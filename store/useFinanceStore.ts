@@ -142,7 +142,26 @@ const getInitialStateWithMigration = (): AppState => {
             categorizationRules: (() => { try { const r = localStorage.getItem('categorization_rules'); return r ? JSON.parse(r) : []; } catch { return []; } })(),
         };
     } catch (e) {
-        console.error("Migration failed:", e);
+        console.error("[FinanceAI] Migration de l'etat echouee:", e);
+        // Phase 0 hardening: AVANT de retourner defaultState (qui ecraserait
+        // potentiellement toutes les donnees utilisateur), on dump le
+        // localStorage corrompu sous une cle de backup horodatee. Les donnees
+        // restent recuperables manuellement si besoin.
+        try {
+            const corruptedDump: Record<string, string | null> = {};
+            const watchedPrefixes = ['app_', 'cached_', 'financeai-', 'fx_rates_', 'categorization_', 'initial_', 'lm_', 'gemini_'];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && watchedPrefixes.some(p => key.startsWith(p))) {
+                    corruptedDump[key] = localStorage.getItem(key);
+                }
+            }
+            const backupKey = `__financeai_backup_${Date.now()}`;
+            localStorage.setItem(backupKey, JSON.stringify({ error: String(e), dump: corruptedDump }));
+            console.warn(`[FinanceAI] Backup des donnees corrompues sauvegarde sous la cle ${backupKey}. Donnees recuperables manuellement via DevTools > Application > Local Storage.`);
+        } catch (backupErr) {
+            console.error("[FinanceAI] Impossible de sauvegarder le backup:", backupErr);
+        }
         return defaultState;
     }
 };

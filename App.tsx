@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
@@ -27,7 +26,7 @@ import { fetchTransactions } from './services/lunchMoney';
 import { INITIAL_BUDGET, INITIAL_CONFIG, INITIAL_PROJECTION, MOCK_ASSETS, INITIAL_INVESTMENT_ACCOUNTS, INITIAL_INVESTMENT_TRANSACTIONS, INITIAL_REAL_ESTATE_GOAL, INITIAL_CHILD_GOAL, DEFAULT_FX_RATES } from './constants';
 import { parseTransactions, markDuplicates } from './utils/transactionParser';
 import { fetchAssetHistory, fetchFxRates } from './services/finance';
-import { calculateGrossFromNet } from './utils/tax';
+import { calculateGrossFromNet } from './services/tax';
 import { generateFinancialReport } from './services/pdfReport';
 import { useFinanceStore } from './store/useFinanceStore';
 

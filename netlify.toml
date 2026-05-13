@@ -9,3 +9,18 @@
 
 [build.environment]
   NODE_VERSION = "20"
+
+# Phase 0: headers de securite
+# Note: 'unsafe-inline' et 'unsafe-eval' sont temporairement necessaires a
+# cause de cdn.tailwindcss.com et de l'importmap esm.sh dans index.html.
+# A serrer en Phase 4 quand on aura migre Tailwind en build-time et bundle
+# les libs externes via Vite.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://esm.sh https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://generativelanguage.googleapis.com https://dev.lunchmoney.app https://www.bankofcanada.ca https://docs.google.com https://api.allorigins.win https://esm.sh; frame-src 'self' https://cdn.plaid.com; worker-src 'self' blob:;"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"

@@ -1,0 +1,433 @@
+
+import React, { useState, useMemo, useEffect } from 'react';
+import { Card } from './ui/Card';
+import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset } from '../types';
+import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend, AreaChart } from 'recharts';
+import { calculateFutureProjection } from '../utils/useFutureSimulation';
+import { fetchPortfolioHistory } from '../services/finance';
+import { calculateGrossFromNet } from '../utils/tax';
+
+interface RetirementProps {
+    goal: RetirementGoal;
+    setGoal: (g: RetirementGoal) => void;
+    currentREER: number;
+    currentCELI: number;
+    currentNonReg: number;
+    calculatedMonthlySavings: number;
+    grossIncome: number;
+    projection: ProjectionConfig;
+    config: BudgetConfig;
+    assets?: Asset[];
+    initialBalances?: Record<string, number>;
+    budgetItems?: BudgetCategory[];
+    realEstateGoals?: RealEstateGoal[];
+    childGoals?: ChildGoal[];
+    travelGoals?: TravelGoal[];
+    lifeEvents?: LifeEvent[];
+    debts?: Debt[];
+}
+
+export const Retirement: React.FC<RetirementProps> = ({
+    goal, setGoal,
+    currentREER, currentCELI, currentNonReg,
+    calculatedMonthlySavings, grossIncome,
+    projection, config,
+    assets = [], initialBalances = {}, budgetItems = [],
+    realEstateGoals = [], childGoals = [], travelGoals = [], lifeEvents = [], debts = []
+}) => {
+    const [lifeExpectancy, setLifeExpectancy] = useState(90);
+    // Editable current age — default from config but can be changed per-session
+    const [currentAge, setCurrentAge] = useState(config.users[0]?.age || 30);
+
+    // Sync age if config changes
+    useEffect(() => {
+        if (config.users[0]?.age) setCurrentAge(config.users[0].age);
+    }, [config]);
+
+    // Live CSV portfolio balances — initialize immediately with prop values so charts show right away
+    const [liveCSVBalances, setLiveCSVBalances] = useState({
+        CELI: currentCELI, CELIAPP: 0, REER: currentREER, NON_ENREG: currentNonReg, CRYPTO: 0, REEE: 0, TOTAL: currentCELI + currentREER + currentNonReg, historicalRate: 0
+    });
+
+    useEffect(() => {
+        // Always set props right away so the chart never starts with 0
+        setLiveCSVBalances(prev => ({ ...prev, CELI: currentCELI, REER: currentREER, NON_ENREG: currentNonReg, TOTAL: currentCELI + currentREER + currentNonReg }));
+
+        const fetchLiveTotals = async () => {
+            try {
+                const history = await fetchPortfolioHistory();
+                if (history.length > 0) {
+                    const lastRow = history[history.length - 1];
+                    let celi = 0, celiapp = 0, reer = 0, nonReg = 0, crypto = 0, reee = 0, total = 0;
+                    Object.keys(lastRow).forEach(key => {
+                        if (key === 'date' || key === 'Date' || key.startsWith('Taux')) return;
+                        const val = Number(lastRow[key]) || 0;
+                        if (key.includes('TOTAL')) { total = val; return; }
+                        const mappedAsset = assets.find(a => key.includes(a.symbol));
+                        const type = mappedAsset?.accountType || 'NON-ENREG';
+                        if (type === 'CELI') celi += val;
+                        else if (type === 'CELIAPP') celiapp += val;
+                        else if (type === 'REER') reer += val;
+                        else if (type === 'CRYPTO') crypto += val;
+                        else if (key.includes('REEE')) reee += val;
+                        else nonReg += val;
+                    });
+                    // Prefer CSV data; fallback to props for zero accounts
+                    setLiveCSVBalances({
+                        CELI: celi || currentCELI, CELIAPP: celiapp,
+                        REER: reer || currentREER, NON_ENREG: nonReg || currentNonReg,
+                        CRYPTO: crypto, REEE: reee, TOTAL: total || (currentCELI + currentREER + currentNonReg),
+                        historicalRate: 0
+                    });
+                }
+            } catch (_) { }
+        };
+        fetchLiveTotals();
+    }, [assets, currentCELI, currentREER, currentNonReg]);
+
+    // Update global goal
+    const updateGoal = (field: keyof RetirementGoal, value: number) => {
+        setGoal({ ...goal, [field]: value });
+    };
+
+    // Computed base values (same logic as FutureProjection)
+    const baseNetAnnual = useMemo(() => config.users.reduce((sum, u) => sum + ((u.netSalary || u.salary || 0) * 12), 0), [config]);
+    const baseGrossAnnual = useMemo(() => config.users.reduce((sum, u) => {
+        if (u.grossSalary) return sum + (u.grossSalary * 12);
+        const netAnnual = (u.netSalary || u.salary || 0) * 12;
+        return sum + calculateGrossFromNet(netAnnual);
+    }, 0), [config]);
+
+    const baseMonthlyExpenses = Math.max(0, (baseNetAnnual / 12) - calculatedMonthlySavings);
+
+    const currentRentExpense = useMemo(() => {
+        const rentItem = budgetItems.find(b => b.name.toLowerCase().includes('loyer') || b.name.toLowerCase().includes('hypothèque'));
+        return rentItem ? (rentItem.frequency === 'Yearly' ? rentItem.target / 12 : rentItem.target) : 1600;
+    }, [budgetItems]);
+
+    const calculatedStartingCash = useMemo(() => {
+        let cash = 0;
+        (Object.values(initialBalances) as number[]).forEach(v => cash += v);
+        return cash;
+    }, [initialBalances]);
+
+    // --- MASTER SIMULATION ENGINE (same as Future tab) ---
+    const { chartData } = useMemo(() => {
+        return calculateFutureProjection({
+            projection,
+            calculatedStartingCash,
+            liveCSVBalances,
+            realEstateGoals,
+            debts,
+            childGoals,
+            travelGoals,
+            lifeEvents,
+            retirementGoal: goal,
+            config,
+            baseGrossAnnual,
+            baseNetAnnual,
+            currentRentExpense,
+            baseMonthlyExpenses,
+        });
+    }, [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, goal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses]);
+
+    // Filter to yearly data points for cleaner chart
+    const yearlyData = useMemo(() => {
+        if (chartData.length === 0) return [];
+        return chartData.filter(d => d.monthIndex % 12 === 0).map(d => ({
+            ...d,
+            TotalCapital: d.CELI + d.REER + d.NonReg + d.Liquidites + (d.CELIAPP || 0),
+        }));
+    }, [chartData]);
+
+    // Find retirement data point
+    const retirementPoint = yearlyData.find(d => d.age >= goal.targetAge);
+    const retirementNetWorth = retirementPoint?.NetWorth || 0;
+    const peakNetWorth = yearlyData.length > 0 ? Math.max(...yearlyData.map(d => d.NetWorth)) : 0;
+    const finalNetWorth = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1]?.NetWorth || 0 : 0;
+
+    // Bankruptcy detection
+    const retirementData = yearlyData.filter(d => d.age >= goal.targetAge);
+    const lifeExpectancyData = yearlyData.filter(d => d.age <= lifeExpectancy);
+    const bankruptcyPoint = retirementData.find(d => d.TotalCapital <= 0);
+    const bankruptcyAge = bankruptcyPoint?.age;
+
+
+
+    return (
+        <div className="space-y-6 animate-premium-in pb-20">
+            {/* HEADER */}
+            <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+                <div>
+                    <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 tracking-tight">Planification Retraite 🏖️</h2>
+                    <p className="text-gray-400 text-sm mt-1">Simulation complète basée sur le moteur FIRE – même données que l'onglet Futur.</p>
+                </div>
+                <div className={`px-4 py-2 rounded-xl border backdrop-blur-md ${bankruptcyAge ? 'bg-red-900/20 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'bg-emerald-900/20 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.2)]'}`}>
+                    <div className="text-xs text-gray-400 uppercase font-bold tracking-wider">Verdict du plan</div>
+                    <div className={`text-xl font-black ${bankruptcyAge ? 'text-red-400' : 'text-emerald-400'}`}>
+                        {bankruptcyAge ? `Capital épuisé à ${bankruptcyAge} ans ⚠️` : `Succès jusqu'à ${lifeExpectancy} ans 🚀`}
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                {/* LEFT: CONTROLS */}
+                <div className="lg:col-span-1 space-y-6">
+                    <Card title="Paramètres de Vie">
+                        <div className="space-y-5">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs text-gray-400 mb-1">Âge Actuel</label>
+                                    <input type="number" min="18" max="80" value={currentAge} onChange={e => setCurrentAge(Number(e.target.value))} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-bold focus:border-primary transition-colors outline-none" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-gray-400 mb-1">Âge Retraite</label>
+                                    <input type="number" value={goal.targetAge} onChange={e => updateGoal('targetAge', Number(e.target.value))} className="w-full bg-black/40 border border-blue-500/30 rounded-lg px-3 py-2 text-blue-400 font-bold focus:border-blue-500 transition-colors outline-none" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="flex justify-between text-xs text-gray-400 mb-1">
+                                    <span>Espérance de vie</span>
+                                    <span className="text-white font-black">{lifeExpectancy} ans</span>
+                                </label>
+                                <input type="range" min="80" max="100" value={lifeExpectancy} onChange={e => setLifeExpectancy(Number(e.target.value))} className="w-full h-1.5 bg-black/50 rounded-lg appearance-none cursor-pointer accent-gray-400" />
+                            </div>
+                        </div>
+                    </Card>
+
+                    <Card title="Capitaux Actuels">
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-3 gap-2 text-center text-[10px] text-gray-400 bg-white/5 p-3 rounded-xl border border-white/5">
+                                <div>
+                                    <div className="uppercase tracking-wider">REER</div>
+                                    <div className="text-white font-bold privacy-blur mt-1">{liveCSVBalances.REER.toLocaleString()}$</div>
+                                </div>
+                                <div>
+                                    <div className="uppercase tracking-wider">CELI</div>
+                                    <div className="text-white font-bold privacy-blur mt-1">{liveCSVBalances.CELI.toLocaleString()}$</div>
+                                </div>
+                                <div>
+                                    <div className="uppercase tracking-wider">Non-Enr.</div>
+                                    <div className="text-white font-bold privacy-blur mt-1">{liveCSVBalances.NON_ENREG.toLocaleString()}$</div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-gray-400">Capital à la retraite ({goal.targetAge} ans)</span>
+                                    <span className="text-white font-bold privacy-blur">{retirementNetWorth.toLocaleString()}$</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-gray-400">Pic du patrimoine</span>
+                                    <span className="text-emerald-400 font-bold privacy-blur">{peakNetWorth.toLocaleString()}$</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-gray-400">Héritage ({lifeExpectancy} ans)</span>
+                                    <span className="text-blue-400 font-bold privacy-blur">{finalNetWorth.toLocaleString()}$</span>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+
+                    <Card title="Revenus & Besoins (Retraite)">
+                        <div className="space-y-5">
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-1">Besoin Mensuel (Aujourd'hui)</label>
+                                <input type="number" value={goal.targetMonthlyIncome} onChange={e => updateGoal('targetMonthlyIncome', Number(e.target.value))} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-bold focus:border-primary transition-colors outline-none privacy-blur" />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-1">Rente État (RRQ + PSV / mois)</label>
+                                <input type="number" value={goal.governmentPension} onChange={e => updateGoal('governmentPension', Number(e.target.value))} className="w-full bg-black/40 border border-blue-500/20 rounded-lg px-3 py-2 text-blue-300 font-bold focus:border-blue-500 transition-colors outline-none privacy-blur" />
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+
+                {/* RIGHT: CHARTS */}
+                <div className="lg:col-span-2 space-y-6">
+
+                    {chartData.length === 0 ? (
+                        <Card title="Simulation">
+                            <div className="flex items-center justify-center h-64 text-gray-500">
+                                <div className="text-center">
+                                    <div className="text-4xl mb-3">⏳</div>
+                                    <p>Chargement des données de portefeuille...</p>
+                                    <p className="text-xs mt-2 text-gray-600">Assurez-vous d'avoir importé un CSV de portefeuille.</p>
+                                </div>
+                            </div>
+                        </Card>
+                    ) : (
+                        <>
+                            {/* MASTER CHART - Accumulation & Decumulation */}
+                            <Card title="📈 Accumulation & Épuisement du Capital (Moteur FIRE)">
+                                <div className="h-[420px] w-full" style={{ minHeight: '420px' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={lifeExpectancyData} margin={{ top: 20, right: 30, left: 10, bottom: 0 }}>
+                                            <defs>
+                                                <linearGradient id="retGradREER" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.75} />
+                                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05} />
+                                                </linearGradient>
+                                                <linearGradient id="retGradCELI" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.75} />
+                                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.05} />
+                                                </linearGradient>
+                                                <linearGradient id="retGradNonReg" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.75} />
+                                                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.05} />
+                                                </linearGradient>
+                                                <linearGradient id="retGradLiq" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.5} />
+                                                    <stop offset="95%" stopColor="#a78bfa" stopOpacity={0.02} />
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
+                                            <XAxis
+                                                dataKey="age"
+                                                stroke="#334155"
+                                                tick={{ fontSize: 10, fill: '#64748b' }}
+                                                tickMargin={10}
+                                                tickFormatter={(val) => `${val} ans`}
+                                            />
+                                            <YAxis
+                                                stroke="#334155"
+                                                tick={{ fontSize: 10, fill: '#64748b' }}
+                                                tickFormatter={(val) => `${(val / 1000).toFixed(0)}k$`}
+                                                width={55}
+                                            />
+                                            <Tooltip content={<RetirementTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.07)', strokeWidth: 2 }} />
+                                            <Legend verticalAlign="top" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '12px' }} />
+                                            <ReferenceLine
+                                                x={goal.targetAge}
+                                                stroke="#f97316"
+                                                strokeDasharray="5 3"
+                                                label={{ position: 'insideTopRight', value: `Retraite (${goal.targetAge}a) 🔥`, fill: '#f97316', fontSize: 11, fontWeight: 'bold', dy: -8 }}
+                                            />
+                                            <Area type="monotone" dataKey="Liquidites" stackId="1" fill="url(#retGradLiq)" stroke="#a78bfa" strokeWidth={1} name="Liquidités" fillOpacity={1} />
+                                            <Area type="monotone" dataKey="NonReg" stackId="1" fill="url(#retGradNonReg)" stroke="#f59e0b" strokeWidth={1} name="Non-Enreg." fillOpacity={1} />
+                                            <Area type="monotone" dataKey="CELI" stackId="1" fill="url(#retGradCELI)" stroke="#10b981" strokeWidth={1.5} name="CELI" fillOpacity={1} />
+                                            <Area type="monotone" dataKey="REER" stackId="1" fill="url(#retGradREER)" stroke="#3b82f6" strokeWidth={1.5} name="REER" fillOpacity={1} />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
+
+                                {/* KPIs under chart */}
+                                <div className="grid grid-cols-3 gap-4 mt-6">
+                                    <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
+                                        <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Capital à la Retraite</div>
+                                        <div className="text-2xl font-black text-blue-400 privacy-blur mt-1 drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]">
+                                            {(retirementNetWorth / 1000).toFixed(0)}k $
+                                        </div>
+                                    </div>
+                                    <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
+                                        <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Pic du Patrimoine</div>
+                                        <div className="text-2xl font-black text-emerald-400 privacy-blur mt-1 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]">
+                                            {(peakNetWorth / 1000).toFixed(0)}k $
+                                        </div>
+                                    </div>
+                                    <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
+                                        <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Héritage ({lifeExpectancy} ans)</div>
+                                        <div className={`text-2xl font-black privacy-blur mt-1 ${finalNetWorth > 0 ? 'text-white' : 'text-red-400'}`}>
+                                            {finalNetWorth > 0 ? `${(finalNetWorth / 1000).toFixed(0)}k $` : 'Épuisé ⚠️'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </Card>
+
+                            {/* RETIREMENT CASHFLOW CHART */}
+                            <Card title="💸 Flux Financier durant la Retraite (Revenus vs Besoin)">
+                                <div className="h-[280px] w-full" style={{ minHeight: '280px' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <ComposedChart data={retirementData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
+                                            <XAxis dataKey="age" stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => `${val}a`} />
+                                            <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} width={50} tickFormatter={(val) => `${(val / 1000).toFixed(0)}k`} />
+                                            <Tooltip
+                                                contentStyle={{ backgroundColor: '#0B0E14', borderColor: '#1e293b', borderRadius: '10px', color: '#fff' }}
+                                                formatter={(val: any, name: string) => [`${Number(val).toLocaleString()}$`, name]}
+                                            />
+                                            <Legend iconType="circle" />
+                                            <Area type="monotone" dataKey="IncomeRetirement" fill="#3b82f620" stroke="#3b82f6" strokeWidth={2} name="Rente Gouv. + PSV" />
+                                            <Area type="monotone" dataKey="Income" fill="#10b98115" stroke="#10b981" strokeWidth={2} name="Revenu Total" />
+                                            <Line type="monotone" dataKey="Expenses" stroke="#ef4444" strokeWidth={3} dot={false} name="Besoin (Infl.)" style={{ filter: 'drop-shadow(0px 2px 6px rgba(239,68,68,0.5))' }} />
+                                        </ComposedChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div className="mt-4 text-xs text-gray-400 text-center bg-white/5 p-3 rounded-lg border border-white/10">
+                                    La ligne rouge représente votre besoin mensuel ({goal.targetMonthlyIncome}$/mois), ajusté à l'inflation ({projection.inflationRate || 2}%) au fil du temps.
+                                </div>
+                            </Card>
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Premium tooltip component
+const RetirementTooltip = React.memo(({ active, payload, label }: any) => {
+    if (!active || !payload || !payload.length) return null;
+    const data = payload[0].payload;
+    const isRetired = data.age >= data.RetirementAge;
+
+    const total = (data.CELI || 0) + (data.REER || 0) + (data.NonReg || 0) + (data.Liquidites || 0);
+
+    return (
+        <div className="bg-[#0B0E14]/95 backdrop-blur-md border border-white/10 p-4 rounded-xl shadow-2xl max-w-[280px] z-50">
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/10">
+                <span className="text-lg font-black text-white">Âge: {data.age} ans</span>
+                <span className={`text-xs font-bold px-2 py-1 rounded-md ${isRetired ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
+                    {isRetired ? 'En Retraite 🏖️' : 'Accumulation 📈'}
+                </span>
+            </div>
+
+            <div className="mb-4 space-y-2">
+                <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Patrimoine Net</span>
+                    <span className="text-sm font-black text-emerald-400 privacy-blur drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]">{data.NetWorth?.toLocaleString()}$</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-black/30 p-2 rounded-lg border border-white/5">
+                        <div className="text-[10px] text-[#10b981] font-bold mb-1">CELI</div>
+                        <div className="text-xs font-black text-gray-100 privacy-blur">{(data.CELI || 0).toLocaleString()}$</div>
+                    </div>
+                    <div className="bg-black/30 p-2 rounded-lg border border-white/5">
+                        <div className="text-[10px] text-[#3b82f6] font-bold mb-1">REER</div>
+                        <div className="text-xs font-black text-gray-100 privacy-blur">{(data.REER || 0).toLocaleString()}$</div>
+                    </div>
+                    {(data.NonReg || 0) > 0 && (
+                        <div className="bg-black/30 p-2 rounded-lg border border-white/5">
+                            <div className="text-[10px] text-[#f59e0b] font-bold mb-1">Non-Enreg.</div>
+                            <div className="text-xs font-black text-gray-100 privacy-blur">{(data.NonReg || 0).toLocaleString()}$</div>
+                        </div>
+                    )}
+                    <div className="bg-black/30 p-2 rounded-lg border border-white/5">
+                        <div className="text-[10px] text-[#a78bfa] font-bold mb-1">Liquidités</div>
+                        <div className="text-xs font-black text-gray-100 privacy-blur">{(data.Liquidites || 0).toLocaleString()}$</div>
+                    </div>
+                </div>
+            </div>
+
+            {isRetired ? (
+                <div className="space-y-2">
+                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Flux Mensuel</div>
+                    <div className="bg-black/30 rounded-lg p-3 border border-red-500/20 space-y-2">
+                        <div className="flex justify-between text-xs"><span className="text-gray-400">Revenu total</span><span className="text-emerald-400 font-bold privacy-blur">+{(data.Income || 0).toLocaleString()}$</span></div>
+                        <div className="flex justify-between text-xs"><span className="text-gray-400">Dépenses (Infl.)</span><span className="text-red-400 font-bold privacy-blur">-{(data.Expenses || 0).toLocaleString()}$</span></div>
+                        <div className="flex justify-between text-xs pt-1 border-t border-white/5"><span className="text-gray-400">Cashflow</span><span className={`font-bold privacy-blur ${(data.Income - data.Expenses) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{(data.Income - data.Expenses).toLocaleString()}$</span></div>
+                    </div>
+                </div>
+            ) : (
+                <div className="space-y-2">
+                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Épargne Mensuelle</div>
+                    <div className="bg-black/30 rounded-lg p-3 border border-emerald-500/20">
+                        <div className="flex justify-between text-xs"><span className="text-gray-400">Cashflow</span><span className="text-emerald-400 font-bold privacy-blur">+{(data.Savings || 0).toLocaleString()}$</span></div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+});

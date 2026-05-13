@@ -1,0 +1,59 @@
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+export interface ToastMessage {
+    id: string;
+    message: string;
+    type: 'success' | 'error' | 'info';
+}
+
+export const ToastContainer: React.FC = () => {
+    const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+    const removeToast = useCallback((id: string) => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+    }, []);
+
+    useEffect(() => {
+        const handleToast = (event: any) => {
+            const { message, type = 'info' } = event.detail;
+            const id = Math.random().toString(36).substring(2, 9);
+            setToasts(prev => [...prev, { id, message, type }]);
+
+            setTimeout(() => removeToast(id), 4000);
+        };
+
+        window.addEventListener('app-toast', handleToast);
+        return () => window.removeEventListener('app-toast', handleToast);
+    }, [removeToast]);
+
+    return (
+        <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2 pointer-events-none">
+            <AnimatePresence>
+                {toasts.map(toast => (
+                    <motion.div
+                        key={toast.id}
+                        initial={{ opacity: 0, x: 50, scale: 0.9 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+                        className={`pointer-events-auto min-w-[300px] p-4 rounded-xl border shadow-2xl flex items-center gap-3 ${toast.type === 'success' ? 'bg-emerald-900/90 border-emerald-500/50 text-emerald-100' :
+                                toast.type === 'error' ? 'bg-red-900/90 border-red-500/50 text-red-100' :
+                                    'bg-blue-900/90 border-blue-500/50 text-blue-100'
+                            }`}
+                    >
+                        <span className="text-xl">
+                            {toast.type === 'success' ? '✅' : toast.type === 'error' ? '❌' : 'ℹ️'}
+                        </span>
+                        <div className="flex-1 text-sm font-medium">{toast.message}</div>
+                        <button onClick={() => removeToast(toast.id)} className="opacity-50 hover:opacity-100 transition-opacity">✕</button>
+                    </motion.div>
+                ))}
+            </AnimatePresence>
+        </div>
+    );
+};
+
+export const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    window.dispatchEvent(new CustomEvent('app-toast', { detail: { message, type } }));
+};

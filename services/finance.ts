@@ -1,4 +1,3 @@
-
 // --- GOOGLE SHEET DATA FETCHER + TAUX DE CHANGE BANQUE DU CANADA ---
 
 export interface MarketDataPoint {
@@ -19,8 +18,38 @@ let activeFetch: Promise<MarketDataPoint[]> | null = null;
 // Taux de change mis en cache localement
 let cachedFxRates: { USD: number; EUR: number; CAD: number; lastFetched: number } | null = null;
 
+// --- Wrapper localStorage tolerant aux environnements sans Web Storage ---
+// Le module est importe par App (browser) et potentiellement par le MCP server (Node).
+// En Node, ServiceWorker ou mode prive Safari, localStorage peut etre absent
+// ou jeter SecurityError ; on no-op silencieusement dans ces cas.
+const hasLocalStorage = (): boolean => {
+    try {
+        return typeof localStorage !== 'undefined' && localStorage !== null;
+    } catch {
+        return false;
+    }
+};
+
+const safeGetItem = (key: string): string | null => {
+    if (!hasLocalStorage()) return null;
+    try {
+        return localStorage.getItem(key);
+    } catch {
+        return null;
+    }
+};
+
+const safeSetItem = (key: string, value: string): void => {
+    if (!hasLocalStorage()) return;
+    try {
+        localStorage.setItem(key, value);
+    } catch {
+        /* QuotaExceededError, SecurityError, etc. */
+    }
+};
+
 /**
- * Fetch avec timeout intégré et support d'abort
+ * Fetch avec timeout integre et support d'abort
  */
 const fetchWithTimeout = async (url: string, timeoutMs: number = FETCH_TIMEOUT_MS): Promise<Response> => {
     const controller = new AbortController();
@@ -44,7 +73,7 @@ const fetchWithRetry = async (url: string, retries: number = MAX_RETRIES): Promi
             return await fetchWithTimeout(url);
         } catch (e) {
             if (attempt === retries) throw e;
-            console.warn(`Tentative ${attempt + 1} échouée, retry...`);
+            console.warn(`Tentative ${attempt + 1} echouee, retry...`);
             await new Promise(r => setTimeout(r, 1000 * (attempt + 1))); // Backoff exponentiel
         }
     }
@@ -76,7 +105,7 @@ const cleanNumberString = (val: any): number => {
     let str = String(val).replace(/^"|"$/g, '').trim();
     if (str === '' || str === '-') return NaN;
 
-    str = str.replace(/[\s\u00A0\u202F$€£%]/g, '');
+    str = str.replace(/[\s  $€£%]/g, '');
     str = str.replace(/[^0-9.,-]/g, '');
 
     const isNeg = str.startsWith('-');
@@ -99,34 +128,34 @@ const cleanNumberString = (val: any): number => {
 };
 
 /**
- * Récupère les taux de change depuis la Banque du Canada (API officielle, gratuite).
- * Cache 24h pour éviter trop de requêtes.
- * Fallback sur les valeurs stockées en cas d'échec.
+ * Recupere les taux de change depuis la Banque du Canada (API officielle, gratuite).
+ * Cache 24h pour eviter trop de requetes.
+ * Fallback sur les valeurs stockees en cas d'echec.
  */
 export const fetchFxRates = async (): Promise<{ USD: number; EUR: number; CAD: number; lastFetched: number }> => {
     const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 heures
     const now = Date.now();
 
-    // Vérifier le cache en mémoire
+    // Verifier le cache en memoire (toujours dispo, browser + Node)
     if (cachedFxRates && (now - cachedFxRates.lastFetched) < CACHE_DURATION_MS) {
         return cachedFxRates;
     }
 
-    // Vérifier le cache localStorage
-    try {
-        const stored = localStorage.getItem('fx_rates_cache');
-        if (stored) {
+    // Verifier le cache persistant si localStorage existe (browser uniquement)
+    const stored = safeGetItem('fx_rates_cache');
+    if (stored) {
+        try {
             const parsed = JSON.parse(stored);
             if (parsed && (now - (parsed.lastFetched || 0)) < CACHE_DURATION_MS) {
                 cachedFxRates = parsed;
                 return parsed;
             }
-        }
-    } catch (e) { /* ignore */ }
+        } catch { /* JSON corrompu : on continue le fetch */ }
+    }
 
     // Fetch depuis la Banque du Canada
     // API: /valet/observations/GROUPE/json?recent=1
-    // Séries: FXUSDCAD (USD/CAD) et FXEURCAD (EUR/CAD)
+    // Series: FXUSDCAD (USD/CAD) et FXEURCAD (EUR/CAD)
     try {
         const BDC_URL = "https://www.bankofcanada.ca/valet/observations/group/FX_RATES_DAILY/json?recent=1";
         const response = await fetchWithTimeout(BDC_URL, 8000);
@@ -142,18 +171,18 @@ export const fetchFxRates = async (): Promise<{ USD: number; EUR: number; CAD: n
                 const rates = { USD: usdCad, EUR: eurCad, CAD: 1.00, lastFetched: now };
                 cachedFxRates = rates;
 
-                // Persistance dans localStorage
-                try { localStorage.setItem('fx_rates_cache', JSON.stringify(rates)); } catch (e) { /* ignore */ }
+                // Persistance dans localStorage si disponible (no-op en Node)
+                safeSetItem('fx_rates_cache', JSON.stringify(rates));
 
-                console.log(`✅ Taux FX mis à jour (Banque du Canada): USD=${usdCad.toFixed(4)}, EUR=${eurCad.toFixed(4)}`);
+                console.log(`Taux FX mis a jour (Banque du Canada): USD=${usdCad.toFixed(4)}, EUR=${eurCad.toFixed(4)}`);
                 return rates;
             }
         }
     } catch (e) {
-        console.warn("⚠️ Impossible de récupérer les taux FX (Banque du Canada), utilisation des valeurs en cache/défaut:", e);
+        console.warn("Impossible de recuperer les taux FX (Banque du Canada), utilisation des valeurs en cache/defaut:", e);
     }
 
-    // Fallback: valeurs par défaut approximatives si tout échoue
+    // Fallback: valeurs par defaut approximatives si tout echoue
     const fallback = { USD: 1.40, EUR: 1.47, CAD: 1.00, lastFetched: 0 };
     return fallback;
 };
@@ -164,25 +193,25 @@ export const fetchPortfolioHistory = async (): Promise<MarketDataPoint[]> => {
 
     activeFetch = (async () => {
         try {
-            console.log(`📡 Fetching Master CSV...`);
+            console.log(`Fetching Master CSV...`);
 
             let csvText = '';
 
-            // 1. Tenter l'export direct (peut échouer à cause des CORS)
+            // 1. Tenter l'export direct (peut echouer a cause des CORS)
             try {
                 const response = await fetchWithTimeout(CSV_URL_GVIZ, 8000);
                 if (response.ok) {
                     const text = await response.text();
                     if (!text.toLowerCase().includes('<!doctype html>') && !text.toLowerCase().includes('<html')) {
                         csvText = text;
-                        console.log('✅ Fetch direct réussi');
+                        console.log('Fetch direct reussi');
                     }
                 }
             } catch (e) {
-                console.warn("Export direct échoué (CORS probable), tentative via Proxy...");
+                console.warn("Export direct echoue (CORS probable), tentative via Proxy...");
             }
 
-            // 2. Fallback via proxy public si nécessaire
+            // 2. Fallback via proxy public si necessaire
             if (!csvText) {
                 const PROXY_URL = `https://api.allorigins.win/raw?url=${encodeURIComponent(CSV_URL_GVIZ)}`;
                 try {
@@ -191,12 +220,12 @@ export const fetchPortfolioHistory = async (): Promise<MarketDataPoint[]> => {
                     csvText = await responseProxy.text();
 
                     if (csvText.toLowerCase().includes('<!doctype html>') || csvText.toLowerCase().includes('<html')) {
-                        console.error("❌ Le fichier Google Sheet est privé ou l'ID est invalide.");
+                        console.error("Le fichier Google Sheet est prive ou l'ID est invalide.");
                         return [];
                     }
-                    console.log('✅ Fetch via proxy réussi');
+                    console.log('Fetch via proxy reussi');
                 } catch (proxyError) {
-                    console.error("❌ Proxy également indisponible:", proxyError);
+                    console.error("Proxy egalement indisponible:", proxyError);
                     return [];
                 }
             }
@@ -204,7 +233,7 @@ export const fetchPortfolioHistory = async (): Promise<MarketDataPoint[]> => {
             const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== '');
             if (lines.length < 2) return [];
 
-            // Détection du séparateur
+            // Detection du separateur
             const firstLine = lines[0];
             const commaCount = (firstLine.match(/,/g) || []).length;
             const semiCount = (firstLine.match(/;/g) || []).length;
@@ -298,12 +327,12 @@ export const fetchPortfolioHistory = async (): Promise<MarketDataPoint[]> => {
 
             const sortedData = data.sort((a, b) => new Date(a.date as string).getTime() - new Date(b.date as string).getTime());
 
-            console.log(`✅ CSV Parsed: ${sortedData.length} lignes chargées.`);
+            console.log(`CSV Parsed: ${sortedData.length} lignes chargees.`);
             cachedData = sortedData;
             return sortedData;
 
         } catch (e) {
-            console.error("❌ CSV Fetch complet échoué:", e);
+            console.error("CSV Fetch complet echoue:", e);
             return [];
         } finally {
             activeFetch = null;

@@ -1,0 +1,5 @@
+{
+  "name": "FinanceAI - LunchMoney Companion",
+  "description": "A comprehensive personal finance dashboard integrating LunchMoney data, Gemini AI categorization, couple budgeting, and investment tracking.",
+  "requestFramePermissions": []
+}

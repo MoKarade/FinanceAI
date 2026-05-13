@@ -1,0 +1,33 @@
+{
+    "tabs": {
+        "dashboard": "Home",
+        "transactions": "Transactions",
+        "budget": "Budget",
+        "goals": "Goals",
+        "planning": "Planning & Subs",
+        "debt": "Debt",
+        "investments": "Investments",
+        "future": "Future",
+        "real_estate": "Real Estate",
+        "child": "Child",
+        "travel": "Travel",
+        "life_events": "Life Events",
+        "retirement": "Retirement",
+        "tax": "Tax & Docs",
+        "data": "Data",
+        "settings": "Settings",
+        "system": "System",
+        "assistant": "AI Assistant"
+    },
+    "dashboard": {
+        "global_net_worth": "Global Net Worth",
+        "passive_income_month": "Passive Income (Month)",
+        "global_variation": "Global Variation",
+        "take_action": "Take action",
+        "manage_goals": "Manage Goals",
+        "detailed_evolution": "Detailed Evolution of your Accounts",
+        "individual_assets": "Individual Assets (Stock Market)",
+        "cash_savings": "Cash & Savings (Liquidity)",
+        "credit_debts": "Credit & Debts"
+    }
+}

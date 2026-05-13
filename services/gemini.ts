@@ -4,20 +4,50 @@ import { Transaction, RecurringItem, FinancialGoal, GoalType, Asset } from "../t
 
 const MODEL_NAME = "gemini-2.0-flash";
 
-// Contexte fiscal et culturel québécois pour améliorer la précision de l'IA
+// =============================================================================
+// PRIVACY & SECURITY HARDENING (Phase 0)
+// =============================================================================
+// 1. Sanitization des payees envoyes a Gemini :
+//    - Strip des caracteres de controle / nouvelles lignes
+//    - Escape des guillemets pour eviter la prompt injection
+//    - Troncature a 60 caracteres max
+// 2. Arrondi des montants exacts a 100$ avant envoi (reduit la precision PII)
+// 3. Le contexte fiscal quebecois reste necessaire pour la categorisation par
+//    nom de marchand. Une anonymisation complete par hash casserait l'efficacite
+//    de categorisation. A evaluer en Phase ulterieure : passer ces calls par
+//    MCP/Claude (qui pourrait recevoir uniquement les hash et faire le mapping
+//    cote serveur en restant local).
+// =============================================================================
+
+const sanitizePayee = (raw: string): string => {
+    if (!raw) return '';
+    // eslint-disable-next-line no-control-regex
+    return raw
+        .replace(/[\x00-\x1F\x7F]/g, ' ')   // strip control chars + DEL
+        .replace(/["\\]/g, ' ')               // strip quotes + backslashes (anti prompt injection)
+        .replace(/\s+/g, ' ')                  // collapse whitespace
+        .trim()
+        .slice(0, 60);                         // limite la PII envoyee
+};
+
+const roundToHundred = (amount: number): number => {
+    return Math.round(amount / 100) * 100;
+};
+
+// Contexte fiscal et culturel quebecois pour ameliorer la precision de l'IA
 const QUEBEC_FISCAL_CONTEXT = `
-Tu es un expert-comptable et conseiller financier spécialisé dans les finances personnelles au Québec, Canada.
+Tu es un expert-comptable et conseiller financier specialise dans les finances personnelles au Quebec, Canada.
 Tes connaissances incluent :
-- Le système fiscal canadien et québécois (impôt fédéral + provincial)
-- Les types de comptes : CELI (Compte Épargne Libre Impôt), REER (Régime Épargne Retraite), CELIAPP/FHSA, REEE
-- Les institutions financières québécoises : Desjardins, Banque Laurentienne, BNC, RBC, TD, BMO, Scotia, CIBC, Wealthsimple
-- Les épiceries : IGA, Metro, Maxi, Super C, Provigo, PA, Walmart, Costco
-- Les commerçants locaux québécois : SAQ, SQDC, Couche-Tard, Jean Coutu, Pharmaprix, Dollarama
-- Les services : Hydro-Québec, Bell, Vidéotron, Telus, Cogeco
+- Le systeme fiscal canadien et quebecois (impot federal + provincial)
+- Les types de comptes : CELI (Compte Epargne Libre Impot), REER (Regime Epargne Retraite), CELIAPP/FHSA, REEE
+- Les institutions financieres quebecoises : Desjardins, Banque Laurentienne, BNC, RBC, TD, BMO, Scotia, CIBC, Wealthsimple
+- Les epiceries : IGA, Metro, Maxi, Super C, Provigo, PA, Walmart, Costco
+- Les commercants locaux quebecois : SAQ, SQDC, Couche-Tard, Jean Coutu, Pharmaprix, Dollarama
+- Les services : Hydro-Quebec, Bell, Videotron, Telus, Cogeco
 - Les restaurants et livraison : Uber Eats, DoorDash, Skip The Dishes, restaurants locaux
 - Les paiements : Interac, Visa, Mastercard, AmEx, PayPal, Google Pay, Apple Pay
-- Les abréviations bancaires courantes sur les relevés québécois
-Tu dois catégoriser les transactions avec précision selon le contexte québécois.
+- Les abreviations bancaires courantes sur les releves quebecois
+Tu dois categoriser les transactions avec precision selon le contexte quebecois.
 `;
 
 const cleanMerchantName = (raw: string): string => {
@@ -67,9 +97,9 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const categorizeBatch = async (transactions: Transaction[], apiKey: string, history: Transaction[] = [], allowedCategories: string[] = [], onProgress?: any): Promise<Transaction[]> => {
     if (transactions.length === 0) return [];
-    if (onProgress) onProgress(0, transactions.length, "🔍 Analyse de l'historique et règles strictes...");
+    if (onProgress) onProgress(0, transactions.length, "Analyse de l'historique et regles strictes...");
     const { matched, remaining } = matchFromHistory(transactions, history);
-    if (onProgress) onProgress(matched.length, transactions.length, `✅ ${matched.length} identifiés (Historique/Règles).`, matched);
+    if (onProgress) onProgress(matched.length, transactions.length, `${matched.length} identifies (Historique/Regles).`, matched);
     if (remaining.length === 0) return matched;
     if (!apiKey) return [...matched, ...remaining];
 
@@ -79,11 +109,11 @@ export const categorizeBatch = async (transactions: Transaction[], apiKey: strin
 
     for (let i = 0; i < remaining.length; i += BATCH_SIZE) {
         const batch = remaining.slice(i, i + BATCH_SIZE);
-        if (onProgress) onProgress(matched.length + aiProcessed.length, transactions.length, `🤖 Appel IA (Lot ${Math.floor(i / BATCH_SIZE) + 1})...`);
-        const txList = batch.map(t => `ID:${t.id}|"${t.payee}"|${t.amount}`).join('\n');
-        const prompt = `${QUEBEC_FISCAL_CONTEXT}\n\nCATEGORIES AUTORISÉES (utilise UNIQUEMENT ces valeurs): ${JSON.stringify(safeCategories)}.\n\nTransactions à catégoriser:\n${txList}\n\nRègle: Si tu ne peux pas déterminer la catégorie avec >50% de confiance, utilise "Autre".\nFORMAT JSON STRICT: [{ "id": number, "category": string, "isTransfer": boolean, "confidence": number }]`;
+        if (onProgress) onProgress(matched.length + aiProcessed.length, transactions.length, `Appel IA (Lot ${Math.floor(i / BATCH_SIZE) + 1})...`);
+        // Phase 0 hardening: sanitize les payees + arrondit les montants avant envoi a Gemini
+        const txList = batch.map(t => `ID:${t.id}|"${sanitizePayee(t.payee)}"|${roundToHundred(t.amount)}`).join('\n');
+        const prompt = `${QUEBEC_FISCAL_CONTEXT}\n\nCATEGORIES AUTORISEES (utilise UNIQUEMENT ces valeurs): ${JSON.stringify(safeCategories)}.\n\nTransactions a categoriser (montants arrondis a 100$):\n${txList}\n\nRegle: Si tu ne peux pas determiner la categorie avec >50% de confiance, utilise "Autre".\nFORMAT JSON STRICT: [{ "id": number, "category": string, "isTransfer": boolean, "confidence": number }]`;
         try {
-            // Utilisation du grounding web pour améliorer la reconnaissance des marchands
             const response = await ai.models.generateContent({
                 model: MODEL_NAME,
                 contents: prompt,
@@ -99,11 +129,10 @@ export const categorizeBatch = async (transactions: Transaction[], apiKey: strin
                 return { ...t, category: aiRes?.category || "Inconnu", status: 'processed' as const, isTransfer: aiRes?.isTransfer === true, confidence: aiRes?.confidence || 50 };
             });
             aiProcessed = [...aiProcessed, ...processedBatch];
-            if (onProgress) onProgress(matched.length + aiProcessed.length, transactions.length, `✨ Lot terminé (${processedBatch.length} transactions).`, processedBatch);
+            if (onProgress) onProgress(matched.length + aiProcessed.length, transactions.length, `Lot termine (${processedBatch.length} transactions).`, processedBatch);
             await sleep(1000);
         } catch (e) {
             console.warn("Web grounding failed, falling back to standard model:", e);
-            // Fallback sans grounding web en cas d'erreur
             try {
                 const fallbackResponse = await ai.models.generateContent({
                     model: MODEL_NAME,
@@ -117,8 +146,9 @@ export const categorizeBatch = async (transactions: Transaction[], apiKey: strin
                     return { ...t, category: aiRes?.category || "Inconnu", status: 'processed' as const, isTransfer: aiRes?.isTransfer === true, confidence: aiRes?.confidence || 50 };
                 });
                 aiProcessed = [...aiProcessed, ...fallbackBatch];
-                if (onProgress) onProgress(matched.length + aiProcessed.length, transactions.length, `✨ Lot terminé (mode standard).`, fallbackBatch);
+                if (onProgress) onProgress(matched.length + aiProcessed.length, transactions.length, `Lot termine (mode standard).`, fallbackBatch);
             } catch (fallbackError) {
+                console.error("[FinanceAI] Echec total de categorisation IA pour ce lot:", fallbackError);
                 const failedBatch = batch.map(t => ({ ...t, status: 'error' as const, confidence: 0 }));
                 aiProcessed = [...aiProcessed, ...failedBatch];
             }
@@ -130,24 +160,31 @@ export const categorizeBatch = async (transactions: Transaction[], apiKey: strin
 export const detectSubscriptionsAI = async (transactions: Transaction[], apiKey: string): Promise<RecurringItem[]> => {
     if (!apiKey) return [];
     const ai = new GoogleGenAI({ apiKey });
-    const recent = transactions.filter(t => t.amount < 0 && !t.isTransfer && !t.isDuplicate).slice(0, 200).map(t => `${t.date}|${t.payee}|${Math.abs(t.amount)}`);
-    const prompt = `${QUEBEC_FISCAL_CONTEXT}\n\nIdentifie les ABONNEMENTS RÉCURRENTS FIXES uniquement. Ignore les dépenses variables.\nDonnées:\n${recent.join('\n')}\nRetourne JSON: [{ "payee": string, "averageAmount": number, "dayOfMonth": number, "category": string, "yearlyCost": number }]`;
+    // Phase 0 hardening: sanitize payees + arrondit les montants envoyes
+    const recent = transactions.filter(t => t.amount < 0 && !t.isTransfer && !t.isDuplicate).slice(0, 200).map(t => `${t.date}|${sanitizePayee(t.payee)}|${roundToHundred(Math.abs(t.amount))}`);
+    const prompt = `${QUEBEC_FISCAL_CONTEXT}\n\nIdentifie les ABONNEMENTS RECURRENTS FIXES uniquement. Ignore les depenses variables.\nDonnees (montants arrondis a 100$):\n${recent.join('\n')}\nRetourne JSON: [{ "payee": string, "averageAmount": number, "dayOfMonth": number, "category": string, "yearlyCost": number }]`;
     try {
         const response = await ai.models.generateContent({ model: MODEL_NAME, contents: prompt, config: { responseMimeType: "application/json" } });
         return safeJsonParse(response.text || "[]").map((item: any) => ({ ...item, lastDate: new Date().toISOString().split('T')[0] }));
-    } catch (e) { return []; }
+    } catch (e) {
+        console.error("[FinanceAI] detectSubscriptionsAI a echoue:", e);
+        return [];
+    }
 };
 
 export const getInvestmentAdvice = async (holdings: string, apiKey: string): Promise<string> => {
     if (!apiKey) return "";
     const ai = new GoogleGenAI({ apiKey });
     try {
-        const response = await ai.models.generateContent({ model: MODEL_NAME, contents: `${QUEBEC_FISCAL_CONTEXT}\n\nAnalyse ce portefeuille: ${holdings}. Conseils concis en français, adaptés au contexte fiscal québécois (CELI, REER, gains en capital).` });
+        const response = await ai.models.generateContent({ model: MODEL_NAME, contents: `${QUEBEC_FISCAL_CONTEXT}\n\nAnalyse ce portefeuille: ${holdings}. Conseils concis en francais, adaptes au contexte fiscal quebecois (CELI, REER, gains en capital).` });
         return response.text || "";
-    } catch (e) { return ""; }
+    } catch (e) {
+        console.error("[FinanceAI] getInvestmentAdvice a echoue:", e);
+        return "";
+    }
 };
 
-// --- MOTEUR D'OBJECTIFS IA OPTIMISÉ ---
+// --- MOTEUR D'OBJECTIFS IA OPTIMISE ---
 export const generateSmartGoals = async (
     financialData: {
         netWorth: number;
@@ -156,8 +193,8 @@ export const generateSmartGoals = async (
         monthlySavings: number;
         debts: { total: number };
         assets: Asset[];
-        celiRoom?: number; // Plafond CELI disponible réel
-        rrspRoom?: number; // Plafond REER disponible réel
+        celiRoom?: number;
+        rrspRoom?: number;
         userAge?: number;
         fxRates?: Record<string, number>;
     },
@@ -172,38 +209,39 @@ export const generateSmartGoals = async (
     const totalAssetsVal = financialData.investments.celi + financialData.investments.reer + financialData.investments.nonReg;
     const assetsWithWeight = financialData.assets.map(a => {
         const val = a.quantity * a.currentPrice * (a.currency === 'USD' ? fxUSD : 1);
-        return { symbol: a.symbol, weight: totalAssetsVal > 0 ? (val / totalAssetsVal) * 100 : 0 };
+        return { symbol: a.symbol, weight: totalAssetsVal > 0 ? Math.round((val / totalAssetsVal) * 100) : 0 };
     });
 
-    const celiRoomStr = financialData.celiRoom !== undefined ? `${financialData.celiRoom}$` : 'Non spécifié';
-    const rrspRoomStr = financialData.rrspRoom !== undefined ? `${financialData.rrspRoom}$` : 'Non spécifié';
+    // Phase 0 hardening: arrondit les montants envoyes a Gemini (PII)
+    const celiRoomStr = financialData.celiRoom !== undefined ? `${roundToHundred(financialData.celiRoom)}$` : 'Non specifie';
+    const rrspRoomStr = financialData.rrspRoom !== undefined ? `${roundToHundred(financialData.rrspRoom)}$` : 'Non specifie';
 
     const prompt = `
         ${QUEBEC_FISCAL_CONTEXT}
         
-        TACHE: Générer 3 à 5 objectifs financiers chirurgicaux basés sur les données réelles du patrimoine.
+        TACHE: Generer 3 a 5 objectifs financiers chirurgicaux bases sur les donnees reelles du patrimoine.
         
-        DONNÉES DU PATRIMOINE:
-        - Capacité d'épargne: ${safeSavings}$/mois
-        - Cash (tous comptes): ${financialData.cash}$
-        - Dettes totales: ${financialData.debts.total}$
-        - REER: ${financialData.investments.reer}$ (Plafond disponible: ${rrspRoomStr})
-        - CELI: ${financialData.investments.celi}$ (Plafond disponible: ${celiRoomStr})
-        - Non-Enregistré: ${financialData.investments.nonReg}$
-        - Actifs par poids: ${JSON.stringify(assetsWithWeight)}
-        - Âge approximatif: ${financialData.userAge || 'Non spécifié'} ans
+        DONNEES DU PATRIMOINE (montants arrondis a 100$):
+        - Capacite d'epargne: ${roundToHundred(safeSavings)}$/mois
+        - Cash (tous comptes): ${roundToHundred(financialData.cash)}$
+        - Dettes totales: ${roundToHundred(financialData.debts.total)}$
+        - REER: ${roundToHundred(financialData.investments.reer)}$ (Plafond disponible: ${rrspRoomStr})
+        - CELI: ${roundToHundred(financialData.investments.celi)}$ (Plafond disponible: ${celiRoomStr})
+        - Non-Enregistre: ${roundToHundred(financialData.investments.nonReg)}$
+        - Actifs par poids (%): ${JSON.stringify(assetsWithWeight)}
+        - Age approximatif: ${financialData.userAge || 'Non specifie'} ans
         
         INSTRUCTIONS:
-        1. PRIORITÉ CELI si plafond disponible > 0 : suggère de maximiser
-        2. PRIORITÉ REER si revenus élevés (>80k$) et plafond disponible
-        3. PRIORITÉ DETTES si taux d'intérêt > 5%
-        4. RÉÉQUILIBRAGE si un actif > 30% du portefeuille
-        5. FONDS D'URGENCE si cash < 3 mois de dépenses
+        1. PRIORITE CELI si plafond disponible > 0 : suggere de maximiser
+        2. PRIORITE REER si revenus eleves (>80k$) et plafond disponible
+        3. PRIORITE DETTES si taux d'interet > 5%
+        4. REEQUILIBRAGE si un actif > 30% du portefeuille
+        5. FONDS D'URGENCE si cash < 3 mois de depenses
         
         FORMAT JSON OBLIGATOIRE:
         [
           {
-            "name": "Titre très précis et actionnable",
+            "name": "Titre tres precis et actionnable",
             "type": "CELI" | "REER" | "LIQUIDITY" | "NET_WORTH" | "REBALANCING",
             "targetAmount": number,
             "target_account": "CELI" | "REER" | "NON-ENREG",
@@ -211,7 +249,7 @@ export const generateSmartGoals = async (
             "monthly_cashflow_impact": number,
             "months_to_goal": number,
             "rationale": "Pourquoi (1 phrase)",
-            "action_plan": ["Action concrète 1", "Action concrète 2"]
+            "action_plan": ["Action concrete 1", "Action concrete 2"]
           }
         ]
     `;
@@ -233,7 +271,8 @@ export const generateSmartGoals = async (
             const isoDate = targetDate.toISOString().split('T')[0];
 
             return {
-                id: `ai_goal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                // Phase 0 hardening: crypto.randomUUID() au lieu de Math.random().toString(36).substr (deprecie)
+                id: `ai_goal_${Date.now()}_${(typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID().slice(0, 9) : Math.random().toString(36).slice(2, 11)}`,
                 name: g.name,
                 type: g.type,
                 targetAmount: g.targetAmount,
@@ -251,7 +290,7 @@ export const generateSmartGoals = async (
         });
 
     } catch (e) {
-        console.error("AI Goal Gen Error:", e);
+        console.error("[FinanceAI] AI Goal Gen Error:", e);
         return [];
     }
 };
@@ -266,27 +305,27 @@ export const analyzeBudgetAI = async (
     },
     apiKey: string
 ): Promise<string[]> => {
-    if (!apiKey) return ["Clé API requise pour le diagnostic IA."];
+    if (!apiKey) return ["Cle API requise pour le diagnostic IA."];
     const ai = new GoogleGenAI({ apiKey });
 
-    // Contexte partagé mais on demande 3 reco JSON
+    // Phase 0 hardening: arrondit les montants envoyes a Gemini (PII)
     const prompt = `
         ${QUEBEC_FISCAL_CONTEXT}
         
         AGIS COMME UN CONSEILLER FINANCIER EXPERT, STRICT ET BIENVEILLANT.
-        Analyse ce budget mensuel québécois et fournis EXACTEMENT 3 recommandations courtes (1 ou 2 phrases max) très concrètes et orientées action. Ne sois pas générique.
+        Analyse ce budget mensuel quebecois et fournis EXACTEMENT 3 recommandations courtes (1 ou 2 phrases max) tres concretes et orientees action. Ne sois pas generique.
         
-        DONNÉES DU MOIS:
-        - Revenu net mensuel: ${budgetData.totalNetIncome}$
-        - Budget prévu: ${budgetData.totalBudget}$
-        - Dépenses réelles actuelles: ${budgetData.totalSpent}$
-        - Alertes de dépassement: ${budgetData.alerts.length > 0 ? budgetData.alerts.join(', ') : 'Aucune'}
+        DONNEES DU MOIS (montants arrondis a 100$):
+        - Revenu net mensuel: ${roundToHundred(budgetData.totalNetIncome)}$
+        - Budget prevu: ${roundToHundred(budgetData.totalBudget)}$
+        - Depenses reelles actuelles: ${roundToHundred(budgetData.totalSpent)}$
+        - Alertes de depassement: ${budgetData.alerts.length > 0 ? budgetData.alerts.join(', ') : 'Aucune'}
         
-        DÉTAIL DES CATÉGORIES (Prévu vs Réel):
-        ${budgetData.categories.map(c => `- ${c.name} (${c.nature}): ${c.target.toFixed(0)}$ prévu, ${c.spent.toFixed(0)}$ dépensé`).join('\n')}
+        DETAIL DES CATEGORIES (Prevu vs Reel, arrondis a 100$):
+        ${budgetData.categories.map(c => `- ${c.name} (${c.nature}): ${roundToHundred(c.target).toFixed(0)}$ prevu, ${roundToHundred(c.spent).toFixed(0)}$ depense`).join('\n')}
         
-        RÈGLE OBLIGATOIRE: Retourne uniquement un Array JSON contenant 3 chaînes de caractères.
-        EXEMPLE CIBLE: ["Analysez vos dépenses en restaurants qui dépassent de X$ la cible.", "Transférez X$ supplémentaires vers votre CELI car votre loyer est sous contrôle.", "Réduisez l'enveloppe loisir de X% pour compenser le dépassement sur l'épicerie."]
+        REGLE OBLIGATOIRE: Retourne uniquement un Array JSON contenant 3 chaines de caracteres.
+        EXEMPLE CIBLE: ["Analysez vos depenses en restaurants qui depassent de X$ la cible.", "Transferez X$ supplementaires vers votre CELI car votre loyer est sous controle.", "Reduisez l'enveloppe loisir de X% pour compenser le depassement sur l'epicerie."]
     `;
 
     try {
@@ -296,9 +335,9 @@ export const analyzeBudgetAI = async (
             config: { responseMimeType: "application/json" }
         });
         const result = safeJsonParse(response.text || "[]");
-        return Array.isArray(result) && result.length > 0 ? result : ["L'IA n'a pas pu générer de recommandations valides."];
+        return Array.isArray(result) && result.length > 0 ? result : ["L'IA n'a pas pu generer de recommandations valides."];
     } catch (e) {
-        console.error("AI Budget Analysis Error:", e);
-        return ["Erreur lors de l'analyse du budget. Vérifiez votre connexion ou votre clé API Gemini."];
+        console.error("[FinanceAI] AI Budget Analysis Error:", e);
+        return ["Erreur lors de l'analyse du budget. Verifiez votre connexion ou votre cle API Gemini."];
     }
 };

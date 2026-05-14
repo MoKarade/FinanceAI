@@ -25,17 +25,13 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "noImplicitAny": true
+    "noImplicitAny": false
   },
   "exclude": [
     "node_modules",
     "dist",
     "build",
     "public",
-    "utils/useFutureSimulation.ts",
-    "components/Dashboard.tsx",
-    "components/FutureProjection.tsx",
-    "components/Investments.tsx",
-    "components/Transactions.tsx"
+    "utils/useFutureSimulation.ts"
   ]
 }

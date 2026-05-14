@@ -6,7 +6,50 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
-## [unreleased] — Branche `claude/analyze-finance-app-CtLvs`
+## [unreleased — vague W1-W5] — Branche `claude/analyze-finance-app-CtLvs`
+
+Bundle majeur ajoutant 11 nouvelles vagues d'améliorations identifiées lors de l'analyse de marché vs ProjectionLab, Pralana Gold, Snap Projections, Boldin, NaviPlan, etc.
+
+### 🏗️ Fondations précision (W1)
+- **W1.1** Web Worker scaffold pour MC hors thread principal (services/projection.worker.ts + runAsync.ts)
+- **W1.2** Bootstrap historique S&P 500 1928-2024 (97 ans, source Damodaran NYU). Capture les vrais krachs.
+- **W1.3** RRQ et PSV séparés (corrige L1: governmentPension × 0.65/0.35 obsolète)
+- **W1.4** Scénario survivant après décès du conjoint (RRQ 60%, PSV cesse, DB selon election)
+- **W1.5** Goal seeking inverse: trouve épargne nécessaire ou âge retraite minimum par dichotomie
+
+### 💰 Optimisations fiscales (W2)
+- **W2.6** Drawdown order optimizer: compare 5 stratégies, retourne la meilleure
+- W2.1/W2.3/W2.7 capturés en config (flags, logique partielle)
+
+### 🎲 Événements de vie stochastiques (W3)
+- **W3.1** Divorce probabiliste (1.5%/an, split 50%, alimony)
+- **W3.2** Invalidité longue durée (0.5%/an, 60% revenu pendant 24 mois)
+- **W3.3** Maladie grave (0.3%/an, capital + dépenses)
+- **W3.4** Héritage probabilisé (fenêtre ± uncertainty)
+- **W3.5** Sandwich generation (boomerang kids + caregiving parents âgés)
+
+### 📊 Visualisation et UX (W4)
+- **W4.1** TaxBracketViz (fédéral + Québec avec marqueur revenu)
+- **W4.5** Replay krach historique (1929/1973/2000/2008/2020/2022)
+- **W4.7** Snowbird (4-6 mois US/Mexique)
+
+### 📥 Capture variables (W5)
+- **W5.1** Profil utilisateur enrichi (santé, carrière, identité, longévité)
+- **W5.2** Bonus/RSU/Stock options/Side income/Périodicité paie
+- **W5.3** Dettes étendues (kind, taux variable, limite, terme, déductible)
+- **W5.4** InsurancePolicy (11 types de police)
+- **W5.5** DB joint-life vs single-life avec %survivant
+- **W5.6** RentalProperty (cap rate, vacancy, NOI, DPA)
+- **W5.7** PrivateBusiness (CCPC, dividendes, BNR)
+- **W5.x** Goals cycliques (véhicules, rénovations, dons charitables)
+
+### 📚 Documentation
+- `docs/PROJECTION.md` étendu (sections 7-11 ajoutées)
+- Toutes les W-features documentées avec tables récapitulatives
+
+---
+
+## [PR #15 mergé] — Branche `claude/analyze-finance-app-CtLvs`
 
 Bundle massif sur PR #15. Refactor profond du moteur de projection + nouvelles features de modélisation + correctifs de déterminisme.
 

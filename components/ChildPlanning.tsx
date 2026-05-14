@@ -1,9 +1,9 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area, ReferenceLine } from 'recharts';
 import { ChildGoal, ProjectionConfig } from '../types';
 import { INITIAL_CHILD_GOAL } from '../constants';
+import { ConfirmModal } from './ui/ConfirmModal';
 
 interface ChildPlanningProps {
     goals: ChildGoal[];
@@ -58,6 +58,7 @@ const fmt = (n: number) => n.toLocaleString('fr-CA', { style: 'currency', curren
 
 export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoals, projection, currentRESP = 0 }) => {
     const [activeTabIndex, setActiveTabIndex] = useState(0);
+    const [confirmRemove, setConfirmRemove] = useState<{ index: number; name: string } | null>(null);
     const goal = goals[activeTabIndex] || goals[0];
 
     const [daycareType, setDaycareType] = useState<DaycareType>('cpe');
@@ -86,11 +87,15 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
 
     const handleRemoveChild = () => {
         if (goals.length <= 1) return;
-        if (window.confirm(`Supprimer ${goal.name || 'cet enfant'} ?`)) {
-            const newGoals = goals.filter((_, i) => i !== activeTabIndex);
-            setGoals(newGoals);
-            setActiveTabIndex(Math.max(0, activeTabIndex - 1));
-        }
+        setConfirmRemove({ index: activeTabIndex, name: goal.name || 'cet enfant' });
+    };
+
+    const doRemoveChild = () => {
+        if (!confirmRemove) return;
+        const newGoals = goals.filter((_, i) => i !== confirmRemove.index);
+        setGoals(newGoals);
+        setActiveTabIndex(Math.max(0, confirmRemove.index - 1));
+        setConfirmRemove(null);
     };
 
     // Impact du parent au foyer : pas de coût garderie mais perte de salaire
@@ -107,11 +112,8 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     const activitiesYearly = ACTIVITIES_INFO[activitiesLevel].yearlyExtra;
     const uniInfo = UNI_INFO[universityType];
     const carCost = CAR_INFO[carGift].cost;
-    const parentSalaryLoss = parentAtHome ? 1700 : 0; // Net mensuel perdu si parent au foyer
+    const parentSalaryLoss = parentAtHome ? 1700 : 0;
 
-    // ==================
-    // CALCUL TIMELINE 0-25 ANS
-    // ==================
     const costTimeline = useMemo(() => {
         const data = [];
         let totalCost = 0;
@@ -120,39 +122,33 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
 
         for (let age = 0; age <= 25; age++) {
             const inf = Math.pow(1 + inflation, age);
-            let base = 0;       // Essentiel (nourriture, vêtements)
-            let garde = 0;      // Garde / école / activités
-            let extra = 0;      // Événements ponctuels
-            let benefices = govBenefits; // Allocations gouvernementales
+            let base = 0;
+            let garde = 0;
+            let extra = 0;
+            let benefices = govBenefits;
 
             if (age === 0) {
-                // Naissance : coût initial + perte congé parental
                 extra += (goal.initialCost || 2800) + (parentalLeaveMonthsCost(goal));
                 base = (goal.monthlyDiapers + goal.monthlyFood + goal.monthlyClothing) * 12;
-                garde = daycareMonthly * 12; // Premiers mois garderie ou parent foyer
+                garde = daycareMonthly * 12;
                 if (parentAtHome) garde = 0;
             } else if (age >= 1 && age <= 4) {
-                // Petite enfance — garderie
                 base = (goal.monthlyDiapers * 0.5 + goal.monthlyFood + goal.monthlyClothing + 50) * 12;
                 garde = (parentAtHome ? 0 : daycareMonthly) * 12;
             } else if (age >= 5 && age <= 11) {
-                // École primaire
-                base = (goal.monthlyFood + goal.monthlyClothing + 80) * 12; // Vêtements + fournitures
-                garde = (schoolYearly + activitiesYearly) / 1; // École + activités
+                base = (goal.monthlyFood + goal.monthlyClothing + 80) * 12;
+                garde = (schoolYearly + activitiesYearly) / 1;
             } else if (age >= 12 && age <= 17) {
-                // Secondaire / ado
-                base = (goal.monthlyFood * 1.2 + goal.monthlyClothing * 1.5 + 150) * 12; // Ado mange plus
+                base = (goal.monthlyFood * 1.2 + goal.monthlyClothing * 1.5 + 150) * 12;
                 garde = (schoolYearly + activitiesYearly);
-                if (age === 16) extra += 500; // Permis conduire
-                benefices = Math.max(0, govBenefits - 100); // Diminue ACE après 12 ans
+                if (age === 16) extra += 500;
+                benefices = Math.max(0, govBenefits - 100);
             } else if (age === 18) {
-                // 18 ans — voiture éventuelle + fin allocations
                 base = 0;
                 garde = 0;
                 extra += carCost;
                 benefices = 0;
             } else if (age >= 18 && age < 18 + uniInfo.years) {
-                // Études post-secondaires
                 base = uniInfo.yearlyCost;
                 garde = 0;
                 benefices = 0;
@@ -177,11 +173,10 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
         return { data, totalCost };
     }, [goal, daycareType, schoolType, activitiesLevel, universityType, carGift, parentAtHome, projection]);
 
-    // REEE Simulator
     const respProjection = useMemo(() => {
         const data = [];
         let balance = currentRESP;
-        const grantRate = 0.30; // 20% Fed + 10% Qc
+        const grantRate = 0.30;
         const maxGrantLifetime = 10800;
         let totalGrants = 0;
         const r = (projection.returnRates?.celi || 7) / 100;
@@ -209,6 +204,14 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
 
     return (
         <div className="space-y-6 animate-fade-in pb-10">
+            <ConfirmModal
+                isOpen={!!confirmRemove}
+                onConfirm={doRemoveChild}
+                onCancel={() => setConfirmRemove(null)}
+                title="Supprimer le profil"
+                message={`Supprimer "${confirmRemove?.name}" définitivement ?`}
+                confirmLabel="Supprimer"
+            />
             {/* EN-TÊTE */}
             <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                 <div>
@@ -261,41 +264,25 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                 </button>
             </div>
 
-
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* ======= CONFIGURATEUR ======= */}
+                {/* CONFIGURATEUR */}
                 <div className="space-y-5">
-
-                    {/* Date naissance */}
                     <Card title="📅 Profil & Date Prévue">
                         <div className="space-y-4">
                             <div>
                                 <label className="text-xs text-gray-400 block mb-1">Prénom ou Identifiant</label>
-                                <input
-                                    type="text"
-                                    value={goal.name || ''}
-                                    onChange={e => update('name', e.target.value)}
-                                    placeholder="Ex: Léo"
-                                    className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white outline-none focus:border-primary"
-                                />
+                                <input type="text" value={goal.name || ''} onChange={e => update('name', e.target.value)} placeholder="Ex: Léo" className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white outline-none focus:border-primary" />
                             </div>
                             <div>
                                 <label className="text-xs text-gray-400 block mb-1">Date de naissance (ou prévue)</label>
-                                <input
-                                    type="date"
-                                    value={goal.birthDate}
-                                    onChange={e => update('birthDate', e.target.value)}
-                                    className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white focus:border-primary outline-none"
-                                />
+                                <input type="date" value={goal.birthDate} onChange={e => update('birthDate', e.target.value)} className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white focus:border-primary outline-none" />
                             </div>
                         </div>
                         <p className="text-[10px] text-gray-500 mt-2">Cette date sera utilisée dans la simulation de l'onglet Futur.</p>
                     </Card>
 
-                    {/* Choix de vie */}
                     <Card title="🎯 Choix de Vie">
                         <div className="space-y-5">
-                            {/* Garde */}
                             <div>
                                 <div className="text-xs font-bold text-pink-400 uppercase mb-2">Mode de garde (0–5 ans)</div>
                                 <div className="space-y-1.5">
@@ -312,8 +299,6 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     ))}
                                 </div>
                             </div>
-
-                            {/* École */}
                             <div>
                                 <div className="text-xs font-bold text-blue-400 uppercase mb-2">Type d'école (6–17 ans)</div>
                                 <div className="space-y-1.5">
@@ -327,8 +312,6 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     ))}
                                 </div>
                             </div>
-
-                            {/* Activités */}
                             <div>
                                 <div className="text-xs font-bold text-yellow-400 uppercase mb-2">Sports & activités</div>
                                 <div className="space-y-1.5">
@@ -342,8 +325,6 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     ))}
                                 </div>
                             </div>
-
-                            {/* Études */}
                             <div>
                                 <div className="text-xs font-bold text-purple-400 uppercase mb-2">Études post-secondaires (18–25 ans)</div>
                                 <div className="space-y-1.5">
@@ -360,8 +341,6 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     ))}
                                 </div>
                             </div>
-
-                            {/* Voiture */}
                             <div>
                                 <div className="text-xs font-bold text-orange-400 uppercase mb-2">Voiture à 18 ans (cadeau)</div>
                                 <div className="flex gap-2">
@@ -378,7 +357,6 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                         </div>
                     </Card>
 
-                    {/* Allocations */}
                     <Card title="💰 Allocations & Coûts de base">
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
@@ -401,9 +379,8 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                     </Card>
                 </div>
 
-                {/* ======= GRAPHIQUES ======= */}
+                {/* GRAPHIQUES */}
                 <div className="lg:col-span-2 space-y-5">
-                    {/* Coût par âge — Décomposé */}
                     <Card title="📊 Coût annuel par âge (décomposé)" action={
                         <div className="text-xs text-gray-400 font-mono">Total : <span className="text-white font-bold privacy-blur">{fmt(costTimeline.totalCost)}</span></div>
                     }>
@@ -413,11 +390,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                     <XAxis dataKey="age" stroke="#666" tick={{ fontSize: 10 }} label={{ value: 'Âge enfant', position: 'insideBottom', offset: -5, fill: '#666' }} />
                                     <YAxis stroke="#666" tick={{ fontSize: 10 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: '#151922', borderColor: '#333', borderRadius: 8 }}
-                                        formatter={(v: number, name: string) => [fmt(Math.abs(v)), name === 'Bénéfices' ? '↩ Allocations' : name]}
-                                        labelFormatter={l => `Âge ${l} ans`}
-                                    />
+                                    <Tooltip contentStyle={{ backgroundColor: '#151922', borderColor: '#333', borderRadius: 8 }} formatter={(v: number, name: string) => [fmt(Math.abs(v)), name === 'Bénéfices' ? '↩ Allocations' : name]} labelFormatter={l => `Âge ${l} ans`} />
                                     <Legend />
                                     <ReferenceLine y={0} stroke="#555" />
                                     <Bar dataKey="Essentiel" stackId="a" fill="#6366f1" name="Essentiel" />
@@ -429,7 +402,6 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                         </div>
                     </Card>
 
-                    {/* REEE */}
                     <Card title="🎓 Simulateur REEE — Croissance jusqu'à 17 ans" action={
                         <div className={`text-xs font-bold px-2 py-1 rounded border ${respCovers >= 100 ? 'text-green-400 border-green-500/30 bg-green-500/10' : 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10'}`}>
                             {respCovers.toFixed(0)}% des études couvertes
@@ -441,8 +413,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     <span>Cotisation annuelle REEE</span>
                                     <span className="text-blue-400 font-bold">{fmt(respContribution)}</span>
                                 </label>
-                                <input type="range" min="0" max="5000" step="100" value={respContribution} onChange={e => setRespContribution(Number(e.target.value))}
-                                    className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                                <input type="range" min="0" max="5000" step="100" value={respContribution} onChange={e => setRespContribution(Number(e.target.value))} className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-blue-500" />
                                 <p className="text-[10px] text-gray-500 mt-1">Optimal : 2 500$/an pour maximiser les subventions (30% = fed 20% + QC 10%)</p>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
@@ -481,7 +452,6 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                         </div>
                     </Card>
 
-                    {/* Résumé impact */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
                             <div className="text-2xl mb-1">{DAYCARE_INFO[daycareType].icon}</div>
@@ -510,8 +480,6 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     );
 };
 
-// Helpers
 function parentalLeaveMonthsCost(goal: ChildGoal): number {
-    // En moyenne, 12 mois de congé parental avec chute de revenu
     return (goal.parentalLeaveIncomeDrop || 900) * 12;
 }

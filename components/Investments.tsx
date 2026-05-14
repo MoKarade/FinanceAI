@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Asset, InvestmentAccount } from '../types';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
@@ -42,8 +41,16 @@ const COLORS_REGION: Record<string, string> = {
 
 type TimeRange = '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'ALL';
 
+const DEFAULT_TARGET_MODEL = [
+    { id: 'index', label: 'Index Mondial (CW8)', targetPct: 40, sectors: ['Index'], icon: '🌍', color: '#8b5cf6' },
+    { id: 'tech', label: 'Technologie', targetPct: 30, sectors: ['Technologie'], icon: '💻', color: '#3b82f6' },
+    { id: 'ind_fin', label: 'Industrie & Finance', targetPct: 15, sectors: ['Industrie', 'Finance'], icon: '🏭', color: '#f59e0b' },
+    { id: 'gold', label: 'Or & Matières', targetPct: 10, sectors: ['Mines/Or'], icon: '🥇', color: '#eab308' },
+    { id: 'cash', label: 'Liquidités', targetPct: 5, sectors: [], icon: '💵', color: '#10b981' },
+];
+
 export const Investments: React.FC<InvestmentsProps> = ({
-    assets, setAssets
+    assets, setAssets, projection, setProjection
 }) => {
 
     const [marketData, setMarketData] = useState<MarketDataPoint[]>([]);
@@ -51,13 +58,17 @@ export const Investments: React.FC<InvestmentsProps> = ({
     const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
     const [timeRange, setTimeRange] = useState<TimeRange>('1Y');
 
-    const [targetModel, setTargetModel] = useState([
-        { id: 'index', label: 'Index Mondial (CW8)', targetPct: 40, sectors: ['Index'], icon: '🌍', color: '#8b5cf6' },
-        { id: 'tech', label: 'Technologie', targetPct: 30, sectors: ['Technologie'], icon: '💻', color: '#3b82f6' },
-        { id: 'ind_fin', label: 'Industrie & Finance', targetPct: 15, sectors: ['Industrie', 'Finance'], icon: '🏭', color: '#f59e0b' },
-        { id: 'gold', label: 'Or & Matières', targetPct: 10, sectors: ['Mines/Or'], icon: '🥇', color: '#eab308' },
-        { id: 'cash', label: 'Liquidités', targetPct: 5, sectors: [], icon: '💵', color: '#10b981' },
-    ]);
+    const [targetModel, setTargetModelLocal] = useState(() => {
+        const pcts = projection?.investmentTargetPcts;
+        if (!pcts) return DEFAULT_TARGET_MODEL;
+        return DEFAULT_TARGET_MODEL.map(m => ({ ...m, targetPct: pcts[m.id] ?? m.targetPct }));
+    });
+    const setTargetModel = (model: typeof DEFAULT_TARGET_MODEL) => {
+        setTargetModelLocal(model);
+        const pcts: Record<string, number> = {};
+        model.forEach(m => { pcts[m.id] = m.targetPct; });
+        setProjection({ ...projection, investmentTargetPcts: pcts });
+    };
     const [isRebalanceEdit, setIsRebalanceEdit] = useState(false);
 
     // Dividend Projections State

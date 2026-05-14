@@ -6,6 +6,7 @@ import { BudgetConfig, BudgetCategory, Asset, RealEstateGoal, ChildGoal, TravelG
 import { calculateFiscalReport } from '../services/tax';
 import { fetchPortfolioHistory } from '../services/finance';
 import { calculateFutureProjection, SimulationParams } from '../services/projection';
+import { runProjectionAsync } from '../services/projection/runAsync';
 
 interface FutureProjectionProps {
   assets: Asset[];
@@ -298,18 +299,42 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         startMonth
     }), [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses]);
 
-    // Perf fix: debounce 300ms — le MC à 100 iter coûte jusqu'à 3s et était
-    // recalculé à chaque caractère/slider. Recalcul retardé après la dernière
-    // interaction utilisateur.
-    const results = useDebouncedMemo<any>(() => {
+    // Perf fix:
+    //  - Mode déterministe (runMC=false): synchrone + debounce 300ms (rapide ~150ms)
+    //  - Mode MC (runMC=true): exécuté dans Web Worker via runProjectionAsync
+    //    (libère le main thread pendant les 1.5-3s de calcul)
+    const syncResults = useDebouncedMemo<any>(() => {
+        if (runMC) return null; // Sera calculé par l'effect ci-dessous
         try {
-            return calculateFutureProjection(params, runMC, selectedScenarioIdx);
+            return calculateFutureProjection(params, false, selectedScenarioIdx);
         } catch (e) {
             console.error("CRITICAL SIMULATION ERROR:", e);
             return { chartData: [], fireNumber: 0, aiNote: "Error", allResults: [] };
         }
     }, [params, runMC, selectedScenarioIdx], 300);
 
+    const [asyncResults, setAsyncResults] = useState<any>(null);
+    const [isComputing, setIsComputing] = useState(false);
+
+    useEffect(() => {
+        if (!runMC) return;
+        let cancelled = false;
+        const timer = setTimeout(() => {
+            setIsComputing(true);
+            runProjectionAsync(params, true, selectedScenarioIdx)
+                .then(r => { if (!cancelled) { setAsyncResults(r); setIsComputing(false); } })
+                .catch(e => {
+                    if (!cancelled) {
+                        console.error("CRITICAL SIMULATION ERROR (worker):", e);
+                        setAsyncResults({ chartData: [], fireNumber: 0, aiNote: "Error", allResults: [] });
+                        setIsComputing(false);
+                    }
+                });
+        }, 300); // debounce 300ms même en MC
+        return () => { cancelled = true; clearTimeout(timer); };
+    }, [params, runMC, selectedScenarioIdx]);
+
+    const results = runMC ? asyncResults : syncResults;
     const { chartData = [], fireNumber = 0, aiNote = "", allResults = [] } = (results || {}) as any;
 
     const { lifeChartEvents, flowChartEvents } = useMemo(() => {
@@ -406,9 +431,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     <div className="ml-4 flex items-center gap-2">
                         <button
                             onClick={() => setRunMC(!runMC)}
-                            className={`px-4 py-2 text-[10px] font-bold rounded-md border transition-all ${runMC ? 'bg-orange-500/20 border-orange-500/50 text-orange-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                            className={`px-4 py-2 text-[10px] font-bold rounded-md border transition-all ${runMC ? 'bg-orange-500/20 border-orange-500/50 text-orange-300' : 'bg-gray-800 border-white/10 text-gray-400'} ${isComputing ? 'animate-pulse' : ''}`}
+                            disabled={isComputing}
                         >
-                            🎲 Monte Carlo {runMC ? 'ON' : 'OFF'}
+                            🎲 Monte Carlo {runMC ? 'ON' : 'OFF'}{isComputing ? ' ⏳' : ''}
                         </button>
                         <button
                             onClick={() => updateProj('useSmileCurve', !projection.useSmileCurve)}

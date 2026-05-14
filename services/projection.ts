@@ -400,9 +400,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 mcNonRegRate = histYear.sp500TotalReturn;
                 // Treasury 10Y → cash proxy
                 mcCashRate = histYear.bondReturn;
-                // FIX agent (code-reviewer): US CPI ≠ Canadian CPI. On garde simInflation
-                // (Canadian) pour l'indexation fiscale/dépenses. Le bootstrap impacte
-                // uniquement les rendements d'actifs, pas l'inflation locale.
+                // FIX D2.x: utilise CPI Canada (StatCan v41690973) si disponible,
+                // sinon fallback US. Capture les vrais chocs d'inflation canadiens —
+                // notamment années 70-80 où CA et US ont divergé via les contrôles
+                // de prix Trudeau 1975-78.
+                currentInflation = histYear.canadianCpi ?? histYear.inflationRate;
                 // Crypto: garde gaussien (pas de série historique pertinente avant 2010)
             }
         }

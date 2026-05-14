@@ -16,6 +16,7 @@ export interface YearReturn {
     sp500TotalReturn: number;   // total return nominal (%), incl. dividendes
     bondReturn: number;         // 10Y Treasury return nominal (%)
     inflationRate: number;      // CPI US (%)
+    canadianCpi?: number;       // CPI Canada (%) — Statistique Canada série v41690973
 }
 
 // Données 1928-2024 (rendements en %). Source: Aswath Damodaran (NYU Stern).
@@ -179,4 +180,45 @@ export function buildReplaySequence(
  */
 export function annualToMonthly(annualPct: number): number {
     return (Math.pow(1 + annualPct / 100, 1 / 12) - 1) * 100;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// CPI Canada 1928-2024 — Statistique Canada (série historique v41690973)
+// Tableau (variation annuelle %, fin d'année). Différence notable avec US:
+// inflation plus modérée années 70 (CA avait des contrôles de prix).
+// Source: Bank of Canada CPI data + StatCan tables 18-10-0004.
+// ───────────────────────────────────────────────────────────────────────────
+const CANADIAN_CPI: Record<number, number> = {
+    1928:  1.1,  1929:  0.0,  1930: -3.4,  1931: -8.9,  1932: -9.3,
+    1933: -3.4,  1934:  0.7,  1935:  1.4,  1936:  2.1,  1937:  3.4,
+    1938: -0.7,  1939:  0.0,  1940:  3.4,  1941:  6.4,  1942:  4.1,
+    1943:  1.7,  1944:  0.7,  1945:  1.6,  1946:  3.5,  1947:  9.9,
+    1948: 14.4,  1949:  3.0,  1950:  2.9,  1951: 10.6,  1952:  2.4,
+    1953: -0.9,  1954:  0.6,  1955:  0.1,  1956:  1.5,  1957:  3.3,
+    1958:  2.6,  1959:  1.1,  1960:  1.2,  1961:  0.4,  1962:  1.7,
+    1963:  1.8,  1964:  1.9,  1965:  2.4,  1966:  3.7,  1967:  3.6,
+    1968:  4.0,  1969:  4.6,  1970:  3.4,  1971:  2.8,  1972:  4.8,
+    1973:  7.5,  1974: 10.9,  1975: 10.7,  1976:  7.5,  1977:  8.0,
+    1978:  8.9,  1979:  9.1,  1980: 10.1,  1981: 12.5,  1982: 10.8,
+    1983:  5.8,  1984:  4.3,  1985:  4.0,  1986:  4.1,  1987:  4.4,
+    1988:  4.0,  1989:  5.0,  1990:  4.8,  1991:  5.6,  1992:  1.5,
+    1993:  1.8,  1994:  0.2,  1995:  2.2,  1996:  1.6,  1997:  1.6,
+    1998:  1.0,  1999:  1.7,  2000:  2.7,  2001:  2.5,  2002:  2.2,
+    2003:  2.8,  2004:  1.9,  2005:  2.2,  2006:  2.0,  2007:  2.1,
+    2008:  2.4,  2009:  0.3,  2010:  1.8,  2011:  2.9,  2012:  1.5,
+    2013:  0.9,  2014:  1.9,  2015:  1.1,  2016:  1.4,  2017:  1.6,
+    2018:  2.3,  2019:  1.9,  2020:  0.7,  2021:  3.4,  2022:  6.8,
+    2023:  3.9,  2024:  2.4,
+};
+
+// Décore les données historiques avec le CPI canadien correspondant
+HISTORICAL_RETURNS_US.forEach(y => {
+    y.canadianCpi = CANADIAN_CPI[y.year];
+});
+
+/**
+ * Récupère le CPI canadien pour une année donnée, avec fallback US si manquant.
+ */
+export function canadianInflationFor(year: number, fallbackUsCpi: number): number {
+    return CANADIAN_CPI[year] ?? fallbackUsCpi;
 }

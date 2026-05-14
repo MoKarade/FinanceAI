@@ -158,6 +158,24 @@ describe('projection/helpers', () => {
         });
     });
 
+    describe('canadianInflationFor (W bootstrap)', () => {
+        it('1975-1976 reflète les contrôles de prix Trudeau (< 11%)', async () => {
+            const { canadianInflationFor } = await import('../../services/projection/historicalReturns');
+            expect(canadianInflationFor(1975, 99)).toBe(10.7);
+            expect(canadianInflationFor(1976, 99)).toBe(7.5);
+        });
+
+        it('2022 reflète le choc post-COVID (~6.8%)', async () => {
+            const { canadianInflationFor } = await import('../../services/projection/historicalReturns');
+            expect(canadianInflationFor(2022, 99)).toBe(6.8);
+        });
+
+        it('année inconnue retourne le fallback US', async () => {
+            const { canadianInflationFor } = await import('../../services/projection/historicalReturns');
+            expect(canadianInflationFor(1700, 5.5)).toBe(5.5);
+        });
+    });
+
     describe('constants', () => {
         it('MER is 0.2% annual', () => {
             expect(MER).toBe(0.0020);

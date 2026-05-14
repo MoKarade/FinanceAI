@@ -66,10 +66,10 @@ describe('computeCurrentLiquidity', () => {
   it('somme balances initiales + transactions non-duplicate non-transfer', () => {
     const initial = { 'Compte A': 1000, 'Compte B': 500 };
     const txs: Transaction[] = [
-      { id: 1, date: '2025-01-01', payee: 'Pay', amount: 100, category: 'Salary', accountName: 'A', status: 'cleared', isDuplicate: false, isTransfer: false } as Transaction,
-      { id: 2, date: '2025-01-02', payee: 'Pay', amount: -50, category: 'Other', accountName: 'A', status: 'cleared', isDuplicate: false, isTransfer: false } as Transaction,
-      { id: 3, date: '2025-01-03', payee: 'Dup', amount: 999, category: 'Other', accountName: 'A', status: 'cleared', isDuplicate: true, isTransfer: false } as Transaction,
-      { id: 4, date: '2025-01-04', payee: 'Xfer', amount: 999, category: 'Other', accountName: 'A', status: 'cleared', isDuplicate: false, isTransfer: true } as Transaction,
+      { id: 1, date: '2025-01-01', payee: 'Pay', amount: 100, category: 'Salary', accountName: 'A', status: 'cleared', isDuplicate: false, isTransfer: false } as unknown as Transaction,
+      { id: 2, date: '2025-01-02', payee: 'Pay', amount: -50, category: 'Other', accountName: 'A', status: 'cleared', isDuplicate: false, isTransfer: false } as unknown as Transaction,
+      { id: 3, date: '2025-01-03', payee: 'Dup', amount: 999, category: 'Other', accountName: 'A', status: 'cleared', isDuplicate: true, isTransfer: false } as unknown as Transaction,
+      { id: 4, date: '2025-01-04', payee: 'Xfer', amount: 999, category: 'Other', accountName: 'A', status: 'cleared', isDuplicate: false, isTransfer: true } as unknown as Transaction,
     ];
     // 1500 + 100 - 50 = 1550
     expect(computeCurrentLiquidity(initial, txs)).toBe(1550);
@@ -112,8 +112,8 @@ describe('computeMonthlyBudgetAggregates', () => {
       ],
     } as BudgetConfig;
     const budget: BudgetCategory[] = [
-      { name: 'Loyer', target: 1600, frequency: 'Monthly', nature: 'Logement' } as BudgetCategory,
-      { name: 'Epicerie', target: 800, frequency: 'Monthly', nature: 'Alimentation' } as BudgetCategory,
+      { name: 'Loyer', target: 1600, frequency: 'Monthly', nature: 'Logement' } as unknown as BudgetCategory,
+      { name: 'Epicerie', target: 800, frequency: 'Monthly', nature: 'Alimentation' } as unknown as BudgetCategory,
       { name: 'CELI', target: 500, frequency: 'Monthly', nature: 'Epargne' } as BudgetCategory, // exclu
     ];
     const r = computeMonthlyBudgetAggregates(config, budget);
@@ -123,9 +123,9 @@ describe('computeMonthlyBudgetAggregates', () => {
   });
 
   it('plafonne savings a 0 si les depenses depassent', () => {
-    const config = { users: [{ netSalary: 1000 } as any] } as BudgetConfig;
+    const config = { users: [{ netSalary: 1000 } as any] } as unknown as BudgetConfig;
     const budget: BudgetCategory[] = [
-      { name: 'X', target: 2000, frequency: 'Monthly', nature: 'Autre' } as BudgetCategory,
+      { name: 'X', target: 2000, frequency: 'Monthly', nature: 'Autre' } as unknown as BudgetCategory,
     ];
     const r = computeMonthlyBudgetAggregates(config, budget);
     expect(r.savings).toBe(0);

@@ -7,6 +7,7 @@ import type {
   BudgetCategory,
   BudgetConfig,
   Debt,
+  User,
 } from '../types';
 
 export interface AssetBreakdown {
@@ -117,11 +118,15 @@ export const computeMonthlyBudgetAggregates = (
   config: BudgetConfig,
   budgetItems: BudgetCategory[],
 ): MonthlyBudgetAggregates => {
-  const income = (config.users || []).reduce(
+  // On normalise via casts explicites pour eviter l'inference TS sur l'union
+  // [User, User] | never[] qui produit un type 'never' surprenant avec `|| []`.
+  const users: User[] = config.users ?? [];
+  const items: BudgetCategory[] = budgetItems ?? [];
+  const income = users.reduce(
     (acc, u) => acc + ((u.netSalary || u.salary || 0)),
     0,
   );
-  const expenses = (budgetItems || []).reduce(
+  const expenses = items.reduce(
     (acc, item) => item.nature === 'Epargne' ? acc : acc + monthlyAmountFor(item),
     0,
   );

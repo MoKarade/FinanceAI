@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Card } from './ui/Card';
 import { AppState, BudgetCategory, Transaction, Asset, SavingsGoal, TravelGoal, Debt, InvestmentAccount, InvestmentTransaction, LifeEvent, RetirementGoal, FinancialGoal, RealEstateGoal, BudgetConfig } from '../types';
 import { showToast } from './ui/Toast';
+import { downloadBackup, readBackupFile, defaultBackupFilename, CloudBackupError } from '../services/cloudBackup';
 
 const BackupSchema = z.object({
   version: z.string().optional(),
@@ -84,6 +85,7 @@ export const Settings: React.FC<SettingsProps> = ({
   financialGoals = []
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const encryptedFileRef = useRef<HTMLInputElement>(null);
 
   const knownAccounts = React.useMemo(() => {
     const accs: Record<string, boolean> = {};
@@ -155,35 +157,102 @@ export const Settings: React.FC<SettingsProps> = ({
   const [pendingRestoreData, setPendingRestoreData] = React.useState<z.infer<typeof BackupSchema> | null>(null);
   const [restoreConfirmPhrase, setRestoreConfirmPhrase] = React.useState('');
 
-  const handleExport = () => {
-    const data = {
-      version: "3.0",
-      timestamp: Date.now(),
-      apiKeys,
-      config,
-      budgetItems,
-      assets,
-      initialBalances,
-      savingsGoals,
-      travelGoals,
-      debts,
-      investmentAccounts,
-      investmentTransactions,
-      lifeEvents,
-      retirementGoal,
-      realEstateGoals,
-      childGoal,
-      childGoals,
-      financialGoals,
-      transactions,
-    };
+  // -- Sauvegarde chiffrée (AES-256-GCM + PBKDF2 600k) --
+  const [showExportEncModal, setShowExportEncModal] = React.useState(false);
+  const [exportPassphrase, setExportPassphrase] = React.useState('');
+  const [exportPassphraseConfirm, setExportPassphraseConfirm] = React.useState('');
+  const [encryptedFile, setEncryptedFile] = React.useState<File | null>(null);
+  const [importPassphrase, setImportPassphrase] = React.useState('');
+  const [encWorking, setEncWorking] = React.useState(false);
 
+  const buildBackupPayload = () => ({
+    version: "3.0",
+    timestamp: Date.now(),
+    apiKeys,
+    config,
+    budgetItems,
+    assets,
+    initialBalances,
+    savingsGoals,
+    travelGoals,
+    debts,
+    investmentAccounts,
+    investmentTransactions,
+    lifeEvents,
+    retirementGoal,
+    realEstateGoals,
+    childGoal,
+    childGoals,
+    financialGoals,
+    transactions,
+  });
+
+  const handleExport = () => {
+    const data = buildBackupPayload();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `financeai_FULL_backup_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
+  };
+
+  const doEncryptedExport = async () => {
+    if (exportPassphrase.length < 8) {
+      showToast("Passphrase trop courte (min 8 caractères).", "error");
+      return;
+    }
+    if (exportPassphrase !== exportPassphraseConfirm) {
+      showToast("Les deux passphrases ne correspondent pas.", "error");
+      return;
+    }
+    setEncWorking(true);
+    try {
+      await downloadBackup(buildBackupPayload(), exportPassphrase, defaultBackupFilename());
+      showToast("✅ Sauvegarde chiffrée téléchargée. Conserve la passphrase précieusement.", "success");
+      setShowExportEncModal(false);
+      setExportPassphrase('');
+      setExportPassphraseConfirm('');
+    } catch (e) {
+      const msg = e instanceof CloudBackupError ? e.message : (e as Error).message;
+      console.error('[Settings] Encrypted export error:', e);
+      showToast(`❌ Echec chiffrement : ${msg}`, "error");
+    } finally {
+      setEncWorking(false);
+    }
+  };
+
+  const handleEncryptedRestoreFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setEncryptedFile(file);
+    setImportPassphrase('');
+  };
+
+  const doEncryptedImport = async () => {
+    if (!encryptedFile || importPassphrase.length < 8) return;
+    setEncWorking(true);
+    try {
+      const decrypted = await readBackupFile<unknown>(encryptedFile, importPassphrase);
+      const parsed = BackupSchema.safeParse(decrypted);
+      if (!parsed.success) {
+        const issue = parsed.error.issues[0];
+        const path = issue.path.length > 0 ? issue.path.join('.') : 'racine';
+        showToast(`❌ Backup déchiffré invalide (${path}) : ${issue.message}`, "error");
+        return;
+      }
+      setEncryptedFile(null);
+      setImportPassphrase('');
+      setRestoreConfirmPhrase('');
+      setPendingRestoreData(parsed.data); // Réutilise le flux de confirmation existant
+    } catch (e) {
+      const msg = e instanceof CloudBackupError ? e.message : (e as Error).message;
+      console.error('[Settings] Encrypted import error:', e);
+      showToast(`❌ ${msg}`, "error");
+    } finally {
+      setEncWorking(false);
+    }
   };
 
   const handleRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -256,6 +325,121 @@ export const Settings: React.FC<SettingsProps> = ({
 
   return (
     <>
+      {/* Modal Export chiffré */}
+      {showExportEncModal && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => !encWorking && setShowExportEncModal(false)}
+        >
+          <div
+            className="bg-[#151922] border border-white/15 rounded-2xl shadow-2xl w-full max-w-md p-6 animate-scale-in"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3 mb-4">
+              <div className="text-2xl mt-0.5">🔐</div>
+              <div className="flex-1">
+                <h3 className="text-white font-bold text-base mb-2">Sauvegarde Chiffrée</h3>
+                <p className="text-gray-400 text-xs leading-relaxed">
+                  Le fichier sera chiffré localement (AES-256-GCM + PBKDF2 600 000 itérations). Conserve la passphrase précieusement — <span className="text-red-300 font-bold">sans elle, le fichier est irrécupérable</span>.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3 mb-5">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Passphrase (min 8 caractères)</label>
+                <input
+                  type="password"
+                  value={exportPassphrase}
+                  onChange={e => setExportPassphrase(e.target.value)}
+                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-primary outline-none font-mono"
+                  autoFocus
+                  disabled={encWorking}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Confirmation</label>
+                <input
+                  type="password"
+                  value={exportPassphraseConfirm}
+                  onChange={e => setExportPassphraseConfirm(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && doEncryptedExport()}
+                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-primary outline-none font-mono"
+                  disabled={encWorking}
+                />
+                {exportPassphrase && exportPassphraseConfirm && exportPassphrase !== exportPassphraseConfirm && (
+                  <p className="text-[10px] text-red-400 mt-1">Les deux passphrases ne correspondent pas.</p>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => { setShowExportEncModal(false); setExportPassphrase(''); setExportPassphraseConfirm(''); }}
+                disabled={encWorking}
+                className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 transition-all text-sm font-medium disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={doEncryptedExport}
+                disabled={encWorking || exportPassphrase.length < 8 || exportPassphrase !== exportPassphraseConfirm}
+                className="px-4 py-2 rounded-xl bg-primary hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold shadow-lg active:scale-95 transition-all"
+              >
+                {encWorking ? 'Chiffrement…' : 'Exporter chiffré'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Import chiffré (saisie passphrase) */}
+      {encryptedFile && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => !encWorking && setEncryptedFile(null)}
+        >
+          <div
+            className="bg-[#151922] border border-white/15 rounded-2xl shadow-2xl w-full max-w-md p-6 animate-scale-in"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3 mb-4">
+              <div className="text-2xl mt-0.5">🔓</div>
+              <div className="flex-1">
+                <h3 className="text-white font-bold text-base mb-1">Déchiffrer la Sauvegarde</h3>
+                <p className="text-gray-500 text-xs font-mono break-all">{encryptedFile.name}</p>
+              </div>
+            </div>
+            <div className="mb-5">
+              <label className="block text-xs text-gray-400 mb-2">Passphrase</label>
+              <input
+                type="password"
+                value={importPassphrase}
+                onChange={e => setImportPassphrase(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && importPassphrase.length >= 8 && doEncryptedImport()}
+                className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-primary outline-none font-mono"
+                autoFocus
+                disabled={encWorking}
+              />
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => { setEncryptedFile(null); setImportPassphrase(''); }}
+                disabled={encWorking}
+                className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 transition-all text-sm font-medium disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={doEncryptedImport}
+                disabled={encWorking || importPassphrase.length < 8}
+                className="px-4 py-2 rounded-xl bg-primary hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold shadow-lg active:scale-95 transition-all"
+              >
+                {encWorking ? 'Déchiffrement…' : 'Déchiffrer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {pendingRestoreData && (
         <div
           className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
@@ -599,31 +783,64 @@ export const Settings: React.FC<SettingsProps> = ({
         </div>
 
         <Card title="Zone de Sauvegarde (Full Backup)" className="border border-green-900/30 bg-green-900/10">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="text-sm text-gray-400">
-              <p>Sauvegardez TOUTES vos donnees. La restauration ecrasera les donnees actuelles.</p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handleExport}
-                className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg"
-              >
-                ⬇️ Tout Exporter
-              </button>
-              <div className="relative">
+          <div className="space-y-4">
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+              <div className="text-sm text-gray-400">
+                <p className="font-bold text-white mb-1">📄 JSON en clair</p>
+                <p className="text-xs">Sauvegarde lisible (debugging, audit). À conserver localement uniquement — contient tes clés API en clair.</p>
+              </div>
+              <div className="flex gap-3 flex-shrink-0">
                 <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-bold flex items-center gap-2 border border-white/20"
+                  onClick={handleExport}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg"
                 >
-                  ⬆️ Restaurer
+                  ⬇️ Exporter JSON
                 </button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  accept=".json"
-                  onChange={handleRestore}
-                />
+                <div className="relative">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-bold flex items-center gap-2 border border-white/20"
+                  >
+                    ⬆️ Restaurer JSON
+                  </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept=".json"
+                    onChange={handleRestore}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-white/5 pt-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+              <div className="text-sm text-gray-400">
+                <p className="font-bold text-white mb-1">🔐 Sauvegarde chiffrée (.bak)</p>
+                <p className="text-xs">AES-256-GCM + PBKDF2 600 000 itérations. Stockage cloud safe (Drive, Gist…) car illisible sans passphrase.</p>
+              </div>
+              <div className="flex gap-3 flex-shrink-0">
+                <button
+                  onClick={() => { setExportPassphrase(''); setExportPassphraseConfirm(''); setShowExportEncModal(true); }}
+                  className="px-4 py-2 bg-primary hover:bg-emerald-500 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg"
+                >
+                  🔐 Exporter chiffré
+                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => encryptedFileRef.current?.click()}
+                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-bold flex items-center gap-2 border border-white/20"
+                  >
+                    🔓 Restaurer chiffré
+                  </button>
+                  <input
+                    type="file"
+                    ref={encryptedFileRef}
+                    className="hidden"
+                    accept=".bak,application/octet-stream"
+                    onChange={handleEncryptedRestoreFile}
+                  />
+                </div>
               </div>
             </div>
           </div>

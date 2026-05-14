@@ -60,3 +60,34 @@ export function welcomeTax(price: number): number {
     tax += Math.min(price, 50000) * 0.005;
     return tax;
 }
+
+// ---- Probabilité annuelle d'événement de soins de longue durée (LTC) ----
+// D2.8: Calibration approximative sur "Long-Term Care Need by Age" (Genworth/Stats Can).
+// Le besoin de soins (>90j) culmine après 80 ans.
+//   65-69: 1%/an, 70-74: 2%/an, 75-79: 4%/an, 80-84: 8%/an, 85-89: 15%/an, 90+: 25%/an
+export function ltcAnnualProbability(age: number): number {
+    if (age < 65) return 0;
+    if (age < 70) return 0.01;
+    if (age < 75) return 0.02;
+    if (age < 80) return 0.04;
+    if (age < 85) return 0.08;
+    if (age < 90) return 0.15;
+    return 0.25;
+}
+
+// ---- Probabilité annuelle de décès par âge (Stats Canada 2020-2022, unisexe lissé) ----
+// D2.8: utilisé pour mortalité stochastique en MC (au lieu d'un horizon fixe).
+//   Sources approximatives: 60→0.6%, 70→1.5%, 80→4%, 85→7%, 90→13%, 95→22%, 100→33%
+export function mortalityAnnualProbability(age: number): number {
+    if (age < 50) return 0.001;
+    if (age < 60) return 0.003;
+    if (age < 65) return 0.005;
+    if (age < 70) return 0.009;
+    if (age < 75) return 0.015;
+    if (age < 80) return 0.025;
+    if (age < 85) return 0.045;
+    if (age < 90) return 0.080;
+    if (age < 95) return 0.140;
+    if (age < 100) return 0.220;
+    return 0.330;
+}

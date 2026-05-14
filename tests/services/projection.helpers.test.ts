@@ -7,6 +7,8 @@ import {
     welcomeTax,
     MER,
     ASSET_VOLATILITY,
+    ltcAnnualProbability,
+    mortalityAnnualProbability,
 } from '../../services/projection/helpers';
 
 describe('projection/helpers', () => {
@@ -111,6 +113,48 @@ describe('projection/helpers', () => {
         it('700k → 6250$ (seul palier 3% activé)', () => {
             // 50000 * 0.005 + 200000 * 0.03 = 250 + 6000 = 6250
             expect(welcomeTax(700000)).toBeCloseTo(6250, 2);
+        });
+    });
+
+    describe('ltcAnnualProbability', () => {
+        it('vaut 0 avant 65 ans', () => {
+            expect(ltcAnnualProbability(40)).toBe(0);
+            expect(ltcAnnualProbability(64)).toBe(0);
+        });
+
+        it('augmente strictement à chaque palier d\'âge', () => {
+            const p65 = ltcAnnualProbability(65);
+            const p75 = ltcAnnualProbability(75);
+            const p85 = ltcAnnualProbability(85);
+            const p95 = ltcAnnualProbability(95);
+            expect(p75).toBeGreaterThan(p65);
+            expect(p85).toBeGreaterThan(p75);
+            expect(p95).toBeGreaterThan(p85);
+        });
+
+        it('plafonne à 25% à 90+', () => {
+            expect(ltcAnnualProbability(92)).toBe(0.25);
+            expect(ltcAnnualProbability(110)).toBe(0.25);
+        });
+    });
+
+    describe('mortalityAnnualProbability', () => {
+        it('croît strictement avec l\'âge', () => {
+            for (let a = 50; a <= 100; a += 5) {
+                expect(mortalityAnnualProbability(a + 5)).toBeGreaterThanOrEqual(mortalityAnnualProbability(a));
+            }
+        });
+
+        it('est dans [0, 1]', () => {
+            for (let a = 30; a <= 110; a++) {
+                const p = mortalityAnnualProbability(a);
+                expect(p).toBeGreaterThan(0);
+                expect(p).toBeLessThanOrEqual(1);
+            }
+        });
+
+        it('reflète l\'asymétrie connue: ~33% à 100 ans', () => {
+            expect(mortalityAnnualProbability(100)).toBeCloseTo(0.33, 1);
         });
     });
 

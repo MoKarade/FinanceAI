@@ -416,6 +416,39 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </div>
                 </div>
 
+                {/* D2.8: Toggles Mortalité stochastique + LTC */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                    <button
+                        onClick={() => updateProj('useStochasticMortality', !projection.useStochasticMortality)}
+                        title="Active des tirages aléatoires de date de décès (tables Stats Can 2020-2022) en mode Monte Carlo. La simulation s'arrête à la mort."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.useStochasticMortality ? 'bg-violet-500/20 border-violet-500/50 text-violet-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        ⚰️ Mortalité stochastique {projection.useStochasticMortality ? 'ON' : 'OFF'}
+                    </button>
+                    <button
+                        onClick={() => updateProj('ltcEnabled', !projection.ltcEnabled)}
+                        title="Soins de longue durée (CHSLD/RPA). Probabilité croissante après 65 ans (1% → 25%/an). Coût mensuel ajouté aux dépenses."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.ltcEnabled ? 'bg-red-500/20 border-red-500/50 text-red-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        🏥 LTC stochastique {projection.ltcEnabled ? 'ON' : 'OFF'}
+                    </button>
+                </div>
+                {projection.ltcEnabled && (
+                    <div className="mb-4 p-3 rounded-lg border border-red-500/20 bg-black/30">
+                        <label className="flex justify-between text-xs text-gray-300 mb-1">
+                            <span>Coût mensuel soins ($/mois)</span>
+                            <span className="text-red-300 font-bold">{projection.ltcMonthlyCost ?? 5000}$</span>
+                        </label>
+                        <input
+                            type="range" min="2000" max="12000" step="500"
+                            value={projection.ltcMonthlyCost ?? 5000}
+                            onChange={e => updateProj('ltcMonthlyCost', Number(e.target.value))}
+                            className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-red-500"
+                        />
+                        <p className="text-[10px] text-gray-500 mt-1">CHSLD public ~2000$, RPA semi-privé ~4500$, soins privés à domicile 8000-12000$.</p>
+                    </div>
+                )}
+
                 {/* D2.7: Champs Withholding tax US sur CELI */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-3 rounded-lg border border-white/5 bg-black/30">
                     <div>

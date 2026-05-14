@@ -137,6 +137,17 @@ export interface ProjectionConfig {
   // Drag annuel sur CELI = share * yield * 15% (en points de pourcentage).
   usEquityShareCeli?: number;
   usEquityDividendYield?: number;
+  // D2.8: Soins de longue durée (LTC) — coût mensuel ajouté en plus
+  // des dépenses normales avec probabilité croissante après 80 ans.
+  // - ltcMonthlyCost: coût mensuel quand l'événement se déclenche (5000$ par défaut).
+  // - ltcEnabled: active la simulation.
+  ltcEnabled?: boolean;
+  ltcMonthlyCost?: number;
+  // D2.8: Mortalité stochastique en Monte Carlo.
+  // Active des tirages aléatoires de date de décès basés sur les tables
+  // canadiennes 2020-2022. La simulation s'arrête à la mort de l'utilisateur
+  // (l'estateNetWorth devient le patrimoine au décès et non en fin d'horizon).
+  useStochasticMortality?: boolean;
 }
 
 export interface RealEstateGoal {

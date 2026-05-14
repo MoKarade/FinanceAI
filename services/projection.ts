@@ -1,7 +1,7 @@
 // services/projection.ts — moteur de projection financière (migré depuis utils/useFutureSimulation.ts)
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config } from '../types';
 import { calculateFiscalReport, CELI_ANNUAL_LIMITS, calculateCeliRoom, calculateGrossFromNet, getMarginalRate, calculateDividendTax, RRSP_ANNUAL_LIMITS, calculateGrossWithholdingRRSP } from '../utils/tax';
-import { mulberry32, gaussianRandom, applyShock, MER, RRIF_RATES, welcomeTax } from './projection/helpers';
+import { mulberry32, gaussianRandom, applyShock, MER, RRIF_RATES, welcomeTax, ltcAnnualProbability, mortalityAnnualProbability } from './projection/helpers';
 
 export interface SimulationParams {
     projection: ProjectionConfig;
@@ -264,6 +264,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // D2.2: RRIF_RATES et welcomeTax → ./projection/helpers
 
     let prevCELI = celi, prevREER = reer, prevLiquid = liquid, prevNW = (liquid + celi + reer + nonReg + crypto + reee);
+
+    // D2.8: État LTC (Long-Term Care). Une fois déclenché, le coût mensuel
+    // s'ajoute aux dépenses jusqu'à la fin de la simulation.
+    let ltcActive = false;
     let nonRegACB = nonReg;
 
     const handleNonRegSale = (amount: number, _label: string): number => {
@@ -290,6 +294,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
     let incomeRetirement = 0; // Scoped outside for Estate NW calculation
 
+    // D2.8: Mortalité stochastique. En MC, à chaque début d'année on tire la
+    // probabilité de décès du user principal. Le loop arrête à la mort.
+    let isDead = false;
+
     for (let m = 0; m <= projection.years * 12; m++) {
         const currentMonthIndex = m % 12;
         const simulationStartDate = new Date(startYear, startMonth, 1);
@@ -300,6 +308,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
         const age = currentAge + Math.floor(m / 12);
         const isRetired = age >= effectiveRetirementAge;
+
+        // D2.8: tirage mortalité (annuel, au début de chaque année)
+        if ((effProj as any).useStochasticMortality && enableMonteCarlo && !isDead && currentMonthIndex === 0 && m > 0) {
+            const pYear = mortalityAnnualProbability(age);
+            if (rng() < pYear) {
+                isDead = true;
+            }
+        }
+        if (isDead) break;
 
         // --- 1. GROWTH & MARKET SHOCKS ---
         let currentInflation = simInflation;
@@ -502,6 +519,21 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         } else {
             // Active phase income & expenses
             monthlyExpenses = effectiveBaseExpenses * expenseMultiplier;
+        }
+
+        // D2.8: Long-Term Care — tirage stochastique en début d'année.
+        // Probabilité convertie en probabilité mensuelle via 1 - (1-p)^(1/12).
+        if ((effProj as any).ltcEnabled && enableMonteCarlo && !ltcActive && age >= 65) {
+            const annualP = ltcAnnualProbability(age);
+            const monthlyP = 1 - Math.pow(1 - annualP, 1 / 12);
+            if (rng() < monthlyP) {
+                ltcActive = true;
+                logEvent(lifeEventsLog, `🏥 Soins de longue durée déclenchés à ${age} ans`);
+            }
+        }
+        if (ltcActive) {
+            const ltcCost = ((effProj as any).ltcMonthlyCost || 5000) * expenseMultiplier;
+            monthlyExpenses += ltcCost;
         }
 
         // --- 4. TAX WITHHOLDING & APRIL SETTLEMENT ---

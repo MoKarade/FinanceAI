@@ -4,6 +4,8 @@ import { Card } from './ui/Card';
 import { AppState, BudgetCategory, Transaction, Asset, SavingsGoal, TravelGoal, Debt, InvestmentAccount, InvestmentTransaction, LifeEvent, RetirementGoal, FinancialGoal, RealEstateGoal, BudgetConfig } from '../types';
 import { showToast } from './ui/Toast';
 import { downloadBackup, readBackupFile, defaultBackupFilename, CloudBackupError } from '../services/cloudBackup';
+import { useFinanceStore } from '../store/useFinanceStore';
+import { InsurancePanel, RentalPropertyPanel, BusinessPanel, CyclicalGoalsPanel } from './PatrimoineExtended';
 
 const BackupSchema = z.object({
   version: z.string().optional(),
@@ -86,6 +88,15 @@ export const Settings: React.FC<SettingsProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const encryptedFileRef = useRef<HTMLInputElement>(null);
+
+  // W5.x — Containers étendus via store direct
+  const insurancePolicies = useFinanceStore(s => s.insurancePolicies ?? []);
+  const rentalProperties = useFinanceStore(s => s.rentalProperties ?? []);
+  const privateBusinesses = useFinanceStore(s => s.privateBusinesses ?? []);
+  const vehicleReplacements = useFinanceStore(s => s.vehicleReplacements ?? []);
+  const majorRenovations = useFinanceStore(s => s.majorRenovations ?? []);
+  const charitableGoals = useFinanceStore(s => s.charitableGoals ?? []);
+  const setAppState = useFinanceStore(s => s.setAppState);
 
   const knownAccounts = React.useMemo(() => {
     const accs: Record<string, boolean> = {};
@@ -909,6 +920,34 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
           </Card>
         </div>
+
+        {/* W5.4 — Assurances */}
+        <InsurancePanel
+          policies={insurancePolicies}
+          onChange={next => setAppState({ insurancePolicies: next })}
+        />
+
+        {/* W5.6 — Immeubles locatifs */}
+        <RentalPropertyPanel
+          properties={rentalProperties}
+          onChange={next => setAppState({ rentalProperties: next })}
+        />
+
+        {/* W5.7 — Entreprises privées */}
+        <BusinessPanel
+          businesses={privateBusinesses}
+          onChange={next => setAppState({ privateBusinesses: next })}
+        />
+
+        {/* W5.x — Goals cycliques */}
+        <CyclicalGoalsPanel
+          vehicles={vehicleReplacements}
+          renovations={majorRenovations}
+          charity={charitableGoals}
+          onVehicles={next => setAppState({ vehicleReplacements: next })}
+          onRenovations={next => setAppState({ majorRenovations: next })}
+          onCharity={next => setAppState({ charitableGoals: next })}
+        />
 
         <Card title="Zone de Sauvegarde (Full Backup)" className="border border-green-900/30 bg-green-900/10">
           <div className="space-y-4">

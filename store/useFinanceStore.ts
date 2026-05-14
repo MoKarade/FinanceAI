@@ -79,6 +79,13 @@ const getInitialStateWithMigration = (): AppState => {
         lastUpdate: Date.now(),
         categorizationRules: [],
         aiConversation: [],
+        // W5.x — Nouveaux containers (vide par défaut)
+        insurancePolicies: [],
+        rentalProperties: [],
+        privateBusinesses: [],
+        vehicleReplacements: [],
+        majorRenovations: [],
+        charitableGoals: [],
     };
 
     if (typeof window === 'undefined') return defaultState;

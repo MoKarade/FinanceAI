@@ -66,6 +66,7 @@ export function findRequiredMonthlySavings(
         return { found: true, value: lo, iterations: 1, finalNetWorthAtTarget: nwLo };
     }
 
+    let converged = false;
     while (hi - lo > 50 && iter < maxIterations) {
         const mid = (lo + hi) / 2;
         const nw = runWith(mid);
@@ -78,7 +79,15 @@ export function findRequiredMonthlySavings(
         iter++;
     }
 
-    return { found: true, value: Math.round((lo + hi) / 2), iterations: iter, finalNetWorthAtTarget: lastNW };
+    // FIX agent (code-reviewer): si la boucle s'épuise sans atteindre la tolérance,
+    // on signale found=false et on indique la valeur convergée approximative.
+    return {
+        found: converged,
+        value: Math.round((lo + hi) / 2),
+        iterations: iter,
+        finalNetWorthAtTarget: lastNW,
+        error: converged ? undefined : `Convergence partielle (${iter} itérations, écart ~${Math.round(Math.abs(lastNW - targetNetWorth)).toLocaleString('fr-CA')}\$)`,
+    };
 }
 
 /**

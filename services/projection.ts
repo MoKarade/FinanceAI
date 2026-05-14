@@ -144,7 +144,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // D2.5: Smile Curve — facteur de style de vie par âge retraite.
     // Référence: étude CIBC "Spending in Retirement". Activable via flag.
     const smileLifestyleFactor = (ageAtMonth: number): number => {
-        if (!(effProj as any).useSmileCurve) return 1;
+        if (!effProj.useSmileCurve) return 1;
         if (ageAtMonth < 75) return 1.15;   // Go-go years
         if (ageAtMonth < 85) return 1.00;   // Slow-go
         return 0.90;                          // No-go (loisirs ↓, santé ↑ déjà géré)
@@ -332,7 +332,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let ltdMonthsRemaining = 0;                 // invalidité longue durée
     let ltdLogged = false;
     let inheritanceReceived = false;
-    let phasedActiveMonth = -1;                  // mois où semi-retraite a commencé
+    let ciTriggered = false;                     // FIX agent: empêche re-déclenchement maladie grave
 
     for (let m = 0; m <= projection.years * 12; m++) {
         const currentMonthIndex = m % 12;
@@ -346,7 +346,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         const isRetired = age >= effectiveRetirementAge;
 
         // D2.8: tirage mortalité (annuel, au début de chaque année)
-        if ((effProj as any).useStochasticMortality && enableMonteCarlo && !isDead && currentMonthIndex === 0 && m > 0) {
+        if (effProj.useStochasticMortality && enableMonteCarlo && !isDead && currentMonthIndex === 0 && m > 0) {
             const pYear = mortalityAnnualProbability(age);
             if (rng() < pYear) {
                 isDead = true;
@@ -354,7 +354,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         }
 
         // W1.4: décès du conjoint (user2) en MC. Bascule en survivorMode au lieu d'arrêter.
-        if ((effProj as any).modelSurvivor && enableMonteCarlo && spouseAlive && !survivorMode && currentMonthIndex === 0 && m > 0) {
+        if (effProj.modelSurvivor && enableMonteCarlo && spouseAlive && !survivorMode && currentMonthIndex === 0 && m > 0) {
             const spouseAge = (config.users[1]?.age || 30) + Math.floor(m / 12);
             const pYearSpouse = mortalityAnnualProbability(spouseAge);
             if (rng() < pYearSpouse) {
@@ -400,8 +400,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 mcNonRegRate = histYear.sp500TotalReturn;
                 // Treasury 10Y → cash proxy
                 mcCashRate = histYear.bondReturn;
-                // Inflation US comme proxy
-                currentInflation = histYear.inflationRate;
+                // FIX agent (code-reviewer): US CPI ≠ Canadian CPI. On garde simInflation
+                // (Canadian) pour l'indexation fiscale/dépenses. Le bootstrap impacte
+                // uniquement les rendements d'actifs, pas l'inflation locale.
                 // Crypto: garde gaussien (pas de série historique pertinente avant 2010)
             }
         }
@@ -420,15 +421,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
         // D2.9: Inflation différenciée par poste (panier CPI Stats Canada).
         let effectiveExpenseInflation: number;
-        if ((effProj as any).usePerCategoryInflation) {
+        if (effProj.usePerCategoryInflation) {
             // Pondérations CPI 2023: Logement 30, Alim 17, Transport 15, Santé 5, Loisirs 6, Autres 27.
             const wHousing = 0.30, wFood = 0.17, wTransport = 0.15, wHealth = 0.05, wLeisure = 0.06, wOther = 0.27;
-            const iHousing  = (effProj as any).inflationHousing  ?? 4.0;
-            const iFood     = (effProj as any).inflationFood     ?? 3.5;
-            const iTransp   = (effProj as any).inflationTransport?? 2.5;
-            const iHealthB  = ((effProj as any).inflationHealth  ?? 4.5) + healthInflationBonus; // bonus santé seulement sur la part santé
-            const iLeisure  = (effProj as any).inflationLeisure  ?? 1.5;
-            const iOther    = (effProj as any).inflationOther    ?? 2.0;
+            const iHousing  = effProj.inflationHousing  ?? 4.0;
+            const iFood     = effProj.inflationFood     ?? 3.5;
+            const iTransp   = effProj.inflationTransport?? 2.5;
+            const iHealthB  = (effProj.inflationHealth  ?? 4.5) + healthInflationBonus; // bonus santé seulement sur la part santé
+            const iLeisure  = effProj.inflationLeisure  ?? 1.5;
+            const iOther    = effProj.inflationOther    ?? 2.0;
             effectiveExpenseInflation = wHousing*iHousing + wFood*iFood + wTransport*iTransp + wHealth*iHealthB + wLeisure*iLeisure + wOther*iOther;
         } else {
             effectiveExpenseInflation = currentInflation + healthInflationBonus;
@@ -460,7 +461,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
         let lifeEventsLog: string[] = [];
         let flowEventsLog: string[] = [];
-        const logEvent = (arr: string[], msg: string) => { if (!enableMonteCarlo) arr.push(msg); };
+        // FIX silent-failure: les événements stochastiques de vie (divorce, LTC,
+        // LTD, CI, héritage, perte emploi, décès conjoint, mortalité) ne se
+        // déclenchent QUE quand enableMonteCarlo. Si on gate ici par !MC, on
+        // perd tous les logs d'événements. lifeEventsLog est cappé à 50 entrées.
+        const logEvent = (arr: string[], msg: string) => { if (arr.length < 50) arr.push(msg); };
 
         // W1.4: log différé du décès conjoint (déclenché plus haut avant l'init de logEvent)
         if (survivorMode && !survivorTriggerLogged) {
@@ -606,16 +611,17 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // ---- PHASE ACTIVE ----
             const yearsElapsed = Math.floor(m / 12);
             incomeMarc = incomeMarcNetMonthly * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
-            incomeAnna = incomeAnnaNetMonthly * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
+            // W1.4 FIX (critique code-reviewer): si conjoint mort, salaire user2 → 0
+            incomeAnna = survivorMode ? 0 : (incomeAnnaNetMonthly * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed));
 
             // D2.10: Perte d'emploi stochastique (MC uniquement).
             // Probabilité annuelle, tirée en janvier. Si déclenchée, le revenu
             // du user principal tombe à 55% (assurance-emploi) durant N mois.
-            const jobLossEnabled = (effProj as any).jobLossEnabled && enableMonteCarlo;
+            const jobLossEnabled = effProj.jobLossEnabled && enableMonteCarlo;
             if (jobLossEnabled && unemployedMonthsRemaining === 0 && currentMonthIndex === 0 && m > 0) {
-                const pAnnual = (effProj as any).jobLossAnnualProbability ?? 0.03;
+                const pAnnual = effProj.jobLossAnnualProbability ?? 0.03;
                 if (rng() < pAnnual) {
-                    unemployedMonthsRemaining = (effProj as any).jobLossDurationMonths || 6;
+                    unemployedMonthsRemaining = effProj.jobLossDurationMonths || 6;
                     logEvent(lifeEventsLog, `💼 Perte d'emploi (durée prévue ${unemployedMonthsRemaining} mois)`);
                 }
             }
@@ -625,10 +631,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             }
 
             // W3.2 — Invalidité longue durée (LTD). Tirage annuel.
-            if ((effProj as any).ltdEnabled && enableMonteCarlo && ltdMonthsRemaining === 0 && currentMonthIndex === 0 && m > 0) {
-                const pAnnual = (effProj as any).ltdAnnualProbability ?? 0.005;
+            if (effProj.ltdEnabled && enableMonteCarlo && ltdMonthsRemaining === 0 && currentMonthIndex === 0 && m > 0) {
+                const pAnnual = effProj.ltdAnnualProbability ?? 0.005;
                 if (rng() < pAnnual) {
-                    ltdMonthsRemaining = (effProj as any).ltdDurationMonths || 24;
+                    ltdMonthsRemaining = effProj.ltdDurationMonths || 24;
                     ltdLogged = false;
                 }
             }
@@ -637,14 +643,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     logEvent(lifeEventsLog, `♿ Invalidité longue durée (${ltdMonthsRemaining} mois)`);
                     ltdLogged = true;
                 }
-                const replacePct = ((effProj as any).ltdIncomeReplacementPct ?? 60) / 100;
+                const replacePct = (effProj.ltdIncomeReplacementPct ?? 60) / 100;
                 incomeMarc *= replacePct;
                 ltdMonthsRemaining--;
             }
 
             monthlyIncome = incomeMarc + incomeAnna;
             const currentGrossMarcAnnual = grossMarcBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
-            const currentGrossAnnaAnnual = grossAnnaBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
+            // W1.4 FIX: si survivor, le brut user2 cesse aussi (cohérent avec incomeAnna=0 ligne 609)
+            const currentGrossAnnaAnnual = survivorMode ? 0 : (grossAnnaBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed));
             accGrossIncomeYear += (currentGrossMarcAnnual + currentGrossAnnaAnnual) / 12;
 
 
@@ -661,7 +668,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
         // D2.8: Long-Term Care — tirage stochastique en début d'année.
         // Probabilité convertie en probabilité mensuelle via 1 - (1-p)^(1/12).
-        if ((effProj as any).ltcEnabled && enableMonteCarlo && !ltcActive && age >= 65) {
+        if (effProj.ltcEnabled && enableMonteCarlo && !ltcActive && age >= 65) {
             const annualP = ltcAnnualProbability(age);
             const monthlyP = 1 - Math.pow(1 - annualP, 1 / 12);
             if (rng() < monthlyP) {
@@ -670,79 +677,96 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             }
         }
         if (ltcActive) {
-            const ltcCost = ((effProj as any).ltcMonthlyCost || 5000) * expenseMultiplier;
+            const ltcCost = (effProj.ltcMonthlyCost || 5000) * expenseMultiplier;
             monthlyExpenses += ltcCost;
         }
 
         // W3.1 — Divorce stochastique (MC). Tirage annuel.
-        if ((effProj as any).divorceEnabled && enableMonteCarlo && !divorced && currentMonthIndex === 0 && m > 0) {
-            const pAnnual = (effProj as any).divorceAnnualProbability ?? 0.015;
+        if (effProj.divorceEnabled && enableMonteCarlo && !divorced && currentMonthIndex === 0 && m > 0) {
+            const pAnnual = effProj.divorceAnnualProbability ?? 0.015;
             if (rng() < pAnnual) {
                 divorced = true;
-                const splitPct = ((effProj as any).divorceSplitPct ?? 50) / 100;
-                liquid *= (1 - splitPct);
-                celi *= (1 - splitPct);
-                reer *= (1 - splitPct);
-                nonReg *= (1 - splitPct);
-                nonRegACB *= (1 - splitPct);
-                crypto *= (1 - splitPct);
-                realEstateEquity *= (1 - splitPct);
+                const splitPct = (effProj.divorceSplitPct ?? 50) / 100;
+                const keep = 1 - splitPct;
+                // FIX silent-failure: split COMPLET (mortgage + REEE + CELIAPP +
+                // propriétés via propertiesState, qui réécrit realEstateEquity chaque mois)
+                liquid *= keep;
+                celi *= keep;
+                celiapp *= keep;
+                reer *= keep;
+                nonReg *= keep;
+                nonRegACB *= keep;
+                crypto *= keep;
+                reee *= keep;
+                realEstateEquity *= keep;
+                mortgageBalance *= keep;
+                propertiesState = propertiesState.map(p => ({
+                    ...p,
+                    currentValue: p.currentValue * keep,
+                    mortgage: p.mortgage * keep,
+                }));
             }
         }
         if (divorced && !divorceLogged) {
-            logEvent(lifeEventsLog, `💔 Divorce (-${((effProj as any).divorceSplitPct ?? 50)}% patrimoine)`);
+            logEvent(lifeEventsLog, `💔 Divorce (-${(effProj.divorceSplitPct ?? 50)}% patrimoine)`);
             divorceLogged = true;
         }
         if (divorced) {
-            const alimony = (effProj as any).divorceAlimonyMonthly || 0;
+            const alimony = effProj.divorceAlimonyMonthly || 0;
             monthlyExpenses += alimony * expenseMultiplier;
         }
 
         // W3.3 — Maladie grave (capital forfaitaire + dépenses additionnelles)
-        if ((effProj as any).criticalIllnessEnabled && enableMonteCarlo && currentMonthIndex === 0 && m > 0) {
-            const pAnnual = (effProj as any).ciAnnualProbability ?? 0.003;
+        // FIX agent silent-failure: ne se déclenche QU'UNE SEULE FOIS (sinon
+        // payout cumulé chaque année = absurde).
+        if (effProj.criticalIllnessEnabled && enableMonteCarlo && !ciTriggered && currentMonthIndex === 0 && m > 0) {
+            const pAnnual = effProj.ciAnnualProbability ?? 0.003;
             if (rng() < pAnnual) {
-                const payout = (effProj as any).ciPayoutAmount || 0;
+                ciTriggered = true;
+                const payout = effProj.ciPayoutAmount || 0;
                 if (payout > 0) liquid += payout;
-                const extra = (effProj as any).ciExtraMonthlyExpense || 0;
+                const extra = effProj.ciExtraMonthlyExpense || 0;
                 if (extra > 0) monthlyExpenses += extra * expenseMultiplier;
                 logEvent(lifeEventsLog, `🩺 Maladie grave (capital +${payout}\$, dépenses +${extra}\$/mois)`);
             }
         }
 
         // W3.4 — Héritage probabilisé
-        if ((effProj as any).inheritanceEnabled && enableMonteCarlo && !inheritanceReceived && currentMonthIndex === 0 && m > 0) {
-            const expectedAge = (effProj as any).inheritanceExpectedAtAge ?? (currentAge + 25);
-            const uncertaintyY = (effProj as any).inheritanceUncertaintyYears ?? 5;
-            // Fenêtre [expectedAge - uncertaintyY, expectedAge + uncertaintyY]
-            if (age >= expectedAge - uncertaintyY && age <= expectedAge + uncertaintyY) {
+        // FIX agent silent-failure: uncertaintyY=0 donnait 80%/an (yearsInWindow=1).
+        // Maintenant: si uncertaintyY=0, on traite comme événement ponctuel à expectedAge.
+        if (effProj.inheritanceEnabled && enableMonteCarlo && !inheritanceReceived && currentMonthIndex === 0 && m > 0) {
+            const expectedAge = effProj.inheritanceExpectedAtAge ?? (currentAge + 25);
+            const uncertaintyY = effProj.inheritanceUncertaintyYears ?? 5;
+            const probInWindow = effProj.inheritanceProbability ?? 0.8;
+            const amount = effProj.inheritanceExpectedAmount || 0;
+            let triggers = false;
+            if (uncertaintyY <= 0) {
+                // Événement ponctuel: tire UNE fois à l'âge attendu
+                triggers = age === expectedAge && rng() < probInWindow;
+            } else if (age >= expectedAge - uncertaintyY && age <= expectedAge + uncertaintyY) {
                 const yearsInWindow = uncertaintyY * 2 + 1;
-                const probInWindow = (effProj as any).inheritanceProbability ?? 0.8;
-                const pYear = probInWindow / yearsInWindow;
-                if (rng() < pYear) {
-                    const amount = (effProj as any).inheritanceExpectedAmount || 0;
-                    if (amount > 0) {
-                        liquid += amount;
-                        inheritanceReceived = true;
-                        logEvent(lifeEventsLog, `🎁 Héritage reçu: +${amount.toLocaleString('fr-CA')}\$`);
-                    }
-                }
+                triggers = rng() < (probInWindow / yearsInWindow);
+            }
+            if (triggers && amount > 0) {
+                liquid += amount;
+                inheritanceReceived = true;
+                logEvent(lifeEventsLog, `🎁 Héritage reçu: +${amount.toLocaleString('fr-CA')}\$`);
             }
         }
 
         // W3.5 — Sandwich generation: aide enfants adultes (boomerang) ou parents âgés
-        const boomerangAmount = (effProj as any).boomerangSupportMonthly || 0;
-        const boomerangStart = (effProj as any).boomerangStartAge ?? -1;
-        const boomerangDuration = (effProj as any).boomerangDurationMonths ?? 0;
+        const boomerangAmount = effProj.boomerangSupportMonthly || 0;
+        const boomerangStart = effProj.boomerangStartAge ?? -1;
+        const boomerangDuration = effProj.boomerangDurationMonths ?? 0;
         if (boomerangAmount > 0 && boomerangStart >= 0 && age >= boomerangStart) {
             const monthsIntoBoomerang = (age - boomerangStart) * 12 + currentMonthIndex;
             if (monthsIntoBoomerang < boomerangDuration) {
                 monthlyExpenses += boomerangAmount * expenseMultiplier;
             }
         }
-        const caregivingAmount = (effProj as any).caregivingMonthly || 0;
-        const caregivingStart = (effProj as any).caregivingStartAge ?? -1;
-        const caregivingDuration = (effProj as any).caregivingDurationMonths ?? 0;
+        const caregivingAmount = effProj.caregivingMonthly || 0;
+        const caregivingStart = effProj.caregivingStartAge ?? -1;
+        const caregivingDuration = effProj.caregivingDurationMonths ?? 0;
         if (caregivingAmount > 0 && caregivingStart >= 0 && age >= caregivingStart) {
             const monthsIntoCare = (age - caregivingStart) * 12 + currentMonthIndex;
             if (monthsIntoCare < caregivingDuration) {
@@ -751,9 +775,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         }
 
         // W4.7 — Snowbird (4-6 mois en US/Mexique)
-        if ((effProj as any).snowbirdEnabled && isRetired) {
-            const monthsPerYear = (effProj as any).snowbirdMonthsPerYear ?? 5;
-            const extraMonthlyCost = (effProj as any).snowbirdExtraMonthlyCost ?? 1500;
+        if (effProj.snowbirdEnabled && isRetired) {
+            const monthsPerYear = effProj.snowbirdMonthsPerYear ?? 5;
+            const extraMonthlyCost = effProj.snowbirdExtraMonthlyCost ?? 1500;
             // Approximation: lissé sur l'année (extra × mois × 12 / 12)
             monthlyExpenses += (extraMonthlyCost * monthsPerYear / 12) * expenseMultiplier;
         }

@@ -32,6 +32,14 @@ const BackupSchema = z.object({
   childGoals: z.array(z.unknown()).optional(),
   financialGoals: z.array(z.unknown()).optional(),
   projection: z.unknown().optional(),
+  // FIX agents (security + code-reviewer): valider + persister les nouveaux W5.x containers
+  insurancePolicies: z.array(z.unknown()).optional(),
+  rentalProperties: z.array(z.unknown()).optional(),
+  privateBusinesses: z.array(z.unknown()).optional(),
+  vehicleReplacements: z.array(z.unknown()).optional(),
+  majorRenovations: z.array(z.unknown()).optional(),
+  charitableGoals: z.array(z.unknown()).optional(),
+  aiConversation: z.array(z.unknown()).optional(),
 }).passthrough().refine(
   (data) => data.version !== undefined || data.transactions !== undefined,
   { message: "doit contenir au moins 'version' ou 'transactions'" }
@@ -177,7 +185,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const [encWorking, setEncWorking] = React.useState(false);
 
   const buildBackupPayload = () => ({
-    version: "3.0",
+    version: "3.1",
     timestamp: Date.now(),
     apiKeys,
     config,
@@ -196,6 +204,13 @@ export const Settings: React.FC<SettingsProps> = ({
     childGoals,
     financialGoals,
     transactions,
+    // FIX agents (HIGH): persister les nouveaux W5.x containers dans le backup
+    insurancePolicies,
+    rentalProperties,
+    privateBusinesses,
+    vehicleReplacements,
+    majorRenovations,
+    charitableGoals,
   });
 
   const handleExport = () => {
@@ -329,6 +344,13 @@ export const Settings: React.FC<SettingsProps> = ({
     if (data.childGoals) safeSet('app_child_goals', data.childGoals);
     if (data.projection) safeSet('app_projection', data.projection);
     safeSet('cached_transactions', data.transactions || []);
+    // FIX agents (HIGH): restaurer les nouveaux W5.x containers
+    safeSet('app_insurance_policies', (data as any).insurancePolicies);
+    safeSet('app_rental_properties', (data as any).rentalProperties);
+    safeSet('app_private_businesses', (data as any).privateBusinesses);
+    safeSet('app_vehicle_replacements', (data as any).vehicleReplacements);
+    safeSet('app_major_renovations', (data as any).majorRenovations);
+    safeSet('app_charitable_goals', (data as any).charitableGoals);
 
     showToast("✅ Restauration reussie ! Re-entrez vos cles API si necessaire.", "success");
     window.location.reload();

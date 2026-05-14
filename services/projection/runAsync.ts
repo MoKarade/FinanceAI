@@ -12,7 +12,9 @@ function getWorker(): Worker | null {
     try {
         _worker = new Worker(new URL('../projection.worker.ts', import.meta.url), { type: 'module' });
         return _worker;
-    } catch {
+    } catch (err) {
+        // FIX agent (silent-failure): ne pas swallow silencieusement
+        console.warn('[projection] Worker indisponible (CSP/MIME?), fallback synchrone:', err);
         return null;
     }
 }

@@ -432,8 +432,8 @@ export const Retirement: React.FC<RetirementProps> = ({
                                         {drawdownResult.results
                                             .sort((a, b) => b.estateNetWorth - a.estateNetWorth)
                                             .map((r, i) => (
-                                                <div key={r.strategy} className="flex justify-between text-[10px] text-gray-300">
-                                                    <span>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '  '} {r.strategy}</span>
+                                                <div key={r.scenarioType} className="flex justify-between text-[10px] text-gray-300">
+                                                    <span>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '  '} {r.icon} {r.strategyName}</span>
                                                     <span className="font-mono">{Math.round(r.estateNetWorth).toLocaleString('fr-CA')}\$</span>
                                                 </div>
                                             ))}

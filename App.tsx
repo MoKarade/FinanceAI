@@ -50,11 +50,6 @@ export const App: React.FC = () => {
     const [showGuide, setShowGuide] = useState(false);
     const isHydrated = useRef(false);
 
-    // Phase silent-failure-hunter #8 : detecter et signaler la datapocalypse
-    // silencieuse. Si getInitialStateWithMigration a echoue au mount,
-    // l'app retourne defaultState mais le backup des donnees corrompues
-    // est sauvegarde sous __financeai_backup_<ts>. On previent l'utilisateur
-    // via un toast d'urgence pour qu'il puisse recuperer ses donnees.
     const migrationWarningShown = useRef(false);
     useEffect(() => {
         if (migrationWarningShown.current) return;
@@ -456,7 +451,7 @@ export const App: React.FC = () => {
                     )}
 
                     {activeTab === Tab.CHILD && <ChildPlanning goals={state.childGoals || []} setGoals={(g) => setAppState({ childGoals: g })} projection={state.projection} currentRESP={assetBreakdown.reee} />}
-                    {activeTab === Tab.TRAVEL && <Travel goals={state.travelGoals} setGoals={(g) => setAppState({ travelGoals: g })} />}
+                    {activeTab === Tab.TRAVEL && <Travel travelGoals={state.travelGoals} setTravelGoals={(g) => setAppState({ travelGoals: g })} />}
                     {activeTab === Tab.LIFE_EVENTS && <LifeEvents events={state.lifeEvents} setEvents={(e) => setAppState({ lifeEvents: e })} travelGoals={state.travelGoals} setTravelGoals={(g) => setAppState({ travelGoals: g })} netWorth={globalNetWorth} returnRate={state.projection.returnRate} />}
                     {activeTab === Tab.RETIREMENT && <Retirement
                         goal={state.retirementGoal} setGoal={(g) => setAppState({ retirementGoal: g })}

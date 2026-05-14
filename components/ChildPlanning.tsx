@@ -22,9 +22,9 @@ type UniversityType = 'aucune' | 'cegep' | 'dep' | 'uni_local' | 'uni_appart' | 
 type CarGift = 'non' | 'usagee' | 'neuve';
 
 const DAYCARE_INFO: Record<DaycareType, { label: string; monthly: number; icon: string; desc: string }> = {
-    cpe: { label: 'CPE Subventionné', monthly: 215, icon: '🏛️', desc: '~$11.25/jour (2025, indexé)' },
+    cpe: { label: 'CPE Subventionné', monthly: 215, icon: '🏗️', desc: '~$11.25/jour (2025, indexé)' },
     garde_privee: { label: 'Garderie Privée', monthly: 1400, icon: '🏠', desc: '~$70/jour, service de garde privé non subventionné' },
-    parent_foyer: { label: 'Parent au Foyer', monthly: 0, icon: '🤱', desc: 'Pas de frais de garde, mais perte de salaire (~1 700$/mois net)' },
+    parent_foyer: { label: 'Parent au Foyer', monthly: 0, icon: '🤱', desc: 'Pas de frais de garde, mais perte de salaire (~1 700$/mois net)' },
 };
 
 const SCHOOL_INFO: Record<SchoolType, { label: string; yearlyExtra: number; icon: string }> = {
@@ -50,8 +50,8 @@ const UNI_INFO: Record<UniversityType, { label: string; yearlyCost: number; icon
 
 const CAR_INFO: Record<CarGift, { label: string; cost: number; icon: string }> = {
     non: { label: 'Pas de voiture', cost: 0, icon: '🚶' },
-    usagee: { label: 'Voiture usagée (~10 000$)', cost: 10000, icon: '🚗' },
-    neuve: { label: 'Voiture neuve (~25 000$)', cost: 25000, icon: '🚙' },
+    usagee: { label: 'Voiture usagée (~10 000$)', cost: 10000, icon: '🚗' },
+    neuve: { label: 'Voiture neuve (~25 000$)', cost: 25000, icon: '🚙' },
 };
 
 const fmt = (n: number) => n.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 });
@@ -61,12 +61,12 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     const [confirmRemove, setConfirmRemove] = useState<{ index: number; name: string } | null>(null);
     const goal = goals[activeTabIndex] || goals[0];
 
-    const [daycareType, setDaycareType] = useState<DaycareType>('cpe');
-    const [schoolType, setSchoolType] = useState<SchoolType>('publique');
-    const [activitiesLevel, setActivitiesLevel] = useState<ActivitiesLevel>('legeres');
-    const [universityType, setUniversityType] = useState<UniversityType>('uni_local');
-    const [carGift, setCarGift] = useState<CarGift>('non');
-    const [respContribution, setRespContribution] = useState(2500);
+    const [daycareType, setDaycareTypeLocal] = useState<DaycareType>((goal?.daycareType as DaycareType) || 'cpe');
+    const [schoolType, setSchoolTypeLocal] = useState<SchoolType>((goal?.schoolType as SchoolType) || 'publique');
+    const [activitiesLevel, setActivitiesLevelLocal] = useState<ActivitiesLevel>((goal?.activitiesLevel as ActivitiesLevel) || 'legeres');
+    const [universityType, setUniversityTypeLocal] = useState<UniversityType>((goal?.universityType as UniversityType) || 'uni_local');
+    const [carGift, setCarGiftLocal] = useState<CarGift>((goal?.carGift as CarGift) || 'non');
+    const [respContribution, setRespContributionLocal] = useState(goal?.respContribution ?? 2500);
     const [parentAtHome, setParentAtHome] = useState(false);
 
     if (!goal) return null; // Hydration guard
@@ -77,6 +77,14 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
         newGoals[activeTabIndex] = { ...newGoals[activeTabIndex], [field]: value };
         setGoals(newGoals);
     };
+
+    // Persisting setters: update local state + persist to store in one call
+    const setDaycareType = (v: DaycareType) => { setDaycareTypeLocal(v); update('daycareType', v); };
+    const setSchoolType = (v: SchoolType) => { setSchoolTypeLocal(v); update('schoolType', v); };
+    const setActivitiesLevel = (v: ActivitiesLevel) => { setActivitiesLevelLocal(v); update('activitiesLevel', v); };
+    const setUniversityType = (v: UniversityType) => { setUniversityTypeLocal(v); update('universityType', v); };
+    const setCarGift = (v: CarGift) => { setCarGiftLocal(v); update('carGift', v); };
+    const setRespContribution = (v: number) => { setRespContributionLocal(v); update('respContribution', v); };
 
     const handleAddChild = () => {
         const newId = 'child_' + Date.now();
@@ -97,6 +105,18 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
         setActiveTabIndex(Math.max(0, confirmRemove.index - 1));
         setConfirmRemove(null);
     };
+
+    // Sync local choix-de-vie when switching children
+    useEffect(() => {
+        if (!goal) return;
+        setDaycareTypeLocal((goal.daycareType as DaycareType) || 'cpe');
+        setSchoolTypeLocal((goal.schoolType as SchoolType) || 'publique');
+        setActivitiesLevelLocal((goal.activitiesLevel as ActivitiesLevel) || 'legeres');
+        setUniversityTypeLocal((goal.universityType as UniversityType) || 'uni_local');
+        setCarGiftLocal((goal.carGift as CarGift) || 'non');
+        setRespContributionLocal(goal.respContribution ?? 2500);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [goal?.id]);
 
     // Impact du parent au foyer : pas de coût garderie mais perte de salaire
     useEffect(() => {
@@ -209,7 +229,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                 onConfirm={doRemoveChild}
                 onCancel={() => setConfirmRemove(null)}
                 title="Supprimer le profil"
-                message={`Supprimer "${confirmRemove?.name}" définitivement ?`}
+                message={`Supprimer "${confirmRemove?.name}" définitivement ?`}
                 confirmLabel="Supprimer"
             />
             {/* EN-TÊTE */}
@@ -382,7 +402,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                 {/* GRAPHIQUES */}
                 <div className="lg:col-span-2 space-y-5">
                     <Card title="📊 Coût annuel par âge (décomposé)" action={
-                        <div className="text-xs text-gray-400 font-mono">Total : <span className="text-white font-bold privacy-blur">{fmt(costTimeline.totalCost)}</span></div>
+                        <div className="text-xs text-gray-400 font-mono">Total : <span className="text-white font-bold privacy-blur">{fmt(costTimeline.totalCost)}</span></div>
                     }>
                         <div className="h-[280px]">
                             <ResponsiveContainer width="100%" height="100%">
@@ -396,7 +416,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     <Bar dataKey="Essentiel" stackId="a" fill="#6366f1" name="Essentiel" />
                                     <Bar dataKey="Garde_École_Activités" stackId="a" fill="#ec4899" name="Garde / École / Activités" />
                                     <Bar dataKey="Ponctuel" stackId="a" fill="#f59e0b" name="Ponctuel (naissance, voiture…)" />
-                                    <Bar dataKey="Bénéfices" stackId="a" fill="#10b981" name="Allocations (négatif = bénéfice)" />
+                                    <Bar dataKey="Bénéfices" stackId="a" fill="#10b981" name="Allocations (négatif = bénéfice)" />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
@@ -414,7 +434,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     <span className="text-blue-400 font-bold">{fmt(respContribution)}</span>
                                 </label>
                                 <input type="range" min="0" max="5000" step="100" value={respContribution} onChange={e => setRespContribution(Number(e.target.value))} className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-blue-500" />
-                                <p className="text-[10px] text-gray-500 mt-1">Optimal : 2 500$/an pour maximiser les subventions (30% = fed 20% + QC 10%)</p>
+                                <p className="text-[10px] text-gray-500 mt-1">Optimal : 2 500$/an pour maximiser les subventions (30% = fed 20% + QC 10%)</p>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
                                 <div className="bg-blue-900/20 p-3 rounded-lg border border-blue-500/20 text-center">

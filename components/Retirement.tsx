@@ -4,6 +4,7 @@ import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, 
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend, AreaChart } from 'recharts';
 import { calculateFutureProjection } from '../services/projection';
 import { findRequiredMonthlySavings, findEarliestRetirementAge } from '../services/projection/goalSeek';
+import { TaxBracketViz } from './TaxBracketViz';
 import { fetchPortfolioHistory } from '../services/finance';
 import { calculateGrossFromNet } from '../services/tax';
 import { useFinanceStore } from '../store/useFinanceStore';
@@ -338,6 +339,9 @@ export const Retirement: React.FC<RetirementProps> = ({
                             )}
                         </div>
                     </Card>
+
+                    {/* W4.1 — Tax bracket viz */}
+                    <TaxBracketViz annualGrossIncome={baseGrossAnnual} label="revenu actuel" />
 
                     {/* W1.5 — Goal Seeking / Projection inverse */}
                     <Card title="🎯 Projection inverse (Goal seeker)">

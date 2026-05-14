@@ -525,6 +525,25 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         🌴 Snowbird {projection.snowbirdEnabled ? 'ON' : 'OFF'}
                     </button>
                 </div>
+
+                {/* W4.5 — Replay historique */}
+                <div className="mb-4 flex items-center gap-2">
+                    <label className="text-[11px] text-gray-400">🎬 Replay krach historique:</label>
+                    <select
+                        value={projection.replayHistoricalYear ?? ''}
+                        onChange={e => updateProj('replayHistoricalYear', e.target.value ? Number(e.target.value) : undefined)}
+                        className="bg-dark border border-border rounded px-2 py-1 text-[11px] text-white"
+                    >
+                        <option value="">— Aucun (mode normal) —</option>
+                        <option value="1929">1929 — Grande Dépression</option>
+                        <option value="1973">1973 — Choc pétrolier + stagflation</option>
+                        <option value="2000">2000 — Bulle dot-com</option>
+                        <option value="2008">2008 — Crise financière</option>
+                        <option value="2020">2020 — COVID</option>
+                        <option value="2022">2022 — Inflation post-COVID</option>
+                    </select>
+                    <span className="text-[10px] text-gray-500">→ Force les rendements historiques à partir de cette année.</span>
+                </div>
                 {projection.ltcEnabled && (
                     <div className="mb-4 p-3 rounded-lg border border-red-500/20 bg-black/30">
                         <label className="flex justify-between text-xs text-gray-300 mb-1">

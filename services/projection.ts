@@ -2,7 +2,7 @@
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config } from '../types';
 import { calculateFiscalReport, CELI_ANNUAL_LIMITS, calculateCeliRoom, calculateGrossFromNet, getMarginalRate, calculateDividendTax, RRSP_ANNUAL_LIMITS, calculateGrossWithholdingRRSP } from '../utils/tax';
 import { mulberry32, gaussianRandom, applyShock, MER, RRIF_RATES, welcomeTax, ltcAnnualProbability, mortalityAnnualProbability } from './projection/helpers';
-import { buildHistoricalSequence, type YearReturn } from './projection/historicalReturns';
+import { buildHistoricalSequence, buildReplaySequence, type YearReturn } from './projection/historicalReturns';
 
 export interface SimulationParams {
     projection: ProjectionConfig;
@@ -312,10 +312,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     const dbSurvivorPct = (effProj.spouseDbSurvivorPct ?? retirementGoal.dbSurvivorPct ?? 60) / 100;
 
     // W1.2: Bootstrap historique - construit une séquence par scénario MC
+    // W4.5: Replay historique - mode déterministe forcé à partir d'une année
+    const replayYear = effProj.replayHistoricalYear;
     const useBootstrap = !!effProj.useHistoricalBootstrap && enableMonteCarlo;
-    const historicalSequence: YearReturn[] | null = useBootstrap
-        ? buildHistoricalSequence(rng, projection.years + 1, effProj.bootstrapBlockSize ?? 24)
-        : null;
+    let historicalSequence: YearReturn[] | null = null;
+    if (replayYear) {
+        historicalSequence = buildReplaySequence(replayYear, projection.years + 1);
+    } else if (useBootstrap) {
+        historicalSequence = buildHistoricalSequence(rng, projection.years + 1, effProj.bootstrapBlockSize ?? 24);
+    }
 
     // D2.10: Perte d'emploi stochastique. unemployedMonthsRemaining > 0
     // pendant la période sans emploi (revenu réduit à 55% capé AE).
@@ -384,7 +389,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             currentInflation = applyShock(simInflation, 1.5, Z_inflation_shock);
         }
 
-        // W1.2: Override avec rendements historiques si bootstrap actif
+        // W1.2 + W4.5: Override avec rendements historiques (bootstrap MC ou replay déterministe)
         if (historicalSequence) {
             const yearIdx = Math.floor(m / 12);
             const histYear = historicalSequence[yearIdx];

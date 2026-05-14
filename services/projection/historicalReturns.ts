@@ -156,6 +156,24 @@ export function buildHistoricalSequence(
 }
 
 /**
+ * W4.5 — Replay historique. Force la simulation à utiliser les rendements
+ * réels à partir d'une année donnée (ex: 1929 pour tester un krach
+ * pendant la décennie critique).
+ */
+export function buildReplaySequence(
+    startYear: number,
+    totalYears: number,
+): YearReturn[] {
+    const idx = HISTORICAL_RETURNS_US.findIndex(y => y.year === startYear);
+    if (idx === -1) return HISTORICAL_RETURNS_US.slice(0, totalYears);
+    const seq: YearReturn[] = [];
+    for (let i = 0; i < totalYears; i++) {
+        seq.push(HISTORICAL_RETURNS_US[(idx + i) % HISTORICAL_RETURNS_US.length]);
+    }
+    return seq;
+}
+
+/**
  * Convertit un rendement annuel en rendement mensuel équivalent.
  * (1 + r_annual)^(1/12) - 1
  */

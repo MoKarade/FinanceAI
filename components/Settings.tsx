@@ -7,16 +7,13 @@ import { Card } from './ui/Card';
 import { AppState, BudgetCategory, Transaction, Asset, SavingsGoal, TravelGoal, Debt, InvestmentAccount, InvestmentTransaction, LifeEvent, RetirementGoal, FinancialGoal, RealEstateGoal, BudgetConfig } from '../types';
 import { showToast } from './ui/Toast';
 
-// Bug audit #5 : schema strict pour valider un fichier de restauration
-// avant d'appeler localStorage.clear(). Permet aux champs additionnels
-// de passer (.passthrough) mais refuse les types invalides (ex. transactions
-// qui ne serait pas un tableau, initialBalances qui ne serait pas Record<string, number>).
 const BackupSchema = z.object({
   version: z.string().optional(),
   timestamp: z.number().optional(),
   apiKeys: z.object({
     gemini: z.string().optional(),
-    lunchMoney: z.string().optional(),
+    eraContext: z.string().optional(),
+    lunchMoney: z.string().optional(), // backward compat
   }).passthrough().optional(),
   config: z.unknown().optional(),
   transactions: z.array(z.unknown()).optional(),
@@ -46,20 +43,15 @@ interface SettingsProps {
   config: AppState['config'];
   setConfig: (c: AppState['config']) => void;
   budgetItems: BudgetCategory[];
-  setBudgetItems: (items: BudgetCategory[]) => void;
   onImportData: (data: string) => void;
   initialBalances: Record<string, number>;
   setInitialBalances: (balances: Record<string, number>) => void;
   transactions: Transaction[];
   setTransactions?: (t: Transaction[]) => void;
   assets: Asset[];
-  setAssets: (assets: Asset[]) => void;
   savingsGoals: SavingsGoal[];
-  setSavingsGoals: (goals: SavingsGoal[]) => void;
   travelGoals: TravelGoal[];
-  setTravelGoals: (goals: TravelGoal[]) => void;
   debts?: Debt[];
-  setDebts?: (d: Debt[]) => void;
   investmentAccounts?: InvestmentAccount[];
   investmentTransactions?: InvestmentTransaction[];
   lifeEvents?: LifeEvent[];
@@ -207,9 +199,6 @@ export const Settings: React.FC<SettingsProps> = ({
 
         const rawData = JSON.parse(jsonStr);
 
-        // Bug audit #5 : valider strictement le schema avant de toucher
-        // a localStorage. Un JSON arbitraire ne doit pas pouvoir declencher
-        // un clear() suivi d'une injection de cles API attaquant.
         const parsed = BackupSchema.safeParse(rawData);
         if (!parsed.success) {
           const issue = parsed.error.issues[0];
@@ -222,7 +211,6 @@ export const Settings: React.FC<SettingsProps> = ({
         const txCount = data.transactions?.length ?? 0;
         const assetCount = data.assets?.length ?? 0;
 
-        // Double confirm : 1) resume + intention, 2) phrase exacte a taper.
         const firstOk = confirm(
           `⚠️ RESTAURATION COMPLETE\n\nVersion Backup: ${data.version || 'Inconnue'}\nTransactions: ${txCount}\nActifs: ${assetCount}\n\nCela va ECRASER toutes les donnees actuelles.\n\nContinuer ?`
         );
@@ -244,12 +232,7 @@ export const Settings: React.FC<SettingsProps> = ({
           }
         };
 
-        // Phase securite C1 : on n'ecrit PLUS lm_token et gemini_key
-        // en clair lors du restore. Le user doit les re-saisir via les
-        // champs Cles API dans Settings apres restore. Le bloc apiKeys
-        // est exclu du persist Zustand (commit e7aaad6f).
         safeSet('app_api_keys', data.apiKeys);
-
         safeSet('app_config', data.config);
         safeSet('app_budget', data.budgetItems);
         safeSet('initial_balances', data.initialBalances);
@@ -265,7 +248,6 @@ export const Settings: React.FC<SettingsProps> = ({
         safeSet('app_real_estate_goals', data.realEstateGoals);
         safeSet('app_child_goal', data.childGoal);
         if (data.childGoals) safeSet('app_child_goals', data.childGoals);
-
         if (data.projection) safeSet('app_projection', data.projection);
         safeSet('cached_transactions', data.transactions || []);
 
@@ -325,14 +307,15 @@ export const Settings: React.FC<SettingsProps> = ({
               <p className="text-xs text-gray-500 mt-1">Pour l'analyse de documents et la categorisation.</p>
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Lunch Money Token</label>
+              <label className="block text-sm text-gray-400 mb-1">Era Context Token</label>
               <input
                 type="password"
-                value={apiKeys?.lunchMoney || ''}
-                onChange={(e) => setApiKeys({ ...apiKeys, lunchMoney: e.target.value })}
+                value={apiKeys?.eraContext || ''}
+                onChange={(e) => setApiKeys({ ...apiKeys, eraContext: e.target.value })}
                 className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
-                placeholder="Token..."
+                placeholder="Token Era Context..."
               />
+              <p className="text-xs text-gray-500 mt-1">Pour la synchronisation des transactions via era.app.</p>
             </div>
             <div className="p-3 bg-green-900/10 rounded border border-green-500/20 mt-4">
               <div className="text-xs text-green-400 font-bold mb-1">✅ Donnees Boursieres</div>
@@ -386,9 +369,6 @@ export const Settings: React.FC<SettingsProps> = ({
                     onClick={() => {
                       const newUsers = [...config.users];
                       newUsers.pop();
-                      // Fix TS2322 : cast vers [User, User] tuple. Note : apres pop()
-                      // le tableau a 1 element, mais le type AppState force 2. C'est
-                      // une dette technique du modele BudgetConfig (devrait etre User[]).
                       setConfig({ ...config, users: newUsers as [any, any] });
                     }}
                     className="bg-red-900/40 text-red-300 px-3 py-1 rounded text-xs hover:bg-red-900/60"
@@ -400,7 +380,6 @@ export const Settings: React.FC<SettingsProps> = ({
                   <button
                     onClick={() => {
                       const newUsers = [...config.users, { name: "Conjoint(e)", age: 30, grossSalary: 0, netSalary: 0, canadaArrivalYear: new Date().getFullYear() - 5, color: '#ec4899' }];
-                      // Fix TS2322 : cast vers [User, User] tuple.
                       setConfig({ ...config, users: newUsers as [any, any] });
                     }}
                     className="bg-green-900/40 text-green-300 px-3 py-1 rounded text-xs hover:bg-green-900/60"

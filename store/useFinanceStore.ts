@@ -8,12 +8,11 @@ interface FinanceState extends AppState {
     setActiveTab: (tab: Tab) => void;
     setAppState: (state: Partial<AppState>) => void;
     updateFxRates: (rates: { USD: number; EUR: number; CAD: number; lastFetched?: number }) => void;
-    updateApiKeys: (keys: { lunchMoney: string; gemini: string }) => void;
+    updateApiKeys: (keys: { eraContext: string; gemini: string }) => void;
     updateLastUpdate: () => void;
     resetState: () => void;
 }
 
-// Helper crypto.randomUUID disponible en browser moderne + Node 19+.
 const safeRandomId = (): string => {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
         return crypto.randomUUID();
@@ -21,10 +20,6 @@ const safeRandomId = (): string => {
     return `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 };
 
-// Phase silent-failure-hunter #8 : exposer le statut de migration au reste
-// de l'app pour eviter la "datapocalypse silencieuse". Si la migration
-// localStorage echoue, App.tsx peut detecter le flag et afficher une
-// banniere d'urgence pointant vers la cle de backup.
 interface MigrationStatus {
     failed: boolean;
     backupKey: string | null;
@@ -79,7 +74,7 @@ const getInitialStateWithMigration = (): AppState => {
         retirementGoal: { targetAge: 65, targetMonthlyIncome: 4000, governmentPension: 1200 },
         financialGoals: [],
         initialBalances: {},
-        apiKeys: { lunchMoney: '', gemini: '' },
+        apiKeys: { eraContext: '', gemini: '' },
         fxRates: DEFAULT_FX_RATES,
         lastUpdate: Date.now(),
         categorizationRules: [],
@@ -89,12 +84,16 @@ const getInitialStateWithMigration = (): AppState => {
 
     try {
         const savedApiKeysStr = localStorage.getItem('app_api_keys');
-        const legacyLm = localStorage.getItem('lm_token');
+        const legacyToken = localStorage.getItem('lm_token');
         const legacyGemini = localStorage.getItem('gemini_key');
-        let safeApiKeys = { lunchMoney: legacyLm || '', gemini: legacyGemini || '' };
+        // Migrate old lunchMoney key -> eraContext
+        let safeApiKeys = { eraContext: legacyToken || '', gemini: legacyGemini || '' };
         if (savedApiKeysStr) {
             const parsed = JSON.parse(savedApiKeysStr);
-            safeApiKeys = { lunchMoney: parsed.lunchMoney || safeApiKeys.lunchMoney, gemini: parsed.gemini || safeApiKeys.gemini };
+            safeApiKeys = {
+                eraContext: parsed.eraContext || parsed.lunchMoney || safeApiKeys.eraContext,
+                gemini: parsed.gemini || safeApiKeys.gemini,
+            };
         }
 
         const savedTransactions = localStorage.getItem('cached_transactions');
@@ -114,7 +113,6 @@ const getInitialStateWithMigration = (): AppState => {
         const savedLifeEvents = localStorage.getItem('app_life_events');
         const savedRetirementGoal = localStorage.getItem('app_retirement_goal');
         const savedFinancialGoals = localStorage.getItem('app_financial_goals');
-
         const storedFxRates = localStorage.getItem('fx_rates_cache');
 
         let budgetItems = savedBudget ? JSON.parse(savedBudget) : INITIAL_BUDGET;
@@ -174,14 +172,11 @@ const getInitialStateWithMigration = (): AppState => {
             }
             backupKey = `__financeai_backup_${Date.now()}`;
             localStorage.setItem(backupKey, JSON.stringify({ error: errorStr, dump: corruptedDump }));
-            console.warn(`[FinanceAI] Backup des donnees corrompues sauvegarde sous la cle ${backupKey}. Donnees recuperables manuellement via DevTools > Application > Local Storage.`);
+            console.warn(`[FinanceAI] Backup sauvegarde sous ${backupKey}`);
         } catch (backupErr) {
             console.error("[FinanceAI] Impossible de sauvegarder le backup:", backupErr);
             backupKey = null;
         }
-        // Phase silent-failure-hunter #8 : exposer le statut pour App.tsx
-        // qui affichera une banniere d'urgence au lieu de retourner
-        // silencieusement defaultState (datapocalypse).
         _migrationStatus = { failed: true, backupKey, error: errorStr };
         return defaultState;
     }
@@ -208,7 +203,6 @@ export const useFinanceStore = create<FinanceState>()(
         }),
         {
             name: 'financeai-storage',
-            // Phase C1 du PLAN_DE_FIX : exclure apiKeys du persist Zustand.
             partialize: (state) => {
                 const { apiKeys, activeTab, ...persistable } = state;
                 return persistable;

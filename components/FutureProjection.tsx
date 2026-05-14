@@ -27,7 +27,7 @@ interface FutureProjectionProps {
   isPrivacyMode?: boolean;
 }
 
-const ExpertTooltip = ({ active, payload, label, isPrivacyMode }: any) => {
+const ExpertTooltip = ({ active, payload, label, isPrivacyMode, userName1, userName2 }: any) => {
     if (!active || !payload || !payload.length) return null;
     const data = payload[0].payload;
 
@@ -39,8 +39,8 @@ const ExpertTooltip = ({ active, payload, label, isPrivacyMode }: any) => {
             </div>
 
             <div className="mb-3 space-y-1">
-                {(data.IncomeMarc || 0) > 0 && <div className="flex justify-between text-xs"><span className="text-gray-400">Paye Marc:</span> <span className="font-mono text-green-400 privacy-blur">+{(data.IncomeMarc || 0).toLocaleString()}$</span></div>}
-                {(data.IncomeAnna || 0) > 0 && <div className="flex justify-between text-xs"><span className="text-gray-400">Paye Anna:</span> <span className="font-mono text-green-400 privacy-blur">+{(data.IncomeAnna || 0).toLocaleString()}$</span></div>}
+                {(data.IncomeMarc || 0) > 0 && <div className="flex justify-between text-xs"><span className="text-gray-400">Paye {userName1 || 'Utilisateur 1'}:</span> <span className="font-mono text-green-400 privacy-blur">+{(data.IncomeMarc || 0).toLocaleString()}$</span></div>}
+                {(data.IncomeAnna || 0) > 0 && <div className="flex justify-between text-xs"><span className="text-gray-400">Paye {userName2 || 'Utilisateur 2'}:</span> <span className="font-mono text-green-400 privacy-blur">+{(data.IncomeAnna || 0).toLocaleString()}$</span></div>}
                 {(data.IncomeRetirement || 0) > 0 && <div className="flex justify-between text-xs"><span className="text-gray-400">Rentes/Retraite:</span> <span className="font-mono text-green-400 privacy-blur">+{(data.IncomeRetirement || 0).toLocaleString()}$</span></div>}
 
                 <div className="flex justify-between text-xs"><span className="text-gray-400">Dépenses Vies:</span> <span className="font-mono text-red-400 privacy-blur">-{(data.Expenses || 0).toLocaleString()}$</span></div>
@@ -123,7 +123,7 @@ const ExpertTooltip = ({ active, payload, label, isPrivacyMode }: any) => {
                         <div>
                             <span className="text-[9px] uppercase text-gray-500 font-bold tracking-widest">Flux d'Épargne</span>
                             <ul className="text-[10px] text-gray-300 mt-1 space-y-1 font-mono">
-                                {data.flowEvents?.map((e: string, i: number) => <li key={i} className={e.includes('Survie') ? 'text-red-300' : 'text-blue-300'}>⮡ {e}</li>)}
+                                {data.flowEvents?.map((e: string, i: number) => <li key={i} className={e.includes('Survie') ? 'text-red-300' : 'text-blue-300'}>⫪ {e}</li>)}
                             </ul>
                         </div>
                     )}
@@ -268,7 +268,6 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         return 1600;
     }, [budgetItems]);
 
-    // DEPART STRICT EN JANVIER 2026
     const startYear = 2026;
     const startMonth = 0;
 
@@ -465,7 +464,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                     className="text-[9px] bg-blue-500/20 text-blue-300 hover:bg-blue-500/40 hover:text-white px-1.5 py-0.5 rounded transition-colors"
                                     title="Appliquer le rendement historique réel de votre Google Sheet"
                                 >
-                                    🪄 Auto ({liveCSVBalances.historicalRate.toFixed(1)}%)
+                                    🪴 Auto ({liveCSVBalances.historicalRate.toFixed(1)}%)
                                 </button>
                             )}
                         </h4>
@@ -534,7 +533,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             <ReferenceLine y={0} stroke="#444" strokeWidth={2} />
                             <ReferenceLine x={todayMonthIndex} stroke="rgba(255,255,255,0.6)" strokeDasharray="5 5" label={{ position: 'top', value: "Aujourd'hui", fill: '#fff', fontSize: 10 }} />
 
-                            <Tooltip content={<ExpertTooltip isPrivacyMode={isPrivacyMode} />} />
+                            <Tooltip content={<ExpertTooltip isPrivacyMode={isPrivacyMode} userName1={config.users[0]?.name} userName2={config.users[1]?.name} />} />
                             <ReferenceLine y={fireNumber} stroke="#f97316" strokeDasharray="5 5" label={{ position: 'top', value: 'Objectif FIRE', fill: '#f97316', fontSize: 12, fontWeight: 'bold' }} />
 
                             {runMC && (

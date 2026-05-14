@@ -18,6 +18,20 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
-      }
+      },
+      build: {
+        sourcemap: 'hidden',
+        chunkSizeWarningLimit: 800,
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              'react-vendor': ['react', 'react-dom'],
+              'recharts': ['recharts'],
+              'ai-vendor': ['@google/genai'],
+              'pdf-vendor': ['jspdf', 'html2canvas'],
+            },
+          },
+        },
+      },
     };
 });

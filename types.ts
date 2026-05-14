@@ -149,9 +149,6 @@ export interface RealEstateGoal {
   renewalRateProjection?: number;
   yearlyRenovations?: number;
   maintenanceYearly?: number;
-  // Fix TS2339 (Dashboard.tsx:161) : champs runtime utilises mais absents du type.
-  // currentValue = valeur marche actuelle (peut differer de price si appreciation).
-  // mortgageBalance = solde hypotheque restant. Calcule en pratique par runAmortization.
   currentValue?: number;
   mortgageBalance?: number;
 }
@@ -210,8 +207,6 @@ export interface LifeEvent {
   impactPercent?: number;
   durationMonths?: number;
   incomeLossPercent?: number;
-  // Fix TS2339 (Dashboard.tsx:416) : icone visuelle (emoji ou nom Lucide) utilisee
-  // dans la timeline. Optionnelle, fallback dans le composant.
   icon?: string;
 }
 
@@ -286,7 +281,7 @@ export interface AppState {
   financialGoals: FinancialGoal[];
   initialBalances: Record<string, number>;
   apiKeys: {
-    lunchMoney: string;
+    eraContext: string;
     gemini: string;
   };
   fxRates: {

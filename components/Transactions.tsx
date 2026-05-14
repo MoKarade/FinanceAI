@@ -11,7 +11,7 @@ interface TransactionsProps {
     transactions: Transaction[];
     setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
     apiKey: string;
-    onSyncLunchMoney: () => void;
+    onSyncEraContext: () => void;
     isSyncing: boolean;
     budgetItems: BudgetCategory[];
     categorizationRules?: CategorizationRule[];
@@ -22,7 +22,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
     transactions,
     setTransactions,
     apiKey,
-    onSyncLunchMoney,
+    onSyncEraContext,
     isSyncing,
     budgetItems,
     categorizationRules = [],
@@ -227,8 +227,6 @@ export const Transactions: React.FC<TransactionsProps> = ({
                     setLiveLogs(prev => [...prev, msg]);
 
                     if (processedChunk && processedChunk.length > 0) {
-                        // Fix TS2345 : annotation explicite Map<number, Transaction>
-                        // pour eviter l'inference 'unknown[]' du callback parameter.
                         setTransactions((currentTransactions: Transaction[]): Transaction[] => {
                             const updateMap = new Map<number, Transaction>(
                                 processedChunk.map((p: Transaction): [number, Transaction] => [p.id, p])
@@ -250,7 +248,6 @@ export const Transactions: React.FC<TransactionsProps> = ({
             }, 1500);
 
         } catch (e: any) {
-            // Fix silent-failure-hunter #23 : log avec contexte (etait juste console.error(e))
             console.error('[Transactions] Categorisation batch failed:', e);
             setLiveLogs(prev => [...prev, `Erreur : ${e?.message || 'inconnue'}`]);
         } finally {
@@ -449,12 +446,12 @@ export const Transactions: React.FC<TransactionsProps> = ({
                             Σ {filteredSum.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}
                         </div>
                         <button
-                            onClick={onSyncLunchMoney}
+                            onClick={onSyncEraContext}
                             disabled={isSyncing}
-                            aria-label="Synchroniser avec LunchMoney"
+                            aria-label="Synchroniser avec Era Context"
                             className="text-xs flex items-center gap-1 text-blue-300 hover:text-white border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 rounded-lg transition-colors font-bold disabled:opacity-50"
                         >
-                            {isSyncing ? 'Sync...' : 'Sync LunchMoney'}
+                            {isSyncing ? 'Sync...' : 'Sync Era Context'}
                         </button>
                         <button
                             onClick={handleExportCSV}

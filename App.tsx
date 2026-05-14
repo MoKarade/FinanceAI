@@ -3,7 +3,7 @@ import { Layout } from './components/Layout';
 import { Onboarding } from './components/Onboarding';
 import { ToastContainer, showToast } from './components/ui/Toast';
 import { Tab, AppState, Transaction, BudgetCategory } from './types';
-import { fetchTransactions } from './services/lunchMoney';
+import { fetchTransactions } from './services/eraContext';
 import { INITIAL_CHILD_GOAL } from './constants';
 import { parseTransactions, markDuplicates } from './utils/transactionParser';
 import { fetchAssetHistory, fetchFxRates } from './services/finance';
@@ -11,9 +11,6 @@ import { calculateGrossFromNet } from './services/tax';
 import { generateFinancialReport } from './services/pdfReport';
 import { useFinanceStore, getMigrationStatus } from './store/useFinanceStore';
 
-// Onglets : lazy-loaded pour code-splitting. Vite cree un chunk par
-// import() dynamique — les modules lourds (FutureProjection ~90ko,
-// Investments ~53ko, Budget ~47ko) ne sont charges qu'a la 1re visite.
 const Dashboard = React.lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
 const Transactions = React.lazy(() => import('./components/Transactions').then(m => ({ default: m.Transactions })));
 const Budget = React.lazy(() => import('./components/Budget').then(m => ({ default: m.Budget })));
@@ -154,10 +151,10 @@ export const App: React.FC = () => {
     }, 0), [state.config]);
 
     useEffect(() => {
-        if (state.apiKeys.lunchMoney && state.transactions.length === 0) {
-            loadData(state.apiKeys.lunchMoney);
+        if (state.apiKeys.eraContext && state.transactions.length === 0) {
+            loadData(state.apiKeys.eraContext);
         }
-    }, [state.apiKeys.lunchMoney]);
+    }, [state.apiKeys.eraContext]);
 
     useEffect(() => {
         let cancelled = false;
@@ -271,7 +268,7 @@ export const App: React.FC = () => {
             showToast('Donnees synchronisees', 'success');
         } catch (e: any) {
             console.error('[FinanceAI] Sync Error:', e);
-            showToast(e?.message ? `Sync echouee : ${e.message}` : 'Erreur de synchronisation LunchMoney.', 'error');
+            showToast(e?.message ? `Sync echouee : ${e.message}` : 'Erreur de synchronisation Era Context.', 'error');
         } finally {
             setIsLoading(false);
         }
@@ -279,8 +276,8 @@ export const App: React.FC = () => {
 
     const handleUpdateApiKeys = (keys: AppState['apiKeys']) => {
         state.updateApiKeys(keys);
-        if (keys.lunchMoney !== state.apiKeys.lunchMoney && keys.lunchMoney) {
-            loadData(keys.lunchMoney, undefined);
+        if (keys.eraContext !== state.apiKeys.eraContext && keys.eraContext) {
+            loadData(keys.eraContext, undefined);
         }
     };
 
@@ -347,8 +344,8 @@ export const App: React.FC = () => {
                     setAppState({ ...data, lastUpdate: Date.now() });
                     localStorage.setItem('app_onboarding_done', 'true');
                     setIsFirstLaunch(false);
-                    if (data.apiKeys?.lunchMoney) {
-                        setTimeout(() => loadData(data.apiKeys!.lunchMoney), 500);
+                    if (data.apiKeys?.eraContext) {
+                        setTimeout(() => loadData(data.apiKeys!.eraContext), 500);
                     }
                 }} />
             )}
@@ -357,7 +354,7 @@ export const App: React.FC = () => {
                 setActiveTab={handleSetTab}
                 lastUpdate={state.lastUpdate}
                 onRefresh={() => {
-                    loadData(state.apiKeys.lunchMoney);
+                    loadData(state.apiKeys.eraContext);
                     window.dispatchEvent(new Event('resize'));
                 }}
                 isLoading={isLoading}
@@ -419,7 +416,7 @@ export const App: React.FC = () => {
                         />
                     )}
 
-                    {activeTab === Tab.TRANSACTIONS && <Transactions transactions={state.transactions} setTransactions={(t) => setAppState({ transactions: typeof t === 'function' ? (t as any)(state.transactions) : t })} apiKey={state.apiKeys.gemini} onSyncLunchMoney={() => loadData(state.apiKeys.lunchMoney, undefined)} isSyncing={isLoading} budgetItems={state.budgetItems} categorizationRules={state.categorizationRules || []} setCategorizationRules={(rules) => setAppState({ categorizationRules: rules })} />}
+                    {activeTab === Tab.TRANSACTIONS && <Transactions transactions={state.transactions} setTransactions={(t) => setAppState({ transactions: typeof t === 'function' ? (t as any)(state.transactions) : t })} apiKey={state.apiKeys.gemini} onSyncEraContext={() => loadData(state.apiKeys.eraContext, undefined)} isSyncing={isLoading} budgetItems={state.budgetItems} categorizationRules={state.categorizationRules || []} setCategorizationRules={(rules) => setAppState({ categorizationRules: rules })} />}
                     {activeTab === Tab.BUDGET && <Budget transactions={state.transactions} config={state.config} budgetItems={state.budgetItems} setBudgetItems={(items) => setAppState({ budgetItems: items })} apiKey={state.apiKeys.gemini} />}
                     {activeTab === Tab.PLANNING && <Planning transactions={state.transactions} savingsGoals={state.savingsGoals} setSavingsGoals={(goals) => setAppState({ savingsGoals: goals })} apiKey={state.apiKeys.gemini} budgetItems={state.budgetItems} setBudgetItems={(items) => setAppState({ budgetItems: items })} config={state.config} />}
                     {activeTab === Tab.DEBT && <DebtManager debts={state.debts} setDebts={(d) => setAppState({ debts: d })} />}
@@ -476,14 +473,14 @@ export const App: React.FC = () => {
                         <Settings
                             apiKeys={state.apiKeys} setApiKeys={handleUpdateApiKeys}
                             config={state.config} setConfig={(c) => setAppState({ config: c })}
-                            budgetItems={state.budgetItems} setBudgetItems={(items) => setAppState({ budgetItems: items })}
+                            budgetItems={state.budgetItems}
                             onImportData={handleManualImport}
                             initialBalances={state.initialBalances} setInitialBalances={(b) => setAppState({ initialBalances: b })}
                             transactions={state.transactions} setTransactions={(t) => setAppState({ transactions: t })}
-                            assets={state.assets} setAssets={(a) => setAppState({ assets: a })}
-                            savingsGoals={state.savingsGoals} setSavingsGoals={(goals) => setAppState({ savingsGoals: goals })}
-                            travelGoals={state.travelGoals} setTravelGoals={(goals) => setAppState({ travelGoals: goals })}
-                            debts={state.debts} setDebts={(d) => setAppState({ debts: d })}
+                            assets={state.assets}
+                            savingsGoals={state.savingsGoals}
+                            travelGoals={state.travelGoals}
+                            debts={state.debts}
                             investmentAccounts={state.investmentAccounts} investmentTransactions={state.investmentTransactions}
                             lifeEvents={state.lifeEvents} retirementGoal={state.retirementGoal}
                             realEstateGoals={state.realEstateGoals}

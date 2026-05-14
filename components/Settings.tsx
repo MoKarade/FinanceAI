@@ -849,9 +849,17 @@ export const Settings: React.FC<SettingsProps> = ({
                           </select>
                         </div>
                         <div className="grid grid-cols-3 gap-1">
-                          <input type="text" placeholder="Industrie" value={user.industry ?? ''}
-                            onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,industry:e.target.value}; setConfig({...config,users:u}); }}
-                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white" />
+                          <select value={user.industry ?? ''}
+                            onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,industry:e.target.value || undefined}; setConfig({...config,users:u}); }}
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white">
+                            <option value="">Industrie...</option>
+                            <option value="tech">Tech</option><option value="finance">Finance</option><option value="health">Santé</option>
+                            <option value="public-sector">Secteur public</option><option value="education">Éducation</option>
+                            <option value="construction">Construction</option><option value="retail">Commerce</option>
+                            <option value="manufacturing">Manufacture</option><option value="energy">Énergie</option>
+                            <option value="transportation">Transport</option><option value="agriculture">Agriculture</option>
+                            <option value="media">Médias</option><option value="other">Autre</option>
+                          </select>
                           <input type="number" placeholder="Ans expérience" value={user.yearsOfExperience ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,yearsOfExperience:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
                             className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white" />

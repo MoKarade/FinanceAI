@@ -68,6 +68,15 @@ export type CanadianProvince =
 export type EmploymentType = 'employee' | 'self-employed' | 'contractor' | 'business-owner' | 'unemployed' | 'retired' | 'student';
 export type PensionPlan = 'DB' | 'DC' | 'RPDB' | 'none';
 export type MaritalStatus = 'single' | 'married' | 'common-law' | 'separated' | 'divorced' | 'widowed';
+// Cycle 2 type-design: union pour Industry (élimine `string` permissif).
+// Liste calibrée sur les top industries StatCan + tech moderne.
+export type Industry =
+    | 'tech' | 'finance' | 'health' | 'public-sector' | 'education'
+    | 'construction' | 'retail' | 'manufacturing' | 'energy'
+    | 'transportation' | 'agriculture' | 'media' | 'other';
+// Union partagée pour les comptes enregistrés canadiens (élimine 3 unions divergentes
+// dans Asset, InvestmentAccount, assetLocation).
+export type RegisteredAccountType = 'CELI' | 'CELIAPP' | 'REER' | 'NON-ENREG' | 'CRYPTO' | 'REEE' | 'MARGE' | 'AUTRE';
 
 // Note: DbPlanDetails était une interface orpheline (jamais consommée).
 // Les champs DB sont centralisés dans RetirementGoal (dbPensionMonthly, etc.).
@@ -100,7 +109,7 @@ export interface User {
   parentAgeAtDeath?: { mother?: number; father?: number };
   activityLevel?: 'sedentary' | 'light' | 'moderate' | 'active';
   // W5.1 — Carrière
-  industry?: string;                     // 'tech', 'health', 'finance', 'public-sector', ...
+  industry?: Industry;                   // union stricte (cycle 2 type-design)
   yearsOfExperience?: number;
   employmentType?: EmploymentType;
   promotionLikelihood5Y?: number;        // 0-100

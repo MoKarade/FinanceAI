@@ -4,10 +4,9 @@ import { Card } from './ui/Card';
 import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset } from '../types';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend, AreaChart } from 'recharts';
 import { calculateFutureProjection } from '../services/projection';
-import { findRequiredMonthlySavings, findEarliestRetirementAge } from '../services/projection/goalSeek';
-import { optimizeDrawdownOrder } from '../services/projection/drawdownOptimizer';
-import { optimizeAssetLocation, type AssetClass, type AccountType } from '../services/projection/assetLocation';
 import { TaxBracketViz } from './TaxBracketViz';
+import { GoalSeekerCard } from './retirement/GoalSeekerCard';
+import { AssetLocationCard } from './retirement/AssetLocationCard';
 import { fetchPortfolioHistory } from '../services/finance';
 import { calculateGrossFromNet } from '../services/tax';
 import { useFinanceStore } from '../store/useFinanceStore';
@@ -42,25 +41,9 @@ export const Retirement: React.FC<RetirementProps> = ({
 }) => {
     const setAppState = useFinanceStore(s => s.setAppState);
     const [lifeExpectancy, setLifeExpectancy] = useState(90);
-    // W1.5 — Goal seeking
-    const [goalSeekTarget, setGoalSeekTarget] = useState<number>(1_000_000);
-    const [goalSeekResult, setGoalSeekResult] = useState<{ savings?: number; age?: number; error?: string } | null>(null);
-    // FIX cycle 2 silent-failure: 3 boutons (savings, age, drawdown) partageaient
-    // un seul flag busy → cliquer rapidement les uns après les autres affichait
-    // des résultats croisés. Un flag par opération.
-    const [busySavings, setBusySavings] = useState(false);
-    const [busyAge, setBusyAge] = useState(false);
-    const [busyDrawdown, setBusyDrawdown] = useState(false);
-    // W2.6 — Drawdown optimizer
-    const [drawdownResult, setDrawdownResult] = useState<ReturnType<typeof optimizeDrawdownOrder> | null>(null);
-    // Asset Location optimizer state
-    const [alHoldings, setAlHoldings] = useState<Array<{ assetClass: AssetClass; amount: number; currentAccount: AccountType }>>([
-        { assetClass: 'bonds', amount: 50000, currentAccount: 'CELI' },
-        { assetClass: 'us-equity', amount: 100000, currentAccount: 'CELI' },
-        { assetClass: 'ca-equity', amount: 50000, currentAccount: 'NonReg' },
-    ]);
-    const [alResult, setAlResult] = useState<ReturnType<typeof optimizeAssetLocation> | null>(null);
     const [currentAge, setCurrentAge] = useState(config.users[0]?.age || 30);
+    // States Goal Seeker / Asset Location déplacés dans leurs sous-composants
+    // (refactor architecture cycle 2 — réduction Retirement.tsx de 700→527 lignes).
 
     useEffect(() => {
         if (config.users[0]?.age) setCurrentAge(config.users[0].age);
@@ -362,182 +345,20 @@ export const Retirement: React.FC<RetirementProps> = ({
                     {/* W4.1 — Tax bracket viz */}
                     <TaxBracketViz annualGrossIncome={baseGrossAnnual} label="revenu actuel" />
 
-                    {/* W1.5 — Goal Seeking / Projection inverse */}
-                    <Card title="🎯 Projection inverse (Goal seeker)">
-                        <div className="space-y-4">
-                            <p className="text-[11px] text-gray-400">
-                                Au lieu de tâtonner les sliders, dis-nous combien tu veux avoir et on calcule l'épargne nécessaire.
-                            </p>
-                            <div>
-                                <label className="block text-xs text-gray-400 mb-1">Patrimoine cible à la retraite</label>
-                                <input
-                                    type="number"
-                                    value={goalSeekTarget}
-                                    onChange={e => setGoalSeekTarget(Number(e.target.value))}
-                                    className="w-full bg-black/40 border border-purple-500/20 rounded-lg px-3 py-2 text-purple-300 font-bold focus:border-purple-500 transition-colors outline-none"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <button
-                                    onClick={() => {
-                                        setBusySavings(true);
-                                        setTimeout(() => {
-                                            const params = {
-                                                projection, calculatedStartingCash, liveCSVBalances,
-                                                realEstateGoals, debts, childGoals, travelGoals, lifeEvents,
-                                                retirementGoal: goal, config,
-                                                baseGrossAnnual, baseNetAnnual,
-                                                currentRentExpense, baseMonthlyExpenses,
-                                            };
-                                            const r = findRequiredMonthlySavings(params, goalSeekTarget, goal.targetAge, 0, 15000, goalSeekTarget * 0.02, 20);
-                                            setGoalSeekResult(r.found ? { savings: r.value } : { savings: r.value, error: r.error });
-                                            setBusySavings(false);
-                                        }, 50);
-                                    }}
-                                    disabled={busySavings}
-                                    className="px-3 py-2 bg-purple-500/20 border border-purple-500/50 rounded-md text-purple-300 text-xs font-bold hover:bg-purple-500/30 disabled:opacity-50"
-                                >
-                                    💰 Trouver épargne $/mois
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setBusyAge(true);
-                                        setTimeout(() => {
-                                            const params = {
-                                                projection, calculatedStartingCash, liveCSVBalances,
-                                                realEstateGoals, debts, childGoals, travelGoals, lifeEvents,
-                                                retirementGoal: goal, config,
-                                                baseGrossAnnual, baseNetAnnual,
-                                                currentRentExpense, baseMonthlyExpenses,
-                                            };
-                                            const r = findEarliestRetirementAge(params);
-                                            setGoalSeekResult({ age: r.value });
-                                            setBusyAge(false);
-                                        }, 50);
-                                    }}
-                                    disabled={busyAge}
-                                    className="px-3 py-2 bg-purple-500/20 border border-purple-500/50 rounded-md text-purple-300 text-xs font-bold hover:bg-purple-500/30 disabled:opacity-50"
-                                >
-                                    🗓️ Âge retraite minimum
-                                </button>
-                            </div>
-                            <button
-                                onClick={() => {
-                                    setBusyDrawdown(true);
-                                    setTimeout(() => {
-                                        const params = {
-                                            projection, calculatedStartingCash, liveCSVBalances,
-                                            realEstateGoals, debts, childGoals, travelGoals, lifeEvents,
-                                            retirementGoal: goal, config,
-                                            baseGrossAnnual, baseNetAnnual,
-                                            currentRentExpense, baseMonthlyExpenses,
-                                        };
-                                        setDrawdownResult(optimizeDrawdownOrder(params));
-                                        setBusyDrawdown(false);
-                                    }, 50);
-                                }}
-                                disabled={busyDrawdown}
-                                className="w-full px-3 py-2 bg-indigo-500/20 border border-indigo-500/50 rounded-md text-indigo-300 text-xs font-bold hover:bg-indigo-500/30 disabled:opacity-50"
-                            >
-                                🎲 Optimiser ordre de décaissement
-                            </button>
-                            {drawdownResult && !busyDrawdown && (
-                                <div className="p-3 bg-indigo-900/30 border border-indigo-500/30 rounded-lg space-y-2">
-                                    <p className="text-xs text-indigo-200">{drawdownResult.explanation}</p>
-                                    <div className="space-y-1">
-                                        {drawdownResult.results
-                                            .sort((a, b) => b.estateNetWorth - a.estateNetWorth)
-                                            .map((r, i) => (
-                                                <div key={r.scenarioType} className="flex justify-between text-[10px] text-gray-300">
-                                                    <span>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '  '} {r.icon} {r.strategyName}</span>
-                                                    <span className="font-mono">{Math.round(r.estateNetWorth).toLocaleString('fr-CA')}\$</span>
-                                                </div>
-                                            ))}
-                                    </div>
-                                </div>
-                            )}
-                            {(busySavings || busyAge || busyDrawdown) && <p className="text-xs text-gray-400">⏳ Calcul en cours…</p>}
-                            {goalSeekResult && !busySavings && !busyAge && (
-                                <div className="p-3 bg-purple-900/30 border border-purple-500/30 rounded-lg">
-                                    {goalSeekResult.savings !== undefined && (
-                                        <p className="text-sm text-purple-200">
-                                            💰 Tu dois épargner <strong className="text-purple-400">{goalSeekResult.savings.toLocaleString('fr-CA')}$/mois</strong>
-                                            {goalSeekResult.error && <span className="block text-xs text-orange-300 mt-1">⚠️ {goalSeekResult.error}</span>}
-                                        </p>
-                                    )}
-                                    {goalSeekResult.age !== undefined && (
-                                        <p className="text-sm text-purple-200">
-                                            🗓️ Tu peux prendre ta retraite dès <strong className="text-purple-400">{goalSeekResult.age} ans</strong> sans tomber en faillite.
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </Card>
+                    {/* W1.5 — Goal Seeking + W2.6 Drawdown (extrait dans GoalSeekerCard) */}
+                    <GoalSeekerCard
+                        paramsBuilder={() => ({
+                            projection, calculatedStartingCash, liveCSVBalances,
+                            realEstateGoals, debts, childGoals, travelGoals, lifeEvents,
+                            retirementGoal: goal, config,
+                            baseGrossAnnual, baseNetAnnual,
+                            currentRentExpense, baseMonthlyExpenses,
+                        })}
+                        targetAge={goal.targetAge}
+                    />
 
-                    {/* Asset Location Optimizer */}
-                    <Card title="🧭 Asset Location Optimizer">
-                        <div className="space-y-3">
-                            <p className="text-[11px] text-gray-400">
-                                Place chaque classe d'actif dans le bon compte (CELI/REER/NonReg) pour minimiser l'impôt. Règle d'or canadienne.
-                            </p>
-                            {alHoldings.map((h, i) => (
-                                <div key={i} className="grid grid-cols-12 gap-1 items-center">
-                                    <select
-                                        value={h.assetClass}
-                                        onChange={e => { const next = [...alHoldings]; next[i] = { ...h, assetClass: e.target.value as AssetClass }; setAlHoldings(next); }}
-                                        className="col-span-4 bg-dark border border-border rounded px-1 py-1 text-[11px] text-white"
-                                    >
-                                        <option value="bonds">Obligations</option>
-                                        <option value="us-equity">Actions US</option>
-                                        <option value="ca-equity">Actions CAD</option>
-                                        <option value="international">International</option>
-                                        <option value="growth-small">Croissance/Small</option>
-                                        <option value="reit">REIT</option>
-                                        <option value="cash">Cash</option>
-                                    </select>
-                                    <input
-                                        type="number" value={h.amount}
-                                        onChange={e => { const next = [...alHoldings]; next[i] = { ...h, amount: Number(e.target.value) || 0 }; setAlHoldings(next); }}
-                                        className="col-span-4 bg-dark border border-border rounded px-1 py-1 text-[11px] text-white"
-                                    />
-                                    <select
-                                        value={h.currentAccount}
-                                        onChange={e => { const next = [...alHoldings]; next[i] = { ...h, currentAccount: e.target.value as AccountType }; setAlHoldings(next); }}
-                                        className="col-span-3 bg-dark border border-border rounded px-1 py-1 text-[11px] text-white"
-                                    >
-                                        <option value="CELI">CELI</option>
-                                        <option value="REER">REER</option>
-                                        <option value="NonReg">NonReg</option>
-                                    </select>
-                                    <button onClick={() => { const next = [...alHoldings]; next.splice(i, 1); setAlHoldings(next); }} className="col-span-1 text-red-400 text-xs">×</button>
-                                </div>
-                            ))}
-                            <div className="flex gap-2">
-                                <button onClick={() => setAlHoldings([...alHoldings, { assetClass: 'us-equity', amount: 10000, currentAccount: 'CELI' }])} className="text-[10px] px-2 py-1 bg-gray-800 rounded text-gray-300">+ Ligne</button>
-                                <button
-                                    onClick={() => setAlResult(optimizeAssetLocation({ annualGrossIncome: baseGrossAnnual, holdings: alHoldings }))}
-                                    className="text-[11px] px-3 py-1 bg-emerald-500/20 border border-emerald-500/50 rounded text-emerald-300 font-bold"
-                                >
-                                    🔍 Analyser
-                                </button>
-                            </div>
-                            {alResult && (
-                                <div className="p-3 bg-emerald-900/30 border border-emerald-500/30 rounded-lg space-y-2">
-                                    <p className="text-xs text-emerald-200">{alResult.summary}</p>
-                                    {alResult.recommendations.map((r, i) => (
-                                        <div key={i} className="text-[10px] text-gray-300 p-2 bg-black/30 rounded">
-                                            <div className="flex justify-between">
-                                                <span><strong>{r.assetClass}</strong> {r.amount.toLocaleString('fr-CA')}\$ : <span className="text-orange-400">{r.currentAccount}</span> → <span className="text-emerald-400">{r.recommendedAccount}</span></span>
-                                                <span className="text-red-300 font-mono">~-{r.annualLossIfUnchanged.toLocaleString('fr-CA')}\$/an</span>
-                                            </div>
-                                            <p className="text-gray-500 mt-1">{r.rationale}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </Card>
+                    {/* Asset Location Optimizer (extrait dans AssetLocationCard) */}
+                    <AssetLocationCard annualGrossIncome={baseGrossAnnual} />
                 </div>
 
                 <div className="lg:col-span-2 space-y-6">

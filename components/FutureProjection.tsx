@@ -452,8 +452,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </div>
                 )}
 
-                {/* D2.8: Toggles Mortalité stochastique + LTC */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                {/* D2.8 + D2.10: Toggles événements de vie stochastiques */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                     <button
                         onClick={() => updateProj('useStochasticMortality', !projection.useStochasticMortality)}
                         title="Active des tirages aléatoires de date de décès (tables Stats Can 2020-2022) en mode Monte Carlo. La simulation s'arrête à la mort."
@@ -467,6 +467,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.ltcEnabled ? 'bg-red-500/20 border-red-500/50 text-red-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
                     >
                         🏥 LTC stochastique {projection.ltcEnabled ? 'ON' : 'OFF'}
+                    </button>
+                    <button
+                        onClick={() => updateProj('jobLossEnabled', !projection.jobLossEnabled)}
+                        title="Perte d'emploi stochastique en MC. Probabilité annuelle ~3% (Stats Can). Pendant N mois, revenu du user principal = 55% (assurance-emploi)."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.jobLossEnabled ? 'bg-orange-500/20 border-orange-500/50 text-orange-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        💼 Perte emploi {projection.jobLossEnabled ? 'ON' : 'OFF'}
                     </button>
                 </div>
                 {projection.ltcEnabled && (

@@ -298,6 +298,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // probabilité de décès du user principal. Le loop arrête à la mort.
     let isDead = false;
 
+    // D2.10: Perte d'emploi stochastique. unemployedMonthsRemaining > 0
+    // pendant la période sans emploi (revenu réduit à 55% capé AE).
+    let unemployedMonthsRemaining = 0;
+
     for (let m = 0; m <= projection.years * 12; m++) {
         const currentMonthIndex = m % 12;
         const simulationStartDate = new Date(startYear, startMonth, 1);
@@ -520,6 +524,23 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             const yearsElapsed = Math.floor(m / 12);
             incomeMarc = incomeMarcNetMonthly * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
             incomeAnna = incomeAnnaNetMonthly * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
+
+            // D2.10: Perte d'emploi stochastique (MC uniquement).
+            // Probabilité annuelle, tirée en janvier. Si déclenchée, le revenu
+            // du user principal tombe à 55% (assurance-emploi) durant N mois.
+            const jobLossEnabled = (effProj as any).jobLossEnabled && enableMonteCarlo;
+            if (jobLossEnabled && unemployedMonthsRemaining === 0 && currentMonthIndex === 0 && m > 0) {
+                const pAnnual = (effProj as any).jobLossAnnualProbability ?? 0.03;
+                if (rng() < pAnnual) {
+                    unemployedMonthsRemaining = (effProj as any).jobLossDurationMonths || 6;
+                    logEvent(lifeEventsLog, `💼 Perte d'emploi (durée prévue ${unemployedMonthsRemaining} mois)`);
+                }
+            }
+            if (unemployedMonthsRemaining > 0) {
+                incomeMarc *= 0.55; // assurance-emploi
+                unemployedMonthsRemaining--;
+            }
+
             monthlyIncome = incomeMarc + incomeAnna;
             const currentGrossMarcAnnual = grossMarcBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
             const currentGrossAnnaAnnual = grossAnnaBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);

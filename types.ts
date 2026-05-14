@@ -162,6 +162,12 @@ export interface ProjectionConfig {
   inflationHealth?: number;      // défaut 4.5
   inflationLeisure?: number;     // défaut 1.5
   inflationOther?: number;       // défaut 2.0
+  // D2.10: Perte d'emploi stochastique. Probabilité annuelle ~3% (Stats Can).
+  // Durée moyenne sans emploi: 6 mois (5-10 selon âge / industrie).
+  // Pendant la période: salaire = 55% du brut (assurance-emploi), capé à 668$/sem 2026.
+  jobLossEnabled?: boolean;
+  jobLossAnnualProbability?: number; // défaut 0.03
+  jobLossDurationMonths?: number;    // défaut 6
 }
 
 export interface RealEstateGoal {

@@ -276,6 +276,34 @@ export const Retirement: React.FC<RetirementProps> = ({
                                 <p className="text-[10px] text-gray-500 mt-1">RREGOP, fonction publique federale, regime garanti viager. Laisse 0 si tu n'as que du REER/CD.</p>
                             </div>
                             {(goal.dbPensionMonthly ?? 0) > 0 && (
+                                <div className="grid grid-cols-2 gap-3 pb-3 border-b border-white/5">
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-1">Option DB (au décès)</label>
+                                        <select
+                                            value={goal.dbElectionType ?? 'joint60'}
+                                            onChange={e => setGoal({ ...goal, dbElectionType: e.target.value as any })}
+                                            className="w-full bg-black/40 border border-emerald-500/10 rounded-lg px-3 py-2 text-emerald-200 text-sm"
+                                        >
+                                            <option value="single">Vie seule (rente cesse)</option>
+                                            <option value="joint60">Conjoint à 60% (recommandé)</option>
+                                            <option value="joint66">Conjoint à 66%</option>
+                                            <option value="joint100">Conjoint à 100% (rente réduite)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-1">% rente survivant</label>
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            max={100}
+                                            value={goal.dbSurvivorPct ?? 60}
+                                            onChange={e => updateGoal('dbSurvivorPct' as any, Number(e.target.value))}
+                                            className="w-full bg-black/40 border border-emerald-500/10 rounded-lg px-3 py-2 text-emerald-200 text-sm"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                            {(goal.dbPensionMonthly ?? 0) > 0 && (
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-xs text-gray-400 mb-1">Indexation IPC (%)</label>

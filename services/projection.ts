@@ -298,6 +298,18 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // probabilité de décès du user principal. Le loop arrête à la mort.
     let isDead = false;
 
+    // W1.4: Survivant. Si modelSurvivor=ON, lorsque le user1 décède,
+    // on continue avec le user2 mais avec ajustements:
+    // - RRQ user1 → 60% versés au conjoint survivant (max RRQ standard)
+    // - PSV user1 → cesse
+    // - DB user1 → continue selon dbElectionType / dbSurvivorPct
+    // - REER user1 → roulé au conjoint sans imposition immédiate
+    let spouseAlive = activeUsersCount > 1;
+    let survivorMode = false;        // user1 mort, user2 vivant
+    let survivorTriggerLogged = false; // log à la prochaine itération (logEvent défini in-loop)
+    const rrqSurvivorPct = (effProj.rrqSurvivorPct ?? 60) / 100;
+    const dbSurvivorPct = (effProj.spouseDbSurvivorPct ?? retirementGoal.dbSurvivorPct ?? 60) / 100;
+
     // D2.10: Perte d'emploi stochastique. unemployedMonthsRemaining > 0
     // pendant la période sans emploi (revenu réduit à 55% capé AE).
     let unemployedMonthsRemaining = 0;
@@ -320,6 +332,18 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 isDead = true;
             }
         }
+
+        // W1.4: décès du conjoint (user2) en MC. Bascule en survivorMode au lieu d'arrêter.
+        if ((effProj as any).modelSurvivor && enableMonteCarlo && spouseAlive && !survivorMode && currentMonthIndex === 0 && m > 0) {
+            const spouseAge = (config.users[1]?.age || 30) + Math.floor(m / 12);
+            const pYearSpouse = mortalityAnnualProbability(spouseAge);
+            if (rng() < pYearSpouse) {
+                spouseAlive = false;
+                survivorMode = true;
+                survivorTriggerLogged = false; // sera loggé en dessous quand lifeEventsLog dispo
+            }
+        }
+
         if (isDead) break;
 
         // --- 1. GROWTH & MARKET SHOCKS ---
@@ -400,6 +424,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         let lifeEventsLog: string[] = [];
         let flowEventsLog: string[] = [];
         const logEvent = (arr: string[], msg: string) => { if (!enableMonteCarlo) arr.push(msg); };
+
+        // W1.4: log différé du décès conjoint (déclenché plus haut avant l'init de logEvent)
+        if (survivorMode && !survivorTriggerLogged) {
+            const spouseAge = (config.users[1]?.age || 30) + Math.floor(m / 12);
+            logEvent(lifeEventsLog, `🖤 Décès du conjoint à ${spouseAge} ans — bascule en mode survivant`);
+            survivorTriggerLogged = true;
+        }
 
         // V90: Windfall Injection (L'Héritage Inattendu)
         if (scenarioType === 'WINDFALL' && m === 60) {
@@ -511,8 +542,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             const psvBaseIndiv = (retirementGoal.psvEstimateMonthly !== undefined)
                 ? (retirementGoal.psvEstimateMonthly * activeUsersCount)
                 : (retirementGoal.governmentPension * 0.35);
-            const rrqMonthly = age >= rrqStartAge ? (rrqBaseIndiv * rrqProrata * rrqFactor) : 0;
-            const psvMonthly = age >= psvStartAge ? (psvBaseIndiv * psvProrata * psvFactor) : 0;
+            // W1.4 — Mode survivant: RRQ user2 → 60% (max RRQ standard), PSV user2 cesse
+            const survivorRrqFactor = survivorMode ? (1 - 0.5 + 0.5 * rrqSurvivorPct) : 1; // ½ + ½×% si couple, sinon 1
+            const survivorPsvFactor = survivorMode ? 0.5 : 1; // PSV individuelle: la moitié cesse
+            const rrqMonthly = age >= rrqStartAge ? (rrqBaseIndiv * rrqProrata * rrqFactor * survivorRrqFactor) : 0;
+            const psvMonthly = age >= psvStartAge ? (psvBaseIndiv * psvProrata * psvFactor * survivorPsvFactor) : 0;
 
             const inflFactor = Math.pow(1 + simInflation / 100, m / 12);
 
@@ -522,7 +556,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             const dbBaseMonthly = retirementGoal.dbPensionMonthly || 0;
             const dbIndexationFraction = Math.min(1, Math.max(0, (retirementGoal.dbPensionIndexationPct ?? 100) / 100));
             const dbInflFactor = 1 + (inflFactor - 1) * dbIndexationFraction;
-            const dbMonthly = age >= dbStartAge ? dbBaseMonthly * dbInflFactor : 0;
+            // W1.4 — Survivant: DB ajustée selon option election (60/66/100%)
+            const dbSurvivorFactor = survivorMode ? dbSurvivorPct : 1;
+            const dbMonthly = age >= dbStartAge ? dbBaseMonthly * dbInflFactor * dbSurvivorFactor : 0;
 
             incomeRetirement = Math.max(0, (rrqMonthly + psvMonthly) * inflFactor + dbMonthly - monthlyOasReduction);
             monthlyIncome = incomeRetirement;

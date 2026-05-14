@@ -475,6 +475,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     >
                         💼 Perte emploi {projection.jobLossEnabled ? 'ON' : 'OFF'}
                     </button>
+                    <button
+                        onClick={() => updateProj('modelSurvivor', !projection.modelSurvivor)}
+                        title="Modélise le décès du conjoint en MC (RRQ survivant 60%, PSV cesse, DB selon election)."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.modelSurvivor ? 'bg-slate-500/20 border-slate-500/50 text-slate-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        🖤 Survivant {projection.modelSurvivor ? 'ON' : 'OFF'}
+                    </button>
                 </div>
                 {projection.ltcEnabled && (
                     <div className="mb-4 p-3 rounded-lg border border-red-500/20 bg-black/30">

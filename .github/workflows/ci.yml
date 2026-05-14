@@ -14,16 +14,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Pas de `cache: 'npm'` ici car ce parametre exige un lock file
+      # (package-lock.json ou yarn.lock). Le lock a ete retire du repo
+      # au commit 97651b54 pour eviter les desyncs. A reactiver une fois
+      # un lock propre regenere et commite.
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
-      # npm install (au lieu de npm ci) car package-lock.json n'est pas
-      # systematiquement regenere apres chaque modif de package.json sur
-      # cette branche. A ramener a `npm ci` une fois le lock file fixe
-      # et le workflow stabilise.
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 

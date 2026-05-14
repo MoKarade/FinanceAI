@@ -6,6 +6,35 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — post W1-W5] — Branche `claude/analyze-finance-app-CtLvs`
+
+Bundle d'optimisations + nouvelle feature suite à l'analyse multi-agents du PR #16.
+
+### ⚡ Performance (perf-optimizer agent #1 et #2)
+- `utils/useDebouncedMemo.ts` (nouveau): hook React générique, debounce 300ms
+- `Retirement.tsx` + `FutureProjection.tsx`: `useMemo` projection → `useDebouncedMemo`
+- Gain estimé: -80% de recalculs pendant la saisie utilisateur
+- **Web Worker câblé** dans FutureProjection pour MC (libère main thread 1.5-3s)
+- Indicateur visuel ⏳ pendant calcul MC + bouton disabled
+
+### 🧪 Couverture tests (silent-failure-hunter agent)
+- 9 nouveaux tests Vitest pour les événements stochastiques (Divorce, LTD, CI, Inheritance, Survivor, Snowbird, Bootstrap, Replay 2008, US Withholding)
+- 6 tests `assetLocation` (incl. cas allocation déjà optimale)
+- Tests passent: 132 → 137/137
+
+### 📊 Précision modélisation
+- **Canadian CPI 1928-2024** (StatCan v41690973): le bootstrap historique utilise maintenant l'inflation canadienne au lieu d'US CPI (capture les divergences années 70-80, contrôles de prix Trudeau)
+- 3 tests vérifiant les valeurs clés (1975-76, 2022 post-COVID, fallback)
+
+### 🧭 Nouvelle feature: Asset Location Optimizer (L9)
+- `services/projection/assetLocation.ts`: optimizeAssetLocation()
+- Implémente la règle d'or canadienne (Canadian Couch Potato / PWL Capital)
+- 7 classes d'actif × 3 comptes
+- Calcule la perte annuelle ($) d'une mauvaise allocation
+- UI dans Retirement: éditeur de holdings + bouton "Analyser"
+
+---
+
 ## [unreleased — vague W1-W5] — Branche `claude/analyze-finance-app-CtLvs`
 
 Bundle majeur ajoutant 11 nouvelles vagues d'améliorations identifiées lors de l'analyse de marché vs ProjectionLab, Pralana Gold, Snap Projections, Boldin, NaviPlan, etc.

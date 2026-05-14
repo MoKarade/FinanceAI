@@ -317,7 +317,7 @@ Une perte en capital sur le NonReg n'est PAS perdue : elle s'accumule dans `capi
 | L6 | Divorce probabiliste pas modélisé | ✅ **CORRIGÉ** (W3.1) |
 | L7 | Régime DB d'employeur : pas de buyback, transferts, ou survivants | 🟡 Élection joint/single (W5.5), buyback pas implémenté |
 | L8 | Stock options/RSU non modélisés | 🟡 Capturés en input (W5.2), non utilisés dans moteur |
-| L9 | Asset location auto pas optimisée | ❌ TODO |
+| L9 | Asset location auto pas optimisée | ✅ **CORRIGÉ** (optimizeAssetLocation) |
 | L10 | Mortalité stochastique user1 break sans cession | ✅ **CORRIGÉ** (W1.4 — survivant) |
 
 ## 8. Features ajoutées (vagues W1-W5)
@@ -414,6 +414,40 @@ Crashes notables capturés :
 
 Mode bootstrap MC : assemble des blocs de 24 mois consécutifs (préserve corrélations).
 Mode replay (W4.5) : force déterministe à partir d'une année donnée.
+
+## 11.5 Asset Location Optimizer
+
+```ts
+optimizeAssetLocation({
+  annualGrossIncome: 100000,
+  holdings: [
+    { assetClass: 'bonds',     amount: 50000,  currentAccount: 'CELI' },
+    { assetClass: 'us-equity', amount: 100000, currentAccount: 'CELI' },
+  ],
+});
+// → { recommendations: [...], totalAnnualLoss: 1247, summary: "Tu perds ~1247$/an d'impôts évitables." }
+```
+
+Règle d'or canadienne implémentée :
+- Obligations / GIC / Cash → **REER** (intérêts 100% imposables)
+- Actions US (VOO/SPY) → **REER** (treaty exempte withholding 15%)
+- Actions CAD (XIC/VCN) → **CELI** (gain non-imposable, dividende éligible favorable hors CELI)
+- International (VXUS) → **NonReg** (FTC récupère le foreign withholding)
+- Croissance/Small-cap → **CELI** (gain non-imposable)
+- REIT → **REER** (distributions taxées comme intérêt)
+
+Compute `marginalRate(annualGrossIncome)` puis annualLoss = différence d'impôt entre compte actuel et idéal + drag US sur CELI + opportunity cost (bonds/cash dans CELI gaspille l'espace).
+
+## 12. Hook useDebouncedMemo + Worker
+
+```ts
+// utils/useDebouncedMemo.ts — hook React générique
+useDebouncedMemo(factory, deps, delay = 300)
+```
+
+- Mode déterministe : synchrone, debounce 300ms
+- Mode MC : asynchrone via `runProjectionAsync` (Web Worker), debounce 300ms
+- Indicateur visuel `⏳` sur le bouton MC pendant calcul
 
 ## 11. Goal Seeking (projection inverse)
 

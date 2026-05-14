@@ -6,6 +6,7 @@ import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Refere
 import { calculateFutureProjection } from '../services/projection';
 import { findRequiredMonthlySavings, findEarliestRetirementAge } from '../services/projection/goalSeek';
 import { optimizeDrawdownOrder } from '../services/projection/drawdownOptimizer';
+import { optimizeAssetLocation, type AssetClass, type AccountType } from '../services/projection/assetLocation';
 import { TaxBracketViz } from './TaxBracketViz';
 import { fetchPortfolioHistory } from '../services/finance';
 import { calculateGrossFromNet } from '../services/tax';
@@ -47,6 +48,13 @@ export const Retirement: React.FC<RetirementProps> = ({
     const [goalSeekBusy, setGoalSeekBusy] = useState(false);
     // W2.6 — Drawdown optimizer
     const [drawdownResult, setDrawdownResult] = useState<ReturnType<typeof optimizeDrawdownOrder> | null>(null);
+    // Asset Location optimizer state
+    const [alHoldings, setAlHoldings] = useState<Array<{ assetClass: AssetClass; amount: number; currentAccount: AccountType }>>([
+        { assetClass: 'bonds', amount: 50000, currentAccount: 'CELI' },
+        { assetClass: 'us-equity', amount: 100000, currentAccount: 'CELI' },
+        { assetClass: 'ca-equity', amount: 50000, currentAccount: 'NonReg' },
+    ]);
+    const [alResult, setAlResult] = useState<ReturnType<typeof optimizeAssetLocation> | null>(null);
     const [currentAge, setCurrentAge] = useState(config.users[0]?.age || 30);
 
     useEffect(() => {
@@ -457,6 +465,70 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             🗓️ Tu peux prendre ta retraite dès <strong className="text-purple-400">{goalSeekResult.age} ans</strong> sans tomber en faillite.
                                         </p>
                                     )}
+                                </div>
+                            )}
+                        </div>
+                    </Card>
+
+                    {/* Asset Location Optimizer */}
+                    <Card title="🧭 Asset Location Optimizer">
+                        <div className="space-y-3">
+                            <p className="text-[11px] text-gray-400">
+                                Place chaque classe d'actif dans le bon compte (CELI/REER/NonReg) pour minimiser l'impôt. Règle d'or canadienne.
+                            </p>
+                            {alHoldings.map((h, i) => (
+                                <div key={i} className="grid grid-cols-12 gap-1 items-center">
+                                    <select
+                                        value={h.assetClass}
+                                        onChange={e => { const next = [...alHoldings]; next[i] = { ...h, assetClass: e.target.value as AssetClass }; setAlHoldings(next); }}
+                                        className="col-span-4 bg-dark border border-border rounded px-1 py-1 text-[11px] text-white"
+                                    >
+                                        <option value="bonds">Obligations</option>
+                                        <option value="us-equity">Actions US</option>
+                                        <option value="ca-equity">Actions CAD</option>
+                                        <option value="international">International</option>
+                                        <option value="growth-small">Croissance/Small</option>
+                                        <option value="reit">REIT</option>
+                                        <option value="cash">Cash</option>
+                                    </select>
+                                    <input
+                                        type="number" value={h.amount}
+                                        onChange={e => { const next = [...alHoldings]; next[i] = { ...h, amount: Number(e.target.value) || 0 }; setAlHoldings(next); }}
+                                        className="col-span-4 bg-dark border border-border rounded px-1 py-1 text-[11px] text-white"
+                                    />
+                                    <select
+                                        value={h.currentAccount}
+                                        onChange={e => { const next = [...alHoldings]; next[i] = { ...h, currentAccount: e.target.value as AccountType }; setAlHoldings(next); }}
+                                        className="col-span-3 bg-dark border border-border rounded px-1 py-1 text-[11px] text-white"
+                                    >
+                                        <option value="CELI">CELI</option>
+                                        <option value="REER">REER</option>
+                                        <option value="NonReg">NonReg</option>
+                                    </select>
+                                    <button onClick={() => { const next = [...alHoldings]; next.splice(i, 1); setAlHoldings(next); }} className="col-span-1 text-red-400 text-xs">×</button>
+                                </div>
+                            ))}
+                            <div className="flex gap-2">
+                                <button onClick={() => setAlHoldings([...alHoldings, { assetClass: 'us-equity', amount: 10000, currentAccount: 'CELI' }])} className="text-[10px] px-2 py-1 bg-gray-800 rounded text-gray-300">+ Ligne</button>
+                                <button
+                                    onClick={() => setAlResult(optimizeAssetLocation({ annualGrossIncome: baseGrossAnnual, holdings: alHoldings }))}
+                                    className="text-[11px] px-3 py-1 bg-emerald-500/20 border border-emerald-500/50 rounded text-emerald-300 font-bold"
+                                >
+                                    🔍 Analyser
+                                </button>
+                            </div>
+                            {alResult && (
+                                <div className="p-3 bg-emerald-900/30 border border-emerald-500/30 rounded-lg space-y-2">
+                                    <p className="text-xs text-emerald-200">{alResult.summary}</p>
+                                    {alResult.recommendations.map((r, i) => (
+                                        <div key={i} className="text-[10px] text-gray-300 p-2 bg-black/30 rounded">
+                                            <div className="flex justify-between">
+                                                <span><strong>{r.assetClass}</strong> {r.amount.toLocaleString('fr-CA')}\$ : <span className="text-orange-400">{r.currentAccount}</span> → <span className="text-emerald-400">{r.recommendedAccount}</span></span>
+                                                <span className="text-red-300 font-mono">~-{r.annualLossIfUnchanged.toLocaleString('fr-CA')}\$/an</span>
+                                            </div>
+                                            <p className="text-gray-500 mt-1">{r.rationale}</p>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>

@@ -377,6 +377,57 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                             </div>
                         </div>
                     </Card>
+
+                    <Card title="💰 Frais Récurrents">
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs text-gray-400">Mode de calcul</span>
+                                <button
+                                    onClick={() => setMode(m => m === 'AUTO' ? 'MANUAL' : 'AUTO')}
+                                    className={`text-xs px-3 py-1 rounded-full font-bold border transition-all ${
+                                        mode === 'AUTO'
+                                        ? 'bg-primary/20 border-primary text-primary'
+                                        : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+                                    }`}
+                                >
+                                    {mode === 'AUTO' ? 'AUTO' : 'MANUEL'}
+                                </button>
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-400">Taxes foncières ($/an)</label>
+                                <input
+                                    type="number"
+                                    step="100"
+                                    value={taxesYearly}
+                                    onChange={e => setTaxesYearly(Number(e.target.value))}
+                                    disabled={mode === 'AUTO'}
+                                    className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-400">Chauffage ($/mois)</label>
+                                <input
+                                    type="number"
+                                    step="10"
+                                    value={heatingMonthly}
+                                    onChange={e => setHeatingMonthly(Number(e.target.value))}
+                                    disabled={mode === 'AUTO'}
+                                    className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-400">Frais de condo ($/mois)</label>
+                                <input
+                                    type="number"
+                                    step="50"
+                                    value={condoFees}
+                                    onChange={e => setCondoFees(Number(e.target.value))}
+                                    disabled={mode === 'AUTO'}
+                                    className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
+                            </div>
+                        </div>
+                    </Card>
                 </div>
 
                 {/* ANALYSIS DASHBOARD */}

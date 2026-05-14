@@ -27,7 +27,7 @@ import { parseTransactions, markDuplicates } from './utils/transactionParser';
 import { fetchAssetHistory, fetchFxRates } from './services/finance';
 import { calculateGrossFromNet } from './services/tax';
 import { generateFinancialReport } from './services/pdfReport';
-import { useFinanceStore } from './store/useFinanceStore';
+import { useFinanceStore, getMigrationStatus } from './store/useFinanceStore';
 
 export const App: React.FC = () => {
     const state = useFinanceStore();
@@ -39,6 +39,28 @@ export const App: React.FC = () => {
     const [isPrivacyMode, setIsPrivacyMode] = useState(false);
     const [showGuide, setShowGuide] = useState(false);
     const isHydrated = useRef(false);
+
+    // Phase silent-failure-hunter #8 : detecter et signaler la datapocalypse
+    // silencieuse. Si getInitialStateWithMigration a echoue au mount,
+    // l'app retourne defaultState mais le backup des donnees corrompues
+    // est sauvegarde sous __financeai_backup_<ts>. On previent l'utilisateur
+    // via un toast d'urgence pour qu'il puisse recuperer ses donnees.
+    const migrationWarningShown = useRef(false);
+    useEffect(() => {
+        if (migrationWarningShown.current) return;
+        const status = getMigrationStatus();
+        if (status.failed) {
+            migrationWarningShown.current = true;
+            const backupHint = status.backupKey
+                ? `Backup sauvegarde sous la cle ${status.backupKey} (F12 -> Application -> Local Storage).`
+                : 'Aucun backup recuperable.';
+            showToast(
+                `[CRITIQUE] Etat corrompu detecte au demarrage. ${backupHint} Vos donnees actuelles sont vides ou par defaut.`,
+                'error'
+            );
+            console.error('[FinanceAI] Migration failure:', status);
+        }
+    }, []);
 
     useEffect(() => {
         const handleHashChange = () => {
@@ -85,13 +107,12 @@ export const App: React.FC = () => {
             return hasBeenConfigured !== 'true';
         } catch (err) {
             console.error("Hydration error:", err);
-            return false;
+            return true;
         }
     });
 
     useEffect(() => { isHydrated.current = true; }, []);
 
-    // Migration Legacy ChildGoal -> ChildGoals array
     useEffect(() => {
         if (!state.childGoals || state.childGoals.length === 0) {
             if (state.childGoal) {
@@ -107,7 +128,6 @@ export const App: React.FC = () => {
         }
     }, [state.childGoal, state.childGoals, setAppState]);
 
-    // Fetch automatique des taux de change (Banque du Canada) au demarrage
     useEffect(() => {
         const updateFxRates = async () => {
             try {
@@ -135,11 +155,13 @@ export const App: React.FC = () => {
     }, [state.apiKeys.lunchMoney]);
 
     useEffect(() => {
+        let cancelled = false;
         const hydrateAssets = async () => {
             const updates = new Map();
             let changed = false;
 
             for (const asset of state.assets) {
+                if (cancelled) return;
                 if (!asset.priceHistory || asset.priceHistory.length === 0) {
                     try {
                         const { history, fromCache } = await fetchAssetHistory(
@@ -148,23 +170,26 @@ export const App: React.FC = () => {
                             asset.currentPrice,
                             asset.performance
                         );
-
+                        if (cancelled) return;
                         if (history && history.length > 0) {
                             updates.set(asset.symbol, history);
                             changed = true;
                         }
                         if (!fromCache) await new Promise(r => setTimeout(r, 2500));
-                    } catch (e) { /* swallow */ }
+                    } catch (e) {
+                        console.warn('[FinanceAI] hydrateAssets failed for', asset.symbol, e);
+                    }
                 }
             }
 
-            if (changed) {
+            if (!cancelled && changed) {
                 setAppState({
                     assets: state.assets.map(a => updates.has(a.symbol) ? { ...a, priceHistory: updates.get(a.symbol) } : a)
                 });
             }
         };
         hydrateAssets();
+        return () => { cancelled = true; };
     }, []);
 
     const loadData = async (token: string, pendingState?: AppState) => {
@@ -239,16 +264,12 @@ export const App: React.FC = () => {
                 lastUpdate: Date.now()
             });
             showToast('Donnees synchronisees', 'success');
-        } catch (e) {
-            console.error("Sync Error:", e);
-            showToast("Erreur de synchronisation LunchMoney.", "error");
+        } catch (e: any) {
+            console.error('[FinanceAI] Sync Error:', e);
+            showToast(e?.message ? `Sync echouee : ${e.message}` : 'Erreur de synchronisation LunchMoney.', 'error');
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const handleUpdateBudget = (budgetItems: BudgetCategory[]) => {
-        setAppState({ budgetItems, lastUpdate: Date.now() });
     };
 
     const handleUpdateApiKeys = (keys: AppState['apiKeys']) => {
@@ -364,6 +385,7 @@ export const App: React.FC = () => {
                         });
                         showToast('Rapport PDF genere avec succes !', 'success');
                     } catch (e) {
+                        console.error('[FinanceAI] PDF generation error:', e);
                         showToast('Erreur lors de la generation du PDF', 'error');
                     }
                 }}
@@ -393,9 +415,9 @@ export const App: React.FC = () => {
 
                 {activeTab === Tab.TRANSACTIONS && <Transactions transactions={state.transactions} setTransactions={(t) => setAppState({ transactions: typeof t === 'function' ? (t as any)(state.transactions) : t })} apiKey={state.apiKeys.gemini} onSyncLunchMoney={() => loadData(state.apiKeys.lunchMoney, undefined)} isSyncing={isLoading} budgetItems={state.budgetItems} categorizationRules={state.categorizationRules || []} setCategorizationRules={(rules) => setAppState({ categorizationRules: rules })} />}
                 {activeTab === Tab.BUDGET && <Budget transactions={state.transactions} config={state.config} budgetItems={state.budgetItems} setBudgetItems={(items) => setAppState({ budgetItems: items })} apiKey={state.apiKeys.gemini} />}
-                {activeTab === Tab.PLANNING && <Planning transactions={state.transactions} savingsGoals={state.savingsGoals} setSavingsGoals={(goals) => setAppState({ savingsGoals: goals })} apiKey={state.apiKeys.gemini} />}
+                {activeTab === Tab.PLANNING && <Planning transactions={state.transactions} savingsGoals={state.savingsGoals} setSavingsGoals={(goals) => setAppState({ savingsGoals: goals })} apiKey={state.apiKeys.gemini} budgetItems={state.budgetItems} setBudgetItems={(items) => setAppState({ budgetItems: items })} config={state.config} />}
                 {activeTab === Tab.DEBT && <DebtManager debts={state.debts} setDebts={(d) => setAppState({ debts: d })} />}
-                {activeTab === Tab.INVESTMENTS && <Investments assets={state.assets} setAssets={(a) => setAppState({ assets: a })} investmentAccounts={state.investmentAccounts} setInvestmentAccounts={(accs) => setAppState({ investmentAccounts: accs })} investmentTransactions={state.investmentTransactions} setInvestmentTransactions={(txs) => setAppState({ investmentTransactions: txs })} apiKey={state.apiKeys.gemini} transactions={state.transactions} budgetItems={state.budgetItems} config={state.config} projection={state.projection} setProjection={(p) => setAppState({ projection: p })} />}
+                {activeTab === Tab.INVESTMENTS && <Investments assets={state.assets} setAssets={(a) => setAppState({ assets: a })} investmentAccounts={state.investmentAccounts} setInvestmentAccounts={(accs: AppState['investmentAccounts']) => setAppState({ investmentAccounts: accs })} investmentTransactions={state.investmentTransactions} setInvestmentTransactions={(txs: AppState['investmentTransactions']) => setAppState({ investmentTransactions: txs })} apiKey={state.apiKeys.gemini} transactions={state.transactions} budgetItems={state.budgetItems} config={state.config} projection={state.projection} setProjection={(p: AppState['projection']) => setAppState({ projection: p })} />}
                 {activeTab === Tab.TAX && <TaxCenter config={state.config} setConfig={(c) => setAppState({ config: c })} assets={state.assets} apiKey={state.apiKeys.gemini} />}
                 {activeTab === Tab.REAL_ESTATE && <RealEstate availableCash={globalNetWorth - (state.assets.reduce((sum, a) => sum + (a.quantity * a.currentPrice * (state.fxRates[a.currency] || 1)), 0))} goals={state.realEstateGoals} setGoals={(g) => setAppState({ realEstateGoals: g })} />}
 

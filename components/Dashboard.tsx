@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Brush } from 'recharts';
@@ -134,7 +133,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
             if (val >= 0) {
                 // ✅ FIX ERR-05 : Pas de faux 3% sur le cash — le cash génère 0$ de revenu passif
-                // (à moins que l'utilisateur ait un compte épargne à taux élevé, non traçable ici)
                 cashList.push({ name: acc, value: val, diffCAD, revMensuel: 0 });
             } else {
                 creditList.push({ name: acc, value: val, diffCAD });
@@ -147,9 +145,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
         });
 
         cashList.sort((a, b) => b.value - a.value);
-        creditList.sort((a, b) => a.value - b.value); // Sort negatives
+        creditList.sort((a, b) => a.value - b.value);
 
-        // 3. Chart History Building (Simplified for brevity, similar to before but grouped)
+        // 3. Chart History Building
         let txIdx = 0;
         let rc: Record<string, number> = { ...initialBalances };
         const keyToAccount: Record<string, string> = {};
@@ -286,12 +284,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {/* CHART */}
             <Card title={t('dashboard.detailed_evolution')} className="w-full min-h-[450px]"
                 action={
-                    <div className="flex flex-col md:flex-row items-end gap-2">
+                    <div className="flex flex-col items-end gap-2">
                         <div className="flex bg-black/40 rounded-lg p-0.5 border border-white/10">
-                            {(['1M', '3M', 'YTD', '1Y', 'ALL'] as TimeRange[]).map(r => (
+                            {(['1M', '3M', 'YTD', '1Y', 'ALL', 'CUSTOM'] as TimeRange[]).map(r => (
                                 <button key={r} onClick={() => setTimeRange(r)} className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${timeRange === r ? 'bg-white text-black shadow' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>{r}</button>
                             ))}
                         </div>
+                        {timeRange === 'CUSTOM' && (
+                            <div className="flex items-center gap-1.5">
+                                <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-black/40 border border-white/10 rounded px-2 py-1 text-[10px] text-white focus:border-white/30 outline-none" />
+                                <span className="text-gray-500 text-[10px]">→</span>
+                                <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-black/40 border border-white/10 rounded px-2 py-1 text-[10px] text-white focus:border-white/30 outline-none" />
+                            </div>
+                        )}
                     </div>
                 }
             >
@@ -411,16 +416,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 type Milestone = { label: string; date: string; icon: string; color: string; tab: Tab; year: number };
                 const milestones: Milestone[] = [];
 
-                // Life Events
                 lifeEvents.forEach(ev => {
                     milestones.push({ label: ev.name, date: ev.date, icon: ev.icon || '🎯', color: '#a855f7', tab: Tab.LIFE_EVENTS, year: new Date(ev.date).getFullYear() + new Date(ev.date).getMonth() / 12 });
                 });
-                // Real Estate purchases
                 realEstateGoals.filter(g => g.isActive && g.purchaseDate).forEach(g => {
                     const yr = new Date(g.purchaseDate!).getFullYear() + new Date(g.purchaseDate!).getMonth() / 12;
                     if (yr > nowYear - 0.5) milestones.push({ label: g.name || 'Immobilier', date: g.purchaseDate!, icon: '🏡', color: '#ec4899', tab: Tab.REAL_ESTATE, year: yr });
                 });
-                // Children
                 childGoals.forEach(c => {
                     const yr = new Date(c.birthDate || '').getFullYear() + new Date(c.birthDate || '').getMonth() / 12;
                     if (c.birthDate) milestones.push({ label: c.name || 'Enfant', date: c.birthDate, icon: '👶', color: '#22c55e', tab: Tab.CHILD, year: yr });
@@ -442,18 +444,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <span className="text-[10px] text-gray-600">{milestones.length} événement{milestones.length > 1 ? 's' : ''}</span>
                         </div>
 
-                        {/* Timeline bar */}
                         <div className="relative h-20 mx-4 select-none">
-                            {/* Rail */}
                             <div className="absolute top-1/2 left-0 right-0 h-px bg-white/10" />
 
-                            {/* Today needle */}
                             <div className="absolute top-0 bottom-0 w-0.5 bg-blue-400/60" style={{ left: `${todayPct}%` }}>
                                 <div className="absolute -top-1 left-1/2 -translate-x-1/2 text-[9px] text-blue-400 font-bold whitespace-nowrap">Auj.</div>
                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-blue-400 ring-2 ring-blue-400/30" />
                             </div>
 
-                            {/* Milestones */}
                             {milestones.map((m, i) => {
                                 const pct = getPct(m.year);
                                 const isPast = m.year < nowYear;
@@ -465,10 +463,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                         style={{ left: `${pct}%`, top: '50%', transform: 'translate(-50%, -50%)' }}
                                         onClick={() => onNavigate && onNavigate(m.tab)}
                                     >
-                                        {/* Connector line */}
                                         <div className={`absolute w-px ${above ? 'bottom-full h-6' : 'top-full h-6'}`} style={{ backgroundColor: m.color + '60' }} />
 
-                                        {/* Dot */}
                                         <div
                                             className={`w-7 h-7 rounded-full flex items-center justify-center text-sm border-2 transition-transform group-hover:scale-125 z-10 ${isPast ? 'opacity-40' : ''}`}
                                             style={{ backgroundColor: m.color + '20', borderColor: m.color }}
@@ -476,7 +472,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                             {m.icon}
                                         </div>
 
-                                        {/* Label */}
                                         <div className={`absolute text-[9px] font-bold whitespace-nowrap ${above ? 'bottom-[calc(100%+26px)]' : 'top-[calc(100%+26px)]'}`}
                                             style={{ color: m.color }}>
                                             {m.label}

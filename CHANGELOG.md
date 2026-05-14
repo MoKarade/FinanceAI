@@ -6,6 +6,35 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — cycle 2/3 fixes + architecture refactor] — Branche `claude/analyze-finance-app-CtLvs`
+
+### 🐛 Fixes post-merge PR #18 (cycle 2 multi-agents)
+
+**Phase 1 — Findings restants des agents** :
+- A: `HISTORICAL_RETURNS_US` mutation top-level retirée (effet de bord cross-test). CPI canadien lu via `canadianInflationFor()` à la demande.
+- B: Tests comportementaux `useDebouncedMemo` avec `vi.useFakeTimers` (3 tests behavior).
+- C: 2 `as any` Retirement.tsx retirés (`dbElectionType`, `dbSurvivorPct` désormais typés).
+- D: `month1ActionPlan` typé `{ monthlyCashflow; strategy } | null` (élimine cascade strict).
+- E: `goalSeekBusy` partagé entre 3 boutons → split en `busySavings`/`busyAge`/`busyDrawdown` (silent-failure: cliquer rapidement n'affiche plus de résultats croisés).
+- F: **`ProjectionResult` interface exportée** + retour `calculateFutureProjection` typé. `runProjectionAsync` passe de `Promise<any>` à `Promise<ProjectionResult>`. ROI: élimine ~40 erreurs TS strict en cascade.
+
+### 🏗️ Phase 2 — Architecture refactor (code-architect agent)
+
+- `components/retirement/GoalSeekerCard.tsx` (124 lignes) — extraction Goal seeker + Drawdown optimizer + 3 busy flags + 2 results state local
+- `components/retirement/AssetLocationCard.tsx` (91 lignes) — extraction holdings + analyse
+- `components/Retirement.tsx` réduit **702 → 527 lignes (-25%)**
+- Phase 2.1 (split `types.ts`) et 2.3 (split `projection.ts`) explicitement skip:
+  - `types.ts` split: cosmétique single barrel file, risque > bénéfice
+  - `projection.ts` split: ~2400 lignes, refactor majeur réservé à session dédiée
+
+### 🎯 Phase 3 — Type tightening (type-design agent)
+
+- Union stricte `Industry` (13 valeurs: tech/finance/health/public-sector/education/construction/retail/manufacturing/energy/transportation/agriculture/media/other) remplace `User.industry: string`
+- Union `RegisteredAccountType` (CELI/CELIAPP/REER/NON-ENREG/CRYPTO/REEE/MARGE/AUTRE) — préparation unification 3 unions divergentes (Asset.accountType, InvestmentAccount.type, AccountType d'assetLocation)
+- Settings UI: champ Industry passe d'input text à `<select>` avec les 13 valeurs
+
+---
+
 ## [unreleased — post W1-W5] — Branche `claude/analyze-finance-app-CtLvs`
 
 Bundle d'optimisations + nouvelle feature suite à l'analyse multi-agents du PR #16.

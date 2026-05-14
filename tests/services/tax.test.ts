@@ -11,6 +11,11 @@ import {
   getMarginalRate,
   FED_BRACKETS,
   QC_BRACKETS,
+  BASIC_PERSONAL_AMOUNT_FED,
+  BASIC_PERSONAL_AMOUNT_QC,
+  RRQ_MAX,
+  RQAP_MAX,
+  AE_MAX_QC,
 } from '../../services/tax';
 
 describe('calculateFiscalReport', () => {
@@ -22,7 +27,7 @@ describe('calculateFiscalReport', () => {
 
   it('applique le credit montant personnel de base (revenu 50k)', () => {
     const r = calculateFiscalReport(50000, 0, 0);
-    // Plage attendue 2025 : impot total ~8.8k$, net ~37k$ apres RRQ+RQAP+AE
+    // Plage attendue 2026 : impot total ~8.3k$, net ~38k$ apres RRQ+RQAP+AE
     expect(r.totalTax).toBeGreaterThan(7000);
     expect(r.totalTax).toBeLessThan(11000);
     expect(r.netIncome).toBeGreaterThan(35000);
@@ -164,9 +169,52 @@ describe('getMarginalRate', () => {
     expect(high).toBeGreaterThan(low);
   });
 
-  it('combine fed * (1 - abatement Quebec) + qc', () => {
+  it('combine fed * (1 - abatement Quebec) + qc pour 80k$ (2026)', () => {
+    // 80k $ : Fed 2026 entre 58523 et 117045 = 20.5%, QC entre 54345 et 108680 = 19%
+    // Fed effectif = 0.205 * (1 - 0.165) = 0.171175 ; total = 0.361175
     const r = getMarginalRate(80000);
-    // Fed 0.205 * 0.835 + QC 0.19 = 0.361
     expect(r).toBeCloseTo(0.361, 2);
+  });
+});
+
+// ----------------------------------------------------------------------------
+// REGRESSION 2026 : verification des barèmes officiels ARC + Revenu Québec
+// ----------------------------------------------------------------------------
+describe('Barèmes fiscaux 2026 (régression)', () => {
+  it('1ère tranche fédérale est 14% (baisse vs 15% en 2025)', () => {
+    expect(FED_BRACKETS[0].rate).toBe(0.14);
+  });
+
+  it('seuils fédéraux 2026 conformes à l\'ARC', () => {
+    expect(FED_BRACKETS[0].upTo).toBe(58523);
+    expect(FED_BRACKETS[1].upTo).toBe(117045);
+    expect(FED_BRACKETS[2].upTo).toBe(181440);
+    expect(FED_BRACKETS[3].upTo).toBe(258482);
+  });
+
+  it('seuils Québec 2026 conformes à Revenu Québec', () => {
+    expect(QC_BRACKETS[0].upTo).toBe(54345);
+    expect(QC_BRACKETS[1].upTo).toBe(108680);
+    expect(QC_BRACKETS[2].upTo).toBe(132245);
+  });
+
+  it('BPA fédéral 2026 = 16 452 $', () => {
+    expect(BASIC_PERSONAL_AMOUNT_FED).toBe(16452);
+  });
+
+  it('BPA Québec 2026 = 18 952 $', () => {
+    expect(BASIC_PERSONAL_AMOUNT_QC).toBe(18952);
+  });
+
+  it('RRQ max 2026 = 4 479,30 $', () => {
+    expect(RRQ_MAX).toBeCloseTo(4479.30, 2);
+  });
+
+  it('RQAP max 2026 = 442,90 $', () => {
+    expect(RQAP_MAX).toBeCloseTo(442.90, 2);
+  });
+
+  it('AE QC max 2026 = 895,70 $', () => {
+    expect(AE_MAX_QC).toBeCloseTo(895.70, 2);
   });
 });

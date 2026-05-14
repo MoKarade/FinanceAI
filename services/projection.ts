@@ -1,5 +1,5 @@
 // services/projection.ts — moteur de projection financière (migré depuis utils/useFutureSimulation.ts)
-import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config } from '../types';
+import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty } from '../types';
 import { calculateFiscalReport, CELI_ANNUAL_LIMITS, calculateCeliRoom, calculateGrossFromNet, getMarginalRate, calculateDividendTax, RRSP_ANNUAL_LIMITS, calculateGrossWithholdingRRSP } from '../utils/tax';
 import { mulberry32, gaussianRandom, applyShock, MER, RRIF_RATES, welcomeTax, ltcAnnualProbability, mortalityAnnualProbability } from './projection/helpers';
 import { buildHistoricalSequence, buildReplaySequence, canadianInflationFor, type YearReturn } from './projection/historicalReturns';
@@ -21,18 +21,123 @@ export interface SimulationParams {
     baseMonthlyExpenses: number;
     startYear?: number;
     startMonth?: number;
+    // W5.x — Conteneurs étendus (optionnels pour backward compat)
+    insurancePolicies?: InsurancePolicy[];
+    vehicleReplacements?: VehicleReplacement[];
+    majorRenovations?: MajorRenovation[];
+    charitableGoals?: CharitableGoal[];
+    rentalProperties?: RentalProperty[];
 }
 
 export type AllocationStrategy = 'AUTO_MARGINAL' | 'PRIO_REER' | 'PRIO_CELI' | 'MELTDOWN_REER' | 'DEBT_FIRST';
 
 export type FutureScenarioType = 'BASE' | 'LIBERTE_55' | 'HYPER_INFLATION' | 'WINDFALL' | 'ECONOMIC_WINTER';
 
+// Cycle 3 TS reviewer quick win #1 (ROI massif): typer chartData[] avec
+// ProjectionChartPoint élimine ~35 erreurs strict en cascade dans
+// RealEstate/Investments/ChildPlanning. Tous les champs optionnels pour
+// compat avec les entrées MC réduites (NetWorth + monthIndex seulement).
+export interface ProjectionChartPoint {
+    monthIndex: number;
+    NetWorth: number;
+    // Variantes MC (minimales)
+    P10?: number | null;
+    P50?: number | null;
+    P90?: number | null;
+    // Variantes déterministes (champ complet)
+    dateLabel?: string;
+    year?: number;
+    age?: number;
+    IncomeMarc?: number;
+    IncomeAnna?: number;
+    IncomeRetirement?: number;
+    Income?: number;
+    NetSalary?: number;
+    Expenses?: number;
+    childCost?: number;
+    childGross?: number;
+    childBenefits?: number;
+    ReeeContrib?: number;
+    ReeePayout?: number;
+    ImmoHypo?: number;
+    ImmoCharges?: number;
+    ImmoInterest?: number;
+    ImmoPrincipal?: number;
+    RentalIncome?: number;
+    Savings?: number;
+    Liquidites?: number;
+    CELI?: number;
+    CELIMax?: number;
+    CELIAPP?: number;
+    REER?: number;
+    REERMax?: number;
+    REEE?: number;
+    NonReg?: number;
+    Crypto?: number;
+    RetraitREER?: number;
+    RetraitCELI?: number;
+    rapBalance?: number;
+    Immobilier?: number;
+    DetteTotale?: number;
+    diffNW?: number;
+    diffCELI?: number;
+    diffREER?: number;
+    diffLiquid?: number;
+    ImpotLatent?: number;
+    FluxImpots?: number;
+    ImpotRetraitREER?: number;
+    ImpotSalaireMois?: number;
+    ImpotGainsCap?: number;
+    ImpotDivers?: number;
+    TaxPaidRevenu?: number;
+    TaxPaidGains?: number;
+    TaxPaidDivers?: number;
+    TaxPaidREER?: number;
+    WithheldTaxRrif?: number;
+    FireTarget?: number;
+    CoastFIRE?: number;
+    BaristaFIRE?: number;
+    isRetired?: boolean;
+    ContribCELI?: number;
+    ContribREER?: number;
+    ContribNonReg?: number;
+    MarketGrowthCELI?: number;
+    MarketGrowthREER?: number;
+    MarketGrowthNonReg?: number;
+    MarketGrowthCrypto?: number;
+    MarketGrowthLiquid?: number;
+    MarketGrowthCELIAPP?: number;
+    MarketGrowthREEE?: number;
+    MarketGrowthPctCELI?: number;
+    MarketGrowthPctREER?: number;
+    MarketGrowthPctNonReg?: number;
+    MarketGrowthPctCrypto?: number;
+    MarketGrowthPctLiquid?: number;
+    MarketGrowthPctCELIAPP?: number;
+    MarketGrowthPctREEE?: number;
+    NetTransferCELI?: number;
+    NetTransferREER?: number;
+    NetTransferNonReg?: number;
+    NetTransferCrypto?: number;
+    NetTransferLiquid?: number;
+    NetTransferCELIAPP?: number;
+    NetTransferREEE?: number;
+    ExpenseInflationImpact?: number;
+    ExpenseInflationPct?: number;
+    AccruedTaxRevenu?: number;
+    AccruedTaxGains?: number;
+    AccruedTaxDivers?: number;
+    AccruedTaxREER?: number;
+    lifeEvents?: string[];
+    flowEvents?: string[];
+    // Champs additionnels dynamiques (consommateurs spécifiques)
+    [extra: string]: any;
+}
+
 // FIX cycle 2 TS reviewer (ROI massif): typer le retour de calculateFutureProjection
 // élimine ~40 erreurs en mode strict (cascade TS2339 sur consumers .chartData, .NetWorth, etc.).
-// `any` toléré sur les sous-champs profonds (chartData entries, expertMetrics) qui sont
-// dynamiquement construits — mais les champs top-level sont contraints.
 export interface ProjectionResult {
-    chartData: any[];
+    chartData: ProjectionChartPoint[];
     finalNetWorth?: number;
     estateNetWorth?: number;
     totalTaxesPaid?: number;
@@ -96,7 +201,7 @@ const calculateGrossNeeded = (netNeeded: number, currentGrossOther: number, acti
 };
 
 const runScenario = (params: SimulationParams, strategy: AllocationStrategy, enableMonteCarlo = false, delayPensions = false, mcIterationIndex = 0, scenarioType: FutureScenarioType = 'BASE') => {
-    const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0 } = params;
+    const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0, insurancePolicies = [], vehicleReplacements = [], majorRenovations = [], charitableGoals = [], rentalProperties = [] } = params;
     
     // Deterministic Seed Generation
     // We use a base seed from initial assets + inflation to ensure same inputs = same base trace
@@ -838,6 +943,85 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             const extraMonthlyCost = effProj.snowbirdExtraMonthlyCost ?? 1500;
             // Approximation: lissé sur l'année (extra × mois × 12 / 12)
             monthlyExpenses += (extraMonthlyCost * monthsPerYear / 12) * expenseMultiplier;
+        }
+
+        // W5.x — Conteneurs étendus intégrés au moteur (cycle 4 — câblage)
+        // Toutes les valeurs nominales sont indexées par expenseMultiplier sauf
+        // les événements ponctuels (renovations).
+
+        // W5.4 — Primes d'assurance mensuelles (vie/invalidité/maladies graves/
+        // soins LD/auto/habitation/responsabilité). Cesse à l'expiry pour les
+        // polices temporaires.
+        let insurancePremiumsMonthly = 0;
+        for (const policy of insurancePolicies) {
+            if (policy.expiryDate) {
+                const expiry = new Date(policy.expiryDate);
+                if (currentLoopDate >= expiry) continue;
+            }
+            insurancePremiumsMonthly += (policy.monthlyPremium || 0);
+        }
+        if (insurancePremiumsMonthly > 0) {
+            monthlyExpenses += insurancePremiumsMonthly * expenseMultiplier;
+        }
+
+        // W5.x — Véhicules cycliques. À chaque cyclYears, dépense ponctuelle.
+        // Calculé par mois écoulé total: si (m+1) % (cyclYears*12) === 0 → achat.
+        for (const v of vehicleReplacements) {
+            const cyclMonths = (v.cyclYears || 8) * 12;
+            if (cyclMonths > 0 && m > 0 && m % cyclMonths === 0) {
+                const cost = (v.costEstimate || 0) * expenseMultiplier;
+                liquid -= cost;
+                logEvent(flowEventsLog, `🚗 Remplacement véhicule: -${Math.round(cost).toLocaleString('fr-CA')}\$`);
+            }
+        }
+
+        // W5.x — Rénovations majeures planifiées (date unique).
+        for (const reno of majorRenovations) {
+            if (!reno.date) continue;
+            const renoDate = new Date(reno.date);
+            const renoMonthIdx = (renoDate.getFullYear() - startYear) * 12 + (renoDate.getMonth() - startMonth);
+            if (renoMonthIdx === m) {
+                const cost = (reno.cost || 0) * expenseMultiplier;
+                liquid -= cost;
+                logEvent(lifeEventsLog, `🔨 Rénovation majeure: -${Math.round(cost).toLocaleString('fr-CA')}\$ (${reno.description || 'maison'})`);
+            }
+        }
+
+        // W5.x — Dons charitables annuels (versés en janvier, lissés sur le mois).
+        // Crédit fiscal approximatif: 33% du montant déductible au Québec (féd 29% + QC 25.75% des premiers 200$, taux moyen ~33% au-delà).
+        for (const charity of charitableGoals) {
+            const yearNow = startYear + Math.floor(m / 12);
+            if (charity.startYear && yearNow < charity.startYear) continue;
+            if (charity.endYear && yearNow > charity.endYear) continue;
+            const annual = charity.annualAmount || 0;
+            if (annual <= 0) continue;
+            monthlyExpenses += (annual / 12) * expenseMultiplier;
+            // Crédit fiscal en avril année suivante (approximation: réduit taxCurrentYear)
+            if (currentMonthIndex === 0) {
+                const taxCredit = annual * 0.33;
+                taxCurrentYear.revenu -= taxCredit;
+                if (charity.donateAppreciatedSecurities) {
+                    // Bonus: titres appréciés exemptent le gain en capital → +50% du gain capital évité
+                    taxCurrentYear.gains -= annual * 0.15; // approximation conservatrice
+                }
+            }
+        }
+
+        // W5.6 — Immeubles locatifs (W5.x RentalProperty[]): NOI lissé.
+        // Note: tracking complet (acquisition, vente, recapture DPA) reporté à
+        // future session. Variable distincte de `totalRentalIncome` (immobilier W*)
+        // qui est calculée plus bas dans le bloc IMMOBILIER pour les RealEstateGoal.
+        let rentalPropertyNoiMonthly = 0;
+        for (const rp of rentalProperties) {
+            const annualRent = (rp.monthlyRent || 0) * 12 * (1 - (rp.vacancyPct || 0) / 100);
+            const annualExpenses = (rp.monthlyExpenses || 0) * 12;
+            const noi = annualRent - annualExpenses;
+            rentalPropertyNoiMonthly += noi / 12;
+        }
+        if (rentalPropertyNoiMonthly !== 0) {
+            monthlyIncome += rentalPropertyNoiMonthly;
+            // Le revenu locatif net est imposable au taux marginal (revenu d'entreprise)
+            taxCurrentYear.revenu += (rentalPropertyNoiMonthly * 0.45) / 12; // approximation marginale 45%
         }
 
         // --- 4. TAX WITHHOLDING & APRIL SETTLEMENT ---

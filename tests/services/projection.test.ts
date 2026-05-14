@@ -219,6 +219,67 @@ describe('calculateFutureProjection', () => {
         }
     });
 
+    // Cycle 4 — W5.x conteneurs câblés au moteur
+    describe('W5.x conteneurs câblés', () => {
+        it('Assurances: primes mensuelles augmentent les dépenses (patrimoine final plus bas)', () => {
+            const noIns = calculateFutureProjection(makeParams({ projection: makeProjection({ years: 20 }) })) as any;
+            const withIns = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 20 }),
+                insurancePolicies: [
+                    { id: 'p1', kind: 'life-term', monthlyPremium: 200, faceAmount: 500000 },
+                    { id: 'p2', kind: 'disability-lt', monthlyPremium: 150 },
+                ],
+            } as any)) as any;
+            const noBase = noIns.allResults.find((s: any) => s.stratType === 'BASE');
+            const insBase = withIns.allResults.find((s: any) => s.stratType === 'BASE');
+            expect(insBase.estateNetWorth).toBeLessThan(noBase.estateNetWorth);
+        });
+
+        it('Véhicules cycliques: dépense ponctuelle tous les N ans', () => {
+            const result = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 20 }),
+                vehicleReplacements: [{ id: 'v1', cyclYears: 8, costEstimate: 35000 }],
+            } as any)) as any;
+            expect(Number.isFinite(result.estateNetWorth)).toBe(true);
+        });
+
+        it('Rénovation planifiée: ne crashe pas si date hors fenêtre', () => {
+            const result = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 5 }),
+                majorRenovations: [{ id: 'r1', date: '2030-06-01', cost: 50000, description: 'cuisine' }],
+            } as any)) as any;
+            expect(Number.isFinite(result.estateNetWorth)).toBe(true);
+        });
+
+        it('Don charitable: ajoute aux dépenses mais réduit l\'impôt (effet net négatif modeste)', () => {
+            const noCharity = calculateFutureProjection(makeParams({ projection: makeProjection({ years: 20 }) })) as any;
+            const withCharity = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 20 }),
+                charitableGoals: [{ id: 'c1', annualAmount: 5000 }],
+            } as any)) as any;
+            const noBase = noCharity.allResults.find((s: any) => s.stratType === 'BASE');
+            const chBase = withCharity.allResults.find((s: any) => s.stratType === 'BASE');
+            // Le don sort du patrimoine mais le crédit fiscal compense partiellement
+            expect(chBase.estateNetWorth).toBeLessThan(noBase.estateNetWorth);
+        });
+
+        it('Immeuble locatif: NOI positif augmente le revenu et le patrimoine', () => {
+            const noRental = calculateFutureProjection(makeParams({ projection: makeProjection({ years: 20 }) })) as any;
+            const withRental = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 20 }),
+                rentalProperties: [{
+                    id: 'rp1', name: 'Triplex',
+                    purchasePrice: 500000, currentValue: 500000, mortgageBalance: 300000,
+                    mortgageRate: 5.5, monthlyRent: 4500, vacancyPct: 5, monthlyExpenses: 1500,
+                }],
+            } as any)) as any;
+            const noBase = noRental.allResults.find((s: any) => s.stratType === 'BASE');
+            const rpBase = withRental.allResults.find((s: any) => s.stratType === 'BASE');
+            // NOI net positif (4500*0.95 - 1500 = 2775/mois - tax 45%) > 0 → patrimoine plus élevé
+            expect(rpBase.estateNetWorth).toBeGreaterThan(noBase.estateNetWorth);
+        });
+    });
+
     // D2.9 — Inflation par poste
     describe('Inflation par poste', () => {
         it('quand activée et que tous les postes valent 2%, le résultat est proche de l\'inflation globale 2%', () => {

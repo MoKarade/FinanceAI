@@ -40,6 +40,12 @@ export const Retirement: React.FC<RetirementProps> = ({
     realEstateGoals = [], childGoals = [], travelGoals = [], lifeEvents = [], debts = []
 }) => {
     const setAppState = useFinanceStore(s => s.setAppState);
+    // W5.x — Conteneurs étendus (cycle 4: câblés dans le moteur)
+    const insurancePolicies = useFinanceStore(s => s.insurancePolicies ?? []);
+    const vehicleReplacements = useFinanceStore(s => s.vehicleReplacements ?? []);
+    const majorRenovations = useFinanceStore(s => s.majorRenovations ?? []);
+    const charitableGoals = useFinanceStore(s => s.charitableGoals ?? []);
+    const rentalProperties = useFinanceStore(s => s.rentalProperties ?? []);
     const [lifeExpectancy, setLifeExpectancy] = useState(90);
     const [currentAge, setCurrentAge] = useState(config.users[0]?.age || 30);
     // States Goal Seeker / Asset Location déplacés dans leurs sous-composants
@@ -139,8 +145,14 @@ export const Retirement: React.FC<RetirementProps> = ({
             baseNetAnnual,
             currentRentExpense,
             baseMonthlyExpenses,
+            // W5.x conteneurs câblés
+            insurancePolicies,
+            vehicleReplacements,
+            majorRenovations,
+            charitableGoals,
+            rentalProperties,
         });
-    }, [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, goal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses], 300);
+    }, [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, goal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties], 300);
 
     const yearlyData = useMemo(() => {
         if (chartData.length === 0) return [];

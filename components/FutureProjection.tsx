@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useDebouncedMemo } from '../utils/useDebouncedMemo';
 import { Card } from './ui/Card';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Line, ComposedChart, Brush, Bar, ReferenceDot, LabelList } from 'recharts';
-import { BudgetConfig, BudgetCategory, Asset, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Transaction, Debt, ProjectionConfig, FinancialGoal, User } from '../types';
+import { BudgetConfig, BudgetCategory, Asset, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Transaction, Debt, ProjectionConfig, FinancialGoal, User, RegisteredAccountType } from '../types';
 import { calculateFiscalReport } from '../services/tax';
 import { fetchPortfolioHistory } from '../services/finance';
 import { calculateFutureProjection, SimulationParams } from '../services/projection';
@@ -210,7 +210,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     if (key.includes('TOTAL')) { total = val; return; }
 
                     const mappedAsset = assets.find(a => key.includes(a.symbol));
-                    const type: string = mappedAsset?.accountType || 'NON-ENREG';
+                    const type: RegisteredAccountType = mappedAsset?.accountType || 'NON-ENREG';
 
                     if (type === 'CELI') celi += val;
                     else if (type === 'REER') reer += val;
@@ -287,6 +287,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const majorRenovations = useFinanceStore(s => s.majorRenovations ?? []);
     const charitableGoals = useFinanceStore(s => s.charitableGoals ?? []);
     const rentalProperties = useFinanceStore(s => s.rentalProperties ?? []);
+    const privateBusinesses = useFinanceStore(s => s.privateBusinesses ?? []);
 
     const params: SimulationParams = useMemo(() => ({
         projection,
@@ -310,7 +311,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         majorRenovations,
         charitableGoals,
         rentalProperties,
-    }), [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties]);
+        privateBusinesses,
+    }), [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses]);
 
     // Perf fix:
     //  - Mode déterministe (runMC=false): synchrone + debounce 300ms (rapide ~150ms)

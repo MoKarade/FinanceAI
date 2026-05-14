@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useDebouncedMemo } from '../utils/useDebouncedMemo';
 import { Card } from './ui/Card';
-import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset } from '../types';
+import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset, RegisteredAccountType } from '../types';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend, AreaChart } from 'recharts';
 import { calculateFutureProjection } from '../services/projection';
 import { TaxBracketViz } from './TaxBracketViz';
@@ -46,6 +46,7 @@ export const Retirement: React.FC<RetirementProps> = ({
     const majorRenovations = useFinanceStore(s => s.majorRenovations ?? []);
     const charitableGoals = useFinanceStore(s => s.charitableGoals ?? []);
     const rentalProperties = useFinanceStore(s => s.rentalProperties ?? []);
+    const privateBusinesses = useFinanceStore(s => s.privateBusinesses ?? []);
     const [lifeExpectancy, setLifeExpectancy] = useState(90);
     const [currentAge, setCurrentAge] = useState(config.users[0]?.age || 30);
     // States Goal Seeker / Asset Location déplacés dans leurs sous-composants
@@ -78,7 +79,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                         // Fix TS2367 : `type` elargi en string pour autoriser CELIAPP (pas dans Asset.accountType union).
                         // CELIAPP / FHSA est un compte legitime au Canada (Compte d'epargne libre d'impot pour
                         // l'achat d'une premiere propriete) que le type Asset.accountType ne prevoit pas encore.
-                        const type: string = mappedAsset?.accountType || 'NON-ENREG';
+                        const type: RegisteredAccountType = mappedAsset?.accountType || 'NON-ENREG';
                         if (type === 'CELI') celi += val;
                         else if (type === 'CELIAPP') celiapp += val;
                         else if (type === 'REER') reer += val;
@@ -151,8 +152,9 @@ export const Retirement: React.FC<RetirementProps> = ({
             majorRenovations,
             charitableGoals,
             rentalProperties,
+            privateBusinesses,
         });
-    }, [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, goal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties], 300);
+    }, [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, goal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses], 300);
 
     const yearlyData = useMemo(() => {
         if (chartData.length === 0) return [];

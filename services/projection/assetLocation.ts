@@ -112,14 +112,12 @@ function annualLoss(
     const taxCurrent = yieldDollars * taxRate(current);
     const taxIdeal = yieldDollars * taxRate(ideal);
 
-    // Drag additionnel pour US equity dans CELI (treaty NON applicable)
+    // FIX code-reviewer (HIGH): self-assign retiré, logique clarifiée.
+    // Drag US withholding 15% s'applique au CELI uniquement (treaty Canada-US
+    // exempte REER mais pas CELI). NonReg: récupéré via FTC, négligé.
     let withholdingDrag = 0;
     if (assetClass === 'us-equity' && current === 'CELI') {
         withholdingDrag = yieldDollars * 0.15;
-    }
-    if (assetClass === 'us-equity' && ideal === 'REER') {
-        // ideal: pas de withholding
-        withholdingDrag = withholdingDrag; // déjà compté ci-dessus
     }
 
     return Math.max(0, (taxCurrent - taxIdeal) + withholdingDrag);
@@ -134,12 +132,20 @@ export function optimizeAssetLocation(input: AssetLocationInput): AssetLocationR
     input.holdings.forEach((h, idx) => {
         const ideal = idealAccount(h.assetClass);
         if (ideal === h.currentAccount) return;
+
+        // FIX agent (HIGH): edge cases bloquants pour AL.
+        //  - amount ≤ 0: ignore
+        //  - marginalRate inconnu (revenu 0): pas de recommandation (signal honnête)
+        if (h.amount <= 0) return;
+        if (marginalRate <= 0) return;
+
         let loss = annualLoss(h.assetClass, h.amount, h.currentAccount, ideal, marginalRate);
 
-        // Opportunity cost — bonds/cash dans CELI 'gaspille' un compte précieux:
-        // l'espace aurait pu héberger de l'équité qui croît ~2 pp de plus.
-        if (h.currentAccount === 'CELI' && (h.assetClass === 'bonds' || h.assetClass === 'cash' || h.assetClass === 'reit')) {
-            const opportunityCost = h.amount * 0.02; // 2 pp de croissance manquée
+        // FIX agent (HIGH): opportunity cost calibré au taux marginal du user.
+        // Bonds/cash dans CELI: ratio = (return_equity - return_bonds) * marginalRate
+        // ≈ (6% - 4%) * marginalRate, plafonné au gain réel.
+        if (h.currentAccount === 'CELI' && (h.assetClass === 'bonds' || h.assetClass === 'cash')) {
+            const opportunityCost = h.amount * 0.02 * marginalRate; // 2pp × taux marginal
             loss = Math.max(loss, opportunityCost);
         }
 

@@ -69,17 +69,9 @@ export type EmploymentType = 'employee' | 'self-employed' | 'contractor' | 'busi
 export type PensionPlan = 'DB' | 'DC' | 'RPDB' | 'none';
 export type MaritalStatus = 'single' | 'married' | 'common-law' | 'separated' | 'divorced' | 'widowed';
 
-// W5.5 — Régime DB d'employeur étendu
-export interface DbPlanDetails {
-  monthlyAtRetirement?: number;          // estimation de la rente mensuelle
-  indexationPct?: number;                // 0-100, fraction d'IPC répercutée
-  startAge?: number;                     // âge début versement
-  yearsOfService?: number;               // années cotisées
-  buybackYears?: number;                 // années rachetables
-  buybackCostPerYear?: number;           // coût par année rachetée
-  electionType?: 'single' | 'joint60' | 'joint66' | 'joint100'; // option survivant
-  survivorPct?: number;                  // % rente pour conjoint survivant
-}
+// Note: DbPlanDetails était une interface orpheline (jamais consommée).
+// Les champs DB sont centralisés dans RetirementGoal (dbPensionMonthly, etc.).
+// Retiré par cycle 2 cleanup type-design agent.
 
 export interface User {
   name: string;
@@ -113,7 +105,6 @@ export interface User {
   employmentType?: EmploymentType;
   promotionLikelihood5Y?: number;        // 0-100
   pensionPlan?: PensionPlan;
-  dbPlan?: DbPlanDetails;
   // W5.1 — Statut civil
   province?: CanadianProvince;
   citizenship?: 'CA' | 'US-person-CA' | 'other';
@@ -246,8 +237,9 @@ export interface ProjectionConfig {
   spouseDbSurvivorPct?: number;       // % rente DB conservée par survivant (0-100)
   rrqSurvivorPct?: number;            // défaut 60%
 
-  // W2.6 — Drawdown order optimizer
-  useDrawdownOptimizer?: boolean;     // explore plusieurs séquences et choisit la meilleure
+  // W2.6 — Drawdown order optimizer (note: l'optimizer est appelé directement
+  // depuis l'UI Retirement; pas de flag global nécessaire — laissé pour future
+  // intégration dans la projection si besoin)
 
   // W4.1 — Tax bracket visualization
   showTaxBracketBreakdown?: boolean;
@@ -525,7 +517,8 @@ export interface RetirementGoal {
   // W2.1 — Roth ladder
   useReerToCeliLadder?: boolean;
   // Préférences décaissement
-  drawdownPreference?: 'AUTO' | 'TAX_EFFICIENT' | 'PRESERVE_CELI' | 'EMPTY_REER_FIRST';
+  // drawdownPreference retiré: orphelin (jamais consommé). Le moteur utilise
+  // déjà AllocationStrategy en interne, et l'optimizer côté UI compare les 5 avenirs.
 }
 
 export type GoalType = 'NET_WORTH' | 'CELI' | 'REER' | 'LIQUIDITY' | 'CUSTOM' | 'EXPENSE_OPTIMIZATION' | 'REBALANCING';

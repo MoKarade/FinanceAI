@@ -236,8 +236,33 @@ export const Retirement: React.FC<RetirementProps> = ({
                                 <input type="number" value={goal.targetMonthlyIncome} onChange={e => updateGoal('targetMonthlyIncome', Number(e.target.value))} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-bold focus:border-primary transition-colors outline-none privacy-blur" />
                             </div>
                             <div>
-                                <label className="block text-xs text-gray-400 mb-1">Rente Etat (RRQ + PSV / mois)</label>
+                                <label className="block text-xs text-gray-400 mb-1">Rente Etat agrégée (RRQ + PSV / mois) — legacy</label>
                                 <input type="number" value={goal.governmentPension} onChange={e => updateGoal('governmentPension', Number(e.target.value))} className="w-full bg-black/40 border border-blue-500/20 rounded-lg px-3 py-2 text-blue-300 font-bold focus:border-blue-500 transition-colors outline-none privacy-blur" />
+                                <p className="text-[10px] text-gray-500 mt-1">Si tu remplis les 2 champs ci-dessous, ce champ est ignoré.</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
+                                <div>
+                                    <label className="block text-xs text-gray-400 mb-1">🇨🇦 RRQ projetée / mois (par personne)</label>
+                                    <input
+                                        type="number"
+                                        value={goal.rrqEstimateMonthly ?? ''}
+                                        placeholder="ex: 1100"
+                                        onChange={e => updateGoal('rrqEstimateMonthly', Number(e.target.value))}
+                                        className="w-full bg-black/40 border border-blue-500/20 rounded-lg px-3 py-2 text-blue-300 text-sm focus:border-blue-500 transition-colors outline-none"
+                                    />
+                                    <p className="text-[10px] text-gray-500 mt-1">Max 2025: 1 433$/mois. Consulte ton relevé RRQ.</p>
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-gray-400 mb-1">🍁 PSV projetée / mois</label>
+                                    <input
+                                        type="number"
+                                        value={goal.psvEstimateMonthly ?? ''}
+                                        placeholder="ex: 734"
+                                        onChange={e => updateGoal('psvEstimateMonthly', Number(e.target.value))}
+                                        className="w-full bg-black/40 border border-blue-500/20 rounded-lg px-3 py-2 text-blue-300 text-sm focus:border-blue-500 transition-colors outline-none"
+                                    />
+                                    <p className="text-[10px] text-gray-500 mt-1">Max 2025: 734$/mois (40 ans résidence).</p>
+                                </div>
                             </div>
                             <div className="pt-3 border-t border-white/5">
                                 <label className="block text-xs text-gray-400 mb-1">Pension employeur DB (prestations determinees) / mois</label>

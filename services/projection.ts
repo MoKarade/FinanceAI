@@ -501,8 +501,18 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 if (monthsPsvFrom65 > 0) psvFactor = 1 + Math.min(monthsPsvFrom65, 60) * 0.006;
             }
 
-            const rrqMonthly = age >= rrqStartAge ? (retirementGoal.governmentPension * 0.65 * rrqProrata * rrqFactor) : 0;
-            const psvMonthly = age >= psvStartAge ? (retirementGoal.governmentPension * 0.35 * psvProrata * psvFactor) : 0;
+            // W1.3 — RRQ et PSV séparés (corrige L1).
+            // Si rrqEstimateMonthly / psvEstimateMonthly fournis, on les utilise
+            // comme base individuelle (déjà par utilisateur). Sinon fallback sur
+            // l'ancien split governmentPension × 0.65/0.35.
+            const rrqBaseIndiv = (retirementGoal.rrqEstimateMonthly !== undefined)
+                ? (retirementGoal.rrqEstimateMonthly * activeUsersCount)
+                : (retirementGoal.governmentPension * 0.65);
+            const psvBaseIndiv = (retirementGoal.psvEstimateMonthly !== undefined)
+                ? (retirementGoal.psvEstimateMonthly * activeUsersCount)
+                : (retirementGoal.governmentPension * 0.35);
+            const rrqMonthly = age >= rrqStartAge ? (rrqBaseIndiv * rrqProrata * rrqFactor) : 0;
+            const psvMonthly = age >= psvStartAge ? (psvBaseIndiv * psvProrata * psvFactor) : 0;
 
             const inflFactor = Math.pow(1 + simInflation / 100, m / 12);
 

@@ -81,13 +81,13 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                         </div>
                         <div className="grid grid-cols-1 gap-3 text-left">
                             {[
-                                { icon: '\u{1F510}', text: 'Pas de serveur back-end — les donnees vivent dans localStorage de votre navigateur.' },
-                                { icon: '\u{1F916}', text: 'Si vous activez Gemini : marchands tronques + montants arrondis a 100$ envoyes a Google AI Studio pour la categorisation.' },
-                                { icon: '\u{1F4B3}', text: 'Si vous activez LunchMoney : token envoye a leur API pour fetcher vos transactions.' },
-                                { icon: '\u{1F4CA}', text: 'Simulation financiere complete (retraite, immobilier, projections) entierement locale.' },
+                                { icon: '🔐', text: 'Pas de serveur back-end — les donnees vivent dans localStorage de votre navigateur.' },
+                                { icon: '🤖', text: 'Si vous activez Gemini : marchands tronques + montants arrondis a 100$ envoyes a Google AI Studio pour la categorisation.' },
+                                { icon: '💳', text: 'Si vous activez LunchMoney : token envoye a leur API pour fetcher vos transactions.' },
+                                { icon: '📊', text: 'Simulation financiere complete (retraite, immobilier, projections) entierement locale.' },
                             ].map((f, i) => (
                                 <div key={i} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
-                                    <span className="text-2xl">{f.icon}</span>
+                                    <span className="text-2xl" aria-hidden="true">{f.icon}</span>
                                     <span className="text-sm text-gray-300">{f.text}</span>
                                 </div>
                             ))}
@@ -106,27 +106,27 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                         </div>
 
                         <div className="space-y-4 p-4 bg-white/5 rounded-xl border border-white/10">
-                            <div className="font-bold text-white text-sm">\u{1F464} Utilisateur principal</div>
+                            <div className="font-bold text-white text-sm">👤 Utilisateur principal</div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="text-xs text-gray-400">Prenom</label>
-                                    <input className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1" value={user1.name} onChange={e => setUser1({ ...user1, name: e.target.value })} />
+                                    <label htmlFor="user1-name" className="text-xs text-gray-400">Prenom</label>
+                                    <input id="user1-name" className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1" value={user1.name} onChange={e => setUser1({ ...user1, name: e.target.value })} />
                                 </div>
                                 <div>
-                                    <label className="text-xs text-gray-400">Age</label>
-                                    <input type="number" className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 font-mono" value={user1.age} onChange={e => setUser1({ ...user1, age: parseInt(e.target.value) || 30 })} min={18} max={80} />
+                                    <label htmlFor="user1-age" className="text-xs text-gray-400">Age</label>
+                                    <input id="user1-age" type="number" inputMode="numeric" className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 font-mono" value={user1.age} onChange={e => setUser1({ ...user1, age: parseInt(e.target.value) || 30 })} min={18} max={80} />
                                 </div>
                                 <div>
-                                    <label className="text-xs text-gray-400">Salaire brut annuel ($)</label>
-                                    <input type="number" className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 font-mono" value={user1.grossSalary} onChange={e => setUser1({ ...user1, grossSalary: Math.max(0, Math.min(10000000, parseInt(e.target.value) || 0)) })} />
+                                    <label htmlFor="user1-gross" className="text-xs text-gray-400">Salaire brut annuel ($)</label>
+                                    <input id="user1-gross" type="number" inputMode="decimal" className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 font-mono" value={user1.grossSalary} onChange={e => setUser1({ ...user1, grossSalary: Math.max(0, Math.min(10000000, parseInt(e.target.value) || 0)) })} />
                                 </div>
                                 <div>
-                                    <label className="text-xs text-gray-400">Salaire net mensuel ($)</label>
-                                    <input type="number" className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 font-mono" value={user1.netSalary} onChange={e => setUser1({ ...user1, netSalary: Math.max(0, Math.min(1000000, parseInt(e.target.value) || 0)) })} />
+                                    <label htmlFor="user1-net" className="text-xs text-gray-400">Salaire net mensuel ($)</label>
+                                    <input id="user1-net" type="number" inputMode="decimal" className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 font-mono" value={user1.netSalary} onChange={e => setUser1({ ...user1, netSalary: Math.max(0, Math.min(1000000, parseInt(e.target.value) || 0)) })} />
                                 </div>
                                 <div className="col-span-2">
-                                    <label className="text-xs text-orange-300">Annee d'arrivee au Canada <span className="text-gray-500">(pour calcul CELI)</span></label>
-                                    <input type="number" className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 font-mono" value={user1.canadaArrivalYear} onChange={e => setUser1({ ...user1, canadaArrivalYear: Math.max(2009, Math.min(new Date().getFullYear(), parseInt(e.target.value) || 2020)) })} min={2009} max={new Date().getFullYear()} />
+                                    <label htmlFor="user1-arrival" className="text-xs text-orange-300">Annee d'arrivee au Canada <span className="text-gray-500">(pour calcul CELI)</span></label>
+                                    <input id="user1-arrival" type="number" inputMode="numeric" className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 font-mono" value={user1.canadaArrivalYear} onChange={e => setUser1({ ...user1, canadaArrivalYear: Math.max(2009, Math.min(new Date().getFullYear(), parseInt(e.target.value) || 2020)) })} min={2009} max={new Date().getFullYear()} />
                                 </div>
                             </div>
                         </div>
@@ -138,15 +138,15 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
                         {hasCoupleMode && (
                             <div className="space-y-4 p-4 bg-white/5 rounded-xl border border-white/10 animate-fade-in">
-                                <div className="font-bold text-white text-sm">\u{1F491} Partenaire</div>
+                                <div className="font-bold text-white text-sm">💑 Partenaire</div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="text-xs text-gray-400">Prenom</label>
-                                        <input className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1" value={user2.name} onChange={e => setUser2({ ...user2, name: e.target.value })} />
+                                        <label htmlFor="user2-name" className="text-xs text-gray-400">Prenom</label>
+                                        <input id="user2-name" className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1" value={user2.name} onChange={e => setUser2({ ...user2, name: e.target.value })} />
                                     </div>
                                     <div>
-                                        <label className="text-xs text-gray-400">Salaire net mensuel ($)</label>
-                                        <input type="number" className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 font-mono" value={user2.netSalary} onChange={e => setUser2({ ...user2, netSalary: Math.max(0, Math.min(1000000, parseInt(e.target.value) || 0)) })} />
+                                        <label htmlFor="user2-net" className="text-xs text-gray-400">Salaire net mensuel ($)</label>
+                                        <input id="user2-net" type="number" inputMode="decimal" className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 font-mono" value={user2.netSalary} onChange={e => setUser2({ ...user2, netSalary: Math.max(0, Math.min(1000000, parseInt(e.target.value) || 0)) })} />
                                     </div>
                                 </div>
                             </div>
@@ -172,19 +172,19 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                         </div>
                         <div className="space-y-4">
                             <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-                                <label className="text-sm font-bold text-white flex items-center gap-2 mb-2">
-                                    \u{1F957} LunchMoney API Token
+                                <label htmlFor="lm-key" className="text-sm font-bold text-white flex items-center gap-2 mb-2">
+                                    <span aria-hidden="true">🥗</span> LunchMoney API Token
                                     <span className="text-[10px] text-gray-500 font-normal">(Sync automatique des transactions)</span>
                                 </label>
-                                <input type="password" placeholder="ey..." className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono" value={lmKey} onChange={e => setLmKey(e.target.value)} />
+                                <input id="lm-key" type="password" placeholder="ey..." className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono" value={lmKey} onChange={e => setLmKey(e.target.value)} />
                                 <p className="text-[10px] text-gray-500 mt-2">Obtenez votre token sur <a href="https://my.lunchmoney.app/developers" target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">my.lunchmoney.app/developers</a></p>
                             </div>
                             <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-                                <label className="text-sm font-bold text-white flex items-center gap-2 mb-2">
-                                    \u{1F916} Google Gemini API Key
+                                <label htmlFor="gemini-key" className="text-sm font-bold text-white flex items-center gap-2 mb-2">
+                                    <span aria-hidden="true">🤖</span> Google Gemini API Key
                                     <span className="text-[10px] text-gray-500 font-normal">(Categorisation IA + objectifs intelligents)</span>
                                 </label>
-                                <input type="password" placeholder="AIza..." className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono" value={geminiKey} onChange={e => setGeminiKey(e.target.value)} />
+                                <input id="gemini-key" type="password" placeholder="AIza..." className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono" value={geminiKey} onChange={e => setGeminiKey(e.target.value)} />
                                 <p className="text-[10px] text-gray-500 mt-2">Obtenez votre cle sur <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">aistudio.google.com</a></p>
                             </div>
                         </div>
@@ -205,13 +205,13 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                         </div>
                         <div className="space-y-3">
                             {[
-                                { label: '\u{1F33F} CELI', key: 'celi', value: celiBalance, onChange: setCeliBalance, hint: 'Compte Epargne Libre-Impot' },
-                                { label: '\u{1F512} REER', key: 'reer', value: reerBalance, onChange: setReerBalance, hint: 'Regime Epargne-Retraite' },
+                                { label: '🌿 CELI', key: 'celi', value: celiBalance, onChange: setCeliBalance, hint: 'Compte Epargne Libre-Impot' },
+                                { label: '🔒 REER', key: 'reer', value: reerBalance, onChange: setReerBalance, hint: 'Regime Epargne-Retraite' },
                             ].map(({ label, key, value, onChange, hint }) => (
                                 <div key={key} className="p-4 bg-white/5 rounded-xl border border-white/10">
-                                    <label className="text-sm font-bold text-white flex items-center gap-2 mb-1">{label} <span className="text-[10px] text-gray-500 font-normal">{hint}</span></label>
+                                    <label htmlFor={`balance-${key}`} className="text-sm font-bold text-white flex items-center gap-2 mb-1">{label} <span className="text-[10px] text-gray-500 font-normal">{hint}</span></label>
                                     <div className="flex items-center gap-2 mt-2">
-                                        <input type="number" placeholder="0" className="flex-1 bg-dark border border-white/10 rounded-lg px-3 py-2 text-white font-mono" value={value || ''} onChange={e => onChange(Math.max(0, Math.min(100000000, parseFloat(e.target.value) || 0)))} />
+                                        <input id={`balance-${key}`} type="number" inputMode="decimal" placeholder="0" className="flex-1 bg-dark border border-white/10 rounded-lg px-3 py-2 text-white font-mono" value={value || ''} onChange={e => onChange(Math.max(0, Math.min(100000000, parseFloat(e.target.value) || 0)))} />
                                         <span className="text-gray-400 text-sm">$</span>
                                     </div>
                                 </div>
@@ -221,7 +221,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                         <div className="flex gap-3">
                             <button onClick={() => setStep('budget')} className="flex-1 py-3 bg-white/5 text-gray-300 rounded-xl font-medium hover:bg-white/10 transition-all">← Retour</button>
                             <button onClick={handleFinish} className="flex-1 py-3 bg-gradient-to-r from-primary to-emerald-500 text-white rounded-xl font-bold shadow-lg hover:brightness-110 transition-all active:scale-95">
-                                Lancer FinanceAI \u{1F680}
+                                Lancer FinanceAI 🚀
                             </button>
                         </div>
                     </div>

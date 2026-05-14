@@ -148,6 +148,20 @@ export interface ProjectionConfig {
   // canadiennes 2020-2022. La simulation s'arrête à la mort de l'utilisateur
   // (l'estateNetWorth devient le patrimoine au décès et non en fin d'horizon).
   useStochasticMortality?: boolean;
+  // D2.9: Inflation différenciée par poste (CPI panier composite).
+  // Pondérations Statistique Canada (CPI-WEIGHTS 2023):
+  //   Logement 30%, Alimentation 17%, Transport 15%, Santé 5%,
+  //   Loisirs 6%, Autres 27%.
+  // Chaque poste a son propre taux d'inflation moyen. Le multiplicateur
+  // global devient une moyenne pondérée. Bonus santé après 75 ans appliqué
+  // sur la part Santé uniquement.
+  usePerCategoryInflation?: boolean;
+  inflationHousing?: number;     // défaut 4.0
+  inflationFood?: number;        // défaut 3.5
+  inflationTransport?: number;   // défaut 2.5
+  inflationHealth?: number;      // défaut 4.5
+  inflationLeisure?: number;     // défaut 1.5
+  inflationOther?: number;       // défaut 2.0
 }
 
 export interface RealEstateGoal {

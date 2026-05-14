@@ -416,6 +416,42 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </div>
                 </div>
 
+                {/* D2.9: Inflation par poste (panier CPI Stats Canada) */}
+                <div className="mb-4">
+                    <button
+                        onClick={() => updateProj('usePerCategoryInflation', !projection.usePerCategoryInflation)}
+                        title="Décompose l'inflation en 6 postes (logement, alim, transport, santé, loisirs, autres) avec pondérations CPI 2023. Plus réaliste que l'inflation globale unique."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.usePerCategoryInflation ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        📊 Inflation par poste {projection.usePerCategoryInflation ? 'ON' : 'OFF'}
+                    </button>
+                </div>
+                {projection.usePerCategoryInflation && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4 p-3 rounded-lg border border-amber-500/20 bg-black/30">
+                        {[
+                            { key: 'inflationHousing',  label: 'Logement',  weight: 30, def: 4.0 },
+                            { key: 'inflationFood',     label: 'Alim.',     weight: 17, def: 3.5 },
+                            { key: 'inflationTransport',label: 'Transport', weight: 15, def: 2.5 },
+                            { key: 'inflationHealth',   label: 'Santé',     weight: 5,  def: 4.5 },
+                            { key: 'inflationLeisure',  label: 'Loisirs',   weight: 6,  def: 1.5 },
+                            { key: 'inflationOther',    label: 'Autres',    weight: 27, def: 2.0 },
+                        ].map(item => (
+                            <div key={item.key}>
+                                <label className="flex justify-between text-xs text-gray-300 mb-1">
+                                    <span>{item.label} ({item.weight}%)</span>
+                                    <span className="text-amber-300 font-bold">{((projection as any)[item.key] ?? item.def).toFixed(1)}%</span>
+                                </label>
+                                <input
+                                    type="range" min="0" max="10" step="0.1"
+                                    value={(projection as any)[item.key] ?? item.def}
+                                    onChange={e => updateProj(item.key as any, Number(e.target.value))}
+                                    className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-amber-500"
+                                />
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 {/* D2.8: Toggles Mortalité stochastique + LTC */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                     <button

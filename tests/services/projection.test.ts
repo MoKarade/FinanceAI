@@ -219,6 +219,40 @@ describe('calculateFutureProjection', () => {
         }
     });
 
+    // D2.9 — Inflation par poste
+    describe('Inflation par poste', () => {
+        it('quand activée et que tous les postes valent 2%, le résultat est proche de l\'inflation globale 2%', () => {
+            const flat = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 10, inflationRate: 2 })
+            })) as any;
+            const perCat = calculateFutureProjection(makeParams({
+                projection: makeProjection({
+                    years: 10,
+                    inflationRate: 2,
+                    usePerCategoryInflation: true,
+                    inflationHousing: 2, inflationFood: 2, inflationTransport: 2,
+                    inflationHealth: 2, inflationLeisure: 2, inflationOther: 2,
+                })
+            })) as any;
+            const flatBase = flat.allResults.find((s: any) => s.stratType === 'BASE');
+            const perBase = perCat.allResults.find((s: any) => s.stratType === 'BASE');
+            // Tolérance: le bonus santé +0.5% sur la part 5% n'est qu'à 75+, hors fenêtre 10 ans
+            expect(Math.abs(perBase.estateNetWorth - flatBase.estateNetWorth)).toBeLessThan(flatBase.estateNetWorth * 0.05);
+        });
+
+        it('logement 6% (vs 4% défaut) augmente le multiplicateur des dépenses → patrimoine plus faible', () => {
+            const low = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 20, usePerCategoryInflation: true, inflationHousing: 4 })
+            })) as any;
+            const high = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 20, usePerCategoryInflation: true, inflationHousing: 6 })
+            })) as any;
+            const lowBase = low.allResults.find((s: any) => s.stratType === 'BASE');
+            const highBase = high.allResults.find((s: any) => s.stratType === 'BASE');
+            expect(highBase.estateNetWorth).toBeLessThan(lowBase.estateNetWorth);
+        });
+    });
+
     // D2.7 — US Withholding sur CELI
     describe('US Withholding CELI', () => {
         it('avec usEquityShareCeli=100% et yield 2%, le patrimoine est plus faible que sans drag', () => {

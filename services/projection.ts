@@ -352,7 +352,23 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
         // V31: Calcul de l'Inflation Cumulative des Dépenses (avec GK)
         const healthInflationBonus = (isRetired && age >= 75) ? Math.min(2.5, (age - 75) * 0.25) : 0;
-        const effectiveExpenseInflation = currentInflation + healthInflationBonus;
+
+        // D2.9: Inflation différenciée par poste (panier CPI Stats Canada).
+        let effectiveExpenseInflation: number;
+        if ((effProj as any).usePerCategoryInflation) {
+            // Pondérations CPI 2023: Logement 30, Alim 17, Transport 15, Santé 5, Loisirs 6, Autres 27.
+            const wHousing = 0.30, wFood = 0.17, wTransport = 0.15, wHealth = 0.05, wLeisure = 0.06, wOther = 0.27;
+            const iHousing  = (effProj as any).inflationHousing  ?? 4.0;
+            const iFood     = (effProj as any).inflationFood     ?? 3.5;
+            const iTransp   = (effProj as any).inflationTransport?? 2.5;
+            const iHealthB  = ((effProj as any).inflationHealth  ?? 4.5) + healthInflationBonus; // bonus santé seulement sur la part santé
+            const iLeisure  = (effProj as any).inflationLeisure  ?? 1.5;
+            const iOther    = (effProj as any).inflationOther    ?? 2.0;
+            effectiveExpenseInflation = wHousing*iHousing + wFood*iFood + wTransport*iTransp + wHealth*iHealthB + wLeisure*iLeisure + wOther*iOther;
+        } else {
+            effectiveExpenseInflation = currentInflation + healthInflationBonus;
+        }
+
         if (!guytonKlinger_freezeInflation) {
             expenseMultiplier *= Math.pow(1 + effectiveExpenseInflation / 100, 1 / 12);
         }

@@ -45,7 +45,12 @@ export const Retirement: React.FC<RetirementProps> = ({
     // W1.5 — Goal seeking
     const [goalSeekTarget, setGoalSeekTarget] = useState<number>(1_000_000);
     const [goalSeekResult, setGoalSeekResult] = useState<{ savings?: number; age?: number; error?: string } | null>(null);
-    const [goalSeekBusy, setGoalSeekBusy] = useState(false);
+    // FIX cycle 2 silent-failure: 3 boutons (savings, age, drawdown) partageaient
+    // un seul flag busy → cliquer rapidement les uns après les autres affichait
+    // des résultats croisés. Un flag par opération.
+    const [busySavings, setBusySavings] = useState(false);
+    const [busyAge, setBusyAge] = useState(false);
+    const [busyDrawdown, setBusyDrawdown] = useState(false);
     // W2.6 — Drawdown optimizer
     const [drawdownResult, setDrawdownResult] = useState<ReturnType<typeof optimizeDrawdownOrder> | null>(null);
     // Asset Location optimizer state
@@ -301,7 +306,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                         <label className="block text-xs text-gray-400 mb-1">Option DB (au décès)</label>
                                         <select
                                             value={goal.dbElectionType ?? 'joint60'}
-                                            onChange={e => setGoal({ ...goal, dbElectionType: e.target.value as any })}
+                                            onChange={e => setGoal({ ...goal, dbElectionType: e.target.value as RetirementGoal['dbElectionType'] })}
                                             className="w-full bg-black/40 border border-emerald-500/10 rounded-lg px-3 py-2 text-emerald-200 text-sm"
                                         >
                                             <option value="single">Vie seule (rente cesse)</option>
@@ -317,7 +322,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             min={0}
                                             max={100}
                                             value={goal.dbSurvivorPct ?? 60}
-                                            onChange={e => updateGoal('dbSurvivorPct' as any, Number(e.target.value))}
+                                            onChange={e => updateGoal('dbSurvivorPct', Number(e.target.value))}
                                             className="w-full bg-black/40 border border-emerald-500/10 rounded-lg px-3 py-2 text-emerald-200 text-sm"
                                         />
                                     </div>
@@ -374,8 +379,8 @@ export const Retirement: React.FC<RetirementProps> = ({
                             </div>
                             <div className="grid grid-cols-2 gap-2">
                                 <button
-                                    onClick={async () => {
-                                        setGoalSeekBusy(true);
+                                    onClick={() => {
+                                        setBusySavings(true);
                                         setTimeout(() => {
                                             const params = {
                                                 projection, calculatedStartingCash, liveCSVBalances,
@@ -386,17 +391,17 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             };
                                             const r = findRequiredMonthlySavings(params, goalSeekTarget, goal.targetAge, 0, 15000, goalSeekTarget * 0.02, 20);
                                             setGoalSeekResult(r.found ? { savings: r.value } : { savings: r.value, error: r.error });
-                                            setGoalSeekBusy(false);
+                                            setBusySavings(false);
                                         }, 50);
                                     }}
-                                    disabled={goalSeekBusy}
+                                    disabled={busySavings}
                                     className="px-3 py-2 bg-purple-500/20 border border-purple-500/50 rounded-md text-purple-300 text-xs font-bold hover:bg-purple-500/30 disabled:opacity-50"
                                 >
                                     💰 Trouver épargne $/mois
                                 </button>
                                 <button
-                                    onClick={async () => {
-                                        setGoalSeekBusy(true);
+                                    onClick={() => {
+                                        setBusyAge(true);
                                         setTimeout(() => {
                                             const params = {
                                                 projection, calculatedStartingCash, liveCSVBalances,
@@ -407,10 +412,10 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             };
                                             const r = findEarliestRetirementAge(params);
                                             setGoalSeekResult({ age: r.value });
-                                            setGoalSeekBusy(false);
+                                            setBusyAge(false);
                                         }, 50);
                                     }}
-                                    disabled={goalSeekBusy}
+                                    disabled={busyAge}
                                     className="px-3 py-2 bg-purple-500/20 border border-purple-500/50 rounded-md text-purple-300 text-xs font-bold hover:bg-purple-500/30 disabled:opacity-50"
                                 >
                                     🗓️ Âge retraite minimum
@@ -418,7 +423,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                             </div>
                             <button
                                 onClick={() => {
-                                    setGoalSeekBusy(true);
+                                    setBusyDrawdown(true);
                                     setTimeout(() => {
                                         const params = {
                                             projection, calculatedStartingCash, liveCSVBalances,
@@ -428,15 +433,15 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             currentRentExpense, baseMonthlyExpenses,
                                         };
                                         setDrawdownResult(optimizeDrawdownOrder(params));
-                                        setGoalSeekBusy(false);
+                                        setBusyDrawdown(false);
                                     }, 50);
                                 }}
-                                disabled={goalSeekBusy}
+                                disabled={busyDrawdown}
                                 className="w-full px-3 py-2 bg-indigo-500/20 border border-indigo-500/50 rounded-md text-indigo-300 text-xs font-bold hover:bg-indigo-500/30 disabled:opacity-50"
                             >
                                 🎲 Optimiser ordre de décaissement
                             </button>
-                            {drawdownResult && !goalSeekBusy && (
+                            {drawdownResult && !busyDrawdown && (
                                 <div className="p-3 bg-indigo-900/30 border border-indigo-500/30 rounded-lg space-y-2">
                                     <p className="text-xs text-indigo-200">{drawdownResult.explanation}</p>
                                     <div className="space-y-1">
@@ -451,8 +456,8 @@ export const Retirement: React.FC<RetirementProps> = ({
                                     </div>
                                 </div>
                             )}
-                            {goalSeekBusy && <p className="text-xs text-gray-400">⏳ Calcul en cours…</p>}
-                            {goalSeekResult && !goalSeekBusy && (
+                            {(busySavings || busyAge || busyDrawdown) && <p className="text-xs text-gray-400">⏳ Calcul en cours…</p>}
+                            {goalSeekResult && !busySavings && !busyAge && (
                                 <div className="p-3 bg-purple-900/30 border border-purple-500/30 rounded-lg">
                                     {goalSeekResult.savings !== undefined && (
                                         <p className="text-sm text-purple-200">

@@ -7,7 +7,7 @@
 //    croisés (le worker répondait FIFO sans corrélation).
 //  - terminate() + recréation au prochain appel si le worker crash.
 
-import type { SimulationParams } from '../projection';
+import type { SimulationParams, ProjectionResult } from '../projection';
 
 let _worker: Worker | null = null;
 let _nextRequestId = 1;
@@ -57,7 +57,7 @@ export async function runProjectionAsync(
     params: SimulationParams,
     runMC: boolean = false,
     selectedIdx: number = 0,
-): Promise<any> {
+): Promise<ProjectionResult> {
     const worker = getWorker();
     if (!worker) {
         const { calculateFutureProjection } = await import('../projection');

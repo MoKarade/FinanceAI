@@ -321,6 +321,14 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // pendant la période sans emploi (revenu réduit à 55% capé AE).
     let unemployedMonthsRemaining = 0;
 
+    // W3.x — États événements de vie stochastiques (résident hors loop)
+    let divorced = false;                       // une fois divorcé, reste divorcé
+    let divorceLogged = false;
+    let ltdMonthsRemaining = 0;                 // invalidité longue durée
+    let ltdLogged = false;
+    let inheritanceReceived = false;
+    let phasedActiveMonth = -1;                  // mois où semi-retraite a commencé
+
     for (let m = 0; m <= projection.years * 12; m++) {
         const currentMonthIndex = m % 12;
         const simulationStartDate = new Date(startYear, startMonth, 1);
@@ -611,6 +619,24 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 unemployedMonthsRemaining--;
             }
 
+            // W3.2 — Invalidité longue durée (LTD). Tirage annuel.
+            if ((effProj as any).ltdEnabled && enableMonteCarlo && ltdMonthsRemaining === 0 && currentMonthIndex === 0 && m > 0) {
+                const pAnnual = (effProj as any).ltdAnnualProbability ?? 0.005;
+                if (rng() < pAnnual) {
+                    ltdMonthsRemaining = (effProj as any).ltdDurationMonths || 24;
+                    ltdLogged = false;
+                }
+            }
+            if (ltdMonthsRemaining > 0) {
+                if (!ltdLogged) {
+                    logEvent(lifeEventsLog, `♿ Invalidité longue durée (${ltdMonthsRemaining} mois)`);
+                    ltdLogged = true;
+                }
+                const replacePct = ((effProj as any).ltdIncomeReplacementPct ?? 60) / 100;
+                incomeMarc *= replacePct;
+                ltdMonthsRemaining--;
+            }
+
             monthlyIncome = incomeMarc + incomeAnna;
             const currentGrossMarcAnnual = grossMarcBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
             const currentGrossAnnaAnnual = grossAnnaBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
@@ -641,6 +667,90 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         if (ltcActive) {
             const ltcCost = ((effProj as any).ltcMonthlyCost || 5000) * expenseMultiplier;
             monthlyExpenses += ltcCost;
+        }
+
+        // W3.1 — Divorce stochastique (MC). Tirage annuel.
+        if ((effProj as any).divorceEnabled && enableMonteCarlo && !divorced && currentMonthIndex === 0 && m > 0) {
+            const pAnnual = (effProj as any).divorceAnnualProbability ?? 0.015;
+            if (rng() < pAnnual) {
+                divorced = true;
+                const splitPct = ((effProj as any).divorceSplitPct ?? 50) / 100;
+                liquid *= (1 - splitPct);
+                celi *= (1 - splitPct);
+                reer *= (1 - splitPct);
+                nonReg *= (1 - splitPct);
+                nonRegACB *= (1 - splitPct);
+                crypto *= (1 - splitPct);
+                realEstateEquity *= (1 - splitPct);
+            }
+        }
+        if (divorced && !divorceLogged) {
+            logEvent(lifeEventsLog, `💔 Divorce (-${((effProj as any).divorceSplitPct ?? 50)}% patrimoine)`);
+            divorceLogged = true;
+        }
+        if (divorced) {
+            const alimony = (effProj as any).divorceAlimonyMonthly || 0;
+            monthlyExpenses += alimony * expenseMultiplier;
+        }
+
+        // W3.3 — Maladie grave (capital forfaitaire + dépenses additionnelles)
+        if ((effProj as any).criticalIllnessEnabled && enableMonteCarlo && currentMonthIndex === 0 && m > 0) {
+            const pAnnual = (effProj as any).ciAnnualProbability ?? 0.003;
+            if (rng() < pAnnual) {
+                const payout = (effProj as any).ciPayoutAmount || 0;
+                if (payout > 0) liquid += payout;
+                const extra = (effProj as any).ciExtraMonthlyExpense || 0;
+                if (extra > 0) monthlyExpenses += extra * expenseMultiplier;
+                logEvent(lifeEventsLog, `🩺 Maladie grave (capital +${payout}\$, dépenses +${extra}\$/mois)`);
+            }
+        }
+
+        // W3.4 — Héritage probabilisé
+        if ((effProj as any).inheritanceEnabled && enableMonteCarlo && !inheritanceReceived && currentMonthIndex === 0 && m > 0) {
+            const expectedAge = (effProj as any).inheritanceExpectedAtAge ?? (currentAge + 25);
+            const uncertaintyY = (effProj as any).inheritanceUncertaintyYears ?? 5;
+            // Fenêtre [expectedAge - uncertaintyY, expectedAge + uncertaintyY]
+            if (age >= expectedAge - uncertaintyY && age <= expectedAge + uncertaintyY) {
+                const yearsInWindow = uncertaintyY * 2 + 1;
+                const probInWindow = (effProj as any).inheritanceProbability ?? 0.8;
+                const pYear = probInWindow / yearsInWindow;
+                if (rng() < pYear) {
+                    const amount = (effProj as any).inheritanceExpectedAmount || 0;
+                    if (amount > 0) {
+                        liquid += amount;
+                        inheritanceReceived = true;
+                        logEvent(lifeEventsLog, `🎁 Héritage reçu: +${amount.toLocaleString('fr-CA')}\$`);
+                    }
+                }
+            }
+        }
+
+        // W3.5 — Sandwich generation: aide enfants adultes (boomerang) ou parents âgés
+        const boomerangAmount = (effProj as any).boomerangSupportMonthly || 0;
+        const boomerangStart = (effProj as any).boomerangStartAge ?? -1;
+        const boomerangDuration = (effProj as any).boomerangDurationMonths ?? 0;
+        if (boomerangAmount > 0 && boomerangStart >= 0 && age >= boomerangStart) {
+            const monthsIntoBoomerang = (age - boomerangStart) * 12 + currentMonthIndex;
+            if (monthsIntoBoomerang < boomerangDuration) {
+                monthlyExpenses += boomerangAmount * expenseMultiplier;
+            }
+        }
+        const caregivingAmount = (effProj as any).caregivingMonthly || 0;
+        const caregivingStart = (effProj as any).caregivingStartAge ?? -1;
+        const caregivingDuration = (effProj as any).caregivingDurationMonths ?? 0;
+        if (caregivingAmount > 0 && caregivingStart >= 0 && age >= caregivingStart) {
+            const monthsIntoCare = (age - caregivingStart) * 12 + currentMonthIndex;
+            if (monthsIntoCare < caregivingDuration) {
+                monthlyExpenses += caregivingAmount * expenseMultiplier;
+            }
+        }
+
+        // W4.7 — Snowbird (4-6 mois en US/Mexique)
+        if ((effProj as any).snowbirdEnabled && isRetired) {
+            const monthsPerYear = (effProj as any).snowbirdMonthsPerYear ?? 5;
+            const extraMonthlyCost = (effProj as any).snowbirdExtraMonthlyCost ?? 1500;
+            // Approximation: lissé sur l'année (extra × mois × 12 / 12)
+            monthlyExpenses += (extraMonthlyCost * monthsPerYear / 12) * expenseMultiplier;
         }
 
         // --- 4. TAX WITHHOLDING & APRIL SETTLEMENT ---

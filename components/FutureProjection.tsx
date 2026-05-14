@@ -489,6 +489,41 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     >
                         📜 Bootstrap historique {projection.useHistoricalBootstrap ? 'ON' : 'OFF'}
                     </button>
+                    <button
+                        onClick={() => updateProj('divorceEnabled', !projection.divorceEnabled)}
+                        title="Divorce stochastique (MC). Probabilité annuelle ~1.5% (cumul ~36% sur 30 ans). Patrimoine split selon divorceSplitPct (défaut 50%)."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.divorceEnabled ? 'bg-rose-500/20 border-rose-500/50 text-rose-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        💔 Divorce {projection.divorceEnabled ? 'ON' : 'OFF'}
+                    </button>
+                    <button
+                        onClick={() => updateProj('ltdEnabled', !projection.ltdEnabled)}
+                        title="Invalidité longue durée stochastique. Probabilité annuelle ~0.5%. Revenu réduit à 60% (assurance privée typique) pendant 24 mois."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.ltdEnabled ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        ♿ Invalidité {projection.ltdEnabled ? 'ON' : 'OFF'}
+                    </button>
+                    <button
+                        onClick={() => updateProj('criticalIllnessEnabled', !projection.criticalIllnessEnabled)}
+                        title="Maladie grave stochastique. Probabilité ~0.3%/an. Capital forfaitaire reçu + dépenses additionnelles."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.criticalIllnessEnabled ? 'bg-pink-500/20 border-pink-500/50 text-pink-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        🩺 Maladie grave {projection.criticalIllnessEnabled ? 'ON' : 'OFF'}
+                    </button>
+                    <button
+                        onClick={() => updateProj('inheritanceEnabled', !projection.inheritanceEnabled)}
+                        title="Héritage probabilisé. Tirage dans la fenêtre [âge attendu ± uncertaintyY]."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.inheritanceEnabled ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        🎁 Héritage {projection.inheritanceEnabled ? 'ON' : 'OFF'}
+                    </button>
+                    <button
+                        onClick={() => updateProj('snowbirdEnabled', !projection.snowbirdEnabled)}
+                        title="Snowbird (4-6 mois en US/Mexique en hiver à la retraite). Surcoût mensuel ~1500\$."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.snowbirdEnabled ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        🌴 Snowbird {projection.snowbirdEnabled ? 'ON' : 'OFF'}
+                    </button>
                 </div>
                 {projection.ltcEnabled && (
                     <div className="mb-4 p-3 rounded-lg border border-red-500/20 bg-black/30">

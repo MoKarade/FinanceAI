@@ -4,6 +4,7 @@ import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, 
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend, AreaChart } from 'recharts';
 import { calculateFutureProjection } from '../services/projection';
 import { findRequiredMonthlySavings, findEarliestRetirementAge } from '../services/projection/goalSeek';
+import { optimizeDrawdownOrder } from '../services/projection/drawdownOptimizer';
 import { TaxBracketViz } from './TaxBracketViz';
 import { fetchPortfolioHistory } from '../services/finance';
 import { calculateGrossFromNet } from '../services/tax';
@@ -43,6 +44,8 @@ export const Retirement: React.FC<RetirementProps> = ({
     const [goalSeekTarget, setGoalSeekTarget] = useState<number>(1_000_000);
     const [goalSeekResult, setGoalSeekResult] = useState<{ savings?: number; age?: number; error?: string } | null>(null);
     const [goalSeekBusy, setGoalSeekBusy] = useState(false);
+    // W2.6 — Drawdown optimizer
+    const [drawdownResult, setDrawdownResult] = useState<ReturnType<typeof optimizeDrawdownOrder> | null>(null);
     const [currentAge, setCurrentAge] = useState(config.users[0]?.age || 30);
 
     useEffect(() => {
@@ -402,6 +405,41 @@ export const Retirement: React.FC<RetirementProps> = ({
                                     🗓️ Âge retraite minimum
                                 </button>
                             </div>
+                            <button
+                                onClick={() => {
+                                    setGoalSeekBusy(true);
+                                    setTimeout(() => {
+                                        const params = {
+                                            projection, calculatedStartingCash, liveCSVBalances,
+                                            realEstateGoals, debts, childGoals, travelGoals, lifeEvents,
+                                            retirementGoal: goal, config,
+                                            baseGrossAnnual, baseNetAnnual,
+                                            currentRentExpense, baseMonthlyExpenses,
+                                        };
+                                        setDrawdownResult(optimizeDrawdownOrder(params));
+                                        setGoalSeekBusy(false);
+                                    }, 50);
+                                }}
+                                disabled={goalSeekBusy}
+                                className="w-full px-3 py-2 bg-indigo-500/20 border border-indigo-500/50 rounded-md text-indigo-300 text-xs font-bold hover:bg-indigo-500/30 disabled:opacity-50"
+                            >
+                                🎲 Optimiser ordre de décaissement
+                            </button>
+                            {drawdownResult && !goalSeekBusy && (
+                                <div className="p-3 bg-indigo-900/30 border border-indigo-500/30 rounded-lg space-y-2">
+                                    <p className="text-xs text-indigo-200">{drawdownResult.explanation}</p>
+                                    <div className="space-y-1">
+                                        {drawdownResult.results
+                                            .sort((a, b) => b.estateNetWorth - a.estateNetWorth)
+                                            .map((r, i) => (
+                                                <div key={r.strategy} className="flex justify-between text-[10px] text-gray-300">
+                                                    <span>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '  '} {r.strategy}</span>
+                                                    <span className="font-mono">{Math.round(r.estateNetWorth).toLocaleString('fr-CA')}\$</span>
+                                                </div>
+                                            ))}
+                                    </div>
+                                </div>
+                            )}
                             {goalSeekBusy && <p className="text-xs text-gray-400">⏳ Calcul en cours…</p>}
                             {goalSeekResult && !goalSeekBusy && (
                                 <div className="p-3 bg-purple-900/30 border border-purple-500/30 rounded-lg">

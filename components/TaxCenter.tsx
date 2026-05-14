@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { jsPDF } from 'jspdf';
 import { showToast } from './ui/Toast';
 import { Card } from './ui/Card';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, Cell, PieChart, Pie } from 'recharts';
@@ -14,10 +13,9 @@ interface TaxCenterProps {
     apiKey?: string;
 }
 
-const DRIVE_FOLDER_URL = "https://drive.google.com/drive/u/0/folders/1mBg4NFJFbT5FpfxUEZkX-9fx8WgVnMH7";
+const DRIVE_FOLDER_URL = "https://drive.google.com";
 
 const MODELS = [
-    "gemini-3-flash-preview",
     "gemini-2.0-flash",
     "gemini-1.5-flash"
 ];

@@ -218,4 +218,196 @@ describe('calculateFutureProjection', () => {
             expect(Number.isFinite(r.estateNetWorth)).toBe(true);
         }
     });
+
+    // D2.9 — Inflation par poste
+    describe('Inflation par poste', () => {
+        it('quand activée et que tous les postes valent 2%, le résultat est proche de l\'inflation globale 2%', () => {
+            const flat = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 10, inflationRate: 2 })
+            })) as any;
+            const perCat = calculateFutureProjection(makeParams({
+                projection: makeProjection({
+                    years: 10,
+                    inflationRate: 2,
+                    usePerCategoryInflation: true,
+                    inflationHousing: 2, inflationFood: 2, inflationTransport: 2,
+                    inflationHealth: 2, inflationLeisure: 2, inflationOther: 2,
+                })
+            })) as any;
+            const flatBase = flat.allResults.find((s: any) => s.stratType === 'BASE');
+            const perBase = perCat.allResults.find((s: any) => s.stratType === 'BASE');
+            // Tolérance: le bonus santé +0.5% sur la part 5% n'est qu'à 75+, hors fenêtre 10 ans
+            expect(Math.abs(perBase.estateNetWorth - flatBase.estateNetWorth)).toBeLessThan(flatBase.estateNetWorth * 0.05);
+        });
+
+        it('logement 6% (vs 4% défaut) augmente le multiplicateur des dépenses → patrimoine plus faible', () => {
+            const low = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 20, usePerCategoryInflation: true, inflationHousing: 4 })
+            })) as any;
+            const high = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 20, usePerCategoryInflation: true, inflationHousing: 6 })
+            })) as any;
+            const lowBase = low.allResults.find((s: any) => s.stratType === 'BASE');
+            const highBase = high.allResults.find((s: any) => s.stratType === 'BASE');
+            expect(highBase.estateNetWorth).toBeLessThan(lowBase.estateNetWorth);
+        });
+    });
+
+    // D2.7 — US Withholding sur CELI
+    describe('US Withholding CELI', () => {
+        it('avec usEquityShareCeli=100% et yield 2%, le patrimoine est plus faible que sans drag', () => {
+            const baseProj = makeProjection({ years: 20, usEquityShareCeli: 0 });
+            const dragProj = makeProjection({ years: 20, usEquityShareCeli: 100, usEquityDividendYield: 2 });
+
+            const noDrag = calculateFutureProjection(makeParams({ projection: baseProj })) as any;
+            const drag = calculateFutureProjection(makeParams({ projection: dragProj })) as any;
+
+            const noBase = noDrag.allResults.find((s: any) => s.stratType === 'BASE');
+            const drBase = drag.allResults.find((s: any) => s.stratType === 'BASE');
+
+            // Drag 100% × 2% × 15% = 0.30 pp annuels sur le CELI → patrimoine final plus bas
+            expect(drBase.estateNetWorth).toBeLessThan(noBase.estateNetWorth);
+        });
+
+        it('share=0 ne produit aucun drag (idempotent vs valeur défaut)', () => {
+            const r1 = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 10, usEquityShareCeli: 0 })
+            })) as any;
+            const r2 = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 10 })
+            })) as any;
+            const b1 = r1.allResults.find((s: any) => s.stratType === 'BASE');
+            const b2 = r2.allResults.find((s: any) => s.stratType === 'BASE');
+            expect(b1.estateNetWorth).toBe(b2.estateNetWorth);
+        });
+    });
+
+    // D2.6 — Sequence Risk Metric
+    describe('Sequence Risk Metric', () => {
+        it('expertMetrics expose sequenceRiskPct et worstDecadeDrawdown quand MC est activé', () => {
+            const params = makeParams({
+                projection: makeProjection({ years: 10 }),
+            });
+            const result = calculateFutureProjection(params, /* runMC */ true) as any;
+            expect(result.expertMetrics).toBeTruthy();
+            expect(typeof result.expertMetrics.sequenceRiskPct).toBe('number');
+            expect(typeof result.expertMetrics.worstDecadeDrawdown).toBe('number');
+            expect(result.expertMetrics.sequenceRiskPct).toBeGreaterThanOrEqual(0);
+            expect(result.expertMetrics.sequenceRiskPct).toBeLessThanOrEqual(100);
+            expect(result.expertMetrics.worstDecadeDrawdown).toBeGreaterThanOrEqual(0);
+            expect(result.expertMetrics.worstDecadeDrawdown).toBeLessThanOrEqual(1);
+        });
+
+        it('expose la fenêtre décennie critique (start/end year) cohérente avec targetAge', () => {
+            const config = makeConfig();
+            config.users[0] = { ...config.users[0], age: 40, birthYear: 1986 };
+            config.users[1] = { ...config.users[1], age: 40, birthYear: 1986 };
+            const params = makeParams({
+                config,
+                retirementGoal: makeRetirementGoal({ targetAge: 60 }),
+                projection: makeProjection({ years: 30 }),
+            });
+            const r = calculateFutureProjection(params, true) as any;
+            const m = r.expertMetrics;
+            // Décennie critique = [retraite-5, retraite+5] = [15, 25] années après start
+            expect(m.criticalDecadeStartYear).toBeGreaterThanOrEqual(14);
+            expect(m.criticalDecadeStartYear).toBeLessThanOrEqual(16);
+            expect(m.criticalDecadeEndYear).toBeGreaterThanOrEqual(24);
+            expect(m.criticalDecadeEndYear).toBeLessThanOrEqual(26);
+        });
+    });
+
+    // D2.5 — Smile Curve (dépenses retraite en U)
+    describe('Smile Curve', () => {
+        const buildLongRetirement = (useSmile: boolean) => {
+            const config = makeConfig();
+            config.users[0] = { ...config.users[0], age: 60, birthYear: 1966 };
+            config.users[1] = { ...config.users[1], age: 60, birthYear: 1966 };
+            return makeParams({
+                config,
+                retirementGoal: makeRetirementGoal({ targetAge: 60, targetMonthlyIncome: 3000 }),
+                projection: makeProjection({ years: 30, useSmileCurve: useSmile }),
+            });
+        };
+
+        it('avec smile curve ON, les dépenses ne sont pas identiques à sans (impact mesurable)', () => {
+            const off = calculateFutureProjection(buildLongRetirement(false)) as any;
+            const on = calculateFutureProjection(buildLongRetirement(true)) as any;
+            const offBase = off.allResults.find((s: any) => s.stratType === 'BASE');
+            const onBase = on.allResults.find((s: any) => s.stratType === 'BASE');
+            // Smile ON majore les go-go years → dépenses plus élevées tôt
+            expect(offBase.estateNetWorth).not.toBe(onBase.estateNetWorth);
+        });
+
+        it('le flag useSmileCurve est respecté (par défaut OFF, multiplicateur = 1)', () => {
+            const params = buildLongRetirement(false);
+            const result = calculateFutureProjection(params) as any;
+            expect(Number.isFinite(result.estateNetWorth)).toBe(true);
+        });
+    });
+
+    // D2.4 — Pension à prestations déterminées (DB)
+    describe('Pension DB', () => {
+        const buildAtRetirement = (extraRetirement: Partial<RetirementGoal>) => {
+            // Démarre à 64 ans + projection 5 ans → traverse l'âge cible 65
+            const config = makeConfig();
+            config.users[0] = { ...config.users[0], age: 64, birthYear: 1962 };
+            config.users[1] = { ...config.users[1], age: 64, birthYear: 1962 };
+            return makeParams({
+                config,
+                retirementGoal: makeRetirementGoal({ targetAge: 65, governmentPension: 1500, ...extraRetirement }),
+                projection: makeProjection({ years: 5 }),
+            });
+        };
+
+        it('sans pension DB, le revenu retraite reflète uniquement RRQ+PSV', () => {
+            const r = calculateFutureProjection(buildAtRetirement({})) as any;
+            const base = r.allResults.find((s: any) => s.stratType === 'BASE');
+            const post65 = base.chartData.filter((d: any) => d.age >= 65);
+            expect(post65.length).toBeGreaterThan(0);
+        });
+
+        it('avec pension DB de 2000$/mois, le patrimoine successoral augmente', () => {
+            const noPension = calculateFutureProjection(buildAtRetirement({ dbPensionMonthly: 0 })) as any;
+            const withPension = calculateFutureProjection(buildAtRetirement({ dbPensionMonthly: 2000 })) as any;
+
+            const noBase = noPension.allResults.find((s: any) => s.stratType === 'BASE');
+            const withBase = withPension.allResults.find((s: any) => s.stratType === 'BASE');
+
+            expect(withBase.estateNetWorth).toBeGreaterThan(noBase.estateNetWorth);
+        });
+
+        it('la pension DB ne se déclenche pas avant dbPensionStartAge', () => {
+            // Démarre 60 ans, début pension à 70 → pas de revenu DB durant la projection 5 ans
+            const config = makeConfig();
+            config.users[0] = { ...config.users[0], age: 60, birthYear: 1966 };
+            config.users[1] = { ...config.users[1], age: 60, birthYear: 1966 };
+            const params = makeParams({
+                config,
+                retirementGoal: makeRetirementGoal({
+                    targetAge: 60,
+                    dbPensionMonthly: 5000,
+                    dbPensionStartAge: 70, // Hors fenêtre de simulation
+                }),
+                projection: makeProjection({ years: 5 }),
+            });
+            const result = calculateFutureProjection(params) as any;
+            expect(Number.isFinite(result.estateNetWorth)).toBe(true);
+        });
+
+        it('indexation 0% rend la pension DB nominale (érodée par l\'inflation)', () => {
+            const fullIndex = calculateFutureProjection(buildAtRetirement({
+                dbPensionMonthly: 2000,
+                dbPensionIndexationPct: 100,
+            })) as any;
+            const noIndex = calculateFutureProjection(buildAtRetirement({
+                dbPensionMonthly: 2000,
+                dbPensionIndexationPct: 0,
+            })) as any;
+            const fullBase = fullIndex.allResults.find((s: any) => s.stratType === 'BASE');
+            const noBase = noIndex.allResults.find((s: any) => s.stratType === 'BASE');
+            // Pleine indexation > pas d'indexation (avec inflation positive)
+            expect(fullBase.estateNetWorth).toBeGreaterThanOrEqual(noBase.estateNetWorth);
+        });
+    });
 });

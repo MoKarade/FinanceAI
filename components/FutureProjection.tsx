@@ -406,6 +406,119 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         >
                             🎲 Monte Carlo {runMC ? 'ON' : 'OFF'}
                         </button>
+                        <button
+                            onClick={() => updateProj('useSmileCurve', !projection.useSmileCurve)}
+                            title="Courbe en U des dépenses retraite (étude CIBC): go-go +15%, slow-go base, no-go -10%"
+                            className={`px-4 py-2 text-[10px] font-bold rounded-md border transition-all ${projection.useSmileCurve ? 'bg-pink-500/20 border-pink-500/50 text-pink-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                        >
+                            😊 Smile Curve {projection.useSmileCurve ? 'ON' : 'OFF'}
+                        </button>
+                    </div>
+                </div>
+
+                {/* D2.9: Inflation par poste (panier CPI Stats Canada) */}
+                <div className="mb-4">
+                    <button
+                        onClick={() => updateProj('usePerCategoryInflation', !projection.usePerCategoryInflation)}
+                        title="Décompose l'inflation en 6 postes (logement, alim, transport, santé, loisirs, autres) avec pondérations CPI 2023. Plus réaliste que l'inflation globale unique."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.usePerCategoryInflation ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        📊 Inflation par poste {projection.usePerCategoryInflation ? 'ON' : 'OFF'}
+                    </button>
+                </div>
+                {projection.usePerCategoryInflation && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4 p-3 rounded-lg border border-amber-500/20 bg-black/30">
+                        {[
+                            { key: 'inflationHousing',  label: 'Logement',  weight: 30, def: 4.0 },
+                            { key: 'inflationFood',     label: 'Alim.',     weight: 17, def: 3.5 },
+                            { key: 'inflationTransport',label: 'Transport', weight: 15, def: 2.5 },
+                            { key: 'inflationHealth',   label: 'Santé',     weight: 5,  def: 4.5 },
+                            { key: 'inflationLeisure',  label: 'Loisirs',   weight: 6,  def: 1.5 },
+                            { key: 'inflationOther',    label: 'Autres',    weight: 27, def: 2.0 },
+                        ].map(item => (
+                            <div key={item.key}>
+                                <label className="flex justify-between text-xs text-gray-300 mb-1">
+                                    <span>{item.label} ({item.weight}%)</span>
+                                    <span className="text-amber-300 font-bold">{((projection as any)[item.key] ?? item.def).toFixed(1)}%</span>
+                                </label>
+                                <input
+                                    type="range" min="0" max="10" step="0.1"
+                                    value={(projection as any)[item.key] ?? item.def}
+                                    onChange={e => updateProj(item.key as any, Number(e.target.value))}
+                                    className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-amber-500"
+                                />
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* D2.8 + D2.10: Toggles événements de vie stochastiques */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                    <button
+                        onClick={() => updateProj('useStochasticMortality', !projection.useStochasticMortality)}
+                        title="Active des tirages aléatoires de date de décès (tables Stats Can 2020-2022) en mode Monte Carlo. La simulation s'arrête à la mort."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.useStochasticMortality ? 'bg-violet-500/20 border-violet-500/50 text-violet-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        ⚰️ Mortalité stochastique {projection.useStochasticMortality ? 'ON' : 'OFF'}
+                    </button>
+                    <button
+                        onClick={() => updateProj('ltcEnabled', !projection.ltcEnabled)}
+                        title="Soins de longue durée (CHSLD/RPA). Probabilité croissante après 65 ans (1% → 25%/an). Coût mensuel ajouté aux dépenses."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.ltcEnabled ? 'bg-red-500/20 border-red-500/50 text-red-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        🏥 LTC stochastique {projection.ltcEnabled ? 'ON' : 'OFF'}
+                    </button>
+                    <button
+                        onClick={() => updateProj('jobLossEnabled', !projection.jobLossEnabled)}
+                        title="Perte d'emploi stochastique en MC. Probabilité annuelle ~3% (Stats Can). Pendant N mois, revenu du user principal = 55% (assurance-emploi)."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.jobLossEnabled ? 'bg-orange-500/20 border-orange-500/50 text-orange-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        💼 Perte emploi {projection.jobLossEnabled ? 'ON' : 'OFF'}
+                    </button>
+                </div>
+                {projection.ltcEnabled && (
+                    <div className="mb-4 p-3 rounded-lg border border-red-500/20 bg-black/30">
+                        <label className="flex justify-between text-xs text-gray-300 mb-1">
+                            <span>Coût mensuel soins ($/mois)</span>
+                            <span className="text-red-300 font-bold">{projection.ltcMonthlyCost ?? 5000}$</span>
+                        </label>
+                        <input
+                            type="range" min="2000" max="12000" step="500"
+                            value={projection.ltcMonthlyCost ?? 5000}
+                            onChange={e => updateProj('ltcMonthlyCost', Number(e.target.value))}
+                            className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-red-500"
+                        />
+                        <p className="text-[10px] text-gray-500 mt-1">CHSLD public ~2000$, RPA semi-privé ~4500$, soins privés à domicile 8000-12000$.</p>
+                    </div>
+                )}
+
+                {/* D2.7: Champs Withholding tax US sur CELI */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-3 rounded-lg border border-white/5 bg-black/30">
+                    <div>
+                        <label className="flex justify-between text-xs text-gray-300 mb-1">
+                            <span>🇺🇸 Part actions US dans CELI (%)</span>
+                            <span className="text-blue-300 font-bold">{projection.usEquityShareCeli ?? 0}%</span>
+                        </label>
+                        <input
+                            type="range" min="0" max="100" step="5"
+                            value={projection.usEquityShareCeli ?? 0}
+                            onChange={e => updateProj('usEquityShareCeli', Number(e.target.value))}
+                            className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        />
+                        <p className="text-[10px] text-gray-500 mt-1">VOO/SPY/QQQ... Le CELI n'est PAS protégé du withholding US 15% (le REER si).</p>
+                    </div>
+                    <div>
+                        <label className="flex justify-between text-xs text-gray-300 mb-1">
+                            <span>Rendement dividende US (%)</span>
+                            <span className="text-blue-300 font-bold">{(projection.usEquityDividendYield ?? 1.5).toFixed(1)}%</span>
+                        </label>
+                        <input
+                            type="range" min="0" max="5" step="0.1"
+                            value={projection.usEquityDividendYield ?? 1.5}
+                            onChange={e => updateProj('usEquityDividendYield', Number(e.target.value))}
+                            className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        />
+                        <p className="text-[10px] text-gray-500 mt-1">Yield moyen S&P 500 ≈ 1.5%. Drag annuel = part × yield × 15%.</p>
                     </div>
                 </div>
 

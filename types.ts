@@ -126,6 +126,48 @@ export interface ProjectionConfig {
   useSmithManoeuvre?: boolean;
   optimizeSourceDeductions?: boolean;
   investmentTargetPcts?: Record<string, number>;
+  // D2.5: Smile Curve — courbe en U des dépenses de retraite (étude CIBC).
+  // Go-go (jusqu'à 74): +15% sur le besoin. Slow-go (75-84): base.
+  // No-go (85+): -10% lifestyle, mais santé compense (déjà modélisé).
+  useSmileCurve?: boolean;
+  // D2.7: Withholding tax US 15% sur dividendes US détenus dans CELI/FHSA.
+  // La convention fiscale Canada-US exempte le REER mais PAS le CELI.
+  // - usEquityShareCeli: fraction CELI investie en actions US (0-100).
+  // - usEquityDividendYield: rendement dividende moyen des actions US (1.5% par défaut).
+  // Drag annuel sur CELI = share * yield * 15% (en points de pourcentage).
+  usEquityShareCeli?: number;
+  usEquityDividendYield?: number;
+  // D2.8: Soins de longue durée (LTC) — coût mensuel ajouté en plus
+  // des dépenses normales avec probabilité croissante après 80 ans.
+  // - ltcMonthlyCost: coût mensuel quand l'événement se déclenche (5000$ par défaut).
+  // - ltcEnabled: active la simulation.
+  ltcEnabled?: boolean;
+  ltcMonthlyCost?: number;
+  // D2.8: Mortalité stochastique en Monte Carlo.
+  // Active des tirages aléatoires de date de décès basés sur les tables
+  // canadiennes 2020-2022. La simulation s'arrête à la mort de l'utilisateur
+  // (l'estateNetWorth devient le patrimoine au décès et non en fin d'horizon).
+  useStochasticMortality?: boolean;
+  // D2.9: Inflation différenciée par poste (CPI panier composite).
+  // Pondérations Statistique Canada (CPI-WEIGHTS 2023):
+  //   Logement 30%, Alimentation 17%, Transport 15%, Santé 5%,
+  //   Loisirs 6%, Autres 27%.
+  // Chaque poste a son propre taux d'inflation moyen. Le multiplicateur
+  // global devient une moyenne pondérée. Bonus santé après 75 ans appliqué
+  // sur la part Santé uniquement.
+  usePerCategoryInflation?: boolean;
+  inflationHousing?: number;     // défaut 4.0
+  inflationFood?: number;        // défaut 3.5
+  inflationTransport?: number;   // défaut 2.5
+  inflationHealth?: number;      // défaut 4.5
+  inflationLeisure?: number;     // défaut 1.5
+  inflationOther?: number;       // défaut 2.0
+  // D2.10: Perte d'emploi stochastique. Probabilité annuelle ~3% (Stats Can).
+  // Durée moyenne sans emploi: 6 mois (5-10 selon âge / industrie).
+  // Pendant la période: salaire = 55% du brut (assurance-emploi), capé à 668$/sem 2026.
+  jobLossEnabled?: boolean;
+  jobLossAnnualProbability?: number; // défaut 0.03
+  jobLossDurationMonths?: number;    // défaut 6
 }
 
 export interface RealEstateGoal {
@@ -223,6 +265,12 @@ export interface RetirementGoal {
   targetAge: number;
   targetMonthlyIncome: number;
   governmentPension: number;
+  // D2.4: Rente mensuelle de régime à prestations déterminées (DB) cumulée
+  // pour le couple (ex: RREGOP, fonction publique fédérale, certaines profs).
+  // Optionnelle. Indexation gérée par `dbPensionIndexationPct` (défaut 100%).
+  dbPensionMonthly?: number;
+  dbPensionIndexationPct?: number; // 0-100, fraction de l'IPC répercutée
+  dbPensionStartAge?: number;      // par défaut targetAge
 }
 
 export type GoalType = 'NET_WORTH' | 'CELI' | 'REER' | 'LIQUIDITY' | 'CUSTOM' | 'EXPENSE_OPTIMIZATION' | 'REBALANCING';

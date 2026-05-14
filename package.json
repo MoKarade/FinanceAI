@@ -11,10 +11,12 @@
     "lint": "eslint . --ext ts,tsx",
     "test": "vitest run",
     "test:watch": "vitest",
-    "knip": "knip"
+    "knip": "knip",
+    "mcp:dev": "tsx mcp/stdio.ts"
   },
   "dependencies": {
     "@google/genai": "^1.40.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
     "framer-motion": "^12.34.5",
     "html2canvas": "^1.4.1",
     "i18next": "^25.8.13",
@@ -25,6 +27,7 @@
     "react-dom": "^19.2.4",
     "react-i18next": "^16.5.4",
     "recharts": "^3.7.0",
+    "zod": "^3.23.0",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
@@ -35,6 +38,7 @@
     "eslint": "^9.0.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "knip": "^5.0.0",
+    "tsx": "^4.19.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "vitest": "^2.0.0"

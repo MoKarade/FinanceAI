@@ -9,7 +9,7 @@ interface AiAssistantProps {
   budgetItems: BudgetCategory[];
   assets: Asset[];
   projection: ProjectionConfig;
-  realEstateGoal: RealEstateGoal;
+  realEstateGoal?: RealEstateGoal;
   config: BudgetConfig;
   initialBalances: Record<string, number>;
 }
@@ -30,26 +30,32 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isOpen, isLoading]);
 
-  // Focus input on open
   useEffect(() => {
       if(isOpen) setTimeout(() => inputRef.current?.focus(), 100);
   }, [isOpen]);
 
+  const sanitizePayee = (raw: string): string => {
+    if (!raw) return '';
+    return raw
+      .replace(/[\x00-\x1F\x7F]/g, ' ')
+      .replace(/["\\]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 60);
+  };
+  const roundToHundred = (amount: number): number => Math.round(amount / 100) * 100;
+
   const generateContext = () => {
-    // 1. Calculate Net Worth & Totals
     const totalAssets = assets.reduce((sum, a) => sum + (a.quantity * a.currentPrice * (a.currency === 'USD' ? 1.38 : a.currency === 'EUR' ? 1.50 : 1)), 0);
     const totalCash = (Object.values(initialBalances) as number[]).reduce((a,b)=>a+b,0) + transactions.reduce((sum, t) => !t.isDuplicate && !t.isTransfer ? sum + t.amount : sum, 0);
     const netWorth = totalAssets + totalCash;
 
-    // 2. Asset Allocation & Performance
     const topAssets = [...assets].sort((a,b) => b.performance - a.performance).slice(0, 3).map(a => `${a.symbol}: +${a.performance}%`).join(', ');
-    
-    // 3. Burn Rate
+
     const now = new Date();
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(now.getMonth() - 3);
@@ -59,7 +65,6 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
     const monthlyBurn = recentExpenses / 3;
     const runway = monthlyBurn > 0 ? (totalCash / monthlyBurn).toFixed(1) : "Infini";
 
-    // 4. Projection
     const annualContrib = projection.manualContribution * 12;
     const rate = projection.returnRate / 100;
     let futureValue = netWorth;
@@ -67,21 +72,28 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
         futureValue = (futureValue + annualContrib) * (1 + rate);
     }
 
-    const last20Txs = transactions.slice(0, 20).map(t => `${t.date}: ${t.payee} (${t.amount.toFixed(0)}$)`).join('\n');
-    
+    const realEstateContext = realEstateGoal
+      ? `Projet immo : ${realEstateGoal.name || 'principal'} a ${roundToHundred(realEstateGoal.price || 0).toLocaleString()}$ (mise de fonds ${roundToHundred(realEstateGoal.downPayment || 0).toLocaleString()}$, taux ${realEstateGoal.mortgageRate || 0}%).`
+      : 'Aucun projet immobilier actif.';
+
+    const last20Txs = transactions.slice(0, 20)
+      .map(t => `${t.date}: ${sanitizePayee(t.payee)} (${roundToHundred(t.amount)}$)`)
+      .join('\n');
+
     return `
       You are an elite, friendly financial advisor. Speak French naturally. Use emojis.
-      
+
       === USER SNAPSHOT ===
-      - Net Worth: ${netWorth.toLocaleString()} CAD (Cash: ${totalCash.toLocaleString()}, Stocks: ${totalAssets.toLocaleString()})
-      - Monthly Burn: ~${monthlyBurn.toFixed(0)}$
+      - Net Worth: ${roundToHundred(netWorth).toLocaleString()} CAD (Cash: ${roundToHundred(totalCash).toLocaleString()}, Stocks: ${roundToHundred(totalAssets).toLocaleString()})
+      - Monthly Burn: ~${roundToHundred(monthlyBurn).toLocaleString()}$
       - Runway: ${runway} months
       - Top Stocks: ${topAssets}
-      - 10y Projection: ~${futureValue.toLocaleString()} CAD
-      
+      - 10y Projection: ~${roundToHundred(futureValue).toLocaleString()} CAD
+      - ${realEstateContext}
+
       === RECENT TRANSACTIONS ===
       ${last20Txs}
-      
+
       === RULES ===
       - Be concise (max 3-4 sentences unless asked for detail).
       - Analyze spending patterns if asked.
@@ -91,20 +103,20 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
 
   const handleSend = async () => {
     if (!input.trim()) return;
-    
+
     const userMsg = input;
     setInput('');
     setMessages(prev => [...prev, { role: 'user', text: userMsg, timestamp: new Date() }]);
     setIsLoading(true);
 
     try {
-      if (!apiKey) throw new Error("Clé API manquante.");
+      if (!apiKey) throw new Error("Cle API manquante.");
 
       const ai = new GoogleGenAI({ apiKey });
-      const model = 'gemini-3-flash-preview'; // Updated to 3 Flash for higher limits
+      const model = 'gemini-2.0-flash';
 
       const response = await ai.models.generateContent({
-        model: model, 
+        model: model,
         contents: [
             { role: 'user', parts: [{ text: generateContext() }] },
             { role: 'user', parts: [{ text: userMsg }] }
@@ -116,7 +128,8 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
           setMessages(prev => [...prev, { role: 'model', text, timestamp: new Date() }]);
       }
     } catch (e: any) {
-      setMessages(prev => [...prev, { role: 'model', text: "⚠️ Oups, je n'arrive pas à réfléchir. Vérifie ta clé API.", timestamp: new Date() }]);
+      console.error('[Assistant] Gemini error:', e);
+      setMessages(prev => [...prev, { role: 'model', text: "⚠️ Oups, je n'arrive pas a reflechir. Verifie ta cle API.", timestamp: new Date() }]);
     } finally {
       setIsLoading(false);
     }
@@ -124,50 +137,47 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
 
   return (
     <>
-      {/* Floating Button - Adjusted position to clear bottom nav */}
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-label={isOpen ? 'Fermer le conseiller IA' : 'Ouvrir le conseiller IA'}
         className={`fixed bottom-24 right-4 md:bottom-8 md:right-8 z-50 w-14 h-14 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all duration-300 active:scale-95 flex items-center justify-center ${isOpen ? 'bg-red-500 rotate-90' : 'bg-primary hover:bg-emerald-400 hover:-translate-y-1'}`}
       >
-        <span className="text-2xl text-white drop-shadow-md">
+        <span className="text-2xl text-white drop-shadow-md" aria-hidden="true">
             {isOpen ? '✕' : '✨'}
         </span>
       </button>
 
-      {/* Chat Window - Full width on mobile with safe bottom spacing */}
       {isOpen && (
-        <div className="fixed bottom-40 right-2 left-2 md:left-auto md:bottom-24 md:right-8 z-50 w-auto md:w-[420px] h-[550px] max-h-[60vh] md:max-h-[550px] bg-[#1a1a1a]/95 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-slide-up origin-bottom-right">
-            
-            {/* Header */}
+        <div role="dialog" aria-modal="true" aria-labelledby="ai-assistant-title" className="fixed bottom-40 right-2 left-2 md:left-auto md:bottom-24 md:right-8 z-50 w-auto md:w-[420px] h-[550px] max-h-[60vh] md:max-h-[550px] bg-[#1a1a1a]/95 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-slide-up origin-bottom-right">
+
             <div className="bg-gradient-to-r from-emerald-900/50 to-purple-900/50 p-4 border-b border-white/5 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-emerald-300 p-0.5">
                     <div className="w-full h-full bg-black rounded-full flex items-center justify-center">
-                        <span className="text-lg">🤖</span>
+                        <span className="text-lg" aria-hidden="true">🤖</span>
                     </div>
                 </div>
                 <div>
-                    <h3 className="font-bold text-white text-base">Conseiller IA</h3>
+                    <h3 id="ai-assistant-title" className="font-bold text-white text-base">Conseiller IA</h3>
                     <div className="flex items-center gap-1.5">
                         <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                         <span className="text-[10px] text-green-300 font-medium">En ligne</span>
                     </div>
                 </div>
                 <div className="ml-auto">
-                    <button onClick={() => setMessages([])} className="text-gray-400 hover:text-white p-2 text-xs bg-white/5 rounded-lg">Effacer</button>
+                    <button onClick={() => setMessages([])} aria-label="Effacer la conversation" className="text-gray-400 hover:text-white p-2 text-xs bg-white/5 rounded-lg">Effacer</button>
                 </div>
             </div>
 
-            {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
                 {messages.map((m, i) => (
                     <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         {m.role === 'model' && (
-                             <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mr-2 text-sm flex-shrink-0 border border-white/10">🤖</div>
+                             <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mr-2 text-sm flex-shrink-0 border border-white/10" aria-hidden="true">🤖</div>
                         )}
-                        <div 
+                        <div
                             className={`max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-relaxed shadow-md ${
-                                m.role === 'user' 
-                                ? 'bg-primary text-white rounded-tr-none' 
+                                m.role === 'user'
+                                ? 'bg-primary text-white rounded-tr-none'
                                 : 'bg-[#2a2a2a] text-gray-200 rounded-tl-none border border-white/5'
                             }`}
                         >
@@ -178,11 +188,11 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
                         </div>
                     </div>
                 ))}
-                
+
                 {isLoading && (
                     <div className="flex justify-start">
-                         <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mr-2 text-sm flex-shrink-0 border border-white/10">🤖</div>
-                        <div className="bg-[#2a2a2a] rounded-2xl rounded-tl-none px-4 py-4 flex gap-1.5 items-center border border-white/5">
+                         <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mr-2 text-sm flex-shrink-0 border border-white/10" aria-hidden="true">🤖</div>
+                        <div className="bg-[#2a2a2a] rounded-2xl rounded-tl-none px-4 py-4 flex gap-1.5 items-center border border-white/5" aria-label="Chargement de la reponse">
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-[bounce_1.4s_infinite_0ms]"></div>
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-[bounce_1.4s_infinite_200ms]"></div>
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-[bounce_1.4s_infinite_400ms]"></div>
@@ -192,22 +202,23 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
             <div className="p-4 bg-black/40 backdrop-blur-md border-t border-white/5">
                 <div className="flex gap-2 bg-[#2a2a2a] rounded-full border border-white/10 px-2 py-2 focus-within:border-primary/50 transition-colors shadow-inner">
-                    <input 
+                    <input
                         ref={inputRef}
-                        type="text" 
+                        type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                         placeholder="Analyser mon budget..."
+                        aria-label="Question au conseiller IA"
                         className="flex-1 bg-transparent px-4 text-sm text-white outline-none disabled:opacity-50 placeholder-gray-500 font-medium"
                         disabled={isLoading}
                     />
-                    <button 
+                    <button
                         onClick={handleSend}
                         disabled={isLoading || !input.trim()}
+                        aria-label="Envoyer le message"
                         className="bg-primary hover:bg-green-500 disabled:opacity-50 text-white w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg shadow-primary/20"
                     >
                         ➤

@@ -1,11 +1,10 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Line, ComposedChart, Brush, Bar, ReferenceDot, LabelList } from 'recharts';
 import { BudgetConfig, BudgetCategory, Asset, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Transaction, Debt, ProjectionConfig, FinancialGoal } from '../types';
-import { calculateFiscalReport } from '../utils/tax';
+import { calculateFiscalReport } from '../services/tax';
 import { fetchPortfolioHistory } from '../services/finance';
-import { calculateFutureProjection, SimulationParams } from '../utils/useFutureSimulation';
+import { calculateFutureProjection, SimulationParams } from '../services/projection';
 
 interface FutureProjectionProps {
   assets: Asset[];
@@ -124,7 +123,7 @@ const ExpertTooltip = ({ active, payload, label, isPrivacyMode }: any) => {
                         <div>
                             <span className="text-[9px] uppercase text-gray-500 font-bold tracking-widest">Flux d'Épargne</span>
                             <ul className="text-[10px] text-gray-300 mt-1 space-y-1 font-mono">
-                                {data.flowEvents?.map((e: string, i: number) => <li key={i} className={e.includes('Survie') ? 'text-red-300' : 'text-blue-300'}>⮑ {e}</li>)}
+                                {data.flowEvents?.map((e: string, i: number) => <li key={i} className={e.includes('Survie') ? 'text-red-300' : 'text-blue-300'}>⮡ {e}</li>)}
                             </ul>
                         </div>
                     )}

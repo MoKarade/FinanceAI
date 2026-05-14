@@ -3,9 +3,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset } from '../types';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend, AreaChart } from 'recharts';
-import { calculateFutureProjection } from '../utils/useFutureSimulation';
+import { calculateFutureProjection } from '../services/projection';
 import { fetchPortfolioHistory } from '../services/finance';
-import { calculateGrossFromNet } from '../utils/tax';
+import { calculateGrossFromNet } from '../services/tax';
 
 interface RetirementProps {
     goal: RetirementGoal;

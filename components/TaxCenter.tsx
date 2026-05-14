@@ -5,7 +5,7 @@ import { Card } from './ui/Card';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, Cell, PieChart, Pie } from 'recharts';
 import { BudgetConfig, Asset } from '../types';
 import { GoogleGenAI } from "@google/genai";
-import { calculateFiscalReport, calculateGrossFromNet } from '../utils/tax';
+import { calculateFiscalReport, calculateGrossFromNet } from '../services/tax';
 
 interface TaxCenterProps {
     config: BudgetConfig;

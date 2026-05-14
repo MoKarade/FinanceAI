@@ -1,5 +1,8 @@
 [build]
-  command = "npm run build"
+  # Typecheck temporairement retire (15+ bugs de typage preexistants reveles
+  # par la nouvelle CI strict). Voir .github/workflows/ci.yml et AUDIT_REPORT.md
+  # pour le backlog. Ramener `npm run typecheck && ...` une fois les bugs fixes.
+  command = "npm install --no-audit --no-fund && npm run test && npm run build"
   publish = "dist"
 
 [[redirects]]

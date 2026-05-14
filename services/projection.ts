@@ -1,6 +1,7 @@
 // services/projection.ts — moteur de projection financière (migré depuis utils/useFutureSimulation.ts)
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config } from '../types';
 import { calculateFiscalReport, CELI_ANNUAL_LIMITS, calculateCeliRoom, calculateGrossFromNet, getMarginalRate, calculateDividendTax, RRSP_ANNUAL_LIMITS, calculateGrossWithholdingRRSP } from '../utils/tax';
+import { mulberry32, gaussianRandom, applyShock, MER, RRIF_RATES, welcomeTax } from './projection/helpers';
 
 export interface SimulationParams {
     projection: ProjectionConfig;
@@ -25,29 +26,8 @@ export type AllocationStrategy = 'AUTO_MARGINAL' | 'PRIO_REER' | 'PRIO_CELI' | '
 
 export type FutureScenarioType = 'BASE' | 'LIBERTE_55' | 'HYPER_INFLATION' | 'WINDFALL' | 'ECONOMIC_WINTER';
 
-// ---- Monte Carlo: Seeded PRNG and Box-Muller transformation ----
-
-/**
- * Mulberry32 is a simple, fast seeded PRNG.
- * @param a The seed value.
- */
-function mulberry32(a: number) {
-    return function() {
-        let t = a += 0x6D2B79F5;
-        t = Math.imul(t ^ t >>> 15, t | 1);
-        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-        return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    }
-}
-
-// Transforms two uniform random numbers into one standard normal deviate
-function gaussianRandom(rng: () => number, mean: number, stdDev: number): number {
-    let u = 0, v = 0;
-    while (u === 0) u = rng();
-    while (v === 0) v = rng();
-    const n = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
-    return mean + stdDev * n;
-}
+// D2.2: mulberry32, gaussianRandom, applyShock, ASSET_VOLATILITY, MER,
+// RRIF_RATES et welcomeTax sont désormais dans ./projection/helpers.
 
 // Helper to calculate gross amount needed for a specific net withdrawal
 // Uses the April settlement logic where tax is calculated but paid later.
@@ -80,16 +60,6 @@ const calculateGrossNeeded = (netNeeded: number, currentGrossOther: number, acti
     }
     return (low + high) / 2;
 };
-
-// ---- Volatility parameters per asset class (annual standard deviation) ----
-const ASSET_VOLATILITY = {
-    stocks: 0.15,  // CELI, REER, NonReg — indice actions
-    crypto: 0.50,
-    cash: 0.03,
-};
-
-// V31: Frais de gestion (MER) appliqués stochastiquement
-const MER = 0.0020;
 
 const runScenario = (params: SimulationParams, strategy: AllocationStrategy, enableMonteCarlo = false, delayPensions = false, mcIterationIndex = 0, scenarioType: FutureScenarioType = 'BASE') => {
     const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0 } = params;
@@ -282,22 +252,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     const rrqBasePension = retirementGoal.governmentPension * 0.65 * rrqAdjustmentFactor;
     const psvBasePension = retirementGoal.governmentPension * 0.35;
 
-    const RRIF_RATES: Record<number, number> = {
-        72: 0.0540, 73: 0.0553, 74: 0.0567, 75: 0.0582, 76: 0.0598,
-        77: 0.0617, 78: 0.0636, 79: 0.0658, 80: 0.0682, 81: 0.0708,
-        82: 0.0738, 83: 0.0771, 84: 0.0808, 85: 0.0851, 86: 0.0899,
-        87: 0.0955, 88: 0.1021, 89: 0.1099, 90: 0.1192, 91: 0.1306,
-        92: 0.1449, 93: 0.1634, 94: 0.2000
-    };
-
-    const welcomeTax = (price: number): number => {
-        let tax = 0;
-        if (price > 500000) tax += (price - 500000) * 0.030;
-        else if (price > 300000) tax += (price - 300000) * 0.015;
-        else if (price > 50000) tax += (price - 50000) * 0.010;
-        tax += Math.min(price, 50000) * 0.005;
-        return tax;
-    };
+    // D2.2: RRIF_RATES et welcomeTax → ./projection/helpers
 
     let prevCELI = celi, prevREER = reer, prevLiquid = liquid, prevNW = (liquid + celi + reer + nonReg + crypto + reee);
     let nonRegACB = nonReg;
@@ -351,13 +306,6 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             const Z_crypto = (Z_market * 1.2 + gaussianRandom(rng, 0, 1) * 0.8);
             const Z_inflation_shock = (-Z_market * 0.4 + Z_macro * 0.6 + gaussianRandom(rng, 0, 1) * 0.5);
             const Z_cash = (Z_inflation_shock * 0.5 + gaussianRandom(rng, 0, 1) * 0.5);
-
-            const applyShock = (baseRateAnnual: number, sigmaAnnual: number, shock: number): number => {
-                const muMonthly = Math.pow(1 + baseRateAnnual / 100, 1 / 12) - 1;
-                const sigmaMonthly = (sigmaAnnual / 100) / Math.sqrt(12);
-                const monthlyRateWithShock = muMonthly + sigmaMonthly * shock;
-                return (Math.pow(1 + monthlyRateWithShock, 12) - 1) * 100;
-            };
 
             mcCeliRate = applyShock(baseRates.celi, 15, Z_stocks);
             mcReerRate = applyShock(baseRates.reer, 15, Z_stocks);

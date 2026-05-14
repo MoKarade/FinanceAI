@@ -60,6 +60,27 @@ export interface BudgetConfig {
   customSplit?: number;
 }
 
+// W5.1 — Profil santé enrichi
+export type HealthRating = 'excellent' | 'good' | 'average' | 'poor';
+export type Gender = 'M' | 'F' | 'X';
+export type CanadianProvince =
+  | 'QC' | 'ON' | 'AB' | 'BC' | 'MB' | 'SK' | 'NS' | 'NB' | 'NL' | 'PE' | 'YT' | 'NT' | 'NU';
+export type EmploymentType = 'employee' | 'self-employed' | 'contractor' | 'business-owner' | 'unemployed' | 'retired' | 'student';
+export type PensionPlan = 'DB' | 'DC' | 'RPDB' | 'none';
+export type MaritalStatus = 'single' | 'married' | 'common-law' | 'separated' | 'divorced' | 'widowed';
+
+// W5.5 — Régime DB d'employeur étendu
+export interface DbPlanDetails {
+  monthlyAtRetirement?: number;          // estimation de la rente mensuelle
+  indexationPct?: number;                // 0-100, fraction d'IPC répercutée
+  startAge?: number;                     // âge début versement
+  yearsOfService?: number;               // années cotisées
+  buybackYears?: number;                 // années rachetables
+  buybackCostPerYear?: number;           // coût par année rachetée
+  electionType?: 'single' | 'joint60' | 'joint66' | 'joint100'; // option survivant
+  survivorPct?: number;                  // % rente pour conjoint survivant
+}
+
 export interface User {
   name: string;
   grossSalary: number;
@@ -68,6 +89,9 @@ export interface User {
   color: string;
   age?: number;
   birthYear?: number;
+  birthMonth?: number;                   // W5.1 (1-12)
+  birthDay?: number;                     // W5.1 (1-31)
+  gender?: Gender;                       // W5.1 — table mortalité diffère
   canadaArrivalYear?: number;
   hasOwnedPropertyLast4Years?: boolean;
   hasChildren?: boolean;
@@ -76,6 +100,36 @@ export interface User {
   celiContributed?: number;
   rrspContributed?: number;
   facteurEquivalence?: number;
+  // W5.1 — Santé et longévité
+  healthRating?: HealthRating;
+  isSmoker?: boolean;
+  bmiCategory?: 'underweight' | 'normal' | 'overweight' | 'obese';
+  chronicConditions?: string[];          // ['diabetes', 'cardio', 'cancer-history', ...]
+  parentAgeAtDeath?: { mother?: number; father?: number };
+  activityLevel?: 'sedentary' | 'light' | 'moderate' | 'active';
+  // W5.1 — Carrière
+  industry?: string;                     // 'tech', 'health', 'finance', 'public-sector', ...
+  yearsOfExperience?: number;
+  employmentType?: EmploymentType;
+  promotionLikelihood5Y?: number;        // 0-100
+  pensionPlan?: PensionPlan;
+  dbPlan?: DbPlanDetails;
+  // W5.1 — Statut civil
+  province?: CanadianProvince;
+  citizenship?: 'CA' | 'US-person-CA' | 'other';
+  maritalStatus?: MaritalStatus;
+  // W5.2 — Rémunération variable
+  bonusPctOfGross?: number;              // 0-100, bonus annuel attendu
+  bonusVolatilityPct?: number;           // ecart-type % du bonus
+  rsuVestingPerYear?: number;            // $ RSU vesting annuel attendu
+  rsuYearsRemaining?: number;            // années restantes de vesting
+  stockOptionsValue?: number;            // valeur intrinsèque actuelle
+  commissionPctOfGross?: number;         // % variable de commission
+  // W5.2 — Side income
+  sideIncomeAnnual?: number;             // freelance, royalties, etc.
+  cryptoStakingAnnual?: number;
+  // W5.2 — Périodicité paie
+  payFrequency?: 'biweekly' | 'semimonthly' | 'monthly' | 'weekly';
 }
 
 export interface BudgetCategory {
@@ -168,6 +222,183 @@ export interface ProjectionConfig {
   jobLossEnabled?: boolean;
   jobLossAnnualProbability?: number; // défaut 0.03
   jobLossDurationMonths?: number;    // défaut 6
+
+  // ────────────────────────────────────────────────────────────────────
+  // W1.x — Précision avancée
+  // ────────────────────────────────────────────────────────────────────
+  // W1.1 — Perf: déléguer Monte Carlo au Web Worker
+  useWebWorker?: boolean;
+  monteCarloIterations?: number;      // défaut 100, max 2000
+
+  // W1.2 — Bootstrap historique (rendements réels 1928-2024 S&P 500)
+  // Au lieu de tirages gaussiens, on rééchantillonne des blocs de l'historique.
+  useHistoricalBootstrap?: boolean;
+  bootstrapBlockSize?: number;        // mois, défaut 24
+
+  // W1.3 — RRQ et PSV séparés (corrige L1: governmentPension × 0.65/0.35)
+  rrqMonthly?: number;                // estimation rente RRQ mensuelle individuelle
+  psvMonthly?: number;                // estimation PSV mensuelle (max 2025: ~734$)
+  rrqMonthlySpouse?: number;
+  psvMonthlySpouse?: number;
+
+  // W1.4 — Scénario survivant
+  modelSurvivor?: boolean;            // active la simulation après décès conjoint
+  spouseDbSurvivorPct?: number;       // % rente DB conservée par survivant (0-100)
+  rrqSurvivorPct?: number;            // défaut 60%
+
+  // W2.6 — Drawdown order optimizer
+  useDrawdownOptimizer?: boolean;     // explore plusieurs séquences et choisit la meilleure
+
+  // W4.1 — Tax bracket visualization
+  showTaxBracketBreakdown?: boolean;
+
+  // W3.1 — Divorce probabiliste
+  divorceEnabled?: boolean;
+  divorceAnnualProbability?: number;  // défaut 0.015 (1.5%/an pendant 30 ans → ~36%)
+  divorceSplitPct?: number;           // % patrimoine perdu (défaut 50)
+  divorceAlimonyMonthly?: number;     // pension alimentaire mensuelle versée
+
+  // W3.2 — Invalidité longue durée
+  ltdEnabled?: boolean;
+  ltdAnnualProbability?: number;      // défaut 0.005
+  ltdIncomeReplacementPct?: number;   // % salaire couvert par assurance (défaut 60)
+  ltdDurationMonths?: number;         // défaut 24
+
+  // W3.3 — Maladie grave
+  criticalIllnessEnabled?: boolean;
+  ciAnnualProbability?: number;       // défaut 0.003
+  ciPayoutAmount?: number;            // forfait reçu (assurance maladies graves)
+  ciExtraMonthlyExpense?: number;     // dépenses additionnelles
+
+  // W3.4 — Héritage probabilisé
+  inheritanceEnabled?: boolean;
+  inheritanceExpectedAmount?: number;
+  inheritanceExpectedAtAge?: number;
+  inheritanceUncertaintyYears?: number; // étalement ±N ans
+  inheritanceProbability?: number;      // 0-1
+
+  // W3.5 — Boomerang kids / sandwich generation
+  boomerangSupportMonthly?: number;
+  boomerangStartAge?: number;
+  boomerangDurationMonths?: number;
+  caregivingMonthly?: number;
+  caregivingStartAge?: number;
+  caregivingDurationMonths?: number;
+
+  // W3.7 — Severance / mise à pied avec prime
+  severanceWeeksPerYear?: number;     // défaut 2 semaines / année d'ancienneté
+  severanceCapWeeks?: number;         // plafond
+
+  // W2.7 — Geographic arbitrage
+  futureProvince?: CanadianProvince;
+  futureProvinceMoveYear?: number;
+
+  // W4.3 — Sensitivity analysis
+  enableSensitivityAnalysis?: boolean;
+
+  // W4.5 — Replay historique
+  replayHistoricalYear?: number;      // 1929 | 1973 | 2000 | 2008 | 2020 | undefined
+
+  // W4.6 — Semi-retraite
+  phasedRetirementEnabled?: boolean;
+  phasedRetirementStartAge?: number;
+  phasedRetirementHoursPct?: number;  // ex: 50% = mi-temps
+
+  // W4.7 — Snowbird (4-6 mois US/Mexique)
+  snowbirdEnabled?: boolean;
+  snowbirdMonthsPerYear?: number;     // défaut 5
+  snowbirdExtraMonthlyCost?: number;  // surcoût mensuel
+
+  // W2.1 — Roth-equivalent ladder (REER→CELI via brackets)
+  enableRothLadder?: boolean;
+}
+
+// ────────────────────────────────────────────────────────────────────
+// W5.3 — Dettes étendues (HELOC, cartes, étudiants, auto, perso, marge)
+// ────────────────────────────────────────────────────────────────────
+export type DebtKind = 'mortgage' | 'heloc' | 'auto' | 'student-federal' | 'student-quebec' | 'credit-card' | 'personal' | 'margin' | 'spouse-loan' | 'other';
+
+// ────────────────────────────────────────────────────────────────────
+// W5.4 — Assurances
+// ────────────────────────────────────────────────────────────────────
+export type InsuranceKind = 'life-term' | 'life-whole' | 'life-universal' | 'disability-st' | 'disability-lt' | 'critical-illness' | 'long-term-care' | 'travel' | 'auto' | 'home' | 'liability';
+
+export interface InsurancePolicy {
+  id: string;
+  kind: InsuranceKind;
+  insurer?: string;
+  faceAmount?: number;          // capital décès / capital invalidité
+  monthlyPremium: number;
+  expiryDate?: string;          // pour temporaire (T10/T20/T30)
+  cashValue?: number;           // pour vie entière / universelle
+  beneficiary?: string;
+  notes?: string;
+}
+
+// ────────────────────────────────────────────────────────────────────
+// W5.6 — Immeuble locatif (cap rate, vacancy, NOI)
+// ────────────────────────────────────────────────────────────────────
+export interface RentalProperty {
+  id: string;
+  name: string;
+  purchasePrice: number;
+  currentValue: number;
+  mortgageBalance: number;
+  mortgageRate: number;
+  monthlyRent: number;
+  vacancyPct: number;           // 0-100
+  monthlyExpenses: number;      // taxes, entretien, assurance, gestion
+  capRate?: number;             // calculé: NOI / valeur
+  acquisitionDate?: string;
+  amortizationYears?: number;
+  ccaTaken?: number;            // DPA cumulée (recapture à la vente)
+}
+
+// ────────────────────────────────────────────────────────────────────
+// W5.7 — Entreprise privée (CCPC)
+// ────────────────────────────────────────────────────────────────────
+export interface PrivateBusiness {
+  id: string;
+  name: string;
+  ownershipPct: number;          // % détenu
+  estimatedValue: number;        // valeur juste marchande
+  annualDividend?: number;       // dividende reçu
+  retainedEarnings?: number;     // BNR
+  ccpcSmallBizDeduction?: boolean; // accès DPE
+  industry?: string;
+}
+
+// ────────────────────────────────────────────────────────────────────
+// W5.x — Goals supplémentaires
+// ────────────────────────────────────────────────────────────────────
+export interface WeddingGoal {
+  id: string;
+  isActive: boolean;
+  date: string;
+  budget: number;
+  contributionFromParents?: number;
+}
+
+export interface VehicleReplacement {
+  id: string;
+  cyclYears: number;             // ex: 8 ans
+  costEstimate: number;
+  isElectric?: boolean;
+}
+
+export interface MajorRenovation {
+  id: string;
+  date: string;
+  cost: number;
+  description?: string;
+}
+
+export interface CharitableGoal {
+  id: string;
+  annualAmount: number;
+  donateAppreciatedSecurities?: boolean; // optimisation fiscale
+  startYear?: number;
+  endYear?: number;
 }
 
 export interface RealEstateGoal {
@@ -234,6 +465,14 @@ export interface Debt {
   interestRate: number;
   minimumPayment: number;
   category: 'CreditCard' | 'Car' | 'Student' | 'Personal' | 'Other';
+  // W5.3 — Champs étendus
+  kind?: DebtKind;
+  isVariableRate?: boolean;
+  limit?: number;                  // pour HELOC, carte de crédit
+  amortizationYears?: number;      // pour auto, hypothécaire
+  termEndDate?: string;            // date fin terme (renouvellement hypo)
+  rateProvider?: string;           // institution prêteuse
+  isInterestDeductible?: boolean;  // intérêt sur prêt placement / Smith Manoeuvre
 }
 
 export interface TravelGoal {
@@ -271,6 +510,22 @@ export interface RetirementGoal {
   dbPensionMonthly?: number;
   dbPensionIndexationPct?: number; // 0-100, fraction de l'IPC répercutée
   dbPensionStartAge?: number;      // par défaut targetAge
+  // W5.5 — Option de pension survivant (joint-life vs single-life)
+  dbElectionType?: 'single' | 'joint60' | 'joint66' | 'joint100';
+  dbSurvivorPct?: number;          // % rente au conjoint survivant (60/66/100)
+  // W1.3 — Plages personnalisées RRQ/PSV (override de governmentPension)
+  rrqEstimateMonthly?: number;     // rente RRQ projetée individuelle
+  psvEstimateMonthly?: number;     // rente PSV projetée
+  // W4.6 — Semi-retraite
+  isPhasedRetirement?: boolean;
+  phasedStartAge?: number;
+  phasedIncomePct?: number;        // % de salaire conservé pendant phased
+  // W2.3 — Spousal RRSP
+  useSpousalRrsp?: boolean;
+  // W2.1 — Roth ladder
+  useReerToCeliLadder?: boolean;
+  // Préférences décaissement
+  drawdownPreference?: 'AUTO' | 'TAX_EFFICIENT' | 'PRESERVE_CELI' | 'EMPTY_REER_FIRST';
 }
 
 export type GoalType = 'NET_WORTH' | 'CELI' | 'REER' | 'LIQUIDITY' | 'CUSTOM' | 'EXPENSE_OPTIMIZATION' | 'REBALANCING';
@@ -357,6 +612,14 @@ export interface AppState {
   lastUpdate: number;
   categorizationRules: CategorizationRule[];
   aiConversation: AiMessage[];
+  // W5.x — Nouveaux containers
+  insurancePolicies?: InsurancePolicy[];
+  rentalProperties?: RentalProperty[];
+  privateBusinesses?: PrivateBusiness[];
+  weddingGoal?: WeddingGoal;
+  vehicleReplacements?: VehicleReplacement[];
+  majorRenovations?: MajorRenovation[];
+  charitableGoals?: CharitableGoal[];
 }
 
 export interface RecurringItem {

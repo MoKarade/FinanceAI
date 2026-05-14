@@ -1,8 +1,10 @@
 # 🔮 Projection Future — Documentation détaillée du moteur
 
-> **Fichier source** : `services/projection.ts` (~2200 lignes) + `services/projection/helpers.ts` + `services/projection/goalSeek.ts` + `services/projection/drawdownOptimizer.ts` + `services/projection/historicalReturns.ts` + `services/projection/runAsync.ts` + `services/projection.worker.ts`
-> **Point d'entrée public** : `calculateFutureProjection(params, runMC = false, selectedIdx = 0)`
+> **Fichier source** : `services/projection.ts` (~2400 lignes) + `services/projection/helpers.ts` + `services/projection/goalSeek.ts` + `services/projection/drawdownOptimizer.ts` + `services/projection/historicalReturns.ts` + `services/projection/runAsync.ts` + `services/projection/assetLocation.ts` + `services/projection.worker.ts`
+> **Point d'entrée public** : `calculateFutureProjection(params, runMC = false, selectedIdx = 0): ProjectionResult`
+> **API async** : `runProjectionAsync(params, runMC, selectedIdx): Promise<ProjectionResult>` — exécute dans un Web Worker avec timeout 30s
 > **Public** : utilisateurs non-experts qui veulent comprendre **exactement** ce que la simulation fait au mois près.
+> **UI composants** : `components/Retirement.tsx` (orchestration) + `components/retirement/GoalSeekerCard.tsx` (projection inverse) + `components/retirement/AssetLocationCard.tsx` (asset location)
 
 ---
 

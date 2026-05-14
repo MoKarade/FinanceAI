@@ -7,7 +7,7 @@
 //    croisés (le worker répondait FIFO sans corrélation).
 //  - terminate() + recréation au prochain appel si le worker crash.
 
-import type { SimulationParams } from '../projection';
+import type { SimulationParams, ProjectionResult } from '../projection';
 
 let _worker: Worker | null = null;
 let _nextRequestId = 1;
@@ -57,7 +57,7 @@ export async function runProjectionAsync(
     params: SimulationParams,
     runMC: boolean = false,
     selectedIdx: number = 0,
-): Promise<any> {
+): Promise<ProjectionResult> {
     const worker = getWorker();
     if (!worker) {
         const { calculateFutureProjection } = await import('../projection');
@@ -65,22 +65,41 @@ export async function runProjectionAsync(
     }
     const id = _nextRequestId++;
     return new Promise((resolve, reject) => {
+        // FIX cycle 3 silent-failure (MEDIUM): timeout + messageerror.
+        // Sans timeout, un worker qui hang ou poste un message sans __requestId
+        // laisse la Promise pendante indéfiniment.
+        const TIMEOUT_MS = 30_000;
+        const cleanup = () => {
+            worker.removeEventListener('message', onMessage);
+            worker.removeEventListener('error', onError);
+            worker.removeEventListener('messageerror', onMessageError);
+            clearTimeout(timeoutHandle);
+        };
         const onMessage = (e: MessageEvent) => {
             // Ne réagir qu'au message correspondant à ce requestId
             if (!e.data || e.data.__requestId !== id) return;
-            worker.removeEventListener('message', onMessage);
-            worker.removeEventListener('error', onError);
+            cleanup();
             if (e.data.__error) reject(new Error(e.data.__error));
             else resolve(e.data.result);
         };
         const onError = (e: ErrorEvent) => {
-            worker.removeEventListener('message', onMessage);
-            worker.removeEventListener('error', onError);
+            cleanup();
             _workerDead = true; // forcera la recréation
             reject(new Error(e.message || 'Worker error'));
         };
+        const onMessageError = (e: MessageEvent) => {
+            cleanup();
+            _workerDead = true;
+            reject(new Error('Worker messageerror (payload non-clonable): ' + String(e.data ?? '')));
+        };
+        const timeoutHandle = setTimeout(() => {
+            cleanup();
+            _workerDead = true; // recréation au prochain appel
+            reject(new Error(`Worker timeout après ${TIMEOUT_MS}ms (requestId=${id})`));
+        }, TIMEOUT_MS);
         worker.addEventListener('message', onMessage);
         worker.addEventListener('error', onError);
+        worker.addEventListener('messageerror', onMessageError);
         const req: WorkerRequest = { __requestId: id, params, runMC, selectedIdx };
         worker.postMessage(req);
     });

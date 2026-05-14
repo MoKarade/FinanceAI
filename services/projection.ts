@@ -2,7 +2,7 @@
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config } from '../types';
 import { calculateFiscalReport, CELI_ANNUAL_LIMITS, calculateCeliRoom, calculateGrossFromNet, getMarginalRate, calculateDividendTax, RRSP_ANNUAL_LIMITS, calculateGrossWithholdingRRSP } from '../utils/tax';
 import { mulberry32, gaussianRandom, applyShock, MER, RRIF_RATES, welcomeTax, ltcAnnualProbability, mortalityAnnualProbability } from './projection/helpers';
-import { buildHistoricalSequence, buildReplaySequence, type YearReturn } from './projection/historicalReturns';
+import { buildHistoricalSequence, buildReplaySequence, canadianInflationFor, type YearReturn } from './projection/historicalReturns';
 
 export interface SimulationParams {
     projection: ProjectionConfig;
@@ -26,6 +26,39 @@ export interface SimulationParams {
 export type AllocationStrategy = 'AUTO_MARGINAL' | 'PRIO_REER' | 'PRIO_CELI' | 'MELTDOWN_REER' | 'DEBT_FIRST';
 
 export type FutureScenarioType = 'BASE' | 'LIBERTE_55' | 'HYPER_INFLATION' | 'WINDFALL' | 'ECONOMIC_WINTER';
+
+// FIX cycle 2 TS reviewer (ROI massif): typer le retour de calculateFutureProjection
+// élimine ~40 erreurs en mode strict (cascade TS2339 sur consumers .chartData, .NetWorth, etc.).
+// `any` toléré sur les sous-champs profonds (chartData entries, expertMetrics) qui sont
+// dynamiquement construits — mais les champs top-level sont contraints.
+export interface ProjectionResult {
+    chartData: any[];
+    finalNetWorth?: number;
+    estateNetWorth?: number;
+    totalTaxesPaid?: number;
+    totalGrowth?: number;
+    totalExpenses?: number;
+    minNetWorth?: number;
+    shortfallMonths?: number;
+    shortfallRate?: number;
+    fireNumber?: number;
+    aiNote?: string;
+    strategyName?: string;
+    stratType?: FutureScenarioType | string;
+    stratDescription?: string;
+    pros?: string[];
+    cons?: string[];
+    icon?: string;
+    delayPensions?: boolean;
+    gainVsAuto?: number;
+    successRate?: number | null;
+    fvi?: number | null;
+    expertMetrics?: any;
+    allResults?: ProjectionResult[];
+    bestStrategyIdx?: number;
+    actionPlan?: { monthlyCashflow: number; strategy: AllocationStrategy } | null;
+    [key: string]: any; // sub-fields dynamiques pour compat
+}
 
 // D2.2: mulberry32, gaussianRandom, applyShock, ASSET_VOLATILITY, MER,
 // RRIF_RATES et welcomeTax sont désormais dans ./projection/helpers.
@@ -202,7 +235,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         ? getMonthOffset(realEstateGoals.find(g => g.isActive && g.isPrimaryResidence)!.purchaseDate)
         : -1;
 
-    let month1ActionPlan = null;
+    // FIX cycle 2 TS reviewer: type explicite pour éviter inférence `null` (cascade strict)
+    let month1ActionPlan: { monthlyCashflow: number; strategy: AllocationStrategy } | null = null;
     let accGrossIncomeYear = 0;
     let accRrspYear = 0;
 
@@ -404,7 +438,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 // sinon fallback US. Capture les vrais chocs d'inflation canadiens —
                 // notamment années 70-80 où CA et US ont divergé via les contrôles
                 // de prix Trudeau 1975-78.
-                currentInflation = histYear.canadianCpi ?? histYear.inflationRate;
+                currentInflation = canadianInflationFor(histYear.year, histYear.inflationRate);
                 // Crypto: garde gaussien (pas de série historique pertinente avant 2010)
             }
         }
@@ -2146,7 +2180,7 @@ const runMonteCarlo = (params: SimulationParams, strategy: AllocationStrategy, d
     return { successRate, p10Data, p50Data, p90Data, fvi, expertMetrics };
 };
 
-export const calculateFutureProjection = (params: SimulationParams, runMC: boolean = false, selectedIdx: number = 0) => {
+export const calculateFutureProjection = (params: SimulationParams, runMC: boolean = false, selectedIdx: number = 0): ProjectionResult => {
     // V90: Avenirs de Vie (5 Distinct Futures)
     const resBase = { 
         ...runScenario(params, 'AUTO_MARGINAL', false, false, 0, 'BASE'), 

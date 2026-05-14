@@ -211,10 +211,9 @@ const CANADIAN_CPI: Record<number, number> = {
     2023:  3.9,  2024:  2.4,
 };
 
-// Décore les données historiques avec le CPI canadien correspondant
-HISTORICAL_RETURNS_US.forEach(y => {
-    y.canadianCpi = CANADIAN_CPI[y.year];
-});
+// FIX cycle 2 code-reviewer (MEDIUM): suppression de la mutation top-level
+// de HISTORICAL_RETURNS_US (effet de bord cross-test). Le CPI canadien est
+// désormais lu à la demande via canadianInflationFor(year, fallback).
 
 /**
  * Récupère le CPI canadien pour une année donnée, avec fallback US si manquant.

@@ -70,15 +70,26 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
     const maxValue = activeGoal.maxValue || 0;
     const propertyName = activeGoal.name || (activeGoal.isPrimaryResidence ? 'Résidence Principale' : 'Investissement');
 
-    const [taxesYearly, setTaxesYearly] = useState(3000);
-    const [heatingMonthly, setHeatingMonthly] = useState(150);
-    const [condoFees, setCondoFees] = useState(0);
+    const [taxesYearly, setTaxesYearly] = useState(activeGoal.taxesYearly ?? 3000);
+    const [heatingMonthly, setHeatingMonthly] = useState(activeGoal.heatingMonthly ?? 150);
+    const [condoFees, setCondoFees] = useState(activeGoal.condoFees ?? 0);
 
+    // Sync from store when switching between properties
+    useEffect(() => {
+        setTaxesYearly(activeGoal.taxesYearly ?? 3000);
+        setHeatingMonthly(activeGoal.heatingMonthly ?? 150);
+        setCondoFees(activeGoal.condoFees ?? 0);
+    }, [activeGoalId]);
+
+    // AUTO: compute from price and persist to store
     useEffect(() => {
         if (mode === 'AUTO') {
-            setTaxesYearly(Math.round(price * 0.01));
-            setHeatingMonthly(Math.round(80 + (price / 10000) * 1.5));
+            const t = Math.round(price * 0.01);
+            const h = Math.round(80 + (price / 10000) * 1.5);
+            setTaxesYearly(t);
+            setHeatingMonthly(h);
             setCondoFees(0);
+            setGoals(goals.map(g => g.id === activeGoal.id ? { ...g, taxesYearly: t, heatingMonthly: h, condoFees: 0 } : g));
         }
     }, [price, mode]);
 
@@ -409,7 +420,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                     type="number"
                                     step="100"
                                     value={taxesYearly}
-                                    onChange={e => setTaxesYearly(Number(e.target.value))}
+                                    onChange={e => { const v = Number(e.target.value); setTaxesYearly(v); updateActiveGoal({ taxesYearly: v }); }}
                                     disabled={mode === 'AUTO'}
                                     className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
                                 />
@@ -420,7 +431,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                     type="number"
                                     step="10"
                                     value={heatingMonthly}
-                                    onChange={e => setHeatingMonthly(Number(e.target.value))}
+                                    onChange={e => { const v = Number(e.target.value); setHeatingMonthly(v); updateActiveGoal({ heatingMonthly: v }); }}
                                     disabled={mode === 'AUTO'}
                                     className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
                                 />
@@ -431,7 +442,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                     type="number"
                                     step="50"
                                     value={condoFees}
-                                    onChange={e => setCondoFees(Number(e.target.value))}
+                                    onChange={e => { const v = Number(e.target.value); setCondoFees(v); updateActiveGoal({ condoFees: v }); }}
                                     disabled={mode === 'AUTO'}
                                     className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
                                 />

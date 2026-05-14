@@ -1,4 +1,3 @@
-
 export interface Transaction {
   id: number;
   date: string;
@@ -126,6 +125,7 @@ export interface ProjectionConfig {
   vehicleReplacementEnabled?: boolean;
   useSmithManoeuvre?: boolean;
   optimizeSourceDeductions?: boolean;
+  investmentTargetPcts?: Record<string, number>;
 }
 
 export interface RealEstateGoal {
@@ -151,6 +151,9 @@ export interface RealEstateGoal {
   maintenanceYearly?: number;
   currentValue?: number;
   mortgageBalance?: number;
+  taxesYearly?: number;
+  heatingMonthly?: number;
+  condoFees?: number;
 }
 
 export interface ChildGoal {
@@ -165,6 +168,12 @@ export interface ChildGoal {
   monthlyDaycare: number;
   governmentBenefits: number;
   parentalLeaveIncomeDrop: number;
+  daycareType?: string;
+  schoolType?: string;
+  activitiesLevel?: string;
+  universityType?: string;
+  carGift?: string;
+  respContribution?: number;
 }
 
 export interface SavingsGoal {

@@ -1,5 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
+import { z } from "zod";
 import { Transaction, RecurringItem, FinancialGoal, GoalType, Asset } from "../types";
 
 const MODEL_NAME = "gemini-2.0-flash";
@@ -12,7 +13,8 @@ const MODEL_NAME = "gemini-2.0-flash";
 //    - Escape des guillemets pour eviter la prompt injection
 //    - Troncature a 60 caracteres max
 // 2. Arrondi des montants exacts a 100$ avant envoi (reduit la precision PII)
-// 3. Le contexte fiscal quebecois reste necessaire pour la categorisation par
+// 3. Validation Zod des reponses LLM (anti-schema-drift, anti-rate-limit JSON)
+// 4. Le contexte fiscal quebecois reste necessaire pour la categorisation par
 //    nom de marchand. Une anonymisation complete par hash casserait l'efficacite
 //    de categorisation. A evaluer en Phase ulterieure : passer ces calls par
 //    MCP/Claude (qui pourrait recevoir uniquement les hash et faire le mapping
@@ -32,6 +34,67 @@ const sanitizePayee = (raw: string): string => {
 
 const roundToHundred = (amount: number): number => {
     return Math.round(amount / 100) * 100;
+};
+
+// ---------------------------------------------------------------------------
+// Schemas Zod : validation stricte des reponses LLM (T4)
+// ---------------------------------------------------------------------------
+
+const CategorizeItemSchema = z.object({
+    id: z.number(),
+    category: z.string(),
+    isTransfer: z.boolean().optional(),
+    confidence: z.number().optional(),
+});
+const CategorizeArraySchema = z.array(CategorizeItemSchema);
+
+const SubscriptionItemSchema = z.object({
+    payee: z.string(),
+    averageAmount: z.number(),
+    dayOfMonth: z.number(),
+    category: z.string(),
+    yearlyCost: z.number(),
+});
+const SubscriptionArraySchema = z.array(SubscriptionItemSchema);
+
+const SmartGoalItemSchema = z.object({
+    name: z.string(),
+    type: z.enum(['NET_WORTH', 'CELI', 'REER', 'LIQUIDITY', 'CUSTOM', 'EXPENSE_OPTIMIZATION', 'REBALANCING']),
+    targetAmount: z.number(),
+    target_account: z.enum(['CELI', 'REER', 'NON-ENREG', 'CRYPTO']).optional(),
+    estimated_yield: z.number().optional(),
+    monthly_cashflow_impact: z.number().optional(),
+    months_to_goal: z.number().optional(),
+    rationale: z.string().optional(),
+    action_plan: z.array(z.string()).optional(),
+});
+const SmartGoalArraySchema = z.array(SmartGoalItemSchema);
+
+const BudgetAnalysisArraySchema = z.array(z.string());
+
+/**
+ * Parse une reponse LLM en JSON puis valide contre un schema Zod.
+ * Renvoie null si parse ou validation echoue ; logge l'erreur cote console.
+ */
+const safeJsonValidate = <T>(text: string, schema: z.ZodType<T>): T | null => {
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(text);
+    } catch (e) {
+        const cleaned = text.trim().replace(/^```json/, '').replace(/```$/, '').trim();
+        try {
+            parsed = JSON.parse(cleaned);
+        } catch (e2) {
+            console.warn('[FinanceAI Gemini] JSON.parse failed:', e2, 'raw:', text.slice(0, 200));
+            return null;
+        }
+    }
+    const result = schema.safeParse(parsed);
+    if (!result.success) {
+        console.warn('[FinanceAI Gemini] Zod validation failed:', result.error.issues.slice(0, 5));
+        return null;
+    }
+    return result.data;
 };
 
 // Contexte fiscal et culturel quebecois pour ameliorer la precision de l'IA
@@ -87,12 +150,6 @@ const matchFromHistory = (transactions: Transaction[], history: Transaction[]) =
     });
     return { matched, remaining };
 };
-const safeJsonParse = (text: string): any[] => {
-    try { return JSON.parse(text); } catch (e) {
-        let cleaned = text.trim().replace(/^```json/, '').replace(/```$/, '').trim();
-        try { return JSON.parse(cleaned); } catch (e2) { return []; }
-    }
-};
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const categorizeBatch = async (transactions: Transaction[], apiKey: string, history: Transaction[] = [], allowedCategories: string[] = [], onProgress?: any): Promise<Transaction[]> => {
@@ -122,8 +179,8 @@ export const categorizeBatch = async (transactions: Transaction[], apiKey: strin
                     tools: [{ googleSearch: {} }]
                 }
             });
-            const results = safeJsonParse(response.text || "[]");
-            const batchMap = new Map(results.map((r: any) => [r.id, r]));
+            const validated = safeJsonValidate(response.text || "[]", CategorizeArraySchema);
+            const batchMap = new Map((validated || []).map(r => [r.id, r]));
             const processedBatch = batch.map(t => {
                 const aiRes = batchMap.get(t.id);
                 return { ...t, category: aiRes?.category || "Inconnu", status: 'processed' as const, isTransfer: aiRes?.isTransfer === true, confidence: aiRes?.confidence || 50 };
@@ -139,8 +196,8 @@ export const categorizeBatch = async (transactions: Transaction[], apiKey: strin
                     contents: prompt,
                     config: { responseMimeType: "application/json" }
                 });
-                const fallbackResults = safeJsonParse(fallbackResponse.text || "[]");
-                const fallbackMap = new Map(fallbackResults.map((r: any) => [r.id, r]));
+                const validatedFb = safeJsonValidate(fallbackResponse.text || "[]", CategorizeArraySchema);
+                const fallbackMap = new Map((validatedFb || []).map(r => [r.id, r]));
                 const fallbackBatch = batch.map(t => {
                     const aiRes = fallbackMap.get(t.id);
                     return { ...t, category: aiRes?.category || "Inconnu", status: 'processed' as const, isTransfer: aiRes?.isTransfer === true, confidence: aiRes?.confidence || 50 };
@@ -165,7 +222,9 @@ export const detectSubscriptionsAI = async (transactions: Transaction[], apiKey:
     const prompt = `${QUEBEC_FISCAL_CONTEXT}\n\nIdentifie les ABONNEMENTS RECURRENTS FIXES uniquement. Ignore les depenses variables.\nDonnees (montants arrondis a 100$):\n${recent.join('\n')}\nRetourne JSON: [{ "payee": string, "averageAmount": number, "dayOfMonth": number, "category": string, "yearlyCost": number }]`;
     try {
         const response = await ai.models.generateContent({ model: MODEL_NAME, contents: prompt, config: { responseMimeType: "application/json" } });
-        return safeJsonParse(response.text || "[]").map((item: any) => ({ ...item, lastDate: new Date().toISOString().split('T')[0] }));
+        const validated = safeJsonValidate(response.text || "[]", SubscriptionArraySchema);
+        if (!validated) return [];
+        return validated.map(item => ({ ...item, lastDate: new Date().toISOString().split('T')[0] }));
     } catch (e) {
         console.error("[FinanceAI] detectSubscriptionsAI a echoue:", e);
         return [];
@@ -261,10 +320,12 @@ export const generateSmartGoals = async (
             config: { responseMimeType: "application/json" }
         });
 
-        const rawGoals = safeJsonParse(response.text || "[]");
+        const validated = safeJsonValidate(response.text || "[]", SmartGoalArraySchema);
+        if (!validated) return [];
+
         const today = new Date();
 
-        return rawGoals.map((g: any) => {
+        return validated.map(g => {
             const months = (g.months_to_goal && g.months_to_goal > 0) ? g.months_to_goal : 12;
             const targetDate = new Date(today);
             targetDate.setMonth(targetDate.getMonth() + months);
@@ -274,13 +335,13 @@ export const generateSmartGoals = async (
                 // Phase 0 hardening: crypto.randomUUID() au lieu de Math.random().toString(36).substr (deprecie)
                 id: `ai_goal_${Date.now()}_${(typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID().slice(0, 9) : Math.random().toString(36).slice(2, 11)}`,
                 name: g.name,
-                type: g.type,
+                type: g.type as GoalType,
                 targetAmount: g.targetAmount,
                 monthlyContributionReq: g.monthly_cashflow_impact || 0,
                 deadline: isoDate,
                 manualCurrentAmount: 0,
                 completed: false,
-                status: 'suggestion',
+                status: 'suggestion' as const,
                 rationale: g.rationale,
                 actionPlan: g.action_plan || [],
                 targetAccount: g.target_account || 'NON-ENREG',
@@ -334,8 +395,8 @@ export const analyzeBudgetAI = async (
             contents: prompt,
             config: { responseMimeType: "application/json" }
         });
-        const result = safeJsonParse(response.text || "[]");
-        return Array.isArray(result) && result.length > 0 ? result : ["L'IA n'a pas pu generer de recommandations valides."];
+        const validated = safeJsonValidate(response.text || "[]", BudgetAnalysisArraySchema);
+        return validated && validated.length > 0 ? validated : ["L'IA n'a pas pu generer de recommandations valides."];
     } catch (e) {
         console.error("[FinanceAI] AI Budget Analysis Error:", e);
         return ["Erreur lors de l'analyse du budget. Verifiez votre connexion ou votre cle API Gemini."];

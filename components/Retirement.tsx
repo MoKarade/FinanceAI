@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset } from '../types';
@@ -6,6 +5,7 @@ import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Refere
 import { calculateFutureProjection } from '../services/projection';
 import { fetchPortfolioHistory } from '../services/finance';
 import { calculateGrossFromNet } from '../services/tax';
+import { useFinanceStore } from '../store/useFinanceStore';
 
 interface RetirementProps {
     goal: RetirementGoal;
@@ -35,6 +35,7 @@ export const Retirement: React.FC<RetirementProps> = ({
     assets = [], initialBalances = {}, budgetItems = [],
     realEstateGoals = [], childGoals = [], travelGoals = [], lifeEvents = [], debts = []
 }) => {
+    const setAppState = useFinanceStore(s => s.setAppState);
     const [lifeExpectancy, setLifeExpectancy] = useState(90);
     const [currentAge, setCurrentAge] = useState(config.users[0]?.age || 30);
 
@@ -173,7 +174,11 @@ export const Retirement: React.FC<RetirementProps> = ({
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs text-gray-400 mb-1">Age Actuel</label>
-                                    <input type="number" min="18" max="80" value={currentAge} onChange={e => setCurrentAge(Number(e.target.value))} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-bold focus:border-primary transition-colors outline-none" />
+                                    <input type="number" min="18" max="80" value={currentAge} onChange={e => {
+                                        const val = Number(e.target.value);
+                                        setCurrentAge(val);
+                                        setAppState({ config: { ...config, users: config.users.map((u, i) => i === 0 ? { ...u, age: val } : u) as BudgetConfig['users'] } });
+                                    }} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-bold focus:border-primary transition-colors outline-none" />
                                 </div>
                                 <div>
                                     <label className="block text-xs text-gray-400 mb-1">Age Retraite</label>

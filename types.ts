@@ -271,6 +271,13 @@ export interface CategorizationRule {
   createdAt: string;
 }
 
+export interface AiMessage {
+  role: 'user' | 'model';
+  text: string;
+  /** ISO 8601 string (sérialisable JSON, contrairement à Date qui devient string après reload) */
+  timestamp: string;
+}
+
 export interface AppState {
   transactions: Transaction[];
   assets: Asset[];
@@ -301,6 +308,7 @@ export interface AppState {
   };
   lastUpdate: number;
   categorizationRules: CategorizationRule[];
+  aiConversation: AiMessage[];
 }
 
 export interface RecurringItem {

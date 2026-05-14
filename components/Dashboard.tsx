@@ -6,6 +6,7 @@ import { Transaction, Asset, BudgetCategory, RealEstateGoal, BudgetConfig, Child
 import { Card } from './ui/Card';
 import { fetchPortfolioHistory, MarketDataPoint } from '../services/finance';
 import { Sparkles, ArrowRight } from 'lucide-react';
+import { ASSET_META } from '../services/assetMeta';
 
 interface DashboardProps {
     transactions: Transaction[];
@@ -26,7 +27,6 @@ interface DashboardProps {
 }
 
 type TimeRange = '1M' | '3M' | 'YTD' | '1Y' | 'ALL' | 'CUSTOM';
-import { ASSET_META } from './Investments';
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#a855f7', '#ec4899', '#06b6d4', '#84cc16', '#6366f1'];
 

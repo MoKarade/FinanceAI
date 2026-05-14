@@ -5,6 +5,7 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip, BarChar
 import { Card } from './ui/Card';
 import { fetchPortfolioHistory, MarketDataPoint } from '../services/finance';
 import { StockChart } from './StockChart';
+import { ASSET_META } from '../services/assetMeta';
 
 interface InvestmentsProps {
     assets: Asset[];
@@ -21,33 +22,6 @@ interface InvestmentsProps {
     projection: any;
     setProjection: any;
 }
-
-// --- 1. INTERNAL METADATA (HARDCODED TRUTH) ---
-// Added: Frequency and Next Payment Month Estimate (1 = Jan, 12 = Dec)
-export const ASSET_META: Record<string, { sector: string, region: string, yield: number, name: string, freq: number, nextPayMonth?: number }> = {
-    // US TECH / SEMI
-    "NASDAQ:NVDA": { name: "Nvidia", sector: "Technologie", region: "USA", yield: 0.02, freq: 4, nextPayMonth: 3 },
-    "NASDAQ:AVGO": { name: "Broadcom", sector: "Technologie", region: "USA", yield: 1.4, freq: 4, nextPayMonth: 3 },
-    "NASDAQ:PLTR": { name: "Palantir", sector: "Technologie", region: "USA", yield: 0, freq: 1 },
-    "NASDAQ:KLAC": { name: "KLA Corp", sector: "Technologie", region: "USA", yield: 0.9, freq: 4, nextPayMonth: 3 },
-
-    // INDUSTRIE / AERO
-    "NYSE:HWM": { name: "Howmet Aero", sector: "Industrie", region: "USA", yield: 0.3, freq: 4, nextPayMonth: 2 },
-    "EPA:SAF": { name: "Safran", sector: "Industrie", region: "Europe", yield: 1.1, freq: 1, nextPayMonth: 5 },
-
-    // FINANCE
-    "NYSE:V": { name: "Visa", sector: "Finance", region: "USA", yield: 0.7, freq: 4, nextPayMonth: 3 },
-
-    // ASIA
-    "NYSE:TSM": { name: "TSMC", sector: "Technologie", region: "Asie", yield: 1.3, freq: 4, nextPayMonth: 4 },
-    "EPA:PAASI": { name: "Emerging Asia", sector: "Index", region: "Asie", yield: 0, freq: 1 },
-    "ANDXF": { name: "Amundi Em. Asia", sector: "Index", region: "Asie", yield: 0, freq: 1 },
-
-    // GLOBAL / COMMODITIES
-    "EPA:CW8": { name: "MSCI World", sector: "Index", region: "Global", yield: 1.5, freq: 1, nextPayMonth: 6 }, // Often capitalized, putting 1.5 theoretical
-    "BIT:GBS": { name: "Gold Bullion", sector: "Mines/Or", region: "Global", yield: 0, freq: 1 },
-    "EPA:PAAS": { name: "Pan American", sector: "Mines/Or", region: "Ameriques", yield: 1.2, freq: 4, nextPayMonth: 2 },
-};
 
 const COLORS_SECTOR: Record<string, string> = {
     "Technologie": "#3b82f6", // Blue

@@ -1,9 +1,9 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, BarChart, Bar } from 'recharts';
 import { RealEstateGoal } from '../types';
 import { INITIAL_REAL_ESTATE_GOAL } from '../constants';
+import { ConfirmModal } from './ui/ConfirmModal';
 
 interface RealEstateProps {
     availableCash: number;
@@ -40,16 +40,22 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
 
     const deleteGoal = (id: string) => {
         if (goals.length <= 1) return;
-        const newGoals = goals.filter(g => g.id !== id);
-        setGoals(newGoals);
-        if (activeGoalId === id) setActiveGoalId(newGoals[0].id);
+        setConfirmDeleteGoalId(id);
     };
+
+    const doConfirmDeleteGoal = () => {
+        if (!confirmDeleteGoalId) return;
+        const newGoals = goals.filter(g => g.id !== confirmDeleteGoalId);
+        setGoals(newGoals);
+        if (activeGoalId === confirmDeleteGoalId) setActiveGoalId(newGoals[0].id);
+        setConfirmDeleteGoalId(null);
+    };
+
+    const [confirmDeleteGoalId, setConfirmDeleteGoalId] = useState<string | null>(null);
 
     // Mode Switch
     const [mode, setMode] = useState<'AUTO' | 'MANUAL'>('MANUAL');
 
-    // Inputs (Local state synced or direct update depending on UX feel)
-    // Synchronized with activeGoal
     const price = activeGoal.price || 450000;
     const downPayment = activeGoal.downPayment || (price * 0.2);
     const downPaymentPercent = Math.round((downPayment / price) * 100);
@@ -61,10 +67,9 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
     const initialRenovations = activeGoal.initialRenovations || 0;
     const yearlyRenovations = activeGoal.yearlyRenovations || 0;
     const renewalRate = activeGoal.renewalRateProjection || 5.0;
-    const maxValue = activeGoal.maxValue || 0; // 0 = no cap
+    const maxValue = activeGoal.maxValue || 0;
     const propertyName = activeGoal.name || (activeGoal.isPrimaryResidence ? 'Résidence Principale' : 'Investissement');
 
-    // Frais récurrents (kept local for now or could be moved to type)
     const [taxesYearly, setTaxesYearly] = useState(3000);
     const [heatingMonthly, setHeatingMonthly] = useState(150);
     const [condoFees, setCondoFees] = useState(0);
@@ -82,7 +87,6 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
     const [localRentalAppreciation, setLocalRentalAppreciation] = useState(propertyGrowthRate);
     const [localStockReturn, setLocalStockReturn] = useState(marketReturn);
 
-    // Calculations
     const totalMortgage = price - downPayment;
     const welcomeTax = (() => {
         let tax = 0;
@@ -133,7 +137,6 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
             }
             totalInterestPaid += yearInterest;
             totalPrincipalPaid += yearPrincipal;
-            // Apply maxValue cap if set
             const rawValue = propertyValue * (1 + (propertyGrowthRate / 100));
             propertyValue = (maxValue > 0 && rawValue > maxValue) ? maxValue : rawValue;
             const calendarYear = purchaseYear + year;
@@ -142,7 +145,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                 calendarYear,
                 age: year,
                 Solde: Math.max(0, Math.round(balance)),
-                ValeurPropriété: Math.round(propertyValue),
+                ValeuréPropriété: Math.round(propertyValue),
                 Équité: Math.max(0, Math.round(propertyValue - Math.max(0, balance))),
                 IntérêtsCumul: Math.round(totalInterestPaid),
                 PrincipalCumul: Math.round(totalPrincipalPaid),
@@ -184,6 +187,14 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
 
     return (
         <div className="space-y-6 animate-fade-in pb-10">
+            <ConfirmModal
+                isOpen={!!confirmDeleteGoalId}
+                onConfirm={doConfirmDeleteGoal}
+                onCancel={() => setConfirmDeleteGoalId(null)}
+                title="Supprimer la propriété"
+                message="Supprimer ce scénario immobilier définitivement ?"
+                confirmLabel="Supprimer"
+            />
             {/* Multi-Property Tabs */}
             <div className="flex flex-wrap items-center gap-2 mb-4">
                 {goals.map((g, idx) => (
@@ -217,7 +228,6 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
             <div className="flex flex-col lg:flex-row justify-between items-start gap-4">
                 <div className="flex-1">
                     <h2 className="text-3xl font-bold text-white tracking-tight">🏢 {propertyName}</h2>
-                    {/* Editable name */}
                     <input
                         type="text"
                         value={propertyName}
@@ -468,7 +478,6 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                             const combinedData = Array.from({ length: amortization }, (_, i) => {
                                 const yr = i + 1;
 
-                                // Scenario 1: Buy to live (Primary Residence) vs Rent & Invest Difference
                                 let rentScenarioNetWorth = totalCashNeeded;
                                 let currentRentCost = currentRent;
                                 for (let y = 1; y <= yr; y++) {
@@ -481,13 +490,10 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                 }
                                 const buyPrimaryNetWorth = amortizationData.data[i]?.Équité || 0;
 
-                                // Scenario 2: Buy to rent out vs Just invest downpayment
-                                // Valeur + Equity de la propriété si louée
                                 const propValue = price * Math.pow(1 + localRentalAppreciation / 100, yr);
                                 const equity = amortizationData.data[i]?.Équité || 0;
-                                const cumulativeRentalIncome = netAnnualIncome * yr; // simplifíé (sans réinvestissement du loyer)
+                                const cumulativeRentalIncome = netAnnualIncome * yr;
 
-                                // Investissement boursier pur de la mise de fonds initiale + frais de notaire
                                 const stockInvestment = totalCashNeeded * Math.pow(1 + localStockReturn / 100, yr);
 
                                 return {
@@ -502,7 +508,6 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
 
                             return (
                                 <>
-                                    {/* Parameters Panel */}
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 p-4 bg-black/30 rounded-xl border border-white/5">
                                         <div>
                                             <label className="text-[10px] text-purple-400 font-bold uppercase block mb-1">
@@ -532,7 +537,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                 value={marketReturn}
                                                 onChange={e => {
                                                     setMarketReturn(Number(e.target.value));
-                                                    setLocalStockReturn(Number(e.target.value)); // Sync both
+                                                    setLocalStockReturn(Number(e.target.value));
                                                 }}
                                                 className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-emerald-500 mt-2"
                                             />
@@ -558,7 +563,6 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                         </div>
                                     </div>
 
-                                    {/* Combined Chart */}
                                     <div className="h-[300px] w-full mt-2">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <AreaChart data={combinedData}>
@@ -567,7 +571,6 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                 <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ backgroundColor: '#0B0E14', borderColor: '#333' }} />
                                                 <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: 11, fontWeight: 'bold' }} />
 
-                                                {/* Curves based on property type focus to avoid overwhelming the chart */}
                                                 {(activeGoal.isPrimaryResidence || !activeGoal.isRented) && (
                                                     <Area type="monotone" dataKey="Acheter (Résidence)" stroke="#10b981" fill="#10b981" fillOpacity={0.1} strokeWidth={3} />
                                                 )}
@@ -597,13 +600,12 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                     <Card title="Amortissement et Équité">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-2">
                             <div><div className="text-[10px] text-gray-500 uppercase tracking-wider">Welcome Tax</div><div className="text-sm font-bold text-white">{formatCurrency(welcomeTax)}</div></div>
-                            <div><div className="text-[10px] text-gray-500 uppercase tracking-wider">Notaire & Insp.</div><div className="text-sm font-bold text-white">{formatCurrency(notaryFees + inspectionFees)}</div></div>
+                            <div><div className="text-[10px] text-gray-500 uppercase tracking-wider">Notaire &amp; Insp.</div><div className="text-sm font-bold text-white">{formatCurrency(notaryFees + inspectionFees)}</div></div>
                             <div><div className="text-[10px] text-gray-500 uppercase tracking-wider">Rénos Initiales</div><div className="text-sm font-bold text-white">{formatCurrency(initialRenovations)}</div></div>
                             <div><div className="text-[10px] text-gray-500 uppercase tracking-wider">Maison Totale</div><div className="text-sm font-bold text-white">{formatCurrency(price + initialRenovations)}</div></div>
                         </div>
                     </Card>
 
-                    {/* AMORTIZATION SCROLLABLE TABLE */}
                     <Card title="📋 Tableau d'Amortissement Annuel">
                         <div className="overflow-x-auto">
                             <div className="mb-3 flex flex-wrap gap-4 text-xs">
@@ -626,7 +628,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                 <tbody>
                                     {amortizationData.data.map((row, idx) => {
                                         const isRenewal = idx > 0 && idx % 5 === 0;
-                                        const equityPct = row.ValeurPropriété > 0 ? Math.round((row.Équité / row.ValeurPropriété) * 100) : 0;
+                                        const equityPct = row.ValeuréPropriété > 0 ? Math.round((row.Équité / row.ValeuréPropriété) * 100) : 0;
                                         return (
                                             <tr key={row.year} className={`border-b border-white/5 ${isRenewal ? 'bg-orange-900/10' : idx % 2 === 0 ? 'bg-white/[0.02]' : ''} hover:bg-white/5 transition-colors`}>
                                                 <td className="py-2 pr-4 font-bold">
@@ -637,7 +639,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                 <td className="py-2 pr-4 text-right text-red-400 privacy-blur">{formatCurrency(row.PartInteretAnnuelle)}</td>
                                                 <td className="py-2 pr-4 text-right text-blue-400 privacy-blur">{formatCurrency(row.PartPrincipalAnnuelle)}</td>
                                                 <td className="py-2 pr-4 text-right text-white privacy-blur">{formatCurrency(row.Solde)}</td>
-                                                <td className="py-2 pr-4 text-right text-purple-300 privacy-blur">{formatCurrency(row.ValeurPropriété)}</td>
+                                                <td className="py-2 pr-4 text-right text-purple-300 privacy-blur">{formatCurrency(row.ValeuréPropriété)}</td>
                                                 <td className="py-2 text-right">
                                                     <span className="text-emerald-400 font-bold privacy-blur">{formatCurrency(row.Équité)}</span>
                                                     <span className="text-gray-600 ml-1">({equityPct}%)</span>
@@ -656,7 +658,6 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
             {goals.length >= 2 && (() => {
                 const PROP_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#a855f7', '#ec4899', '#06b6d4'];
 
-                // Compute equity data for all goals
                 const allSeries = goals.map((goal, gi) => {
                     const p = goal.price || 450000;
                     const dp = goal.downPayment || (p * 0.2);
@@ -692,7 +693,6 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                     return { name: goal.name || `Prop. ${gi + 1}`, points, color: PROP_COLORS[gi % PROP_COLORS.length] };
                 });
 
-                // Build unified chart data by year
                 const maxLen = Math.max(...allSeries.map(s => s.points.length));
                 const chartData: Record<string, number | string>[] = [];
                 for (let yr = 1; yr <= maxLen; yr++) {
@@ -706,7 +706,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
 
                 return (
                     <Card
-                        title={`📊 Comparaison des ${goals.length} Propriétés — Équité Projetée`}
+                        title={`📊 Comparaison des ${goals.length} Propriétés — Équité Projectée`}
                         className="mt-4"
                     >
                         <div className="flex gap-4 mb-4 flex-wrap">

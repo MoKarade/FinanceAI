@@ -762,6 +762,134 @@ export const Settings: React.FC<SettingsProps> = ({
                         />
                       </div>
                     </div>
+
+                    {/* W5.1 — Profil détaillé (santé, carrière, identité) */}
+                    <details className="mt-3 pt-3 border-t border-white/5">
+                      <summary className="text-[10px] font-bold text-gray-300 cursor-pointer hover:text-white">🩺 Profil détaillé (santé, carrière, identité)</summary>
+                      <div className="mt-2 space-y-2">
+                        <div className="grid grid-cols-3 gap-1">
+                          <select
+                            value={user.gender ?? ''}
+                            onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,gender:e.target.value||undefined}; setConfig({...config,users:u}); }}
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white"
+                          >
+                            <option value="">Sexe</option><option value="M">Homme</option><option value="F">Femme</option><option value="X">Autre</option>
+                          </select>
+                          <select
+                            value={user.province ?? ''}
+                            onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,province:e.target.value||undefined}; setConfig({...config,users:u}); }}
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white"
+                          >
+                            <option value="">Province</option>
+                            <option value="QC">Québec</option><option value="ON">Ontario</option><option value="AB">Alberta</option>
+                            <option value="BC">C.-B.</option><option value="MB">Manitoba</option><option value="SK">Saskatchewan</option>
+                            <option value="NS">N.-É.</option><option value="NB">N.-B.</option><option value="NL">T.-N.</option>
+                            <option value="PE">Î.-P.-É.</option><option value="YT">Yukon</option><option value="NT">T.-N.-O.</option><option value="NU">Nunavut</option>
+                          </select>
+                          <select
+                            value={user.citizenship ?? ''}
+                            onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,citizenship:e.target.value||undefined}; setConfig({...config,users:u}); }}
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white"
+                          >
+                            <option value="">Citoyenneté</option><option value="CA">Canadien</option><option value="US-person-CA">Dual CA/US (PFIC!)</option><option value="other">Autre</option>
+                          </select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1">
+                          <select
+                            value={user.maritalStatus ?? ''}
+                            onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,maritalStatus:e.target.value||undefined}; setConfig({...config,users:u}); }}
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white"
+                          >
+                            <option value="">Statut civil</option>
+                            <option value="single">Célibataire</option><option value="married">Marié</option><option value="common-law">Conjoint de fait</option>
+                            <option value="separated">Séparé</option><option value="divorced">Divorcé</option><option value="widowed">Veuf</option>
+                          </select>
+                          <select
+                            value={user.employmentType ?? ''}
+                            onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,employmentType:e.target.value||undefined}; setConfig({...config,users:u}); }}
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white"
+                          >
+                            <option value="">Type emploi</option>
+                            <option value="employee">Employé</option><option value="self-employed">Autonome</option>
+                            <option value="contractor">Contractuel</option><option value="business-owner">Entrepreneur</option>
+                            <option value="unemployed">Sans emploi</option><option value="retired">Retraité</option><option value="student">Étudiant</option>
+                          </select>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          <input type="text" placeholder="Industrie" value={user.industry ?? ''}
+                            onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,industry:e.target.value}; setConfig({...config,users:u}); }}
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white" />
+                          <input type="number" placeholder="Ans expérience" value={user.yearsOfExperience ?? ''}
+                            onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,yearsOfExperience:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white" />
+                          <select
+                            value={user.pensionPlan ?? ''}
+                            onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,pensionPlan:e.target.value||undefined}; setConfig({...config,users:u}); }}
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white"
+                          >
+                            <option value="">Régime retraite</option>
+                            <option value="DB">DB (prestations dét.)</option><option value="DC">DC (cotisations dét.)</option>
+                            <option value="RPDB">RPDB</option><option value="none">Aucun</option>
+                          </select>
+                        </div>
+                        <div className="text-[9px] text-gray-500 uppercase tracking-widest mt-2">Santé & longévité</div>
+                        <div className="grid grid-cols-2 gap-1">
+                          <select
+                            value={user.healthRating ?? ''}
+                            onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,healthRating:e.target.value||undefined}; setConfig({...config,users:u}); }}
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white"
+                          >
+                            <option value="">État santé</option><option value="excellent">Excellent</option><option value="good">Bon</option><option value="average">Moyen</option><option value="poor">Faible</option>
+                          </select>
+                          <select
+                            value={user.activityLevel ?? ''}
+                            onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,activityLevel:e.target.value||undefined}; setConfig({...config,users:u}); }}
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white"
+                          >
+                            <option value="">Activité physique</option><option value="sedentary">Sédentaire</option><option value="light">Légère</option><option value="moderate">Modérée</option><option value="active">Active</option>
+                          </select>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          <label className="flex items-center gap-1 text-[10px] text-gray-400">
+                            <input type="checkbox" checked={user.isSmoker ?? false}
+                              onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,isSmoker:e.target.checked}; setConfig({...config,users:u}); }} />
+                            🚬 Fumeur
+                          </label>
+                          <input type="number" placeholder="Mère ✝ âge" value={user.parentAgeAtDeath?.mother ?? ''}
+                            onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user, parentAgeAtDeath:{...user.parentAgeAtDeath, mother:Number(e.target.value)||undefined}}; setConfig({...config,users:u}); }}
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white" />
+                          <input type="number" placeholder="Père ✝ âge" value={user.parentAgeAtDeath?.father ?? ''}
+                            onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user, parentAgeAtDeath:{...user.parentAgeAtDeath, father:Number(e.target.value)||undefined}}; setConfig({...config,users:u}); }}
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white" />
+                        </div>
+                        <div className="text-[9px] text-gray-500 uppercase tracking-widest mt-2">Rémunération variable</div>
+                        <div className="grid grid-cols-3 gap-1">
+                          <input type="number" placeholder="Bonus % brut" value={user.bonusPctOfGross ?? ''}
+                            onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,bonusPctOfGross:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white" />
+                          <input type="number" placeholder="RSU $/an" value={user.rsuVestingPerYear ?? ''}
+                            onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,rsuVestingPerYear:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white" />
+                          <input type="number" placeholder="Stock opts $" value={user.stockOptionsValue ?? ''}
+                            onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,stockOptionsValue:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-1">
+                          <input type="number" placeholder="Side income $/an" value={user.sideIncomeAnnual ?? ''}
+                            onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,sideIncomeAnnual:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white" />
+                          <select
+                            value={user.payFrequency ?? ''}
+                            onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,payFrequency:e.target.value||undefined}; setConfig({...config,users:u}); }}
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white"
+                          >
+                            <option value="">Périodicité paie</option>
+                            <option value="weekly">Hebdo (52)</option><option value="biweekly">Bihebdo (26)</option>
+                            <option value="semimonthly">Bimensuel (24)</option><option value="monthly">Mensuel (12)</option>
+                          </select>
+                        </div>
+                      </div>
+                    </details>
                   </div>
                 ))}
               </div>

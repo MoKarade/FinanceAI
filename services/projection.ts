@@ -140,6 +140,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
     if (activeUsersCount === 0) activeUsersCount = 1;
 
+    // D2.5: Smile Curve — facteur de style de vie par âge retraite.
+    // Référence: étude CIBC "Spending in Retirement". Activable via flag.
+    const smileLifestyleFactor = (ageAtMonth: number): number => {
+        if (!(effProj as any).useSmileCurve) return 1;
+        if (ageAtMonth < 75) return 1.15;   // Go-go years
+        if (ageAtMonth < 85) return 1.00;   // Slow-go
+        return 0.90;                          // No-go (loisirs ↓, santé ↑ déjà géré)
+    };
+
     let useManualBalances = effProj.useManualBalances ?? false;
     let manualCELIRoom = effProj.manualCELIRoom ?? 0;
     let manualRRSPRoom = effProj.manualREERRoom ?? 0;
@@ -488,9 +497,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
         // --- 3. MONTHLY EXPENSES & EVENTS ---
         if (isRetired) {
-            // Retirement expenses & social benefits (RRQ, PSV)
-            monthlyExpenses = Math.abs(retirementGoal.targetMonthlyIncome) * expenseMultiplier;
-            // (Logic for RRQ/PSV and Shortfall handling)
+            // D2.5: Smile Curve appliquée au besoin de retraite (1 si flag off).
+            monthlyExpenses = Math.abs(retirementGoal.targetMonthlyIncome) * expenseMultiplier * smileLifestyleFactor(age);
         } else {
             // Active phase income & expenses
             monthlyExpenses = effectiveBaseExpenses * expenseMultiplier;

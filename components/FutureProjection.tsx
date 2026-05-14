@@ -406,6 +406,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         >
                             🎲 Monte Carlo {runMC ? 'ON' : 'OFF'}
                         </button>
+                        <button
+                            onClick={() => updateProj('useSmileCurve', !projection.useSmileCurve)}
+                            title="Courbe en U des dépenses retraite (étude CIBC): go-go +15%, slow-go base, no-go -10%"
+                            className={`px-4 py-2 text-[10px] font-bold rounded-md border transition-all ${projection.useSmileCurve ? 'bg-pink-500/20 border-pink-500/50 text-pink-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                        >
+                            😊 Smile Curve {projection.useSmileCurve ? 'ON' : 'OFF'}
+                        </button>
                     </div>
                 </div>
 

@@ -126,6 +126,10 @@ export interface ProjectionConfig {
   useSmithManoeuvre?: boolean;
   optimizeSourceDeductions?: boolean;
   investmentTargetPcts?: Record<string, number>;
+  // D2.5: Smile Curve — courbe en U des dépenses de retraite (étude CIBC).
+  // Go-go (jusqu'à 74): +15% sur le besoin. Slow-go (75-84): base.
+  // No-go (85+): -10% lifestyle, mais santé compense (déjà modélisé).
+  useSmileCurve?: boolean;
 }
 
 export interface RealEstateGoal {

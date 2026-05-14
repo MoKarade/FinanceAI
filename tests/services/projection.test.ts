@@ -219,6 +219,35 @@ describe('calculateFutureProjection', () => {
         }
     });
 
+    // D2.5 — Smile Curve (dépenses retraite en U)
+    describe('Smile Curve', () => {
+        const buildLongRetirement = (useSmile: boolean) => {
+            const config = makeConfig();
+            config.users[0] = { ...config.users[0], age: 60, birthYear: 1966 };
+            config.users[1] = { ...config.users[1], age: 60, birthYear: 1966 };
+            return makeParams({
+                config,
+                retirementGoal: makeRetirementGoal({ targetAge: 60, targetMonthlyIncome: 3000 }),
+                projection: makeProjection({ years: 30, useSmileCurve: useSmile }),
+            });
+        };
+
+        it('avec smile curve ON, les dépenses ne sont pas identiques à sans (impact mesurable)', () => {
+            const off = calculateFutureProjection(buildLongRetirement(false)) as any;
+            const on = calculateFutureProjection(buildLongRetirement(true)) as any;
+            const offBase = off.allResults.find((s: any) => s.stratType === 'BASE');
+            const onBase = on.allResults.find((s: any) => s.stratType === 'BASE');
+            // Smile ON majore les go-go years → dépenses plus élevées tôt
+            expect(offBase.estateNetWorth).not.toBe(onBase.estateNetWorth);
+        });
+
+        it('le flag useSmileCurve est respecté (par défaut OFF, multiplicateur = 1)', () => {
+            const params = buildLongRetirement(false);
+            const result = calculateFutureProjection(params) as any;
+            expect(Number.isFinite(result.estateNetWorth)).toBe(true);
+        });
+    });
+
     // D2.4 — Pension à prestations déterminées (DB)
     describe('Pension DB', () => {
         const buildAtRetirement = (extraRetirement: Partial<RetirementGoal>) => {

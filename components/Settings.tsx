@@ -1,10 +1,44 @@
 
 import React, { useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
+import { z } from 'zod';
 import { calculateFiscalReport, calculateGrossFromNet } from '../services/tax';
 import { Card } from './ui/Card';
 import { AppState, BudgetCategory, Transaction, Asset, SavingsGoal, TravelGoal, Debt, InvestmentAccount, InvestmentTransaction, LifeEvent, RetirementGoal, FinancialGoal, RealEstateGoal, BudgetConfig } from '../types';
 import { showToast } from './ui/Toast';
+
+// Bug audit #5 : schema strict pour valider un fichier de restauration
+// avant d'appeler localStorage.clear(). Permet aux champs additionnels
+// de passer (.passthrough) mais refuse les types invalides (ex. transactions
+// qui ne serait pas un tableau, initialBalances qui ne serait pas Record<string, number>).
+const BackupSchema = z.object({
+  version: z.string().optional(),
+  timestamp: z.number().optional(),
+  apiKeys: z.object({
+    gemini: z.string().optional(),
+    lunchMoney: z.string().optional(),
+  }).passthrough().optional(),
+  config: z.unknown().optional(),
+  transactions: z.array(z.unknown()).optional(),
+  budgetItems: z.array(z.unknown()).optional(),
+  assets: z.array(z.unknown()).optional(),
+  initialBalances: z.record(z.string(), z.number()).optional(),
+  savingsGoals: z.array(z.unknown()).optional(),
+  travelGoals: z.array(z.unknown()).optional(),
+  debts: z.array(z.unknown()).optional(),
+  investmentAccounts: z.array(z.unknown()).optional(),
+  investmentTransactions: z.array(z.unknown()).optional(),
+  lifeEvents: z.array(z.unknown()).optional(),
+  retirementGoal: z.unknown().optional(),
+  realEstateGoals: z.array(z.unknown()).optional(),
+  childGoal: z.unknown().optional(),
+  childGoals: z.array(z.unknown()).optional(),
+  financialGoals: z.array(z.unknown()).optional(),
+  projection: z.unknown().optional(),
+}).passthrough().refine(
+  (data) => data.version !== undefined || data.transactions !== undefined,
+  { message: "doit contenir au moins 'version' ou 'transactions'" }
+);
 
 interface SettingsProps {
   apiKeys: AppState['apiKeys'];
@@ -171,54 +205,72 @@ export const Settings: React.FC<SettingsProps> = ({
         const jsonStr = ev.target?.result as string;
         if (!jsonStr) throw new Error("Fichier vide");
 
-        const data = JSON.parse(jsonStr);
+        const rawData = JSON.parse(jsonStr);
 
-        if (!data.version && !data.transactions) {
-          showToast("❌ Fichier invalide. Ce n'est pas une sauvegarde FinanceAI.", "error");
+        // Bug audit #5 : valider strictement le schema avant de toucher
+        // a localStorage. Un JSON arbitraire ne doit pas pouvoir declencher
+        // un clear() suivi d'une injection de cles API attaquant.
+        const parsed = BackupSchema.safeParse(rawData);
+        if (!parsed.success) {
+          const issue = parsed.error.issues[0];
+          const path = issue.path.length > 0 ? issue.path.join('.') : 'racine';
+          showToast(`❌ Backup invalide (${path}) : ${issue.message}`, "error");
+          return;
+        }
+        const data = parsed.data;
+
+        const txCount = data.transactions?.length ?? 0;
+        const assetCount = data.assets?.length ?? 0;
+
+        // Double confirm : 1) resume + intention, 2) phrase exacte a taper.
+        const firstOk = confirm(
+          `⚠️ RESTAURATION COMPLETE\n\nVersion Backup: ${data.version || 'Inconnue'}\nTransactions: ${txCount}\nActifs: ${assetCount}\n\nCela va ECRASER toutes les donnees actuelles.\n\nContinuer ?`
+        );
+        if (!firstOk) return;
+
+        const phrase = prompt(
+          "Confirmation finale : tapez exactement RESTAURER (en majuscules) pour effacer les donnees actuelles et appliquer ce backup."
+        );
+        if (phrase !== "RESTAURER") {
+          showToast("Restauration annulee.", "error");
           return;
         }
 
-        const txCount = Array.isArray(data.transactions) ? data.transactions.length : 0;
-        const assetCount = Array.isArray(data.assets) ? data.assets.length : 0;
+        localStorage.clear();
 
-        if (confirm(`⚠️ RESTAURATION COMPLETE\n\nVersion Backup: ${data.version || 'Inconnue'}\nTransactions: ${txCount}\nActifs: ${assetCount}\n\nCela va ECRASER toutes les donnees actuelles. Continuer ?`)) {
+        const safeSet = (key: string, val: any) => {
+          if (val !== undefined && val !== null) {
+            localStorage.setItem(key, JSON.stringify(val));
+          }
+        };
 
-          localStorage.clear();
+        // Phase securite C1 : on n'ecrit PLUS lm_token et gemini_key
+        // en clair lors du restore. Le user doit les re-saisir via les
+        // champs Cles API dans Settings apres restore. Le bloc apiKeys
+        // est exclu du persist Zustand (commit e7aaad6f).
+        safeSet('app_api_keys', data.apiKeys);
 
-          const safeSet = (key: string, val: any) => {
-            if (val !== undefined && val !== null) {
-              localStorage.setItem(key, JSON.stringify(val));
-            }
-          };
+        safeSet('app_config', data.config);
+        safeSet('app_budget', data.budgetItems);
+        safeSet('initial_balances', data.initialBalances);
+        safeSet('app_assets', data.assets);
+        safeSet('app_savings_goals', data.savingsGoals);
+        safeSet('app_travel_goals', data.travelGoals);
+        safeSet('app_debts', data.debts || []);
+        safeSet('app_investment_acc', data.investmentAccounts || []);
+        safeSet('app_investment_tx', data.investmentTransactions || []);
+        safeSet('app_life_events', data.lifeEvents || []);
+        safeSet('app_financial_goals', data.financialGoals || []);
+        safeSet('app_retirement_goal', data.retirementGoal);
+        safeSet('app_real_estate_goals', data.realEstateGoals);
+        safeSet('app_child_goal', data.childGoal);
+        if (data.childGoals) safeSet('app_child_goals', data.childGoals);
 
-          // Phase securite C1 : on n'ecrit PLUS lm_token et gemini_key
-          // en clair lors du restore. Le user doit les re-saisir via les
-          // champs Cles API dans Settings apres restore. Le bloc apiKeys
-          // est exclu du persist Zustand (commit e7aaad6f).
-          safeSet('app_api_keys', data.apiKeys);
+        if (data.projection) safeSet('app_projection', data.projection);
+        safeSet('cached_transactions', data.transactions || []);
 
-          safeSet('app_config', data.config);
-          safeSet('app_budget', data.budgetItems);
-          safeSet('initial_balances', data.initialBalances);
-          safeSet('app_assets', data.assets);
-          safeSet('app_savings_goals', data.savingsGoals);
-          safeSet('app_travel_goals', data.travelGoals);
-          safeSet('app_debts', data.debts || []);
-          safeSet('app_investment_acc', data.investmentAccounts || []);
-          safeSet('app_investment_tx', data.investmentTransactions || []);
-          safeSet('app_life_events', data.lifeEvents || []);
-          safeSet('app_financial_goals', data.financialGoals || []);
-          safeSet('app_retirement_goal', data.retirementGoal);
-          safeSet('app_real_estate_goals', data.realEstateGoals);
-          safeSet('app_child_goal', data.childGoal);
-          if (data.childGoals) safeSet('app_child_goals', data.childGoals);
-
-          if (data.projection) safeSet('app_projection', data.projection);
-          safeSet('cached_transactions', data.transactions || []);
-
-          showToast("✅ Restauration reussie ! Re-entrez vos cles API si necessaire.", "success");
-          window.location.reload();
-        }
+        showToast("✅ Restauration reussie ! Re-entrez vos cles API si necessaire.", "success");
+        window.location.reload();
       } catch (err: any) {
         console.error('[Settings] Restore failed:', err);
         showToast(`❌ Echec restauration : ${err?.message || 'inconnu'}`, "error");

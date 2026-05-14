@@ -13,9 +13,18 @@ interface FinanceState extends AppState {
     resetState: () => void;
 }
 
+// Helper crypto.randomUUID disponible en browser moderne + Node 19+.
+// Fallback minimal au cas ou (devrait jamais s'executer en pratique).
+const safeRandomId = (): string => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+};
+
 const migrateBudgetItems = (items: BudgetCategory[]): BudgetCategory[] => {
     return items.map(item => {
-        const id = item.id || `cat_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const id = item.id || `cat_${safeRandomId()}`;
         let nature = item.nature;
         if (!nature) {
             const n = (item.name || '').toLowerCase();
@@ -41,7 +50,6 @@ const migrateUserConfig = (config: any): any => {
 };
 
 const getInitialStateWithMigration = (): AppState => {
-    // Basic defaults
     const defaultState: AppState = {
         transactions: [],
         assets: [],
@@ -143,10 +151,6 @@ const getInitialStateWithMigration = (): AppState => {
         };
     } catch (e) {
         console.error("[FinanceAI] Migration de l'etat echouee:", e);
-        // Phase 0 hardening: AVANT de retourner defaultState (qui ecraserait
-        // potentiellement toutes les donnees utilisateur), on dump le
-        // localStorage corrompu sous une cle de backup horodatee. Les donnees
-        // restent recuperables manuellement si besoin.
         try {
             const corruptedDump: Record<string, string | null> = {};
             const watchedPrefixes = ['app_', 'cached_', 'financeai-', 'fx_rates_', 'categorization_', 'initial_', 'lm_', 'gemini_'];
@@ -186,8 +190,19 @@ export const useFinanceStore = create<FinanceState>()(
             resetState: () => set(initialState),
         }),
         {
-            name: 'financeai-storage', // unique name
-            // By default, it uses localStorage. We can optionally configure parts to save/exclude
+            name: 'financeai-storage',
+            // Phase C1 du PLAN_DE_FIX : exclure apiKeys du persist Zustand.
+            // Les cles legacy (lm_token / gemini_key / app_api_keys) restent
+            // lues au mount par getInitialStateWithMigration() pour la retrocompat,
+            // mais Zustand ne les ecrit plus dans 'financeai-storage'.
+            // Plan ulterieur (P2) : chiffrer apiKeys via la primitive AES-GCM de
+            // services/cloudBackup.ts avec une passphrase utilisateur.
+            partialize: (state) => {
+                const { apiKeys, ...rest } = state;
+                // On garde tout sauf apiKeys et l'activeTab (volatile par session).
+                const { activeTab, ...persistable } = rest as any;
+                return persistable;
+            },
         }
     )
 );

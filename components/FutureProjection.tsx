@@ -475,6 +475,74 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     >
                         💼 Perte emploi {projection.jobLossEnabled ? 'ON' : 'OFF'}
                     </button>
+                    <button
+                        onClick={() => updateProj('modelSurvivor', !projection.modelSurvivor)}
+                        title="Modélise le décès du conjoint en MC (RRQ survivant 60%, PSV cesse, DB selon election)."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.modelSurvivor ? 'bg-slate-500/20 border-slate-500/50 text-slate-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        🖤 Survivant {projection.modelSurvivor ? 'ON' : 'OFF'}
+                    </button>
+                    <button
+                        onClick={() => updateProj('useHistoricalBootstrap', !projection.useHistoricalBootstrap)}
+                        title="Au lieu de rendements gaussiens, échantillonne l'historique réel S&P 500 + inflation US 1928-2024 (97 ans). Capture les vrais krachs (1929, 1973-74, 2000-02, 2008, 2020)."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.useHistoricalBootstrap ? 'bg-teal-500/20 border-teal-500/50 text-teal-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        📜 Bootstrap historique {projection.useHistoricalBootstrap ? 'ON' : 'OFF'}
+                    </button>
+                    <button
+                        onClick={() => updateProj('divorceEnabled', !projection.divorceEnabled)}
+                        title="Divorce stochastique (MC). Probabilité annuelle ~1.5% (cumul ~36% sur 30 ans). Patrimoine split selon divorceSplitPct (défaut 50%)."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.divorceEnabled ? 'bg-rose-500/20 border-rose-500/50 text-rose-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        💔 Divorce {projection.divorceEnabled ? 'ON' : 'OFF'}
+                    </button>
+                    <button
+                        onClick={() => updateProj('ltdEnabled', !projection.ltdEnabled)}
+                        title="Invalidité longue durée stochastique. Probabilité annuelle ~0.5%. Revenu réduit à 60% (assurance privée typique) pendant 24 mois."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.ltdEnabled ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        ♿ Invalidité {projection.ltdEnabled ? 'ON' : 'OFF'}
+                    </button>
+                    <button
+                        onClick={() => updateProj('criticalIllnessEnabled', !projection.criticalIllnessEnabled)}
+                        title="Maladie grave stochastique. Probabilité ~0.3%/an. Capital forfaitaire reçu + dépenses additionnelles."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.criticalIllnessEnabled ? 'bg-pink-500/20 border-pink-500/50 text-pink-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        🩺 Maladie grave {projection.criticalIllnessEnabled ? 'ON' : 'OFF'}
+                    </button>
+                    <button
+                        onClick={() => updateProj('inheritanceEnabled', !projection.inheritanceEnabled)}
+                        title="Héritage probabilisé. Tirage dans la fenêtre [âge attendu ± uncertaintyY]."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.inheritanceEnabled ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        🎁 Héritage {projection.inheritanceEnabled ? 'ON' : 'OFF'}
+                    </button>
+                    <button
+                        onClick={() => updateProj('snowbirdEnabled', !projection.snowbirdEnabled)}
+                        title="Snowbird (4-6 mois en US/Mexique en hiver à la retraite). Surcoût mensuel ~1500\$."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.snowbirdEnabled ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        🌴 Snowbird {projection.snowbirdEnabled ? 'ON' : 'OFF'}
+                    </button>
+                </div>
+
+                {/* W4.5 — Replay historique */}
+                <div className="mb-4 flex items-center gap-2">
+                    <label className="text-[11px] text-gray-400">🎬 Replay krach historique:</label>
+                    <select
+                        value={projection.replayHistoricalYear ?? ''}
+                        onChange={e => updateProj('replayHistoricalYear', e.target.value ? Number(e.target.value) : undefined)}
+                        className="bg-dark border border-border rounded px-2 py-1 text-[11px] text-white"
+                    >
+                        <option value="">— Aucun (mode normal) —</option>
+                        <option value="1929">1929 — Grande Dépression</option>
+                        <option value="1973">1973 — Choc pétrolier + stagflation</option>
+                        <option value="2000">2000 — Bulle dot-com</option>
+                        <option value="2008">2008 — Crise financière</option>
+                        <option value="2020">2020 — COVID</option>
+                        <option value="2022">2022 — Inflation post-COVID</option>
+                    </select>
+                    <span className="text-[10px] text-gray-500">→ Force les rendements historiques à partir de cette année.</span>
                 </div>
                 {projection.ltcEnabled && (
                     <div className="mb-4 p-3 rounded-lg border border-red-500/20 bg-black/30">

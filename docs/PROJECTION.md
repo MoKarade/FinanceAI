@@ -1,6 +1,6 @@
 # 🔮 Projection Future — Documentation détaillée du moteur
 
-> **Fichier source** : `services/projection.ts` (~2000 lignes) + `services/projection/helpers.ts`
+> **Fichier source** : `services/projection.ts` (~2200 lignes) + `services/projection/helpers.ts` + `services/projection/goalSeek.ts` + `services/projection/drawdownOptimizer.ts` + `services/projection/historicalReturns.ts` + `services/projection/runAsync.ts` + `services/projection.worker.ts`
 > **Point d'entrée public** : `calculateFutureProjection(params, runMC = false, selectedIdx = 0)`
 > **Public** : utilisateurs non-experts qui veulent comprendre **exactement** ce que la simulation fait au mois près.
 
@@ -305,20 +305,128 @@ Une perte en capital sur le NonReg n'est PAS perdue : elle s'accumule dans `capi
 
 ---
 
-## 7. Limitations connues (documentées, à corriger)
+## 7. Limitations connues — État (mai 2026)
 
-| ID | Limitation | PR future |
+| ID | Limitation | Statut |
 |---|---|---|
-| L1 | RRQ et PSV mêlés dans `governmentPension × 0.65/0.35` au lieu de deux champs | — |
-| L2 | Taxe de bienvenue utilise `else if` (paliers non-cumulatifs, faux fiscalement) | D2.11 |
-| L3 | 100 itérations MC seulement (IC95% ±3pp) — Web Worker prévu | D2.12 |
-| L4 | Bootstrap historique pas implémenté (Box-Muller gaussien seulement) | D2.13 |
-| L5 | Survivant après décès du conjoint pas géré (RRQ survivant 60%, etc.) | — |
-| L6 | Divorce probabiliste pas modélisé | — |
-| L7 | Régime DB d'employeur : pas de buyback, transferts, ou survivants | — |
-| L8 | Stock options/RSU non modélisés | — |
-| L9 | Asset location (FNB US dans REER vs CELI) pas optimisée automatiquement | — |
-| L10 | Mortalité stochastique : break à la mort du user1 — pas de cession au conjoint | — |
+| L1 | RRQ et PSV mêlés dans `governmentPension × 0.65/0.35` | ✅ **CORRIGÉ** (W1.3) |
+| L2 | Taxe de bienvenue utilise `else if` (paliers non-cumulatifs) | 🟡 Documenté, à corriger |
+| L3 | 100 itérations MC seulement (IC95% ±3pp) | ✅ **Web Worker scaffold** (W1.1) |
+| L4 | Bootstrap historique pas implémenté | ✅ **CORRIGÉ** (W1.2) |
+| L5 | Survivant après décès du conjoint pas géré | ✅ **CORRIGÉ** (W1.4) |
+| L6 | Divorce probabiliste pas modélisé | ✅ **CORRIGÉ** (W3.1) |
+| L7 | Régime DB d'employeur : pas de buyback, transferts, ou survivants | 🟡 Élection joint/single (W5.5), buyback pas implémenté |
+| L8 | Stock options/RSU non modélisés | 🟡 Capturés en input (W5.2), non utilisés dans moteur |
+| L9 | Asset location auto pas optimisée | ❌ TODO |
+| L10 | Mortalité stochastique user1 break sans cession | ✅ **CORRIGÉ** (W1.4 — survivant) |
+
+## 8. Features ajoutées (vagues W1-W5)
+
+### Vague W1 — Fondations précision
+
+| ID | Feature | UI |
+|---|---|---|
+| **W1.1** | Web Worker scaffold (runProjectionAsync) | — (API) |
+| **W1.2** | Bootstrap historique 1928-2024 (S&P + bonds + CPI) | Toggle 📜 |
+| **W1.3** | RRQ et PSV séparés (champs individuels) | 2 inputs Retirement |
+| **W1.4** | Scénario survivant après décès conjoint | Toggle 🖤 + dropdown DB election |
+| **W1.5** | Goal seeking / projection inverse (épargne ou âge minimal) | Card 🎯 Retirement |
+| **W1.6** | Comparison multi-scénarios | ⚠️ Partiel (allResults exposé) |
+
+### Vague W2 — Optimisations fiscales
+
+| ID | Feature | Statut |
+|---|---|---|
+| **W2.1** | Roth-equivalent ladder (REER→CELI) | 🟡 Flag, pas de logique |
+| **W2.2** | Pension splitting 65+ explicite | ⚠️ Implicite via activeUsersCount |
+| **W2.3** | Spousal RRSP optimization | 🟡 Flag |
+| **W2.6** | **Drawdown order optimizer** | ✅ 5 stratégies comparées |
+| **W2.7** | Geographic arbitrage | 🟡 Champ futureProvince |
+
+### Vague W3 — Événements de vie stochastiques
+
+| ID | Feature | Probabilité défaut | UI Toggle |
+|---|---|---|---|
+| **W3.1** | **Divorce** | 1.5%/an | 💔 |
+| **W3.2** | **Invalidité longue durée** | 0.5%/an | ♿ |
+| **W3.3** | **Maladie grave** | 0.3%/an | 🩺 |
+| **W3.4** | **Héritage probabilisé** | configurable | 🎁 |
+| **W3.5** | Sandwich generation (boomerang + caregiving) | toujours actif si configuré | — |
+| **W3.7** | Severance / mise à pied | 🟡 Flag | — |
+
+### Vague W4 — Visualisation et UX
+
+| ID | Feature | Localisation |
+|---|---|---|
+| **W4.1** | **Tax bracket viz** (fédéral + Québec avec marqueur revenu) | Retirement |
+| **W4.5** | **Replay krach historique** (1929/1973/2000/2008/2020/2022) | Dropdown FutureProjection |
+| **W4.6** | Phased retirement (semi-retraite) | 🟡 Flag |
+| **W4.7** | **Snowbird** (4-6 mois US/Mexique en hiver) | Toggle 🌴 |
+
+### Vague W5 — Capture de variables
+
+| ID | Catégorie | Champs ajoutés |
+|---|---|---|
+| **W5.1** | Profil utilisateur enrichi | sexe, province, citoyenneté, statut civil, santé, fumeur, IMC, conditions chroniques, parents âge décès, industrie, expérience, type emploi, régime retraite |
+| **W5.2** | Rémunération variable | bonus % brut, RSU $/an, stock options, side income, périodicité paie |
+| **W5.3** | Dettes étendues | kind, taux variable, limite, terme, prêteur, déductible |
+| **W5.4** | **InsurancePolicy** (11 types) | vie temp/entière/U, invalidité ST/LT, maladies graves, soins LD, voyage, auto, habitation, responsabilité |
+| **W5.5** | DB joint-life vs single-life | option survivant + % rente |
+| **W5.6** | **RentalProperty** | cap rate, vacancy, NOI, DPA, amortization |
+| **W5.7** | **PrivateBusiness** (CCPC) | % détention, JVM, dividendes, BNR, accès DPE |
+| **W5.x** | Goals cycliques | véhicules cycliques, rénovations majeures, dons charitables |
+
+## 9. Stratégies de décaissement (drawdown)
+
+5 stratégies disponibles, accessibles via `optimizeDrawdownOrder(params)` :
+
+```
+🥇 AUTO_MARGINAL  : optimise le taux marginal à chaque retrait
+🥈 PRIO_REER      : vide REER d'abord (lisse revenu, évite OAS clawback)
+🥉 PRIO_CELI      : vide CELI d'abord (préserve REER différé)
+   MELTDOWN_REER  : meltdown REER en pré-retraite (comble brackets bas)
+   DEBT_FIRST     : extinction dettes avant placements
+```
+
+L'optimizer lance les 5 et retourne celle qui maximise `estateNetWorth` avec un gain mesuré vs la pire.
+
+## 10. Bootstrap historique (W1.2)
+
+Source : Aswath Damodaran (NYU Stern) — 97 années 1928-2024.
+
+```
+HISTORICAL_RETURNS_US[] = [
+  { year: 1928, sp500: +43.81%, bonds: +0.84%, inflation: -1.15% },
+  ...
+  { year: 2022, sp500: -18.04%, bonds: -17.83%, inflation: +6.45% },
+  { year: 2023, sp500: +26.06%, bonds: +3.88%, inflation: +3.35% },
+  { year: 2024, sp500: +25.02%, bonds: +0.58%, inflation: +2.95% },
+]
+```
+
+Crashes notables capturés :
+- **1929-1933** : -86% cumulé (Grande Dépression)
+- **1973-1974** : -40% (choc pétrolier + stagflation)
+- **2000-2002** : -43% (bulle dot-com)
+- **2008** : -37% (crise financière)
+- **2020** : -34% (mars COVID, rebond rapide)
+- **2022** : -18% S&P + -18% bonds (60/40 explosé)
+
+Mode bootstrap MC : assemble des blocs de 24 mois consécutifs (préserve corrélations).
+Mode replay (W4.5) : force déterministe à partir d'une année donnée.
+
+## 11. Goal Seeking (projection inverse)
+
+```ts
+findRequiredMonthlySavings(params, targetNetWorth, targetAge?)
+// → { found: true, value: 1850, iterations: 12 }
+
+findEarliestRetirementAge(params, minAge=45, maxAge=75)
+// → { found: true, value: 58, iterations: 10 }
+```
+
+Méthode : dichotomie sur le paramètre, garantit convergence en log2(range) appels.
+
 
 ---
 

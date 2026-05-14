@@ -79,6 +79,13 @@ const getInitialStateWithMigration = (): AppState => {
         lastUpdate: Date.now(),
         categorizationRules: [],
         aiConversation: [],
+        // W5.x — Nouveaux containers (vide par défaut)
+        insurancePolicies: [],
+        rentalProperties: [],
+        privateBusinesses: [],
+        vehicleReplacements: [],
+        majorRenovations: [],
+        charitableGoals: [],
     };
 
     if (typeof window === 'undefined') return defaultState;
@@ -158,6 +165,13 @@ const getInitialStateWithMigration = (): AppState => {
             lastUpdate: Date.now(),
             categorizationRules: (() => { try { const r = localStorage.getItem('categorization_rules'); return r ? JSON.parse(r) : []; } catch { return []; } })(),
             aiConversation: [],
+            // FIX agents (HIGH code-reviewer): defaults manquants dans le retour de migration
+            insurancePolicies: (() => { try { const r = localStorage.getItem('app_insurance_policies'); return r ? JSON.parse(r) : []; } catch { return []; } })(),
+            rentalProperties: (() => { try { const r = localStorage.getItem('app_rental_properties'); return r ? JSON.parse(r) : []; } catch { return []; } })(),
+            privateBusinesses: (() => { try { const r = localStorage.getItem('app_private_businesses'); return r ? JSON.parse(r) : []; } catch { return []; } })(),
+            vehicleReplacements: (() => { try { const r = localStorage.getItem('app_vehicle_replacements'); return r ? JSON.parse(r) : []; } catch { return []; } })(),
+            majorRenovations: (() => { try { const r = localStorage.getItem('app_major_renovations'); return r ? JSON.parse(r) : []; } catch { return []; } })(),
+            charitableGoals: (() => { try { const r = localStorage.getItem('app_charitable_goals'); return r ? JSON.parse(r) : []; } catch { return []; } })(),
         };
     } catch (e) {
         const errorStr = String(e);

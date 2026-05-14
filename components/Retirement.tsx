@@ -3,6 +3,9 @@ import { Card } from './ui/Card';
 import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset } from '../types';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend, AreaChart } from 'recharts';
 import { calculateFutureProjection } from '../services/projection';
+import { findRequiredMonthlySavings, findEarliestRetirementAge } from '../services/projection/goalSeek';
+import { optimizeDrawdownOrder } from '../services/projection/drawdownOptimizer';
+import { TaxBracketViz } from './TaxBracketViz';
 import { fetchPortfolioHistory } from '../services/finance';
 import { calculateGrossFromNet } from '../services/tax';
 import { useFinanceStore } from '../store/useFinanceStore';
@@ -37,6 +40,12 @@ export const Retirement: React.FC<RetirementProps> = ({
 }) => {
     const setAppState = useFinanceStore(s => s.setAppState);
     const [lifeExpectancy, setLifeExpectancy] = useState(90);
+    // W1.5 — Goal seeking
+    const [goalSeekTarget, setGoalSeekTarget] = useState<number>(1_000_000);
+    const [goalSeekResult, setGoalSeekResult] = useState<{ savings?: number; age?: number; error?: string } | null>(null);
+    const [goalSeekBusy, setGoalSeekBusy] = useState(false);
+    // W2.6 — Drawdown optimizer
+    const [drawdownResult, setDrawdownResult] = useState<ReturnType<typeof optimizeDrawdownOrder> | null>(null);
     const [currentAge, setCurrentAge] = useState(config.users[0]?.age || 30);
 
     useEffect(() => {
@@ -236,8 +245,33 @@ export const Retirement: React.FC<RetirementProps> = ({
                                 <input type="number" value={goal.targetMonthlyIncome} onChange={e => updateGoal('targetMonthlyIncome', Number(e.target.value))} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-bold focus:border-primary transition-colors outline-none privacy-blur" />
                             </div>
                             <div>
-                                <label className="block text-xs text-gray-400 mb-1">Rente Etat (RRQ + PSV / mois)</label>
+                                <label className="block text-xs text-gray-400 mb-1">Rente Etat agrégée (RRQ + PSV / mois) — legacy</label>
                                 <input type="number" value={goal.governmentPension} onChange={e => updateGoal('governmentPension', Number(e.target.value))} className="w-full bg-black/40 border border-blue-500/20 rounded-lg px-3 py-2 text-blue-300 font-bold focus:border-blue-500 transition-colors outline-none privacy-blur" />
+                                <p className="text-[10px] text-gray-500 mt-1">Si tu remplis les 2 champs ci-dessous, ce champ est ignoré.</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
+                                <div>
+                                    <label className="block text-xs text-gray-400 mb-1">🇨🇦 RRQ projetée / mois (par personne)</label>
+                                    <input
+                                        type="number"
+                                        value={goal.rrqEstimateMonthly ?? ''}
+                                        placeholder="ex: 1100"
+                                        onChange={e => updateGoal('rrqEstimateMonthly', Number(e.target.value))}
+                                        className="w-full bg-black/40 border border-blue-500/20 rounded-lg px-3 py-2 text-blue-300 text-sm focus:border-blue-500 transition-colors outline-none"
+                                    />
+                                    <p className="text-[10px] text-gray-500 mt-1">Max 2025: 1 433$/mois. Consulte ton relevé RRQ.</p>
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-gray-400 mb-1">🍁 PSV projetée / mois</label>
+                                    <input
+                                        type="number"
+                                        value={goal.psvEstimateMonthly ?? ''}
+                                        placeholder="ex: 734"
+                                        onChange={e => updateGoal('psvEstimateMonthly', Number(e.target.value))}
+                                        className="w-full bg-black/40 border border-blue-500/20 rounded-lg px-3 py-2 text-blue-300 text-sm focus:border-blue-500 transition-colors outline-none"
+                                    />
+                                    <p className="text-[10px] text-gray-500 mt-1">Max 2025: 734$/mois (40 ans résidence).</p>
+                                </div>
                             </div>
                             <div className="pt-3 border-t border-white/5">
                                 <label className="block text-xs text-gray-400 mb-1">Pension employeur DB (prestations determinees) / mois</label>
@@ -250,6 +284,34 @@ export const Retirement: React.FC<RetirementProps> = ({
                                 />
                                 <p className="text-[10px] text-gray-500 mt-1">RREGOP, fonction publique federale, regime garanti viager. Laisse 0 si tu n'as que du REER/CD.</p>
                             </div>
+                            {(goal.dbPensionMonthly ?? 0) > 0 && (
+                                <div className="grid grid-cols-2 gap-3 pb-3 border-b border-white/5">
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-1">Option DB (au décès)</label>
+                                        <select
+                                            value={goal.dbElectionType ?? 'joint60'}
+                                            onChange={e => setGoal({ ...goal, dbElectionType: e.target.value as any })}
+                                            className="w-full bg-black/40 border border-emerald-500/10 rounded-lg px-3 py-2 text-emerald-200 text-sm"
+                                        >
+                                            <option value="single">Vie seule (rente cesse)</option>
+                                            <option value="joint60">Conjoint à 60% (recommandé)</option>
+                                            <option value="joint66">Conjoint à 66%</option>
+                                            <option value="joint100">Conjoint à 100% (rente réduite)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-1">% rente survivant</label>
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            max={100}
+                                            value={goal.dbSurvivorPct ?? 60}
+                                            onChange={e => updateGoal('dbSurvivorPct' as any, Number(e.target.value))}
+                                            className="w-full bg-black/40 border border-emerald-500/10 rounded-lg px-3 py-2 text-emerald-200 text-sm"
+                                        />
+                                    </div>
+                                </div>
+                            )}
                             {(goal.dbPensionMonthly ?? 0) > 0 && (
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
@@ -276,6 +338,122 @@ export const Retirement: React.FC<RetirementProps> = ({
                                         />
                                         <p className="text-[10px] text-gray-500 mt-1">Defaut = age cible retraite</p>
                                     </div>
+                                </div>
+                            )}
+                        </div>
+                    </Card>
+
+                    {/* W4.1 — Tax bracket viz */}
+                    <TaxBracketViz annualGrossIncome={baseGrossAnnual} label="revenu actuel" />
+
+                    {/* W1.5 — Goal Seeking / Projection inverse */}
+                    <Card title="🎯 Projection inverse (Goal seeker)">
+                        <div className="space-y-4">
+                            <p className="text-[11px] text-gray-400">
+                                Au lieu de tâtonner les sliders, dis-nous combien tu veux avoir et on calcule l'épargne nécessaire.
+                            </p>
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-1">Patrimoine cible à la retraite</label>
+                                <input
+                                    type="number"
+                                    value={goalSeekTarget}
+                                    onChange={e => setGoalSeekTarget(Number(e.target.value))}
+                                    className="w-full bg-black/40 border border-purple-500/20 rounded-lg px-3 py-2 text-purple-300 font-bold focus:border-purple-500 transition-colors outline-none"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    onClick={async () => {
+                                        setGoalSeekBusy(true);
+                                        setTimeout(() => {
+                                            const params = {
+                                                projection, calculatedStartingCash, liveCSVBalances,
+                                                realEstateGoals, debts, childGoals, travelGoals, lifeEvents,
+                                                retirementGoal: goal, config,
+                                                baseGrossAnnual, baseNetAnnual,
+                                                currentRentExpense, baseMonthlyExpenses,
+                                            };
+                                            const r = findRequiredMonthlySavings(params, goalSeekTarget, goal.targetAge, 0, 15000, goalSeekTarget * 0.02, 20);
+                                            setGoalSeekResult(r.found ? { savings: r.value } : { savings: r.value, error: r.error });
+                                            setGoalSeekBusy(false);
+                                        }, 50);
+                                    }}
+                                    disabled={goalSeekBusy}
+                                    className="px-3 py-2 bg-purple-500/20 border border-purple-500/50 rounded-md text-purple-300 text-xs font-bold hover:bg-purple-500/30 disabled:opacity-50"
+                                >
+                                    💰 Trouver épargne $/mois
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        setGoalSeekBusy(true);
+                                        setTimeout(() => {
+                                            const params = {
+                                                projection, calculatedStartingCash, liveCSVBalances,
+                                                realEstateGoals, debts, childGoals, travelGoals, lifeEvents,
+                                                retirementGoal: goal, config,
+                                                baseGrossAnnual, baseNetAnnual,
+                                                currentRentExpense, baseMonthlyExpenses,
+                                            };
+                                            const r = findEarliestRetirementAge(params);
+                                            setGoalSeekResult({ age: r.value });
+                                            setGoalSeekBusy(false);
+                                        }, 50);
+                                    }}
+                                    disabled={goalSeekBusy}
+                                    className="px-3 py-2 bg-purple-500/20 border border-purple-500/50 rounded-md text-purple-300 text-xs font-bold hover:bg-purple-500/30 disabled:opacity-50"
+                                >
+                                    🗓️ Âge retraite minimum
+                                </button>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setGoalSeekBusy(true);
+                                    setTimeout(() => {
+                                        const params = {
+                                            projection, calculatedStartingCash, liveCSVBalances,
+                                            realEstateGoals, debts, childGoals, travelGoals, lifeEvents,
+                                            retirementGoal: goal, config,
+                                            baseGrossAnnual, baseNetAnnual,
+                                            currentRentExpense, baseMonthlyExpenses,
+                                        };
+                                        setDrawdownResult(optimizeDrawdownOrder(params));
+                                        setGoalSeekBusy(false);
+                                    }, 50);
+                                }}
+                                disabled={goalSeekBusy}
+                                className="w-full px-3 py-2 bg-indigo-500/20 border border-indigo-500/50 rounded-md text-indigo-300 text-xs font-bold hover:bg-indigo-500/30 disabled:opacity-50"
+                            >
+                                🎲 Optimiser ordre de décaissement
+                            </button>
+                            {drawdownResult && !goalSeekBusy && (
+                                <div className="p-3 bg-indigo-900/30 border border-indigo-500/30 rounded-lg space-y-2">
+                                    <p className="text-xs text-indigo-200">{drawdownResult.explanation}</p>
+                                    <div className="space-y-1">
+                                        {drawdownResult.results
+                                            .sort((a, b) => b.estateNetWorth - a.estateNetWorth)
+                                            .map((r, i) => (
+                                                <div key={r.scenarioType} className="flex justify-between text-[10px] text-gray-300">
+                                                    <span>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '  '} {r.icon} {r.strategyName}</span>
+                                                    <span className="font-mono">{Math.round(r.estateNetWorth).toLocaleString('fr-CA')}\$</span>
+                                                </div>
+                                            ))}
+                                    </div>
+                                </div>
+                            )}
+                            {goalSeekBusy && <p className="text-xs text-gray-400">⏳ Calcul en cours…</p>}
+                            {goalSeekResult && !goalSeekBusy && (
+                                <div className="p-3 bg-purple-900/30 border border-purple-500/30 rounded-lg">
+                                    {goalSeekResult.savings !== undefined && (
+                                        <p className="text-sm text-purple-200">
+                                            💰 Tu dois épargner <strong className="text-purple-400">{goalSeekResult.savings.toLocaleString('fr-CA')}$/mois</strong>
+                                            {goalSeekResult.error && <span className="block text-xs text-orange-300 mt-1">⚠️ {goalSeekResult.error}</span>}
+                                        </p>
+                                    )}
+                                    {goalSeekResult.age !== undefined && (
+                                        <p className="text-sm text-purple-200">
+                                            🗓️ Tu peux prendre ta retraite dès <strong className="text-purple-400">{goalSeekResult.age} ans</strong> sans tomber en faillite.
+                                        </p>
+                                    )}
                                 </div>
                             )}
                         </div>

@@ -14,13 +14,24 @@ interface FinanceState extends AppState {
 }
 
 // Helper crypto.randomUUID disponible en browser moderne + Node 19+.
-// Fallback minimal au cas ou (devrait jamais s'executer en pratique).
 const safeRandomId = (): string => {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
         return crypto.randomUUID();
     }
     return `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 };
+
+// Phase silent-failure-hunter #8 : exposer le statut de migration au reste
+// de l'app pour eviter la "datapocalypse silencieuse". Si la migration
+// localStorage echoue, App.tsx peut detecter le flag et afficher une
+// banniere d'urgence pointant vers la cle de backup.
+interface MigrationStatus {
+    failed: boolean;
+    backupKey: string | null;
+    error: string | null;
+}
+let _migrationStatus: MigrationStatus = { failed: false, backupKey: null, error: null };
+export const getMigrationStatus = (): MigrationStatus => _migrationStatus;
 
 const migrateBudgetItems = (items: BudgetCategory[]): BudgetCategory[] => {
     return items.map(item => {
@@ -77,7 +88,6 @@ const getInitialStateWithMigration = (): AppState => {
     if (typeof window === 'undefined') return defaultState;
 
     try {
-        // Read old keys
         const savedApiKeysStr = localStorage.getItem('app_api_keys');
         const legacyLm = localStorage.getItem('lm_token');
         const legacyGemini = localStorage.getItem('gemini_key');
@@ -150,7 +160,9 @@ const getInitialStateWithMigration = (): AppState => {
             categorizationRules: (() => { try { const r = localStorage.getItem('categorization_rules'); return r ? JSON.parse(r) : []; } catch { return []; } })(),
         };
     } catch (e) {
+        const errorStr = String(e);
         console.error("[FinanceAI] Migration de l'etat echouee:", e);
+        let backupKey: string | null = null;
         try {
             const corruptedDump: Record<string, string | null> = {};
             const watchedPrefixes = ['app_', 'cached_', 'financeai-', 'fx_rates_', 'categorization_', 'initial_', 'lm_', 'gemini_'];
@@ -160,12 +172,17 @@ const getInitialStateWithMigration = (): AppState => {
                     corruptedDump[key] = localStorage.getItem(key);
                 }
             }
-            const backupKey = `__financeai_backup_${Date.now()}`;
-            localStorage.setItem(backupKey, JSON.stringify({ error: String(e), dump: corruptedDump }));
+            backupKey = `__financeai_backup_${Date.now()}`;
+            localStorage.setItem(backupKey, JSON.stringify({ error: errorStr, dump: corruptedDump }));
             console.warn(`[FinanceAI] Backup des donnees corrompues sauvegarde sous la cle ${backupKey}. Donnees recuperables manuellement via DevTools > Application > Local Storage.`);
         } catch (backupErr) {
             console.error("[FinanceAI] Impossible de sauvegarder le backup:", backupErr);
+            backupKey = null;
         }
+        // Phase silent-failure-hunter #8 : exposer le statut pour App.tsx
+        // qui affichera une banniere d'urgence au lieu de retourner
+        // silencieusement defaultState (datapocalypse).
+        _migrationStatus = { failed: true, backupKey, error: errorStr };
         return defaultState;
     }
 };
@@ -192,15 +209,8 @@ export const useFinanceStore = create<FinanceState>()(
         {
             name: 'financeai-storage',
             // Phase C1 du PLAN_DE_FIX : exclure apiKeys du persist Zustand.
-            // Les cles legacy (lm_token / gemini_key / app_api_keys) restent
-            // lues au mount par getInitialStateWithMigration() pour la retrocompat,
-            // mais Zustand ne les ecrit plus dans 'financeai-storage'.
-            // Plan ulterieur (P2) : chiffrer apiKeys via la primitive AES-GCM de
-            // services/cloudBackup.ts avec une passphrase utilisateur.
             partialize: (state) => {
-                const { apiKeys, ...rest } = state;
-                // On garde tout sauf apiKeys et l'activeTab (volatile par session).
-                const { activeTab, ...persistable } = rest as any;
+                const { apiKeys, activeTab, ...persistable } = state;
                 return persistable;
             },
         }

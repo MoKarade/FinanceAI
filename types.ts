@@ -26,7 +26,7 @@ export interface Asset {
   buyPrice?: number;
   priceHistory?: Array<{ date: string; price: number; rawPrice?: number; fxRate?: number }>;
   lastHistorySync?: number;
-  accountType?: 'CELI' | 'CELIAPP' | 'REER' | 'NON-ENREG' | 'CRYPTO' | 'REEE';
+  accountType?: RegisteredAccountType; // (cycle 3 TS agent: unifié sur le type partagé)
   dividendYield?: number;
   dividendFreq?: 'Monthly' | 'Quarterly' | 'Yearly';
   nextDividendDate?: string;

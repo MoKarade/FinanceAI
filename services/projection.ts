@@ -459,7 +459,16 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             const psvMonthly = age >= psvStartAge ? (retirementGoal.governmentPension * 0.35 * psvProrata * psvFactor) : 0;
 
             const inflFactor = Math.pow(1 + simInflation / 100, m / 12);
-            incomeRetirement = Math.max(0, (rrqMonthly + psvMonthly) * inflFactor - monthlyOasReduction);
+
+            // D2.4: Rente DB (prestations déterminées). Indexée partiellement
+            // selon dbPensionIndexationPct (défaut 100% = pleinement indexée).
+            const dbStartAge = retirementGoal.dbPensionStartAge ?? retirementGoal.targetAge;
+            const dbBaseMonthly = retirementGoal.dbPensionMonthly || 0;
+            const dbIndexationFraction = Math.min(1, Math.max(0, (retirementGoal.dbPensionIndexationPct ?? 100) / 100));
+            const dbInflFactor = 1 + (inflFactor - 1) * dbIndexationFraction;
+            const dbMonthly = age >= dbStartAge ? dbBaseMonthly * dbInflFactor : 0;
+
+            incomeRetirement = Math.max(0, (rrqMonthly + psvMonthly) * inflFactor + dbMonthly - monthlyOasReduction);
             monthlyIncome = incomeRetirement;
 
             // D2.3: monthlyExpenses est défini de façon unique dans le bloc

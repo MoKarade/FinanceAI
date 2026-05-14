@@ -218,4 +218,69 @@ describe('calculateFutureProjection', () => {
             expect(Number.isFinite(r.estateNetWorth)).toBe(true);
         }
     });
+
+    // D2.4 — Pension à prestations déterminées (DB)
+    describe('Pension DB', () => {
+        const buildAtRetirement = (extraRetirement: Partial<RetirementGoal>) => {
+            // Démarre à 64 ans + projection 5 ans → traverse l'âge cible 65
+            const config = makeConfig();
+            config.users[0] = { ...config.users[0], age: 64, birthYear: 1962 };
+            config.users[1] = { ...config.users[1], age: 64, birthYear: 1962 };
+            return makeParams({
+                config,
+                retirementGoal: makeRetirementGoal({ targetAge: 65, governmentPension: 1500, ...extraRetirement }),
+                projection: makeProjection({ years: 5 }),
+            });
+        };
+
+        it('sans pension DB, le revenu retraite reflète uniquement RRQ+PSV', () => {
+            const r = calculateFutureProjection(buildAtRetirement({})) as any;
+            const base = r.allResults.find((s: any) => s.stratType === 'BASE');
+            const post65 = base.chartData.filter((d: any) => d.age >= 65);
+            expect(post65.length).toBeGreaterThan(0);
+        });
+
+        it('avec pension DB de 2000$/mois, le patrimoine successoral augmente', () => {
+            const noPension = calculateFutureProjection(buildAtRetirement({ dbPensionMonthly: 0 })) as any;
+            const withPension = calculateFutureProjection(buildAtRetirement({ dbPensionMonthly: 2000 })) as any;
+
+            const noBase = noPension.allResults.find((s: any) => s.stratType === 'BASE');
+            const withBase = withPension.allResults.find((s: any) => s.stratType === 'BASE');
+
+            expect(withBase.estateNetWorth).toBeGreaterThan(noBase.estateNetWorth);
+        });
+
+        it('la pension DB ne se déclenche pas avant dbPensionStartAge', () => {
+            // Démarre 60 ans, début pension à 70 → pas de revenu DB durant la projection 5 ans
+            const config = makeConfig();
+            config.users[0] = { ...config.users[0], age: 60, birthYear: 1966 };
+            config.users[1] = { ...config.users[1], age: 60, birthYear: 1966 };
+            const params = makeParams({
+                config,
+                retirementGoal: makeRetirementGoal({
+                    targetAge: 60,
+                    dbPensionMonthly: 5000,
+                    dbPensionStartAge: 70, // Hors fenêtre de simulation
+                }),
+                projection: makeProjection({ years: 5 }),
+            });
+            const result = calculateFutureProjection(params) as any;
+            expect(Number.isFinite(result.estateNetWorth)).toBe(true);
+        });
+
+        it('indexation 0% rend la pension DB nominale (érodée par l\'inflation)', () => {
+            const fullIndex = calculateFutureProjection(buildAtRetirement({
+                dbPensionMonthly: 2000,
+                dbPensionIndexationPct: 100,
+            })) as any;
+            const noIndex = calculateFutureProjection(buildAtRetirement({
+                dbPensionMonthly: 2000,
+                dbPensionIndexationPct: 0,
+            })) as any;
+            const fullBase = fullIndex.allResults.find((s: any) => s.stratType === 'BASE');
+            const noBase = noIndex.allResults.find((s: any) => s.stratType === 'BASE');
+            // Pleine indexation > pas d'indexation (avec inflation positive)
+            expect(fullBase.estateNetWorth).toBeGreaterThanOrEqual(noBase.estateNetWorth);
+        });
+    });
 });

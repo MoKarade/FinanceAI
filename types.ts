@@ -223,6 +223,12 @@ export interface RetirementGoal {
   targetAge: number;
   targetMonthlyIncome: number;
   governmentPension: number;
+  // D2.4: Rente mensuelle de régime à prestations déterminées (DB) cumulée
+  // pour le couple (ex: RREGOP, fonction publique fédérale, certaines profs).
+  // Optionnelle. Indexation gérée par `dbPensionIndexationPct` (défaut 100%).
+  dbPensionMonthly?: number;
+  dbPensionIndexationPct?: number; // 0-100, fraction de l'IPC répercutée
+  dbPensionStartAge?: number;      // par défaut targetAge
 }
 
 export type GoalType = 'NET_WORTH' | 'CELI' | 'REER' | 'LIQUIDITY' | 'CUSTOM' | 'EXPENSE_OPTIMIZATION' | 'REBALANCING';

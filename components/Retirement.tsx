@@ -239,6 +239,45 @@ export const Retirement: React.FC<RetirementProps> = ({
                                 <label className="block text-xs text-gray-400 mb-1">Rente Etat (RRQ + PSV / mois)</label>
                                 <input type="number" value={goal.governmentPension} onChange={e => updateGoal('governmentPension', Number(e.target.value))} className="w-full bg-black/40 border border-blue-500/20 rounded-lg px-3 py-2 text-blue-300 font-bold focus:border-blue-500 transition-colors outline-none privacy-blur" />
                             </div>
+                            <div className="pt-3 border-t border-white/5">
+                                <label className="block text-xs text-gray-400 mb-1">Pension employeur DB (prestations determinees) / mois</label>
+                                <input
+                                    type="number"
+                                    value={goal.dbPensionMonthly ?? 0}
+                                    onChange={e => updateGoal('dbPensionMonthly', Number(e.target.value))}
+                                    placeholder="0"
+                                    className="w-full bg-black/40 border border-emerald-500/20 rounded-lg px-3 py-2 text-emerald-300 font-bold focus:border-emerald-500 transition-colors outline-none privacy-blur"
+                                />
+                                <p className="text-[10px] text-gray-500 mt-1">RREGOP, fonction publique federale, regime garanti viager. Laisse 0 si tu n'as que du REER/CD.</p>
+                            </div>
+                            {(goal.dbPensionMonthly ?? 0) > 0 && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-1">Indexation IPC (%)</label>
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            max={100}
+                                            value={goal.dbPensionIndexationPct ?? 100}
+                                            onChange={e => updateGoal('dbPensionIndexationPct', Number(e.target.value))}
+                                            className="w-full bg-black/40 border border-emerald-500/10 rounded-lg px-3 py-2 text-emerald-200 text-sm focus:border-emerald-500 transition-colors outline-none"
+                                        />
+                                        <p className="text-[10px] text-gray-500 mt-1">100 = pleine indexation, 50 = demi, 0 = nominale</p>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-1">Age debut versement</label>
+                                        <input
+                                            type="number"
+                                            min={50}
+                                            max={75}
+                                            value={goal.dbPensionStartAge ?? goal.targetAge}
+                                            onChange={e => updateGoal('dbPensionStartAge', Number(e.target.value))}
+                                            className="w-full bg-black/40 border border-emerald-500/10 rounded-lg px-3 py-2 text-emerald-200 text-sm focus:border-emerald-500 transition-colors outline-none"
+                                        />
+                                        <p className="text-[10px] text-gray-500 mt-1">Defaut = age cible retraite</p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </Card>
                 </div>

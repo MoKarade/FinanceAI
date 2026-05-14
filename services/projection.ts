@@ -1796,10 +1796,40 @@ const runMonteCarlo = (params: SimulationParams, strategy: AllocationStrategy, d
 
     // Expert metrics for the main scenario
     const representativeRun = sorted[p50Index] || sorted[0];
+
+    // D2.6: Sequence-of-returns risk dans la décennie critique (5 ans avant + 5 après retraite).
+    // Un krach pendant cette fenêtre est ~10× plus destructeur qu'à 20 ans de retraite.
+    // Métrique: % d'itérations MC où le NW chute sous 50% du capital initial pendant la décennie critique.
+    const retAge = params.retirementGoal.targetAge || 65;
+    const currentAge = params.config.users[0]?.age || 30;
+    const yearsToRetirement = Math.max(0, retAge - currentAge);
+    const criticalDecadeStartMonth = Math.max(0, (yearsToRetirement - 5) * 12);
+    const criticalDecadeEndMonth = Math.min(nMonths, (yearsToRetirement + 5) * 12);
+    const fragileThreshold = startNW * 0.5;
+
+    let fragileCount = 0;
+    let worstDecadeDrawdown = 0;
+    for (const run of allRuns) {
+        let minInDecade = Infinity;
+        for (let mi = criticalDecadeStartMonth; mi <= criticalDecadeEndMonth && mi < run.netWorthByMonth.length; mi++) {
+            const nw = run.netWorthByMonth[mi];
+            if (nw < minInDecade) minInDecade = nw;
+        }
+        if (minInDecade < fragileThreshold) fragileCount++;
+        const drawdown = startNW > 0 ? Math.max(0, (startNW - minInDecade) / startNW) : 0;
+        if (drawdown > worstDecadeDrawdown) worstDecadeDrawdown = drawdown;
+    }
+    const sequenceRiskPct = Math.round((fragileCount / iterations) * 100);
+
     const expertMetrics = {
         swr: representativeRun ? (representativeRun.totalExpenses / (representativeRun.chartData?.length || 1) * 12) / (startNW || 1) : 0,
         taxLeakage: representativeRun ? (representativeRun.totalTaxesPaid / (representativeRun.totalGrowth || 1)) : 0,
-        shortfallRisk: representativeRun ? representativeRun.shortfallRate : 0
+        shortfallRisk: representativeRun ? representativeRun.shortfallRate : 0,
+        // D2.6: nouveaux champs
+        sequenceRiskPct,          // % itérations où NW < 50% startNW dans la décennie critique
+        worstDecadeDrawdown,      // pire chute relative (0-1) observée dans la fenêtre
+        criticalDecadeStartYear: Math.floor(criticalDecadeStartMonth / 12),
+        criticalDecadeEndYear: Math.floor(criticalDecadeEndMonth / 12),
     };
 
     return { successRate, p10Data, p50Data, p90Data, fvi, expertMetrics };

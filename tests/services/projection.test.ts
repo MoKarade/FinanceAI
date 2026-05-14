@@ -219,6 +219,41 @@ describe('calculateFutureProjection', () => {
         }
     });
 
+    // D2.6 — Sequence Risk Metric
+    describe('Sequence Risk Metric', () => {
+        it('expertMetrics expose sequenceRiskPct et worstDecadeDrawdown quand MC est activé', () => {
+            const params = makeParams({
+                projection: makeProjection({ years: 10 }),
+            });
+            const result = calculateFutureProjection(params, /* runMC */ true) as any;
+            expect(result.expertMetrics).toBeTruthy();
+            expect(typeof result.expertMetrics.sequenceRiskPct).toBe('number');
+            expect(typeof result.expertMetrics.worstDecadeDrawdown).toBe('number');
+            expect(result.expertMetrics.sequenceRiskPct).toBeGreaterThanOrEqual(0);
+            expect(result.expertMetrics.sequenceRiskPct).toBeLessThanOrEqual(100);
+            expect(result.expertMetrics.worstDecadeDrawdown).toBeGreaterThanOrEqual(0);
+            expect(result.expertMetrics.worstDecadeDrawdown).toBeLessThanOrEqual(1);
+        });
+
+        it('expose la fenêtre décennie critique (start/end year) cohérente avec targetAge', () => {
+            const config = makeConfig();
+            config.users[0] = { ...config.users[0], age: 40, birthYear: 1986 };
+            config.users[1] = { ...config.users[1], age: 40, birthYear: 1986 };
+            const params = makeParams({
+                config,
+                retirementGoal: makeRetirementGoal({ targetAge: 60 }),
+                projection: makeProjection({ years: 30 }),
+            });
+            const r = calculateFutureProjection(params, true) as any;
+            const m = r.expertMetrics;
+            // Décennie critique = [retraite-5, retraite+5] = [15, 25] années après start
+            expect(m.criticalDecadeStartYear).toBeGreaterThanOrEqual(14);
+            expect(m.criticalDecadeStartYear).toBeLessThanOrEqual(16);
+            expect(m.criticalDecadeEndYear).toBeGreaterThanOrEqual(24);
+            expect(m.criticalDecadeEndYear).toBeLessThanOrEqual(26);
+        });
+    });
+
     // D2.5 — Smile Curve (dépenses retraite en U)
     describe('Smile Curve', () => {
         const buildLongRetirement = (useSmile: boolean) => {

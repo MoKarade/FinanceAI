@@ -3,6 +3,7 @@ import { Card } from './ui/Card';
 import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset } from '../types';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend, AreaChart } from 'recharts';
 import { calculateFutureProjection } from '../services/projection';
+import { findRequiredMonthlySavings, findEarliestRetirementAge } from '../services/projection/goalSeek';
 import { fetchPortfolioHistory } from '../services/finance';
 import { calculateGrossFromNet } from '../services/tax';
 import { useFinanceStore } from '../store/useFinanceStore';
@@ -37,6 +38,10 @@ export const Retirement: React.FC<RetirementProps> = ({
 }) => {
     const setAppState = useFinanceStore(s => s.setAppState);
     const [lifeExpectancy, setLifeExpectancy] = useState(90);
+    // W1.5 — Goal seeking
+    const [goalSeekTarget, setGoalSeekTarget] = useState<number>(1_000_000);
+    const [goalSeekResult, setGoalSeekResult] = useState<{ savings?: number; age?: number; error?: string } | null>(null);
+    const [goalSeekBusy, setGoalSeekBusy] = useState(false);
     const [currentAge, setCurrentAge] = useState(config.users[0]?.age || 30);
 
     useEffect(() => {
@@ -329,6 +334,84 @@ export const Retirement: React.FC<RetirementProps> = ({
                                         />
                                         <p className="text-[10px] text-gray-500 mt-1">Defaut = age cible retraite</p>
                                     </div>
+                                </div>
+                            )}
+                        </div>
+                    </Card>
+
+                    {/* W1.5 — Goal Seeking / Projection inverse */}
+                    <Card title="🎯 Projection inverse (Goal seeker)">
+                        <div className="space-y-4">
+                            <p className="text-[11px] text-gray-400">
+                                Au lieu de tâtonner les sliders, dis-nous combien tu veux avoir et on calcule l'épargne nécessaire.
+                            </p>
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-1">Patrimoine cible à la retraite</label>
+                                <input
+                                    type="number"
+                                    value={goalSeekTarget}
+                                    onChange={e => setGoalSeekTarget(Number(e.target.value))}
+                                    className="w-full bg-black/40 border border-purple-500/20 rounded-lg px-3 py-2 text-purple-300 font-bold focus:border-purple-500 transition-colors outline-none"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    onClick={async () => {
+                                        setGoalSeekBusy(true);
+                                        setTimeout(() => {
+                                            const params = {
+                                                projection, calculatedStartingCash, liveCSVBalances,
+                                                realEstateGoals, debts, childGoals, travelGoals, lifeEvents,
+                                                retirementGoal: goal, config,
+                                                baseGrossAnnual, baseNetAnnual,
+                                                currentRentExpense, baseMonthlyExpenses,
+                                            };
+                                            const r = findRequiredMonthlySavings(params, goalSeekTarget, goal.targetAge, 0, 15000, goalSeekTarget * 0.02, 20);
+                                            setGoalSeekResult(r.found ? { savings: r.value } : { savings: r.value, error: r.error });
+                                            setGoalSeekBusy(false);
+                                        }, 50);
+                                    }}
+                                    disabled={goalSeekBusy}
+                                    className="px-3 py-2 bg-purple-500/20 border border-purple-500/50 rounded-md text-purple-300 text-xs font-bold hover:bg-purple-500/30 disabled:opacity-50"
+                                >
+                                    💰 Trouver épargne $/mois
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        setGoalSeekBusy(true);
+                                        setTimeout(() => {
+                                            const params = {
+                                                projection, calculatedStartingCash, liveCSVBalances,
+                                                realEstateGoals, debts, childGoals, travelGoals, lifeEvents,
+                                                retirementGoal: goal, config,
+                                                baseGrossAnnual, baseNetAnnual,
+                                                currentRentExpense, baseMonthlyExpenses,
+                                            };
+                                            const r = findEarliestRetirementAge(params);
+                                            setGoalSeekResult({ age: r.value });
+                                            setGoalSeekBusy(false);
+                                        }, 50);
+                                    }}
+                                    disabled={goalSeekBusy}
+                                    className="px-3 py-2 bg-purple-500/20 border border-purple-500/50 rounded-md text-purple-300 text-xs font-bold hover:bg-purple-500/30 disabled:opacity-50"
+                                >
+                                    🗓️ Âge retraite minimum
+                                </button>
+                            </div>
+                            {goalSeekBusy && <p className="text-xs text-gray-400">⏳ Calcul en cours…</p>}
+                            {goalSeekResult && !goalSeekBusy && (
+                                <div className="p-3 bg-purple-900/30 border border-purple-500/30 rounded-lg">
+                                    {goalSeekResult.savings !== undefined && (
+                                        <p className="text-sm text-purple-200">
+                                            💰 Tu dois épargner <strong className="text-purple-400">{goalSeekResult.savings.toLocaleString('fr-CA')}$/mois</strong>
+                                            {goalSeekResult.error && <span className="block text-xs text-orange-300 mt-1">⚠️ {goalSeekResult.error}</span>}
+                                        </p>
+                                    )}
+                                    {goalSeekResult.age !== undefined && (
+                                        <p className="text-sm text-purple-200">
+                                            🗓️ Tu peux prendre ta retraite dès <strong className="text-purple-400">{goalSeekResult.age} ans</strong> sans tomber en faillite.
+                                        </p>
+                                    )}
                                 </div>
                             )}
                         </div>

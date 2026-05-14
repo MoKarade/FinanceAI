@@ -94,11 +94,12 @@ const makeParams = (overrides: Partial<SimulationParams> = {}): SimulationParams
 // ---------------------------------------------------------------------------
 
 describe('calculateFutureProjection', () => {
-    it('renvoie exactement 5 scénarios (BASE, LIBERTE_55, HYPER_INFLATION, WINDFALL, ECONOMIC_WINTER)', () => {
-        const results = calculateFutureProjection(makeParams());
-        expect(Array.isArray(results)).toBe(true);
-        expect(results).toHaveLength(5);
-        const types = results.map((r: any) => r.stratType);
+    it('renvoie exactement 5 scénarios dans allResults (BASE, LIBERTE_55, HYPER_INFLATION, WINDFALL, ECONOMIC_WINTER)', () => {
+        const result = calculateFutureProjection(makeParams()) as any;
+        const scenarios = result.allResults as any[];
+        expect(Array.isArray(scenarios)).toBe(true);
+        expect(scenarios).toHaveLength(5);
+        const types = scenarios.map(r => r.stratType);
         expect(types).toEqual(
             expect.arrayContaining(['BASE', 'LIBERTE_55', 'HYPER_INFLATION', 'WINDFALL', 'ECONOMIC_WINTER'])
         );
@@ -106,24 +107,27 @@ describe('calculateFutureProjection', () => {
 
     it('chaque scénario a un chartData non vide proche de years*12 entrées', () => {
         const params = makeParams();
-        const results = calculateFutureProjection(params);
+        const result = calculateFutureProjection(params) as any;
+        const scenarios = result.allResults as any[];
         const expectedMonths = (params.projection.years || 5) * 12;
-        for (const r of results as any[]) {
+        for (const r of scenarios) {
             expect(r.chartData.length).toBeGreaterThan(expectedMonths - 2);
             expect(r.chartData.length).toBeLessThanOrEqual(expectedMonths + 2);
         }
     });
 
     it('gainVsAuto vaut 0 pour le scénario BASE', () => {
-        const results = calculateFutureProjection(makeParams()) as any[];
-        const base = results.find(r => r.stratType === 'BASE');
+        const result = calculateFutureProjection(makeParams()) as any;
+        const scenarios = result.allResults as any[];
+        const base = scenarios.find(r => r.stratType === 'BASE');
         expect(base).toBeDefined();
         expect(base.gainVsAuto).toBe(0);
     });
 
     it('estateNetWorth est numérique non-NaN dans tous les scénarios', () => {
-        const results = calculateFutureProjection(makeParams()) as any[];
-        for (const r of results) {
+        const result = calculateFutureProjection(makeParams()) as any;
+        const scenarios = result.allResults as any[];
+        for (const r of scenarios) {
             expect(typeof r.estateNetWorth).toBe('number');
             expect(Number.isNaN(r.estateNetWorth)).toBe(false);
             expect(Number.isFinite(r.estateNetWorth)).toBe(true);
@@ -131,23 +135,26 @@ describe('calculateFutureProjection', () => {
     });
 
     it('WINDFALL augmente le patrimoine vs BASE (héritage 250k $)', () => {
-        const results = calculateFutureProjection(makeParams()) as any[];
-        const base = results.find(r => r.stratType === 'BASE');
-        const windfall = results.find(r => r.stratType === 'WINDFALL');
+        const result = calculateFutureProjection(makeParams()) as any;
+        const scenarios = result.allResults as any[];
+        const base = scenarios.find(r => r.stratType === 'BASE');
+        const windfall = scenarios.find(r => r.stratType === 'WINDFALL');
         expect(windfall.estateNetWorth).toBeGreaterThan(base.estateNetWorth);
     });
 
     it('HYPER_INFLATION dégrade le patrimoine vs BASE (en réel)', () => {
-        const results = calculateFutureProjection(makeParams()) as any[];
-        const base = results.find(r => r.stratType === 'BASE');
-        const hyper = results.find(r => r.stratType === 'HYPER_INFLATION');
+        const result = calculateFutureProjection(makeParams()) as any;
+        const scenarios = result.allResults as any[];
+        const base = scenarios.find(r => r.stratType === 'BASE');
+        const hyper = scenarios.find(r => r.stratType === 'HYPER_INFLATION');
         // L'inflation 5.5% érode la valeur réelle nette même avec rendements similaires
         expect(hyper.estateNetWorth).toBeLessThan(base.estateNetWorth);
     });
 
     it('patrimoine positif avec cash + revenus normaux et 5 ans d\'horizon', () => {
-        const results = calculateFutureProjection(makeParams()) as any[];
-        const base = results.find(r => r.stratType === 'BASE');
+        const result = calculateFutureProjection(makeParams()) as any;
+        const scenarios = result.allResults as any[];
+        const base = scenarios.find(r => r.stratType === 'BASE');
         expect(base.estateNetWorth).toBeGreaterThan(0);
     });
 
@@ -170,16 +177,18 @@ describe('calculateFutureProjection', () => {
     });
 
     it('shortfallRate ∈ [0, 1] dans tous les scénarios', () => {
-        const results = calculateFutureProjection(makeParams()) as any[];
-        for (const r of results) {
+        const result = calculateFutureProjection(makeParams()) as any;
+        const scenarios = result.allResults as any[];
+        for (const r of scenarios) {
             expect(r.shortfallRate).toBeGreaterThanOrEqual(0);
             expect(r.shortfallRate).toBeLessThanOrEqual(1);
         }
     });
 
     it('chaque entrée de chartData expose NetWorth numérique', () => {
-        const results = calculateFutureProjection(makeParams()) as any[];
-        const base = results.find(r => r.stratType === 'BASE');
+        const result = calculateFutureProjection(makeParams()) as any;
+        const scenarios = result.allResults as any[];
+        const base = scenarios.find(r => r.stratType === 'BASE');
         for (const d of base.chartData) {
             expect(typeof d.NetWorth).toBe('number');
             expect(Number.isFinite(d.NetWorth)).toBe(true);
@@ -202,9 +211,10 @@ describe('calculateFutureProjection', () => {
                 ] as BudgetConfig['users'],
             },
         };
-        const results = calculateFutureProjection(makeParams(zeroIncome)) as any[];
-        expect(results).toHaveLength(5);
-        for (const r of results) {
+        const result = calculateFutureProjection(makeParams(zeroIncome)) as any;
+        const scenarios = result.allResults as any[];
+        expect(scenarios).toHaveLength(5);
+        for (const r of scenarios) {
             expect(Number.isFinite(r.estateNetWorth)).toBe(true);
         }
     });

@@ -75,8 +75,11 @@ const BudgetAnalysisArraySchema = z.array(z.string());
 /**
  * Parse une reponse LLM en JSON puis valide contre un schema Zod.
  * Renvoie null si parse ou validation echoue ; logge l'erreur cote console.
+ *
+ * Note: generique sur S extends z.ZodTypeAny pour que TS infere correctement
+ * le type de retour via z.infer<S> (z.ZodType<T> ne reverse-infere pas T).
  */
-const safeJsonValidate = <T>(text: string, schema: z.ZodType<T>): T | null => {
+const safeJsonValidate = <S extends z.ZodTypeAny>(text: string, schema: S): z.infer<S> | null => {
     let parsed: unknown;
     try {
         parsed = JSON.parse(text);
@@ -224,7 +227,14 @@ export const detectSubscriptionsAI = async (transactions: Transaction[], apiKey:
         const response = await ai.models.generateContent({ model: MODEL_NAME, contents: prompt, config: { responseMimeType: "application/json" } });
         const validated = safeJsonValidate(response.text || "[]", SubscriptionArraySchema);
         if (!validated) return [];
-        return validated.map(item => ({ ...item, lastDate: new Date().toISOString().split('T')[0] }));
+        return validated.map((item): RecurringItem => ({
+            payee: item.payee,
+            averageAmount: item.averageAmount,
+            dayOfMonth: item.dayOfMonth,
+            category: item.category,
+            yearlyCost: item.yearlyCost,
+            lastDate: new Date().toISOString().split('T')[0],
+        }));
     } catch (e) {
         console.error("[FinanceAI] detectSubscriptionsAI a echoue:", e);
         return [];

@@ -7,6 +7,7 @@ import { calculateFiscalReport } from '../services/tax';
 import { fetchPortfolioHistory } from '../services/finance';
 import { calculateFutureProjection, SimulationParams } from '../services/projection';
 import { runProjectionAsync, terminateProjectionWorker } from '../services/projection/runAsync';
+import { useFinanceStore } from '../store/useFinanceStore';
 
 interface FutureProjectionProps {
   assets: Asset[];
@@ -280,6 +281,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const [selectedScenarioIdx, setSelectedScenarioIdx] = useState(0);
     const [runMC, setRunMC] = useState(true);
 
+    // W5.x — Conteneurs étendus câblés au moteur
+    const insurancePolicies = useFinanceStore(s => s.insurancePolicies ?? []);
+    const vehicleReplacements = useFinanceStore(s => s.vehicleReplacements ?? []);
+    const majorRenovations = useFinanceStore(s => s.majorRenovations ?? []);
+    const charitableGoals = useFinanceStore(s => s.charitableGoals ?? []);
+    const rentalProperties = useFinanceStore(s => s.rentalProperties ?? []);
+
     const params: SimulationParams = useMemo(() => ({
         projection,
         calculatedStartingCash,
@@ -296,8 +304,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         currentRentExpense,
         baseMonthlyExpenses,
         startYear,
-        startMonth
-    }), [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses]);
+        startMonth,
+        insurancePolicies,
+        vehicleReplacements,
+        majorRenovations,
+        charitableGoals,
+        rentalProperties,
+    }), [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties]);
 
     // Perf fix:
     //  - Mode déterministe (runMC=false): synchrone + debounce 300ms (rapide ~150ms)

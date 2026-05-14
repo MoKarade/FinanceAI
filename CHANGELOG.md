@@ -6,6 +6,34 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — cycle 4 : ProjectionChartPoint + W5.x câblage] — Branche `claude/analyze-finance-app-CtLvs`
+
+### 🎯 PR A — `ProjectionChartPoint` typé (TS reviewer quick win #1)
+
+- Interface `ProjectionChartPoint` avec ~90 champs optionnels typés (NetWorth, IncomeMarc, CELI, REER, MarketGrowth*, etc.)
+- `ProjectionResult.chartData: ProjectionChartPoint[]` (au lieu de `any[]`)
+- ROI: élimine ~35 erreurs TS strict en cascade dans RealEstate/Investments/ChildPlanning
+
+### 🔗 PR B — `RegisteredAccountType` unification finale
+
+- `InvestmentAccount.type: 'CELI'|...` → `RegisteredAccountType` (élimine la 2e union divergente)
+
+### 🔌 PR C — W5.x conteneurs câblés au moteur (cycle 4 intégration)
+
+Les conteneurs capturés en UI depuis PR #16 mais ignorés du moteur sont maintenant **fonctionnels** :
+
+- **W5.4 Assurances** : primes mensuelles ajoutées aux dépenses (avec respect `expiryDate` pour T10/T20/T30)
+- **Véhicules cycliques** : `liquid -= cost` tous les N×12 mois
+- **Rénovations majeures** : `liquid -= cost` à la date planifiée
+- **Dons charitables** : `monthlyExpenses` + crédit fiscal 33% (`taxCurrentYear.revenu`) + bonus titres appréciés
+- **W5.6 Immeubles locatifs** : NOI = `(rent×(1-vacancy) - expenses)` ajouté au revenu + imposable au marginal 45%
+
+`SimulationParams` étendu, `Retirement.tsx` + `FutureProjection.tsx` passent les conteneurs via store.
+
+5 tests régression W5.x ajoutés. Tests: **148/148**.
+
+---
+
 ## [unreleased — cycle 2/3 fixes + architecture refactor + final agents review] — Branche `claude/analyze-finance-app-CtLvs`
 
 ### 🔍 Phase 4 — Re-run 3 agents post-refactor

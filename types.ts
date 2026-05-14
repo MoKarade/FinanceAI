@@ -37,7 +37,7 @@ export interface InvestmentAccount {
   id: string;
   userId: number;
   name: string;
-  type: 'CELI' | 'CELIAPP' | 'REER' | 'MARGE' | 'NON-ENREG' | 'CRYPTO' | 'AUTRE';
+  type: RegisteredAccountType; // (cycle 3 TS agent: unifié sur le type partagé — exclut REEE qui n'est pas un compte d'investissement direct, mais le union l'inclut pour compat)
 }
 
 export interface InvestmentTransaction {

@@ -91,16 +91,15 @@ const ASSET_VOLATILITY = {
 // V31: Frais de gestion (MER) appliqués stochastiquement
 const MER = 0.0020;
 
-const logEvent = (log: string[], msg: string) => {
-    if (log.length < 500) log.push(msg); // Safety cap
-};
-
 const runScenario = (params: SimulationParams, strategy: AllocationStrategy, enableMonteCarlo = false, delayPensions = false, mcIterationIndex = 0, scenarioType: FutureScenarioType = 'BASE') => {
     const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0 } = params;
     
     // Deterministic Seed Generation
     // We use a base seed from initial assets + inflation to ensure same inputs = same base trace
-    const baseSeedStr = `${calculatedStartingCash}-${projection.inflationRate || 2.0}-${mcIterationIndex}`;
+    // D2.3: la graine MC ne dépend QUE de l'index d'itération + scénario,
+    // pas du capital initial (sinon impossible de comparer 100k$ vs 100.001$
+    // sur des trajectoires aléatoires identiques).
+    const baseSeedStr = `${scenarioType}-${strategy}-${mcIterationIndex}`;
     let baseSeedNum = 0;
     for (let i = 0; i < baseSeedStr.length; i++) {
         baseSeedNum = (baseSeedNum << 5) - baseSeedNum + baseSeedStr.charCodeAt(i);
@@ -142,7 +141,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
     const user1 = config.users[0];
     const currentAge = user1?.age || 30;
-    const currentYear = new Date().getFullYear();
+    // D2.3: suppression de `new Date().getFullYear()` (rendait la simulation
+    // non déterministe — résultat dépendait de l'horloge système).
+    // La variable n'était de toute façon jamais utilisée.
 
     let totalHistoricalCeliRoom = 0;
     let totalHistoricalRrspRoom = 0;
@@ -513,10 +514,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             incomeRetirement = Math.max(0, (rrqMonthly + psvMonthly) * inflFactor - monthlyOasReduction);
             monthlyIncome = incomeRetirement;
 
-            // V31: Le multiplicateur d'inflation (expenseMultiplier) corrige le bug temporel de GK
-            monthlyExpenses = Math.abs(retirementGoal.targetMonthlyIncome) * expenseMultiplier;
-
-            // NOTE: Le manque à gagner (Shortfall) a été déplacé dans la section unifiée plus bas
+            // D2.3: monthlyExpenses est défini de façon unique dans le bloc
+            // EXPENSES & EVENTS plus bas (évite la double affectation).
         } else {
             // ---- PHASE ACTIVE ----
             const yearsElapsed = Math.floor(m / 12);
@@ -1914,7 +1913,9 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
     let expertMetrics: any = null;
 
     if (runMC) {
-        const MC_ITERATIONS = 50; // Performance: Reduced from 100 to 50
+        // D2.3: revenu à 100 itérations (IC95% ≈ ±3 points vs ±7 à 50 iter).
+        // Migration vers Web Worker prévue pour pouvoir aller à 500-1000.
+        const MC_ITERATIONS = 100;
         const mcResult = runMonteCarlo(params, 'AUTO_MARGINAL', target.delayPensions, MC_ITERATIONS);
         successRate = mcResult.successRate;
         fvi = mcResult.fvi;

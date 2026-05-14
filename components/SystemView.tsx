@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card } from './ui/Card';
 import { AppState } from '../types';
+import { getMigrationStatus } from '../store/useFinanceStore';
 
 interface SystemViewProps {
     state: AppState;
@@ -30,20 +31,112 @@ const CHANGELOG = [
     }
 ];
 
-export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
-    const [logs, setLogs] = useState<string[]>([]);
-    
-    useEffect(() => {
-        const newLogs = [];
-        const now = new Date().toLocaleTimeString();
-        newLogs.push(`[${now}] SYSTEM_INIT: Dashboard v4.0 loaded.`);
-        newLogs.push(`[${now}] STATE_MGR: Persistence active on 15 nodes.`);
-        newLogs.push(`[${now}] SIM_ENGINE: Baseline reset to Jan 2026.`);
-        newLogs.push(`[${now}] TAX_MODULE: Gross income strictly bound to config.`);
-        setLogs(newLogs);
-    }, []);
+type LogLine = { text: string; level: 'info' | 'warn' | 'err' };
 
-    const dbSize = JSON.stringify(state).length / 1024;
+const formatRelative = (ts: number | undefined): string => {
+    if (!ts || ts <= 0) return 'jamais';
+    const diffMs = Date.now() - ts;
+    if (diffMs < 0) return 'futur';
+    const sec = Math.round(diffMs / 1000);
+    if (sec < 60) return `il y a ${sec}s`;
+    const min = Math.round(sec / 60);
+    if (min < 60) return `il y a ${min} min`;
+    const hr = Math.round(min / 60);
+    if (hr < 24) return `il y a ${hr}h`;
+    const days = Math.round(hr / 24);
+    return `il y a ${days} j`;
+};
+
+const computeDiagnostics = (state: AppState): LogLine[] => {
+    const now = new Date().toLocaleTimeString();
+    const stamp = (txt: string): string => `[${now}] ${txt}`;
+
+    const migration = getMigrationStatus();
+    const lines: LogLine[] = [];
+
+    lines.push({ text: stamp(`SYSTEM_INIT: app chargée à ${new Date().toLocaleDateString('fr-CA')}`), level: 'info' });
+
+    if (migration.failed) {
+        lines.push({
+            text: stamp(`STATE_MGR: ERREUR de migration localStorage — ${migration.error?.slice(0, 80)}`),
+            level: 'err',
+        });
+        if (migration.backupKey) {
+            lines.push({
+                text: stamp(`STATE_MGR: backup disponible sous "${migration.backupKey}" (F12 → Application)`),
+                level: 'warn',
+            });
+        }
+    } else {
+        lines.push({ text: stamp(`STATE_MGR: migration localStorage OK`), level: 'info' });
+    }
+
+    lines.push({
+        text: stamp(
+            `STATE_MGR: ${state.transactions.length} tx · ${state.assets.length} actifs · ` +
+            `${state.debts.length} dettes · ${state.financialGoals.length} goals`
+        ),
+        level: 'info',
+    });
+
+    lines.push({
+        text: stamp(
+            `SYNC: dernière mise à jour ${formatRelative(state.lastUpdate)}`
+        ),
+        level: 'info',
+    });
+
+    const fxAge = state.fxRates.lastFetched ?? 0;
+    lines.push({
+        text: stamp(
+            `FX_API: USD=${state.fxRates.USD.toFixed(4)} · EUR=${state.fxRates.EUR.toFixed(4)} ` +
+            `(BdC, ${formatRelative(fxAge)})`
+        ),
+        level: fxAge === 0 ? 'warn' : 'info',
+    });
+
+    const hasEra = !!state.apiKeys.eraContext;
+    const hasGemini = !!state.apiKeys.gemini;
+    lines.push({
+        text: stamp(
+            `API_KEYS: Era Context ${hasEra ? '✓' : '✗'} · Gemini ${hasGemini ? '✓' : '✗'}`
+        ),
+        level: (hasEra && hasGemini) ? 'info' : 'warn',
+    });
+
+    lines.push({
+        text: stamp(`TAX_MODULE: barèmes 2026 chargés (fédéral 1ère tranche 14%, BPA 16 452$)`),
+        level: 'info',
+    });
+
+    try {
+        const dbSize = JSON.stringify(state).length / 1024;
+        lines.push({
+            text: stamp(`STORE: snapshot mémoire ${dbSize.toFixed(1)} KB`),
+            level: dbSize > 4000 ? 'warn' : 'info',
+        });
+    } catch {
+        lines.push({ text: stamp(`STORE: impossible de sérialiser l'état (cycle ?)`), level: 'err' });
+    }
+
+    if (state.aiConversation && state.aiConversation.length > 0) {
+        lines.push({
+            text: stamp(`AI_ASSIST: ${state.aiConversation.length} message(s) en historique`),
+            level: 'info',
+        });
+    }
+
+    return lines;
+};
+
+export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
+    const [refreshKey, setRefreshKey] = useState(0);
+
+    const logs = useMemo(() => computeDiagnostics(state), [state, refreshKey]);
+
+    const dbSize = useMemo(() => {
+        try { return JSON.stringify(state).length / 1024; } catch { return 0; }
+    }, [state]);
 
     return (
         <div className="space-y-6 animate-fade-in pb-20">
@@ -60,7 +153,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
+
                 <div className="lg:col-span-2 space-y-6">
                     <Card title="📚 La Toile d'Araignée (Interconnexions)">
                         <div className="space-y-4 text-sm text-gray-300 leading-relaxed">
@@ -73,7 +166,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                                     <li><strong>Enfant :</strong> Un coût mensuel s'applique jusqu'à 18 ans, suivi d'un retrait massif (30k$) pour les études supérieures simulées.</li>
                                 </ul>
                             </div>
-                            
+
                             <div className="bg-white/5 p-4 rounded-xl border border-white/10">
                                 <h4 className="font-bold text-white mb-2 text-lg text-red-400">2. L'Axe Fédéral/Provincial (Impôts)</h4>
                                 <p>Pour éviter les erreurs de saisie :</p>
@@ -91,13 +184,27 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                         </div>
                     </Card>
 
-                    <Card title="Terminal Système" className="bg-[#0c0c0c] border border-white/10 font-mono">
-                        <div className="h-[200px] overflow-y-auto custom-scrollbar p-2 text-xs space-y-1">
+                    <Card title="Diagnostic Système" className="bg-[#0c0c0c] border border-white/10 font-mono">
+                        <div className="flex justify-between items-center mb-2 px-2">
+                            <span className="text-[10px] text-gray-500 uppercase tracking-widest">État runtime</span>
+                            <button
+                                onClick={() => setRefreshKey(k => k + 1)}
+                                className="text-[10px] text-emerald-400 hover:text-emerald-300 px-2 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors"
+                                aria-label="Rafraîchir le diagnostic"
+                            >
+                                ⟳ Refresh
+                            </button>
+                        </div>
+                        <div className="h-[260px] overflow-y-auto custom-scrollbar p-2 text-xs space-y-1">
                             {logs.map((line, i) => (
                                 <div key={i} className="flex gap-2">
-                                    <span className="text-gray-600 select-none">{(i+1).toString().padStart(3, '0')}</span>
-                                    <span className={line.includes('WARN') ? 'text-yellow-400' : line.includes('ERR') ? 'text-red-400' : 'text-green-400/80'}>
-                                        {line}
+                                    <span className="text-gray-600 select-none">{(i + 1).toString().padStart(3, '0')}</span>
+                                    <span className={
+                                        line.level === 'err' ? 'text-red-400' :
+                                            line.level === 'warn' ? 'text-yellow-400' :
+                                                'text-green-400/80'
+                                    }>
+                                        {line.text}
                                     </span>
                                 </div>
                             ))}

@@ -35,6 +35,17 @@ export function compareLifeScenarios(params: SimulationParams): ScenarioComparis
     const r = calculateFutureProjection(params) as any;
     const allResults = (r.allResults || []) as any[];
 
+    // FIX silent-failure cycle 2 (MEDIUM): allResults vide → signal explicite.
+    if (allResults.length === 0) {
+        console.warn('[compareLifeScenarios] allResults vide — moteur n\'a pas produit de scénarios.');
+        return {
+            bestScenario: '—',
+            bestEstateNetWorth: 0,
+            results: [],
+            explanation: '⚠️ Aucun scénario calculable. Vérifie tes paramètres (capital initial, années, salaire).',
+        };
+    }
+
     const results = allResults.map(s => ({
         scenarioType: s.stratType,
         strategyName: s.strategyName ?? s.stratType,

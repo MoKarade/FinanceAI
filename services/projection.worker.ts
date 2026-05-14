@@ -16,14 +16,14 @@ interface RunMessage {
 }
 
 self.onmessage = (e: MessageEvent<RunMessage>) => {
+    // FIX silent-failure cycle 2 (HIGH): requestId obligatoire pour corréler
+    // chaque réponse à son appel — évite les résultats croisés entre appels concurrents.
+    const requestId = (e.data as any).__requestId;
     const { params, runMC = false, selectedIdx = 0 } = e.data;
     try {
         const result = calculateFutureProjection(params, runMC, selectedIdx);
-        // FIX agent (perf + code-reviewer): structured clone gère nativement
-        // les objets sérialisables. JSON.parse(JSON.stringify) coûte ~15-30ms
-        // sur un chartData de 360 entrées et est inutile.
-        (self as any).postMessage(result);
+        (self as any).postMessage({ __requestId: requestId, result });
     } catch (err) {
-        (self as any).postMessage({ __error: String(err) });
+        (self as any).postMessage({ __requestId: requestId, __error: String(err) });
     }
 };

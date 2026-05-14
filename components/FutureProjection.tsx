@@ -6,7 +6,7 @@ import { BudgetConfig, BudgetCategory, Asset, RealEstateGoal, ChildGoal, TravelG
 import { calculateFiscalReport } from '../services/tax';
 import { fetchPortfolioHistory } from '../services/finance';
 import { calculateFutureProjection, SimulationParams } from '../services/projection';
-import { runProjectionAsync } from '../services/projection/runAsync';
+import { runProjectionAsync, terminateProjectionWorker } from '../services/projection/runAsync';
 
 interface FutureProjectionProps {
   assets: Asset[];
@@ -333,6 +333,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         }, 300); // debounce 300ms même en MC
         return () => { cancelled = true; clearTimeout(timer); };
     }, [params, runMC, selectedScenarioIdx]);
+
+    // FIX agent cycle 2 (HIGH): cleanup du Worker au démontage du composant
+    // (évite fuites en HMR dev + ressource libérée propre).
+    useEffect(() => {
+        return () => { terminateProjectionWorker(); };
+    }, []);
 
     const results = runMC ? asyncResults : syncResults;
     const { chartData = [], fireNumber = 0, aiNote = "", allResults = [] } = (results || {}) as any;

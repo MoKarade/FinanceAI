@@ -650,10 +650,32 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 ltdMonthsRemaining--;
             }
 
+            // W5.2 INTEGRATION: Bonus + RSU + Side income (capturés dans User mais
+            // ignorés du moteur jusqu'ici). Tous lissés sur l'année (vs paiement
+            // ponctuel qui complexifierait sans gain). Versés en janvier seulement
+            // pour modéliser le saut de revenu.
+            const u1 = config.users[0];
+            const u2 = config.users[1];
+            const bonusMonthly1 = (u1?.bonusPctOfGross ? (grossMarcBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed)) * (u1.bonusPctOfGross / 100) / 12 : 0);
+            const bonusMonthly2 = (!survivorMode && u2?.bonusPctOfGross ? (grossAnnaBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed)) * (u2.bonusPctOfGross / 100) / 12 : 0);
+            const rsuMonthly1 = (u1?.rsuVestingPerYear && (u1.rsuYearsRemaining ?? 99) > yearsElapsed) ? u1.rsuVestingPerYear / 12 : 0;
+            const rsuMonthly2 = (!survivorMode && u2?.rsuVestingPerYear && (u2.rsuYearsRemaining ?? 99) > yearsElapsed) ? u2.rsuVestingPerYear / 12 : 0;
+            const sideMonthly1 = (u1?.sideIncomeAnnual || 0) / 12;
+            const sideMonthly2 = survivorMode ? 0 : (u2?.sideIncomeAnnual || 0) / 12;
+            // Approximation: revenu variable taxé au marginal → ajout au net via *0.55 (~marginal moyen 45%)
+            // ET ajout au brut pour les calculs fiscaux ARC/QC ultérieurs.
+            const variableNet1 = (bonusMonthly1 + rsuMonthly1 + sideMonthly1) * 0.55;
+            const variableNet2 = (bonusMonthly2 + rsuMonthly2 + sideMonthly2) * 0.55;
+            incomeMarc += variableNet1;
+            incomeAnna += variableNet2;
+
             monthlyIncome = incomeMarc + incomeAnna;
-            const currentGrossMarcAnnual = grossMarcBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
-            // W1.4 FIX: si survivor, le brut user2 cesse aussi (cohérent avec incomeAnna=0 ligne 609)
-            const currentGrossAnnaAnnual = survivorMode ? 0 : (grossAnnaBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed));
+            const baseGrossMarc = grossMarcBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
+            const baseGrossAnna = survivorMode ? 0 : (grossAnnaBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed));
+            const variableGross1 = (bonusMonthly1 + rsuMonthly1 + sideMonthly1) * 12;
+            const variableGross2 = (bonusMonthly2 + rsuMonthly2 + sideMonthly2) * 12;
+            const currentGrossMarcAnnual = baseGrossMarc + variableGross1;
+            const currentGrossAnnaAnnual = baseGrossAnna + variableGross2;
             accGrossIncomeYear += (currentGrossMarcAnnual + currentGrossAnnaAnnual) / 12;
 
 

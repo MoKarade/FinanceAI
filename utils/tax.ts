@@ -1,43 +1,44 @@
 
 // ============================================
-// BARÈMES FISCAUX CANADA / QUÉBEC — 2025
+// BARÈMES FISCAUX CANADA / QUÉBEC — 2026
 // Source: ARC + Revenu Québec
 // ============================================
 
 export const FED_BRACKETS = [
-    { upTo: 57375, rate: 0.15, label: "15.0%" },
-    { upTo: 114750, rate: 0.205, label: "20.5%" },
-    { upTo: 177882, rate: 0.26, label: "26.0%" },
-    { upTo: 253414, rate: 0.29, label: "29.0%" },
+    { upTo: 58523, rate: 0.14, label: "14.0%" },
+    { upTo: 117045, rate: 0.205, label: "20.5%" },
+    { upTo: 181440, rate: 0.26, label: "26.0%" },
+    { upTo: 258482, rate: 0.29, label: "29.0%" },
     { upTo: Infinity, rate: 0.33, label: "33.0%" }
 ];
 
 export const QC_BRACKETS = [
-    { upTo: 53255, rate: 0.14, label: "14.0%" },
-    { upTo: 106495, rate: 0.19, label: "19.0%" },
-    { upTo: 129590, rate: 0.24, label: "24.0%" },
+    { upTo: 54345, rate: 0.14, label: "14.0%" },
+    { upTo: 108680, rate: 0.19, label: "19.0%" },
+    { upTo: 132245, rate: 0.24, label: "24.0%" },
     { upTo: Infinity, rate: 0.2575, label: "25.75%" }
 ];
 
-export const BASIC_PERSONAL_AMOUNT_FED = 16129;
-export const BASIC_PERSONAL_AMOUNT_QC = 17183;
+export const BASIC_PERSONAL_AMOUNT_FED = 16452;
+export const BASIC_PERSONAL_AMOUNT_QC = 18952;
 
-export const RRQ_RATE = 0.064;
-export const RRQ_MPE = 73200;
+// RRQ 2026: 5.3% base + 1% supplémentaire (volet 1)
+export const RRQ_RATE = 0.063;
+export const RRQ_MPE = 74600;
 export const RRQ_EXEMPTION = 3500;
-export const RRQ_MAX = 4460.80;
+export const RRQ_MAX = 4479.30;
 
 export const RRQ_PART2_RATE = 0.04;
-export const RRQ_YAMPE = 81200;
+export const RRQ_YAMPE = 85000;
 export const RRQ_PART2_MAX = (RRQ_YAMPE - RRQ_MPE) * RRQ_PART2_RATE;
 
-export const RQAP_RATE = 0.00494;
-export const RQAP_MAX_INCOME = 94000;
-export const RQAP_MAX = 464.36;
+export const RQAP_RATE = 0.0043;
+export const RQAP_MAX_INCOME = 103000;
+export const RQAP_MAX = 442.90;
 
-export const AE_RATE_QC = 0.0131;
-export const AE_MAX_INCOME = 65700;
-export const AE_MAX_QC = 860.67;
+export const AE_RATE_QC = 0.0130;
+export const AE_MAX_INCOME = 68900;
+export const AE_MAX_QC = 895.70;
 
 export const CAPITAL_GAINS_INCLUSION_STANDARD = 0.50;
 export const CAPITAL_GAINS_INCLUSION_HIGH = 0.6667;
@@ -151,7 +152,7 @@ const bracketsCache: Record<number, {
 
 const getIndexedBracketsForYear = (year: number) => {
     if (bracketsCache[year]) return bracketsCache[year];
-    const inflationFactor = Math.pow(1.02, Math.max(0, year - 2025));
+    const inflationFactor = Math.pow(1.02, Math.max(0, year - 2026));
     const indexedFed = FED_BRACKETS.map(b => ({ ...b, upTo: b.upTo === Infinity ? Infinity : b.upTo * inflationFactor }));
     const indexedQc = QC_BRACKETS.map(b => ({ ...b, upTo: b.upTo === Infinity ? Infinity : b.upTo * inflationFactor }));
     const basicFed = BASIC_PERSONAL_AMOUNT_FED * inflationFactor;
@@ -160,7 +161,7 @@ const getIndexedBracketsForYear = (year: number) => {
     return bracketsCache[year];
 };
 
-export const getMarginalRate = (income: number, year: number = 2025) => {
+export const getMarginalRate = (income: number, year: number = 2026) => {
     const { fed, qc } = getIndexedBracketsForYear(year);
     const fedRate = fed.find(b => income <= b.upTo)?.rate || 0.33;
     const qcRate = qc.find(b => income <= b.upTo)?.rate || 0.2575;
@@ -168,7 +169,7 @@ export const getMarginalRate = (income: number, year: number = 2025) => {
     return effectiveFedRate + qcRate;
 };
 
-export const calculateFiscalReport = (grossIncome: number, rrspContribution: number, fhsaContribution: number, year: number = 2025, skipBreakdown: boolean = false) => {
+export const calculateFiscalReport = (grossIncome: number, rrspContribution: number, fhsaContribution: number, year: number = 2026, skipBreakdown: boolean = false) => {
     grossIncome = Number(grossIncome) || 0;
     rrspContribution = Number(rrspContribution) || 0;
     fhsaContribution = Number(fhsaContribution) || 0;
@@ -178,7 +179,8 @@ export const calculateFiscalReport = (grossIncome: number, rrspContribution: num
 
     const fedData = calculateDetailedTax(netTaxable, indexedFedBrackets, skipBreakdown);
     let fedTax = fedData.totalTax;
-    fedTax -= (indexedBasicFed * 0.15);
+    // Crédit non-remboursable BPA fédéral: taux de la 1ère tranche (14% en 2026, baisse de 15%)
+    fedTax -= (indexedBasicFed * 0.14);
     const abatement = fedTax * 0.165;
     fedTax -= abatement;
 

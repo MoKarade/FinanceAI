@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { Layout } from './components/Layout';
 import { Onboarding } from './components/Onboarding';
 import { ToastContainer, showToast } from './components/ui/Toast';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { Tab, AppState, Transaction, BudgetCategory } from './types';
 import { fetchTransactions } from './services/eraContext';
 import { INITIAL_CHILD_GOAL } from './constants';
@@ -30,6 +31,26 @@ const DebtManager = React.lazy(() => import('./components/DebtManager').then(m =
 const SystemView = React.lazy(() => import('./components/SystemView').then(m => ({ default: m.SystemView })));
 const GuideModal = React.lazy(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })));
 
+const TAB_LABELS: Record<Tab, string> = {
+    [Tab.DASHBOARD]: 'Accueil',
+    [Tab.TRANSACTIONS]: 'Transactions',
+    [Tab.BUDGET]: 'Budget',
+    [Tab.PLANNING]: 'Planif. & Abos',
+    [Tab.DEBT]: 'Dettes',
+    [Tab.INVESTMENTS]: 'Investissements',
+    [Tab.FUTURE]: 'Futur',
+    [Tab.REAL_ESTATE]: 'Immobilier',
+    [Tab.CHILD]: 'Enfant',
+    [Tab.TRAVEL]: 'Voyages',
+    [Tab.LIFE_EVENTS]: 'Parcours de Vie',
+    [Tab.RETIREMENT]: 'Retraite',
+    [Tab.TAX]: 'Impôts & Docs',
+    [Tab.DATA]: 'Data',
+    [Tab.SETTINGS]: 'Paramètres',
+    [Tab.SYSTEM]: 'Système',
+    [Tab.ASSISTANT]: 'Assistant IA'
+};
+
 const TabLoader: React.FC = () => (
     <div className="flex items-center justify-center h-96">
         <div className="animate-spin h-8 w-8 rounded-full border-4 border-primary border-t-transparent" />
@@ -46,6 +67,7 @@ export const App: React.FC = () => {
     const [isPrivacyMode, setIsPrivacyMode] = useState(false);
     const [showGuide, setShowGuide] = useState(false);
     const isHydrated = useRef(false);
+    const currentSyncController = useRef<AbortController | null>(null);
 
     const migrationWarningShown = useRef(false);
     useEffect(() => {
@@ -76,27 +98,15 @@ export const App: React.FC = () => {
     }, [activeTab, setActiveTab]);
 
     useEffect(() => {
-        const tabNames: Record<Tab, string> = {
-            [Tab.DASHBOARD]: 'Accueil',
-            [Tab.TRANSACTIONS]: 'Transactions',
-            [Tab.BUDGET]: 'Budget',
-            [Tab.PLANNING]: 'Planif. & Abos',
-            [Tab.DEBT]: 'Dettes',
-            [Tab.INVESTMENTS]: 'Investissements',
-            [Tab.FUTURE]: 'Futur',
-            [Tab.REAL_ESTATE]: 'Immobilier',
-            [Tab.CHILD]: 'Enfant',
-            [Tab.TRAVEL]: 'Voyages',
-            [Tab.LIFE_EVENTS]: 'Parcours de Vie',
-            [Tab.RETIREMENT]: 'Retraite',
-            [Tab.TAX]: 'Impôts & Docs',
-            [Tab.DATA]: 'Data',
-            [Tab.SETTINGS]: 'Paramètres',
-            [Tab.SYSTEM]: 'Système',
-            [Tab.ASSISTANT]: 'Assistant IA'
-        };
-        document.title = `FinanceAI - ${tabNames[activeTab] || 'Pro'}`;
+        document.title = `FinanceAI - ${TAB_LABELS[activeTab] || 'Pro'}`;
     }, [activeTab]);
+
+    // Cancel toute sync en cours quand le composant est démonté
+    useEffect(() => {
+        return () => {
+            currentSyncController.current?.abort();
+        };
+    }, []);
 
     const handleSetTab = (tab: Tab) => {
         setActiveTab(tab);
@@ -196,6 +206,12 @@ export const App: React.FC = () => {
 
     const loadData = async (token: string, pendingState?: AppState) => {
         if (!token) return;
+
+        // Abort la sync précédente si encore en cours
+        currentSyncController.current?.abort();
+        const controller = new AbortController();
+        currentSyncController.current = controller;
+
         setIsLoading(true);
         try {
             const currentState = pendingState || state;
@@ -213,10 +229,12 @@ export const App: React.FC = () => {
                 startDateToFetch = '2000-01-01';
             }
 
-            const newTxs = await fetchTransactions(token, startDateToFetch || '2000-01-01');
+            const newTxs = await fetchTransactions(token, startDateToFetch || '2000-01-01', controller.signal);
+
+            // Vérifier qu'on n'a pas été remplacés par une sync plus récente avant d'écrire le state
+            if (controller.signal.aborted) return;
 
             if (newTxs.length === 0) {
-                setIsLoading(false);
                 return;
             }
 
@@ -260,6 +278,8 @@ export const App: React.FC = () => {
                 });
             }
 
+            if (controller.signal.aborted) return;
+
             setAppState({
                 transactions: deduplicatedList,
                 initialBalances: balances,
@@ -267,10 +287,16 @@ export const App: React.FC = () => {
             });
             showToast('Donnees synchronisees', 'success');
         } catch (e: any) {
+            // AbortError = sync remplacée par une plus récente, silencieux
+            if (e?.name === 'AbortError' || controller.signal.aborted) return;
             console.error('[FinanceAI] Sync Error:', e);
             showToast(e?.message ? `Sync echouee : ${e.message}` : 'Erreur de synchronisation Era Context.', 'error');
         } finally {
-            setIsLoading(false);
+            // Ne reset isLoading que si on est toujours le sync actif
+            if (currentSyncController.current === controller) {
+                currentSyncController.current = null;
+                setIsLoading(false);
+            }
         }
     };
 
@@ -396,100 +422,102 @@ export const App: React.FC = () => {
                 currentValues={{ celi: assetBreakdown.celi, reer: assetBreakdown.reer, liquidity: currentLiquidity }}
             >
                 <Suspense fallback={<TabLoader />}>
-                    {activeTab === Tab.DASHBOARD && (
-                        <Dashboard
-                            transactions={state.transactions}
-                            assets={state.assets}
-                            initialBalances={state.initialBalances}
-                            budgetItems={state.budgetItems}
-                            realEstateGoals={state.realEstateGoals}
-                            childGoals={state.childGoals || []}
-                            travelGoals={state.travelGoals}
-                            lifeEvents={state.lifeEvents}
-                            retirementGoal={state.retirementGoal}
-                            debts={state.debts}
-                            config={state.config}
-                            apiKey={state.apiKeys.gemini}
-                            calculatedMonthlySavings={calculatedMonthlySavings}
-                            onNavigate={handleSetTab}
-                            isPrivacyMode={isPrivacyMode}
-                        />
-                    )}
+                    <ErrorBoundary resetKey={activeTab} label={TAB_LABELS[activeTab]}>
+                        {activeTab === Tab.DASHBOARD && (
+                            <Dashboard
+                                transactions={state.transactions}
+                                assets={state.assets}
+                                initialBalances={state.initialBalances}
+                                budgetItems={state.budgetItems}
+                                realEstateGoals={state.realEstateGoals}
+                                childGoals={state.childGoals || []}
+                                travelGoals={state.travelGoals}
+                                lifeEvents={state.lifeEvents}
+                                retirementGoal={state.retirementGoal}
+                                debts={state.debts}
+                                config={state.config}
+                                apiKey={state.apiKeys.gemini}
+                                calculatedMonthlySavings={calculatedMonthlySavings}
+                                onNavigate={handleSetTab}
+                                isPrivacyMode={isPrivacyMode}
+                            />
+                        )}
 
-                    {activeTab === Tab.TRANSACTIONS && <Transactions transactions={state.transactions} setTransactions={(t) => setAppState({ transactions: typeof t === 'function' ? (t as any)(state.transactions) : t })} apiKey={state.apiKeys.gemini} onSyncEraContext={() => loadData(state.apiKeys.eraContext, undefined)} isSyncing={isLoading} budgetItems={state.budgetItems} categorizationRules={state.categorizationRules || []} setCategorizationRules={(rules) => setAppState({ categorizationRules: rules })} />}
-                    {activeTab === Tab.BUDGET && <Budget transactions={state.transactions} config={state.config} budgetItems={state.budgetItems} setBudgetItems={(items) => setAppState({ budgetItems: items })} apiKey={state.apiKeys.gemini} />}
-                    {activeTab === Tab.PLANNING && <Planning transactions={state.transactions} savingsGoals={state.savingsGoals} setSavingsGoals={(goals) => setAppState({ savingsGoals: goals })} apiKey={state.apiKeys.gemini} budgetItems={state.budgetItems} setBudgetItems={(items) => setAppState({ budgetItems: items })} config={state.config} />}
-                    {activeTab === Tab.DEBT && <DebtManager debts={state.debts} setDebts={(d) => setAppState({ debts: d })} />}
-                    {activeTab === Tab.INVESTMENTS && <Investments assets={state.assets} setAssets={(a) => setAppState({ assets: a })} investmentAccounts={state.investmentAccounts} setInvestmentAccounts={(accs: AppState['investmentAccounts']) => setAppState({ investmentAccounts: accs })} investmentTransactions={state.investmentTransactions} setInvestmentTransactions={(txs: AppState['investmentTransactions']) => setAppState({ investmentTransactions: txs })} apiKey={state.apiKeys.gemini} transactions={state.transactions} budgetItems={state.budgetItems} config={state.config} projection={state.projection} setProjection={(p: AppState['projection']) => setAppState({ projection: p })} />}
-                    {activeTab === Tab.TAX && <TaxCenter config={state.config} setConfig={(c) => setAppState({ config: c })} assets={state.assets} apiKey={state.apiKeys.gemini} />}
-                    {activeTab === Tab.REAL_ESTATE && <RealEstate availableCash={globalNetWorth - (state.assets.reduce((sum, a) => sum + (a.quantity * a.currentPrice * (state.fxRates[a.currency] || 1)), 0))} goals={state.realEstateGoals} setGoals={(g) => setAppState({ realEstateGoals: g })} />}
+                        {activeTab === Tab.TRANSACTIONS && <Transactions transactions={state.transactions} setTransactions={(t) => setAppState({ transactions: typeof t === 'function' ? (t as any)(state.transactions) : t })} apiKey={state.apiKeys.gemini} onSyncEraContext={() => loadData(state.apiKeys.eraContext, undefined)} isSyncing={isLoading} budgetItems={state.budgetItems} categorizationRules={state.categorizationRules || []} setCategorizationRules={(rules) => setAppState({ categorizationRules: rules })} />}
+                        {activeTab === Tab.BUDGET && <Budget transactions={state.transactions} config={state.config} budgetItems={state.budgetItems} setBudgetItems={(items) => setAppState({ budgetItems: items })} apiKey={state.apiKeys.gemini} />}
+                        {activeTab === Tab.PLANNING && <Planning transactions={state.transactions} savingsGoals={state.savingsGoals} setSavingsGoals={(goals) => setAppState({ savingsGoals: goals })} apiKey={state.apiKeys.gemini} budgetItems={state.budgetItems} setBudgetItems={(items) => setAppState({ budgetItems: items })} config={state.config} />}
+                        {activeTab === Tab.DEBT && <DebtManager debts={state.debts} setDebts={(d) => setAppState({ debts: d })} />}
+                        {activeTab === Tab.INVESTMENTS && <Investments assets={state.assets} setAssets={(a) => setAppState({ assets: a })} investmentAccounts={state.investmentAccounts} setInvestmentAccounts={(accs: AppState['investmentAccounts']) => setAppState({ investmentAccounts: accs })} investmentTransactions={state.investmentTransactions} setInvestmentTransactions={(txs: AppState['investmentTransactions']) => setAppState({ investmentTransactions: txs })} apiKey={state.apiKeys.gemini} transactions={state.transactions} budgetItems={state.budgetItems} config={state.config} projection={state.projection} setProjection={(p: AppState['projection']) => setAppState({ projection: p })} />}
+                        {activeTab === Tab.TAX && <TaxCenter config={state.config} setConfig={(c) => setAppState({ config: c })} assets={state.assets} apiKey={state.apiKeys.gemini} />}
+                        {activeTab === Tab.REAL_ESTATE && <RealEstate availableCash={globalNetWorth - (state.assets.reduce((sum, a) => sum + (a.quantity * a.currentPrice * (state.fxRates[a.currency] || 1)), 0))} goals={state.realEstateGoals} setGoals={(g) => setAppState({ realEstateGoals: g })} />}
 
-                    {activeTab === Tab.FUTURE && (
-                        <FutureProjection
-                            assets={state.assets}
-                            initialBalances={state.initialBalances}
-                            transactions={state.transactions}
-                            budgetItems={state.budgetItems}
-                            config={state.config}
-                            realEstateGoals={state.realEstateGoals}
-                            setRealEstateGoals={(g) => setAppState({ realEstateGoals: g })}
-                            childGoals={state.childGoals || []}
-                            setChildGoals={(g) => setAppState({ childGoals: g })}
-                            travelGoals={state.travelGoals}
-                            lifeEvents={state.lifeEvents}
-                            debts={state.debts}
-                            retirementGoal={state.retirementGoal}
+                        {activeTab === Tab.FUTURE && (
+                            <FutureProjection
+                                assets={state.assets}
+                                initialBalances={state.initialBalances}
+                                transactions={state.transactions}
+                                budgetItems={state.budgetItems}
+                                config={state.config}
+                                realEstateGoals={state.realEstateGoals}
+                                setRealEstateGoals={(g) => setAppState({ realEstateGoals: g })}
+                                childGoals={state.childGoals || []}
+                                setChildGoals={(g) => setAppState({ childGoals: g })}
+                                travelGoals={state.travelGoals}
+                                lifeEvents={state.lifeEvents}
+                                debts={state.debts}
+                                retirementGoal={state.retirementGoal}
+                                calculatedMonthlySavings={calculatedMonthlySavings}
+                                projection={state.projection}
+                                setProjection={(p) => setAppState({ projection: p })}
+                                financialGoals={state.financialGoals}
+                                isPrivacyMode={isPrivacyMode}
+                            />
+                        )}
+
+                        {activeTab === Tab.CHILD && <ChildPlanning goals={state.childGoals || []} setGoals={(g) => setAppState({ childGoals: g })} projection={state.projection} currentRESP={assetBreakdown.reee} />}
+                        {activeTab === Tab.TRAVEL && <Travel travelGoals={state.travelGoals} setTravelGoals={(g) => setAppState({ travelGoals: g })} />}
+                        {activeTab === Tab.LIFE_EVENTS && <LifeEvents events={state.lifeEvents} setEvents={(e) => setAppState({ lifeEvents: e })} travelGoals={state.travelGoals} setTravelGoals={(g) => setAppState({ travelGoals: g })} netWorth={globalNetWorth} returnRate={state.projection.returnRate} />}
+                        {activeTab === Tab.RETIREMENT && <Retirement
+                            goal={state.retirementGoal} setGoal={(g) => setAppState({ retirementGoal: g })}
+                            currentREER={assetBreakdown.reer} currentCELI={assetBreakdown.celi} currentNonReg={assetBreakdown.nonReg}
                             calculatedMonthlySavings={calculatedMonthlySavings}
+                            grossIncome={state.config.users.reduce((acc, u) => acc + (u.grossSalary || u.salary || 0), 0)}
                             projection={state.projection}
-                            setProjection={(p) => setAppState({ projection: p })}
-                            financialGoals={state.financialGoals}
-                            isPrivacyMode={isPrivacyMode}
-                        />
-                    )}
-
-                    {activeTab === Tab.CHILD && <ChildPlanning goals={state.childGoals || []} setGoals={(g) => setAppState({ childGoals: g })} projection={state.projection} currentRESP={assetBreakdown.reee} />}
-                    {activeTab === Tab.TRAVEL && <Travel travelGoals={state.travelGoals} setTravelGoals={(g) => setAppState({ travelGoals: g })} />}
-                    {activeTab === Tab.LIFE_EVENTS && <LifeEvents events={state.lifeEvents} setEvents={(e) => setAppState({ lifeEvents: e })} travelGoals={state.travelGoals} setTravelGoals={(g) => setAppState({ travelGoals: g })} netWorth={globalNetWorth} returnRate={state.projection.returnRate} />}
-                    {activeTab === Tab.RETIREMENT && <Retirement
-                        goal={state.retirementGoal} setGoal={(g) => setAppState({ retirementGoal: g })}
-                        currentREER={assetBreakdown.reer} currentCELI={assetBreakdown.celi} currentNonReg={assetBreakdown.nonReg}
-                        calculatedMonthlySavings={calculatedMonthlySavings}
-                        grossIncome={state.config.users.reduce((acc, u) => acc + (u.grossSalary || u.salary || 0), 0)}
-                        projection={state.projection}
-                        config={state.config}
-                        assets={state.assets}
-                        initialBalances={state.initialBalances}
-                        budgetItems={state.budgetItems}
-                        realEstateGoals={state.realEstateGoals}
-                        childGoals={state.childGoals || []}
-                        travelGoals={state.travelGoals}
-                        lifeEvents={state.lifeEvents}
-                        debts={state.debts}
-                    />}
-                    {activeTab === Tab.DATA && <JsonDataView />}
-                    {activeTab === Tab.SYSTEM && <SystemView state={state} />}
-
-                    {activeTab === Tab.SETTINGS && (
-                        <Settings
-                            apiKeys={state.apiKeys} setApiKeys={handleUpdateApiKeys}
-                            config={state.config} setConfig={(c) => setAppState({ config: c })}
-                            budgetItems={state.budgetItems}
-                            onImportData={handleManualImport}
-                            initialBalances={state.initialBalances} setInitialBalances={(b) => setAppState({ initialBalances: b })}
-                            transactions={state.transactions} setTransactions={(t) => setAppState({ transactions: t })}
+                            config={state.config}
                             assets={state.assets}
-                            savingsGoals={state.savingsGoals}
-                            travelGoals={state.travelGoals}
-                            debts={state.debts}
-                            investmentAccounts={state.investmentAccounts} investmentTransactions={state.investmentTransactions}
-                            lifeEvents={state.lifeEvents} retirementGoal={state.retirementGoal}
+                            initialBalances={state.initialBalances}
+                            budgetItems={state.budgetItems}
                             realEstateGoals={state.realEstateGoals}
-                            setRealEstateGoals={(g) => setAppState({ realEstateGoals: g })}
-                            childGoal={state.childGoal} childGoals={state.childGoals || []} financialGoals={state.financialGoals}
-                        />
-                    )}
+                            childGoals={state.childGoals || []}
+                            travelGoals={state.travelGoals}
+                            lifeEvents={state.lifeEvents}
+                            debts={state.debts}
+                        />}
+                        {activeTab === Tab.DATA && <JsonDataView />}
+                        {activeTab === Tab.SYSTEM && <SystemView state={state} />}
 
-                    {activeTab === Tab.ASSISTANT && <AiAssistant apiKey={state.apiKeys.gemini} transactions={state.transactions} budgetItems={state.budgetItems} assets={state.assets} projection={state.projection} realEstateGoal={state.realEstateGoals[0]} config={state.config} initialBalances={state.initialBalances} />}
+                        {activeTab === Tab.SETTINGS && (
+                            <Settings
+                                apiKeys={state.apiKeys} setApiKeys={handleUpdateApiKeys}
+                                config={state.config} setConfig={(c) => setAppState({ config: c })}
+                                budgetItems={state.budgetItems}
+                                onImportData={handleManualImport}
+                                initialBalances={state.initialBalances} setInitialBalances={(b) => setAppState({ initialBalances: b })}
+                                transactions={state.transactions} setTransactions={(t) => setAppState({ transactions: t })}
+                                assets={state.assets}
+                                savingsGoals={state.savingsGoals}
+                                travelGoals={state.travelGoals}
+                                debts={state.debts}
+                                investmentAccounts={state.investmentAccounts} investmentTransactions={state.investmentTransactions}
+                                lifeEvents={state.lifeEvents} retirementGoal={state.retirementGoal}
+                                realEstateGoals={state.realEstateGoals}
+                                setRealEstateGoals={(g) => setAppState({ realEstateGoals: g })}
+                                childGoal={state.childGoal} childGoals={state.childGoals || []} financialGoals={state.financialGoals}
+                            />
+                        )}
+
+                        {activeTab === Tab.ASSISTANT && <AiAssistant apiKey={state.apiKeys.gemini} transactions={state.transactions} budgetItems={state.budgetItems} assets={state.assets} projection={state.projection} realEstateGoal={state.realEstateGoals[0]} config={state.config} initialBalances={state.initialBalances} />}
+                    </ErrorBoundary>
 
                     {showGuide && <GuideModal activeTab={activeTab} onClose={() => setShowGuide(false)} />}
                 </Suspense>

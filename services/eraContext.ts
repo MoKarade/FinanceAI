@@ -4,7 +4,7 @@ import { Transaction } from "../types";
 // Platform: era.app — MCP-first personal finance, REST API for professional users.
 const ERA_CONTEXT_BASE = 'https://api.era.app/v1';
 
-export const fetchTransactions = async (token: string, startDateInput?: string | number): Promise<Transaction[]> => {
+export const fetchTransactions = async (token: string, startDateInput?: string | number, signal?: AbortSignal): Promise<Transaction[]> => {
     if (!token) {
         console.warn("[EraContext] No token provided.");
         return [];
@@ -33,6 +33,10 @@ export const fetchTransactions = async (token: string, startDateInput?: string |
         const pageSize = 100;
 
         while (hasMore) {
+            if (signal?.aborted) {
+                throw new DOMException('Aborted', 'AbortError');
+            }
+
             const params = new URLSearchParams({
                 from_date: startStr,
                 to_date: endStr,
@@ -41,6 +45,7 @@ export const fetchTransactions = async (token: string, startDateInput?: string |
             });
 
             const response = await fetch(`${ERA_CONTEXT_BASE}/transactions?${params}`, {
+                signal,
                 headers: {
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'application/json',
@@ -71,6 +76,7 @@ export const fetchTransactions = async (token: string, startDateInput?: string |
             accountName: t.account_name || t.account_group_key || 'Unknown',
         }));
     } catch (e) {
+        if ((e as any)?.name === 'AbortError') throw e;
         console.error("[EraContext] Fetch failed:", e);
         throw e;
     }

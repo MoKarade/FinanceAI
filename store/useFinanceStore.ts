@@ -78,6 +78,7 @@ const getInitialStateWithMigration = (): AppState => {
         fxRates: DEFAULT_FX_RATES,
         lastUpdate: Date.now(),
         categorizationRules: [],
+        aiConversation: [],
     };
 
     if (typeof window === 'undefined') return defaultState;
@@ -156,6 +157,7 @@ const getInitialStateWithMigration = (): AppState => {
             fxRates: storedFxRates ? JSON.parse(storedFxRates) : DEFAULT_FX_RATES,
             lastUpdate: Date.now(),
             categorizationRules: (() => { try { const r = localStorage.getItem('categorization_rules'); return r ? JSON.parse(r) : []; } catch { return []; } })(),
+            aiConversation: [],
         };
     } catch (e) {
         const errorStr = String(e);

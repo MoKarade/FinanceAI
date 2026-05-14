@@ -43,21 +43,21 @@ export const Layout: React.FC<LayoutProps> = ({
   const toggleLang = () => i18n.changeLanguage(currentLang === 'fr' ? 'en' : 'fr');
 
   const navItems = [
-    { id: Tab.DASHBOARD, label: t('tabs.dashboard'), icon: '📊' },
-    { id: Tab.TRANSACTIONS, label: t('tabs.transactions'), icon: '💳' },
+    { id: Tab.DASHBOARD, label: t('tabs.dashboard'), icon: '\u{1F4CA}' },
+    { id: Tab.TRANSACTIONS, label: t('tabs.transactions'), icon: '\u{1F4B3}' },
     { id: Tab.BUDGET, label: t('tabs.budget'), icon: '⚖️' },
-    { id: Tab.FUTURE, label: t('tabs.future'), icon: '🔮' },
-    { id: Tab.INVESTMENTS, label: t('tabs.investments'), icon: '📈' },
+    { id: Tab.FUTURE, label: t('tabs.future'), icon: '\u{1F52E}' },
+    { id: Tab.INVESTMENTS, label: t('tabs.investments'), icon: '\u{1F4C8}' },
   ];
 
   const extraItems = [
-    { id: Tab.PLANNING, label: t('tabs.planning'), icon: '📅' },
-    { id: Tab.DEBT, label: t('tabs.debt'), icon: '💸' },
-    { id: Tab.TAX, label: t('tabs.tax'), icon: '🏛️' },
-    { id: Tab.REAL_ESTATE, label: t('tabs.real_estate'), icon: '🏡' },
-    { id: Tab.CHILD, label: t('tabs.child'), icon: '👶' },
-    { id: Tab.RETIREMENT, label: t('tabs.retirement'), icon: '🏖️' },
-    { id: Tab.LIFE_EVENTS, label: t('tabs.life_events'), icon: '🛤️' },
+    { id: Tab.PLANNING, label: t('tabs.planning'), icon: '\u{1F4C5}' },
+    { id: Tab.DEBT, label: t('tabs.debt'), icon: '\u{1F4B8}' },
+    { id: Tab.TAX, label: t('tabs.tax'), icon: '\u{1F3DB}️' },
+    { id: Tab.REAL_ESTATE, label: t('tabs.real_estate'), icon: '\u{1F3E1}' },
+    { id: Tab.CHILD, label: t('tabs.child'), icon: '\u{1F476}' },
+    { id: Tab.RETIREMENT, label: t('tabs.retirement'), icon: '\u{1F3D6}️' },
+    { id: Tab.LIFE_EVENTS, label: t('tabs.life_events'), icon: '\u{1F6E4}️' },
   ];
 
   const getSmartMilestone = () => {
@@ -116,10 +116,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
   return (
     <div className={`min-h-screen flex flex-col md:flex-row text-gray-200 font-sans ${isPrivacyMode ? 'privacy-active' : ''}`}>
-
-      {/* 🛡️ RÈGLES STRICTES DE CONFIDENTIALITÉ GLOBALE 🛡️ */}
       <style>{`
-        /* Classe standard */
         .privacy-active .privacy-blur {
             filter: blur(8px) !important;
             opacity: 0.5 !important;
@@ -127,14 +124,10 @@ export const Layout: React.FC<LayoutProps> = ({
             user-select: none !important;
         }
         .privacy-active .privacy-blur:hover { filter: blur(0px) !important; opacity: 1 !important; }
-        
-        /* Cible les tableaux (Dettes, Budget, Data, etc.) */
         .privacy-active table td:nth-child(n+2):not(:last-child) {
             filter: blur(5px) !important;
             opacity: 0.6 !important;
         }
-        
-        /* Cible TOUS les graphiques Recharts (Axes, Tooltips, Légendes) */
         .privacy-active .recharts-cartesian-axis-tick-value tspan,
         .privacy-active .recharts-tooltip-item-value,
         .privacy-active .recharts-tooltip-label,
@@ -143,8 +136,6 @@ export const Layout: React.FC<LayoutProps> = ({
             opacity: 0.3 !important;
             color: transparent !important;
         }
-        
-        /* Inputs numériques globaux */
         .privacy-active input[type="number"],
         .privacy-active input[type="range"] + span,
         .privacy-active .font-mono {
@@ -153,10 +144,7 @@ export const Layout: React.FC<LayoutProps> = ({
         }
       `}</style>
 
-      {/* DESKTOP SIDEBAR */}
       <aside className="hidden md:flex w-72 min-w-[18rem] bg-[#0B0E14] border-r border-white/10 flex-col z-30 h-screen overflow-hidden shadow-2xl sticky top-0">
-
-        {/* HEADER */}
         <div className="p-6 pb-2">
           <div className="flex justify-between items-start">
             <div className={`flex items-center gap-3 group px-2 py-1 rounded-xl transition-all duration-500 hover:bg-white/5`}>
@@ -170,14 +158,14 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
             <div className="flex gap-1">
               <button onClick={onOpenGuide} className="p-2 rounded-lg text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 transition-all" title="Guide du Pilote">ℹ️</button>
-              <button onClick={togglePrivacyMode} className={`p-2 rounded-lg transition-all ${isPrivacyMode ? 'bg-white/10 text-white' : 'text-gray-500 hover:bg-white/5 hover:text-white'}`} title="Mode Discret">{isPrivacyMode ? '🙈' : '👁️'}</button>
+              <button onClick={togglePrivacyMode} className={`p-2 rounded-lg transition-all ${isPrivacyMode ? 'bg-white/10 text-white' : 'text-gray-500 hover:bg-white/5 hover:text-white'}`} title="Mode Discret">{isPrivacyMode ? '\u{1F648}' : '\u{1F441}️'}</button>
             </div>
           </div>
         </div>
 
-        {/* MILESTONE WIDGET */}
         <div className="px-6 py-6">
-          <div className="p-4 rounded-xl bg-gradient-to-br from-[#1A1E29] to-[#0d0f14] border border-white/5 relative overflow-hidden group shadow-lg cursor-pointer hover:border-primary/30 transition-colors" onClick={() => setActiveTab(Tab.GOALS)}>
+          {/* Milestone widget : clic redirige vers FUTURE (anciennement GOALS qui etait mort) */}
+          <div className="p-4 rounded-xl bg-gradient-to-br from-[#1A1E29] to-[#0d0f14] border border-white/5 relative overflow-hidden group shadow-lg cursor-pointer hover:border-primary/30 transition-colors" onClick={() => setActiveTab(Tab.FUTURE)}>
             <div className="absolute top-0 right-0 w-16 h-16 bg-primary/10 rounded-full blur-2xl -mr-8 -mt-8"></div>
             <div className="flex justify-between items-end mb-2 relative z-10">
               <div>
@@ -192,13 +180,12 @@ export const Layout: React.FC<LayoutProps> = ({
               <div className="h-full bg-gradient-to-r from-emerald-600 to-primary shadow-[0_0_10px_rgba(16,185,129,0.5)] transition-all duration-1000" style={{ width: `${milestone.percent}%` }}></div>
             </div>
             <div className="flex items-center justify-between text-[10px] text-gray-500 relative z-10 bg-white/[0.03] p-1.5 rounded-lg border border-white/5 backdrop-blur-sm">
-              <span className="flex items-center gap-1">🎯 Cible:</span>
+              <span className="flex items-center gap-1">\u{1F3AF} Cible:</span>
               <span className="text-white font-bold capitalize">{milestoneDateStr}</span>
             </div>
           </div>
         </div>
 
-        {/* NAVIGATION */}
         <nav className="flex-1 min-h-0 overflow-y-auto px-4 space-y-1.5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
           <div className="text-[10px] uppercase text-gray-500 font-bold px-4 mb-2 tracking-widest mt-2">Principal</div>
           {navItems.map((item) => (
@@ -228,33 +215,30 @@ export const Layout: React.FC<LayoutProps> = ({
           ))}
         </nav>
 
-        {/* FOOTER ACTIONS */}
         <div className="p-4 border-t border-white/5 bg-[#0F1116]">
           <div className="grid grid-cols-3 gap-1 mb-3">
-            <a href={`#${Tab.DATA}`} onClick={(e) => { e.preventDefault(); setActiveTab(Tab.DATA); }} className={`flex flex-col items-center justify-center p-2 rounded-lg text-[10px] font-medium transition-all ${activeTab === Tab.DATA ? 'bg-white/10 text-white' : 'text-gray-500 hover:bg-white/5'}`}><span className="text-sm">💾</span> Data</a>
-            <a href={`#${Tab.SYSTEM}`} onClick={(e) => { e.preventDefault(); setActiveTab(Tab.SYSTEM); }} className={`flex flex-col items-center justify-center p-2 rounded-lg text-[10px] font-medium transition-all ${activeTab === Tab.SYSTEM ? 'bg-white/10 text-white' : 'text-gray-500 hover:bg-white/5'}`}><span className="text-sm">🛠️</span> Sys</a>
+            <a href={`#${Tab.DATA}`} onClick={(e) => { e.preventDefault(); setActiveTab(Tab.DATA); }} className={`flex flex-col items-center justify-center p-2 rounded-lg text-[10px] font-medium transition-all ${activeTab === Tab.DATA ? 'bg-white/10 text-white' : 'text-gray-500 hover:bg-white/5'}`}><span className="text-sm">\u{1F4BE}</span> Data</a>
+            <a href={`#${Tab.SYSTEM}`} onClick={(e) => { e.preventDefault(); setActiveTab(Tab.SYSTEM); }} className={`flex flex-col items-center justify-center p-2 rounded-lg text-[10px] font-medium transition-all ${activeTab === Tab.SYSTEM ? 'bg-white/10 text-white' : 'text-gray-500 hover:bg-white/5'}`}><span className="text-sm">\u{1F6E0}️</span> Sys</a>
             <a href={`#${Tab.SETTINGS}`} onClick={(e) => { e.preventDefault(); setActiveTab(Tab.SETTINGS); }} className={`flex flex-col items-center justify-center p-2 rounded-lg text-[10px] font-medium transition-all ${activeTab === Tab.SETTINGS ? 'bg-white/10 text-white' : 'text-gray-500 hover:bg-white/5'}`}><span className="text-sm">⚙️</span> Config</a>
           </div>
           <button onClick={onRefresh} disabled={isLoading} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-gray-800 to-gray-700 hover:from-gray-700 hover:to-gray-600 border border-white/10 text-white py-3 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:scale-100">
-            <span className={isLoading ? "animate-spin" : ""}>🔄</span> {isLoading ? "Sync" : "Synchroniser"}
+            <span className={isLoading ? "animate-spin" : ""}>\u{1F504}</span> {isLoading ? "Sync" : "Synchroniser"}
           </button>
           {onGeneratePDF && (
             <button onClick={onGeneratePDF} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-900/40 to-purple-900/40 hover:from-indigo-800/60 hover:to-purple-800/60 border border-indigo-500/20 text-indigo-300 hover:text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg active:scale-95 mt-2">
-              📄 {currentLang === 'fr' ? 'Rapport PDF' : 'PDF Report'}
+              \u{1F4C4} {currentLang === 'fr' ? 'Rapport PDF' : 'PDF Report'}
             </button>
           )}
-          {/* Language Toggle */}
           <button
             onClick={toggleLang}
-            title={currentLang === 'fr' ? 'Switch to English' : 'Passer en Français'}
+            title={currentLang === 'fr' ? 'Switch to English' : 'Passer en Francais'}
             className="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white py-2 rounded-xl text-xs font-bold transition-all mt-2"
           >
-            🌐 {currentLang === 'fr' ? '🇫🇷 FR → EN' : '🇬🇧 EN → FR'}
+            \u{1F310} {currentLang === 'fr' ? '\u{1F1EB}\u{1F1F7} FR → EN' : '\u{1F1EC}\u{1F1E7} EN → FR'}
           </button>
         </div>
       </aside>
 
-      {/* MOBILE TOP BAR */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0B0E14]/95 backdrop-blur-xl border-b border-white/10 z-50 flex items-center justify-between px-4 shadow-xl">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center text-white font-bold shadow-lg shadow-primary/20">Fi</div>
@@ -262,8 +246,8 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
         <div className="flex items-center gap-3">
           <button onClick={onOpenGuide} className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400">ℹ️</button>
-          <button onClick={togglePrivacyMode} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-lg active:scale-90 transition-transform">{isPrivacyMode ? '🙈' : '👁️'} </button>
-          <button onClick={onRefresh} className={`w-9 h-9 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-90 transition-transform ${isLoading ? 'animate-spin text-primary' : 'text-gray-300'}`}>🔄</button>
+          <button onClick={togglePrivacyMode} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-lg active:scale-90 transition-transform">{isPrivacyMode ? '\u{1F648}' : '\u{1F441}️'} </button>
+          <button onClick={onRefresh} className={`w-9 h-9 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-90 transition-transform ${isLoading ? 'animate-spin text-primary' : 'text-gray-300'}`}>\u{1F504}</button>
         </div>
       </div>
 
@@ -273,7 +257,6 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       </main>
 
-      {/* MOBILE BOTTOM NAVIGATION */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[#12141a]/100 backdrop-blur-2xl border-t border-white/10 z-[100] flex items-center justify-around px-1 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
         {navItems.map((item) => (
           <a
@@ -287,7 +270,6 @@ export const Layout: React.FC<LayoutProps> = ({
             {activeTab === item.id && <span className="absolute top-2 w-1 h-1 bg-primary rounded-full shadow-[0_0_5px_#10b981]"></span>}
           </a>
         ))}
-        {/* Bouton ⋯ ouvre le drawer secondaire */}
         <button
           onClick={() => setShowMobileDrawer(v => !v)}
           className={`relative flex flex-col items-center justify-center w-14 h-full transition-all duration-200 active:scale-95 ${showMobileDrawer || extraItems.some(e => e.id === activeTab) || [Tab.SETTINGS, Tab.DATA, Tab.SYSTEM].includes(activeTab) ? 'text-primary' : 'text-gray-500'}`}
@@ -298,7 +280,6 @@ export const Layout: React.FC<LayoutProps> = ({
         </button>
       </div>
 
-      {/* MOBILE DRAWER OVERLAY — onglets secondaires */}
       {showMobileDrawer && (
         <div className="md:hidden fixed inset-0 z-40" onClick={() => setShowMobileDrawer(false)}>
           <div className="absolute bottom-20 left-0 right-0 bg-[#0F1116]/98 backdrop-blur-xl border-t border-white/10 p-4 shadow-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
@@ -321,7 +302,7 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
             <div className="text-[10px] uppercase text-gray-500 font-bold tracking-widest mb-3">App</div>
             <div className="grid grid-cols-3 gap-2">
-              {[{ id: Tab.SETTINGS, icon: '⚙️', label: 'Config' }, { id: Tab.DATA, icon: '💾', label: 'Data' }, { id: Tab.SYSTEM, icon: '🛠️', label: 'Système' }].map(item => (
+              {[{ id: Tab.SETTINGS, icon: '⚙️', label: 'Config' }, { id: Tab.DATA, icon: '\u{1F4BE}', label: 'Data' }, { id: Tab.SYSTEM, icon: '\u{1F6E0}️', label: 'Systeme' }].map(item => (
                 <a
                   key={item.id}
                   href={`#${item.id}`}

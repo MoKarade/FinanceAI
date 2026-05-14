@@ -67,17 +67,16 @@ export interface User {
   netSalary: number;
   salary?: number;
   color: string;
-  // Informations personnelles pour les calculs fiscaux
-  age?: number;              // Âge actuel (pour simulation et plafond CELI)
-  birthYear?: number;        // Année de naissance (Alternative à l'âge pour plus de précision)
-  canadaArrivalYear?: number; // Année d'arrivée au Canada (pour calcul plafond CELI réel)
-  hasOwnedPropertyLast4Years?: boolean; // Pour admissibilité CELIAPP (Premier acheteur)
-  hasChildren?: boolean;     // Pour admissibilité REEE
-  childCount?: number;       // Nombre d'enfants
-  fhsaBalance?: number;      // Solde CELIAPP / FHSA
-  celiContributed?: number;  // Total contribué au CELI (pour calculer plafond restant)
-  rrspContributed?: number;  // Total contribué au REER
-  facteurEquivalence?: number; // V44: Facteur d'équivalence (FE) qui réduit le plafond REER
+  age?: number;
+  birthYear?: number;
+  canadaArrivalYear?: number;
+  hasOwnedPropertyLast4Years?: boolean;
+  hasChildren?: boolean;
+  childCount?: number;
+  fhsaBalance?: number;
+  celiContributed?: number;
+  rrspContributed?: number;
+  facteurEquivalence?: number;
 }
 
 export interface BudgetCategory {
@@ -104,48 +103,34 @@ export interface ProjectionConfig {
     cash: number;
   };
   emergencyFundMonths?: number;
-
-  // NEW: Paramètres persistants pour le moteur Hybride et la macro-économie
   salaryGrowth?: number;
   theoreticalIncome?: number;
   theoreticalExpenses?: number;
   useTheoretical?: boolean;
-
-  // V16: Stress Test (Séquence de Rendements)
   stressTestEnabled?: boolean;
-  stressTestYear?: number;      // Année du krach depuis aujourd'hui (1-15)
-  stressTestDrop?: number;      // Chute du portefeuille en % (10-60)
-  stressTestRecoveryMonths?: number; // Durée de récupération en mois (6-60)
-  stressTestInflationShock?: number; // NEW: Surtension inflationniste (+0-10%)
-
-  // V16: Scénario B (pour comparaison A/B)
+  stressTestYear?: number;
+  stressTestDrop?: number;
+  stressTestRecoveryMonths?: number;
+  stressTestInflationShock?: number;
   scenarioB?: ProjectionConfig;
   scenarioBLabel?: string;
-
-  // V18: Immobilier appreciation rate override
-  propertyGrowthRate?: number;  // % annuel d'appréciation immobilière dans la simulation
-
-  // V18: Manual account balance overrides (if CSV unavailable or overridden)
+  propertyGrowthRate?: number;
   useManualBalances?: boolean;
   manualCELI?: number;
   manualREER?: number;
   manualNonReg?: number;
   manualCash?: number;
   manualCrypto?: number;
-  manualCELIRoom?: number;  // V28: Override plafond CELI
-  manualREERRoom?: number;  // V28: Override plafond REER
-
-  // V22: Mécaniques optionnelles
-  vehicleReplacementEnabled?: boolean;  // Remplacement véhicule 35k tous les 10 ans
-  useSmithManoeuvre?: boolean;          // Levier immobilier (capital remboursé → NonReg)
-
-  // V49: Optimisation retenue à la source (T1213)
+  manualCELIRoom?: number;
+  manualREERRoom?: number;
+  vehicleReplacementEnabled?: boolean;
+  useSmithManoeuvre?: boolean;
   optimizeSourceDeductions?: boolean;
 }
 
 export interface RealEstateGoal {
   id: string;
-  name?: string;              // Custom property label (e.g. "Rive-Sud" or "Chalet")
+  name?: string;
   isActive: boolean;
   purchaseDate: string;
   price: number;
@@ -157,14 +142,13 @@ export interface RealEstateGoal {
   unrecoverableMonthly: number;
   isPrimaryResidence: boolean;
   isRented?: boolean;
-  maxValue?: number;          // Price appreciation cap (e.g. 2x purchase price)
-  // Enriched parameters
+  maxValue?: number;
   propertyGrowthRate?: number;
   rentalIncomeMonthly?: number;
   initialRenovations?: number;
   renewalRateProjection?: number;
-  yearlyRenovations?: number;  // Annual renovation / maintenance budget
-  maintenanceYearly?: number;  // Property taxes (overrides auto-calc)
+  yearlyRenovations?: number;
+  maintenanceYearly?: number;
 }
 
 export interface ChildGoal {
@@ -248,11 +232,11 @@ export interface FinancialGoal {
   complexityScore?: number;
 }
 
+// Tab enum : GOALS retire car onglet 100% mort. Objectifs maintenant dans Tab.FUTURE.
 export enum Tab {
   DASHBOARD = 'DASHBOARD',
   TRANSACTIONS = 'TRANSACTIONS',
   BUDGET = 'BUDGET',
-  GOALS = 'GOALS',
   PLANNING = 'PLANNING',
   DEBT = 'DEBT',
   INVESTMENTS = 'INVESTMENTS',
@@ -269,12 +253,11 @@ export enum Tab {
   ASSISTANT = 'ASSISTANT',
 }
 
-// V18: Règles de catégorisation automatique des transactions
 export interface CategorizationRule {
   id: string;
-  pattern: string;         // Substring to match in payee name (case-insensitive)
-  category: string;        // Target category to assign
-  createdAt: string;       // ISO date
+  pattern: string;
+  category: string;
+  createdAt: string;
 }
 
 export interface AppState {
@@ -286,7 +269,7 @@ export interface AppState {
   config: BudgetConfig;
   projection: ProjectionConfig;
   realEstateGoals: RealEstateGoal[];
-  childGoal?: ChildGoal; // Legacy
+  childGoal?: ChildGoal;
   childGoals: ChildGoal[];
   savingsGoals: SavingsGoal[];
   debts: Debt[];
@@ -299,12 +282,11 @@ export interface AppState {
     lunchMoney: string;
     gemini: string;
   };
-  // Taux de change mis à jour automatiquement (source: Banque du Canada)
   fxRates: {
     USD: number;
     EUR: number;
     CAD: number;
-    lastFetched?: number; // Timestamp du dernier fetch
+    lastFetched?: number;
   };
   lastUpdate: number;
   categorizationRules: CategorizationRule[];

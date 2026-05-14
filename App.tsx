@@ -17,22 +17,17 @@ import { AiAssistant } from './components/AiAssistant';
 import { FutureProjection } from './components/FutureProjection';
 import { DebtManager } from './components/DebtManager';
 import { SystemView } from './components/SystemView';
-import { Goals } from './components/Goals';
 import { GuideModal } from './components/GuideModal';
 import { Onboarding } from './components/Onboarding';
 import { ToastContainer, showToast } from './components/ui/Toast';
-import { Tab, AppState, Transaction, BudgetCategory, BudgetConfig, RealEstateGoal } from './types';
+import { Tab, AppState, Transaction, BudgetCategory } from './types';
 import { fetchTransactions } from './services/lunchMoney';
-import { INITIAL_BUDGET, INITIAL_CONFIG, INITIAL_PROJECTION, MOCK_ASSETS, INITIAL_INVESTMENT_ACCOUNTS, INITIAL_INVESTMENT_TRANSACTIONS, INITIAL_REAL_ESTATE_GOAL, INITIAL_CHILD_GOAL, DEFAULT_FX_RATES } from './constants';
+import { INITIAL_CHILD_GOAL } from './constants';
 import { parseTransactions, markDuplicates } from './utils/transactionParser';
 import { fetchAssetHistory, fetchFxRates } from './services/finance';
 import { calculateGrossFromNet } from './services/tax';
 import { generateFinancialReport } from './services/pdfReport';
 import { useFinanceStore } from './store/useFinanceStore';
-
-// FX_RATES est maintenant dynamique — chargé depuis Banque du Canada via fetchFxRates()
-// Les taux sont stockés dans state.fxRates et mis à jour automatiquement
-
 
 export const App: React.FC = () => {
     const state = useFinanceStore();
@@ -45,7 +40,6 @@ export const App: React.FC = () => {
     const [showGuide, setShowGuide] = useState(false);
     const isHydrated = useRef(false);
 
-    // Sync tab state with URL hash
     useEffect(() => {
         const handleHashChange = () => {
             const hash = window.location.hash.replace('#', '');
@@ -57,13 +51,11 @@ export const App: React.FC = () => {
         return () => window.removeEventListener('hashchange', handleHashChange);
     }, [activeTab, setActiveTab]);
 
-    // Update document title based on active tab
     useEffect(() => {
         const tabNames: Record<Tab, string> = {
             [Tab.DASHBOARD]: 'Accueil',
             [Tab.TRANSACTIONS]: 'Transactions',
             [Tab.BUDGET]: 'Budget',
-            [Tab.GOALS]: 'Objectifs',
             [Tab.PLANNING]: 'Planif. & Abos',
             [Tab.DEBT]: 'Dettes',
             [Tab.INVESTMENTS]: 'Investissements',
@@ -86,7 +78,7 @@ export const App: React.FC = () => {
         setActiveTab(tab);
         window.location.hash = tab;
     };
-    // ✅ ONBOARDING : S'affiche si l'app n'a jamais été configurée
+
     const [isFirstLaunch, setIsFirstLaunch] = useState<boolean>(() => {
         try {
             const hasBeenConfigured = localStorage.getItem('app_onboarding_done');
@@ -96,8 +88,6 @@ export const App: React.FC = () => {
             return false;
         }
     });
-
-
 
     useEffect(() => { isHydrated.current = true; }, []);
 
@@ -117,33 +107,27 @@ export const App: React.FC = () => {
         }
     }, [state.childGoal, state.childGoals, setAppState]);
 
-    // Fetch automatique des taux de change (Banque du Canada) au démarrage
+    // Fetch automatique des taux de change (Banque du Canada) au demarrage
     useEffect(() => {
         const updateFxRates = async () => {
             try {
                 const rates = await fetchFxRates();
-                // Ne mettre à jour que si les taux ont réellement changé
                 if (state.fxRates.USD !== rates.USD || state.fxRates.EUR !== rates.EUR) {
                     state.updateFxRates(rates);
                 }
             } catch (e) {
-                console.warn('Impossible de mettre à jour les taux FX:', e);
+                console.warn('Impossible de mettre a jour les taux FX:', e);
             }
         };
         updateFxRates();
-    }, []); // Une seule fois au montage (la fonction gère le cache interne de 24h)
+    }, []);
 
-    // ✅ FIX #2 : Multiplier brut/net plus réaliste
-    // ✅ FIX #2 : Utiliser l'estimateur inverse pour un brut plus réaliste si manquant
     const baseGrossAnnual = useMemo(() => state.config.users.reduce((sum, u) => {
         if (u.grossSalary) return sum + (u.grossSalary * 12);
         const netAnnual = (u.netSalary || u.salary || 0) * 12;
         return sum + calculateGrossFromNet(netAnnual);
     }, 0), [state.config]);
 
-
-
-    // ✅ FIX #9 : Sync plus fiable
     useEffect(() => {
         if (state.apiKeys.lunchMoney && state.transactions.length === 0) {
             loadData(state.apiKeys.lunchMoney);
@@ -170,7 +154,7 @@ export const App: React.FC = () => {
                             changed = true;
                         }
                         if (!fromCache) await new Promise(r => setTimeout(r, 2500));
-                    } catch (e) { }
+                    } catch (e) { /* swallow */ }
                 }
             }
 
@@ -181,7 +165,7 @@ export const App: React.FC = () => {
             }
         };
         hydrateAssets();
-    }, []); // Run asset hydration once on mount or when assets are first loaded
+    }, []);
 
     const loadData = async (token: string, pendingState?: AppState) => {
         if (!token) return;
@@ -254,7 +238,7 @@ export const App: React.FC = () => {
                 initialBalances: balances,
                 lastUpdate: Date.now()
             });
-            showToast('Données synchronisées', 'success');
+            showToast('Donnees synchronisees', 'success');
         } catch (e) {
             console.error("Sync Error:", e);
             showToast("Erreur de synchronisation LunchMoney.", "error");
@@ -263,73 +247,14 @@ export const App: React.FC = () => {
         }
     };
 
-    const handleDeleteTransaction = (id: number) => {
-        setAppState({
-            transactions: state.transactions.filter(t => t.id !== id),
-            lastUpdate: Date.now()
-        });
-        showToast('Transaction ignorée', 'info');
-    };
-
-    const handleRestoreTransaction = (id: number) => {
-        const urlId = window.location.hash.split('restore=')[1];
-        if (urlId || id) {
-            // Restore logic would go here if we tracked deleted ones
-            showToast('Restauration impossible dans cette version', 'info');
-        }
-    };
-
-    const handleSaveFutureConfig = (newConfig: Partial<AppState['config']>) => {
-        setAppState({
-            config: { ...state.config, ...newConfig },
-            lastUpdate: Date.now()
-        });
-        showToast('Configuration enregistrée', 'success');
-    };
-
     const handleUpdateBudget = (budgetItems: BudgetCategory[]) => {
         setAppState({ budgetItems, lastUpdate: Date.now() });
-    };
-
-    const handleAddTransaction = (newTx: Partial<Transaction>) => {
-        const maxId = Math.max(0, ...state.transactions.map(t => t.id));
-        const tx: Transaction = {
-            ...newTx,
-            id: maxId + 1,
-            date: newTx.date || new Date().toISOString().split('T')[0],
-            payee: newTx.payee || 'Nouvelle transaction',
-            amount: newTx.amount || 0,
-            category: newTx.category || 'Uncategorized',
-            status: 'manual' as const,
-        };
-
-        setAppState({
-            transactions: [tx, ...state.transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-            lastUpdate: Date.now()
-        });
-        showToast('Transaction ajoutée avec succès', 'success');
-    };
-
-    const handleUpdateTransaction = (updatedTx: Transaction) => {
-        setAppState({
-            transactions: state.transactions.map(t => t.id === updatedTx.id ? updatedTx : t)
-        });
-    };
-
-    const handleClearAllData = () => {
-        if (window.confirm("Êtes-vous sûr de vouloir supprimer toutes vos données ? Cette action est irréversible (sauf synchronisation cloud).")) {
-            localStorage.clear();
-            state.resetState();
-            setActiveTab(Tab.DASHBOARD);
-            showToast('Toutes les données locales ont été effacées.', 'success');
-            setTimeout(() => window.location.reload(), 2000);
-        }
     };
 
     const handleUpdateApiKeys = (keys: AppState['apiKeys']) => {
         state.updateApiKeys(keys);
         if (keys.lunchMoney !== state.apiKeys.lunchMoney && keys.lunchMoney) {
-            loadData(keys.lunchMoney, undefined); // Fetch data when key changes
+            loadData(keys.lunchMoney, undefined);
         }
     };
 
@@ -338,7 +263,7 @@ export const App: React.FC = () => {
         const combined = [...parsed, ...state.transactions];
         const deduped = markDuplicates(combined);
         setAppState({ transactions: deduped, lastUpdate: Date.now() });
-        showToast(`${deduped.length} transactions importées`, 'success');
+        showToast(`${deduped.length} transactions importees`, 'success');
     };
 
     const globalNetWorth = useMemo(() => {
@@ -351,7 +276,7 @@ export const App: React.FC = () => {
         return cash + investments;
     }, [state.initialBalances, state.transactions, state.assets]);
 
-    const { monthlyIncome, monthlyBudgetExpenses, calculatedMonthlySavings } = useMemo(() => {
+    const { calculatedMonthlySavings } = useMemo(() => {
         const income = state.config.users.reduce((acc, u) => acc + (u.netSalary || u.salary || 0), 0);
         const budgetExp = state.budgetItems.reduce((acc, item) => {
             if (item.nature === 'Epargne') return acc;
@@ -362,8 +287,6 @@ export const App: React.FC = () => {
             return acc + amount;
         }, 0);
         return {
-            monthlyIncome: income,
-            monthlyBudgetExpenses: budgetExp,
             calculatedMonthlySavings: Math.max(0, income - budgetExp)
         };
     }, [state.config, state.budgetItems]);
@@ -391,19 +314,13 @@ export const App: React.FC = () => {
         return cash;
     }, [state.initialBalances, state.transactions]);
 
-    const currentTotalDebt = useMemo(() => {
-        return state.debts.reduce((sum, d) => sum + d.balance, 0);
-    }, [state.debts]);
-
     return (
         <div>
-            {/* ONBOARDING — Premier lancement seulement */}
             {isFirstLaunch && (
                 <Onboarding onComplete={(data) => {
                     setAppState({ ...data, lastUpdate: Date.now() });
                     localStorage.setItem('app_onboarding_done', 'true');
                     setIsFirstLaunch(false);
-                    // Si une clé LunchMoney est fournie, lancer la sync immédiatement
                     if (data.apiKeys?.lunchMoney) {
                         setTimeout(() => loadData(data.apiKeys!.lunchMoney), 500);
                     }
@@ -414,7 +331,6 @@ export const App: React.FC = () => {
                 setActiveTab={handleSetTab}
                 lastUpdate={state.lastUpdate}
                 onRefresh={() => {
-                    // Double refresh pour re-trigger le fetchPortfolioHistory
                     loadData(state.apiKeys.lunchMoney);
                     window.dispatchEvent(new Event('resize'));
                 }}
@@ -436,7 +352,7 @@ export const App: React.FC = () => {
                             liquidityBalance: currentLiquidity,
                             budgetItems: state.budgetItems.map(b => ({ name: b.name, nature: b.nature || 'Autre', target: b.target, frequency: b.frequency || 'Monthly' })),
                             realEstateGoals: state.realEstateGoals.filter(g => g.isActive).map(g => ({
-                                name: g.name || 'Propriété',
+                                name: g.name || 'Propriete',
                                 price: g.price || 0,
                                 equity: 0,
                             })),
@@ -446,9 +362,9 @@ export const App: React.FC = () => {
                             generatedAt: new Date().toLocaleDateString('fr-CA'),
                             lang: document.documentElement.lang || 'fr',
                         });
-                        showToast('Rapport PDF généré avec succès !', 'success');
+                        showToast('Rapport PDF genere avec succes !', 'success');
                     } catch (e) {
-                        showToast('Erreur lors de la génération du PDF', 'error');
+                        showToast('Erreur lors de la generation du PDF', 'error');
                     }
                 }}
                 monthlySavings={calculatedMonthlySavings}
@@ -471,18 +387,6 @@ export const App: React.FC = () => {
                         apiKey={state.apiKeys.gemini}
                         calculatedMonthlySavings={calculatedMonthlySavings}
                         onNavigate={handleSetTab}
-                        isPrivacyMode={isPrivacyMode}
-                    />
-                )}
-
-                {activeTab === Tab.GOALS && (
-                    <Goals
-                        goals={state.financialGoals}
-                        setGoals={(g) => setAppState({ financialGoals: g })}
-                        currentValues={{ celi: assetBreakdown.celi, reer: assetBreakdown.reer, liquidity: currentLiquidity, netWorth: globalNetWorth }}
-                        monthlySavings={calculatedMonthlySavings}
-                        debtsTotal={currentTotalDebt}
-                        apiKey={state.apiKeys.gemini}
                         isPrivacyMode={isPrivacyMode}
                     />
                 )}
@@ -510,13 +414,11 @@ export const App: React.FC = () => {
                         lifeEvents={state.lifeEvents}
                         debts={state.debts}
                         retirementGoal={state.retirementGoal}
-                        setRetirementGoal={(r) => setAppState({ retirementGoal: r })}
                         calculatedMonthlySavings={calculatedMonthlySavings}
                         projection={state.projection}
                         setProjection={(p) => setAppState({ projection: p })}
                         financialGoals={state.financialGoals}
                         isPrivacyMode={isPrivacyMode}
-                        onNavigate={setActiveTab}
                     />
                 )}
 
@@ -561,11 +463,10 @@ export const App: React.FC = () => {
                     />
                 )}
 
-                {activeTab === Tab.ASSISTANT && <AiAssistant apiKey={state.apiKeys.gemini} transactions={state.transactions} budgetItems={state.budgetItems} assets={state.assets} projection={state.projection} realEstateGoals={state.realEstateGoals} config={state.config} initialBalances={state.initialBalances} />}
+                {activeTab === Tab.ASSISTANT && <AiAssistant apiKey={state.apiKeys.gemini} transactions={state.transactions} budgetItems={state.budgetItems} assets={state.assets} projection={state.projection} realEstateGoal={state.realEstateGoals[0]} config={state.config} initialBalances={state.initialBalances} />}
 
                 {showGuide && <GuideModal activeTab={activeTab} onClose={() => setShowGuide(false)} />}
             </Layout>
-            {/* Notification System */}
             <ToastContainer />
         </div>
     );

@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Line, ComposedChart, Brush, Bar, ReferenceDot, LabelList } from 'recharts';
-import { BudgetConfig, BudgetCategory, Asset, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Transaction, Debt, ProjectionConfig, FinancialGoal } from '../types';
+import { BudgetConfig, BudgetCategory, Asset, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Transaction, Debt, ProjectionConfig, FinancialGoal, User } from '../types';
 import { calculateFiscalReport } from '../services/tax';
 import { fetchPortfolioHistory } from '../services/finance';
 import { calculateFutureProjection, SimulationParams } from '../services/projection';
@@ -18,7 +18,7 @@ interface FutureProjectionProps {
   setChildGoals?: (g: ChildGoal[]) => void;
   travelGoals: TravelGoal[];
   lifeEvents: LifeEvent[];
-  debts?: Debt[]; 
+  debts?: Debt[];
   retirementGoal: RetirementGoal;
   calculatedMonthlySavings: number;
   projection: ProjectionConfig;
@@ -30,21 +30,21 @@ interface FutureProjectionProps {
 const ExpertTooltip = ({ active, payload, label, isPrivacyMode }: any) => {
     if (!active || !payload || !payload.length) return null;
     const data = payload[0].payload;
-    
+
     return (
         <div className="bg-[#0B0E14]/95 backdrop-blur-md border border-white/20 p-4 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] max-w-sm z-50">
             <div className="text-sm font-bold text-white mb-2 border-b border-white/20 pb-2 flex justify-between items-center">
                 <span>{data.dateLabel || 'N/A'}</span>
                 <span className="text-[10px] text-gray-400 bg-white/10 px-2 py-0.5 rounded">Âge: {data.age || '??'}</span>
             </div>
-            
+
             <div className="mb-3 space-y-1">
                 {(data.IncomeMarc || 0) > 0 && <div className="flex justify-between text-xs"><span className="text-gray-400">Paye Marc:</span> <span className="font-mono text-green-400 privacy-blur">+{(data.IncomeMarc || 0).toLocaleString()}$</span></div>}
                 {(data.IncomeAnna || 0) > 0 && <div className="flex justify-between text-xs"><span className="text-gray-400">Paye Anna:</span> <span className="font-mono text-green-400 privacy-blur">+{(data.IncomeAnna || 0).toLocaleString()}$</span></div>}
                 {(data.IncomeRetirement || 0) > 0 && <div className="flex justify-between text-xs"><span className="text-gray-400">Rentes/Retraite:</span> <span className="font-mono text-green-400 privacy-blur">+{(data.IncomeRetirement || 0).toLocaleString()}$</span></div>}
-                
+
                 <div className="flex justify-between text-xs"><span className="text-gray-400">Dépenses Vies:</span> <span className="font-mono text-red-400 privacy-blur">-{(data.Expenses || 0).toLocaleString()}$</span></div>
-                
+
                 {(data.childGross || 0) > 0 && (
                     <div className="flex justify-between text-[10px]">
                         <span className="text-gray-500 pl-2">↳ dt. Enfant:</span>
@@ -55,7 +55,7 @@ const ExpertTooltip = ({ active, payload, label, isPrivacyMode }: any) => {
                     </div>
                 )}
                 {(data.ReeeContrib || 0) > 0 && <div className="flex justify-between text-[10px]"><span className="text-gray-500 pl-2">↳ dt. Épargne REEE:</span> <span className="font-mono text-blue-300 privacy-blur">{(data.ReeeContrib || 0)}$ (+30% gouv)</span></div>}
-                
+
                 {(data.ImmoHypo || 0) > 0 && (
                     <div className="flex flex-col text-[10px]">
                         <div className="flex justify-between">
@@ -73,14 +73,14 @@ const ExpertTooltip = ({ active, payload, label, isPrivacyMode }: any) => {
                         <span className="font-mono text-pink-300 privacy-blur">Chg {(data.ImmoCharges || 0).toLocaleString()}$</span>
                     </div>
                 )}
-                
+
                 <div className="flex justify-between text-xs font-bold border-t border-white/10 pt-1 mt-1">
-                    <span className="text-gray-300">Var. Nette (Mois):</span> 
+                    <span className="text-gray-300">Var. Nette (Mois):</span>
                     <span className={`font-mono privacy-blur ${(data.diffNW || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {(data.diffNW || 0) > 0 ? '+' : ''}{(data.diffNW || 0).toLocaleString()}$
                     </span>
                 </div>
-                
+
                 <div className="grid grid-cols-3 gap-1 mt-1 text-[9px] text-gray-400 border-b border-white/5 pb-2 mb-2">
                     <div className="text-center bg-white/5 rounded py-0.5">Cash: <br/><span className={(data.diffLiquid || 0) >= 0 ? 'text-green-300' : 'text-red-300'}>{(data.diffLiquid || 0) > 0 ? '+' : ''}{(data.diffLiquid || 0)}$</span></div>
                     <div className="text-center bg-white/5 rounded py-0.5">CELI: <br/><span className={(data.diffCELI || 0) >= 0 ? 'text-green-300' : 'text-red-300'}>{(data.diffCELI || 0) > 0 ? '+' : ''}{(data.diffCELI || 0)}$</span></div>
@@ -97,11 +97,11 @@ const ExpertTooltip = ({ active, payload, label, isPrivacyMode }: any) => {
                 {(data.Crypto || 0) > 0 && <div className="flex justify-between"><span className="text-purple-500">Crypto:</span> <span className="font-mono privacy-blur">{(data.Crypto || 0).toLocaleString()}$</span></div>}
                 <div className="flex justify-between"><span className="text-pink-500">Immobilier:</span> <span className="font-mono privacy-blur">{(data.Immobilier || 0).toLocaleString()}$</span></div>
             </div>
-            
+
             <div className="flex justify-between font-black text-sm text-white bg-white/10 p-2 rounded border border-white/20">
                 <span>Valeur Nette:</span> <span className="font-mono privacy-blur">{(data.NetWorth || 0).toLocaleString()}$</span>
             </div>
-            
+
             {((data.ImpotLatent || 0) < 0 || (data.FluxImpots || 0) < 0) && (
                 <div className="mt-2 space-y-1">
                     {(data.ImpotLatent || 0) < 0 && <div className="flex justify-between text-xs"><span className="text-red-500 font-bold">Impôt Latent (Dette):</span> <span className="font-mono text-red-400 privacy-blur">{(data.ImpotLatent || 0).toLocaleString()}$</span></div>}
@@ -154,7 +154,7 @@ const CustomFlowEventLabel = (props: any) => {
 };
 
 export const FutureProjection: React.FC<FutureProjectionProps> = ({
-    assets = [], initialBalances = {}, transactions = [], budgetItems = [], config, 
+    assets = [], initialBalances = {}, transactions = [], budgetItems = [], config,
     realEstateGoals = [], setRealEstateGoals, childGoals = [], travelGoals = [], lifeEvents = [], debts = [], retirementGoal,
     calculatedMonthlySavings, projection, setProjection, financialGoals = [], isPrivacyMode = false
 }) => {
@@ -171,14 +171,20 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     };
 
     const updateReturnRate = (key: string, val: number) => {
-        setProjection({ 
-            ...projection, 
-            returnRates: { ...(projection.returnRates || { celi: 7, reer: 6.5, nonReg: 6.5, crypto: 10, cash: 3 }), [key]: val } 
+        setProjection({
+            ...projection,
+            returnRates: { ...(projection.returnRates || { celi: 7, reer: 6.5, nonReg: 6.5, crypto: 10, cash: 3 }), [key]: val }
         });
     };
 
-    const baseNetAnnual = useMemo(() => (config?.users || []).reduce((sum, u) => sum + ((u.netSalary || u.salary || 0) * 12), 0), [config]);
-    const baseGrossAnnual = useMemo(() => (config?.users || []).reduce((sum, u) => sum + ((u.grossSalary || 0) * 12), 0), [config]);
+    const baseNetAnnual = useMemo<number>(() => {
+        const users: User[] = (config?.users ?? []) as unknown as User[];
+        return users.reduce((sum: number, u: User) => sum + ((u.netSalary || u.salary || 0) * 12), 0);
+    }, [config]);
+    const baseGrossAnnual = useMemo<number>(() => {
+        const users: User[] = (config?.users ?? []) as unknown as User[];
+        return users.reduce((sum: number, u: User) => sum + ((u.grossSalary || 0) * 12), 0);
+    }, [config]);
     const baseMonthlyExpenses = (baseNetAnnual / 12) - calculatedMonthlySavings;
 
     const [liveCSVBalances, setLiveCSVBalances] = useState({ CELI: 0, REER: 0, NON_ENREG: 0, CRYPTO: 0, REEE: 0, TOTAL: 0, historicalRate: 0 });
@@ -194,15 +200,15 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 if (!lastRow) return;
 
                 let celi = 0, reer = 0, nonReg = 0, crypto = 0, reee = 0, total = 0;
-                
+
                 Object.keys(lastRow).forEach(key => {
                     if (key === 'date' || key === 'Date' || key.startsWith('Taux')) return;
                     const val = Number(lastRow[key]) || 0;
                     if (key.includes('TOTAL')) { total = val; return; }
-                    
+
                     const mappedAsset = assets.find(a => key.includes(a.symbol));
-                    const type = mappedAsset?.accountType || 'NON-ENREG';
-                    
+                    const type: string = mappedAsset?.accountType || 'NON-ENREG';
+
                     if (type === 'CELI') celi += val;
                     else if (type === 'REER') reer += val;
                     else if (type === 'CRYPTO') crypto += val;
@@ -210,14 +216,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     else nonReg += val;
                 });
 
-                let historicalRate = 7.0; 
+                let historicalRate = 7.0;
                 if (history.length > 1) {
                     const firstRow = history[0];
                     const firstTotalKey = Object.keys(firstRow).find(k => k.includes('TOTAL'));
                     if (firstTotalKey) {
                         const firstTotal = Number(firstRow[firstTotalKey]) || 0;
                         const lastTotal = Number(lastRow[firstTotalKey]) || 0;
-                        
+
                         const days = (new Date(lastRow.date as string).getTime() - new Date(firstRow.date as string).getTime()) / (1000 * 3600 * 24);
                         if (days > 30 && firstTotal > 0 && lastTotal > 0) {
                             const years = days / 365.25;
@@ -250,7 +256,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         });
         return cash;
     }, [initialBalances, transactions]);
-    
+
     const currentRentExpense = useMemo(() => {
         const rentItem = budgetItems.find(b => b.name.toLowerCase().includes('loyer') || b.name.toLowerCase().includes('rent') || b.name.toLowerCase().includes('hypothèque'));
         if (rentItem) {
@@ -259,13 +265,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             if (rentItem.frequency === 'Weekly') val *= 4.33;
             return val;
         }
-        return 1600; 
+        return 1600;
     }, [budgetItems]);
 
-    // 🔥 DÉPART STRICT EN JANVIER 2026 🔥
+    // DEPART STRICT EN JANVIER 2026
     const startYear = 2026;
-    const startMonth = 0; 
-    
+    const startMonth = 0;
+
     const todayMonthIndex = useMemo(() => {
         const now = new Date();
         return Math.max(0, (now.getFullYear() - startYear) * 12 + (now.getMonth() - startMonth));
@@ -292,7 +298,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         startMonth
     }), [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses]);
 
-    const results = useMemo(() => {
+    const results = useMemo<any>(() => {
         try {
             return calculateFutureProjection(params, runMC, selectedScenarioIdx);
         } catch (e) {
@@ -300,15 +306,15 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             return { chartData: [], fireNumber: 0, aiNote: "Error", allResults: [] };
         }
     }, [params, runMC, selectedScenarioIdx]);
-    
-    const { chartData = [], fireNumber = 0, aiNote = "", allResults = [] } = results || {};
+
+    const { chartData = [], fireNumber = 0, aiNote = "", allResults = [] } = (results || {}) as any;
 
     const { lifeChartEvents, flowChartEvents } = useMemo(() => {
-        let lifes: any[] = [];
-        let flows: any[] = [];
+        const lifes: any[] = [];
+        const flows: any[] = [];
         let lifeIdx = 0;
         let flowIdx = 0;
-        chartData.forEach((d) => {
+        chartData.forEach((d: any) => {
             if (d.lifeEvents?.length > 0) lifes.push({ monthIndex: d.monthIndex, val: d.NetWorth, label: d.lifeEvents.join(' | '), index: lifeIdx++ });
             if (d.flowEvents?.length > 0 && (d.FluxImpots < 0 || d.flowEvents.some((x:any)=>x.includes('-')))) {
                 flows.push({ monthIndex: d.monthIndex, val: d.ImpotLatent || 0, label: d.flowEvents[0], index: flowIdx++ });
@@ -319,7 +325,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
     return (
         <div className="space-y-6 animate-fade-in pb-24">
-            
+
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-900/40 to-emerald-900/40 border border-white/10 p-6 shadow-2xl">
                  <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                      <div>
@@ -341,8 +347,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         key={idx}
                         onClick={() => setSelectedScenarioIdx(idx)}
                         className={`p-4 rounded-xl border transition-all text-left relative overflow-hidden group ${
-                            selectedScenarioIdx === idx 
-                            ? 'bg-primary/20 border-primary ring-1 ring-primary' 
+                            selectedScenarioIdx === idx
+                            ? 'bg-primary/20 border-primary ring-1 ring-primary'
                             : 'bg-surface/40 border-white/5 hover:border-white/20'
                         }`}
                     >
@@ -381,21 +387,21 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
                 <div className="flex justify-center mb-6">
                     <div className="bg-black/50 p-1 rounded-lg border border-white/10 flex">
-                        <button 
-                            onClick={() => updateProj('useTheoretical', false)} 
+                        <button
+                            onClick={() => updateProj('useTheoretical', false)}
                             className={`px-6 py-2 text-sm font-bold rounded-md transition-all ${!projection.useTheoretical ? 'bg-primary text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
                         >
                             🔗 Données Réelles
                         </button>
-                        <button 
-                            onClick={() => updateProj('useTheoretical', true)} 
+                        <button
+                            onClick={() => updateProj('useTheoretical', true)}
                             className={`px-6 py-2 text-sm font-bold rounded-md transition-all ${projection.useTheoretical ? 'bg-purple-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
                         >
                             🧪 Mode Sandbox
                         </button>
                     </div>
                     <div className="ml-4 flex items-center gap-2">
-                        <button 
+                        <button
                             onClick={() => setRunMC(!runMC)}
                             className={`px-4 py-2 text-[10px] font-bold rounded-md border transition-all ${runMC ? 'bg-orange-500/20 border-orange-500/50 text-orange-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
                         >
@@ -454,7 +460,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-white/10 pb-1 flex justify-between items-center">
                             <span>Rendements Estimés</span>
                             {liveCSVBalances.historicalRate > 0 && (
-                                <button 
+                                <button
                                     onClick={applyHistoricalRate}
                                     className="text-[9px] bg-blue-500/20 text-blue-300 hover:bg-blue-500/40 hover:text-white px-1.5 py-0.5 rounded transition-colors"
                                     title="Appliquer le rendement historique réel de votre Google Sheet"
@@ -478,7 +484,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             <input type="range" min="2" max="15" step="0.1" value={projection.returnRates?.nonReg || 6.5} onChange={e => { updateReturnRate('nonReg', Number(e.target.value)); updateReturnRate('reer', Number(e.target.value)); }} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-yellow-500" />
                         </div>
                     </div>
-                    
+
                     <div className="space-y-4">
                         <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-white/10 pb-1">Paramètres Spéciaux</h4>
                         <div>
@@ -493,7 +499,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 <span>Valeur Max Maison</span>
                                 <span className="text-pink-400 font-bold privacy-blur">{((realEstateGoals[0]?.maxValue || 1000000)/1000).toFixed(0)}k$</span>
                             </label>
-                            <input type="range" min="300000" max="3000000" step="50000" value={realEstateGoals[0]?.maxValue || 1000000} onChange={e => { 
+                            <input type="range" min="300000" max="3000000" step="50000" value={realEstateGoals[0]?.maxValue || 1000000} onChange={e => {
                                 const updated = [...realEstateGoals];
                                 if (updated[0]) {
                                     updated[0] = { ...updated[0], maxValue: Number(e.target.value) };
@@ -511,23 +517,23 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                      <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-                            
-                            <XAxis 
-                                dataKey="monthIndex" 
-                                stroke="#666" 
-                                tick={{fontSize: 10}} 
+
+                            <XAxis
+                                dataKey="monthIndex"
+                                stroke="#666"
+                                tick={{fontSize: 10}}
                                 minTickGap={50}
                                 tickFormatter={(val) => {
                                     const match = chartData.find((d:any) => d.monthIndex === val);
                                     return match ? `${match.year}` : val;
                                 }}
                             />
-                            
+
                             <YAxis stroke="#666" tick={{fontSize: 10}} domain={['auto', 'auto']} tickFormatter={(val) => isPrivacyMode ? '***' : `${(val/1000000).toFixed(1)}M`} />
 
                             <ReferenceLine y={0} stroke="#444" strokeWidth={2} />
                             <ReferenceLine x={todayMonthIndex} stroke="rgba(255,255,255,0.6)" strokeDasharray="5 5" label={{ position: 'top', value: "Aujourd'hui", fill: '#fff', fontSize: 10 }} />
-                            
+
                             <Tooltip content={<ExpertTooltip isPrivacyMode={isPrivacyMode} />} />
                             <ReferenceLine y={fireNumber} stroke="#f97316" strokeDasharray="5 5" label={{ position: 'top', value: 'Objectif FIRE', fill: '#f97316', fontSize: 12, fontWeight: 'bold' }} />
 
@@ -545,32 +551,32 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             <Area type="monotone" dataKey="NonReg" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} name="Non-Enreg" isAnimationActive={false}/>
                             <Area type="monotone" dataKey="Crypto" stackId="1" stroke="#a855f7" fill="#a855f7" fillOpacity={0.6} name="Crypto" isAnimationActive={false}/>
                             <Area type="monotone" dataKey="Immobilier" stackId="1" stroke="#ec4899" fill="#ec4899" fillOpacity={0.3} name="Équité Immo" isAnimationActive={false}/>
-                            
+
                             <Area type="monotone" dataKey="ImpotLatent" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} strokeDasharray="3 3" name="Impôt Latent" isAnimationActive={false}/>
                             <Bar dataKey="FluxImpots" fill="#ef4444" fillOpacity={0.8} name="Paiement Impôts" barSize={4} isAnimationActive={false} />
 
                             <Line type="monotone" dataKey="NetWorth" stroke="#fff" strokeWidth={3} dot={false} name="Valeur Nette Totale" isAnimationActive={false}/>
 
                             {lifeChartEvents.map((evt, i) => (
-                                <ReferenceDot key={`life-${i}`} x={evt.monthIndex} y={evt.val} r={6} fill="#facc15" stroke="#0B0E14" strokeWidth={2} isAnimationActive={false}>
+                                <ReferenceDot key={`life-${i}`} x={evt.monthIndex} y={evt.val} r={6} fill="#facc15" stroke="#0B0E14" strokeWidth={2}>
                                     <LabelList dataKey="label" content={<CustomLifeEventLabel value={evt.label} index={evt.index} />} />
                                 </ReferenceDot>
                             ))}
 
                             {flowChartEvents.map((evt, i) => (
-                                <ReferenceDot key={`flow-${i}`} x={evt.monthIndex} y={evt.val} r={3} fill="#60a5fa" stroke="#0B0E14" strokeWidth={1} isAnimationActive={false}>
+                                <ReferenceDot key={`flow-${i}`} x={evt.monthIndex} y={evt.val} r={3} fill="#60a5fa" stroke="#0B0E14" strokeWidth={1}>
                                     <LabelList dataKey="label" content={<CustomFlowEventLabel value={evt.label} index={evt.index} />} />
                                 </ReferenceDot>
                             ))}
-                            
+
                             <Brush dataKey="monthIndex" height={30} stroke="#8884d8" fill="#151922" tickFormatter={(val) => {
-                                const match = chartData.find(d => d.monthIndex === val);
+                                const match = chartData.find((d: any) => d.monthIndex === val);
                                 return match ? `${match.year}` : '';
                             }}/>
                         </ComposedChart>
                     </ResponsiveContainer>
                 </div>
-                
+
                 <div className="mt-6 flex flex-wrap gap-4 text-[10px] text-gray-400 justify-center bg-black/20 p-4 rounded-xl border border-white/5">
                     <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#4b5563] rounded"></span> Cash</span>
                     <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#10b981] rounded"></span> CELI</span>

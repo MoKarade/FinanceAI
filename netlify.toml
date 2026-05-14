@@ -1,9 +1,5 @@
 [build]
-  # Typecheck temporairement retire (cf. .github/workflows/ci.yml et
-  # docs/TYPECHECK_BACKLOG.md). Reactiver `npm run typecheck` une fois
-  # les 4 fichiers (Dashboard, FutureProjection, Investments, Transactions)
-  # fixes ou marques // @ts-nocheck.
-  command = "npm install --no-audit --no-fund && npm run test && npm run build"
+  command = "npm install --no-audit --no-fund && npm run typecheck && npm run test && npm run build"
   publish = "dist"
 
 [[redirects]]

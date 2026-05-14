@@ -23,19 +23,8 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      # Typecheck temporairement desactive : `exclude` dans tsconfig ne marche
-      # PAS car tsc traverse les imports (App.tsx importe Dashboard, FutureProjection,
-      # Investments, Transactions -> ils sont typecheck-es meme si dans exclude).
-      #
-      # 22 erreurs preexistantes dans ces 4 fichiers + 1 dans useFutureSimulation.
-      # Documente dans docs/TYPECHECK_BACKLOG.md avec procedure de fix progressif.
-      #
-      # Pour reactiver proprement, il faut soit :
-      #  (a) Ajouter // @ts-nocheck en tete de chaque fichier exclus (rapide mais
-      #      desactive la protection sur les futures modifs de ces fichiers).
-      #  (b) Fixer chaque bug un par un selon le backlog (propre, sprint dedie).
-      # - name: Typecheck
-      #   run: npm run typecheck
+      - name: Typecheck
+        run: npm run typecheck
 
       - name: Tests
         run: npm run test

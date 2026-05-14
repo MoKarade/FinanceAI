@@ -32,6 +32,10 @@
     "dist",
     "build",
     "public",
-    "utils/useFutureSimulation.ts"
+    "utils/useFutureSimulation.ts",
+    "components/Dashboard.tsx",
+    "components/FutureProjection.tsx",
+    "components/Investments.tsx",
+    "components/Transactions.tsx"
   ]
 }

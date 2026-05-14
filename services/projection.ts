@@ -2455,9 +2455,10 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
     let expertMetrics: any = null;
 
     if (runMC) {
-        // D2.3: revenu à 100 itérations (IC95% ≈ ±3 points vs ±7 à 50 iter).
-        // Migration vers Web Worker prévue pour pouvoir aller à 500-1000.
-        const MC_ITERATIONS = 100;
+        // Cycle 5 audit UI: monteCarloIterations désormais lu depuis ProjectionConfig
+        // (panneau Paramètres Avancés). Bornes: 50-1000.
+        const requested = params.projection.monteCarloIterations ?? 100;
+        const MC_ITERATIONS = Math.max(50, Math.min(1000, requested));
         const mcResult = runMonteCarlo(params, 'AUTO_MARGINAL', target.delayPensions, MC_ITERATIONS);
         successRate = mcResult.successRate;
         fvi = mcResult.fvi;

@@ -8,6 +8,7 @@ import { fetchPortfolioHistory } from '../services/finance';
 import { calculateFutureProjection, SimulationParams } from '../services/projection';
 import { runProjectionAsync, terminateProjectionWorker } from '../services/projection/runAsync';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { AdvancedProjectionParams } from './AdvancedProjectionParams';
 
 interface FutureProjectionProps {
   assets: Asset[];
@@ -594,6 +595,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         <option value="2022">2022 — Inflation post-COVID</option>
                     </select>
                     <span className="text-[10px] text-gray-500">→ Force les rendements historiques à partir de cette année.</span>
+                </div>
+
+                {/* Cycle 5 — Panneau Paramètres Avancés (audit UI coverage) */}
+                <div className="mb-4">
+                    <AdvancedProjectionParams projection={projection} updateProj={updateProj} />
                 </div>
                 {projection.ltcEnabled && (
                     <div className="mb-4 p-3 rounded-lg border border-red-500/20 bg-black/30">

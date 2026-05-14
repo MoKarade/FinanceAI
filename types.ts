@@ -130,6 +130,13 @@ export interface ProjectionConfig {
   // Go-go (jusqu'à 74): +15% sur le besoin. Slow-go (75-84): base.
   // No-go (85+): -10% lifestyle, mais santé compense (déjà modélisé).
   useSmileCurve?: boolean;
+  // D2.7: Withholding tax US 15% sur dividendes US détenus dans CELI/FHSA.
+  // La convention fiscale Canada-US exempte le REER mais PAS le CELI.
+  // - usEquityShareCeli: fraction CELI investie en actions US (0-100).
+  // - usEquityDividendYield: rendement dividende moyen des actions US (1.5% par défaut).
+  // Drag annuel sur CELI = share * yield * 15% (en points de pourcentage).
+  usEquityShareCeli?: number;
+  usEquityDividendYield?: number;
 }
 
 export interface RealEstateGoal {

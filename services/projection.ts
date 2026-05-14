@@ -1455,9 +1455,18 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         const activeCryptoRate = enableMonteCarlo ? mcCryptoRate : baseRates.crypto;
         const activeCashRate = enableMonteCarlo ? mcCashRate : baseRates.cash;
 
-        const effectiveCeliRate = activeCeliRate * glideFactor + targetGlideRate * (1 - glideFactor);
+        const effectiveCeliRateRaw = activeCeliRate * glideFactor + targetGlideRate * (1 - glideFactor);
         const effectiveReerRate = activeReerRate * glideFactor + targetGlideRate * (1 - glideFactor);
-        const effectiveNonRegRate = activeNonRegRate * glideFactor + targetGlideRate * (1 - glideFactor);
+        const effectiveNonRegRateRaw = activeNonRegRate * glideFactor + targetGlideRate * (1 - glideFactor);
+
+        // D2.7: Withholding tax US 15% — drag sur le CELI uniquement.
+        // REER exempté par convention fiscale. NON_ENREG: drag présent mais
+        // crédit pour impôt étranger récupère, donc négligé ici.
+        const usShareCeli = Math.min(1, Math.max(0, (effProj.usEquityShareCeli ?? 0) / 100));
+        const usDivYield = (effProj.usEquityDividendYield ?? 1.5) / 100;
+        const usCeliDragPct = usShareCeli * usDivYield * 0.15 * 100; // en points %
+        const effectiveCeliRate = effectiveCeliRateRaw - usCeliDragPct;
+        const effectiveNonRegRate = effectiveNonRegRateRaw;
 
         // V31: Séquençage Mid-Month & Intégration globale des MER
         const applyMidMonthGrowth = (startVal: number, endVal: number, rateAnnual: number, applyMER: boolean = true) => {

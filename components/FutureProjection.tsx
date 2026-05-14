@@ -416,6 +416,36 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </div>
                 </div>
 
+                {/* D2.7: Champs Withholding tax US sur CELI */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-3 rounded-lg border border-white/5 bg-black/30">
+                    <div>
+                        <label className="flex justify-between text-xs text-gray-300 mb-1">
+                            <span>🇺🇸 Part actions US dans CELI (%)</span>
+                            <span className="text-blue-300 font-bold">{projection.usEquityShareCeli ?? 0}%</span>
+                        </label>
+                        <input
+                            type="range" min="0" max="100" step="5"
+                            value={projection.usEquityShareCeli ?? 0}
+                            onChange={e => updateProj('usEquityShareCeli', Number(e.target.value))}
+                            className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        />
+                        <p className="text-[10px] text-gray-500 mt-1">VOO/SPY/QQQ... Le CELI n'est PAS protégé du withholding US 15% (le REER si).</p>
+                    </div>
+                    <div>
+                        <label className="flex justify-between text-xs text-gray-300 mb-1">
+                            <span>Rendement dividende US (%)</span>
+                            <span className="text-blue-300 font-bold">{(projection.usEquityDividendYield ?? 1.5).toFixed(1)}%</span>
+                        </label>
+                        <input
+                            type="range" min="0" max="5" step="0.1"
+                            value={projection.usEquityDividendYield ?? 1.5}
+                            onChange={e => updateProj('usEquityDividendYield', Number(e.target.value))}
+                            className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        />
+                        <p className="text-[10px] text-gray-500 mt-1">Yield moyen S&P 500 ≈ 1.5%. Drag annuel = part × yield × 15%.</p>
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div className="space-y-4">
                         <h4 className={`text-xs font-bold uppercase tracking-widest border-b pb-1 ${projection.useTheoretical ? 'text-purple-400 border-purple-500/20' : 'text-emerald-400 border-emerald-500/20'}`}>Flux Mensuels</h4>

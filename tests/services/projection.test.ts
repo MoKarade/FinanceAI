@@ -219,6 +219,35 @@ describe('calculateFutureProjection', () => {
         }
     });
 
+    // D2.7 — US Withholding sur CELI
+    describe('US Withholding CELI', () => {
+        it('avec usEquityShareCeli=100% et yield 2%, le patrimoine est plus faible que sans drag', () => {
+            const baseProj = makeProjection({ years: 20, usEquityShareCeli: 0 });
+            const dragProj = makeProjection({ years: 20, usEquityShareCeli: 100, usEquityDividendYield: 2 });
+
+            const noDrag = calculateFutureProjection(makeParams({ projection: baseProj })) as any;
+            const drag = calculateFutureProjection(makeParams({ projection: dragProj })) as any;
+
+            const noBase = noDrag.allResults.find((s: any) => s.stratType === 'BASE');
+            const drBase = drag.allResults.find((s: any) => s.stratType === 'BASE');
+
+            // Drag 100% × 2% × 15% = 0.30 pp annuels sur le CELI → patrimoine final plus bas
+            expect(drBase.estateNetWorth).toBeLessThan(noBase.estateNetWorth);
+        });
+
+        it('share=0 ne produit aucun drag (idempotent vs valeur défaut)', () => {
+            const r1 = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 10, usEquityShareCeli: 0 })
+            })) as any;
+            const r2 = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 10 })
+            })) as any;
+            const b1 = r1.allResults.find((s: any) => s.stratType === 'BASE');
+            const b2 = r2.allResults.find((s: any) => s.stratType === 'BASE');
+            expect(b1.estateNetWorth).toBe(b2.estateNetWorth);
+        });
+    });
+
     // D2.6 — Sequence Risk Metric
     describe('Sequence Risk Metric', () => {
         it('expertMetrics expose sequenceRiskPct et worstDecadeDrawdown quand MC est activé', () => {

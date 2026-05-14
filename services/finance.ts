@@ -7,6 +7,7 @@ export interface MarketDataPoint {
 
 const SHEET_ID = "1bvHRAFP-GCjQjgsRit61JBidPAmerdgij33_lO1Ob9w";
 const CSV_URL_GVIZ = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=0`;
+const CSV_PROXY_URL = '/.netlify/functions/sheet-proxy';
 
 // Timeout et retry pour les fetches
 const FETCH_TIMEOUT_MS = 12000; // 12 secondes max
@@ -105,7 +106,7 @@ const cleanNumberString = (val: any): number => {
     let str = String(val).replace(/^"|"$/g, '').trim();
     if (str === '' || str === '-') return NaN;
 
-    str = str.replace(/[\s  $€£%]/g, '');
+    str = str.replace(/[\s  $€£%]/g, '');
     str = str.replace(/[^0-9.,-]/g, '');
 
     const isNeg = str.startsWith('-');
@@ -208,24 +209,24 @@ export const fetchPortfolioHistory = async (): Promise<MarketDataPoint[]> => {
                     }
                 }
             } catch (e) {
-                console.warn("Export direct echoue (CORS probable), tentative via Proxy...");
+                console.warn("Export direct echoue (CORS probable), tentative via proxy Netlify...");
             }
 
-            // 2. Fallback via proxy public si necessaire
+            // 2. Fallback via notre Netlify Function (server-side, pas de CORS).
+            //    Remplace l'ancienne dépendance à api.allorigins.win.
             if (!csvText) {
-                const PROXY_URL = `https://api.allorigins.win/raw?url=${encodeURIComponent(CSV_URL_GVIZ)}`;
                 try {
-                    const responseProxy = await fetchWithRetry(PROXY_URL);
-                    if (!responseProxy.ok) throw new Error(`Erreur Proxy: ${responseProxy.status}`);
+                    const responseProxy = await fetchWithRetry(CSV_PROXY_URL);
+                    if (!responseProxy.ok) throw new Error(`Erreur proxy Netlify: ${responseProxy.status}`);
                     csvText = await responseProxy.text();
 
                     if (csvText.toLowerCase().includes('<!doctype html>') || csvText.toLowerCase().includes('<html')) {
                         console.error("Le fichier Google Sheet est prive ou l'ID est invalide.");
                         return [];
                     }
-                    console.log('Fetch via proxy reussi');
+                    console.log('Fetch via proxy Netlify reussi');
                 } catch (proxyError) {
-                    console.error("Proxy egalement indisponible:", proxyError);
+                    console.error("Proxy Netlify indisponible:", proxyError);
                     return [];
                 }
             }

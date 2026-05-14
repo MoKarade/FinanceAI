@@ -12,10 +12,12 @@ interface RealEstateProps {
 }
 
 export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, setGoals }) => {
+    // Selection state
     const [activeGoalId, setActiveGoalId] = useState<string>(goals[0]?.id || 'primary');
-    const [confirmDeleteGoalId, setConfirmDeleteGoalId] = useState<string | null>(null);
 
-    const activeGoal = useMemo(() => goals.find(g => g.id === activeGoalId) || goals[0] || INITIAL_REAL_ESTATE_GOAL, [goals, activeGoalId]);
+    const activeGoal = useMemo(() =>
+        goals.find(g => g.id === activeGoalId) || goals[0] || INITIAL_REAL_ESTATE_GOAL
+        , [goals, activeGoalId]);
 
     const updateActiveGoal = (updates: Partial<RealEstateGoal>) => {
         const newGoals = goals.map(g => g.id === activeGoal.id ? { ...g, ...updates } : g);
@@ -24,7 +26,14 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
 
     const addNewGoal = () => {
         const newId = `prop_${Date.now()}`;
-        const newGoal: RealEstateGoal = { ...INITIAL_REAL_ESTATE_GOAL, id: newId, isActive: false, isPrimaryResidence: false, price: 400000, downPayment: 80000 };
+        const newGoal: RealEstateGoal = {
+            ...INITIAL_REAL_ESTATE_GOAL,
+            id: newId,
+            isActive: false,
+            isPrimaryResidence: false,
+            price: 400000,
+            downPayment: 80000,
+        };
         setGoals([...goals, newGoal]);
         setActiveGoalId(newId);
     };
@@ -42,6 +51,9 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
         setConfirmDeleteGoalId(null);
     };
 
+    const [confirmDeleteGoalId, setConfirmDeleteGoalId] = useState<string | null>(null);
+
+    // Mode Switch
     const [mode, setMode] = useState<'AUTO' | 'MANUAL'>('MANUAL');
 
     const price = activeGoal.price || 450000;
@@ -77,16 +89,19 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
 
     const totalMortgage = price - downPayment;
     const welcomeTax = (() => {
-        let tax = 0; let v = price;
+        let tax = 0;
+        let v = price;
         if (v > 552300) { tax += (v - 552300) * 0.02; v = 552300; }
         if (v > 290000) { tax += (v - 290000) * 0.015; v = 290000; }
         if (v > 58900) { tax += (v - 58900) * 0.01; v = 58900; }
         tax += v * 0.005;
         return tax;
     })();
+
     const notaryFees = 1500;
     const inspectionFees = 800;
     const totalCashNeeded = downPayment + welcomeTax + notaryFees + inspectionFees + initialRenovations;
+
     const monthlyRate = rate / 100 / 12;
     const numberOfPayments = amortization * 12;
     const monthlyMortgage = monthlyRate > 0
@@ -102,12 +117,15 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
         let currentRate = rate / 100 / 12;
         let propertyValue = price + initialRenovations;
         const purchaseYear = new Date(targetDate || new Date()).getFullYear();
+
         for (let year = 1; year <= amortization; year++) {
-            let yearInterest = 0; let yearPrincipal = 0;
+            let yearInterest = 0;
+            let yearPrincipal = 0;
             if (year > 1 && (year - 1) % 5 === 0) {
                 currentRate = renewalRate / 100 / 12;
                 const remainingMonths = (amortization - year + 1) * 12;
-                if (currentRate > 0) currentMonthlyPayment = (currentRate * balance * Math.pow(1 + currentRate, remainingMonths)) / (Math.pow(1 + currentRate, remainingMonths) - 1);
+                if (currentRate > 0)
+                    currentMonthlyPayment = (currentRate * balance * Math.pow(1 + currentRate, remainingMonths)) / (Math.pow(1 + currentRate, remainingMonths) - 1);
             }
             for (let m = 0; m < 12; m++) {
                 if (balance <= 0) break;
@@ -121,7 +139,21 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
             totalPrincipalPaid += yearPrincipal;
             const rawValue = propertyValue * (1 + (propertyGrowthRate / 100));
             propertyValue = (maxValue > 0 && rawValue > maxValue) ? maxValue : rawValue;
-            data.push({ year, calendarYear: purchaseYear + year, age: year, Solde: Math.max(0, Math.round(balance)), Valeur: Math.round(propertyValue), Équité: Math.max(0, Math.round(propertyValue - Math.max(0, balance))), Intérêts: Math.round(totalInterestPaid), Principal: Math.round(totalPrincipalPaid), PartInteret: Math.round(yearInterest), PartPrincipal: Math.round(yearPrincipal), Taux: (currentRate * 12 * 100).toFixed(1) + '%', Renos: Math.round(yearlyRenovations * year) });
+            const calendarYear = purchaseYear + year;
+            data.push({
+                year,
+                calendarYear,
+                age: year,
+                Solde: Math.max(0, Math.round(balance)),
+                ValeuréPropriété: Math.round(propertyValue),
+                Équité: Math.max(0, Math.round(propertyValue - Math.max(0, balance))),
+                IntérêtsCumul: Math.round(totalInterestPaid),
+                PrincipalCumul: Math.round(totalPrincipalPaid),
+                PartInteretAnnuelle: Math.round(yearInterest),
+                PartPrincipalAnnuelle: Math.round(yearPrincipal),
+                TauxEnVigueur: (currentRate * 12 * 100).toFixed(1) + '%',
+                RenosCumul: Math.round(yearlyRenovations * year),
+            });
         }
         return { data, totalInterest: totalInterestPaid, finalValue: propertyValue };
     }, [totalMortgage, rate, renewalRate, monthlyMortgage, amortization, price, propertyGrowthRate, initialRenovations, maxValue, targetDate, yearlyRenovations]);
@@ -144,164 +176,577 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
             const differenceToInvest = (buyAnnualCost - rentAnnualCost);
             rentScenarioNetWorth *= (1 + marketReturn / 100);
             if (differenceToInvest > 0) rentScenarioNetWorth += differenceToInvest;
-            else rentScenarioNetWorth -= Math.abs(differenceToInvest);
-            const yearData = amortizationData.data[year - 1];
-            if (yearData) buyNetWorth = yearData.Équité - yearlyRenovations * year;
-            buyNetWorth *= (1 + propertyGrowthRate / 100);
+            buyNetWorth = amortizationData.data[year - 1]?.Équité || 0;
             currentRentCost *= 1.03;
-            data.push({ year, Locataire: Math.round(rentScenarioNetWorth), Propriétaire: Math.round(buyNetWorth) });
+            data.push({ year, 'Acheter (Équité)': Math.round(buyNetWorth), 'Louer + Investir': Math.round(rentScenarioNetWorth) });
         }
         return data;
-    }, [totalCashNeeded, downPayment, initialRenovations, currentRent, netMonthlyCost, maintenanceMonthly, marketReturn, amortizationData, yearlyRenovations, propertyGrowthRate, amortization]);
+    }, [amortization, totalCashNeeded, downPayment, initialRenovations, netMonthlyCost, maintenanceMonthly, currentRent, marketReturn, amortizationData.data]);
 
-    const fmt = (n: number) => n.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 });
-    const lastData = amortizationData.data[amortizationData.data.length - 1];
-    const finalEquity = lastData?Équité || 0;
-    const breakEvenYear = buyVsRentData.findIndex(d => d.Propriétaire > d.Locataire) + 1;
+    const formatCurrency = (val: number) => new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(val);
 
     return (
         <div className="space-y-6 animate-fade-in pb-10">
-            <ConfirmModal isOpen={!!confirmDeleteGoalId} onConfirm={doConfirmDeleteGoal} onCancel={() => setConfirmDeleteGoalId(null)} title="Supprimer la propriété" message="Supprimer ce scénario immobilier définitivement ?" confirmLabel="Supprimer" />
-
+            <ConfirmModal
+                isOpen={!!confirmDeleteGoalId}
+                onConfirm={doConfirmDeleteGoal}
+                onCancel={() => setConfirmDeleteGoalId(null)}
+                title="Supprimer la propriété"
+                message="Supprimer ce scénario immobilier définitivement ?"
+                confirmLabel="Supprimer"
+            />
             {/* Multi-Property Tabs */}
             <div className="flex flex-wrap items-center gap-2 mb-4">
                 {goals.map((g, idx) => (
-                    <button key={g.id} onClick={() => setActiveGoalId(g.id)}
-                        className={`px-4 py-2 rounded-xl border transition-all flex items-center gap-2 ${activeGoalId === g.id ? 'bg-blue-500/20 border-blue-500 text-blue-300 font-bold' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}>
+                    <button
+                        key={g.id}
+                        onClick={() => setActiveGoalId(g.id)}
+                        className={`px-4 py-2 rounded-xl border transition-all flex items-center gap-2 ${activeGoalId === g.id
+                            ? 'bg-blue-500/20 border-blue-500 text-blue-300 font-bold'
+                            : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}
+                    >
                         <span>🏠 {g.name || (g.isPrimaryResidence ? 'Résidence' : `Propriété ${idx + 1}`)}</span>
                         {g.isActive && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
                         {goals.length > 1 && (
-                            <span onClick={(e) => { e.stopPropagation(); deleteGoal(g.id); }} className="ml-2 text-gray-600 hover:text-red-400 cursor-pointer">✕</span>
+                            <span
+                                onClick={(e) => { e.stopPropagation(); deleteGoal(g.id); }}
+                                className="ml-2 text-gray-600 hover:text-red-400 cursor-pointer"
+                            >
+                                ✕
+                            </span>
                         )}
                     </button>
                 ))}
-                <button onClick={addNewGoal} className="px-4 py-2 rounded-xl bg-white/5 border border-dashed border-white/20 text-gray-400 hover:bg-white/10 flex items-center gap-2">＋ Ajouter une propriété</button>
+                <button
+                    onClick={addNewGoal}
+                    className="px-4 py-2 rounded-xl bg-white/5 border border-dashed border-white/20 text-gray-400 hover:bg-white/10 flex items-center gap-2"
+                >
+                    ＋ Ajouter une propriété
+                </button>
             </div>
 
-            {/* HEADER */}
-            <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold text-white tracking-tight">{propertyName}</h2>
-                    <p className="text-gray-400 text-sm mt-1">{activeGoal.isPrimaryResidence ? 'Résidence principale — Analyse hypothécaire complète' : 'Investissement locatif — Analyse de rentabilité'}</p>
+            <div className="flex flex-col lg:flex-row justify-between items-start gap-4">
+                <div className="flex-1">
+                    <h2 className="text-3xl font-bold text-white tracking-tight">🏢 {propertyName}</h2>
+                    <input
+                        type="text"
+                        value={propertyName}
+                        onChange={e => updateActiveGoal({ name: e.target.value })}
+                        placeholder="Nom de la propriété..."
+                        className="mt-2 bg-transparent border-b border-white/20 text-gray-400 text-sm focus:outline-none focus:border-blue-400 w-72 pb-0.5 transition-colors"
+                    />
                 </div>
-                <div className="flex items-center gap-3">
-                    <button onClick={() => setMode(mode === 'AUTO' ? 'MANUAL' : 'AUTO')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${mode === 'AUTO' ? 'bg-primary/20 border-primary text-primary' : 'bg-white/5 border-white/10 text-gray-400'}`}>{mode === 'AUTO' ? '⚙️ Auto' : '📝 Manuel'}</button>
-                    <button onClick={() => updateActiveGoal({ isActive: !activeGoal.isActive })} className={`px-4 py-2 rounded-xl font-bold text-sm border transition-all ${activeGoal.isActive ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}>{activeGoal.isActive ? '✅ Actif dans Futur' : 'Activer dans Futur'}</button>
-                    <button onClick={() => updateActiveGoal({ isPrimaryResidence: !activeGoal.isPrimaryResidence })} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10">{activeGoal.isPrimaryResidence ? '🏠 Principale' : '💼 Locatif'}</button>
-                </div>
-            </div>
-
-            {/* Summary KPIs */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-[#151922] border border-white/10 rounded-2xl p-4">
-                    <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Prix d'Achat</div>
-                    <div className="text-2xl font-black text-white privacy-blur">{fmt(price)}</div>
-                    <div className="text-xs text-gray-500 mt-1">Mise de fonds {downPaymentPercent}%</div>
-                </div>
-                <div className="bg-[#151922] border border-white/10 rounded-2xl p-4">
-                    <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Paiement Mensuel</div>
-                    <div className="text-2xl font-black text-white privacy-blur">{fmt(totalMonthlyCost)}</div>
-                    <div className="text-xs text-gray-500 mt-1">Hypothèque + taxes + chauffage</div>
-                </div>
-                <div className="bg-[#151922] border border-white/10 rounded-2xl p-4">
-                    <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Équité à terme</div>
-                    <div className="text-2xl font-black text-white privacy-blur">{fmt(finalEquity)}</div>
-                    <div className="text-xs text-gray-500 mt-1">Après {amortization} ans d'amortissement</div>
-                </div>
-                <div className="bg-[#151922] border border-white/10 rounded-2xl p-4">
-                    <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Cash Total Nécessaire</div>
-                    <div className="text-2xl font-black text-white privacy-blur">{fmt(totalCashNeeded)}</div>
-                    <div className={`text-xs mt-1 font-bold ${availableCash >= totalCashNeeded ? 'text-green-400' : 'text-red-400'}`}>{availableCash >= totalCashNeeded ? `✅ Vous avez ${fmt(availableCash)}` : `⚠️ Manque ${fmt(totalCashNeeded - availableCash)}`}</div>
+                <div className="flex gap-3 items-center">
+                    <div className="text-right bg-black/40 border border-white/10 rounded-xl p-3">
+                        <div className="text-[10px] text-gray-500 uppercase font-bold">Mensualité Nette</div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-2xl font-black text-white privacy-blur">{formatCurrency(netMonthlyCost)}</span>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => updateActiveGoal({ isActive: !activeGoal.isActive })}
+                        className={`py-3 px-4 rounded-xl font-bold transition-all shadow-lg text-sm ${activeGoal.isActive
+                            ? 'bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30'
+                            : 'bg-primary text-white hover:brightness-110 border border-transparent'
+                            }`}
+                    >
+                        {activeGoal.isActive ? '❌ Désactiver cette propriété' : '✅ Activer dans Simulation'}
+                    </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 {/* CONFIGURATEUR */}
-                <div className="space-y-4">
-                    <Card title="🏠 Paramètres de la Propriété">
+                <div className="lg:col-span-1 space-y-5">
+                    <Card title="Type de propriété">
                         <div className="space-y-3">
-                            <div>
-                                <label className="text-xs text-gray-400 block mb-1">Nom / Identifiant</label>
-                                <input type="text" value={activeGoal.name || ''} onChange={e => updateActiveGoal({ name: e.target.value })} className="w-full bg-white/5 border border-border rounded px-2 py-1.5 text-white text-sm outline-none focus:border-primary" placeholder="Ex: Maison Laval" />
-                            </div>
-                            <div className="flex justify-between items-center"><label className="text-xs text-gray-300">Prix d'achat</label><input type="number" value={price} onChange={e => updateActiveGoal({ price: Number(e.target.value) })} className="w-28 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-white" /></div>
-                            <div className="flex justify-between items-center"><label className="text-xs text-gray-300">Mise de fonds</label><input type="number" value={downPayment} onChange={e => updateActiveGoal({ downPayment: Number(e.target.value) })} className="w-28 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-white" /></div>
-                            <div className="flex justify-between items-center"><label className="text-xs text-gray-300">Taux hypothécaire (%)</label><input type="number" step="0.1" value={rate} onChange={e => updateActiveGoal({ mortgageRate: Number(e.target.value) })} className="w-28 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-white" /></div>
-                            <div className="flex justify-between items-center"><label className="text-xs text-gray-300">Amortissement (ans)</label><input type="number" value={amortization} onChange={e => updateActiveGoal({ amortization: Number(e.target.value) })} className="w-28 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-white" /></div>
-                            <div className="flex justify-between items-center"><label className="text-xs text-gray-300">Taux renouvellement (%)</label><input type="number" step="0.1" value={renewalRate} onChange={e => updateActiveGoal({ renewalRateProjection: Number(e.target.value) })} className="w-28 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-white" /></div>
-                            <div className="flex justify-between items-center"><label className="text-xs text-gray-300">Croissance propriété (%/an)</label><input type="number" step="0.1" value={propertyGrowthRate} onChange={e => updateActiveGoal({ propertyGrowthRate: Number(e.target.value) })} className="w-28 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-white" /></div>
-                            <div className="flex justify-between items-center"><label className="text-xs text-gray-300">Date d'achat prévue</label><input type="date" value={targetDate} onChange={e => updateActiveGoal({ purchaseDate: e.target.value })} className="w-36 bg-white/5 border border-border rounded px-2 py-1 text-right text-xs text-white" /></div>
+                            <label className="flex items-center gap-3 p-3 rounded-lg border border-white/10 cursor-pointer hover:bg-white/5 transition-colors">
+                                <input
+                                    type="checkbox"
+                                    checked={activeGoal.isPrimaryResidence}
+                                    onChange={e => updateActiveGoal({ isPrimaryResidence: e.target.checked })}
+                                    className="w-4 h-4 accent-primary"
+                                />
+                                <div className="flex-1">
+                                    <div className="text-sm font-bold text-white">Résidence Principale</div>
+                                    <div className="text-[10px] text-gray-500">Si coché, le loyer actuel sera supprimé.</div>
+                                </div>
+                            </label>
+
+                            {!activeGoal.isPrimaryResidence && (
+                                <label className="flex items-center gap-3 p-3 rounded-lg border border-white/10 cursor-pointer hover:bg-white/5 transition-colors">
+                                    <input
+                                        type="checkbox"
+                                        checked={activeGoal.isRented || false}
+                                        onChange={e => {
+                                            if (e.target.checked) {
+                                                updateActiveGoal({ isRented: true, rentalIncomeMonthly: Math.round(price / 23.3 / 12) });
+                                            } else {
+                                                updateActiveGoal({ isRented: false, rentalIncomeMonthly: 0 });
+                                            }
+                                        }}
+                                        className="w-4 h-4 accent-green-500"
+                                    />
+                                    <div className="flex-1">
+                                        <div className="text-sm font-bold text-white">Propriété Locative</div>
+                                        <div className="text-[10px] text-gray-500">Génère des revenus de location.</div>
+                                    </div>
+                                </label>
+                            )}
+
+                            {activeGoal.isRented && !activeGoal.isPrimaryResidence && (
+                                <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg space-y-2 mt-2">
+                                    <label className="flex justify-between items-end text-xs text-green-400 font-bold">
+                                        <span>Revenu Locatif ($/mois)</span>
+                                        <button
+                                            onClick={() => updateActiveGoal({ rentalIncomeMonthly: Math.round(price / 23.3 / 12) })}
+                                            className="text-[9px] bg-green-500/20 px-1.5 py-0.5 rounded text-green-300 hover:bg-green-500/40"
+                                            title="Basé sur le ratio moyen Prix/Loyer au Québec (23.3)"
+                                        >
+                                            Auto (Moy. QC)
+                                        </button>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="50"
+                                        value={rentalIncomeMonthly}
+                                        onChange={e => updateActiveGoal({ rentalIncomeMonthly: Number(e.target.value) })}
+                                        className="w-full bg-black/50 border border-green-500/30 rounded px-2 py-1.5 text-green-400 text-sm font-bold focus:outline-none focus:border-green-400"
+                                        placeholder="Ex: 1500$"
+                                    />
+                                </div>
+                            )}
                         </div>
                     </Card>
-                    <Card title="💸 Revenus & Charges">
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center"><label className="text-xs text-gray-300">Revenu locatif/mois</label><input type="number" value={rentalIncomeMonthly} onChange={e => updateActiveGoal({ rentalIncomeMonthly: Number(e.target.value) })} className="w-24 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-green-400" /></div>
-                            <div className="flex justify-between items-center"><label className="text-xs text-gray-300">Taxes municipales/an</label><input type="number" value={taxesYearly} onChange={e => setTaxesYearly(Number(e.target.value))} disabled={mode === 'AUTO'} className="w-24 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-white disabled:opacity-50" /></div>
-                            <div className="flex justify-between items-center"><label className="text-xs text-gray-300">Chauffage/mois</label><input type="number" value={heatingMonthly} onChange={e => setHeatingMonthly(Number(e.target.value))} disabled={mode === 'AUTO'} className="w-24 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-white disabled:opacity-50" /></div>
-                            <div className="flex justify-between items-center"><label className="text-xs text-gray-300">Condo/mois</label><input type="number" value={condoFees} onChange={e => setCondoFees(Number(e.target.value))} className="w-24 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-white" /></div>
-                            <div className="flex justify-between items-center"><label className="text-xs text-gray-300">Réno. initiales</label><input type="number" value={initialRenovations} onChange={e => updateActiveGoal({ initialRenovations: Number(e.target.value) })} className="w-24 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-white" /></div>
-                            <div className="flex justify-between items-center"><label className="text-xs text-gray-300">Réno. annuelles</label><input type="number" value={yearlyRenovations} onChange={e => updateActiveGoal({ yearlyRenovations: Number(e.target.value) })} className="w-24 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-white" /></div>
+
+                    <Card title="💵 Prix et Financement">
+                        <div className="space-y-4">
+                            <div>
+                                <label className="flex justify-between text-xs text-gray-400 mb-1">
+                                    <span>Prix d'achat</span>
+                                    <span className="text-white font-bold privacy-blur">{formatCurrency(price)}</span>
+                                </label>
+                                <input type="range" min="150000" max="2500000" step="10000" value={price} onChange={e => updateActiveGoal({ price: Number(e.target.value) })}
+                                    className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-primary" />
+                            </div>
+                            <div>
+                                <label className="flex justify-between text-xs text-gray-400 mb-1">
+                                    <span>Mise de fonds</span>
+                                    <span className="text-blue-300 font-bold privacy-blur">{formatCurrency(downPayment)} ({downPaymentPercent}%)</span>
+                                </label>
+                                <input type="range" min={price * 0.05} max={price} step="5000" value={downPayment} onChange={e => updateActiveGoal({ downPayment: Number(e.target.value) })}
+                                    className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs text-gray-400 mb-1">Amortissement</label>
+                                    <select value={amortization} onChange={e => updateActiveGoal({ amortization: Number(e.target.value) })} className="w-full bg-white/5 border border-border rounded px-2 py-1.5 text-white text-sm">
+                                        <option value="15">15 ans</option>
+                                        <option value="20">20 ans</option>
+                                        <option value="25">25 ans</option>
+                                        <option value="30">30 ans</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-gray-400 mb-1">Date cible</label>
+                                    <input type="date" value={targetDate} onChange={e => updateActiveGoal({ purchaseDate: e.target.value })} className="w-full bg-white/5 border border-border rounded px-2 py-1.5 text-white text-sm" />
+                                </div>
+                            </div>
                         </div>
-                        <div className="mt-4 pt-3 border-t border-white/10 space-y-1">
-                            <div className="flex justify-between text-xs"><span className="text-gray-400">Coût mensuel brut</span><span className="text-white font-bold">{fmt(totalMonthlyCost)}</span></div>
-                            {rentalIncomeMonthly > 0 && <div className="flex justify-between text-xs"><span className="text-green-400">- Revenu locatif</span><span className="text-green-400">-{fmt(rentalIncomeMonthly)}</span></div>}
-                            <div className="flex justify-between text-xs font-bold"><span className="text-gray-200">Coût net mensuel</span><span className="text-white">{fmt(netMonthlyCost)}</span></div>
-                            <div className="flex justify-between text-xs"><span className="text-red-400">Non-récupérable/mois</span><span className="text-red-400">{fmt(unrecoverableMonthly)}</span></div>
+                    </Card>
+
+                    <Card title="📉 Taux et Rendement">
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs text-orange-400 mb-1 font-bold">Taux Actuel (%)</label>
+                                    <input type="number" step="0.1" value={rate} onChange={e => updateActiveGoal({ mortgageRate: Number(e.target.value) })} className="w-full bg-orange-500/10 border border-orange-500/30 rounded px-2 py-1.5 text-orange-400 text-sm font-bold" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-red-400 mb-1 font-bold">Taux Renouvellement</label>
+                                    <input type="number" step="0.1" value={renewalRate} onChange={e => updateActiveGoal({ renewalRateProjection: Number(e.target.value) })} className="w-full bg-red-500/10 border border-red-500/30 rounded px-2 py-1.5 text-red-400 text-sm font-bold" />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs text-blue-400 mb-1 font-bold">Appréciation Immo (%/an)</label>
+                                    <input type="number" step="0.5" value={propertyGrowthRate} onChange={e => updateActiveGoal({ propertyGrowthRate: Number(e.target.value) })} className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-emerald-400 mb-1 font-bold">Rénos annuelles ($)</label>
+                                    <input type="number" step="500" value={yearlyRenovations} onChange={e => updateActiveGoal({ yearlyRenovations: Number(e.target.value) })} className="w-full bg-emerald-500/10 border border-emerald-500/30 rounded px-2 py-1.5 text-emerald-400 text-sm font-bold" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="flex justify-between text-xs text-purple-400 mb-1 font-bold">
+                                    <span>Plafond Valeur Max</span>
+                                    <span>{maxValue > 0 ? formatCurrency(maxValue) : 'Aucun plafond'}</span>
+                                </label>
+                                <input type="range" min="0" max={price * 4} step={price * 0.1} value={maxValue} onChange={e => updateActiveGoal({ maxValue: Number(e.target.value) })} className="w-full h-1.5 bg-black/50 rounded-lg appearance-none cursor-pointer accent-purple-500" />
+                                <p className="text-[9px] text-gray-500 mt-1">Limite l'appréciation projetée de la propriété à un maximum réaliste.</p>
+                            </div>
+                        </div>
+                    </Card>
+
+                    <Card title="💰 Frais Récurrents">
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs text-gray-400">Mode de calcul</span>
+                                <button
+                                    onClick={() => setMode(m => m === 'AUTO' ? 'MANUAL' : 'AUTO')}
+                                    className={`text-xs px-3 py-1 rounded-full font-bold border transition-all ${
+                                        mode === 'AUTO'
+                                        ? 'bg-primary/20 border-primary text-primary'
+                                        : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+                                    }`}
+                                >
+                                    {mode === 'AUTO' ? 'AUTO' : 'MANUEL'}
+                                </button>
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-400">Taxes foncières ($/an)</label>
+                                <input
+                                    type="number"
+                                    step="100"
+                                    value={taxesYearly}
+                                    onChange={e => setTaxesYearly(Number(e.target.value))}
+                                    disabled={mode === 'AUTO'}
+                                    className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-400">Chauffage ($/mois)</label>
+                                <input
+                                    type="number"
+                                    step="10"
+                                    value={heatingMonthly}
+                                    onChange={e => setHeatingMonthly(Number(e.target.value))}
+                                    disabled={mode === 'AUTO'}
+                                    className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-400">Frais de condo ($/mois)</label>
+                                <input
+                                    type="number"
+                                    step="50"
+                                    value={condoFees}
+                                    onChange={e => setCondoFees(Number(e.target.value))}
+                                    disabled={mode === 'AUTO'}
+                                    className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
+                            </div>
                         </div>
                     </Card>
                 </div>
 
-                {/* CHARTS */}
-                <div className="lg:col-span-2 space-y-6">
-                    <Card title="📈 Évolution Hypothèque & Équité">
+                {/* ANALYSIS DASHBOARD */}
+                <div className="lg:col-span-3 space-y-5">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/10">
+                            <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Cash nécessaire</div>
+                            <div className="text-xl font-black text-white privacy-blur">{formatCurrency(totalCashNeeded)}</div>
+                            <div className={`text-[10px] font-bold ${availableCash >= totalCashNeeded ? 'text-green-400' : 'text-red-400'}`}>
+                                {availableCash >= totalCashNeeded ? '✓ Disponible' : `⚠️ Manque ${formatCurrency(totalCashNeeded - availableCash)}`}
+                            </div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/10">
+                            <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Prêt Initial</div>
+                            <div className="text-xl font-black text-white privacy-blur">{formatCurrency(totalMortgage)}</div>
+                            <div className="text-[9px] text-gray-500">Ratio Prêt/Valeur: {Math.round((totalMortgage / price) * 100)}%</div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/10">
+                            <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Perte Sèche (Mens.)</div>
+                            <div className="text-xl font-black text-red-400 privacy-blur">{formatCurrency(unrecoverableMonthly)}</div>
+                            <div className="text-[9px] text-gray-500">Intérêts + taxes + entretien</div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/10">
+                            <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Valeur à terme</div>
+                            <div className="text-xl font-black text-green-400 privacy-blur">{formatCurrency(amortizationData.finalValue)}</div>
+                            <div className="text-[9px] text-gray-500">Dans {amortization} ans</div>
+                        </div>
+                    </div>
+
+                    <Card title="📊 Scénarios Comparatifs (Habiter vs Louer vs Bourse)">
+                        {(() => {
+                            const monthlyRental = rentalIncomeMonthly || Math.round(price / 23.3 / 12);
+                            const grossYield = (monthlyRental * 12 / price) * 100;
+                            const annualExpenses = monthlyTaxes * 12 + heatingMonthly * 12 + condoFees * 12 + (price * 0.01);
+                            const netAnnualIncome = (monthlyRental * 12) - annualExpenses - (amortizationData.data[0]?.PartInteretAnnuelle || 0);
+                            const netYield = (netAnnualIncome / price) * 100;
+
+                            const combinedData = Array.from({ length: amortization }, (_, i) => {
+                                const yr = i + 1;
+
+                                let rentScenarioNetWorth = totalCashNeeded;
+                                let currentRentCost = currentRent;
+                                for (let y = 1; y <= yr; y++) {
+                                    const rentAnnualCost = currentRentCost * 12;
+                                    const buyAnnualCost = netMonthlyCost * 12 + maintenanceMonthly * 12;
+                                    const differenceToInvest = (buyAnnualCost - rentAnnualCost);
+                                    rentScenarioNetWorth *= (1 + marketReturn / 100);
+                                    if (differenceToInvest > 0) rentScenarioNetWorth += differenceToInvest;
+                                    currentRentCost *= 1.03;
+                                }
+                                const buyPrimaryNetWorth = amortizationData.data[i]?.Équité || 0;
+
+                                const propValue = price * Math.pow(1 + localRentalAppreciation / 100, yr);
+                                const equity = amortizationData.data[i]?.Équité || 0;
+                                const cumulativeRentalIncome = netAnnualIncome * yr;
+
+                                const stockInvestment = totalCashNeeded * Math.pow(1 + localStockReturn / 100, yr);
+
+                                return {
+                                    year: yr,
+                                    'Acheter (Résidence)': Math.round(buyPrimaryNetWorth),
+                                    'Louer + Investir Reste': Math.round(rentScenarioNetWorth),
+                                    'Investissement Locatif (Équité+Loyer)': Math.round(equity + cumulativeRentalIncome),
+                                    'Bourse (Placer Cash Initial)': Math.round(stockInvestment),
+                                    'Valeur Propriété': Math.round(propValue),
+                                };
+                            });
+
+                            return (
+                                <>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 p-4 bg-black/30 rounded-xl border border-white/5">
+                                        <div>
+                                            <label className="text-[10px] text-purple-400 font-bold uppercase block mb-1">
+                                                Loyer actuel (scénario Louer)
+                                            </label>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="number"
+                                                    step="50"
+                                                    value={currentRent}
+                                                    onChange={e => setCurrentRent(Number(e.target.value))}
+                                                    className="w-full bg-purple-500/10 border border-purple-500/30 rounded px-2 py-1.5 text-purple-300 text-sm font-bold focus:outline-none focus:border-purple-400"
+                                                />
+                                                <span className="text-xs text-gray-500">$/m</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="flex justify-between text-[10px] text-emerald-400 font-bold uppercase mb-1">
+                                                <span>Rendement Boursier</span>
+                                                <span className="text-white">{marketReturn}%</span>
+                                            </label>
+                                            <input
+                                                type="range"
+                                                min="3"
+                                                max="15"
+                                                step="0.5"
+                                                value={marketReturn}
+                                                onChange={e => {
+                                                    setMarketReturn(Number(e.target.value));
+                                                    setLocalStockReturn(Number(e.target.value));
+                                                }}
+                                                className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-emerald-500 mt-2"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="flex justify-between text-[10px] text-pink-400 font-bold uppercase mb-1">
+                                                <span>Appréciation Immo</span>
+                                                <span className="text-white">{localRentalAppreciation}%</span>
+                                            </label>
+                                            <input
+                                                type="range"
+                                                min="0" max="10" step="0.5"
+                                                value={localRentalAppreciation}
+                                                onChange={e => setLocalRentalAppreciation(Number(e.target.value))}
+                                                className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-pink-500 mt-2"
+                                            />
+                                        </div>
+                                        <div className={`p-2 rounded-lg border flex flex-col justify-center ${netYield > 0 ? 'bg-green-900/20 border-green-500/20' : 'bg-red-900/20 border-red-500/20'}`}>
+                                            <div className="text-[9px] uppercase font-bold text-gray-400">Si location (Cash-Flow)</div>
+                                            <div className={`text-lg font-black ${netYield > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                {formatCurrency(netAnnualIncome)}<span className="text-[10px] font-normal text-gray-500">/an</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="h-[300px] w-full mt-2">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={combinedData}>
+                                                <XAxis dataKey="year" tick={{ fontSize: 10 }} tickFormatter={v => `An ${v}`} />
+                                                <YAxis hide />
+                                                <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ backgroundColor: '#0B0E14', borderColor: '#333' }} />
+                                                <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: 11, fontWeight: 'bold' }} />
+
+                                                {(activeGoal.isPrimaryResidence || !activeGoal.isRented) && (
+                                                    <Area type="monotone" dataKey="Acheter (Résidence)" stroke="#10b981" fill="#10b981" fillOpacity={0.1} strokeWidth={3} />
+                                                )}
+
+                                                {(activeGoal.isPrimaryResidence || !activeGoal.isRented) && (
+                                                    <Area type="monotone" dataKey="Louer + Investir Reste" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.1} strokeWidth={3} />
+                                                )}
+
+                                                {(!activeGoal.isPrimaryResidence && activeGoal.isRented) && (
+                                                    <Area type="monotone" dataKey="Investissement Locatif (Équité+Loyer)" stroke="#f43f5e" fill="#f43f5e" fillOpacity={0.1} strokeWidth={3} />
+                                                )}
+
+                                                {(!activeGoal.isPrimaryResidence && activeGoal.isRented) && (
+                                                    <Area type="monotone" dataKey="Bourse (Placer Cash Initial)" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.1} strokeWidth={3} />
+                                                )}
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <p className="text-[9px] text-gray-500 mt-3 text-center">
+                                        Note: Le graphique affiche automatiquement les scénarios pertinents (Habiter vs Louer) selon le type de propriété que vous avez configuré (Résidence Principale ou Propriété Locative).
+                                    </p>
+                                </>
+                            );
+                        })()}
+                    </Card>
+
+                    <Card title="Amortissement et Équité">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-2">
+                            <div><div className="text-[10px] text-gray-500 uppercase tracking-wider">Welcome Tax</div><div className="text-sm font-bold text-white">{formatCurrency(welcomeTax)}</div></div>
+                            <div><div className="text-[10px] text-gray-500 uppercase tracking-wider">Notaire &amp; Insp.</div><div className="text-sm font-bold text-white">{formatCurrency(notaryFees + inspectionFees)}</div></div>
+                            <div><div className="text-[10px] text-gray-500 uppercase tracking-wider">Rénos Initiales</div><div className="text-sm font-bold text-white">{formatCurrency(initialRenovations)}</div></div>
+                            <div><div className="text-[10px] text-gray-500 uppercase tracking-wider">Maison Totale</div><div className="text-sm font-bold text-white">{formatCurrency(price + initialRenovations)}</div></div>
+                        </div>
+                    </Card>
+
+                    <Card title="📋 Tableau d'Amortissement Annuel">
+                        <div className="overflow-x-auto">
+                            <div className="mb-3 flex flex-wrap gap-4 text-xs">
+                                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />Intérêts totaux payés : <span className="font-bold text-red-400 privacy-blur">{formatCurrency(amortizationData.totalInterest)}</span></div>
+                                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />Gain Équité projeté : <span className="font-bold text-emerald-400 privacy-blur">{formatCurrency((amortizationData.data[amortizationData.data.length - 1]?.Équité || 0) - downPayment)}</span></div>
+                                {yearlyRenovations > 0 && <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-yellow-500 inline-block" />Rénos totales : <span className="font-bold text-yellow-400 privacy-blur">{formatCurrency(yearlyRenovations * amortization)}</span></div>}
+                            </div>
+                            <table className="w-full text-xs text-left min-w-[700px]">
+                                <thead>
+                                    <tr className="border-b border-white/10 text-gray-500 uppercase tracking-wider">
+                                        <th className="py-2 pr-4">Année</th>
+                                        <th className="py-2 pr-4">Taux</th>
+                                        <th className="py-2 pr-4 text-right">Intérêts/an</th>
+                                        <th className="py-2 pr-4 text-right">Principal/an</th>
+                                        <th className="py-2 pr-4 text-right">Solde Restant</th>
+                                        <th className="py-2 pr-4 text-right">Valeur Propriété</th>
+                                        <th className="py-2 text-right">Équité</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {amortizationData.data.map((row, idx) => {
+                                        const isRenewal = idx > 0 && idx % 5 === 0;
+                                        const equityPct = row.ValeuréPropriété > 0 ? Math.round((row.Équité / row.ValeuréPropriété) * 100) : 0;
+                                        return (
+                                            <tr key={row.year} className={`border-b border-white/5 ${isRenewal ? 'bg-orange-900/10' : idx % 2 === 0 ? 'bg-white/[0.02]' : ''} hover:bg-white/5 transition-colors`}>
+                                                <td className="py-2 pr-4 font-bold">
+                                                    {row.calendarYear}
+                                                    {isRenewal && <span className="ml-1.5 text-[9px] text-orange-400 border border-orange-500/30 rounded px-1">Renouvellement</span>}
+                                                </td>
+                                                <td className="py-2 pr-4 text-orange-300">{row.TauxEnVigueur}</td>
+                                                <td className="py-2 pr-4 text-right text-red-400 privacy-blur">{formatCurrency(row.PartInteretAnnuelle)}</td>
+                                                <td className="py-2 pr-4 text-right text-blue-400 privacy-blur">{formatCurrency(row.PartPrincipalAnnuelle)}</td>
+                                                <td className="py-2 pr-4 text-right text-white privacy-blur">{formatCurrency(row.Solde)}</td>
+                                                <td className="py-2 pr-4 text-right text-purple-300 privacy-blur">{formatCurrency(row.ValeuréPropriété)}</td>
+                                                <td className="py-2 text-right">
+                                                    <span className="text-emerald-400 font-bold privacy-blur">{formatCurrency(row.Équité)}</span>
+                                                    <span className="text-gray-600 ml-1">({equityPct}%)</span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
+                </div>
+            </div>
+
+            {/* ===== COMPARAISON MULTI-PROPRIÉTÉS ===== */}
+            {goals.length >= 2 && (() => {
+                const PROP_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#a855f7', '#ec4899', '#06b6d4'];
+
+                const allSeries = goals.map((goal, gi) => {
+                    const p = goal.price || 450000;
+                    const dp = goal.downPayment || (p * 0.2);
+                    const r = (goal.mortgageRate || 4.5) / 100 / 12;
+                    const amort = goal.amortization || 25;
+                    const mort = p - dp;
+                    const renewR = (goal.renewalRateProjection || 5.0) / 100 / 12;
+                    const growth = (goal.propertyGrowthRate || 3.0) / 100;
+                    const numPmt = amort * 12;
+                    let monthlyPmt = r > 0
+                        ? (r * mort * Math.pow(1 + r, numPmt)) / (Math.pow(1 + r, numPmt) - 1)
+                        : mort / numPmt;
+                    let balance = mort;
+                    let propVal = p + (goal.initialRenovations || 0);
+                    let currentR = r;
+
+                    const points: { year: number; equity: number }[] = [];
+                    for (let year = 1; year <= amort; year++) {
+                        if (year > 1 && (year - 1) % 5 === 0) {
+                            currentR = renewR;
+                            const rem = (amort - year + 1) * 12;
+                            if (currentR > 0)
+                                monthlyPmt = (currentR * balance * Math.pow(1 + currentR, rem)) / (Math.pow(1 + currentR, rem) - 1);
+                        }
+                        for (let m = 0; m < 12; m++) {
+                            if (balance <= 0) break;
+                            const interest = balance * currentR;
+                            balance -= (monthlyPmt - interest);
+                        }
+                        propVal *= (1 + growth);
+                        points.push({ year, equity: Math.max(0, Math.round(propVal - Math.max(0, balance))) });
+                    }
+                    return { name: goal.name || `Prop. ${gi + 1}`, points, color: PROP_COLORS[gi % PROP_COLORS.length] };
+                });
+
+                const maxLen = Math.max(...allSeries.map(s => s.points.length));
+                const chartData: Record<string, number | string>[] = [];
+                for (let yr = 1; yr <= maxLen; yr++) {
+                    const row: Record<string, number | string> = { year: yr };
+                    allSeries.forEach(s => {
+                        const pt = s.points.find(p => p.year === yr);
+                        if (pt) row[s.name] = pt.equity;
+                    });
+                    chartData.push(row);
+                }
+
+                return (
+                    <Card
+                        title={`📊 Comparaison des ${goals.length} Propriétés — Équité Projectée`}
+                        className="mt-4"
+                    >
+                        <div className="flex gap-4 mb-4 flex-wrap">
+                            {allSeries.map(s => (
+                                <div key={s.name} className="flex items-center gap-2 text-xs font-bold" style={{ color: s.color }}>
+                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: s.color }} />
+                                    {s.name}
+                                </div>
+                            ))}
+                        </div>
                         <div className="h-[280px]">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={amortizationData.data} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="equityGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient>
-                                        <linearGradient id="debtGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.2}/><stop offset="95%" stopColor="#ef4444" stopOpacity={0}/></linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                                    <XAxis dataKey="year" stroke="#666" tick={{ fontSize: 10 }} tickFormatter={v => `An ${v}`} />
-                                    <YAxis stroke="#666" tick={{ fontSize: 10 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#151922', borderColor: '#333', borderRadius: 8 }} formatter={(v: number) => fmt(v)} labelFormatter={l => `Année ${l}`} />
-                                    <Legend />
-                                    <Area type="monotone" dataKey="Valeur" stroke="#8b5cf6" fill="none" strokeWidth={1.5} strokeDasharray="4 4" name="Valeur Marché" />
-                                    <Area type="monotone" dataKey="Équité" stroke="#10b981" fill="url(#equityGrad)" strokeWidth={2} name="Équité" />
-                                    <Area type="monotone" dataKey="Solde" stroke="#ef4444" fill="url(#debtGrad)" strokeWidth={2} name="Solde Hypothèque" />
+                                <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 5, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" />
+                                    <XAxis dataKey="year" stroke="#555" tick={{ fontSize: 10 }} tickFormatter={v => `An ${v}`} />
+                                    <YAxis stroke="#555" tick={{ fontSize: 10 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} width={50} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#1a1e29', borderColor: '#333', borderRadius: '8px', fontSize: '11px' }}
+                                        formatter={(val: number, name: string) => [`${val.toLocaleString('fr-CA')} $`, name]}
+                                        labelFormatter={v => `Année ${v}`}
+                                    />
+                                    <Legend iconSize={8} wrapperStyle={{ fontSize: '10px' }} />
+                                    {allSeries.map((s, i) => (
+                                        <Area
+                                            key={s.name}
+                                            type="monotone"
+                                            dataKey={s.name}
+                                            stroke={s.color}
+                                            fill={s.color + '15'}
+                                            strokeWidth={2}
+                                            dot={false}
+                                        />
+                                    ))}
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
                     </Card>
+                );
+            })()}
 
-                    <Card title="🥇 Acheter vs. Louer" action={
-                        breakEvenYear > 0 ? <div className="text-xs font-bold text-green-400 bg-green-900/20 px-2 py-1 rounded border border-green-500/30">⚡ Rentable en {breakEvenYear} ans</div> : <div className="text-xs text-gray-500">Louer reste avantageux</div>
-                    }>
-                        <div className="grid grid-cols-2 gap-3 mb-4">
-                            <div><label className="text-xs text-gray-400 block mb-1">Loyer actuel/mois</label><input type="number" value={currentRent} onChange={e => setCurrentRent(Number(e.target.value))} className="w-full bg-white/5 border border-border rounded px-2 py-1 text-sm text-white" /></div>
-                            <div><label className="text-xs text-gray-400 block mb-1">Rendement bourse (%)</label><input type="number" step="0.5" value={marketReturn} onChange={e => setMarketReturn(Number(e.target.value))} className="w-full bg-white/5 border border-border rounded px-2 py-1 text-sm text-white" /></div>
-                        </div>
-                        <div className="h-[220px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={buyVsRentData} margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="buyGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient>
-                                        <linearGradient id="rentGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                                    <XAxis dataKey="year" stroke="#666" tick={{ fontSize: 10 }} tickFormatter={v => `An ${v}`} />
-                                    <YAxis stroke="#666" tick={{ fontSize: 10 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#151922', borderColor: '#333', borderRadius: 8 }} formatter={(v: number) => fmt(v)} labelFormatter={l => `Année ${l}`} />
-                                    <Legend />
-                                    <Area type="monotone" dataKey="Propriétaire" stroke="#10b981" fill="url(#buyGrad)" strokeWidth={2} name="Propriétaire" />
-                                    <Area type="monotone" dataKey="Locataire" stroke="#3b82f6" fill="url(#rentGrad)" strokeWidth={2} name="Locataire (investi)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                        <p className="text-[10px] text-gray-500 mt-3">ℹ️ Si vous louez, on suppose que vous investissez la mise de fonds + la différence mensuelle en bourse. Points de croisement = moment où l'achat devient plus rentable.</p>
-                    </Card>
-                </div>
-            </div>
         </div>
     );
 };

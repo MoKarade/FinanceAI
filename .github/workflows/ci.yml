@@ -20,8 +20,12 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      # npm install (au lieu de npm ci) car package-lock.json n'est pas
+      # systematiquement regenere apres chaque modif de package.json sur
+      # cette branche. A ramener a `npm ci` une fois le lock file fixe
+      # et le workflow stabilise.
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Typecheck
         run: npm run typecheck

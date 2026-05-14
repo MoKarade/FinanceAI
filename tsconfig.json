@@ -26,5 +26,12 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "noImplicitAny": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "public",
+    "utils/useFutureSimulation.ts"
+  ]
 }

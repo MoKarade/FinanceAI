@@ -482,6 +482,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     >
                         🖤 Survivant {projection.modelSurvivor ? 'ON' : 'OFF'}
                     </button>
+                    <button
+                        onClick={() => updateProj('useHistoricalBootstrap', !projection.useHistoricalBootstrap)}
+                        title="Au lieu de rendements gaussiens, échantillonne l'historique réel S&P 500 + inflation US 1928-2024 (97 ans). Capture les vrais krachs (1929, 1973-74, 2000-02, 2008, 2020)."
+                        className={`px-3 py-2 text-[11px] font-bold rounded-md border transition-all ${projection.useHistoricalBootstrap ? 'bg-teal-500/20 border-teal-500/50 text-teal-300' : 'bg-gray-800 border-white/10 text-gray-400'}`}
+                    >
+                        📜 Bootstrap historique {projection.useHistoricalBootstrap ? 'ON' : 'OFF'}
+                    </button>
                 </div>
                 {projection.ltcEnabled && (
                     <div className="mb-4 p-3 rounded-lg border border-red-500/20 bg-black/30">

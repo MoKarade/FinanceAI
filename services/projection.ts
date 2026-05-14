@@ -2,6 +2,7 @@
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config } from '../types';
 import { calculateFiscalReport, CELI_ANNUAL_LIMITS, calculateCeliRoom, calculateGrossFromNet, getMarginalRate, calculateDividendTax, RRSP_ANNUAL_LIMITS, calculateGrossWithholdingRRSP } from '../utils/tax';
 import { mulberry32, gaussianRandom, applyShock, MER, RRIF_RATES, welcomeTax, ltcAnnualProbability, mortalityAnnualProbability } from './projection/helpers';
+import { buildHistoricalSequence, type YearReturn } from './projection/historicalReturns';
 
 export interface SimulationParams {
     projection: ProjectionConfig;
@@ -310,6 +311,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     const rrqSurvivorPct = (effProj.rrqSurvivorPct ?? 60) / 100;
     const dbSurvivorPct = (effProj.spouseDbSurvivorPct ?? retirementGoal.dbSurvivorPct ?? 60) / 100;
 
+    // W1.2: Bootstrap historique - construit une séquence par scénario MC
+    const useBootstrap = !!effProj.useHistoricalBootstrap && enableMonteCarlo;
+    const historicalSequence: YearReturn[] | null = useBootstrap
+        ? buildHistoricalSequence(rng, projection.years + 1, effProj.bootstrapBlockSize ?? 24)
+        : null;
+
     // D2.10: Perte d'emploi stochastique. unemployedMonthsRemaining > 0
     // pendant la période sans emploi (revenu réduit à 55% capé AE).
     let unemployedMonthsRemaining = 0;
@@ -367,6 +374,23 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             mcCryptoRate = applyShock(baseRates.crypto, 45, Z_crypto);
             mcCashRate = applyShock(baseRates.cash, 2, Z_cash);
             currentInflation = applyShock(simInflation, 1.5, Z_inflation_shock);
+        }
+
+        // W1.2: Override avec rendements historiques si bootstrap actif
+        if (historicalSequence) {
+            const yearIdx = Math.floor(m / 12);
+            const histYear = historicalSequence[yearIdx];
+            if (histYear) {
+                // S&P 500 → actions (CELI/REER/NonReg)
+                mcCeliRate = histYear.sp500TotalReturn;
+                mcReerRate = histYear.sp500TotalReturn;
+                mcNonRegRate = histYear.sp500TotalReturn;
+                // Treasury 10Y → cash proxy
+                mcCashRate = histYear.bondReturn;
+                // Inflation US comme proxy
+                currentInflation = histYear.inflationRate;
+                // Crypto: garde gaussien (pas de série historique pertinente avant 2010)
+            }
         }
 
         // V36: Crisis Dashboard 2.0 — Inflation Shock

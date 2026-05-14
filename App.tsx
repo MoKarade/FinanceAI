@@ -67,6 +67,7 @@ export const App: React.FC = () => {
     const [isPrivacyMode, setIsPrivacyMode] = useState(false);
     const [showGuide, setShowGuide] = useState(false);
     const isHydrated = useRef(false);
+    const currentSyncController = useRef<AbortController | null>(null);
 
     const migrationWarningShown = useRef(false);
     useEffect(() => {
@@ -99,6 +100,13 @@ export const App: React.FC = () => {
     useEffect(() => {
         document.title = `FinanceAI - ${TAB_LABELS[activeTab] || 'Pro'}`;
     }, [activeTab]);
+
+    // Cancel toute sync en cours quand le composant est démonté
+    useEffect(() => {
+        return () => {
+            currentSyncController.current?.abort();
+        };
+    }, []);
 
     const handleSetTab = (tab: Tab) => {
         setActiveTab(tab);
@@ -198,6 +206,12 @@ export const App: React.FC = () => {
 
     const loadData = async (token: string, pendingState?: AppState) => {
         if (!token) return;
+
+        // Abort la sync précédente si encore en cours
+        currentSyncController.current?.abort();
+        const controller = new AbortController();
+        currentSyncController.current = controller;
+
         setIsLoading(true);
         try {
             const currentState = pendingState || state;
@@ -215,10 +229,12 @@ export const App: React.FC = () => {
                 startDateToFetch = '2000-01-01';
             }
 
-            const newTxs = await fetchTransactions(token, startDateToFetch || '2000-01-01');
+            const newTxs = await fetchTransactions(token, startDateToFetch || '2000-01-01', controller.signal);
+
+            // Vérifier qu'on n'a pas été remplacés par une sync plus récente avant d'écrire le state
+            if (controller.signal.aborted) return;
 
             if (newTxs.length === 0) {
-                setIsLoading(false);
                 return;
             }
 
@@ -262,6 +278,8 @@ export const App: React.FC = () => {
                 });
             }
 
+            if (controller.signal.aborted) return;
+
             setAppState({
                 transactions: deduplicatedList,
                 initialBalances: balances,
@@ -269,10 +287,16 @@ export const App: React.FC = () => {
             });
             showToast('Donnees synchronisees', 'success');
         } catch (e: any) {
+            // AbortError = sync remplacée par une plus récente, silencieux
+            if (e?.name === 'AbortError' || controller.signal.aborted) return;
             console.error('[FinanceAI] Sync Error:', e);
             showToast(e?.message ? `Sync echouee : ${e.message}` : 'Erreur de synchronisation Era Context.', 'error');
         } finally {
-            setIsLoading(false);
+            // Ne reset isLoading que si on est toujours le sync actif
+            if (currentSyncController.current === controller) {
+                currentSyncController.current = null;
+                setIsLoading(false);
+            }
         }
     };
 

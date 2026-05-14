@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useDebouncedMemo } from '../utils/useDebouncedMemo';
 import { Card } from './ui/Card';
 import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset } from '../types';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend, AreaChart } from 'recharts';
@@ -124,7 +125,9 @@ export const Retirement: React.FC<RetirementProps> = ({
         return cash;
     }, [initialBalances]);
 
-    const { chartData } = useMemo(() => {
+    // Perf fix (perf agent #1): debounce 300ms — la projection coûte 80-150ms
+    // et était recalculée à chaque caractère tapé dans un input numérique.
+    const { chartData } = useDebouncedMemo(() => {
         return calculateFutureProjection({
             projection,
             calculatedStartingCash,
@@ -141,7 +144,7 @@ export const Retirement: React.FC<RetirementProps> = ({
             currentRentExpense,
             baseMonthlyExpenses,
         });
-    }, [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, goal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses]);
+    }, [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, goal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses], 300);
 
     const yearlyData = useMemo(() => {
         if (chartData.length === 0) return [];

@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { useDebouncedMemo } from '../utils/useDebouncedMemo';
 import { Card } from './ui/Card';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Line, ComposedChart, Brush, Bar, ReferenceDot, LabelList } from 'recharts';
 import { BudgetConfig, BudgetCategory, Asset, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Transaction, Debt, ProjectionConfig, FinancialGoal, User } from '../types';
@@ -297,14 +298,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         startMonth
     }), [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses]);
 
-    const results = useMemo<any>(() => {
+    // Perf fix: debounce 300ms — le MC à 100 iter coûte jusqu'à 3s et était
+    // recalculé à chaque caractère/slider. Recalcul retardé après la dernière
+    // interaction utilisateur.
+    const results = useDebouncedMemo<any>(() => {
         try {
             return calculateFutureProjection(params, runMC, selectedScenarioIdx);
         } catch (e) {
             console.error("CRITICAL SIMULATION ERROR:", e);
             return { chartData: [], fireNumber: 0, aiNote: "Error", allResults: [] };
         }
-    }, [params, runMC, selectedScenarioIdx]);
+    }, [params, runMC, selectedScenarioIdx], 300);
 
     const { chartData = [], fireNumber = 0, aiNote = "", allResults = [] } = (results || {}) as any;
 

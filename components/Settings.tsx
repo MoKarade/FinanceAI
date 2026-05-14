@@ -1,7 +1,7 @@
 
 import React, { useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { calculateFiscalReport, calculateGrossFromNet } from '../utils/tax';
+import { calculateFiscalReport, calculateGrossFromNet } from '../services/tax';
 import { Card } from './ui/Card';
 import { AppState, BudgetCategory, Transaction, Asset, SavingsGoal, TravelGoal, Debt, InvestmentAccount, InvestmentTransaction, LifeEvent, RetirementGoal, FinancialGoal, RealEstateGoal, BudgetConfig } from '../types';
 import { showToast } from './ui/Toast';
@@ -71,7 +71,6 @@ export const Settings: React.FC<SettingsProps> = ({
     return accs;
   }, [transactions, initialBalances]);
 
-  // --- SAVED PROFILES LOGIC ---
   const [savedProfiles, setSavedProfiles] = React.useState<string[]>([]);
   const [newProfileName, setNewProfileName] = React.useState('');
 
@@ -80,21 +79,21 @@ export const Settings: React.FC<SettingsProps> = ({
       const profiles = JSON.parse(localStorage.getItem('saved_profiles_list') || '[]');
       setSavedProfiles(profiles);
     } catch (err) {
-      console.warn("Restore config error:", err);
+      console.warn("[Settings] Restore config error:", err);
     }
   }, []);
 
   const saveProfile = () => {
     if (!newProfileName.trim()) return;
     const profileSlug = `profile_${newProfileName.trim().replace(/\s+/g, '_').toLowerCase()}`;
-    const profileData = { config }; // Sauvegarde uniquement les salaires et la config macro
+    const profileData = { config };
     localStorage.setItem(profileSlug, JSON.stringify(profileData));
 
     const newProfiles = [...new Set([...savedProfiles, newProfileName.trim()])];
     setSavedProfiles(newProfiles);
     localStorage.setItem('saved_profiles_list', JSON.stringify(newProfiles));
     setNewProfileName('');
-    showToast(`Profil "${newProfileName}" sauvegardé avec succès !`, "success");
+    showToast(`Profil "${newProfileName}" sauvegarde avec succes !`, "success");
   };
 
   const loadProfile = (name: string) => {
@@ -105,12 +104,12 @@ export const Settings: React.FC<SettingsProps> = ({
         const data = JSON.parse(dataStr);
         if (data.config) {
           setConfig(data.config);
-          showToast(`Profil "${name}" chargé !`, "success");
+          showToast(`Profil "${name}" charge !`, "success");
         }
       }
-    } catch (err) {
-      console.error("Profile load error:", err);
-      showToast("Erreur lors du chargement du profil.", "error");
+    } catch (err: any) {
+      console.error("[Settings] Profile load error:", err);
+      showToast(`Erreur sur "${name}": ${err?.message || 'inconnu'}`, "error");
     }
   };
 
@@ -130,11 +129,9 @@ export const Settings: React.FC<SettingsProps> = ({
     setProfileToDelete(null);
   };
 
-
-  // --- EXPORT LOGIC (FULL STATE) ---
   const handleExport = () => {
     const data = {
-      version: "3.0", // Bumped version for new Data Source
+      version: "3.0",
       timestamp: Date.now(),
       apiKeys,
       config,
@@ -163,7 +160,6 @@ export const Settings: React.FC<SettingsProps> = ({
     a.click();
   };
 
-  // --- NUCLEAR RESTORE LOGIC ---
   const handleRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -185,7 +181,7 @@ export const Settings: React.FC<SettingsProps> = ({
         const txCount = Array.isArray(data.transactions) ? data.transactions.length : 0;
         const assetCount = Array.isArray(data.assets) ? data.assets.length : 0;
 
-        if (confirm(`⚠️ RESTAURATION COMPLÈTE\n\nVersion Backup: ${data.version || 'Inconnue'}\nTransactions: ${txCount}\nActifs: ${assetCount}\n\nCela va ÉCRASER toutes les données actuelles. Continuer ?`)) {
+        if (confirm(`⚠️ RESTAURATION COMPLETE\n\nVersion Backup: ${data.version || 'Inconnue'}\nTransactions: ${txCount}\nActifs: ${assetCount}\n\nCela va ECRASER toutes les donnees actuelles. Continuer ?`)) {
 
           localStorage.clear();
 
@@ -195,9 +191,11 @@ export const Settings: React.FC<SettingsProps> = ({
             }
           };
 
+          // Phase securite C1 : on n'ecrit PLUS lm_token et gemini_key
+          // en clair lors du restore. Le user doit les re-saisir via les
+          // champs Cles API dans Settings apres restore. Le bloc apiKeys
+          // est exclu du persist Zustand (commit e7aaad6f).
           safeSet('app_api_keys', data.apiKeys);
-          if (data.apiKeys?.lunchMoney) localStorage.setItem('lm_token', data.apiKeys.lunchMoney);
-          if (data.apiKeys?.gemini) localStorage.setItem('gemini_key', data.apiKeys.gemini);
 
           safeSet('app_config', data.config);
           safeSet('app_budget', data.budgetItems);
@@ -218,11 +216,12 @@ export const Settings: React.FC<SettingsProps> = ({
           if (data.projection) safeSet('app_projection', data.projection);
           safeSet('cached_transactions', data.transactions || []);
 
-          showToast("✅ Restauration réussie !", "success");
+          showToast("✅ Restauration reussie ! Re-entrez vos cles API si necessaire.", "success");
           window.location.reload();
         }
-      } catch (err) {
-        showToast(`❌ Échec de la restauration.`, "error");
+      } catch (err: any) {
+        console.error('[Settings] Restore failed:', err);
+        showToast(`❌ Echec restauration : ${err?.message || 'inconnu'}`, "error");
       }
     };
     reader.readAsText(file);
@@ -235,8 +234,8 @@ export const Settings: React.FC<SettingsProps> = ({
       <Card title="Soldes Initiaux des Comptes">
         <div className="space-y-4">
           <p className="text-sm text-gray-400">
-            Définissez le montant de départ de vos comptes (Chequing, Savings).
-            <br /><span className="text-xs text-orange-400">Important : Ces montants définissent le point de départ "Cash".</span>
+            Definissez le montant de depart de vos comptes (Chequing, Savings).
+            <br /><span className="text-xs text-orange-400">Important : Ces montants definissent le point de depart "Cash".</span>
           </p>
 
           {Object.keys(knownAccounts).length > 0 ? (
@@ -247,20 +246,20 @@ export const Settings: React.FC<SettingsProps> = ({
                   <input
                     type="number"
                     value={initialBalances[acc] || 0}
-                    onChange={(e) => setInitialBalances({ ...initialBalances, [acc]: parseFloat(e.target.value) })}
+                    onChange={(e) => setInitialBalances({ ...initialBalances, [acc]: parseFloat(e.target.value) || 0 })}
                     className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
                   />
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-gray-500 text-sm italic">Aucun compte détecté. Importez des transactions d'abord.</div>
+            <div className="text-gray-500 text-sm italic">Aucun compte detecte. Importez des transactions d'abord.</div>
           )}
         </div>
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card title="Clés API & Services">
+        <Card title="Cles API & Services">
           <div className="space-y-4">
             <div>
               <label className="block text-sm text-gray-400 mb-1">Gemini API Key (IA)</label>
@@ -271,7 +270,7 @@ export const Settings: React.FC<SettingsProps> = ({
                 className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
                 placeholder="AIza..."
               />
-              <p className="text-xs text-gray-500 mt-1">Pour l'analyse de documents et la catégorisation.</p>
+              <p className="text-xs text-gray-500 mt-1">Pour l'analyse de documents et la categorisation.</p>
             </div>
             <div>
               <label className="block text-sm text-gray-400 mb-1">Lunch Money Token</label>
@@ -284,9 +283,9 @@ export const Settings: React.FC<SettingsProps> = ({
               />
             </div>
             <div className="p-3 bg-green-900/10 rounded border border-green-500/20 mt-4">
-              <div className="text-xs text-green-400 font-bold mb-1">✅ Données Boursières</div>
+              <div className="text-xs text-green-400 font-bold mb-1">✅ Donnees Boursieres</div>
               <p className="text-[10px] text-gray-400">
-                L'application est maintenant connectée à votre <strong>Fichier Maître (Google Sheet)</strong>. Plus aucune configuration requise !
+                L'application est maintenant connectee a votre <strong>Fichier Maitre (Google Sheet)</strong>. Plus aucune configuration requise !
               </p>
             </div>
           </div>
@@ -294,11 +293,10 @@ export const Settings: React.FC<SettingsProps> = ({
 
         <Card title="⚙️ Configuration Utilisateurs (Salaires & Macro)">
 
-          {/* SAUVEGARDE DE PROFILS */}
           <div className="mb-6 bg-black/30 p-4 rounded-xl border border-white/5 shadow-inner">
-            <h3 className="text-sm font-bold text-white mb-3">💾 Profils Enregistrés</h3>
+            <h3 className="text-sm font-bold text-white mb-3">💾 Profils Enregistres</h3>
             <div className="flex flex-wrap gap-2 mb-3">
-              {savedProfiles.length === 0 && <span className="text-xs text-gray-500 italic">Aucun profil enregistré.</span>}
+              {savedProfiles.length === 0 && <span className="text-xs text-gray-500 italic">Aucun profil enregistre.</span>}
               {savedProfiles.map(p => (
                 <div key={p} className="flex items-center bg-primary/20 text-blue-300 text-xs px-3 py-1.5 rounded-full border border-primary/30">
                   <span className="font-bold cursor-pointer" onClick={() => loadProfile(p)}>{p}</span>
@@ -306,8 +304,9 @@ export const Settings: React.FC<SettingsProps> = ({
                     onClick={() => deleteProfile(p)}
                     className={`ml-2 font-bold px-1.5 rounded ${profileToDelete === p ? 'bg-red-500 text-white' : 'text-white/50 hover:text-red-400'}`}
                     title={profileToDelete === p ? "Cliquez encore pour confirmer" : "Supprimer"}
+                    aria-label={profileToDelete === p ? "Confirmer la suppression" : `Supprimer le profil ${p}`}
                   >
-                    {profileToDelete === p ? 'Sûr?' : '×'}
+                    {profileToDelete === p ? 'Sur?' : '×'}
                   </button>
                 </div>
               ))}
@@ -335,7 +334,10 @@ export const Settings: React.FC<SettingsProps> = ({
                     onClick={() => {
                       const newUsers = [...config.users];
                       newUsers.pop();
-                      setConfig({ ...config, users: newUsers });
+                      // Fix TS2322 : cast vers [User, User] tuple. Note : apres pop()
+                      // le tableau a 1 element, mais le type AppState force 2. C'est
+                      // une dette technique du modele BudgetConfig (devrait etre User[]).
+                      setConfig({ ...config, users: newUsers as [any, any] });
                     }}
                     className="bg-red-900/40 text-red-300 px-3 py-1 rounded text-xs hover:bg-red-900/60"
                   >
@@ -345,8 +347,9 @@ export const Settings: React.FC<SettingsProps> = ({
                 {config.users.length < 2 && (
                   <button
                     onClick={() => {
-                      const newUsers = [...config.users, { name: "Conjoint(e)", age: 30, grossSalary: 0, netSalary: 0, canadaArrivalYear: new Date().getFullYear() - 5 }];
-                      setConfig({ ...config, users: newUsers });
+                      const newUsers = [...config.users, { name: "Conjoint(e)", age: 30, grossSalary: 0, netSalary: 0, canadaArrivalYear: new Date().getFullYear() - 5, color: '#ec4899' }];
+                      // Fix TS2322 : cast vers [User, User] tuple.
+                      setConfig({ ...config, users: newUsers as [any, any] });
                     }}
                     className="bg-green-900/40 text-green-300 px-3 py-1 rounded text-xs hover:bg-green-900/60"
                   >
@@ -375,13 +378,13 @@ export const Settings: React.FC<SettingsProps> = ({
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-xs text-gray-400">Âge actuel</label>
+                      <label className="text-xs text-gray-400">Age actuel</label>
                       <input
                         type="number"
                         value={user.age || 30}
                         onChange={(e) => {
                           const newUsers = [...config.users] as [any, any];
-                          newUsers[idx] = { ...user, age: parseInt(e.target.value) };
+                          newUsers[idx] = { ...user, age: parseInt(e.target.value) || 30 };
                           setConfig({ ...config, users: newUsers });
                         }}
                         className="w-full bg-dark border border-border rounded px-2 py-1 text-sm text-white font-mono"
@@ -389,13 +392,13 @@ export const Settings: React.FC<SettingsProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-orange-300">Arrivée au Canada</label>
+                      <label className="text-xs text-orange-300">Arrivee au Canada</label>
                       <input
                         type="number"
                         value={user.canadaArrivalYear || new Date().getFullYear() - 5}
                         onChange={(e) => {
                           const newUsers = [...config.users] as [any, any];
-                          newUsers[idx] = { ...user, canadaArrivalYear: parseInt(e.target.value) };
+                          newUsers[idx] = { ...user, canadaArrivalYear: parseInt(e.target.value) || 2020 };
                           setConfig({ ...config, users: newUsers });
                         }}
                         className="w-full bg-dark border border-border rounded px-2 py-1 text-sm text-white font-mono"
@@ -412,7 +415,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         value={user.grossSalary || 0}
                         onChange={(e) => {
                           const newUsers = [...config.users] as [any, any];
-                          newUsers[idx] = { ...user, grossSalary: parseFloat(e.target.value) };
+                          newUsers[idx] = { ...user, grossSalary: parseFloat(e.target.value) || 0 };
                           setConfig({ ...config, users: newUsers });
                         }}
                         className="w-full bg-dark border border-border rounded px-2 py-1 text-sm text-white font-mono"
@@ -425,7 +428,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         value={user.netSalary || user.salary || 0}
                         onChange={(e) => {
                           const newUsers = [...config.users] as [any, any];
-                          newUsers[idx] = { ...user, netSalary: parseFloat(e.target.value) };
+                          newUsers[idx] = { ...user, netSalary: parseFloat(e.target.value) || 0 };
                           setConfig({ ...config, users: newUsers });
                         }}
                         className="w-full bg-dark border border-border rounded px-2 py-1 text-sm text-white font-mono"
@@ -450,7 +453,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         <span className="text-[10px] text-gray-400 group-hover:text-blue-400 transition-colors">Premier Acheteur (CELIAPP)</span>
                       </label>
                     </div>
-                    
+
                     <div className="flex items-center gap-3">
                       <label className="flex items-center gap-2 cursor-pointer group">
                         <input
@@ -471,7 +474,7 @@ export const Settings: React.FC<SettingsProps> = ({
                           value={user.childCount || 1}
                           onChange={(e) => {
                             const newUsers = [...config.users] as [any, any];
-                            newUsers[idx] = { ...user, childCount: parseInt(e.target.value) };
+                            newUsers[idx] = { ...user, childCount: parseInt(e.target.value) || 1 };
                             setConfig({ ...config, users: newUsers });
                           }}
                           className="w-12 bg-black/40 border border-white/10 rounded px-1.5 py-0.5 text-[10px] text-white font-mono text-center"
@@ -484,7 +487,7 @@ export const Settings: React.FC<SettingsProps> = ({
                       <span className="text-[10px] text-gray-400 uppercase font-black shrink-0">FE ⚖️</span>
                       <input
                         type="number"
-                        placeholder="Facteur Équiv. (ex: 0)"
+                        placeholder="Facteur Equiv. (ex: 0)"
                         value={user.facteurEquivalence ?? 0}
                         onChange={(e) => {
                           const newUsers = [...config.users] as [any, any];
@@ -500,7 +503,7 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Mode de Répartition</label>
+              <label className="block text-sm text-gray-400 mb-2">Mode de Repartition</label>
               <select
                 value={config.splitMode}
                 onChange={(e) => setConfig({ ...config, splitMode: e.target.value as any })}
@@ -508,7 +511,7 @@ export const Settings: React.FC<SettingsProps> = ({
               >
                 <option value="prorata">Prorata des Salaires Nets</option>
                 <option value="50/50">50 / 50</option>
-                <option value="custom">Personnalisé</option>
+                <option value="custom">Personnalise</option>
               </select>
             </div>
           </div>
@@ -518,7 +521,7 @@ export const Settings: React.FC<SettingsProps> = ({
       <Card title="Zone de Sauvegarde (Full Backup)" className="border border-green-900/30 bg-green-900/10">
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
           <div className="text-sm text-gray-400">
-            <p>Sauvegardez TOUTES vos données. La restauration écrasera les données actuelles.</p>
+            <p>Sauvegardez TOUTES vos donnees. La restauration ecrasera les donnees actuelles.</p>
           </div>
           <div className="flex gap-3">
             <button

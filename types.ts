@@ -3,7 +3,7 @@ export interface Transaction {
   id: number;
   date: string;
   payee: string;
-  amount: number; // Negative for expense, positive for income
+  amount: number;
   category: string;
   originalCategory?: string;
   accountId?: number;
@@ -27,7 +27,7 @@ export interface Asset {
   buyPrice?: number;
   priceHistory?: Array<{ date: string; price: number; rawPrice?: number; fxRate?: number }>;
   lastHistorySync?: number;
-  accountType?: 'CELI' | 'REER' | 'NON-ENREG' | 'CRYPTO';
+  accountType?: 'CELI' | 'CELIAPP' | 'REER' | 'NON-ENREG' | 'CRYPTO' | 'REEE';
   dividendYield?: number;
   dividendFreq?: 'Monthly' | 'Quarterly' | 'Yearly';
   nextDividendDate?: string;
@@ -149,6 +149,11 @@ export interface RealEstateGoal {
   renewalRateProjection?: number;
   yearlyRenovations?: number;
   maintenanceYearly?: number;
+  // Fix TS2339 (Dashboard.tsx:161) : champs runtime utilises mais absents du type.
+  // currentValue = valeur marche actuelle (peut differer de price si appreciation).
+  // mortgageBalance = solde hypotheque restant. Calcule en pratique par runAmortization.
+  currentValue?: number;
+  mortgageBalance?: number;
 }
 
 export interface ChildGoal {
@@ -205,6 +210,9 @@ export interface LifeEvent {
   impactPercent?: number;
   durationMonths?: number;
   incomeLossPercent?: number;
+  // Fix TS2339 (Dashboard.tsx:416) : icone visuelle (emoji ou nom Lucide) utilisee
+  // dans la timeline. Optionnelle, fallback dans le composant.
+  icon?: string;
 }
 
 export interface RetirementGoal {
@@ -232,7 +240,6 @@ export interface FinancialGoal {
   complexityScore?: number;
 }
 
-// Tab enum : GOALS retire car onglet 100% mort. Objectifs maintenant dans Tab.FUTURE.
 export enum Tab {
   DASHBOARD = 'DASHBOARD',
   TRANSACTIONS = 'TRANSACTIONS',

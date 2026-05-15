@@ -1,7 +1,10 @@
 // services/projection.ts — moteur de projection financière (migré depuis utils/useFutureSimulation.ts)
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness } from '../types';
 import { calculateFiscalReport, CELI_ANNUAL_LIMITS, calculateCeliRoom, calculateGrossFromNet, getMarginalRate, calculateDividendTax, RRSP_ANNUAL_LIMITS, calculateGrossWithholdingRRSP } from '../utils/tax';
-import { mulberry32, gaussianRandom, applyShock, MER, RRIF_RATES, welcomeTax, ltcAnnualProbability, mortalityAnnualProbability } from './projection/helpers';
+import { mulberry32, gaussianRandom, applyShock, MER, RRIF_RATES, welcomeTax, ltcAnnualProbability, mortalityAnnualProbability, applyMidMonthGrowth } from './projection/helpers';
+import { runMonteCarlo } from './projection/monteCarlo';
+import { SCENARIO_DEFINITIONS } from './projection/scenarios';
+import { applyW5Effects, applyAgeBasedExpenses } from './projection/w5Effects';
 import { buildHistoricalSequence, buildReplaySequence, canadianInflationFor, type YearReturn } from './projection/historicalReturns';
 
 export interface SimulationParams {
@@ -166,40 +169,8 @@ export interface ProjectionResult {
     [key: string]: any; // sub-fields dynamiques pour compat
 }
 
-// D2.2: mulberry32, gaussianRandom, applyShock, ASSET_VOLATILITY, MER,
-// RRIF_RATES et welcomeTax sont désormais dans ./projection/helpers.
+// Cycle 7 split: calculateGrossNeeded retiré (dead code, jamais appelé)
 
-// Helper to calculate gross amount needed for a specific net withdrawal
-// Uses the April settlement logic where tax is calculated but paid later.
-const calculateGrossNeeded = (netNeeded: number, currentGrossOther: number, activeUsersCount: number, year: number): number => {
-    if (netNeeded <= 0) return 0;
-
-    // Binary search for gross amount
-    let low = netNeeded;
-    let high = netNeeded * 3;
-    let iterations = 0;
-
-    while (iterations < 15) {
-        const mid = (low + high) / 2;
-        const netBaseReport = calculateFiscalReport(currentGrossOther / activeUsersCount, 0, 0, year);
-        const netBase = netBaseReport.netIncome * activeUsersCount;
-
-        const netTotalReport = calculateFiscalReport((currentGrossOther + mid) / activeUsersCount, 0, 0, year);
-        const netTotal = netTotalReport.netIncome * activeUsersCount;
-
-        const netFromMid = netTotal - netBase;
-
-        if (Math.abs(netFromMid - netNeeded) < 1) return mid;
-
-        if (netFromMid < netNeeded) {
-            low = mid;
-        } else {
-            high = mid;
-        }
-        iterations++;
-    }
-    return (low + high) / 2;
-};
 
 const runScenario = (params: SimulationParams, strategy: AllocationStrategy, enableMonteCarlo = false, delayPensions = false, mcIterationIndex = 0, scenarioType: FutureScenarioType = 'BASE') => {
     const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0, insurancePolicies = [], vehicleReplacements = [], majorRenovations = [], charitableGoals = [], rentalProperties = [], privateBusinesses = [] } = params;
@@ -918,129 +889,30 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             }
         }
 
-        // W3.5 — Sandwich generation: aide enfants adultes (boomerang) ou parents âgés
-        const boomerangAmount = effProj.boomerangSupportMonthly || 0;
-        const boomerangStart = effProj.boomerangStartAge ?? -1;
-        const boomerangDuration = effProj.boomerangDurationMonths ?? 0;
-        if (boomerangAmount > 0 && boomerangStart >= 0 && age >= boomerangStart) {
-            const monthsIntoBoomerang = (age - boomerangStart) * 12 + currentMonthIndex;
-            if (monthsIntoBoomerang < boomerangDuration) {
-                monthlyExpenses += boomerangAmount * expenseMultiplier;
+        // Cycle 7 split: Sandwich generation (boomerang + caregiving) + Snowbird
+        // extraits dans ./projection/w5Effects (applyAgeBasedExpenses).
+        applyAgeBasedExpenses(
+            { age, currentMonthIndex, isRetired, expenseMultiplier },
+            effProj,
+            { addExpense: (amt) => { monthlyExpenses += amt; } }
+        );
+
+        // Cycle 7 split: 6 effets W5.x extraits dans ./projection/w5Effects.ts
+        // (insurance/véhicules cycliques/rénos majeures/dons charity/locatifs/CCPC).
+        // Mutation via mutateur passé par référence — état partagé inchangé.
+        applyW5Effects(
+            { m, currentMonthIndex, currentLoopDate, startYear, startMonth, expenseMultiplier },
+            { insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses },
+            {
+                addExpense: (amt) => { monthlyExpenses += amt; },
+                addIncome: (amt) => { monthlyIncome += amt; },
+                subtractLiquid: (amt) => { liquid -= amt; },
+                addTaxRevenu: (amt) => { taxCurrentYear.revenu += amt; },
+                addTaxGains: (amt) => { taxCurrentYear.gains += amt; },
+                logFlow: (msg) => logEvent(flowEventsLog, msg),
+                logLife: (msg) => logEvent(lifeEventsLog, msg),
             }
-        }
-        const caregivingAmount = effProj.caregivingMonthly || 0;
-        const caregivingStart = effProj.caregivingStartAge ?? -1;
-        const caregivingDuration = effProj.caregivingDurationMonths ?? 0;
-        if (caregivingAmount > 0 && caregivingStart >= 0 && age >= caregivingStart) {
-            const monthsIntoCare = (age - caregivingStart) * 12 + currentMonthIndex;
-            if (monthsIntoCare < caregivingDuration) {
-                monthlyExpenses += caregivingAmount * expenseMultiplier;
-            }
-        }
-
-        // W4.7 — Snowbird (4-6 mois en US/Mexique)
-        if (effProj.snowbirdEnabled && isRetired) {
-            const monthsPerYear = effProj.snowbirdMonthsPerYear ?? 5;
-            const extraMonthlyCost = effProj.snowbirdExtraMonthlyCost ?? 1500;
-            // Approximation: lissé sur l'année (extra × mois × 12 / 12)
-            monthlyExpenses += (extraMonthlyCost * monthsPerYear / 12) * expenseMultiplier;
-        }
-
-        // W5.x — Conteneurs étendus intégrés au moteur (cycle 4 — câblage)
-        // Toutes les valeurs nominales sont indexées par expenseMultiplier sauf
-        // les événements ponctuels (renovations).
-
-        // W5.4 — Primes d'assurance mensuelles (vie/invalidité/maladies graves/
-        // soins LD/auto/habitation/responsabilité). Cesse à l'expiry pour les
-        // polices temporaires.
-        let insurancePremiumsMonthly = 0;
-        for (const policy of insurancePolicies) {
-            if (policy.expiryDate) {
-                const expiry = new Date(policy.expiryDate);
-                if (currentLoopDate >= expiry) continue;
-            }
-            insurancePremiumsMonthly += (policy.monthlyPremium || 0);
-        }
-        if (insurancePremiumsMonthly > 0) {
-            monthlyExpenses += insurancePremiumsMonthly * expenseMultiplier;
-        }
-
-        // W5.x — Véhicules cycliques. À chaque cyclYears, dépense ponctuelle.
-        // Calculé par mois écoulé total: si (m+1) % (cyclYears*12) === 0 → achat.
-        for (const v of vehicleReplacements) {
-            const cyclMonths = (v.cyclYears || 8) * 12;
-            if (cyclMonths > 0 && m > 0 && m % cyclMonths === 0) {
-                const cost = (v.costEstimate || 0) * expenseMultiplier;
-                liquid -= cost;
-                logEvent(flowEventsLog, `🚗 Remplacement véhicule: -${Math.round(cost).toLocaleString('fr-CA')}\$`);
-            }
-        }
-
-        // W5.x — Rénovations majeures planifiées (date unique).
-        for (const reno of majorRenovations) {
-            if (!reno.date) continue;
-            const renoDate = new Date(reno.date);
-            const renoMonthIdx = (renoDate.getFullYear() - startYear) * 12 + (renoDate.getMonth() - startMonth);
-            if (renoMonthIdx === m) {
-                const cost = (reno.cost || 0) * expenseMultiplier;
-                liquid -= cost;
-                logEvent(lifeEventsLog, `🔨 Rénovation majeure: -${Math.round(cost).toLocaleString('fr-CA')}\$ (${reno.description || 'maison'})`);
-            }
-        }
-
-        // W5.x — Dons charitables annuels (versés en janvier, lissés sur le mois).
-        // Crédit fiscal approximatif: 33% du montant déductible au Québec (féd 29% + QC 25.75% des premiers 200$, taux moyen ~33% au-delà).
-        for (const charity of charitableGoals) {
-            const yearNow = startYear + Math.floor(m / 12);
-            if (charity.startYear && yearNow < charity.startYear) continue;
-            if (charity.endYear && yearNow > charity.endYear) continue;
-            const annual = charity.annualAmount || 0;
-            if (annual <= 0) continue;
-            monthlyExpenses += (annual / 12) * expenseMultiplier;
-            // Crédit fiscal en avril année suivante (approximation: réduit taxCurrentYear)
-            if (currentMonthIndex === 0) {
-                const taxCredit = annual * 0.33;
-                taxCurrentYear.revenu -= taxCredit;
-                if (charity.donateAppreciatedSecurities) {
-                    // Bonus: titres appréciés exemptent le gain en capital → +50% du gain capital évité
-                    taxCurrentYear.gains -= annual * 0.15; // approximation conservatrice
-                }
-            }
-        }
-
-        // W5.6 — Immeubles locatifs (W5.x RentalProperty[]): NOI lissé.
-        // Note: tracking complet (acquisition, vente, recapture DPA) reporté à
-        // future session. Variable distincte de `totalRentalIncome` (immobilier W*)
-        // qui est calculée plus bas dans le bloc IMMOBILIER pour les RealEstateGoal.
-        let rentalPropertyNoiMonthly = 0;
-        for (const rp of rentalProperties) {
-            const annualRent = (rp.monthlyRent || 0) * 12 * (1 - (rp.vacancyPct || 0) / 100);
-            const annualExpenses = (rp.monthlyExpenses || 0) * 12;
-            const noi = annualRent - annualExpenses;
-            rentalPropertyNoiMonthly += noi / 12;
-        }
-        if (rentalPropertyNoiMonthly !== 0) {
-            monthlyIncome += rentalPropertyNoiMonthly;
-            // Le revenu locatif net est imposable au taux marginal (revenu d'entreprise)
-            taxCurrentYear.revenu += (rentalPropertyNoiMonthly * 0.45) / 12; // approximation marginale 45%
-        }
-
-        // W5.7 — Entreprise privée (CCPC): dividendes mensuels au revenu.
-        // Imposition selon dividende éligible (taux réduit, ~32% combiné) vs ordinaire.
-        // DPE (Déduction pour petite entreprise) gérée au niveau corporate, ici on n'impose
-        // que le dividende reçu par l'actionnaire individuel.
-        let businessDividendMonthly = 0;
-        for (const biz of privateBusinesses) {
-            if (biz.annualDividend && biz.annualDividend > 0) {
-                businessDividendMonthly += (biz.annualDividend * (biz.ownershipPct || 100) / 100) / 12;
-            }
-        }
-        if (businessDividendMonthly > 0) {
-            monthlyIncome += businessDividendMonthly;
-            // Dividende non-éligible (CCPC sans DPE) taxé ~40% combiné; éligible (DPE) ~32%.
-            // On utilise 36% comme moyenne pondérée.
-            taxCurrentYear.revenu += (businessDividendMonthly * 0.36) / 12;
-        }
+        );
 
         // --- 4. TAX WITHHOLDING & APRIL SETTLEMENT ---
         let taxPaidRevenu = 0, taxPaidGains = 0, taxPaidDivers = 0, taxPaidREER = 0;
@@ -2006,25 +1878,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         const effectiveCeliRate = effectiveCeliRateRaw - usCeliDragPct;
         const effectiveNonRegRate = effectiveNonRegRateRaw;
 
-        // V31: Séquençage Mid-Month & Intégration globale des MER
-        const applyMidMonthGrowth = (startVal: number, endVal: number, rateAnnual: number, applyMER: boolean = true) => {
-            if (startVal <= 0 && endVal <= 0) return { newVal: 0, growth: 0, pct: 0 };
-
-            const monthlyRate = Math.pow(1 + rateAnnual / 100, 1 / 12) - 1;
-            const netFlow = endVal - startVal;
-
-            // Le solde initial croît le mois entier, les flux ne croissent qu'un demi-mois
-            const growthOnStart = startVal * monthlyRate;
-            const growthOnFlow = netFlow * ((Math.pow(1 + rateAnnual / 100, 1 / 24)) - 1);
-
-            const merDeduction = applyMER ? (startVal + netFlow) * (MER / 12) : 0;
-            const totalGrowth = growthOnStart + growthOnFlow - merDeduction;
-
-            const newVal = Math.max(0, endVal + totalGrowth);
-            const pct = startVal > 0 ? (totalGrowth / startVal) * 100 : 0;
-            return { newVal, growth: totalGrowth, pct };
-        };
-
+        // Cycle 7 split: applyMidMonthGrowth hoisté dans ./projection/helpers
+        // (était redéfini 360× par scénario MC)
         const resC = applyMidMonthGrowth(prevCELI, celi, effectiveCeliRate, true);
         celi = resC.newVal; growthCELI = resC.growth; growthPctCELI = resC.pct;
 
@@ -2267,175 +2122,24 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     };
 };
 
-// ---- Monte Carlo: Run N iterations and compute P10/P50/P90 curves + success rate ----
-const runMonteCarlo = (params: SimulationParams, strategy: AllocationStrategy, delayPensions: boolean, iterations = 100) => {
-    // Collect all final net worths + NetWorth per month index for percentile calc
-    const allRuns: { 
-        netWorthByMonth: number[]; 
-        finalNW: number;
-        minNetWorth: number;
-        totalTaxesPaid: number;
-        totalGrowth: number;
-        totalExpenses: number;
-        shortfallRate: number;
-        estateNetWorth: number;
-        chartData: any[];
-    }[] = [];
-    // Determine number of months (intended duration: m=0 to m=years*12)
-    const nMonths = params.projection.years * 12;
+// Cycle 7 split: runMonteCarlo extrait dans ./projection/monteCarlo
 
-    for (let i = 0; i < iterations; i++) {
-        const result = runScenario(params, strategy, true, delayPensions, i);
-        const nwHistory = result.chartData.map(d => d.NetWorth);
-        // Pad with 0 if run terminated early (bankrupty)
-        while (nwHistory.length <= nMonths) {
-            nwHistory.push(0);
-        }
-        allRuns.push({
-            netWorthByMonth: nwHistory,
-            finalNW: result.finalNetWorth,
-            minNetWorth: result.minNetWorth,
-            totalTaxesPaid: result.totalTaxesPaid,
-            totalGrowth: result.totalGrowth,
-            totalExpenses: result.totalExpenses,
-            shortfallRate: result.shortfallRate,
-            estateNetWorth: result.estateNetWorth,
-            chartData: result.chartData
-        });
-    }
-
-    const successRate = Math.round((allRuns.filter(r => r.finalNW > 0).length / iterations) * 100);
-
-    // For P10/P50/P90, pick the run closest to each percentile by final NW
-    const sorted = [...allRuns].sort((a, b) => a.finalNW - b.finalNW);
-
-    // Build per-month percentile curves from collected data (including month 0)
-    const p10Index = Math.floor(iterations * 0.10);
-    const p50Index = Math.floor(iterations * 0.50);
-    const p90Index = Math.floor(iterations * 0.90);
-
-    const p10Data = sorted[p10Index]?.netWorthByMonth || Array(nMonths + 1).fill(0);
-    const p50Data = sorted[p50Index]?.netWorthByMonth || Array(nMonths + 1).fill(0);
-    const p90Data = sorted[p90Index]?.netWorthByMonth || Array(nMonths + 1).fill(0);
-
-    // V65: Calculate FVI Components
-    const startNW = (params.calculatedStartingCash + params.liveCSVBalances.CELI + params.liveCSVBalances.CELIAPP + params.liveCSVBalances.REER + params.liveCSVBalances.NON_ENREG + params.liveCSVBalances.CRYPTO + params.liveCSVBalances.REEE);
-    
-    // 1. Survival Score (30%)
-    const survivalScore = successRate / 100;
-    
-    // 2. Safety Score (30%) - Stress resilience (min NW > 10% of start)
-    const safetyScore = allRuns.filter((r: any) => r.minNetWorth > startNW * 0.1).length / iterations;
-    
-    // 3. Efficiency Score (20%) - Tax Leakage (average 1 - Taxes/Growth)
-    const avgEfficiency = allRuns.reduce((acc: number, r: any) => {
-        const leakage = r.totalGrowth > 0 ? Math.min(1, r.totalTaxesPaid / r.totalGrowth) : 0.5;
-        return acc + (1 - leakage);
-    }, 0) / iterations;
-
-    // 4. Legacy Score (20%) - Growth potential
-    const avgLegacyRatio = allRuns.reduce((acc: number, r: any) => {
-        return acc + Math.min(3, r.estateNetWorth / (startNW || 1));
-    }, 0) / iterations;
-    const legacyScore = Math.min(1, avgLegacyRatio / 2); // Score 1 if doubled estate
-
-    const fvi = Math.round((survivalScore * 0.3 + safetyScore * 0.3 + avgEfficiency * 0.2 + legacyScore * 0.2) * 100);
-
-    // Expert metrics for the main scenario
-    const representativeRun = sorted[p50Index] || sorted[0];
-
-    // D2.6: Sequence-of-returns risk dans la décennie critique (5 ans avant + 5 après retraite).
-    // Un krach pendant cette fenêtre est ~10× plus destructeur qu'à 20 ans de retraite.
-    // Métrique: % d'itérations MC où le NW chute sous 50% du capital initial pendant la décennie critique.
-    const retAge = params.retirementGoal.targetAge || 65;
-    const currentAge = params.config.users[0]?.age || 30;
-    const yearsToRetirement = Math.max(0, retAge - currentAge);
-    const criticalDecadeStartMonth = Math.max(0, (yearsToRetirement - 5) * 12);
-    const criticalDecadeEndMonth = Math.min(nMonths, (yearsToRetirement + 5) * 12);
-    const fragileThreshold = startNW * 0.5;
-
-    let fragileCount = 0;
-    let worstDecadeDrawdown = 0;
-    for (const run of allRuns) {
-        let minInDecade = Infinity;
-        for (let mi = criticalDecadeStartMonth; mi <= criticalDecadeEndMonth && mi < run.netWorthByMonth.length; mi++) {
-            const nw = run.netWorthByMonth[mi];
-            if (nw < minInDecade) minInDecade = nw;
-        }
-        if (minInDecade < fragileThreshold) fragileCount++;
-        const drawdown = startNW > 0 ? Math.max(0, (startNW - minInDecade) / startNW) : 0;
-        if (drawdown > worstDecadeDrawdown) worstDecadeDrawdown = drawdown;
-    }
-    const sequenceRiskPct = Math.round((fragileCount / iterations) * 100);
-
-    const expertMetrics = {
-        swr: representativeRun ? (representativeRun.totalExpenses / (representativeRun.chartData?.length || 1) * 12) / (startNW || 1) : 0,
-        taxLeakage: representativeRun ? (representativeRun.totalTaxesPaid / (representativeRun.totalGrowth || 1)) : 0,
-        shortfallRisk: representativeRun ? representativeRun.shortfallRate : 0,
-        // D2.6: nouveaux champs
-        sequenceRiskPct,          // % itérations où NW < 50% startNW dans la décennie critique
-        worstDecadeDrawdown,      // pire chute relative (0-1) observée dans la fenêtre
-        criticalDecadeStartYear: Math.floor(criticalDecadeStartMonth / 12),
-        criticalDecadeEndYear: Math.floor(criticalDecadeEndMonth / 12),
-    };
-
-    return { successRate, p10Data, p50Data, p90Data, fvi, expertMetrics };
-};
 
 export const calculateFutureProjection = (params: SimulationParams, runMC: boolean = false, selectedIdx: number = 0): ProjectionResult => {
-    // V90: Avenirs de Vie (5 Distinct Futures)
-    const resBase = { 
-        ...runScenario(params, 'AUTO_MARGINAL', false, false, 0, 'BASE'), 
-        strategyName: "Le Plan de Base", 
-        stratType: 'BASE', 
-        delayPensions: false,
-        stratDescription: "Votre trajectoire actuelle basée sur les paramètres standards (Inflation 2%, Retraite 65 ans).",
-        pros: ["Équilibre réaliste", "Stabilité fiscale"],
-        cons: ["Dépendance aux marchés standards"],
-        icon: '📊'
-    };
-    const resLiberté55 = { 
-        ...runScenario(params, 'PRIO_REER', false, false, 0, 'LIBERTE_55'), 
-        strategyName: "Liberté 55", 
-        stratType: 'LIBERTE_55', 
-        delayPensions: false,
-        stratDescription: "Simule un arrêt de travail précoce à 55 ans en maximisant le REER pour combler le pont fiscal.",
-        pros: ["Retraite anticipée", "Pont fiscal optimisé"],
-        cons: ["Nécessite une épargne agressive dès maintenant"],
-        icon: '🌅'
-    };
-    const resHyperInflation = { 
-        ...runScenario(params, 'AUTO_MARGINAL', false, false, 0, 'HYPER_INFLATION'), 
-        strategyName: "Le Choc d'Inflation", 
-        stratType: 'HYPER_INFLATION', 
-        delayPensions: false,
-        stratDescription: "Scénario catastrophe avec une inflation soutenue à 5.5% (type années 70-80).",
-        pros: ["Test de résilience"],
-        cons: ["Érosion massive du pouvoir d'achat"],
-        icon: '🔥'
-    };
-    const resWindfall = { 
-        ...runScenario(params, 'AUTO_MARGINAL', false, false, 0, 'WINDFALL'), 
-        strategyName: "L'Héritage Inattendu", 
-        stratType: 'WINDFALL', 
-        delayPensions: false,
-        stratDescription: "Simule une injection de 250,000$ (héritage ou gain) après 5 ans.",
-        pros: ["Accélération massive", "Liberté financière soudaine"],
-        cons: ["Incertitude sur le timing réel"],
-        icon: '🎁'
-    };
-    const resWinter = { 
-        ...runScenario(params, 'AUTO_MARGINAL', false, false, 0, 'ECONOMIC_WINTER'), 
-        strategyName: "L'Hiver Économique", 
-        stratType: 'ECONOMIC_WINTER', 
-        delayPensions: false,
-        stratDescription: "Une décennie de croissance faible (3% Bourse, 1% Cash) combinée à une inflation persistante.",
-        pros: ["Scénario prudent"],
-        cons: ["Croissance du patrimoine très lente"],
-        icon: '❄️'
-    };
-
-    const results = [resBase, resLiberté55, resHyperInflation, resWindfall, resWinter];
+    // V90 + Cycle 7 split: Avenirs de Vie (5 Distinct Futures)
+    // Metadata extraite dans ./projection/scenarios. Itère sur SCENARIO_DEFINITIONS
+    // au lieu de 5 blocs hardcodés ~10 lignes chacun.
+    const results = SCENARIO_DEFINITIONS.map(def => ({
+        ...runScenario(params, def.strategy, false, def.delayPensions, 0, def.stratType),
+        strategyName: def.strategyName,
+        stratType: def.stratType,
+        delayPensions: def.delayPensions,
+        stratDescription: def.stratDescription,
+        pros: def.pros,
+        cons: def.cons,
+        icon: def.icon,
+    }));
+    const resBase = results[0]; // BASE est la référence pour gainVsAuto
 
     // V50: Stable indexing for the UI (we don't sort the main results array anymore)
     const sortedByEstate = [...results].sort((a, b) => b.estateNetWorth - a.estateNetWorth);
@@ -2459,7 +2163,8 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
         // (panneau Paramètres Avancés). Bornes: 50-1000.
         const requested = params.projection.monteCarloIterations ?? 100;
         const MC_ITERATIONS = Math.max(50, Math.min(1000, requested));
-        const mcResult = runMonteCarlo(params, 'AUTO_MARGINAL', target.delayPensions, MC_ITERATIONS);
+        // Cycle 7 split: runScenario injecté pour éviter dépendance circulaire
+        const mcResult = runMonteCarlo(runScenario, params, 'AUTO_MARGINAL', target.delayPensions, MC_ITERATIONS);
         successRate = mcResult.successRate;
         fvi = mcResult.fvi;
         expertMetrics = mcResult.expertMetrics;

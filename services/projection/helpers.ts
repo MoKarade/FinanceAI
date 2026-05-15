@@ -40,6 +40,22 @@ export const ASSET_VOLATILITY = {
 // V31: Frais de gestion appliqués stochastiquement
 export const MER = 0.0020;
 
+// V31: Séquençage Mid-Month & Intégration globale des MER
+// Cycle 7 split: hoisté hors de runScenario (était redéfini 360× par scénario).
+export function applyMidMonthGrowth(startVal: number, endVal: number, rateAnnual: number, applyMER: boolean = true) {
+    if (startVal <= 0 && endVal <= 0) return { newVal: 0, growth: 0, pct: 0 };
+    const monthlyRate = Math.pow(1 + rateAnnual / 100, 1 / 12) - 1;
+    const netFlow = endVal - startVal;
+    // Le solde initial croît le mois entier, les flux ne croissent qu'un demi-mois
+    const growthOnStart = startVal * monthlyRate;
+    const growthOnFlow = netFlow * ((Math.pow(1 + rateAnnual / 100, 1 / 24)) - 1);
+    const merDeduction = applyMER ? (startVal + netFlow) * (MER / 12) : 0;
+    const totalGrowth = growthOnStart + growthOnFlow - merDeduction;
+    const newVal = Math.max(0, endVal + totalGrowth);
+    const pct = startVal > 0 ? (totalGrowth / startVal) * 100 : 0;
+    return { newVal, growth: totalGrowth, pct };
+}
+
 // ---- Table de retrait minimum FERR (RRIF) par âge (Canada) ----
 // Source: ARC. À 94+ on plafonne à 20% (fallback via `RRIF_RATES[age] ?? 0.20`).
 export const RRIF_RATES: Record<number, number> = {

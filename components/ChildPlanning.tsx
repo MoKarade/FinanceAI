@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { ChildGoal, ProjectionConfig } from '../types';
 import { INITIAL_CHILD_GOAL } from '../constants';
 import { ConfirmModal } from './ui/ConfirmModal';
+import { useFinanceStore } from '../store/useFinanceStore';
 
 interface ChildPlanningProps {
     goals: ChildGoal[];
@@ -60,6 +61,18 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     const [activeTabIndex, setActiveTabIndex] = useState(0);
     const [confirmRemove, setConfirmRemove] = useState<{ index: number; name: string } | null>(null);
     const goal = goals[activeTabIndex] || goals[0];
+
+    // Wiring 2026-05: lecture de la projection vivante pour montrer le REEE
+    // projeté par le moteur principal (FutureProjection), à comparer avec
+    // la simulation locale ci-dessous.
+    const lastProjection = useFinanceStore(s => s.lastProjection);
+    const projectedReeeAt18 = useMemo(() => {
+        if (!lastProjection?.chartData?.length || !goal?.birthDate) return null;
+        const childBirthYear = new Date(goal.birthDate).getFullYear();
+        const targetYear = childBirthYear + 17;
+        const point = lastProjection.chartData.find(p => p.year === targetYear);
+        return point?.REEE ?? null;
+    }, [lastProjection, goal?.birthDate]);
 
     const [daycareType, setDaycareTypeLocal] = useState<DaycareType>((goal?.daycareType as DaycareType) || 'cpe');
     const [schoolType, setSchoolTypeLocal] = useState<SchoolType>((goal?.schoolType as SchoolType) || 'publique');
@@ -423,8 +436,18 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                     </Card>
 
                     <Card title="🎓 Simulateur REEE — Croissance jusqu'à 17 ans" action={
-                        <div className={`text-xs font-bold px-2 py-1 rounded border ${respCovers >= 100 ? 'text-green-400 border-green-500/30 bg-green-500/10' : 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10'}`}>
-                            {respCovers.toFixed(0)}% des études couvertes
+                        <div className="flex items-center gap-2">
+                            {projectedReeeAt18 !== null && projectedReeeAt18 > 0 && (
+                                <div
+                                    className="text-[10px] font-bold px-2 py-1 rounded border text-blue-300 border-blue-500/30 bg-blue-500/10"
+                                    title="Projection officielle (FutureProjection) au 17e anniversaire"
+                                >
+                                    🔗 {fmt(projectedReeeAt18)}
+                                </div>
+                            )}
+                            <div className={`text-xs font-bold px-2 py-1 rounded border ${respCovers >= 100 ? 'text-green-400 border-green-500/30 bg-green-500/10' : 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10'}`}>
+                                {respCovers.toFixed(0)}% des études couvertes
+                            </div>
                         </div>
                     }>
                         <div className="space-y-3 mb-4">

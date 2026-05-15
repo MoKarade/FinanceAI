@@ -15,6 +15,7 @@ import { fetchPortfolioHistory, MarketDataPoint } from '../services/finance';
 import { StockChart } from './StockChart';
 import { ASSET_META } from '../services/assetMeta';
 import { DividendPanel } from './investments/DividendPanel';
+import { useFinanceStore } from '../store/useFinanceStore';
 
 interface InvestmentsProps {
     assets: Asset[];
@@ -66,6 +67,25 @@ export const Investments: React.FC<InvestmentsProps> = ({
     const [isLoading, setIsLoading] = useState(true);
     const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
     const [timeRange, setTimeRange] = useState<TimeRange>('1Y');
+
+    // Wiring 2026-05: lecture de la projection vivante depuis le store.
+    const lastProjection = useFinanceStore(s => s.lastProjection);
+    const projectionHorizonYears = projection.years || 30;
+    const horizonSnapshot = useMemo(() => {
+        if (!lastProjection?.chartData?.length) return null;
+        const targetMonth = projectionHorizonYears * 12;
+        const point = lastProjection.chartData.find(p => p.monthIndex === targetMonth)
+            ?? lastProjection.chartData[lastProjection.chartData.length - 1];
+        if (!point) return null;
+        return {
+            year: point.year ?? new Date().getFullYear() + projectionHorizonYears,
+            celi: point.CELI ?? 0,
+            reer: point.REER ?? 0,
+            nonReg: point.NonReg ?? 0,
+            crypto: point.Crypto ?? 0,
+            netWorth: point.NetWorth ?? 0,
+        };
+    }, [lastProjection, projectionHorizonYears]);
 
     const [targetModel, setTargetModelLocal] = useState(() => {
         const pcts = projection?.investmentTargetPcts;
@@ -351,6 +371,38 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     </div>
                 </Card>
             </div>
+
+            {/* 0.5 PROJECTION RETRAITE (Wiring 2026-05) — n'apparaît que si l'utilisateur
+                a déjà ouvert l'onglet Future au moins une fois dans la session. */}
+            {horizonSnapshot && (
+                <Card title={`🔮 Portefeuille projeté en ${horizonSnapshot.year} (${projectionHorizonYears} ans)`} className="bg-gradient-to-br from-blue-900/10 to-indigo-900/10 border-blue-500/20">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        <div className="p-3 rounded-xl bg-emerald-900/20 border border-emerald-500/20">
+                            <div className="text-[10px] text-emerald-300 font-bold uppercase tracking-widest mb-1">CELI</div>
+                            <div className="text-lg font-black text-emerald-400 privacy-blur">{horizonSnapshot.celi.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-blue-900/20 border border-blue-500/20">
+                            <div className="text-[10px] text-blue-300 font-bold uppercase tracking-widest mb-1">REER</div>
+                            <div className="text-lg font-black text-blue-400 privacy-blur">{horizonSnapshot.reer.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-amber-900/20 border border-amber-500/20">
+                            <div className="text-[10px] text-amber-300 font-bold uppercase tracking-widest mb-1">Non-Enreg</div>
+                            <div className="text-lg font-black text-amber-400 privacy-blur">{horizonSnapshot.nonReg.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
+                        </div>
+                        {horizonSnapshot.crypto > 0 && (
+                            <div className="p-3 rounded-xl bg-purple-900/20 border border-purple-500/20">
+                                <div className="text-[10px] text-purple-300 font-bold uppercase tracking-widest mb-1">Crypto</div>
+                                <div className="text-lg font-black text-purple-400 privacy-blur">{horizonSnapshot.crypto.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
+                            </div>
+                        )}
+                        <div className="p-3 rounded-xl bg-white/5 border border-white/10 col-span-2 md:col-span-1">
+                            <div className="text-[10px] text-gray-300 font-bold uppercase tracking-widest mb-1">Patrimoine Net</div>
+                            <div className="text-lg font-black text-white privacy-blur">{horizonSnapshot.netWorth.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
+                        </div>
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-3">🔗 Synchronisé avec la simulation FutureProjection (scénario actif).</div>
+                </Card>
+            )}
 
             {/* 1. CHART SECTION */}
             <Card className="min-h-[550px]" title="Performance Comparée">

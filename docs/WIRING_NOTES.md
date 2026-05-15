@@ -146,6 +146,34 @@ Le store Zustand expose maintenant `lastProjection: ProjectionResult | null`.
 - Premier consumer: `Dashboard.tsx` "Indicateur Futur" — affiche le NW réel
   projeté à N ans depuis chartData, plutôt que la formule simple 5%
 
+## 🆕 Deep-link cross-tab (Phase B2, 2026-05)
+
+Le store expose `pendingFocus: PendingFocus | null` et la fonction
+`navigateWithFocus(tab, section?)`. Pattern :
+
+```tsx
+// Source — un badge 🔗 d'un onglet
+const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
+<Badge onClick={() => navigateWithFocus(Tab.FUTURE, 'fire-objective')}>
+  🔗 Projection: $X
+</Badge>
+
+// Destination — la page cible consomme l'intent au mount
+import { usePendingFocus } from '../utils/usePendingFocus';
+usePendingFocus(Tab.FUTURE);
+// Scroll vers l'élément <Section data-focus-section="fire-objective" />
+```
+
+`pendingFocus` expire après 5s (`expiresAt`) — garde-fou contre les
+focus fantômes. Animation `animate-pulse-once` (1.5s) au scroll.
+
+Consumers actifs:
+- Dashboard "Indicateur Futur" (KPI + badge "🔗 Sync")
+- Budget bandeau "🔗 Impact à long terme" (bandeau entier cliquable)
+- Children badge "🔗 fmt(REEE)"
+- Investments Card "Portefeuille projeté" (CTA "ouvrir →")
+- RealEstate badge "🔗 Projection: $X"
+
 ### Pattern pour brancher d'autres onglets
 
 ```tsx

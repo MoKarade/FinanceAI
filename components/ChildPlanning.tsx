@@ -4,7 +4,7 @@ import { PageHeader } from './ui/PageHeader';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area, ReferenceLine } from 'recharts';
-import { ChildGoal, ProjectionConfig } from '../types';
+import { ChildGoal, ProjectionConfig, Tab as TabEnum } from '../types';
 import { INITIAL_CHILD_GOAL } from '../constants';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { useFinanceStore } from '../store/useFinanceStore';
@@ -69,6 +69,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     // projeté par le moteur principal (FutureProjection), à comparer avec
     // la simulation locale ci-dessous.
     const lastProjection = useFinanceStore(s => s.lastProjection);
+    const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
     const projectedReeeAt18 = useMemo(() => {
         if (!lastProjection?.chartData?.length || !goal?.birthDate) return null;
         const childBirthYear = new Date(goal.birthDate).getFullYear();
@@ -431,12 +432,14 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                     <Card title="🎓 Simulateur REEE — Croissance jusqu'à 17 ans" action={
                         <div className="flex items-center gap-2">
                             {projectedReeeAt18 !== null && projectedReeeAt18 > 0 && (
-                                <div
-                                    className="text-[10px] font-bold px-2 py-1 rounded border text-blue-300 border-blue-500/30 bg-blue-500/10"
-                                    title="Projection officielle (FutureProjection) au 17e anniversaire"
+                                <Badge
+                                    variant="info"
+                                    size="sm"
+                                    onClick={() => navigateWithFocus(TabEnum.FUTURE)}
+                                    title="Projection officielle (FutureProjection) au 17e anniversaire — clic pour ouvrir"
                                 >
                                     🔗 {fmt(projectedReeeAt18)}
-                                </div>
+                                </Badge>
                             )}
                             <div className={`text-xs font-bold px-2 py-1 rounded border ${respCovers >= 100 ? 'text-green-400 border-green-500/30 bg-green-500/10' : 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10'}`}>
                                 {respCovers.toFixed(0)}% des études couvertes

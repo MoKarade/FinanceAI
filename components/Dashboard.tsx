@@ -10,6 +10,7 @@ import { fetchPortfolioHistory, MarketDataPoint } from '../services/finance';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import { ASSET_META } from '../services/assetMeta';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { Tab as TabEnum } from '../types';
 
 interface DashboardProps {
     transactions: Transaction[];
@@ -53,6 +54,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     // Wiring 2026-05: lit la vraie projection FutureProjection si dispo, sinon
     // fallback sur formule simple. Garanti d'être sync avec l'onglet projection.
     const lastProjection = useFinanceStore(s => s.lastProjection);
+    const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
 
     const calculateFutureValue = (pv: number, pmtMonthly: number, years: number) => {
         // Si on a une projection vivante, on cherche le NW au mois cible.
@@ -284,10 +286,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     variant="warning"
                 />
                 {/* Indicateur Futur — custom car contient un input année */}
-                <div className="bg-info-bg backdrop-blur-sm rounded-card p-4 border-l-4 border-l-info-500 border-r border-t border-b border-white/5 flex flex-col gap-1">
+                <div className="bg-info-bg backdrop-blur-sm rounded-card p-4 border-l-4 border-l-info-500 border-r border-t border-b border-white/5 flex flex-col gap-1 hover:bg-info-500/15 transition-colors group">
                     <div className="flex items-center justify-between">
                         <span className="kpi-label">{t('dashboard.future_predictor', 'Indicateur Futur')}</span>
-                        <span className="text-meta text-ink-300" aria-hidden="true">🎯</span>
+                        <button
+                            type="button"
+                            onClick={() => navigateWithFocus(TabEnum.FUTURE)}
+                            className="text-meta text-info-400 opacity-0 group-hover:opacity-100 focus-ring rounded transition-opacity"
+                            title="Ouvrir la projection future"
+                            aria-label="Aller à FutureProjection"
+                        >
+                            🎯 →
+                        </button>
                     </div>
                     <div className="text-kpi text-ink-50 privacy-blur tabular-nums">
                         {calculateFutureValue(latestTotals?.Total || 0, calculatedMonthlySavings || 0, futureYears).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
@@ -306,7 +316,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <span className="text-ink-400">ans</span>
                         </div>
                         {lastProjection?.chartData && lastProjection.chartData.length > 0 && (
-                            <span className="text-tiny text-info-400 font-bold" title="Synchronisé avec FutureProjection">🔗 Sync</span>
+                            <button
+                                type="button"
+                                onClick={() => navigateWithFocus(TabEnum.FUTURE)}
+                                className="text-tiny text-info-400 font-bold hover:underline focus-ring rounded"
+                                title="Ouvrir la projection future"
+                            >
+                                🔗 Sync
+                            </button>
                         )}
                     </div>
                 </div>

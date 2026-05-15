@@ -421,8 +421,8 @@ Le backend wiring est en place. Côté UI, ajouter :
 | **A2** | `feat(ui): primitives Button + Badge + SectionHeader` | 3 primitives + tests RTL | A3+ | M |
 | **A3** | `feat(ui): primitives KPIStat + StatGrid + CollapsibleSection + Pill` | 4 primitives + tests | A4+ | M |
 | **A4** | `feat(ui): PageHeader + EmptyState` | 2 primitives | B+ | S |
-| **B1** | `feat(nav): regroupement sidebar par thèmes` | Layout.tsx refondu, groupes Argent/Plan/Objectifs/Outils | Mobile drawer | M |
-| **B2** | `feat(nav): deep-link cross-tab (pendingFocus)` | Store + hook + scrollIntoView | Pages users | S |
+| ~~**B1**~~ | ~~`feat(nav): regroupement sidebar`~~ | ✅ FAIT — Layout.tsx avec 4 groupes thématiques | — | M |
+| ~~**B2**~~ | ~~`feat(nav): deep-link cross-tab`~~ | ✅ FAIT — `pendingFocus` + `navigateWithFocus` + `usePendingFocus` hook + animate-pulse-once. 5 consumers branchés. | — | M |
 | **C1** | `refactor(future): hero KPI + collapsible sections` | FutureProjection cible §4.1 | — | M |
 | **C2** | `refactor(dashboard): hero clean + sections collapsibles` | Dashboard cible §4.2 | — | M |
 | **C3** | `refactor(budget): hero + bandeau + sections` | Budget cible §4.3 | — | S |

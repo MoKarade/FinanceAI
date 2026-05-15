@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { RealEstateGoal } from '../types';
+import { RealEstateGoal, Tab as TabEnum } from '../types';
 import { INITIAL_REAL_ESTATE_GOAL } from '../constants';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { PropertyConfigurator } from './realestate/PropertyConfigurator';
@@ -207,6 +207,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
     // Wiring 2026-05: équité immo projetée par le moteur principal au terme de
     // l'amortissement, à comparer avec le calcul local de la card Buy vs Rent.
     const lastProjection = useFinanceStore(s => s.lastProjection);
+    const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
     const projectedEquityAtAmortEnd = useMemo(() => {
         if (!lastProjection?.chartData?.length) return null;
         const targetMonth = amortization * 12;
@@ -344,12 +345,14 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
 
                     <Card title="📊 Scénarios Comparatifs (Habiter vs Louer vs Bourse)" action={
                         projectedEquityAtAmortEnd !== null && projectedEquityAtAmortEnd > 0 ? (
-                            <div
-                                className="text-[10px] font-bold px-2 py-1 rounded border text-blue-300 border-blue-500/30 bg-blue-500/10"
-                                title={`Équité immo projetée par FutureProjection à l'année ${amortization}`}
+                            <Badge
+                                variant="info"
+                                size="sm"
+                                onClick={() => navigateWithFocus(TabEnum.FUTURE)}
+                                title={`Équité immo projetée par FutureProjection à l'année ${amortization} — clic pour ouvrir`}
                             >
                                 🔗 Projection: {formatCurrency(projectedEquityAtAmortEnd)}
-                            </div>
+                            </Badge>
                         ) : null
                     }>
                         {(() => {

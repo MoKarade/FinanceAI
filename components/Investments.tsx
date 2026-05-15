@@ -8,6 +8,7 @@ import {
     BudgetCategory,
     BudgetConfig,
     RegisteredAccountType,
+    Tab as TabEnum,
 } from '../types';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip } from 'recharts';
 import { Card } from './ui/Card';
@@ -73,6 +74,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
 
     // Wiring 2026-05: lecture de la projection vivante depuis le store.
     const lastProjection = useFinanceStore(s => s.lastProjection);
+    const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
     const projectionHorizonYears = projection.years || 30;
     const horizonSnapshot = useMemo(() => {
         if (!lastProjection?.chartData?.length) return null;
@@ -418,7 +420,13 @@ export const Investments: React.FC<InvestmentsProps> = ({
                             <div className="text-lg font-black text-white privacy-blur">{horizonSnapshot.netWorth.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
                         </div>
                     </div>
-                    <div className="text-[10px] text-gray-500 mt-3">🔗 Synchronisé avec la simulation FutureProjection (scénario actif).</div>
+                    <button
+                        type="button"
+                        onClick={() => navigateWithFocus(TabEnum.FUTURE)}
+                        className="text-tiny text-info-400 mt-3 hover:underline font-bold focus-ring rounded inline-flex items-center gap-1"
+                    >
+                        🔗 Synchronisé avec FutureProjection — ouvrir →
+                    </button>
                 </Card>
             )}
 

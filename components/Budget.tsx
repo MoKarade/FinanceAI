@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Transaction, BudgetConfig, BudgetCategory } from '../types';
+import { Transaction, BudgetConfig, BudgetCategory, Tab as TabEnum } from '../types';
 import { Card } from './ui/Card';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
@@ -312,6 +312,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // Wiring 2026-05: snapshot final de la projection vivante.
     // Permet de relier "épargne théorique mensuelle" → "patrimoine fin vie".
     const lastProjection = useFinanceStore(s => s.lastProjection);
+    const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
     const projectionSummary = useMemo(() => {
         if (!lastProjection?.chartData?.length) return null;
         const last = lastProjection.chartData[lastProjection.chartData.length - 1];
@@ -442,9 +443,14 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
             {/* PROJECTION LINK (Wiring 2026-05) */}
             {projectionSummary && (
-                <div className="bg-gradient-to-br from-blue-900/10 to-indigo-900/10 border border-blue-500/20 rounded-2xl p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                <button
+                    type="button"
+                    onClick={() => navigateWithFocus(TabEnum.FUTURE)}
+                    className="bg-gradient-to-br from-blue-900/10 to-indigo-900/10 border border-blue-500/20 rounded-card p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full text-left hover:from-blue-900/20 hover:to-indigo-900/20 transition-colors focus-ring"
+                    title="Ouvrir FutureProjection"
+                >
                     <div>
-                        <div className="text-[10px] uppercase font-bold text-blue-300 tracking-widest mb-1">🔗 Impact à long terme</div>
+                        <div className="text-tiny uppercase font-bold text-info-400 tracking-widest mb-1">🔗 Impact à long terme →</div>
                         <div className="text-2xl font-black text-white privacy-blur">
                             {projectionSummary.estateNetWorth.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
                         </div>
@@ -459,7 +465,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                         </div>
                         <div className="text-[10px] text-gray-500">par +100$/mois d'épargne supplémentaire</div>
                     </div>
-                </div>
+                </button>
             )}
 
             {/* ALERTS BANNER */}

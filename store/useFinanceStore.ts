@@ -4,6 +4,16 @@ import { AppState, Tab, BudgetCategory } from '../types';
 import { INITIAL_BUDGET, INITIAL_CONFIG, INITIAL_PROJECTION, INITIAL_REAL_ESTATE_GOAL, INITIAL_CHILD_GOAL, DEFAULT_FX_RATES } from '../constants';
 import type { ProjectionResult } from '../services/projection/types';
 
+// Phase B2 — Deep-link cross-tab: un onglet pose un "intent" de focus, la page
+// destination le consomme au mount (scroll, highlight, focus, etc.).
+export interface PendingFocus {
+    tab: Tab;
+    section: string | null;
+    /** Timestamp d'expiration (ms). Garde-fou: si la page cible ne consomme
+     *  pas dans 5s, on auto-purge pour éviter les focus fantômes. */
+    expiresAt: number;
+}
+
 interface FinanceState extends AppState {
     activeTab: Tab;
     isPrivacyMode: boolean;
@@ -11,11 +21,16 @@ interface FinanceState extends AppState {
     // mis à jour par FutureProjection. Lu par Dashboard/Investments/Budget/etc.
     // pour afficher des projections cohérentes sans recalculer.
     lastProjection: ProjectionResult | null;
+    pendingFocus: PendingFocus | null;
     setActiveTab: (tab: Tab) => void;
     setPrivacyMode: (v: boolean) => void;
     togglePrivacyMode: () => void;
     setAppState: (state: Partial<AppState>) => void;
     setLastProjection: (r: ProjectionResult | null) => void;
+    /** Navigate to a tab with an optional section to scroll/focus on arrival. */
+    navigateWithFocus: (tab: Tab, section?: string) => void;
+    /** Called by the destination page after it has consumed the focus intent. */
+    clearPendingFocus: () => void;
     updateFxRates: (rates: { USD: number; EUR: number; CAD: number; lastFetched?: number }) => void;
     updateApiKeys: (keys: { eraContext: string; gemini: string }) => void;
     updateLastUpdate: () => void;
@@ -216,12 +231,18 @@ export const useFinanceStore = create<FinanceState>()(
             activeTab: Tab.DASHBOARD,
             isPrivacyMode: false,
             lastProjection: null,
+            pendingFocus: null,
 
             setActiveTab: (tab) => set({ activeTab: tab }),
             setPrivacyMode: (v) => set({ isPrivacyMode: v }),
             togglePrivacyMode: () => set((prev) => ({ isPrivacyMode: !prev.isPrivacyMode })),
             setAppState: (state) => set((prev) => ({ ...prev, ...state })),
             setLastProjection: (r) => set({ lastProjection: r }),
+            navigateWithFocus: (tab, section) => set({
+                activeTab: tab,
+                pendingFocus: { tab, section: section ?? null, expiresAt: Date.now() + 5000 },
+            }),
+            clearPendingFocus: () => set({ pendingFocus: null }),
             updateFxRates: (rates) => set((prev) => ({
                 fxRates: { ...prev.fxRates, ...rates }
             })),
@@ -248,7 +269,7 @@ export const useFinanceStore = create<FinanceState>()(
                 return persistedState as Partial<FinanceState>;
             },
             partialize: (state) => {
-                const { apiKeys, activeTab, isPrivacyMode, lastProjection, ...persistable } = state;
+                const { apiKeys, activeTab, isPrivacyMode, lastProjection, pendingFocus, ...persistable } = state;
                 return persistable;
             },
         }

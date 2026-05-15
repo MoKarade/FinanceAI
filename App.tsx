@@ -8,7 +8,8 @@ import { fetchTransactions } from './services/eraContext';
 import { INITIAL_CHILD_GOAL } from './constants';
 import { parseTransactions, markDuplicates } from './utils/transactionParser';
 import { fetchAssetHistory, fetchFxRates } from './services/finance';
-import { generateFinancialReport } from './services/pdfReport';
+// Phase 3E perf — lazy-load pdfReport (jspdf = 595KB) seulement au clic
+// "Générer PDF" plutôt qu'au boot de l'app.
 import { useFinanceStore, getMigrationStatus } from './store/useFinanceStore';
 import { useDerivedFinancials } from './utils/useDerivedFinancials';
 import { TabRouter } from './components/TabRouter';
@@ -301,6 +302,8 @@ export const App: React.FC = () => {
                 onOpenGuide={() => setShowGuide(true)}
                 onGeneratePDF={async () => {
                     try {
+                        // Lazy-load jspdf vendor chunk seulement à l'usage
+                        const { generateFinancialReport } = await import('./services/pdfReport');
                         await generateFinancialReport({
                             netWorth: globalNetWorth,
                             monthlySavings: calculatedMonthlySavings,

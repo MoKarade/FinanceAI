@@ -1,16 +1,33 @@
-
 import React, { useState } from 'react';
 import { AppState, BudgetConfig } from '../types';
 import { INITIAL_BUDGET, INITIAL_PROJECTION, INITIAL_REAL_ESTATE_GOAL, INITIAL_CHILD_GOAL, DEFAULT_FX_RATES } from '../constants';
+import { Button } from './ui/Button';
 
 interface OnboardingProps {
     onComplete: (data: Partial<AppState>) => void;
 }
 
-type OnboardingStep = 'welcome' | 'profile' | 'budget' | 'investing' | 'done';
+type OnboardingStep = 'welcome' | 'profile' | 'keys' | 'investing';
 
-const STEPS: OnboardingStep[] = ['welcome', 'profile', 'budget', 'investing', 'done'];
+const STEPS: OnboardingStep[] = ['welcome', 'profile', 'keys', 'investing'];
+const STEP_LABELS: Record<OnboardingStep, string> = {
+    welcome: 'Bienvenue',
+    profile: 'Votre profil',
+    keys: 'Clés API (optionnel)',
+    investing: 'Vos comptes',
+};
 
+/**
+ * Phase 3D — Onboarding refondu.
+ *
+ * Changements:
+ *  - Step 'done' supprimé (mort, jamais affiché)
+ *  - Step 'budget' renommé 'keys' (le contenu était les clés API, pas le budget)
+ *  - <Button> primitive partout au lieu de className manuels
+ *  - Tokens typo + couleurs sémantiques (warning au lieu de text-amber-300/80)
+ *  - aria-current sur la barre de progression
+ *  - "Sauter cette étape" sur la dernière (les soldes sont configurables après)
+ */
 export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     const [step, setStep] = useState<OnboardingStep>('welcome');
     const [eraContextKey, setEraContextKey] = useState('');
@@ -27,6 +44,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     const next = () => {
         const nextStep = STEPS[stepIdx + 1];
         if (nextStep) setStep(nextStep);
+    };
+    const prev = () => {
+        const prevStep = STEPS[stepIdx - 1];
+        if (prevStep) setStep(prevStep);
     };
 
     const handleFinish = () => {
@@ -58,11 +79,18 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
             <div className="relative w-full max-w-lg">
                 <div className="mb-8">
-                    <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                        <span>Configuration initiale</span>
-                        <span>{stepIdx + 1} / {STEPS.length}</span>
+                    <div className="flex items-center justify-between text-meta text-ink-400 mb-2">
+                        <span>{STEP_LABELS[step]}</span>
+                        <span aria-live="polite">{stepIdx + 1} / {STEPS.length}</span>
                     </div>
-                    <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                    <div
+                        className="w-full h-1 bg-white/5 rounded-full overflow-hidden"
+                        role="progressbar"
+                        aria-valuenow={Math.round(progress)}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label="Progression de la configuration"
+                    >
                         <div
                             className="h-full bg-gradient-to-r from-primary to-emerald-400 transition-all duration-500"
                             style={{ width: `${progress}%` }}
@@ -72,127 +100,123 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
                 {step === 'welcome' && (
                     <div className="text-center space-y-6 animate-fade-in">
-                        <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-primary to-emerald-300 flex items-center justify-center text-4xl shadow-[0_0_40px_rgba(16,185,129,0.3)]">
+                        <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-primary to-emerald-300 flex items-center justify-center text-4xl shadow-[0_0_40px_rgba(16,185,129,0.3)]" aria-hidden="true">
                             Fi
                         </div>
                         <div>
-                            <h1 className="text-4xl font-black text-white mb-3">Bienvenue sur<br />FinanceAI</h1>
-                            <p className="text-gray-400 text-lg">Configuration rapide en 3 minutes.<br />Donnees stockees localement dans votre navigateur.</p>
+                            <h1 className="text-display text-ink-50 mb-3">Bienvenue sur<br />FinanceAI</h1>
+                            <p className="text-body text-ink-300">Configuration rapide en 3 minutes.<br />Données stockées localement dans votre navigateur.</p>
                         </div>
                         <div className="grid grid-cols-1 gap-3 text-left">
                             {[
-                                { icon: '🔐', text: 'Pas de serveur back-end — les donnees vivent dans localStorage de votre navigateur.' },
-                                { icon: '🤖', text: 'Si vous activez Gemini : marchands tronques + montants arrondis a 100$ envoyes a Google AI Studio pour la categorisation.' },
-                                { icon: '💳', text: 'Si vous activez Era Context : token envoye a leur API pour fetcher vos transactions.' },
-                                { icon: '📊', text: 'Simulation financiere complete (retraite, immobilier, projections) entierement locale.' },
+                                { icon: '🔐', text: "Pas de serveur back-end — les données vivent dans localStorage de votre navigateur." },
+                                { icon: '🤖', text: "Si vous activez Gemini : marchands tronqués + montants arrondis à 100$ envoyés à Google AI Studio pour la catégorisation." },
+                                { icon: '💳', text: "Si vous activez Era Context : token envoyé à leur API pour fetcher vos transactions." },
+                                { icon: '📊', text: "Simulation financière complète (retraite, immobilier, projections) entièrement locale." },
                             ].map((f, i) => (
-                                <div key={i} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
+                                <div key={i} className="flex items-center gap-3 p-3 bg-white/5 rounded-card border border-white/5">
                                     <span className="text-2xl" aria-hidden="true">{f.icon}</span>
-                                    <span className="text-sm text-gray-300">{f.text}</span>
+                                    <span className="text-body text-ink-200">{f.text}</span>
                                 </div>
                             ))}
                         </div>
-                        <button onClick={next} className="w-full py-4 bg-gradient-to-r from-primary to-emerald-500 text-white font-bold rounded-2xl text-lg shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:brightness-110 transition-all active:scale-95">
+                        <Button onClick={next} variant="primary" size="lg" fullWidth>
                             Commencer la configuration →
-                        </button>
+                        </Button>
                     </div>
                 )}
 
                 {step === 'profile' && (
                     <div className="space-y-6 animate-fade-in">
                         <div>
-                            <h2 className="text-2xl font-bold text-white">Votre profil</h2>
-                            <p className="text-gray-400 text-sm mt-1">Utilise pour les calculs fiscaux et la projection</p>
+                            <h2 className="text-h1 text-ink-50">Votre profil</h2>
+                            <p className="text-meta text-ink-400 mt-1">Utilisé pour les calculs fiscaux et la projection</p>
                         </div>
 
-                        <div className="space-y-4 p-4 bg-white/5 rounded-xl border border-white/10">
-                            <div className="font-bold text-white text-sm">👤 Utilisateur principal</div>
+                        <div className="space-y-4 p-4 bg-white/5 rounded-card border border-white/10">
+                            <div className="font-bold text-ink-50 text-body">👤 Utilisateur principal</div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label htmlFor="user1-name" className="text-xs text-gray-400">Prenom</label>
-                                    <input id="user1-name" className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1" value={user1.name} onChange={e => setUser1({ ...user1, name: e.target.value })} />
+                                    <label htmlFor="user1-name" className="text-meta text-ink-400">Prénom</label>
+                                    <input id="user1-name" className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body mt-1 focus-ring" value={user1.name} onChange={e => setUser1({ ...user1, name: e.target.value })} />
                                 </div>
                                 <div>
-                                    <label htmlFor="user1-age" className="text-xs text-gray-400">Age</label>
-                                    <input id="user1-age" type="number" inputMode="numeric" className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 font-mono" value={user1.age} onChange={e => setUser1({ ...user1, age: parseInt(e.target.value) || 30 })} min={18} max={80} />
+                                    <label htmlFor="user1-age" className="text-meta text-ink-400">Âge</label>
+                                    <input id="user1-age" type="number" inputMode="numeric" className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body mt-1 font-mono focus-ring" value={user1.age} onChange={e => setUser1({ ...user1, age: parseInt(e.target.value) || 30 })} min={18} max={80} />
                                 </div>
                                 <div>
-                                    <label htmlFor="user1-gross" className="text-xs text-gray-400">Salaire brut annuel ($)</label>
-                                    <input id="user1-gross" type="number" inputMode="decimal" className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 font-mono" value={user1.grossSalary} onChange={e => setUser1({ ...user1, grossSalary: Math.max(0, Math.min(10000000, parseInt(e.target.value) || 0)) })} />
+                                    <label htmlFor="user1-gross" className="text-meta text-ink-400">Salaire brut annuel ($)</label>
+                                    <input id="user1-gross" type="number" inputMode="decimal" className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body mt-1 font-mono focus-ring" value={user1.grossSalary} onChange={e => setUser1({ ...user1, grossSalary: Math.max(0, Math.min(10000000, parseInt(e.target.value) || 0)) })} />
                                 </div>
                                 <div>
-                                    <label htmlFor="user1-net" className="text-xs text-gray-400">Salaire net mensuel ($)</label>
-                                    <input id="user1-net" type="number" inputMode="decimal" className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 font-mono" value={user1.netSalary} onChange={e => setUser1({ ...user1, netSalary: Math.max(0, Math.min(1000000, parseInt(e.target.value) || 0)) })} />
+                                    <label htmlFor="user1-net" className="text-meta text-ink-400">Salaire net mensuel ($)</label>
+                                    <input id="user1-net" type="number" inputMode="decimal" className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body mt-1 font-mono focus-ring" value={user1.netSalary} onChange={e => setUser1({ ...user1, netSalary: Math.max(0, Math.min(1000000, parseInt(e.target.value) || 0)) })} />
                                 </div>
                                 <div className="col-span-2">
-                                    <label htmlFor="user1-arrival" className="text-xs text-orange-300">Annee d'arrivee au Canada <span className="text-gray-500">(pour calcul CELI)</span></label>
-                                    <input id="user1-arrival" type="number" inputMode="numeric" className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 font-mono" value={user1.canadaArrivalYear} onChange={e => setUser1({ ...user1, canadaArrivalYear: Math.max(2009, Math.min(new Date().getFullYear(), parseInt(e.target.value) || 2020)) })} min={2009} max={new Date().getFullYear()} />
+                                    <label htmlFor="user1-arrival" className="text-meta text-warning-400">Année d'arrivée au Canada <span className="text-ink-400">(pour calcul CELI)</span></label>
+                                    <input id="user1-arrival" type="number" inputMode="numeric" className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body mt-1 font-mono focus-ring" value={user1.canadaArrivalYear} onChange={e => setUser1({ ...user1, canadaArrivalYear: Math.max(2009, Math.min(new Date().getFullYear(), parseInt(e.target.value) || 2020)) })} min={2009} max={new Date().getFullYear()} />
                                 </div>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <input type="checkbox" id="coupleMode" checked={hasCoupleMode} onChange={e => setHasCoupleMode(e.target.checked)} className="w-4 h-4 rounded" />
-                            <label htmlFor="coupleMode" className="text-sm text-gray-300 cursor-pointer">Mode couple (2 revenus)</label>
+                            <input type="checkbox" id="coupleMode" checked={hasCoupleMode} onChange={e => setHasCoupleMode(e.target.checked)} className="w-4 h-4 rounded focus-ring" />
+                            <label htmlFor="coupleMode" className="text-body text-ink-200 cursor-pointer">Mode couple (2 revenus)</label>
                         </div>
 
                         {hasCoupleMode && (
-                            <div className="space-y-4 p-4 bg-white/5 rounded-xl border border-white/10 animate-fade-in">
-                                <div className="font-bold text-white text-sm">💑 Partenaire</div>
+                            <div className="space-y-4 p-4 bg-white/5 rounded-card border border-white/10 animate-fade-in">
+                                <div className="font-bold text-ink-50 text-body">💑 Partenaire</div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label htmlFor="user2-name" className="text-xs text-gray-400">Prenom</label>
-                                        <input id="user2-name" className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1" value={user2.name} onChange={e => setUser2({ ...user2, name: e.target.value })} />
+                                        <label htmlFor="user2-name" className="text-meta text-ink-400">Prénom</label>
+                                        <input id="user2-name" className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body mt-1 focus-ring" value={user2.name} onChange={e => setUser2({ ...user2, name: e.target.value })} />
                                     </div>
                                     <div>
-                                        <label htmlFor="user2-net" className="text-xs text-gray-400">Salaire net mensuel ($)</label>
-                                        <input id="user2-net" type="number" inputMode="decimal" className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 font-mono" value={user2.netSalary} onChange={e => setUser2({ ...user2, netSalary: Math.max(0, Math.min(1000000, parseInt(e.target.value) || 0)) })} />
+                                        <label htmlFor="user2-net" className="text-meta text-ink-400">Salaire net mensuel ($)</label>
+                                        <input id="user2-net" type="number" inputMode="decimal" className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body mt-1 font-mono focus-ring" value={user2.netSalary} onChange={e => setUser2({ ...user2, netSalary: Math.max(0, Math.min(1000000, parseInt(e.target.value) || 0)) })} />
                                     </div>
                                 </div>
                             </div>
                         )}
 
                         <div className="flex gap-3">
-                            <button onClick={() => setStep('welcome')} className="flex-1 py-3 bg-white/5 text-gray-300 rounded-xl font-medium hover:bg-white/10 transition-all">← Retour</button>
-                            <button onClick={next} className="flex-1 py-3 bg-primary text-white rounded-xl font-bold hover:brightness-110 transition-all active:scale-95">
-                                Continuer →
-                            </button>
+                            <Button onClick={prev} variant="ghost" size="md" fullWidth>← Retour</Button>
+                            <Button onClick={next} variant="primary" size="md" fullWidth>Continuer →</Button>
                         </div>
                     </div>
                 )}
 
-                {step === 'budget' && (
+                {step === 'keys' && (
                     <div className="space-y-6 animate-fade-in">
                         <div>
-                            <h2 className="text-2xl font-bold text-white">Cles API</h2>
-                            <p className="text-gray-400 text-sm mt-1">Optionnelles — l'app fonctionne sans, mais avec moins de fonctionnalites.</p>
-                            <p className="text-amber-300/80 text-meta mt-2 leading-relaxed">
-                                ⚠️ En activant Gemini, vous consentez explicitement a ce que des donnees (marchands tronques + montants arrondis a 100$) soient envoyees a Google AI Studio. Era Context verra votre token + transactions.
+                            <h2 className="text-h1 text-ink-50">Clés API</h2>
+                            <p className="text-meta text-ink-400 mt-1">Optionnelles — l'app fonctionne sans, mais avec moins de fonctionnalités.</p>
+                            <p className="text-meta text-warning-400 mt-2 leading-relaxed">
+                                ⚠️ En activant Gemini, vous consentez explicitement à ce que des données (marchands tronqués + montants arrondis à 100$) soient envoyées à Google AI Studio. Era Context verra votre token + transactions.
                             </p>
                         </div>
                         <div className="space-y-4">
-                            <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-                                <label htmlFor="era-key" className="text-sm font-bold text-white flex items-center gap-2 mb-2">
+                            <div className="p-4 bg-white/5 rounded-card border border-white/10">
+                                <label htmlFor="era-key" className="text-body font-bold text-ink-50 flex items-center gap-2 mb-2">
                                     <span aria-hidden="true">🌐</span> Era Context Token
-                                    <span className="text-tiny text-gray-500 font-normal">(Sync automatique des transactions)</span>
+                                    <span className="text-tiny text-ink-400 font-normal">(Sync automatique des transactions)</span>
                                 </label>
-                                <input id="era-key" type="password" placeholder="Token Era Context..." className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono" value={eraContextKey} onChange={e => setEraContextKey(e.target.value)} />
-                                <p className="text-tiny text-gray-500 mt-2">Obtenez votre token sur <a href="https://era.app" target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">era.app</a></p>
+                                <input id="era-key" type="password" placeholder="Token Era Context..." className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body font-mono focus-ring" value={eraContextKey} onChange={e => setEraContextKey(e.target.value)} />
+                                <p className="text-tiny text-ink-400 mt-2">Obtenez votre token sur <a href="https://era.app" target="_blank" rel="noopener noreferrer" className="text-info-400 underline">era.app</a></p>
                             </div>
-                            <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-                                <label htmlFor="gemini-key" className="text-sm font-bold text-white flex items-center gap-2 mb-2">
+                            <div className="p-4 bg-white/5 rounded-card border border-white/10">
+                                <label htmlFor="gemini-key" className="text-body font-bold text-ink-50 flex items-center gap-2 mb-2">
                                     <span aria-hidden="true">🤖</span> Google Gemini API Key
-                                    <span className="text-tiny text-gray-500 font-normal">(Categorisation IA + objectifs intelligents)</span>
+                                    <span className="text-tiny text-ink-400 font-normal">(Catégorisation IA + objectifs intelligents)</span>
                                 </label>
-                                <input id="gemini-key" type="password" placeholder="AIza..." className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono" value={geminiKey} onChange={e => setGeminiKey(e.target.value)} />
-                                <p className="text-tiny text-gray-500 mt-2">Obtenez votre cle sur <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">aistudio.google.com</a></p>
+                                <input id="gemini-key" type="password" placeholder="AIza..." className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body font-mono focus-ring" value={geminiKey} onChange={e => setGeminiKey(e.target.value)} />
+                                <p className="text-tiny text-ink-400 mt-2">Obtenez votre clé sur <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-info-400 underline">aistudio.google.com</a></p>
                             </div>
                         </div>
                         <div className="flex gap-3">
-                            <button onClick={() => setStep('profile')} className="flex-1 py-3 bg-white/5 text-gray-300 rounded-xl font-medium hover:bg-white/10 transition-all">← Retour</button>
-                            <button onClick={next} className="flex-1 py-3 bg-primary text-white rounded-xl font-bold hover:brightness-110 transition-all active:scale-95">
-                                Continuer →
-                            </button>
+                            <Button onClick={prev} variant="ghost" size="md" fullWidth>← Retour</Button>
+                            <Button onClick={next} variant="primary" size="md" fullWidth>Continuer →</Button>
                         </div>
                     </div>
                 )}
@@ -200,29 +224,29 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 {step === 'investing' && (
                     <div className="space-y-6 animate-fade-in">
                         <div>
-                            <h2 className="text-2xl font-bold text-white">Vos comptes d'investissement</h2>
-                            <p className="text-gray-400 text-sm mt-1">Soldes approximatifs — vous pourrez les modifier plus tard</p>
+                            <h2 className="text-h1 text-ink-50">Vos comptes d'investissement</h2>
+                            <p className="text-meta text-ink-400 mt-1">Soldes approximatifs — vous pourrez les modifier plus tard</p>
                         </div>
                         <div className="space-y-3">
                             {[
-                                { label: '🌿 CELI', key: 'celi', value: celiBalance, onChange: setCeliBalance, hint: 'Compte Epargne Libre-Impot' },
-                                { label: '🔒 REER', key: 'reer', value: reerBalance, onChange: setReerBalance, hint: 'Regime Epargne-Retraite' },
+                                { label: '🌿 CELI', key: 'celi', value: celiBalance, onChange: setCeliBalance, hint: 'Compte Épargne Libre-Impôt' },
+                                { label: '🔒 REER', key: 'reer', value: reerBalance, onChange: setReerBalance, hint: "Régime Épargne-Retraite" },
                             ].map(({ label, key, value, onChange, hint }) => (
-                                <div key={key} className="p-4 bg-white/5 rounded-xl border border-white/10">
-                                    <label htmlFor={`balance-${key}`} className="text-sm font-bold text-white flex items-center gap-2 mb-1">{label} <span className="text-tiny text-gray-500 font-normal">{hint}</span></label>
+                                <div key={key} className="p-4 bg-white/5 rounded-card border border-white/10">
+                                    <label htmlFor={`balance-${key}`} className="text-body font-bold text-ink-50 flex items-center gap-2 mb-1">{label} <span className="text-tiny text-ink-400 font-normal">{hint}</span></label>
                                     <div className="flex items-center gap-2 mt-2">
-                                        <input id={`balance-${key}`} type="number" inputMode="decimal" placeholder="0" className="flex-1 bg-dark border border-white/10 rounded-lg px-3 py-2 text-white font-mono" value={value || ''} onChange={e => onChange(Math.max(0, Math.min(100000000, parseFloat(e.target.value) || 0)))} />
-                                        <span className="text-gray-400 text-sm">$</span>
+                                        <input id={`balance-${key}`} type="number" inputMode="decimal" placeholder="0" className="flex-1 bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 font-mono focus-ring" value={value || ''} onChange={e => onChange(Math.max(0, Math.min(100000000, parseFloat(e.target.value) || 0)))} />
+                                        <span className="text-ink-400 text-body">$</span>
                                     </div>
                                 </div>
                             ))}
-                            <p className="text-xs text-gray-500 text-center">Vous pouvez laisser a 0 — a configurer dans Investissements</p>
+                            <p className="text-tiny text-ink-400 text-center">Vous pouvez laisser à 0 — à configurer dans Investissements</p>
                         </div>
                         <div className="flex gap-3">
-                            <button onClick={() => setStep('budget')} className="flex-1 py-3 bg-white/5 text-gray-300 rounded-xl font-medium hover:bg-white/10 transition-all">← Retour</button>
-                            <button onClick={handleFinish} className="flex-1 py-3 bg-gradient-to-r from-primary to-emerald-500 text-white rounded-xl font-bold shadow-lg hover:brightness-110 transition-all active:scale-95">
+                            <Button onClick={prev} variant="ghost" size="md" fullWidth>← Retour</Button>
+                            <Button onClick={handleFinish} variant="primary" size="md" fullWidth>
                                 Lancer FinanceAI 🚀
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 )}

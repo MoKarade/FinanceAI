@@ -3,6 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Brush } from 'recharts';
 import { Transaction, Asset, BudgetCategory, RealEstateGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Tab, Debt } from '../types';
 import { Card } from './ui/Card';
+import { PageHeader } from './ui/PageHeader';
+import { KPIStat } from './ui/KPIStat';
+import { StatGrid } from './ui/StatGrid';
 import { fetchPortfolioHistory, MarketDataPoint } from '../services/finance';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import { ASSET_META } from '../services/assetMeta';
@@ -246,59 +249,68 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return (
         <div className="space-y-6 animate-fade-in pb-10">
 
-            {/* HEADER */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                <div className="lg:col-span-2 premium-card p-6 rounded-2xl glow-primary relative overflow-hidden group shadow-2xl animate-premium-in">
-                    <div className="absolute -right-10 -top-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-all duration-700"></div>
-                    <div className="text-[10px] uppercase font-bold text-gray-500 mb-1 tracking-widest opacity-80">{t('dashboard.global_net_worth')}</div>
-                    <div className="text-4xl font-black text-white privacy-blur tracking-tight">
-                        {(latestTotals?.Total || 0).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
-                    </div>
-                    <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-white/5">
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></div>
-                            <div>
-                                <div className="text-[10px] text-yellow-500 uppercase font-bold">{t('dashboard.passive_income_month')}</div>
-                                <div className="text-sm font-bold text-yellow-400 privacy-blur">+{totalMonthlyPassive.toLocaleString('fr-CA', { maximumFractionDigits: 0 })}$</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <PageHeader
+                icon="📊"
+                title={t('dashboard.title', "Vue d'ensemble")}
+                subtitle={t('dashboard.subtitle', "Patrimoine consolidé et tendance")}
+            />
 
-                <div className="premium-card p-6 rounded-2xl flex flex-col justify-center animate-premium-in" style={{ animationDelay: '0.1s' }}>
-                    <div className="text-[10px] uppercase font-bold text-gray-500 mb-1 tracking-widest opacity-80">{t('dashboard.global_variation')} ({timeRange})</div>
-                    <div className={`text-4xl font-black ${performance.global >= 0 ? 'text-green-400' : 'text-red-400'} privacy-blur tracking-tight`}>
-                        {performance.global > 0 ? '+' : ''}{performance.global.toFixed(2)}%
+            {/* Hero KPI strip — 4 chiffres clés */}
+            <StatGrid cols={4}>
+                <KPIStat
+                    label={t('dashboard.global_net_worth')}
+                    icon="💰"
+                    value={(latestTotals?.Total || 0).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
+                    sublabel={t('dashboard.consolidated', 'Tous comptes')}
+                    privacy
+                    variant="primary"
+                />
+                <KPIStat
+                    label={`${t('dashboard.global_variation')} (${timeRange})`}
+                    icon="📈"
+                    value={`${performance.global > 0 ? '+' : ''}${performance.global.toFixed(2)}%`}
+                    trend={performance.diff}
+                    trendLabel="$"
+                    sublabel={(performance.diff > 0 ? '+' : '') + (performance.diff || 0).toLocaleString() + ' $'}
+                    privacy
+                    variant={performance.global >= 0 ? 'success' : 'danger'}
+                />
+                <KPIStat
+                    label={t('dashboard.passive_income_month')}
+                    icon="✨"
+                    value={`+${totalMonthlyPassive.toLocaleString('fr-CA', { maximumFractionDigits: 0 })}$`}
+                    sublabel="/ mois"
+                    privacy
+                    variant="warning"
+                />
+                {/* Indicateur Futur — custom car contient un input année */}
+                <div className="bg-info-bg backdrop-blur-sm rounded-card p-4 border-l-4 border-l-info-500 border-r border-t border-b border-white/5 flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                        <span className="kpi-label">{t('dashboard.future_predictor', 'Indicateur Futur')}</span>
+                        <span className="text-meta text-ink-300" aria-hidden="true">🎯</span>
                     </div>
-                    <div className={`text-sm mt-1 font-bold ${performance.diff >= 0 ? 'text-green-500/70' : 'text-red-500/70'} privacy-blur`}>
-                        {(performance.diff > 0 ? '+' : '') + (performance.diff || 0).toLocaleString() + ' $'}
-                    </div>
-                </div>
-
-                <div className="bg-gradient-to-br from-indigo-900/20 to-blue-900/20 p-6 rounded-2xl border border-indigo-500/20 relative overflow-hidden group flex flex-col justify-center">
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div className="text-[10px] uppercase font-bold text-gray-500 mb-2 tracking-widest">{t('dashboard.future_predictor', 'Indicateur Futur (Potentiel)')}</div>
-                    <div className="flex items-center gap-2 mb-2 z-10">
-                        <span className="text-xs text-gray-400 font-bold">Dans</span>
-                        <input
-                            type="number"
-                            className="w-16 bg-black/50 border border-white/20 rounded px-2 py-1 text-sm text-center font-bold text-white focus:outline-none focus:border-blue-500 transition-colors"
-                            value={futureYears}
-                            onChange={(e) => setFutureYears(Math.max(1, Math.min(50, Number(e.target.value))))}
-                            min={1} max={50}
-                        />
-                        <span className="text-xs text-gray-400 font-bold">ans</span>
-                    </div>
-                    <div className="text-3xl font-black text-blue-400 tracking-tight privacy-blur z-10">
+                    <div className="text-kpi text-ink-50 privacy-blur tabular-nums">
                         {calculateFutureValue(latestTotals?.Total || 0, calculatedMonthlySavings || 0, futureYears).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
                     </div>
-                    <div className="text-[9px] text-gray-500 mt-2 font-bold z-10">
-                        {lastProjection?.chartData && lastProjection.chartData.length > 0
-                            ? `🔗 Synchronisé avec la simulation (scénario actif).`
-                            : `Basé sur ${(calculatedMonthlySavings || 0).toLocaleString()}$/mo d'épargne avec 5% de rendement.`}
+                    <div className="flex items-center justify-between gap-2 text-meta">
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-ink-400">Dans</span>
+                            <input
+                                type="number"
+                                className="w-12 bg-dark border border-white/15 rounded px-1.5 py-0.5 text-meta text-center font-bold text-ink-50 focus-ring"
+                                value={futureYears}
+                                onChange={(e) => setFutureYears(Math.max(1, Math.min(50, Number(e.target.value))))}
+                                min={1} max={50}
+                                aria-label="Horizon en années"
+                            />
+                            <span className="text-ink-400">ans</span>
+                        </div>
+                        {lastProjection?.chartData && lastProjection.chartData.length > 0 && (
+                            <span className="text-tiny text-info-400 font-bold" title="Synchronisé avec FutureProjection">🔗 Sync</span>
+                        )}
                     </div>
                 </div>
-            </div>
+            </StatGrid>
 
             {/* CHART */}
             <Card title={t('dashboard.detailed_evolution')} className="w-full min-h-[450px]"

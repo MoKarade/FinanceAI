@@ -102,11 +102,14 @@ Moins de duplication, cohérence garantie entre onglets.
 1. ✅ Wire `savingsGoals` + `financialGoals` au moteur (fait)
 2. ✅ Optimiser stratégies de décaissement (PBMA + bracket 1 + OAS guard + capLossBank)
 3. ✅ Stocker `lastProjection` dans Zustand store (Option A) — fait
-4. ✅ Premier consumer cross-tab: Dashboard "Indicateur Futur" lit la vraie projection (fait)
-5. ⏳ Brancher Investments, Budget, Children sur `lastProjection`
-6. ⏳ Vérifier `isActive` sur RealEstateGoal dans la projection
-7. ⏳ Tests unitaires supplémentaires pour le drawdown optim (PBMA, bracket-1, OAS guard)
-8. 🎨 **UI rework** (après tout ce qui précède)
+4. ✅ Premier consumer cross-tab: Dashboard "Indicateur Futur" (fait)
+5. ✅ Investments: card "Portefeuille projeté" lit chartData[CELI/REER/NonReg/Crypto/NW] (fait)
+6. ✅ Children: badge "REEE projeté à 17 ans" en cross-check du simulateur local (fait)
+7. ⏳ Budget: ajouter card "Sensibilité épargne → patrimoine fin vie"
+8. ⏳ Real Estate: utiliser projection pour le compare Buy vs Rent (au lieu du calcul local)
+9. ⏳ Vérifier `isActive` sur RealEstateGoal dans la projection
+10. ⏳ Tests unitaires supplémentaires pour le drawdown optim (PBMA, bracket-1, OAS guard)
+11. 🎨 **UI rework** (après tout ce qui précède)
 
 ## 🆕 Changement 2026-05 (Option A implémentée)
 

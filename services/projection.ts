@@ -5,7 +5,7 @@ import { mulberry32, gaussianRandom, applyShock, MER, RRIF_RATES, welcomeTax, lt
 import { runMonteCarlo } from './projection/monteCarlo';
 import { SCENARIO_DEFINITIONS } from './projection/scenarios';
 import { applyW5Effects, applyAgeBasedExpenses } from './projection/w5Effects';
-import { tryCriticalIllness, tryInheritance } from './projection/stochasticEvents';
+import { tryCriticalIllness, tryInheritance, tryMortality, trySpouseMortality, tryLtcTrigger, ltcMonthlyCost, tickJobLoss, tickLtd } from './projection/stochasticEvents';
 import { processAprilSettlement } from './projection/taxCycle';
 import { buildHistoricalSequence, buildReplaySequence, canadianInflationFor, type YearReturn } from './projection/historicalReturns';
 
@@ -458,23 +458,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         const age = currentAge + Math.floor(m / 12);
         const isRetired = age >= effectiveRetirementAge;
 
-        // D2.8: tirage mortalité (annuel, au début de chaque année)
-        if (effProj.useStochasticMortality && enableMonteCarlo && !isDead && currentMonthIndex === 0 && m > 0) {
-            const pYear = mortalityAnnualProbability(age);
-            if (rng() < pYear) {
-                isDead = true;
-            }
+        // Cycle 9 split: mortalité user + conjoint → ./projection/stochasticEvents
+        if (tryMortality({ m, currentMonthIndex, age, enableMonteCarlo, rng }, effProj, isDead)) {
+            isDead = true;
         }
-
-        // W1.4: décès du conjoint (user2) en MC. Bascule en survivorMode au lieu d'arrêter.
-        if (effProj.modelSurvivor && enableMonteCarlo && spouseAlive && !survivorMode && currentMonthIndex === 0 && m > 0) {
-            const spouseAge = (config.users[1]?.age || 30) + Math.floor(m / 12);
-            const pYearSpouse = mortalityAnnualProbability(spouseAge);
-            if (rng() < pYearSpouse) {
-                spouseAlive = false;
-                survivorMode = true;
-                survivorTriggerLogged = false; // sera loggé en dessous quand lifeEventsLog dispo
-            }
+        const spouseAge = (config.users[1]?.age || 30) + Math.floor(m / 12);
+        if (trySpouseMortality({ m, currentMonthIndex, enableMonteCarlo, rng }, effProj, spouseAge, spouseAlive, survivorMode)) {
+            spouseAlive = false;
+            survivorMode = true;
+            survivorTriggerLogged = false;
         }
 
         if (isDead) break;
@@ -729,38 +721,32 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // W1.4 FIX (critique code-reviewer): si conjoint mort, salaire user2 → 0
             incomeAnna = survivorMode ? 0 : (incomeAnnaNetMonthly * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed));
 
-            // D2.10: Perte d'emploi stochastique (MC uniquement).
-            // Probabilité annuelle, tirée en janvier. Si déclenchée, le revenu
-            // du user principal tombe à 55% (assurance-emploi) durant N mois.
-            const jobLossEnabled = effProj.jobLossEnabled && enableMonteCarlo;
-            if (jobLossEnabled && unemployedMonthsRemaining === 0 && currentMonthIndex === 0 && m > 0) {
-                const pAnnual = effProj.jobLossAnnualProbability ?? 0.03;
-                if (rng() < pAnnual) {
-                    unemployedMonthsRemaining = effProj.jobLossDurationMonths || 6;
-                    logEvent(lifeEventsLog, `💼 Perte d'emploi (durée prévue ${unemployedMonthsRemaining} mois)`);
-                }
+            // Cycle 9 split: job loss + LTD → ./projection/stochasticEvents (tick*)
+            const wasUnemployed = unemployedMonthsRemaining > 0;
+            const jobLossResult = tickJobLoss({ m, currentMonthIndex, enableMonteCarlo, rng }, effProj, unemployedMonthsRemaining);
+            unemployedMonthsRemaining = jobLossResult.newMonthsRemaining;
+            if (jobLossResult.triggered) {
+                logEvent(lifeEventsLog, `💼 Perte d'emploi (durée prévue ${jobLossResult.duration} mois)`);
             }
-            if (unemployedMonthsRemaining > 0) {
-                incomeMarc *= 0.55; // assurance-emploi
-                unemployedMonthsRemaining--;
+            // Si en chômage (avant décrément ou nouvellement déclenché), revenu ↓ 55% (AE)
+            if (wasUnemployed || jobLossResult.triggered) {
+                incomeMarc *= 0.55;
             }
 
-            // W3.2 — Invalidité longue durée (LTD). Tirage annuel.
-            if (effProj.ltdEnabled && enableMonteCarlo && ltdMonthsRemaining === 0 && currentMonthIndex === 0 && m > 0) {
-                const pAnnual = effProj.ltdAnnualProbability ?? 0.005;
-                if (rng() < pAnnual) {
-                    ltdMonthsRemaining = effProj.ltdDurationMonths || 24;
-                    ltdLogged = false;
-                }
+            const wasLtd = ltdMonthsRemaining > 0;
+            const ltdResult = tickLtd({ m, currentMonthIndex, enableMonteCarlo, rng }, effProj, ltdMonthsRemaining, ltdLogged);
+            ltdMonthsRemaining = ltdResult.newMonthsRemaining;
+            if (ltdResult.needsLog) {
+                logEvent(lifeEventsLog, `♿ Invalidité longue durée (${ltdResult.duration} mois)`);
+                ltdLogged = true;
+            } else if (ltdResult.duration > 0 && !ltdLogged) {
+                // Nouvellement déclenchée (tirée ce cycle)
+                logEvent(lifeEventsLog, `♿ Invalidité longue durée (${ltdResult.duration} mois)`);
+                ltdLogged = true;
             }
-            if (ltdMonthsRemaining > 0) {
-                if (!ltdLogged) {
-                    logEvent(lifeEventsLog, `♿ Invalidité longue durée (${ltdMonthsRemaining} mois)`);
-                    ltdLogged = true;
-                }
+            if (wasLtd || ltdResult.duration > 0) {
                 const replacePct = (effProj.ltdIncomeReplacementPct ?? 60) / 100;
                 incomeMarc *= replacePct;
-                ltdMonthsRemaining--;
             }
 
             // W5.2 INTEGRATION: Bonus + RSU + Side income (capturés dans User mais
@@ -803,19 +789,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             monthlyExpenses = effectiveBaseExpenses * expenseMultiplier;
         }
 
-        // D2.8: Long-Term Care — tirage stochastique en début d'année.
-        // Probabilité convertie en probabilité mensuelle via 1 - (1-p)^(1/12).
-        if (effProj.ltcEnabled && enableMonteCarlo && !ltcActive && age >= 65) {
-            const annualP = ltcAnnualProbability(age);
-            const monthlyP = 1 - Math.pow(1 - annualP, 1 / 12);
-            if (rng() < monthlyP) {
-                ltcActive = true;
-                logEvent(lifeEventsLog, `🏥 Soins de longue durée déclenchés à ${age} ans`);
-            }
+        // Cycle 9 split: LTC trigger + coût mensuel → ./projection/stochasticEvents
+        if (tryLtcTrigger({ age, enableMonteCarlo, rng }, effProj, ltcActive)) {
+            ltcActive = true;
+            logEvent(lifeEventsLog, `🏥 Soins de longue durée déclenchés à ${age} ans`);
         }
         if (ltcActive) {
-            const ltcCost = (effProj.ltcMonthlyCost || 5000) * expenseMultiplier;
-            monthlyExpenses += ltcCost;
+            monthlyExpenses += ltcMonthlyCost(effProj, expenseMultiplier);
         }
 
         // W3.1 — Divorce stochastique (MC). Tirage annuel.

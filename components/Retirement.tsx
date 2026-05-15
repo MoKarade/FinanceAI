@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useDebouncedMemo } from '../utils/useDebouncedMemo';
 import { Card } from './ui/Card';
+import { PageHeader } from './ui/PageHeader';
+import { Badge } from './ui/Badge';
 import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset, RegisteredAccountType } from '../types';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend, AreaChart } from 'recharts';
 import { calculateFutureProjection } from '../services/projection';
@@ -176,18 +178,17 @@ export const Retirement: React.FC<RetirementProps> = ({
 
     return (
         <div className="space-y-6 animate-premium-in pb-20">
-            <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 tracking-tight">Planification Retraite 🏖️</h2>
-                    <p className="text-gray-400 text-sm mt-1">Simulation complete basee sur le moteur FIRE – memes donnees que l'onglet Futur.</p>
-                </div>
-                <div className={`px-4 py-2 rounded-xl border backdrop-blur-md ${bankruptcyAge ? 'bg-red-900/20 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'bg-emerald-900/20 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.2)]'}`}>
-                    <div className="text-xs text-gray-400 uppercase font-bold tracking-wider">Verdict du plan</div>
-                    <div className={`text-xl font-black ${bankruptcyAge ? 'text-red-400' : 'text-emerald-400'}`}>
-                        {bankruptcyAge ? `Capital epuise a ${bankruptcyAge} ans ⚠️` : `Succes jusqu'a ${lifeExpectancy} ans 🚀`}
-                    </div>
-                </div>
-            </div>
+            <PageHeader
+                icon="🏖️"
+                title="Planification Retraite"
+                subtitle="Simulation complète basée sur le moteur FIRE — mêmes données que l'onglet Future."
+                badge={
+                    <Badge variant={bankruptcyAge ? 'danger' : 'success'} size="md">
+                        {bankruptcyAge ? `⚠️ Capital épuisé à ${bankruptcyAge} ans` : `🚀 Succès jusqu'à ${lifeExpectancy} ans`}
+                    </Badge>
+                }
+            />
+
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-1 space-y-6">

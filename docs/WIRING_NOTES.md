@@ -105,9 +105,9 @@ Moins de duplication, cohérence garantie entre onglets.
 4. ✅ Premier consumer cross-tab: Dashboard "Indicateur Futur" (fait)
 5. ✅ Investments: card "Portefeuille projeté" lit chartData[CELI/REER/NonReg/Crypto/NW] (fait)
 6. ✅ Children: badge "REEE projeté à 17 ans" en cross-check du simulateur local (fait)
-7. ⏳ Budget: ajouter card "Sensibilité épargne → patrimoine fin vie"
-8. ⏳ Real Estate: utiliser projection pour le compare Buy vs Rent (au lieu du calcul local)
-9. ⏳ Vérifier `isActive` sur RealEstateGoal dans la projection
+7. ✅ Budget: bandeau "Impact à long terme" + sensibilité +100$/mo (fait)
+8. ✅ Vérifier `isActive` sur RealEstateGoal — comportement OK, tests de régression ajoutés
+9. ⏳ Real Estate: utiliser projection pour le compare Buy vs Rent (au lieu du calcul local)
 10. ⏳ Tests unitaires supplémentaires pour le drawdown optim (PBMA, bracket-1, OAS guard)
 11. 🎨 **UI rework** (après tout ce qui précède)
 

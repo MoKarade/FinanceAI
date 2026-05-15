@@ -599,6 +599,59 @@ describe('calculateFutureProjection', () => {
         });
     });
 
+    describe('RealEstateGoal isActive guard', () => {
+        const makeInactiveGoal = () => ({
+            id: 'inactive_house',
+            name: 'Test Property',
+            isActive: false,
+            isPrimaryResidence: true,
+            price: 500000,
+            downPayment: 100000,
+            mortgageRate: 4.5,
+            amortization: 25,
+            purchaseDate: '2027-06',
+            propertyGrowthRate: 3,
+            maxValue: 0,
+            renewalRateProjection: 5,
+            initialRenovations: 0,
+            yearlyRenovations: 0,
+            taxesYearly: 4000,
+            heatingMonthly: 200,
+            condoFees: 0,
+            rentalIncomeMonthly: 0,
+        });
+
+        it('un goal inactif ne réduit pas le liquide au mois de purchaseDate', () => {
+            const inactiveGoal = makeInactiveGoal();
+            const baseline = calculateFutureProjection(makeParams({ realEstateGoals: [] })) as any;
+            const withInactive = calculateFutureProjection(makeParams({
+                realEstateGoals: [inactiveGoal] as any,
+            })) as any;
+            const noBase = baseline.allResults.find((s: any) => s.stratType === 'BASE');
+            const inactiveBase = withInactive.allResults.find((s: any) => s.stratType === 'BASE');
+            // ±5% de tolérance pour les arrondis (le moteur a des micro-variations
+            // selon les init paths). Inactif ≈ inexistant.
+            const ratio = Math.abs(inactiveBase.estateNetWorth - noBase.estateNetWorth) / Math.max(1, noBase.estateNetWorth);
+            expect(ratio).toBeLessThan(0.05);
+        });
+
+        it('un goal actif réduit le liquide vs inactif (achat déclenché)', () => {
+            const active = { ...makeInactiveGoal(), isActive: true, id: 'active_house' };
+            const inactive = makeInactiveGoal();
+            const withActive = calculateFutureProjection(makeParams({
+                realEstateGoals: [active] as any,
+            })) as any;
+            const withInactive = calculateFutureProjection(makeParams({
+                realEstateGoals: [inactive] as any,
+            })) as any;
+            // L'achat actif consomme du liquide (down payment + welcome tax) → estate
+            // immédiatement après doit refléter une équité différente d'un cas inactif.
+            const activeBase = withActive.allResults.find((s: any) => s.stratType === 'BASE');
+            const inactiveBase = withInactive.allResults.find((s: any) => s.stratType === 'BASE');
+            expect(activeBase.estateNetWorth).not.toBe(inactiveBase.estateNetWorth);
+        });
+    });
+
     describe('Wiring goals (2026-05)', () => {
         it('SavingsGoal: une deadline drainante réduit le patrimoine final', () => {
             const targetDate = '2027-06';

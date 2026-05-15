@@ -244,7 +244,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                         <span className="text-lg">{isAnalyzing ? '⏳' : '🤖'}</span>
                         <div className="text-left leading-tight">
                             <div className="font-bold text-white text-xs">Analyser Documents</div>
-                            <div className="text-[9px] text-white/70">Supporte fichiers illimités</div>
+                            <div className="text-tiny text-white/70">Supporte fichiers illimités</div>
                         </div>
                     </button>
                     <input type="file" ref={fileInputRef} className="hidden" multiple accept="image/*,application/pdf" onChange={handleFileDrop} />
@@ -257,7 +257,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
             {isAnalyzing && (
                 <div className="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden">
                     <div className="bg-blue-500 h-2.5 rounded-full transition-all duration-300" style={{ width: `${(progress.current / progress.total) * 100}%` }}></div>
-                    <div className="text-center text-[10px] text-gray-400 mt-1">Traitement {progress.current} / {progress.total} fichiers</div>
+                    <div className="text-center text-tiny text-gray-400 mt-1">Traitement {progress.current} / {progress.total} fichiers</div>
                 </div>
             )}
 
@@ -266,19 +266,19 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                     <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">📄 Fiche de Paie Détectée ({scannedPay.freq})</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                         <div className="bg-black/30 p-3 rounded border border-white/5">
-                            <div className="text-[10px] text-gray-400">Brut Annuel Est.</div>
+                            <div className="text-tiny text-gray-400">Brut Annuel Est.</div>
                             <div className="text-lg font-bold text-white">{scannedPay.gross.toLocaleString()}$</div>
                         </div>
                         <div className="bg-black/30 p-3 rounded border border-white/5">
-                            <div className="text-[10px] text-gray-400">Net Annuel Est.</div>
+                            <div className="text-tiny text-gray-400">Net Annuel Est.</div>
                             <div className="text-lg font-bold text-green-400">{scannedPay.net.toLocaleString()}$</div>
                         </div>
                         <div className="bg-black/30 p-3 rounded border border-white/5">
-                            <div className="text-[10px] text-gray-400">Impôts Retenus Est.</div>
+                            <div className="text-tiny text-gray-400">Impôts Retenus Est.</div>
                             <div className="text-lg font-bold text-red-400">-{scannedPay.tax.toLocaleString()}$</div>
                         </div>
                         <div className="bg-black/30 p-3 rounded border border-white/5">
-                            <div className="text-[10px] text-gray-400">REER/RPP Retenus</div>
+                            <div className="text-tiny text-gray-400">REER/RPP Retenus</div>
                             <div className="text-lg font-bold text-blue-400">{scannedPay.rrsp.toLocaleString()}$</div>
                         </div>
                     </div>
@@ -331,7 +331,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                     <span className="text-gray-400">Total Synchronisé</span>
                                     <span className="text-xl font-bold text-white font-mono">{grossIncome.toLocaleString()}$</span>
                                 </div>
-                                <p className="text-[10px] text-gray-500 mt-2 flex items-center gap-1">
+                                <p className="text-tiny text-gray-500 mt-2 flex items-center gap-1">
                                     <span>🔒</span> Verrouillé (* 12 mois) lié à la Configuration.
                                 </p>
                             </div>
@@ -342,7 +342,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                         <span className="text-xs text-green-400 font-bold">Impôt déjà prélevé (Source)</span>
                                         <span className="text-sm font-mono text-white">{alreadyPaidTax.toLocaleString()}$</span>
                                     </div>
-                                    <div className="text-[10px] text-gray-500 mt-1">Détecté automatiquement via vos documents</div>
+                                    <div className="text-tiny text-gray-500 mt-1">Détecté automatiquement via vos documents</div>
                                 </div>
                             )}
 
@@ -352,7 +352,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                         <span className="text-xs text-yellow-400 font-bold">Invest. Non-Enregistrés</span>
                                         <span className="text-xs text-white">{investmentTaxData.totalNonReg.toLocaleString()}$</span>
                                     </div>
-                                    <div className="text-[10px] text-gray-500">
+                                    <div className="text-tiny text-gray-500">
                                         Impact estimé sur revenu imposable: <span className="text-red-300">+{investmentTaxData.taxableAddOn.toFixed(0)}$</span>
                                     </div>
                                 </div>
@@ -385,26 +385,26 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <Card className="!p-4 border-l-4 border-l-red-500 bg-surface/50">
-                            <div className="text-[10px] text-gray-500 uppercase font-bold">Impôt Total</div>
+                            <div className="text-tiny text-gray-500 uppercase font-bold">Impôt Total</div>
                             <div className="text-2xl font-black text-white">{report.totalTax.toLocaleString('fr-CA', { maximumFractionDigits: 0 })} $</div>
-                            <div className="text-[10px] text-gray-500">Fed + Qc</div>
+                            <div className="text-tiny text-gray-500">Fed + Qc</div>
                         </Card>
                         <Card className="!p-4 border-l-4 border-l-green-500 bg-surface/50">
-                            <div className="text-[10px] text-gray-500 uppercase font-bold">Revenu Net</div>
+                            <div className="text-tiny text-gray-500 uppercase font-bold">Revenu Net</div>
                             <div className="text-2xl font-black text-green-400">{report.netIncome.toLocaleString('fr-CA', { maximumFractionDigits: 0 })} $</div>
-                            <div className="text-[10px] text-gray-500">Dans vos poches</div>
+                            <div className="text-tiny text-gray-500">Dans vos poches</div>
                         </Card>
                         <Card className="!p-4 border-l-4 border-l-yellow-500 bg-surface/50">
-                            <div className="text-[10px] text-gray-500 uppercase font-bold">Taux Marginal</div>
+                            <div className="text-tiny text-gray-500 uppercase font-bold">Taux Marginal</div>
                             <div className="text-2xl font-black text-yellow-400">{report.marginalRate.toFixed(1)}%</div>
-                            <div className="text-[10px] text-gray-500">Sur le prochain $</div>
+                            <div className="text-tiny text-gray-500">Sur le prochain $</div>
                         </Card>
                         <Card className="!p-4 border-l-4 border-l-blue-500 bg-surface/50">
-                            <div className="text-[10px] text-gray-500 uppercase font-bold">Remboursement Est.</div>
+                            <div className="text-tiny text-gray-500 uppercase font-bold">Remboursement Est.</div>
                             <div className={`text-2xl font-black ${report.refundOrOwe > 0 ? 'text-green-400' : 'text-red-400'}`}>
                                 {report.refundOrOwe > 0 ? '+' : ''}{report.refundOrOwe.toLocaleString('fr-CA', { maximumFractionDigits: 0 })} $
                             </div>
-                            <div className="text-[10px] text-gray-500">Basé sur docs reçus</div>
+                            <div className="text-tiny text-gray-500">Basé sur docs reçus</div>
                         </Card>
                     </div>
 
@@ -419,13 +419,13 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                     <div className="space-y-4 mt-2">
                                         {(fedBreakdown ?? []).map((b, i) => (
                                             <div key={i} className="relative">
-                                                <div className="flex justify-between text-[10px] mb-1">
+                                                <div className="flex justify-between text-tiny mb-1">
                                                     <span className="text-gray-300 font-bold">{b.rate}</span>
                                                     <span className="text-gray-500">{b.amount > 0 ? `${b.amount.toFixed(0)}$ taxés` : '0$'}</span>
                                                 </div>
                                                 <div className="h-4 w-full bg-gray-800 rounded overflow-hidden relative border border-white/5">
                                                     <div className="h-full bg-red-600/80 transition-all duration-500" style={{ width: `${b.percentFull}%` }}></div>
-                                                    <div className="absolute inset-0 flex items-center justify-center text-[9px] font-mono text-white/80 shadow-black drop-shadow-md">
+                                                    <div className="absolute inset-0 flex items-center justify-center text-tiny font-mono text-white/80 shadow-black drop-shadow-md">
                                                         {b.filled.toLocaleString()} $ / {typeof b.max === 'number' ? b.max.toLocaleString() : b.max} $
                                                     </div>
                                                 </div>
@@ -437,13 +437,13 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                     <div className="space-y-4 mt-2">
                                         {(qcBreakdown ?? []).map((b, i) => (
                                             <div key={i} className="relative">
-                                                <div className="flex justify-between text-[10px] mb-1">
+                                                <div className="flex justify-between text-tiny mb-1">
                                                     <span className="text-gray-300 font-bold">{b.rate}</span>
                                                     <span className="text-gray-500">{b.amount > 0 ? `${b.amount.toFixed(0)}$ taxés` : '0$'}</span>
                                                 </div>
                                                 <div className="h-4 w-full bg-gray-800 rounded overflow-hidden relative border border-white/5">
                                                     <div className="h-full bg-blue-600/80 transition-all duration-500" style={{ width: `${b.percentFull}%` }}></div>
-                                                    <div className="absolute inset-0 flex items-center justify-center text-[9px] font-mono text-white/80 shadow-black drop-shadow-md">
+                                                    <div className="absolute inset-0 flex items-center justify-center text-tiny font-mono text-white/80 shadow-black drop-shadow-md">
                                                         {b.filled.toLocaleString()} $ / {typeof b.max === 'number' ? b.max.toLocaleString() : b.max} $
                                                     </div>
                                                 </div>

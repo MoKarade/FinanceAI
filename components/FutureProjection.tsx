@@ -407,7 +407,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </ResponsiveContainer>
                 </div>
 
-                <div className="mt-6 flex flex-wrap gap-4 text-[10px] text-gray-400 justify-center bg-black/20 p-4 rounded-xl border border-white/5">
+                <div className="mt-6 flex flex-wrap gap-4 text-tiny text-gray-400 justify-center bg-black/20 p-4 rounded-xl border border-white/5">
                     <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#4b5563] rounded"></span> Cash</span>
                     <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#10b981] rounded"></span> CELI</span>
                     <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#3b82f6] rounded"></span> REER</span>

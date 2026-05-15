@@ -226,7 +226,7 @@ export const Settings: React.FC<SettingsProps> = ({
               </div>
               <div className="p-3 bg-green-900/10 rounded border border-green-500/20 mt-4">
                 <div className="text-xs text-green-400 font-bold mb-1">✅ Donnees Boursieres</div>
-                <p className="text-[10px] text-gray-400">
+                <p className="text-tiny text-gray-400">
                   L'application est maintenant connectee a votre <strong>Fichier Maitre (Google Sheet)</strong>. Plus aucune configuration requise !
                 </p>
               </div>
@@ -375,7 +375,7 @@ export const Settings: React.FC<SettingsProps> = ({
                     </div>
 
                     <div className="pt-2 border-t border-white/5 space-y-2">
-                      <div className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Options Fiscales</div>
+                      <div className="text-tiny text-gray-500 font-black uppercase tracking-widest">Options Fiscales</div>
                       <div className="flex items-center gap-4">
                         <label className="flex items-center gap-2 cursor-pointer group">
                           <input
@@ -388,7 +388,7 @@ export const Settings: React.FC<SettingsProps> = ({
                             }}
                             className="w-3 h-3 rounded border-gray-600 bg-black text-blue-500 focus:ring-blue-500/50"
                           />
-                          <span className="text-[10px] text-gray-400 group-hover:text-blue-400 transition-colors">Premier Acheteur (CELIAPP)</span>
+                          <span className="text-tiny text-gray-400 group-hover:text-blue-400 transition-colors">Premier Acheteur (CELIAPP)</span>
                         </label>
                       </div>
 
@@ -404,7 +404,7 @@ export const Settings: React.FC<SettingsProps> = ({
                             }}
                             className="w-3 h-3 rounded border-gray-600 bg-black text-blue-500 focus:ring-blue-500/50"
                           />
-                          <span className="text-[10px] text-gray-400 group-hover:text-pink-400 transition-colors">A des enfants (REEE)</span>
+                          <span className="text-tiny text-gray-400 group-hover:text-pink-400 transition-colors">A des enfants (REEE)</span>
                         </label>
                         {user.hasChildren && (
                           <input
@@ -415,14 +415,14 @@ export const Settings: React.FC<SettingsProps> = ({
                               newUsers[idx] = { ...user, childCount: parseInt(e.target.value) || 1 };
                               setConfig({ ...config, users: newUsers });
                             }}
-                            className="w-12 bg-black/40 border border-white/10 rounded px-1.5 py-0.5 text-[10px] text-white font-mono text-center"
+                            className="w-12 bg-black/40 border border-white/10 rounded px-1.5 py-0.5 text-tiny text-white font-mono text-center"
                             min={1} max={10}
                           />
                         )}
                       </div>
 
                       <div className="flex items-center gap-2 bg-black/20 p-1.5 rounded border border-white/5">
-                        <span className="text-[10px] text-gray-400 uppercase font-black shrink-0">FE ⚖️</span>
+                        <span className="text-tiny text-gray-400 uppercase font-black shrink-0">FE ⚖️</span>
                         <input
                           type="number"
                           placeholder="Facteur Equiv. (ex: 0)"
@@ -432,27 +432,27 @@ export const Settings: React.FC<SettingsProps> = ({
                             newUsers[idx] = { ...user, facteurEquivalence: parseFloat(e.target.value) || 0 };
                             setConfig({ ...config, users: newUsers });
                           }}
-                          className="w-full bg-transparent border-none text-[10px] text-white font-mono focus:ring-0 text-right p-0"
+                          className="w-full bg-transparent border-none text-tiny text-white font-mono focus:ring-0 text-right p-0"
                         />
                       </div>
                     </div>
 
                     {/* W5.1 — Profil détaillé (santé, carrière, identité) */}
                     <details className="mt-3 pt-3 border-t border-white/5">
-                      <summary className="text-[10px] font-bold text-gray-300 cursor-pointer hover:text-white">🩺 Profil détaillé (santé, carrière, identité)</summary>
+                      <summary className="text-tiny font-bold text-gray-300 cursor-pointer hover:text-white">🩺 Profil détaillé (santé, carrière, identité)</summary>
                       <div className="mt-2 space-y-2">
                         <div className="grid grid-cols-3 gap-1">
                           <select
                             value={user.gender ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,gender:e.target.value||undefined}; setConfig({...config,users:u}); }}
-                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white"
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
                           >
                             <option value="">Sexe</option><option value="M">Homme</option><option value="F">Femme</option><option value="X">Autre</option>
                           </select>
                           <select
                             value={user.province ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,province:e.target.value||undefined}; setConfig({...config,users:u}); }}
-                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white"
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
                           >
                             <option value="">Province</option>
                             <option value="QC">Québec</option><option value="ON">Ontario</option><option value="AB">Alberta</option>
@@ -463,7 +463,7 @@ export const Settings: React.FC<SettingsProps> = ({
                           <select
                             value={user.citizenship ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,citizenship:e.target.value||undefined}; setConfig({...config,users:u}); }}
-                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white"
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
                           >
                             <option value="">Citoyenneté</option><option value="CA">Canadien</option><option value="US-person-CA">Dual CA/US (PFIC!)</option><option value="other">Autre</option>
                           </select>
@@ -472,7 +472,7 @@ export const Settings: React.FC<SettingsProps> = ({
                           <select
                             value={user.maritalStatus ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,maritalStatus:e.target.value||undefined}; setConfig({...config,users:u}); }}
-                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white"
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
                           >
                             <option value="">Statut civil</option>
                             <option value="single">Célibataire</option><option value="married">Marié</option><option value="common-law">Conjoint de fait</option>
@@ -481,7 +481,7 @@ export const Settings: React.FC<SettingsProps> = ({
                           <select
                             value={user.employmentType ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,employmentType:e.target.value||undefined}; setConfig({...config,users:u}); }}
-                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white"
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
                           >
                             <option value="">Type emploi</option>
                             <option value="employee">Employé</option><option value="self-employed">Autonome</option>
@@ -492,7 +492,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         <div className="grid grid-cols-3 gap-1">
                           <select value={user.industry ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,industry:e.target.value || undefined}; setConfig({...config,users:u}); }}
-                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white">
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white">
                             <option value="">Industrie...</option>
                             <option value="tech">Tech</option><option value="finance">Finance</option><option value="health">Santé</option>
                             <option value="public-sector">Secteur public</option><option value="education">Éducation</option>
@@ -503,67 +503,67 @@ export const Settings: React.FC<SettingsProps> = ({
                           </select>
                           <input type="number" placeholder="Ans expérience" value={user.yearsOfExperience ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,yearsOfExperience:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
-                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white" />
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                           <select
                             value={user.pensionPlan ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,pensionPlan:e.target.value||undefined}; setConfig({...config,users:u}); }}
-                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white"
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
                           >
                             <option value="">Régime retraite</option>
                             <option value="DB">DB (prestations dét.)</option><option value="DC">DC (cotisations dét.)</option>
                             <option value="RPDB">RPDB</option><option value="none">Aucun</option>
                           </select>
                         </div>
-                        <div className="text-[9px] text-gray-500 uppercase tracking-widest mt-2">Santé & longévité</div>
+                        <div className="text-tiny text-gray-500 uppercase tracking-widest mt-2">Santé & longévité</div>
                         <div className="grid grid-cols-2 gap-1">
                           <select
                             value={user.healthRating ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,healthRating:e.target.value||undefined}; setConfig({...config,users:u}); }}
-                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white"
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
                           >
                             <option value="">État santé</option><option value="excellent">Excellent</option><option value="good">Bon</option><option value="average">Moyen</option><option value="poor">Faible</option>
                           </select>
                           <select
                             value={user.activityLevel ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,activityLevel:e.target.value||undefined}; setConfig({...config,users:u}); }}
-                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white"
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
                           >
                             <option value="">Activité physique</option><option value="sedentary">Sédentaire</option><option value="light">Légère</option><option value="moderate">Modérée</option><option value="active">Active</option>
                           </select>
                         </div>
                         <div className="grid grid-cols-3 gap-1">
-                          <label className="flex items-center gap-1 text-[10px] text-gray-400">
+                          <label className="flex items-center gap-1 text-tiny text-gray-400">
                             <input type="checkbox" checked={user.isSmoker ?? false}
                               onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,isSmoker:e.target.checked}; setConfig({...config,users:u}); }} />
                             🚬 Fumeur
                           </label>
                           <input type="number" placeholder="Mère ✝ âge" value={user.parentAgeAtDeath?.mother ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user, parentAgeAtDeath:{...user.parentAgeAtDeath, mother:Number(e.target.value)||undefined}}; setConfig({...config,users:u}); }}
-                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white" />
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                           <input type="number" placeholder="Père ✝ âge" value={user.parentAgeAtDeath?.father ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user, parentAgeAtDeath:{...user.parentAgeAtDeath, father:Number(e.target.value)||undefined}}; setConfig({...config,users:u}); }}
-                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white" />
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                         </div>
-                        <div className="text-[9px] text-gray-500 uppercase tracking-widest mt-2">Rémunération variable</div>
+                        <div className="text-tiny text-gray-500 uppercase tracking-widest mt-2">Rémunération variable</div>
                         <div className="grid grid-cols-3 gap-1">
                           <input type="number" placeholder="Bonus % brut" value={user.bonusPctOfGross ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,bonusPctOfGross:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
-                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white" />
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                           <input type="number" placeholder="RSU $/an" value={user.rsuVestingPerYear ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,rsuVestingPerYear:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
-                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white" />
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                           <input type="number" placeholder="Stock opts $" value={user.stockOptionsValue ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,stockOptionsValue:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
-                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white" />
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                         </div>
                         <div className="grid grid-cols-2 gap-1">
                           <input type="number" placeholder="Side income $/an" value={user.sideIncomeAnnual ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,sideIncomeAnnual:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
-                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white" />
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                           <select
                             value={user.payFrequency ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,payFrequency:e.target.value||undefined}; setConfig({...config,users:u}); }}
-                            className="bg-dark border border-border rounded px-1 py-0.5 text-[10px] text-white"
+                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
                           >
                             <option value="">Périodicité paie</option>
                             <option value="weekly">Hebdo (52)</option><option value="biweekly">Bihebdo (26)</option>

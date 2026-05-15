@@ -397,7 +397,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                 <>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 p-4 bg-black/30 rounded-xl border border-white/5">
                                         <div>
-                                            <label className="text-[10px] text-purple-400 font-bold uppercase block mb-1">
+                                            <label className="text-tiny text-purple-400 font-bold uppercase block mb-1">
                                                 Loyer actuel (scénario Louer)
                                             </label>
                                             <div className="flex items-center gap-2">
@@ -412,7 +412,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="flex justify-between text-[10px] text-emerald-400 font-bold uppercase mb-1">
+                                            <label className="flex justify-between text-tiny text-emerald-400 font-bold uppercase mb-1">
                                                 <span>Rendement Boursier</span>
                                                 <span className="text-white">{marketReturn}%</span>
                                             </label>
@@ -430,7 +430,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                             />
                                         </div>
                                         <div>
-                                            <label className="flex justify-between text-[10px] text-pink-400 font-bold uppercase mb-1">
+                                            <label className="flex justify-between text-tiny text-pink-400 font-bold uppercase mb-1">
                                                 <span>Appréciation Immo</span>
                                                 <span className="text-white">{localRentalAppreciation}%</span>
                                             </label>
@@ -443,9 +443,9 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                             />
                                         </div>
                                         <div className={`p-2 rounded-lg border flex flex-col justify-center ${netYield > 0 ? 'bg-green-900/20 border-green-500/20' : 'bg-red-900/20 border-red-500/20'}`}>
-                                            <div className="text-[9px] uppercase font-bold text-gray-400">Si location (Cash-Flow)</div>
+                                            <div className="text-tiny uppercase font-bold text-gray-400">Si location (Cash-Flow)</div>
                                             <div className={`text-lg font-black ${netYield > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                {formatCurrency(netAnnualIncome)}<span className="text-[10px] font-normal text-gray-500">/an</span>
+                                                {formatCurrency(netAnnualIncome)}<span className="text-tiny font-normal text-gray-500">/an</span>
                                             </div>
                                         </div>
                                     </div>
@@ -476,7 +476,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                             </AreaChart>
                                         </ResponsiveContainer>
                                     </div>
-                                    <p className="text-[9px] text-gray-500 mt-3 text-center">
+                                    <p className="text-tiny text-gray-500 mt-3 text-center">
                                         Note: Le graphique affiche automatiquement les scénarios pertinents (Habiter vs Louer) selon le type de propriété que vous avez configuré (Résidence Principale ou Propriété Locative).
                                     </p>
                                 </>
@@ -486,10 +486,10 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
 
                     <Card title="Amortissement et Équité">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-2">
-                            <div><div className="text-[10px] text-gray-500 uppercase tracking-wider">Welcome Tax</div><div className="text-sm font-bold text-white">{formatCurrency(welcomeTax)}</div></div>
-                            <div><div className="text-[10px] text-gray-500 uppercase tracking-wider">Notaire &amp; Insp.</div><div className="text-sm font-bold text-white">{formatCurrency(notaryFees + inspectionFees)}</div></div>
-                            <div><div className="text-[10px] text-gray-500 uppercase tracking-wider">Rénos Initiales</div><div className="text-sm font-bold text-white">{formatCurrency(initialRenovations)}</div></div>
-                            <div><div className="text-[10px] text-gray-500 uppercase tracking-wider">Maison Totale</div><div className="text-sm font-bold text-white">{formatCurrency(price + initialRenovations)}</div></div>
+                            <div><div className="text-tiny text-gray-500 uppercase tracking-wider">Welcome Tax</div><div className="text-sm font-bold text-white">{formatCurrency(welcomeTax)}</div></div>
+                            <div><div className="text-tiny text-gray-500 uppercase tracking-wider">Notaire &amp; Insp.</div><div className="text-sm font-bold text-white">{formatCurrency(notaryFees + inspectionFees)}</div></div>
+                            <div><div className="text-tiny text-gray-500 uppercase tracking-wider">Rénos Initiales</div><div className="text-sm font-bold text-white">{formatCurrency(initialRenovations)}</div></div>
+                            <div><div className="text-tiny text-gray-500 uppercase tracking-wider">Maison Totale</div><div className="text-sm font-bold text-white">{formatCurrency(price + initialRenovations)}</div></div>
                         </div>
                     </Card>
 
@@ -520,7 +520,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                             <tr key={row.year} className={`border-b border-white/5 ${isRenewal ? 'bg-orange-900/10' : idx % 2 === 0 ? 'bg-white/[0.02]' : ''} hover:bg-white/5 transition-colors`}>
                                                 <td className="py-2 pr-4 font-bold">
                                                     {row.calendarYear}
-                                                    {isRenewal && <span className="ml-1.5 text-[9px] text-orange-400 border border-orange-500/30 rounded px-1">Renouvellement</span>}
+                                                    {isRenewal && <span className="ml-1.5 text-tiny text-orange-400 border border-orange-500/30 rounded px-1">Renouvellement</span>}
                                                 </td>
                                                 <td className="py-2 pr-4 text-orange-300">{row.TauxEnVigueur}</td>
                                                 <td className="py-2 pr-4 text-right text-red-400 privacy-blur">{formatCurrency(row.PartInteretAnnuelle)}</td>

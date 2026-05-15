@@ -50,7 +50,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                         />
                         <div className="flex-1">
                             <div className="text-sm font-bold text-white">Résidence Principale</div>
-                            <div className="text-[10px] text-gray-500">Si coché, le loyer actuel sera supprimé.</div>
+                            <div className="text-tiny text-gray-500">Si coché, le loyer actuel sera supprimé.</div>
                         </div>
                     </label>
 
@@ -70,7 +70,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                             />
                             <div className="flex-1">
                                 <div className="text-sm font-bold text-white">Propriété Locative</div>
-                                <div className="text-[10px] text-gray-500">Génère des revenus de location.</div>
+                                <div className="text-tiny text-gray-500">Génère des revenus de location.</div>
                             </div>
                         </label>
                     )}
@@ -81,7 +81,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                                 <span>Revenu Locatif ($/mois)</span>
                                 <button
                                     onClick={() => updateActiveGoal({ rentalIncomeMonthly: Math.round(price / 23.3 / 12) })}
-                                    className="text-[9px] bg-green-500/20 px-1.5 py-0.5 rounded text-green-300 hover:bg-green-500/40"
+                                    className="text-tiny bg-green-500/20 px-1.5 py-0.5 rounded text-green-300 hover:bg-green-500/40"
                                     title="Basé sur le ratio moyen Prix/Loyer au Québec (23.3)"
                                 >
                                     Auto (Moy. QC)
@@ -164,7 +164,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                             <span>{maxValue > 0 ? fmt(maxValue) : 'Aucun plafond'}</span>
                         </label>
                         <input type="range" min="0" max={price * 4} step={price * 0.1} value={maxValue} onChange={e => updateActiveGoal({ maxValue: Number(e.target.value) })} className="w-full h-1.5 bg-black/50 rounded-lg appearance-none cursor-pointer accent-purple-500" />
-                        <p className="text-[9px] text-gray-500 mt-1">Limite l'appréciation projetée de la propriété à un maximum réaliste.</p>
+                        <p className="text-tiny text-gray-500 mt-1">Limite l'appréciation projetée de la propriété à un maximum réaliste.</p>
                     </div>
                 </div>
             </Card>

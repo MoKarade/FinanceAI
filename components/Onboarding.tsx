@@ -166,7 +166,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                         <div>
                             <h2 className="text-2xl font-bold text-white">Cles API</h2>
                             <p className="text-gray-400 text-sm mt-1">Optionnelles — l'app fonctionne sans, mais avec moins de fonctionnalites.</p>
-                            <p className="text-amber-300/80 text-[11px] mt-2 leading-relaxed">
+                            <p className="text-amber-300/80 text-meta mt-2 leading-relaxed">
                                 ⚠️ En activant Gemini, vous consentez explicitement a ce que des donnees (marchands tronques + montants arrondis a 100$) soient envoyees a Google AI Studio. Era Context verra votre token + transactions.
                             </p>
                         </div>
@@ -174,18 +174,18 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                             <div className="p-4 bg-white/5 rounded-xl border border-white/10">
                                 <label htmlFor="era-key" className="text-sm font-bold text-white flex items-center gap-2 mb-2">
                                     <span aria-hidden="true">🌐</span> Era Context Token
-                                    <span className="text-[10px] text-gray-500 font-normal">(Sync automatique des transactions)</span>
+                                    <span className="text-tiny text-gray-500 font-normal">(Sync automatique des transactions)</span>
                                 </label>
                                 <input id="era-key" type="password" placeholder="Token Era Context..." className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono" value={eraContextKey} onChange={e => setEraContextKey(e.target.value)} />
-                                <p className="text-[10px] text-gray-500 mt-2">Obtenez votre token sur <a href="https://era.app" target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">era.app</a></p>
+                                <p className="text-tiny text-gray-500 mt-2">Obtenez votre token sur <a href="https://era.app" target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">era.app</a></p>
                             </div>
                             <div className="p-4 bg-white/5 rounded-xl border border-white/10">
                                 <label htmlFor="gemini-key" className="text-sm font-bold text-white flex items-center gap-2 mb-2">
                                     <span aria-hidden="true">🤖</span> Google Gemini API Key
-                                    <span className="text-[10px] text-gray-500 font-normal">(Categorisation IA + objectifs intelligents)</span>
+                                    <span className="text-tiny text-gray-500 font-normal">(Categorisation IA + objectifs intelligents)</span>
                                 </label>
                                 <input id="gemini-key" type="password" placeholder="AIza..." className="w-full bg-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono" value={geminiKey} onChange={e => setGeminiKey(e.target.value)} />
-                                <p className="text-[10px] text-gray-500 mt-2">Obtenez votre cle sur <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">aistudio.google.com</a></p>
+                                <p className="text-tiny text-gray-500 mt-2">Obtenez votre cle sur <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">aistudio.google.com</a></p>
                             </div>
                         </div>
                         <div className="flex gap-3">
@@ -209,7 +209,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                                 { label: '🔒 REER', key: 'reer', value: reerBalance, onChange: setReerBalance, hint: 'Regime Epargne-Retraite' },
                             ].map(({ label, key, value, onChange, hint }) => (
                                 <div key={key} className="p-4 bg-white/5 rounded-xl border border-white/10">
-                                    <label htmlFor={`balance-${key}`} className="text-sm font-bold text-white flex items-center gap-2 mb-1">{label} <span className="text-[10px] text-gray-500 font-normal">{hint}</span></label>
+                                    <label htmlFor={`balance-${key}`} className="text-sm font-bold text-white flex items-center gap-2 mb-1">{label} <span className="text-tiny text-gray-500 font-normal">{hint}</span></label>
                                     <div className="flex items-center gap-2 mt-2">
                                         <input id={`balance-${key}`} type="number" inputMode="decimal" placeholder="0" className="flex-1 bg-dark border border-white/10 rounded-lg px-3 py-2 text-white font-mono" value={value || ''} onChange={e => onChange(Math.max(0, Math.min(100000000, parseFloat(e.target.value) || 0)))} />
                                         <span className="text-gray-400 text-sm">$</span>

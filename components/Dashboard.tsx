@@ -335,14 +335,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <div className="flex flex-col items-end gap-2">
                         <div className="flex bg-black/40 rounded-lg p-0.5 border border-white/10">
                             {(['1M', '3M', 'YTD', '1Y', 'ALL', 'CUSTOM'] as TimeRange[]).map(r => (
-                                <button key={r} onClick={() => setTimeRange(r)} className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${timeRange === r ? 'bg-white text-black shadow' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>{r}</button>
+                                <button key={r} onClick={() => setTimeRange(r)} className={`px-3 py-1 text-tiny font-bold rounded transition-all ${timeRange === r ? 'bg-white text-black shadow' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>{r}</button>
                             ))}
                         </div>
                         {timeRange === 'CUSTOM' && (
                             <div className="flex items-center gap-1.5">
-                                <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-black/40 border border-white/10 rounded px-2 py-1 text-[10px] text-white focus:border-white/30 outline-none" />
-                                <span className="text-gray-500 text-[10px]">→</span>
-                                <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-black/40 border border-white/10 rounded px-2 py-1 text-[10px] text-white focus:border-white/30 outline-none" />
+                                <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-black/40 border border-white/10 rounded px-2 py-1 text-tiny text-white focus:border-white/30 outline-none" />
+                                <span className="text-gray-500 text-tiny">→</span>
+                                <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-black/40 border border-white/10 rounded px-2 py-1 text-tiny text-white focus:border-white/30 outline-none" />
                             </div>
                         )}
                     </div>
@@ -385,12 +385,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     <div className="w-8 h-8 rounded bg-[#1e2330] flex items-center justify-center text-xs font-bold text-gray-300">{asset.symbol.substring(0, 2)}</div>
                                     <div>
                                         <div className="font-bold text-white text-sm">{asset.symbol}</div>
-                                        <div className="text-[9px] text-gray-500 bg-black/50 px-1.5 rounded inline-block mt-0.5">{asset.accountType}</div>
+                                        <div className="text-tiny text-gray-500 bg-black/50 px-1.5 rounded inline-block mt-0.5">{asset.accountType}</div>
                                     </div>
                                 </div>
                                 <div className="text-right">
                                     <div className="font-mono font-bold text-gray-200 text-sm privacy-blur">{asset.value.toLocaleString('fr-CA', { maximumFractionDigits: 0 })}$</div>
-                                    <div className="flex justify-end gap-2 text-[10px] mt-0.5 font-bold privacy-blur">
+                                    <div className="flex justify-end gap-2 text-tiny mt-0.5 font-bold privacy-blur">
                                         <span className={asset.diffCAD >= 0 ? 'text-green-500' : 'text-red-500'}>
                                             {asset.diffCAD >= 0 ? '+' : ''}{asset.diffCAD.toLocaleString('fr-CA', { maximumFractionDigits: 0 })}$
                                         </span>
@@ -416,7 +416,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 </div>
                                 <div className="text-right">
                                     <div className="font-mono font-bold text-blue-100 text-sm privacy-blur">{acc.value.toLocaleString('fr-CA', { maximumFractionDigits: 0 })}$</div>
-                                    <div className="flex justify-end gap-2 text-[10px] mt-0.5 font-bold privacy-blur">
+                                    <div className="flex justify-end gap-2 text-tiny mt-0.5 font-bold privacy-blur">
                                         <span className={acc.diffCAD >= 0 ? 'text-green-500' : 'text-red-500'}>
                                             {acc.diffCAD >= 0 ? '+' : ''}{acc.diffCAD.toLocaleString('fr-CA', { maximumFractionDigits: 0 })}$ (30j)
                                         </span>
@@ -437,13 +437,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     <div className="w-8 h-8 rounded bg-red-900/50 text-red-400 flex items-center justify-center text-xs font-bold">💳</div>
                                     <div>
                                         <div className="font-bold text-white text-sm truncate max-w-[120px]">{acc.name}</div>
-                                        {acc.isManual && <div className="text-[9px] text-gray-500">Saisie Manuelle</div>}
+                                        {acc.isManual && <div className="text-tiny text-gray-500">Saisie Manuelle</div>}
                                     </div>
                                 </div>
                                 <div className="text-right">
                                     <div className="font-mono font-bold text-red-400 text-sm privacy-blur">{acc.value.toLocaleString('fr-CA', { maximumFractionDigits: 0 })}$</div>
                                     {!acc.isManual && (
-                                        <div className="text-[10px] mt-0.5 font-bold privacy-blur text-gray-500">
+                                        <div className="text-tiny mt-0.5 font-bold privacy-blur text-gray-500">
                                             Var: {acc.diffCAD > 0 ? '+' : ''}{acc.diffCAD.toLocaleString('fr-CA', { maximumFractionDigits: 0 })}$
                                         </div>
                                     )}
@@ -489,14 +489,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <div className="rounded-2xl bg-gradient-to-r from-[#0d0f14]/90 to-[#111520]/90 border border-white/5 p-5">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">🗓️ Timeline des Jalons de Vie</h3>
-                            <span className="text-[10px] text-gray-600">{milestones.length} événement{milestones.length > 1 ? 's' : ''}</span>
+                            <span className="text-tiny text-gray-600">{milestones.length} événement{milestones.length > 1 ? 's' : ''}</span>
                         </div>
 
                         <div className="relative h-20 mx-4 select-none">
                             <div className="absolute top-1/2 left-0 right-0 h-px bg-white/10" />
 
                             <div className="absolute top-0 bottom-0 w-0.5 bg-blue-400/60" style={{ left: `${todayPct}%` }}>
-                                <div className="absolute -top-1 left-1/2 -translate-x-1/2 text-[9px] text-blue-400 font-bold whitespace-nowrap">Auj.</div>
+                                <div className="absolute -top-1 left-1/2 -translate-x-1/2 text-tiny text-blue-400 font-bold whitespace-nowrap">Auj.</div>
                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-blue-400 ring-2 ring-blue-400/30" />
                             </div>
 
@@ -520,7 +520,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                             {m.icon}
                                         </div>
 
-                                        <div className={`absolute text-[9px] font-bold whitespace-nowrap ${above ? 'bottom-[calc(100%+26px)]' : 'top-[calc(100%+26px)]'}`}
+                                        <div className={`absolute text-tiny font-bold whitespace-nowrap ${above ? 'bottom-[calc(100%+26px)]' : 'top-[calc(100%+26px)]'}`}
                                             style={{ color: m.color }}>
                                             {m.label}
                                             <br />

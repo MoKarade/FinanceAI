@@ -398,25 +398,25 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 <Card title={`🔮 Portefeuille projeté en ${horizonSnapshot.year} (${projectionHorizonYears} ans)`} className="bg-gradient-to-br from-blue-900/10 to-indigo-900/10 border-blue-500/20">
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                         <div className="p-3 rounded-xl bg-emerald-900/20 border border-emerald-500/20">
-                            <div className="text-[10px] text-emerald-300 font-bold uppercase tracking-widest mb-1">CELI</div>
+                            <div className="text-tiny text-emerald-300 font-bold uppercase tracking-widest mb-1">CELI</div>
                             <div className="text-lg font-black text-emerald-400 privacy-blur">{horizonSnapshot.celi.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
                         </div>
                         <div className="p-3 rounded-xl bg-blue-900/20 border border-blue-500/20">
-                            <div className="text-[10px] text-blue-300 font-bold uppercase tracking-widest mb-1">REER</div>
+                            <div className="text-tiny text-blue-300 font-bold uppercase tracking-widest mb-1">REER</div>
                             <div className="text-lg font-black text-blue-400 privacy-blur">{horizonSnapshot.reer.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
                         </div>
                         <div className="p-3 rounded-xl bg-amber-900/20 border border-amber-500/20">
-                            <div className="text-[10px] text-amber-300 font-bold uppercase tracking-widest mb-1">Non-Enreg</div>
+                            <div className="text-tiny text-amber-300 font-bold uppercase tracking-widest mb-1">Non-Enreg</div>
                             <div className="text-lg font-black text-amber-400 privacy-blur">{horizonSnapshot.nonReg.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
                         </div>
                         {horizonSnapshot.crypto > 0 && (
                             <div className="p-3 rounded-xl bg-purple-900/20 border border-purple-500/20">
-                                <div className="text-[10px] text-purple-300 font-bold uppercase tracking-widest mb-1">Crypto</div>
+                                <div className="text-tiny text-purple-300 font-bold uppercase tracking-widest mb-1">Crypto</div>
                                 <div className="text-lg font-black text-purple-400 privacy-blur">{horizonSnapshot.crypto.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
                             </div>
                         )}
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 col-span-2 md:col-span-1">
-                            <div className="text-[10px] text-gray-300 font-bold uppercase tracking-widest mb-1">Patrimoine Net</div>
+                            <div className="text-tiny text-gray-300 font-bold uppercase tracking-widest mb-1">Patrimoine Net</div>
                             <div className="text-lg font-black text-white privacy-blur">{horizonSnapshot.netWorth.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
                         </div>
                     </div>
@@ -457,7 +457,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     if (next.has(asset.id)) next.delete(asset.id); else next.add(asset.id);
                                     setSelectedKeys(next);
                                 }}
-                                className={`text-[10px] px-2 py-1.5 rounded-lg border transition-all flex items-center gap-2 ${isActive
+                                className={`text-tiny px-2 py-1.5 rounded-lg border transition-all flex items-center gap-2 ${isActive
                                     ? (asset.isTotal ? 'bg-green-500/20 text-green-400 border-green-500/50 font-bold' : 'bg-blue-500/20 text-blue-300 border-blue-500/50')
                                     : 'bg-[#1a1a1a] text-gray-500 border-white/5 hover:border-white/10 hover:text-gray-300'
                                     }`}
@@ -467,7 +467,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     {asset.name}
                                 </div>
                                 {Math.abs(asset.trend) > 0.5 && (
-                                    <span className={`text-[9px] ${asset.trend > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                    <span className={`text-tiny ${asset.trend > 0 ? 'text-green-500' : 'text-red-500'}`}>
                                         {asset.trend > 0 ? '↗' : '↘'}
                                     </span>
                                 )}
@@ -531,7 +531,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         </div>
                                         <div className="text-right">
                                             <div className="text-white font-bold">{item.value.toLocaleString()} $</div>
-                                            <div className="text-[10px] text-gray-500">{item.percent.toFixed(1)}%</div>
+                                            <div className="text-tiny text-gray-500">{item.percent.toFixed(1)}%</div>
                                         </div>
                                     </div>
                                 ))}
@@ -571,7 +571,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         </div>
                                         <div className="text-right">
                                             <div className="text-white font-bold">{item.value.toLocaleString()} $</div>
-                                            <div className="text-[10px] text-gray-500">{item.percent.toFixed(1)}%</div>
+                                            <div className="text-tiny text-gray-500">{item.percent.toFixed(1)}%</div>
                                         </div>
                                     </div>
                                 ))}
@@ -651,7 +651,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             <span className="text-xl">{item.icon}</span>
                                             <div>
                                                 <div className="text-white font-bold text-sm">{item.label}</div>
-                                                <div className="text-[10px] text-gray-500 flex items-center gap-2 mt-1">
+                                                <div className="text-tiny text-gray-500 flex items-center gap-2 mt-1">
                                                     <span>Actuel: <span className="text-gray-300 font-bold">{item.currentPct.toFixed(1)}%</span></span>
                                                     <span className="opacity-50">|</span>
                                                     {isRebalanceEdit ? (
@@ -670,7 +670,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                                                         setTargetModel(newModel);
                                                                     }}
                                                                 />
-                                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-[10px]">%</span>
+                                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-tiny">%</span>
                                                             </div>
                                                         </div>
                                                     ) : (
@@ -762,7 +762,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         </div>
                                         <div>
                                             <div className="font-bold text-white text-sm leading-tight tracking-tight">{asset.name}</div>
-                                            <div className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">{asset.region}</div>
+                                            <div className="text-tiny text-gray-500 font-medium uppercase tracking-wider">{asset.region}</div>
                                         </div>
                                     </div>
                                     <div className="text-right">
@@ -770,7 +770,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3 text-[10px] mb-4 relative z-10">
+                                <div className="grid grid-cols-2 gap-3 text-tiny mb-4 relative z-10">
                                     <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/5 backdrop-blur-sm">
                                         <div className="text-gray-500 mb-1 font-bold">Valeur</div>
                                         <div className="text-white font-mono font-bold text-xs">{asset.value.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
@@ -785,14 +785,14 @@ export const Investments: React.FC<InvestmentsProps> = ({
                             </div>
 
                             <div className="flex items-center justify-between pt-3 border-t border-white/5 relative z-10 mt-auto">
-                                <div className="text-[10px] text-gray-400 flex items-center gap-2">
+                                <div className="text-tiny text-gray-400 flex items-center gap-2">
                                     <span className="font-medium">Yield</span>
                                     <span className={asset.yield > 0 ? "text-emerald-400 font-bold" : "text-gray-500"}>{asset.yield}%</span>
                                 </div>
                                 <select
                                     value={accountType}
                                     onChange={(e) => handleAssetAccountChange(asset.id, e.target.value)}
-                                    className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-[10px] text-gray-300 font-bold outline-none hover:bg-white/10 cursor-pointer transition-colors"
+                                    className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-tiny text-gray-300 font-bold outline-none hover:bg-white/10 cursor-pointer transition-colors"
                                 >
                                     <option value="CELI">CELI</option>
                                     <option value="REER">REER</option>

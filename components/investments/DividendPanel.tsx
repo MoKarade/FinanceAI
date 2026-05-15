@@ -68,12 +68,12 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                 <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-3xl shadow-inner border border-emerald-500/10">💰</div>
                     <div>
-                        <div className="text-[10px] uppercase font-bold text-emerald-500/70 tracking-widest mb-1">Rente Annuelle Estimée</div>
+                        <div className="text-tiny uppercase font-bold text-emerald-500/70 tracking-widest mb-1">Rente Annuelle Estimée</div>
                         <div className="text-3xl font-black text-white privacy-blur tracking-tight">{totalAnnualDividends.toLocaleString()} CAD</div>
                     </div>
                 </div>
                 <div className="text-right hidden sm:block">
-                    <div className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1">Moyenne mensuelle</div>
+                    <div className="text-tiny uppercase font-bold text-gray-500 tracking-widest mb-1">Moyenne mensuelle</div>
                     <div className="text-xl font-bold text-gray-300">{(totalAnnualDividends / 12).toLocaleString()} $ / mois</div>
                 </div>
             </div>
@@ -99,17 +99,17 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                                     </div>
                                     <div>
                                         <div className="font-bold text-white text-sm tracking-tight">{item.name}</div>
-                                        <div className="text-[10px] text-gray-500">{item.id.split(':')[0]}</div>
+                                        <div className="text-tiny text-gray-500">{item.id.split(':')[0]}</div>
                                     </div>
                                 </div>
                                 <div className="text-right">
                                     <div className="text-emerald-400 font-bold text-sm">+{item.amountPerPayout.toFixed(0)}$</div>
-                                    <div className="text-[9px] text-gray-500 font-medium">{item.freq === 4 ? 'Trimestriel' : 'Annuel'}</div>
+                                    <div className="text-tiny text-gray-500 font-medium">{item.freq === 4 ? 'Trimestriel' : 'Annuel'}</div>
                                 </div>
                             </div>
                             <div className="mt-3 pt-2 border-t border-white/5 flex justify-between items-center relative z-10">
-                                <span className="text-[10px] text-gray-500 font-medium">Prochain paiement</span>
-                                <span className="text-[10px] font-bold text-white bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/10 text-emerald-300">
+                                <span className="text-tiny text-gray-500 font-medium">Prochain paiement</span>
+                                <span className="text-tiny font-bold text-white bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/10 text-emerald-300">
                                     {item.nextPayout}
                                 </span>
                             </div>
@@ -130,7 +130,7 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                             <h4 className="text-sm font-bold text-white flex items-center gap-2">
                                 <span className="text-emerald-400">📈</span> Projection sur 12 mois
                             </h4>
-                            <p className="text-[10px] text-gray-500 mt-1">Estimation des revenus passifs futurs</p>
+                            <p className="text-tiny text-gray-500 mt-1">Estimation des revenus passifs futurs</p>
                         </div>
 
                         <div className="flex items-center gap-6 bg-black/40 p-3 rounded-xl border border-white/5 w-full sm:w-auto">
@@ -139,13 +139,13 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                                     <div className={`w-3 h-3 bg-white rounded-full absolute top-[2px] transition-all ${dripEnabled ? 'left-4 translate-x-0.5' : 'left-0.5'}`}></div>
                                 </div>
                                 <input type="checkbox" className="hidden" checked={dripEnabled} onChange={(e) => setDripEnabled(e.target.checked)} />
-                                <span className="text-[10px] font-bold text-gray-300 group-hover:text-white transition-colors">DRIP (Réinvestir)</span>
+                                <span className="text-tiny font-bold text-gray-300 group-hover:text-white transition-colors">DRIP (Réinvestir)</span>
                             </label>
 
                             <div className="w-px h-6 bg-white/10 hidden sm:block"></div>
 
                             <div className="flex items-center gap-2 flex-1 sm:flex-none">
-                                <span className="text-[10px] text-gray-400 whitespace-nowrap">Croissance des div. :</span>
+                                <span className="text-tiny text-gray-400 whitespace-nowrap">Croissance des div. :</span>
                                 <input
                                     type="number"
                                     min="0"
@@ -154,7 +154,7 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                                     onChange={(e) => setDivGrowthRate(Number(e.target.value))}
                                     className="bg-black/50 border border-white/10 rounded px-2 py-0.5 text-xs text-white font-bold w-14 outline-none focus:border-emerald-500 transition-colors text-center"
                                 />
-                                <span className="text-[10px] text-gray-400">% / an</span>
+                                <span className="text-tiny text-gray-400">% / an</span>
                             </div>
                         </div>
                     </div>

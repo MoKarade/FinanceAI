@@ -455,7 +455,7 @@ Le backend wiring est en place. Côté UI, ajouter :
 L'UI est considérée "refondue" quand :
 
 - [x] Une page de l'app est reconnaissable sans regarder la nav (= cohérence visuelle)
-- [x] Aucune utilisation de `text-[9px]` ou `text-[10px]` *dans la nav* (= scale typo respectée)
+- [x] Aucune utilisation de `text-[9px]` / `text-[10px]` / `text-[11px]` dans toute l'app (= scale typo respectée à 100%)
 - [x] Chaque KPI cross-tab (🔗) est cliquable et navigue (= interconnections actives)
 - [x] Les 10 toggles stochastiques de FutureProjection sont fermés par défaut (= friction stochastique éliminée)
 - [x] La sidebar desktop a 4 groupes nommés (= IA refondue)

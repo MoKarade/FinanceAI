@@ -54,7 +54,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                     <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-300 select-none">
                         Détails techniques
                     </summary>
-                    <pre className="text-[10px] text-red-200/70 bg-black/40 p-3 rounded mt-2 overflow-auto max-h-48 whitespace-pre-wrap break-words">
+                    <pre className="text-tiny text-red-200/70 bg-black/40 p-3 rounded mt-2 overflow-auto max-h-48 whitespace-pre-wrap break-words">
                         {error.name}: {error.message}
                         {error.stack ? `\n\n${error.stack}` : ''}
                     </pre>

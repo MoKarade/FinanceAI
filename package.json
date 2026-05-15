@@ -15,6 +15,7 @@
     "mcp:dev": "tsx mcp/stdio.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.96.0",
     "@google/genai": "^1.40.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "framer-motion": "^12.34.5",

@@ -87,32 +87,38 @@ describe('projection/helpers', () => {
         });
     });
 
-    // NOTE: l'implémentation actuelle utilise `else if` entre les paliers,
-    // donc seul UN palier s'ajoute aux 0,5% sur 50k. Ce n'est PAS conforme
-    // au calcul officiel cumulé/progressif (TODO D2.5: corriger).
-    // Les tests ci-dessous figent le comportement existant pour éviter une
-    // régression silencieuse lors de la migration.
-    describe('welcomeTax (comportement actuel, à corriger)', () => {
+    // Calcul cumulatif par tranche (paliers Montréal 2026).
+    // Paliers: 0.5% / 1% / 1.5% / 2% / 2.5% / 3% / 3.5% / 4%
+    // Seuils: 53 700 / 269 300 / 538 500 / 1 077 000 / 2 154 000 / 3 231 000 / 5 385 000
+    describe('welcomeTax (cumulatif Montréal 2026)', () => {
         it('returns 0 for price 0', () => {
             expect(welcomeTax(0)).toBe(0);
         });
 
-        it('50k → 250$', () => {
+        it('50k → 250$ (palier 1 seul)', () => {
+            // 50000 * 0.005 = 250
             expect(welcomeTax(50000)).toBeCloseTo(250, 2);
         });
 
-        it('300k → 2750$ (seul palier 1% activé)', () => {
-            expect(welcomeTax(300000)).toBeCloseTo(2750, 2);
+        it('300k → 2885$ (paliers 1-3 cumulés)', () => {
+            // 53700*0.005 + 215600*0.010 + 30700*0.015 = 268.50 + 2156 + 460.50
+            expect(welcomeTax(300000)).toBeCloseTo(2885, 2);
         });
 
-        it('500k → 3250$ (seul palier 1.5% activé)', () => {
-            // 50000 * 0.005 + 200000 * 0.015 = 250 + 3000 = 3250
-            expect(welcomeTax(500000)).toBeCloseTo(3250, 2);
+        it('500k → 5885$ (paliers 1-3 cumulés)', () => {
+            // 53700*0.005 + 215600*0.010 + 230700*0.015 = 268.50 + 2156 + 3460.50
+            expect(welcomeTax(500000)).toBeCloseTo(5885, 2);
         });
 
-        it('700k → 6250$ (seul palier 3% activé)', () => {
-            // 50000 * 0.005 + 200000 * 0.03 = 250 + 6000 = 6250
-            expect(welcomeTax(700000)).toBeCloseTo(6250, 2);
+        it('700k → 9692.50$ (paliers 1-4 cumulés)', () => {
+            // 53700*0.005 + 215600*0.010 + 269200*0.015 + 161500*0.020
+            expect(welcomeTax(700000)).toBeCloseTo(9692.5, 2);
+        });
+
+        it('1.5M → 27807.50$ (paliers 1-5 cumulés)', () => {
+            // 53700*0.005 + 215600*0.010 + 269200*0.015 + 538500*0.020 + 423000*0.025
+            // = 268.50 + 2156 + 4038 + 10770 + 10575 = 27807.50
+            expect(welcomeTax(1500000)).toBeCloseTo(27807.5, 2);
         });
     });
 

@@ -7,6 +7,17 @@ interface GuideModalProps {
     onClose: () => void;
 }
 
+// Parser markdown sûr (anti-XSS): split sur `**...**` en composants React.
+function renderBoldMarkdown(text: string): React.ReactNode {
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+            return <strong key={i} className="text-white">{part.slice(2, -2)}</strong>;
+        }
+        return <React.Fragment key={i}>{part}</React.Fragment>;
+    });
+}
+
 export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) => {
 
     const getContent = () => {
@@ -100,7 +111,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
                             {content.features?.map((feat, idx) => (
                                 <li key={idx} className="flex gap-3 text-sm text-gray-300 leading-relaxed">
                                     <span className="text-blue-500 mt-1">●</span>
-                                    <span dangerouslySetInnerHTML={{ __html: feat.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white">$1</strong>') }}></span>
+                                    <span>{renderBoldMarkdown(feat)}</span>
                                 </li>
                             ))}
                         </ul>

@@ -4,7 +4,7 @@
 // Valeur d'affichage uniquement (impotLatent dans data.push).
 // Pattern: Pure Function + injection calculateFiscalReport.
 
-import { CAPITAL_GAINS_HIGH_THRESHOLD, type FiscalReport } from '../../utils/tax';
+import { CAPITAL_GAINS_INCLUSION_STANDARD, type FiscalReport } from '../../utils/tax';
 
 type FiscalFn = (
     grossIncome: number,
@@ -58,12 +58,9 @@ export function computeLatentTax(
         * activeUsersCount * inflationFactor;
 
     const latentCapitalGain = Math.max(0, nonReg - nonRegACB);
-    const thresholdGains = CAPITAL_GAINS_HIGH_THRESHOLD * activeUsersCount;
-    const taxableLatentGain = latentCapitalGain <= thresholdGains
-        ? latentCapitalGain * 0.50
-        : (thresholdGains * 0.50) + ((latentCapitalGain - thresholdGains) * 0.6667);
+    const taxableLatentGain = latentCapitalGain * CAPITAL_GAINS_INCLUSION_STANDARD;
 
-    const totalTaxableLatent = reer + crypto * 0.5 + taxableLatentGain;
+    const totalTaxableLatent = reer + crypto * CAPITAL_GAINS_INCLUSION_STANDARD + taxableLatentGain;
     const totalLatentPerUser = ((currentGrossBase + totalTaxableLatent) / activeUsersCount) / inflationFactor;
     const fullLiquidationTax = calculateFiscalReport(totalLatentPerUser, 0, 0, loopYear, enableMonteCarlo).totalTax
         * activeUsersCount * inflationFactor;

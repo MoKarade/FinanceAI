@@ -4,6 +4,13 @@
 // affectation à monthlyIncome par le caller).
 
 import type { RetirementGoal, User } from '../../types';
+import { RRQ_MPE } from '../../utils/tax';
+
+// Constantes RRQ/PSV 2026 (Retraite Québec + Service Canada)
+const RRQ_DENOMINATOR_YEARS = 39;       // Années cotisées pour pleine RRQ (8/47 plus faibles retirées)
+const PSV_MIN_RESIDENCY_YEARS = 10;     // Minimum 10 ans résidence Canada après 18 ans pour PSV
+const PSV_FULL_RESIDENCY_YEARS = 40;    // Pleine pension à 40 ans
+const PSV_BONUS_75_PLUS = 0.10;         // +10% automatique à partir de 75 ans (depuis juillet 2022)
 
 export interface RetirementIncomeCtx {
     m: number;
@@ -17,6 +24,7 @@ export interface RetirementIncomeCtx {
     dbSurvivorPct: number;
     rrqSurvivorPct: number;
     psvResidencyYears: number[];
+    startYear: number;  // pour calcul arrivalAge depuis canadaArrivalYear
 }
 
 /**
@@ -31,24 +39,45 @@ export function computeRetirementIncome(
     const {
         m, age, simInflation, activeUsersCount, baseGrossAnnual,
         delayPensions, survivorMode, monthlyOasReduction,
-        dbSurvivorPct, rrqSurvivorPct, psvResidencyYears,
+        dbSurvivorPct, rrqSurvivorPct, psvResidencyYears, startYear,
     } = ctx;
 
     let totalPsvProrata = 0;
     let totalRrqMpeRatio = 0;
     const yearsElapsed = Math.floor(m / 12);
-    const RRQ_MPE_ESTIMATE = 73200 * Math.pow(1 + (simInflation + 0.5) / 100, yearsElapsed);
+    // MGA RRQ projeté: base 2026 (RRQ_MPE) indexée à inflation + croissance salariale ~0.5%/an
+    const rrqMpeProjected = RRQ_MPE * Math.pow(1 + (simInflation + 0.5) / 100, yearsElapsed);
 
     users.filter(u => u).forEach((u, idx) => {
         const currentGrossUser = u.grossSalary || (baseGrossAnnual / activeUsersCount);
-        totalRrqMpeRatio += Math.min(1.0, currentGrossUser / RRQ_MPE_ESTIMATE);
-        totalPsvProrata += Math.min(1.0, psvResidencyYears[idx] / 40);
+        totalRrqMpeRatio += Math.min(1.0, currentGrossUser / rrqMpeProjected);
+
+        // PSV résidence: prorata 1/40, mais 0 si < 10 ans (règle Service Canada)
+        const residencyYears = psvResidencyYears[idx] ?? 0;
+        const psvIndividualProrata = residencyYears < PSV_MIN_RESIDENCY_YEARS
+            ? 0
+            : Math.min(1.0, residencyYears / PSV_FULL_RESIDENCY_YEARS);
+        totalPsvProrata += psvIndividualProrata;
     });
     const psvProrata = totalPsvProrata / activeUsersCount;
     const rrqMpeRatio = totalRrqMpeRatio / activeUsersCount;
 
-    const workedYearsAtRetirement = Math.max(0, retirementGoal.targetAge - Math.max(18, users[0]?.canadaArrivalYear || 18));
-    const rrqProrata = Math.min(1, workedYearsAtRetirement / 39) * rrqMpeRatio;
+    // Prorata RRQ basé sur années cotisées au Canada entre 18 ans et l'âge de retraite.
+    // canadaArrivalYear est une ANNÉE calendaire (ex. 2010), il faut la convertir en ÂGE
+    // via birthYear. Si pas d'immigration documentée, on suppose présence depuis 18 ans.
+    const u0 = users[0];
+    let arrivalAge = 18;
+    if (u0?.canadaArrivalYear && u0?.birthYear) {
+        arrivalAge = Math.max(18, u0.canadaArrivalYear - u0.birthYear);
+    } else if (u0?.canadaArrivalYear && !u0?.birthYear) {
+        // Fallback: si on n'a que arrivalYear, estimer via startYear et âge courant
+        const currentAge = age;
+        const currentYear = startYear + yearsElapsed;
+        const estimatedBirthYear = currentYear - currentAge;
+        arrivalAge = Math.max(18, u0.canadaArrivalYear - estimatedBirthYear);
+    }
+    const workedYearsAtRetirement = Math.max(0, retirementGoal.targetAge - arrivalAge);
+    const rrqProrata = Math.min(1, workedYearsAtRetirement / RRQ_DENOMINATOR_YEARS) * rrqMpeRatio;
 
     let rrqFactor = 1.0;
     let psvFactor = 1.0;
@@ -78,8 +107,10 @@ export function computeRetirementIncome(
 
     const survivorRrqFactor = survivorMode ? (1 - 0.5 + 0.5 * rrqSurvivorPct) : 1;
     const survivorPsvFactor = survivorMode ? 0.5 : 1;
+    // Bonification automatique PSV +10% à partir de 75 ans (depuis juillet 2022)
+    const psv75Bonus = age >= 75 ? (1 + PSV_BONUS_75_PLUS) : 1;
     const rrqMonthly = age >= rrqStartAge ? (rrqBaseIndiv * rrqProrata * rrqFactor * survivorRrqFactor) : 0;
-    const psvMonthly = age >= psvStartAge ? (psvBaseIndiv * psvProrata * psvFactor * survivorPsvFactor) : 0;
+    const psvMonthly = age >= psvStartAge ? (psvBaseIndiv * psvProrata * psvFactor * psv75Bonus * survivorPsvFactor) : 0;
 
     const inflFactor = Math.pow(1 + simInflation / 100, m / 12);
 

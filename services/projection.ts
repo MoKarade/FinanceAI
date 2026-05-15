@@ -402,7 +402,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // Cycle 13 split: calcul RRQ/PSV/DB → ./projection/retirementIncome
             incomeRetirement = computeRetirementIncome(
                 { m, age, simInflation, activeUsersCount, baseGrossAnnual, delayPensions,
-                  survivorMode, monthlyOasReduction, dbSurvivorPct, rrqSurvivorPct, psvResidencyYears },
+                  survivorMode, monthlyOasReduction, dbSurvivorPct, rrqSurvivorPct, psvResidencyYears,
+                  startYear },
                 retirementGoal,
                 config.users,
             );

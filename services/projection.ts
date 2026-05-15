@@ -5,6 +5,8 @@ import { mulberry32, gaussianRandom, applyShock, MER, RRIF_RATES, welcomeTax, lt
 import { runMonteCarlo } from './projection/monteCarlo';
 import { SCENARIO_DEFINITIONS } from './projection/scenarios';
 import { applyW5Effects, applyAgeBasedExpenses } from './projection/w5Effects';
+import { tryCriticalIllness, tryInheritance } from './projection/stochasticEvents';
+import { processAprilSettlement } from './projection/taxCycle';
 import { buildHistoricalSequence, buildReplaySequence, canadianInflationFor, type YearReturn } from './projection/historicalReturns';
 
 export interface SimulationParams {
@@ -851,43 +853,16 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             monthlyExpenses += alimony * expenseMultiplier;
         }
 
-        // W3.3 — Maladie grave (capital forfaitaire + dépenses additionnelles)
-        // FIX agent silent-failure: ne se déclenche QU'UNE SEULE FOIS (sinon
-        // payout cumulé chaque année = absurde).
-        if (effProj.criticalIllnessEnabled && enableMonteCarlo && !ciTriggered && currentMonthIndex === 0 && m > 0) {
-            const pAnnual = effProj.ciAnnualProbability ?? 0.003;
-            if (rng() < pAnnual) {
-                ciTriggered = true;
-                const payout = effProj.ciPayoutAmount || 0;
-                if (payout > 0) liquid += payout;
-                const extra = effProj.ciExtraMonthlyExpense || 0;
-                if (extra > 0) monthlyExpenses += extra * expenseMultiplier;
-                logEvent(lifeEventsLog, `🩺 Maladie grave (capital +${payout}\$, dépenses +${extra}\$/mois)`);
-            }
-        }
-
-        // W3.4 — Héritage probabilisé
-        // FIX agent silent-failure: uncertaintyY=0 donnait 80%/an (yearsInWindow=1).
-        // Maintenant: si uncertaintyY=0, on traite comme événement ponctuel à expectedAge.
-        if (effProj.inheritanceEnabled && enableMonteCarlo && !inheritanceReceived && currentMonthIndex === 0 && m > 0) {
-            const expectedAge = effProj.inheritanceExpectedAtAge ?? (currentAge + 25);
-            const uncertaintyY = effProj.inheritanceUncertaintyYears ?? 5;
-            const probInWindow = effProj.inheritanceProbability ?? 0.8;
-            const amount = effProj.inheritanceExpectedAmount || 0;
-            let triggers = false;
-            if (uncertaintyY <= 0) {
-                // Événement ponctuel: tire UNE fois à l'âge attendu
-                triggers = age === expectedAge && rng() < probInWindow;
-            } else if (age >= expectedAge - uncertaintyY && age <= expectedAge + uncertaintyY) {
-                const yearsInWindow = uncertaintyY * 2 + 1;
-                triggers = rng() < (probInWindow / yearsInWindow);
-            }
-            if (triggers && amount > 0) {
-                liquid += amount;
-                inheritanceReceived = true;
-                logEvent(lifeEventsLog, `🎁 Héritage reçu: +${amount.toLocaleString('fr-CA')}\$`);
-            }
-        }
+        // Cycle 8 split: événements stochastiques one-shot (CI + héritage)
+        // extraits dans ./projection/stochasticEvents.
+        const stochCtx = { m, currentMonthIndex, age, currentAge, expenseMultiplier, enableMonteCarlo, rng };
+        const stochMutator = {
+            addLiquid: (amt: number) => { liquid += amt; },
+            addExpense: (amt: number) => { monthlyExpenses += amt; },
+            logLife: (msg: string) => logEvent(lifeEventsLog, msg),
+        };
+        if (tryCriticalIllness(stochCtx, effProj, ciTriggered, stochMutator)) ciTriggered = true;
+        if (tryInheritance(stochCtx, effProj, inheritanceReceived, stochMutator)) inheritanceReceived = true;
 
         // Cycle 7 split: Sandwich generation (boomerang + caregiving) + Snowbird
         // extraits dans ./projection/w5Effects (applyAgeBasedExpenses).
@@ -915,27 +890,25 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         );
 
         // --- 4. TAX WITHHOLDING & APRIL SETTLEMENT ---
-        let taxPaidRevenu = 0, taxPaidGains = 0, taxPaidDivers = 0, taxPaidREER = 0;
-        if (currentMonthIndex === 3 && m > 0) {
-            // April tax filing
-            taxPaidRevenu = taxPreviousYear.revenu;
-            taxPaidGains = taxPreviousYear.gains;
-            taxPaidDivers = taxPreviousYear.divers;
-            taxPaidREER = taxPreviousYear.reer;
-            fluxImpots = taxPaidRevenu + taxPaidGains + taxPaidDivers + taxPaidREER;
-            if (fluxImpots !== 0) {
-                liquid -= fluxImpots;
-                impotSalaireMois = taxPaidRevenu; impotReerMois = taxPaidREER;
-                impotGainsMois = taxPaidGains; impotDiversMois = taxPaidDivers;
-                if (fluxImpots < 0) {
-                    logEvent(flowEventsLog, `💸 Remboursement d'impôt: +${Math.round(Math.abs(fluxImpots)).toLocaleString('fr-CA')}$`);
-                    if (taxPaidRevenu < 0) { nonReg += Math.abs(taxPaidRevenu); nonRegACB += Math.abs(taxPaidRevenu); }
-                } else {
-                    logEvent(flowEventsLog, `🏛️ Fisc: Régularisation de ${Math.round(fluxImpots).toLocaleString()}$ payée.`);
-                }
-            }
-            taxPreviousYear = { revenu: 0, gains: 0, divers: 0, reer: 0 };
+        // Cycle 8 split: avril extrait dans ./projection/taxCycle (processAprilSettlement).
+        const aprilResult = processAprilSettlement(currentMonthIndex, m, taxPreviousYear, {
+            subtractLiquid: (amt) => { liquid -= amt; },
+            addNonReg: (amt) => { nonReg += amt; },
+            addNonRegACB: (amt) => { nonRegACB += amt; },
+            logFlow: (msg) => logEvent(flowEventsLog, msg),
+        });
+        const taxPaidRevenu = aprilResult.taxPaidRevenu;
+        const taxPaidGains = aprilResult.taxPaidGains;
+        const taxPaidDivers = aprilResult.taxPaidDivers;
+        const taxPaidREER = aprilResult.taxPaidREER;
+        if (aprilResult.fluxImpots !== 0) {
+            fluxImpots = aprilResult.fluxImpots;
+            impotSalaireMois = taxPaidRevenu;
+            impotReerMois = taxPaidREER;
+            impotGainsMois = taxPaidGains;
+            impotDiversMois = taxPaidDivers;
         }
+        taxPreviousYear = aprilResult.newTaxPreviousYear;
 
         // V49: Monthly salary withholding approximation (T1213 Optimization)
         if (!isRetired) {

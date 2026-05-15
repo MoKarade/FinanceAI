@@ -108,7 +108,7 @@ Moins de duplication, cohérence garantie entre onglets.
 7. ✅ Budget: bandeau "Impact à long terme" + sensibilité +100$/mo (fait)
 8. ✅ Vérifier `isActive` sur RealEstateGoal — comportement OK, tests de régression ajoutés
 9. ⏳ Real Estate: utiliser projection pour le compare Buy vs Rent (au lieu du calcul local)
-10. ⏳ Tests unitaires supplémentaires pour le drawdown optim (PBMA, bracket-1, OAS guard)
+10. ✅ Tests d'intégration pour le drawdown optim (cascade retraité, RetraitREER>0, AUTO_MARGINAL vs PRIO_REER) — fait
 11. 🎨 **UI rework** (après tout ce qui précède)
 
 ## 🆕 Changement 2026-05 (Option A implémentée)

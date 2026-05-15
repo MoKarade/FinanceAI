@@ -60,6 +60,25 @@ describe('Dashboard', () => {
         expect(container.firstChild).toBeTruthy();
     });
 
+    it('Phase C2: affiche le PageHeader + les 4 KPI du hero', () => {
+        const { container } = render(<Dashboard {...baseProps} />);
+        // useTranslation est mocké → on vérifie les clés i18n présentes.
+        const text = container.textContent || '';
+        expect(text).toContain('dashboard.title');
+        expect(text).toContain('dashboard.global_net_worth');
+        expect(text).toContain('dashboard.global_variation');
+        expect(text).toContain('dashboard.passive_income_month');
+        expect(text).toContain('dashboard.future_predictor');
+    });
+
+    it('Phase B2: l\'Indicateur Futur expose un bouton clickable vers FutureProjection', () => {
+        const { container } = render(<Dashboard {...baseProps} />);
+        // Le bouton "🎯 →" est dans le KPI custom
+        const buttons = container.querySelectorAll('button');
+        const focusBtn = Array.from(buttons).find(b => b.getAttribute('aria-label')?.includes('FutureProjection'));
+        expect(focusBtn).toBeTruthy();
+    });
+
     it('en mode privacyMode=true, se rend sans crash', () => {
         const { container } = render(<Dashboard {...baseProps} isPrivacyMode={true} />);
         expect(container.firstChild).toBeTruthy();

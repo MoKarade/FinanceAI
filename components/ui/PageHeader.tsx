@@ -32,7 +32,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                 </div>
             </div>
             {actions && (
-                <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+                <div className="flex flex-wrap items-center gap-2 flex-shrink-0 w-full md:w-auto">
                     {actions}
                 </div>
             )}

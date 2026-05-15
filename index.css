@@ -226,4 +226,18 @@
     min-width: 44px;
     min-height: 44px;
   }
+
+  /* Phase D1 — Polish 360px: text-display est trop grand sur mobile.
+   *  On le rabaisse à 1.5rem (24px) sur viewports étroits, et restaure
+   *  la taille pleine sur md+ (28rem ≈ 448px). */
+  @media (max-width: 639px) {
+    .text-display {
+      font-size: 1.5rem !important;
+      line-height: 2rem !important;
+    }
+    .text-kpi {
+      font-size: 1.375rem !important;
+      line-height: 1.75rem !important;
+    }
+  }
 }

@@ -54,11 +54,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
     };
 
     useEffect(() => {
+        let cancelled = false;
         const load = async () => {
             const data = await fetchPortfolioHistory();
-            setMarketData(data);
+            if (!cancelled) setMarketData(data);
         };
         load();
+        return () => { cancelled = true; };
     }, []);
 
     // --- ENGINE: DATA UNIFICATION & 30-DAY LOOKBACK ---

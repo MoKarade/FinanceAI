@@ -103,8 +103,9 @@ export interface ProjectionChartPoint {
     AccruedTaxREER?: number;
     lifeEvents?: string[];
     flowEvents?: string[];
-    // Champs additionnels dynamiques (consommateurs spécifiques)
-    [extra: string]: any;
+    // Audit 2026-05: index signature narrow (unknown au lieu de any) pour
+    // forcer narrowing côté consommateur sans casser l'accès aux champs ad-hoc.
+    [extra: string]: number | string | boolean | string[] | undefined;
 }
 
 // FIX cycle 2 TS reviewer (ROI massif): typer le retour de calculateFutureProjection
@@ -135,5 +136,6 @@ export interface ProjectionResult {
     allResults?: ProjectionResult[];
     bestStrategyIdx?: number;
     actionPlan?: { monthlyCashflow: number; strategy: AllocationStrategy } | null;
-    [key: string]: any;
+    // Audit 2026-05: unknown au lieu de any pour forcer narrow chez consommateurs.
+    [key: string]: unknown;
 }

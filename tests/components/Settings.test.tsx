@@ -14,7 +14,7 @@ vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (k: string) => k, i18n: { language: 'fr' } }),
 }));
 
-const defaultApiKeys: AppState['apiKeys'] = { gemini: 'GEM_SECRET', eraContext: 'ERA_SECRET' };
+const defaultApiKeys: AppState['apiKeys'] = { anthropic: 'ANT_SECRET', eraContext: 'ERA_SECRET' };
 const defaultConfig: BudgetConfig = {
     users: [
         { name: 'Marc', monthlyGross: 7000, rrspContribution: 0, fhsaContribution: 0, birthYear: 1990, canadaArrivalYear: 2009 } as any,

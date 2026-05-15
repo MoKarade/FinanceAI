@@ -32,7 +32,7 @@ interface FinanceState extends AppState {
     /** Called by the destination page after it has consumed the focus intent. */
     clearPendingFocus: () => void;
     updateFxRates: (rates: { USD: number; EUR: number; CAD: number; lastFetched?: number }) => void;
-    updateApiKeys: (keys: { eraContext: string; gemini: string }) => void;
+    updateApiKeys: (keys: { eraContext: string; anthropic: string }) => void;
     updateLastUpdate: () => void;
     resetState: () => void;
 }
@@ -98,7 +98,7 @@ const getInitialStateWithMigration = (): AppState => {
         retirementGoal: { targetAge: 65, targetMonthlyIncome: 4000, governmentPension: 1200 },
         financialGoals: [],
         initialBalances: {},
-        apiKeys: { eraContext: '', gemini: '', anthropic: '' },
+        apiKeys: { eraContext: '', anthropic: '' },
         fxRates: DEFAULT_FX_RATES,
         lastUpdate: Date.now(),
         categorizationRules: [],
@@ -117,19 +117,16 @@ const getInitialStateWithMigration = (): AppState => {
     try {
         const savedApiKeysStr = localStorage.getItem('app_api_keys');
         const legacyToken = localStorage.getItem('lm_token');
-        const legacyGemini = localStorage.getItem('gemini_key');
-        // Migrate old lunchMoney key -> eraContext
-        let safeApiKeys: { eraContext: string; gemini: string; anthropic: string } = {
+        // Phase 4 A5: Gemini retiré — pas de migration depuis l'ancienne clé.
+        // L'utilisateur doit fournir une clé Anthropic Claude.
+        let safeApiKeys: { eraContext: string; anthropic: string } = {
             eraContext: legacyToken || '',
-            gemini: legacyGemini || '',
             anthropic: '',
         };
         if (savedApiKeysStr) {
             const parsed = JSON.parse(savedApiKeysStr);
             safeApiKeys = {
                 eraContext: parsed.eraContext || parsed.lunchMoney || safeApiKeys.eraContext,
-                gemini: parsed.gemini || safeApiKeys.gemini,
-                // Phase 4 A1 — nouvelle clé Anthropic, vide par défaut
                 anthropic: parsed.anthropic || '',
             };
         }
@@ -264,25 +261,25 @@ export const useFinanceStore = create<FinanceState>()(
             // de la forme du state, et ajouter une étape dans `migrate`.
             // Sans version, toute évolution casse silencieusement le boot des
             // utilisateurs existants (cf audit 2026-05 §State management).
-            version: 2,
+            version: 3,
             migrate: (persistedState: unknown, fromVersion: number) => {
                 let state = persistedState as Partial<FinanceState>;
-                // v0/undefined → v1 : pas de transformation (intro versioning)
+                // v0/undefined → v1 : intro versioning
                 if (fromVersion === undefined || fromVersion < 1) {
                     state = state as Partial<FinanceState>;
                 }
-                // v1 → v2 : Phase 4 A1 — ajout du champ apiKeys.anthropic.
-                // Si l'utilisateur a une clé gemini mais pas anthropic, on
-                // n'auto-copie PAS (clés API distinctes par provider).
-                if (fromVersion < 2 && state?.apiKeys) {
+                // v1 → v2 : Phase 4 A1 — ajout apiKeys.anthropic (gemini gardé)
+                // v2 → v3 : Phase 4 A5 — suppression de apiKeys.gemini.
+                //   On ne copie PAS la clé gemini vers anthropic (formats différents).
+                if (fromVersion < 3 && (state as any)?.apiKeys) {
+                    const apiKeys = (state as any).apiKeys as { eraContext?: string; gemini?: string; anthropic?: string };
                     state = {
                         ...state,
                         apiKeys: {
-                            eraContext: state.apiKeys.eraContext || '',
-                            gemini: state.apiKeys.gemini || '',
-                            anthropic: state.apiKeys.anthropic || '',
+                            eraContext: apiKeys.eraContext || '',
+                            anthropic: apiKeys.anthropic || '',
                         },
-                    };
+                    } as Partial<FinanceState>;
                 }
                 return state;
             },

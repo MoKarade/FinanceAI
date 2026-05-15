@@ -90,7 +90,7 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                         retirementGoal={state.retirementGoal}
                         debts={state.debts}
                         config={state.config}
-                        apiKey={state.apiKeys.anthropic || state.apiKeys.gemini}
+                        apiKey={state.apiKeys.anthropic}
                         calculatedMonthlySavings={calculatedMonthlySavings}
                         onNavigate={setActiveTab}
                         isPrivacyMode={isPrivacyMode}
@@ -101,7 +101,7 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                     <Transactions
                         transactions={state.transactions}
                         setTransactions={(t) => setAppState({ transactions: typeof t === 'function' ? (t as any)(state.transactions) : t })}
-                        apiKey={state.apiKeys.anthropic || state.apiKeys.gemini}
+                        apiKey={state.apiKeys.anthropic}
                         onSyncEraContext={onSyncEra}
                         isSyncing={isLoading}
                         budgetItems={state.budgetItems}
@@ -116,7 +116,7 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                         config={state.config}
                         budgetItems={state.budgetItems}
                         setBudgetItems={(items) => setAppState({ budgetItems: items })}
-                        apiKey={state.apiKeys.anthropic || state.apiKeys.gemini}
+                        apiKey={state.apiKeys.anthropic}
                     />
                 )}
 
@@ -125,7 +125,7 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                         transactions={state.transactions}
                         savingsGoals={state.savingsGoals}
                         setSavingsGoals={(goals) => setAppState({ savingsGoals: goals })}
-                        apiKey={state.apiKeys.anthropic || state.apiKeys.gemini}
+                        apiKey={state.apiKeys.anthropic}
                         budgetItems={state.budgetItems}
                         setBudgetItems={(items) => setAppState({ budgetItems: items })}
                         config={state.config}
@@ -143,7 +143,7 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                         setInvestmentAccounts={(accs) => setAppState({ investmentAccounts: accs })}
                         investmentTransactions={state.investmentTransactions}
                         setInvestmentTransactions={(txs) => setAppState({ investmentTransactions: txs })}
-                        apiKey={state.apiKeys.anthropic || state.apiKeys.gemini}
+                        apiKey={state.apiKeys.anthropic}
                         transactions={state.transactions}
                         budgetItems={state.budgetItems}
                         config={state.config}
@@ -155,7 +155,7 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                 {activeTab === Tab.TAX && (
                     <TaxCenter
                         config={state.config} setConfig={(c) => setAppState({ config: c })}
-                        assets={state.assets} apiKey={state.apiKeys.anthropic || state.apiKeys.gemini}
+                        assets={state.assets} apiKey={state.apiKeys.anthropic}
                     />
                 )}
 
@@ -255,8 +255,8 @@ export const TabRouter: React.FC<TabRouterProps> = ({
 
                 {activeTab === Tab.ASSISTANT && (
                     <AiAssistant
-                        // Phase 4 A2: bascule sur la clé Anthropic, fallback Gemini pendant la migration
-                        apiKey={state.apiKeys.anthropic || state.apiKeys.gemini}
+                        // Phase 4 A5: clé Anthropic Claude (Gemini retiré)
+                        apiKey={state.apiKeys.anthropic}
                         transactions={state.transactions}
                         budgetItems={state.budgetItems}
                         assets={state.assets}

@@ -31,7 +31,7 @@ const STEP_LABELS: Record<OnboardingStep, string> = {
 export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     const [step, setStep] = useState<OnboardingStep>('welcome');
     const [eraContextKey, setEraContextKey] = useState('');
-    const [geminiKey, setGeminiKey] = useState('');
+    const [anthropicKey, setAnthropicKey] = useState('');
     const [user1, setUser1] = useState({ name: 'Moi', grossSalary: 70000, netSalary: 4500, age: 30, canadaArrivalYear: 2020 });
     const [user2, setUser2] = useState({ name: 'Partenaire', grossSalary: 60000, netSalary: 3800, age: 30, canadaArrivalYear: 2020 });
     const [hasCoupleMode, setHasCoupleMode] = useState(false);
@@ -61,7 +61,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
         onComplete({
             config,
-            apiKeys: { eraContext: eraContextKey, gemini: geminiKey },
+            apiKeys: { eraContext: eraContextKey, anthropic: anthropicKey },
             fxRates: DEFAULT_FX_RATES,
             budgetItems: INITIAL_BUDGET,
             projection: INITIAL_PROJECTION,
@@ -110,7 +110,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                         <div className="grid grid-cols-1 gap-3 text-left">
                             {[
                                 { icon: '🔐', text: "Pas de serveur back-end — les données vivent dans localStorage de votre navigateur." },
-                                { icon: '🤖', text: "Si vous activez Gemini : marchands tronqués + montants arrondis à 100$ envoyés à Google AI Studio pour la catégorisation." },
+                                { icon: '🤖', text: "Si vous activez Claude : marchands tronqués + montants arrondis à 100$ envoyés à Anthropic pour la catégorisation et le conseil." },
                                 { icon: '💳', text: "Si vous activez Era Context : token envoyé à leur API pour fetcher vos transactions." },
                                 { icon: '📊', text: "Simulation financière complète (retraite, immobilier, projections) entièrement locale." },
                             ].map((f, i) => (
@@ -193,7 +193,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                             <h2 className="text-h1 text-ink-50">Clés API</h2>
                             <p className="text-meta text-ink-400 mt-1">Optionnelles — l'app fonctionne sans, mais avec moins de fonctionnalités.</p>
                             <p className="text-meta text-warning-400 mt-2 leading-relaxed">
-                                ⚠️ En activant Gemini, vous consentez explicitement à ce que des données (marchands tronqués + montants arrondis à 100$) soient envoyées à Google AI Studio. Era Context verra votre token + transactions.
+                                ⚠️ En activant Claude (Anthropic), vous consentez à ce que des données (marchands tronqués + montants arrondis à 100$) soient envoyées à Anthropic. Era Context verra votre token + transactions.
                             </p>
                         </div>
                         <div className="space-y-4">
@@ -206,12 +206,12 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                                 <p className="text-tiny text-ink-400 mt-2">Obtenez votre token sur <a href="https://era.app" target="_blank" rel="noopener noreferrer" className="text-info-400 underline">era.app</a></p>
                             </div>
                             <div className="p-4 bg-white/5 rounded-card border border-white/10">
-                                <label htmlFor="gemini-key" className="text-body font-bold text-ink-50 flex items-center gap-2 mb-2">
-                                    <span aria-hidden="true">🤖</span> Google Gemini API Key
-                                    <span className="text-tiny text-ink-400 font-normal">(Catégorisation IA + objectifs intelligents)</span>
+                                <label htmlFor="anthropic-key" className="text-body font-bold text-ink-50 flex items-center gap-2 mb-2">
+                                    <span aria-hidden="true">🤖</span> Anthropic Claude API Key
+                                    <span className="text-tiny text-ink-400 font-normal">(Catégorisation IA + conseiller + objectifs intelligents)</span>
                                 </label>
-                                <input id="gemini-key" type="password" placeholder="AIza..." className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body font-mono focus-ring" value={geminiKey} onChange={e => setGeminiKey(e.target.value)} />
-                                <p className="text-tiny text-ink-400 mt-2">Obtenez votre clé sur <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-info-400 underline">aistudio.google.com</a></p>
+                                <input id="anthropic-key" type="password" placeholder="sk-ant-..." className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body font-mono focus-ring" value={anthropicKey} onChange={e => setAnthropicKey(e.target.value)} />
+                                <p className="text-tiny text-ink-400 mt-2">Obtenez votre clé sur <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer" className="text-info-400 underline">console.anthropic.com</a></p>
                             </div>
                         </div>
                         <div className="flex gap-3">

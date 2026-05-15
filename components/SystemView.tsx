@@ -96,12 +96,12 @@ const computeDiagnostics = (state: AppState): LogLine[] => {
     });
 
     const hasEra = !!state.apiKeys.eraContext;
-    const hasGemini = !!state.apiKeys.gemini;
+    const hasAnthropic = !!state.apiKeys.anthropic;
     lines.push({
         text: stamp(
-            `API_KEYS: Era Context ${hasEra ? '✓' : '✗'} · Gemini ${hasGemini ? '✓' : '✗'}`
+            `API_KEYS: Era Context ${hasEra ? '✓' : '✗'} · Anthropic Claude ${hasAnthropic ? '✓' : '✗'}`
         ),
-        level: (hasEra && hasGemini) ? 'info' : 'warn',
+        level: (hasEra && hasAnthropic) ? 'info' : 'warn',
     });
 
     lines.push({

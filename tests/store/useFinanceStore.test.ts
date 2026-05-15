@@ -30,15 +30,15 @@ describe('useFinanceStore', () => {
     });
 
     it('updateApiKeys merge clé par clé sans écraser les autres', () => {
-        useFinanceStore.getState().updateApiKeys({ gemini: 'key1', eraContext: '' });
-        useFinanceStore.getState().updateApiKeys({ gemini: 'key1', eraContext: 'token2' });
+        useFinanceStore.getState().updateApiKeys({ anthropic: 'key1', eraContext: '' });
+        useFinanceStore.getState().updateApiKeys({ anthropic: 'key1', eraContext: 'token2' });
         const { apiKeys } = useFinanceStore.getState();
-        expect(apiKeys.gemini).toBe('key1');
+        expect(apiKeys.anthropic).toBe('key1');
         expect(apiKeys.eraContext).toBe('token2');
     });
 
     it('persiste le state mais EXCLUT apiKeys du localStorage (audit 2026-05)', () => {
-        useFinanceStore.getState().updateApiKeys({ gemini: 'SECRET123', eraContext: 'TOKEN456' });
+        useFinanceStore.getState().updateApiKeys({ anthropic: 'SECRET123', eraContext: 'TOKEN456' });
         // Force trigger persist (Zustand persiste sur set)
         useFinanceStore.getState().setActiveTab(Tab.SETTINGS);
         const raw = localStorage.getItem('financeai-storage');
@@ -49,11 +49,11 @@ describe('useFinanceStore', () => {
         expect(raw).not.toContain('apiKeys');
     });
 
-    it('a une version persist = 2 (Phase 4 A1 — schema bump pour apiKeys.anthropic)', () => {
+    it('a une version persist = 3 (Phase 4 A5 — suppression apiKeys.gemini)', () => {
         useFinanceStore.getState().setActiveTab(Tab.SETTINGS);
         const raw = localStorage.getItem('financeai-storage');
         if (!raw) throw new Error('Persist did not write');
         const parsed = JSON.parse(raw);
-        expect(parsed.version).toBe(2);
+        expect(parsed.version).toBe(3);
     });
 });

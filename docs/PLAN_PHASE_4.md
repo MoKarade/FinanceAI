@@ -86,7 +86,17 @@
 
 ## §2 — Plan d'exécution (8 PRs)
 
-### Phase 4.A — Migration mécanique Gemini → Claude
+### ✅ Phase 4.A — TERMINÉE (mai 2026)
+
+Toutes les PR A1-A5 mergées. Migration Gemini → Claude **complète** :
+- `services/gemini.ts` supprimé
+- `@google/genai` retiré du `package.json`
+- 0 référence à Gemini dans le code app
+- `apiKeys.gemini` retiré du store (schema v3)
+- UI Onboarding + Settings + SystemView mises à jour ("Anthropic Claude")
+- Tests: 223/223 passants tout du long
+
+### Phase 4.A — Détails historiques
 
 #### PR #1 : `services/claude.ts` + types
 - **Effort** : M

@@ -44,6 +44,14 @@ export const CAPITAL_GAINS_INCLUSION_STANDARD = 0.50;
 export const CAPITAL_GAINS_INCLUSION_HIGH = 0.6667;
 export const CAPITAL_GAINS_HIGH_THRESHOLD = 250000;
 
+// Plafonds spécifiques aux régimes (par utilisateur).
+// Source : Budget fédéral 2024-2026. À mettre à jour à chaque budget.
+export const RAP_LIMIT_PER_USER = 60000;                    // Régime Accession Propriété
+export const PBMA_THRESHOLD_PER_USER = 17183;               // Palier de base montant ajusté
+export const OAS_CLAWBACK_THRESHOLD_2024 = 90997;           // Seuil PSV clawback 2024
+export const FHSA_LIFETIME_LIMIT_PER_USER = 40000;          // CELIAPP plafond à vie
+export const FHSA_ANNUAL_LIMIT_PER_USER = 8000;             // CELIAPP plafond annuel
+
 export const calculateGrossWithholdingRRSP = (netNeeded: number): { gross: number, withholding: number } => {
     if (netNeeded <= 0) return { gross: 0, withholding: 0 };
     let grossAttempt = netNeeded / (1 - 0.21);
@@ -168,6 +176,8 @@ export const getMarginalRate = (income: number, year: number = 2026) => {
     const effectiveFedRate = fedRate * (1 - 0.165);
     return effectiveFedRate + qcRate;
 };
+
+export type FiscalReport = ReturnType<typeof calculateFiscalReport>;
 
 export const calculateFiscalReport = (grossIncome: number, rrspContribution: number, fhsaContribution: number, year: number = 2026, skipBreakdown: boolean = false) => {
     grossIncome = Number(grossIncome) || 0;

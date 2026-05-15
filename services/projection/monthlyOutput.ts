@@ -242,7 +242,7 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         NetTransferREEE: Number((contribREEE - withdrawalREEE).toFixed(2)),
         ExpenseInflationImpact: Number((monthlyExpenses * (simInflation / 100 / 12)).toFixed(2)),
         ExpenseInflationPct: Number((simInflation / 12).toFixed(2)),
-        AccruedTaxRevenue: Number((taxCurrentYear.revenu + taxPreviousYear.revenu).toFixed(2)),
+        AccruedTaxRevenu: Number((taxCurrentYear.revenu + taxPreviousYear.revenu).toFixed(2)),
         AccruedTaxGains: Number((taxCurrentYear.gains + taxPreviousYear.gains).toFixed(2)),
         AccruedTaxDivers: Number((taxCurrentYear.divers + taxPreviousYear.divers).toFixed(2)),
         AccruedTaxREER: Number((taxCurrentYear.reer + taxPreviousYear.reer).toFixed(2)),

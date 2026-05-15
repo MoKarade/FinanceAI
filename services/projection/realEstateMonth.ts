@@ -8,6 +8,7 @@
 // propertiesState est mutée en place (objets référencés).
 
 import type { RealEstateGoal } from '../../types';
+import { RAP_LIMIT_PER_USER } from '../../utils/tax';
 
 type GetMarginalRateFn = (annualGross: number) => number;
 type GetMonthOffsetFn = (dateStr: string) => number;
@@ -77,26 +78,7 @@ export interface RealEstateCtx {
     currentRentExpense: number;
 }
 
-function handleNonRegSale(state: RealEstateState, amount: number): number {
-    const sold = Math.min(state.nonReg, amount);
-    if (sold > 0) {
-        const proportion = state.nonRegACB > 0 && state.nonReg > 0
-            ? Math.min(1, state.nonRegACB / state.nonReg) : 0;
-        const costBasis = sold * proportion;
-        state.nonReg -= sold;
-        state.nonRegACB = Math.max(0, state.nonRegACB - costBasis);
-        const rawGain = sold - costBasis;
-        if (rawGain < 0) {
-            state.capitalLossBank += Math.abs(rawGain);
-        } else {
-            const usableLoss = Math.min(rawGain, state.capitalLossBank);
-            const taxableGain = rawGain - usableLoss;
-            state.capitalLossBank -= usableLoss;
-            state.accCapitalGainsYear += taxableGain;
-        }
-    }
-    return sold;
-}
+import { handleNonRegSale } from './portfolioOps';
 
 /**
  * Traite tout l'immobilier pour le mois courant.
@@ -145,7 +127,7 @@ export function processRealEstate(
 
                 // Phase 1: RAP (si résidence principale et éligible)
                 if (goal.isPrimaryResidence && (!state.hasUsedRap || state.rapRepaymentDueTotal === 0)) {
-                    const rapLimit = 60000 * activeUsersCount;
+                    const rapLimit = RAP_LIMIT_PER_USER * activeUsersCount;
                     const rapAvailable = Math.max(0, rapLimit - state.rapBorrowed);
                     if (rapAvailable > 0) {
                         const rapAmount = Math.min(state.reer, rapAvailable, remainingShortfall);

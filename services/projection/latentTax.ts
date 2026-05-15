@@ -4,13 +4,15 @@
 // Valeur d'affichage uniquement (impotLatent dans data.push).
 // Pattern: Pure Function + injection calculateFiscalReport.
 
+import { CAPITAL_GAINS_HIGH_THRESHOLD, type FiscalReport } from '../../utils/tax';
+
 type FiscalFn = (
     grossIncome: number,
     rrspContrib: number,
     fhsaContrib: number,
     year: number,
     skipBreakdown: boolean,
-) => { netIncome: number; totalTax: number };
+) => FiscalReport;
 
 export interface LatentTaxCtx {
     m: number;
@@ -56,7 +58,7 @@ export function computeLatentTax(
         * activeUsersCount * inflationFactor;
 
     const latentCapitalGain = Math.max(0, nonReg - nonRegACB);
-    const thresholdGains = 250000 * activeUsersCount;
+    const thresholdGains = CAPITAL_GAINS_HIGH_THRESHOLD * activeUsersCount;
     const taxableLatentGain = latentCapitalGain <= thresholdGains
         ? latentCapitalGain * 0.50
         : (thresholdGains * 0.50) + ((latentCapitalGain - thresholdGains) * 0.6667);

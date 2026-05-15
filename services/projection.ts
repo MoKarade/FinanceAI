@@ -8,6 +8,8 @@ import { applyW5Effects, applyAgeBasedExpenses } from './projection/w5Effects';
 import { tryCriticalIllness, tryInheritance, tryMortality, trySpouseMortality, tryLtcTrigger, ltcMonthlyCost, tickJobLoss, tickLtd, tryDivorce } from './projection/stochasticEvents';
 import { processAprilSettlement, computeOasClawback, processTaxLossHarvesting, processAutoVehicleReplacement, processDecemberTaxFiling, processJanuaryReset } from './projection/taxCycle';
 import { buildHistoricalSequence, buildReplaySequence, canadianInflationFor, type YearReturn } from './projection/historicalReturns';
+import { computeRetirementIncome } from './projection/retirementIncome';
+import { processOneChild } from './projection/childrenReee';
 
 export interface SimulationParams {
     projection: ProjectionConfig;
@@ -637,79 +639,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 lifeEventsLog.push('📍 Début Retraite');
                 hasLoggedRetirement = true;
             }
-            // V22 A: RRQ dès 60 ans (65%), PSV dès 65 ans (35%)
-            // Phase 2: Arbitrage de Longévité (Délai des rentes à 70 ans)
-
-            // PSV Prorata (40 ans de résidence pour 100%) - Tracker dynamique
-            let totalPsvProrata = 0;
-            let totalRrqMpeRatio = 0;
-            const yearsElapsed = Math.floor(m / 12);
-            // Phase 2: MGA dynamique (73200 + indexation salariale)
-            const RRQ_MPE_ESTIMATE = 73200 * Math.pow(1 + (simInflation + 0.5) / 100, yearsElapsed);
-
-            config.users.filter(u => u).forEach((u, idx) => {
-                const currentGrossUser = (u.grossSalary || (baseGrossAnnual / activeUsersCount));
-                // Ratio de cotisation MGA basé sur le salaire simulé actuel vs MGA courant
-                totalRrqMpeRatio += Math.min(1.0, currentGrossUser / RRQ_MPE_ESTIMATE);
-
-                // Prorata PSV basé sur le compteur dynamique arrêtté à la retraite
-                totalPsvProrata += Math.min(1.0, psvResidencyYears[idx] / 40);
-            });
-            const psvProrata = totalPsvProrata / activeUsersCount;
-            const rrqMpeRatio = totalRrqMpeRatio / activeUsersCount;
-
-            // Le ratio est figé selon l'âge cible de retraite, pas l'âge courant
-            const workedYearsAtRetirement = Math.max(0, retirementGoal.targetAge - Math.max(18, config.users[0]?.canadaArrivalYear || 18));
-            const rrqProrata = Math.min(1, workedYearsAtRetirement / 39) * rrqMpeRatio;
-
-            let rrqFactor = 1.0;
-            let psvFactor = 1.0;
-            let rrqStartAge = Math.max(60, retirementGoal.targetAge);
-            let psvStartAge = Math.max(65, retirementGoal.targetAge);
-
-            if (delayPensions) {
-                rrqStartAge = 70;
-                psvStartAge = 70;
-                rrqFactor = 1.42; // Bonus max (60 months * 0.7%)
-                psvFactor = 1.36; // Bonus max (60 months * 0.6%)
-            } else {
-                const monthsFrom65 = (rrqStartAge - 65) * 12;
-                if (monthsFrom65 < 0) rrqFactor = 1 + Math.max(monthsFrom65, -60) * 0.006;
-                else rrqFactor = 1 + Math.min(monthsFrom65, 60) * 0.007;
-
-                const monthsPsvFrom65 = (psvStartAge - 65) * 12;
-                if (monthsPsvFrom65 > 0) psvFactor = 1 + Math.min(monthsPsvFrom65, 60) * 0.006;
-            }
-
-            // W1.3 — RRQ et PSV séparés (corrige L1).
-            // Si rrqEstimateMonthly / psvEstimateMonthly fournis, on les utilise
-            // comme base individuelle (déjà par utilisateur). Sinon fallback sur
-            // l'ancien split governmentPension × 0.65/0.35.
-            const rrqBaseIndiv = (retirementGoal.rrqEstimateMonthly !== undefined)
-                ? (retirementGoal.rrqEstimateMonthly * activeUsersCount)
-                : (retirementGoal.governmentPension * 0.65);
-            const psvBaseIndiv = (retirementGoal.psvEstimateMonthly !== undefined)
-                ? (retirementGoal.psvEstimateMonthly * activeUsersCount)
-                : (retirementGoal.governmentPension * 0.35);
-            // W1.4 — Mode survivant: RRQ user2 → 60% (max RRQ standard), PSV user2 cesse
-            const survivorRrqFactor = survivorMode ? (1 - 0.5 + 0.5 * rrqSurvivorPct) : 1; // ½ + ½×% si couple, sinon 1
-            const survivorPsvFactor = survivorMode ? 0.5 : 1; // PSV individuelle: la moitié cesse
-            const rrqMonthly = age >= rrqStartAge ? (rrqBaseIndiv * rrqProrata * rrqFactor * survivorRrqFactor) : 0;
-            const psvMonthly = age >= psvStartAge ? (psvBaseIndiv * psvProrata * psvFactor * survivorPsvFactor) : 0;
-
-            const inflFactor = Math.pow(1 + simInflation / 100, m / 12);
-
-            // D2.4: Rente DB (prestations déterminées). Indexée partiellement
-            // selon dbPensionIndexationPct (défaut 100% = pleinement indexée).
-            const dbStartAge = retirementGoal.dbPensionStartAge ?? retirementGoal.targetAge;
-            const dbBaseMonthly = retirementGoal.dbPensionMonthly || 0;
-            const dbIndexationFraction = Math.min(1, Math.max(0, (retirementGoal.dbPensionIndexationPct ?? 100) / 100));
-            const dbInflFactor = 1 + (inflFactor - 1) * dbIndexationFraction;
-            // W1.4 — Survivant: DB ajustée selon option election (60/66/100%)
-            const dbSurvivorFactor = survivorMode ? dbSurvivorPct : 1;
-            const dbMonthly = age >= dbStartAge ? dbBaseMonthly * dbInflFactor * dbSurvivorFactor : 0;
-
-            incomeRetirement = Math.max(0, (rrqMonthly + psvMonthly) * inflFactor + dbMonthly - monthlyOasReduction);
+            // Cycle 13 split: calcul RRQ/PSV/DB → ./projection/retirementIncome
+            incomeRetirement = computeRetirementIncome(
+                { m, age, simInflation, activeUsersCount, baseGrossAnnual, delayPensions,
+                  survivorMode, monthlyOasReduction, dbSurvivorPct, rrqSurvivorPct, psvResidencyYears },
+                retirementGoal,
+                config.users,
+            );
             monthlyIncome = incomeRetirement;
 
             // D2.3: monthlyExpenses est défini de façon unique dans le bloc
@@ -1241,135 +1177,57 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         immoHypo = totalImmoHypo;
 
         // ---- ENFANTS & REEE ----
+        // Cycle 14 split: processOneChild → ./projection/childrenReee.
+        // Les variables liquid/reee/monthlyIncome/incomeAnna sont commitées après le forEach.
+        let _childLiquid = liquid;
+        let _childReee = reee;
+        let _childMonthlyIncome = monthlyIncome;
+        let _childIncomeAnna = incomeAnna;
         activeChild.forEach((child, idx) => {
             const birthOffset = getMonthOffset(child.birthDate);
-            if (child.isActive && m >= Math.max(0, birthOffset)) {
-                if (m === Math.max(0, birthOffset)) {
-                    liquid -= (child.initialCost ?? 0);
-                    logEvent(lifeEventsLog, `Naissance 👶 (${child.name || 'Enfant'})`);
-                }
-                const childAgeMonths = m - Math.max(0, birthOffset);
-
-                if (childAgeMonths < 18 * 12) {
-                    let cMonthly = (child.monthlyDiapers ?? 0) + (child.monthlyFood ?? 0) + (child.monthlyClothing ?? 0);
-
-                    // V31: RQAP Net Cashflow Fix (Remplace salaire Anna par RQAP au lieu d'ajouter un déficit)
-                    let annaIsOnMatLeave = false;
-                    if (childAgeMonths < 12) {
-                        annaIsOnMatLeave = true;
-                        const yearsElapsed = Math.floor(m / 12);
-                        const annaGrossAnnual = grossAnnaBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
-                        const rqapCap = 98000 * expenseMultiplier;
-                        const eligibleSalary = Math.min(annaGrossAnnual, rqapCap);
-
-                        // RQAP remplace environ 60% du net pendant 1 an
-                        const rqapNetInfo = calculateFiscalReport(eligibleSalary * 0.55, 0, 0, loopYear, enableMonteCarlo);
-                        const rqapNetMonthly = rqapNetInfo.netIncome / 12;
-
-                        // Replace Anna's regular income in the general pool with RQAP
-                        monthlyIncome = monthlyIncome - incomeAnna + rqapNetMonthly;
-                        incomeAnna = rqapNetMonthly; // update tracking
-
-                        // V47 RQAP Limit: Deduct Anna's missing gross salary from RRSP accumulation room
-                        const annaGrossMonthly = (grossAnnaBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed)) / 12;
-                        accGrossIncomeYear -= annaGrossMonthly; // Ne génère pas d'espace REER
-
-                        // Offset: Anna saves ~$350/mo on commuting/lunches while home
-                        const commutingSavings = 350 * expenseMultiplier;
-                        monthlyExpenses -= commutingSavings;
-                    }
-
-                    if (childAgeMonths < 60 && !annaIsOnMatLeave) {
-                        // V22 C: Crédit garderie QC — privée (> 400$/m) → 30% du coût
-                        const daycareGross = (child.monthlyDaycare ?? 0) * expenseMultiplier;
-                        const daycareCostNet = daycareGross > 400 ? daycareGross * 0.30 : daycareGross;
-                        cMonthly += daycareCostNet;
-                    }
-
-                    const currentChildGrossCost = cMonthly * expenseMultiplier;
-                    monthlyExpenses += currentChildGrossCost;
-
-                    // V31: CCB Dégressif au-dessus de 150k de revenus familiaux
-                    let adjustedBenefits = child.governmentBenefits ?? 0;
-                    const householdGross = grossMarcBaseAnnual + grossAnnaBaseAnnual;
-                    if (householdGross > 150000) {
-                        const clawbackRatio = Math.max(0, 1 - ((householdGross - 150000) / 100000));
-                        adjustedBenefits *= clawbackRatio;
-                    }
-
-                    monthlyIncome += adjustedBenefits;
-                    childGrossCost += currentChildGrossCost;
-                    childBenefits += adjustedBenefits;
-                    childMonthlyCost += currentChildGrossCost;
-
-                    // V31 + REEE Catch-up Fix
-                    const childAgeYears = Math.floor(childAgeMonths / 12) + 1;
-                    const maxTheoreticalScee = Math.min(7200, childAgeYears * 500);
-
-                    let optimalReeeMonthly = 2500 / 12;
-                    let sceeYearlyLimit = 500;
-                    let iqeeYearlyLimit = 250;
-
-                    // V44: Suivi isolé des subventions REEE par ID d'enfant
-                    const childId = child.id || `enfant_${idx}`; // fallback
-                    if (!reeeTracker[childId]) reeeTracker[childId] = { scee: 0, iqee: 0 };
-                    const tracker = reeeTracker[childId];
-
-                    // Si on a du retard sur les subventions, la cible et les plafonds doublent (Rattrapage d'une année passée)
-                    if (tracker.scee < maxTheoreticalScee) {
-                        optimalReeeMonthly = 5000 / 12;
-                        sceeYearlyLimit = 1000;
-                        iqeeYearlyLimit = 500;
-                    }
-
-                    if (liquid >= optimalReeeMonthly && !isRetired) {
-                        liquid -= optimalReeeMonthly;
-                        withdrawalLiquid += optimalReeeMonthly;
-                        reeeContribMonthly += Math.round(optimalReeeMonthly);
-
-                        // SCEE Rattrapage
-                        const sceeGrant = Math.min(optimalReeeMonthly * 0.20, sceeYearlyLimit / 12, 7200 - tracker.scee);
-                        tracker.scee += Math.max(0, sceeGrant);
-
-                        // IQEE Rattrapage
-                        const iqeeGrant = Math.min(optimalReeeMonthly * 0.10, iqeeYearlyLimit / 12, 3600 - tracker.iqee);
-                        tracker.iqee += Math.max(0, iqeeGrant);
-
-                        const totalGrant = Math.max(0, sceeGrant) + Math.max(0, iqeeGrant);
-                        reee += optimalReeeMonthly + totalGrant;
-                        contribREEE += optimalReeeMonthly + totalGrant;
-                    }
-                }
-
-                if (childAgeMonths >= 18 * 12 && childAgeMonths < 25 * 12) {
-                    const studiesMonthly = (20000 / 12) * expenseMultiplier;
-                    monthlyExpenses += studiesMonthly;
-                    childGrossCost += studiesMonthly;
-                    childMonthlyCost += studiesMonthly;
-                    if (reee >= studiesMonthly) {
-                        reee -= studiesMonthly;
-                        withdrawalREEE += studiesMonthly;
-                        monthlyIncome += studiesMonthly;
-                        reeePayoutMonthly += studiesMonthly;
-                        contribLiquid += studiesMonthly;
-                    } else if (reee > 0) {
-                        monthlyIncome += reee;
-                        reeePayoutMonthly += reee;
-                        withdrawalREEE += reee;
-                        contribLiquid += reee;
-                        reee = 0;
-                    }
-                }
-
-                // V31: Fermeture REEE à 25 ans
-                if (childAgeMonths === 25 * 12 && reee > 0) {
-                    liquid += reee;
-                    taxCurrentYear.divers += reee * 0.20; // V31 Fix 3: Pénalité/Impôt sur retrait résiduel REEE
-                    logEvent(flowEventsLog, `🎓 Fermeture REEE (${child.name || 'Enfant 25 ans'}): +${Math.round(reee).toLocaleString('fr-CA')}$ → Liquidités`);
-                    reee = 0;
-                }
-            }
+            if (!child.isActive || m < Math.max(0, birthOffset)) return;
+            const childAgeMonths = m - Math.max(0, birthOffset);
+            const isFirstMonth = m === Math.max(0, birthOffset);
+            const childId = child.id || `enfant_${idx}`;
+            const tracker = reeeTracker[childId] ?? { scee: 0, iqee: 0 };
+            const result = processOneChild(
+                child, idx, isFirstMonth, childAgeMonths,
+                {
+                    m, loopYear, simSalaryGrowth, simInflation, expenseMultiplier,
+                    isRetired, grossMarcBaseAnnual, grossAnnaBaseAnnual,
+                    incomeAnna: _childIncomeAnna,
+                    liquid: _childLiquid,
+                    reee: _childReee,
+                    householdGross: grossMarcBaseAnnual + grossAnnaBaseAnnual,
+                    trackerScee: tracker.scee, trackerIqee: tracker.iqee,
+                    enableMonteCarlo,
+                },
+                calculateFiscalReport,
+            );
+            _childLiquid += result.liquidDelta;
+            _childReee = result.reeeNewBalance;
+            monthlyExpenses += result.monthlyExpenseDelta;
+            _childMonthlyIncome += result.monthlyIncomeDelta;
+            if (result.newIncomeAnna !== null) _childIncomeAnna = result.newIncomeAnna;
+            accGrossIncomeYear += result.accGrossDelta;
+            reeeTracker[result.childId] = { scee: result.newTrackerScee, iqee: result.newTrackerIqee };
+            childGrossCost += result.childGrossCostAdd;
+            childBenefits += result.childBenefitsAdd;
+            childMonthlyCost += result.childMonthlyCostAdd;
+            reeeContribMonthly += result.reeeContribAdd;
+            withdrawalLiquid += result.withdrawalLiquidAdd;
+            withdrawalREEE += result.withdrawalREEEAdd;
+            reeePayoutMonthly += result.reeePayoutAdd;
+            contribREEE += result.contribREEEAdd;
+            contribLiquid += result.contribLiquidAdd;
+            taxCurrentYear.divers += result.taxDiversAdd;
+            result.lifeEventLogs.forEach(msg => logEvent(lifeEventsLog, msg));
+            result.flowEventLogs.forEach(msg => logEvent(flowEventsLog, msg));
         });
+        liquid = _childLiquid;
+        reee = _childReee;
+        monthlyIncome = _childMonthlyIncome;
+        incomeAnna = _childIncomeAnna;
 
         const currentIsoMonth = currentLoopDate.toISOString().split('T')[0].substring(0, 7);
         travelGoals.forEach(t => { 

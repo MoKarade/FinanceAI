@@ -1,6 +1,10 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useDebouncedMemo } from '../utils/useDebouncedMemo';
 import { Card } from './ui/Card';
+import { PageHeader } from './ui/PageHeader';
+import { KPIStat } from './ui/KPIStat';
+import { StatGrid } from './ui/StatGrid';
+import { Pill } from './ui/Pill';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Line, ComposedChart, Brush, Bar, ReferenceDot, LabelList } from 'recharts';
 import { BudgetConfig, BudgetCategory, Asset, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Transaction, Debt, ProjectionConfig, FinancialGoal, User, RegisteredAccountType } from '../types';
 import { fetchPortfolioHistory } from '../services/finance';
@@ -263,20 +267,57 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     return (
         <div className="space-y-6 animate-fade-in pb-24">
 
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-900/40 to-emerald-900/40 border border-white/10 p-6 shadow-2xl">
-                 <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                     <div>
-                         <h2 className="text-3xl font-black text-white italic">Moteur de Simulation HD (Départ 2026)</h2>
-                         <p className="text-gray-300 text-sm mt-1 max-w-2xl">
-                             Analyse des flux mensuels projetés avec transition automatique Loyer → Hypothèque et Frais Enfants dynamiques.
-                         </p>
-                     </div>
-                     <div className="text-right bg-black/40 p-3 rounded-xl border border-white/10">
-                         <div className="text-[10px] text-orange-400 font-bold uppercase tracking-widest">Objectif FIRE (Règle des 4%)</div>
-                         <div className="text-2xl font-black text-white privacy-blur">{fireNumber.toLocaleString()} $</div>
-                     </div>
-                 </div>
-            </div>
+            <PageHeader
+                icon="🔮"
+                title="Projection Future"
+                subtitle="Analyse des flux mensuels projetés avec Loyer → Hypothèque automatique et frais enfants dynamiques."
+                actions={
+                    <Pill
+                        aria-label="Mode de données"
+                        size="sm"
+                        value={projection.useTheoretical ? 'sandbox' : 'real'}
+                        onChange={(v) => updateProj('useTheoretical', v === 'sandbox')}
+                        options={[
+                            { value: 'real', label: 'Données Réelles', icon: '🔗' },
+                            { value: 'sandbox', label: 'Sandbox', icon: '🧪' },
+                        ]}
+                    />
+                }
+            />
+
+            {/* Hero KPI strip — instant comprehension */}
+            <StatGrid cols={4}>
+                <KPIStat
+                    label="Objectif FIRE"
+                    icon="🎯"
+                    value={`${(fireNumber / 1000).toFixed(0)}k $`}
+                    sublabel="Règle des 4%"
+                    privacy
+                    variant="warning"
+                />
+                <KPIStat
+                    label="Patrimoine projeté"
+                    icon="💼"
+                    value={`${((results?.estateNetWorth || 0) / 1000000).toFixed(2)}M $`}
+                    sublabel={`Fin de l'horizon (${projection.years || 30} ans)`}
+                    privacy
+                    variant="primary"
+                />
+                <KPIStat
+                    label="Taux de succès"
+                    icon="✓"
+                    value={results?.successRate != null ? `${results.successRate}%` : '—'}
+                    sublabel={runMC ? 'Monte Carlo (100 itér.)' : 'Active MC pour calculer'}
+                    variant={results?.successRate != null && results.successRate >= 80 ? 'success' : results?.successRate != null && results.successRate >= 50 ? 'warning' : 'danger'}
+                />
+                <KPIStat
+                    label="Vitalité financière"
+                    icon="🌡️"
+                    value={results?.fvi != null ? `${results.fvi}/100` : '—'}
+                    sublabel={runMC ? '30/30/20/20 split' : 'Active MC pour calculer'}
+                    variant={results?.fvi != null && results.fvi >= 70 ? 'success' : results?.fvi != null && results.fvi >= 40 ? 'warning' : 'danger'}
+                />
+            </StatGrid>
             <ProjectionControls
                 projection={projection}
                 updateProj={updateProj}

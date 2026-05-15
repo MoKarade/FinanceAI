@@ -8,7 +8,7 @@ export const ExpertTooltip = ({ active, payload, isPrivacyMode, userName1, userN
         <div className="bg-[#0B0E14]/95 backdrop-blur-md border border-white/20 p-4 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] max-w-sm z-50">
             <div className="text-sm font-bold text-white mb-2 border-b border-white/20 pb-2 flex justify-between items-center">
                 <span>{data.dateLabel || 'N/A'}</span>
-                <span className="text-[10px] text-gray-400 bg-white/10 px-2 py-0.5 rounded">Âge: {data.age || '??'}</span>
+                <span className="text-tiny text-gray-400 bg-white/10 px-2 py-0.5 rounded">Âge: {data.age || '??'}</span>
             </div>
 
             <div className="mb-3 space-y-1">
@@ -19,7 +19,7 @@ export const ExpertTooltip = ({ active, payload, isPrivacyMode, userName1, userN
                 <div className="flex justify-between text-xs"><span className="text-gray-400">Dépenses Vies:</span> <span className="font-mono text-red-400 privacy-blur">-{(data.Expenses || 0).toLocaleString()}$</span></div>
 
                 {(data.childGross || 0) > 0 && (
-                    <div className="flex justify-between text-[10px]">
+                    <div className="flex justify-between text-tiny">
                         <span className="text-gray-500 pl-2">↳ dt. Enfant:</span>
                         <span className="font-mono text-red-300 privacy-blur text-right">
                             -{(data.childGross || 0).toLocaleString()}$
@@ -27,21 +27,21 @@ export const ExpertTooltip = ({ active, payload, isPrivacyMode, userName1, userN
                         </span>
                     </div>
                 )}
-                {(data.ReeeContrib || 0) > 0 && <div className="flex justify-between text-[10px]"><span className="text-gray-500 pl-2">↳ dt. Épargne REEE:</span> <span className="font-mono text-blue-300 privacy-blur">{(data.ReeeContrib || 0)}$ (+30% gouv)</span></div>}
+                {(data.ReeeContrib || 0) > 0 && <div className="flex justify-between text-tiny"><span className="text-gray-500 pl-2">↳ dt. Épargne REEE:</span> <span className="font-mono text-blue-300 privacy-blur">{(data.ReeeContrib || 0)}$ (+30% gouv)</span></div>}
 
                 {(data.ImmoHypo || 0) > 0 && (
-                    <div className="flex flex-col text-[10px]">
+                    <div className="flex flex-col text-tiny">
                         <div className="flex justify-between">
                             <span className="text-gray-500 pl-2">↳ dt. Maison:</span>
                             <span className="font-mono text-pink-300 privacy-blur">Hypo {(data.ImmoHypo || 0).toLocaleString()}$ | Chg {(data.ImmoCharges || 0).toLocaleString()}$</span>
                         </div>
-                        <div className="flex justify-end text-[9px] text-gray-500 mt-0.5 font-mono">
+                        <div className="flex justify-end text-tiny text-gray-500 mt-0.5 font-mono">
                             (Capital: <span className="text-green-400/80 mx-1">+{(data.ImmoPrincipal || 0).toLocaleString()}$</span> Intérêts: <span className="text-red-400/80 ml-1">-{(data.ImmoInterest || 0).toLocaleString()}$</span>)
                         </div>
                     </div>
                 )}
                 {(data.ImmoHypo || 0) === 0 && (data.ImmoCharges || 0) > 0 && (
-                    <div className="flex justify-between text-[10px]">
+                    <div className="flex justify-between text-tiny">
                         <span className="text-gray-500 pl-2">↳ dt. Maison (Payée):</span>
                         <span className="font-mono text-pink-300 privacy-blur">Chg {(data.ImmoCharges || 0).toLocaleString()}$</span>
                     </div>
@@ -54,7 +54,7 @@ export const ExpertTooltip = ({ active, payload, isPrivacyMode, userName1, userN
                     </span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-1 mt-1 text-[9px] text-gray-400 border-b border-white/5 pb-2 mb-2">
+                <div className="grid grid-cols-3 gap-1 mt-1 text-tiny text-gray-400 border-b border-white/5 pb-2 mb-2">
                     <div className="text-center bg-white/5 rounded py-0.5">Cash: <br/><span className={(data.diffLiquid || 0) >= 0 ? 'text-green-300' : 'text-red-300'}>{(data.diffLiquid || 0) > 0 ? '+' : ''}{(data.diffLiquid || 0)}$</span></div>
                     <div className="text-center bg-white/5 rounded py-0.5">CELI: <br/><span className={(data.diffCELI || 0) >= 0 ? 'text-green-300' : 'text-red-300'}>{(data.diffCELI || 0) > 0 ? '+' : ''}{(data.diffCELI || 0)}$</span></div>
                     <div className="text-center bg-white/5 rounded py-0.5">REER: <br/><span className={(data.diffREER || 0) >= 0 ? 'text-green-300' : 'text-red-300'}>{(data.diffREER || 0) > 0 ? '+' : ''}{(data.diffREER || 0)}$</span></div>
@@ -86,7 +86,7 @@ export const ExpertTooltip = ({ active, payload, isPrivacyMode, userName1, userN
                 <div className="mt-3 pt-2 border-t border-white/20">
                     {data.lifeEvents?.length > 0 && (
                         <div className="mb-2">
-                            <span className="text-[9px] uppercase text-yellow-500 font-bold tracking-widest">Événements</span>
+                            <span className="text-tiny uppercase text-yellow-500 font-bold tracking-widest">Événements</span>
                             <ul className="text-xs text-yellow-300 mt-1 font-bold space-y-1">
                                 {data.lifeEvents?.map((e: string, i: number) => <li key={i}>{e}</li>)}
                             </ul>
@@ -94,8 +94,8 @@ export const ExpertTooltip = ({ active, payload, isPrivacyMode, userName1, userN
                     )}
                     {data.flowEvents?.length > 0 && (
                         <div>
-                            <span className="text-[9px] uppercase text-gray-500 font-bold tracking-widest">Flux d'Épargne</span>
-                            <ul className="text-[10px] text-gray-300 mt-1 space-y-1 font-mono">
+                            <span className="text-tiny uppercase text-gray-500 font-bold tracking-widest">Flux d'Épargne</span>
+                            <ul className="text-tiny text-gray-300 mt-1 space-y-1 font-mono">
                                 {data.flowEvents?.map((e: string, i: number) => <li key={i} className={e.includes('Survie') ? 'text-red-300' : 'text-blue-300'}>⫪ {e}</li>)}
                             </ul>
                         </div>

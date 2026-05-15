@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Tooltip } from '../../../components/ui/Tooltip';
 
 describe('Tooltip', () => {
@@ -12,17 +12,15 @@ describe('Tooltip', () => {
         render(<Tooltip content="Help!" delay={0}><button>Trigger</button></Tooltip>);
         const trigger = screen.getByRole('button');
         fireEvent.mouseEnter(trigger.parentElement!);
-        // delay=0 → résolu après le prochain tick
-        await new Promise(r => setTimeout(r, 5));
-        expect(screen.getByRole('tooltip')).toHaveTextContent('Help!');
+        // delay=0 → un microtask + un setTimeout=0 doivent passer
+        await waitFor(() => expect(screen.getByRole('tooltip')).toHaveTextContent('Help!'));
     });
 
     it('hides tooltip on mouse leave', async () => {
         render(<Tooltip content="Help!" delay={0}><button>Trigger</button></Tooltip>);
         const wrapper = screen.getByRole('button').parentElement!;
         fireEvent.mouseEnter(wrapper);
-        await new Promise(r => setTimeout(r, 5));
-        expect(screen.getByRole('tooltip')).toBeInTheDocument();
+        await waitFor(() => expect(screen.getByRole('tooltip')).toBeInTheDocument());
         fireEvent.mouseLeave(wrapper);
         expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
     });
@@ -31,7 +29,6 @@ describe('Tooltip', () => {
         render(<Tooltip content="Help!" delay={0}><button>Trigger</button></Tooltip>);
         const wrapper = screen.getByRole('button').parentElement!;
         fireEvent.focus(wrapper);
-        await new Promise(r => setTimeout(r, 5));
-        expect(screen.getByRole('tooltip')).toBeInTheDocument();
+        await waitFor(() => expect(screen.getByRole('tooltip')).toBeInTheDocument());
     });
 });

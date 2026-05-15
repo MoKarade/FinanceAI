@@ -184,7 +184,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
               <h3 id="ai-assistant-title" className="font-bold text-white text-base">Conseiller IA</h3>
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                <span className="text-[10px] text-green-300 font-medium">En ligne</span>
+                <span className="text-tiny text-green-300 font-medium">En ligne</span>
               </div>
             </div>
             <div className="ml-auto">
@@ -206,7 +206,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
                 >
                   {m.text.split('\n').map((line, idx) => <p key={idx} className={idx > 0 ? "mt-2" : ""}>{line}</p>)}
                   {m.timestamp && (
-                    <div className={`text-[9px] mt-1 text-right ${m.role === 'user' ? 'text-green-200' : 'text-gray-500'}`}>
+                    <div className={`text-tiny mt-1 text-right ${m.role === 'user' ? 'text-green-200' : 'text-gray-500'}`}>
                       {formatTime(m.timestamp)}
                     </div>
                   )}

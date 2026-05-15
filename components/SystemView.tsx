@@ -186,10 +186,10 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
 
                     <Card title="Diagnostic Système" className="bg-[#0c0c0c] border border-white/10 font-mono">
                         <div className="flex justify-between items-center mb-2 px-2">
-                            <span className="text-[10px] text-gray-500 uppercase tracking-widest">État runtime</span>
+                            <span className="text-tiny text-gray-500 uppercase tracking-widest">État runtime</span>
                             <button
                                 onClick={() => setRefreshKey(k => k + 1)}
-                                className="text-[10px] text-emerald-400 hover:text-emerald-300 px-2 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors"
+                                className="text-tiny text-emerald-400 hover:text-emerald-300 px-2 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors"
                                 aria-label="Rafraîchir le diagnostic"
                             >
                                 ⟳ Refresh
@@ -216,11 +216,11 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                 <div className="lg:col-span-1 space-y-6">
                     <div className="grid grid-cols-2 gap-4">
                         <Card className="!p-4 bg-white/5 border-white/10">
-                            <div className="text-[10px] text-gray-500 uppercase font-bold">Base de Données</div>
+                            <div className="text-tiny text-gray-500 uppercase font-bold">Base de Données</div>
                             <div className="text-xl font-bold text-white">{dbSize.toFixed(0)} KB</div>
                         </Card>
                         <Card className="!p-4 bg-white/5 border-white/10">
-                            <div className="text-[10px] text-gray-500 uppercase font-bold">Objectifs</div>
+                            <div className="text-tiny text-gray-500 uppercase font-bold">Objectifs</div>
                             <div className="text-xl font-bold text-white">{state.financialGoals.length}</div>
                         </Card>
                     </div>
@@ -232,12 +232,12 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                                     <div className={`absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full ${i === 0 ? 'bg-primary shadow-[0_0_10px_#10b981]' : 'bg-gray-600'}`}></div>
                                     <div className="flex justify-between items-center mb-1">
                                         <span className={`text-sm font-bold ${i === 0 ? 'text-white' : 'text-gray-400'}`}>v{log.version}</span>
-                                        <span className="text-[10px] text-gray-500">{log.date}</span>
+                                        <span className="text-tiny text-gray-500">{log.date}</span>
                                     </div>
                                     <div className={`text-xs font-bold mb-2 ${i === 0 ? 'text-primary' : 'text-gray-300'}`}>{log.title}</div>
                                     <ul className="space-y-1">
                                         {log.features.map((feat, j) => (
-                                            <li key={j} className="text-[11px] text-gray-400 leading-tight flex items-start gap-2">
+                                            <li key={j} className="text-meta text-gray-400 leading-tight flex items-start gap-2">
                                                 <span className="text-white/20">•</span>{feat}
                                             </li>
                                         ))}

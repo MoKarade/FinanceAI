@@ -241,7 +241,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
                   disabled={encWorking}
                 />
                 {exportPassphrase && exportPassphraseConfirm && exportPassphrase !== exportPassphraseConfirm && (
-                  <p className="text-[10px] text-red-400 mt-1">Les deux passphrases ne correspondent pas.</p>
+                  <p className="text-tiny text-red-400 mt-1">Les deux passphrases ne correspondent pas.</p>
                 )}
               </div>
             </div>

@@ -181,7 +181,7 @@ export const Layout: React.FC<LayoutProps> = ({
               </div>
               <div className="animate-premium-in">
                 <h1 className="text-xl font-bold text-white tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">FinanceAI</h1>
-                <div className="text-[10px] text-gray-500 font-mono">v2.5 • Pro</div>
+                <div className="text-tiny text-gray-500 font-mono">v2.5 • Pro</div>
               </div>
             </div>
             <div className="flex gap-1">
@@ -196,7 +196,7 @@ export const Layout: React.FC<LayoutProps> = ({
             <div className="absolute top-0 right-0 w-16 h-16 bg-primary/10 rounded-full blur-2xl -mr-8 -mt-8" aria-hidden="true"></div>
             <div className="flex justify-between items-end mb-2 relative z-10">
               <div>
-                <div className="text-[9px] text-gray-400 uppercase tracking-widest font-bold mb-0.5 truncate max-w-[120px]">{milestone.label}</div>
+                <div className="text-tiny text-gray-400 uppercase tracking-widest font-bold mb-0.5 truncate max-w-[120px]">{milestone.label}</div>
                 <div className="text-lg font-black text-white privacy-blur">{milestone.target.toLocaleString()}$</div>
               </div>
               <div className="text-right">
@@ -206,7 +206,7 @@ export const Layout: React.FC<LayoutProps> = ({
             <div className="w-full bg-black/50 rounded-full h-1.5 overflow-hidden mb-3 relative z-10 border border-white/5">
               <div className="h-full bg-gradient-to-r from-emerald-600 to-primary shadow-[0_0_10px_rgba(16,185,129,0.5)] transition-all duration-1000" style={{ width: `${milestone.percent}%` }}></div>
             </div>
-            <div className="flex items-center justify-between text-[10px] text-gray-500 relative z-10 bg-white/[0.03] p-1.5 rounded-lg border border-white/5 backdrop-blur-sm">
+            <div className="flex items-center justify-between text-tiny text-gray-500 relative z-10 bg-white/[0.03] p-1.5 rounded-lg border border-white/5 backdrop-blur-sm">
               <span className="flex items-center gap-1"><span aria-hidden="true">🎯</span> Cible:</span>
               <span className="text-white font-bold capitalize">{milestoneDateStr}</span>
             </div>

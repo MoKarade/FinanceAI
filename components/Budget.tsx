@@ -454,16 +454,16 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                         <div className="text-2xl font-black text-white privacy-blur">
                             {projectionSummary.estateNetWorth.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
                         </div>
-                        <div className="text-[10px] text-gray-500 mt-1">
+                        <div className="text-tiny text-gray-500 mt-1">
                             Patrimoine successoral projeté en {projectionSummary.finalYear} (FutureProjection actif).
                         </div>
                     </div>
                     <div className="bg-black/30 rounded-xl p-3 border border-white/5">
-                        <div className="text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-1">Sensibilité</div>
+                        <div className="text-tiny uppercase font-bold text-gray-400 tracking-widest mb-1">Sensibilité</div>
                         <div className="text-base font-bold text-emerald-400 privacy-blur">
                             +{projectionSummary.per100Boost.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
                         </div>
-                        <div className="text-[10px] text-gray-500">par +100$/mois d'épargne supplémentaire</div>
+                        <div className="text-tiny text-gray-500">par +100$/mois d'épargne supplémentaire</div>
                     </div>
                 </button>
             )}
@@ -492,11 +492,11 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
                             {/* NEW: VISUALISATION FISCALE */}
                             <div className="bg-black/30 rounded-lg p-3 border border-white/5 space-y-2">
-                                <div className="flex justify-between items-center text-[10px] text-gray-400">
+                                <div className="flex justify-between items-center text-tiny text-gray-400">
                                     <span>Revenus Bruts Totaux</span>
                                     <span>{totalGrossDisplay.toLocaleString()}$</span>
                                 </div>
-                                <div className="flex justify-between items-center text-[10px] text-red-400">
+                                <div className="flex justify-between items-center text-tiny text-red-400">
                                     <span>Déductions Source (Impôts/Ass.)</span>
                                     <span>-{totalTaxDisplay.toLocaleString()}$</span>
                                 </div>
@@ -515,7 +515,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     <span className="text-sm font-bold text-indigo-400">{coupleAnalysis.user1.name}</span>
                                     <div className="flex items-center gap-2">
                                         {coupleAnalysis.splitMode === 'prorata' && (
-                                            <span className="text-[9px] text-gray-500">{(coupleAnalysis.splitRatio1 * 100).toFixed(0)}% (Net)</span>
+                                            <span className="text-tiny text-gray-500">{(coupleAnalysis.splitRatio1 * 100).toFixed(0)}% (Net)</span>
                                         )}
                                         <span className="text-xs text-gray-500 bg-white/5 px-2 py-0.5 rounded">
                                             Effort: {coupleAnalysis.user1Income > 0 ? ((coupleAnalysis.user1Contribution / coupleAnalysis.user1Income) * 100).toFixed(0) : 0}%
@@ -529,7 +529,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${coupleAnalysis.user1Savings.toFixed(0)}$`}></div>
                                 </div>
 
-                                <div className="flex justify-between text-[10px] text-gray-400 px-1">
+                                <div className="flex justify-between text-tiny text-gray-400 px-1">
                                     <div className="flex flex-col">
                                         <span>Sorties: <span className="text-white font-bold">{coupleAnalysis.user1Contribution.toLocaleString()}$</span></span>
                                     </div>
@@ -546,7 +546,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                         <span className="text-sm font-bold text-pink-400">{coupleAnalysis.user2.name}</span>
                                         <div className="flex items-center gap-2">
                                             {coupleAnalysis.splitMode === 'prorata' && (
-                                                <span className="text-[9px] text-gray-500">{((1 - coupleAnalysis.splitRatio1) * 100).toFixed(0)}% (Net)</span>
+                                                <span className="text-tiny text-gray-500">{((1 - coupleAnalysis.splitRatio1) * 100).toFixed(0)}% (Net)</span>
                                             )}
                                             <span className="text-xs text-gray-500 bg-white/5 px-2 py-0.5 rounded">
                                                 Effort: {coupleAnalysis.user2Income > 0 ? ((coupleAnalysis.user2Contribution / coupleAnalysis.user2Income) * 100).toFixed(0) : 0}%
@@ -560,7 +560,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                         <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${coupleAnalysis.user2Savings.toFixed(0)}$`}></div>
                                     </div>
 
-                                    <div className="flex justify-between text-[10px] text-gray-400 px-1">
+                                    <div className="flex justify-between text-tiny text-gray-400 px-1">
                                         <div className="flex flex-col">
                                             <span>Sorties: <span className="text-white font-bold">{coupleAnalysis.user2Contribution.toLocaleString()}$</span></span>
                                         </div>
@@ -575,7 +575,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                 <div className="text-2xl font-bold text-green-400 privacy-blur">
                                     +{coupleAnalysis.totalSavings.toLocaleString()} $
                                 </div>
-                                <div className="text-[10px] text-green-200">Potentiel d'épargne combiné (Net)</div>
+                                <div className="text-tiny text-green-200">Potentiel d'épargne combiné (Net)</div>
                             </div>
                         </div>
                     </Card>

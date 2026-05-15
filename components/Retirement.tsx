@@ -220,7 +220,7 @@ export const Retirement: React.FC<RetirementProps> = ({
 
                     <Card title="Capitaux Actuels">
                         <div className="space-y-4">
-                            <div className="grid grid-cols-3 gap-2 text-center text-[10px] text-gray-400 bg-white/5 p-3 rounded-xl border border-white/5">
+                            <div className="grid grid-cols-3 gap-2 text-center text-tiny text-gray-400 bg-white/5 p-3 rounded-xl border border-white/5">
                                 <div>
                                     <div className="uppercase tracking-wider">REER</div>
                                     <div className="text-white font-bold privacy-blur mt-1">{liveCSVBalances.REER.toLocaleString()}$</div>
@@ -261,7 +261,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                             <div>
                                 <label className="block text-xs text-gray-400 mb-1">Rente Etat agrégée (RRQ + PSV / mois) — legacy</label>
                                 <input type="number" value={goal.governmentPension} onChange={e => updateGoal('governmentPension', Number(e.target.value))} className="w-full bg-black/40 border border-blue-500/20 rounded-lg px-3 py-2 text-blue-300 font-bold focus:border-blue-500 transition-colors outline-none privacy-blur" />
-                                <p className="text-[10px] text-gray-500 mt-1">Si tu remplis les 2 champs ci-dessous, ce champ est ignoré.</p>
+                                <p className="text-tiny text-gray-500 mt-1">Si tu remplis les 2 champs ci-dessous, ce champ est ignoré.</p>
                             </div>
                             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
                                 <div>
@@ -273,7 +273,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                         onChange={e => updateGoal('rrqEstimateMonthly', Number(e.target.value))}
                                         className="w-full bg-black/40 border border-blue-500/20 rounded-lg px-3 py-2 text-blue-300 text-sm focus:border-blue-500 transition-colors outline-none"
                                     />
-                                    <p className="text-[10px] text-gray-500 mt-1">Max 2025: 1 433$/mois. Consulte ton relevé RRQ.</p>
+                                    <p className="text-tiny text-gray-500 mt-1">Max 2025: 1 433$/mois. Consulte ton relevé RRQ.</p>
                                 </div>
                                 <div>
                                     <label className="block text-xs text-gray-400 mb-1">🍁 PSV projetée / mois</label>
@@ -284,7 +284,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                         onChange={e => updateGoal('psvEstimateMonthly', Number(e.target.value))}
                                         className="w-full bg-black/40 border border-blue-500/20 rounded-lg px-3 py-2 text-blue-300 text-sm focus:border-blue-500 transition-colors outline-none"
                                     />
-                                    <p className="text-[10px] text-gray-500 mt-1">Max 2025: 734$/mois (40 ans résidence).</p>
+                                    <p className="text-tiny text-gray-500 mt-1">Max 2025: 734$/mois (40 ans résidence).</p>
                                 </div>
                             </div>
                             <div className="pt-3 border-t border-white/5">
@@ -296,7 +296,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                     placeholder="0"
                                     className="w-full bg-black/40 border border-emerald-500/20 rounded-lg px-3 py-2 text-emerald-300 font-bold focus:border-emerald-500 transition-colors outline-none privacy-blur"
                                 />
-                                <p className="text-[10px] text-gray-500 mt-1">RREGOP, fonction publique federale, regime garanti viager. Laisse 0 si tu n'as que du REER/CD.</p>
+                                <p className="text-tiny text-gray-500 mt-1">RREGOP, fonction publique federale, regime garanti viager. Laisse 0 si tu n'as que du REER/CD.</p>
                             </div>
                             {(goal.dbPensionMonthly ?? 0) > 0 && (
                                 <div className="grid grid-cols-2 gap-3 pb-3 border-b border-white/5">
@@ -338,7 +338,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             onChange={e => updateGoal('dbPensionIndexationPct', Number(e.target.value))}
                                             className="w-full bg-black/40 border border-emerald-500/10 rounded-lg px-3 py-2 text-emerald-200 text-sm focus:border-emerald-500 transition-colors outline-none"
                                         />
-                                        <p className="text-[10px] text-gray-500 mt-1">100 = pleine indexation, 50 = demi, 0 = nominale</p>
+                                        <p className="text-tiny text-gray-500 mt-1">100 = pleine indexation, 50 = demi, 0 = nominale</p>
                                     </div>
                                     <div>
                                         <label className="block text-xs text-gray-400 mb-1">Age debut versement</label>
@@ -350,7 +350,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             onChange={e => updateGoal('dbPensionStartAge', Number(e.target.value))}
                                             className="w-full bg-black/40 border border-emerald-500/10 rounded-lg px-3 py-2 text-emerald-200 text-sm focus:border-emerald-500 transition-colors outline-none"
                                         />
-                                        <p className="text-[10px] text-gray-500 mt-1">Defaut = age cible retraite</p>
+                                        <p className="text-tiny text-gray-500 mt-1">Defaut = age cible retraite</p>
                                     </div>
                                 </div>
                             )}
@@ -427,19 +427,19 @@ export const Retirement: React.FC<RetirementProps> = ({
 
                                 <div className="grid grid-cols-3 gap-4 mt-6">
                                     <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
-                                        <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Capital a la Retraite</div>
+                                        <div className="text-tiny text-gray-500 uppercase tracking-widest font-bold">Capital a la Retraite</div>
                                         <div className="text-2xl font-black text-blue-400 privacy-blur mt-1 drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]">
                                             {(retirementNetWorth / 1000).toFixed(0)}k $
                                         </div>
                                     </div>
                                     <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
-                                        <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Pic du Patrimoine</div>
+                                        <div className="text-tiny text-gray-500 uppercase tracking-widest font-bold">Pic du Patrimoine</div>
                                         <div className="text-2xl font-black text-emerald-400 privacy-blur mt-1 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]">
                                             {(peakNetWorth / 1000).toFixed(0)}k $
                                         </div>
                                     </div>
                                     <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
-                                        <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Heritage ({lifeExpectancy} ans)</div>
+                                        <div className="text-tiny text-gray-500 uppercase tracking-widest font-bold">Heritage ({lifeExpectancy} ans)</div>
                                         <div className={`text-2xl font-black privacy-blur mt-1 ${finalNetWorth > 0 ? 'text-white' : 'text-red-400'}`}>
                                             {finalNetWorth > 0 ? `${(finalNetWorth / 1000).toFixed(0)}k $` : 'Epuise ⚠️'}
                                         </div>
@@ -490,27 +490,27 @@ const RetirementTooltip = React.memo(({ active, payload, label }: any) => {
 
             <div className="mb-4 space-y-2">
                 <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Patrimoine Net</span>
+                    <span className="text-tiny font-bold text-gray-400 uppercase tracking-widest">Patrimoine Net</span>
                     <span className="text-sm font-black text-emerald-400 privacy-blur drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]">{data.NetWorth?.toLocaleString()}$</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                     <div className="bg-black/30 p-2 rounded-lg border border-white/5">
-                        <div className="text-[10px] text-[#10b981] font-bold mb-1">CELI</div>
+                        <div className="text-tiny text-[#10b981] font-bold mb-1">CELI</div>
                         <div className="text-xs font-black text-gray-100 privacy-blur">{(data.CELI || 0).toLocaleString()}$</div>
                     </div>
                     <div className="bg-black/30 p-2 rounded-lg border border-white/5">
-                        <div className="text-[10px] text-[#3b82f6] font-bold mb-1">REER</div>
+                        <div className="text-tiny text-[#3b82f6] font-bold mb-1">REER</div>
                         <div className="text-xs font-black text-gray-100 privacy-blur">{(data.REER || 0).toLocaleString()}$</div>
                     </div>
                     {(data.NonReg || 0) > 0 && (
                         <div className="bg-black/30 p-2 rounded-lg border border-white/5">
-                            <div className="text-[10px] text-[#f59e0b] font-bold mb-1">Non-Enreg.</div>
+                            <div className="text-tiny text-[#f59e0b] font-bold mb-1">Non-Enreg.</div>
                             <div className="text-xs font-black text-gray-100 privacy-blur">{(data.NonReg || 0).toLocaleString()}$</div>
                         </div>
                     )}
                     <div className="bg-black/30 p-2 rounded-lg border border-white/5">
-                        <div className="text-[10px] text-[#a78bfa] font-bold mb-1">Liquidites</div>
+                        <div className="text-tiny text-[#a78bfa] font-bold mb-1">Liquidites</div>
                         <div className="text-xs font-black text-gray-100 privacy-blur">{(data.Liquidites || 0).toLocaleString()}$</div>
                     </div>
                 </div>
@@ -518,7 +518,7 @@ const RetirementTooltip = React.memo(({ active, payload, label }: any) => {
 
             {isRetired ? (
                 <div className="space-y-2">
-                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Flux Mensuel</div>
+                    <div className="text-tiny font-bold text-gray-400 uppercase tracking-widest mb-1">Flux Mensuel</div>
                     <div className="bg-black/30 rounded-lg p-3 border border-red-500/20 space-y-2">
                         <div className="flex justify-between text-xs"><span className="text-gray-400">Revenu total</span><span className="text-emerald-400 font-bold privacy-blur">+{(data.Income || 0).toLocaleString()}$</span></div>
                         <div className="flex justify-between text-xs"><span className="text-gray-400">Depenses (Infl.)</span><span className="text-red-400 font-bold privacy-blur">-{(data.Expenses || 0).toLocaleString()}$</span></div>
@@ -527,7 +527,7 @@ const RetirementTooltip = React.memo(({ active, payload, label }: any) => {
                 </div>
             ) : (
                 <div className="space-y-2">
-                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Epargne Mensuelle</div>
+                    <div className="text-tiny font-bold text-gray-400 uppercase tracking-widest mb-1">Epargne Mensuelle</div>
                     <div className="bg-black/30 rounded-lg p-3 border border-emerald-500/20">
                         <div className="flex justify-between text-xs"><span className="text-gray-400">Cashflow</span><span className="text-emerald-400 font-bold privacy-blur">+{(data.Savings || 0).toLocaleString()}$</span></div>
                     </div>

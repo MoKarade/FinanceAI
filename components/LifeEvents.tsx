@@ -152,7 +152,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                 const [dragOverYear, setDragOverYear] = React.useState<number | null>(null);
                 return (
                     <Card title="🗓️ Timeline Interactive — Glissez pour déplacer un événement">
-                        <div className="text-[10px] text-gray-500 mb-4">Faites glisser les événements sur les années pour ajuster votre calendrier de vie.</div>
+                        <div className="text-tiny text-gray-500 mb-4">Faites glisser les événements sur les années pour ajuster votre calendrier de vie.</div>
                         <div className="overflow-x-auto pb-3">
                             <div className="flex gap-2 min-w-max">
                                 {timelineYears.map(year => {
@@ -165,18 +165,18 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                             onDragLeave={() => setDragOverYear(null)}
                                             onDrop={(e) => { handleDrop(e, year); setDragOverYear(null); }}
                                         >
-                                            <div className={`text-[10px] font-black text-center pb-1 border-b ${isNow ? 'text-green-400 border-green-500/30' : 'text-gray-500 border-white/5'}`}>
+                                            <div className={`text-tiny font-black text-center pb-1 border-b ${isNow ? 'text-green-400 border-green-500/30' : 'text-gray-500 border-white/5'}`}>
                                                 {year}{isNow && <span className="ml-1 text-green-400">●</span>}
                                             </div>
                                             {eventsByYear[year]?.map((item) => (
                                                 <div key={item.uniqueKey} draggable onDragStart={(e) => handleDragStart(e, item.uniqueKey)}
-                                                    className={`px-1.5 py-1 rounded text-[9px] font-bold cursor-grab active:cursor-grabbing flex items-center gap-1 select-none transition-opacity hover:opacity-80 ${item.type === 'KRACH' || item.type === 'ACCIDENT' || item.type === 'PERTE_EMPLOI' ? 'bg-red-900/60 text-red-300 border border-red-500/30' : item.uniqueKey.startsWith('travel') ? 'bg-blue-900/60 text-blue-300 border border-blue-500/30' : 'bg-purple-900/60 text-purple-300 border border-purple-500/30'}`}
+                                                    className={`px-1.5 py-1 rounded text-tiny font-bold cursor-grab active:cursor-grabbing flex items-center gap-1 select-none transition-opacity hover:opacity-80 ${item.type === 'KRACH' || item.type === 'ACCIDENT' || item.type === 'PERTE_EMPLOI' ? 'bg-red-900/60 text-red-300 border border-red-500/30' : item.uniqueKey.startsWith('travel') ? 'bg-blue-900/60 text-blue-300 border border-blue-500/30' : 'bg-purple-900/60 text-purple-300 border border-purple-500/30'}`}
                                                     title={`${item.name} — ${item.cost.toLocaleString()}$`}>
                                                     <span>{item.icon}</span>
                                                     <span className="truncate max-w-[55px]">{item.name}</span>
                                                 </div>
                                             ))}
-                                            {isDragOver && <div className="text-[9px] text-blue-400 text-center mt-auto pt-1 animate-pulse">⬇ Déposer ici</div>}
+                                            {isDragOver && <div className="text-tiny text-blue-400 text-center mt-auto pt-1 animate-pulse">⬇ Déposer ici</div>}
                                         </div>
                                     );
                                 })}
@@ -271,7 +271,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                     <div>
                                         <div className="flex justify-between text-sm mb-2"><span className="text-gray-300">Coût Immédiat</span><span className="text-white font-bold">{impactAnalysis.immediateCost.toLocaleString()} $</span></div>
                                         <div className="w-full bg-gray-800 rounded-full h-2"><div className="h-full bg-red-500 rounded-full" style={{ width: `${Math.min(100, impactAnalysis.liquidityRatio)}%` }}></div></div>
-                                        <div className="text-[10px] text-right text-red-400 mt-1">{impactAnalysis.liquidityRatio.toFixed(1)}% de votre patrimoine actuel</div>
+                                        <div className="text-tiny text-right text-red-400 mt-1">{impactAnalysis.liquidityRatio.toFixed(1)}% de votre patrimoine actuel</div>
                                     </div>
                                     <div className="bg-blue-900/10 border border-blue-500/20 rounded-xl p-4">
                                         <div className="flex items-center gap-2 mb-2"><span className="text-xl">🦋</span><h4 className="font-bold text-blue-300 text-sm">Effet Papillon (20 ans)</h4></div>

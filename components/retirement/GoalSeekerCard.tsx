@@ -52,7 +52,7 @@ export const GoalSeekerCard: React.FC<GoalSeekerCardProps> = ({ paramsBuilder, t
     return (
         <Card title="🎯 Projection inverse (Goal seeker)">
             <div className="space-y-4">
-                <p className="text-[11px] text-gray-400">
+                <p className="text-meta text-gray-400">
                     Au lieu de tâtonner les sliders, dis-nous combien tu veux avoir et on calcule l'épargne nécessaire.
                 </p>
                 <div>
@@ -94,7 +94,7 @@ export const GoalSeekerCard: React.FC<GoalSeekerCardProps> = ({ paramsBuilder, t
                             {drawdownResult.results
                                 .sort((a, b) => b.estateNetWorth - a.estateNetWorth)
                                 .map((r, i) => (
-                                    <div key={r.scenarioType} className="flex justify-between text-[10px] text-gray-300">
+                                    <div key={r.scenarioType} className="flex justify-between text-tiny text-gray-300">
                                         <span>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '  '} {r.icon} {r.strategyName}</span>
                                         <span className="font-mono">{Math.round(r.estateNetWorth).toLocaleString('fr-CA')}$</span>
                                     </div>

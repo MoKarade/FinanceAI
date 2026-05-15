@@ -122,7 +122,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                                 </div>
 
                                 {!isPast && (
-                                    <div className="mt-4 text-[10px] text-gray-500 text-center">
+                                    <div className="mt-4 text-tiny text-gray-500 text-center">
                                         Ce montant sera déduit de vos liquidités dans la simulation du futur.
                                     </div>
                                 )}

@@ -305,7 +305,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 <input type="date" value={goal.birthDate} onChange={e => update('birthDate', e.target.value)} className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white focus:border-primary outline-none" />
                             </div>
                         </div>
-                        <p className="text-[10px] text-gray-500 mt-2">Cette date sera utilisée dans la simulation de l'onglet Futur.</p>
+                        <p className="text-tiny text-gray-500 mt-2">Cette date sera utilisée dans la simulation de l'onglet Futur.</p>
                     </Card>
 
                     <Card title="🎯 Choix de Vie">
@@ -319,7 +319,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                             <span className="text-xl">{info.icon}</span>
                                             <div className="flex-1">
                                                 <div className="text-xs font-bold">{info.label}</div>
-                                                <div className="text-[10px] text-gray-500">{info.desc}</div>
+                                                <div className="text-tiny text-gray-500">{info.desc}</div>
                                             </div>
                                             <div className="text-xs font-mono font-bold text-right">{info.monthly > 0 ? `${info.monthly}$/m` : 'Gratuit'}</div>
                                         </button>
@@ -361,7 +361,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                             <span className="text-xl">{info.icon}</span>
                                             <div className="flex-1">
                                                 <div className="text-xs font-bold">{info.label}</div>
-                                                {info.years > 0 && <div className="text-[10px] text-gray-500">{info.years} ans</div>}
+                                                {info.years > 0 && <div className="text-tiny text-gray-500">{info.years} ans</div>}
                                             </div>
                                             <div className="text-xs font-mono font-bold text-right text-purple-300">{info.yearlyCost > 0 ? `${(info.yearlyCost / 1000).toFixed(0)}k$/an` : 'Gratuit'}</div>
                                         </button>
@@ -375,8 +375,8 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                         <button key={key} onClick={() => setCarGift(key)}
                                             className={`flex-1 flex flex-col items-center p-2.5 rounded-lg border text-center transition-all ${carGift === key ? 'border-orange-500 bg-orange-500/10 text-white' : 'border-white/5 bg-white/5 text-gray-400 hover:bg-white/10'}`}>
                                             <span className="text-xl mb-1">{info.icon}</span>
-                                            <div className="text-[9px] font-bold leading-tight">{info.label.split(' (')[0]}</div>
-                                            {info.cost > 0 && <div className="text-[9px] font-mono text-orange-300 mt-0.5">{(info.cost / 1000).toFixed(0)}k$</div>}
+                                            <div className="text-tiny font-bold leading-tight">{info.label.split(' (')[0]}</div>
+                                            {info.cost > 0 && <div className="text-tiny font-mono text-orange-300 mt-0.5">{(info.cost / 1000).toFixed(0)}k$</div>}
                                         </button>
                                     ))}
                                 </div>
@@ -453,19 +453,19 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     <span className="text-blue-400 font-bold">{fmt(respContribution)}</span>
                                 </label>
                                 <input type="range" min="0" max="5000" step="100" value={respContribution} onChange={e => setRespContribution(Number(e.target.value))} className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-blue-500" />
-                                <p className="text-[10px] text-gray-500 mt-1">Optimal : 2 500$/an pour maximiser les subventions (30% = fed 20% + QC 10%)</p>
+                                <p className="text-tiny text-gray-500 mt-1">Optimal : 2 500$/an pour maximiser les subventions (30% = fed 20% + QC 10%)</p>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
                                 <div className="bg-blue-900/20 p-3 rounded-lg border border-blue-500/20 text-center">
-                                    <div className="text-[10px] text-gray-500 uppercase mb-1">Capital à 17 ans</div>
+                                    <div className="text-tiny text-gray-500 uppercase mb-1">Capital à 17 ans</div>
                                     <div className="text-lg font-black text-white privacy-blur">{fmt(totalResp)}</div>
                                 </div>
                                 <div className="bg-green-900/20 p-3 rounded-lg border border-green-500/20 text-center">
-                                    <div className="text-[10px] text-gray-500 uppercase mb-1">Coût études prévu</div>
+                                    <div className="text-tiny text-gray-500 uppercase mb-1">Coût études prévu</div>
                                     <div className="text-lg font-black text-white privacy-blur">{fmt(totalStudiesCost)}</div>
                                 </div>
                                 <div className="bg-purple-900/20 p-3 rounded-lg border border-purple-500/20 text-center">
-                                    <div className="text-[10px] text-gray-500 uppercase mb-1">Couverture</div>
+                                    <div className="text-tiny text-gray-500 uppercase mb-1">Couverture</div>
                                     <div className={`text-lg font-black ${respCovers >= 100 ? 'text-green-400' : 'text-yellow-400'}`}>{respCovers.toFixed(0)}%</div>
                                 </div>
                             </div>
@@ -494,22 +494,22 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
                             <div className="text-2xl mb-1">{DAYCARE_INFO[daycareType].icon}</div>
-                            <div className="text-[10px] text-gray-400">Garde mensuelle</div>
+                            <div className="text-tiny text-gray-400">Garde mensuelle</div>
                             <div className="text-sm font-bold text-white">{fmt(DAYCARE_INFO[daycareType].monthly)}</div>
                         </div>
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
                             <div className="text-2xl mb-1">{SCHOOL_INFO[schoolType].icon}</div>
-                            <div className="text-[10px] text-gray-400">Frais scolaires/an</div>
+                            <div className="text-tiny text-gray-400">Frais scolaires/an</div>
                             <div className="text-sm font-bold text-white">{fmt(SCHOOL_INFO[schoolType].yearlyExtra)}</div>
                         </div>
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
                             <div className="text-2xl mb-1">{ACTIVITIES_INFO[activitiesLevel].icon}</div>
-                            <div className="text-[10px] text-gray-400">Activités/an</div>
+                            <div className="text-tiny text-gray-400">Activités/an</div>
                             <div className="text-sm font-bold text-white">{fmt(ACTIVITIES_INFO[activitiesLevel].yearlyExtra)}</div>
                         </div>
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
                             <div className="text-2xl mb-1">{UNI_INFO[universityType].icon}</div>
-                            <div className="text-[10px] text-gray-400">Études total</div>
+                            <div className="text-tiny text-gray-400">Études total</div>
                             <div className="text-sm font-bold text-white">{fmt(totalStudiesCost)}</div>
                         </div>
                     </div>

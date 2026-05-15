@@ -95,7 +95,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                             {debts.map(d => (
                                 <div key={d.id} className="p-3 bg-[#1a1a1a] rounded-xl border border-white/5 flex justify-between items-center group">
                                     <div><div className="font-bold text-white text-sm">{d.name}</div><div className="text-xs text-gray-500">{d.interestRate}% • Min: {d.minimumPayment}$</div></div>
-                                    <div className="text-right"><div className="font-mono text-red-400 font-bold">{d.balance.toLocaleString()} $</div><button onClick={() => handleDelete(d.id)} className="text-[10px] text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">Supprimer</button></div>
+                                    <div className="text-right"><div className="font-mono text-red-400 font-bold">{d.balance.toLocaleString()} $</div><button onClick={() => handleDelete(d.id)} className="text-tiny text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">Supprimer</button></div>
                                 </div>
                             ))}
                             {debts.length === 0 && <div className="text-center text-gray-500 text-sm py-4">Aucune dette. Bravo !</div>}
@@ -106,7 +106,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                             <div>
                                 <label className="flex justify-between text-xs text-gray-300 mb-1"><span>Paiement Mensuel Supplémentaire</span><span className="font-bold text-green-400">{extraPayment}$</span></label>
                                 <input type="range" min="0" max="2000" step="50" value={extraPayment} onChange={e => setExtraPayment(Number(e.target.value))} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-green-500" />
-                                <div className="text-[10px] text-gray-500 mt-1">En plus des minimums ({totalMinPayment}$). Total payé: <strong className="text-white">{(totalMinPayment + extraPayment).toLocaleString()}$/mois</strong>.</div>
+                                <div className="text-tiny text-gray-500 mt-1">En plus des minimums ({totalMinPayment}$). Total payé: <strong className="text-white">{(totalMinPayment + extraPayment).toLocaleString()}$/mois</strong>.</div>
                             </div>
                             <div className="p-3 bg-white/5 rounded border border-white/10">
                                 <div className="flex justify-between items-center mb-1"><span className="text-xs text-gray-400">Liberté dans</span><span className="text-sm font-bold text-white">{(simulation.months / 12).toFixed(1)} ans</span></div>

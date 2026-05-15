@@ -36,7 +36,7 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                                 }}
                                 title={`Tranche ${(b.rate * 100).toFixed(1)}% jusqu'à ${b.upTo === Infinity ? '∞' : b.upTo.toLocaleString('fr-CA')}\$`}
                             >
-                                <span className="text-[9px] text-white font-mono">{(b.rate * 100).toFixed(0)}%</span>
+                                <span className="text-tiny text-white font-mono">{(b.rate * 100).toFixed(0)}%</span>
                             </div>
                         );
                     })}
@@ -49,7 +49,7 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                         <div className="absolute -top-1 -translate-x-1/2 w-2 h-2 bg-yellow-400 rounded-full" />
                     </div>
                 </div>
-                <div className="flex justify-between text-[9px] text-gray-500">
+                <div className="flex justify-between text-tiny text-gray-500">
                     <span>0\$</span>
                     <span className="text-yellow-400 font-bold">{annualGrossIncome.toLocaleString('fr-CA')}\$</span>
                     <span>{Math.round(maxIncome / 1000)}k\$</span>
@@ -61,13 +61,13 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
     return (
         <Card title={`💰 Tranches d'imposition${label ? ` (${label})` : ''}`}>
             <div className="space-y-3">
-                <p className="text-[10px] text-gray-400">
+                <p className="text-tiny text-gray-400">
                     Marqueur jaune = ton revenu brut annuel ({annualGrossIncome.toLocaleString('fr-CA')}\$).
                     Vise à minimiser le temps passé dans les tranches au-dessus de 40%.
                 </p>
                 {renderBracketBar(FED_BRACKETS as any, '🇨🇦 Fédéral (ARC)', '59, 130, 246')}
                 {renderBracketBar(QC_BRACKETS as any, '🟦 Québec (Revenu Québec)', '236, 72, 153')}
-                <p className="text-[10px] text-gray-500 italic">
+                <p className="text-tiny text-gray-500 italic">
                     Marginal combiné approximatif: {(() => {
                         const fed = FED_BRACKETS.find((b: any) => annualGrossIncome <= b.upTo)?.rate || 0;
                         const qc = QC_BRACKETS.find((b: any) => annualGrossIncome <= b.upTo)?.rate || 0;

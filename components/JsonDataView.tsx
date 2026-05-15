@@ -10,13 +10,16 @@ export const JsonDataView: React.FC = () => {
   const itemsPerPage = 50;
 
   useEffect(() => {
+      let cancelled = false;
       const load = async () => {
           setIsLoading(true);
           const liveData = await fetchPortfolioHistory();
+          if (cancelled) return;
           setData(liveData);
           setIsLoading(false);
       };
       load();
+      return () => { cancelled = true; };
   }, []);
 
   const columns = useMemo(() => {

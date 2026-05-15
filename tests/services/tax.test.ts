@@ -137,10 +137,10 @@ describe('calculateCapitalGainsTax', () => {
     expect(tax).toBeCloseTo(2000, 1);
   });
 
-  it('applique 66.67% d\'inclusion au-dessus de 250k$', () => {
+  it('applique 50% d\'inclusion uniforme même au-dessus de 250k$ (annulation mars 2025)', () => {
     const tax = calculateCapitalGainsTax(50000, 0.40, 1, 250000);
-    // 50k * 0.6667 * 0.40 = 13334
-    expect(tax).toBeCloseTo(13334, 1);
+    // 50k * 0.5 * 0.40 = 10000 (proposition 66.67% retirée par le gouvernement)
+    expect(tax).toBeCloseTo(10000, 1);
   });
 
   it('renvoie 0 pour un gain non positif', () => {
@@ -206,8 +206,9 @@ describe('Barèmes fiscaux 2026 (régression)', () => {
     expect(BASIC_PERSONAL_AMOUNT_QC).toBe(18952);
   });
 
-  it('RRQ max 2026 = 4 479,30 $', () => {
-    expect(RRQ_MAX).toBeCloseTo(4479.30, 2);
+  it('RRQ max 2026 ≈ 4 569,60$ (taux 6.4% x (MPE 74 900 - exemption 3 500))', () => {
+    // Correction audit fiscal: taux 2026 = 6.4% (5.4% base + 1% volet 1), MPE = 74 900$
+    expect(RRQ_MAX).toBeCloseTo(4569.60, 2);
   });
 
   it('RQAP max 2026 = 442,90 $', () => {

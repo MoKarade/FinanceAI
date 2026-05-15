@@ -1,5 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Asset, InvestmentAccount, RegisteredAccountType } from '../types';
+import {
+    Asset,
+    AppState,
+    InvestmentAccount,
+    InvestmentTransaction,
+    Transaction,
+    BudgetCategory,
+    BudgetConfig,
+    RegisteredAccountType,
+} from '../types';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { Card } from './ui/Card';
 import { fetchPortfolioHistory, MarketDataPoint } from '../services/finance';
@@ -9,17 +18,16 @@ import { ASSET_META } from '../services/assetMeta';
 interface InvestmentsProps {
     assets: Asset[];
     setAssets: (assets: Asset[]) => void;
-    // Props kept for compatibility
     investmentAccounts: InvestmentAccount[];
-    setInvestmentAccounts: any;
-    investmentTransactions: any;
-    setInvestmentTransactions: any;
+    setInvestmentAccounts: (accounts: InvestmentAccount[]) => void;
+    investmentTransactions: InvestmentTransaction[];
+    setInvestmentTransactions: (transactions: InvestmentTransaction[]) => void;
     apiKey: string;
-    transactions: any;
-    budgetItems: any;
-    config: any;
-    projection: any;
-    setProjection: any;
+    transactions: Transaction[];
+    budgetItems: BudgetCategory[];
+    config: BudgetConfig;
+    projection: AppState['projection'];
+    setProjection: (projection: AppState['projection']) => void;
 }
 
 const COLORS_SECTOR: Record<string, string> = {
@@ -77,9 +85,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
 
     // --- INSTANT DATA LOAD ---
     useEffect(() => {
+        let cancelled = false;
         const load = async () => {
             setIsLoading(true);
             const data = await fetchPortfolioHistory();
+            if (cancelled) return;
             setMarketData(data);
 
             if (data.length > 0) {
@@ -91,6 +101,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
             setIsLoading(false);
         };
         load();
+        return () => { cancelled = true; };
     }, []);
 
     // --- ANALYSIS ENGINE ---
@@ -283,7 +294,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
         let currentPortfolioValue = currentAllocation.reduce((s, a) => s + a.value, 0);
         let monthlyIncome = totalAnnualDividends / 12;
 
-        const data = [];
+        const data: Array<{ month: string; Revenu: number; Accumulé: number }> = [];
         const today = new Date();
 
         for (let i = 0; i < 12; i++) {

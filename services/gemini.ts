@@ -32,6 +32,22 @@ const sanitizePayee = (raw: string): string => {
         .slice(0, 60);                         // limite la PII envoyee
 };
 
+// Audit 2026-05: timeout générique pour appels Gemini (le SDK ne propose pas
+// d'AbortSignal natif fiable selon version). On race contre setTimeout.
+const GEMINI_TIMEOUT_MS = 45_000;
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`Gemini timeout ${label} (${ms}ms)`)), ms);
+    });
+    try {
+        return await Promise.race([promise, timeoutPromise]);
+    } finally {
+        if (timer) clearTimeout(timer);
+    }
+}
+
 const roundToHundred = (amount: number): number => {
     return Math.round(amount / 100) * 100;
 };
@@ -174,14 +190,18 @@ export const categorizeBatch = async (transactions: Transaction[], apiKey: strin
         const txList = batch.map(t => `ID:${t.id}|"${sanitizePayee(t.payee)}"|${roundToHundred(t.amount)}`).join('\n');
         const prompt = `${QUEBEC_FISCAL_CONTEXT}\n\nCATEGORIES AUTORISEES (utilise UNIQUEMENT ces valeurs): ${JSON.stringify(safeCategories)}.\n\nTransactions a categoriser (montants arrondis a 100$):\n${txList}\n\nRegle: Si tu ne peux pas determiner la categorie avec >50% de confiance, utilise "Autre".\nFORMAT JSON STRICT: [{ "id": number, "category": string, "isTransfer": boolean, "confidence": number }]`;
         try {
-            const response = await ai.models.generateContent({
-                model: MODEL_NAME,
-                contents: prompt,
-                config: {
-                    responseMimeType: "application/json",
-                    tools: [{ googleSearch: {} }]
-                }
-            });
+            const response = await withTimeout(
+                ai.models.generateContent({
+                    model: MODEL_NAME,
+                    contents: prompt,
+                    config: {
+                        responseMimeType: "application/json",
+                        tools: [{ googleSearch: {} }]
+                    }
+                }),
+                GEMINI_TIMEOUT_MS,
+                'categorize batch'
+            );
             const validated = safeJsonValidate(response.text || "[]", CategorizeArraySchema);
             const batchMap = new Map((validated || []).map(r => [r.id, r]));
             const processedBatch = batch.map(t => {
@@ -194,11 +214,15 @@ export const categorizeBatch = async (transactions: Transaction[], apiKey: strin
         } catch (e) {
             console.warn("Web grounding failed, falling back to standard model:", e);
             try {
-                const fallbackResponse = await ai.models.generateContent({
-                    model: MODEL_NAME,
-                    contents: prompt,
-                    config: { responseMimeType: "application/json" }
-                });
+                const fallbackResponse = await withTimeout(
+                    ai.models.generateContent({
+                        model: MODEL_NAME,
+                        contents: prompt,
+                        config: { responseMimeType: "application/json" }
+                    }),
+                    GEMINI_TIMEOUT_MS,
+                    'categorize fallback'
+                );
                 const validatedFb = safeJsonValidate(fallbackResponse.text || "[]", CategorizeArraySchema);
                 const fallbackMap = new Map((validatedFb || []).map(r => [r.id, r]));
                 const fallbackBatch = batch.map(t => {

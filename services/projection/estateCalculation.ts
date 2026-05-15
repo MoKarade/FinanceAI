@@ -3,7 +3,7 @@
 // V40 (bilan successoral) + V48 (Smith bug) + V60 (NPV pensions publiques).
 // Pattern: Pure Function + injection calculateFiscalReport.
 
-import { CAPITAL_GAINS_HIGH_THRESHOLD, type FiscalReport } from '../../utils/tax';
+import { CAPITAL_GAINS_INCLUSION_STANDARD, type FiscalReport } from '../../utils/tax';
 
 type FiscalFn = (
     grossIncome: number,
@@ -86,13 +86,9 @@ export function computeEstateNetWorth(
         : (grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, simulationYears);
 
     const estateLatentGain = Math.max(0, nonReg - nonRegACB);
-    const thresholdEstate = CAPITAL_GAINS_HIGH_THRESHOLD * activeUsersCount;
+    const taxableEstateGain = estateLatentGain * CAPITAL_GAINS_INCLUSION_STANDARD;
 
-    const taxableEstateGain = estateLatentGain <= thresholdEstate
-        ? estateLatentGain * 0.50
-        : (thresholdEstate * 0.50) + ((estateLatentGain - thresholdEstate) * 0.6667);
-
-    const taxableCryptoGain = crypto * 0.50;
+    const taxableCryptoGain = crypto * CAPITAL_GAINS_INCLUSION_STANDARD;
     const totalEstateLiquidation = reer + taxableEstateGain + taxableCryptoGain;
 
     // Phase 2: Double décès (fin de simulation). Impôt supporté par le survivant seul.

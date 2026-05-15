@@ -214,18 +214,21 @@ export const Settings: React.FC<SettingsProps> = ({
   });
 
   const handleExport = () => {
-    const data = buildBackupPayload();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    // Sécurité (audit 2026-05): l'export JSON clair NE DOIT JAMAIS contenir apiKeys.
+    // Pour exporter aussi les clés API, l'utilisateur DOIT passer par l'export chiffré.
+    const { apiKeys: _stripped, ...dataWithoutKeys } = buildBackupPayload();
+    const blob = new Blob([JSON.stringify(dataWithoutKeys, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `financeai_FULL_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `financeai_backup_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
+    showToast("Sauvegarde téléchargée (clés API exclues — utilise l'export chiffré pour les inclure).", "info");
   };
 
   const doEncryptedExport = async () => {
-    if (exportPassphrase.length < 8) {
-      showToast("Passphrase trop courte (min 8 caractères).", "error");
+    if (exportPassphrase.length < 12) {
+      showToast("Passphrase trop courte (min 12 caractères pour résister au brute-force).", "error");
       return;
     }
     if (exportPassphrase !== exportPassphraseConfirm) {

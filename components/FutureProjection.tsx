@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, Fragment } from 'react';
 import { useDebouncedMemo } from '../utils/useDebouncedMemo';
 import { Card } from './ui/Card';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Line, ComposedChart, Brush, Bar, ReferenceDot, LabelList } from 'recharts';
@@ -426,7 +426,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             🤖
                         </div>
                         <div>
-                            <p className="text-sm text-gray-200 leading-relaxed" dangerouslySetInnerHTML={{ __html: aiNote.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                            <p className="text-sm text-gray-200 leading-relaxed">
+                                {aiNote.split(/(\*\*[^*]+\*\*)/g).map((part: string, i: number) =>
+                                    part.startsWith('**') && part.endsWith('**')
+                                        ? <strong key={i}>{part.slice(2, -2)}</strong>
+                                        : <Fragment key={i}>{part}</Fragment>
+                                )}
+                            </p>
                             <div className="flex gap-4 mt-2">
                                  <div className="text-[10px] text-emerald-400 font-bold">Pros: {allResults[selectedScenarioIdx]?.pros?.join(', ') || 'N/A'}</div>
                                 <div className="text-[10px] text-red-400 font-bold">Cons: {allResults[selectedScenarioIdx]?.cons?.join(', ') || 'N/A'}</div>

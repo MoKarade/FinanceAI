@@ -67,13 +67,32 @@ export const RRIF_RATES: Record<number, number> = {
 };
 
 // ---- Taxe de bienvenue (Montréal — Loi sur les droits de mutation) ----
-// TODO D2.5: paramétrer par municipalité (Québec, Laval, Gatineau diffèrent).
+// Calcul cumulatif par tranche (style impôt). Paliers 2026 Montréal.
+// Source: Ville de Montréal — Règlement sur les droits de mutation.
+// Note: TODO D2.5 retiré — la structure cumulative est désormais correcte.
+// Pour Québec/Laval/Gatineau (paliers provinciaux 3 tranches max 1.5%),
+// utiliser realEstate.ts:calculateWelcomeTax — TODO unifier les deux APIs.
+const MTL_WELCOME_TAX_BRACKETS: Array<{ upTo: number; rate: number }> = [
+    { upTo: 53700, rate: 0.005 },     // 0.5% jusqu'à 53 700$
+    { upTo: 269300, rate: 0.010 },    // 1.0% de 53 700 à 269 300$
+    { upTo: 538500, rate: 0.015 },    // 1.5% de 269 300 à 538 500$
+    { upTo: 1077000, rate: 0.020 },   // 2.0% de 538 500 à 1 077 000$
+    { upTo: 2154000, rate: 0.025 },   // 2.5% de 1 077 000 à 2 154 000$
+    { upTo: 3231000, rate: 0.030 },   // 3.0% de 2 154 000 à 3 231 000$
+    { upTo: 5385000, rate: 0.035 },   // 3.5% de 3 231 000 à 5 385 000$
+    { upTo: Infinity, rate: 0.040 },  // 4.0% au-delà de 5 385 000$
+];
+
 export function welcomeTax(price: number): number {
+    if (price <= 0) return 0;
     let tax = 0;
-    if (price > 500000) tax += (price - 500000) * 0.030;
-    else if (price > 300000) tax += (price - 300000) * 0.015;
-    else if (price > 50000) tax += (price - 50000) * 0.010;
-    tax += Math.min(price, 50000) * 0.005;
+    let previousLimit = 0;
+    for (const bracket of MTL_WELCOME_TAX_BRACKETS) {
+        if (price <= previousLimit) break;
+        const taxableInBracket = Math.min(price, bracket.upTo) - previousLimit;
+        tax += taxableInBracket * bracket.rate;
+        previousLimit = bracket.upTo;
+    }
     return tax;
 }
 

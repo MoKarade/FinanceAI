@@ -605,7 +605,8 @@ export interface AppState {
   initialBalances: Record<string, number>;
   apiKeys: {
     eraContext: string;
-    gemini: string;
+    gemini: string;     // @deprecated Phase 4 — supprimé en PR A5 final
+    anthropic?: string; // Phase 4 A1 — Claude API key (Anthropic)
   };
   fxRates: {
     USD: number;

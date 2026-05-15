@@ -49,11 +49,11 @@ describe('useFinanceStore', () => {
         expect(raw).not.toContain('apiKeys');
     });
 
-    it('a une version persist = 1 (Zustand schema versioning, audit 2026-05)', () => {
+    it('a une version persist = 2 (Phase 4 A1 — schema bump pour apiKeys.anthropic)', () => {
         useFinanceStore.getState().setActiveTab(Tab.SETTINGS);
         const raw = localStorage.getItem('financeai-storage');
         if (!raw) throw new Error('Persist did not write');
         const parsed = JSON.parse(raw);
-        expect(parsed.version).toBe(1);
+        expect(parsed.version).toBe(2);
     });
 });

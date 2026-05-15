@@ -98,7 +98,7 @@ const getInitialStateWithMigration = (): AppState => {
         retirementGoal: { targetAge: 65, targetMonthlyIncome: 4000, governmentPension: 1200 },
         financialGoals: [],
         initialBalances: {},
-        apiKeys: { eraContext: '', gemini: '' },
+        apiKeys: { eraContext: '', gemini: '', anthropic: '' },
         fxRates: DEFAULT_FX_RATES,
         lastUpdate: Date.now(),
         categorizationRules: [],
@@ -119,12 +119,18 @@ const getInitialStateWithMigration = (): AppState => {
         const legacyToken = localStorage.getItem('lm_token');
         const legacyGemini = localStorage.getItem('gemini_key');
         // Migrate old lunchMoney key -> eraContext
-        let safeApiKeys = { eraContext: legacyToken || '', gemini: legacyGemini || '' };
+        let safeApiKeys: { eraContext: string; gemini: string; anthropic: string } = {
+            eraContext: legacyToken || '',
+            gemini: legacyGemini || '',
+            anthropic: '',
+        };
         if (savedApiKeysStr) {
             const parsed = JSON.parse(savedApiKeysStr);
             safeApiKeys = {
                 eraContext: parsed.eraContext || parsed.lunchMoney || safeApiKeys.eraContext,
                 gemini: parsed.gemini || safeApiKeys.gemini,
+                // Phase 4 A1 — nouvelle clé Anthropic, vide par défaut
+                anthropic: parsed.anthropic || '',
             };
         }
 
@@ -258,15 +264,27 @@ export const useFinanceStore = create<FinanceState>()(
             // de la forme du state, et ajouter une étape dans `migrate`.
             // Sans version, toute évolution casse silencieusement le boot des
             // utilisateurs existants (cf audit 2026-05 §State management).
-            version: 1,
+            version: 2,
             migrate: (persistedState: unknown, fromVersion: number) => {
-                // v0 → v1 : pas de transformation, juste l'introduction du versioning.
-                // Les futures migrations ajouteront leurs étapes ici :
-                //   if (fromVersion < 2) { state = migrateV1ToV2(state); }
+                let state = persistedState as Partial<FinanceState>;
+                // v0/undefined → v1 : pas de transformation (intro versioning)
                 if (fromVersion === undefined || fromVersion < 1) {
-                    return persistedState as Partial<FinanceState>;
+                    state = state as Partial<FinanceState>;
                 }
-                return persistedState as Partial<FinanceState>;
+                // v1 → v2 : Phase 4 A1 — ajout du champ apiKeys.anthropic.
+                // Si l'utilisateur a une clé gemini mais pas anthropic, on
+                // n'auto-copie PAS (clés API distinctes par provider).
+                if (fromVersion < 2 && state?.apiKeys) {
+                    state = {
+                        ...state,
+                        apiKeys: {
+                            eraContext: state.apiKeys.eraContext || '',
+                            gemini: state.apiKeys.gemini || '',
+                            anthropic: state.apiKeys.anthropic || '',
+                        },
+                    };
+                }
+                return state;
             },
             partialize: (state) => {
                 const { apiKeys, activeTab, isPrivacyMode, lastProjection, pendingFocus, ...persistable } = state;

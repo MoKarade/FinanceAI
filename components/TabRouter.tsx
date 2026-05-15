@@ -255,7 +255,8 @@ export const TabRouter: React.FC<TabRouterProps> = ({
 
                 {activeTab === Tab.ASSISTANT && (
                     <AiAssistant
-                        apiKey={state.apiKeys.gemini}
+                        // Phase 4 A2: bascule sur la clé Anthropic, fallback Gemini pendant la migration
+                        apiKey={state.apiKeys.anthropic || state.apiKeys.gemini}
                         transactions={state.transactions}
                         budgetItems={state.budgetItems}
                         assets={state.assets}

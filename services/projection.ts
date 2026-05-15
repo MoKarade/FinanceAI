@@ -6,7 +6,7 @@ import { runMonteCarlo } from './projection/monteCarlo';
 import { SCENARIO_DEFINITIONS } from './projection/scenarios';
 import { applyW5Effects, applyAgeBasedExpenses } from './projection/w5Effects';
 import { tryCriticalIllness, tryInheritance, tryMortality, trySpouseMortality, tryLtcTrigger, ltcMonthlyCost, tickJobLoss, tickLtd, tryDivorce } from './projection/stochasticEvents';
-import { processAprilSettlement, computeOasClawback, processTaxLossHarvesting, processAutoVehicleReplacement } from './projection/taxCycle';
+import { processAprilSettlement, computeOasClawback, processTaxLossHarvesting, processAutoVehicleReplacement, processDecemberTaxFiling } from './projection/taxCycle';
 import { buildHistoricalSequence, buildReplaySequence, canadianInflationFor, type YearReturn } from './projection/historicalReturns';
 
 export interface SimulationParams {
@@ -913,98 +913,30 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             impotSalaireMois = 0;
         }
 
-        // ---- DÉCEMBRE: Calcul impôts finaux et transfert pour Avril ----
+        // Cycle 11 split: December tax filing → ./projection/taxCycle.processDecemberTaxFiling
         if (currentMonthIndex === 11 && m > 0) {
             const yearsElapsed = Math.floor(m / 12);
             const inflationFactor = Math.pow(1 + simInflation / 100, yearsElapsed);
+            const decResult = processDecemberTaxFiling(
+                currentMonthIndex,
+                {
+                    m, loopYear, isRetired, enableMonteCarlo,
+                    yearsElapsed, inflationFactor, activeUsersCount,
+                    grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
+                    optimizeSourceDeductions: effProj.optimizeSourceDeductions,
+                    incomeRetirementMonthly: incomeRetirement,
+                    nonReg, baseNonRegRate: baseRates.nonReg,
+                    accRrspYear, accFhsaYear, smithInterestDeductibleYear,
+                    accRentesYear, accRetraitsReerYear, accCapitalGainsYear,
+                },
+                { calculateFiscalReport, getMarginalRate, calculateDividendTax },
+                taxCurrentYear,
+            );
+            taxCurrentYear = decResult.newTaxCurrentYear;
+            decResult.logs.forEach(msg => logEvent(flowEventsLog, msg));
 
-            if (!isRetired) {
-                const grossMarc = grossMarcBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
-                const grossAnna = grossAnnaBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
-                const totalDeductions = accRrspYear + accFhsaYear + smithInterestDeductibleYear;
-
-                const grossMarcReal = grossMarc / inflationFactor;
-                const grossAnnaReal = grossAnna / inflationFactor;
-                const deductionsReal = totalDeductions / inflationFactor;
-
-                // V31: Optimisation Fiscale — Déductions attribuées au salaire le plus élevé
-                let deductionsMarc = 0;
-                let deductionsAnna = 0;
-                if (grossMarcReal > grossAnnaReal) {
-                    deductionsMarc = deductionsReal;
-                } else {
-                    deductionsAnna = deductionsReal;
-                }
-
-                const taxMarcReal = grossMarcReal > 0 ? calculateFiscalReport(grossMarcReal, deductionsMarc, 0, loopYear, enableMonteCarlo).totalTax : 0;
-                const taxAnnaReal = grossAnnaReal > 0 ? calculateFiscalReport(grossAnnaReal, deductionsAnna, 0, loopYear, enableMonteCarlo).totalTax : 0;
-                const totalAnnualTax = (taxMarcReal + taxAnnaReal) * inflationFactor;
-
-                // V49: L'employeur a retenu de l'impôt toute l'année selon s'il connaissait tes déductions ou non
-                let taxMarcEmployer = taxMarcReal;
-                let taxAnnaEmployer = taxAnnaReal;
-                if (!effProj.optimizeSourceDeductions) {
-                    taxMarcEmployer = grossMarcReal > 0 ? calculateFiscalReport(grossMarcReal, 0, 0, loopYear, enableMonteCarlo).totalTax : 0;
-                    taxAnnaEmployer = grossAnnaReal > 0 ? calculateFiscalReport(grossAnnaReal, 0, 0, loopYear, enableMonteCarlo).totalTax : 0;
-                }
-                const totalEmployerTax = (taxMarcEmployer + taxAnnaEmployer) * inflationFactor;
-
-                const estimatedWithholding = totalEmployerTax * 0.92;
-                // V30: Overwrite the 12-month approximation with the exact verified amount (Tax Due - Tax Withheld)
-                // Si optimizeSourceDeductions=false, totalAnnualTax sera beaucoup plus bas que estimatedWithholding, générant un gros remboursement!
-                taxCurrentYear.revenu = Math.max(-100000, totalAnnualTax - estimatedWithholding);
-            } else {
-                const basePensionAnnual = (incomeRetirement * 12) + accRentesYear;
-                if (basePensionAnnual > 0) {
-                    const basePensionReal = basePensionAnnual / inflationFactor;
-                    const taxReal = calculateFiscalReport(basePensionReal / activeUsersCount, 0, 0, loopYear).totalTax * activeUsersCount;
-                    const totalTax = taxReal * inflationFactor;
-                    const diff = totalTax * 0.05;
-                    if (diff > 100) taxCurrentYear.revenu += diff;
-                }
-            }
-
-            // V45: Ex-Glidepath logic removed.
-            // La vente forcée de 5% du Non-Enreg créait une bombe fiscale inutile au sommet salarial.
-            // Le ratio cible est déjà ajusté par le rebalancement virtuel des rendements effectifs.
-
-            if (accCapitalGainsYear > 0) {
-                const incomeForGains = isRetired
-                    ? (incomeRetirement * 12 + accRentesYear + accRetraitsReerYear)
-                    : (grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
-
-                const currentMargForGains = getMarginalRate(incomeForGains / activeUsersCount, loopYear);
-
-                // V31 Fix 1: Loi du Gain en Capital (Palier 250k) pour l'impôt courant
-                const thresholdGains = 250000 * activeUsersCount;
-                let taxableCapGains = 0;
-                if (accCapitalGainsYear <= thresholdGains) {
-                    taxableCapGains = accCapitalGainsYear * 0.50;
-                } else {
-                    taxableCapGains = (thresholdGains * 0.50) + ((accCapitalGainsYear - thresholdGains) * 0.6667);
-                }
-
-                const tax = taxableCapGains * currentMargForGains;
-                taxCurrentYear.gains += tax;
-                if (tax > 100) logEvent(flowEventsLog, `↳ Impôt Gains Cap Accumulés: +${Math.round(tax).toLocaleString('fr-CA')}$`);
-            }
             accCapitalGainsYear = 0;
-
-            if (nonReg > 0) {
-                // On assume que 30% du rendement Non-Reg est sous forme de dividendes déterminés
-                const annualDiv = nonReg * (baseRates.nonReg / 100) * 0.30;
-                const incomeForDiv = (isRetired ? (incomeRetirement * 12 + accRentesYear) : (grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed)) / activeUsersCount;
-
-                const currentMarginal = getMarginalRate(incomeForDiv, loopYear);
-                const divTax = calculateDividendTax(annualDiv, currentMarginal);
-
-                if (divTax > 1) {
-                    taxCurrentYear.gains += divTax;
-                }
-            }
-
             smithInterestDeductibleYear = 0;
-            // accGrossIncomeYear = 0; // V38: MOVED TO JANUARY to allow RRSP room calculation based on previous year
             accRrspYear = 0;
             accFhsaYear = 0;
 

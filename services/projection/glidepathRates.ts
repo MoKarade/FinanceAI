@@ -40,7 +40,7 @@ export interface GlidepathRates {
  * Applique le glidepath (→ obligations en approche retraite) et le drag
  * fiscal US sur le CELI (retenue 15% sur dividendes US).
  */
-export function computeGlidepathRates(ctx: GlidepathCtx): GlidepathRates {
+export function computeGlidepathRates(ctx: Readonly<GlidepathCtx>): GlidepathRates {
     const {
         m, retirementMonthIndex, isRetired, simInflation,
         enableMonteCarlo, mcCeliRate, mcReerRate, mcNonRegRate, mcCryptoRate, mcCashRate,

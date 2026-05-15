@@ -41,7 +41,7 @@ export interface GrowthResult {
  * contributions du mois courant du calcul de croissance.
  * Idem REEE avec contribREEE.
  */
-export function applyMonthlyGrowth(inputs: GrowthInputs): GrowthResult {
+export function applyMonthlyGrowth(inputs: Readonly<GrowthInputs>): GrowthResult {
     const celi = applyMidMonthGrowth(inputs.prevCELI, inputs.celi, inputs.effectiveCeliRate, true);
     const celiapp = applyMidMonthGrowth(inputs.celiapp, inputs.celiapp, inputs.activeCeliRate, true);
     const reer = applyMidMonthGrowth(inputs.prevREER, inputs.reer, inputs.effectiveReerRate, true);

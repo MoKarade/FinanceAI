@@ -3,7 +3,13 @@
 // Décaissement agressif du REER pour éviter la bombe fiscale à la mort.
 // Pure Return: retourne null si aucune action.
 
-import type { AllocationStrategy } from '../projection';
+import type { AllocationStrategy } from './types';
+
+const MELTDOWN_NW_HIGH = 2_000_000;
+const MELTDOWN_NW_MID  = 1_000_000;
+const MELTDOWN_TARGET_HIGH = 220_000;
+const MELTDOWN_TARGET_MID  = 140_000;
+const MELTDOWN_TARGET_BASE =  90_000;
 
 export interface MeltdownCtx {
     m: number;
@@ -34,7 +40,7 @@ export interface MeltdownResult {
  * revenu imposable courant dépasse déjà la cible.
  */
 export function processReerMeltdown(
-    ctx: MeltdownCtx,
+    ctx: Readonly<MeltdownCtx>,
     strategy: AllocationStrategy,
 ): MeltdownResult | null {
     if (strategy !== 'MELTDOWN_REER' || ctx.reer <= 0) return null;
@@ -52,10 +58,10 @@ export function processReerMeltdown(
         : (grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, yearsSinceStart);
 
     const totalAssets = reer + nonReg + celi + realEstateEquity;
-    const isVeryHighNW = totalAssets > 2000000;
-    const isHighNW = totalAssets > 1000000;
+    const isVeryHighNW = totalAssets > MELTDOWN_NW_HIGH;
+    const isHighNW = totalAssets > MELTDOWN_NW_MID;
 
-    const targetMeltGross = (isVeryHighNW ? 220000 : isHighNW ? 140000 : 90000) * (activeUsersCount || 1);
+    const targetMeltGross = (isVeryHighNW ? MELTDOWN_TARGET_HIGH : isHighNW ? MELTDOWN_TARGET_MID : MELTDOWN_TARGET_BASE) * (activeUsersCount || 1);
 
     if (currentTotalGross >= targetMeltGross) return null;
 

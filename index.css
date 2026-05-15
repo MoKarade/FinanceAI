@@ -205,4 +205,25 @@
   .kpi-label {
     @apply text-tiny uppercase text-ink-400;
   }
+
+  /* Phase D2 — microinteraction: lift léger au hover, utilisé sur les Cards
+   *  cliquables (deep-link cross-tab, navigation, etc.) */
+  .lift-on-hover {
+    @apply transition-all duration-200;
+  }
+  .lift-on-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Phase D1 — safe-area inset pour iOS bottom nav (notch + home indicator) */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Phase D1 — surface tactile minimum 44x44 (WCAG / Apple HIG) */
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }

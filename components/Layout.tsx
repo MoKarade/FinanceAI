@@ -252,10 +252,11 @@ export const Layout: React.FC<LayoutProps> = ({
         </nav>
 
         <div className="p-4 border-t border-white/5 bg-[#0F1116]">
-          <nav aria-label="Outils systeme" className="grid grid-cols-3 gap-1 mb-3">
-            <button type="button" onClick={() => setActiveTab(Tab.DATA)} aria-current={activeTab === Tab.DATA ? 'page' : undefined} className={`flex flex-col items-center justify-center p-2 rounded-lg text-[10px] font-medium transition-all ${activeTab === Tab.DATA ? 'bg-white/10 text-white' : 'text-gray-500 hover:bg-white/5'}`}><span className="text-sm" aria-hidden="true">💾</span> Data</button>
-            <button type="button" onClick={() => setActiveTab(Tab.SYSTEM)} aria-current={activeTab === Tab.SYSTEM ? 'page' : undefined} className={`flex flex-col items-center justify-center p-2 rounded-lg text-[10px] font-medium transition-all ${activeTab === Tab.SYSTEM ? 'bg-white/10 text-white' : 'text-gray-500 hover:bg-white/5'}`}><span className="text-sm" aria-hidden="true">🛠️</span> Sys</button>
-            <button type="button" onClick={() => setActiveTab(Tab.SETTINGS)} aria-current={activeTab === Tab.SETTINGS ? 'page' : undefined} className={`flex flex-col items-center justify-center p-2 rounded-lg text-[10px] font-medium transition-all ${activeTab === Tab.SETTINGS ? 'bg-white/10 text-white' : 'text-gray-500 hover:bg-white/5'}`}><span className="text-sm" aria-hidden="true">⚙️</span> Config</button>
+          {/* Phase D1 — système: targets touch 44px+ (text-meta + py-2.5) */}
+          <nav aria-label="Outils système" className="grid grid-cols-3 gap-2 mb-3">
+            <button type="button" onClick={() => setActiveTab(Tab.DATA)} aria-current={activeTab === Tab.DATA ? 'page' : undefined} className={`flex flex-col items-center justify-center p-2.5 rounded-card text-tiny font-medium transition-all focus-ring ${activeTab === Tab.DATA ? 'bg-white/10 text-ink-50' : 'text-ink-400 hover:bg-white/5 hover:text-ink-100'}`}><span className="text-base" aria-hidden="true">💾</span> Data</button>
+            <button type="button" onClick={() => setActiveTab(Tab.SYSTEM)} aria-current={activeTab === Tab.SYSTEM ? 'page' : undefined} className={`flex flex-col items-center justify-center p-2.5 rounded-card text-tiny font-medium transition-all focus-ring ${activeTab === Tab.SYSTEM ? 'bg-white/10 text-ink-50' : 'text-ink-400 hover:bg-white/5 hover:text-ink-100'}`}><span className="text-base" aria-hidden="true">🛠️</span> Sys</button>
+            <button type="button" onClick={() => setActiveTab(Tab.SETTINGS)} aria-current={activeTab === Tab.SETTINGS ? 'page' : undefined} className={`flex flex-col items-center justify-center p-2.5 rounded-card text-tiny font-medium transition-all focus-ring ${activeTab === Tab.SETTINGS ? 'bg-white/10 text-ink-50' : 'text-ink-400 hover:bg-white/5 hover:text-ink-100'}`}><span className="text-base" aria-hidden="true">⚙️</span> Config</button>
           </nav>
           <button onClick={onRefresh} disabled={isLoading} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-gray-800 to-gray-700 hover:from-gray-700 hover:to-gray-600 border border-white/10 text-white py-3 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:scale-100">
             <span aria-hidden="true" className={isLoading ? "animate-spin" : ""}>🔄</span> {isLoading ? "Sync" : "Synchroniser"}
@@ -288,74 +289,86 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       </div>
 
-      <main className="flex-1 p-3 md:p-10 mt-16 md:mt-0 overflow-y-auto min-h-[100dvh] pb-28 md:pb-10 relative z-0 scroll-smooth">
+      <main className="flex-1 p-3 md:p-10 mt-16 md:mt-0 overflow-y-auto min-h-[100dvh] pb-24 md:pb-10 relative z-0 scroll-smooth">
         <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 animate-premium-in">
           {children}
         </div>
       </main>
 
-      <nav aria-label="Navigation mobile" className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[#12141a]/100 backdrop-blur-2xl border-t border-white/10 z-[100] flex items-center justify-around px-1 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+      {/* Phase D1 — Bottom nav avec text-tiny (cohérent avec scale typo) + targets touch 48px+ */}
+      <nav aria-label="Navigation mobile" className="md:hidden fixed bottom-0 left-0 right-0 h-[72px] bg-[#12141a]/100 backdrop-blur-2xl border-t border-white/10 z-[100] flex items-center justify-around px-1 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
         {navItems.map((item) => (
           <button
             key={item.id}
             type="button"
             onClick={() => { setActiveTab(item.id as Tab); setShowMobileDrawer(false); }}
             aria-current={activeTab === item.id ? 'page' : undefined}
-            className={`relative flex flex-col items-center justify-center w-12 h-full transition-all duration-200 active:scale-95 group`}
+            className={`relative flex flex-col items-center justify-center min-w-[56px] h-full transition-all duration-200 active:scale-95 group focus-ring rounded-card`}
           >
-            <div aria-hidden="true" className={`text-2xl mb-1 transition-transform duration-300 ${activeTab === item.id ? 'scale-110 -translate-y-1 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'text-gray-500 group-hover:text-gray-300'}`}>{item.icon}</div>
-            <span className={`text-[9px] font-medium transition-colors ${activeTab === item.id ? 'text-primary' : 'text-gray-500'}`}>{item.label}</span>
-            {activeTab === item.id && <span aria-hidden="true" className="absolute top-2 w-1 h-1 bg-primary rounded-full shadow-[0_0_5px_#10b981]"></span>}
+            <div aria-hidden="true" className={`text-2xl mb-1 transition-transform duration-300 ${activeTab === item.id ? 'scale-110 -translate-y-0.5 text-ink-50 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'text-ink-400 group-hover:text-ink-200'}`}>{item.icon}</div>
+            <span className={`text-tiny font-medium transition-colors ${activeTab === item.id ? 'text-primary' : 'text-ink-400'}`}>{item.label}</span>
+            {activeTab === item.id && <span aria-hidden="true" className="absolute top-1.5 w-1 h-1 bg-primary rounded-full shadow-[0_0_5px_#10b981]"></span>}
           </button>
         ))}
         <button
           onClick={() => setShowMobileDrawer(v => !v)}
           aria-label="Plus d'options"
           aria-expanded={showMobileDrawer}
-          className={`relative flex flex-col items-center justify-center w-14 h-full transition-all duration-200 active:scale-95 ${showMobileDrawer || extraItems.some(e => e.id === activeTab) || [Tab.SETTINGS, Tab.DATA, Tab.SYSTEM].includes(activeTab) ? 'text-primary' : 'text-gray-500'}`}
+          className={`relative flex flex-col items-center justify-center min-w-[56px] h-full transition-all duration-200 active:scale-95 focus-ring rounded-card ${showMobileDrawer || extraItems.some(e => e.id === activeTab) || [Tab.SETTINGS, Tab.DATA, Tab.SYSTEM].includes(activeTab) ? 'text-primary' : 'text-ink-400'}`}
         >
           <div aria-hidden="true" className={`text-2xl mb-1 transition-transform ${showMobileDrawer ? 'rotate-90' : ''}`}>⋯</div>
-          <span className="text-[10px] font-medium">Plus</span>
-          {(extraItems.some(e => e.id === activeTab) || [Tab.SETTINGS, Tab.DATA, Tab.SYSTEM].includes(activeTab)) && <span aria-hidden="true" className="absolute top-2 w-1 h-1 bg-primary rounded-full"></span>}
+          <span className="text-tiny font-medium">Plus</span>
+          {(extraItems.some(e => e.id === activeTab) || [Tab.SETTINGS, Tab.DATA, Tab.SYSTEM].includes(activeTab)) && <span aria-hidden="true" className="absolute top-1.5 w-1 h-1 bg-primary rounded-full"></span>}
         </button>
       </nav>
 
       {showMobileDrawer && (
         <div className="md:hidden fixed inset-0 z-40" onClick={() => setShowMobileDrawer(false)}>
-          <div className="absolute bottom-20 left-0 right-0 bg-[#0F1116]/98 backdrop-blur-xl border-t border-white/10 p-4 shadow-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
-            <div className="text-[10px] uppercase text-gray-500 font-bold tracking-widest mb-3">Projets de Vie</div>
-            <div className="grid grid-cols-4 gap-2 mb-4">
-              {extraItems.map(item => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => { setActiveTab(item.id); setShowMobileDrawer(false); }}
-                  aria-current={activeTab === item.id ? 'page' : undefined}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl transition-all active:scale-95 border ${activeTab === item.id
-                    ? 'bg-white/10 border-white/20 text-white'
-                    : 'bg-white/5 border-white/5 text-gray-400 hover:text-white hover:bg-white/10'
-                    }`}
-                >
-                  <span aria-hidden="true" className="text-xl mb-1">{item.icon}</span>
-                  <span className="text-[9px] font-medium text-center leading-tight">{item.label}</span>
-                </button>
-              ))}
+          <div className="absolute bottom-[72px] left-0 right-0 bg-[#0F1116]/98 backdrop-blur-xl border-t border-white/10 p-4 shadow-2xl animate-slide-up max-h-[70vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            {/* Phase D1 — Drawer mobile aligné sur les groupes desktop (cohérent avec B1) */}
+            {navGroups.slice(1).map((group) => (
+              <div key={group.label} className="mb-4 last:mb-0">
+                <div className="text-tiny uppercase text-ink-400 font-bold tracking-widest mb-2 flex items-center gap-2">
+                  <span aria-hidden="true">{group.icon}</span>
+                  <span>{group.label}</span>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {group.items.map(item => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => { setActiveTab(item.id); setShowMobileDrawer(false); }}
+                      aria-current={activeTab === item.id ? 'page' : undefined}
+                      className={`flex flex-col items-center justify-center p-3 rounded-card transition-all active:scale-95 border focus-ring min-h-[72px] ${activeTab === item.id
+                        ? 'bg-white/10 border-white/20 text-ink-50'
+                        : 'bg-white/5 border-white/5 text-ink-300 hover:text-ink-50 hover:bg-white/10'
+                        }`}
+                    >
+                      <span aria-hidden="true" className="text-xl mb-1">{item.icon}</span>
+                      <span className="text-tiny font-medium text-center leading-tight">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            <div className="text-tiny uppercase text-ink-400 font-bold tracking-widest mb-2 flex items-center gap-2">
+              <span aria-hidden="true">⚙️</span><span>Système</span>
             </div>
-            <div className="text-[10px] uppercase text-gray-500 font-bold tracking-widest mb-3">App</div>
             <div className="grid grid-cols-3 gap-2">
-              {[{ id: Tab.SETTINGS, icon: '⚙️', label: 'Config' }, { id: Tab.DATA, icon: '💾', label: 'Data' }, { id: Tab.SYSTEM, icon: '🛠️', label: 'Systeme' }].map(item => (
+              {[{ id: Tab.SETTINGS, icon: '⚙️', label: 'Config' }, { id: Tab.DATA, icon: '💾', label: 'Data' }, { id: Tab.SYSTEM, icon: '🛠️', label: 'Système' }].map(item => (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => { setActiveTab(item.id); setShowMobileDrawer(false); }}
                   aria-current={activeTab === item.id ? 'page' : undefined}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all active:scale-95 ${activeTab === item.id
-                    ? 'bg-white/10 border-white/20 text-white'
-                    : 'bg-white/5 border-white/5 text-gray-500 hover:text-white'
+                  className={`flex flex-col items-center justify-center p-3 rounded-card border transition-all active:scale-95 focus-ring min-h-[64px] ${activeTab === item.id
+                    ? 'bg-white/10 border-white/20 text-ink-50'
+                    : 'bg-white/5 border-white/5 text-ink-300 hover:text-ink-50'
                     }`}
                 >
                   <span aria-hidden="true" className="text-xl mb-1">{item.icon}</span>
-                  <span className="text-[9px] font-medium">{item.label}</span>
+                  <span className="text-tiny font-medium">{item.label}</span>
                 </button>
               ))}
             </div>

@@ -12,6 +12,9 @@ import { computeRetirementIncome } from './projection/retirementIncome';
 import { processOneChild } from './projection/childrenReee';
 import { computeActiveIncome } from './projection/activeIncome';
 import { processReerMeltdown } from './projection/meltdownReer';
+import { applyTravelExpenses, applyLifeEvents, computeStressTest } from './projection/monthlyEvents';
+import { computeLatentTax } from './projection/latentTax';
+import { computeGlidepathRates } from './projection/glidepathRates';
 
 export interface SimulationParams {
     projection: ProjectionConfig;
@@ -1187,57 +1190,27 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         incomeAnna = _childIncomeAnna;
 
         const currentIsoMonth = currentLoopDate.toISOString().split('T')[0].substring(0, 7);
-        travelGoals.forEach(t => { 
-            if (t.date.startsWith(currentIsoMonth)) {
-                const effectiveCost = (t.totalCost ?? 0) * expenseMultiplier;
-                monthlyExpenses += effectiveCost;
-                logEvent(flowEventsLog, `✈️ Voyage (${t.destination}): -${Math.round(effectiveCost).toLocaleString('fr-CA')}$`);
-            }
+        // Cycle 16 split: voyages + événements de vie + stress test → ./projection/monthlyEvents
+        applyTravelExpenses(travelGoals, currentIsoMonth, expenseMultiplier, {
+            addExpense: (n) => { monthlyExpenses += n; },
+            logFlow: (s) => logEvent(flowEventsLog, s),
         });
-
-        lifeEvents.forEach(e => {
-            if (e.date.startsWith(currentIsoMonth)) {
-                if (e.type === 'KRACH') {
-                    const drop = (1 - ((e.impactPercent || 30) / 100));
-                    celi *= drop; reer *= drop; nonReg *= drop; crypto *= drop;
-                    logEvent(lifeEventsLog, `Krach (-${e.impactPercent}%) 📉`);
-                } else {
-                    // V22 D: Frais vente immobilière
-                    const isVente = e.name && e.name.toLowerCase().includes('vente');
-                    if (isVente) {
-                        const soldProp = propertiesState.find(p => p.isBought && p.mortgage < p.currentValue);
-                        if (soldProp) {
-                            const saleNet = soldProp.currentValue * 0.95 - soldProp.mortgage;
-                            liquid += Math.max(0, saleNet);
-                            realEstateEquity -= soldProp.currentValue - soldProp.mortgage;
-                            mortgageBalance -= soldProp.mortgage;
-                            soldProp.isBought = false; soldProp.mortgage = 0;
-                            (soldProp as any).isSold = true;
-                            logEvent(lifeEventsLog, `🏠 Vente (net 95%): +${Math.round(Math.max(0, saleNet)).toLocaleString('fr-CA')}$`);
-                        }
-                    } else {
-                        const effectiveImpact = (e.impactAmount ?? 0) * expenseMultiplier;
-                        monthlyExpenses += effectiveImpact;
-                        logEvent(lifeEventsLog, `${e.name} 💸`);
-                        logEvent(flowEventsLog, `🔔 Événement (${e.name}): -${Math.round(effectiveImpact).toLocaleString('fr-CA')}$`);
-                    }
-                }
-            }
+        applyLifeEvents(lifeEvents, currentIsoMonth, expenseMultiplier, propertiesState, {
+            shockPortfolio: (f) => { celi *= f; reer *= f; nonReg *= f; crypto *= f; },
+            addLiquid: (n) => { liquid += n; },
+            addExpense: (n) => { monthlyExpenses += n; },
+            adjustRealEstate: (eq, mort) => { realEstateEquity += eq; mortgageBalance += mort; },
+            logLife: (s) => logEvent(lifeEventsLog, s),
+            logFlow: (s) => logEvent(flowEventsLog, s),
         });
-
-        // V16: Stress Test
-        if (effProj.stressTestEnabled) {
-            const crashStartMonth = (effProj.stressTestYear || 5) * 12;
-            const recoveryMonths = effProj.stressTestRecoveryMonths || 24;
-            const drop = (effProj.stressTestDrop || 30) / 100;
-            if (m === crashStartMonth) {
-                const shockFactor = (1 - drop);
-                celi *= shockFactor; reer *= shockFactor; nonReg *= shockFactor; crypto *= shockFactor;
-                logEvent(lifeEventsLog, `📉 Choc Marché -${Math.round(drop * 100)}%`);
-            } else if (m > crashStartMonth && m <= crashStartMonth + recoveryMonths) {
-                const recoveryBoost = drop / recoveryMonths;
-                celi *= (1 + recoveryBoost * 0.9); reer *= (1 + recoveryBoost * 0.9); nonReg *= (1 + recoveryBoost * 0.9);
-            }
+        const stressResult = computeStressTest(effProj, m);
+        if (stressResult.crashFactor !== 1) {
+            celi *= stressResult.crashFactor; reer *= stressResult.crashFactor;
+            nonReg *= stressResult.crashFactor; crypto *= stressResult.crashFactor;
+            if (stressResult.log) logEvent(lifeEventsLog, stressResult.log);
+        }
+        if (stressResult.recoveryFactor !== 1) {
+            celi *= stressResult.recoveryFactor; reer *= stressResult.recoveryFactor; nonReg *= stressResult.recoveryFactor;
         }
 
         let monthlyCashflow = monthlyIncome - monthlyExpenses;
@@ -1449,34 +1422,14 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             if (rrspRoom > 0 && nonReg > 0 && !isRetired) { const a = Math.min(nonReg, rrspRoom); const s = handleNonRegSale(a, 'Opti.REER'); reer += s; rrspRoom -= s; accRrspYear += s; }
         }
 
-        // V21 Mec 8: Glidepath asset allocation
-        const yearsToRetirementNow = Math.max(0, (retirementMonthIndex - m) / 12);
-        const glideStartYears = 10;
-        const targetGlideRate = simInflation + 1.0;
-
-        // V31: Terminal Rate Glidepath (Plancher d'équité de 60% en retraite)
-        let glideFactor = yearsToRetirementNow < glideStartYears ? (yearsToRetirementNow / glideStartYears) : 1.0;
-        if (isRetired) glideFactor = Math.max(0.60, glideFactor);
-
-        // Monte Carlo B: Use random rates if MC mode enabled, else use base rates
-        const activeCeliRate = enableMonteCarlo ? mcCeliRate : baseRates.celi;
-        const activeReerRate = enableMonteCarlo ? mcReerRate : baseRates.reer;
-        const activeNonRegRate = enableMonteCarlo ? mcNonRegRate : baseRates.nonReg;
-        const activeCryptoRate = enableMonteCarlo ? mcCryptoRate : baseRates.crypto;
-        const activeCashRate = enableMonteCarlo ? mcCashRate : baseRates.cash;
-
-        const effectiveCeliRateRaw = activeCeliRate * glideFactor + targetGlideRate * (1 - glideFactor);
-        const effectiveReerRate = activeReerRate * glideFactor + targetGlideRate * (1 - glideFactor);
-        const effectiveNonRegRateRaw = activeNonRegRate * glideFactor + targetGlideRate * (1 - glideFactor);
-
-        // D2.7: Withholding tax US 15% — drag sur le CELI uniquement.
-        // REER exempté par convention fiscale. NON_ENREG: drag présent mais
-        // crédit pour impôt étranger récupère, donc négligé ici.
-        const usShareCeli = Math.min(1, Math.max(0, (effProj.usEquityShareCeli ?? 0) / 100));
-        const usDivYield = (effProj.usEquityDividendYield ?? 1.5) / 100;
-        const usCeliDragPct = usShareCeli * usDivYield * 0.15 * 100; // en points %
-        const effectiveCeliRate = effectiveCeliRateRaw - usCeliDragPct;
-        const effectiveNonRegRate = effectiveNonRegRateRaw;
+        // Cycle 18 split: glidepath + taux effectifs → ./projection/glidepathRates
+        const gr = computeGlidepathRates({
+            m, retirementMonthIndex, isRetired, simInflation, enableMonteCarlo,
+            mcCeliRate, mcReerRate, mcNonRegRate, mcCryptoRate, mcCashRate, baseRates,
+            usEquityShareCeli: effProj.usEquityShareCeli,
+            usEquityDividendYield: effProj.usEquityDividendYield,
+        });
+        const { effectiveCeliRate, effectiveReerRate, effectiveNonRegRate, activeCeliRate, activeCryptoRate, activeCashRate } = gr;
 
         // Cycle 7 split: applyMidMonthGrowth hoisté dans ./projection/helpers
         // (était redéfini 360× par scénario MC)
@@ -1516,31 +1469,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             hasHitFire = true;
         }
 
-        // V40: Accurate Latent Tax (Liquidation Delta)
-        const yearsElapsedLat = Math.floor(m / 12);
-        const inflationFactorLat = Math.pow(1 + simInflation / 100, yearsElapsedLat);
-        const currentGrossBaseLat = !isRetired ? (grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, yearsElapsedLat) : (accRentesYear + (incomeRetirement * 12));
-        const currentGrossPerUserLat = (currentGrossBaseLat / activeUsersCount) / inflationFactorLat;
-
-        const baseTaxReport = calculateFiscalReport(currentGrossPerUserLat, 0, 0, loopYear, enableMonteCarlo);
-        const baseTaxAmount = baseTaxReport.totalTax * activeUsersCount * inflationFactorLat;
-
-        const latentCapitalGain = Math.max(0, nonReg - nonRegACB);
-        const thresholdGainsLat = 250000 * activeUsersCount;
-        let taxableLatentGain = 0;
-        if (latentCapitalGain <= thresholdGainsLat) {
-            taxableLatentGain = latentCapitalGain * 0.50;
-        } else {
-            taxableLatentGain = (thresholdGainsLat * 0.50) + ((latentCapitalGain - thresholdGainsLat) * 0.6667);
-        }
-
-        // Inclusion: REER is 100% taxable, Crypto is 50/66% taxable (assumed 50% for simplicity in latent)
-        const totalTaxableLatentAssets = reer + crypto * 0.5 + taxableLatentGain;
-        const totalLatentIncomePerUser = ((currentGrossBaseLat + totalTaxableLatentAssets) / activeUsersCount) / inflationFactorLat;
-        const fullLiquidationTaxReport = calculateFiscalReport(totalLatentIncomePerUser, 0, 0, loopYear, enableMonteCarlo);
-        const fullLiquidationTaxAmount = fullLiquidationTaxReport.totalTax * activeUsersCount * inflationFactorLat;
-
-        let impotLatent = -(fullLiquidationTaxAmount - baseTaxAmount);
+        // Cycle 17 split: impôt latent → ./projection/latentTax
+        const impotLatent = computeLatentTax(
+            { m, loopYear, simInflation, simSalaryGrowth, isRetired, activeUsersCount,
+              grossMarcBaseAnnual, grossAnnaBaseAnnual, accRentesYear, incomeRetirement,
+              reer, nonReg, nonRegACB, crypto, enableMonteCarlo },
+            calculateFiscalReport as any,
+        );
 
         // ---- V31: TFSA/FHSA Room Refills move to December block (around line 550) ----
 

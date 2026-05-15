@@ -10,6 +10,7 @@
 
 import type { Debt } from '../../types';
 import type { AllocationStrategy } from '../projection';
+import { PBMA_THRESHOLD_PER_USER, type FiscalReport } from '../../utils/tax';
 
 type FiscalReportFn = (
     grossIncome: number,
@@ -17,7 +18,7 @@ type FiscalReportFn = (
     fhsaContrib: number,
     year: number,
     skipBreakdown: boolean,
-) => { marginalRate: number };
+) => FiscalReport;
 
 type GrossWithholdingFn = (netDesired: number) => { gross: number };
 
@@ -49,6 +50,7 @@ export interface CashflowState {
     contribCELI: number;
     contribREER: number;
     contribNonReg: number;
+    contribCELIAPP: number;
     shortfallMonths: number;
     flowEventLogs: string[];
 }
@@ -72,26 +74,7 @@ export interface CashflowCtx {
     hasPurchasedPrimary: boolean;
 }
 
-function handleNonRegSale(state: CashflowState, amount: number): number {
-    const sold = Math.min(state.nonReg, amount);
-    if (sold > 0) {
-        const proportion = state.nonRegACB > 0 && state.nonReg > 0
-            ? Math.min(1, state.nonRegACB / state.nonReg) : 0;
-        const costBasis = sold * proportion;
-        state.nonReg -= sold;
-        state.nonRegACB = Math.max(0, state.nonRegACB - costBasis);
-        const rawGain = sold - costBasis;
-        if (rawGain < 0) {
-            state.capitalLossBank += Math.abs(rawGain);
-        } else {
-            const usableLoss = Math.min(rawGain, state.capitalLossBank);
-            const taxableGain = rawGain - usableLoss;
-            state.capitalLossBank -= usableLoss;
-            state.accCapitalGainsYear += taxableGain;
-        }
-    }
-    return sold;
-}
+import { handleNonRegSale } from './portfolioOps';
 
 function rrspWithholding(grossDraw: number): number {
     if (grossDraw <= 5000) return grossDraw * 0.21;
@@ -139,7 +122,7 @@ export function processCashflowAllocation(
                 ? ((incomeRetirement * 12) + state.accRetraitsReerYear + accRentesYear)
                 : ((grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, Math.floor(m / 12)) + state.accRetraitsReerYear);
 
-            const pbmaThreshold = 17183 * activeUsersCount;
+            const pbmaThreshold = PBMA_THRESHOLD_PER_USER * activeUsersCount;
             let pbmaRoom = Math.max(0, pbmaThreshold - currentAnnualGrossTotal);
 
             let buckets: string[];
@@ -253,6 +236,7 @@ export function processCashflowAllocation(
             state.fhsaRoom -= fillFhsa;
             state.fhsaLifetimeContrib += fillFhsa;
             state.accFhsaYear += fillFhsa;
+            state.contribCELIAPP += fillFhsa;
             excess -= fillFhsa;
         }
 

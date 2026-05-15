@@ -8,6 +8,7 @@
 // avec utils/tax).
 
 import type { ChildGoal } from '../../types';
+import type { FiscalReport } from '../../utils/tax';
 
 type FiscalReportFn = (
     grossIncome: number,
@@ -15,7 +16,7 @@ type FiscalReportFn = (
     fhsaContrib: number,
     year: number,
     skipBreakdown: boolean,
-) => { netIncome: number };
+) => FiscalReport;
 
 export interface ChildProcessCtx {
     m: number;

@@ -28,6 +28,7 @@ export interface PropertyStateMutable {
     isBought: boolean;
     mortgage: number;
     currentValue: number;
+    isSold?: boolean;
     [key: string]: unknown;
 }
 
@@ -67,7 +68,7 @@ export function applyLifeEvents(
                     );
                     soldProp.isBought = false;
                     soldProp.mortgage = 0;
-                    (soldProp as any).isSold = true;
+                    soldProp.isSold = true;
                     state.logLife(`🏠 Vente (net 95%): +${Math.round(Math.max(0, saleNet)).toLocaleString('fr-CA')}$`);
                 }
             } else {

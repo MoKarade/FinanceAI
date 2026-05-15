@@ -1,12 +1,15 @@
 // services/projection.ts — moteur de projection financière (migré depuis utils/useFutureSimulation.ts)
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness } from '../types';
-import { calculateFiscalReport, CELI_ANNUAL_LIMITS, calculateCeliRoom, calculateGrossFromNet, getMarginalRate, calculateDividendTax, RRSP_ANNUAL_LIMITS, calculateGrossWithholdingRRSP } from '../utils/tax';
-import { mulberry32, gaussianRandom, applyShock, MER, RRIF_RATES, welcomeTax, ltcAnnualProbability, mortalityAnnualProbability, applyMidMonthGrowth } from './projection/helpers';
+import { calculateFiscalReport, calculateCeliRoom, getMarginalRate, calculateDividendTax, RRSP_ANNUAL_LIMITS, calculateGrossWithholdingRRSP, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER, CAPITAL_GAINS_HIGH_THRESHOLD } from '../utils/tax';
+import { mulberry32, gaussianRandom, applyShock, MER, RRIF_RATES, welcomeTax, applyMidMonthGrowth } from './projection/helpers';
 import { runMonteCarlo } from './projection/monteCarlo';
 import { SCENARIO_DEFINITIONS } from './projection/scenarios';
 import { applyW5Effects, applyAgeBasedExpenses } from './projection/w5Effects';
-import { tryCriticalIllness, tryInheritance, tryMortality, trySpouseMortality, tryLtcTrigger, ltcMonthlyCost, tickJobLoss, tickLtd, tryDivorce } from './projection/stochasticEvents';
-import { processAprilSettlement, computeOasClawback, processTaxLossHarvesting, processAutoVehicleReplacement, processDecemberTaxFiling, processJanuaryReset } from './projection/taxCycle';
+import { tryCriticalIllness, tryInheritance, tryMortality, trySpouseMortality, tryLtcTrigger, ltcMonthlyCost, tryDivorce } from './projection/stochasticEvents';
+import { processAprilSettlement } from './projection/taxApril';
+import { computeOasClawback, processTaxLossHarvesting, processDecemberTaxFiling } from './projection/taxDecember';
+import { processJanuaryReset } from './projection/taxJanuary';
+import { processAutoVehicleReplacement } from './projection/vehicleCycle';
 import { buildHistoricalSequence, buildReplaySequence, canadianInflationFor, type YearReturn } from './projection/historicalReturns';
 import { computeRetirementIncome } from './projection/retirementIncome';
 import { processOneChild } from './projection/childrenReee';
@@ -18,6 +21,9 @@ import { computeGlidepathRates } from './projection/glidepathRates';
 import { processCashflowAllocation, type CashflowState } from './projection/cashflowAllocation';
 import { processRealEstate, type RealEstateState } from './projection/realEstateMonth';
 import { buildMonthlyDataPoint } from './projection/monthlyOutput';
+import { applyMonthlyGrowth } from './projection/growthApplication';
+import { buildSeededRng, computeHistoricalContributionRoom, computeRrqAdjustment, computeIncomeBaseline, computeScenarioOverrides, makeSmileLifestyleFactor } from './projection/setupSimulation';
+import { handleNonRegSale as portfolioNonRegSale } from './projection/portfolioOps';
 
 export interface SimulationParams {
     projection: ProjectionConfig;
@@ -187,18 +193,8 @@ export interface ProjectionResult {
 const runScenario = (params: SimulationParams, strategy: AllocationStrategy, enableMonteCarlo = false, delayPensions = false, mcIterationIndex = 0, scenarioType: FutureScenarioType = 'BASE') => {
     const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0, insurancePolicies = [], vehicleReplacements = [], majorRenovations = [], charitableGoals = [], rentalProperties = [], privateBusinesses = [] } = params;
     
-    // Deterministic Seed Generation
-    // We use a base seed from initial assets + inflation to ensure same inputs = same base trace
-    // D2.3: la graine MC ne dépend QUE de l'index d'itération + scénario,
-    // pas du capital initial (sinon impossible de comparer 100k$ vs 100.001$
-    // sur des trajectoires aléatoires identiques).
-    const baseSeedStr = `${scenarioType}-${strategy}-${mcIterationIndex}`;
-    let baseSeedNum = 0;
-    for (let i = 0; i < baseSeedStr.length; i++) {
-        baseSeedNum = (baseSeedNum << 5) - baseSeedNum + baseSeedStr.charCodeAt(i);
-        baseSeedNum |= 0;
-    }
-    const rng = mulberry32(Math.abs(baseSeedNum) || 42);
+    // Cycle 22 split: RNG seedé déterministique → ./projection/setupSimulation
+    const rng = buildSeededRng(scenarioType, strategy, mcIterationIndex);
 
     const getMonthOffset = (dateStr: string) => {
         const d = new Date(dateStr);
@@ -238,39 +234,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // non déterministe — résultat dépendait de l'horloge système).
     // La variable n'était de toute façon jamais utilisée.
 
-    let totalHistoricalCeliRoom = 0;
-    let totalHistoricalRrspRoom = 0;
-    let activeUsersCount = 0;
+    // Cycle 22 split: droits CELI/REER historiques → ./projection/setupSimulation
+    const { totalHistoricalCeliRoom, totalHistoricalRrspRoom, activeUsersCount } =
+        computeHistoricalContributionRoom(config.users, baseGrossAnnual, startYear);
 
-    // V38: Calcul STRICT des droits selon la résidence et l'âge
-    config.users.filter(u => u).forEach(u => {
-        activeUsersCount++;
-        const birthYear = u.birthYear || (startYear - (u.age || 30));
-        const arrivalYear = u.canadaArrivalYear || (startYear - 5);
-        totalHistoricalCeliRoom += calculateCeliRoom(birthYear, arrivalYear, startYear);
-        const yearsInCanadaBeforeStart = Math.max(0, startYear - arrivalYear);
-        if (yearsInCanadaBeforeStart > 0) {
-            const individualSalaryPortion = baseGrossAnnual / (config.users.filter(u => u).length || 1);
-            const totalFE = config.users.reduce((acc, user) => acc + (user?.facteurEquivalence || 0), 0);
-            for (let y = 1; y <= yearsInCanadaBeforeStart; y++) {
-                const histYear = startYear - y;
-                const pastSalary = individualSalaryPortion / Math.pow(1.02, y);
-                const annualCap = RRSP_ANNUAL_LIMITS[histYear] || 32490;
-                totalHistoricalRrspRoom += Math.max(0, Math.min(pastSalary * 0.18, annualCap) - (totalFE / (config.users.filter(u => u).length || 1)));
-            }
-        }
-    });
-
-    if (activeUsersCount === 0) activeUsersCount = 1;
-
-    // D2.5: Smile Curve — facteur de style de vie par âge retraite.
-    // Référence: étude CIBC "Spending in Retirement". Activable via flag.
-    const smileLifestyleFactor = (ageAtMonth: number): number => {
-        if (!effProj.useSmileCurve) return 1;
-        if (ageAtMonth < 75) return 1.15;   // Go-go years
-        if (ageAtMonth < 85) return 1.00;   // Slow-go
-        return 0.90;                          // No-go (loisirs ↓, santé ↑ déjà géré)
-    };
+    // Cycle 22 split: Smile Curve factor → ./projection/setupSimulation
+    const smileLifestyleFactor = makeSmileLifestyleFactor(effProj.useSmileCurve);
 
     let useManualBalances = effProj.useManualBalances ?? false;
     let manualCELIRoom = effProj.manualCELIRoom ?? 0;
@@ -285,11 +254,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let fhsaRoom = 0;
     const celiappOpeningYear = celiapp > 0 ? (startYear - 1) : startYear;
     if (startYear === celiappOpeningYear) { 
-        fhsaRoom = 8000 * fhsaEligibleUsersCount; 
+        fhsaRoom = FHSA_ANNUAL_LIMIT_PER_USER * fhsaEligibleUsersCount;
     }
 
     let fhsaClosingYear = -1;
-    let fhsaLifetimeContrib = Math.min(celiapp, 40000 * fhsaEligibleUsersCount);
+    let fhsaLifetimeContrib = Math.min(celiapp, FHSA_LIFETIME_LIMIT_PER_USER * fhsaEligibleUsersCount);
     let accFhsaYear = 0;
     
     let hasPurchasedPrimary = false;
@@ -303,18 +272,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         psvResidencyYears[idx] = Math.max(0, startYear - Math.max(arrivalYear, birthYear + 18));
     });
 
-    // V90: Scenario Overrides
-    let simInflation = projection.inflationRate || 2.0;
-    if (scenarioType === 'HYPER_INFLATION') simInflation = 5.5;
+    // Cycle 22 split: scenario overrides (inflation + rates) → ./projection/setupSimulation
+    const { simInflation, baseRates } = computeScenarioOverrides(projection as any, scenarioType);
 
     let overrideRetirementAge = retirementGoal.targetAge || 65;
     if (scenarioType === 'LIBERTE_55') overrideRetirementAge = 55;
     const effectiveRetirementAge = delayPensions ? 70 : overrideRetirementAge;
     const retirementMonthIndex = (effectiveRetirementAge - currentAge) * 12;
-
-    const baseRates = (scenarioType === 'ECONOMIC_WINTER') 
-        ? { celi: 3.0, reer: 3.0, nonReg: 2.0, crypto: 5.0, cash: 1.0 }
-        : ((projection as any).rates || { celi: 7, reer: 6.5, nonReg: 6.5, crypto: 10, cash: 3 });
 
     const effectiveBaseExpenses = projection.useTheoretical ? (projection.theoreticalExpenses || 4000) : baseMonthlyExpenses;
     const fireTargetAnnual = effectiveBaseExpenses * 12;
@@ -360,10 +324,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
     let reeeTracker: Record<string, { scee: number, iqee: number }> = {};
 
-    const incomeMarcNetMonthly = projection.useTheoretical ? ((projection.theoreticalIncome || 8000) * 0.55) : (config.users[0]?.netSalary || 0);
-    const incomeAnnaNetMonthly = projection.useTheoretical ? ((projection.theoreticalIncome || 8000) * 0.45) : (config.users[1]?.netSalary || 0);
-    const grossMarcBaseAnnual = projection.useTheoretical ? (incomeMarcNetMonthly * 12 * 1.35) : (config.users[0]?.grossSalary || (incomeMarcNetMonthly * 12 * 1.35));
-    const grossAnnaBaseAnnual = projection.useTheoretical ? (incomeAnnaNetMonthly * 12 * 1.35) : (config.users[1]?.grossSalary || (incomeAnnaNetMonthly * 12 * 1.35));
+    // Cycle 22 split: revenus net/brut baseline → ./projection/setupSimulation
+    const { incomeMarcNetMonthly, incomeAnnaNetMonthly, grossMarcBaseAnnual, grossAnnaBaseAnnual } =
+        computeIncomeBaseline(projection, config.users);
 
     const simSalaryGrowth = effProj.salaryGrowth ?? 2.5;
     const simEFMonths = effProj.emergencyFundMonths || 3;
@@ -374,16 +337,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let mcCryptoRate = baseRates.crypto;
     let mcCashRate = baseRates.cash;
 
-    const effectivePensionStartAge = delayPensions ? 70 : 65;
-    const rrqMonthsFromRef = (effectivePensionStartAge - 65) * 12;
-    let rrqAdjustmentFactor = 1.0;
-    if (rrqMonthsFromRef < 0) {
-        rrqAdjustmentFactor = 1 + Math.max(rrqMonthsFromRef, -60) * 0.006;
-    } else if (rrqMonthsFromRef > 0) {
-        rrqAdjustmentFactor = 1 + Math.min(rrqMonthsFromRef, 60) * 0.007; 
-    }
-    const rrqBasePension = retirementGoal.governmentPension * 0.65 * rrqAdjustmentFactor;
-    const psvBasePension = retirementGoal.governmentPension * 0.35;
+    // Cycle 22 split: RRQ adjustment + pensions baseline → ./projection/setupSimulation
+    const { rrqAdjustmentFactor, rrqBasePension, psvBasePension } = computeRrqAdjustment(delayPensions, retirementGoal);
 
     // D2.2: RRIF_RATES et welcomeTax → ./projection/helpers
 
@@ -394,25 +349,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let ltcActive = false;
     let nonRegACB = nonReg;
 
+    // Cycle 25 split: handleNonRegSale partagé → ./projection/portfolioOps
+    // Closure-wrapper: synchronise les let locaux avec le state object.
     const handleNonRegSale = (amount: number, _label: string): number => {
-        const sold = Math.min(nonReg, amount);
-        if (sold > 0) {
-            const proportion = nonRegACB > 0 && nonReg > 0 ? Math.min(1, nonRegACB / nonReg) : 0;
-            const costBasis = sold * proportion;
-            nonReg -= sold;
-            nonRegACB = Math.max(0, nonRegACB - costBasis);
-            // V25-6: Track capital gains/losses
-            const rawGain = sold - costBasis;
-            if (rawGain < 0) {
-                capitalLossBank += Math.abs(rawGain); // crystallise loss
-            } else {
-                // Apply bank if any
-                const usableLoss = Math.min(rawGain, capitalLossBank);
-                const taxableGain = rawGain - usableLoss;
-                capitalLossBank -= usableLoss;
-                accCapitalGainsYear += taxableGain;
-            }
-        }
+        const ms = { nonReg, nonRegACB, capitalLossBank, accCapitalGainsYear };
+        const sold = portfolioNonRegSale(ms, amount);
+        nonReg = ms.nonReg;
+        nonRegACB = ms.nonRegACB;
+        capitalLossBank = ms.capitalLossBank;
+        accCapitalGainsYear = ms.accCapitalGainsYear;
         return sold;
     };
 
@@ -843,12 +788,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             taxPreviousYear = { ...taxCurrentYear };
             taxCurrentYear = { revenu: 0, gains: 0, reer: 0, divers: 0 };
 
-            // V28: TFSA Room reset is now handled in January (Month 0) see line ~350
+            // V28 + Cycle 12: TFSA Room reset géré en Janvier — voir processJanuaryReset (./projection/taxJanuary)
 
             // V28: FHSA Room reset
             const yearsSinceOpening = loopYear - celiappOpeningYear;
-            if (yearsSinceOpening < 15 && fhsaLifetimeContrib < 40000 * activeUsersCount) {
-                fhsaRoom = 8000 * activeUsersCount;
+            if (yearsSinceOpening < 15 && fhsaLifetimeContrib < FHSA_LIFETIME_LIMIT_PER_USER * activeUsersCount) {
+                fhsaRoom = FHSA_ANNUAL_LIMIT_PER_USER * activeUsersCount;
             }
 
             // Cycle 10 split: TLH → ./projection/taxCycle (processTaxLossHarvesting)
@@ -923,10 +868,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             janResult.logs.forEach(msg => flowEventsLog.push(msg));
         }
 
-        // V31: Expiration CELIAPP (15 ans) - Transfert forcé vers REER
-        // V31: Expiration CELIAPP (15 ans) gérée en Janvier seulement
-
-        // Cycle 10 split: Auto-vehicle → ./projection/taxCycle (processAutoVehicleReplacement)
+        // Cycle 10/23 split: Auto-vehicle → ./projection/vehicleCycle (processAutoVehicleReplacement)
         monthsSinceLastVehicle++;
         const vehResult = processAutoVehicleReplacement(m, monthsSinceLastVehicle, effProj.vehicleReplacementEnabled, simInflation);
         if (vehResult.cost > 0) {
@@ -1092,7 +1034,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             fhsaLifetimeContrib, celiWithdrawalsThisYear,
             retraitReerMois, retraitCeliMois,
             withdrawalREER, withdrawalCELI, withdrawalNonReg, withdrawalCrypto,
-            contribCELI, contribREER, contribNonReg,
+            contribCELI, contribREER, contribNonReg, contribCELIAPP,
             shortfallMonths,
             flowEventLogs: [],
         };
@@ -1120,7 +1062,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         withdrawalREER = cashState.withdrawalREER; withdrawalCELI = cashState.withdrawalCELI;
         withdrawalNonReg = cashState.withdrawalNonReg; withdrawalCrypto = cashState.withdrawalCrypto;
         contribCELI = cashState.contribCELI; contribREER = cashState.contribREER;
-        contribNonReg = cashState.contribNonReg;
+        contribNonReg = cashState.contribNonReg; contribCELIAPP = cashState.contribCELIAPP;
         shortfallMonths = cashState.shortfallMonths;
         cashState.flowEventLogs.forEach(msg => logEvent(flowEventsLog, msg));
 
@@ -1155,30 +1097,24 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         });
         const { effectiveCeliRate, effectiveReerRate, effectiveNonRegRate, activeCeliRate, activeCryptoRate, activeCashRate } = gr;
 
-        // Cycle 7 split: applyMidMonthGrowth hoisté dans ./projection/helpers
-        // (était redéfini 360× par scénario MC)
-        const resC = applyMidMonthGrowth(prevCELI, celi, effectiveCeliRate, true);
-        celi = resC.newVal; growthCELI = resC.growth; growthPctCELI = resC.pct;
-
-        const resA = applyMidMonthGrowth(celiapp, celiapp, activeCeliRate, true);
-        celiapp = resA.newVal; growthCELIAPP = resA.growth; growthPctCELIAPP = resA.pct;
-
-        const resR = applyMidMonthGrowth(prevREER, reer, effectiveReerRate, true);
-        reer = resR.newVal; growthREER = resR.growth; growthPctREER = resR.pct;
-
-        const resN = applyMidMonthGrowth((nonReg - contribNonReg), nonReg, effectiveNonRegRate, true);
-        nonReg = resN.newVal; growthNonReg = resN.growth; growthPctNonReg = resN.pct;
-
-        const resCr = applyMidMonthGrowth(crypto, crypto, activeCryptoRate, false); // No MER on Crypto
-        crypto = resCr.newVal; growthCrypto = resCr.growth; growthPctCrypto = resCr.pct;
-
-        const resL = applyMidMonthGrowth(prevLiquid, liquid, activeCashRate, false); // No MER on cash
-        liquid = resL.newVal; growthLiquid = resL.growth; growthPctLiquid = resL.pct;
-
-        const resRE = applyMidMonthGrowth(reee - contribREEE, reee, activeCashRate, true);
-        reee = resRE.newVal; growthREEE = resRE.growth; growthPctREEE = resRE.pct;
-
-        totalGrowth += growthCELI + growthREER + growthNonReg + growthCrypto + growthLiquid + growthCELIAPP + growthREEE;
+        // Cycle 24 split: croissance mensuelle 7 actifs → ./projection/growthApplication
+        const g = applyMonthlyGrowth({
+            prevCELI, celi, effectiveCeliRate,
+            celiapp, activeCeliRate,
+            prevREER, reer, effectiveReerRate,
+            nonReg, contribNonReg, effectiveNonRegRate,
+            crypto, activeCryptoRate,
+            prevLiquid, liquid, activeCashRate,
+            reee, contribREEE,
+        });
+        celi = g.celi.newVal; growthCELI = g.celi.growth; growthPctCELI = g.celi.pct;
+        celiapp = g.celiapp.newVal; growthCELIAPP = g.celiapp.growth; growthPctCELIAPP = g.celiapp.pct;
+        reer = g.reer.newVal; growthREER = g.reer.growth; growthPctREER = g.reer.pct;
+        nonReg = g.nonReg.newVal; growthNonReg = g.nonReg.growth; growthPctNonReg = g.nonReg.pct;
+        crypto = g.crypto.newVal; growthCrypto = g.crypto.growth; growthPctCrypto = g.crypto.pct;
+        liquid = g.liquid.newVal; growthLiquid = g.liquid.growth; growthPctLiquid = g.liquid.pct;
+        reee = g.reee.newVal; growthREEE = g.reee.growth; growthPctREEE = g.reee.pct;
+        totalGrowth += g.totalGrowth;
         totalTaxesPaid += fluxImpots + taxOnRrif + retraitReerMois * (0.15); // approximation for mid-year witholdings not yet filed
         totalExpenses += monthlyExpenses;
 
@@ -1198,10 +1134,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             { m, loopYear, simInflation, simSalaryGrowth, isRetired, activeUsersCount,
               grossMarcBaseAnnual, grossAnnaBaseAnnual, accRentesYear, incomeRetirement,
               reer, nonReg, nonRegACB, crypto, enableMonteCarlo },
-            calculateFiscalReport as any,
+            calculateFiscalReport,
         );
-
-        // ---- V31: TFSA/FHSA Room Refills move to December block (around line 550) ----
 
         // Cycle 21 split: assemblage data.push → ./projection/monthlyOutput
         data.push(buildMonthlyDataPoint({
@@ -1245,7 +1179,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         : (grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, projection.years);
 
     const estateLatentGain = Math.max(0, nonReg - nonRegACB);
-    const thresholdEstate = 250000 * activeUsersCount;
+    const thresholdEstate = CAPITAL_GAINS_HIGH_THRESHOLD * activeUsersCount;
 
     let taxableEstateGain = 0;
     if (estateLatentGain <= thresholdEstate) {

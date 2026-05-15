@@ -5,8 +5,8 @@ import { mulberry32, gaussianRandom, applyShock, MER, RRIF_RATES, welcomeTax, lt
 import { runMonteCarlo } from './projection/monteCarlo';
 import { SCENARIO_DEFINITIONS } from './projection/scenarios';
 import { applyW5Effects, applyAgeBasedExpenses } from './projection/w5Effects';
-import { tryCriticalIllness, tryInheritance, tryMortality, trySpouseMortality, tryLtcTrigger, ltcMonthlyCost, tickJobLoss, tickLtd } from './projection/stochasticEvents';
-import { processAprilSettlement } from './projection/taxCycle';
+import { tryCriticalIllness, tryInheritance, tryMortality, trySpouseMortality, tryLtcTrigger, ltcMonthlyCost, tickJobLoss, tickLtd, tryDivorce } from './projection/stochasticEvents';
+import { processAprilSettlement, computeOasClawback, processTaxLossHarvesting, processAutoVehicleReplacement } from './projection/taxCycle';
 import { buildHistoricalSequence, buildReplaySequence, canadianInflationFor, type YearReturn } from './projection/historicalReturns';
 
 export interface SimulationParams {
@@ -798,31 +798,26 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             monthlyExpenses += ltcMonthlyCost(effProj, expenseMultiplier);
         }
 
-        // W3.1 — Divorce stochastique (MC). Tirage annuel.
-        if (effProj.divorceEnabled && enableMonteCarlo && !divorced && currentMonthIndex === 0 && m > 0) {
-            const pAnnual = effProj.divorceAnnualProbability ?? 0.015;
-            if (rng() < pAnnual) {
-                divorced = true;
-                const splitPct = (effProj.divorceSplitPct ?? 50) / 100;
-                const keep = 1 - splitPct;
-                // FIX silent-failure: split COMPLET (mortgage + REEE + CELIAPP +
-                // propriétés via propertiesState, qui réécrit realEstateEquity chaque mois)
-                liquid *= keep;
-                celi *= keep;
-                celiapp *= keep;
-                reer *= keep;
-                nonReg *= keep;
-                nonRegACB *= keep;
-                crypto *= keep;
-                reee *= keep;
-                realEstateEquity *= keep;
-                mortgageBalance *= keep;
-                propertiesState = propertiesState.map(p => ({
-                    ...p,
-                    currentValue: p.currentValue * keep,
-                    mortgage: p.mortgage * keep,
-                }));
-            }
+        // Cycle 10 split: divorce → ./projection/stochasticEvents (tryDivorce)
+        // Le splitter callback mute toutes les locales en un point.
+        if (tryDivorce({ m, currentMonthIndex, enableMonteCarlo, rng }, effProj, divorced, (keep) => {
+            liquid *= keep;
+            celi *= keep;
+            celiapp *= keep;
+            reer *= keep;
+            nonReg *= keep;
+            nonRegACB *= keep;
+            crypto *= keep;
+            reee *= keep;
+            realEstateEquity *= keep;
+            mortgageBalance *= keep;
+            propertiesState = propertiesState.map(p => ({
+                ...p,
+                currentValue: p.currentValue * keep,
+                mortgage: p.mortgage * keep,
+            }));
+        })) {
+            divorced = true;
         }
         if (divorced && !divorceLogged) {
             logEvent(lifeEventsLog, `💔 Divorce (-${(effProj.divorceSplitPct ?? 50)}% patrimoine)`);
@@ -1025,36 +1020,25 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 fhsaRoom = 8000 * activeUsersCount;
             }
 
-            // V31: Tax-Loss Harvesting Actif (Récolte de pertes si marché négatif)
+            // Cycle 10 split: TLH → ./projection/taxCycle (processTaxLossHarvesting)
             const currentNonRegRate = enableMonteCarlo ? mcNonRegRate : baseRates.nonReg;
-            if (currentNonRegRate < 0 && nonReg > 0) {
-                const fakeSell = nonReg * 0.50; // On vend 50% du portefeuille pour cristalliser la perte
-                const dropRate = Math.abs(currentNonRegRate) / 100;
-                const harvestedLoss = fakeSell * dropRate;
-                capitalLossBank += harvestedLoss;
-
-                // V48: Réinvestissement fictif immédiat à la nouvelle valeur basse pour ajuster le PBR
-                const proportion = nonRegACB > 0 && nonReg > 0 ? Math.min(1, nonRegACB / nonReg) : 0;
-                nonRegACB -= (fakeSell * proportion); // On purge l'ancien coût
-                nonRegACB += (fakeSell * (1 - dropRate)); // On rajoute le nouveau coût plus bas
-
-                logEvent(flowEventsLog, `🛡️ Perte Cristallisée (TLH): +${Math.round(harvestedLoss).toLocaleString('fr-CA')}$ (Banque) | ACB ajusté à la baisse`);
+            const tlhResult = processTaxLossHarvesting(currentMonthIndex, m, nonReg, nonRegACB, currentNonRegRate);
+            if (tlhResult.harvestedLoss > 0) {
+                capitalLossBank += tlhResult.harvestedLoss;
+                nonRegACB += tlhResult.acbDelta;
+                if (tlhResult.logMsg) logEvent(flowEventsLog, tlhResult.logMsg);
             }
         }
 
-        // V21 — OAS Clawback
+        // Cycle 10 split: OAS Clawback → ./projection/taxCycle (computeOasClawback)
         if (currentMonthIndex === 11 && m > 0 && isRetired && age >= 65) {
-            // V31: Indexation OAS Clawback
-            const OAS_THRESHOLD = 90997 * expenseMultiplier;
-            const annualPensionIncome = (incomeRetirement * 12) + accRetraitsReerYear + accRentesYear;
-            const psvAnnualBase = psvBasePension * 12 * Math.pow(1 + simInflation / 100, m / 12);
-            if (annualPensionIncome > OAS_THRESHOLD) {
-                const excess = annualPensionIncome - OAS_THRESHOLD;
-                oasClawbackNextPeriod = Math.min(psvAnnualBase, excess * 0.15);
-                if (oasClawbackNextPeriod > 1) flowEventsLog.push(`⚠️ PSV Clawback prévu: -${Math.round(oasClawbackNextPeriod).toLocaleString('fr-CA')}$/an`);
-            } else {
-                oasClawbackNextPeriod = 0;
-            }
+            const oasResult = computeOasClawback(
+                currentMonthIndex, m, isRetired, age, expenseMultiplier,
+                incomeRetirement, accRetraitsReerYear, accRentesYear,
+                psvBasePension, simInflation,
+            );
+            oasClawbackNextPeriod = oasResult.clawbackAnnual;
+            if (oasResult.logMsg) flowEventsLog.push(oasResult.logMsg);
         }
 
         // ---- JANVIER: Réinitialisation + FERR + CELI dynamique ----
@@ -1169,13 +1153,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // V31: Expiration CELIAPP (15 ans) - Transfert forcé vers REER
         // V31: Expiration CELIAPP (15 ans) gérée en Janvier seulement
 
-        // V22: Remplacement véhicule (conditionnel)
+        // Cycle 10 split: Auto-vehicle → ./projection/taxCycle (processAutoVehicleReplacement)
         monthsSinceLastVehicle++;
-        if (m > 0 && monthsSinceLastVehicle >= 120 && effProj.vehicleReplacementEnabled === true) {
-            const vehicleCost = 35000 * Math.pow(1 + simInflation / 100, m / 12);
-            liquid -= vehicleCost;
-            monthsSinceLastVehicle = 0;
-            lifeEventsLog.push(`🚗 Remplacement véhicule: -${Math.round(vehicleCost).toLocaleString('fr-CA')}$`);
+        const vehResult = processAutoVehicleReplacement(m, monthsSinceLastVehicle, effProj.vehicleReplacementEnabled, simInflation);
+        if (vehResult.cost > 0) {
+            liquid -= vehResult.cost;
+            if (vehResult.resetCounter) monthsSinceLastVehicle = 0;
+            if (vehResult.logMsg) lifeEventsLog.push(vehResult.logMsg);
         }
 
         // ---- DETTES ----

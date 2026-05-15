@@ -175,6 +175,31 @@ export function tickJobLoss(
  * W3.2 — Invalidité longue durée (LTD) multi-mois.
  * Comme tickJobLoss mais avec un flag de log séparé (log une fois au début).
  */
+/**
+ * W3.1 — Divorce stochastique (one-shot).
+ * Le split est COMPLEXE (12+ variables à diviser) — caller fournit un splitter
+ * qui mute ses propres locales (liquid, celi, reer, etc., et propertiesState).
+ *
+ * Retourne true si le divorce vient de se produire (caller met à jour `divorced`).
+ */
+export function tryDivorce(
+    ctx: { m: number; currentMonthIndex: number; enableMonteCarlo: boolean; rng: () => number },
+    proj: ProjectionConfig,
+    alreadyDivorced: boolean,
+    applySplit: (keepFraction: number) => void,
+): boolean {
+    if (!proj.divorceEnabled || !ctx.enableMonteCarlo) return false;
+    if (alreadyDivorced) return false;
+    if (ctx.currentMonthIndex !== 0 || ctx.m === 0) return false;
+    const pAnnual = proj.divorceAnnualProbability ?? 0.015;
+    if (ctx.rng() >= pAnnual) return false;
+
+    const splitPct = (proj.divorceSplitPct ?? 50) / 100;
+    const keep = 1 - splitPct;
+    applySplit(keep);
+    return true;
+}
+
 export function tickLtd(
     ctx: { m: number; currentMonthIndex: number; enableMonteCarlo: boolean; rng: () => number },
     proj: ProjectionConfig,

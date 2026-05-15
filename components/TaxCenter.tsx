@@ -4,7 +4,8 @@ import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, Cell, PieChart, Pie } from 'recharts';
 import { BudgetConfig, Asset } from '../types';
-import { GoogleGenAI } from "@google/genai";
+// Phase 4 A4: bascule sur services/claude.ts (Sonnet 4.6 + Vision)
+import { analyzePayslip } from '../services/claude';
 import { calculateFiscalReport, calculateGrossFromNet } from '../services/tax';
 
 interface TaxCenterProps {
@@ -16,10 +17,8 @@ interface TaxCenterProps {
 
 const DRIVE_FOLDER_URL = "https://drive.google.com";
 
-const MODELS = [
-    "gemini-2.0-flash",
-    "gemini-1.5-flash"
-];
+// Phase 4 A4: les modèles Gemini sont remplacés par Claude Sonnet 4.6
+// (cf services/claude.ts analyzePayslip).
 
 export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets = [], apiKey }) => {
 
@@ -49,60 +48,13 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
         setScannedPay(null);
     };
 
-    const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-    const analyzeSingleFile = async (ai: GoogleGenAI, file: File): Promise<any> => {
-        const base64Data = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => resolve((reader.result as string).split(',')[1]);
-            reader.onerror = error => {
-                console.error("File reading error:", error);
-                showToast("Erreur lors de la lecture du fichier.", "error");
-                reject(error);
-            };
-        });
-
-        const prompt = `
-            Analyse cette FICHE DE PAIE ou document financier.
-            Extrait UNIQUEMENT les montants pour la PÉRIODE COURANTE (pas les cumuls annuels YTD) et retourne un JSON pur :
-            {
-                "grossPeriod": number,
-                "netPeriod": number,
-                "taxPeriod": number,
-                "rrspPeriod": number,
-                "frequency": string ("Weekly" | "Bi-Weekly" | "Semi-Monthly" | "Monthly")
-            }
-        `;
-
-        for (const model of MODELS) {
-            try {
-                const response = await ai.models.generateContent({
-                    model: model,
-                    contents: [{ role: 'user', parts: [{ text: prompt }, { inlineData: { mimeType: file.type, data: base64Data } }] }],
-                    config: { responseMimeType: "application/json" }
-                });
-
-                const data = JSON.parse(response.text || "{}");
-                return {
-                    grossPeriod: data.grossPeriod || 0,
-                    netPeriod: data.netPeriod || 0,
-                    taxPeriod: data.taxPeriod || 0,
-                    rrspPeriod: data.rrspPeriod || 0,
-                    frequency: data.frequency || "Bi-Weekly"
-                };
-            } catch (err: any) {
-                console.warn(`Model ${model} failed, trying next...`, err);
-                await wait(2000);
-            }
-        }
-        throw new Error("All models failed");
-    };
+    // Phase 4 A4: analyse vision déportée dans services/claude.ts
+    // Voir analyzePayslip(file, apiKey).
 
     const handleFileDrop = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return;
         if (!apiKey) {
-            showToast("Clé API Gemini requise pour analyser les relevés.", "info");
+            showToast("Clé API Anthropic requise pour analyser les relevés.", "info");
             return;
         }
 
@@ -115,13 +67,19 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
         let totalRrspFound = 0;
         let finalScannedPay = null;
 
-        const ai = new GoogleGenAI({ apiKey });
-
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             setAnalysisStatus(`Analyse de ${file.name} (${i + 1}/${files.length})...`);
 
-            const res = await analyzeSingleFile(ai, file);
+            let res;
+            try {
+                res = await analyzePayslip(file, apiKey);
+            } catch (err) {
+                console.error(`[TaxCenter] analyzePayslip failed for ${file.name}:`, err);
+                showToast(`Échec analyse ${file.name}. Format JPG/PNG requis.`, 'error');
+                setProgress({ current: i + 1, total: files.length });
+                continue;
+            }
 
             let multiplier = 26;
             if (res.frequency === "Weekly") multiplier = 52;
@@ -147,7 +105,8 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
             }
 
             setProgress({ current: i + 1, total: files.length });
-            await wait(3000);
+            // Petite pause entre fichiers pour respecter rate-limit Anthropic
+            await new Promise(r => setTimeout(r, 1000));
         }
 
         if (finalScannedPay) {

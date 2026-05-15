@@ -6,6 +6,7 @@ import { INITIAL_REAL_ESTATE_GOAL } from '../constants';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { PropertyConfigurator } from './realestate/PropertyConfigurator';
 import { MultiPropertyComparison } from './realestate/MultiPropertyComparison';
+import { useFinanceStore } from '../store/useFinanceStore';
 
 interface RealEstateProps {
     availableCash: number;
@@ -198,6 +199,17 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
 
     const formatCurrency = (val: number) => new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(val);
 
+    // Wiring 2026-05: équité immo projetée par le moteur principal au terme de
+    // l'amortissement, à comparer avec le calcul local de la card Buy vs Rent.
+    const lastProjection = useFinanceStore(s => s.lastProjection);
+    const projectedEquityAtAmortEnd = useMemo(() => {
+        if (!lastProjection?.chartData?.length) return null;
+        const targetMonth = amortization * 12;
+        const point = lastProjection.chartData.find(p => p.monthIndex === targetMonth)
+            ?? lastProjection.chartData[Math.min(targetMonth, lastProjection.chartData.length - 1)];
+        return point?.Immobilier ?? null;
+    }, [lastProjection, amortization]);
+
     return (
         <div className="space-y-6 animate-fade-in pb-10">
             <ConfirmModal
@@ -309,7 +321,16 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                         </div>
                     </div>
 
-                    <Card title="📊 Scénarios Comparatifs (Habiter vs Louer vs Bourse)">
+                    <Card title="📊 Scénarios Comparatifs (Habiter vs Louer vs Bourse)" action={
+                        projectedEquityAtAmortEnd !== null && projectedEquityAtAmortEnd > 0 ? (
+                            <div
+                                className="text-[10px] font-bold px-2 py-1 rounded border text-blue-300 border-blue-500/30 bg-blue-500/10"
+                                title={`Équité immo projetée par FutureProjection à l'année ${amortization}`}
+                            >
+                                🔗 Projection: {formatCurrency(projectedEquityAtAmortEnd)}
+                            </div>
+                        ) : null
+                    }>
                         {(() => {
                             const monthlyRental = rentalIncomeMonthly || Math.round(price / 23.3 / 12);
                             const grossYield = (monthlyRental * 12 / price) * 100;

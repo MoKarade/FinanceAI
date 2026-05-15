@@ -107,9 +107,35 @@ Moins de duplication, cohérence garantie entre onglets.
 6. ✅ Children: badge "REEE projeté à 17 ans" en cross-check du simulateur local (fait)
 7. ✅ Budget: bandeau "Impact à long terme" + sensibilité +100$/mo (fait)
 8. ✅ Vérifier `isActive` sur RealEstateGoal — comportement OK, tests de régression ajoutés
-9. ⏳ Real Estate: utiliser projection pour le compare Buy vs Rent (au lieu du calcul local)
-10. ✅ Tests d'intégration pour le drawdown optim (cascade retraité, RetraitREER>0, AUTO_MARGINAL vs PRIO_REER) — fait
-11. 🎨 **UI rework** (après tout ce qui précède)
+9. ✅ Real Estate: badge "Projection moteur" dans Buy vs Rent en cross-check du calcul local (fait)
+10. ✅ Tests d'intégration pour le drawdown optim (fait)
+11. 🎨 **UI rework** (prochaine étape — tout le backend est branché)
+
+## 🎉 Backend wiring complet (status mai 2026)
+
+Tous les onglets clé lisent maintenant `lastProjection` du store quand l'utilisateur a ouvert FutureProjection au moins une fois dans la session :
+
+| Onglet         | Indicateur lu de la projection                                  |
+|---|---|
+| **Dashboard**  | NetWorth projeté à N ans (Indicateur Futur)                     |
+| **Investments**| CELI/REER/NonReg/Crypto/NW projetés à la fin de l'horizon       |
+| **Budget**     | Patrimoine successoral + sensibilité +100$/mo                   |
+| **Children**   | REEE projeté à 17 ans (cross-check du simulateur local)         |
+| **Real Estate**| Équité immo projetée à la fin de l'amortissement                |
+
+**Pattern uniforme** :
+```tsx
+const lastProjection = useFinanceStore(s => s.lastProjection);
+const snapshot = useMemo(() => {
+  if (!lastProjection?.chartData?.length) return null;
+  return lastProjection.chartData.find(p => p.monthIndex === targetMonth) ?? null;
+}, [lastProjection, targetMonth]);
+{snapshot && <YourComponent value={snapshot.SomeField} />}
+```
+
+Fallback gracieux : si `lastProjection === null` (avant 1ère ouverture de Future), chaque consumer utilise son propre calcul local.
+
+L'UI rework peut maintenant retravailler la présentation sans toucher au backend de données.
 
 ## 🆕 Changement 2026-05 (Option A implémentée)
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { analyzeBudgetAI } from '../../services/gemini';
+// Phase 4 A3: bascule sur services/claude.ts (Sonnet 4.6)
+import { analyzeBudgetAI } from '../../services/claude';
 
 export interface BudgetAiPayload {
     totalNetIncome: number;

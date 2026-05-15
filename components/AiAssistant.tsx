@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI } from "@google/genai";
 import { Transaction, BudgetCategory, Asset, ProjectionConfig, RealEstateGoal, BudgetConfig, AiMessage } from '../types';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { chatStream } from '../services/claude';
 
 interface AiAssistantProps {
   apiKey: string;
@@ -167,36 +167,34 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
     setStreamingText('');
 
     try {
-      if (!apiKey) throw new Error("Clé API manquante.");
+      if (!apiKey) throw new Error("Clé API Anthropic manquante.");
 
-      const ai = new GoogleGenAI({ apiKey });
-      const model = 'gemini-2.0-flash';
-
-      // Phase 4 — streaming. Affichage progressif au fur et à mesure.
-      const stream = await ai.models.generateContentStream({
-        model,
-        contents: [
-          { role: 'user', parts: [{ text: generateContext() }] },
-          { role: 'user', parts: [{ text: userText }] }
-        ]
-      });
+      // Phase 4 A2: streaming via services/claude.ts (Sonnet 4.6)
+      // Le contexte est fourni en system prompt, l'historique de conversation
+      // (jusqu'aux 10 derniers messages user/model) constitue les messages.
+      const recent = useFinanceStore.getState().aiConversation.slice(-10);
+      const messages = [
+        ...recent.map(m => ({
+          role: (m.role === 'model' ? 'assistant' : 'user') as 'user' | 'assistant',
+          content: m.text,
+        })),
+        { role: 'user' as const, content: userText },
+      ];
 
       // On crée un message "vide" qu'on va remplir progressivement
       appendMessage({ role: 'model', text: '', timestamp: new Date().toISOString() });
 
       let accumulated = '';
-      for await (const chunk of stream) {
-        if (chunk.text) {
-          accumulated += chunk.text;
-          setStreamingText(accumulated);
-          updateLastModelMessage(accumulated);
-        }
+      for await (const chunk of chatStream(messages, apiKey, { system: generateContext() })) {
+        accumulated += chunk;
+        setStreamingText(accumulated);
+        updateLastModelMessage(accumulated);
       }
     } catch (e: any) {
-      console.error('[Assistant] Gemini error:', e);
+      console.error('[Assistant] Claude error:', e);
       appendMessage({
         role: 'model',
-        text: "⚠️ Oups, je n'arrive pas à réfléchir. Vérifie ta clé API.",
+        text: "⚠️ Oups, je n'arrive pas à réfléchir. Vérifie ta clé API Anthropic.",
         timestamp: new Date().toISOString(),
       });
     } finally {

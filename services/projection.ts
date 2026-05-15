@@ -1,5 +1,5 @@
 // services/projection.ts — moteur de projection financière (migré depuis utils/useFutureSimulation.ts)
-import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty } from '../types';
+import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness } from '../types';
 import { calculateFiscalReport, CELI_ANNUAL_LIMITS, calculateCeliRoom, calculateGrossFromNet, getMarginalRate, calculateDividendTax, RRSP_ANNUAL_LIMITS, calculateGrossWithholdingRRSP } from '../utils/tax';
 import { mulberry32, gaussianRandom, applyShock, MER, RRIF_RATES, welcomeTax, ltcAnnualProbability, mortalityAnnualProbability } from './projection/helpers';
 import { buildHistoricalSequence, buildReplaySequence, canadianInflationFor, type YearReturn } from './projection/historicalReturns';
@@ -27,6 +27,7 @@ export interface SimulationParams {
     majorRenovations?: MajorRenovation[];
     charitableGoals?: CharitableGoal[];
     rentalProperties?: RentalProperty[];
+    privateBusinesses?: PrivateBusiness[];
 }
 
 export type AllocationStrategy = 'AUTO_MARGINAL' | 'PRIO_REER' | 'PRIO_CELI' | 'MELTDOWN_REER' | 'DEBT_FIRST';
@@ -201,7 +202,7 @@ const calculateGrossNeeded = (netNeeded: number, currentGrossOther: number, acti
 };
 
 const runScenario = (params: SimulationParams, strategy: AllocationStrategy, enableMonteCarlo = false, delayPensions = false, mcIterationIndex = 0, scenarioType: FutureScenarioType = 'BASE') => {
-    const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0, insurancePolicies = [], vehicleReplacements = [], majorRenovations = [], charitableGoals = [], rentalProperties = [] } = params;
+    const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0, insurancePolicies = [], vehicleReplacements = [], majorRenovations = [], charitableGoals = [], rentalProperties = [], privateBusinesses = [] } = params;
     
     // Deterministic Seed Generation
     // We use a base seed from initial assets + inflation to ensure same inputs = same base trace
@@ -1022,6 +1023,23 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             monthlyIncome += rentalPropertyNoiMonthly;
             // Le revenu locatif net est imposable au taux marginal (revenu d'entreprise)
             taxCurrentYear.revenu += (rentalPropertyNoiMonthly * 0.45) / 12; // approximation marginale 45%
+        }
+
+        // W5.7 — Entreprise privée (CCPC): dividendes mensuels au revenu.
+        // Imposition selon dividende éligible (taux réduit, ~32% combiné) vs ordinaire.
+        // DPE (Déduction pour petite entreprise) gérée au niveau corporate, ici on n'impose
+        // que le dividende reçu par l'actionnaire individuel.
+        let businessDividendMonthly = 0;
+        for (const biz of privateBusinesses) {
+            if (biz.annualDividend && biz.annualDividend > 0) {
+                businessDividendMonthly += (biz.annualDividend * (biz.ownershipPct || 100) / 100) / 12;
+            }
+        }
+        if (businessDividendMonthly > 0) {
+            monthlyIncome += businessDividendMonthly;
+            // Dividende non-éligible (CCPC sans DPE) taxé ~40% combiné; éligible (DPE) ~32%.
+            // On utilise 36% comme moyenne pondérée.
+            taxCurrentYear.revenu += (businessDividendMonthly * 0.36) / 12;
         }
 
         // --- 4. TAX WITHHOLDING & APRIL SETTLEMENT ---
@@ -2437,9 +2455,10 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
     let expertMetrics: any = null;
 
     if (runMC) {
-        // D2.3: revenu à 100 itérations (IC95% ≈ ±3 points vs ±7 à 50 iter).
-        // Migration vers Web Worker prévue pour pouvoir aller à 500-1000.
-        const MC_ITERATIONS = 100;
+        // Cycle 5 audit UI: monteCarloIterations désormais lu depuis ProjectionConfig
+        // (panneau Paramètres Avancés). Bornes: 50-1000.
+        const requested = params.projection.monteCarloIterations ?? 100;
+        const MC_ITERATIONS = Math.max(50, Math.min(1000, requested));
         const mcResult = runMonteCarlo(params, 'AUTO_MARGINAL', target.delayPensions, MC_ITERATIONS);
         successRate = mcResult.successRate;
         fvi = mcResult.fvi;

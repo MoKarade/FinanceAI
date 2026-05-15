@@ -6,6 +6,46 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — cycle 5 : UI coverage 100% du moteur] — Branche `claude/analyze-finance-app-CtLvs`
+
+### 🔍 Audit UI coverage par agent
+
+Le moteur lit ~150 champs depuis SimulationParams + sous-types. L'audit a révélé que **~35% des champs effectivement utilisés** n'avaient aucun contrôle UI : leurs valeurs restaient figées sur les défauts.
+
+### ⚙️ Nouveau composant : `AdvancedProjectionParams.tsx`
+
+Panneau collapsible dans FutureProjection qui expose les paramètres jusque-là cachés :
+
+**🔥 Stress Test (4 champs HIGH)** : enabled, year, drop, recovery + inflation shock — feature lue par moteur mais inaccessible.
+
+**🎯 Optimisations fiscales (3 toggles HIGH)** :
+- `useSmithManoeuvre` (hypothèque déductible)
+- `optimizeSourceDeductions` (T1213)
+- `vehicleReplacementEnabled` (auto-replace cyclique)
+
+**🎲 Monte Carlo & Bootstrap** :
+- `monteCarloIterations` (50-1000) — **désormais lu par le moteur** (était figé à 100)
+- `bootstrapBlockSize`
+
+**🎭 Détails événements stochastiques** (apparaissent quand le toggle correspondant est ON) :
+- Divorce: probabilité annuelle, split %, pension alimentaire
+- LTD: probabilité, % revenu maintenu, durée
+- CI: probabilité, capital forfaitaire, dépenses additionnelles
+- Héritage: montant attendu, âge attendu, incertitude, probabilité
+- Perte d'emploi: probabilité, durée
+- Survivant: % RRQ + % DB conservés
+
+**🌴 Snowbird** : mois/an + surcoût mensuel
+**🧒 Sandwich generation** : boomerang + caregiving (montant, âge début, durée)
+**💰 Soldes initiaux manuels** : useManualBalances + 7 champs (CELI/REER/NonReg/Cash/Crypto/CELI room/REER room)
+**📊 Rendements affinés** : crypto + cash (absents de la grille principale)
+
+### 🧹 Cleanup
+
+- Orphelins marqués `@deprecated` dans types.ts (scenarioB, scenarioBLabel)
+
+---
+
 ## [unreleased — cycle 4 : ProjectionChartPoint + W5.x câblage] — Branche `claude/analyze-finance-app-CtLvs`
 
 ### 🎯 PR A — `ProjectionChartPoint` typé (TS reviewer quick win #1)

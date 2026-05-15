@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Asset, InvestmentAccount } from '../types';
+import { Asset, InvestmentAccount, RegisteredAccountType } from '../types';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { Card } from './ui/Card';
 import { fetchPortfolioHistory, MarketDataPoint } from '../services/finance';
@@ -332,7 +332,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
         const assetIdx = assets.findIndex(a => symbolKey.includes(a.symbol));
         if (assetIdx >= 0) {
             const newAssets = [...assets];
-            newAssets[assetIdx] = { ...newAssets[assetIdx], accountType: newAccount as any };
+            newAssets[assetIdx] = { ...newAssets[assetIdx], accountType: newAccount as RegisteredAccountType };
             setAssets(newAssets);
         }
     };

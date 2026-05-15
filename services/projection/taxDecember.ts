@@ -3,7 +3,7 @@
 // Cycle 10 (computeOasClawback, processTaxLossHarvesting): décembre = mois 11.
 // Cycle 11 (processDecemberTaxFiling): régularisation annuelle d'impôt.
 
-import { OAS_CLAWBACK_THRESHOLD_2024, CAPITAL_GAINS_HIGH_THRESHOLD, type FiscalReport } from '../../utils/tax';
+import { OAS_CLAWBACK_THRESHOLD_2026, CAPITAL_GAINS_INCLUSION_STANDARD, type FiscalReport } from '../../utils/tax';
 
 /**
  * V31 — OAS Clawback prévu (calcul annuel en décembre).
@@ -25,7 +25,7 @@ export function computeOasClawback(
     if (currentMonthIndex !== 11 || m === 0 || !isRetired || age < 65) {
         return { clawbackAnnual: 0 };
     }
-    const OAS_THRESHOLD = OAS_CLAWBACK_THRESHOLD_2024 * expenseMultiplier;
+    const OAS_THRESHOLD = OAS_CLAWBACK_THRESHOLD_2026 * expenseMultiplier;
     const annualPensionIncome = (incomeRetirementMonthly * 12) + accRetraitsReerYear + accRentesYear;
     const psvAnnualBase = psvBasePension * 12 * Math.pow(1 + simInflation / 100, m / 12);
     if (annualPensionIncome <= OAS_THRESHOLD) return { clawbackAnnual: 0 };
@@ -178,11 +178,8 @@ export function processDecemberTaxFiling(
             : (ctx.grossMarcBaseAnnual + ctx.grossAnnaBaseAnnual) * Math.pow(1 + ctx.simSalaryGrowth / 100, ctx.yearsElapsed);
         const currentMargForGains = helpers.getMarginalRate(incomeForGains / ctx.activeUsersCount, ctx.loopYear);
 
-        // V31: Loi du Gain en Capital (palier 250k)
-        const thresholdGains = CAPITAL_GAINS_HIGH_THRESHOLD * ctx.activeUsersCount;
-        const taxableCapGains = ctx.accCapitalGainsYear <= thresholdGains
-            ? ctx.accCapitalGainsYear * 0.50
-            : (thresholdGains * 0.50) + ((ctx.accCapitalGainsYear - thresholdGains) * 0.6667);
+        // Inclusion gains capitaux: 50% uniforme (annulation 66.67% > 250k$ mars 2025).
+        const taxableCapGains = ctx.accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD;
 
         const tax = taxableCapGains * currentMargForGains;
         taxCurrent.gains += tax;

@@ -22,14 +22,15 @@ export const QC_BRACKETS = [
 export const BASIC_PERSONAL_AMOUNT_FED = 16452;
 export const BASIC_PERSONAL_AMOUNT_QC = 18952;
 
-// RRQ 2026: 5.3% base + 1% supplémentaire (volet 1)
-export const RRQ_RATE = 0.063;
-export const RRQ_MPE = 74600;
+// RRQ 2026: 5.4% base + 1% supplémentaire (volet 1) = 6.4%
+// Source: Retraite Québec 2026
+export const RRQ_RATE = 0.064;
+export const RRQ_MPE = 74900;
 export const RRQ_EXEMPTION = 3500;
-export const RRQ_MAX = 4479.30;
+export const RRQ_MAX = (RRQ_MPE - RRQ_EXEMPTION) * RRQ_RATE; // ≈ 4 569.60$
 
 export const RRQ_PART2_RATE = 0.04;
-export const RRQ_YAMPE = 85000;
+export const RRQ_YAMPE = 85100;
 export const RRQ_PART2_MAX = (RRQ_YAMPE - RRQ_MPE) * RRQ_PART2_RATE;
 
 export const RQAP_RATE = 0.0043;
@@ -40,15 +41,15 @@ export const AE_RATE_QC = 0.0130;
 export const AE_MAX_INCOME = 68900;
 export const AE_MAX_QC = 895.70;
 
+// Inclusion gains en capital: 50% uniforme depuis annulation de la proposition
+// fédérale à 66.67% > 250k$ en mars 2025.
 export const CAPITAL_GAINS_INCLUSION_STANDARD = 0.50;
-export const CAPITAL_GAINS_INCLUSION_HIGH = 0.6667;
-export const CAPITAL_GAINS_HIGH_THRESHOLD = 250000;
 
 // Plafonds spécifiques aux régimes (par utilisateur).
 // Source : Budget fédéral 2024-2026. À mettre à jour à chaque budget.
 export const RAP_LIMIT_PER_USER = 60000;                    // Régime Accession Propriété
 export const PBMA_THRESHOLD_PER_USER = 17183;               // Palier de base montant ajusté
-export const OAS_CLAWBACK_THRESHOLD_2024 = 90997;           // Seuil PSV clawback 2024
+export const OAS_CLAWBACK_THRESHOLD_2026 = 93454;           // Seuil PSV clawback 2026 (indexé 2024→2026)
 export const FHSA_LIFETIME_LIMIT_PER_USER = 40000;          // CELIAPP plafond à vie
 export const FHSA_ANNUAL_LIMIT_PER_USER = 8000;             // CELIAPP plafond annuel
 
@@ -76,7 +77,7 @@ export const RRSP_ANNUAL_LIMITS: Record<number, number> = {
     2015: 24930, 2016: 25370, 2017: 26010, 2018: 26230, 2019: 26500,
     2020: 27230, 2021: 27830, 2022: 29210, 2023: 30780, 2024: 31560,
     2025: 32490,
-    2026: 33140, 2027: 33800, 2028: 34480, 2029: 35170, 2030: 35870,
+    2026: 33810, 2027: 34480, 2028: 35170, 2029: 35870, 2030: 36590,
 };
 
 export const calculateCeliRoom = (birthYear: number, arrivalYear: number, currentYear: number): number => {
@@ -189,8 +190,9 @@ export const calculateFiscalReport = (grossIncome: number, rrspContribution: num
 
     const fedData = calculateDetailedTax(netTaxable, indexedFedBrackets, skipBreakdown);
     let fedTax = fedData.totalTax;
-    // Crédit non-remboursable BPA fédéral: taux de la 1ère tranche (14% en 2026, baisse de 15%)
-    fedTax -= (indexedBasicFed * 0.14);
+    // Crédit non-remboursable BPA fédéral: l'ARC maintient le crédit au taux le plus
+    // bas applicable, soit 15% (gelé), malgré la baisse du 1er palier à 14% (C-4).
+    fedTax -= (indexedBasicFed * 0.15);
     const abatement = fedTax * 0.165;
     fedTax -= abatement;
 
@@ -255,22 +257,25 @@ export const calculateGrossFromNet = (targetNetAnnual: number): number => {
     return (low + high) / 2;
 };
 
-export const calculateCapitalGainsTax = (realizedGain: number, marginalRate: number, activeUsersCount: number = 1, otherGainsThisYear: number = 0): number => {
+// Signature préservée pour compat — paramètres activeUsersCount/otherGainsThisYear
+// ignorés depuis l'annulation de la proposition fédérale 66.67% > 250k$ (mars 2025).
+export const calculateCapitalGainsTax = (realizedGain: number, marginalRate: number, _activeUsersCount: number = 1, _otherGainsThisYear: number = 0): number => {
     if (realizedGain <= 0) return 0;
-    const limit = CAPITAL_GAINS_HIGH_THRESHOLD * activeUsersCount;
-    const remainingStandardRoom = Math.max(0, limit - otherGainsThisYear);
-    const gainsAtStandardRate = Math.min(realizedGain, remainingStandardRoom);
-    const gainsAtHighRate = Math.max(0, realizedGain - gainsAtStandardRate);
-    const taxStandard = gainsAtStandardRate * CAPITAL_GAINS_INCLUSION_STANDARD * marginalRate;
-    const taxHigh = gainsAtHighRate * CAPITAL_GAINS_INCLUSION_HIGH * marginalRate;
-    return taxStandard + taxHigh;
+    return realizedGain * CAPITAL_GAINS_INCLUSION_STANDARD * marginalRate;
 };
 
-export const calculateDividendTax = (dividendAmount: number, marginalRate: number): number => {
+export type DividendKind = 'eligible' | 'non-eligible';
+
+// Dividendes 2026 (Québec):
+// - Admissibles (grandes sociétés cotées): gross-up 38%, CID fédéral 15.0198% + CID QC 11.7% du majoré
+// - Non-admissibles (SPCC, sociétés privées): gross-up 15%, CID fédéral 9.0301% + CID QC 3.42% du majoré
+export const calculateDividendTax = (dividendAmount: number, marginalRate: number, kind: DividendKind = 'eligible'): number => {
     if (dividendAmount <= 0) return 0;
-    const grossedUpAmount = dividendAmount * 1.38;
+    const grossUpRate = kind === 'eligible' ? 1.38 : 1.15;
+    const cidFedRate = kind === 'eligible' ? 0.150198 : 0.090301;
+    const cidQcRate = kind === 'eligible' ? 0.117 : 0.0342;
+    const grossedUpAmount = dividendAmount * grossUpRate;
     const grossTax = grossedUpAmount * marginalRate;
-    const cidTotalRate = 0.267;
-    const cidAmount = grossedUpAmount * cidTotalRate;
+    const cidAmount = grossedUpAmount * (cidFedRate + cidQcRate);
     return Math.max(0, grossTax - cidAmount);
 };

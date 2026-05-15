@@ -219,6 +219,20 @@ export const useFinanceStore = create<FinanceState>()(
         }),
         {
             name: 'financeai-storage',
+            // Schema versioning: incrémenter à chaque changement non-rétrocompatible
+            // de la forme du state, et ajouter une étape dans `migrate`.
+            // Sans version, toute évolution casse silencieusement le boot des
+            // utilisateurs existants (cf audit 2026-05 §State management).
+            version: 1,
+            migrate: (persistedState: unknown, fromVersion: number) => {
+                // v0 → v1 : pas de transformation, juste l'introduction du versioning.
+                // Les futures migrations ajouteront leurs étapes ici :
+                //   if (fromVersion < 2) { state = migrateV1ToV2(state); }
+                if (fromVersion === undefined || fromVersion < 1) {
+                    return persistedState as Partial<FinanceState>;
+                }
+                return persistedState as Partial<FinanceState>;
+            },
             partialize: (state) => {
                 const { apiKeys, activeTab, ...persistable } = state;
                 return persistable;

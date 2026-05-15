@@ -1,9 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from './ui/Card';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, BarChart, Bar } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { RealEstateGoal } from '../types';
 import { INITIAL_REAL_ESTATE_GOAL } from '../constants';
 import { ConfirmModal } from './ui/ConfirmModal';
+import { PropertyConfigurator } from './realestate/PropertyConfigurator';
+import { MultiPropertyComparison } from './realestate/MultiPropertyComparison';
 
 interface RealEstateProps {
     availableCash: number;
@@ -267,189 +269,18 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                {/* CONFIGURATEUR */}
-                <div className="lg:col-span-1 space-y-5">
-                    <Card title="Type de propriété">
-                        <div className="space-y-3">
-                            <label className="flex items-center gap-3 p-3 rounded-lg border border-white/10 cursor-pointer hover:bg-white/5 transition-colors">
-                                <input
-                                    type="checkbox"
-                                    checked={activeGoal.isPrimaryResidence}
-                                    onChange={e => updateActiveGoal({ isPrimaryResidence: e.target.checked })}
-                                    className="w-4 h-4 accent-primary"
-                                />
-                                <div className="flex-1">
-                                    <div className="text-sm font-bold text-white">Résidence Principale</div>
-                                    <div className="text-[10px] text-gray-500">Si coché, le loyer actuel sera supprimé.</div>
-                                </div>
-                            </label>
-
-                            {!activeGoal.isPrimaryResidence && (
-                                <label className="flex items-center gap-3 p-3 rounded-lg border border-white/10 cursor-pointer hover:bg-white/5 transition-colors">
-                                    <input
-                                        type="checkbox"
-                                        checked={activeGoal.isRented || false}
-                                        onChange={e => {
-                                            if (e.target.checked) {
-                                                updateActiveGoal({ isRented: true, rentalIncomeMonthly: Math.round(price / 23.3 / 12) });
-                                            } else {
-                                                updateActiveGoal({ isRented: false, rentalIncomeMonthly: 0 });
-                                            }
-                                        }}
-                                        className="w-4 h-4 accent-green-500"
-                                    />
-                                    <div className="flex-1">
-                                        <div className="text-sm font-bold text-white">Propriété Locative</div>
-                                        <div className="text-[10px] text-gray-500">Génère des revenus de location.</div>
-                                    </div>
-                                </label>
-                            )}
-
-                            {activeGoal.isRented && !activeGoal.isPrimaryResidence && (
-                                <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg space-y-2 mt-2">
-                                    <label className="flex justify-between items-end text-xs text-green-400 font-bold">
-                                        <span>Revenu Locatif ($/mois)</span>
-                                        <button
-                                            onClick={() => updateActiveGoal({ rentalIncomeMonthly: Math.round(price / 23.3 / 12) })}
-                                            className="text-[9px] bg-green-500/20 px-1.5 py-0.5 rounded text-green-300 hover:bg-green-500/40"
-                                            title="Basé sur le ratio moyen Prix/Loyer au Québec (23.3)"
-                                        >
-                                            Auto (Moy. QC)
-                                        </button>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="50"
-                                        value={rentalIncomeMonthly}
-                                        onChange={e => updateActiveGoal({ rentalIncomeMonthly: Number(e.target.value) })}
-                                        className="w-full bg-black/50 border border-green-500/30 rounded px-2 py-1.5 text-green-400 text-sm font-bold focus:outline-none focus:border-green-400"
-                                        placeholder="Ex: 1500$"
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    </Card>
-
-                    <Card title="💵 Prix et Financement">
-                        <div className="space-y-4">
-                            <div>
-                                <label className="flex justify-between text-xs text-gray-400 mb-1">
-                                    <span>Prix d'achat</span>
-                                    <span className="text-white font-bold privacy-blur">{formatCurrency(price)}</span>
-                                </label>
-                                <input type="range" min="150000" max="2500000" step="10000" value={price} onChange={e => updateActiveGoal({ price: Number(e.target.value) })}
-                                    className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-primary" />
-                            </div>
-                            <div>
-                                <label className="flex justify-between text-xs text-gray-400 mb-1">
-                                    <span>Mise de fonds</span>
-                                    <span className="text-blue-300 font-bold privacy-blur">{formatCurrency(downPayment)} ({downPaymentPercent}%)</span>
-                                </label>
-                                <input type="range" min={price * 0.05} max={price} step="5000" value={downPayment} onChange={e => updateActiveGoal({ downPayment: Number(e.target.value) })}
-                                    className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-blue-500" />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs text-gray-400 mb-1">Amortissement</label>
-                                    <select value={amortization} onChange={e => updateActiveGoal({ amortization: Number(e.target.value) })} className="w-full bg-white/5 border border-border rounded px-2 py-1.5 text-white text-sm">
-                                        <option value="15">15 ans</option>
-                                        <option value="20">20 ans</option>
-                                        <option value="25">25 ans</option>
-                                        <option value="30">30 ans</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs text-gray-400 mb-1">Date cible</label>
-                                    <input type="date" value={targetDate} onChange={e => updateActiveGoal({ purchaseDate: e.target.value })} className="w-full bg-white/5 border border-border rounded px-2 py-1.5 text-white text-sm" />
-                                </div>
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card title="📉 Taux et Rendement">
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs text-orange-400 mb-1 font-bold">Taux Actuel (%)</label>
-                                    <input type="number" step="0.1" value={rate} onChange={e => updateActiveGoal({ mortgageRate: Number(e.target.value) })} className="w-full bg-orange-500/10 border border-orange-500/30 rounded px-2 py-1.5 text-orange-400 text-sm font-bold" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs text-red-400 mb-1 font-bold">Taux Renouvellement</label>
-                                    <input type="number" step="0.1" value={renewalRate} onChange={e => updateActiveGoal({ renewalRateProjection: Number(e.target.value) })} className="w-full bg-red-500/10 border border-red-500/30 rounded px-2 py-1.5 text-red-400 text-sm font-bold" />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs text-blue-400 mb-1 font-bold">Appréciation Immo (%/an)</label>
-                                    <input type="number" step="0.5" value={propertyGrowthRate} onChange={e => updateActiveGoal({ propertyGrowthRate: Number(e.target.value) })} className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs text-emerald-400 mb-1 font-bold">Rénos annuelles ($)</label>
-                                    <input type="number" step="500" value={yearlyRenovations} onChange={e => updateActiveGoal({ yearlyRenovations: Number(e.target.value) })} className="w-full bg-emerald-500/10 border border-emerald-500/30 rounded px-2 py-1.5 text-emerald-400 text-sm font-bold" />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="flex justify-between text-xs text-purple-400 mb-1 font-bold">
-                                    <span>Plafond Valeur Max</span>
-                                    <span>{maxValue > 0 ? formatCurrency(maxValue) : 'Aucun plafond'}</span>
-                                </label>
-                                <input type="range" min="0" max={price * 4} step={price * 0.1} value={maxValue} onChange={e => updateActiveGoal({ maxValue: Number(e.target.value) })} className="w-full h-1.5 bg-black/50 rounded-lg appearance-none cursor-pointer accent-purple-500" />
-                                <p className="text-[9px] text-gray-500 mt-1">Limite l'appréciation projetée de la propriété à un maximum réaliste.</p>
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card title="💰 Frais Récurrents">
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs text-gray-400">Mode de calcul</span>
-                                <button
-                                    onClick={() => setMode(m => m === 'AUTO' ? 'MANUAL' : 'AUTO')}
-                                    className={`text-xs px-3 py-1 rounded-full font-bold border transition-all ${
-                                        mode === 'AUTO'
-                                        ? 'bg-primary/20 border-primary text-primary'
-                                        : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
-                                    }`}
-                                >
-                                    {mode === 'AUTO' ? 'AUTO' : 'MANUEL'}
-                                </button>
-                            </div>
-                            <div>
-                                <label className="text-xs text-gray-400">Taxes foncières ($/an)</label>
-                                <input
-                                    type="number"
-                                    step="100"
-                                    value={taxesYearly}
-                                    onChange={e => { const v = Number(e.target.value); setTaxesYearly(v); updateActiveGoal({ taxesYearly: v }); }}
-                                    disabled={mode === 'AUTO'}
-                                    className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-xs text-gray-400">Chauffage ($/mois)</label>
-                                <input
-                                    type="number"
-                                    step="10"
-                                    value={heatingMonthly}
-                                    onChange={e => { const v = Number(e.target.value); setHeatingMonthly(v); updateActiveGoal({ heatingMonthly: v }); }}
-                                    disabled={mode === 'AUTO'}
-                                    className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-xs text-gray-400">Frais de condo ($/mois)</label>
-                                <input
-                                    type="number"
-                                    step="50"
-                                    value={condoFees}
-                                    onChange={e => { const v = Number(e.target.value); setCondoFees(v); updateActiveGoal({ condoFees: v }); }}
-                                    disabled={mode === 'AUTO'}
-                                    className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                                />
-                            </div>
-                        </div>
-                    </Card>
-                </div>
+                <PropertyConfigurator
+                    activeGoal={activeGoal}
+                    updateActiveGoal={updateActiveGoal}
+                    mode={mode}
+                    setMode={setMode}
+                    taxesYearly={taxesYearly}
+                    setTaxesYearly={setTaxesYearly}
+                    heatingMonthly={heatingMonthly}
+                    setHeatingMonthly={setHeatingMonthly}
+                    condoFees={condoFees}
+                    setCondoFees={setCondoFees}
+                />
 
                 {/* ANALYSIS DASHBOARD */}
                 <div className="lg:col-span-3 space-y-5">
@@ -665,98 +496,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                 </div>
             </div>
 
-            {/* ===== COMPARAISON MULTI-PROPRIÉTÉS ===== */}
-            {goals.length >= 2 && (() => {
-                const PROP_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#a855f7', '#ec4899', '#06b6d4'];
-
-                const allSeries = goals.map((goal, gi) => {
-                    const p = goal.price || 450000;
-                    const dp = goal.downPayment || (p * 0.2);
-                    const r = (goal.mortgageRate || 4.5) / 100 / 12;
-                    const amort = goal.amortization || 25;
-                    const mort = p - dp;
-                    const renewR = (goal.renewalRateProjection || 5.0) / 100 / 12;
-                    const growth = (goal.propertyGrowthRate || 3.0) / 100;
-                    const numPmt = amort * 12;
-                    let monthlyPmt = r > 0
-                        ? (r * mort * Math.pow(1 + r, numPmt)) / (Math.pow(1 + r, numPmt) - 1)
-                        : mort / numPmt;
-                    let balance = mort;
-                    let propVal = p + (goal.initialRenovations || 0);
-                    let currentR = r;
-
-                    const points: { year: number; equity: number }[] = [];
-                    for (let year = 1; year <= amort; year++) {
-                        if (year > 1 && (year - 1) % 5 === 0) {
-                            currentR = renewR;
-                            const rem = (amort - year + 1) * 12;
-                            if (currentR > 0)
-                                monthlyPmt = (currentR * balance * Math.pow(1 + currentR, rem)) / (Math.pow(1 + currentR, rem) - 1);
-                        }
-                        for (let m = 0; m < 12; m++) {
-                            if (balance <= 0) break;
-                            const interest = balance * currentR;
-                            balance -= (monthlyPmt - interest);
-                        }
-                        propVal *= (1 + growth);
-                        points.push({ year, equity: Math.max(0, Math.round(propVal - Math.max(0, balance))) });
-                    }
-                    return { name: goal.name || `Prop. ${gi + 1}`, points, color: PROP_COLORS[gi % PROP_COLORS.length] };
-                });
-
-                const maxLen = Math.max(...allSeries.map(s => s.points.length));
-                const chartData: Record<string, number | string>[] = [];
-                for (let yr = 1; yr <= maxLen; yr++) {
-                    const row: Record<string, number | string> = { year: yr };
-                    allSeries.forEach(s => {
-                        const pt = s.points.find(p => p.year === yr);
-                        if (pt) row[s.name] = pt.equity;
-                    });
-                    chartData.push(row);
-                }
-
-                return (
-                    <Card
-                        title={`📊 Comparaison des ${goals.length} Propriétés — Équité Projectée`}
-                        className="mt-4"
-                    >
-                        <div className="flex gap-4 mb-4 flex-wrap">
-                            {allSeries.map(s => (
-                                <div key={s.name} className="flex items-center gap-2 text-xs font-bold" style={{ color: s.color }}>
-                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: s.color }} />
-                                    {s.name}
-                                </div>
-                            ))}
-                        </div>
-                        <div className="h-[280px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 5, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" />
-                                    <XAxis dataKey="year" stroke="#555" tick={{ fontSize: 10 }} tickFormatter={v => `An ${v}`} />
-                                    <YAxis stroke="#555" tick={{ fontSize: 10 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} width={50} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: '#1a1e29', borderColor: '#333', borderRadius: '8px', fontSize: '11px' }}
-                                        formatter={(val: number, name: string) => [`${val.toLocaleString('fr-CA')} $`, name]}
-                                        labelFormatter={v => `Année ${v}`}
-                                    />
-                                    <Legend iconSize={8} wrapperStyle={{ fontSize: '10px' }} />
-                                    {allSeries.map((s, i) => (
-                                        <Area
-                                            key={s.name}
-                                            type="monotone"
-                                            dataKey={s.name}
-                                            stroke={s.color}
-                                            fill={s.color + '15'}
-                                            strokeWidth={2}
-                                            dot={false}
-                                        />
-                                    ))}
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </Card>
-                );
-            })()}
+            <MultiPropertyComparison goals={goals} />
 
         </div>
     );

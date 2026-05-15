@@ -7,6 +7,7 @@
 // directement les variables locales de runScenario.
 
 import type { ProjectionConfig } from '../../types';
+import { ltcAnnualProbability, mortalityAnnualProbability } from './helpers';
 
 export interface StochasticContext {
     m: number;
@@ -82,4 +83,116 @@ export function tryInheritance(
     state.addLiquid(amount);
     state.logLife(`🎁 Héritage reçu: +${amount.toLocaleString('fr-CA')}\$`);
     return true;
+}
+
+/**
+ * D2.8 — Mortalité stochastique. Tirage annuel en janvier.
+ * Retourne true si le décès est tiré ce cycle (caller doit alors break la simulation).
+ */
+export function tryMortality(
+    ctx: { m: number; currentMonthIndex: number; age: number; enableMonteCarlo: boolean; rng: () => number },
+    proj: ProjectionConfig,
+    alreadyDead: boolean,
+): boolean {
+    if (!proj.useStochasticMortality || !ctx.enableMonteCarlo) return false;
+    if (alreadyDead) return false;
+    if (ctx.currentMonthIndex !== 0 || ctx.m === 0) return false;
+    const pYear = mortalityAnnualProbability(ctx.age);
+    return ctx.rng() < pYear;
+}
+
+/**
+ * W1.4 — Mortalité du conjoint. Tirage annuel; si déclenché, retourne true
+ * (caller bascule en mode survivant).
+ */
+export function trySpouseMortality(
+    ctx: { m: number; currentMonthIndex: number; enableMonteCarlo: boolean; rng: () => number },
+    proj: ProjectionConfig,
+    spouseAge: number,
+    spouseAlive: boolean,
+    survivorModeActive: boolean,
+): boolean {
+    if (!proj.modelSurvivor || !ctx.enableMonteCarlo) return false;
+    if (!spouseAlive || survivorModeActive) return false;
+    if (ctx.currentMonthIndex !== 0 || ctx.m === 0) return false;
+    const pYear = mortalityAnnualProbability(spouseAge);
+    return ctx.rng() < pYear;
+}
+
+/**
+ * D2.8 — Long-Term Care trigger. Probabilité annuelle convertie mensuelle.
+ * Une fois actif, NE SE DÉCLENCHE PAS À NOUVEAU (caller garde le flag).
+ * Retourne true si le LTC vient juste de s'activer.
+ */
+export function tryLtcTrigger(
+    ctx: { age: number; enableMonteCarlo: boolean; rng: () => number },
+    proj: ProjectionConfig,
+    ltcAlreadyActive: boolean,
+): boolean {
+    if (!proj.ltcEnabled || !ctx.enableMonteCarlo) return false;
+    if (ltcAlreadyActive || ctx.age < 65) return false;
+    const annualP = ltcAnnualProbability(ctx.age);
+    const monthlyP = 1 - Math.pow(1 - annualP, 1 / 12);
+    return ctx.rng() < monthlyP;
+}
+
+/**
+ * Calcule le coût mensuel de LTC une fois actif (avec multiplicateur d'inflation).
+ */
+export function ltcMonthlyCost(proj: ProjectionConfig, expenseMultiplier: number): number {
+    return (proj.ltcMonthlyCost || 5000) * expenseMultiplier;
+}
+
+/**
+ * D2.10 — Perte d'emploi stochastique (multi-mois).
+ * Si actuellement en chômage (`monthsRemaining > 0`), décrémente.
+ * Sinon, peut déclencher si conditions remplies.
+ *
+ * Retourne: { newMonthsRemaining, triggered }
+ * - newMonthsRemaining: durée restante à jour (décrémentée si déjà actif)
+ * - triggered: true si la perte d'emploi vient d'être tirée ce cycle (pour log)
+ */
+export function tickJobLoss(
+    ctx: { m: number; currentMonthIndex: number; enableMonteCarlo: boolean; rng: () => number },
+    proj: ProjectionConfig,
+    monthsRemaining: number,
+): { newMonthsRemaining: number; triggered: boolean; duration: number } {
+    // Tick existing unemployment (décrémenter d'abord)
+    if (monthsRemaining > 0) {
+        return { newMonthsRemaining: monthsRemaining - 1, triggered: false, duration: 0 };
+    }
+    // Tirage d'un nouveau chômage (janvier uniquement, MC requis)
+    if (!proj.jobLossEnabled || !ctx.enableMonteCarlo) return { newMonthsRemaining: 0, triggered: false, duration: 0 };
+    if (ctx.currentMonthIndex !== 0 || ctx.m === 0) return { newMonthsRemaining: 0, triggered: false, duration: 0 };
+    const pAnnual = proj.jobLossAnnualProbability ?? 0.03;
+    if (ctx.rng() >= pAnnual) return { newMonthsRemaining: 0, triggered: false, duration: 0 };
+
+    const duration = proj.jobLossDurationMonths || 6;
+    return { newMonthsRemaining: duration, triggered: true, duration };
+}
+
+/**
+ * W3.2 — Invalidité longue durée (LTD) multi-mois.
+ * Comme tickJobLoss mais avec un flag de log séparé (log une fois au début).
+ */
+export function tickLtd(
+    ctx: { m: number; currentMonthIndex: number; enableMonteCarlo: boolean; rng: () => number },
+    proj: ProjectionConfig,
+    monthsRemaining: number,
+    alreadyLogged: boolean,
+): { newMonthsRemaining: number; needsLog: boolean; duration: number } {
+    if (monthsRemaining > 0) {
+        return {
+            newMonthsRemaining: monthsRemaining - 1,
+            needsLog: !alreadyLogged,
+            duration: monthsRemaining,
+        };
+    }
+    if (!proj.ltdEnabled || !ctx.enableMonteCarlo) return { newMonthsRemaining: 0, needsLog: false, duration: 0 };
+    if (ctx.currentMonthIndex !== 0 || ctx.m === 0) return { newMonthsRemaining: 0, needsLog: false, duration: 0 };
+    const pAnnual = proj.ltdAnnualProbability ?? 0.005;
+    if (ctx.rng() >= pAnnual) return { newMonthsRemaining: 0, needsLog: false, duration: 0 };
+
+    const duration = proj.ltdDurationMonths || 24;
+    return { newMonthsRemaining: duration, needsLog: false, duration };
 }

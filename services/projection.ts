@@ -1,5 +1,5 @@
 // services/projection.ts — moteur de projection financière (migré depuis utils/useFutureSimulation.ts)
-import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness } from '../types';
+import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness, SavingsGoal, FinancialGoal } from '../types';
 import { calculateFiscalReport, getMarginalRate, calculateDividendTax, calculateGrossWithholdingRRSP, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
 import { RRIF_RATES, welcomeTax } from './projection/helpers';
 import { runMonteCarlo } from './projection/monteCarlo';
@@ -15,7 +15,7 @@ import { computeRetirementIncome } from './projection/retirementIncome';
 import { processOneChild } from './projection/childrenReee';
 import { computeActiveIncome } from './projection/activeIncome';
 import { processReerMeltdown } from './projection/meltdownReer';
-import { applyTravelExpenses, applyLifeEvents, computeStressTest } from './projection/monthlyEvents';
+import { applyTravelExpenses, applyLifeEvents, computeStressTest, applySavingsGoalDeadlines, applyFinancialGoalDeadlines } from './projection/monthlyEvents';
 import { computeLatentTax } from './projection/latentTax';
 import { computeGlidepathRates } from './projection/glidepathRates';
 import { processCashflowAllocation, type CashflowState } from './projection/cashflowAllocation';
@@ -54,13 +54,16 @@ export interface SimulationParams {
     charitableGoals?: CharitableGoal[];
     rentalProperties?: RentalProperty[];
     privateBusinesses?: PrivateBusiness[];
+    // Wiring 2026-05: goals jusqu'ici inutilisés par le moteur.
+    savingsGoals?: SavingsGoal[];
+    financialGoals?: FinancialGoal[];
 }
 
 // Cycle 7 split: calculateGrossNeeded retiré (dead code, jamais appelé)
 
 
 const runScenario = (params: SimulationParams, strategy: AllocationStrategy, enableMonteCarlo = false, delayPensions = false, mcIterationIndex = 0, scenarioType: FutureScenarioType = 'BASE') => {
-    const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0, insurancePolicies = [], vehicleReplacements = [], majorRenovations = [], charitableGoals = [], rentalProperties = [], privateBusinesses = [] } = params;
+    const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0, insurancePolicies = [], vehicleReplacements = [], majorRenovations = [], charitableGoals = [], rentalProperties = [], privateBusinesses = [], savingsGoals = [], financialGoals = [] } = params;
     
     // Cycle 22 split: RNG seedé déterministique → ./projection/setupSimulation
     const rng = buildSeededRng(scenarioType, strategy, mcIterationIndex);
@@ -799,6 +802,35 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             logLife: (s) => logEvent(lifeEventsLog, s),
             logFlow: (s) => logEvent(flowEventsLog, s),
         });
+
+        // Wiring 2026-05: SavingsGoal et FinancialGoal aux deadlines.
+        const goalMutator = {
+            withdrawFromAccount: (account: 'CELI' | 'REER' | 'NON-ENREG' | 'CRYPTO' | 'LIQUID', amount: number): number => {
+                let remaining = amount;
+                if (account === 'LIQUID' || account === 'NON-ENREG') {
+                    const fromLiquid = Math.min(liquid, remaining);
+                    liquid -= fromLiquid; remaining -= fromLiquid;
+                    if (remaining > 0 && account === 'NON-ENREG' && nonReg > 0) {
+                        const fromNR = Math.min(nonReg, remaining);
+                        nonReg -= fromNR; nonRegACB = Math.max(0, nonRegACB - fromNR); remaining -= fromNR;
+                    }
+                } else if (account === 'CELI') {
+                    const drawn = Math.min(celi, remaining);
+                    celi -= drawn; celiWithdrawalsThisYear += drawn; remaining -= drawn;
+                } else if (account === 'REER') {
+                    const drawn = Math.min(reer, remaining);
+                    reer -= drawn; accRetraitsReerYear += drawn; remaining -= drawn;
+                } else if (account === 'CRYPTO') {
+                    const drawn = Math.min(crypto, remaining);
+                    crypto -= drawn; accCapitalGainsYear += drawn; remaining -= drawn;
+                }
+                return amount - remaining;
+            },
+            addExpense: (_n: number) => { /* déjà soustrait du compte ciblé */ },
+            logFlow: (s: string) => logEvent(flowEventsLog, s),
+        };
+        applySavingsGoalDeadlines(savingsGoals, currentIsoMonth, expenseMultiplier, goalMutator);
+        applyFinancialGoalDeadlines(financialGoals, currentIsoMonth, expenseMultiplier, goalMutator);
         const stressResult = computeStressTest(effProj, m);
         if (stressResult.crashFactor !== 1) {
             celi *= stressResult.crashFactor; reer *= stressResult.crashFactor;

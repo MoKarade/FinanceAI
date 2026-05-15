@@ -392,6 +392,32 @@ Une perte en capital sur le NonReg n'est PAS perdue : elle s'accumule dans `capi
 
 L'optimizer lance les 5 et retourne celle qui maximise `estateNetWorth` avec un gain mesuré vs la pire.
 
+### 9.1 Optimisations 2026-05 (cashflowAllocation.ts)
+
+Le shortfall cascade a été enrichi avec trois couches d'intelligence fiscale :
+
+1. **Palier 0% (PBMA)** — existant : retrait REER jusqu'au palier de base montant
+   ajusté (~17 183$/usager), à taux marginal effectif 0%.
+
+2. **Palier 14% (NOUVEAU, AUTO_MARGINAL uniquement)** — extension : continue le
+   retrait REER jusqu'au plafond du palier 1 (~54 345$/usager, fed+QC combiné
+   28%). Sous ce seuil, sortir du REER plutôt que du CELI préserve la valeur
+   futur non-imposable du CELI.
+
+3. **OAS Clawback Guard (NOUVEAU)** — si `isRetired`, plafonne les retraits REER
+   au seuil de clawback PSV (`OAS_CLAWBACK_THRESHOLD_2026 = 93 454$`/usager).
+   Tout dollar au-delà déclencherait une récupération de 15%. Le shortfall
+   bascule alors sur CELI/NonReg.
+
+4. **Banque de pertes en capital (NOUVEAU)** — si `capitalLossBank > 1000$`,
+   inverse REER ↔ NONREG dans la cascade. Vendre du NonReg utilise la banque
+   (gain compensé → effectivement non-imposable) au lieu de gaspiller la
+   déduction REER.
+
+**Impact mesurable** : pour un retraité à 60 ans avec ~$50k de revenu retraite
+base, le palier 14% permet de retirer ~$30k de plus du REER chaque année sans
+dépasser le bracket 1. Sur 30 ans de retraite, c'est ~$200k de CELI préservés.
+
 ## 10. Bootstrap historique (W1.2)
 
 Source : Aswath Damodaran (NYU Stern) — 97 années 1928-2024.

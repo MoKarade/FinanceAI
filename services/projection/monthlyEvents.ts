@@ -3,7 +3,7 @@
 // Trois helpers indépendants groupés car ils tournent tous au même moment
 // du loop mensuel (après les dépenses enfants, avant shortfall).
 
-import type { TravelGoal, LifeEvent, ProjectionConfig } from '../../types';
+import type { TravelGoal, LifeEvent, ProjectionConfig, SavingsGoal, FinancialGoal } from '../../types';
 
 // ── Voyages ──────────────────────────────────────────────────────────────────
 
@@ -78,6 +78,55 @@ export function applyLifeEvents(
                 state.logFlow(`🔔 Événement (${e.name}): -${Math.round(effectiveImpact).toLocaleString('fr-CA')}$`);
             }
         }
+    }
+}
+
+// ── Objectifs (SavingsGoal + FinancialGoal) ──────────────────────────────────
+// Wiring 2026-05: ces deux types de goals étaient déclarés en types mais jamais
+// consommés par le moteur. Au mois du deadline, on retire le manque à combler
+// (targetAmount − currentAmount) du compte ciblé (FinancialGoal) ou du liquide
+// (SavingsGoal). Permet à la projection de refléter l'impact des achats prévus.
+
+export interface GoalDeadlineMutator {
+    withdrawFromAccount: (account: 'CELI' | 'REER' | 'NON-ENREG' | 'CRYPTO' | 'LIQUID', amount: number) => number;
+    addExpense: (amt: number) => void;
+    logFlow: (msg: string) => void;
+}
+
+export function applySavingsGoalDeadlines(
+    savingsGoals: SavingsGoal[],
+    currentIsoMonth: string,
+    expenseMultiplier: number,
+    state: GoalDeadlineMutator,
+): void {
+    for (const g of savingsGoals) {
+        if (!g.deadline || !g.deadline.startsWith(currentIsoMonth)) continue;
+        const need = Math.max(0, (g.targetAmount || 0) - (g.currentAmount || 0));
+        if (need <= 0) continue;
+        const effective = need * expenseMultiplier;
+        // SavingsGoal n'a pas de compte cible → cascade depuis liquide.
+        const drawn = state.withdrawFromAccount('LIQUID', effective);
+        if (drawn > 0) state.addExpense(drawn);
+        state.logFlow(`🎯 Objectif (${g.name}): -${Math.round(effective).toLocaleString('fr-CA')}$`);
+    }
+}
+
+export function applyFinancialGoalDeadlines(
+    financialGoals: FinancialGoal[],
+    currentIsoMonth: string,
+    expenseMultiplier: number,
+    state: GoalDeadlineMutator,
+): void {
+    for (const g of financialGoals) {
+        if (g.status === 'archived' || g.completed) continue;
+        if (!g.deadline || !g.deadline.startsWith(currentIsoMonth)) continue;
+        const need = Math.max(0, (g.targetAmount || 0) - (g.manualCurrentAmount || 0));
+        if (need <= 0) continue;
+        const effective = need * expenseMultiplier;
+        const account = g.targetAccount || 'NON-ENREG';
+        const drawn = state.withdrawFromAccount(account, effective);
+        if (drawn > 0) state.addExpense(drawn);
+        state.logFlow(`🏆 But financier (${g.name}): -${Math.round(effective).toLocaleString('fr-CA')}$ depuis ${account}`);
     }
 }
 

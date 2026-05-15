@@ -7,6 +7,11 @@ import { ConfirmModal } from './ui/ConfirmModal';
 import { PropertyConfigurator } from './realestate/PropertyConfigurator';
 import { MultiPropertyComparison } from './realestate/MultiPropertyComparison';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { PageHeader } from './ui/PageHeader';
+import { KPIStat } from './ui/KPIStat';
+import { StatGrid } from './ui/StatGrid';
+import { Button } from './ui/Button';
+import { Badge } from './ui/Badge';
 
 interface RealEstateProps {
     availableCash: number;
@@ -220,64 +225,70 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                 message="Supprimer ce scénario immobilier définitivement ?"
                 confirmLabel="Supprimer"
             />
-            {/* Multi-Property Tabs */}
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-                {goals.map((g, idx) => (
-                    <button
-                        key={g.id}
-                        onClick={() => setActiveGoalId(g.id)}
-                        className={`px-4 py-2 rounded-xl border transition-all flex items-center gap-2 ${activeGoalId === g.id
-                            ? 'bg-blue-500/20 border-blue-500 text-blue-300 font-bold'
-                            : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}
+            <PageHeader
+                icon="🏡"
+                title="Immobilier"
+                subtitle={`${goals.length} propriété${goals.length > 1 ? 's' : ''} configurée${goals.length > 1 ? 's' : ''} · Mensualité nette ${formatCurrency(netMonthlyCost)}`}
+                badge={activeGoal.isActive ? <Badge variant="success" size="md">✓ Active dans simulation</Badge> : <Badge variant="neutral" size="md">Inactive</Badge>}
+                actions={
+                    <Button
+                        onClick={() => updateActiveGoal({ isActive: !activeGoal.isActive })}
+                        variant={activeGoal.isActive ? 'danger' : 'primary'}
+                        size="md"
                     >
-                        <span>🏠 {g.name || (g.isPrimaryResidence ? 'Résidence' : `Propriété ${idx + 1}`)}</span>
-                        {g.isActive && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
-                        {goals.length > 1 && (
-                            <span
-                                onClick={(e) => { e.stopPropagation(); deleteGoal(g.id); }}
-                                className="ml-2 text-gray-600 hover:text-red-400 cursor-pointer"
-                            >
-                                ✕
-                            </span>
-                        )}
-                    </button>
-                ))}
+                        {activeGoal.isActive ? '❌ Désactiver' : '✅ Activer dans Simulation'}
+                    </Button>
+                }
+            />
+
+            {/* Multi-Property Tabs */}
+            <div className="flex flex-wrap items-center gap-2">
+                {goals.map((g, idx) => {
+                    const isActive = activeGoalId === g.id;
+                    return (
+                        <button
+                            key={g.id}
+                            onClick={() => setActiveGoalId(g.id)}
+                            className={`px-4 py-2 rounded-pill border transition-all flex items-center gap-2 text-meta font-bold focus-ring ${
+                                isActive
+                                    ? 'bg-info-bg border-info-500 text-info-400'
+                                    : 'bg-white/5 border-white/10 text-ink-300 hover:bg-white/10'
+                            }`}
+                        >
+                            <span>🏠 {g.name || (g.isPrimaryResidence ? 'Résidence' : `Propriété ${idx + 1}`)}</span>
+                            {g.isActive && <span className="w-2 h-2 rounded-full bg-success-500 animate-pulse" aria-label="active" />}
+                            {goals.length > 1 && (
+                                <span
+                                    onClick={(e) => { e.stopPropagation(); deleteGoal(g.id); }}
+                                    className="ml-2 text-ink-400 hover:text-danger-400 cursor-pointer"
+                                    role="button"
+                                    aria-label={`Supprimer ${g.name}`}
+                                >
+                                    ✕
+                                </span>
+                            )}
+                        </button>
+                    );
+                })}
                 <button
                     onClick={addNewGoal}
-                    className="px-4 py-2 rounded-xl bg-white/5 border border-dashed border-white/20 text-gray-400 hover:bg-white/10 flex items-center gap-2"
+                    className="px-4 py-2 rounded-pill bg-white/5 border border-dashed border-white/20 text-ink-300 hover:bg-white/10 text-meta font-bold focus-ring"
                 >
-                    ＋ Ajouter une propriété
+                    + Ajouter une propriété
                 </button>
             </div>
 
-            <div className="flex flex-col lg:flex-row justify-between items-start gap-4">
-                <div className="flex-1">
-                    <h2 className="text-3xl font-bold text-white tracking-tight">🏢 {propertyName}</h2>
-                    <input
-                        type="text"
-                        value={propertyName}
-                        onChange={e => updateActiveGoal({ name: e.target.value })}
-                        placeholder="Nom de la propriété..."
-                        className="mt-2 bg-transparent border-b border-white/20 text-gray-400 text-sm focus:outline-none focus:border-blue-400 w-72 pb-0.5 transition-colors"
-                    />
-                </div>
-                <div className="flex gap-3 items-center">
-                    <div className="text-right bg-black/40 border border-white/10 rounded-xl p-3">
-                        <div className="text-[10px] text-gray-500 uppercase font-bold">Mensualité Nette</div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-2xl font-black text-white privacy-blur">{formatCurrency(netMonthlyCost)}</span>
-                        </div>
-                    </div>
-                    <button
-                        onClick={() => updateActiveGoal({ isActive: !activeGoal.isActive })}
-                        className={`py-3 px-4 rounded-xl font-bold transition-all shadow-lg text-sm ${activeGoal.isActive
-                            ? 'bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30'
-                            : 'bg-primary text-white hover:brightness-110 border border-transparent'
-                            }`}
-                    >
-                        {activeGoal.isActive ? '❌ Désactiver cette propriété' : '✅ Activer dans Simulation'}
-                    </button>
-                </div>
+            {/* Property name editor */}
+            <div className="flex items-center gap-3">
+                <span className="text-h1 text-ink-50">🏢 {propertyName}</span>
+                <input
+                    type="text"
+                    value={propertyName}
+                    onChange={e => updateActiveGoal({ name: e.target.value })}
+                    placeholder="Renommer..."
+                    className="bg-transparent border-b border-white/20 text-ink-300 text-meta focus:outline-none focus:border-info-400 w-48 pb-0.5 transition-colors"
+                    aria-label="Nom de la propriété"
+                />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -296,30 +307,40 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
 
                 {/* ANALYSIS DASHBOARD */}
                 <div className="lg:col-span-3 space-y-5">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div className="p-3 rounded-xl bg-black/40 border border-white/10">
-                            <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Cash nécessaire</div>
-                            <div className="text-xl font-black text-white privacy-blur">{formatCurrency(totalCashNeeded)}</div>
-                            <div className={`text-[10px] font-bold ${availableCash >= totalCashNeeded ? 'text-green-400' : 'text-red-400'}`}>
-                                {availableCash >= totalCashNeeded ? '✓ Disponible' : `⚠️ Manque ${formatCurrency(totalCashNeeded - availableCash)}`}
-                            </div>
-                        </div>
-                        <div className="p-3 rounded-xl bg-black/40 border border-white/10">
-                            <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Prêt Initial</div>
-                            <div className="text-xl font-black text-white privacy-blur">{formatCurrency(totalMortgage)}</div>
-                            <div className="text-[9px] text-gray-500">Ratio Prêt/Valeur: {Math.round((totalMortgage / price) * 100)}%</div>
-                        </div>
-                        <div className="p-3 rounded-xl bg-black/40 border border-white/10">
-                            <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Perte Sèche (Mens.)</div>
-                            <div className="text-xl font-black text-red-400 privacy-blur">{formatCurrency(unrecoverableMonthly)}</div>
-                            <div className="text-[9px] text-gray-500">Intérêts + taxes + entretien</div>
-                        </div>
-                        <div className="p-3 rounded-xl bg-black/40 border border-white/10">
-                            <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Valeur à terme</div>
-                            <div className="text-xl font-black text-green-400 privacy-blur">{formatCurrency(amortizationData.finalValue)}</div>
-                            <div className="text-[9px] text-gray-500">Dans {amortization} ans</div>
-                        </div>
-                    </div>
+                    <StatGrid cols={4} gap="sm">
+                        <KPIStat
+                            label="Cash nécessaire"
+                            icon="💵"
+                            value={formatCurrency(totalCashNeeded)}
+                            sublabel={availableCash >= totalCashNeeded ? '✓ Disponible' : `Manque ${formatCurrency(totalCashNeeded - availableCash)}`}
+                            privacy
+                            variant={availableCash >= totalCashNeeded ? 'success' : 'danger'}
+                        />
+                        <KPIStat
+                            label="Prêt Initial"
+                            icon="🏦"
+                            value={formatCurrency(totalMortgage)}
+                            sublabel={`Ratio Prêt/Valeur: ${Math.round((totalMortgage / price) * 100)}%`}
+                            privacy
+                            variant="info"
+                        />
+                        <KPIStat
+                            label="Perte Sèche (Mens.)"
+                            icon="💸"
+                            value={formatCurrency(unrecoverableMonthly)}
+                            sublabel="Intérêts + taxes + entretien"
+                            privacy
+                            variant="danger"
+                        />
+                        <KPIStat
+                            label="Valeur à terme"
+                            icon="📈"
+                            value={formatCurrency(amortizationData.finalValue)}
+                            sublabel={`Dans ${amortization} ans`}
+                            privacy
+                            variant="success"
+                        />
+                    </StatGrid>
 
                     <Card title="📊 Scénarios Comparatifs (Habiter vs Louer vs Bourse)" action={
                         projectedEquityAtAmortEnd !== null && projectedEquityAtAmortEnd > 0 ? (

@@ -62,9 +62,10 @@ export const App: React.FC = () => {
     const setAppState = state.setAppState;
     const activeTab = state.activeTab;
     const setActiveTab = state.setActiveTab;
+    const isPrivacyMode = state.isPrivacyMode;
+    const togglePrivacyMode = state.togglePrivacyMode;
 
     const [isLoading, setIsLoading] = useState(false);
-    const [isPrivacyMode, setIsPrivacyMode] = useState(false);
     const [showGuide, setShowGuide] = useState(false);
     const isHydrated = useRef(false);
     const currentSyncController = useRef<AbortController | null>(null);
@@ -385,7 +386,7 @@ export const App: React.FC = () => {
                 }}
                 isLoading={isLoading}
                 isPrivacyMode={isPrivacyMode}
-                togglePrivacyMode={() => setIsPrivacyMode(!isPrivacyMode)}
+                togglePrivacyMode={togglePrivacyMode}
                 netWorth={globalNetWorth}
                 onOpenGuide={() => setShowGuide(true)}
                 onGeneratePDF={async () => {

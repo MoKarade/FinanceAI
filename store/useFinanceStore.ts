@@ -5,7 +5,10 @@ import { INITIAL_BUDGET, INITIAL_CONFIG, INITIAL_PROJECTION, INITIAL_REAL_ESTATE
 
 interface FinanceState extends AppState {
     activeTab: Tab;
+    isPrivacyMode: boolean;
     setActiveTab: (tab: Tab) => void;
+    setPrivacyMode: (v: boolean) => void;
+    togglePrivacyMode: () => void;
     setAppState: (state: Partial<AppState>) => void;
     updateFxRates: (rates: { USD: number; EUR: number; CAD: number; lastFetched?: number }) => void;
     updateApiKeys: (keys: { eraContext: string; gemini: string }) => void;
@@ -205,8 +208,11 @@ export const useFinanceStore = create<FinanceState>()(
         (set) => ({
             ...initialState,
             activeTab: Tab.DASHBOARD,
+            isPrivacyMode: false,
 
             setActiveTab: (tab) => set({ activeTab: tab }),
+            setPrivacyMode: (v) => set({ isPrivacyMode: v }),
+            togglePrivacyMode: () => set((prev) => ({ isPrivacyMode: !prev.isPrivacyMode })),
             setAppState: (state) => set((prev) => ({ ...prev, ...state })),
             updateFxRates: (rates) => set((prev) => ({
                 fxRates: { ...prev.fxRates, ...rates }
@@ -234,7 +240,7 @@ export const useFinanceStore = create<FinanceState>()(
                 return persistedState as Partial<FinanceState>;
             },
             partialize: (state) => {
-                const { apiKeys, activeTab, ...persistable } = state;
+                const { apiKeys, activeTab, isPrivacyMode, ...persistable } = state;
                 return persistable;
             },
         }

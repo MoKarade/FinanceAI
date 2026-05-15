@@ -163,6 +163,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const charitableGoals = useFinanceStore(s => s.charitableGoals ?? []);
     const rentalProperties = useFinanceStore(s => s.rentalProperties ?? []);
     const privateBusinesses = useFinanceStore(s => s.privateBusinesses ?? []);
+    // Wiring 2026-05: deux goals jusqu'ici dead-wired arrivent maintenant au moteur.
+    const savingsGoals = useFinanceStore(s => s.savingsGoals ?? []);
 
     const params: SimulationParams = useMemo(() => ({
         projection,
@@ -187,7 +189,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         charitableGoals,
         rentalProperties,
         privateBusinesses,
-    }), [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses]);
+        savingsGoals,
+        financialGoals,
+    }), [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, savingsGoals, financialGoals]);
 
     // Perf fix:
     //  - Mode déterministe (runMC=false): synchrone + debounce 300ms (rapide ~150ms)

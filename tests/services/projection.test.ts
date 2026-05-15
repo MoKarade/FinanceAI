@@ -598,4 +598,38 @@ describe('calculateFutureProjection', () => {
             expect(usBase.estateNetWorth).toBeLessThan(noBase.estateNetWorth);
         });
     });
+
+    describe('Wiring goals (2026-05)', () => {
+        it('SavingsGoal: une deadline drainante réduit le patrimoine final', () => {
+            const targetDate = '2027-06';
+            const baseline = calculateFutureProjection(makeParams({
+                savingsGoals: [],
+            })) as any;
+            const withGoal = calculateFutureProjection(makeParams({
+                savingsGoals: [
+                    { id: 'sg1', name: 'Voyage Europe', targetAmount: 15000, currentAmount: 0, deadline: targetDate, icon: '✈️' },
+                ],
+            })) as any;
+            const noBase = baseline.allResults.find((s: any) => s.stratType === 'BASE');
+            const goalBase = withGoal.allResults.find((s: any) => s.stratType === 'BASE');
+            expect(goalBase.estateNetWorth).toBeLessThan(noBase.estateNetWorth);
+        });
+
+        it('FinancialGoal avec targetAccount=CELI: réduit le solde CELI projeté', () => {
+            const baseline = calculateFutureProjection(makeParams({
+                financialGoals: [],
+            })) as any;
+            const withGoal = calculateFutureProjection(makeParams({
+                financialGoals: [
+                    { id: 'fg1', name: 'Mise de fonds maison', type: 'savings' as any, targetAmount: 20000, deadline: '2028-03', targetAccount: 'CELI' },
+                ],
+            })) as any;
+            const noBase = baseline.allResults.find((s: any) => s.stratType === 'BASE');
+            const goalBase = withGoal.allResults.find((s: any) => s.stratType === 'BASE');
+            // CELI moins élevé au mois 27 (mars 2028) après retrait du goal
+            const noBaseCeli = noBase.chartData[30]?.CELI ?? 0;
+            const goalBaseCeli = goalBase.chartData[30]?.CELI ?? 0;
+            expect(goalBaseCeli).toBeLessThan(noBaseCeli);
+        });
+    });
 });

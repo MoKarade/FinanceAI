@@ -10,7 +10,13 @@
 
 import type { Debt } from '../../types';
 import type { AllocationStrategy } from './types';
-import { PBMA_THRESHOLD_PER_USER, type FiscalReport } from '../../utils/tax';
+import { PBMA_THRESHOLD_PER_USER, OAS_CLAWBACK_THRESHOLD_2026, type FiscalReport } from '../../utils/tax';
+
+// Plafond du palier 1 (14% fédéral + 14% Québec) par utilisateur. Combinaison
+// marginale ≈ 28%, comparable à la retenue REER de 21% — donc encore avantageux
+// de puiser dans le REER plutôt que dans le CELI quand on est sous ce seuil.
+// Source: utils/tax.ts QC_BRACKETS[0].upTo + FED_BRACKETS[0].upTo (le plus restrictif des deux).
+const SAFE_REER_BRACKET_TOP_PER_USER = 54345;
 
 type FiscalReportFn = (
     grossIncome: number,
@@ -122,31 +128,70 @@ export function processCashflowAllocation(
                 ? ((incomeRetirement * 12) + state.accRetraitsReerYear + accRentesYear)
                 : ((grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, Math.floor(m / 12)) + state.accRetraitsReerYear);
 
+            let runningGross = currentAnnualGrossTotal;
             const pbmaThreshold = PBMA_THRESHOLD_PER_USER * activeUsersCount;
-            let pbmaRoom = Math.max(0, pbmaThreshold - currentAnnualGrossTotal);
+            const bracket1Top = SAFE_REER_BRACKET_TOP_PER_USER * activeUsersCount;
+            // OAS clawback ne s'applique qu'aux 65+. On le proxy par isRetired puisque
+            // l'âge n'est pas dans le contexte; les retraités < 65 ne reçoivent pas PSV
+            // donc le cap est sans effet pour eux (revenus typiquement < 93k).
+            const oasCap = isRetired ? OAS_CLAWBACK_THRESHOLD_2026 * activeUsersCount : Infinity;
+
+            // Helper local: cap-aware REER draw. Mute state, retourne brut tiré.
+            const drawReer = (capRoomGross: number, label: string): number => {
+                if (shortfall <= 0 || state.reer <= 0 || capRoomGross <= 0) return 0;
+                const { gross: grossAttempt } = calculateGrossWithholdingRRSP(shortfall);
+                const actualGross = Math.min(state.reer, grossAttempt, capRoomGross);
+                if (actualGross <= 0) return 0;
+                const actualWithholding = rrspWithholding(actualGross);
+                const actualNet = Math.min(actualGross - actualWithholding, shortfall);
+
+                state.reer -= actualGross;
+                state.liquid += actualNet;
+                state.accRetraitsReerYear += actualGross;
+                state.retraitReerMois += actualGross;
+                state.withdrawalREER += actualGross;
+                state.taxCurrentYearReer += actualWithholding;
+                runningGross += actualGross;
+                shortfall -= actualNet;
+                state.flowEventLogs.push(`↳ Retrait REER (${label}): +${actualGross.toFixed(0)}$ Brut -> +${actualNet.toFixed(0)}$ Net`);
+                return actualGross;
+            };
+
+            // Logique #1 — PBMA: REER au taux 0% marginal (palier 0).
+            // Toutes stratégies en profitent (ne pas laisser de la place gaspillée).
+            const pbmaRoom = Math.min(
+                Math.max(0, pbmaThreshold - runningGross),
+                Math.max(0, oasCap - runningGross),
+            );
+            drawReer(pbmaRoom, 'Palier 0%');
+
+            // Logique #1b — Bracket-1 fill (AUTO_MARGINAL uniquement, optim 2026).
+            // Sous le palier 1 (~54k/usager), marginal combiné fed+QC ≈ 28%, déjà
+            // proche de la retenue à la source REER. Préférer REER ici évite de
+            // gaspiller du CELI dont le rendement futur est non-imposable.
+            if (strategy === 'AUTO_MARGINAL') {
+                const bracket1Room = Math.min(
+                    Math.max(0, bracket1Top - runningGross),
+                    Math.max(0, oasCap - runningGross),
+                );
+                drawReer(bracket1Room, 'Palier 14%');
+            }
 
             let buckets: string[];
             if (strategy === 'PRIO_REER') buckets = ['REER', 'CELI', 'NONREG', 'CRYPTO'];
             else if (strategy === 'PRIO_CELI') buckets = ['CELI', 'NONREG', 'REER', 'CRYPTO'];
             else buckets = ['CELI', 'REER', 'NONREG', 'CRYPTO'];
 
-            // Logique #1: REER à 0% marginal (PBMA)
-            if (shortfall > 0 && state.reer > 0 && pbmaRoom > 0) {
-                const desiredNet = Math.min(shortfall, pbmaRoom);
-                const { gross: grossAttempt } = calculateGrossWithholdingRRSP(desiredNet);
-                const actualGrossToDraw = Math.min(state.reer, grossAttempt, pbmaRoom);
-                const actualWithholding = rrspWithholding(actualGrossToDraw);
-                const actualNet = Math.min(actualGrossToDraw - actualWithholding, shortfall);
-
-                state.reer -= actualGrossToDraw;
-                state.liquid += actualNet;
-                state.accRetraitsReerYear += actualGrossToDraw;
-                state.retraitReerMois += actualGrossToDraw;
-                state.withdrawalREER += actualGrossToDraw;
-                state.taxCurrentYearReer += actualWithholding;
-                pbmaRoom -= actualGrossToDraw;
-                shortfall -= actualNet;
-                state.flowEventLogs.push(`↳ Retrait REER (Palier 0%): +${actualGrossToDraw.toFixed(0)}$ Brut -> +${actualNet.toFixed(0)}$ Net`);
+            // Optim 2026: banque de pertes en capital — si on a des pertes accumulées
+            // significatives, on préfère vendre du NonReg avant le REER pour les
+            // utiliser (le gain compensé devient effectivement non-imposable).
+            if (state.capitalLossBank > 1000 && state.nonReg > 0) {
+                const reerIdx = buckets.indexOf('REER');
+                const nonRegIdx = buckets.indexOf('NONREG');
+                if (reerIdx !== -1 && nonRegIdx !== -1 && nonRegIdx > reerIdx) {
+                    buckets[reerIdx] = 'NONREG';
+                    buckets[nonRegIdx] = 'REER';
+                }
             }
 
             // Cascade standard
@@ -169,19 +214,9 @@ export function processCashflowAllocation(
                     shortfall -= drawnNonReg;
                     state.flowEventLogs.push(`↳ Retrait Non-Enreg: +${Math.round(drawnNonReg).toLocaleString('fr-CA')}$`);
                 } else if (bucket === 'REER' && state.reer > 0) {
-                    const { gross: grossAttempt } = calculateGrossWithholdingRRSP(shortfall);
-                    const actualGrossToDraw = Math.min(state.reer, grossAttempt);
-                    const actualWithholding = rrspWithholding(actualGrossToDraw);
-                    const actualNet = actualGrossToDraw - actualWithholding;
-
-                    state.reer -= actualGrossToDraw;
-                    state.liquid += actualNet;
-                    state.accRetraitsReerYear += actualGrossToDraw;
-                    state.retraitReerMois += actualGrossToDraw;
-                    state.withdrawalREER += actualGrossToDraw;
-                    state.taxCurrentYearReer += actualWithholding;
-                    shortfall -= actualNet;
-                    state.flowEventLogs.push(`↳ Retrait REER (Standard): +${actualGrossToDraw.toFixed(0)}$ Brut -> +${actualNet.toFixed(0)}$ Net`);
+                    // OAS guard appliqué ici aussi: on respecte le plafond clawback.
+                    const reerCap = Math.max(0, oasCap - runningGross);
+                    drawReer(reerCap, 'Standard');
                 } else if (bucket === 'CRYPTO' && state.crypto > 0) {
                     const drawn = Math.min(state.crypto, shortfall);
                     state.crypto -= drawn;

@@ -6,6 +6,7 @@ import { Card } from './ui/Card';
 import { fetchPortfolioHistory, MarketDataPoint } from '../services/finance';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import { ASSET_META } from '../services/assetMeta';
+import { useFinanceStore } from '../store/useFinanceStore';
 
 interface DashboardProps {
     transactions: Transaction[];
@@ -46,8 +47,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const [customEnd, setCustomEnd] = useState(new Date().toISOString().split('T')[0]);
     const [futureYears, setFutureYears] = useState<number>(5);
 
+    // Wiring 2026-05: lit la vraie projection FutureProjection si dispo, sinon
+    // fallback sur formule simple. Garanti d'être sync avec l'onglet projection.
+    const lastProjection = useFinanceStore(s => s.lastProjection);
+
     const calculateFutureValue = (pv: number, pmtMonthly: number, years: number) => {
-        const r = 0.05; // 5% real return assumption
+        // Si on a une projection vivante, on cherche le NW au mois cible.
+        if (lastProjection?.chartData && lastProjection.chartData.length > 0) {
+            const targetMonth = years * 12;
+            const point = lastProjection.chartData.find(p => p.monthIndex === targetMonth)
+                || lastProjection.chartData[Math.min(targetMonth, lastProjection.chartData.length - 1)];
+            if (point && typeof point.NetWorth === 'number' && point.NetWorth > 0) {
+                return point.NetWorth;
+            }
+        }
+        // Fallback: formule simple 5% (avant que l'utilisateur ouvre l'onglet projection).
+        const r = 0.05;
         const pmt = pmtMonthly * 12;
         const compoundFactor = Math.pow(1 + r, years);
         return pv * compoundFactor + pmt * ((compoundFactor - 1) / r);
@@ -278,7 +293,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         {calculateFutureValue(latestTotals?.Total || 0, calculatedMonthlySavings || 0, futureYears).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
                     </div>
                     <div className="text-[9px] text-gray-500 mt-2 font-bold z-10">
-                        Basé sur {(calculatedMonthlySavings || 0).toLocaleString()}$/mo d'épargne avec 5% de rendement.
+                        {lastProjection?.chartData && lastProjection.chartData.length > 0
+                            ? `🔗 Synchronisé avec la simulation (scénario actif).`
+                            : `Basé sur ${(calculatedMonthlySavings || 0).toLocaleString()}$/mo d'épargne avec 5% de rendement.`}
                     </div>
                 </div>
             </div>

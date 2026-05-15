@@ -237,6 +237,15 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const results = runMC ? asyncResults : syncResults;
     const { chartData = [], fireNumber = 0, aiNote = "", allResults = [] } = (results || {}) as any;
 
+    // Wiring 2026-05 (Option A): publie le dernier résultat dans le store pour
+    // que Dashboard/Investments/Budget/etc. puissent l'afficher sans recalculer.
+    const setLastProjection = useFinanceStore(s => s.setLastProjection);
+    useEffect(() => {
+        if (results && Array.isArray(results.chartData) && results.chartData.length > 0) {
+            setLastProjection(results);
+        }
+    }, [results, setLastProjection]);
+
     const { lifeChartEvents, flowChartEvents } = useMemo(() => {
         const lifes: any[] = [];
         const flows: any[] = [];

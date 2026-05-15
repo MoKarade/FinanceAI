@@ -42,23 +42,51 @@ export const Layout: React.FC<LayoutProps> = ({
   const currentLang = i18n.language?.startsWith('en') ? 'en' : 'fr';
   const toggleLang = () => i18n.changeLanguage(currentLang === 'fr' ? 'en' : 'fr');
 
-  const navItems = [
-    { id: Tab.DASHBOARD, label: t('tabs.dashboard'), icon: '📊' },
-    { id: Tab.TRANSACTIONS, label: t('tabs.transactions'), icon: '💳' },
-    { id: Tab.BUDGET, label: t('tabs.budget'), icon: '⚖️' },
-    { id: Tab.FUTURE, label: t('tabs.future'), icon: '🔮' },
-    { id: Tab.INVESTMENTS, label: t('tabs.investments'), icon: '📈' },
+  // Phase B1 — Regroupement thématique (cf docs/UI_REFOUNDATION_PLAN.md §3.1)
+  const navGroups: Array<{ label: string; icon: string; items: Array<{ id: Tab; label: string; icon: string }> }> = [
+    {
+      label: 'Argent',
+      icon: '💰',
+      items: [
+        { id: Tab.DASHBOARD, label: t('tabs.dashboard'), icon: '📊' },
+        { id: Tab.TRANSACTIONS, label: t('tabs.transactions'), icon: '💳' },
+        { id: Tab.BUDGET, label: t('tabs.budget'), icon: '⚖️' },
+      ],
+    },
+    {
+      label: 'Plan',
+      icon: '🎯',
+      items: [
+        { id: Tab.FUTURE, label: t('tabs.future'), icon: '🔮' },
+        { id: Tab.INVESTMENTS, label: t('tabs.investments'), icon: '📈' },
+        { id: Tab.RETIREMENT, label: t('tabs.retirement'), icon: '🏖️' },
+      ],
+    },
+    {
+      label: 'Objectifs',
+      icon: '🎁',
+      items: [
+        { id: Tab.REAL_ESTATE, label: t('tabs.real_estate'), icon: '🏡' },
+        { id: Tab.CHILD, label: t('tabs.child'), icon: '👶' },
+        { id: Tab.TRAVEL, label: t('tabs.travel', 'Voyages'), icon: '✈️' },
+        { id: Tab.LIFE_EVENTS, label: t('tabs.life_events'), icon: '🛤️' },
+      ],
+    },
+    {
+      label: 'Outils',
+      icon: '🛠️',
+      items: [
+        { id: Tab.TAX, label: t('tabs.tax'), icon: '🏛️' },
+        { id: Tab.DEBT, label: t('tabs.debt'), icon: '💸' },
+        { id: Tab.PLANNING, label: t('tabs.planning'), icon: '📅' },
+      ],
+    },
   ];
 
-  const extraItems = [
-    { id: Tab.PLANNING, label: t('tabs.planning'), icon: '📅' },
-    { id: Tab.DEBT, label: t('tabs.debt'), icon: '💸' },
-    { id: Tab.TAX, label: t('tabs.tax'), icon: '🏛️' },
-    { id: Tab.REAL_ESTATE, label: t('tabs.real_estate'), icon: '🏡' },
-    { id: Tab.CHILD, label: t('tabs.child'), icon: '👶' },
-    { id: Tab.RETIREMENT, label: t('tabs.retirement'), icon: '🏖️' },
-    { id: Tab.LIFE_EVENTS, label: t('tabs.life_events'), icon: '🛤️' },
-  ];
+  // Items utilisés par les menus mobile/legacy. Garde une liste plate.
+  const allNavItems = navGroups.flatMap(g => g.items);
+  const navItems = navGroups[0].items; // shortcut Argent pour bottom-nav
+  const extraItems = navGroups.slice(1).flatMap(g => g.items);
 
   const getSmartMilestone = () => {
     const activeGoals = financialGoals
@@ -185,34 +213,41 @@ export const Layout: React.FC<LayoutProps> = ({
           </button>
         </div>
 
-        <nav aria-label="Navigation principale" className="flex-1 min-h-0 overflow-y-auto px-4 space-y-1.5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-          <div className="text-[10px] uppercase text-gray-500 font-bold px-4 mb-2 tracking-widest mt-2">Principal</div>
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setActiveTab(item.id)}
-              aria-current={activeTab === item.id ? 'page' : undefined}
-              className={`flex items-center space-x-3 w-full px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden ${activeTab === item.id ? 'bg-white/5 text-white shadow-lg border border-white/5' : 'hover:bg-white/5 text-gray-400 hover:text-gray-200'
-                }`}
-            >
-              {activeTab === item.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r" aria-hidden="true"></div>}
-              <span aria-hidden="true" className={`text-lg transition-transform group-hover:scale-110 ${activeTab === item.id ? 'scale-110 text-primary' : ''}`}>{item.icon}</span>
-              <span className="font-medium text-sm">{item.label}</span>
-            </button>
-          ))}
-          <div className="text-[10px] uppercase text-gray-500 font-bold px-4 mb-2 tracking-widest mt-6">Projets de Vie</div>
-          {extraItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setActiveTab(item.id)}
-              aria-current={activeTab === item.id ? 'page' : undefined}
-              className={`flex items-center space-x-3 w-full px-4 py-3 rounded-xl transition-all duration-300 ${activeTab === item.id ? 'bg-white/5 text-white border border-white/5' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-            >
-              <span aria-hidden="true" className="text-lg">{item.icon}</span>
-              <span className="font-medium text-sm">{item.label}</span>
-            </button>
+        <nav aria-label="Navigation principale" className="flex-1 min-h-0 overflow-y-auto px-4 space-y-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+          {navGroups.map((group) => (
+            <div key={group.label}>
+              <div className="text-tiny uppercase text-ink-500 font-bold px-4 mb-2 tracking-widest flex items-center gap-2">
+                <span aria-hidden="true">{group.icon}</span>
+                <span>{group.label}</span>
+              </div>
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setActiveTab(item.id)}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-card transition-all duration-200 group relative overflow-hidden focus-ring ${
+                        isActive
+                          ? 'bg-white/5 text-ink-50 shadow-lg border border-white/5'
+                          : 'hover:bg-white/5 text-ink-300 hover:text-ink-50'
+                      }`}
+                    >
+                      {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r" aria-hidden="true"></div>}
+                      <span
+                        aria-hidden="true"
+                        className={`text-base transition-transform group-hover:scale-110 ${isActive ? 'scale-110 text-primary' : ''}`}
+                      >
+                        {item.icon}
+                      </span>
+                      <span className="font-medium text-meta">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           ))}
         </nav>
 

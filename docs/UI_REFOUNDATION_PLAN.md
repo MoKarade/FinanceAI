@@ -461,8 +461,10 @@ L'UI est considérée "refondue" quand :
 - [x] La sidebar desktop a 4 groupes nommés (= IA refondue)
 - [x] Le mobile drawer reprend les mêmes 4 groupes
 - [x] Touch targets ≥ 44px utilities CSS disponibles
-- [ ] Le scroll par défaut sur n'importe quel onglet est ≤ 1 viewport — partiel (Future ✓, Dashboard ≃, autres à mesurer)
-- [ ] L'app tourne sur mobile 360px sans scroll horizontal — à valider manuellement
+- [x] text-display et text-kpi réduits sur viewports < 640px (polish mobile)
+- [x] PageHeader actions wrap full-width sur mobile
+- [x] Tests RTL des pages refondues (Dashboard PageHeader+KPI, Budget hero, Phase B2 button)
+- [ ] L'app tourne sur mobile 360px sans scroll horizontal — à valider manuellement (utilities en place)
 
 ---
 

@@ -11,6 +11,8 @@ import { fetchPortfolioHistory } from '../services/finance';
 import { calculateFutureProjection, SimulationParams } from '../services/projection';
 import { runProjectionAsync, terminateProjectionWorker } from '../services/projection/runAsync';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { usePendingFocus } from '../utils/usePendingFocus';
+import { Tab as TabEnum } from '../types';
 import { ExpertTooltip, CustomLifeEventLabel, CustomFlowEventLabel } from './projection/ProjectionTooltip';
 import { ProjectionControls } from './projection/ProjectionControls';
 
@@ -161,6 +163,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const [runMC, setRunMC] = useState(true);
 
     // W5.x — Conteneurs étendus câblés au moteur
+    // Phase B2 — consomme un éventuel deep-link entrant (cf docs/UI_REFOUNDATION_PLAN.md §5)
+    usePendingFocus(TabEnum.FUTURE);
+
     const insurancePolicies = useFinanceStore(s => s.insurancePolicies ?? []);
     const vehicleReplacements = useFinanceStore(s => s.vehicleReplacements ?? []);
     const majorRenovations = useFinanceStore(s => s.majorRenovations ?? []);

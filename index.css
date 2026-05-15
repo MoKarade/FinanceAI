@@ -177,3 +177,32 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255,255,255,0.2);
 }
+
+/* ============================================================
+ * Phase A1 (2026-05) — Tokens UI & helpers de refonte
+ * Classes utilitaires consommées par les nouvelles primitives.
+ * Ne pas utiliser directement dans les pages existantes — passer
+ * par <Button>, <Badge>, <KPIStat>, etc. (à coder en A2/A3).
+ * ============================================================ */
+
+@layer components {
+  /* Focus ring unifié pour tous les contrôles interactifs */
+  .focus-ring {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-dark;
+  }
+
+  /* Card "subtle" — variante pour sous-cards imbriquées */
+  .card-subtle {
+    @apply bg-white/[0.03] border border-white/5 rounded-card;
+  }
+
+  /* Section header — pattern uniforme dans toutes les Cards */
+  .section-header {
+    @apply flex items-center justify-between mb-4 pb-3 border-b border-white/5;
+  }
+
+  /* KPI Label — petit caps avec tracking, pattern uniforme */
+  .kpi-label {
+    @apply text-tiny uppercase text-ink-400;
+  }
+}

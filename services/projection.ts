@@ -26,6 +26,7 @@ import { buildSeededRng, computeHistoricalContributionRoom, computeRrqAdjustment
 import { handleNonRegSale as portfolioNonRegSale } from './projection/portfolioOps';
 import { computeEstateNetWorth } from './projection/estateCalculation';
 import { computeMonthlyMarketRates, type StressTestConfig } from './projection/marketShocks';
+import { computeEffectiveExpenseInflation, computeMonthlyWithholding } from './projection/monthlyCalcs';
 import { type AllocationStrategy, type FutureScenarioType, type ProjectionResult } from './projection/types';
 export type { AllocationStrategy, FutureScenarioType, ProjectionChartPoint, ProjectionResult } from './projection/types';
 
@@ -301,25 +302,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         const { mcCeliRate, mcReerRate, mcNonRegRate, mcCryptoRate, mcCashRate, currentInflation } =
             computeMonthlyMarketRates(m, enableMonteCarlo, baseRates, simInflation, historicalSequence, stressTestConfig, rng);
 
-        // V31: Calcul de l'Inflation Cumulative des Dépenses (avec GK)
-        const healthInflationBonus = (isRetired && age >= 75) ? Math.min(2.5, (age - 75) * 0.25) : 0;
-
-        // D2.9: Inflation différenciée par poste (panier CPI Stats Canada).
-        let effectiveExpenseInflation: number;
-        if (effProj.usePerCategoryInflation) {
-            // Pondérations CPI 2023: Logement 30, Alim 17, Transport 15, Santé 5, Loisirs 6, Autres 27.
-            const wHousing = 0.30, wFood = 0.17, wTransport = 0.15, wHealth = 0.05, wLeisure = 0.06, wOther = 0.27;
-            const iHousing  = effProj.inflationHousing  ?? 4.0;
-            const iFood     = effProj.inflationFood     ?? 3.5;
-            const iTransp   = effProj.inflationTransport?? 2.5;
-            const iHealthB  = (effProj.inflationHealth  ?? 4.5) + healthInflationBonus; // bonus santé seulement sur la part santé
-            const iLeisure  = effProj.inflationLeisure  ?? 1.5;
-            const iOther    = effProj.inflationOther    ?? 2.0;
-            effectiveExpenseInflation = wHousing*iHousing + wFood*iFood + wTransport*iTransp + wHealth*iHealthB + wLeisure*iLeisure + wOther*iOther;
-        } else {
-            effectiveExpenseInflation = currentInflation + healthInflationBonus;
-        }
-
+        // Cycle 29 split: inflation effective des dépenses → ./projection/monthlyCalcs
+        const effectiveExpenseInflation = computeEffectiveExpenseInflation(age, isRetired, currentInflation, effProj);
         if (!guytonKlinger_freezeInflation) {
             expenseMultiplier *= Math.pow(1 + effectiveExpenseInflation / 100, 1 / 12);
         }
@@ -552,31 +536,14 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         }
         taxPreviousYear = aprilResult.newTaxPreviousYear;
 
-        // V49: Monthly salary withholding approximation (T1213 Optimization)
+        // Cycle 29 split: retenue salariale mensuelle → ./projection/monthlyCalcs
         if (!isRetired) {
-            const yearsElapsed = Math.floor(m / 12);
-            const inflationFactor = Math.pow(1 + simInflation / 100, yearsElapsed);
-            const grossMarcReal = (grossMarcBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed)) / inflationFactor;
-            const grossAnnaReal = (grossAnnaBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed)) / inflationFactor;
-
-            let monthlyDeductionsMarc = 0;
-            let monthlyDeductionsAnna = 0;
-            
-            // Si T1213 activé, l'employeur réduit la retenue selon les REER/CELIAPP du mois courant
-            if (effProj.optimizeSourceDeductions) {
-                const totalMonthlyDeduct = (contribREER + contribCELIAPP + (smithInterestDeductibleYear/12)) / inflationFactor;
-                if (grossMarcReal > grossAnnaReal) monthlyDeductionsMarc = totalMonthlyDeduct;
-                else monthlyDeductionsAnna = totalMonthlyDeduct;
-            }
-
-            const taxMarcReal = grossMarcReal > 0 ? calculateFiscalReport(grossMarcReal, monthlyDeductionsMarc, 0, loopYear, enableMonteCarlo).totalTax : 0;
-            const taxAnnaReal = grossAnnaReal > 0 ? calculateFiscalReport(grossAnnaReal, monthlyDeductionsAnna, 0, loopYear, enableMonteCarlo).totalTax : 0;
-            
-            const totalAnnualTax = (taxMarcReal + taxAnnaReal) * inflationFactor;
-            const estimatedWithholding = totalAnnualTax * 0.92;
-            const approxAnnualDeficit = Math.max(-5000, totalAnnualTax - estimatedWithholding);
-            
-            taxCurrentYear.revenu += approxAnnualDeficit / 12;
+            taxCurrentYear.revenu += computeMonthlyWithholding(
+                { m, loopYear, simInflation, simSalaryGrowth, grossMarcBaseAnnual, grossAnnaBaseAnnual,
+                  contribREER, contribCELIAPP, smithInterestDeductibleYear,
+                  enableMonteCarlo, optimizeSourceDeductions: effProj.optimizeSourceDeductions },
+                calculateFiscalReport,
+            );
             impotSalaireMois = 0;
         }
 

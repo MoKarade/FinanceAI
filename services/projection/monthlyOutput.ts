@@ -5,7 +5,7 @@
 //
 // Pattern: Pure Function — reçoit un contexte immuable, retourne le point.
 
-import type { ProjectionChartPoint } from '../projection';
+import type { ProjectionChartPoint } from './types';
 
 type TaxBucket = { revenu: number; gains: number; reer: number; divers: number };
 

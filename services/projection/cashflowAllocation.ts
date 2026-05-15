@@ -9,7 +9,7 @@
 // capitalLossBank/accCapitalGainsYear, tous dans state).
 
 import type { Debt } from '../../types';
-import type { AllocationStrategy } from '../projection';
+import type { AllocationStrategy } from './types';
 import { PBMA_THRESHOLD_PER_USER, type FiscalReport } from '../../utils/tax';
 
 type FiscalReportFn = (

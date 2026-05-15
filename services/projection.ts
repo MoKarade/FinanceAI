@@ -1,7 +1,7 @@
 // services/projection.ts — moteur de projection financière (migré depuis utils/useFutureSimulation.ts)
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness } from '../types';
-import { calculateFiscalReport, calculateCeliRoom, getMarginalRate, calculateDividendTax, RRSP_ANNUAL_LIMITS, calculateGrossWithholdingRRSP, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER, CAPITAL_GAINS_HIGH_THRESHOLD } from '../utils/tax';
-import { mulberry32, gaussianRandom, applyShock, MER, RRIF_RATES, welcomeTax, applyMidMonthGrowth } from './projection/helpers';
+import { calculateFiscalReport, getMarginalRate, calculateDividendTax, calculateGrossWithholdingRRSP, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
+import { RRIF_RATES, welcomeTax } from './projection/helpers';
 import { runMonteCarlo } from './projection/monteCarlo';
 import { SCENARIO_DEFINITIONS } from './projection/scenarios';
 import { applyW5Effects, applyAgeBasedExpenses } from './projection/w5Effects';
@@ -10,7 +10,7 @@ import { processAprilSettlement } from './projection/taxApril';
 import { computeOasClawback, processTaxLossHarvesting, processDecemberTaxFiling } from './projection/taxDecember';
 import { processJanuaryReset } from './projection/taxJanuary';
 import { processAutoVehicleReplacement } from './projection/vehicleCycle';
-import { buildHistoricalSequence, buildReplaySequence, canadianInflationFor, type YearReturn } from './projection/historicalReturns';
+import { buildHistoricalSequence, buildReplaySequence, type YearReturn } from './projection/historicalReturns';
 import { computeRetirementIncome } from './projection/retirementIncome';
 import { processOneChild } from './projection/childrenReee';
 import { computeActiveIncome } from './projection/activeIncome';
@@ -24,6 +24,11 @@ import { buildMonthlyDataPoint } from './projection/monthlyOutput';
 import { applyMonthlyGrowth } from './projection/growthApplication';
 import { buildSeededRng, computeHistoricalContributionRoom, computeRrqAdjustment, computeIncomeBaseline, computeScenarioOverrides, makeSmileLifestyleFactor } from './projection/setupSimulation';
 import { handleNonRegSale as portfolioNonRegSale } from './projection/portfolioOps';
+import { computeEstateNetWorth } from './projection/estateCalculation';
+import { computeMonthlyMarketRates, type StressTestConfig } from './projection/marketShocks';
+import { computeEffectiveExpenseInflation, computeMonthlyWithholding } from './projection/monthlyCalcs';
+import { type AllocationStrategy, type FutureScenarioType, type ProjectionResult } from './projection/types';
+export type { AllocationStrategy, FutureScenarioType, ProjectionChartPoint, ProjectionResult } from './projection/types';
 
 export interface SimulationParams {
     projection: ProjectionConfig;
@@ -49,142 +54,6 @@ export interface SimulationParams {
     charitableGoals?: CharitableGoal[];
     rentalProperties?: RentalProperty[];
     privateBusinesses?: PrivateBusiness[];
-}
-
-export type AllocationStrategy = 'AUTO_MARGINAL' | 'PRIO_REER' | 'PRIO_CELI' | 'MELTDOWN_REER' | 'DEBT_FIRST';
-
-export type FutureScenarioType = 'BASE' | 'LIBERTE_55' | 'HYPER_INFLATION' | 'WINDFALL' | 'ECONOMIC_WINTER';
-
-// Cycle 3 TS reviewer quick win #1 (ROI massif): typer chartData[] avec
-// ProjectionChartPoint élimine ~35 erreurs strict en cascade dans
-// RealEstate/Investments/ChildPlanning. Tous les champs optionnels pour
-// compat avec les entrées MC réduites (NetWorth + monthIndex seulement).
-export interface ProjectionChartPoint {
-    monthIndex: number;
-    NetWorth: number;
-    // Variantes MC (minimales)
-    P10?: number | null;
-    P50?: number | null;
-    P90?: number | null;
-    // Variantes déterministes (champ complet)
-    dateLabel?: string;
-    year?: number;
-    age?: number;
-    IncomeMarc?: number;
-    IncomeAnna?: number;
-    IncomeRetirement?: number;
-    Income?: number;
-    NetSalary?: number;
-    Expenses?: number;
-    childCost?: number;
-    childGross?: number;
-    childBenefits?: number;
-    ReeeContrib?: number;
-    ReeePayout?: number;
-    ImmoHypo?: number;
-    ImmoCharges?: number;
-    ImmoInterest?: number;
-    ImmoPrincipal?: number;
-    RentalIncome?: number;
-    Savings?: number;
-    Liquidites?: number;
-    CELI?: number;
-    CELIMax?: number;
-    CELIAPP?: number;
-    REER?: number;
-    REERMax?: number;
-    REEE?: number;
-    NonReg?: number;
-    Crypto?: number;
-    RetraitREER?: number;
-    RetraitCELI?: number;
-    rapBalance?: number;
-    Immobilier?: number;
-    DetteTotale?: number;
-    diffNW?: number;
-    diffCELI?: number;
-    diffREER?: number;
-    diffLiquid?: number;
-    ImpotLatent?: number;
-    FluxImpots?: number;
-    ImpotRetraitREER?: number;
-    ImpotSalaireMois?: number;
-    ImpotGainsCap?: number;
-    ImpotDivers?: number;
-    TaxPaidRevenu?: number;
-    TaxPaidGains?: number;
-    TaxPaidDivers?: number;
-    TaxPaidREER?: number;
-    WithheldTaxRrif?: number;
-    FireTarget?: number;
-    CoastFIRE?: number;
-    BaristaFIRE?: number;
-    isRetired?: boolean;
-    ContribCELI?: number;
-    ContribREER?: number;
-    ContribNonReg?: number;
-    MarketGrowthCELI?: number;
-    MarketGrowthREER?: number;
-    MarketGrowthNonReg?: number;
-    MarketGrowthCrypto?: number;
-    MarketGrowthLiquid?: number;
-    MarketGrowthCELIAPP?: number;
-    MarketGrowthREEE?: number;
-    MarketGrowthPctCELI?: number;
-    MarketGrowthPctREER?: number;
-    MarketGrowthPctNonReg?: number;
-    MarketGrowthPctCrypto?: number;
-    MarketGrowthPctLiquid?: number;
-    MarketGrowthPctCELIAPP?: number;
-    MarketGrowthPctREEE?: number;
-    NetTransferCELI?: number;
-    NetTransferREER?: number;
-    NetTransferNonReg?: number;
-    NetTransferCrypto?: number;
-    NetTransferLiquid?: number;
-    NetTransferCELIAPP?: number;
-    NetTransferREEE?: number;
-    ExpenseInflationImpact?: number;
-    ExpenseInflationPct?: number;
-    AccruedTaxRevenu?: number;
-    AccruedTaxGains?: number;
-    AccruedTaxDivers?: number;
-    AccruedTaxREER?: number;
-    lifeEvents?: string[];
-    flowEvents?: string[];
-    // Champs additionnels dynamiques (consommateurs spécifiques)
-    [extra: string]: any;
-}
-
-// FIX cycle 2 TS reviewer (ROI massif): typer le retour de calculateFutureProjection
-// élimine ~40 erreurs en mode strict (cascade TS2339 sur consumers .chartData, .NetWorth, etc.).
-export interface ProjectionResult {
-    chartData: ProjectionChartPoint[];
-    finalNetWorth?: number;
-    estateNetWorth?: number;
-    totalTaxesPaid?: number;
-    totalGrowth?: number;
-    totalExpenses?: number;
-    minNetWorth?: number;
-    shortfallMonths?: number;
-    shortfallRate?: number;
-    fireNumber?: number;
-    aiNote?: string;
-    strategyName?: string;
-    stratType?: FutureScenarioType | string;
-    stratDescription?: string;
-    pros?: string[];
-    cons?: string[];
-    icon?: string;
-    delayPensions?: boolean;
-    gainVsAuto?: number;
-    successRate?: number | null;
-    fvi?: number | null;
-    expertMetrics?: any;
-    allResults?: ProjectionResult[];
-    bestStrategyIdx?: number;
-    actionPlan?: { monthlyCashflow: number; strategy: AllocationStrategy } | null;
-    [key: string]: any; // sub-fields dynamiques pour compat
 }
 
 // Cycle 7 split: calculateGrossNeeded retiré (dead code, jamais appelé)
@@ -331,11 +200,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     const simSalaryGrowth = effProj.salaryGrowth ?? 2.5;
     const simEFMonths = effProj.emergencyFundMonths || 3;
 
-    let mcCeliRate = baseRates.celi;
-    let mcReerRate = baseRates.reer;
-    let mcNonRegRate = baseRates.nonReg;
-    let mcCryptoRate = baseRates.crypto;
-    let mcCashRate = baseRates.cash;
+    // Cycle 27 split: stressTest config construit une fois (évite re-création par itération)
+    const stressTestConfig: StressTestConfig | null = effProj.stressTestEnabled ? {
+        enabled: true,
+        year: effProj.stressTestYear || 5,
+        recoveryMonths: effProj.stressTestRecoveryMonths || 24,
+        inflationShock: effProj.stressTestInflationShock || 0,
+    } : null;
 
     // Cycle 22 split: RRQ adjustment + pensions baseline → ./projection/setupSimulation
     const { rrqAdjustmentFactor, rrqBasePension, psvBasePension } = computeRrqAdjustment(delayPensions, retirementGoal);
@@ -427,76 +298,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         if (isDead) break;
 
         // --- 1. GROWTH & MARKET SHOCKS ---
-        let currentInflation = simInflation;
+        // Cycle 27 split: chocs de marché + bootstrap historique + stress test inflation → ./projection/marketShocks
+        const { mcCeliRate, mcReerRate, mcNonRegRate, mcCryptoRate, mcCashRate, currentInflation } =
+            computeMonthlyMarketRates(m, enableMonteCarlo, baseRates, simInflation, historicalSequence, stressTestConfig, rng);
 
-
-
-        if (enableMonteCarlo) {
-            // Correlated monthly shocks using our seeded PRNG
-            const Z_market = gaussianRandom(rng, 0, 1);
-            const Z_macro = gaussianRandom(rng, 0, 1);
-
-            const Z_stocks = (Z_market * 0.8 + gaussianRandom(rng, 0, 1) * 0.6);
-            const Z_crypto = (Z_market * 1.2 + gaussianRandom(rng, 0, 1) * 0.8);
-            const Z_inflation_shock = (-Z_market * 0.4 + Z_macro * 0.6 + gaussianRandom(rng, 0, 1) * 0.5);
-            const Z_cash = (Z_inflation_shock * 0.5 + gaussianRandom(rng, 0, 1) * 0.5);
-
-            mcCeliRate = applyShock(baseRates.celi, 15, Z_stocks);
-            mcReerRate = applyShock(baseRates.reer, 15, Z_stocks);
-            mcNonRegRate = applyShock(baseRates.nonReg, 15, Z_stocks);
-            mcCryptoRate = applyShock(baseRates.crypto, 45, Z_crypto);
-            mcCashRate = applyShock(baseRates.cash, 2, Z_cash);
-            currentInflation = applyShock(simInflation, 1.5, Z_inflation_shock);
-        }
-
-        // W1.2 + W4.5: Override avec rendements historiques (bootstrap MC ou replay déterministe)
-        if (historicalSequence) {
-            const yearIdx = Math.floor(m / 12);
-            const histYear = historicalSequence[yearIdx];
-            if (histYear) {
-                // S&P 500 → actions (CELI/REER/NonReg)
-                mcCeliRate = histYear.sp500TotalReturn;
-                mcReerRate = histYear.sp500TotalReturn;
-                mcNonRegRate = histYear.sp500TotalReturn;
-                // Treasury 10Y → cash proxy
-                mcCashRate = histYear.bondReturn;
-                // FIX D2.x: utilise CPI Canada (StatCan v41690973) si disponible,
-                // sinon fallback US. Capture les vrais chocs d'inflation canadiens —
-                // notamment années 70-80 où CA et US ont divergé via les contrôles
-                // de prix Trudeau 1975-78.
-                currentInflation = canadianInflationFor(histYear.year, histYear.inflationRate);
-                // Crypto: garde gaussien (pas de série historique pertinente avant 2010)
-            }
-        }
-
-        // V36: Crisis Dashboard 2.0 — Inflation Shock
-        if (effProj.stressTestEnabled) {
-            const crashStartMonth = (effProj.stressTestYear || 5) * 12;
-            const recoveryMonths = effProj.stressTestRecoveryMonths || 24;
-            if (m >= crashStartMonth && m <= crashStartMonth + recoveryMonths) {
-                currentInflation += (effProj.stressTestInflationShock || 0);
-            }
-        }
-
-        // V31: Calcul de l'Inflation Cumulative des Dépenses (avec GK)
-        const healthInflationBonus = (isRetired && age >= 75) ? Math.min(2.5, (age - 75) * 0.25) : 0;
-
-        // D2.9: Inflation différenciée par poste (panier CPI Stats Canada).
-        let effectiveExpenseInflation: number;
-        if (effProj.usePerCategoryInflation) {
-            // Pondérations CPI 2023: Logement 30, Alim 17, Transport 15, Santé 5, Loisirs 6, Autres 27.
-            const wHousing = 0.30, wFood = 0.17, wTransport = 0.15, wHealth = 0.05, wLeisure = 0.06, wOther = 0.27;
-            const iHousing  = effProj.inflationHousing  ?? 4.0;
-            const iFood     = effProj.inflationFood     ?? 3.5;
-            const iTransp   = effProj.inflationTransport?? 2.5;
-            const iHealthB  = (effProj.inflationHealth  ?? 4.5) + healthInflationBonus; // bonus santé seulement sur la part santé
-            const iLeisure  = effProj.inflationLeisure  ?? 1.5;
-            const iOther    = effProj.inflationOther    ?? 2.0;
-            effectiveExpenseInflation = wHousing*iHousing + wFood*iFood + wTransport*iTransp + wHealth*iHealthB + wLeisure*iLeisure + wOther*iOther;
-        } else {
-            effectiveExpenseInflation = currentInflation + healthInflationBonus;
-        }
-
+        // Cycle 29 split: inflation effective des dépenses → ./projection/monthlyCalcs
+        const effectiveExpenseInflation = computeEffectiveExpenseInflation(age, isRetired, currentInflation, effProj);
         if (!guytonKlinger_freezeInflation) {
             expenseMultiplier *= Math.pow(1 + effectiveExpenseInflation / 100, 1 / 12);
         }
@@ -729,31 +536,14 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         }
         taxPreviousYear = aprilResult.newTaxPreviousYear;
 
-        // V49: Monthly salary withholding approximation (T1213 Optimization)
+        // Cycle 29 split: retenue salariale mensuelle → ./projection/monthlyCalcs
         if (!isRetired) {
-            const yearsElapsed = Math.floor(m / 12);
-            const inflationFactor = Math.pow(1 + simInflation / 100, yearsElapsed);
-            const grossMarcReal = (grossMarcBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed)) / inflationFactor;
-            const grossAnnaReal = (grossAnnaBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed)) / inflationFactor;
-
-            let monthlyDeductionsMarc = 0;
-            let monthlyDeductionsAnna = 0;
-            
-            // Si T1213 activé, l'employeur réduit la retenue selon les REER/CELIAPP du mois courant
-            if (effProj.optimizeSourceDeductions) {
-                const totalMonthlyDeduct = (contribREER + contribCELIAPP + (smithInterestDeductibleYear/12)) / inflationFactor;
-                if (grossMarcReal > grossAnnaReal) monthlyDeductionsMarc = totalMonthlyDeduct;
-                else monthlyDeductionsAnna = totalMonthlyDeduct;
-            }
-
-            const taxMarcReal = grossMarcReal > 0 ? calculateFiscalReport(grossMarcReal, monthlyDeductionsMarc, 0, loopYear, enableMonteCarlo).totalTax : 0;
-            const taxAnnaReal = grossAnnaReal > 0 ? calculateFiscalReport(grossAnnaReal, monthlyDeductionsAnna, 0, loopYear, enableMonteCarlo).totalTax : 0;
-            
-            const totalAnnualTax = (taxMarcReal + taxAnnaReal) * inflationFactor;
-            const estimatedWithholding = totalAnnualTax * 0.92;
-            const approxAnnualDeficit = Math.max(-5000, totalAnnualTax - estimatedWithholding);
-            
-            taxCurrentYear.revenu += approxAnnualDeficit / 12;
+            taxCurrentYear.revenu += computeMonthlyWithholding(
+                { m, loopYear, simInflation, simSalaryGrowth, grossMarcBaseAnnual, grossAnnaBaseAnnual,
+                  contribREER, contribCELIAPP, smithInterestDeductibleYear,
+                  enableMonteCarlo, optimizeSourceDeductions: effProj.optimizeSourceDeductions },
+                calculateFiscalReport,
+            );
             impotSalaireMois = 0;
         }
 
@@ -1163,77 +953,39 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         }));
     }
 
-    // V48: Smith Manoeuvre Bug (Création magique d'argent)
-    // On soustrait strictement la dette HELOC de la valeur nette car l'actif réinvesti existe dans le Non-Enreg
-    const finalRawNetWorth = liquid + celi + celiapp + reer + nonReg + crypto + reee + realEstateEquity - mortgageBalance - smithManoeuvreDebt;
+    // Cycle 26 split: bilan successoral → ./projection/estateCalculation
+    const estate = computeEstateNetWorth({
+        liquid, celi, celiapp, reer, nonReg, nonRegACB, crypto, reee,
+        realEstateEquity, mortgageBalance, smithManoeuvreDebt,
+        incomeRetirement, accRentesYear, accRetraitsReerYear,
+        grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
+        simulationYears: projection.years,
+        startYear, currentAge,
+        retirementTargetAge: retirementGoal.targetAge,
+        governmentPension: retirementGoal.governmentPension,
+        activeUsersCount, simInflation, enableMonteCarlo,
+        startingCash: calculatedStartingCash,
+        startingCELI: liveCSVBalances.CELI || 0,
+        startingCELIAPP: liveCSVBalances.CELIAPP || 0,
+        startingREER: liveCSVBalances.REER || 0,
+        startingNonReg: liveCSVBalances.NON_ENREG || 0,
+        startingCrypto: liveCSVBalances.CRYPTO || 0,
+        startingREEE: liveCSVBalances.REEE || 0,
+    }, calculateFiscalReport);
 
-    // V40: Improved Estate Net Worth (Bilan Successoral)
-    // We simulate a final year including all REER and all capital gains at the end of simulation.
-    const finalM = projection.years * 12;
-    const finalYear = startYear + projection.years;
-    const finalAge = currentAge + projection.years;
-    const finalIsRetired = finalAge >= retirementGoal.targetAge;
-
-    const estateCurrentIncome = finalIsRetired
-        ? (incomeRetirement * 12 + accRentesYear + accRetraitsReerYear) // these accumulators are annual, they represent the last simulated year
-        : (grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, projection.years);
-
-    const estateLatentGain = Math.max(0, nonReg - nonRegACB);
-    const thresholdEstate = CAPITAL_GAINS_HIGH_THRESHOLD * activeUsersCount;
-
-    let taxableEstateGain = 0;
-    if (estateLatentGain <= thresholdEstate) {
-        taxableEstateGain = estateLatentGain * 0.50;
-    } else {
-        taxableEstateGain = (thresholdEstate * 0.50) + ((estateLatentGain - thresholdEstate) * 0.6667);
-    }
-
-    const cryptoGain = crypto;
-    const taxableCryptoGain = cryptoGain * 0.50;
-
-    const totalEstateLiquidation = reer + taxableEstateGain + taxableCryptoGain;
-    // Phase 2: Double décès (Fin de simulation complète). 
-    // L'impôt de succession est appliqué à 100%, annulation du Spousal Rollover car la ligne du temps s'arrête.
-    // V48: On assume que l'impôt est supporté par le survivant SEUL, car c'est la fin absolue des deux vies.
-    const estateReportBase = calculateFiscalReport(estateCurrentIncome / activeUsersCount, 0, 0, finalYear, enableMonteCarlo);
-    const estateReportFinal = calculateFiscalReport((estateCurrentIncome + totalEstateLiquidation), 0, 0, finalYear, enableMonteCarlo);
-    const totalEstateTax = (estateReportFinal.totalTax - estateReportBase.totalTax);
-
-    // V60: Ultimate Estate Integration (NPV of future social safety nets)
-    // If we stop at age 65, the value of RRQ/PSV is high but invisible. We calculate its Net Present Value (NPV).
-    const lifeExpectancy = 95;
-    const remainingYearsAtEnd = Math.max(0, lifeExpectancy - finalAge);
-    const rrqExpected = (retirementGoal.governmentPension * 0.65 * (activeUsersCount || 1)) * Math.pow(1 + simInflation / 100, projection.years);
-    const psvExpected = (retirementGoal.governmentPension * 0.35 * (activeUsersCount || 1)) * Math.pow(1 + simInflation / 100, projection.years);
-    
-    // Simplification calculate NPV (Annuity present value formula)
-    // r = real discount rate (risk-free after inflation), approx 2%
-    const r_npv = 0.02;
-    const npvFactor = r_npv > 0 ? (1 - Math.pow(1 + r_npv, -remainingYearsAtEnd)) / r_npv : remainingYearsAtEnd;
-    
-    const rrqNPV = finalAge >= 65 ? (rrqExpected * npvFactor) : (rrqExpected * npvFactor * Math.pow(1.02, -(65 - finalAge)));
-    const psvNPV = finalAge >= 65 ? (psvExpected * npvFactor) : (psvExpected * npvFactor * Math.pow(1.02, -(65 - finalAge)));
-    
-    // The "Pension Bonus" reflects the extra value of having delayed pensions vs regular ones
-    const pensionValueTotal = (rrqNPV + psvNPV);
-
-    const estateNetWorth = finalRawNetWorth - totalEstateTax + (pensionValueTotal * 0.7); // 30% reduction for liquidity risk
-    
-    const startNW = (calculatedStartingCash + liveCSVBalances.CELI + liveCSVBalances.CELIAPP + liveCSVBalances.REER + liveCSVBalances.NON_ENREG + liveCSVBalances.CRYPTO + liveCSVBalances.REEE);
-
-    return { 
-        chartData: data, 
-        actionPlan: month1ActionPlan, 
-        fireNumber: fireTargetNetWorth || 0, 
-        finalNetWorth: Number.isNaN(finalRawNetWorth) ? 0 : finalRawNetWorth, 
-        estateNetWorth: Number.isNaN(estateNetWorth) ? 0 : estateNetWorth,
-        totalEstateTax: Number.isNaN(totalEstateTax) ? 0 : totalEstateTax,
+    return {
+        chartData: data,
+        actionPlan: month1ActionPlan,
+        fireNumber: fireTargetNetWorth || 0,
+        finalNetWorth: estate.finalRawNetWorth,
+        estateNetWorth: estate.estateNetWorth,
+        totalEstateTax: estate.totalEstateTax,
         totalTaxesPaid: totalTaxesPaid || 0,
         totalGrowth: totalGrowth || 0,
         totalExpenses,
         minNetWorth,
         shortfallRate: shortfallMonths / (projection.years * 12),
-        startNW
+        startNW: estate.startNW,
     };
 };
 

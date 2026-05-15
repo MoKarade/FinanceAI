@@ -37,7 +37,7 @@ export interface LatentTaxCtx {
  * Méthode: compare la facture fiscale à taux courant vs liquidation totale.
  */
 export function computeLatentTax(
-    ctx: LatentTaxCtx,
+    ctx: Readonly<LatentTaxCtx>,
     calculateFiscalReport: FiscalFn,
 ): number {
     const {

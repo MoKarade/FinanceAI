@@ -413,7 +413,78 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict de 3 strings (pas de markdown):
     }
 };
 
-// ─── Vision: analyse documents fiscaux (compat gemini.ts analyzeDocuments) ──
+// ─── Vision: analyse fiche de paie (compat TaxCenter) ───────────────────────
+
+const PayslipSchema = z.object({
+    grossPeriod: z.number(),
+    netPeriod: z.number(),
+    taxPeriod: z.number(),
+    rrspPeriod: z.number(),
+    frequency: z.enum(['Weekly', 'Bi-Weekly', 'Semi-Monthly', 'Monthly']),
+});
+export type PayslipData = z.infer<typeof PayslipSchema>;
+
+/**
+ * Phase 4 A4 — analyse vision d'une fiche de paie / document fiscal.
+ *
+ * Extrait les montants de la PÉRIODE COURANTE (pas YTD) au format
+ * structuré pour TaxCenter. Modèle Sonnet 4.6 (Vision).
+ */
+export const analyzePayslip = async (file: File, apiKey: string): Promise<PayslipData> => {
+    if (!apiKey) throw new Error('Clé API Anthropic manquante.');
+
+    // Lit le fichier en base64 pour Anthropic Vision
+    const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1] || result);
+        };
+        reader.onerror = () => reject(new Error('Lecture fichier échouée'));
+        reader.readAsDataURL(file);
+    });
+
+    const mediaType = (file.type || 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+    if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mediaType)) {
+        throw new Error(`Type ${mediaType} non supporté. Utilise JPG/PNG/GIF/WEBP.`);
+    }
+
+    const client = makeClient(apiKey);
+    const response = await client.messages.create({
+        model: MODEL_SONNET,
+        max_tokens: 512,
+        system: `${QUEBEC_FISCAL_CONTEXT}\nTu analyses des fiches de paie québécoises (T4, RL-1, talons). Extrais les montants de la PÉRIODE COURANTE uniquement (pas les cumuls YTD).`,
+        messages: [{
+            role: 'user',
+            content: [
+                { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+                {
+                    type: 'text',
+                    text: `Analyse cette fiche de paie. Extrais UNIQUEMENT les montants de la PÉRIODE COURANTE et retourne un JSON strict (sans markdown):
+{
+  "grossPeriod": number,
+  "netPeriod": number,
+  "taxPeriod": number,
+  "rrspPeriod": number,
+  "frequency": "Weekly" | "Bi-Weekly" | "Semi-Monthly" | "Monthly"
+}`,
+                },
+            ],
+        }],
+    });
+
+    const text = response.content
+        .filter(b => b.type === 'text')
+        .map(b => (b as { type: 'text'; text: string }).text)
+        .join('');
+    const validated = safeJsonValidate(text, PayslipSchema);
+    if (!validated) {
+        throw new Error('Format JSON invalide retourné par Claude.');
+    }
+    return validated;
+};
+
+// ─── Vision: analyse générique de documents (compat gemini.ts) ──────────────
 
 export const analyzeDocuments = async (
     files: File[],

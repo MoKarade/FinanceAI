@@ -1,0 +1,130 @@
+import React, { useEffect, useRef } from 'react';
+
+type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
+
+interface ModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    title?: React.ReactNode;
+    subtitle?: React.ReactNode;
+    icon?: React.ReactNode;
+    size?: ModalSize;
+    closeOnBackdrop?: boolean;
+    closeOnEsc?: boolean;
+    /** Slot pour des actions à droite du titre (ex: actions secondaires). */
+    headerActions?: React.ReactNode;
+    /** Footer slot — affiché en bas, séparé par un border-top. */
+    footer?: React.ReactNode;
+    className?: string;
+    children: React.ReactNode;
+}
+
+const SIZE_CLASSES: Record<ModalSize, string> = {
+    sm: 'max-w-sm',
+    md: 'max-w-md',
+    lg: 'max-w-lg',
+    xl: 'max-w-2xl',
+    full: 'max-w-5xl max-h-[90vh]',
+};
+
+/**
+ * Phase 3A — Primitive Modal unifiée.
+ *
+ * Remplace les 5+ implémentations custom (ConfirmModal, GuideModal,
+ * BudgetAiModal, BackupPanel modals, Transactions wizard…).
+ *
+ * Caractéristiques:
+ *  - role="dialog" + aria-modal="true" + aria-labelledby auto
+ *  - Backdrop blur + escape key + clic backdrop (configurables)
+ *  - Focus trap minimal: focus initial sur le close button
+ *  - Lock body scroll quand ouvert (évite scroll arrière-plan)
+ *  - Mobile-friendly: w-full max-w-X, p-4 du backdrop pour padding sûr
+ */
+export const Modal: React.FC<ModalProps> = ({
+    isOpen, onClose,
+    title, subtitle, icon,
+    size = 'md',
+    closeOnBackdrop = true,
+    closeOnEsc = true,
+    headerActions, footer,
+    className = '', children,
+}) => {
+    const closeBtnRef = useRef<HTMLButtonElement>(null);
+    const titleId = React.useId();
+
+    useEffect(() => {
+        if (!isOpen) return;
+        // Focus le bouton close au mount
+        const t = setTimeout(() => closeBtnRef.current?.focus(), 50);
+        // Lock body scroll
+        const prevOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        // Escape handler
+        const onKey = (e: KeyboardEvent) => {
+            if (closeOnEsc && e.key === 'Escape') onClose();
+        };
+        document.addEventListener('keydown', onKey);
+        return () => {
+            clearTimeout(t);
+            document.body.style.overflow = prevOverflow;
+            document.removeEventListener('keydown', onKey);
+        };
+    }, [isOpen, closeOnEsc, onClose]);
+
+    if (!isOpen) return null;
+
+    return (
+        <div
+            role="presentation"
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+            onClick={closeOnBackdrop ? onClose : undefined}
+        >
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={title ? titleId : undefined}
+                onClick={e => e.stopPropagation()}
+                className={[
+                    'bg-surface border border-white/15 rounded-card shadow-2xl w-full overflow-hidden',
+                    'animate-slide-up flex flex-col max-h-[90vh]',
+                    SIZE_CLASSES[size],
+                    className,
+                ].filter(Boolean).join(' ')}
+            >
+                {(title || headerActions) && (
+                    <div className="flex items-start justify-between gap-3 p-4 border-b border-white/10 flex-shrink-0">
+                        <div className="flex items-center gap-3 min-w-0">
+                            {icon && <span className="text-h1 flex-shrink-0" aria-hidden="true">{icon}</span>}
+                            <div className="min-w-0">
+                                {title && <h2 id={titleId} className="text-h2 text-ink-50 truncate">{title}</h2>}
+                                {subtitle && <p className="text-meta text-ink-400 mt-0.5">{subtitle}</p>}
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                            {headerActions}
+                            <button
+                                ref={closeBtnRef}
+                                type="button"
+                                onClick={onClose}
+                                aria-label="Fermer"
+                                className="w-8 h-8 inline-flex items-center justify-center rounded-card text-ink-300 hover:text-ink-50 hover:bg-white/10 transition-colors focus-ring"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex-1 overflow-y-auto p-4 min-h-0">
+                    {children}
+                </div>
+
+                {footer && (
+                    <div className="flex items-center justify-end gap-2 p-4 border-t border-white/10 flex-shrink-0">
+                        {footer}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};

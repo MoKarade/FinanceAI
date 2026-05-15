@@ -427,7 +427,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         </div>
                         <div>
                             <p className="text-sm text-gray-200 leading-relaxed">
-                                {aiNote.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+                                {aiNote.split(/(\*\*[^*]+\*\*)/g).map((part: string, i: number) =>
                                     part.startsWith('**') && part.endsWith('**')
                                         ? <strong key={i}>{part.slice(2, -2)}</strong>
                                         : <Fragment key={i}>{part}</Fragment>

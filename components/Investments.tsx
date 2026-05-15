@@ -294,7 +294,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
         let currentPortfolioValue = currentAllocation.reduce((s, a) => s + a.value, 0);
         let monthlyIncome = totalAnnualDividends / 12;
 
-        const data = [];
+        const data: Array<{ month: string; Revenu: number; Accumulé: number }> = [];
         const today = new Date();
 
         for (let i = 0; i < 12; i++) {

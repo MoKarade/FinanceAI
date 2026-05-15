@@ -105,7 +105,7 @@ export interface ProjectionChartPoint {
     flowEvents?: string[];
     // Audit 2026-05: index signature narrow (unknown au lieu de any) pour
     // forcer narrowing côté consommateur sans casser l'accès aux champs ad-hoc.
-    [extra: string]: number | string | boolean | string[] | undefined;
+    [extra: string]: number | string | boolean | string[] | null | undefined;
 }
 
 // FIX cycle 2 TS reviewer (ROI massif): typer le retour de calculateFutureProjection

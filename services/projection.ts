@@ -6,7 +6,7 @@ import { runMonteCarlo } from './projection/monteCarlo';
 import { SCENARIO_DEFINITIONS } from './projection/scenarios';
 import { applyW5Effects, applyAgeBasedExpenses } from './projection/w5Effects';
 import { tryCriticalIllness, tryInheritance, tryMortality, trySpouseMortality, tryLtcTrigger, ltcMonthlyCost, tickJobLoss, tickLtd, tryDivorce } from './projection/stochasticEvents';
-import { processAprilSettlement, computeOasClawback, processTaxLossHarvesting, processAutoVehicleReplacement, processDecemberTaxFiling } from './projection/taxCycle';
+import { processAprilSettlement, computeOasClawback, processTaxLossHarvesting, processAutoVehicleReplacement, processDecemberTaxFiling, processJanuaryReset } from './projection/taxCycle';
 import { buildHistoricalSequence, buildReplaySequence, canadianInflationFor, type YearReturn } from './projection/historicalReturns';
 
 export interface SimulationParams {
@@ -973,113 +973,55 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             if (oasResult.logMsg) flowEventsLog.push(oasResult.logMsg);
         }
 
-        // ---- JANVIER: Réinitialisation + FERR + CELI dynamique ----
-        if (currentMonthIndex === 0 && m > 0) {
-            accRetraitsReerYear = 0;
-            accRentesYear = 0;
-            monthlyOasReduction = oasClawbackNextPeriod / 12;
-
-            const nextLoopYear = startYear + Math.floor(m / 12);
-
-            // V38: Plafond CELI indexé à l'inflation avec règle d'arrondi ARC (500$)
-            // Formule: P_brut = 7000 * (1 + i_inf)^(Y - 2026)
-            const celiLimitBrut = 7000 * Math.pow(1 + simInflation / 100, nextLoopYear - 2026);
-            const celiLimitThisYear = nextLoopYear >= 2026
-                ? Math.round(celiLimitBrut / 500) * 500
-                : 7000;
-
-            // V38: Seuls les résidants de 18+ ans accumulent du CELI
-            let totalCeliLimitThisYear = 0;
-            config.users.filter(u => u).forEach(u => {
-                const birthYear = u.birthYear || (startYear - (u.age || 30));
-                const arrivalYear = u.canadaArrivalYear || (startYear - 5);
-                const ageThisYear = nextLoopYear - birthYear;
-                if (ageThisYear >= 18 && nextLoopYear >= arrivalYear) {
-                    totalCeliLimitThisYear += celiLimitThisYear;
-                }
-            });
-
-            celiRoom += totalCeliLimitThisYear;
-
-            // V38: CELIAPP Logic - Plafonds figés à 8k et 40k, limités à 15 ans
-            // V66: Admissibilité dynamique - S'arrête après l'achat d'une résidence principale
-            const anyUserEligibleFhsa = !hasPurchasedPrimary && config.users.some(u => {
-                const birthYear = u.birthYear || (startYear - (u.age || 30));
-                const arrivalYear = u.canadaArrivalYear || (startYear - 5);
-                const ageThisYear = nextLoopYear - birthYear;
-                const isFirstBuyer = !u.hasOwnedPropertyLast4Years;
-                return ageThisYear >= 18 && nextLoopYear >= arrivalYear && isFirstBuyer;
-            });
-
-            const yearsSinceOpening = nextLoopYear - celiappOpeningYear;
-            const remainingLifetimeRoom = Math.max(0, (40000 * fhsaEligibleUsersCount) - fhsaLifetimeContrib);
-            
-            if (anyUserEligibleFhsa && yearsSinceOpening < 15 && remainingLifetimeRoom > 0) {
-                const fhsaYearlyFixed = 8000 * fhsaEligibleUsersCount;
-                const unusedPrevious = fhsaRoom;
-                const allowedCarryForward = Math.min(fhsaYearlyFixed, unusedPrevious);
-                const newRoom = Math.min(remainingLifetimeRoom, fhsaYearlyFixed + allowedCarryForward);
-                fhsaRoom = newRoom;
-            } else if (yearsSinceOpening >= 15 && celiapp > 0) {
-                // V38: Fermeture obligatoire après 15 ans -> Transfert vers REER (sans impact sur plafond)
-                flowEventsLog.push(`🏛️ CELIAPP: Fin des 15 ans. Transfert vers REER.`);
-                reer += celiapp;
+        // Cycle 12 split: January reset → ./projection/taxCycle.processJanuaryReset
+        const janResult = processJanuaryReset(
+            currentMonthIndex,
+            {
+                m, startYear, simInflation, age, isRetired, activeUsersCount,
+                oasClawbackNextPeriod, hasPurchasedPrimary,
+                celiappOpeningYear, fhsaEligibleUsersCount,
+                users: config.users,
+                celiapp, reer, liquid, nonReg, crypto, celi,
+                accGrossIncomeYear, accRetraitsReerYearOld: accRetraitsReerYear,
+                incomeRetirementMonthly: incomeRetirement,
+                fhsaRoomCurrent: fhsaRoom, fhsaLifetimeContrib,
+                celiRoomCurrent: celiRoom, rrspRoomCurrent: rrspRoom,
+                taxCurrentYearGains: taxCurrentYear.gains,
+                prevPortfolioNW, loopYear,
+            },
+            { RRIF_RATES, calculateFiscalReport },
+        );
+        if (janResult) {
+            accRetraitsReerYear = janResult.accRetraitsReerYearReset;
+            accRentesYear = janResult.accRentesYearReset;
+            monthlyOasReduction = janResult.monthlyOasReduction;
+            celiRoom += janResult.celiRoomDelta;
+            fhsaRoom = janResult.fhsaRoomNew;
+            if (janResult.celiappTransferToReer > 0) {
+                reer += janResult.celiappTransferToReer;
                 celiapp = 0;
-                fhsaRoom = 0;
+            }
+            if (janResult.rrspRoomReset) {
+                rrspRoom = 0;
             } else {
-                fhsaRoom = 0;
+                rrspRoom += janResult.rrspRoomDelta;
             }
-
-            // V38: REER - Droit de cotisation de 18% du revenu brut CANADIEN de l'année précédente
-            // Formule: Max_ARC = 32490 * (1 + i_plafond)^(Y - 2026)
-            // V46: Indexation réaliste du plafond REER basée sur l'inflation + 0.5% (Non liée aux promotions salariales de l'utilisateur)
-            let rrspYearlyCap = 33330; // 2026 cap
-            if (nextLoopYear === 2025) rrspYearlyCap = 32490;
-            else if (nextLoopYear > 2026) {
-                const assumedRrspGrowth = (simInflation + 0.5) / 100;
-                rrspYearlyCap = 33330 * Math.pow(1 + assumedRrspGrowth, nextLoopYear - 2026);
+            accGrossIncomeYear = janResult.accGrossIncomeYearReset;
+            // FERR
+            if (janResult.ferrMandatoryGross > 0) {
+                taxOnRrif = janResult.ferrTaxOnRrif;
+                reer -= janResult.ferrMandatoryGross;
+                taxCurrentYear.reer += janResult.ferrTaxOnRrif;
+                impotReerMois += janResult.ferrTaxOnRrif;
+                accRetraitsReerYear += janResult.ferrMandatoryGross;
+                liquid += janResult.ferrMandatoryGross;
+                if (janResult.ferrLogMsg) flowEventsLog.push(janResult.ferrLogMsg);
             }
-
-            const totalFE = config.users.reduce((acc, u) => acc + (u?.facteurEquivalence || 0), 0);
-
-            // On calcule le nouveau droit basé sur ce qui a été accumulé l'année précédente (accGrossIncomeYear)
-            // V44: Subtrai le Facteur d'Équivalence (FE)
-            const newRrspRoom = Math.max(0, Math.min(rrspYearlyCap * activeUsersCount, accGrossIncomeYear * 0.18) - totalFE);
-            if (age <= 71) {
-                rrspRoom += newRrspRoom;
-            } else {
-                rrspRoom = 0; // V38: Les droits s'arrêtent après 71 ans
-            }
-            // V38: Reset pour capturer le revenu de la nouvelle année
-            accGrossIncomeYear = 0;
-
-            if (age >= 72) { // Le statut isRetired n'a aucune importance légale ici
-                const rrifRate = RRIF_RATES[age] || 0.20;
-                const mandatoryGross = reer * rrifRate;
-
-                // V47: RRIF Marginal Rate Fix - Include previous year capital gains/dividends for realistic bracket
-                const priorYearGainsProxy = (taxCurrentYear.gains / 0.25) || 0; // rough proxy based on tax
-                const deflatedIncomeForMargRate = ((accRetraitsReerYear + priorYearGainsProxy + (isRetired ? incomeRetirement * 12 : 0)) / activeUsersCount) / Math.pow(1 + simInflation / 100, m / 12);
-
-                const rrifMarginalRate = calculateFiscalReport(deflatedIncomeForMargRate, 0, 0, loopYear).marginalRate;
-
-                taxOnRrif = mandatoryGross * (rrifMarginalRate / 100);
-                const netRrif = mandatoryGross - taxOnRrif;
-                reer -= mandatoryGross;
-                taxCurrentYear.reer += taxOnRrif;
-                impotReerMois += taxOnRrif;
-                accRetraitsReerYear += mandatoryGross;
-                liquid += mandatoryGross;
-                flowEventsLog.push(`🏦 FERR (${(rrifRate * 100).toFixed(1)}%): Brut ${mandatoryGross.toFixed(2)}$ → Net ${netRrif.toFixed(2)}$ → Liquidités`);
-            }
-
-            // V25-7: Check Guyton-Klinger (compare to portfolio NW a year ago)
-            if (isRetired && m > 12) {
-                const currentPortfolio = liquid + celi + reer + nonReg + crypto;
-                guytonKlinger_freezeInflation = currentPortfolio < prevPortfolioNW * 0.95;
-                if (guytonKlinger_freezeInflation) flowEventsLog.push('❄️ Guyton-Klinger: Gel de l’indexation des dépenses');
-                prevPortfolioNW = currentPortfolio;
-            }
+            // Guyton-Klinger
+            guytonKlinger_freezeInflation = janResult.guytonKlingerFreeze;
+            prevPortfolioNW = janResult.newPrevPortfolioNW;
+            // Logs
+            janResult.logs.forEach(msg => flowEventsLog.push(msg));
         }
 
         // V31: Expiration CELIAPP (15 ans) - Transfert forcé vers REER

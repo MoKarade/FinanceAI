@@ -10,6 +10,8 @@ import { processAprilSettlement, computeOasClawback, processTaxLossHarvesting, p
 import { buildHistoricalSequence, buildReplaySequence, canadianInflationFor, type YearReturn } from './projection/historicalReturns';
 import { computeRetirementIncome } from './projection/retirementIncome';
 import { processOneChild } from './projection/childrenReee';
+import { computeActiveIncome } from './projection/activeIncome';
+import { processReerMeltdown } from './projection/meltdownReer';
 
 export interface SimulationParams {
     projection: ProjectionConfig;
@@ -652,68 +654,23 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // EXPENSES & EVENTS plus bas (évite la double affectation).
         } else {
             // ---- PHASE ACTIVE ----
-            const yearsElapsed = Math.floor(m / 12);
-            incomeMarc = incomeMarcNetMonthly * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
-            // W1.4 FIX (critique code-reviewer): si conjoint mort, salaire user2 → 0
-            incomeAnna = survivorMode ? 0 : (incomeAnnaNetMonthly * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed));
-
-            // Cycle 9 split: job loss + LTD → ./projection/stochasticEvents (tick*)
-            const wasUnemployed = unemployedMonthsRemaining > 0;
-            const jobLossResult = tickJobLoss({ m, currentMonthIndex, enableMonteCarlo, rng }, effProj, unemployedMonthsRemaining);
-            unemployedMonthsRemaining = jobLossResult.newMonthsRemaining;
-            if (jobLossResult.triggered) {
-                logEvent(lifeEventsLog, `💼 Perte d'emploi (durée prévue ${jobLossResult.duration} mois)`);
-            }
-            // Si en chômage (avant décrément ou nouvellement déclenché), revenu ↓ 55% (AE)
-            if (wasUnemployed || jobLossResult.triggered) {
-                incomeMarc *= 0.55;
-            }
-
-            const wasLtd = ltdMonthsRemaining > 0;
-            const ltdResult = tickLtd({ m, currentMonthIndex, enableMonteCarlo, rng }, effProj, ltdMonthsRemaining, ltdLogged);
-            ltdMonthsRemaining = ltdResult.newMonthsRemaining;
-            if (ltdResult.needsLog) {
-                logEvent(lifeEventsLog, `♿ Invalidité longue durée (${ltdResult.duration} mois)`);
-                ltdLogged = true;
-            } else if (ltdResult.duration > 0 && !ltdLogged) {
-                // Nouvellement déclenchée (tirée ce cycle)
-                logEvent(lifeEventsLog, `♿ Invalidité longue durée (${ltdResult.duration} mois)`);
-                ltdLogged = true;
-            }
-            if (wasLtd || ltdResult.duration > 0) {
-                const replacePct = (effProj.ltdIncomeReplacementPct ?? 60) / 100;
-                incomeMarc *= replacePct;
-            }
-
-            // W5.2 INTEGRATION: Bonus + RSU + Side income (capturés dans User mais
-            // ignorés du moteur jusqu'ici). Tous lissés sur l'année (vs paiement
-            // ponctuel qui complexifierait sans gain). Versés en janvier seulement
-            // pour modéliser le saut de revenu.
-            const u1 = config.users[0];
-            const u2 = config.users[1];
-            const bonusMonthly1 = (u1?.bonusPctOfGross ? (grossMarcBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed)) * (u1.bonusPctOfGross / 100) / 12 : 0);
-            const bonusMonthly2 = (!survivorMode && u2?.bonusPctOfGross ? (grossAnnaBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed)) * (u2.bonusPctOfGross / 100) / 12 : 0);
-            const rsuMonthly1 = (u1?.rsuVestingPerYear && (u1.rsuYearsRemaining ?? 99) > yearsElapsed) ? u1.rsuVestingPerYear / 12 : 0;
-            const rsuMonthly2 = (!survivorMode && u2?.rsuVestingPerYear && (u2.rsuYearsRemaining ?? 99) > yearsElapsed) ? u2.rsuVestingPerYear / 12 : 0;
-            const sideMonthly1 = (u1?.sideIncomeAnnual || 0) / 12;
-            const sideMonthly2 = survivorMode ? 0 : (u2?.sideIncomeAnnual || 0) / 12;
-            // Approximation: revenu variable taxé au marginal → ajout au net via *0.55 (~marginal moyen 45%)
-            // ET ajout au brut pour les calculs fiscaux ARC/QC ultérieurs.
-            const variableNet1 = (bonusMonthly1 + rsuMonthly1 + sideMonthly1) * 0.55;
-            const variableNet2 = (bonusMonthly2 + rsuMonthly2 + sideMonthly2) * 0.55;
-            incomeMarc += variableNet1;
-            incomeAnna += variableNet2;
-
-            monthlyIncome = incomeMarc + incomeAnna;
-            const baseGrossMarc = grossMarcBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
-            const baseGrossAnna = survivorMode ? 0 : (grossAnnaBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed));
-            const variableGross1 = (bonusMonthly1 + rsuMonthly1 + sideMonthly1) * 12;
-            const variableGross2 = (bonusMonthly2 + rsuMonthly2 + sideMonthly2) * 12;
-            const currentGrossMarcAnnual = baseGrossMarc + variableGross1;
-            const currentGrossAnnaAnnual = baseGrossAnna + variableGross2;
-            accGrossIncomeYear += (currentGrossMarcAnnual + currentGrossAnnaAnnual) / 12;
-
-
+            // Cycle 15 split: salaire + job loss/LTD + bonus/RSU → ./projection/activeIncome
+            const aiResult = computeActiveIncome(
+                { m, currentMonthIndex, simSalaryGrowth, enableMonteCarlo, rng,
+                  incomeMarcNetMonthly, incomeAnnaNetMonthly, survivorMode,
+                  grossMarcBaseAnnual, grossAnnaBaseAnnual,
+                  unemployedMonthsRemaining, ltdMonthsRemaining, ltdLogged },
+                effProj,
+                config.users,
+            );
+            incomeMarc = aiResult.incomeMarc;
+            incomeAnna = aiResult.incomeAnna;
+            monthlyIncome = aiResult.monthlyIncome;
+            accGrossIncomeYear += aiResult.accGrossAdd;
+            unemployedMonthsRemaining = aiResult.newUnemployedMonths;
+            ltdMonthsRemaining = aiResult.newLtdMonths;
+            ltdLogged = aiResult.ltdLogged;
+            aiResult.lifeEventLogs.forEach(msg => logEvent(lifeEventsLog, msg));
         }
 
         // --- 3. MONTHLY EXPENSES & EVENTS ---
@@ -1470,46 +1427,20 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             liquid = targetEF;
         }
 
-        // V64: Hyper-Aggressive REER Meltdown Logic
-        // If strategy is MELTDOWN_REER and we have RRSP funds, we aggressively "melt" them to avoid the 50%+ tax bomb at death.
-        if (strategy === 'MELTDOWN_REER' && reer > 0) {
-            const yearsSinceStart = Math.floor(m / 12);
-            const currentTotalGross = isRetired 
-                ? (incomeRetirement * 12 + accRetraitsReerYear + accRentesYear)
-                : (grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, yearsSinceStart);
-            
-            // Goal: Aggressive Tax Arbitrage & ESTATE MAXIMIZATION.
-            // For High NW users, we target the 180k+ brackets because the loss at death is ~53%.
-            // Melting at 45-50% early is still a win if it stops the exponential growth of the "tax debt".
-            const totalAssets = (reer + nonReg + celi + realEstateEquity);
-            const isVeryHighNW = totalAssets > 2000000;
-            const isHighNW = totalAssets > 1000000;
-            
-            // We target a much higher "floor" for withdrawals to ensure we actually pull money out.
-            // MOD: Amplified Meltdown (Lowering floor triggers more withdrawals)
-            const targetMeltGross = (isVeryHighNW ? 220000 : isHighNW ? 140000 : 90000) * (activeUsersCount || 1);
-            
-            if (currentTotalGross < targetMeltGross) {
-                // If we are below the target, we withdraw the difference.
-                const meltAmountBrut = Math.min(reer, (targetMeltGross - currentTotalGross) / 12);
-                
-                // Minimum withdrawal to make it worth the move
-                if (meltAmountBrut > 200) { 
-                    const withholding = meltAmountBrut * (isVeryHighNW ? 0.38 : 0.30); // Higher withholding for high brackets
-                    const netMelt = meltAmountBrut - withholding;
-                    
-                    reer -= meltAmountBrut;
-                    nonReg += netMelt;
-                    nonRegACB += netMelt;
-                    accRetraitsReerYear += meltAmountBrut;
-                    taxCurrentYear.reer += withholding;
-                    
-                    // Log the gain context only once a year to avoid spam
-                    if (m % 12 === 0) {
-                        logEvent(flowEventsLog, `🔥 Stratégie Meltdown: Retrait de ${Math.round(meltAmountBrut * 12).toLocaleString('fr-CA')}$ pour saturer les paliers.`);
-                    }
-                }
-            }
+        // Cycle 15 split: REER Meltdown → ./projection/meltdownReer
+        const meltResult = processReerMeltdown(
+            { m, isRetired, simSalaryGrowth, activeUsersCount, incomeRetirement,
+              accRetraitsReerYear, accRentesYear, grossMarcBaseAnnual, grossAnnaBaseAnnual,
+              reer, nonReg, celi, realEstateEquity },
+            strategy,
+        );
+        if (meltResult) {
+            reer -= meltResult.reerDrawn;
+            nonReg += meltResult.nonRegAdd;
+            nonRegACB += meltResult.nonRegAdd;
+            accRetraitsReerYear += meltResult.reerDrawn;
+            taxCurrentYear.reer += meltResult.withholding;
+            if (meltResult.log) logEvent(flowEventsLog, meltResult.log);
         }
 
         // Transfert NonReg → CELI/REER si espace

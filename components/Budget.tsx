@@ -6,6 +6,7 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recha
 import { showToast } from './ui/Toast';
 import { BudgetGroupTable } from './budget/BudgetGroupTable';
 import { BudgetAiModal } from './budget/BudgetAiModal';
+import { useFinanceStore } from '../store/useFinanceStore';
 
 interface BudgetProps {
     transactions: Transaction[];
@@ -302,6 +303,27 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         { name: 'Épargne Théorique', value: Math.max(0, coupleAnalysis.totalSavings), fill: '#60a5fa' }
     ];
 
+    // Wiring 2026-05: snapshot final de la projection vivante.
+    // Permet de relier "épargne théorique mensuelle" → "patrimoine fin vie".
+    const lastProjection = useFinanceStore(s => s.lastProjection);
+    const projectionSummary = useMemo(() => {
+        if (!lastProjection?.chartData?.length) return null;
+        const last = lastProjection.chartData[lastProjection.chartData.length - 1];
+        const monthlyTotalSavings = coupleAnalysis.totalSavings / getMultiplier(); // ramène mensuel
+        // Sensibilité: estimation linéaire grossière "+100$/mo → +Δ patrimoine".
+        // On utilise l'horizon de la projection et un rendement réel net ~5%.
+        const horizonYears = lastProjection.chartData.length / 12;
+        const realRate = 0.05;
+        const factor = ((Math.pow(1 + realRate, horizonYears) - 1) / realRate) * 12; // FV d'une rente
+        const per100 = 100 * factor; // impact patrimoine si +100$/mo
+        return {
+            estateNetWorth: lastProjection.estateNetWorth ?? last?.NetWorth ?? 0,
+            finalYear: last?.year ?? new Date().getFullYear() + Math.round(horizonYears),
+            per100Boost: per100,
+            currentMonthlySavings: monthlyTotalSavings,
+        };
+    }, [lastProjection, coupleAnalysis.totalSavings]);
+
     return (
         <div className="space-y-6 animate-fade-in pb-20">
             <ConfirmModal
@@ -405,6 +427,28 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     </div>
                 </Card>
             </div>
+
+            {/* PROJECTION LINK (Wiring 2026-05) */}
+            {projectionSummary && (
+                <div className="bg-gradient-to-br from-blue-900/10 to-indigo-900/10 border border-blue-500/20 rounded-2xl p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                    <div>
+                        <div className="text-[10px] uppercase font-bold text-blue-300 tracking-widest mb-1">🔗 Impact à long terme</div>
+                        <div className="text-2xl font-black text-white privacy-blur">
+                            {projectionSummary.estateNetWorth.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
+                        </div>
+                        <div className="text-[10px] text-gray-500 mt-1">
+                            Patrimoine successoral projeté en {projectionSummary.finalYear} (FutureProjection actif).
+                        </div>
+                    </div>
+                    <div className="bg-black/30 rounded-xl p-3 border border-white/5">
+                        <div className="text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-1">Sensibilité</div>
+                        <div className="text-base font-bold text-emerald-400 privacy-blur">
+                            +{projectionSummary.per100Boost.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
+                        </div>
+                        <div className="text-[10px] text-gray-500">par +100$/mois d'épargne supplémentaire</div>
+                    </div>
+                </div>
+            )}
 
             {/* ALERTS BANNER */}
             {timeView === 'MONTH' && alerts.length > 0 && (

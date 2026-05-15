@@ -2,7 +2,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Transaction, BudgetCategory, CategorizationRule } from '../types';
 import { showToast } from './ui/Toast';
-import { categorizeBatch } from '../services/gemini';
+// Phase 4 A3: bascule sur services/claude.ts (Haiku 4.5 pour vitesse)
+import { categorizeBatch } from '../services/claude';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
 import { CATEGORY_ICONS } from '../constants';

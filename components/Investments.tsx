@@ -238,7 +238,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 trend,
                 isTotal
             };
-        }).filter(Boolean).sort((a: any, b: any) => {
+        }).filter((x): x is NonNullable<typeof x> => x !== null).sort((a, b) => {
             if (a.isTotal) return -1;
             if (b.isTotal) return 1;
             return b.trend - a.trend; // Sort by momentum

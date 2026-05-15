@@ -418,7 +418,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                             <>
                                 <Card title="Paliers Fédéraux (Canada)">
                                     <div className="space-y-4 mt-2">
-                                        {fedBreakdown.map((b, i) => (
+                                        {(fedBreakdown ?? []).map((b, i) => (
                                             <div key={i} className="relative">
                                                 <div className="flex justify-between text-[10px] mb-1">
                                                     <span className="text-gray-300 font-bold">{b.rate}</span>
@@ -436,7 +436,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                 </Card>
                                 <Card title="Paliers Provinciaux (Québec)">
                                     <div className="space-y-4 mt-2">
-                                        {qcBreakdown.map((b, i) => (
+                                        {(qcBreakdown ?? []).map((b, i) => (
                                             <div key={i} className="relative">
                                                 <div className="flex justify-between text-[10px] mb-1">
                                                     <span className="text-gray-300 font-bold">{b.rate}</span>

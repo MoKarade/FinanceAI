@@ -7,6 +7,12 @@ import { showToast } from './ui/Toast';
 import { BudgetGroupTable } from './budget/BudgetGroupTable';
 import { BudgetAiModal } from './budget/BudgetAiModal';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { PageHeader } from './ui/PageHeader';
+import { KPIStat } from './ui/KPIStat';
+import { StatGrid } from './ui/StatGrid';
+import { Pill } from './ui/Pill';
+import { Button } from './ui/Button';
+import { Badge } from './ui/Badge';
 
 interface BudgetProps {
     transactions: Transaction[];
@@ -334,99 +340,105 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 message="Supprimer cette catégorie de budget définitivement ? Les transactions associées ne seront pas effacées."
                 confirmLabel="Supprimer"
             />
-            {/* HEADER CONTROLS */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h2 className="text-2xl font-bold text-white">Pilotage Budget</h2>
-                    <p className="text-xs text-gray-400">
-                        {timeView === 'MONTH' ? 'Vision tactique (Mois en cours)' :
-                            timeView === 'QUARTER' ? 'Vision trimestrielle (Objectifs x3)' :
-                                timeView === 'YEAR' ? 'Vision stratégique (Objectifs x12)' :
-                                    'Période Personnalisée'}
-                    </p>
-                    {/* BUDGET HEALTH INDICATOR */}
-                    <div className={`mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border ${totalNetIncomeDisplay >= totalBudgetDisplay ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
-                        <span>{totalNetIncomeDisplay >= totalBudgetDisplay ? '✅ Budget Excédentaire' : '⚠️ Budget Déficitaire'}</span>
-                        <span>{(totalNetIncomeDisplay - totalBudgetDisplay).toLocaleString()}$</span>
-                    </div>
-                </div>
-
-                <div className="flex gap-2 items-center flex-wrap">
-                    <button
-                        onClick={handleAiDiagnosis}
-                        className="px-3 py-1.5 rounded text-[10px] font-bold uppercase transition-all bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600 hover:text-white border border-indigo-500/30 flex items-center gap-1"
-                    >
-                        ✨ Diagnostic IA
-                    </button>
-                    <div className="bg-black/40 rounded-lg p-1 border border-white/10 flex">
-                        <button onClick={() => setTimeView('MONTH')} className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase transition-all ${timeView === 'MONTH' ? 'bg-indigo-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>
-                            📅 Mois
-                        </button>
-                        <button onClick={() => setTimeView('QUARTER')} className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase transition-all ${timeView === 'QUARTER' ? 'bg-indigo-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>
-                            📊 Trimestre
-                        </button>
-                        <button onClick={() => setTimeView('YEAR')} className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase transition-all ${timeView === 'YEAR' ? 'bg-indigo-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>
-                            📆 Année
-                        </button>
-                        <button onClick={() => setTimeView('CUSTOM')} className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase transition-all ${timeView === 'CUSTOM' ? 'bg-indigo-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}>
-                            🛠️ Custom
-                        </button>
-                    </div>
-
-                    {timeView === 'CUSTOM' && (
-                        <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1 border border-white/10">
-                            <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-transparent text-white text-[10px] border-none outline-none w-24" />
-                            <span className="text-gray-500">-</span>
-                            <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-transparent text-white text-[10px] border-none outline-none w-24" />
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* SUMMARY CARDS */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative">
-                <Card className="!p-4 bg-surface border-l-4 border-l-indigo-500 relative overflow-hidden group">
-                    <div className="text-[10px] text-gray-500 uppercase font-bold">Budget Prévu</div>
-                    <div className="text-2xl font-bold text-white privacy-blur">{totalBudgetDisplay.toLocaleString()}$</div>
-                    <div className="text-[10px] text-gray-500 mt-1">Cible Ajustée (x{getMultiplier().toFixed(1)})</div>
-
-                    {/* INFLATION SIMULATOR */}
-                    <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm z-10 p-2 text-center">
-                        <span className="text-xs text-orange-400 font-bold uppercase mb-1">Simulateur Inflation</span>
-                        <input
-                            type="range" min="0" max="20" step="1"
-                            value={inflationSim} onChange={e => setInflationSim(Number(e.target.value))}
-                            className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
+            <PageHeader
+                icon="⚖️"
+                title="Pilotage Budget"
+                subtitle={
+                    timeView === 'MONTH' ? 'Vision tactique (Mois en cours)' :
+                    timeView === 'QUARTER' ? 'Vision trimestrielle (Objectifs ×3)' :
+                    timeView === 'YEAR' ? 'Vision stratégique (Objectifs ×12)' :
+                    'Période personnalisée'
+                }
+                badge={
+                    <Badge variant={totalNetIncomeDisplay >= totalBudgetDisplay ? 'success' : 'danger'} size="md">
+                        {totalNetIncomeDisplay >= totalBudgetDisplay ? '✅ Excédentaire' : '⚠️ Déficitaire'}
+                        <span className="ml-1 tabular-nums">{(totalNetIncomeDisplay - totalBudgetDisplay).toLocaleString()}$</span>
+                    </Badge>
+                }
+                actions={
+                    <>
+                        <Button onClick={handleAiDiagnosis} variant="primary" size="sm" icon="✨">
+                            Diagnostic IA
+                        </Button>
+                        <Pill
+                            aria-label="Période"
+                            size="sm"
+                            value={timeView}
+                            onChange={(v) => setTimeView(v as TimeView)}
+                            options={[
+                                { value: 'MONTH', label: 'Mois', icon: '📅' },
+                                { value: 'QUARTER', label: 'Trim.', icon: '📊' },
+                                { value: 'YEAR', label: 'Année', icon: '📆' },
+                                { value: 'CUSTOM', label: 'Custom', icon: '🛠️' },
+                            ]}
                         />
-                        <div className="text-white font-bold mt-1">+{inflationSim}%</div>
-                    </div>
-                    {inflationSim > 0 && (
-                        <div className="absolute top-2 right-2 text-xs bg-orange-500 text-black font-bold px-1.5 rounded">+{inflationSim}% Infl.</div>
-                    )}
-                </Card>
+                        {timeView === 'CUSTOM' && (
+                            <div className="flex items-center gap-1 bg-white/5 rounded-pill p-1 border border-white/10">
+                                <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-transparent text-ink-100 text-meta border-none outline-none w-24" aria-label="Date de début" />
+                                <span className="text-ink-400">-</span>
+                                <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-transparent text-ink-100 text-meta border-none outline-none w-24" aria-label="Date de fin" />
+                            </div>
+                        )}
+                    </>
+                }
+            />
 
-                <Card className="!p-4 bg-surface border-l-4 border-l-blue-500">
-                    <div className="text-[10px] text-gray-500 uppercase font-bold">Dépenses Réelles</div>
-                    <div className="text-2xl font-bold text-white privacy-blur">{totalSpentDisplay.toLocaleString()}$</div>
-                    <div className="text-[10px] text-gray-500 mt-1">
-                        Sur la période sélectionnée
-                    </div>
-                </Card>
+            {/* Hero KPI strip */}
+            <StatGrid cols={4}>
+                <KPIStat
+                    label="Budget Prévu"
+                    icon="🎯"
+                    value={`${totalBudgetDisplay.toLocaleString()}$`}
+                    sublabel={`Cible Ajustée (×${getMultiplier().toFixed(1)})${inflationSim > 0 ? ` · +${inflationSim}% infl.` : ''}`}
+                    privacy
+                    variant="primary"
+                />
+                <KPIStat
+                    label="Dépenses Réelles"
+                    icon="💸"
+                    value={`${totalSpentDisplay.toLocaleString()}$`}
+                    sublabel="Sur la période"
+                    privacy
+                    variant="info"
+                />
+                <KPIStat
+                    label="Reste Disponible (Net)"
+                    icon="💰"
+                    value={`${totalRemainingDisplay.toLocaleString()}$`}
+                    sublabel="Revenu Net − Réel"
+                    privacy
+                    variant={totalRemainingDisplay < 0 ? 'danger' : 'success'}
+                />
+                <KPIStat
+                    label="Projection Fin Période"
+                    icon="📈"
+                    value={`${projectedTotalDisplay.toLocaleString()}$`}
+                    sublabel={projectedTotalDisplay > totalBudgetDisplay ? `+${(projectedTotalDisplay - totalBudgetDisplay).toFixed(0)}$ vs Budget` : 'Dans les clous'}
+                    privacy
+                    variant={projectedTotalDisplay > totalBudgetDisplay ? 'warning' : 'success'}
+                />
+            </StatGrid>
 
-                <Card className="!p-4 bg-surface border-l-4 border-l-green-500">
-                    <div className="text-[10px] text-gray-500 uppercase font-bold">Reste Disponible (Net)</div>
-                    <div className={`text-2xl font-bold ${totalRemainingDisplay < 0 ? 'text-red-400' : 'text-green-400'} privacy-blur`}>{totalRemainingDisplay.toLocaleString()}$</div>
-                    <div className="text-[10px] text-gray-500 mt-1">Revenu Net - Réel</div>
-                </Card>
-
-                <Card className="!p-4 bg-surface border-l-4 border-l-yellow-500">
-                    <div className="text-[10px] text-gray-500 uppercase font-bold">Projection Fin Période</div>
-                    <div className="text-2xl font-bold text-yellow-400 privacy-blur">{projectedTotalDisplay.toLocaleString()}$</div>
-                    <div className="text-[10px] text-gray-500 mt-1">
-                        {projectedTotalDisplay > totalBudgetDisplay ? `+${(projectedTotalDisplay - totalBudgetDisplay).toFixed(0)}$ vs Budget` : 'Dans les clous'}
-                    </div>
-                </Card>
-            </div>
+            {/* Simulateur d'inflation — toggle inline (avant: caché en hover sur Card 1) */}
+            <details className="bg-surface/40 rounded-card border border-white/5 group">
+                <summary className="cursor-pointer px-4 py-2 text-meta text-ink-300 hover:text-ink-50 transition-colors flex items-center justify-between focus-ring">
+                    <span>🔥 Simulateur d'inflation {inflationSim > 0 && <Badge variant="warning" size="sm" className="ml-2">+{inflationSim}%</Badge>}</span>
+                    <span className="text-ink-400 group-open:rotate-180 transition-transform" aria-hidden="true">▾</span>
+                </summary>
+                <div className="px-4 pb-4 pt-2 border-t border-white/5">
+                    <label className="flex justify-between text-meta text-ink-300 mb-2">
+                        <span>Hausse des dépenses simulée</span>
+                        <span className="text-warning-400 font-bold">+{inflationSim}%</span>
+                    </label>
+                    <input
+                        type="range" min="0" max="20" step="1"
+                        value={inflationSim} onChange={e => setInflationSim(Number(e.target.value))}
+                        className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-warning-500"
+                        aria-label="Simulateur d'inflation"
+                    />
+                    <p className="text-tiny text-ink-400 mt-2">Applique un multiplicateur sur les cibles non-Épargne pour estimer l'impact de l'inflation.</p>
+                </div>
+            </details>
 
             {/* PROJECTION LINK (Wiring 2026-05) */}
             {projectionSummary && (

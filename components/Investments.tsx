@@ -11,6 +11,9 @@ import {
 } from '../types';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip } from 'recharts';
 import { Card } from './ui/Card';
+import { PageHeader } from './ui/PageHeader';
+import { Pill } from './ui/Pill';
+import { Badge } from './ui/Badge';
 import { fetchPortfolioHistory, MarketDataPoint } from '../services/finance';
 import { StockChart } from './StockChart';
 import { ASSET_META } from '../services/assetMeta';
@@ -332,39 +335,54 @@ export const Investments: React.FC<InvestmentsProps> = ({
     };
 
     return (
-        <div className="space-y-8 animate-fade-in pb-10 relative">
+        <div className="space-y-6 animate-fade-in pb-10 relative">
 
-            {/* 0. HEALTH SCORE WIDGET */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="md:col-span-1 bg-gradient-to-br from-indigo-900/40 to-black border-indigo-500/30 flex flex-col justify-center items-center py-6">
-                    <div className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">Score de Santé</div>
-                    <div className="relative flex items-center justify-center w-32 h-32 mb-2">
+            <PageHeader
+                icon="📈"
+                title="Investissements"
+                subtitle="Performance, allocation et revenus passifs"
+                badge={
+                    <Badge
+                        variant={healthScore >= 80 ? 'success' : healthScore >= 50 ? 'warning' : 'danger'}
+                        size="md"
+                        title="Score basé sur la diversification et la tendance vs marché"
+                    >
+                        Santé {healthScore}/100
+                    </Badge>
+                }
+            />
+
+            {/* Hero: Score de santé (donut) + Performance vs Marché */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="md:col-span-1 flex flex-col justify-center items-center py-6">
+                    <div className="kpi-label mb-2">Score de Santé</div>
+                    <div className="relative flex items-center justify-center w-28 h-28 mb-2">
                         <svg className="absolute w-full h-full transform -rotate-90">
-                            <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-white/5" />
-                            <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="8" fill="transparent"
-                                strokeDasharray="351.8"
-                                strokeDashoffset={351.8 - (351.8 * healthScore) / 100}
-                                className={`transition-all duration-1000 ${healthScore >= 80 ? 'text-green-500' : healthScore >= 50 ? 'text-yellow-500' : 'text-red-500'}`}
+                            <circle cx="56" cy="56" r="48" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-white/5" />
+                            <circle cx="56" cy="56" r="48" stroke="currentColor" strokeWidth="8" fill="transparent"
+                                strokeDasharray="301.6"
+                                strokeDashoffset={301.6 - (301.6 * healthScore) / 100}
+                                className={`transition-all duration-1000 ${healthScore >= 80 ? 'text-success-500' : healthScore >= 50 ? 'text-warning-500' : 'text-danger-500'}`}
                             />
                         </svg>
-                        <div className="text-4xl font-black text-white">{healthScore}</div>
+                        <div className="text-display text-ink-50">{healthScore}</div>
                     </div>
-                    <div className="text-xs text-gray-400 text-center px-4">
-                        Basé sur la diversification ({indexWeight.toFixed(0)}% Safe) et la tendance face au marché.
+                    <div className="text-meta text-ink-400 text-center px-4">
+                        {indexWeight.toFixed(0)}% safe · tendance vs marché
                     </div>
                 </Card>
 
-                <Card className="md:col-span-2 flex flex-col justify-center gap-6" title="Performance vs Marché (24h)">
+                <Card className="md:col-span-2 flex flex-col justify-center" title="Performance vs Marché (24h)">
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col items-center justify-center">
-                            <div className="text-gray-400 text-xs font-bold mb-1">Votre Portefeuille</div>
-                            <div className={`text-3xl font-black ${portfolioTrend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        <div className="card-subtle p-4 flex flex-col items-center justify-center">
+                            <div className="kpi-label mb-1">Votre Portefeuille</div>
+                            <div className={`text-kpi tabular-nums ${portfolioTrend >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
                                 {portfolioTrend > 0 ? '+' : ''}{portfolioTrend.toFixed(2)}%
                             </div>
                         </div>
-                        <div className="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col items-center justify-center">
-                            <div className="text-gray-400 text-xs font-bold mb-1">Marché (CW8 / MSCI)</div>
-                            <div className={`text-3xl font-black ${benchmarkTrend >= 0 ? 'text-blue-400' : 'text-red-400'}`}>
+                        <div className="card-subtle p-4 flex flex-col items-center justify-center">
+                            <div className="kpi-label mb-1">Marché (CW8 / MSCI)</div>
+                            <div className={`text-kpi tabular-nums ${benchmarkTrend >= 0 ? 'text-info-400' : 'text-danger-400'}`}>
                                 {benchmarkTrend > 0 ? '+' : ''}{benchmarkTrend.toFixed(2)}%
                             </div>
                         </div>
@@ -406,19 +424,15 @@ export const Investments: React.FC<InvestmentsProps> = ({
 
             {/* 1. CHART SECTION */}
             <Card className="min-h-[550px]" title="Performance Comparée">
-                <div className="flex justify-between items-center mb-4 border-b border-white/5 pb-2">
-                    <div className="flex gap-1 bg-black/40 p-1 rounded-lg">
-                        {(['1M', '3M', '6M', 'YTD', '1Y', 'ALL'] as TimeRange[]).map(r => (
-                            <button
-                                key={r}
-                                onClick={() => setTimeRange(r)}
-                                className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${timeRange === r ? 'bg-white text-black shadow' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-                            >
-                                {r}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="text-xs text-gray-500">
+                <div className="flex justify-between items-center mb-4 border-b border-white/5 pb-2 gap-4 flex-wrap">
+                    <Pill
+                        aria-label="Période"
+                        size="sm"
+                        value={timeRange}
+                        onChange={(v) => setTimeRange(v as TimeRange)}
+                        options={(['1M', '3M', '6M', 'YTD', '1Y', 'ALL'] as TimeRange[]).map(r => ({ value: r, label: r }))}
+                    />
+                    <div className="text-meta text-ink-400">
                         {filteredMarketData.length} points
                     </div>
                 </div>

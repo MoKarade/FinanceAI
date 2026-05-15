@@ -12,6 +12,12 @@ import { computeRetirementIncome } from './projection/retirementIncome';
 import { processOneChild } from './projection/childrenReee';
 import { computeActiveIncome } from './projection/activeIncome';
 import { processReerMeltdown } from './projection/meltdownReer';
+import { applyTravelExpenses, applyLifeEvents, computeStressTest } from './projection/monthlyEvents';
+import { computeLatentTax } from './projection/latentTax';
+import { computeGlidepathRates } from './projection/glidepathRates';
+import { processCashflowAllocation, type CashflowState } from './projection/cashflowAllocation';
+import { processRealEstate, type RealEstateState } from './projection/realEstateMonth';
+import { buildMonthlyDataPoint } from './projection/monthlyOutput';
 
 export interface SimulationParams {
     projection: ProjectionConfig;
@@ -941,197 +947,57 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         });
         monthlyExpenses += debtPayments;
 
-        // ---- IMMOBILIER ----
-        let totalImmoHypo = 0;
-        let totalImmoCharges = 0;
-        let totalImmoEquity = 0;
-        let totalImmoDebt = 0;
-        let totalRentalIncome = 0;
-        // ---- IMMOBILIER (SCENARIOS) ----
-        activeRE.forEach((goal, i) => {
-            const pState = propertiesState[i];
-            if (!pState) return;
-
-            const purchaseOffset = getMonthOffset(goal.purchaseDate);
-            if (goal.isActive && m >= purchaseOffset) {
-                if (!pState.isBought) {
-                    const welcomeFees = welcomeTax(goal.price);
-                    const totalCashNeeded = goal.downPayment + goal.totalClosingCosts + welcomeFees;
-                    if (celiapp > 0) {
-                        liquid += celiapp;
-                        logEvent(flowEventsLog, `Vente CELIAPP (${goal.id}): +${celiapp.toFixed(0)}$`);
-                        celiapp = 0;
-                        fhsaClosingYear = loopYear; // V28: Compte fermé après retrait pour achat
-                    }
-                    // V30: Home Buyers' Plan (RAP) logic
-                    if (liquid < totalCashNeeded && reer > 0) {
-                        const totalShortfall = totalCashNeeded - liquid;
-                        let remainingShortfall = totalShortfall;
-
-                        // Phase 1: Try RAP (Tax-Free Withdrawal) if eligible
-                        if (goal.isPrimaryResidence && (!hasUsedRap || rapRepaymentDueTotal === 0)) {
-                            const rapLimit = 60000 * activeUsersCount;
-                            const rapAvailable = Math.max(0, rapLimit - rapBorrowed);
-                            if (rapAvailable > 0) {
-                                const rapAmount = Math.min(reer, rapAvailable, remainingShortfall);
-                                if (rapAmount > 0) {
-                                    reer -= rapAmount;
-                                    liquid += rapAmount;
-                                    rapBorrowed += rapAmount;
-                                    rapRepaymentDueTotal += rapAmount;
-                                    hasUsedRap = true;
-                                    const graceYears = (loopYear >= 2022 && loopYear <= 2025) ? 5 : 2;
-                                    rapRepaymentStartOffset = m + (graceYears * 12);
-                                    withdrawalREER += rapAmount;
-                                    contribLiquid += rapAmount;
-                                    remainingShortfall -= rapAmount;
-                                    logEvent(flowEventsLog, `↳ Retrait RAP (Non-imposable): +${Math.round(rapAmount).toLocaleString('fr-CA')}$`);
-                                }
-                            }
-                        }
-
-                        // Phase 2: Tax-Free CELI withdrawal
-                        if (remainingShortfall > 0 && celi > 0) {
-                            const celiAmount = Math.min(celi, remainingShortfall);
-                            celi -= celiAmount;
-                            liquid += celiAmount;
-                            withdrawalCELI += celiAmount;
-                            celiWithdrawalsThisYear += celiAmount;
-                            retraitCeliMois += celiAmount;
-                            contribLiquid += celiAmount;
-                            remainingShortfall -= celiAmount;
-                            logEvent(flowEventsLog, `↳ Retrait CELI (Achat Immo): +${Math.round(celiAmount).toLocaleString('fr-CA')}$`);
-                        }
-
-                        // Phase 3: Tax-Deferred Non-Reg withdrawal
-                        if (remainingShortfall > 0 && nonReg > 0) {
-                            const nonRegAmount = handleNonRegSale(remainingShortfall, 'Achat Immo');
-                            liquid += nonRegAmount;
-                            withdrawalNonReg += nonRegAmount;
-                            contribLiquid += nonRegAmount;
-                            remainingShortfall -= nonRegAmount;
-                            logEvent(flowEventsLog, `↳ Retrait Non-Enreg (Achat Immo): +${Math.round(nonRegAmount).toLocaleString('fr-CA')}$`);
-                        }
-
-                        // Phase 4: Taxable REER Withdrawal for any remaining shortfall (Last Resort)
-                        if (remainingShortfall > 0 && reer > 0) {
-                            const currentAnnualGross = (isRetired ? incomeRetirement * 12 : (grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, Math.floor(m / 12))) / activeUsersCount;
-                            const margRate = getMarginalRate(currentAnnualGross);
-                            const grossNeeded = remainingShortfall / Math.max(0.1, (1 - margRate));
-                            const drawn = Math.min(reer, grossNeeded);
-                            const tax = drawn * margRate;
-                            const net = drawn - tax;
-                            reer -= drawn; liquid += drawn; // V36: Gross
-                            withdrawalREER += drawn;
-                            contribLiquid += drawn;
-                            taxCurrentYear.reer += tax;
-                            impotReerMois += tax; // Visibility V36
-                            logEvent(flowEventsLog, `🚨 Retrait REER Imposable (Achat Immo @${(margRate * 100).toFixed(0)}%): -${Math.round(drawn).toLocaleString('fr-CA')}$`);
-                        }
-                    }
-
-                    if (liquid >= totalCashNeeded) {
-                        liquid -= totalCashNeeded;
-                        withdrawalLiquid += totalCashNeeded;
-                        pState.isBought = true;
-                        const r = (goal.mortgageRate / 100) / 12;
-                        const n = goal.amortization * 12;
-                        const p = pState.mortgage;
-                        pState.calculatedPmt = r > 0 ? p * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1) : p / n;
-                        logEvent(lifeEventsLog, `🏠 Achat (${goal.id}): -${Math.round(totalCashNeeded).toLocaleString('fr-CA')}$`);
-                        logEvent(flowEventsLog, `MBP: -${goal.downPayment.toLocaleString('fr-CA')}$ | Frais+TBienv.: -${Math.round(goal.totalClosingCosts + welcomeFees).toLocaleString('fr-CA')}$`);
-                        if (goal.isPrimaryResidence) hasPurchasedPrimary = true;
-                    } else {
-                        // Still can't afford — flag it so user knows
-                        if (m === purchaseOffset) logEvent(flowEventsLog, `⚠️ Achat (${goal.id}) reporté: liquidités insuffisantes`);
-                    }
-                }
-
-                if (pState.isBought && !((pState as any).isSold)) {
-                    const monthsSincePurchase = m - purchaseOffset;
-                    // V21 Mec 6: Renouvellement hypo (sécurisé div/0)
-                    if (monthsSincePurchase > 0 && monthsSincePurchase % 60 === 0) {
-                        const remainingMonths = goal.amortization * 12 - monthsSincePurchase;
-                        if (remainingMonths > 60 && pState.mortgage > 0) {
-                            const rateShock = ((pState.id.charCodeAt(0) % 3) - 1) * 0.015;
-                            const newRate = Math.max(0.01, goal.mortgageRate / 100 + rateShock);
-                            const nr = newRate / 12;
-                            pState.calculatedPmt = pState.mortgage * nr * Math.pow(1 + nr, remainingMonths) / (Math.pow(1 + nr, remainingMonths) - 1);
-                            logEvent(lifeEventsLog, `🏦 Renouvellement ${goal.id}: ${(newRate * 100).toFixed(2)}%`);
-                        }
-                    }
-                    pState.currentValue *= Math.pow(1 + (goal.propertyGrowthRate || 3) / 100, 1 / 12);
-                    // V25-3: Plafond maxValue
-                    if (goal.maxValue && pState.currentValue > goal.maxValue) pState.currentValue = goal.maxValue;
-                    const monthlyRate = (goal.mortgageRate / 100) / 12;
-                    const interestPaid = pState.mortgage * monthlyRate;
-                    const principalPaid = Math.max(0, pState.calculatedPmt - interestPaid);
-                    const prevMortgage = pState.mortgage;
-                    pState.mortgage = Math.max(0, pState.mortgage - principalPaid);
-                    // V25-3: Détection payoff
-                    if (prevMortgage > 0 && pState.mortgage <= 0 && !(pState as any).isPaidOff) {
-                        (pState as any).isPaidOff = true;
-                        pState.calculatedPmt = 0;
-                        logEvent(lifeEventsLog, `🏠 Propriété payée à 100 % ! (${goal.id})`);
-                    }
-                    totalImmoHypo += pState.calculatedPmt;
-                    totalImmoEquity += pState.currentValue - pState.mortgage;
-                    totalImmoDebt += pState.mortgage;
-                    immoInterest += interestPaid;
-                    immoPrincipal += principalPaid;
-
-                    // V22 G: Manoeuvre Smith — V23 Fix 3: intérêts capitalisés, hors monthlyExpenses
-                    if (effProj.useSmithManoeuvre === true && goal.isPrimaryResidence && principalPaid > 0) {
-                        smithManoeuvreDebt += principalPaid;
-                        nonReg += principalPaid;
-                        nonRegACB += principalPaid;
-                        const smithInterest = smithManoeuvreDebt * (0.05 / 12);
-                        // V23 Fix 3: capitalisé dans la dette (pas de sortie de cash)
-                        smithManoeuvreDebt += smithInterest;
-                        smithInterestDeductibleYear += smithInterest;
-                    }
-
-                    // V31: Limit LTV to 65% for Smith Manoeuvre
-                    if (smithManoeuvreDebt + pState.mortgage > pState.currentValue * 0.65) {
-                        const surplusMarginCall = (smithManoeuvreDebt + pState.mortgage) - (pState.currentValue * 0.65);
-                        if (surplusMarginCall > 0 && nonReg > 0) {
-                            const call = handleNonRegSale(surplusMarginCall, 'Margin Call LTV');
-                            smithManoeuvreDebt -= call;
-                            logEvent(flowEventsLog, `🚨 Appell de marge (HELOC): Vente ${Math.round(call).toLocaleString('fr-CA')}$ NonReg`);
-                        }
-                    }
-
-                    if (!goal.isPrimaryResidence && goal.rentalIncomeMonthly) {
-                        const rentalIncome = goal.rentalIncomeMonthly * Math.pow(1 + simInflation / 100, m / 12);
-                        totalRentalIncome += rentalIncome;
-                        monthlyIncome += rentalIncome;
-                        accRentesYear += rentalIncome;
-                    }
-
-                    const monthlyCharges = goal.unrecoverableMonthly || 0;
-                    totalImmoCharges += monthlyCharges;
-                    monthlyExpenses += pState.calculatedPmt + monthlyCharges;
-                    immoHypo += pState.calculatedPmt;
-                    immoCharges += monthlyCharges;
-                }
-            }
-        });
-
-        // V27: Si une propriété est achetée et que c'est une résidence principale, l'utilisateur ne paie plus de loyer
-        if (hasPurchasedPrimary) {
-            monthlyExpenses -= currentRentExpense * Math.pow(1 + simInflation / 100, m / 12);
-        }
-
-        // RAP
-        if (hasUsedRap && rapRepaymentDueTotal > 0 && m >= rapRepaymentStartOffset) {
-            const monthlyRepayment = (rapBorrowed / 15) / 12;
-            const amnt = Math.min(rapRepaymentDueTotal, monthlyRepayment);
-            if (liquid >= amnt) { liquid -= amnt; reer += amnt; rapRepaymentDueTotal -= amnt; }
-        }
-
-        realEstateEquity = totalImmoEquity;
-        mortgageBalance = totalImmoDebt;
-        immoHypo = totalImmoHypo;
+        // Cycle 20 split: tout l'immobilier mensuel → ./projection/realEstateMonth
+        const reState: RealEstateState = {
+            liquid, celi, celiapp, reer, nonReg, nonRegACB, capitalLossBank,
+            monthlyIncome, monthlyExpenses, accRentesYear, accCapitalGainsYear,
+            realEstateEquity, mortgageBalance, hasPurchasedPrimary,
+            hasUsedRap, rapBorrowed, rapRepaymentDueTotal, rapRepaymentStartOffset,
+            smithManoeuvreDebt, smithInterestDeductibleYear,
+            fhsaClosingYear,
+            taxCurrentYearReer: taxCurrentYear.reer, impotReerMois,
+            withdrawalLiquid, withdrawalCELI, withdrawalNonReg, withdrawalREER, contribLiquid,
+            celiWithdrawalsThisYear, retraitCeliMois,
+            immoInterest, immoPrincipal, immoHypo, immoCharges,
+            totalRentalIncome: 0,
+            lifeEventLogs: [], flowEventLogs: [],
+        };
+        processRealEstate(
+            reState,
+            { m, loopYear, isRetired, activeUsersCount, simInflation, simSalaryGrowth,
+              grossMarcBaseAnnual, grossAnnaBaseAnnual, incomeRetirement,
+              useSmithManoeuvre: effProj.useSmithManoeuvre === true, currentRentExpense },
+            activeRE,
+            propertiesState,
+            getMonthOffset,
+            welcomeTax,
+            getMarginalRate,
+        );
+        liquid = reState.liquid; celi = reState.celi; celiapp = reState.celiapp;
+        reer = reState.reer; nonReg = reState.nonReg; nonRegACB = reState.nonRegACB;
+        capitalLossBank = reState.capitalLossBank;
+        monthlyIncome = reState.monthlyIncome; monthlyExpenses = reState.monthlyExpenses;
+        accRentesYear = reState.accRentesYear; accCapitalGainsYear = reState.accCapitalGainsYear;
+        realEstateEquity = reState.realEstateEquity; mortgageBalance = reState.mortgageBalance;
+        hasPurchasedPrimary = reState.hasPurchasedPrimary;
+        hasUsedRap = reState.hasUsedRap; rapBorrowed = reState.rapBorrowed;
+        rapRepaymentDueTotal = reState.rapRepaymentDueTotal;
+        rapRepaymentStartOffset = reState.rapRepaymentStartOffset;
+        smithManoeuvreDebt = reState.smithManoeuvreDebt;
+        smithInterestDeductibleYear = reState.smithInterestDeductibleYear;
+        fhsaClosingYear = reState.fhsaClosingYear;
+        taxCurrentYear.reer = reState.taxCurrentYearReer;
+        impotReerMois = reState.impotReerMois;
+        withdrawalLiquid = reState.withdrawalLiquid; withdrawalCELI = reState.withdrawalCELI;
+        withdrawalNonReg = reState.withdrawalNonReg; withdrawalREER = reState.withdrawalREER;
+        contribLiquid = reState.contribLiquid;
+        celiWithdrawalsThisYear = reState.celiWithdrawalsThisYear;
+        retraitCeliMois = reState.retraitCeliMois;
+        immoInterest = reState.immoInterest; immoPrincipal = reState.immoPrincipal;
+        immoHypo = reState.immoHypo; immoCharges = reState.immoCharges;
+        const totalRentalIncome = reState.totalRentalIncome;
+        reState.lifeEventLogs.forEach(msg => logEvent(lifeEventsLog, msg));
+        reState.flowEventLogs.forEach(msg => logEvent(flowEventsLog, msg));
 
         // ---- ENFANTS & REEE ----
         // Cycle 14 split: processOneChild → ./projection/childrenReee.
@@ -1187,57 +1053,27 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         incomeAnna = _childIncomeAnna;
 
         const currentIsoMonth = currentLoopDate.toISOString().split('T')[0].substring(0, 7);
-        travelGoals.forEach(t => { 
-            if (t.date.startsWith(currentIsoMonth)) {
-                const effectiveCost = (t.totalCost ?? 0) * expenseMultiplier;
-                monthlyExpenses += effectiveCost;
-                logEvent(flowEventsLog, `✈️ Voyage (${t.destination}): -${Math.round(effectiveCost).toLocaleString('fr-CA')}$`);
-            }
+        // Cycle 16 split: voyages + événements de vie + stress test → ./projection/monthlyEvents
+        applyTravelExpenses(travelGoals, currentIsoMonth, expenseMultiplier, {
+            addExpense: (n) => { monthlyExpenses += n; },
+            logFlow: (s) => logEvent(flowEventsLog, s),
         });
-
-        lifeEvents.forEach(e => {
-            if (e.date.startsWith(currentIsoMonth)) {
-                if (e.type === 'KRACH') {
-                    const drop = (1 - ((e.impactPercent || 30) / 100));
-                    celi *= drop; reer *= drop; nonReg *= drop; crypto *= drop;
-                    logEvent(lifeEventsLog, `Krach (-${e.impactPercent}%) 📉`);
-                } else {
-                    // V22 D: Frais vente immobilière
-                    const isVente = e.name && e.name.toLowerCase().includes('vente');
-                    if (isVente) {
-                        const soldProp = propertiesState.find(p => p.isBought && p.mortgage < p.currentValue);
-                        if (soldProp) {
-                            const saleNet = soldProp.currentValue * 0.95 - soldProp.mortgage;
-                            liquid += Math.max(0, saleNet);
-                            realEstateEquity -= soldProp.currentValue - soldProp.mortgage;
-                            mortgageBalance -= soldProp.mortgage;
-                            soldProp.isBought = false; soldProp.mortgage = 0;
-                            (soldProp as any).isSold = true;
-                            logEvent(lifeEventsLog, `🏠 Vente (net 95%): +${Math.round(Math.max(0, saleNet)).toLocaleString('fr-CA')}$`);
-                        }
-                    } else {
-                        const effectiveImpact = (e.impactAmount ?? 0) * expenseMultiplier;
-                        monthlyExpenses += effectiveImpact;
-                        logEvent(lifeEventsLog, `${e.name} 💸`);
-                        logEvent(flowEventsLog, `🔔 Événement (${e.name}): -${Math.round(effectiveImpact).toLocaleString('fr-CA')}$`);
-                    }
-                }
-            }
+        applyLifeEvents(lifeEvents, currentIsoMonth, expenseMultiplier, propertiesState, {
+            shockPortfolio: (f) => { celi *= f; reer *= f; nonReg *= f; crypto *= f; },
+            addLiquid: (n) => { liquid += n; },
+            addExpense: (n) => { monthlyExpenses += n; },
+            adjustRealEstate: (eq, mort) => { realEstateEquity += eq; mortgageBalance += mort; },
+            logLife: (s) => logEvent(lifeEventsLog, s),
+            logFlow: (s) => logEvent(flowEventsLog, s),
         });
-
-        // V16: Stress Test
-        if (effProj.stressTestEnabled) {
-            const crashStartMonth = (effProj.stressTestYear || 5) * 12;
-            const recoveryMonths = effProj.stressTestRecoveryMonths || 24;
-            const drop = (effProj.stressTestDrop || 30) / 100;
-            if (m === crashStartMonth) {
-                const shockFactor = (1 - drop);
-                celi *= shockFactor; reer *= shockFactor; nonReg *= shockFactor; crypto *= shockFactor;
-                logEvent(lifeEventsLog, `📉 Choc Marché -${Math.round(drop * 100)}%`);
-            } else if (m > crashStartMonth && m <= crashStartMonth + recoveryMonths) {
-                const recoveryBoost = drop / recoveryMonths;
-                celi *= (1 + recoveryBoost * 0.9); reer *= (1 + recoveryBoost * 0.9); nonReg *= (1 + recoveryBoost * 0.9);
-            }
+        const stressResult = computeStressTest(effProj, m);
+        if (stressResult.crashFactor !== 1) {
+            celi *= stressResult.crashFactor; reer *= stressResult.crashFactor;
+            nonReg *= stressResult.crashFactor; crypto *= stressResult.crashFactor;
+            if (stressResult.log) logEvent(lifeEventsLog, stressResult.log);
+        }
+        if (stressResult.recoveryFactor !== 1) {
+            celi *= stressResult.recoveryFactor; reer *= stressResult.recoveryFactor; nonReg *= stressResult.recoveryFactor;
         }
 
         let monthlyCashflow = monthlyIncome - monthlyExpenses;
@@ -1247,185 +1083,46 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
         if (m === 1 && month1ActionPlan === null) month1ActionPlan = { monthlyCashflow, strategy };
 
-        // --- 4. MANQUE À GAGNER (SHORTFALL) UNIFIÉ ---
-        if (monthlyCashflow < 0) {
-            let shortfall = -monthlyCashflow;
-            // Piger dans les liquidités jusqu'au seuil critique
-            if (liquid - shortfall >= criticalThreshold) {
-                liquid -= shortfall;
-                shortfall = 0;
-            } else {
-                const fromLiquid = Math.max(0, liquid - criticalThreshold);
-                liquid -= fromLiquid;
-                shortfall -= fromLiquid;
-            }
-
-            if (shortfall > 0) shortfallMonths++;
-
-            if (shortfall > 0) {
-                const currentAnnualGrossTotal = isRetired
-                    ? ((incomeRetirement * 12) + accRetraitsReerYear + accRentesYear)
-                    : ((grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, Math.floor(m / 12)) + accRetraitsReerYear);
-
-                // PBMA: Montant Personnel de Base (Quebec 2025: ~17183$)
-                const pbmaThreshold = 17183 * activeUsersCount;
-                let pbmaRoom = Math.max(0, pbmaThreshold - currentAnnualGrossTotal);
-
-                // Séquence dynamique
-                let buckets: string[] = [];
-                if (strategy === 'PRIO_REER') buckets = ['REER', 'CELI', 'NONREG', 'CRYPTO'];
-                else if (strategy === 'PRIO_CELI') buckets = ['CELI', 'NONREG', 'REER', 'CRYPTO'];
-                else buckets = ['CELI', 'REER', 'NONREG', 'CRYPTO'];
-
-                // 🌟 LOGIQUE INTELLIGENTE #1: Retrait REER à 0% d'impôt marginal
-                if (shortfall > 0 && reer > 0 && pbmaRoom > 0) {
-                    const desiredNet = Math.min(shortfall, pbmaRoom);
-                    const { gross: grossAttempt } = calculateGrossWithholdingRRSP(desiredNet);
-                    
-                    // V49: Gérer la retenue plate de la banque (Cliffs)
-                    let actualGrossToDraw = Math.min(reer, grossAttempt, pbmaRoom);
-                    
-                    // Recalculer la retenue bancaire réelle sur le montant brut PIGÉ
-                    let actualWithholding = 0;
-                    if (actualGrossToDraw <= 5000) actualWithholding = actualGrossToDraw * 0.21;
-                    else if (actualGrossToDraw <= 15000) actualWithholding = actualGrossToDraw * 0.26;
-                    else actualWithholding = actualGrossToDraw * 0.30;
-
-                    const actualNetAttempt = actualGrossToDraw - actualWithholding;
-                    
-                    // V48 Shortfall Infinity Loop Fix: Cap the actual net to the real shortfall to avoid overshoot
-                    const actualNet = Math.min(actualNetAttempt, shortfall);
-
-                    reer -= actualGrossToDraw;
-                    liquid += actualNet;
-                    accRetraitsReerYear += actualGrossToDraw;
-                    retraitReerMois += actualGrossToDraw;
-                    withdrawalREER += actualGrossToDraw;
-                    taxCurrentYear.reer += actualWithholding; // Régularisé en Avril (Remboursement!)
-                    pbmaRoom -= actualGrossToDraw;
-                    shortfall -= actualNet;
-                    logEvent(flowEventsLog, `↳ Retrait REER (Palier 0%): +${actualGrossToDraw.toFixed(0)}$ Brut -> +${actualNet.toFixed(0)}$ Net`);
-                }
-
-                // PRIORITÉ STANDARD POUR LE RESTE
-                for (const bucket of buckets) {
-                    if (shortfall <= 0.1) break;
-
-                    if (bucket === 'CELI' && celi > 0) {
-                        const drawn = Math.min(celi, shortfall);
-                        celi -= drawn; liquid += drawn;
-                        celiWithdrawalsThisYear += drawn;
-                        retraitCeliMois += drawn;
-                        withdrawalCELI += drawn;
-                        shortfall -= drawn;
-                        logEvent(flowEventsLog, `↳ Retrait CELI: +${Math.round(drawn).toLocaleString('fr-CA')}$`);
-                    } else if (bucket === 'NONREG' && nonReg > 0) {
-                        const drawnNonReg = handleNonRegSale(shortfall, 'Retrait Vie');
-                        liquid += drawnNonReg;
-                        withdrawalNonReg += drawnNonReg;
-                        shortfall -= drawnNonReg;
-                        logEvent(flowEventsLog, `↳ Retrait Non-Enreg: +${Math.round(drawnNonReg).toLocaleString('fr-CA')}$`);
-                    } else if (bucket === 'REER' && reer > 0) {
-                        const { gross: grossAttempt } = calculateGrossWithholdingRRSP(shortfall);
-                        const actualGrossToDraw = Math.min(reer, grossAttempt);
-
-                        let actualWithholding = 0;
-                        if (actualGrossToDraw <= 5000) actualWithholding = actualGrossToDraw * 0.21;
-                        else if (actualGrossToDraw <= 15000) actualWithholding = actualGrossToDraw * 0.26;
-                        else actualWithholding = actualGrossToDraw * 0.30;
-
-                        const actualNet = actualGrossToDraw - actualWithholding;
-
-                        reer -= actualGrossToDraw;
-                        liquid += actualNet;
-                        accRetraitsReerYear += actualGrossToDraw;
-                        retraitReerMois += actualGrossToDraw;
-                        withdrawalREER += actualGrossToDraw;
-                        taxCurrentYear.reer += actualWithholding;
-                        shortfall -= actualNet;
-                        logEvent(flowEventsLog, `↳ Retrait REER (Standard): +${actualGrossToDraw.toFixed(0)}$ Brut -> +${actualNet.toFixed(0)}$ Net`);
-                    } else if (bucket === 'CRYPTO' && crypto > 0) {
-                        const drawn = Math.min(crypto, shortfall);
-                        crypto -= drawn; liquid += drawn;
-                        shortfall -= drawn;
-                        withdrawalCrypto += drawn;
-                        accCapitalGainsYear += drawn;
-                        logEvent(flowEventsLog, `🚨 Liquidation Crypto (Dernier Recours): +${drawn.toFixed(0)}$`);
-                    }
-                }
-            }
-
-        } else {
-            let excess = monthlyCashflow;
-
-            if (liquid < targetEF) {
-                const fillEF = Math.min(excess, targetEF - liquid);
-                liquid += fillEF; excess -= fillEF;
-            }
-
-            // V31: Cash Drag Sweep (Investir tout excès au-dessus du fonds d'urgence)
-            if (liquid > targetEF) {
-                const sweep = liquid - targetEF;
-                liquid -= sweep;
-                excess += sweep;
-            }
-
-            // V31: Arbitrage des Dettes Toxiques (> 7%) en priorité absolue
-            // MOD: If DEBT_FIRST, we pay ALL debts here.
-            if (excess > 0) {
-                activeDebts.filter(d => d.balance > 0 && (d.interestRate > 7 || strategy === 'DEBT_FIRST')).sort((a, b) => b.interestRate - a.interestRate).forEach(d => {
-                    const pay = Math.min(excess, d.balance);
-                    if (pay > 0) {
-                        d.balance -= pay;
-                        excess -= pay;
-                        const label = d.interestRate > 7 ? 'Dette Toxique' : 'Dette (Strat. Briseur)';
-                        flowEventsLog.push(`💸 Remboursement ${label} (${d.name}): -${Math.round(pay).toLocaleString('fr-CA')}$`);
-                    }
-                });
-            }
-
-            // MOD: Re-check if debts remain after repayment
-            const hasRemainingDebtPostPay = activeDebts.some(d => d.balance > 0);
-
-            // V66: FHSA strictly stops after purchase
-            // MOD: DEBT_FIRST skips FHSA until debts are gone.
-            if (excess > 0 && fhsaRoom > 0 && !isRetired && hasFuturePurchase && !hasPurchasedPrimary && (strategy !== 'DEBT_FIRST' || !hasRemainingDebtPostPay)) {
-                const fillFhsa = Math.min(fhsaRoom, excess);
-                celiapp += fillFhsa; fhsaRoom -= fillFhsa; fhsaLifetimeContrib += fillFhsa;
-                accFhsaYear += fillFhsa; excess -= fillFhsa;
-            }
-
-            if (!isRetired) {
-                const yearsElapsedForMarg = Math.floor(m / 12);
-                const estAnnualGross = (grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, yearsElapsedForMarg);
-                const marginal = calculateFiscalReport(estAnnualGross / activeUsersCount, 0, 0, loopYear, enableMonteCarlo).marginalRate;
-
-                // DEBT_FIRST skips regular investments until debts are clear
-                if (strategy === 'DEBT_FIRST' && hasRemainingDebtPostPay) {
-                    // Do nothing with excess, it will flow back to liquid below
-                } else if (strategy === 'PRIO_REER' || (strategy === 'AUTO_MARGINAL' && marginal >= 40)) {
-                    if (excess > 0 && rrspRoom > 0) { const fill = Math.min(rrspRoom, excess); reer += fill; rrspRoom -= fill; excess -= fill; accRrspYear += fill; contribREER += fill; }
-                    if (excess > 0 && celiRoom > 0) { const fill = Math.min(celiRoom, excess); celi += fill; celiRoom -= fill; excess -= fill; contribCELI += fill; }
-                } else {
-                    if (excess > 0 && celiRoom > 0) { const fill = Math.min(celiRoom, excess); celi += fill; celiRoom -= fill; excess -= fill; contribCELI += fill; }
-                    if (excess > 0 && rrspRoom > 0) { const fill = Math.min(rrspRoom, excess); reer += fill; rrspRoom -= fill; excess -= fill; accRrspYear += fill; contribREER += fill; }
-                }
-            } else {
-                // RETIREMENT: RRIF Overflow Sweep
-                // Prioritize TFSA/CELI first to shelter excess from tax
-                if (excess > 0 && celiRoom > 0) {
-                    const fill = Math.min(celiRoom, excess);
-                    celi += fill;
-                    celiRoom -= fill;
-                    excess -= fill;
-                    contribCELI += fill;
-                    logEvent(flowEventsLog, `↳ Surplus redirigé vers CELI: +${Math.round(fill).toLocaleString('fr-CA')}$`);
-                }
-            }
-
-            if (excess > 0) { nonReg += excess; nonRegACB += excess; contribNonReg += excess; excess = 0; }
-            liquid = targetEF;
-        }
+        // Cycle 19 split: shortfall + excess allocation → ./projection/cashflowAllocation
+        const cashState: CashflowState = {
+            liquid, celi, reer, celiapp, nonReg, nonRegACB, capitalLossBank, crypto,
+            celiRoom, rrspRoom, fhsaRoom,
+            taxCurrentYearReer: taxCurrentYear.reer,
+            accRetraitsReerYear, accCapitalGainsYear, accRrspYear, accFhsaYear,
+            fhsaLifetimeContrib, celiWithdrawalsThisYear,
+            retraitReerMois, retraitCeliMois,
+            withdrawalREER, withdrawalCELI, withdrawalNonReg, withdrawalCrypto,
+            contribCELI, contribREER, contribNonReg,
+            shortfallMonths,
+            flowEventLogs: [],
+        };
+        processCashflowAllocation(
+            cashState,
+            { monthlyCashflow, targetEF, criticalThreshold, isRetired, strategy,
+              m, loopYear, enableMonteCarlo, activeUsersCount,
+              grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
+              incomeRetirement, accRentesYear, hasFuturePurchase, hasPurchasedPrimary },
+            activeDebts,
+            calculateFiscalReport,
+            calculateGrossWithholdingRRSP,
+        );
+        liquid = cashState.liquid; celi = cashState.celi; reer = cashState.reer;
+        celiapp = cashState.celiapp; nonReg = cashState.nonReg; nonRegACB = cashState.nonRegACB;
+        capitalLossBank = cashState.capitalLossBank; crypto = cashState.crypto;
+        celiRoom = cashState.celiRoom; rrspRoom = cashState.rrspRoom; fhsaRoom = cashState.fhsaRoom;
+        taxCurrentYear.reer = cashState.taxCurrentYearReer;
+        accRetraitsReerYear = cashState.accRetraitsReerYear;
+        accCapitalGainsYear = cashState.accCapitalGainsYear;
+        accRrspYear = cashState.accRrspYear; accFhsaYear = cashState.accFhsaYear;
+        fhsaLifetimeContrib = cashState.fhsaLifetimeContrib;
+        celiWithdrawalsThisYear = cashState.celiWithdrawalsThisYear;
+        retraitReerMois = cashState.retraitReerMois; retraitCeliMois = cashState.retraitCeliMois;
+        withdrawalREER = cashState.withdrawalREER; withdrawalCELI = cashState.withdrawalCELI;
+        withdrawalNonReg = cashState.withdrawalNonReg; withdrawalCrypto = cashState.withdrawalCrypto;
+        contribCELI = cashState.contribCELI; contribREER = cashState.contribREER;
+        contribNonReg = cashState.contribNonReg;
+        shortfallMonths = cashState.shortfallMonths;
+        cashState.flowEventLogs.forEach(msg => logEvent(flowEventsLog, msg));
 
         // Cycle 15 split: REER Meltdown → ./projection/meltdownReer
         const meltResult = processReerMeltdown(
@@ -1449,34 +1146,14 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             if (rrspRoom > 0 && nonReg > 0 && !isRetired) { const a = Math.min(nonReg, rrspRoom); const s = handleNonRegSale(a, 'Opti.REER'); reer += s; rrspRoom -= s; accRrspYear += s; }
         }
 
-        // V21 Mec 8: Glidepath asset allocation
-        const yearsToRetirementNow = Math.max(0, (retirementMonthIndex - m) / 12);
-        const glideStartYears = 10;
-        const targetGlideRate = simInflation + 1.0;
-
-        // V31: Terminal Rate Glidepath (Plancher d'équité de 60% en retraite)
-        let glideFactor = yearsToRetirementNow < glideStartYears ? (yearsToRetirementNow / glideStartYears) : 1.0;
-        if (isRetired) glideFactor = Math.max(0.60, glideFactor);
-
-        // Monte Carlo B: Use random rates if MC mode enabled, else use base rates
-        const activeCeliRate = enableMonteCarlo ? mcCeliRate : baseRates.celi;
-        const activeReerRate = enableMonteCarlo ? mcReerRate : baseRates.reer;
-        const activeNonRegRate = enableMonteCarlo ? mcNonRegRate : baseRates.nonReg;
-        const activeCryptoRate = enableMonteCarlo ? mcCryptoRate : baseRates.crypto;
-        const activeCashRate = enableMonteCarlo ? mcCashRate : baseRates.cash;
-
-        const effectiveCeliRateRaw = activeCeliRate * glideFactor + targetGlideRate * (1 - glideFactor);
-        const effectiveReerRate = activeReerRate * glideFactor + targetGlideRate * (1 - glideFactor);
-        const effectiveNonRegRateRaw = activeNonRegRate * glideFactor + targetGlideRate * (1 - glideFactor);
-
-        // D2.7: Withholding tax US 15% — drag sur le CELI uniquement.
-        // REER exempté par convention fiscale. NON_ENREG: drag présent mais
-        // crédit pour impôt étranger récupère, donc négligé ici.
-        const usShareCeli = Math.min(1, Math.max(0, (effProj.usEquityShareCeli ?? 0) / 100));
-        const usDivYield = (effProj.usEquityDividendYield ?? 1.5) / 100;
-        const usCeliDragPct = usShareCeli * usDivYield * 0.15 * 100; // en points %
-        const effectiveCeliRate = effectiveCeliRateRaw - usCeliDragPct;
-        const effectiveNonRegRate = effectiveNonRegRateRaw;
+        // Cycle 18 split: glidepath + taux effectifs → ./projection/glidepathRates
+        const gr = computeGlidepathRates({
+            m, retirementMonthIndex, isRetired, simInflation, enableMonteCarlo,
+            mcCeliRate, mcReerRate, mcNonRegRate, mcCryptoRate, mcCashRate, baseRates,
+            usEquityShareCeli: effProj.usEquityShareCeli,
+            usEquityDividendYield: effProj.usEquityDividendYield,
+        });
+        const { effectiveCeliRate, effectiveReerRate, effectiveNonRegRate, activeCeliRate, activeCryptoRate, activeCashRate } = gr;
 
         // Cycle 7 split: applyMidMonthGrowth hoisté dans ./projection/helpers
         // (était redéfini 360× par scénario MC)
@@ -1516,136 +1193,40 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             hasHitFire = true;
         }
 
-        // V40: Accurate Latent Tax (Liquidation Delta)
-        const yearsElapsedLat = Math.floor(m / 12);
-        const inflationFactorLat = Math.pow(1 + simInflation / 100, yearsElapsedLat);
-        const currentGrossBaseLat = !isRetired ? (grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, yearsElapsedLat) : (accRentesYear + (incomeRetirement * 12));
-        const currentGrossPerUserLat = (currentGrossBaseLat / activeUsersCount) / inflationFactorLat;
-
-        const baseTaxReport = calculateFiscalReport(currentGrossPerUserLat, 0, 0, loopYear, enableMonteCarlo);
-        const baseTaxAmount = baseTaxReport.totalTax * activeUsersCount * inflationFactorLat;
-
-        const latentCapitalGain = Math.max(0, nonReg - nonRegACB);
-        const thresholdGainsLat = 250000 * activeUsersCount;
-        let taxableLatentGain = 0;
-        if (latentCapitalGain <= thresholdGainsLat) {
-            taxableLatentGain = latentCapitalGain * 0.50;
-        } else {
-            taxableLatentGain = (thresholdGainsLat * 0.50) + ((latentCapitalGain - thresholdGainsLat) * 0.6667);
-        }
-
-        // Inclusion: REER is 100% taxable, Crypto is 50/66% taxable (assumed 50% for simplicity in latent)
-        const totalTaxableLatentAssets = reer + crypto * 0.5 + taxableLatentGain;
-        const totalLatentIncomePerUser = ((currentGrossBaseLat + totalTaxableLatentAssets) / activeUsersCount) / inflationFactorLat;
-        const fullLiquidationTaxReport = calculateFiscalReport(totalLatentIncomePerUser, 0, 0, loopYear, enableMonteCarlo);
-        const fullLiquidationTaxAmount = fullLiquidationTaxReport.totalTax * activeUsersCount * inflationFactorLat;
-
-        let impotLatent = -(fullLiquidationTaxAmount - baseTaxAmount);
+        // Cycle 17 split: impôt latent → ./projection/latentTax
+        const impotLatent = computeLatentTax(
+            { m, loopYear, simInflation, simSalaryGrowth, isRetired, activeUsersCount,
+              grossMarcBaseAnnual, grossAnnaBaseAnnual, accRentesYear, incomeRetirement,
+              reer, nonReg, nonRegACB, crypto, enableMonteCarlo },
+            calculateFiscalReport as any,
+        );
 
         // ---- V31: TFSA/FHSA Room Refills move to December block (around line 550) ----
 
-        const expectedRealReturnRate = 0.05;
-        // V31: Coast FIRE corrigé en dollars constants actuels
-        const targetToday = fireTargetNetWorth;
-        const coastFireNominal = m >= retirementMonthIndex ? futureFireTarget : (targetToday / Math.pow(1 + expectedRealReturnRate / 12, Math.max(0, retirementMonthIndex - m))) * expenseMultiplier;
-
-        // V31: Barista target ajusté avec expenseMultiplier
-        const baristaTargetToday = Math.max(0, effectiveBaseExpenses - 1500) * 12 * 25;
-        const baristaTargetFuture = baristaTargetToday * expenseMultiplier;
-
-        if (enableMonteCarlo) {
-            data.push({ NetWorth: Number(rawNetWorth.toFixed(2)), monthIndex: m } as any);
-        } else {
-            data.push({
-                lifeEvents: lifeEventsLog,
-                flowEvents: flowEventsLog,
-                monthIndex: m,
-                dateLabel: `${currentLoopDate.toLocaleString('fr-CA', { month: 'short' })} ${loopYear}`,
-                year: loopYear,
-                age,
-                IncomeMarc: Number(incomeMarc.toFixed(2)),
-                IncomeAnna: Number(incomeAnna.toFixed(2)),
-                IncomeRetirement: Number(incomeRetirement.toFixed(2)),
-                Income: Number(monthlyIncome.toFixed(2)),
-                Expenses: Number(monthlyExpenses.toFixed(2)),
-                childCost: Number(childMonthlyCost.toFixed(2)),
-                childGross: Number(childGrossCost.toFixed(2)),
-                childBenefits: Number(childBenefits.toFixed(2)),
-                ReeeContrib: Number(reeeContribMonthly.toFixed(2)),
-                ReeePayout: Number(reeePayoutMonthly.toFixed(2)),
-                ImmoHypo: Number(immoHypo.toFixed(2)),
-                ImmoCharges: Number(immoCharges.toFixed(2)),
-                ImmoInterest: Number(immoInterest.toFixed(2)),
-                ImmoPrincipal: Number(immoPrincipal.toFixed(2)),
-                RentalIncome: Number(totalRentalIncome.toFixed(2)),
-                Savings: Number((monthlyIncome - monthlyExpenses).toFixed(2)),
-                NetSalary: Number(monthlyIncome.toFixed(2)),
-                Liquidites: Number(liquid.toFixed(2)),
-                CELI: Number(celi.toFixed(2)),
-                RetraitREER: Number(retraitReerMois.toFixed(2)),
-                RetraitCELI: Number(retraitCeliMois.toFixed(2)),
-                CELIMax: Number((celiRoom + celi).toFixed(2)),
-                CELIAPP: Number(celiapp.toFixed(2)),
-                REER: Number(reer.toFixed(2)),
-                REERMax: Number((rrspRoom + reer).toFixed(2)),
-                REEE: Number(reee.toFixed(2)),
-                NonReg: Number(nonReg.toFixed(2)),
-                Crypto: Number(crypto.toFixed(2)),
-                rapBalance: Number(rapRepaymentDueTotal.toFixed(2)),
-                Immobilier: Number(realEstateEquity.toFixed(2)),
-                DetteTotale: Number((mortgageBalance + activeDebtsTotal).toFixed(2)),
-                NetWorth: Number(rawNetWorth.toFixed(2)),
-                diffNW: Number((rawNetWorth - prevNW).toFixed(2)),
-                diffCELI: Number((celi - prevCELI).toFixed(2)),
-                diffREER: Number((reer - prevREER).toFixed(2)),
-                diffLiquid: Number((liquid - prevLiquid).toFixed(2)),
-                ImpotLatent: Number(impotLatent.toFixed(2)),
-                FluxImpots: Number(fluxImpots.toFixed(2)),
-                ImpotRetraitREER: Number(impotReerMois.toFixed(2)),
-                ImpotSalaireMois: Number(impotSalaireMois.toFixed(2)),
-                ImpotGainsCap: Number(impotGainsMois.toFixed(2)),
-                ImpotDivers: Number(impotDiversMois.toFixed(2)),
-                TaxPaidRevenu: Number(taxPaidRevenu.toFixed(2)),
-                TaxPaidGains: Number(taxPaidGains.toFixed(2)),
-                TaxPaidDivers: Number(taxPaidDivers.toFixed(2)),
-                TaxPaidREER: Number(taxPaidREER.toFixed(2)),
-                WithheldTaxRrif: Number((taxOnRrif || 0).toFixed(2)), // V49: Export FERR flat tax withholding
-                FireTarget: Number(futureFireTarget.toFixed(2)),
-                CoastFIRE: Number(coastFireNominal.toFixed(2)),
-                BaristaFIRE: Number(baristaTargetFuture.toFixed(2)),
-                isRetired,
-                ContribCELI: Number(contribCELI.toFixed(2)),
-                ContribREER: Number(contribREER.toFixed(2)),
-                ContribNonReg: Number(contribNonReg.toFixed(2)),
-                MarketGrowthCELI: Number(growthCELI.toFixed(2)),
-                MarketGrowthREER: Number(growthREER.toFixed(2)),
-                MarketGrowthNonReg: Number(growthNonReg.toFixed(2)),
-                MarketGrowthCrypto: Number(growthCrypto.toFixed(2)),
-                MarketGrowthLiquid: Number(growthLiquid.toFixed(2)),
-                MarketGrowthCELIAPP: Number(growthCELIAPP.toFixed(2)),
-                MarketGrowthREEE: Number(growthREEE.toFixed(2)),
-                MarketGrowthPctCELI: Number(growthPctCELI.toFixed(2)),
-                MarketGrowthPctREER: Number(growthPctREER.toFixed(2)),
-                MarketGrowthPctNonReg: Number(growthPctNonReg.toFixed(2)),
-                MarketGrowthPctCrypto: Number(growthPctCrypto.toFixed(2)),
-                MarketGrowthPctLiquid: Number(growthPctLiquid.toFixed(2)),
-                MarketGrowthPctCELIAPP: Number(growthPctCELIAPP.toFixed(2)),
-                MarketGrowthPctREEE: Number(growthPctREEE.toFixed(2)),
-                NetTransferCELI: Number((contribCELI - withdrawalCELI).toFixed(2)),
-                NetTransferREER: Number((contribREER - withdrawalREER).toFixed(2)),
-                NetTransferNonReg: Number((contribNonReg - withdrawalNonReg).toFixed(2)),
-                NetTransferCrypto: Number((contribCrypto - withdrawalCrypto).toFixed(2)),
-                NetTransferLiquid: Number((contribLiquid - withdrawalLiquid).toFixed(2)),
-                NetTransferCELIAPP: Number((contribCELIAPP - withdrawalCELIAPP).toFixed(2)),
-                NetTransferREEE: Number((contribREEE - withdrawalREEE).toFixed(2)),
-                ExpenseInflationImpact: Number((monthlyExpenses * (simInflation / 100 / 12)).toFixed(2)),
-                ExpenseInflationPct: Number((simInflation / 12).toFixed(2)),
-                AccruedTaxRevenue: Number((taxCurrentYear.revenu + taxPreviousYear.revenu).toFixed(2)),
-                AccruedTaxGains: Number((taxCurrentYear.gains + taxPreviousYear.gains).toFixed(2)),
-                AccruedTaxDivers: Number((taxCurrentYear.divers + taxPreviousYear.divers).toFixed(2)),
-                AccruedTaxREER: Number((taxCurrentYear.reer + taxPreviousYear.reer).toFixed(2))
-            });
-        }
+        // Cycle 21 split: assemblage data.push → ./projection/monthlyOutput
+        data.push(buildMonthlyDataPoint({
+            m, retirementMonthIndex, fireTargetNetWorth, futureFireTarget,
+            simInflation, expenseMultiplier, effectiveBaseExpenses, enableMonteCarlo,
+            rawNetWorth, currentLoopDate, loopYear, age, isRetired,
+            incomeMarc, incomeAnna, incomeRetirement, monthlyIncome, monthlyExpenses,
+            childMonthlyCost, childGrossCost, childBenefits,
+            reeeContribMonthly, reeePayoutMonthly,
+            immoHypo, immoCharges, immoInterest, immoPrincipal, totalRentalIncome,
+            liquid, celi, celiapp, reer, reee, nonReg, crypto,
+            retraitReerMois, retraitCeliMois, celiRoom, rrspRoom,
+            rapRepaymentDueTotal, realEstateEquity, mortgageBalance, activeDebtsTotal,
+            prevNW, prevCELI, prevREER, prevLiquid,
+            impotLatent, fluxImpots, impotReerMois, impotSalaireMois, impotGainsMois, impotDiversMois,
+            taxPaidRevenu, taxPaidGains, taxPaidDivers, taxPaidREER, taxOnRrif,
+            contribCELI, withdrawalCELI, contribREER, withdrawalREER,
+            contribNonReg, withdrawalNonReg, contribCrypto, withdrawalCrypto,
+            contribLiquid, withdrawalLiquid, contribCELIAPP, withdrawalCELIAPP,
+            contribREEE, withdrawalREEE,
+            growthCELI, growthREER, growthNonReg, growthCrypto, growthLiquid, growthCELIAPP, growthREEE,
+            growthPctCELI, growthPctREER, growthPctNonReg, growthPctCrypto, growthPctLiquid, growthPctCELIAPP, growthPctREEE,
+            taxCurrentYear, taxPreviousYear,
+            lifeEventsLog, flowEventsLog,
+        }));
     }
 
     // V48: Smith Manoeuvre Bug (Création magique d'argent)

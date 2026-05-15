@@ -22,6 +22,10 @@ export default defineConfig(({ mode }) => {
       build: {
         sourcemap: 'hidden',
         chunkSizeWarningLimit: 800,
+        // Phase 3E perf — désactive le polyfill modulepreload (économise ~2-4KB
+        // sur le bundle initial). Tous les navigateurs modernes supportent
+        // nativement modulepreload, le polyfill est inutile pour notre cible.
+        modulePreload: { polyfill: false },
         rollupOptions: {
           output: {
             manualChunks: {

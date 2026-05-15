@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Card } from './ui/Card';
+import { PageHeader } from './ui/PageHeader';
+import { Button } from './ui/Button';
 import { LifeEvent, LifeEventType, TravelGoal } from '../types';
 import { ResponsiveContainer, PieChart, Pie, Cell, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { ConfirmModal } from './ui/ConfirmModal';
@@ -113,16 +115,16 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                 confirmLabel="Supprimer"
             />
 
-            {/* HEADER */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold text-white tracking-tight flex items-center gap-2">🛤️ Parcours de Vie</h2>
-                    <p className="text-gray-400 text-sm mt-1">Simulez l'impact financier de vos projets (Voyages, Mariage) et des aléas (Accidents, Krach).</p>
-                </div>
-                <button onClick={() => setIsAdding(!isAdding)} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:brightness-110 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg transition-transform active:scale-95 flex items-center gap-2">
-                    {isAdding ? 'Fermer' : '➕ Ajouter un Événement'}
-                </button>
-            </div>
+            <PageHeader
+                icon="🛤️"
+                title="Parcours de Vie"
+                subtitle="Simulez l'impact financier de vos projets (voyages, mariage) et des aléas (accidents, krach)."
+                actions={
+                    <Button onClick={() => setIsAdding(!isAdding)} variant={isAdding ? 'ghost' : 'secondary'} size="md">
+                        {isAdding ? 'Fermer' : '➕ Ajouter un Événement'}
+                    </Button>
+                }
+            />
 
             {/* INTERACTIVE TIMELINE */}
             {(() => {

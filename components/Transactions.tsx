@@ -4,6 +4,7 @@ import { Transaction, BudgetCategory, CategorizationRule } from '../types';
 import { showToast } from './ui/Toast';
 import { categorizeBatch } from '../services/gemini';
 import { Card } from './ui/Card';
+import { PageHeader } from './ui/PageHeader';
 import { CATEGORY_ICONS } from '../constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
@@ -314,7 +315,13 @@ export const Transactions: React.FC<TransactionsProps> = ({
     };
 
     return (
-        <div className="space-y-4 relative">
+        <div className="space-y-6 relative">
+
+            <PageHeader
+                icon="💳"
+                title="Transactions"
+                subtitle={`${transactions.length} transactions au total · ${uncategorizedGroups.length} groupe(s) à classer`}
+            />
 
             <div className="rounded-xl border border-indigo-500/20 bg-indigo-900/10">
                 <button

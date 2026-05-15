@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Card } from './ui/Card';
+import { PageHeader } from './ui/PageHeader';
+import { Badge } from './ui/Badge';
 import { Debt } from '../types';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
 import { ConfirmModal } from './ui/ConfirmModal';
@@ -66,16 +68,12 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     return (
         <div className="space-y-6 animate-fade-in pb-20">
             <ConfirmModal isOpen={!!confirmDeleteId} onConfirm={doConfirmDelete} onCancel={() => setConfirmDeleteId(null)} title="Supprimer la dette" message="Supprimer cette dette définitivement ?" confirmLabel="Supprimer" />
-            <div className="flex justify-between items-center bg-gradient-to-r from-red-900/40 to-orange-900/40 p-6 rounded-2xl border border-red-500/20">
-                <div>
-                    <h2 className="text-3xl font-bold text-white tracking-tight">Gestion de la Dette</h2>
-                    <p className="text-gray-400 text-sm mt-1">Éliminez vos dettes toxiques (Cartes, Prêts).</p>
-                </div>
-                <div className="text-right">
-                    <div className="text-xs text-red-300 uppercase font-bold">Total Dû</div>
-                    <div className="text-3xl font-black text-white">{totalDebt.toLocaleString()} $</div>
-                </div>
-            </div>
+            <PageHeader
+                icon="💸"
+                title="Gestion de la Dette"
+                subtitle="Éliminez vos dettes toxiques (cartes, prêts)."
+                badge={<Badge variant={totalDebt > 0 ? 'danger' : 'success'} size="md">Total Dû: {totalDebt.toLocaleString()} $</Badge>}
+            />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-1 space-y-6">
                     <Card title="Vos Dettes" action={<button onClick={() => setIsAdding(!isAdding)} className="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20">+ Ajouter</button>}>

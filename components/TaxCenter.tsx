@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { showToast } from './ui/Toast';
 import { Card } from './ui/Card';
+import { PageHeader } from './ui/PageHeader';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, Cell, PieChart, Pie } from 'recharts';
 import { BudgetConfig, Asset } from '../types';
 import { GoogleGenAI } from "@google/genai";
@@ -228,14 +229,13 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
     return (
         <div className="space-y-6 animate-fade-in pb-20">
 
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-surface p-4 rounded-2xl border border-white/5 shadow-lg">
-                <div>
-                    <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-                        🏛️ Simulateur d'Impôts (Québec)
-                    </h2>
-                    <p className="text-gray-400 text-xs">Pré-rempli et verrouillé avec votre profil global.</p>
-                </div>
-                <div className="flex gap-2 w-full md:w-auto">
+            <PageHeader
+                icon="🏛️"
+                title="Simulateur d'Impôts (Québec)"
+                subtitle="Pré-rempli et verrouillé avec votre profil global"
+            />
+
+            <div className="flex justify-end gap-2 w-full md:w-auto md:ml-auto -mt-2">
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isAnalyzing}
@@ -252,7 +252,6 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                     <button onClick={openDrive} className="flex items-center justify-center gap-2 bg-[#1f2937] hover:bg-[#374151] border border-white/10 px-4 py-2 rounded-lg transition-all shadow-lg active:scale-95 group">
                         <img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" alt="Drive" className="w-6 h-6 group-hover:scale-110 transition-transform" />
                     </button>
-                </div>
             </div>
 
             {isAnalyzing && (

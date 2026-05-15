@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card } from './ui/Card';
+import { PageHeader } from './ui/PageHeader';
 import { AppState, BudgetCategory, Transaction, Asset, SavingsGoal, TravelGoal, Debt, InvestmentAccount, InvestmentTransaction, LifeEvent, RetirementGoal, FinancialGoal, RealEstateGoal, BudgetConfig } from '../types';
 import { showToast } from './ui/Toast';
 import { useFinanceStore } from '../store/useFinanceStore';
@@ -165,6 +166,11 @@ export const Settings: React.FC<SettingsProps> = ({
       <BackupPanel buildPayload={buildBackupPayload} />
 
       <div className="max-w-4xl mx-auto space-y-6">
+        <PageHeader
+            icon="⚙️"
+            title="Paramètres"
+            subtitle="Configuration globale, profils utilisateurs, intégrations API."
+        />
 
         <Card title="Soldes Initiaux des Comptes">
           <div className="space-y-4">

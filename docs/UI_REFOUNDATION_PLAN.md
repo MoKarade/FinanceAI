@@ -428,8 +428,8 @@ Le backend wiring est en place. Côté UI, ajouter :
 | **C3** | `refactor(budget): hero + bandeau + sections` | Budget cible §4.3 | — | S |
 | **C4** | `refactor(investments): standardisation` | Pattern PageHeader+KPI | — | M |
 | **C5** | `refactor(realestate): standardisation` | Sections séparées | — | M |
-| **C6** | `refactor(transactions): aération filter bar` | Bar moins dense | — | S |
-| **C7** | `refactor(retirement/children/settings): uniformisation` | Application tokens | — | S |
+| ~~**C6**~~ | ~~`refactor(transactions)`~~ | ✅ FAIT (PageHeader ajouté) | — | S |
+| ~~**C7**~~ | ~~`refactor(retirement/children/settings)`~~ | ✅ FAIT — Retirement/TaxCenter/DebtManager/Travel/LifeEvents/Settings/Children avec PageHeader | — | S |
 | **D1** | `feat(ui): mobile pass` | Audit responsive + corrections targets touch | — | M |
 | **D2** | `feat(ui): animations + microinteractions` | Transitions sections, hover states, loading | — | S |
 

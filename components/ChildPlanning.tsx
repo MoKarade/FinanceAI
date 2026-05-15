@@ -1,5 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from './ui/Card';
+import { PageHeader } from './ui/PageHeader';
+import { Button } from './ui/Button';
+import { Badge } from './ui/Badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area, ReferenceLine } from 'recharts';
 import { ChildGoal, ProjectionConfig } from '../types';
 import { INITIAL_CHILD_GOAL } from '../constants';
@@ -245,37 +248,27 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                 message={`Supprimer "${confirmRemove?.name}" définitivement ?`}
                 confirmLabel="Supprimer"
             />
-            {/* EN-TÊTE */}
-            <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold text-white flex items-center gap-2">👶 Planification Enfant</h2>
-                    <p className="text-gray-400 text-sm mt-1">Configurez les choix de vie et visualisez l'impact financier complet jusqu'à 25 ans.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <div className="text-right bg-black/40 border border-white/10 rounded-xl p-3">
-                        <div className="text-[10px] text-gray-500 uppercase font-bold">Coût Total (Ce profil)</div>
-                        <div className="text-2xl font-black text-white privacy-blur">{fmt(costTimeline.totalCost)}</div>
-                        <div className="text-[10px] text-gray-500">0–25 ans, net des allocations</div>
-                    </div>
-                    <button
-                        onClick={() => update('isActive', !goal.isActive)}
-                        className={`py-3 px-4 rounded-xl font-bold transition-all shadow-lg text-sm ${goal.isActive
-                            ? 'bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30'
-                            : 'bg-primary text-white hover:brightness-110 border border-transparent'
-                            }`}
-                    >
-                        {goal.isActive ? '❌ Désactiver (Futur)' : '✅ Activer dans Futur'}
-                    </button>
-                    {goals.length > 1 && (
-                        <button
-                            onClick={handleRemoveChild}
-                            className="text-red-400 hover:text-red-300 bg-red-900/40 p-3 rounded-xl border border-red-500/30"
-                            title="Supprimer ce profil"
+            <PageHeader
+                icon="👶"
+                title="Planification Enfant"
+                subtitle="Configurez les choix de vie et visualisez l'impact financier complet jusqu'à 25 ans."
+                badge={<Badge variant="info" size="md">Coût total: {fmt(costTimeline.totalCost)}</Badge>}
+                actions={
+                    <>
+                        <Button
+                            onClick={() => update('isActive', !goal.isActive)}
+                            variant={goal.isActive ? 'danger' : 'primary'}
+                            size="md"
                         >
-                            🗑️
-                        </button>
-                    )}
-                </div>
+                            {goal.isActive ? '❌ Désactiver (Futur)' : '✅ Activer dans Futur'}
+                        </Button>
+                        {goals.length > 1 && (
+                            <Button onClick={handleRemoveChild} variant="ghost" size="md" title="Supprimer ce profil">🗑️</Button>
+                        )}
+                    </>
+                }
+            />
+            <div className="hidden">{/* spacing preserve */}
             </div>
 
             {/* TABS ENFANTS */}

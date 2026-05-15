@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { Card } from './ui/Card';
 import { ConfirmModal } from './ui/ConfirmModal';
+import { PageHeader } from './ui/PageHeader';
+import { Button } from './ui/Button';
 import { TravelGoal } from '../types';
 
 interface TravelProps {
@@ -41,18 +43,16 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                 message="Supprimer ce voyage définitivement ?"
                 confirmLabel="Supprimer"
             />
-            <div className="flex justify-between items-center">
-                <div>
-                    <h2 className="text-3xl font-bold text-white tracking-tight">Mes Voyages</h2>
-                    <p className="text-gray-400 text-sm">Planifiez vos prochaines aventures</p>
-                </div>
-                <button
-                    onClick={() => setIsAdding(!isAdding)}
-                    className="bg-primary hover:bg-green-500 text-white px-4 py-2 rounded-lg font-bold shadow-lg transition-transform active:scale-95"
-                >
-                    {isAdding ? 'Annuler' : '+ Nouveau Voyage'}
-                </button>
-            </div>
+            <PageHeader
+                icon="✈️"
+                title="Mes Voyages"
+                subtitle="Planifiez vos prochaines aventures"
+                actions={
+                    <Button onClick={() => setIsAdding(!isAdding)} variant={isAdding ? 'ghost' : 'primary'} size="md">
+                        {isAdding ? 'Annuler' : '+ Nouveau Voyage'}
+                    </Button>
+                }
+            />
 
             {isAdding && (
                 <Card className="border-2 border-dashed border-white/20 bg-white/5">

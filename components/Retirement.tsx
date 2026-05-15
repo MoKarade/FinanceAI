@@ -160,17 +160,17 @@ export const Retirement: React.FC<RetirementProps> = ({
         if (chartData.length === 0) return [];
         return chartData.filter(d => d.monthIndex % 12 === 0).map(d => ({
             ...d,
-            TotalCapital: d.CELI + d.REER + d.NonReg + d.Liquidites + (d.CELIAPP || 0),
+            TotalCapital: (d.CELI ?? 0) + (d.REER ?? 0) + (d.NonReg ?? 0) + (d.Liquidites ?? 0) + (d.CELIAPP ?? 0),
         }));
     }, [chartData]);
 
-    const retirementPoint = yearlyData.find(d => d.age >= goal.targetAge);
+    const retirementPoint = yearlyData.find(d => (d.age ?? 0) >= goal.targetAge);
     const retirementNetWorth = retirementPoint?.NetWorth || 0;
     const peakNetWorth = yearlyData.length > 0 ? Math.max(...yearlyData.map(d => d.NetWorth)) : 0;
     const finalNetWorth = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1]?.NetWorth || 0 : 0;
 
-    const retirementData = yearlyData.filter(d => d.age >= goal.targetAge);
-    const lifeExpectancyData = yearlyData.filter(d => d.age <= lifeExpectancy);
+    const retirementData = yearlyData.filter(d => (d.age ?? 0) >= goal.targetAge);
+    const lifeExpectancyData = yearlyData.filter(d => (d.age ?? 0) <= lifeExpectancy);
     const bankruptcyPoint = retirementData.find(d => d.TotalCapital <= 0);
     const bankruptcyAge = bankruptcyPoint?.age;
 

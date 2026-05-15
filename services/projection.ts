@@ -126,7 +126,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         fhsaRoom = FHSA_ANNUAL_LIMIT_PER_USER * fhsaEligibleUsersCount;
     }
 
-    let fhsaClosingYear = -1;
+    let fhsaClosingYear: number | null = -1;
     let fhsaLifetimeContrib = Math.min(celiapp, FHSA_LIFETIME_LIMIT_PER_USER * fhsaEligibleUsersCount);
     let accFhsaYear = 0;
     

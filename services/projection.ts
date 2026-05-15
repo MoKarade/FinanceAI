@@ -17,6 +17,7 @@ import { computeLatentTax } from './projection/latentTax';
 import { computeGlidepathRates } from './projection/glidepathRates';
 import { processCashflowAllocation, type CashflowState } from './projection/cashflowAllocation';
 import { processRealEstate, type RealEstateState } from './projection/realEstateMonth';
+import { buildMonthlyDataPoint } from './projection/monthlyOutput';
 
 export interface SimulationParams {
     projection: ProjectionConfig;
@@ -1202,108 +1203,30 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
         // ---- V31: TFSA/FHSA Room Refills move to December block (around line 550) ----
 
-        const expectedRealReturnRate = 0.05;
-        // V31: Coast FIRE corrigé en dollars constants actuels
-        const targetToday = fireTargetNetWorth;
-        const coastFireNominal = m >= retirementMonthIndex ? futureFireTarget : (targetToday / Math.pow(1 + expectedRealReturnRate / 12, Math.max(0, retirementMonthIndex - m))) * expenseMultiplier;
-
-        // V31: Barista target ajusté avec expenseMultiplier
-        const baristaTargetToday = Math.max(0, effectiveBaseExpenses - 1500) * 12 * 25;
-        const baristaTargetFuture = baristaTargetToday * expenseMultiplier;
-
-        if (enableMonteCarlo) {
-            data.push({ NetWorth: Number(rawNetWorth.toFixed(2)), monthIndex: m } as any);
-        } else {
-            data.push({
-                lifeEvents: lifeEventsLog,
-                flowEvents: flowEventsLog,
-                monthIndex: m,
-                dateLabel: `${currentLoopDate.toLocaleString('fr-CA', { month: 'short' })} ${loopYear}`,
-                year: loopYear,
-                age,
-                IncomeMarc: Number(incomeMarc.toFixed(2)),
-                IncomeAnna: Number(incomeAnna.toFixed(2)),
-                IncomeRetirement: Number(incomeRetirement.toFixed(2)),
-                Income: Number(monthlyIncome.toFixed(2)),
-                Expenses: Number(monthlyExpenses.toFixed(2)),
-                childCost: Number(childMonthlyCost.toFixed(2)),
-                childGross: Number(childGrossCost.toFixed(2)),
-                childBenefits: Number(childBenefits.toFixed(2)),
-                ReeeContrib: Number(reeeContribMonthly.toFixed(2)),
-                ReeePayout: Number(reeePayoutMonthly.toFixed(2)),
-                ImmoHypo: Number(immoHypo.toFixed(2)),
-                ImmoCharges: Number(immoCharges.toFixed(2)),
-                ImmoInterest: Number(immoInterest.toFixed(2)),
-                ImmoPrincipal: Number(immoPrincipal.toFixed(2)),
-                RentalIncome: Number(totalRentalIncome.toFixed(2)),
-                Savings: Number((monthlyIncome - monthlyExpenses).toFixed(2)),
-                NetSalary: Number(monthlyIncome.toFixed(2)),
-                Liquidites: Number(liquid.toFixed(2)),
-                CELI: Number(celi.toFixed(2)),
-                RetraitREER: Number(retraitReerMois.toFixed(2)),
-                RetraitCELI: Number(retraitCeliMois.toFixed(2)),
-                CELIMax: Number((celiRoom + celi).toFixed(2)),
-                CELIAPP: Number(celiapp.toFixed(2)),
-                REER: Number(reer.toFixed(2)),
-                REERMax: Number((rrspRoom + reer).toFixed(2)),
-                REEE: Number(reee.toFixed(2)),
-                NonReg: Number(nonReg.toFixed(2)),
-                Crypto: Number(crypto.toFixed(2)),
-                rapBalance: Number(rapRepaymentDueTotal.toFixed(2)),
-                Immobilier: Number(realEstateEquity.toFixed(2)),
-                DetteTotale: Number((mortgageBalance + activeDebtsTotal).toFixed(2)),
-                NetWorth: Number(rawNetWorth.toFixed(2)),
-                diffNW: Number((rawNetWorth - prevNW).toFixed(2)),
-                diffCELI: Number((celi - prevCELI).toFixed(2)),
-                diffREER: Number((reer - prevREER).toFixed(2)),
-                diffLiquid: Number((liquid - prevLiquid).toFixed(2)),
-                ImpotLatent: Number(impotLatent.toFixed(2)),
-                FluxImpots: Number(fluxImpots.toFixed(2)),
-                ImpotRetraitREER: Number(impotReerMois.toFixed(2)),
-                ImpotSalaireMois: Number(impotSalaireMois.toFixed(2)),
-                ImpotGainsCap: Number(impotGainsMois.toFixed(2)),
-                ImpotDivers: Number(impotDiversMois.toFixed(2)),
-                TaxPaidRevenu: Number(taxPaidRevenu.toFixed(2)),
-                TaxPaidGains: Number(taxPaidGains.toFixed(2)),
-                TaxPaidDivers: Number(taxPaidDivers.toFixed(2)),
-                TaxPaidREER: Number(taxPaidREER.toFixed(2)),
-                WithheldTaxRrif: Number((taxOnRrif || 0).toFixed(2)), // V49: Export FERR flat tax withholding
-                FireTarget: Number(futureFireTarget.toFixed(2)),
-                CoastFIRE: Number(coastFireNominal.toFixed(2)),
-                BaristaFIRE: Number(baristaTargetFuture.toFixed(2)),
-                isRetired,
-                ContribCELI: Number(contribCELI.toFixed(2)),
-                ContribREER: Number(contribREER.toFixed(2)),
-                ContribNonReg: Number(contribNonReg.toFixed(2)),
-                MarketGrowthCELI: Number(growthCELI.toFixed(2)),
-                MarketGrowthREER: Number(growthREER.toFixed(2)),
-                MarketGrowthNonReg: Number(growthNonReg.toFixed(2)),
-                MarketGrowthCrypto: Number(growthCrypto.toFixed(2)),
-                MarketGrowthLiquid: Number(growthLiquid.toFixed(2)),
-                MarketGrowthCELIAPP: Number(growthCELIAPP.toFixed(2)),
-                MarketGrowthREEE: Number(growthREEE.toFixed(2)),
-                MarketGrowthPctCELI: Number(growthPctCELI.toFixed(2)),
-                MarketGrowthPctREER: Number(growthPctREER.toFixed(2)),
-                MarketGrowthPctNonReg: Number(growthPctNonReg.toFixed(2)),
-                MarketGrowthPctCrypto: Number(growthPctCrypto.toFixed(2)),
-                MarketGrowthPctLiquid: Number(growthPctLiquid.toFixed(2)),
-                MarketGrowthPctCELIAPP: Number(growthPctCELIAPP.toFixed(2)),
-                MarketGrowthPctREEE: Number(growthPctREEE.toFixed(2)),
-                NetTransferCELI: Number((contribCELI - withdrawalCELI).toFixed(2)),
-                NetTransferREER: Number((contribREER - withdrawalREER).toFixed(2)),
-                NetTransferNonReg: Number((contribNonReg - withdrawalNonReg).toFixed(2)),
-                NetTransferCrypto: Number((contribCrypto - withdrawalCrypto).toFixed(2)),
-                NetTransferLiquid: Number((contribLiquid - withdrawalLiquid).toFixed(2)),
-                NetTransferCELIAPP: Number((contribCELIAPP - withdrawalCELIAPP).toFixed(2)),
-                NetTransferREEE: Number((contribREEE - withdrawalREEE).toFixed(2)),
-                ExpenseInflationImpact: Number((monthlyExpenses * (simInflation / 100 / 12)).toFixed(2)),
-                ExpenseInflationPct: Number((simInflation / 12).toFixed(2)),
-                AccruedTaxRevenue: Number((taxCurrentYear.revenu + taxPreviousYear.revenu).toFixed(2)),
-                AccruedTaxGains: Number((taxCurrentYear.gains + taxPreviousYear.gains).toFixed(2)),
-                AccruedTaxDivers: Number((taxCurrentYear.divers + taxPreviousYear.divers).toFixed(2)),
-                AccruedTaxREER: Number((taxCurrentYear.reer + taxPreviousYear.reer).toFixed(2))
-            });
-        }
+        // Cycle 21 split: assemblage data.push → ./projection/monthlyOutput
+        data.push(buildMonthlyDataPoint({
+            m, retirementMonthIndex, fireTargetNetWorth, futureFireTarget,
+            simInflation, expenseMultiplier, effectiveBaseExpenses, enableMonteCarlo,
+            rawNetWorth, currentLoopDate, loopYear, age, isRetired,
+            incomeMarc, incomeAnna, incomeRetirement, monthlyIncome, monthlyExpenses,
+            childMonthlyCost, childGrossCost, childBenefits,
+            reeeContribMonthly, reeePayoutMonthly,
+            immoHypo, immoCharges, immoInterest, immoPrincipal, totalRentalIncome,
+            liquid, celi, celiapp, reer, reee, nonReg, crypto,
+            retraitReerMois, retraitCeliMois, celiRoom, rrspRoom,
+            rapRepaymentDueTotal, realEstateEquity, mortgageBalance, activeDebtsTotal,
+            prevNW, prevCELI, prevREER, prevLiquid,
+            impotLatent, fluxImpots, impotReerMois, impotSalaireMois, impotGainsMois, impotDiversMois,
+            taxPaidRevenu, taxPaidGains, taxPaidDivers, taxPaidREER, taxOnRrif,
+            contribCELI, withdrawalCELI, contribREER, withdrawalREER,
+            contribNonReg, withdrawalNonReg, contribCrypto, withdrawalCrypto,
+            contribLiquid, withdrawalLiquid, contribCELIAPP, withdrawalCELIAPP,
+            contribREEE, withdrawalREEE,
+            growthCELI, growthREER, growthNonReg, growthCrypto, growthLiquid, growthCELIAPP, growthREEE,
+            growthPctCELI, growthPctREER, growthPctNonReg, growthPctCrypto, growthPctLiquid, growthPctCELIAPP, growthPctREEE,
+            taxCurrentYear, taxPreviousYear,
+            lifeEventsLog, flowEventsLog,
+        }));
     }
 
     // V48: Smith Manoeuvre Bug (Création magique d'argent)

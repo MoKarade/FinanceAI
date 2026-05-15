@@ -2,14 +2,20 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AppState, Tab, BudgetCategory } from '../types';
 import { INITIAL_BUDGET, INITIAL_CONFIG, INITIAL_PROJECTION, INITIAL_REAL_ESTATE_GOAL, INITIAL_CHILD_GOAL, DEFAULT_FX_RATES } from '../constants';
+import type { ProjectionResult } from '../services/projection/types';
 
 interface FinanceState extends AppState {
     activeTab: Tab;
     isPrivacyMode: boolean;
+    // Wiring 2026-05 (Option A): dernier résultat de calculateFutureProjection,
+    // mis à jour par FutureProjection. Lu par Dashboard/Investments/Budget/etc.
+    // pour afficher des projections cohérentes sans recalculer.
+    lastProjection: ProjectionResult | null;
     setActiveTab: (tab: Tab) => void;
     setPrivacyMode: (v: boolean) => void;
     togglePrivacyMode: () => void;
     setAppState: (state: Partial<AppState>) => void;
+    setLastProjection: (r: ProjectionResult | null) => void;
     updateFxRates: (rates: { USD: number; EUR: number; CAD: number; lastFetched?: number }) => void;
     updateApiKeys: (keys: { eraContext: string; gemini: string }) => void;
     updateLastUpdate: () => void;
@@ -209,11 +215,13 @@ export const useFinanceStore = create<FinanceState>()(
             ...initialState,
             activeTab: Tab.DASHBOARD,
             isPrivacyMode: false,
+            lastProjection: null,
 
             setActiveTab: (tab) => set({ activeTab: tab }),
             setPrivacyMode: (v) => set({ isPrivacyMode: v }),
             togglePrivacyMode: () => set((prev) => ({ isPrivacyMode: !prev.isPrivacyMode })),
             setAppState: (state) => set((prev) => ({ ...prev, ...state })),
+            setLastProjection: (r) => set({ lastProjection: r }),
             updateFxRates: (rates) => set((prev) => ({
                 fxRates: { ...prev.fxRates, ...rates }
             })),
@@ -240,7 +248,7 @@ export const useFinanceStore = create<FinanceState>()(
                 return persistedState as Partial<FinanceState>;
             },
             partialize: (state) => {
-                const { apiKeys, activeTab, isPrivacyMode, ...persistable } = state;
+                const { apiKeys, activeTab, isPrivacyMode, lastProjection, ...persistable } = state;
                 return persistable;
             },
         }

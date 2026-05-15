@@ -101,7 +101,38 @@ Moins de duplication, cohérence garantie entre onglets.
 
 1. ✅ Wire `savingsGoals` + `financialGoals` au moteur (fait)
 2. ✅ Optimiser stratégies de décaissement (PBMA + bracket 1 + OAS guard + capLossBank)
-3. ⏳ Stocker `lastProjection` dans Zustand store (Option A)
-4. ⏳ Vérifier `isActive` sur RealEstateGoal dans la projection
-5. ⏳ Tests unitaires pour les deux nouveaux wirings (`applySavingsGoalDeadlines`, `applyFinancialGoalDeadlines`)
-6. 🎨 **UI rework** (après tout ce qui précède)
+3. ✅ Stocker `lastProjection` dans Zustand store (Option A) — fait
+4. ✅ Premier consumer cross-tab: Dashboard "Indicateur Futur" lit la vraie projection (fait)
+5. ⏳ Brancher Investments, Budget, Children sur `lastProjection`
+6. ⏳ Vérifier `isActive` sur RealEstateGoal dans la projection
+7. ⏳ Tests unitaires supplémentaires pour le drawdown optim (PBMA, bracket-1, OAS guard)
+8. 🎨 **UI rework** (après tout ce qui précède)
+
+## 🆕 Changement 2026-05 (Option A implémentée)
+
+Le store Zustand expose maintenant `lastProjection: ProjectionResult | null`.
+- Écrit par `FutureProjection.tsx` à chaque update (sync ou async via worker)
+- Lu par tous les onglets via `useFinanceStore(s => s.lastProjection)`
+- Exclu de la persistance (champ dérivé, recalculé au chargement)
+- Premier consumer: `Dashboard.tsx` "Indicateur Futur" — affiche le NW réel
+  projeté à N ans depuis chartData, plutôt que la formule simple 5%
+
+### Pattern pour brancher d'autres onglets
+
+```tsx
+import { useFinanceStore } from '../store/useFinanceStore';
+
+const lastProjection = useFinanceStore(s => s.lastProjection);
+// → ProjectionResult | null
+//   chartData[] avec NetWorth, CELI, REER, NonReg, etc. mois par mois
+//   fireNumber, successRate, fvi pour les KPIs
+
+if (lastProjection?.chartData?.length) {
+    const at10y = lastProjection.chartData.find(p => p.monthIndex === 120);
+    // utiliser at10y.NetWorth, at10y.CELI, etc.
+}
+```
+
+L'utilisateur doit avoir ouvert l'onglet "Future" au moins une fois dans la
+session pour que `lastProjection` soit peuplé. Les consumers doivent
+fallback gracefully sur leur calcul local quand `null`.

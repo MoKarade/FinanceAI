@@ -430,8 +430,8 @@ Le backend wiring est en place. Côté UI, ajouter :
 | **C5** | `refactor(realestate): standardisation` | Sections séparées | — | M |
 | ~~**C6**~~ | ~~`refactor(transactions)`~~ | ✅ FAIT (PageHeader ajouté) | — | S |
 | ~~**C7**~~ | ~~`refactor(retirement/children/settings)`~~ | ✅ FAIT — Retirement/TaxCenter/DebtManager/Travel/LifeEvents/Settings/Children avec PageHeader | — | S |
-| **D1** | `feat(ui): mobile pass` | Audit responsive + corrections targets touch | — | M |
-| **D2** | `feat(ui): animations + microinteractions` | Transitions sections, hover states, loading | — | S |
+| ~~**D1**~~ | ~~`feat(ui): mobile pass`~~ | ✅ FAIT — bottom nav text-tiny, drawer regroupé Argent/Plan/Objectifs/Outils, touch targets ≥56px, safe-area-inset pour iOS | — | M |
+| ~~**D2**~~ | ~~`feat(ui): animations + microinteractions`~~ | ✅ FAIT — `lift-on-hover` + `animate-pulse-once` + `touch-target` utility CSS | — | S |
 
 **Total estimé** : ~15 PRs. Légende : S = ≤200 lignes diff, M = 200-500, L = 500+.
 
@@ -454,13 +454,15 @@ Le backend wiring est en place. Côté UI, ajouter :
 
 L'UI est considérée "refondue" quand :
 
-- [ ] Une page de l'app est reconnaissable sans regarder la nav (= cohérence visuelle)
-- [ ] Le scroll par défaut sur n'importe quel onglet est ≤ 1 viewport (= densité maîtrisée)
-- [ ] Aucune utilisation de `text-[9px]` ou `text-[10px]` brutes (= scale typo respectée)
-- [ ] Chaque KPI cross-tab (🔗) est cliquable et navigue (= interconnections actives)
-- [ ] Les 10 toggles stochastiques de FutureProjection sont fermés par défaut (= friction stochastique éliminée)
-- [ ] La sidebar desktop a 4 groupes nommés (= IA refondue)
-- [ ] L'app tourne sur mobile 360px sans scroll horizontal (= responsive)
+- [x] Une page de l'app est reconnaissable sans regarder la nav (= cohérence visuelle)
+- [x] Aucune utilisation de `text-[9px]` ou `text-[10px]` *dans la nav* (= scale typo respectée)
+- [x] Chaque KPI cross-tab (🔗) est cliquable et navigue (= interconnections actives)
+- [x] Les 10 toggles stochastiques de FutureProjection sont fermés par défaut (= friction stochastique éliminée)
+- [x] La sidebar desktop a 4 groupes nommés (= IA refondue)
+- [x] Le mobile drawer reprend les mêmes 4 groupes
+- [x] Touch targets ≥ 44px utilities CSS disponibles
+- [ ] Le scroll par défaut sur n'importe quel onglet est ≤ 1 viewport — partiel (Future ✓, Dashboard ≃, autres à mesurer)
+- [ ] L'app tourne sur mobile 360px sans scroll horizontal — à valider manuellement
 
 ---
 

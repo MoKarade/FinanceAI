@@ -222,3 +222,24 @@ Le moteur expose maintenant **7 scénarios** (au lieu de 5) via
 **Impact UI**: la grille scenarios dans `ProjectionControls` est passée de
 `md:grid-cols-5` à `sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7`. Les 2
 nouveaux scénarios portent un badge "Nouveau" pour les mettre en évidence.
+
+## 🆕 UI Phase C terminée (2026-05) — toutes pages refondues
+
+| Page | État | Pattern primitive utilisé |
+|---|---|---|
+| FutureProjection (C1) | ✅ | PageHeader + 4-KPI StatGrid + 4 CollapsibleSection + grille 7 scenario cards |
+| Dashboard (C2) | ✅ | PageHeader + 4-KPI StatGrid + EraContextInsights + chart Brush |
+| Budget (C3) | ✅ | PageHeader + 4-KPI StatGrid + BudgetGroupTable extrait |
+| Investments (C4) | ✅ | PageHeader + KPIStat/StatGrid dans card Portefeuille projeté + 3 CollapsibleSection (Allocation / Rééquilibrage / Portefeuille Détaillé) |
+| RealEstate (C5) | ✅ | PageHeader + 4-KPI StatGrid + PropertyConfigurator + MultiPropertyComparison extraits |
+
+Pattern uniforme final:
+```tsx
+<PageHeader icon="…" title="…" subtitle="…" actions={…} badge={…} />
+<StatGrid cols={4}><KPIStat … /></StatGrid>          // Hero
+{/* Sections principales (Card) */}
+<CollapsibleSection title="…" defaultOpen={true}>     // Sections secondaires
+```
+
+L'app peut être parcourue de page en page avec une perception visuelle
+cohérente: même typo, mêmes patterns, mêmes affordances de navigation.

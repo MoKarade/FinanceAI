@@ -424,10 +424,10 @@ Le backend wiring est en place. Côté UI, ajouter :
 | ~~**B1**~~ | ~~`feat(nav): regroupement sidebar`~~ | ✅ FAIT — Layout.tsx avec 4 groupes thématiques | — | M |
 | ~~**B2**~~ | ~~`feat(nav): deep-link cross-tab`~~ | ✅ FAIT — `pendingFocus` + `navigateWithFocus` + `usePendingFocus` hook + animate-pulse-once. 5 consumers branchés. | — | M |
 | ~~**C1**~~ | ~~`refactor(future): hero KPI + collapsible sections`~~ | ✅ FAIT — Hero KPI 4-strip (FIRE/Patrimoine/MC Success/FVI) + 4 CollapsibleSection dans ProjectionControls (Macro ouverte, Variabilité ouverte si MC, Stochastiques fermée, Avancés fermée). Phase 4 #4: grille scenario 7 cartes responsive (sm-2, lg-4, xl-7) + badge "Nouveau" sur compound stress. | — | M |
-| **C2** | `refactor(dashboard): hero clean + sections collapsibles` | Dashboard cible §4.2 | — | M |
-| **C3** | `refactor(budget): hero + bandeau + sections` | Budget cible §4.3 | — | S |
-| **C4** | `refactor(investments): standardisation` | Pattern PageHeader+KPI | — | M |
-| **C5** | `refactor(realestate): standardisation` | Sections séparées | — | M |
+| ~~**C2**~~ | ~~`refactor(dashboard): hero clean + sections collapsibles`~~ | ✅ FAIT — PageHeader + StatGrid 4-KPI hero (Patrimoine / Variation / Revenu passif / Indicateur Futur cliquable) + EraContextInsights widget (Phase 4 B7) + chart Brush avec sélecteur 1M/3M/YTD/1Y/ALL/CUSTOM + 3 cards segmentées (Actifs/Cash/Dettes) + Timeline jalons de vie. | — | M |
+| ~~**C3**~~ | ~~`refactor(budget): hero + bandeau + sections`~~ | ✅ FAIT — PageHeader + StatGrid 4-KPI hero + Santé Financière card + BudgetGroupTable (extrait sous-composant) + bandeau "Impact à long terme" cliquable (deep-link Phase B2) + Améliorer mon budget AI panel. | — | S |
+| ~~**C4**~~ | ~~`refactor(investments): standardisation`~~ | ✅ FAIT — PageHeader + Badge santé + Hero donut (Score Santé) + Perf vs Marché + **KPIStat/StatGrid** dans le card Portefeuille projeté + **3 CollapsibleSection** (Allocation Analysis ouverte, Rééquilibrage ouvert si actions requises sinon fermé, Portefeuille Détaillé ouvert avec badge count). DividendPanel sous-composant. | — | M |
+| ~~**C5**~~ | ~~`refactor(realestate): standardisation`~~ | ✅ FAIT — PageHeader + StatGrid 4-KPI (Valeur / Équité / Mensualité / TODO) + PropertyConfigurator + MultiPropertyComparison sous-composants + Cards Scénarios Comparatifs + Amortissement + Tableau d'Amortissement. | — | M |
 | ~~**C6**~~ | ~~`refactor(transactions)`~~ | ✅ FAIT (PageHeader ajouté) | — | S |
 | ~~**C7**~~ | ~~`refactor(retirement/children/settings)`~~ | ✅ FAIT — Retirement/TaxCenter/DebtManager/Travel/LifeEvents/Settings/Children avec PageHeader | — | S |
 | ~~**D1**~~ | ~~`feat(ui): mobile pass`~~ | ✅ FAIT — bottom nav text-tiny, drawer regroupé Argent/Plan/Objectifs/Outils, touch targets ≥56px, safe-area-inset pour iOS | — | M |

@@ -5,6 +5,10 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
+      // Phase 4 — base path configurable pour GitHub Pages.
+      // En dev (mode === 'development') ou si VITE_BASE_PATH absent → '/'.
+      // En build GitHub Pages, le workflow set VITE_BASE_PATH=/FinanceAI/.
+      base: env.VITE_BASE_PATH || '/',
       server: {
         port: 3000,
         host: '0.0.0.0',

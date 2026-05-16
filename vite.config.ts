@@ -31,7 +31,7 @@ export default defineConfig(({ mode }) => {
             manualChunks: {
               'react-vendor': ['react', 'react-dom'],
               'recharts': ['recharts'],
-              'ai-vendor': ['@google/genai'],
+              'ai-vendor': ['@anthropic-ai/sdk'],
               'pdf-vendor': ['jspdf', 'html2canvas'],
             },
           },

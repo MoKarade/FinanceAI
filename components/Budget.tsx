@@ -298,7 +298,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
     const handleAiDiagnosis = () => {
         if (!apiKey) {
-            showToast("Clé API Gemini requise pour le diagnostic IA.", "info");
+            showToast("Clé API Anthropic requise pour le diagnostic IA.", "info");
             return;
         }
         setShowAiModal(true);

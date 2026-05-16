@@ -203,15 +203,15 @@ export const Settings: React.FC<SettingsProps> = ({
           <Card title="Cles API & Services">
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Gemini API Key (IA)</label>
+                <label className="block text-sm text-gray-400 mb-1">Anthropic API Key (Claude)</label>
                 <input
                   type="password"
-                  value={apiKeys?.gemini || ''}
-                  onChange={(e) => setApiKeys({ ...apiKeys, gemini: e.target.value })}
+                  value={apiKeys?.anthropic || ''}
+                  onChange={(e) => setApiKeys({ ...apiKeys, anthropic: e.target.value })}
                   className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
-                  placeholder="AIza..."
+                  placeholder="sk-ant-..."
                 />
-                <p className="text-xs text-gray-500 mt-1">Pour l'analyse de documents et la categorisation.</p>
+                <p className="text-xs text-gray-500 mt-1">Pour Claude Sonnet/Haiku — analyse, catégorisation, vision. Obtenez votre clé sur <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer" className="text-info-400 underline">console.anthropic.com</a></p>
               </div>
               <div>
                 <label className="block text-sm text-gray-400 mb-1">Era Context Token</label>

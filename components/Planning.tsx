@@ -2,7 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { Transaction, RecurringItem, SavingsGoal, BudgetConfig, BudgetCategory } from '../types';
 import { Card } from './ui/Card';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
-import { detectSubscriptionsAI } from '../services/gemini';
+// Phase 4 A5: bascule sur services/claude.ts (Haiku 4.5)
+import { detectSubscriptionsAI } from '../services/claude';
 import { showToast } from './ui/Toast';
 import { ConfirmModal } from './ui/ConfirmModal';
 

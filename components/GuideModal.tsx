@@ -42,7 +42,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
                         "🔄 **Moteur Hybride** : Basculez entre vos donnees reelles (Budget) et des donnees theoriques via les sliders.",
                         "👶 **Enfant & Maison** : Les achats de maison coupent le loyer et activent l'hypotheque. L'enfant coute de l'argent jusqu'a 18 ans avec une pique pour les etudes.",
                         "📉 **Impot Latent** : Represente sous la barre du zero, c'est la dette fiscale accumulee sur vos gains non-realises.",
-                        "✨ **Objectifs IA** : Cliquez sur le bouton IA pour que Gemini lise vos comptes et vous propose des objectifs pertinents (ex: remplir REER, rembourser telle dette).",
+                        "✨ **Objectifs IA** : Cliquez sur le bouton IA pour que Claude lise vos comptes et vous propose des objectifs pertinents (ex: remplir REER, rembourser telle dette).",
                         "🔗 **Connexion Auto** : Un objectif de type 'CELI' se mettra a jour tout seul quand la valeur de votre CELI monte dans le Google Sheet."
                     ],
                     tip: "Survolez le graphique avec la souris : l'info-bulle Expert montre la variation exacte (+/- X$) de votre patrimoine et de vos comptes par rapport au mois precedent !"
@@ -64,7 +64,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
                     desc: "Calculateur de l'impot sur le revenu (Quebec/Canada).",
                     features: [
                         "🔒 **Sync Globale** : Vos revenus bruts sont directement extraits de l'onglet 'Reglages'. Plus besoin de les saisir manuellement.",
-                        "🤖 **IA Documentaire** : Deposez vos T4/Releves. L'IA Gemini lira les montants d'impots deja payes pour calculer votre remboursement.",
+                        "🤖 **IA Documentaire** : Deposez vos T4/Releves. L'IA Claude lira les montants d'impots deja payes pour calculer votre remboursement.",
                         "📊 **Paliers Marginaux** : Observez visuellement comment votre dernier dollar est taxe a travers les tranches."
                     ],
                     tip: "Modifiez votre salaire dans Reglages -> Profils, et regardez les barres rouges s'ajuster ici."

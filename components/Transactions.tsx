@@ -216,7 +216,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
         }
 
         setProgressStatus({ current: 0, total: targetTxs.length });
-        setLiveLogs(prev => [...prev, `${targetTxs.length} transactions ciblees.`, `Modele: Gemini 2.0 Flash`]);
+        setLiveLogs(prev => [...prev, `${targetTxs.length} transactions ciblees.`, `Modele: Claude Sonnet 4.6`]);
 
         try {
             await categorizeBatch(
@@ -513,7 +513,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                 <div key={i} className="opacity-90">{`> ${log}`}</div>
                             ))}
                             <div className="sticky bottom-0 bg-black/90 pb-2 border-t border-green-500/20 pt-2 flex items-center justify-between">
-                                <span className="animate-pulse">TRAITEMENT IA (Gemini 2.0 Flash)...</span>
+                                <span className="animate-pulse">TRAITEMENT IA (Claude Sonnet 4.6)...</span>
                                 <span>{progressStatus.current}/{progressStatus.total}</span>
                             </div>
                         </div>

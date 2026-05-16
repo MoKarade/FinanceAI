@@ -15,6 +15,9 @@ import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
 import { Pill } from './ui/Pill';
 import { Badge } from './ui/Badge';
+import { KPIStat } from './ui/KPIStat';
+import { StatGrid } from './ui/StatGrid';
+import { CollapsibleSection } from './ui/CollapsibleSection';
 import { fetchPortfolioHistory, MarketDataPoint } from '../services/finance';
 import { StockChart } from './StockChart';
 import { ASSET_META } from '../services/assetMeta';
@@ -393,33 +396,49 @@ export const Investments: React.FC<InvestmentsProps> = ({
             </div>
 
             {/* 0.5 PROJECTION RETRAITE (Wiring 2026-05) — n'apparaît que si l'utilisateur
-                a déjà ouvert l'onglet Future au moins une fois dans la session. */}
+                a déjà ouvert l'onglet Future au moins une fois dans la session.
+                C4: KPIStat/StatGrid au lieu de raw divs (uniformisation avec FutureProjection). */}
             {horizonSnapshot && (
                 <Card title={`🔮 Portefeuille projeté en ${horizonSnapshot.year} (${projectionHorizonYears} ans)`} className="bg-gradient-to-br from-blue-900/10 to-indigo-900/10 border-blue-500/20">
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                        <div className="p-3 rounded-xl bg-emerald-900/20 border border-emerald-500/20">
-                            <div className="text-tiny text-emerald-300 font-bold uppercase tracking-widest mb-1">CELI</div>
-                            <div className="text-lg font-black text-emerald-400 privacy-blur">{horizonSnapshot.celi.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
-                        </div>
-                        <div className="p-3 rounded-xl bg-blue-900/20 border border-blue-500/20">
-                            <div className="text-tiny text-blue-300 font-bold uppercase tracking-widest mb-1">REER</div>
-                            <div className="text-lg font-black text-blue-400 privacy-blur">{horizonSnapshot.reer.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
-                        </div>
-                        <div className="p-3 rounded-xl bg-amber-900/20 border border-amber-500/20">
-                            <div className="text-tiny text-amber-300 font-bold uppercase tracking-widest mb-1">Non-Enreg</div>
-                            <div className="text-lg font-black text-amber-400 privacy-blur">{horizonSnapshot.nonReg.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
-                        </div>
+                    <StatGrid cols={horizonSnapshot.crypto > 0 ? 5 : 4}>
+                        <KPIStat
+                            label="CELI"
+                            icon="🌱"
+                            value={horizonSnapshot.celi.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
+                            privacy
+                            variant="success"
+                        />
+                        <KPIStat
+                            label="REER"
+                            icon="🏦"
+                            value={horizonSnapshot.reer.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
+                            privacy
+                            variant="primary"
+                        />
+                        <KPIStat
+                            label="Non-Enreg"
+                            icon="📊"
+                            value={horizonSnapshot.nonReg.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
+                            privacy
+                            variant="warning"
+                        />
                         {horizonSnapshot.crypto > 0 && (
-                            <div className="p-3 rounded-xl bg-purple-900/20 border border-purple-500/20">
-                                <div className="text-tiny text-purple-300 font-bold uppercase tracking-widest mb-1">Crypto</div>
-                                <div className="text-lg font-black text-purple-400 privacy-blur">{horizonSnapshot.crypto.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
-                            </div>
+                            <KPIStat
+                                label="Crypto"
+                                icon="₿"
+                                value={horizonSnapshot.crypto.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
+                                privacy
+                                variant="danger"
+                            />
                         )}
-                        <div className="p-3 rounded-xl bg-white/5 border border-white/10 col-span-2 md:col-span-1">
-                            <div className="text-tiny text-gray-300 font-bold uppercase tracking-widest mb-1">Patrimoine Net</div>
-                            <div className="text-lg font-black text-white privacy-blur">{horizonSnapshot.netWorth.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
-                        </div>
-                    </div>
+                        <KPIStat
+                            label="Patrimoine Net"
+                            icon="💼"
+                            value={horizonSnapshot.netWorth.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
+                            privacy
+                            variant="info"
+                        />
+                    </StatGrid>
                     <button
                         type="button"
                         onClick={() => navigateWithFocus(TabEnum.FUTURE)}
@@ -495,8 +514,15 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 </div>
             </Card>
 
-            {/* 2. ALLOCATION PANORAMIQUE (FULL WIDTH) */}
-            <Card title="Analyse de l'Allocation">
+            {/* 2. ALLOCATION PANORAMIQUE (FULL WIDTH)
+                C4: CollapsibleSection — ouvert par défaut, mais on permet à
+                l'utilisateur de replier pour focus. */}
+            <CollapsibleSection
+                title="Analyse de l'Allocation"
+                icon="🎯"
+                subtitle="Répartition géographique et sectorielle"
+                defaultOpen={true}
+            >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 min-h-[300px]">
 
                     {/* REGIONS */}
@@ -580,7 +606,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     </div>
 
                 </div>
-            </Card>
+            </CollapsibleSection>
 
             {/* 3. DIVIDEND CALENDAR */}
             <DividendPanel
@@ -613,7 +639,14 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 const sumTargets = targetModel.reduce((sum, t) => sum + t.targetPct, 0);
 
                 return (
-                    <Card title="⚖️ Rééquilibrage du Portefeuille" className="mt-8">
+                    <CollapsibleSection
+                        title="Rééquilibrage du Portefeuille"
+                        icon="⚖️"
+                        subtitle={hasActions ? "Actions de rééquilibrage recommandées" : "Allocation conforme aux cibles"}
+                        defaultOpen={hasActions}
+                        badge={hasActions ? <Badge variant="warning" size="sm">Action requise</Badge> : <Badge variant="success" size="sm">OK</Badge>}
+                        className="mt-2"
+                    >
                         <div className="mb-6 bg-gradient-to-r from-violet-900/20 to-black p-4 rounded-xl border border-violet-500/20 flex items-center justify-between">
                             <div>
                                 <div className="text-xs text-violet-400 uppercase font-bold mb-1">Diagnostic Automatique</div>
@@ -737,12 +770,20 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                 </div>
                             </div>
                         )}
-                    </Card>
+                    </CollapsibleSection>
                 );
             })()}
 
-            {/* 5. STOCK CARDS GRID */}
-            <h3 className="text-xl font-bold text-white mt-8 mb-4">Portefeuille Détaillé</h3>
+            {/* 5. STOCK CARDS GRID
+                C4: wrap dans CollapsibleSection — ouvert par défaut, badge count
+                pour orienter l'utilisateur quand il replie. */}
+            <CollapsibleSection
+                title="Portefeuille Détaillé"
+                icon="📦"
+                subtitle="Tous les actifs avec performance et compte fiscal"
+                defaultOpen={true}
+                badge={<Badge variant="neutral" size="sm">{currentAllocation.length} actifs</Badge>}
+            >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {currentAllocation.map((asset) => {
                     // Try to find matching asset in props to get saved account type
@@ -804,6 +845,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     );
                 })}
             </div>
+            </CollapsibleSection>
 
         </div>
     );

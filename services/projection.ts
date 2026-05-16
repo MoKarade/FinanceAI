@@ -1042,7 +1042,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 export const calculateFutureProjection = (params: SimulationParams, runMC: boolean = false, selectedIdx: number = 0): ProjectionResult => {
     // V90 + Cycle 7 split: Avenirs de Vie (5 Distinct Futures)
     // Metadata extraite dans ./projection/scenarios. Itère sur SCENARIO_DEFINITIONS
-    // au lieu de 5 blocs hardcodés ~10 lignes chacun.
+    // (7 scénarios depuis Phase 4 #4) au lieu de blocs hardcodés ~10 lignes chacun.
     const results = SCENARIO_DEFINITIONS.map(def => ({
         ...runScenario(params, def.strategy, false, def.delayPensions, 0, def.stratType),
         strategyName: def.strategyName,

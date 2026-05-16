@@ -20,7 +20,7 @@ Le moteur `calculateFutureProjection()` consomme déjà :
 | **Life Events**      | `lifeEvents[]` (mariage, krach, vente immo, héritage)                                |
 | **Retirement**       | `retirementGoal` (targetAge, monthlyIncome, govPension, dbPension)                   |
 | **Transactions**     | `transactions[]` → `calculatedStartingCash`                                          |
-| **Settings**         | `apiKeys.gemini` (pour insights AI), `config.users` (citoyenneté, province, santé…) |
+| **Settings**         | `apiKeys.anthropic` + `apiKeys.eraContext` (Phase 4 — insights AI Claude), `config.users` (citoyenneté, province, santé…) |
 | **W5.x extensions**  | InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness |
 | **🆕 Savings Goals** | `savingsGoals[]` (deadlines déclenchent dépenses sur le liquide)                     |
 | **🆕 Financial Goals**| `financialGoals[]` (deadlines retirent du compte ciblé CELI/REER/NonReg/Crypto)     |
@@ -193,3 +193,32 @@ if (lastProjection?.chartData?.length) {
 L'utilisateur doit avoir ouvert l'onglet "Future" au moins une fois dans la
 session pour que `lastProjection` soit peuplé. Les consumers doivent
 fallback gracefully sur leur calcul local quand `null`.
+
+## 🆕 Phase 4 #4 — Compound stress scenarios (2026-05)
+
+Le moteur expose maintenant **7 scénarios** (au lieu de 5) via
+`SCENARIO_DEFINITIONS` dans `services/projection/scenarios.ts`:
+
+| stratType | Nom | Particularité |
+|---|---|---|
+| BASE | Le Plan de Base | référence (gainVsAuto = 0) |
+| LIBERTE_55 | Liberté 55 | retraite anticipée, max REER |
+| HYPER_INFLATION | Choc d'Inflation | inflation 5.5% |
+| WINDFALL | Héritage Inattendu | +250k$ au mois 60 |
+| ECONOMIC_WINTER | Hiver Économique | rendements compressés |
+| **COMPOUND_STRESS** | **Tempête Parfaite** | inflation 5% × rendements anémiques × **LTC forcé** |
+| **LATE_INHERITANCE** | **Héritage Tardif** | +250k$ au mois 240 (an 20 vs an 5 pour WINDFALL) |
+
+**Mécanisme COMPOUND_STRESS**:
+- `services/projection/setupSimulation.ts` empile `simInflation=5.0` + baseRates
+  type ECONOMIC_WINTER (CELI 3%, REER 3%, NonReg 2%, cash 1%)
+- `services/projection.ts` force `effProj.ltcEnabled = true` via override pour
+  cette boucle uniquement (n'affecte pas les autres scénarios)
+
+**Mécanisme LATE_INHERITANCE**:
+- Trigger `m === 240` (au lieu de `m === 60` pour WINDFALL) ajoute 250 000$
+  au liquid + log event `⏳ Héritage Tardif (an 20): +250 000$`
+
+**Impact UI**: la grille scenarios dans `ProjectionControls` est passée de
+`md:grid-cols-5` à `sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7`. Les 2
+nouveaux scénarios portent un badge "Nouveau" pour les mettre en évidence.

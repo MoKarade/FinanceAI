@@ -423,7 +423,7 @@ Le backend wiring est en place. Côté UI, ajouter :
 | **A4** | `feat(ui): PageHeader + EmptyState` | 2 primitives | B+ | S |
 | ~~**B1**~~ | ~~`feat(nav): regroupement sidebar`~~ | ✅ FAIT — Layout.tsx avec 4 groupes thématiques | — | M |
 | ~~**B2**~~ | ~~`feat(nav): deep-link cross-tab`~~ | ✅ FAIT — `pendingFocus` + `navigateWithFocus` + `usePendingFocus` hook + animate-pulse-once. 5 consumers branchés. | — | M |
-| **C1** | `refactor(future): hero KPI + collapsible sections` | FutureProjection cible §4.1 | — | M |
+| ~~**C1**~~ | ~~`refactor(future): hero KPI + collapsible sections`~~ | ✅ FAIT — Hero KPI 4-strip (FIRE/Patrimoine/MC Success/FVI) + 4 CollapsibleSection dans ProjectionControls (Macro ouverte, Variabilité ouverte si MC, Stochastiques fermée, Avancés fermée). Phase 4 #4: grille scenario 7 cartes responsive (sm-2, lg-4, xl-7) + badge "Nouveau" sur compound stress. | — | M |
 | **C2** | `refactor(dashboard): hero clean + sections collapsibles` | Dashboard cible §4.2 | — | M |
 | **C3** | `refactor(budget): hero + bandeau + sections` | Budget cible §4.3 | — | S |
 | **C4** | `refactor(investments): standardisation` | Pattern PageHeader+KPI | — | M |

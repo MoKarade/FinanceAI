@@ -77,32 +77,41 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
     const activeStochasticCount = STOCHASTIC_TOGGLES.filter(t => !!(projection as any)[t.key]).length;
     return (
         <>
-            {/* Scenario Selector — pas dans une collapsible: choix structurant */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                {allResults.map((res: any, idx: number) => (
-                    <button
-                        key={idx}
-                        onClick={() => setSelectedScenarioIdx(idx)}
-                        className={`p-4 rounded-card border transition-all text-left relative overflow-hidden focus-ring ${
-                            selectedScenarioIdx === idx
-                                ? 'bg-primary/15 border-primary ring-1 ring-primary'
-                                : 'bg-surface/40 border-white/5 hover:border-white/20'
-                        }`}
-                    >
-                        <div className="flex items-center gap-3 mb-2">
-                            <span className="text-h1" aria-hidden="true">{res.icon}</span>
-                            <div className="min-w-0">
-                                <div className="text-meta font-bold text-ink-50 leading-tight truncate">{res.strategyName}</div>
-                                <div className="text-tiny text-ink-400 mt-0.5">Patrimoine: {Math.round(res.estateNetWorth / 1000000).toFixed(1)}M$</div>
+            {/* Scenario Selector — pas dans une collapsible: choix structurant.
+                7 cartes (Phase 4 #4): 4+3 sur lg, 7 sur xl. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+                {allResults.map((res: any, idx: number) => {
+                    const isCompoundNew = res.stratType === 'COMPOUND_STRESS' || res.stratType === 'LATE_INHERITANCE';
+                    return (
+                        <button
+                            key={idx}
+                            onClick={() => setSelectedScenarioIdx(idx)}
+                            className={`p-4 rounded-card border transition-all text-left relative overflow-hidden focus-ring ${
+                                selectedScenarioIdx === idx
+                                    ? 'bg-primary/15 border-primary ring-1 ring-primary'
+                                    : 'bg-surface/40 border-white/5 hover:border-white/20'
+                            }`}
+                        >
+                            <div className="flex items-center gap-3 mb-2">
+                                <span className="text-h1" aria-hidden="true">{res.icon}</span>
+                                <div className="min-w-0">
+                                    <div className="text-meta font-bold text-ink-50 leading-tight truncate">{res.strategyName}</div>
+                                    <div className="text-tiny text-ink-400 mt-0.5">Patrimoine: {Math.round(res.estateNetWorth / 1000000).toFixed(1)}M$</div>
+                                </div>
                             </div>
-                        </div>
-                        {selectedScenarioIdx === idx && (
-                            <div className="absolute top-0 right-0 w-8 h-8 bg-primary/20 rounded-bl-card flex items-center justify-center">
-                                <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                            </div>
-                        )}
-                    </button>
-                ))}
+                            {isCompoundNew && selectedScenarioIdx !== idx && (
+                                <div className="absolute top-1 left-1">
+                                    <Badge variant="warning" size="sm">Nouveau</Badge>
+                                </div>
+                            )}
+                            {selectedScenarioIdx === idx && (
+                                <div className="absolute top-0 right-0 w-8 h-8 bg-primary/20 rounded-bl-card flex items-center justify-center">
+                                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                                </div>
+                            )}
+                        </button>
+                    );
+                })}
             </div>
 
             {/* AI Insight — visible si présent */}

@@ -26,12 +26,15 @@
 ┌──────────────────────────────────────────────────────────────────┐
 │  Niveau 1 : calculateFutureProjection()                         │
 │                                                                   │
-│  → Lance 5 scénarios fixés                                      │
+│  → Lance 7 scénarios fixés                                      │
 │      • BASE             — paramètres actuels                     │
 │      • LIBERTE_55       — retraite à 55 + max REER               │
 │      • HYPER_INFLATION  — inflation 5.5%                         │
 │      • WINDFALL         — héritage +250 000$ au mois 60          │
 │      • ECONOMIC_WINTER  — bourse 3% / cash 1% / pessimiste       │
+│      • COMPOUND_STRESS  — inflation 5% × rendements anémiques    │
+│                          × LTC forcé (Tempête Parfaite)          │
+│      • LATE_INHERITANCE — +250 000$ au mois 240 (an 20)          │
 │                                                                   │
 │  → Trie par patrimoine successoral                              │
 │  → Si runMC=true, lance Monte Carlo sur le scénario sélectionné │
@@ -245,8 +248,18 @@ Une perte en capital sur le NonReg n'est PAS perdue : elle s'accumule dans `capi
 
 ## 4. Inputs disponibles (UI)
 
-### Section Avenirs de Vie (5 scénarios)
+### Section Avenirs de Vie (7 scénarios)
 - Aucun input direct — paramètres fixés en code (`scenarioType` overrides).
+- **Scénarios standards** : BASE, LIBERTE_55, HYPER_INFLATION, WINDFALL, ECONOMIC_WINTER.
+- **Scénarios compound stress (Phase 4 #4)** :
+  - **COMPOUND_STRESS** (« Tempête Parfaite ») : empile inflation 5%+, rendements
+    anémiques (CELI/REER 3%, NonReg 2%, cash 1%) et **force `ltcEnabled = true`**
+    via override dans `runScenario` (cf `services/projection.ts`). Le pire du pire,
+    probabilité combinée faible mais non nulle — utile pour mesurer la marge de
+    sécurité.
+  - **LATE_INHERITANCE** (« Héritage Tardif ») : injection de 250 000$ au mois 240
+    (an 20) au lieu du mois 60 comme WINDFALL. Teste le pont fiscal long et
+    montre la nécessité d'autonomie financière dans la première décennie.
 
 ### Section Données réelles / Sandbox
 - `useTheoretical` : bascule entre revenus/dépenses réels du CSV et mode bac-à-sable.
@@ -512,13 +525,13 @@ calculateFutureProjection({
 }, /* runMC */ true);
 ```
 
-→ Retourne 5 scénarios + bandes P10/P50/P90 + FVI + métrique sequence risk + indication si LTC s'est déclenché dans certaines itérations.
+→ Retourne 7 scénarios + bandes P10/P50/P90 + FVI + métrique sequence risk + indication si LTC s'est déclenché dans certaines itérations.
 
 ---
 
 ## 9. Pour le développeur
 
-- **Tests** : `tests/services/projection.test.ts` (22 tests scénarios) + `tests/services/projection.helpers.test.ts` (24 tests helpers purs).
+- **Tests** : `tests/services/projection.test.ts` (47 tests scénarios — incluant les 7 avenirs et les 2 compound stress de Phase 4 #4) + `tests/services/projection.helpers.test.ts` (28 tests helpers purs).
 - **Déterminisme** : graine fixée par scénario+stratégie+iter. Re-run = identique.
 - **Performance** : ~50ms par scénario en mode déterministe, ~3s pour 100 itérations MC sur un horizon 30 ans. Web Worker prévu pour pousser à 1000+.
 - **Pas de side-effects** : pure function par construction. Idéal pour MCP/RPC.

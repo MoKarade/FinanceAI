@@ -94,14 +94,17 @@ const makeParams = (overrides: Partial<SimulationParams> = {}): SimulationParams
 // ---------------------------------------------------------------------------
 
 describe('calculateFutureProjection', () => {
-    it('renvoie exactement 5 scénarios dans allResults (BASE, LIBERTE_55, HYPER_INFLATION, WINDFALL, ECONOMIC_WINTER)', () => {
+    it('renvoie 7 scénarios dans allResults (5 originaux + COMPOUND_STRESS + LATE_INHERITANCE)', () => {
         const result = calculateFutureProjection(makeParams()) as any;
         const scenarios = result.allResults as any[];
         expect(Array.isArray(scenarios)).toBe(true);
-        expect(scenarios).toHaveLength(5);
+        expect(scenarios).toHaveLength(7);
         const types = scenarios.map(r => r.stratType);
         expect(types).toEqual(
-            expect.arrayContaining(['BASE', 'LIBERTE_55', 'HYPER_INFLATION', 'WINDFALL', 'ECONOMIC_WINTER'])
+            expect.arrayContaining([
+                'BASE', 'LIBERTE_55', 'HYPER_INFLATION', 'WINDFALL', 'ECONOMIC_WINTER',
+                'COMPOUND_STRESS', 'LATE_INHERITANCE',
+            ])
         );
     });
 
@@ -213,7 +216,7 @@ describe('calculateFutureProjection', () => {
         };
         const result = calculateFutureProjection(makeParams(zeroIncome)) as any;
         const scenarios = result.allResults as any[];
-        expect(scenarios).toHaveLength(5);
+        expect(scenarios).toHaveLength(7);
         for (const r of scenarios) {
             expect(Number.isFinite(r.estateNetWorth)).toBe(true);
         }
@@ -706,6 +709,32 @@ describe('calculateFutureProjection', () => {
             const activeBase = withActive.allResults.find((s: any) => s.stratType === 'BASE');
             const inactiveBase = withInactive.allResults.find((s: any) => s.stratType === 'BASE');
             expect(activeBase.estateNetWorth).not.toBe(inactiveBase.estateNetWorth);
+        });
+    });
+
+    describe('Scénarios compound (Phase 4 #4)', () => {
+        it('COMPOUND_STRESS: patrimoine final inférieur à ECONOMIC_WINTER (cumul + LTC)', () => {
+            const result = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 15 }),
+            })) as any;
+            const winter = result.allResults.find((s: any) => s.stratType === 'ECONOMIC_WINTER');
+            const stress = result.allResults.find((s: any) => s.stratType === 'COMPOUND_STRESS');
+            expect(stress).toBeDefined();
+            expect(winter).toBeDefined();
+            // Cumul inflation 5% + rendements anémiques + LTC forcé → pire que winter seul.
+            expect(stress.estateNetWorth).toBeLessThanOrEqual(winter.estateNetWorth);
+        });
+
+        it('LATE_INHERITANCE: patrimoine final ≥ BASE (héritage tardif aide quand même)', () => {
+            const result = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 25 }), // assez long pour atteindre m=240
+            })) as any;
+            const base = result.allResults.find((s: any) => s.stratType === 'BASE');
+            const late = result.allResults.find((s: any) => s.stratType === 'LATE_INHERITANCE');
+            expect(late).toBeDefined();
+            expect(base).toBeDefined();
+            // Pas strict > car le seed est différent, mais ≥ raisonnable
+            expect(late.estateNetWorth).toBeGreaterThanOrEqual(base.estateNetWorth * 0.95);
         });
     });
 

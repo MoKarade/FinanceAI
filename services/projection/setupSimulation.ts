@@ -163,8 +163,12 @@ export function computeScenarioOverrides(
 ): ScenarioOverrideResult {
     let simInflation = projection.inflationRate || 2.0;
     if (scenarioType === 'HYPER_INFLATION') simInflation = 5.5;
+    // Phase 4 #4: COMPOUND_STRESS empile l'inflation soutenue ET les rendements
+    // anémiques. La gestion de LTC se fait via le flag projection.ltcEnabled
+    // forcé à true dans le runner (cf projection.ts effProj override).
+    if (scenarioType === 'COMPOUND_STRESS') simInflation = 5.0;
 
-    const baseRates = (scenarioType === 'ECONOMIC_WINTER')
+    const baseRates = (scenarioType === 'ECONOMIC_WINTER' || scenarioType === 'COMPOUND_STRESS')
         ? { celi: 3.0, reer: 3.0, nonReg: 2.0, crypto: 5.0, cash: 1.0 }
         : (projection.rates || { celi: 7, reer: 6.5, nonReg: 6.5, crypto: 10, cash: 3 });
 

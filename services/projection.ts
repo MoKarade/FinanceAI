@@ -73,7 +73,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         return (d.getFullYear() - startYear) * 12 + (d.getMonth() - startMonth);
     };
 
-    const effProj = projection;
+    // Phase 4 #4: COMPOUND_STRESS force ltcEnabled (la facette "soins LD"
+    // du cumul stress). Les autres paramètres (inflation, rates) sont
+    // déjà overridés par computeScenarioOverrides.
+    const effProj = scenarioType === 'COMPOUND_STRESS'
+        ? { ...projection, ltcEnabled: true }
+        : projection;
     const data = [];
 
     let liquid = Number(effProj.useManualBalances ? (effProj.manualCash ?? calculatedStartingCash) : calculatedStartingCash) || 0;
@@ -352,6 +357,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             liquid += windfallAmount;
             logEvent(lifeEventsLog, `🎁 Héritage Inattendu: +250 000$`);
             logEvent(flowEventsLog, `💰 WINDFALL: Injection de surplus.`);
+        }
+
+        // Phase 4 #4 — Héritage tardif: même montant mais 20 ans plus tard.
+        // Teste la capacité à tenir le pont financier longtemps avant l'apport.
+        if (scenarioType === 'LATE_INHERITANCE' && m === 240) {
+            const lateAmount = 250000;
+            liquid += lateAmount;
+            logEvent(lifeEventsLog, `⏳ Héritage Tardif (an 20): +250 000$`);
+            logEvent(flowEventsLog, `💰 LATE_INHERITANCE: enfin libéré.`);
         }
 
         // Phase 2: Restitution du CELI en JANVIER (Mois 0)

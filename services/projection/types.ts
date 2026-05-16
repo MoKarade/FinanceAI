@@ -4,7 +4,15 @@
 
 export type AllocationStrategy = 'AUTO_MARGINAL' | 'PRIO_REER' | 'PRIO_CELI' | 'MELTDOWN_REER' | 'DEBT_FIRST';
 
-export type FutureScenarioType = 'BASE' | 'LIBERTE_55' | 'HYPER_INFLATION' | 'WINDFALL' | 'ECONOMIC_WINTER';
+export type FutureScenarioType =
+    | 'BASE'
+    | 'LIBERTE_55'
+    | 'HYPER_INFLATION'
+    | 'WINDFALL'
+    | 'ECONOMIC_WINTER'
+    // Phase 4 #4: compound stress scenarios (krach × inflation × LTC, héritage tardif)
+    | 'COMPOUND_STRESS'
+    | 'LATE_INHERITANCE';
 
 // Cycle 3 TS reviewer quick win #1 (ROI massif): typer chartData[] avec
 // ProjectionChartPoint élimine ~35 erreurs strict en cascade dans

@@ -67,4 +67,26 @@ export const SCENARIO_DEFINITIONS: ScenarioDefinition[] = [
         icon: '❄️',
         delayPensions: false,
     },
+    // Phase 4 #4 — Compound stress (le pire du pire)
+    {
+        stratType: 'COMPOUND_STRESS',
+        strategy: 'AUTO_MARGINAL',
+        strategyName: "Tempête Parfaite",
+        stratDescription: "Cumul: inflation 5%+, croissance faible (équivalent ECONOMIC_WINTER) ET soins de longue durée à 75 ans. Test de résilience extrême.",
+        pros: ['Identifie les vulnérabilités', 'Justifie une marge de sécurité plus large'],
+        cons: ['Probabilité combinée faible mais non nulle', 'Anxiogène à regarder'],
+        icon: '⛈️',
+        delayPensions: false,
+    },
+    // Phase 4 #4 — Héritage tardif (test pont fiscal long)
+    {
+        stratType: 'LATE_INHERITANCE',
+        strategy: 'AUTO_MARGINAL',
+        strategyName: "Héritage Tardif",
+        stratDescription: "Injection de 250 000$ tard (vers 20 ans plutôt que 5 ans). Teste si vous tenez le pont financier en attendant.",
+        pros: ['Réaliste pour parents qui vivent longtemps', 'Montre la nécessité d\'autonomie'],
+        cons: ['Long délai à supporter sans aide'],
+        icon: '⏳',
+        delayPensions: false,
+    },
 ];

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Transaction, BudgetCategory, Asset, ProjectionConfig, RealEstateGoal, BudgetConfig, AiMessage } from '../types';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { chatStream } from '../services/claude';
+import { buildEnrichedContext, renderEnrichedContext, maybeRememberFromMessage } from '../services/aiOrchestrator';
 
 interface AiAssistantProps {
   apiKey: string;
@@ -169,9 +170,28 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
     try {
       if (!apiKey) throw new Error("Clé API Anthropic manquante.");
 
+      // Phase 4 B7: si l'utilisateur dit "remember: X", on persiste dans
+      // Era Context et on ne fait pas tourner Claude pour ça.
+      const eraToken = useFinanceStore.getState().apiKeys.eraContext;
+      const remembered = await maybeRememberFromMessage(userText, eraToken).catch(() => ({ captured: false, fact: undefined }));
+      if (remembered.captured) {
+        appendMessage({
+          role: 'model',
+          text: `✅ Mémorisé: "${remembered.fact}". Je m'en souviendrai entre nos sessions.`,
+          timestamp: new Date().toISOString(),
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Phase 4 B7: enrichit le system prompt avec les insights Era Context
+      // (cash-flow, spending analysis, forecast, memory). Cache 1h côté
+      // eraContext.ts donc pas de hit réseau systématique.
+      const enriched = await buildEnrichedContext(eraToken).catch(() => null);
+      const enrichedBlock = enriched ? renderEnrichedContext(enriched) : '';
+      const systemPrompt = generateContext() + enrichedBlock;
+
       // Phase 4 A2: streaming via services/claude.ts (Sonnet 4.6)
-      // Le contexte est fourni en system prompt, l'historique de conversation
-      // (jusqu'aux 10 derniers messages user/model) constitue les messages.
       const recent = useFinanceStore.getState().aiConversation.slice(-10);
       const messages = [
         ...recent.map(m => ({
@@ -185,7 +205,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
       appendMessage({ role: 'model', text: '', timestamp: new Date().toISOString() });
 
       let accumulated = '';
-      for await (const chunk of chatStream(messages, apiKey, { system: generateContext() })) {
+      for await (const chunk of chatStream(messages, apiKey, { system: systemPrompt })) {
         accumulated += chunk;
         setStreamingText(accumulated);
         updateLastModelMessage(accumulated);

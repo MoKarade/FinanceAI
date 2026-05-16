@@ -96,6 +96,34 @@ Toutes les PR A1-A5 mergées. Migration Gemini → Claude **complète** :
 - UI Onboarding + Settings + SystemView mises à jour ("Anthropic Claude")
 - Tests: 223/223 passants tout du long
 
+### ✅ Phase 4.B — TERMINÉE (mai 2026)
+
+**B6** — `services/eraContext.ts` étendu :
+- `getCashFlow(token, days)` → période, totaux revenus/dépenses, top catégories
+- `analyzeSpending(token, days)` → top dépenses + anomalies détectées
+- `forecastSpending(token, months)` → prévision dépenses N mois
+- `getDailyFinancialSummary(token)` → snapshot quotidien
+- `rememberFact(token, fact)` / `recallHistory(token)` → mémoire persistante
+- `searchTransactions(token, query)` → recherche libre
+- `listRecurringCharges(token)` → abonnements détectés côté Era
+- Helper générique `eraRequest()` avec timeout, Bearer auth, validation Zod, cache TTL 1h
+
+**B7** — `services/aiOrchestrator.ts` (NOUVEAU) :
+- `buildEnrichedContext(token)` : compose en parallèle cash-flow + spending + forecast + memory
+- `renderEnrichedContext(ctx)` : formate pour system prompt Claude
+- `maybeRememberFromMessage(msg, token)` : capture "remember: X" et persiste
+
+AiAssistant.tsx utilise l'orchestrator :
+- Détection "remember:" court-circuite Claude et appelle Era Context
+- System prompt enrichi avec insights Era Context (cash-flow réel, anomalies, forecast, mémoire)
+- Cache TTL 1h évite les hits réseau répétés
+
+**B8** — Era Context catégoriseur primaire :
+- Planning.tsx utilise `listRecurringCharges` Era Context **avant** de tomber sur Claude
+- Si Era Context retourne des résultats → instant, gratuit, basé sur historique complet
+- Fallback Claude pour les transactions résiduelles ou si Era Context non configuré
+- Toast clair indiquant la source ("via Era Context (gratuit)")
+
 ### Phase 4.A — Détails historiques
 
 #### PR #1 : `services/claude.ts` + types

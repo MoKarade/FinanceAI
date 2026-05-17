@@ -6,6 +6,141 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — cycle 6 : Claude+Era migration + UI refoundation + a11y polish] — 2026-05
+
+> Le plus gros cycle depuis le lancement. Migration complète de la stack
+> IA, refonte du design system, et toutes les pages standardisées sur un
+> pattern uniforme.
+
+### 🤖 Phase 4.A — Migration Gemini → Claude (5 PRs séquentielles)
+
+- **`services/claude.ts`** créé (~550 lignes) : wrapper `@anthropic-ai/sdk`
+  mirroring complet de l'ancienne surface Gemini.
+  - `chat`, `chatStream` — équivalents `generateContent` + streaming
+  - `categorizeBatch` — modèle `claude-haiku-4-5` (volume + vitesse)
+  - `analyzeBudget`, `analyzePayslip`, `analyzeDocuments` — Sonnet 4.6
+  - Préservation de `sanitizePayee`, `roundToHundred`, Zod schemas, `QUEBEC_FISCAL_CONTEXT`
+  - `dangerouslyAllowBrowser: true` (app client-side, clé utilisateur)
+- **Schema store v1 → v2 → v3** : ajout `apiKeys.anthropic` puis suppression
+  `apiKeys.gemini`. Migration progressive sans casser les utilisateurs
+  existants.
+- **5 consumers migrés** : `AiAssistant`, `BudgetAiModal`, `Transactions`
+  (catégorisation), `TaxCenter` (Vision), `Planning` (suggestions goals).
+- **`services/gemini.ts` supprimé** + dépendance `@google/genai` retirée du
+  `package.json`. Cleanup final dans la PR A5.
+- **Bundle** : `ai-vendor` chunk 289 KB → 130 KB (**-55%** — Anthropic SDK
+  plus léger).
+
+### 🌐 Phase 4.B — Era Context comme moteur de qualité
+
+- **`services/eraContext.ts`** étendu (1 endpoint → 9 endpoints) :
+  - `getCashFlow`, `analyzeSpending`, `forecastSpending`, `getDailyFinancialSummary`
+  - `rememberFact`, `recallHistory` (mémoire persistante)
+  - `searchTransactions`, `listRecurringCharges`
+  - Helper générique `eraRequest()` avec timeout, Bearer auth, validation Zod, cache TTL 1h
+- **`services/aiOrchestrator.ts`** (nouveau, ~135 lignes) :
+  - `buildEnrichedContext(token)` : Promise.all parallèle sur 4 endpoints
+  - `renderEnrichedContext(ctx)` : format pour system prompt Claude
+  - `maybeRememberFromMessage(msg, token)` : détecte "remember:"/"souviens-toi:"
+- **`components/AiAssistant.tsx`** : court-circuit "remember:" + system
+  prompt enrichi automatiquement avec insights Era Context.
+- **`components/Planning.tsx`** : utilise `listRecurringCharges` Era Context
+  comme primaire, Claude fallback (toast indique la source).
+- **`components/dashboard/EraContextInsights.tsx`** (nouveau) : widget Dashboard
+  qui montre cash-flow 90j + top catégorie 30j + prévision mois prochain +
+  anomalies + mémoire. Silencieux si pas de token Era.
+
+### 🎲 Phase 4 #4 — Nouveaux scénarios compound stress
+
+2 scénarios MC supplémentaires (5 → 7 au total) :
+
+- **`COMPOUND_STRESS`** (« Tempête Parfaite ») : empile inflation 5%+,
+  rendements anémiques (CELI/REER 3%, NonReg 2%, cash 1%) ET force
+  `ltcEnabled = true` via override scenario-local. Le pire du pire.
+- **`LATE_INHERITANCE`** (« Héritage Tardif ») : injection de 250 000$ au
+  mois 240 (an 20) au lieu de WINDFALL (mois 60). Teste le pont fiscal long.
+
+UI : grille scenarios passe de `md:grid-cols-5` à `sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7`,
+badge "Nouveau" sur les 2 ajouts.
+
+### 🎨 Refonte UI complète (Phases A → D)
+
+- **Phase A — Design tokens + primitives** :
+  - `tailwind.config.js` : couleurs sémantiques (primary, success, warning,
+    danger, info, secondary), scale typo cohérente (text-display/h1/h2/body/
+    meta/tiny — fin des `text-[9-11px]` ad-hoc), border-radius `rounded-card`,
+    focus utility `focus-ring`.
+  - 14 primitives dans `components/ui/` : Button, Badge, Card, CollapsibleSection,
+    KPIStat, StatGrid, PageHeader, Pill, SectionHeader, EmptyState, Modal,
+    ConfirmModal, Toast, Tooltip, ErrorBoundary. Tests RTL pour chacune.
+- **Phase B — Navigation** :
+  - `Layout.tsx` regroupé en 4 groupes thématiques sidebar (Argent / Plan /
+    Objectifs / Outils)
+  - Deep-link cross-tab : `pendingFocus` dans le store + `navigateWithFocus(tab, section)`
+    + hook `usePendingFocus` + animation `animate-pulse-once`
+  - 5 consumers : Dashboard, Budget, Children, Investments, RealEstate
+- **Phase C — Refonte des 9 pages** (C1 → C7) :
+  - C1 FutureProjection : Hero KPI 4-strip (FIRE/Patrimoine/MC Success/FVI)
+    + 4 CollapsibleSection (Macro / Variabilité / Stochastiques / Avancés)
+  - C2 Dashboard : 4-KPI StatGrid + EraContextInsights widget + chart Brush
+    multi-période + 3 cards segmentées
+  - C3 Budget : 4-KPI StatGrid + `BudgetGroupTable` extrait + bandeau impact
+    long terme cliquable (deep-link FutureProjection)
+  - C4 Investments : KPIStat/StatGrid dans card Portefeuille projeté +
+    3 CollapsibleSection (Allocation / Rééquilibrage / Portefeuille Détaillé)
+  - C5 RealEstate : 4-KPI StatGrid + `PropertyConfigurator` + `MultiPropertyComparison`
+    sous-composants
+  - C6 Transactions : PageHeader uniformisé
+  - C7 Retirement, TaxCenter, DebtManager, Travel, LifeEvents, Settings,
+    Children avec PageHeader
+- **Phase D — Mobile + animations** :
+  - Bottom nav `text-tiny`, drawer regroupé, touch targets ≥ 56px, `pb-safe`
+    pour iOS
+  - Utilities `lift-on-hover`, `animate-pulse-once`, `touch-target`
+
+### ♿ A11y — Audit Phase 5.1
+
+- `components/Layout.tsx` : skip link "Aller au contenu principal" en
+  premier focusable, devient visible au focus clavier
+- `<main>` reçoit `id="main"` + `tabIndex={-1}` (target du skip link)
+- `text-[9-11px]` bannis du codebase (0 occurrence)
+
+### 📚 Documentation structurée
+
+- **`docs/ARCHITECTURE.md`** (nouveau) : vue d'ensemble pour nouveaux
+  contributeurs (stack, topologie, store, moteur projection, IA, tests,
+  workflow contributeur)
+- **`docs/adr/`** (nouveau dossier) : 4 ADRs courts
+  - ADR-001 Migration Gemini → Claude
+  - ADR-002 Era Context comme moteur de qualité
+  - ADR-003 Split projection.ts modulaire (31 sous-modules)
+  - ADR-004 Design system primitives custom (vs shadcn/Radix)
+- **`docs/PROJECTION.md`** mis à jour : 7 scénarios documentés (Phase 4 #4),
+  pipeline diagram à jour, count de tests (47 + 28)
+- **`docs/UI_REFOUNDATION_PLAN.md`** : Phase A/B/C/D toutes marquées ✅ FAIT
+  avec description précise de ce qui a atterri
+- **`docs/WIRING_NOTES.md`** : section "UI Phase C terminée" + section
+  "Phase 4 #4 Compound stress" + section "Deep-link cross-tab"
+- **`docs/TYPECHECK_BACKLOG.md`** : entièrement réécrit (backlog résorbé,
+  doc historique)
+- **`docs/PLAN_PHASE_4.md`** (nouveau) : plan détaillé de la migration
+  Claude + Era (référence historique)
+- **`docs/AUDIT_2026-05.md`** §Phase 5 : colonne État ajoutée (5.1 ✅,
+  5.2 ✅, 5.3-5.6 ⏳ non prioritaires)
+
+### 🚀 Déploiement
+
+- **GitHub Pages** : workflow `.github/workflows/deploy-pages.yml` créé,
+  `VITE_BASE_PATH` configurable dans `vite.config.ts`
+- **Vercel** : auto-detected, preview par PR
+
+### ✅ Tests
+
+225 tests verts (24 fichiers de test) tout au long du cycle. Aucune
+régression introduite. Typecheck strict clean en permanence.
+
+---
+
 ## [unreleased — cycle 5 : UI coverage 100% du moteur] — Branche `claude/analyze-finance-app-CtLvs`
 
 ### 🔍 Audit UI coverage par agent

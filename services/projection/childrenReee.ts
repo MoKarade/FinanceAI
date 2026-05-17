@@ -33,6 +33,10 @@ export interface ChildProcessCtx {
     householdGross: number;
     trackerScee: number;
     trackerIqee: number;
+    /** Contributions REEE cumulées à vie pour CE bénéficiaire (audit §6.9 / F13).
+     *  Le plafond ARC est 50 000$/enfant à vie — au-delà, plus de cotisations
+     *  permises (mais la croissance continue). */
+    trackerReeeContribLifetime: number;
     enableMonteCarlo: boolean;
 }
 
@@ -47,6 +51,9 @@ export interface ChildTickResult {
 
     newTrackerScee: number;
     newTrackerIqee: number;
+    /** Contributions REEE cumulées à vie après application du mois courant
+     *  (clamped à 50 000$ par bénéficiaire). */
+    newTrackerReeeContribLifetime: number;
     childId: string;
 
     childGrossCostAdd: number;
@@ -79,7 +86,8 @@ export function processOneChild(
     const {
         m, loopYear, simSalaryGrowth, expenseMultiplier, isRetired,
         grossAnnaBaseAnnual, incomeAnna, liquid, reee,
-        householdGross, trackerScee, trackerIqee, enableMonteCarlo,
+        householdGross, trackerScee, trackerIqee,
+        trackerReeeContribLifetime, enableMonteCarlo,
     } = ctx;
 
     const childId = child.id || `enfant_${childIdx}`;
@@ -93,6 +101,7 @@ export function processOneChild(
     let taxDiversAdd = 0;
     let newTrackerScee = trackerScee;
     let newTrackerIqee = trackerIqee;
+    let newTrackerReeeContribLifetime = trackerReeeContribLifetime;
     let childGrossCostAdd = 0;
     let childBenefitsAdd = 0;
     let childMonthlyCostAdd = 0;
@@ -166,11 +175,23 @@ export function processOneChild(
             iqeeYearlyLimit = 500;
         }
 
+        // Audit §6.9 / F13: plafond REEE lifetime 50 000$/bénéficiaire (ARC).
+        // Si on s'approche du plafond, on plafonne la cotisation du mois courant.
+        // Au-delà du plafond → 0 cotisation (la croissance du REEE continue,
+        // mais aucune nouvelle contribution n'est permise).
+        const REEE_LIFETIME_LIMIT_PER_BENEFICIARY = 50000;
+        const lifetimeContribRoomLeft = Math.max(0, REEE_LIFETIME_LIMIT_PER_BENEFICIARY - newTrackerReeeContribLifetime);
+        if (optimalReeeMonthly > lifetimeContribRoomLeft) {
+            optimalReeeMonthly = lifetimeContribRoomLeft;
+        }
+
         // Check against effective liquid (after birth cost if first month)
-        if (liquid + liquidDelta >= optimalReeeMonthly && !isRetired) {
+        if (optimalReeeMonthly > 0 && liquid + liquidDelta >= optimalReeeMonthly && !isRetired) {
             liquidDelta -= optimalReeeMonthly;
             withdrawalLiquidAdd += optimalReeeMonthly;
             reeeContribAdd += Math.round(optimalReeeMonthly);
+            // Audit §6.9: tracker mis à jour pour bloquer les futurs mois
+            newTrackerReeeContribLifetime += optimalReeeMonthly;
 
             const sceeGrant = Math.min(optimalReeeMonthly * 0.20, sceeYearlyLimit / 12, 7200 - newTrackerScee);
             newTrackerScee += Math.max(0, sceeGrant);
@@ -223,6 +244,7 @@ export function processOneChild(
         taxDiversAdd,
         newTrackerScee,
         newTrackerIqee,
+        newTrackerReeeContribLifetime,
         childId,
         childGrossCostAdd,
         childBenefitsAdd,

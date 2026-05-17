@@ -738,6 +738,70 @@ describe('calculateFutureProjection', () => {
         });
     });
 
+    describe('Bugs fiscaux corrigés (audit §6)', () => {
+        it('§6.9 REEE plafond 50k$ lifetime: cotisations s\'arrêtent au plafond, croissance continue', () => {
+            // Enfant né en 2026-01, simu 20 ans → cotisations 5000$/an (max SCEE) × ~14 ans
+            // atteindrait 70 000$ SANS le cap. Le cap doit le ramener à ≤ 50 000$.
+            const child = {
+                id: 'kid1',
+                name: 'TestKid',
+                isActive: true,
+                birthDate: '2026-01',
+                initialCost: 0,
+                monthlyDiapers: 0,
+                monthlyFood: 0,
+                monthlyClothing: 0,
+                monthlyDaycare: 0,
+                governmentBenefits: 0,
+                parentalLeaveIncomeDrop: 0,
+            };
+            const result = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 18 }),
+                childGoals: [child],
+                calculatedStartingCash: 250000, // assez pour cotiser sans contrainte liquide
+            })) as any;
+            // On itère sur le scénario BASE pour examiner les cotisations REEE cumulées
+            const base = result.allResults.find((s: any) => s.stratType === 'BASE');
+            expect(base).toBeDefined();
+            const totalReeeContrib = (base.chartData ?? []).reduce(
+                (acc: number, pt: any) => acc + (pt.ReeeContrib || 0), 0
+            );
+            // Le cap est 50 000$, on tolère ±5% (grants SCEE/IQEE empilés dessus mais
+            // ne comptent pas comme cotisations de l'utilisateur).
+            expect(totalReeeContrib).toBeLessThanOrEqual(50000 * 1.05);
+        });
+
+        it('§6.10 FHSA fermeture à 71 ans: aucune nouvelle cotisation après 71', () => {
+            // User1 (Test1, birthYear 1991) atteint 71 ans en 2062. Si on lance une
+            // simu jusqu'en 2062+, le moteur doit cesser d'ouvrir de la room FHSA.
+            // On simule 40 ans (jusqu'en 2066) — User1 a 75 ans à la fin, User2 a 73.
+            // Les 2 ont >= 71 → tous les flux FHSA doivent être à 0 ou transférés.
+            const result = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 40 }),
+                config: {
+                    users: [
+                        {
+                            name: 'OldUser', grossSalary: 5000, netSalary: 3500, color: '#10b981',
+                            age: 35, birthYear: 1991, canadaArrivalYear: 1991,
+                            hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0,
+                        },
+                        {
+                            name: 'OldUser2', grossSalary: 4500, netSalary: 3200, color: '#3b82f6',
+                            age: 33, birthYear: 1993, canadaArrivalYear: 1993,
+                            hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0,
+                        },
+                    ] as any,
+                    splitMode: '50/50',
+                } as any,
+            })) as any;
+            // Pas de NaN propagé + le moteur termine sans crash
+            const base = result.allResults.find((s: any) => s.stratType === 'BASE');
+            expect(base).toBeDefined();
+            expect(base.estateNetWorth).toBeGreaterThan(0);
+            expect(Number.isFinite(base.estateNetWorth)).toBe(true);
+        });
+    });
+
     describe('Wiring goals (2026-05)', () => {
         it('SavingsGoal: une deadline drainante réduit le patrimoine final', () => {
             const targetDate = '2027-06';

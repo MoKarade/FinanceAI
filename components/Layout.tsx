@@ -144,6 +144,13 @@ export const Layout: React.FC<LayoutProps> = ({
 
   return (
     <div className={`min-h-screen flex flex-col md:flex-row text-gray-200 font-sans ${isPrivacyMode ? 'privacy-active' : ''}`}>
+      {/* A11y (Audit Phase 5.1): skip link — invisible jusqu'à focus clavier. */}
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[200] focus:px-4 focus:py-2 focus:rounded-card focus:bg-primary focus:text-white focus:font-bold focus:shadow-xl"
+      >
+        Aller au contenu principal
+      </a>
       <style>{`
         .privacy-active .privacy-blur {
             filter: blur(8px) !important;
@@ -289,7 +296,7 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       </div>
 
-      <main className="flex-1 p-3 md:p-10 mt-16 md:mt-0 overflow-y-auto min-h-[100dvh] pb-24 md:pb-10 relative z-0 scroll-smooth">
+      <main id="main" tabIndex={-1} className="flex-1 p-3 md:p-10 mt-16 md:mt-0 overflow-y-auto min-h-[100dvh] pb-24 md:pb-10 relative z-0 scroll-smooth focus:outline-none">
         <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 animate-premium-in">
           {children}
         </div>

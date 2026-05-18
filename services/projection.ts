@@ -199,7 +199,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let minNetWorth = liquid + celi + celiapp + reer + nonReg + crypto + reee;
     let shortfallMonths = 0;
 
-    let reeeTracker: Record<string, { scee: number, iqee: number }> = {};
+    let reeeTracker: Record<string, { scee: number; iqee: number; contribLifetime: number }> = {};
 
     // Cycle 22 split: revenus net/brut baseline → ./projection/setupSimulation
     const { incomeMarcNetMonthly, incomeAnnaNetMonthly, grossMarcBaseAnnual, grossAnnaBaseAnnual } =
@@ -762,7 +762,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             const childAgeMonths = m - Math.max(0, birthOffset);
             const isFirstMonth = m === Math.max(0, birthOffset);
             const childId = child.id || `enfant_${idx}`;
-            const tracker = reeeTracker[childId] ?? { scee: 0, iqee: 0 };
+            const tracker = reeeTracker[childId] ?? { scee: 0, iqee: 0, contribLifetime: 0 };
             const result = processOneChild(
                 child, idx, isFirstMonth, childAgeMonths,
                 {
@@ -773,6 +773,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     reee: _childReee,
                     householdGross: grossMarcBaseAnnual + grossAnnaBaseAnnual,
                     trackerScee: tracker.scee, trackerIqee: tracker.iqee,
+                    trackerReeeContribLifetime: tracker.contribLifetime ?? 0,
                     enableMonteCarlo,
                 },
                 calculateFiscalReport,
@@ -783,7 +784,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             _childMonthlyIncome += result.monthlyIncomeDelta;
             if (result.newIncomeAnna !== null) _childIncomeAnna = result.newIncomeAnna;
             accGrossIncomeYear += result.accGrossDelta;
-            reeeTracker[result.childId] = { scee: result.newTrackerScee, iqee: result.newTrackerIqee };
+            reeeTracker[result.childId] = {
+                scee: result.newTrackerScee,
+                iqee: result.newTrackerIqee,
+                contribLifetime: result.newTrackerReeeContribLifetime,
+            };
             childGrossCost += result.childGrossCostAdd;
             childBenefits += result.childBenefitsAdd;
             childMonthlyCost += result.childMonthlyCostAdd;

@@ -101,14 +101,24 @@ export function processJanuaryReset(
         }
     });
 
-    // === 2. FHSA: éligibilité dynamique + carry-forward + fermeture 15 ans ===
+    // === 2. FHSA: éligibilité dynamique + carry-forward + fermeture 15 ans OU 71 ans ===
+    // Audit §6.10: ARC exige la fermeture du CELIAPP au 31 décembre de l'année
+    // où le titulaire atteint 71 ans (ou après 15 ans, ou 1 an après le premier
+    // retrait admissible — premier événement applicable). On ajoute le check 71 ans.
     const anyUserEligibleFhsa = !ctx.hasPurchasedPrimary && ctx.users.some(u => {
         if (!u) return false;
         const birthYear = u.birthYear || (ctx.startYear - (u.age || 30));
         const arrivalYear = u.canadaArrivalYear || (ctx.startYear - 5);
         const ageThisYear = nextLoopYear - birthYear;
         const isFirstBuyer = !u.hasOwnedPropertyLast4Years;
-        return ageThisYear >= 18 && nextLoopYear >= arrivalYear && isFirstBuyer;
+        return ageThisYear >= 18 && ageThisYear < 71 && nextLoopYear >= arrivalYear && isFirstBuyer;
+    });
+
+    const allUsersExceeded71 = ctx.users.every(u => {
+        if (!u) return true;
+        const birthYear = u.birthYear || (ctx.startYear - (u.age || 30));
+        const ageThisYear = nextLoopYear - birthYear;
+        return ageThisYear >= 71;
     });
 
     const yearsSinceOpening = nextLoopYear - ctx.celiappOpeningYear;
@@ -116,14 +126,16 @@ export function processJanuaryReset(
 
     let fhsaRoomNew = 0;
     let celiappTransferToReer = 0;
-    if (anyUserEligibleFhsa && yearsSinceOpening < 15 && remainingLifetimeRoom > 0) {
+    const closureForcedBy71 = allUsersExceeded71;
+    if (anyUserEligibleFhsa && yearsSinceOpening < 15 && remainingLifetimeRoom > 0 && !closureForcedBy71) {
         const fhsaYearlyFixed = FHSA_ANNUAL_LIMIT_PER_USER * ctx.fhsaEligibleUsersCount;
         const unusedPrevious = ctx.fhsaRoomCurrent;
         const allowedCarryForward = Math.min(fhsaYearlyFixed, unusedPrevious);
         const newRoom = Math.min(remainingLifetimeRoom, fhsaYearlyFixed + allowedCarryForward);
         fhsaRoomNew = newRoom;
-    } else if (yearsSinceOpening >= 15 && ctx.celiapp > 0) {
-        logs.push(`🏛️ CELIAPP: Fin des 15 ans. Transfert vers REER.`);
+    } else if ((yearsSinceOpening >= 15 || closureForcedBy71) && ctx.celiapp > 0) {
+        const reason = closureForcedBy71 ? "71 ans atteint" : "Fin des 15 ans";
+        logs.push(`🏛️ CELIAPP: ${reason}. Transfert vers REER.`);
         celiappTransferToReer = ctx.celiapp;
         fhsaRoomNew = 0;
     } else {

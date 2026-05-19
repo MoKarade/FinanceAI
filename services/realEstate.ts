@@ -194,6 +194,118 @@ export const runAmortization = (input: AmortizationInput): AmortizationResult =>
   return { data, totalInterest: totalInterestPaid, finalValue: propertyValue };
 };
 
+// ============================================
+// OSFI B-20 — Stress test hypothécaire (audit §6.6)
+// Source: Bureau du surintendant des institutions financières (OSFI), guideline B-20.
+//  - MQR floor 5.25% + buffer +2 points = qualifying rate
+//  - GDS max 39% (Gross Debt Service ratio)
+//  - TDS max 44% (Total Debt Service ratio)
+// https://www.osfi-bsif.gc.ca/en/supervision/financial-institutions/banks/minimum-qualifying-rate-uninsured-mortgages
+// ============================================
+
+export const OSFI_MQR_FLOOR = 0.0525;        // 5.25% — plancher du qualifying rate
+export const OSFI_MQR_BUFFER = 0.02;          // +2 points au-dessus du taux contractuel
+export const OSFI_GDS_MAX = 0.39;             // Gross Debt Service max — 39% du revenu brut mensuel
+export const OSFI_TDS_MAX = 0.44;             // Total Debt Service max — 44%
+
+export interface B20StressTestInput {
+  /** Taux contractuel de l'hypothèque (% annuel, ex: 4.5 pour 4.5%) */
+  contractRate: number;
+  /** Montant emprunté (prix - mise de fonds) */
+  loanAmount: number;
+  /** Période d'amortissement (années) */
+  amortization: number;
+  /** Charges logement mensuelles HORS hypothèque (taxes/12 + chauffage + 50% condo) */
+  monthlyHousingChargesExclMortgage: number;
+  /** Revenu brut mensuel familial (toutes sources) */
+  monthlyGrossIncome: number;
+  /** Paiements mensuels d'autres dettes (cartes, auto, prêt étudiant) */
+  otherDebtMonthly?: number;
+}
+
+export interface B20StressTestResult {
+  /** Taux de qualification en DÉCIMAL (ex: 0.065 = 6.5%). Différent de B20StressTestInput.contractRate qui est en pourcentage. */
+  qualifyingRate: number;
+  qualifyingMonthlyPmt: number; // PMT mensuel calculé au qualifying rate
+  totalHousingPmt: number;      // qualifying PMT + housing charges
+  gds: number;                  // ratio GDS (0-1)
+  tds: number;                  // ratio TDS (0-1)
+  passes: boolean;              // true si GDS ≤ 39% ET TDS ≤ 44%
+  failReason?: string;          // raison si fail
+}
+
+/**
+ * Calcule le qualifying rate selon OSFI B-20 :
+ *   `qualifyingRate = max(contractRate + 2 pts, 5.25%)`
+ *
+ * @param contractRate Taux contractuel en % annuel (ex: 4.5 pour 4.5%).
+ * @returns Qualifying rate en décimal (ex: 0.065).
+ */
+export const calculateB20QualifyingRate = (contractRate: number): number => {
+  if (!Number.isFinite(contractRate) || contractRate <= 0) return OSFI_MQR_FLOOR;
+  const contractDecimal = contractRate / 100;
+  return Math.max(contractDecimal + OSFI_MQR_BUFFER, OSFI_MQR_FLOOR);
+};
+
+/**
+ * Effectue le stress test hypothécaire OSFI B-20.
+ *
+ * Vérifie que l'emprunteur peut servir le prêt au qualifying rate, en
+ * respectant les ratios GDS (max 39%) et TDS (max 44%).
+ *
+ * @returns { qualifyingRate, qualifyingMonthlyPmt, gds, tds, passes, failReason }
+ */
+export const calculateB20StressTest = (input: B20StressTestInput): B20StressTestResult => {
+  const {
+    contractRate,
+    loanAmount,
+    amortization,
+    monthlyHousingChargesExclMortgage,
+    monthlyGrossIncome,
+    otherDebtMonthly = 0,
+  } = input;
+
+  const qualifyingRate = calculateB20QualifyingRate(contractRate);
+  const monthlyQualifyingRate = qualifyingRate / 12;
+  const n = amortization * 12;
+
+  let qualifyingMonthlyPmt = 0;
+  if (loanAmount > 0 && n > 0) {
+    qualifyingMonthlyPmt = monthlyQualifyingRate > 0
+      ? (monthlyQualifyingRate * loanAmount * Math.pow(1 + monthlyQualifyingRate, n))
+        / (Math.pow(1 + monthlyQualifyingRate, n) - 1)
+      : loanAmount / n;
+  }
+
+  const totalHousingPmt = qualifyingMonthlyPmt + Math.max(0, monthlyHousingChargesExclMortgage);
+  const safeIncome = Math.max(1, monthlyGrossIncome); // évite division par 0
+
+  const gds = totalHousingPmt / safeIncome;
+  const tds = (totalHousingPmt + Math.max(0, otherDebtMonthly)) / safeIncome;
+
+  const gdsFail = gds > OSFI_GDS_MAX;
+  const tdsFail = tds > OSFI_TDS_MAX;
+  const passes = !gdsFail && !tdsFail;
+
+  let failReason: string | undefined;
+  if (!passes) {
+    const reasons: string[] = [];
+    if (gdsFail) reasons.push(`GDS ${(gds * 100).toFixed(1)}% > 39%`);
+    if (tdsFail) reasons.push(`TDS ${(tds * 100).toFixed(1)}% > 44%`);
+    failReason = reasons.join(' + ');
+  }
+
+  return {
+    qualifyingRate,
+    qualifyingMonthlyPmt,
+    totalHousingPmt,
+    gds,
+    tds,
+    passes,
+    failReason,
+  };
+};
+
 /**
  * Couts d'achat totaux pour un achat immobilier au Quebec :
  * mise de fonds + taxe de bienvenue + notaire + inspection + renovations initiales.

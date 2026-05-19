@@ -11,6 +11,15 @@ import {
   validateMortgageParameters,
   calculateSchlPremiumRate,
   calculateSchlPremium,
+  calculateGstNewHomeRebate,
+  calculateQstNewHomeRebate,
+  calculateNewHomeRebateTotal,
+  GST_REBATE_MAX,
+  QST_REBATE_MAX,
+  GST_REBATE_PRICE_FULL,
+  GST_REBATE_PRICE_ZERO,
+  QST_REBATE_PRICE_FULL,
+  QST_REBATE_PRICE_ZERO,
   SCHL_PREMIUM_TIERS,
   OSFI_MQR_FLOOR,
   OSFI_MQR_BUFFER,
@@ -596,5 +605,79 @@ describe('calculateSchlPremium (§6.5)', () => {
     expect(SCHL_PREMIUM_TIERS.length).toBe(6);
     expect(SCHL_PREMIUM_TIERS[0].maxLtv).toBe(0.65);
     expect(SCHL_PREMIUM_TIERS[5].maxLtv).toBe(0.95);
+  });
+});
+
+// ----------------------------------------------------------------------------
+// §6.7 — TPS/TVQ remboursement résidence neuve
+// Sources: ARC RC4028 (TPS) + Revenu Québec (TVQ)
+// ----------------------------------------------------------------------------
+describe('calculateGstNewHomeRebate (§6.7)', () => {
+  it('applique 36% de la TPS pour prix ≤ 350 000$', () => {
+    // 300k × 5% × 36% = 5 400$
+    expect(calculateGstNewHomeRebate(300000)).toBeCloseTo(5400, 1);
+  });
+
+  it('atteint le rebate max à 350 000$ exactement (6 300$)', () => {
+    expect(calculateGstNewHomeRebate(GST_REBATE_PRICE_FULL)).toBeCloseTo(GST_REBATE_MAX, 1);
+  });
+
+  it('décroît linéairement entre 350k et 450k$', () => {
+    // À 400k : transitionRatio = (450 - 400) / 100 = 0.5 → 6300 × 0.5 = 3150$
+    expect(calculateGstNewHomeRebate(400000)).toBeCloseTo(GST_REBATE_MAX * 0.5, 1);
+  });
+
+  it('retourne 0 pour prix ≥ 450 000$', () => {
+    expect(calculateGstNewHomeRebate(450000)).toBe(0);
+    expect(calculateGstNewHomeRebate(500000)).toBe(0);
+  });
+
+  it('retourne 0 pour prix invalide', () => {
+    expect(calculateGstNewHomeRebate(0)).toBe(0);
+    expect(calculateGstNewHomeRebate(NaN)).toBe(0);
+    expect(calculateGstNewHomeRebate(-1000)).toBe(0);
+  });
+});
+
+describe('calculateQstNewHomeRebate (§6.7)', () => {
+  it('applique 50% de la TVQ pour prix ≤ 200 000$', () => {
+    // 150k × 9.975% × 50% = 7 481.25$
+    expect(calculateQstNewHomeRebate(150000)).toBeCloseTo(7481.25, 1);
+  });
+
+  it('atteint le rebate max à 200 000$ exactement', () => {
+    expect(calculateQstNewHomeRebate(QST_REBATE_PRICE_FULL)).toBeCloseTo(QST_REBATE_MAX, 1);
+  });
+
+  it('décroît linéairement entre 200k et 300k$', () => {
+    // À 250k : transitionRatio = 0.5 → max × 0.5
+    expect(calculateQstNewHomeRebate(250000)).toBeCloseTo(QST_REBATE_MAX * 0.5, 1);
+  });
+
+  it('retourne 0 pour prix ≥ 300 000$', () => {
+    expect(calculateQstNewHomeRebate(300000)).toBe(0);
+    expect(calculateQstNewHomeRebate(400000)).toBe(0);
+  });
+});
+
+describe('calculateNewHomeRebateTotal (§6.7)', () => {
+  it('retourne 0 si pas résidence neuve', () => {
+    expect(calculateNewHomeRebateTotal(300000, false)).toBe(0);
+  });
+
+  it('combine TPS + TVQ pour résidence neuve à 150k$', () => {
+    const expected = calculateGstNewHomeRebate(150000) + calculateQstNewHomeRebate(150000);
+    expect(calculateNewHomeRebateTotal(150000, true)).toBeCloseTo(expected, 2);
+  });
+
+  it('retourne TPS rebate seulement si prix > seuil TVQ (300k)', () => {
+    // Prix 400k : TPS rebate partiel ≈ 3150$, TVQ rebate = 0
+    const r = calculateNewHomeRebateTotal(400000, true);
+    expect(r).toBeCloseTo(calculateGstNewHomeRebate(400000), 1);
+    expect(calculateQstNewHomeRebate(400000)).toBe(0);
+  });
+
+  it('snapshot — 300k neuve : 5 400$ TPS + 0$ TVQ = 5 400$ total', () => {
+    expect(calculateNewHomeRebateTotal(300000, true)).toBeCloseTo(5400, 1);
   });
 });

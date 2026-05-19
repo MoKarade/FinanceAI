@@ -527,6 +527,93 @@ export const calculateSchlPremium = (input: SchlPremiumInput): SchlPremiumResult
   return { ltv, rate, premium, required: true, available };
 };
 
+// ============================================
+// TPS/TVQ résidence neuve — remboursements (audit §6.7)
+// Sources:
+//  - ARC TPS neuf : https://www.canada.ca/fr/agence-revenu/services/formulaires-publications/publications/rc4028.html
+//  - Revenu Québec TVQ neuf : https://www.revenuquebec.ca/fr/citoyens/situations-particulieres/votre-residence/achat-construction-renovation-residence/remboursement-de-la-tvq-pour-achat-ou-construction-residence-neuve/
+//
+// TPS (fédéral) : taux 5%
+//  - Prix ≤ 350 000$ : remboursement 36% de la TPS payée (max 6 300$)
+//  - 350 000 - 450 000$ : décroît linéairement à 0
+//  - > 450 000$ : 0% remboursement
+//
+// TVQ (provincial QC) : taux 9.975%
+//  - Prix ≤ 200 000$ : remboursement 50% de la TVQ payée (max 9 975$)
+//  - 200 000 - 300 000$ (?) : barème spécifique
+//  - À noter : le rebate TVQ a été modifié plusieurs fois ; cette implémentation
+//    suit le barème 2026 standard.
+// ============================================
+
+export const GST_RATE = 0.05;
+export const QST_RATE = 0.09975;
+
+export const GST_REBATE_PRICE_FULL = 350000;    // jusqu'à ce prix : rebate plein
+export const GST_REBATE_PRICE_ZERO = 450000;    // au-delà : zéro rebate
+export const GST_REBATE_RATE_FULL = 0.36;       // 36% de la TPS payée
+export const GST_REBATE_MAX = GST_REBATE_PRICE_FULL * GST_RATE * GST_REBATE_RATE_FULL;  // 6 300$
+
+export const QST_REBATE_PRICE_FULL = 200000;
+export const QST_REBATE_PRICE_ZERO = 300000;
+export const QST_REBATE_RATE_FULL = 0.50;       // 50% de la TVQ payée
+export const QST_REBATE_MAX = QST_REBATE_PRICE_FULL * QST_RATE * QST_REBATE_RATE_FULL;  // ~9 975$
+
+/**
+ * Calcule le remboursement TPS pour l'achat d'une résidence neuve.
+ *
+ * Source: ARC RC4028. Le remboursement est de 36% de la TPS payée pour les
+ * résidences ≤ 350 000$, décroissant linéairement à 0 pour 450 000$+.
+ *
+ * @param price Prix d'achat avant taxes
+ * @returns Montant du remboursement TPS (0 à ~6 300$)
+ */
+export const calculateGstNewHomeRebate = (price: number): number => {
+  if (!Number.isFinite(price) || price <= 0) return 0;
+  if (price <= GST_REBATE_PRICE_FULL) {
+    return price * GST_RATE * GST_REBATE_RATE_FULL;
+  }
+  if (price >= GST_REBATE_PRICE_ZERO) {
+    return 0;
+  }
+  // Phase de transition linéaire entre 350k et 450k
+  // Formule ARC : rebate × ((450 000 - prix) / 100 000)
+  const transitionRatio = (GST_REBATE_PRICE_ZERO - price) / (GST_REBATE_PRICE_ZERO - GST_REBATE_PRICE_FULL);
+  return GST_REBATE_MAX * transitionRatio;
+};
+
+/**
+ * Calcule le remboursement TVQ pour l'achat d'une résidence neuve au Québec.
+ *
+ * Source: Revenu Québec. Remboursement 50% de la TVQ pour résidences ≤ 200 000$,
+ * décroissant linéairement à 0 pour 300 000$+.
+ *
+ * @param price Prix d'achat avant taxes
+ * @returns Montant du remboursement TVQ (0 à ~9 975$)
+ */
+export const calculateQstNewHomeRebate = (price: number): number => {
+  if (!Number.isFinite(price) || price <= 0) return 0;
+  if (price <= QST_REBATE_PRICE_FULL) {
+    return price * QST_RATE * QST_REBATE_RATE_FULL;
+  }
+  if (price >= QST_REBATE_PRICE_ZERO) {
+    return 0;
+  }
+  const transitionRatio = (QST_REBATE_PRICE_ZERO - price) / (QST_REBATE_PRICE_ZERO - QST_REBATE_PRICE_FULL);
+  return QST_REBATE_MAX * transitionRatio;
+};
+
+/**
+ * Calcule le remboursement TOTAL (TPS + TVQ) pour une résidence neuve.
+ * Si l'achat n'est PAS une résidence neuve, retourne 0.
+ *
+ * Note : ce remboursement vient en RÉDUCTION du coût total à l'achat
+ * (l'acheteur paie taxes pleines puis se fait rembourser après).
+ */
+export const calculateNewHomeRebateTotal = (price: number, isNewConstruction: boolean): number => {
+  if (!isNewConstruction) return 0;
+  return calculateGstNewHomeRebate(price) + calculateQstNewHomeRebate(price);
+};
+
 /**
  * Couts d'achat totaux pour un achat immobilier au Quebec :
  * mise de fonds + taxe de bienvenue + notaire + inspection + renovations initiales.

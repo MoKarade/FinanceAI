@@ -9,7 +9,7 @@
 
 import type { RealEstateGoal } from '../../types';
 import { RAP_LIMIT_PER_USER } from '../../utils/tax';
-import { calculateB20StressTest, validateMortgageParameters, calculateSchlPremium } from '../realEstate';
+import { calculateB20StressTest, validateMortgageParameters, calculateSchlPremium, calculateNewHomeRebateTotal } from '../realEstate';
 
 type GetMarginalRateFn = (annualGross: number) => number;
 type GetMonthOffsetFn = (dateStr: string) => number;
@@ -132,7 +132,14 @@ export function processRealEstate(
             }
 
             const welcomeFees = welcomeTax(goal.price);
-            const totalCashNeeded = goal.downPayment + goal.totalClosingCosts + welcomeFees;
+            // §6.7 — Remboursement TPS/TVQ pour résidence neuve (réduit le coût net)
+            const newHomeRebate = calculateNewHomeRebateTotal(goal.price, !!goal.isNewConstruction);
+            const totalCashNeeded = Math.max(0, goal.downPayment + goal.totalClosingCosts + welcomeFees - newHomeRebate);
+            if (newHomeRebate > 0) {
+                state.lifeEventLogs.push(
+                    `💰 Rembours. TPS/TVQ neuve §6.7 (${goal.id}): -${Math.round(newHomeRebate).toLocaleString('fr-CA')}$`,
+                );
+            }
 
             if (state.celiapp > 0) {
                 state.liquid += state.celiapp;

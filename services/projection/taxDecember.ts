@@ -145,16 +145,32 @@ export function processDecemberTaxFiling(
         const deductionsMarc = grossMarcReal > grossAnnaReal ? deductionsReal : 0;
         const deductionsAnna = grossMarcReal > grossAnnaReal ? 0 : deductionsReal;
 
-        const taxMarcReal = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, deductionsMarc, 0, ctx.loopYear, ctx.enableMonteCarlo).totalTax : 0;
-        const taxAnnaReal = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, deductionsAnna, 0, ctx.loopYear, ctx.enableMonteCarlo).totalTax : 0;
+        // §6.2 — crédits 65+ pour salarié actif 65+ (audit silent-failure FINDING 2).
+        // Cas : senior qui continue à travailler après 65 ans. Sans ce passage,
+        // le crédit âge fédéral + ligne 361 QC seraient silencieusement nuls.
+        // Limite : on utilise ctx.age (user[0] = Marc) pour les deux conjoints.
+        // Si seul Anna a 65+ et pas Marc, la prudence préfère 0 crédit (faux négatif)
+        // à un crédit indu (faux positif). Marc fait foi pour la simplicité ici.
+        const familyGrossReal = grossMarcReal + grossAnnaReal;
+        const ageOptsActive: AgeCreditOptions | undefined = (ctx.age !== undefined && ctx.age >= 65)
+            ? {
+                age: ctx.age,
+                eligiblePensionIncome: 0, // pas de pension admissible en mode actif
+                hasSpouse: ctx.activeUsersCount > 1,
+                familyIncome: familyGrossReal,
+            }
+            : undefined;
+
+        const taxMarcReal = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, deductionsMarc, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsActive).totalTax : 0;
+        const taxAnnaReal = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, deductionsAnna, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsActive).totalTax : 0;
         const totalAnnualTax = (taxMarcReal + taxAnnaReal) * ctx.inflationFactor;
 
         // V49: Retenue source (T1213 ou non)
         let taxMarcEmployer = taxMarcReal;
         let taxAnnaEmployer = taxAnnaReal;
         if (!ctx.optimizeSourceDeductions) {
-            taxMarcEmployer = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo).totalTax : 0;
-            taxAnnaEmployer = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo).totalTax : 0;
+            taxMarcEmployer = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsActive).totalTax : 0;
+            taxAnnaEmployer = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsActive).totalTax : 0;
         }
         const totalEmployerTax = (taxMarcEmployer + taxAnnaEmployer) * ctx.inflationFactor;
         const estimatedWithholding = totalEmployerTax * 0.92;
@@ -167,13 +183,16 @@ export function processDecemberTaxFiling(
         if (basePensionAnnual > 0) {
             const basePensionReal = basePensionAnnual / ctx.inflationFactor;
             const incomeIndividualReal = basePensionReal / ctx.activeUsersCount;
-            // §6.2 — crédits 65+ et revenu de retraite (ARC ligne 30100/31400 + Revenu Québec ligne 361)
+            // §6.2 — crédits 65+ et revenu de retraite (ARC ligne 30100/31400 + Revenu Québec ligne 361).
+            // FIX audit code-reviewer MEDIUM 5 : familyIncome inclut aussi les retraits REER de l'année
+            // pour ne pas surestimer le crédit ligne 361 QC.
+            const reerRealForFamily = ctx.accRetraitsReerYear / ctx.inflationFactor;
             const ageOpts: AgeCreditOptions | undefined = ctx.age !== undefined
                 ? {
                     age: ctx.age,
                     eligiblePensionIncome: incomeIndividualReal,
                     hasSpouse: ctx.activeUsersCount > 1,
-                    familyIncome: basePensionReal,
+                    familyIncome: basePensionReal + reerRealForFamily,
                 }
                 : undefined;
             const taxReal = helpers.calculateFiscalReport(incomeIndividualReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOpts).totalTax * ctx.activeUsersCount;

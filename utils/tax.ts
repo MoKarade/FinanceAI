@@ -110,43 +110,67 @@ export interface AgeCreditOptions {
  * (avant abattement fédéral et avant BPA).
  *
  * Sources :
- *  - ARC ligne 30100 (âge fédéral, indexé 2026 = 2.0%)
- *  - ARC ligne 31400 (pension fédéral, fixe 2 000$)
- *  - Revenu Québec ligne 361 (âge + revenu retraite combinés, indexé 2026 = 2.05%)
+ *  - ARC ligne 30100 (âge fédéral, indexé annuellement via getIndexedBracketsForYear)
+ *  - ARC ligne 31400 (pension fédéral, fixe 2 000$, restreint 65+ hors cas invalidité)
+ *  - Revenu Québec ligne 361 (âge + revenu retraite, indexé annuellement)
+ *
+ * @param opts          Âge, revenu pension admissible, statut conjoint, revenu familial
+ * @param netTaxableIncome Revenu net après déductions (sert au seuil fed et fallback QC)
+ * @param year          Année fiscale pour indexer les seuils et montants (défaut 2026)
  */
 export const calculateAgeAndPensionCredits = (
     opts: AgeCreditOptions,
     netTaxableIncome: number,
+    year: number = 2026,
 ): { fedCredit: number; qcCredit: number } => {
-    const age = opts.age ?? 0;
-    const pension = Math.max(0, opts.eligiblePensionIncome ?? 0);
-    const familyIncome = Math.max(0, opts.familyIncome ?? netTaxableIncome);
+    // Guard NaN/Infinity (audit silent-failure-hunter §6.2) : un NaN injecté via
+    // opts (e.g. activeUsersCount = 0 → division NaN) polluerait tout le calcul.
+    const safe = (v: number | undefined, fallback = 0): number => {
+        const n = v ?? fallback;
+        return Number.isFinite(n) ? Math.max(0, n) : fallback;
+    };
+
+    const age = safe(opts.age);
+    const pension = safe(opts.eligiblePensionIncome);
+    const familyIncome = safe(opts.familyIncome, netTaxableIncome);
+
+    // Indexation des seuils et montants 2026 selon l'année (fact mutualisé
+    // avec getIndexedBracketsForYear pour cohérence avec les paliers).
+    const { inflationFactor } = getIndexedBracketsForYear(year);
+    const ageAmountFed = AGE_AMOUNT_FED_2026 * inflationFactor;
+    const ageThresholdFed = AGE_AMOUNT_FED_THRESHOLD_2026 * inflationFactor;
+    const ageAmountQc = AGE_AMOUNT_QC_2026 * inflationFactor;
+    const retirementAmountQc = RETIREMENT_INCOME_AMOUNT_QC_2026 * inflationFactor;
+    const thresholdSingle = QC_LINE_361_THRESHOLD_SINGLE * inflationFactor;
+    const thresholdCouple = QC_LINE_361_THRESHOLD_COUPLE * inflationFactor;
 
     let fedAmount = 0;
     let qcAmount = 0;
 
-    // Crédit fédéral en raison de l'âge (65+)
+    // Crédit fédéral en raison de l'âge (65+, ARC ligne 30100)
     if (age >= AGE_AMOUNT_FED_MIN_AGE) {
-        fedAmount += netTaxableIncome <= AGE_AMOUNT_FED_THRESHOLD_2026
-            ? AGE_AMOUNT_FED_2026
+        fedAmount += netTaxableIncome <= ageThresholdFed
+            ? ageAmountFed
             : Math.max(
                 0,
-                AGE_AMOUNT_FED_2026 - (netTaxableIncome - AGE_AMOUNT_FED_THRESHOLD_2026) * AGE_AMOUNT_FED_REDUCTION_RATE,
+                ageAmountFed - (netTaxableIncome - ageThresholdFed) * AGE_AMOUNT_FED_REDUCTION_RATE,
             );
     }
 
-    // Crédit fédéral pour revenu de pension (max 2 000$ admissible)
-    fedAmount += Math.min(PENSION_INCOME_AMOUNT_FED, pension);
+    // Crédit fédéral pour revenu de pension (ARC ligne 31400).
+    // FIX audit code-reviewer + silent-failure §6.2 — restreint 65+ pour rentes
+    // standard (FERR, pension privée, REER converti). Les exceptions invalidité
+    // < 65 ans ne sont pas modélisées dans FinanceAI (caller responsabilité).
+    if (age >= AGE_AMOUNT_FED_MIN_AGE) {
+        fedAmount += Math.min(PENSION_INCOME_AMOUNT_FED, pension);
+    }
 
-    // Ligne 361 QC (âge + revenu retraite combinés)
+    // Ligne 361 QC (âge + revenu retraite combinés, Revenu Québec)
     if (age >= QC_LINE_361_MIN_AGE) {
-        const ageQc = AGE_AMOUNT_QC_2026;
-        const retirementQc = Math.min(RETIREMENT_INCOME_AMOUNT_QC_2026, pension);
-        const grossLine361 = ageQc + retirementQc;
+        const retirementQc = Math.min(retirementAmountQc, pension);
+        const grossLine361 = ageAmountQc + retirementQc;
 
-        const threshold = opts.hasSpouse
-            ? QC_LINE_361_THRESHOLD_COUPLE
-            : QC_LINE_361_THRESHOLD_SINGLE;
+        const threshold = opts.hasSpouse ? thresholdCouple : thresholdSingle;
         const reduction = Math.max(0, familyIncome - threshold) * QC_LINE_361_REDUCTION_RATE;
         qcAmount = Math.max(0, grossLine361 - reduction);
     }
@@ -301,8 +325,9 @@ export const calculateFiscalReport = (
 
     // Crédits 65+ et revenu de retraite (audit §6.2). Calculés une seule fois,
     // appliqués au fédéral AVANT l'abatement QC et au provincial APRÈS le BPA.
+    // L'année est propagée pour indexer seuils et montants ligne 361 + ligne 30100.
     const ageCredits = ageOpts
-        ? calculateAgeAndPensionCredits(ageOpts, netTaxable)
+        ? calculateAgeAndPensionCredits(ageOpts, netTaxable, year)
         : { fedCredit: 0, qcCredit: 0 };
 
     const fedData = calculateDetailedTax(netTaxable, indexedFedBrackets, skipBreakdown);

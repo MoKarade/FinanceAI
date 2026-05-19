@@ -2,7 +2,7 @@
 // Cycle 23 split (depuis taxCycle.ts): réinitialisation annuelle de janvier.
 // Cycle 12 (origine): exécuté uniquement en janvier (currentMonthIndex === 0 && m > 0).
 
-import { FHSA_LIFETIME_LIMIT_PER_USER, FHSA_ANNUAL_LIMIT_PER_USER, type FiscalReport } from '../../utils/tax';
+import { FHSA_LIFETIME_LIMIT_PER_USER, FHSA_ANNUAL_LIMIT_PER_USER, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
 //
 // Janvier — Réinitialisation annuelle + recalcul plafonds CELI/FHSA/REER + FERR.
 //
@@ -48,7 +48,7 @@ export interface JanuaryContext {
 
 export interface JanuaryHelpers {
     RRIF_RATES: Record<number, number>;
-    calculateFiscalReport: (gross: number, deductions: number, withheld: number, year: number) => FiscalReport;
+    calculateFiscalReport: (gross: number, deductions: number, withheld: number, year: number, skipBreakdown?: boolean, ageOpts?: AgeCreditOptions) => FiscalReport;
 }
 
 export interface JanuaryResult {
@@ -164,7 +164,16 @@ export function processJanuaryReset(
         const priorYearGainsProxy = (ctx.taxCurrentYearGains / 0.25) || 0;
         const inflFactorAtNow = Math.pow(1 + ctx.simInflation / 100, ctx.m / 12);
         const deflatedIncomeForMargRate = ((ctx.accRetraitsReerYearOld + priorYearGainsProxy + (ctx.isRetired ? ctx.incomeRetirementMonthly * 12 : 0)) / ctx.activeUsersCount) / inflFactorAtNow;
-        const rrifMarginalRate = helpers.calculateFiscalReport(deflatedIncomeForMargRate, 0, 0, ctx.loopYear).marginalRate;
+        // §6.2 — applique les crédits 65+ et revenu retraite au calcul du taux marginal FERR.
+        // Sans cela (audit silent-failure FINDING 1), la retenue FERR est surestimée
+        // de ~1 200-1 800$/an pour un retraité 72+.
+        const ageOptsFerr: AgeCreditOptions = {
+            age: ctx.age,
+            eligiblePensionIncome: deflatedIncomeForMargRate,
+            hasSpouse: ctx.activeUsersCount > 1,
+            familyIncome: deflatedIncomeForMargRate * ctx.activeUsersCount,
+        };
+        const rrifMarginalRate = helpers.calculateFiscalReport(deflatedIncomeForMargRate, 0, 0, ctx.loopYear, false, ageOptsFerr).marginalRate;
 
         ferrTaxOnRrif = ferrMandatoryGross * (rrifMarginalRate / 100);
         const netRrif = ferrMandatoryGross - ferrTaxOnRrif;

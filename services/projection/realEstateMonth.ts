@@ -9,7 +9,7 @@
 
 import type { RealEstateGoal } from '../../types';
 import { RAP_LIMIT_PER_USER } from '../../utils/tax';
-import { calculateB20StressTest } from '../realEstate';
+import { calculateB20StressTest, validateMortgageParameters } from '../realEstate';
 
 type GetMarginalRateFn = (annualGross: number) => number;
 type GetMonthOffsetFn = (dateStr: string) => number;
@@ -113,6 +113,24 @@ export function processRealEstate(
 
         // ── ACHAT ──────────────────────────────────────────────────────
         if (!pState.isBought) {
+            // §6.8 — Validation SCHL : mise de fonds min + amortissement max.
+            // Informatif uniquement (n'empêche pas l'achat) — l'utilisateur peut
+            // tout de même choisir de simuler un scénario non conforme.
+            if (m === purchaseOffset) {
+                const validation = validateMortgageParameters({
+                    price: goal.price,
+                    downPayment: goal.downPayment,
+                    amortization: goal.amortization,
+                    isFirstTimeBuyer: goal.isFirstTimeBuyer ?? false,
+                    isNewConstruction: goal.isNewConstruction ?? false,
+                });
+                if (!validation.valid) {
+                    validation.errors.forEach(err => {
+                        state.lifeEventLogs.push(`⚠️ SCHL §6.8 (${goal.id}): ${err}`);
+                    });
+                }
+            }
+
             const welcomeFees = welcomeTax(goal.price);
             const totalCashNeeded = goal.downPayment + goal.totalClosingCosts + welcomeFees;
 

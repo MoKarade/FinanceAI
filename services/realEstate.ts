@@ -306,6 +306,136 @@ export const calculateB20StressTest = (input: B20StressTestInput): B20StressTest
   };
 };
 
+// ============================================
+// SCHL — Validation mise de fonds + amortissement (audit §6.8)
+// Source: Société canadienne d'hypothèques et de logement (SCHL).
+//  - Mise de fonds min: 5% (≤500k$), 5%+10% (500k-1.5M$), 20% (>1.5M$)
+//  - Amortissement max assuré: 25 ans (30 ans pour 1er acheteur ou résidence
+//    neuve depuis août 2024)
+//  - Amortissement max conventionnel (>20% MDP): 30 ans
+// https://www.schl-cmhc.gc.ca/buying/mortgage-loan-insurance
+// ============================================
+
+export const SCHL_PRICE_THRESHOLD_TIER1 = 500000;       // 5% sous ce seuil
+export const SCHL_PRICE_THRESHOLD_TIER2 = 1500000;      // 5%+10% jusqu'à ce seuil; 20%+ au-delà
+export const SCHL_MIN_DOWN_TIER1 = 0.05;
+export const SCHL_MIN_DOWN_TIER2 = 0.10;
+export const SCHL_MIN_DOWN_TIER3 = 0.20;
+export const SCHL_AMORT_MAX_INSURED_STANDARD = 25;       // ans
+export const SCHL_AMORT_MAX_INSURED_FTB_OR_NEW = 30;     // 1er acheteur OU résidence neuve (depuis août 2024)
+export const SCHL_AMORT_MAX_CONVENTIONAL = 30;           // ≥ 20% MDP
+
+/**
+ * Calcule la mise de fonds MINIMUM requise pour un prix d'achat donné (SCHL).
+ *
+ * Paliers 2026 :
+ *  - prix ≤ 500 000$ : 5% du prix
+ *  - 500 000 < prix ≤ 1 500 000 : 5% sur premier 500k$ + 10% au-delà
+ *  - prix > 1 500 000 : 20% (assurance SCHL non disponible)
+ */
+export const calculateMinDownPayment = (price: number): number => {
+  if (!Number.isFinite(price) || price <= 0) return 0;
+  if (price <= SCHL_PRICE_THRESHOLD_TIER1) {
+    return price * SCHL_MIN_DOWN_TIER1;
+  }
+  if (price <= SCHL_PRICE_THRESHOLD_TIER2) {
+    return SCHL_PRICE_THRESHOLD_TIER1 * SCHL_MIN_DOWN_TIER1
+      + (price - SCHL_PRICE_THRESHOLD_TIER1) * SCHL_MIN_DOWN_TIER2;
+  }
+  return price * SCHL_MIN_DOWN_TIER3;
+};
+
+export interface MortgageValidationInput {
+  price: number;
+  downPayment: number;
+  amortization: number;
+  /** Premier acheteur : permet amortissement 30 ans même en assuré (depuis août 2024). */
+  isFirstTimeBuyer?: boolean;
+  /** Résidence neuve (construction récente) : idem ci-dessus. */
+  isNewConstruction?: boolean;
+}
+
+export interface MortgageValidationResult {
+  valid: boolean;
+  errors: string[];
+  /** Ratio mise de fonds / prix (0-1). */
+  downPaymentRatio: number;
+  /** Mise de fonds minimum requise par SCHL. */
+  minDownPayment: number;
+  /** Amortissement maximum autorisé selon le profil. */
+  maxAmortizationAllowed: number;
+  /** True si la mise de fonds est < 20% → prêt assuré (assurance SCHL obligatoire). */
+  insured: boolean;
+}
+
+/**
+ * Valide les paramètres d'un prêt hypothécaire selon les règles SCHL :
+ *  - Mise de fonds ≥ minimum requis selon le prix
+ *  - Amortissement ≤ maximum autorisé selon le statut (assuré/conventionnel,
+ *    premier acheteur, résidence neuve)
+ *  - Si prix > 1.5M$, la mise de fonds DOIT être ≥ 20% (assurance non disponible).
+ *
+ * Retourne `{valid, errors[]}` avec messages détaillés pour debug.
+ */
+export const validateMortgageParameters = (input: MortgageValidationInput): MortgageValidationResult => {
+  const { price, downPayment, amortization, isFirstTimeBuyer = false, isNewConstruction = false } = input;
+  const errors: string[] = [];
+
+  const safePrice = Math.max(0, Number.isFinite(price) ? price : 0);
+  const safeDown = Math.max(0, Number.isFinite(downPayment) ? downPayment : 0);
+  const safeAmort = Math.max(0, Number.isFinite(amortization) ? amortization : 0);
+
+  const downPaymentRatio = safePrice > 0 ? safeDown / safePrice : 0;
+  // Guard epsilon flottant : 20% exact (price × 0.20) peut donner 19.9999...
+  // à cause de l'arithmétique flottante. On considère ≥ 20% si on est à
+  // 1e-9 près du seuil.
+  const insured = downPaymentRatio < (SCHL_MIN_DOWN_TIER3 - 1e-9)
+    && safePrice <= SCHL_PRICE_THRESHOLD_TIER2;
+  const minDownPayment = calculateMinDownPayment(safePrice);
+
+  if (safePrice <= 0) {
+    errors.push('Prix d\'achat invalide ou nul.');
+  } else if (safePrice > SCHL_PRICE_THRESHOLD_TIER2 && downPaymentRatio < SCHL_MIN_DOWN_TIER3) {
+    // Cas prix > 1.5M$ : un seul message ciblé (pas de doublon avec
+    // "mise de fonds insuffisante" qui serait redondant).
+    errors.push(
+      `Prix > 1,5M$ : assurance SCHL non disponible. Mise de fonds doit être ≥ 20% ` +
+      `(actuellement ${(downPaymentRatio * 100).toFixed(1)}%, soit ${Math.round(safeDown).toLocaleString('fr-CA')}$)`,
+    );
+  } else if (safeDown < minDownPayment) {
+    errors.push(
+      `Mise de fonds insuffisante : ${Math.round(safeDown).toLocaleString('fr-CA')}$ ` +
+      `< minimum SCHL ${Math.round(minDownPayment).toLocaleString('fr-CA')}$ ` +
+      `(${(downPaymentRatio * 100).toFixed(1)}% du prix)`,
+    );
+  }
+
+  let maxAmortizationAllowed: number;
+  if (insured) {
+    maxAmortizationAllowed = (isFirstTimeBuyer || isNewConstruction)
+      ? SCHL_AMORT_MAX_INSURED_FTB_OR_NEW
+      : SCHL_AMORT_MAX_INSURED_STANDARD;
+  } else {
+    maxAmortizationAllowed = SCHL_AMORT_MAX_CONVENTIONAL;
+  }
+
+  if (safeAmort > maxAmortizationAllowed) {
+    const reason = insured
+      ? `assuré ${(isFirstTimeBuyer || isNewConstruction) ? '(1er acheteur/neuf, max 30 ans)' : '(max 25 ans)'}`
+      : 'conventionnel (max 30 ans)';
+    errors.push(`Amortissement ${safeAmort} ans > maximum ${maxAmortizationAllowed} ans en ${reason}`);
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    downPaymentRatio,
+    minDownPayment,
+    maxAmortizationAllowed,
+    insured,
+  };
+};
+
 /**
  * Couts d'achat totaux pour un achat immobilier au Quebec :
  * mise de fonds + taxe de bienvenue + notaire + inspection + renovations initiales.

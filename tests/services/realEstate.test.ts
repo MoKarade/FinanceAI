@@ -7,10 +7,20 @@ import {
   runBuyVsRent,
   calculateB20QualifyingRate,
   calculateB20StressTest,
+  calculateMinDownPayment,
+  validateMortgageParameters,
   OSFI_MQR_FLOOR,
   OSFI_MQR_BUFFER,
   OSFI_GDS_MAX,
   OSFI_TDS_MAX,
+  SCHL_PRICE_THRESHOLD_TIER1,
+  SCHL_PRICE_THRESHOLD_TIER2,
+  SCHL_MIN_DOWN_TIER1,
+  SCHL_MIN_DOWN_TIER2,
+  SCHL_MIN_DOWN_TIER3,
+  SCHL_AMORT_MAX_INSURED_STANDARD,
+  SCHL_AMORT_MAX_INSURED_FTB_OR_NEW,
+  SCHL_AMORT_MAX_CONVENTIONAL,
 } from '../../services/realEstate';
 
 describe('calculateWelcomeTax', () => {
@@ -295,5 +305,184 @@ describe('calculateB20StressTest (§6.6)', () => {
     // À 5.25% contractuel, buffer donne 7.25% > floor 5.25%. Vérifie qu'on
     // utilise bien le résultat du buffer (pas le floor).
     expect(calculateB20QualifyingRate(5.25)).toBeCloseTo(0.0725, 4);
+  });
+});
+
+// ----------------------------------------------------------------------------
+// §6.8 — SCHL : validation mise de fonds + amortissement max
+// Source: Société canadienne d'hypothèques et de logement
+// ----------------------------------------------------------------------------
+describe('calculateMinDownPayment (§6.8)', () => {
+  it('applique 5% sous le seuil tier 1 (500k$)', () => {
+    expect(calculateMinDownPayment(400000)).toBe(400000 * SCHL_MIN_DOWN_TIER1);
+  });
+
+  it('frontière exacte tier 1 : 500k$ = 25 000$ minimum', () => {
+    expect(calculateMinDownPayment(SCHL_PRICE_THRESHOLD_TIER1))
+      .toBe(SCHL_PRICE_THRESHOLD_TIER1 * SCHL_MIN_DOWN_TIER1);
+  });
+
+  it('applique 5%+10% sur tranche 500k-1.5M$', () => {
+    // 800k$ : 5% × 500k + 10% × 300k = 25 000 + 30 000 = 55 000$
+    const result = calculateMinDownPayment(800000);
+    expect(result).toBe(25000 + 30000);
+  });
+
+  it('applique 20% pour prix > 1.5M$ (assurance SCHL non disponible)', () => {
+    expect(calculateMinDownPayment(2000000)).toBe(2000000 * SCHL_MIN_DOWN_TIER3);
+  });
+
+  it('frontière exacte tier 2 : 1.5M$ = 5%×500k + 10%×1M = 125 000$', () => {
+    expect(calculateMinDownPayment(SCHL_PRICE_THRESHOLD_TIER2)).toBe(25000 + 100000);
+  });
+
+  it('renvoie 0 pour prix invalide', () => {
+    expect(calculateMinDownPayment(0)).toBe(0);
+    expect(calculateMinDownPayment(-1000)).toBe(0);
+    expect(calculateMinDownPayment(NaN)).toBe(0);
+  });
+});
+
+describe('validateMortgageParameters (§6.8)', () => {
+  it('valide un achat conforme (400k$ × 10% MDP × 25 ans assuré)', () => {
+    const r = validateMortgageParameters({
+      price: 400000,
+      downPayment: 40000,
+      amortization: 25,
+    });
+    expect(r.valid).toBe(true);
+    expect(r.errors).toHaveLength(0);
+    expect(r.insured).toBe(true);
+    expect(r.maxAmortizationAllowed).toBe(SCHL_AMORT_MAX_INSURED_STANDARD);
+  });
+
+  it('rejette une mise de fonds insuffisante', () => {
+    const r = validateMortgageParameters({
+      price: 500000,
+      downPayment: 10000,  // 2% < 5% min
+      amortization: 25,
+    });
+    expect(r.valid).toBe(false);
+    expect(r.errors.some(e => e.includes('Mise de fonds insuffisante'))).toBe(true);
+  });
+
+  it('exige 20% min si prix > 1.5M$ (assurance SCHL non dispo)', () => {
+    const r = validateMortgageParameters({
+      price: 2000000,
+      downPayment: 200000,  // 10% < 20% requis
+      amortization: 25,
+    });
+    expect(r.valid).toBe(false);
+    expect(r.errors.some(e => e.includes('1,5M$'))).toBe(true);
+  });
+
+  it('limite amortissement à 25 ans pour assuré standard (pas FTB ni neuf)', () => {
+    const r = validateMortgageParameters({
+      price: 400000,
+      downPayment: 40000,  // 10% → assuré
+      amortization: 30,
+    });
+    expect(r.valid).toBe(false);
+    expect(r.errors.some(e => e.includes('Amortissement 30 ans'))).toBe(true);
+  });
+
+  it('permet 30 ans en assuré pour premier acheteur', () => {
+    const r = validateMortgageParameters({
+      price: 400000,
+      downPayment: 40000,
+      amortization: 30,
+      isFirstTimeBuyer: true,
+    });
+    expect(r.valid).toBe(true);
+    expect(r.maxAmortizationAllowed).toBe(SCHL_AMORT_MAX_INSURED_FTB_OR_NEW);
+  });
+
+  it('permet 30 ans en assuré pour résidence neuve', () => {
+    const r = validateMortgageParameters({
+      price: 400000,
+      downPayment: 40000,
+      amortization: 30,
+      isNewConstruction: true,
+    });
+    expect(r.valid).toBe(true);
+  });
+
+  it('permet 30 ans en conventionnel (MDP ≥ 20%)', () => {
+    const r = validateMortgageParameters({
+      price: 500000,
+      downPayment: 100000,  // 20% exact → conventionnel
+      amortization: 30,
+    });
+    expect(r.valid).toBe(true);
+    expect(r.insured).toBe(false);
+    expect(r.maxAmortizationAllowed).toBe(SCHL_AMORT_MAX_CONVENTIONAL);
+  });
+
+  it('détecte plusieurs erreurs cumulées (MDP + amortissement)', () => {
+    const r = validateMortgageParameters({
+      price: 600000,
+      downPayment: 5000,   // 0.8% < 5% min
+      amortization: 35,    // > 25 ans max assuré
+    });
+    expect(r.valid).toBe(false);
+    expect(r.errors.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('un seul message d\'erreur pour prix > 1.5M$ + MDP < 5% (pas de doublon)', () => {
+    // Fix audit code-reviewer HIGH 1 : prix > 1.5M$ et MDP 1% devrait
+    // produire UNIQUEMENT le message ">1,5M$", pas aussi "MDP insuffisante".
+    const r = validateMortgageParameters({
+      price: 2000000,
+      downPayment: 20000,  // 1% — très insuffisant à plusieurs niveaux
+      amortization: 25,
+    });
+    expect(r.valid).toBe(false);
+    // Un seul message d'erreur ciblé (le plus précis : >1,5M$).
+    expect(r.errors).toHaveLength(1);
+    expect(r.errors[0]).toContain('1,5M$');
+  });
+
+  it('frontière exacte prix = 1.5M$ + MDP minimum (125 000$) : assuré, valide', () => {
+    const r = validateMortgageParameters({
+      price: 1500000,
+      downPayment: 125000,  // 5%×500k + 10%×1M = 125k exact
+      amortization: 25,
+    });
+    expect(r.valid).toBe(true);
+    expect(r.insured).toBe(true);
+  });
+
+  it('frontière MDP = 20% exact (price × 0.20) : conventionnel malgré arrondi flottant', () => {
+    // price * 0.20 peut donner 19.9999...% en flottant. Le guard epsilon doit
+    // classer ce cas comme conventionnel (insured = false).
+    const price = 500000;
+    const r = validateMortgageParameters({
+      price,
+      downPayment: price * 0.20,  // 100 000$ — exactement 20%
+      amortization: 30,
+    });
+    expect(r.valid).toBe(true);
+    expect(r.insured).toBe(false);
+    expect(r.maxAmortizationAllowed).toBe(SCHL_AMORT_MAX_CONVENTIONAL);
+  });
+
+  it('price = 0 : erreur explicite "Prix d\'achat invalide"', () => {
+    const r = validateMortgageParameters({
+      price: 0,
+      downPayment: 10000,
+      amortization: 25,
+    });
+    expect(r.valid).toBe(false);
+    expect(r.errors.some(e => e.includes('invalide'))).toBe(true);
+  });
+
+  it('protège contre paramètres invalides (NaN, négatifs)', () => {
+    const r = validateMortgageParameters({
+      price: NaN,
+      downPayment: -1000,
+      amortization: NaN,
+    });
+    expect(Number.isFinite(r.downPaymentRatio)).toBe(true);
+    expect(Number.isFinite(r.minDownPayment)).toBe(true);
   });
 });

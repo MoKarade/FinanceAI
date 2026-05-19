@@ -8,6 +8,7 @@ import {
   calculateCapitalGainsTax,
   calculateDividendTax,
   calculateAgeAndPensionCredits,
+  calculateRamqPremium,
   getMarginalRate,
   FED_BRACKETS,
   QC_BRACKETS,
@@ -25,7 +26,16 @@ import {
   QC_LINE_361_THRESHOLD_COUPLE,
   FED_NONREFUNDABLE_RATE,
   QC_NONREFUNDABLE_RATE,
+  RAMQ_EXEMPTION_SINGLE_2026,
+  RAMQ_EXEMPTION_COUPLE_2026,
+  RAMQ_EXEMPTION_SINGLE_CHILD_1,
+  RAMQ_MAX_PREMIUM_2026,
+  RAMQ_RATE_SINGLE_BRACKET1,
+  RAMQ_RATE_SINGLE_BRACKET2,
+  RAMQ_BRACKET1_AMOUNT,
 } from '../../services/tax';
+import { processDecemberTaxFiling } from '../../services/projection/taxDecember';
+import { calculateFiscalReport as calcReport, getMarginalRate as getMarg, calculateDividendTax as calcDiv } from '../../services/tax';
 
 describe('calculateFiscalReport', () => {
   it('renvoie zero pour un revenu nul', () => {
@@ -419,5 +429,175 @@ describe('calculateFiscalReport avec ageOpts (§6.2 intégration)', () => {
     expect(r.totalTax).toBeLessThan(1000);
     expect(r.netIncome).toBeGreaterThan(25000);
     expect(r.netIncome).toBeLessThan(30000);
+  });
+});
+
+// ----------------------------------------------------------------------------
+// §6.4 — RAMQ : prime régime public assurance médicaments
+// Sources : RAMQ + Revenu Québec ligne 447, Annexe K (2026 max 766$)
+// ----------------------------------------------------------------------------
+describe('calculateRamqPremium (§6.4)', () => {
+  it('renvoie 0 pour un revenu sous le seuil d\'exemption célibataire', () => {
+    const premium = calculateRamqPremium(RAMQ_EXEMPTION_SINGLE_2026 - 1000);
+    expect(premium).toBe(0);
+  });
+
+  it('renvoie 0 pour un revenu sous le seuil d\'exemption couple', () => {
+    const premium = calculateRamqPremium(RAMQ_EXEMPTION_COUPLE_2026 - 1000, { hasSpouse: true });
+    expect(premium).toBe(0);
+  });
+
+  it('applique le taux du palier 1 célibataire (7.65%) sur l\'excès', () => {
+    const excess = 3000; // inférieur au palier 1 (5000$)
+    const premium = calculateRamqPremium(RAMQ_EXEMPTION_SINGLE_2026 + excess);
+    expect(premium).toBeCloseTo(excess * RAMQ_RATE_SINGLE_BRACKET1, 2);
+  });
+
+  it('cumule palier 1 + palier 2 célibataire', () => {
+    const excess = RAMQ_BRACKET1_AMOUNT + 3000; // 5000 dans bracket1 + 3000 dans bracket2
+    const premium = calculateRamqPremium(RAMQ_EXEMPTION_SINGLE_2026 + excess);
+    const expected = RAMQ_BRACKET1_AMOUNT * RAMQ_RATE_SINGLE_BRACKET1 + 3000 * RAMQ_RATE_SINGLE_BRACKET2;
+    expect(premium).toBeCloseTo(expected, 2);
+  });
+
+  it('plafonne à 766$/adulte (max 2026)', () => {
+    const premium = calculateRamqPremium(200000, { hasSpouse: false });
+    expect(premium).toBe(RAMQ_MAX_PREMIUM_2026);
+  });
+
+  it('couple paie moins par adulte que célibataire (taux plus bas)', () => {
+    const familyIncome = 40000;
+    const single = calculateRamqPremium(familyIncome, { hasSpouse: false });
+    const couplePerAdult = calculateRamqPremium(familyIncome, { hasSpouse: true });
+    expect(couplePerAdult).toBeLessThan(single);
+  });
+
+  it('renvoie 0 si exempt = true (couverture privée)', () => {
+    const premium = calculateRamqPremium(80000, { exempt: true });
+    expect(premium).toBe(0);
+  });
+
+  it('relève le seuil d\'exemption avec enfants', () => {
+    const incomeAt35k = 35000;
+    // 35k$ > seuil single (19 500$) → prime non nulle sans enfants
+    const noChildren = calculateRamqPremium(incomeAt35k, { hasSpouse: false, childrenCount: 0 });
+    // Avec 2+ enfants : seuil = 19 500 + 7 895 = 27 395$, excès = 7 605$, prime > 0 mais plus faible
+    const twoChildren = calculateRamqPremium(incomeAt35k, { hasSpouse: false, childrenCount: 2 });
+    expect(twoChildren).toBeLessThan(noChildren);
+  });
+
+  it('guard NaN — revenu invalide retourne 0 sans pollution', () => {
+    expect(calculateRamqPremium(NaN)).toBe(0);
+    expect(calculateRamqPremium(Infinity)).toBe(0);
+    expect(calculateRamqPremium(-1000)).toBe(0);
+  });
+
+  it('régression — célibataire 35 000$ atteint le plafond 766$ (snapshot 2026)', () => {
+    // 35 000 - 19 500 = 15 500$ excès → palier 1 (5 000 × 7.65%) + palier 2
+    // (9 600 × 11.48%) = 382.50 + 1 101.96 = 1 484.46$ → plafonné à 766$ max.
+    const premium = calculateRamqPremium(35000, { hasSpouse: false });
+    expect(premium).toBe(RAMQ_MAX_PREMIUM_2026);
+  });
+
+  // ---- Fixes review agents (tdd-guide + silent-failure-hunter) ----
+
+  it('frontière exacte : revenu = seuil single (19 500$) → prime = 0', () => {
+    expect(calculateRamqPremium(RAMQ_EXEMPTION_SINGLE_2026)).toBe(0);
+  });
+
+  it('frontière exacte : revenu = seuil couple (31 610$) → prime = 0', () => {
+    expect(calculateRamqPremium(RAMQ_EXEMPTION_COUPLE_2026, { hasSpouse: true })).toBe(0);
+  });
+
+  it('childrenCount = 1 : palier intermédiaire distinct de 0 et 2+', () => {
+    // À 25 000$ revenu single :
+    // - 0 enfant : excess = 25 000 - 19 500 = 5 500$ → prime > 0
+    // - 1 enfant : excess = 25 000 - (19 500 + 4 105) = 1 395$ → prime plus basse
+    // - 2 enfants : excess = 25 000 - (19 500 + 7 895) = -2 395 → prime = 0
+    const p0 = calculateRamqPremium(25000, { hasSpouse: false, childrenCount: 0 });
+    const p1 = calculateRamqPremium(25000, { hasSpouse: false, childrenCount: 1 });
+    const p2 = calculateRamqPremium(25000, { hasSpouse: false, childrenCount: 2 });
+    expect(p1).toBeGreaterThan(0);
+    expect(p1).toBeLessThan(p0);
+    expect(p2).toBe(0);
+    // Le bonus pour 1 enfant = RAMQ_EXEMPTION_SINGLE_CHILD_1 (4 105$)
+    expect(p1).toBeCloseTo((5500 - RAMQ_EXEMPTION_SINGLE_CHILD_1) * RAMQ_RATE_SINGLE_BRACKET1, 2);
+  });
+
+  it('frontière bracket1/bracket2 : excès exactement 5 000$ ne touche pas bracket2', () => {
+    const premium = calculateRamqPremium(RAMQ_EXEMPTION_SINGLE_2026 + RAMQ_BRACKET1_AMOUNT);
+    expect(premium).toBeCloseTo(RAMQ_BRACKET1_AMOUNT * RAMQ_RATE_SINGLE_BRACKET1, 2);
+  });
+
+  it('exempt = true bloque tout calcul même avec revenu très élevé et 3 enfants', () => {
+    const premium = calculateRamqPremium(500000, { exempt: true, hasSpouse: true, childrenCount: 3 });
+    expect(premium).toBe(0);
+  });
+});
+
+// ----------------------------------------------------------------------------
+// §6.4 — Intégration processDecemberTaxFiling : la prime RAMQ est bien appliquée
+// ----------------------------------------------------------------------------
+describe('processDecemberTaxFiling intègre la prime RAMQ (§6.4)', () => {
+  const baseCtx = {
+    m: 12,
+    loopYear: 2026,
+    isRetired: false,
+    enableMonteCarlo: false,
+    yearsElapsed: 0,
+    inflationFactor: 1,
+    activeUsersCount: 1,
+    grossMarcBaseAnnual: 40000,
+    grossAnnaBaseAnnual: 0,
+    simSalaryGrowth: 0,
+    optimizeSourceDeductions: false,
+    incomeRetirementMonthly: 0,
+    nonReg: 0,
+    baseNonRegRate: 0,
+    accRrspYear: 0,
+    accFhsaYear: 0,
+    smithInterestDeductibleYear: 0,
+    accRentesYear: 0,
+    accRetraitsReerYear: 0,
+    accCapitalGainsYear: 0,
+  };
+  const helpers = {
+    calculateFiscalReport: calcReport,
+    getMarginalRate: getMarg,
+    calculateDividendTax: calcDiv,
+  };
+
+  it('applique la prime RAMQ à taxCurrent.divers pour un actif non-exempt', () => {
+    const result = processDecemberTaxFiling(
+      11,  // décembre
+      { ...baseCtx, ramqExempt: false, childrenCount: 0 },
+      helpers,
+      { revenu: 0, gains: 0, divers: 0, reer: 0 },
+    );
+    expect(result.newTaxCurrentYear.divers).toBeGreaterThan(0);
+    expect(result.logs.some(l => l.includes('RAMQ'))).toBe(true);
+  });
+
+  it('exempte la prime RAMQ si ramqExempt = true (couverture privée)', () => {
+    const result = processDecemberTaxFiling(
+      11,
+      { ...baseCtx, ramqExempt: true, childrenCount: 0 },
+      helpers,
+      { revenu: 0, gains: 0, divers: 0, reer: 0 },
+    );
+    expect(result.newTaxCurrentYear.divers).toBe(0);
+    expect(result.logs.some(l => l.includes('RAMQ'))).toBe(false);
+  });
+
+  it('soustrait les déductions REER du familyNetIncome mode actif', () => {
+    // Avec 40k$ brut + 30k$ REER → revenu net = 10k$ → sous seuil 19 500$ → prime 0
+    const result = processDecemberTaxFiling(
+      11,
+      { ...baseCtx, ramqExempt: false, childrenCount: 0, accRrspYear: 30000 },
+      helpers,
+      { revenu: 0, gains: 0, divers: 0, reer: 0 },
+    );
+    // Pas de prime RAMQ car revenu net (10k$) < seuil exemption (19 500$)
+    expect(result.logs.some(l => l.includes('RAMQ'))).toBe(false);
   });
 });

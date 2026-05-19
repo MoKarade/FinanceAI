@@ -181,6 +181,116 @@ export const calculateAgeAndPensionCredits = (
     };
 };
 
+// ============================================
+// RAMQ — Régime public d'assurance médicaments (audit §6.4)
+// Source: Régie de l'assurance maladie du Québec (RAMQ) + Revenu Québec ligne 447.
+// Annexe K de la déclaration TP-1. Indexation annuelle au 1er juillet.
+//
+// Sources :
+//  - RAMQ tarifs 2026 : https://www.ramq.gouv.qc.ca/fr/citoyens/assurance-medicaments-prescrits
+//  - Annexe K Revenu Québec : https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/400-a-447-impot-et-cotisations/ligne-447/
+//  - CFFP Université de Sherbrooke (paliers détaillés) : https://cffp.recherche.usherbrooke.ca/outils-ressources/guide-mesures-fiscales/cotisation-regime-assurance-medicaments-quebec/
+// ============================================
+
+// Seuils d'exemption 2026 (revenu familial net) — pas de prime sous le seuil.
+export const RAMQ_EXEMPTION_SINGLE_2026 = 19500;
+export const RAMQ_EXEMPTION_COUPLE_2026 = 31610;
+// Bonus seuil selon enfants à charge — barème Annexe K 2026 (Revenu Québec).
+// Note: l'Annexe K s'arrête à "2 enfants ou plus" — pas de tranche additionnelle 3+.
+export const RAMQ_EXEMPTION_SINGLE_CHILD_1 = 4105;          // ajouté pour 1 enfant
+export const RAMQ_EXEMPTION_SINGLE_CHILD_2PLUS = 7895;      // total pour 2+ enfants
+export const RAMQ_EXEMPTION_COUPLE_CHILD_1 = 12110;
+export const RAMQ_EXEMPTION_COUPLE_CHILD_2PLUS = 16215;
+
+// Paliers sur l'excès au-dessus du seuil
+export const RAMQ_BRACKET1_AMOUNT = 5000;
+export const RAMQ_BRACKET2_AMOUNT = 9600;       // jusqu'à 14 600$ d'excès total
+
+// Taux par adulte (single vs couple — par adulte du couple)
+export const RAMQ_RATE_SINGLE_BRACKET1 = 0.0765;
+export const RAMQ_RATE_SINGLE_BRACKET2 = 0.1148;
+export const RAMQ_RATE_COUPLE_BRACKET1 = 0.0384;
+export const RAMQ_RATE_COUPLE_BRACKET2 = 0.0575;
+
+// Prime maximale 2026
+export const RAMQ_MAX_PREMIUM_2026 = 766;
+
+export interface RamqOptions {
+    /** Couple = seuils plus élevés et taux plus bas par adulte. */
+    hasSpouse?: boolean;
+    /** Nombre d'enfants à charge — relève le seuil d'exemption. */
+    childrenCount?: number;
+    /**
+     * Personne exemptée du paiement (livret de réclamation valide, étudiant 18-25
+     * célibataire temps plein, 65+ avec SRG maximum, trouble fonctionnel < 18 ans,
+     * COUVERTURE PRIVÉE par régime employeur/association).
+     * Caller responsabilité de fournir ce flag.
+     */
+    exempt?: boolean;
+}
+
+/**
+ * Calcule la prime RAMQ annuelle PAR ADULTE pour le régime public d'assurance
+ * médicaments (Revenu Québec ligne 447, Annexe K).
+ *
+ * Source : RAMQ + Revenu Québec, barème 2026 (prime max 766$). Indexation
+ * annuelle via getIndexedBracketsForYear pour les projections > 2026.
+ *
+ * Important : si l'adulte est couvert par un régime PRIVÉ (employeur, association
+ * professionnelle, conjoint), il ne paie pas la prime publique. Le caller doit
+ * passer `exempt: true` dans ce cas.
+ *
+ * @param familyNetIncome Revenu familial NET (après déductions REER/FHSA).
+ * @param opts            hasSpouse, childrenCount, exempt
+ * @param year            Année fiscale pour indexer seuils + prime max (défaut 2026).
+ * @returns Prime annuelle PAR ADULTE (0 à RAMQ_MAX_PREMIUM_2026 × indexation).
+ *          Multiplier par activeUsersCount pour le total famille.
+ */
+export const calculateRamqPremium = (
+    familyNetIncome: number,
+    opts: RamqOptions = {},
+    year: number = 2026,
+): number => {
+    if (opts.exempt) return 0;
+    if (!Number.isFinite(familyNetIncome) || familyNetIncome <= 0) return 0;
+
+    const children = Math.max(0, Math.floor(opts.childrenCount ?? 0));
+    const isCouple = !!opts.hasSpouse;
+
+    // Indexation annuelle des seuils et de la prime max (mutualisée avec les
+    // paliers d'impôt via getIndexedBracketsForYear).
+    const { inflationFactor } = getIndexedBracketsForYear(year);
+
+    let exemption = (isCouple ? RAMQ_EXEMPTION_COUPLE_2026 : RAMQ_EXEMPTION_SINGLE_2026) * inflationFactor;
+    if (children >= 1) {
+        exemption += (isCouple ? RAMQ_EXEMPTION_COUPLE_CHILD_1 : RAMQ_EXEMPTION_SINGLE_CHILD_1) * inflationFactor;
+    }
+    if (children >= 2) {
+        // L'écart entre "1 enfant" et "2+ enfants" couvre le 2e enfant et au-delà
+        // (l'Annexe K ne distingue pas 2 vs 3+ enfants — c'est un palier final).
+        exemption += (isCouple
+            ? (RAMQ_EXEMPTION_COUPLE_CHILD_2PLUS - RAMQ_EXEMPTION_COUPLE_CHILD_1)
+            : (RAMQ_EXEMPTION_SINGLE_CHILD_2PLUS - RAMQ_EXEMPTION_SINGLE_CHILD_1)
+        ) * inflationFactor;
+    }
+
+    const excess = Math.max(0, familyNetIncome - exemption);
+    if (excess <= 0) return 0;
+
+    const rate1 = isCouple ? RAMQ_RATE_COUPLE_BRACKET1 : RAMQ_RATE_SINGLE_BRACKET1;
+    const rate2 = isCouple ? RAMQ_RATE_COUPLE_BRACKET2 : RAMQ_RATE_SINGLE_BRACKET2;
+
+    const bracket1Width = RAMQ_BRACKET1_AMOUNT * inflationFactor;
+    const bracket2Width = RAMQ_BRACKET2_AMOUNT * inflationFactor;
+    const maxPremium = RAMQ_MAX_PREMIUM_2026 * inflationFactor;
+
+    const inBracket1 = Math.min(excess, bracket1Width);
+    const inBracket2 = Math.min(Math.max(0, excess - bracket1Width), bracket2Width);
+
+    const premium = inBracket1 * rate1 + inBracket2 * rate2;
+    return Math.min(maxPremium, premium);
+};
+
 export const calculateGrossWithholdingRRSP = (netNeeded: number): { gross: number, withholding: number } => {
     if (netNeeded <= 0) return { gross: 0, withholding: 0 };
     let grossAttempt = netNeeded / (1 - 0.21);

@@ -3,7 +3,7 @@
 // Cycle 10 (computeOasClawback, processTaxLossHarvesting): décembre = mois 11.
 // Cycle 11 (processDecemberTaxFiling): régularisation annuelle d'impôt.
 
-import { OAS_CLAWBACK_THRESHOLD_2026, CAPITAL_GAINS_INCLUSION_STANDARD, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
+import { OAS_CLAWBACK_THRESHOLD_2026, CAPITAL_GAINS_INCLUSION_STANDARD, calculateRamqPremium, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
 
 /**
  * V31 — OAS Clawback prévu (calcul annuel en décembre).
@@ -105,6 +105,18 @@ export interface DecemberContext {
     accCapitalGainsYear: number;
     /** Âge courant de l'utilisateur principal — sert aux crédits §6.2 (65+ et revenu retraite). */
     age?: number;
+    /**
+     * Nombre d'enfants à charge — sert au seuil d'exemption RAMQ (§6.4).
+     * Optionnel, défaut 0.
+     */
+    childrenCount?: number;
+    /**
+     * Si vrai, l'utilisateur est exempté de la prime RAMQ (§6.4) — couverture
+     * privée par régime employeur/association, livret de réclamation valide,
+     * étudiant 18-25, 65+ avec SRG max.
+     * Optionnel, défaut false (l'utilisateur paie au public).
+     */
+    ramqExempt?: boolean;
 }
 
 export interface DecemberHelpers {
@@ -199,6 +211,46 @@ export function processDecemberTaxFiling(
             const totalTax = taxReal * ctx.inflationFactor;
             const diff = totalTax * 0.05;
             if (diff > 100) taxCurrent.revenu += diff;
+        }
+    }
+
+    // ---- 1.5. RAMQ — prime annuelle régime public d'assurance médicaments (audit §6.4) ----
+    // Calculée par adulte sur le revenu familial NET (après déductions REER/FHSA).
+    // Si l'utilisateur a une couverture privée (régime employeur/association),
+    // passer `ramqExempt: true`.
+    {
+        let familyNetIncome: number;
+        if (ctx.isRetired) {
+            // Mode retraité : revenu pension + rentes + retraits REER + gains capitaux
+            // accumulés sur l'année. Tous imposables au sens de la ligne 275 TP-1.
+            familyNetIncome = (
+                ctx.incomeRetirementMonthly * 12
+                + ctx.accRentesYear
+                + ctx.accRetraitsReerYear
+                + ctx.accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD
+            ) / ctx.inflationFactor;
+        } else {
+            // Mode actif : revenu brut salarial - déductions REER + FHSA + Smith.
+            // FIX audit code-reviewer HIGH 1 : sans soustraction des déductions, RAMQ
+            // surestime systématiquement la prime pour les cotisants REER.
+            const grossFamily = (ctx.grossMarcBaseAnnual + ctx.grossAnnaBaseAnnual)
+                * Math.pow(1 + ctx.simSalaryGrowth / 100, ctx.yearsElapsed);
+            const deductions = ctx.accRrspYear + ctx.accFhsaYear + ctx.smithInterestDeductibleYear;
+            familyNetIncome = Math.max(0, grossFamily - deductions) / ctx.inflationFactor;
+        }
+        const ramqPerAdult = calculateRamqPremium(
+            familyNetIncome,
+            {
+                hasSpouse: ctx.activeUsersCount > 1,
+                childrenCount: ctx.childrenCount ?? 0,
+                exempt: !!ctx.ramqExempt,
+            },
+            ctx.loopYear,  // indexation seuils + prime max
+        );
+        const ramqTotal = ramqPerAdult * ctx.activeUsersCount * ctx.inflationFactor;
+        if (ramqTotal > 0) {
+            taxCurrent.divers += ramqTotal;
+            logs.push(`💊 RAMQ médicaments: ${Math.round(ramqTotal).toLocaleString('fr-CA')}$/an (${Math.round(ramqPerAdult)}$/adulte)`);
         }
     }
 

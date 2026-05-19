@@ -4,7 +4,7 @@
 // affectation à monthlyIncome par le caller).
 
 import type { RetirementGoal, User } from '../../types';
-import { RRQ_MPE } from '../../utils/tax';
+import { RRQ_MPE, calculateGISBenefit } from '../../utils/tax';
 
 // Constantes RRQ/PSV 2026 (Retraite Québec + Service Canada)
 const RRQ_DENOMINATOR_YEARS = 39;       // Années cotisées pour pleine RRQ (8/47 plus faibles retirées)
@@ -121,5 +121,24 @@ export function computeRetirementIncome(
     const dbSurvivorFactor = survivorMode ? dbSurvivorPct : 1;
     const dbMonthly = age >= dbStartAge ? dbBaseMonthly * dbInflFactor * dbSurvivorFactor : 0;
 
-    return Math.max(0, (rrqMonthly + psvMonthly) * inflFactor + dbMonthly - monthlyOasReduction);
+    // §6.3 — SRG (Supplément de revenu garanti) pour retraités 65+ recevant la PSV.
+    // Approximation : on estime le revenu autre que PSV via RRQ + DB pension
+    // (annualisés). Cette approximation ignore les retraits REER, gains capitaux,
+    // et rentes Non-Reg qui sont gérés ailleurs dans le moteur — donc le SRG
+    // calculé ici peut être surestimé pour ces profils. TODO : intégration plus
+    // précise via taxDecember si l'audit le requiert.
+    const currentYear = startYear + yearsElapsed;
+    const otherIncomeAnnualPerAdult = (rrqMonthly + dbMonthly) * 12;
+    const otherIncomeAnnualFamily = otherIncomeAnnualPerAdult * activeUsersCount;
+    const hasSpouseWithOAS = activeUsersCount > 1 && age >= psvStartAge;
+    const gisMonthlyPerAdult = (age >= psvStartAge && psvMonthly > 0)
+        ? calculateGISBenefit(
+            hasSpouseWithOAS ? otherIncomeAnnualFamily : otherIncomeAnnualPerAdult,
+            hasSpouseWithOAS,
+            currentYear,
+        )
+        : 0;
+    const gisMonthly = gisMonthlyPerAdult * activeUsersCount;
+
+    return Math.max(0, (rrqMonthly + psvMonthly + gisMonthly) * inflFactor + dbMonthly - monthlyOasReduction);
 }

@@ -10,6 +10,7 @@ import {
   calculateAgeAndPensionCredits,
   calculateRamqPremium,
   calculateFSSPremium,
+  calculateGISBenefit,
   getMarginalRate,
   FED_BRACKETS,
   QC_BRACKETS,
@@ -33,6 +34,11 @@ import {
   FSS_THRESHOLD_MAX,
   FSS_FLAT_AMOUNT,
   FSS_MAX_PREMIUM,
+  GIS_MAX_MONTHLY_SINGLE_2026,
+  GIS_MAX_MONTHLY_COUPLE_2026,
+  GIS_INCOME_THRESHOLD_SINGLE,
+  GIS_INCOME_THRESHOLD_COUPLE,
+  GIS_CLAWBACK_RATE,
   RAMQ_EXEMPTION_SINGLE_2026,
   RAMQ_EXEMPTION_COUPLE_2026,
   RAMQ_EXEMPTION_SINGLE_CHILD_1,
@@ -737,5 +743,58 @@ describe('processDecemberTaxFiling intègre FSS §6.1', () => {
     );
     // Mode actif → pas de FSS individuel
     expect(result.logs.some(l => l.includes('FSS'))).toBe(false);
+  });
+});
+
+// ----------------------------------------------------------------------------
+// §6.3 — SRG (Supplément de revenu garanti)
+// Source: Service Canada, barème Q1 2026
+// ----------------------------------------------------------------------------
+describe('calculateGISBenefit (§6.3)', () => {
+  it('verse le maximum célibataire si revenu autre = 0', () => {
+    expect(calculateGISBenefit(0, false)).toBeCloseTo(GIS_MAX_MONTHLY_SINGLE_2026, 1);
+  });
+
+  it('verse le maximum couple par adulte si revenu = 0', () => {
+    expect(calculateGISBenefit(0, true)).toBeCloseTo(GIS_MAX_MONTHLY_COUPLE_2026, 1);
+  });
+
+  it('clawback 50% : revenu 12 000$/an réduit SRG mensuel de 500$', () => {
+    // 12 000 × 50% / 12 = 500$/mois de réduction
+    const reduced = calculateGISBenefit(12000, false);
+    const expected = GIS_MAX_MONTHLY_SINGLE_2026 - 500;
+    expect(reduced).toBeCloseTo(expected, 1);
+  });
+
+  it('annule SRG au-delà du seuil célibataire (22 512$)', () => {
+    expect(calculateGISBenefit(GIS_INCOME_THRESHOLD_SINGLE, false)).toBe(0);
+    expect(calculateGISBenefit(30000, false)).toBe(0);
+  });
+
+  it('annule SRG au-delà du seuil couple combiné (29 760$)', () => {
+    expect(calculateGISBenefit(GIS_INCOME_THRESHOLD_COUPLE, true)).toBe(0);
+    expect(calculateGISBenefit(40000, true)).toBe(0);
+  });
+
+  it('couple paie moins par adulte que célibataire au même revenu', () => {
+    const single = calculateGISBenefit(10000, false);
+    const couple = calculateGISBenefit(10000, true);
+    expect(couple).toBeLessThan(single);
+  });
+
+  it('guard NaN/Infinity/négatif → 0', () => {
+    expect(calculateGISBenefit(NaN, false)).toBe(0);
+    expect(calculateGISBenefit(Infinity, false)).toBe(0);
+    expect(calculateGISBenefit(-1000, false)).toBe(0);
+  });
+
+  it('cohérence — clawback rate exposé à 50%', () => {
+    expect(GIS_CLAWBACK_RATE).toBe(0.50);
+  });
+
+  it('indexation par année — max augmente en 2030 vs 2026', () => {
+    const max2026 = calculateGISBenefit(0, false, 2026);
+    const max2030 = calculateGISBenefit(0, false, 2030);
+    expect(max2030).toBeGreaterThan(max2026);
   });
 });

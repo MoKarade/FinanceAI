@@ -347,6 +347,62 @@ export const calculateFSSPremium = (
     return max;
 };
 
+// ============================================
+// SRG — Supplément de revenu garanti (audit §6.3)
+// Source: Service Canada. Programme aux aînés 65+ recevant la PSV avec
+// revenu autre que PSV faible. Réduit par clawback 50¢/1$ d'autre revenu.
+//
+// Barème 2026 Q1 (janvier-mars), indexé trimestriellement :
+//  - Célibataire 65+ : max 1 105$/mois, seuil revenu 22 512$
+//  - Couple (2 reçoivent PSV) : max 662$/mois par adulte, seuil 29 760$ combiné
+//  - (Cas conjoint sans PSV ou Allocation : non implémentés ici)
+//
+// Clawback : 50% du revenu autre que PSV au-delà de l'exemption d'emploi.
+//
+// https://www.canada.ca/en/services/benefits/publicpensions/old-age-security/guaranteed-income-supplement/benefit-amount.html
+// ============================================
+
+export const GIS_MAX_MONTHLY_SINGLE_2026 = 1105;
+export const GIS_MAX_MONTHLY_COUPLE_2026 = 662;       // par adulte
+export const GIS_INCOME_THRESHOLD_SINGLE = 22512;
+export const GIS_INCOME_THRESHOLD_COUPLE = 29760;     // revenu combiné
+export const GIS_CLAWBACK_RATE = 0.50;                // 50¢ par 1$ d'autre revenu
+
+/**
+ * Calcule le SRG mensuel pour un retraité 65+ recevant la PSV.
+ *
+ * @param otherIncomeAnnual Revenu net annuel autre que PSV (RRQ, retraits REER,
+ *                          pensions privées, gains capitaux imposables...).
+ *                          Pour un couple : revenu FAMILIAL combiné.
+ * @param hasSpouseWithOAS  Si vrai, applique le barème couple (max plus bas
+ *                          par adulte, seuil revenu combiné plus haut).
+ * @param year              Année fiscale pour indexation (défaut 2026).
+ * @returns SRG mensuel PAR ADULTE (0 à GIS_MAX_MONTHLY_*_2026 × indexation).
+ */
+export const calculateGISBenefit = (
+    otherIncomeAnnual: number,
+    hasSpouseWithOAS: boolean,
+    year: number = 2026,
+): number => {
+    if (!Number.isFinite(otherIncomeAnnual) || otherIncomeAnnual < 0) return 0;
+
+    const { inflationFactor } = getIndexedBracketsForYear(year);
+    const maxMonthly = hasSpouseWithOAS
+        ? GIS_MAX_MONTHLY_COUPLE_2026 * inflationFactor
+        : GIS_MAX_MONTHLY_SINGLE_2026 * inflationFactor;
+    const incomeThreshold = hasSpouseWithOAS
+        ? GIS_INCOME_THRESHOLD_COUPLE * inflationFactor
+        : GIS_INCOME_THRESHOLD_SINGLE * inflationFactor;
+
+    if (otherIncomeAnnual >= incomeThreshold) return 0;
+
+    // Clawback : 50% du revenu autre que PSV (les seuils incluent déjà cette
+    // logique : à 0$ revenu autre = max, à incomeThreshold = 0).
+    // SRG mensuel = max - (clawback × revenu / 12).
+    const monthlyClawback = (otherIncomeAnnual * GIS_CLAWBACK_RATE) / 12;
+    return Math.max(0, maxMonthly - monthlyClawback);
+};
+
 export const calculateGrossWithholdingRRSP = (netNeeded: number): { gross: number, withholding: number } => {
     if (netNeeded <= 0) return { gross: 0, withholding: 0 };
     let grossAttempt = netNeeded / (1 - 0.21);

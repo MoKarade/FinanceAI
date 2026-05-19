@@ -667,6 +667,10 @@ describe('calculateFutureProjection', () => {
             isPrimaryResidence: true,
             price: 500000,
             downPayment: 100000,
+            // Champ requis par processRealEstate (sinon totalCashNeeded = NaN
+            // et l'achat échoue silencieusement). Fix audit silent-failure.
+            totalClosingCosts: 5000,
+            unrecoverableMonthly: 0,
             mortgageRate: 4.5,
             amortization: 25,
             purchaseDate: '2027-06',
@@ -696,19 +700,40 @@ describe('calculateFutureProjection', () => {
         });
 
         it('un goal actif réduit le liquide vs inactif (achat déclenché)', () => {
+            // Fonds suffisants pour garantir le déclenchement de l'achat (downPayment
+            // 100k$ + welcomeTax + closingCosts ≈ 110k$ requis). Avec les valeurs
+            // par défaut de makeParams (25k cash + 90k liquides), la cascade pouvait
+            // échouer selon les rendements MC, faisant converger active/inactive
+            // vers les mêmes valeurs et cassant le test (flaky pré-existant).
+            const richBalances = {
+                CELI: 100000,
+                CELIAPP: 0,
+                REER: 50000,
+                NON_ENREG: 50000,
+                CRYPTO: 0,
+                REEE: 0,
+            };
             const active = { ...makeInactiveGoal(), isActive: true, id: 'active_house' };
             const inactive = makeInactiveGoal();
             const withActive = calculateFutureProjection(makeParams({
+                calculatedStartingCash: 200000,
+                liveCSVBalances: richBalances,
                 realEstateGoals: [active] as any,
             })) as any;
             const withInactive = calculateFutureProjection(makeParams({
+                calculatedStartingCash: 200000,
+                liveCSVBalances: richBalances,
                 realEstateGoals: [inactive] as any,
             })) as any;
             // L'achat actif consomme du liquide (down payment + welcome tax) → estate
             // immédiatement après doit refléter une équité différente d'un cas inactif.
             const activeBase = withActive.allResults.find((s: any) => s.stratType === 'BASE');
             const inactiveBase = withInactive.allResults.find((s: any) => s.stratType === 'BASE');
-            expect(activeBase.estateNetWorth).not.toBe(inactiveBase.estateNetWorth);
+            // Différence significative attendue (>1% du patrimoine inactif) — l'équité
+            // immobilière finale après 3 ans de détention + l'amortissement du prêt
+            // créent un écart mesurable.
+            const diff = Math.abs(activeBase.estateNetWorth - inactiveBase.estateNetWorth);
+            expect(diff).toBeGreaterThan(Math.max(1, inactiveBase.estateNetWorth * 0.01));
         });
     });
 

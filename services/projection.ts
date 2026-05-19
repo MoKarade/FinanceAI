@@ -580,6 +580,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     nonReg, baseNonRegRate: baseRates.nonReg,
                     accRrspYear, accFhsaYear, smithInterestDeductibleYear,
                     accRentesYear, accRetraitsReerYear, accCapitalGainsYear,
+                    age,
+                    // §6.4 RAMQ: nombre d'enfants à charge (relève le seuil d'exemption).
+                    // Approximé via childGoals.length faute de champ dédié dans User.
+                    // TODO: ajouter `User.dependentChildrenCount` pour précision.
+                    childrenCount: activeChild.length,
+                    // §6.4 RAMQ: exempt si couverture privée (employeur/association).
+                    // TODO: flag `User.hasPrivateDrugInsurance` à ajouter. Par défaut
+                    // false (paie au régime public) — conservateur pour FinanceAI.
+                    ramqExempt: false,
                 },
                 { calculateFiscalReport, getMarginalRate, calculateDividendTax },
                 taxCurrentYear,

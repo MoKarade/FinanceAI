@@ -3,7 +3,7 @@
 // Cycle 10 (computeOasClawback, processTaxLossHarvesting): décembre = mois 11.
 // Cycle 11 (processDecemberTaxFiling): régularisation annuelle d'impôt.
 
-import { OAS_CLAWBACK_THRESHOLD_2026, CAPITAL_GAINS_INCLUSION_STANDARD, type FiscalReport } from '../../utils/tax';
+import { OAS_CLAWBACK_THRESHOLD_2026, CAPITAL_GAINS_INCLUSION_STANDARD, calculateRamqPremium, calculateFSSPremium, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
 
 /**
  * V31 — OAS Clawback prévu (calcul annuel en décembre).
@@ -103,10 +103,24 @@ export interface DecemberContext {
     accRentesYear: number;
     accRetraitsReerYear: number;
     accCapitalGainsYear: number;
+    /** Âge courant de l'utilisateur principal — sert aux crédits §6.2 (65+ et revenu retraite). */
+    age?: number;
+    /**
+     * Nombre d'enfants à charge — sert au seuil d'exemption RAMQ (§6.4).
+     * Optionnel, défaut 0.
+     */
+    childrenCount?: number;
+    /**
+     * Si vrai, l'utilisateur est exempté de la prime RAMQ (§6.4) — couverture
+     * privée par régime employeur/association, livret de réclamation valide,
+     * étudiant 18-25, 65+ avec SRG max.
+     * Optionnel, défaut false (l'utilisateur paie au public).
+     */
+    ramqExempt?: boolean;
 }
 
 export interface DecemberHelpers {
-    calculateFiscalReport: (gross: number, deductions: number, withheld: number, year: number, mc?: boolean) => FiscalReport;
+    calculateFiscalReport: (gross: number, deductions: number, withheld: number, year: number, mc?: boolean, ageOpts?: AgeCreditOptions) => FiscalReport;
     getMarginalRate: (income: number, year: number) => number;
     calculateDividendTax: (annualDiv: number, marginalRate: number) => number;
 }
@@ -143,16 +157,32 @@ export function processDecemberTaxFiling(
         const deductionsMarc = grossMarcReal > grossAnnaReal ? deductionsReal : 0;
         const deductionsAnna = grossMarcReal > grossAnnaReal ? 0 : deductionsReal;
 
-        const taxMarcReal = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, deductionsMarc, 0, ctx.loopYear, ctx.enableMonteCarlo).totalTax : 0;
-        const taxAnnaReal = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, deductionsAnna, 0, ctx.loopYear, ctx.enableMonteCarlo).totalTax : 0;
+        // §6.2 — crédits 65+ pour salarié actif 65+ (audit silent-failure FINDING 2).
+        // Cas : senior qui continue à travailler après 65 ans. Sans ce passage,
+        // le crédit âge fédéral + ligne 361 QC seraient silencieusement nuls.
+        // Limite : on utilise ctx.age (user[0] = Marc) pour les deux conjoints.
+        // Si seul Anna a 65+ et pas Marc, la prudence préfère 0 crédit (faux négatif)
+        // à un crédit indu (faux positif). Marc fait foi pour la simplicité ici.
+        const familyGrossReal = grossMarcReal + grossAnnaReal;
+        const ageOptsActive: AgeCreditOptions | undefined = (ctx.age !== undefined && ctx.age >= 65)
+            ? {
+                age: ctx.age,
+                eligiblePensionIncome: 0, // pas de pension admissible en mode actif
+                hasSpouse: ctx.activeUsersCount > 1,
+                familyIncome: familyGrossReal,
+            }
+            : undefined;
+
+        const taxMarcReal = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, deductionsMarc, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsActive).totalTax : 0;
+        const taxAnnaReal = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, deductionsAnna, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsActive).totalTax : 0;
         const totalAnnualTax = (taxMarcReal + taxAnnaReal) * ctx.inflationFactor;
 
         // V49: Retenue source (T1213 ou non)
         let taxMarcEmployer = taxMarcReal;
         let taxAnnaEmployer = taxAnnaReal;
         if (!ctx.optimizeSourceDeductions) {
-            taxMarcEmployer = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo).totalTax : 0;
-            taxAnnaEmployer = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo).totalTax : 0;
+            taxMarcEmployer = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsActive).totalTax : 0;
+            taxAnnaEmployer = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsActive).totalTax : 0;
         }
         const totalEmployerTax = (taxMarcEmployer + taxAnnaEmployer) * ctx.inflationFactor;
         const estimatedWithholding = totalEmployerTax * 0.92;
@@ -164,10 +194,93 @@ export function processDecemberTaxFiling(
         const basePensionAnnual = (ctx.incomeRetirementMonthly * 12) + ctx.accRentesYear;
         if (basePensionAnnual > 0) {
             const basePensionReal = basePensionAnnual / ctx.inflationFactor;
-            const taxReal = helpers.calculateFiscalReport(basePensionReal / ctx.activeUsersCount, 0, 0, ctx.loopYear).totalTax * ctx.activeUsersCount;
+            const incomeIndividualReal = basePensionReal / ctx.activeUsersCount;
+            // §6.2 — crédits 65+ et revenu de retraite (ARC ligne 30100/31400 + Revenu Québec ligne 361).
+            // FIX audit code-reviewer MEDIUM 5 : familyIncome inclut aussi les retraits REER de l'année
+            // pour ne pas surestimer le crédit ligne 361 QC.
+            const reerRealForFamily = ctx.accRetraitsReerYear / ctx.inflationFactor;
+            const ageOpts: AgeCreditOptions | undefined = ctx.age !== undefined
+                ? {
+                    age: ctx.age,
+                    eligiblePensionIncome: incomeIndividualReal,
+                    hasSpouse: ctx.activeUsersCount > 1,
+                    familyIncome: basePensionReal + reerRealForFamily,
+                }
+                : undefined;
+            const taxReal = helpers.calculateFiscalReport(incomeIndividualReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOpts).totalTax * ctx.activeUsersCount;
             const totalTax = taxReal * ctx.inflationFactor;
             const diff = totalTax * 0.05;
             if (diff > 100) taxCurrent.revenu += diff;
+        }
+    }
+
+    // ---- 1.5. RAMQ — prime annuelle régime public d'assurance médicaments (audit §6.4) ----
+    // Calculée par adulte sur le revenu familial NET (après déductions REER/FHSA).
+    // Si l'utilisateur a une couverture privée (régime employeur/association),
+    // passer `ramqExempt: true`.
+    {
+        let familyNetIncome: number;
+        if (ctx.isRetired) {
+            // Mode retraité : revenu pension + rentes + retraits REER + gains capitaux
+            // accumulés sur l'année. Tous imposables au sens de la ligne 275 TP-1.
+            familyNetIncome = (
+                ctx.incomeRetirementMonthly * 12
+                + ctx.accRentesYear
+                + ctx.accRetraitsReerYear
+                + ctx.accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD
+            ) / ctx.inflationFactor;
+        } else {
+            // Mode actif : revenu brut salarial - déductions REER + FHSA + Smith.
+            // FIX audit code-reviewer HIGH 1 : sans soustraction des déductions, RAMQ
+            // surestime systématiquement la prime pour les cotisants REER.
+            const grossFamily = (ctx.grossMarcBaseAnnual + ctx.grossAnnaBaseAnnual)
+                * Math.pow(1 + ctx.simSalaryGrowth / 100, ctx.yearsElapsed);
+            const deductions = ctx.accRrspYear + ctx.accFhsaYear + ctx.smithInterestDeductibleYear;
+            familyNetIncome = Math.max(0, grossFamily - deductions) / ctx.inflationFactor;
+        }
+        const ramqPerAdult = calculateRamqPremium(
+            familyNetIncome,
+            {
+                hasSpouse: ctx.activeUsersCount > 1,
+                childrenCount: ctx.childrenCount ?? 0,
+                exempt: !!ctx.ramqExempt,
+            },
+            ctx.loopYear,  // indexation seuils + prime max
+        );
+        const ramqTotal = ramqPerAdult * ctx.activeUsersCount * ctx.inflationFactor;
+        if (ramqTotal > 0) {
+            taxCurrent.divers += ramqTotal;
+            logs.push(`💊 RAMQ médicaments: ${Math.round(ramqTotal).toLocaleString('fr-CA')}$/an (${Math.round(ramqPerAdult)}$/adulte)`);
+        }
+    }
+
+    // ---- 1.6. FSS — Cotisation au Fonds des services de santé (audit §6.1) ----
+    // Applicable aux retraités et autres revenus non salariaux. Les salariés
+    // sont couverts par leur employeur (cotisation employeur, hors scope ici).
+    //
+    // Limitations connues (audit silent-failure §6.1) :
+    //  1. Le mode actif est exclu du calcul FSS individuel. Un travailleur
+    //     autonome (auto-employé) ou un actif avec revenu d'entreprise
+    //     individuelle devrait payer FSS. FinanceAI n'expose pas encore le
+    //     flag `User.hasSelfEmployedIncome` — à ajouter dans une future PR.
+    //  2. `individualNetIncome` est calculé comme moyenne (revenu_famille /
+    //     activeUsersCount). Pour des conjoints aux revenus très asymétriques,
+    //     la cotisation FSS familiale peut être imprécise (la moyenne sous-
+    //     estime la cotisation du conjoint le plus aisé). Approximation
+    //     acceptable pour projections long terme — précision exacte nécessite
+    //     un suivi individuel des revenus retraite (hors scope §6.1).
+    if (ctx.isRetired) {
+        const individualNetIncome = (
+            ctx.incomeRetirementMonthly * 12
+            + ctx.accRentesYear
+            + ctx.accRetraitsReerYear
+            + ctx.accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD
+        ) / ctx.activeUsersCount / ctx.inflationFactor;
+        const fssPerAdult = calculateFSSPremium(individualNetIncome, ctx.loopYear);
+        const fssTotal = fssPerAdult * ctx.activeUsersCount * ctx.inflationFactor;
+        if (fssTotal > 0) {
+            taxCurrent.divers += fssTotal;
+            logs.push(`🏥 FSS (ligne 446): ${Math.round(fssTotal).toLocaleString('fr-CA')}$/an (${Math.round(fssPerAdult)}$/adulte)`);
         }
     }
 

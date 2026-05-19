@@ -9,6 +9,7 @@
 
 import type { RealEstateGoal } from '../../types';
 import { RAP_LIMIT_PER_USER } from '../../utils/tax';
+import { calculateB20StressTest, validateMortgageParameters, calculateSchlPremium, calculateNewHomeRebateTotal } from '../realEstate';
 
 type GetMarginalRateFn = (annualGross: number) => number;
 type GetMonthOffsetFn = (dateStr: string) => number;
@@ -112,8 +113,33 @@ export function processRealEstate(
 
         // ── ACHAT ──────────────────────────────────────────────────────
         if (!pState.isBought) {
+            // §6.8 — Validation SCHL : mise de fonds min + amortissement max.
+            // Informatif uniquement (n'empêche pas l'achat) — l'utilisateur peut
+            // tout de même choisir de simuler un scénario non conforme.
+            if (m === purchaseOffset) {
+                const validation = validateMortgageParameters({
+                    price: goal.price,
+                    downPayment: goal.downPayment,
+                    amortization: goal.amortization,
+                    isFirstTimeBuyer: goal.isFirstTimeBuyer ?? false,
+                    isNewConstruction: goal.isNewConstruction ?? false,
+                });
+                if (!validation.valid) {
+                    validation.errors.forEach(err => {
+                        state.lifeEventLogs.push(`⚠️ SCHL §6.8 (${goal.id}): ${err}`);
+                    });
+                }
+            }
+
             const welcomeFees = welcomeTax(goal.price);
-            const totalCashNeeded = goal.downPayment + goal.totalClosingCosts + welcomeFees;
+            // §6.7 — Remboursement TPS/TVQ pour résidence neuve (réduit le coût net)
+            const newHomeRebate = calculateNewHomeRebateTotal(goal.price, !!goal.isNewConstruction);
+            const totalCashNeeded = Math.max(0, goal.downPayment + goal.totalClosingCosts + welcomeFees - newHomeRebate);
+            if (newHomeRebate > 0) {
+                state.lifeEventLogs.push(
+                    `💰 Rembours. TPS/TVQ neuve §6.7 (${goal.id}): -${Math.round(newHomeRebate).toLocaleString('fr-CA')}$`,
+                );
+            }
 
             if (state.celiapp > 0) {
                 state.liquid += state.celiapp;
@@ -194,6 +220,21 @@ export function processRealEstate(
                 state.liquid -= totalCashNeeded;
                 state.withdrawalLiquid += totalCashNeeded;
                 pState.isBought = true;
+
+                // §6.5 — Prime SCHL si MDP < 20% (LTV > 80%). Ajoutée au principal
+                // du prêt avant calcul du PMT.
+                const schl = calculateSchlPremium({
+                    price: goal.price,
+                    downPayment: goal.downPayment,
+                });
+                if (schl.required) {
+                    pState.mortgage += schl.premium;
+                    state.lifeEventLogs.push(
+                        `🏦 Prime SCHL §6.5 (${goal.id}): +${Math.round(schl.premium).toLocaleString('fr-CA')}$ ` +
+                        `(${(schl.rate * 100).toFixed(2)}% sur LTV ${(schl.ltv * 100).toFixed(1)}%)`,
+                    );
+                }
+
                 const r = (goal.mortgageRate / 100) / 12;
                 const n = goal.amortization * 12;
                 const p = pState.mortgage;
@@ -201,6 +242,52 @@ export function processRealEstate(
                 state.lifeEventLogs.push(`🏠 Achat (${goal.id}): -${Math.round(totalCashNeeded).toLocaleString('fr-CA')}$`);
                 state.flowEventLogs.push(`MBP: -${goal.downPayment.toLocaleString('fr-CA')}$ | Frais+TBienv.: -${Math.round(goal.totalClosingCosts + welcomeFees).toLocaleString('fr-CA')}$`);
                 if (goal.isPrimaryResidence) state.hasPurchasedPrimary = true;
+
+                // §6.6 — Stress test OSFI B-20 (qualifying rate + GDS/TDS).
+                // Informatif uniquement : on logue un warning si l'achat ne passerait
+                // pas une qualification réelle. L'achat est tout de même autorisé
+                // dans la simulation (la décision finale appartient à l'utilisateur).
+                //
+                // Limitations connues (à améliorer dans futures PRs) :
+                //  - `otherDebtMonthly = 0` : on n'a pas accès aux dettes (ctx.debts).
+                //    Sous-estime TDS — un user avec dette auto/cartes pourrait échouer
+                //    en réalité alors qu'on logue "passes" ici.
+                //  - Composition mensuelle simple (`rate / 12`) vs semi-annuelle
+                //    canadienne légale : biais conservateur léger (~0.05% sur PMT),
+                //    cohérent avec le reste du moteur.
+                if (Number.isFinite(goal.mortgageRate) && goal.mortgageRate > 0) {
+                    const monthlyGross = ctx.isRetired
+                        ? ctx.incomeRetirement
+                        : ((ctx.grossMarcBaseAnnual + ctx.grossAnnaBaseAnnual)
+                            * Math.pow(1 + ctx.simSalaryGrowth / 100, Math.floor(ctx.m / 12))) / 12;
+                    // §6.6 MEDIUM-6 — indexer les charges logement par inflation pour
+                    // cohérence avec le revenu nominal (sinon GDS s'améliore artificiellement
+                    // sur achats futurs).
+                    const inflFactor = Math.pow(1 + ctx.simInflation / 100, Math.floor(ctx.m / 12));
+                    const monthlyHousingExcl = (
+                        ((goal.taxesYearly || 0) / 12)
+                        + (goal.heatingMonthly || 0)
+                        + ((goal.condoFees || 0) * 0.5)
+                    ) * inflFactor;
+                    const stress = calculateB20StressTest({
+                        contractRate: goal.mortgageRate,
+                        loanAmount: pState.mortgage,
+                        amortization: goal.amortization,
+                        monthlyHousingChargesExclMortgage: monthlyHousingExcl,
+                        monthlyGrossIncome: monthlyGross,
+                        otherDebtMonthly: 0,
+                    });
+                    if (!stress.passes) {
+                        state.lifeEventLogs.push(
+                            `⚠️ Stress test B-20 OSFI (${goal.id}): ${stress.failReason} ` +
+                            `(qualifying rate ${(stress.qualifyingRate * 100).toFixed(2)}%)`,
+                        );
+                    }
+                } else {
+                    state.flowEventLogs.push(
+                        `ℹ️ Stress test B-20 ignoré pour ${goal.id} : taux contractuel invalide`,
+                    );
+                }
             } else if (m === purchaseOffset) {
                 state.flowEventLogs.push(`⚠️ Achat (${goal.id}) reporté: liquidités insuffisantes`);
             }

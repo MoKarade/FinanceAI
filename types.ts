@@ -430,6 +430,10 @@ export interface RealEstateGoal {
   taxesYearly?: number;
   heatingMonthly?: number;
   condoFees?: number;
+  /** §6.8 SCHL — Premier acheteur : permet amortissement 30 ans même en assuré (depuis août 2024). */
+  isFirstTimeBuyer?: boolean;
+  /** §6.8 SCHL — Résidence neuve : idem, permet 30 ans en assuré. */
+  isNewConstruction?: boolean;
 }
 
 export interface ChildGoal {

@@ -68,4 +68,4 @@ Question utilisateur
 - Era Context API peut changer de schéma — le wrapper utilise Zod pour
   valider, et logue clairement quand le schéma diverge.
 
-**Référence** : voir [PLAN_PHASE_4.md](../PLAN_PHASE_4.md) §1-§2 (Phase 4.B).
+**Référence** : voir [HANDOVER.md](../HANDOVER.md) §2.9 et le CHANGELOG cycle 6.

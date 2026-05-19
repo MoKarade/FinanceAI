@@ -80,7 +80,7 @@ sémantiques** définis dans `tailwind.config.js` + `index.css`.
 - Pas de `<Combobox>` ou `<Listbox>` complexe. Si besoin futur, on évaluera
   Radix juste pour ces cas (cohabitation possible).
 - Form primitives (Input/Select) ne sont **pas encore** dans le système.
-  Tracking dans `UI_REFOUNDATION_PLAN.md` pour un chantier futur si la
-  douleur émerge.
+  Tracking dans [HANDOVER.md](../HANDOVER.md) §4.2 et §5.3.A pour un chantier
+  futur si la douleur émerge.
 
-**Référence** : voir [UI_REFOUNDATION_PLAN.md](../UI_REFOUNDATION_PLAN.md) §2.
+**Référence** : voir [HANDOVER.md](../HANDOVER.md) §2.6 pour l'historique des phases UI.

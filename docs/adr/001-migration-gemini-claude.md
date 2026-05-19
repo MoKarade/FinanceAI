@@ -62,4 +62,4 @@ Migrer **tous** les usages IA vers `@anthropic-ai/sdk` en client-side
 - Pas de billing centralisé : l'utilisateur paie sa propre clé Anthropic.
   Trade-off identique à l'ancienne config Gemini.
 
-**Référence** : voir [PLAN_PHASE_4.md](../PLAN_PHASE_4.md) §0-§2.
+**Référence** : voir [HANDOVER.md](../HANDOVER.md) §2.8 et le CHANGELOG cycle 6.

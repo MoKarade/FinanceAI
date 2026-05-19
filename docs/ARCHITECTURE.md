@@ -237,9 +237,7 @@ Toutes les PR doivent passer **typecheck + tests + build**. Le pipeline CI
 
 ## 9. Pour aller plus loin
 
+- [HANDOVER.md](HANDOVER.md) — vue d'ensemble + roadmap + recommandations (lire en premier)
 - [PROJECTION.md](PROJECTION.md) — détail du moteur de projection (9 phases mensuelles, scénarios, MC)
 - [WIRING_NOTES.md](WIRING_NOTES.md) — wirings inter-onglets, `lastProjection`, deep-links
-- [UI_REFOUNDATION_PLAN.md](UI_REFOUNDATION_PLAN.md) — design system, navigation, palette
-- [PLAN_PHASE_4.md](PLAN_PHASE_4.md) — migration Claude + Era Context (historique)
-- [AUDIT_2026-05.md](AUDIT_2026-05.md) — audit qualité multi-dimension (référence pour les chantiers Phase 5/6)
 - [adr/](adr/) — Architecture Decision Records (décisions structurantes)

@@ -6,6 +6,163 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — cycle 7 : Phase 6 fiscalité complète + flaky fix] — 2026-05-19
+
+> Cycle dédié à la complétion de la Phase 6 fiscale (manques structurels
+> identifiés par l'audit 2026-05). 8 items implémentés en suivant un
+> protocole strict : impl → 4 agents review en parallèle → fix HIGH/MEDIUM
+> → tests intégration → triple validation locale → commit + push.
+> Tests : 243 → 348 (+105 nouveaux). Branche `claude/phase-6-tax-qc`.
+
+### 💰 §6.2 — Crédits 65+ et revenu de retraite (fed + QC)
+
+- **ARC ligne 30100** (Montant en raison de l'âge) : indexation 2026 = 2.0%,
+  max 8 966$, seuil 46 432$, réduction 15%.
+- **ARC ligne 31400** (Crédit pour revenu de pension) : 2 000$ fixe, restreint
+  65+ (sauf invalidité non modélisée).
+- **Revenu Québec ligne 361** (combinée) : crédit âge 3 986$ + revenu retraite
+  3 058$, seuils familiaux 27 835$/45 270$ (single/couple), réduction 18.75%.
+- Fonction `calculateAgeAndPensionCredits(opts, netTaxable, year)` avec guard
+  NaN/Infinity, indexation seuils via `getIndexedBracketsForYear`.
+- Intégration dans `calculateFiscalReport` (param `ageOpts` optionnel) +
+  `taxDecember.ts` mode retraité + actif 65+ + `taxJanuary.ts` FERR margRate.
+- 16 tests (12 baseline + 4 review-fixes : frontière 64/65, NaN, pension=0+65+,
+  snapshot régression).
+- Impact : ~970$/personne/an d'économie pour retraité 65+ sous seuils.
+
+### 💊 §6.4 — RAMQ prime régime public d'assurance médicaments
+
+- **Revenu Québec ligne 447 + Annexe K** : seuils 19 500$/31 610$ (single/couple),
+  paliers 7.65%/3.84% (palier 1) + 11.48%/5.75% (palier 2), max 766$/adulte.
+- Bonus seuils par enfant à charge (4 105$ / 12 110$ pour 1er, +3 790$ / +4 105$
+  pour 2+).
+- Fonction `calculateRamqPremium(income, opts, year)` avec exemption privée +
+  indexation.
+- Intégration dans `taxDecember.ts` modes retraité ET actif. `familyNetIncome`
+  inclut REER déductions (mode actif) ou retraits REER + 50% gains capitaux
+  (mode retraité).
+- 18 tests dont 5 review-fixes (frontières seuils, childrenCount=1, frontière
+  bracket1/bracket2, exempt + revenu élevé) + 3 intégration `processDecemberTaxFiling`.
+- Impact : jusqu'à ~1 532$/an pour couple non-couvert privé.
+
+### 🏦 §6.6 — Stress test OSFI B-20 hypothécaire
+
+- **OSFI guideline B-20** : qualifying rate = max(contractRate + 2 pts, 5.25%),
+  GDS ≤ 39%, TDS ≤ 44%.
+- Fonctions `calculateB20QualifyingRate(rate)` + `calculateB20StressTest(input)`
+  retournant `{qualifyingRate, qualifyingPmt, gds, tds, passes, failReason}`.
+- Intégration dans `realEstateMonth.ts` au déclenchement de l'achat. Log warning
+  dans `lifeEventLogs` si fail, n'empêche pas l'achat (informatif).
+- Indexation des charges logement par inflation pour cohérence avec revenu nominal.
+- 16 tests dont 4 review-fixes (amortization=0, frontière GDS 39%, snapshot
+  qualifying PMT, contractRate=5.25%).
+- Limitations documentées : `otherDebtMonthly = 0` (pas d'accès aux dettes via
+  RealEstateCtx), composition mensuelle simple vs semi-annuelle canadienne.
+
+### ✅ §6.8 — Validation SCHL mise de fonds + amortissement max
+
+- **SCHL** : MDP min 5%/5%+10%/20% selon prix (≤500k/500k-1.5M/>1.5M).
+  Amortissement max 25 ans (assuré std) ou 30 ans (1er acheteur OU résidence
+  neuve depuis août 2024) ou 30 ans (conventionnel ≥20% MDP).
+- Fonctions `calculateMinDownPayment(price)` + `validateMortgageParameters(input)`
+  retournant `{valid, errors[], downPaymentRatio, minDownPayment, maxAmortizationAllowed, insured}`.
+- Intégration : validation au mois d'achat avec warnings groupés (un seul message
+  ciblé pour prix >1.5M$, pas de doublon).
+- `RealEstateGoal` étendu avec `isFirstTimeBuyer?: boolean` et
+  `isNewConstruction?: boolean`.
+- Guard epsilon 1e-9 sur frontière MDP 20% (évite mauvaise classification à
+  cause d'arrondi flottant).
+- 19 tests dont 4 review-fixes (un seul message si prix>1.5M, frontière 1.5M
+  exacte, MDP=20% exact, price=0 explicite).
+
+### 🏥 §6.1 — FSS Fonds des services de santé
+
+- **Revenu Québec ligne 446 + Annexe F** : seuils 18 130$/33 130$/63 060$/148 030$,
+  paliers 0/1% × excès/150$ flat/150$ + 1%/1 000$ max.
+- Fonction `calculateFSSPremium(netIncome, year)` avec indexation complète.
+- Intégration `taxDecember.ts` mode retraité uniquement (salariés couverts par
+  employeur). Revenu individuel = (pension + rentes + retraits + 50% gains
+  capitaux) / activeUsersCount.
+- Limitations documentées (audit silent-failure) : 1) actifs autonomes exclus
+  (TODO `User.hasSelfEmployedIncome`), 2) revenu individuel approximé par
+  moyenne familiale.
+- 13 tests dont 3 intégration `processDecemberTaxFiling`.
+- Impact : jusqu'à 1 000$/adulte/an pour retraités à revenu élevé.
+
+### 🏠 §6.5 — SCHL prime d'assurance hypothécaire
+
+- **SCHL primes 2026** par tranche LTV : 0.60%/1.70%/2.40%/2.80%/3.10%/4.00%
+  (LTV ≤65/75/80/85/90/95%). Assurance non disponible si LTV > 95% ou prix > 1.5M$.
+- Fonctions `calculateSchlPremiumRate(ltv)` + `calculateSchlPremium(input)`
+  retournant `{ltv, rate, premium, required, available}`.
+- Intégration `realEstateMonth.ts` : la prime est ajoutée au principal du prêt
+  AVANT calcul du PMT, augmentant les paiements mensuels.
+- 17 tests (tous les paliers + frontières + snapshot 5% MDP → 19 000$).
+
+### 💰 §6.7 — TPS/TVQ remboursement résidence neuve
+
+- **ARC RC4028** (TPS) : rebate 36% jusqu'à 350k$, décroissance linéaire à 0
+  pour 450k$+.
+- **Revenu Québec** (TVQ) : rebate 50% jusqu'à 200k$, décroissance à 0 pour 300k$+.
+- Fonctions `calculateGstNewHomeRebate(price)`, `calculateQstNewHomeRebate(price)`,
+  `calculateNewHomeRebateTotal(price, isNewConstruction)`.
+- Intégration : si `goal.isNewConstruction`, rebate soustrait du `totalCashNeeded`
+  à l'achat (modélisation simplifiée : net après remboursement).
+- 13 tests (paliers TPS, paliers TVQ, combinaison, snapshot 300k$ → 5 400$).
+
+### 🎁 §6.3 — SRG Supplément de revenu garanti
+
+- **Service Canada Q1 2026** : max 1 105$/mois célibataire, 662$/mois couple/adulte,
+  seuils revenu 22 512$/29 760$, clawback 50%.
+- Fonction `calculateGISBenefit(otherIncomeAnnual, hasSpouseWithOAS, year)`.
+- Intégration dans `retirementIncome.ts` : SRG ajouté au revenu de retraite
+  mensuel si age ≥ psvStartAge ET psvMonthly > 0. otherIncome approximé par
+  RRQ + DB annualisés.
+- 9 tests (max célibataire/couple, clawback, annulation seuils, indexation).
+- Limitation documentée : approximation `otherIncome = rrq + db` ignore retraits
+  REER et gains capitaux (SRG potentiellement surestimé pour ces profils).
+- Impact : crucial pour scénarios faible revenu retraite (jusqu'à 13 200$/an
+  célibataire).
+
+### 🐛 Fix flaky `RealEstateGoal isActive guard`
+
+Test pré-existant qui échouait sur main depuis cycle 6 : `makeInactiveGoal`
+omettait `totalClosingCosts`, ce qui rendait `totalCashNeeded = downPayment +
+undefined + welcomeFees = NaN`. La cascade d'achat ne s'exécutait jamais
+silencieusement, faisant converger active/inactive vers le même `estateNetWorth`.
+Fix : ajout `totalClosingCosts: 5000` + fonds suffisants pour garantir l'achat
++ assertion renforcée (`diff > max(1, inactiveBase × 1%)` plutôt que `!==`).
+
+### 🔬 Protocole agents review (multi-agents qualité par PR)
+
+À partir de §6.2, chaque item §6.x déclenche un cycle :
+1. Implémentation baseline + tests + triple validation.
+2. Lancement de 4 agents en parallèle (typescript-reviewer, code-reviewer,
+   silent-failure-hunter, tdd-guide) avec contexte ciblé.
+3. Synthèse des findings (HIGH/MEDIUM/LOW + tests manquants).
+4. Application des fixes critiques (HIGH systématique, MEDIUM selon impact).
+5. Tests additionnels (snapshot régression, frontières exactes, intégration).
+6. Triple validation finale + commit "review fixes" sur la même PR.
+
+Résultat : 11 HIGH + 14 MEDIUM identifiés et résolus AVANT merge. Sans ce
+protocole, les calculs fiscaux auraient des biais silencieux non détectables
+par typecheck/tests baseline.
+
+### 📚 Documentation
+
+- `docs/PLAN_PHASE_6.md` (créé) : plan de match suivi PR par PR.
+- `docs/HANDOVER.md` §3.4 : à mettre à jour après merge PR #84 (tous les ⏳ → ✅).
+- Mémoire projet (`.claude/projects/.../memory/`) : 6 fichiers de mémoire
+  pour Marc (profile, projet, workflow git, règles fiscales, état Phase 6,
+  feedback agents).
+
+### ✅ Tests
+
+348/348 tests verts (vs 243 sur main avant ce cycle). Aucun flaky restant.
+Typecheck strict clean en permanence. Build production : ~3.75s.
+
+---
+
 ## [unreleased — cycle 6 : Claude+Era migration + UI refoundation + a11y polish] — 2026-05
 
 > Le plus gros cycle depuis le lancement. Migration complète de la stack

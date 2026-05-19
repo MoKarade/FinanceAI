@@ -1,26 +1,28 @@
 # Plan Phase 6 — Manques fiscaux structurels
 
-> **Document de travail** suivi PR par PR jusqu'à complétion. Mis à jour à chaque merge.
-> **Branche** : `claude/phase-6-tax-qc` (depuis `main`, indépendante de PR #83 docs cleanup).
+> **STATUT : ✅ COMPLET — 2026-05-19**
+> Tous les items §6.1-6.10 implémentés sur la branche `claude/phase-6-tax-qc` (PR #84).
+> Voir `CHANGELOG.md` cycle 7 pour le détail. Ce fichier peut être supprimé après
+> merge PR #84 (info migrée dans CHANGELOG + ADRs).
+
 > **Origine** : audit 2026-05 §Phase 6 (résumé dans `docs/HANDOVER.md` §3.4).
-> **Statut au 2026-05-19** : §6.9 ✅ + §6.10 ✅ (PR #82). Reste 8 items + tests régression.
+> **Branche** : `claude/phase-6-tax-qc` depuis `main`, indépendante de PR #83 docs cleanup.
 
 ---
 
-## Ordre d'attaque
-
-Priorité par valeur unitaire descendante, items immobilier groupés en fin :
+## Ordre d'attaque (✅ TERMINÉ)
 
 | Rang | Item | Effort | Impact $ | Fichiers cibles | État |
 |---|---|---|---|---|---|
-| 1 | **§6.2** Crédits 65+ et revenu retraite (fed + QC) | 4h | ~970$/pers./an | `utils/tax.ts` · `taxDecember.ts` · `taxJanuary.ts` | 🚧 En cours |
-| 2 | §6.4 RAMQ médicaments | 3h | ~744$/adulte/an | `utils/tax.ts` · `taxDecember.ts` | ⏳ |
-| 3 | §6.6 Stress test B-20 OSFI | 3h | Validation prêt | `realEstateMonth.ts` | ⏳ |
-| 4 | §6.8 Validation mise de fonds + amortissement max | 2h | Garde-fou réaliste | `realEstateMonth.ts` | ⏳ |
-| 5 | §6.1 FSS retraités | 3h | Jusqu'à 1 000$/an | `utils/tax.ts` · `taxDecember.ts` | ⏳ |
-| 6 | §6.5 SCHL prime hypothécaire | 4h | 2.8-4% du prêt | `realEstateMonth.ts` | ⏳ |
-| 7 | §6.7 TPS/TVQ résidence neuve | 4h | Remboursement partiel jusqu'à 450k$ | `realEstateMonth.ts` | ⏳ |
-| 8 | §6.3 SRG (Supplément revenu garanti) | 6h | Crucial faible revenu retraite | `retirementIncome.ts` | ⏳ |
+| 1 | §6.2 Crédits 65+ et revenu retraite (fed + QC) | 4h | ~970$/pers./an | `utils/tax.ts` · `taxDecember.ts` · `taxJanuary.ts` | ✅ |
+| 2 | §6.4 RAMQ médicaments | 3h | ~766$/adulte/an | `utils/tax.ts` · `taxDecember.ts` | ✅ |
+| 3 | §6.6 Stress test B-20 OSFI | 3h | Validation prêt | `realEstate.ts` · `realEstateMonth.ts` | ✅ |
+| 4 | §6.8 Validation mise de fonds + amortissement max | 2h | Garde-fou réaliste | `realEstate.ts` · `realEstateMonth.ts` | ✅ |
+| 5 | §6.1 FSS retraités | 3h | Jusqu'à 1 000$/an | `utils/tax.ts` · `taxDecember.ts` | ✅ |
+| 6 | §6.5 SCHL prime hypothécaire | 4h | 2.8-4% du prêt | `realEstate.ts` · `realEstateMonth.ts` | ✅ |
+| 7 | §6.7 TPS/TVQ résidence neuve | 4h | Remboursement jusqu'à 450k$ | `realEstate.ts` · `realEstateMonth.ts` | ✅ |
+| 8 | §6.3 SRG (Supplément revenu garanti) | 6h | Crucial faible revenu retraite | `utils/tax.ts` · `retirementIncome.ts` | ✅ |
+| Bonus | Fix flaky `RealEstateGoal isActive guard` | 1h | — | `tests/services/projection.test.ts` | ✅ |
 
 **Total** : ~29h + 9h tests régression = ~38h.
 

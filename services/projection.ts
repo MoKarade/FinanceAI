@@ -580,6 +580,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     nonReg, baseNonRegRate: baseRates.nonReg,
                     accRrspYear, accFhsaYear, smithInterestDeductibleYear,
                     accRentesYear, accRetraitsReerYear, accCapitalGainsYear,
+                    age,
                 },
                 { calculateFiscalReport, getMarginalRate, calculateDividendTax },
                 taxCurrentYear,

@@ -8,6 +8,7 @@ import {
   calculateGrossWithholdingRRSP,
   calculateCapitalGainsTax,
   calculateDividendTax,
+  calculateAgeAndPensionCredits,
   getMarginalRate,
   FED_BRACKETS,
   QC_BRACKETS,
@@ -16,6 +17,15 @@ import {
   RRQ_MAX,
   RQAP_MAX,
   AE_MAX_QC,
+  AGE_AMOUNT_FED_2026,
+  AGE_AMOUNT_FED_THRESHOLD_2026,
+  PENSION_INCOME_AMOUNT_FED,
+  AGE_AMOUNT_QC_2026,
+  RETIREMENT_INCOME_AMOUNT_QC_2026,
+  QC_LINE_361_THRESHOLD_SINGLE,
+  QC_LINE_361_THRESHOLD_COUPLE,
+  FED_NONREFUNDABLE_RATE,
+  QC_NONREFUNDABLE_RATE,
 } from '../../services/tax';
 
 describe('calculateFiscalReport', () => {
@@ -217,5 +227,144 @@ describe('Barèmes fiscaux 2026 (régression)', () => {
 
   it('AE QC max 2026 = 895,70 $', () => {
     expect(AE_MAX_QC).toBeCloseTo(895.70, 2);
+  });
+});
+
+// ----------------------------------------------------------------------------
+// §6.2 — Crédits 65+ et revenu de retraite (fed + QC)
+// Sources : ARC ligne 30100/31400 + Revenu Québec ligne 361 (indexation 2026)
+// ----------------------------------------------------------------------------
+describe('calculateAgeAndPensionCredits (§6.2)', () => {
+  it('renvoie 0 pour une personne < 65 ans sans pension', () => {
+    const { fedCredit, qcCredit } = calculateAgeAndPensionCredits(
+      { age: 60, eligiblePensionIncome: 0 },
+      50000,
+    );
+    expect(fedCredit).toBe(0);
+    expect(qcCredit).toBe(0);
+  });
+
+  it('renvoie le crédit pension fédéral même pour < 65 ans (revenu pension admissible)', () => {
+    const { fedCredit } = calculateAgeAndPensionCredits(
+      { age: 64, eligiblePensionIncome: 3000 },
+      40000,
+    );
+    // 2000$ × 15% = 300$
+    expect(fedCredit).toBeCloseTo(2000 * FED_NONREFUNDABLE_RATE, 2);
+  });
+
+  it('applique le crédit âge fédéral à plein si revenu net ≤ seuil 2026', () => {
+    const { fedCredit } = calculateAgeAndPensionCredits(
+      { age: 70, eligiblePensionIncome: 0 },
+      AGE_AMOUNT_FED_THRESHOLD_2026 - 1000,
+    );
+    // 8 966$ × 15% = 1 344,90$
+    expect(fedCredit).toBeCloseTo(AGE_AMOUNT_FED_2026 * FED_NONREFUNDABLE_RATE, 2);
+  });
+
+  it('réduit le crédit âge fédéral de 15% du revenu excédentaire', () => {
+    const excess = 10000;
+    const { fedCredit } = calculateAgeAndPensionCredits(
+      { age: 70, eligiblePensionIncome: 0 },
+      AGE_AMOUNT_FED_THRESHOLD_2026 + excess,
+    );
+    const expectedAmount = AGE_AMOUNT_FED_2026 - excess * 0.15;
+    expect(fedCredit).toBeCloseTo(expectedAmount * FED_NONREFUNDABLE_RATE, 2);
+  });
+
+  it('annule le crédit âge fédéral pour un revenu très élevé', () => {
+    const veryHigh = AGE_AMOUNT_FED_THRESHOLD_2026 + AGE_AMOUNT_FED_2026 / 0.15 + 5000;
+    const { fedCredit } = calculateAgeAndPensionCredits(
+      { age: 70, eligiblePensionIncome: 0 },
+      veryHigh,
+    );
+    expect(fedCredit).toBe(0);
+  });
+
+  it('plafonne le crédit pension fédéral à 2 000$ × 15%', () => {
+    const { fedCredit: low } = calculateAgeAndPensionCredits(
+      { age: 70, eligiblePensionIncome: 1500 },
+      40000,
+    );
+    const { fedCredit: high } = calculateAgeAndPensionCredits(
+      { age: 70, eligiblePensionIncome: 10000 },
+      40000,
+    );
+    expect(high - low).toBeCloseTo((PENSION_INCOME_AMOUNT_FED - 1500) * FED_NONREFUNDABLE_RATE, 2);
+  });
+
+  it('applique la ligne 361 QC à plein pour 65+ sous le seuil sans conjoint', () => {
+    const familyIncome = QC_LINE_361_THRESHOLD_SINGLE - 1000;
+    const pension = RETIREMENT_INCOME_AMOUNT_QC_2026;
+    const { qcCredit } = calculateAgeAndPensionCredits(
+      { age: 70, eligiblePensionIncome: pension, hasSpouse: false, familyIncome },
+      familyIncome,
+    );
+    const expectedAmount = AGE_AMOUNT_QC_2026 + RETIREMENT_INCOME_AMOUNT_QC_2026;
+    expect(qcCredit).toBeCloseTo(expectedAmount * QC_NONREFUNDABLE_RATE, 2);
+  });
+
+  it('utilise le seuil couple (45 270$) quand hasSpouse = true', () => {
+    const familyIncome = QC_LINE_361_THRESHOLD_COUPLE - 1000;
+    const { qcCredit: withSpouse } = calculateAgeAndPensionCredits(
+      { age: 70, eligiblePensionIncome: 3000, hasSpouse: true, familyIncome },
+      familyIncome,
+    );
+    const { qcCredit: noSpouse } = calculateAgeAndPensionCredits(
+      { age: 70, eligiblePensionIncome: 3000, hasSpouse: false, familyIncome },
+      familyIncome,
+    );
+    expect(withSpouse).toBeGreaterThan(noSpouse);
+  });
+
+  it('réduit la ligne 361 QC de 18.75% du revenu excédentaire', () => {
+    const excess = 10000;
+    const familyIncome = QC_LINE_361_THRESHOLD_SINGLE + excess;
+    const { qcCredit } = calculateAgeAndPensionCredits(
+      { age: 70, eligiblePensionIncome: RETIREMENT_INCOME_AMOUNT_QC_2026, hasSpouse: false, familyIncome },
+      familyIncome,
+    );
+    const grossLine361 = AGE_AMOUNT_QC_2026 + RETIREMENT_INCOME_AMOUNT_QC_2026;
+    const reduction = excess * 0.1875;
+    const expectedAmount = Math.max(0, grossLine361 - reduction);
+    expect(qcCredit).toBeCloseTo(expectedAmount * QC_NONREFUNDABLE_RATE, 2);
+  });
+});
+
+describe('calculateFiscalReport avec ageOpts (§6.2 intégration)', () => {
+  it('réduit l\'impôt total pour un retraité 67 ans vs un actif jeune au même revenu', () => {
+    const income = 35000;
+    const baseline = calculateFiscalReport(income, 0, 0);
+    const senior = calculateFiscalReport(income, 0, 0, 2026, false, {
+      age: 67,
+      eligiblePensionIncome: income,
+      hasSpouse: false,
+      familyIncome: income,
+    });
+    expect(senior.totalTax).toBeLessThan(baseline.totalTax);
+    const saving = baseline.totalTax - senior.totalTax;
+    expect(saving).toBeGreaterThan(800);
+    expect(saving).toBeLessThan(3000);
+  });
+
+  it('ne change rien sans ageOpts (rétrocompatibilité)', () => {
+    const r1 = calculateFiscalReport(50000, 0, 0);
+    const r2 = calculateFiscalReport(50000, 0, 0, 2026);
+    const r3 = calculateFiscalReport(50000, 0, 0, 2026, false);
+    expect(r1.totalTax).toBe(r2.totalTax);
+    expect(r2.totalTax).toBe(r3.totalTax);
+  });
+
+  it('annule le crédit ligne 361 QC pour un retraité au-dessus du seuil familial', () => {
+    const senior = calculateFiscalReport(80000, 0, 0, 2026, false, {
+      age: 70,
+      eligiblePensionIncome: 80000,
+      hasSpouse: false,
+      familyIncome: 80000,
+    });
+    const baseline = calculateFiscalReport(80000, 0, 0);
+    // À 80k$ familial sans conjoint, l'excès est trop grand : qcCredit = 0.
+    // Seul l'écart fédéral subsiste (âge réduit + pension 2000$).
+    expect(senior.totalTax).toBeLessThan(baseline.totalTax);
   });
 });

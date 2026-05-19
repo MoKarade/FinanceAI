@@ -3,7 +3,7 @@
 // Cycle 10 (computeOasClawback, processTaxLossHarvesting): décembre = mois 11.
 // Cycle 11 (processDecemberTaxFiling): régularisation annuelle d'impôt.
 
-import { OAS_CLAWBACK_THRESHOLD_2026, CAPITAL_GAINS_INCLUSION_STANDARD, type FiscalReport } from '../../utils/tax';
+import { OAS_CLAWBACK_THRESHOLD_2026, CAPITAL_GAINS_INCLUSION_STANDARD, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
 
 /**
  * V31 — OAS Clawback prévu (calcul annuel en décembre).
@@ -103,10 +103,12 @@ export interface DecemberContext {
     accRentesYear: number;
     accRetraitsReerYear: number;
     accCapitalGainsYear: number;
+    /** Âge courant de l'utilisateur principal — sert aux crédits §6.2 (65+ et revenu retraite). */
+    age?: number;
 }
 
 export interface DecemberHelpers {
-    calculateFiscalReport: (gross: number, deductions: number, withheld: number, year: number, mc?: boolean) => FiscalReport;
+    calculateFiscalReport: (gross: number, deductions: number, withheld: number, year: number, mc?: boolean, ageOpts?: AgeCreditOptions) => FiscalReport;
     getMarginalRate: (income: number, year: number) => number;
     calculateDividendTax: (annualDiv: number, marginalRate: number) => number;
 }
@@ -164,7 +166,17 @@ export function processDecemberTaxFiling(
         const basePensionAnnual = (ctx.incomeRetirementMonthly * 12) + ctx.accRentesYear;
         if (basePensionAnnual > 0) {
             const basePensionReal = basePensionAnnual / ctx.inflationFactor;
-            const taxReal = helpers.calculateFiscalReport(basePensionReal / ctx.activeUsersCount, 0, 0, ctx.loopYear).totalTax * ctx.activeUsersCount;
+            const incomeIndividualReal = basePensionReal / ctx.activeUsersCount;
+            // §6.2 — crédits 65+ et revenu de retraite (ARC ligne 30100/31400 + Revenu Québec ligne 361)
+            const ageOpts: AgeCreditOptions | undefined = ctx.age !== undefined
+                ? {
+                    age: ctx.age,
+                    eligiblePensionIncome: incomeIndividualReal,
+                    hasSpouse: ctx.activeUsersCount > 1,
+                    familyIncome: basePensionReal,
+                }
+                : undefined;
+            const taxReal = helpers.calculateFiscalReport(incomeIndividualReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOpts).totalTax * ctx.activeUsersCount;
             const totalTax = taxReal * ctx.inflationFactor;
             const diff = totalTax * 0.05;
             if (diff > 100) taxCurrent.revenu += diff;

@@ -53,6 +53,110 @@ export const OAS_CLAWBACK_THRESHOLD_2026 = 93454;           // Seuil PSV clawbac
 export const FHSA_LIFETIME_LIMIT_PER_USER = 40000;          // CELIAPP plafond à vie
 export const FHSA_ANNUAL_LIMIT_PER_USER = 8000;             // CELIAPP plafond annuel
 
+// ============================================
+// CRÉDITS 65+ ET REVENU DE RETRAITE (audit §6.2)
+// ============================================
+
+// --- Fédéral ---
+// Crédit en raison de l'âge (ligne 30100). Source: ARC, indexation 2026 = 2.0%.
+// Base 2025: 8 790$ max, seuil 45 522$, réduction 15% au-delà.
+// Voir https://www.canada.ca/.../line-30100-amount.html
+export const AGE_AMOUNT_FED_2026 = 8966;                    // 8790 × 1.02
+export const AGE_AMOUNT_FED_THRESHOLD_2026 = 46432;         // 45522 × 1.02
+export const AGE_AMOUNT_FED_REDUCTION_RATE = 0.15;
+export const AGE_AMOUNT_FED_MIN_AGE = 65;
+
+// Crédit pour revenu de pension (ligne 31400). Source: ARC, montant fixe
+// non indexé depuis 2006. Voir https://www.canada.ca/.../line-31400-pension-income-amount.html
+export const PENSION_INCOME_AMOUNT_FED = 2000;
+
+// Taux du palier le plus bas fédéral pour crédits non-remboursables (gelé à 15%
+// par l'ARC malgré la baisse du 1er palier à 14% en 2026 — politique C-4).
+export const FED_NONREFUNDABLE_RATE = 0.15;
+
+// --- Provincial Québec ---
+// Ligne 361 — Montant accordé en raison de l'âge ou pour revenus de retraite.
+// Source: Revenu Québec, formulaire TP-1.G 2026, indexation 2026 = 2.05%.
+// Voir https://www.revenuquebec.ca/.../aide-par-ligne/350-a-398-1-credits-dimpot-non-remboursables/ligne-361/
+export const AGE_AMOUNT_QC_2026 = 3986;                     // 65+ par personne, 2026
+export const RETIREMENT_INCOME_AMOUNT_QC_2026 = 3058;       // max sur premier 3 058$ de pension admissible (≈2998 × 1.0205)
+export const QC_LINE_361_THRESHOLD_SINGLE = 27835;          // revenu familial max pour crédit complet (sans conjoint)
+export const QC_LINE_361_THRESHOLD_COUPLE = 45270;          // revenu familial max pour crédit complet (avec conjoint)
+export const QC_LINE_361_REDUCTION_RATE = 0.1875;           // 18.75% au-delà du seuil
+export const QC_LINE_361_MIN_AGE = 65;
+
+// Taux du palier le plus bas QC pour crédits non-remboursables.
+export const QC_NONREFUNDABLE_RATE = 0.14;
+
+export interface AgeCreditOptions {
+    /** Âge de la personne au moment du calcul (≥ 65 pour activer crédit âge fed + QC). */
+    age?: number;
+    /** Revenu de pension admissible — sert au crédit pension fed (max 2 000$) et au crédit revenu retraite QC. */
+    eligiblePensionIncome?: number;
+    /** Si vrai, utilise le seuil QC couple (45 270$). Sinon seuil individuel (27 835$). */
+    hasSpouse?: boolean;
+    /**
+     * Revenu familial QC utilisé pour réduire la ligne 361.
+     * Si non fourni, on prend le revenu imposable net (grossIncome - rrsp - fhsa).
+     */
+    familyIncome?: number;
+}
+
+/**
+ * Calcule les crédits non-remboursables fédéraux et provinciaux liés à l'âge
+ * (65+) et au revenu de pension admissible.
+ *
+ * Retourne `{ fedCredit, qcCredit }` à SOUSTRAIRE de l'impôt déjà calculé
+ * (avant abattement fédéral et avant BPA).
+ *
+ * Sources :
+ *  - ARC ligne 30100 (âge fédéral, indexé 2026 = 2.0%)
+ *  - ARC ligne 31400 (pension fédéral, fixe 2 000$)
+ *  - Revenu Québec ligne 361 (âge + revenu retraite combinés, indexé 2026 = 2.05%)
+ */
+export const calculateAgeAndPensionCredits = (
+    opts: AgeCreditOptions,
+    netTaxableIncome: number,
+): { fedCredit: number; qcCredit: number } => {
+    const age = opts.age ?? 0;
+    const pension = Math.max(0, opts.eligiblePensionIncome ?? 0);
+    const familyIncome = Math.max(0, opts.familyIncome ?? netTaxableIncome);
+
+    let fedAmount = 0;
+    let qcAmount = 0;
+
+    // Crédit fédéral en raison de l'âge (65+)
+    if (age >= AGE_AMOUNT_FED_MIN_AGE) {
+        fedAmount += netTaxableIncome <= AGE_AMOUNT_FED_THRESHOLD_2026
+            ? AGE_AMOUNT_FED_2026
+            : Math.max(
+                0,
+                AGE_AMOUNT_FED_2026 - (netTaxableIncome - AGE_AMOUNT_FED_THRESHOLD_2026) * AGE_AMOUNT_FED_REDUCTION_RATE,
+            );
+    }
+
+    // Crédit fédéral pour revenu de pension (max 2 000$ admissible)
+    fedAmount += Math.min(PENSION_INCOME_AMOUNT_FED, pension);
+
+    // Ligne 361 QC (âge + revenu retraite combinés)
+    if (age >= QC_LINE_361_MIN_AGE) {
+        const ageQc = AGE_AMOUNT_QC_2026;
+        const retirementQc = Math.min(RETIREMENT_INCOME_AMOUNT_QC_2026, pension);
+        const grossLine361 = ageQc + retirementQc;
+
+        const threshold = opts.hasSpouse
+            ? QC_LINE_361_THRESHOLD_COUPLE
+            : QC_LINE_361_THRESHOLD_SINGLE;
+        const reduction = Math.max(0, familyIncome - threshold) * QC_LINE_361_REDUCTION_RATE;
+        qcAmount = Math.max(0, grossLine361 - reduction);
+    }
+
+    return {
+        fedCredit: fedAmount * FED_NONREFUNDABLE_RATE,
+        qcCredit: qcAmount * QC_NONREFUNDABLE_RATE,
+    };
+};
+
 export const calculateGrossWithholdingRRSP = (netNeeded: number): { gross: number, withholding: number } => {
     if (netNeeded <= 0) return { gross: 0, withholding: 0 };
     let grossAttempt = netNeeded / (1 - 0.21);
@@ -180,7 +284,14 @@ export const getMarginalRate = (income: number, year: number = 2026) => {
 
 export type FiscalReport = ReturnType<typeof calculateFiscalReport>;
 
-export const calculateFiscalReport = (grossIncome: number, rrspContribution: number, fhsaContribution: number, year: number = 2026, skipBreakdown: boolean = false) => {
+export const calculateFiscalReport = (
+    grossIncome: number,
+    rrspContribution: number,
+    fhsaContribution: number,
+    year: number = 2026,
+    skipBreakdown: boolean = false,
+    ageOpts?: AgeCreditOptions,
+) => {
     grossIncome = Number(grossIncome) || 0;
     rrspContribution = Number(rrspContribution) || 0;
     fhsaContribution = Number(fhsaContribution) || 0;
@@ -188,17 +299,28 @@ export const calculateFiscalReport = (grossIncome: number, rrspContribution: num
 
     const netTaxable = Math.max(0, grossIncome - rrspContribution - fhsaContribution);
 
+    // Crédits 65+ et revenu de retraite (audit §6.2). Calculés une seule fois,
+    // appliqués au fédéral AVANT l'abatement QC et au provincial APRÈS le BPA.
+    const ageCredits = ageOpts
+        ? calculateAgeAndPensionCredits(ageOpts, netTaxable)
+        : { fedCredit: 0, qcCredit: 0 };
+
     const fedData = calculateDetailedTax(netTaxable, indexedFedBrackets, skipBreakdown);
     let fedTax = fedData.totalTax;
     // Crédit non-remboursable BPA fédéral: l'ARC maintient le crédit au taux le plus
     // bas applicable, soit 15% (gelé), malgré la baisse du 1er palier à 14% (C-4).
-    fedTax -= (indexedBasicFed * 0.15);
+    fedTax -= (indexedBasicFed * FED_NONREFUNDABLE_RATE);
+    // §6.2 — crédits âge fédéral + pension fédéral (appliqués AVANT abatement QC).
+    // Le clamp final à 0 sur totalTax couvre déjà le cas où fedTax devient négatif.
+    fedTax -= ageCredits.fedCredit;
     const abatement = fedTax * 0.165;
     fedTax -= abatement;
 
     const qcData = calculateDetailedTax(netTaxable, indexedQcBrackets, skipBreakdown);
     let qcTax = qcData.totalTax;
-    qcTax -= (indexedBasicQc * 0.14);
+    qcTax -= (indexedBasicQc * QC_NONREFUNDABLE_RATE);
+    // §6.2 — ligne 361 QC (âge + revenu retraite, réduite par revenu familial)
+    qcTax -= ageCredits.qcCredit;
 
     const rrqBase = Math.max(0, Math.min(grossIncome, RRQ_MPE) - RRQ_EXEMPTION);
     const rrqVolet1 = Math.min(RRQ_MAX, rrqBase * RRQ_RATE);

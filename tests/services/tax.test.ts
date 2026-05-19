@@ -9,6 +9,7 @@ import {
   calculateDividendTax,
   calculateAgeAndPensionCredits,
   calculateRamqPremium,
+  calculateFSSPremium,
   getMarginalRate,
   FED_BRACKETS,
   QC_BRACKETS,
@@ -26,6 +27,12 @@ import {
   QC_LINE_361_THRESHOLD_COUPLE,
   FED_NONREFUNDABLE_RATE,
   QC_NONREFUNDABLE_RATE,
+  FSS_THRESHOLD_ZERO,
+  FSS_THRESHOLD_FLAT,
+  FSS_THRESHOLD_RAMP,
+  FSS_THRESHOLD_MAX,
+  FSS_FLAT_AMOUNT,
+  FSS_MAX_PREMIUM,
   RAMQ_EXEMPTION_SINGLE_2026,
   RAMQ_EXEMPTION_COUPLE_2026,
   RAMQ_EXEMPTION_SINGLE_CHILD_1,
@@ -599,5 +606,136 @@ describe('processDecemberTaxFiling intègre la prime RAMQ (§6.4)', () => {
     );
     // Pas de prime RAMQ car revenu net (10k$) < seuil exemption (19 500$)
     expect(result.logs.some(l => l.includes('RAMQ'))).toBe(false);
+  });
+});
+
+// ----------------------------------------------------------------------------
+// §6.1 — FSS : Cotisation au Fonds des services de santé (ligne 446)
+// Source: Revenu Québec Annexe F
+// ----------------------------------------------------------------------------
+describe('calculateFSSPremium (§6.1)', () => {
+  it('renvoie 0 sous le seuil minimum (< 18 130$)', () => {
+    expect(calculateFSSPremium(10000)).toBe(0);
+    expect(calculateFSSPremium(FSS_THRESHOLD_ZERO - 1)).toBe(0);
+  });
+
+  it('applique 1% sur tranche 18 130 - 33 130$', () => {
+    // Revenu 25 000$ : excès = 25 000 - 18 130 = 6 870$ × 1% = 68.70$
+    const excess = 25000 - FSS_THRESHOLD_ZERO;
+    expect(calculateFSSPremium(25000)).toBeCloseTo(excess * 0.01, 2);
+  });
+
+  it('applique 150$ fixe entre 33 130$ et 63 060$', () => {
+    expect(calculateFSSPremium(40000)).toBe(FSS_FLAT_AMOUNT);
+    expect(calculateFSSPremium(60000)).toBe(FSS_FLAT_AMOUNT);
+  });
+
+  it('applique 150$ + 1% sur tranche 63 060 - 148 030$', () => {
+    // Revenu 80 000$ : 150 + (80 000 - 63 060) × 1% = 150 + 169.40 = 319.40$
+    const excess = 80000 - FSS_THRESHOLD_RAMP;
+    expect(calculateFSSPremium(80000)).toBeCloseTo(FSS_FLAT_AMOUNT + excess * 0.01, 2);
+  });
+
+  it('plafonne à 1 000$ pour revenus élevés (≥ 148 030$)', () => {
+    expect(calculateFSSPremium(200000)).toBe(FSS_MAX_PREMIUM);
+    expect(calculateFSSPremium(FSS_THRESHOLD_MAX)).toBeCloseTo(FSS_MAX_PREMIUM, 0);
+  });
+
+  it('frontière exacte seuil zéro (18 130$) → 0', () => {
+    expect(calculateFSSPremium(FSS_THRESHOLD_ZERO)).toBe(0);
+  });
+
+  it('frontière exacte seuil flat (33 130$) → 150$', () => {
+    // À 33 130$ exactement, on est au passage du palier 1% au palier 150$ fixe.
+    // Le code utilise <=, donc 33 130$ donne (33 130 - 18 130) × 1% = 150$ exactement.
+    expect(calculateFSSPremium(FSS_THRESHOLD_FLAT)).toBeCloseTo(FSS_FLAT_AMOUNT, 0);
+  });
+
+  it('frontière exacte seuil ramp (63 060$) → 150$', () => {
+    expect(calculateFSSPremium(FSS_THRESHOLD_RAMP)).toBeCloseTo(FSS_FLAT_AMOUNT, 0);
+  });
+
+  it('guard NaN/Infinity/négatif → 0', () => {
+    expect(calculateFSSPremium(NaN)).toBe(0);
+    expect(calculateFSSPremium(Infinity)).toBe(0);
+    expect(calculateFSSPremium(-1000)).toBe(0);
+  });
+
+  it('indexation par année — seuils augmentent en 2030 vs 2026', () => {
+    // Revenu 20 000$ (juste au-dessus du seuil zéro 2026 = 18 130$).
+    // En 2026 : (20 000 - 18 130) × 1% = 18.70$.
+    // En 2030, seuil indexé ~19 624$ : (20 000 - 19 624) × 1% = 3.76$.
+    // L'indexation des seuils REND moins de gens redevables (cotisation baisse).
+    const p2026 = calculateFSSPremium(20000, 2026);
+    const p2030 = calculateFSSPremium(20000, 2030);
+    expect(p2030).toBeLessThan(p2026);
+  });
+});
+
+describe('processDecemberTaxFiling intègre FSS §6.1', () => {
+  const retiredCtx = {
+    m: 12,
+    loopYear: 2026,
+    isRetired: true,
+    enableMonteCarlo: false,
+    yearsElapsed: 5,
+    inflationFactor: 1,
+    activeUsersCount: 1,
+    grossMarcBaseAnnual: 0,
+    grossAnnaBaseAnnual: 0,
+    simSalaryGrowth: 0,
+    optimizeSourceDeductions: false,
+    incomeRetirementMonthly: 4000,  // 48 000$/an → palier flat FSS 150$
+    nonReg: 0,
+    baseNonRegRate: 0,
+    accRrspYear: 0,
+    accFhsaYear: 0,
+    smithInterestDeductibleYear: 0,
+    accRentesYear: 0,
+    accRetraitsReerYear: 0,
+    accCapitalGainsYear: 0,
+    ramqExempt: true,  // isoler le test FSS sans bruit RAMQ
+  };
+  const helpers2 = {
+    calculateFiscalReport: calcReport,
+    getMarginalRate: getMarg,
+    calculateDividendTax: calcDiv,
+  };
+
+  it('applique la cotisation FSS pour un retraité avec revenu > seuil', () => {
+    const result = processDecemberTaxFiling(
+      11,
+      retiredCtx,
+      helpers2,
+      { revenu: 0, gains: 0, divers: 0, reer: 0 },
+    );
+    expect(result.newTaxCurrentYear.divers).toBeGreaterThan(0);
+    expect(result.logs.some(l => l.includes('FSS'))).toBe(true);
+  });
+
+  it('aucune FSS pour un retraité sous le seuil', () => {
+    const result = processDecemberTaxFiling(
+      11,
+      { ...retiredCtx, incomeRetirementMonthly: 1000 },  // 12k$ < 18 130$
+      helpers2,
+      { revenu: 0, gains: 0, divers: 0, reer: 0 },
+    );
+    expect(result.logs.some(l => l.includes('FSS'))).toBe(false);
+  });
+
+  it('aucune FSS pour un actif (mode salarié couvert par employeur)', () => {
+    const result = processDecemberTaxFiling(
+      11,
+      {
+        ...retiredCtx,
+        isRetired: false,
+        incomeRetirementMonthly: 0,
+        grossMarcBaseAnnual: 60000,  // revenu actif élevé
+      },
+      helpers2,
+      { revenu: 0, gains: 0, divers: 0, reer: 0 },
+    );
+    // Mode actif → pas de FSS individuel
+    expect(result.logs.some(l => l.includes('FSS'))).toBe(false);
   });
 });

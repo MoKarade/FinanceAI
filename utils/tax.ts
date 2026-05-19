@@ -291,6 +291,62 @@ export const calculateRamqPremium = (
     return Math.min(maxPremium, premium);
 };
 
+// ============================================
+// FSS — Cotisation au Fonds des services de santé (audit §6.1)
+// Source: Revenu Québec ligne 446 + Annexe F. S'applique principalement aux
+// retraités, indépendants et autres revenus non salariaux (les salariés sont
+// couverts par leur employeur via cotisation FSS de l'employeur).
+//
+// Paliers 2025 (indexés annuellement) :
+//  - 0 à 18 130$         → 0$
+//  - 18 130 à 33 130$    → 1% × (revenu - 18 130)
+//  - 33 130 à 63 060$    → 150$ fixe
+//  - 63 060 à 148 030$   → 150$ + 1% × (revenu - 63 060)
+//  - ≥ 148 030$          → 1 000$ max
+//
+// https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/400-a-447-impot-et-cotisations/ligne-446/
+// ============================================
+
+export const FSS_THRESHOLD_ZERO = 18130;       // pas de cotisation sous ce seuil
+export const FSS_THRESHOLD_FLAT = 33130;       // début palier 150$ fixe
+export const FSS_THRESHOLD_RAMP = 63060;       // début palier 150$ + 1%
+export const FSS_THRESHOLD_MAX = 148030;       // début plafond 1 000$
+export const FSS_RATE_TIER1 = 0.01;            // 1% sur première tranche progressive
+export const FSS_RATE_TIER2 = 0.01;            // 1% sur deuxième tranche progressive
+export const FSS_FLAT_AMOUNT = 150;
+export const FSS_MAX_PREMIUM = 1000;
+
+/**
+ * Calcule la cotisation FSS (ligne 446) selon l'Annexe F pour un particulier.
+ *
+ * Applicable aux retraités, indépendants et autres revenus non salariaux.
+ * Les salariés sont couverts par leur employeur (cotisation FSS employeur).
+ *
+ * @param netIncome  Revenu net imposable (après déductions).
+ * @param year       Année fiscale pour indexation (défaut 2026).
+ * @returns Cotisation FSS annuelle (0 à FSS_MAX_PREMIUM × indexation).
+ */
+export const calculateFSSPremium = (
+    netIncome: number,
+    year: number = 2026,
+): number => {
+    if (!Number.isFinite(netIncome) || netIncome <= 0) return 0;
+
+    const { inflationFactor } = getIndexedBracketsForYear(year);
+    const t1 = FSS_THRESHOLD_ZERO * inflationFactor;
+    const t2 = FSS_THRESHOLD_FLAT * inflationFactor;
+    const t3 = FSS_THRESHOLD_RAMP * inflationFactor;
+    const t4 = FSS_THRESHOLD_MAX * inflationFactor;
+    const flat = FSS_FLAT_AMOUNT * inflationFactor;
+    const max = FSS_MAX_PREMIUM * inflationFactor;
+
+    if (netIncome <= t1) return 0;
+    if (netIncome <= t2) return (netIncome - t1) * FSS_RATE_TIER1;
+    if (netIncome <= t3) return flat;
+    if (netIncome <= t4) return flat + (netIncome - t3) * FSS_RATE_TIER2;
+    return max;
+};
+
 export const calculateGrossWithholdingRRSP = (netNeeded: number): { gross: number, withholding: number } => {
     if (netNeeded <= 0) return { gross: 0, withholding: 0 };
     let grossAttempt = netNeeded / (1 - 0.21);

@@ -3,7 +3,7 @@
 // Cycle 10 (computeOasClawback, processTaxLossHarvesting): décembre = mois 11.
 // Cycle 11 (processDecemberTaxFiling): régularisation annuelle d'impôt.
 
-import { OAS_CLAWBACK_THRESHOLD_2026, CAPITAL_GAINS_INCLUSION_STANDARD, calculateRamqPremium, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
+import { OAS_CLAWBACK_THRESHOLD_2026, CAPITAL_GAINS_INCLUSION_STANDARD, calculateRamqPremium, calculateFSSPremium, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
 
 /**
  * V31 — OAS Clawback prévu (calcul annuel en décembre).
@@ -251,6 +251,36 @@ export function processDecemberTaxFiling(
         if (ramqTotal > 0) {
             taxCurrent.divers += ramqTotal;
             logs.push(`💊 RAMQ médicaments: ${Math.round(ramqTotal).toLocaleString('fr-CA')}$/an (${Math.round(ramqPerAdult)}$/adulte)`);
+        }
+    }
+
+    // ---- 1.6. FSS — Cotisation au Fonds des services de santé (audit §6.1) ----
+    // Applicable aux retraités et autres revenus non salariaux. Les salariés
+    // sont couverts par leur employeur (cotisation employeur, hors scope ici).
+    //
+    // Limitations connues (audit silent-failure §6.1) :
+    //  1. Le mode actif est exclu du calcul FSS individuel. Un travailleur
+    //     autonome (auto-employé) ou un actif avec revenu d'entreprise
+    //     individuelle devrait payer FSS. FinanceAI n'expose pas encore le
+    //     flag `User.hasSelfEmployedIncome` — à ajouter dans une future PR.
+    //  2. `individualNetIncome` est calculé comme moyenne (revenu_famille /
+    //     activeUsersCount). Pour des conjoints aux revenus très asymétriques,
+    //     la cotisation FSS familiale peut être imprécise (la moyenne sous-
+    //     estime la cotisation du conjoint le plus aisé). Approximation
+    //     acceptable pour projections long terme — précision exacte nécessite
+    //     un suivi individuel des revenus retraite (hors scope §6.1).
+    if (ctx.isRetired) {
+        const individualNetIncome = (
+            ctx.incomeRetirementMonthly * 12
+            + ctx.accRentesYear
+            + ctx.accRetraitsReerYear
+            + ctx.accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD
+        ) / ctx.activeUsersCount / ctx.inflationFactor;
+        const fssPerAdult = calculateFSSPremium(individualNetIncome, ctx.loopYear);
+        const fssTotal = fssPerAdult * ctx.activeUsersCount * ctx.inflationFactor;
+        if (fssTotal > 0) {
+            taxCurrent.divers += fssTotal;
+            logs.push(`🏥 FSS (ligne 446): ${Math.round(fssTotal).toLocaleString('fr-CA')}$/an (${Math.round(fssPerAdult)}$/adulte)`);
         }
     }
 

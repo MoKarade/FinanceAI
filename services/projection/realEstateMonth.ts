@@ -9,7 +9,7 @@
 
 import type { RealEstateGoal } from '../../types';
 import { RAP_LIMIT_PER_USER } from '../../utils/tax';
-import { calculateB20StressTest, validateMortgageParameters } from '../realEstate';
+import { calculateB20StressTest, validateMortgageParameters, calculateSchlPremium } from '../realEstate';
 
 type GetMarginalRateFn = (annualGross: number) => number;
 type GetMonthOffsetFn = (dateStr: string) => number;
@@ -213,6 +213,21 @@ export function processRealEstate(
                 state.liquid -= totalCashNeeded;
                 state.withdrawalLiquid += totalCashNeeded;
                 pState.isBought = true;
+
+                // §6.5 — Prime SCHL si MDP < 20% (LTV > 80%). Ajoutée au principal
+                // du prêt avant calcul du PMT.
+                const schl = calculateSchlPremium({
+                    price: goal.price,
+                    downPayment: goal.downPayment,
+                });
+                if (schl.required) {
+                    pState.mortgage += schl.premium;
+                    state.lifeEventLogs.push(
+                        `🏦 Prime SCHL §6.5 (${goal.id}): +${Math.round(schl.premium).toLocaleString('fr-CA')}$ ` +
+                        `(${(schl.rate * 100).toFixed(2)}% sur LTV ${(schl.ltv * 100).toFixed(1)}%)`,
+                    );
+                }
+
                 const r = (goal.mortgageRate / 100) / 12;
                 const n = goal.amortization * 12;
                 const p = pState.mortgage;

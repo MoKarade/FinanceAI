@@ -9,6 +9,9 @@ import {
   calculateB20StressTest,
   calculateMinDownPayment,
   validateMortgageParameters,
+  calculateSchlPremiumRate,
+  calculateSchlPremium,
+  SCHL_PREMIUM_TIERS,
   OSFI_MQR_FLOOR,
   OSFI_MQR_BUFFER,
   OSFI_GDS_MAX,
@@ -484,5 +487,114 @@ describe('validateMortgageParameters (§6.8)', () => {
     });
     expect(Number.isFinite(r.downPaymentRatio)).toBe(true);
     expect(Number.isFinite(r.minDownPayment)).toBe(true);
+  });
+});
+
+// ----------------------------------------------------------------------------
+// §6.5 — SCHL : prime d'assurance hypothécaire (LTV > 80%)
+// Source: Société canadienne d'hypothèques et de logement
+// ----------------------------------------------------------------------------
+describe('calculateSchlPremiumRate (§6.5)', () => {
+  it('retourne 0.60% pour LTV ≤ 65%', () => {
+    expect(calculateSchlPremiumRate(0.60)).toBe(0.0060);
+    expect(calculateSchlPremiumRate(0.65)).toBe(0.0060);
+  });
+
+  it('retourne 1.70% pour 65% < LTV ≤ 75%', () => {
+    expect(calculateSchlPremiumRate(0.70)).toBe(0.0170);
+    expect(calculateSchlPremiumRate(0.75)).toBe(0.0170);
+  });
+
+  it('retourne 2.40% pour 75% < LTV ≤ 80%', () => {
+    expect(calculateSchlPremiumRate(0.78)).toBe(0.0240);
+  });
+
+  it('retourne 2.80% pour 80% < LTV ≤ 85%', () => {
+    expect(calculateSchlPremiumRate(0.83)).toBe(0.0280);
+  });
+
+  it('retourne 3.10% pour 85% < LTV ≤ 90%', () => {
+    expect(calculateSchlPremiumRate(0.88)).toBe(0.0310);
+  });
+
+  it('retourne 4.00% pour 90% < LTV ≤ 95%', () => {
+    expect(calculateSchlPremiumRate(0.94)).toBe(0.0400);
+    expect(calculateSchlPremiumRate(0.95)).toBe(0.0400);
+  });
+
+  it('retourne 0 pour LTV > 95% (assurance non disponible)', () => {
+    expect(calculateSchlPremiumRate(0.97)).toBe(0);
+  });
+
+  it('retourne 0 pour LTV invalide (NaN, négatif, 0)', () => {
+    expect(calculateSchlPremiumRate(NaN)).toBe(0);
+    expect(calculateSchlPremiumRate(-0.1)).toBe(0);
+    expect(calculateSchlPremiumRate(0)).toBe(0);
+  });
+});
+
+describe('calculateSchlPremium (§6.5)', () => {
+  it('prime requise si MDP < 20% (LTV > 80%)', () => {
+    // 400k$ × 10% MDP = 40k$. Loan = 360k$. LTV = 90%. Prime 3.10%.
+    const r = calculateSchlPremium({ price: 400000, downPayment: 40000 });
+    expect(r.required).toBe(true);
+    expect(r.available).toBe(true);
+    expect(r.ltv).toBeCloseTo(0.90, 4);
+    expect(r.rate).toBe(0.0310);
+    expect(r.premium).toBeCloseTo(360000 * 0.0310, 1);
+  });
+
+  it('aucune prime pour conventionnel (MDP ≥ 20%)', () => {
+    const r = calculateSchlPremium({ price: 500000, downPayment: 100000 });
+    expect(r.required).toBe(false);
+    expect(r.available).toBe(true);
+    expect(r.premium).toBe(0);
+  });
+
+  it('frontière MDP = 20% exact : pas de prime (LTV = 80% ≤ 80%)', () => {
+    const r = calculateSchlPremium({ price: 500000, downPayment: 100000 });
+    expect(r.ltv).toBeCloseTo(0.80, 4);
+    expect(r.required).toBe(false);
+  });
+
+  it('frontière MDP = 19.99% : prime requise', () => {
+    // 500k × 19.99% = 99 950$. LTV = 80.01% → palier 2.80%
+    const r = calculateSchlPremium({ price: 500000, downPayment: 99950 });
+    expect(r.required).toBe(true);
+    expect(r.rate).toBe(0.0280);
+  });
+
+  it('assurance non disponible pour prix > 1.5M$', () => {
+    const r = calculateSchlPremium({ price: 2000000, downPayment: 200000 });
+    expect(r.available).toBe(false);
+    expect(r.required).toBe(false);
+    expect(r.premium).toBe(0);
+  });
+
+  it('assurance non disponible pour LTV > 95% (MDP < 5%)', () => {
+    const r = calculateSchlPremium({ price: 400000, downPayment: 10000 });
+    expect(r.ltv).toBeCloseTo(0.975, 4);
+    expect(r.available).toBe(false);
+    expect(r.required).toBe(false);
+  });
+
+  it('snapshot — 500k × 5% MDP → prime 4.00% × 475k = 19 000$', () => {
+    const r = calculateSchlPremium({ price: 500000, downPayment: 25000 });
+    expect(r.ltv).toBeCloseTo(0.95, 4);
+    expect(r.rate).toBe(0.0400);
+    expect(r.premium).toBe(19000);
+  });
+
+  it('guard NaN/négatif : retourne ltv 0 sans crash', () => {
+    const r = calculateSchlPremium({ price: NaN, downPayment: -1000 });
+    expect(Number.isFinite(r.ltv)).toBe(true);
+    expect(Number.isFinite(r.premium)).toBe(true);
+    expect(r.required).toBe(false);
+  });
+
+  it('cohérence avec SCHL_PREMIUM_TIERS (6 paliers exposés)', () => {
+    expect(SCHL_PREMIUM_TIERS.length).toBe(6);
+    expect(SCHL_PREMIUM_TIERS[0].maxLtv).toBe(0.65);
+    expect(SCHL_PREMIUM_TIERS[5].maxLtv).toBe(0.95);
   });
 });

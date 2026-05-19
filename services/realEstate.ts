@@ -436,6 +436,97 @@ export const validateMortgageParameters = (input: MortgageValidationInput): Mort
   };
 };
 
+// ============================================
+// SCHL — Prime d'assurance hypothécaire (audit §6.5)
+// Source: Société canadienne d'hypothèques et de logement.
+// Applicable si MDP < 20% (prêt assuré). La prime est ajoutée au principal du prêt.
+//
+// Barème 2026 par tranche LTV (Loan-to-Value = loan / price) :
+//  - LTV ≤ 65%        : 0.60%
+//  - 65% < LTV ≤ 75%  : 1.70%
+//  - 75% < LTV ≤ 80%  : 2.40%
+//  - 80% < LTV ≤ 85%  : 2.80%
+//  - 85% < LTV ≤ 90%  : 3.10%
+//  - 90% < LTV ≤ 95%  : 4.00%
+//  - LTV > 95% ou prix > 1.5M$ : non disponible
+//
+// https://www.schl-cmhc.gc.ca/buying/mortgage-loan-insurance
+// ============================================
+
+export interface SchlPremiumTier {
+  maxLtv: number;     // 0-1 (ex: 0.65 pour LTV ≤ 65%)
+  rate: number;       // 0-1 (ex: 0.006 pour 0.60%)
+}
+
+export const SCHL_PREMIUM_TIERS: readonly SchlPremiumTier[] = [
+  { maxLtv: 0.65, rate: 0.0060 },
+  { maxLtv: 0.75, rate: 0.0170 },
+  { maxLtv: 0.80, rate: 0.0240 },
+  { maxLtv: 0.85, rate: 0.0280 },
+  { maxLtv: 0.90, rate: 0.0310 },
+  { maxLtv: 0.95, rate: 0.0400 },
+];
+
+/**
+ * Calcule le taux de prime SCHL applicable selon le ratio LTV (Loan-to-Value).
+ *
+ * @param ltv Ratio loan / price (0-1)
+ * @returns Taux de prime (0-1), ou 0 si LTV > 95% (assurance non disponible)
+ */
+export const calculateSchlPremiumRate = (ltv: number): number => {
+  if (!Number.isFinite(ltv) || ltv <= 0) return 0;
+  for (const tier of SCHL_PREMIUM_TIERS) {
+    if (ltv <= tier.maxLtv) return tier.rate;
+  }
+  return 0;  // LTV > 95% : assurance non disponible
+};
+
+export interface SchlPremiumInput {
+  price: number;
+  downPayment: number;
+  /** Premier acheteur : peut majorer ou exempter selon programme (non implémenté ici). */
+  isFirstTimeBuyer?: boolean;
+}
+
+export interface SchlPremiumResult {
+  ltv: number;
+  rate: number;
+  /** Prime à ajouter au principal du prêt (price - downPayment + premium). */
+  premium: number;
+  /** True si le prêt nécessite une assurance SCHL (LTV > 80% et price ≤ 1.5M$). */
+  required: boolean;
+  /** True si l'assurance est DISPONIBLE (LTV ≤ 95% et price ≤ 1.5M$). */
+  available: boolean;
+}
+
+/**
+ * Calcule la prime SCHL d'assurance hypothécaire pour un achat donné.
+ *
+ * Prime due si MDP < 20% (LTV > 80%). Pour MDP ≥ 20%, prêt conventionnel
+ * (prime = 0). Pour prix > 1.5M$ ou LTV > 95%, assurance non disponible.
+ *
+ * @returns { ltv, rate, premium, required, available }
+ */
+export const calculateSchlPremium = (input: SchlPremiumInput): SchlPremiumResult => {
+  const safePrice = Math.max(0, Number.isFinite(input.price) ? input.price : 0);
+  const safeDown = Math.max(0, Number.isFinite(input.downPayment) ? input.downPayment : 0);
+  const baseLoan = Math.max(0, safePrice - safeDown);
+  const ltv = safePrice > 0 ? baseLoan / safePrice : 0;
+
+  const aboveMaxLtv = ltv > 0.95;
+  const aboveMaxPrice = safePrice > SCHL_PRICE_THRESHOLD_TIER2;
+  const available = !aboveMaxLtv && !aboveMaxPrice && safePrice > 0;
+  const required = ltv > 0.80 && available;
+
+  if (!required) {
+    return { ltv, rate: 0, premium: 0, required: false, available };
+  }
+
+  const rate = calculateSchlPremiumRate(ltv);
+  const premium = baseLoan * rate;
+  return { ltv, rate, premium, required: true, available };
+};
+
 /**
  * Couts d'achat totaux pour un achat immobilier au Quebec :
  * mise de fonds + taxe de bienvenue + notaire + inspection + renovations initiales.

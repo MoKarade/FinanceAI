@@ -11,21 +11,26 @@
 | Indicateur | Valeur |
 |---|---|
 | Branche principale | `main` |
-| Dernière PR mergée | **#85** (Phase 7 — perf, a11y, market data, §7.G fixes, §8 polish) |
-| Tests | **412/412 verts** (32 fichiers) — +64 vs cycle 7 |
+| Dernière PR mergée | **#95** (F.11 — ChildPlanning design pro, dernier item refonte v3.0) |
+| Tests | **511/511 verts** (44 fichiers) — +99 depuis cycle 8 |
 | Typecheck | Clean en mode strict (`noImplicitAny`, `strictNullChecks`, `useUnknownInCatchVariables`) |
-| Build | OK — html2canvas exclu du bundle Vite (optimizeDeps.exclude + rollupOptions.external) |
-| Déploiement | Vercel (auto par PR) + GitHub Pages (workflow `.github/workflows/deploy-pages.yml`) |
+| Build | OK — bundle index ~526 KB gzip ~165 KB |
+| Déploiement | Vercel (auto par PR) + GitHub Pages (workflow `deploy-pages.yml`) |
 | Stack IA | `@anthropic-ai/sdk` (Sonnet 4.6 + Haiku 4.5) — **Gemini retiré** |
-| API banque | Era Context REST (`api.era.app`) — 9 endpoints + cache TTL 1h |
-| Market data | Finnhub REST (cours actions/ETF) via `services/marketData/` façade |
-| Schema store | **v4** (Zustand persist, migrations v1→v2→v3→v4 ; ajout `apiKeys.finnhub`) |
+| Services IA | 9+ : chat/stream, categorizeBatch, analyzeBudget, analyzePayslip Vision, getNextBestActions, getRebalanceJustifications, getCoupleOptimizationStrategies, getRealEstateAdvice |
+| API banque | Era Context REST (`api.era.app`) — 9 endpoints + cache TTL 1h + boot sync (C.6) |
+| Market data | Finnhub REST (cours actions/ETF) via `services/marketData/` façade (gratuit only) |
+| Schema store | **v6** (migrations v1→v2→v3→v4→v5 `lifeExpectancy`→v6 `purchases[]` DCA) |
 | Audit fiscal | **22/22 items Phase 6** + **5/5 HIGH §7.G** tous ✅ |
-| CSP | `<meta>` dans `index.html` + `netlify.toml` (plus de `generativelanguage.googleapis.com`) |
-| apiKeys | Exclues du localStorage ET des deux formats de backup (JSON clair + chiffré) |
+| Onglets | 18 dans `Tab` enum incluant `LIFE_PROJECTS` (fusion Voyages+Events) et `DOCUMENTS` |
+| CSP | `<meta>` dans `index.html` + `netlify.toml` |
+| Langue | **100% français** (FR/EN toggle retiré Phase A) |
+| Format | `1 111,55 $` centralisé via `utils/format.ts` (formatCAD, formatPercent, etc.) |
+| Version | Affichée via git SHA + date build (vite-env.d.ts + `__APP_VERSION__`) |
 
-L'app est **fonctionnelle de bout en bout**, déployée, et stable.
-Phase 7 et 7.G sont terminées. Phase 8 (tests, a11y, polish) en cours sur PR #85.
+L'app est **fonctionnelle de bout en bout**, déployée, stable, et la refonte
+UI v3.0 est **100% terminée** (PRs #86 à #95, 8 phases + cleanup + F.11).
+Prochain chantier : **P1 Production Readiness** (voir `PLAN_P1.md`).
 
 ---
 
@@ -165,6 +170,48 @@ Tests : **243 → 348 (+105 nouveaux)**.
 - `services/realEstate.ts` : `calculateB20StressTest`, `validateMortgageParameters`, `calculateMinDownPayment`, `calculateSchlPremium`, `calculateNewHomeRebateTotal`
 - Types étendus : `RealEstateGoal.isFirstTimeBuyer`, `RealEstateGoal.isNewConstruction`
 
+### 2.17 Refonte UI v3.0 — 8 phases + cleanup (PRs #86-95)
+
+Refonte massive selon le document `MAJ_FinanceAI.txt` (directives utilisateur).
+**10 PRs**, ~600 commits/changements, **501→511 tests verts**.
+
+| PR | Phase | Items principaux |
+|---|---|---|
+| `#86` | **A + B** | Format `1 111,55` centralisé, FR-only, version git SHA, couple badge, sidebar hover/accordion, NextBestAction IA |
+| `#87` | **C** | Hub Configuration (Settings+Onboarding), MissingDataBanner, payslip upload IA, Era boot sync |
+| `#88+#89` | **D** | KPI strip 5 cols, ZoomableTimeChart, HealthIndicator, multi-comptes toggle, stocks cliquables modal |
+| `#90` | **D'** | Sync catégories Budget↔Transactions, tuiles fusionnées prévu/réel, fiscal détaillé, IA streaming |
+| `#91` | **E** | Sous-onglets Investments, pies interactives, IA rééquilibrage, AddStockForm Finnhub |
+| `#92` | **F** | Projets de vie (fusion Travel+LifeEvents), sync Immo↔Futur, indicateurs activation unifiés |
+| `#93` | **G** | Documents global avec extraction IA Vision, optimisation fiscale couple IA |
+| `#94` | Cleanup | DCA multi-achat (store v6), Asset Location développé, conseils IA Immo, tax brackets précis |
+| `#95` | F.11 | ChildPlanning design pro (tabs Pill, labels épurés) |
+
+**Nouveaux composants notables** :
+- `<ZoomableTimeChart>` — zoom molette + pan, réutilisable (Dashboard + Investments)
+- `<NextBestAction>` — widget IA sidebar (Haiku 4.5, cache 1h)
+- `<HealthIndicator>` — score 0-100 paramétrable (4 ratios)
+- `<MissingDataBanner>` + `<MissingDataChecklist>` — pattern de redirect cross-tab
+- `<DualKPIStat>` — tuile prévu/réel Budget
+- `<PayslipUploadCard>` — upload Vision IA avec auto-fill
+- `<LifeProjects>` — onglet unifié Voyages + Événements
+- `<Documents>` — hub global avec catégories + extraction IA
+- `<CoupleOptimizationCard>` — stratégies fiscales couple IA
+- `<RealEstateAdviceCard>` — conseils IA Immo (5 catégories)
+- `<AddStockForm>` — ajout manuel avec Finnhub validation
+- `<StockComparisonModal>` — multi-stock overlay
+- `<CurrentCapitalCard>` — extrait de Retirement.tsx
+
+**Nouveaux services IA** :
+- `getNextBestActions()` — 1-3 actions concrètes (Haiku)
+- `getRebalanceJustifications()` — batch IA pour rééquilibrage (Haiku)
+- `getCoupleOptimizationStrategies()` — Spousal RRSP, pension splitting (Haiku)
+- `getRealEstateAdvice()` — 5 catégories cost/timing/leverage/tax/risk (Haiku)
+
+**Migrations store** :
+- v4 → v5 : `retirementGoal.lifeExpectancy` (default 90)
+- v5 → v6 : `Asset.purchases[]` (DCA multi-achat, legacy dateBought/buyPrice gardés)
+
 ---
 
 ## 3. État détaillé des audits
@@ -239,28 +286,42 @@ Tests : **243 → 348 (+105 nouveaux)**.
 
 ## 4. Ce qui est prévu pour la suite
 
-### 4.1 ✅ Phase 6 fiscale — TERMINÉE (cycle 7, PR #84)
+### 4.1 ✅ Phase 6 fiscale + Refonte UI v3.0 — TERMINÉES
 
-Les 8 items §6.1-§6.8 sont implémentés et testés (voir §2.16 + §3.4).
-**Plus rien à faire côté fiscal structurel.**
+- Phase 6 (fiscal QC) : cycle 7, PR #84 (voir §2.16 + §3.4)
+- Refonte UI v3.0 : cycles 9-13, PRs #86-95 (voir §2.17)
 
-### 4.2 Court terme — Polish a11y/UX (priorité moyenne)
+### 4.2 🚧 P1 — Production Readiness — EN COURS
+
+Voir `docs/PLAN_P1.md` pour le détail complet. ~35h estimés.
+
+| Item | Effort | Statut |
+|---|---|---|
+| P1.1 Error logger local self-contained | 4h | 🚧 démarré |
+| P1.2 Validation Zod end-to-end | 6h | À faire |
+| P1.3 Backup automatique rolling (IndexedDB) | 6h | À faire |
+| P1.4 CSV export | 3h | À faire |
+| P1.5 PDF export complet | 8h | À faire |
+| P1.6 Lighthouse CI | 2h | À faire |
+| P1.7 Audit log | 6h | À faire |
+
+**Contrainte cardinale** : tout reste sur tiers gratuits.
+
+### 4.3 P0 — Stabilisation (différé)
+
+Validation visuelle post-refonte v3.0 + tests mobiles réels. À reprendre
+quand des regressions sont identifiées par l'utilisateur.
+
+### 4.4 Long terme (priorité basse)
 
 | Item | Effort | Notes |
 |---|---|---|
-| §5.5 Contrast check AA tokens | 3h | Script qui calcule WCAG AA pour chaque combinaison token/background |
-| §5.4 axe a11y CI script | 4h | Installer `vitest-axe`, audit auto sur 5 pages clés |
-| Form primitives (Input/Select/Field) | 8h | Voir ADR-004 § "Conséquences ouvertes". 133 inputs inline à migrer |
-| Mobile 360px validation manuelle | 1h | Le seul critère UI non coché — tester sur device réel |
-
-### 4.3 Long terme — i18n + analytics (priorité basse)
-
-| Item | Effort | Notes |
-|---|---|---|
-| §5.3 i18n compléter | 10h | 32 clés → ~260 clés. `i18next-scanner` pour auto-extraction |
-| `<html lang>` dynamique | 30min | Synchroniser avec i18next (actuellement statique `fr`) |
-| Analytics (privacy-friendly) | 6h | Compter usage des onglets, sans tracker tiers — Plausible/Umami self-hosted |
-| Multi-utilisateurs (BFF) | 30h+ | Si évolution post mono-user — proxy IA, auth, billing partagé |
+| P2 Mobile & a11y AAA (PWA, screen reader) | 25-30h | Roadmap "10/10" §P2 |
+| P3 Refactor god-components (Settings, Retirement, Investments) | 40h | Roadmap §P3 |
+| P4 Tests Playwright E2E + visual regression | 25h | Roadmap §P4 |
+| P5 Era push, sync multi-device, AI cost optim | 50-80h | Roadmap §P5 |
+| Form primitives (Input/Select/Field) | 8h | ADR-004 §"Conséquences ouvertes" — 133 inputs inline |
+| i18n compléter (32 → ~260 clés) si multi-lang revient | 10h | Structure i18next en place |
 
 ---
 
@@ -361,6 +422,7 @@ potentielles restantes (cosmétiques) :
 | `docs/ARCHITECTURE.md` | Stack, topologie, store, pipeline IA, workflow |
 | `docs/PROJECTION.md` | Détail du moteur (9 phases mensuelles, 7 scénarios, MC) |
 | `docs/WIRING_NOTES.md` | Wirings inter-onglets (`lastProjection`, deep-links) |
+| `docs/PLAN_P1.md` | Plan P1 Production Readiness — chantier actuel |
 | `docs/adr/` | 4 ADRs structurants (Claude migration, Era pattern, projection split, design system) |
 | `CHANGELOG.md` | Historique versionné des releases |
 
@@ -384,6 +446,9 @@ Pour réduire le bruit et éviter les sources de vérité divergentes :
 | `docs/archive/PLAN_DE_FIX.md` | Plan de fix initial — fixes exécutés et trackés en commits |
 | `docs/archive/RAPPORT_FIXES.md` | Rapport de fixes — info dans CHANGELOG |
 | `docs/archive/plan_mcp_financeai.md` | Plan MCP — code MCP existe dans `mcp/`, ce plan était un brouillon |
+| `docs/CONTRAST_AUDIT.md` | Audit Phase 7.D.1 terminé — info dans CHANGELOG cycle 7 |
+| `docs/PLAN_PHASE_7.md` | Phase 7 terminée — info dans HANDOVER §2.10-2.14 |
+| `docs/PLAN_REFONTE_UI.md` | Refonte v3.0 terminée — info dans HANDOVER §2.17 + ADR-005 si créé |
 
 Toute info historique nécessaire est :
 1. Soit dans les commits (`git log`)

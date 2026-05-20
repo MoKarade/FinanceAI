@@ -4,6 +4,7 @@ import { Card } from './ui/Card';
 import { AppState } from '../types';
 import { getMigrationStatus } from '../store/useFinanceStore';
 import { ErrorLogViewer } from './system/ErrorLogViewer';
+import { AuditLogViewer } from './system/AuditLogViewer';
 
 interface SystemViewProps {
     state: AppState;
@@ -155,6 +156,9 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
 
             {/* P1.1 — Journal d'erreurs local (consultable + exportable) */}
             <ErrorLogViewer />
+
+            {/* P1.7 — Journal d'audit (changements de state, qui-quoi-quand) */}
+            <AuditLogViewer />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 

@@ -241,3 +241,32 @@
     }
   }
 }
+
+/* ============================================================
+ * P2.6 — Respect prefers-reduced-motion (WCAG 2.3.3 AAA)
+ * Désactive animations/transitions longues pour les utilisateurs
+ * sensibles aux mouvements (vestibulaires, anxiété, etc.).
+ * Garde les transitions courtes (≤10ms) pour préserver l'UX.
+ * ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .aurora-blob {
+    animation: none !important;
+  }
+
+  .skeleton-box::after {
+    animation: none !important;
+  }
+
+  .lift-on-hover:hover {
+    transform: none !important;
+  }
+}

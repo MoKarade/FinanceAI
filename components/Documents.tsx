@@ -229,7 +229,7 @@ export const Documents: React.FC = () => {
                                         type="button"
                                         onClick={() => setConfirmDeleteId(doc.id)}
                                         aria-label={`Supprimer ${doc.name}`}
-                                        className="text-ink-500 hover:text-red-400 transition-colors p-1 rounded opacity-0 group-hover:opacity-100 focus-ring"
+                                        className="touch-target flex items-center justify-center text-ink-500 hover:text-red-400 transition-colors rounded opacity-0 group-hover:opacity-100 focus-within:opacity-100 focus-ring"
                                     >
                                         🗑️
                                     </button>

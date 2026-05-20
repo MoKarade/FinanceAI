@@ -304,7 +304,7 @@ export const Layout: React.FC<LayoutProps> = ({
             onClick={togglePrivacyMode}
             aria-label={isPrivacyMode ? 'Quitter le mode discret' : 'Activer le mode discret'}
             aria-pressed={isPrivacyMode}
-            className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-lg active:scale-90 transition-transform"
+            className="w-11 h-11 rounded-full bg-white/5 flex items-center justify-center text-lg active:scale-90 transition-transform focus-ring"
           >
             {isPrivacyMode ? '🙈' : '👁️'}
           </button>

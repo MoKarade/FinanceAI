@@ -3,6 +3,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tab, FinancialGoal } from '../types';
 import { CoupleModeBadge } from './ui/CoupleModeBadge';
+import { NextBestAction } from './sidebar/NextBestAction';
 
 interface LayoutProps {
   activeTab: Tab;
@@ -106,59 +107,8 @@ export const Layout: React.FC<LayoutProps> = ({
   const navItems = navGroups[0].items; // shortcut Argent pour bottom-nav
   const extraItems = navGroups.slice(1).flatMap(g => g.items);
 
-  const getSmartMilestone = () => {
-    const activeGoals = financialGoals
-      .filter(g => !g.completed)
-      .map(g => {
-        let current = g.manualCurrentAmount || 0;
-        if (g.type === 'NET_WORTH') current = netWorth;
-        else if (g.type === 'CELI') current = currentValues.celi;
-        else if (g.type === 'REER') current = currentValues.reer;
-        else if (g.type === 'LIQUIDITY') current = currentValues.liquidity;
-
-        if (current >= g.targetAmount) return null;
-
-        return {
-          ...g,
-          current,
-          percent: (current / g.targetAmount) * 100,
-          remaining: g.targetAmount - current,
-          isUserDefined: true
-        };
-      })
-      .filter((g): g is NonNullable<typeof g> => g !== null)
-      .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
-
-    if (activeGoals.length > 0) {
-      const next = activeGoals[0];
-      return { target: next.targetAmount, current: next.current, label: next.name, percent: next.percent, remaining: next.remaining };
-    }
-
-    const getNextStep = (current: number) => {
-      if (current < 10000) return 10000;
-      if (current < 50000) return 50000;
-      if (current < 100000) return 100000;
-      if (current < 250000) return 250000;
-      if (current < 500000) return 500000;
-      if (current < 1000000) return 1000000;
-      return Math.ceil((current + 1) / 100000) * 100000;
-    };
-
-    const stepTarget = getNextStep(netWorth);
-    return { target: stepTarget, current: netWorth, label: "Prochain Palier", percent: Math.min(100, Math.max(0, (netWorth / stepTarget) * 100)), remaining: stepTarget - netWorth };
-  };
-
-  const milestone = getSmartMilestone();
-
-  let milestoneDateStr = "N/A";
-  if (monthlySavings > 0 && milestone.remaining > 0) {
-    const monthsToGo = milestone.remaining / monthlySavings;
-    const targetDate = new Date();
-    targetDate.setMonth(targetDate.getMonth() + Math.ceil(monthsToGo));
-    milestoneDateStr = targetDate.toLocaleDateString('fr-CA', { month: 'long', year: 'numeric' });
-  } else if (milestone.remaining <= 0) {
-    milestoneDateStr = "Atteint !";
-  }
+  // Phase B.3 — `getSmartMilestone` (palier statique) retiré. Remplacé par le
+  // widget NextBestAction qui appelle Claude (Haiku) avec lastProjection + Era.
 
   return (
     <div className={`min-h-screen flex flex-col md:flex-row text-gray-200 font-sans ${isPrivacyMode ? 'privacy-active' : ''}`}>
@@ -243,28 +193,8 @@ export const Layout: React.FC<LayoutProps> = ({
           </button>
         </div>
 
-        {/* Milestone widget — sera remplacé par NextBestAction en Phase B.3.
-            Masqué quand sidebar est collapsée. */}
-        <div className={`px-3 pb-3 shrink-0 transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none h-0 overflow-hidden'}`}>
-          <button type="button" onClick={() => setActiveTab(Tab.FUTURE)} className="w-full p-3 rounded-xl bg-gradient-to-br from-[#1A1E29] to-[#0d0f14] border border-white/5 relative overflow-hidden group shadow-lg cursor-pointer hover:border-primary/30 transition-colors text-left" aria-label={`Objectif: ${milestone.label}, ${milestone.percent.toFixed(0)}%`}>
-            <div className="absolute top-0 right-0 w-16 h-16 bg-primary/10 rounded-full blur-2xl -mr-8 -mt-8" aria-hidden="true"></div>
-            <div className="flex justify-between items-end mb-2 relative z-10">
-              <div className="min-w-0">
-                <div className="text-tiny text-gray-400 uppercase tracking-widest font-bold mb-0.5 truncate">{milestone.label}</div>
-                <div className="text-base font-black text-white privacy-blur">{milestone.target.toLocaleString('fr-CA')} $</div>
-              </div>
-              <div className="text-right shrink-0">
-                <div className="text-xl font-bold text-primary">{milestone.percent.toFixed(0)}%</div>
-              </div>
-            </div>
-            <div className="w-full bg-black/50 rounded-full h-1.5 overflow-hidden mb-2 relative z-10 border border-white/5">
-              <div className="h-full bg-gradient-to-r from-emerald-600 to-primary transition-all duration-1000" style={{ width: `${milestone.percent}%` }}></div>
-            </div>
-            <div className="flex items-center justify-between text-tiny text-gray-500 relative z-10">
-              <span className="capitalize">{milestoneDateStr}</span>
-            </div>
-          </button>
-        </div>
+        {/* Phase B.3 — NextBestAction remplace l'ancien widget milestone. */}
+        <NextBestAction isSidebarOpen={isSidebarOpen} />
 
         {/* Navigation principale — accordion par groupe */}
         <nav aria-label="Navigation principale" className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">

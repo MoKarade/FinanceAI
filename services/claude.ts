@@ -454,6 +454,111 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict de 3 strings (pas de markdown):
     }
 };
 
+// ─── Phase B.3 — "Prochaine Meilleure Action" ───────────────────────────────
+
+const NextBestActionSchema = z.object({
+    title: z.string().min(3),
+    reason: z.string().min(5),
+    urgency: z.enum(['high', 'medium', 'low']),
+    impact_estimate: z.string().optional(),
+});
+
+const NextBestActionsSchema = z.array(NextBestActionSchema).min(1).max(3);
+
+export type NextBestAction = z.infer<typeof NextBestActionSchema>;
+
+export interface FinancialSnapshot {
+    netWorth: number;
+    monthlyIncome: number;
+    monthlyExpenses: number;
+    celiBalance: number;
+    reerBalance: number;
+    currentAge: number;
+    retirementAge: number;
+    topDebts: Array<{ name: string; balance: number; rate: number }>;
+    activeGoals: Array<{ name: string; targetAmount: number; currentAmount: number; deadline: string }>;
+    projectedNetWorth20y?: number;
+    eraContextSummary?: string;
+    coupleMode?: boolean;
+}
+
+/**
+ * Phase B.3 — génère 1-3 prochaines meilleures actions personnalisées.
+ *
+ * Le prompt force des actions concrètes québécoises (REER, CELI, CELIAPP,
+ * RAP, FERR, etc.) et un format JSON strict validé via Zod. Si la clé API
+ * est absente ou si l'appel échoue, retourne []. Les consumers doivent gérer
+ * l'état vide (afficher "Configurer API" ou skeleton).
+ */
+export const getNextBestActions = async (
+    snapshot: FinancialSnapshot,
+    apiKey: string,
+): Promise<NextBestAction[]> => {
+    if (!apiKey) return [];
+
+    const lines: string[] = [
+        `Patrimoine net actuel: ${roundToHundred(snapshot.netWorth)}$`,
+        `Revenus mensuels: ${roundToHundred(snapshot.monthlyIncome)}$`,
+        `Dépenses mensuelles: ${roundToHundred(snapshot.monthlyExpenses)}$`,
+        `Âge: ${snapshot.currentAge} ans, retraite cible: ${snapshot.retirementAge} ans`,
+        `Solde CELI: ${roundToHundred(snapshot.celiBalance)}$`,
+        `Solde REER: ${roundToHundred(snapshot.reerBalance)}$`,
+        snapshot.coupleMode ? 'Mode couple actif' : 'Mode individuel',
+    ];
+    if (snapshot.projectedNetWorth20y !== undefined) {
+        lines.push(`Patrimoine projeté à +20 ans: ${roundToHundred(snapshot.projectedNetWorth20y)}$`);
+    }
+    if (snapshot.topDebts.length > 0) {
+        lines.push(
+            `Dettes prioritaires:\n${snapshot.topDebts
+                .map(d => `  - ${d.name}: ${roundToHundred(d.balance)}$ à ${d.rate.toFixed(2)}%`)
+                .join('\n')}`,
+        );
+    }
+    if (snapshot.activeGoals.length > 0) {
+        lines.push(
+            `Objectifs actifs:\n${snapshot.activeGoals
+                .slice(0, 5)
+                .map(g => `  - ${g.name}: ${roundToHundred(g.currentAmount)}$ / ${roundToHundred(g.targetAmount)}$ (échéance ${g.deadline})`)
+                .join('\n')}`,
+        );
+    }
+    if (snapshot.eraContextSummary) {
+        lines.push(`Contexte Era (90j):\n${snapshot.eraContextSummary}`);
+    }
+
+    const userPrompt = `AGIS COMME UN CONSEILLER FINANCIER QUÉBÉCOIS EXPERT.
+Analyse ce snapshot financier complet et propose EXACTEMENT 3 prochaines meilleures actions concrètes pour cette personne, classées par ordre d'impact financier estimé (la plus rentable d'abord).
+
+DONNÉES (montants arrondis à 100$):
+${lines.join('\n')}
+
+CONTRAINTES:
+- Chaque action doit être SPÉCIFIQUE (montant ou date concrète si possible)
+- Pertinence québécoise prioritaire (REER, CELI, CELIAPP, RAP, FERR, IQPA, RAMQ, etc.)
+- Urgency "high" UNIQUEMENT si action expire bientôt (fin année fiscale, plafond REER, etc.)
+- impact_estimate format: "+X 000 $/an" ou "−Y 000 $ impôt" (peut être omis)
+
+RÉPONDS UNIQUEMENT par un JSON Array strict de 3 objets (pas de markdown, pas d'explication):
+[
+  { "title": "...", "reason": "...", "urgency": "high|medium|low", "impact_estimate": "..." },
+  ...
+]`;
+
+    try {
+        const text = await chat(
+            [{ role: 'user', content: userPrompt }],
+            apiKey,
+            { model: MODEL_HAIKU, system: QUEBEC_FISCAL_CONTEXT, maxTokens: 1024, temperature: 0.5, timeoutMs: 20000 },
+        );
+        const validated = safeJsonValidate(text, NextBestActionsSchema);
+        return validated ?? [];
+    } catch (e) {
+        console.error('[Claude] getNextBestActions failed:', e);
+        return [];
+    }
+};
+
 // ─── Vision: analyse fiche de paie (compat TaxCenter) ───────────────────────
 
 const PayslipSchema = z.object({

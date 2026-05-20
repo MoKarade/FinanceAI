@@ -79,9 +79,22 @@ async function eraRequest<S extends z.ZodTypeAny>(
             return null;
         }
         const raw = await response.json();
-        const validated = schema.parse(raw);
-        if (useCache) setCached(key, validated);
-        return validated;
+        // P1.2 — safeParse au lieu de parse : Era peut envoyer un payload
+        // malformé (breaking change, edge case), on log via errorLogger
+        // mais l'app ne crash pas — retourne null comme pour HTTP error.
+        const validated = schema.safeParse(raw);
+        if (!validated.success) {
+            const { logError } = await import('./errorLogger');
+            logError({
+                source: 'era',
+                severity: 'warning',
+                message: `${path} Zod validation failed`,
+                context: { issues: validated.error.issues.slice(0, 3) },
+            });
+            return null;
+        }
+        if (useCache) setCached(key, validated.data);
+        return validated.data;
     } catch (e) {
         if ((e as Error).name === 'AbortError') throw e;
         console.warn(`[EraContext] ${path} failed:`, (e as Error).message);
@@ -177,10 +190,21 @@ export const fetchTransactions = async (
             }
 
             const rawData = await response.json();
-            const data = EraContextResponseSchema.parse(rawData);
-            const rows = data.transactions ?? [];
+            // P1.2 — safeParse pour ne pas crash si Era envoie payload malformé
+            const parsed = EraContextResponseSchema.safeParse(rawData);
+            if (!parsed.success) {
+                const { logError } = await import('./errorLogger');
+                logError({
+                    source: 'era',
+                    severity: 'warning',
+                    message: 'fetchTransactions Zod validation failed',
+                    context: { page, issues: parsed.error.issues.slice(0, 3) },
+                });
+                break; // arrête la pagination
+            }
+            const rows = parsed.data.transactions ?? [];
             allRaw = [...allRaw, ...rows];
-            hasMore = rows.length === pageSize && (data.pagination?.has_more ?? false);
+            hasMore = rows.length === pageSize && (parsed.data.pagination?.has_more ?? false);
             page++;
         }
 
@@ -354,8 +378,14 @@ export const rememberFact = async (
             console.warn(`[EraContext] rememberFact HTTP ${response.status}`);
             return null;
         }
-        const validated = RememberAckSchema.parse(await response.json());
-        return { id: validated.id };
+        // P1.2 — safeParse pour cohérence avec eraRequest
+        const parsed = RememberAckSchema.safeParse(await response.json());
+        if (!parsed.success) {
+            const { logError } = await import('./errorLogger');
+            logError({ source: 'era', severity: 'warning', message: 'rememberFact ack invalid', context: { issues: parsed.error.issues.slice(0, 2) } });
+            return null;
+        }
+        return { id: parsed.data.id };
     } catch (e) {
         if ((e as Error).name === 'AbortError') throw e;
         console.warn('[EraContext] rememberFact failed:', (e as Error).message);

@@ -113,6 +113,8 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
             setError("Prix d'achat invalide.");
             return;
         }
+        // Phase E.8 — initialise purchases[] avec le premier achat, garde
+        // dateBought/buyPrice pour rétrocompat
         const asset: Asset = {
             symbol: validatedSymbol,
             name: stockName,
@@ -122,6 +124,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
             performance: ((currentPrice - bp) / bp) * 100,
             dateBought,
             buyPrice: bp,
+            purchases: [{ date: dateBought, quantity: qty, price: bp }],
             accountType,
         };
         onAdd(asset);

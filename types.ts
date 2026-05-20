@@ -15,6 +15,18 @@ export interface Transaction {
   isVerified?: boolean;
 }
 
+// Phase E.8 — DCA multi-achat : un seul achat (dateBought + buyPrice) ne suffit
+// plus pour calculer le gain réel sur plusieurs entrées étalées dans le temps.
+// `purchases` capture chaque entrée individuellement.
+export interface AssetPurchase {
+  /** ISO date YYYY-MM-DD */
+  date: string;
+  /** quantité achetée à cette date */
+  quantity: number;
+  /** prix unitaire à l'achat (devise = Asset.currency) */
+  price: number;
+}
+
 export interface Asset {
   symbol: string;
   quantity: number;
@@ -22,11 +34,15 @@ export interface Asset {
   currentPrice: number;
   name: string;
   performance: number;
+  /** @deprecated Phase E.8 — utiliser purchases[]. Conservé pour rétrocompat. */
   dateBought: string;
+  /** @deprecated Phase E.8 — utiliser purchases[]. Conservé pour rétrocompat. */
   buyPrice?: number;
+  /** Phase E.8 — historique des achats (DCA support). */
+  purchases?: AssetPurchase[];
   priceHistory?: Array<{ date: string; price: number; rawPrice?: number; fxRate?: number }>;
   lastHistorySync?: number;
-  accountType?: RegisteredAccountType; // (cycle 3 TS agent: unifié sur le type partagé)
+  accountType?: RegisteredAccountType;
   dividendYield?: number;
   dividendFreq?: 'Monthly' | 'Quarterly' | 'Yearly';
   nextDividendDate?: string;

@@ -14,6 +14,7 @@ import { Sparkles, ArrowRight } from 'lucide-react';
 import { ASSET_META } from '../services/assetMeta';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { EraContextInsights } from './dashboard/EraContextInsights';
+import { HealthIndicator } from './dashboard/HealthIndicator';
 import { Tab as TabEnum } from '../types';
 import { formatCAD, formatNumber, formatPercent, formatSigned } from '../utils/format';
 
@@ -351,6 +352,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                 </div>
             </StatGrid>
+
+            {/* Phase D.6 — Indicateur santé financière paramétrable (remplace
+                temporairement les anciens KPIs Cash/Saving/Dette retirés en D.5) */}
+            <HealthIndicator />
 
             {/* Phase 4 B6/B7 — Insights pré-calculés par Era Context (silencieux si pas de token) */}
             <EraContextInsights />

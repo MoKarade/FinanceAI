@@ -13,6 +13,7 @@ import { fetchAssetHistory, fetchFxRates } from './services/finance';
 import { useFinanceStore, getMigrationStatus } from './store/useFinanceStore';
 import { useDerivedFinancials } from './utils/useDerivedFinancials';
 import { TabRouter } from './components/TabRouter';
+import { CommandPalette, useCommandPalette, makeNavigationActions } from './components/ui/CommandPalette';
 
 const GuideModal = React.lazy(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })));
 
@@ -74,6 +75,37 @@ export const App: React.FC = () => {
         setActiveTab(tab);
         window.location.hash = tab;
     };
+
+    // §7.B.3 — Command palette Cmd+K global
+    const cmdK = useCommandPalette();
+    const cmdActions = useMemo(() => [
+        ...makeNavigationActions(handleSetTab),
+        {
+            id: 'action:privacy',
+            label: isPrivacyMode ? 'Désactiver le mode privé' : 'Activer le mode privé',
+            group: 'Actions',
+            icon: isPrivacyMode ? '👁️' : '🙈',
+            keywords: ['privacy', 'masquer', 'cacher', 'discret'],
+            onSelect: () => togglePrivacyMode(),
+        },
+        {
+            id: 'action:guide',
+            label: 'Ouvrir le guide',
+            group: 'Actions',
+            icon: 'ℹ️',
+            keywords: ['guide', 'help', 'aide'],
+            onSelect: () => setShowGuide(true),
+        },
+        {
+            id: 'action:refresh',
+            label: 'Synchroniser les données',
+            group: 'Actions',
+            icon: '🔄',
+            keywords: ['sync', 'refresh', 'reload'],
+            onSelect: () => { loadData(state.apiKeys.eraContext); window.dispatchEvent(new Event('resize')); },
+        },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    ], [isPrivacyMode, handleSetTab]);
 
     const [isFirstLaunch, setIsFirstLaunch] = useState<boolean>(() => {
         try {
@@ -357,6 +389,7 @@ export const App: React.FC = () => {
                 </Suspense>
             </Layout>
             <ToastContainer />
+            <CommandPalette open={cmdK.isOpen} onClose={cmdK.close} actions={cmdActions} />
         </div>
     );
 };

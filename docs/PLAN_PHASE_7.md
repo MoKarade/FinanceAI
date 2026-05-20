@@ -224,7 +224,7 @@ services/marketData/
 | TBD | A.4 bundle cleanup | ✅ | knip → delete lunchMoney.ts + macroApi.ts (266L) + html2canvas (unused, pdf-vendor -203KB) |
 | TBD | B.1 empty states | ✅ | EmptyState branché : Transactions (main list mobile), DebtManager, Travel, LifeEvents. Pattern unifié. |
 | TBD | B.2 skeletons | ✅ | Primitive Skeleton + SkeletonList (variants text/rect/circle/chart/kpi/list-row, role="status"/aria-busy). Dashboard chart Suspense fallback + Investments isLoading branchés. 6 tests RTL. |
-| — | B.3 Cmd+K palette | ⏳ | — |
+| TBD | B.3 Cmd+K palette | ✅ | Impl maison (pas de cmdk lib) ~200L. Cmd/Ctrl+K global. 17 actions nav + 3 actions (privacy, guide, refresh). Filter par label/group/keywords. ↑↓/Enter/Esc + click outside. 7 tests RTL. |
 | — | C.1 Layout test RTL | ⏳ | — |
 | — | C.2 AbortController Claude | ⏳ | — |
 | — | C.3 Zod systématique | ⏳ | — |

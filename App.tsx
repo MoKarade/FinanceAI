@@ -83,6 +83,27 @@ export const App: React.FC = () => {
         configureMarketDataProvider({ finnhubKey: state.apiKeys.finnhub });
     }, [state.apiKeys.finnhub]);
 
+    // Phase C.6 — sync Era au boot. Si l'utilisateur a un token Era configuré,
+    // pré-chauffe le cache `buildEnrichedContext` (1h TTL) pour que les widgets
+    // IA (NextBestAction, EraContextInsights) répondent instantanément. Silent
+    // fail si l'API est indisponible — pas critique pour l'usage core.
+    useEffect(() => {
+        if (!state.apiKeys.eraContext) return;
+        const ctrl = new AbortController();
+        const timer = setTimeout(async () => {
+            try {
+                const { buildEnrichedContext } = await import('./services/aiOrchestrator');
+                await buildEnrichedContext(state.apiKeys.eraContext, { signal: ctrl.signal });
+            } catch {
+                // silencieux — le cache reste vide, les widgets feront leur fetch eux-mêmes
+            }
+        }, 500); // léger debounce pour ne pas bloquer le 1er paint
+        return () => {
+            clearTimeout(timer);
+            ctrl.abort();
+        };
+    }, [state.apiKeys.eraContext]);
+
     // Cancel toute sync en cours quand le composant est démonté
     useEffect(() => {
         return () => {

@@ -263,7 +263,7 @@ export const useFinanceStore = create<FinanceState>()(
             // de la forme du state, et ajouter une étape dans `migrate`.
             // Sans version, toute évolution casse silencieusement le boot des
             // utilisateurs existants (cf audit 2026-05 §State management).
-            version: 4,
+            version: 5,
             migrate: (persistedState: unknown, fromVersion: number) => {
                 let state = persistedState as Partial<FinanceState>;
                 // v0/undefined → v1 : intro versioning
@@ -296,6 +296,17 @@ export const useFinanceStore = create<FinanceState>()(
                             finnhub: apiKeys.finnhub || '',
                         },
                     } as Partial<FinanceState>;
+                }
+                // v4 → v5 : Phase C.3 — `lifeExpectancy` migré du state local
+                //   Retirement.tsx vers retirementGoal global. Default 90.
+                if (fromVersion < 5 && (state as any)?.retirementGoal) {
+                    const rg = (state as any).retirementGoal as { lifeExpectancy?: number };
+                    if (rg.lifeExpectancy === undefined) {
+                        state = {
+                            ...state,
+                            retirementGoal: { ...(state as any).retirementGoal, lifeExpectancy: 90 },
+                        } as Partial<FinanceState>;
+                    }
                 }
                 return state;
             },

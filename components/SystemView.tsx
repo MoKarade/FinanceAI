@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { Card } from './ui/Card';
 import { AppState } from '../types';
 import { getMigrationStatus } from '../store/useFinanceStore';
+import { ErrorLogViewer } from './system/ErrorLogViewer';
 
 interface SystemViewProps {
     state: AppState;
@@ -151,6 +152,9 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                     </div>
                 </div>
             </div>
+
+            {/* P1.1 — Journal d'erreurs local (consultable + exportable) */}
+            <ErrorLogViewer />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 

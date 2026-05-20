@@ -24,3 +24,25 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# P1 — Cache strategy. Évite "Failed to fetch dynamically imported module"
+# (signalé par user sur hubperso.com après deploy). Le problème : navigateur
+# garde un vieux index.html cached qui pointe vers des hashes de chunks qui
+# n'existent plus sur le serveur après le nouveau build.
+#
+# Solution : forcer no-cache sur index.html (toujours frais), cache long sur
+# les assets hashés (immutable car nouveau hash si contenu change).
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "public, no-cache, must-revalidate"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, no-cache, must-revalidate"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

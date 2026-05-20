@@ -102,7 +102,19 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
     }, [price, mode]);
 
     const [currentRent, setCurrentRent] = useState(1600);
-    const [marketReturn, setMarketReturn] = useState(7);
+    // Phase F.7 — coût d'opportunité dynamique : le rendement boursier hérite
+    // de l'hypothèse globale de croissance des actions (projection.returnRate).
+    // L'utilisateur peut toujours override localement via le slider.
+    const globalReturnRate = useFinanceStore(s => s.projection?.returnRate);
+    const [marketReturn, setMarketReturn] = useState(globalReturnRate ?? 7);
+    const [marketReturnOverridden, setMarketReturnOverridden] = useState(false);
+    // Sync automatique tant que l'utilisateur n'a pas explicitement override
+    React.useEffect(() => {
+        if (!marketReturnOverridden && globalReturnRate !== undefined && globalReturnRate !== marketReturn) {
+            setMarketReturn(globalReturnRate);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [globalReturnRate]);
     const [localRentalAppreciation, setLocalRentalAppreciation] = useState(propertyGrowthRate);
     const [localStockReturn, setLocalStockReturn] = useState(marketReturn);
 
@@ -413,8 +425,25 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                         </div>
                                         <div>
                                             <label className="flex justify-between text-tiny text-emerald-400 font-bold uppercase mb-1">
-                                                <span>Rendement Boursier</span>
-                                                <span className="text-white">{marketReturn}%</span>
+                                                <span className="flex items-center gap-1">
+                                                    Rendement Boursier
+                                                    {!marketReturnOverridden && globalReturnRate !== undefined && (
+                                                        <span title="Synchronisé avec hypothèse globale (Futur)" className="text-info-400 font-normal text-tiny normal-case">🔗</span>
+                                                    )}
+                                                </span>
+                                                <span className="flex items-center gap-2">
+                                                    <span className="text-white">{marketReturn}%</span>
+                                                    {marketReturnOverridden && globalReturnRate !== undefined && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => { setMarketReturnOverridden(false); setMarketReturn(globalReturnRate); setLocalStockReturn(globalReturnRate); }}
+                                                            className="text-tiny text-info-400 hover:underline font-normal normal-case"
+                                                            title={`Resynchroniser avec la projection globale (${globalReturnRate}%)`}
+                                                        >
+                                                            ↺ sync
+                                                        </button>
+                                                    )}
+                                                </span>
                                             </label>
                                             <input
                                                 type="range"
@@ -425,9 +454,15 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                 onChange={e => {
                                                     setMarketReturn(Number(e.target.value));
                                                     setLocalStockReturn(Number(e.target.value));
+                                                    setMarketReturnOverridden(true);
                                                 }}
                                                 className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-emerald-500 mt-2"
                                             />
+                                            {!marketReturnOverridden && globalReturnRate !== undefined && (
+                                                <p className="text-tiny text-info-400/70 italic mt-1">
+                                                    Phase F.7 — coût d'opportunité hérité de Futur ({globalReturnRate}%). Bouge le slider pour override.
+                                                </p>
+                                            )}
                                         </div>
                                         <div>
                                             <label className="flex justify-between text-tiny text-pink-400 font-bold uppercase mb-1">

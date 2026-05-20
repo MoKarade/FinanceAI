@@ -219,8 +219,8 @@ services/marketData/
 | PR | Sous-phase | Statut | Notes |
 |---|---|---|---|
 | TBD | A.1 lazy recharts | ✅ | DashboardEvolutionChart extrait + React.lazy. Recharts hors du critical path au boot. |
-| — | A.2 lazy pdf-vendor | ⏳ | — |
-| — | A.3 MC perf cache Date | ⏳ | — |
+| (déjà fait) | A.2 lazy pdf-vendor | ✅ | Déjà en place : `await import('./services/pdfReport')` dans App.tsx:305-306 depuis Phase 3E. |
+| TBD | A.3 MC perf cache Date | ✅ | `loopDates[]` pré-calculé hors boucle. ~504k allocations Date/calculateFutureProjection() → N (years*12+1). |
 | — | A.4 bundle cleanup | ⏳ | — |
 | — | B.1 empty states | ⏳ | — |
 | — | B.2 skeletons | ⏳ | — |

@@ -281,11 +281,19 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let inheritanceReceived = false;
     let ciTriggered = false;                     // FIX agent: empêche re-déclenchement maladie grave
 
+    // §7.A.3 — Pré-calcule les Date des 360+ mois en une passe.
+    // Avant : 2 allocations Date + 1 setMonth par itération mois × 100 itér MC ×
+    // 7 scénarios = 504k allocations par calculateFutureProjection().
+    // Après : N allocations par runScenario (N = years*12+1), réutilisées.
+    const totalMonths = projection.years * 12 + 1;
+    const loopDates: Date[] = new Array(totalMonths);
+    for (let i = 0; i < totalMonths; i++) {
+        loopDates[i] = new Date(startYear, startMonth + i, 1);
+    }
+
     for (let m = 0; m <= projection.years * 12; m++) {
         const currentMonthIndex = m % 12;
-        const simulationStartDate = new Date(startYear, startMonth, 1);
-        const currentLoopDate = new Date(simulationStartDate);
-        currentLoopDate.setMonth(simulationStartDate.getMonth() + m);
+        const currentLoopDate = loopDates[m];
         const loopYear = currentLoopDate.getFullYear();
 
 

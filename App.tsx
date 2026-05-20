@@ -14,6 +14,7 @@ import { useFinanceStore, getMigrationStatus } from './store/useFinanceStore';
 import { useDerivedFinancials } from './utils/useDerivedFinancials';
 import { TabRouter } from './components/TabRouter';
 import { CommandPalette, useCommandPalette, makeNavigationActions } from './components/ui/CommandPalette';
+import { useTranslation } from 'react-i18next';
 
 const GuideModal = React.lazy(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })));
 
@@ -63,6 +64,15 @@ export const App: React.FC = () => {
         // sont dans TabRouter — ici on se contente d'un fallback générique.
         document.title = `FinanceAI - ${activeTab || 'Pro'}`;
     }, [activeTab]);
+
+    // §7.D.3 — <html lang> dynamique synchronisé avec i18next.
+    const { i18n: i18nInstance } = useTranslation();
+    useEffect(() => {
+        const lang = (i18nInstance.language || 'fr').split('-')[0];
+        if (document.documentElement.lang !== lang) {
+            document.documentElement.lang = lang;
+        }
+    }, [i18nInstance.language]);
 
     // Cancel toute sync en cours quand le composant est démonté
     useEffect(() => {

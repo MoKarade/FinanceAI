@@ -20,6 +20,10 @@
         "assistant": "AI Assistant"
     },
     "dashboard": {
+        "title": "Overview",
+        "subtitle": "Consolidated net worth and trend",
+        "consolidated": "All accounts",
+        "future_predictor": "Future Indicator",
         "global_net_worth": "Global Net Worth",
         "passive_income_month": "Passive Income (Month)",
         "global_variation": "Global Variation",

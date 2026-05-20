@@ -230,7 +230,7 @@ services/marketData/
 | (déjà fait) | C.3 Zod systématique | ✅ | Audit : 5/5 consumers structurés (categorize, subscriptions, smartGoals, budgetAnalysis, payslip) utilisent `safeJsonValidate` qui wrappe Zod parse + try/catch + warn log + null fallback. |
 | TBD | D.1 contrast script | ✅ | scripts/check-contrast.ts + npm run check-contrast. Audit 16×3=48 combos, 38/48 conformes AA. Pas de critical failure (ink-50/100/200/300 OK). Rapport `docs/CONTRAST_AUDIT.md`. |
 | TBD | D.2 axe CI | ✅ | vitest-axe + axe-core installés. tests/a11y/primitives.axe.test.tsx avec 6 tests sur Button/Badge/KPIStat/PageHeader/EmptyState/Skeleton. 0 violation serious/critical. |
-| — | D.3 i18n compléter | ⏳ | — |
+| TBD | D.3 i18n compléter | ✅ | Audit révèle écart minimal : 24 keys utilisées dans le code, 32 dans fr.json. 4 keys manquantes ajoutées (dashboard.title/subtitle/consolidated/future_predictor) en fr+en. `<html lang>` dynamique branché à i18next via useEffect dans App.tsx. (Le "260 keys" de l'audit était une projection théorique, pas le besoin réel actuel.) |
 | — | E.1 F11 RRQ_MPE unifié | ⏳ | — |
 | — | E.2 F12 retenue REER décomposée | ⏳ | — |
 | — | E.3 F22 BPA précision | ⏳ | — |

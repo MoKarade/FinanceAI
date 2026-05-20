@@ -21,13 +21,44 @@ beforeEach(() => {
     useFinanceStore.setState(initialState, true);
     vi.clearAllMocks();
     localStorage.clear();
+    // P1 gating — useHasUserData requires user1 to have name + salary > 0
+    // pour que les tests existants vérifient la logique apiKey/fetch (et pas
+    // le gate "no data"). Activé via setState pour TOUS les tests par défaut.
+    useFinanceStore.setState({
+        config: {
+            ...initialState.config,
+            users: [
+                { ...initialState.config.users[0], name: 'TestUser', grossSalary: 5000, netSalary: 3500 },
+                { ...initialState.config.users[1], name: '' },
+            ],
+        },
+    });
 });
 
 describe('NextBestAction', () => {
-    it('affiche un message "configurer clé API" si pas de clé Anthropic', () => {
+    it('affiche un message "configurer clé API" si pas de clé Anthropic (et hasData=true)', () => {
         useFinanceStore.setState({ apiKeys: { ...initialState.apiKeys, anthropic: '' } });
         render(<NextBestAction isSidebarOpen={true} />);
         expect(screen.getByText(/clé API Anthropic/i)).toBeInTheDocument();
+    });
+
+    it('P1 gating — affiche "Renseigne ton profil" si pas de données utilisateur', () => {
+        // Reset users à vide pour ce test spécifique
+        useFinanceStore.setState({
+            config: {
+                ...initialState.config,
+                users: [
+                    { ...initialState.config.users[0], name: '', grossSalary: 0, netSalary: 0 },
+                    { ...initialState.config.users[1], name: '' },
+                ],
+            },
+            apiKeys: { ...initialState.apiKeys, anthropic: 'sk-test' },
+            assets: [],
+            transactions: [],
+            financialGoals: [],
+        });
+        render(<NextBestAction isSidebarOpen={true} />);
+        expect(screen.getByText(/Renseigne ton profil/i)).toBeInTheDocument();
     });
 
     it('appelle getNextBestActions au mount si clé présente', async () => {

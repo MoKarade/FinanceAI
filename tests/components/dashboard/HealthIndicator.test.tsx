@@ -8,9 +8,39 @@ const initialState = useFinanceStore.getState();
 beforeEach(() => {
     useFinanceStore.setState(initialState, true);
     localStorage.clear();
+    // P1 gating — HealthIndicator masque tout sans données utilisateur.
+    // On configure un user avec données pour que les tests vérifient
+    // le score, pas l'empty state.
+    useFinanceStore.setState({
+        config: {
+            ...initialState.config,
+            users: [
+                { ...initialState.config.users[0], name: 'TestUser', grossSalary: 5000, netSalary: 3500 },
+                { ...initialState.config.users[1], name: '' },
+            ],
+        },
+    });
 });
 
 describe('HealthIndicator', () => {
+    it('P1 gating — affiche EmptyDataPrompt si pas de données utilisateur', () => {
+        // Reset users à vide
+        useFinanceStore.setState({
+            config: {
+                ...initialState.config,
+                users: [
+                    { ...initialState.config.users[0], name: '', grossSalary: 0, netSalary: 0 },
+                    { ...initialState.config.users[1], name: '' },
+                ],
+            },
+            assets: [],
+            transactions: [],
+            financialGoals: [],
+        });
+        render(<HealthIndicator />);
+        expect(screen.getByText(/Score de santé financière indisponible/i)).toBeInTheDocument();
+    });
+
     it('renders un score 0-100 par défaut', () => {
         render(<HealthIndicator />);
         expect(screen.getByText('/ 100')).toBeInTheDocument();
@@ -57,8 +87,8 @@ describe('HealthIndicator', () => {
             config: {
                 ...initialState.config,
                 users: [
-                    { ...initialState.config.users[0], netSalary: 10000, grossSalary: 12000 },
-                    { ...initialState.config.users[1], netSalary: 0, grossSalary: 0 },
+                    { ...initialState.config.users[0], name: 'Alice', netSalary: 10000, grossSalary: 12000 },
+                    { ...initialState.config.users[1], name: '', netSalary: 0, grossSalary: 0 },
                 ],
             },
             budgetItems: [{ id: 'food', name: 'Food', target: 2000, nature: 'Besoin', frequency: 'Monthly' } as never],

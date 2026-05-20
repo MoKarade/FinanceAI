@@ -15,6 +15,7 @@ import { useDerivedFinancials } from './utils/useDerivedFinancials';
 import { TabRouter } from './components/TabRouter';
 import { CommandPalette, useCommandPalette, makeNavigationActions } from './components/ui/CommandPalette';
 import { useTranslation } from 'react-i18next';
+import { configureMarketDataProvider } from './services/marketData';
 
 const GuideModal = React.lazy(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })));
 
@@ -73,6 +74,11 @@ export const App: React.FC = () => {
             document.documentElement.lang = lang;
         }
     }, [i18nInstance.language]);
+
+    // §7.F.5 — Configure le provider marketData (Finnhub) quand la clé change.
+    useEffect(() => {
+        configureMarketDataProvider({ finnhubKey: state.apiKeys.finnhub });
+    }, [state.apiKeys.finnhub]);
 
     // Cancel toute sync en cours quand le composant est démonté
     useEffect(() => {

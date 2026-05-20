@@ -234,12 +234,12 @@ services/marketData/
 | (déjà fait) | E.1 F11 RRQ_MPE unifié | ✅ | Audit : retirementIncome.ts:7 importe déjà RRQ_MPE de utils/tax.ts. Aucun duplicate. |
 | TBD | E.2 F12 retenue REER décomposée | ✅ | Constante RRSP_WITHHOLDING_QC{bracket1/2/3} avec fed+qc+combined. Taux 19/24/29% (vs ancienne approx 21/26/30). calculateGrossWithholdingRRSP retourne `bracket: 1\|2\|3` en plus. Tests adaptés (3000 → 3703.70, 20000 → 28169.01). |
 | TBD | E.3 F22 BPA précision | ✅ | BASIC_PERSONAL_AMOUNT_FED 16452→16444 (ARC), QC 18952→18571 (RQ). Sources citées en commentaire. Tests régression mis à jour. |
-| — | F.1 Façade marketData | ⏳ | — |
-| — | F.2 Provider Finnhub | ⏳ | — |
-| — | F.3 Auto-populate assetMeta | ⏳ | — |
-| — | F.4 Computed portfolio history | ⏳ | — |
-| — | F.5 UI Settings Finnhub key | ⏳ | — |
-| — | F.6 Migration progressive flag | ⏳ | — |
+| TBD | F.1 Façade marketData | ✅ | services/marketData/ : types.ts (Quote/HistoryPoint/AssetProfile/DividendInfo/MarketDataProvider/MarketDataError), cache.ts (TTL 4-buckets, withCache pattern), index.ts (façade configureMarketDataProvider/getQuote/getHistory/getProfile/getDividends/getActiveProviderName). 14 tests. |
+| TBD | F.2 Provider Finnhub | ✅ | providers/finnhub.ts : wrapper REST avec timeout AbortController, gestion 401/429/500, mapping symboles (NASDAQ/NYSE/TSE/EPA → format Finnhub), inferCurrency, sectorFromFinnhub, regionFromCountry. |
+| TBD | F.3 Auto-populate assetMeta | ✅ | assetMeta.ts : seed hardcodé conservé + nouveau getAssetMeta(symbol) async qui priorise getProfile() dynamique, getAssetMetaSync() pour rétrocompat. |
+| (différé) | F.4 Computed portfolio history | 🚧 | Out of scope — nécessite refactor majeur du dataflow Investments + suppression dépendance Google Sheet. À planifier comme chantier dédié quand un user adopte Finnhub. |
+| TBD | F.5 UI Settings Finnhub key | ✅ | Champ password Finnhub dans Settings + apiKeys.finnhub dans store (schema v4 + migration v3→v4) + types.ts AppState étendu + App.tsx useEffect configureMarketDataProvider({finnhubKey}). |
+| TBD | F.6 Migration progressive flag | ✅ | Implicite : sans clé Finnhub configurée, activeProvider=null → getQuote/getProfile retournent null/[] → fallback automatique sur ASSET_META seed (cf F.3). Opt-in user, zero breaking change. |
 
 ---
 

@@ -224,10 +224,28 @@ export const Settings: React.FC<SettingsProps> = ({
                 />
                 <p className="text-xs text-gray-500 mt-1">Pour la synchronisation des transactions via era.app.</p>
               </div>
-              <div className="p-3 bg-green-900/10 rounded border border-green-500/20 mt-4">
-                <div className="text-xs text-green-400 font-bold mb-1">✅ Donnees Boursieres</div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Finnhub API Key (Données boursières)</label>
+                <input
+                  type="password"
+                  value={apiKeys?.finnhub || ''}
+                  onChange={(e) => setApiKeys({ ...apiKeys, finnhub: e.target.value })}
+                  className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
+                  placeholder="d12abc..."
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  §7.F : remplace l'ancien Google Sheet hardcodé. Quotes + historique + profils
+                  d'actifs à jour quotidiennement via <a href="https://finnhub.io/register" target="_blank" rel="noopener noreferrer" className="text-info-400 underline">finnhub.io</a> (gratuit, 60 req/min).
+                  Optionnel : sans clé, fallback sur le Google Sheet legacy.
+                </p>
+              </div>
+              <div className="p-3 bg-info-bg rounded border border-info-border mt-4">
+                <div className="text-xs text-info-400 font-bold mb-1">ℹ️ Source de données actives</div>
                 <p className="text-tiny text-gray-400">
-                  L'application est maintenant connectee a votre <strong>Fichier Maitre (Google Sheet)</strong>. Plus aucune configuration requise !
+                  {apiKeys?.finnhub
+                    ? <>Finnhub configuré → quotes/profils dynamiques. Google Sheet en fallback.</>
+                    : <>Google Sheet uniquement (mode legacy). Ajoutez une clé Finnhub pour des données dynamiques.</>
+                  }
                 </p>
               </div>
             </div>

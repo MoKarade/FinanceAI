@@ -49,11 +49,11 @@ describe('useFinanceStore', () => {
         expect(raw).not.toContain('apiKeys');
     });
 
-    it('a une version persist = 3 (Phase 4 A5 — suppression apiKeys.gemini)', () => {
+    it('a une version persist = 4 (§7.F.5 — ajout apiKeys.finnhub)', () => {
         useFinanceStore.getState().setActiveTab(Tab.SETTINGS);
         const raw = localStorage.getItem('financeai-storage');
         if (!raw) throw new Error('Persist did not write');
         const parsed = JSON.parse(raw);
-        expect(parsed.version).toBe(3);
+        expect(parsed.version).toBe(4);
     });
 });

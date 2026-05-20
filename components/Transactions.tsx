@@ -323,6 +323,21 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 icon="💳"
                 title="Transactions"
                 subtitle={`${transactions.length} transactions au total · ${uncategorizedGroups.length} groupe(s) à classer`}
+                actions={
+                    transactions.length > 0 ? (
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                const { exportTransactionsCSV, downloadCSV, dateForFilename } = await import('../utils/csvExport');
+                                downloadCSV(`transactions-${dateForFilename()}`, exportTransactionsCSV(transactions));
+                            }}
+                            className="px-3 py-1.5 bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded-card text-info-300 text-tiny font-bold transition-colors focus-ring"
+                            title="Exporter toutes les transactions en CSV"
+                        >
+                            📊 Export CSV
+                        </button>
+                    ) : null
+                }
             />
 
             <div className="rounded-xl border border-indigo-500/20 bg-indigo-900/10">

@@ -11,10 +11,10 @@
 | Indicateur | Valeur |
 |---|---|
 | Branche principale | `main` |
-| Dernière PR mergée | **#95** (F.11 — ChildPlanning design pro, dernier item refonte v3.0) |
-| Tests | **511/511 verts** (44 fichiers) — +99 depuis cycle 8 |
+| Dernière PR mergée | **#105** (P1.6 Lighthouse CI — clôture P1 Production Readiness 7/7) |
+| Tests | **566/566 verts** (50 fichiers) — +55 depuis fin refonte v3.0 |
 | Typecheck | Clean en mode strict (`noImplicitAny`, `strictNullChecks`, `useUnknownInCatchVariables`) |
-| Build | OK — bundle index ~526 KB gzip ~165 KB |
+| Build | OK — bundle index ~528 KB gzip ~166 KB, vendor jspdf lazy-chargé |
 | Déploiement | Vercel (auto par PR) + GitHub Pages (workflow `deploy-pages.yml`) |
 | Stack IA | `@anthropic-ai/sdk` (Sonnet 4.6 + Haiku 4.5) — **Gemini retiré** |
 | Services IA | 9+ : chat/stream, categorizeBatch, analyzeBudget, analyzePayslip Vision, getNextBestActions, getRebalanceJustifications, getCoupleOptimizationStrategies, getRealEstateAdvice |
@@ -28,9 +28,10 @@
 | Format | `1 111,55 $` centralisé via `utils/format.ts` (formatCAD, formatPercent, etc.) |
 | Version | Affichée via git SHA + date build (vite-env.d.ts + `__APP_VERSION__`) |
 
-L'app est **fonctionnelle de bout en bout**, déployée, stable, et la refonte
-UI v3.0 est **100% terminée** (PRs #86 à #95, 8 phases + cleanup + F.11).
-Prochain chantier : **P1 Production Readiness** (voir `PLAN_P1.md`).
+L'app est **fonctionnelle de bout en bout**, déployée, stable. Refonte UI v3.0
+**100% terminée** (PRs #86 à #95) et **P1 Production Readiness 100% terminé**
+(PRs #99 à #105 — 7/7 items). Prochain chantier : **P2 Mobile & a11y AAA**
+(roadmap "10/10" §P2).
 
 ---
 
@@ -291,32 +292,45 @@ Refonte massive selon le document `MAJ_FinanceAI.txt` (directives utilisateur).
 - Phase 6 (fiscal QC) : cycle 7, PR #84 (voir §2.16 + §3.4)
 - Refonte UI v3.0 : cycles 9-13, PRs #86-95 (voir §2.17)
 
-### 4.2 🚧 P1 — Production Readiness — EN COURS
+### 4.2 ✅ P1 — Production Readiness — TERMINÉ (7/7)
 
-Voir `docs/PLAN_P1.md` pour le détail complet. ~35h estimés.
+Voir `docs/PLAN_P1.md` pour le détail complet. **PRs #99 à #105**, 2026-05-20.
 
-| Item | Effort | Statut |
+| Item | PR | Statut |
 |---|---|---|
-| P1.1 Error logger local self-contained | 4h | 🚧 démarré |
-| P1.2 Validation Zod end-to-end | 6h | À faire |
-| P1.3 Backup automatique rolling (IndexedDB) | 6h | À faire |
-| P1.4 CSV export | 3h | À faire |
-| P1.5 PDF export complet | 8h | À faire |
-| P1.6 Lighthouse CI | 2h | À faire |
-| P1.7 Audit log | 6h | À faire |
+| P1.1 Error logger local self-contained | #99 | ✅ livré — `services/errorLogger.ts` (rolling 100) + global handlers + viewer |
+| P1.2 Validation Zod end-to-end | #102 | ✅ livré — `safeParse` sur réponses Era avec errorLogger intégré |
+| P1.3 Backup automatique rolling (IndexedDB) | #101 | ✅ livré — `services/backupAuto.ts` 7-day rolling + AutoBackupPanel UI |
+| P1.4 CSV export + lazyWithRetry + cache headers | #100 | ✅ livré — `utils/csvExport.ts` (14 tests) + résilience chunk-load |
+| P1.5 PDF export complet | #104 | ✅ livré — fiscal, holdings, dettes, goals (+16 tests builders purs) |
+| P1.6 Lighthouse CI | #105 | ✅ livré — workflow isolé, budgets warn-only, continue-on-error |
+| P1.7 Audit log | #103 | ✅ livré — `services/auditLog.ts` (rolling 500) + AuditLogViewer |
 
-**Contrainte cardinale** : tout reste sur tiers gratuits.
+**Contrainte cardinale respectée** : tout sur tiers gratuits (Vercel free,
+GitHub Actions free, IndexedDB navigateur, Lighthouse CI temporary storage).
+Tests : 511 → **566**, 0 régression.
+
+**Suivi optionnel** : brancher `logAudit(...)` aux call-sites importants (import CSV,
+suppressions batch, etc.) — infrastructure prête mais call-sites non wirés.
 
 ### 4.3 P0 — Stabilisation (différé)
 
 Validation visuelle post-refonte v3.0 + tests mobiles réels. À reprendre
 quand des regressions sont identifiées par l'utilisateur.
 
-### 4.4 Long terme (priorité basse)
+### 4.4 🎯 Prochain chantier : P2 Mobile & a11y AAA
+
+Roadmap "10/10" §P2 — ~25-30h estimés.
+
+- Audit responsive 1280→375px (toutes les vues)
+- WCAG AA basics : focus visible, contraste, labels ARIA, navigation clavier
+- Optionnel : PWA install + offline shell
+- Optionnel : screen reader pass
+
+### 4.5 Long terme (priorité basse)
 
 | Item | Effort | Notes |
 |---|---|---|
-| P2 Mobile & a11y AAA (PWA, screen reader) | 25-30h | Roadmap "10/10" §P2 |
 | P3 Refactor god-components (Settings, Retirement, Investments) | 40h | Roadmap §P3 |
 | P4 Tests Playwright E2E + visual regression | 25h | Roadmap §P4 |
 | P5 Era push, sync multi-device, AI cost optim | 50-80h | Roadmap §P5 |

@@ -143,17 +143,21 @@ describe('calculateCeliAvailableRoom', () => {
 });
 
 describe('calculateGrossWithholdingRRSP', () => {
-  it('utilise le palier 21% pour un retrait < 5k$', () => {
+  // §7.E.2 — Taux QC décomposés (5/10/15% féd + 14% QC = 19/24/29% combiné)
+  // au lieu de l'ancienne approximation 21/26/30%.
+  it('utilise le palier 19% (bracket 1) pour un retrait <= 5k$', () => {
     const r = calculateGrossWithholdingRRSP(3000);
-    // 3000 / (1 - 0.21) = 3797.47$
-    expect(r.gross).toBeCloseTo(3797.47, 1);
-    expect(r.withholding).toBeCloseTo(797.47, 1);
+    // 3000 / (1 - 0.19) = 3703.70$
+    expect(r.gross).toBeCloseTo(3703.70, 1);
+    expect(r.withholding).toBeCloseTo(703.70, 1);
+    expect(r.bracket).toBe(1);
   });
 
-  it('utilise le palier 30% pour un retrait > 15k$', () => {
+  it('utilise le palier 29% (bracket 3) pour un retrait > 15k$', () => {
     const r = calculateGrossWithholdingRRSP(20000);
-    // 20000 / (1 - 0.30) = 28571.43$
-    expect(r.gross).toBeCloseTo(28571.43, 1);
+    // 20000 / (1 - 0.29) = 28169.01$
+    expect(r.gross).toBeCloseTo(28169.01, 1);
+    expect(r.bracket).toBe(3);
   });
 
   it('renvoie 0 pour un net non positif', () => {
@@ -231,11 +235,11 @@ describe('Barèmes fiscaux 2026 (régression)', () => {
   });
 
   it('BPA fédéral 2026 = 16 452 $', () => {
-    expect(BASIC_PERSONAL_AMOUNT_FED).toBe(16452);
+    expect(BASIC_PERSONAL_AMOUNT_FED).toBe(16444);
   });
 
   it('BPA Québec 2026 = 18 952 $', () => {
-    expect(BASIC_PERSONAL_AMOUNT_QC).toBe(18952);
+    expect(BASIC_PERSONAL_AMOUNT_QC).toBe(18571);
   });
 
   it('RRQ max 2026 ≈ 4 569,60$ (taux 6.4% x (MPE 74 900 - exemption 3 500))', () => {

@@ -231,9 +231,9 @@ services/marketData/
 | TBD | D.1 contrast script | ✅ | scripts/check-contrast.ts + npm run check-contrast. Audit 16×3=48 combos, 38/48 conformes AA. Pas de critical failure (ink-50/100/200/300 OK). Rapport `docs/CONTRAST_AUDIT.md`. |
 | TBD | D.2 axe CI | ✅ | vitest-axe + axe-core installés. tests/a11y/primitives.axe.test.tsx avec 6 tests sur Button/Badge/KPIStat/PageHeader/EmptyState/Skeleton. 0 violation serious/critical. |
 | TBD | D.3 i18n compléter | ✅ | Audit révèle écart minimal : 24 keys utilisées dans le code, 32 dans fr.json. 4 keys manquantes ajoutées (dashboard.title/subtitle/consolidated/future_predictor) en fr+en. `<html lang>` dynamique branché à i18next via useEffect dans App.tsx. (Le "260 keys" de l'audit était une projection théorique, pas le besoin réel actuel.) |
-| — | E.1 F11 RRQ_MPE unifié | ⏳ | — |
-| — | E.2 F12 retenue REER décomposée | ⏳ | — |
-| — | E.3 F22 BPA précision | ⏳ | — |
+| (déjà fait) | E.1 F11 RRQ_MPE unifié | ✅ | Audit : retirementIncome.ts:7 importe déjà RRQ_MPE de utils/tax.ts. Aucun duplicate. |
+| TBD | E.2 F12 retenue REER décomposée | ✅ | Constante RRSP_WITHHOLDING_QC{bracket1/2/3} avec fed+qc+combined. Taux 19/24/29% (vs ancienne approx 21/26/30). calculateGrossWithholdingRRSP retourne `bracket: 1\|2\|3` en plus. Tests adaptés (3000 → 3703.70, 20000 → 28169.01). |
+| TBD | E.3 F22 BPA précision | ✅ | BASIC_PERSONAL_AMOUNT_FED 16452→16444 (ARC), QC 18952→18571 (RQ). Sources citées en commentaire. Tests régression mis à jour. |
 | — | F.1 Façade marketData | ⏳ | — |
 | — | F.2 Provider Finnhub | ⏳ | — |
 | — | F.3 Auto-populate assetMeta | ⏳ | — |

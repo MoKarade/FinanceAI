@@ -19,8 +19,15 @@ export const QC_BRACKETS = [
     { upTo: Infinity, rate: 0.2575, label: "25.75%" }
 ];
 
-export const BASIC_PERSONAL_AMOUNT_FED = 16452;
-export const BASIC_PERSONAL_AMOUNT_QC = 18952;
+// §7.E.3 / F22 — BPA 2026 ajustés aux valeurs officielles définitives.
+// Source ARC (Montant personnel de base augmenté, ligne 30000) : 16 129$ (palier
+//   réduit > 173k$) → 16 444$ (palier max < 173k$). On retient le palier max.
+// Source RQ 2026 (Montant personnel de base) : 18 571$.
+// Anciennes valeurs (16 452 et 18 952) étaient des estimations basées sur
+// l'indexation annoncée — légèrement décalées vs publication finale ARC/RQ.
+// Impact unitaire : ~165$/personne/an de crédit ajusté (cf audit F22).
+export const BASIC_PERSONAL_AMOUNT_FED = 16444;
+export const BASIC_PERSONAL_AMOUNT_QC = 18571;
 
 // RRQ 2026: 5.4% base + 1% supplémentaire (volet 1) = 6.4%
 // Source: Retraite Québec 2026
@@ -403,14 +410,40 @@ export const calculateGISBenefit = (
     return Math.max(0, maxMonthly - monthlyClawback);
 };
 
-export const calculateGrossWithholdingRRSP = (netNeeded: number): { gross: number, withholding: number } => {
-    if (netNeeded <= 0) return { gross: 0, withholding: 0 };
-    let grossAttempt = netNeeded / (1 - 0.21);
-    if (grossAttempt <= 5000) return { gross: grossAttempt, withholding: grossAttempt * 0.21 };
-    grossAttempt = netNeeded / (1 - 0.26);
-    if (grossAttempt <= 15000) return { gross: grossAttempt, withholding: grossAttempt * 0.26 };
-    grossAttempt = netNeeded / (1 - 0.30);
-    return { gross: grossAttempt, withholding: grossAttempt * 0.30 };
+// §7.E.2 — Décomposition des taux de retenue source REER pour résidents QC.
+// ARC + RQ : retenue = féd uniforme + QC progressif.
+//   Tranche ≤ 5 000$    : 5% féd + 14% QC = 19% combiné
+//   Tranche 5 001-15 000 : 10% féd + 14% QC = 24% combiné (NB : 14% reste idem QC)
+//   Tranche > 15 000     : 15% féd + 14% QC = 29% combiné
+// Hors QC : 10/20/30% combiné (à modéliser si besoin futur).
+// Refs : ARC IT-528R2 + RQ TP-1015.
+export const RRSP_WITHHOLDING_QC = {
+    bracket1: { upTo: 5000,  fed: 0.05, qc: 0.14, combined: 0.19 },
+    bracket2: { upTo: 15000, fed: 0.10, qc: 0.14, combined: 0.24 },
+    bracket3: { upTo: Infinity, fed: 0.15, qc: 0.14, combined: 0.29 },
+} as const;
+
+/**
+ * Retourne le gross + withholding pour retirer `netNeeded` du REER (résident QC).
+ * §7.E.2 : on garde la signature historique (compatibilité) mais on rajoute
+ * une variante typée par tranche pour les nouveaux consumers.
+ *
+ * Note : les anciens taux 21/26/30 étaient des approximations combinées
+ * historiques. La décomposition réelle est 19/24/29 (QC). Le delta est mineur
+ * mais cumulé à 30 ans il représente ~1 000-3 000$ par retraité.
+ */
+export const calculateGrossWithholdingRRSP = (netNeeded: number): { gross: number, withholding: number, bracket: 1 | 2 | 3 } => {
+    if (netNeeded <= 0) return { gross: 0, withholding: 0, bracket: 1 };
+    let grossAttempt = netNeeded / (1 - RRSP_WITHHOLDING_QC.bracket1.combined);
+    if (grossAttempt <= RRSP_WITHHOLDING_QC.bracket1.upTo) {
+        return { gross: grossAttempt, withholding: grossAttempt * RRSP_WITHHOLDING_QC.bracket1.combined, bracket: 1 };
+    }
+    grossAttempt = netNeeded / (1 - RRSP_WITHHOLDING_QC.bracket2.combined);
+    if (grossAttempt <= RRSP_WITHHOLDING_QC.bracket2.upTo) {
+        return { gross: grossAttempt, withholding: grossAttempt * RRSP_WITHHOLDING_QC.bracket2.combined, bracket: 2 };
+    }
+    grossAttempt = netNeeded / (1 - RRSP_WITHHOLDING_QC.bracket3.combined);
+    return { gross: grossAttempt, withholding: grossAttempt * RRSP_WITHHOLDING_QC.bracket3.combined, bracket: 3 };
 };
 
 export const CELI_ANNUAL_LIMITS: Record<number, number> = {

@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Card } from './ui/Card';
+import { EmptyState } from './ui/EmptyState';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { PageHeader } from './ui/PageHeader';
 import { Button } from './ui/Button';
@@ -133,10 +134,11 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
             </div>
 
             {sortedTrips.length === 0 && !isAdding && (
-                <div className="text-center py-20 opacity-50">
-                    <span className="text-6xl block mb-4">🌍</span>
-                    <p>Aucun voyage prévu. Ajoutez-en un pour voir l'impact sur vos finances !</p>
-                </div>
+                <EmptyState
+                    icon="🌍"
+                    title="Aucun voyage prévu"
+                    description="Ajoutez un voyage pour voir son impact sur vos finances et votre projection long terme."
+                />
             )}
         </div>
     );

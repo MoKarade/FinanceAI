@@ -222,7 +222,7 @@ services/marketData/
 | (déjà fait) | A.2 lazy pdf-vendor | ✅ | Déjà en place : `await import('./services/pdfReport')` dans App.tsx:305-306 depuis Phase 3E. |
 | TBD | A.3 MC perf cache Date | ✅ | `loopDates[]` pré-calculé hors boucle. ~504k allocations Date/calculateFutureProjection() → N (years*12+1). |
 | TBD | A.4 bundle cleanup | ✅ | knip → delete lunchMoney.ts + macroApi.ts (266L) + html2canvas (unused, pdf-vendor -203KB) |
-| — | B.1 empty states | ⏳ | — |
+| TBD | B.1 empty states | ✅ | EmptyState branché : Transactions (main list mobile), DebtManager, Travel, LifeEvents. Pattern unifié. |
 | — | B.2 skeletons | ⏳ | — |
 | — | B.3 Cmd+K palette | ⏳ | — |
 | — | C.1 Layout test RTL | ⏳ | — |

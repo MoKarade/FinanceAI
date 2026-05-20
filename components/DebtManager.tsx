@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Card } from './ui/Card';
+import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
 import { Badge } from './ui/Badge';
 import { Debt } from '../types';
@@ -98,7 +99,14 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                     <div className="text-right"><div className="font-mono text-red-400 font-bold">{d.balance.toLocaleString()} $</div><button onClick={() => handleDelete(d.id)} className="text-tiny text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">Supprimer</button></div>
                                 </div>
                             ))}
-                            {debts.length === 0 && <div className="text-center text-gray-500 text-sm py-4">Aucune dette. Bravo !</div>}
+                            {debts.length === 0 && (
+                                <EmptyState
+                                    variant="subtle"
+                                    icon="🎉"
+                                    title="Aucune dette"
+                                    description="Bravo ! Votre santé financière est au beau fixe."
+                                />
+                            )}
                         </div>
                     </Card>
                     <Card title="Stratégie de Remboursement">

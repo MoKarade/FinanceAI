@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Card } from './ui/Card';
+import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
 import { Button } from './ui/Button';
 import { LifeEvent, LifeEventType, TravelGoal } from '../types';
@@ -251,7 +252,13 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                 </div>
                             );
                         })}
-                        {filteredItems.length === 0 && <div className="pl-8 text-gray-500 text-sm italic">Aucun événement dans cette catégorie.</div>}
+                        {filteredItems.length === 0 && (
+                            <EmptyState
+                                variant="subtle"
+                                title="Aucun événement"
+                                description="Aucun événement dans cette catégorie pour le moment."
+                            />
+                        )}
                     </div>
                 </div>
 

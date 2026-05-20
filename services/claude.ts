@@ -122,49 +122,90 @@ export interface ChatMessage {
  * Appel Claude en one-shot. Retourne le texte complet quand prêt.
  * Use case: appels courts (analyses ponctuelles), background tasks.
  */
+// §7.C.2 — Timeout par défaut sur tous les appels Claude (évite UI bloquée
+// si la connexion gèle ou si le modèle hallucine longtemps).
+const DEFAULT_CLAUDE_TIMEOUT_MS = 30_000;
+
+/**
+ * Crée un AbortSignal qui combine un signal externe (optionnel) ET un timeout.
+ * Si l'externe abort en premier → on relaye. Si timeout en premier → on abort.
+ */
+function makeTimeoutSignal(externalSignal: AbortSignal | undefined, timeoutMs: number): { signal: AbortSignal; cleanup: () => void } {
+    const ctrl = new AbortController();
+    const timeoutId = setTimeout(() => ctrl.abort(new Error(`Claude timeout après ${timeoutMs}ms`)), timeoutMs);
+    let externalListener: (() => void) | undefined;
+    if (externalSignal) {
+        if (externalSignal.aborted) ctrl.abort(externalSignal.reason);
+        else {
+            externalListener = () => ctrl.abort(externalSignal.reason);
+            externalSignal.addEventListener('abort', externalListener, { once: true });
+        }
+    }
+    return {
+        signal: ctrl.signal,
+        cleanup: () => {
+            clearTimeout(timeoutId);
+            if (externalSignal && externalListener) {
+                externalSignal.removeEventListener('abort', externalListener);
+            }
+        },
+    };
+}
+
 export async function chat(
     messages: ChatMessage[],
     apiKey: string,
-    options: { system?: string; model?: string; maxTokens?: number; temperature?: number } = {},
+    options: { system?: string; model?: string; maxTokens?: number; temperature?: number; signal?: AbortSignal; timeoutMs?: number } = {},
 ): Promise<string> {
     if (!apiKey) throw new Error('Clé API Anthropic manquante.');
     const client = makeClient(apiKey);
-    const response = await client.messages.create({
-        model: options.model ?? MODEL_SONNET,
-        max_tokens: options.maxTokens ?? 1024,
-        temperature: options.temperature ?? 0.7,
-        system: options.system,
-        messages,
-    });
-    // La réponse Anthropic est un array de content blocks; on concatène les text.
-    return response.content
-        .filter(block => block.type === 'text')
-        .map(block => (block as { type: 'text'; text: string }).text)
-        .join('');
+    const { signal, cleanup } = makeTimeoutSignal(options.signal, options.timeoutMs ?? DEFAULT_CLAUDE_TIMEOUT_MS);
+    try {
+        const response = await client.messages.create({
+            model: options.model ?? MODEL_SONNET,
+            max_tokens: options.maxTokens ?? 1024,
+            temperature: options.temperature ?? 0.7,
+            system: options.system,
+            messages,
+        }, { signal });
+        // La réponse Anthropic est un array de content blocks; on concatène les text.
+        return response.content
+            .filter(block => block.type === 'text')
+            .map(block => (block as { type: 'text'; text: string }).text)
+            .join('');
+    } finally {
+        cleanup();
+    }
 }
 
 /**
  * Appel Claude en streaming. Retourne un async iterable de chunks de texte.
  * Use case: AiAssistant — affichage progressif token par token.
+ * §7.C.2 — supporte signal externe (bouton "Annuler") + timeout default 30s.
  */
 export async function* chatStream(
     messages: ChatMessage[],
     apiKey: string,
-    options: { system?: string; model?: string; maxTokens?: number; temperature?: number } = {},
+    options: { system?: string; model?: string; maxTokens?: number; temperature?: number; signal?: AbortSignal; timeoutMs?: number } = {},
 ): AsyncGenerator<string> {
     if (!apiKey) throw new Error('Clé API Anthropic manquante.');
     const client = makeClient(apiKey);
-    const stream = client.messages.stream({
-        model: options.model ?? MODEL_SONNET,
-        max_tokens: options.maxTokens ?? 2048,
-        temperature: options.temperature ?? 0.7,
-        system: options.system,
-        messages,
-    });
-    for await (const event of stream) {
-        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-            yield event.delta.text;
+    const { signal, cleanup } = makeTimeoutSignal(options.signal, options.timeoutMs ?? DEFAULT_CLAUDE_TIMEOUT_MS);
+    try {
+        const stream = client.messages.stream({
+            model: options.model ?? MODEL_SONNET,
+            max_tokens: options.maxTokens ?? 2048,
+            temperature: options.temperature ?? 0.7,
+            system: options.system,
+            messages,
+        }, { signal });
+        for await (const event of stream) {
+            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+                yield event.delta.text;
+            }
         }
+    } finally {
+        cleanup();
     }
 }
 

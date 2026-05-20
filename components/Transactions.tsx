@@ -5,6 +5,7 @@ import { showToast } from './ui/Toast';
 // Phase 4 A3: bascule sur services/claude.ts (Haiku 4.5 pour vitesse)
 import { categorizeBatch } from '../services/claude';
 import { Card } from './ui/Card';
+import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
 import { CATEGORY_ICONS } from '../constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -629,7 +630,14 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 {/* Mobile: vue cartes (< md) */}
                 <ul role="list" aria-label={`${filteredTransactions.length} transactions`} className="md:hidden space-y-2 pb-4 -mx-1">
                     {paginatedTransactions.length === 0 && (
-                        <li className="text-center text-gray-500 text-sm py-12">Aucune transaction.</li>
+                        <li>
+                            <EmptyState
+                                variant="subtle"
+                                icon="🔍"
+                                title="Aucune transaction"
+                                description="Importez un CSV ou ajustez les filtres pour voir vos transactions."
+                            />
+                        </li>
                     )}
                     {paginatedTransactions.map((t) => {
                         const isSelected = selectedIds.has(t.id);

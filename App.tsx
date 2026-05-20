@@ -11,13 +11,19 @@ import { fetchAssetHistory, fetchFxRates } from './services/finance';
 // Phase 3E perf — lazy-load pdfReport (jspdf = 595KB) seulement au clic
 // "Générer PDF" plutôt qu'au boot de l'app.
 import { useFinanceStore, getMigrationStatus } from './store/useFinanceStore';
+import { useShallow } from 'zustand/shallow';
 import { useDerivedFinancials } from './utils/useDerivedFinancials';
 import { TabRouter } from './components/TabRouter';
+import { CommandPalette, useCommandPalette, makeNavigationActions } from './components/ui/CommandPalette';
+import { useTranslation } from 'react-i18next';
+import { configureMarketDataProvider } from './services/marketData';
 
 const GuideModal = React.lazy(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })));
 
 export const App: React.FC = () => {
-    const state = useFinanceStore();
+    // useShallow prevents cascade re-renders when unrelated store slices change
+    // (e.g. aiConversation update should not re-render the whole App tree).
+    const state = useFinanceStore(useShallow(s => s));
     const setAppState = state.setAppState;
     const activeTab = state.activeTab;
     const setActiveTab = state.setActiveTab;
@@ -63,6 +69,20 @@ export const App: React.FC = () => {
         document.title = `FinanceAI - ${activeTab || 'Pro'}`;
     }, [activeTab]);
 
+    // §7.D.3 — <html lang> dynamique synchronisé avec i18next.
+    const { i18n: i18nInstance } = useTranslation();
+    useEffect(() => {
+        const lang = (i18nInstance.language || 'fr').split('-')[0];
+        if (document.documentElement.lang !== lang) {
+            document.documentElement.lang = lang;
+        }
+    }, [i18nInstance.language]);
+
+    // §7.F.5 — Configure le provider marketData (Finnhub) quand la clé change.
+    useEffect(() => {
+        configureMarketDataProvider({ finnhubKey: state.apiKeys.finnhub });
+    }, [state.apiKeys.finnhub]);
+
     // Cancel toute sync en cours quand le composant est démonté
     useEffect(() => {
         return () => {
@@ -74,6 +94,37 @@ export const App: React.FC = () => {
         setActiveTab(tab);
         window.location.hash = tab;
     };
+
+    // §7.B.3 — Command palette Cmd+K global
+    const cmdK = useCommandPalette();
+    const cmdActions = useMemo(() => [
+        ...makeNavigationActions(handleSetTab),
+        {
+            id: 'action:privacy',
+            label: isPrivacyMode ? 'Désactiver le mode privé' : 'Activer le mode privé',
+            group: 'Actions',
+            icon: isPrivacyMode ? '👁️' : '🙈',
+            keywords: ['privacy', 'masquer', 'cacher', 'discret'],
+            onSelect: () => togglePrivacyMode(),
+        },
+        {
+            id: 'action:guide',
+            label: 'Ouvrir le guide',
+            group: 'Actions',
+            icon: 'ℹ️',
+            keywords: ['guide', 'help', 'aide'],
+            onSelect: () => setShowGuide(true),
+        },
+        {
+            id: 'action:refresh',
+            label: 'Synchroniser les données',
+            group: 'Actions',
+            icon: '🔄',
+            keywords: ['sync', 'refresh', 'reload'],
+            onSelect: () => { loadData(state.apiKeys.eraContext); window.dispatchEvent(new Event('resize')); },
+        },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    ], [isPrivacyMode, handleSetTab]);
 
     const [isFirstLaunch, setIsFirstLaunch] = useState<boolean>(() => {
         try {
@@ -171,7 +222,7 @@ export const App: React.FC = () => {
 
         setIsLoading(true);
         try {
-            const currentState = pendingState || state;
+            const currentState = pendingState || useFinanceStore.getState();
             let startDateToFetch: string | undefined = undefined;
 
             if (currentState.transactions.length > 0) {
@@ -195,7 +246,7 @@ export const App: React.FC = () => {
                 return;
             }
 
-            const base = pendingState || state;
+            const base = pendingState || useFinanceStore.getState();
             const existingTxMap = new Map<number, Transaction>(base.transactions.map(t => [t.id, t]));
             const mergedList = [...base.transactions];
 
@@ -357,6 +408,7 @@ export const App: React.FC = () => {
                 </Suspense>
             </Layout>
             <ToastContainer />
+            <CommandPalette open={cmdK.isOpen} onClose={cmdK.close} actions={cmdActions} />
         </div>
     );
 };

@@ -98,7 +98,7 @@ const getInitialStateWithMigration = (): AppState => {
         retirementGoal: { targetAge: 65, targetMonthlyIncome: 4000, governmentPension: 1200 },
         financialGoals: [],
         initialBalances: {},
-        apiKeys: { eraContext: '', anthropic: '' },
+        apiKeys: { eraContext: '', anthropic: '', finnhub: '' },
         fxRates: DEFAULT_FX_RATES,
         lastUpdate: Date.now(),
         categorizationRules: [],
@@ -119,15 +119,17 @@ const getInitialStateWithMigration = (): AppState => {
         const legacyToken = localStorage.getItem('lm_token');
         // Phase 4 A5: Gemini retiré — pas de migration depuis l'ancienne clé.
         // L'utilisateur doit fournir une clé Anthropic Claude.
-        let safeApiKeys: { eraContext: string; anthropic: string } = {
+        let safeApiKeys: { eraContext: string; anthropic: string; finnhub: string } = {
             eraContext: legacyToken || '',
             anthropic: '',
+            finnhub: '',
         };
         if (savedApiKeysStr) {
             const parsed = JSON.parse(savedApiKeysStr);
             safeApiKeys = {
                 eraContext: parsed.eraContext || parsed.lunchMoney || safeApiKeys.eraContext,
                 anthropic: parsed.anthropic || '',
+                finnhub: parsed.finnhub || '',
             };
         }
 
@@ -261,7 +263,7 @@ export const useFinanceStore = create<FinanceState>()(
             // de la forme du state, et ajouter une étape dans `migrate`.
             // Sans version, toute évolution casse silencieusement le boot des
             // utilisateurs existants (cf audit 2026-05 §State management).
-            version: 3,
+            version: 4,
             migrate: (persistedState: unknown, fromVersion: number) => {
                 let state = persistedState as Partial<FinanceState>;
                 // v0/undefined → v1 : intro versioning
@@ -278,6 +280,20 @@ export const useFinanceStore = create<FinanceState>()(
                         apiKeys: {
                             eraContext: apiKeys.eraContext || '',
                             anthropic: apiKeys.anthropic || '',
+                        },
+                    } as Partial<FinanceState>;
+                }
+                // v3 → v4 : §7.F.5 — ajout apiKeys.finnhub pour le data sourcing
+                //   marketData (Finnhub provider). Default vide → mode dégradé
+                //   (assetMeta seed hardcodé utilisé en fallback).
+                if (fromVersion < 4 && (state as any)?.apiKeys) {
+                    const apiKeys = (state as any).apiKeys as { eraContext?: string; anthropic?: string; finnhub?: string };
+                    state = {
+                        ...state,
+                        apiKeys: {
+                            eraContext: apiKeys.eraContext || '',
+                            anthropic: apiKeys.anthropic || '',
+                            finnhub: apiKeys.finnhub || '',
                         },
                     } as Partial<FinanceState>;
                 }

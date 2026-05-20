@@ -14,9 +14,8 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
       },
       plugins: [react()],
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+      optimizeDeps: {
+        exclude: ['html2canvas'],
       },
       resolve: {
         alias: {
@@ -36,8 +35,9 @@ export default defineConfig(({ mode }) => {
               'react-vendor': ['react', 'react-dom'],
               'recharts': ['recharts'],
               'ai-vendor': ['@anthropic-ai/sdk'],
-              'pdf-vendor': ['jspdf', 'html2canvas'],
+              'pdf-vendor': ['jspdf'],
             },
+            external: ['html2canvas'],
           },
         },
       },

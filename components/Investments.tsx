@@ -18,6 +18,7 @@ import { Badge } from './ui/Badge';
 import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { CollapsibleSection } from './ui/CollapsibleSection';
+import { Skeleton } from './ui/Skeleton';
 import { fetchPortfolioHistory, MarketDataPoint } from '../services/finance';
 import { StockChart } from './StockChart';
 import { ASSET_META } from '../services/assetMeta';
@@ -498,8 +499,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 <div style={{ width: '100%', height: '400px' }}>
                     {isLoading ? (
                         <div className="w-full h-full flex flex-col gap-4">
-                            <div className="flex-1 skeleton-box rounded-xl"></div>
-                            <div className="h-8 skeleton-box rounded-lg w-3/4 mx-auto"></div>
+                            <Skeleton variant="chart" className="!h-auto flex-1" />
+                            <Skeleton variant="text" className="w-3/4 mx-auto !h-8" />
                         </div>
                     ) : filteredMarketData.length > 0 ? (
                         <StockChart

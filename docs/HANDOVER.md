@@ -11,18 +11,21 @@
 | Indicateur | Valeur |
 |---|---|
 | Branche principale | `main` |
-| Dernière PR mergée | **#82** (fix fiscaux §6.9 + §6.10) |
-| Tests | **227/227 verts** (24 fichiers) |
+| Dernière PR mergée | **#85** (Phase 7 — perf, a11y, market data, §7.G fixes, §8 polish) |
+| Tests | **412/412 verts** (32 fichiers) — +64 vs cycle 7 |
 | Typecheck | Clean en mode strict (`noImplicitAny`, `strictNullChecks`, `useUnknownInCatchVariables`) |
-| Build | OK — bundle ~3.5 MB, gzipped ~830 KB |
+| Build | OK — html2canvas exclu du bundle Vite (optimizeDeps.exclude + rollupOptions.external) |
 | Déploiement | Vercel (auto par PR) + GitHub Pages (workflow `.github/workflows/deploy-pages.yml`) |
 | Stack IA | `@anthropic-ai/sdk` (Sonnet 4.6 + Haiku 4.5) — **Gemini retiré** |
-| API banque | Era Context REST (`api.era.app`) avec 9 endpoints + cache TTL 1h |
-| Schema store | **v3** (Zustand persist, migrations v1→v2→v3) |
+| API banque | Era Context REST (`api.era.app`) — 9 endpoints + cache TTL 1h |
+| Market data | Finnhub REST (cours actions/ETF) via `services/marketData/` façade |
+| Schema store | **v4** (Zustand persist, migrations v1→v2→v3→v4 ; ajout `apiKeys.finnhub`) |
+| Audit fiscal | **22/22 items Phase 6** + **5/5 HIGH §7.G** tous ✅ |
+| CSP | `<meta>` dans `index.html` + `netlify.toml` (plus de `generativelanguage.googleapis.com`) |
+| apiKeys | Exclues du localStorage ET des deux formats de backup (JSON clair + chiffré) |
 
 L'app est **fonctionnelle de bout en bout**, déployée, et stable.
-Tous les chantiers structurels sont terminés. Ce qui reste est du domain-specific
-(Phase 6 tax features) ou des polish optionnels (Phase 5.3-5.5).
+Phase 7 et 7.G sont terminées. Phase 8 (tests, a11y, polish) en cours sur PR #85.
 
 ---
 
@@ -127,8 +130,40 @@ Tous les chantiers structurels sont terminés. Ce qui reste est du domain-specif
 ### 2.13 Documentation structurée (PR #81)
 - `c804534` : CHANGELOG cycle 6 (entrée massive) + `docs/ARCHITECTURE.md` (210 lignes, vue d'ensemble) + 4 ADRs dans `docs/adr/`
 
-### 2.14 Bugs fiscaux Phase 6 (PR #82)
+### 2.14 Bugs fiscaux Phase 6 partie 1 (PR #82)
 - `3269aaa` : §6.9 REEE plafond lifetime 50 000$/bénéficiaire + §6.10 FHSA fermeture à 71 ans + 2 tests régression
+
+### 2.15 Cleanup docs final (PR #83)
+- `d2a6f8f` : HANDOVER.md unique + suppression 9 docs obsolètes (-3400 lignes, -66%)
+
+### 2.16 Phase 6 fiscale **complète** — Cycle 7 (PR #84)
+
+Branche dédiée `claude/phase-6-tax-qc`, **8 items §6.1-§6.8 implémentés** sous
+protocole strict : impl → **4 agents review en parallèle** (typescript-reviewer,
+code-reviewer, silent-failure-hunter, tdd-guide) → fix HIGH/MEDIUM → tests
+intégration → triple validation locale → commit.
+
+Tests : **243 → 348 (+105 nouveaux)**.
+
+| Commit | Item | Description |
+|---|---|---|
+| `cd96128` | docs | Plan de match Phase 6 + valeurs officielles 2026 |
+| `4d13d4a` | §6.2 | Crédits 65+ et revenu de retraite (fed + QC) — ~970$/pers./an |
+| `49ade96` | §6.2 | Review findings : 4 agents (TS + code + silent + tdd) |
+| `a55a649` | §6.4 | RAMQ prime médicaments — jusqu'à 1 532$/couple/an |
+| `8d9e9ee` | §6.6 | OSFI B-20 stress test hypothécaire (qualifying rate, GDS, TDS) |
+| `e51fd67` | §6.8 | SCHL validation MDP min (5/10/20%) + amortissement max (25/30 ans) |
+| `d99cb39` | §6.1 | FSS Fonds santé QC retraités — jusqu'à 1 000$/adulte/an |
+| `ddfdabd` | §6.5 | SCHL prime hypothécaire LTV > 80% — 0.6-4% sur principal |
+| `9c3ef24` | §6.7 | TPS/TVQ remboursement résidence neuve — jusqu'à 5 400$ pour 300k$ |
+| `d0f7587` | §6.3 | SRG Supplément revenu garanti — jusqu'à 13 200$/an célibataire |
+| `2d31789` | bonus | Fix flaky `RealEstateGoal isActive guard` (totalClosingCosts manquant) |
+| `5d51cb7` | docs | CHANGELOG cycle 7 + PLAN_PHASE_6 marqué TERMINÉ |
+
+**Nouvelles fonctions exposées** :
+- `utils/tax.ts` : `calculateAgeAndPensionCredits`, `calculateRamqPremium`, `calculateFSSPremium`, `calculateGISBenefit`
+- `services/realEstate.ts` : `calculateB20StressTest`, `validateMortgageParameters`, `calculateMinDownPayment`, `calculateSchlPremium`, `calculateNewHomeRebateTotal`
+- Types étendus : `RealEstateGoal.isFirstTimeBuyer`, `RealEstateGoal.isNewConstruction`
 
 ---
 
@@ -148,18 +183,18 @@ Tous les chantiers structurels sont terminés. Ce qui reste est du domain-specif
 | F8 | ✅ Fixé | RRQ_RATE = 0.064 |
 | F9 | ✅ Fixé | OAS_CLAWBACK_2026 = 93 454$ |
 | F10 | ✅ Fixé | Paliers fédéraux + QC indexés |
-| F11 | ⏳ | Deux sources de vérité RRQ_MPE — à vérifier |
-| F12 | ⏳ | Retenue source REER QC : 5/10/15% combinés |
+| F11 | ⏳ | Deux sources de vérité RRQ_MPE — à vérifier (cosmétique) |
+| F12 | ⏳ | Retenue source REER QC : 5/10/15% combinés (impact mineur) |
 | F13 | ✅ Fixé | REEE plafond 50k$/bénéficiaire (PR #82) |
-| F14 | ⏳ | SCHL prime hypothécaire (§6.5) |
-| F15 | ⏳ | Stress test B-20 OSFI (§6.6) |
-| F16 | ⏳ | FSS retraités (§6.1) |
-| F17 | ⏳ | Crédits 65+ et revenu retraite QC (§6.2) |
-| F18 | ⏳ | SRG (§6.3) |
-| F19 | ⏳ | RAMQ médicaments (§6.4) |
-| F20 | ⏳ | TPS/TVQ résidence neuve (§6.7) |
-| F21 | ⏳ | Validation mise de fonds min + amortissement max (§6.8) |
-| F22 | ⏳ | BPA fédéral/QC précision décimale |
+| F14 | ✅ Fixé | SCHL prime hypothécaire — PR #84 §6.5 |
+| F15 | ✅ Fixé | Stress test B-20 OSFI — PR #84 §6.6 |
+| F16 | ✅ Fixé | FSS retraités — PR #84 §6.1 |
+| F17 | ✅ Fixé | Crédits 65+ et revenu retraite QC — PR #84 §6.2 |
+| F18 | ✅ Fixé | SRG — PR #84 §6.3 |
+| F19 | ✅ Fixé | RAMQ médicaments — PR #84 §6.4 |
+| F20 | ✅ Fixé | TPS/TVQ résidence neuve — PR #84 §6.7 |
+| F21 | ✅ Fixé | Validation mise de fonds min + amortissement max — PR #84 §6.8 |
+| F22 | ⏳ | BPA fédéral/QC précision décimale (cosmétique) |
 
 ### 3.2 Sécurité (audit §Sécurité)
 
@@ -184,43 +219,30 @@ Tous les chantiers structurels sont terminés. Ce qui reste est du domain-specif
 | 5.5 | ⏳ | Contrast AA check tokens |
 | 5.6 | ✅ | CHANGELOG cycle 6 + ARCHITECTURE.md + 4 ADRs |
 
-### 3.4 Phase 6 (manques fiscaux)
+### 3.4 Phase 6 (manques fiscaux) — ✅ TOUS TERMINÉS
 
-| # | Statut | Description |
-|---|---|---|
-| 6.1 | ⏳ | FSS retraités |
-| 6.2 | ⏳ | Crédits 65+ et revenu retraite QC |
-| 6.3 | ⏳ | SRG |
-| 6.4 | ⏳ | RAMQ médicaments |
-| 6.5 | ⏳ | SCHL prime hypothécaire |
-| 6.6 | ⏳ | Stress test B-20 OSFI |
-| 6.7 | ⏳ | TPS/TVQ résidence neuve |
-| 6.8 | ⏳ | Mise de fonds min + amortissement max |
-| 6.9 | ✅ | REEE plafond 50k$ lifetime (PR #82) |
-| 6.10 | ✅ | FHSA fermeture 71 ans (PR #82) |
-| 6.11 | 🚧 | Tests régression (2/N — pour 6.9 et 6.10) |
+| # | Statut | Description | PR |
+|---|---|---|---|
+| 6.1 | ✅ | FSS retraités | #84 |
+| 6.2 | ✅ | Crédits 65+ et revenu retraite QC | #84 |
+| 6.3 | ✅ | SRG | #84 |
+| 6.4 | ✅ | RAMQ médicaments | #84 |
+| 6.5 | ✅ | SCHL prime hypothécaire | #84 |
+| 6.6 | ✅ | Stress test B-20 OSFI | #84 |
+| 6.7 | ✅ | TPS/TVQ résidence neuve | #84 |
+| 6.8 | ✅ | Mise de fonds min + amortissement max | #84 |
+| 6.9 | ✅ | REEE plafond 50k$ lifetime | #82 |
+| 6.10 | ✅ | FHSA fermeture 71 ans | #82 |
+| 6.11 | ✅ | Tests régression (105 nouveaux tests via protocole agents review) | #84 |
 
 ---
 
 ## 4. Ce qui est prévu pour la suite
 
-### 4.1 Court terme — Phase 6 tax features (priorité haute, impact direct)
+### 4.1 ✅ Phase 6 fiscale — TERMINÉE (cycle 7, PR #84)
 
-Items à fort impact $ qui restent **non-implémentés** :
-
-| Item | Effort | Impact $ | Notes |
-|---|---|---|---|
-| §6.2 Crédits 65+ et revenu retraite QC | 4h | ~970$/personne/an | Crédits non remboursables QC — à ajouter dans `utils/tax.ts` `calculateFiscalReport` |
-| §6.3 SRG (Supplément revenu garanti) | 6h | Variable, **crucial** pour scénarios faible revenu retraite | Logique de clawback complexe (table de revenu) |
-| §6.4 RAMQ médicaments | 3h | ~744$/adulte/an | Prime annuelle indexée au revenu |
-| §6.1 FSS retraités | 3h | Jusqu'à 1 000$/an | Contribution santé QC, > 65 ans |
-| §6.5 SCHL prime hypothécaire | 4h | 2.8-4% du prêt | Automatique si mise de fonds < 20% |
-| §6.6 Stress test B-20 OSFI | 3h | Validation OSFI | `max(contractRate + 2%, 5.25%)` |
-| §6.7 TPS/TVQ résidence neuve | 4h | Remboursement partiel jusqu'à 450k$ | Logique de paliers |
-| §6.8 Validation mise de fonds + amortissement max | 2h | Garde-fou réaliste | 5%/35 ans accepté actuellement sans contrainte |
-
-**Ordre suggéré** : 6.2 → 6.4 → 6.6 → 6.8 → 6.1 → 6.5 → 6.7 → 6.3
-(le plus de valeur unitaire en premier, SRG complexe en dernier)
+Les 8 items §6.1-§6.8 sont implémentés et testés (voir §2.16 + §3.4).
+**Plus rien à faire côté fiscal structurel.**
 
 ### 4.2 Court terme — Polish a11y/UX (priorité moyenne)
 
@@ -246,15 +268,15 @@ Items à fort impact $ qui restent **non-implémentés** :
 
 ### 5.1 Immédiat (avant tout nouveau chantier)
 
-1. **Vérifier visuellement les 7 scénarios MC** sur Vercel preview après PR #77/78.
-   Confirmer que `COMPOUND_STRESS` et `LATE_INHERITANCE` affichent leur badge "Nouveau"
-   correctement et que la grille `xl:grid-cols-7` tient sur un écran 1440px.
-
-2. **Tester sur mobile 360px réel** (iPhone SE / Galaxy A entry-level).
+1. **Tester sur mobile 360px réel** (iPhone SE / Galaxy A entry-level).
    Le seul critère UI non validé manuellement.
 
-3. **Run `npm run knip`** pour identifier les dead code / imports inutilisés
+2. **Run `npm run knip`** pour identifier les dead code / imports inutilisés
    (la commande est dans `package.json` mais pas exécutée régulièrement).
+
+3. **Vérifier les nouvelles fonctions fiscales en production** (Vercel preview) :
+   simuler un retraité 70+ pour confirmer que crédits âge + RAMQ + FSS
+   apparaissent dans `chartData` mensuels et impactent le patrimoine projeté.
 
 ### 5.2 Hygiène continue
 
@@ -318,12 +340,16 @@ Items à fort impact $ qui restent **non-implémentés** :
 - **Command palette Cmd+K** (audit §4.5) : nav globale rapide. Effort modéré
   (~6h) mais transforme l'UX desktop.
 
-#### E. Domaine fiscal (impact très haut, effort élevé)
+#### E. Domaine fiscal — ✅ TERMINÉ (cycle 7)
 
-- Implémenter les §6.1-6.8 dans l'ordre suggéré §4.1.
-- Ajouter des tests régression par item (§6.11). 9h estimés pour ~25 tests.
-- Considérer un mode "audit fiscal" qui présente toutes les hypothèses de calcul
-  à l'utilisateur de manière transparente (le mode actuel est implicite).
+Tous les items §6.1-§6.10 sont implémentés (voir §2.16). Améliorations
+potentielles restantes (cosmétiques) :
+
+- **F11** Unifier `RRQ_MPE_ESTIMATE` vs `RRQ_MPE` (deux sources de vérité)
+- **F12** Retenue source REER QC : décomposer 5/10/15% combinés
+- **F22** BPA fédéral/QC précision décimale (~0.5% d'imprécision)
+- Mode "audit fiscal" qui exposerait toutes les hypothèses de calcul à
+  l'utilisateur — actuellement implicite.
 
 ---
 
@@ -350,6 +376,7 @@ Pour réduire le bruit et éviter les sources de vérité divergentes :
 |---|---|
 | `docs/AUDIT_2026-05.md` | Statut consolidé dans ce HANDOVER §3 |
 | `docs/PLAN_PHASE_4.md` | Migration Claude+Era terminée — ADR-001 + ADR-002 résument |
+| `docs/PLAN_PHASE_6.md` | Phase 6 terminée (cycle 7) — info consolidée dans CHANGELOG cycle 7 + HANDOVER §2.16 |
 | `docs/UI_REFOUNDATION_PLAN.md` | Toutes phases terminées — ADR-004 résume |
 | `docs/TYPECHECK_BACKLOG.md` | Backlog résorbé — info captée dans ADR-003 |
 | `docs/archive/AUDIT_REPORT.md` | Audit initial 30 agents — remplacé par AUDIT_2026-05 puis HANDOVER |

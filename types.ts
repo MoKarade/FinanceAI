@@ -610,6 +610,7 @@ export interface AppState {
   apiKeys: {
     eraContext: string;
     anthropic: string; // Phase 4 A5 — Claude API key (Anthropic) — remplace Gemini
+    finnhub: string;   // §7.F.5 — marketData (quotes/history/profile) — optionnel
   };
   fxRates: {
     USD: number;

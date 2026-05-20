@@ -50,6 +50,8 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
   const [streamingText, setStreamingText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // §7.C.2 — AbortController pour permettre à l'utilisateur d'annuler un stream.
+  const abortRef = useRef<AbortController | null>(null);
 
   const messagesToRender: AiMessage[] = aiConversation.length === 0 ? [GREETING] : aiConversation;
 
@@ -204,8 +206,10 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
       // On crée un message "vide" qu'on va remplir progressivement
       appendMessage({ role: 'model', text: '', timestamp: new Date().toISOString() });
 
+      // §7.C.2 — Crée un AbortController par requête, accessible via bouton "Annuler"
+      abortRef.current = new AbortController();
       let accumulated = '';
-      for await (const chunk of chatStream(messages, apiKey, { system: systemPrompt })) {
+      for await (const chunk of chatStream(messages, apiKey, { system: systemPrompt, signal: abortRef.current.signal })) {
         accumulated += chunk;
         setStreamingText(accumulated);
         updateLastModelMessage(accumulated);
@@ -342,6 +346,16 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
                 className="flex-1 bg-transparent px-4 text-sm text-white outline-none disabled:opacity-50 placeholder-gray-500 font-medium"
                 disabled={isLoading}
               />
+              {isLoading ? (
+                <button
+                  onClick={() => abortRef.current?.abort(new DOMException('User cancelled', 'AbortError'))}
+                  aria-label="Annuler la génération"
+                  title="Annuler"
+                  className="bg-danger-500 hover:bg-danger-400 text-white w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg shadow-danger-500/20 focus-ring"
+                >
+                  ⏹
+                </button>
+              ) : (
               <button
                 onClick={() => handleSend()}
                 disabled={isLoading || !input.trim()}
@@ -350,6 +364,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
               >
                 ➚
               </button>
+              )}
             </div>
           </div>
         </div>

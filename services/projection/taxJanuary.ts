@@ -2,7 +2,7 @@
 // Cycle 23 split (depuis taxCycle.ts): réinitialisation annuelle de janvier.
 // Cycle 12 (origine): exécuté uniquement en janvier (currentMonthIndex === 0 && m > 0).
 
-import { FHSA_LIFETIME_LIMIT_PER_USER, FHSA_ANNUAL_LIMIT_PER_USER, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
+import { FHSA_LIFETIME_LIMIT_PER_USER, FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
 //
 // Janvier — Réinitialisation annuelle + recalcul plafonds CELI/FHSA/REER + FERR.
 //
@@ -143,12 +143,10 @@ export function processJanuaryReset(
     }
 
     // === 3. REER: 18% revenu brut canadien année précédente - FE ===
-    let rrspYearlyCap = 33330;
-    if (nextLoopYear === 2025) rrspYearlyCap = 32490;
-    else if (nextLoopYear > 2026) {
-        const assumedRrspGrowth = (ctx.simInflation + 0.5) / 100;
-        rrspYearlyCap = 33330 * Math.pow(1 + assumedRrspGrowth, nextLoopYear - 2026);
-    }
+    // Use RRSP_ANNUAL_LIMITS when year is known; extrapolate beyond table via
+    // inflation + 0.5%/yr from the 2026 official cap (§7.G RRSP desync fix).
+    const rrspYearlyCap = RRSP_ANNUAL_LIMITS[nextLoopYear]
+        ?? (RRSP_ANNUAL_LIMITS[2026] * Math.pow(1 + (ctx.simInflation + 0.5) / 100, nextLoopYear - 2026));
     const totalFE = ctx.users.reduce((acc, u) => acc + (u?.facteurEquivalence || 0), 0);
     const newRrspRoom = Math.max(0, Math.min(rrspYearlyCap * ctx.activeUsersCount, ctx.accGrossIncomeYear * 0.18) - totalFE);
 

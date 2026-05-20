@@ -1,11 +1,14 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Brush } from 'recharts';
+// Phase 7.A.1 — DashboardEvolutionChart lazy-load pour différer le chunk recharts (~445KB)
+// hors du premier paint au boot (Dashboard = tab par défaut).
+const DashboardEvolutionChart = React.lazy(() => import('./dashboard/DashboardEvolutionChart'));
 import { Transaction, Asset, BudgetCategory, RealEstateGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Tab, Debt } from '../types';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
 import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
+import { Skeleton } from './ui/Skeleton';
 import { fetchPortfolioHistory, MarketDataPoint } from '../services/finance';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import { ASSET_META } from '../services/assetMeta';
@@ -353,27 +356,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 }
             >
                 <div className="w-full h-[380px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={unifiedHistory} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                            <defs>
-                                {accountKeys.map((key, idx) => (
-                                    <linearGradient key={key} id={`color${idx}`} x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor={COLORS[idx % COLORS.length]} stopOpacity={0.8} />
-                                        <stop offset="95%" stopColor={COLORS[idx % COLORS.length]} stopOpacity={0.1} />
-                                    </linearGradient>
-                                ))}
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" vertical={false} />
-                            <XAxis dataKey="date" stroke="#555" tick={{ fontSize: 10 }} minTickGap={50} tickFormatter={(str) => new Date(str).toLocaleDateString(undefined, { month: 'short', year: '2-digit' })} />
-                            <YAxis stroke="#555" tick={{ fontSize: 10 }} width={45} domain={['auto', 'auto']} tickFormatter={(val) => isPrivacyMode ? '***' : `${(val / 1000).toFixed(0)}k`} />
-                            <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', borderColor: '#333', borderRadius: '8px', fontSize: '12px' }} itemStyle={{ color: '#fff' }} formatter={(val: number, name: string) => [isPrivacyMode ? '*** $' : (val || 0).toLocaleString() + ' $', name]} labelFormatter={(label) => new Date(label).toLocaleDateString()} />
-                            <Legend verticalAlign="top" iconSize={8} wrapperStyle={{ fontSize: '10px' }} />
-                            {accountKeys.map((key, idx) => (
-                                <Area key={key} type="monotone" dataKey={key} stackId="1" stroke={COLORS[idx % COLORS.length]} fill={`url(#color${idx})`} name={key} />
-                            ))}
-                            <Brush dataKey="date" height={20} stroke="#444" fill="#111" tickFormatter={() => ''} />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                    <Suspense fallback={<Skeleton variant="chart" />}>
+                        <DashboardEvolutionChart
+                            unifiedHistory={unifiedHistory}
+                            accountKeys={accountKeys}
+                            colors={COLORS}
+                            isPrivacyMode={isPrivacyMode}
+                        />
+                    </Suspense>
                 </div>
             </Card>
 

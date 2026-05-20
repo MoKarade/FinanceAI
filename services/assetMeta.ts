@@ -1,9 +1,16 @@
-// Metadonnees hardcodees du portefeuille : secteur, region, rendement,
-// frequence de versement et mois du prochain dividende.
+// §7.F.3 — assetMeta hybride : seed hardcodé (fallback offline) + override
+// dynamique via getProfile(symbol) marketData provider.
 //
-// Extrait de components/Investments.tsx (bug audit #11) pour casser le
-// couplage Dashboard -> Investments. Dashboard tirait ~53ko d'Investments
-// uniquement pour cet objet.
+// Avant : 13 symboles hardcodés, jamais à jour, manque les nouveaux achats.
+// Après : ASSET_META = seed initial. getAssetMeta(symbol) priorise un profil
+// dynamique (Finnhub) si disponible, sinon retourne le seed, sinon une
+// valeur "inconnue" minimale.
+//
+// Migration : les consumers existants (`ASSET_META[symbol]`) restent
+// compatibles tant qu'ils ne sont pas mis à jour. Nouveau code doit utiliser
+// `getAssetMeta(symbol)` async.
+
+import { getProfile, type AssetProfile } from './marketData';
 
 export interface AssetMeta {
   sector: string;
@@ -14,6 +21,7 @@ export interface AssetMeta {
   nextPayMonth?: number;
 }
 
+/** Seed hardcodé — fallback quand marketData provider absent ou échoue. */
 export const ASSET_META: Record<string, AssetMeta> = {
   // US TECH / SEMI
   "NASDAQ:NVDA": { name: "Nvidia", sector: "Technologie", region: "USA", yield: 0.02, freq: 4, nextPayMonth: 3 },
@@ -38,3 +46,49 @@ export const ASSET_META: Record<string, AssetMeta> = {
   "BIT:GBS": { name: "Gold Bullion", sector: "Mines/Or", region: "Global", yield: 0, freq: 1 },
   "EPA:PAAS": { name: "Pan American", sector: "Mines/Or", region: "Ameriques", yield: 1.2, freq: 4, nextPayMonth: 2 },
 };
+
+const UNKNOWN_META: AssetMeta = {
+  name: 'Inconnu',
+  sector: 'Autre',
+  region: 'Global',
+  yield: 0,
+  freq: 1,
+};
+
+/** Convertit un AssetProfile (marketData) vers notre AssetMeta historique. */
+function profileToMeta(profile: AssetProfile): AssetMeta {
+  return {
+    name: profile.name,
+    sector: profile.sector,
+    region: profile.region,
+    yield: profile.dividendYield,
+    freq: 4, // valeur sentinel — Finnhub /profile2 ne renvoie pas la freq
+  };
+}
+
+/**
+ * Récupère la metadata d'un actif. Priorité :
+ *   1. marketData provider dynamique (si configuré)
+ *   2. ASSET_META seed hardcodé
+ *   3. UNKNOWN_META par défaut
+ *
+ * Async pour permettre le fetch réseau. Cache TTL 24h géré par marketData/cache.
+ */
+export async function getAssetMeta(symbol: string): Promise<AssetMeta> {
+  // 1. Tente le provider dynamique
+  try {
+    const profile = await getProfile(symbol);
+    if (profile) return profileToMeta(profile);
+  } catch {
+    // silently fallback to seed
+  }
+  // 2. Seed hardcodé
+  if (ASSET_META[symbol]) return ASSET_META[symbol];
+  // 3. Unknown — pas de crash sur un nouveau symbole inconnu
+  return { ...UNKNOWN_META, name: symbol };
+}
+
+/** Version sync (rétrocompat). Lit uniquement le seed sans tenter le provider. */
+export function getAssetMetaSync(symbol: string): AssetMeta {
+  return ASSET_META[symbol] ?? { ...UNKNOWN_META, name: symbol };
+}

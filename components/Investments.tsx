@@ -25,6 +25,7 @@ import { ASSET_META } from '../services/assetMeta';
 import { DividendPanel } from './investments/DividendPanel';
 import { formatCAD } from '../utils/format';
 import { getRebalanceJustifications, type RebalanceActionInput } from '../services/claude';
+import { AddStockForm } from './investments/AddStockForm';
 import { useFinanceStore } from '../store/useFinanceStore';
 
 interface InvestmentsProps {
@@ -120,6 +121,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
     // Phase E.7 — justifications IA des actions de rééquilibrage
     const [iaJustifications, setIaJustifications] = useState<Map<string, string>>(new Map());
     const [isFetchingJustifications, setIsFetchingJustifications] = useState(false);
+    // Phase E.9 — modal d'ajout manuel d'une action
+    const [showAddStockForm, setShowAddStockForm] = useState(false);
 
     // --- INSTANT DATA LOAD ---
     useEffect(() => {
@@ -902,7 +905,18 @@ export const Investments: React.FC<InvestmentsProps> = ({
             })()}
 
             {/* 5. STOCK CARDS GRID — Phase E.3 sub-tab 'detail' */}
-            {subTab === 'detail' && <CollapsibleSection
+            {subTab === 'detail' && <>
+                {/* Phase E.9 — bouton d'ajout manuel d'action */}
+                <div className="flex justify-end">
+                    <button
+                        type="button"
+                        onClick={() => setShowAddStockForm(true)}
+                        className="px-3 py-1.5 bg-primary/15 hover:bg-primary/25 border border-primary/40 text-primary text-tiny font-bold rounded-card transition-colors focus-ring"
+                    >
+                        + Ajouter une action
+                    </button>
+                </div>
+                <CollapsibleSection
                 title="Portefeuille Détaillé"
                 icon="📦"
                 subtitle="Tous les actifs avec performance et compte fiscal"
@@ -970,7 +984,19 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     );
                 })}
             </div>
-            </CollapsibleSection>}
+            </CollapsibleSection>
+            </>}
+
+            {/* Phase E.9 — Modal d'ajout manuel */}
+            <AddStockForm
+                isOpen={showAddStockForm}
+                onClose={() => setShowAddStockForm(false)}
+                onAdd={(newAsset) => {
+                    if (setAssets) {
+                        setAssets([...assets, newAsset]);
+                    }
+                }}
+            />
 
         </div>
     );

@@ -28,67 +28,41 @@ export const CATEGORY_ICONS: Record<string, string> = {
 // PROFIL PAR DÉFAUT — Neutre, à configurer dans Settings
 // Les vrais chiffres sont entrés par l'utilisateur dans Paramètres
 // ============================================================
+// P1 — Defaults factices "Marc / Anna" retirés (doc directives utilisateur :
+// "je veux vide tant que j'ai pas rentré les infos moi").
+// L'Onboarding remplit ces valeurs avec les vraies données utilisateur au
+// premier launch. Couleurs préservées car cosmétiques.
 export const INITIAL_USERS: [User, User] = [
   {
-    name: "Marc",
-    grossSalary: 110000,
-    netSalary: 6200,
+    name: "",
+    grossSalary: 0,
+    netSalary: 0,
     color: "#BFDBFE",
-    age: 34,
-    birthYear: 1991, // V38: Strict Canadian mode
-    canadaArrivalYear: 2023,
+    age: 0,
+    birthYear: 0,
+    canadaArrivalYear: 0,
     hasOwnedPropertyLast4Years: false,
     hasChildren: false,
     childCount: 0
   },
   {
-    name: "Anna",
-    grossSalary: 85000,
-    netSalary: 4800,
+    name: "",
+    grossSalary: 0,
+    netSalary: 0,
     color: "#FBCFE8",
-    age: 32,
-    birthYear: 1993,
-    canadaArrivalYear: 2023,
+    age: 0,
+    birthYear: 0,
+    canadaArrivalYear: 0,
     hasOwnedPropertyLast4Years: false,
     hasChildren: false,
     childCount: 0
   }
 ];
 
-// Budget par défaut générique — catégories communes, montants à ajuster
-export const INITIAL_BUDGET: BudgetCategory[] = [
-  { id: "cat_loyer", name: "Loyer / Hypothèque", target: 1500, frequency: "Monthly", type: "Commun", nature: "Besoin" },
-  { id: "cat_costco", name: "Costco / Vrac", target: 300, frequency: "Monthly", type: "Commun", nature: "Besoin" },
-  { id: "cat_hydro", name: "Hydro-Québec", target: 100, frequency: "Monthly", type: "Commun", nature: "Besoin" },
-  { id: "cat_epicerie", name: "Épicerie", target: 500, frequency: "Monthly", type: "Commun", nature: "Besoin" },
-  { id: "cat_internet", name: "Internet / Wifi", target: 80, frequency: "Monthly", type: "Commun", nature: "Besoin" },
-  { id: "cat_ass_hab", name: "Assurance Habitation", target: 50, frequency: "Monthly", type: "Commun", nature: "Besoin" },
-  { id: "cat_pharmacie", name: "Pharmacie", target: 50, frequency: "Monthly", type: "Commun", nature: "Besoin" },
-  { id: "cat_prod_men", name: "Produits Ménagers / Entretien", target: 40, frequency: "Monthly", type: "Commun", nature: "Besoin" },
-  { id: "cat_ent_auto", name: "Entretien auto", target: 50, frequency: "Monthly", type: "Commun", nature: "Besoin" },
-  { id: "cat_essence", name: "Essence", target: 150, frequency: "Monthly", type: "Commun", nature: "Besoin" },
-
-  { id: "cat_voyage", name: "Voyage", target: 200, frequency: "Monthly", type: "Commun", nature: "Envie" },
-  { id: "cat_meubles", name: "Meubles & Déco", target: 50, frequency: "Monthly", type: "Commun", nature: "Envie" },
-  { id: "cat_tech", name: "Tech", target: 100, frequency: "Monthly", type: "Commun", nature: "Envie" },
-  { id: "cat_resto", name: "Resto / Sorties", target: 200, frequency: "Monthly", type: "Commun", nature: "Envie" },
-  { id: "cat_vape", name: "Vape", target: 60, frequency: "Monthly", type: "Commun", nature: "Envie" },
-  { id: "cat_activites", name: "Activités / Sorties", target: 100, frequency: "Monthly", type: "Commun", nature: "Envie" },
-  { id: "cat_streaming", name: "Streaming", target: 30, frequency: "Monthly", type: "Commun", nature: "Envie" },
-  { id: "cat_alcool", name: "Alcool / SAQ", target: 80, frequency: "Monthly", type: "Commun", nature: "Envie" },
-  { id: "cat_beuh", name: "Beuh", target: 60, frequency: "Monthly", type: "Commun", nature: "Envie" },
-  { id: "cat_hobby", name: "Hobby", target: 50, frequency: "Monthly", type: "Commun", nature: "Envie" },
-  { id: "cat_cadeaux", name: "Cadeaux", target: 50, frequency: "Monthly", type: "Commun", nature: "Envie" },
-  { id: "cat_vetements", name: "Vêtements", target: 100, frequency: "Monthly", type: "Commun", nature: "Envie" },
-  { id: "cat_coiffeur", name: "Coiffeur", target: 40, frequency: "Monthly", type: "Commun", nature: "Envie" },
-  { id: "cat_jeux", name: "Jeux Vidéo", target: 40, frequency: "Monthly", type: "Commun", nature: "Envie" },
-  { id: "cat_sport", name: "Sport", target: 50, frequency: "Monthly", type: "Commun", nature: "Envie" },
-  { id: "cat_cafe", name: "Café / Snacks", target: 50, frequency: "Monthly", type: "Commun", nature: "Envie" },
-  { id: "cat_stat", name: "Stationnement", target: 20, frequency: "Monthly", type: "Commun", nature: "Envie" },
-
-  { id: "cat_finances", name: "Finances", target: 500, frequency: "Monthly", type: "Commun", nature: "Epargne" },
-  { id: "cat_autre", name: "Autre", target: 100, frequency: "Monthly", type: "Commun", nature: "Envie" }
-];
+// P1 — Catégories de budget retirées (doc directives : zéro données factices).
+// L'utilisateur crée ses propres catégories dans Budget. Une suggestion IA
+// peut générer un budget basé sur les vraies transactions importées.
+export const INITIAL_BUDGET: BudgetCategory[] = [];
 
 export const INITIAL_CONFIG: BudgetConfig = {
   users: INITIAL_USERS,
@@ -110,20 +84,24 @@ export const INITIAL_PROJECTION: ProjectionConfig = {
   useTheoretical: false
 };
 
+// P1 — Defaults factices immobilier retirés (zéro données factices).
+// L'utilisateur saisit son propre projet immobilier dans l'onglet Immobilier.
+// `isActive: false` donc rien n'apparaît dans les projections tant qu'il
+// n'a pas activé un projet.
 export const INITIAL_REAL_ESTATE_GOAL: RealEstateGoal = {
   id: 'main_property',
   isActive: false,
   purchaseDate: new Date(new Date().setFullYear(new Date().getFullYear() + 3)).toISOString().split('T')[0],
-  price: 450000,
-  downPayment: 90000,
-  mortgageRate: 4.5,
+  price: 0,
+  downPayment: 0,
+  mortgageRate: 0,
   amortization: 25,
-  totalClosingCosts: 10000,
-  monthlyPayment: 2100,
-  unrecoverableMonthly: 1500,
+  totalClosingCosts: 0,
+  monthlyPayment: 0,
+  unrecoverableMonthly: 0,
   isPrimaryResidence: true,
   isRented: false,
-  maxValue: 1200000
+  maxValue: 0
 };
 
 // Valeurs réalistes pour la planification d'un enfant (Québec 2025)

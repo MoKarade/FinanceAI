@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { formatNumber, formatPercent } from '../../utils/format';
+import { useHasUserData } from '../../utils/useHasUserData';
+import { EmptyDataPrompt } from '../ui/EmptyDataPrompt';
 
 /**
  * Phase D.6 — indicateur de santé financière paramétrable.
@@ -80,8 +82,21 @@ interface MetricRow {
 }
 
 export const HealthIndicator: React.FC<{ className?: string }> = ({ className = '' }) => {
+    // P1 gating — score 0-100 sans données → bogus. On masque tant que pas saisi.
+    const { hasData } = useHasUserData();
     const [weights, setWeights] = useState<Weights>(loadWeights);
     const [showSettings, setShowSettings] = useState(false);
+
+    if (!hasData) {
+        return (
+            <EmptyDataPrompt
+                icon="🩺"
+                title="Score de santé financière indisponible"
+                description="Renseigne ton profil (salaire, dépenses) pour calculer ton score 0-100 et tes 4 ratios (épargne, coussin, dette, FIRE)."
+                className={className}
+            />
+        );
+    }
 
     const config = useFinanceStore(s => s.config);
     const budgetItems = useFinanceStore(s => s.budgetItems);

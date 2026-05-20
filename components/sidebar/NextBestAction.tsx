@@ -3,6 +3,8 @@ import { useFinanceStore } from '../../store/useFinanceStore';
 import { getNextBestActions, type NextBestAction as NBAction, type FinancialSnapshot } from '../../services/claude';
 import { buildEnrichedContext } from '../../services/aiOrchestrator';
 import { formatCAD } from '../../utils/format';
+import { useHasUserData } from '../../utils/useHasUserData';
+import { Tab } from '../../types';
 
 /**
  * Phase B.3 — widget IA "Prochaine Meilleure Action".
@@ -61,6 +63,9 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen })
 
     const apiKey = useFinanceStore(s => s.apiKeys.anthropic);
     const eraToken = useFinanceStore(s => s.apiKeys.eraContext);
+    const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
+    // P1 gating — pas de recommandation pertinente sans données utilisateur
+    const { hasData } = useHasUserData();
     const assets = useFinanceStore(s => s.assets);
     const initialBalances = useFinanceStore(s => s.initialBalances);
     const debts = useFinanceStore(s => s.debts);
@@ -110,7 +115,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen })
     }, [assets, initialBalances, debts, config, budgetItems, retirementGoal, financialGoals, lastProjection]);
 
     const fetchActions = useCallback(async (force = false) => {
-        if (!apiKey) {
+        if (!apiKey || !hasData) {
             setActions([]);
             return;
         }
@@ -156,7 +161,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen })
         } finally {
             setIsLoading(false);
         }
-    }, [apiKey, eraToken, snapshot]);
+    }, [apiKey, eraToken, snapshot, hasData]);
 
     // Initial fetch (depuis cache si dispo).
     useEffect(() => {
@@ -185,6 +190,26 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen })
     }
 
     // État expanded : carte complète
+    // P1 gating — pas de données utilisateur → pas d'action pertinente
+    if (!hasData) {
+        return (
+            <div className="px-3 pb-3">
+                <button
+                    type="button"
+                    onClick={() => navigateWithFocus(Tab.SETTINGS, 'profile-user1-card')}
+                    className="w-full text-left p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 text-meta text-amber-300 hover:bg-amber-500/10 focus-ring transition-colors"
+                >
+                    <div className="font-bold mb-1 flex items-center gap-2">
+                        <span aria-hidden="true">⚡</span> Aucune action disponible
+                    </div>
+                    <div className="text-tiny text-ink-400">
+                        Renseigne ton profil pour activer les recommandations IA.
+                    </div>
+                    <div className="text-tiny text-amber-400 mt-1 font-medium">→ Configurer mon profil</div>
+                </button>
+            </div>
+        );
+    }
     if (!apiKey) {
         return (
             <div className="px-3 pb-3">

@@ -124,6 +124,9 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                     />
                 )}
 
+                {/* Phase G.5 — préparation architecturale : Dettes et Planning sont des
+                    candidats à la fusion en sous-onglets de Transactions (doc directives §10).
+                    Pour l'instant : tabs séparés, mais la possibilité est documentée. */}
                 {activeTab === Tab.PLANNING && (
                     <Planning
                         transactions={state.transactions}

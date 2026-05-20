@@ -559,6 +559,91 @@ RÉPONDS UNIQUEMENT par un JSON Array strict de 3 objets (pas de markdown, pas d
     }
 };
 
+// ─── Phase F.8 — Conseils IA Immobilier (Buy/Sell/Refi/HELOC) ────────────────
+
+const RealEstateAdviceSchema = z.object({
+    summary: z.string().min(10),
+    insights: z.array(z.object({
+        category: z.enum(['cost', 'timing', 'leverage', 'tax', 'risk']),
+        title: z.string(),
+        detail: z.string(),
+    })).min(1).max(5),
+});
+
+export type RealEstateAdvice = z.infer<typeof RealEstateAdviceSchema>;
+
+export interface RealEstateContext {
+    price: number;
+    downPayment: number;
+    mortgageRate: number;
+    amortizationYears: number;
+    monthlyMortgagePayment: number;
+    propertyTaxesAnnual: number;
+    welcomeTax: number;
+    maintenanceAnnual: number;
+    isPrimaryResidence: boolean;
+    isFirstTimeBuyer: boolean;
+    currentRent?: number;
+    marketReturnExpected?: number;
+    propertyAppreciationExpected?: number;
+}
+
+export const getRealEstateAdvice = async (
+    ctx: RealEstateContext,
+    apiKey: string,
+): Promise<RealEstateAdvice | null> => {
+    if (!apiKey) return null;
+
+    const userPrompt = `Tu es conseiller hypothécaire québécois expert.
+
+PROFIL DU PROJET :
+- Prix : ${roundToHundred(ctx.price)}$, mise de fonds ${roundToHundred(ctx.downPayment)}$ (${((ctx.downPayment / ctx.price) * 100).toFixed(1)}%)
+- Hypothèque : ${ctx.mortgageRate}% sur ${ctx.amortizationYears} ans → ${roundToHundred(ctx.monthlyMortgagePayment)}$/mois
+- Frais récurrents : taxes ${roundToHundred(ctx.propertyTaxesAnnual)}$/an, entretien ${roundToHundred(ctx.maintenanceAnnual)}$/an
+- Welcome tax : ${roundToHundred(ctx.welcomeTax)}$ (un coup)
+- Type : ${ctx.isPrimaryResidence ? 'résidence principale' : 'investissement locatif'}${ctx.isFirstTimeBuyer ? ' · PREMIER ACHAT (RAP + CELIAPP éligibles)' : ''}
+${ctx.currentRent ? `- Coût opportunité : loyer actuel ${roundToHundred(ctx.currentRent)}$/mois` : ''}
+${ctx.marketReturnExpected ? `- Rendement boursier attendu : ${ctx.marketReturnExpected}%` : ''}
+${ctx.propertyAppreciationExpected ? `- Appréciation immo attendue : ${ctx.propertyAppreciationExpected}%/an` : ''}
+
+Produis :
+1. summary : 1-2 phrases sur le bilan global (achat sain, équilibré, fragile)
+2. insights : EXACTEMENT 3 conseils concrets répartis sur les catégories suivantes :
+   - cost : coût caché ou sous-estimé
+   - timing : conseil temporel (refi, attendre, profiter d'opportunité)
+   - leverage : effet de levier (HELOC, Smith Maneuvre, RAP)
+   - tax : optimisation fiscale (CELIAPP, RAP, déductions)
+   - risk : risque sous-couvert (stress test B-20, taux variable, vacance)
+
+CONTRAINTES :
+- Chaque insight : title court + detail 1-2 phrases avec chiffre concret
+- Pertinence québécoise : RAP, CELIAPP, SCHL, B-20, etc.
+
+RÉPONDS UNIQUEMENT par un JSON strict (pas de markdown) :
+{
+  "summary": "...",
+  "insights": [
+    { "category": "cost|timing|leverage|tax|risk", "title": "...", "detail": "..." }
+  ]
+}`;
+
+    try {
+        const text = await chat(
+            [{ role: 'user', content: userPrompt }],
+            apiKey,
+            { model: MODEL_HAIKU, system: QUEBEC_FISCAL_CONTEXT, maxTokens: 1500, temperature: 0.5, timeoutMs: 25000 },
+        );
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) return null;
+        const parsed = JSON.parse(jsonMatch[0]);
+        const validated = RealEstateAdviceSchema.safeParse(parsed);
+        return validated.success ? validated.data : null;
+    } catch (e) {
+        console.error('[Claude] getRealEstateAdvice failed:', e);
+        return null;
+    }
+};
+
 // ─── Phase G.4 — Optimisation fiscale couple (cross-spouse strategies) ───────
 
 const CoupleOptimizationStrategySchema = z.object({

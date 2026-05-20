@@ -6,6 +6,7 @@ import { INITIAL_REAL_ESTATE_GOAL } from '../constants';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { PropertyConfigurator } from './realestate/PropertyConfigurator';
 import { MultiPropertyComparison } from './realestate/MultiPropertyComparison';
+import { RealEstateAdviceCard } from './realestate/RealEstateAdviceCard';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { PageHeader } from './ui/PageHeader';
 import { KPIStat } from './ui/KPIStat';
@@ -577,6 +578,25 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
             </div>
 
             <MultiPropertyComparison goals={goals} />
+
+            {/* Phase F.8 — Conseils IA Immobilier poussés */}
+            <RealEstateAdviceCard
+                context={{
+                    price,
+                    downPayment,
+                    mortgageRate: rate,
+                    amortizationYears: amortization,
+                    monthlyMortgagePayment: monthlyMortgage,
+                    propertyTaxesAnnual: taxesYearly,
+                    welcomeTax,
+                    maintenanceAnnual: maintenanceMonthly * 12,
+                    isPrimaryResidence: !!activeGoal.isPrimaryResidence,
+                    isFirstTimeBuyer: !!activeGoal.isFirstTimeBuyer,
+                    currentRent,
+                    marketReturnExpected: marketReturn,
+                    propertyAppreciationExpected: propertyGrowthRate,
+                }}
+            />
 
         </div>
     );

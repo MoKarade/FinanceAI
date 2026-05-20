@@ -6,6 +6,7 @@ import { showToast } from './ui/Toast';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { InsurancePanel, RentalPropertyPanel, BusinessPanel, CyclicalGoalsPanel } from './PatrimoineExtended';
 import { BackupPanel } from './settings/BackupPanel';
+import { AutoBackupPanel } from './settings/AutoBackupPanel';
 import { PayslipUploadCard } from './settings/PayslipUploadCard';
 import { MissingDataChecklist } from './ui/MissingDataBanner';
 import { usePendingFocus } from '../utils/usePendingFocus';
@@ -171,6 +172,8 @@ export const Settings: React.FC<SettingsProps> = ({
   return (
     <>
       <BackupPanel buildPayload={buildBackupPayload} />
+      {/* P1.3 — Backup auto rolling IndexedDB (complémentaire à l'export JSON manuel) */}
+      <AutoBackupPanel />
 
       <div className="max-w-4xl mx-auto space-y-6">
         <PageHeader

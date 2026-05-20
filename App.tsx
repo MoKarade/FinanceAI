@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { configureMarketDataProvider } from './services/marketData';
 import { installGlobalErrorHandlers } from './services/errorLogger';
 import { lazyWithRetry, clearChunkReloadFlag } from './utils/lazyWithRetry';
+import { initAutoBackup } from './services/backupAuto';
 
 const GuideModal = lazyWithRetry(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })), 'GuideModal');
 
@@ -46,6 +47,10 @@ export const App: React.FC = () => {
         // P1 fix : si l'app a chargé OK, clear le flag "chunk reload attempted"
         // pour permettre un retry futur si nouveau deploy.
         clearChunkReloadFlag();
+        // P1.3 — auto-backup quotidien dans IndexedDB (silent fail si indispo).
+        // Léger debounce (2s) pour ne pas bloquer le 1er paint.
+        const timer = setTimeout(() => { initAutoBackup(); }, 2000);
+        return () => clearTimeout(timer);
     }, []);
 
     const migrationWarningShown = useRef(false);

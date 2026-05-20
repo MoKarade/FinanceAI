@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { formatCAD } from '../../utils/format';
 
 /**
@@ -20,6 +20,10 @@ export interface ZoomableSeries {
     color: string;
     name?: string;
     stackId?: string;
+    /** Type de rendu : 'area' (stacked par défaut) ou 'line' (overlay non empilé) */
+    type?: 'area' | 'line';
+    /** Épaisseur de la ligne pour type='line' (défaut 2) */
+    strokeWidth?: number;
 }
 
 interface ZoomableTimeChartProps {
@@ -162,7 +166,7 @@ export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
             aria-label="Graphique temporel — molette pour zoomer, glisser pour déplacer, double-clic pour réinitialiser"
         >
             <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={visibleData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <ComposedChart data={visibleData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
                         {series.map((s, idx) => (
                             <linearGradient key={s.key} id={`ztc-grad-${idx}`} x1="0" y1="0" x2="0" y2="1">
@@ -193,19 +197,32 @@ export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
                         labelFormatter={(label) => new Date(label).toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' })}
                     />
                     <Legend verticalAlign="top" iconSize={8} wrapperStyle={{ fontSize: '10px' }} />
-                    {series.map((s, idx) => (
-                        <Area
-                            key={s.key}
-                            type="monotone"
-                            dataKey={s.key}
-                            stackId={stacked ? (s.stackId ?? '1') : undefined}
-                            stroke={s.color}
-                            fill={`url(#ztc-grad-${idx})`}
-                            name={s.name ?? s.key}
-                            isAnimationActive={false}
-                        />
-                    ))}
-                </AreaChart>
+                    {series.map((s, idx) =>
+                        s.type === 'line' ? (
+                            <Line
+                                key={s.key}
+                                type="monotone"
+                                dataKey={s.key}
+                                stroke={s.color}
+                                strokeWidth={s.strokeWidth ?? 2}
+                                dot={false}
+                                name={s.name ?? s.key}
+                                isAnimationActive={false}
+                            />
+                        ) : (
+                            <Area
+                                key={s.key}
+                                type="monotone"
+                                dataKey={s.key}
+                                stackId={stacked ? (s.stackId ?? '1') : undefined}
+                                stroke={s.color}
+                                fill={`url(#ztc-grad-${idx})`}
+                                name={s.name ?? s.key}
+                                isAnimationActive={false}
+                            />
+                        ),
+                    )}
+                </ComposedChart>
             </ResponsiveContainer>
 
             {/* Hint visuel + bouton reset */}

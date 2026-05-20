@@ -58,6 +58,33 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const [customEnd, setCustomEnd] = useState(new Date().toISOString().split('T')[0]);
     const [futureYears, setFutureYears] = useState<number>(5);
 
+    // Phase D.3 — multi-comptes : chaque compte peut être masqué/affiché ; un
+    // bouton "Total" superpose une ligne d'agrégat. Persistance localStorage.
+    const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => {
+        try {
+            const raw = localStorage.getItem('dashboard:hiddenAccounts:v1');
+            return raw ? new Set(JSON.parse(raw)) : new Set();
+        } catch { return new Set(); }
+    });
+    const [showTotalLine, setShowTotalLine] = useState<boolean>(() => {
+        try { return localStorage.getItem('dashboard:showTotal:v1') === 'true'; } catch { return false; }
+    });
+    const toggleAccount = (key: string) => {
+        setHiddenAccounts(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key); else next.add(key);
+            try { localStorage.setItem('dashboard:hiddenAccounts:v1', JSON.stringify([...next])); } catch {/* */}
+            return next;
+        });
+    };
+    const toggleTotal = () => {
+        setShowTotalLine(prev => {
+            const next = !prev;
+            try { localStorage.setItem('dashboard:showTotal:v1', String(next)); } catch {/* */}
+            return next;
+        });
+    };
+
     // Wiring 2026-05: lit la vraie projection FutureProjection si dispo, sinon
     // fallback sur formule simple. Garanti d'être sync avec l'onglet projection.
     const lastProjection = useFinanceStore(s => s.lastProjection);
@@ -379,6 +406,51 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                 }
             >
+                {/* Phase D.3 — chips toggle pour chaque compte + "Total" overlay */}
+                {accountKeys.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                        <span className="text-tiny text-ink-500 uppercase tracking-widest font-bold mr-1">Affichage :</span>
+                        {accountKeys.map((key, idx) => {
+                            const isHidden = hiddenAccounts.has(key);
+                            const color = COLORS[idx % COLORS.length];
+                            return (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => toggleAccount(key)}
+                                    aria-pressed={!isHidden}
+                                    title={isHidden ? `Afficher ${key}` : `Masquer ${key}`}
+                                    className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-tiny font-medium border transition-colors focus-ring ${
+                                        isHidden
+                                            ? 'bg-white/[0.02] text-ink-500 border-white/5 hover:bg-white/5'
+                                            : 'bg-white/10 text-ink-100 border-white/15 hover:bg-white/15'
+                                    }`}
+                                >
+                                    <span
+                                        aria-hidden="true"
+                                        className={`w-2 h-2 rounded-full ${isHidden ? 'opacity-30' : ''}`}
+                                        style={{ backgroundColor: color }}
+                                    />
+                                    {key}
+                                </button>
+                            );
+                        })}
+                        <button
+                            type="button"
+                            onClick={toggleTotal}
+                            aria-pressed={showTotalLine}
+                            title={showTotalLine ? 'Masquer la ligne Total' : 'Afficher la ligne Total'}
+                            className={`ml-2 inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-tiny font-bold border transition-colors focus-ring ${
+                                showTotalLine
+                                    ? 'bg-white text-black border-white'
+                                    : 'bg-white/[0.02] text-ink-400 border-white/10 hover:bg-white/5'
+                            }`}
+                        >
+                            <span aria-hidden="true">∑</span>
+                            Total
+                        </button>
+                    </div>
+                )}
                 <div className="w-full h-[380px]">
                     <Suspense fallback={<Skeleton variant="chart" />}>
                         <DashboardEvolutionChart
@@ -386,6 +458,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             accountKeys={accountKeys}
                             colors={COLORS}
                             isPrivacyMode={isPrivacyMode}
+                            hiddenAccounts={hiddenAccounts}
+                            showTotalLine={showTotalLine}
                         />
                     </Suspense>
                 </div>

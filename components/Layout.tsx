@@ -266,7 +266,7 @@ export const Layout: React.FC<LayoutProps> = ({
             {[
               { id: Tab.DATA, icon: '💾', label: 'Data' },
               { id: Tab.SYSTEM, icon: '🛠️', label: 'Système' },
-              { id: Tab.SETTINGS, icon: '⚙️', label: 'Config' },
+              { id: Tab.SETTINGS, icon: '⚙️', label: 'Configuration' },
             ].map(item => (
               <button
                 key={item.id}
@@ -378,7 +378,7 @@ export const Layout: React.FC<LayoutProps> = ({
               <span aria-hidden="true">⚙️</span><span>Système</span>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              {[{ id: Tab.SETTINGS, icon: '⚙️', label: 'Config' }, { id: Tab.DATA, icon: '💾', label: 'Data' }, { id: Tab.SYSTEM, icon: '🛠️', label: 'Système' }].map(item => (
+              {[{ id: Tab.SETTINGS, icon: '⚙️', label: 'Configuration' }, { id: Tab.DATA, icon: '💾', label: 'Data' }, { id: Tab.SYSTEM, icon: '🛠️', label: 'Système' }].map(item => (
                 <button
                   key={item.id}
                   type="button"

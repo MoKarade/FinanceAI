@@ -49,7 +49,13 @@ export const Retirement: React.FC<RetirementProps> = ({
     const charitableGoals = useFinanceStore(s => s.charitableGoals ?? []);
     const rentalProperties = useFinanceStore(s => s.rentalProperties ?? []);
     const privateBusinesses = useFinanceStore(s => s.privateBusinesses ?? []);
-    const [lifeExpectancy, setLifeExpectancy] = useState(90);
+    // Phase C.3 — `lifeExpectancy` lu depuis le store (retirementGoal). Le Hub
+    // Configuration (Phase C.1) sera l'endroit canonique pour le modifier ; le
+    // slider local reste pour rétrocompat et exploration rapide.
+    const retirementGoalStore = useFinanceStore(s => s.retirementGoal);
+    const lifeExpectancy = retirementGoalStore?.lifeExpectancy ?? 90;
+    const setLifeExpectancy = (v: number) =>
+        setAppState({ retirementGoal: { ...retirementGoalStore, lifeExpectancy: v } });
     const [currentAge, setCurrentAge] = useState(config.users[0]?.age || 30);
     // States Goal Seeker / Asset Location déplacés dans leurs sous-composants
     // (refactor architecture cycle 2 — réduction Retirement.tsx de 700→527 lignes).

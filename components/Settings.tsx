@@ -1,11 +1,14 @@
 import React from 'react';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
-import { AppState, BudgetCategory, Transaction, Asset, SavingsGoal, TravelGoal, Debt, InvestmentAccount, InvestmentTransaction, LifeEvent, RetirementGoal, FinancialGoal, RealEstateGoal, BudgetConfig } from '../types';
+import { AppState, BudgetCategory, Transaction, Asset, SavingsGoal, TravelGoal, Debt, InvestmentAccount, InvestmentTransaction, LifeEvent, RetirementGoal, FinancialGoal, RealEstateGoal, BudgetConfig, Tab } from '../types';
 import { showToast } from './ui/Toast';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { InsurancePanel, RentalPropertyPanel, BusinessPanel, CyclicalGoalsPanel } from './PatrimoineExtended';
 import { BackupPanel } from './settings/BackupPanel';
+import { PayslipUploadCard } from './settings/PayslipUploadCard';
+import { MissingDataChecklist } from './ui/MissingDataBanner';
+import { usePendingFocus } from '../utils/usePendingFocus';
 
 interface SettingsProps {
   apiKeys: AppState['apiKeys'];
@@ -73,6 +76,10 @@ export const Settings: React.FC<SettingsProps> = ({
     Object.keys(initialBalances).forEach(k => accs[k] = true);
     return accs;
   }, [transactions, initialBalances]);
+
+  // Phase C.5 — consomme pendingFocus pour scroll vers le champ ciblé
+  // depuis une bannière MissingDataBanner d'un autre onglet.
+  usePendingFocus(Tab.SETTINGS);
 
   const [savedProfiles, setSavedProfiles] = React.useState<string[]>([]);
   const [newProfileName, setNewProfileName] = React.useState('');
@@ -168,9 +175,68 @@ export const Settings: React.FC<SettingsProps> = ({
       <div className="max-w-4xl mx-auto space-y-6">
         <PageHeader
             icon="⚙️"
-            title="Paramètres"
-            subtitle="Configuration globale, profils utilisateurs, intégrations API."
+            title="Configuration"
+            subtitle="Hub central — profil, retraite, intégrations, sauvegarde. Modifie ici, l'app suit."
         />
+
+        {/* Phase C.5 — état global de la configuration : %completion + champs manquants */}
+        <MissingDataChecklist />
+
+        {/* Phase C.1 — Hub retraite : centralise les paramètres absorbés depuis
+            l'onglet Retraite (espérance de vie, âge cible, revenu cible). */}
+        <Card title="🏖️ Paramètres de retraite (hub central)">
+          <div className="space-y-4">
+            <p className="text-tiny text-gray-400 leading-snug">
+              Ces paramètres alimentent les projections retraite (capital, drawdown, RRQ/PSV) et
+              s'appliquent automatiquement aux onglets Retraite, Investissement et Futur.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div data-focus-section="profile-retirementAge">
+                <label className="block text-xs text-gray-400 mb-1">Âge de retraite cible</label>
+                <input
+                  type="number"
+                  min={50}
+                  max={75}
+                  value={retirementGoal?.targetAge ?? 65}
+                  onChange={(e) => setAppState({ retirementGoal: { ...(retirementGoal as RetirementGoal), targetAge: Number(e.target.value) || 65 } })}
+                  className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
+                />
+              </div>
+              <div data-focus-section="profile-lifeExpectancy">
+                <label className="block text-xs text-gray-400 mb-1">
+                  Espérance de vie
+                  <span className="ml-1 text-tiny text-gray-500">(80–100 ans)</span>
+                </label>
+                <input
+                  type="number"
+                  min={80}
+                  max={105}
+                  value={retirementGoal?.lifeExpectancy ?? 90}
+                  onChange={(e) => setAppState({ retirementGoal: { ...(retirementGoal as RetirementGoal), lifeExpectancy: Number(e.target.value) || 90 } })}
+                  className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
+                />
+              </div>
+              <div data-focus-section="profile-retirementIncome">
+                <label className="block text-xs text-gray-400 mb-1">Revenu mensuel cible</label>
+                <input
+                  type="number"
+                  min={0}
+                  step={100}
+                  value={retirementGoal?.targetMonthlyIncome ?? 4000}
+                  onChange={(e) => setAppState({ retirementGoal: { ...(retirementGoal as RetirementGoal), targetMonthlyIncome: Number(e.target.value) || 0 } })}
+                  className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
+                />
+              </div>
+            </div>
+            <p className="text-tiny text-gray-500 italic">
+              💡 Ces valeurs sont la source de vérité unique. Les onglets Retraite/Futur
+              les lisent depuis ici — plus de duplication.
+            </p>
+          </div>
+        </Card>
+
+        {/* Phase C.2 — upload IA de relevé de salaire (Vision Claude) */}
+        <PayslipUploadCard />
 
         <Card title="Soldes Initiaux des Comptes">
           <div className="space-y-4">
@@ -202,7 +268,7 @@ export const Settings: React.FC<SettingsProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card title="Cles API & Services">
             <div className="space-y-4">
-              <div>
+              <div data-focus-section="apiKeys-anthropic">
                 <label className="block text-sm text-gray-400 mb-1">Anthropic API Key (Claude)</label>
                 <input
                   type="password"
@@ -213,7 +279,7 @@ export const Settings: React.FC<SettingsProps> = ({
                 />
                 <p className="text-xs text-gray-500 mt-1">Pour Claude Sonnet/Haiku — analyse, catégorisation, vision. Obtenez votre clé sur <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer" className="text-info-400 underline">console.anthropic.com</a></p>
               </div>
-              <div>
+              <div data-focus-section="apiKeys-eraContext">
                 <label className="block text-sm text-gray-400 mb-1">Era Context Token</label>
                 <input
                   type="password"
@@ -317,9 +383,13 @@ export const Settings: React.FC<SettingsProps> = ({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {config.users.map((user, idx) => (
-                  <div key={idx} className="space-y-2 p-3 bg-white/5 rounded border border-border">
+                  <div
+                    key={idx}
+                    data-focus-section={`profile-user${idx + 1}-card`}
+                    className="space-y-2 p-3 bg-white/5 rounded border border-border"
+                  >
                     <div className="font-bold text-white mb-2 border-b border-white/5 pb-1">Utilisateur {idx + 1}</div>
-                    <div>
+                    <div data-focus-section={`profile-user${idx + 1}-name`}>
                       <label className="text-xs text-gray-400">Nom</label>
                       <input
                         type="text"
@@ -333,7 +403,7 @@ export const Settings: React.FC<SettingsProps> = ({
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <div>
+                      <div data-focus-section={`profile-user${idx + 1}-age`}>
                         <label className="text-xs text-gray-400">Age actuel</label>
                         <input
                           type="number"
@@ -364,7 +434,7 @@ export const Settings: React.FC<SettingsProps> = ({
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <div>
+                      <div data-focus-section={`profile-user${idx + 1}-grossSalary`}>
                         <label className="text-xs text-gray-400 font-bold text-green-300">Salaire Brut ($)</label>
                         <input
                           type="number"
@@ -377,7 +447,7 @@ export const Settings: React.FC<SettingsProps> = ({
                           className="w-full bg-dark border border-border rounded px-2 py-1 text-sm text-white font-mono"
                         />
                       </div>
-                      <div>
+                      <div data-focus-section={`profile-user${idx + 1}-netSalary`}>
                         <label className="text-xs text-gray-400 font-bold text-blue-300">Salaire Net ($)</label>
                         <input
                           type="number"

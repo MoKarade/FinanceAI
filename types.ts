@@ -509,6 +509,9 @@ export interface LifeEvent {
 
 export interface RetirementGoal {
   targetAge: number;
+  // Phase C.3 — paramètre migré du state local Retirement.tsx vers le store
+  // pour que le Hub Configuration le centralise (refonte UI v3.0 §13).
+  lifeExpectancy?: number; // défaut 90 ans, range typique 80-100
   targetMonthlyIncome: number;
   governmentPension: number;
   // D2.4: Rente mensuelle de régime à prestations déterminées (DB) cumulée

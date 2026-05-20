@@ -49,11 +49,18 @@ describe('useFinanceStore', () => {
         expect(raw).not.toContain('apiKeys');
     });
 
-    it('a une version persist = 4 (§7.F.5 — ajout apiKeys.finnhub)', () => {
+    it('a une version persist = 5 (Phase C.3 — retirementGoal.lifeExpectancy)', () => {
         useFinanceStore.getState().setActiveTab(Tab.SETTINGS);
         const raw = localStorage.getItem('financeai-storage');
         if (!raw) throw new Error('Persist did not write');
         const parsed = JSON.parse(raw);
-        expect(parsed.version).toBe(4);
+        expect(parsed.version).toBe(5);
+    });
+
+    it('retirementGoal.lifeExpectancy peut être mis à jour via setAppState (Phase C.3)', () => {
+        const store = useFinanceStore.getState();
+        const goal = store.retirementGoal;
+        store.setAppState({ retirementGoal: { ...goal, lifeExpectancy: 95 } });
+        expect(useFinanceStore.getState().retirementGoal.lifeExpectancy).toBe(95);
     });
 });

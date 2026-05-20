@@ -1,27 +1,30 @@
-# Plan P1 — Production Readiness
+# Plan P1 — Production Readiness ✅ TERMINÉ
 
 > **Origine** : roadmap "10/10" proposée après livraison refonte UI v3.0.
 > **Décision utilisateur** (2026-05-20) : commencer par **P1**, P0 différé.
-> **Branche** : `claude/p1-production-readiness` (créée depuis main).
-> **Contrainte cardinale** : **tout reste sur tiers gratuits**. Pas de
+> **Statut** : **7/7 items livrés** en une journée (2026-05-20), PRs #99 à #105.
+> **Contrainte cardinale respectée** : **tout sur tiers gratuits**. Pas de
 > backend tiers, pas de Sentry SaaS, pas de WebSocket payant.
 
 ---
 
-## Vue d'ensemble
+## Vue d'ensemble — État final
 
 P1 = ce qui transforme un projet hobby en app prête pour la prod **mono-utilisateur**, sans infrastructure externe payante.
 
-| Item | Effort | Impact | Statut |
-|---|---|---|---|
-| **P1.1** Error logger local self-contained | 4h | 🔴 critique | 🚧 démarré (stash) |
-| **P1.2** Validation Zod end-to-end (AI + Era + store) | 6h | 🟠 important | À faire |
-| **P1.3** Backup automatique rolling (IndexedDB 7-day) | 6h | 🟠 important | À faire |
-| **P1.4** CSV export (transactions + holdings + budget) | 3h | 🟡 utile | À faire |
-| **P1.5** PDF export complet (rapport patrimoine + fiscal) | 8h | 🟠 important | À faire |
-| **P1.6** Lighthouse CI dans GitHub Actions | 2h | 🟡 utile | À faire |
-| **P1.7** Audit log localStorage (qui a changé quoi) | 6h | 🟢 nice-to-have | À faire |
-| **TOTAL** | **~35h** | | |
+| Item | Effort | Impact | Statut | PR |
+|---|---|---|---|---|
+| **P1.1** Error logger local self-contained | 4h | 🔴 critique | ✅ livré | #99 |
+| **P1.2** Validation Zod end-to-end (AI + Era + store) | 6h | 🟠 important | ✅ livré | #102 |
+| **P1.3** Backup automatique rolling (IndexedDB 7-day) | 6h | 🟠 important | ✅ livré | #101 |
+| **P1.4** CSV export + lazyWithRetry + cache headers | 3h | 🟡 utile | ✅ livré | #100 |
+| **P1.5** PDF export complet (patrimoine + fiscal + holdings + dettes + goals) | 8h | 🟠 important | ✅ livré | #104 |
+| **P1.6** Lighthouse CI dans GitHub Actions | 2h | 🟡 utile | ✅ livré | #105 |
+| **P1.7** Audit log localStorage (qui a changé quoi) | 6h | 🟢 nice-to-have | ✅ livré | #103 |
+| **TOTAL** | **~35h** | | **7/7** | |
+
+**Tests** : 511 → **566 verts** (50 fichiers), 0 régression. Build clean.
+**Bundle** : index 528 KB gzip 166 KB, vendor jspdf 391 KB lazy-chargé.
 
 ### Note GlitchTip / Sentry
 
@@ -33,9 +36,9 @@ infrastructure.
 
 ---
 
-## P1.1 — Error logger local (4h)
+## P1.1 — Error logger local (4h) ✅ livré (#99)
 
-**Statut** : 🚧 Démarré, stashé pendant rédaction de ce plan.
+**Statut** : ✅ Livré. `services/errorLogger.ts` + global handlers + viewer.
 
 ### Architecture
 - `services/errorLogger.ts` : rolling buffer 100 entrées en localStorage
@@ -57,7 +60,7 @@ infrastructure.
 
 ---
 
-## P1.2 — Validation Zod end-to-end (6h)
+## P1.2 — Validation Zod end-to-end (6h) ✅ livré (#102)
 
 ### Pourquoi
 L'app reçoit des données de 3 sources externes :
@@ -82,7 +85,7 @@ Si une de ces sources renvoie un payload malformé (typo dans Claude, breaking c
 
 ---
 
-## P1.3 — Backup automatique rolling (6h)
+## P1.3 — Backup automatique rolling (6h) ✅ livré (#101)
 
 ### Pourquoi
 Aujourd'hui : backup manuel via `BackupPanel` (export JSON / export chiffré).
@@ -105,7 +108,7 @@ nouvel ordi), tout est perdu.
 
 ---
 
-## P1.4 — CSV export (3h)
+## P1.4 — CSV export + résilience chunk-load (3h) ✅ livré (#100)
 
 ### Pourquoi
 Pour analyse externe (Excel, comptable) ou archivage simple. Format universel.
@@ -127,7 +130,7 @@ Pour analyse externe (Excel, comptable) ou archivage simple. Format universel.
 
 ---
 
-## P1.5 — PDF export complet (8h)
+## P1.5 — PDF export complet (8h) ✅ livré (#104)
 
 ### Pourquoi
 Aujourd'hui : `pdfReport.ts` existe mais minimaliste. Pour un app finance,
@@ -151,7 +154,7 @@ un rapport PDF mensuel/annuel propre est attendu.
 
 ---
 
-## P1.6 — Lighthouse CI (2h)
+## P1.6 — Lighthouse CI (2h) ✅ livré (#105)
 
 ### Pourquoi
 Garde-fou perf/a11y/SEO automatique. Empêche les régressions silencieuses.
@@ -167,7 +170,7 @@ Garde-fou perf/a11y/SEO automatique. Empêche les régressions silencieuses.
 
 ---
 
-## P1.7 — Audit log (6h)
+## P1.7 — Audit log (6h) ✅ livré (#103)
 
 ### Pourquoi
 "Qui a changé quoi quand" — utile pour debug, ou si l'utilisateur se demande

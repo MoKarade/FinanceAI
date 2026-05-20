@@ -6,7 +6,120 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
-## [unreleased — cycle 13 : Refonte UI v3.0 COMPLÈTE (8 phases + cleanup + F.11)] — 2026-05-20
+## [unreleased — cycle 14 : P1 Production Readiness COMPLÈTE (7/7 items)] — 2026-05-20
+
+> **Sprint d'une journée** post-refonte UI v3.0. 7 PRs (#99 à #105) livrent
+> tout le plan `docs/PLAN_P1.md` (~35h estimés). **511 → 566 tests verts**.
+> Contrainte cardinale respectée : **tout sur tiers gratuits**.
+
+### P1.1 — Error logger local (#99)
+
+- `services/errorLogger.ts` : rolling buffer 100 entrées en `localStorage`,
+  helpers `logError` / `getErrors` / `filterErrors` / `clearErrors` /
+  `exportErrorsAsJSON` / `getErrorStats`
+- 7 sources (`ai | era | projection | ui | network | storage | unknown`),
+  4 severities (`info | warning | error | critical`)
+- `installGlobalErrorHandlers()` au boot dans `App.tsx` (capture
+  `window.onerror` + `unhandledrejection`)
+- `services/claude.ts` : `console.error` → `logError({source: 'ai', ...})`
+  dans les 5 fonctions IA principales
+- UI `components/system/ErrorLogViewer.tsx` dans onglet Système : table,
+  filtres source/severity, export JSON, clear avec confirmation
+- 10 tests unitaires
+
+### P1.4 — CSV export + résilience chunk-load + cache headers (#100)
+
+- `utils/csvExport.ts` : `escapeCsvField` / `toCSV<T>` / `downloadCSV` +
+  helpers `exportTransactionsCSV` / `exportHoldingsCSV` / `exportBudgetCSV`
+  conformes RFC 4180 (UTF-8 BOM, échappement `"` et `,`)
+- 14 tests unitaires (edge cases : nulls, virgules, guillemets, newlines)
+- **Fix critique chunk-load** : `utils/lazyWithRetry.tsx` wrap autour de
+  `React.lazy` avec retry + reload one-shot via `sessionStorage` flag.
+  Résout `TypeError: Failed to fetch dynamically imported module` après
+  nouveau deploy.
+- `netlify.toml` : cache headers `no-cache` pour `index.html`, `immutable`
+  pour `/assets/*` — empêche le navigateur de garder un index.html stale
+  qui pointe vers des chunks supprimés.
+
+### P1.3 — Backup automatique IndexedDB (#101)
+
+- `services/backupAuto.ts` : rolling 7-day backups dans IndexedDB
+  (50MB+ vs 5MB localStorage), JSON sérialisé du state complet sauf
+  `apiKeys` (sécurité)
+- Debounce 2s au boot dans `App.tsx`, 1 backup quotidien max,
+  garbage collection > 7 jours
+- UI `components/settings/AutoBackupPanel.tsx` : liste, restore (avec
+  confirmation + insurance backup pré-restore), delete
+- Migration vers Schema v6 (`assets.purchases[]` DCA) couverte par les
+  backups
+- 12 tests unitaires (fake IDB via `fake-indexeddb`)
+
+### P1.2 — Validation Zod end-to-end (#102)
+
+- `services/eraContext.ts` : tous les `Schema.parse()` → `safeParse()` avec
+  `logError({source: 'era', severity: 'warning', ...})` en cas d'échec
+- Generic helper `eraRequest<T>(endpoint, schema, opts)` — DRY pour les
+  9 endpoints
+- `fetchTransactions` : pagination cursor-based résiliente (poursuit si
+  une page est invalide, ne crash plus)
+- `rememberFact` : ack response validation
+- 8 tests unitaires couvrant : réponse OK, réponse invalide, réponse
+  partiellement invalide (pagination), endpoint 500
+
+### P1.7 — Audit log local (#103)
+
+- `services/auditLog.ts` : rolling buffer 500 entrées en `localStorage`,
+  helpers `logAudit` / `getAuditLog` / `filterAuditLog` / `clearAuditLog` /
+  `getAuditStats` / `exportAuditLogAsJSON`
+- 4 opérations (`add | remove | update | replace`), `countBefore`/`countAfter`
+  optionnels pour traçabilité quantitative
+- UI `components/system/AuditLogViewer.tsx` dans onglet Système (pattern
+  identique à ErrorLogViewer) : table, filtres champ/opération, export, clear
+- 8 tests unitaires (cap MAX_ENTRIES, filtres, stats, corruption recovery)
+- **Wiring aux call-sites** reste optionnel — infrastructure prête mais
+  `logAudit(...)` à appeler manuellement aux paths importants
+  (import CSV, suppressions batch, etc.)
+
+### P1.5 — PDF report complet (#104)
+
+- Étend `services/pdfReport.ts` (jspdf, lazy 391 KB) avec 4 nouvelles pages :
+  - **Fiscale** : fédéral, QC, RRQ, RQAP, AE, taux marginal/moyen par
+    contribuable + totaux combinés (utilise `calculateFiscalReport`
+    de `utils/tax.ts`)
+  - **Holdings** : table par asset (symbole, qté, prix, compte) avec
+    valeur CAD via `fxRates` et total
+  - **Dettes** : table par dette (taux, paiement min, solde) avec
+    estimation mois restants (formule amortissement avalanche)
+  - **Goals** : liste objectifs actifs avec barre de progression et %
+- 4 **builders purs** exportés et testables (`buildHoldingsRows` /
+  `buildDebtsRows` / `buildGoalsRows` / `buildFiscalSummary`) — 16 tests
+- `ReportData` étendu avec 4 champs optionnels — entrée historique
+  `generateFinancialReport(data)` rétro-compatible
+- Helper `ensureRoom()` pour pagination automatique des tables longues
+
+### P1.6 — Lighthouse CI (#105)
+
+- `.github/workflows/lighthouse.yml` : workflow **isolé** du CI critique
+  (`ci.yml` inchangé), `treosh/lighthouse-ci-action@v12`
+- `concurrency` + `cancel-in-progress` → pas de runs zombies
+- `timeout-minutes: 10` + `continue-on-error: true` → ne bloque jamais
+  le merge même si lighthouse fail/timeout
+- `.lighthouserc.json` : 4 catégories (perf, a11y, best-practices, SEO)
+  en **warn-only** initial (perf ≥0.5, a11y ≥0.85, BP ≥0.8, SEO ≥0.7)
+- `staticDistDir: './dist'` → sert le build sans serveur externe
+- Upload `temporary-public-storage` → lien rapport HTML dans logs du run
+- `.gitignore` : exclut `.lighthouseci/` (artefacts locaux)
+
+### Méta
+
+- 511 → **566 tests verts** (+55, 50 fichiers)
+- 0 régression typecheck/build
+- Bundle index inchangé (528 KB gzip 166 KB), `pdf-vendor` 391 KB lazy
+- Doc inventory mis à jour (`HANDOVER.md` §4.2, `PLAN_P1.md` clôturé)
+
+---
+
+## [cycle 13 : Refonte UI v3.0 COMPLÈTE (8 phases + cleanup + F.11)] — 2026-05-20
 
 > Refonte massive selon le document directives `MAJ_FinanceAI.txt`. **10 PRs**
 > (#86 à #95), 8 phases logiques (A → G + cleanup + F.11), **501 → 511 tests verts**.

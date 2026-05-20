@@ -14,6 +14,8 @@ import { Pill } from './ui/Pill';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { formatCAD } from '../utils/format';
+import { DualKPIStat } from './budget/DualKPIStat';
+import { calculateFiscalReport } from '../utils/tax';
 
 interface BudgetProps {
     transactions: Transaction[];
@@ -30,6 +32,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     const [inflationSim, setInflationSim] = useState(0);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null); // Pour le modal
+    // Phase D'.6 — navigation périodes : 0 = courante, -1 = mois/trim/année précédent, etc.
+    const [periodOffset, setPeriodOffset] = useState(0);
+    // Phase D'.4 — filtre personne en mode couple (null = tout combiné)
+    const [personFilter, setPersonFilter] = useState<0 | 1 | null>(null);
 
     const [showAiModal, setShowAiModal] = useState(false);
 
@@ -43,23 +49,25 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     const monthProgress = (currentDay / daysInMonth) * 100;
 
     const getDateRange = () => {
-        const end = new Date();
-        const start = new Date();
-
+        // Phase D'.6 — applique le periodOffset (négatif = passé, positif = futur)
         if (timeView === 'MONTH') {
-            start.setDate(1);
-            start.setHours(0, 0, 0, 0);
+            const start = new Date(now.getFullYear(), now.getMonth() + periodOffset, 1);
+            const end = new Date(now.getFullYear(), now.getMonth() + periodOffset + 1, 0, 23, 59, 59);
+            return { start, end };
         } else if (timeView === 'QUARTER') {
-            start.setDate(start.getDate() - 90);
-            start.setHours(0, 0, 0, 0);
+            const currentQuarter = Math.floor(now.getMonth() / 3);
+            const startMonth = (currentQuarter + periodOffset) * 3;
+            const start = new Date(now.getFullYear(), startMonth, 1);
+            const end = new Date(now.getFullYear(), startMonth + 3, 0, 23, 59, 59);
+            return { start, end };
         } else if (timeView === 'YEAR') {
-            start.setFullYear(start.getFullYear() - 1);
-            start.setHours(0, 0, 0, 0);
+            const start = new Date(now.getFullYear() + periodOffset, 0, 1);
+            const end = new Date(now.getFullYear() + periodOffset, 11, 31, 23, 59, 59);
+            return { start, end };
         } else {
-            // Custom
+            // Custom : pas de périodes adjacentes, utilise les bornes user.
             return { start: new Date(customStart), end: new Date(customEnd) };
         }
-        return { start, end };
     };
 
     const getMultiplier = () => {
@@ -172,6 +180,55 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     const totalRemainingDisplay = totalNetIncomeDisplay - totalSpentDisplay; // Based on Net Income
     const projectedTotalDisplay = timeView === 'MONTH' ? (totalSpentDisplay / (currentDay / daysInMonth)) : totalSpentDisplay;
 
+    // Phase D'.3 — vraie décomposition fiscale (intègre fed + QC + RRQ + AE + RQAP)
+    // au lieu de la simple soustraction Brut − Net.
+    const fiscalBreakdown = useMemo(() => {
+        // grossSalary et netSalary sont MENSUELS dans le store → × 12 pour annuel
+        let fedTax = 0;
+        let qcTax = 0;
+        let rrq = 0;
+        let ae = 0;
+        let rqap = 0;
+        let netIncome = 0;
+        let totalGross = 0;
+        for (const u of usersIncome) {
+            const grossAnnual = u.grossSalary * 12;
+            if (grossAnnual <= 0) continue;
+            const report = calculateFiscalReport(grossAnnual, 0, 0, new Date().getFullYear(), true);
+            fedTax += report.fedTax;
+            qcTax += report.qcTax;
+            rrq += report.rrq;
+            ae += report.ae;
+            rqap += report.rqap;
+            netIncome += report.netIncome;
+            totalGross += grossAnnual;
+        }
+        const totalTax = fedTax + qcTax + rrq + ae + rqap;
+        const multiplier = getMultiplier() / 12; // de annuel → période courante (mois/trim/an)
+        return {
+            grossDisplay: totalGross * multiplier,
+            fedTaxDisplay: fedTax * multiplier,
+            qcTaxDisplay: qcTax * multiplier,
+            rrqDisplay: rrq * multiplier,
+            aeRqapDisplay: (ae + rqap) * multiplier,
+            totalTaxDisplay: totalTax * multiplier,
+            netDisplay: netIncome * multiplier,
+            averageRate: totalGross > 0 ? (totalTax / totalGross) * 100 : 0,
+        };
+    }, [usersIncome, timeView, customStart, customEnd]);
+
+    // Phase D'.5 — revenu RÉEL = somme transactions positives (hors transferts) sur la période
+    const totalActualIncomeDisplay = useMemo(() => {
+        const { start, end } = getDateRange();
+        return transactions
+            .filter(t => !t.isTransfer && t.amount > 0)
+            .filter(t => {
+                const d = new Date(t.date);
+                return d >= start && d <= end;
+            })
+            .reduce((sum, t) => sum + t.amount, 0);
+    }, [transactions, getDateRange]);
+
     // --- 2. GROUPING LOGIC ---
     const groupedItems = useMemo(() => {
         const groups = { 'Besoin': [] as BudgetCategory[], 'Envie': [] as BudgetCategory[], 'Epargne': [] as BudgetCategory[] };
@@ -253,10 +310,26 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         return list;
     }, [budgetItems, actualsMap, timeView, inflationSim, customStart, customEnd]);
 
+    const setAppState = useFinanceStore(s => s.setAppState);
+
     const handleUpdateItem = (index: number, field: keyof BudgetCategory, value: any) => {
         const newItems = [...budgetItems];
-        newItems[index] = { ...newItems[index], [field]: value };
+        const oldItem = newItems[index];
+        newItems[index] = { ...oldItem, [field]: value };
         setBudgetItems(newItems);
+
+        // Phase D'.1 — synchro absolue : si rename de catégorie, propage aux
+        // transactions qui utilisent l'ancien nom.
+        if (field === 'name' && typeof value === 'string' && oldItem.name && oldItem.name !== value) {
+            const updatedTransactions = transactions.map(t =>
+                t.category === oldItem.name ? { ...t, category: value } : t
+            );
+            const renamedCount = updatedTransactions.filter((t, i) => t.category !== transactions[i].category).length;
+            if (renamedCount > 0) {
+                setAppState({ transactions: updatedTransactions });
+                showToast(`Catégorie renommée. ${renamedCount} transaction(s) mises à jour.`, 'success');
+            }
+        }
     };
 
     const handleAddItem = (nature: 'Besoin' | 'Envie' | 'Epargne' = 'Envie') => {
@@ -279,10 +352,32 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
     const doConfirmDelete = () => {
         if (confirmDeleteId) {
+            const itemToDelete = budgetItems.find(i => i.id === confirmDeleteId);
             setBudgetItems(budgetItems.filter(i => i.id !== confirmDeleteId));
+            // Phase D'.1 — réassigne les transactions affectées à "Uncategorized"
+            // au lieu de les laisser pointer vers une catégorie fantôme.
+            if (itemToDelete?.name) {
+                const affectedCount = transactions.filter(t => t.category === itemToDelete.name).length;
+                if (affectedCount > 0) {
+                    const updatedTransactions = transactions.map(t =>
+                        t.category === itemToDelete.name ? { ...t, category: 'Uncategorized' } : t
+                    );
+                    setAppState({ transactions: updatedTransactions });
+                    showToast(`Catégorie supprimée. ${affectedCount} transaction(s) déplacée(s) vers "Uncategorized".`, 'info');
+                }
+            }
             setConfirmDeleteId(null);
         }
     };
+
+    // Phase D'.1 — compte les transactions affectées par la suppression
+    // (utilisé dans le message de confirmation).
+    const deleteAffectedCount = useMemo(() => {
+        if (!confirmDeleteId) return 0;
+        const itemToDelete = budgetItems.find(i => i.id === confirmDeleteId);
+        if (!itemToDelete?.name) return 0;
+        return transactions.filter(t => t.category === itemToDelete.name).length;
+    }, [confirmDeleteId, budgetItems, transactions]);
 
     const buildAiPayload = () => ({
         totalNetIncome: totalNetIncomeDisplay,
@@ -339,7 +434,11 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 onConfirm={doConfirmDelete}
                 onCancel={() => setConfirmDeleteId(null)}
                 title="Supprimer la catégorie"
-                message="Supprimer cette catégorie de budget définitivement ? Les transactions associées ne seront pas effacées."
+                message={
+                    deleteAffectedCount > 0
+                        ? `Supprimer définitivement ? ${deleteAffectedCount} transaction(s) seront déplacées vers "Uncategorized".`
+                        : "Supprimer cette catégorie de budget définitivement ?"
+                }
                 confirmLabel="Supprimer"
             />
             <PageHeader
@@ -366,7 +465,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                             aria-label="Période"
                             size="sm"
                             value={timeView}
-                            onChange={(v) => setTimeView(v as TimeView)}
+                            onChange={(v) => { setTimeView(v as TimeView); setPeriodOffset(0); }}
                             options={[
                                 { value: 'MONTH', label: 'Mois', icon: '📅' },
                                 { value: 'QUARTER', label: 'Trim.', icon: '📊' },
@@ -374,6 +473,51 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                 { value: 'CUSTOM', label: 'Custom', icon: '🛠️' },
                             ]}
                         />
+                        {/* Phase D'.6 — navigation rapide périodes adjacentes */}
+                        {timeView !== 'CUSTOM' && (
+                            <div className="flex items-center gap-1 bg-white/5 rounded-pill p-0.5 border border-white/10">
+                                <button
+                                    type="button"
+                                    onClick={() => setPeriodOffset(o => o - 1)}
+                                    title="Période précédente"
+                                    aria-label="Période précédente"
+                                    className="px-2 py-1 text-ink-300 hover:text-ink-100 hover:bg-white/10 rounded transition-colors focus-ring"
+                                >
+                                    ←
+                                </button>
+                                <span className="px-2 text-tiny text-ink-300 font-mono min-w-[80px] text-center">
+                                    {(() => {
+                                        const { start } = getDateRange();
+                                        if (timeView === 'MONTH') return start.toLocaleDateString('fr-CA', { month: 'short', year: '2-digit' });
+                                        if (timeView === 'QUARTER') {
+                                            const q = Math.floor(start.getMonth() / 3) + 1;
+                                            return `T${q} ${start.getFullYear()}`;
+                                        }
+                                        return String(start.getFullYear());
+                                    })()}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setPeriodOffset(o => Math.min(0, o + 1))}
+                                    disabled={periodOffset >= 0}
+                                    title={periodOffset >= 0 ? 'Période actuelle' : 'Période suivante'}
+                                    aria-label="Période suivante"
+                                    className="px-2 py-1 text-ink-300 hover:text-ink-100 hover:bg-white/10 rounded transition-colors focus-ring disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                                >
+                                    →
+                                </button>
+                                {periodOffset !== 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setPeriodOffset(0)}
+                                        title="Revenir à la période actuelle"
+                                        className="px-2 py-1 text-tiny text-info-400 hover:underline focus-ring rounded"
+                                    >
+                                        Auj.
+                                    </button>
+                                )}
+                            </div>
+                        )}
                         {timeView === 'CUSTOM' && (
                             <div className="flex items-center gap-1 bg-white/5 rounded-pill p-1 border border-white/10">
                                 <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-transparent text-ink-100 text-meta border-none outline-none w-24" aria-label="Date de début" />
@@ -381,45 +525,60 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                 <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-transparent text-ink-100 text-meta border-none outline-none w-24" aria-label="Date de fin" />
                             </div>
                         )}
+                        {/* Phase D'.4 — filtre personne en mode couple */}
+                        {coupleAnalysis.user2 && (
+                            <Pill
+                                aria-label="Filtre personne"
+                                size="sm"
+                                value={personFilter === null ? 'all' : (personFilter === 0 ? 'user1' : 'user2')}
+                                onChange={(v) => setPersonFilter(v === 'all' ? null : v === 'user1' ? 0 : 1)}
+                                options={[
+                                    { value: 'all', label: 'Couple', icon: '👥' },
+                                    { value: 'user1', label: coupleAnalysis.user1?.name?.split(' ')[0] || 'P1', icon: '👤' },
+                                    { value: 'user2', label: coupleAnalysis.user2?.name?.split(' ')[0] || 'P2', icon: '👤' },
+                                ]}
+                            />
+                        )}
                     </>
                 }
             />
 
-            {/* Hero KPI strip */}
-            <StatGrid cols={4}>
-                <KPIStat
-                    label="Budget Prévu"
+            {/* Phase D'.5 — Tuiles fusionnées prévu/réel (doc directives §3) */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <DualKPIStat
+                    label="Budget"
                     icon="🎯"
-                    value={`${totalBudgetDisplay.toLocaleString()}$`}
-                    sublabel={`Cible Ajustée (×${getMultiplier().toFixed(1)})${inflationSim > 0 ? ` · +${inflationSim}% infl.` : ''}`}
-                    privacy
+                    prevu={totalBudgetDisplay}
+                    reel={totalSpentDisplay}
+                    sublabel={`Cible (×${getMultiplier().toFixed(1)})`}
                     variant="primary"
                 />
-                <KPIStat
-                    label="Dépenses Réelles"
-                    icon="💸"
-                    value={`${totalSpentDisplay.toLocaleString()}$`}
-                    sublabel="Sur la période"
-                    privacy
-                    variant="info"
-                />
-                <KPIStat
-                    label="Reste Disponible (Net)"
+                <DualKPIStat
+                    label="Revenus"
                     icon="💰"
-                    value={`${totalRemainingDisplay.toLocaleString()}$`}
-                    sublabel="Revenu Net − Réel"
-                    privacy
+                    prevu={totalNetIncomeDisplay}
+                    reel={totalActualIncomeDisplay}
+                    sublabel="Net (transactions ≥ 0)"
+                    variant="success"
+                />
+                <DualKPIStat
+                    label="Dépenses"
+                    icon="💸"
+                    prevu={totalBudgetDisplay}
+                    reel={totalSpentDisplay}
+                    sublabel={projectedTotalDisplay > totalBudgetDisplay ? `Projection +${formatCAD(projectedTotalDisplay - totalBudgetDisplay)}` : 'Sous le budget'}
+                    variant={totalSpentDisplay > totalBudgetDisplay ? 'danger' : 'info'}
+                    invertGoodBad
+                />
+                <DualKPIStat
+                    label="Restant"
+                    icon="🟢"
+                    prevu={totalNetIncomeDisplay - totalBudgetDisplay}
+                    reel={totalRemainingDisplay}
+                    sublabel="Revenu − Dépenses"
                     variant={totalRemainingDisplay < 0 ? 'danger' : 'success'}
                 />
-                <KPIStat
-                    label="Projection Fin Période"
-                    icon="📈"
-                    value={`${projectedTotalDisplay.toLocaleString()}$`}
-                    sublabel={projectedTotalDisplay > totalBudgetDisplay ? `+${(projectedTotalDisplay - totalBudgetDisplay).toFixed(0)}$ vs Budget` : 'Dans les clous'}
-                    privacy
-                    variant={projectedTotalDisplay > totalBudgetDisplay ? 'warning' : 'success'}
-                />
-            </StatGrid>
+            </div>
 
             {/* Simulateur d'inflation — toggle inline (avant: caché en hover sur Card 1) */}
             <details className="bg-surface/40 rounded-card border border-white/5 group">
@@ -491,22 +650,74 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     <Card title={coupleAnalysis.isSolo ? "Santé Financière" : "Santé Financière du Couple"} className="bg-gradient-to-br from-[#1e1e1e] to-blue-900/10 border-blue-500/20">
                         <div className="space-y-6">
 
-                            {/* NEW: VISUALISATION FISCALE */}
+                            {/* Phase D'.3 — Visualisation fiscale détaillée (fed + QC + RRQ + AE + RQAP)
+                                au lieu de la simple soustraction Brut − Net. */}
                             <div className="bg-black/30 rounded-lg p-3 border border-white/5 space-y-2">
                                 <div className="flex justify-between items-center text-tiny text-gray-400">
                                     <span>Revenus Bruts Totaux</span>
-                                    <span>{totalGrossDisplay.toLocaleString()}$</span>
+                                    <span className="font-mono">{formatCAD(fiscalBreakdown.grossDisplay)}</span>
                                 </div>
-                                <div className="flex justify-between items-center text-tiny text-red-400">
-                                    <span>Déductions Source (Impôts/Ass.)</span>
-                                    <span>-{totalTaxDisplay.toLocaleString()}$</span>
+                                {/* Barre stackée multi-couleurs des déductions */}
+                                <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden flex">
+                                    <div
+                                        className="h-full bg-red-500/80"
+                                        style={{ width: `${(fiscalBreakdown.fedTaxDisplay / fiscalBreakdown.grossDisplay) * 100}%` }}
+                                        title={`Fédéral : ${formatCAD(fiscalBreakdown.fedTaxDisplay)}`}
+                                    />
+                                    <div
+                                        className="h-full bg-rose-600/80"
+                                        style={{ width: `${(fiscalBreakdown.qcTaxDisplay / fiscalBreakdown.grossDisplay) * 100}%` }}
+                                        title={`Québec : ${formatCAD(fiscalBreakdown.qcTaxDisplay)}`}
+                                    />
+                                    <div
+                                        className="h-full bg-amber-500/80"
+                                        style={{ width: `${(fiscalBreakdown.rrqDisplay / fiscalBreakdown.grossDisplay) * 100}%` }}
+                                        title={`RRQ : ${formatCAD(fiscalBreakdown.rrqDisplay)}`}
+                                    />
+                                    <div
+                                        className="h-full bg-yellow-400/80"
+                                        style={{ width: `${(fiscalBreakdown.aeRqapDisplay / fiscalBreakdown.grossDisplay) * 100}%` }}
+                                        title={`AE + RQAP : ${formatCAD(fiscalBreakdown.aeRqapDisplay)}`}
+                                    />
                                 </div>
-                                <div className="w-full bg-gray-800 h-1 rounded-full">
-                                    <div className="h-full bg-red-500/50" style={{ width: `${(totalTaxDisplay / totalGrossDisplay) * 100}%` }}></div>
+                                {/* Legend détaillé */}
+                                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-tiny">
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1 text-red-300">
+                                            <span aria-hidden="true" className="w-2 h-2 bg-red-500/80 rounded-sm" />
+                                            Impôt fédéral
+                                        </span>
+                                        <span className="font-mono">{formatCAD(fiscalBreakdown.fedTaxDisplay)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1 text-rose-300">
+                                            <span aria-hidden="true" className="w-2 h-2 bg-rose-600/80 rounded-sm" />
+                                            Impôt QC
+                                        </span>
+                                        <span className="font-mono">{formatCAD(fiscalBreakdown.qcTaxDisplay)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1 text-amber-300">
+                                            <span aria-hidden="true" className="w-2 h-2 bg-amber-500/80 rounded-sm" />
+                                            RRQ
+                                        </span>
+                                        <span className="font-mono">{formatCAD(fiscalBreakdown.rrqDisplay)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1 text-yellow-300">
+                                            <span aria-hidden="true" className="w-2 h-2 bg-yellow-400/80 rounded-sm" />
+                                            AE + RQAP
+                                        </span>
+                                        <span className="font-mono">{formatCAD(fiscalBreakdown.aeRqapDisplay)}</span>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between items-center text-tiny text-ink-500 pt-1 border-t border-white/5">
+                                    <span>Total déductions ({fiscalBreakdown.averageRate.toFixed(1)}% moyen)</span>
+                                    <span className="font-mono text-red-400">−{formatCAD(fiscalBreakdown.totalTaxDisplay)}</span>
                                 </div>
                                 <div className="flex justify-between items-center font-bold text-white mt-1 pt-1 border-t border-white/5">
                                     <span>Revenu Net Disponible</span>
-                                    <span className="text-green-400">{totalNetIncomeDisplay.toLocaleString()}$</span>
+                                    <span className="text-emerald-400 font-mono">{formatCAD(fiscalBreakdown.netDisplay)}</span>
                                 </div>
                             </div>
 

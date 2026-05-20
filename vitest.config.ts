@@ -7,6 +7,7 @@ export default defineConfig({
     environmentMatchGlobs: [
       ['tests/components/**', 'jsdom'],
       ['tests/store/**', 'jsdom'],
+      ['tests/a11y/**', 'jsdom'],
     ],
     include: ['tests/**/*.test.{ts,tsx}'],
     setupFiles: ['./tests/setup.ts'],

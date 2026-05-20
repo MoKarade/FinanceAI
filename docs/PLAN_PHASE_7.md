@@ -228,8 +228,8 @@ services/marketData/
 | TBD | C.1 Layout test RTL | ✅ | 7 tests : children render, skip link href #main, main#main tabIndex, refresh btn, privacy toggle aria-pressed (desktop+mobile), aria-current="page", nav mobile aria-label. |
 | TBD | C.2 AbortController Claude | ✅ | makeTimeoutSignal helper (combine signal externe + timeout 30s default) sur chat() + chatStream(). AiAssistant : bouton "Annuler" (⏹) en lieu de l'icône envoi quand isLoading. |
 | (déjà fait) | C.3 Zod systématique | ✅ | Audit : 5/5 consumers structurés (categorize, subscriptions, smartGoals, budgetAnalysis, payslip) utilisent `safeJsonValidate` qui wrappe Zod parse + try/catch + warn log + null fallback. |
-| — | D.1 contrast script | ⏳ | — |
-| — | D.2 axe CI | ⏳ | — |
+| TBD | D.1 contrast script | ✅ | scripts/check-contrast.ts + npm run check-contrast. Audit 16×3=48 combos, 38/48 conformes AA. Pas de critical failure (ink-50/100/200/300 OK). Rapport `docs/CONTRAST_AUDIT.md`. |
+| TBD | D.2 axe CI | ✅ | vitest-axe + axe-core installés. tests/a11y/primitives.axe.test.tsx avec 6 tests sur Button/Badge/KPIStat/PageHeader/EmptyState/Skeleton. 0 violation serious/critical. |
 | — | D.3 i18n compléter | ⏳ | — |
 | — | E.1 F11 RRQ_MPE unifié | ⏳ | — |
 | — | E.2 F12 retenue REER décomposée | ⏳ | — |

@@ -218,7 +218,7 @@ services/marketData/
 
 | PR | Sous-phase | Statut | Notes |
 |---|---|---|---|
-| — | A.1 lazy recharts | ⏳ | — |
+| TBD | A.1 lazy recharts | ✅ | DashboardEvolutionChart extrait + React.lazy. Recharts hors du critical path au boot. |
 | — | A.2 lazy pdf-vendor | ⏳ | — |
 | — | A.3 MC perf cache Date | ⏳ | — |
 | — | A.4 bundle cleanup | ⏳ | — |

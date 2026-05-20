@@ -24,6 +24,8 @@ import { StockChart } from './StockChart';
 import { ASSET_META } from '../services/assetMeta';
 import { DividendPanel } from './investments/DividendPanel';
 import { formatCAD } from '../utils/format';
+import { getRebalanceJustifications, type RebalanceActionInput } from '../services/claude';
+import { AddStockForm } from './investments/AddStockForm';
 import { useFinanceStore } from '../store/useFinanceStore';
 
 interface InvestmentsProps {
@@ -69,13 +71,20 @@ const DEFAULT_TARGET_MODEL = [
 ];
 
 export const Investments: React.FC<InvestmentsProps> = ({
-    assets, setAssets, projection, setProjection
+    assets, setAssets, projection, setProjection, apiKey
 }) => {
+    // Phase E.7 — apiKey du store (fallback prop pour rétrocompat) pour appeler Claude
+    const anthropicKeyFromStore = useFinanceStore(s => s.apiKeys.anthropic);
+    const claudeKey = anthropicKeyFromStore || apiKey || '';
 
     const [marketData, setMarketData] = useState<MarketDataPoint[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
     const [timeRange, setTimeRange] = useState<TimeRange>('1Y');
+    // Phase E.3 — sous-onglets pour aérer la page (doc directives §4)
+    const [subTab, setSubTab] = useState<'overview' | 'allocation' | 'rebalance' | 'detail'>('overview');
+    // Phase E.6 — filtre interactif Geo/Sector cliqué dans la pie
+    const [allocationFilter, setAllocationFilter] = useState<{ type: 'region' | 'sector'; value: string } | null>(null);
 
     // Wiring 2026-05: lecture de la projection vivante depuis le store.
     const lastProjection = useFinanceStore(s => s.lastProjection);
@@ -109,6 +118,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
         setProjection({ ...projection, investmentTargetPcts: pcts });
     };
     const [isRebalanceEdit, setIsRebalanceEdit] = useState(false);
+    // Phase E.7 — justifications IA des actions de rééquilibrage
+    const [iaJustifications, setIaJustifications] = useState<Map<string, string>>(new Map());
+    const [isFetchingJustifications, setIsFetchingJustifications] = useState(false);
+    // Phase E.9 — modal d'ajout manuel d'une action
+    const [showAddStockForm, setShowAddStockForm] = useState(false);
 
     // --- INSTANT DATA LOAD ---
     useEffect(() => {
@@ -359,6 +373,29 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 }
             />
 
+            {/* Phase E.3 — Sous-onglets + Phase E.1 — TimeRange global au sommet */}
+            <div className="flex flex-wrap items-center justify-center gap-3">
+                <Pill
+                    aria-label="Vue Investissements"
+                    size="sm"
+                    value={subTab}
+                    onChange={(v) => setSubTab(v as typeof subTab)}
+                    options={[
+                        { value: 'overview', label: "Vue d'ensemble", icon: '📊' },
+                        { value: 'allocation', label: 'Allocation', icon: '🎯' },
+                        { value: 'rebalance', label: 'Rééquilibrage', icon: '⚖️' },
+                        { value: 'detail', label: 'Détail', icon: '📦' },
+                    ]}
+                />
+                <Pill
+                    aria-label="Période"
+                    size="sm"
+                    value={timeRange}
+                    onChange={(v) => setTimeRange(v as TimeRange)}
+                    options={(['1M', '3M', '6M', 'YTD', '1Y', 'ALL'] as TimeRange[]).map(r => ({ value: r, label: r }))}
+                />
+            </div>
+
             {/* Hero: Score de santé (donut) + Performance vs Marché */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card className="md:col-span-1 flex flex-col justify-center items-center py-6">
@@ -397,10 +434,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 </Card>
             </div>
 
-            {/* 0.5 PROJECTION RETRAITE (Wiring 2026-05) — n'apparaît que si l'utilisateur
-                a déjà ouvert l'onglet Future au moins une fois dans la session.
-                C4: KPIStat/StatGrid au lieu de raw divs (uniformisation avec FutureProjection). */}
-            {horizonSnapshot && (
+            {/* 0.5 PROJECTION RETRAITE — Phase E.3 overview only */}
+            {subTab === 'overview' && horizonSnapshot && (
                 <Card title={`🔮 Portefeuille projeté en ${horizonSnapshot.year} (${projectionHorizonYears} ans)`} className="bg-gradient-to-br from-blue-900/10 to-indigo-900/10 border-blue-500/20">
                     <StatGrid cols={horizonSnapshot.crypto > 0 ? 5 : 4}>
                         <KPIStat
@@ -451,19 +486,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 </Card>
             )}
 
-            {/* 1. CHART SECTION */}
-            <Card className="min-h-[550px]" title="Performance Comparée">
-                <div className="flex justify-between items-center mb-4 border-b border-white/5 pb-2 gap-4 flex-wrap">
-                    <Pill
-                        aria-label="Période"
-                        size="sm"
-                        value={timeRange}
-                        onChange={(v) => setTimeRange(v as TimeRange)}
-                        options={(['1M', '3M', '6M', 'YTD', '1Y', 'ALL'] as TimeRange[]).map(r => ({ value: r, label: r }))}
-                    />
-                    <div className="text-meta text-ink-400">
-                        {filteredMarketData.length} points
-                    </div>
+            {/* 1. CHART SECTION — Phase E.3 overview only */}
+            {subTab === 'overview' && <Card className="min-h-[550px]" title="Performance Comparée">
+                {/* Phase E.1 — Pill TimeRange déplacée en haut de page (global) */}
+                <div className="flex justify-end items-center mb-2 text-meta text-ink-400">
+                    {filteredMarketData.length} points · période <strong className="text-ink-200 ml-1">{timeRange}</strong>
                 </div>
 
                 {/* SERIES TOGGLES */}
@@ -514,12 +541,10 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         </div>
                     )}
                 </div>
-            </Card>
+            </Card>}
 
-            {/* 2. ALLOCATION PANORAMIQUE (FULL WIDTH)
-                C4: CollapsibleSection — ouvert par défaut, mais on permet à
-                l'utilisateur de replier pour focus. */}
-            <CollapsibleSection
+            {/* 2. ALLOCATION PANORAMIQUE — Phase E.3 sub-tab 'allocation' */}
+            {subTab === 'allocation' && <CollapsibleSection
                 title="Analyse de l'Allocation"
                 icon="🎯"
                 subtitle="Répartition géographique et sectorielle"
@@ -527,7 +552,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
             >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 min-h-[300px]">
 
-                    {/* REGIONS */}
+                    {/* REGIONS — Phase E.6 : clic = filtre stocks */}
                     <div className="bg-[#1a1a1a] rounded-xl p-4 border border-white/5 flex flex-col">
                         <h4 className="text-gray-400 text-xs font-bold uppercase mb-4 text-center">Répartition Géographique</h4>
                         <div className="flex-1 flex flex-col lg:flex-row items-center gap-4">
@@ -541,33 +566,50 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             paddingAngle={5}
                                             dataKey="value"
                                             stroke="none"
+                                            onClick={(entry: { name?: string }) => entry.name && setAllocationFilter({ type: 'region', value: entry.name })}
+                                            cursor="pointer"
                                         >
                                             {geoBreakdown.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS_REGION[entry.name] || '#444'} />
+                                                <Cell
+                                                    key={`cell-${index}`}
+                                                    fill={COLORS_REGION[entry.name] || '#444'}
+                                                    opacity={allocationFilter?.type === 'region' && allocationFilter.value !== entry.name ? 0.3 : 1}
+                                                />
                                             ))}
                                         </Pie>
-                                        <ReTooltip contentStyle={{ backgroundColor: '#fff', color: '#000', borderRadius: '8px', border: 'none' }} itemStyle={{ color: '#000' }} formatter={(val: number) => val.toLocaleString() + '$'} />
+                                        <ReTooltip contentStyle={{ backgroundColor: '#fff', color: '#000', borderRadius: '8px', border: 'none' }} itemStyle={{ color: '#000' }} formatter={(val: number) => formatCAD(val)} />
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>
                             <div className="flex-1 w-full space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
-                                {geoBreakdown.map(item => (
-                                    <div key={item.name} className="flex justify-between items-center text-xs p-2 bg-white/5 rounded">
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS_REGION[item.name] || '#444' }}></span>
-                                            <span className="text-gray-200 font-medium">{item.name}</span>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-white font-bold">{item.value.toLocaleString()} $</div>
-                                            <div className="text-tiny text-gray-500">{item.percent.toFixed(1)}%</div>
-                                        </div>
-                                    </div>
-                                ))}
+                                {geoBreakdown.map(item => {
+                                    const isActive = allocationFilter?.type === 'region' && allocationFilter.value === item.name;
+                                    return (
+                                        <button
+                                            key={item.name}
+                                            type="button"
+                                            onClick={() => setAllocationFilter(isActive ? null : { type: 'region', value: item.name })}
+                                            className={`w-full flex justify-between items-center text-xs p-2 rounded transition-colors focus-ring ${
+                                                isActive ? 'bg-white/15 border border-white/20' : 'bg-white/5 hover:bg-white/10'
+                                            }`}
+                                            aria-pressed={isActive}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS_REGION[item.name] || '#444' }}></span>
+                                                <span className="text-gray-200 font-medium">{item.name}</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-white font-bold">{formatCAD(item.value)}</div>
+                                                <div className="text-tiny text-gray-500">{item.percent.toFixed(1)}%</div>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
 
-                    {/* SECTORS */}
+                    {/* SECTORS — Phase E.6 : clic = filtre stocks */}
                     <div className="bg-[#1a1a1a] rounded-xl p-4 border border-white/5 flex flex-col">
                         <h4 className="text-gray-400 text-xs font-bold uppercase mb-4 text-center">Répartition Sectorielle</h4>
                         <div className="flex-1 flex flex-col lg:flex-row items-center gap-4">
@@ -581,45 +623,98 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             paddingAngle={5}
                                             dataKey="value"
                                             stroke="none"
+                                            onClick={(entry: { name?: string }) => entry.name && setAllocationFilter({ type: 'sector', value: entry.name })}
+                                            cursor="pointer"
                                         >
                                             {sectorBreakdown.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS_SECTOR[entry.name] || '#444'} />
+                                                <Cell
+                                                    key={`cell-${index}`}
+                                                    fill={COLORS_SECTOR[entry.name] || '#444'}
+                                                    opacity={allocationFilter?.type === 'sector' && allocationFilter.value !== entry.name ? 0.3 : 1}
+                                                />
                                             ))}
                                         </Pie>
-                                        <ReTooltip contentStyle={{ backgroundColor: '#fff', color: '#000', borderRadius: '8px', border: 'none' }} itemStyle={{ color: '#000' }} formatter={(val: number) => val.toLocaleString() + '$'} />
+                                        <ReTooltip contentStyle={{ backgroundColor: '#fff', color: '#000', borderRadius: '8px', border: 'none' }} itemStyle={{ color: '#000' }} formatter={(val: number) => formatCAD(val)} />
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>
                             <div className="flex-1 w-full space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
-                                {sectorBreakdown.map(item => (
-                                    <div key={item.name} className="flex justify-between items-center text-xs p-2 bg-white/5 rounded">
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS_SECTOR[item.name] || '#444' }}></span>
-                                            <span className="text-gray-200 font-medium">{item.name}</span>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-white font-bold">{item.value.toLocaleString()} $</div>
-                                            <div className="text-tiny text-gray-500">{item.percent.toFixed(1)}%</div>
-                                        </div>
-                                    </div>
-                                ))}
+                                {sectorBreakdown.map(item => {
+                                    const isActive = allocationFilter?.type === 'sector' && allocationFilter.value === item.name;
+                                    return (
+                                        <button
+                                            key={item.name}
+                                            type="button"
+                                            onClick={() => setAllocationFilter(isActive ? null : { type: 'sector', value: item.name })}
+                                            className={`w-full flex justify-between items-center text-xs p-2 rounded transition-colors focus-ring ${
+                                                isActive ? 'bg-white/15 border border-white/20' : 'bg-white/5 hover:bg-white/10'
+                                            }`}
+                                            aria-pressed={isActive}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS_SECTOR[item.name] || '#444' }}></span>
+                                                <span className="text-gray-200 font-medium">{item.name}</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-white font-bold">{formatCAD(item.value)}</div>
+                                                <div className="text-tiny text-gray-500">{item.percent.toFixed(1)}%</div>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
 
                 </div>
-            </CollapsibleSection>
 
-            {/* 3. DIVIDEND CALENDAR */}
-            <DividendPanel
+                {/* Phase E.6 — Liste des stocks filtrés par geo/sector cliqué */}
+                {allocationFilter && (
+                    <div className="mt-4 p-4 bg-gradient-to-r from-primary/5 to-info-500/5 border border-primary/20 rounded-xl">
+                        <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                                <span aria-hidden="true">{allocationFilter.type === 'region' ? '🌍' : '🏢'}</span>
+                                Actions en <span className="text-primary">{allocationFilter.value}</span>
+                            </h4>
+                            <button
+                                type="button"
+                                onClick={() => setAllocationFilter(null)}
+                                className="text-tiny text-ink-400 hover:text-ink-100 px-2 py-1 rounded transition-colors focus-ring"
+                            >
+                                ✕ Effacer filtre
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                            {currentAllocation
+                                .filter(a => allocationFilter.type === 'region' ? a.region === allocationFilter.value : a.sector === allocationFilter.value)
+                                .sort((a, b) => b.value - a.value)
+                                .map(a => (
+                                    <div key={a.id} className="bg-white/5 p-3 rounded-lg border border-white/5">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <span className="font-bold text-white text-sm truncate">{a.name}</span>
+                                            <span className="text-tiny text-ink-400 font-mono">{a.weight.toFixed(1)}%</span>
+                                        </div>
+                                        <div className="text-meta font-mono text-ink-200 privacy-blur">{formatCAD(a.value)}</div>
+                                        <div className={`text-tiny font-mono ${a.trend24h >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                            {a.trend24h >= 0 ? '+' : ''}{a.trend24h.toFixed(2)}% (24h)
+                                        </div>
+                                    </div>
+                                ))}
+                        </div>
+                    </div>
+                )}
+            </CollapsibleSection>}
+
+            {/* 3. DIVIDEND CALENDAR — Phase E.3 visible en overview */}
+            {subTab === 'overview' && <DividendPanel
                 dividendCalendar={dividendCalendar}
                 totalAnnualDividends={totalAnnualDividends}
                 currentAllocation={currentAllocation}
                 isLoading={isLoading}
-            />
+            />}
 
-            {/* 4. VISUAL PORTFOLIO REBALANCING (V16) */}
-            {currentAllocation.length > 0 && (() => {
+            {/* 4. VISUAL PORTFOLIO REBALANCING (V16) — Phase E.3 sub-tab 'rebalance' */}
+            {subTab === 'rebalance' && currentAllocation.length > 0 && (() => {
                 const totalPortfolio = currentAllocation.reduce((s, a) => s + a.value, 0);
 
                 const rebalancingActions = targetModel.map(target => {
@@ -656,7 +751,33 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     {hasActions ? '⚠️ Des actions de rééquilibrage sont recommandées' : '✅ Portefeuille bien équilibré'}
                                 </div>
                             </div>
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                {/* Phase E.7 — bouton justifications IA */}
+                                {hasActions && claudeKey && (
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            setIsFetchingJustifications(true);
+                                            const inputs: RebalanceActionInput[] = rebalancingActions.map(a => ({
+                                                id: a.id,
+                                                label: a.label,
+                                                action: a.action,
+                                                currentPct: a.currentPct,
+                                                targetPct: a.targetPct,
+                                                diffAmount: a.diffAmount,
+                                            }));
+                                            const justifications = await getRebalanceJustifications(inputs, claudeKey);
+                                            const map = new Map<string, string>();
+                                            justifications.forEach(j => map.set(j.actionId, j.reason));
+                                            setIaJustifications(map);
+                                            setIsFetchingJustifications(false);
+                                        }}
+                                        disabled={isFetchingJustifications}
+                                        className="px-3 py-1.5 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 rounded-lg text-xs font-bold hover:bg-indigo-600 hover:text-white transition-colors disabled:opacity-50"
+                                    >
+                                        {isFetchingJustifications ? '⏳ Analyse…' : '✨ Pourquoi ces actions ?'}
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => setIsRebalanceEdit(!isRebalanceEdit)}
                                     className="px-3 py-1.5 bg-violet-600/20 text-violet-300 border border-violet-500/30 rounded-lg text-xs font-bold hover:bg-violet-600 hover:text-white transition-colors"
@@ -745,6 +866,13 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             style={{ left: `${item.targetPct}%` }}
                                         />
                                     </div>
+                                    {/* Phase E.7 — justification IA */}
+                                    {iaJustifications.has(item.id) && (
+                                        <div className="mt-3 pt-3 border-t border-white/5 text-tiny text-indigo-300 italic flex gap-2">
+                                            <span aria-hidden="true" className="text-indigo-400 shrink-0">✨</span>
+                                            <span className="leading-relaxed">{iaJustifications.get(item.id)}</span>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -776,10 +904,19 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 );
             })()}
 
-            {/* 5. STOCK CARDS GRID
-                C4: wrap dans CollapsibleSection — ouvert par défaut, badge count
-                pour orienter l'utilisateur quand il replie. */}
-            <CollapsibleSection
+            {/* 5. STOCK CARDS GRID — Phase E.3 sub-tab 'detail' */}
+            {subTab === 'detail' && <>
+                {/* Phase E.9 — bouton d'ajout manuel d'action */}
+                <div className="flex justify-end">
+                    <button
+                        type="button"
+                        onClick={() => setShowAddStockForm(true)}
+                        className="px-3 py-1.5 bg-primary/15 hover:bg-primary/25 border border-primary/40 text-primary text-tiny font-bold rounded-card transition-colors focus-ring"
+                    >
+                        + Ajouter une action
+                    </button>
+                </div>
+                <CollapsibleSection
                 title="Portefeuille Détaillé"
                 icon="📦"
                 subtitle="Tous les actifs avec performance et compte fiscal"
@@ -848,6 +985,18 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 })}
             </div>
             </CollapsibleSection>
+            </>}
+
+            {/* Phase E.9 — Modal d'ajout manuel */}
+            <AddStockForm
+                isOpen={showAddStockForm}
+                onClose={() => setShowAddStockForm(false)}
+                onAdd={(newAsset) => {
+                    if (setAssets) {
+                        setAssets([...assets, newAsset]);
+                    }
+                }}
+            />
 
         </div>
     );

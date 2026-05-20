@@ -559,6 +559,66 @@ RÉPONDS UNIQUEMENT par un JSON Array strict de 3 objets (pas de markdown, pas d
     }
 };
 
+// ─── Phase E.7 — Justifications IA de rééquilibrage ──────────────────────────
+
+const RebalanceJustificationSchema = z.object({
+    actionId: z.string(),
+    reason: z.string().min(5),
+});
+const RebalanceJustificationsSchema = z.array(RebalanceJustificationSchema);
+
+export type RebalanceJustification = z.infer<typeof RebalanceJustificationSchema>;
+
+export interface RebalanceActionInput {
+    id: string;
+    label: string;       // ex: "Tesla (TSLA)"
+    action: 'BUY' | 'SELL' | 'OK';
+    currentPct: number;
+    targetPct: number;
+    diffAmount: number;  // $ à acheter ou vendre
+    sector?: string;
+    region?: string;
+}
+
+/**
+ * Phase E.7 — pour chaque action de rééquilibrage, génère 1 phrase IA
+ * justifiant le mouvement (ex: "Tesla dépasse 18% du portefeuille — réduire
+ * pour respecter la cible 10% et diversifier").
+ */
+export const getRebalanceJustifications = async (
+    actions: RebalanceActionInput[],
+    apiKey: string,
+): Promise<RebalanceJustification[]> => {
+    if (!apiKey || actions.length === 0) return [];
+
+    const userPrompt = `Tu es conseiller financier québécois expert. Pour CHAQUE action de rééquilibrage ci-dessous, fournis UNE SEULE phrase claire (max 20 mots) qui justifie le mouvement.
+
+CONTRAINTES :
+- Ton concis, factuel, sans jargon excessif
+- Mention de la différence concrète (% ou $) quand pertinent
+- Pertinence québécoise (CELI/REER si applicable)
+- Pour action='OK', dire pourquoi c'est aligné (juste 1 phrase de validation)
+
+DONNÉES :
+${actions.map(a => `[${a.id}] ${a.label} | ${a.action} | actuel ${a.currentPct.toFixed(1)}% vs cible ${a.targetPct.toFixed(1)}% (Δ ${roundToHundred(a.diffAmount)}$)${a.sector ? ' | secteur ' + a.sector : ''}${a.region ? ' | région ' + a.region : ''}`).join('\n')}
+
+RÉPONDS UNIQUEMENT par un JSON Array strict (pas de markdown) :
+[{ "actionId": "id1", "reason": "phrase 1" }, { "actionId": "id2", "reason": "phrase 2" }, ...]`;
+
+    try {
+        const text = await chat(
+            [{ role: 'user', content: userPrompt }],
+            apiKey,
+            { model: MODEL_HAIKU, system: QUEBEC_FISCAL_CONTEXT, maxTokens: 2048, temperature: 0.5, timeoutMs: 25000 },
+        );
+        const validated = safeJsonValidate(text, RebalanceJustificationsSchema);
+        return validated ?? [];
+    } catch (e) {
+        console.error('[Claude] getRebalanceJustifications failed:', e);
+        return [];
+    }
+};
+
 // ─── Vision: analyse fiche de paie (compat TaxCenter) ───────────────────────
 
 const PayslipSchema = z.object({

@@ -11,7 +11,10 @@ import { useFinanceStore } from '../../store/useFinanceStore';
  * Partout ailleurs (sidebar, modals, autres onglets) ce badge sert d'affichage
  * non interactif.
  */
-export const CoupleModeBadge: React.FC<{ className?: string }> = ({ className = '' }) => {
+export const CoupleModeBadge: React.FC<{ className?: string; compact?: boolean }> = ({
+    className = '',
+    compact = false,
+}) => {
     const isCouple = useFinanceStore(s => {
         const u2 = s.config?.users?.[1];
         return Boolean(u2?.name && u2.name.trim() !== '');
@@ -19,7 +22,7 @@ export const CoupleModeBadge: React.FC<{ className?: string }> = ({ className = 
 
     return (
         <div
-            className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-tiny font-medium select-none ${
+            className={`inline-flex items-center gap-1.5 ${compact ? 'px-1.5 py-1' : 'px-2 py-1'} rounded-full text-tiny font-medium select-none ${
                 isCouple
                     ? 'bg-pink-500/10 text-pink-300 border border-pink-500/20'
                     : 'bg-white/5 text-ink-300 border border-white/10'
@@ -28,7 +31,7 @@ export const CoupleModeBadge: React.FC<{ className?: string }> = ({ className = 
             aria-label={isCouple ? 'Mode Couple actif' : 'Mode Individuel actif'}
         >
             <span aria-hidden="true">{isCouple ? '👥' : '👤'}</span>
-            <span>{isCouple ? 'Couple' : 'Individuel'}</span>
+            {!compact && <span>{isCouple ? 'Couple' : 'Individuel'}</span>}
         </div>
     );
 };

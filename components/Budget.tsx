@@ -31,6 +31,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     const [inflationSim, setInflationSim] = useState(0);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null); // Pour le modal
+    // Phase D'.6 — navigation périodes : 0 = courante, -1 = mois/trim/année précédent, etc.
+    const [periodOffset, setPeriodOffset] = useState(0);
+    // Phase D'.4 — filtre personne en mode couple (null = tout combiné)
+    const [personFilter, setPersonFilter] = useState<0 | 1 | null>(null);
 
     const [showAiModal, setShowAiModal] = useState(false);
 
@@ -44,23 +48,25 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     const monthProgress = (currentDay / daysInMonth) * 100;
 
     const getDateRange = () => {
-        const end = new Date();
-        const start = new Date();
-
+        // Phase D'.6 — applique le periodOffset (négatif = passé, positif = futur)
         if (timeView === 'MONTH') {
-            start.setDate(1);
-            start.setHours(0, 0, 0, 0);
+            const start = new Date(now.getFullYear(), now.getMonth() + periodOffset, 1);
+            const end = new Date(now.getFullYear(), now.getMonth() + periodOffset + 1, 0, 23, 59, 59);
+            return { start, end };
         } else if (timeView === 'QUARTER') {
-            start.setDate(start.getDate() - 90);
-            start.setHours(0, 0, 0, 0);
+            const currentQuarter = Math.floor(now.getMonth() / 3);
+            const startMonth = (currentQuarter + periodOffset) * 3;
+            const start = new Date(now.getFullYear(), startMonth, 1);
+            const end = new Date(now.getFullYear(), startMonth + 3, 0, 23, 59, 59);
+            return { start, end };
         } else if (timeView === 'YEAR') {
-            start.setFullYear(start.getFullYear() - 1);
-            start.setHours(0, 0, 0, 0);
+            const start = new Date(now.getFullYear() + periodOffset, 0, 1);
+            const end = new Date(now.getFullYear() + periodOffset, 11, 31, 23, 59, 59);
+            return { start, end };
         } else {
-            // Custom
+            // Custom : pas de périodes adjacentes, utilise les bornes user.
             return { start: new Date(customStart), end: new Date(customEnd) };
         }
-        return { start, end };
     };
 
     const getMultiplier = () => {
@@ -421,7 +427,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                             aria-label="Période"
                             size="sm"
                             value={timeView}
-                            onChange={(v) => setTimeView(v as TimeView)}
+                            onChange={(v) => { setTimeView(v as TimeView); setPeriodOffset(0); }}
                             options={[
                                 { value: 'MONTH', label: 'Mois', icon: '📅' },
                                 { value: 'QUARTER', label: 'Trim.', icon: '📊' },
@@ -429,12 +435,71 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                 { value: 'CUSTOM', label: 'Custom', icon: '🛠️' },
                             ]}
                         />
+                        {/* Phase D'.6 — navigation rapide périodes adjacentes */}
+                        {timeView !== 'CUSTOM' && (
+                            <div className="flex items-center gap-1 bg-white/5 rounded-pill p-0.5 border border-white/10">
+                                <button
+                                    type="button"
+                                    onClick={() => setPeriodOffset(o => o - 1)}
+                                    title="Période précédente"
+                                    aria-label="Période précédente"
+                                    className="px-2 py-1 text-ink-300 hover:text-ink-100 hover:bg-white/10 rounded transition-colors focus-ring"
+                                >
+                                    ←
+                                </button>
+                                <span className="px-2 text-tiny text-ink-300 font-mono min-w-[80px] text-center">
+                                    {(() => {
+                                        const { start } = getDateRange();
+                                        if (timeView === 'MONTH') return start.toLocaleDateString('fr-CA', { month: 'short', year: '2-digit' });
+                                        if (timeView === 'QUARTER') {
+                                            const q = Math.floor(start.getMonth() / 3) + 1;
+                                            return `T${q} ${start.getFullYear()}`;
+                                        }
+                                        return String(start.getFullYear());
+                                    })()}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setPeriodOffset(o => Math.min(0, o + 1))}
+                                    disabled={periodOffset >= 0}
+                                    title={periodOffset >= 0 ? 'Période actuelle' : 'Période suivante'}
+                                    aria-label="Période suivante"
+                                    className="px-2 py-1 text-ink-300 hover:text-ink-100 hover:bg-white/10 rounded transition-colors focus-ring disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                                >
+                                    →
+                                </button>
+                                {periodOffset !== 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setPeriodOffset(0)}
+                                        title="Revenir à la période actuelle"
+                                        className="px-2 py-1 text-tiny text-info-400 hover:underline focus-ring rounded"
+                                    >
+                                        Auj.
+                                    </button>
+                                )}
+                            </div>
+                        )}
                         {timeView === 'CUSTOM' && (
                             <div className="flex items-center gap-1 bg-white/5 rounded-pill p-1 border border-white/10">
                                 <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-transparent text-ink-100 text-meta border-none outline-none w-24" aria-label="Date de début" />
                                 <span className="text-ink-400">-</span>
                                 <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-transparent text-ink-100 text-meta border-none outline-none w-24" aria-label="Date de fin" />
                             </div>
+                        )}
+                        {/* Phase D'.4 — filtre personne en mode couple */}
+                        {coupleAnalysis.user2 && (
+                            <Pill
+                                aria-label="Filtre personne"
+                                size="sm"
+                                value={personFilter === null ? 'all' : (personFilter === 0 ? 'user1' : 'user2')}
+                                onChange={(v) => setPersonFilter(v === 'all' ? null : v === 'user1' ? 0 : 1)}
+                                options={[
+                                    { value: 'all', label: 'Couple', icon: '👥' },
+                                    { value: 'user1', label: coupleAnalysis.user1?.name?.split(' ')[0] || 'P1', icon: '👤' },
+                                    { value: 'user2', label: coupleAnalysis.user2?.name?.split(' ')[0] || 'P2', icon: '👤' },
+                                ]}
+                            />
                         )}
                     </>
                 }

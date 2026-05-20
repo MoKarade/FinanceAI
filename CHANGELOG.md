@@ -6,6 +6,112 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — cycle 13 : Refonte UI v3.0 COMPLÈTE (8 phases + cleanup + F.11)] — 2026-05-20
+
+> Refonte massive selon le document directives `MAJ_FinanceAI.txt`. **10 PRs**
+> (#86 à #95), 8 phases logiques (A → G + cleanup + F.11), **501 → 511 tests verts**.
+> Store v4 → v6 avec migrations propres. 15+ nouveaux composants, 6 nouveaux
+> services IA, fusion d'onglets, refonte navigation, indicateurs santé,
+> IA partout. **100% gratuit** — Finnhub free, ta clé Anthropic perso, Era perso.
+
+### Phase A (Fondations transverses) — PR #86
+
+- Format `1 111,55 $` centralisé via `utils/format.ts` (formatCAD, formatNumber,
+  formatPercent, formatSigned, formatDate, formatCompactCAD) — 23 tests unitaires
+- Suppression du toggle FR/EN — locale `fr` verrouillée, paquet `en.json` retiré,
+  dépendance `i18next-browser-languagedetector` retirée
+- Version exacte injectée via Vite define (`__APP_VERSION__`, `__GIT_SHA__`,
+  `__BUILD_DATE__`) — affichée dans la sidebar (tooltip date de build)
+- Mode Couple = indicateur read-only global (`<CoupleModeBadge>`), source de
+  vérité unique = `config.users[1].name` non vide
+
+### Phase B (Navigation + sidebar refonte) — PR #86
+
+- Sidebar cachée par défaut (rail 64px) + reveal au hover/focus (288px), transition
+  fluide 200ms, respect motion-reduce
+- Accordion par groupe (Argent / Plan / Objectifs / Outils) — chaque groupe
+  toggleable au clic, aria-expanded propre
+- Widget IA "Prochaine Meilleure Action" (`<NextBestAction>`) remplace le palier
+  statique — Claude Haiku 4.5 + cache localStorage 1h
+- Cleanup : boutons info ℹ️, Synchroniser 🔄, Rapport PDF retirés
+
+### Phase C (Hub Configuration) — PR #87
+
+- Onglet Configuration centralise : profil, retraite (âge, espérance de vie,
+  revenus cibles), API keys, sauvegarde
+- `<MissingDataBanner>` + `<MissingDataChecklist>` : 11 champs critiques
+  déclarés, pattern de redirect cross-tab via `navigateWithFocus(tab, section)`
+- `<PayslipUploadCard>` : extraction Vision Claude Sonnet auto-fill grossSalary/netSalary
+- Era boot sync : pré-chauffe le cache `buildEnrichedContext` (1h TTL) au mount
+- Migration store v4 → v5 : `retirementGoal.lifeExpectancy` (default 90)
+
+### Phase D (Home tab refonte) — PRs #88 + #89
+
+- KPI strip 5 cols : Net Worth, Variation, Active Income, Passive Income, Indicateur Futur
+- `<ZoomableTimeChart>` : zoom molette + pan + multi-échelle dynamique (réutilisable Investments)
+- Chips toggle multi-comptes + ligne Total overlay
+- Stocks cliquables avec checkbox, multi-check → `<StockComparisonModal>` overlay
+- Gain $/% depuis l'achat affiché si `Asset.buyPrice` connu (sinon CTA "Configurer")
+- `<HealthIndicator>` : score 0-100 paramétrable (4 ratios : épargne, coussin, dette, FIRE)
+- Suppression Cash/Saving/Dette/Jalons (vue allégée)
+
+### Phase D' (Budget refonte) — PR #90
+
+- Sync absolue catégories Budget↔Transactions : rename propagé, suppression réassigne à "Uncategorized"
+- `<DualKPIStat>` : 4 tuiles Prévu/Réel (Budget / Revenus / Dépenses / Restant) avec écart % coloré
+- Santé financière fiscale : `calculateFiscalReport` au lieu de Brut−Net (Fed/QC/RRQ/AE/RAMQ/FSS)
+- Filtre Personne A/B/combiné (Pill) en mode couple
+- Navigation périodes adjacentes (← Mai 26 → + bouton "Auj.")
+- Diagnostic IA fluide (streaming via `chatStream`) au lieu de one-shot 30s
+
+### Phase E (Investissement refonte) — PR #91
+
+- 4 sous-onglets : Vue d'ensemble / Allocation / Rééquilibrage / Détail
+- TimeRange global au sommet (affecte toutes les sections)
+- StockChart utilise désormais `<ZoomableTimeChart>` (zoom molette, multi-échelle)
+- Pies Geo/Sectorielles **interactives** : click → filtre stocks avec gains $/%
+- Justifications IA des actions de rééquilibrage (`getRebalanceJustifications`)
+- `<AddStockForm>` : ajout manuel avec validation Finnhub + suggestion prix historique
+- Portefeuille projeté 2066 = copie exacte FUTUR (consume `lastProjection.chartData`)
+
+### Phase F (Retraite + Immobilier + Enfant + Projets de vie) — PR #92
+
+- Fusion Voyages + LifeEvents → onglet unifié "Projets de vie" (`Tab.LIFE_PROJECTS`)
+- Indicateurs activation FUTUR uniformisés (RealEstate + ChildPlanning, mêmes badges)
+- Rendement boursier Immobilier sync dynamique avec `projection.returnRate` global
+  (coût d'opportunité Buy vs Rent toujours à jour)
+
+### Phase G (Impôts + Documents) — PR #93
+
+- Nouvel onglet **Documents** global (`Tab.DOCUMENTS`) : hub central PDF/Image
+  avec catégories (PAYSLIP, T4, BANK_STATEMENT, etc.) et extraction IA Vision
+  pour les fiches de paie
+- `<CoupleOptimizationCard>` : 3 stratégies IA (Spousal RRSP, allocation CELI,
+  pension splitting, transferts crédits) avec confidence + économie estimée $/an
+
+### Cleanup final — PRs #94 + #95
+
+- **E.8 DCA multi-achat** : type `Asset.purchases[]` + store v5→v6 + 4 helpers
+  (`utils/assetPurchases.ts`, +10 tests) + UI stats DCA dans Portefeuille Détaillé
+- **F.4 Asset Location développé** : score d'efficacité 0-100 live, pré-rempli
+  depuis le store, synthèse 3 cards (CELI/REER/NonReg), perte annuelle estimée
+- **F.8 Conseils IA Immobilier** : `<RealEstateAdviceCard>` 5 catégories
+- **G.3 Tax brackets ultra-précis** : breakdown $ par tranche consommée, effective vs marginal
+- **F.5 Extraction CurrentCapitalCard** : Retirement.tsx -23 lignes (partial)
+- **F.11 ChildPlanning design pro** : tabs Pill-style cohérents, labels épurés
+- **G.2** TaxCenter upload : orienté vers Documents global (`"Calcul rapide / Pour archiver → Documents"`)
+- **G.5** Préparation architecturale Dettes/Planning → sous-onglets Transactions (commentaire seulement)
+- **+19 tests** pour Documents, CoupleOptimization, assetPurchases (482 → 501 → 511 verts)
+
+### Items volontairement différés (P0+P2+P3+P4+P5)
+
+- E.2 Live prices intraday : nécessite WebSocket payant — current daily data acceptable
+- F.5 deep refactor (38k → 20k via extraction multiple) : itératif
+- P0 validation visuelle / mobile : à reprendre quand regressions identifiées
+- Roadmap "10/10" détaillée : voir HANDOVER §4.4
+
+---
+
 ## [unreleased — cycle 8 : Phase 7 + 7.G HIGH fixes + Phase 8 polish] — 2026-05-20
 
 > Phase 7 : 22 sous-tâches (perf, a11y, i18n, market data Finnhub, schema v4,

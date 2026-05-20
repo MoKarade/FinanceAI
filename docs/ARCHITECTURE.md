@@ -104,6 +104,18 @@ Règles structurelles :
 ### Migrations
 - **v1 → v2** : ajout `apiKeys.anthropic` (Phase 4.A1)
 - **v2 → v3** : suppression `apiKeys.gemini` (Phase 4.A5)
+- **v3 → v4** : ajout `apiKeys.finnhub` (Phase 7.F.5)
+- **v4 → v5** : ajout `retirementGoal.lifeExpectancy` (default 90, Phase C.3)
+- **v5 → v6** : conversion `dateBought + buyPrice + quantity` → `purchases[]` DCA multi-achat (Phase E.8)
+
+### Onglets (Tab enum, 18 entries)
+
+Argent : DASHBOARD, TRANSACTIONS, BUDGET, PLANNING, DEBT
+Investissement : INVESTMENTS
+Plan futur : FUTURE, RETIREMENT
+Objectifs : REAL_ESTATE, CHILD, LIFE_PROJECTS (fusion de TRAVEL + LIFE_EVENTS depuis Phase F.12 — les 2 enums anciens forwardent)
+Outils : TAX, DOCUMENTS (Phase G.1), DEBT, PLANNING
+Système : DATA, SETTINGS (label "Configuration"), SYSTEM, ASSISTANT
 
 ### Cross-tab data flow
 1. `FutureProjection.tsx` calcule la projection et écrit dans `lastProjection`.
@@ -180,10 +192,22 @@ User input ──► AiAssistant.tsx
 
 **Séparation des modèles** :
 - `claude-sonnet-4-6` — chat, analyses budget, suggestions Planning, vision payslip
-- `claude-haiku-4-5` — catégorisation batch transactions (volume + vitesse)
+- `claude-haiku-4-5` — catégorisation batch transactions (volume + vitesse), justifications rééquilibrage, NextBestAction, optimisation fiscale couple, conseils Immobilier (refonte v3.0)
 
 **Cache** : `services/eraContext.ts` cache les requêtes pendant 1h en mémoire
 (Map). Évite les hits réseau répétés (ex: ouvrir/fermer Dashboard).
+
+**Services IA exposés** (refonte v3.0, tous gratuits avec clé utilisateur) :
+- `chat()` / `chatStream()` — one-shot et streaming Sonnet
+- `categorizeBatch()` — catégorisation transactions par lot (Haiku)
+- `analyzeBudgetAI()` / streaming — diagnostic budget (Sonnet)
+- `analyzePayslip()` — Vision IA fiches de paie (Sonnet Vision)
+- `generateSmartGoals()` — suggestions Planning (Sonnet)
+- `detectSubscriptionsAI()` — détection abonnements récurrents (Haiku)
+- `getNextBestActions()` — Phase B.3, sidebar widget IA (Haiku, cache 1h localStorage)
+- `getRebalanceJustifications()` — Phase E.7, batch justifs Investments (Haiku)
+- `getCoupleOptimizationStrategies()` — Phase G.4, Spousal RRSP / pension splitting (Haiku)
+- `getRealEstateAdvice()` — Phase F.8, 5 catégories cost/timing/leverage/tax/risk (Haiku)
 
 ---
 

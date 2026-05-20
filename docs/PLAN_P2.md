@@ -36,15 +36,15 @@
 
 | Item | Effort | Impact | Statut |
 |---|---|---|---|
-| **P2.1** Tests axe pages complètes (Dashboard, Investments, Transactions, etc.) | 4h | 🟠 important | À faire |
-| **P2.2** Modal focus restore on close | 0.5h | 🟡 utile | À faire |
-| **P2.3** Modal close button 32→44px hit area | 0.5h | 🟡 utile | À faire |
-| **P2.4** Touch target audit (`.touch-target` adoption) | 2h | 🟡 utile | À faire |
-| **P2.5** Contrast script run + fix flagged combos | 1h | 🟠 important | À faire |
-| **P2.6** Respect `prefers-reduced-motion` (animations/transitions) | 0.5h | 🟡 utile | À faire |
-| **P2.7** Skip-to-main link | 0.5h | 🟡 utile | À faire |
-| **P2.8** Form labels audit (133 inputs ADR-004) | 2h | 🟠 important | À faire |
-| **P2.9** PWA minimal (manifest.json + SW offline shell) | 3h | 🟢 nice-to-have | À faire |
+| **P2.1** Tests axe pages complètes (Dashboard, Investments, Transactions, etc.) | 4h | 🟠 important | 🔲 À faire |
+| **P2.2** Modal focus restore on close | 0.5h | 🟡 utile | ✅ livré (#108) |
+| **P2.3** Modal close button 32→44px hit area | 0.5h | 🟡 utile | ✅ livré (#108) |
+| **P2.4** Touch target audit (`.touch-target` adoption) | 2h | 🟡 utile | ✅ livré (#110) |
+| **P2.5** Contrast script run + fix flagged combos | 1h | 🟠 important | ✅ livré (#109) |
+| **P2.6** Respect `prefers-reduced-motion` (animations/transitions) | 0.5h | 🟡 utile | ✅ livré (#108) |
+| **P2.7** Skip-to-main link | 0.5h | 🟡 utile | ✅ déjà fait (cycle 5.1) |
+| **P2.8** Form labels audit (133 inputs ADR-004) | 2h | 🟠 important | 🔲 À faire |
+| **P2.9** PWA minimal (manifest.json + SW offline shell) | 3h | 🟢 nice-to-have | 🔲 Optionnel |
 | **TOTAL** | **~14h** | | |
 
 **P2.10 user-side** : test sur iPhone SE / Galaxy A entry-level réel. Non délégable.
@@ -79,7 +79,7 @@
 
 ---
 
-## P2.2 — Modal focus restore (0.5h)
+## P2.2 — Modal focus restore (0.5h) ✅ livré (#108)
 
 ### Changement
 - `components/ui/Modal.tsx` : capturer `document.activeElement` au moment du
@@ -93,7 +93,7 @@
 
 ---
 
-## P2.3 — Modal close button hit area (0.5h)
+## P2.3 — Modal close button hit area (0.5h) ✅ livré (#108)
 
 ### Changement
 - Bouton close : `w-8 h-8` → `w-10 h-10` (40px) ou augmenter padding
@@ -103,7 +103,7 @@
 
 ---
 
-## P2.4 — Touch target audit (2h)
+## P2.4 — Touch target audit (2h) ✅ livré (#110)
 
 ### Approche
 - Grep `<button` dans components/ pour les boutons icon-only
@@ -119,7 +119,7 @@
 
 ---
 
-## P2.5 — Contrast script run + fix (1h)
+## P2.5 — Contrast script run + fix (1h) ✅ livré (#109)
 
 ### Commande
 ```bash
@@ -140,7 +140,7 @@ npx tsx scripts/check-contrast.ts
 
 ---
 
-## P2.6 — `prefers-reduced-motion` (0.5h)
+## P2.6 — `prefers-reduced-motion` (0.5h) ✅ livré (#108)
 
 ### Changement
 - `index.css` : ajouter un media query global qui désactive les
@@ -161,7 +161,7 @@ npx tsx scripts/check-contrast.ts
 
 ---
 
-## P2.7 — Skip-to-main link (0.5h)
+## P2.7 — Skip-to-main link (0.5h) ✅ déjà fait (cycle 5.1)
 
 ### Changement
 - `App.tsx` : ajouter en premier child un `<a href="#main-content">Aller au contenu</a>`

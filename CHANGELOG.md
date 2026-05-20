@@ -6,7 +6,79 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
-## [unreleased — cycle 14 : P1 Production Readiness COMPLÈTE (7/7 items)] — 2026-05-20
+## [unreleased — cycle 15 : P2 Mobile & a11y AAA (6/9 items)] — 2026-05-20
+
+> Suite directe du cycle 14 (P1 livré). 4 PRs (#107 à #110) couvrent les
+> phases 1+2 du plan P2 (`docs/PLAN_P2.md`). **569/569 tests verts**.
+> Estimation révisée à 14h vs 25-30h roadmap initial — la base était déjà
+> solide après le cycle 7.D + refonte v3.0. Reste P2.8 form labels (2h) +
+> P2.1 axe pages (4h) + P2.9 PWA optionnel.
+
+### Plan P2 publié (#107)
+
+`docs/PLAN_P2.md` (250 lignes) — triage du code existant qui révèle que la
+base mobile/a11y est déjà solide (sidebar mobile, focus trap modal, 205
+`aria-*`, script contrast, axe sur 6 primitives). 9 items priorisés en
+4 phases d'exécution.
+
+### Phase 1 : Quick wins (#108)
+
+- **P2.2 Modal focus restore** : `components/ui/Modal.tsx` sauvegarde
+  `document.activeElement` à l'ouverture, restaure à la fermeture (Escape /
+  backdrop / X). Guard si l'élément a été détruit pendant l'ouverture.
+  Bénéfice : keyboard users ne perdent plus le focus.
+- **P2.3 Modal close hit area** : `w-8 h-8` → `w-11 h-11` (32 → 44px),
+  WCAG 2.5.5 (Target Size). Bénéficie à tous les modals via la primitive.
+- **P2.6 prefers-reduced-motion** : media query global dans `index.css`
+  qui désactive animations/transitions longues + explicitement `aurora-blob`,
+  `skeleton-box`, `lift-on-hover`. WCAG 2.3.3 (AAA).
+- **P2.7 skip-to-main** : déjà implémenté (`Layout.tsx:117-123` depuis le
+  cycle 5.1) — aucune action nécessaire.
+- 3 nouveaux tests Modal (hit area, focus restore, no-crash si élément
+  précédent détruit).
+
+### Phase 2 : Audits → fixes
+
+**P2.5 Contrast WCAG AA** (#109) :
+- `scripts/check-contrast.ts` révèle 3 échecs critiques sur `ink-400`
+  (#64748b ratio 3.30) et `ink-500` (#475569 ratio 2.07).
+- Fix dans `tailwind.config.js` :
+  - `ink-400` #64748b → **#8896a8** (ratio 5.21-6.42, passe AA normal)
+  - `ink-500` #475569 → **#6a7689** (ratio 3.41-4.20, passe AA large)
+- Avant : 38/48 conformes AA normal, 3 fails critiques.
+- Après : 41/48 conformes AA normal, **0 fail critique**.
+- 124+ usages `text-ink-400` bénéficient automatiquement.
+
+**P2.4 Touch target audit** (#110) :
+- 5 boutons icon-only sub-44px corrigés avec `.touch-target` utility
+  (déjà définie `index.css`) ou bump explicite :
+  1. Privacy toggle Layout : `w-9 h-9` → `w-11 h-11` + `focus-ring`
+  2. Toast close ✕ : `p-0.5` (~20px) → `.touch-target` (44px)
+  3. Documents delete 🗑️ : `p-1` (~24px) → `.touch-target` + `focus-within`
+  4. Planning month arrows : `p-1 px-3` → `.touch-target` + `aria-label`
+  5. Planning goal delete ✕ : aucune dimension → `.touch-target` + `aria-label`
+- Checkboxes natifs (Transactions, Onboarding) reportés à P2.8.
+
+### Reste à livrer
+
+- **P2.8 Form labels** (~2h) — vérifier les 133 inputs (`<input>`, `<select>`,
+  `<textarea>`) pour label associé ou `aria-label`. Audit + fix.
+- **P2.1 Tests axe pages complètes** (~4h) — 8 pages couvertes (Dashboard,
+  Transactions, Investments, TaxCenter, Retirement, FutureProjection,
+  Settings, Onboarding). Verrouille tout le travail a11y dans des tests
+  automatiques.
+- **P2.9 PWA** (~3h, optionnel) — `manifest.json` + service worker cache-first.
+
+### Méta cycle 15
+
+- 4 PRs (#107 docs, #108 quick wins, #109 contrast, #110 touch targets)
+- Tests : 566 → **569** (+3 sur Modal)
+- 0 régression typecheck / build
+- Bundle index inchangé (528 KB gzip 166 KB)
+
+---
+
+## [cycle 14 : P1 Production Readiness COMPLÈTE (7/7 items)] — 2026-05-20
 
 > **Sprint d'une journée** post-refonte UI v3.0. 7 PRs (#99 à #105) livrent
 > tout le plan `docs/PLAN_P1.md` (~35h estimés). **511 → 566 tests verts**.

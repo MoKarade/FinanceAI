@@ -11,8 +11,8 @@
 | Indicateur | Valeur |
 |---|---|
 | Branche principale | `main` |
-| Dernière PR mergée | **#105** (P1.6 Lighthouse CI — clôture P1 Production Readiness 7/7) |
-| Tests | **566/566 verts** (50 fichiers) — +55 depuis fin refonte v3.0 |
+| Dernière PR mergée | **#110** (P2.4 touch target audit — 6/9 P2 livré) |
+| Tests | **569/569 verts** (50 fichiers) — +58 depuis fin refonte v3.0 |
 | Typecheck | Clean en mode strict (`noImplicitAny`, `strictNullChecks`, `useUnknownInCatchVariables`) |
 | Build | OK — bundle index ~528 KB gzip ~166 KB, vendor jspdf lazy-chargé |
 | Déploiement | Vercel (auto par PR) + GitHub Pages (workflow `deploy-pages.yml`) |
@@ -29,9 +29,9 @@
 | Version | Affichée via git SHA + date build (vite-env.d.ts + `__APP_VERSION__`) |
 
 L'app est **fonctionnelle de bout en bout**, déployée, stable. Refonte UI v3.0
-**100% terminée** (PRs #86 à #95) et **P1 Production Readiness 100% terminé**
-(PRs #99 à #105 — 7/7 items). Prochain chantier : **P2 Mobile & a11y AAA**
-(roadmap "10/10" §P2).
+**100% terminée** (PRs #86 à #95), **P1 Production Readiness 100% terminé**
+(PRs #99 à #105 — 7/7 items), et **P2 Mobile & a11y AAA en cours**
+(PRs #107 à #110 — 6/9 items, ~6h restants).
 
 ---
 
@@ -318,9 +318,27 @@ suppressions batch, etc.) — infrastructure prête mais call-sites non wirés.
 Validation visuelle post-refonte v3.0 + tests mobiles réels. À reprendre
 quand des regressions sont identifiées par l'utilisateur.
 
-### 4.4 🎯 Prochain chantier : P2 Mobile & a11y AAA
+### 4.4 🚧 P2 — Mobile & a11y AAA — EN COURS (6/9 items, ~6h restants)
 
-Roadmap "10/10" §P2 — ~25-30h estimés.
+Voir `docs/PLAN_P2.md` pour le détail complet. **PRs #107 à #110**, 2026-05-20.
+Estimation révisée à 14h après triage (vs 25-30h roadmap initial — beaucoup
+déjà fait au cycle 7.D + refonte v3.0).
+
+| Item | PR | Statut |
+|---|---|---|
+| P2.2 Modal focus restore | #108 | ✅ livré |
+| P2.3 Modal close hit area 44px | #108 | ✅ livré |
+| P2.4 Touch target audit (5 boutons) | #110 | ✅ livré |
+| P2.5 Contrast WCAG AA (ink-400/500) | #109 | ✅ livré |
+| P2.6 prefers-reduced-motion | #108 | ✅ livré |
+| P2.7 Skip-to-main link | — | ✅ déjà fait (cycle 5.1) |
+| P2.8 Form labels audit (133 inputs) | — | 🔲 À faire (~2h) |
+| P2.1 Tests axe pages complètes | — | 🔲 À faire (~4h) |
+| P2.9 PWA (manifest + SW) | — | 🟡 Optionnel (~3h) |
+
+**Phase 1 quick wins** + **Phase 2 audits→fixes** quasi complètes.
+Reste **Phase 3 tests** (P2.1 axe) qui verrouille tout le travail dans des
+tests automatiques.
 
 - Audit responsive 1280→375px (toutes les vues)
 - WCAG AA basics : focus visible, contraste, labels ARIA, navigation clavier

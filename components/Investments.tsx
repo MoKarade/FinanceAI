@@ -24,6 +24,7 @@ import { StockChart } from './StockChart';
 import { ASSET_META } from '../services/assetMeta';
 import { DividendPanel } from './investments/DividendPanel';
 import { formatCAD } from '../utils/format';
+import { getRebalanceJustifications, type RebalanceActionInput } from '../services/claude';
 import { useFinanceStore } from '../store/useFinanceStore';
 
 interface InvestmentsProps {
@@ -69,8 +70,11 @@ const DEFAULT_TARGET_MODEL = [
 ];
 
 export const Investments: React.FC<InvestmentsProps> = ({
-    assets, setAssets, projection, setProjection
+    assets, setAssets, projection, setProjection, apiKey
 }) => {
+    // Phase E.7 — apiKey du store (fallback prop pour rétrocompat) pour appeler Claude
+    const anthropicKeyFromStore = useFinanceStore(s => s.apiKeys.anthropic);
+    const claudeKey = anthropicKeyFromStore || apiKey || '';
 
     const [marketData, setMarketData] = useState<MarketDataPoint[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -113,6 +117,9 @@ export const Investments: React.FC<InvestmentsProps> = ({
         setProjection({ ...projection, investmentTargetPcts: pcts });
     };
     const [isRebalanceEdit, setIsRebalanceEdit] = useState(false);
+    // Phase E.7 — justifications IA des actions de rééquilibrage
+    const [iaJustifications, setIaJustifications] = useState<Map<string, string>>(new Map());
+    const [isFetchingJustifications, setIsFetchingJustifications] = useState(false);
 
     // --- INSTANT DATA LOAD ---
     useEffect(() => {
@@ -742,7 +749,33 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     {hasActions ? '⚠️ Des actions de rééquilibrage sont recommandées' : '✅ Portefeuille bien équilibré'}
                                 </div>
                             </div>
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                {/* Phase E.7 — bouton justifications IA */}
+                                {hasActions && claudeKey && (
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            setIsFetchingJustifications(true);
+                                            const inputs: RebalanceActionInput[] = rebalancingActions.map(a => ({
+                                                id: a.id,
+                                                label: a.label,
+                                                action: a.action,
+                                                currentPct: a.currentPct,
+                                                targetPct: a.targetPct,
+                                                diffAmount: a.diffAmount,
+                                            }));
+                                            const justifications = await getRebalanceJustifications(inputs, claudeKey);
+                                            const map = new Map<string, string>();
+                                            justifications.forEach(j => map.set(j.actionId, j.reason));
+                                            setIaJustifications(map);
+                                            setIsFetchingJustifications(false);
+                                        }}
+                                        disabled={isFetchingJustifications}
+                                        className="px-3 py-1.5 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 rounded-lg text-xs font-bold hover:bg-indigo-600 hover:text-white transition-colors disabled:opacity-50"
+                                    >
+                                        {isFetchingJustifications ? '⏳ Analyse…' : '✨ Pourquoi ces actions ?'}
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => setIsRebalanceEdit(!isRebalanceEdit)}
                                     className="px-3 py-1.5 bg-violet-600/20 text-violet-300 border border-violet-500/30 rounded-lg text-xs font-bold hover:bg-violet-600 hover:text-white transition-colors"
@@ -831,6 +864,13 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             style={{ left: `${item.targetPct}%` }}
                                         />
                                     </div>
+                                    {/* Phase E.7 — justification IA */}
+                                    {iaJustifications.has(item.id) && (
+                                        <div className="mt-3 pt-3 border-t border-white/5 text-tiny text-indigo-300 italic flex gap-2">
+                                            <span aria-hidden="true" className="text-indigo-400 shrink-0">✨</span>
+                                            <span className="leading-relaxed">{iaJustifications.get(item.id)}</span>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>

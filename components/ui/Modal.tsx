@@ -53,10 +53,13 @@ export const Modal: React.FC<ModalProps> = ({
 }) => {
     const closeBtnRef = useRef<HTMLButtonElement>(null);
     const dialogRef = useRef<HTMLDivElement>(null);
+    const previousFocusRef = useRef<HTMLElement | null>(null);
     const titleId = React.useId();
 
     useEffect(() => {
         if (!isOpen) return;
+        // P2.2 — save current focus pour le restaurer à la fermeture (a11y keyboard)
+        previousFocusRef.current = (document.activeElement as HTMLElement | null) ?? null;
         const t = setTimeout(() => closeBtnRef.current?.focus(), 50);
         const prevOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
@@ -79,6 +82,11 @@ export const Modal: React.FC<ModalProps> = ({
             clearTimeout(t);
             document.body.style.overflow = prevOverflow;
             document.removeEventListener('keydown', onKey);
+            // P2.2 — restore focus à l'opener (guard si l'élément a été détruit)
+            const target = previousFocusRef.current;
+            if (target && document.body.contains(target) && typeof target.focus === 'function') {
+                target.focus();
+            }
         };
     }, [isOpen, closeOnEsc, onClose]);
 
@@ -119,7 +127,7 @@ export const Modal: React.FC<ModalProps> = ({
                                 type="button"
                                 onClick={onClose}
                                 aria-label="Fermer"
-                                className="w-8 h-8 inline-flex items-center justify-center rounded-card text-ink-300 hover:text-ink-50 hover:bg-white/10 transition-colors focus-ring"
+                                className="w-11 h-11 inline-flex items-center justify-center rounded-card text-ink-300 hover:text-ink-50 hover:bg-white/10 transition-colors focus-ring"
                             >
                                 ✕
                             </button>

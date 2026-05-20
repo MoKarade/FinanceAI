@@ -14,7 +14,7 @@ export interface PendingFocus {
     expiresAt: number;
 }
 
-interface FinanceState extends AppState {
+export interface FinanceState extends AppState {
     activeTab: Tab;
     isPrivacyMode: boolean;
     // Wiring 2026-05 (Option A): dernier résultat de calculateFutureProjection,

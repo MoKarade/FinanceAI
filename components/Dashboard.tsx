@@ -8,6 +8,7 @@ import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
 import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
+import { Skeleton } from './ui/Skeleton';
 import { fetchPortfolioHistory, MarketDataPoint } from '../services/finance';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import { ASSET_META } from '../services/assetMeta';
@@ -355,7 +356,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 }
             >
                 <div className="w-full h-[380px]">
-                    <Suspense fallback={<div className="w-full h-full flex items-center justify-center text-gray-500 text-sm animate-pulse">Chargement du graphique…</div>}>
+                    <Suspense fallback={<Skeleton variant="chart" />}>
                         <DashboardEvolutionChart
                             unifiedHistory={unifiedHistory}
                             accountKeys={accountKeys}

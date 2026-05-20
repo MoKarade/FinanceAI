@@ -223,7 +223,7 @@ services/marketData/
 | TBD | A.3 MC perf cache Date | ✅ | `loopDates[]` pré-calculé hors boucle. ~504k allocations Date/calculateFutureProjection() → N (years*12+1). |
 | TBD | A.4 bundle cleanup | ✅ | knip → delete lunchMoney.ts + macroApi.ts (266L) + html2canvas (unused, pdf-vendor -203KB) |
 | TBD | B.1 empty states | ✅ | EmptyState branché : Transactions (main list mobile), DebtManager, Travel, LifeEvents. Pattern unifié. |
-| — | B.2 skeletons | ⏳ | — |
+| TBD | B.2 skeletons | ✅ | Primitive Skeleton + SkeletonList (variants text/rect/circle/chart/kpi/list-row, role="status"/aria-busy). Dashboard chart Suspense fallback + Investments isLoading branchés. 6 tests RTL. |
 | — | B.3 Cmd+K palette | ⏳ | — |
 | — | C.1 Layout test RTL | ⏳ | — |
 | — | C.2 AbortController Claude | ⏳ | — |

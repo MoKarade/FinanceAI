@@ -370,8 +370,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 }
             />
 
-            {/* Phase E.3 — Sous-onglets pour aérer la page (doc directives §4) */}
-            <div className="flex justify-center">
+            {/* Phase E.3 — Sous-onglets + Phase E.1 — TimeRange global au sommet */}
+            <div className="flex flex-wrap items-center justify-center gap-3">
                 <Pill
                     aria-label="Vue Investissements"
                     size="sm"
@@ -383,6 +383,13 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         { value: 'rebalance', label: 'Rééquilibrage', icon: '⚖️' },
                         { value: 'detail', label: 'Détail', icon: '📦' },
                     ]}
+                />
+                <Pill
+                    aria-label="Période"
+                    size="sm"
+                    value={timeRange}
+                    onChange={(v) => setTimeRange(v as TimeRange)}
+                    options={(['1M', '3M', '6M', 'YTD', '1Y', 'ALL'] as TimeRange[]).map(r => ({ value: r, label: r }))}
                 />
             </div>
 
@@ -478,17 +485,9 @@ export const Investments: React.FC<InvestmentsProps> = ({
 
             {/* 1. CHART SECTION — Phase E.3 overview only */}
             {subTab === 'overview' && <Card className="min-h-[550px]" title="Performance Comparée">
-                <div className="flex justify-between items-center mb-4 border-b border-white/5 pb-2 gap-4 flex-wrap">
-                    <Pill
-                        aria-label="Période"
-                        size="sm"
-                        value={timeRange}
-                        onChange={(v) => setTimeRange(v as TimeRange)}
-                        options={(['1M', '3M', '6M', 'YTD', '1Y', 'ALL'] as TimeRange[]).map(r => ({ value: r, label: r }))}
-                    />
-                    <div className="text-meta text-ink-400">
-                        {filteredMarketData.length} points
-                    </div>
+                {/* Phase E.1 — Pill TimeRange déplacée en haut de page (global) */}
+                <div className="flex justify-end items-center mb-2 text-meta text-ink-400">
+                    {filteredMarketData.length} points · période <strong className="text-ink-200 ml-1">{timeRange}</strong>
                 </div>
 
                 {/* SERIES TOGGLES */}

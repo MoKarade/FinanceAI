@@ -110,6 +110,7 @@ const getInitialStateWithMigration = (): AppState => {
         vehicleReplacements: [],
         majorRenovations: [],
         charitableGoals: [],
+        documents: [],
     };
 
     if (typeof window === 'undefined') return defaultState;

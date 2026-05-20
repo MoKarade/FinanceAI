@@ -64,6 +64,8 @@ export function makeNavigationActions(setActiveTab: (t: Tab) => void): CommandAc
         { tab: Tab.LIFE_PROJECTS, label: 'Projets de vie', icon: '🛤️', keywords: ['voyage', 'travel', 'mariage', 'event', 'parcours', 'projet'] },
         { tab: Tab.RETIREMENT, label: 'Retraite', icon: '🏖️', keywords: ['retraite', 'pension', 'rrq'] },
         { tab: Tab.TAX, label: 'Centre fiscal', icon: '🧮', keywords: ['tax', 'impot', 'declaration'] },
+        // Phase G.1 — onglet Documents global
+        { tab: Tab.DOCUMENTS, label: 'Documents', icon: '📁', keywords: ['document', 'pdf', 'image', 'relevé', 'paie', 'contrat'] },
         { tab: Tab.ASSISTANT, label: 'Assistant AI', icon: '🤖', keywords: ['ai', 'claude', 'chat', 'assistant'] },
         { tab: Tab.SETTINGS, label: 'Paramètres', icon: '⚙️', keywords: ['settings', 'config', 'reglages'] },
         { tab: Tab.SYSTEM, label: 'Système', icon: '🔧', keywords: ['system', 'admin'] },

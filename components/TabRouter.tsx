@@ -12,6 +12,7 @@ const ChildPlanning = React.lazy(() => import('./ChildPlanning').then(m => ({ de
 const Travel = React.lazy(() => import('./Travel').then(m => ({ default: m.Travel })));
 const LifeEvents = React.lazy(() => import('./LifeEvents').then(m => ({ default: m.LifeEvents })));
 const LifeProjects = React.lazy(() => import('./LifeProjects').then(m => ({ default: m.LifeProjects })));
+const Documents = React.lazy(() => import('./Documents').then(m => ({ default: m.Documents })));
 const Retirement = React.lazy(() => import('./Retirement').then(m => ({ default: m.Retirement })));
 const TaxCenter = React.lazy(() => import('./TaxCenter').then(m => ({ default: m.TaxCenter })));
 const Settings = React.lazy(() => import('./Settings').then(m => ({ default: m.Settings })));
@@ -34,6 +35,7 @@ const TAB_LABELS: Record<Tab, string> = {
     [Tab.TRAVEL]: 'Voyages',
     [Tab.LIFE_EVENTS]: 'Parcours de Vie',
     [Tab.LIFE_PROJECTS]: 'Projets de vie',
+    [Tab.DOCUMENTS]: 'Documents',
     [Tab.RETIREMENT]: 'Retraite',
     [Tab.TAX]: 'Impôts & Docs',
     [Tab.DATA]: 'Data',
@@ -232,6 +234,7 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                     />
                 )}
 
+                {activeTab === Tab.DOCUMENTS && <Documents />}
                 {activeTab === Tab.DATA && <JsonDataView />}
                 {activeTab === Tab.SYSTEM && <SystemView state={state} />}
 

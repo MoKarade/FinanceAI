@@ -60,6 +60,28 @@ export interface BudgetConfig {
   customSplit?: number;
 }
 
+// Phase G.1 — onglet Documents global (PDF/Image avec IA extraction)
+export type DocumentCategory =
+  | 'PAYSLIP'        // fiche de paie
+  | 'T4'             // relevé fiscal T4 / Relevé 1
+  | 'BANK_STATEMENT' // relevé bancaire / brokerage
+  | 'CONTRACT'       // contrat hypothécaire, bail, assurance
+  | 'INVOICE'        // facture importante
+  | 'OTHER';         // divers
+
+export interface DocumentMeta {
+  id: string;
+  name: string;             // nom du fichier original
+  category: DocumentCategory;
+  uploadedAt: string;       // ISO date
+  sizeBytes: number;
+  mimeType: string;         // 'image/png', 'application/pdf', etc.
+  /** Données extraites par IA (Vision Claude), si applicable */
+  extractedData?: Record<string, unknown>;
+  /** Notes utilisateur */
+  notes?: string;
+}
+
 // W5.1 — Profil santé enrichi
 export type HealthRating = 'excellent' | 'good' | 'average' | 'poor';
 export type Gender = 'M' | 'F' | 'X';
@@ -574,6 +596,9 @@ export enum Tab {
   LIFE_PROJECTS = 'LIFE_PROJECTS',
   RETIREMENT = 'RETIREMENT',
   TAX = 'TAX',
+  // Phase G.1 — onglet Documents global (centralise les uploads PDF/Image
+  // précédemment éparpillés dans TaxCenter, Configuration, etc.)
+  DOCUMENTS = 'DOCUMENTS',
   DATA = 'DATA',
   SETTINGS = 'SETTINGS',
   SYSTEM = 'SYSTEM',
@@ -634,6 +659,8 @@ export interface AppState {
   vehicleReplacements?: VehicleReplacement[];
   majorRenovations?: MajorRenovation[];
   charitableGoals?: CharitableGoal[];
+  // Phase G.1 — métadonnées des documents uploadés (blobs stockés séparément)
+  documents?: DocumentMeta[];
 }
 
 export interface RecurringItem {

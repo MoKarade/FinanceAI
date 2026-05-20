@@ -1,20 +1,16 @@
-// --- GOOGLE SHEET DATA FETCHER + TAUX DE CHANGE BANQUE DU CANADA ---
+// --- TAUX DE CHANGE BANQUE DU CANADA (seul fetch externe restant) ---
+// P1 — Suppression totale du Google Sheet legacy (sur demande utilisateur).
+// L'app ne fait plus aucun fetch vers docs.google.com pour les données
+// boursières. La source de vérité unique est désormais Finnhub via
+// services/marketData/.
 
 export interface MarketDataPoint {
     date: string;
     [key: string]: string | number;
 }
 
-const SHEET_ID = "1bvHRAFP-GCjQjgsRit61JBidPAmerdgij33_lO1Ob9w";
-const CSV_URL_GVIZ = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=0`;
-const CSV_PROXY_URL = '/.netlify/functions/sheet-proxy';
-
-// Timeout et retry pour les fetches
+// Timeout pour les fetches (utilisé par fetchFxRates Banque du Canada uniquement)
 const FETCH_TIMEOUT_MS = 12000; // 12 secondes max
-const MAX_RETRIES = 2;
-
-let cachedData: MarketDataPoint[] | null = null;
-let activeFetch: Promise<MarketDataPoint[]> | null = null;
 
 // Taux de change mis en cache localement
 let cachedFxRates: { USD: number; EUR: number; CAD: number; lastFetched: number } | null = null;
@@ -65,68 +61,6 @@ const fetchWithTimeout = async (url: string, timeoutMs: number = FETCH_TIMEOUT_M
     }
 };
 
-/**
- * Fetch avec retries automatiques
- */
-const fetchWithRetry = async (url: string, retries: number = MAX_RETRIES): Promise<Response> => {
-    for (let attempt = 0; attempt <= retries; attempt++) {
-        try {
-            return await fetchWithTimeout(url);
-        } catch (e) {
-            if (attempt === retries) throw e;
-            console.warn(`Tentative ${attempt + 1} echouee, retry...`);
-            await new Promise(r => setTimeout(r, 1000 * (attempt + 1))); // Backoff exponentiel
-        }
-    }
-    throw new Error("Max retries reached");
-};
-
-// Parseur CSV manuel robuste
-const parseCsvLine = (text: string, sep: string): string[] => {
-    const result: string[] = [];
-    let cur = '';
-    let inQuotes = false;
-    for (let i = 0; i < text.length; i++) {
-        const char = text[i];
-        if (char === '"') {
-            inQuotes = !inQuotes;
-        } else if (char === sep && !inQuotes) {
-            result.push(cur);
-            cur = '';
-        } else {
-            cur += char;
-        }
-    }
-    result.push(cur);
-    return result.map(s => s.trim().replace(/^"|"$/g, ''));
-};
-
-const cleanNumberString = (val: any): number => {
-    if (val === null || val === undefined) return NaN;
-    let str = String(val).replace(/^"|"$/g, '').trim();
-    if (str === '' || str === '-') return NaN;
-
-    str = str.replace(/[\s  $€£%]/g, '');
-    str = str.replace(/[^0-9.,-]/g, '');
-
-    const isNeg = str.startsWith('-');
-    str = str.replace(/-/g, '');
-    if (isNeg) str = '-' + str;
-
-    const lastComma = str.lastIndexOf(',');
-    const lastDot = str.lastIndexOf('.');
-
-    if (lastComma > lastDot) {
-        str = str.replace(/\./g, '').replace(',', '.');
-    } else if (lastDot > lastComma) {
-        str = str.replace(/,/g, '');
-    } else if (lastComma !== -1 && lastDot === -1) {
-        str = str.replace(',', '.');
-    }
-
-    const num = parseFloat(str);
-    return isNaN(num) ? NaN : num;
-};
 
 /**
  * Recupere les taux de change depuis la Banque du Canada (API officielle, gratuite).
@@ -188,160 +122,19 @@ export const fetchFxRates = async (): Promise<{ USD: number; EUR: number; CAD: n
     return fallback;
 };
 
+// P1 — STUB : Google Sheet legacy COMPLÈTEMENT supprimé (demande utilisateur :
+// "je veux que plus rien ai accès à ce sheet"). Aucune requête vers
+// docs.google.com depuis l'app. La source de vérité pour les données
+// boursières est désormais Finnhub (services/marketData/) ou les saisies
+// manuelles de l'utilisateur dans Configuration/Investments.
+//
+// Cette fonction est conservée pour ne pas casser les ~5 consumers
+// (Dashboard, Investments, Retirement, FutureProjection, JsonDataView)
+// qui l'attendent — elle retourne désormais toujours un tableau vide.
 export const fetchPortfolioHistory = async (): Promise<MarketDataPoint[]> => {
-    if (cachedData && cachedData.length > 0) return cachedData;
-    if (activeFetch) return activeFetch;
-
-    activeFetch = (async () => {
-        try {
-            console.log(`Fetching Master CSV...`);
-
-            let csvText = '';
-
-            // 1. Tenter l'export direct (peut echouer a cause des CORS)
-            try {
-                const response = await fetchWithTimeout(CSV_URL_GVIZ, 8000);
-                if (response.ok) {
-                    const text = await response.text();
-                    if (!text.toLowerCase().includes('<!doctype html>') && !text.toLowerCase().includes('<html')) {
-                        csvText = text;
-                        console.log('Fetch direct reussi');
-                    }
-                }
-            } catch (e) {
-                console.warn("Export direct echoue (CORS probable), tentative via proxy Netlify...");
-            }
-
-            // 2. Fallback via notre Netlify Function (server-side, pas de CORS).
-            //    Remplace l'ancienne dépendance à api.allorigins.win.
-            if (!csvText) {
-                try {
-                    const responseProxy = await fetchWithRetry(CSV_PROXY_URL);
-                    if (!responseProxy.ok) throw new Error(`Erreur proxy Netlify: ${responseProxy.status}`);
-                    csvText = await responseProxy.text();
-
-                    if (csvText.toLowerCase().includes('<!doctype html>') || csvText.toLowerCase().includes('<html')) {
-                        console.error("Le fichier Google Sheet est prive ou l'ID est invalide.");
-                        return [];
-                    }
-                    console.log('Fetch via proxy Netlify reussi');
-                } catch (proxyError) {
-                    console.error("Proxy Netlify indisponible:", proxyError);
-                    return [];
-                }
-            }
-
-            const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== '');
-            if (lines.length < 2) return [];
-
-            // Detection du separateur
-            const firstLine = lines[0];
-            const commaCount = (firstLine.match(/,/g) || []).length;
-            const semiCount = (firstLine.match(/;/g) || []).length;
-            const tabCount = (firstLine.match(/\t/g) || []).length;
-
-            let separator = ',';
-            if (semiCount > commaCount && semiCount > tabCount) separator = ';';
-            else if (tabCount > commaCount && tabCount > semiCount) separator = '\t';
-
-            const headers = parseCsvLine(firstLine, separator).map(h => h.replace(/[\r\n]/g, '').trim());
-
-            let dateColIdx = headers.findIndex(h => h.toLowerCase().includes('date') || h.toLowerCase().includes('jour') || h.toLowerCase().includes('timestamp'));
-            if (dateColIdx === -1) dateColIdx = 0;
-
-            const data: MarketDataPoint[] = [];
-            const lastKnownValues: Record<string, number> = {};
-
-            const limitDate = new Date();
-            limitDate.setDate(limitDate.getDate() + 2);
-
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i];
-                if (!line.trim()) continue;
-
-                const cols = parseCsvLine(line, separator);
-                const rowObj: MarketDataPoint = { date: '' };
-
-                let rawDate = cols[dateColIdx] || '';
-                rawDate = String(rawDate).replace(/^"|"$/g, '').split(' ')[0];
-
-                let parsedDateStr = '';
-                // Handle Excel serial date numbers (e.g. 45678 = days since 1900-01-01)
-                if (/^\d{5}$/.test(rawDate) || /^\d{4,6}$/.test(rawDate)) {
-                    const serial = parseInt(rawDate);
-                    if (serial > 25000 && serial < 80000) {
-                        // Excel epoch: Jan 1 1900 = day 1 (with bug: treats 1900 as leap year, so offset 2)
-                        const excelEpoch = new Date(1899, 11, 30); // Dec 30, 1899
-                        const d = new Date(excelEpoch.getTime() + serial * 86400000);
-                        if (!isNaN(d.getTime())) {
-                            parsedDateStr = d.toISOString().split('T')[0];
-                        }
-                    }
-                }
-                if (!parsedDateStr && rawDate.includes('/')) {
-                    const p = rawDate.split('/');
-                    if (p.length === 3) {
-                        let y = p[2], m = p[1], d = p[0];
-                        if (p[0].length === 4) { y = p[0]; m = p[1]; d = p[2]; }
-                        else if (Number(p[0]) > 12) { d = p[0]; m = p[1]; }
-                        else if (Number(p[1]) > 12) { m = p[0]; d = p[1]; }
-
-                        if (y.length === 2) y = `20${y}`;
-                        parsedDateStr = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-                    }
-                } else if (rawDate.includes('-')) {
-                    const p = rawDate.split('-');
-                    if (p.length === 3) {
-                        let y = p[0], m = p[1], d = p[2];
-                        if (p[2].length === 4) { y = p[2]; m = p[1]; d = p[0]; }
-                        if (y.length === 2) y = `20${y}`;
-                        parsedDateStr = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-                    }
-                } else if (!parsedDateStr) {
-                    parsedDateStr = rawDate;
-                }
-
-                if (!parsedDateStr) continue;
-
-                const rowDate = new Date(parsedDateStr);
-                if (isNaN(rowDate.getTime())) continue;
-                if (rowDate > limitDate) continue;
-
-                rowObj['date'] = parsedDateStr;
-
-                headers.forEach((header, idx) => {
-                    if (idx === dateColIdx || !header) return;
-
-                    const rawVal = cols[idx] || '';
-                    const val = cleanNumberString(rawVal);
-
-                    if (!isNaN(val) && val !== 0) {
-                        lastKnownValues[header] = val;
-                        rowObj[header] = val;
-                    } else {
-                        rowObj[header] = lastKnownValues[header] || 0;
-                    }
-                });
-
-                data.push(rowObj);
-            }
-
-            const sortedData = data.sort((a, b) => new Date(a.date as string).getTime() - new Date(b.date as string).getTime());
-
-            console.log(`CSV Parsed: ${sortedData.length} lignes chargees.`);
-            cachedData = sortedData;
-            return sortedData;
-
-        } catch (e) {
-            console.error("CSV Fetch complet echoue:", e);
-            return [];
-        } finally {
-            activeFetch = null;
-        }
-    })();
-
-    return activeFetch;
+    return [];
 };
+
 
 export const fetchAssetHistory = async (symbol: string, currency: string, currentPrice: number, performance: number) => {
     const data = await fetchPortfolioHistory();

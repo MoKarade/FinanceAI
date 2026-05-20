@@ -570,6 +570,8 @@ export enum Tab {
   CHILD = 'CHILD',
   TRAVEL = 'TRAVEL',
   LIFE_EVENTS = 'LIFE_EVENTS',
+  // Phase F.12 — onglet unifié "Projets de vie" (fusion Travel + LifeEvents)
+  LIFE_PROJECTS = 'LIFE_PROJECTS',
   RETIREMENT = 'RETIREMENT',
   TAX = 'TAX',
   DATA = 'DATA',

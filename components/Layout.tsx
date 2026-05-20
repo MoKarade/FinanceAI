@@ -87,8 +87,8 @@ export const Layout: React.FC<LayoutProps> = ({
       items: [
         { id: Tab.REAL_ESTATE, label: t('tabs.real_estate'), icon: '🏡' },
         { id: Tab.CHILD, label: t('tabs.child'), icon: '👶' },
-        { id: Tab.TRAVEL, label: t('tabs.travel', 'Voyages'), icon: '✈️' },
-        { id: Tab.LIFE_EVENTS, label: t('tabs.life_events'), icon: '🛤️' },
+        // Phase F.12 — fusion Voyages + Parcours de vie → "Projets de vie" (doc directives §8)
+        { id: Tab.LIFE_PROJECTS, label: 'Projets de vie', icon: '🛤️' },
       ],
     },
     {

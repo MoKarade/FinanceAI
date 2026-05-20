@@ -1,8 +1,9 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import i18n from '../i18n';
 import { Tab, FinancialGoal } from '../types';
+import { CoupleModeBadge } from './ui/CoupleModeBadge';
+import { NextBestAction } from './sidebar/NextBestAction';
 
 interface LayoutProps {
   activeTab: Tab;
@@ -39,8 +40,26 @@ export const Layout: React.FC<LayoutProps> = ({
 }) => {
   const { t } = useTranslation();
   const [showMobileDrawer, setShowMobileDrawer] = React.useState(false);
-  const currentLang = i18n.language?.startsWith('en') ? 'en' : 'fr';
-  const toggleLang = () => i18n.changeLanguage(currentLang === 'fr' ? 'en' : 'fr');
+
+  // Phase B.1 — sidebar cachée par défaut, expansion au survol + focus clavier.
+  const [sidebarHovered, setSidebarHovered] = React.useState(false);
+  const [sidebarFocused, setSidebarFocused] = React.useState(false);
+  const isSidebarOpen = sidebarHovered || sidebarFocused;
+
+  // Phase B.2 — accordion : chaque groupe peut être déplié/replié au clic.
+  // Par défaut tous ouverts pour ne pas surprendre l'utilisateur ; il choisit
+  // ensuite de masquer les sections qu'il n'utilise pas.
+  const [openGroups, setOpenGroups] = React.useState<Set<string>>(
+    () => new Set(['Argent', 'Plan', 'Objectifs', 'Outils']),
+  );
+  const toggleGroup = React.useCallback((label: string) => {
+    setOpenGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  }, []);
 
   // Phase B1 — Regroupement thématique (cf docs/UI_REFOUNDATION_PLAN.md §3.1)
   const navGroups: Array<{ label: string; icon: string; items: Array<{ id: Tab; label: string; icon: string }> }> = [
@@ -88,59 +107,8 @@ export const Layout: React.FC<LayoutProps> = ({
   const navItems = navGroups[0].items; // shortcut Argent pour bottom-nav
   const extraItems = navGroups.slice(1).flatMap(g => g.items);
 
-  const getSmartMilestone = () => {
-    const activeGoals = financialGoals
-      .filter(g => !g.completed)
-      .map(g => {
-        let current = g.manualCurrentAmount || 0;
-        if (g.type === 'NET_WORTH') current = netWorth;
-        else if (g.type === 'CELI') current = currentValues.celi;
-        else if (g.type === 'REER') current = currentValues.reer;
-        else if (g.type === 'LIQUIDITY') current = currentValues.liquidity;
-
-        if (current >= g.targetAmount) return null;
-
-        return {
-          ...g,
-          current,
-          percent: (current / g.targetAmount) * 100,
-          remaining: g.targetAmount - current,
-          isUserDefined: true
-        };
-      })
-      .filter((g): g is NonNullable<typeof g> => g !== null)
-      .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
-
-    if (activeGoals.length > 0) {
-      const next = activeGoals[0];
-      return { target: next.targetAmount, current: next.current, label: next.name, percent: next.percent, remaining: next.remaining };
-    }
-
-    const getNextStep = (current: number) => {
-      if (current < 10000) return 10000;
-      if (current < 50000) return 50000;
-      if (current < 100000) return 100000;
-      if (current < 250000) return 250000;
-      if (current < 500000) return 500000;
-      if (current < 1000000) return 1000000;
-      return Math.ceil((current + 1) / 100000) * 100000;
-    };
-
-    const stepTarget = getNextStep(netWorth);
-    return { target: stepTarget, current: netWorth, label: "Prochain Palier", percent: Math.min(100, Math.max(0, (netWorth / stepTarget) * 100)), remaining: stepTarget - netWorth };
-  };
-
-  const milestone = getSmartMilestone();
-
-  let milestoneDateStr = "N/A";
-  if (monthlySavings > 0 && milestone.remaining > 0) {
-    const monthsToGo = milestone.remaining / monthlySavings;
-    const targetDate = new Date();
-    targetDate.setMonth(targetDate.getMonth() + Math.ceil(monthsToGo));
-    milestoneDateStr = targetDate.toLocaleDateString('fr-CA', { month: 'long', year: 'numeric' });
-  } else if (milestone.remaining <= 0) {
-    milestoneDateStr = "Atteint !";
-  }
+  // Phase B.3 — `getSmartMilestone` (palier statique) retiré. Remplacé par le
+  // widget NextBestAction qui appelle Claude (Haiku) avec lastProjection + Era.
 
   return (
     <div className={`min-h-screen flex flex-col md:flex-row text-gray-200 font-sans ${isPrivacyMode ? 'privacy-active' : ''}`}>
@@ -179,108 +147,147 @@ export const Layout: React.FC<LayoutProps> = ({
         }
       `}</style>
 
-      <aside className="hidden md:flex w-72 min-w-[18rem] bg-[#0B0E14] border-r border-white/10 flex-col z-30 h-screen overflow-hidden shadow-2xl sticky top-0">
-        <div className="p-6 pb-2">
-          <div className="flex justify-between items-start">
-            <div className={`flex items-center gap-3 group px-2 py-1 rounded-xl transition-all duration-500 hover:bg-white/5`}>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-emerald-300 flex items-center justify-center text-white text-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] group-hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all" aria-hidden="true">
-                Fi
-              </div>
-              <div className="animate-premium-in">
-                <h1 className="text-xl font-bold text-white tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">FinanceAI</h1>
-                <div className="text-tiny text-gray-500 font-mono">v2.5 • Pro</div>
-              </div>
+      {/* Phase B.1 — sidebar fixe-positionnée, collapsed-by-default (w-16),
+          expand au survol/focus (w-72). Le main a `md:ml-16` pour préserver la
+          place du rail collapsé ; l'expansion overlay le contenu (pas de shift). */}
+      <aside
+        className={`hidden md:flex fixed top-0 left-0 bottom-0 z-40 flex-col bg-[#0B0E14] border-r border-white/10 overflow-hidden shadow-2xl transition-[width] duration-200 motion-reduce:transition-none ${
+          isSidebarOpen ? 'w-72' : 'w-16'
+        }`}
+        onMouseEnter={() => setSidebarHovered(true)}
+        onMouseLeave={() => setSidebarHovered(false)}
+        onFocus={() => setSidebarFocused(true)}
+        onBlur={(e) => {
+          // Ne déclenche le collapse que si le focus quitte tout l'aside.
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) setSidebarFocused(false);
+        }}
+        aria-expanded={isSidebarOpen}
+      >
+        {/* Brand + privacy toggle */}
+        <div className="p-3 pb-2 shrink-0 space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-emerald-300 flex items-center justify-center text-white text-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0" aria-hidden="true">
+              Fi
             </div>
-            <div className="flex gap-1">
-              <button onClick={onOpenGuide} aria-label="Guide du Pilote" className="p-2 rounded-lg text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 transition-all" title="Guide du Pilote">ℹ️</button>
-              <button onClick={togglePrivacyMode} aria-label={isPrivacyMode ? 'Quitter le mode discret' : 'Activer le mode discret'} aria-pressed={isPrivacyMode} className={`p-2 rounded-lg transition-all ${isPrivacyMode ? 'bg-white/10 text-white' : 'text-gray-500 hover:bg-white/5 hover:text-white'}`} title="Mode Discret">{isPrivacyMode ? '🙈' : '👁️'}</button>
+            <div className={`min-w-0 whitespace-nowrap transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
+              <h1 className="text-lg font-bold text-white tracking-tight">FinanceAI</h1>
+              <div className="text-tiny text-gray-500 font-mono" title={`Build ${__BUILD_DATE__}`}>
+                v{__APP_VERSION__} • {__GIT_SHA__}
+              </div>
             </div>
           </div>
-        </div>
-
-        <div className="px-6 py-6">
-          <button type="button" onClick={() => setActiveTab(Tab.FUTURE)} className="w-full p-4 rounded-xl bg-gradient-to-br from-[#1A1E29] to-[#0d0f14] border border-white/5 relative overflow-hidden group shadow-lg cursor-pointer hover:border-primary/30 transition-colors text-left" aria-label={`Objectif: ${milestone.label}, ${milestone.percent.toFixed(0)}%`}>
-            <div className="absolute top-0 right-0 w-16 h-16 bg-primary/10 rounded-full blur-2xl -mr-8 -mt-8" aria-hidden="true"></div>
-            <div className="flex justify-between items-end mb-2 relative z-10">
-              <div>
-                <div className="text-tiny text-gray-400 uppercase tracking-widest font-bold mb-0.5 truncate max-w-[120px]">{milestone.label}</div>
-                <div className="text-lg font-black text-white privacy-blur">{milestone.target.toLocaleString()}$</div>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-primary">{milestone.percent.toFixed(0)}%</div>
-              </div>
-            </div>
-            <div className="w-full bg-black/50 rounded-full h-1.5 overflow-hidden mb-3 relative z-10 border border-white/5">
-              <div className="h-full bg-gradient-to-r from-emerald-600 to-primary shadow-[0_0_10px_rgba(16,185,129,0.5)] transition-all duration-1000" style={{ width: `${milestone.percent}%` }}></div>
-            </div>
-            <div className="flex items-center justify-between text-tiny text-gray-500 relative z-10 bg-white/[0.03] p-1.5 rounded-lg border border-white/5 backdrop-blur-sm">
-              <span className="flex items-center gap-1"><span aria-hidden="true">🎯</span> Cible:</span>
-              <span className="text-white font-bold capitalize">{milestoneDateStr}</span>
-            </div>
+          <button
+            type="button"
+            onClick={togglePrivacyMode}
+            aria-label={isPrivacyMode ? 'Quitter le mode discret' : 'Activer le mode discret'}
+            aria-pressed={isPrivacyMode}
+            title="Mode Discret"
+            className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-colors ${
+              isPrivacyMode ? 'bg-white/10 text-white' : 'text-gray-500 hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            <span aria-hidden="true" className="text-base shrink-0">{isPrivacyMode ? '🙈' : '👁️'}</span>
+            <span className={`text-meta whitespace-nowrap transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
+              {isPrivacyMode ? 'Quitter discret' : 'Mode discret'}
+            </span>
           </button>
         </div>
 
-        <nav aria-label="Navigation principale" className="flex-1 min-h-0 overflow-y-auto px-4 space-y-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-          {navGroups.map((group) => (
-            <div key={group.label}>
-              <div className="text-tiny uppercase text-ink-500 font-bold px-4 mb-2 tracking-widest flex items-center gap-2">
-                <span aria-hidden="true">{group.icon}</span>
-                <span>{group.label}</span>
+        {/* Phase B.3 — NextBestAction remplace l'ancien widget milestone. */}
+        <NextBestAction isSidebarOpen={isSidebarOpen} />
+
+        {/* Navigation principale — accordion par groupe */}
+        <nav aria-label="Navigation principale" className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+          {navGroups.map((group) => {
+            const isGroupExpanded = openGroups.has(group.label);
+            // Quand la sidebar est collapsée, on montre toujours les items
+            // (icônes seules — labels masqués par opacity). Quand elle est
+            // ouverte, on respecte l'état accordion.
+            const showItems = !isSidebarOpen || isGroupExpanded;
+
+            return (
+              <div key={group.label} className="mb-1">
+                <button
+                  type="button"
+                  onClick={() => isSidebarOpen && toggleGroup(group.label)}
+                  aria-expanded={isSidebarOpen ? isGroupExpanded : undefined}
+                  disabled={!isSidebarOpen}
+                  title={!isSidebarOpen ? group.label : undefined}
+                  className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-card transition-colors ${
+                    isSidebarOpen ? 'hover:bg-white/5 cursor-pointer' : 'cursor-default'
+                  }`}
+                >
+                  <span className="text-base shrink-0" aria-hidden="true">{group.icon}</span>
+                  <span className={`text-tiny uppercase font-bold text-ink-500 tracking-widest whitespace-nowrap flex-1 text-left transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
+                    {group.label}
+                  </span>
+                  <span
+                    className={`shrink-0 text-ink-500 text-meta transition-all duration-150 ${
+                      isSidebarOpen ? 'opacity-100' : 'opacity-0'
+                    } ${isGroupExpanded ? 'rotate-90' : ''}`}
+                    aria-hidden="true"
+                  >
+                    ›
+                  </span>
+                </button>
+                <div className={`overflow-hidden transition-[max-height] duration-200 motion-reduce:transition-none ${showItems ? 'max-h-[600px]' : 'max-h-0'}`}>
+                  <div className="space-y-0.5 pt-0.5">
+                    {group.items.map((item) => {
+                      const isActive = activeTab === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setActiveTab(item.id)}
+                          aria-current={isActive ? 'page' : undefined}
+                          title={!isSidebarOpen ? item.label : undefined}
+                          className={`flex items-center gap-3 w-full px-3 py-2 rounded-card transition-colors duration-150 relative focus-ring ${
+                            isActive ? 'bg-white/5 text-ink-50' : 'hover:bg-white/5 text-ink-300 hover:text-ink-50'
+                          }`}
+                        >
+                          {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-primary rounded-r" aria-hidden="true"></span>}
+                          <span aria-hidden="true" className={`text-base shrink-0 ${isActive ? 'text-primary' : ''}`}>{item.icon}</span>
+                          <span className={`font-medium text-meta whitespace-nowrap transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
+                            {item.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-              <div className="space-y-1">
-                {group.items.map((item) => {
-                  const isActive = activeTab === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setActiveTab(item.id)}
-                      aria-current={isActive ? 'page' : undefined}
-                      className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-card transition-all duration-200 group relative overflow-hidden focus-ring ${
-                        isActive
-                          ? 'bg-white/5 text-ink-50 shadow-lg border border-white/5'
-                          : 'hover:bg-white/5 text-ink-300 hover:text-ink-50'
-                      }`}
-                    >
-                      {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r" aria-hidden="true"></div>}
-                      <span
-                        aria-hidden="true"
-                        className={`text-base transition-transform group-hover:scale-110 ${isActive ? 'scale-110 text-primary' : ''}`}
-                      >
-                        {item.icon}
-                      </span>
-                      <span className="font-medium text-meta">{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </nav>
 
-        <div className="p-4 border-t border-white/5 bg-[#0F1116]">
-          {/* Phase D1 — système: targets touch 44px+ (text-meta + py-2.5) */}
-          <nav aria-label="Outils système" className="grid grid-cols-3 gap-2 mb-3">
-            <button type="button" onClick={() => setActiveTab(Tab.DATA)} aria-current={activeTab === Tab.DATA ? 'page' : undefined} className={`flex flex-col items-center justify-center p-2.5 rounded-card text-tiny font-medium transition-all focus-ring ${activeTab === Tab.DATA ? 'bg-white/10 text-ink-50' : 'text-ink-400 hover:bg-white/5 hover:text-ink-100'}`}><span className="text-base" aria-hidden="true">💾</span> Data</button>
-            <button type="button" onClick={() => setActiveTab(Tab.SYSTEM)} aria-current={activeTab === Tab.SYSTEM ? 'page' : undefined} className={`flex flex-col items-center justify-center p-2.5 rounded-card text-tiny font-medium transition-all focus-ring ${activeTab === Tab.SYSTEM ? 'bg-white/10 text-ink-50' : 'text-ink-400 hover:bg-white/5 hover:text-ink-100'}`}><span className="text-base" aria-hidden="true">🛠️</span> Sys</button>
-            <button type="button" onClick={() => setActiveTab(Tab.SETTINGS)} aria-current={activeTab === Tab.SETTINGS ? 'page' : undefined} className={`flex flex-col items-center justify-center p-2.5 rounded-card text-tiny font-medium transition-all focus-ring ${activeTab === Tab.SETTINGS ? 'bg-white/10 text-ink-50' : 'text-ink-400 hover:bg-white/5 hover:text-ink-100'}`}><span className="text-base" aria-hidden="true">⚙️</span> Config</button>
+        {/* Footer : système + badge couple */}
+        <div className="p-2 border-t border-white/5 bg-[#0F1116] shrink-0 space-y-2">
+          <nav aria-label="Outils système" className={`gap-1 ${isSidebarOpen ? 'grid grid-cols-3' : 'flex flex-col'}`}>
+            {[
+              { id: Tab.DATA, icon: '💾', label: 'Data' },
+              { id: Tab.SYSTEM, icon: '🛠️', label: 'Système' },
+              { id: Tab.SETTINGS, icon: '⚙️', label: 'Config' },
+            ].map(item => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveTab(item.id)}
+                aria-current={activeTab === item.id ? 'page' : undefined}
+                title={!isSidebarOpen ? item.label : undefined}
+                className={`flex ${isSidebarOpen ? 'flex-col' : 'flex-row'} items-center justify-center gap-1 p-2 rounded-card text-tiny font-medium transition-colors focus-ring ${
+                  activeTab === item.id ? 'bg-white/10 text-ink-50' : 'text-ink-400 hover:bg-white/5 hover:text-ink-100'
+                }`}
+              >
+                <span className="text-base shrink-0" aria-hidden="true">{item.icon}</span>
+                <span className={`whitespace-nowrap transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 max-h-0 overflow-hidden'}`}>
+                  {item.label}
+                </span>
+              </button>
+            ))}
           </nav>
-          <button onClick={onRefresh} disabled={isLoading} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-gray-800 to-gray-700 hover:from-gray-700 hover:to-gray-600 border border-white/10 text-white py-3 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:scale-100">
-            <span aria-hidden="true" className={isLoading ? "animate-spin" : ""}>🔄</span> {isLoading ? "Sync" : "Synchroniser"}
-          </button>
-          {onGeneratePDF && (
-            <button onClick={onGeneratePDF} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-900/40 to-purple-900/40 hover:from-indigo-800/60 hover:to-purple-800/60 border border-indigo-500/20 text-indigo-300 hover:text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg active:scale-95 mt-2">
-              <span aria-hidden="true">📄</span> {currentLang === 'fr' ? 'Rapport PDF' : 'PDF Report'}
-            </button>
-          )}
-          <button
-            onClick={toggleLang}
-            title={currentLang === 'fr' ? 'Switch to English' : 'Passer en Francais'}
-            aria-label={currentLang === 'fr' ? 'Switch to English' : 'Passer en Francais'}
-            className="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white py-2 rounded-xl text-xs font-bold transition-all mt-2"
-          >
-            <span aria-hidden="true">🌐</span> {currentLang === 'fr' ? '🇫🇷 FR → EN' : '🇬🇧 EN → FR'}
-          </button>
+          <div className="flex justify-center">
+            <CoupleModeBadge compact={!isSidebarOpen} />
+          </div>
         </div>
       </aside>
 
@@ -289,14 +296,22 @@ export const Layout: React.FC<LayoutProps> = ({
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center text-white font-bold shadow-lg shadow-primary/20" aria-hidden="true">Fi</div>
           <h1 className="text-lg font-bold text-white tracking-tight">FinanceAI</h1>
         </div>
+        {/* Phase B.4 — info ℹ️ et Synchroniser 🔄 retirées sur mobile aussi. */}
         <div className="flex items-center gap-3">
-          <button onClick={onOpenGuide} aria-label="Guide du Pilote" className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400">ℹ️</button>
-          <button onClick={togglePrivacyMode} aria-label={isPrivacyMode ? 'Quitter le mode discret' : 'Activer le mode discret'} aria-pressed={isPrivacyMode} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-lg active:scale-90 transition-transform">{isPrivacyMode ? '🙈' : '👁️'}</button>
-          <button onClick={onRefresh} aria-label="Synchroniser" className={`w-9 h-9 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-90 transition-transform ${isLoading ? 'animate-spin text-primary' : 'text-gray-300'}`}>🔄</button>
+          <button
+            onClick={togglePrivacyMode}
+            aria-label={isPrivacyMode ? 'Quitter le mode discret' : 'Activer le mode discret'}
+            aria-pressed={isPrivacyMode}
+            className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-lg active:scale-90 transition-transform"
+          >
+            {isPrivacyMode ? '🙈' : '👁️'}
+          </button>
         </div>
       </div>
 
-      <main id="main" tabIndex={-1} className="flex-1 p-3 md:p-10 mt-16 md:mt-0 overflow-y-auto min-h-[100dvh] pb-24 md:pb-10 relative z-0 scroll-smooth focus:outline-none">
+      {/* Phase B.1 — md:ml-16 réserve la largeur du rail collapsé. L'expansion
+          de la sidebar (w-72) overlay le contenu sans push (pas de jump). */}
+      <main id="main" tabIndex={-1} className="flex-1 p-3 md:p-10 md:ml-16 mt-16 md:mt-0 overflow-y-auto min-h-[100dvh] pb-24 md:pb-10 relative z-0 scroll-smooth focus:outline-none">
         <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 animate-premium-in">
           {children}
         </div>

@@ -1,12 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { Layout } from '../../components/Layout';
 import { Tab } from '../../types';
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (k: string, d?: string) => d || k, i18n: { language: 'fr' } }),
 }));
-// Évite l'init côté i18n.ts (LanguageDetector) qui requiert un DOM complet.
 vi.mock('../../i18n', () => ({ default: {} }));
 
 const baseProps = {
@@ -41,12 +40,20 @@ describe('Layout', () => {
         expect(main?.getAttribute('tabIndex')).toBe('-1');
     });
 
-    it('expose un bouton refresh accessible avec aria-label', () => {
-        const onRefresh = vi.fn();
-        render(<Layout {...baseProps} onRefresh={onRefresh} />);
-        const btn = screen.getByLabelText('Synchroniser');
-        fireEvent.click(btn);
-        expect(onRefresh).toHaveBeenCalled();
+    it('§B.4 — bouton Synchroniser retiré (doc directives §1)', () => {
+        render(<Layout {...baseProps} />);
+        expect(screen.queryByLabelText('Synchroniser')).toBeNull();
+    });
+
+    it('§B.4 — bouton info ℹ️ retiré (doc directives §1)', () => {
+        render(<Layout {...baseProps} />);
+        expect(screen.queryByLabelText('Guide du Pilote')).toBeNull();
+    });
+
+    it('§B.4 — bouton Rapport PDF retiré de la sidebar', () => {
+        render(<Layout {...baseProps} onGeneratePDF={vi.fn()} />);
+        // Le bouton n'apparaît plus dans la sidebar (sera repensé dans une phase ultérieure).
+        expect(screen.queryByText(/Rapport PDF/i)).toBeNull();
     });
 
     it('bouton privacy mode toggle expose aria-pressed (desktop + mobile)', () => {
@@ -73,5 +80,48 @@ describe('Layout', () => {
     it('navigation mobile expose aria-label "Navigation mobile"', () => {
         render(<Layout {...baseProps} />);
         expect(screen.getByRole('navigation', { name: 'Navigation mobile' })).toBeInTheDocument();
+    });
+
+    it('§B.1 — sidebar desktop a aria-expanded=false par défaut (collapsed)', () => {
+        const { container } = render(<Layout {...baseProps} />);
+        const sidebar = container.querySelector('aside');
+        expect(sidebar?.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('§B.1 — sidebar expands au mouseEnter, collapses au mouseLeave', () => {
+        const { container } = render(<Layout {...baseProps} />);
+        const sidebar = container.querySelector('aside')!;
+        expect(sidebar.getAttribute('aria-expanded')).toBe('false');
+        fireEvent.mouseEnter(sidebar);
+        expect(sidebar.getAttribute('aria-expanded')).toBe('true');
+        fireEvent.mouseLeave(sidebar);
+        expect(sidebar.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('§B.2 — clic sur header de groupe (sidebar ouverte) toggle aria-expanded', () => {
+        const { container } = render(<Layout {...baseProps} />);
+        const sidebar = container.querySelector('aside')!;
+        fireEvent.mouseEnter(sidebar); // ouvre la sidebar
+        const argentHeader = within(sidebar).getAllByRole('button').find(
+            b => b.textContent?.includes('Argent') && !b.hasAttribute('aria-current')
+        );
+        expect(argentHeader).toBeDefined();
+        expect(argentHeader!.getAttribute('aria-expanded')).toBe('true'); // default open
+        fireEvent.click(argentHeader!);
+        expect(argentHeader!.getAttribute('aria-expanded')).toBe('false');
+        fireEvent.click(argentHeader!);
+        expect(argentHeader!.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('§B.2 — header de groupe disabled quand sidebar collapsed', () => {
+        const { container } = render(<Layout {...baseProps} />);
+        const sidebar = container.querySelector('aside')!;
+        // sidebar collapsed par défaut → headers disabled
+        const headers = within(sidebar).getAllByRole('button').filter(
+            b => b.textContent?.includes('Argent') && !b.hasAttribute('aria-current')
+        );
+        expect(headers.length).toBeGreaterThan(0);
+        // au moins un header doit être disabled quand sidebar est collapsée
+        expect(headers.some(h => (h as HTMLButtonElement).disabled)).toBe(true);
     });
 });

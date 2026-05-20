@@ -14,6 +14,8 @@ import { Sparkles, ArrowRight } from 'lucide-react';
 import { ASSET_META } from '../services/assetMeta';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { EraContextInsights } from './dashboard/EraContextInsights';
+import { HealthIndicator } from './dashboard/HealthIndicator';
+import { StockComparisonModal } from './dashboard/StockComparisonModal';
 import { Tab as TabEnum } from '../types';
 import { formatCAD, formatNumber, formatPercent, formatSigned } from '../utils/format';
 
@@ -56,6 +58,44 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const [customStart, setCustomStart] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
     const [customEnd, setCustomEnd] = useState(new Date().toISOString().split('T')[0]);
     const [futureYears, setFutureYears] = useState<number>(5);
+
+    // Phase D.3 — multi-comptes : chaque compte peut être masqué/affiché ; un
+    // bouton "Total" superpose une ligne d'agrégat. Persistance localStorage.
+    const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => {
+        try {
+            const raw = localStorage.getItem('dashboard:hiddenAccounts:v1');
+            return raw ? new Set(JSON.parse(raw)) : new Set();
+        } catch { return new Set(); }
+    });
+    const [showTotalLine, setShowTotalLine] = useState<boolean>(() => {
+        try { return localStorage.getItem('dashboard:showTotal:v1') === 'true'; } catch { return false; }
+    });
+    const toggleAccount = (key: string) => {
+        setHiddenAccounts(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key); else next.add(key);
+            try { localStorage.setItem('dashboard:hiddenAccounts:v1', JSON.stringify([...next])); } catch {/* */}
+            return next;
+        });
+    };
+    const toggleTotal = () => {
+        setShowTotalLine(prev => {
+            const next = !prev;
+            try { localStorage.setItem('dashboard:showTotal:v1', String(next)); } catch {/* */}
+            return next;
+        });
+    };
+
+    // Phase D.4 — sélection de stocks pour comparaison superposée
+    const [selectedStockSymbols, setSelectedStockSymbols] = useState<Set<string>>(new Set());
+    const [showComparisonModal, setShowComparisonModal] = useState(false);
+    const toggleStockSelection = (symbol: string) => {
+        setSelectedStockSymbols(prev => {
+            const next = new Set(prev);
+            if (next.has(symbol)) next.delete(symbol); else next.add(symbol);
+            return next;
+        });
+    };
 
     // Wiring 2026-05: lit la vraie projection FutureProjection si dispo, sinon
     // fallback sur formule simple. Garanti d'être sync avec l'onglet projection.
@@ -352,6 +392,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </StatGrid>
 
+            {/* Phase D.6 — Indicateur santé financière paramétrable (remplace
+                temporairement les anciens KPIs Cash/Saving/Dette retirés en D.5) */}
+            <HealthIndicator />
+
             {/* Phase 4 B6/B7 — Insights pré-calculés par Era Context (silencieux si pas de token) */}
             <EraContextInsights />
 
@@ -374,6 +418,51 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                 }
             >
+                {/* Phase D.3 — chips toggle pour chaque compte + "Total" overlay */}
+                {accountKeys.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                        <span className="text-tiny text-ink-500 uppercase tracking-widest font-bold mr-1">Affichage :</span>
+                        {accountKeys.map((key, idx) => {
+                            const isHidden = hiddenAccounts.has(key);
+                            const color = COLORS[idx % COLORS.length];
+                            return (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => toggleAccount(key)}
+                                    aria-pressed={!isHidden}
+                                    title={isHidden ? `Afficher ${key}` : `Masquer ${key}`}
+                                    className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-tiny font-medium border transition-colors focus-ring ${
+                                        isHidden
+                                            ? 'bg-white/[0.02] text-ink-500 border-white/5 hover:bg-white/5'
+                                            : 'bg-white/10 text-ink-100 border-white/15 hover:bg-white/15'
+                                    }`}
+                                >
+                                    <span
+                                        aria-hidden="true"
+                                        className={`w-2 h-2 rounded-full ${isHidden ? 'opacity-30' : ''}`}
+                                        style={{ backgroundColor: color }}
+                                    />
+                                    {key}
+                                </button>
+                            );
+                        })}
+                        <button
+                            type="button"
+                            onClick={toggleTotal}
+                            aria-pressed={showTotalLine}
+                            title={showTotalLine ? 'Masquer la ligne Total' : 'Afficher la ligne Total'}
+                            className={`ml-2 inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-tiny font-bold border transition-colors focus-ring ${
+                                showTotalLine
+                                    ? 'bg-white text-black border-white'
+                                    : 'bg-white/[0.02] text-ink-400 border-white/10 hover:bg-white/5'
+                            }`}
+                        >
+                            <span aria-hidden="true">∑</span>
+                            Total
+                        </button>
+                    </div>
+                )}
                 <div className="w-full h-[380px]">
                     <Suspense fallback={<Skeleton variant="chart" />}>
                         <DashboardEvolutionChart
@@ -381,40 +470,128 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             accountKeys={accountKeys}
                             colors={COLORS}
                             isPrivacyMode={isPrivacyMode}
+                            hiddenAccounts={hiddenAccounts}
+                            showTotalLine={showTotalLine}
                         />
                     </Suspense>
                 </div>
             </Card>
 
             {/* Phase D.5 — Cash/Saving/Dette/Jalons retirés (doc directives §2).
-                L'indicateur santé paramétrable + reste arrivent en phase D ultérieure. */}
-            <Card title={t('dashboard.individual_assets')}>
-                <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
-                    {segmentedData.assets.map(asset => (
-                        <div key={asset.symbol} className="bg-white/5 p-3 rounded-xl border border-white/5 flex justify-between items-center hover:bg-white/10 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded bg-[#1e2330] flex items-center justify-center text-xs font-bold text-gray-300">{asset.symbol.substring(0, 2)}</div>
-                                <div>
-                                    <div className="font-bold text-white text-sm">{asset.symbol}</div>
-                                    <div className="text-tiny text-gray-500 bg-black/50 px-1.5 rounded inline-block mt-0.5">{asset.accountType}</div>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <div className="font-mono font-bold text-gray-200 text-sm privacy-blur">{formatCAD(asset.value)}</div>
-                                <div className="flex justify-end gap-2 text-tiny mt-0.5 font-bold privacy-blur">
-                                    <span className={asset.diffCAD >= 0 ? 'text-green-500' : 'text-red-500'}>
-                                        {formatSigned(asset.diffCAD, { withCurrency: true })}
-                                    </span>
-                                    <span className="text-yellow-500" title="Revenu Mensuel Estimé (Dividendes)">
-                                        +{formatCAD(asset.revMensuel)}
-                                    </span>
-                                </div>
-                            </div>
+                Phase D.4 — Checkbox + clic → drawer chart, multi-check → overlay comparatif. */}
+            <Card
+                title={t('dashboard.individual_assets')}
+                action={
+                    selectedStockSymbols.size > 0 ? (
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowComparisonModal(true)}
+                                className="px-3 py-1.5 bg-primary/15 hover:bg-primary/25 border border-primary/40 text-primary text-tiny font-bold rounded-card transition-colors focus-ring"
+                            >
+                                📈 {selectedStockSymbols.size === 1 ? 'Voir courbe' : `Comparer (${selectedStockSymbols.size})`}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedStockSymbols(new Set())}
+                                className="px-2 py-1 text-tiny text-ink-400 hover:text-ink-200 transition-colors focus-ring rounded"
+                                title="Tout désélectionner"
+                            >
+                                ✕
+                            </button>
                         </div>
-                    ))}
+                    ) : (
+                        <span className="text-tiny text-ink-500 italic">Coche pour comparer</span>
+                    )
+                }
+            >
+                <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                    {segmentedData.assets.map(asset => {
+                        const isSelected = selectedStockSymbols.has(asset.symbol);
+                        // Phase D.4 — gain $/% depuis achat si dateBought + buyPrice connus
+                        const ownedAsset = assets.find(a => a.symbol === asset.symbol);
+                        const buyPrice = ownedAsset?.buyPrice;
+                        const quantity = ownedAsset?.quantity || 0;
+                        const currentPrice = ownedAsset?.currentPrice || 0;
+                        const hasPurchaseData = buyPrice && buyPrice > 0 && quantity > 0;
+                        const gainAbs = hasPurchaseData ? (currentPrice - buyPrice) * quantity : null;
+                        const gainPct = hasPurchaseData ? ((currentPrice - buyPrice!) / buyPrice!) * 100 : null;
+                        return (
+                            <div
+                                key={asset.symbol}
+                                className={`p-3 rounded-xl border transition-colors cursor-pointer flex justify-between items-center group ${
+                                    isSelected
+                                        ? 'bg-primary/10 border-primary/40 hover:bg-primary/15'
+                                        : 'bg-white/5 border-white/5 hover:bg-white/10'
+                                }`}
+                                onClick={() => toggleStockSelection(asset.symbol)}
+                                role="button"
+                                tabIndex={0}
+                                aria-pressed={isSelected}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        toggleStockSelection(asset.symbol);
+                                    }
+                                }}
+                            >
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div
+                                        aria-hidden="true"
+                                        className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${
+                                            isSelected ? 'bg-primary border-primary' : 'border-white/20 group-hover:border-white/40'
+                                        }`}
+                                    >
+                                        {isSelected && <span className="text-tiny text-white font-bold">✓</span>}
+                                    </div>
+                                    <div className="w-8 h-8 rounded bg-[#1e2330] flex items-center justify-center text-xs font-bold text-gray-300 shrink-0">{asset.symbol.substring(0, 2)}</div>
+                                    <div className="min-w-0">
+                                        <div className="font-bold text-white text-sm truncate">{asset.symbol}</div>
+                                        <div className="text-tiny text-gray-500 bg-black/50 px-1.5 rounded inline-block mt-0.5">{asset.accountType}</div>
+                                    </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                    <div className="font-mono font-bold text-gray-200 text-sm privacy-blur">{formatCAD(asset.value)}</div>
+                                    <div className="flex justify-end gap-2 text-tiny mt-0.5 font-bold privacy-blur">
+                                        <span className={asset.diffCAD >= 0 ? 'text-green-500' : 'text-red-500'}>
+                                            {formatSigned(asset.diffCAD, { withCurrency: true })}
+                                        </span>
+                                        <span className="text-yellow-500" title="Revenu mensuel estimé (dividendes)">
+                                            +{formatCAD(asset.revMensuel)}
+                                        </span>
+                                    </div>
+                                    {hasPurchaseData && gainAbs !== null && gainPct !== null ? (
+                                        <div className="text-tiny mt-0.5 privacy-blur" title="Gain total depuis l'achat (cours actuel vs prix d'achat)">
+                                            <span className={`font-mono ${gainAbs >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                Achat : {formatSigned(gainAbs, { withCurrency: true })} ({formatSigned(gainPct, { decimals: 2 })}%)
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <div className="text-tiny mt-0.5 text-ink-600 italic">
+                                            Date/prix d'achat manquant ·{' '}
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); navigateWithFocus(TabEnum.SETTINGS, 'profile-user1-card'); }}
+                                                className="text-info-400 hover:underline focus-ring rounded"
+                                            >
+                                                Configurer →
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
                     {segmentedData.assets.length === 0 && <div className="text-center py-4 text-gray-500 text-xs">Aucun actif trouvé.</div>}
                 </div>
             </Card>
+
+            <StockComparisonModal
+                symbols={Array.from(selectedStockSymbols)}
+                isOpen={showComparisonModal}
+                onClose={() => setShowComparisonModal(false)}
+                isPrivacyMode={isPrivacyMode}
+            />
 
         </div>
     );

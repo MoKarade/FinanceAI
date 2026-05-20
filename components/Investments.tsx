@@ -76,6 +76,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
     const [isLoading, setIsLoading] = useState(true);
     const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
     const [timeRange, setTimeRange] = useState<TimeRange>('1Y');
+    // Phase E.3 — sous-onglets pour aérer la page (doc directives §4)
+    const [subTab, setSubTab] = useState<'overview' | 'allocation' | 'rebalance' | 'detail'>('overview');
 
     // Wiring 2026-05: lecture de la projection vivante depuis le store.
     const lastProjection = useFinanceStore(s => s.lastProjection);
@@ -359,6 +361,22 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 }
             />
 
+            {/* Phase E.3 — Sous-onglets pour aérer la page (doc directives §4) */}
+            <div className="flex justify-center">
+                <Pill
+                    aria-label="Vue Investissements"
+                    size="sm"
+                    value={subTab}
+                    onChange={(v) => setSubTab(v as typeof subTab)}
+                    options={[
+                        { value: 'overview', label: "Vue d'ensemble", icon: '📊' },
+                        { value: 'allocation', label: 'Allocation', icon: '🎯' },
+                        { value: 'rebalance', label: 'Rééquilibrage', icon: '⚖️' },
+                        { value: 'detail', label: 'Détail', icon: '📦' },
+                    ]}
+                />
+            </div>
+
             {/* Hero: Score de santé (donut) + Performance vs Marché */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card className="md:col-span-1 flex flex-col justify-center items-center py-6">
@@ -397,10 +415,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 </Card>
             </div>
 
-            {/* 0.5 PROJECTION RETRAITE (Wiring 2026-05) — n'apparaît que si l'utilisateur
-                a déjà ouvert l'onglet Future au moins une fois dans la session.
-                C4: KPIStat/StatGrid au lieu de raw divs (uniformisation avec FutureProjection). */}
-            {horizonSnapshot && (
+            {/* 0.5 PROJECTION RETRAITE — Phase E.3 overview only */}
+            {subTab === 'overview' && horizonSnapshot && (
                 <Card title={`🔮 Portefeuille projeté en ${horizonSnapshot.year} (${projectionHorizonYears} ans)`} className="bg-gradient-to-br from-blue-900/10 to-indigo-900/10 border-blue-500/20">
                     <StatGrid cols={horizonSnapshot.crypto > 0 ? 5 : 4}>
                         <KPIStat
@@ -451,8 +467,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 </Card>
             )}
 
-            {/* 1. CHART SECTION */}
-            <Card className="min-h-[550px]" title="Performance Comparée">
+            {/* 1. CHART SECTION — Phase E.3 overview only */}
+            {subTab === 'overview' && <Card className="min-h-[550px]" title="Performance Comparée">
                 <div className="flex justify-between items-center mb-4 border-b border-white/5 pb-2 gap-4 flex-wrap">
                     <Pill
                         aria-label="Période"
@@ -514,12 +530,10 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         </div>
                     )}
                 </div>
-            </Card>
+            </Card>}
 
-            {/* 2. ALLOCATION PANORAMIQUE (FULL WIDTH)
-                C4: CollapsibleSection — ouvert par défaut, mais on permet à
-                l'utilisateur de replier pour focus. */}
-            <CollapsibleSection
+            {/* 2. ALLOCATION PANORAMIQUE — Phase E.3 sub-tab 'allocation' */}
+            {subTab === 'allocation' && <CollapsibleSection
                 title="Analyse de l'Allocation"
                 icon="🎯"
                 subtitle="Répartition géographique et sectorielle"
@@ -608,18 +622,18 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     </div>
 
                 </div>
-            </CollapsibleSection>
+            </CollapsibleSection>}
 
-            {/* 3. DIVIDEND CALENDAR */}
-            <DividendPanel
+            {/* 3. DIVIDEND CALENDAR — Phase E.3 visible en overview */}
+            {subTab === 'overview' && <DividendPanel
                 dividendCalendar={dividendCalendar}
                 totalAnnualDividends={totalAnnualDividends}
                 currentAllocation={currentAllocation}
                 isLoading={isLoading}
-            />
+            />}
 
-            {/* 4. VISUAL PORTFOLIO REBALANCING (V16) */}
-            {currentAllocation.length > 0 && (() => {
+            {/* 4. VISUAL PORTFOLIO REBALANCING (V16) — Phase E.3 sub-tab 'rebalance' */}
+            {subTab === 'rebalance' && currentAllocation.length > 0 && (() => {
                 const totalPortfolio = currentAllocation.reduce((s, a) => s + a.value, 0);
 
                 const rebalancingActions = targetModel.map(target => {
@@ -776,10 +790,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 );
             })()}
 
-            {/* 5. STOCK CARDS GRID
-                C4: wrap dans CollapsibleSection — ouvert par défaut, badge count
-                pour orienter l'utilisateur quand il replie. */}
-            <CollapsibleSection
+            {/* 5. STOCK CARDS GRID — Phase E.3 sub-tab 'detail' */}
+            {subTab === 'detail' && <CollapsibleSection
                 title="Portefeuille Détaillé"
                 icon="📦"
                 subtitle="Tous les actifs avec performance et compte fiscal"
@@ -847,7 +859,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     );
                 })}
             </div>
-            </CollapsibleSection>
+            </CollapsibleSection>}
 
         </div>
     );

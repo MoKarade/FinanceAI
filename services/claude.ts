@@ -559,6 +559,73 @@ RÉPONDS UNIQUEMENT par un JSON Array strict de 3 objets (pas de markdown, pas d
     }
 };
 
+// ─── Phase G.4 — Optimisation fiscale couple (cross-spouse strategies) ───────
+
+const CoupleOptimizationStrategySchema = z.object({
+    title: z.string().min(3),
+    description: z.string().min(10),
+    estimated_savings_cad: z.number().optional(),
+    confidence: z.enum(['high', 'medium', 'low']),
+});
+const CoupleOptimizationStrategiesSchema = z.array(CoupleOptimizationStrategySchema).min(1).max(4);
+
+export type CoupleOptimizationStrategy = z.infer<typeof CoupleOptimizationStrategySchema>;
+
+export interface CoupleTaxContext {
+    user1: { name: string; grossAnnual: number; netAnnual: number; rrspRoom?: number; tfsaRoom?: number };
+    user2: { name: string; grossAnnual: number; netAnnual: number; rrspRoom?: number; tfsaRoom?: number };
+    combinedAssetsCAD?: number;
+    isRetired?: boolean;
+}
+
+export const getCoupleOptimizationStrategies = async (
+    ctx: CoupleTaxContext,
+    apiKey: string,
+): Promise<CoupleOptimizationStrategy[]> => {
+    if (!apiKey) return [];
+
+    const userPrompt = `Tu es conseiller fiscal québécois expert en stratégies pour couple.
+
+PROFIL :
+- ${ctx.user1.name} : brut ${roundToHundred(ctx.user1.grossAnnual)}$, net ${roundToHundred(ctx.user1.netAnnual)}$/an${ctx.user1.rrspRoom ? `, REER dispo ${roundToHundred(ctx.user1.rrspRoom)}$` : ''}${ctx.user1.tfsaRoom ? `, CELI dispo ${roundToHundred(ctx.user1.tfsaRoom)}$` : ''}
+- ${ctx.user2.name} : brut ${roundToHundred(ctx.user2.grossAnnual)}$, net ${roundToHundred(ctx.user2.netAnnual)}$/an${ctx.user2.rrspRoom ? `, REER dispo ${roundToHundred(ctx.user2.rrspRoom)}$` : ''}${ctx.user2.tfsaRoom ? `, CELI dispo ${roundToHundred(ctx.user2.tfsaRoom)}$` : ''}
+${ctx.combinedAssetsCAD ? `- Patrimoine combiné : ${roundToHundred(ctx.combinedAssetsCAD)}$` : ''}
+${ctx.isRetired ? '- Statut : à la retraite (fractionnement de revenus de pension applicable)' : ''}
+
+Propose EXACTEMENT 3 stratégies concrètes d'optimisation fiscale couple, classées par impact estimé décroissant.
+
+Pertinence prioritaire :
+- Fractionnement REER (cotisation au conjoint avec revenu plus bas — Spousal RRSP)
+- Allocation CELI optimale entre conjoints
+- Transfert de crédits non-utilisés (BPA, frais médicaux, dons)
+- Pension splitting (si retraité — jusqu'à 50% transférable)
+- Choix joint pour les gains en capital / dividendes
+
+CONTRAINTES :
+- estimated_savings_cad en $ annuel (peut être omis si difficile à chiffrer)
+- confidence : 'high' uniquement si calcul précis possible avec les données fournies
+- description : 1-2 phrases, ton concret avec montant et action
+
+RÉPONDS UNIQUEMENT par un JSON Array strict (pas de markdown) :
+[
+  { "title": "...", "description": "...", "estimated_savings_cad": 1500, "confidence": "high" },
+  ...
+]`;
+
+    try {
+        const text = await chat(
+            [{ role: 'user', content: userPrompt }],
+            apiKey,
+            { model: MODEL_HAIKU, system: QUEBEC_FISCAL_CONTEXT, maxTokens: 1500, temperature: 0.4, timeoutMs: 25000 },
+        );
+        const validated = safeJsonValidate(text, CoupleOptimizationStrategiesSchema);
+        return validated ?? [];
+    } catch (e) {
+        console.error('[Claude] getCoupleOptimizationStrategies failed:', e);
+        return [];
+    }
+};
+
 // ─── Phase E.7 — Justifications IA de rééquilibrage ──────────────────────────
 
 const RebalanceJustificationSchema = z.object({

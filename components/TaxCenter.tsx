@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { showToast } from './ui/Toast';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
+import { CoupleOptimizationCard } from './tax/CoupleOptimizationCard';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, Cell, PieChart, Pie } from 'recharts';
 import { BudgetConfig, Asset } from '../types';
 // Phase 4 A4: bascule sur services/claude.ts (Sonnet 4.6 + Vision)
@@ -255,6 +256,9 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                     <span>ℹ️</span> {analysisStatus}
                 </div>
             )}
+
+            {/* Phase G.4 — Optimisation fiscale couple IA (rendu uniquement si couple) */}
+            <CoupleOptimizationCard />
 
             {/* TABS FOR PROFILE */}
             {config.users.length > 1 && (

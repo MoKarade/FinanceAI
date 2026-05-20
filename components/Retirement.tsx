@@ -9,6 +9,7 @@ import { calculateFutureProjection } from '../services/projection';
 import { TaxBracketViz } from './TaxBracketViz';
 import { GoalSeekerCard } from './retirement/GoalSeekerCard';
 import { AssetLocationCard } from './retirement/AssetLocationCard';
+import { CurrentCapitalCard } from './retirement/CurrentCapitalCard';
 import { fetchPortfolioHistory } from '../services/finance';
 import { calculateGrossFromNet } from '../services/tax';
 import { useFinanceStore } from '../store/useFinanceStore';
@@ -224,39 +225,15 @@ export const Retirement: React.FC<RetirementProps> = ({
                         </div>
                     </Card>
 
-                    <Card title="Capitaux Actuels">
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-3 gap-2 text-center text-tiny text-gray-400 bg-white/5 p-3 rounded-xl border border-white/5">
-                                <div>
-                                    <div className="uppercase tracking-wider">REER</div>
-                                    <div className="text-white font-bold privacy-blur mt-1">{liveCSVBalances.REER.toLocaleString()}$</div>
-                                </div>
-                                <div>
-                                    <div className="uppercase tracking-wider">CELI</div>
-                                    <div className="text-white font-bold privacy-blur mt-1">{liveCSVBalances.CELI.toLocaleString()}$</div>
-                                </div>
-                                <div>
-                                    <div className="uppercase tracking-wider">Non-Enr.</div>
-                                    <div className="text-white font-bold privacy-blur mt-1">{liveCSVBalances.NON_ENREG.toLocaleString()}$</div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-1">
-                                <div className="flex justify-between text-xs">
-                                    <span className="text-gray-400">Capital a la retraite ({goal.targetAge} ans)</span>
-                                    <span className="text-white font-bold privacy-blur">{retirementNetWorth.toLocaleString()}$</span>
-                                </div>
-                                <div className="flex justify-between text-xs">
-                                    <span className="text-gray-400">Pic du patrimoine</span>
-                                    <span className="text-emerald-400 font-bold privacy-blur">{peakNetWorth.toLocaleString()}$</span>
-                                </div>
-                                <div className="flex justify-between text-xs">
-                                    <span className="text-gray-400">Heritage ({lifeExpectancy} ans)</span>
-                                    <span className="text-blue-400 font-bold privacy-blur">{finalNetWorth.toLocaleString()}$</span>
-                                </div>
-                            </div>
-                        </div>
-                    </Card>
+                    {/* Phase F.5 — extraction Card "Capitaux Actuels" en sous-composant */}
+                    <CurrentCapitalCard
+                        balances={{ REER: liveCSVBalances.REER, CELI: liveCSVBalances.CELI, NON_ENREG: liveCSVBalances.NON_ENREG }}
+                        targetAge={goal.targetAge}
+                        lifeExpectancy={lifeExpectancy}
+                        retirementNetWorth={retirementNetWorth}
+                        peakNetWorth={peakNetWorth}
+                        finalNetWorth={finalNetWorth}
+                    />
 
                     <Card title="Revenus & Besoins (Retraite)">
                         <div className="space-y-5">

@@ -264,7 +264,7 @@ export const useFinanceStore = create<FinanceState>()(
             // de la forme du state, et ajouter une étape dans `migrate`.
             // Sans version, toute évolution casse silencieusement le boot des
             // utilisateurs existants (cf audit 2026-05 §State management).
-            version: 5,
+            version: 6,
             migrate: (persistedState: unknown, fromVersion: number) => {
                 let state = persistedState as Partial<FinanceState>;
                 // v0/undefined → v1 : intro versioning
@@ -308,6 +308,29 @@ export const useFinanceStore = create<FinanceState>()(
                             retirementGoal: { ...(state as any).retirementGoal, lifeExpectancy: 90 },
                         } as Partial<FinanceState>;
                     }
+                }
+                // v5 → v6 : Phase E.8 — DCA multi-achat. Convertit dateBought +
+                //   buyPrice + quantity en purchases: [{date, quantity, price}].
+                //   Les champs legacy restent pour rétrocompat.
+                if (fromVersion < 6 && Array.isArray((state as any)?.assets)) {
+                    type LegacyAsset = { dateBought?: string; buyPrice?: number; quantity?: number; purchases?: unknown };
+                    state = {
+                        ...state,
+                        assets: (state as any).assets.map((a: LegacyAsset) => {
+                            if (Array.isArray(a.purchases) && a.purchases.length > 0) return a;
+                            if (a.dateBought && typeof a.buyPrice === 'number' && a.buyPrice > 0 && a.quantity && a.quantity > 0) {
+                                return {
+                                    ...a,
+                                    purchases: [{
+                                        date: a.dateBought,
+                                        quantity: a.quantity,
+                                        price: a.buyPrice,
+                                    }],
+                                };
+                            }
+                            return a;
+                        }),
+                    } as Partial<FinanceState>;
                 }
                 return state;
             },

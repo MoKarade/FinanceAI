@@ -49,12 +49,12 @@ describe('useFinanceStore', () => {
         expect(raw).not.toContain('apiKeys');
     });
 
-    it('a une version persist = 5 (Phase C.3 — retirementGoal.lifeExpectancy)', () => {
+    it('a une version persist = 6 (Phase E.8 — DCA multi-achat purchases[])', () => {
         useFinanceStore.getState().setActiveTab(Tab.SETTINGS);
         const raw = localStorage.getItem('financeai-storage');
         if (!raw) throw new Error('Persist did not write');
         const parsed = JSON.parse(raw);
-        expect(parsed.version).toBe(5);
+        expect(parsed.version).toBe(6);
     });
 
     it('retirementGoal.lifeExpectancy peut être mis à jour via setAppState (Phase C.3)', () => {

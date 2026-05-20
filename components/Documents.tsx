@@ -34,9 +34,13 @@ const CATEGORY_LABELS: Record<DocumentCategory, { label: string; icon: string }>
 
 const ACCEPTED_MIME = 'image/jpeg,image/png,image/webp,application/pdf';
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+const EMPTY_DOCS: DocumentMeta[] = [];
 
 export const Documents: React.FC = () => {
-    const documents = useFinanceStore(s => s.documents ?? []);
+    // Selector qui renvoie la même référence si undefined — évite la boucle infinie
+    // causée par `?? []` qui crée un nouveau tableau à chaque rendu.
+    const documentsFromStore = useFinanceStore(s => s.documents);
+    const documents = documentsFromStore ?? EMPTY_DOCS;
     const setAppState = useFinanceStore(s => s.setAppState);
     const apiKey = useFinanceStore(s => s.apiKeys.anthropic);
 

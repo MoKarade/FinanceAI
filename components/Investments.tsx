@@ -26,6 +26,7 @@ import { DividendPanel } from './investments/DividendPanel';
 import { formatCAD } from '../utils/format';
 import { getRebalanceJustifications, type RebalanceActionInput } from '../services/claude';
 import { AddStockForm } from './investments/AddStockForm';
+import { computePurchaseStats } from '../utils/assetPurchases';
 import { useFinanceStore } from '../store/useFinanceStore';
 
 interface InvestmentsProps {
@@ -928,6 +929,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     // Try to find matching asset in props to get saved account type
                     const savedAsset = assets.find(a => asset.id.includes(a.symbol));
                     const accountType = savedAsset?.accountType || 'NON-ENREG';
+                    // Phase E.8 — affiche les stats DCA si purchases[] présent
+                    const purchaseStats = savedAsset ? computePurchaseStats({ ...savedAsset, currentPrice: asset.value / (savedAsset.quantity || 1) }) : null;
 
                     return (
                         <div key={asset.id} className="premium-card border border-white/5 hover:border-white/20 p-5 rounded-2xl transition-all group relative overflow-hidden flex flex-col justify-between animate-premium-in shadow-xl">
@@ -980,6 +983,24 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     <option value="CRYPTO">Crypto</option>
                                 </select>
                             </div>
+                            {/* Phase E.8 — DCA stats si purchases[] non-vide */}
+                            {purchaseStats && purchaseStats.purchaseCount > 1 && (
+                                <div className="mt-3 pt-3 border-t border-white/5">
+                                    <div className="text-tiny text-info-300 uppercase font-bold mb-1">DCA · {purchaseStats.purchaseCount} achats</div>
+                                    <div className="space-y-0.5 text-tiny">
+                                        <div className="flex justify-between">
+                                            <span className="text-ink-500">Coût moyen</span>
+                                            <span className="font-mono text-ink-200">{formatCAD(purchaseStats.averageCost)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-ink-500">Gain total</span>
+                                            <span className={`font-mono ${purchaseStats.totalGain >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                {purchaseStats.totalGain >= 0 ? '+' : ''}{formatCAD(purchaseStats.totalGain)} ({purchaseStats.gainPct.toFixed(1)}%)
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     );
                 })}

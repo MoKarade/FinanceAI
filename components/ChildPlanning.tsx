@@ -270,7 +270,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                             variant={goal.isActive ? 'danger' : 'primary'}
                             size="md"
                         >
-                            {goal.isActive ? '❌ Désactiver (Futur)' : '✅ Activer dans Futur'}
+                            {goal.isActive ? 'Désactiver dans Futur' : 'Activer dans Futur'}
                         </Button>
                         {goals.length > 1 && (
                             <Button onClick={handleRemoveChild} variant="ghost" size="md" title="Supprimer ce profil">🗑️</Button>
@@ -281,22 +281,29 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
             <div className="hidden">{/* spacing preserve */}
             </div>
 
-            {/* TABS ENFANTS */}
-            <div className="flex flex-wrap gap-2 pt-2 border-b border-white/10 pb-4">
+            {/* Phase F.11 — onglets enfants alignés sur le style Pill (cohérence app) */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-b border-white/10 pb-4">
                 {goals.map((g, idx) => (
                     <button
+                        type="button"
                         key={g.id || idx}
                         onClick={() => setActiveTabIndex(idx)}
-                        className={`px-5 py-2 rounded-xl font-bold text-sm transition-all focus:outline-none ${activeTabIndex === idx ? 'bg-blue-600/20 text-blue-400 border border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]' : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-transparent'}`}
+                        aria-pressed={activeTabIndex === idx}
+                        className={`px-4 py-1.5 rounded-pill font-medium text-meta transition-colors focus-ring ${
+                            activeTabIndex === idx
+                                ? 'bg-info-500/15 text-info-300 border border-info-500/30'
+                                : 'bg-white/5 text-ink-400 hover:bg-white/10 border border-white/10'
+                        }`}
                     >
                         {g.name || `Enfant ${idx + 1}`}
                     </button>
                 ))}
                 <button
+                    type="button"
                     onClick={handleAddChild}
-                    className="px-4 py-2 rounded-xl font-bold text-sm bg-green-900/20 text-green-400 border border-green-500/30 hover:bg-green-900/40 transition-all focus:outline-none flex items-center gap-1"
+                    className="px-3 py-1.5 rounded-pill text-meta font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors focus-ring"
                 >
-                    <span className="text-lg leading-none">+</span> Ajouter
+                    + Ajouter
                 </button>
             </div>
 

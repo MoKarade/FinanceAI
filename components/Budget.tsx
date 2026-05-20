@@ -15,6 +15,7 @@ import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { formatCAD } from '../utils/format';
 import { DualKPIStat } from './budget/DualKPIStat';
+import { calculateFiscalReport } from '../utils/tax';
 
 interface BudgetProps {
     transactions: Transaction[];
@@ -178,6 +179,43 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     const totalSpentDisplay = (Object.values(actualsMap) as number[]).reduce((a, b) => a + b, 0);
     const totalRemainingDisplay = totalNetIncomeDisplay - totalSpentDisplay; // Based on Net Income
     const projectedTotalDisplay = timeView === 'MONTH' ? (totalSpentDisplay / (currentDay / daysInMonth)) : totalSpentDisplay;
+
+    // Phase D'.3 — vraie décomposition fiscale (intègre fed + QC + RRQ + AE + RQAP)
+    // au lieu de la simple soustraction Brut − Net.
+    const fiscalBreakdown = useMemo(() => {
+        // grossSalary et netSalary sont MENSUELS dans le store → × 12 pour annuel
+        let fedTax = 0;
+        let qcTax = 0;
+        let rrq = 0;
+        let ae = 0;
+        let rqap = 0;
+        let netIncome = 0;
+        let totalGross = 0;
+        for (const u of usersIncome) {
+            const grossAnnual = u.grossSalary * 12;
+            if (grossAnnual <= 0) continue;
+            const report = calculateFiscalReport(grossAnnual, 0, 0, new Date().getFullYear(), true);
+            fedTax += report.fedTax;
+            qcTax += report.qcTax;
+            rrq += report.rrq;
+            ae += report.ae;
+            rqap += report.rqap;
+            netIncome += report.netIncome;
+            totalGross += grossAnnual;
+        }
+        const totalTax = fedTax + qcTax + rrq + ae + rqap;
+        const multiplier = getMultiplier() / 12; // de annuel → période courante (mois/trim/an)
+        return {
+            grossDisplay: totalGross * multiplier,
+            fedTaxDisplay: fedTax * multiplier,
+            qcTaxDisplay: qcTax * multiplier,
+            rrqDisplay: rrq * multiplier,
+            aeRqapDisplay: (ae + rqap) * multiplier,
+            totalTaxDisplay: totalTax * multiplier,
+            netDisplay: netIncome * multiplier,
+            averageRate: totalGross > 0 ? (totalTax / totalGross) * 100 : 0,
+        };
+    }, [usersIncome, timeView, customStart, customEnd]);
 
     // Phase D'.5 — revenu RÉEL = somme transactions positives (hors transferts) sur la période
     const totalActualIncomeDisplay = useMemo(() => {
@@ -612,22 +650,74 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     <Card title={coupleAnalysis.isSolo ? "Santé Financière" : "Santé Financière du Couple"} className="bg-gradient-to-br from-[#1e1e1e] to-blue-900/10 border-blue-500/20">
                         <div className="space-y-6">
 
-                            {/* NEW: VISUALISATION FISCALE */}
+                            {/* Phase D'.3 — Visualisation fiscale détaillée (fed + QC + RRQ + AE + RQAP)
+                                au lieu de la simple soustraction Brut − Net. */}
                             <div className="bg-black/30 rounded-lg p-3 border border-white/5 space-y-2">
                                 <div className="flex justify-between items-center text-tiny text-gray-400">
                                     <span>Revenus Bruts Totaux</span>
-                                    <span>{totalGrossDisplay.toLocaleString()}$</span>
+                                    <span className="font-mono">{formatCAD(fiscalBreakdown.grossDisplay)}</span>
                                 </div>
-                                <div className="flex justify-between items-center text-tiny text-red-400">
-                                    <span>Déductions Source (Impôts/Ass.)</span>
-                                    <span>-{totalTaxDisplay.toLocaleString()}$</span>
+                                {/* Barre stackée multi-couleurs des déductions */}
+                                <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden flex">
+                                    <div
+                                        className="h-full bg-red-500/80"
+                                        style={{ width: `${(fiscalBreakdown.fedTaxDisplay / fiscalBreakdown.grossDisplay) * 100}%` }}
+                                        title={`Fédéral : ${formatCAD(fiscalBreakdown.fedTaxDisplay)}`}
+                                    />
+                                    <div
+                                        className="h-full bg-rose-600/80"
+                                        style={{ width: `${(fiscalBreakdown.qcTaxDisplay / fiscalBreakdown.grossDisplay) * 100}%` }}
+                                        title={`Québec : ${formatCAD(fiscalBreakdown.qcTaxDisplay)}`}
+                                    />
+                                    <div
+                                        className="h-full bg-amber-500/80"
+                                        style={{ width: `${(fiscalBreakdown.rrqDisplay / fiscalBreakdown.grossDisplay) * 100}%` }}
+                                        title={`RRQ : ${formatCAD(fiscalBreakdown.rrqDisplay)}`}
+                                    />
+                                    <div
+                                        className="h-full bg-yellow-400/80"
+                                        style={{ width: `${(fiscalBreakdown.aeRqapDisplay / fiscalBreakdown.grossDisplay) * 100}%` }}
+                                        title={`AE + RQAP : ${formatCAD(fiscalBreakdown.aeRqapDisplay)}`}
+                                    />
                                 </div>
-                                <div className="w-full bg-gray-800 h-1 rounded-full">
-                                    <div className="h-full bg-red-500/50" style={{ width: `${(totalTaxDisplay / totalGrossDisplay) * 100}%` }}></div>
+                                {/* Legend détaillé */}
+                                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-tiny">
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1 text-red-300">
+                                            <span aria-hidden="true" className="w-2 h-2 bg-red-500/80 rounded-sm" />
+                                            Impôt fédéral
+                                        </span>
+                                        <span className="font-mono">{formatCAD(fiscalBreakdown.fedTaxDisplay)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1 text-rose-300">
+                                            <span aria-hidden="true" className="w-2 h-2 bg-rose-600/80 rounded-sm" />
+                                            Impôt QC
+                                        </span>
+                                        <span className="font-mono">{formatCAD(fiscalBreakdown.qcTaxDisplay)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1 text-amber-300">
+                                            <span aria-hidden="true" className="w-2 h-2 bg-amber-500/80 rounded-sm" />
+                                            RRQ
+                                        </span>
+                                        <span className="font-mono">{formatCAD(fiscalBreakdown.rrqDisplay)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1 text-yellow-300">
+                                            <span aria-hidden="true" className="w-2 h-2 bg-yellow-400/80 rounded-sm" />
+                                            AE + RQAP
+                                        </span>
+                                        <span className="font-mono">{formatCAD(fiscalBreakdown.aeRqapDisplay)}</span>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between items-center text-tiny text-ink-500 pt-1 border-t border-white/5">
+                                    <span>Total déductions ({fiscalBreakdown.averageRate.toFixed(1)}% moyen)</span>
+                                    <span className="font-mono text-red-400">−{formatCAD(fiscalBreakdown.totalTaxDisplay)}</span>
                                 </div>
                                 <div className="flex justify-between items-center font-bold text-white mt-1 pt-1 border-t border-white/5">
                                     <span>Revenu Net Disponible</span>
-                                    <span className="text-green-400">{totalNetIncomeDisplay.toLocaleString()}$</span>
+                                    <span className="text-emerald-400 font-mono">{formatCAD(fiscalBreakdown.netDisplay)}</span>
                                 </div>
                             </div>
 

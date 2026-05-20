@@ -392,8 +392,16 @@ export const App: React.FC = () => {
                 onOpenGuide={() => setShowGuide(true)}
                 onGeneratePDF={async () => {
                     try {
-                        // Lazy-load jspdf vendor chunk seulement à l'usage
-                        const { generateFinancialReport } = await import('./services/pdfReport');
+                        // P1.5 — PDF complet : patrimoine + fiscal + holdings + dettes + goals + retraite + budget.
+                        // Lazy-load jspdf vendor chunk seulement à l'usage.
+                        const {
+                            generateFinancialReport,
+                            buildHoldingsRows,
+                            buildDebtsRows,
+                            buildGoalsRows,
+                            buildFiscalSummary,
+                        } = await import('./services/pdfReport');
+
                         await generateFinancialReport({
                             netWorth: globalNetWorth,
                             monthlySavings: calculatedMonthlySavings,
@@ -414,6 +422,11 @@ export const App: React.FC = () => {
                             userName: state.config.users[0]?.name,
                             generatedAt: new Date().toLocaleDateString('fr-CA'),
                             lang: document.documentElement.lang || 'fr',
+                            // P1.5 — sections étendues (dérivées via builders purs testés)
+                            fiscal: buildFiscalSummary(state),
+                            holdings: buildHoldingsRows(state),
+                            debtsDetail: buildDebtsRows(state),
+                            goalsDetail: buildGoalsRows(state),
                         });
                         showToast('Rapport PDF genere avec succes !', 'success');
                     } catch (e) {

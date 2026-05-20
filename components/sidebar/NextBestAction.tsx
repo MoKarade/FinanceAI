@@ -78,7 +78,8 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen })
             + (initialBalances?.liquidity || 0)
             - (debts || []).reduce((acc, d) => acc + (d.balance || 0), 0);
 
-        const monthlyIncome = ((config?.users?.[0]?.netSalary || 0) + (config?.users?.[1]?.netSalary || 0)) / 12;
+        // `netSalary` est en MENSUEL dans le store (cf Budget.tsx + Retirement.tsx).
+        const monthlyIncome = (config?.users?.[0]?.netSalary || 0) + (config?.users?.[1]?.netSalary || 0);
         const monthlyExpenses = (budgetItems || []).reduce((acc, b) => acc + (b.target || 0), 0);
 
         const projected = lastProjection?.chartData?.length

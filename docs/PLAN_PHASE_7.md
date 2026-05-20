@@ -225,9 +225,9 @@ services/marketData/
 | TBD | B.1 empty states | ✅ | EmptyState branché : Transactions (main list mobile), DebtManager, Travel, LifeEvents. Pattern unifié. |
 | TBD | B.2 skeletons | ✅ | Primitive Skeleton + SkeletonList (variants text/rect/circle/chart/kpi/list-row, role="status"/aria-busy). Dashboard chart Suspense fallback + Investments isLoading branchés. 6 tests RTL. |
 | TBD | B.3 Cmd+K palette | ✅ | Impl maison (pas de cmdk lib) ~200L. Cmd/Ctrl+K global. 17 actions nav + 3 actions (privacy, guide, refresh). Filter par label/group/keywords. ↑↓/Enter/Esc + click outside. 7 tests RTL. |
-| — | C.1 Layout test RTL | ⏳ | — |
-| — | C.2 AbortController Claude | ⏳ | — |
-| — | C.3 Zod systématique | ⏳ | — |
+| TBD | C.1 Layout test RTL | ✅ | 7 tests : children render, skip link href #main, main#main tabIndex, refresh btn, privacy toggle aria-pressed (desktop+mobile), aria-current="page", nav mobile aria-label. |
+| TBD | C.2 AbortController Claude | ✅ | makeTimeoutSignal helper (combine signal externe + timeout 30s default) sur chat() + chatStream(). AiAssistant : bouton "Annuler" (⏹) en lieu de l'icône envoi quand isLoading. |
+| (déjà fait) | C.3 Zod systématique | ✅ | Audit : 5/5 consumers structurés (categorize, subscriptions, smartGoals, budgetAnalysis, payslip) utilisent `safeJsonValidate` qui wrappe Zod parse + try/catch + warn log + null fallback. |
 | — | D.1 contrast script | ⏳ | — |
 | — | D.2 axe CI | ⏳ | — |
 | — | D.3 i18n compléter | ⏳ | — |

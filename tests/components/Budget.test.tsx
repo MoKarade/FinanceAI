@@ -62,13 +62,15 @@ describe('Budget — refonte UI (Phase C3)', () => {
         expect(container.textContent).toContain('Pilotage Budget');
     });
 
-    it('affiche les 4 KPIs du hero (Budget Prévu / Dépenses Réelles / Reste / Projection)', () => {
+    it('Phase D\'.5 — affiche les 4 tuiles dual prévu/réel (Budget / Revenus / Dépenses / Restant)', () => {
         const { container } = render(<Budget {...baseProps} />);
         const text = container.textContent || '';
-        expect(text).toContain('Budget Prévu');
-        expect(text).toContain('Dépenses Réelles');
-        expect(text).toContain('Reste Disponible');
-        expect(text).toContain('Projection Fin Période');
+        expect(text).toContain('Budget');
+        expect(text).toContain('Revenus');
+        expect(text).toContain('Dépenses');
+        expect(text).toContain('Restant');
+        // Les tuiles affichent toutes le label "Réel / Prévu"
+        expect(text.match(/Réel \/ Prévu/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
     });
 
     it('affiche le badge Excédentaire/Déficitaire', () => {

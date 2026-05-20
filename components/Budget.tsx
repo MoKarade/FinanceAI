@@ -14,6 +14,7 @@ import { Pill } from './ui/Pill';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { formatCAD } from '../utils/format';
+import { DualKPIStat } from './budget/DualKPIStat';
 
 interface BudgetProps {
     transactions: Transaction[];
@@ -172,6 +173,18 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     const totalRemainingDisplay = totalNetIncomeDisplay - totalSpentDisplay; // Based on Net Income
     const projectedTotalDisplay = timeView === 'MONTH' ? (totalSpentDisplay / (currentDay / daysInMonth)) : totalSpentDisplay;
 
+    // Phase D'.5 — revenu RÉEL = somme transactions positives (hors transferts) sur la période
+    const totalActualIncomeDisplay = useMemo(() => {
+        const { start, end } = getDateRange();
+        return transactions
+            .filter(t => !t.isTransfer && t.amount > 0)
+            .filter(t => {
+                const d = new Date(t.date);
+                return d >= start && d <= end;
+            })
+            .reduce((sum, t) => sum + t.amount, 0);
+    }, [transactions, getDateRange]);
+
     // --- 2. GROUPING LOGIC ---
     const groupedItems = useMemo(() => {
         const groups = { 'Besoin': [] as BudgetCategory[], 'Envie': [] as BudgetCategory[], 'Epargne': [] as BudgetCategory[] };
@@ -253,10 +266,26 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         return list;
     }, [budgetItems, actualsMap, timeView, inflationSim, customStart, customEnd]);
 
+    const setAppState = useFinanceStore(s => s.setAppState);
+
     const handleUpdateItem = (index: number, field: keyof BudgetCategory, value: any) => {
         const newItems = [...budgetItems];
-        newItems[index] = { ...newItems[index], [field]: value };
+        const oldItem = newItems[index];
+        newItems[index] = { ...oldItem, [field]: value };
         setBudgetItems(newItems);
+
+        // Phase D'.1 — synchro absolue : si rename de catégorie, propage aux
+        // transactions qui utilisent l'ancien nom.
+        if (field === 'name' && typeof value === 'string' && oldItem.name && oldItem.name !== value) {
+            const updatedTransactions = transactions.map(t =>
+                t.category === oldItem.name ? { ...t, category: value } : t
+            );
+            const renamedCount = updatedTransactions.filter((t, i) => t.category !== transactions[i].category).length;
+            if (renamedCount > 0) {
+                setAppState({ transactions: updatedTransactions });
+                showToast(`Catégorie renommée. ${renamedCount} transaction(s) mises à jour.`, 'success');
+            }
+        }
     };
 
     const handleAddItem = (nature: 'Besoin' | 'Envie' | 'Epargne' = 'Envie') => {
@@ -279,10 +308,32 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
     const doConfirmDelete = () => {
         if (confirmDeleteId) {
+            const itemToDelete = budgetItems.find(i => i.id === confirmDeleteId);
             setBudgetItems(budgetItems.filter(i => i.id !== confirmDeleteId));
+            // Phase D'.1 — réassigne les transactions affectées à "Uncategorized"
+            // au lieu de les laisser pointer vers une catégorie fantôme.
+            if (itemToDelete?.name) {
+                const affectedCount = transactions.filter(t => t.category === itemToDelete.name).length;
+                if (affectedCount > 0) {
+                    const updatedTransactions = transactions.map(t =>
+                        t.category === itemToDelete.name ? { ...t, category: 'Uncategorized' } : t
+                    );
+                    setAppState({ transactions: updatedTransactions });
+                    showToast(`Catégorie supprimée. ${affectedCount} transaction(s) déplacée(s) vers "Uncategorized".`, 'info');
+                }
+            }
             setConfirmDeleteId(null);
         }
     };
+
+    // Phase D'.1 — compte les transactions affectées par la suppression
+    // (utilisé dans le message de confirmation).
+    const deleteAffectedCount = useMemo(() => {
+        if (!confirmDeleteId) return 0;
+        const itemToDelete = budgetItems.find(i => i.id === confirmDeleteId);
+        if (!itemToDelete?.name) return 0;
+        return transactions.filter(t => t.category === itemToDelete.name).length;
+    }, [confirmDeleteId, budgetItems, transactions]);
 
     const buildAiPayload = () => ({
         totalNetIncome: totalNetIncomeDisplay,
@@ -339,7 +390,11 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 onConfirm={doConfirmDelete}
                 onCancel={() => setConfirmDeleteId(null)}
                 title="Supprimer la catégorie"
-                message="Supprimer cette catégorie de budget définitivement ? Les transactions associées ne seront pas effacées."
+                message={
+                    deleteAffectedCount > 0
+                        ? `Supprimer définitivement ? ${deleteAffectedCount} transaction(s) seront déplacées vers "Uncategorized".`
+                        : "Supprimer cette catégorie de budget définitivement ?"
+                }
                 confirmLabel="Supprimer"
             />
             <PageHeader
@@ -385,41 +440,42 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 }
             />
 
-            {/* Hero KPI strip */}
-            <StatGrid cols={4}>
-                <KPIStat
-                    label="Budget Prévu"
+            {/* Phase D'.5 — Tuiles fusionnées prévu/réel (doc directives §3) */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <DualKPIStat
+                    label="Budget"
                     icon="🎯"
-                    value={`${totalBudgetDisplay.toLocaleString()}$`}
-                    sublabel={`Cible Ajustée (×${getMultiplier().toFixed(1)})${inflationSim > 0 ? ` · +${inflationSim}% infl.` : ''}`}
-                    privacy
+                    prevu={totalBudgetDisplay}
+                    reel={totalSpentDisplay}
+                    sublabel={`Cible (×${getMultiplier().toFixed(1)})`}
                     variant="primary"
                 />
-                <KPIStat
-                    label="Dépenses Réelles"
-                    icon="💸"
-                    value={`${totalSpentDisplay.toLocaleString()}$`}
-                    sublabel="Sur la période"
-                    privacy
-                    variant="info"
-                />
-                <KPIStat
-                    label="Reste Disponible (Net)"
+                <DualKPIStat
+                    label="Revenus"
                     icon="💰"
-                    value={`${totalRemainingDisplay.toLocaleString()}$`}
-                    sublabel="Revenu Net − Réel"
-                    privacy
+                    prevu={totalNetIncomeDisplay}
+                    reel={totalActualIncomeDisplay}
+                    sublabel="Net (transactions ≥ 0)"
+                    variant="success"
+                />
+                <DualKPIStat
+                    label="Dépenses"
+                    icon="💸"
+                    prevu={totalBudgetDisplay}
+                    reel={totalSpentDisplay}
+                    sublabel={projectedTotalDisplay > totalBudgetDisplay ? `Projection +${formatCAD(projectedTotalDisplay - totalBudgetDisplay)}` : 'Sous le budget'}
+                    variant={totalSpentDisplay > totalBudgetDisplay ? 'danger' : 'info'}
+                    invertGoodBad
+                />
+                <DualKPIStat
+                    label="Restant"
+                    icon="🟢"
+                    prevu={totalNetIncomeDisplay - totalBudgetDisplay}
+                    reel={totalRemainingDisplay}
+                    sublabel="Revenu − Dépenses"
                     variant={totalRemainingDisplay < 0 ? 'danger' : 'success'}
                 />
-                <KPIStat
-                    label="Projection Fin Période"
-                    icon="📈"
-                    value={`${projectedTotalDisplay.toLocaleString()}$`}
-                    sublabel={projectedTotalDisplay > totalBudgetDisplay ? `+${(projectedTotalDisplay - totalBudgetDisplay).toFixed(0)}$ vs Budget` : 'Dans les clous'}
-                    privacy
-                    variant={projectedTotalDisplay > totalBudgetDisplay ? 'warning' : 'success'}
-                />
-            </StatGrid>
+            </div>
 
             {/* Simulateur d'inflation — toggle inline (avant: caché en hover sur Card 1) */}
             <details className="bg-surface/40 rounded-card border border-white/5 group">

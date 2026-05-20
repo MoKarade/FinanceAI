@@ -17,6 +17,7 @@ import { TabRouter } from './components/TabRouter';
 import { CommandPalette, useCommandPalette, makeNavigationActions } from './components/ui/CommandPalette';
 import { useTranslation } from 'react-i18next';
 import { configureMarketDataProvider } from './services/marketData';
+import { installGlobalErrorHandlers } from './services/errorLogger';
 
 const GuideModal = React.lazy(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })));
 
@@ -34,6 +35,14 @@ export const App: React.FC = () => {
     const [showGuide, setShowGuide] = useState(false);
     const isHydrated = useRef(false);
     const currentSyncController = useRef<AbortController | null>(null);
+
+    // P1 — installation des handlers d'erreur globaux au boot (une seule fois)
+    const errorHandlersInstalled = useRef(false);
+    useEffect(() => {
+        if (errorHandlersInstalled.current) return;
+        errorHandlersInstalled.current = true;
+        installGlobalErrorHandlers();
+    }, []);
 
     const migrationWarningShown = useRef(false);
     useEffect(() => {

@@ -15,6 +15,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { Transaction, RecurringItem, FinancialGoal, GoalType } from '../types';
+import { logError } from './errorLogger';
 
 // ─── Modèles ─────────────────────────────────────────────────────────────────
 
@@ -449,7 +450,7 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict de 3 strings (pas de markdown):
             ? validated
             : ['L\'IA n\'a pas pu générer de recommandations valides.'];
     } catch (e) {
-        console.error('[Claude] analyzeBudgetAI failed:', e);
+        logError({ source: 'ai', message: 'analyzeBudgetAI failed', error: e });
         return ['Erreur lors de l\'analyse du budget. Vérifie ta clé API Anthropic.'];
     }
 };
@@ -554,7 +555,7 @@ RÉPONDS UNIQUEMENT par un JSON Array strict de 3 objets (pas de markdown, pas d
         const validated = safeJsonValidate(text, NextBestActionsSchema);
         return validated ?? [];
     } catch (e) {
-        console.error('[Claude] getNextBestActions failed:', e);
+        logError({ source: 'ai', message: 'getNextBestActions failed', error: e });
         return [];
     }
 };
@@ -639,7 +640,7 @@ RÉPONDS UNIQUEMENT par un JSON strict (pas de markdown) :
         const validated = RealEstateAdviceSchema.safeParse(parsed);
         return validated.success ? validated.data : null;
     } catch (e) {
-        console.error('[Claude] getRealEstateAdvice failed:', e);
+        logError({ source: 'ai', message: 'getRealEstateAdvice failed', error: e });
         return null;
     }
 };
@@ -706,7 +707,7 @@ RÉPONDS UNIQUEMENT par un JSON Array strict (pas de markdown) :
         const validated = safeJsonValidate(text, CoupleOptimizationStrategiesSchema);
         return validated ?? [];
     } catch (e) {
-        console.error('[Claude] getCoupleOptimizationStrategies failed:', e);
+        logError({ source: 'ai', message: 'getCoupleOptimizationStrategies failed', error: e });
         return [];
     }
 };
@@ -766,7 +767,7 @@ RÉPONDS UNIQUEMENT par un JSON Array strict (pas de markdown) :
         const validated = safeJsonValidate(text, RebalanceJustificationsSchema);
         return validated ?? [];
     } catch (e) {
-        console.error('[Claude] getRebalanceJustifications failed:', e);
+        logError({ source: 'ai', message: 'getRebalanceJustifications failed', error: e });
         return [];
     }
 };

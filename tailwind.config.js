@@ -63,8 +63,12 @@ export default {
           100: '#e2e8f0', // titre secondaire
           200: '#cbd5e1', // text strong
           300: '#94a3b8', // body
-          400: '#64748b', // meta
-          500: '#475569', // disabled
+          // P2.5 (2026-05): ink-400 et ink-500 éclaircis pour respecter WCAG AA.
+          // ink-400 #8896a8 → ratio 5.21-6.42 (passe AA normal ≥4.5 sur 3 bgs).
+          // ink-500 #6a7689 → ratio 3.41-4.20 (passe AA large ≥3.0 ; usage "disabled"
+          // bénéficie de l'exemption WCAG 1.4.3 pour les contrôles inactifs).
+          400: '#8896a8', // meta (avant: #64748b — ratio 3.30 fail)
+          500: '#6a7689', // disabled (avant: #475569 — ratio 2.07 fail)
         },
       },
       fontSize: {

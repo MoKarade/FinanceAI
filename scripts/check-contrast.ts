@@ -37,8 +37,9 @@ const TEXT_COLORS: Record<string, string> = {
     'ink-100': '#e2e8f0',
     'ink-200': '#cbd5e1',
     'ink-300': '#94a3b8',
-    'ink-400': '#64748b',
-    'ink-500': '#475569',
+    // P2.5 (2026-05): éclaircis pour respecter WCAG AA sur les 3 bgs.
+    'ink-400': '#8896a8', // était #64748b (ratio 3.30 fail)
+    'ink-500': '#6a7689', // était #475569 (ratio 2.07 fail)
 };
 
 // --- WCAG contrast calculation ---

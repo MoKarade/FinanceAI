@@ -128,8 +128,11 @@ export function computeRetirementIncome(
     // calculé ici peut être surestimé pour ces profils. TODO : intégration plus
     // précise via taxDecember si l'audit le requiert.
     const currentYear = startYear + yearsElapsed;
-    const otherIncomeAnnualPerAdult = (rrqMonthly + dbMonthly) * 12;
-    const otherIncomeAnnualFamily = otherIncomeAnnualPerAdult * activeUsersCount;
+    // rrqMonthly is already family-level (rrqBaseIndiv × activeUsersCount above).
+    // Computing family total first, then dividing for the per-adult figure avoids
+    // the double-multiplication that caused SRG = $0 for entitled couples (§7.G).
+    const otherIncomeAnnualFamily = (rrqMonthly + dbMonthly) * 12;
+    const otherIncomeAnnualPerAdult = otherIncomeAnnualFamily / Math.max(1, activeUsersCount);
     const hasSpouseWithOAS = activeUsersCount > 1 && age >= psvStartAge;
     const gisMonthlyPerAdult = (age >= psvStartAge && psvMonthly > 0)
         ? calculateGISBenefit(

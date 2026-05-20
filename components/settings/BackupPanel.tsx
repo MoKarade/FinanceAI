@@ -82,7 +82,8 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
     }
     setEncWorking(true);
     try {
-      await downloadBackup(buildPayload(), exportPassphrase, defaultBackupFilename());
+      const { apiKeys: _stripped, ...payloadWithoutKeys } = buildPayload() as { apiKeys: unknown };
+      await downloadBackup(payloadWithoutKeys, exportPassphrase, defaultBackupFilename());
       showToast("✅ Sauvegarde chiffrée téléchargée. Conserve la passphrase précieusement.", "success");
       setShowExportEncModal(false);
       setExportPassphrase('');

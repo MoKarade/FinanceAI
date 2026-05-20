@@ -7,8 +7,6 @@ vi.mock('../../services/cloudBackup', () => ({
     downloadBackup: vi.fn().mockResolvedValue(undefined),
     defaultBackupFilename: () => 'backup.enc',
 }));
-vi.mock('../../services/gemini', () => ({ categorizeBatch: vi.fn() }));
-vi.mock('../../services/lunchMoney', () => ({ fetchLunchMoneyTransactions: vi.fn() }));
 vi.mock('../../services/eraContext', () => ({ fetchEraContextTransactions: vi.fn() }));
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (k: string) => k, i18n: { language: 'fr' } }),

@@ -36,7 +36,7 @@ export default defineConfig(({ mode }) => {
               'react-vendor': ['react', 'react-dom'],
               'recharts': ['recharts'],
               'ai-vendor': ['@anthropic-ai/sdk'],
-              'pdf-vendor': ['jspdf', 'html2canvas'],
+              'pdf-vendor': ['jspdf'],
             },
           },
         },

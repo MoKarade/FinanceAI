@@ -221,7 +221,7 @@ services/marketData/
 | TBD | A.1 lazy recharts | ✅ | DashboardEvolutionChart extrait + React.lazy. Recharts hors du critical path au boot. |
 | (déjà fait) | A.2 lazy pdf-vendor | ✅ | Déjà en place : `await import('./services/pdfReport')` dans App.tsx:305-306 depuis Phase 3E. |
 | TBD | A.3 MC perf cache Date | ✅ | `loopDates[]` pré-calculé hors boucle. ~504k allocations Date/calculateFutureProjection() → N (years*12+1). |
-| — | A.4 bundle cleanup | ⏳ | — |
+| TBD | A.4 bundle cleanup | ✅ | knip → delete lunchMoney.ts + macroApi.ts (266L) + html2canvas (unused, pdf-vendor -203KB) |
 | — | B.1 empty states | ⏳ | — |
 | — | B.2 skeletons | ⏳ | — |
 | — | B.3 Cmd+K palette | ⏳ | — |

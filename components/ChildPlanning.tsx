@@ -313,8 +313,8 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                     <Card title="📅 Profil & Date Prévue">
                         <div className="space-y-4">
                             <div>
-                                <label className="text-xs text-gray-400 block mb-1">Prénom ou Identifiant</label>
-                                <input type="text" value={goal.name || ''} onChange={e => update('name', e.target.value)} placeholder="Ex: Léo" className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white outline-none focus:border-primary" />
+                                <label htmlFor="child-name-input" className="text-xs text-gray-400 block mb-1">Prénom ou Identifiant</label>
+                                <input id="child-name-input" type="text" value={goal.name || ''} onChange={e => update('name', e.target.value)} placeholder="Ex: Léo" className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white outline-none focus:border-primary" />
                             </div>
                             <div>
                                 <label className="text-xs text-gray-400 block mb-1">Date de naissance (ou prévue)</label>

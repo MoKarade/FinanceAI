@@ -272,8 +272,9 @@ export const Settings: React.FC<SettingsProps> = ({
           <Card title="Cles API & Services">
             <div className="space-y-4">
               <div data-focus-section="apiKeys-anthropic">
-                <label className="block text-sm text-gray-400 mb-1">Anthropic API Key (Claude)</label>
+                <label htmlFor="apikey-anthropic" className="block text-sm text-gray-400 mb-1">Anthropic API Key (Claude)</label>
                 <input
+                  id="apikey-anthropic"
                   type="password"
                   value={apiKeys?.anthropic || ''}
                   onChange={(e) => setApiKeys({ ...apiKeys, anthropic: e.target.value })}
@@ -283,8 +284,9 @@ export const Settings: React.FC<SettingsProps> = ({
                 <p className="text-xs text-gray-500 mt-1">Pour Claude Sonnet/Haiku — analyse, catégorisation, vision. Obtenez votre clé sur <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer" className="text-info-400 underline">console.anthropic.com</a></p>
               </div>
               <div data-focus-section="apiKeys-eraContext">
-                <label className="block text-sm text-gray-400 mb-1">Era Context Token</label>
+                <label htmlFor="apikey-era" className="block text-sm text-gray-400 mb-1">Era Context Token</label>
                 <input
+                  id="apikey-era"
                   type="password"
                   value={apiKeys?.eraContext || ''}
                   onChange={(e) => setApiKeys({ ...apiKeys, eraContext: e.target.value })}
@@ -294,8 +296,9 @@ export const Settings: React.FC<SettingsProps> = ({
                 <p className="text-xs text-gray-500 mt-1">Pour la synchronisation des transactions via era.app.</p>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Finnhub API Key (Données boursières)</label>
+                <label htmlFor="apikey-finnhub" className="block text-sm text-gray-400 mb-1">Finnhub API Key (Données boursières)</label>
                 <input
+                  id="apikey-finnhub"
                   type="password"
                   value={apiKeys?.finnhub || ''}
                   onChange={(e) => setApiKeys({ ...apiKeys, finnhub: e.target.value })}
@@ -592,7 +595,7 @@ export const Settings: React.FC<SettingsProps> = ({
                             <option value="transportation">Transport</option><option value="agriculture">Agriculture</option>
                             <option value="media">Médias</option><option value="other">Autre</option>
                           </select>
-                          <input type="number" placeholder="Ans expérience" value={user.yearsOfExperience ?? ''}
+                          <input aria-label="Années d'expérience professionnelle" type="number" placeholder="Ans expérience" value={user.yearsOfExperience ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,yearsOfExperience:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
                             className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                           <select
@@ -628,27 +631,27 @@ export const Settings: React.FC<SettingsProps> = ({
                               onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,isSmoker:e.target.checked}; setConfig({...config,users:u}); }} />
                             🚬 Fumeur
                           </label>
-                          <input type="number" placeholder="Mère ✝ âge" value={user.parentAgeAtDeath?.mother ?? ''}
+                          <input aria-label="Âge au décès de la mère (espérance vie hérédité)" type="number" placeholder="Mère ✝ âge" value={user.parentAgeAtDeath?.mother ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user, parentAgeAtDeath:{...user.parentAgeAtDeath, mother:Number(e.target.value)||undefined}}; setConfig({...config,users:u}); }}
                             className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                          <input type="number" placeholder="Père ✝ âge" value={user.parentAgeAtDeath?.father ?? ''}
+                          <input aria-label="Âge au décès du père (espérance vie hérédité)" type="number" placeholder="Père ✝ âge" value={user.parentAgeAtDeath?.father ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user, parentAgeAtDeath:{...user.parentAgeAtDeath, father:Number(e.target.value)||undefined}}; setConfig({...config,users:u}); }}
                             className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                         </div>
                         <div className="text-tiny text-gray-500 uppercase tracking-widest mt-2">Rémunération variable</div>
                         <div className="grid grid-cols-3 gap-1">
-                          <input type="number" placeholder="Bonus % brut" value={user.bonusPctOfGross ?? ''}
+                          <input aria-label="Bonus en pourcentage du brut" type="number" placeholder="Bonus % brut" value={user.bonusPctOfGross ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,bonusPctOfGross:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
                             className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                          <input type="number" placeholder="RSU $/an" value={user.rsuVestingPerYear ?? ''}
+                          <input aria-label="RSU vesting annuel (dollars)" type="number" placeholder="RSU $/an" value={user.rsuVestingPerYear ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,rsuVestingPerYear:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
                             className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                          <input type="number" placeholder="Stock opts $" value={user.stockOptionsValue ?? ''}
+                          <input aria-label="Valeur stock options (dollars)" type="number" placeholder="Stock opts $" value={user.stockOptionsValue ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,stockOptionsValue:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
                             className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                         </div>
                         <div className="grid grid-cols-2 gap-1">
-                          <input type="number" placeholder="Side income $/an" value={user.sideIncomeAnnual ?? ''}
+                          <input aria-label="Revenus secondaires annuels (freelance, etc.)" type="number" placeholder="Side income $/an" value={user.sideIncomeAnnual ?? ''}
                             onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,sideIncomeAnnual:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
                             className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                           <select

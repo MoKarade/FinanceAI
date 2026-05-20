@@ -221,8 +221,9 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
             </div>
             <div className="space-y-3 mb-5">
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Passphrase (min 8 caractères)</label>
+                <label htmlFor="backup-export-passphrase" className="block text-xs text-gray-400 mb-1">Passphrase (min 8 caractères)</label>
                 <input
+                  id="backup-export-passphrase"
                   type="password"
                   value={exportPassphrase}
                   onChange={e => setExportPassphrase(e.target.value)}
@@ -232,8 +233,9 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Confirmation</label>
+                <label htmlFor="backup-export-confirm" className="block text-xs text-gray-400 mb-1">Confirmation</label>
                 <input
+                  id="backup-export-confirm"
                   type="password"
                   value={exportPassphraseConfirm}
                   onChange={e => setExportPassphraseConfirm(e.target.value)}
@@ -284,8 +286,9 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
               </div>
             </div>
             <div className="mb-5">
-              <label className="block text-xs text-gray-400 mb-2">Passphrase</label>
+              <label htmlFor="backup-import-passphrase" className="block text-xs text-gray-400 mb-2">Passphrase</label>
               <input
+                id="backup-import-passphrase"
                 type="password"
                 value={importPassphrase}
                 onChange={e => setImportPassphrase(e.target.value)}

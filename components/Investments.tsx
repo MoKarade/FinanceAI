@@ -816,6 +816,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                                             <span>Cible:</span>
                                                             <div className="relative">
                                                                 <input
+                                                                    aria-label="Allocation cible (pourcentage)"
                                                                     type="number"
                                                                     min="0"
                                                                     max="100"
@@ -973,6 +974,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     <span className={asset.yield > 0 ? "text-emerald-400 font-bold" : "text-gray-500"}>{asset.yield}%</span>
                                 </div>
                                 <select
+                                    aria-label={`Type de compte pour ${asset.symbol}`}
                                     value={accountType}
                                     onChange={(e) => handleAssetAccountChange(asset.id, e.target.value)}
                                     className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-tiny text-gray-300 font-bold outline-none hover:bg-white/10 cursor-pointer transition-colors"

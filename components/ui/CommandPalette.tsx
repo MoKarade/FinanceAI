@@ -60,8 +60,8 @@ export function makeNavigationActions(setActiveTab: (t: Tab) => void): CommandAc
         { tab: Tab.FUTURE, label: 'Projection Future', icon: '🔮', keywords: ['future', 'projection', 'simulation', 'mc'] },
         { tab: Tab.REAL_ESTATE, label: 'Immobilier', icon: '🏠', keywords: ['immo', 'maison', 'hypotheque'] },
         { tab: Tab.CHILD, label: 'Enfants', icon: '👶', keywords: ['enfant', 'reee', 'famille'] },
-        { tab: Tab.TRAVEL, label: 'Voyages', icon: '✈️', keywords: ['voyage', 'travel', 'vacances'] },
-        { tab: Tab.LIFE_EVENTS, label: 'Événements de vie', icon: '⭐', keywords: ['life', 'evenements', 'mariage'] },
+        // Phase F.12 — Tab.TRAVEL et Tab.LIFE_EVENTS fusionnés en LIFE_PROJECTS
+        { tab: Tab.LIFE_PROJECTS, label: 'Projets de vie', icon: '🛤️', keywords: ['voyage', 'travel', 'mariage', 'event', 'parcours', 'projet'] },
         { tab: Tab.RETIREMENT, label: 'Retraite', icon: '🏖️', keywords: ['retraite', 'pension', 'rrq'] },
         { tab: Tab.TAX, label: 'Centre fiscal', icon: '🧮', keywords: ['tax', 'impot', 'declaration'] },
         { tab: Tab.ASSISTANT, label: 'Assistant AI', icon: '🤖', keywords: ['ai', 'claude', 'chat', 'assistant'] },

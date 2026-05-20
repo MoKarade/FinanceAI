@@ -73,10 +73,14 @@ describe('CommandPalette', () => {
 });
 
 describe('makeNavigationActions', () => {
-    it('génère 17 actions de navigation pour tous les Tabs', () => {
+    it('génère les actions de navigation principales (Phase F.12 — TRAVEL+LIFE_EVENTS fusionnés en LIFE_PROJECTS)', () => {
         const set = vi.fn();
         const actions = makeNavigationActions(set);
-        expect(actions.length).toBe(Object.keys(Tab).length);
+        // 18 tabs total dans l'enum, mais TRAVEL et LIFE_EVENTS sont
+        // forwardés vers LIFE_PROJECTS — donc 18 - 2 + 1 = 17 entrées dans la palette
+        // Tab enum a 18 entries mais TRAVEL et LIFE_EVENTS forwardent vers
+        // LIFE_PROJECTS — donc 18 - 2 = 16 entrées exposées dans la palette
+        expect(actions.length).toBe(Object.keys(Tab).length - 2);
         actions.forEach(a => expect(a.group).toBe('Navigation'));
     });
 

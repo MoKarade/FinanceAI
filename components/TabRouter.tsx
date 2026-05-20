@@ -11,6 +11,7 @@ const RealEstate = React.lazy(() => import('./RealEstate').then(m => ({ default:
 const ChildPlanning = React.lazy(() => import('./ChildPlanning').then(m => ({ default: m.ChildPlanning })));
 const Travel = React.lazy(() => import('./Travel').then(m => ({ default: m.Travel })));
 const LifeEvents = React.lazy(() => import('./LifeEvents').then(m => ({ default: m.LifeEvents })));
+const LifeProjects = React.lazy(() => import('./LifeProjects').then(m => ({ default: m.LifeProjects })));
 const Retirement = React.lazy(() => import('./Retirement').then(m => ({ default: m.Retirement })));
 const TaxCenter = React.lazy(() => import('./TaxCenter').then(m => ({ default: m.TaxCenter })));
 const Settings = React.lazy(() => import('./Settings').then(m => ({ default: m.Settings })));
@@ -32,6 +33,7 @@ const TAB_LABELS: Record<Tab, string> = {
     [Tab.CHILD]: 'Enfant',
     [Tab.TRAVEL]: 'Voyages',
     [Tab.LIFE_EVENTS]: 'Parcours de Vie',
+    [Tab.LIFE_PROJECTS]: 'Projets de vie',
     [Tab.RETIREMENT]: 'Retraite',
     [Tab.TAX]: 'Impôts & Docs',
     [Tab.DATA]: 'Data',
@@ -199,15 +201,15 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                     />
                 )}
 
-                {activeTab === Tab.TRAVEL && (
-                    <Travel travelGoals={state.travelGoals} setTravelGoals={(g) => setAppState({ travelGoals: g })} />
-                )}
-
-                {activeTab === Tab.LIFE_EVENTS && (
-                    <LifeEvents
-                        events={state.lifeEvents} setEvents={(e) => setAppState({ lifeEvents: e })}
-                        travelGoals={state.travelGoals} setTravelGoals={(g) => setAppState({ travelGoals: g })}
-                        netWorth={globalNetWorth} returnRate={state.projection.returnRate}
+                {/* Phase F.12 — Tab.TRAVEL et Tab.LIFE_EVENTS forwardent vers le nouvel onglet unifié */}
+                {(activeTab === Tab.LIFE_PROJECTS || activeTab === Tab.TRAVEL || activeTab === Tab.LIFE_EVENTS) && (
+                    <LifeProjects
+                        travelGoals={state.travelGoals}
+                        setTravelGoals={(g) => setAppState({ travelGoals: g })}
+                        lifeEvents={state.lifeEvents}
+                        setLifeEvents={(e) => setAppState({ lifeEvents: e })}
+                        netWorth={globalNetWorth}
+                        returnRate={state.projection.returnRate}
                     />
                 )}
 

@@ -18,8 +18,9 @@ import { CommandPalette, useCommandPalette, makeNavigationActions } from './comp
 import { useTranslation } from 'react-i18next';
 import { configureMarketDataProvider } from './services/marketData';
 import { installGlobalErrorHandlers } from './services/errorLogger';
+import { lazyWithRetry, clearChunkReloadFlag } from './utils/lazyWithRetry';
 
-const GuideModal = React.lazy(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })));
+const GuideModal = lazyWithRetry(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })), 'GuideModal');
 
 export const App: React.FC = () => {
     // useShallow prevents cascade re-renders when unrelated store slices change
@@ -42,6 +43,9 @@ export const App: React.FC = () => {
         if (errorHandlersInstalled.current) return;
         errorHandlersInstalled.current = true;
         installGlobalErrorHandlers();
+        // P1 fix : si l'app a chargé OK, clear le flag "chunk reload attempted"
+        // pour permettre un retry futur si nouveau deploy.
+        clearChunkReloadFlag();
     }, []);
 
     const migrationWarningShown = useRef(false);

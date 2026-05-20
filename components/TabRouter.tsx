@@ -1,26 +1,29 @@
 import React, { Suspense } from 'react';
 import { Tab, AppState } from '../types';
 import { ErrorBoundary } from './ui/ErrorBoundary';
+// P1 fix — wrap React.lazy avec retry + reload sur chunk-load-error
+// (cf hubperso.com regression : "Failed to fetch dynamically imported module")
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 
-const Dashboard = React.lazy(() => import('./Dashboard').then(m => ({ default: m.Dashboard })));
-const Transactions = React.lazy(() => import('./Transactions').then(m => ({ default: m.Transactions })));
-const Budget = React.lazy(() => import('./Budget').then(m => ({ default: m.Budget })));
-const Planning = React.lazy(() => import('./Planning').then(m => ({ default: m.Planning })));
-const Investments = React.lazy(() => import('./Investments').then(m => ({ default: m.Investments })));
-const RealEstate = React.lazy(() => import('./RealEstate').then(m => ({ default: m.RealEstate })));
-const ChildPlanning = React.lazy(() => import('./ChildPlanning').then(m => ({ default: m.ChildPlanning })));
-const Travel = React.lazy(() => import('./Travel').then(m => ({ default: m.Travel })));
-const LifeEvents = React.lazy(() => import('./LifeEvents').then(m => ({ default: m.LifeEvents })));
-const LifeProjects = React.lazy(() => import('./LifeProjects').then(m => ({ default: m.LifeProjects })));
-const Documents = React.lazy(() => import('./Documents').then(m => ({ default: m.Documents })));
-const Retirement = React.lazy(() => import('./Retirement').then(m => ({ default: m.Retirement })));
-const TaxCenter = React.lazy(() => import('./TaxCenter').then(m => ({ default: m.TaxCenter })));
-const Settings = React.lazy(() => import('./Settings').then(m => ({ default: m.Settings })));
-const JsonDataView = React.lazy(() => import('./JsonDataView').then(m => ({ default: m.JsonDataView })));
-const AiAssistant = React.lazy(() => import('./AiAssistant').then(m => ({ default: m.AiAssistant })));
-const FutureProjection = React.lazy(() => import('./FutureProjection').then(m => ({ default: m.FutureProjection })));
-const DebtManager = React.lazy(() => import('./DebtManager').then(m => ({ default: m.DebtManager })));
-const SystemView = React.lazy(() => import('./SystemView').then(m => ({ default: m.SystemView })));
+const Dashboard = lazyWithRetry(() => import('./Dashboard').then(m => ({ default: m.Dashboard })), 'Dashboard');
+const Transactions = lazyWithRetry(() => import('./Transactions').then(m => ({ default: m.Transactions })), 'Transactions');
+const Budget = lazyWithRetry(() => import('./Budget').then(m => ({ default: m.Budget })), 'Budget');
+const Planning = lazyWithRetry(() => import('./Planning').then(m => ({ default: m.Planning })), 'Planning');
+const Investments = lazyWithRetry(() => import('./Investments').then(m => ({ default: m.Investments })), 'Investments');
+const RealEstate = lazyWithRetry(() => import('./RealEstate').then(m => ({ default: m.RealEstate })), 'RealEstate');
+const ChildPlanning = lazyWithRetry(() => import('./ChildPlanning').then(m => ({ default: m.ChildPlanning })), 'ChildPlanning');
+const Travel = lazyWithRetry(() => import('./Travel').then(m => ({ default: m.Travel })), 'Travel');
+const LifeEvents = lazyWithRetry(() => import('./LifeEvents').then(m => ({ default: m.LifeEvents })), 'LifeEvents');
+const LifeProjects = lazyWithRetry(() => import('./LifeProjects').then(m => ({ default: m.LifeProjects })), 'LifeProjects');
+const Documents = lazyWithRetry(() => import('./Documents').then(m => ({ default: m.Documents })), 'Documents');
+const Retirement = lazyWithRetry(() => import('./Retirement').then(m => ({ default: m.Retirement })), 'Retirement');
+const TaxCenter = lazyWithRetry(() => import('./TaxCenter').then(m => ({ default: m.TaxCenter })), 'TaxCenter');
+const Settings = lazyWithRetry(() => import('./Settings').then(m => ({ default: m.Settings })), 'Settings');
+const JsonDataView = lazyWithRetry(() => import('./JsonDataView').then(m => ({ default: m.JsonDataView })), 'JsonDataView');
+const AiAssistant = lazyWithRetry(() => import('./AiAssistant').then(m => ({ default: m.AiAssistant })), 'AiAssistant');
+const FutureProjection = lazyWithRetry(() => import('./FutureProjection').then(m => ({ default: m.FutureProjection })), 'FutureProjection');
+const DebtManager = lazyWithRetry(() => import('./DebtManager').then(m => ({ default: m.DebtManager })), 'DebtManager');
+const SystemView = lazyWithRetry(() => import('./SystemView').then(m => ({ default: m.SystemView })), 'SystemView');
 
 const TAB_LABELS: Record<Tab, string> = {
     [Tab.DASHBOARD]: 'Accueil',

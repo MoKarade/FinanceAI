@@ -63,7 +63,7 @@ export const ToastContainer: React.FC = () => {
                         <button
                             onClick={() => removeToast(toast.id)}
                             aria-label="Fermer la notification"
-                            className="opacity-50 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 transition-opacity rounded p-0.5"
+                            className="touch-target flex items-center justify-center opacity-50 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 transition-opacity rounded"
                         >
                             ✕
                         </button>

@@ -179,9 +179,9 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                 <div className="xl:col-span-1 space-y-6">
                     <Card title="Calendrier des Factures">
                         <div className="flex justify-between items-center mb-4 bg-white/5 p-2 rounded-lg">
-                            <button onClick={() => changeMonth(-1)} className="p-1 px-3 hover:bg-white/10 rounded text-gray-400">◀</button>
+                            <button onClick={() => changeMonth(-1)} aria-label="Mois précédent" className="touch-target flex items-center justify-center hover:bg-white/10 rounded text-gray-400 focus-ring">◀</button>
                             <h2 className="text-sm font-bold text-white capitalize">{currentDate.toLocaleString('fr-CA', { month: 'long', year: 'numeric' })}</h2>
-                            <button onClick={() => changeMonth(1)} className="p-1 px-3 hover:bg-white/10 rounded text-gray-400">▶</button>
+                            <button onClick={() => changeMonth(1)} aria-label="Mois suivant" className="touch-target flex items-center justify-center hover:bg-white/10 rounded text-gray-400 focus-ring">▶</button>
                         </div>
                         <div className="grid grid-cols-7 gap-1">
                             {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(d => <div key={d} className="text-center text-gray-600 text-tiny font-bold uppercase pb-1">{d}</div>)}
@@ -218,7 +218,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                 const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
                                 return (
                                     <div key={goal.id} className="relative p-3 bg-[#1a1a1a] rounded-xl border border-white/5 group">
-                                        <button onClick={() => handleDeleteGoal(goal.id)} className="absolute top-2 right-2 text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+                                        <button onClick={() => handleDeleteGoal(goal.id)} aria-label={`Supprimer l'objectif ${goal.name}`} className="absolute top-1 right-1 touch-target flex items-center justify-center text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity focus-ring rounded">✕</button>
                                         <div className="flex justify-between items-center mb-1">
                                             <div className="flex items-center gap-2"><span className="text-lg">{goal.icon}</span><span className="text-sm font-bold text-white">{goal.name}</span></div>
                                             <span className="text-xs text-gray-400">{goal.currentAmount}/{goal.targetAmount}$</span>

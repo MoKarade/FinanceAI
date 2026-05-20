@@ -1,21 +1,21 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
-import enTranslations from './locales/en.json';
 import frTranslations from './locales/fr.json';
 
+// Phase A.2 — application 100% française. Détecteur de langue et paquet
+// anglais retirés ; locale verrouillée à `fr`.
 i18n
-    .use(LanguageDetector)
     .use(initReactI18next)
     .init({
         resources: {
-            en: { translation: enTranslations },
-            fr: { translation: frTranslations }
+            fr: { translation: frTranslations },
         },
+        lng: 'fr',
         fallbackLng: 'fr',
+        supportedLngs: ['fr'],
         interpolation: {
-            escapeValue: false // not needed for react as it escapes by default
-        }
+            escapeValue: false,
+        },
     });
 
 export default i18n;

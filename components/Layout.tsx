@@ -1,8 +1,8 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import i18n from '../i18n';
 import { Tab, FinancialGoal } from '../types';
+import { CoupleModeBadge } from './ui/CoupleModeBadge';
 
 interface LayoutProps {
   activeTab: Tab;
@@ -39,8 +39,6 @@ export const Layout: React.FC<LayoutProps> = ({
 }) => {
   const { t } = useTranslation();
   const [showMobileDrawer, setShowMobileDrawer] = React.useState(false);
-  const currentLang = i18n.language?.startsWith('en') ? 'en' : 'fr';
-  const toggleLang = () => i18n.changeLanguage(currentLang === 'fr' ? 'en' : 'fr');
 
   // Phase B1 — Regroupement thématique (cf docs/UI_REFOUNDATION_PLAN.md §3.1)
   const navGroups: Array<{ label: string; icon: string; items: Array<{ id: Tab; label: string; icon: string }> }> = [
@@ -188,7 +186,9 @@ export const Layout: React.FC<LayoutProps> = ({
               </div>
               <div className="animate-premium-in">
                 <h1 className="text-xl font-bold text-white tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">FinanceAI</h1>
-                <div className="text-tiny text-gray-500 font-mono">v2.5 • Pro</div>
+                <div className="text-tiny text-gray-500 font-mono" title={`Build ${__BUILD_DATE__}`}>
+                  v{__APP_VERSION__} • {__GIT_SHA__}
+                </div>
               </div>
             </div>
             <div className="flex gap-1">
@@ -270,17 +270,12 @@ export const Layout: React.FC<LayoutProps> = ({
           </button>
           {onGeneratePDF && (
             <button onClick={onGeneratePDF} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-900/40 to-purple-900/40 hover:from-indigo-800/60 hover:to-purple-800/60 border border-indigo-500/20 text-indigo-300 hover:text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg active:scale-95 mt-2">
-              <span aria-hidden="true">📄</span> {currentLang === 'fr' ? 'Rapport PDF' : 'PDF Report'}
+              <span aria-hidden="true">📄</span> Rapport PDF
             </button>
           )}
-          <button
-            onClick={toggleLang}
-            title={currentLang === 'fr' ? 'Switch to English' : 'Passer en Francais'}
-            aria-label={currentLang === 'fr' ? 'Switch to English' : 'Passer en Francais'}
-            className="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white py-2 rounded-xl text-xs font-bold transition-all mt-2"
-          >
-            <span aria-hidden="true">🌐</span> {currentLang === 'fr' ? '🇫🇷 FR → EN' : '🇬🇧 EN → FR'}
-          </button>
+          <div className="mt-3 flex justify-center">
+            <CoupleModeBadge />
+          </div>
         </div>
       </aside>
 

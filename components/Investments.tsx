@@ -23,6 +23,7 @@ import { fetchPortfolioHistory, MarketDataPoint } from '../services/finance';
 import { StockChart } from './StockChart';
 import { ASSET_META } from '../services/assetMeta';
 import { DividendPanel } from './investments/DividendPanel';
+import { formatCAD } from '../utils/format';
 import { useFinanceStore } from '../store/useFinanceStore';
 
 interface InvestmentsProps {
@@ -405,21 +406,21 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         <KPIStat
                             label="CELI"
                             icon="🌱"
-                            value={horizonSnapshot.celi.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
+                            value={formatCAD(horizonSnapshot.celi)}
                             privacy
                             variant="success"
                         />
                         <KPIStat
                             label="REER"
                             icon="🏦"
-                            value={horizonSnapshot.reer.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
+                            value={formatCAD(horizonSnapshot.reer)}
                             privacy
                             variant="primary"
                         />
                         <KPIStat
                             label="Non-Enreg"
                             icon="📊"
-                            value={horizonSnapshot.nonReg.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
+                            value={formatCAD(horizonSnapshot.nonReg)}
                             privacy
                             variant="warning"
                         />
@@ -427,7 +428,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                             <KPIStat
                                 label="Crypto"
                                 icon="₿"
-                                value={horizonSnapshot.crypto.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
+                                value={formatCAD(horizonSnapshot.crypto)}
                                 privacy
                                 variant="danger"
                             />
@@ -435,7 +436,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         <KPIStat
                             label="Patrimoine Net"
                             icon="💼"
-                            value={horizonSnapshot.netWorth.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
+                            value={formatCAD(horizonSnapshot.netWorth)}
                             privacy
                             variant="info"
                         />
@@ -663,7 +664,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     {isRebalanceEdit ? '💾 Terminer' : '⚙️ Modifier Cibles'}
                                 </button>
                                 <div className="text-3xl font-black text-white privacy-blur hidden sm:block">
-                                    {totalPortfolio.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
+                                    {formatCAD(totalPortfolio)}
                                 </div>
                             </div>
                         </div>

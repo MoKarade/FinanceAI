@@ -15,6 +15,7 @@ import { ASSET_META } from '../services/assetMeta';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { EraContextInsights } from './dashboard/EraContextInsights';
 import { Tab as TabEnum } from '../types';
+import { formatCAD, formatNumber, formatPercent, formatSigned } from '../utils/format';
 
 interface DashboardProps {
     transactions: Transaction[];
@@ -266,7 +267,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <KPIStat
                     label={t('dashboard.global_net_worth')}
                     icon="💰"
-                    value={(latestTotals?.Total || 0).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
+                    value={formatCAD(latestTotals?.Total || 0)}
                     sublabel={t('dashboard.consolidated', 'Tous comptes')}
                     privacy
                     variant="primary"
@@ -274,17 +275,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <KPIStat
                     label={`${t('dashboard.global_variation')} (${timeRange})`}
                     icon="📈"
-                    value={`${performance.global > 0 ? '+' : ''}${performance.global.toFixed(2)}%`}
+                    value={formatPercent(performance.global)}
                     trend={performance.diff}
                     trendLabel="$"
-                    sublabel={(performance.diff > 0 ? '+' : '') + (performance.diff || 0).toLocaleString() + ' $'}
+                    sublabel={formatSigned(performance.diff || 0, { withCurrency: true })}
                     privacy
                     variant={performance.global >= 0 ? 'success' : 'danger'}
                 />
                 <KPIStat
                     label={t('dashboard.passive_income_month')}
                     icon="✨"
-                    value={`+${totalMonthlyPassive.toLocaleString('fr-CA', { maximumFractionDigits: 0 })}$`}
+                    value={`+${formatNumber(totalMonthlyPassive)} $`}
                     sublabel="/ mois"
                     privacy
                     variant="warning"
@@ -304,7 +305,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         </button>
                     </div>
                     <div className="text-kpi text-ink-50 privacy-blur tabular-nums">
-                        {calculateFutureValue(latestTotals?.Total || 0, calculatedMonthlySavings || 0, futureYears).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
+                        {formatCAD(calculateFutureValue(latestTotals?.Total || 0, calculatedMonthlySavings || 0, futureYears))}
                     </div>
                     <div className="flex items-center justify-between gap-2 text-meta">
                         <div className="flex items-center gap-1.5">

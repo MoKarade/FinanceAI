@@ -13,6 +13,7 @@ import { StatGrid } from './ui/StatGrid';
 import { Pill } from './ui/Pill';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
+import { formatCAD } from '../utils/format';
 
 interface BudgetProps {
     transactions: Transaction[];
@@ -452,7 +453,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     <div>
                         <div className="text-tiny uppercase font-bold text-info-400 tracking-widest mb-1">🔗 Impact à long terme →</div>
                         <div className="text-2xl font-black text-white privacy-blur">
-                            {projectionSummary.estateNetWorth.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
+                            {formatCAD(projectionSummary.estateNetWorth)}
                         </div>
                         <div className="text-tiny text-gray-500 mt-1">
                             Patrimoine successoral projeté en {projectionSummary.finalYear} (FutureProjection actif).
@@ -461,7 +462,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     <div className="bg-black/30 rounded-xl p-3 border border-white/5">
                         <div className="text-tiny uppercase font-bold text-gray-400 tracking-widest mb-1">Sensibilité</div>
                         <div className="text-base font-bold text-emerald-400 privacy-blur">
-                            +{projectionSummary.per100Boost.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}
+                            +{formatCAD(projectionSummary.per100Boost)}
                         </div>
                         <div className="text-tiny text-gray-500">par +100$/mois d'épargne supplémentaire</div>
                     </div>

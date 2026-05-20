@@ -40,6 +40,8 @@ const SIZE_CLASSES: Record<ModalSize, string> = {
  *  - Lock body scroll quand ouvert (évite scroll arrière-plan)
  *  - Mobile-friendly: w-full max-w-X, p-4 du backdrop pour padding sûr
  */
+const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export const Modal: React.FC<ModalProps> = ({
     isOpen, onClose,
     title, subtitle, icon,
@@ -50,18 +52,27 @@ export const Modal: React.FC<ModalProps> = ({
     className = '', children,
 }) => {
     const closeBtnRef = useRef<HTMLButtonElement>(null);
+    const dialogRef = useRef<HTMLDivElement>(null);
     const titleId = React.useId();
 
     useEffect(() => {
         if (!isOpen) return;
-        // Focus le bouton close au mount
         const t = setTimeout(() => closeBtnRef.current?.focus(), 50);
-        // Lock body scroll
         const prevOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
-        // Escape handler
+
         const onKey = (e: KeyboardEvent) => {
-            if (closeOnEsc && e.key === 'Escape') onClose();
+            if (closeOnEsc && e.key === 'Escape') { onClose(); return; }
+            if (e.key !== 'Tab' || !dialogRef.current) return;
+            const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
+            if (focusable.length === 0) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (e.shiftKey) {
+                if (document.activeElement === first) { last.focus(); e.preventDefault(); }
+            } else {
+                if (document.activeElement === last) { first.focus(); e.preventDefault(); }
+            }
         };
         document.addEventListener('keydown', onKey);
         return () => {
@@ -80,6 +91,7 @@ export const Modal: React.FC<ModalProps> = ({
             onClick={closeOnBackdrop ? onClose : undefined}
         >
             <div
+                ref={dialogRef}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={title ? titleId : undefined}

@@ -6,6 +6,74 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — cycle 8 : Phase 7 + 7.G HIGH fixes + Phase 8 polish] — 2026-05-20
+
+> Phase 7 : 22 sous-tâches (perf, a11y, i18n, market data Finnhub, schema v4,
+> CommandPalette, Skeleton). Phase 7.G : 5 bugs HIGH de l'audit. Phase 8 :
+> bundle, tests manquants, focus trap Modal, BudgetAiModal→Modal.
+> Tests : 348 → 412 (+64). Branche `claude/analyze-finance-app-CtLvs`, PR #85.
+
+### 🐛 §7.G — 5 HIGH findings de l'audit 2026-05
+
+- **SRG double-count fix** (`retirementIncome.ts`) : `rrqMonthly` était déjà
+  family-level (× `activeUsersCount`), puis `otherIncomeAnnualFamily` le
+  multipliait à nouveau → GIS = $0 pour les couples ayant droit à $5k+/an.
+  Fix : `otherIncomeAnnualFamily = (rrqMonthly + dbMonthly) * 12`,
+  `otherIncomeAnnualPerAdult = family / max(1, activeUsersCount)`.
+  3 tests de régression ajoutés.
+
+- **apiKeys exclues du backup chiffré** (`BackupPanel.tsx`) : `doEncryptedExport`
+  envoyait `buildPayload()` complet incluant les clés API. Fix : même
+  destructuring que l'export JSON clair (`{ apiKeys: _stripped, ...rest }`).
+  Ni le JSON clair ni le .bak ne contiennent maintenant de credentials.
+
+- **RRSP cap desync** (`taxJanuary.ts`) : cap hardcodé à `33330` (faux pour 2026 :
+  cap ARC officiel = `33810`). Fix : `RRSP_ANNUAL_LIMITS[nextLoopYear] ?? extrapolation`.
+  Import `RRSP_ANNUAL_LIMITS` depuis `utils/tax`.
+
+- **CSP** : `netlify.toml` retire `generativelanguage.googleapis.com` (Gemini
+  retiré en PR #73), ajoute `api.anthropic.com` et `finnhub.io`. `index.html`
+  ajoute `<meta http-equiv="Content-Security-Policy">` pour GitHub Pages.
+
+- **README** : refonte complète — Gemini→Claude, 115→412 tests, 5→7 scénarios,
+  architecture reflète l'état réel (aiOrchestrator, marketData/, schema v4).
+
+### ⚡ Phase 8.A — Bundle + Perf
+
+- `vite.config.ts` : `optimizeDeps.exclude: ['html2canvas']` + `external:
+  ['html2canvas']` dans rollupOptions. Retire le define `GEMINI_API_KEY` (obsolète).
+- `App.tsx` : `useFinanceStore(useShallow(s => s))` — shallow comparison
+  prévient les cascade re-renders lors de mises à jour de slices non rendues
+  (ex : `aiConversation`). `loadData` utilise `useFinanceStore.getState()`
+  pour éviter les closures stale.
+
+### ♿ Phase 8.C — Accessibilité
+
+- `Modal.tsx` : focus trap complet Tab + Shift+Tab (wrap aux extrémités).
+  `dialogRef` pointé sur `role="dialog"`, sélecteur FOCUSABLE couvre tous les
+  éléments interactifs natifs.
+- `BudgetAiModal.tsx` : remplace l'implémentation inline `<div>` custom par
+  `<Modal>` — héritage automatique de `aria-modal`, `role="dialog"`,
+  `aria-labelledby`, focus trap, Escape, scroll-lock.
+
+### 🧪 Phase 8.B — Tests manquants
+
+- `tests/utils/transactionParser.test.ts` (9 tests) : `markDuplicates` + `parseTransactions`
+  — duplicate detection, score API vs manual, Interac, virement, CSV tab/semicolon.
+- `tests/services/aiOrchestrator.test.ts` (8 tests) : `buildEnrichedContext` —
+  token vide, parallel calls, graceful error, AbortSignal passthrough ;
+  `renderEnrichedContext` — format cash-flow, memory facts.
+- `tests/services/retirementIncome.test.ts` (3 tests) : régression SRG §7.G.
+
+### 📚 Phase 8.E — Documentation
+
+- `docs/HANDOVER.md §1` : mise à jour indicateurs (PR #85, 412 tests, schema v4,
+  Finnhub, CSP, apiKeys backup fix).
+- `CHANGELOG.md` : entrée cycle 8.
+- `README.md` : refonte complète (voir §7.G ci-dessus).
+
+---
+
 ## [unreleased — cycle 7 : Phase 6 fiscalité complète + flaky fix] — 2026-05-19
 
 > Cycle dédié à la complétion de la Phase 6 fiscale (manques structurels

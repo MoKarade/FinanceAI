@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-// Phase 4 A3: bascule sur services/claude.ts (Sonnet 4.6)
+import { Modal } from '../ui/Modal';
 import { analyzeBudgetAI } from '../../services/claude';
 
 export interface BudgetAiPayload {
@@ -32,38 +32,34 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
     }, []);
 
     return (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-            <div className="bg-[#1e1e1e] border border-indigo-500/30 rounded-xl max-w-lg w-full overflow-hidden shadow-2xl">
-                <div className="p-4 border-b border-white/10 flex justify-between items-center bg-indigo-900/10">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                        <span className="text-xl">✨</span> Diagnostic IA du Budget
-                    </h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">✕</button>
+        <Modal
+            isOpen
+            onClose={onClose}
+            title="Diagnostic IA du Budget"
+            icon="✨"
+            size="lg"
+        >
+            {isAnalyzing ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                    <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+                    <p className="text-sm text-gray-400 mt-4 animate-pulse">L'IA de FinanceAI parcourt vos lignes de budget...</p>
                 </div>
-                <div className="p-6">
-                    {isAnalyzing ? (
-                        <div className="flex flex-col items-center justify-center py-8">
-                            <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                            <p className="text-sm text-gray-400 mt-4 animate-pulse">L'IA de FinanceAI parcourt vos lignes de budget...</p>
+            ) : (
+                <div className="space-y-4">
+                    {aiRecommendations.map((reco, idx) => (
+                        <div key={idx} className="bg-white/5 border border-white/10 rounded-lg p-4 flex gap-3 animate-slide-up" style={{ animationDelay: `${idx * 100}ms` }}>
+                            <div className="text-indigo-400 mt-0.5" aria-hidden="true">•</div>
+                            <p className="text-sm text-gray-200 leading-relaxed">{reco}</p>
                         </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {aiRecommendations.map((reco, idx) => (
-                                <div key={idx} className="bg-white/5 border border-white/10 rounded-lg p-4 flex gap-3 animate-slide-up" style={{ animationDelay: `${idx * 100}ms` }}>
-                                    <div className="text-indigo-400 mt-0.5">•</div>
-                                    <p className="text-sm text-gray-200 leading-relaxed">{reco}</p>
-                                </div>
-                            ))}
-                            <button
-                                onClick={onClose}
-                                className="w-full mt-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold transition-colors"
-                            >
-                                Fermer le diagnostic
-                            </button>
-                        </div>
-                    )}
+                    ))}
+                    <button
+                        onClick={onClose}
+                        className="w-full mt-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold transition-colors"
+                    >
+                        Fermer le diagnostic
+                    </button>
                 </div>
-            </div>
-        </div>
+            )}
+        </Modal>
     );
 };

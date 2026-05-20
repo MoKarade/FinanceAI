@@ -11,20 +11,21 @@
 | Indicateur | Valeur |
 |---|---|
 | Branche principale | `main` |
-| Dernière PR mergée | **#84** (Phase 6 fiscale complète — cycle 7) |
-| Tests | **348/348 verts** (24 fichiers) — +121 vs cycle 6 |
+| Dernière PR mergée | **#85** (Phase 7 — perf, a11y, market data, §7.G fixes, §8 polish) |
+| Tests | **412/412 verts** (32 fichiers) — +64 vs cycle 7 |
 | Typecheck | Clean en mode strict (`noImplicitAny`, `strictNullChecks`, `useUnknownInCatchVariables`) |
-| Build | OK — bundle ~3.5 MB, gzipped ~830 KB |
+| Build | OK — html2canvas exclu du bundle Vite (optimizeDeps.exclude + rollupOptions.external) |
 | Déploiement | Vercel (auto par PR) + GitHub Pages (workflow `.github/workflows/deploy-pages.yml`) |
 | Stack IA | `@anthropic-ai/sdk` (Sonnet 4.6 + Haiku 4.5) — **Gemini retiré** |
-| API banque | Era Context REST (`api.era.app`) avec 9 endpoints + cache TTL 1h |
-| Schema store | **v3** (Zustand persist, migrations v1→v2→v3) |
-| Audit fiscal | **22/22 items Phase 6 terminés** (F1-F22 tous ✅, §6.1-§6.10 ✅) |
+| API banque | Era Context REST (`api.era.app`) — 9 endpoints + cache TTL 1h |
+| Market data | Finnhub REST (cours actions/ETF) via `services/marketData/` façade |
+| Schema store | **v4** (Zustand persist, migrations v1→v2→v3→v4 ; ajout `apiKeys.finnhub`) |
+| Audit fiscal | **22/22 items Phase 6** + **5/5 HIGH §7.G** tous ✅ |
+| CSP | `<meta>` dans `index.html` + `netlify.toml` (plus de `generativelanguage.googleapis.com`) |
+| apiKeys | Exclues du localStorage ET des deux formats de backup (JSON clair + chiffré) |
 
 L'app est **fonctionnelle de bout en bout**, déployée, et stable.
-**Tous les chantiers structurels et fiscaux sont terminés.** Ce qui reste est
-du polish optionnel (Phase 5.3-5.5 i18n/axe/contrast) ou des améliorations
-performance.
+Phase 7 et 7.G sont terminées. Phase 8 (tests, a11y, polish) en cours sur PR #85.
 
 ---
 

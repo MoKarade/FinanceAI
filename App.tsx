@@ -11,6 +11,7 @@ import { fetchAssetHistory, fetchFxRates } from './services/finance';
 // Phase 3E perf — lazy-load pdfReport (jspdf = 595KB) seulement au clic
 // "Générer PDF" plutôt qu'au boot de l'app.
 import { useFinanceStore, getMigrationStatus } from './store/useFinanceStore';
+import { useShallow } from 'zustand/shallow';
 import { useDerivedFinancials } from './utils/useDerivedFinancials';
 import { TabRouter } from './components/TabRouter';
 import { CommandPalette, useCommandPalette, makeNavigationActions } from './components/ui/CommandPalette';
@@ -20,7 +21,9 @@ import { configureMarketDataProvider } from './services/marketData';
 const GuideModal = React.lazy(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })));
 
 export const App: React.FC = () => {
-    const state = useFinanceStore();
+    // useShallow prevents cascade re-renders when unrelated store slices change
+    // (e.g. aiConversation update should not re-render the whole App tree).
+    const state = useFinanceStore(useShallow(s => s));
     const setAppState = state.setAppState;
     const activeTab = state.activeTab;
     const setActiveTab = state.setActiveTab;
@@ -219,7 +222,7 @@ export const App: React.FC = () => {
 
         setIsLoading(true);
         try {
-            const currentState = pendingState || state;
+            const currentState = pendingState || useFinanceStore.getState();
             let startDateToFetch: string | undefined = undefined;
 
             if (currentState.transactions.length > 0) {
@@ -243,7 +246,7 @@ export const App: React.FC = () => {
                 return;
             }
 
-            const base = pendingState || state;
+            const base = pendingState || useFinanceStore.getState();
             const existingTxMap = new Map<number, Transaction>(base.transactions.map(t => [t.id, t]));
             const mergedList = [...base.transactions];
 

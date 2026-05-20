@@ -78,6 +78,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
     const [timeRange, setTimeRange] = useState<TimeRange>('1Y');
     // Phase E.3 — sous-onglets pour aérer la page (doc directives §4)
     const [subTab, setSubTab] = useState<'overview' | 'allocation' | 'rebalance' | 'detail'>('overview');
+    // Phase E.6 — filtre interactif Geo/Sector cliqué dans la pie
+    const [allocationFilter, setAllocationFilter] = useState<{ type: 'region' | 'sector'; value: string } | null>(null);
 
     // Wiring 2026-05: lecture de la projection vivante depuis le store.
     const lastProjection = useFinanceStore(s => s.lastProjection);
@@ -541,7 +543,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
             >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 min-h-[300px]">
 
-                    {/* REGIONS */}
+                    {/* REGIONS — Phase E.6 : clic = filtre stocks */}
                     <div className="bg-[#1a1a1a] rounded-xl p-4 border border-white/5 flex flex-col">
                         <h4 className="text-gray-400 text-xs font-bold uppercase mb-4 text-center">Répartition Géographique</h4>
                         <div className="flex-1 flex flex-col lg:flex-row items-center gap-4">
@@ -555,33 +557,50 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             paddingAngle={5}
                                             dataKey="value"
                                             stroke="none"
+                                            onClick={(entry: { name?: string }) => entry.name && setAllocationFilter({ type: 'region', value: entry.name })}
+                                            cursor="pointer"
                                         >
                                             {geoBreakdown.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS_REGION[entry.name] || '#444'} />
+                                                <Cell
+                                                    key={`cell-${index}`}
+                                                    fill={COLORS_REGION[entry.name] || '#444'}
+                                                    opacity={allocationFilter?.type === 'region' && allocationFilter.value !== entry.name ? 0.3 : 1}
+                                                />
                                             ))}
                                         </Pie>
-                                        <ReTooltip contentStyle={{ backgroundColor: '#fff', color: '#000', borderRadius: '8px', border: 'none' }} itemStyle={{ color: '#000' }} formatter={(val: number) => val.toLocaleString() + '$'} />
+                                        <ReTooltip contentStyle={{ backgroundColor: '#fff', color: '#000', borderRadius: '8px', border: 'none' }} itemStyle={{ color: '#000' }} formatter={(val: number) => formatCAD(val)} />
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>
                             <div className="flex-1 w-full space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
-                                {geoBreakdown.map(item => (
-                                    <div key={item.name} className="flex justify-between items-center text-xs p-2 bg-white/5 rounded">
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS_REGION[item.name] || '#444' }}></span>
-                                            <span className="text-gray-200 font-medium">{item.name}</span>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-white font-bold">{item.value.toLocaleString()} $</div>
-                                            <div className="text-tiny text-gray-500">{item.percent.toFixed(1)}%</div>
-                                        </div>
-                                    </div>
-                                ))}
+                                {geoBreakdown.map(item => {
+                                    const isActive = allocationFilter?.type === 'region' && allocationFilter.value === item.name;
+                                    return (
+                                        <button
+                                            key={item.name}
+                                            type="button"
+                                            onClick={() => setAllocationFilter(isActive ? null : { type: 'region', value: item.name })}
+                                            className={`w-full flex justify-between items-center text-xs p-2 rounded transition-colors focus-ring ${
+                                                isActive ? 'bg-white/15 border border-white/20' : 'bg-white/5 hover:bg-white/10'
+                                            }`}
+                                            aria-pressed={isActive}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS_REGION[item.name] || '#444' }}></span>
+                                                <span className="text-gray-200 font-medium">{item.name}</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-white font-bold">{formatCAD(item.value)}</div>
+                                                <div className="text-tiny text-gray-500">{item.percent.toFixed(1)}%</div>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
 
-                    {/* SECTORS */}
+                    {/* SECTORS — Phase E.6 : clic = filtre stocks */}
                     <div className="bg-[#1a1a1a] rounded-xl p-4 border border-white/5 flex flex-col">
                         <h4 className="text-gray-400 text-xs font-bold uppercase mb-4 text-center">Répartition Sectorielle</h4>
                         <div className="flex-1 flex flex-col lg:flex-row items-center gap-4">
@@ -595,33 +614,86 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             paddingAngle={5}
                                             dataKey="value"
                                             stroke="none"
+                                            onClick={(entry: { name?: string }) => entry.name && setAllocationFilter({ type: 'sector', value: entry.name })}
+                                            cursor="pointer"
                                         >
                                             {sectorBreakdown.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS_SECTOR[entry.name] || '#444'} />
+                                                <Cell
+                                                    key={`cell-${index}`}
+                                                    fill={COLORS_SECTOR[entry.name] || '#444'}
+                                                    opacity={allocationFilter?.type === 'sector' && allocationFilter.value !== entry.name ? 0.3 : 1}
+                                                />
                                             ))}
                                         </Pie>
-                                        <ReTooltip contentStyle={{ backgroundColor: '#fff', color: '#000', borderRadius: '8px', border: 'none' }} itemStyle={{ color: '#000' }} formatter={(val: number) => val.toLocaleString() + '$'} />
+                                        <ReTooltip contentStyle={{ backgroundColor: '#fff', color: '#000', borderRadius: '8px', border: 'none' }} itemStyle={{ color: '#000' }} formatter={(val: number) => formatCAD(val)} />
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>
                             <div className="flex-1 w-full space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
-                                {sectorBreakdown.map(item => (
-                                    <div key={item.name} className="flex justify-between items-center text-xs p-2 bg-white/5 rounded">
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS_SECTOR[item.name] || '#444' }}></span>
-                                            <span className="text-gray-200 font-medium">{item.name}</span>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-white font-bold">{item.value.toLocaleString()} $</div>
-                                            <div className="text-tiny text-gray-500">{item.percent.toFixed(1)}%</div>
-                                        </div>
-                                    </div>
-                                ))}
+                                {sectorBreakdown.map(item => {
+                                    const isActive = allocationFilter?.type === 'sector' && allocationFilter.value === item.name;
+                                    return (
+                                        <button
+                                            key={item.name}
+                                            type="button"
+                                            onClick={() => setAllocationFilter(isActive ? null : { type: 'sector', value: item.name })}
+                                            className={`w-full flex justify-between items-center text-xs p-2 rounded transition-colors focus-ring ${
+                                                isActive ? 'bg-white/15 border border-white/20' : 'bg-white/5 hover:bg-white/10'
+                                            }`}
+                                            aria-pressed={isActive}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS_SECTOR[item.name] || '#444' }}></span>
+                                                <span className="text-gray-200 font-medium">{item.name}</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-white font-bold">{formatCAD(item.value)}</div>
+                                                <div className="text-tiny text-gray-500">{item.percent.toFixed(1)}%</div>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
 
                 </div>
+
+                {/* Phase E.6 — Liste des stocks filtrés par geo/sector cliqué */}
+                {allocationFilter && (
+                    <div className="mt-4 p-4 bg-gradient-to-r from-primary/5 to-info-500/5 border border-primary/20 rounded-xl">
+                        <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                                <span aria-hidden="true">{allocationFilter.type === 'region' ? '🌍' : '🏢'}</span>
+                                Actions en <span className="text-primary">{allocationFilter.value}</span>
+                            </h4>
+                            <button
+                                type="button"
+                                onClick={() => setAllocationFilter(null)}
+                                className="text-tiny text-ink-400 hover:text-ink-100 px-2 py-1 rounded transition-colors focus-ring"
+                            >
+                                ✕ Effacer filtre
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                            {currentAllocation
+                                .filter(a => allocationFilter.type === 'region' ? a.region === allocationFilter.value : a.sector === allocationFilter.value)
+                                .sort((a, b) => b.value - a.value)
+                                .map(a => (
+                                    <div key={a.id} className="bg-white/5 p-3 rounded-lg border border-white/5">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <span className="font-bold text-white text-sm truncate">{a.name}</span>
+                                            <span className="text-tiny text-ink-400 font-mono">{a.weight.toFixed(1)}%</span>
+                                        </div>
+                                        <div className="text-meta font-mono text-ink-200 privacy-blur">{formatCAD(a.value)}</div>
+                                        <div className={`text-tiny font-mono ${a.trend24h >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                            {a.trend24h >= 0 ? '+' : ''}{a.trend24h.toFixed(2)}% (24h)
+                                        </div>
+                                    </div>
+                                ))}
+                        </div>
+                    </div>
+                )}
             </CollapsibleSection>}
 
             {/* 3. DIVIDEND CALENDAR — Phase E.3 visible en overview */}

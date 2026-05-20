@@ -1,5 +1,11 @@
 import { defineConfig } from 'vitest/config';
 
+// P1 fix — vitest ^4 a retiré `environmentMatchGlobs` (était deprecated dans v3).
+// Solution : utiliser `projects` pour grouper les tests par environnement, OU
+// simplement passer tout en jsdom (overhead négligeable et simpler config).
+// Choix : jsdom partout — la plupart de nos tests utilisent localStorage ou React,
+// et les tests services pures n'ont pas de cost notable en jsdom.
+
 export default defineConfig({
   // Phase A.4 — les constantes globales définies dans vite.config.ts (build)
   // doivent aussi exister en environnement de test sinon ReferenceError.
@@ -9,13 +15,7 @@ export default defineConfig({
     __BUILD_DATE__: JSON.stringify('1970-01-01'),
   },
   test: {
-    // Tests services: Node (rapide). Tests composants: jsdom via __jsdom__ env override.
-    environment: 'node',
-    environmentMatchGlobs: [
-      ['tests/components/**', 'jsdom'],
-      ['tests/store/**', 'jsdom'],
-      ['tests/a11y/**', 'jsdom'],
-    ],
+    environment: 'jsdom',
     include: ['tests/**/*.test.{ts,tsx}'],
     setupFiles: ['./tests/setup.ts'],
   },

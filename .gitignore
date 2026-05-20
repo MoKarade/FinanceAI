@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# P1.6 — Lighthouse CI artifacts locaux
+.lighthouseci/
+
 # Env files (secrets) - Phase 0 hardening
 .env
 .env.*

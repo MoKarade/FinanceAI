@@ -1,0 +1,21 @@
+{
+  "name": "FinanceAI",
+  "short_name": "FinanceAI",
+  "description": "Gestionnaire de finances personnelles québécois — patrimoine, fiscal, retraite",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#10b981",
+  "background_color": "#0B0E14",
+  "lang": "fr-CA",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -24,7 +24,7 @@ L'app est **production-ready pour un usage mono-utilisateur**, avec une posture 
 
 ## 2. Top problèmes consolidés (toutes catégories)
 
-### 🔴 CRITICAL (8) — à fixer impérativement
+### 🔴 CRITICAL (9) — à fixer impérativement
 
 | # | Catégorie | Issue | Fichier | Effort |
 |---|---|---|---|---|
@@ -36,6 +36,7 @@ L'app est **production-ready pour un usage mono-utilisateur**, avec une posture 
 | C6 | **TypeScript** | 21 violations Hooks dans FutureProjection.tsx (return avant hooks) | FutureProjection.tsx:46-258 | 2-3h |
 | C7 | **TypeScript** | `useState` dans IIFE (callback) | LifeEvents.tsx:153 | 30 min |
 | C8 | **TypeScript** | 4 hooks après `if (!goal) return null` | ChildPlanning.tsx:89-213 | 1h |
+| **C9** | **🐛 BUG FISCAL** | **`welcomeTax` 3 implémentations divergentes (5885$ vs 5755$ pour 500k$)** | helpers.ts:86, realEstate.ts:88, RealEstate.tsx:123 | 2h |
 
 #### Détails CRITICAL principal
 
@@ -418,6 +419,201 @@ Chaque `s => s.X ?? []` crée une nouvelle référence `[]` à chaque render →
 | recharts | 128 KB | Chargé trop tôt (PH4) |
 | pdf-vendor | 128 KB | Déjà lazy ✓ |
 | ai-vendor | 35 KB | OK |
+
+### 3.6 Tests (agent `pr-test-analyzer`)
+
+573 tests / 51 fichiers — **bonne base mais gaps critiques**. Couverture estimée :
+- `services/projection/` : 31 modules → 4 fichiers de tests = **~25%**
+- `services/` (hors projection) : **~55%**
+- `components/ui/` : **~60%**
+- `components/` (top-level) : **~25%** (FutureProjection, Investments, Retirement, RealEstate, TaxCenter, LifeEvents, Planning sans tests)
+
+#### Gaps CRITIQUES tests
+
+##### TST1 — `services/cloudBackup.ts` : **ZÉRO test sur crypto AES-256-GCM**
+Module le plus sensible (perte de données irrécupérable). Aucune validation roundtrip, mauvaise passphrase, fichier corrompu. **Fix** : `tests/services/cloudBackup.test.ts` avec roundtrip + cas d'erreur. Vitest a `webcrypto` natif Node 20+.
+
+##### TST2 — `migrateUserConfig` et `migrateBudgetItems` non testées
+Le test actuel appelle `resetState()` qui contourne `getInitialStateWithMigration`. Migrations critiques (calcul `grossSalary` from `salary`, inférence `nature` budget) tournent à chaque boot sans test.
+**Fix** : extraire dans `utils/migration.ts` ou exporter et tester en isolation avec configs pré-migration.
+
+##### TST3 — 27 sous-modules `services/projection/` sans tests directs
+- `monteCarlo.ts` (successRate, percentiles, fvi)
+- `drawdownOptimizer.ts`, `cashflowAllocation.ts`, `glidepathRates.ts`
+- `latentTax.ts`, `meltdownReer.ts`, `stochasticEvents.ts`, `w5Effects.ts`
+- `estateCalculation.ts`, `vehicleCycle.ts`
+- `setupSimulation.ts`, `monthlyCalcs.ts/Events.ts/Output.ts`
+- `portfolioOps.ts`, `growthApplication.ts`, `realEstateMonth.ts`
+
+Effets remontent uniquement via `projection.test.ts` (intégration opaque). Bug dans `shortfallRate` invisible.
+
+##### TST4 — `backupAuto.ts` : seulement tests de dégradation
+Logique rolling 7-jours (`MAX_DAILY_BACKUPS = 7`), création backup réel, restore : **jamais testés**. Fix : installer `fake-indexeddb` + écrire tests métier.
+
+##### TST5 — `runAsync.ts` : timeout 30s, requestId, fallback sync (Worker undefined en Vitest) jamais testés.
+
+##### TST6 — `utils/useDerivedFinancials.ts` : aucun test
+Hook lu par Dashboard/Investments/Budget. Régression silencieuse possible sur `globalNetWorth`.
+
+#### Bug logique flaky goalSeek IDENTIFIÉ
+`services/projection/goalSeek.ts:129` — `findEarliestRetirementAge` retourne **toujours** `found: true`, même quand l'horizon 45-75 ne contient pas d'âge viable. La boucle bisect peut converger sur frontier avec `minNetWorth = -1` et le test passe. **Vraie cause de l'intermittence** : variables module-level partagées modifient l'ordre d'init quand suite complète vs isolation.
+
+**Fix** : (a) corriger la logique `found: true` inconditionnel, (b) `vi.isolateModules()` autour du test, (c) ajouter param `seed` déterministe.
+
+#### Tests fragiles à corriger
+- `eraContextZod.test.ts:49` : `setTimeout(50ms)` + assertion tautologique `expect(raw === null \|\| typeof raw === 'string')`
+- `format.test.ts:97` : regex `19|20` mai timezone hack → `vi.useFakeTimers`
+- `useDebouncedMemo.test.ts` : **ne teste pas le hook lui-même**, juste `setTimeout` natif
+- `Dashboard.test.tsx` : 5 tests `toBeTruthy()` smoke seulement, aucune valeur régression
+
+#### Composants top-level sans aucun test (RTL + axe)
+FutureProjection, Investments, LifeEvents, LifeProjects, Planning, Retirement, RealEstate, TaxCenter, DebtManager, ChildPlanning, Travel, ainsi que ConfirmModal, Toast, ErrorBoundary, StatGrid, Card, EmptyDataPrompt, AutoBackupPanel, BackupPanel.
+
+#### Bonnes pratiques tests déjà en place ✅
+- `projection.helpers.test.ts` : stats 10k échantillons + tolérance
+- `aiOrchestrator.test.ts` : mock par module + `clearAllMocks` + couverture dégradation
+- `useFinanceStore.test.ts` : test sécurité que `apiKeys` n'apparaît pas dans localStorage
+- `retirementIncome.test.ts` : régression SRG §7.G avec contexte fiscal réel
+- Locale `fr-CA` fixée dans `aiOrchestrator.test.ts` (fix 2026-05-21)
+
+---
+
+## 5bis. Sprint 6 — Tests (ajouté post-audit pr-test-analyzer, ~3 jours)
+
+| # | Item | Effort |
+|---|---|---|
+| TST1 | `cloudBackup.test.ts` : roundtrip crypto + cas d'erreur | 3h |
+| TST2 | Extraire `migrateUserConfig`/`migrateBudgetItems` dans `utils/migration.ts` + tester | 4h |
+| TST3 | Tests directs 27 sous-modules projection (priorité monteCarlo, cashflowAllocation, drawdownOptimizer) | 1j |
+| TST4 | `backupAuto.test.ts` avec `fake-indexeddb` (rolling + restore) | 4h |
+| TST5 | `runAsync.test.ts` (fallback sync + timeout) | 2h |
+| TST6 | `useDerivedFinancials.test.ts` | 2h |
+| Fix bug logique `findEarliestRetirementAge` (return `found: true` inconditionnel) + flaky | 2h |
+| Corriger tests fragiles (eraContextZod, format, useDebouncedMemo, Dashboard) | 3h |
+| Playwright E2E 3 flux critiques (onboarding, backup/restore, projection) | 1j |
+
+**Total Sprint 6** : ~3 jours. À enclencher après Sprint 1 STOP THE BLEED.
+
+### 3.7 Commentaires (agent `comment-analyzer`)
+
+**~2 060 lignes de commentaires `//` audités. ~185 lignes à supprimer net.** Convention Marc (CLAUDE.md global) : "comments minimum, nommage clair plutôt que commentaires verbeux". Beaucoup de commentaires "Phase X / Cycle Y" sont des artefacts de provenance qui pourrissent.
+
+#### À SUPPRIMER (~185 lignes)
+
+| Type | Lignes | Action |
+|---|---|---|
+| Auto-ref chemin fichier (`// services/projection/X.ts` en L1) | 41 | Supprimer (IDE/OS font déjà le job) |
+| "Cycle X split → ./module" dans `services/projection.ts` | 38 | Supprimer (navigation par imports) |
+| En-têtes "Cycle X:" dans sous-modules projection | 28 (sauf 4 invariants) | Supprimer le préfixe |
+| Préfixes "Phase X —" dans composants (Budget, AiAssistant, Dashboard, etc.) | 60 | Supprimer le préfixe, garder description si pertinente |
+| "compat gemini.ts" headers dans `claude.ts` | 6 | Reformuler (gemini.ts n'existe plus) |
+| "Retiré par cycle X" orphelins (`types.ts:119-121`) | 3 | Supprimer |
+| V-prefix `// V29: ...` sur variables locales | 8 | Supprimer |
+
+#### À UPDATER
+
+| Issue | Fichier | Action |
+|---|---|---|
+| En-tête `claude.ts:1-13` parle de migration depuis `gemini.ts` (supprimé) | services/claude.ts | Réécrire pour décrire état actuel |
+| Refs `→ ./projection/taxCycle` (fichier fantôme) | services/projection.ts:545, 576, 624, 634, 645 | Pointer vers taxApril/taxDecember/taxJanuary |
+| Refs `§7.x` / `§6.x` sans ancre doc | App.tsx, AiAssistant.tsx, claude.ts, marketData/* | Supprimer le préfixe, garder la description |
+| "Wiring 2026-05 (Option A)" en commentaire store | store/useFinanceStore.ts:20 | Supprimer la date, garder description du pattern |
+
+#### À GARDER (précieux — ne PAS toucher)
+
+- **`utils/tax.ts` ~116 lignes** : sources ARC/RevenuQC/RAMQ avec URLs, raisons d'ajustement, invariants fiscaux non-évidents. **Traçabilité réglementaire irremplaçable**.
+- `services/projection/helpers.ts` ~20 lignes : tables actuarielles LTC (Genworth/StatsCan) + mortalité avec calibration par tranche d'âge.
+- `services/cloudBackup.ts` 4 lignes : contraintes crypto non-évidentes (12 chars min, AES-GCM échec indistinguable).
+- **`App.tsx:56-60`** : workaround SW registration récent (Bug fix 2026-05-21).
+- `services/projection/marketShocks.ts` : invariant ordre PRNG pour reproductibilité MC.
+- `services/projection/monteCarlo.ts` : pattern injection dépendance (évite import circulaire).
+- Migrations store `v1 → v6` dans `useFinanceStore.ts` : ~50 lignes essentielles pour future migration v7.
+- Commentaires invariants dans tests projection (décennie critique, drag formule, etc.).
+
+#### TODO actifs à tracker
+
+| Ref | Fichier:Ligne | Priorité | Action |
+|---|---|---|---|
+| Taxe bienvenue dupliquée | services/projection/helpers.ts:74 | MEDIUM | Unifier API helpers.ts vs realEstate.ts |
+| SRG partiel surestimé | services/projection/retirementIncome.ts:128 | MEDIUM | Modéliser profils SRG incomplets |
+| `dependentChildrenCount` manquant | services/projection.ts:594 | LOW | Ajouter champ sur User |
+| `hasPrivateDrugInsurance` manquant | services/projection.ts:597 | LOW | Ajouter flag sur User |
+
+#### Action sprint
+Ajouter cleanup commentaires (~2h) dans le Sprint 2 quick wins.
+
+### 3.8 Dead code & duplications (agent `refactor-cleaner`)
+
+**Économie totale potentielle** : -280 KB bundle gzip + ~90 lignes code mort + ~50 lignes duplication + 50% empreinte localStorage. **+1 bug fiscal masqué identifié**.
+
+#### DC-SAFE_TO_DELETE
+
+##### DC1 — `lucide-react` import mort
+**Fichier** : `components/Dashboard.tsx:13`
+```ts
+import { Sparkles, ArrowRight } from 'lucide-react';
+```
+**Aucune utilisation** dans les 598 lignes de Dashboard.tsx. Seul fichier qui importe la dep.
+**Action** : supprimer import + `npm uninstall lucide-react`.
+**Gain** : -200 KB bundle gzip.
+
+##### DC2 — `framer-motion` 1 seul usage légitime
+`components/ui/Toast.tsx:3` (`motion.div` + `AnimatePresence`) remplaçable par CSS `@keyframes`.
+**Gain** : -80 KB gzip (dup avec H5).
+
+##### DC3 — Exports orphelins constants.ts
+- `DEFAULT_CATEGORIES` (l.7-14) : 0 consommateur → -13 lignes
+- `MOCK_ASSETS` (l.122) : 0 consommateur → -1 ligne
+
+##### DC4 — Champs `@deprecated` 0 consommateur
+`types.ts:206-209` : `ProjectionConfig.scenarioB` + `scenarioBLabel` jamais lus. -4 lignes.
+
+#### 🐛 BUG IDENTIFIÉ — `welcomeTax` 3 implémentations divergentes
+
+**CRITIQUE** : 3 calculs différents pour la même donnée d'entrée.
+
+| Fichier | Paliers | Résultat pour 500k$ |
+|---|---|---|
+| `services/projection/helpers.ts:86` | Montréal 2026, 8 paliers (jusqu'à 4%) | **~5885 $** |
+| `services/realEstate.ts:88` | Provincial, 3 tranches (1.5% max) | **~5755 $** |
+| `components/RealEstate.tsx:123` | Hardcodé inline 2002 style | non testé |
+
+Le moteur de projection utilise helpers.ts, le calculateur UI utilise realEstate.ts → **résultats différents affichés selon la page**. TODO existant ligne 74 helpers.ts confirme le bug.
+
+**Fix** : décider du référentiel (Montréal multi-paliers OU provincial) → exporter depuis realEstate.ts (déjà testé) → remplacer dans projection.ts:740 + supprimer copie inline RealEstate.tsx.
+**Effort** : 2h.
+
+#### DC-CAREFUL (duplications & legacy)
+
+| # | Type | Fichiers | Action | Lignes |
+|---|---|---|---|---|
+| DC5 | `safeRandomId` dupliqué | Toast.tsx:11 + useFinanceStore.ts:40 | Extraire `utils/safeRandomId.ts` | -5 |
+| DC6 | `config.users.reduce(...)` 6+ fois | App.tsx:437, TabRouter.tsx:229, Retirement.tsx:120-121, FutureProjection.tsx:66-70 | Étendre `useDerivedFinancials` avec `totalGrossAnnual/totalNetMonthly` | -12 |
+| DC7 | `formatCurrency` local dup `formatCAD` | RealEstate.tsx:218 | Import `formatCAD` | -1 + cohérence |
+| DC8 | `.toLocaleString()` bruts inconsistants | Budget.tsx:456+, BudgetGroupTable.tsx:74+ | Remplacer par `formatCAD`/`formatNumber` | ~12 occurrences |
+| DC9 | `Asset.dateBought/buyPrice` `@deprecated` mais utilisés | Dashboard.tsx:511-518, AddStockForm.tsx:125-126 | Migrer vers `asset.purchases[0]` | -15 |
+| DC10 | `childGoal` singulier legacy | types.ts:647, App.tsx:210-222, Settings.tsx:35,59,159 | Cleanup en 3 étapes | -25 |
+| DC11 | Double stockage `app_*` LS + Zustand persist | useFinanceStore.ts:118-196 | Post-migration `localStorage.removeItem(legacyKey)` | -50% LS empreinte |
+| DC12 | `legacyToken` / `lunchMoney` migration | useFinanceStore.ts:120,131 | Supprimer si tous users migrés | -5 |
+
+#### DC-SUSPECT (à valider avant action)
+
+##### DC13 — `services/portfolio.ts` (~170 lignes) sans consommateur prod
+Importé uniquement dans `tests/services/portfolio.test.ts`. Exposait `computeAssetBreakdown`, `computeBudgetAggregates` mais aucun composant ne l'utilise. **Suspicion** : destiné au MCP Sprint 2 ?
+
+**Action** : si roadmap MCP prévoit → KEEP_DOCUMENTED. Sinon SAFE_TO_DELETE → -170 lignes + 1 test.
+
+##### DC14 — `utils/safeNumber.ts` utilisé uniquement par son test
+Pas d'import en code applicatif. Si pas de roadmap prévue → SAFE_TO_DELETE → -30 lignes.
+
+##### DC15 — `Tab.TRAVEL` + `Tab.LIFE_EVENTS` dans enum
+**KEEP_DOCUMENTED** : forward-routing TabRouter.tsx:213 pour deep-links bookmarkés `#TRAVEL`. À ne PAS supprimer sans vérifier analytics.
+
+#### Scripts CLI non-référencés mais légitimes
+`scripts/diff-snapshots.ts`, `scripts/verify-precision.ts`, `scripts/check-contrast.ts` → KEEP, branchés dans package.json.
+
+#### Action sprint
+Ajouter cleanup dead code + duplications dans le Sprint 2 quick wins (~4h). Le bug `welcomeTax` divergent va dans le Sprint 1 STOP THE BLEED (CRITICAL fiscal !).
 
 ---
 

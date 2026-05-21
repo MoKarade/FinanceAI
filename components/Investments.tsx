@@ -19,7 +19,8 @@ import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { Skeleton } from './ui/Skeleton';
-import { fetchPortfolioHistory, MarketDataPoint } from '../services/finance';
+import { MarketDataPoint } from '../services/finance';
+import { usePortfolioHistory } from '../hooks/usePortfolioHistory';
 import { StockChart } from './StockChart';
 import { ASSET_META } from '../services/assetMeta';
 import { DividendPanel } from './investments/DividendPanel';
@@ -126,11 +127,15 @@ export const Investments: React.FC<InvestmentsProps> = ({
     const [showAddStockForm, setShowAddStockForm] = useState(false);
 
     // --- INSTANT DATA LOAD ---
+    // Sprint 3B M3 + test-mode-complet : utilise usePortfolioHistory hook qui
+    // retourne le marketData synthétique en mode test (depuis testFixtures)
+    // ou le CSV externe sinon.
+    const { history: portfolioHistory } = usePortfolioHistory();
     useEffect(() => {
         let cancelled = false;
         const load = async () => {
             setIsLoading(true);
-            const data = await fetchPortfolioHistory();
+            const data = portfolioHistory;
             if (cancelled) return;
             setMarketData(data);
 
@@ -144,7 +149,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
         };
         load();
         return () => { cancelled = true; };
-    }, []);
+    }, [portfolioHistory]);
 
     // --- ANALYSIS ENGINE ---
     const {

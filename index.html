@@ -20,7 +20,12 @@
     <link rel="stylesheet" href="/index.css">
     <!-- CSP for GitHub Pages (Netlify headers don't apply on GH Pages). -->
     <!-- Keep in sync with netlify.toml [[headers]] Content-Security-Policy. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.anthropic.com https://api.era.app https://finnhub.io https://www.bankofcanada.ca; frame-src 'self' https://cdn.plaid.com; worker-src 'self' blob:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.anthropic.com https://api.era.app https://finnhub.io https://www.bankofcanada.ca https://www.google-analytics.com https://*.analytics.google.com https://*.google-analytics.com; frame-src 'self' https://cdn.plaid.com; worker-src 'self' blob:;">
+
+    <!-- Google Analytics 4 — Measurement ID G-5WLQGBF1VL -->
+    <!-- Tag chargé async (non-bloquant). Code d'init externalisé dans /ga-init.js pour respecter la CSP stricte (pas d'unsafe-inline dans netlify.toml script-src). -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-5WLQGBF1VL"></script>
+    <script src="/ga-init.js"></script>
   </head>
   <body>
     <div class="aurora-bg">

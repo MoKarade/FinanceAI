@@ -297,10 +297,18 @@ Priorité de traitement :
 
 **Progression session 2026-05-21** :
 - ✅ **Mode strict TOTAL** : 8 composants migrés (Dashboard, Investments, Budget, RealEstate, Planning, ChildPlanning, HealthIndicator, Retirement) + ProjectionRequired
-- ✅ **Centralisation Phase 3 Tier 1+2** : 7 nouveaux champs chartData (realNetWorth, liquidityRunway, mortgageRemainingMonths, reeeContribCum, reeeGrantsCum, DividendIncome, TaxableInvIncome)
+- ✅ **Centralisation Phase 3 Tier 1+2+3** : 9 nouveaux champs chartData (realNetWorth, liquidityRunway, mortgageRemainingMonths, reeeContribCum, reeeGrantsCum, DividendIncome, TaxableInvIncome, **marginalTaxRate, effectiveTaxRate**)
 - ✅ **ChildPlanning respProjection** branché sur reeeContribCum/reeeGrantsCum (vraies données moteur)
 - ✅ **B1 décision UX** : Badge "Scénario actif" dans Retirement + sync avec Future
 - ✅ **B2 cohérence enfants** : LIMITATIONS documentées dans childCosts.ts
 - ✅ **Q3 keyboard shortcuts** : Alt+1..9 pour switcher d'onglet
-- ✅ **+5 tests Vitest** convergence (594/594 verts au total)
+- ✅ **+7 tests Vitest** convergence (596/596 verts au total)
+- ✅ **DT1 cleanup** : variables locales ChildPlanning post-migration retirées
+- ✅ **D1 SESSION_HANDOVER** : section dédiée cycles 17-18 + index docs mis à jour
+- ✅ **D2 README** : conventions clés + raccourcis clavier + liens docs
+- ✅ **D3 ADR** : 3 nouveaux ADRs (005 Future source unique, 006 no-fake, 007 auth)
 - ✅ **BACKLOG.md** maintenu à jour à chaque batch
+
+**Items livrés cette session : 17** (vs ~40 restants au début)
+**Tests : 583 → 596** (+13)
+**Docs : 11 nouveaux fichiers**

@@ -226,12 +226,18 @@ const TEST_FINANCIAL_GOALS: FinancialGoal[] = [
  *   - 'TOTAL' : somme totale incluant initialBalances cash
  */
 export function generateTestMarketData(): MarketDataPoint[] {
+    // Convention "valeurs réelles ou rien" : en mode test on ne SIMULE PAS
+    // les fluctuations boursières (avant : sinus + bruit aléatoire qui ne
+    // correspondaient à aucune vérité historique). À la place on fait une
+    // interpolation **linéaire** entre buyPrice (point d'achat fictif) et
+    // currentPrice (valeur fictive mais cohérente avec les fixtures), pour
+    // que l'évolution du graph montre uniquement la trajectoire d'achat
+    // sans prétendre simuler un historique de marché.
+    //
+    // En mode production : ce hook n'est pas appelé — le vrai CSV
+    // /portfolio-history.csv fournit les valeurs historiques réelles.
     const out: MarketDataPoint[] = [];
     const now = new Date();
-    // Granularité hebdomadaire sur 2 ans = 104 points. Permet au graph
-    // d'évolution (timeRange '1M' par défaut) d'afficher 4-5 points, et
-    // de monter à 52+ points pour '1Y'. Avant on était à 24 points mensuels
-    // → '1M' n'affichait qu'1 point isolé.
     const WEEKS = 104;
 
     const initialBalances = {
@@ -242,17 +248,6 @@ export function generateTestMarketData(): MarketDataPoint[] {
         LIQUIDITE: 8500,
     };
     const cashTotal = Object.values(initialBalances).reduce((s, v) => s + v, 0);
-
-    // RNG seedé pour reproductibilité — même historique entre rechargements.
-    // Mulberry32 : déterministe et léger.
-    let seed = 1739817360;
-    const rng = () => {
-        seed = (seed + 0x6D2B79F5) | 0;
-        let t = seed;
-        t = Math.imul(t ^ (t >>> 15), t | 1);
-        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
 
     for (let i = WEEKS - 1; i >= 0; i--) {
         const d = new Date(now);
@@ -268,17 +263,7 @@ export function generateTestMarketData(): MarketDataPoint[] {
 
         for (const a of TEST_ASSETS) {
             const buy = a.purchases?.[0]?.price ?? a.currentPrice;
-            // Tendance linéaire buy → currentPrice + fluctuations réalistes :
-            //   - oscillation sinus ±2% (cycle ~6 mois)
-            //   - bruit gaussien-light ±1.5%
-            //   - crypto plus volatile : ±4% sinus + ±3% bruit
-            const isCrypto = a.accountType === 'CRYPTO';
-            const trend = buy + (a.currentPrice - buy) * t;
-            const sineAmp = isCrypto ? 0.04 : 0.02;
-            const noiseAmp = isCrypto ? 0.03 : 0.015;
-            const sine = Math.sin(t * Math.PI * 4) * sineAmp;
-            const noise = (rng() - 0.5) * 2 * noiseAmp;
-            const price = trend * (1 + sine + noise);
+            const price = buy + (a.currentPrice - buy) * t;
             const qty = a.quantity || a.purchases?.[0]?.quantity || 0;
             const value = Math.round(price * qty * 100) / 100;
             row[a.symbol] = value;

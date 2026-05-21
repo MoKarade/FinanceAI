@@ -341,9 +341,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     label={`${t('dashboard.global_variation')} (${timeRange})`}
                     icon="📈"
                     value={formatPercent(performance.global)}
-                    trend={performance.diff}
-                    trendLabel="$"
-                    sublabel={formatSigned(performance.diff || 0, { withCurrency: true })}
+                    sublabel={formatSigned(performance.diff || 0, { withCurrency: true, decimals: 2 })}
                     privacy
                     variant={performance.global >= 0 ? 'success' : 'danger'}
                 />

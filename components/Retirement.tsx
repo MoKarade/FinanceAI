@@ -157,6 +157,7 @@ export const Retirement: React.FC<RetirementProps> = ({
     // Convention "valeurs réelles ou rien" : pas d'invention de valeurs
     // approximatives quand la source canonique est indisponible.
     const projectionFromStore = useFinanceStore(s => s.lastProjection?.chartData ?? null);
+    const activeScenarioName = useFinanceStore(s => s.lastProjection?.strategyName ?? null);
     const chartData = projectionFromStore ?? [];
     const hasProjection = chartData.length > 0;
 
@@ -197,7 +198,9 @@ export const Retirement: React.FC<RetirementProps> = ({
             <PageHeader
                 icon="🏖️"
                 title="Planification Retraite"
-                subtitle="Simulation complète basée sur le moteur FIRE — mêmes données que l'onglet Future."
+                subtitle={activeScenarioName
+                    ? `Scénario actif : ${activeScenarioName} — synchronisé avec Future`
+                    : "Simulation complète basée sur le moteur FIRE — mêmes données que l'onglet Future."}
                 badge={
                     <Badge variant={bankruptcyAge ? 'danger' : 'success'} size="md">
                         {bankruptcyAge ? `⚠️ Capital épuisé à ${bankruptcyAge} ans` : `🚀 Succès jusqu'à ${lifeExpectancy} ans`}

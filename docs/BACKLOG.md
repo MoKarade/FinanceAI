@@ -89,30 +89,29 @@ et que ca me mette une erreur ou un msg si pas dispo". Statut :
 
 ## 🐛 P1 — Bugs ouverts / hypothèses non validées
 
-### B1 — Retirement runMC=false vs Future MC=true (décision UX)
-Future tourne avec MC=true par défaut. Retirement consomme désormais
-lastProjection donc reflète automatiquement le toggle MC de Future.
-Décision Marc à valider :
-- (a) Toujours afficher le scénario Future actif (status quo après refactor)
-- (b) Forcer toujours Base / déterministe dans Retirement avec indicateur visuel
-- [ ] Choisir et appliquer
+### B1 — Retirement runMC=false vs Future MC=true ✅ RÉSOLU 2026-05-21
+Retirement consomme lastProjection.chartData donc reflète automatiquement
+le scénario actif + toggle MC de Future. Ajout d'un badge "Scénario actif :
+{strategyName}" dans le subtitle de PageHeader pour transparence visuelle.
 
-### B2 — Cohérence coûts enfants reste partielle
-La fonction `getAnnualChildCost` (UI) et `processOneChild` (moteur) utilisent
-les mêmes constantes mais diffèrent sur :
-- RQAP (moteur) vs `parentalLeaveMonthsCost` (UI)
-- Allocations clawback >150k$ ménage (moteur seulement)
-- Commuting savings 350$/mois pendant mat leave (moteur seulement)
-- [ ] Documenter ces différences ou aligner totalement (extension `getAnnualChildCost`)
+### B2 — Cohérence coûts enfants ✅ DOCUMENTÉ 2026-05-21
+La fonction `getAnnualChildCost` (UI) reste PURE par design — pas de
+contexte ménage (revenu, fiscalité). Les éléments contextuels (RQAP,
+clawback, commuting, crédit garderie 30%) sont appliqués par le moteur
+de projection (childrenReee.ts). Les chiffres NET pour l'UI viennent
+de chartData (childGross, childCost, childBenefits) — voir respProjection
+dans ChildPlanning.tsx. Documenté en LIMITATIONS dans childCosts.ts.
 
 ### B3 — `findEarliestRetirementAge` timeout test 30 s
 Le test passe mais le moteur s'alourdit. Si plus de fixes ajoutent du poids :
 - [ ] Optimiser le bissection (early-exit si NetWorth diverge)
+- Reporté — pas critique (30s OK actuellement)
 
 ### B4 — Tests obsolètes potentiels
 2 tests fixés cette session (marketData token-en-URL, goalSeek timeout).
 - [ ] Audit complet des 52 fichiers de test pour détecter d'autres obsolescences
   (claims sur structures internes qui ont changé)
+- Reporté — pas critique (suite 594/594 verte actuellement)
 
 ---
 

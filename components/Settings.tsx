@@ -118,9 +118,11 @@ export const Settings: React.FC<SettingsProps> = ({
           showToast(`Profil "${name}" charge !`, "success");
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      // TH4 fix : unknown au lieu de any (useUnknownInCatchVariables tsconfig)
       console.error("[Settings] Profile load error:", err);
-      showToast(`Erreur sur "${name}": ${err?.message || 'inconnu'}`, "error");
+      const msg = err instanceof Error ? err.message : 'inconnu';
+      showToast(`Erreur sur "${name}": ${msg}`, "error");
     }
   };
 

@@ -9,7 +9,8 @@ import { PageHeader } from './ui/PageHeader';
 import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { Skeleton } from './ui/Skeleton';
-import { fetchPortfolioHistory, MarketDataPoint } from '../services/finance';
+import { MarketDataPoint } from '../services/finance';
+import { usePortfolioHistory } from '../hooks/usePortfolioHistory';
 import { ASSET_META } from '../services/assetMeta';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { EraContextInsights } from './dashboard/EraContextInsights';
@@ -118,15 +119,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
         return pv * compoundFactor + pmt * ((compoundFactor - 1) / r);
     };
 
+    // Sprint 3B M3 — usePortfolioHistory hook avec cache singleton.
+    // Avant : fetch redondant à chaque mount Dashboard (et chaque autre tab
+    // qui en a besoin). Maintenant : un seul fetch global mis en cache pour
+    // toute la session.
+    const { history: portfolioHistory } = usePortfolioHistory();
     useEffect(() => {
-        let cancelled = false;
-        const load = async () => {
-            const data = await fetchPortfolioHistory();
-            if (!cancelled) setMarketData(data);
-        };
-        load();
-        return () => { cancelled = true; };
-    }, []);
+        setMarketData(portfolioHistory);
+    }, [portfolioHistory]);
 
     // --- ENGINE: DATA UNIFICATION & 30-DAY LOOKBACK ---
     // Phase D.8 — Active Income (mensuel) = somme des netSalary du couple.

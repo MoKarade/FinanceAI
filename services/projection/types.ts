@@ -79,6 +79,18 @@ export interface ProjectionChartPoint {
     CoastFIRE?: number;
     BaristaFIRE?: number;
     isRetired?: boolean;
+    // Centralisation Phase 3 — champs dérivés simples (Tier 1)
+    realNetWorth?: number;          // NetWorth déflaté à $ d'aujourd'hui
+    liquidityRunway?: number;       // Mois de dépenses couverts par Liquidites
+    mortgageRemainingMonths?: number; // Estimation linéaire balance/paiement
+    // Centralisation Phase 3 — Tier 2 (tracking REEE)
+    reeeContribCum?: number;        // Cumul contributions REEE (ménage)
+    reeeGrantsCum?: number;         // Cumul subventions SCEE+IQEE (ménage)
+    // Centralisation Phase 3 — Tier 3 (fiscalité + dividendes)
+    marginalTaxRate?: number;       // Taux marginal d'imposition (%)
+    effectiveTaxRate?: number;      // Taux moyen d'imposition (%)
+    DividendIncome?: number;        // Dividendes mensuels NonReg
+    TaxableInvIncome?: number;      // Revenus de placement imposables
     ContribCELI?: number;
     ContribREER?: number;
     ContribNonReg?: number;

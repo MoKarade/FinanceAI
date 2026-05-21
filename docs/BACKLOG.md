@@ -38,20 +38,20 @@ en parallèle des exports JSON manuels.
 > Le refactor "Future = source unique" est à **65 %**. Reste l'extension
 > moteur. Doc : [CENTRALIZED_CALC_PROGRESS.md](CENTRALIZED_CALC_PROGRESS.md).
 
-### C1 — Étendre le moteur `monthlyOutput.ts`
+### C1 — Étendre le moteur `monthlyOutput.ts` ✅ partiellement terminé 2026-05-21
 Ajouter ces champs dans `ProjectionChartPoint` :
-- [ ] `marginalTaxRate` (% mensuel) — pour TaxCenter
-- [ ] `effectiveTaxRate` (%) — pour TaxCenter
-- [ ] `TaxableInvIncome` ($) — pour TaxCenter investmentTaxData
-- [ ] `DividendIncome` ($) mensuel — pour Investments + DividendPanel
-- [ ] `reeeGrantsCum` ($) — pour ChildPlanning respProjection
-- [ ] `reeeContribCum` ($) — pour ChildPlanning respProjection
-- [ ] `pensionRRQ`, `pensionPSV`, `pensionPrivee` (split IncomeRetirement)
-- [ ] `realNetWorth` (déflaté à $ d'aujourd'hui) — pour charts pouvoir d'achat
-- [ ] `liquidityRunway` (mois) — pour stress test
-- [ ] `mortgageRemainingMonths` — pour RealEstate
-- **Effort** : 3-4 h
-- **Risque** : medium (multiple call-sites de calculateFiscalReport)
+- [ ] `marginalTaxRate` (% mensuel) — pour TaxCenter (Tier 3, reporté — exige refactor call-sites calculateFiscalReport)
+- [ ] `effectiveTaxRate` (%) — pour TaxCenter (Tier 3, reporté)
+- [x] `TaxableInvIncome` ($) — pour TaxCenter investmentTaxData
+- [x] `DividendIncome` ($) mensuel — pour Investments + DividendPanel
+- [x] `reeeGrantsCum` ($) — pour ChildPlanning respProjection
+- [x] `reeeContribCum` ($) — pour ChildPlanning respProjection
+- [ ] `pensionRRQ`, `pensionPSV`, `pensionPrivee` (split IncomeRetirement) — Tier 3, reporté
+- [x] `realNetWorth` (déflaté à $ d'aujourd'hui) — pour charts pouvoir d'achat
+- [x] `liquidityRunway` (mois) — pour stress test
+- [x] `mortgageRemainingMonths` — estimation linéaire balance/paiement
+- **Reste à faire** : marginalTaxRate, effectiveTaxRate, pensionRRQ/PSV/Privee
+- **Effort restant** : ~1h pour les 3 derniers champs
 
 ### C2 — Migrer composants après extension
 - [ ] TaxCenter `report.marginalRate` / `effectiveRate` / `taxableAddOn`

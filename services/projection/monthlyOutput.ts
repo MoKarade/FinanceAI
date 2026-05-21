@@ -36,6 +36,12 @@ export interface MonthlyOutputCtx {
     childBenefits: number;
     reeeContribMonthly: number;
     reeePayoutMonthly: number;
+    // Phase 3 Tier 2 — REEE cumulés ménage
+    reeeContribCum: number;
+    reeeGrantsCum: number;
+    // Phase 3 Tier 3 — dividendes mensuels + revenus de placement imposables
+    dividendIncome: number;
+    taxableInvIncome: number;
     // Immobilier
     immoHypo: number;
     immoCharges: number;
@@ -141,6 +147,8 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         incomeMarc, incomeAnna, incomeRetirement, monthlyIncome, monthlyExpenses,
         childMonthlyCost, childGrossCost, childBenefits,
         reeeContribMonthly, reeePayoutMonthly,
+        reeeContribCum, reeeGrantsCum,
+        dividendIncome, taxableInvIncome,
         immoHypo, immoCharges, immoInterest, immoPrincipal, totalRentalIncome,
         liquid, celi, celiapp, reer, reee, nonReg, crypto,
         retraitReerMois, retraitCeliMois, celiRoom, rrspRoom,
@@ -175,6 +183,12 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         childBenefits: Number(childBenefits.toFixed(2)),
         ReeeContrib: Number(reeeContribMonthly.toFixed(2)),
         ReeePayout: Number(reeePayoutMonthly.toFixed(2)),
+        // Phase 3 Tier 2 — cumul REEE pour ChildPlanning respProjection
+        reeeContribCum: Number(reeeContribCum.toFixed(2)),
+        reeeGrantsCum: Number(reeeGrantsCum.toFixed(2)),
+        // Phase 3 Tier 3 — dividendes et revenus de placement imposables
+        DividendIncome: Number(dividendIncome.toFixed(2)),
+        TaxableInvIncome: Number(taxableInvIncome.toFixed(2)),
         ImmoHypo: Number(immoHypo.toFixed(2)),
         ImmoCharges: Number(immoCharges.toFixed(2)),
         ImmoInterest: Number(immoInterest.toFixed(2)),
@@ -197,6 +211,16 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         Immobilier: Number(realEstateEquity.toFixed(2)),
         DetteTotale: Number((mortgageBalance + activeDebtsTotal).toFixed(2)),
         NetWorth: Number(rawNetWorth.toFixed(2)),
+        // Centralisation Phase 3 Tier 1 — champs dérivés simples
+        realNetWorth: Number((rawNetWorth / Math.max(1e-9, expenseMultiplier)).toFixed(2)),
+        liquidityRunway: monthlyExpenses > 0 ? Number((liquid / monthlyExpenses).toFixed(1)) : 0,
+        // Estimation linéaire : balance / paiement mensuel (approximation
+        // raisonnable pour amortissement classique sans changement de taux).
+        // Pour une valeur exacte avec capitalisation, voir mortgageBlendedRate
+        // (Phase 3 ultérieure).
+        mortgageRemainingMonths: immoHypo > 0 && mortgageBalance > 0
+            ? Math.ceil(mortgageBalance / immoHypo)
+            : 0,
         diffNW: Number((rawNetWorth - prevNW).toFixed(2)),
         diffCELI: Number((celi - prevCELI).toFixed(2)),
         diffREER: Number((reer - prevREER).toFixed(2)),

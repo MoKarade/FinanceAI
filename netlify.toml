@@ -24,7 +24,9 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    Content-Security-Policy = "default-src 'self'; script-src 'self' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.anthropic.com https://api.era.app https://finnhub.io https://www.bankofcanada.ca https://www.google-analytics.com https://*.analytics.google.com https://*.google-analytics.com; frame-src 'self' https://cdn.plaid.com; worker-src 'self' blob:;"
+    # Sprint 3 SM3 (sécurité) — frame-src https://cdn.plaid.com retiré : aucun
+    # usage de Plaid dans le code, c'était une fuite de surface d'attaque.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.anthropic.com https://api.era.app https://finnhub.io https://www.bankofcanada.ca https://www.google-analytics.com https://*.analytics.google.com https://*.google-analytics.com; worker-src 'self' blob:;"
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"

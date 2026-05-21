@@ -66,6 +66,31 @@ function makeId(): string {
  * @example
  *   logError({ source: 'ai', message: 'Claude timeout', severity: 'warning', context: { tab: 'budget' } });
  */
+// Sprint 3 SH5 (sécurité) — Champs financiers/PII à masquer du context.
+// Le logger est exporté/partagé via SystemView donc tout PII fuiterait.
+// Match récursif sur les clés (case-insensitive).
+const SENSITIVE_KEY_PATTERNS = /^(amount|balance|payee|fact|salary|netSalary|grossSalary|income|expense|cost|price|debt|net.*worth|api.*key|token|password|passphrase|email|phone|sin|nas|account.*number)$/i;
+const MAX_DEPTH = 4;
+
+function sanitizeContext(value: unknown, depth = 0): unknown {
+    if (value === null || value === undefined) return value;
+    if (depth >= MAX_DEPTH) return '[truncated]';
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
+    if (Array.isArray(value)) return value.slice(0, 10).map(v => sanitizeContext(v, depth + 1));
+    if (typeof value === 'object') {
+        const out: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+            if (SENSITIVE_KEY_PATTERNS.test(k)) {
+                out[k] = '[redacted]';
+            } else {
+                out[k] = sanitizeContext(v, depth + 1);
+            }
+        }
+        return out;
+    }
+    return String(value);
+}
+
 export function logError(input: {
     source: ErrorSource;
     message: string;
@@ -91,7 +116,8 @@ export function logError(input: {
         source: input.source,
         message,
         stack,
-        context: input.context,
+        // SH5 : context sanitisé pour ne JAMAIS persister/exporter de PII.
+        context: input.context ? sanitizeContext(input.context) as Record<string, unknown> : undefined,
         userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
         url: typeof window !== 'undefined' ? window.location.pathname : undefined,
     };

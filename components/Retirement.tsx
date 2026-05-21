@@ -50,13 +50,15 @@ export const Retirement: React.FC<RetirementProps> = ({
     // Sprint 2 PH3 — Regroupement W5.x via useShallow (avant : 6 selectors
     // séparés + `?? []` créaient des refs nouvelles à chaque render, invalidant
     // les useMemo deps de la projection cachée).
-    const { insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses } = useFinanceStore(useShallow(s => ({
+    const { insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, savingsGoals, financialGoals } = useFinanceStore(useShallow(s => ({
         insurancePolicies: s.insurancePolicies ?? EMPTY_ARRAY,
         vehicleReplacements: s.vehicleReplacements ?? EMPTY_ARRAY,
         majorRenovations: s.majorRenovations ?? EMPTY_ARRAY,
         charitableGoals: s.charitableGoals ?? EMPTY_ARRAY,
         rentalProperties: s.rentalProperties ?? EMPTY_ARRAY,
         privateBusinesses: s.privateBusinesses ?? EMPTY_ARRAY,
+        savingsGoals: s.savingsGoals ?? EMPTY_ARRAY,
+        financialGoals: s.financialGoals ?? EMPTY_ARRAY,
     })));
     // Phase C.3 — `lifeExpectancy` lu depuis le store (retirementGoal). Le Hub
     // Configuration (Phase C.1) sera l'endroit canonique pour le modifier ; le
@@ -177,6 +179,10 @@ export const Retirement: React.FC<RetirementProps> = ({
                     charitableGoals,
                     rentalProperties,
                     privateBusinesses,
+                    // Cohérence avec FutureProjection — sans ces flux la
+                    // projection retraite divergeait des chiffres Future
+                    savingsGoals,
+                    financialGoals,
                 }, false, 0);
                 if (!cancelled) setChartData(result.chartData ?? []);
             } catch (e) {
@@ -187,7 +193,7 @@ export const Retirement: React.FC<RetirementProps> = ({
             }
         }, 300);
         return () => { cancelled = true; clearTimeout(timer); };
-    }, [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, goal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses]);
+    }, [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, goal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, savingsGoals, financialGoals]);
 
     // Nettoyage Worker au démontage du composant
     useEffect(() => () => { terminateProjectionWorker(); }, []);

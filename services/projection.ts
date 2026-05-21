@@ -712,11 +712,18 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         }
 
         // ---- DETTES ----
+        // Si minimumPayment ≤ intérêts mensuels, la dette ne s'éteint jamais
+        // (négatif amortissement). Bug observable sur cartes de crédit à
+        // forte balance avec paiement minimum dérisoire. Garde-fou : forcer
+        // un paiement effectif suffisant pour amortir en 25 ans maximum
+        // (balance/300 + intérêts), même si le minimumPayment est plus bas.
         let debtPayments = 0;
         activeDebts.forEach(d => {
             if (d.balance > 0) {
                 const interest = (d.balance * (d.interestRate / 100)) / 12;
-                const payment = Math.min(d.balance + interest, d.minimumPayment);
+                const principalFloor = d.balance / 300; // 25 ans
+                const effectiveMinimum = Math.max(d.minimumPayment, interest + principalFloor);
+                const payment = Math.min(d.balance + interest, effectiveMinimum);
                 d.balance = d.balance + interest - payment;
                 debtPayments += payment;
             }

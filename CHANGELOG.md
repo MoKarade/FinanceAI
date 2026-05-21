@@ -6,6 +6,89 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — cycle 16 : Fix PWA inopérante en prod + locale aiOrchestrator] — 2026-05-21
+
+> 2 PRs livrent le fix du bug PWA découvert lors de la validation finale
+> du cycle 15 + un follow-up sur un test fragile aux locales.
+> **PR #118 (PWA fix) mergée**, PR cycle-16-followups en cours.
+
+### Bug PWA inopérante en prod (#118 — `ae8a6c5`)
+
+Symptôme : sur https://www.hubperso.com, le service worker n'était pas
+enregistré au boot, le cache `financeai-v2` restait vide. La PWA était
+inopérante malgré les PRs #113 (PWA initial) et #116 (SW cache fix) du
+cycle 15.
+
+**Diagnostic en deux temps** (cf `docs/INVESTIGATION_PWA_VERCEL_2026-05-21.md`) :
+
+1. **Bug build Vercel** : `import.meta.env.PROD` s'évaluait à `false`
+   lors du build Vercel malgré le log `building for production`. Le bloc
+   de registration SW dans `App.tsx:55-61` était dead-code-éliminé.
+   Le bundle prod sur Vercel faisait 744 KB et ne contenait aucune
+   référence à `sw.js` / `serviceWorker`, contre 528 KB pour mon build
+   local correct (différentiel +216 KB / +40 % cohérent avec un build
+   en mode dev).
+2. **Bug séquencement React** : même avec le code SW présent dans le
+   bundle, `useEffect` tourne après `window.load` (mount React arrive
+   après l'event). Donc `window.addEventListener('load', ...)` attachait
+   un listener à un event déjà fired → callback jamais exécuté →
+   SW jamais registered.
+
+### Fixes (#118)
+
+- `package.json` : `"vite build"` → `"vite build --mode production"`.
+  Effet primaire : Vite résout le mode comme `production` de manière
+  non-ambiguë. Effet secondaire utile : le hash du commit change →
+  Vercel ne peut PAS skipper le build via `Ignored Build Step:
+  Automatic`.
+- `App.tsx:54-71` : guard `document.readyState === 'complete'` avant
+  d'attacher le listener. Si le DOM est déjà loaded au moment du
+  effect (cas dominant en SPA React), register directement. Sinon
+  fallback `addEventListener('load', ..., { once: true })`. Au passage,
+  remplacement du `.catch(() => {})` silencieux par un `console.error`
+  explicite (anti-pattern silent-failure-hunter).
+- `docs/INVESTIGATION_PWA_VERCEL_2026-05-21.md` : 295 lignes de
+  diagnostic complet (6 hypothèses testées et écartées, plan B archivé).
+
+### Validation prod (post-merge `ae8a6c5`)
+
+- Nouveau bundle `index-CviMRQ3u.js` (528 KB, contient `sw.js`)
+- `navigator.serviceWorker.getRegistrations()` → 1 reg `activated`
+- `caches.keys()` → `["financeai-v2"]` (16 entrées au 2e load)
+- `navigator.serviceWorker.controller` non-null après navigation
+
+### Hygiène : fix test fragile aux locales (`services/aiOrchestrator.ts`)
+
+Bug latent découvert lors de la validation cycle 16 :
+[tests/services/aiOrchestrator.test.ts:101](tests/services/aiOrchestrator.test.ts#L101)
+attendait `'10,000'` mais `services/aiOrchestrator.ts:75-77` utilisait
+`.toLocaleString()` **sans locale** → résultat dépendait du runtime :
+
+- CI ubuntu-latest (`en_US.UTF-8`) → `'10,000'` → ✅ pass
+- Node local `fr-CA` → `'10 000'` (espace insécable) → ❌ fail
+
+Plus grave qu'un test fragile : le **system prompt envoyé à Claude
+variait selon la locale browser de l'utilisateur**. Non-déterministe.
+
+Fix : import de `formatNumber` depuis `utils/format` (centralisé fr-CA,
+même convention que `formatCAD` etc.). 6 occurrences remplacées dans
+`services/aiOrchestrator.ts`. Test mis à jour pour générer la chaîne
+attendue via la même locale `fr-CA`.
+
+### Méta cycle 16
+
+- 2 PRs : #118 fix PWA + cycle-16-followups (locale + docs)
+- Tests : 573 → 573 verts (1 test fail intermittent locale corrigé)
+- 0 régression typecheck / build
+- Bundle index passé de 744 KB → **528 KB** (économie réelle 216 KB
+  gzip ~50 KB pour les utilisateurs prod)
+- Apprentissages : silent catches sont des pièges même quand ils ne
+  causent pas le bug actif ; séquencement React/DOM peut piéger les
+  `window.load` listeners ; vérifier que le bundle prod contient ce
+  qu'on croit avoir buildé.
+
+---
+
 ## [unreleased — cycle 15 : P2 Mobile & a11y AAA COMPLÈTE (9/9 items)] — 2026-05-20/21
 
 > Suite directe du cycle 14 (P1 livré). **8 PRs (#107 à #114)** livrent

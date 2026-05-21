@@ -26,9 +26,9 @@ npm run preview
 ## 🧪 Tests et qualité
 
 ```bash
-npm run test          # Vitest (388 tests, 29 fichiers)
-npm run typecheck     # TypeScript strict mode
-npm run build         # Vite + tsc
+npm run test          # Vitest (573 tests, 51 fichiers)
+npm run typecheck     # TypeScript strict mode (clean)
+npm run build         # Vite (--mode production)
 ```
 
 ## 📚 Documentation

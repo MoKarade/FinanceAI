@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Transaction, RecurringItem, SavingsGoal, BudgetConfig, BudgetCategory } from '../types';
 import { Card } from './ui/Card';
+import { ProjectionRequired } from './ui/ProjectionRequired';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 // Phase 4 A5: bascule sur services/claude.ts (Haiku 4.5)
 import { detectSubscriptionsAI } from '../services/claude';
@@ -65,7 +66,11 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
     }, [transactions]);
 
     const activeSubs = aiSubs || heuristicSubs;
-    const { totalMonthly, totalYearly, potentialSavings } = useMemo(() => { const mTotal = activeSubs.reduce((acc, i) => acc + i.averageAmount, 0); const yTotal = mTotal * 12; return { totalMonthly: mTotal, totalYearly: yTotal, potentialSavings: yTotal * 10 * 1.4 }; }, [activeSubs]);
+    const { totalMonthly, totalYearly } = useMemo(() => {
+        const mTotal = activeSubs.reduce((acc, i) => acc + i.averageAmount, 0);
+        const yTotal = mTotal * 12;
+        return { totalMonthly: mTotal, totalYearly: yTotal };
+    }, [activeSubs]);
 
     const calendarDays = useMemo(() => {
         const year = currentDate.getFullYear();
@@ -170,9 +175,12 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                             ))}
                             {activeSubs.length === 0 && <div className="text-center text-gray-500 py-10">Aucun abonnement détecté.</div>}
                         </div>
-                        <div className="mt-4 bg-gradient-to-br from-red-900/20 to-black border border-red-500/20 p-3 rounded-xl flex items-center justify-between">
-                            <div><div className="text-tiny text-red-300 uppercase font-bold">Le "Latte Factor"</div><div className="text-tiny text-gray-400">Si investi à 7% sur 10 ans</div></div>
-                            <div className="text-xl font-black text-white privacy-blur">{potentialSavings.toLocaleString()}$</div>
+                        <div className="mt-4 bg-gradient-to-br from-red-900/20 to-black border border-red-500/20 p-3 rounded-xl">
+                            <div className="text-tiny text-red-300 uppercase font-bold mb-2">Le "Latte Factor"</div>
+                            <div className="text-tiny text-gray-400 mb-2">
+                                Impact à long terme de ces {activeSubs.length} abonnements si l'argent était plutôt investi.
+                            </div>
+                            <ProjectionRequired variant="inline" feature="cette projection long-terme" />
                         </div>
                     </Card>
                 </div>

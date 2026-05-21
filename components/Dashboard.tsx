@@ -18,6 +18,7 @@ import { HealthIndicator } from './dashboard/HealthIndicator';
 import { StockComparisonModal } from './dashboard/StockComparisonModal';
 import { Tab as TabEnum } from '../types';
 import { formatCAD, formatNumber, formatPercent, formatSigned } from '../utils/format';
+import { ProjectionRequired } from './ui/ProjectionRequired';
 
 interface DashboardProps {
     transactions: Transaction[];
@@ -102,21 +103,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const lastProjection = useFinanceStore(s => s.lastProjection);
     const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
 
-    const calculateFutureValue = (pv: number, pmtMonthly: number, years: number) => {
-        // Si on a une projection vivante, on cherche le NW au mois cible.
-        if (lastProjection?.chartData && lastProjection.chartData.length > 0) {
-            const targetMonth = years * 12;
-            const point = lastProjection.chartData.find(p => p.monthIndex === targetMonth)
-                || lastProjection.chartData[Math.min(targetMonth, lastProjection.chartData.length - 1)];
-            if (point && typeof point.NetWorth === 'number' && point.NetWorth > 0) {
-                return point.NetWorth;
-            }
+    // Mode strict : retourne null si pas de projection. Aucune invention
+    // (avant : fallback formule 5% qui divergeait silencieusement de Future).
+    const calculateFutureValue = (_pv: number, _pmtMonthly: number, years: number): number | null => {
+        if (!lastProjection?.chartData || lastProjection.chartData.length === 0) return null;
+        const targetMonth = years * 12;
+        const point = lastProjection.chartData.find(p => p.monthIndex === targetMonth)
+            || lastProjection.chartData[Math.min(targetMonth, lastProjection.chartData.length - 1)];
+        if (point && typeof point.NetWorth === 'number' && point.NetWorth > 0) {
+            return point.NetWorth;
         }
-        // Fallback: formule simple 5% (avant que l'utilisateur ouvre l'onglet projection).
-        const r = 0.05;
-        const pmt = pmtMonthly * 12;
-        const compoundFactor = Math.pow(1 + r, years);
-        return pv * compoundFactor + pmt * ((compoundFactor - 1) / r);
+        return null;
     };
 
     // Sprint 3B M3 — usePortfolioHistory hook avec cache singleton.
@@ -378,7 +375,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         </button>
                     </div>
                     <div className="text-kpi text-ink-50 privacy-blur tabular-nums">
-                        {formatCAD(calculateFutureValue(latestTotals?.Total || 0, calculatedMonthlySavings || 0, futureYears))}
+                        {(() => {
+                            const projected = calculateFutureValue(latestTotals?.Total || 0, calculatedMonthlySavings || 0, futureYears);
+                            return projected != null
+                                ? formatCAD(projected)
+                                : <ProjectionRequired variant="inline" feature="cette projection" />;
+                        })()}
                     </div>
                     <div className="flex items-center justify-between gap-2 text-meta">
                         <div className="flex items-center gap-1.5">

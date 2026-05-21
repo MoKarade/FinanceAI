@@ -7,6 +7,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { ChildGoal, ProjectionConfig, Tab as TabEnum } from '../types';
 import { INITIAL_CHILD_GOAL } from '../constants';
 import { ConfirmModal } from './ui/ConfirmModal';
+import { ProjectionRequired } from './ui/ProjectionRequired';
 import { useFinanceStore } from '../store/useFinanceStore';
 import {
     DAYCARE_INFO, SCHOOL_INFO, ACTIVITIES_INFO, UNI_INFO, CAR_INFO,
@@ -170,34 +171,38 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
         return { data, totalCost };
     }, [goal, daycareType, schoolType, activitiesLevel, universityType, carGift, projection]);
 
+    // Mode strict 2026-05-21 : respProjection vient de lastProjection.chartData
+    // (champ REEE par année) au lieu d'une formule locale qui divergeait du
+    // moteur. Si la projection n'a pas tourné, respProjection est vide et
+    // l'UI affiche <ProjectionRequired>.
     const respProjection = useMemo(() => {
+        if (!lastProjection?.chartData?.length || !goal?.birthDate) return [];
+        const birthYear = new Date(goal.birthDate).getFullYear();
         const data = [];
-        let balance = currentRESP;
-        const grantRate = 0.30;
-        const maxGrantLifetime = 10800;
-        let totalGrants = 0;
-        const r = (projection.returnRates?.celi || 7) / 100;
-
+        let prevBalance = currentRESP;
         for (let age = 0; age <= 17; age++) {
-            const contribution = respContribution;
-            let grant = Math.min(contribution * grantRate, maxGrantLifetime - totalGrants);
-            totalGrants += grant;
-            const growth = balance * r;
-            balance = balance + contribution + grant + growth;
+            const targetYear = birthYear + age;
+            // Premier point de l'année cible (point de janvier)
+            const point = lastProjection.chartData.find(p => p.year === targetYear);
+            if (!point || typeof point.REEE !== 'number') continue;
+            const solde = point.REEE;
             data.push({
                 age,
-                Solde: Math.round(balance),
-                Contribution: Math.round(contribution),
-                Subvention: Math.round(grant),
-                Intérêts: Math.round(growth),
+                Solde: Math.round(solde),
+                Contribution: 0,    // Détail non exposé séparément par le moteur
+                Subvention: 0,      // (à ajouter en Phase 3 — reeeContribCum/reeeGrantsCum)
+                Intérêts: Math.max(0, Math.round(solde - prevBalance)),
             });
+            prevBalance = solde;
         }
         return data;
-    }, [respContribution, projection, currentRESP]);
+    }, [lastProjection, currentRESP, goal?.birthDate]);
 
-    const totalResp = respProjection[respProjection.length - 1]?.Solde || 0;
+    const totalResp = respProjection[respProjection.length - 1]?.Solde ?? null;
     const totalStudiesCost = uniInfo.yearlyCost * uniInfo.years;
-    const respCovers = totalStudiesCost > 0 ? Math.min(100, (totalResp / totalStudiesCost) * 100) : 100;
+    const respCovers = totalResp != null && totalStudiesCost > 0
+        ? Math.min(100, (totalResp / totalStudiesCost) * 100)
+        : null;
 
     // C8 fix : garde déplacée APRÈS tous les hooks ci-dessus.
     if (!goal) return null;
@@ -420,9 +425,13 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     🔗 {fmt(projectedReeeAt18)}
                                 </Badge>
                             )}
-                            <div className={`text-xs font-bold px-2 py-1 rounded border ${respCovers >= 100 ? 'text-green-400 border-green-500/30 bg-green-500/10' : 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10'}`}>
-                                {respCovers.toFixed(0)}% des études couvertes
-                            </div>
+                            {respCovers != null ? (
+                                <div className={`text-xs font-bold px-2 py-1 rounded border ${respCovers >= 100 ? 'text-green-400 border-green-500/30 bg-green-500/10' : 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10'}`}>
+                                    {respCovers.toFixed(0)}% des études couvertes
+                                </div>
+                            ) : (
+                                <ProjectionRequired variant="inline" feature="la couverture études" />
+                            )}
                         </div>
                     }>
                         <div className="space-y-3 mb-4">
@@ -437,7 +446,9 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                             <div className="grid grid-cols-3 gap-2">
                                 <div className="bg-blue-900/20 p-3 rounded-lg border border-blue-500/20 text-center">
                                     <div className="text-tiny text-gray-500 uppercase mb-1">Capital à 17 ans</div>
-                                    <div className="text-lg font-black text-white privacy-blur">{fmt(totalResp)}</div>
+                                    <div className="text-lg font-black text-white privacy-blur">
+                                        {totalResp != null ? fmt(totalResp) : <ProjectionRequired variant="inline" />}
+                                    </div>
                                 </div>
                                 <div className="bg-green-900/20 p-3 rounded-lg border border-green-500/20 text-center">
                                     <div className="text-tiny text-gray-500 uppercase mb-1">Coût études prévu</div>
@@ -445,11 +456,16 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 </div>
                                 <div className="bg-purple-900/20 p-3 rounded-lg border border-purple-500/20 text-center">
                                     <div className="text-tiny text-gray-500 uppercase mb-1">Couverture</div>
-                                    <div className={`text-lg font-black ${respCovers >= 100 ? 'text-green-400' : 'text-yellow-400'}`}>{respCovers.toFixed(0)}%</div>
+                                    <div className={`text-lg font-black ${respCovers != null && respCovers >= 100 ? 'text-green-400' : 'text-yellow-400'}`}>
+                                        {respCovers != null ? `${respCovers.toFixed(0)}%` : '—'}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         <div className="h-[200px]">
+                            {respProjection.length === 0 ? (
+                                <ProjectionRequired feature="La projection REEE" />
+                            ) : (
                             <ResponsiveContainer width="100%" height="100%">
                                 <ComposedChart data={respProjection} margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
                                     <defs>
@@ -467,6 +483,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     <Bar dataKey="Subvention" fill="#10b981" name="Subventions reçues" />
                                 </ComposedChart>
                             </ResponsiveContainer>
+                            )}
                         </div>
                     </Card>
 

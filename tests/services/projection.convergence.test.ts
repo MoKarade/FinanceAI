@@ -321,6 +321,63 @@ describe('Convergence projection ↔ UI', () => {
         });
     });
 
+    describe('Centralisation Phase 3 (nouveaux champs chartData)', () => {
+        it('realNetWorth est exposé et < NetWorth après inflation cumulée', () => {
+            const result = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 10, inflationRate: 2 }),
+            })) as any;
+            const chart: any[] = result.chartData;
+            const lastPoint = chart[chart.length - 1];
+            expect(typeof lastPoint.realNetWorth).toBe('number');
+            expect(Number.isFinite(lastPoint.realNetWorth)).toBe(true);
+            // Après 10 ans à 2% : realNetWorth doit être < NetWorth nominal
+            expect(lastPoint.realNetWorth).toBeLessThan(lastPoint.NetWorth);
+        });
+
+        it('liquidityRunway est exposé et > 0 si Liquidites > 0', () => {
+            const result = calculateFutureProjection(makeParams()) as any;
+            const first = result.chartData[0];
+            expect(typeof first.liquidityRunway).toBe('number');
+            expect(first.liquidityRunway).toBeGreaterThanOrEqual(0);
+        });
+
+        it('mortgageRemainingMonths exposé (0 si pas d\'hypo)', () => {
+            const result = calculateFutureProjection(makeParams()) as any;
+            const first = result.chartData[0];
+            expect(typeof first.mortgageRemainingMonths).toBe('number');
+            expect(first.mortgageRemainingMonths).toBe(0); // pas d'immo dans fixture
+        });
+
+        it('reeeContribCum / reeeGrantsCum croissent monotone (au moins pendant 0-17 ans enfant)', () => {
+            const result = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 20 }),
+            })) as any;
+            const chart: any[] = result.chartData;
+            // Trouver des points où l'enfant est éligible REEE
+            const points = chart.filter((_, i) => i % 12 === 0).slice(0, 10);
+            let lastContrib = 0;
+            let lastGrants = 0;
+            for (const p of points) {
+                expect(typeof p.reeeContribCum).toBe('number');
+                expect(typeof p.reeeGrantsCum).toBe('number');
+                expect(p.reeeContribCum).toBeGreaterThanOrEqual(lastContrib - 1); // tolérance arrondis
+                expect(p.reeeGrantsCum).toBeGreaterThanOrEqual(lastGrants - 1);
+                lastContrib = p.reeeContribCum;
+                lastGrants = p.reeeGrantsCum;
+            }
+        });
+
+        it('DividendIncome et TaxableInvIncome exposés', () => {
+            const result = calculateFutureProjection(makeParams()) as any;
+            const first = result.chartData[0];
+            expect(typeof first.DividendIncome).toBe('number');
+            expect(typeof first.TaxableInvIncome).toBe('number');
+            expect(first.DividendIncome).toBeGreaterThanOrEqual(0);
+            // TaxableInvIncome >= DividendIncome (gains × 50% ajouté)
+            expect(first.TaxableInvIncome).toBeGreaterThanOrEqual(first.DividendIncome);
+        });
+    });
+
     describe('Convergence formelle', () => {
         it('chartData[0].NetWorth ≈ calculatedStartingCash + portfolio + immo', () => {
             const params = makeParams();

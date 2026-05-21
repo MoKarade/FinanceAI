@@ -180,20 +180,29 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
         const birthYear = new Date(goal.birthDate).getFullYear();
         const data = [];
         let prevBalance = currentRESP;
+        let prevContribCum = 0;
+        let prevGrantsCum = 0;
         for (let age = 0; age <= 17; age++) {
             const targetYear = birthYear + age;
-            // Premier point de l'année cible (point de janvier)
-            const point = lastProjection.chartData.find(p => p.year === targetYear);
+            const point = lastProjection.chartData.find(p => p.year === targetYear) as any;
             if (!point || typeof point.REEE !== 'number') continue;
             const solde = point.REEE;
+            const contribCum = point.reeeContribCum ?? prevContribCum;
+            const grantsCum = point.reeeGrantsCum ?? prevGrantsCum;
+            // Annual delta
+            const contribAnnual = Math.max(0, contribCum - prevContribCum);
+            const grantAnnual = Math.max(0, grantsCum - prevGrantsCum);
+            const interets = Math.max(0, Math.round(solde - prevBalance - contribAnnual - grantAnnual));
             data.push({
                 age,
                 Solde: Math.round(solde),
-                Contribution: 0,    // Détail non exposé séparément par le moteur
-                Subvention: 0,      // (à ajouter en Phase 3 — reeeContribCum/reeeGrantsCum)
-                Intérêts: Math.max(0, Math.round(solde - prevBalance)),
+                Contribution: Math.round(contribAnnual),
+                Subvention: Math.round(grantAnnual),
+                Intérêts: interets,
             });
             prevBalance = solde;
+            prevContribCum = contribCum;
+            prevGrantsCum = grantsCum;
         }
         return data;
     }, [lastProjection, currentRESP, goal?.birthDate]);

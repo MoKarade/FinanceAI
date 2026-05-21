@@ -1012,6 +1012,17 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             calculateFiscalReport,
         );
 
+        // Centralisation Phase 3 Tier 2 — cumul REEE (somme sur tous les enfants)
+        const reeeContribCum = Object.values(reeeTracker).reduce((s, t) => s + (t.contribLifetime ?? 0), 0);
+        const reeeGrantsCum = Object.values(reeeTracker).reduce((s, t) => s + (t.scee ?? 0) + (t.iqee ?? 0), 0);
+
+        // Centralisation Phase 3 Tier 3 — dividendes mensuels + revenus de
+        // placement imposables (50% des gains capital + 100% des dividendes).
+        // Approximation : rendement non-reg × 30% × balance, divisé par 12.
+        const baseNonRegRateForDiv = baseRates.nonReg ?? 0;
+        const dividendIncome = (nonReg * (baseNonRegRateForDiv / 100) * 0.30) / 12;
+        const taxableInvIncome = dividendIncome + (accCapitalGainsYear * 0.5) / 12;
+
         // Cycle 21 split: assemblage data.push → ./projection/monthlyOutput
         data.push(buildMonthlyDataPoint({
             m, retirementMonthIndex, fireTargetNetWorth, futureFireTarget,
@@ -1020,6 +1031,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             incomeMarc, incomeAnna, incomeRetirement, monthlyIncome, monthlyExpenses,
             childMonthlyCost, childGrossCost, childBenefits,
             reeeContribMonthly, reeePayoutMonthly,
+            reeeContribCum, reeeGrantsCum,
+            dividendIncome, taxableInvIncome,
             immoHypo, immoCharges, immoInterest, immoPrincipal, totalRentalIncome,
             liquid, celi, celiapp, reer, reee, nonReg, crypto,
             retraitReerMois, retraitCeliMois, celiRoom, rrspRoom,

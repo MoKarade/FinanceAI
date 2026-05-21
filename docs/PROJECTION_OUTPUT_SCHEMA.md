@@ -119,17 +119,23 @@ const peakNW = useProjectionSelector(
 );
 ```
 
-## Champs non disponibles (à ajouter au moteur si besoin)
+## Champs Phase 3 ajoutés (2026-05-21)
 
-Identifiés par audit ChildPlanning/Retirement/TaxCenter — calculs faits ad-hoc :
+Centralisation — champs dérivés / cumulés exposés :
 
-| Champ proposé | Consommateur actuel | Effort ajout moteur |
+| Champ | Type | Sémantique |
 |---|---|---|
-| `pensionRRQ`, `pensionPSV`, `pensionPrivee` (split `IncomeRetirement`) | Retirement | 30 min |
-| `marginalTaxRate`, `effectiveTaxRate` (%) | TaxCenter | 30 min |
-| `reeeTotalContribCum`, `reeeGrantsCum` (SCEE+IQEE) | ChildPlanning | 1 h |
-| `liquidityRunway` (mois de coussin) | Retirement, Dashboard stress-test | 30 min |
-| `realNetWorth` (NetWorth déflaté à $ d'aujourd'hui) | Charts "pouvoir d'achat" | 15 min |
-| `mortgageRemainingMonths` | RealEstate | 30 min |
+| `realNetWorth` | $ | NetWorth déflaté à $ d'aujourd'hui (= NetWorth / expenseMultiplier) |
+| `liquidityRunway` | mois | Mois de dépenses couverts par Liquidites (= Liquid / monthlyExpenses) |
+| `mortgageRemainingMonths` | mois | Estimation linéaire (= mortgageBalance / immoHypo) |
+| `reeeContribCum` | $ | Cumul contributions REEE (ménage, somme sur tous les enfants) |
+| `reeeGrantsCum` | $ | Cumul subventions SCEE + IQEE (ménage) |
+| `DividendIncome` | $/mois | Dividendes NonReg estimés (= solde × yield × 30% / 12) |
+| `TaxableInvIncome` | $/mois | Revenus de placement imposables (= dividendes + 50% gains capital / 12) |
 
-À envisager pour Sprint suivant.
+## Champs encore à ajouter (Phase 3 finition)
+
+| Champ proposé | Consommateur | Effort |
+|---|---|---|
+| `pensionRRQ`, `pensionPSV`, `pensionPrivee` (split `IncomeRetirement`) | Retirement | 30 min (refactor retirementIncome.ts) |
+| `marginalTaxRate`, `effectiveTaxRate` (%) | TaxCenter | 30 min (appel calculateFiscalReport per-month) |

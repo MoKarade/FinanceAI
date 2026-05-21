@@ -63,7 +63,7 @@ Ajouter ces champs dans `ProjectionChartPoint` :
 - [x] `DividendIncome` ($) mensuel — pour Investments + DividendPanel
 - [x] `reeeGrantsCum` ($) — pour ChildPlanning respProjection
 - [x] `reeeContribCum` ($) — pour ChildPlanning respProjection
-- [ ] `pensionRRQ`, `pensionPSV`, `pensionPrivee` (split IncomeRetirement) — reporté (refactor retirementIncome.ts non-trivial)
+- [x] `pensionRRQ`, `pensionPSV`, `pensionPrivee` (split IncomeRetirement) ✅ 2026-05-21
 - [x] `realNetWorth` (déflaté à $ d'aujourd'hui) — pour charts pouvoir d'achat
 - [x] `liquidityRunway` (mois) — pour stress test
 - [x] `mortgageRemainingMonths` — estimation linéaire balance/paiement
@@ -168,9 +168,9 @@ Si un test asset n'est pas dans le CSV (regression future), afficher un warning.
 - [ ] Mesurer post Sprint 1 vs baseline (suppression framer-motion -80KB déjà fait)
 - [ ] Identifier prochain candidat à lazy-load (recharts ? PDF lib ?)
 
-### P2 — Cache portfolio-history.csv en SW
-Le SW cache déjà `/assets/*`. Ajouter `/portfolio-history.csv` et
-`/test-portfolio-history.csv` ?
+### P2 — Cache portfolio-history.csv en SW ✅ TERMINÉ 2026-05-21
+Le SW cache désormais `/assets/*` + `/portfolio-history.csv` +
+`/test-portfolio-history.csv` (cache-first, immuable côté serveur).
 
 ### P3 — Worker projection : profiler
 Le moteur s'est alourdi (childCosts, fix dettes). Mesurer impact sur

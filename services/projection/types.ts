@@ -86,11 +86,14 @@ export interface ProjectionChartPoint {
     // Centralisation Phase 3 — Tier 2 (tracking REEE)
     reeeContribCum?: number;        // Cumul contributions REEE (ménage)
     reeeGrantsCum?: number;         // Cumul subventions SCEE+IQEE (ménage)
-    // Centralisation Phase 3 — Tier 3 (fiscalité + dividendes)
+    // Centralisation Phase 3 — Tier 3 (fiscalité + dividendes + pensions split)
     marginalTaxRate?: number;       // Taux marginal d'imposition (%)
     effectiveTaxRate?: number;      // Taux moyen d'imposition (%)
     DividendIncome?: number;        // Dividendes mensuels NonReg
     TaxableInvIncome?: number;      // Revenus de placement imposables
+    pensionRRQ?: number;            // Rente RRQ/RPC mensuelle
+    pensionPSV?: number;            // PSV + SRG mensuelle (après écrêtement)
+    pensionPrivee?: number;         // Pensions privées DB mensuelles
     ContribCELI?: number;
     ContribREER?: number;
     ContribNonReg?: number;

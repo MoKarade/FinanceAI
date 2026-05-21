@@ -424,6 +424,35 @@ describe('Convergence projection ↔ UI', () => {
             expect(lastPoint.reeeContribCum).toBeLessThanOrEqual(50000 * 1 + 100); // tolérance arrondis
         });
 
+        it('pensionRRQ/PSV/Privee exposés et somme cohérente avec IncomeRetirement', () => {
+            const result = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 35 }),
+                retirementGoal: makeRetirementGoal({ targetAge: 60 }),
+            })) as any;
+            const chart: any[] = result.chartData;
+            const retiredPoint = chart.find(p => p.isRetired && p.IncomeRetirement > 0);
+            if (retiredPoint) {
+                expect(typeof retiredPoint.pensionRRQ).toBe('number');
+                expect(typeof retiredPoint.pensionPSV).toBe('number');
+                expect(typeof retiredPoint.pensionPrivee).toBe('number');
+                // Somme ≈ IncomeRetirement (à ±5% pour écrêtement PSV)
+                const sum = retiredPoint.pensionRRQ + retiredPoint.pensionPSV + retiredPoint.pensionPrivee;
+                expect(sum).toBeGreaterThanOrEqual(retiredPoint.IncomeRetirement * 0.95);
+                expect(sum).toBeLessThanOrEqual(retiredPoint.IncomeRetirement * 1.15);
+            }
+        });
+
+        it('Hors retraite, pensions = 0', () => {
+            const result = calculateFutureProjection(makeParams()) as any;
+            const chart: any[] = result.chartData;
+            const activePoint = chart.find(p => !p.isRetired);
+            if (activePoint) {
+                expect(activePoint.pensionRRQ).toBe(0);
+                expect(activePoint.pensionPSV).toBe(0);
+                expect(activePoint.pensionPrivee).toBe(0);
+            }
+        });
+
         it('liquidityRunway diminue en retraite (décumulation)', () => {
             const result = calculateFutureProjection(makeParams({
                 projection: makeProjection({ years: 35 }),

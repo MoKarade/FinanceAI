@@ -55,15 +55,22 @@ describe('computeRetirementIncome — SRG §7.G regression', () => {
         const income = computeRetirementIncome(coupleCtx, coupleGoal, coupleUsers);
         // With low income, GIS should kick in — income must exceed RRQ+PSV alone
         const rrqPsvOnly = (300 * 2) * (35 / 40) + (700 * 2) * (35 / 40); // rough family total
-        expect(income).toBeGreaterThan(rrqPsvOnly * 0.8);
+        expect(income.total).toBeGreaterThan(rrqPsvOnly * 0.8);
     });
 
     it('single: SRG computation does not multiply income by activeUsersCount=1 (no double-count)', () => {
         // Single person — ensure otherIncomeAnnualFamily equals rrqMonthly*12, not doubled
         const singleCtx: RetirementIncomeCtx = { ...baseCtx, activeUsersCount: 1 };
         const income1 = computeRetirementIncome(singleCtx, baseGoal, [baseUser]);
-        expect(income1).toBeGreaterThan(0);
-        expect(Number.isFinite(income1)).toBe(true);
+        expect(income1.total).toBeGreaterThan(0);
+        expect(Number.isFinite(income1.total)).toBe(true);
+        // Phase 3 Tier 3 — split par source disponible
+        expect(income1.rrq).toBeGreaterThanOrEqual(0);
+        expect(income1.psv).toBeGreaterThanOrEqual(0);
+        expect(income1.privee).toBeGreaterThanOrEqual(0);
+        // Total = somme des composantes - oasReduction (clampé à 0)
+        const computed = Math.max(0, income1.rrq + income1.psv + income1.privee - income1.oasReduction);
+        expect(income1.total).toBeCloseTo(computed, 1);
     });
 
     it('couple with minimal pension: GIS is NOT zero (§7.G double-count fix)', () => {
@@ -82,6 +89,6 @@ describe('computeRetirementIncome — SRG §7.G regression', () => {
         const income = computeRetirementIncome(coupleCtx, lowIncomeGoal, [baseUser, baseUser]);
         // GIS should push total above raw PSV+RRQ
         const rawPsvRrq = (700 * 2 + 100 * 2); // family monthly
-        expect(income).toBeGreaterThan(rawPsvRrq * 0.85);
+        expect(income.total).toBeGreaterThan(rawPsvRrq * 0.85);
     });
 });

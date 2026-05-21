@@ -84,7 +84,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const fetchLiveTotals = async () => {
             const history = await fetchPortfolioHistory();
                 if (!history || history.length === 0) {
-                    console.warn("FutureProjection: No history found, using default balances.");
+                    // LOW-4 fix (audit 2026-05-21) : log seulement en DEV. État
+                    // normal pour un nouvel utilisateur sans historique CSV.
+                    if (import.meta.env.DEV) {
+                        console.warn("FutureProjection: No history found, using default balances.");
+                    }
                     return;
                 }
                 const lastRow = history[history.length - 1];

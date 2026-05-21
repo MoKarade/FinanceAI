@@ -281,6 +281,59 @@ Couple **Alex + Sam** (mode test, `services/testFixtures.ts`) :
 | 18.8 | Navigation au clavier (Tab/Enter/Esc) fonctionne sur modaux | a11y |
 | 18.9 | Aucun `console.error` rouge dans toute la session | Critical |
 | 18.10 | Aucun warning React Hooks order | OK |
+| 18.11 | **Keyboard shortcut Alt+1** → Dashboard, Alt+2 → Transactions, … Alt+9 → Assistant | 9 raccourcis OK |
+| 18.12 | Alt+N dans un input texte **ne déclenche pas** la navigation | OK |
+| 18.13 | **PWA install banner** custom (bas écran emerald) apparaît si non installée | OK |
+| 18.14 | Bouton "Plus tard" dismiss le banner pour **30 jours** (localStorage) | OK |
+| 18.15 | Banner ne réapparaît PAS si app déjà installée (`display-mode: standalone`) | OK |
+| 18.16 | **SW cache CSV** : DevTools → Application → Cache `financeai-v2` contient portfolio-history.csv | OK |
+| 18.17 | Mode offline (DevTools → Network → Offline) → mode test charge quand même | CSV cached |
+
+## Section 20 — Mode strict (empty states transverses)
+
+| # | Test | Attendu |
+|---|------|---------|
+| 20.1 | **Mode test désactivé + projection jamais calculée** → Retraite affiche `ProjectionRequired` | Card amber "Projection nécessaire" + CTA |
+| 20.2 | Idem → Dashboard "Indicateur Futur" affiche inline `ProjectionRequired` au lieu d'inventer | OK |
+| 20.3 | Idem → Investments Card "Portefeuille projeté" affiche `ProjectionRequired` (block) | OK |
+| 20.4 | Idem → Budget "Impact à long terme" affiche `ProjectionRequired` | OK |
+| 20.5 | Idem → RealEstate badge "Équité projetée" affiche `ProjectionRequired` inline | OK |
+| 20.6 | Idem → Planning "Latte Factor" affiche `ProjectionRequired` (pas plus de × 10 × 1.4 fake) | OK |
+| 20.7 | Idem → ChildPlanning graph REEE affiche `ProjectionRequired` (pas de formule locale) | OK |
+| 20.8 | Idem → HealthIndicator ligne FIRE affiche "Projection requise — ouvrir Future" | OK |
+| 20.9 | Bouton "Ouvrir Future →" dans tous les empty states fonctionne | OK navigation |
+| 20.10 | Aucun composant en mode strict n'affiche `0,00 $` / `NaN` / formule fake | Critique |
+
+## Section 21 — Centralisation (convergence inter-onglets)
+
+| # | Test | Attendu |
+|---|------|---------|
+| 21.1 | Ouvrir Future avec scénario "Liberté 55" → Retraite badge "Scénario actif : Liberté 55" | OK |
+| 21.2 | Changer scénario Future → HealthIndicator FIRE se met à jour sans reload | OK |
+| 21.3 | Toggle Monte Carlo dans Future → Retraite reflète automatiquement | OK |
+| 21.4 | Patrimoine Future = NetWorth dernier point chartData (±5% impôts latents) | OK convergence |
+| 21.5 | Taux marginal Future tooltip = `marginalTaxRate` chartData | OK |
+| 21.6 | Mortgage restant Future = `mortgageRemainingMonths` (estimation linéaire) | OK |
+| 21.7 | REEE Future = ChildPlanning Solde REEE année correspondante | OK depuis pension split |
+| 21.8 | Liquidity runway Dashboard = `chartData[0].liquidityRunway` mois courant | OK |
+| 21.9 | `realNetWorth` ≠ `NetWorth` après 20+ ans d'inflation | OK déflation |
+| 21.10 | Pension RRQ/PSV/Privée séparées dans chartData après 65 ans (sum ≈ IncomeRetirement ±5%) | OK |
+| 21.11 | DividendIncome `chartData[0]` ≈ NonReg × yield × 30% / 12 | OK |
+| 21.12 | reeeContribCum plafonné à 50 000$ par enfant (limite ARC) | OK |
+
+## Section 22 — Auth / Sécurité (post Cloudflare Access)
+
+| # | Test | Attendu |
+|---|------|---------|
+| 22.1 | Accès www.hubperso.com sans session → redirige Cloudflare Access (Google OAuth) | OK |
+| 22.2 | Login Google non autorisé → "Access denied" Cloudflare | OK |
+| 22.3 | Session valide → app charge en < 3 s | OK |
+| 22.4 | Header `Cf-Access-Authenticated-User-Email` présent (DevTools Network) | OK |
+| 22.5 | Logout via `/cdn-cgi/access/logout` redirige propre | OK |
+| 22.6 | MFA Google requis à la connexion | OK |
+| 22.7 | Validation clé Anthropic : format `sk-ant-...` warning visuel | OK depuis 2026-05-21 |
+| 22.8 | Validation clé Finnhub : alphanum ≥ 15 chars warning si non-conforme | OK |
+| 22.9 | **V1 fix** : pas de `app_api_keys` en clair dans localStorage (purge auto au boot) | OK depuis 2026-05-21 |
 
 ## Section 19 — Régressions critiques (à vérifier après chaque fix majeur)
 
@@ -343,3 +396,5 @@ Quand on livre un fix ou une feature :
 | 2026-05-21 | +4 tests (1.15-1.18) | CSV Yahoo Finance réel pour mode test |
 | 2026-05-21 | +4 tests (9.12-9.15) | Migration ChildPlanning costTimeline source unique |
 | 2026-05-21 | +6 tests Vitest convergence (Sprint 1A/1E) | HealthIndicator + ChildPlanning migrés |
+| 2026-05-21 | +32 tests manuels (Sections 18.11-18.17, 20, 21, 22) | Mode strict + Centralisation + Auth + raccourcis |
+| 2026-05-21 | Cible 160-200 atteinte : 163 tests | Voir détail dans sections |

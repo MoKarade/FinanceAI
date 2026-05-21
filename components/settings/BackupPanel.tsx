@@ -170,10 +170,13 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
     };
 
     // C5 fix : apiKeys n'est plus inclus dans les backups par défaut (sécurité).
-    // Si un ancien backup contient des apiKeys (version <= 3.1), on les
-    // restaure quand même pour rétrocompatibilité. Sinon, l'utilisateur doit
-    // les re-saisir (toast affiché plus bas).
-    if (data.apiKeys) safeSet('app_api_keys', data.apiKeys);
+    // V1 fix (audit 2026-05-21) : si un ancien backup contient des apiKeys,
+    // on NE LES RESTAURE PLUS dans localStorage (où elles seraient en clair).
+    // L'utilisateur doit les re-saisir manuellement via Configuration (la
+    // clef legacy `app_api_keys` est purgée au prochain boot du store).
+    if (data.apiKeys) {
+        console.warn('[Restore] apiKeys détectées dans backup mais non restaurées (sécurité V1). Re-saisir manuellement dans Configuration.');
+    }
     safeSet('app_config', data.config);
     safeSet('app_budget', data.budgetItems);
     safeSet('initial_balances', data.initialBalances);

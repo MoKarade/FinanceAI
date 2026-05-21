@@ -55,7 +55,6 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     const [universityType, setUniversityTypeLocal] = useState<UniversityType>((goal?.universityType as UniversityType) || 'uni_local');
     const [carGift, setCarGiftLocal] = useState<CarGift>((goal?.carGift as CarGift) || 'non');
     const [respContribution, setRespContributionLocal] = useState(goal?.respContribution ?? 2500);
-    const [parentAtHome, setParentAtHome] = useState(false);
 
     // C8 fix : la garde `if (!goal) return null` est déplacée APRÈS tous les
     // hooks (juste avant le `return` JSX final). Les hooks qui dépendent de
@@ -110,14 +109,10 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [goal?.id]);
 
-    // Impact du parent au foyer : pas de coût garderie mais perte de salaire
-    useEffect(() => {
-        if (daycareType === 'parent_foyer') {
-            setParentAtHome(true);
-        } else {
-            setParentAtHome(false);
-        }
-    }, [daycareType]);
+    // Note (audit HIGH-1 2026-05-21) : le state local `parentAtHome` a été
+    // supprimé car jamais lu. La logique parent au foyer est correctement
+    // appliquée via `daycareType === 'parent_foyer'` dans `getAnnualChildCost`
+    // de services/projection/childCosts.ts (source unique).
 
     // Variables locales : seules uniInfo est utilisée par le JSX (couverture études).
     // Les autres (daycareMonthly, schoolYearly, etc.) étaient utilisées par
@@ -523,5 +518,8 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
 };
 
 function parentalLeaveMonthsCost(goal: ChildGoal): number {
-    return (goal.parentalLeaveIncomeDrop || 900) * 12;
+    // HIGH-2 fix (audit 2026-05-21) : fallback aligné sur INITIAL_CHILD_GOAL
+    // (constants.ts = 800$). Avant : 900 fallback non documenté → divergence
+    // silencieuse entre fixture par défaut et calcul si champ undefined.
+    return (goal.parentalLeaveIncomeDrop ?? INITIAL_CHILD_GOAL.parentalLeaveIncomeDrop) * 12;
 }

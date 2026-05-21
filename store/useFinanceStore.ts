@@ -135,12 +135,21 @@ const getInitialStateWithMigration = (): AppState => {
             finnhub: '',
         };
         if (savedApiKeysStr) {
-            const parsed = JSON.parse(savedApiKeysStr);
-            safeApiKeys = {
-                eraContext: parsed.eraContext || parsed.lunchMoney || safeApiKeys.eraContext,
-                anthropic: parsed.anthropic || '',
-                finnhub: parsed.finnhub || '',
-            };
+            // V1 SECURITY (audit 2026-05-21) : la clef legacy `app_api_keys`
+            // stockait les clefs API en clair, exfiltrable via XSS ou extension
+            // malveillante. Migration : on lit une dernière fois pour ne pas
+            // perdre les clefs existantes, puis on SUPPRIME la clef du
+            // localStorage. Les nouvelles clefs vivent dans le state Zustand
+            // (excluded de persist via partialize → uniquement en mémoire).
+            try {
+                const parsed = JSON.parse(savedApiKeysStr);
+                safeApiKeys = {
+                    eraContext: parsed.eraContext || parsed.lunchMoney || safeApiKeys.eraContext,
+                    anthropic: parsed.anthropic || '',
+                    finnhub: parsed.finnhub || '',
+                };
+            } catch { /* parse error, ignorer */ }
+            try { localStorage.removeItem('app_api_keys'); } catch { /* quota / privacy */ }
         }
 
         const savedTransactions = localStorage.getItem('cached_transactions');

@@ -17,45 +17,12 @@
 
 import { useMemo } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
+// MEDIUM-3 fix (audit 2026-05-21) : re-export du type canonique de
+// services/projection/types.ts au lieu d'une copie locale qui devenait
+// silencieusement obsolète à chaque ajout de champ dans monthlyOutput.ts.
+import type { ProjectionChartPoint as CanonicalProjectionChartPoint } from '../services/projection/types';
 
-export interface ProjectionChartPoint {
-    monthIndex: number;
-    dateLabel?: string;
-    year: number;
-    age: number;
-    isRetired?: boolean;
-    NetWorth: number;
-    Liquidites?: number;
-    CELI?: number;
-    CELIAPP?: number;
-    REER?: number;
-    REEE?: number;
-    NonReg?: number;
-    Crypto?: number;
-    Immobilier?: number;
-    DetteTotale?: number;
-    Income?: number;
-    IncomeMarc?: number;
-    IncomeAnna?: number;
-    IncomeRetirement?: number;
-    Expenses?: number;
-    childGross?: number;
-    childCost?: number;
-    childBenefits?: number;
-    ReeeContrib?: number;
-    ReeePayout?: number;
-    RetraitREER?: number;
-    RetraitCELI?: number;
-    Savings?: number;
-    FireTarget?: number;
-    lifeEvents?: string[];
-    flowEvents?: string[];
-    P10?: number | null;
-    P50?: number | null;
-    P90?: number | null;
-    diffNW?: number;
-    [key: string]: unknown;
-}
+export type ProjectionChartPoint = CanonicalProjectionChartPoint;
 
 /**
  * Sélectionne un slice de la projection courante.

@@ -39,7 +39,12 @@ export default defineConfig(({ mode }) => {
         }
       },
       build: {
-        sourcemap: 'hidden',
+        // Sprint 3 SH6 (sécurité) — `'hidden'` générait quand même les fichiers
+        // .js.map déployés sur Vercel/Netlify (accessibles publiquement à
+        // domaine.com/assets/index-X.js.map → exposait tout le TS source).
+        // `false` ne génère AUCUN sourcemap. Si on veut debug en prod, utiliser
+        // un service de monitoring privé qui upload les sourcemaps séparément.
+        sourcemap: false,
         chunkSizeWarningLimit: 800,
         // Phase 3E perf — désactive le polyfill modulepreload (économise ~2-4KB
         // sur le bundle initial). Tous les navigateurs modernes supportent

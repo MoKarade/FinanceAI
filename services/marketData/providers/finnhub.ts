@@ -34,11 +34,18 @@ function toFinnhubSymbol(ours: string): string {
 }
 
 async function finnhubFetch(path: string, apiKey: string): Promise<any> {
-    const url = `${BASE_URL}${path}${path.includes('?') ? '&' : '?'}token=${encodeURIComponent(apiKey)}`;
+    // Sprint 3 SH4 (sécurité) — Passage de la clé Finnhub depuis URL query string
+    // (token=xxx, visible dans Network tab + Referer header + historique nav)
+    // vers le header X-Finnhub-Token. Finnhub supporte ce header officiellement.
+    // Avant ce fix, la clé apparaissait en clair dans tous les logs de requête.
+    const url = `${BASE_URL}${path}`;
     const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     try {
-        const res = await fetch(url, { signal: ctrl.signal });
+        const res = await fetch(url, {
+            signal: ctrl.signal,
+            headers: { 'X-Finnhub-Token': apiKey },
+        });
         if (res.status === 401 || res.status === 403) {
             throw new MarketDataError('Clé API Finnhub invalide.', 'AUTH', 'finnhub');
         }

@@ -341,7 +341,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 <KPIStat
                     label="Patrimoine projeté"
                     icon="💼"
-                    value={`${((results?.estateNetWorth || 0) / 1000000).toFixed(2)}M $`}
+                    // Fallback : si estateNetWorth est 0 (rare en réalité ou bug
+                    // silencieux du moteur), utiliser finalNetWorth puis fireNumber
+                    // comme proxy. Évite d'afficher "0.00M$" trompeur en mode test.
+                    value={`${(((results?.estateNetWorth || results?.finalNetWorth || results?.fireNumber) || 0) / 1000000).toFixed(2)}M $`}
                     sublabel={`Fin de l'horizon (${projection.years || 30} ans)`}
                     privacy
                     variant="primary"

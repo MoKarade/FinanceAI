@@ -1051,6 +1051,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         startingREEE: liveCSVBalances.REEE || 0,
     }, calculateFiscalReport);
 
+    // Bug détecté en mode test : chartData parfois vide silencieusement
+    // (lastProjection jamais set côté store). Trace explicite pour faciliter
+    // le debug local quand on voit "Patrimoine projeté: 0.00M$" en UI.
+    if (data.length === 0) {
+        console.warn('[projection] runScenario retourne chartData=[] — possible early break (mortality?) ou boucle skip. years=', projection.years, ' isDead=', isDead, ' estateNetWorth=', estate.estateNetWorth);
+    }
+
     return {
         chartData: data,
         actionPlan: month1ActionPlan,

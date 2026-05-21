@@ -137,7 +137,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
     );
 
     const { unifiedHistory, latestTotals, accountKeys, segmentedData, totalMonthlyPassive } = useMemo(() => {
-        if (marketData.length === 0) return { unifiedHistory: [], latestTotals: { Total: 0 }, accountKeys: [], segmentedData: { assets: [], cash: [], credit: [] }, totalMonthlyPassive: 0 };
+        // Bug fix test-mode : si marketData (CSV historique externe) vide, on
+        // calcule quand même un latestTotals.Total à partir de initialBalances +
+        // transactions (cash) + assets (portfolio courant) pour que NetWorth
+        // s'affiche correctement en mode test ou pour user sans CSV.
+        if (marketData.length === 0) {
+            let cash = 0;
+            (Object.values(initialBalances) as number[]).forEach(v => cash += v);
+            transactions.forEach((t) => {
+                if (!t.isDuplicate && !t.isTransfer) cash += t.amount;
+            });
+            const portfolio = assets.reduce((sum, a) => sum + (a.quantity || 0) * (a.currentPrice || 0), 0);
+            return {
+                unifiedHistory: [],
+                latestTotals: { date: new Date().toISOString().split('T')[0], Total: cash + portfolio } as MarketDataPoint,
+                accountKeys: [],
+                segmentedData: { assets: [], cash: [], credit: [] },
+                totalMonthlyPassive: 0,
+            };
+        }
 
         // 1. Transaction Timeline & Balances
         const sortedTxs = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());

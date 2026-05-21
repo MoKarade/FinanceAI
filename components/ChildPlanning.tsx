@@ -3,7 +3,7 @@ import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area, ReferenceLine } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area, ReferenceLine, ComposedChart } from 'recharts';
 import { ChildGoal, ProjectionConfig, Tab as TabEnum } from '../types';
 import { INITIAL_CHILD_GOAL } from '../constants';
 import { ConfirmModal } from './ui/ConfirmModal';
@@ -496,7 +496,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                         </div>
                         <div className="h-[200px]">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={respProjection} margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
+                                <ComposedChart data={respProjection} margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="respGrad" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
@@ -510,7 +510,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     <Legend />
                                     <Area type="monotone" dataKey="Solde" stroke="#3b82f6" fill="url(#respGrad)" strokeWidth={2} name="Solde Total" />
                                     <Bar dataKey="Subvention" fill="#10b981" name="Subventions reçues" />
-                                </AreaChart>
+                                </ComposedChart>
                             </ResponsiveContainer>
                         </div>
                     </Card>

@@ -51,13 +51,24 @@ export const App: React.FC = () => {
         // Léger debounce (2s) pour ne pas bloquer le 1er paint.
         const timer = setTimeout(() => { initAutoBackup(); }, 2000);
 
-        // P2.9 — service worker en PROD seulement (Vite HMR en dev s'auto-gère)
+        // P2.9 — service worker en PROD seulement (Vite HMR en dev s'auto-gère).
+        // Bug fix 2026-05-21 : ce useEffect tourne souvent APRÈS window.load
+        // (mount React arrive après l'event), donc addEventListener('load') ne
+        // déclenchait jamais le callback → SW jamais registered, cache vide.
+        // Fix : register direct si le DOM est déjà loaded, sinon on attend l'event.
         if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').catch(() => {
-                    // silent fail — l'app fonctionne sans SW
+            const registerSW = () => {
+                navigator.serviceWorker.register('/sw.js').catch((err) => {
+                    // log explicite plutôt qu'un silent catch — utile en cas
+                    // de régression future (anti-pattern silent-failure-hunter).
+                    console.error('[SW] registration failed:', err);
                 });
-            });
+            };
+            if (document.readyState === 'complete') {
+                registerSW();
+            } else {
+                window.addEventListener('load', registerSW, { once: true });
+            }
         }
 
         return () => clearTimeout(timer);

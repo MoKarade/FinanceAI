@@ -50,6 +50,16 @@ export const App: React.FC = () => {
         // P1.3 — auto-backup quotidien dans IndexedDB (silent fail si indispo).
         // Léger debounce (2s) pour ne pas bloquer le 1er paint.
         const timer = setTimeout(() => { initAutoBackup(); }, 2000);
+
+        // P2.9 — service worker en PROD seulement (Vite HMR en dev s'auto-gère)
+        if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(() => {
+                    // silent fail — l'app fonctionne sans SW
+                });
+            });
+        }
+
         return () => clearTimeout(timer);
     }, []);
 

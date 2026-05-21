@@ -228,7 +228,11 @@ const TEST_FINANCIAL_GOALS: FinancialGoal[] = [
 export function generateTestMarketData(): MarketDataPoint[] {
     const out: MarketDataPoint[] = [];
     const now = new Date();
-    const MONTHS = 24;
+    // Granularité hebdomadaire sur 2 ans = 104 points. Permet au graph
+    // d'évolution (timeRange '1M' par défaut) d'afficher 4-5 points, et
+    // de monter à 52+ points pour '1Y'. Avant on était à 24 points mensuels
+    // → '1M' n'affichait qu'1 point isolé.
+    const WEEKS = 104;
 
     const initialBalances = {
         CELI: 32000,
@@ -239,13 +243,23 @@ export function generateTestMarketData(): MarketDataPoint[] {
     };
     const cashTotal = Object.values(initialBalances).reduce((s, v) => s + v, 0);
 
-    for (let i = MONTHS - 1; i >= 0; i--) {
-        const d = new Date(now);
-        d.setMonth(d.getMonth() - i);
-        const date = d.toISOString().split('T')[0];
-        const t = (MONTHS - 1 - i) / (MONTHS - 1); // 0 (oldest) → 1 (newest)
+    // RNG seedé pour reproductibilité — même historique entre rechargements.
+    // Mulberry32 : déterministe et léger.
+    let seed = 1739817360;
+    const rng = () => {
+        seed = (seed + 0x6D2B79F5) | 0;
+        let t = seed;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
 
-        // Pour chaque asset, interpole entre buyPrice et currentPrice
+    for (let i = WEEKS - 1; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i * 7);
+        const date = d.toISOString().split('T')[0];
+        const t = (WEEKS - 1 - i) / (WEEKS - 1); // 0 (oldest) → 1 (newest)
+
         const row: MarketDataPoint = { date };
         let celiTotal = 0;
         let reerTotal = 0;
@@ -254,7 +268,17 @@ export function generateTestMarketData(): MarketDataPoint[] {
 
         for (const a of TEST_ASSETS) {
             const buy = a.purchases?.[0]?.price ?? a.currentPrice;
-            const price = buy + (a.currentPrice - buy) * t;
+            // Tendance linéaire buy → currentPrice + fluctuations réalistes :
+            //   - oscillation sinus ±2% (cycle ~6 mois)
+            //   - bruit gaussien-light ±1.5%
+            //   - crypto plus volatile : ±4% sinus + ±3% bruit
+            const isCrypto = a.accountType === 'CRYPTO';
+            const trend = buy + (a.currentPrice - buy) * t;
+            const sineAmp = isCrypto ? 0.04 : 0.02;
+            const noiseAmp = isCrypto ? 0.03 : 0.015;
+            const sine = Math.sin(t * Math.PI * 4) * sineAmp;
+            const noise = (rng() - 0.5) * 2 * noiseAmp;
+            const price = trend * (1 + sine + noise);
             const qty = a.quantity || a.purchases?.[0]?.quantity || 0;
             const value = Math.round(price * qty * 100) / 100;
             row[a.symbol] = value;

@@ -214,7 +214,8 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
         setStreamingText(accumulated);
         updateLastModelMessage(accumulated);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
+      // TH4 fix : unknown au lieu de any (useUnknownInCatchVariables tsconfig)
       console.error('[Assistant] Claude error:', e);
       appendMessage({
         role: 'model',

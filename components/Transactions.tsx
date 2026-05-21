@@ -250,9 +250,11 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 if (hasLeftovers) setShowWizard(true);
             }, 1500);
 
-        } catch (e: any) {
+        } catch (e: unknown) {
+            // TH4 fix : unknown au lieu de any (useUnknownInCatchVariables tsconfig)
             console.error('[Transactions] Categorisation batch failed:', e);
-            setLiveLogs(prev => [...prev, `Erreur : ${e?.message || 'inconnue'}`]);
+            const msg = e instanceof Error ? e.message : 'inconnue';
+            setLiveLogs(prev => [...prev, `Erreur : ${msg}`]);
         } finally {
             setTimeout(() => {
                 setProcessing(false);

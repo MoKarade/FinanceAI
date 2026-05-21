@@ -378,11 +378,15 @@ export const App: React.FC = () => {
                 lastUpdate: Date.now()
             });
             showToast('Donnees synchronisees', 'success');
-        } catch (e: any) {
-            // AbortError = sync remplacée par une plus récente, silencieux
-            if (e?.name === 'AbortError' || controller.signal.aborted) return;
+        } catch (e: unknown) {
+            // TH4 fix : catch typé unknown au lieu de any (respect du tsconfig
+            // useUnknownInCatchVariables). AbortError = sync remplacée par
+            // une plus récente, silencieux.
+            const isAbort = e instanceof DOMException && e.name === 'AbortError';
+            if (isAbort || controller.signal.aborted) return;
             console.error('[FinanceAI] Sync Error:', e);
-            showToast(e?.message ? `Sync echouee : ${e.message}` : 'Erreur de synchronisation Era Context.', 'error');
+            const msg = e instanceof Error ? e.message : '';
+            showToast(msg ? `Sync echouee : ${msg}` : 'Erreur de synchronisation Era Context.', 'error');
         } finally {
             // Ne reset isLoading que si on est toujours le sync actif
             if (currentSyncController.current === controller) {

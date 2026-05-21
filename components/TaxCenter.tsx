@@ -371,7 +371,9 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                         </Card>
                         <Card className="!p-4 border-l-4 border-l-yellow-500 bg-surface/50">
                             <div className="text-tiny text-gray-500 uppercase font-bold">Taux Marginal</div>
-                            <div className="text-2xl font-black text-yellow-400">{report.marginalRate.toFixed(1)}%</div>
+                            {/* Bug fix : utils/tax.ts:getMarginalRate retourne un DÉCIMAL
+                                (ex: 0.4 pour 40%), pas un pourcentage. Multiplier par 100. */}
+                            <div className="text-2xl font-black text-yellow-400">{(report.marginalRate * 100).toFixed(1)}%</div>
                             <div className="text-tiny text-gray-500">Sur le prochain $</div>
                         </Card>
                         <Card className="!p-4 border-l-4 border-l-blue-500 bg-surface/50">

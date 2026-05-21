@@ -198,10 +198,10 @@ les plus critiques en Playwright (cible : 20-30 tests).
 - [x] Liens vers BACKLOG, MANUAL_TEST_CHECKLIST, CENTRALIZED_CALC_PROGRESS,
   PROJECTION_OUTPUT_SCHEMA, SECURITY_STRATEGY
 
-### D3 — ADR (Architecture Decision Records)
-- [ ] ADR sur Cloudflare Access vs alternatives auth
-- [ ] ADR sur Future = source unique vs calculs locaux
-- [ ] ADR sur convention no-fake-data
+### D3 — ADR (Architecture Decision Records) ✅ TERMINÉ 2026-05-21
+- [x] ADR 005 — Future = source unique pour les calculs projetés
+- [x] ADR 006 — Convention "valeurs réelles ou rien"
+- [x] ADR 007 — Authentification Cloudflare Access (proposé, config en attente)
 
 ### D4 — Doc utilisateur
 Aujourd'hui pas de doc end-user. À créer si l'app sort du contexte perso :

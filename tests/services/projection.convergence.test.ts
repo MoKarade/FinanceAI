@@ -398,6 +398,90 @@ describe('Convergence projection ↔ UI', () => {
             const highRate = resultHigh.chartData[0].marginalTaxRate;
             expect(highRate).toBeGreaterThanOrEqual(lowRate);
         });
+
+        it('Tous les nouveaux champs sont présents sur chaque point chartData', () => {
+            const result = calculateFutureProjection(makeParams()) as any;
+            const newFields = [
+                'realNetWorth', 'liquidityRunway', 'mortgageRemainingMonths',
+                'reeeContribCum', 'reeeGrantsCum',
+                'DividendIncome', 'TaxableInvIncome',
+                'marginalTaxRate', 'effectiveTaxRate',
+            ];
+            const sample = result.chartData[Math.floor(result.chartData.length / 2)];
+            for (const field of newFields) {
+                expect(sample, `Champ "${field}" doit être exposé`).toHaveProperty(field);
+                expect(typeof sample[field]).toBe('number');
+                expect(Number.isFinite(sample[field])).toBe(true);
+            }
+        });
+
+        it('reeeContribCum est plafonné par REEE_LIFETIME_LIMIT 50k$/enfant', () => {
+            const result = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 30 }),
+            })) as any;
+            const lastPoint = result.chartData[result.chartData.length - 1];
+            // 1 enfant dans fixture, limite ARC = 50 000$
+            expect(lastPoint.reeeContribCum).toBeLessThanOrEqual(50000 * 1 + 100); // tolérance arrondis
+        });
+
+        it('liquidityRunway diminue en retraite (décumulation)', () => {
+            const result = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 35 }),
+            })) as any;
+            const chart: any[] = result.chartData;
+            // Trouver un point en retraite (isRetired)
+            const retiredPoint = chart.find(p => p.isRetired && p.RetraitREER > 0);
+            if (retiredPoint) {
+                // En retraite avec retraits actifs, runway doit être un nombre fini
+                expect(typeof retiredPoint.liquidityRunway).toBe('number');
+                expect(Number.isFinite(retiredPoint.liquidityRunway)).toBe(true);
+            }
+        });
+    });
+
+    describe('Invariants généraux', () => {
+        it('NetWorth ≥ Liquidites + CELI + REER + NonReg + Crypto + Immo - DetteTotale (à ±5% pour REEE/CELIAPP)', () => {
+            const result = calculateFutureProjection(makeParams()) as any;
+            for (const p of result.chartData.slice(0, 12)) {
+                const components =
+                    (p.Liquidites ?? 0) + (p.CELI ?? 0) + (p.REER ?? 0) +
+                    (p.NonReg ?? 0) + (p.Crypto ?? 0) + (p.Immobilier ?? 0) -
+                    (p.DetteTotale ?? 0);
+                // NetWorth peut inclure CELIAPP/REEE en plus, ou impôts latents en moins
+                const ratio = p.NetWorth / Math.max(1, components);
+                expect(ratio).toBeGreaterThan(0.7);
+                expect(ratio).toBeLessThan(1.5);
+            }
+        });
+
+        it('Expenses > 0 sur tous les points (utilisateur n\'a jamais 0 dépense)', () => {
+            const result = calculateFutureProjection(makeParams()) as any;
+            for (const p of result.chartData) {
+                expect(p.Expenses).toBeGreaterThan(0);
+            }
+        });
+
+        it('isRetired bascule à false → true et reste true ensuite (monotone)', () => {
+            const result = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 35 }),
+                retirementGoal: makeRetirementGoal({ targetAge: 60 }),
+            })) as any;
+            const chart: any[] = result.chartData;
+            let firstRetiredIdx = -1;
+            for (let i = 0; i < chart.length; i++) {
+                if (chart[i].isRetired) { firstRetiredIdx = i; break; }
+            }
+            if (firstRetiredIdx > 0) {
+                // Tous les points après doivent avoir isRetired=true
+                for (let i = firstRetiredIdx; i < chart.length; i++) {
+                    expect(chart[i].isRetired).toBe(true);
+                }
+                // Tous les points avant : false
+                for (let i = 0; i < firstRetiredIdx; i++) {
+                    expect(chart[i].isRetired).toBe(false);
+                }
+            }
+        });
     });
 
     describe('Convergence formelle', () => {

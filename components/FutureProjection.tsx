@@ -383,7 +383,15 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 config={config}
             />
 
-            <Card title={`La Courbe de Vie - ${allResults[selectedScenarioIdx]?.strategyName || 'Simulation'}`}>
+            <Card title={`La Courbe de Vie - ${allResults[selectedScenarioIdx]?.strategyName || 'Simulation'}`}
+                action={isComputing ? (
+                    <span className="flex items-center gap-2 text-tiny text-amber-400" role="status" aria-live="polite">
+                        <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="40" strokeDashoffset="20" opacity="0.5"/>
+                        </svg>
+                        Recalcul Monte Carlo en cours…
+                    </span>
+                ) : undefined}>
                 <div style={{ width: '100%', height: '650px' }}>
                      <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>

@@ -180,11 +180,14 @@ keystroke latency dans Future sliders.
 
 ## 🧪 P2 — Tests
 
-### T1 — Étendre les tests de convergence
-Actuellement 16 tests dans `projection.convergence.test.ts`. Ajouter :
-- [ ] Vérification que `getAnnualChildCost(child, ageYear)` × 12 ≈ chartData.childGross moyenne sur année correspondante
-- [ ] Test E2E mode test : activer mode test → naviguer chaque onglet → 0 console.error
-- [ ] Test que ProjectionRequired s'affiche bien si lastProjection vide
+### T1 — Étendre les tests de convergence ✅ TERMINÉ 2026-05-21
+- [x] 29 tests dans `projection.convergence.test.ts` (cible 30 ≈ atteinte)
+- [x] Tests sur les 9 nouveaux champs chartData (Phase 3 Tier 1+2+3)
+- [x] Test plafond REEE 50k\$/enfant
+- [x] Test liquidityRunway en retraite
+- [x] 3 invariants généraux ajoutés (NetWorth ≥ composants, Expenses > 0, isRetired monotone)
+- [ ] Test E2E mode test (E2E Playwright reporté → T2)
+- [ ] Test ProjectionRequired affichage (composant rendering test reporté)
 
 ### T2 — Tests visuels (Playwright)
 - [ ] Screenshot baseline Dashboard / Future / Retraite / Enfant

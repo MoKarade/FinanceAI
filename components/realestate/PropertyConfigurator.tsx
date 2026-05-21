@@ -120,8 +120,8 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-xs text-gray-400 mb-1">Amortissement</label>
-                            <select value={amortization} onChange={e => updateActiveGoal({ amortization: Number(e.target.value) })} className="w-full bg-white/5 border border-border rounded px-2 py-1.5 text-white text-sm">
+                            <label htmlFor="amortization-select" className="block text-xs text-gray-400 mb-1">Amortissement</label>
+                            <select id="amortization-select" value={amortization} onChange={e => updateActiveGoal({ amortization: Number(e.target.value) })} className="w-full bg-white/5 border border-border rounded px-2 py-1.5 text-white text-sm">
                                 <option value="15">15 ans</option>
                                 <option value="20">20 ans</option>
                                 <option value="25">25 ans</option>

@@ -118,15 +118,15 @@ export const RentalPropertyPanel: React.FC<{
                                 {rp.name} — NOI: {noi.toLocaleString('fr-CA')}$ · Cap: {capRate}%
                             </summary>
                             <div className="mt-2 grid grid-cols-3 gap-1">
-                                <input placeholder="Nom" value={rp.name} onChange={e => update(i, { name: e.target.value })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
-                                <input type="number" placeholder="Prix achat $" value={rp.purchasePrice || ''} onChange={e => update(i, { purchasePrice: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
-                                <input type="number" placeholder="Valeur actuelle $" value={rp.currentValue || ''} onChange={e => update(i, { currentValue: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
-                                <input type="number" placeholder="Hypothèque $" value={rp.mortgageBalance || ''} onChange={e => update(i, { mortgageBalance: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
-                                <input type="number" placeholder="Taux %" value={rp.mortgageRate || ''} onChange={e => update(i, { mortgageRate: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
-                                <input type="number" placeholder="Loyer $/mois" value={rp.monthlyRent || ''} onChange={e => update(i, { monthlyRent: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
-                                <input type="number" placeholder="Vacance %" value={rp.vacancyPct || ''} onChange={e => update(i, { vacancyPct: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
-                                <input type="number" placeholder="Charges $/mois" value={rp.monthlyExpenses || ''} onChange={e => update(i, { monthlyExpenses: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
-                                <input type="number" placeholder="DPA cumulée $" value={rp.ccaTaken || ''} onChange={e => update(i, { ccaTaken: Number(e.target.value) || undefined })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
+                                <input aria-label="Nom de l'immeuble locatif" placeholder="Nom" value={rp.name} onChange={e => update(i, { name: e.target.value })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
+                                <input aria-label="Prix d'achat (dollars)" type="number" placeholder="Prix achat $" value={rp.purchasePrice || ''} onChange={e => update(i, { purchasePrice: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
+                                <input aria-label="Valeur actuelle (dollars)" type="number" placeholder="Valeur actuelle $" value={rp.currentValue || ''} onChange={e => update(i, { currentValue: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
+                                <input aria-label="Solde hypothécaire (dollars)" type="number" placeholder="Hypothèque $" value={rp.mortgageBalance || ''} onChange={e => update(i, { mortgageBalance: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
+                                <input aria-label="Taux hypothécaire (pourcentage)" type="number" placeholder="Taux %" value={rp.mortgageRate || ''} onChange={e => update(i, { mortgageRate: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
+                                <input aria-label="Loyer mensuel (dollars)" type="number" placeholder="Loyer $/mois" value={rp.monthlyRent || ''} onChange={e => update(i, { monthlyRent: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
+                                <input aria-label="Taux de vacance (pourcentage)" type="number" placeholder="Vacance %" value={rp.vacancyPct || ''} onChange={e => update(i, { vacancyPct: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
+                                <input aria-label="Charges mensuelles (dollars)" type="number" placeholder="Charges $/mois" value={rp.monthlyExpenses || ''} onChange={e => update(i, { monthlyExpenses: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
+                                <input aria-label="DPA cumulée (dollars)" type="number" placeholder="DPA cumulée $" value={rp.ccaTaken || ''} onChange={e => update(i, { ccaTaken: Number(e.target.value) || undefined })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
                                 <button onClick={() => remove(i)} className="col-span-3 text-red-400 text-tiny hover:text-red-300">Supprimer cet immeuble</button>
                             </div>
                         </details>
@@ -159,10 +159,10 @@ export const BusinessPanel: React.FC<{
                 )}
                 {businesses.map((b, i) => (
                     <div key={b.id} className="grid grid-cols-6 gap-1 items-center p-2 bg-black/30 rounded border border-white/5">
-                        <input placeholder="Nom" value={b.name} onChange={e => update(i, { name: e.target.value })} className="col-span-2 bg-dark border border-border rounded px-1 py-1 text-meta text-white" />
-                        <input type="number" placeholder="% détenu" value={b.ownershipPct} onChange={e => update(i, { ownershipPct: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-1 text-meta text-white" />
-                        <input type="number" placeholder="JVM $" value={b.estimatedValue || ''} onChange={e => update(i, { estimatedValue: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-1 text-meta text-white" />
-                        <input type="number" placeholder="Div annuel $" value={b.annualDividend || ''} onChange={e => update(i, { annualDividend: Number(e.target.value) || undefined })} className="bg-dark border border-border rounded px-1 py-1 text-meta text-white" />
+                        <input aria-label="Nom de la société" placeholder="Nom" value={b.name} onChange={e => update(i, { name: e.target.value })} className="col-span-2 bg-dark border border-border rounded px-1 py-1 text-meta text-white" />
+                        <input aria-label="Pourcentage détenu" type="number" placeholder="% détenu" value={b.ownershipPct} onChange={e => update(i, { ownershipPct: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-1 text-meta text-white" />
+                        <input aria-label="Juste valeur marchande (dollars)" type="number" placeholder="JVM $" value={b.estimatedValue || ''} onChange={e => update(i, { estimatedValue: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-1 text-meta text-white" />
+                        <input aria-label="Dividende annuel (dollars)" type="number" placeholder="Div annuel $" value={b.annualDividend || ''} onChange={e => update(i, { annualDividend: Number(e.target.value) || undefined })} className="bg-dark border border-border rounded px-1 py-1 text-meta text-white" />
                         <button onClick={() => remove(i)} className="text-red-400 hover:text-red-300">×</button>
                     </div>
                 ))}
@@ -191,8 +191,8 @@ export const CyclicalGoalsPanel: React.FC<{
                     <h4 className="text-tiny font-bold uppercase tracking-widest text-gray-400 mb-2">🚗 Véhicules cycliques</h4>
                     {vehicles.map((v, i) => (
                         <div key={v.id} className="flex gap-1 mb-1">
-                            <input type="number" placeholder="Tous les N ans" value={v.cyclYears} onChange={e => { const next = [...vehicles]; next[i] = { ...v, cyclYears: Number(e.target.value) || 0 }; onVehicles(next); }} className="w-16 bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                            <input type="number" placeholder="Coût $" value={v.costEstimate} onChange={e => { const next = [...vehicles]; next[i] = { ...v, costEstimate: Number(e.target.value) || 0 }; onVehicles(next); }} className="flex-1 bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
+                            <input aria-label="Fréquence de remplacement (années)" type="number" placeholder="Tous les N ans" value={v.cyclYears} onChange={e => { const next = [...vehicles]; next[i] = { ...v, cyclYears: Number(e.target.value) || 0 }; onVehicles(next); }} className="w-16 bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
+                            <input aria-label="Coût estimé du véhicule (dollars)" type="number" placeholder="Coût $" value={v.costEstimate} onChange={e => { const next = [...vehicles]; next[i] = { ...v, costEstimate: Number(e.target.value) || 0 }; onVehicles(next); }} className="flex-1 bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                             <button onClick={() => { const next = [...vehicles]; next.splice(i, 1); onVehicles(next); }} className="text-red-400 text-xs">×</button>
                         </div>
                     ))}
@@ -203,8 +203,8 @@ export const CyclicalGoalsPanel: React.FC<{
                     <h4 className="text-tiny font-bold uppercase tracking-widest text-gray-400 mb-2">🔨 Rénovations majeures</h4>
                     {renovations.map((r, i) => (
                         <div key={r.id} className="flex gap-1 mb-1">
-                            <input type="date" value={r.date} onChange={e => { const next = [...renovations]; next[i] = { ...r, date: e.target.value }; onRenovations(next); }} className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                            <input type="number" placeholder="Coût $" value={r.cost} onChange={e => { const next = [...renovations]; next[i] = { ...r, cost: Number(e.target.value) || 0 }; onRenovations(next); }} className="flex-1 bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
+                            <input aria-label="Date de la rénovation" type="date" value={r.date} onChange={e => { const next = [...renovations]; next[i] = { ...r, date: e.target.value }; onRenovations(next); }} className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
+                            <input aria-label="Coût de la rénovation (dollars)" type="number" placeholder="Coût $" value={r.cost} onChange={e => { const next = [...renovations]; next[i] = { ...r, cost: Number(e.target.value) || 0 }; onRenovations(next); }} className="flex-1 bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                             <button onClick={() => { const next = [...renovations]; next.splice(i, 1); onRenovations(next); }} className="text-red-400 text-xs">×</button>
                         </div>
                     ))}
@@ -215,7 +215,7 @@ export const CyclicalGoalsPanel: React.FC<{
                     <h4 className="text-tiny font-bold uppercase tracking-widest text-gray-400 mb-2">❤️ Dons charitables</h4>
                     {charity.map((c, i) => (
                         <div key={c.id} className="flex gap-1 mb-1">
-                            <input type="number" placeholder="$/an" value={c.annualAmount} onChange={e => { const next = [...charity]; next[i] = { ...c, annualAmount: Number(e.target.value) || 0 }; onCharity(next); }} className="flex-1 bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
+                            <input aria-label="Don annuel (dollars)" type="number" placeholder="$/an" value={c.annualAmount} onChange={e => { const next = [...charity]; next[i] = { ...c, annualAmount: Number(e.target.value) || 0 }; onCharity(next); }} className="flex-1 bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                             <label className="text-tiny text-gray-400 flex items-center gap-1">
                                 <input type="checkbox" checked={c.donateAppreciatedSecurities ?? false} onChange={e => { const next = [...charity]; next[i] = { ...c, donateAppreciatedSecurities: e.target.checked }; onCharity(next); }} />
                                 titres

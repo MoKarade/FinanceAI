@@ -206,10 +206,10 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                     <Card title="Objectifs (Sinking Funds)" action={<button onClick={() => setIsAddingGoal(!isAddingGoal)} className="text-tiny bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-white">+ Nouveau</button>}>
                         {isAddingGoal && (
                             <div className="mb-4 p-3 bg-white/5 rounded border border-white/10 grid grid-cols-2 gap-2">
-                                <input type="text" placeholder="Nom" className="bg-dark border border-white/10 rounded px-2 py-1 text-xs text-white" value={newGoal.name} onChange={e => setNewGoal({ ...newGoal, name: e.target.value })} />
-                                <input type="number" placeholder="Cible $" className="bg-dark border border-white/10 rounded px-2 py-1 text-xs text-white" value={newGoal.targetAmount || ''} onChange={e => setNewGoal({ ...newGoal, targetAmount: parseFloat(e.target.value) })} />
-                                <input type="number" placeholder="Actuel $" className="bg-dark border border-white/10 rounded px-2 py-1 text-xs text-white" value={newGoal.currentAmount || ''} onChange={e => setNewGoal({ ...newGoal, currentAmount: parseFloat(e.target.value) })} />
-                                <input type="date" className="bg-dark border border-white/10 rounded px-2 py-1 text-xs text-white" value={newGoal.deadline} onChange={e => setNewGoal({ ...newGoal, deadline: e.target.value })} />
+                                <input aria-label="Nom de l'objectif" type="text" placeholder="Nom" className="bg-dark border border-white/10 rounded px-2 py-1 text-xs text-white" value={newGoal.name} onChange={e => setNewGoal({ ...newGoal, name: e.target.value })} />
+                                <input aria-label="Montant cible (dollars)" type="number" placeholder="Cible $" className="bg-dark border border-white/10 rounded px-2 py-1 text-xs text-white" value={newGoal.targetAmount || ''} onChange={e => setNewGoal({ ...newGoal, targetAmount: parseFloat(e.target.value) })} />
+                                <input aria-label="Montant actuel (dollars)" type="number" placeholder="Actuel $" className="bg-dark border border-white/10 rounded px-2 py-1 text-xs text-white" value={newGoal.currentAmount || ''} onChange={e => setNewGoal({ ...newGoal, currentAmount: parseFloat(e.target.value) })} />
+                                <input aria-label="Date d'échéance" type="date" className="bg-dark border border-white/10 rounded px-2 py-1 text-xs text-white" value={newGoal.deadline} onChange={e => setNewGoal({ ...newGoal, deadline: e.target.value })} />
                                 <button onClick={handleAddGoal} className="col-span-2 bg-primary text-white text-xs font-bold py-1 rounded">Ajouter</button>
                             </div>
                         )}

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Transaction, BudgetConfig, BudgetCategory, Tab as TabEnum } from '../types';
 import { Card } from './ui/Card';
 import { ConfirmModal } from './ui/ConfirmModal';
+import { ProjectionRequired } from './ui/ProjectionRequired';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 import { showToast } from './ui/Toast';
 import { BudgetGroupTable } from './budget/BudgetGroupTable';
@@ -601,7 +602,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 </div>
             </details>
 
-            {/* PROJECTION LINK (Wiring 2026-05) */}
+            {/* PROJECTION LINK (Wiring 2026-05) — mode strict */}
+            {!projectionSummary && (
+                <ProjectionRequired feature="L'impact à long terme du budget" />
+            )}
             {projectionSummary && (
                 <button
                     type="button"

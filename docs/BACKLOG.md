@@ -62,17 +62,21 @@ Ajouter ces champs dans `ProjectionChartPoint` :
 - **Effort** : ~3 h total
 - **Risque** : low (lecture chartData simple)
 
-### C3 — Mode strict TOTAL
+### C3 — Mode strict TOTAL ✅ TERMINÉ 2026-05-21
 Marc a demandé : "que ca prenne seulement les données du graph uniquement
 et que ca me mette une erreur ou un msg si pas dispo". Statut :
 - [x] Retirement : strict (plus de fallback worker)
 - [x] HealthIndicator : strict (msg si projection vide)
 - [x] Composant `ProjectionRequired` créé
-- [ ] **ChildPlanning** : costTimeline utilise encore `getAnnualChildCost` pure
-  fonction. À migrer pour lire chartData `childGross` agrégé par année — exige
-  extension moteur pour split par enfant
-- [ ] **Investments**, **Dashboard**, **TaxCenter** : à passer en strict après
-  extension moteur
+- [x] **Dashboard** : Indicateur Futur → ProjectionRequired si pas dispo + fallback 5% supprimé
+- [x] **Investments** : Card "Portefeuille projeté" → ProjectionRequired
+- [x] **Budget** : Card "Impact à long terme" → ProjectionRequired
+- [x] **RealEstate** : Badge équité projetée → ProjectionRequired inline
+- [x] **Planning** : "Latte Factor" fake `× 10 × 1.4` retiré → ProjectionRequired
+- [x] **ChildPlanning** : `respProjection` reconstruit depuis chartData (champ REEE),
+  totalResp/respCovers null si pas dispo, graphe → ProjectionRequired
+- [x] **TaxCenter** : 100% temps présent — pas de migration nécessaire
+- [x] **DebtManager** : 100% local-deterministic (slider extraPayment) — pas de migration
 
 ### C4 — Supprimer code mort post-migration
 - [ ] Worker local Retirement.tsx (déjà supprimé)

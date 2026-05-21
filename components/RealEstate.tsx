@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from './ui/Card';
+import { ProjectionRequired } from './ui/ProjectionRequired';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { RealEstateGoal, Tab as TabEnum } from '../types';
 import { INITIAL_REAL_ESTATE_GOAL } from '../constants';
@@ -364,7 +365,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                             >
                                 🔗 Projection: {formatCurrency(projectedEquityAtAmortEnd)}
                             </Badge>
-                        ) : null
+                        ) : <ProjectionRequired variant="inline" feature="l'équité immo projetée" />
                     }>
                         {(() => {
                             const monthlyRental = rentalIncomeMonthly || Math.round(price / 23.3 / 12);

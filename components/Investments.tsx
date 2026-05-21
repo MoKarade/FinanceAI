@@ -25,6 +25,7 @@ import { StockChart } from './StockChart';
 import { ASSET_META } from '../services/assetMeta';
 import { DividendPanel } from './investments/DividendPanel';
 import { formatCAD } from '../utils/format';
+import { ProjectionRequired } from './ui/ProjectionRequired';
 import { getRebalanceJustifications, type RebalanceActionInput } from '../services/claude';
 import { AddStockForm } from './investments/AddStockForm';
 import { computePurchaseStats } from '../utils/assetPurchases';
@@ -471,6 +472,9 @@ export const Investments: React.FC<InvestmentsProps> = ({
             </div>
 
             {/* 0.5 PROJECTION RETRAITE — Phase E.3 overview only */}
+            {subTab === 'overview' && !horizonSnapshot && (
+                <ProjectionRequired feature="Le portefeuille projeté à l'horizon retraite" />
+            )}
             {subTab === 'overview' && horizonSnapshot && (
                 <Card title={`🔮 Portefeuille projeté en ${horizonSnapshot.year} (${projectionHorizonYears} ans)`} className="bg-gradient-to-br from-blue-900/10 to-indigo-900/10 border-blue-500/20">
                     <StatGrid cols={horizonSnapshot.crypto > 0 ? 5 : 4}>

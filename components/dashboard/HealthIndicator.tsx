@@ -136,14 +136,12 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
         const debtScore = clamp01(100 - (debtAssetsRatio / 50) * 100); // 0% dette = 100, 50%+ = 0
 
         // 4. Progression FIRE (patrimoine / 25× dépenses annuelles)
-        // Source de vérité : Future projection si elle a été calculée
-        // (moteur inclut inflation et dépenses réelles annuelles), sinon
-        // fallback formule 25× dépenses mensuelles courantes.
-        const fireTarget = projectionFireTarget > 0
-            ? projectionFireTarget
-            : monthlyExpenses * 12 * 25;
-        const fireProgressPct = fireTarget > 0 ? (totalAssets / fireTarget) * 100 : 0;
-        const fireScore = clamp01(fireProgressPct);
+        // Mode strict : la cible FIRE vient EXCLUSIVEMENT de Future. Si la
+        // projection n'a pas été calculée, on retourne null et l'UI affiche
+        // un état "Projection requise" plutôt qu'une valeur inventée.
+        const fireTarget = projectionFireTarget > 0 ? projectionFireTarget : null;
+        const fireProgressPct = fireTarget != null ? (totalAssets / fireTarget) * 100 : null;
+        const fireScore = fireProgressPct != null ? clamp01(fireProgressPct) : null;
 
         return [
             {
@@ -170,9 +168,13 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
             {
                 id: 'fireProgress' as const,
                 label: 'Progression FIRE',
-                value: fireScore,
-                raw: `${formatPercent(fireProgressPct, 1)} (cible : 25× dépenses annuelles)`,
-                help: "Cible 100% : indépendance financière atteinte (règle des 4%).",
+                value: fireScore ?? 0,
+                raw: fireProgressPct != null
+                    ? `${formatPercent(fireProgressPct, 1)} (cible Future : ${formatNumber(fireTarget ?? 0)} $)`
+                    : 'Projection requise — ouvrir Future',
+                help: fireProgressPct != null
+                    ? "Cible 100% : indépendance financière atteinte (règle des 4%)."
+                    : "La cible FIRE vient de l'onglet Future (moteur de projection). Calculez-la d'abord.",
             },
         ];
     }, [config, budgetItems, debts, assets, initialBalances, projectionFireTarget]);

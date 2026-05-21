@@ -1,0 +1,69 @@
+// components/ui/ProjectionRequired.tsx
+//
+// Empty state à afficher dans tout onglet qui dépend de la projection
+// Future. Convention "calculs centralisés stricts" : si la projection
+// n'a pas encore été calculée (lastProjection vide), on n'invente AUCUNE
+// valeur — on affiche ce message + un bouton pour naviguer vers Future.
+//
+// Pourquoi : la convention "valeurs réelles ou rien" interdit les fallbacks
+// approximatifs (ex: 25× dépenses ad-hoc) car ils divergeraient des
+// chiffres de Future. Mieux vaut un message clair qu'un nombre mensonger.
+
+import React from 'react';
+import { useFinanceStore } from '../../store/useFinanceStore';
+import { Tab } from '../../types';
+
+interface ProjectionRequiredProps {
+    /** Section concernée (ex: "le capital à la retraite") */
+    feature?: string;
+    /** Affichage en inline (petit) ou en bloc (carte pleine) */
+    variant?: 'inline' | 'block';
+}
+
+export const ProjectionRequired: React.FC<ProjectionRequiredProps> = ({
+    feature = 'cette donnée',
+    variant = 'block',
+}) => {
+    const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
+    const goToFuture = () => navigateWithFocus?.(Tab.FUTURE);
+
+    if (variant === 'inline') {
+        return (
+            <span className="text-tiny text-amber-400 italic" role="status">
+                Projection requise —{' '}
+                <button
+                    onClick={goToFuture}
+                    className="underline hover:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-400 rounded"
+                    aria-label="Ouvrir l'onglet Future pour calculer la projection"
+                >
+                    ouvrir Future
+                </button>
+            </span>
+        );
+    }
+
+    return (
+        <div
+            className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-6 text-center"
+            role="status"
+            aria-live="polite"
+        >
+            <div className="text-3xl mb-2" aria-hidden="true">📊</div>
+            <div className="text-meta font-bold text-amber-300 mb-1">
+                Projection nécessaire
+            </div>
+            <div className="text-tiny text-ink-300 mb-4 max-w-md mx-auto">
+                {feature} provient de l'onglet Future. Ouvrez Future au moins
+                une fois pour calculer la projection — les valeurs s'afficheront
+                ensuite automatiquement dans tous les autres onglets.
+            </div>
+            <button
+                onClick={goToFuture}
+                className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-meta font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400"
+                aria-label="Naviguer vers l'onglet Future"
+            >
+                Ouvrir Future →
+            </button>
+        </div>
+    );
+};

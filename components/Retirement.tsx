@@ -4,7 +4,6 @@ import { PageHeader } from './ui/PageHeader';
 import { Badge } from './ui/Badge';
 import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset, RegisteredAccountType } from '../types';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend, AreaChart } from 'recharts';
-import { runProjectionAsync, terminateProjectionWorker } from '../services/projection/runAsync';
 import { TaxBracketViz } from './TaxBracketViz';
 import { GoalSeekerCard } from './retirement/GoalSeekerCard';
 import { AssetLocationCard } from './retirement/AssetLocationCard';
@@ -13,6 +12,7 @@ import { fetchPortfolioHistory } from '../services/finance';
 import { calculateGrossFromNet } from '../services/tax';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { useShallow } from 'zustand/shallow';
+import { ProjectionRequired } from './ui/ProjectionRequired';
 
 // Sprint 2 PH3 — constante stable pour éviter de créer un nouveau [] à chaque
 // render (qui invaliderait les useMemo deps de la projection).
@@ -147,71 +147,18 @@ export const Retirement: React.FC<RetirementProps> = ({
         return cash;
     }, [initialBalances]);
 
-    // 2026-05-21 — Refactor centralisation : Retirement consomme désormais
-    // `store.lastProjection.chartData` produit par FutureProjection.tsx. Avant,
-    // un Worker local recalculait la projection avec scenarioIdx=0/MC=false
-    // et divergait silencieusement des chiffres affichés par Future (qui
-    // utilise selectedScenarioIdx + MC togglable).
+    // 2026-05-21 — Mode strict centralisation :
+    // Retirement consomme EXCLUSIVEMENT `store.lastProjection.chartData`
+    // produit par FutureProjection.tsx. Plus de Worker local de fallback
+    // (qui divergeait des chiffres affichés par Future). Si la projection
+    // n'a pas encore été calculée, on affiche <ProjectionRequired> et
+    // l'utilisateur va dans Future pour la déclencher.
     //
-    // Le Worker local est gardé en fallback : si l'utilisateur ouvre Retraite
-    // SANS avoir d'abord ouvert Future, on déclenche un calcul de secours
-    // pour ne pas afficher des "—" partout. Mais dès que Future tourne au
-    // moins une fois dans la session, ses résultats prennent le relais.
-    //
-    // Voir docs/CENTRALIZED_CALC_REFACTOR.md et docs/PROJECTION_OUTPUT_SCHEMA.md.
+    // Convention "valeurs réelles ou rien" : pas d'invention de valeurs
+    // approximatives quand la source canonique est indisponible.
     const projectionFromStore = useFinanceStore(s => s.lastProjection?.chartData ?? null);
-    const [fallbackChartData, setFallbackChartData] = useState<any[]>([]);
-
-    useEffect(() => {
-        // Si Future a déjà publié une projection dans le store, on l'utilise —
-        // pas besoin de relancer un Worker (économie + convergence garantie).
-        if (projectionFromStore && projectionFromStore.length > 0) return;
-
-        let cancelled = false;
-        const timer = setTimeout(async () => {
-            try {
-                const result = await runProjectionAsync({
-                    projection,
-                    calculatedStartingCash,
-                    liveCSVBalances,
-                    realEstateGoals,
-                    debts,
-                    childGoals,
-                    travelGoals,
-                    lifeEvents,
-                    retirementGoal: goal,
-                    config,
-                    baseGrossAnnual,
-                    baseNetAnnual,
-                    currentRentExpense,
-                    baseMonthlyExpenses,
-                    insurancePolicies,
-                    vehicleReplacements,
-                    majorRenovations,
-                    charitableGoals,
-                    rentalProperties,
-                    privateBusinesses,
-                    savingsGoals,
-                    financialGoals,
-                }, false, 0);
-                if (!cancelled) setFallbackChartData(result.chartData ?? []);
-            } catch (e) {
-                if (!cancelled) {
-                    console.error('[Retirement] fallback projection failed:', e);
-                    setFallbackChartData([]);
-                }
-            }
-        }, 300);
-        return () => { cancelled = true; clearTimeout(timer); };
-    }, [projectionFromStore, projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, goal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, savingsGoals, financialGoals]);
-
-    // Source unique : projection du store, fallback worker local
-    const chartData = (projectionFromStore && projectionFromStore.length > 0)
-        ? projectionFromStore
-        : fallbackChartData;
-
-    // Nettoyage Worker au démontage du composant
-    useEffect(() => () => { terminateProjectionWorker(); }, []);
+    const chartData = projectionFromStore ?? [];
+    const hasProjection = chartData.length > 0;
 
     const yearlyData = useMemo(() => {
         if (chartData.length === 0) return [];
@@ -230,6 +177,20 @@ export const Retirement: React.FC<RetirementProps> = ({
     const lifeExpectancyData = yearlyData.filter(d => (d.age ?? 0) <= lifeExpectancy);
     const bankruptcyPoint = retirementData.find(d => d.TotalCapital <= 0);
     const bankruptcyAge = bankruptcyPoint?.age;
+
+    // Mode strict : pas de projection = pas de données. Aucune invention.
+    if (!hasProjection) {
+        return (
+            <div className="space-y-6 animate-premium-in pb-20">
+                <PageHeader
+                    icon="🏖️"
+                    title="Planification Retraite"
+                    subtitle="Simulation complète basée sur le moteur FIRE — mêmes données que l'onglet Future."
+                />
+                <ProjectionRequired feature="La simulation de retraite" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 animate-premium-in pb-20">

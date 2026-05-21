@@ -238,12 +238,14 @@ fichiers distincts si le moteur grossit.
 ## 🎯 Quick wins potentiels (< 1 h chacun)
 
 - [ ] Bouton "Reset to defaults" dans Configuration
-- [ ] Confirm dialog avant `enableTestMode` si données existantes (déjà fait ?)
+- [x] Confirm dialog avant `enableTestMode` si données existantes — ✅ déjà fait
 - [ ] Export PDF Future avec scénarios
 - [ ] Dark/light mode toggle (si pas déjà supporté)
 - [ ] PWA install prompt customisé
 - [ ] Loading skeleton pour les chartes Future pendant calcul (>1s)
-- [ ] Keyboard shortcuts (1-9 pour switcher onglets)
+- [x] **Keyboard shortcuts Alt+1..9 pour switcher onglets** ✅ 2026-05-21
+  (Alt+1=Dashboard, Alt+2=Transactions, Alt+3=Budget, Alt+4=Planning,
+   Alt+5=Investments, Alt+6=Future, Alt+7=Retraite, Alt+8=Impôts, Alt+9=Assistant)
 - [ ] Vue mobile : optimiser Future tab (responsive)
 
 ---

@@ -55,7 +55,11 @@ self.addEventListener('fetch', (event) => {
     if (url.origin !== self.location.origin) return; // pas de cache pour Era / Finnhub / Anthropic
 
     // Cache-first pour /assets/* (chunks Vite hashés, immutable)
-    if (url.pathname.startsWith('/assets/')) {
+    // + portfolio-history.csv (historique immuable côté serveur, peut être
+    // grand ~50KB, vaut le coup d'éviter le re-fetch à chaque load).
+    if (url.pathname.startsWith('/assets/') ||
+        url.pathname === '/portfolio-history.csv' ||
+        url.pathname === '/test-portfolio-history.csv') {
         event.respondWith(
             caches.match(req).then((hit) => {
                 if (hit) return hit;

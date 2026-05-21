@@ -250,6 +250,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     };
 
     let incomeRetirement = 0; // Scoped outside for Estate NW calculation
+    // Phase 3 Tier 3 — split par source (RRQ + PSV + privée) pour chartData
+    let pensionRRQ = 0;
+    let pensionPSV = 0;
+    let pensionPrivee = 0;
 
     // D2.8: Mortalité stochastique. En MC, à chaque début d'année on tire la
     // probabilité de décès du user principal. Le loop arrête à la mort.
@@ -343,6 +347,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         let incomeMarc = 0;
         let incomeAnna = 0;
         incomeRetirement = 0;
+        pensionRRQ = 0;
+        pensionPSV = 0;
+        pensionPrivee = 0;
         let childGrossCost = 0;
         let childBenefits = 0;
         let childMonthlyCost = 0;
@@ -434,13 +441,17 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 hasLoggedRetirement = true;
             }
             // Cycle 13 split: calcul RRQ/PSV/DB → ./projection/retirementIncome
-            incomeRetirement = computeRetirementIncome(
+            const retirementBreakdown = computeRetirementIncome(
                 { m, age, simInflation, activeUsersCount, baseGrossAnnual, delayPensions,
                   survivorMode, monthlyOasReduction, dbSurvivorPct, rrqSurvivorPct, psvResidencyYears,
                   startYear },
                 retirementGoal,
                 config.users,
             );
+            incomeRetirement = retirementBreakdown.total;
+            pensionRRQ = retirementBreakdown.rrq;
+            pensionPSV = retirementBreakdown.psv;
+            pensionPrivee = retirementBreakdown.privee;
             monthlyIncome = incomeRetirement;
 
             // D2.3: monthlyExpenses est défini de façon unique dans le bloc
@@ -1046,6 +1057,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             reeeContribCum, reeeGrantsCum,
             dividendIncome, taxableInvIncome,
             marginalTaxRate, effectiveTaxRate,
+            pensionRRQ, pensionPSV, pensionPrivee,
             immoHypo, immoCharges, immoInterest, immoPrincipal, totalRentalIncome,
             liquid, celi, celiapp, reer, reee, nonReg, crypto,
             retraitReerMois, retraitCeliMois, celiRoom, rrspRoom,

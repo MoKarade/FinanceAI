@@ -45,6 +45,10 @@ export interface MonthlyOutputCtx {
     // Phase 3 Tier 3 — taux d'imposition (par adulte)
     marginalTaxRate: number;
     effectiveTaxRate: number;
+    // Phase 3 Tier 3 — split pensions retraite
+    pensionRRQ: number;
+    pensionPSV: number;
+    pensionPrivee: number;
     // Immobilier
     immoHypo: number;
     immoCharges: number;
@@ -153,6 +157,7 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         reeeContribCum, reeeGrantsCum,
         dividendIncome, taxableInvIncome,
         marginalTaxRate, effectiveTaxRate,
+        pensionRRQ, pensionPSV, pensionPrivee,
         immoHypo, immoCharges, immoInterest, immoPrincipal, totalRentalIncome,
         liquid, celi, celiapp, reer, reee, nonReg, crypto,
         retraitReerMois, retraitCeliMois, celiRoom, rrspRoom,
@@ -195,6 +200,9 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         TaxableInvIncome: Number(taxableInvIncome.toFixed(2)),
         marginalTaxRate: Number(marginalTaxRate.toFixed(2)),
         effectiveTaxRate: Number(effectiveTaxRate.toFixed(2)),
+        pensionRRQ: Number(pensionRRQ.toFixed(2)),
+        pensionPSV: Number(pensionPSV.toFixed(2)),
+        pensionPrivee: Number(pensionPrivee.toFixed(2)),
         ImmoHypo: Number(immoHypo.toFixed(2)),
         ImmoCharges: Number(immoCharges.toFixed(2)),
         ImmoInterest: Number(immoInterest.toFixed(2)),

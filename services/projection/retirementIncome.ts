@@ -1,7 +1,7 @@
 // services/projection/retirementIncome.ts
 // Cycle 13: calcul du revenu de retraite mensuel (RRQ + PSV + DB).
-// Pure function: aucun side effect. Retourne incomeRetirement (avant
-// affectation à monthlyIncome par le caller).
+// Pure function: aucun side effect. Retourne RetirementIncomeBreakdown
+// avec le total ET le split par source (Phase 3 Tier 3 — split pensions).
 
 import type { RetirementGoal, User } from '../../types';
 import { RRQ_MPE, calculateGISBenefit } from '../../utils/tax';
@@ -28,14 +28,41 @@ export interface RetirementIncomeCtx {
 }
 
 /**
+ * Détail du revenu de retraite par source. Le `total` est le montant
+ * mensuel net (après écrêtement PSV) qui était retourné historiquement.
+ * Les composantes individuelles sont exposées pour permettre aux onglets
+ * (Retirement.tsx, TaxCenter.tsx) d'afficher le split sans recalculer.
+ *
+ * Phase 3 Tier 3 (2026-05-21) : avant ce refactor, computeRetirementIncome
+ * retournait `number` (juste le total). Les onglets ne pouvaient pas afficher
+ * "RRQ : 1200\$ / PSV : 700\$ / DB : 500\$" sans dupliquer le calcul.
+ */
+export interface RetirementIncomeBreakdown {
+    /** Revenu mensuel total après écrêtement PSV. = ce que retournait le legacy `number`. */
+    total: number;
+    /** Rentes RRQ (Régime de rentes du Québec / RPC). */
+    rrq: number;
+    /** Pension de la Sécurité de la vieillesse + SRG (Supplément revenu garanti). */
+    psv: number;
+    /** Régimes à prestations déterminées (pensions privées). */
+    privee: number;
+    /** Écrêtement PSV pour revenus > seuil (montant déduit). */
+    oasReduction: number;
+}
+
+/**
  * Calcule le revenu mensuel brut de retraite (RRQ + PSV + DB − écrêtement PSV).
  * Appelé une fois par mois quand isRetired === true.
+ *
+ * Retourne maintenant un `RetirementIncomeBreakdown` avec le split par source.
+ * Pour la compat legacy : `result.total` est l'équivalent du `number` retourné
+ * avant le refactor.
  */
 export function computeRetirementIncome(
     ctx: RetirementIncomeCtx,
     retirementGoal: RetirementGoal,
     users: User[],
-): number {
+): RetirementIncomeBreakdown {
     const {
         m, age, simInflation, activeUsersCount, baseGrossAnnual,
         delayPensions, survivorMode, monthlyOasReduction,
@@ -143,5 +170,16 @@ export function computeRetirementIncome(
         : 0;
     const gisMonthly = gisMonthlyPerAdult * activeUsersCount;
 
-    return Math.max(0, (rrqMonthly + psvMonthly + gisMonthly) * inflFactor + dbMonthly - monthlyOasReduction);
+    // Phase 3 Tier 3 — split par source avant clamp Math.max(0, ...)
+    const rrq = rrqMonthly * inflFactor;
+    const psv = (psvMonthly + gisMonthly) * inflFactor;
+    const privee = dbMonthly;
+    const totalRaw = rrq + psv + privee - monthlyOasReduction;
+    return {
+        total: Math.max(0, totalRaw),
+        rrq: Math.max(0, rrq),
+        psv: Math.max(0, psv),
+        privee: Math.max(0, privee),
+        oasReduction: monthlyOasReduction,
+    };
 }

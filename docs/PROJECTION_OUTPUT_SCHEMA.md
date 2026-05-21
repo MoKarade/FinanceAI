@@ -133,9 +133,21 @@ Centralisation — champs dérivés / cumulés exposés :
 | `DividendIncome` | $/mois | Dividendes NonReg estimés (= solde × yield × 30% / 12) |
 | `TaxableInvIncome` | $/mois | Revenus de placement imposables (= dividendes + 50% gains capital / 12) |
 
-## Champs encore à ajouter (Phase 3 finition)
+## Phase 3 — Tier 3 split pensions (2026-05-21) ✅ TERMINÉ
 
-| Champ proposé | Consommateur | Effort |
+| Champ | Type | Sémantique |
 |---|---|---|
-| `pensionRRQ`, `pensionPSV`, `pensionPrivee` (split `IncomeRetirement`) | Retirement | 30 min (refactor retirementIncome.ts) |
-| `marginalTaxRate`, `effectiveTaxRate` (%) | TaxCenter | 30 min (appel calculateFiscalReport per-month) |
+| `pensionRRQ` | $/mois | Rente RRQ/RPC mensuelle (avec inflation cumulée) |
+| `pensionPSV` | $/mois | PSV + SRG mensuelle (après écrêtement OAS) |
+| `pensionPrivee` | $/mois | Pensions privées DB (dbMonthly) |
+
+`computeRetirementIncome` retourne maintenant `RetirementIncomeBreakdown`
+au lieu d'un `number` simple. Compat legacy : `.total` = ancienne valeur.
+
+`pensionRRQ + pensionPSV + pensionPrivee - oasReduction ≈ IncomeRetirement`
+(clampé à 0 minimum).
+
+## Phase 3 ≈ COMPLET
+
+Tous les champs identifiés dans le plan original sont exposés.
+Restent à brancher dans les composants UI (à faire selon priorité).

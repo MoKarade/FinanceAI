@@ -135,7 +135,15 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
 
     const taxData = useMemo(() => {
         const results = config.users.map((u, i) => {
-            const uGross = u.grossSalary || calculateGrossFromNet((u.netSalary || 0) * 12);
+            // Bug fix test-mode : u.grossSalary et u.netSalary sont MENSUELS
+            // dans le store (convention Budget.tsx). Le moteur fiscal attend
+            // le brut ANNUEL → × 12. Avant ce fix, TaxCenter affichait
+            // grossIncome = 13 700$ comme "REVENU BRUT ANNUEL" pour un couple
+            // dont le brut annuel réel est 164 400$ → impôt = 0$ (sous le PBMA).
+            const monthlyGross = u.grossSalary || 0;
+            const uGross = monthlyGross > 0
+                ? monthlyGross * 12
+                : calculateGrossFromNet((u.netSalary || 0) * 12);
             const splitRatio = 1 / config.users.length;
             const uTotalTaxable = uGross + (investmentTaxData.taxableAddOn * splitRatio);
             const res = calculateFiscalReport(uTotalTaxable, rrspContribution * splitRatio, fhsaContribution * splitRatio);

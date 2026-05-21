@@ -159,12 +159,42 @@ export const Investments: React.FC<InvestmentsProps> = ({
         benchmarkTrend,
         indexWeight
     } = useMemo(() => {
-        if (marketData.length === 0) return {
-            currentAllocation: [], geoBreakdown: [], sectorBreakdown: [],
-            dividendCalendar: [], totalAnnualDividends: 0,
-            availableSeriesWithTrend: [],
-            healthScore: 0, portfolioTrend: 0, benchmarkTrend: 0, indexWeight: 0
-        };
+        if (marketData.length === 0) {
+            // Bug fix test-mode : si pas de CSV historique, construire
+            // l'allocation directement depuis le store `assets` (qty × price).
+            // Avant ce fix, "0 actifs" affichés en mode test malgré 5 assets.
+            const fallbackAllocation = assets.map(a => {
+                const value = (a.quantity || 0) * (a.currentPrice || 0);
+                const meta = ASSET_META[a.symbol] || { name: a.name || a.symbol, sector: 'Autre', region: 'Autre', yield: 0, freq: 1 };
+                return {
+                    id: a.symbol,
+                    value,
+                    trend24h: 0,
+                    weight: 0, // calculé après
+                    dividendYearly: value * (meta.yield / 100),
+                    ...meta,
+                };
+            }).filter(a => a.value > 0);
+            const fallbackTotal = fallbackAllocation.reduce((s, a) => s + a.value, 0) || 1;
+            fallbackAllocation.forEach(a => { a.weight = (a.value / fallbackTotal) * 100; });
+            fallbackAllocation.sort((a, b) => b.value - a.value);
+            const geoMap: Record<string, number> = {};
+            const sectorMap: Record<string, number> = {};
+            fallbackAllocation.forEach(a => {
+                geoMap[a.region] = (geoMap[a.region] || 0) + a.value;
+                sectorMap[a.sector] = (sectorMap[a.sector] || 0) + a.value;
+            });
+            const geoData = Object.entries(geoMap).map(([name, value]) => ({ name, value, percent: (value / fallbackTotal) * 100 })).sort((a, b) => b.value - a.value);
+            const sectorData = Object.entries(sectorMap).map(([name, value]) => ({ name, value, percent: (value / fallbackTotal) * 100 })).sort((a, b) => b.value - a.value);
+            return {
+                currentAllocation: fallbackAllocation,
+                geoBreakdown: geoData,
+                sectorBreakdown: sectorData,
+                dividendCalendar: [], totalAnnualDividends: 0,
+                availableSeriesWithTrend: [],
+                healthScore: 0, portfolioTrend: 0, benchmarkTrend: 0, indexWeight: 0,
+            };
+        }
 
         // 1. Get Latest Valid Row scanning backwards for non-zeros
         const latestValues: Record<string, number> = {};

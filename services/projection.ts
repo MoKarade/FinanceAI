@@ -72,9 +72,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // un objet Date. Appelé en boucle hot (chaque propriété immo × chaque mois
     // × chaque itération MC = jusqu'à 100 × 360 × N allocations Date évitées).
     // Gain : -5 à -15ms par scénario MC, élimine pression GC dans la boucle.
-    const getMonthOffset = (dateStr: string): number => {
+    // Defensive : retourne 0 si dateStr est null/undefined/vide (au lieu de crash
+    // `.slice` sur undefined — vu en mode test avec fixture sans purchaseDate).
+    const getMonthOffset = (dateStr: string | undefined | null): number => {
+        if (!dateStr || typeof dateStr !== 'string' || dateStr.length < 7) return 0;
         const year = parseInt(dateStr.slice(0, 4), 10);
         const month = parseInt(dateStr.slice(5, 7), 10) - 1;
+        if (isNaN(year) || isNaN(month)) return 0;
         return (year - startYear) * 12 + (month - startMonth);
     };
 

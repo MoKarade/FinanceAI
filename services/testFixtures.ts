@@ -154,9 +154,15 @@ const TEST_BUDGET_ITEMS: BudgetCategory[] = [
 const TEST_REAL_ESTATE: RealEstateGoal[] = [
     {
         id: 're-1', name: 'Maison principale (test)', price: 450000, downPayment: 90000,
-        rate: 4.5, amortization: 25, isActive: true, purchaseOffset: 0,
+        rate: 4.5, mortgageRate: 4.5, amortization: 25, isActive: true,
+        isPrimaryResidence: true, purchaseOffset: 0,
+        // Fix bug Future : la projection lit `purchaseDate` via getMonthOffset
+        // (services/projection.ts:170 + realEstateMonth.ts:111). Sans cette
+        // date, .slice() crashe dans le Worker.
+        purchaseDate: new Date().toISOString().split('T')[0],
         propertyGrowthRate: 3.0, monthlyTaxes: 280, monthlyInsurance: 95,
-        monthlyMaintenance: 250, isFirstTimeBuyer: false, isNewConstruction: false,
+        monthlyMaintenance: 250, totalClosingCosts: 8000,
+        monthlyPayment: 2000, isFirstTimeBuyer: false, isNewConstruction: false,
     } as unknown as RealEstateGoal,
 ];
 

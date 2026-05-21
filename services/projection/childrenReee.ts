@@ -9,6 +9,11 @@
 
 import type { ChildGoal } from '../../types';
 import type { FiscalReport } from '../../utils/tax';
+import {
+    DAYCARE_INFO, SCHOOL_INFO, ACTIVITIES_INFO, UNI_INFO, CAR_INFO,
+    type DaycareType, type SchoolType, type ActivitiesLevel,
+    type UniversityType, type CarGift,
+} from './childCosts';
 
 type FiscalReportFn = (
     grossIncome: number,
@@ -114,13 +119,51 @@ export function processOneChild(
     const lifeEventLogs: string[] = [];
     const flowEventLogs: string[] = [];
 
+    // Résolution des choix UI (defaults alignés avec ChildPlanning.tsx)
+    const daycareType: DaycareType = (child.daycareType as DaycareType) || 'cpe';
+    const schoolType: SchoolType = (child.schoolType as SchoolType) || 'publique';
+    const activitiesLevel: ActivitiesLevel = (child.activitiesLevel as ActivitiesLevel) || 'legeres';
+    const universityType: UniversityType = (child.universityType as UniversityType) || 'uni_local';
+    const carGift: CarGift = (child.carGift as CarGift) || 'non';
+    const daycareMonthlyUI = DAYCARE_INFO[daycareType].monthly;
+    const schoolYearly = SCHOOL_INFO[schoolType].yearlyExtra;
+    const activitiesYearly = ACTIVITIES_INFO[activitiesLevel].yearlyExtra;
+    const uni = UNI_INFO[universityType];
+    const carCost = CAR_INFO[carGift].cost;
+    const parentAtHome = daycareType === 'parent_foyer';
+    const childAgeYears = Math.floor(childAgeMonths / 12);
+
     if (isFirstMonth) {
         liquidDelta -= (child.initialCost ?? 0);
         lifeEventLogs.push(`Naissance 👶 (${child.name || 'Enfant'})`);
     }
 
     if (childAgeMonths < 18 * 12) {
-        let cMonthly = (child.monthlyDiapers ?? 0) + (child.monthlyFood ?? 0) + (child.monthlyClothing ?? 0);
+        // Mêmes tranches que ChildPlanning.tsx — voir services/projection/childCosts.ts.
+        // On reconstruit ici les flux mensuels pour conserver l'intégration mois-à-mois
+        // (RQAP, allocations, REEE) qui suit son propre cadencement.
+        const diapers = child.monthlyDiapers ?? 0;
+        const food = child.monthlyFood ?? 0;
+        const clothing = child.monthlyClothing ?? 0;
+
+        let cMonthly = 0; // dépenses essentielles mensuelles
+        let careMonthly = 0; // garderie / école / activités, en mensuel
+
+        if (childAgeYears === 0) {
+            cMonthly = diapers + food + clothing;
+            careMonthly = parentAtHome ? 0 : daycareMonthlyUI;
+        } else if (childAgeYears >= 1 && childAgeYears <= 4) {
+            cMonthly = diapers * 0.5 + food + clothing + 50;
+            careMonthly = parentAtHome ? 0 : daycareMonthlyUI;
+        } else if (childAgeYears >= 5 && childAgeYears <= 11) {
+            cMonthly = food + clothing + 80;
+            careMonthly = (schoolYearly + activitiesYearly) / 12;
+        } else if (childAgeYears >= 12 && childAgeYears <= 17) {
+            cMonthly = food * 1.2 + clothing * 1.5 + 150;
+            careMonthly = (schoolYearly + activitiesYearly) / 12;
+            // Achat 16 ans amorti sur l'année (500$/an = ~41.67$/mois cette année-là)
+            if (childAgeYears === 16) cMonthly += 500 / 12;
+        }
 
         const annaIsOnMatLeave = childAgeMonths < 12;
         if (annaIsOnMatLeave) {
@@ -140,18 +183,26 @@ export function processOneChild(
             accGrossDelta -= annaGrossMonthly;
 
             monthlyExpenseDelta -= 350 * expenseMultiplier; // commuting savings
+            // Pendant le congé parental : pas de frais garderie
+            careMonthly = 0;
         }
 
-        if (childAgeMonths < 60 && !annaIsOnMatLeave) {
-            const daycareGross = (child.monthlyDaycare ?? 0) * expenseMultiplier;
-            const daycareCostNet = daycareGross > 400 ? daycareGross * 0.30 : daycareGross;
-            cMonthly += daycareCostNet;
+        // Frais garderie nets après crédit d'impôt fédéral 30% au-delà de 400$/mois
+        // Compatible avec la logique historique (CPE déjà subventionné → < 400$
+        //  → pas de crédit ; garderie privée 1400$ → ~30% remboursés).
+        if (careMonthly > 400) {
+            careMonthly = careMonthly * 0.30;
         }
 
-        const currentChildGrossCost = cMonthly * expenseMultiplier;
+        // Total mensuel = essentiel + garderie/école/activités, indexé inflation
+        const currentChildGrossCost = (cMonthly + careMonthly) * expenseMultiplier;
         monthlyExpenseDelta += currentChildGrossCost;
 
         let adjustedBenefits = child.governmentBenefits ?? 0;
+        // Ados 12-17 ans : réduction allocation (cohérence ChildPlanning)
+        if (childAgeYears >= 12 && childAgeYears <= 17) {
+            adjustedBenefits = Math.max(0, adjustedBenefits - 100);
+        }
         if (householdGross > 150000) {
             const clawbackRatio = Math.max(0, 1 - ((householdGross - 150000) / 100000));
             adjustedBenefits *= clawbackRatio;
@@ -162,8 +213,9 @@ export function processOneChild(
         childMonthlyCostAdd += currentChildGrossCost;
 
         // REEE contributions with SCEE/IQEE catch-up
-        const childAgeYears = Math.floor(childAgeMonths / 12) + 1;
-        const maxTheoreticalScee = Math.min(7200, childAgeYears * 500);
+        // +1 car SCEE calcule sur l'année civile EN COURS, pas l'âge révolu
+        const childAgeYearsForGrant = childAgeYears + 1;
+        const maxTheoreticalScee = Math.min(7200, childAgeYearsForGrant * 500);
 
         let optimalReeeMonthly = 2500 / 12;
         let sceeYearlyLimit = 500;
@@ -205,8 +257,22 @@ export function processOneChild(
         }
     }
 
-    if (childAgeMonths >= 18 * 12 && childAgeMonths < 25 * 12) {
-        const studiesMonthly = (20000 / 12) * expenseMultiplier;
+    // Achat voiture cadeau à 18 ans (premier mois de la 18e année)
+    if (childAgeMonths === 18 * 12 && carCost > 0) {
+        const carInflated = carCost * expenseMultiplier;
+        liquidDelta -= carInflated;
+        lifeEventLogs.push(`🚗 Cadeau voiture (${child.name || 'Enfant'} 18 ans): -${Math.round(carInflated).toLocaleString('fr-CA')}$`);
+        childGrossCostAdd += carInflated;
+        childMonthlyCostAdd += carInflated;
+    }
+
+    // Études post-secondaires : durée et coût annuel selon universityType
+    // (uni_local 5k$/an × 4 ans, uni_etranger 35k$/an × 4 ans, etc.).
+    // Avant : 20 000$/an fixe sur 18-25 — ignorait totalement le choix UI.
+    const uniStartMonths = 18 * 12;
+    const uniEndMonths = uniStartMonths + uni.years * 12;
+    if (uni.years > 0 && childAgeMonths >= uniStartMonths && childAgeMonths < uniEndMonths) {
+        const studiesMonthly = (uni.yearlyCost / 12) * expenseMultiplier;
         monthlyExpenseDelta += studiesMonthly;
         childGrossCostAdd += studiesMonthly;
         childMonthlyCostAdd += studiesMonthly;

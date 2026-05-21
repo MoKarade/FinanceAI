@@ -117,14 +117,20 @@ export const App: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        const handleHashChange = () => {
+        const applyHash = () => {
             const hash = window.location.hash.replace('#', '');
             if (Object.values(Tab).includes(hash as Tab) && hash !== activeTab) {
                 setActiveTab(hash as Tab);
             }
         };
-        window.addEventListener('hashchange', handleHashChange);
-        return () => window.removeEventListener('hashchange', handleHashChange);
+        // BUG FIX 2026-05-21 (audit checklist) : `hashchange` ne se déclenche
+        // PAS au boot. Sans cet appel direct, ouvrir https://www.hubperso.com/#FUTURE
+        // affichait toujours le Dashboard (le tab `title` changeait mais pas
+        // le contenu). Appel immédiat au mount + listener pour les changements
+        // ultérieurs.
+        applyHash();
+        window.addEventListener('hashchange', applyHash);
+        return () => window.removeEventListener('hashchange', applyHash);
     }, [activeTab, setActiveTab]);
 
     useEffect(() => {

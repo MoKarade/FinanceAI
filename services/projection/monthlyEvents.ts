@@ -14,6 +14,8 @@ export function applyTravelExpenses(
     state: { addExpense: (n: number) => void; logFlow: (s: string) => void },
 ): void {
     for (const t of travelGoals) {
+        // Defensive 2026-05-21 : skip si date manquante/invalide (crash Worker observé)
+        if (!t.date || typeof t.date !== 'string') continue;
         if (t.date.startsWith(currentIsoMonth)) {
             const effectiveCost = (t.totalCost ?? 0) * expenseMultiplier;
             state.addExpense(effectiveCost);
@@ -49,6 +51,8 @@ export function applyLifeEvents(
     state: LifeEventMutator,
 ): void {
     for (const e of lifeEvents) {
+        // Defensive 2026-05-21 : skip si date manquante/invalide
+        if (!e.date || typeof e.date !== 'string') continue;
         if (!e.date.startsWith(currentIsoMonth)) continue;
 
         if (e.type === 'KRACH') {

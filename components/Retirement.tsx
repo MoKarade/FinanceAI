@@ -147,13 +147,26 @@ export const Retirement: React.FC<RetirementProps> = ({
         return cash;
     }, [initialBalances]);
 
-    // Sprint 2 PH1 — Migration vers Worker async pour éliminer le jank 80-150ms
-    // sur le main thread à chaque keystroke des inputs sliders. Avant ce fix,
-    // calculateFutureProjection tournait synchrone bloquant l'UI. Le pattern
-    // suit FutureProjection.tsx (Worker scaffold déjà en place).
-    const [chartData, setChartData] = useState<any[]>([]);
+    // 2026-05-21 — Refactor centralisation : Retirement consomme désormais
+    // `store.lastProjection.chartData` produit par FutureProjection.tsx. Avant,
+    // un Worker local recalculait la projection avec scenarioIdx=0/MC=false
+    // et divergait silencieusement des chiffres affichés par Future (qui
+    // utilise selectedScenarioIdx + MC togglable).
+    //
+    // Le Worker local est gardé en fallback : si l'utilisateur ouvre Retraite
+    // SANS avoir d'abord ouvert Future, on déclenche un calcul de secours
+    // pour ne pas afficher des "—" partout. Mais dès que Future tourne au
+    // moins une fois dans la session, ses résultats prennent le relais.
+    //
+    // Voir docs/CENTRALIZED_CALC_REFACTOR.md et docs/PROJECTION_OUTPUT_SCHEMA.md.
+    const projectionFromStore = useFinanceStore(s => s.lastProjection?.chartData ?? null);
+    const [fallbackChartData, setFallbackChartData] = useState<any[]>([]);
 
     useEffect(() => {
+        // Si Future a déjà publié une projection dans le store, on l'utilise —
+        // pas besoin de relancer un Worker (économie + convergence garantie).
+        if (projectionFromStore && projectionFromStore.length > 0) return;
+
         let cancelled = false;
         const timer = setTimeout(async () => {
             try {
@@ -172,28 +185,30 @@ export const Retirement: React.FC<RetirementProps> = ({
                     baseNetAnnual,
                     currentRentExpense,
                     baseMonthlyExpenses,
-                    // W5.x conteneurs câblés
                     insurancePolicies,
                     vehicleReplacements,
                     majorRenovations,
                     charitableGoals,
                     rentalProperties,
                     privateBusinesses,
-                    // Cohérence avec FutureProjection — sans ces flux la
-                    // projection retraite divergeait des chiffres Future
                     savingsGoals,
                     financialGoals,
                 }, false, 0);
-                if (!cancelled) setChartData(result.chartData ?? []);
+                if (!cancelled) setFallbackChartData(result.chartData ?? []);
             } catch (e) {
                 if (!cancelled) {
-                    console.error('[Retirement] projection failed:', e);
-                    setChartData([]);
+                    console.error('[Retirement] fallback projection failed:', e);
+                    setFallbackChartData([]);
                 }
             }
         }, 300);
         return () => { cancelled = true; clearTimeout(timer); };
-    }, [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, goal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, savingsGoals, financialGoals]);
+    }, [projectionFromStore, projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, goal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, savingsGoals, financialGoals]);
+
+    // Source unique : projection du store, fallback worker local
+    const chartData = (projectionFromStore && projectionFromStore.length > 0)
+        ? projectionFromStore
+        : fallbackChartData;
 
     // Nettoyage Worker au démontage du composant
     useEffect(() => () => { terminateProjectionWorker(); }, []);

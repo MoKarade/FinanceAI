@@ -171,12 +171,14 @@ const TEST_REAL_ESTATE: RealEstateGoal[] = [
 const TEST_DEBTS: Debt[] = [
     {
         id: 'd1', name: 'Carte Visa Desjardins (test)', balance: 2800,
-        rate: 19.9, monthlyPayment: 250, kind: 'credit-card',
-    } as unknown as Debt,
+        interestRate: 19.9, minimumPayment: 250,
+        category: 'CreditCard', kind: 'credit-card',
+    },
     {
         id: 'd2', name: 'Prêt auto (test)', balance: 18500,
-        rate: 6.5, monthlyPayment: 425, kind: 'loan',
-    } as unknown as Debt,
+        interestRate: 6.5, minimumPayment: 425,
+        category: 'Car', kind: 'auto', amortizationYears: 5,
+    },
 ];
 
 // ─── Goals ─────────────────────────────────────────────────────────────
@@ -192,7 +194,7 @@ const TEST_CHILD_GOALS: ChildGoal[] = [
     {
         id: 'child-1', name: 'Léa (test)', birthDate: '2022-06-15',
         daycareType: 'cpe', schoolType: 'publique', activitiesLevel: 'legeres',
-        universityType: 'uni_local', carGift: 'usagee_5k',
+        universityType: 'uni_local', carGift: 'usagee',
         monthlyDiapers: 120, monthlyFood: 200, monthlyClothing: 80,
         respContribution: 2500, governmentBenefits: 450, initialCost: 2800,
     } as unknown as ChildGoal,

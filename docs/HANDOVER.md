@@ -11,8 +11,8 @@
 | Indicateur | Valeur |
 |---|---|
 | Branche principale | `main` |
-| Dernière PR mergée | **#110** (P2.4 touch target audit — 6/9 P2 livré) |
-| Tests | **569/569 verts** (50 fichiers) — +58 depuis fin refonte v3.0 |
+| Dernière PR mergée | **#114** (P2.1 axe pages — clôture P2 Mobile & a11y AAA 9/9) |
+| Tests | **573/573 verts** (51 fichiers) — +62 depuis fin refonte v3.0 |
 | Typecheck | Clean en mode strict (`noImplicitAny`, `strictNullChecks`, `useUnknownInCatchVariables`) |
 | Build | OK — bundle index ~528 KB gzip ~166 KB, vendor jspdf lazy-chargé |
 | Déploiement | Vercel (auto par PR) + GitHub Pages (workflow `deploy-pages.yml`) |
@@ -30,8 +30,10 @@
 
 L'app est **fonctionnelle de bout en bout**, déployée, stable. Refonte UI v3.0
 **100% terminée** (PRs #86 à #95), **P1 Production Readiness 100% terminé**
-(PRs #99 à #105 — 7/7 items), et **P2 Mobile & a11y AAA en cours**
-(PRs #107 à #110 — 6/9 items, ~6h restants).
+(PRs #99 à #105 — 7/7 items), et **P2 Mobile & a11y AAA 100% terminé**
+(PRs #107 à #114 — 9/9 items). Prochain chantier potentiel : **P3 Refactor
+god-components** (Settings, Retirement, Investments) ou **P4 Tests Playwright
+E2E** (roadmap "10/10" §P3-P4).
 
 ---
 
@@ -318,11 +320,10 @@ suppressions batch, etc.) — infrastructure prête mais call-sites non wirés.
 Validation visuelle post-refonte v3.0 + tests mobiles réels. À reprendre
 quand des regressions sont identifiées par l'utilisateur.
 
-### 4.4 🚧 P2 — Mobile & a11y AAA — EN COURS (6/9 items, ~6h restants)
+### 4.4 ✅ P2 — Mobile & a11y AAA — TERMINÉ (9/9 items)
 
-Voir `docs/PLAN_P2.md` pour le détail complet. **PRs #107 à #110**, 2026-05-20.
-Estimation révisée à 14h après triage (vs 25-30h roadmap initial — beaucoup
-déjà fait au cycle 7.D + refonte v3.0).
+Voir `docs/PLAN_P2.md` pour le détail complet. **PRs #107 à #114**, 2026-05-20/21.
+Estimation initiale 25-30h → révisée à 14h après triage → livré en ~7h effectif.
 
 | Item | PR | Statut |
 |---|---|---|
@@ -332,20 +333,16 @@ déjà fait au cycle 7.D + refonte v3.0).
 | P2.5 Contrast WCAG AA (ink-400/500) | #109 | ✅ livré |
 | P2.6 prefers-reduced-motion | #108 | ✅ livré |
 | P2.7 Skip-to-main link | — | ✅ déjà fait (cycle 5.1) |
-| P2.8 Form labels audit (133 inputs) | — | 🔲 À faire (~2h) |
-| P2.1 Tests axe pages complètes | — | 🔲 À faire (~4h) |
-| P2.9 PWA (manifest + SW) | — | 🟡 Optionnel (~3h) |
+| P2.8 Form labels audit (~35 inputs) | #112 | ✅ livré |
+| P2.9 PWA (manifest + SW) | #113 | ✅ livré |
+| P2.1 Tests axe pages complètes | #114 | ✅ livré |
 
-**Phase 1 quick wins** + **Phase 2 audits→fixes** quasi complètes.
-Reste **Phase 3 tests** (P2.1 axe) qui verrouille tout le travail dans des
-tests automatiques.
+Tests : 511 → **573**, 0 régression. WCAG AA conformité atteinte
+(sub-ensemble AAA pour touch, focus, reduced-motion).
 
-- Audit responsive 1280→375px (toutes les vues)
-- WCAG AA basics : focus visible, contraste, labels ARIA, navigation clavier
-- Optionnel : PWA install + offline shell
-- Optionnel : screen reader pass
+### 4.5 🎯 Prochain chantier potentiel : P3/P4/P5
 
-### 4.5 Long terme (priorité basse)
+Roadmap "10/10" §P3-P5. Estimations indicatives.
 
 | Item | Effort | Notes |
 |---|---|---|

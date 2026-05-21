@@ -3,7 +3,7 @@ import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area, ReferenceLine, ComposedChart } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Area, ReferenceLine, ComposedChart } from 'recharts';
 import { ChildGoal, ProjectionConfig, Tab as TabEnum } from '../types';
 import { INITIAL_CHILD_GOAL } from '../constants';
 import { ConfirmModal } from './ui/ConfirmModal';
@@ -119,12 +119,10 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
         }
     }, [daycareType]);
 
-    const daycareMonthly = DAYCARE_INFO[daycareType].monthly;
-    const schoolYearly = SCHOOL_INFO[schoolType].yearlyExtra;
-    const activitiesYearly = ACTIVITIES_INFO[activitiesLevel].yearlyExtra;
+    // Variables locales : seules uniInfo est utilisée par le JSX (couverture études).
+    // Les autres (daycareMonthly, schoolYearly, etc.) étaient utilisées par
+    // l'ancien costTimeline inline — maintenant la source est getAnnualChildCost().
     const uniInfo = UNI_INFO[universityType];
-    const carCost = CAR_INFO[carGift].cost;
-    const parentSalaryLoss = parentAtHome ? 1700 : 0;
 
     // Centralisation 2026-05-21 : utilise getAnnualChildCost() (source unique
     // services/projection/childCosts.ts) au lieu de répliquer la logique des

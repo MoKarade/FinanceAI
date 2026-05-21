@@ -376,6 +376,28 @@ describe('Convergence projection ↔ UI', () => {
             // TaxableInvIncome >= DividendIncome (gains × 50% ajouté)
             expect(first.TaxableInvIncome).toBeGreaterThanOrEqual(first.DividendIncome);
         });
+
+        it('marginalTaxRate et effectiveTaxRate exposés et plausibles', () => {
+            const result = calculateFutureProjection(makeParams()) as any;
+            const first = result.chartData[0];
+            expect(typeof first.marginalTaxRate).toBe('number');
+            expect(typeof first.effectiveTaxRate).toBe('number');
+            // Taux raisonnables (>0% car revenu salarial, <60% car palier max QC+fed)
+            expect(first.marginalTaxRate).toBeGreaterThan(0);
+            expect(first.marginalTaxRate).toBeLessThan(60);
+            expect(first.effectiveTaxRate).toBeGreaterThanOrEqual(0);
+            expect(first.effectiveTaxRate).toBeLessThan(first.marginalTaxRate); // moyen < marginal
+        });
+
+        it('marginalTaxRate augmente avec le revenu (paliers progressifs)', () => {
+            const paramsLow = makeParams({ baseGrossAnnual: 50000 });
+            const paramsHigh = makeParams({ baseGrossAnnual: 300000 });
+            const resultLow = calculateFutureProjection(paramsLow) as any;
+            const resultHigh = calculateFutureProjection(paramsHigh) as any;
+            const lowRate = resultLow.chartData[0].marginalTaxRate;
+            const highRate = resultHigh.chartData[0].marginalTaxRate;
+            expect(highRate).toBeGreaterThanOrEqual(lowRate);
+        });
     });
 
     describe('Convergence formelle', () => {

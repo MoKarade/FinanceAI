@@ -1023,6 +1023,18 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         const dividendIncome = (nonReg * (baseNonRegRateForDiv / 100) * 0.30) / 12;
         const taxableInvIncome = dividendIncome + (accCapitalGainsYear * 0.5) / 12;
 
+        // Phase 3 Tier 3 — taux d'imposition marginal et effectif (PAR ADULTE)
+        // Source : calculateFiscalReport sur le revenu brut annuel courant.
+        // En retraite : on combine pensions + retraits REER pour le calcul.
+        const grossPerUserAnnual = isRetired
+            ? (incomeRetirement * 12 + accRetraitsReerYear) / Math.max(1, activeUsersCount)
+            : (grossMarcBaseAnnual + grossAnnaBaseAnnual) / Math.max(1, activeUsersCount);
+        const fiscalReportTier3 = grossPerUserAnnual > 0
+            ? calculateFiscalReport(grossPerUserAnnual, 0, 0, loopYear, true /* skip breakdown pour perf */)
+            : null;
+        const marginalTaxRate = fiscalReportTier3 ? fiscalReportTier3.marginalRate * 100 : 0;
+        const effectiveTaxRate = fiscalReportTier3 ? fiscalReportTier3.averageRate : 0;
+
         // Cycle 21 split: assemblage data.push → ./projection/monthlyOutput
         data.push(buildMonthlyDataPoint({
             m, retirementMonthIndex, fireTargetNetWorth, futureFireTarget,
@@ -1033,6 +1045,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             reeeContribMonthly, reeePayoutMonthly,
             reeeContribCum, reeeGrantsCum,
             dividendIncome, taxableInvIncome,
+            marginalTaxRate, effectiveTaxRate,
             immoHypo, immoCharges, immoInterest, immoPrincipal, totalRentalIncome,
             liquid, celi, celiapp, reer, reee, nonReg, crypto,
             retraitReerMois, retraitCeliMois, celiRoom, rrspRoom,

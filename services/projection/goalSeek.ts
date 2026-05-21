@@ -117,6 +117,21 @@ export function findEarliestRetirementAge(
         return base.minNetWorth ?? -1;
     };
 
+    // Sprint 2 H6 fix — Validation initiale : si même `maxAge` n'est pas viable
+    // (le pire scénario possible — l'utilisateur attend le plus longtemps avant
+    // de prendre sa retraite et le NW reste négatif), retourner `found: false`.
+    // Avant ce fix, la fonction retournait toujours `found: true` même quand
+    // l'horizon [minAge, maxAge] ne contenait aucun âge viable — la bissection
+    // convergeait vers une valeur frontière avec `minNetWorth = -1`. Source
+    // du test flaky `findEarliestRetirementAge` qui passait toujours `≥ 45`
+    // car le bug `found: true` masquait l'absence de vraie solution.
+    const maxAgeNW = runWith(maxAge);
+    if (maxAgeNW <= 0) {
+        return { found: false, value: maxAge, iterations: 1, finalNetWorthAtTarget: maxAgeNW };
+    }
+    lastNW = maxAgeNW;
+    hi = maxAge;
+
     while (hi - lo > 1 && iter < maxIterations) {
         const mid = Math.floor((lo + hi) / 2);
         const minNW = runWith(mid);

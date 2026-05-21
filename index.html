@@ -15,6 +15,11 @@
     <!-- FONTS -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Sprint 2 PL1 — preload du weight 400 d'Outfit (le plus utilisé) pour
+         économiser ~100ms LCP. Le navigateur découvre la fonte avant de parser
+         le CSS Google Fonts. -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+          href="https://fonts.gstatic.com/s/outfit/v11/QGYvz_MVcBeNP4NJtEtq.woff2">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="/index.css">

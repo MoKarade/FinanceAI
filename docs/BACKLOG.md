@@ -25,11 +25,28 @@ applicatif. Doc : [SECURITY_STRATEGY.md](SECURITY_STRATEGY.md).
 - **Effort** : 90 min (manuel Cloudflare + 0 code)
 - **Coût** : 0 $
 
-### S2 — Sprint 3B SH3 : IndexedDB backup chiffré (en cours)
-Pending dans la TaskList. Backup automatique chiffré vers IndexedDB
-en parallèle des exports JSON manuels.
-- **Effort** : 4-6 h
-- **Risque** : medium (test de round-trip nécessaire)
+### S2 — Sprint 3B SH3 : IndexedDB backup chiffré (analysé 2026-05-21)
+État actuel :
+- ✅ `services/backupAuto.ts` existe : backup IndexedDB rolling 7 jours auto
+- ✅ Download manuel JSON déjà chiffré AES-256-GCM + PBKDF2 600k (`services/cloudBackup.ts`)
+- ❌ Backup auto IndexedDB stocké en clair
+
+**Analyse menace** : le chiffrement IndexedDB ne protège PAS contre le
+seul scénario réaliste (vol laptop déverrouillé) car le `localStorage`
+non-chiffré est tout aussi accessible. Pour une vraie sécurité au repos,
+il faut chiffrer **tout le store** au boot avec une passphrase (item H1
+hardening dans SECURITY_STRATEGY.md).
+
+**Recommandation** :
+- (a) Mettre en place Cloudflare Access (S1) — bloque l'accès distant
+- (b) Si vol laptop critique : implémenter H1 (chiffrement localStorage
+  passphrase) → IndexedDB chiffré automatique en cascade
+
+S2 isolé apporte peu de valeur sans H1. Reporté jusqu'à décision Marc
+sur H1.
+- **Effort isolé** : 3-5 h (passphrase UI + Web Crypto AES + migration
+  backups existants)
+- **Risque** : medium (perte si passphrase oubliée → besoin recovery)
 
 ---
 
@@ -240,16 +257,16 @@ fichiers distincts si le moteur grossit.
 
 ## 🎯 Quick wins potentiels (< 1 h chacun)
 
-- [ ] Bouton "Reset to defaults" dans Configuration
+- ❌ Bouton "Reset to defaults" dans Configuration — **reporté** (trop dangereux pour un quick win, perte irréversible)
 - [x] Confirm dialog avant `enableTestMode` si données existantes — ✅ déjà fait
-- [ ] Export PDF Future avec scénarios
-- [ ] Dark/light mode toggle (si pas déjà supporté)
+- [ ] Export PDF Future avec scénarios — reporté (1h+, builder dédié)
+- ❌ Dark/light mode toggle — **reporté** (app en `darkMode: 'class'` sans variables CSS light, re-thémer = gros chantier)
 - [ ] PWA install prompt customisé
 - [ ] Loading skeleton pour les chartes Future pendant calcul (>1s)
 - [x] **Keyboard shortcuts Alt+1..9 pour switcher onglets** ✅ 2026-05-21
-  (Alt+1=Dashboard, Alt+2=Transactions, Alt+3=Budget, Alt+4=Planning,
-   Alt+5=Investments, Alt+6=Future, Alt+7=Retraite, Alt+8=Impôts, Alt+9=Assistant)
 - [ ] Vue mobile : optimiser Future tab (responsive)
+- [x] **U5 Warning fixtures CSV manquant un symbole** ✅ 2026-05-21
+- [x] **Q8 Validation format clés API** ✅ 2026-05-21 (Anthropic `sk-ant-*`, Finnhub alphanum ≥15)
 
 ---
 

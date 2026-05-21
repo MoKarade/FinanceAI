@@ -282,12 +282,22 @@ Priorité de traitement :
 
 | Catégorie | Items ouverts | Effort total |
 |-----------|---------------|--------------|
-| P0 Sécurité | 2 | ~6 h (90 min auth + 4-6 h backup IndexedDB) |
-| P1 Centralisation | 4 sujets, ~12 items | ~10 h |
-| P1 Bugs | 4 | ~3 h |
-| P2 UX | 6 | ~6 h |
-| P2 Performance | 3 | ~4 h |
-| P2 Tests | 4 | ~8 h |
-| P3 Docs | 4 | ~6 h |
-| P3 Dette tech | 5 | ~6 h |
-| **Total restant estimé** | **~40 items** | **~50 h** |
+| P0 Sécurité | 2 (S1 auth + S2 IndexedDB backup) | ~6 h |
+| P1 Centralisation | 3 champs Tier 3 restants (marginalTax/effective/pensionSplit) | ~1 h |
+| P1 Bugs | 2 reportés (B3 goalSeek timeout / B4 audit tests) | non-critique |
+| P2 UX | 5 items (skeleton Future, mobile, export PDF, dark mode, PWA prompt) | ~5 h |
+| P2 Performance | 3 (bundle audit, SW cache, profiler) | ~4 h |
+| P2 Tests | 4 (étendre convergence, Playwright, coverage, automatiser) | ~8 h |
+| P3 Docs | 4 (handover, README, ADR, doc user) | ~6 h |
+| P3 Dette tech | 5 (imports, any, split testFixtures, split worker, align getAnnualChildCost) | ~6 h |
+| **Total restant estimé** | **~28 items** | **~36 h** |
+
+**Progression session 2026-05-21** :
+- ✅ **Mode strict TOTAL** : 8 composants migrés (Dashboard, Investments, Budget, RealEstate, Planning, ChildPlanning, HealthIndicator, Retirement) + ProjectionRequired
+- ✅ **Centralisation Phase 3 Tier 1+2** : 7 nouveaux champs chartData (realNetWorth, liquidityRunway, mortgageRemainingMonths, reeeContribCum, reeeGrantsCum, DividendIncome, TaxableInvIncome)
+- ✅ **ChildPlanning respProjection** branché sur reeeContribCum/reeeGrantsCum (vraies données moteur)
+- ✅ **B1 décision UX** : Badge "Scénario actif" dans Retirement + sync avec Future
+- ✅ **B2 cohérence enfants** : LIMITATIONS documentées dans childCosts.ts
+- ✅ **Q3 keyboard shortcuts** : Alt+1..9 pour switcher d'onglet
+- ✅ **+5 tests Vitest** convergence (594/594 verts au total)
+- ✅ **BACKLOG.md** maintenu à jour à chaque batch

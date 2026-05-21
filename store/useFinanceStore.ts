@@ -22,6 +22,11 @@ export interface FinanceState extends AppState {
     // pour afficher des projections cohérentes sans recalculer.
     lastProjection: ProjectionResult | null;
     pendingFocus: PendingFocus | null;
+    // Mode test : true = l'app affiche des fixtures de test, banner visible
+    isTestMode: boolean;
+    /** Snapshot des vraies données sauvegardé AVANT activation du mode test.
+     *  Restauré quand l'utilisateur sort du mode test. */
+    realDataSnapshot: Partial<AppState> | null;
     setActiveTab: (tab: Tab) => void;
     setPrivacyMode: (v: boolean) => void;
     togglePrivacyMode: () => void;
@@ -35,6 +40,10 @@ export interface FinanceState extends AppState {
     updateApiKeys: (keys: { eraContext: string; anthropic: string }) => void;
     updateLastUpdate: () => void;
     resetState: () => void;
+    /** Active le mode test : sauvegarde l'état actuel + applique des fixtures. */
+    enableTestMode: (fixtures: Partial<AppState>) => void;
+    /** Désactive le mode test : restaure l'état sauvegardé. */
+    disableTestMode: () => void;
 }
 
 const safeRandomId = (): string => {
@@ -238,6 +247,8 @@ export const useFinanceStore = create<FinanceState>()(
             isPrivacyMode: false,
             lastProjection: null,
             pendingFocus: null,
+            isTestMode: false,
+            realDataSnapshot: null,
 
             setActiveTab: (tab) => set({ activeTab: tab }),
             setPrivacyMode: (v) => set({ isPrivacyMode: v }),
@@ -257,6 +268,33 @@ export const useFinanceStore = create<FinanceState>()(
             })),
             updateLastUpdate: () => set({ lastUpdate: Date.now() }),
             resetState: () => set(initialState),
+
+            // Mode test : sauve l'état "vrai" actuel, applique les fixtures,
+            // active le flag (banner visible via Layout).
+            enableTestMode: (fixtures) => set((prev) => {
+                if (prev.isTestMode) return prev; // déjà en mode test
+                // Snapshot des données utilisateur courantes (hors flags UI).
+                const { apiKeys: _ak, activeTab: _at, isPrivacyMode: _pm, lastProjection: _lp, pendingFocus: _pf, isTestMode: _tm, realDataSnapshot: _rds, ...persistable } = prev as FinanceState;
+                void _ak; void _at; void _pm; void _lp; void _pf; void _tm; void _rds;
+                return {
+                    ...prev,
+                    ...fixtures,
+                    isTestMode: true,
+                    realDataSnapshot: persistable as Partial<AppState>,
+                };
+            }),
+            // Restaure les vraies données sauvegardées + désactive le flag.
+            disableTestMode: () => set((prev) => {
+                if (!prev.isTestMode) return prev;
+                const snap = prev.realDataSnapshot;
+                if (!snap) return { ...prev, isTestMode: false, realDataSnapshot: null };
+                return {
+                    ...prev,
+                    ...snap,
+                    isTestMode: false,
+                    realDataSnapshot: null,
+                };
+            }),
         }),
         {
             name: 'financeai-storage',

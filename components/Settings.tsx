@@ -10,6 +10,7 @@ import { AutoBackupPanel } from './settings/AutoBackupPanel';
 import { PayslipUploadCard } from './settings/PayslipUploadCard';
 import { MissingDataChecklist } from './ui/MissingDataBanner';
 import { usePendingFocus } from '../utils/usePendingFocus';
+import { TestModePanel } from './settings/TestModePanel';
 
 interface SettingsProps {
   apiKeys: AppState['apiKeys'];
@@ -184,6 +185,9 @@ export const Settings: React.FC<SettingsProps> = ({
       <BackupPanel buildPayload={buildBackupPayload} />
       {/* P1.3 — Backup auto rolling IndexedDB (complémentaire à l'export JSON manuel) */}
       <AutoBackupPanel />
+
+      {/* Mode test — fixtures de test avec backup auto avant switch */}
+      <TestModePanel />
 
       <div className="max-w-4xl mx-auto space-y-6">
         <PageHeader

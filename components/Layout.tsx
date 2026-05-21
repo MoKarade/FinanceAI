@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Tab, FinancialGoal } from '../types';
 import { CoupleModeBadge } from './ui/CoupleModeBadge';
 import { NextBestAction } from './sidebar/NextBestAction';
+import { useFinanceStore } from '../store/useFinanceStore';
 
 interface LayoutProps {
   activeTab: Tab;
@@ -112,8 +113,11 @@ export const Layout: React.FC<LayoutProps> = ({
   // Phase B.3 — `getSmartMilestone` (palier statique) retiré. Remplacé par le
   // widget NextBestAction qui appelle Claude (Haiku) avec lastProjection + Era.
 
+  // Mode test : banner permanent en haut + classe globale.
+  const isTestMode = useFinanceStore(s => s.isTestMode);
+
   return (
-    <div className={`min-h-screen flex flex-col md:flex-row text-gray-200 font-sans ${isPrivacyMode ? 'privacy-active' : ''}`}>
+    <div className={`min-h-screen flex flex-col md:flex-row text-gray-200 font-sans ${isPrivacyMode ? 'privacy-active' : ''} ${isTestMode ? 'test-mode-active' : ''}`}>
       {/* A11y (Audit Phase 5.1): skip link — invisible jusqu'à focus clavier. */}
       <a
         href="#main"
@@ -121,6 +125,19 @@ export const Layout: React.FC<LayoutProps> = ({
       >
         Aller au contenu principal
       </a>
+
+      {/* Banner Mode Test — toujours visible quand isTestMode=true. */}
+      {isTestMode && (
+        <div
+          role="status"
+          aria-label="Mode test activé"
+          className="fixed top-0 left-0 right-0 z-[150] bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 text-white text-center py-2 px-4 font-bold text-sm shadow-lg flex items-center justify-center gap-3"
+        >
+          <span aria-hidden="true">🧪</span>
+          <span>MODE TEST — données fictives, vos vraies données sont sauvegardées</span>
+          <span aria-hidden="true">🧪</span>
+        </div>
+      )}
       <style>{`
         .privacy-active .privacy-blur {
             filter: blur(8px) !important;

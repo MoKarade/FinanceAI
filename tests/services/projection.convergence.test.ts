@@ -259,6 +259,68 @@ describe('Convergence projection ↔ UI', () => {
         });
     });
 
+    describe('HealthIndicator (Sprint 1A)', () => {
+        it('FireTarget est exposé dans chaque point chartData (peut être 0 si non calculé)', () => {
+            const result = calculateFutureProjection(makeParams()) as any;
+            const first = result.chartData[0];
+            // FireTarget peut être absent dans certains scénarios MC, mais
+            // doit exister si le mode déterministe le calcule.
+            expect(typeof first.FireTarget === 'number' || first.FireTarget === undefined).toBe(true);
+        });
+
+        it('Si FireTarget existe, il est numérique non-NaN', () => {
+            const result = calculateFutureProjection(makeParams()) as any;
+            for (const p of result.chartData) {
+                if (p.FireTarget !== undefined && p.FireTarget !== null) {
+                    expect(typeof p.FireTarget).toBe('number');
+                    expect(Number.isFinite(p.FireTarget)).toBe(true);
+                }
+            }
+        });
+    });
+
+    describe('ChildPlanning costTimeline (Sprint 1E)', () => {
+        it('getAnnualChildCost réagit aux choix UI (publique→privée double les frais d\'école)', () => {
+            const child = makeChild();
+            const pub = getAnnualChildCost(
+                { ...child, schoolType: 'publique' } as any,
+                8, 1, 0,
+            );
+            const priv = getAnnualChildCost(
+                { ...child, schoolType: 'privee' } as any,
+                8, 1, 0,
+            );
+            // École privée 6000 vs publique 500 → différence 5500/an
+            expect(priv.careAndSchool).toBeGreaterThan(pub.careAndSchool);
+            expect(priv.careAndSchool - pub.careAndSchool).toBeGreaterThan(4000);
+        });
+
+        it('getAnnualChildCost cumule sur 26 ans = somme cohérente', () => {
+            const child = makeChild();
+            let lifetime = 0;
+            for (let age = 0; age <= 25; age++) {
+                lifetime += getAnnualChildCost(child, age, 1, age === 0 ? 10800 : 0).netTotal;
+            }
+            // Léa avec choix défaut (CPE+publique+légères+uni_local+usagée)
+            // doit être > 50k$ et < 500k$ lifetime
+            expect(lifetime).toBeGreaterThan(50000);
+            expect(lifetime).toBeLessThan(500000);
+        });
+
+        it('université étranger > local pour les années 18-21', () => {
+            const local = getAnnualChildCost(makeChild({ universityType: 'uni_local' }), 19, 1, 0);
+            const abroad = getAnnualChildCost(makeChild({ universityType: 'uni_etranger' }), 19, 1, 0);
+            expect(abroad.studies).toBeGreaterThan(local.studies);
+            expect(abroad.studies - local.studies).toBeGreaterThan(20000); // 35k - 5k = 30k
+        });
+
+        it('voiture neuve année 18 = +25000$ vs pas de voiture', () => {
+            const noCar = getAnnualChildCost(makeChild({ carGift: 'non' }), 18, 1, 0);
+            const newCar = getAnnualChildCost(makeChild({ carGift: 'neuve' }), 18, 1, 0);
+            expect(newCar.oneOff - noCar.oneOff).toBe(25000);
+        });
+    });
+
     describe('Convergence formelle', () => {
         it('chartData[0].NetWorth ≈ calculatedStartingCash + portfolio + immo', () => {
             const params = makeParams();

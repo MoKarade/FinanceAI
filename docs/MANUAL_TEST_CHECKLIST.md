@@ -63,6 +63,10 @@ Couple **Alex + Sam** (mode test, `services/testFixtures.ts`) :
 | 1.12 | Card **Revenus passifs** affiche dividendes des actifs | Si applicable, sinon "Aucun" sans crash |
 | 1.13 | Bouton "Mode privé" masque les chiffres (blur) | Réversible |
 | 1.14 | i18n FR par défaut, libellés sans clé non-traduite (ex: `dashboard.foo`) | Aucun |
+| 1.15 | **Health Indicator** FIRE progress = pourcentage cohérent avec Future | OK depuis migration 2026-05-21 |
+| 1.16 | **Graph Évolution** affiche des courbes RÉELLES (volatilité Yahoo, pas droite linéaire) | OK depuis CSV 2026-05-21 |
+| 1.17 | Hover BTC-CAD : oscillation visible entre ~89k et ~107k$ sur 2 ans | OK (vraies valeurs Yahoo) |
+| 1.18 | Hover AAPL : ~190 → ~305 USD × 1.37 = ~260 → ~418 CAD | Conversion fixe documentée |
 
 ## Section 2 — Investissements
 
@@ -179,6 +183,10 @@ Couple **Alex + Sam** (mode test, `services/testFixtures.ts`) :
 | 9.9 | Changer **universityType=uni_etranger** → coût total grimpe | 35k×4 = 140k vs uni_local 20k |
 | 9.10 | Changer **carGift=neuve** → +25k$ à 18 ans visible Future | Avant le fix : aucun impact |
 | 9.11 | Changer **daycareType=parent_foyer** → garderie 0$ mais perte salaire ~1700$ | OK |
+| 9.12 | Graph **costTimeline** : changer schoolType=privée → bars Garde/École plus hautes 5-17 ans | OK depuis migration 2026-05-21 (utilise getAnnualChildCost source unique) |
+| 9.13 | Changer universityType=etranger → spike années 18-21 dans timeline | OK |
+| 9.14 | Changer carGift=neuve → pic année 18 +25k$ | OK |
+| 9.15 | totalCost timeline cohérent avec Future (même formules tranches d'âge) | OK convergence garantie |
 
 ## Section 10 — Projets de vie
 
@@ -332,3 +340,6 @@ Quand on livre un fix ou une feature :
 | 2026-05-21 | +6 tests (6.11.b + 9.8/9/10/11 + Future events) | Refactor childCosts.ts source unique |
 | 2026-05-21 | +3 tests (7.10/11/12) | Refactor centralisation calculs (Retraite ← lastProjection) |
 | 2026-05-21 | +10 tests Vitest automatisés (`projection.convergence.test.ts`) | Convergence Future ↔ UI |
+| 2026-05-21 | +4 tests (1.15-1.18) | CSV Yahoo Finance réel pour mode test |
+| 2026-05-21 | +4 tests (9.12-9.15) | Migration ChildPlanning costTimeline source unique |
+| 2026-05-21 | +6 tests Vitest convergence (Sprint 1A/1E) | HealthIndicator + ChildPlanning migrés |

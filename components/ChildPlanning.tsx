@@ -125,65 +125,50 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     const carCost = CAR_INFO[carGift].cost;
     const parentSalaryLoss = parentAtHome ? 1700 : 0;
 
+    // Centralisation 2026-05-21 : utilise getAnnualChildCost() (source unique
+    // services/projection/childCosts.ts) au lieu de répliquer la logique des
+    // tranches d'âge. Garanti aligné avec le moteur de projection qui utilise
+    // les mêmes constantes DAYCARE_INFO/SCHOOL_INFO/etc.
     const costTimeline = useMemo(() => {
         if (!goal) return { data: [], totalCost: 0 };
+        const inflation = (projection.inflationRate || 2) / 100;
+        const parentalLeaveYr0 = parentalLeaveMonthsCost(goal);
+        // Override les choix de vie sur le goal pour matcher l'état local
+        // de ce composant (les useState sont la vérité utilisateur courante,
+        // pas encore forcément persistés sur goal.daycareType etc.)
+        const effectiveGoal: ChildGoal = {
+            ...goal,
+            daycareType,
+            schoolType,
+            activitiesLevel,
+            universityType,
+            carGift,
+        };
+
         const data = [];
         let totalCost = 0;
-        const inflation = (projection.inflationRate || 2) / 100;
-        const govBenefits = goal.governmentBenefits || 450;
 
         for (let age = 0; age <= 25; age++) {
-            const inf = Math.pow(1 + inflation, age);
-            let base = 0;
-            let garde = 0;
-            let extra = 0;
-            let benefices = govBenefits;
+            const inflationMultiplier = Math.pow(1 + inflation, age);
+            const b = getAnnualChildCost(
+                effectiveGoal,
+                age,
+                inflationMultiplier,
+                age === 0 ? parentalLeaveYr0 : 0,
+            );
 
-            if (age === 0) {
-                extra += (goal.initialCost || 2800) + (parentalLeaveMonthsCost(goal));
-                base = (goal.monthlyDiapers + goal.monthlyFood + goal.monthlyClothing) * 12;
-                garde = daycareMonthly * 12;
-                if (parentAtHome) garde = 0;
-            } else if (age >= 1 && age <= 4) {
-                base = (goal.monthlyDiapers * 0.5 + goal.monthlyFood + goal.monthlyClothing + 50) * 12;
-                garde = (parentAtHome ? 0 : daycareMonthly) * 12;
-            } else if (age >= 5 && age <= 11) {
-                base = (goal.monthlyFood + goal.monthlyClothing + 80) * 12;
-                garde = (schoolYearly + activitiesYearly) / 1;
-            } else if (age >= 12 && age <= 17) {
-                base = (goal.monthlyFood * 1.2 + goal.monthlyClothing * 1.5 + 150) * 12;
-                garde = (schoolYearly + activitiesYearly);
-                if (age === 16) extra += 500;
-                benefices = Math.max(0, govBenefits - 100);
-            } else if (age === 18) {
-                base = 0;
-                garde = 0;
-                extra += carCost;
-                benefices = 0;
-            } else if (age >= 18 && age < 18 + uniInfo.years) {
-                base = uniInfo.yearlyCost;
-                garde = 0;
-                benefices = 0;
-            } else {
-                base = 0;
-                garde = 0;
-                benefices = 0;
-            }
-
-            const annualCost = Math.round(((base + garde + extra) * inf) - benefices);
-            totalCost += Math.max(0, annualCost);
-
+            totalCost += b.netTotal;
             data.push({
                 age,
-                Essentiel: Math.max(0, Math.round(base * inf)),
-                Garde_École_Activités: Math.max(0, Math.round(garde * inf)),
-                Ponctuel: Math.round(extra * inf),
-                Bénéfices: -Math.round(benefices),
-                Total: Math.max(0, annualCost),
+                Essentiel: b.base,
+                Garde_École_Activités: b.careAndSchool + b.studies,
+                Ponctuel: b.oneOff,
+                Bénéfices: -b.benefits,
+                Total: b.netTotal,
             });
         }
         return { data, totalCost };
-    }, [goal, daycareType, schoolType, activitiesLevel, universityType, carGift, parentAtHome, projection]);
+    }, [goal, daycareType, schoolType, activitiesLevel, universityType, carGift, projection]);
 
     const respProjection = useMemo(() => {
         const data = [];

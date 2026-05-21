@@ -3,6 +3,7 @@ import { useFinanceStore } from '../../store/useFinanceStore';
 import { formatNumber, formatPercent } from '../../utils/format';
 import { useHasUserData } from '../../utils/useHasUserData';
 import { EmptyDataPrompt } from '../ui/EmptyDataPrompt';
+import { useProjectionSelector } from '../../hooks/useProjectionSelector';
 
 /**
  * Phase D.6 — indicateur de santé financière paramétrable.
@@ -26,6 +27,10 @@ import { EmptyDataPrompt } from '../ui/EmptyDataPrompt';
  */
 
 const STORAGE_KEY = 'healthIndicator:weights:v1';
+
+// Selectors top-level pour stabilité (useProjectionSelector compare la ref).
+const selectFireTarget = (chart: ReadonlyArray<{ FireTarget?: number }>): number =>
+    chart[0]?.FireTarget ?? 0;
 
 interface Weights {
     savingsRate: number;
@@ -103,6 +108,8 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
     const debts = useFinanceStore(s => s.debts);
     const assets = useFinanceStore(s => s.assets);
     const initialBalances = useFinanceStore(s => s.initialBalances);
+    // Centralisation : FireTarget vient de la projection si disponible
+    const projectionFireTarget = useProjectionSelector(selectFireTarget, 0);
 
     const metrics = useMemo<MetricRow[]>(() => {
         // Revenus mensuels (netSalary est mensuel dans le store)
@@ -129,7 +136,12 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
         const debtScore = clamp01(100 - (debtAssetsRatio / 50) * 100); // 0% dette = 100, 50%+ = 0
 
         // 4. Progression FIRE (patrimoine / 25× dépenses annuelles)
-        const fireTarget = monthlyExpenses * 12 * 25;
+        // Source de vérité : Future projection si elle a été calculée
+        // (moteur inclut inflation et dépenses réelles annuelles), sinon
+        // fallback formule 25× dépenses mensuelles courantes.
+        const fireTarget = projectionFireTarget > 0
+            ? projectionFireTarget
+            : monthlyExpenses * 12 * 25;
         const fireProgressPct = fireTarget > 0 ? (totalAssets / fireTarget) * 100 : 0;
         const fireScore = clamp01(fireProgressPct);
 
@@ -163,7 +175,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                 help: "Cible 100% : indépendance financière atteinte (règle des 4%).",
             },
         ];
-    }, [config, budgetItems, debts, assets, initialBalances]);
+    }, [config, budgetItems, debts, assets, initialBalances, projectionFireTarget]);
 
     // Score global pondéré (normalisation au cas où la somme des poids ≠ 100)
     const totalScore = useMemo(() => {

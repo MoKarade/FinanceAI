@@ -4,9 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> Dernière session : 2026-05-20/21 — sprint de 18 PRs livrant **P1
-> Production Readiness 7/7** + **P2 Mobile & a11y AAA 9/9**.
-> Tests 511 → **573 verts**. App **live sur https://www.hubperso.com**.
+> Dernière session : 2026-05-21 (cycles 17-18) — **mode test complet** +
+> **mode strict centralisation calculs** (Future = source unique).
+> Tests 573 → **596 verts**. App live sur https://www.hubperso.com.
+>
+> **Cycle 17-18 highlights** :
+> - Mode test fixtures (couple Alex/Sam, 5 actifs réels Yahoo, REEE/dettes/immo)
+> - 13 fixes bugs visibles (TaxCenter × 100, dettes infinies, Enfant crash, Math.round M$, etc.)
+> - **Mode strict TOTAL** : 8 composants migrés vers `lastProjection.chartData`
+> - **Centralisation Phase 3** : 9 nouveaux champs chartData (marginalTax,
+>   reeeContribCum, DividendIncome, realNetWorth, etc.)
+> - CSV Yahoo Finance authentique pour mode test (no-fake total)
+> - Keyboard shortcuts Alt+1..9
+> - 23 tests convergence Vitest (594→596 verts) + checklist 131 tests manuels
+> - 8 nouveaux docs (BACKLOG, SECURITY_STRATEGY, CENTRALIZED_CALC_*,
+>   PROJECTION_OUTPUT_SCHEMA, etc.)
 
 ---
 
@@ -88,6 +100,54 @@
 | #113 | P2.9 PWA | manifest.json + sw.js + icon.svg + register en PROD |
 | #114 | P2.1 axe pages | 4 pages couvertes (Onboarding, SystemView, Dashboard, TaxBracketViz) |
 | #115 | docs P2 final | MAJ HANDOVER + CHANGELOG + PLAN_P2 (clôturé 9/9) |
+
+### Cycles 17-18 — Mode test + Centralisation + Strict mode (2026-05-21)
+
+Direct merges sur main (pas de PRs numérotées — workflow accéléré avec
+Marc validant en live).
+
+**Mode test** :
+- `services/testFixtures.ts` : couple Alex/Sam, 68 transactions, 5 actifs
+  réels Yahoo (VFV.TO, VEQT.TO, XEQT.TO, AAPL, BTC-CAD), CSV historique
+  100% authentique bundlé `services/data/test-portfolio-history.csv`
+- Bouton Activer/Désactiver dans Configuration → TestModePanel
+- Banner orange permanent en mode actif
+- `enableTestMode` snapshot des vraies données pour restauration safe
+
+**13 fixes bugs visibles** (cycle 17) :
+- TaxCenter taux marginal × 100 (était décimal affiché tel quel)
+- Future scénarios "0.0M$" (Math.round avant /1M)
+- Enfant crash (Bar dans AreaChart → ComposedChart)
+- Tooltip Future taille fixe + icônes alignées + ligne décaissement
+- Extinction dettes (effectiveMinimum garde-fou)
+- Retirement aligné avec Future (savingsGoals + financialGoals)
+- Fixtures Debt/ChildGoal champs corrects
+- Variation Dashboard 2 décimales partout
+- Plus : tooltip décaissement portfolio en retraite (bug "60\$/mois")
+
+**Mode strict TOTAL** (cycle 18) :
+- 8 composants migrés : Retirement, Dashboard, Investments, Budget,
+  RealEstate, Planning, ChildPlanning, HealthIndicator
+- Composant partagé `components/ui/ProjectionRequired.tsx` (variants
+  block + inline)
+- Suppression de tous les fallbacks fake (formule 5% Dashboard, 25×
+  HealthIndicator, ×10×1.4 Latte Factor Planning, projection REEE locale
+  ChildPlanning)
+- Convention "valeurs réelles ou rien" appliquée à fond
+
+**Centralisation Phase 3 — 9 nouveaux champs `chartData`** :
+- Tier 1 : `realNetWorth`, `liquidityRunway`, `mortgageRemainingMonths`
+- Tier 2 : `reeeContribCum`, `reeeGrantsCum`
+- Tier 3 : `DividendIncome`, `TaxableInvIncome`, `marginalTaxRate`, `effectiveTaxRate`
+- Hook partagé `hooks/useProjectionSelector.ts` (3 variants)
+
+**B1 décision UX** : Retirement reflète automatiquement le scénario actif
+de Future (badge "Scénario actif : {strategyName}" dans subtitle).
+
+**Q3 keyboard shortcuts** : Alt+1..9 pour switcher d'onglet.
+
+**Tests** : 573 → 596 verts (+23 : 16 convergence + 5 nouveaux Tier 1-2
++ 2 nouveaux Tier 3). +131 tests manuels checklist.
 
 ### Phase 3 — Lighthouse prod fixes (PR #116)
 
@@ -197,7 +257,13 @@ npx tsx scripts/check-contrast.ts  # audit WCAG AA contrast
 
 | Doc | Quand le lire |
 |---|---|
-| `docs/HANDOVER.md` | Vue exhaustive du projet, historique complet 25 PRs analysées |
+| **`docs/BACKLOG.md`** | **Source de vérité du restant à faire — à lire EN PREMIER pour savoir où en est le projet** |
+| `docs/MANUAL_TEST_CHECKLIST.md` | 131+ tests manuels à exécuter à chaque livraison (sections par onglet) |
+| `docs/CENTRALIZED_CALC_PROGRESS.md` | Suivi du refactor "Future = source unique" — Phase 1+2 done, Phase 3 Tier 1+2+3 ✅ |
+| `docs/CENTRALIZED_CALC_REFACTOR.md` | Plan stratégique du refactor (5 étapes, calculs KEEP_LOCAL identifiés) |
+| `docs/PROJECTION_OUTPUT_SCHEMA.md` | Inventaire exhaustif des champs `lastProjection.chartData[i]` (~50 champs) |
+| `docs/SECURITY_STRATEGY.md` | Plan auth Cloudflare Access + Google OAuth (0$, 90 min config) |
+| `docs/HANDOVER.md` | Vue exhaustive du projet, historique complet PRs analysées |
 | `docs/ARCHITECTURE.md` | Stack détaillé, topologie, store, pipeline IA |
 | `docs/PROJECTION.md` | Moteur de projection (9 phases, 7 scénarios, MC) |
 | `docs/WIRING_NOTES.md` | Wirings inter-onglets (lastProjection, deep-links) |

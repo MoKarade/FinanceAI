@@ -186,14 +186,17 @@ les plus critiques en Playwright (cible : 20-30 tests).
 
 ## 📚 P3 — Documentation
 
-### D1 — Mettre à jour SESSION_HANDOVER.md
-Le handover référence l'état avant les refactors récents.
-- [ ] Section §4 : cycles 17-18 résumés (centralisation, CSV réel, mode strict)
-- [ ] Section §10 : architecture mise à jour (hook useProjectionSelector)
+### D1 — Mettre à jour SESSION_HANDOVER.md ✅ TERMINÉ 2026-05-21
+- [x] Section dédiée Cycles 17-18 (Mode test + 13 fixes + Mode strict + Centralisation)
+- [x] Index des docs mis à jour avec BACKLOG en tête + lien CENTRALIZED_CALC_PROGRESS
+- [x] Highlights synthétisés en haut du doc
 
-### D2 — README projet
-- [ ] Ajouter section "Mode test" avec lien vers MANUAL_TEST_CHECKLIST.md
-- [ ] Documenter convention "valeurs réelles ou rien"
+### D2 — README projet ✅ TERMINÉ 2026-05-21
+- [x] Section "Conventions clés" : Future = source unique, mode strict, no-fake
+- [x] Section "Raccourcis clavier" Alt+1..9
+- [x] Tests count : 573 → 596
+- [x] Liens vers BACKLOG, MANUAL_TEST_CHECKLIST, CENTRALIZED_CALC_PROGRESS,
+  PROJECTION_OUTPUT_SCHEMA, SECURITY_STRATEGY
 
 ### D3 — ADR (Architecture Decision Records)
 - [ ] ADR sur Cloudflare Access vs alternatives auth

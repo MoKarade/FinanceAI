@@ -26,16 +26,52 @@ npm run preview
 ## 🧪 Tests et qualité
 
 ```bash
-npm run test          # Vitest (573 tests, 51 fichiers)
+npm run test          # Vitest (596 tests, 52 fichiers)
 npm run typecheck     # TypeScript strict mode (clean)
 npm run build         # Vite (--mode production)
 ```
+
+Tests manuels : 131 cas couvrant 17 onglets — voir
+[`docs/MANUAL_TEST_CHECKLIST.md`](docs/MANUAL_TEST_CHECKLIST.md).
+
+## 🎓 Conventions clés
+
+- **Future = source unique** : tout calcul long-terme (FIRE, capital
+  retraite, coût enfant lifetime…) vient de `lastProjection.chartData`.
+  Voir [`docs/CENTRALIZED_CALC_PROGRESS.md`](docs/CENTRALIZED_CALC_PROGRESS.md)
+  et [`docs/PROJECTION_OUTPUT_SCHEMA.md`](docs/PROJECTION_OUTPUT_SCHEMA.md).
+- **Mode strict** : si la projection n'est pas calculée, les onglets
+  affichent `<ProjectionRequired>` au lieu d'inventer des valeurs.
+- **No-fake data** : aucune donnée simulée en production. En mode test,
+  CSV historique Yahoo Finance réel (104 points hebdo sur 2 ans).
+- **Mode test** : bouton dans Configuration → snapshot des vraies données
+  + bascule sur fixtures Alex/Sam. Restauration safe au désactivement.
+
+## ⌨️ Raccourcis clavier
+
+| Touche | Action |
+|---|---|
+| `Alt+1` | Dashboard |
+| `Alt+2` | Transactions |
+| `Alt+3` | Budget |
+| `Alt+4` | Planning |
+| `Alt+5` | Investments |
+| `Alt+6` | Future |
+| `Alt+7` | Retraite |
+| `Alt+8` | Impôts |
+| `Alt+9` | Assistant |
 
 ## 📚 Documentation
 
 | Fichier | Contenu |
 |---|---|
-| [`docs/PROJECTION.md`](docs/PROJECTION.md) | **Documentation détaillée du moteur de projection future** — 9 phases mensuelles, calendrier fiscal, calculs RRQ/PSV/DB/SRG, Monte Carlo, FVI, sequence risk |
+| **[`docs/BACKLOG.md`](docs/BACKLOG.md)** | **Source de vérité du restant à faire** — items P0/P1/P2/P3 |
+| [`docs/SESSION_HANDOVER.md`](docs/SESSION_HANDOVER.md) | Reprise rapide — état actuel + recommandations |
+| [`docs/MANUAL_TEST_CHECKLIST.md`](docs/MANUAL_TEST_CHECKLIST.md) | 131 tests manuels par onglet |
+| [`docs/CENTRALIZED_CALC_PROGRESS.md`](docs/CENTRALIZED_CALC_PROGRESS.md) | Suivi refactor "Future = source unique" |
+| [`docs/PROJECTION_OUTPUT_SCHEMA.md`](docs/PROJECTION_OUTPUT_SCHEMA.md) | Schéma exhaustif `chartData[i]` (~50 champs) |
+| [`docs/SECURITY_STRATEGY.md`](docs/SECURITY_STRATEGY.md) | Plan auth (Cloudflare Access) |
+| [`docs/PROJECTION.md`](docs/PROJECTION.md) | Moteur de projection (9 phases, 7 scénarios, MC) |
 | [`CHANGELOG.md`](CHANGELOG.md) | Historique des changements |
 | [`docs/HANDOVER.md`](docs/HANDOVER.md) | Guide de reprise — architecture, décisions, dette technique |
 | [`mcp/README.md`](mcp/README.md) | Documentation du serveur MCP (intégration agents IA) |

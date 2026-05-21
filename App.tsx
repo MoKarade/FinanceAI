@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { Layout } from './components/Layout';
 import { Onboarding } from './components/Onboarding';
 import { ToastContainer, showToast } from './components/ui/Toast';
+import { PwaInstallBanner } from './components/PwaInstallBanner';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { Tab, AppState, Transaction, BudgetCategory } from './types';
 import { fetchTransactions } from './services/eraContext';
@@ -535,6 +536,7 @@ export const App: React.FC = () => {
                 </Suspense>
             </Layout>
             <ToastContainer />
+            <PwaInstallBanner />
             <CommandPalette open={cmdK.isOpen} onClose={cmdK.close} actions={cmdActions} />
         </div>
     );

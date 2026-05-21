@@ -223,10 +223,10 @@ les plus critiques en Playwright (cible : 20-30 tests).
 - [x] ADR 006 — Convention "valeurs réelles ou rien"
 - [x] ADR 007 — Authentification Cloudflare Access (proposé, config en attente)
 
-### D4 — Doc utilisateur
-Aujourd'hui pas de doc end-user. À créer si l'app sort du contexte perso :
-- [ ] Quick start guide
-- [ ] FAQ (privacy, données stockées, etc.)
+### D4 — Doc utilisateur ✅ TERMINÉ 2026-05-21
+- [x] [USER_GUIDE.md](USER_GUIDE.md) créé : quick start + tour chaque onglet
+  + raccourcis clavier + confidentialité + backups + PWA install + FAQ
+  (6 questions courantes)
 
 ---
 
@@ -264,7 +264,7 @@ fichiers distincts si le moteur grossit.
 - [x] Confirm dialog avant `enableTestMode` si données existantes — ✅ déjà fait
 - [ ] Export PDF Future avec scénarios — reporté (1h+, builder dédié)
 - ❌ Dark/light mode toggle — **reporté** (app en `darkMode: 'class'` sans variables CSS light, re-thémer = gros chantier)
-- [ ] PWA install prompt customisé
+- [x] **PWA install prompt customisé** ✅ 2026-05-21 (banner emerald discret en bas, dismiss 30 jours)
 - [ ] Loading skeleton pour les chartes Future pendant calcul (>1s)
 - [x] **Keyboard shortcuts Alt+1..9 pour switcher onglets** ✅ 2026-05-21
 - [ ] Vue mobile : optimiser Future tab (responsive)

@@ -20,6 +20,7 @@ import { configureMarketDataProvider } from './services/marketData';
 import { installGlobalErrorHandlers } from './services/errorLogger';
 import { lazyWithRetry, clearChunkReloadFlag } from './utils/lazyWithRetry';
 import { initAutoBackup } from './services/backupAuto';
+import { trackPageView } from './services/analytics';
 
 const GuideModal = lazyWithRetry(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })), 'GuideModal');
 
@@ -73,6 +74,13 @@ export const App: React.FC = () => {
 
         return () => clearTimeout(timer);
     }, []);
+
+    // GA4 — page_view explicite à chaque changement d'onglet. GA4 ne
+    // track automatiquement que la page d'entrée ; sans cet effect, les
+    // navigations SPA n'apparaissent pas dans "Pages and screens".
+    useEffect(() => {
+        trackPageView(activeTab);
+    }, [activeTab]);
 
     const migrationWarningShown = useRef(false);
     useEffect(() => {

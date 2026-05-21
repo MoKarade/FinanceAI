@@ -99,41 +99,51 @@ function genHistory(buyPrice: number, currentPrice: number): Array<{ date: strin
     return out;
 }
 
+// Convention "valeurs réelles ou rien" : currentPrice et buyPrice sont les
+// VRAIES valeurs Yahoo Finance correspondant aux premier et dernier points
+// du CSV `services/data/test-portfolio-history.csv` (snapshot 2024-05-20
+// → 2026-05-21, hebdomadaire). AAPL est converti USD → CAD au taux fixe
+// `USD_CAD_RATE` documenté ci-dessous.
+//
+// Si le CSV est régénéré (script scripts/build-test-portfolio-csv.cjs), les
+// bornes doivent être mises à jour ici en cohérence. Voir aussi
+// `parseTestMarketCsv()` plus bas.
+const USD_CAD_RATE = 1.37;
 const TEST_ASSETS: Asset[] = [
     {
         id: 'test-asset-1', symbol: 'VFV.TO', name: 'Vanguard S&P 500 (CAD)', region: 'us-equity',
-        sector: 'index', accountType: 'CELI', currentPrice: 145.50,
-        priceHistory: genHistory(110.00, 145.50),
-        purchases: [{ date: '2023-01-15', price: 110.00, quantity: 50 }],
-        dateBought: '2023-01-15', buyPrice: 110.00, quantity: 50,
+        sector: 'index', accountType: 'CELI', currentPrice: 182.18,
+        priceHistory: genHistory(128.78, 182.18),
+        purchases: [{ date: '2024-05-20', price: 128.78, quantity: 50 }],
+        dateBought: '2024-05-20', buyPrice: 128.78, quantity: 50,
     },
     {
         id: 'test-asset-2', symbol: 'VEQT.TO', name: 'Vanguard All-Equity', region: 'global',
-        sector: 'index', accountType: 'REER', currentPrice: 38.20,
-        priceHistory: genHistory(32.10, 38.20),
-        purchases: [{ date: '2022-08-10', price: 32.10, quantity: 250 }],
-        dateBought: '2022-08-10', buyPrice: 32.10, quantity: 250,
+        sector: 'index', accountType: 'REER', currentPrice: 59.19,
+        priceHistory: genHistory(41.16, 59.19),
+        purchases: [{ date: '2024-05-20', price: 41.16, quantity: 250 }],
+        dateBought: '2024-05-20', buyPrice: 41.16, quantity: 250,
     },
     {
         id: 'test-asset-3', symbol: 'XEQT.TO', name: 'iShares All-Equity', region: 'global',
-        sector: 'index', accountType: 'NON-ENREG', currentPrice: 32.95,
-        priceHistory: genHistory(29.00, 32.95),
-        purchases: [{ date: '2023-05-22', price: 29.00, quantity: 100 }],
-        dateBought: '2023-05-22', buyPrice: 29.00, quantity: 100,
+        sector: 'index', accountType: 'NON-ENREG', currentPrice: 43.82,
+        priceHistory: genHistory(31.02, 43.82),
+        purchases: [{ date: '2024-05-20', price: 31.02, quantity: 100 }],
+        dateBought: '2024-05-20', buyPrice: 31.02, quantity: 100,
     },
     {
         id: 'test-asset-4', symbol: 'AAPL', name: 'Apple Inc.', region: 'us-equity',
-        sector: 'tech', accountType: 'CELI', currentPrice: 220.00,
-        priceHistory: genHistory(130.00, 220.00),
-        purchases: [{ date: '2021-03-15', price: 130.00, quantity: 20 }],
-        dateBought: '2021-03-15', buyPrice: 130.00, quantity: 20,
+        sector: 'tech', accountType: 'CELI', currentPrice: 304.99 * USD_CAD_RATE,
+        priceHistory: genHistory(189.98 * USD_CAD_RATE, 304.99 * USD_CAD_RATE),
+        purchases: [{ date: '2024-05-20', price: 189.98 * USD_CAD_RATE, quantity: 20 }],
+        dateBought: '2024-05-20', buyPrice: 189.98 * USD_CAD_RATE, quantity: 20,
     },
     {
         id: 'test-asset-5', symbol: 'BTC-CAD', name: 'Bitcoin', region: 'crypto',
-        sector: 'crypto', accountType: 'CRYPTO', currentPrice: 95000,
-        priceHistory: genHistory(60000, 95000),
-        purchases: [{ date: '2024-01-10', price: 60000, quantity: 0.15 }],
-        dateBought: '2024-01-10', buyPrice: 60000, quantity: 0.15,
+        sector: 'crypto', accountType: 'CRYPTO', currentPrice: 106951.52,
+        priceHistory: genHistory(93665.95, 106951.52),
+        purchases: [{ date: '2024-05-20', price: 93665.95, quantity: 0.15 }],
+        dateBought: '2024-05-20', buyPrice: 93665.95, quantity: 0.15,
     },
 ] as unknown as Asset[];
 
@@ -225,21 +235,57 @@ const TEST_FINANCIAL_GOALS: FinancialGoal[] = [
  *   - 'TOTAL_CELI' / 'TOTAL_REER' / 'TOTAL_NON-ENREG' / 'TOTAL_CRYPTO' : agrégats
  *   - 'TOTAL' : somme totale incluant initialBalances cash
  */
-export function generateTestMarketData(): MarketDataPoint[] {
-    // Convention "valeurs réelles ou rien" : en mode test on ne SIMULE PAS
-    // les fluctuations boursières (avant : sinus + bruit aléatoire qui ne
-    // correspondaient à aucune vérité historique). À la place on fait une
-    // interpolation **linéaire** entre buyPrice (point d'achat fictif) et
-    // currentPrice (valeur fictive mais cohérente avec les fixtures), pour
-    // que l'évolution du graph montre uniquement la trajectoire d'achat
-    // sans prétendre simuler un historique de marché.
-    //
-    // En mode production : ce hook n'est pas appelé — le vrai CSV
-    // /portfolio-history.csv fournit les valeurs historiques réelles.
-    const out: MarketDataPoint[] = [];
-    const now = new Date();
-    const WEEKS = 104;
+// Import raw du CSV historique réel (Yahoo Finance v8, weekly close,
+// 2024-05-20 → 2026-05-21 — 106 points hebdo). Bundlé via Vite `?raw`,
+// pas de fetch réseau requis. Voir scripts/build-test-portfolio-csv.cjs
+// pour reproduire (Yahoo Finance API, sans clé requise).
+// eslint-disable-next-line import/no-unresolved
+import testPortfolioCsv from './data/test-portfolio-history.csv?raw';
 
+/**
+ * Parse le CSV bundlé en un map `{ date: { SYMBOL: price } }`.
+ * Convertit AAPL (USD source Yahoo) en CAD via taux fixe USD_CAD_RATE
+ * (~1.37, moyenne 2024-2026). Cette conversion est une légère approximation
+ * documentée — pas de fluctuation forex jour-à-jour. Les autres symboles
+ * sont nativement en CAD (suffixe .TO ou paire -CAD).
+ */
+function parseTestMarketCsv(): { date: string; prices: Record<string, number> }[] {
+    const lines = testPortfolioCsv.trim().split(/\r?\n/);
+    const headers = lines[0].split(',').map(s => s.trim());
+    // headers attendus : date,VFV.TO,AAPL,BTC-CAD,VEQT.TO,XEQT.TO
+    const rows: { date: string; prices: Record<string, number> }[] = [];
+    for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',').map(s => s.trim());
+        if (cols.length < headers.length) continue;
+        const row: { date: string; prices: Record<string, number> } = {
+            date: cols[0],
+            prices: {},
+        };
+        for (let j = 1; j < headers.length; j++) {
+            const symbol = headers[j];
+            const raw = parseFloat(cols[j]);
+            if (!Number.isFinite(raw)) continue;
+            row.prices[symbol] = symbol === 'AAPL' ? raw * USD_CAD_RATE : raw;
+        }
+        rows.push(row);
+    }
+    return rows;
+}
+
+const PARSED_CSV = parseTestMarketCsv();
+
+/**
+ * Historique de marché pour le mode test, basé sur des vraies données
+ * Yahoo Finance hebdomadaires (close prices, 2024-05 → 2026-05).
+ *
+ * Convention "valeurs réelles ou rien" : aucune simulation, aucune
+ * interpolation. Les valeurs viennent toutes du CSV bundlé. Si une
+ * cellule est manquante (rare), le point est ignoré pour ce symbole.
+ *
+ * En production : ce hook n'est pas appelé — le vrai CSV
+ * `/portfolio-history.csv` (vrai portefeuille Marc) prime.
+ */
+export function generateTestMarketData(): MarketDataPoint[] {
     const initialBalances = {
         CELI: 32000,
         REER: 12500,
@@ -248,36 +294,32 @@ export function generateTestMarketData(): MarketDataPoint[] {
         LIQUIDITE: 8500,
     };
     const cashTotal = Object.values(initialBalances).reduce((s, v) => s + v, 0);
+    const out: MarketDataPoint[] = [];
 
-    for (let i = WEEKS - 1; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - i * 7);
-        const date = d.toISOString().split('T')[0];
-        const t = (WEEKS - 1 - i) / (WEEKS - 1); // 0 (oldest) → 1 (newest)
-
-        const row: MarketDataPoint = { date };
+    for (const row of PARSED_CSV) {
+        const point: MarketDataPoint = { date: row.date };
         let celiTotal = 0;
         let reerTotal = 0;
         let nonRegTotal = 0;
         let cryptoTotal = 0;
 
         for (const a of TEST_ASSETS) {
-            const buy = a.purchases?.[0]?.price ?? a.currentPrice;
-            const price = buy + (a.currentPrice - buy) * t;
+            const price = row.prices[a.symbol];
+            if (price == null) continue; // pas de fake — on saute si manquant
             const qty = a.quantity || a.purchases?.[0]?.quantity || 0;
             const value = Math.round(price * qty * 100) / 100;
-            row[a.symbol] = value;
+            point[a.symbol] = value;
             if (a.accountType === 'CELI') celiTotal += value;
             else if (a.accountType === 'REER') reerTotal += value;
             else if (a.accountType === 'CRYPTO') cryptoTotal += value;
             else nonRegTotal += value;
         }
-        row['TOTAL_CELI'] = celiTotal;
-        row['TOTAL_REER'] = reerTotal;
-        row['TOTAL_NON-ENREG'] = nonRegTotal;
-        row['TOTAL_CRYPTO'] = cryptoTotal;
-        row['TOTAL'] = celiTotal + reerTotal + nonRegTotal + cryptoTotal + cashTotal;
-        out.push(row);
+        point['TOTAL_CELI'] = celiTotal;
+        point['TOTAL_REER'] = reerTotal;
+        point['TOTAL_NON-ENREG'] = nonRegTotal;
+        point['TOTAL_CRYPTO'] = cryptoTotal;
+        point['TOTAL'] = celiTotal + reerTotal + nonRegTotal + cryptoTotal + cashTotal;
+        out.push(point);
     }
 
     return out;

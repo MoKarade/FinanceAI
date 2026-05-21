@@ -104,6 +104,21 @@ et que ca me mette une erreur ou un msg si pas dispo". Statut :
 
 ---
 
+## 🐛 Bugs trouvés au test browser (2026-05-21)
+
+### TB1 — Hash navigation au boot ✅ FIXÉ (commit e888564, validé prod)
+### TB2 — Worker crash `slice undefined` ✅ FIXÉ (commit e888564, validé prod)
+### TB3 — 7 cards scénarios Future affichent `0.00M$` 🔴 À INVESTIGUER
+KPI principal "Patrimoine projeté" = 1.69M$ (correct) mais les 7 cards
+scénarios affichent `0.00M$`. Cause probable : en `runMC=true`, le worker
+ne calcule que le scénario sélectionné ; `allResults[i].estateNetWorth`
+reste 0 pour les autres. Fichiers : `services/projection.ts` +
+`runAsync.ts`. Effort ~1-2h. Non-bloquant (courbe + KPI principal OK).
+### TB4 — Réactivité sliders Future ⚠️ À VALIDER MANUELLEMENT
+Automation JS/clavier ne recalcule pas (limitation injection synthétique
+React 19, pas un bug app). Stress test : ✅ AUCUN crash sous valeurs
+extrêmes. Marc doit drag manuellement pour confirmer la réactivité.
+
 ## 🐛 P1 — Bugs ouverts / hypothèses non validées
 
 ### B1 — Retirement runMC=false vs Future MC=true ✅ RÉSOLU 2026-05-21

@@ -40,7 +40,24 @@ export function useDebouncedMemo<T>(
             try {
                 setValue(factoryRef.current());
             } catch (e) {
+                // SF2 fix (Sprint 1) : avant ce fix, un crash de la factory laissait
+                // l'ANCIENNE valeur affichée comme si elle était courante. Pour les
+                // calculs lourds comme la projection MC, ça pouvait afficher une
+                // simulation périmée comme valide. On loggue via errorLogger pour
+                // que le crash apparaisse dans SystemView, et on garde la valeur
+                // précédente (le caller peut tester un éventuel flag _hasError).
                 console.error('[useDebouncedMemo] factory crash on update:', e);
+                try {
+                    // Import dynamique pour éviter dépendance circulaire au boot
+                    import('../services/errorLogger').then(({ logError }) => {
+                        logError({
+                            source: 'ui',
+                            severity: 'critical',
+                            message: 'useDebouncedMemo factory crash',
+                            error: e instanceof Error ? e : new Error(String(e)),
+                        });
+                    }).catch(() => { /* logger lui-même HS, silent */ });
+                } catch { /* ignore */ }
             }
         }, delay);
         return () => clearTimeout(timer);

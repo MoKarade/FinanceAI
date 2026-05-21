@@ -211,8 +211,22 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         try {
             return calculateFutureProjection(params, false, selectedScenarioIdx);
         } catch (e) {
+            // SF3 fix (Sprint 1) : avant ce fix, un crash projection retournait
+            // silencieusement `fireNumber: 0` + chartData vide → propagé via
+            // setLastProjection à Dashboard, Investments, Budget, NextBestAction
+            // (IA) qui basaient leurs recommandations sur des données invalides
+            // présentées comme valides. On ajoute un flag `_hasError` que les
+            // consumers peuvent tester, et on loggue via errorLogger.
             console.error("CRITICAL SIMULATION ERROR:", e);
-            return { chartData: [], fireNumber: 0, aiNote: "Error", allResults: [] };
+            import('../services/errorLogger').then(({ logError }) => {
+                logError({
+                    source: 'projection',
+                    severity: 'critical',
+                    message: 'calculateFutureProjection crashed',
+                    error: e instanceof Error ? e : new Error(String(e)),
+                });
+            }).catch(() => { /* logger HS, silent */ });
+            return { chartData: [], fireNumber: 0, aiNote: "Error", allResults: [], _hasError: true };
         }
     }, [params, runMC, selectedScenarioIdx], 300);
 

@@ -10,12 +10,28 @@
 //
 // Note : ce SW est uniquement chargé en PROD (vite import.meta.env.PROD).
 
-const CACHE_NAME = 'financeai-v1';
-const PRECACHE_URLS = ['/', '/index.html', '/manifest.json', '/icon.svg'];
+const CACHE_NAME = 'financeai-v2';
+const PRECACHE_URLS = ['/', '/manifest.json', '/icon.svg'];
+
+// P2.9 fix : précache individuel (vs cache.addAll qui échoue all-or-nothing).
+// Sur Vercel/Netlify, '/index.html' peut 404 (rewrite vers '/'), ce qui
+// faisait tomber tout le batch. Maintenant chaque resource est tentée
+// séparément, on continue même si une échoue.
+async function precacheIndividually(cache) {
+    await Promise.all(PRECACHE_URLS.map(async (url) => {
+        try {
+            const res = await fetch(url, { cache: 'reload' });
+            if (res.ok) await cache.put(url, res);
+        } catch {
+            // silent : la resource manquante ne bloque pas le SW
+        }
+    }));
+}
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
+        caches.open(CACHE_NAME)
+            .then((cache) => precacheIndividually(cache))
             .then(() => self.skipWaiting())
             .catch(() => { /* silent fail — le SW fonctionnera quand même au prochain fetch */ })
     );

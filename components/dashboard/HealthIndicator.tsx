@@ -197,7 +197,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                     <span aria-hidden="true">🩺</span>
-                    <h3 className="font-bold text-ink-50">Santé financière</h3>
+                    <h2 className="font-bold text-ink-50">Santé financière</h2>
                 </div>
                 <button
                     type="button"

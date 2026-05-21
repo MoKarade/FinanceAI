@@ -274,6 +274,25 @@ function parseTestMarketCsv(): { date: string; prices: Record<string, number> }[
 
 const PARSED_CSV = parseTestMarketCsv();
 
+// U5 — Warning si le CSV bundlé manque un symbole utilisé par TEST_ASSETS.
+// Détecte les régressions futures (ex: si on ajoute un actif test sans
+// régénérer le CSV via scripts/build-test-portfolio-csv.cjs).
+(function validateCsvSymbols() {
+    if (PARSED_CSV.length === 0) return;
+    const csvSymbols = new Set(Object.keys(PARSED_CSV[0].prices));
+    const missing: string[] = [];
+    for (const a of TEST_ASSETS) {
+        if (!csvSymbols.has(a.symbol)) missing.push(a.symbol);
+    }
+    if (missing.length > 0) {
+        console.warn(
+            `[testFixtures] CSV bundlé manque ${missing.length} symbole(s) utilisé(s) ` +
+            `par TEST_ASSETS : ${missing.join(', ')}. ` +
+            `Régénérer via scripts/build-test-portfolio-csv.cjs.`
+        );
+    }
+})();
+
 /**
  * Historique de marché pour le mode test, basé sur des vraies données
  * Yahoo Finance hebdomadaires (close prices, 2024-05 → 2026-05).

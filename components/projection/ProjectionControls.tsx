@@ -96,7 +96,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                                 <span className="text-h1" aria-hidden="true">{res.icon}</span>
                                 <div className="min-w-0">
                                     <div className="text-meta font-bold text-ink-50 leading-tight truncate">{res.strategyName}</div>
-                                    <div className="text-tiny text-ink-400 mt-0.5">Patrimoine: {Math.round(res.estateNetWorth / 1000000).toFixed(1)}M$</div>
+                                    <div className="text-tiny text-ink-400 mt-0.5">Patrimoine: {(res.estateNetWorth / 1000000).toFixed(2)}M$</div>
                                 </div>
                             </div>
                             {isCompoundNew && selectedScenarioIdx !== idx && (

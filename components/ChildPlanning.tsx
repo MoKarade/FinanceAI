@@ -8,6 +8,12 @@ import { ChildGoal, ProjectionConfig, Tab as TabEnum } from '../types';
 import { INITIAL_CHILD_GOAL } from '../constants';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { useFinanceStore } from '../store/useFinanceStore';
+import {
+    DAYCARE_INFO, SCHOOL_INFO, ACTIVITIES_INFO, UNI_INFO, CAR_INFO,
+    getAnnualChildCost,
+    type DaycareType, type SchoolType, type ActivitiesLevel,
+    type UniversityType, type CarGift,
+} from '../services/projection/childCosts';
 
 interface ChildPlanningProps {
     goals: ChildGoal[];
@@ -19,44 +25,8 @@ interface ChildPlanningProps {
 // ============================
 // CHOIX DE VIE — Impacts chiffrés
 // ============================
-type DaycareType = 'cpe' | 'garde_privee' | 'parent_foyer';
-type SchoolType = 'publique' | 'privee' | 'internationale';
-type ActivitiesLevel = 'aucune' | 'legeres' | 'intensives';
-type UniversityType = 'aucune' | 'cegep' | 'dep' | 'uni_local' | 'uni_appart' | 'uni_etranger';
-type CarGift = 'non' | 'usagee' | 'neuve';
-
-const DAYCARE_INFO: Record<DaycareType, { label: string; monthly: number; icon: string; desc: string }> = {
-    cpe: { label: 'CPE Subventionné', monthly: 215, icon: '🏗️', desc: '~$11.25/jour (2025, indexé)' },
-    garde_privee: { label: 'Garderie Privée', monthly: 1400, icon: '🏠', desc: '~$70/jour, service de garde privé non subventionné' },
-    parent_foyer: { label: 'Parent au Foyer', monthly: 0, icon: '🤱', desc: 'Pas de frais de garde, mais perte de salaire (~1 700$/mois net)' },
-};
-
-const SCHOOL_INFO: Record<SchoolType, { label: string; yearlyExtra: number; icon: string }> = {
-    publique: { label: 'École Publique', yearlyExtra: 500, icon: '📚' },
-    privee: { label: 'École Privée', yearlyExtra: 6000, icon: '🎓' },
-    internationale: { label: 'Internationale', yearlyExtra: 10000, icon: '🌍' },
-};
-
-const ACTIVITIES_INFO: Record<ActivitiesLevel, { label: string; yearlyExtra: number; icon: string }> = {
-    aucune: { label: 'Aucune activité', yearlyExtra: 0, icon: '🏠' },
-    legeres: { label: 'Légères (1 sport/art)', yearlyExtra: 1500, icon: '⚽' },
-    intensives: { label: 'Intensives (2-3 disciplines)', yearlyExtra: 4500, icon: '🏆' },
-};
-
-const UNI_INFO: Record<UniversityType, { label: string; yearlyCost: number; icon: string; years: number }> = {
-    aucune: { label: 'Pas d\'études post-sec.', yearlyCost: 0, icon: '🔧', years: 0 },
-    dep: { label: 'DEP (Formation prof.)', yearlyCost: 2000, icon: '🛠️', years: 2 },
-    cegep: { label: 'Cégep seulement', yearlyCost: 1000, icon: '📘', years: 2 },
-    uni_local: { label: 'Université chez parents', yearlyCost: 5000, icon: '🎓', years: 4 },
-    uni_appart: { label: 'Université + Appart', yearlyCost: 20000, icon: '🏙️', years: 4 },
-    uni_etranger: { label: 'Univ. Hors Québec/Canada', yearlyCost: 35000, icon: '✈️', years: 4 },
-};
-
-const CAR_INFO: Record<CarGift, { label: string; cost: number; icon: string }> = {
-    non: { label: 'Pas de voiture', cost: 0, icon: '🚶' },
-    usagee: { label: 'Voiture usagée (~10 000$)', cost: 10000, icon: '🚗' },
-    neuve: { label: 'Voiture neuve (~25 000$)', cost: 25000, icon: '🚙' },
-};
+// Types et constantes déplacés dans services/projection/childCosts.ts
+// (source unique partagée avec le moteur de projection).
 
 const fmt = (n: number) => n.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 });
 

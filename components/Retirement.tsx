@@ -1,11 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useDebouncedMemo } from '../utils/useDebouncedMemo';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
 import { Badge } from './ui/Badge';
 import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset, RegisteredAccountType } from '../types';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend, AreaChart } from 'recharts';
-import { calculateFutureProjection } from '../services/projection';
+import { runProjectionAsync, terminateProjectionWorker } from '../services/projection/runAsync';
 import { TaxBracketViz } from './TaxBracketViz';
 import { GoalSeekerCard } from './retirement/GoalSeekerCard';
 import { AssetLocationCard } from './retirement/AssetLocationCard';
@@ -13,6 +12,11 @@ import { CurrentCapitalCard } from './retirement/CurrentCapitalCard';
 import { fetchPortfolioHistory } from '../services/finance';
 import { calculateGrossFromNet } from '../services/tax';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { useShallow } from 'zustand/shallow';
+
+// Sprint 2 PH3 — constante stable pour éviter de créer un nouveau [] à chaque
+// render (qui invaliderait les useMemo deps de la projection).
+const EMPTY_ARRAY: never[] = [];
 
 interface RetirementProps {
     goal: RetirementGoal;
@@ -43,13 +47,17 @@ export const Retirement: React.FC<RetirementProps> = ({
     realEstateGoals = [], childGoals = [], travelGoals = [], lifeEvents = [], debts = []
 }) => {
     const setAppState = useFinanceStore(s => s.setAppState);
-    // W5.x — Conteneurs étendus (cycle 4: câblés dans le moteur)
-    const insurancePolicies = useFinanceStore(s => s.insurancePolicies ?? []);
-    const vehicleReplacements = useFinanceStore(s => s.vehicleReplacements ?? []);
-    const majorRenovations = useFinanceStore(s => s.majorRenovations ?? []);
-    const charitableGoals = useFinanceStore(s => s.charitableGoals ?? []);
-    const rentalProperties = useFinanceStore(s => s.rentalProperties ?? []);
-    const privateBusinesses = useFinanceStore(s => s.privateBusinesses ?? []);
+    // Sprint 2 PH3 — Regroupement W5.x via useShallow (avant : 6 selectors
+    // séparés + `?? []` créaient des refs nouvelles à chaque render, invalidant
+    // les useMemo deps de la projection cachée).
+    const { insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses } = useFinanceStore(useShallow(s => ({
+        insurancePolicies: s.insurancePolicies ?? EMPTY_ARRAY,
+        vehicleReplacements: s.vehicleReplacements ?? EMPTY_ARRAY,
+        majorRenovations: s.majorRenovations ?? EMPTY_ARRAY,
+        charitableGoals: s.charitableGoals ?? EMPTY_ARRAY,
+        rentalProperties: s.rentalProperties ?? EMPTY_ARRAY,
+        privateBusinesses: s.privateBusinesses ?? EMPTY_ARRAY,
+    })));
     // Phase C.3 — `lifeExpectancy` lu depuis le store (retirementGoal). Le Hub
     // Configuration (Phase C.1) sera l'endroit canonique pour le modifier ; le
     // slider local reste pour rétrocompat et exploration rapide.
@@ -137,33 +145,52 @@ export const Retirement: React.FC<RetirementProps> = ({
         return cash;
     }, [initialBalances]);
 
-    // Perf fix (perf agent #1): debounce 300ms — la projection coûte 80-150ms
-    // et était recalculée à chaque caractère tapé dans un input numérique.
-    const { chartData } = useDebouncedMemo(() => {
-        return calculateFutureProjection({
-            projection,
-            calculatedStartingCash,
-            liveCSVBalances,
-            realEstateGoals,
-            debts,
-            childGoals,
-            travelGoals,
-            lifeEvents,
-            retirementGoal: goal,
-            config,
-            baseGrossAnnual,
-            baseNetAnnual,
-            currentRentExpense,
-            baseMonthlyExpenses,
-            // W5.x conteneurs câblés
-            insurancePolicies,
-            vehicleReplacements,
-            majorRenovations,
-            charitableGoals,
-            rentalProperties,
-            privateBusinesses,
-        });
-    }, [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, goal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses], 300);
+    // Sprint 2 PH1 — Migration vers Worker async pour éliminer le jank 80-150ms
+    // sur le main thread à chaque keystroke des inputs sliders. Avant ce fix,
+    // calculateFutureProjection tournait synchrone bloquant l'UI. Le pattern
+    // suit FutureProjection.tsx (Worker scaffold déjà en place).
+    const [chartData, setChartData] = useState<any[]>([]);
+
+    useEffect(() => {
+        let cancelled = false;
+        const timer = setTimeout(async () => {
+            try {
+                const result = await runProjectionAsync({
+                    projection,
+                    calculatedStartingCash,
+                    liveCSVBalances,
+                    realEstateGoals,
+                    debts,
+                    childGoals,
+                    travelGoals,
+                    lifeEvents,
+                    retirementGoal: goal,
+                    config,
+                    baseGrossAnnual,
+                    baseNetAnnual,
+                    currentRentExpense,
+                    baseMonthlyExpenses,
+                    // W5.x conteneurs câblés
+                    insurancePolicies,
+                    vehicleReplacements,
+                    majorRenovations,
+                    charitableGoals,
+                    rentalProperties,
+                    privateBusinesses,
+                }, false, 0);
+                if (!cancelled) setChartData(result.chartData ?? []);
+            } catch (e) {
+                if (!cancelled) {
+                    console.error('[Retirement] projection failed:', e);
+                    setChartData([]);
+                }
+            }
+        }, 300);
+        return () => { cancelled = true; clearTimeout(timer); };
+    }, [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, goal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses]);
+
+    // Nettoyage Worker au démontage du composant
+    useEffect(() => () => { terminateProjectionWorker(); }, []);
 
     const yearlyData = useMemo(() => {
         if (chartData.length === 0) return [];

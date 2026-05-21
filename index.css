@@ -162,6 +162,34 @@
   100% { transform: translateX(100%); }
 }
 
+/* Sprint 2 H5 — Toast slide-in animation (remplace framer-motion, économie -80KB gzip). */
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(50px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+@keyframes toast-slide-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+.animate-toast-in {
+  animation: toast-slide-in 0.3s var(--ease-out-back, cubic-bezier(0.34, 1.56, 0.64, 1)) forwards;
+}
+.animate-toast-out {
+  animation: toast-slide-out 0.2s ease-out forwards;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

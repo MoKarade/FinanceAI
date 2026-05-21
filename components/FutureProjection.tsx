@@ -11,7 +11,12 @@ import { fetchPortfolioHistory } from '../services/finance';
 import { calculateFutureProjection, SimulationParams } from '../services/projection';
 import { runProjectionAsync, terminateProjectionWorker } from '../services/projection/runAsync';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { useShallow } from 'zustand/shallow';
 import { usePendingFocus } from '../utils/usePendingFocus';
+
+// Sprint 2 PH2 — constante stable pour éviter de créer un nouveau [] à chaque
+// render (qui invaliderait les useMemo deps en aval).
+const EMPTY_ARRAY: never[] = [];
 import { Tab as TabEnum } from '../types';
 import { ExpertTooltip, CustomLifeEventLabel, CustomFlowEventLabel } from './projection/ProjectionTooltip';
 import { ProjectionControls } from './projection/ProjectionControls';
@@ -168,14 +173,20 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // Phase B2 — consomme un éventuel deep-link entrant (cf docs/UI_REFOUNDATION_PLAN.md §5)
     usePendingFocus(TabEnum.FUTURE);
 
-    const insurancePolicies = useFinanceStore(s => s.insurancePolicies ?? []);
-    const vehicleReplacements = useFinanceStore(s => s.vehicleReplacements ?? []);
-    const majorRenovations = useFinanceStore(s => s.majorRenovations ?? []);
-    const charitableGoals = useFinanceStore(s => s.charitableGoals ?? []);
-    const rentalProperties = useFinanceStore(s => s.rentalProperties ?? []);
-    const privateBusinesses = useFinanceStore(s => s.privateBusinesses ?? []);
-    // Wiring 2026-05: deux goals jusqu'ici dead-wired arrivent maintenant au moteur.
-    const savingsGoals = useFinanceStore(s => s.savingsGoals ?? []);
+    // Sprint 2 PH2 — Regroupement en un seul selector useShallow. Avant ce fix,
+    // 7 selectors séparés provoquaient des re-renders parasites et chaque `?? []`
+    // créait une nouvelle référence à chaque render, invalidant les useMemo
+    // deps en aval (`params` ci-dessous).
+    const { insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, savingsGoals } = useFinanceStore(useShallow(s => ({
+        insurancePolicies: s.insurancePolicies ?? EMPTY_ARRAY,
+        vehicleReplacements: s.vehicleReplacements ?? EMPTY_ARRAY,
+        majorRenovations: s.majorRenovations ?? EMPTY_ARRAY,
+        charitableGoals: s.charitableGoals ?? EMPTY_ARRAY,
+        rentalProperties: s.rentalProperties ?? EMPTY_ARRAY,
+        privateBusinesses: s.privateBusinesses ?? EMPTY_ARRAY,
+        // Wiring 2026-05: deux goals jusqu'ici dead-wired arrivent maintenant au moteur.
+        savingsGoals: s.savingsGoals ?? EMPTY_ARRAY,
+    })));
 
     const params: SimulationParams = useMemo(() => ({
         projection,

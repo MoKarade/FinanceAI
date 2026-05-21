@@ -128,7 +128,8 @@ Couple **Alex + Sam** (mode test, `services/testFixtures.ts`) :
 | 6.8 | Tooltip événements alignés avec **icônes** colonne fixe `w-5` | ✈️🏠🚗🔨🩺🎁🏛️💰 selon type |
 | 6.9 | Événements **Voyage Italie / Japon** visibles aux dates prévues | OK |
 | 6.10 | Événement **Rénovation** visible | OK |
-| 6.11 | Événement **Naissance enfant** ou coût enfant visible | À valider après refactor childrenReee |
+| 6.11 | Événement **Naissance enfant** + cadeau voiture 18 ans visible | OK depuis refactor childCosts.ts 2026-05-21 |
+| 6.11.b | Coût enfant Future **converge** avec onglet Enfant | OK source unique childCosts |
 | 6.12 | Dette Visa 2 800 $ **s'éteint** dans les 12-18 mois projetés | OK depuis fix effectiveMinimum |
 | 6.13 | Dette Auto 18 500 $ **s'éteint** en ~5 ans | OK |
 | 6.14 | Graph étalé jusqu'à age 95 (lifeExpectancy) | OK |
@@ -171,6 +172,10 @@ Couple **Alex + Sam** (mode test, `services/testFixtures.ts`) :
 | 9.5 | Coût enfant **aligné avec Future** | À valider après refactor childrenReee |
 | 9.6 | Coût parental leave > 0 si paramétré | OK |
 | 9.7 | Suppression enfant via modal de confirmation | OK |
+| 9.8 | Changer **schoolType=Privée** → coût total de Léa augmente | Privée 6k/an vs Publique 500/an |
+| 9.9 | Changer **universityType=uni_etranger** → coût total grimpe | 35k×4 = 140k vs uni_local 20k |
+| 9.10 | Changer **carGift=neuve** → +25k$ à 18 ans visible Future | Avant le fix : aucun impact |
+| 9.11 | Changer **daycareType=parent_foyer** → garderie 0$ mais perte salaire ~1700$ | OK |
 
 ## Section 10 — Projets de vie
 
@@ -321,3 +326,4 @@ Quand on livre un fix ou une feature :
 | Date | Tests ajoutés | Fix concerné |
 |---|---|---|
 | 2026-05-21 | Création initiale (131 tests) | Sprint mode test + 5 fixes session |
+| 2026-05-21 | +6 tests (6.11.b + 9.8/9/10/11 + Future events) | Refactor childCosts.ts source unique |

@@ -190,6 +190,17 @@
   animation: toast-slide-out 0.2s ease-out forwards;
 }
 
+/* Mode test — bordure orange permanente sur le viewport pour éviter d'oublier
+   qu'on est en train de manipuler des fixtures et pas les vraies données. */
+.test-mode-active {
+  outline: 3px solid #f59e0b;
+  outline-offset: -3px;
+  padding-top: 36px; /* compense la hauteur du banner top fixed */
+}
+@media (max-width: 767px) {
+  .test-mode-active { padding-top: 48px; }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

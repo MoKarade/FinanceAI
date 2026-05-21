@@ -22,6 +22,7 @@ import {
     type SpendingForecast,
     type RecalledFact,
 } from './eraContext';
+import { formatNumber } from '../utils/format';
 
 export interface EnrichedContext {
     cashFlow: CashFlowInsight | null;
@@ -69,25 +70,29 @@ export function renderEnrichedContext(ctx: EnrichedContext): string {
 
     const lines: string[] = ['\n=== ERA CONTEXT INSIGHTS ==='];
 
+    // Fix 2026-05-21 : `.toLocaleString()` sans locale dépend du runtime
+    // (en-US sur CI Linux, fr-CA sur browser canadien) et générait un
+    // system prompt non-déterministe envoyé à Claude. Centralisé via
+    // `formatNumber` (fr-CA) cohérent avec le reste de l'app.
     if (ctx.cashFlow) {
         lines.push(
             `Cash-flow ${ctx.cashFlow.period_start}→${ctx.cashFlow.period_end}:`,
-            `  Revenus: ${ctx.cashFlow.income_total.toLocaleString()} CAD`,
-            `  Dépenses: ${ctx.cashFlow.expense_total.toLocaleString()} CAD`,
-            `  Net: ${ctx.cashFlow.net_cash_flow.toLocaleString()} CAD`,
+            `  Revenus: ${formatNumber(ctx.cashFlow.income_total)} CAD`,
+            `  Dépenses: ${formatNumber(ctx.cashFlow.expense_total)} CAD`,
+            `  Net: ${formatNumber(ctx.cashFlow.net_cash_flow)} CAD`,
         );
         if (ctx.cashFlow.by_category?.length) {
             const top3 = ctx.cashFlow.by_category.slice(0, 3);
-            lines.push(`  Top 3 catégories: ${top3.map(c => `${c.category} (${c.amount.toLocaleString()}$)`).join(', ')}`);
+            lines.push(`  Top 3 catégories: ${top3.map(c => `${c.category} (${formatNumber(c.amount)}$)`).join(', ')}`);
         }
     }
 
     if (ctx.spending?.top_categories?.length) {
         lines.push(
-            `\nAnalyse 30j: ${ctx.spending.total_spent.toLocaleString()} CAD total.`,
+            `\nAnalyse 30j: ${formatNumber(ctx.spending.total_spent)} CAD total.`,
             `Top dépenses:`,
             ...ctx.spending.top_categories.slice(0, 5).map(c =>
-                `  - ${c.category}: ${c.amount.toLocaleString()}$ (${c.pct.toFixed(1)}%)`,
+                `  - ${c.category}: ${formatNumber(c.amount)}$ (${c.pct.toFixed(1)}%)`,
             ),
         );
         if (ctx.spending.anomalies?.length) {
@@ -99,7 +104,7 @@ export function renderEnrichedContext(ctx: EnrichedContext): string {
     if (ctx.forecast?.forecast?.length) {
         lines.push(`\nPrévision ${ctx.forecast.months_ahead} mois:`);
         ctx.forecast.forecast.forEach(f =>
-            lines.push(`  ${f.month}: dépenses ~${f.projected_expenses.toLocaleString()}$${f.projected_income ? `, revenus ~${f.projected_income.toLocaleString()}$` : ''}`),
+            lines.push(`  ${f.month}: dépenses ~${formatNumber(f.projected_expenses)}$${f.projected_income ? `, revenus ~${formatNumber(f.projected_income)}$` : ''}`),
         );
     }
 

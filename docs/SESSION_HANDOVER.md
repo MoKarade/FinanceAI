@@ -110,10 +110,10 @@ Validé sur hubperso.com lors de la dernière session :
 - ✅ A11y manual checks 5.1 à 5.7 tous OK (focus restore, hit area, contrast, touch, reduced-motion, skip-link, form labels)
 
 **À valider encore** (après #116 mergé) :
-- 🔲 **Cache Storage `financeai-v2` peuplé** (était vide avant fix #116)
+- ✅ **Cache Storage `financeai-v2` peuplé** — Validé 2026-05-21 après PR #118 (cycle 16). 16 entrées au 2e load (HTML + assets/* hashés). Voir `docs/INVESTIGATION_PWA_VERCEL_2026-05-21.md` pour le diagnostic complet.
 - 🔲 **Lighthouse A11y re-run pour confirmer 100**
 - 🔲 **PDF complet (P1.5)** — l'user n'a pas encore testé Patrimoine + Fiscal + Holdings + Dettes + Goals dans un seul PDF
-- 🔲 **SW update test** (push nouveau commit, vérifier que nouveau SW prend la main)
+- ✅ **SW update test** — Validé 2026-05-21 : push PR #118 a triggered un nouveau build, SW v2 a remplacé l'ancien automatiquement (skipWaiting + clientsClaim).
 - 🔲 **iOS Safari** (l'user n'a pas Safari)
 
 ---

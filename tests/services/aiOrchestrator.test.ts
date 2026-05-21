@@ -97,9 +97,13 @@ describe('renderEnrichedContext', () => {
         };
         const output = renderEnrichedContext(ctx);
         expect(output).toContain('ERA CONTEXT');
-        // toLocaleString formats 10000 → "10,000" and 2500 → "2,500"
-        expect(output).toContain('10,000');
-        expect(output).toContain('2,500');
+        // Fix 2026-05-21 : formatNumber utilise fr-CA (espace insécable
+        // séparateur de milliers). Le test générait avant un résultat
+        // dépendant de la locale du runtime (en-US sur CI, fr-CA local).
+        // On reconstruit la chaîne attendue via la même fonction de format.
+        const fmt = (n: number) => (n).toLocaleString('fr-CA');
+        expect(output).toContain(fmt(10000));
+        expect(output).toContain(fmt(2500));
     });
 
     it('includes memory facts when present', () => {

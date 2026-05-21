@@ -132,6 +132,32 @@ export const App: React.FC = () => {
         document.title = `FinanceAI - ${activeTab || 'Pro'}`;
     }, [activeTab]);
 
+    // Q3 — Keyboard shortcuts Alt+1..9 pour switcher d'onglet rapidement
+    useEffect(() => {
+        const SHORTCUTS: Array<Tab> = [
+            Tab.DASHBOARD, Tab.TRANSACTIONS, Tab.BUDGET, Tab.PLANNING,
+            Tab.INVESTMENTS, Tab.FUTURE, Tab.RETIREMENT, Tab.TAX, Tab.ASSISTANT,
+        ];
+        const onKeyDown = (e: KeyboardEvent) => {
+            // Ignore si l'utilisateur tape dans un input/textarea/contenteditable
+            const target = e.target as HTMLElement | null;
+            if (target && (
+                target.tagName === 'INPUT' ||
+                target.tagName === 'TEXTAREA' ||
+                target.tagName === 'SELECT' ||
+                target.isContentEditable
+            )) return;
+            // Alt+1..9 pour naviguer (Cmd/Ctrl+1 est réservé navigateur)
+            if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+            const num = parseInt(e.key, 10);
+            if (Number.isNaN(num) || num < 1 || num > SHORTCUTS.length) return;
+            e.preventDefault();
+            setActiveTab(SHORTCUTS[num - 1]);
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [setActiveTab]);
+
     // §7.D.3 — <html lang> dynamique synchronisé avec i18next.
     const { i18n: i18nInstance } = useTranslation();
     useEffect(() => {

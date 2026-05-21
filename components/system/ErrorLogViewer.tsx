@@ -107,6 +107,7 @@ export const ErrorLogViewer: React.FC = () => {
                 <div className="flex flex-wrap gap-2 items-center">
                     <label className="text-tiny text-ink-400">Source :</label>
                     <select
+                        aria-label="Filtrer par source d'erreur"
                         value={sourceFilter}
                         onChange={e => setSourceFilter(e.target.value as ErrorSource | 'all')}
                         className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white"
@@ -117,6 +118,7 @@ export const ErrorLogViewer: React.FC = () => {
                     </select>
                     <label className="text-tiny text-ink-400 ml-2">Severity :</label>
                     <select
+                        aria-label="Filtrer par niveau de severity"
                         value={severityFilter}
                         onChange={e => setSeverityFilter(e.target.value as ErrorSeverity | 'all')}
                         className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white"

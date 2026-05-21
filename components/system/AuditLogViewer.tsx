@@ -95,6 +95,7 @@ export const AuditLogViewer: React.FC = () => {
                 <div className="flex flex-wrap gap-2 items-center">
                     <label className="text-tiny text-ink-400">Champ :</label>
                     <select
+                        aria-label="Filtrer par champ modifié"
                         value={fieldFilter}
                         onChange={e => setFieldFilter(e.target.value)}
                         className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white"
@@ -104,6 +105,7 @@ export const AuditLogViewer: React.FC = () => {
                     </select>
                     <label className="text-tiny text-ink-400 ml-2">Opération :</label>
                     <select
+                        aria-label="Filtrer par type d'opération"
                         value={opFilter}
                         onChange={e => setOpFilter(e.target.value as AuditEntry['operation'] | 'all')}
                         className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white"

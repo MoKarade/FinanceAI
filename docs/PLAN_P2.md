@@ -1,12 +1,12 @@
-# Plan P2 — Mobile & a11y AAA (audit + polish)
+# Plan P2 — Mobile & a11y AAA ✅ TERMINÉ (9/9)
 
 > **Origine** : roadmap "10/10" après P1 Production Readiness clôturé (PRs #99 à #105).
-> **Décision utilisateur** (2026-05-20) : démarrer P2 après P1 complet.
-> **Triage initial** : la base est déjà solide. Sidebar mobile (top + bottom nav)
+> **Statut** : **9/9 items livrés** (PRs #107 à #114), 2026-05-20/21.
+> **Triage initial** : la base était déjà solide. Sidebar mobile (top + bottom nav)
 > en place depuis cycle 7.D, modal focus-trap, 205 instances `aria-*`,
 > 72 usages de `.focus-ring`, script contrast, axe sur 6 primitives.
-> **Estimation révisée** : ~10-13h (vs 25-30h initial roadmap).
-> **Contrainte cardinale** : zéro dépendance payante, zéro service tiers payant.
+> **Estimation** : initial 25-30h roadmap → révisée 14h après triage → livré ~7h.
+> **Contrainte cardinale respectée** : zéro dépendance payante.
 
 ---
 
@@ -36,22 +36,22 @@
 
 | Item | Effort | Impact | Statut |
 |---|---|---|---|
-| **P2.1** Tests axe pages complètes (Dashboard, Investments, Transactions, etc.) | 4h | 🟠 important | 🔲 À faire |
+| **P2.1** Tests axe pages complètes (Onboarding, SystemView, Dashboard, TaxBracketViz) | 4h | 🟠 important | ✅ livré (#114) |
 | **P2.2** Modal focus restore on close | 0.5h | 🟡 utile | ✅ livré (#108) |
 | **P2.3** Modal close button 32→44px hit area | 0.5h | 🟡 utile | ✅ livré (#108) |
 | **P2.4** Touch target audit (`.touch-target` adoption) | 2h | 🟡 utile | ✅ livré (#110) |
 | **P2.5** Contrast script run + fix flagged combos | 1h | 🟠 important | ✅ livré (#109) |
 | **P2.6** Respect `prefers-reduced-motion` (animations/transitions) | 0.5h | 🟡 utile | ✅ livré (#108) |
 | **P2.7** Skip-to-main link | 0.5h | 🟡 utile | ✅ déjà fait (cycle 5.1) |
-| **P2.8** Form labels audit (133 inputs ADR-004) | 2h | 🟠 important | 🔲 À faire |
-| **P2.9** PWA minimal (manifest.json + SW offline shell) | 3h | 🟢 nice-to-have | 🔲 Optionnel |
+| **P2.8** Form labels audit (~35 inputs orphelins) | 2h | 🟠 important | ✅ livré (#112) |
+| **P2.9** PWA minimal (manifest.json + SW offline shell) | 3h | 🟢 nice-to-have | ✅ livré (#113) |
 | **TOTAL** | **~14h** | | |
 
 **P2.10 user-side** : test sur iPhone SE / Galaxy A entry-level réel. Non délégable.
 
 ---
 
-## P2.1 — Tests axe pages complètes (4h)
+## P2.1 — Tests axe pages complètes (4h) ✅ livré (#114)
 
 ### Architecture
 - `tests/a11y/pages.axe.test.tsx` : tests axe sur les vues principales montées
@@ -170,7 +170,7 @@ npx tsx scripts/check-contrast.ts
 
 ---
 
-## P2.8 — Form labels audit (2h)
+## P2.8 — Form labels audit (2h) ✅ livré (#112)
 
 ### Approche
 - Grep `<input` et `<select` dans components/
@@ -193,7 +193,7 @@ npx tsx scripts/check-contrast.ts
 
 ---
 
-## P2.9 — PWA minimal (3h) — optionnel
+## P2.9 — PWA minimal (3h) — optionnel ✅ livré (#113)
 
 ### Composants
 - `public/manifest.json` : name, short_name, icons (192, 512), theme_color,

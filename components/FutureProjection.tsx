@@ -42,13 +42,15 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     realEstateGoals = [], setRealEstateGoals, childGoals = [], travelGoals = [], lifeEvents = [], debts = [], retirementGoal,
     calculatedMonthlySavings, projection, setProjection, financialGoals = [], isPrivacyMode = false
 }) => {
-        // SAFETY CHECKS
-    if (!budgetItems || !projection || !config || !initialBalances) {
-        console.error("FutureProjection: Missing critical initialization data.", { budgetItems, projection, config, initialBalances });
-        return <div className="p-8 text-center text-red-400 font-bold bg-surface/50 rounded-2xl border border-red-500/20">
-            ⚠️ Données d'initialisation manquantes. Veuillez vérifier vos comptes et votre budget.
-        </div>;
-    }
+    // C6 fix (Sprint 1B) — La garde SAFETY CHECKS qui retournait du JSX avant
+    // tous les hooks ci-dessous était une violation flagrante de la règle des
+    // Hooks (21 violations remontées par ESLint react-hooks/rules-of-hooks).
+    // Si les props passaient d'un état non-init à init entre 2 renders, l'ordre
+    // des hooks se décalait → panique React, state corrompu.
+    //
+    // Fix : la garde est déplacée APRÈS tous les hooks, juste avant le return
+    // JSX final. Les hooks tolèrent les props undefined via `?.` et `|| 0`
+    // (déjà en place avant ce fix). Voir guard early-return ligne ~285.
 
     const updateProj = (key: keyof ProjectionConfig, val: any) => {
         setProjection({ ...projection, [key]: val });
@@ -282,6 +284,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         });
         return { lifeChartEvents: lifes, flowChartEvents: flows };
     }, [chartData]);
+
+    // C6 fix (Sprint 1B) — Garde déplacée ICI (après tous les hooks) pour
+    // respecter la règle des Hooks. Retourne un placeholder UI si les props
+    // critiques manquent. Avant ce fix, cette garde était ligne 46 (avant les
+    // 21 hooks ci-dessus) → 21 violations react-hooks/rules-of-hooks.
+    if (!budgetItems || !projection || !config || !initialBalances) {
+        console.error("FutureProjection: Missing critical initialization data.", { budgetItems, projection, config, initialBalances });
+        return <div className="p-8 text-center text-red-400 font-bold bg-surface/50 rounded-2xl border border-red-500/20">
+            ⚠️ Données d'initialisation manquantes. Veuillez vérifier vos comptes et votre budget.
+        </div>;
+    }
 
     return (
         <div className="space-y-6 animate-fade-in pb-24">

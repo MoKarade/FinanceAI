@@ -83,34 +83,54 @@ function generateTestTransactions(): Transaction[] {
 }
 
 // ─── Actifs (CELI + REER + NonReg + Crypto) ────────────────────────────
+// Helper pour générer un priceHistory plausible : 6 points sur 12 mois,
+// interpolation linéaire entre buy price et current price.
+function genHistory(buyPrice: number, currentPrice: number): Array<{ date: string; price: number }> {
+    const out: Array<{ date: string; price: number }> = [];
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(now);
+        d.setMonth(d.getMonth() - i * 2);
+        const t = (6 - i) / 6;
+        const price = buyPrice + (currentPrice - buyPrice) * t;
+        out.push({ date: d.toISOString().split('T')[0], price: Math.round(price * 100) / 100 });
+    }
+    return out;
+}
+
 const TEST_ASSETS: Asset[] = [
     {
         id: 'test-asset-1', symbol: 'VFV.TO', name: 'Vanguard S&P 500 (CAD)', region: 'us-equity',
         sector: 'index', accountType: 'CELI', currentPrice: 145.50,
+        priceHistory: genHistory(110.00, 145.50),
         purchases: [{ date: '2023-01-15', price: 110.00, quantity: 50 }],
         dateBought: '2023-01-15', buyPrice: 110.00, quantity: 50,
     },
     {
         id: 'test-asset-2', symbol: 'VEQT.TO', name: 'Vanguard All-Equity', region: 'global',
         sector: 'index', accountType: 'REER', currentPrice: 38.20,
+        priceHistory: genHistory(32.10, 38.20),
         purchases: [{ date: '2022-08-10', price: 32.10, quantity: 250 }],
         dateBought: '2022-08-10', buyPrice: 32.10, quantity: 250,
     },
     {
         id: 'test-asset-3', symbol: 'XEQT.TO', name: 'iShares All-Equity', region: 'global',
         sector: 'index', accountType: 'NON-ENREG', currentPrice: 32.95,
+        priceHistory: genHistory(29.00, 32.95),
         purchases: [{ date: '2023-05-22', price: 29.00, quantity: 100 }],
         dateBought: '2023-05-22', buyPrice: 29.00, quantity: 100,
     },
     {
         id: 'test-asset-4', symbol: 'AAPL', name: 'Apple Inc.', region: 'us-equity',
         sector: 'tech', accountType: 'CELI', currentPrice: 220.00,
+        priceHistory: genHistory(130.00, 220.00),
         purchases: [{ date: '2021-03-15', price: 130.00, quantity: 20 }],
         dateBought: '2021-03-15', buyPrice: 130.00, quantity: 20,
     },
     {
         id: 'test-asset-5', symbol: 'BTC-CAD', name: 'Bitcoin', region: 'crypto',
         sector: 'crypto', accountType: 'CRYPTO', currentPrice: 95000,
+        priceHistory: genHistory(60000, 95000),
         purchases: [{ date: '2024-01-10', price: 60000, quantity: 0.15 }],
         dateBought: '2024-01-10', buyPrice: 60000, quantity: 0.15,
     },

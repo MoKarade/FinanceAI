@@ -86,7 +86,11 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     const [respContribution, setRespContributionLocal] = useState(goal?.respContribution ?? 2500);
     const [parentAtHome, setParentAtHome] = useState(false);
 
-    if (!goal) return null; // Hydration guard
+    // C8 fix : la garde `if (!goal) return null` est déplacée APRÈS tous les
+    // hooks (juste avant le `return` JSX final). Les hooks qui dépendent de
+    // `goal` font leur propre check interne. Avant ce fix, 4 hooks (2 useEffect
+    // + 2 useMemo) étaient appelés conditionnellement → violation des règles
+    // des Hooks → instabilité potentielle si `goal` passait de undefined à défini.
 
     const update = (field: keyof ChildGoal, value: any) => {
         if (!goals.length) return;
@@ -152,6 +156,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     const parentSalaryLoss = parentAtHome ? 1700 : 0;
 
     const costTimeline = useMemo(() => {
+        if (!goal) return { data: [], totalCost: 0 };
         const data = [];
         let totalCost = 0;
         const inflation = (projection.inflationRate || 2) / 100;
@@ -238,6 +243,9 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     const totalResp = respProjection[respProjection.length - 1]?.Solde || 0;
     const totalStudiesCost = uniInfo.yearlyCost * uniInfo.years;
     const respCovers = totalStudiesCost > 0 ? Math.min(100, (totalResp / totalStudiesCost) * 100) : 100;
+
+    // C8 fix : garde déplacée APRÈS tous les hooks ci-dessus.
+    if (!goal) return null;
 
     return (
         <div className="space-y-6 animate-fade-in pb-10">

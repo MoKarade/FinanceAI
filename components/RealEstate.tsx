@@ -7,6 +7,7 @@ import { ConfirmModal } from './ui/ConfirmModal';
 import { PropertyConfigurator } from './realestate/PropertyConfigurator';
 import { MultiPropertyComparison } from './realestate/MultiPropertyComparison';
 import { RealEstateAdviceCard } from './realestate/RealEstateAdviceCard';
+import { calculateWelcomeTax } from '../services/realEstate';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { PageHeader } from './ui/PageHeader';
 import { KPIStat } from './ui/KPIStat';
@@ -120,15 +121,12 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
     const [localStockReturn, setLocalStockReturn] = useState(marketReturn);
 
     const totalMortgage = price - downPayment;
-    const welcomeTax = (() => {
-        let tax = 0;
-        let v = price;
-        if (v > 552300) { tax += (v - 552300) * 0.02; v = 552300; }
-        if (v > 290000) { tax += (v - 290000) * 0.015; v = 290000; }
-        if (v > 58900) { tax += (v - 58900) * 0.01; v = 58900; }
-        tax += v * 0.005;
-        return tax;
-    })();
+    // C9 fix : était une IIFE dupliquée de services/realEstate.ts:calculateWelcomeTax.
+    // Note : le moteur de projection (services/projection/helpers.ts:welcomeTax)
+    // utilise les paliers Montréal (jusqu'à 4%), tandis qu'ici on utilise les
+    // paliers provinciaux Québec (jusqu'à 2%). Distinction volontaire, à unifier
+    // dans un futur refactor via param `city: 'montreal' | 'quebec'`.
+    const welcomeTax = calculateWelcomeTax(price);
 
     const notaryFees = 1500;
     const inspectionFees = 800;

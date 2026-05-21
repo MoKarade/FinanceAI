@@ -10,6 +10,7 @@
 // sur action utilisateur explicite, et un banner permanent signale le mode.
 
 import type { AppState, Asset, Transaction, BudgetCategory, Debt, ChildGoal, RealEstateGoal, TravelGoal, LifeEvent, FinancialGoal, RetirementGoal, BudgetConfig } from '../types';
+import type { MarketDataPoint } from './finance';
 
 const TEST_USERS: BudgetConfig['users'] = [
     { name: 'Alex (test)', grossSalary: 7500, netSalary: 5200, color: '#10b981', age: 35, birthYear: 1991, canadaArrivalYear: 1991 },
@@ -209,6 +210,67 @@ const TEST_LIFE_EVENTS: LifeEvent[] = [
 const TEST_FINANCIAL_GOALS: FinancialGoal[] = [
     { id: 'fg-1', name: 'Fond urgence 6 mois', target: 30000, current: 8500, accountType: 'CELI', deadline: '2027-12-31' } as unknown as FinancialGoal,
 ];
+
+/**
+ * Génère 24 mois de marketData synthétique pour que Dashboard + Investments
+ * puissent afficher l'évolution détaillée, les actifs individuels, et calculer
+ * la performance / dividendes. Sans cette fonction, le mode test affiche
+ * « Aucun actif trouvé » dans les vues qui dépendent du CSV historique.
+ *
+ * Convention des colonnes (compat code existant) :
+ *   - 'date' : YYYY-MM-DD
+ *   - '<SYMBOL>' : valeur totale = quantity × price interpolé (ex: 'VFV.TO')
+ *   - 'TOTAL_CELI' / 'TOTAL_REER' / 'TOTAL_NON-ENREG' / 'TOTAL_CRYPTO' : agrégats
+ *   - 'TOTAL' : somme totale incluant initialBalances cash
+ */
+export function generateTestMarketData(): MarketDataPoint[] {
+    const out: MarketDataPoint[] = [];
+    const now = new Date();
+    const MONTHS = 24;
+
+    const initialBalances = {
+        CELI: 32000,
+        REER: 12500,
+        'NON-ENREG': 3500,
+        CRYPTO: 14250,
+        LIQUIDITE: 8500,
+    };
+    const cashTotal = Object.values(initialBalances).reduce((s, v) => s + v, 0);
+
+    for (let i = MONTHS - 1; i >= 0; i--) {
+        const d = new Date(now);
+        d.setMonth(d.getMonth() - i);
+        const date = d.toISOString().split('T')[0];
+        const t = (MONTHS - 1 - i) / (MONTHS - 1); // 0 (oldest) → 1 (newest)
+
+        // Pour chaque asset, interpole entre buyPrice et currentPrice
+        const row: MarketDataPoint = { date };
+        let celiTotal = 0;
+        let reerTotal = 0;
+        let nonRegTotal = 0;
+        let cryptoTotal = 0;
+
+        for (const a of TEST_ASSETS) {
+            const buy = a.purchases?.[0]?.price ?? a.currentPrice;
+            const price = buy + (a.currentPrice - buy) * t;
+            const qty = a.quantity || a.purchases?.[0]?.quantity || 0;
+            const value = Math.round(price * qty * 100) / 100;
+            row[a.symbol] = value;
+            if (a.accountType === 'CELI') celiTotal += value;
+            else if (a.accountType === 'REER') reerTotal += value;
+            else if (a.accountType === 'CRYPTO') cryptoTotal += value;
+            else nonRegTotal += value;
+        }
+        row['TOTAL_CELI'] = celiTotal;
+        row['TOTAL_REER'] = reerTotal;
+        row['TOTAL_NON-ENREG'] = nonRegTotal;
+        row['TOTAL_CRYPTO'] = cryptoTotal;
+        row['TOTAL'] = celiTotal + reerTotal + nonRegTotal + cryptoTotal + cashTotal;
+        out.push(row);
+    }
+
+    return out;
+}
 
 /**
  * Retourne un état complet de test. Les balances et soldes sont cohérents

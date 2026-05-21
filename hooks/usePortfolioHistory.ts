@@ -15,6 +15,8 @@
 
 import { useEffect, useState } from 'react';
 import { fetchPortfolioHistory, MarketDataPoint } from '../services/finance';
+import { useFinanceStore } from '../store/useFinanceStore';
+import { generateTestMarketData } from '../services/testFixtures';
 
 let cached: MarketDataPoint[] | null = null;
 let inFlight: Promise<MarketDataPoint[]> | null = null;
@@ -40,14 +42,31 @@ export interface UsePortfolioHistoryResult {
 }
 
 export function usePortfolioHistory(): UsePortfolioHistoryResult {
-    const [history, setHistory] = useState<MarketDataPoint[]>(() => cached ?? []);
-    const [isLoading, setIsLoading] = useState(() => cached === null);
+    // En mode test, on retourne un marketData synthétique généré depuis les
+    // fixtures pour que Dashboard (Évolution Détaillée, Actifs individuels)
+    // et Investments (Vue d'ensemble, Allocation, Performance) aient des
+    // données à afficher. Sans ce hook, l'utilisateur en mode test voit
+    // "Aucun actif trouvé" partout malgré 5 assets dans le store.
+    const isTestMode = useFinanceStore(s => s.isTestMode);
+    const [history, setHistory] = useState<MarketDataPoint[]>(() => {
+        if (isTestMode) return generateTestMarketData();
+        return cached ?? [];
+    });
+    const [isLoading, setIsLoading] = useState(() => !isTestMode && cached === null);
     const [error, setError] = useState<Error | null>(null);
 
     useEffect(() => {
+        if (isTestMode) {
+            // Régénère à chaque fois pour rester aligné si les fixtures changent
+            setHistory(generateTestMarketData());
+            setIsLoading(false);
+            return;
+        }
         let cancelled = false;
         if (cached) {
-            return; // déjà en mémoire, rien à faire
+            setHistory(cached);
+            setIsLoading(false);
+            return;
         }
         getPortfolioHistory()
             .then(data => {
@@ -63,7 +82,7 @@ export function usePortfolioHistory(): UsePortfolioHistoryResult {
                 }
             });
         return () => { cancelled = true; };
-    }, []);
+    }, [isTestMode]);
 
     return { history, isLoading, error };
 }

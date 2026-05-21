@@ -13,11 +13,11 @@
 | UI | React 19 + TypeScript (strict) | `noImplicitAny`, `strictNullChecks`, `useUnknownInCatchVariables` |
 | Bundler | Vite 6 | esbuild en dev, Rollup pour le bundle prod, source-maps activées |
 | Styling | Tailwind CSS + index.css | Design tokens custom (couleurs sémantiques, scale typo) |
-| State | Zustand 5 + `persist` middleware | Schema versionné (v1 → v3), migrations en code |
+| State | Zustand 5 + `persist` middleware | Schema versionné (v1 → v6), migrations en code |
 | Charts | Recharts 2 | Bundle dédié `recharts-*.js` (~445 KB) |
 | IA | `@anthropic-ai/sdk` (client-side) | `dangerouslyAllowBrowser: true` |
 | Banque | Era Context REST API | Bearer token utilisateur, cache TTL 1h |
-| Tests | Vitest + React Testing Library | 225 tests, 24 fichiers |
+| Tests | Vitest + React Testing Library | 573 tests, 51 fichiers |
 | Hébergement | Vercel (auto) + GitHub Pages (workflow) | Preview par PR |
 
 Pas de backend. L'app vit côté navigateur, persiste localement via `persist`,
@@ -230,8 +230,7 @@ tests/
     └── useFinanceStore.test.ts
 ```
 
-**225/225 tests verts** au 2026-05. Tous les scénarios MC, les helpers de
-projection, les primitives UI et les migrations de store sont couverts.
+**573/573 tests verts** au 2026-05 (1 flaky pré-existant sur `projection.goalSeek > findEarliestRetirementAge` à surveiller). Tous les scénarios MC, les helpers de projection, les primitives UI et les migrations de store sont couverts.
 
 ---
 
@@ -250,8 +249,8 @@ projection, les primitives UI et les migrations de store sont couverts.
 npm install
 npm run dev        # localhost:3000
 npm run typecheck  # tsc --noEmit, doit rester clean
-npm test           # vitest, doit rester 225/225
-npm run build      # vérifie le bundle prod
+npm test           # vitest, doit rester 573/573
+npm run build      # vérifie le bundle prod (vite build --mode production)
 ```
 
 Toutes les PR doivent passer **typecheck + tests + build**. Le pipeline CI

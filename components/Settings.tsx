@@ -140,10 +140,18 @@ export const Settings: React.FC<SettingsProps> = ({
     setProfileToDelete(null);
   };
 
-  const buildBackupPayload = () => ({
-    version: "3.1",
+  // C5 fix (Sprint 1) — Sécurité : apiKeys NE SONT PLUS incluses par défaut
+  // dans le backup. Avant ce fix, un fichier `.bak` chiffré avec passphrase
+  // faible (ou partagé accidentellement) exposait Anthropic + Era + Finnhub
+  // (clés directes vers données bancaires + LLM payant).
+  // Si l'utilisateur veut quand même inclure les clés, la fonction doit être
+  // appelée explicitement avec `buildBackupPayload({ includeApiKeys: true })`.
+  // L'utilisateur est alors prévenu via le toast de restauration que ses clés
+  // sont à re-saisir (déjà le cas dans le UX flow actuel).
+  const buildBackupPayload = (opts: { includeApiKeys?: boolean } = {}) => ({
+    version: "3.2",
     timestamp: Date.now(),
-    apiKeys,
+    ...(opts.includeApiKeys ? { apiKeys } : {}),
     config,
     budgetItems,
     assets,

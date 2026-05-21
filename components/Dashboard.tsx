@@ -10,7 +10,6 @@ import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { Skeleton } from './ui/Skeleton';
 import { fetchPortfolioHistory, MarketDataPoint } from '../services/finance';
-import { Sparkles, ArrowRight } from 'lucide-react';
 import { ASSET_META } from '../services/assetMeta';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { EraContextInsights } from './dashboard/EraContextInsights';

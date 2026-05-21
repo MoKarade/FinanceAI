@@ -25,9 +25,25 @@ import { trackPageView } from './services/analytics';
 const GuideModal = lazyWithRetry(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })), 'GuideModal');
 
 export const App: React.FC = () => {
-    // useShallow prevents cascade re-renders when unrelated store slices change
-    // (e.g. aiConversation update should not re-render the whole App tree).
-    const state = useFinanceStore(useShallow(s => s));
+    // C1 fix (Sprint 1) — `useShallow(s => s)` ne fait PAS ce que le commentaire
+    // précédent prétendait : il sélectionnait l'objet entier du store, donc
+    // toute mise à jour de slice (notamment `lastProjection` mis à jour
+    // toutes les ~300ms+timer Worker pendant le calcul Monte Carlo) faisait
+    // re-render App → Layout → TabRouter → toutes les pages.
+    //
+    // `lastProjection` est un objet volumineux (chartData ~360 points × 40 champs)
+    // qui n'est jamais lu directement via `state.lastProjection` dans App.tsx ni
+    // dans les composants enfants (ils l'accèdent via `useFinanceStore(s => s.lastProjection)`
+    // pattern Wiring 2026-05). On l'exclut donc du selector App pour éliminer
+    // les re-renders cascade.
+    //
+    // Refactor complet (sélecteurs atomiques, suppression du prop-drilling
+    // TabRouter) reporté à Sprint 3 (issue H2).
+    const state = useFinanceStore(useShallow(s => {
+        const { lastProjection: _lp, ...rest } = s;
+        void _lp;
+        return rest;
+    }));
     const setAppState = state.setAppState;
     const activeTab = state.activeTab;
     const setActiveTab = state.setActiveTab;

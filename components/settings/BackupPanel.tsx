@@ -169,7 +169,11 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
       }
     };
 
-    safeSet('app_api_keys', data.apiKeys);
+    // C5 fix : apiKeys n'est plus inclus dans les backups par défaut (sécurité).
+    // Si un ancien backup contient des apiKeys (version <= 3.1), on les
+    // restaure quand même pour rétrocompatibilité. Sinon, l'utilisateur doit
+    // les re-saisir (toast affiché plus bas).
+    if (data.apiKeys) safeSet('app_api_keys', data.apiKeys);
     safeSet('app_config', data.config);
     safeSet('app_budget', data.budgetItems);
     safeSet('initial_balances', data.initialBalances);

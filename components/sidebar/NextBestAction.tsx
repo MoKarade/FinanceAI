@@ -156,7 +156,19 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen })
             } else {
                 setHasError(true);
             }
-        } catch {
+        } catch (e) {
+            // SF4 fix (Sprint 1) : avant ce fix, toute erreur (timeout réseau,
+            // 500 Anthropic, parsing échoué) affichait le même message générique
+            // sans aucune trace. Maintenant on loggue via errorLogger pour
+            // pouvoir diagnostiquer dans SystemView.
+            import('../../services/errorLogger').then(({ logError }) => {
+                logError({
+                    source: 'ai',
+                    severity: 'warning',
+                    message: 'getNextBestActions failed',
+                    error: e instanceof Error ? e : new Error(String(e)),
+                });
+            }).catch(() => { /* logger HS, silent */ });
             setHasError(true);
         } finally {
             setIsLoading(false);

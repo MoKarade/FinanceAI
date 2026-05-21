@@ -150,7 +150,9 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                         setEvents(events.map(ev => { if (ev.id === idToDrop) { const nd = new Date(ev.date); nd.setFullYear(targetYear); return { ...ev, date: nd.toISOString().split('T')[0] }; } return ev; }));
                     }
                 };
-                const [dragOverYear, setDragOverYear] = React.useState<number | null>(null);
+                // C7 fix : useState a été déplacé au niveau top du composant (ligne 44).
+                // L'ancien `const [dragOverYear, setDragOverYear] = React.useState(null)` ici
+                // était une violation de la règle des Hooks (hook dans callback IIFE).
                 return (
                     <Card title="🗓️ Timeline Interactive — Glissez pour déplacer un événement">
                         <div className="text-tiny text-gray-500 mb-4">Faites glisser les événements sur les années pour ajuster votre calendrier de vie.</div>

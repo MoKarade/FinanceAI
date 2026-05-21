@@ -1,0 +1,39 @@
+// services/analytics.ts
+// Wrapper minimaliste autour de gtag (Google Analytics 4).
+//
+// Le tag gtag.js est chargé dans index.html. Ce module expose une API
+// typée pour tracker les vues d'écran SPA (changements d'onglet) sans
+// jamais envoyer de PII.
+//
+// No-op silencieux si gtag n'est pas disponible (env de test, blocker
+// d'ads, CSP qui rejette googletagmanager, etc.) — l'app continue de
+// fonctionner sans analytics.
+
+declare global {
+    interface Window {
+        gtag?: (
+            command: 'event' | 'config' | 'set' | 'js',
+            targetOrEventName: string,
+            params?: Record<string, unknown>,
+        ) => void;
+        dataLayer?: unknown[];
+    }
+}
+
+/**
+ * Envoie un page_view à GA4 pour un onglet de la SPA.
+ *
+ * GA4 ne track automatiquement que la page d'entrée — les navigations
+ * SPA (changements de `Tab` enum) doivent être déclarées explicitement
+ * pour apparaître dans les rapports "Pages and screens".
+ *
+ * @param tab Nom de l'onglet actif (valeur du `Tab` enum).
+ */
+export function trackPageView(tab: string): void {
+    if (typeof window === 'undefined') return;
+    if (typeof window.gtag !== 'function') return;
+    window.gtag('event', 'page_view', {
+        page_title: tab,
+        page_path: `/${tab.toLowerCase()}`,
+    });
+}

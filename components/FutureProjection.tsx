@@ -392,7 +392,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         Recalcul Monte Carlo en cours…
                     </span>
                 ) : undefined}>
-                <div style={{ width: '100%', height: '650px' }}>
+                {/* Hauteur responsive : 380px mobile, 500px tablet, 650px desktop */}
+                <div className="w-full h-[380px] sm:h-[500px] lg:h-[650px]">
                      <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />

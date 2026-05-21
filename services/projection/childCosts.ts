@@ -16,6 +16,21 @@
 //   - Une fonction `getAnnualChildCost(child, ageYears, opts)` qui réplique
 //     fidèlement la logique de ChildPlanning.tsx (tranches d'âge 0/1-4/5-11/
 //     12-17/18/18+uni.years/25+) et renvoie un montant annuel détaillé.
+//
+// LIMITATIONS connues (audit B2) :
+//   - `getAnnualChildCost` NE prend PAS en compte les éléments suivants
+//     que le moteur de projection applique (`childrenReee.ts` + `projection.ts`) :
+//     • RQAP (rente d'assurance parentale) en année 0
+//     • Clawback allocations gouvernementales si ménage > 150k$/an
+//     • Économies commuting 350$/mois pendant le congé parental
+//     • Crédit fédéral 30% sur frais garderie > 400$/mois
+//   - C'est INTENTIONNEL : `getAnnualChildCost` est une fonction PURE qui ne
+//     dépend pas du contexte ménage (revenu, dépenses, fiscalité). Elle sert
+//     à projeter le COÛT BRUT par âge pour l'affichage de timeline.
+//   - Pour des chiffres NET (après crédits/clawbacks/etc.), consommer
+//     directement `lastProjection.chartData` (champs `childGross`, `childCost`,
+//     `childBenefits` calculés par le moteur). Voir ChildPlanning.tsx
+//     respProjection qui fait ce branchement.
 
 import type { ChildGoal } from '../../types';
 

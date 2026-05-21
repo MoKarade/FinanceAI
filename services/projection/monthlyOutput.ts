@@ -42,6 +42,9 @@ export interface MonthlyOutputCtx {
     // Phase 3 Tier 3 — dividendes mensuels + revenus de placement imposables
     dividendIncome: number;
     taxableInvIncome: number;
+    // Phase 3 Tier 3 — taux d'imposition (par adulte)
+    marginalTaxRate: number;
+    effectiveTaxRate: number;
     // Immobilier
     immoHypo: number;
     immoCharges: number;
@@ -149,6 +152,7 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         reeeContribMonthly, reeePayoutMonthly,
         reeeContribCum, reeeGrantsCum,
         dividendIncome, taxableInvIncome,
+        marginalTaxRate, effectiveTaxRate,
         immoHypo, immoCharges, immoInterest, immoPrincipal, totalRentalIncome,
         liquid, celi, celiapp, reer, reee, nonReg, crypto,
         retraitReerMois, retraitCeliMois, celiRoom, rrspRoom,
@@ -189,6 +193,8 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         // Phase 3 Tier 3 — dividendes et revenus de placement imposables
         DividendIncome: Number(dividendIncome.toFixed(2)),
         TaxableInvIncome: Number(taxableInvIncome.toFixed(2)),
+        marginalTaxRate: Number(marginalTaxRate.toFixed(2)),
+        effectiveTaxRate: Number(effectiveTaxRate.toFixed(2)),
         ImmoHypo: Number(immoHypo.toFixed(2)),
         ImmoCharges: Number(immoCharges.toFixed(2)),
         ImmoInterest: Number(immoInterest.toFixed(2)),

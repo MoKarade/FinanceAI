@@ -147,7 +147,10 @@ Couple **Alex + Sam** (mode test, `services/testFixtures.ts`) :
 | 7.5 | **Asset Location Card** affiche split CELI/REER/NonReg/Crypto | OK |
 | 7.6 | **Capitaux actuels** = somme cohérente avec Investments | OK |
 | 7.7 | Graph accumulation/épuisement visible | OK |
-| 7.8 | Chiffres **alignés avec Future** | Convergence améliorée depuis fix savingsGoals/financialGoals |
+| 7.8 | Chiffres **alignés avec Future** | OK depuis fix savingsGoals/financialGoals + refactor lastProjection 2026-05-21 |
+| 7.10 | Ouvrir Future, changer scénario → ouvrir Retraite : **les chiffres reflètent le scénario sélectionné** | OK depuis 2026-05-21 |
+| 7.11 | Ouvrir Retraite **sans avoir ouvert Future** d'abord → fallback worker local calcule | OK |
+| 7.12 | KPI Capital retraite = `chartData.find(p.age >= targetAge).NetWorth` | OK (test Vitest #7.1) |
 | 7.9 | Slider lifeExpectancy 80-100 ans réactif | OK |
 
 ## Section 8 — Immobilier
@@ -327,3 +330,5 @@ Quand on livre un fix ou une feature :
 |---|---|---|
 | 2026-05-21 | Création initiale (131 tests) | Sprint mode test + 5 fixes session |
 | 2026-05-21 | +6 tests (6.11.b + 9.8/9/10/11 + Future events) | Refactor childCosts.ts source unique |
+| 2026-05-21 | +3 tests (7.10/11/12) | Refactor centralisation calculs (Retraite ← lastProjection) |
+| 2026-05-21 | +10 tests Vitest automatisés (`projection.convergence.test.ts`) | Convergence Future ↔ UI |

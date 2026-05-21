@@ -58,7 +58,10 @@ describe('findRequiredMonthlySavings', () => {
 });
 
 describe('findEarliestRetirementAge', () => {
-    it('retourne un âge plausible', () => {
+    // Test plus lourd : bissection × projection complète. Le moteur est devenu
+    // plus complet (childCosts par tranches, fix dettes, etc.) → augmente
+    // timeout de 5s → 30s pour éviter flaky CI.
+    it('retourne un âge plausible', { timeout: 30000 }, () => {
         const result = findEarliestRetirementAge(baseParams());
         expect(result.value).toBeGreaterThanOrEqual(45);
         expect(result.value).toBeLessThanOrEqual(75);

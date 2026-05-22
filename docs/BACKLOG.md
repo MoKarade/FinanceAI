@@ -331,9 +331,13 @@ Désormais un nouveau deploy est pris automatiquement au reload, sans Clear.
 
 ## ⚡ P2 — Performance
 
-### P1 — Bundle size audit complet
-- [ ] Mesurer post Sprint 1 vs baseline (suppression framer-motion -80KB déjà fait)
-- [ ] Identifier prochain candidat à lazy-load (recharts ? PDF lib ?)
+### P1 — Bundle size audit complet ✅ AUDITÉ (2026-05-22)
+Mesuré (gzip) : recharts 128 KB · index/shell 125 KB · pdf-vendor 128 KB (lazy)
+· html2canvas 48 KB (lazy) · ai-vendor 35 KB (lazy) · chaque onglet 3-18 KB (lazy
+via TabRouter). **Conclusion** : déjà bien code-splitté (onglets/PDF/IA lazy).
+Seul gros poste restant = **recharts (core, charts partout)** → réduire = changer
+de lib, gros + risqué. À traiter avec **G4** (la refonte graphs façon Google
+Finance pourrait remplacer/alléger recharts). Pas un sujet isolé.
 
 ### P2 — Cache portfolio-history.csv en SW ✅ TERMINÉ 2026-05-21
 Le SW cache désormais `/assets/*` + `/portfolio-history.csv` +

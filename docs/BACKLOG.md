@@ -174,10 +174,16 @@ log. Effort ~1 h. Note : le KPI principal masque le bug via son fallback
   <realEstate|childLiquid|cashflow> (mois N)` → fix ciblé immédiat.
   **À retirer une fois TB3 corrigé.**
 
-### TB4 — Réactivité sliders Future ⚠️ À VALIDER MANUELLEMENT
-Automation JS/clavier ne recalcule pas (limitation injection synthétique
-React 19, pas un bug app). Stress test : ✅ AUCUN crash sous valeurs
-extrêmes. Marc doit drag manuellement pour confirmer la réactivité.
+### TB4 — Réactivité sliders Future ✅ VALIDÉ + 2 BUGS CORRIGÉS (2026-05-22)
+Marc a validé manuellement (drag réel). Résultat :
+- Slider **Dépenses** : OK (la projection réagit).
+- Sliders **Rendement** : ne changeaient RIEN → 2 bugs trouvés et corrigés
+  (commit 1134d59) :
+  1. `setupSimulation` lisait `projection.rates` (champ inexistant) au lieu de
+     `projection.returnRates` → fallback défaut, sliders sans effet. Aligné.
+  2. Slider Non-Enregistré : `updateReturnRate` appelé 2× (nonReg+reer) → stale
+     closure, le 2e écrasait le 1er → valeur figée. Remplacé par un seul update.
+- Les sliders de rendement contrôlent désormais réellement la projection.
 
 ## 🐛 P1 — Bugs ouverts / hypothèses non validées
 

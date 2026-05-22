@@ -284,12 +284,15 @@ les plus critiques en Playwright (cible : 20-30 tests).
 
 ## 🔧 P3 — Dette technique restante
 
-### DT1 — Cleanup imports
-Audit `import {...}` non utilisés (refactor cycle 17 a probablement laissé
-des leftovers — ex: `runProjectionAsync`, `terminateProjectionWorker` dans
-Retirement après mode strict).
-- [ ] `npm run lint --fix` audit
-- [ ] Supprimer ces imports
+### DT1 — Cleanup imports ✅ FAIT (2026-05-22)
+Tous les imports morts retirés (9 fichiers, ~41 warnings clearés) :
+recharts mort dans Planning/TaxCenter/Transactions/LifeEvents/DebtManager,
+lazy-imports Travel/LifeEvents dans TabRouter, formatNumber/KPIStat/StatGrid/
+CATEGORY_ICONS/BudgetConfig divers. Validé typecheck + 604 tests.
+- **Reste (DT1b, basse priorité)** : ~460 warnings restants = `no-console`
+  (intentionnels/scripts), props/args inutilisés (contrats d'interface),
+  `exhaustive-deps` (revue prudente requise), `no-explicit-any` (= DT2).
+  Aucun n'est un import mort.
 
 ### DT2 — Types `any` résiduels
 Le projet utilise encore `any` dans certains endroits (rapidité).

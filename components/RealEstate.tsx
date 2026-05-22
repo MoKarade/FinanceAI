@@ -236,7 +236,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
     const annualExpenses = monthlyTaxes * 12 + heatingMonthly * 12 + condoFees * 12 + (price * 0.01);
     const netAnnualIncome = (monthlyRental * 12) - annualExpenses - (amortizationData.data[0]?.PartInteretAnnuelle || 0);
     const netYield = (netAnnualIncome / price) * 100;
-    const combinedData = Array.from({ length: amortization }, (_, i) => {
+    const combinedData = useMemo(() => Array.from({ length: amortization }, (_, i) => {
         const yr = i + 1;
         let rentScenarioNetWorth = totalCashNeeded;
         let currentRentCost = currentRent;
@@ -261,7 +261,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
             'Bourse (Placer Cash Initial)': Math.round(stockInvestment),
             'Valeur Propriété': Math.round(propValue),
         };
-    });
+    }), [amortization, totalCashNeeded, currentRent, netMonthlyCost, maintenanceMonthly, marketReturn, price, localRentalAppreciation, localStockReturn, netAnnualIncome, amortizationData.data]);
     const zoom = useTimeChartZoom<any>(combinedData);
 
     return (

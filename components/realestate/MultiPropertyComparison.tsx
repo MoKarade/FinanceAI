@@ -47,7 +47,7 @@ export const MultiPropertyComparison: React.FC<MultiPropertyComparisonProps> = (
         return { name: goal.name || `Prop. ${gi + 1}`, points, color: PROP_COLORS[gi % PROP_COLORS.length] };
     });
 
-    const maxLen = Math.max(...allSeries.map(s => s.points.length));
+    const maxLen = allSeries.length > 0 ? Math.max(...allSeries.map(s => s.points.length)) : 0;
     const chartData: Record<string, number | string>[] = [];
     for (let yr = 1; yr <= maxLen; yr++) {
         const row: Record<string, number | string> = { year: yr };

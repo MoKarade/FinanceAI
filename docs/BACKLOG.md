@@ -14,28 +14,25 @@
 
 ## 🚨 P0 — Bloquant / Sécurité
 
-### B0 — React error #310 sur chaque onglet au load — **CRITIQUE, app inutilisable** (signalé 2026-05-22)
-À chaque chargement de l'app, chaque onglet tombe dans l'ErrorBoundary
+### B0 — React error #310 sur chaque onglet au load — ✅ FIX CODE FAIT (2026-05-22)
+À chaque chargement, chaque onglet tombait dans l'ErrorBoundary
 (« Erreur dans Accueil ») avec **Minified React error #310** =
-*"Rendered more hooks than during the previous render"*. Stack prod :
-`at Je (...index-DfDjfGju.js)` → `Object.od [as useCallback]`.
+*"Rendered more hooks than during the previous render"*.
 
-**Hypothèse (forte)** : régression du **mode strict** (MS1-MS8). Des composants
-font `if (!hasProjection) return <ProjectionRequired/>` AVANT certains hooks
-(`useMemo`/`useCallback`). Render 1 (pas de projection) = N hooks, render 2
-(projection arrivée) = N+M hooks → violation. Cohérent avec « chaque onglet »
-(8 composants migrés : Dashboard, Investments, Budget, RealEstate, Planning,
-ChildPlanning, Retirement, HealthIndicator).
+**Cause réelle** (confirmée par `eslint react-hooks/rules-of-hooks`) :
+`components/dashboard/HealthIndicator.tsx` faisait
+`if (!hasData) return <EmptyDataPrompt/>` AVANT 8 hooks (`useFinanceStore` ×5,
+`useProjectionSelector`, 2× `useMemo`). À l'hydratation du store, `hasData`
+passe false→true → le nombre de hooks change → crash. HealthIndicator est rendu
+par Dashboard (Accueil) et monté en permanence, d'où l'effet « chaque onglet ».
+C'était le **seul** fichier avec des erreurs `rules-of-hooks` (scan repo entier).
 
-- [ ] Auditer les 8 composants mode strict : tout early-return doit être APRÈS
-  tous les hooks
-- [ ] Déplacer les `ProjectionRequired` returns sous les hooks (ou rendre le
-  contenu conditionnel dans le JSX au lieu d'un early-return)
-- [ ] Ajouter un test/lint `react-hooks/rules-of-hooks` en CI pour bloquer la
-  régression
-- [ ] Vérifier en prod sur les 8 onglets après fix
-- **Effort estimé** : 1-2 h
-- **Note** : à corriger en priorité absolue — passe avant tout le reste P0.
+- [x] Audit ESLint de tout le repo → 1 seul fichier fautif (HealthIndicator)
+- [x] Déplacé l'early-return APRÈS tous les hooks
+- [x] Lint : 0 erreur `rules-of-hooks` ; typecheck clean ; 604/604 tests verts
+- [ ] **Ajouter `npm run lint` (rules-of-hooks) au CI** pour bloquer la
+  régression (le rule existe déjà en `error` mais n'est pas dans le pipeline)
+- [ ] Vérifier en prod sur les onglets après redeploy Vercel
 
 ### S1 — Auth Google OAuth + MFA (Cloudflare Access) — ✅ FAIT (2026-05-22)
 Site désormais protégé : login Google obligatoire, restreint à

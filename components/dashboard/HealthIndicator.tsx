@@ -88,20 +88,13 @@ interface MetricRow {
 
 export const HealthIndicator: React.FC<{ className?: string }> = ({ className = '' }) => {
     // P1 gating — score 0-100 sans données → bogus. On masque tant que pas saisi.
+    // IMPORTANT : on lit hasData ici, mais l'early-return est APRÈS tous les
+    // hooks (plus bas). Un return avant un hook = React #310 "rendered more
+    // hooks than during the previous render" au moment où le store s'hydrate
+    // (hasData false → true change le nombre de hooks). Cf. BACKLOG B0.
     const { hasData } = useHasUserData();
     const [weights, setWeights] = useState<Weights>(loadWeights);
     const [showSettings, setShowSettings] = useState(false);
-
-    if (!hasData) {
-        return (
-            <EmptyDataPrompt
-                icon="🩺"
-                title="Score de santé financière indisponible"
-                description="Renseigne ton profil (salaire, dépenses) pour calculer ton score 0-100 et tes 4 ratios (épargne, coussin, dette, FIRE)."
-                className={className}
-            />
-        );
-    }
 
     const config = useFinanceStore(s => s.config);
     const budgetItems = useFinanceStore(s => s.budgetItems);
@@ -185,6 +178,18 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
         const totalWeight = Object.values(weights).reduce((s, w) => s + w, 0);
         return totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
     }, [metrics, weights]);
+
+    // Early-return APRÈS tous les hooks (règle des Hooks — voir tête de fonction).
+    if (!hasData) {
+        return (
+            <EmptyDataPrompt
+                icon="🩺"
+                title="Score de santé financière indisponible"
+                description="Renseigne ton profil (salaire, dépenses) pour calculer ton score 0-100 et tes 4 ratios (épargne, coussin, dette, FIRE)."
+                className={className}
+            />
+        );
+    }
 
     const colors = colorForScore(totalScore);
 

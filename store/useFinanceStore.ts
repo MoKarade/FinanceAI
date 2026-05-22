@@ -259,15 +259,30 @@ export const useFinanceStore = create<FinanceState>()(
             isTestMode: false,
             realDataSnapshot: null,
 
-            setActiveTab: (tab) => set({ activeTab: tab }),
+            // Navigation : on synchronise window.location.hash AVANT le set.
+            // Sinon l'effet applyHash (App.tsx, deps [activeTab]) se relance au
+            // changement d'activeTab, lit le hash resté périmé et revert vers
+            // l'onglet courant → les boutons navigateWithFocus semblent « morts ».
+            // Cf. BACKLOG G1 (2026-05-22).
+            setActiveTab: (tab) => {
+                if (typeof window !== 'undefined' && window.location.hash.replace('#', '') !== tab) {
+                    window.location.hash = tab;
+                }
+                set({ activeTab: tab });
+            },
             setPrivacyMode: (v) => set({ isPrivacyMode: v }),
             togglePrivacyMode: () => set((prev) => ({ isPrivacyMode: !prev.isPrivacyMode })),
             setAppState: (state) => set((prev) => ({ ...prev, ...state })),
             setLastProjection: (r) => set({ lastProjection: r }),
-            navigateWithFocus: (tab, section) => set({
-                activeTab: tab,
-                pendingFocus: { tab, section: section ?? null, expiresAt: Date.now() + 5000 },
-            }),
+            navigateWithFocus: (tab, section) => {
+                if (typeof window !== 'undefined' && window.location.hash.replace('#', '') !== tab) {
+                    window.location.hash = tab;
+                }
+                set({
+                    activeTab: tab,
+                    pendingFocus: { tab, section: section ?? null, expiresAt: Date.now() + 5000 },
+                });
+            },
             clearPendingFocus: () => set({ pendingFocus: null }),
             updateFxRates: (rates) => set((prev) => ({
                 fxRates: { ...prev.fxRates, ...rates }

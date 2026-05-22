@@ -12,8 +12,6 @@ const Planning = lazyWithRetry(() => import('./Planning').then(m => ({ default: 
 const Investments = lazyWithRetry(() => import('./Investments').then(m => ({ default: m.Investments })), 'Investments');
 const RealEstate = lazyWithRetry(() => import('./RealEstate').then(m => ({ default: m.RealEstate })), 'RealEstate');
 const ChildPlanning = lazyWithRetry(() => import('./ChildPlanning').then(m => ({ default: m.ChildPlanning })), 'ChildPlanning');
-const Travel = lazyWithRetry(() => import('./Travel').then(m => ({ default: m.Travel })), 'Travel');
-const LifeEvents = lazyWithRetry(() => import('./LifeEvents').then(m => ({ default: m.LifeEvents })), 'LifeEvents');
 const LifeProjects = lazyWithRetry(() => import('./LifeProjects').then(m => ({ default: m.LifeProjects })), 'LifeProjects');
 const Documents = lazyWithRetry(() => import('./Documents').then(m => ({ default: m.Documents })), 'Documents');
 const Retirement = lazyWithRetry(() => import('./Retirement').then(m => ({ default: m.Retirement })), 'Retirement');

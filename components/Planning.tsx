@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import { Transaction, RecurringItem, SavingsGoal, BudgetConfig, BudgetCategory } from '../types';
 import { Card } from './ui/Card';
 import { ProjectionRequired } from './ui/ProjectionRequired';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 // Phase 4 A5: bascule sur services/claude.ts (Haiku 4.5)
 import { detectSubscriptionsAI } from '../services/claude';
 // Phase 4 B8: Era Context fournit aussi une détection récurrence — on l'utilise

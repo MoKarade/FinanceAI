@@ -17,7 +17,7 @@ import { EraContextInsights } from './dashboard/EraContextInsights';
 import { HealthIndicator } from './dashboard/HealthIndicator';
 import { StockComparisonModal } from './dashboard/StockComparisonModal';
 import { Tab as TabEnum } from '../types';
-import { formatCAD, formatNumber, formatPercent, formatSigned } from '../utils/format';
+import { formatCAD, formatPercent, formatSigned } from '../utils/format';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 
 interface DashboardProps {

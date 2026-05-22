@@ -131,12 +131,26 @@ et que ca me mette une erreur ou un msg si pas dispo". Statut :
 
 ### TB1 — Hash navigation au boot ✅ FIXÉ (commit e888564, validé prod)
 ### TB2 — Worker crash `slice undefined` ✅ FIXÉ (commit e888564, validé prod)
-### TB3 — 7 cards scénarios Future affichent `0.00M$` 🔴 À INVESTIGUER
-KPI principal "Patrimoine projeté" = 1.69M$ (correct) mais les 7 cards
-scénarios affichent `0.00M$`. Cause probable : en `runMC=true`, le worker
-ne calcule que le scénario sélectionné ; `allResults[i].estateNetWorth`
-reste 0 pour les autres. Fichiers : `services/projection.ts` +
-`runAsync.ts`. Effort ~1-2h. Non-bloquant (courbe + KPI principal OK).
+### TB3 — 7 cards scénarios Future affichent `0.00M$` ⚠️ INVESTIGUÉ 2026-05-22 — repro requise
+**Hypothèse initiale RÉFUTÉE** : le worker NE tronque PAS `allResults`.
+`calculateFutureProjection` (projection.ts:1129) calcule chaque scénario via
+`runScenario(..., false, ...)` de façon déterministe → chaque `allResults[i]`
+a son `estateNetWorth`. `runMC` n'ajoute que P10/P50/P90 au scénario sélectionné
+(ligne 1169), il ne zéro pas les autres. `runAsync.ts` (ligne 83) passe `result`
+intact via postMessage. Card lit `res.estateNetWorth` brut
+(ProjectionControls.tsx:99).
+
+**Donc `estateNetWorth` ne peut valoir 0 que si** : (a) NaN → garde
+estateCalculation.ts:116 le force à 0 ; ou (b) le scénario épuise réellement le
+patrimoine (légitime pour un FIRE agressif à l'horizon 95 ans). Le KPI principal
+(FutureProjection.tsx:351) masque ça via fallback `estateNetWorth ||
+finalNetWorth || fireNumber` — les cards non, d'où la divergence apparente.
+
+**Reste à faire (Marc, post-fix #310)** : ouvrir Future et confirmer
+visuellement. Si les cards affichent encore TOUTES `0.00M$` alors que la courbe
+monte → vrai bug NaN à tracer (input manquant dans computeEstateNetWorth). Si
+seulement certaines (scénarios dépensiers) → comportement correct, pas un bug.
+Pas reproductible/fixable sans données réelles → laissé en attente.
 ### TB4 — Réactivité sliders Future ⚠️ À VALIDER MANUELLEMENT
 Automation JS/clavier ne recalcule pas (limitation injection synthétique
 React 19, pas un bug app). Stress test : ✅ AUCUN crash sous valeurs
@@ -341,17 +355,24 @@ Priorité de traitement :
 
 ## Snapshot de tailles approximatives
 
-| Catégorie | Items ouverts | Effort total |
-|-----------|---------------|--------------|
-| P0 Sécurité | 1 restant (S2 IndexedDB backup) — S1 auth ✅ fait | ~3 h |
-| P1 Centralisation | 3 champs Tier 3 restants (marginalTax/effective/pensionSplit) | ~1 h |
-| P1 Bugs | 2 reportés (B3 goalSeek timeout / B4 audit tests) | non-critique |
-| P2 UX | 5 items (skeleton Future, mobile, export PDF, dark mode, PWA prompt) | ~5 h |
-| P2 Performance | 3 (bundle audit, SW cache, profiler) | ~4 h |
-| P2 Tests | 4 (étendre convergence, Playwright, coverage, automatiser) | ~8 h |
-| P3 Docs | 4 (handover, README, ADR, doc user) | ~6 h |
-| P3 Dette tech | 5 (imports, any, split testFixtures, split worker, align getAnnualChildCost) | ~6 h |
-| **Total restant estimé** | **~28 items** | **~36 h** |
+| Catégorie | Items ouverts | Effort | Note |
+|-----------|---------------|--------|------|
+| P0 Sécurité | S2 IndexedDB backup (reporté, dépend décision A8) | ~3 h | S1 auth ✅, B0 #310 ✅, gate lint ✅ |
+| P1 Centralisation | C2 (brancher TaxCenter/Investments/RealEstate) + C4 (code mort) | ~4 h | C1 moteur ✅ complet |
+| P1 Bugs | TB3 (investigué, repro Marc requise), TB4 (Marc), B3/B4 reportés | ~1-2 h si bug | non-bloquant |
+| P2 UX | U3 toggle MC, U4 tooltip groups, export PNG/PDF | ~4 h | U2/U5/U6 ✅, dark mode rejeté |
+| P2 Performance | P1 bundle audit, P3 profiler worker | ~4 h | P2 SW cache ✅ |
+| P2 Tests | T2 Playwright, T3 coverage 64→80%, T4 automatiser manuels | ~8 h | T1 convergence ✅ |
+| P3 Docs | — | — | D1-D4 ✅ + AUTH_SETUP ✅ |
+| P3 Dette tech | DT1 imports (~98 warnings), DT2 `any`, DT4 split testFixtures, DT5 split worker | ~6 h | non-critique |
+| **Total restant** | **~14 items actionnables** | **~30 h** | gros postes = tests + dette + UX |
+
+**Progression session 2026-05-22** :
+- ✅ **S1 — Cloudflare Access** activé (login Google, restreint à Marc) + [AUTH_SETUP.md](AUTH_SETUP.md)
+- ✅ **B0 — React #310** corrigé (HealthIndicator : early-return après les hooks)
+- ✅ **Gate lint** : étape CI + `prebuild: npm run lint` (bloque rules-of-hooks avant prod)
+- ✅ **TB3** investigué (worker/calc OK, repro Marc requise — pas un bug worker)
+- ⏳ Reste à valider par Marc : hard-reload prod (#310), drag sliders Future (TB4)
 
 **Progression session 2026-05-21** :
 - ✅ **Mode strict TOTAL** : 8 composants migrés (Dashboard, Investments, Budget, RealEstate, Planning, ChildPlanning, HealthIndicator, Retirement) + ProjectionRequired

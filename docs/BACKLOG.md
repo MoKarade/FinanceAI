@@ -293,7 +293,12 @@ violé par la CSP. Effet : la PWA ne charge plus son manifest.
 `/sw.js` (assets publics, pas de données) — déjà anticipé dans
 [AUTH_SETUP.md](AUTH_SETUP.md) §maintenance. Action Cloudflare (Marc), ~10 min.
 
-### G8 — Bug : beacon Cloudflare Insights bloqué par la CSP 🟢 P3
+### G8 — Bug : beacon Cloudflare Insights bloqué par la CSP ✅ FAIT (2026-05-22)
+Réglé par whitelist CSP (choix Marc) : `static.cloudflareinsights.com` ajouté au
+`script-src` + `cloudflareinsights.com` au `connect-src` (POST du beacon RUM),
+dans index.html (CSP active sur Vercel) ET netlify.toml (synchro).
+<!-- entrée d'origine ci-dessous -->
+
 `static.cloudflareinsights.com/beacon.min.js` bloqué par `script-src`. Cloudflare
 injecte son analytics auto. Comme GA4 est déjà en place, le plus simple :
 **désactiver Cloudflare Web Analytics** (dashboard Cloudflare → la zone →

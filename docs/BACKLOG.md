@@ -93,12 +93,15 @@ Ajouter ces champs dans `ProjectionChartPoint` :
 - **Reste à faire** : split pension (peu critique, reporté)
 - **Effort restant** : ~30 min
 
-### C2 — Migrer composants après extension 🟡 P2 (largement recouvert par C3)
-> 2026-05-22 : la centralisation a été en grande partie faite via **C3** (mode
-> strict) — ChildPlanning `respProjection` reconstruit depuis chartData ✓,
-> RealEstate badge équité ✓, TaxCenter = 100% temps présent (N/A). Reste à
-> vérifier finement : Investments `totalAnnualDividends` (KPI) + DividendPanel
-> (timeline DRIP). **Non-bloquant** (les onglets fonctionnent) ; vérif reportée.
+### C2 — Migrer composants après extension ✅ FAIT (2026-05-22)
+> Centralisation complète après vérification :
+> - Faite via **C3** (mode strict) : ChildPlanning `respProjection` ← chartData ✓,
+>   RealEstate badge équité ← chartData ✓ (+ HealthIndicator, Dashboard, etc.).
+> - **N/A — valeur du présent ou outil interactif** (pas une projection, même
+>   logique que TaxCenter & DebtManager) : TaxCenter (temps présent) ; Investments
+>   `totalAnnualDividends` (KPI présent = holdings × yield) ; DividendPanel (outil
+>   DRIP **interactif** : toggle + slider de croissance → une lecture chartData
+>   statique DÉGRADERAIT l'interactivité). Rien de plus à migrer.
 <!-- items d'origine -->
 - [ ] TaxCenter `report.marginalRate` / `effectiveRate` / `taxableAddOn`
 - [ ] Investments `totalAnnualDividends` (KPI)

@@ -19,7 +19,7 @@ const EVENT_KEYWORD_ICONS: Array<[RegExp, string]> = [
     [/survie|coussin/i, '🛟'],
 ];
 
-const splitEventIcon = (label: string): { icon: string; text: string } => {
+export const splitEventIcon = (label: string): { icon: string; text: string } => {
     // Detect leading emoji (1-2 codepoints + optional VS16/skin tone)
     const m = label.match(/^([\p{Emoji_Presentation}\p{Extended_Pictographic}][️‍\p{Emoji_Modifier}\p{Emoji_Component}]*)\s+(.*)$/u);
     if (m) return { icon: m[1], text: m[2] };
@@ -162,22 +162,40 @@ export const ExpertTooltip = ({ active, payload, isPrivacyMode, userName1, userN
     );
 };
 
-export const CustomLifeEventLabel = (props: any) => {
-    const { x, y, value, index } = props;
-    const dyOffsets = [-25, -45, -65, 25, 45];
-    const dy = dyOffsets[index % dyOffsets.length];
+// G5 — pastille d'événement individuelle et cliquable, rendue comme label SVG
+// d'un ReferenceDot (recharts injecte x,y en pixels). Chaque événement a sa
+// propre icône (plus de labels texte fusionnés « A | B | C »). Les événements
+// d'un même mois s'empilent verticalement via `subIdx` : vie au-dessus du
+// point, flux en dessous. Le clic remonte le payload via `onSelect`.
+export const ClickableEventIcon = (props: any) => {
+    const { payload, onSelect, kind = 'life', selected = false } = props;
+    // Recharts v3 : utilisé via le prop `shape` du ReferenceDot → coords en cx/cy.
+    // Fallbacks (x/y, viewBox) au cas où l'API change.
+    const px = props.cx ?? props.x ?? props.viewBox?.x;
+    const py = props.cy ?? props.y ?? props.viewBox?.y;
+    if (typeof px !== 'number' || typeof py !== 'number' || !payload) return null;
+    const { icon } = splitEventIcon(payload.label || '');
+    const isLife = kind === 'life';
+    const sub = payload.subIdx || 0;
+    const dy = isLife ? -(20 + sub * 24) : (20 + sub * 20);
+    const r = isLife ? 12 : 9;
+    const color = isLife ? '#facc15' : '#60a5fa';
     return (
-        <text x={x} y={y} dy={dy} fill="#facc15" fontSize={11} textAnchor="middle" fontWeight="black" style={{ filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.8))' }}>
-            {value}
-        </text>
-    );
-};
-
-export const CustomFlowEventLabel = (props: any) => {
-    const { x, y, value } = props;
-    return (
-        <text x={x} y={y} dy={-10} fill="#60a5fa" fontSize={8} textAnchor="middle" opacity={0.6}>
-            {value}
-        </text>
+        <g
+            transform={`translate(${px}, ${py})`}
+            style={{ cursor: 'pointer' }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onSelect?.(payload); }}
+            role="button"
+            tabIndex={-1}
+            aria-label={`Événement : ${payload.label}`}
+        >
+            {/* ancre sur la courbe + tige vers la pastille */}
+            <circle r={3} fill={color} stroke="#0B0E14" strokeWidth={1} />
+            <line x1={0} y1={0} x2={0} y2={dy} stroke={color} strokeWidth={1} strokeOpacity={0.45} />
+            {selected && <circle cy={dy} r={r + 5} fill="none" stroke={color} strokeWidth={1.5} strokeOpacity={0.55} />}
+            <circle cy={dy} r={r} fill="#0B0E14" stroke={color} strokeWidth={selected ? 3 : 1.75} />
+            <text y={dy} textAnchor="middle" dominantBaseline="central" fontSize={isLife ? 13 : 10} style={{ pointerEvents: 'none' }}>{icon}</text>
+        </g>
     );
 };

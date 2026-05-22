@@ -5,7 +5,7 @@ import { PageHeader } from './ui/PageHeader';
 import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { Pill } from './ui/Pill';
-import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Line, ComposedChart, Bar, ReferenceDot, LabelList } from 'recharts';
+import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Line, ComposedChart, Bar, ReferenceDot } from 'recharts';
 import { BudgetConfig, BudgetCategory, Asset, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Transaction, Debt, ProjectionConfig, FinancialGoal, User, RegisteredAccountType } from '../types';
 import { fetchPortfolioHistory } from '../services/finance';
 import { calculateFutureProjection, SimulationParams } from '../services/projection';
@@ -18,7 +18,7 @@ import { usePendingFocus } from '../utils/usePendingFocus';
 // render (qui invaliderait les useMemo deps en aval).
 const EMPTY_ARRAY: never[] = [];
 import { Tab as TabEnum } from '../types';
-import { ExpertTooltip, CustomLifeEventLabel, CustomFlowEventLabel } from './projection/ProjectionTooltip';
+import { ExpertTooltip, ClickableEventIcon, splitEventIcon } from './projection/ProjectionTooltip';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ProjectionControls } from './projection/ProjectionControls';
 
@@ -287,15 +287,35 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         }
     }, [results, setLastProjection]);
 
+    // G5 — un événement = une pastille (plus de fusion « A | B | C »). On garde
+    // year/age/dateLabel par événement pour la fiche au clic, et `subIdx` pour
+    // empiler verticalement les événements d'un même mois.
     const { lifeChartEvents, flowChartEvents } = useMemo(() => {
         const lifes: any[] = [];
         const flows: any[] = [];
         let lifeIdx = 0;
         let flowIdx = 0;
+        // Anti-spam : le moteur ré-émet certains labels (renouvellements, stress
+        // tests) plusieurs mois d'affilée. On collapse les répétitions du même
+        // label rapprochées (≤ DEDUP_GAP mois) pour ne garder qu'une pastille.
+        const DEDUP_GAP = 3;
+        const lastLife: Record<string, number> = {};
+        const lastFlow: Record<string, number> = {};
         chartData.forEach((d: any) => {
-            if (d.lifeEvents?.length > 0) lifes.push({ monthIndex: d.monthIndex, val: d.NetWorth, label: d.lifeEvents.join(' | '), index: lifeIdx++ });
-            if (d.flowEvents?.length > 0 && (d.FluxImpots < 0 || d.flowEvents.some((x:any)=>x.includes('-')))) {
-                flows.push({ monthIndex: d.monthIndex, val: d.ImpotLatent || 0, label: d.flowEvents[0], index: flowIdx++ });
+            const meta = { monthIndex: d.monthIndex, year: d.year, age: d.age, dateLabel: d.dateLabel };
+            let lifeSub = 0;
+            (d.lifeEvents || []).forEach((label: string) => {
+                if (lastLife[label] != null && d.monthIndex - lastLife[label] <= DEDUP_GAP) return;
+                lastLife[label] = d.monthIndex;
+                lifes.push({ ...meta, val: d.NetWorth, netWorth: d.NetWorth, label, subIdx: lifeSub++, index: lifeIdx++, kind: 'life' });
+            });
+            if (d.flowEvents?.length > 0 && (d.FluxImpots < 0 || d.flowEvents.some((x: any) => x.includes('-')))) {
+                let flowSub = 0;
+                d.flowEvents.forEach((label: string) => {
+                    if (lastFlow[label] != null && d.monthIndex - lastFlow[label] <= DEDUP_GAP) return;
+                    lastFlow[label] = d.monthIndex;
+                    flows.push({ ...meta, val: d.ImpotLatent || 0, netWorth: d.NetWorth, label, subIdx: flowSub++, index: flowIdx++, kind: 'flow' });
+                });
             }
         });
         return { lifeChartEvents: lifes, flowChartEvents: flows };
@@ -306,6 +326,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
     // G4 — zoom molette / pan / sélecteur de période sur la courbe (remplace <Brush>).
     const zoom = useTimeChartZoom<any>(chartData);
+
+    // G5 — événement sélectionné (clic sur une pastille) → fiche détail.
+    const [selectedEvent, setSelectedEvent] = useState<any>(null);
 
     // C6 fix (Sprint 1B) — Garde déplacée ICI (après tous les hooks) pour
     // respecter la règle des Hooks. Retourne un placeholder UI si les props
@@ -324,6 +347,15 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const visMaxMonth = zoom.visibleData[zoom.visibleData.length - 1]?.monthIndex ?? Number.POSITIVE_INFINITY;
     const visibleLifeEvents = lifeChartEvents.filter((e: any) => e.monthIndex >= visMinMonth && e.monthIndex <= visMaxMonth);
     const visibleFlowEvents = flowChartEvents.filter((e: any) => e.monthIndex >= visMinMonth && e.monthIndex <= visMaxMonth);
+    // Plafond de densité : en vue large on échantillonne uniformément (lisibilité
+    // + fluidité). En zoomant, la fenêtre contient moins d'événements → tous visibles.
+    const thinEvents = (arr: any[], cap: number) => {
+        if (arr.length <= cap) return arr;
+        const step = Math.ceil(arr.length / cap);
+        return arr.filter((_: any, i: number) => i % step === 0);
+    };
+    const shownLifeEvents = thinEvents(visibleLifeEvents, 40);
+    const shownFlowEvents = thinEvents(visibleFlowEvents, 24);
     const lastMonthIndex = chartData.length > 0 ? chartData[chartData.length - 1].monthIndex : 0;
     const idxForYears = (yrs: number) => {
         const i = chartData.findIndex((d: any) => d.monthIndex >= yrs * 12);
@@ -465,8 +497,46 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 <div
                     ref={zoom.containerRef}
                     {...zoom.handlers}
+                    onClick={() => setSelectedEvent(null)}
                     className={`relative w-full h-[380px] sm:h-[500px] lg:h-[650px] select-none ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-default'}`}
                 >
+                    {/* G5 — fiche détail de l'événement cliqué */}
+                    {selectedEvent && (() => {
+                        const { icon, text } = splitEventIcon(selectedEvent.label || '');
+                        return (
+                            <div
+                                className="absolute top-2 right-2 z-20 w-[min(260px,calc(100%-1rem))] bg-[#0B0E14]/95 backdrop-blur-md border border-white/20 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.7)] p-3 animate-fade-in"
+                                onClick={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                role="dialog"
+                                aria-label="Détail de l'événement"
+                            >
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="flex items-start gap-2 min-w-0">
+                                        <span className="text-xl shrink-0" aria-hidden="true">{icon}</span>
+                                        <div className="min-w-0">
+                                            <div className="text-sm font-bold text-white break-words">{text}</div>
+                                            <div className="text-tiny text-ink-400 mt-0.5">
+                                                {selectedEvent.dateLabel || selectedEvent.year || '—'}{selectedEvent.age != null ? ` · Âge ${selectedEvent.age}` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedEvent(null)}
+                                        aria-label="Fermer la fiche"
+                                        className="shrink-0 text-ink-400 hover:text-white text-sm leading-none p-1 -m-1 rounded focus-ring"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                                <div className="mt-2 pt-2 border-t border-white/10 flex justify-between text-tiny">
+                                    <span className="text-ink-400">Valeur nette à ce moment</span>
+                                    <span className="font-mono text-white privacy-blur">{Math.round(selectedEvent.netWorth || 0).toLocaleString('fr-CA')} $</span>
+                                </div>
+                            </div>
+                        );
+                    })()}
                      <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart data={zoom.visibleData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
@@ -510,16 +580,38 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
                             <Line type="monotone" dataKey="NetWorth" stroke="#fff" strokeWidth={3} dot={false} name="Valeur Nette Totale" isAnimationActive={false}/>
 
-                            {visibleLifeEvents.map((evt: any, i: number) => (
-                                <ReferenceDot key={`life-${i}`} x={evt.monthIndex} y={evt.val} r={6} fill="#facc15" stroke="#0B0E14" strokeWidth={2}>
-                                    <LabelList dataKey="label" content={<CustomLifeEventLabel value={evt.label} index={evt.index} />} />
-                                </ReferenceDot>
+                            {shownLifeEvents.map((evt: any, i: number) => (
+                                <ReferenceDot
+                                    key={`life-${i}`}
+                                    x={evt.monthIndex}
+                                    y={evt.val}
+                                    r={3}
+                                    shape={
+                                        <ClickableEventIcon
+                                            kind="life"
+                                            payload={evt}
+                                            onSelect={setSelectedEvent}
+                                            selected={!!selectedEvent && selectedEvent.monthIndex === evt.monthIndex && selectedEvent.label === evt.label && selectedEvent.subIdx === evt.subIdx}
+                                        />
+                                    }
+                                />
                             ))}
 
-                            {visibleFlowEvents.map((evt: any, i: number) => (
-                                <ReferenceDot key={`flow-${i}`} x={evt.monthIndex} y={evt.val} r={3} fill="#60a5fa" stroke="#0B0E14" strokeWidth={1}>
-                                    <LabelList dataKey="label" content={<CustomFlowEventLabel value={evt.label} index={evt.index} />} />
-                                </ReferenceDot>
+                            {shownFlowEvents.map((evt: any, i: number) => (
+                                <ReferenceDot
+                                    key={`flow-${i}`}
+                                    x={evt.monthIndex}
+                                    y={evt.val}
+                                    r={2}
+                                    shape={
+                                        <ClickableEventIcon
+                                            kind="flow"
+                                            payload={evt}
+                                            onSelect={setSelectedEvent}
+                                            selected={!!selectedEvent && selectedEvent.monthIndex === evt.monthIndex && selectedEvent.label === evt.label && selectedEvent.subIdx === evt.subIdx}
+                                        />
+                                    }
+                                />
                             ))}
                         </ComposedChart>
                     </ResponsiveContainer>

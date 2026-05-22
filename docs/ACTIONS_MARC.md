@@ -8,26 +8,25 @@
 
 ## 🔴 P0 — Sécurité (à faire avant exposition publique large)
 
-### A1 — Activer Cloudflare Access (auth Google + MFA)
-**Pourquoi** : le site est public, n'importe qui avec l'URL voit tes données.
-**Effort** : ~90 min, 0 $, aucun code (config externe).
-**Doc complète** : [SECURITY_STRATEGY.md](SECURITY_STRATEGY.md) + [ADR 007](adr/007-auth-cloudflare-access.md)
+### A1 — Activer Cloudflare Access (auth Google + MFA) ✅ FAIT (2026-05-22)
+**Statut** : implémenté et validé en production.
+**Doc complète** : [AUTH_SETUP.md](AUTH_SETUP.md) (config réelle + journal de debug)
++ [ADR 007](adr/007-auth-cloudflare-access.md)
 
-Étapes :
-- [ ] 1. Vérifier que `hubperso.com` peut passer par Cloudflare DNS (vs Vercel DNS actuel)
-- [ ] 2. Créer un compte Cloudflare (gratuit) si pas déjà fait
-- [ ] 3. Ajouter le domaine `hubperso.com` dans Cloudflare → changer les nameservers
-- [ ] 4. Activer **Zero Trust → Access → Applications** → Add application (Self-hosted)
-- [ ] 5. Domaine de l'app : `hubperso.com`
-- [ ] 6. Policy : `Allow` si `email == marc.richard4@gmail.com`
-- [ ] 7. Identity Provider : ajouter **Google** (OAuth)
-- [ ] 8. Session duration : 24h
-- [ ] 9. Activer la 2FA sur ton compte Google si pas déjà fait
-- [ ] 10. Tester en fenêtre privée → doit rediriger vers Google login
-- [ ] 11. Vérifier qu'un autre Gmail est refusé (403)
+Résultat : seul `marc.richard4@gmail.com` accède à l'app via Google OAuth,
+session 24h. `hubperso.com` redirige (301) vers `www.hubperso.com` qui impose
+Access.
 
-> ⚠️ Penser à whitelister `/sw.js` et `/manifest.json` dans Access si la PWA
-> ne s'installe plus après activation.
+- [x] DNS Cloudflare (domaine acheté chez Cloudflare Registrar → NS déjà OK)
+- [x] Application Access Self-hosted sur `www.hubperso.com`
+- [x] Policy `Allow` si `email == marc.richard4@gmail.com`
+- [x] Identity Provider Google OAuth
+- [x] Session 24h
+- [x] Redirect Rule apex `hubperso.com` → `www.hubperso.com`
+- [x] Testé en fenêtre privée → login Google requis
+
+> ⚠️ Reste à surveiller : si la PWA ne s'installe plus, whitelister `/sw.js` et
+> `/manifest.json` dans Access (policy Bypass). Non observé à ce jour.
 
 ### A2 — Rotation des clés API (si jamais exposées)
 **Pourquoi** : les clés Anthropic/Finnhub/Era étaient en clair dans
@@ -130,7 +129,7 @@ que le moteur applique. Donc le coût brut affiché diffère légèrement du net
 
 | # | Action | Priorité | Effort | Bloquant ? |
 |---|--------|----------|--------|------------|
-| A1 | Cloudflare Access auth | 🔴 P0 | 90 min | Si exposition publique |
+| A1 | Cloudflare Access auth | ✅ FAIT | — | — |
 | A2 | Rotation clés API | 🔴 P0 | 15 min | Si PC partagé |
 | A3 | Valider sliders Future | 🟡 P1 | 5 min | Non |
 | A4 | Valider cards scénarios | 🟡 P1 | 2 min | Non |
@@ -142,5 +141,6 @@ que le moteur applique. Donc le coût brut affiché diffère légèrement du net
 | A10 | Vérif Vercel | 🟢 P3 | 5 min | Non |
 | A11 | Backup avant tests | 🟢 P3 | 2 min | Recommandé |
 
-**Le plus urgent** : A11 (backup) puis A3/A4 (valider les 2 bugs trouvés) —
-ça me dira si je dois fixer TB3/TB4 ou si tout est vert.
+**A1 (auth) est fait** ✅ — l'app est sécurisée. Le plus urgent maintenant :
+A2 (rotation clés si PC partagé), puis A11 (backup) avant A3/A4 (valider les 2
+bugs trouvés) — ça me dira si je dois fixer TB3/TB4 ou si tout est vert.

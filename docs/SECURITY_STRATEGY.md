@@ -4,6 +4,11 @@
 > `hubperso.com` est publiquement accessible donc **n'importe qui peut ouvrir
 > l'app**. Il faut une authentification **obligatoire** avant tout accès aux
 > données stockées (localStorage) ou aux clés API.
+>
+> **MAJ 2026-05-22 — Option A (Cloudflare Access) implémentée et validée.**
+> L'app n'est plus publique : login Google obligatoire, restreint à
+> `marc.richard4@gmail.com`. Détails dans [AUTH_SETUP.md](AUTH_SETUP.md).
+> Le « risque principal non-mitigé » ci-dessous est désormais **mitigé**.
 
 ## 1. Modèle de menace
 
@@ -155,14 +160,15 @@ Total Phase 1-4 : **~90 minutes** pour une app full-secure.
 
 ## 6. Validation post-déploiement
 
-Checklist à exécuter une fois Cloudflare Access activé :
+Checklist (état au 2026-05-22, Access activé) :
 
-- [ ] Ouvrir `hubperso.com` en fenêtre privée → doit rediriger Google
-- [ ] Se connecter avec marc.richard4@gmail.com → app accessible
-- [ ] Se connecter avec un autre Gmail → doit refuser (403)
-- [ ] Attendre 24h+ → la session doit expirer et re-demander auth
-- [ ] Inspecter response headers : `cf-access-jwt-assertion` présent
-- [ ] Vérifier `View Source` sur `hubperso.com` non-auth : pas de HTML applicatif
-- [ ] Lighthouse + axe-core toujours OK post-Access
-- [ ] PWA / SW toujours fonctionnels (Cloudflare Access whitelist /sw.js si nécessaire)
-- [ ] Ajouter au `MANUAL_TEST_CHECKLIST.md` section "Sécurité" 5 tests
+- [x] Ouvrir `hubperso.com` en fenêtre privée → redirige bien vers Google
+- [x] Se connecter avec marc.richard4@gmail.com → app accessible
+- [ ] Se connecter avec un autre Gmail → doit refuser (403) — à confirmer
+- [ ] Attendre 24h+ → la session doit expirer et re-demander auth — à confirmer
+- [ ] Inspecter response headers : `cf-access-jwt-assertion` présent — à confirmer
+- [ ] Vérifier `View Source` sur `hubperso.com` non-auth : pas de HTML applicatif — à confirmer
+- [ ] Lighthouse + axe-core toujours OK post-Access — à refaire
+- [ ] PWA / SW toujours fonctionnels (whitelist /sw.js si nécessaire) — à confirmer
+- [x] Section "auth" présente dans `MANUAL_TEST_CHECKLIST.md` (section 22) —
+  à enrichir avec les cas du journal de debug de [AUTH_SETUP.md](AUTH_SETUP.md)

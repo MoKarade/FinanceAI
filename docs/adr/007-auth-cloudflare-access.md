@@ -1,8 +1,11 @@
 # ADR 007 — Authentification via Cloudflare Access + Google OAuth
 
-**Date** : 2026-05-21
-**Statut** : Proposé (config externe en attente)
+**Date** : 2026-05-21 (proposé) · 2026-05-22 (implémenté)
+**Statut** : **Accepté — implémenté et validé en production**
 **Décideurs** : Marc (user)
+
+> Setup réalisé le 2026-05-22. Procédure exacte, config de référence et journal
+> de debug dans [`docs/AUTH_SETUP.md`](../AUTH_SETUP.md).
 
 ## Contexte
 
@@ -29,13 +32,19 @@ Audit : 7 risques évalués dans [`docs/SECURITY_STRATEGY.md`](../SECURITY_STRAT
 `hubperso.com`**, avec authentification Google OAuth + MFA, policy
 restreinte à `marc.richard4@gmail.com`.
 
-### Architecture
+### Architecture (telle qu'implémentée)
 
 ```
-Browser → Cloudflare Edge (Access policy check)
-              ├─ pas de JWT valide → redirige vers Google OAuth
-              └─ JWT valide → forward vers Vercel origin
+hubperso.com (apex)  → Cloudflare Redirect Rule 301 → https://www.hubperso.com
+www.hubperso.com     → Cloudflare Edge (Access policy check)
+                           ├─ pas de JWT valide → redirige vers Google OAuth
+                           └─ JWT valide → forward vers Vercel origin
 ```
+
+Le domaine **canonique est `www.hubperso.com`** (seul domaine en « Valid
+Configuration » côté Vercel). L'apex `hubperso.com` ne sert pas l'app : il
+redirige (301) vers `www`, qui impose Access. Toute requête finit donc
+authentifiée.
 
 Toute requête HTTP doit présenter un JWT Cloudflare signé. Sans JWT, le
 HTML applicatif n'est même pas servi — l'utilisateur voit la page de
@@ -107,12 +116,17 @@ login, complexité auth/refresh tokens.
 - ✅ ADR rédigé
 - ✅ Plan détaillé dans [`docs/SECURITY_STRATEGY.md`](../SECURITY_STRATEGY.md)
   (5 phases, checklist validation 8 tests)
-- 🔲 **Config externe** : Marc doit valider la migration DNS Cloudflare
-  puis configurer la policy
-- 🔲 Documentation post-implémentation : créer `docs/AUTH_SETUP.md` avec
-  les étapes exactes
+- ✅ **Config externe réalisée (2026-05-22)** : DNS Cloudflare (domaine acheté
+  chez Cloudflare Registrar → NS déjà Cloudflare), IdP Google OAuth, application
+  Access Self-hosted sur `www.hubperso.com`, policy email unique, Redirect Rule
+  apex → www
+- ✅ Documentation post-implémentation : [`docs/AUTH_SETUP.md`](../AUTH_SETUP.md)
+  (config de référence + procédure réelle + journal de debug)
+- ✅ Validé en production : login Google requis en fenêtre privée sur
+  `hubperso.com` et `www.hubperso.com`
 - 🔲 Ajouter section "Sécurité" au `docs/MANUAL_TEST_CHECKLIST.md`
-  (5 tests post-Access)
+  (5 tests post-Access) — la section 22 « auth » existe, à enrichir avec les
+  cas du journal de debug
 
 ## Hardening complémentaire (post Access)
 

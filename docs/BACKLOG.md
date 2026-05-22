@@ -14,15 +14,38 @@
 
 ## 🚨 P0 — Bloquant / Sécurité
 
-### S1 — Auth Google OAuth + MFA (Cloudflare Access) — **CRITIQUE**
-Site public exposé sans gate auth. N'importe qui avec l'URL voit du HTML
-applicatif. Doc : [SECURITY_STRATEGY.md](SECURITY_STRATEGY.md).
-- [ ] Phase 1 — Vérifier faisabilité DNS Cloudflare sur hubperso.com
-- [ ] Phase 2 — Configurer Cloudflare Access policy (email Marc + MFA)
-- [ ] Phase 3 — Tester en fenêtre privée, session 24h
-- [ ] Phase 4 — Doc `AUTH_SETUP.md` + update README
+### B0 — React error #310 sur chaque onglet au load — **CRITIQUE, app inutilisable** (signalé 2026-05-22)
+À chaque chargement de l'app, chaque onglet tombe dans l'ErrorBoundary
+(« Erreur dans Accueil ») avec **Minified React error #310** =
+*"Rendered more hooks than during the previous render"*. Stack prod :
+`at Je (...index-DfDjfGju.js)` → `Object.od [as useCallback]`.
+
+**Hypothèse (forte)** : régression du **mode strict** (MS1-MS8). Des composants
+font `if (!hasProjection) return <ProjectionRequired/>` AVANT certains hooks
+(`useMemo`/`useCallback`). Render 1 (pas de projection) = N hooks, render 2
+(projection arrivée) = N+M hooks → violation. Cohérent avec « chaque onglet »
+(8 composants migrés : Dashboard, Investments, Budget, RealEstate, Planning,
+ChildPlanning, Retirement, HealthIndicator).
+
+- [ ] Auditer les 8 composants mode strict : tout early-return doit être APRÈS
+  tous les hooks
+- [ ] Déplacer les `ProjectionRequired` returns sous les hooks (ou rendre le
+  contenu conditionnel dans le JSX au lieu d'un early-return)
+- [ ] Ajouter un test/lint `react-hooks/rules-of-hooks` en CI pour bloquer la
+  régression
+- [ ] Vérifier en prod sur les 8 onglets après fix
+- **Effort estimé** : 1-2 h
+- **Note** : à corriger en priorité absolue — passe avant tout le reste P0.
+
+### S1 — Auth Google OAuth + MFA (Cloudflare Access) — ✅ FAIT (2026-05-22)
+Site désormais protégé : login Google obligatoire, restreint à
+`marc.richard4@gmail.com`. Doc : [AUTH_SETUP.md](AUTH_SETUP.md).
+- [x] Phase 1 — DNS Cloudflare (domaine acheté chez Cloudflare Registrar)
+- [x] Phase 2 — Cloudflare Access policy (email Marc) + IdP Google OAuth
+- [x] Phase 3 — Testé en fenêtre privée, session 24h, redirect apex → www
+- [x] Phase 4 — Doc `AUTH_SETUP.md` créée
 - [ ] Phase 5 — Hardening optionnel : chiffrement localStorage avec passphrase
-- **Effort** : 90 min (manuel Cloudflare + 0 code)
+  (= H1 / décision A8 — voir ACTIONS_MARC.md, reste à trancher)
 - **Coût** : 0 $
 
 ### S2 — Sprint 3B SH3 : IndexedDB backup chiffré (analysé 2026-05-21)
@@ -236,7 +259,7 @@ les plus critiques en Playwright (cible : 20-30 tests).
 ### D3 — ADR (Architecture Decision Records) ✅ TERMINÉ 2026-05-21
 - [x] ADR 005 — Future = source unique pour les calculs projetés
 - [x] ADR 006 — Convention "valeurs réelles ou rien"
-- [x] ADR 007 — Authentification Cloudflare Access (proposé, config en attente)
+- [x] ADR 007 — Authentification Cloudflare Access (implémenté 2026-05-22, voir AUTH_SETUP.md)
 
 ### D4 — Doc utilisateur ✅ TERMINÉ 2026-05-21
 - [x] [USER_GUIDE.md](USER_GUIDE.md) créé : quick start + tour chaque onglet
@@ -320,7 +343,7 @@ Priorité de traitement :
 
 | Catégorie | Items ouverts | Effort total |
 |-----------|---------------|--------------|
-| P0 Sécurité | 2 (S1 auth + S2 IndexedDB backup) | ~6 h |
+| P0 Sécurité | 1 restant (S2 IndexedDB backup) — S1 auth ✅ fait | ~3 h |
 | P1 Centralisation | 3 champs Tier 3 restants (marginalTax/effective/pensionSplit) | ~1 h |
 | P1 Bugs | 2 reportés (B3 goalSeek timeout / B4 audit tests) | non-critique |
 | P2 UX | 5 items (skeleton Future, mobile, export PDF, dark mode, PWA prompt) | ~5 h |

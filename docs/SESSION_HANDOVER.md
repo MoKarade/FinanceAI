@@ -4,7 +4,11 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> Dernière session : 2026-05-21 (cycles 17-18) — **mode test complet** +
+> Dernière session : 2026-05-22 — **Cloudflare Access activé** : l'app n'est
+> plus publique (login Google obligatoire, restreint à marc.richard4@gmail.com).
+> Voir [AUTH_SETUP.md](AUTH_SETUP.md). Aucun changement de code applicatif.
+>
+> Session précédente : 2026-05-21 (cycles 17-18) — **mode test complet** +
 > **mode strict centralisation calculs** (Future = source unique).
 > Tests 573 → **596 verts**. App live sur https://www.hubperso.com.
 >
@@ -262,14 +266,15 @@ npx tsx scripts/check-contrast.ts  # audit WCAG AA contrast
 | `docs/CENTRALIZED_CALC_PROGRESS.md` | Suivi du refactor "Future = source unique" — Phase 1+2 done, Phase 3 Tier 1+2+3 ✅ |
 | `docs/CENTRALIZED_CALC_REFACTOR.md` | Plan stratégique du refactor (5 étapes, calculs KEEP_LOCAL identifiés) |
 | `docs/PROJECTION_OUTPUT_SCHEMA.md` | Inventaire exhaustif des champs `lastProjection.chartData[i]` (~50 champs) |
-| `docs/SECURITY_STRATEGY.md` | Plan auth Cloudflare Access + Google OAuth (0$, 90 min config) |
+| **`docs/AUTH_SETUP.md`** | **Auth Cloudflare Access — config réelle + journal de debug. À lire si l'accès au site casse** |
+| `docs/SECURITY_STRATEGY.md` | Analyse de menace + options auth (Option A = Cloudflare Access, implémentée 2026-05-22) |
 | `docs/HANDOVER.md` | Vue exhaustive du projet, historique complet PRs analysées |
 | `docs/ARCHITECTURE.md` | Stack détaillé, topologie, store, pipeline IA |
 | `docs/PROJECTION.md` | Moteur de projection (9 phases, 7 scénarios, MC) |
 | `docs/WIRING_NOTES.md` | Wirings inter-onglets (lastProjection, deep-links) |
 | `docs/PLAN_P1.md` | Plan P1 clôturé (référence pour comprendre pourquoi chaque item P1) |
 | `docs/PLAN_P2.md` | Plan P2 clôturé (idem pour P2) |
-| `docs/adr/` | 4 ADRs structurants (Claude migration, Era pattern, projection split, design system) |
+| `docs/adr/` | 7 ADRs structurants (Claude migration, Era pattern, projection split, design system, Future source unique, no-fake, auth Cloudflare Access) |
 | `CHANGELOG.md` | Historique versionné cycles 13, 14, 15 |
 
 ---

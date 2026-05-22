@@ -10,7 +10,7 @@ Décisions structurantes documentées au format ADR léger (1-2 pages chacune).
 | [004](004-design-system-custom-vs-shadcn.md) | Design system primitives custom (vs shadcn/Radix) | 2026-05 | Acceptée |
 | [005](005-future-source-unique-calculs.md) | Future = source unique pour les calculs projetés | 2026-05-21 | Acceptée |
 | [006](006-no-fake-data-convention.md) | Convention "valeurs réelles ou rien" | 2026-05-21 | Acceptée |
-| [007](007-auth-cloudflare-access.md) | Authentification via Cloudflare Access + Google OAuth | 2026-05-21 | Proposée |
+| [007](007-auth-cloudflare-access.md) | Authentification via Cloudflare Access + Google OAuth | 2026-05-22 | Acceptée (implémentée) |
 
 ## Format
 

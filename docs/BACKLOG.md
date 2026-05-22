@@ -316,6 +316,17 @@ Le conteneur d'un graph a une taille 0 au 1er render (Future). Ajouter
 `minWidth`/`minHeight` ou `aspect` sur le ResponsiveContainer concerné. À traiter
 avec la refonte graphs G4.
 
+### G10 — Service Worker servait du vieux code après deploy ✅ FAIT (2026-05-22)
+Galère récurrente de la session : Marc restait coincé sur d'anciens bundles
+(ex. worker `CoUPjCPD`, bug #310) malgré les hard-reloads, jusqu'à « Clear site
+data ». Cause : `public/sw.js` network-first faisait `fetch(req)` sans
+`no-store` → index.html pouvait venir du cache HTTP (stale) → pointait vers
+d'anciens hashes de chunks. Et `sw.js` ne changeant jamais d'octets, aucun
+nouveau SW ne s'installait (activate/purge jamais re-déclenché).
+**Fix (commit d5bf8d1)** : navigation forcée en `cache: 'no-store'` (index
+toujours frais en ligne, fallback offline conservé) + bump `CACHE_NAME` v2→v3.
+Désormais un nouveau deploy est pris automatiquement au reload, sans Clear.
+
 ---
 
 ## ⚡ P2 — Performance

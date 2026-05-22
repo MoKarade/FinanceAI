@@ -217,6 +217,16 @@
   background: rgba(255,255,255,0.2);
 }
 
+/* G3b — plein écran du graphique via la Fullscreen API. L'élément passe dans le
+   « top layer » du navigateur, ce qui échappe aux ancêtres transformés
+   (animate-fade-in) qui piégeaient l'approche position:fixed. */
+.chart-fullscreen:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  background: #0B0E14;
+  padding: 1.5rem;
+}
+
 /* ============================================================
  * Phase A1 (2026-05) — Tokens UI & helpers de refonte
  * Classes utilitaires consommées par les nouvelles primitives.

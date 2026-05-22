@@ -489,16 +489,26 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             Tout
                         </button>
                     </div>
-                    <span className="text-tiny text-ink-500 hidden sm:block" aria-hidden="true">
-                        Molette = zoom · glisser = défiler · double-clic = reset
-                    </span>
+                    <div className="flex items-center gap-2">
+                        <span className="text-tiny text-ink-500 hidden md:block" aria-hidden="true">
+                            Molette = zoom · glisser = défiler
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => zoom.containerRef.current?.requestFullscreen?.()}
+                            className="px-2 py-1 text-tiny font-bold rounded text-ink-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors focus-ring"
+                            title="Plein écran (Échap pour quitter)"
+                        >
+                            ⛶ Plein écran
+                        </button>
+                    </div>
                 </div>
                 {/* Hauteur responsive : 380px mobile, 500px tablet, 650px desktop */}
                 <div
                     ref={zoom.containerRef}
                     {...zoom.handlers}
                     onClick={() => setSelectedEvent(null)}
-                    className={`relative w-full h-[380px] sm:h-[500px] lg:h-[650px] select-none ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-default'}`}
+                    className={`chart-fullscreen relative w-full h-[380px] sm:h-[500px] lg:h-[650px] select-none ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-default'}`}
                 >
                     {/* G5 — fiche détail de l'événement cliqué */}
                     {selectedEvent && (() => {

@@ -242,7 +242,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                                 <span>Non-Enregistré / REER</span>
                                 <span className="text-warning-400 font-bold">{projection.returnRates?.nonReg || 6.5}%</span>
                             </label>
-                            <input type="range" min="2" max="15" step="0.1" value={projection.returnRates?.nonReg || 6.5} onChange={e => { updateReturnRate('nonReg', Number(e.target.value)); updateReturnRate('reer', Number(e.target.value)); }} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-warning-500" />
+                            <input type="range" min="2" max="15" step="0.1" value={projection.returnRates?.nonReg || 6.5} onChange={e => { const v = Number(e.target.value); updateProj('returnRates', { ...(projection.returnRates || { celi: 7, reer: 6.5, nonReg: 6.5, crypto: 10, cash: 3 }), nonReg: v, reer: v }); }} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-warning-500" />
                         </div>
                     </div>
 

@@ -158,7 +158,7 @@ export interface ScenarioOverrideResult {
  * - LIBERTE_55: pas d'override macro (juste retirement age, géré ailleurs)
  */
 export function computeScenarioOverrides(
-    projection: { inflationRate?: number; rates?: { celi: number; reer: number; nonReg: number; crypto: number; cash: number } } & Record<string, any>,
+    projection: { inflationRate?: number; returnRates?: { celi: number; reer: number; nonReg: number; crypto: number; cash: number } } & Record<string, any>,
     scenarioType: FutureScenarioType,
 ): ScenarioOverrideResult {
     let simInflation = projection.inflationRate || 2.0;
@@ -168,9 +168,12 @@ export function computeScenarioOverrides(
     // forcé à true dans le runner (cf projection.ts effProj override).
     if (scenarioType === 'COMPOUND_STRESS') simInflation = 5.0;
 
+    // 2026-05-22 : lisait `projection.rates` (champ inexistant) → toujours
+    // undefined → fallback défaut, donc les sliders de rendement de l'UI
+    // (qui écrivent `projection.returnRates`) n'avaient AUCUN effet. Aligné.
     const baseRates = (scenarioType === 'ECONOMIC_WINTER' || scenarioType === 'COMPOUND_STRESS')
         ? { celi: 3.0, reer: 3.0, nonReg: 2.0, crypto: 5.0, cash: 1.0 }
-        : (projection.rates || { celi: 7, reer: 6.5, nonReg: 6.5, crypto: 10, cash: 3 });
+        : (projection.returnRates || { celi: 7, reer: 6.5, nonReg: 6.5, crypto: 10, cash: 3 });
 
     return { simInflation, baseRates };
 }

@@ -10,7 +10,7 @@
 //
 // Note : ce SW est uniquement chargé en PROD (vite import.meta.env.PROD).
 
-const CACHE_NAME = 'financeai-v2';
+const CACHE_NAME = 'financeai-v3';
 const PRECACHE_URLS = ['/', '/manifest.json', '/icon.svg'];
 
 // P2.9 fix : précache individuel (vs cache.addAll qui échoue all-or-nothing).
@@ -74,9 +74,15 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Network-first pour index.html et le reste (avec fallback cache offline)
+    // Network-first pour index.html et le reste (avec fallback cache offline).
+    // 2026-05-22 : les requêtes de navigation sont forcées en `no-store`. Sans
+    // ça, fetch(req) pouvait servir un index.html depuis le cache HTTP du
+    // navigateur (stale) → index pointant vers d'anciens hashes de chunks →
+    // utilisateur coincé sur du vieux code après un deploy. Online = toujours
+    // frais ; offline = fallback cache via le .catch ci-dessous.
+    const fetchOpts = req.mode === 'navigate' ? { cache: 'no-store' } : undefined;
     event.respondWith(
-        fetch(req)
+        fetch(req, fetchOpts)
             .then((res) => {
                 if (!res || res.status !== 200) return res;
                 const clone = res.clone();

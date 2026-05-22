@@ -241,6 +241,17 @@ Bouton "Télécharger PNG" pour partager le graph.
 ### U6 — Mode test : indicateur quand fixtures CSV manquent un symbole
 Si un test asset n'est pas dans le CSV (regression future), afficher un warning.
 
+### U7 — Sidebar (panneau onglets gauche) : icônes stables + pas de flicker 🟡 P2 (demandé 2026-05-22)
+Deux problèmes au repli/déploiement du panneau de gauche :
+1. **Icônes qui se déplacent** : l'icône de chaque onglet doit rester à la
+   MÊME position horizontale que le panneau soit replié (icône seule) ou déployé
+   (icône + label). Actuellement elles bougent.
+2. **Flicker** : la transition ouvrir/fermer saccade. La rendre fluide (animer
+   `width`/`transform` en CSS, pas de remount du panneau, label en
+   `opacity`/`overflow` plutôt que conditionnel monté/démonté).
+- Fichier : `components/Layout.tsx` (sidebar) + sous-composants `components/sidebar/`.
+- Effort ~2 h + vérif visuelle (replié/déployé, 320/768/1440).
+
 ---
 
 ## 🎨 Refonte graphs & onglet Futur (demandé par Marc 2026-05-22)
@@ -483,7 +494,7 @@ Priorité de traitement :
 | P1 Centralisation | C2 (brancher TaxCenter/Investments/RealEstate) + C4 (code mort) | ~4 h | C1 moteur ✅ complet |
 | P1 Bugs | **TB3 cards à 0 = NaN confirmé**, G1 boutons « aller Futur » cassés ; TB4 (Marc), B3/B4 reportés | ~2 h | TB3+G1 = vrais bugs |
 | 🎨 Refonte graphs & Futur | G2 overlaps, G3 sous-onglets+plein écran, G4 zoom/pan/style Google Finance (tous graphs), G5 icônes events, G6 tooltip | ~20-25 h | demandé 2026-05-22, gros chantier |
-| P2 UX | U3 toggle MC, U4 tooltip groups, export PNG/PDF | ~4 h | U2/U5/U6 ✅, dark mode rejeté |
+| P2 UX | U3 toggle MC, U4 tooltip groups, export PNG/PDF, **U7 sidebar (icônes stables + pas de flicker)** | ~6 h | U2/U5/U6 ✅, dark mode rejeté |
 | P2 Performance | P1 bundle audit, P3 profiler worker | ~4 h | P2 SW cache ✅ |
 | P2 Tests | T2 Playwright, T3 coverage 64→80%, T4 automatiser manuels | ~8 h | T1 convergence ✅ |
 | P3 Docs | — | — | D1-D4 ✅ + AUTH_SETUP ✅ |

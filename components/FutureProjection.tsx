@@ -18,7 +18,7 @@ import { usePendingFocus } from '../utils/usePendingFocus';
 // render (qui invaliderait les useMemo deps en aval).
 const EMPTY_ARRAY: never[] = [];
 import { Tab as TabEnum } from '../types';
-import { ExpertTooltip, ClickableEventIcon, splitEventIcon } from './projection/ProjectionTooltip';
+import { ExpertTooltip, ClickableEventIcon, splitEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ProjectionControls } from './projection/ProjectionControls';
 
@@ -555,10 +555,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             <YAxis stroke="#666" tick={{fontSize: 10}} domain={['auto', 'auto']} tickFormatter={(val) => isPrivacyMode ? '***' : `${(val/1000000).toFixed(1)}M`} />
 
                             <ReferenceLine y={0} stroke="#444" strokeWidth={2} />
-                            <ReferenceLine x={todayMonthIndex} stroke="rgba(255,255,255,0.6)" strokeDasharray="5 5" label={{ position: 'top', value: "Aujourd'hui", fill: '#fff', fontSize: 10 }} />
+                            <ReferenceLine x={todayMonthIndex} stroke="rgba(255,255,255,0.6)" strokeDasharray="5 5" label={<RefLineLabel value="Aujourd'hui" color="#ffffff" />} />
 
                             <Tooltip content={<ExpertTooltip isPrivacyMode={isPrivacyMode} userName1={config.users[0]?.name} userName2={config.users[1]?.name} />} />
-                            <ReferenceLine y={fireNumber} stroke="#f97316" strokeDasharray="5 5" label={{ position: 'top', value: 'Objectif FIRE', fill: '#f97316', fontSize: 12, fontWeight: 'bold' }} />
+                            <ReferenceLine y={fireNumber} stroke="#f97316" strokeDasharray="5 5" label={<RefLineLabel value="Objectif FIRE" color="#f97316" />} />
 
                             {runMC && (
                                 <>

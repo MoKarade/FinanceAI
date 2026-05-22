@@ -207,3 +207,26 @@ export const ClickableEventIcon = (props: any) => {
         </g>
     );
 };
+
+// G2 — label de ReferenceLine en pastille ancrée au bord (au lieu d'un texte
+// centré qui passe par-dessus les aires et devient illisible). Ligne horizontale
+// (Objectif FIRE) → pill en haut à droite ; ligne verticale (Aujourd'hui) → pill
+// en haut, décalée à droite du trait pour ne pas chevaucher l'axe Y.
+export const RefLineLabel = (props: any) => {
+    const { viewBox, value, color = '#ffffff' } = props;
+    if (!viewBox) return null;
+    const { x = 0, y = 0, width = 0, height = 0 } = viewBox;
+    const fontSize = 11;
+    const text = String(value);
+    const w = Math.round(text.length * fontSize * 0.58 + 16);
+    const h = 18;
+    const isHorizontal = width >= height; // FIRE (horizontale) vs Aujourd'hui (verticale)
+    const rectX = isHorizontal ? x + width - w - 6 : x + 6;
+    const rectY = isHorizontal ? y - h - 3 : y + 3;
+    return (
+        <g style={{ pointerEvents: 'none' }}>
+            <rect x={rectX} y={rectY} width={w} height={h} rx={9} fill="#0B0E14" fillOpacity={0.88} stroke={color} strokeOpacity={0.55} />
+            <text x={rectX + w / 2} y={rectY + h / 2 + 0.5} textAnchor="middle" dominantBaseline="central" fill={color} fontSize={fontSize} fontWeight="bold">{text}</text>
+        </g>
+    );
+};

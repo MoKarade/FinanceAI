@@ -6,6 +6,49 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — cycle 17 : Refonte graphique « Google Finance » (zoom partout + Futur)] — 2026-05-22
+
+> Refonte transverse des graphiques : zoom molette / pan / reset sur **tous** les
+> onglets + refonte complète du graph Futur. Architecture réutilisable
+> (`useTimeChartZoom` + `ZoomContainer`). Commits `53d1faf`, `22922de`, `25f0838`,
+> `6da3869`, `9a058a3`, `7473809`, `486a324` (poussés sur main).
+
+### Graph Futur (G2-G6, G3b)
+
+- **G3** — sous-onglets 📈 Graphique / ⚙️ Paramètres (KPIs toujours visibles).
+- **G4** — zoom molette + pan + double-clic reset + sélecteur de période
+  (5/10/20/30 ans/Tout) ; remplace le `<Brush>`. Logique extraite dans le hook
+  `useTimeChartZoom`, partagé avec `ZoomableTimeChart`.
+- **G5** — un événement = une pastille emoji individuelle **cliquable** → fiche
+  détail (date/âge/valeur nette). Dedup des labels répétés + plafond de densité
+  échantillonné ; rendu via le prop `shape` du ReferenceDot (recharts v3 n'affiche
+  pas `LabelList` dans `ReferenceDot`).
+- **G6** — infobulle refondue : conteneur dégradé + accent + apparition animée,
+  hero valeur nette, pastilles de couleur sur la répartition.
+- **G2** — labels de lignes FIRE/Aujourd'hui en pastilles ancrées aux bords
+  (`RefLineLabel`), plus de texte illisible par-dessus les aires.
+- **G3b** — plein écran via la **Fullscreen API** (top layer du navigateur, échappe
+  à l'ancêtre transformé qui piégeait `position:fixed`).
+
+### Zoom sur tous les autres graphs (G7)
+
+- Composant réutilisable `ZoomContainer` (ref + handlers + bouton « Vue complète » + hint).
+- Zoom molette/pan/reset ajouté à : **Dette** (extinction), **Retraite**
+  (accumulation + cashflow), **Enfant** (coûts par âge + REEE), **Immobilier**
+  (Acheter-vs-Louer + comparaison multi-propriétés). Dashboard + Investissements
+  avaient déjà la molette (`ZoomableTimeChart`) + leur propre sélecteur de période.
+
+### Notes
+
+- Qualité : `typecheck` 0 / `lint` 0 / **607 tests** verts à chaque palier, zoom
+  vérifié en preview onglet par onglet.
+- `RealEstate` : calcul Acheter-vs-Louer remonté d'une IIFE de rendu au niveau
+  composant pour pouvoir brancher le hook.
+- Warning dev-only recharts « duplicate key CELI/REER » sur les aires empilées :
+  noté (G9), non-bloquant, absent du build prod.
+
+---
+
 ## [unreleased — cycle 16 : Fix PWA inopérante en prod + locale aiOrchestrator] — 2026-05-21
 
 > 2 PRs livrent le fix du bug PWA découvert lors de la validation finale

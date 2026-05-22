@@ -264,17 +264,31 @@ Les CTA des empty-states `ProjectionRequired` (mode strict) ne naviguent pas
 vers Future. À vérifier : `navigateWithFocus(Tab.FUTURE)` dans
 `components/ui/ProjectionRequired.tsx` (hash routing vs setActiveTab). Effort ~1 h.
 
-### G2 — Bug : texte qui chevauche icônes/cases, surtout onglet Futur 🟡 P2
+### G2 — Bug : texte qui chevauche icônes/cases, surtout onglet Futur ✅ FAIT (2026-05-22)
+> Labels de lignes FIRE/Aujourd'hui en pastilles ancrées aux bords (`RefLineLabel`) ;
+> les labels-texte d'événements qui se chevauchaient sont remplacés par des
+> pastilles-icônes individuelles (cf. G5). Commit `6da3869`.
+<!-- description d'origine -->
 Overlaps visuels (« c'est moche »). Auditer les `position:absolute`,
 `truncate` manquants, largeurs fixes, z-index. Cibler Future en priorité.
 Effort ~2 h + vérif responsive 320/768/1440.
 
-### G3 — Onglet Futur en sous-onglets + plein écran 🟡 P2
+### G3 — Onglet Futur en sous-onglets + plein écran ✅ FAIT (2026-05-22)
+> Sous-onglets 📈 Graphique / ⚙️ Paramètres (KPIs toujours visibles), commit `53d1faf`.
+> Plein écran via la **Fullscreen API** (`requestFullscreen` + `.chart-fullscreen:fullscreen`,
+> top layer qui échappe à l'ancêtre transformé), commit `486a324`.
+<!-- description d'origine -->
 - Sous-onglet **Paramètres** (sliders/config) + sous-onglet **Graphique**
 - Bouton **plein écran** sur le graph
 - Effort ~3-4 h (restructure layout FutureProjection.tsx + ProjectionControls.tsx)
 
-### G4 — Refonte de TOUS les graphs façon Google Finance 🟡 P2 (gros)
+### G4 — Refonte de TOUS les graphs façon Google Finance ✅ FAIT (2026-05-22)
+> Hook réutilisable `useTimeChartZoom` + composant `ZoomContainer`. Zoom molette /
+> pan / double-clic reset sur **tous** les graphs : Futur (+ sélecteur de période
+> 5/10/20/30 ans), Dette, Retraite ×2, Enfant ×2, Immobilier ×2. Dashboard +
+> Investissements avaient déjà molette zoom (ZoomableTimeChart) + leur propre
+> sélecteur de période. Commits `53d1faf`, `9a058a3`, `7473809`.
+<!-- description d'origine -->
 Demande transverse, à appliquer à chaque graph (chacun garde ses params) :
 - [ ] **Zoom molette** (in/out) + **pan** gauche/droite via slider/brush
 - [ ] **Sélecteur de période depuis le graph** (1A/5A/10A/Max…)
@@ -285,12 +299,21 @@ Demande transverse, à appliquer à chaque graph (chacun garde ses params) :
 - Effort ~8-12 h (composant graph réutilisable partagé). **Prérequis** : créer
   un `<FinanceChart>` générique pour ne pas réimplémenter par onglet.
 
-### G5 — Graph Futur : toutes les icônes d'événements, individuellement 🟡 P2
+### G5 — Graph Futur : toutes les icônes d'événements, individuellement ✅ FAIT (2026-05-22)
+> Une pastille emoji par événement (fin de la fusion « A | B | C »), cliquable →
+> fiche détail (date/âge/valeur nette). Anti-spam : dedup labels répétés + plafond
+> de densité échantillonné ; zoom révèle tout. `ClickableEventIcon` via le prop
+> `shape` du ReferenceDot (recharts v3 ignore LabelList dans ReferenceDot). Commit `22922de`.
+<!-- description d'origine -->
 Afficher chaque événement (enfant, achat voiture, impôts, hypothèque, vente,
 reno, voyage…) avec son icône **distincte et cliquable**, pas un point unique
 agrégé. Lié au tooltip G6. Effort ~3 h.
 
-### G6 — Refonte infobulle graph Futur 🟡 P2
+### G6 — Refonte infobulle graph Futur ✅ FAIT (2026-05-22)
+> `ExpertTooltip` refondu : conteneur dégradé + barre d'accent + apparition animée,
+> en-tête lisible (date gras + badge âge), répartition avec pastilles de couleur,
+> valeur nette en hero (dégradé) avec la variation mensuelle en chip. Commit `25f0838`.
+<!-- description d'origine -->
 Affichage actuel des événements (vente CELIAPP, naissance enfant, etc.) jugé
 « cheap ». Rendre plus beau/vivant : carte par événement avec icône, couleur
 sémantique, montant formaté, mini-hiérarchie. Fichier
@@ -322,10 +345,13 @@ injecte son analytics auto. Comme GA4 est déjà en place, le plus simple :
 Analytics) OU ajouter `static.cloudflareinsights.com` au `script-src` de
 [netlify.toml](../netlify.toml). Cosmétique (aucun impact fonctionnel).
 
-### G9 — Warning recharts `width(-1) height(-1)` 🟢 P3
+### G9 — Warnings console recharts (dev-only) 🟢 P3
 Le conteneur d'un graph a une taille 0 au 1er render (Future). Ajouter
-`minWidth`/`minHeight` ou `aspect` sur le ResponsiveContainer concerné. À traiter
-avec la refonte graphs G4.
+`minWidth`/`minHeight` ou `aspect` sur le ResponsiveContainer concerné.
+> 2026-05-22 : aussi observé « Encountered two children with the same key CELI/REER »
+> sur les aires empilées (FutureProjection/Retirement). Warning **dev-only** (React
+> ne vérifie les keys qu'en dev → absent du build prod), origine probable interne
+> recharts v3. Non-bloquant, non corrigé.
 
 ### G10 — Service Worker servait du vieux code après deploy ✅ FAIT (2026-05-22)
 Galère récurrente de la session : Marc restait coincé sur d'anciens bundles

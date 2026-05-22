@@ -3,7 +3,6 @@ import { showToast } from './ui/Toast';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
 import { CoupleOptimizationCard } from './tax/CoupleOptimizationCard';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, Cell, PieChart, Pie } from 'recharts';
 import { BudgetConfig, Asset } from '../types';
 // Phase 4 A4: bascule sur services/claude.ts (Sonnet 4.6 + Vision)
 import { analyzePayslip } from '../services/claude';

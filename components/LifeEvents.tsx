@@ -4,7 +4,7 @@ import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
 import { Button } from './ui/Button';
 import { LifeEvent, LifeEventType, TravelGoal } from '../types';
-import { ResponsiveContainer, PieChart, Pie, Cell, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, Legend, Tooltip } from 'recharts';
 import { ConfirmModal } from './ui/ConfirmModal';
 
 interface LifeEventsProps {

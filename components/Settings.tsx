@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
-import { AppState, BudgetCategory, Transaction, Asset, SavingsGoal, TravelGoal, Debt, InvestmentAccount, InvestmentTransaction, LifeEvent, RetirementGoal, FinancialGoal, RealEstateGoal, BudgetConfig, Tab } from '../types';
+import { AppState, BudgetCategory, Transaction, Asset, SavingsGoal, TravelGoal, Debt, InvestmentAccount, InvestmentTransaction, LifeEvent, RetirementGoal, FinancialGoal, RealEstateGoal, Tab } from '../types';
 import { showToast } from './ui/Toast';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { InsurancePanel, RentalPropertyPanel, BusinessPanel, CyclicalGoalsPanel } from './PatrimoineExtended';

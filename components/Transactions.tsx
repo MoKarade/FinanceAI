@@ -7,8 +7,6 @@ import { categorizeBatch } from '../services/claude';
 import { Card } from './ui/Card';
 import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
-import { CATEGORY_ICONS } from '../constants';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 interface TransactionsProps {
     transactions: Transaction[];

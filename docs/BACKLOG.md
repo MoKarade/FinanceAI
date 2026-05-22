@@ -131,7 +131,7 @@ et que ca me mette une erreur ou un msg si pas dispo". Statut :
 
 ### TB1 — Hash navigation au boot ✅ FIXÉ (commit e888564, validé prod)
 ### TB2 — Worker crash `slice undefined` ✅ FIXÉ (commit e888564, validé prod)
-### TB3 — 7 cards scénarios Future affichent `0.00M$` 🔴 CONFIRMÉ BUG 2026-05-22
+### TB3 — 7 cards scénarios Future à `0.00M$` 🟡 DORMANT — tripwire posé (2026-05-22)
 **Hypothèse initiale RÉFUTÉE** : le worker NE tronque PAS `allResults`.
 `calculateFutureProjection` (projection.ts:1129) calcule chaque scénario via
 `runScenario(..., false, ...)` de façon déterministe → chaque `allResults[i]`
@@ -157,6 +157,23 @@ input commun est NaN/undefined.
 du premier input non-fini dans computeEstateNetWorth, retester, puis retirer le
 log. Effort ~1 h. Note : le KPI principal masque le bug via son fallback
 `estateNetWorth || finalNetWorth || fireNumber` (FutureProjection.tsx:351).
+
+**Résolution diagnostique (2026-05-22) — root cause identifiée, fix dormant :**
+- Diag console (objet déplié) confirme : `liquid` (→ `finalRawNetWorth` → estate)
+  devient **NaN**, et SEULEMENT `liquid` → spécifique au cash. Vient d'un champ de
+  config numérique vide/NaN dans les **vraies données de Marc** (effacées depuis
+  par Clear site data).
+- Path enfant uni/voiture **écarté** (UNI_INFO/CAR_INFO complets). Reste real
+  estate (mut. 770), childLiquid autre delta (849), ou cashflow (937).
+- Les **fixtures de test ne reproduisent PLUS** (corrigées cycles 17/18 : dettes,
+  carGift). Confirmé par Marc en mode test : banner visible + cards OK. Donc bug
+  non reproductible ni via test ni via données.
+- **Tripwire en place (choix Marc, option 1)** : instrumentation throttlée dans
+  `projection.ts` (3 mutations de `liquid`) + `estateCalculation.ts`. À la
+  prochaine occurrence, la console affiche `[TB3/liquid] NaN après
+  <realEstate|childLiquid|cashflow> (mois N)` → fix ciblé immédiat.
+  **À retirer une fois TB3 corrigé.**
+
 ### TB4 — Réactivité sliders Future ⚠️ À VALIDER MANUELLEMENT
 Automation JS/clavier ne recalcule pas (limitation injection synthétique
 React 19, pas un bug app). Stress test : ✅ AUCUN crash sous valeurs
@@ -446,11 +463,12 @@ Priorité de traitement :
 - ✅ **S1 — Cloudflare Access** activé (login Google, restreint à Marc) + [AUTH_SETUP.md](AUTH_SETUP.md)
 - ✅ **B0 — React #310** corrigé (HealthIndicator : early-return après les hooks)
 - ✅ **Gate lint** : étape CI + `prebuild: npm run lint` (bloque rules-of-hooks avant prod)
-- ✅ **TB3** investigué puis **confirmé bug** par Marc (7 cards à 0 = NaN dans
-  computeEstateNetWorth, pas un bug worker) — à fixer (trace NaN)
+- ✅ **B0 #310 + G1 boutons** confirmés réglés EN PROD par Marc (post hard-reload)
+- ✅ **TB3** root cause identifiée (`liquid` NaN venant des vraies données de Marc) ;
+  fixtures ne reproduisent plus → bug **dormant**, tripwire posé (option 1 de Marc)
 - ✅ **DT1 imports** : tous les imports morts retirés (9 fichiers, 502→461 warnings)
-- 🆕 **Refonte graphs & Futur** (G1-G6) ajoutée au backlog suite au retour Marc
-- ⏳ Reste à valider par Marc : hard-reload prod (#310), drag sliders Future (TB4)
+- 🆕 **Refonte graphs & Futur** (G1-G6) + bugs CSP (G7-G9) ajoutés au backlog
+- ⏳ Actions Marc en attente : **A12** (bypass Access manifest, PWA), drag sliders (TB4)
 
 **Progression session 2026-05-21** :
 - ✅ **Mode strict TOTAL** : 8 composants migrés (Dashboard, Investments, Budget, RealEstate, Planning, ChildPlanning, HealthIndicator, Retirement) + ProjectionRequired

@@ -43,10 +43,11 @@ export const ExpertTooltip = ({ active, payload, isPrivacyMode, userName1, userN
     const portfolioOutflow = (data.RetraitREER || 0) + (data.RetraitCELI || 0);
 
     return (
-        <div className="bg-[#0B0E14]/95 backdrop-blur-md border border-white/20 p-4 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] w-80 max-h-[520px] overflow-y-auto z-50">
-            <div className="text-sm font-bold text-white mb-2 border-b border-white/20 pb-2 flex justify-between items-center">
-                <span>{data.dateLabel || 'N/A'}</span>
-                <span className="text-tiny text-gray-400 bg-white/10 px-2 py-0.5 rounded">Âge: {data.age || '??'}</span>
+        <div className="relative bg-gradient-to-b from-[#11161f]/95 to-[#0B0E14]/95 backdrop-blur-md border border-white/15 ring-1 ring-white/5 p-4 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.85)] w-80 max-h-[520px] overflow-y-auto z-50 animate-fade-in">
+            <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-primary via-purple-500 to-pink-500 opacity-80" />
+            <div className="mb-3 pb-2.5 border-b border-white/15 flex justify-between items-center gap-2">
+                <span className="text-base font-extrabold text-white tracking-tight">{data.dateLabel || 'N/A'}</span>
+                <span className="text-tiny font-bold text-primary bg-primary/15 border border-primary/30 px-2 py-0.5 rounded-full whitespace-nowrap">Âge {data.age || '??'}</span>
             </div>
 
             <div className="mb-3 space-y-1">
@@ -100,18 +101,25 @@ export const ExpertTooltip = ({ active, payload, isPrivacyMode, userName1, userN
                 </div>
             </div>
 
-            <div className="bg-black/30 p-2 rounded-lg space-y-1.5 text-xs text-white border border-white/5 mb-3">
-                <div className="flex justify-between"><span className="text-gray-500">Cash (Coussin):</span> <span className="font-mono privacy-blur">{(data.Liquidites || 0).toLocaleString()}$</span></div>
-                <div className="flex justify-between"><span className="text-green-500">CELI:</span> <span className="font-mono privacy-blur">{(data.CELI || 0).toLocaleString()}$</span></div>
-                <div className="flex justify-between"><span className="text-blue-500">REER:</span> <span className="font-mono privacy-blur">{(data.REER || 0).toLocaleString()}$</span></div>
-                {(data.REEE || 0) > 0 && <div className="flex justify-between"><span className="text-cyan-400">REEE (Études):</span> <span className="font-mono privacy-blur">{(data.REEE || 0).toLocaleString()}$</span></div>}
-                <div className="flex justify-between"><span className="text-orange-500">Non-Enreg:</span> <span className="font-mono privacy-blur">{(data.NonReg || 0).toLocaleString()}$</span></div>
-                {(data.Crypto || 0) > 0 && <div className="flex justify-between"><span className="text-purple-500">Crypto:</span> <span className="font-mono privacy-blur">{(data.Crypto || 0).toLocaleString()}$</span></div>}
-                <div className="flex justify-between"><span className="text-pink-500">Immobilier:</span> <span className="font-mono privacy-blur">{(data.Immobilier || 0).toLocaleString()}$</span></div>
+            <div className="bg-black/30 p-2.5 rounded-xl space-y-1.5 text-xs text-white border border-white/10 mb-3">
+                <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1.5">Répartition du patrimoine</div>
+                <div className="flex justify-between items-center"><span className="flex items-center gap-1.5 text-gray-300"><span className="w-2 h-2 rounded-full shrink-0 bg-[#4b5563]" />Cash (Coussin)</span> <span className="font-mono privacy-blur">{(data.Liquidites || 0).toLocaleString()}$</span></div>
+                <div className="flex justify-between items-center"><span className="flex items-center gap-1.5 text-gray-300"><span className="w-2 h-2 rounded-full shrink-0 bg-[#10b981]" />CELI</span> <span className="font-mono privacy-blur">{(data.CELI || 0).toLocaleString()}$</span></div>
+                <div className="flex justify-between items-center"><span className="flex items-center gap-1.5 text-gray-300"><span className="w-2 h-2 rounded-full shrink-0 bg-[#3b82f6]" />REER</span> <span className="font-mono privacy-blur">{(data.REER || 0).toLocaleString()}$</span></div>
+                {(data.REEE || 0) > 0 && <div className="flex justify-between items-center"><span className="flex items-center gap-1.5 text-gray-300"><span className="w-2 h-2 rounded-full shrink-0 bg-[#06b6d4]" />REEE (Études)</span> <span className="font-mono privacy-blur">{(data.REEE || 0).toLocaleString()}$</span></div>}
+                <div className="flex justify-between items-center"><span className="flex items-center gap-1.5 text-gray-300"><span className="w-2 h-2 rounded-full shrink-0 bg-[#f59e0b]" />Non-Enreg</span> <span className="font-mono privacy-blur">{(data.NonReg || 0).toLocaleString()}$</span></div>
+                {(data.Crypto || 0) > 0 && <div className="flex justify-between items-center"><span className="flex items-center gap-1.5 text-gray-300"><span className="w-2 h-2 rounded-full shrink-0 bg-[#a855f7]" />Crypto</span> <span className="font-mono privacy-blur">{(data.Crypto || 0).toLocaleString()}$</span></div>}
+                <div className="flex justify-between items-center"><span className="flex items-center gap-1.5 text-gray-300"><span className="w-2 h-2 rounded-full shrink-0 bg-[#ec4899]" />Immobilier</span> <span className="font-mono privacy-blur">{(data.Immobilier || 0).toLocaleString()}$</span></div>
             </div>
 
-            <div className="flex justify-between font-black text-sm text-white bg-white/10 p-2 rounded border border-white/20">
-                <span>Valeur Nette:</span> <span className="font-mono privacy-blur">{(data.NetWorth || 0).toLocaleString()}$</span>
+            <div className="rounded-xl bg-gradient-to-r from-primary/20 to-purple-500/15 border border-white/15 p-3">
+                <div className="flex items-center justify-between gap-2">
+                    <span className="text-tiny uppercase tracking-widest text-ink-300 font-bold">Valeur nette</span>
+                    <span className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded ${(data.diffNW || 0) >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-red-500/15'}`}>
+                        {(data.diffNW || 0) > 0 ? '+' : ''}{(data.diffNW || 0).toLocaleString()}$ /mois
+                    </span>
+                </div>
+                <div className="mt-1 text-2xl font-black text-white font-mono privacy-blur leading-none">{(data.NetWorth || 0).toLocaleString()}$</div>
             </div>
 
             {((data.ImpotLatent || 0) < 0 || (data.FluxImpots || 0) < 0) && (

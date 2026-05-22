@@ -2,6 +2,8 @@ import React from 'react';
 import { Card } from '../ui/Card';
 import { RealEstateGoal } from '../../types';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
+import { useTimeChartZoom } from '../../hooks/useTimeChartZoom';
+import { ZoomContainer } from '../ui/ZoomContainer';
 
 const PROP_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#a855f7', '#ec4899', '#06b6d4'];
 
@@ -10,8 +12,6 @@ interface MultiPropertyComparisonProps {
 }
 
 export const MultiPropertyComparison: React.FC<MultiPropertyComparisonProps> = ({ goals }) => {
-    if (goals.length < 2) return null;
-
     const allSeries = goals.map((goal, gi) => {
         const p = goal.price || 450000;
         const dp = goal.downPayment || (p * 0.2);
@@ -58,6 +58,10 @@ export const MultiPropertyComparison: React.FC<MultiPropertyComparisonProps> = (
         chartData.push(row);
     }
 
+    // G7b — zoom molette / pan sur la comparaison multi-propriétés (x = année).
+    const zoom = useTimeChartZoom<any>(chartData);
+    if (goals.length < 2) return null;
+
     return (
         <Card
             title={`📊 Comparaison des ${goals.length} Propriétés — Équité Projectée`}
@@ -71,9 +75,9 @@ export const MultiPropertyComparison: React.FC<MultiPropertyComparisonProps> = (
                     </div>
                 ))}
             </div>
-            <div className="h-[280px]">
+            <ZoomContainer zoom={zoom} className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 5, bottom: 5 }}>
+                    <AreaChart data={zoom.visibleData} margin={{ top: 5, right: 10, left: 5, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" />
                         <XAxis dataKey="year" stroke="#555" tick={{ fontSize: 10 }} tickFormatter={v => `An ${v}`} />
                         <YAxis stroke="#555" tick={{ fontSize: 10 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} width={50} />
@@ -96,7 +100,7 @@ export const MultiPropertyComparison: React.FC<MultiPropertyComparisonProps> = (
                         ))}
                     </AreaChart>
                 </ResponsiveContainer>
-            </div>
+            </ZoomContainer>
         </Card>
     );
 };

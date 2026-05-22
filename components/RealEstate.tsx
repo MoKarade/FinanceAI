@@ -2,6 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
+import { ZoomContainer } from './ui/ZoomContainer';
 import { RealEstateGoal, Tab as TabEnum } from '../types';
 import { INITIAL_REAL_ESTATE_GOAL } from '../constants';
 import { ConfirmModal } from './ui/ConfirmModal';
@@ -228,6 +230,40 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
         return point?.Immobilier ?? null;
     }, [lastProjection, amortization]);
 
+    // G7b — calcul Acheter-vs-Louer remonté au niveau composant (il vivait dans
+    // une IIFE de rendu) pour pouvoir brancher le zoom molette/pan sur la courbe.
+    const monthlyRental = rentalIncomeMonthly || Math.round(price / 23.3 / 12);
+    const annualExpenses = monthlyTaxes * 12 + heatingMonthly * 12 + condoFees * 12 + (price * 0.01);
+    const netAnnualIncome = (monthlyRental * 12) - annualExpenses - (amortizationData.data[0]?.PartInteretAnnuelle || 0);
+    const netYield = (netAnnualIncome / price) * 100;
+    const combinedData = Array.from({ length: amortization }, (_, i) => {
+        const yr = i + 1;
+        let rentScenarioNetWorth = totalCashNeeded;
+        let currentRentCost = currentRent;
+        for (let y = 1; y <= yr; y++) {
+            const rentAnnualCost = currentRentCost * 12;
+            const buyAnnualCost = netMonthlyCost * 12 + maintenanceMonthly * 12;
+            const differenceToInvest = (buyAnnualCost - rentAnnualCost);
+            rentScenarioNetWorth *= (1 + marketReturn / 100);
+            if (differenceToInvest > 0) rentScenarioNetWorth += differenceToInvest;
+            currentRentCost *= 1.03;
+        }
+        const buyPrimaryNetWorth = amortizationData.data[i]?.Équité || 0;
+        const propValue = price * Math.pow(1 + localRentalAppreciation / 100, yr);
+        const equity = amortizationData.data[i]?.Équité || 0;
+        const cumulativeRentalIncome = netAnnualIncome * yr;
+        const stockInvestment = totalCashNeeded * Math.pow(1 + localStockReturn / 100, yr);
+        return {
+            year: yr,
+            'Acheter (Résidence)': Math.round(buyPrimaryNetWorth),
+            'Louer + Investir Reste': Math.round(rentScenarioNetWorth),
+            'Investissement Locatif (Équité+Loyer)': Math.round(equity + cumulativeRentalIncome),
+            'Bourse (Placer Cash Initial)': Math.round(stockInvestment),
+            'Valeur Propriété': Math.round(propValue),
+        };
+    });
+    const zoom = useTimeChartZoom<any>(combinedData);
+
     return (
         <div className="space-y-6 animate-fade-in pb-10">
             <ConfirmModal
@@ -368,43 +404,6 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                         ) : <ProjectionRequired variant="inline" feature="l'équité immo projetée" />
                     }>
                         {(() => {
-                            const monthlyRental = rentalIncomeMonthly || Math.round(price / 23.3 / 12);
-                            const grossYield = (monthlyRental * 12 / price) * 100;
-                            const annualExpenses = monthlyTaxes * 12 + heatingMonthly * 12 + condoFees * 12 + (price * 0.01);
-                            const netAnnualIncome = (monthlyRental * 12) - annualExpenses - (amortizationData.data[0]?.PartInteretAnnuelle || 0);
-                            const netYield = (netAnnualIncome / price) * 100;
-
-                            const combinedData = Array.from({ length: amortization }, (_, i) => {
-                                const yr = i + 1;
-
-                                let rentScenarioNetWorth = totalCashNeeded;
-                                let currentRentCost = currentRent;
-                                for (let y = 1; y <= yr; y++) {
-                                    const rentAnnualCost = currentRentCost * 12;
-                                    const buyAnnualCost = netMonthlyCost * 12 + maintenanceMonthly * 12;
-                                    const differenceToInvest = (buyAnnualCost - rentAnnualCost);
-                                    rentScenarioNetWorth *= (1 + marketReturn / 100);
-                                    if (differenceToInvest > 0) rentScenarioNetWorth += differenceToInvest;
-                                    currentRentCost *= 1.03;
-                                }
-                                const buyPrimaryNetWorth = amortizationData.data[i]?.Équité || 0;
-
-                                const propValue = price * Math.pow(1 + localRentalAppreciation / 100, yr);
-                                const equity = amortizationData.data[i]?.Équité || 0;
-                                const cumulativeRentalIncome = netAnnualIncome * yr;
-
-                                const stockInvestment = totalCashNeeded * Math.pow(1 + localStockReturn / 100, yr);
-
-                                return {
-                                    year: yr,
-                                    'Acheter (Résidence)': Math.round(buyPrimaryNetWorth),
-                                    'Louer + Investir Reste': Math.round(rentScenarioNetWorth),
-                                    'Investissement Locatif (Équité+Loyer)': Math.round(equity + cumulativeRentalIncome),
-                                    'Bourse (Placer Cash Initial)': Math.round(stockInvestment),
-                                    'Valeur Propriété': Math.round(propValue),
-                                };
-                            });
-
                             return (
                                 <>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 p-4 bg-black/30 rounded-xl border border-white/5">
@@ -485,9 +484,9 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                         </div>
                                     </div>
 
-                                    <div className="h-[300px] w-full mt-2">
+                                    <ZoomContainer zoom={zoom} className="h-[300px] w-full mt-2">
                                         <ResponsiveContainer width="100%" height="100%">
-                                            <AreaChart data={combinedData}>
+                                            <AreaChart data={zoom.visibleData}>
                                                 <XAxis dataKey="year" tick={{ fontSize: 10 }} tickFormatter={v => `An ${v}`} />
                                                 <YAxis hide />
                                                 <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ backgroundColor: '#0B0E14', borderColor: '#333' }} />
@@ -510,7 +509,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                 )}
                                             </AreaChart>
                                         </ResponsiveContainer>
-                                    </div>
+                                    </ZoomContainer>
                                     <p className="text-tiny text-gray-500 mt-3 text-center">
                                         Note: Le graphique affiche automatiquement les scénarios pertinents (Habiter vs Louer) selon le type de propriété que vous avez configuré (Résidence Principale ou Propriété Locative).
                                     </p>

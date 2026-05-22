@@ -30,8 +30,11 @@ C'était le **seul** fichier avec des erreurs `rules-of-hooks` (scan repo entier
 - [x] Audit ESLint de tout le repo → 1 seul fichier fautif (HealthIndicator)
 - [x] Déplacé l'early-return APRÈS tous les hooks
 - [x] Lint : 0 erreur `rules-of-hooks` ; typecheck clean ; 604/604 tests verts
-- [ ] **Ajouter `npm run lint` (rules-of-hooks) au CI** pour bloquer la
-  régression (le rule existe déjà en `error` mais n'est pas dans le pipeline)
+- [x] **Gate lint ajouté** : étape `Lint` dans `.github/workflows/ci.yml` +
+  `prebuild: npm run lint` dans package.json (gate le deploy Vercel/Netlify car
+  ils lancent `npm run build`). Bonus : retiré une directive `eslint-disable
+  import/no-unresolved` morte dans testFixtures.ts qui faisait sortir lint en
+  erreur de config.
 - [ ] Vérifier en prod sur les onglets après redeploy Vercel
 
 ### S1 — Auth Google OAuth + MFA (Cloudflare Access) — ✅ FAIT (2026-05-22)

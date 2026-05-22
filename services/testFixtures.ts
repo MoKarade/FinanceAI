@@ -239,7 +239,6 @@ const TEST_FINANCIAL_GOALS: FinancialGoal[] = [
 // 2024-05-20 → 2026-05-21 — 106 points hebdo). Bundlé via Vite `?raw`,
 // pas de fetch réseau requis. Voir scripts/build-test-portfolio-csv.cjs
 // pour reproduire (Yahoo Finance API, sans clé requise).
-// eslint-disable-next-line import/no-unresolved
 import testPortfolioCsv from './data/test-portfolio-history.csv?raw';
 
 /**

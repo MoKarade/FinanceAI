@@ -23,6 +23,11 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
+      # Bloque les erreurs ESLint (notamment react-hooks/rules-of-hooks → React
+      # #310 qui a cassé l'app en prod le 2026-05-22). Les warnings ne bloquent pas.
+      - name: Lint
+        run: npm run lint
+
       - name: Typecheck
         run: npm run typecheck
 

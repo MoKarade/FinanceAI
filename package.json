@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "npm run lint",
     "build": "vite build --mode production",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",

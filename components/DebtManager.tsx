@@ -6,6 +6,8 @@ import { Badge } from './ui/Badge';
 import { Debt } from '../types';
 import { ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
 import { ConfirmModal } from './ui/ConfirmModal';
+import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
+import { ZoomContainer } from './ui/ZoomContainer';
 
 interface DebtManagerProps {
     debts: Debt[];
@@ -66,6 +68,9 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     const totalDebt = debts.reduce((sum, d) => sum + d.balance, 0);
     const totalMinPayment = debts.reduce((sum, d) => sum + d.minimumPayment, 0);
 
+    // G7a — zoom molette / pan sur la courbe d'extinction (x = mois).
+    const zoom = useTimeChartZoom<any>(simulation.chart);
+
     return (
         <div className="space-y-6 animate-fade-in pb-20">
             <ConfirmModal isOpen={!!confirmDeleteId} onConfirm={doConfirmDelete} onCancel={() => setConfirmDeleteId(null)} title="Supprimer la dette" message="Supprimer cette dette définitivement ?" confirmLabel="Supprimer" />
@@ -125,9 +130,9 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                 </div>
                 <div className="lg:col-span-2">
                     <Card title="Projection d'Extinction de la Dette">
-                        <div style={{ width: '100%', height: '350px', minHeight: '350px' }}>
+                        <ZoomContainer zoom={zoom} style={{ width: '100%', height: '350px', minHeight: '350px' }}>
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={simulation.chart} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                <AreaChart data={zoom.visibleData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                                     <defs><linearGradient id="colorDebt" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/><stop offset="95%" stopColor="#ef4444" stopOpacity={0}/></linearGradient></defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                     <XAxis dataKey="month" stroke="#666" tick={{fontSize: 10}} tickFormatter={(m) => `M${m}`} />
@@ -136,7 +141,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                     <Area type="monotone" dataKey="balance" stroke="#ef4444" fill="url(#colorDebt)" name="Solde Restant" strokeWidth={3} />
                                 </AreaChart>
                             </ResponsiveContainer>
-                        </div>
+                        </ZoomContainer>
                     </Card>
                     <div className="mt-6 p-4 bg-blue-900/10 border border-blue-500/20 rounded-xl flex gap-4 items-start">
                         <span className="text-2xl">ℹ️</span>

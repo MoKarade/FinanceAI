@@ -4,6 +4,8 @@ import { PageHeader } from './ui/PageHeader';
 import { Badge } from './ui/Badge';
 import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset, RegisteredAccountType } from '../types';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend, AreaChart } from 'recharts';
+import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
+import { ZoomContainer } from './ui/ZoomContainer';
 import { TaxBracketViz } from './TaxBracketViz';
 import { GoalSeekerCard } from './retirement/GoalSeekerCard';
 import { AssetLocationCard } from './retirement/AssetLocationCard';
@@ -177,6 +179,10 @@ export const Retirement: React.FC<RetirementProps> = ({
     const retirementData = yearlyData.filter(d => (d.age ?? 0) >= goal.targetAge);
     const lifeExpectancyData = yearlyData.filter(d => (d.age ?? 0) <= lifeExpectancy);
     const bankruptcyPoint = retirementData.find(d => d.TotalCapital <= 0);
+
+    // G7c — zoom molette / pan sur les deux graphes Retraite (x = âge).
+    const zoomAccum = useTimeChartZoom<any>(lifeExpectancyData);
+    const zoomCashflow = useTimeChartZoom<any>(retirementData);
     const bankruptcyAge = bankruptcyPoint?.age;
 
     // Mode strict : pas de projection = pas de données. Aucune invention.
@@ -385,9 +391,9 @@ export const Retirement: React.FC<RetirementProps> = ({
                     ) : (
                         <>
                             <Card title="📈 Accumulation & Epuisement du Capital (Moteur FIRE)">
-                                <div className="h-[420px] w-full" style={{ minHeight: '420px' }}>
+                                <ZoomContainer zoom={zoomAccum} className="h-[420px] w-full" style={{ minHeight: '420px' }}>
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={lifeExpectancyData} margin={{ top: 20, right: 30, left: 10, bottom: 0 }}>
+                                        <AreaChart data={zoomAccum.visibleData} margin={{ top: 20, right: 30, left: 10, bottom: 0 }}>
                                             <defs>
                                                 <linearGradient id="retGradREER" x1="0" y1="0" x2="0" y2="1">
                                                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.75} />
@@ -418,7 +424,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             <Area type="monotone" dataKey="REER" stackId="1" fill="url(#retGradREER)" stroke="#3b82f6" strokeWidth={1.5} name="REER" fillOpacity={1} />
                                         </AreaChart>
                                     </ResponsiveContainer>
-                                </div>
+                                </ZoomContainer>
 
                                 <div className="grid grid-cols-3 gap-4 mt-6">
                                     <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
@@ -443,9 +449,9 @@ export const Retirement: React.FC<RetirementProps> = ({
                             </Card>
 
                             <Card title="💸 Flux Financier durant la Retraite (Revenus vs Besoin)">
-                                <div className="h-[280px] w-full" style={{ minHeight: '280px' }}>
+                                <ZoomContainer zoom={zoomCashflow} className="h-[280px] w-full" style={{ minHeight: '280px' }}>
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <ComposedChart data={retirementData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
+                                        <ComposedChart data={zoomCashflow.visibleData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
                                             <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
                                             <XAxis dataKey="age" stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => `${val}a`} />
                                             <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} width={50} tickFormatter={(val) => `${(val / 1000).toFixed(0)}k`} />
@@ -456,7 +462,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             <Line type="monotone" dataKey="Expenses" stroke="#ef4444" strokeWidth={3} dot={false} name="Besoin (Infl.)" style={{ filter: 'drop-shadow(0px 2px 6px rgba(239,68,68,0.5))' }} />
                                         </ComposedChart>
                                     </ResponsiveContainer>
-                                </div>
+                                </ZoomContainer>
                                 <div className="mt-4 text-xs text-gray-400 text-center bg-white/5 p-3 rounded-lg border border-white/10">
                                     La ligne rouge represente votre besoin mensuel ({goal.targetMonthlyIncome}$/mois), ajuste a l'inflation ({projection.inflationRate || 2}%) au fil du temps.
                                 </div>

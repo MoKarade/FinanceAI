@@ -4,6 +4,8 @@ import { PageHeader } from './ui/PageHeader';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Area, ReferenceLine, ComposedChart } from 'recharts';
+import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
+import { ZoomContainer } from './ui/ZoomContainer';
 import { ChildGoal, ProjectionConfig, Tab as TabEnum } from '../types';
 import { INITIAL_CHILD_GOAL } from '../constants';
 import { ConfirmModal } from './ui/ConfirmModal';
@@ -201,6 +203,10 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     }, [lastProjection, currentRESP, goal?.birthDate]);
 
     const totalResp = respProjection[respProjection.length - 1]?.Solde ?? null;
+
+    // G7d — zoom molette / pan sur les deux graphes Enfant (x = âge).
+    const zoomCost = useTimeChartZoom<any>(costTimeline.data);
+    const zoomResp = useTimeChartZoom<any>(respProjection);
     const totalStudiesCost = uniInfo.yearlyCost * uniInfo.years;
     const respCovers = totalResp != null && totalStudiesCost > 0
         ? Math.min(100, (totalResp / totalStudiesCost) * 100)
@@ -397,9 +403,9 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                     <Card title="📊 Coût annuel par âge (décomposé)" action={
                         <div className="text-xs text-gray-400 font-mono">Total : <span className="text-white font-bold privacy-blur">{fmt(costTimeline.totalCost)}</span></div>
                     }>
-                        <div className="h-[280px]">
+                        <ZoomContainer zoom={zoomCost} className="h-[280px]">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={costTimeline.data} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                                <BarChart data={zoomCost.visibleData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                     <XAxis dataKey="age" stroke="#666" tick={{ fontSize: 10 }} label={{ value: 'Âge enfant', position: 'insideBottom', offset: -5, fill: '#666' }} />
                                     <YAxis stroke="#666" tick={{ fontSize: 10 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
@@ -412,7 +418,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     <Bar dataKey="Bénéfices" stackId="a" fill="#10b981" name="Allocations (négatif = bénéfice)" />
                                 </BarChart>
                             </ResponsiveContainer>
-                        </div>
+                        </ZoomContainer>
                     </Card>
 
                     <Card title="🎓 Simulateur REEE — Croissance jusqu'à 17 ans" action={
@@ -468,8 +474,9 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                             {respProjection.length === 0 ? (
                                 <ProjectionRequired feature="La projection REEE" />
                             ) : (
+                            <ZoomContainer zoom={zoomResp} className="h-full w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <ComposedChart data={respProjection} margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
+                                <ComposedChart data={zoomResp.visibleData} margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="respGrad" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
@@ -485,6 +492,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     <Bar dataKey="Subvention" fill="#10b981" name="Subventions reçues" />
                                 </ComposedChart>
                             </ResponsiveContainer>
+                            </ZoomContainer>
                             )}
                         </div>
                     </Card>

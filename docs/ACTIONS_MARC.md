@@ -25,8 +25,29 @@ Access.
 - [x] Redirect Rule apex `hubperso.com` → `www.hubperso.com`
 - [x] Testé en fenêtre privée → login Google requis
 
-> ⚠️ Reste à surveiller : si la PWA ne s'installe plus, whitelister `/sw.js` et
-> `/manifest.json` dans Access (policy Bypass). Non observé à ce jour.
+> ⚠️ CONFIRMÉ 2026-05-22 : la PWA ne charge plus son manifest sous Access
+> (CSP + CORS bloquent la redirection login sur `/manifest.json`). À corriger
+> → voir **A12** ci-dessous.
+
+### A12 — Bypass Access pour `/manifest.json` et `/sw.js` (PWA cassée) 🔴
+**Pourquoi** : depuis A1, Access exige l'auth sur `/manifest.json` → le
+navigateur reçoit une redirection cross-origin vers `cloudflareaccess.com`,
+bloquée par CSP (`default-src 'self'`) ET CORS. La PWA (manifest, icônes,
+installation) ne fonctionne plus. Console : `manifest ... violates CSP` +
+`blocked by CORS policy`.
+**Effort** : ~10 min, config Cloudflare, 0 code.
+- [ ] Zero Trust → Access → **Applications**
+- [ ] Créer une nouvelle application **Self-hosted** ciblant `www.hubperso.com`
+  avec **Path** = `/manifest.json` (puis une 2e pour `/sw.js`), OU configurer
+  ces paths dans l'app FinanceAI
+- [ ] Policy **Bypass** → Include → **Everyone** (ce sont des fichiers publics,
+  aucune donnée perso)
+- [ ] Tester : ouvrir `https://www.hubperso.com/manifest.json` en navigation
+  privée → doit renvoyer le JSON (200), PAS une page de login
+- [ ] Vérifier que l'installation PWA refonctionne
+> Note : ajouter `manifest-src cloudflareaccess.com` à la CSP ne suffirait PAS
+> (la redirection renvoie une page login, pas le manifest) — le **Bypass** est
+> la vraie correction.
 
 ### A2 — Rotation des clés API (si jamais exposées)
 **Pourquoi** : les clés Anthropic/Finnhub/Era étaient en clair dans
@@ -130,9 +151,10 @@ que le moteur applique. Donc le coût brut affiché diffère légèrement du net
 | # | Action | Priorité | Effort | Bloquant ? |
 |---|--------|----------|--------|------------|
 | A1 | Cloudflare Access auth | ✅ FAIT | — | — |
+| A12 | Bypass Access /manifest.json + /sw.js (PWA) | 🔴 P0 | 10 min | PWA cassée |
 | A2 | Rotation clés API | 🔴 P0 | 15 min | Si PC partagé |
-| A3 | Valider sliders Future | 🟡 P1 | 5 min | Non |
-| A4 | Valider cards scénarios | 🟡 P1 | 2 min | Non |
+| A3 | Valider sliders Future (TB4) | 🟡 P1 | 5 min | Non |
+| A4 | Cards scénarios | ✅ confirmé bug (TB3) | — | en cours fix |
 | A5 | Checklist 163 tests | 🟡 P1 | 30 min | Non |
 | A6 | Test mobile | 🟡 P1 | 10 min | Non |
 | A7 | Décision backend proxy | 🟢 P2 | décision | Non |
@@ -141,6 +163,7 @@ que le moteur applique. Donc le coût brut affiché diffère légèrement du net
 | A10 | Vérif Vercel | 🟢 P3 | 5 min | Non |
 | A11 | Backup avant tests | 🟢 P3 | 2 min | Recommandé |
 
-**A1 (auth) est fait** ✅ — l'app est sécurisée. Le plus urgent maintenant :
-A2 (rotation clés si PC partagé), puis A11 (backup) avant A3/A4 (valider les 2
-bugs trouvés) — ça me dira si je dois fixer TB3/TB4 ou si tout est vert.
+**Le plus urgent** : **A12** (réparer la PWA via bypass Access — 10 min Cloudflare),
+puis A2 (rotation clés si PC partagé). Pour TB3 (cards à 0, confirmé), j'ai
+déployé un diagnostic : ouvre Future après hard-reload et envoie-moi la ligne
+console `[TB3/estate]` → je fixe la cause.

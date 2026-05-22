@@ -279,7 +279,12 @@ Affichage actuel des événements (vente CELIAPP, naissance enfant, etc.) jugé
 sémantique, montant formaté, mini-hiérarchie. Fichier
 `components/projection/ProjectionTooltip.tsx`. Effort ~3 h.
 
-### G7 — Bug : manifest PWA bloqué par la CSP sous Cloudflare Access 🟡 P2
+### G7 — Bug : manifest PWA bloqué par la CSP sous Cloudflare Access ✅ FAIT (2026-05-22)
+Réglé via **A12** : policy Bypass Access sur `/manifest.json` (+ `/sw.js`). Marc
+a confirmé : les erreurs manifest/CORS ont disparu de la console. Aussi corrigé :
+meta `mobile-web-app-capable` ajouté (déprécation apple-, commit 9ac2ca7).
+<!-- entrée d'origine ci-dessous conservée pour contexte -->
+
 Console prod : `Loading a manifest from 'https://hubperso.cloudflareaccess.com/
 cdn-cgi/access/login/...manifest.json' violates CSP default-src 'self'`. Access
 exige l'auth pour `/manifest.json` → redirige vers son login cross-origin →

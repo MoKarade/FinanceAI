@@ -552,4 +552,41 @@ describe('Convergence projection ↔ UI', () => {
             expect(ratio).toBeLessThan(1.5);
         });
     });
+
+    describe('Régression session 2026-05-22', () => {
+        // TB4 : returnRates doit affecter la projection. Le moteur lisait
+        // `projection.rates` (champ inexistant) au lieu de `projection.returnRates`
+        // → les sliders de rendement n'avaient aucun effet. Ce test casse si la
+        // régression revient (les deux runs donneraient le même résultat).
+        it('returnRates plus élevés → patrimoine projeté plus élevé', () => {
+            const peak = (r: any) => Math.max(...r.chartData.map((p: any) => p.NetWorth || 0));
+            const low = calculateFutureProjection(makeParams({
+                projection: makeProjection({ returnRates: { celi: 2, reer: 2, nonReg: 2, crypto: 2, cash: 1 } }),
+            })) as any;
+            const high = calculateFutureProjection(makeParams({
+                projection: makeProjection({ returnRates: { celi: 14, reer: 14, nonReg: 14, crypto: 14, cash: 4 } }),
+            })) as any;
+            expect(peak(high)).toBeGreaterThan(peak(low));
+        });
+
+        // TB3 : garde anti-NaN. estateNetWorth doit être fini sur les 7 scénarios
+        // (un input config NaN le forçait à 0 → cards "0.00M$").
+        it('estateNetWorth fini sur tous les scénarios (fixtures complètes)', () => {
+            const result = calculateFutureProjection(makeParams()) as any;
+            expect(result.allResults.length).toBeGreaterThan(0);
+            for (const r of result.allResults) {
+                expect(Number.isFinite(r.estateNetWorth), `estate non-fini: ${r.strategyName}`).toBe(true);
+            }
+        });
+
+        // TB3 : NetWorth (donc liquid) fini sur toute la courbe.
+        it('NetWorth fini sur chaque point de la courbe (35 ans)', () => {
+            const result = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 35 }),
+            })) as any;
+            for (const p of result.chartData) {
+                expect(Number.isFinite(p.NetWorth)).toBe(true);
+            }
+        });
+    });
 });

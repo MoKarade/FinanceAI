@@ -5,7 +5,7 @@ import { PageHeader } from './ui/PageHeader';
 import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { Pill } from './ui/Pill';
-import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Line, ComposedChart, Brush, Bar, ReferenceDot, LabelList } from 'recharts';
+import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Line, ComposedChart, Bar, ReferenceDot, LabelList } from 'recharts';
 import { BudgetConfig, BudgetCategory, Asset, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Transaction, Debt, ProjectionConfig, FinancialGoal, User, RegisteredAccountType } from '../types';
 import { fetchPortfolioHistory } from '../services/finance';
 import { calculateFutureProjection, SimulationParams } from '../services/projection';
@@ -19,6 +19,7 @@ import { usePendingFocus } from '../utils/usePendingFocus';
 const EMPTY_ARRAY: never[] = [];
 import { Tab as TabEnum } from '../types';
 import { ExpertTooltip, CustomLifeEventLabel, CustomFlowEventLabel } from './projection/ProjectionTooltip';
+import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ProjectionControls } from './projection/ProjectionControls';
 
 interface FutureProjectionProps {
@@ -300,6 +301,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         return { lifeChartEvents: lifes, flowChartEvents: flows };
     }, [chartData]);
 
+    // G3 — sous-onglets Futur (Graphique = courbe + KPIs ; Paramètres = contrôles).
+    const [futureSubTab, setFutureSubTab] = useState<'graph' | 'params'>('graph');
+
+    // G4 — zoom molette / pan / sélecteur de période sur la courbe (remplace <Brush>).
+    const zoom = useTimeChartZoom<any>(chartData);
+
     // C6 fix (Sprint 1B) — Garde déplacée ICI (après tous les hooks) pour
     // respecter la règle des Hooks. Retourne un placeholder UI si les props
     // critiques manquent. Avant ce fix, cette garde était ligne 46 (avant les
@@ -310,6 +317,18 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             ⚠️ Données d'initialisation manquantes. Veuillez vérifier vos comptes et votre budget.
         </div>;
     }
+
+    // G4/G5 — fenêtre visible (en monthIndex) pour ne tracer que les événements
+    // dans la plage zoomée et borner le sélecteur de période.
+    const visMinMonth = zoom.visibleData[0]?.monthIndex ?? Number.NEGATIVE_INFINITY;
+    const visMaxMonth = zoom.visibleData[zoom.visibleData.length - 1]?.monthIndex ?? Number.POSITIVE_INFINITY;
+    const visibleLifeEvents = lifeChartEvents.filter((e: any) => e.monthIndex >= visMinMonth && e.monthIndex <= visMaxMonth);
+    const visibleFlowEvents = flowChartEvents.filter((e: any) => e.monthIndex >= visMinMonth && e.monthIndex <= visMaxMonth);
+    const lastMonthIndex = chartData.length > 0 ? chartData[chartData.length - 1].monthIndex : 0;
+    const idxForYears = (yrs: number) => {
+        const i = chartData.findIndex((d: any) => d.monthIndex >= yrs * 12);
+        return i === -1 ? chartData.length - 1 : i;
+    };
 
     return (
         <div className="space-y-6 animate-fade-in pb-24">
@@ -368,6 +387,25 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     variant={results?.fvi != null && results.fvi >= 70 ? 'success' : results?.fvi != null && results.fvi >= 40 ? 'warning' : 'danger'}
                 />
             </StatGrid>
+            {/* G3 — bascule Graphique / Paramètres */}
+            <div className="flex gap-1 p-1 rounded-card bg-surface/40 border border-white/5 w-fit" role="tablist" aria-label="Vue Future">
+                <button
+                    type="button" role="tab" aria-selected={futureSubTab === 'graph'}
+                    onClick={() => setFutureSubTab('graph')}
+                    className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === 'graph' ? 'bg-primary text-white' : 'text-ink-300 hover:text-ink-100'}`}
+                >
+                    📈 Graphique
+                </button>
+                <button
+                    type="button" role="tab" aria-selected={futureSubTab === 'params'}
+                    onClick={() => setFutureSubTab('params')}
+                    className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === 'params' ? 'bg-primary text-white' : 'text-ink-300 hover:text-ink-100'}`}
+                >
+                    ⚙️ Paramètres
+                </button>
+            </div>
+
+            {futureSubTab === 'params' && (
             <ProjectionControls
                 projection={projection}
                 updateProj={updateProj}
@@ -386,7 +424,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 setRealEstateGoals={setRealEstateGoals}
                 config={config}
             />
+            )}
 
+            {futureSubTab === 'graph' && (
             <Card title={`La Courbe de Vie - ${allResults[selectedScenarioIdx]?.strategyName || 'Simulation'}`}
                 action={isComputing ? (
                     <span className="flex items-center gap-2 text-tiny text-amber-400" role="status" aria-live="polite">
@@ -396,10 +436,39 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         Recalcul Monte Carlo en cours…
                     </span>
                 ) : undefined}>
+                {/* G4 — sélecteur de période façon Google Finance */}
+                <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                    <div className="flex gap-0.5 p-0.5 rounded-card bg-black/30 border border-white/5">
+                        {[5, 10, 20, 30].filter((y) => y * 12 < lastMonthIndex).map((y) => (
+                            <button
+                                key={y}
+                                type="button"
+                                onClick={() => zoom.showRange(0, idxForYears(y))}
+                                className="px-2.5 py-1 text-tiny font-bold rounded text-ink-300 hover:text-white hover:bg-white/10 transition-colors focus-ring"
+                            >
+                                {y} ans
+                            </button>
+                        ))}
+                        <button
+                            type="button"
+                            onClick={zoom.reset}
+                            className={`px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring ${!zoom.isZoomed ? 'bg-primary text-white' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
+                        >
+                            Tout
+                        </button>
+                    </div>
+                    <span className="text-tiny text-ink-500 hidden sm:block" aria-hidden="true">
+                        Molette = zoom · glisser = défiler · double-clic = reset
+                    </span>
+                </div>
                 {/* Hauteur responsive : 380px mobile, 500px tablet, 650px desktop */}
-                <div className="w-full h-[380px] sm:h-[500px] lg:h-[650px]">
+                <div
+                    ref={zoom.containerRef}
+                    {...zoom.handlers}
+                    className={`relative w-full h-[380px] sm:h-[500px] lg:h-[650px] select-none ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-default'}`}
+                >
                      <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
+                        <ComposedChart data={zoom.visibleData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
 
                             <XAxis
@@ -441,22 +510,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
                             <Line type="monotone" dataKey="NetWorth" stroke="#fff" strokeWidth={3} dot={false} name="Valeur Nette Totale" isAnimationActive={false}/>
 
-                            {lifeChartEvents.map((evt, i) => (
+                            {visibleLifeEvents.map((evt: any, i: number) => (
                                 <ReferenceDot key={`life-${i}`} x={evt.monthIndex} y={evt.val} r={6} fill="#facc15" stroke="#0B0E14" strokeWidth={2}>
                                     <LabelList dataKey="label" content={<CustomLifeEventLabel value={evt.label} index={evt.index} />} />
                                 </ReferenceDot>
                             ))}
 
-                            {flowChartEvents.map((evt, i) => (
+                            {visibleFlowEvents.map((evt: any, i: number) => (
                                 <ReferenceDot key={`flow-${i}`} x={evt.monthIndex} y={evt.val} r={3} fill="#60a5fa" stroke="#0B0E14" strokeWidth={1}>
                                     <LabelList dataKey="label" content={<CustomFlowEventLabel value={evt.label} index={evt.index} />} />
                                 </ReferenceDot>
                             ))}
-
-                            <Brush dataKey="monthIndex" height={30} stroke="#8884d8" fill="#151922" tickFormatter={(val) => {
-                                const match = chartData.find((d: any) => d.monthIndex === val);
-                                return match ? `${match.year}` : '';
-                            }}/>
                         </ComposedChart>
                     </ResponsiveContainer>
                 </div>
@@ -472,6 +536,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#ef4444] opacity-30 rounded"></span> Dette Fiscale Latente (Sous 0)</span>
                 </div>
             </Card>
+            )}
         </div>
     );
 };

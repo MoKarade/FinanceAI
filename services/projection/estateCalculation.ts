@@ -111,6 +111,25 @@ export function computeEstateNetWorth(
 
     const startNW = startingCash + startingCELI + startingCELIAPP + startingREER + startingNonReg + startingCrypto + startingREEE;
 
+    // TB3 (2026-05-22) — diagnostic NON-masquant : si estateNetWorth est non-fini,
+    // la garde plus bas le force à 0 → les 7 cards scénarios affichent 0.00M$.
+    // On logue l'input/intermédiaire fautif pour tracer la source sans inventer
+    // de valeur (cf. ADR 006). À retirer une fois la cause corrigée.
+    if (!Number.isFinite(estateNetWorth)) {
+        const probe: Record<string, number> = {
+            liquid, celi, celiapp, reer, nonReg, nonRegACB, crypto, reee,
+            realEstateEquity, mortgageBalance, smithManoeuvreDebt,
+            incomeRetirement, accRentesYear, accRetraitsReerYear,
+            grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
+            currentAge, retirementTargetAge, governmentPension,
+            activeUsersCount, simInflation,
+            finalRawNetWorth, estateCurrentIncome, totalEstateLiquidation,
+            totalEstateTax, rrqNPV, psvNPV,
+        };
+        const bad = Object.entries(probe).filter(([, v]) => !Number.isFinite(v));
+        console.warn('[TB3/estate] estateNetWorth non-fini → forcé à 0 (cards 0.00M$). Fautifs:', Object.fromEntries(bad));
+    }
+
     return {
         finalRawNetWorth: Number.isNaN(finalRawNetWorth) ? 0 : finalRawNetWorth,
         estateNetWorth: Number.isNaN(estateNetWorth) ? 0 : estateNetWorth,

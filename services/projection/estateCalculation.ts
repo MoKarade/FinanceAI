@@ -59,6 +59,10 @@ export interface EstateResult {
     startNW: number;
 }
 
+// TB3 diagnostic : ne logue qu'UNE fois par chargement (le worker appelle cette
+// fonction des centaines de fois — 7 scénarios × N itérations Monte Carlo).
+let _tb3DiagLogged = false;
+
 export function computeEstateNetWorth(
     inputs: Readonly<EstateCalcInputs>,
     calculateFiscalReport: FiscalFn,
@@ -115,19 +119,23 @@ export function computeEstateNetWorth(
     // la garde plus bas le force à 0 → les 7 cards scénarios affichent 0.00M$.
     // On logue l'input/intermédiaire fautif pour tracer la source sans inventer
     // de valeur (cf. ADR 006). À retirer une fois la cause corrigée.
-    if (!Number.isFinite(estateNetWorth)) {
+    if (!Number.isFinite(estateNetWorth) && !_tb3DiagLogged) {
+        _tb3DiagLogged = true;
         const probe: Record<string, number> = {
             liquid, celi, celiapp, reer, nonReg, nonRegACB, crypto, reee,
             realEstateEquity, mortgageBalance, smithManoeuvreDebt,
             incomeRetirement, accRentesYear, accRetraitsReerYear,
             grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
-            currentAge, retirementTargetAge, governmentPension,
-            activeUsersCount, simInflation,
+            currentAge, retirementTargetAge, finalAge, remainingYearsAtEnd,
+            governmentPension, activeUsersCount, simInflation,
             finalRawNetWorth, estateCurrentIncome, totalEstateLiquidation,
-            totalEstateTax, rrqNPV, psvNPV,
+            totalEstateTax, npvFactor, rrqNPV, psvNPV,
         };
-        const bad = Object.entries(probe).filter(([, v]) => !Number.isFinite(v));
-        console.warn('[TB3/estate] estateNetWorth non-fini → forcé à 0 (cards 0.00M$). Fautifs:', Object.fromEntries(bad));
+        const bad = Object.entries(probe)
+            .filter(([, v]) => !Number.isFinite(v))
+            .map(([k, v]) => `${k}=${v}`)
+            .join(' | ');
+        console.warn(`[TB3/estate] estateNetWorth NaN → 0. Fautifs: ${bad || '(aucun input simple — voir calc)'}`);
     }
 
     return {

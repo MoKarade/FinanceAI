@@ -262,6 +262,27 @@ Affichage actuel des événements (vente CELIAPP, naissance enfant, etc.) jugé
 sémantique, montant formaté, mini-hiérarchie. Fichier
 `components/projection/ProjectionTooltip.tsx`. Effort ~3 h.
 
+### G7 — Bug : manifest PWA bloqué par la CSP sous Cloudflare Access 🟡 P2
+Console prod : `Loading a manifest from 'https://hubperso.cloudflareaccess.com/
+cdn-cgi/access/login/...manifest.json' violates CSP default-src 'self'`. Access
+exige l'auth pour `/manifest.json` → redirige vers son login cross-origin →
+violé par la CSP. Effet : la PWA ne charge plus son manifest.
+**Fix** : ajouter une policy **Bypass** dans Access pour `/manifest.json` ET
+`/sw.js` (assets publics, pas de données) — déjà anticipé dans
+[AUTH_SETUP.md](AUTH_SETUP.md) §maintenance. Action Cloudflare (Marc), ~10 min.
+
+### G8 — Bug : beacon Cloudflare Insights bloqué par la CSP 🟢 P3
+`static.cloudflareinsights.com/beacon.min.js` bloqué par `script-src`. Cloudflare
+injecte son analytics auto. Comme GA4 est déjà en place, le plus simple :
+**désactiver Cloudflare Web Analytics** (dashboard Cloudflare → la zone →
+Analytics) OU ajouter `static.cloudflareinsights.com` au `script-src` de
+[netlify.toml](../netlify.toml). Cosmétique (aucun impact fonctionnel).
+
+### G9 — Warning recharts `width(-1) height(-1)` 🟢 P3
+Le conteneur d'un graph a une taille 0 au 1er render (Future). Ajouter
+`minWidth`/`minHeight` ou `aspect` sur le ResponsiveContainer concerné. À traiter
+avec la refonte graphs G4.
+
 ---
 
 ## ⚡ P2 — Performance

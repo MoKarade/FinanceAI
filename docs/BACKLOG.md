@@ -93,7 +93,13 @@ Ajouter ces champs dans `ProjectionChartPoint` :
 - **Reste à faire** : split pension (peu critique, reporté)
 - **Effort restant** : ~30 min
 
-### C2 — Migrer composants après extension
+### C2 — Migrer composants après extension 🟡 P2 (largement recouvert par C3)
+> 2026-05-22 : la centralisation a été en grande partie faite via **C3** (mode
+> strict) — ChildPlanning `respProjection` reconstruit depuis chartData ✓,
+> RealEstate badge équité ✓, TaxCenter = 100% temps présent (N/A). Reste à
+> vérifier finement : Investments `totalAnnualDividends` (KPI) + DividendPanel
+> (timeline DRIP). **Non-bloquant** (les onglets fonctionnent) ; vérif reportée.
+<!-- items d'origine -->
 - [ ] TaxCenter `report.marginalRate` / `effectiveRate` / `taxableAddOn`
 - [ ] Investments `totalAnnualDividends` (KPI)
 - [ ] Investments DividendPanel (timeline 30 ans DRIP)
@@ -118,12 +124,23 @@ et que ca me mette une erreur ou un msg si pas dispo". Statut :
 - [x] **TaxCenter** : 100% temps présent — pas de migration nécessaire
 - [x] **DebtManager** : 100% local-deterministic (slider extraPayment) — pas de migration
 
-### C4 — Supprimer code mort post-migration
-- [ ] Worker local Retirement.tsx (déjà supprimé)
-- [ ] Calcul `costTimeline` inline si remplacé par lookup chartData
-- [ ] Calcul `respProjection` inline si remplacé par lookup chartData
-- **Effort** : 1 h
-- **Effet** : -100 à -200 lignes
+### C4 — Supprimer code mort post-migration ✅ FAIT (2026-05-22)
+> Analyse `knip` : **aucun code mort applicatif à supprimer en sécurité.**
+> - Les « unused files » signalés étaient des **faux positifs runtime**
+>   (`public/sw.js` enregistré par App.tsx, `public/ga-init.js` chargé par
+>   index.html) ou de l'**outillage dev** (`scripts/*`). → `knip.json` ajouté
+>   (déclare les vrais entry points : index.tsx, mcp/, scripts/, sw.js, ga-init.js)
+>   → rapport fiable désormais (plus de cri au loup).
+> - Les ~58 « unused exports » restants sont de l'**API intentionnelle / interne** :
+>   constantes fiscales (`utils/tax.ts`, `services/realEstate.ts`), fonctions IA
+>   (`services/claude.ts`, `eraContext.ts`), crypto de backup (`cloudBackup.ts` =
+>   feature **SH3** planifiée), seed data (`constants.ts`). Pas de suppression
+>   (règle « supprimer seulement si certain »).
+> - `costTimeline`/`respProjection` : déjà sourcés depuis chartData (cf. C3), pas
+>   de calcul inline mort résiduel ; worker Retirement déjà supprimé.
+<!-- items d'origine -->
+- [x] Worker local Retirement.tsx (déjà supprimé)
+- [x] `costTimeline` / `respProjection` : déjà migrés sur chartData (C3)
 
 ---
 

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "index.tsx",
+    "mcp/stdio.ts",
+    "mcp/server.ts",
+    "scripts/*.{ts,cjs}",
+    "public/sw.js",
+    "public/ga-init.js"
+  ],
+  "project": ["**/*.{ts,tsx,js,cjs}"],
+  "ignore": ["dist/**"],
+  "ignoreDependencies": ["axe-core"]
+}

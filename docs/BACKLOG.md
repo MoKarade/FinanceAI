@@ -131,7 +131,7 @@ et que ca me mette une erreur ou un msg si pas dispo". Statut :
 
 ### TB1 — Hash navigation au boot ✅ FIXÉ (commit e888564, validé prod)
 ### TB2 — Worker crash `slice undefined` ✅ FIXÉ (commit e888564, validé prod)
-### TB3 — 7 cards scénarios Future affichent `0.00M$` ⚠️ INVESTIGUÉ 2026-05-22 — repro requise
+### TB3 — 7 cards scénarios Future affichent `0.00M$` 🔴 CONFIRMÉ BUG 2026-05-22
 **Hypothèse initiale RÉFUTÉE** : le worker NE tronque PAS `allResults`.
 `calculateFutureProjection` (projection.ts:1129) calcule chaque scénario via
 `runScenario(..., false, ...)` de façon déterministe → chaque `allResults[i]`
@@ -146,11 +146,17 @@ patrimoine (légitime pour un FIRE agressif à l'horizon 95 ans). Le KPI princip
 (FutureProjection.tsx:351) masque ça via fallback `estateNetWorth ||
 finalNetWorth || fireNumber` — les cards non, d'où la divergence apparente.
 
-**Reste à faire (Marc, post-fix #310)** : ouvrir Future et confirmer
-visuellement. Si les cards affichent encore TOUTES `0.00M$` alors que la courbe
-monte → vrai bug NaN à tracer (input manquant dans computeEstateNetWorth). Si
-seulement certaines (scénarios dépensiers) → comportement correct, pas un bug.
-Pas reproductible/fixable sans données réelles → laissé en attente.
+**CONFIRMÉ par Marc (2026-05-22)** : les 7 cards sont TOUTES à 0. Donc ce n'est
+PAS de la dépletion légitime (improbable que les 7 stratégies épuisent tout) →
+c'est un **NaN** dans `computeEstateNetWorth` (estateCalculation.ts) forcé à 0
+par la garde ligne 116. Comme le calcul est partagé par les 7 scénarios, un
+input commun est NaN/undefined.
+**À tracer** (candidats inputs) : `nonRegACB`, `governmentPension`,
+`incomeRetirement`, `accRentesYear`, `accRetraitsReerYear`, ou un retour
+`calculateFiscalReport` NaN. **Plan** : gardes `?? 0` sur les inputs + log DEV
+du premier input non-fini dans computeEstateNetWorth, retester, puis retirer le
+log. Effort ~1 h. Note : le KPI principal masque le bug via son fallback
+`estateNetWorth || finalNetWorth || fireNumber` (FutureProjection.tsx:351).
 ### TB4 — Réactivité sliders Future ⚠️ À VALIDER MANUELLEMENT
 Automation JS/clavier ne recalcule pas (limitation injection synthétique
 React 19, pas un bug app). Stress test : ✅ AUCUN crash sous valeurs
@@ -211,6 +217,50 @@ Bouton "Télécharger PNG" pour partager le graph.
 
 ### U6 — Mode test : indicateur quand fixtures CSV manquent un symbole
 Si un test asset n'est pas dans le CSV (regression future), afficher un warning.
+
+---
+
+## 🎨 Refonte graphs & onglet Futur (demandé par Marc 2026-05-22)
+
+> Gros chantier UX. Plusieurs items nécessitent une vérif visuelle (browser) —
+> à faire avec Marc dispo pour valider le rendu.
+
+### G1 — Bug : boutons « Aller à l'onglet Futur » ne marchent pas 🔴 P1
+Les CTA des empty-states `ProjectionRequired` (mode strict) ne naviguent pas
+vers Future. À vérifier : `navigateWithFocus(Tab.FUTURE)` dans
+`components/ui/ProjectionRequired.tsx` (hash routing vs setActiveTab). Effort ~1 h.
+
+### G2 — Bug : texte qui chevauche icônes/cases, surtout onglet Futur 🟡 P2
+Overlaps visuels (« c'est moche »). Auditer les `position:absolute`,
+`truncate` manquants, largeurs fixes, z-index. Cibler Future en priorité.
+Effort ~2 h + vérif responsive 320/768/1440.
+
+### G3 — Onglet Futur en sous-onglets + plein écran 🟡 P2
+- Sous-onglet **Paramètres** (sliders/config) + sous-onglet **Graphique**
+- Bouton **plein écran** sur le graph
+- Effort ~3-4 h (restructure layout FutureProjection.tsx + ProjectionControls.tsx)
+
+### G4 — Refonte de TOUS les graphs façon Google Finance 🟡 P2 (gros)
+Demande transverse, à appliquer à chaque graph (chacun garde ses params) :
+- [ ] **Zoom molette** (in/out) + **pan** gauche/droite via slider/brush
+- [ ] **Sélecteur de période depuis le graph** (1A/5A/10A/Max…)
+- [ ] **Style/couleurs Google Finance** (ligne fine, gradient sous la courbe,
+  grille discrète, hover crosshair) tout en gardant nos paramètres en plus
+- Recharts supporte `Brush` (pan) et le zoom via domaine contrôlé ; molette =
+  handler `onWheel` custom. Évaluer aussi `recharts` + lib zoom ou alternative.
+- Effort ~8-12 h (composant graph réutilisable partagé). **Prérequis** : créer
+  un `<FinanceChart>` générique pour ne pas réimplémenter par onglet.
+
+### G5 — Graph Futur : toutes les icônes d'événements, individuellement 🟡 P2
+Afficher chaque événement (enfant, achat voiture, impôts, hypothèque, vente,
+reno, voyage…) avec son icône **distincte et cliquable**, pas un point unique
+agrégé. Lié au tooltip G6. Effort ~3 h.
+
+### G6 — Refonte infobulle graph Futur 🟡 P2
+Affichage actuel des événements (vente CELIAPP, naissance enfant, etc.) jugé
+« cheap ». Rendre plus beau/vivant : carte par événement avec icône, couleur
+sémantique, montant formaté, mini-hiérarchie. Fichier
+`components/projection/ProjectionTooltip.tsx`. Effort ~3 h.
 
 ---
 
@@ -362,19 +412,23 @@ Priorité de traitement :
 |-----------|---------------|--------|------|
 | P0 Sécurité | S2 IndexedDB backup (reporté, dépend décision A8) | ~3 h | S1 auth ✅, B0 #310 ✅, gate lint ✅ |
 | P1 Centralisation | C2 (brancher TaxCenter/Investments/RealEstate) + C4 (code mort) | ~4 h | C1 moteur ✅ complet |
-| P1 Bugs | TB3 (investigué, repro Marc requise), TB4 (Marc), B3/B4 reportés | ~1-2 h si bug | non-bloquant |
+| P1 Bugs | **TB3 cards à 0 = NaN confirmé**, G1 boutons « aller Futur » cassés ; TB4 (Marc), B3/B4 reportés | ~2 h | TB3+G1 = vrais bugs |
+| 🎨 Refonte graphs & Futur | G2 overlaps, G3 sous-onglets+plein écran, G4 zoom/pan/style Google Finance (tous graphs), G5 icônes events, G6 tooltip | ~20-25 h | demandé 2026-05-22, gros chantier |
 | P2 UX | U3 toggle MC, U4 tooltip groups, export PNG/PDF | ~4 h | U2/U5/U6 ✅, dark mode rejeté |
 | P2 Performance | P1 bundle audit, P3 profiler worker | ~4 h | P2 SW cache ✅ |
 | P2 Tests | T2 Playwright, T3 coverage 64→80%, T4 automatiser manuels | ~8 h | T1 convergence ✅ |
 | P3 Docs | — | — | D1-D4 ✅ + AUTH_SETUP ✅ |
-| P3 Dette tech | DT1 imports (~98 warnings), DT2 `any`, DT4 split testFixtures, DT5 split worker | ~6 h | non-critique |
-| **Total restant** | **~14 items actionnables** | **~30 h** | gros postes = tests + dette + UX |
+| P3 Dette tech | DT2 `any`, DT4 split testFixtures, DT5 split worker | ~5 h | DT1 imports ✅ fait |
+| **Total restant** | **~19 items actionnables** | **~55 h** | gros poste = refonte graphs/Futur |
 
 **Progression session 2026-05-22** :
 - ✅ **S1 — Cloudflare Access** activé (login Google, restreint à Marc) + [AUTH_SETUP.md](AUTH_SETUP.md)
 - ✅ **B0 — React #310** corrigé (HealthIndicator : early-return après les hooks)
 - ✅ **Gate lint** : étape CI + `prebuild: npm run lint` (bloque rules-of-hooks avant prod)
-- ✅ **TB3** investigué (worker/calc OK, repro Marc requise — pas un bug worker)
+- ✅ **TB3** investigué puis **confirmé bug** par Marc (7 cards à 0 = NaN dans
+  computeEstateNetWorth, pas un bug worker) — à fixer (trace NaN)
+- ✅ **DT1 imports** : tous les imports morts retirés (9 fichiers, 502→461 warnings)
+- 🆕 **Refonte graphs & Futur** (G1-G6) ajoutée au backlog suite au retour Marc
 - ⏳ Reste à valider par Marc : hard-reload prod (#310), drag sliders Future (TB4)
 
 **Progression session 2026-05-21** :

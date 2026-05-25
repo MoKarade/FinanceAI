@@ -7,7 +7,8 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { Tab, AppState, Transaction, BudgetCategory } from './types';
 import { fetchTransactions } from './services/eraContext';
 import { INITIAL_CHILD_GOAL } from './constants';
-import { parseTransactions, markDuplicates } from './utils/transactionParser';
+import { markDuplicates } from './utils/transactionParser';
+import { parseBankCsv } from './services/import/parseBankCsv';
 import { fetchAssetHistory, fetchFxRates } from './services/finance';
 // Phase 3E perf — lazy-load pdfReport (jspdf = 595KB) seulement au clic
 // "Générer PDF" plutôt qu'au boot de l'app.
@@ -489,11 +490,11 @@ export const App: React.FC = () => {
     };
 
     const handleManualImport = (rawData: string) => {
-        const parsed = parseTransactions(rawData);
+        const parsed = parseBankCsv(rawData).transactions;
         const combined = [...parsed, ...state.transactions];
         const deduped = markDuplicates(combined);
         setAppState({ transactions: deduped, lastUpdate: Date.now() });
-        showToast(`${deduped.length} transactions importees`, 'success');
+        showToast(`${parsed.length} transaction(s) importée(s)`, 'success');
     };
 
     // Phase 3B — memos extraits dans utils/useDerivedFinancials.ts

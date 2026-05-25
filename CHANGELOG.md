@@ -6,7 +6,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
-## [unreleased — Clés chiffrées · fix budget · plan d'action · crypto CoinGecko] — 2026-05-25
+## [unreleased — Clés chiffrées · fix budget · plan d'action · crypto · import CSV] — 2026-05-25
 
 > **Bug corrigé** : « je mets mes clés era / Finnhub et rien ne se charge ».
 > Cause racine — l'audit C5 (2026-05-21) avait rendu les clés API
@@ -67,6 +67,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - Historique : `market_chart` *downsamplé* à 1 point/jour côté client (évite le
   param `interval=daily` réservé Enterprise). `https://api.coingecko.com` ajouté à
   la CSP. 7 tests ; fetch crypto vérifié dans le navigateur (BTC en CAD via la CSP).
+
+### Banque — import CSV universel (gratuit, 100% local)
+
+- Nouveau parseur `services/import/parseBankCsv.ts` qui gère **n'importe quel
+  relevé** : séparateur virgule/`;`/TAB auto-détecté, guillemets, en-têtes FR/EN,
+  mapping de colonnes, débit/crédit séparés, dates ISO ou JJ/MM ou MM/JJ
+  (déduites), montants `$ 1 234,56` (décimale FR) et `(50,00)` négatif. Remplace
+  l'ancien `parseTransactions` (TAB/`;` + JJ/MM/AAAA seulement).
+- Nouveau composant `ImportBankStatement` dans Paramètres : choix de fichier →
+  **aperçu** (séparateur/colonnes détectés + 3 lignes + compte) → import. Rien ne
+  quitte le navigateur.
+- Le champ « Era Context Token » (cassé, era est MCP-only) est **retiré**.
+- 9 tests sur le parseur ; flux complet vérifié dans le navigateur (dépôt CSV →
+  aperçu → import → toast).
 
 ---
 

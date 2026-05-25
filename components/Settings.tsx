@@ -11,6 +11,7 @@ import { PayslipUploadCard } from './settings/PayslipUploadCard';
 import { MissingDataChecklist } from './ui/MissingDataBanner';
 import { usePendingFocus } from '../utils/usePendingFocus';
 import { TestModePanel } from './settings/TestModePanel';
+import { ImportBankStatement } from './import/ImportBankStatement';
 
 interface SettingsProps {
   apiKeys: AppState['apiKeys'];
@@ -47,6 +48,7 @@ export const Settings: React.FC<SettingsProps> = ({
   setInitialBalances,
   transactions,
   budgetItems,
+  onImportData,
   assets,
   savingsGoals,
   travelGoals,
@@ -282,6 +284,8 @@ export const Settings: React.FC<SettingsProps> = ({
           </div>
         </Card>
 
+        <ImportBankStatement onImport={onImportData} />
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card title="Cles API & Services">
             <div className="space-y-4">
@@ -305,18 +309,6 @@ export const Settings: React.FC<SettingsProps> = ({
                   </div>
                 )}
                 <p className="text-xs text-gray-500 mt-1">Pour Claude Sonnet/Haiku — analyse, catégorisation, vision. Obtenez votre clé sur <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer" className="text-info-400 underline">console.anthropic.com</a></p>
-              </div>
-              <div data-focus-section="apiKeys-eraContext">
-                <label htmlFor="apikey-era" className="block text-sm text-gray-400 mb-1">Era Context Token</label>
-                <input
-                  id="apikey-era"
-                  type="password"
-                  value={apiKeys?.eraContext || ''}
-                  onChange={(e) => setApiKeys({ ...apiKeys, eraContext: e.target.value })}
-                  className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
-                  placeholder="Token Era Context..."
-                />
-                <p className="text-xs text-gray-500 mt-1">Pour la synchronisation des transactions via era.app.</p>
               </div>
               <div>
                 <label htmlFor="apikey-finnhub" className="block text-sm text-gray-400 mb-1">Finnhub API Key (Données boursières)</label>

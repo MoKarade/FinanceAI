@@ -6,7 +6,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
-## [unreleased — Clés API persistées chiffrées + diagnostic era/Finnhub] — 2026-05-25
+## [unreleased — Clés chiffrées · fix budget · plan d'action hiérarchique] — 2026-05-25
 
 > **Bug corrigé** : « je mets mes clés era / Finnhub et rien ne se charge ».
 > Cause racine — l'audit C5 (2026-05-21) avait rendu les clés API
@@ -38,6 +38,24 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - `fix(era)` (commit `2165c40`, déjà en prod) : un retour Era à **0 transaction**
   n'est plus muet → toast explicite. Combiné à la persistance, era/Finnhub
   deviennent **auto-diagnostiquants** (succès / 0-tx / erreur réseau-CORS visibles).
+
+### Fix budget — impossible d'ajouter une catégorie
+
+- **Bug** : `BudgetGroupTable` faisait `return null` quand le groupe était vide,
+  ce qui masquait aussi son bouton « + Ajouter ». Avec `INITIAL_BUDGET = []`, un
+  nouvel utilisateur ne pouvait créer **aucune** catégorie de dépense (bloquant).
+- **Fix** : empty state explicite + bouton « + Ajouter » toujours rendu. Vérifié
+  dans le navigateur (groupe vide → bouton → ajout). 3 tests de régression.
+
+### Plan d'action HIÉRARCHIQUE (onglet Futur)
+
+- Le plan d'action plat (liste par année) devient un **drill-down progressif** :
+  Vue d'ensemble → décennie → 3 ans → année → semestre → trimestre → mois →
+  conseils. Fil d'Ariane cliquable pour remonter.
+- Moteur pur `services/projection/actionPlanHierarchy.ts` (découpe le flux mensuel
+  par `monthIndex`, année par calendrier) + UI `ActionPlanDrilldown.tsx`. Chaque
+  niveau montre le flux net par compte + des conseils dérivés des flux réels (aucune
+  règle inventée). 6 tests sur le moteur ; drill-down vérifié dans le navigateur.
 
 ---
 

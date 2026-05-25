@@ -24,7 +24,7 @@ import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ProjectionControls } from './projection/ProjectionControls';
 import { rankStrategies, OBJECTIVE_LABELS, type OptimizeObjective } from '../services/projection/strategyRanking';
 import { usePastPortfolioHistory } from '../hooks/usePastPortfolioHistory';
-import { computeYearlyActions, ACTION_ACCOUNTS } from '../services/projection/yearlyActions';
+import { ActionPlanDrilldown } from './projection/ActionPlanDrilldown';
 
 // G10 — Légende interactive : une seule source de vérité pour les chips ET les
 // gardes de visibilité dans le graphique. `key` correspond au dataKey recharts
@@ -416,14 +416,6 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     }, [allResults, optimizeObjective]);
     const bestScenario = ranking.ranked[0] || null;
 
-    // C2 — plan d'action concret par année, dérivé du scénario actuellement affiché.
-    // On ne garde que les années avec un mouvement notable (> 100 $ sur un compte).
-    const yearlyActions = useMemo(() => computeYearlyActions(chartData), [chartData]);
-    const actionableYears = useMemo(
-        () => yearlyActions.filter((ya) => ACTION_ACCOUNTS.some((a) => Math.abs(ya.flows[a.key]) > 100)),
-        [yearlyActions],
-    );
-    const [showAllYears, setShowAllYears] = useState(false);
     // B2 — « pourquoi ? » : déplie le classement complet des scénarios (Couche 2).
     const [showRanking, setShowRanking] = useState(false);
 
@@ -913,47 +905,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </div>
                 </div>
 
-                {/* C2 — Plan d'action : ce que la stratégie te fait faire, année par année. */}
-                {actionableYears.length > 0 && (
-                    <div className="mt-6 bg-black/20 p-4 rounded-xl border border-white/5">
-                        <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
-                            <span className="text-meta font-black text-white flex items-center gap-1.5"><span aria-hidden="true">📋</span> Plan d'action</span>
-                            <span className="text-tiny text-ink-500">selon {allResults[selectedScenarioIdx]?.strategyName || 'la stratégie'}</span>
-                        </div>
-                        <p className="text-tiny text-ink-500 mb-3">Dépose 💰 / retire 🏧 par compte, chaque année, pour suivre la meilleure stratégie.</p>
-                        <ul className="space-y-1.5">
-                            {(showAllYears ? actionableYears : actionableYears.slice(0, 6)).map((ya) => {
-                                const deposits = ACTION_ACCOUNTS.filter((a) => ya.flows[a.key] > 100);
-                                const withdrawals = ACTION_ACCOUNTS.filter((a) => ya.flows[a.key] < -100);
-                                return (
-                                    <li key={ya.year} className="bg-white/[0.03] rounded-lg p-2.5">
-                                        <div className="flex items-center justify-between gap-2 mb-1.5">
-                                            <span className="text-xs font-bold text-white">{ya.year}{ya.age != null ? ` · ${ya.age} ans` : ''}</span>
-                                            {ya.isRetired && <span className="text-tiny text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded">Retraite</span>}
-                                        </div>
-                                        <div className="flex flex-wrap gap-1.5 text-tiny font-mono">
-                                            {deposits.map((a) => (
-                                                <span key={a.key} className="px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-300 privacy-blur">💰 {a.label} +{Math.round(ya.flows[a.key]).toLocaleString('fr-CA')}$</span>
-                                            ))}
-                                            {withdrawals.map((a) => (
-                                                <span key={a.key} className="px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-300 privacy-blur">🏧 {a.label} −{Math.abs(Math.round(ya.flows[a.key])).toLocaleString('fr-CA')}$</span>
-                                            ))}
-                                        </div>
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                        {actionableYears.length > 6 && (
-                            <button
-                                type="button"
-                                onClick={() => setShowAllYears((v) => !v)}
-                                className="mt-2.5 text-tiny font-bold text-primary hover:underline focus-ring rounded px-1"
-                            >
-                                {showAllYears ? 'Voir moins' : `Voir toutes les années (${actionableYears.length})`}
-                            </button>
-                        )}
-                    </div>
-                )}
+                {/* C2 — Plan d'action HIÉRARCHIQUE : global → décennie → 3 ans → année
+                    → semestre → trimestre → mois → conseils (drill-down au clic). */}
+                <ActionPlanDrilldown chartData={chartData} strategyName={allResults[selectedScenarioIdx]?.strategyName} />
             </Card>
             )}
         </div>

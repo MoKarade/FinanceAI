@@ -133,6 +133,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   par année (dépose 💰 / retire 🏧 par compte), dérivé de `NetTransfer<compte>`
   du scénario affiché (`services/projection/yearlyActions.ts`, testé). Prochaines
   années + « voir toutes les années ». Aucune règle inventée.
+- **B2** — « Pourquoi cette stratégie ? » : dépliant (Couche 2) sur l'optimiseur
+  qui montre le **classement complet** des scénarios (patrimoine, impôt, âge FIRE)
+  avec le 🏆 gagnant pour l'objectif choisi. Rend les raisons du choix visibles.
 
 ### Notes
 

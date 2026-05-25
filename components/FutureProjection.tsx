@@ -417,6 +417,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         [yearlyActions],
     );
     const [showAllYears, setShowAllYears] = useState(false);
+    // B2 — « pourquoi ? » : déplie le classement complet des scénarios (Couche 2).
+    const [showRanking, setShowRanking] = useState(false);
 
     // G4 — zoom molette / pan / sélecteur de période sur la courbe (remplace <Brush>).
     // A3 — consomme displayData (passé réel préfixé + futur projeté).
@@ -672,6 +674,40 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 </button>
                             )}
                         </div>
+                        {/* B2 — « pourquoi ? » : classement complet des scénarios (Couche 2). */}
+                        {ranking.ranked.length > 1 && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowRanking((v) => !v)}
+                                    aria-expanded={showRanking}
+                                    className="mt-2.5 text-tiny font-bold text-primary hover:underline focus-ring rounded px-1"
+                                >
+                                    {showRanking ? 'Masquer le pourquoi' : 'Pourquoi cette stratégie ?'}
+                                </button>
+                                {showRanking && (
+                                    <div className="mt-2 pt-2 border-t border-white/10">
+                                        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 gap-y-1 text-tiny items-center">
+                                            <span className="text-ink-500 font-bold uppercase tracking-wide">Stratégie</span>
+                                            <span className="text-ink-500 font-bold text-right">Patrim.</span>
+                                            <span className="text-ink-500 font-bold text-right">Impôt</span>
+                                            <span className="text-ink-500 font-bold text-right">FIRE</span>
+                                            {ranking.ranked.map((r, i) => (
+                                                <React.Fragment key={r.index}>
+                                                    <span className={`truncate ${i === 0 ? 'text-white font-bold' : 'text-ink-300'}`}>{i === 0 ? '🏆 ' : ''}{r.strategyName}</span>
+                                                    <span className="text-right font-mono privacy-blur text-green-300/90">{(r.estateNetWorth / 1e6).toFixed(2)}M</span>
+                                                    <span className="text-right font-mono privacy-blur text-amber-300/90">{(r.totalTaxesPaid / 1000).toFixed(0)}k</span>
+                                                    <span className="text-right font-mono text-primary">{r.fireAge != null ? `${r.fireAge}a` : '—'}</span>
+                                                </React.Fragment>
+                                            ))}
+                                        </div>
+                                        <p className="text-tiny text-ink-500 pt-2 leading-snug">
+                                            Classé selon ton objectif « {OBJECTIVE_LABELS[optimizeObjective]} ». Le 🏆 est celui qui maximise ce critère parmi les {ranking.ranked.length} scénarios calculés.
+                                        </p>
+                                    </div>
+                                )}
+                            </>
+                        )}
                     </div>
                 )}
                 {/* G4 — sélecteur de période façon Google Finance */}

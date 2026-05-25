@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { ComposedChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { ComposedChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceDot } from 'recharts';
 import { useTimeChartZoom } from '../../hooks/useTimeChartZoom';
-import { splitEventIcon } from './ProjectionTooltip';
+import { splitEventIcon, ClickableEventIcon } from './ProjectionTooltip';
 
 /**
  * G9 P1 — fenêtre détaillée du graphique Futur (clic sur la courbe).
@@ -25,17 +25,43 @@ interface AccountDef {
     gainKey?: string;
     /** Champ chartData du flux net du mois (apport − retrait) (P2). */
     flowKey?: string;
+    /** Champ chartData « espace + solde » (CELIMax/REERMax) — comptes enregistrés. */
+    roomMaxKey?: string;
+    /** Champ chartData des cotisations du mois (G19). */
+    contribKey?: string;
 }
 
 const ACCOUNTS: AccountDef[] = [
     { key: 'Liquidites', label: 'Cash (Coussin)', color: '#4b5563', gainKey: 'MarketGrowthLiquid', flowKey: 'NetTransferLiquid' },
-    { key: 'CELI', label: 'CELI', color: '#10b981', gainKey: 'MarketGrowthCELI', flowKey: 'NetTransferCELI' },
-    { key: 'REER', label: 'REER', color: '#3b82f6', gainKey: 'MarketGrowthREER', flowKey: 'NetTransferREER' },
+    { key: 'CELI', label: 'CELI', color: '#10b981', gainKey: 'MarketGrowthCELI', flowKey: 'NetTransferCELI', roomMaxKey: 'CELIMax', contribKey: 'ContribCELI' },
+    { key: 'REER', label: 'REER', color: '#3b82f6', gainKey: 'MarketGrowthREER', flowKey: 'NetTransferREER', roomMaxKey: 'REERMax', contribKey: 'ContribREER' },
     { key: 'REEE', label: 'REEE (Études)', color: '#06b6d4', gainKey: 'MarketGrowthREEE', flowKey: 'NetTransferREEE' },
     { key: 'NonReg', label: 'Non-Enregistré', color: '#f59e0b', gainKey: 'MarketGrowthNonReg', flowKey: 'NetTransferNonReg' },
     { key: 'Crypto', label: 'Crypto', color: '#a855f7', gainKey: 'MarketGrowthCrypto', flowKey: 'NetTransferCrypto' },
     { key: 'Immobilier', label: 'Immobilier', color: '#ec4899' },
 ];
+
+// G19 — espace de cotisation gagné par année (CELI/REER). Dérivation par
+// conservation : espace_gagné(Y) = espace_dispo(fin Y) − espace_dispo(fin Y−1)
+// + cotisations(Y). L'espace dispo = Max (espace + solde) − solde. Capture aussi
+// le réajout d'espace CELI après retrait. Année 1 : pas de référence → gained=null.
+interface RoomYear { year: number; gained: number | null; avail: number }
+function computeRoomByYear(chartData: any[], balanceKey: string, maxKey: string, contribKey: string): RoomYear[] {
+    const byYear = new Map<number, { availLast: number; contribs: number }>();
+    for (const d of chartData) {
+        const avail = (d[maxKey] || 0) - (d[balanceKey] || 0);
+        const cur = byYear.get(d.year) || { availLast: 0, contribs: 0 };
+        cur.availLast = avail; // dernier mois vu = décembre
+        cur.contribs += d[contribKey] || 0;
+        byYear.set(d.year, cur);
+    }
+    const years = [...byYear.keys()].sort((a, b) => a - b);
+    return years.map((y, i) => {
+        const e = byYear.get(y)!;
+        const prev = i > 0 ? byYear.get(years[i - 1])!.availLast : null;
+        return { year: y, gained: prev === null ? null : (e.availLast - prev + e.contribs), avail: e.availLast };
+    });
+}
 
 // G13 — point enrichi du drill-down : la valeur du compte + les composantes qui
 // expliquent son mouvement (toutes issues du moteur, aucune invention).
@@ -62,10 +88,10 @@ const fmtMoney = (n: number) => `${Math.round(n).toLocaleString('fr-CA')} $`;
 function explainMovement(d: AccountPoint): MovementReason[] {
     if (!d.hasDecomp) return [];
     const out: MovementReason[] = [];
-    if (d.gain > 0.5) out.push({ icon: '📈', text: `Gain marché +${fmtMoney(d.gain)}`, tone: 'pos' });
-    else if (d.gain < -0.5) out.push({ icon: '📉', text: `Perte marché ${fmtMoney(d.gain)}`, tone: 'neg' });
-    if (d.flow > 0.5) out.push({ icon: '💰', text: `Apport (dépôt) +${fmtMoney(d.flow)}`, tone: 'in' });
-    else if (d.flow < -0.5) out.push({ icon: '🏧', text: `Retrait ${fmtMoney(d.flow)}`, tone: 'out' });
+    if (d.gain > 0.5) out.push({ icon: '📈', text: `Rendement placements +${fmtMoney(d.gain)}`, tone: 'pos' });
+    else if (d.gain < -0.5) out.push({ icon: '📉', text: `Perte de marché ${fmtMoney(d.gain)}`, tone: 'neg' });
+    if (d.flow > 0.5) out.push({ icon: '💰', text: `Dépôt (argent ajouté) +${fmtMoney(d.flow)}`, tone: 'in' });
+    else if (d.flow < -0.5) out.push({ icon: '🏧', text: `Retrait (argent sorti) ${fmtMoney(d.flow)}`, tone: 'out' });
     return out;
 }
 
@@ -184,6 +210,23 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
         const i = accountSeries.findIndex((d) => d.monthIndex >= yrs * 12);
         return i === -1 ? accountSeries.length - 1 : i;
     };
+
+    // G16 — marqueurs d'événements sur le mini-graph (retraits, dépôts, achats…).
+    // On exclut le bruit récurrent (« régénération de l'espace ») et on plafonne
+    // la densité pour ne pas surcharger le petit graphique.
+    const eventMarkers = selected ? (() => {
+        const NOISE = /r[ée]g[ée]n[ée]ration|espace de cotis/i;
+        const all = zoom.visibleData
+            .filter((d) => d.events.some((e) => !NOISE.test(e)))
+            .map((d) => ({ monthIndex: d.monthIndex, value: d.value, label: d.events.find((e) => !NOISE.test(e)) || d.events[0] }));
+        const step = Math.max(1, Math.ceil(all.length / 12));
+        return all.filter((_, i) => i % step === 0);
+    })() : [];
+
+    // G19 — espace de cotisation gagné par année (CELI/REER uniquement).
+    const roomByYear = selected?.roomMaxKey && selected.contribKey
+        ? computeRoomByYear(chartData, selected.key, selected.roomMaxKey, selected.contribKey)
+        : [];
 
     const fmt = (n: number) => `${Math.round(n).toLocaleString('fr-CA')} $`;
     const blur = isPrivacyMode ? 'privacy-blur' : '';
@@ -384,6 +427,15 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                         content={<AccountDrillTooltip accountLabel={selected.label} isPrivacyMode={isPrivacyMode} />}
                                     />
                                     <Area type="monotone" dataKey="value" stroke={selected.color} strokeWidth={2} fill="url(#acct-grad)" isAnimationActive={false} name={selected.label} />
+                                    {eventMarkers.map((mk, i) => (
+                                        <ReferenceDot
+                                            key={`evt-${mk.monthIndex}-${i}`}
+                                            x={mk.monthIndex}
+                                            y={mk.value}
+                                            r={2}
+                                            shape={<ClickableEventIcon kind="flow" payload={{ label: mk.label, monthIndex: mk.monthIndex }} />}
+                                        />
+                                    ))}
                                 </ComposedChart>
                             </ResponsiveContainer>
                         </div>
@@ -392,9 +444,13 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                         {/* G13 — pourquoi la valeur bouge : plus gros mouvements + raison */}
                         {keyMoments.length > 0 && (
                             <div className="mt-4 border-t border-white/10 pt-3">
-                                <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-2">
+                                <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1">
                                     Pourquoi ça bouge — moments clés
                                 </div>
+                                <p className="text-tiny text-ink-500 mb-2 leading-snug">
+                                    La <span className="text-ink-300 font-semibold">variation</span> d'un mois = rendement de tes placements (marché)
+                                    + tes dépôts − tes retraits. Détail ci-dessous.
+                                </p>
                                 <ul className="space-y-2">
                                     {keyMoments.map((d) => {
                                         const reasons = explainMovement(d);
@@ -433,6 +489,40 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                         );
                                     })}
                                 </ul>
+                            </div>
+                        )}
+
+                        {/* G19 — espace de cotisation gagné par année (CELI/REER) */}
+                        {roomByYear.length > 0 && (
+                            <div className="mt-4 border-t border-white/10 pt-3">
+                                <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1">
+                                    Espace de cotisation gagné par année
+                                </div>
+                                <p className="text-tiny text-ink-500 mb-2 leading-snug">
+                                    Droits {selected.label} qui s'ajoutent chaque année (et ré-ajout de l'espace après un retrait, pour le CELI).
+                                </p>
+                                <div className="max-h-52 overflow-y-auto rounded-lg border border-white/10">
+                                    <table className="w-full text-xs">
+                                        <thead className="sticky top-0 bg-[#0B0E14]">
+                                            <tr className="text-tiny uppercase tracking-wide text-ink-500">
+                                                <th className="text-left font-bold px-2.5 py-1.5">Année</th>
+                                                <th className="text-right font-bold px-2.5 py-1.5">Espace gagné</th>
+                                                <th className="text-right font-bold px-2.5 py-1.5">Espace dispo.</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {roomByYear.map((r) => (
+                                                <tr key={r.year} className="border-t border-white/5">
+                                                    <td className="px-2.5 py-1.5 text-ink-200 font-semibold">{r.year}</td>
+                                                    <td className={`px-2.5 py-1.5 text-right font-mono ${blur} ${r.gained === null ? 'text-ink-600' : r.gained > 0 ? 'text-green-300' : 'text-ink-400'}`}>
+                                                        {r.gained === null ? '—' : `+${fmtMoney(r.gained)}`}
+                                                    </td>
+                                                    <td className={`px-2.5 py-1.5 text-right font-mono text-ink-300 ${blur}`}>{fmtMoney(r.avail)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
                     </>

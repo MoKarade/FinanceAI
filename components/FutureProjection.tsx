@@ -629,13 +629,6 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             <Tooltip content={<ExpertTooltip isPrivacyMode={isPrivacyMode} userName1={config.users[0]?.name} userName2={config.users[1]?.name} />} />
                             {isVisible('fire') && <ReferenceLine y={fireNumber} stroke="#f97316" strokeDasharray="5 5" label={<RefLineLabel value="Objectif FIRE" color="#f97316" />} />}
 
-                            {runMC && isVisible('montecarlo') && (
-                                <>
-                                    <Area type="monotone" dataKey="P90" stroke="none" fill="#3b82f6" fillOpacity={0.05} name="Optimiste (P90)" />
-                                    <Area type="monotone" dataKey="P50" stroke="#3b82f6" strokeDasharray="5 5" fill="none" name="Médiane (P50)" />
-                                    <Area type="monotone" dataKey="P10" stroke="none" fill="#ef4444" fillOpacity={0.05} name="Pessimiste (P10)" />
-                                </>
-                            )}
                             {isVisible('Liquidites') && <Area type="monotone" dataKey="Liquidites" stackId="1" stroke="#4b5563" fill="#4b5563" name="Cash" isAnimationActive={false} />}
                             {isVisible('CELI') && <Area type="monotone" dataKey="CELI" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} name="CELI" isAnimationActive={false}/>}
                             {isVisible('REER') && <Area type="monotone" dataKey="REER" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} name="REER" isAnimationActive={false}/>}
@@ -646,6 +639,16 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
                             {isVisible('ImpotLatent') && <Area type="monotone" dataKey="ImpotLatent" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} strokeDasharray="3 3" name="Impôt Latent" isAnimationActive={false}/>}
                             {isVisible('FluxImpots') && <Bar dataKey="FluxImpots" fill="#ef4444" fillOpacity={0.8} name="Paiement Impôts" barSize={4} isAnimationActive={false} />}
+
+                            {/* G17 — Monte Carlo dessiné PAR-DESSUS la pile (sinon occulté) en
+                                cône d'incertitude : P10/P90 pointillés + médiane pleine. */}
+                            {runMC && isVisible('montecarlo') && (
+                                <>
+                                    <Line type="monotone" dataKey="P90" stroke="#60a5fa" strokeWidth={1.5} strokeDasharray="5 4" dot={false} name="Optimiste (P90)" isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="P10" stroke="#f87171" strokeWidth={1.5} strokeDasharray="5 4" dot={false} name="Pessimiste (P10)" isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="P50" stroke="#c084fc" strokeWidth={2.5} dot={false} name="Scénario médian (P50)" isAnimationActive={false} />
+                                </>
+                            )}
 
                             {isVisible('NetWorth') && <Line type="monotone" dataKey="NetWorth" stroke="#fff" strokeWidth={3} dot={false} name="Valeur Nette Totale" isAnimationActive={false}/>}
 

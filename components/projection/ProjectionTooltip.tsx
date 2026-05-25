@@ -38,25 +38,39 @@ export const splitEventIcon = (label: string): { icon: string; text: string } =>
     return { icon: '📌', text: label };
 };
 
-// G11 v2 — infobulle au SURVOL = résumé concis (glance). Le détail complet
-// (chaque compte, flux, impôts, drill-down + le « pourquoi » détaillé) est
-// réservé au CLIC → FutureDetailModal. Décision UX validée par Marc :
-// survol lisible en < 1 s, deep-dive au clic. Fini le tooltip trop long.
-export const ExpertTooltip = ({ active, payload }: any) => {
+// Comptes affichés dans la répartition de l'infobulle (valeur + rendement du mois).
+const TOOLTIP_ACCOUNTS: Array<{ key: string; label: string; color: string; gainKey?: string }> = [
+    { key: 'Liquidites', label: 'Cash', color: '#4b5563', gainKey: 'MarketGrowthLiquid' },
+    { key: 'CELI', label: 'CELI', color: '#10b981', gainKey: 'MarketGrowthCELI' },
+    { key: 'REER', label: 'REER', color: '#3b82f6', gainKey: 'MarketGrowthREER' },
+    { key: 'REEE', label: 'REEE', color: '#06b6d4', gainKey: 'MarketGrowthREEE' },
+    { key: 'NonReg', label: 'Non-Enreg', color: '#f59e0b', gainKey: 'MarketGrowthNonReg' },
+    { key: 'Crypto', label: 'Crypto', color: '#a855f7', gainKey: 'MarketGrowthCrypto' },
+    { key: 'Immobilier', label: 'Immobilier', color: '#ec4899' },
+];
+
+// Infobulle au SURVOL — résumé clair + détail par compte (gains) + dépenses.
+// G15 : libellés explicites (« Rendement » = marché, « Dépôts » = ce que tu
+// ajoutes, gros chiffre = « Variation ce mois »). Le détail exhaustif + le
+// « pourquoi » par compte reste au CLIC (FutureDetailModal).
+export const ExpertTooltip = ({ active, payload, userName1, userName2 }: any) => {
     if (!active || !payload || !payload.length) return null;
     const data = payload[0].payload;
     const fmt = (n: number) => Math.round(n).toLocaleString('fr-CA');
 
-    // Résumé du « pourquoi » du mois : apport net (dépôts − retraits) vs gain marché.
     const totalFlow = (data.NetTransferCELI || 0) + (data.NetTransferREER || 0) + (data.NetTransferNonReg || 0)
         + (data.NetTransferCrypto || 0) + (data.NetTransferLiquid || 0) + (data.NetTransferCELIAPP || 0) + (data.NetTransferREEE || 0);
     const totalGain = (data.MarketGrowthCELI || 0) + (data.MarketGrowthREER || 0) + (data.MarketGrowthNonReg || 0)
         + (data.MarketGrowthCrypto || 0) + (data.MarketGrowthLiquid || 0) + (data.MarketGrowthCELIAPP || 0) + (data.MarketGrowthREEE || 0);
     const diffNW = data.diffNW || 0;
+    const portfolioOutflow = (data.RetraitREER || 0) + (data.RetraitCELI || 0);
     const events: string[] = [...(data.lifeEvents || []), ...(data.flowEvents || [])];
+    const accounts = TOOLTIP_ACCOUNTS
+        .map((a) => ({ ...a, value: data[a.key] || 0, gain: a.gainKey ? (data[a.gainKey] || 0) : 0 }))
+        .filter((a) => a.value !== 0);
 
     return (
-        <div className="relative bg-gradient-to-b from-[#11161f]/95 to-[#0B0E14]/95 backdrop-blur-md border border-white/15 ring-1 ring-white/5 p-3.5 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.85)] w-64 z-50 animate-fade-in">
+        <div className="relative bg-gradient-to-b from-[#11161f]/95 to-[#0B0E14]/95 backdrop-blur-md border border-white/15 ring-1 ring-white/5 p-3.5 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.85)] w-72 max-h-[480px] overflow-y-auto z-50 animate-fade-in">
             <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-primary via-purple-500 to-pink-500 opacity-80" />
 
             <div className="flex justify-between items-center gap-2 mb-2.5">
@@ -64,30 +78,62 @@ export const ExpertTooltip = ({ active, payload }: any) => {
                 <span className="text-tiny font-bold text-primary bg-primary/15 border border-primary/30 px-2 py-0.5 rounded-full whitespace-nowrap">Âge {data.age || '??'}</span>
             </div>
 
-            {/* Hero : valeur nette + variation du mois */}
+            {/* Hero : valeur nette + variation du mois (libellé explicite) */}
             <div className="rounded-xl bg-gradient-to-r from-primary/20 to-purple-500/15 border border-white/15 p-2.5 mb-2.5">
                 <div className="flex items-center justify-between gap-2">
                     <span className="text-tiny uppercase tracking-widest text-ink-300 font-bold">Valeur nette</span>
                     <span className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded ${diffNW >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-red-500/15'}`}>
-                        {diffNW > 0 ? '+' : ''}{fmt(diffNW)}$ /mois
+                        Variation {diffNW > 0 ? '+' : ''}{fmt(diffNW)}$
                     </span>
                 </div>
                 <div className="mt-1 text-2xl font-black text-white font-mono privacy-blur leading-none">{fmt(data.NetWorth || 0)}$</div>
             </div>
 
-            {/* Résumé du pourquoi : apport (ce que je mets) vs gain (marché) */}
+            {/* Pourquoi : dépôts (ce que tu ajoutes) vs rendement (marché) */}
             {(totalFlow !== 0 || totalGain !== 0) && (
-                <div className="flex items-center gap-2 mb-2.5 text-tiny font-mono">
-                    <span className={`flex-1 text-center px-1.5 py-1 rounded ${totalFlow >= 0 ? 'text-sky-300 bg-sky-500/10' : 'text-orange-300 bg-orange-500/10'} privacy-blur`} title="Ce que tu déposes / retires (apport net)">
-                        Apport {totalFlow > 0 ? '+' : ''}{fmt(totalFlow)}$
-                    </span>
-                    <span className={`flex-1 text-center px-1.5 py-1 rounded ${totalGain >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-red-500/10'} privacy-blur`} title="Ce que le marché te rapporte (gain)">
-                        Gain {totalGain > 0 ? '+' : ''}{fmt(totalGain)}$
-                    </span>
+                <div className="mb-2.5">
+                    <div className="flex items-center gap-2 text-tiny font-mono">
+                        <span className={`flex-1 text-center px-1.5 py-1 rounded ${totalFlow >= 0 ? 'text-sky-300 bg-sky-500/10' : 'text-orange-300 bg-orange-500/10'} privacy-blur`} title="Argent que tu ajoutes toi-même (dépôts − retraits)">
+                            Dépôts {totalFlow > 0 ? '+' : ''}{fmt(totalFlow)}$
+                        </span>
+                        <span className={`flex-1 text-center px-1.5 py-1 rounded ${totalGain >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-red-500/10'} privacy-blur`} title="Ce que tes placements rapportent (rendement du marché)">
+                            Rendement {totalGain > 0 ? '+' : ''}{fmt(totalGain)}$
+                        </span>
+                    </div>
+                    <div className="text-[10px] text-ink-600 text-center mt-1">Dépôts = ce que tu ajoutes · Rendement = ce que le marché rapporte</div>
                 </div>
             )}
 
-            {/* Présence d'événement(s) — aperçu compact, détail au clic */}
+            {/* Revenus / dépenses du mois */}
+            <div className="space-y-1 mb-2.5 text-xs">
+                {(data.IncomeMarc || 0) > 0 && <div className="flex justify-between"><span className="text-gray-400">Paye {userName1 || 'Util. 1'}</span><span className="font-mono text-green-400 privacy-blur">+{fmt(data.IncomeMarc)}$</span></div>}
+                {(data.IncomeAnna || 0) > 0 && <div className="flex justify-between"><span className="text-gray-400">Paye {userName2 || 'Util. 2'}</span><span className="font-mono text-green-400 privacy-blur">+{fmt(data.IncomeAnna)}$</span></div>}
+                {(data.IncomeRetirement || 0) > 0 && <div className="flex justify-between"><span className="text-gray-400">Rentes / retraite</span><span className="font-mono text-green-400 privacy-blur">+{fmt(data.IncomeRetirement)}$</span></div>}
+                {portfolioOutflow > 0 && <div className="flex justify-between"><span className="text-gray-400">Décaissement portfolio</span><span className="font-mono text-amber-400 privacy-blur">+{fmt(portfolioOutflow)}$</span></div>}
+                {(data.Expenses || 0) > 0 && <div className="flex justify-between"><span className="text-gray-400">Dépenses de vie</span><span className="font-mono text-red-400 privacy-blur">-{fmt(data.Expenses)}$</span></div>}
+            </div>
+
+            {/* Répartition par compte : valeur + rendement du mois (G14) */}
+            {accounts.length > 0 && (
+                <div className="bg-black/30 p-2.5 rounded-xl space-y-1 text-xs border border-white/10 mb-2.5">
+                    <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1">Par compte (valeur · rendement)</div>
+                    {accounts.map((a) => (
+                        <div key={a.key} className="flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-1.5 text-gray-300 min-w-0">
+                                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: a.color }} />
+                                <span className="truncate">{a.label}</span>
+                            </span>
+                            <span className="flex items-center gap-1.5 shrink-0 font-mono">
+                                <span className="privacy-blur text-white">{fmt(a.value)}$</span>
+                                {Math.abs(a.gain) > 0.5 && (
+                                    <span className={`text-[10px] ${a.gain >= 0 ? 'text-green-400' : 'text-red-400'}`}>{a.gain > 0 ? '+' : ''}{fmt(a.gain)}</span>
+                                )}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            )}
+
             {events.length > 0 && (
                 <div className="flex items-center gap-1.5 mb-2 text-tiny text-yellow-200 bg-yellow-500/5 rounded-lg px-2 py-1.5 border border-yellow-500/15">
                     <span className="shrink-0" aria-hidden="true">{splitEventIcon(events[0]).icon}</span>

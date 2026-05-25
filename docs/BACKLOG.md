@@ -555,9 +555,14 @@ Priorité de traitement :
 - ✅ **G13** — explication des mouvements par compte dans le drill-down (gain marché
   vs apport/retrait + moments clés + causes via événements moteur, aucune devinette).
 - ✅ **G11** — infobulle au survol refondue en résumé concis, détail complet au clic.
+- ✅ **G14-G19** — infobulle : détail par compte + dépenses restaurés (G14) ; libellés
+  clarifiés (G15) ; icônes d'événements sur les graphs de compte (G16) ; Monte Carlo
+  visible en cône (G17) + reproductibilité confirmée (G18) ; espace de cotisation
+  gagné par année CELI/REER (G19, dérivé, aucune extension moteur).
 - ✅ **Bugs** réglés : mode test préserve les clés API, badge couple cliquable,
   sidebar onglets fluide (icônes stables au survol).
 - ⏳ Reste : TB3 dormant, SH3 backup chiffré (analysé, faible valeur).
+  Limite connue : espace de cotisation FHSA/CELIAPP non affiché (pas de `Max` émis par le moteur).
 
 **Progression session 2026-05-22** :
 - ✅ **S1 — Cloudflare Access** activé (login Google, restreint à Marc) + [AUTH_SETUP.md](AUTH_SETUP.md)

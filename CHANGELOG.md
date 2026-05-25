@@ -74,6 +74,25 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   le détail exhaustif (chaque compte, flux, impôts, drill-down) est réservé au
   **clic** dans la modale. Règle le souci « infobulle trop longue pour sa taille ».
 
+### Lisibilité + espace de cotisation (G14-G19)
+
+- **G14** — l'infobulle au survol redonne le détail par compte (valeur + rendement
+  du mois par compte) et les revenus/dépenses, en plus du hero valeur nette.
+- **G15** — libellés clarifiés : « Gain marché » → « Rendement placements »,
+  « Retrait » → « Retrait (argent sorti) », le gros chiffre est nommé « Variation »,
+  + une ligne de légende expliquant Variation = rendement + dépôts − retraits.
+- **G16** — icônes d'événements (retraits, achats…) sur chaque mini-graph de
+  compte dans le drill-down, avec exclusion du bruit récurrent et plafond de densité.
+- **G17** — Monte Carlo bien plus visible : tracé en cône d'incertitude
+  (P10/P90 pointillés + médiane pleine) **par-dessus** la pile d'aires (il était
+  occulté + à 5 % d'opacité). 
+- **G18** — Monte Carlo confirmé déjà reproductible (RNG seedé
+  `scenarioType-strategy-iteration`, aucun `Math.random`) : mêmes percentiles à
+  chaque recalcul. La stabilité est désormais visible grâce à G17.
+- **G19** — détail **par année de l'espace de cotisation gagné** (CELI/REER) dans
+  le drill-down : dérivé par conservation depuis `CELIMax`/`REERMax` + cotisations
+  (capture aussi le ré-ajout d'espace CELI après un retrait/RAP). Aucune extension moteur.
+
 ### Notes
 
 - Qualité : `typecheck` 0 / `lint` 0 / **607 tests** verts à chaque palier, zoom

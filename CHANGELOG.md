@@ -98,6 +98,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   Le moteur émet désormais `CELIAPPMax = fhsaRoom + celiapp` (additif, ne change pas la
   simulation). Note : il ne s'affiche que s'il est financé (achat immo futur).
 
+### Optimiseur « meilleure façon » — Phase 1 (G21)
+
+- **Sélecteur d'objectif** dans l'onglet Futur (Équilibré / Patrimoine max / Impôt
+  minimum / FIRE le plus tôt), persisté en localStorage.
+- **Recommandation auto** : l'app classe les 7 scénarios déjà calculés selon
+  l'objectif et propose le meilleur (nom + patrimoine + impôt à vie + âge FIRE),
+  avec un bouton « Appliquer cette stratégie ». Module pur `strategyRanking.ts`
+  (testé, 6 cas) — réutilise les métriques déterministes par scénario, aucune
+  relance de simulation. Phases 2-3 à venir (actions concrètes par année + vraie
+  recherche multi-stratégies dans le moteur).
+
 ### Notes
 
 - Qualité : `typecheck` 0 / `lint` 0 / **607 tests** verts à chaque palier, zoom

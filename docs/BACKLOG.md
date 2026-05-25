@@ -565,7 +565,21 @@ Priorité de traitement :
   sidebar onglets fluide (icônes stables au survol).
 - ⏳ Reste : TB3 dormant, SH3 backup chiffré (analysé, faible valeur).
 
-### 🎯 G21 — Optimiseur « meilleure façon de gérer mon argent » (GROS CHANTIER, à planifier)
+### 🎯 G21 — Optimiseur « meilleure façon de gérer mon argent » (GROS CHANTIER)
+
+**Cadrage Marc (2026-05-25)** : objectif **sélectionnable dans l'app**, optimiser
+**tout** (achat RAP/FHSA/CELI, allocation cotisations, ordre de retrait, meilleur
+scénario auto), présentation = **les deux** (meilleur scénario + pourquoi ET actions
+concrètes par année).
+
+- ✅ **Phase 1 FAITE** — sélecteur d'objectif + classement des 7 scénarios
+  (`strategyRanking.ts`, testé) + recommandation « meilleur + pourquoi » + bouton
+  Appliquer. Réutilise les métriques existantes, aucune relance de simulation.
+- ⏳ **Phase 2** — actions concrètes par année (cotisations/retraits par compte
+  dérivés du meilleur scénario, déjà dans chartData).
+- ⏳ **Phase 3** (gros moteur) — vraie recherche multi-stratégies : tester plusieurs
+  ordres de retrait / allocations / montages RAP-vs-FHSA + décision FHSA pour l'achat.
+
 
 Demande Marc : l'onglet Futur doit tester plein de stratégies (ordre de retrait,
 allocation cotisations, RAP vs FHSA vs CELI pour l'achat immo, timing) et **proposer

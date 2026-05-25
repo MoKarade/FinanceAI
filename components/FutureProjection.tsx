@@ -22,6 +22,7 @@ import { ExpertTooltip, ClickableEventIcon, RefLineLabel } from './projection/Pr
 import { FutureDetailModal } from './projection/FutureDetailModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ProjectionControls } from './projection/ProjectionControls';
+import { rankStrategies, OBJECTIVE_LABELS, type OptimizeObjective } from '../services/projection/strategyRanking';
 
 // G10 — Légende interactive : une seule source de vérité pour les chips ET les
 // gardes de visibilité dans le graphique. `key` correspond au dataKey recharts
@@ -363,6 +364,21 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // G3 — sous-onglets Futur (Graphique = courbe + KPIs ; Paramètres = contrôles).
     const [futureSubTab, setFutureSubTab] = useState<'graph' | 'params'>('graph');
 
+    // G21 Phase 1 — objectif d'optimisation choisi par l'utilisateur (persisté).
+    // L'app classe les scénarios déjà calculés et recommande le meilleur.
+    const [optimizeObjective, setOptimizeObjective] = useState<OptimizeObjective>(() => {
+        try {
+            const raw = localStorage.getItem('future:objective:v1');
+            return (raw === 'wealth' || raw === 'tax' || raw === 'fire') ? raw : 'balanced';
+        } catch { return 'balanced'; }
+    });
+    const chooseObjective = (obj: OptimizeObjective) => {
+        setOptimizeObjective(obj);
+        try { localStorage.setItem('future:objective:v1', obj); } catch {/* localStorage indispo */}
+    };
+    const ranking = useMemo(() => rankStrategies(allResults || EMPTY_ARRAY, optimizeObjective), [allResults, optimizeObjective]);
+    const bestScenario = ranking.ranked[0] || null;
+
     // G4 — zoom molette / pan / sélecteur de période sur la courbe (remplace <Brush>).
     const zoom = useTimeChartZoom<any>(chartData);
 
@@ -556,6 +572,51 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         Recalcul Monte Carlo en cours…
                     </span>
                 ) : undefined}>
+                {/* G21 Phase 1 — Optimiseur : choisis un objectif, l'app recommande
+                    le meilleur des scénarios calculés et te laisse l'appliquer. */}
+                {allResults.length > 1 && bestScenario && (
+                    <div className="mb-4 rounded-xl border border-primary/25 bg-gradient-to-br from-primary/10 to-purple-500/5 p-3.5">
+                        <div className="flex items-center justify-between gap-2 flex-wrap mb-2.5">
+                            <span className="text-meta font-black text-white tracking-tight flex items-center gap-1.5">
+                                <span aria-hidden="true">🎯</span> Optimiseur — ta meilleure façon
+                            </span>
+                            <div className="flex gap-0.5 p-0.5 rounded-card bg-black/30 border border-white/5" role="group" aria-label="Objectif d'optimisation">
+                                {(['balanced', 'wealth', 'tax', 'fire'] as OptimizeObjective[]).map((obj) => (
+                                    <button
+                                        key={obj}
+                                        type="button"
+                                        onClick={() => chooseObjective(obj)}
+                                        aria-pressed={optimizeObjective === obj}
+                                        className={`px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring ${optimizeObjective === obj ? 'bg-primary text-white' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
+                                    >
+                                        {OBJECTIVE_LABELS[obj]}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <div className="min-w-0">
+                                <div className="text-sm font-bold text-white">{bestScenario.strategyName}</div>
+                                <div className="text-tiny text-ink-300 mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
+                                    <span>Patrimoine <span className="font-mono text-green-300 privacy-blur">{(bestScenario.estateNetWorth / 1e6).toFixed(2)}M$</span></span>
+                                    <span>Impôt à vie <span className="font-mono text-amber-300 privacy-blur">{(bestScenario.totalTaxesPaid / 1000).toFixed(0)}k$</span></span>
+                                    {bestScenario.fireAge != null && <span>FIRE à <span className="font-mono text-primary">{bestScenario.fireAge} ans</span></span>}
+                                </div>
+                            </div>
+                            {selectedScenarioIdx === ranking.bestIndex ? (
+                                <span className="text-tiny font-bold text-green-300 bg-green-500/10 px-2.5 py-1 rounded-card whitespace-nowrap">✓ Stratégie active</span>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedScenarioIdx(ranking.bestIndex)}
+                                    className="text-tiny font-bold text-white bg-primary hover:bg-primary/80 px-3 py-1.5 rounded-card transition-colors focus-ring whitespace-nowrap"
+                                >
+                                    Appliquer cette stratégie
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
                 {/* G4 — sélecteur de période façon Google Finance */}
                 <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                     <div className="flex gap-0.5 p-0.5 rounded-card bg-black/30 border border-white/5">

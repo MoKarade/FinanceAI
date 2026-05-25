@@ -11,6 +11,9 @@ describe('parseAmount', () => {
         expect(parseAmount('1 234,56')).toBeCloseTo(1234.56);
         expect(parseAmount('-45.00')).toBeCloseTo(-45);
         expect(parseAmount('(50,00)')).toBeCloseTo(-50); // parenthèses = négatif
+        expect(parseAmount('1,500')).toBeCloseTo(1500); // virgule + 3 chiffres = milliers
+        expect(parseAmount('1,50')).toBeCloseTo(1.5); // virgule + 2 chiffres = décimale
+        expect(parseAmount('1,234.56')).toBeCloseTo(1234.56); // format US
         expect(parseAmount('2500')).toBe(2500);
         expect(parseAmount('')).toBeNull();
         expect(parseAmount('abc')).toBeNull();

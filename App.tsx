@@ -490,11 +490,15 @@ export const App: React.FC = () => {
     };
 
     const handleManualImport = (rawData: string) => {
-        const parsed = parseBankCsv(rawData).transactions;
-        const combined = [...parsed, ...state.transactions];
+        const result = parseBankCsv(rawData);
+        const combined = [...result.transactions, ...state.transactions];
         const deduped = markDuplicates(combined);
         setAppState({ transactions: deduped, lastUpdate: Date.now() });
-        showToast(`${parsed.length} transaction(s) importée(s)`, 'success');
+        // No-silent-failure : on dit combien de lignes ont été ignorées.
+        const msg = result.skipped > 0
+            ? `${result.transactions.length} transaction(s) importée(s), ${result.skipped} ligne(s) ignorée(s).`
+            : `${result.transactions.length} transaction(s) importée(s)`;
+        showToast(msg, 'success');
     };
 
     // Phase 3B — memos extraits dans utils/useDerivedFinancials.ts

@@ -262,6 +262,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                 </table>
                 )}
                 <button
+                    type="button"
                     onClick={() => onAddItem(nature)}
                     className="w-full py-2 text-tiny text-gray-500 hover:text-white hover:bg-white/5 transition-colors border-t border-white/5"
                 >

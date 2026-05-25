@@ -160,6 +160,10 @@ const looksLikeHeader = (cells: string[], cols: BankCsvColumns): boolean => {
     return parseDate(cells[cols.date] ?? '', 'ISO') === null && parseDate(cells[cols.date] ?? '', 'DMY') === null;
 };
 
+// Compteur monotone d'IDs : Date.now() seul n'est pas unique si deux imports
+// tombent dans la même milliseconde → collisions d'ID = corruption d'état React.
+let importIdCounter = Date.now();
+
 export const parseBankCsv = (raw: string): ParsedBankCsv => {
     const lines = (raw ?? '').replace(/\r\n?/g, '\n').split('\n').filter((l) => l.trim().length > 0);
     const empty: ParsedBankCsv = {
@@ -205,7 +209,7 @@ export const parseBankCsv = (raw: string): ParsedBankCsv => {
     const transactions: Transaction[] = [];
     let skipped = 0;
 
-    rows.forEach((r, idx) => {
+    rows.forEach((r) => {
         const isoDate = parseDate(at(r, columns.date), dateOrder);
         if (!isoDate) { skipped++; return; }
 
@@ -226,7 +230,7 @@ export const parseBankCsv = (raw: string): ParsedBankCsv => {
         const isTransfer = lc.includes('virement') || lc.includes('transfert') || lc.includes('transfer');
 
         transactions.push({
-            id: -(Date.now() * 1000 + idx),
+            id: -(importIdCounter++),
             date: isoDate,
             payee,
             amount,

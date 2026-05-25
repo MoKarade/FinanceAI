@@ -235,7 +235,9 @@ const getInitialStateWithMigration = (): AppState => {
             const watchedPrefixes = ['app_', 'cached_', 'financeai-', 'fx_rates_', 'categorization_', 'initial_', 'lm_', 'gemini_'];
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
-                if (key && watchedPrefixes.some(p => key.startsWith(p))) {
+                // On exclut le blob de clés chiffrées du dump de crash (sécurité H1) :
+                // pas besoin de l'élargir à une 2e clef localStorage.
+                if (key && key !== 'app_api_keys_enc' && key !== 'app_api_keys' && watchedPrefixes.some(p => key.startsWith(p))) {
                     corruptedDump[key] = localStorage.getItem(key);
                 }
             }

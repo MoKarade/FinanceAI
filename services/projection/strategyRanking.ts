@@ -20,6 +20,17 @@ export interface RankableScenario {
     totalTaxesPaid: number;
     minNetWorth: number;
     chartData: Array<{ NetWorth?: number; FireTarget?: number; age?: number; monthIndex?: number }>;
+    /** C3 — 'strategy' = façon de gérer comparable ; 'stress' = test de monde. */
+    kind?: 'strategy' | 'stress' | string;
+}
+
+export interface RankStrategiesOptions {
+    /**
+     * Ne classe que les scénarios éligibles (ex : les façons de GÉRER sous le même
+     * monde — pas les stress-tests). L'`index` retourné reste celui du tableau
+     * d'origine, pour que « Appliquer » sélectionne le bon scénario.
+     */
+    eligible?: (s: RankableScenario, index: number) => boolean;
 }
 
 export interface RankedScenario {
@@ -54,13 +65,24 @@ function fireAgeOf(s: RankableScenario): number | null {
 // robustesse (creux le plus haut) et précocité du FIRE.
 const BALANCED_WEIGHTS = { estate: 0.4, tax: 0.25, robustness: 0.2, fire: 0.15 } as const;
 
-export function rankStrategies(scenarios: RankableScenario[], objective: OptimizeObjective): RankingResult {
+export function rankStrategies(
+    scenarios: RankableScenario[],
+    objective: OptimizeObjective,
+    opts?: RankStrategiesOptions,
+): RankingResult {
     if (scenarios.length === 0) return { ranked: [], bestIndex: 0, objective };
 
-    const estates = scenarios.map((s) => s.estateNetWorth || 0);
-    const taxes = scenarios.map((s) => s.totalTaxesPaid || 0);
-    const mins = scenarios.map((s) => s.minNetWorth || 0);
-    const fireMonths = scenarios.map(fireMonthIndex);
+    // C3 — on ne note que les scénarios éligibles (comparables entre eux), mais on
+    // conserve leur index d'origine. Les normalisations se font sur ce sous-ensemble.
+    const entries = scenarios
+        .map((s, i) => ({ s, i }))
+        .filter(({ s, i }) => (opts?.eligible ? opts.eligible(s, i) : true));
+    if (entries.length === 0) return { ranked: [], bestIndex: 0, objective };
+
+    const estates = entries.map(({ s }) => s.estateNetWorth || 0);
+    const taxes = entries.map(({ s }) => s.totalTaxesPaid || 0);
+    const mins = entries.map(({ s }) => s.minNetWorth || 0);
+    const fireMonths = entries.map(({ s }) => fireMonthIndex(s));
 
     const eMin = Math.min(...estates), eMax = Math.max(...estates);
     const tMin = Math.min(...taxes), tMax = Math.max(...taxes);
@@ -69,11 +91,11 @@ export function rankStrategies(scenarios: RankableScenario[], objective: Optimiz
     const fMin = finiteFire.length ? Math.min(...finiteFire) : 0;
     const fMax = finiteFire.length ? Math.max(...finiteFire) : 1;
 
-    const scored: RankedScenario[] = scenarios.map((s, i) => {
-        const nEstate = norm(estates[i], eMin, eMax);
-        const nTax = 1 - norm(taxes[i], tMin, tMax); // moins d'impôt = mieux
-        const nRobust = norm(mins[i], mMin, mMax); // creux le plus haut = mieux
-        const nFire = Number.isFinite(fireMonths[i]) ? 1 - norm(fireMonths[i], fMin, fMax) : 0; // plus tôt = mieux ; jamais = 0
+    const scored: RankedScenario[] = entries.map(({ s, i: originalIndex }, k) => {
+        const nEstate = norm(estates[k], eMin, eMax);
+        const nTax = 1 - norm(taxes[k], tMin, tMax); // moins d'impôt = mieux
+        const nRobust = norm(mins[k], mMin, mMax); // creux le plus haut = mieux
+        const nFire = Number.isFinite(fireMonths[k]) ? 1 - norm(fireMonths[k], fMin, fMax) : 0; // plus tôt = mieux ; jamais = 0
         let score: number;
         switch (objective) {
             case 'wealth': score = nEstate; break;
@@ -84,11 +106,11 @@ export function rankStrategies(scenarios: RankableScenario[], objective: Optimiz
                     + BALANCED_WEIGHTS.robustness * nRobust + BALANCED_WEIGHTS.fire * nFire;
         }
         return {
-            index: i,
+            index: originalIndex,
             strategyName: s.strategyName,
             score,
-            estateNetWorth: estates[i],
-            totalTaxesPaid: taxes[i],
+            estateNetWorth: estates[k],
+            totalTaxesPaid: taxes[k],
             fireAge: fireAgeOf(s),
         };
     });

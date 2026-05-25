@@ -1143,6 +1143,7 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
         pros: def.pros,
         cons: def.cons,
         icon: def.icon,
+        kind: def.kind,
     }));
     const resBase = results[0]; // BASE est la référence pour gainVsAuto
 

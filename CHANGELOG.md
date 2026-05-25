@@ -136,6 +136,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **B2** — « Pourquoi cette stratégie ? » : dépliant (Couche 2) sur l'optimiseur
   qui montre le **classement complet** des scénarios (patrimoine, impôt, âge FIRE)
   avec le 🏆 gagnant pour l'objectif choisi. Rend les raisons du choix visibles.
+- **C3 (incrément 1)** — l'optimiseur compare désormais de **vraies façons de gérer**
+  sous le même monde réaliste : 3 variantes ajoutées (CELI d'abord, REER d'abord,
+  fonte du REER) à côté du Plan de Base. Champ `kind` 'strategy'/'stress' :
+  l'optimiseur ne classe que les stratégies comparables (les stress-tests de monde
+  restent pour la résilience, hors classement). Additif — les 7 scénarios existants
+  sont inchangés (aucune régression de calcul). Reste C3 : décision RAP-vs-FHSA pour
+  l'achat, asset location, recherche plus fine.
 
 ### Notes
 

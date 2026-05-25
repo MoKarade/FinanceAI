@@ -406,7 +406,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         setOptimizeObjective(obj);
         try { localStorage.setItem('future:objective:v1', obj); } catch {/* localStorage indispo */}
     };
-    const ranking = useMemo(() => rankStrategies(allResults || EMPTY_ARRAY, optimizeObjective), [allResults, optimizeObjective]);
+    // C3 — l'optimiseur ne compare que les FAÇONS DE GÉRER (kind 'strategy', même
+    // monde réaliste), pas les stress-tests de monde. Repli : si aucun scénario
+    // n'est tagué (données en cache antérieures), on classe tout.
+    const ranking = useMemo(() => {
+        const list = allResults || EMPTY_ARRAY;
+        const hasStrategyKind = list.some((r: any) => r?.kind === 'strategy');
+        return rankStrategies(list, optimizeObjective, hasStrategyKind ? { eligible: (s: any) => s?.kind === 'strategy' } : undefined);
+    }, [allResults, optimizeObjective]);
     const bestScenario = ranking.ranked[0] || null;
 
     // C2 — plan d'action concret par année, dérivé du scénario actuellement affiché.

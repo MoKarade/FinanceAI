@@ -14,6 +14,12 @@ export interface ScenarioDefinition {
     cons: string[];
     icon: string;
     delayPensions: boolean;
+    /**
+     * C3 — distingue une FAÇON DE GÉRER (strategy, monde réaliste BASE, comparable
+     * entre elles pour « la meilleure façon ») d'un STRESS-TEST de monde (inflation,
+     * krach…). L'optimiseur ne classe que les `strategy`. Absent = 'stress'.
+     */
+    kind?: 'strategy' | 'stress';
 }
 
 export const SCENARIO_DEFINITIONS: ScenarioDefinition[] = [
@@ -26,6 +32,42 @@ export const SCENARIO_DEFINITIONS: ScenarioDefinition[] = [
         cons: ['Dépendance aux marchés standards'],
         icon: '📊',
         delayPensions: false,
+        kind: 'strategy',
+    },
+    // C3 — variantes de GESTION sous le même monde réaliste (BASE) : seules
+    // comparables entre elles pour recommander « la meilleure façon de gérer ».
+    {
+        stratType: 'BASE',
+        strategy: 'PRIO_CELI',
+        strategyName: 'Gestion : CELI d’abord',
+        stratDescription: 'Cotise et retire en priorité du CELI (libre d’impôt) avant le REER. Réduit l’impôt à court terme.',
+        pros: ['Souplesse', 'Moins d’impôt immédiat'],
+        cons: ['Espace REER moins exploité tôt'],
+        icon: '🟢',
+        delayPensions: false,
+        kind: 'strategy',
+    },
+    {
+        stratType: 'BASE',
+        strategy: 'PRIO_REER',
+        strategyName: 'Gestion : REER d’abord',
+        stratDescription: 'Maximise le REER tôt (déduction au taux marginal élevé) et décaisse pendant le pont fiscal. Limite le RRIF forcé.',
+        pros: ['Déduction maximale', 'Pont fiscal optimisé'],
+        cons: ['Moins de liquidité libre d’impôt'],
+        icon: '🔵',
+        delayPensions: false,
+        kind: 'strategy',
+    },
+    {
+        stratType: 'BASE',
+        strategy: 'MELTDOWN_REER',
+        strategyName: 'Gestion : fonte du REER',
+        stratDescription: 'Décaisse agressivement le REER aux années à faible taux pour minimiser l’impôt à vie et l’impôt latent.',
+        pros: ['Impôt à vie minimisé', 'Moins d’impôt latent'],
+        cons: ['Demande de la discipline', 'Revenu imposable plus tôt'],
+        icon: '🫠',
+        delayPensions: false,
+        kind: 'strategy',
     },
     {
         stratType: 'LIBERTE_55',

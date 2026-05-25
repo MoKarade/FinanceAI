@@ -10,12 +10,22 @@
 import type { Quote, HistoryPoint, AssetProfile, DividendInfo, MarketDataProvider } from './types';
 import { withCache, clearMarketDataCache } from './cache';
 import { FinnhubProvider } from './providers/finnhub';
+import { CoinGeckoProvider, coinGeckoIdFor } from './providers/coingecko';
 
 export * from './types';
 export { clearMarketDataCache } from './cache';
 
-// Singleton provider — instancié lazy à la première requête avec la clé API.
+// Provider actions (Finnhub) — instancié quand la clé API est fournie.
 let activeProvider: MarketDataProvider | null = null;
+
+// Provider crypto (CoinGecko) — GRATUIT, sans clé, TOUJOURS disponible.
+// Indépendant de la clé Finnhub : le crypto marche même sans rien configurer.
+const cryptoProvider = new CoinGeckoProvider();
+
+/** Route par symbole : crypto connu → CoinGecko, sinon Finnhub (si configuré). */
+function pickProvider(symbol: string): MarketDataProvider | null {
+    return coinGeckoIdFor(symbol) ? cryptoProvider : activeProvider;
+}
 
 /**
  * Configure le provider actif. Appelé par l'app quand la clé Finnhub change
@@ -36,8 +46,9 @@ export function configureMarketDataProvider(opts: { finnhubKey?: string }): void
  * est inconnu / erreur réseau.
  */
 export async function getQuote(symbol: string): Promise<Quote | null> {
-    if (!activeProvider) return null;
-    return withCache('quote', symbol, () => activeProvider!.getQuote(symbol));
+    const provider = pickProvider(symbol);
+    if (!provider) return null;
+    return withCache('quote', symbol, () => provider.getQuote(symbol));
 }
 
 /**
@@ -45,9 +56,10 @@ export async function getQuote(symbol: string): Promise<Quote | null> {
  * ou aucun point disponible.
  */
 export async function getHistory(symbol: string, from: Date, to: Date): Promise<HistoryPoint[]> {
-    if (!activeProvider) return [];
+    const provider = pickProvider(symbol);
+    if (!provider) return [];
     const key = `${symbol}::${from.toISOString().slice(0, 10)}::${to.toISOString().slice(0, 10)}`;
-    const result = await withCache('history', key, () => activeProvider!.getHistory(symbol, from, to));
+    const result = await withCache('history', key, () => provider.getHistory(symbol, from, to));
     return result ?? [];
 }
 
@@ -56,14 +68,16 @@ export async function getHistory(symbol: string, from: Date, to: Date): Promise<
  * (sector/region/yield) au lieu de hardcoder dans services/assetMeta.ts.
  */
 export async function getProfile(symbol: string): Promise<AssetProfile | null> {
-    if (!activeProvider) return null;
-    return withCache('profile', symbol, () => activeProvider!.getProfile(symbol));
+    const provider = pickProvider(symbol);
+    if (!provider) return null;
+    return withCache('profile', symbol, () => provider.getProfile(symbol));
 }
 
 /** Prochains dividendes connus. Optional — provider peut ne pas l'implémenter. */
 export async function getDividends(symbol: string): Promise<DividendInfo[]> {
-    if (!activeProvider || !activeProvider.getDividends) return [];
-    const result = await withCache('dividends', symbol, () => activeProvider!.getDividends!(symbol));
+    const provider = pickProvider(symbol);
+    if (!provider || !provider.getDividends) return []; // crypto → pas de dividendes
+    const result = await withCache('dividends', symbol, () => provider.getDividends!(symbol));
     return result ?? [];
 }
 

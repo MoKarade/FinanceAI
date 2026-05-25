@@ -6,7 +6,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
-## [unreleased — Clés chiffrées · fix budget · plan d'action hiérarchique] — 2026-05-25
+## [unreleased — Clés chiffrées · fix budget · plan d'action · crypto CoinGecko] — 2026-05-25
 
 > **Bug corrigé** : « je mets mes clés era / Finnhub et rien ne se charge ».
 > Cause racine — l'audit C5 (2026-05-21) avait rendu les clés API
@@ -56,6 +56,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   par `monthIndex`, année par calendrier) + UI `ActionPlanDrilldown.tsx`. Chaque
   niveau montre le flux net par compte + des conseils dérivés des flux réels (aucune
   règle inventée). 6 tests sur le moteur ; drill-down vérifié dans le navigateur.
+
+### Crypto — prix automatiques gratuits (CoinGecko)
+
+- Nouveau provider `services/marketData/providers/coingecko.ts` : **gratuit, sans
+  clé, CORS-OK** (vérifié : `access-control-allow-origin: *`, prix en CAD natif).
+- La façade `marketData` **route par symbole** : un crypto connu (`BTC-CAD`,
+  `ETH-CAD`…) → CoinGecko ; sinon → Finnhub. Le crypto marche donc **même sans clé
+  Finnhub**. Aucune signature publique changée (`getQuote`/`getHistory`).
+- Historique : `market_chart` *downsamplé* à 1 point/jour côté client (évite le
+  param `interval=daily` réservé Enterprise). `https://api.coingecko.com` ajouté à
+  la CSP. 7 tests ; fetch crypto vérifié dans le navigateur (BTC en CAD via la CSP).
 
 ---
 

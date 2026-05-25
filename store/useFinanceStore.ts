@@ -303,6 +303,11 @@ export const useFinanceStore = create<FinanceState>()(
                 return {
                     ...prev,
                     ...fixtures,
+                    // BUG fix : les clés API sont des credentials, pas des données
+                    // financières. Le mode test ne doit jamais les écraser, sinon
+                    // eraContext / market data (actions) tombent en panne et il faut
+                    // tout re-saisir au retour. On garde toujours les vraies clés.
+                    apiKeys: prev.apiKeys,
                     isTestMode: true,
                     realDataSnapshot: persistable as Partial<AppState>,
                 };

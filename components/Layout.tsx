@@ -281,11 +281,14 @@ export const Layout: React.FC<LayoutProps> = ({
 
         {/* Footer : système + badge couple */}
         <div className="p-2 border-t border-white/5 bg-[#0F1116] shrink-0 space-y-2">
-          <nav aria-label="Outils système" className={`gap-1 ${isSidebarOpen ? 'grid grid-cols-3' : 'flex flex-col'}`}>
+          {/* U7 — disposition constante (icônes alignées à gauche, px-3) pour que
+              rien ne bouge entre l'état replié et déplié ; seuls les labels
+              apparaissent en fondu (opacity). Plus de bascule grid↔flex. */}
+          <nav aria-label="Outils système" className="flex flex-col gap-0.5">
             {[
+              { id: Tab.SETTINGS, icon: '⚙️', label: 'Configuration' },
               { id: Tab.DATA, icon: '💾', label: 'Data' },
               { id: Tab.SYSTEM, icon: '🛠️', label: 'Système' },
-              { id: Tab.SETTINGS, icon: '⚙️', label: 'Configuration' },
             ].map(item => (
               <button
                 key={item.id}
@@ -293,20 +296,27 @@ export const Layout: React.FC<LayoutProps> = ({
                 onClick={() => setActiveTab(item.id)}
                 aria-current={activeTab === item.id ? 'page' : undefined}
                 title={!isSidebarOpen ? item.label : undefined}
-                className={`flex ${isSidebarOpen ? 'flex-col' : 'flex-row'} items-center justify-center gap-1 p-2 rounded-card text-tiny font-medium transition-colors focus-ring ${
+                className={`flex flex-row items-center gap-3 px-3 py-2 rounded-card text-tiny font-medium transition-colors focus-ring ${
                   activeTab === item.id ? 'bg-white/10 text-ink-50' : 'text-ink-400 hover:bg-white/5 hover:text-ink-100'
                 }`}
               >
                 <span className="text-base shrink-0" aria-hidden="true">{item.icon}</span>
-                <span className={`whitespace-nowrap transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 max-h-0 overflow-hidden'}`}>
+                <span className={`whitespace-nowrap transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
                   {item.label}
                 </span>
               </button>
             ))}
           </nav>
-          <div className="flex justify-center">
+          {/* BUG fix : badge couple/individuel maintenant cliquable → ouvre la
+              Configuration (où on ajoute/retire le conjoint). */}
+          <button
+            type="button"
+            onClick={() => setActiveTab(Tab.SETTINGS)}
+            title="Mode Couple / Individuel — cliquer pour modifier dans Configuration"
+            className="flex justify-center w-full hover:opacity-80 transition-opacity focus-ring rounded-full"
+          >
             <CoupleModeBadge compact={!isSidebarOpen} />
-          </div>
+          </button>
         </div>
       </aside>
 

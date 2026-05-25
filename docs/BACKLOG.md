@@ -565,20 +565,50 @@ Priorité de traitement :
   sidebar onglets fluide (icônes stables au survol).
 - ⏳ Reste : TB3 dormant, SH3 backup chiffré (analysé, faible valeur).
 
-### 🎯 G21 — Optimiseur « meilleure façon de gérer mon argent » (GROS CHANTIER)
+### 🎯 INITIATIVE « COPILOTE D'ARGENT » — onglet Futur = passé + présent + futur + optimiseur (GROS CHANTIER MULTI-SESSIONS)
 
-**Cadrage Marc (2026-05-25)** : objectif **sélectionnable dans l'app**, optimiser
-**tout** (achat RAP/FHSA/CELI, allocation cotisations, ordre de retrait, meilleur
-scénario auto), présentation = **les deux** (meilleur scénario + pourquoi ET actions
-concrètes par année).
+**Vision (Marc, 2026-05-25)** : l'onglet Futur doit être *la meilleure façon possible
+de gérer mon argent*. Ligne de vie continue passé→aujourd'hui→futur, qui dit en une
+phrase quoi faire et se laisse creuser jusqu'au mois près pour comprendre pourquoi.
 
-- ✅ **Phase 1 FAITE** — sélecteur d'objectif + classement des 7 scénarios
-  (`strategyRanking.ts`, testé) + recommandation « meilleur + pourquoi » + bouton
-  Appliquer. Réutilise les métriques existantes, aucune relance de simulation.
-- ⏳ **Phase 2** — actions concrètes par année (cotisations/retraits par compte
-  dérivés du meilleur scénario, déjà dans chartData).
-- ⏳ **Phase 3** (gros moteur) — vraie recherche multi-stratégies : tester plusieurs
-  ordres de retrait / allocations / montages RAP-vs-FHSA + décision FHSA pour l'achat.
+**Principe d'affichage transversal — 3 couches (progressive disclosure)** :
+- **Couche 0 — Verdict (2 s)** : 1 phrase + 1 chiffre + pastille couleur.
+- **Couche 1 — Pourquoi résumé (survol / 1 clic)** : 2-3 raisons clés + graphe.
+- **Couche 2 — Détail total (creuser)** : par compte, par année, jour par jour (passé),
+  actions concrètes, montages. Règle : tout chiffre de Couche 0/1 est cliquable → sa justif.
+
+**Constat données (audit 2026-05-25)** : passé = AUCUNE source opérationnelle
+(`fetchPortfolioHistory()` → [] à `services/finance.ts:135`, `liveCSVBalances` jamais
+peuplé, prix quotidiens Finnhub `getHistory()` jamais appelés). Seule vraie donnée
+passée = `cached_transactions` (datées au jour, sans `accountType` → mapping requis).
+Projection = mensuelle, démarre à aujourd'hui (2026), pas de passé. ⇒ « voir le passé »
+= **reconstruire** depuis les transactions, pas juste afficher.
+
+**Pilier A — Ligne de vie (passé + présent + futur)**
+- A1 (L) — reconstruire le passé par compte depuis `cached_transactions` (rétro-cumul
+  depuis le solde actuel) + mapping accountId→type. Pur/testable. No-fake : depuis la
+  1re transaction connue seulement.
+- A2 (M, option) — brancher Finnhub `getHistory()` → `priceHistory[]` des Assets pour
+  une vraie valeur-marché **quotidienne** des placements (cache local, 1 fetch/jour).
+- A3 (M) — fusionner passé réel + futur projeté sur l'axe du graphe (passé plein, futur
+  cône MC, jonction « Aujourd'hui »), + période étendue vers le passé.
+
+**Pilier B — Affichage 3 couches**
+- B1 (S) — bandeau « Verdict » Couche 0 en haut de l'onglet (optimiseur + santé).
+- B2 (M) — « pourquoi » cliquable partout (chaque chiffre → justif en Couche 2).
+- B3 (S) — cohérence tooltip=résumé / modale=détail / bandeau=verdict (déjà amorcé).
+
+**Pilier C — Optimiseur (la cervelle)**
+- ✅ C1 (FAIT, G21 P1) — reco parmi 7 scénarios + objectif sélectionnable (`strategyRanking.ts`).
+- C2 (M) — actions concrètes par année dérivées du meilleur scénario (données déjà
+  dans chartData : Contrib*/NetTransfer*/Retrait*).
+- C3 (L/XL, moteur) — vraie recherche multi-stratégies : ordre de retrait paramétrable,
+  allocations testées, **décision achat RAP vs FHSA vs CELI**, brancher `assetLocation.ts`
+  (écrit mais non utilisé), boucle d'optimisation bornée en Web Worker.
+- C4 (M, moteur) — Monte Carlo sur les 2-3 finalistes pour classer par robustesse réelle.
+
+**Ordre de construction recommandé** : C2 → B1 → A1 → A3 → B2 → A2 → C3 → C4.
+(D'abord la valeur immédiate sur données dispo ; le gros moteur C3 en dernier quand le reste est solide.)
 
 
 Demande Marc : l'onglet Futur doit tester plein de stratégies (ordre de retrait,

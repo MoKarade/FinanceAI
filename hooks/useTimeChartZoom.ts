@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import { useState, useRef, useMemo, useCallback } from 'react';
 
 /**
  * G4 — interaction zoom/pan réutilisable pour les graphiques temporels.
@@ -14,6 +14,12 @@ import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
  *   - Glisser : pan latéral (seulement quand on est zoomé)
  *   - Double-clic / reset() : retour à la vue complète
  *   - showRange(from, to) : sélecteur de période (ex. « 10 ans »)
+ *
+ * Le listener molette est posé via un **callback ref** (et non un useEffect sur
+ * un ref objet) : React le rappelle à chaque (dé)montage du nœud, donc le
+ * listener suit toujours l'élément vivant. Corrige le bug « zoom mort après
+ * changement d'onglet » (le conteneur remontait sans que le useEffect ne se
+ * réexécute → listener attaché à un nœud détaché).
  */
 
 export interface TimeChartZoomHandlers {
@@ -25,8 +31,10 @@ export interface TimeChartZoomHandlers {
 }
 
 export interface TimeChartZoom<T> {
-    /** À poser sur le conteneur du graphique (mesure + listener molette). */
-    containerRef: React.RefObject<HTMLDivElement | null>;
+    /** Callback ref à poser sur le conteneur (`ref={containerRef}`). */
+    containerRef: (node: HTMLDivElement | null) => void;
+    /** Élément courant — pour getBoundingClientRect / requestFullscreen. */
+    containerEl: React.RefObject<HTMLDivElement | null>;
     /** Tranche visible des données (= `data` complet si non zoomé). */
     visibleData: T[];
     isZoomed: boolean;
@@ -46,12 +54,18 @@ export function useTimeChartZoom<T>(
     options?: { minPoints?: number },
 ): TimeChartZoom<T> {
     const minPoints = options?.minPoints ?? DEFAULT_MIN_POINTS;
-    const containerRef = useRef<HTMLDivElement>(null);
+    const elRef = useRef<HTMLDivElement | null>(null);
     const [range, setRange] = useState<[number, number] | null>(null);
     const [isPanning, setIsPanning] = useState(false);
     const panRef = useRef<{ startX: number; startStart: number; startEnd: number } | null>(null);
 
     const dataLength = data.length;
+
+    // Lues au moment du wheel via refs → handler stable sans closure périmée.
+    const dataLengthRef = useRef(dataLength);
+    dataLengthRef.current = dataLength;
+    const minPointsRef = useRef(minPoints);
+    minPointsRef.current = minPoints;
 
     const visibleData = useMemo(() => {
         if (!range) return data as T[];
@@ -61,41 +75,49 @@ export function useTimeChartZoom<T>(
     // Normalise puis applique une plage : si elle couvre tout, on repasse en
     // vue complète (range = null) pour réafficher le hint « molette = zoom ».
     const applyRange = useCallback((start: number, end: number) => {
-        if (start <= 0 && end >= dataLength - 1) {
+        if (start <= 0 && end >= dataLengthRef.current - 1) {
             setRange(null);
         } else {
             setRange([Math.round(start), Math.round(end)]);
         }
-    }, [dataLength]);
+    }, []);
 
-    // Molette via listener natif non-passif : `onWheel` JSX est passif en React,
-    // donc preventDefault() y est ignoré et la page scrollerait pendant le zoom.
-    useEffect(() => {
-        const el = containerRef.current;
-        if (!el || dataLength < 2) return;
+    // Molette via listener natif non-passif (onWheel JSX est passif en React →
+    // preventDefault y serait ignoré et la page scrollerait pendant le zoom).
+    const handleWheel = useCallback((e: WheelEvent) => {
+        e.preventDefault();
+        const el = elRef.current;
+        if (!el) return;
+        const dl = dataLengthRef.current;
+        if (dl < 2) return;
+        const mp = minPointsRef.current;
+        const rect = el.getBoundingClientRect();
+        const cursorRel = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        setRange((prev) => {
+            const start = prev?.[0] ?? 0;
+            const end = prev?.[1] ?? dl - 1;
+            const span = end - start;
+            const cursorIdx = start + cursorRel * span;
+            const factor = e.deltaY < 0 ? 0.85 : 1.15; // zoom in / out
+            const newSpan = Math.max(mp, Math.min(dl - 1, span * factor));
+            const newStart = Math.max(0, cursorIdx - cursorRel * newSpan);
+            const newEnd = Math.min(dl - 1, newStart + newSpan);
+            const adjustedStart = Math.max(0, newEnd - newSpan);
+            if (adjustedStart <= 0 && newEnd >= dl - 1) return null;
+            return [Math.round(adjustedStart), Math.round(newEnd)];
+        });
+    }, []);
 
-        const onWheel = (e: WheelEvent) => {
-            e.preventDefault();
-            const rect = el.getBoundingClientRect();
-            const cursorRel = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-            setRange((prev) => {
-                const start = prev?.[0] ?? 0;
-                const end = prev?.[1] ?? dataLength - 1;
-                const span = end - start;
-                const cursorIdx = start + cursorRel * span;
-                const factor = e.deltaY < 0 ? 0.85 : 1.15; // zoom in / out
-                const newSpan = Math.max(minPoints, Math.min(dataLength - 1, span * factor));
-                const newStart = Math.max(0, cursorIdx - cursorRel * newSpan);
-                const newEnd = Math.min(dataLength - 1, newStart + newSpan);
-                const adjustedStart = Math.max(0, newEnd - newSpan);
-                if (adjustedStart <= 0 && newEnd >= dataLength - 1) return null;
-                return [Math.round(adjustedStart), Math.round(newEnd)];
-            });
-        };
-
-        el.addEventListener('wheel', onWheel, { passive: false });
-        return () => el.removeEventListener('wheel', onWheel);
-    }, [dataLength, minPoints]);
+    // Callback ref : (ré)attache le listener à chaque montage du nœud.
+    const containerRef = useCallback((node: HTMLDivElement | null) => {
+        if (elRef.current) {
+            elRef.current.removeEventListener('wheel', handleWheel);
+        }
+        elRef.current = node;
+        if (node) {
+            node.addEventListener('wheel', handleWheel, { passive: false });
+        }
+    }, [handleWheel]);
 
     const onMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
         if (dataLength < 2 || !range) return; // pan désactivé en vue complète
@@ -106,7 +128,7 @@ export function useTimeChartZoom<T>(
     const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         const pan = panRef.current;
         if (!pan) return;
-        const rect = containerRef.current?.getBoundingClientRect();
+        const rect = elRef.current?.getBoundingClientRect();
         if (!rect) return;
         const span = pan.startEnd - pan.startStart;
         const deltaIdx = -((e.clientX - pan.startX) / rect.width) * span;
@@ -125,14 +147,16 @@ export function useTimeChartZoom<T>(
     const reset = useCallback(() => setRange(null), []);
 
     const showRange = useCallback((from: number, to: number) => {
-        if (dataLength < 2) return;
-        const lo = Math.max(0, Math.min(from, dataLength - 1));
-        const hi = Math.max(lo + 1, Math.min(to, dataLength - 1));
+        const dl = dataLengthRef.current;
+        if (dl < 2) return;
+        const lo = Math.max(0, Math.min(from, dl - 1));
+        const hi = Math.max(lo + 1, Math.min(to, dl - 1));
         applyRange(lo, hi);
-    }, [dataLength, applyRange]);
+    }, [applyRange]);
 
     return {
         containerRef,
+        containerEl: elRef,
         visibleData,
         isZoomed: range !== null,
         isPanning,

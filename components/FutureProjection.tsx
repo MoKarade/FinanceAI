@@ -471,16 +471,19 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 {/* G4 — sélecteur de période façon Google Finance */}
                 <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                     <div className="flex gap-0.5 p-0.5 rounded-card bg-black/30 border border-white/5">
-                        {[5, 10, 20, 30].filter((y) => y * 12 < lastMonthIndex).map((y) => (
-                            <button
-                                key={y}
-                                type="button"
-                                onClick={() => zoom.showRange(0, idxForYears(y))}
-                                className="px-2.5 py-1 text-tiny font-bold rounded text-ink-300 hover:text-white hover:bg-white/10 transition-colors focus-ring"
-                            >
-                                {y} ans
-                            </button>
-                        ))}
+                        {[5, 10, 20, 30].filter((y) => y * 12 < lastMonthIndex).map((y) => {
+                            const active = !!zoom.range && zoom.range[0] === 0 && zoom.range[1] === idxForYears(y);
+                            return (
+                                <button
+                                    key={y}
+                                    type="button"
+                                    onClick={() => zoom.showRange(0, idxForYears(y))}
+                                    className={`px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring ${active ? 'bg-primary text-white' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
+                                >
+                                    {y} ans
+                                </button>
+                            );
+                        })}
                         <button
                             type="button"
                             onClick={zoom.reset}
@@ -495,7 +498,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         </span>
                         <button
                             type="button"
-                            onClick={() => zoom.containerRef.current?.requestFullscreen?.()}
+                            onClick={() => zoom.containerEl.current?.requestFullscreen?.()}
                             className="px-2 py-1 text-tiny font-bold rounded text-ink-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors focus-ring"
                             title="Plein écran (Échap pour quitter)"
                         >

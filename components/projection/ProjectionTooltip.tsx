@@ -3,20 +3,29 @@ import React from 'react';
 // Normalise un label d'event : extrait l'emoji du début pour l'aligner dans
 // un slot fixe, et garde le reste du texte. Si pas d'emoji détecté, retourne
 // un emoji par défaut basé sur mots-clés.
+// Ordre = priorité (premier match gagne). Patterns tolérants aux accents
+// (imp[oô]t, int[ée]r[êe]t…) car le moteur émet parfois sans diacritiques.
 const EVENT_KEYWORD_ICONS: Array<[RegExp, string]> = [
-    [/voyage/i, '✈️'],
-    [/vente|maison|immo|hypo/i, '🏠'],
-    [/krach|chute|baisse marché/i, '📉'],
-    [/véhicule|voiture|auto/i, '🚗'],
-    [/réno|rénovation|travaux/i, '🔨'],
-    [/maladie|santé|hospital/i, '🩺'],
-    [/héritage|succession/i, '🎁'],
-    [/rembours.*impôt|remboursement fisc/i, '💸'],
-    [/fisc|impôt|tax/i, '🏛️'],
-    [/objectif|but financier/i, '🎯'],
-    [/enfant|naissance|bébé|reee/i, '👶'],
-    [/épargne|invest|placement/i, '💰'],
-    [/survie|coussin/i, '🛟'],
+    [/voyage|vacances/i, '✈️'],
+    [/krach|chute|baisse|correction march/i, '📉'],
+    [/v[ée]hicule|voiture/i, '🚗'],
+    [/r[ée]no|r[ée]novation|travaux/i, '🔨'],
+    [/maladie|sant[ée]|hospital/i, '🩺'],
+    [/h[ée]ritage|succession|legs/i, '🎁'],
+    [/retrait|d[ée]caiss|withdraw|sortie/i, '🏧'],
+    [/dividende|drip/i, '💵'],
+    [/gain|rendement|int[ée]r[êe]t|croissance|cumul|plus-value/i, '📈'],
+    [/cotisation|contribution|d[ée]p[oô]t|versement|apport/i, '💰'],
+    [/rrq|psv|rente|pension|prestation/i, '👴'],
+    [/rembours/i, '💸'],
+    [/fisc|imp[oô]t|\btax/i, '🏛️'],
+    [/loyer|achat.*r[ée]sidence/i, '🏠'],
+    [/vente|maison|immo|hypo|propri[ée]t/i, '🏠'],
+    [/assurance|insurance/i, '🛡️'],
+    [/objectif|but financier|cible/i, '🎯'],
+    [/enfant|naissance|b[ée]b[ée]|reee|[ée]tudes/i, '👶'],
+    [/[ée]pargne|invest|placement|celi|reer|fhsa/i, '💰'],
+    [/survie|coussin|urgence/i, '🛟'],
 ];
 
 export const splitEventIcon = (label: string): { icon: string; text: string } => {
@@ -26,7 +35,7 @@ export const splitEventIcon = (label: string): { icon: string; text: string } =>
     for (const [re, icon] of EVENT_KEYWORD_ICONS) {
         if (re.test(label)) return { icon, text: label };
     }
-    return { icon: '•', text: label };
+    return { icon: '📌', text: label };
 };
 
 export const ExpertTooltip = ({ active, payload, isPrivacyMode, userName1, userName2 }: any) => {
@@ -203,7 +212,7 @@ export const ClickableEventIcon = (props: any) => {
             <line x1={0} y1={0} x2={0} y2={dy} stroke={color} strokeWidth={1} strokeOpacity={0.45} />
             {selected && <circle cy={dy} r={r + 5} fill="none" stroke={color} strokeWidth={1.5} strokeOpacity={0.55} />}
             <circle cy={dy} r={r} fill="#0B0E14" stroke={color} strokeWidth={selected ? 3 : 1.75} />
-            <text y={dy} textAnchor="middle" dominantBaseline="central" fontSize={isLife ? 13 : 10} style={{ pointerEvents: 'none' }}>{icon}</text>
+            <text y={dy} textAnchor="middle" dominantBaseline="central" fontSize={isLife ? 13 : 10} fill="#e5e7eb" style={{ pointerEvents: 'none' }}>{icon}</text>
         </g>
     );
 };

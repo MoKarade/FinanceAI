@@ -360,6 +360,12 @@ export const App: React.FC = () => {
             if (controller.signal.aborted) return;
 
             if (newTxs.length === 0) {
+                // No-silent-failure : si l'utilisateur n'a AUCUNE transaction et qu'Era
+                // n'en renvoie aucune, on le dit (compte Era non lié à une banque, clé
+                // invalide, ou rien sur la période) au lieu de rester muet.
+                if (currentState.transactions.length === 0) {
+                    showToast("Era Context : 0 transaction reçue. Vérifie que ton compte Era est bien connecté à ta banque et que ta clé est valide.", 'info');
+                }
                 return;
             }
 

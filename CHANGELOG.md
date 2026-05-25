@@ -124,6 +124,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   Note d'honnêteté affichée (source + couverture). Le vrai passé s'affiche avec
   des titres datés + une clé Finnhub configurée.
 
+### Affichage 3 couches : verdict + plan d'action (B1, C2)
+
+- **B1** — bandeau « Verdict » (Couche 0) en haut du graphe : une phrase + un
+  chiffre + une pastille (« En bonne voie — libre dès X ans · Y M$ à l'horizon »),
+  lisible en 2 secondes. Le détail (stratégie, pourquoi) est en dessous.
+- **C2** — panneau « Plan d'action » : ce que la stratégie te fait faire année
+  par année (dépose 💰 / retire 🏧 par compte), dérivé de `NetTransfer<compte>`
+  du scénario affiché (`services/projection/yearlyActions.ts`, testé). Prochaines
+  années + « voir toutes les années ». Aucune règle inventée.
+
 ### Notes
 
 - Qualité : `typecheck` 0 / `lint` 0 / **607 tests** verts à chaque palier, zoom

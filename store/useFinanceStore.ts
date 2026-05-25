@@ -135,12 +135,17 @@ const getInitialStateWithMigration = (): AppState => {
             finnhub: '',
         };
         if (savedApiKeysStr) {
-            // V1 SECURITY (audit 2026-05-21) : la clef legacy `app_api_keys`
-            // stockait les clefs API en clair, exfiltrable via XSS ou extension
-            // malveillante. Migration : on lit une dernière fois pour ne pas
-            // perdre les clefs existantes, puis on SUPPRIME la clef du
-            // localStorage. Les nouvelles clefs vivent dans le state Zustand
-            // (excluded de persist via partialize → uniquement en mémoire).
+            // SECURITY (audit C5 2026-05-21, révisé 2026-05-25) : la clef legacy
+            // `app_api_keys` stockait les clefs API EN CLAIR (exfiltrable via XSS
+            // ou extension). On la lit une dernière fois pour ne rien perdre,
+            // puis on la SUPPRIME du localStorage.
+            //
+            // Les clefs ne sont JAMAIS persistées en clair : exclues du persist
+            // Zustand via partialize. Elles sont désormais persistées CHIFFRÉES
+            // (AES-256-GCM, clef non-extractible en IndexedDB) via
+            // services/secureKeyStore, et ré-hydratées en async au boot par
+            // App.tsx. Ici, en synchrone, elles ne sont qu'en mémoire le temps
+            // que l'hydratation chiffrée prenne le relais.
             try {
                 const parsed = JSON.parse(savedApiKeysStr);
                 safeApiKeys = {

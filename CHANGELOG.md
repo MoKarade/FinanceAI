@@ -6,6 +6,41 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Clés API persistées chiffrées + diagnostic era/Finnhub] — 2026-05-25
+
+> **Bug corrigé** : « je mets mes clés era / Finnhub et rien ne se charge ».
+> Cause racine — l'audit C5 (2026-05-21) avait rendu les clés API
+> *mémoire-seulement* ; elles disparaissaient donc à **chaque rechargement**
+> (Finnhub recevait une clé vide, l'effet era ne partait jamais). Ce n'était pas
+> un problème d'API.
+
+### Persistance chiffrée des clés API
+
+- Nouveau module `services/secureKeyStore.ts` : clé **AES-256-GCM non-extractible**
+  générée par le navigateur et stockée dans **IndexedDB** ; blob chiffré
+  (`iv ‖ ciphertext`, base64) dans `localStorage` (`app_api_keys_enc`). Un dump de
+  `localStorage` seul est inexploitable (clé absente + non ré-exportable).
+- Hydratation au boot (`App.tsx`) : les clés sont rechargées **toutes seules** au
+  démarrage — donc dès que Cloudflare Access (Google + MFA) t'a laissé entrer.
+  Saisie une fois → era + Finnhub se branchent ensuite via les effets réactifs.
+- `handleUpdateApiKeys` chiffre et persiste à chaque mise à jour ; **no-silent-failure**
+  (toast si le coffre est indisponible — vieux navigateur sans Web Crypto).
+- **Limite assumée et documentée** : protège *au repos*, pas contre un XSS *actif*
+  (un attaquant in-page peut demander le déchiffrement). La barrière contre les
+  intrus reste la CSP stricte + Cloudflare Access.
+- Migration douce de l'ancienne clé legacy `app_api_keys` (lue puis supprimée), et
+  `partialize` continue d'exclure les clés du persist Zustand en clair.
+- 7 tests (`tests/services/secureKeyStore.test.ts`) : round-trip, IV aléatoire,
+  rejet de ciphertext altéré / mauvaise clé / blob trop court. Suite : 630 tests OK.
+
+### Diagnostic era / Finnhub
+
+- `fix(era)` (commit `2165c40`, déjà en prod) : un retour Era à **0 transaction**
+  n'est plus muet → toast explicite. Combiné à la persistance, era/Finnhub
+  deviennent **auto-diagnostiquants** (succès / 0-tx / erreur réseau-CORS visibles).
+
+---
+
 ## [unreleased — cycle 17 : Refonte graphique « Google Finance » (zoom partout + Futur)] — 2026-05-22
 
 > Refonte transverse des graphiques : zoom molette / pan / reset sur **tous** les

@@ -12,6 +12,7 @@ import { fetchAssetHistory, fetchFxRates } from './services/finance';
 // Phase 3E perf — lazy-load pdfReport (jspdf = 595KB) seulement au clic
 // "Générer PDF" plutôt qu'au boot de l'app.
 import { useFinanceStore, getMigrationStatus } from './store/useFinanceStore';
+import { loadApiKeys, saveApiKeys } from './services/secureKeyStore';
 import { useShallow } from 'zustand/shallow';
 import { useDerivedFinancials } from './utils/useDerivedFinancials';
 import { TabRouter } from './components/TabRouter';
@@ -178,6 +179,36 @@ export const App: React.FC = () => {
     useEffect(() => {
         configureMarketDataProvider({ finnhubKey: state.apiKeys.finnhub });
     }, [state.apiKeys.finnhub]);
+
+    // Hydratation des clés API depuis le coffre chiffré (au boot, une fois).
+    // C5 les avait rendues mémoire-seulement → elles disparaissaient à chaque
+    // rechargement. Désormais : on les recharge tout seul au démarrage (donc
+    // dès que Cloudflare Access t'a laissé entrer via Google). Quand la clé est
+    // posée dans le store, les effets réactifs ci-dessous (Finnhub, era) partent
+    // automatiquement. Best-effort : si le coffre est indisponible (vieux
+    // navigateur, pas de Web Crypto), on ne casse pas le boot.
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const stored = await loadApiKeys();
+                if (cancelled) return;
+                if (stored && (stored.eraContext || stored.anthropic || stored.finnhub)) {
+                    useFinanceStore.getState().updateApiKeys(stored);
+                    return;
+                }
+                // Migration : clés legacy encore lues en clair au boot (avant C5)
+                // mais pas encore dans le coffre → on les chiffre maintenant.
+                const current = useFinanceStore.getState().apiKeys;
+                if (current.eraContext || current.anthropic || current.finnhub) {
+                    await saveApiKeys(current);
+                }
+            } catch (e) {
+                console.warn('[FinanceAI] Hydratation des clés chiffrées impossible:', e);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
 
     // Phase C.6 — sync Era au boot. Si l'utilisateur a un token Era configuré,
     // pré-chauffe le cache `buildEnrichedContext` (1h TTL) pour que les widgets
@@ -435,9 +466,24 @@ export const App: React.FC = () => {
         }
     };
 
-    const handleUpdateApiKeys = (keys: AppState['apiKeys']) => {
+    const handleUpdateApiKeys = async (keys: AppState['apiKeys']) => {
+        const prevEra = state.apiKeys.eraContext;
         state.updateApiKeys(keys);
-        if (keys.eraContext !== state.apiKeys.eraContext && keys.eraContext) {
+        // Persistance chiffrée : saisies une fois → rechargées tout seul au
+        // prochain boot. No-silent-failure : si le coffre est indisponible, on
+        // le dit (les clés restent valides pour la session en cours).
+        try {
+            await saveApiKeys(useFinanceStore.getState().apiKeys);
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : '';
+            showToast(
+                msg
+                    ? `Clés non sauvegardées (${msg}). Elles resteront valides jusqu'au rechargement.`
+                    : "Clés non sauvegardées : coffre chiffré indisponible. Elles resteront valides jusqu'au rechargement.",
+                'error'
+            );
+        }
+        if (keys.eraContext !== prevEra && keys.eraContext) {
             loadData(keys.eraContext, undefined);
         }
     };

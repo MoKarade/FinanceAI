@@ -37,6 +37,7 @@ interface FutureLegendItem {
 const FUTURE_LEGEND_ITEMS: FutureLegendItem[] = [
     { key: 'Liquidites', label: 'Cash', color: '#4b5563', shape: 'area' },
     { key: 'CELI', label: 'CELI', color: '#10b981', shape: 'area' },
+    { key: 'CELIAPP', label: 'CELIAPP (FHSA)', color: '#2dd4bf', shape: 'area' },
     { key: 'REER', label: 'REER', color: '#3b82f6', shape: 'area' },
     { key: 'REEE', label: 'REEE', color: '#06b6d4', shape: 'area' },
     { key: 'NonReg', label: 'Non-Enreg', color: '#f59e0b', shape: 'area' },
@@ -631,6 +632,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
                             {isVisible('Liquidites') && <Area type="monotone" dataKey="Liquidites" stackId="1" stroke="#4b5563" fill="#4b5563" name="Cash" isAnimationActive={false} />}
                             {isVisible('CELI') && <Area type="monotone" dataKey="CELI" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} name="CELI" isAnimationActive={false}/>}
+                            {isVisible('CELIAPP') && <Area type="monotone" dataKey="CELIAPP" stackId="1" stroke="#2dd4bf" fill="#2dd4bf" fillOpacity={0.6} name="CELIAPP (FHSA)" isAnimationActive={false}/>}
                             {isVisible('REER') && <Area type="monotone" dataKey="REER" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} name="REER" isAnimationActive={false}/>}
                             {isVisible('REEE') && <Area type="monotone" dataKey="REEE" stackId="1" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.6} name="REEE" isAnimationActive={false}/>}
                             {isVisible('NonReg') && <Area type="monotone" dataKey="NonReg" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} name="Non-Enreg" isAnimationActive={false}/>}

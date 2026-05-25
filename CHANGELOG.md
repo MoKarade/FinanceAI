@@ -92,6 +92,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **G19** — détail **par année de l'espace de cotisation gagné** (CELI/REER) dans
   le drill-down : dérivé par conservation depuis `CELIMax`/`REERMax` + cotisations
   (capture aussi le ré-ajout d'espace CELI après un retrait/RAP). Aucune extension moteur.
+- **G20** — le **FHSA/CELIAPP** devient un compte first-class : présent dans le graphe
+  principal (aire empilable + chip de légende), l'infobulle (valeur + rendement), la
+  modale (compte + drill-down + moments + marqueurs) et la table d'espace de cotisation.
+  Le moteur émet désormais `CELIAPPMax = fhsaRoom + celiapp` (additif, ne change pas la
+  simulation). Note : il ne s'affiche que s'il est financé (achat immo futur).
 
 ### Notes
 

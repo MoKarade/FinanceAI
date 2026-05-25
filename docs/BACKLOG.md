@@ -559,10 +559,28 @@ Priorité de traitement :
   clarifiés (G15) ; icônes d'événements sur les graphs de compte (G16) ; Monte Carlo
   visible en cône (G17) + reproductibilité confirmée (G18) ; espace de cotisation
   gagné par année CELI/REER (G19, dérivé, aucune extension moteur).
+- ✅ **G20** — FHSA/CELIAPP first-class (graphe + infobulle + modale + table d'espace) ;
+  moteur émet `CELIAPPMax`. S'affiche quand financé (achat immo futur).
 - ✅ **Bugs** réglés : mode test préserve les clés API, badge couple cliquable,
   sidebar onglets fluide (icônes stables au survol).
 - ⏳ Reste : TB3 dormant, SH3 backup chiffré (analysé, faible valeur).
-  Limite connue : espace de cotisation FHSA/CELIAPP non affiché (pas de `Max` émis par le moteur).
+
+### 🎯 G21 — Optimiseur « meilleure façon de gérer mon argent » (GROS CHANTIER, à planifier)
+
+Demande Marc : l'onglet Futur doit tester plein de stratégies (ordre de retrait,
+allocation cotisations, RAP vs FHSA vs CELI pour l'achat immo, timing) et **proposer
+LA meilleure** façon, en actions concrètes. État actuel (audit moteur) :
+- 7 scénarios statiques, **sélection manuelle** (`selectedScenarioIdx`), pas d'auto-best.
+- `drawdownOptimizer.ts` = **code mort** (n'optimise rien) ; ordre de retrait **codé en
+  dur** par stratégie dans `cashflowAllocation.ts:180-195`.
+- `assetLocation.ts` complet mais **non branché** au moteur.
+- Allocation cotisations = ordre fixe par stratégie (pas d'optimisation dynamique).
+- FHSA **cédé en bloc** à l'achat (`realEstateMonth.ts:144-149`) ; RAP = cascade fixe
+  (RAP → CELI → NonReg → REER), **aucune décision RAP vs FHSA vs CELI**.
+- Aucune boucle multi-stratégies déterministe (sauf les 7 scénarios + MC sur le choisi).
+
+À définir avec Marc : critère d'optimisation (valeur finale ? impôt ? date FIRE ?
+succès MC ?), agressivité des recommandations, format des actions proposées.
 
 **Progression session 2026-05-22** :
 - ✅ **S1 — Cloudflare Access** activé (login Google, restreint à Marc) + [AUTH_SETUP.md](AUTH_SETUP.md)

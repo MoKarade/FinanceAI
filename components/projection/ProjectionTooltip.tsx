@@ -42,6 +42,7 @@ export const splitEventIcon = (label: string): { icon: string; text: string } =>
 const TOOLTIP_ACCOUNTS: Array<{ key: string; label: string; color: string; gainKey?: string }> = [
     { key: 'Liquidites', label: 'Cash', color: '#4b5563', gainKey: 'MarketGrowthLiquid' },
     { key: 'CELI', label: 'CELI', color: '#10b981', gainKey: 'MarketGrowthCELI' },
+    { key: 'CELIAPP', label: 'CELIAPP (FHSA)', color: '#2dd4bf', gainKey: 'MarketGrowthCELIAPP' },
     { key: 'REER', label: 'REER', color: '#3b82f6', gainKey: 'MarketGrowthREER' },
     { key: 'REEE', label: 'REEE', color: '#06b6d4', gainKey: 'MarketGrowthREEE' },
     { key: 'NonReg', label: 'Non-Enreg', color: '#f59e0b', gainKey: 'MarketGrowthNonReg' },

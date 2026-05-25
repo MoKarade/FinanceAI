@@ -1068,7 +1068,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             pensionRRQ, pensionPSV, pensionPrivee,
             immoHypo, immoCharges, immoInterest, immoPrincipal, totalRentalIncome,
             liquid, celi, celiapp, reer, reee, nonReg, crypto,
-            retraitReerMois, retraitCeliMois, celiRoom, rrspRoom,
+            retraitReerMois, retraitCeliMois, celiRoom, rrspRoom, fhsaRoom,
             rapRepaymentDueTotal, realEstateEquity, mortgageBalance, activeDebtsTotal,
             prevNW, prevCELI, prevREER, prevLiquid,
             impotLatent, fluxImpots, impotReerMois, impotSalaireMois, impotGainsMois, impotDiversMois,

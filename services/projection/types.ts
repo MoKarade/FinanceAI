@@ -50,6 +50,7 @@ export interface ProjectionChartPoint {
     CELI?: number;
     CELIMax?: number;
     CELIAPP?: number;
+    CELIAPPMax?: number;
     REER?: number;
     REERMax?: number;
     REEE?: number;

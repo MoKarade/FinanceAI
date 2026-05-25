@@ -68,6 +68,7 @@ export interface MonthlyOutputCtx {
     retraitCeliMois: number;
     celiRoom: number;
     rrspRoom: number;
+    fhsaRoom: number;
     // Immobilier / dettes
     rapRepaymentDueTotal: number;
     realEstateEquity: number;
@@ -160,7 +161,7 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         pensionRRQ, pensionPSV, pensionPrivee,
         immoHypo, immoCharges, immoInterest, immoPrincipal, totalRentalIncome,
         liquid, celi, celiapp, reer, reee, nonReg, crypto,
-        retraitReerMois, retraitCeliMois, celiRoom, rrspRoom,
+        retraitReerMois, retraitCeliMois, celiRoom, rrspRoom, fhsaRoom,
         rapRepaymentDueTotal, realEstateEquity, mortgageBalance, activeDebtsTotal,
         prevNW, prevCELI, prevREER, prevLiquid,
         impotLatent, fluxImpots, impotReerMois, impotSalaireMois, impotGainsMois, impotDiversMois,
@@ -216,6 +217,7 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         RetraitCELI: Number(retraitCeliMois.toFixed(2)),
         CELIMax: Number((celiRoom + celi).toFixed(2)),
         CELIAPP: Number(celiapp.toFixed(2)),
+        CELIAPPMax: Number((fhsaRoom + celiapp).toFixed(2)),
         REER: Number(reer.toFixed(2)),
         REERMax: Number((rrspRoom + reer).toFixed(2)),
         REEE: Number(reee.toFixed(2)),

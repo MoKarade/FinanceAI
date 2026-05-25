@@ -547,6 +547,14 @@ Priorité de traitement :
 | P3 Dette tech | DT2 `any`, DT4 split testFixtures, DT5 split worker | ~5 h | DT1 imports ✅ fait |
 | **Total restant** | **~19 items actionnables** | **~55 h** | gros poste = refonte graphs/Futur |
 
+**Progression session 2026-05-25** :
+- ✅ **Cycle 17 graphs** terminé : modale détaillée au clic (G9 P1), apport-vs-gain
+  par compte (G9 P2), **légende interactive** du graph Futur (G10 — cocher/décocher
+  chaque série, persistée). Détails dans le CHANGELOG cycle 17.
+- ✅ **Bugs** réglés : mode test préserve les clés API, badge couple cliquable,
+  sidebar onglets fluide (icônes stables au survol).
+- ⏳ Reste : **G11** refonte infobulle v2 (rendue optionnelle par Marc), TB3 dormant.
+
 **Progression session 2026-05-22** :
 - ✅ **S1 — Cloudflare Access** activé (login Google, restreint à Marc) + [AUTH_SETUP.md](AUTH_SETUP.md)
 - ✅ **B0 — React #310** corrigé (HealthIndicator : early-return après les hooks)

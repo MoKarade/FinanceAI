@@ -23,6 +23,43 @@ import { FutureDetailModal } from './projection/FutureDetailModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ProjectionControls } from './projection/ProjectionControls';
 
+// G10 — Légende interactive : une seule source de vérité pour les chips ET les
+// gardes de visibilité dans le graphique. `key` correspond au dataKey recharts
+// (ou à un groupe logique : 'montecarlo', 'events', 'fire', 'aujourdhui').
+type LegendShape = 'area' | 'line' | 'bar' | 'dashed' | 'dot';
+interface FutureLegendItem {
+    key: string;
+    label: string;
+    color: string;
+    shape: LegendShape;
+    mcOnly?: boolean; // n'apparaît que si Monte Carlo est activé
+}
+const FUTURE_LEGEND_ITEMS: FutureLegendItem[] = [
+    { key: 'Liquidites', label: 'Cash', color: '#4b5563', shape: 'area' },
+    { key: 'CELI', label: 'CELI', color: '#10b981', shape: 'area' },
+    { key: 'REER', label: 'REER', color: '#3b82f6', shape: 'area' },
+    { key: 'REEE', label: 'REEE', color: '#06b6d4', shape: 'area' },
+    { key: 'NonReg', label: 'Non-Enreg', color: '#f59e0b', shape: 'area' },
+    { key: 'Crypto', label: 'Crypto', color: '#a855f7', shape: 'area' },
+    { key: 'Immobilier', label: 'Équité Immo', color: '#ec4899', shape: 'area' },
+    { key: 'NetWorth', label: 'Valeur Nette', color: '#ffffff', shape: 'line' },
+    { key: 'ImpotLatent', label: 'Impôt Latent', color: '#ef4444', shape: 'dashed' },
+    { key: 'FluxImpots', label: 'Paiement Impôts', color: '#ef4444', shape: 'bar' },
+    { key: 'montecarlo', label: 'Monte Carlo (P10–P90)', color: '#3b82f6', shape: 'dashed', mcOnly: true },
+    { key: 'events', label: 'Événements / icônes', color: '#e5e7eb', shape: 'dot' },
+    { key: 'fire', label: 'Objectif FIRE', color: '#f97316', shape: 'dashed' },
+    { key: 'aujourdhui', label: "Aujourd'hui", color: '#ffffff', shape: 'dashed' },
+];
+
+const LegendSwatch: React.FC<{ shape: LegendShape; color: string; dimmed?: boolean }> = ({ shape, color, dimmed }) => {
+    const style = { backgroundColor: color, opacity: dimmed ? 0.4 : 1 } as React.CSSProperties;
+    if (shape === 'line') return <span className="w-4 h-[3px] rounded-full shrink-0" style={style} aria-hidden="true" />;
+    if (shape === 'bar') return <span className="w-1.5 h-3 rounded-sm shrink-0" style={style} aria-hidden="true" />;
+    if (shape === 'dot') return <span className="w-2.5 h-2.5 rounded-full shrink-0" style={style} aria-hidden="true" />;
+    if (shape === 'dashed') return <span className="w-4 h-0 shrink-0 border-t-2 border-dashed" style={{ borderColor: color, opacity: dimmed ? 0.4 : 1 }} aria-hidden="true" />;
+    return <span className="w-3 h-3 rounded shrink-0" style={style} aria-hidden="true" />;
+};
+
 interface FutureProjectionProps {
   assets: Asset[];
   initialBalances: Record<string, number>;
@@ -331,6 +368,29 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // G5 — événement sélectionné (clic sur une pastille) → fiche détail.
     const [detailPoint, setDetailPoint] = useState<any>(null);
 
+    // G10 — légende interactive : on stocke les séries MASQUÉES (le delta vs
+    // défaut « tout visible »), persistées en localStorage. Même convention que
+    // Dashboard (`dashboard:hiddenAccounts:v1`) : persistance dans le setter.
+    const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(() => {
+        try {
+            const raw = localStorage.getItem('future:hiddenSeries:v1');
+            return raw ? new Set<string>(JSON.parse(raw)) : new Set<string>();
+        } catch { return new Set<string>(); }
+    });
+    const isVisible = (key: string) => !hiddenSeries.has(key);
+    const toggleSeries = (key: string) => {
+        setHiddenSeries((prev) => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key); else next.add(key);
+            try { localStorage.setItem('future:hiddenSeries:v1', JSON.stringify([...next])); } catch {/* localStorage indispo */}
+            return next;
+        });
+    };
+    const showAllSeries = () => {
+        setHiddenSeries(new Set());
+        try { localStorage.setItem('future:hiddenSeries:v1', '[]'); } catch {/* localStorage indispo */}
+    };
+
     // C6 fix (Sprint 1B) — Garde déplacée ICI (après tous les hooks) pour
     // respecter la règle des Hooks. Retourne un placeholder UI si les props
     // critiques manquent. Avant ce fix, cette garde était ligne 46 (avant les
@@ -535,32 +595,32 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             <YAxis stroke="#666" tick={{fontSize: 10}} domain={['auto', 'auto']} tickFormatter={(val) => isPrivacyMode ? '***' : `${(val/1000000).toFixed(1)}M`} />
 
                             <ReferenceLine y={0} stroke="#444" strokeWidth={2} />
-                            <ReferenceLine x={todayMonthIndex} stroke="rgba(255,255,255,0.6)" strokeDasharray="5 5" label={<RefLineLabel value="Aujourd'hui" color="#ffffff" />} />
+                            {isVisible('aujourdhui') && <ReferenceLine x={todayMonthIndex} stroke="rgba(255,255,255,0.6)" strokeDasharray="5 5" label={<RefLineLabel value="Aujourd'hui" color="#ffffff" />} />}
 
                             <Tooltip content={<ExpertTooltip isPrivacyMode={isPrivacyMode} userName1={config.users[0]?.name} userName2={config.users[1]?.name} />} />
-                            <ReferenceLine y={fireNumber} stroke="#f97316" strokeDasharray="5 5" label={<RefLineLabel value="Objectif FIRE" color="#f97316" />} />
+                            {isVisible('fire') && <ReferenceLine y={fireNumber} stroke="#f97316" strokeDasharray="5 5" label={<RefLineLabel value="Objectif FIRE" color="#f97316" />} />}
 
-                            {runMC && (
+                            {runMC && isVisible('montecarlo') && (
                                 <>
                                     <Area type="monotone" dataKey="P90" stroke="none" fill="#3b82f6" fillOpacity={0.05} name="Optimiste (P90)" />
                                     <Area type="monotone" dataKey="P50" stroke="#3b82f6" strokeDasharray="5 5" fill="none" name="Médiane (P50)" />
                                     <Area type="monotone" dataKey="P10" stroke="none" fill="#ef4444" fillOpacity={0.05} name="Pessimiste (P10)" />
                                 </>
                             )}
-                            <Area type="monotone" dataKey="Liquidites" stackId="1" stroke="#4b5563" fill="#4b5563" name="Cash" isAnimationActive={false} />
-                            <Area type="monotone" dataKey="CELI" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} name="CELI" isAnimationActive={false}/>
-                            <Area type="monotone" dataKey="REER" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} name="REER" isAnimationActive={false}/>
-                            <Area type="monotone" dataKey="REEE" stackId="1" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.6} name="REEE" isAnimationActive={false}/>
-                            <Area type="monotone" dataKey="NonReg" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} name="Non-Enreg" isAnimationActive={false}/>
-                            <Area type="monotone" dataKey="Crypto" stackId="1" stroke="#a855f7" fill="#a855f7" fillOpacity={0.6} name="Crypto" isAnimationActive={false}/>
-                            <Area type="monotone" dataKey="Immobilier" stackId="1" stroke="#ec4899" fill="#ec4899" fillOpacity={0.3} name="Équité Immo" isAnimationActive={false}/>
+                            {isVisible('Liquidites') && <Area type="monotone" dataKey="Liquidites" stackId="1" stroke="#4b5563" fill="#4b5563" name="Cash" isAnimationActive={false} />}
+                            {isVisible('CELI') && <Area type="monotone" dataKey="CELI" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} name="CELI" isAnimationActive={false}/>}
+                            {isVisible('REER') && <Area type="monotone" dataKey="REER" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} name="REER" isAnimationActive={false}/>}
+                            {isVisible('REEE') && <Area type="monotone" dataKey="REEE" stackId="1" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.6} name="REEE" isAnimationActive={false}/>}
+                            {isVisible('NonReg') && <Area type="monotone" dataKey="NonReg" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} name="Non-Enreg" isAnimationActive={false}/>}
+                            {isVisible('Crypto') && <Area type="monotone" dataKey="Crypto" stackId="1" stroke="#a855f7" fill="#a855f7" fillOpacity={0.6} name="Crypto" isAnimationActive={false}/>}
+                            {isVisible('Immobilier') && <Area type="monotone" dataKey="Immobilier" stackId="1" stroke="#ec4899" fill="#ec4899" fillOpacity={0.3} name="Équité Immo" isAnimationActive={false}/>}
 
-                            <Area type="monotone" dataKey="ImpotLatent" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} strokeDasharray="3 3" name="Impôt Latent" isAnimationActive={false}/>
-                            <Bar dataKey="FluxImpots" fill="#ef4444" fillOpacity={0.8} name="Paiement Impôts" barSize={4} isAnimationActive={false} />
+                            {isVisible('ImpotLatent') && <Area type="monotone" dataKey="ImpotLatent" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} strokeDasharray="3 3" name="Impôt Latent" isAnimationActive={false}/>}
+                            {isVisible('FluxImpots') && <Bar dataKey="FluxImpots" fill="#ef4444" fillOpacity={0.8} name="Paiement Impôts" barSize={4} isAnimationActive={false} />}
 
-                            <Line type="monotone" dataKey="NetWorth" stroke="#fff" strokeWidth={3} dot={false} name="Valeur Nette Totale" isAnimationActive={false}/>
+                            {isVisible('NetWorth') && <Line type="monotone" dataKey="NetWorth" stroke="#fff" strokeWidth={3} dot={false} name="Valeur Nette Totale" isAnimationActive={false}/>}
 
-                            {shownLifeEvents.map((evt: any, i: number) => (
+                            {isVisible('events') && shownLifeEvents.map((evt: any, i: number) => (
                                 <ReferenceDot
                                     key={`life-${i}`}
                                     x={evt.monthIndex}
@@ -576,7 +636,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 />
                             ))}
 
-                            {shownFlowEvents.map((evt: any, i: number) => (
+                            {isVisible('events') && shownFlowEvents.map((evt: any, i: number) => (
                                 <ReferenceDot
                                     key={`flow-${i}`}
                                     x={evt.monthIndex}
@@ -606,15 +666,40 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     />
                 )}
 
-                <div className="mt-6 flex flex-wrap gap-4 text-tiny text-gray-400 justify-center bg-black/20 p-4 rounded-xl border border-white/5">
-                    <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#4b5563] rounded"></span> Cash</span>
-                    <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#10b981] rounded"></span> CELI</span>
-                    <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#3b82f6] rounded"></span> REER</span>
-                    <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#06b6d4] rounded"></span> REEE</span>
-                    <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#f59e0b] rounded"></span> Non-Enregistré</span>
-                    <div className="w-px h-4 bg-white/20 mx-2"></div>
-                    <span className="flex items-center gap-1"><span className="w-4 h-1 bg-[#fff]"></span> Valeur Nette</span>
-                    <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#ef4444] opacity-30 rounded"></span> Dette Fiscale Latente (Sous 0)</span>
+                {/* G10 — légende interactive : clic = afficher/masquer la série. */}
+                <div className="mt-6 bg-black/20 p-4 rounded-xl border border-white/5">
+                    <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                        <span className="text-tiny text-ink-500 font-semibold uppercase tracking-wide">
+                            Légende — clique pour afficher / masquer
+                        </span>
+                        {hiddenSeries.size > 0 && (
+                            <button
+                                type="button"
+                                onClick={showAllSeries}
+                                className="text-tiny font-bold text-primary hover:underline focus-ring rounded px-1"
+                            >
+                                Tout réafficher ({hiddenSeries.size} masqué{hiddenSeries.size > 1 ? 's' : ''})
+                            </button>
+                        )}
+                    </div>
+                    <div className="flex flex-wrap gap-2" role="group" aria-label="Séries du graphique">
+                        {FUTURE_LEGEND_ITEMS.filter((it) => !it.mcOnly || runMC).map((it) => {
+                            const on = isVisible(it.key);
+                            return (
+                                <button
+                                    key={it.key}
+                                    type="button"
+                                    onClick={() => toggleSeries(it.key)}
+                                    aria-pressed={on}
+                                    title={on ? `Masquer ${it.label}` : `Afficher ${it.label}`}
+                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-card text-tiny font-semibold border transition-colors focus-ring ${on ? 'bg-white/10 border-white/15 text-ink-100 hover:bg-white/15' : 'bg-transparent border-white/5 text-ink-500 line-through hover:text-ink-300'}`}
+                                >
+                                    <LegendSwatch shape={it.shape} color={it.color} dimmed={!on} />
+                                    {it.label}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             </Card>
             )}

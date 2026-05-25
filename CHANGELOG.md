@@ -38,6 +38,24 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   (Acheter-vs-Louer + comparaison multi-propriétés). Dashboard + Investissements
   avaient déjà la molette (`ZoomableTimeChart`) + leur propre sélecteur de période.
 
+### Détail au clic + légende interactive (G9, G10)
+
+- **G9 P1** — clic sur le graph Futur → modale détaillée (`FutureDetailModal`,
+  `createPortal` vers `body`) : tous les comptes (valeur + variation), événement
+  du point cliqué, et **drill-down par compte** (graph valeur au fil du temps
+  avec zoom + sélecteur de période). Pastilles cliquables → même modale.
+- **G9 P2** — distinction **apport vs gain** par compte (chips Apport/Gain dans
+  l'infobulle et la modale). Données déjà émises par le moteur
+  (`Contrib*`/`MarketGrowth*`/`NetTransfer*` dans `chartData`) → UI seule, aucune
+  extension moteur.
+- **G10** — **légende interactive** : chaque série (Cash/CELI/REER/REEE/Non-Enreg/
+  Crypto/Équité Immo, Valeur Nette, Impôt Latent, Paiement Impôts, Monte Carlo,
+  Événements/icônes, Objectif FIRE, Aujourd'hui) est un chip cliquable
+  afficher/masquer ; swatch dont la **forme** reflète l'encodage (aire/ligne/barre/
+  pointillé/point). Choix persisté en localStorage (`future:hiddenSeries:v1`,
+  même convention que `dashboard:hiddenAccounts:v1`) + bouton « Tout réafficher ».
+  Le chip Monte Carlo n'apparaît que si MC est activé.
+
 ### Notes
 
 - Qualité : `typecheck` 0 / `lint` 0 / **607 tests** verts à chaque palier, zoom

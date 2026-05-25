@@ -129,7 +129,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
             // Fallback Claude (utilisé si pas d'Era Context OU si Era Context ne
             // retourne rien — typiquement compte vide ou nouveau)
             if (!apiKey) {
-                showToast('Configure Era Context ou une clé Anthropic pour analyser.', 'info');
+                showToast('Configure une clé Anthropic pour analyser tes abonnements.', 'info');
                 return;
             }
             const results = await detectSubscriptionsAI(transactions, apiKey);

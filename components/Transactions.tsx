@@ -12,8 +12,6 @@ interface TransactionsProps {
     transactions: Transaction[];
     setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
     apiKey: string;
-    onSyncEraContext: () => void;
-    isSyncing: boolean;
     budgetItems: BudgetCategory[];
     categorizationRules?: CategorizationRule[];
     setCategorizationRules?: (rules: CategorizationRule[]) => void;
@@ -23,8 +21,6 @@ export const Transactions: React.FC<TransactionsProps> = ({
     transactions,
     setTransactions,
     apiKey,
-    onSyncEraContext,
-    isSyncing,
     budgetItems,
     categorizationRules = [],
     setCategorizationRules,
@@ -469,15 +465,6 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         <div className={`text-tiny sm:text-xs font-bold px-2 py-1 rounded border border-white/10 whitespace-nowrap ${filteredSum > 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'}`}>
                             Σ {filteredSum.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}
                         </div>
-                        <button
-                            onClick={onSyncEraContext}
-                            disabled={isSyncing}
-                            aria-label="Synchroniser avec Era Context"
-                            className="text-tiny sm:text-xs flex items-center gap-1 text-blue-300 hover:text-white border border-blue-500/30 bg-blue-500/10 px-2 sm:px-3 py-1.5 rounded-lg transition-colors font-bold disabled:opacity-50 whitespace-nowrap"
-                        >
-                            {isSyncing ? 'Sync...' : 'Sync'}
-                            <span className="hidden sm:inline"> Era Context</span>
-                        </button>
                         <button
                             onClick={handleExportCSV}
                             title="Exporter en CSV (compatible Excel)"

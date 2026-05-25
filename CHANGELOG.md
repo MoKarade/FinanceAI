@@ -82,6 +82,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - 9 tests sur le parseur ; flux complet vérifié dans le navigateur (dépôt CSV →
   aperçu → import → toast).
 
+### Durcissement — vulnérabilité + nettoyage era orphelin
+
+- **Vulnérabilité corrigée** : `qs` (DoS modéré déclenchable à distance,
+  GHSA-q8mj-m7cp-5q26) → `npm audit fix` → **0 vulnérabilité**.
+- **Nettoyage era** : après le retrait du champ era (MCP-only, inutilisable), on
+  enlève les **orphelins** qui pointaient encore vers cette feature morte : champ
+  « Era Context Token » dans l'**Onboarding**, bouton « Sync Era Context » dans
+  **Transactions** (+ chaîne de props `onSyncEra`/`isSyncing`), toast « Configure
+  Era Context… » dans **Planning**. Plus aucune UI ne propose une fonctionnalité
+  qui ne peut pas marcher. Typecheck + 655 tests + build OK ; 0 erreur lint.
+
 ---
 
 ## [unreleased — cycle 17 : Refonte graphique « Google Finance » (zoom partout + Futur)] — 2026-05-22

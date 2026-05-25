@@ -30,7 +30,6 @@ const STEP_LABELS: Record<OnboardingStep, string> = {
  */
 export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     const [step, setStep] = useState<OnboardingStep>('welcome');
-    const [eraContextKey, setEraContextKey] = useState('');
     const [anthropicKey, setAnthropicKey] = useState('');
     const [user1, setUser1] = useState({ name: 'Moi', grossSalary: 70000, netSalary: 4500, age: 30, canadaArrivalYear: 2020 });
     const [user2, setUser2] = useState({ name: 'Partenaire', grossSalary: 60000, netSalary: 3800, age: 30, canadaArrivalYear: 2020 });
@@ -61,7 +60,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
         onComplete({
             config,
-            apiKeys: { eraContext: eraContextKey, anthropic: anthropicKey },
+            apiKeys: { eraContext: '', anthropic: anthropicKey, finnhub: '' },
             fxRates: DEFAULT_FX_RATES,
             budgetItems: INITIAL_BUDGET,
             projection: INITIAL_PROJECTION,
@@ -111,7 +110,6 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                             {[
                                 { icon: '🔐', text: "Pas de serveur back-end — les données vivent dans localStorage de votre navigateur." },
                                 { icon: '🤖', text: "Si vous activez Claude : marchands tronqués + montants arrondis à 100$ envoyés à Anthropic pour la catégorisation et le conseil." },
-                                { icon: '💳', text: "Si vous activez Era Context : token envoyé à leur API pour fetcher vos transactions." },
                                 { icon: '📊', text: "Simulation financière complète (retraite, immobilier, projections) entièrement locale." },
                             ].map((f, i) => (
                                 <div key={i} className="flex items-center gap-3 p-3 bg-white/5 rounded-card border border-white/5">
@@ -193,18 +191,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                             <h2 className="text-h1 text-ink-50">Clés API</h2>
                             <p className="text-meta text-ink-400 mt-1">Optionnelles — l'app fonctionne sans, mais avec moins de fonctionnalités.</p>
                             <p className="text-meta text-warning-400 mt-2 leading-relaxed">
-                                ⚠️ En activant Claude (Anthropic), vous consentez à ce que des données (marchands tronqués + montants arrondis à 100$) soient envoyées à Anthropic. Era Context verra votre token + transactions.
+                                ⚠️ En activant Claude (Anthropic), vous consentez à ce que des données (marchands tronqués + montants arrondis à 100$) soient envoyées à Anthropic.
                             </p>
                         </div>
                         <div className="space-y-4">
-                            <div className="p-4 bg-white/5 rounded-card border border-white/10">
-                                <label htmlFor="era-key" className="text-body font-bold text-ink-50 flex items-center gap-2 mb-2">
-                                    <span aria-hidden="true">🌐</span> Era Context Token
-                                    <span className="text-tiny text-ink-400 font-normal">(Sync automatique des transactions)</span>
-                                </label>
-                                <input id="era-key" type="password" placeholder="Token Era Context..." className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body font-mono focus-ring" value={eraContextKey} onChange={e => setEraContextKey(e.target.value)} />
-                                <p className="text-tiny text-ink-400 mt-2">Obtenez votre token sur <a href="https://era.app" target="_blank" rel="noopener noreferrer" className="text-info-400 underline">era.app</a></p>
-                            </div>
                             <div className="p-4 bg-white/5 rounded-card border border-white/10">
                                 <label htmlFor="anthropic-key" className="text-body font-bold text-ink-50 flex items-center gap-2 mb-2">
                                     <span aria-hidden="true">🤖</span> Anthropic Claude API Key

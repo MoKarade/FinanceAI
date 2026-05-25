@@ -62,7 +62,6 @@ export interface TabRouterProps {
     calculatedMonthlySavings: number;
     assetBreakdown: { reer: number; celi: number; reee: number; nonReg: number };
     currentLiquidity: number;
-    onSyncEra: () => void;
     onUpdateApiKeys: (keys: AppState['apiKeys']) => void;
     onManualImport: (rawData: string) => void;
 }
@@ -77,7 +76,7 @@ export interface TabRouterProps {
 export const TabRouter: React.FC<TabRouterProps> = ({
     activeTab, state, setAppState, setActiveTab, isPrivacyMode, isLoading,
     globalNetWorth, calculatedMonthlySavings, assetBreakdown, currentLiquidity,
-    onSyncEra, onUpdateApiKeys, onManualImport,
+    onUpdateApiKeys, onManualImport,
 }) => {
     return (
         <Suspense fallback={<TabLoader />}>
@@ -107,8 +106,6 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                         transactions={state.transactions}
                         setTransactions={(t) => setAppState({ transactions: typeof t === 'function' ? (t as any)(state.transactions) : t })}
                         apiKey={state.apiKeys.anthropic}
-                        onSyncEraContext={onSyncEra}
-                        isSyncing={isLoading}
                         budgetItems={state.budgetItems}
                         categorizationRules={state.categorizationRules || []}
                         setCategorizationRules={(rules) => setAppState({ categorizationRules: rules })}

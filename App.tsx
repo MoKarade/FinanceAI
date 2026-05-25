@@ -585,7 +585,6 @@ export const App: React.FC = () => {
                     calculatedMonthlySavings={calculatedMonthlySavings}
                     assetBreakdown={assetBreakdown}
                     currentLiquidity={currentLiquidity}
-                    onSyncEra={() => loadData(state.apiKeys.eraContext, undefined)}
                     onUpdateApiKeys={handleUpdateApiKeys}
                     onManualImport={handleManualImport}
                 />

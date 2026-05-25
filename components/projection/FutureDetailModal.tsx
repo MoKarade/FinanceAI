@@ -37,6 +37,88 @@ const ACCOUNTS: AccountDef[] = [
     { key: 'Immobilier', label: 'Immobilier', color: '#ec4899' },
 ];
 
+// G13 — point enrichi du drill-down : la valeur du compte + les composantes qui
+// expliquent son mouvement (toutes issues du moteur, aucune invention).
+interface AccountPoint {
+    monthIndex: number;
+    year: number;
+    dateLabel?: string;
+    value: number;
+    gain: number;        // MarketGrowthX — gain/perte marché du mois
+    flow: number;        // NetTransferX — apport net (dépôts − retraits)
+    events: string[];    // libellés exacts du moteur = la VRAIE cause d'un mouvement
+    hasDecomp: boolean;  // false pour l'Immobilier (pas de gain/flow émis)
+}
+
+type ReasonTone = 'pos' | 'neg' | 'in' | 'out';
+interface MovementReason { icon: string; text: string; tone: ReasonTone; }
+
+const fmtMoney = (n: number) => `${Math.round(n).toLocaleString('fr-CA')} $`;
+
+// G13 — décompose le mouvement d'un compte en composantes EXACTES : gain marché
+// (MarketGrowthX) vs apport/retrait net (NetTransferX). On ne devine PAS la cause
+// d'un retrait (un retrait CELI peut être un achat immo via RAP, pas forcément la
+// retraite) : la cause précise vient des événements du mois, affichés à part.
+function explainMovement(d: AccountPoint): MovementReason[] {
+    if (!d.hasDecomp) return [];
+    const out: MovementReason[] = [];
+    if (d.gain > 0.5) out.push({ icon: '📈', text: `Gain marché +${fmtMoney(d.gain)}`, tone: 'pos' });
+    else if (d.gain < -0.5) out.push({ icon: '📉', text: `Perte marché ${fmtMoney(d.gain)}`, tone: 'neg' });
+    if (d.flow > 0.5) out.push({ icon: '💰', text: `Apport (dépôt) +${fmtMoney(d.flow)}`, tone: 'in' });
+    else if (d.flow < -0.5) out.push({ icon: '🏧', text: `Retrait ${fmtMoney(d.flow)}`, tone: 'out' });
+    return out;
+}
+
+const REASON_TONE_CLASS: Record<ReasonTone, string> = {
+    pos: 'text-green-300 bg-green-500/10',
+    neg: 'text-red-300 bg-red-500/10',
+    in: 'text-sky-300 bg-sky-500/10',
+    out: 'text-orange-300 bg-orange-500/10',
+};
+
+// G13 — infobulle du drill-down : valeur du mois + le « pourquoi » (gain marché,
+// apport/retrait + origine) + événements. Niveau module → recharts y injecte
+// `active`/`payload`, on lui passe `accountLabel`/`isPrivacyMode` en props.
+const AccountDrillTooltip: React.FC<any> = ({ active, payload, accountLabel, isPrivacyMode }) => {
+    if (!active || !payload?.length) return null;
+    const d = payload[0].payload as AccountPoint;
+    const reasons = explainMovement(d);
+    const blur = isPrivacyMode ? 'privacy-blur' : '';
+    return (
+        <div className="bg-[#11161f] border border-white/15 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] p-3 w-56 text-xs">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className="font-bold text-white">{d.dateLabel || d.year}</span>
+                <span className="text-tiny text-ink-400">{accountLabel}</span>
+            </div>
+            <div className={`font-mono text-base font-black text-white mb-2 ${blur}`}>{fmtMoney(d.value)}</div>
+            {reasons.length > 0 ? (
+                <div className="space-y-1">
+                    <div className="text-tiny uppercase tracking-wide text-ink-500 font-bold">Ce mois</div>
+                    {reasons.map((r, i) => (
+                        <div key={i} className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded font-mono ${REASON_TONE_CLASS[r.tone]} ${blur}`}>
+                            <span aria-hidden="true">{r.icon}</span><span>{r.text}</span>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="text-tiny text-ink-500">Équité = capital d’hypothèque remboursé + valorisation</div>
+            )}
+            {d.events.length > 0 && (
+                <div className="mt-2 pt-1.5 border-t border-white/10 space-y-1">
+                    {d.events.map((e, i) => {
+                        const { icon, text } = splitEventIcon(e);
+                        return (
+                            <div key={i} className="flex items-start gap-1.5 text-tiny text-yellow-200">
+                                <span aria-hidden="true">{icon}</span><span className="flex-1">{text}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+};
+
 interface FutureDetailModalProps {
     point: any;
     chartData: any[];
@@ -65,12 +147,38 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
         return { ...a, value, variation, gain, flow };
     }).filter((a) => a.value !== 0 || a.variation !== 0);
 
-    // Série temporelle du compte sélectionné (drill-down).
-    const accountSeries = useMemo(() => {
-        if (!selected) return [] as any[];
-        return chartData.map((d) => ({ monthIndex: d.monthIndex, year: d.year, value: d[selected.key] || 0 }));
+    // Série temporelle du compte sélectionné (drill-down), enrichie des
+    // composantes qui expliquent chaque mouvement (G13).
+    const accountSeries = useMemo<AccountPoint[]>(() => {
+        if (!selected) return [];
+        const hasDecomp = !!(selected.gainKey || selected.flowKey);
+        return chartData.map((d) => ({
+            monthIndex: d.monthIndex,
+            year: d.year,
+            dateLabel: d.dateLabel,
+            value: d[selected.key] || 0,
+            gain: selected.gainKey ? (d[selected.gainKey] || 0) : 0,
+            flow: selected.flowKey ? (d[selected.flowKey] || 0) : 0,
+            events: [...(d.lifeEvents || []), ...(d.flowEvents || [])],
+            hasDecomp,
+        }));
     }, [chartData, selected]);
-    const zoom = useTimeChartZoom<any>(accountSeries);
+    const zoom = useTimeChartZoom<AccountPoint>(accountSeries);
+
+    // G13 — « moments clés » : les plus gros mouvements mois-à-mois du compte,
+    // avec leur explication. Triés par ampleur puis réordonnés chronologiquement.
+    const keyMoments = useMemo(() => {
+        if (!selected || accountSeries.length < 2) return [];
+        const withDelta = accountSeries.map((d, i) => ({
+            ...d,
+            delta: i > 0 ? d.value - accountSeries[i - 1].value : 0,
+        }));
+        return withDelta
+            .filter((d) => Math.abs(d.delta) > 1)
+            .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+            .slice(0, 5)
+            .sort((a, b) => a.monthIndex - b.monthIndex);
+    }, [accountSeries, selected]);
     const lastMonth = accountSeries.length ? accountSeries[accountSeries.length - 1].monthIndex : 0;
     const idxForYears = (yrs: number) => {
         const i = accountSeries.findIndex((d) => d.monthIndex >= yrs * 12);
@@ -272,15 +380,61 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                     />
                                     <YAxis stroke="#666" tick={{ fontSize: 10 }} width={50} tickFormatter={(v) => isPrivacyMode ? '***' : `${(v / 1000).toFixed(0)}k`} />
                                     <Tooltip
-                                        contentStyle={{ backgroundColor: '#11161f', borderColor: '#333', borderRadius: 8, fontSize: 12 }}
-                                        formatter={(v: number) => [isPrivacyMode ? '*** $' : fmt(v), selected.label]}
-                                        labelFormatter={(v) => { const m = chartData.find((d) => d.monthIndex === v); return m ? (m.dateLabel || m.year) : v; }}
+                                        cursor={{ stroke: selected.color, strokeOpacity: 0.4 }}
+                                        content={<AccountDrillTooltip accountLabel={selected.label} isPrivacyMode={isPrivacyMode} />}
                                     />
                                     <Area type="monotone" dataKey="value" stroke={selected.color} strokeWidth={2} fill="url(#acct-grad)" isAnimationActive={false} name={selected.label} />
                                 </ComposedChart>
                             </ResponsiveContainer>
                         </div>
                         <p className="text-tiny text-ink-600 mt-2 text-center">Molette = zoom · glisser = défiler · double-clic = reset</p>
+
+                        {/* G13 — pourquoi la valeur bouge : plus gros mouvements + raison */}
+                        {keyMoments.length > 0 && (
+                            <div className="mt-4 border-t border-white/10 pt-3">
+                                <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-2">
+                                    Pourquoi ça bouge — moments clés
+                                </div>
+                                <ul className="space-y-2">
+                                    {keyMoments.map((d) => {
+                                        const reasons = explainMovement(d);
+                                        return (
+                                            <li key={d.monthIndex} className="bg-white/[0.03] rounded-lg p-2.5">
+                                                <div className="flex items-center justify-between gap-2 mb-1">
+                                                    <span className="text-xs font-bold text-white">{d.dateLabel || d.year}</span>
+                                                    <span className={`font-mono text-xs font-bold ${d.delta >= 0 ? 'text-green-400' : 'text-red-400'} ${blur}`}>
+                                                        {d.delta > 0 ? '+' : ''}{fmtMoney(d.delta)}
+                                                    </span>
+                                                </div>
+                                                {reasons.length > 0 ? (
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {reasons.map((r, i) => (
+                                                            <span key={i} className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-tiny font-mono ${REASON_TONE_CLASS[r.tone]} ${blur}`}>
+                                                                <span aria-hidden="true">{r.icon}</span>{r.text}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-tiny text-ink-500">Équité immobilière (capital remboursé + valorisation)</div>
+                                                )}
+                                                {d.events.length > 0 && (
+                                                    <div className="mt-1.5 space-y-0.5">
+                                                        {d.events.map((e, i) => {
+                                                            const { icon, text } = splitEventIcon(e);
+                                                            return (
+                                                                <div key={i} className="flex items-start gap-1.5 text-tiny text-yellow-200/90">
+                                                                    <span aria-hidden="true">{icon}</span><span className="flex-1">{text}</span>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </div>
+                        )}
                     </>
                 )}
             </div>

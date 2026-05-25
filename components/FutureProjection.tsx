@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useDebouncedMemo } from '../utils/useDebouncedMemo';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
@@ -391,6 +391,32 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         try { localStorage.setItem('future:hiddenSeries:v1', '[]'); } catch {/* localStorage indispo */}
     };
 
+    // G12 — clic n'importe où sur le graphique → modale détail (pas seulement
+    // sur une pastille d'événement). On résout le mois cliqué par GÉOMÉTRIE :
+    // position X du clic relative à la grille cartésienne → indice dans la
+    // tranche visible. Robuste (marche au tactile, sans survol préalable, là où
+    // recharts ne déclenche pas son `onClick` interne — la cause probable du bug
+    // « seul le clic sur un événement marche »). `lastHoverPointRef` (rempli par
+    // le survol recharts) sert de repli. On ignore les glissers (pan) via la
+    // distance parcourue depuis le mousedown.
+    const lastHoverPointRef = useRef<any>(null);
+    const pointerDownPosRef = useRef<{ x: number; y: number } | null>(null);
+    const handleChartContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        const down = pointerDownPosRef.current;
+        if (down && (Math.abs(e.clientX - down.x) > 6 || Math.abs(e.clientY - down.y) > 6)) return; // glisser = pan
+        const data = zoom.visibleData;
+        if (!data.length) return;
+        const grid = zoom.containerEl.current?.querySelector('.recharts-cartesian-grid');
+        const rect = grid?.getBoundingClientRect();
+        let point: any = null;
+        if (rect && rect.width > 0) {
+            const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            point = data[Math.round(frac * (data.length - 1))];
+        }
+        if (!point) point = lastHoverPointRef.current; // repli : dernier point survolé
+        if (point) setDetailPoint(point);
+    };
+
     // C6 fix (Sprint 1B) — Garde déplacée ICI (après tous les hooks) pour
     // respecter la règle des Hooks. Retourne un placeholder UI si les props
     // critiques manquent. Avant ce fix, cette garde était ligne 46 (avant les
@@ -555,7 +581,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="text-tiny text-ink-500 hidden md:block" aria-hidden="true">
-                            Molette = zoom · glisser = défiler
+                            Clic = détail · molette = zoom · glisser = défiler
                         </span>
                         <button
                             type="button"
@@ -571,12 +597,15 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 <div
                     ref={zoom.containerRef}
                     {...zoom.handlers}
-                    className={`chart-fullscreen relative w-full h-[380px] sm:h-[500px] lg:h-[650px] select-none ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-default'}`}
+                    onMouseDownCapture={(e) => { pointerDownPosRef.current = { x: e.clientX, y: e.clientY }; }}
+                    onClick={handleChartContainerClick}
+                    className={`chart-fullscreen relative w-full h-[380px] sm:h-[500px] lg:h-[650px] select-none ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-pointer'}`}
                 >
                      <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart
                             data={zoom.visibleData}
                             margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
+                            onMouseMove={(s: any) => { const p = s?.activePayload?.[0]?.payload; if (p) lastHoverPointRef.current = p; }}
                             onClick={(s: any) => { const p = s?.activePayload?.[0]?.payload; if (p) setDetailPoint(p); }}
                         >
                             <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />

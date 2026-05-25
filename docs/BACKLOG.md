@@ -551,9 +551,13 @@ Priorité de traitement :
 - ✅ **Cycle 17 graphs** terminé : modale détaillée au clic (G9 P1), apport-vs-gain
   par compte (G9 P2), **légende interactive** du graph Futur (G10 — cocher/décocher
   chaque série, persistée). Détails dans le CHANGELOG cycle 17.
+- ✅ **G12** — clic n'importe où sur le graph Futur → modale (résolution géométrique).
+- ✅ **G13** — explication des mouvements par compte dans le drill-down (gain marché
+  vs apport/retrait + moments clés + causes via événements moteur, aucune devinette).
+- ✅ **G11** — infobulle au survol refondue en résumé concis, détail complet au clic.
 - ✅ **Bugs** réglés : mode test préserve les clés API, badge couple cliquable,
   sidebar onglets fluide (icônes stables au survol).
-- ⏳ Reste : **G11** refonte infobulle v2 (rendue optionnelle par Marc), TB3 dormant.
+- ⏳ Reste : TB3 dormant, SH3 backup chiffré (analysé, faible valeur).
 
 **Progression session 2026-05-22** :
 - ✅ **S1 — Cloudflare Access** activé (login Google, restreint à Marc) + [AUTH_SETUP.md](AUTH_SETUP.md)

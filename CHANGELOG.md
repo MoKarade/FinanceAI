@@ -56,6 +56,24 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   même convention que `dashboard:hiddenAccounts:v1`) + bouton « Tout réafficher ».
   Le chip Monte Carlo n'apparaît que si MC est activé.
 
+### Clic partout + explications + infobulle v2 (G11, G12, G13)
+
+- **G12** — clic **n'importe où** sur le graph Futur ouvre la modale détail (plus
+  seulement les pastilles d'événement). Le mois cliqué est résolu par géométrie
+  (X du clic vs grille cartésienne) → robuste au tactile et là où recharts ne
+  déclenche pas son `onClick` interne. Glisser (pan) ≠ clic (seuil de distance).
+- **G13** — dans le drill-down par compte : explication **mois par mois** du
+  pourquoi ça monte/descend, à partir des composantes réelles du moteur
+  (gain marché `MarketGrowthX` vs apport/retrait net `NetTransferX`) + section
+  « Moments clés » (plus gros mouvements). La cause précise d'un retrait vient
+  des **événements** du moteur (« Achat Immo », « Palier 14% », « FERR »…), pas
+  d'une devinette — un retrait CELI peut financer un achat immo (RAP), pas
+  forcément la retraite (no-fake-data).
+- **G11** — infobulle au **survol** refondue en résumé concis (date, valeur nette,
+  variation, apport-vs-gain, aperçu d'événement, « clique pour le détail »). Tout
+  le détail exhaustif (chaque compte, flux, impôts, drill-down) est réservé au
+  **clic** dans la modale. Règle le souci « infobulle trop longue pour sa taille ».
+
 ### Notes
 
 - Qualité : `typecheck` 0 / `lint` 0 / **607 tests** verts à chaque palier, zoom

@@ -38,161 +38,67 @@ export const splitEventIcon = (label: string): { icon: string; text: string } =>
     return { icon: '📌', text: label };
 };
 
-export const ExpertTooltip = ({ active, payload, isPrivacyMode, userName1, userName2 }: any) => {
+// G11 v2 — infobulle au SURVOL = résumé concis (glance). Le détail complet
+// (chaque compte, flux, impôts, drill-down + le « pourquoi » détaillé) est
+// réservé au CLIC → FutureDetailModal. Décision UX validée par Marc :
+// survol lisible en < 1 s, deep-dive au clic. Fini le tooltip trop long.
+export const ExpertTooltip = ({ active, payload }: any) => {
     if (!active || !payload || !payload.length) return null;
     const data = payload[0].payload;
+    const fmt = (n: number) => Math.round(n).toLocaleString('fr-CA');
 
-    // Décaissement portfolio (retraits CELI + REER du mois) : affiché quand
-    // l'utilisateur est en retraite. Sans ça, le tooltip ne montrait que
-    // RRQ/PSV → semblait dire qu'on vivait avec ~60$/mois pendant le gap
-    // entre l'âge de retraite et le démarrage des prestations publiques.
-    const isRetired = (data.IncomeRetirement || 0) > 0
-        || (data.RetraitREER || 0) > 0
-        || (data.RetraitCELI || 0) > 0;
-    const portfolioOutflow = (data.RetraitREER || 0) + (data.RetraitCELI || 0);
-
-    // P2 — apport net (dépôts − retraits) vs gain marché, totalisés sur les comptes.
+    // Résumé du « pourquoi » du mois : apport net (dépôts − retraits) vs gain marché.
     const totalFlow = (data.NetTransferCELI || 0) + (data.NetTransferREER || 0) + (data.NetTransferNonReg || 0)
         + (data.NetTransferCrypto || 0) + (data.NetTransferLiquid || 0) + (data.NetTransferCELIAPP || 0) + (data.NetTransferREEE || 0);
     const totalGain = (data.MarketGrowthCELI || 0) + (data.MarketGrowthREER || 0) + (data.MarketGrowthNonReg || 0)
         + (data.MarketGrowthCrypto || 0) + (data.MarketGrowthLiquid || 0) + (data.MarketGrowthCELIAPP || 0) + (data.MarketGrowthREEE || 0);
+    const diffNW = data.diffNW || 0;
+    const events: string[] = [...(data.lifeEvents || []), ...(data.flowEvents || [])];
 
     return (
-        <div className="relative bg-gradient-to-b from-[#11161f]/95 to-[#0B0E14]/95 backdrop-blur-md border border-white/15 ring-1 ring-white/5 p-4 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.85)] w-80 max-h-[520px] overflow-y-auto z-50 animate-fade-in">
+        <div className="relative bg-gradient-to-b from-[#11161f]/95 to-[#0B0E14]/95 backdrop-blur-md border border-white/15 ring-1 ring-white/5 p-3.5 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.85)] w-64 z-50 animate-fade-in">
             <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-primary via-purple-500 to-pink-500 opacity-80" />
-            <div className="mb-3 pb-2.5 border-b border-white/15 flex justify-between items-center gap-2">
-                <span className="text-base font-extrabold text-white tracking-tight">{data.dateLabel || 'N/A'}</span>
+
+            <div className="flex justify-between items-center gap-2 mb-2.5">
+                <span className="text-sm font-extrabold text-white tracking-tight">{data.dateLabel || 'N/A'}</span>
                 <span className="text-tiny font-bold text-primary bg-primary/15 border border-primary/30 px-2 py-0.5 rounded-full whitespace-nowrap">Âge {data.age || '??'}</span>
             </div>
 
-            {/* P2 — apport (ce que je mets) vs gain (croissance marché) du mois */}
-            {(totalFlow !== 0 || totalGain !== 0) && (
-                <div className="flex items-center gap-2 mb-3 text-tiny font-mono">
-                    <span className={`px-1.5 py-0.5 rounded ${totalFlow >= 0 ? 'text-sky-300 bg-sky-500/10' : 'text-orange-300 bg-orange-500/10'} privacy-blur`} title="Ce que tu déposes/retires (apport net)">
-                        Apport {totalFlow > 0 ? '+' : ''}{Math.round(totalFlow).toLocaleString()}$
-                    </span>
-                    <span className={`px-1.5 py-0.5 rounded ${totalGain >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-red-500/10'} privacy-blur`} title="Ce que le marché te rapporte (gain)">
-                        Gain {totalGain > 0 ? '+' : ''}{Math.round(totalGain).toLocaleString()}$
-                    </span>
-                </div>
-            )}
-
-            <div className="mb-3 space-y-1">
-                {(data.IncomeMarc || 0) > 0 && <div className="flex justify-between text-xs"><span className="text-gray-400">Paye {userName1 || 'Utilisateur 1'}:</span> <span className="font-mono text-green-400 privacy-blur">+{(data.IncomeMarc || 0).toLocaleString()}$</span></div>}
-                {(data.IncomeAnna || 0) > 0 && <div className="flex justify-between text-xs"><span className="text-gray-400">Paye {userName2 || 'Utilisateur 2'}:</span> <span className="font-mono text-green-400 privacy-blur">+{(data.IncomeAnna || 0).toLocaleString()}$</span></div>}
-                {(data.IncomeRetirement || 0) > 0 && <div className="flex justify-between text-xs"><span className="text-gray-400">Rentes/Retraite:</span> <span className="font-mono text-green-400 privacy-blur">+{(data.IncomeRetirement || 0).toLocaleString()}$</span></div>}
-                {portfolioOutflow > 0 && <div className="flex justify-between text-xs"><span className="text-gray-400">Décaissement portfolio:</span> <span className="font-mono text-amber-400 privacy-blur">+{portfolioOutflow.toLocaleString()}$</span></div>}
-
-                <div className="flex justify-between text-xs"><span className="text-gray-400">Dépenses Vies:</span> <span className="font-mono text-red-400 privacy-blur">-{(data.Expenses || 0).toLocaleString()}$</span></div>
-
-                {(data.childGross || 0) > 0 && (
-                    <div className="flex justify-between text-tiny">
-                        <span className="text-gray-500 pl-2">↳ dt. Enfant:</span>
-                        <span className="font-mono text-red-300 privacy-blur text-right">
-                            -{(data.childGross || 0).toLocaleString()}$
-                            {(data.childBenefits || 0) > 0 && <span className="text-green-400 ml-1">(+{(data.childBenefits || 0)}$ alloc)</span>}
-                        </span>
-                    </div>
-                )}
-                {(data.ReeeContrib || 0) > 0 && <div className="flex justify-between text-tiny"><span className="text-gray-500 pl-2">↳ dt. Épargne REEE:</span> <span className="font-mono text-blue-300 privacy-blur">{(data.ReeeContrib || 0)}$ (+30% gouv)</span></div>}
-
-                {(data.ImmoHypo || 0) > 0 && (
-                    <div className="flex flex-col text-tiny">
-                        <div className="flex justify-between">
-                            <span className="text-gray-500 pl-2">↳ dt. Maison:</span>
-                            <span className="font-mono text-pink-300 privacy-blur">Hypo {(data.ImmoHypo || 0).toLocaleString()}$ | Chg {(data.ImmoCharges || 0).toLocaleString()}$</span>
-                        </div>
-                        <div className="flex justify-end text-tiny text-gray-500 mt-0.5 font-mono">
-                            (Capital: <span className="text-green-400/80 mx-1">+{(data.ImmoPrincipal || 0).toLocaleString()}$</span> Intérêts: <span className="text-red-400/80 ml-1">-{(data.ImmoInterest || 0).toLocaleString()}$</span>)
-                        </div>
-                    </div>
-                )}
-                {(data.ImmoHypo || 0) === 0 && (data.ImmoCharges || 0) > 0 && (
-                    <div className="flex justify-between text-tiny">
-                        <span className="text-gray-500 pl-2">↳ dt. Maison (Payée):</span>
-                        <span className="font-mono text-pink-300 privacy-blur">Chg {(data.ImmoCharges || 0).toLocaleString()}$</span>
-                    </div>
-                )}
-
-                <div className="flex justify-between text-xs font-bold border-t border-white/10 pt-1 mt-1">
-                    <span className="text-gray-300">Var. Nette (Mois):</span>
-                    <span className={`font-mono privacy-blur ${(data.diffNW || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {(data.diffNW || 0) > 0 ? '+' : ''}{(data.diffNW || 0).toLocaleString()}$
-                    </span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-1 mt-1 text-tiny text-gray-400 border-b border-white/5 pb-2 mb-2">
-                    <div className="text-center bg-white/5 rounded py-0.5">Cash: <br/><span className={(data.diffLiquid || 0) >= 0 ? 'text-green-300' : 'text-red-300'}>{(data.diffLiquid || 0) > 0 ? '+' : ''}{(data.diffLiquid || 0)}$</span></div>
-                    <div className="text-center bg-white/5 rounded py-0.5">CELI: <br/><span className={(data.diffCELI || 0) >= 0 ? 'text-green-300' : 'text-red-300'}>{(data.diffCELI || 0) > 0 ? '+' : ''}{(data.diffCELI || 0)}$</span></div>
-                    <div className="text-center bg-white/5 rounded py-0.5">REER: <br/><span className={(data.diffREER || 0) >= 0 ? 'text-green-300' : 'text-red-300'}>{(data.diffREER || 0) > 0 ? '+' : ''}{(data.diffREER || 0)}$</span></div>
-                </div>
-            </div>
-
-            <div className="bg-black/30 p-2.5 rounded-xl space-y-1.5 text-xs text-white border border-white/10 mb-3">
-                <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1.5">Répartition du patrimoine</div>
-                <div className="flex justify-between items-center"><span className="flex items-center gap-1.5 text-gray-300"><span className="w-2 h-2 rounded-full shrink-0 bg-[#4b5563]" />Cash (Coussin)</span> <span className="font-mono privacy-blur">{(data.Liquidites || 0).toLocaleString()}$</span></div>
-                <div className="flex justify-between items-center"><span className="flex items-center gap-1.5 text-gray-300"><span className="w-2 h-2 rounded-full shrink-0 bg-[#10b981]" />CELI</span> <span className="font-mono privacy-blur">{(data.CELI || 0).toLocaleString()}$</span></div>
-                <div className="flex justify-between items-center"><span className="flex items-center gap-1.5 text-gray-300"><span className="w-2 h-2 rounded-full shrink-0 bg-[#3b82f6]" />REER</span> <span className="font-mono privacy-blur">{(data.REER || 0).toLocaleString()}$</span></div>
-                {(data.REEE || 0) > 0 && <div className="flex justify-between items-center"><span className="flex items-center gap-1.5 text-gray-300"><span className="w-2 h-2 rounded-full shrink-0 bg-[#06b6d4]" />REEE (Études)</span> <span className="font-mono privacy-blur">{(data.REEE || 0).toLocaleString()}$</span></div>}
-                <div className="flex justify-between items-center"><span className="flex items-center gap-1.5 text-gray-300"><span className="w-2 h-2 rounded-full shrink-0 bg-[#f59e0b]" />Non-Enreg</span> <span className="font-mono privacy-blur">{(data.NonReg || 0).toLocaleString()}$</span></div>
-                {(data.Crypto || 0) > 0 && <div className="flex justify-between items-center"><span className="flex items-center gap-1.5 text-gray-300"><span className="w-2 h-2 rounded-full shrink-0 bg-[#a855f7]" />Crypto</span> <span className="font-mono privacy-blur">{(data.Crypto || 0).toLocaleString()}$</span></div>}
-                <div className="flex justify-between items-center"><span className="flex items-center gap-1.5 text-gray-300"><span className="w-2 h-2 rounded-full shrink-0 bg-[#ec4899]" />Immobilier</span> <span className="font-mono privacy-blur">{(data.Immobilier || 0).toLocaleString()}$</span></div>
-            </div>
-
-            <div className="rounded-xl bg-gradient-to-r from-primary/20 to-purple-500/15 border border-white/15 p-3">
+            {/* Hero : valeur nette + variation du mois */}
+            <div className="rounded-xl bg-gradient-to-r from-primary/20 to-purple-500/15 border border-white/15 p-2.5 mb-2.5">
                 <div className="flex items-center justify-between gap-2">
                     <span className="text-tiny uppercase tracking-widest text-ink-300 font-bold">Valeur nette</span>
-                    <span className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded ${(data.diffNW || 0) >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-red-500/15'}`}>
-                        {(data.diffNW || 0) > 0 ? '+' : ''}{(data.diffNW || 0).toLocaleString()}$ /mois
+                    <span className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded ${diffNW >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-red-500/15'}`}>
+                        {diffNW > 0 ? '+' : ''}{fmt(diffNW)}$ /mois
                     </span>
                 </div>
-                <div className="mt-1 text-2xl font-black text-white font-mono privacy-blur leading-none">{(data.NetWorth || 0).toLocaleString()}$</div>
+                <div className="mt-1 text-2xl font-black text-white font-mono privacy-blur leading-none">{fmt(data.NetWorth || 0)}$</div>
             </div>
 
-            {((data.ImpotLatent || 0) < 0 || (data.FluxImpots || 0) < 0) && (
-                <div className="mt-2 space-y-1">
-                    {(data.ImpotLatent || 0) < 0 && <div className="flex justify-between text-xs"><span className="text-red-500 font-bold">Impôt Latent (Dette):</span> <span className="font-mono text-red-400 privacy-blur">{(data.ImpotLatent || 0).toLocaleString()}$</span></div>}
-                    {(data.FluxImpots || 0) < 0 && <div className="flex justify-between text-xs"><span className="text-red-500 font-bold">Impôt Payé (Avril):</span> <span className="font-mono text-red-400 privacy-blur">{(data.FluxImpots || 0).toLocaleString()}$</span></div>}
+            {/* Résumé du pourquoi : apport (ce que je mets) vs gain (marché) */}
+            {(totalFlow !== 0 || totalGain !== 0) && (
+                <div className="flex items-center gap-2 mb-2.5 text-tiny font-mono">
+                    <span className={`flex-1 text-center px-1.5 py-1 rounded ${totalFlow >= 0 ? 'text-sky-300 bg-sky-500/10' : 'text-orange-300 bg-orange-500/10'} privacy-blur`} title="Ce que tu déposes / retires (apport net)">
+                        Apport {totalFlow > 0 ? '+' : ''}{fmt(totalFlow)}$
+                    </span>
+                    <span className={`flex-1 text-center px-1.5 py-1 rounded ${totalGain >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-red-500/10'} privacy-blur`} title="Ce que le marché te rapporte (gain)">
+                        Gain {totalGain > 0 ? '+' : ''}{fmt(totalGain)}$
+                    </span>
                 </div>
             )}
 
-            {(data.lifeEvents?.length > 0 || data.flowEvents?.length > 0) && (
-                <div className="mt-3 pt-2 border-t border-white/20">
-                    {data.lifeEvents?.length > 0 && (
-                        <div className="mb-2">
-                            <span className="text-tiny uppercase text-yellow-500 font-bold tracking-widest">Événements</span>
-                            <ul className="text-xs text-yellow-300 mt-1 font-bold space-y-1">
-                                {data.lifeEvents?.map((e: string, i: number) => {
-                                    const { icon, text } = splitEventIcon(e);
-                                    return (
-                                        <li key={i} className="flex items-start gap-2">
-                                            <span className="inline-block w-5 text-center shrink-0" aria-hidden="true">{icon}</span>
-                                            <span className="flex-1 break-words">{text}</span>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        </div>
-                    )}
-                    {data.flowEvents?.length > 0 && (
-                        <div>
-                            <span className="text-tiny uppercase text-gray-500 font-bold tracking-widest">Flux d'Épargne</span>
-                            <ul className="text-tiny mt-1 space-y-1 font-mono">
-                                {data.flowEvents?.map((e: string, i: number) => {
-                                    const { icon, text } = splitEventIcon(e);
-                                    const color = e.includes('Survie') ? 'text-red-300' : 'text-blue-300';
-                                    return (
-                                        <li key={i} className={`flex items-start gap-2 ${color}`}>
-                                            <span className="inline-block w-5 text-center shrink-0" aria-hidden="true">{icon}</span>
-                                            <span className="flex-1 break-words">{text}</span>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        </div>
-                    )}
+            {/* Présence d'événement(s) — aperçu compact, détail au clic */}
+            {events.length > 0 && (
+                <div className="flex items-center gap-1.5 mb-2 text-tiny text-yellow-200 bg-yellow-500/5 rounded-lg px-2 py-1.5 border border-yellow-500/15">
+                    <span className="shrink-0" aria-hidden="true">{splitEventIcon(events[0]).icon}</span>
+                    <span className="flex-1 truncate font-semibold">{splitEventIcon(events[0]).text}</span>
+                    {events.length > 1 && <span className="text-ink-400 shrink-0 font-mono">+{events.length - 1}</span>}
                 </div>
             )}
+
+            <div className="text-tiny text-ink-500 text-center pt-1.5 border-t border-white/10">
+                Clique pour le détail complet
+            </div>
         </div>
     );
 };

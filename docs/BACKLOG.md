@@ -610,6 +610,15 @@ Projection = mensuelle, démarre à aujourd'hui (2026), pas de passé. ⇒ « vo
 **Ordre de construction recommandé** : C2 → B1 → A1 → A3 → B2 → A2 → C3 → C4.
 (D'abord la valeur immédiate sur données dispo ; le gros moteur C3 en dernier quand le reste est solide.)
 
+**Avancement (2026-05-25)** : ✅ A1 (reconstruction, testé) · ✅ A2 (fetch Finnhub) ·
+✅ A3 (passé+futur fusionnés) · ✅ B1 (verdict) · ✅ B2 (pourquoi/classement) ·
+✅ C1 (reco objectif) · ✅ C2 (plan d'action annuel) · ✅ C3 incrément 1 (compare
+4 façons de gérer sous monde BASE, stress hors classement).
+**Reste** : C3 suite = **décision RAP-vs-FHSA pour l'achat** (realEstateMonth) +
+brancher assetLocation + recherche plus fine ; C4 = MC sur les finalistes.
+⚠️ La suite de C3 **modifie les calculs d'argent** → à faire à frais + tests de
+non-régression. Valider le **passé réel A3** sur données réelles (titres datés + clé Finnhub).
+
 
 Demande Marc : l'onglet Futur doit tester plein de stratégies (ordre de retrait,
 allocation cotisations, RAP vs FHSA vs CELI pour l'achat immo, timing) et **proposer

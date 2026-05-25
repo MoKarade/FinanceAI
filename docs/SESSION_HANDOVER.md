@@ -4,9 +4,13 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> Dernière session : 2026-05-22 — **Cloudflare Access activé** : l'app n'est
-> plus publique (login Google obligatoire, restreint à marc.richard4@gmail.com).
-> Voir [AUTH_SETUP.md](AUTH_SETUP.md). Aucun changement de code applicatif.
+> Dernière session : 2026-05-25 — **État production final** :
+> - Cloudflare Access activé (login Google, session 24h) ✅
+> - Clés API chiffrées AES-256-GCM (services/secureKeyStore.ts) ✅
+> - Import CSV universel (100% local, parseBankCsv.ts) ✅
+> - Crypto pricing CoinGecko + Stock pricing Finnhub ✅
+> - Era integration dormante (MCP-only, UI retirée) ✅
+> Voir [AUTH_SETUP.md](AUTH_SETUP.md), [SECURITY_STRATEGY.md](SECURITY_STRATEGY.md). Tests 573/573 verts.
 >
 > Session précédente : 2026-05-21 (cycles 17-18) — **mode test complet** +
 > **mode strict centralisation calculs** (Future = source unique).
@@ -39,8 +43,11 @@
 | **Build** | OK — bundle index ~528 KB gzip ~166 KB (vendor jspdf 391 KB lazy) |
 | **Schema store** | v6 (Zustand persist avec migrations v1→v6) |
 | **Stack IA** | `@anthropic-ai/sdk` (Sonnet 4.6 + Haiku 4.5) — Gemini retiré |
-| **Banque** | Era Context REST (api.era.app) — 9 endpoints + boot sync |
-| **Market** | Finnhub REST (gratuit only) |
+| **Banque** | CSV universel (100% local, parseBankCsv.ts) — Era Context MCP-only (UI retirée) |
+| **Crypto** | CoinGecko (gratuit, sans clé) |
+| **Stock/ETF** | Finnhub REST (gratuit) |
+| **Sécurité storage** | AES-256-GCM + IndexedDB non-extractible (services/secureKeyStore.ts) |
+| **Auth** | Cloudflare Access (Google OAuth, session 24h) |
 | **Lighthouse prod** | Performance 97 / A11y 100* / BP 100 / SEO 90 |
 | **PWA** | manifest + SW v2 (precache résilient) — installable Chrome/Edge/Mobile |
 | **WCAG** | AA conformant (sub-set AAA pour touch, focus, reduced-motion) |

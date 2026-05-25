@@ -15,18 +15,28 @@
 | Menace | Sévérité | Probabilité | Mitigation actuelle |
 |--------|----------|-------------|---------------------|
 | Visiteur anonyme accède au localStorage de Marc | 🔴 critique | impossible | localStorage est **par origine + navigateur** — un visiteur sur son navigateur a son propre store vide |
-| Marc oublie de se déconnecter sur un PC partagé | 🔴 critique | élevée | Aucune (pas de session/logout) |
-| Vol de l'appareil de Marc (laptop déverrouillé) | 🔴 critique | moyen | Verrouillage Windows uniquement |
+| Marc oublie de se déconnecter sur un PC partagé | 🔴 critique | élevée | **MITIGÉ** : Cloudflare Access (session 24h, expiration auto) |
+| Vol de l'appareil de Marc (laptop déverrouillé) | 🔴 critique | moyen | **MITIGÉ** : AES-256-GCM (IndexedDB, clé device non-extractible) + Cloudflare Access |
 | MITM sur Wi-Fi public | 🟡 moyen | faible | HTTPS Vercel (TLS 1.3) |
 | Prompt injection via Claude tab | 🟡 moyen | moyen | Encadrement `<memory>` (Sprint 1 C4) |
 | Exfiltration via XSS | 🔴 critique | très faible | CSP stricte sans `unsafe-inline` (Sprint 3 SH2) |
 | Compromission GitHub repo | 🟡 moyen | très faible | Pas de secret commit (Sprint 1 C5) |
+| Clés API en clair dans localStorage | 🔴 critique | très faible | **MITIGÉ** : AES-256-GCM + IndexedDB non-extractible (services/secureKeyStore.ts) |
+| Accès public à l'URL | 🔴 critique | élevée | **MITIGÉ** : Cloudflare Access obligatoire (Google OAuth, MFA via Google) |
 
-**Risque principal non-mitigé** : pas de gate authentique entre l'URL publique
-et les données stockées. Anyone with the URL → page chargée → si le navigateur
-a déjà persisté un store, il s'affiche.
+**Risques mitigés** (2026-05-25) :
+- **PC partagé / oubli logout** → Cloudflare Access : session 24h + expiration auto
+- **Vol laptop déverrouillé** → AES-256-GCM + clé device IndexedDB (non-extractible)
 
-## 2. Options évaluées
+## 2. État actuel — Cloudflare Access implémenté (2026-05-22+)
+
+Cloudflare Access est **en production**. Voir [AUTH_SETUP.md](AUTH_SETUP.md) pour la config détaillée.
+
+Résultat : seul `marc.richard4@gmail.com` peut accéder à `hubperso.com`. La session
+dure 24h et expire automatiquement. ⚠️ **La PWA ne charge plus son manifest** — À corriger
+via Bypass Access pour `/manifest.json` et `/sw.js` (voir [ACTIONS_MARC.md](ACTIONS_MARC.md) §A12).
+
+## 3. Options d'authentification évaluées
 
 ### Option A — Cloudflare Access + Google OAuth (RECOMMANDÉ)
 
@@ -59,14 +69,15 @@ Browser → Cloudflare Edge (Access policy)
 
 **Coût** : 0 $/mois (plan gratuit Cloudflare Access)
 
-**Étapes d'implémentation** :
-1. Vérifier que `hubperso.com` peut être déplacé vers Cloudflare DNS
-2. Créer une application Cloudflare Access avec policy
-   `email = marc.richard4@gmail.com`
-3. Activer Google comme Identity Provider (IdP)
-4. Configurer la durée de session (24h)
-5. Tester : ouvrir une fenêtre privée → doit rediriger vers Google
-6. Activer la 2FA sur le compte Google si pas déjà fait
+**Status (2026-05-25)** : ✅ Implémenté et en prod depuis 2026-05-22.
+
+**Étapes d'implémentation** (pour référence):
+1. ✅ `hubperso.com` sur Cloudflare DNS
+2. ✅ Application Cloudflare Access créée (`email = marc.richard4@gmail.com`)
+3. ✅ Google comme Identity Provider (IdP)
+4. ✅ Durée de session 24h
+5. ✅ Testé : fenêtre privée redirige bien vers Google
+6. ✅ 2FA sur Google compte
 
 **Documentation** : https://developers.cloudflare.com/cloudflare-one/policies/access/
 

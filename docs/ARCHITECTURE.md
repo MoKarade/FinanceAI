@@ -16,13 +16,18 @@
 | State | Zustand 5 + `persist` middleware | Schema versionné (v1 → v6), migrations en code |
 | Charts | Recharts 2 | Bundle dédié `recharts-*.js` (~445 KB) |
 | IA | `@anthropic-ai/sdk` (client-side) | `dangerouslyAllowBrowser: true` |
-| Banque | Era Context REST API | Bearer token utilisateur, cache TTL 1h |
+| Storage sécurisé | AES-256-GCM IndexedDB | services/secureKeyStore.ts (clé device non-extractible) |
+| Import données | CSV universel + Finnhub + CoinGecko | parseBankCsv.ts (100% local) |
+| Crypto pricing | CoinGecko REST | Gratuit, sans clé, CORS-friendly |
+| Stock/ETF pricing | Finnhub REST | Clé gratuite optionnelle |
 | Tests | Vitest + React Testing Library | 573 tests, 51 fichiers |
+| Auth | Cloudflare Access | Google OAuth, session 24h |
 | Hébergement | Vercel (auto) + GitHub Pages (workflow) | Preview par PR |
 
-Pas de backend. L'app vit côté navigateur, persiste localement via `persist`,
-et appelle deux APIs tierces (Anthropic, Era Context) directement depuis le
-client. Pas de session serveur, pas de base de données.
+Pas de backend. L'app vit côté navigateur, persiste localement via `persist`
+(chiffré en AES-256 pour les clés API), et appelle des APIs tierces (Anthropic,
+Finnhub, CoinGecko) directement depuis le client. Pas de session serveur, pas de
+base de données.
 
 ---
 
@@ -38,21 +43,23 @@ FinanceAI/
 │   ├── investments/         DividendPanel
 │   ├── budget/              BudgetGroupTable, BudgetAiModal
 │   ├── realestate/          PropertyConfigurator, MultiPropertyComparison
-│   ├── settings/            BackupPanel
+│   ├── settings/            BackupPanel, ImportBankStatement
 │   └── retirement/          AssetLocationCard, GoalSeekerCard
 ├── services/                Logique métier pure (testable, sans React)
 │   ├── projection.ts        Orchestrateur (1111 lignes)
 │   ├── projection/          31 sous-modules (split Phase 3)
 │   ├── projection.worker.ts Worker MC
 │   ├── claude.ts            Wrapper Anthropic SDK
-│   ├── eraContext.ts        Wrapper REST Era Context
 │   ├── aiOrchestrator.ts    Compositeur Era + Claude
+│   ├── secureKeyStore.ts    AES-256-GCM + IndexedDB (clé device)
 │   ├── tax.ts               Calcul impôt QC/Fed
+│   ├── import/              parseBankCsv.ts (CSV universel)
+│   ├── marketData/          providers/ coingecko.ts, finnhub.ts (pricing)
 │   ├── portfolio.ts         Historique CSV portfolio
 │   ├── realEstate.ts        Amortissement hypothèque
-│   └── …                    finance, lunchMoney, macroApi, pdfReport, cloudBackup
+│   └── …                    finance, macroApi, pdfReport, cloudBackup
 ├── store/
-│   └── useFinanceStore.ts   Zustand store unique (schema v3, persist)
+│   └── useFinanceStore.ts   Zustand store unique (schema v6, persist)
 ├── utils/
 │   ├── tax.ts               Constantes fiscales (paliers, plafonds)
 │   ├── safeNumber.ts        Helper anti-NaN
@@ -167,7 +174,30 @@ vie du worker (création, terminaison, replay).
 
 ---
 
-## 5. IA — pipeline composé
+## 5. Sourcing des données — pipeline uniformisé
+
+```
+Transactions bancaires
+  ├─ Import CSV (parseBankCsv.ts) — 100% local, universel
+  └─► Zustand + localStorage (chiffré AES-256)
+
+Crypto prices (BTC, ETH, SOL, …)
+  ├─ CoinGecko (services/marketData/providers/coingecko.ts)
+  ├─ Gratuit, sans clé, CORS-friendly
+  └─► Portfolio + Dashboard
+
+Stock/ETF prices (AAPL, VOO, XGRO, …)
+  ├─ Finnhub (services/marketData/providers/finnhub.ts)
+  ├─ Clé gratuite optionnelle
+  └─► Portfolio + Dashboard
+
+API keys (Anthropic, Finnhub)
+  ├─ Chiffrées AES-256-GCM (services/secureKeyStore.ts)
+  ├─ Clé device IndexedDB (non-extractible)
+  └─► Zustand + localStorage chiffré
+```
+
+## 6. IA — pipeline composé
 
 ```
 User input ──► AiAssistant.tsx
@@ -177,9 +207,9 @@ User input ──► AiAssistant.tsx
                  │         └─► eraContext.rememberFact()    [persiste côté Era]
                  │
                  ├─ Sinon :
-                 │    └─► aiOrchestrator.buildEnrichedContext(eraToken)
+                 │    └─► aiOrchestrator.buildEnrichedContext(eraToken) — OPTIONNEL
                  │         ├─ Promise.all en parallèle :
-                 │         │  ├─ eraContext.getCashFlow()
+                 │         │  ├─ eraContext.getCashFlow()       [si token configuré]
                  │         │  ├─ eraContext.analyzeSpending()
                  │         │  ├─ eraContext.forecastSpending()
                  │         │  └─ eraContext.recallHistory()
@@ -211,7 +241,7 @@ User input ──► AiAssistant.tsx
 
 ---
 
-## 6. Tests
+## 7. Tests
 
 ```
 tests/
@@ -234,7 +264,7 @@ tests/
 
 ---
 
-## 7. Décisions clés (voir aussi `docs/adr/`)
+## 8. Décisions clés (voir aussi `docs/adr/`)
 
 - **ADR-001** : Migration Gemini → Claude Anthropic
 - **ADR-002** : Era Context comme moteur de qualité (insights + categorizer)
@@ -243,7 +273,7 @@ tests/
 
 ---
 
-## 8. Workflow contributeur
+## 9. Workflow contributeur
 
 ```bash
 npm install
@@ -258,7 +288,7 @@ Toutes les PR doivent passer **typecheck + tests + build**. Le pipeline CI
 
 ---
 
-## 9. Pour aller plus loin
+## 10. Pour aller plus loin
 
 - [HANDOVER.md](HANDOVER.md) — vue d'ensemble + roadmap + recommandations (lire en premier)
 - [PROJECTION.md](PROJECTION.md) — détail du moteur de projection (9 phases mensuelles, scénarios, MC)

@@ -222,3 +222,47 @@ diagnostiquer. Le DNS reste proxied, l'app redevient publique le temps du fix.
   il redirige vers `www`. Sûr tant que l'apex ne sert aucun contenu (pas de
   mapping Vercel + Redirect Rule). Si un jour l'apex sert l'app, il faudra une
   app Access dédiée sur l'apex aussi.
+- **Clés API** : depuis 2026-05-25 elles sont **chiffrées au repos** (AES-256-GCM,
+  clé non-extractible IndexedDB — `services/secureKeyStore.ts`). Protège contre une
+  fuite at-rest, pas contre un XSS actif. A8 (passphrase) n'est donc plus prioritaire.
+
+---
+
+## 7. Donner l'accès à d'autres personnes (ajouter un user / rendre public)
+
+> ⚠️ Ces opérations modifient des **contrôles d'accès** — Claude ne peut pas les
+> faire à ta place. Tu les fais toi-même dans le dashboard Cloudflare. L'app est
+> **local-first** : chaque visiteur a son propre stockage navigateur isolé, donc
+> ouvrir l'accès **n'expose jamais tes données** (les autres arrivent sur une app
+> vierge, leurs données restent chez eux).
+
+### 7.1 Ajouter UN utilisateur (par email) — recommandé pour tester
+1. **Cloudflare → Zero Trust → Access → Applications → FinanceAI → Edit**.
+2. Onglet **Policies** → édite la policy `Allow`.
+3. Dans **Include**, ajoute un bloc `Emails` (ou utilise `Emails` en liste) et mets
+   l'adresse Gmail de la personne, à côté de `marc.richard4@gmail.com`.
+   - Alternative plus large : `Include → Emails ending in → @ton-domaine.com`.
+4. **Save**. La personne se connecte sur `www.hubperso.com` avec **son** Google →
+   elle a sa propre app vierge. Aucun déploiement nécessaire.
+
+### 7.2 Ouvrir au public
+Deux variantes :
+- **Public mais connecté (recommandé)** : policy `Allow` → `Include → Everyone`
+  **en gardant l'IdP Google**. N'importe qui se connecte avec son Google ; tu gardes
+  une identité par user (utile si on rebranche un jour le déverrouillage par login).
+- **Public total (sans login)** : **supprime** l'application Access `FinanceAI`
+  (Applications → … → Delete). Le site devient accessible à tous sans authentification.
+  ⚠️ Dans ce cas il n'y a plus de gate Google ; garde la **CSP stricte** (déjà en place).
+
+### 7.3 Avant d'ouvrir — checklist
+- ✅ Isolation par navigateur (aucune fuite cross-user — confirmé par l'audit sécu).
+- ✅ Aucun secret en dur dans le bundle (clés saisies par chaque user).
+- ⏳ **Recommandé** (voir [BACKLOG.md](BACKLOG.md)) : consolider la persistance (dette),
+  rendre le backup automatique, et ajouter un onboarding « tes données restent dans
+  CE navigateur — fais une sauvegarde » pour gérer honnêtement la perte de données.
+
+### 7.4 Personnaliser la page de connexion
+- **Cloudflare → Zero Trust → Settings → Custom Pages** + onglet **Appearance** de
+  l'app Access : logo, nom d'org, couleurs (HTML custom = Enterprise seulement).
+- **Écran « Se connecter avec Google »** : Google Cloud Console → APIs & Services →
+  OAuth consent screen (nom d'app, logo, email de support).

@@ -2,7 +2,7 @@
 
 > Liste de tout ce que **Claude ne peut pas faire** et qui requiert ton
 > intervention. Classé par priorité. Coche au fur et à mesure.
-> Dernière MAJ : 2026-05-22.
+> Dernière MAJ : 2026-05-25.
 
 ---
 
@@ -50,13 +50,17 @@ installation) ne fonctionne plus. Console : `manifest ... violates CSP` +
 > la vraie correction.
 
 ### A2 — Rotation des clés API (si jamais exposées)
-**Pourquoi** : les clés Anthropic/Finnhub/Era étaient en clair dans
-localStorage (`app_api_keys`) jusqu'au fix V1 d'hier. Si tu as utilisé l'app
-sur un PC partagé, considère-les compromises.
+**Statut** : ⚠️ À faire si tu soupçonnes une exposition antérieure
+**Pourquoi** : les clés Anthropic/Finnhub étaient disponibles en localStorage.
+Depuis 2026-05-25, elles sont chiffrées AES-256-GCM (services/secureKeyStore.ts).
+
+**Si tu as utilisé l'app sur un PC partagé avant 2026-05-25** :
 - [ ] Régénérer la clé Anthropic sur console.anthropic.com
 - [ ] Régénérer la clé Finnhub sur finnhub.io
 - [ ] Re-saisir les nouvelles clés dans Configuration → Clés API
-- [ ] (Le fix V1 purge automatiquement l'ancienne clef localStorage au prochain boot)
+
+**À partir de 2026-05-25** : les nouvelles clés saisiront chiffrées (AES-256).
+Les anciennes clés en clair dans localStorage seront migrées/purgées au prochain boot.
 
 ---
 

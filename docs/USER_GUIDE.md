@@ -29,10 +29,14 @@ Avant d'entrer tes vraies données, **active le mode test** :
 
 | Source | Onglet | Comment |
 |---|---|---|
-| Transactions bancaires | Configuration → Era Context Token | Synchronisation auto (era.app) |
+| Transactions bancaires | Configuration → Importer un relevé bancaire | Import CSV universel (100 % local) |
 | Actifs investis | Investments → ➕ Ajouter | Manuel ou import CSV |
 | Salaire | Configuration → Profil → salaires | Manuel |
 | Soldes initiaux | Configuration → Soldes initiaux | CELI, REER, NON-ENR, Crypto |
+
+> **Nouvelles sources de prix** (2026-05-25) :
+> - **Crypto** : CoinGecko (gratuit, sans clé requise — BTC, ETH, SOL, etc.)
+> - **Actions & ETF** : Finnhub (clé gratuite optionnelle pour les cours en direct)
 
 ## 📊 Comprendre chaque onglet
 
@@ -123,8 +127,10 @@ pour extraction automatique.
 
 - Profils utilisateurs + objectifs
 - **Mode test** (toggle)
-- **Clés API** : Anthropic (Claude IA), Finnhub (cotations), Era (transactions)
-  — toutes optionnelles, validation format visuelle
+- **Clés API optionnelles** :
+  - Anthropic (Claude IA, analyse budget/assistant)
+  - Finnhub (cotations actions/ETF en direct)
+- **Import CSV** : relevés bancaires (toutes les banques, format universel)
 - Privacy Mode (cacher les montants)
 - Export/Import JSON chiffré (mot de passe)
 
@@ -203,11 +209,11 @@ Future → bandeau scénarios en haut du graph. Cliquer une carte (Base,
 Liberté 55, Hyperinflation, etc.). Le badge "Scénario actif" dans
 Retraite reflète ton choix.
 
-### Les actions affichent toujours la même valeur, c'est normal ?
+### Les cours des actions/crypto affichent toujours la même valeur, c'est normal ?
 
-En mode test, les prix actions sont les vraies valeurs Yahoo Finance
-historiques (snapshot 2024-05 → 2026-05). En prod, les prix sont
-fetchés via Finnhub (si clé configurée) ou depuis ton CSV de portfolio.
+- **Crypto (BTC, ETH, SOL, etc.)** : prix auto-mis à jour via CoinGecko (gratuit, aucune clé).
+- **Actions/ETF** : prix via Finnhub (clé gratuite optionnelle), ou snapshot initial si Finnhub non configurée.
+- **Mode test** : les prix sont les vraies valeurs Yahoo Finance historiques (snapshot 2024-05 → 2026-05).
 
 ### J'ai oublié mon mot de passe de backup chiffré
 

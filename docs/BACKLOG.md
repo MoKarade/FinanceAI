@@ -12,6 +12,63 @@
 
 ---
 
+## 📍 Session 2026-05-25 — « Copilote d'argent » + sourcing gratuit + durcissement
+
+### ✅ Livré + en prod cette session
+- **Clés API persistées chiffrées** (AES-256-GCM, clé non-extractible IndexedDB) —
+  `services/secureKeyStore.ts`. Résout « je mets mes clés et rien ne se charge »
+  (l'audit C5 les rendait mémoire-seulement). Commit `c90f4b8`.
+- **Fix budget** : impossible d'ajouter une catégorie (groupe vide → bouton caché).
+  `BudgetGroupTable` montre toujours le bouton. Commit `4e21b58`.
+- **Plan d'action hiérarchique** (Futur) : vue d'ensemble → décennie → 3 ans →
+  année → semestre → trimestre → mois → conseils. `actionPlanHierarchy.ts` +
+  `ActionPlanDrilldown.tsx`. Commit `01c0f83`.
+- **Crypto gratuit** : provider CoinGecko (sans clé, CORS-OK), routage par symbole.
+  Commit `2213e31`.
+- **Import CSV bancaire universel** (gratuit, 100% local) : `parseBankCsv.ts` +
+  `ImportBankStatement.tsx`. Commit `6d60973`.
+- **era retiré** (MCP-only, inappelable d'un navigateur) : champ Settings +
+  orphelins Onboarding/Transactions/Planning. Commits `6d60973`, `2ffcad4`.
+- **Vuln `qs` corrigée** (`npm audit fix` → 0 vuln) + fixes d'audit multi-agents
+  (collision d'IDs import, skip silencieux, dump de crash, a11y). Commits `2ffcad4`, `f608e92`.
+
+### 🔧 Trouvé par le fleet d'agents — à traiter (priorisé)
+- **[HAUTE] Dette persistance : 2 systèmes concurrents** — `getInitialStateWithMigration`
+  lit ~25 clés `app_*` à la main + Zustand `persist` (v6) gère `financeai-storage`
+  avec sa propre chaîne de migration. Source classique de corruption silencieuse au
+  boot. **Consolider sur Zustand persist avant d'ouvrir au public.** (architect)
+- **[HAUTE] Backup auto manuel → automatique + nag** — `backupAuto.ts` + `cloudBackup.ts`
+  existent ; un user public ne lancera jamais le backup avant un clear-cache. Wirer un
+  déclencheur récurrent + un rappel « aucune sauvegarde ». (architect)
+- **[MOY] Migrer la persistance vers IndexedDB** (quota localStorage ~5 Mo + parsing
+  synchrone bloquant au boot). (architect)
+- **[MOY] Sécurité H2 — prompt injection via `payee`** : `sanitizePayee` ne filtre que
+  les caractères de contrôle ; un libellé bancaire malveillant peut injecter un prompt
+  vers Claude. À durcir. (security-reviewer, ex-S4)
+- **[MOY] `loadApiKeys`** : distinguer « rien stocké » de « blob présent mais
+  déchiffrement échoué » + toast « clés non restaurées ». (silent-failure-hunter)
+- **[BAS] Code mort à retirer** (refactor-cleaner + knip) : `MOCK_ASSETS` /
+  `INITIAL_INVESTMENT_ACCOUNTS` / `INITIAL_INVESTMENT_TRANSACTIONS` (constants.ts, 0 réf) ;
+  alias `optimizeDrawdownOrder` (drawdownOptimizer.ts) ; `searchTransactions` /
+  `clearInsightCache` (eraContext, dormants). Attention aux imports de types orphelins.
+- **[BAS] `Permissions-Policy`** absent du `<meta>` CSP (présent seulement dans les
+  headers Netlify) → à ajouter avant ouverture publique non-Netlify.
+
+### 🚀 Prochaines étapes produit (préparées avec Marc)
+- **Import positions courtier (CSV)** : même mécanique que la banque, pour saisir les
+  actions en lot (Wealthsimple/Questrade/Disnat…). Demandé, non commencé.
+- **Option B — agrégateur bancaire (clé)** : SimpleFIN (~15 $/an, payé par le user) via
+  un relais serverless Vercel (contourne le CORS). **Différé** — Marc a choisi « CSV-only
+  pour l'instant ».
+- **Rendre public / multi-user** : ouvrir Cloudflare Access (any Google login) ou retirer
+  Access. Voir procédure dans [AUTH_SETUP.md](AUTH_SETUP.md). Pré-requis recommandé :
+  consolider la persistance (dette ci-dessus) + onboarding « contrat de données » (« vos
+  données restent dans CE navigateur, faites une sauvegarde »).
+- **Sync cross-device gratuite optionnelle** : blob chiffré synchronisé via le propre
+  stockage du user (GitHub Gist / Google Drive de l'user) — reste local-first, 0 coût.
+
+---
+
 ## 🚨 P0 — Bloquant / Sécurité
 
 ### B0 — React error #310 sur chaque onglet au load — ✅ FIX CODE FAIT (2026-05-22)

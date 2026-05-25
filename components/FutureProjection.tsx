@@ -18,7 +18,8 @@ import { usePendingFocus } from '../utils/usePendingFocus';
 // render (qui invaliderait les useMemo deps en aval).
 const EMPTY_ARRAY: never[] = [];
 import { Tab as TabEnum } from '../types';
-import { ExpertTooltip, ClickableEventIcon, splitEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
+import { ExpertTooltip, ClickableEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
+import { FutureDetailModal } from './projection/FutureDetailModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ProjectionControls } from './projection/ProjectionControls';
 
@@ -328,7 +329,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const zoom = useTimeChartZoom<any>(chartData);
 
     // G5 — événement sélectionné (clic sur une pastille) → fiche détail.
-    const [selectedEvent, setSelectedEvent] = useState<any>(null);
+    const [detailPoint, setDetailPoint] = useState<any>(null);
 
     // C6 fix (Sprint 1B) — Garde déplacée ICI (après tous les hooks) pour
     // respecter la règle des Hooks. Retourne un placeholder UI si les props
@@ -510,48 +511,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 <div
                     ref={zoom.containerRef}
                     {...zoom.handlers}
-                    onClick={() => setSelectedEvent(null)}
                     className={`chart-fullscreen relative w-full h-[380px] sm:h-[500px] lg:h-[650px] select-none ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-default'}`}
                 >
-                    {/* G5 — fiche détail de l'événement cliqué */}
-                    {selectedEvent && (() => {
-                        const { icon, text } = splitEventIcon(selectedEvent.label || '');
-                        return (
-                            <div
-                                className="absolute top-2 right-2 z-20 w-[min(260px,calc(100%-1rem))] bg-[#0B0E14]/95 backdrop-blur-md border border-white/20 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.7)] p-3 animate-fade-in"
-                                onClick={(e) => e.stopPropagation()}
-                                onMouseDown={(e) => e.stopPropagation()}
-                                role="dialog"
-                                aria-label="Détail de l'événement"
-                            >
-                                <div className="flex items-start justify-between gap-2">
-                                    <div className="flex items-start gap-2 min-w-0">
-                                        <span className="text-xl shrink-0" aria-hidden="true">{icon}</span>
-                                        <div className="min-w-0">
-                                            <div className="text-sm font-bold text-white break-words">{text}</div>
-                                            <div className="text-tiny text-ink-400 mt-0.5">
-                                                {selectedEvent.dateLabel || selectedEvent.year || '—'}{selectedEvent.age != null ? ` · Âge ${selectedEvent.age}` : ''}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setSelectedEvent(null)}
-                                        aria-label="Fermer la fiche"
-                                        className="shrink-0 text-ink-400 hover:text-white text-sm leading-none p-1 -m-1 rounded focus-ring"
-                                    >
-                                        ✕
-                                    </button>
-                                </div>
-                                <div className="mt-2 pt-2 border-t border-white/10 flex justify-between text-tiny">
-                                    <span className="text-ink-400">Valeur nette à ce moment</span>
-                                    <span className="font-mono text-white privacy-blur">{Math.round(selectedEvent.netWorth || 0).toLocaleString('fr-CA')} $</span>
-                                </div>
-                            </div>
-                        );
-                    })()}
                      <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={zoom.visibleData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
+                        <ComposedChart
+                            data={zoom.visibleData}
+                            margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
+                            onClick={(s: any) => { const p = s?.activePayload?.[0]?.payload; if (p) setDetailPoint(p); }}
+                        >
                             <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
 
                             <XAxis
@@ -603,8 +570,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                         <ClickableEventIcon
                                             kind="life"
                                             payload={evt}
-                                            onSelect={setSelectedEvent}
-                                            selected={!!selectedEvent && selectedEvent.monthIndex === evt.monthIndex && selectedEvent.label === evt.label && selectedEvent.subIdx === evt.subIdx}
+                                            onSelect={(ev: any) => setDetailPoint(chartData.find((d: any) => d.monthIndex === ev.monthIndex) || ev)}
                                         />
                                     }
                                 />
@@ -620,8 +586,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                         <ClickableEventIcon
                                             kind="flow"
                                             payload={evt}
-                                            onSelect={setSelectedEvent}
-                                            selected={!!selectedEvent && selectedEvent.monthIndex === evt.monthIndex && selectedEvent.label === evt.label && selectedEvent.subIdx === evt.subIdx}
+                                            onSelect={(ev: any) => setDetailPoint(chartData.find((d: any) => d.monthIndex === ev.monthIndex) || ev)}
                                         />
                                     }
                                 />
@@ -629,6 +594,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         </ComposedChart>
                     </ResponsiveContainer>
                 </div>
+
+                {detailPoint && (
+                    <FutureDetailModal
+                        point={detailPoint}
+                        chartData={chartData}
+                        userName1={config.users[0]?.name}
+                        userName2={config.users[1]?.name}
+                        isPrivacyMode={isPrivacyMode}
+                        onClose={() => setDetailPoint(null)}
+                    />
+                )}
 
                 <div className="mt-6 flex flex-wrap gap-4 text-tiny text-gray-400 justify-center bg-black/20 p-4 rounded-xl border border-white/5">
                     <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#4b5563] rounded"></span> Cash</span>

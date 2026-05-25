@@ -53,7 +53,10 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
     getDisplayTarget, isSolo, splitRatio1, userNames, timeView,
     onUpdateItem, onDeleteItem, onAddItem,
 }) => {
-    if (items.length === 0) return null;
+    // NB : on ne masque PLUS les groupes vides. Sinon le bouton « + Ajouter »
+    // (ci-dessous) disparaissait avec eux → impossible de créer la 1re catégorie
+    // d'un groupe (bloquant total pour un nouvel utilisateur, INITIAL_BUDGET=[]).
+    const isEmpty = items.length === 0;
 
     const groupTotalTarget = items.reduce((sum, i) => sum + getDisplayTarget(i), 0);
     const groupTotalSpent = items.reduce((sum, i) => sum + (actualsMap[i.name] || 0), 0);
@@ -78,6 +81,12 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
             </div>
 
             <div className="bg-[#1a1a1a] rounded-b-lg border border-white/5 overflow-hidden">
+                {isEmpty && (
+                    <div className="px-4 py-6 text-center text-tiny text-gray-500">
+                        Aucune catégorie dans « {nature} » pour l'instant. Clique ci-dessous pour en créer une.
+                    </div>
+                )}
+                {!isEmpty && (
                 <table className="w-full text-left border-collapse">
                     <thead className="bg-black/20 text-tiny text-gray-500 uppercase">
                         <tr>
@@ -251,6 +260,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                         })}
                     </tbody>
                 </table>
+                )}
                 <button
                     onClick={() => onAddItem(nature)}
                     className="w-full py-2 text-tiny text-gray-500 hover:text-white hover:bg-white/5 transition-colors border-t border-white/5"

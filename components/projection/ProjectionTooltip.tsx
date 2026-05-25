@@ -51,6 +51,12 @@ export const ExpertTooltip = ({ active, payload, isPrivacyMode, userName1, userN
         || (data.RetraitCELI || 0) > 0;
     const portfolioOutflow = (data.RetraitREER || 0) + (data.RetraitCELI || 0);
 
+    // P2 — apport net (dépôts − retraits) vs gain marché, totalisés sur les comptes.
+    const totalFlow = (data.NetTransferCELI || 0) + (data.NetTransferREER || 0) + (data.NetTransferNonReg || 0)
+        + (data.NetTransferCrypto || 0) + (data.NetTransferLiquid || 0) + (data.NetTransferCELIAPP || 0) + (data.NetTransferREEE || 0);
+    const totalGain = (data.MarketGrowthCELI || 0) + (data.MarketGrowthREER || 0) + (data.MarketGrowthNonReg || 0)
+        + (data.MarketGrowthCrypto || 0) + (data.MarketGrowthLiquid || 0) + (data.MarketGrowthCELIAPP || 0) + (data.MarketGrowthREEE || 0);
+
     return (
         <div className="relative bg-gradient-to-b from-[#11161f]/95 to-[#0B0E14]/95 backdrop-blur-md border border-white/15 ring-1 ring-white/5 p-4 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.85)] w-80 max-h-[520px] overflow-y-auto z-50 animate-fade-in">
             <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-primary via-purple-500 to-pink-500 opacity-80" />
@@ -58,6 +64,18 @@ export const ExpertTooltip = ({ active, payload, isPrivacyMode, userName1, userN
                 <span className="text-base font-extrabold text-white tracking-tight">{data.dateLabel || 'N/A'}</span>
                 <span className="text-tiny font-bold text-primary bg-primary/15 border border-primary/30 px-2 py-0.5 rounded-full whitespace-nowrap">Âge {data.age || '??'}</span>
             </div>
+
+            {/* P2 — apport (ce que je mets) vs gain (croissance marché) du mois */}
+            {(totalFlow !== 0 || totalGain !== 0) && (
+                <div className="flex items-center gap-2 mb-3 text-tiny font-mono">
+                    <span className={`px-1.5 py-0.5 rounded ${totalFlow >= 0 ? 'text-sky-300 bg-sky-500/10' : 'text-orange-300 bg-orange-500/10'} privacy-blur`} title="Ce que tu déposes/retires (apport net)">
+                        Apport {totalFlow > 0 ? '+' : ''}{Math.round(totalFlow).toLocaleString()}$
+                    </span>
+                    <span className={`px-1.5 py-0.5 rounded ${totalGain >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-red-500/10'} privacy-blur`} title="Ce que le marché te rapporte (gain)">
+                        Gain {totalGain > 0 ? '+' : ''}{Math.round(totalGain).toLocaleString()}$
+                    </span>
+                </div>
+            )}
 
             <div className="mb-3 space-y-1">
                 {(data.IncomeMarc || 0) > 0 && <div className="flex justify-between text-xs"><span className="text-gray-400">Paye {userName1 || 'Utilisateur 1'}:</span> <span className="font-mono text-green-400 privacy-blur">+{(data.IncomeMarc || 0).toLocaleString()}$</span></div>}

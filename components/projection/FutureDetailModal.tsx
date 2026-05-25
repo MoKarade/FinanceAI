@@ -21,15 +21,19 @@ interface AccountDef {
     key: string;
     label: string;
     color: string;
+    /** Champ chartData du gain marché du mois (P2). */
+    gainKey?: string;
+    /** Champ chartData du flux net du mois (apport − retrait) (P2). */
+    flowKey?: string;
 }
 
 const ACCOUNTS: AccountDef[] = [
-    { key: 'Liquidites', label: 'Cash (Coussin)', color: '#4b5563' },
-    { key: 'CELI', label: 'CELI', color: '#10b981' },
-    { key: 'REER', label: 'REER', color: '#3b82f6' },
-    { key: 'REEE', label: 'REEE (Études)', color: '#06b6d4' },
-    { key: 'NonReg', label: 'Non-Enregistré', color: '#f59e0b' },
-    { key: 'Crypto', label: 'Crypto', color: '#a855f7' },
+    { key: 'Liquidites', label: 'Cash (Coussin)', color: '#4b5563', gainKey: 'MarketGrowthLiquid', flowKey: 'NetTransferLiquid' },
+    { key: 'CELI', label: 'CELI', color: '#10b981', gainKey: 'MarketGrowthCELI', flowKey: 'NetTransferCELI' },
+    { key: 'REER', label: 'REER', color: '#3b82f6', gainKey: 'MarketGrowthREER', flowKey: 'NetTransferREER' },
+    { key: 'REEE', label: 'REEE (Études)', color: '#06b6d4', gainKey: 'MarketGrowthREEE', flowKey: 'NetTransferREEE' },
+    { key: 'NonReg', label: 'Non-Enregistré', color: '#f59e0b', gainKey: 'MarketGrowthNonReg', flowKey: 'NetTransferNonReg' },
+    { key: 'Crypto', label: 'Crypto', color: '#a855f7', gainKey: 'MarketGrowthCrypto', flowKey: 'NetTransferCrypto' },
     { key: 'Immobilier', label: 'Immobilier', color: '#ec4899' },
 ];
 
@@ -56,7 +60,9 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
     const accounts = ACCOUNTS.map((a) => {
         const value = point[a.key] || 0;
         const variation = value - (prev ? (prev[a.key] || 0) : value);
-        return { ...a, value, variation };
+        const gain = a.gainKey ? (point[a.gainKey] || 0) : null;   // croissance marché du mois
+        const flow = a.flowKey ? (point[a.flowKey] || 0) : null;   // apport net (dépôt − retrait)
+        return { ...a, value, variation, gain, flow };
     }).filter((a) => a.value !== 0 || a.variation !== 0);
 
     // Série temporelle du compte sélectionné (drill-down).
@@ -126,19 +132,39 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                     key={a.key}
                                     type="button"
                                     onClick={() => setSelected(a)}
-                                    className="w-full flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 transition-colors text-left focus-ring"
+                                    className="w-full p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 transition-colors text-left focus-ring"
                                 >
-                                    <span className="flex items-center gap-2 min-w-0">
-                                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: a.color }} />
-                                        <span className="text-sm text-white truncate">{a.label}</span>
-                                    </span>
-                                    <span className="flex items-center gap-2.5 shrink-0">
-                                        <span className={`font-mono text-sm text-white ${blur}`}>{fmt(a.value)}</span>
-                                        <span className={`font-mono text-tiny px-1.5 py-0.5 rounded ${a.variation >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-red-500/10'} ${blur}`}>
-                                            {a.variation > 0 ? '+' : ''}{fmt(a.variation)}
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="flex items-center gap-2 min-w-0">
+                                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: a.color }} />
+                                            <span className="text-sm text-white truncate">{a.label}</span>
                                         </span>
-                                        <span className="text-ink-500" aria-hidden="true">›</span>
-                                    </span>
+                                        <span className="flex items-center gap-2 shrink-0">
+                                            <span className={`font-mono text-sm text-white ${blur}`}>{fmt(a.value)}</span>
+                                            <span className="text-ink-500" aria-hidden="true">›</span>
+                                        </span>
+                                    </div>
+                                    {/* P2 — apport (ce que je mets) vs gain (croissance marché) */}
+                                    {(a.flow !== null || a.gain !== null) ? (
+                                        <div className="flex items-center gap-2 mt-1.5 pl-[18px] text-tiny font-mono">
+                                            {a.flow !== null && (
+                                                <span className={`px-1.5 py-0.5 rounded ${a.flow >= 0 ? 'text-sky-300 bg-sky-500/10' : 'text-orange-300 bg-orange-500/10'} ${blur}`}>
+                                                    Apport {a.flow > 0 ? '+' : ''}{fmt(a.flow)}
+                                                </span>
+                                            )}
+                                            {a.gain !== null && (
+                                                <span className={`px-1.5 py-0.5 rounded ${a.gain >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-red-500/10'} ${blur}`}>
+                                                    Gain {a.gain > 0 ? '+' : ''}{fmt(a.gain)}
+                                                </span>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="mt-1.5 pl-[18px] text-tiny font-mono">
+                                            <span className={`px-1.5 py-0.5 rounded ${a.variation >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-red-500/10'} ${blur}`}>
+                                                {a.variation > 0 ? '+' : ''}{fmt(a.variation)} ce mois
+                                            </span>
+                                        </div>
+                                    )}
                                 </button>
                             ))}
                         </div>

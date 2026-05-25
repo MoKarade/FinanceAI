@@ -80,7 +80,6 @@ export const Transactions: React.FC<TransactionsProps> = ({
         };
         const updated = [...categorizationRules, rule];
         setCategorizationRules?.(updated);
-        try { localStorage.setItem('categorization_rules', JSON.stringify(updated)); } catch (e) { console.warn('[Transactions] storage quota?', e); }
         setNewPattern('');
         showToast(`Regle ajoutee: "${rule.pattern}" -> ${rule.category}`, 'success');
     };
@@ -88,7 +87,6 @@ export const Transactions: React.FC<TransactionsProps> = ({
     const handleDeleteRule = (id: string) => {
         const updated = categorizationRules.filter(r => r.id !== id);
         setCategorizationRules?.(updated);
-        try { localStorage.setItem('categorization_rules', JSON.stringify(updated)); } catch (e) { console.warn('[Transactions] storage quota?', e); }
     };
 
     const handleApplyRuleNow = (rule: CategorizationRule) => {

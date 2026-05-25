@@ -88,7 +88,7 @@ const migrateUserConfig = (config: any): any => {
     return { ...config, users: newUsers };
 };
 
-const getInitialStateWithMigration = (): AppState => {
+export const getInitialStateWithMigration = (): AppState => {
     const defaultState: AppState = {
         transactions: [],
         assets: [],
@@ -123,6 +123,18 @@ const getInitialStateWithMigration = (): AppState => {
     };
 
     if (typeof window === 'undefined') return defaultState;
+
+    // CONSOLIDATION persistance (2026-05-25) : `financeai-storage` (Zustand persist)
+    // est LA source de vérité. S'il existe, persist hydrate les vraies données
+    // juste après → inutile (et risqué) de relire ~25 clés legacy `app_*` à chaque
+    // boot. Cette 2e source/migration parallèle était la dette #1 (corruption
+    // silencieuse possible + parse synchrone bloquant au boot). La lecture legacy
+    // ci-dessous ne sert donc plus qu'à l'IMPORT UNIQUE des utilisateurs d'avant
+    // l'ère persist (aucune perte : financeai-storage contient toutes les données
+    // persistables ; les clés API vivent dans secureKeyStore).
+    try {
+        if (localStorage.getItem('financeai-storage') !== null) return defaultState;
+    } catch { /* localStorage inaccessible : on tente la lecture legacy quand même */ }
 
     try {
         const savedApiKeysStr = localStorage.getItem('app_api_keys');

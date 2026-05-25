@@ -93,6 +93,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   Era Context… » dans **Planning**. Plus aucune UI ne propose une fonctionnalité
   qui ne peut pas marcher. Typecheck + 655 tests + build OK ; 0 erreur lint.
 
+### Consolidation de la persistance (dette #1 — avant ouverture publique)
+
+- **Problème** : 2 systèmes lisaient le state à CHAQUE boot — `getInitialStateWithMigration`
+  (lecture manuelle de ~25 clés legacy `app_*` + sa propre chaîne de migration) **et**
+  Zustand `persist` (`financeai-storage`, v6). Deux chemins de migration parallèles =
+  risque de corruption silencieuse + parse synchrone bloquant.
+- **Fix sûr (préservant le comportement)** : `financeai-storage` (persist) est désormais
+  la **source de vérité unique**. S'il existe, on **ne relit plus** les clés legacy ; la
+  lecture legacy ne sert qu'à l'**import unique** des utilisateurs d'avant persist. Aucun
+  déplacement/suppression de données → zéro risque de perte (prouvé sur 3 scénarios de boot).
+- Retiré l'écriture directe redondante de `categorization_rules` (déjà persisté via le store).
+- 4 tests de boot (`tests/store/persistenceConsolidation.test.ts`) ; **659 tests OK** ;
+  boot vérifié au navigateur (mode test → 70 transactions hydratées, aucun crash).
+
 ---
 
 ## [unreleased — cycle 17 : Refonte graphique « Google Finance » (zoom partout + Futur)] — 2026-05-22

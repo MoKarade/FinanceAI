@@ -33,10 +33,11 @@
   (collision d'IDs import, skip silencieux, dump de crash, a11y). Commits `2ffcad4`, `f608e92`.
 
 ### 🔧 Trouvé par le fleet d'agents — à traiter (priorisé)
-- **[HAUTE] Dette persistance : 2 systèmes concurrents** — `getInitialStateWithMigration`
-  lit ~25 clés `app_*` à la main + Zustand `persist` (v6) gère `financeai-storage`
-  avec sa propre chaîne de migration. Source classique de corruption silencieuse au
-  boot. **Consolider sur Zustand persist avant d'ouvrir au public.** (architect)
+- ~~**[HAUTE] Dette persistance : 2 systèmes concurrents**~~ — ✅ **FAIT (2026-05-25)**.
+  `financeai-storage` (persist) est désormais la source de vérité unique ; la lecture
+  legacy `app_*` ne sert plus qu'à l'import unique (gate sur présence de financeai-storage).
+  Écriture redondante `categorization_rules` retirée. 4 tests de boot + vérif navigateur.
+  Reste (suite, plus tard) : migrer le storage de localStorage → IndexedDB (quota + boot async).
 - **[HAUTE] Backup auto manuel → automatique + nag** — `backupAuto.ts` + `cloudBackup.ts`
   existent ; un user public ne lancera jamais le backup avant un clear-cache. Wirer un
   déclencheur récurrent + un rappel « aucune sauvegarde ». (architect)

@@ -5,7 +5,7 @@ import { PageHeader } from './ui/PageHeader';
 import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { Pill } from './ui/Pill';
-import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Line, ComposedChart, Bar, ReferenceDot } from 'recharts';
+import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ReferenceArea, Line, ComposedChart, Bar, ReferenceDot } from 'recharts';
 import { BudgetConfig, BudgetCategory, Asset, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Transaction, Debt, ProjectionConfig, FinancialGoal, User, RegisteredAccountType } from '../types';
 import { fetchPortfolioHistory } from '../services/finance';
 import { calculateFutureProjection, SimulationParams } from '../services/projection';
@@ -23,6 +23,7 @@ import { FutureDetailModal } from './projection/FutureDetailModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ProjectionControls } from './projection/ProjectionControls';
 import { rankStrategies, OBJECTIVE_LABELS, type OptimizeObjective } from '../services/projection/strategyRanking';
+import { usePastPortfolioHistory } from '../hooks/usePastPortfolioHistory';
 
 // G10 — Légende interactive : une seule source de vérité pour les chips ET les
 // gardes de visibilité dans le graphique. `key` correspond au dataKey recharts
@@ -318,6 +319,34 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const results = runMC ? asyncResults : syncResults;
     const { chartData = [], fireNumber = 0, aiNote = "", allResults = [] } = (results || {}) as any;
 
+    // A1/A3 — passé réel reconstruit (valeur marché des placements) préfixé au
+    // graphe AVANT le début de projection (monthIndex < 0), sans toucher au futur
+    // (événements, lignes de référence, sélecteur de période restent intacts).
+    // On n'y trace QUE les comptes de placement (pas de fausse « valeur nette
+    // totale » : le cash/immo passé n'est pas reconstruit).
+    const pastHistory = usePastPortfolioHistory();
+    const pastPrefix = useMemo<any[]>(() => {
+        if (!pastHistory.points.length) return EMPTY_ARRAY;
+        return pastHistory.points
+            .map((p) => {
+                const [py, pm] = p.date.split('-').map(Number);
+                return {
+                    monthIndex: (py - startYear) * 12 + (pm - 1),
+                    year: py,
+                    dateLabel: p.date,
+                    Liquidites: 0, Immobilier: 0,
+                    CELI: p.CELI, CELIAPP: p.CELIAPP, REER: p.REER, REEE: p.REEE, NonReg: p.NonReg, Crypto: p.Crypto,
+                    isPast: true,
+                };
+            })
+            .filter((p) => p.monthIndex < 0); // strictement avant le début de projection (pas de doublon d'index)
+    }, [pastHistory.points, startYear]);
+    const displayData = useMemo<any[]>(
+        () => (pastPrefix.length ? [...pastPrefix, ...chartData] : chartData),
+        [pastPrefix, chartData],
+    );
+    const pastStartIndex = pastPrefix.length ? pastPrefix[0].monthIndex : 0;
+
     // Wiring 2026-05 (Option A): publie le dernier résultat dans le store pour
     // que Dashboard/Investments/Budget/etc. puissent l'afficher sans recalculer.
     const setLastProjection = useFinanceStore(s => s.setLastProjection);
@@ -380,7 +409,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const bestScenario = ranking.ranked[0] || null;
 
     // G4 — zoom molette / pan / sélecteur de période sur la courbe (remplace <Brush>).
-    const zoom = useTimeChartZoom<any>(chartData);
+    // A3 — consomme displayData (passé réel préfixé + futur projeté).
+    const zoom = useTimeChartZoom<any>(displayData);
 
     // G5 — événement sélectionné (clic sur une pastille) → fiche détail.
     const [detailPoint, setDetailPoint] = useState<any>(null);
@@ -655,6 +685,16 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         </button>
                     </div>
                 </div>
+                {/* A3 — note d'honnêteté sur le passé reconstruit (placements seulement). */}
+                {pastPrefix.length > 0 && (
+                    <div className="-mt-1 mb-2 text-tiny text-cyan-300/80 flex items-center gap-1.5 flex-wrap">
+                        <span aria-hidden="true">⟵</span>
+                        <span>
+                            Passé réel des placements{pastHistory.firstDate ? ` depuis ${pastHistory.firstDate.slice(0, 7)}` : ''}
+                            {pastHistory.isLoading ? ' · chargement des prix…' : (pastHistory.coverage < 0.99 ? ' · partiellement estimé aux prix actuels' : '')}
+                        </span>
+                    </div>
+                )}
                 {/* Hauteur responsive : 380px mobile, 500px tablet, 650px desktop */}
                 <div
                     ref={zoom.containerRef}
@@ -678,13 +718,19 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 tick={{fontSize: 10}}
                                 minTickGap={50}
                                 tickFormatter={(val) => {
-                                    const match = chartData.find((d:any) => d.monthIndex === val);
+                                    const match = displayData.find((d:any) => d.monthIndex === val);
                                     return match ? `${match.year}` : val;
                                 }}
                             />
 
                             <YAxis stroke="#666" tick={{fontSize: 10}} domain={['auto', 'auto']} tickFormatter={(val) => isPrivacyMode ? '***' : `${(val/1000000).toFixed(1)}M`} />
 
+                            {pastPrefix.length > 0 && (
+                                <ReferenceArea x1={pastStartIndex} x2={0} fill="#22d3ee" fillOpacity={0.05} stroke="none" />
+                            )}
+                            {pastPrefix.length > 0 && (
+                                <ReferenceLine x={0} stroke="#22d3ee" strokeOpacity={0.5} strokeDasharray="3 3" label={<RefLineLabel value="Passé réel ⟵" color="#22d3ee" />} />
+                            )}
                             <ReferenceLine y={0} stroke="#444" strokeWidth={2} />
                             {isVisible('aujourdhui') && <ReferenceLine x={todayMonthIndex} stroke="rgba(255,255,255,0.6)" strokeDasharray="5 5" label={<RefLineLabel value="Aujourd'hui" color="#ffffff" />} />}
 

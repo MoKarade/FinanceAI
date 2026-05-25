@@ -109,6 +109,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   relance de simulation. Phases 2-3 à venir (actions concrètes par année + vraie
   recherche multi-stratégies dans le moteur).
 
+### Ligne de vie : passé réel + futur projeté (A1-A3)
+
+- **A1** — `services/history/reconstructPortfolioHistory.ts` (pur, 5 tests) :
+  valeur marché passée par compte = Σ détention(t) × prix(t) en CAD, avec
+  indicateur de couverture (vrais prix vs estimé).
+- **A2** — `hooks/usePastPortfolioHistory.ts` : récupère l'historique quotidien
+  Finnhub (`getHistory`) par titre détenu pour peupler les prix, puis reconstruit.
+  Mode test : utilise le `priceHistory` des fixtures.
+- **A3** — le graphe Futur **préfixe le passé réel** (placements) avant le début
+  de projection (monthIndex < 0), zone « Passé réel » ombrée, sans toucher au
+  futur (événements, lignes, périodes intacts). N'affiche que les comptes de
+  placement (pas de fausse valeur nette totale : cash/immo passé non reconstruit).
+  Note d'honnêteté affichée (source + couverture). Le vrai passé s'affiche avec
+  des titres datés + une clé Finnhub configurée.
+
 ### Notes
 
 - Qualité : `typecheck` 0 / `lint` 0 / **607 tests** verts à chaque palier, zoom

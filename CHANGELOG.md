@@ -6,7 +6,34 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
-## [unreleased — G21 C4 · robustesse Monte Carlo · C3 suite · PRIO_CELI_NO_RAP · AssetLocationPanel · Clés chiffrées · fix budget · plan d'action · crypto · import CSV] — 2026-05-26
+## [unreleased — G21 C5 · optimiseur configurable · C4 robustesse · C3 suite · PRIO_CELI_NO_RAP · AssetLocationPanel · Clés chiffrées · fix budget · plan d'action · crypto · import CSV] — 2026-05-26
+
+### G21 C5 — Optimiseur de stratégies configurable
+
+- **`StrategyOptimizerPanel`** dans l'onglet Futur : l'utilisateur **compose son espace
+  de recherche** en cochant des valeurs de leviers (10 leviers : ordre de retrait,
+  rentes, âge de retraite, RAP, ordre de cotisation, dépenses retraite, Smith Manoeuvre,
+  priorité dettes, coussin d'urgence, placement par compte). Compte de configurations +
+  temps estimé **en direct**, avertissement au-delà de 300 configs.
+- On teste **toutes les combinaisons** (produit cartésien) par Monte Carlo, **réparti sur
+  plusieurs cœurs** (pool multi-worker), et on désigne la **meilleure selon l'objectif**
+  choisi (Équilibré / Patrimoine / Impôt / FIRE). Le re-tri par objectif est **instantané**
+  (recalculé en mémoire, aucune relance moteur).
+- **Verdict détaillé** : métriques clés du gagnant, ses 10 leviers en clair, une
+  **explication FR** comparant au dauphin et nommant les **leviers décisifs**, et le
+  **détail du score** (survie / patrimoine / fiscalité / FIRE / robustesse). Tableau
+  triable/filtrable de **toutes** les configs avec garde de survie.
+- **Découplage moteur** (ADR-008) : `StrategyConfig` modélise une stratégie comme une
+  combinaison de leviers orthogonaux. `EngineOverrides` optionnels (RAP, cotisation,
+  dettes) + clone de params (âge, dépenses, coussin, Smith, asset location). Tous les
+  overrides absents ⇒ comportement historique inchangé.
+- **`strategySearch.ts`** : MC par config (risque) + run déterministe (impôt à vie + âge
+  FIRE). **`strategyConfigRanking.ts`** : classement par objectif + garde de survie +
+  `explainWinner`. **`runStrategySearchAsync`** : sharding multi-worker + agrégation.
+- **Fix bug dormant** : `runMonteCarlo` n'injectait pas les `EngineOverrides` dans les
+  runs MC — les leviers découplés ne se seraient pas appliqués. Corrigé.
+- Tests : +29 (générateur d'espace, recherche, sharding, classement, explication,
+  assetLocation). 692 tests verts.
 
 ### G21 C4 — Classement des stratégies par robustesse (Monte Carlo)
 

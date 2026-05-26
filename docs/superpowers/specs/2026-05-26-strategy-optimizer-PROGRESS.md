@@ -182,13 +182,28 @@ sensibilité). **669 tests existants toujours verts** → non-régression prouv�
 - **runScenario non exporté** : tester l'optimiseur via faux `runScenario` injecté
   (cf. `strategyRobustness.test.ts`) OU via `processCashflowAllocation` exporté.
 
-## 6. État git
-- Branche `main`. Derniers commits C5 : `201bb8f` (spec), `a1ee5c9` (commit 1).
-- Tout poussé. 674 tests verts (669 + 5), typecheck propre, build OK.
+## 6. État git — ✅ C5 TERMINÉ (tous les commits)
+- Branche `main`. Commits C5 : `201bb8f` (spec), `a1ee5c9` (c1 moteur), `cf2c83a` (c3
+  générateur), `78fcae0` (c4 pool+recherche), `6151997` (c5 classement+explication),
+  `fad78bb` (c6 UI), `8bfce6f` (c2 assetLocation), + docs (c7).
+- **704 tests verts**, typecheck propre, build OK.
 
-## 7. Prochain pas recommandé
-**Commit 3 (générateur d'espace)** — logique pure, faible risque, débloque le cœur de
-l'optimiseur. Puis commit 4 (pool worker), puis 5 (classement/explication), puis 6 (UI),
-en gardant le câblage `assetLocation` (commit 2) pour un moment de contexte frais car
-c'est le plus délicat. Le lever `assetLocation` peut être livré en dernier sans bloquer
-les 9 autres leviers.
+### Récap par commit
+- ✅ **Commit 1** (`a1ee5c9`) — StrategyConfig + EngineOverrides + découplage moteur.
+- ✅ **Commit 2** (`8bfce6f`) — assetLocation via clone params (+0,4pp NonReg). Approche
+  pragmatique (pas de suivi par classe d'actif). Effet modulé par le solde NonReg réel.
+- ✅ **Commit 3** (`cf2c83a`) — `strategySpace.ts` (générateur + configToEngine).
+- ✅ **Commit 4** (`78fcae0`) — `strategySearch.ts` (MC + run déterministe par config) +
+  `runStrategySearchAsync` (pool multi-worker, sharding contigu) + mode worker. Fix :
+  `runMonteCarlo` threade désormais les overrides.
+- ✅ **Commit 5** (`6151997`) — `strategyConfigRanking.ts` (classement par objectif +
+  garde de survie + breakdown + `explainWinner` + `decisiveLevers`).
+- ✅ **Commit 6** (`fad78bb`) — `StrategyOptimizerPanel.tsx` (composeur + verdict +
+  détail score + tableau triable/filtrable + sélecteur d'objectif). Intégré dans Futur.
+- ✅ **Commit 7** — docs (ADR-008, CHANGELOG, BACKLOG, ce handover).
+
+## 7. Suites possibles (hors scope C5)
+- Affiner l'approximation `assetLocation` (suivi par classe d'actif dans la boucle) si
+  Marc juge le +0,4pp trop grossier.
+- Sauvegarde/partage de configurations d'optimiseur (YAGNI pour l'instant).
+- « Appliquer » le gagnant : pousser sa config vers les paramètres réels du Futur.

@@ -105,4 +105,26 @@ describe('strategySpace — configToEngine', () => {
         expect(base.retirementGoal.targetMonthlyIncome).toBe(5000);
         expect(base.projection.emergencyFundMonths).toBe(6);
     });
+
+    it('assetLocation=true applique un bonus de rendement au compte NonReg', () => {
+        const base = baseParams();
+        const baseNonReg = base.projection.returnRates!.nonReg; // 6
+        const off = configToEngine({
+            withdrawalOrder: 'AUTO_MARGINAL', delayPensions: false, retirementAge: 65,
+            skipRap: false, contributionOrder: 'CELI_FIRST', retirementSpending: 1,
+            smithManoeuvre: false, debtFirst: false, emergencyFundMonths: 6, assetLocation: false,
+        }, base);
+        const on = configToEngine({
+            withdrawalOrder: 'AUTO_MARGINAL', delayPensions: false, retirementAge: 65,
+            skipRap: false, contributionOrder: 'CELI_FIRST', retirementSpending: 1,
+            smithManoeuvre: false, debtFirst: false, emergencyFundMonths: 6, assetLocation: true,
+        }, base);
+
+        expect(off.params.projection.returnRates!.nonReg).toBe(baseNonReg); // inchangé
+        expect(on.params.projection.returnRates!.nonReg).toBeGreaterThan(baseNonReg); // bonus
+        // Les autres comptes ne bougent pas.
+        expect(on.params.projection.returnRates!.celi).toBe(base.projection.returnRates!.celi);
+        // Immutabilité : la base n'a pas bougé.
+        expect(base.projection.returnRates!.nonReg).toBe(baseNonReg);
+    });
 });

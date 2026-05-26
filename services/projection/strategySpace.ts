@@ -95,18 +95,33 @@ export interface EngineArgs {
 }
 
 /**
+ * Bonus de rendement (points de %) appliqué au compte non-enregistré quand le levier
+ * assetLocation est actif. Approximation de l'alpha d'une allocation optimale par
+ * compte (obligations→REER, croissance→CELI, étranger→NonReg) : elle réduit le drag
+ * fiscal sur la portion imposable. Le moteur applique ce taux au SOLDE NonReg réel —
+ * l'effet est donc nul sans NonReg et croît avec lui (pas de donnée plaquée). Ordre
+ * de grandeur prudent issu de la littérature (Canadian Couch Potato / PWL ≈ 0,3–0,5 %).
+ */
+const ASSET_LOCATION_BONUS_PP = 0.4;
+
+/**
  * Traduit une StrategyConfig en arguments pour runScenario : clone immutable de
- * params (âge de retraite, dépenses, coussin, Smith) + overrides moteur (RAP,
- * cotisation, dettes). Le levier assetLocation n'est PAS encore appliqué (commit 2).
+ * params (âge de retraite, dépenses, coussin, Smith, asset location) + overrides
+ * moteur (RAP, cotisation, dettes).
  */
 export function configToEngine(config: StrategyConfig, baseParams: SimulationParams): EngineArgs {
     const baseIncome = baseParams.retirementGoal.targetMonthlyIncome ?? 0;
+    const baseReturnRates = baseParams.projection.returnRates;
+    const returnRates = config.assetLocation && baseReturnRates
+        ? { ...baseReturnRates, nonReg: baseReturnRates.nonReg + ASSET_LOCATION_BONUS_PP }
+        : baseReturnRates;
     const params: SimulationParams = {
         ...baseParams,
         projection: {
             ...baseParams.projection,
             emergencyFundMonths: config.emergencyFundMonths,
             useSmithManoeuvre: config.smithManoeuvre,
+            returnRates,
         },
         retirementGoal: {
             ...baseParams.retirementGoal,

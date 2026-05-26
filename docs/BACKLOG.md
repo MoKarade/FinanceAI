@@ -43,12 +43,18 @@
   - [~] **Style** : contrôles harmonisés avec les autres ; affiner visuellement si
     besoin (la barre période peut chevaucher la légende centrée — à ajuster au besoin).
 
-### Infobulles & lisibilité (questions à poser)
-- [ ] **G22-UX1 — Infobulles incompréhensibles** : refondre le texte + icônes + structure
-  pour comprendre d'un coup d'œil. Exemple à corriger (achat immo) :
-  `🏠Achat (re-1): -103 135$` / `⚠️Stress test B-20 OSFI… GDS 197.7% > 39%…` /
-  `🏧↳ Retrait RAP… +1 355$` / `🏧↳ Retrait CELI (Achat Immo): +82 205$` /
-  `📌MBP: -90 000$ | Frais+TBienv.: -13 135$`. Appliquer à TOUTES les infobulles similaires.
+### Infobulles & lisibilité
+- [x] **G22-UX1 — Infobulles incompréhensibles** — ✅ FAIT. Toutes les chaînes
+  `flowEventLogs`/`lifeEventLogs` réécrites en français clair, jargon masqué.
+  Avant : `🏠Achat (re-1): -103 135$` / `⚠️Stress test B-20 OSFI… GDS 197.7%…` /
+  `🏧↳ Retrait RAP… +1 355$` / `📌MBP: -90 000$ | Frais+TBienv.: -13 135$`.
+  Après : `🏠 Achat de la propriété : -103 135 $ (argent sorti de tes comptes)` /
+  `⚠️ Hypothèque risquée : tes paiements seraient trop élevés…` / `🏦 ↳ Retrait
+  REER via le RAP, sans impôt : +1 355 $` / `📌 Mise de fonds : -90 000 $ · Frais
+  de notaire + taxe de bienvenue : -13 135 $`. Fichiers : `realEstateMonth.ts`,
+  `cashflowAllocation.ts` (REER/CELI/non-enreg/crypto/dettes/surplus),
+  `childrenReee.ts` (voiture, fermeture REEE). Format uniforme (espace avant `$`,
+  acronymes expliqués). Aucun test ne dépendait des anciennes chaînes.
 
 ### Refonte navigation / onglets (questions à poser)
 - [x] **G22-N1 — Supprimer l'onglet Documents** — ✅ FAIT. Retiré de l'enum Tab,

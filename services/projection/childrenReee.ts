@@ -261,7 +261,7 @@ export function processOneChild(
     if (childAgeMonths === 18 * 12 && carCost > 0) {
         const carInflated = carCost * expenseMultiplier;
         liquidDelta -= carInflated;
-        lifeEventLogs.push(`🚗 Cadeau voiture (${child.name || 'Enfant'} 18 ans): -${Math.round(carInflated).toLocaleString('fr-CA')}$`);
+        lifeEventLogs.push(`🚗 Cadeau voiture pour ${child.name || 'l\'enfant'} (18 ans) : -${Math.round(carInflated).toLocaleString('fr-CA')} $`);
         childGrossCostAdd += carInflated;
         childMonthlyCostAdd += carInflated;
     }
@@ -296,7 +296,7 @@ export function processOneChild(
     if (childAgeMonths === 25 * 12 && reeeNewBalance > 0) {
         liquidDelta += reeeNewBalance;
         taxDiversAdd += reeeNewBalance * 0.20;
-        flowEventLogs.push(`🎓 Fermeture REEE (${child.name || 'Enfant 25 ans'}): +${Math.round(reeeNewBalance).toLocaleString('fr-CA')}$ → Liquidités`);
+        flowEventLogs.push(`🎓 Fermeture du REEE (régime d'épargne-études) de ${child.name || 'l\'enfant'} : +${Math.round(reeeNewBalance).toLocaleString('fr-CA')} $ versés dans tes liquidités`);
         reeeNewBalance = 0;
     }
 

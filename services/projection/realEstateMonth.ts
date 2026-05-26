@@ -129,7 +129,7 @@ export function processRealEstate(
                 });
                 if (!validation.valid) {
                     validation.errors.forEach(err => {
-                        state.lifeEventLogs.push(`⚠️ SCHL §6.8 (${goal.id}): ${err}`);
+                        state.lifeEventLogs.push(`⚠️ Assurance prêt hypothécaire (SCHL) : ${err}`);
                     });
                 }
             }
@@ -146,7 +146,7 @@ export function processRealEstate(
 
             if (state.celiapp > 0) {
                 state.liquid += state.celiapp;
-                state.flowEventLogs.push(`Vente CELIAPP (${goal.id}): +${state.celiapp.toFixed(0)}$`);
+                state.flowEventLogs.push(`💰 Retrait CELIAPP (FHSA) pour l'achat : +${Math.round(state.celiapp).toLocaleString('fr-CA')} $`);
                 state.celiapp = 0;
                 state.fhsaClosingYear = loopYear;
             }
@@ -171,7 +171,7 @@ export function processRealEstate(
                             state.withdrawalREER += rapAmount;
                             state.contribLiquid += rapAmount;
                             remainingShortfall -= rapAmount;
-                            state.flowEventLogs.push(`↳ Retrait RAP (Non-imposable): +${Math.round(rapAmount).toLocaleString('fr-CA')}$`);
+                            state.flowEventLogs.push(`🏦 ↳ Retrait REER via le RAP, sans impôt : +${Math.round(rapAmount).toLocaleString('fr-CA')} $`);
                         }
                     }
                 }
@@ -186,7 +186,7 @@ export function processRealEstate(
                     state.retraitCeliMois += celiAmount;
                     state.contribLiquid += celiAmount;
                     remainingShortfall -= celiAmount;
-                    state.flowEventLogs.push(`↳ Retrait CELI (Achat Immo): +${Math.round(celiAmount).toLocaleString('fr-CA')}$`);
+                    state.flowEventLogs.push(`🏦 ↳ Retrait CELI pour l'achat : +${Math.round(celiAmount).toLocaleString('fr-CA')} $`);
                 }
 
                 // Phase 3: NonReg
@@ -196,7 +196,7 @@ export function processRealEstate(
                     state.withdrawalNonReg += nonRegAmount;
                     state.contribLiquid += nonRegAmount;
                     remainingShortfall -= nonRegAmount;
-                    state.flowEventLogs.push(`↳ Retrait Non-Enreg (Achat Immo): +${Math.round(nonRegAmount).toLocaleString('fr-CA')}$`);
+                    state.flowEventLogs.push(`🏦 ↳ Retrait du compte non-enregistré pour l'achat : +${Math.round(nonRegAmount).toLocaleString('fr-CA')} $`);
                 }
 
                 // Phase 4: REER imposable (dernier recours)
@@ -215,7 +215,7 @@ export function processRealEstate(
                     state.contribLiquid += drawn;
                     state.taxCurrentYearReer += tax;
                     state.impotReerMois += tax;
-                    state.flowEventLogs.push(`🚨 Retrait REER Imposable (Achat Immo @${(margRate * 100).toFixed(0)}%): -${Math.round(drawn).toLocaleString('fr-CA')}$`);
+                    state.flowEventLogs.push(`🚨 ↳ Retrait REER imposable pour l'achat (impôt ~${(margRate * 100).toFixed(0)} %) : -${Math.round(drawn).toLocaleString('fr-CA')} $`);
                 }
             }
 
@@ -242,8 +242,8 @@ export function processRealEstate(
                 const n = goal.amortization * 12;
                 const p = pState.mortgage;
                 pState.calculatedPmt = r > 0 ? p * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1) : p / n;
-                state.lifeEventLogs.push(`🏠 Achat (${goal.id}): -${Math.round(totalCashNeeded).toLocaleString('fr-CA')}$`);
-                state.flowEventLogs.push(`MBP: -${goal.downPayment.toLocaleString('fr-CA')}$ | Frais+TBienv.: -${Math.round(goal.totalClosingCosts + welcomeFees).toLocaleString('fr-CA')}$`);
+                state.lifeEventLogs.push(`🏠 Achat ${goal.name || 'de la propriété'} : -${Math.round(totalCashNeeded).toLocaleString('fr-CA')} $ (argent sorti de tes comptes)`);
+                state.flowEventLogs.push(`📌 Mise de fonds : -${goal.downPayment.toLocaleString('fr-CA')} $ · Frais de notaire + taxe de bienvenue : -${Math.round(goal.totalClosingCosts + welcomeFees).toLocaleString('fr-CA')} $`);
                 if (goal.isPrimaryResidence) state.hasPurchasedPrimary = true;
 
                 // §6.6 — Stress test OSFI B-20 (qualifying rate + GDS/TDS).
@@ -282,17 +282,16 @@ export function processRealEstate(
                     });
                     if (!stress.passes) {
                         state.lifeEventLogs.push(
-                            `⚠️ Stress test B-20 OSFI (${goal.id}): ${stress.failReason} ` +
-                            `(qualifying rate ${(stress.qualifyingRate * 100).toFixed(2)}%)`,
+                            `⚠️ Hypothèque risquée : tes paiements seraient trop élevés par rapport à ton revenu — une banque pourrait refuser ce prêt.`,
                         );
                     }
                 } else {
                     state.flowEventLogs.push(
-                        `ℹ️ Stress test B-20 ignoré pour ${goal.id} : taux contractuel invalide`,
+                        `ℹ️ Vérification d'emprunt ignorée (taux d'hypothèque non renseigné).`,
                     );
                 }
             } else if (m === purchaseOffset) {
-                state.flowEventLogs.push(`⚠️ Achat (${goal.id}) reporté: liquidités insuffisantes`);
+                state.flowEventLogs.push(`⚠️ Achat reporté : pas assez de liquidités pour la mise de fonds.`);
             }
         }
 
@@ -307,7 +306,7 @@ export function processRealEstate(
                     const newRate = Math.max(0.01, goal.mortgageRate / 100 + rateShock);
                     const nr = newRate / 12;
                     pState.calculatedPmt = pState.mortgage * nr * Math.pow(1 + nr, remainingMonths) / (Math.pow(1 + nr, remainingMonths) - 1);
-                    state.lifeEventLogs.push(`🏦 Renouvellement ${goal.id}: ${(newRate * 100).toFixed(2)}%`);
+                    state.lifeEventLogs.push(`🏦 Renouvellement hypothécaire ${goal.name || ''} : nouveau taux ${(newRate * 100).toFixed(2)} %`);
                 }
             }
             pState.currentValue *= Math.pow(1 + (goal.propertyGrowthRate || 3) / 100, 1 / 12);
@@ -321,7 +320,7 @@ export function processRealEstate(
             if (prevMortgage > 0 && pState.mortgage <= 0 && !pState.isPaidOff) {
                 pState.isPaidOff = true;
                 pState.calculatedPmt = 0;
-                state.lifeEventLogs.push(`🏠 Propriété payée à 100 % ! (${goal.id})`);
+                state.lifeEventLogs.push(`🏠 Hypothèque remboursée à 100 % ! ${goal.name || 'Propriété'} t'appartient pleinement.`);
             }
             totalImmoHypo += pState.calculatedPmt;
             totalImmoEquity += pState.currentValue - pState.mortgage;
@@ -345,7 +344,7 @@ export function processRealEstate(
                 if (surplusMarginCall > 0 && state.nonReg > 0) {
                     const call = handleNonRegSale(state, surplusMarginCall);
                     state.smithManoeuvreDebt -= call;
-                    state.flowEventLogs.push(`🚨 Appell de marge (HELOC): Vente ${Math.round(call).toLocaleString('fr-CA')}$ NonReg`);
+                    state.flowEventLogs.push(`🚨 Appel de marge : vente forcée de ${Math.round(call).toLocaleString('fr-CA')} $ (compte non-enregistré)`);
                 }
             }
 

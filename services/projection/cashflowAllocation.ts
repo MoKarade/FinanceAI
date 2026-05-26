@@ -167,7 +167,7 @@ export function processCashflowAllocation(
                 state.taxCurrentYearReer += actualWithholding;
                 runningGross += actualGross;
                 shortfall -= actualNet;
-                state.flowEventLogs.push(`↳ Retrait REER (${label}): +${actualGross.toFixed(0)}$ Brut -> +${actualNet.toFixed(0)}$ Net`);
+                state.flowEventLogs.push(`🏦 ↳ Retrait REER (${label}) : +${Math.round(actualGross).toLocaleString('fr-CA')} $ brut → +${Math.round(actualNet).toLocaleString('fr-CA')} $ net après impôt`);
                 return actualGross;
             };
 
@@ -220,13 +220,13 @@ export function processCashflowAllocation(
                     state.retraitCeliMois += drawn;
                     state.withdrawalCELI += drawn;
                     shortfall -= drawn;
-                    state.flowEventLogs.push(`↳ Retrait CELI: +${Math.round(drawn).toLocaleString('fr-CA')}$`);
+                    state.flowEventLogs.push(`🏦 ↳ Retrait CELI (sans impôt) : +${Math.round(drawn).toLocaleString('fr-CA')} $`);
                 } else if (bucket === 'NONREG' && state.nonReg > 0) {
                     const drawnNonReg = handleNonRegSale(state, shortfall);
                     state.liquid += drawnNonReg;
                     state.withdrawalNonReg += drawnNonReg;
                     shortfall -= drawnNonReg;
-                    state.flowEventLogs.push(`↳ Retrait Non-Enreg: +${Math.round(drawnNonReg).toLocaleString('fr-CA')}$`);
+                    state.flowEventLogs.push(`🏦 ↳ Retrait du compte non-enregistré : +${Math.round(drawnNonReg).toLocaleString('fr-CA')} $`);
                 } else if (bucket === 'REER' && state.reer > 0) {
                     // OAS guard appliqué ici aussi: on respecte le plafond clawback.
                     const reerCap = Math.max(0, oasCap - runningGross);
@@ -238,7 +238,7 @@ export function processCashflowAllocation(
                     shortfall -= drawn;
                     state.withdrawalCrypto += drawn;
                     state.accCapitalGainsYear += drawn;
-                    state.flowEventLogs.push(`🚨 Liquidation Crypto (Dernier Recours): +${drawn.toFixed(0)}$`);
+                    state.flowEventLogs.push(`🚨 Vente de crypto (dernier recours) : +${Math.round(drawn).toLocaleString('fr-CA')} $`);
                 }
             }
         }
@@ -269,8 +269,8 @@ export function processCashflowAllocation(
                 if (pay > 0) {
                     d.balance -= pay;
                     excess -= pay;
-                    const label = d.interestRate > 7 ? 'Dette Toxique' : 'Dette (Strat. Briseur)';
-                    state.flowEventLogs.push(`💸 Remboursement ${label} (${d.name}): -${Math.round(pay).toLocaleString('fr-CA')}$`);
+                    const label = d.interestRate > 7 ? 'dette à taux élevé' : 'remboursement accéléré';
+                    state.flowEventLogs.push(`💸 Remboursement ${d.name} (${label}) : -${Math.round(pay).toLocaleString('fr-CA')} $`);
                 }
             }
         }
@@ -333,7 +333,7 @@ export function processCashflowAllocation(
                 state.celiRoom -= fill;
                 excess -= fill;
                 state.contribCELI += fill;
-                state.flowEventLogs.push(`↳ Surplus redirigé vers CELI: +${Math.round(fill).toLocaleString('fr-CA')}$`);
+                state.flowEventLogs.push(`💰 ↳ Surplus placé dans le CELI : +${Math.round(fill).toLocaleString('fr-CA')} $`);
             }
         }
 

@@ -19,6 +19,7 @@ import {
 } from '../../services/projection';
 import {
     runStrategySearchAsync,
+    SEARCH_CANCELLED,
     type StrategySearchProgress,
 } from '../../services/projection/runAsync';
 import {
@@ -36,8 +37,6 @@ import {
 
 interface Props {
     params: SimulationParams;
-    /** Itérations MC par config (borné [50,1000] côté moteur). Défaut 1000. */
-    iterations?: number;
     /** Applique la config gagnante aux paramètres réels du Futur. Absent ⇒ pas de bouton. */
     onApply?: (config: StrategyConfig) => void;
 }
@@ -46,6 +45,12 @@ type Status = 'idle' | 'running' | 'done' | 'error';
 
 const OBJECTIVES: OptimizeObjective[] = ['balanced', 'wealth', 'tax', 'fire'];
 const WARN_THRESHOLD = 300; // au-delà : avertissement temps de calcul
+// Budget total de simulations : les itérations par config s'adaptent au nombre de
+// configs pour borner le temps total (sinon N×1000 sims = 15-20 min). Précision
+// statistique suffisante pour un classement ; bornée [60, 400] par config.
+const SIM_BUDGET = 24_000;
+const adaptiveIterations = (nConfigs: number): number =>
+    Math.max(60, Math.min(400, Math.round(SIM_BUDGET / Math.max(1, nConfigs))));
 
 const fmtM = (v: number): string => `${(v / 1_000_000).toFixed(2)}M$`;
 const fmtMs = (ms: number): string => {
@@ -72,7 +77,7 @@ const ScoreBar: React.FC<{ label: string; value: number }> = ({ label, value }) 
     </div>
 );
 
-export const StrategyOptimizerPanel: React.FC<Props> = ({ params, iterations = 300, onApply }) => {
+export const StrategyOptimizerPanel: React.FC<Props> = ({ params, onApply }) => {
     const [applied, setApplied] = useState(false);
     const [composerOpen, setComposerOpen] = useState(true);
     const [selection, setSelection] = useState<LeverSelection>({});
@@ -84,7 +89,8 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, iterations = 3
     const [filter, setFilter] = useState<{ key: keyof StrategyConfig; value: unknown } | null>(null);
 
     const aliveRef = useRef(true);
-    useEffect(() => () => { aliveRef.current = false; }, []);
+    const abortRef = useRef<AbortController | null>(null);
+    useEffect(() => () => { aliveRef.current = false; abortRef.current?.abort(); }, []);
 
     const ctx: SpaceContext = useMemo(() => ({
         hasPrimaryPurchase: (params.realEstateGoals?.length ?? 0) > 0,
@@ -92,10 +98,11 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, iterations = 3
     }), [params]);
 
     const configCount = useMemo(() => countConfigs(selection, ctx), [selection, ctx]);
+    const iters = adaptiveIterations(configCount); // budget adaptatif (borne le temps total)
     const nWorkers = typeof navigator !== 'undefined' && navigator.hardwareConcurrency ? navigator.hardwareConcurrency : 4;
     const estMs = useMemo(
-        () => estimateRuntimeMs(configCount, iterations) / Math.max(1, nWorkers),
-        [configCount, iterations, nWorkers],
+        () => estimateRuntimeMs(configCount, iters) / Math.max(1, nWorkers),
+        [configCount, iters, nWorkers],
     );
 
     // Re-tri par objectif SANS recalcul moteur : dérivé des résultats bruts.
@@ -121,10 +128,13 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, iterations = 3
         setApplied(false);
         setComposerOpen(false); // replie le composeur pour laisser place aux résultats
         setProgress({ done: 0, total: configCount });
+        const ac = new AbortController();
+        abortRef.current = ac;
         try {
             const configs = generateStrategySpace(selection, ctx);
             const result = await runStrategySearchAsync(params, configs, {
-                iterations,
+                iterations: iters,
+                signal: ac.signal,
                 onProgress: (p) => { if (aliveRef.current) setProgress(p); },
             });
             if (!aliveRef.current) return;
@@ -132,10 +142,18 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, iterations = 3
             setStatus('done');
         } catch (e: unknown) {
             if (!aliveRef.current) return;
-            setError(e instanceof Error ? e.message : 'Échec de la recherche de stratégie');
+            const msg = e instanceof Error ? e.message : String(e);
+            if (msg === SEARCH_CANCELLED) {
+                setStatus('idle'); // annulation volontaire : retour propre, pas d'erreur
+                setComposerOpen(true);
+                return;
+            }
+            setError(msg || 'Échec de la recherche de stratégie');
             setStatus('error');
         }
-    }, [params, selection, ctx, configCount, iterations]);
+    }, [params, selection, ctx, configCount, iters]);
+
+    const cancel = useCallback(() => abortRef.current?.abort(), []);
 
     const pct = progress && progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
     const winner = ranking?.ranked[0] ?? null;
@@ -249,6 +267,13 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, iterations = 3
                     <p className="text-tiny text-ink-500 mt-1.5">
                         {Math.round(progress.done)}/{progress.total} configurations · ça peut prendre une minute, tu peux changer d'onglet.
                     </p>
+                    <button
+                        type="button"
+                        onClick={cancel}
+                        className="mt-2 w-full rounded-lg bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 px-3 py-1.5 text-tiny font-bold text-red-200 focus-ring transition-colors"
+                    >
+                        Annuler
+                    </button>
                 </div>
             )}
 

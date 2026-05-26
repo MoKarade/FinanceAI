@@ -227,11 +227,21 @@ export function shardContiguous<T>(items: ReadonlyArray<T>, n: number): T[][] {
  * L'ordre des résultats agrégés suit l'ordre d'entrée de `configs` (tranches
  * contiguës réassemblées par index de worker) → déterministe et testable.
  */
+/** Erreur sentinelle : la recherche a été annulée par l'utilisateur (pas un échec). */
+export const SEARCH_CANCELLED = '__SEARCH_CANCELLED__';
+
 export async function runStrategySearchAsync(
     params: SimulationParams,
     configs: ReadonlyArray<StrategyConfig>,
-    opts: { iterations?: number; maxWorkers?: number; onProgress?: (p: StrategySearchProgress) => void } = {},
+    opts: {
+        iterations?: number;
+        maxWorkers?: number;
+        onProgress?: (p: StrategySearchProgress) => void;
+        /** Annulation : terminer les workers et rejeter avec SEARCH_CANCELLED. */
+        signal?: AbortSignal;
+    } = {},
 ): Promise<StrategySearchResult> {
+    const { signal } = opts;
     const total = configs.length;
 
     // Détermine le parallélisme effectif (borné par le nb de configs).
@@ -240,6 +250,8 @@ export async function runStrategySearchAsync(
         : 4;
     const requested = opts.maxWorkers ?? hardware;
     const nWorkers = Math.max(1, Math.min(requested, total || 1));
+
+    if (signal?.aborted) throw new Error(SEARCH_CANCELLED);
 
     const canUseWorkers = typeof Worker !== 'undefined' && total > 0;
     if (!canUseWorkers) {
@@ -269,6 +281,7 @@ export async function runStrategySearchAsync(
         const cleanupAll = () => {
             for (const w of watchdogs) clearTimeout(w);
             for (const w of workers) w.terminate();
+            signal?.removeEventListener('abort', onAbort);
         };
         const fail = (err: Error) => {
             if (settled) return;
@@ -276,6 +289,12 @@ export async function runStrategySearchAsync(
             cleanupAll();
             reject(err);
         };
+        // Annulation utilisateur : termine immédiatement tous les workers du pool.
+        function onAbort() { fail(new Error(SEARCH_CANCELLED)); }
+        if (signal) {
+            if (signal.aborted) { fail(new Error(SEARCH_CANCELLED)); return; }
+            signal.addEventListener('abort', onAbort);
+        }
         const tryResolve = () => {
             if (settled) return;
             if (perShardResults.some((r) => r === null)) return;

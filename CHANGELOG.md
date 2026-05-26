@@ -35,6 +35,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - Tests : +29 (générateur d'espace, recherche, sharding, classement, explication,
   assetLocation). 692 tests verts.
 
+#### Ajustements post-feedback Marc
+- **Fix bloquant** : la recherche mourait sur « worker sans progrès depuis 60 s » —
+  la progression n'était signalée qu'après chaque config (1000 sims = long silence).
+  Ajout d'un **heartbeat** Monte Carlo + progression fractionnaire ; watchdog 90 s.
+- **assetLocation effectif** : le bonus (+0,4pp) s'applique à **tous les comptes**,
+  plus seulement au NonReg que le moteur draine vers le CELI/REER (l'effet ne
+  s'évapore plus).
+- **« Appliquer »** : pousse la config gagnante dans les paramètres réels du Futur
+  (leviers persistants dans ProjectionConfig + retirementGoal + sélection de scénario).
+- **UX** : défaut 300 itérations (utilisable), composeur repliable (replié au
+  lancement), chargement spinner + % + estimation.
+- **Fusion** : l'ancien optimiseur « ta meilleure façon » (Phase 1, qui ne faisait
+  que sélectionner un scénario) est retiré ; seul le bandeau « Verdict » reste en
+  haut, l'optimisation complète vit dans le nouveau panneau.
+
 ### G21 C4 — Classement des stratégies par robustesse (Monte Carlo)
 
 - **`RobustnessPanel`** dans l'onglet Futur : un bouton « Tester la robustesse » lance

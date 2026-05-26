@@ -93,8 +93,11 @@
   TOUS les calculs, TOUTES les prévisions pour CHAQUE compte CHAQUE année. Pour un user
   qui ne comprend pas. + explications in-app partout + barre de recherche.
 - [ ] **G22-F2 — Version de l'app auto-tenue à jour + affichée**.
-- [ ] **G22-F3 — Onboarding accueillant** : refaire le texte du 1er lancement (explique
-  l'app, son utilité, demande les bonnes infos nécessaires).
+- [x] **G22-F3 — Onboarding accueillant** — ✅ FAIT. Étape « Bienvenue » réécrite pour
+  mener avec la valeur (vision claire, simulateur du futur, assistant IA, données locales)
+  au lieu des seuls détails techniques. Tutoiement aligné sur le reste de l'app (les étapes
+  vouvoyaient encore). Structure 4 étapes conservée (bienvenue/profil/clés/comptes). Aucun
+  test ne dépendait du texte ; a11y onboarding OK.
 - [ ] **G22-F4 — Tutoriel pas-à-pas (1re fois)** : parcourt tous les onglets, bulles
   d'explication, actions à réaliser pour avancer, ignorable, relançable depuis Paramètres.
 

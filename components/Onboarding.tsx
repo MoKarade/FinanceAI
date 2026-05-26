@@ -103,14 +103,18 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                             Fi
                         </div>
                         <div>
-                            <h1 className="text-display text-ink-50 mb-3">Bienvenue sur<br />FinanceAI</h1>
-                            <p className="text-body text-ink-300">Configuration rapide en 3 minutes.<br />Données stockées localement dans votre navigateur.</p>
+                            <h1 className="text-display text-ink-50 mb-3">Bienvenue !<br />Voici FinanceAI</h1>
+                            <p className="text-body text-ink-300">
+                                Ton tableau de bord financier personnel. Il rassemble tes comptes,
+                                ton budget et tes objectifs, puis te montre à quoi ressemble ton avenir.
+                            </p>
                         </div>
                         <div className="grid grid-cols-1 gap-3 text-left">
                             {[
-                                { icon: '🔐', text: "Pas de serveur back-end — les données vivent dans localStorage de votre navigateur." },
-                                { icon: '🤖', text: "Si vous activez Claude : marchands tronqués + montants arrondis à 100$ envoyés à Anthropic pour la catégorisation et le conseil." },
-                                { icon: '📊', text: "Simulation financière complète (retraite, immobilier, projections) entièrement locale." },
+                                { icon: '📊', text: "Vois clairement où va ton argent chaque mois (budget, dettes, épargne)." },
+                                { icon: '🔮', text: "Simule ton futur : retraite, achat de maison, enfants — et trouve la meilleure stratégie." },
+                                { icon: '🤖', text: "Un assistant IA (optionnel) catégorise tes dépenses et te conseille." },
+                                { icon: '🔐', text: "Tes données restent sur ton appareil. Aucun serveur, aucun compte à créer." },
                             ].map((f, i) => (
                                 <div key={i} className="flex items-center gap-3 p-3 bg-white/5 rounded-card border border-white/5">
                                     <span className="text-2xl" aria-hidden="true">{f.icon}</span>
@@ -118,8 +122,9 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                                 </div>
                             ))}
                         </div>
+                        <p className="text-meta text-ink-400">Configuration en 3 minutes — tout est modifiable plus tard.</p>
                         <Button onClick={next} variant="primary" size="lg" fullWidth>
-                            Commencer la configuration →
+                            C'est parti →
                         </Button>
                     </div>
                 )}
@@ -127,8 +132,8 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 {step === 'profile' && (
                     <div className="space-y-6 animate-fade-in">
                         <div>
-                            <h2 className="text-h1 text-ink-50">Votre profil</h2>
-                            <p className="text-meta text-ink-400 mt-1">Utilisé pour les calculs fiscaux et la projection</p>
+                            <h2 className="text-h1 text-ink-50">Ton profil</h2>
+                            <p className="text-meta text-ink-400 mt-1">Sert aux calculs d'impôts et à la projection de ton avenir</p>
                         </div>
 
                         <div className="space-y-4 p-4 bg-white/5 rounded-card border border-white/10">
@@ -191,7 +196,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                             <h2 className="text-h1 text-ink-50">Clés API</h2>
                             <p className="text-meta text-ink-400 mt-1">Optionnelles — l'app fonctionne sans, mais avec moins de fonctionnalités.</p>
                             <p className="text-meta text-warning-400 mt-2 leading-relaxed">
-                                ⚠️ En activant Claude (Anthropic), vous consentez à ce que des données (marchands tronqués + montants arrondis à 100$) soient envoyées à Anthropic.
+                                ⚠️ En activant Claude (Anthropic), tu consens à ce que des données (marchands tronqués + montants arrondis à 100$) soient envoyées à Anthropic.
                             </p>
                         </div>
                         <div className="space-y-4">
@@ -214,8 +219,8 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 {step === 'investing' && (
                     <div className="space-y-6 animate-fade-in">
                         <div>
-                            <h2 className="text-h1 text-ink-50">Vos comptes d'investissement</h2>
-                            <p className="text-meta text-ink-400 mt-1">Soldes approximatifs — vous pourrez les modifier plus tard</p>
+                            <h2 className="text-h1 text-ink-50">Tes comptes d'investissement</h2>
+                            <p className="text-meta text-ink-400 mt-1">Soldes approximatifs — tu pourras les modifier plus tard</p>
                         </div>
                         <div className="space-y-3">
                             {[
@@ -230,7 +235,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                                     </div>
                                 </div>
                             ))}
-                            <p className="text-tiny text-ink-400 text-center">Vous pouvez laisser à 0 — à configurer dans Investissements</p>
+                            <p className="text-tiny text-ink-400 text-center">Tu peux laisser à 0 — à configurer dans Investissements</p>
                         </div>
                         <div className="flex gap-3">
                             <Button onClick={prev} variant="ghost" size="md" fullWidth>← Retour</Button>

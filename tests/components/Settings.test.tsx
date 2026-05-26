@@ -21,6 +21,33 @@ const defaultConfig: BudgetConfig = {
     splitMode: '50/50',
 };
 
+// G22-N5 — Settings forwarde appState à SystemView (sous-onglet diagnostics).
+// AppState minimal pour satisfaire le type (les tests ci-dessous ne naviguent
+// pas vers le sous-onglet Système).
+const minimalAppState: AppState = {
+    transactions: [],
+    assets: [],
+    investmentTransactions: [],
+    investmentAccounts: [],
+    budgetItems: [],
+    config: defaultConfig,
+    projection: { years: 30, returnRate: 0.06, inflationRate: 0.02, savingsMode: 'manual', manualContribution: 0, usePortfolioRate: false },
+    realEstateGoals: [],
+    childGoals: [],
+    savingsGoals: [],
+    debts: [],
+    travelGoals: [],
+    lifeEvents: [],
+    retirementGoal: { targetAge: 65, targetMonthlyIncome: 4000, governmentPension: 1200 },
+    financialGoals: [],
+    initialBalances: {},
+    apiKeys: defaultApiKeys,
+    fxRates: { USD: 1.35, EUR: 1.45, CAD: 1 },
+    lastUpdate: Date.now(),
+    categorizationRules: [],
+    aiConversation: [],
+};
+
 const baseProps = {
     apiKeys: defaultApiKeys,
     setApiKeys: vi.fn(),
@@ -34,6 +61,7 @@ const baseProps = {
     assets: [],
     savingsGoals: [],
     travelGoals: [],
+    appState: minimalAppState,
 };
 
 describe('Settings', () => {

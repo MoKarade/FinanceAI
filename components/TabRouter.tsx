@@ -19,7 +19,8 @@ const Settings = lazyWithRetry(() => import('./Settings').then(m => ({ default: 
 const AiAssistant = lazyWithRetry(() => import('./AiAssistant').then(m => ({ default: m.AiAssistant })), 'AiAssistant');
 const FutureProjection = lazyWithRetry(() => import('./FutureProjection').then(m => ({ default: m.FutureProjection })), 'FutureProjection');
 const DebtManager = lazyWithRetry(() => import('./DebtManager').then(m => ({ default: m.DebtManager })), 'DebtManager');
-const SystemView = lazyWithRetry(() => import('./SystemView').then(m => ({ default: m.SystemView })), 'SystemView');
+// G22-N5 — SystemView n'est plus une route top-level : fusionné dans Settings
+// (sous-onglet « Système & diagnostics »).
 
 const TAB_LABELS: Record<Tab, string> = {
     [Tab.DASHBOARD]: 'Accueil',
@@ -36,7 +37,6 @@ const TAB_LABELS: Record<Tab, string> = {
     [Tab.RETIREMENT]: 'Retraite',
     [Tab.TAX]: 'Impôts & Docs',
     [Tab.SETTINGS]: 'Paramètres',
-    [Tab.SYSTEM]: 'Système',
     [Tab.ASSISTANT]: 'Assistant IA',
 };
 
@@ -218,8 +218,6 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                     />
                 )}
 
-                {activeTab === Tab.SYSTEM && <SystemView state={state} />}
-
                 {activeTab === Tab.SETTINGS && (
                     <Settings
                         apiKeys={state.apiKeys} setApiKeys={onUpdateApiKeys}
@@ -237,6 +235,7 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                         realEstateGoals={state.realEstateGoals}
                         setRealEstateGoals={(g) => setAppState({ realEstateGoals: g })}
                         childGoal={state.childGoal} childGoals={state.childGoals || []} financialGoals={state.financialGoals}
+                        appState={state}
                     />
                 )}
 

@@ -64,8 +64,9 @@ export function makeNavigationActions(setActiveTab: (t: Tab) => void): CommandAc
         { tab: Tab.RETIREMENT, label: 'Retraite', icon: '🏖️', keywords: ['retraite', 'pension', 'rrq'] },
         { tab: Tab.TAX, label: 'Centre fiscal', icon: '🧮', keywords: ['tax', 'impot', 'declaration'] },
         { tab: Tab.ASSISTANT, label: 'Assistant AI', icon: '🤖', keywords: ['ai', 'claude', 'chat', 'assistant'] },
-        { tab: Tab.SETTINGS, label: 'Paramètres', icon: '⚙️', keywords: ['settings', 'config', 'reglages'] },
-        { tab: Tab.SYSTEM, label: 'Système', icon: '🔧', keywords: ['system', 'admin'] },
+        // G22-N5 — Système fusionné dans Configuration ; keywords 'system'/'diagnostic'
+        // gardés ici pour que la recherche y mène toujours.
+        { tab: Tab.SETTINGS, label: 'Paramètres', icon: '⚙️', keywords: ['settings', 'config', 'reglages', 'system', 'systeme', 'admin', 'diagnostic', 'version'] },
     ];
     return navMap.map(({ tab, label, icon, keywords }) => ({
         id: `nav:${tab}`,

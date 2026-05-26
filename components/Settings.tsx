@@ -27,6 +27,8 @@ import { AccountsSection } from './settings/sections/AccountsSection';
 import { PatrimoineSection } from './settings/sections/PatrimoineSection';
 import { IntegrationsSection } from './settings/sections/IntegrationsSection';
 import { BackupSection } from './settings/sections/BackupSection';
+// G22-N5 — Système fusionné dans Config (6e sous-onglet « Système & diagnostics »).
+import { SystemView } from './SystemView';
 
 interface SettingsProps {
   apiKeys: AppState['apiKeys'];
@@ -52,9 +54,11 @@ interface SettingsProps {
   childGoal?: any;
   childGoals?: any[];
   financialGoals?: FinancialGoal[];
+  // G22-N5 — état complet, forwardé à SystemView (sous-onglet diagnostics).
+  appState: AppState;
 }
 
-type SubTab = 'profile' | 'accounts' | 'patrimoine' | 'integrations' | 'backup';
+type SubTab = 'profile' | 'accounts' | 'patrimoine' | 'integrations' | 'backup' | 'system';
 
 const SUB_TABS: ReadonlyArray<{ id: SubTab; label: string; icon: string }> = [
   { id: 'profile', label: 'Profil', icon: '👤' },
@@ -62,6 +66,7 @@ const SUB_TABS: ReadonlyArray<{ id: SubTab; label: string; icon: string }> = [
   { id: 'patrimoine', label: 'Patrimoine', icon: '🏠' },
   { id: 'integrations', label: 'Clés API', icon: '🔌' },
   { id: 'backup', label: 'Sauvegarde', icon: '💾' },
+  { id: 'system', label: 'Système & diagnostics', icon: '🛠️' },
 ];
 
 /** Mappe un data-focus-section (deep-link) vers le sous-onglet qui le contient. */
@@ -94,6 +99,7 @@ export const Settings: React.FC<SettingsProps> = ({
   childGoal,
   childGoals = [],
   financialGoals = [],
+  appState,
 }) => {
   // Containers étendus (W5.x) — lus ici pour le payload de backup ; la section
   // Patrimoine les lit/écrit de son côté (même store, pas de duplication d'état).
@@ -190,6 +196,7 @@ export const Settings: React.FC<SettingsProps> = ({
         <IntegrationsSection apiKeys={apiKeys} setApiKeys={setApiKeys} />
       )}
       {sub === 'backup' && <BackupSection buildPayload={buildBackupPayload} />}
+      {sub === 'system' && <SystemView state={appState} />}
     </div>
   );
 };

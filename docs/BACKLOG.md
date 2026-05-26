@@ -78,8 +78,15 @@
   scroll (`usePendingFocus`). Test Settings mis à jour (navigue vers Sauvegarde →
   la couverture sécurité « clés API hors backup » est réellement exercée, plus de
   skip silencieux). (« Hypothèses éco » du plan initial : sans objet ici, vit dans Futur.)
-- [ ] **G22-N5 — Refonte onglet Système** : remodéliser entièrement, auto-tenu à jour
-  (commits + versions), combiné avec Configuration (autre page).
+- [x] **G22-N5 — Refonte onglet Système** — ✅ FAIT (décisions Marc).
+  Système devient le 6e sous-onglet « Système & diagnostics » de Configuration
+  (retiré de la sidebar, du drawer mobile, de la CommandPalette et de l'enum `Tab`).
+  Le CHANGELOG écrit à la main est remplacé par une carte « Version & build » réelle
+  (`__APP_VERSION__` CalVer · `__GIT_SHA__` · `__BUILD_DATE__`, injectés par Vite —
+  auto-tenue à jour à chaque déploiement). Diagnostics runtime + journaux erreurs/audit
+  conservés. « Toile d'Araignée » gardée pour l'instant (sera revue avec F1). `SystemView`
+  reçoit `appState` forwardé par Settings. CommandPalette : keywords system/diagnostic/version
+  pointent vers Configuration.
 
 ### Features (gros)
 - [ ] **G22-F1 — Page « Explications » dans Futur** : explique TOUTES les opérations,

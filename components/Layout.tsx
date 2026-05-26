@@ -305,8 +305,8 @@ export const Layout: React.FC<LayoutProps> = ({
               apparaissent en fondu (opacity). Plus de bascule grid↔flex. */}
           <nav aria-label="Outils système" className="flex flex-col gap-0.5">
             {[
+              // G22-N5 — Système fusionné dans Configuration (sous-onglet « Système & diagnostics »).
               { id: Tab.SETTINGS, icon: '⚙️', label: 'Configuration' },
-              { id: Tab.SYSTEM, icon: '🛠️', label: 'Système' },
             ].map(item => (
               <button
                 key={item.id}
@@ -384,11 +384,11 @@ export const Layout: React.FC<LayoutProps> = ({
           onClick={() => setShowMobileDrawer(v => !v)}
           aria-label="Plus d'options"
           aria-expanded={showMobileDrawer}
-          className={`relative flex flex-col items-center justify-center min-w-[56px] h-full transition-all duration-200 active:scale-95 focus-ring rounded-card ${showMobileDrawer || extraItems.some(e => e.id === activeTab) || [Tab.SETTINGS, Tab.SYSTEM].includes(activeTab) ? 'text-primary' : 'text-ink-400'}`}
+          className={`relative flex flex-col items-center justify-center min-w-[56px] h-full transition-all duration-200 active:scale-95 focus-ring rounded-card ${showMobileDrawer || extraItems.some(e => e.id === activeTab) || activeTab === Tab.SETTINGS ? 'text-primary' : 'text-ink-400'}`}
         >
           <div aria-hidden="true" className={`text-2xl mb-1 transition-transform ${showMobileDrawer ? 'rotate-90' : ''}`}>⋯</div>
           <span className="text-tiny font-medium">Plus</span>
-          {(extraItems.some(e => e.id === activeTab) || [Tab.SETTINGS, Tab.SYSTEM].includes(activeTab)) && <span aria-hidden="true" className="absolute top-1.5 w-1 h-1 bg-primary rounded-full"></span>}
+          {(extraItems.some(e => e.id === activeTab) || activeTab === Tab.SETTINGS) && <span aria-hidden="true" className="absolute top-1.5 w-1 h-1 bg-primary rounded-full"></span>}
         </button>
       </nav>
 
@@ -423,10 +423,11 @@ export const Layout: React.FC<LayoutProps> = ({
             ))}
 
             <div className="text-tiny uppercase text-ink-400 font-bold tracking-widest mb-2 flex items-center gap-2">
-              <span aria-hidden="true">⚙️</span><span>Système</span>
+              <span aria-hidden="true">⚙️</span><span>Configuration</span>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              {[{ id: Tab.SETTINGS, icon: '⚙️', label: 'Configuration' }, { id: Tab.SYSTEM, icon: '🛠️', label: 'Système' }].map(item => (
+              {/* G22-N5 — Système fusionné dans Configuration (sous-onglet interne). */}
+              {[{ id: Tab.SETTINGS, icon: '⚙️', label: 'Configuration' }].map(item => (
                 <button
                   key={item.id}
                   type="button"

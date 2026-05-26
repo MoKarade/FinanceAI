@@ -623,7 +623,7 @@ export enum Tab {
   RETIREMENT = 'RETIREMENT',
   TAX = 'TAX',
   SETTINGS = 'SETTINGS',
-  SYSTEM = 'SYSTEM',
+  // G22-N5 — SYSTEM retiré : fusionné dans Configuration (sous-onglet « Système & diagnostics »).
   ASSISTANT = 'ASSISTANT',
 }
 

@@ -10,30 +10,16 @@ interface SystemViewProps {
     state: AppState;
 }
 
-const CHANGELOG = [
-    {
-        version: "4.0",
-        date: "Aujourd'hui",
-        title: "Interconnexion Totale & Sim. 2026",
-        features: [
-            "Le simulateur Futur démarre formellement en Janvier 2026, avec calcul des variations mensuelles nettes dans l'info-bulle.",
-            "L'onglet Impôts est désormais verrouillé et lit ses données directement depuis le profil Config (Fin des incohérences).",
-            "La logique Immo annule le loyer du budget dès l'achat. L'enfant génère un coût massif pour ses études à 18 ans.",
-            "Sauvegarde continue : Chaque état de curseur (slider) ou option est préservé via le LocalStorage Global."
-        ]
-    },
-    {
-        version: "3.2",
-        date: "Précédemment",
-        title: "Correction Moteur Fiscal & Retraite",
-        features: [
-            "Moteur hybride (Réel vs Théorique) pour le Futur.",
-            "Plafond de croissance immobilière ajouté."
-        ]
-    }
-];
-
 type LogLine = { text: string; level: 'info' | 'warn' | 'err' };
+
+// G22-N5 — Infos de build injectées par Vite (vite.config define) : version
+// CalVer, hash git court, horodatage du build. Source unique, auto-tenue à jour
+// à chaque déploiement — remplace l'ancien CHANGELOG écrit à la main.
+const BUILD_INFO = {
+    version: __APP_VERSION__,
+    sha: __GIT_SHA__,
+    builtAt: __BUILD_DATE__,
+};
 
 const formatRelative = (ts: number | undefined): string => {
     if (!ts || ts <= 0) return 'jamais';
@@ -233,25 +219,24 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                         </Card>
                     </div>
 
-                    <Card title="Historique">
-                        <div className="relative border-l border-white/10 ml-3 space-y-6 py-2">
-                            {CHANGELOG.map((log, i) => (
-                                <div key={i} className="relative pl-6">
-                                    <div className={`absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full ${i === 0 ? 'bg-primary shadow-[0_0_10px_#10b981]' : 'bg-gray-600'}`}></div>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className={`text-sm font-bold ${i === 0 ? 'text-white' : 'text-gray-400'}`}>v{log.version}</span>
-                                        <span className="text-tiny text-gray-500">{log.date}</span>
-                                    </div>
-                                    <div className={`text-xs font-bold mb-2 ${i === 0 ? 'text-primary' : 'text-gray-300'}`}>{log.title}</div>
-                                    <ul className="space-y-1">
-                                        {log.features.map((feat, j) => (
-                                            <li key={j} className="text-meta text-gray-400 leading-tight flex items-start gap-2">
-                                                <span className="text-white/20">•</span>{feat}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            ))}
+                    <Card title="Version & build">
+                        <div className="space-y-3 text-sm">
+                            <p className="text-tiny text-gray-500 leading-snug">
+                                Infos injectées automatiquement à chaque build/déploiement. Utile
+                                pour vérifier que tu utilises bien la dernière version (et pour le support).
+                            </p>
+                            <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                <span className="text-gray-400">Version</span>
+                                <span className="font-mono font-bold text-white">v{BUILD_INFO.version}</span>
+                            </div>
+                            <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                <span className="text-gray-400">Commit</span>
+                                <span className="font-mono text-emerald-400">{BUILD_INFO.sha}</span>
+                            </div>
+                            <div className="flex items-center justify-between py-2">
+                                <span className="text-gray-400">Build</span>
+                                <span className="font-mono text-gray-300">{BUILD_INFO.builtAt}</span>
+                            </div>
                         </div>
                     </Card>
                 </div>

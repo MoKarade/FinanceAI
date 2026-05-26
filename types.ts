@@ -623,10 +623,6 @@ export enum Tab {
   LIFE_PROJECTS = 'LIFE_PROJECTS',
   RETIREMENT = 'RETIREMENT',
   TAX = 'TAX',
-  // Phase G.1 — onglet Documents global (centralise les uploads PDF/Image
-  // précédemment éparpillés dans TaxCenter, Configuration, etc.)
-  DOCUMENTS = 'DOCUMENTS',
-  DATA = 'DATA',
   SETTINGS = 'SETTINGS',
   SYSTEM = 'SYSTEM',
   ASSISTANT = 'ASSISTANT',

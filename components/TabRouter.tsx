@@ -13,11 +13,9 @@ const Investments = lazyWithRetry(() => import('./Investments').then(m => ({ def
 const RealEstate = lazyWithRetry(() => import('./RealEstate').then(m => ({ default: m.RealEstate })), 'RealEstate');
 const ChildPlanning = lazyWithRetry(() => import('./ChildPlanning').then(m => ({ default: m.ChildPlanning })), 'ChildPlanning');
 const LifeProjects = lazyWithRetry(() => import('./LifeProjects').then(m => ({ default: m.LifeProjects })), 'LifeProjects');
-const Documents = lazyWithRetry(() => import('./Documents').then(m => ({ default: m.Documents })), 'Documents');
 const Retirement = lazyWithRetry(() => import('./Retirement').then(m => ({ default: m.Retirement })), 'Retirement');
 const TaxCenter = lazyWithRetry(() => import('./TaxCenter').then(m => ({ default: m.TaxCenter })), 'TaxCenter');
 const Settings = lazyWithRetry(() => import('./Settings').then(m => ({ default: m.Settings })), 'Settings');
-const JsonDataView = lazyWithRetry(() => import('./JsonDataView').then(m => ({ default: m.JsonDataView })), 'JsonDataView');
 const AiAssistant = lazyWithRetry(() => import('./AiAssistant').then(m => ({ default: m.AiAssistant })), 'AiAssistant');
 const FutureProjection = lazyWithRetry(() => import('./FutureProjection').then(m => ({ default: m.FutureProjection })), 'FutureProjection');
 const DebtManager = lazyWithRetry(() => import('./DebtManager').then(m => ({ default: m.DebtManager })), 'DebtManager');
@@ -36,10 +34,8 @@ const TAB_LABELS: Record<Tab, string> = {
     [Tab.TRAVEL]: 'Voyages',
     [Tab.LIFE_EVENTS]: 'Parcours de Vie',
     [Tab.LIFE_PROJECTS]: 'Projets de vie',
-    [Tab.DOCUMENTS]: 'Documents',
     [Tab.RETIREMENT]: 'Retraite',
     [Tab.TAX]: 'Impôts & Docs',
-    [Tab.DATA]: 'Data',
     [Tab.SETTINGS]: 'Paramètres',
     [Tab.SYSTEM]: 'Système',
     [Tab.ASSISTANT]: 'Assistant IA',
@@ -236,8 +232,6 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                     />
                 )}
 
-                {activeTab === Tab.DOCUMENTS && <Documents />}
-                {activeTab === Tab.DATA && <JsonDataView />}
                 {activeTab === Tab.SYSTEM && <SystemView state={state} />}
 
                 {activeTab === Tab.SETTINGS && (

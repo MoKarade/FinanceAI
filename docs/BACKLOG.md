@@ -48,8 +48,10 @@
   `📌MBP: -90 000$ | Frais+TBienv.: -13 135$`. Appliquer à TOUTES les infobulles similaires.
 
 ### Refonte navigation / onglets (questions à poser)
-- [ ] **G22-N1 — Supprimer l'onglet Documents**.
-- [ ] **G22-N2 — Supprimer l'onglet Data**.
+- [x] **G22-N1 — Supprimer l'onglet Documents** — ✅ FAIT. Retiré de l'enum Tab,
+  TabRouter, Layout (sidebar + drawer mobile), CommandPalette ; `Documents.tsx` +
+  test supprimés.
+- [x] **G22-N2 — Supprimer l'onglet Data** — ✅ FAIT. Idem ; `JsonDataView.tsx` supprimé.
 - [ ] **G22-N3 — Déplacer Planif & Abonnements dans Budget** (questions à poser).
 - [ ] **G22-N4 — Refonte onglet Configuration** : interface devenue confuse, tout
   refaire propre sans perdre d'info (possiblement plusieurs sous-onglets).

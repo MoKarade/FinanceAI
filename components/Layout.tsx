@@ -97,8 +97,6 @@ export const Layout: React.FC<LayoutProps> = ({
       icon: '🛠️',
       items: [
         { id: Tab.TAX, label: t('tabs.tax'), icon: '🏛️' },
-        // Phase G.1 — hub Documents global (extraction IA fiches de paie)
-        { id: Tab.DOCUMENTS, label: 'Documents', icon: '📁' },
         { id: Tab.DEBT, label: t('tabs.debt'), icon: '💸' },
         { id: Tab.PLANNING, label: t('tabs.planning'), icon: '📅' },
       ],
@@ -287,7 +285,6 @@ export const Layout: React.FC<LayoutProps> = ({
           <nav aria-label="Outils système" className="flex flex-col gap-0.5">
             {[
               { id: Tab.SETTINGS, icon: '⚙️', label: 'Configuration' },
-              { id: Tab.DATA, icon: '💾', label: 'Data' },
               { id: Tab.SYSTEM, icon: '🛠️', label: 'Système' },
             ].map(item => (
               <button
@@ -365,11 +362,11 @@ export const Layout: React.FC<LayoutProps> = ({
           onClick={() => setShowMobileDrawer(v => !v)}
           aria-label="Plus d'options"
           aria-expanded={showMobileDrawer}
-          className={`relative flex flex-col items-center justify-center min-w-[56px] h-full transition-all duration-200 active:scale-95 focus-ring rounded-card ${showMobileDrawer || extraItems.some(e => e.id === activeTab) || [Tab.SETTINGS, Tab.DATA, Tab.SYSTEM].includes(activeTab) ? 'text-primary' : 'text-ink-400'}`}
+          className={`relative flex flex-col items-center justify-center min-w-[56px] h-full transition-all duration-200 active:scale-95 focus-ring rounded-card ${showMobileDrawer || extraItems.some(e => e.id === activeTab) || [Tab.SETTINGS, Tab.SYSTEM].includes(activeTab) ? 'text-primary' : 'text-ink-400'}`}
         >
           <div aria-hidden="true" className={`text-2xl mb-1 transition-transform ${showMobileDrawer ? 'rotate-90' : ''}`}>⋯</div>
           <span className="text-tiny font-medium">Plus</span>
-          {(extraItems.some(e => e.id === activeTab) || [Tab.SETTINGS, Tab.DATA, Tab.SYSTEM].includes(activeTab)) && <span aria-hidden="true" className="absolute top-1.5 w-1 h-1 bg-primary rounded-full"></span>}
+          {(extraItems.some(e => e.id === activeTab) || [Tab.SETTINGS, Tab.SYSTEM].includes(activeTab)) && <span aria-hidden="true" className="absolute top-1.5 w-1 h-1 bg-primary rounded-full"></span>}
         </button>
       </nav>
 
@@ -407,7 +404,7 @@ export const Layout: React.FC<LayoutProps> = ({
               <span aria-hidden="true">⚙️</span><span>Système</span>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              {[{ id: Tab.SETTINGS, icon: '⚙️', label: 'Configuration' }, { id: Tab.DATA, icon: '💾', label: 'Data' }, { id: Tab.SYSTEM, icon: '🛠️', label: 'Système' }].map(item => (
+              {[{ id: Tab.SETTINGS, icon: '⚙️', label: 'Configuration' }, { id: Tab.SYSTEM, icon: '🛠️', label: 'Système' }].map(item => (
                 <button
                   key={item.id}
                   type="button"

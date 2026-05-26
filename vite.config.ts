@@ -3,10 +3,10 @@ import { execSync } from 'node:child_process';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Phase A.4 — version exacte exposée comme constantes globales build-time.
-// `APP_VERSION` est bumpée manuellement à chaque phase majeure ; `GIT_SHA`
-// identifie chaque push ; `BUILD_DATE` permet de tracer l'âge du bundle.
-const APP_VERSION = '3.0.0-alpha.0';
+// G22-F2 — version AUTO (plus de bump manuel). CalVer `AAAA.M.J` dérivée de la date
+// de build : change à chaque déploiement, robuste même sur clone git shallow (Vercel)
+// où un compteur de commits serait faux. `GIT_SHA` identifie le commit exact,
+// `BUILD_DATE` (horodatage complet) trace l'instant du build.
 const GIT_SHA = (() => {
     try {
         return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
@@ -14,7 +14,9 @@ const GIT_SHA = (() => {
         return 'dev';
     }
 })();
-const BUILD_DATE = new Date().toISOString().slice(0, 10);
+const _now = new Date();
+const APP_VERSION = `${_now.getFullYear()}.${_now.getMonth() + 1}.${_now.getDate()}`;
+const BUILD_DATE = _now.toISOString().slice(0, 16).replace('T', ' '); // 'AAAA-MM-JJ HH:MM' UTC
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');

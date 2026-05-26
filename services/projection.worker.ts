@@ -11,27 +11,44 @@
 //   worker.postMessage({ params, runMC, selectedIdx });
 //   worker.onmessage = (e) => setResult(e.data);
 
-import { calculateFutureProjection, calculateRobustnessRanking, type SimulationParams } from './projection';
+import {
+    calculateFutureProjection,
+    calculateRobustnessRanking,
+    calculateStrategySearch,
+    type SimulationParams,
+    type StrategyConfig,
+} from './projection';
 
 interface RunMessage {
     params: SimulationParams;
     runMC?: boolean;
     selectedIdx?: number;
-    mode?: 'projection' | 'robustness';
+    mode?: 'projection' | 'robustness' | 'strategySearch';
     iterationsPerStrategy?: number;
+    // G21 C5 commit 4 — mode 'strategySearch' : ce worker traite SA part de configs
+    // (sharding fait côté main thread). iterations = sims MC par config.
+    configs?: StrategyConfig[];
+    iterations?: number;
 }
 
 self.onmessage = (e: MessageEvent<RunMessage>) => {
     // FIX silent-failure cycle 2 (HIGH): requestId obligatoire pour corréler
     // chaque réponse à son appel — évite les résultats croisés entre appels concurrents.
     const requestId = (e.data as any).__requestId;
-    const { params, runMC = false, selectedIdx = 0, mode = 'projection', iterationsPerStrategy } = e.data;
+    const { params, runMC = false, selectedIdx = 0, mode = 'projection', iterationsPerStrategy, configs, iterations } = e.data;
     try {
         if (mode === 'robustness') {
             const result = calculateRobustnessRanking(params, {
                 iterationsPerStrategy,
                 onProgress: (done, total, current) =>
                     (self as any).postMessage({ __requestId: requestId, __progress: { done, total, current } }),
+            });
+            (self as any).postMessage({ __requestId: requestId, result });
+        } else if (mode === 'strategySearch') {
+            const result = calculateStrategySearch(params, configs ?? [], {
+                iterations,
+                onProgress: (done, total) =>
+                    (self as any).postMessage({ __requestId: requestId, __progress: { done, total } }),
             });
             (self as any).postMessage({ __requestId: requestId, result });
         } else {

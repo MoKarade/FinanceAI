@@ -4,7 +4,8 @@ import { calculateFiscalReport, getMarginalRate, calculateDividendTax, calculate
 import { RRIF_RATES, welcomeTax } from './projection/helpers';
 import { runMonteCarlo } from './projection/monteCarlo';
 import { rankStrategiesByRobustness, type RobustnessRanking, type RankRobustnessOptions } from './projection/strategyRobustness';
-import type { EngineOverrides } from './projection/strategyConfig';
+import type { EngineOverrides, StrategyConfig } from './projection/strategyConfig';
+import { runStrategySearch, type StrategySearchResult, type RunStrategySearchOptions } from './projection/strategySearch';
 import { SCENARIO_DEFINITIONS } from './projection/scenarios';
 import { applyW5Effects, applyAgeBasedExpenses } from './projection/w5Effects';
 import { tryCriticalIllness, tryInheritance, tryMortality, trySpouseMortality, tryLtcTrigger, ltcMonthlyCost, tryDivorce } from './projection/stochasticEvents';
@@ -32,6 +33,8 @@ import { computeEffectiveExpenseInflation, computeMonthlyWithholding } from './p
 import { type AllocationStrategy, type FutureScenarioType, type ProjectionResult } from './projection/types';
 export type { AllocationStrategy, FutureScenarioType, ProjectionChartPoint, ProjectionResult } from './projection/types';
 export type { RobustnessRanking, StrategyRobustness, RankRobustnessOptions } from './projection/strategyRobustness';
+export type { StrategySearchResult, ConfigResult, RunStrategySearchOptions } from './projection/strategySearch';
+export type { StrategyConfig } from './projection/strategyConfig';
 
 export interface SimulationParams {
     projection: ProjectionConfig;
@@ -1218,3 +1221,14 @@ export const calculateRobustnessRanking = (
     params: SimulationParams,
     opts: RankRobustnessOptions = {},
 ): RobustnessRanking => rankStrategiesByRobustness(runScenario, params, opts);
+
+// G21 C5 commit 4 — évalue un sous-ensemble de StrategyConfig par Monte Carlo.
+// Injecte le runScenario privé dans runStrategySearch. Très coûteux (N configs ×
+// jusqu'à 1000 sims) → appeler via le pool multi-worker (runStrategySearchAsync),
+// jamais sur le thread de rendu. Le sharding sur plusieurs cœurs se fait en amont :
+// chaque worker reçoit sa part de `configs`.
+export const calculateStrategySearch = (
+    params: SimulationParams,
+    configs: ReadonlyArray<StrategyConfig>,
+    opts: RunStrategySearchOptions = {},
+): StrategySearchResult => runStrategySearch(runScenario, params, configs, opts);

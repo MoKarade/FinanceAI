@@ -7,7 +7,14 @@
 //    croisés (le worker répondait FIFO sans corrélation).
 //  - terminate() + recréation au prochain appel si le worker crash.
 
-import type { SimulationParams, ProjectionResult, RobustnessRanking } from '../projection';
+import type {
+    SimulationParams,
+    ProjectionResult,
+    RobustnessRanking,
+    StrategyConfig,
+    StrategySearchResult,
+    ConfigResult,
+} from '../projection';
 
 let _worker: Worker | null = null;
 let _nextRequestId = 1;
@@ -181,6 +188,150 @@ export async function runRobustnessRankingAsync(
             params,
             mode: 'robustness',
             iterationsPerStrategy: opts.iterationsPerStrategy,
+        });
+    });
+}
+
+export interface StrategySearchProgress {
+    done: number;
+    total: number;
+}
+
+/** Découpe `items` en `n` tranches contiguës aussi équilibrées que possible. Exporté pour test. */
+export function shardContiguous<T>(items: ReadonlyArray<T>, n: number): T[][] {
+    const shards: T[][] = [];
+    const base = Math.floor(items.length / n);
+    const remainder = items.length % n;
+    let offset = 0;
+    for (let i = 0; i < n; i++) {
+        const size = base + (i < remainder ? 1 : 0); // les 1ers shards prennent +1
+        shards.push(items.slice(offset, offset + size));
+        offset += size;
+    }
+    return shards;
+}
+
+/**
+ * G21 C5 commit 4 — recherche exhaustive de la meilleure stratégie : lance un
+ * Monte Carlo sur CHAQUE StrategyConfig de l'espace de recherche, réparti sur un
+ * POOL de Web Workers (un par cœur logique). Chaque worker traite sa tranche de
+ * configs et rapporte sa progression locale ; on agrège la progression globale.
+ *
+ * Pool dédié (PAS le singleton `_worker` réservé à projection/robustness) : on
+ * crée les workers à la volée et on les termine à la fin de la recherche — c'est
+ * une opération lourde et ponctuelle, pas un canal réutilisé.
+ *
+ * Fallback synchrone (Node/tests/CSP) : `calculateStrategySearch` sur toutes les
+ * configs, ordre préservé.
+ *
+ * L'ordre des résultats agrégés suit l'ordre d'entrée de `configs` (tranches
+ * contiguës réassemblées par index de worker) → déterministe et testable.
+ */
+export async function runStrategySearchAsync(
+    params: SimulationParams,
+    configs: ReadonlyArray<StrategyConfig>,
+    opts: { iterations?: number; maxWorkers?: number; onProgress?: (p: StrategySearchProgress) => void } = {},
+): Promise<StrategySearchResult> {
+    const total = configs.length;
+
+    // Détermine le parallélisme effectif (borné par le nb de configs).
+    const hardware = typeof navigator !== 'undefined' && navigator.hardwareConcurrency
+        ? navigator.hardwareConcurrency
+        : 4;
+    const requested = opts.maxWorkers ?? hardware;
+    const nWorkers = Math.max(1, Math.min(requested, total || 1));
+
+    const canUseWorkers = typeof Worker !== 'undefined' && total > 0;
+    if (!canUseWorkers) {
+        const { calculateStrategySearch } = await import('../projection');
+        return calculateStrategySearch(params, configs, {
+            iterations: opts.iterations,
+            onProgress: (done) => opts.onProgress?.({ done, total }),
+        });
+    }
+
+    const shards = shardContiguous(configs, nWorkers).filter((s) => s.length > 0);
+    const workers: Worker[] = [];
+    const perShardDone = new Array(shards.length).fill(0);
+    const perShardResults: (ConfigResult[] | null)[] = new Array(shards.length).fill(null);
+    let resolvedIterations = opts.iterations ?? 1000;
+
+    const emitProgress = () => {
+        const done = perShardDone.reduce((s, d) => s + d, 0);
+        opts.onProgress?.({ done, total });
+    };
+
+    return new Promise<StrategySearchResult>((resolve, reject) => {
+        const IDLE_MS = 60_000; // hang d'un worker = aucun progrès pendant 60s
+        let settled = false;
+        const watchdogs: ReturnType<typeof setTimeout>[] = [];
+
+        const cleanupAll = () => {
+            for (const w of watchdogs) clearTimeout(w);
+            for (const w of workers) w.terminate();
+        };
+        const fail = (err: Error) => {
+            if (settled) return;
+            settled = true;
+            cleanupAll();
+            reject(err);
+        };
+        const tryResolve = () => {
+            if (settled) return;
+            if (perShardResults.some((r) => r === null)) return;
+            settled = true;
+            cleanupAll();
+            const results = perShardResults.flatMap((r) => r ?? []);
+            resolve({ results, iterations: resolvedIterations });
+        };
+
+        shards.forEach((shard, k) => {
+            let worker: Worker;
+            try {
+                worker = new Worker(new URL('../projection.worker.ts', import.meta.url), { type: 'module' });
+            } catch (err) {
+                fail(new Error('Pool worker indisponible: ' + String(err)));
+                return;
+            }
+            workers.push(worker);
+
+            const armWatchdog = () => {
+                clearTimeout(watchdogs[k]);
+                watchdogs[k] = setTimeout(
+                    () => fail(new Error(`Recherche: worker ${k} sans progrès depuis ${IDLE_MS}ms`)),
+                    IDLE_MS,
+                );
+            };
+            const onMessage = (e: MessageEvent) => {
+                if (!e.data || e.data.__requestId !== k) return;
+                if (e.data.__progress) {
+                    perShardDone[k] = e.data.__progress.done;
+                    emitProgress();
+                    armWatchdog();
+                    return;
+                }
+                if (e.data.__error) {
+                    fail(new Error(`Worker ${k}: ${e.data.__error}`));
+                    return;
+                }
+                const shardResult = e.data.result as StrategySearchResult;
+                perShardResults[k] = shardResult.results;
+                resolvedIterations = shardResult.iterations;
+                perShardDone[k] = shard.length;
+                emitProgress();
+                tryResolve();
+            };
+            worker.addEventListener('message', onMessage);
+            worker.addEventListener('error', (e) => fail(new Error(`Worker ${k} error: ${e.message}`)));
+            worker.addEventListener('messageerror', () => fail(new Error(`Worker ${k} messageerror`)));
+            armWatchdog();
+            worker.postMessage({
+                __requestId: k,
+                params,
+                mode: 'strategySearch',
+                configs: shard,
+                iterations: opts.iterations,
+            });
         });
     });
 }

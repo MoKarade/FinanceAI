@@ -3,7 +3,8 @@
 // Pattern injection de dépendance: runScenario passé en argument pour
 // éviter dépendance circulaire avec projection.ts.
 
-import type { SimulationParams, AllocationStrategy } from '../projection';
+import type { SimulationParams, AllocationStrategy, FutureScenarioType } from '../projection';
+import type { EngineOverrides } from './strategyConfig';
 
 type RunScenarioFn = (
     params: SimulationParams,
@@ -11,6 +12,8 @@ type RunScenarioFn = (
     enableMonteCarlo: boolean,
     delayPensions: boolean,
     mcIterationIndex: number,
+    scenarioType?: FutureScenarioType,
+    overrides?: EngineOverrides,
 ) => any;
 
 export interface MonteCarloResult {
@@ -36,6 +39,7 @@ export function runMonteCarlo(
     strategy: AllocationStrategy,
     delayPensions: boolean,
     iterations = 100,
+    overrides: EngineOverrides = {},
 ): MonteCarloResult {
     const allRuns: {
         netWorthByMonth: number[];
@@ -51,7 +55,7 @@ export function runMonteCarlo(
     const nMonths = params.projection.years * 12;
 
     for (let i = 0; i < iterations; i++) {
-        const result = runScenario(params, strategy, true, delayPensions, i);
+        const result = runScenario(params, strategy, true, delayPensions, i, 'BASE', overrides);
         const nwHistory = result.chartData.map((d: any) => d.NetWorth);
         while (nwHistory.length <= nMonths) nwHistory.push(0);
         allRuns.push({

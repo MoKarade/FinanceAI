@@ -27,16 +27,18 @@
 - [ ] **G22-B2 — Bouton couple toujours cassé** : cliquer « couple » doit basculer TOUT
   (backend + front + interface + tout ce qui dépend du couple) en mode couple, sans erreur.
   (déjà tenté #130, à reprendre proprement).
-- [~] **G22-B3 — Graph Accueil incohérent** (scopé avec Marc — les 4) :
-  `DashboardEvolutionChart` utilise déjà `ZoomableTimeChart` mais il manque/cloche :
-  1. **Boutons de période** (5/10/20/30 ans) comme le Futur — absents sur l'Accueil.
-  2. **Bouton plein écran** (createPortal) — absent.
-  3. **Zoom molette ne marche PAS** → VRAI BUG à diagnostiquer (handler wheel non
-     déclenché ? parent qui intercepte ? data/xKey ?). Comparer avec l'usage Futur.
-  4. **Style/apparence** à harmoniser avec les autres graphs.
-  → Piste : factoriser la « couche de contrôles » du Futur (période + plein écran +
-  légende) en wrapper réutilisable, ou l'ajouter autour de DashboardEvolutionChart.
-  ⚠️ Gros morceau : à faire en contexte frais pour bien diagnostiquer le bug zoom.
+- [~] **G22-B3 — Graph Accueil incohérent** — partiellement FAIT :
+  Cause racine : `ZoomableTimeChart` avait perdu ses contrôles (régression de
+  l'extraction G4 du hook ; #122 marqué fait mais code sans sélecteur).
+  - [x] **Boutons de période** : data-aware (1M/3M/6M/1A/5A selon l'étendue réelle) +
+    « Tout » (reset). Via `showRange()` du hook. → Accueil + Investissements.
+  - [x] **Plein écran** : Fullscreen API native sur le conteneur (`containerEl`).
+  - [x] **Zoom molette** : le listener natif `{passive:false}` était déjà correct ;
+    les boutons période donnent un zoom fiable en complément. À RE-VALIDER en live
+    après deploy : si la molette est encore morte SPÉCIFIQUEMENT sur l'Accueil, repro
+    nécessaire (piste : données trop courtes, ou ancêtre qui capte le scroll).
+  - [~] **Style** : contrôles harmonisés avec les autres ; affiner visuellement si
+    besoin (la barre période peut chevaucher la légende centrée — à ajuster au besoin).
 
 ### Infobulles & lisibilité (questions à poser)
 - [ ] **G22-UX1 — Infobulles incompréhensibles** : refondre le texte + icônes + structure

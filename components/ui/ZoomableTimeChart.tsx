@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { formatCAD } from '../../utils/format';
 import { useTimeChartZoom } from '../../hooks/useTimeChartZoom';
@@ -42,7 +42,19 @@ interface ZoomableTimeChartProps {
     stacked?: boolean;
     /** Formatteur custom pour les valeurs Y (par défaut : compact k$/M$) */
     yFormatter?: (val: number) => string;
+    /** Affiche la barre de contrôles (périodes + plein écran). Défaut true. */
+    showControls?: boolean;
 }
+
+// Présélections de période (lookback depuis la dernière date). On n'affiche que
+// celles plus courtes que l'étendue réelle des données (sinon le bouton ne zoome pas).
+const PERIOD_PRESETS: ReadonlyArray<{ label: string; days: number }> = [
+    { label: '1M', days: 30 },
+    { label: '3M', days: 91 },
+    { label: '6M', days: 182 },
+    { label: '1A', days: 365 },
+    { label: '5A', days: 365 * 5 },
+];
 
 function formatTick(timestamp: string | number, spanDays: number): string {
     const d = new Date(timestamp);
@@ -74,8 +86,9 @@ export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
     privacyMode = false,
     stacked = true,
     yFormatter = defaultYFormatter,
+    showControls = true,
 }) => {
-    const { containerRef, visibleData, isZoomed, isPanning, handlers, reset } = useTimeChartZoom(data);
+    const { containerRef, containerEl, visibleData, isZoomed, isPanning, handlers, reset, showRange } = useTimeChartZoom(data);
 
     const spanDays = useMemo(() => {
         if (visibleData.length < 2) return 0;
@@ -84,15 +97,89 @@ export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
         return (last - first) / (1000 * 60 * 60 * 24);
     }, [visibleData, xKey]);
 
+    // Étendue totale des données (pour ne proposer que les périodes pertinentes).
+    const totalSpanDays = useMemo(() => {
+        if (data.length < 2) return 0;
+        const first = new Date(data[0][xKey] as string).getTime();
+        const last = new Date(data[data.length - 1][xKey] as string).getTime();
+        return (last - first) / (1000 * 60 * 60 * 24);
+    }, [data, xKey]);
+
+    const availablePeriods = useMemo(
+        () => PERIOD_PRESETS.filter((p) => p.days < totalSpanDays),
+        [totalSpanDays],
+    );
+
+    // Affiche les `days` derniers jours : 1er indice dont la date >= (dernière date − days).
+    const showPeriod = useCallback((days: number) => {
+        if (data.length < 2) return;
+        const lastTs = new Date(data[data.length - 1][xKey] as string).getTime();
+        const fromTs = lastTs - days * 86_400_000;
+        let fromIdx = data.findIndex((d) => new Date(d[xKey] as string).getTime() >= fromTs);
+        if (fromIdx < 0) fromIdx = 0;
+        showRange(fromIdx, data.length - 1);
+    }, [data, xKey, showRange]);
+
+    // Plein écran natif sur le conteneur du graphe (Fullscreen API).
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    useEffect(() => {
+        const onFsChange = () => setIsFullscreen(document.fullscreenElement === containerEl.current);
+        document.addEventListener('fullscreenchange', onFsChange);
+        return () => document.removeEventListener('fullscreenchange', onFsChange);
+    }, [containerEl]);
+    const toggleFullscreen = useCallback(() => {
+        const el = containerEl.current;
+        if (!el) return;
+        if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+        else el.requestFullscreen?.().catch(() => {});
+    }, [containerEl]);
+
     return (
         <div
             ref={containerRef}
-            className={`relative w-full h-full select-none ${isZoomed && isPanning ? 'cursor-grabbing' : (isZoomed ? 'cursor-grab' : 'cursor-default')}`}
+            className={`relative w-full h-full select-none ${isZoomed && isPanning ? 'cursor-grabbing' : (isZoomed ? 'cursor-grab' : 'cursor-default')} ${isFullscreen ? 'bg-ink-950 p-4' : ''}`}
             {...handlers}
-            style={{ height }}
+            style={{ height: isFullscreen ? '100vh' : height }}
             role="img"
             aria-label="Graphique temporel — molette pour zoomer, glisser pour déplacer, double-clic pour réinitialiser"
         >
+            {/* Barre de contrôles : périodes (gauche) + plein écran (droite). */}
+            {showControls && (
+                <div className="absolute top-2 left-2 z-10 flex items-center gap-1 flex-wrap">
+                    {availablePeriods.map((p) => (
+                        <button
+                            key={p.label}
+                            type="button"
+                            onClick={() => showPeriod(p.days)}
+                            className="px-2 py-0.5 text-tiny font-bold rounded-card bg-white/10 hover:bg-white/20 border border-white/15 text-ink-200 transition-colors focus-ring"
+                            title={`Afficher les ${p.label} derniers`}
+                        >
+                            {p.label}
+                        </button>
+                    ))}
+                    {availablePeriods.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={reset}
+                            className={`px-2 py-0.5 text-tiny font-bold rounded-card border transition-colors focus-ring ${isZoomed ? 'bg-white/10 hover:bg-white/20 border-white/15 text-ink-200' : 'bg-indigo-500/25 border-indigo-400/40 text-white'}`}
+                            title="Vue complète"
+                        >
+                            Tout
+                        </button>
+                    )}
+                </div>
+            )}
+            {showControls && (
+                <button
+                    type="button"
+                    onClick={toggleFullscreen}
+                    className="absolute top-2 right-2 z-10 px-2 py-0.5 text-tiny font-bold rounded-card bg-white/10 hover:bg-white/20 border border-white/15 text-ink-200 transition-colors focus-ring"
+                    title={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
+                    aria-label={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
+                >
+                    {isFullscreen ? '✕ Réduire' : '⛶ Plein écran'}
+                </button>
+            )}
             <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={visibleData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
@@ -153,8 +240,8 @@ export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
                 </ComposedChart>
             </ResponsiveContainer>
 
-            {/* Hint visuel + bouton reset */}
-            {isZoomed && (
+            {/* Reset autonome quand la barre de contrôles est masquée (sinon « Tout » l'assure). */}
+            {isZoomed && !showControls && (
                 <button
                     type="button"
                     onClick={reset}

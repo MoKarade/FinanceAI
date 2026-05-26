@@ -26,6 +26,7 @@ import { rankStrategies, OBJECTIVE_LABELS, type OptimizeObjective } from '../ser
 import { usePastPortfolioHistory } from '../hooks/usePastPortfolioHistory';
 import { ActionPlanDrilldown } from './projection/ActionPlanDrilldown';
 import { AssetLocationPanel } from './projection/AssetLocationPanel';
+import { RobustnessPanel } from './projection/RobustnessPanel';
 
 // G10 — Légende interactive : une seule source de vérité pour les chips ET les
 // gardes de visibilité dans le graphique. `key` correspond au dataKey recharts
@@ -909,6 +910,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 {/* C3 suite — Placement par compte : assetLocation branchée sur
                     le portfolio réel. Recommande CELI/REER/NonReg optimal. */}
                 <AssetLocationPanel assets={assets} annualGrossIncome={baseGrossAnnual} />
+
+                {/* C4 — Classement par robustesse (Monte Carlo, taux de succès).
+                    Bouton explicite : 5 stratégies × 1000 sims dans le Web Worker. */}
+                <RobustnessPanel params={params} />
 
                 {/* C2 — Plan d'action HIÉRARCHIQUE : global → décennie → 3 ans → année
                     → semestre → trimestre → mois → conseils (drill-down au clic). */}

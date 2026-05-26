@@ -27,6 +27,7 @@ import { usePastPortfolioHistory } from '../hooks/usePastPortfolioHistory';
 import { reconstructCashHistory } from '../services/history/reconstructCashHistory';
 import { reconstructRealEstateEquityByYear } from '../services/history/reconstructRealEstateEquity';
 import { ActionPlanDrilldown } from './projection/ActionPlanDrilldown';
+import { ProjectionExplains } from './projection/ProjectionExplains';
 import { AssetLocationPanel } from './projection/AssetLocationPanel';
 import { RobustnessPanel } from './projection/RobustnessPanel';
 import { StrategyOptimizerPanel } from './projection/StrategyOptimizerPanel';
@@ -455,7 +456,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     }, [chartData]);
 
     // G3 — sous-onglets Futur (Graphique = courbe + KPIs ; Paramètres = contrôles).
-    const [futureSubTab, setFutureSubTab] = useState<'graph' | 'params'>('graph');
+    const [futureSubTab, setFutureSubTab] = useState<'graph' | 'params' | 'explains'>('graph');
 
     // G21 — objectif servant au bandeau « Verdict » (meilleur scénario en 1 phrase).
     // L'optimisation interactive complète (choix des leviers, re-tri par objectif) vit
@@ -637,7 +638,16 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 >
                     ⚙️ Paramètres
                 </button>
+                <button
+                    type="button" role="tab" aria-selected={futureSubTab === 'explains'}
+                    onClick={() => setFutureSubTab('explains')}
+                    className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === 'explains' ? 'bg-primary text-white' : 'text-ink-300 hover:text-ink-100'}`}
+                >
+                    📖 Explications
+                </button>
             </div>
+
+            {futureSubTab === 'explains' && <ProjectionExplains chartData={chartData} />}
 
             {futureSubTab === 'params' && (
             <ProjectionControls

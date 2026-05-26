@@ -89,9 +89,16 @@
   pointent vers Configuration.
 
 ### Features (gros)
-- [ ] **G22-F1 — Page « Explications » dans Futur** : explique TOUTES les opérations,
-  TOUS les calculs, TOUTES les prévisions pour CHAQUE compte CHAQUE année. Pour un user
-  qui ne comprend pas. + explications in-app partout + barre de recherche.
+- [x] **G22-F1 — Page « Explications » dans Futur** — ✅ FAIT (explorateur data-driven complet).
+  3e sous-onglet « 📖 Explications » dans Futur (`ProjectionExplains`, à côté de Graphique/Paramètres).
+  Pilotée à 100 % par les vraies données de projection (`ProjectionChartPoint[]`, ~70 champs/mois) :
+  par **année** (repliable) → drill **mois par mois** ; pour chaque mois, les événements en
+  français clair (réutilise `flowEvents`/`lifeEvents` post-UX1) **+ détail chiffré par compte**
+  (cotisé / marché / retrait / transfert / versé) pour CHAQUE compte (Liquidités, CELI, REER,
+  CELIAPP, non-enreg, crypto, REEE, immo, dettes). **Barre de recherche** transverse (date,
+  événements, comptes mouvementés) avec compteur + auto-expand des années matchées. Section
+  **« Comment ça marche »** (méthodologie : projection, ordre de retrait, RAP, CELIAPP, impôts,
+  Monte Carlo). Empty state honnête si aucune projection. 5 tests. Typecheck OK, build OK.
 - [ ] **G22-F2 — Version de l'app auto-tenue à jour + affichée**.
 - [x] **G22-F3 — Onboarding accueillant** — ✅ FAIT. Étape « Bienvenue » réécrite pour
   mener avec la valeur (vision claire, simulateur du futur, assistant IA, données locales)

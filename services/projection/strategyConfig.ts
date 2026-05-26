@@ -125,3 +125,15 @@ export const LEVER_LIBRARY: ReadonlyArray<LeverDef> = [
 export function withdrawalOrderToStrategy(order: WithdrawalOrder): AllocationStrategy {
     return order; // les 4 valeurs coïncident avec l'enum existant
 }
+
+/** Libellé humain d'un levier (ex: 'retirementAge' → 'Âge de retraite'). */
+export function leverLabel(key: keyof StrategyConfig): string {
+    return LEVER_LIBRARY.find(l => l.key === key)?.label ?? String(key);
+}
+
+/** Libellé humain d'une valeur de levier (ex: ('skipRap', true) → 'CELI sans RAP'). */
+export function leverValueLabel(key: keyof StrategyConfig, value: unknown): string {
+    const lever = LEVER_LIBRARY.find(l => l.key === key);
+    const opt = lever?.options.find(o => o.value === value);
+    return opt?.label ?? String(value);
+}

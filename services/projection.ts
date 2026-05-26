@@ -35,6 +35,17 @@ export type { AllocationStrategy, FutureScenarioType, ProjectionChartPoint, Proj
 export type { RobustnessRanking, StrategyRobustness, RankRobustnessOptions } from './projection/strategyRobustness';
 export type { StrategySearchResult, ConfigResult, RunStrategySearchOptions } from './projection/strategySearch';
 export type { StrategyConfig } from './projection/strategyConfig';
+export {
+    rankConfigResults,
+    explainWinner,
+    decisiveLevers,
+    OBJECTIVE_LABELS,
+    type ConfigRankingResult,
+    type RankedConfig,
+    type ScoreBreakdown,
+    type OptimizeObjective,
+    type DecisiveLever,
+} from './projection/strategyConfigRanking';
 
 export interface SimulationParams {
     projection: ProjectionConfig;

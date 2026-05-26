@@ -39,6 +39,12 @@ const baseProps = {
 describe('Settings', () => {
     let createdBlob: Blob | undefined;
 
+    // G22-N4 : la sauvegarde est désormais dans le sous-onglet « Sauvegarde ».
+    // On y navigue avant de chercher les boutons d'export.
+    const goToBackupTab = () => {
+        fireEvent.click(screen.getByRole('tab', { name: 'Sauvegarde' }));
+    };
+
     beforeEach(() => {
         vi.clearAllMocks();
         createdBlob = undefined;
@@ -58,17 +64,16 @@ describe('Settings', () => {
 
     it("l'export JSON clair n'inclut PAS les clés API dans le blob (audit sécurité 2026-05)", async () => {
         render(<Settings {...baseProps} />);
+        goToBackupTab();
 
-        // Find plain export button — typically labeled "Exporter" or "JSON" (not "chiffré")
+        // Find plain export button — labeled "Exporter JSON" (not "chiffré")
         const allButtons = screen.getAllByRole('button');
         const exportBtn = allButtons.find(
             b => b.textContent?.includes('Exporter') && !b.textContent?.toLowerCase().includes('chiffr')
         );
-        if (!exportBtn) {
-            // Section may be in a different tab — skip rather than fail
-            return;
-        }
-        fireEvent.click(exportBtn);
+        // Doit exister maintenant qu'on est sur le bon sous-onglet (régression G22-N4).
+        expect(exportBtn).toBeTruthy();
+        fireEvent.click(exportBtn!);
 
         // Give async state update a tick
         await waitFor(() => expect(URL.createObjectURL).toHaveBeenCalled());
@@ -82,6 +87,7 @@ describe('Settings', () => {
 
     it("le bouton 'Exporter chiffré' ouvre la modal de passphrase", async () => {
         render(<Settings {...baseProps} />);
+        goToBackupTab();
 
         const encBtn = screen.getAllByRole('button').find(
             b => b.textContent?.toLowerCase().includes('chiffr') && b.textContent?.toLowerCase().includes('export')
@@ -97,6 +103,7 @@ describe('Settings', () => {
 
     it("dans la modal chiffrée, le bouton confirmer est désactivé si passphrase vide", async () => {
         render(<Settings {...baseProps} />);
+        goToBackupTab();
 
         const encBtn = screen.getAllByRole('button').find(
             b => b.textContent?.toLowerCase().includes('chiffr') && b.textContent?.toLowerCase().includes('export')

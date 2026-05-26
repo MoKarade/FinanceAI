@@ -1,0 +1,26 @@
+// components/settings/sections/BackupSection.tsx
+// G22-N4 — extrait de Settings.tsx : sauvegarde & données. Export/restauration
+// JSON manuel (BackupPanel), backup auto rolling IndexedDB (AutoBackupPanel) et
+// mode test/fixtures (TestModePanel). Le payload de backup est construit par le
+// parent (qui détient toutes les données) et passé via buildPayload.
+
+import React from 'react';
+import { BackupPanel } from '../BackupPanel';
+import { AutoBackupPanel } from '../AutoBackupPanel';
+import { TestModePanel } from '../TestModePanel';
+
+interface BackupSectionProps {
+  buildPayload: (opts?: { includeApiKeys?: boolean }) => Record<string, unknown>;
+}
+
+export const BackupSection: React.FC<BackupSectionProps> = ({ buildPayload }) => {
+  return (
+    <div className="space-y-6">
+      <BackupPanel buildPayload={buildPayload} />
+      {/* P1.3 — Backup auto rolling IndexedDB (complémentaire à l'export JSON manuel) */}
+      <AutoBackupPanel />
+      {/* Mode test — fixtures de test avec backup auto avant switch */}
+      <TestModePanel />
+    </div>
+  );
+};

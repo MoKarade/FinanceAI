@@ -67,8 +67,17 @@
   TabRouter rend BudgetWorkspace pour Tab.BUDGET ; enum `Tab.PLANNING` + nav (Layout,
   CommandPalette) + raccourci Alt+4 (→ Dettes) retirés. (clé i18n `tabs.planning`
   laissée, inerte.)
-- [ ] **G22-N4 — Refonte onglet Configuration** : interface devenue confuse, tout
-  refaire propre sans perdre d'info (possiblement plusieurs sous-onglets).
+- [x] **G22-N4 — Refonte onglet Configuration** — ✅ FAIT (sous-onglets thématiques).
+  `Settings.tsx` (745 lignes) découpé en orchestrateur léger (~210 l.) + 6 sections
+  sous `components/settings/sections/` : `ProfileSection` (retraite hub + `UsersCard`),
+  `AccountsSection` (soldes + paie + import banque), `PatrimoineSection` (W5.x :
+  assurances/locatifs/entreprises/cycliques), `IntegrationsSection` (clés API),
+  `BackupSection` (export/auto/mode test). Nav 5 sous-onglets : Profil | Comptes &
+  soldes | Patrimoine | Clés API | Sauvegarde. Deep-link cross-tab préservé : le
+  sous-onglet contenant le `data-focus-section` ciblé s'ouvre d'office avant le
+  scroll (`usePendingFocus`). Test Settings mis à jour (navigue vers Sauvegarde →
+  la couverture sécurité « clés API hors backup » est réellement exercée, plus de
+  skip silencieux). (« Hypothèses éco » du plan initial : sans objet ici, vit dans Futur.)
 - [ ] **G22-N5 — Refonte onglet Système** : remodéliser entièrement, auto-tenu à jour
   (commits + versions), combiné avec Configuration (autre page).
 

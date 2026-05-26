@@ -6,6 +6,46 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — G22 · lisibilité, navigation & pédagogie] — 2026-05-26
+
+Lot de 13 items axés sur la clarté pour un utilisateur non expert.
+
+### Ajouté
+- **Page « Explications » (Futur)** — 3e sous-onglet `ProjectionExplains` : explorateur
+  data-driven de la projection. Par année (repliable) → drill mois par mois ; pour chaque
+  mois les événements en français clair **+ détail chiffré par compte** (cotisé / marché /
+  retrait / transfert / versé). Barre de recherche transverse + section « Comment ça marche »
+  (méthodologie : ordre de retrait, RAP, CELIAPP, impôts, Monte Carlo). (G22-F1)
+- **Tutoriel guidé** — moteur maison (zéro dépendance) : visite des 15 onglets, spotlight +
+  bulle, raccourcis ←/→/Échap, démarrage post-onboarding, relançable depuis Configuration.
+  (`components/tour/*`) (G22-F4)
+- **Carte « Version & build »** dans Système (`__APP_VERSION__` · `__GIT_SHA__` ·
+  `__BUILD_DATE__`) — auto-tenue à jour, remplace le CHANGELOG hardcodé. (G22-N5)
+
+### Modifié
+- **Configuration en sous-onglets thématiques** — `Settings.tsx` (745 l.) découpé en
+  orchestrateur (~210 l.) + 6 sections (`components/settings/sections/*`) : Profil | Comptes &
+  soldes | Patrimoine | Clés API | Sauvegarde | **Système & diagnostics** (fusionné). Deep-link
+  cross-tab préservé. (G22-N4, N5)
+- **Infobulles de projection réécrites en français clair**, jargon masqué (RAP, B-20, MBP,
+  TBienv, REEE…) dans `realEstateMonth.ts`, `cashflowAllocation.ts`, `childrenReee.ts`. (G22-UX1)
+- **Onboarding accueillant** — étape « Bienvenue » orientée valeur + tutoiement aligné sur
+  l'app. (G22-F3)
+- **Valeur nette passée complète** (cash + immo reconstruits) fusionnée au graphe Futur. (G22-B1)
+- **Graphe Accueil** : boutons période + plein écran réalignés. (G22-B3)
+- **Badge couple (sidebar)** : bascule directe Couple ⇄ Individuel. (G22-B2)
+- **Version app auto** (CalVer) au lieu du bump manuel. (G22-F2)
+
+### Supprimé
+- Onglets **Documents** et **Data** retirés (enum, routeur, nav, palette). (G22-N1, N2)
+- Onglet **Planif & Abos** fusionné dans **Budget** (sous-onglets). (G22-N3)
+- `Tab.SYSTEM` retiré de l'enum (Système vit désormais dans Configuration).
+
+### Qualité
+- Revue IA (typescript + sécurité + qualité) : sécurité saine (clés API toujours hors backup),
+  2 corrections appliquées au moteur de tour (logique de fin + cleanup rAF).
+- Tests : 692 → **719** verts (nouveaux : `GuidedTour`, `ProjectionExplains`, `Settings` MAJ).
+
 ## [unreleased — G21 C5 · optimiseur configurable · C4 robustesse · C3 suite · PRIO_CELI_NO_RAP · AssetLocationPanel · Clés chiffrées · fix budget · plan d'action · crypto · import CSV] — 2026-05-26
 
 ### G21 C5 — Optimiseur de stratégies configurable

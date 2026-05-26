@@ -179,7 +179,7 @@ export function processCashflowAllocation(
 
             let buckets: string[];
             if (strategy === 'PRIO_REER') buckets = ['REER', 'CELI', 'NONREG', 'CRYPTO'];
-            else if (strategy === 'PRIO_CELI') buckets = ['CELI', 'NONREG', 'REER', 'CRYPTO'];
+            else if (strategy === 'PRIO_CELI' || strategy === 'PRIO_CELI_NO_RAP') buckets = ['CELI', 'NONREG', 'REER', 'CRYPTO'];
             else buckets = ['CELI', 'REER', 'NONREG', 'CRYPTO'];
 
             // Optim 2026: banque de pertes en capital — si on a des pertes accumulées

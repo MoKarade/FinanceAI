@@ -77,6 +77,8 @@ export interface RealEstateCtx {
     incomeRetirement: number;
     useSmithManoeuvre: boolean;
     currentRentExpense: number;
+    /** C3 suite — si true, saute le RAP à l'achat (CELI avant REER non-imposable). */
+    skipRapForPurchase?: boolean;
 }
 
 import { handleNonRegSale } from './portfolioOps';
@@ -98,6 +100,7 @@ export function processRealEstate(
         m, loopYear, isRetired, activeUsersCount, simInflation, simSalaryGrowth,
         grossMarcBaseAnnual, grossAnnaBaseAnnual, incomeRetirement,
         useSmithManoeuvre, currentRentExpense,
+        skipRapForPurchase = false,
     } = ctx;
 
     let totalImmoHypo = 0;
@@ -151,8 +154,8 @@ export function processRealEstate(
             if (state.liquid < totalCashNeeded && state.reer > 0) {
                 let remainingShortfall = totalCashNeeded - state.liquid;
 
-                // Phase 1: RAP (si résidence principale et éligible)
-                if (goal.isPrimaryResidence && (!state.hasUsedRap || state.rapRepaymentDueTotal === 0)) {
+                // Phase 1: RAP (si résidence principale, éligible, et non sauté par stratégie)
+                if (!skipRapForPurchase && goal.isPrimaryResidence && (!state.hasUsedRap || state.rapRepaymentDueTotal === 0)) {
                     const rapLimit = RAP_LIMIT_PER_USER * activeUsersCount;
                     const rapAvailable = Math.max(0, rapLimit - state.rapBorrowed);
                     if (rapAvailable > 0) {

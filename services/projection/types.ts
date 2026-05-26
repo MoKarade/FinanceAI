@@ -2,7 +2,7 @@
 // Cycle 28 split: types partagés entre projection.ts et les sous-modules.
 // Élimine les imports circulaires (monthlyOutput, meltdownReer, cashflowAllocation → projection.ts).
 
-export type AllocationStrategy = 'AUTO_MARGINAL' | 'PRIO_REER' | 'PRIO_CELI' | 'MELTDOWN_REER' | 'DEBT_FIRST';
+export type AllocationStrategy = 'AUTO_MARGINAL' | 'PRIO_REER' | 'PRIO_CELI' | 'MELTDOWN_REER' | 'DEBT_FIRST' | 'PRIO_CELI_NO_RAP';
 
 export type FutureScenarioType =
     | 'BASE'

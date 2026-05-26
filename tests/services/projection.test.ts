@@ -94,11 +94,11 @@ const makeParams = (overrides: Partial<SimulationParams> = {}): SimulationParams
 // ---------------------------------------------------------------------------
 
 describe('calculateFutureProjection', () => {
-    it('renvoie 10 scénarios dans allResults (7 stress/base + 3 variantes de gestion C3)', () => {
+    it('renvoie 11 scénarios dans allResults (6 stress/base + 5 variantes de gestion C3)', () => {
         const result = calculateFutureProjection(makeParams()) as any;
         const scenarios = result.allResults as any[];
         expect(Array.isArray(scenarios)).toBe(true);
-        expect(scenarios).toHaveLength(10);
+        expect(scenarios).toHaveLength(11);
         const types = scenarios.map(r => r.stratType);
         expect(types).toEqual(
             expect.arrayContaining([
@@ -106,8 +106,9 @@ describe('calculateFutureProjection', () => {
                 'COMPOUND_STRESS', 'LATE_INHERITANCE',
             ])
         );
-        // C3 — 4 façons de gérer comparables (kind 'strategy', toutes sous le monde BASE).
-        expect(scenarios.filter(r => r.kind === 'strategy')).toHaveLength(4);
+        // C3 — 5 façons de gérer comparables (kind 'strategy', toutes sous le monde BASE).
+        // AUTO_MARGINAL, PRIO_CELI, PRIO_REER, MELTDOWN_REER, PRIO_CELI_NO_RAP.
+        expect(scenarios.filter(r => r.kind === 'strategy')).toHaveLength(5);
     });
 
     it('chaque scénario a un chartData non vide proche de years*12 entrées', () => {
@@ -218,7 +219,7 @@ describe('calculateFutureProjection', () => {
         };
         const result = calculateFutureProjection(makeParams(zeroIncome)) as any;
         const scenarios = result.allResults as any[];
-        expect(scenarios).toHaveLength(10);
+        expect(scenarios).toHaveLength(11);
         for (const r of scenarios) {
             expect(Number.isFinite(r.estateNetWorth)).toBe(true);
         }

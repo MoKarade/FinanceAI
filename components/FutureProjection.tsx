@@ -25,6 +25,7 @@ import { ProjectionControls } from './projection/ProjectionControls';
 import { rankStrategies, OBJECTIVE_LABELS, type OptimizeObjective } from '../services/projection/strategyRanking';
 import { usePastPortfolioHistory } from '../hooks/usePastPortfolioHistory';
 import { ActionPlanDrilldown } from './projection/ActionPlanDrilldown';
+import { AssetLocationPanel } from './projection/AssetLocationPanel';
 
 // G10 — Légende interactive : une seule source de vérité pour les chips ET les
 // gardes de visibilité dans le graphique. `key` correspond au dataKey recharts
@@ -904,6 +905,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         })}
                     </div>
                 </div>
+
+                {/* C3 suite — Placement par compte : assetLocation branchée sur
+                    le portfolio réel. Recommande CELI/REER/NonReg optimal. */}
+                <AssetLocationPanel assets={assets} annualGrossIncome={baseGrossAnnual} />
 
                 {/* C2 — Plan d'action HIÉRARCHIQUE : global → décennie → 3 ans → année
                     → semestre → trimestre → mois → conseils (drill-down au clic). */}

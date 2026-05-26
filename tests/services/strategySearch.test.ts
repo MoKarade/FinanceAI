@@ -119,14 +119,20 @@ describe('strategySearch — runStrategySearch', () => {
         expect(results[0].fireAge).toBeNull();
     });
 
-    it('onProgress est appelé une fois par config terminée', () => {
+    it('onProgress progresse de façon monotone et termine à 100% (heartbeat inclus)', () => {
         const configs = generateStrategySpace({ retirementAge: [55, 60, 65, 63] }, ctx);
         const progress: Array<{ done: number; total: number }> = [];
         runStrategySearch(fakeRunScenario, baseParams(), configs, {
             iterations: 50,
             onProgress: (done, total) => progress.push({ done, total }),
         });
-        expect(progress).toHaveLength(configs.length);
+        // Heartbeat fractionnaire pendant le MC → plus d'un appel par config.
+        expect(progress.length).toBeGreaterThanOrEqual(configs.length);
+        // Monotone non décroissant (pas de retour en arrière du % affiché).
+        for (let i = 1; i < progress.length; i++) {
+            expect(progress[i].done).toBeGreaterThanOrEqual(progress[i - 1].done);
+        }
+        // Dernier appel = recherche terminée.
         expect(progress[progress.length - 1]).toEqual({ done: configs.length, total: configs.length });
     });
 

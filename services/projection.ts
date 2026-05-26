@@ -1162,7 +1162,18 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
         skipRapForPurchase: proj.appliedSkipRap,
     };
     const effectiveParams: SimulationParams = proj.appliedAssetLocation && proj.returnRates
-        ? { ...params, projection: { ...proj, returnRates: { ...proj.returnRates, nonReg: proj.returnRates.nonReg + ASSET_LOCATION_BONUS_PP } } }
+        ? {
+            ...params,
+            projection: {
+                ...proj,
+                returnRates: {
+                    ...proj.returnRates,
+                    celi: proj.returnRates.celi + ASSET_LOCATION_BONUS_PP,
+                    reer: proj.returnRates.reer + ASSET_LOCATION_BONUS_PP,
+                    nonReg: proj.returnRates.nonReg + ASSET_LOCATION_BONUS_PP,
+                },
+            },
+        }
         : params;
 
     // V90 + Cycle 7 split: Avenirs de Vie (5 Distinct Futures)

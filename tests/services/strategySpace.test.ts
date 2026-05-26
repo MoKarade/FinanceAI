@@ -120,10 +120,12 @@ describe('strategySpace — configToEngine', () => {
             smithManoeuvre: false, debtFirst: false, emergencyFundMonths: 6, assetLocation: true,
         }, base);
 
-        expect(off.params.projection.returnRates!.nonReg).toBe(baseNonReg); // inchangé
-        expect(on.params.projection.returnRates!.nonReg).toBeGreaterThan(baseNonReg); // bonus
-        // Les autres comptes ne bougent pas.
-        expect(on.params.projection.returnRates!.celi).toBe(base.projection.returnRates!.celi);
+        expect(off.params.projection.returnRates!.nonReg).toBe(baseNonReg); // inchangé sans le levier
+        // Bonus appliqué à TOUS les comptes (le moteur draine le NonReg vers CELI/REER,
+        // un bonus NonReg-seul s'évaporerait → on relève le rendement mélangé).
+        expect(on.params.projection.returnRates!.nonReg).toBeGreaterThan(baseNonReg);
+        expect(on.params.projection.returnRates!.celi).toBeGreaterThan(base.projection.returnRates!.celi);
+        expect(on.params.projection.returnRates!.reer).toBeGreaterThan(base.projection.returnRates!.reer);
         // Immutabilité : la base n'a pas bougé.
         expect(base.projection.returnRates!.nonReg).toBe(baseNonReg);
     });

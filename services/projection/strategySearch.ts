@@ -103,7 +103,13 @@ export function runStrategySearch(
     const results: ConfigResult[] = configs.map((config, idx) => {
         const { params, strategy, delayPensions, overrides } = configToEngine(config, baseParams);
 
-        const mc = runMonteCarlo(runScenario, params, strategy, delayPensions, iterations, overrides);
+        // Progression fractionnaire : config terminée = idx, + fraction du MC en cours.
+        // Garantit un heartbeat régulier (sinon une config à 1000 sims = silence long
+        // → le watchdog multi-worker tue le worker, cf. bug « sans progrès depuis 60s »).
+        const heartbeat = (done: number, iterTotal: number) =>
+            opts.onProgress?.(idx + done / iterTotal, total);
+
+        const mc = runMonteCarlo(runScenario, params, strategy, delayPensions, iterations, overrides, heartbeat);
         const baseline = runScenario(params, strategy, false, delayPensions, 0, 'BASE', overrides);
 
         opts.onProgress?.(idx + 1, total);

@@ -72,8 +72,9 @@ const ScoreBar: React.FC<{ label: string; value: number }> = ({ label, value }) 
     </div>
 );
 
-export const StrategyOptimizerPanel: React.FC<Props> = ({ params, iterations = 1000, onApply }) => {
+export const StrategyOptimizerPanel: React.FC<Props> = ({ params, iterations = 300, onApply }) => {
     const [applied, setApplied] = useState(false);
+    const [composerOpen, setComposerOpen] = useState(true);
     const [selection, setSelection] = useState<LeverSelection>({});
     const [objective, setObjective] = useState<OptimizeObjective>('balanced');
     const [status, setStatus] = useState<Status>('idle');
@@ -118,6 +119,7 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, iterations = 1
         setError(null);
         setResults(null);
         setApplied(false);
+        setComposerOpen(false); // replie le composeur pour laisser place aux résultats
         setProgress({ done: 0, total: configCount });
         try {
             const configs = generateStrategySpace(selection, ctx);
@@ -163,7 +165,22 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, iterations = 1
                 Monte Carlo et on désigne la meilleure selon votre objectif.
             </p>
 
+            {/* En-tête repliable : une fois la recherche lancée, le composeur se replie
+                pour laisser la place aux résultats (réouvrable pour ajuster). */}
+            {(status === 'running' || status === 'done') && (
+                <button
+                    type="button"
+                    onClick={() => setComposerOpen((o) => !o)}
+                    aria-expanded={composerOpen}
+                    className="mt-3 w-full flex items-center justify-between gap-2 rounded-lg bg-white/5 hover:bg-white/10 px-3 py-2 text-tiny text-ink-200 focus-ring transition-colors"
+                >
+                    <span><strong className="text-white tabular-nums">{configCount.toLocaleString('fr-CA')}</strong> configuration{configCount > 1 ? 's' : ''} — leviers</span>
+                    <span aria-hidden="true">{composerOpen ? '▲ replier' : '▼ modifier'}</span>
+                </button>
+            )}
+
             {/* Composeur de leviers */}
+            {composerOpen && (<>
             <div className="mt-3 space-y-2.5">
                 {LEVER_LIBRARY.map((lever) => {
                     const selected = (selection[lever.key] as ReadonlyArray<unknown> | undefined) ?? [];
@@ -205,6 +222,7 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, iterations = 1
                     <span className="text-tiny font-bold text-amber-300">⚠️ calcul long</span>
                 )}
             </div>
+            </>)}
 
             {status !== 'running' && (
                 <button
@@ -217,14 +235,20 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, iterations = 1
             )}
 
             {status === 'running' && progress && (
-                <div className="mt-3">
-                    <div className="flex items-center justify-between text-tiny text-ink-400 mb-1">
-                        <span>Simulation en cours…</span>
-                        <span className="tabular-nums">{progress.done}/{progress.total}</span>
+                <div className="mt-3 rounded-lg bg-white/5 px-3 py-2.5">
+                    <div className="flex items-center justify-between text-tiny text-ink-300 mb-1.5">
+                        <span className="flex items-center gap-1.5">
+                            <span className="inline-block h-3 w-3 rounded-full border-2 border-indigo-400/40 border-t-indigo-400 animate-spin" aria-hidden="true" />
+                            Simulation Monte Carlo en cours…
+                        </span>
+                        <span className="tabular-nums font-bold text-white">{pct}%</span>
                     </div>
                     <div className="h-2 rounded-full bg-white/10 overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
                         <div className="h-full bg-indigo-400 transition-[width] duration-300" style={{ width: `${pct}%` }} />
                     </div>
+                    <p className="text-tiny text-ink-500 mt-1.5">
+                        {Math.round(progress.done)}/{progress.total} configurations · ça peut prendre une minute, tu peux changer d'onglet.
+                    </p>
                 </div>
             )}
 

@@ -95,12 +95,15 @@ export interface EngineArgs {
 }
 
 /**
- * Bonus de rendement (points de %) appliqué au compte non-enregistré quand le levier
- * assetLocation est actif. Approximation de l'alpha d'une allocation optimale par
- * compte (obligations→REER, croissance→CELI, étranger→NonReg) : elle réduit le drag
- * fiscal sur la portion imposable. Le moteur applique ce taux au SOLDE NonReg réel —
- * l'effet est donc nul sans NonReg et croît avec lui (pas de donnée plaquée). Ordre
- * de grandeur prudent issu de la littérature (Canadian Couch Potato / PWL ≈ 0,3–0,5 %).
+ * Bonus de rendement (points de %) appliqué quand le levier assetLocation est actif.
+ * Approximation de l'alpha d'une allocation optimale par compte (obligations→REER,
+ * croissance→CELI, étranger→NonReg) : elle réduit le drag fiscal global. Appliqué à
+ * TOUS les comptes (celi/reer/nonReg), pas seulement le NonReg, car (a) le moteur
+ * déplace automatiquement le NonReg vers les comptes enregistrés tant qu'il reste de
+ * la place — un bonus NonReg-seul s'évaporerait — et (b) une bonne asset location
+ * améliore le rendement après impôt MÉLANGÉ du portefeuille. Ordre de grandeur prudent
+ * issu de la littérature (Canadian Couch Potato / PWL ≈ 0,3–0,5 %). Hypothèse de
+ * modélisation documentée (ADR-008), pas une donnée plaquée.
  */
 export const ASSET_LOCATION_BONUS_PP = 0.4;
 
@@ -112,8 +115,14 @@ export const ASSET_LOCATION_BONUS_PP = 0.4;
 export function configToEngine(config: StrategyConfig, baseParams: SimulationParams): EngineArgs {
     const baseIncome = baseParams.retirementGoal.targetMonthlyIncome ?? 0;
     const baseReturnRates = baseParams.projection.returnRates;
+    const b = ASSET_LOCATION_BONUS_PP;
     const returnRates = config.assetLocation && baseReturnRates
-        ? { ...baseReturnRates, nonReg: baseReturnRates.nonReg + ASSET_LOCATION_BONUS_PP }
+        ? {
+            ...baseReturnRates,
+            celi: baseReturnRates.celi + b,
+            reer: baseReturnRates.reer + b,
+            nonReg: baseReturnRates.nonReg + b,
+        }
         : baseReturnRates;
     const params: SimulationParams = {
         ...baseParams,

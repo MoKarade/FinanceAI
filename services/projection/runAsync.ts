@@ -262,7 +262,7 @@ export async function runStrategySearchAsync(
     };
 
     return new Promise<StrategySearchResult>((resolve, reject) => {
-        const IDLE_MS = 60_000; // hang d'un worker = aucun progrès pendant 60s
+        const IDLE_MS = 90_000; // hang = aucun progrès pendant 90s (heartbeat MC ~chaque 5%)
         let settled = false;
         const watchdogs: ReturnType<typeof setTimeout>[] = [];
 

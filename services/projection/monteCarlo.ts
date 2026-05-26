@@ -40,6 +40,9 @@ export function runMonteCarlo(
     delayPensions: boolean,
     iterations = 100,
     overrides: EngineOverrides = {},
+    /** Heartbeat optionnel : appelé périodiquement (i, total) pendant la boucle MC.
+     * Sert au watchdog multi-worker (évite un silence > timeout sur une config lourde). */
+    onIteration?: (done: number, total: number) => void,
 ): MonteCarloResult {
     const allRuns: {
         netWorthByMonth: number[];
@@ -55,6 +58,9 @@ export function runMonteCarlo(
     const nMonths = params.projection.years * 12;
 
     for (let i = 0; i < iterations; i++) {
+        // Heartbeat ~tous les 5% (au moins tous les 25 tours) → le worker poste un
+        // progrès régulier même sur une config qui prend > 60s à elle seule.
+        if (onIteration && i % Math.max(25, Math.floor(iterations / 20)) === 0) onIteration(i, iterations);
         const result = runScenario(params, strategy, true, delayPensions, i, 'BASE', overrides);
         const nwHistory = result.chartData.map((d: any) => d.NetWorth);
         while (nwHistory.length <= nMonths) nwHistory.push(0);

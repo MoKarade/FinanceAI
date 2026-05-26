@@ -124,7 +124,7 @@ sensibilité). **669 tests existants toujours verts** → non-régression prouv�
   net-d'impôt aux comptes bien placés. À discuter/évaluer.
 - Tests : un portefeuille mal placé → `assetLocation:true` améliore le patrimoine final.
 
-### Commit 3 — Générateur d'espace (`strategySpace.ts`, PUR, faible risque — BON PROCHAIN PAS)
+### Commit 3 — ✅ FAIT (`cf2c83a`) — Générateur d'espace (`strategySpace.ts`)
 - `LeverSelection` = `{ [key]: valeurs[] }` (leviers activés + valeurs cochées).
 - `SpaceContext` = `{ hasPrimaryPurchase: boolean; currentAge: number }`.
 - `generateStrategySpace(selection, ctx): StrategyConfig[]` = produit cartésien.

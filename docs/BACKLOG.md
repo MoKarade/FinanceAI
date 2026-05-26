@@ -12,6 +12,52 @@
 
 ---
 
+## 📍 Session 2026-05-26 (soir) — Lot UX/refonte demandé par Marc (G22)
+
+> Chaque item est un **long chantier** : plan + questions + implémentation, un par un.
+> Statut : `[ ]` à faire · `[~]` en cours · `[x]` fait.
+
+### Bugs (effort faible-moyen)
+- [x] **G22-B1 — Valeur nette passée à 0 (Futur)** — ✅ FAIT. VN passée COMPLÈTE
+  (option 3) : placements (déjà) + cash (flux transactions à rebours,
+  `reconstructCashHistory`) + équité immo (amortissement, `reconstructRealEstateEquity`).
+  La ligne VN démarre à la 1re transaction connue (avant = vide, pas de fausse VN à 0).
+  Carry-forward placements pour continuité. 8 tests. (décisions Marc : option 3 + start
+  à la 1re transaction).
+- [ ] **G22-B2 — Bouton couple toujours cassé** : cliquer « couple » doit basculer TOUT
+  (backend + front + interface + tout ce qui dépend du couple) en mode couple, sans erreur.
+  (déjà tenté #130, à reprendre proprement).
+- [ ] **G22-B3 — Graph Accueil incohérent** : le graphe du Dashboard n'a pas le
+  zoom souris / pan / sélecteur de période comme les autres (ZoomableTimeChart). À aligner.
+
+### Infobulles & lisibilité (questions à poser)
+- [ ] **G22-UX1 — Infobulles incompréhensibles** : refondre le texte + icônes + structure
+  pour comprendre d'un coup d'œil. Exemple à corriger (achat immo) :
+  `🏠Achat (re-1): -103 135$` / `⚠️Stress test B-20 OSFI… GDS 197.7% > 39%…` /
+  `🏧↳ Retrait RAP… +1 355$` / `🏧↳ Retrait CELI (Achat Immo): +82 205$` /
+  `📌MBP: -90 000$ | Frais+TBienv.: -13 135$`. Appliquer à TOUTES les infobulles similaires.
+
+### Refonte navigation / onglets (questions à poser)
+- [ ] **G22-N1 — Supprimer l'onglet Documents**.
+- [ ] **G22-N2 — Supprimer l'onglet Data**.
+- [ ] **G22-N3 — Déplacer Planif & Abonnements dans Budget** (questions à poser).
+- [ ] **G22-N4 — Refonte onglet Configuration** : interface devenue confuse, tout
+  refaire propre sans perdre d'info (possiblement plusieurs sous-onglets).
+- [ ] **G22-N5 — Refonte onglet Système** : remodéliser entièrement, auto-tenu à jour
+  (commits + versions), combiné avec Configuration (autre page).
+
+### Features (gros)
+- [ ] **G22-F1 — Page « Explications » dans Futur** : explique TOUTES les opérations,
+  TOUS les calculs, TOUTES les prévisions pour CHAQUE compte CHAQUE année. Pour un user
+  qui ne comprend pas. + explications in-app partout + barre de recherche.
+- [ ] **G22-F2 — Version de l'app auto-tenue à jour + affichée**.
+- [ ] **G22-F3 — Onboarding accueillant** : refaire le texte du 1er lancement (explique
+  l'app, son utilité, demande les bonnes infos nécessaires).
+- [ ] **G22-F4 — Tutoriel pas-à-pas (1re fois)** : parcourt tous les onglets, bulles
+  d'explication, actions à réaliser pour avancer, ignorable, relançable depuis Paramètres.
+
+---
+
 ## 📍 Session 2026-05-25 — « Copilote d'argent » + sourcing gratuit + durcissement
 
 ### ✅ Livré + en prod cette session

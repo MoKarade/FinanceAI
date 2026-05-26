@@ -24,6 +24,8 @@ import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ProjectionControls } from './projection/ProjectionControls';
 import { rankStrategies, type OptimizeObjective } from '../services/projection/strategyRanking';
 import { usePastPortfolioHistory } from '../hooks/usePastPortfolioHistory';
+import { reconstructCashHistory } from '../services/history/reconstructCashHistory';
+import { reconstructRealEstateEquityByYear } from '../services/history/reconstructRealEstateEquity';
 import { ActionPlanDrilldown } from './projection/ActionPlanDrilldown';
 import { AssetLocationPanel } from './projection/AssetLocationPanel';
 import { RobustnessPanel } from './projection/RobustnessPanel';
@@ -346,23 +348,63 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // (événements, lignes de référence, sélecteur de période restent intacts).
     // On n'y trace QUE les comptes de placement (pas de fausse « valeur nette
     // totale » : le cash/immo passé n'est pas reconstruit).
+    // G22-B1 — VALEUR NETTE passée complète : placements (reconstruits) + cash
+    // (flux de transactions à rebours) + équité immo (amortissement). La ligne VN
+    // ne démarre qu'à la 1re transaction connue (avant = données cash inconnues,
+    // VN laissée vide → pas de fausse ligne à 0). Carry-forward des placements pour
+    // une courbe continue. Le cash actuel = cash au début de projection (jan 2026).
     const pastHistory = usePastPortfolioHistory();
     const pastPrefix = useMemo<any[]>(() => {
-        if (!pastHistory.points.length) return EMPTY_ARRAY;
-        return pastHistory.points
-            .map((p) => {
-                const [py, pm] = p.date.split('-').map(Number);
-                return {
-                    monthIndex: (py - startYear) * 12 + (pm - 1),
-                    year: py,
-                    dateLabel: p.date,
-                    Liquidites: 0, Immobilier: 0,
-                    CELI: p.CELI, CELIAPP: p.CELIAPP, REER: p.REER, REEE: p.REEE, NonReg: p.NonReg, Crypto: p.Crypto,
-                    isPast: true,
-                };
-            })
-            .filter((p) => p.monthIndex < 0); // strictement avant le début de projection (pas de doublon d'index)
-    }, [pastHistory.points, startYear]);
+        const miOf = (ym: string): number => {
+            const [y, m] = ym.split('-').map(Number);
+            return (y - startYear) * 12 + (m - 1);
+        };
+        const nowMonthKey = `${startYear}-${String(startMonth + 1).padStart(2, '0')}`;
+        const cashRes = reconstructCashHistory(transactions, calculatedStartingCash || 0, nowMonthKey);
+        const equityByYear = reconstructRealEstateEquityByYear(realEstateGoals, startYear);
+
+        const invByMi = new Map<number, any>();
+        for (const p of pastHistory.points) {
+            const mi = miOf(p.date);
+            if (mi < 0) invByMi.set(mi, p);
+        }
+        const cashByMi = new Map<number, number>();
+        for (const c of cashRes.points) {
+            const mi = miOf(c.month);
+            if (mi < 0) cashByMi.set(mi, c.cash);
+        }
+        const mis = [...invByMi.keys(), ...cashByMi.keys()];
+        if (mis.length === 0) return EMPTY_ARRAY;
+        const minMi = Math.min(...mis);
+        const firstTxnMi = cashRes.firstMonth ? miOf(cashRes.firstMonth) : 1; // 1 = jamais de passé connu
+
+        const out: any[] = [];
+        let lastInv: any = null;
+        for (let mi = minMi; mi < 0; mi++) {
+            const invHere = invByMi.get(mi);
+            if (invHere) lastInv = invHere;
+            const inv = invHere ?? lastInv;
+            const cash = cashByMi.get(mi);
+            const year = startYear + Math.floor(mi / 12);
+            const month = (((mi % 12) + 12) % 12) + 1;
+            const immo = equityByYear.get(year) ?? 0;
+            const celi = inv?.CELI ?? 0, celiapp = inv?.CELIAPP ?? 0, reer = inv?.REER ?? 0,
+                reee = inv?.REEE ?? 0, nonReg = inv?.NonReg ?? 0, crypto = inv?.Crypto ?? 0;
+            const hasNW = mi >= firstTxnMi; // VN seulement à partir de la 1re transaction connue
+            const investSum = celi + celiapp + reer + reee + nonReg + crypto;
+            out.push({
+                monthIndex: mi,
+                year,
+                dateLabel: `${year}-${String(month).padStart(2, '0')}`,
+                Liquidites: hasNW ? (cash ?? 0) : 0,
+                Immobilier: immo,
+                CELI: celi, CELIAPP: celiapp, REER: reer, REEE: reee, NonReg: nonReg, Crypto: crypto,
+                NetWorth: hasNW ? Math.round(investSum + (cash ?? 0) + immo) : undefined,
+                isPast: true,
+            });
+        }
+        return out;
+    }, [pastHistory.points, startYear, startMonth, transactions, calculatedStartingCash, realEstateGoals]);
     const displayData = useMemo<any[]>(
         () => (pastPrefix.length ? [...pastPrefix, ...chartData] : chartData),
         [pastPrefix, chartData],

@@ -740,6 +740,78 @@ describe('calculateFutureProjection', () => {
         });
     });
 
+    describe('C3 suite — PRIO_CELI_NO_RAP saute le RAP à l\'achat', () => {
+        // Achat résidence principale sous-financé en liquide → la cascade
+        // d'achat (realEstateMonth) doit puiser au-delà du liquide. PRIO_CELI
+        // emprunte au RAP en Phase 1 (rapBalance > 0, obligation 15 ans) ;
+        // PRIO_CELI_NO_RAP saute cette phase et puise CELI/NonReg/REER imposable
+        // (rapBalance reste 0). REER volontairement gros pour garantir le
+        // financement de l'achat dans les DEUX cas (sinon le « 0 » de NO_RAP
+        // serait trivial : achat avorté plutôt que RAP évité).
+        const makePurchaseParams = () => makeParams({
+            calculatedStartingCash: 25000,
+            liveCSVBalances: { CELI: 15000, CELIAPP: 0, REER: 200000, NON_ENREG: 0, CRYPTO: 0, REEE: 0 },
+            projection: makeProjection({ years: 10 }),
+            realEstateGoals: [{
+                id: 'rap_test_house',
+                name: 'Test Primary',
+                isActive: true,
+                isPrimaryResidence: true,
+                price: 500000,
+                downPayment: 120000,
+                totalClosingCosts: 5000,
+                unrecoverableMonthly: 0,
+                mortgageRate: 4.5,
+                amortization: 25,
+                purchaseDate: '2027-06',
+                propertyGrowthRate: 3,
+                maxValue: 0,
+                renewalRateProjection: 5,
+                initialRenovations: 0,
+                yearlyRenovations: 0,
+                taxesYearly: 4000,
+                heatingMonthly: 200,
+                condoFees: 0,
+                rentalIncomeMonthly: 0,
+            }] as any,
+        });
+
+        // rapBalance = rapRepaymentDueTotal (monthlyOutput). Pic sur la projection.
+        const maxRapBalance = (res: any): number =>
+            res.chartData.reduce((mx: number, p: any) => Math.max(mx, p.rapBalance ?? 0), 0);
+
+        const findByStrategy = (result: any, name: string) => {
+            const r = result.allResults.find((s: any) => s.strategyName === name);
+            expect(r, `scénario "${name}" introuvable`).toBeDefined();
+            return r;
+        };
+
+        it('PRIO_CELI emprunte au RAP à l\'achat (rapBalance > 0)', () => {
+            const result = calculateFutureProjection(makePurchaseParams()) as any;
+            const prioCeli = findByStrategy(result, "Gestion : CELI d'abord");
+            expect(maxRapBalance(prioCeli)).toBeGreaterThan(0);
+        });
+
+        it('PRIO_CELI_NO_RAP ne touche jamais au RAP (rapBalance reste 0)', () => {
+            const result = calculateFutureProjection(makePurchaseParams()) as any;
+            const noRap = findByStrategy(result, 'Achat : CELI sans RAP');
+            expect(maxRapBalance(noRap)).toBe(0);
+        });
+
+        it('non-régression : les deux stratégies produisent un patrimoine fini et divergent', () => {
+            const result = calculateFutureProjection(makePurchaseParams()) as any;
+            const noRap = findByStrategy(result, 'Achat : CELI sans RAP');
+            const prioCeli = findByStrategy(result, "Gestion : CELI d'abord");
+            expect(Number.isFinite(noRap.estateNetWorth)).toBe(true);
+            expect(Number.isFinite(prioCeli.estateNetWorth)).toBe(true);
+            // L'achat a bien lieu dans les deux cas (équité immobilière créée).
+            expect(noRap.chartData.some((p: any) => (p.Immobilier ?? 0) > 0)).toBe(true);
+            expect(prioCeli.chartData.some((p: any) => (p.Immobilier ?? 0) > 0)).toBe(true);
+            // Flux d'achat différents (RAP vs CELI/REER imposable) → l'issue diverge.
+            expect(noRap.estateNetWorth).not.toBe(prioCeli.estateNetWorth);
+        });
+    });
+
     describe('Scénarios compound (Phase 4 #4)', () => {
         it('COMPOUND_STRESS: patrimoine final inférieur à ECONOMIC_WINTER (cumul + LTC)', () => {
             const result = calculateFutureProjection(makeParams({

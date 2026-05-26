@@ -52,18 +52,12 @@
   TabRouter, Layout (sidebar + drawer mobile), CommandPalette ; `Documents.tsx` +
   test supprimés.
 - [x] **G22-N2 — Supprimer l'onglet Data** — ✅ FAIT. Idem ; `JsonDataView.tsx` supprimé.
-- [~] **G22-N3 — Déplacer Planif & Abos dans Budget** — design VERROUILLÉ (Marc :
-  sous-onglets). Plan d'implémentation prêt :
-  1. `Budget.tsx` : coquille de sous-onglets « Budget » | « Charges fixes & Abos » |
-     « Objectifs » (réutiliser le pattern sous-onglets du Futur). Nouveaux props
-     `savingsGoals` + `setSavingsGoals`.
-  2. `Planning.tsx` : ajouter prop `section?: 'all'|'fixed'|'goals'` →
-     'fixed' = Abonnements/Récurrents + Calendrier factures ; 'goals' = Objectifs.
-  3. `TabRouter` : passer savingsGoals/setSavingsGoals à `<Budget>` ; retirer la route
-     `Tab.PLANNING` + son label.
-  4. `Layout` (nav « Planif. & Abos ») + `CommandPalette` : retirer l'entrée PLANNING.
-     Garder l'enum `Tab.PLANNING` si des deep-links/focus l'utilisent (à vérifier).
-  ⚠️ Touche l'onglet Budget (cœur) → implémenter en contexte frais pour la qualité.
+- [x] **G22-N3 — Déplacer Planif & Abos dans Budget** — ✅ FAIT (sous-onglets).
+  Wrapper `BudgetWorkspace.tsx` : sous-onglets « Budget » | « Charges fixes & Abos »
+  | « Objectifs ». `Planning` reçoit `section` ('fixed'/'goals') ; Budget intact.
+  TabRouter rend BudgetWorkspace pour Tab.BUDGET ; enum `Tab.PLANNING` + nav (Layout,
+  CommandPalette) + raccourci Alt+4 (→ Dettes) retirés. (clé i18n `tabs.planning`
+  laissée, inerte.)
 - [ ] **G22-N4 — Refonte onglet Configuration** : interface devenue confuse, tout
   refaire propre sans perdre d'info (possiblement plusieurs sous-onglets).
 - [ ] **G22-N5 — Refonte onglet Système** : remodéliser entièrement, auto-tenu à jour

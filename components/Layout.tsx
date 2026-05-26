@@ -98,7 +98,6 @@ export const Layout: React.FC<LayoutProps> = ({
       items: [
         { id: Tab.TAX, label: t('tabs.tax'), icon: '🏛️' },
         { id: Tab.DEBT, label: t('tabs.debt'), icon: '💸' },
-        { id: Tab.PLANNING, label: t('tabs.planning'), icon: '📅' },
       ],
     },
   ];

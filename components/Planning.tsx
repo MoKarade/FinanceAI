@@ -20,9 +20,12 @@ interface PlanningProps {
     setBudgetItems: (items: BudgetCategory[]) => void;
     config: BudgetConfig;
     apiKey?: string;
+    /** G22-N3 — sous-section rendue quand intégré dans Budget :
+     *  'fixed' = Abonnements/Récurrents + Calendrier ; 'goals' = Objectifs ; 'all' = tout. */
+    section?: 'all' | 'fixed' | 'goals';
 }
 
-export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals = [], setSavingsGoals, budgetItems, setBudgetItems, config, apiKey }) => {
+export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals = [], setSavingsGoals, budgetItems, setBudgetItems, config, apiKey, section = 'all' }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [aiSubs, setAiSubs] = useState<RecurringItem[] | null>(null);
@@ -146,10 +149,11 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
     return (
         <div className="space-y-6 animate-fade-in pb-20">
             <ConfirmModal isOpen={!!confirmDeleteGoalId} onConfirm={doConfirmDeleteGoal} onCancel={() => setConfirmDeleteGoalId(null)} title="Supprimer l'objectif" message="Supprimer cet objectif d'épargne définitivement ?" confirmLabel="Supprimer" />
+            {section !== 'goals' && (
             <div className="flex flex-col md:flex-row justify-between items-end gap-4 bg-gradient-to-r from-blue-900/20 to-purple-900/20 p-6 rounded-2xl border border-white/10">
                 <div>
-                    <h2 className="text-3xl font-bold text-white tracking-tight">Planification & Charges Fixes</h2>
-                    <p className="text-gray-400 text-sm mt-1">Abonnements, Factures Récurrentes & Objectifs.</p>
+                    <h2 className="text-3xl font-bold text-white tracking-tight">{section === 'all' ? 'Planification & Charges Fixes' : 'Charges Fixes & Abonnements'}</h2>
+                    <p className="text-gray-400 text-sm mt-1">{section === 'all' ? 'Abonnements, Factures Récurrentes & Objectifs.' : 'Abonnements & Factures Récurrentes.'}</p>
                 </div>
                 <div className="flex gap-4">
                     <div className="text-right"><div className="text-tiny uppercase text-gray-500 font-bold">Fixe Mensuel</div><div className="text-2xl font-bold text-red-400 privacy-blur">{totalMonthly.toFixed(0)} $</div></div>
@@ -157,7 +161,9 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                     <div className="text-right"><div className="text-tiny uppercase text-gray-500 font-bold">Coût Annuel</div><div className="text-2xl font-bold text-white privacy-blur">{totalYearly.toLocaleString()} $</div></div>
                 </div>
             </div>
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            )}
+            <div className={`grid grid-cols-1 gap-6 ${section === 'all' ? 'xl:grid-cols-3' : section === 'fixed' ? 'xl:grid-cols-2' : 'xl:grid-cols-1'}`}>
+                {section !== 'goals' && (
                 <div className="xl:col-span-1 space-y-6">
                     <Card title="Abonnements & Récurrents" action={
                         <div className="flex gap-2">{!aiSubs ? (<button onClick={handleAiAnalysis} disabled={isAnalyzing} className="text-tiny bg-gradient-to-r from-secondary to-purple-600 px-2 py-1 rounded text-white font-bold hover:brightness-110 disabled:opacity-50">{isAnalyzing ? '...' : '⚡ IA'}</button>) : (<button onClick={() => setAiSubs(null)} className="text-tiny bg-white/10 px-2 py-1 rounded text-gray-400">Reset</button>)}</div>
@@ -183,6 +189,8 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                         </div>
                     </Card>
                 </div>
+                )}
+                {section !== 'goals' && (
                 <div className="xl:col-span-1 space-y-6">
                     <Card title="Calendrier des Factures">
                         <div className="flex justify-between items-center mb-4 bg-white/5 p-2 rounded-lg">
@@ -209,6 +217,8 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                         </div>
                     </Card>
                 </div>
+                )}
+                {section !== 'fixed' && (
                 <div className="xl:col-span-1 space-y-6">
                     <Card title="Objectifs (Sinking Funds)" action={<button onClick={() => setIsAddingGoal(!isAddingGoal)} className="text-tiny bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-white">+ Nouveau</button>}>
                         {isAddingGoal && (
@@ -238,6 +248,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                         </div>
                     </Card>
                 </div>
+                )}
             </div>
         </div>
     );

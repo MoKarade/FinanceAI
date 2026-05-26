@@ -7,8 +7,8 @@ import { lazyWithRetry } from '../utils/lazyWithRetry';
 
 const Dashboard = lazyWithRetry(() => import('./Dashboard').then(m => ({ default: m.Dashboard })), 'Dashboard');
 const Transactions = lazyWithRetry(() => import('./Transactions').then(m => ({ default: m.Transactions })), 'Transactions');
-const Budget = lazyWithRetry(() => import('./Budget').then(m => ({ default: m.Budget })), 'Budget');
-const Planning = lazyWithRetry(() => import('./Planning').then(m => ({ default: m.Planning })), 'Planning');
+// G22-N3 — Budget + Planif/Abos fusionnés en sous-onglets via BudgetWorkspace.
+const BudgetWorkspace = lazyWithRetry(() => import('./budget/BudgetWorkspace').then(m => ({ default: m.BudgetWorkspace })), 'BudgetWorkspace');
 const Investments = lazyWithRetry(() => import('./Investments').then(m => ({ default: m.Investments })), 'Investments');
 const RealEstate = lazyWithRetry(() => import('./RealEstate').then(m => ({ default: m.RealEstate })), 'RealEstate');
 const ChildPlanning = lazyWithRetry(() => import('./ChildPlanning').then(m => ({ default: m.ChildPlanning })), 'ChildPlanning');
@@ -25,7 +25,6 @@ const TAB_LABELS: Record<Tab, string> = {
     [Tab.DASHBOARD]: 'Accueil',
     [Tab.TRANSACTIONS]: 'Transactions',
     [Tab.BUDGET]: 'Budget',
-    [Tab.PLANNING]: 'Planif. & Abos',
     [Tab.DEBT]: 'Dettes',
     [Tab.INVESTMENTS]: 'Investissements',
     [Tab.FUTURE]: 'Futur',
@@ -109,27 +108,14 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                 )}
 
                 {activeTab === Tab.BUDGET && (
-                    <Budget
+                    <BudgetWorkspace
                         transactions={state.transactions}
                         config={state.config}
                         budgetItems={state.budgetItems}
                         setBudgetItems={(items) => setAppState({ budgetItems: items })}
                         apiKey={state.apiKeys.anthropic}
-                    />
-                )}
-
-                {/* Phase G.5 — préparation architecturale : Dettes et Planning sont des
-                    candidats à la fusion en sous-onglets de Transactions (doc directives §10).
-                    Pour l'instant : tabs séparés, mais la possibilité est documentée. */}
-                {activeTab === Tab.PLANNING && (
-                    <Planning
-                        transactions={state.transactions}
                         savingsGoals={state.savingsGoals}
                         setSavingsGoals={(goals) => setAppState({ savingsGoals: goals })}
-                        apiKey={state.apiKeys.anthropic}
-                        budgetItems={state.budgetItems}
-                        setBudgetItems={(items) => setAppState({ budgetItems: items })}
-                        config={state.config}
                     />
                 )}
 

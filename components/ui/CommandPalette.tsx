@@ -53,8 +53,7 @@ export function makeNavigationActions(setActiveTab: (t: Tab) => void): CommandAc
     const navMap: Array<{ tab: Tab; label: string; icon: string; keywords?: string[] }> = [
         { tab: Tab.DASHBOARD, label: "Vue d'ensemble", icon: '📊', keywords: ['dashboard', 'home', 'accueil'] },
         { tab: Tab.TRANSACTIONS, label: 'Transactions', icon: '💳', keywords: ['transac', 'depense', 'achats'] },
-        { tab: Tab.BUDGET, label: 'Budget', icon: '🧾', keywords: ['budget', 'depenses'] },
-        { tab: Tab.PLANNING, label: 'Planification', icon: '🧭', keywords: ['plan', 'objectifs', 'goals'] },
+        { tab: Tab.BUDGET, label: 'Budget', icon: '🧾', keywords: ['budget', 'depenses', 'abonnements', 'charges fixes', 'objectifs', 'planification'] },
         { tab: Tab.DEBT, label: 'Dettes', icon: '💳', keywords: ['debt', 'pret', 'credit'] },
         { tab: Tab.INVESTMENTS, label: 'Investissements', icon: '📈', keywords: ['invest', 'bourse', 'actions'] },
         { tab: Tab.FUTURE, label: 'Projection Future', icon: '🔮', keywords: ['future', 'projection', 'simulation', 'mc'] },

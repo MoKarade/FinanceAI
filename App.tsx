@@ -144,7 +144,8 @@ export const App: React.FC = () => {
     // Q3 — Keyboard shortcuts Alt+1..9 pour switcher d'onglet rapidement
     useEffect(() => {
         const SHORTCUTS: Array<Tab> = [
-            Tab.DASHBOARD, Tab.TRANSACTIONS, Tab.BUDGET, Tab.PLANNING,
+            // G22-N3 : Planif fusionné dans Budget → raccourci 4 = Dettes.
+            Tab.DASHBOARD, Tab.TRANSACTIONS, Tab.BUDGET, Tab.DEBT,
             Tab.INVESTMENTS, Tab.FUTURE, Tab.RETIREMENT, Tab.TAX, Tab.ASSISTANT,
         ];
         const onKeyDown = (e: KeyboardEvent) => {

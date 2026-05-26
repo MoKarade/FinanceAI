@@ -27,8 +27,16 @@
 - [ ] **G22-B2 — Bouton couple toujours cassé** : cliquer « couple » doit basculer TOUT
   (backend + front + interface + tout ce qui dépend du couple) en mode couple, sans erreur.
   (déjà tenté #130, à reprendre proprement).
-- [ ] **G22-B3 — Graph Accueil incohérent** : le graphe du Dashboard n'a pas le
-  zoom souris / pan / sélecteur de période comme les autres (ZoomableTimeChart). À aligner.
+- [~] **G22-B3 — Graph Accueil incohérent** (scopé avec Marc — les 4) :
+  `DashboardEvolutionChart` utilise déjà `ZoomableTimeChart` mais il manque/cloche :
+  1. **Boutons de période** (5/10/20/30 ans) comme le Futur — absents sur l'Accueil.
+  2. **Bouton plein écran** (createPortal) — absent.
+  3. **Zoom molette ne marche PAS** → VRAI BUG à diagnostiquer (handler wheel non
+     déclenché ? parent qui intercepte ? data/xKey ?). Comparer avec l'usage Futur.
+  4. **Style/apparence** à harmoniser avec les autres graphs.
+  → Piste : factoriser la « couche de contrôles » du Futur (période + plein écran +
+  légende) en wrapper réutilisable, ou l'ajouter autour de DashboardEvolutionChart.
+  ⚠️ Gros morceau : à faire en contexte frais pour bien diagnostiquer le bug zoom.
 
 ### Infobulles & lisibilité (questions à poser)
 - [ ] **G22-UX1 — Infobulles incompréhensibles** : refondre le texte + icônes + structure

@@ -27,6 +27,7 @@ import { usePastPortfolioHistory } from '../hooks/usePastPortfolioHistory';
 import { ActionPlanDrilldown } from './projection/ActionPlanDrilldown';
 import { AssetLocationPanel } from './projection/AssetLocationPanel';
 import { RobustnessPanel } from './projection/RobustnessPanel';
+import { StrategyOptimizerPanel } from './projection/StrategyOptimizerPanel';
 
 // G10 — Légende interactive : une seule source de vérité pour les chips ET les
 // gardes de visibilité dans le graphique. `key` correspond au dataKey recharts
@@ -914,6 +915,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 {/* C4 — Classement par robustesse (Monte Carlo, taux de succès).
                     Bouton explicite : 5 stratégies × 1000 sims dans le Web Worker. */}
                 <RobustnessPanel params={params} />
+
+                {/* C5 — Optimiseur configurable : l'utilisateur compose l'espace de
+                    leviers, on teste toutes les combinaisons et on désigne la meilleure
+                    selon l'objectif choisi (multi-worker, re-tri instantané). */}
+                <StrategyOptimizerPanel params={params} />
 
                 {/* C2 — Plan d'action HIÉRARCHIQUE : global → décennie → 3 ans → année
                     → semestre → trimestre → mois → conseils (drill-down au clic). */}

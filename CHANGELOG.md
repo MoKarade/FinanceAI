@@ -6,6 +6,28 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — G21 C3 suite · PRIO_CELI_NO_RAP · AssetLocationPanel · Clés chiffrées · fix budget · plan d'action · crypto · import CSV] — 2026-05-26
+
+### G21 C3 suite — Décision RAP-vs-FHSA + placement par compte
+
+- **`PRIO_CELI_NO_RAP`** — nouveau `AllocationStrategy` qui saute le retrait RAP à l'achat
+  immobilier (CELIAPP + CELI en priorité, pas d'obligation de remboursement sur 15 ans).
+  Répond à : « est-ce que le RAP vaut le coup face à vider le CELI ? » — les deux
+  scénarios sont maintenant comparables côte à côte dans l'optimiseur.
+- `realEstateMonth.ts` : `skipRapForPurchase` dans `RealEstateCtx`, même monde BASE
+  que `PRIO_CELI`, seule différence à l'achat.
+- `scenarios.ts` : 5 stratégies `kind: 'strategy'` comparables (AUTO_MARGINAL, PRIO_CELI,
+  PRIO_REER, MELTDOWN_REER, PRIO_CELI_NO_RAP) + fix encodage (réécriture double-quotes ASCII
+  pour éliminer le bug esbuild sur les apostrophes U+2018/U+2019).
+- **`AssetLocationPanel`** — nouveau composant `components/projection/AssetLocationPanel.tsx`
+  qui branche enfin `services/projection/assetLocation.ts` (code préexistant orphelin) sur
+  le portfolio réel. Affiche le coût annuel évitable ($/an) en impôts selon le mauvais placement
+  des actifs entre CELI/REER/NonReg. Panel expandable avec privacy-blur sur les montants.
+  Heuristique symbole → classe d'actif (VOO/SPY → US equity, XIC/VCN → CAD equity, etc.).
+- Tests : 659/659 verts, typecheck propre, build OK.
+
+---
+
 ## [unreleased — Clés chiffrées · fix budget · plan d'action · crypto · import CSV] — 2026-05-25
 
 > **Bug corrigé** : « je mets mes clés era / Finnhub et rien ne se charge ».

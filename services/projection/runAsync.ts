@@ -274,7 +274,11 @@ export async function runStrategySearchAsync(
     };
 
     return new Promise<StrategySearchResult>((resolve, reject) => {
-        const IDLE_MS = 90_000; // hang = aucun progrès pendant 90s (heartbeat MC ~chaque 5%)
+        // Watchdog = écart MAX sans progrès (réarmé à chaque heartbeat), pas la durée
+        // totale. Le heartbeat tire tous les ~5% d'itérations (sub-seconde en nominal),
+        // donc 15 min est une marge de sécurité : ne coupe jamais une recherche longue
+        // ni un onglet mis en arrière-plan (timers throttlés par le navigateur).
+        const IDLE_MS = 15 * 60_000; // 15 min sans aucun progrès = vrai hang
         let settled = false;
         const watchdogs: ReturnType<typeof setTimeout>[] = [];
 

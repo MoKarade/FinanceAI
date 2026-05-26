@@ -1137,6 +1137,7 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
     // (7 scénarios depuis Phase 4 #4) au lieu de blocs hardcodés ~10 lignes chacun.
     const results = SCENARIO_DEFINITIONS.map(def => ({
         ...runScenario(params, def.strategy, false, def.delayPensions, 0, def.stratType),
+        strategy: def.strategy,
         strategyName: def.strategyName,
         stratType: def.stratType,
         delayPensions: def.delayPensions,
@@ -1170,8 +1171,10 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
         // (panneau Paramètres Avancés). Bornes: 50-1000.
         const requested = params.projection.monteCarloIterations ?? 100;
         const MC_ITERATIONS = Math.max(50, Math.min(1000, requested));
-        // Cycle 7 split: runScenario injecté pour éviter dépendance circulaire
-        const mcResult = runMonteCarlo(runScenario, params, 'AUTO_MARGINAL', target.delayPensions, MC_ITERATIONS);
+        // Cycle 7 split: runScenario injecté pour éviter dépendance circulaire.
+        // G21 C4 fix : utilise la stratégie réelle du scénario ciblé (avant,
+        // 'AUTO_MARGINAL' était hardcodé → le MC ignorait le scénario sélectionné).
+        const mcResult = runMonteCarlo(runScenario, params, (target as any).strategy ?? 'AUTO_MARGINAL', target.delayPensions, MC_ITERATIONS);
         successRate = mcResult.successRate;
         fvi = mcResult.fvi;
         expertMetrics = mcResult.expertMetrics;

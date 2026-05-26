@@ -3,6 +3,7 @@ import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Deb
 import { calculateFiscalReport, getMarginalRate, calculateDividendTax, calculateGrossWithholdingRRSP, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
 import { RRIF_RATES, welcomeTax } from './projection/helpers';
 import { runMonteCarlo } from './projection/monteCarlo';
+import { rankStrategiesByRobustness, type RobustnessRanking, type RankRobustnessOptions } from './projection/strategyRobustness';
 import { SCENARIO_DEFINITIONS } from './projection/scenarios';
 import { applyW5Effects, applyAgeBasedExpenses } from './projection/w5Effects';
 import { tryCriticalIllness, tryInheritance, tryMortality, trySpouseMortality, tryLtcTrigger, ltcMonthlyCost, tryDivorce } from './projection/stochasticEvents';
@@ -29,6 +30,7 @@ import { computeMonthlyMarketRates, type StressTestConfig } from './projection/m
 import { computeEffectiveExpenseInflation, computeMonthlyWithholding } from './projection/monthlyCalcs';
 import { type AllocationStrategy, type FutureScenarioType, type ProjectionResult } from './projection/types';
 export type { AllocationStrategy, FutureScenarioType, ProjectionChartPoint, ProjectionResult } from './projection/types';
+export type { RobustnessRanking, StrategyRobustness, RankRobustnessOptions } from './projection/strategyRobustness';
 
 export interface SimulationParams {
     projection: ProjectionConfig;
@@ -1205,3 +1207,12 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
         bestStrategyIdx: results.indexOf(best)
     };
 };
+
+// G21 C4 — point d'entrée du classement par robustesse. Injecte le runScenario
+// privé dans rankStrategiesByRobustness (qui ne peut pas l'importer sans créer
+// une dépendance circulaire). Coûteux (5 × jusqu'à 1000 sims) → appeler via le
+// Web Worker (runRobustnessRankingAsync), pas sur le thread de rendu.
+export const calculateRobustnessRanking = (
+    params: SimulationParams,
+    opts: RankRobustnessOptions = {},
+): RobustnessRanking => rankStrategiesByRobustness(runScenario, params, opts);

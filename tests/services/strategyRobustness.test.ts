@@ -3,6 +3,7 @@ import {
     rankStrategiesByRobustness,
     type RankRobustnessOptions,
 } from '../../services/projection/strategyRobustness';
+import { calculateRobustnessRanking } from '../../services/projection';
 import type { SimulationParams, AllocationStrategy } from '../../services/projection';
 
 // ---------------------------------------------------------------------------
@@ -137,5 +138,35 @@ describe('rankStrategiesByRobustness', () => {
         expect(calls).toHaveLength(6);
         expect(calls[0]).toEqual({ done: 0, total: 5, current: expect.any(String) });
         expect(calls[5]).toEqual({ done: 5, total: 5, current: '' });
+    });
+});
+
+// Intégration : passe par le VRAI moteur (calculateRobustnessRanking → vrai
+// runScenario → runMonteCarlo). Valide le câblage de bout en bout (pas le faux).
+// 50 itérations × 5 stratégies sur horizon court → quelques secondes.
+describe('calculateRobustnessRanking (intégration moteur réel)', () => {
+    it('classe les 5 stratégies avec des taux de succès finis et un tri correct', () => {
+        const { ranked, iterationsPerStrategy } = calculateRobustnessRanking(makeParams(), {
+            iterationsPerStrategy: 50,
+        });
+        expect(ranked).toHaveLength(5);
+        expect(iterationsPerStrategy).toBe(50);
+        for (const r of ranked) {
+            expect(Number.isFinite(r.successRate)).toBe(true);
+            expect(r.successRate).toBeGreaterThanOrEqual(0);
+            expect(r.successRate).toBeLessThanOrEqual(100);
+            expect(Number.isFinite(r.medianFinalNW)).toBe(true);
+        }
+        for (let i = 0; i < ranked.length - 1; i++) {
+            expect(ranked[i].successRate).toBeGreaterThanOrEqual(ranked[i + 1].successRate);
+        }
+    });
+
+    it('est reproductible : deux appels → mêmes taux (RNG seedée par stratégie)', () => {
+        const params = makeParams();
+        const a = calculateRobustnessRanking(params, { iterationsPerStrategy: 50 });
+        const b = calculateRobustnessRanking(params, { iterationsPerStrategy: 50 });
+        expect(a.ranked.map(r => [r.strategy, r.successRate]))
+            .toEqual(b.ranked.map(r => [r.strategy, r.successRate]));
     });
 });

@@ -78,19 +78,25 @@ export const GuidedTour: React.FC = () => {
       setRect(r.width > 0 && r.height > 0 ? { top: r.top, left: r.left, width: r.width, height: r.height } : null);
     };
     // Double rAF : laisser le switch d'onglet + le layout se stabiliser.
-    let raf2 = 0;
-    const raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(measure); });
+    // Flag `cancelled` : le 2e rAF est planifié DANS le 1er, donc un simple
+    // cancelAnimationFrame ne le couvre pas — on garde une garde explicite pour
+    // éviter un setRect après démontage/ré-exécution de l'effet.
+    let cancelled = false;
+    requestAnimationFrame(() => {
+      if (cancelled) return;
+      requestAnimationFrame(() => { if (!cancelled) measure(); });
+    });
     window.addEventListener('resize', measure);
     return () => {
-      cancelAnimationFrame(raf1);
-      cancelAnimationFrame(raf2);
+      cancelled = true;
       window.removeEventListener('resize', measure);
     };
   }, [active, idx]);
 
   const next = useCallback(() => {
-    setIdx((i) => (i + 1 < total ? i + 1 : i));
-    if (idx + 1 >= total) finish();
+    // Dernière étape → terminer (return tôt, pas de setIdx fragile).
+    if (idx + 1 >= total) { finish(); return; }
+    setIdx((i) => i + 1);
   }, [idx, total, finish]);
 
   const prev = useCallback(() => {

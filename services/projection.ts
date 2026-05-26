@@ -6,6 +6,7 @@ import { runMonteCarlo } from './projection/monteCarlo';
 import { rankStrategiesByRobustness, type RobustnessRanking, type RankRobustnessOptions } from './projection/strategyRobustness';
 import type { EngineOverrides, StrategyConfig } from './projection/strategyConfig';
 import { runStrategySearch, type StrategySearchResult, type RunStrategySearchOptions } from './projection/strategySearch';
+import { ASSET_LOCATION_BONUS_PP } from './projection/strategySpace';
 import { SCENARIO_DEFINITIONS } from './projection/scenarios';
 import { applyW5Effects, applyAgeBasedExpenses } from './projection/w5Effects';
 import { tryCriticalIllness, tryInheritance, tryMortality, trySpouseMortality, tryLtcTrigger, ltcMonthlyCost, tryDivorce } from './projection/stochasticEvents';
@@ -1150,11 +1151,25 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
 
 export const calculateFutureProjection = (params: SimulationParams, runMC: boolean = false, selectedIdx: number = 0): ProjectionResult => {
+    // G21 C5 — leviers « appliqués » depuis l'optimiseur (orthogonaux à l'axe
+    // scénario). EngineOverrides threadés à TOUS les scénarios + bonus de rendement
+    // NonReg pour l'asset location (clone immutable, effet modulé par le solde réel).
+    // Tous absents ⇒ comportement historique strictement inchangé.
+    const proj = params.projection;
+    const appliedOverrides: EngineOverrides = {
+        contributionOrder: proj.appliedContributionOrder,
+        debtFirst: proj.appliedDebtFirst,
+        skipRapForPurchase: proj.appliedSkipRap,
+    };
+    const effectiveParams: SimulationParams = proj.appliedAssetLocation && proj.returnRates
+        ? { ...params, projection: { ...proj, returnRates: { ...proj.returnRates, nonReg: proj.returnRates.nonReg + ASSET_LOCATION_BONUS_PP } } }
+        : params;
+
     // V90 + Cycle 7 split: Avenirs de Vie (5 Distinct Futures)
     // Metadata extraite dans ./projection/scenarios. Itère sur SCENARIO_DEFINITIONS
     // (7 scénarios depuis Phase 4 #4) au lieu de blocs hardcodés ~10 lignes chacun.
     const results = SCENARIO_DEFINITIONS.map(def => ({
-        ...runScenario(params, def.strategy, false, def.delayPensions, 0, def.stratType),
+        ...runScenario(effectiveParams, def.strategy, false, def.delayPensions, 0, def.stratType, appliedOverrides),
         strategy: def.strategy,
         strategyName: def.strategyName,
         stratType: def.stratType,
@@ -1192,7 +1207,7 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
         // Cycle 7 split: runScenario injecté pour éviter dépendance circulaire.
         // G21 C4 fix : utilise la stratégie réelle du scénario ciblé (avant,
         // 'AUTO_MARGINAL' était hardcodé → le MC ignorait le scénario sélectionné).
-        const mcResult = runMonteCarlo(runScenario, params, (target as any).strategy ?? 'AUTO_MARGINAL', target.delayPensions, MC_ITERATIONS);
+        const mcResult = runMonteCarlo(runScenario, effectiveParams, (target as any).strategy ?? 'AUTO_MARGINAL', target.delayPensions, MC_ITERATIONS, appliedOverrides);
         successRate = mcResult.successRate;
         fvi = mcResult.fvi;
         expertMetrics = mcResult.expertMetrics;

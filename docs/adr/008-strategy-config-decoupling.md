@@ -52,6 +52,21 @@ sans relance moteur.
 - `assetLocation` est une **approximation** (+0,4pp sur le rendement NonReg) plutôt
   qu'un suivi par classe d'actif dans la boucle mensuelle — choix YAGNI assumé.
   L'effet se module sur le solde NonReg réel (pas de donnée plaquée).
+- **Limite connue de `assetLocation`** : le moteur déplace automatiquement le NonReg
+  vers le CELI/REER tant qu'il reste de la place enregistrée (`projection.ts`,
+  optimisation « Opti.CELI »/« Opti.REER »). Le bonus de rendement NonReg est donc
+  largement inerte quand de la place subsiste, et ne mord vraiment que sur les
+  portefeuilles où le NonReg persiste (room saturée). Documenté plutôt que masqué.
+
+## G21 C5 — « Appliquer » la stratégie gagnante
+
+Les leviers orthogonaux (RAP, cotisation, dettes, asset location) sont persistés dans
+`ProjectionConfig` (`applied*`) et threadés dans **toutes** les simulations de
+`calculateFutureProjection`. L'âge/dépenses retraite vont dans `retirementGoal`,
+coussin/Smith dans `projection`. L'ordre de retrait + le report des rentes — qui SONT
+l'axe scénario — sont appliqués en **sélectionnant le scénario correspondant** dans la
+liste, pas par un nouveau champ. `applyConfigToSettings` (pur, testé) produit les objets
+à passer aux setters.
 
 **Ouvertes :**
 - L'explosion combinatoire (10 leviers tous cochés = 11 520 configs) est bornée

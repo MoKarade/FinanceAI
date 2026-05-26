@@ -38,6 +38,8 @@ interface Props {
     params: SimulationParams;
     /** Itérations MC par config (borné [50,1000] côté moteur). Défaut 1000. */
     iterations?: number;
+    /** Applique la config gagnante aux paramètres réels du Futur. Absent ⇒ pas de bouton. */
+    onApply?: (config: StrategyConfig) => void;
 }
 
 type Status = 'idle' | 'running' | 'done' | 'error';
@@ -70,7 +72,8 @@ const ScoreBar: React.FC<{ label: string; value: number }> = ({ label, value }) 
     </div>
 );
 
-export const StrategyOptimizerPanel: React.FC<Props> = ({ params, iterations = 1000 }) => {
+export const StrategyOptimizerPanel: React.FC<Props> = ({ params, iterations = 1000, onApply }) => {
+    const [applied, setApplied] = useState(false);
     const [selection, setSelection] = useState<LeverSelection>({});
     const [objective, setObjective] = useState<OptimizeObjective>('balanced');
     const [status, setStatus] = useState<Status>('idle');
@@ -114,6 +117,7 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, iterations = 1
         setStatus('running');
         setError(null);
         setResults(null);
+        setApplied(false);
         setProgress({ done: 0, total: configCount });
         try {
             const configs = generateStrategySpace(selection, ctx);
@@ -247,7 +251,14 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, iterations = 1
                         ))}
                     </div>
 
-                    <WinnerCard winner={winner} explanation={explainWinner(winner, runnerUp, objective)} survivalThreshold={ranking.survivalThreshold} hasSurvivor={ranking.hasSurvivor} />
+                    <WinnerCard
+                        winner={winner}
+                        explanation={explainWinner(winner, runnerUp, objective)}
+                        survivalThreshold={ranking.survivalThreshold}
+                        hasSurvivor={ranking.hasSurvivor}
+                        applied={applied}
+                        onApply={onApply ? () => { onApply(winner.result.config); setApplied(true); } : undefined}
+                    />
 
                     {/* Tableau de toutes les configs + filtre par levier */}
                     <ResultsTable
@@ -268,7 +279,9 @@ const WinnerCard: React.FC<{
     explanation: string;
     survivalThreshold: number;
     hasSurvivor: boolean;
-}> = ({ winner, explanation, survivalThreshold, hasSurvivor }) => {
+    applied?: boolean;
+    onApply?: () => void;
+}> = ({ winner, explanation, survivalThreshold, hasSurvivor, applied, onApply }) => {
     const r = winner.result;
     return (
         <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-3">
@@ -308,6 +321,23 @@ const WinnerCard: React.FC<{
                 <ScoreBar label="FIRE" value={winner.breakdown.fire} />
                 <ScoreBar label="Robustesse" value={winner.breakdown.robustness} />
             </div>
+
+            {onApply && (
+                <button
+                    type="button"
+                    onClick={onApply}
+                    disabled={applied}
+                    className="mt-3 w-full rounded-lg bg-green-500/20 hover:bg-green-500/30 disabled:opacity-60 disabled:cursor-not-allowed border border-green-500/40 px-3 py-2 text-meta font-bold text-green-200 focus-ring transition-colors"
+                >
+                    {applied ? '✓ Appliquée à tes paramètres' : 'Appliquer cette stratégie'}
+                </button>
+            )}
+            {onApply && (
+                <p className="mt-1.5 text-tiny text-ink-500">
+                    Écrit les leviers dans tes paramètres du Futur (âge/dépenses retraite, coussin,
+                    Smith, RAP, cotisation, dettes, placement) et sélectionne le scénario de retrait correspondant.
+                </p>
+            )}
         </div>
     );
 };

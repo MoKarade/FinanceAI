@@ -8,6 +8,7 @@
 // AUCUNE dépendance vers ../projection ici (évite le cycle) : types purs + données.
 
 import type { AllocationStrategy } from './types';
+import type { ProjectionConfig, RetirementGoal } from '../../types';
 
 export type WithdrawalOrder = 'AUTO_MARGINAL' | 'PRIO_REER' | 'PRIO_CELI' | 'MELTDOWN_REER';
 export type ContributionOrder = 'REER_FIRST' | 'CELI_FIRST';
@@ -136,4 +137,48 @@ export function leverValueLabel(key: keyof StrategyConfig, value: unknown): stri
     const lever = LEVER_LIBRARY.find(l => l.key === key);
     const opt = lever?.options.find(o => o.value === value);
     return opt?.label ?? String(value);
+}
+
+/** État à écrire pour « appliquer » une StrategyConfig aux paramètres réels du Futur. */
+export interface AppliedSettings {
+    projection: ProjectionConfig;
+    retirementGoal: RetirementGoal;
+    /** = withdrawalOrder ; sert à sélectionner le scénario correspondant dans l'UI. */
+    strategy: AllocationStrategy;
+    delayPensions: boolean;
+}
+
+/**
+ * Traduit une StrategyConfig en mises à jour d'état réel (G21 C5 « Appliquer »).
+ * PUR : retourne les objets à passer aux setters, ne mute rien. Les leviers
+ * orthogonaux (RAP, cotisation, dettes, asset location) deviennent des champs
+ * `applied*` de ProjectionConfig ; âge/dépenses → retirementGoal ; coussin/Smith →
+ * projection ; withdrawalOrder/delayPensions → sélection de scénario (retournés à
+ * part). Idempotent pour l'asset location : on stocke le flag, le bonus de rendement
+ * est appliqué à la volée par le moteur (pas cumulé dans returnRates).
+ */
+export function applyConfigToSettings(
+    config: StrategyConfig,
+    currentProjection: ProjectionConfig,
+    currentRetirementGoal: RetirementGoal,
+): AppliedSettings {
+    const baseIncome = currentRetirementGoal.targetMonthlyIncome ?? 0;
+    return {
+        projection: {
+            ...currentProjection,
+            emergencyFundMonths: config.emergencyFundMonths,
+            useSmithManoeuvre: config.smithManoeuvre,
+            appliedContributionOrder: config.contributionOrder,
+            appliedDebtFirst: config.debtFirst,
+            appliedSkipRap: config.skipRap,
+            appliedAssetLocation: config.assetLocation,
+        },
+        retirementGoal: {
+            ...currentRetirementGoal,
+            targetAge: config.retirementAge,
+            targetMonthlyIncome: Math.round(baseIncome * config.retirementSpending),
+        },
+        strategy: withdrawalOrderToStrategy(config.withdrawalOrder),
+        delayPensions: config.delayPensions,
+    };
 }

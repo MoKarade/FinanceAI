@@ -352,6 +352,17 @@ export interface ProjectionConfig {
 
   // W2.1 — Roth-equivalent ladder (REER→CELI via brackets)
   enableRothLadder?: boolean;
+
+  // G21 C5 — Leviers de stratégie « appliqués » depuis l'optimiseur. Ces leviers
+  // sont orthogonaux à l'axe scénario (ordre de retrait / rentes) : ils s'appliquent
+  // à TOUTES les simulations de calculateFutureProjection via EngineOverrides + un
+  // bonus de rendement NonReg pour l'asset location. Absents ⇒ comportement
+  // historique inchangé. (withdrawalOrder + delayPensions sont appliqués en
+  // sélectionnant le scénario correspondant, pas ici.)
+  appliedContributionOrder?: 'REER_FIRST' | 'CELI_FIRST';
+  appliedDebtFirst?: boolean;
+  appliedSkipRap?: boolean;
+  appliedAssetLocation?: boolean;
 }
 
 // ────────────────────────────────────────────────────────────────────

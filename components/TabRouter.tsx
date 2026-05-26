@@ -187,6 +187,7 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                         lifeEvents={state.lifeEvents}
                         debts={state.debts}
                         retirementGoal={state.retirementGoal}
+                        setRetirementGoal={(g) => setAppState({ retirementGoal: g })}
                         calculatedMonthlySavings={calculatedMonthlySavings}
                         projection={state.projection}
                         setProjection={(p) => setAppState({ projection: p })}

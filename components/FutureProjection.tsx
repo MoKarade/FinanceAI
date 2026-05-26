@@ -28,6 +28,7 @@ import { ActionPlanDrilldown } from './projection/ActionPlanDrilldown';
 import { AssetLocationPanel } from './projection/AssetLocationPanel';
 import { RobustnessPanel } from './projection/RobustnessPanel';
 import { StrategyOptimizerPanel } from './projection/StrategyOptimizerPanel';
+import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 
 // G10 — Légende interactive : une seule source de vérité pour les chips ET les
 // gardes de visibilité dans le graphique. `key` correspond au dataKey recharts
@@ -81,6 +82,7 @@ interface FutureProjectionProps {
   lifeEvents: LifeEvent[];
   debts?: Debt[];
   retirementGoal: RetirementGoal;
+  setRetirementGoal?: (g: RetirementGoal) => void;
   calculatedMonthlySavings: number;
   projection: ProjectionConfig;
   setProjection: (p: ProjectionConfig) => void;
@@ -90,7 +92,7 @@ interface FutureProjectionProps {
 
 export const FutureProjection: React.FC<FutureProjectionProps> = ({
     assets = [], initialBalances = {}, transactions = [], budgetItems = [], config,
-    realEstateGoals = [], setRealEstateGoals, childGoals = [], travelGoals = [], lifeEvents = [], debts = [], retirementGoal,
+    realEstateGoals = [], setRealEstateGoals, childGoals = [], travelGoals = [], lifeEvents = [], debts = [], retirementGoal, setRetirementGoal,
     calculatedMonthlySavings, projection, setProjection, financialGoals = [], isPrivacyMode = false
 }) => {
     // C6 fix (Sprint 1B) — La garde SAFETY CHECKS qui retournait du JSX avant
@@ -322,6 +324,22 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
     const results = runMC ? asyncResults : syncResults;
     const { chartData = [], fireNumber = 0, aiNote = "", allResults = [] } = (results || {}) as any;
+
+    // G21 C5 — « Appliquer » la stratégie gagnante de l'optimiseur aux paramètres
+    // réels du Futur. Les leviers orthogonaux + âge/dépenses/coussin/Smith sont
+    // persistés via les setters ; l'ordre de retrait + le report des rentes sont
+    // appliqués en sélectionnant le scénario correspondant dans la liste.
+    const handleApplyConfig = (config: StrategyConfig) => {
+        const applied = applyConfigToSettings(config, projection, retirementGoal);
+        setProjection(applied.projection);
+        setRetirementGoal?.(applied.retirementGoal);
+        const idx = (allResults as any[]).findIndex(
+            (r) => r.strategy === applied.strategy && r.delayPensions === applied.delayPensions,
+        );
+        const fallbackIdx = (allResults as any[]).findIndex((r) => r.strategy === applied.strategy);
+        const targetIdx = idx >= 0 ? idx : fallbackIdx;
+        if (targetIdx >= 0) setSelectedScenarioIdx(targetIdx);
+    };
 
     // A1/A3 — passé réel reconstruit (valeur marché des placements) préfixé au
     // graphe AVANT le début de projection (monthIndex < 0), sans toucher au futur
@@ -919,7 +937,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 {/* C5 — Optimiseur configurable : l'utilisateur compose l'espace de
                     leviers, on teste toutes les combinaisons et on désigne la meilleure
                     selon l'objectif choisi (multi-worker, re-tri instantané). */}
-                <StrategyOptimizerPanel params={params} />
+                <StrategyOptimizerPanel params={params} onApply={setRetirementGoal ? handleApplyConfig : undefined} />
 
                 {/* C2 — Plan d'action HIÉRARCHIQUE : global → décennie → 3 ans → année
                     → semestre → trimestre → mois → conseils (drill-down au clic). */}

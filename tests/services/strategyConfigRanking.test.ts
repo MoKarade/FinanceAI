@@ -4,8 +4,10 @@ import {
     explainWinner,
     decisiveLevers,
 } from '../../services/projection/strategyConfigRanking';
+import { applyConfigToSettings } from '../../services/projection/strategyConfig';
 import type { ConfigResult } from '../../services/projection/strategySearch';
 import type { StrategyConfig } from '../../services/projection/strategyConfig';
+import type { ProjectionConfig, RetirementGoal } from '../../types';
 
 // G21 C5 commit 5 — tests du classement par objectif + explication du gagnant.
 // Données ConfigResult fabriquées à la main (le module est PUR, aucun moteur).
@@ -113,6 +115,44 @@ describe('strategyConfigRanking — decisiveLevers', () => {
 
     it('configs identiques → aucun levier décisif', () => {
         expect(decisiveLevers(cfg(), cfg())).toHaveLength(0);
+    });
+});
+
+describe('strategyConfig — applyConfigToSettings (Appliquer)', () => {
+    const proj = (): ProjectionConfig => ({
+        years: 30, returnRate: 6, inflationRate: 2, savingsMode: 'manual',
+        manualContribution: 1500, usePortfolioRate: false,
+        returnRates: { celi: 6, reer: 6, nonReg: 6, crypto: 8, cash: 2 },
+        emergencyFundMonths: 6, useSmithManoeuvre: false,
+    } as ProjectionConfig);
+    const goal = (): RetirementGoal => ({ targetAge: 65, targetMonthlyIncome: 5000, governmentPension: 1500 } as RetirementGoal);
+
+    it('écrit les leviers orthogonaux dans projection + âge/dépenses dans retirementGoal', () => {
+        const out = applyConfigToSettings(cfg({
+            retirementAge: 60, retirementSpending: 1.1, emergencyFundMonths: 12, smithManoeuvre: true,
+            contributionOrder: 'REER_FIRST', debtFirst: true, skipRap: true, assetLocation: true,
+            withdrawalOrder: 'PRIO_REER', delayPensions: true,
+        }), proj(), goal());
+
+        expect(out.projection.emergencyFundMonths).toBe(12);
+        expect(out.projection.useSmithManoeuvre).toBe(true);
+        expect(out.projection.appliedContributionOrder).toBe('REER_FIRST');
+        expect(out.projection.appliedDebtFirst).toBe(true);
+        expect(out.projection.appliedSkipRap).toBe(true);
+        expect(out.projection.appliedAssetLocation).toBe(true);
+        expect(out.retirementGoal.targetAge).toBe(60);
+        expect(out.retirementGoal.targetMonthlyIncome).toBe(5500); // 5000 × 1.1
+        // withdrawalOrder + delayPensions retournés à part (pour sélection de scénario).
+        expect(out.strategy).toBe('PRIO_REER');
+        expect(out.delayPensions).toBe(true);
+    });
+
+    it('n\'altère pas l\'asset location dans returnRates (flag seulement, idempotent)', () => {
+        const base = proj();
+        const out = applyConfigToSettings(cfg({ assetLocation: true }), base, goal());
+        // returnRates inchangés ; seul le flag est posé (le bonus est appliqué par le moteur).
+        expect(out.projection.returnRates!.nonReg).toBe(base.returnRates!.nonReg);
+        expect(out.projection.appliedAssetLocation).toBe(true);
     });
 });
 

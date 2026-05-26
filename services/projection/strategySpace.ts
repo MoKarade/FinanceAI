@@ -102,7 +102,7 @@ export interface EngineArgs {
  * l'effet est donc nul sans NonReg et croît avec lui (pas de donnée plaquée). Ordre
  * de grandeur prudent issu de la littérature (Canadian Couch Potato / PWL ≈ 0,3–0,5 %).
  */
-const ASSET_LOCATION_BONUS_PP = 0.4;
+export const ASSET_LOCATION_BONUS_PP = 0.4;
 
 /**
  * Traduit une StrategyConfig en arguments pour runScenario : clone immutable de

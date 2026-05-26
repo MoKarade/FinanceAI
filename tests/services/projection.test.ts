@@ -111,6 +111,25 @@ describe('calculateFutureProjection', () => {
         expect(scenarios.filter(r => r.kind === 'strategy')).toHaveLength(5);
     });
 
+    // NB sur appliedAssetLocation : le moteur déplace automatiquement le NonReg vers
+    // le CELI/REER tant qu'il reste de la place enregistrée (projection.ts ~l.1000,
+    // "Opti.CELI"/"Opti.REER"). Le bonus de rendement NonReg est donc largement inerte
+    // quand de la place subsiste — limite assumée de cette approximation (cf. ADR-008).
+    // Le threading des overrides bout-en-bout est prouvé par le test contributionOrder
+    // ci-dessous ; l'effet du bonus NonReg lui-même est couvert au niveau unitaire
+    // (strategySpace.test : configToEngine bumpe bien returnRates.nonReg).
+    it('G21 C5 — appliedContributionOrder modifie la répartition (levier threadé)', () => {
+        const celi = calculateFutureProjection(makeParams({
+            projection: makeProjection({ appliedContributionOrder: 'CELI_FIRST' }),
+        })) as any;
+        const reer = calculateFutureProjection(makeParams({
+            projection: makeProjection({ appliedContributionOrder: 'REER_FIRST' }),
+        })) as any;
+        // Le levier est threadé jusqu'au moteur : les deux ordres produisent des
+        // trajectoires distinctes (fiscalité différente) → patrimoine successoral différent.
+        expect(reer.allResults[0].estateNetWorth).not.toBe(celi.allResults[0].estateNetWorth);
+    });
+
     it('chaque scénario a un chartData non vide proche de years*12 entrées', () => {
         const params = makeParams();
         const result = calculateFutureProjection(params) as any;

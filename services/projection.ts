@@ -4,6 +4,7 @@ import { calculateFiscalReport, getMarginalRate, calculateDividendTax, calculate
 import { RRIF_RATES, welcomeTax } from './projection/helpers';
 import { runMonteCarlo } from './projection/monteCarlo';
 import { rankStrategiesByRobustness, type RobustnessRanking, type RankRobustnessOptions } from './projection/strategyRobustness';
+import type { EngineOverrides } from './projection/strategyConfig';
 import { SCENARIO_DEFINITIONS } from './projection/scenarios';
 import { applyW5Effects, applyAgeBasedExpenses } from './projection/w5Effects';
 import { tryCriticalIllness, tryInheritance, tryMortality, trySpouseMortality, tryLtcTrigger, ltcMonthlyCost, tryDivorce } from './projection/stochasticEvents';
@@ -69,7 +70,7 @@ export interface SimulationParams {
 // une fois la cause corrigée.
 let _tb3LiquidLogged = false;
 
-const runScenario = (params: SimulationParams, strategy: AllocationStrategy, enableMonteCarlo = false, delayPensions = false, mcIterationIndex = 0, scenarioType: FutureScenarioType = 'BASE') => {
+const runScenario = (params: SimulationParams, strategy: AllocationStrategy, enableMonteCarlo = false, delayPensions = false, mcIterationIndex = 0, scenarioType: FutureScenarioType = 'BASE', overrides: EngineOverrides = {}) => {
     const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0, insurancePolicies = [], vehicleReplacements = [], majorRenovations = [], charitableGoals = [], rentalProperties = [], privateBusinesses = [], savingsGoals = [], financialGoals = [] } = params;
     
     // Cycle 22 split: RNG seedé déterministique → ./projection/setupSimulation
@@ -768,7 +769,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             { m, loopYear, isRetired, activeUsersCount, simInflation, simSalaryGrowth,
               grossMarcBaseAnnual, grossAnnaBaseAnnual, incomeRetirement,
               useSmithManoeuvre: effProj.useSmithManoeuvre === true, currentRentExpense,
-              skipRapForPurchase: strategy === 'PRIO_CELI_NO_RAP' },
+              skipRapForPurchase: overrides.skipRapForPurchase ?? (strategy === 'PRIO_CELI_NO_RAP') },
             activeRE,
             propertiesState,
             getMonthOffset,
@@ -939,7 +940,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             { monthlyCashflow, targetEF, criticalThreshold, isRetired, strategy,
               m, loopYear, enableMonteCarlo, activeUsersCount,
               grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
-              incomeRetirement, accRentesYear, hasFuturePurchase, hasPurchasedPrimary },
+              incomeRetirement, accRentesYear, hasFuturePurchase, hasPurchasedPrimary,
+              contributionOrder: overrides.contributionOrder, debtFirst: overrides.debtFirst },
             activeDebts,
             calculateFiscalReport,
             calculateGrossWithholdingRRSP,

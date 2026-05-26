@@ -10,6 +10,7 @@
 
 import type { Debt } from '../../types';
 import type { AllocationStrategy } from './types';
+import type { ContributionOrder } from './strategyConfig';
 import { PBMA_THRESHOLD_PER_USER, OAS_CLAWBACK_THRESHOLD_2026, type FiscalReport } from '../../utils/tax';
 
 // Plafond du palier 1 (14% fédéral + 14% Québec) par utilisateur. Combinaison
@@ -78,6 +79,12 @@ export interface CashflowCtx {
     accRentesYear: number;
     hasFuturePurchase: boolean;
     hasPurchasedPrimary: boolean;
+    // G21 C5 — leviers découplés de l'enum AllocationStrategy. Absents ⇒ on retombe
+    // sur le comportement historique dérivé de `strategy` (aucune régression).
+    /** Ordre de cotisation en accumulation, indépendant de l'ordre de retrait. */
+    contributionOrder?: ContributionOrder;
+    /** Rembourser toutes les dettes avant d'investir (vs seulement toxiques >7%). */
+    debtFirst?: boolean;
 }
 
 import { handleNonRegSale } from './portfolioOps';
@@ -105,7 +112,14 @@ export function processCashflowAllocation(
         m, loopYear, enableMonteCarlo, activeUsersCount,
         grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
         incomeRetirement, accRentesYear, hasFuturePurchase, hasPurchasedPrimary,
+        contributionOrder, debtFirst,
     } = ctx;
+
+    // G21 C5 — résolution des leviers : override explicite sinon dérivé de l'enum
+    // (comportement historique). `debtFirstActive` remplace les tests directs sur
+    // strategy === 'DEBT_FIRST' ; `reerFirstContrib` remplace la dérivation de
+    // l'ordre de cotisation depuis l'ordre de retrait.
+    const debtFirstActive = debtFirst ?? (strategy === 'DEBT_FIRST');
 
     if (monthlyCashflow < 0) {
         // ── SHORTFALL ──────────────────────────────────────────────────
@@ -248,7 +262,7 @@ export function processCashflowAllocation(
         // Dettes toxiques (>7%) ou toutes si DEBT_FIRST
         if (excess > 0) {
             const sortedDebts = activeDebts
-                .filter(d => d.balance > 0 && (d.interestRate > 7 || strategy === 'DEBT_FIRST'))
+                .filter(d => d.balance > 0 && (d.interestRate > 7 || debtFirstActive))
                 .sort((a, b) => b.interestRate - a.interestRate);
             for (const d of sortedDebts) {
                 const pay = Math.min(excess, d.balance);
@@ -265,7 +279,7 @@ export function processCashflowAllocation(
 
         // FHSA (sauf si DEBT_FIRST avec dettes restantes)
         if (excess > 0 && state.fhsaRoom > 0 && !isRetired && hasFuturePurchase && !hasPurchasedPrimary
-            && (strategy !== 'DEBT_FIRST' || !hasRemainingDebtPostPay)) {
+            && (!debtFirstActive || !hasRemainingDebtPostPay)) {
             const fillFhsa = Math.min(state.fhsaRoom, excess);
             state.celiapp += fillFhsa;
             state.fhsaRoom -= fillFhsa;
@@ -280,9 +294,15 @@ export function processCashflowAllocation(
             const estAnnualGross = (grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, yearsElapsedForMarg);
             const marginal = calculateFiscalReport(estAnnualGross / activeUsersCount, 0, 0, loopYear, enableMonteCarlo).marginalRate;
 
-            if (strategy === 'DEBT_FIRST' && hasRemainingDebtPostPay) {
+            // Ordre de cotisation : override explicite sinon dérivé de l'enum (REER
+            // d'abord si PRIO_REER, ou si AUTO_MARGINAL à taux marginal élevé).
+            const reerFirstContrib = contributionOrder
+                ? contributionOrder === 'REER_FIRST'
+                : (strategy === 'PRIO_REER' || (strategy === 'AUTO_MARGINAL' && marginal >= 40));
+
+            if (debtFirstActive && hasRemainingDebtPostPay) {
                 // Skip investments — excess will flow to liquid below
-            } else if (strategy === 'PRIO_REER' || (strategy === 'AUTO_MARGINAL' && marginal >= 40)) {
+            } else if (reerFirstContrib) {
                 if (excess > 0 && state.rrspRoom > 0) {
                     const fill = Math.min(state.rrspRoom, excess);
                     state.reer += fill; state.rrspRoom -= fill; excess -= fill;

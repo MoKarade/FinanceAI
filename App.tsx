@@ -24,6 +24,8 @@ import { installGlobalErrorHandlers } from './services/errorLogger';
 import { lazyWithRetry, clearChunkReloadFlag } from './utils/lazyWithRetry';
 import { initAutoBackup } from './services/backupAuto';
 import { trackPageView } from './services/analytics';
+import { GuidedTour } from './components/tour/GuidedTour';
+import { startGuidedTour } from './components/tour/tourControl';
 
 const GuideModal = lazyWithRetry(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })), 'GuideModal');
 
@@ -515,6 +517,8 @@ export const App: React.FC = () => {
                     if (data.apiKeys?.eraContext) {
                         setTimeout(() => loadData(data.apiKeys!.eraContext), 500);
                     }
+                    // G22-F4 — lance le tutoriel guidé juste après l'onboarding (1re fois).
+                    setTimeout(() => startGuidedTour(), 700);
                 }} />
             )}
             <Layout
@@ -601,6 +605,8 @@ export const App: React.FC = () => {
             <ToastContainer />
             <PwaInstallBanner />
             <CommandPalette open={cmdK.isOpen} onClose={cmdK.close} actions={cmdActions} />
+            {/* G22-F4 — tutoriel guidé (overlay global, démarré par event). */}
+            <GuidedTour />
         </div>
     );
 };

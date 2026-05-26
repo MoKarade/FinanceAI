@@ -7,6 +7,7 @@ import React from 'react';
 import { Card } from '../../ui/Card';
 import { useFinanceStore } from '../../../store/useFinanceStore';
 import { UsersCard } from './UsersCard';
+import { startGuidedTour } from '../../tour/tourControl';
 import type { AppState, RetirementGoal } from '../../../types';
 
 interface ProfileSectionProps {
@@ -20,6 +21,21 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ config, setConfi
 
   return (
     <div className="space-y-6">
+      {/* G22-F4 — relancer le tutoriel guidé (visite de tous les onglets). */}
+      <div className="flex items-center justify-between gap-3 p-3 rounded-card bg-primary/10 border border-primary/20">
+        <div className="text-meta text-ink-200">
+          <span aria-hidden="true" className="mr-1">🎓</span>
+          Nouveau ou besoin d'un rappel ? Refais la visite guidée de l'app.
+        </div>
+        <button
+          type="button"
+          onClick={startGuidedTour}
+          className="shrink-0 px-3 py-1.5 rounded-card text-meta font-bold text-white bg-primary hover:brightness-110 transition-all focus-ring"
+        >
+          Revoir le tutoriel
+        </button>
+      </div>
+
       {/* Phase C.1 — Hub retraite : centralise les paramètres absorbés depuis
           l'onglet Retraite (espérance de vie, âge cible, revenu cible). */}
       <Card title="🏖️ Paramètres de retraite (hub central)">

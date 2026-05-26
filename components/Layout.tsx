@@ -276,6 +276,7 @@ export const Layout: React.FC<LayoutProps> = ({
                         <button
                           key={item.id}
                           type="button"
+                          data-tour-id={`nav-${item.id}`}
                           onClick={() => setActiveTab(item.id)}
                           aria-current={isActive ? 'page' : undefined}
                           title={!isSidebarOpen ? item.label : undefined}
@@ -311,6 +312,7 @@ export const Layout: React.FC<LayoutProps> = ({
               <button
                 key={item.id}
                 type="button"
+                data-tour-id={`nav-${item.id}`}
                 onClick={() => setActiveTab(item.id)}
                 aria-current={activeTab === item.id ? 'page' : undefined}
                 title={!isSidebarOpen ? item.label : undefined}

@@ -98,8 +98,15 @@
   au lieu des seuls détails techniques. Tutoiement aligné sur le reste de l'app (les étapes
   vouvoyaient encore). Structure 4 étapes conservée (bienvenue/profil/clés/comptes). Aucun
   test ne dépendait du texte ; a11y onboarding OK.
-- [ ] **G22-F4 — Tutoriel pas-à-pas (1re fois)** : parcourt tous les onglets, bulles
-  d'explication, actions à réaliser pour avancer, ignorable, relançable depuis Paramètres.
+- [x] **G22-F4 — Tutoriel pas-à-pas (1re fois)** — ✅ FAIT (moteur maison, zéro dépendance).
+  Visite guidée de **tous les onglets** (15 étapes) : à chaque étape le tour ouvre l'onglet,
+  met son item de nav en surbrillance (spotlight box-shadow, ancré sur `data-tour-id="nav-*"`)
+  et affiche une bulle. Navigation Suivant/Précédent/Passer + raccourcis ←/→/Échap. Robuste :
+  fallback bulle centrée si l'ancre n'est pas mesurable (mobile/sidebar masquée). Démarre
+  automatiquement après l'onboarding (1re fois, flag `app_tour_done`), **relançable** via
+  un bouton dans Configuration → Profil. Déclenchement découplé par event global
+  (`financeai:start-tour`). Fichiers : `components/tour/{tourSteps,tourControl,GuidedTour}`.
+  4 tests (démarrage/navigation/skip). Typecheck OK, build OK.
 
 ---
 

@@ -24,9 +24,12 @@
   La ligne VN démarre à la 1re transaction connue (avant = vide, pas de fausse VN à 0).
   Carry-forward placements pour continuité. 8 tests. (décisions Marc : option 3 + start
   à la 1re transaction).
-- [ ] **G22-B2 — Bouton couple toujours cassé** : cliquer « couple » doit basculer TOUT
-  (backend + front + interface + tout ce qui dépend du couple) en mode couple, sans erreur.
-  (déjà tenté #130, à reprendre proprement).
+- [x] **G22-B2 — Bouton couple toujours cassé** — ✅ FAIT. Le badge couple de la
+  sidebar (sous les onglets) ne faisait qu'ouvrir Configuration ; il **bascule
+  désormais directement** Couple ⇄ Individuel (ajoute/retire le 2e utilisateur dans
+  `config.users`). Propagation immédiate partout (38 fichiers lisent `config.users`
+  réactivement via le store). Détails du conjoint éditables dans Configuration.
+  À revalider en live (Marc).
 - [~] **G22-B3 — Graph Accueil incohérent** — partiellement FAIT :
   Cause racine : `ZoomableTimeChart` avait perdu ses contrôles (régression de
   l'extraction G4 du hook ; #122 marqué fait mais code sans sélecteur).

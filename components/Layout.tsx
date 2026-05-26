@@ -113,6 +113,28 @@ export const Layout: React.FC<LayoutProps> = ({
   // Mode test : banner permanent en haut + classe globale.
   const isTestMode = useFinanceStore(s => s.isTestMode);
 
+  // G22-B2 — bascule directe Couple ⇄ Individuel depuis la sidebar. Ajoute/retire
+  // le 2e utilisateur dans `config.users` ; tout l'app lit `config.users.length`
+  // (réactif via le store) donc la bascule se propage partout (Dashboard, Budget,
+  // Futur, Impôts…). Détails du conjoint éditables ensuite dans Configuration.
+  const coupleConfig = useFinanceStore(s => s.config);
+  const setAppState = useFinanceStore(s => s.setAppState);
+  // Même définition que CoupleModeBadge : couple = 2e utilisateur avec un nom.
+  const isCouple = Boolean(coupleConfig?.users?.[1]?.name && coupleConfig.users[1].name.trim() !== '');
+  const toggleCoupleMode = () => {
+    if (!coupleConfig) return;
+    const users = coupleConfig.users as any[];
+    let nextUsers: any[];
+    if (isCouple) {
+      nextUsers = [users[0]]; // repasse en individuel : on retire le conjoint
+    } else if (users.length >= 2) {
+      nextUsers = [users[0], { ...users[1], name: users[1]?.name || 'Conjoint(e)' }]; // 2e user existant sans nom → on le nomme
+    } else {
+      nextUsers = [...users, { name: 'Conjoint(e)', age: 30, grossSalary: 0, netSalary: 0, canadaArrivalYear: new Date().getFullYear() - 5, color: '#ec4899' }];
+    }
+    setAppState({ config: { ...coupleConfig, users: nextUsers as any } });
+  };
+
   return (
     <div className={`min-h-screen flex flex-col md:flex-row text-gray-200 font-sans ${isPrivacyMode ? 'privacy-active' : ''} ${isTestMode ? 'test-mode-active' : ''}`}>
       {/* A11y (Audit Phase 5.1): skip link — invisible jusqu'à focus clavier. */}
@@ -303,12 +325,13 @@ export const Layout: React.FC<LayoutProps> = ({
               </button>
             ))}
           </nav>
-          {/* BUG fix : badge couple/individuel maintenant cliquable → ouvre la
-              Configuration (où on ajoute/retire le conjoint). */}
+          {/* G22-B2 — clic = BASCULE directe Couple ⇄ Individuel (ajoute/retire le
+              conjoint), propagée à toute l'app. Détails du conjoint dans Configuration. */}
           <button
             type="button"
-            onClick={() => setActiveTab(Tab.SETTINGS)}
-            title="Mode Couple / Individuel — cliquer pour modifier dans Configuration"
+            onClick={toggleCoupleMode}
+            aria-pressed={isCouple}
+            title={isCouple ? 'Mode Couple actif — cliquer pour repasser en Individuel' : 'Mode Individuel — cliquer pour passer en Couple'}
             className="flex justify-center w-full hover:opacity-80 transition-opacity focus-ring rounded-full"
           >
             <CoupleModeBadge compact={!isSidebarOpen} />

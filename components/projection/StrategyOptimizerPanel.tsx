@@ -100,8 +100,10 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, onApply }) => 
     const configCount = useMemo(() => countConfigs(selection, ctx), [selection, ctx]);
     const iters = adaptiveIterations(configCount); // budget adaptatif (borne le temps total)
     const nWorkers = typeof navigator !== 'undefined' && navigator.hardwareConcurrency ? navigator.hardwareConcurrency : 4;
+    // ~8 ms/sim : coût observé d'une projection complète (40 ans) en prod, bien plus
+    // réaliste que le défaut optimiste de 2 ms (sinon l'estimation annonce 3 s pour 14 s).
     const estMs = useMemo(
-        () => estimateRuntimeMs(configCount, iters) / Math.max(1, nWorkers),
+        () => estimateRuntimeMs(configCount, iters, 8) / Math.max(1, nWorkers),
         [configCount, iters, nWorkers],
     );
 

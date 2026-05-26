@@ -6,7 +6,28 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
-## [unreleased — G21 C3 suite · PRIO_CELI_NO_RAP · AssetLocationPanel · Clés chiffrées · fix budget · plan d'action · crypto · import CSV] — 2026-05-26
+## [unreleased — G21 C4 · robustesse Monte Carlo · C3 suite · PRIO_CELI_NO_RAP · AssetLocationPanel · Clés chiffrées · fix budget · plan d'action · crypto · import CSV] — 2026-05-26
+
+### G21 C4 — Classement des stratégies par robustesse (Monte Carlo)
+
+- **`RobustnessPanel`** dans l'onglet Futur : un bouton « Tester la robustesse » lance
+  un Monte Carlo (1000 simulations × 5 stratégies de gestion) et classe les façons de
+  gérer par **taux de succès** = % des scénarios où le patrimoine ne s'épuise jamais.
+  Barre colorée sémantique par stratégie + patrimoine médian, bouton relancer.
+- **`strategyRobustness.ts`** : `rankStrategiesByRobustness` re-lance un MC par stratégie
+  (`kind:'strategy'`, donc sous le même monde réaliste — stress-tests exclus) et trie par
+  taux de succès (départage FVI puis patrimoine médian). Injection de `runScenario`.
+- **Web Worker** : nouveau mode `'robustness'` qui poste des messages de progression
+  (`__progress`). `runRobustnessRankingAsync` utilise un **watchdog réarmé à chaque
+  progrès** (pas de timeout fixe — 5000 sims dépassent souvent 30s ; on ne tue le worker
+  que sur un vrai hang de 45s sans progrès). Fallback synchrone pour Node/tests.
+- **Fix bug dormant** : `projection.ts` hardcodait `'AUTO_MARGINAL'` dans le Monte Carlo —
+  le taux de succès affiché ignorait donc le scénario sélectionné. Corrigé en passant la
+  stratégie réelle (`target.strategy`).
+- Tests : 5 unitaires (faux `runScenario`, tri/bornage/progression/déterminisme) + 2
+  d'intégration moteur réel (reproductibilité RNG seedée). 669 tests verts.
+
+
 
 ### G21 C3 suite — Décision RAP-vs-FHSA + placement par compte
 

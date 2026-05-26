@@ -673,9 +673,12 @@ Projection = mensuelle, démarre à aujourd'hui (2026), pas de passé. ⇒ « vo
 ✅ C1 (reco objectif) · ✅ C2 (plan d'action annuel) · ✅ C3 incrément 1 (compare
 4 façons de gérer sous monde BASE, stress hors classement) ·
 ✅ C3 suite — décision RAP-vs-FHSA (`PRIO_CELI_NO_RAP`), `assetLocation.ts` branché
-(`AssetLocationPanel`), 5 stratégies `kind=strategy` comparables, 659 tests verts.
-**Reste** : C4 = Monte Carlo sur les 2-3 finalistes pour classer par robustesse réelle.
-Valider le **passé réel A3** sur données réelles (titres datés + clé Finnhub).
+(`AssetLocationPanel`), 5 stratégies `kind=strategy` comparables, 659 tests verts ·
+✅ C4 — Monte Carlo de robustesse sur les **5 stratégies**, classées par **taux de
+succès** (% des sims où le patrimoine ne s'épuise pas). `strategyRobustness.ts` +
+worker (mode robustesse, watchdog progression) + `RobustnessPanel` (bouton, 1000
+sims/stratégie). Fix bug dormant : le MC hardcodait AUTO_MARGINAL. 669 tests verts.
+**Reste G21** : valider le **passé réel A3** sur données réelles (titres datés + clé Finnhub).
 
 
 Demande Marc : l'onglet Futur doit tester plein de stratégies (ordre de retrait,

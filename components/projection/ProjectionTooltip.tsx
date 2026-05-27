@@ -135,11 +135,27 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: any) =>
                 </div>
             )}
 
+            {/* U4 — Tous les événements du mois, pas juste le premier.
+                Avant : seul events[0] affiché + « +N ». Maintenant : liste
+                complète (le tooltip est déjà scrollable max-h-[480px]).
+                Chaque ligne a son icône dédié via splitEventIcon. */}
             {events.length > 0 && (
-                <div className="flex items-center gap-1.5 mb-2 text-tiny text-yellow-200 bg-yellow-500/5 rounded-lg px-2 py-1.5 border border-yellow-500/15">
-                    <span className="shrink-0" aria-hidden="true">{splitEventIcon(events[0]).icon}</span>
-                    <span className="flex-1 truncate font-semibold">{splitEventIcon(events[0]).text}</span>
-                    {events.length > 1 && <span className="text-ink-400 shrink-0 font-mono">+{events.length - 1}</span>}
+                <div className="mb-2.5 space-y-1">
+                    <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1">
+                        {events.length === 1 ? 'Événement' : `Événements (${events.length})`}
+                    </div>
+                    {events.map((ev, i) => {
+                        const { icon, text } = splitEventIcon(ev);
+                        return (
+                            <div
+                                key={i}
+                                className="flex items-center gap-1.5 text-tiny text-yellow-200 bg-yellow-500/5 rounded-lg px-2 py-1.5 border border-yellow-500/15"
+                            >
+                                <span className="shrink-0" aria-hidden="true">{icon}</span>
+                                <span className="flex-1 font-semibold leading-tight">{text}</span>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 

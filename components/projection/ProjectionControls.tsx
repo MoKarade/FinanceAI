@@ -138,17 +138,51 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                 </Card>
             )}
 
-            {/* Toolbar Monte Carlo + Smile Curve — actions principales toujours visibles */}
-            <div className="flex flex-wrap items-center gap-2">
-                <Button
-                    onClick={() => setRunMC(!runMC)}
-                    variant={runMC ? 'primary' : 'ghost'}
-                    size="sm"
-                    disabled={isComputing}
-                    loading={isComputing}
+            {/* Toolbar simulation — radio-group MC prominent (U3).
+                Le mode MC est structurant : il change la forme des courbes sur
+                tous les onglets (Futur, Retraite, Enfant…) via la projection
+                partagée. Un simple bouton toggle était invisible pour un
+                nouvel utilisateur. Radio-group avec label descriptif. */}
+            <div className="flex flex-wrap items-center gap-3">
+                <div
+                    role="radiogroup"
+                    aria-label="Mode de simulation"
+                    className="flex items-center bg-black/50 border border-white/10 rounded-xl p-1 gap-0.5"
                 >
-                    🎲 Monte Carlo {runMC ? 'ON' : 'OFF'}
-                </Button>
+                    <button
+                        role="radio"
+                        aria-checked={!runMC}
+                        onClick={() => !isComputing && setRunMC(false)}
+                        disabled={isComputing}
+                        title="Projection unique, sans aléatoire. Rapide (~150 ms). Pas de bandes P10-P90."
+                        className={`px-3 py-1.5 rounded-lg text-meta font-semibold transition-all focus-ring ${
+                            !runMC
+                                ? 'bg-success-500/20 text-success-300 border border-success-500/30 shadow-sm'
+                                : 'text-ink-400 hover:text-ink-200 border border-transparent'
+                        }`}
+                    >
+                        📊 Déterministe
+                    </button>
+                    <button
+                        role="radio"
+                        aria-checked={runMC}
+                        onClick={() => !isComputing && setRunMC(true)}
+                        disabled={isComputing}
+                        title="100 scénarios aléatoires — affiche les bandes P10/P90. Impacte Retraite et Enfant aussi."
+                        className={`px-3 py-1.5 rounded-lg text-meta font-semibold transition-all focus-ring ${
+                            runMC
+                                ? 'bg-primary/20 text-primary border border-primary/30 shadow-sm'
+                                : 'text-ink-400 hover:text-ink-200 border border-transparent'
+                        }`}
+                    >
+                        🎲 Monte Carlo{isComputing && runMC ? ' …' : ''}
+                    </button>
+                </div>
+                {runMC && (
+                    <span className="text-tiny text-ink-400 hidden sm:inline select-none">
+                        Impacte tous les onglets
+                    </span>
+                )}
                 <Button
                     onClick={() => updateProj('useSmileCurve', !projection.useSmileCurve)}
                     variant={projection.useSmileCurve ? 'primary' : 'ghost'}

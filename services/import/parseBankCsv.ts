@@ -35,7 +35,7 @@ export interface ParsedBankCsv {
 }
 
 const stripAccents = (s: string): string => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
-const norm = (s: string): string => stripAccents(s).toLowerCase().trim();
+export const norm = (s: string): string => stripAccents(s).toLowerCase().trim();
 
 const HEADER_KEYWORDS: Record<keyof BankCsvColumns, string[]> = {
     date: ['date', 'transaction date', 'posting date', 'date de transaction', 'date de comptabilisation', "date d'operation"],
@@ -48,7 +48,7 @@ const HEADER_KEYWORDS: Record<keyof BankCsvColumns, string[]> = {
 };
 
 /** Découpe une ligne CSV en respectant les guillemets et les "" échappés. */
-const splitCsvLine = (line: string, delim: Delimiter): string[] => {
+export const splitCsvLine = (line: string, delim: Delimiter): string[] => {
     const out: string[] = [];
     let cur = '';
     let inQuotes = false;
@@ -77,7 +77,7 @@ const countOutsideQuotes = (line: string, ch: string): number => {
     return n;
 };
 
-const detectDelimiter = (line: string): Delimiter => {
+export const detectDelimiter = (line: string): Delimiter => {
     const counts: Array<[Delimiter, number]> = [
         [',', countOutsideQuotes(line, ',')],
         [';', countOutsideQuotes(line, ';')],

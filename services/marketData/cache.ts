@@ -3,6 +3,8 @@
 // pour garder des données fraîches. Si besoin de persistence cross-session,
 // upgrade futur vers IndexedDB.
 
+import { idbGetEntry, idbSetEntry, idbClearEntries } from './persistentCache';
+
 interface CachedEntry<T> {
     value: T;
     expiresAt: number;
@@ -11,8 +13,8 @@ interface CachedEntry<T> {
 const TTL_PRESETS = {
     /** Quote spot : 5 min (variations rapides). */
     quote: 5 * 60 * 1000,
-    /** Historique : 1h (recalcul rare). */
-    history: 60 * 60 * 1000,
+    /** Historique : 24h. Les prix passés sont quasi-immuables → persistés en IndexedDB. */
+    history: 24 * 60 * 60 * 1000,
     /** Profil statique : 24h (très rarement changeant). */
     profile: 24 * 60 * 60 * 1000,
     /** Dividendes : 6h. */
@@ -22,6 +24,10 @@ const TTL_PRESETS = {
 export type CacheBucket = keyof typeof TTL_PRESETS;
 
 const store = new Map<string, CachedEntry<unknown>>();
+
+// Buckets persistés en IndexedDB (survivent au rechargement de page).
+// 'quote' (spot 5 min) reste mémoire-seule : on le veut toujours frais.
+const PERSISTENT_BUCKETS = new Set<CacheBucket>(['history', 'profile', 'dividends']);
 
 function k(bucket: CacheBucket, key: string): string {
     return `${bucket}::${key}`;
@@ -37,16 +43,29 @@ export async function withCache<T>(
     fetcher: () => Promise<T | null>,
 ): Promise<T | null> {
     const cacheKey = k(bucket, key);
+
+    // L1 — cache mémoire (rapide, synchrone).
     const cached = store.get(cacheKey) as CachedEntry<T> | undefined;
     if (cached && cached.expiresAt > Date.now()) {
         return cached.value;
     }
+
+    // L2 — cache IndexedDB persistant (buckets lents seulement). No-op si IDB absent.
+    if (PERSISTENT_BUCKETS.has(bucket)) {
+        const persisted = await idbGetEntry<T>(cacheKey);
+        if (persisted && persisted.expiresAt > Date.now()) {
+            store.set(cacheKey, persisted); // réhydrate L1
+            return persisted.value;
+        }
+    }
+
     const value = await fetcher();
     if (value !== null) {
-        store.set(cacheKey, {
-            value,
-            expiresAt: Date.now() + TTL_PRESETS[bucket],
-        });
+        const entry: CachedEntry<T> = { value, expiresAt: Date.now() + TTL_PRESETS[bucket] };
+        store.set(cacheKey, entry);
+        if (PERSISTENT_BUCKETS.has(bucket)) {
+            void idbSetEntry(cacheKey, entry); // fire-and-forget, best-effort
+        }
     }
     return value;
 }
@@ -55,6 +74,7 @@ export async function withCache<T>(
 export function clearMarketDataCache(bucket?: CacheBucket): void {
     if (!bucket) {
         store.clear();
+        void idbClearEntries();
         return;
     }
     const prefix = `${bucket}::`;

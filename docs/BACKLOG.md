@@ -29,10 +29,13 @@ Merges sur `main`, CI verte vérifiée à chaque fois.
 - **Option « Immigré au Canada »** (par personne, Config + Onboarding) : droit CELI/REER/PSV
   calculé depuis l'année de résidence fiscale ; corrige un défaut qui sous-estimait le droit
   de tout résident de naissance laissant le champ vide.
-- **Tests : 868 verts** · lint + tsc + build OK · couverture `utils/tax.ts` 98,6 %.
+- **Copilote — finitions** : import positions courtier CSV (`parseBrokerCsv` + `ImportBrokerPositions`,
+  dédup par symbole) · cache prix Finnhub persisté en IndexedDB (TTL history 24h) · « Appliquer le
+  gagnant » de l'optimiseur déjà en place (vérifié).
+- **Tests : 881 verts** · lint + tsc + build OK · couverture `utils/tax.ts` 98,6 %.
 
-**Prochains items ouverts (recommandés)** : import positions courtier CSV · valider le passé
-réel A3 (tes données + clé Finnhub) · ouverture multi-user (accès public + onboarding inconnu
+**Prochains items ouverts (recommandés)** : valider le passé réel A3 (tes données + clé Finnhub)
+· ouverture multi-user (accès public + onboarding inconnu
 + sync cross-device chiffrée). NB : le détail des sections plus bas est partiellement périmé
 (U7 ✅, T2-en-CI ✅, T3 hooks ✅, robustesse ✅) — à nettoyer lors d'une passe doc dédiée.
 

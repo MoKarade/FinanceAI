@@ -268,14 +268,12 @@ Ajouter ces champs dans `ProjectionChartPoint` :
 >   `totalAnnualDividends` (KPI présent = holdings × yield) ; DividendPanel (outil
 >   DRIP **interactif** : toggle + slider de croissance → une lecture chartData
 >   statique DÉGRADERAIT l'interactivité). Rien de plus à migrer.
-<!-- items d'origine -->
-- [ ] TaxCenter `report.marginalRate` / `effectiveRate` / `taxableAddOn`
-- [ ] Investments `totalAnnualDividends` (KPI)
-- [ ] Investments DividendPanel (timeline 30 ans DRIP)
-- [ ] ChildPlanning `respProjection` (timeline REEE)
-- [ ] RealEstate `amortizationData.Équité` (timeline 25 ans par propriété)
-- **Effort** : ~3 h total
-- **Risque** : low (lecture chartData simple)
+<!-- items d'origine — résolus/N-A (cf. note C2 ci-dessus + C3) : -->
+- [x] TaxCenter `report.marginalRate` / `effectiveRate` — N/A (temps présent, pas une projection)
+- [x] Investments `totalAnnualDividends` (KPI) — N/A (KPI présent = holdings × yield)
+- [x] Investments DividendPanel (timeline DRIP) — N/A (outil interactif, lecture statique dégraderait)
+- [x] ChildPlanning `respProjection` (timeline REEE) — ✅ migré sur chartData (C3)
+- [x] RealEstate `amortizationData.Équité` — ✅ badge équité ← chartData (C3)
 
 ### C3 — Mode strict TOTAL ✅ TERMINÉ 2026-05-21
 Marc a demandé : "que ca prenne seulement les données du graph uniquement
@@ -412,11 +410,13 @@ Le test passe mais le moteur s'alourdit. Si plus de fixes ajoutent du poids :
 
 ## 🎨 P2 — UX & polish
 
-### U1 — Indicateur visuel "Projection requise" partout
-Composant `ProjectionRequired` créé mais utilisé seulement dans Retirement.
-- [ ] Investments tab : si lastProjection vide, hide horizon KPI
-- [ ] Dashboard : indicateur futur disabled si pas de projection
-- [ ] TaxCenter : badge "approximation hors projection"
+### U1 — Indicateur visuel "Projection requise" partout ✅ FAIT (via C3 mode strict)
+> Description ci-dessous périmée (pré-C3). `ProjectionRequired` est désormais branché
+> partout via le mode strict (cf. C3) : Dashboard, Investments, Budget, RealEstate,
+> Planning, ChildPlanning. TaxCenter = temps présent (pas de projection requise).
+- [x] Investments tab : Card "Portefeuille projeté" → ProjectionRequired (C3)
+- [x] Dashboard : indicateur Futur → ProjectionRequired + fallback 5% supprimé (C3)
+- [x] TaxCenter : 100% temps présent, badge non pertinent (C3)
 
 ### U2 — Onglet Future : badge "Scénario actif"
 Indiquer clairement quel scénario est sélectionné dans Future, vu que
@@ -485,16 +485,10 @@ Effort ~2 h + vérif responsive 320/768/1440.
 > 5/10/20/30 ans), Dette, Retraite ×2, Enfant ×2, Immobilier ×2. Dashboard +
 > Investissements avaient déjà molette zoom (ZoomableTimeChart) + leur propre
 > sélecteur de période. Commits `53d1faf`, `9a058a3`, `7473809`.
-<!-- description d'origine -->
-Demande transverse, à appliquer à chaque graph (chacun garde ses params) :
-- [ ] **Zoom molette** (in/out) + **pan** gauche/droite via slider/brush
-- [ ] **Sélecteur de période depuis le graph** (1A/5A/10A/Max…)
-- [ ] **Style/couleurs Google Finance** (ligne fine, gradient sous la courbe,
-  grille discrète, hover crosshair) tout en gardant nos paramètres en plus
-- Recharts supporte `Brush` (pan) et le zoom via domaine contrôlé ; molette =
-  handler `onWheel` custom. Évaluer aussi `recharts` + lib zoom ou alternative.
-- Effort ~8-12 h (composant graph réutilisable partagé). **Prérequis** : créer
-  un `<FinanceChart>` générique pour ne pas réimplémenter par onglet.
+<!-- description d'origine — tous livrés via G4/G7 (hook useTimeChartZoom + ZoomableTimeChart) : -->
+- [x] **Zoom molette** + **pan** — ✅ tous les graphs (G4/G7a-e)
+- [x] **Sélecteur de période depuis le graph** (1A/5A/10A/Max) — ✅ (G7e + Futur 5/10/20/30 ans)
+- [x] **Style/couleurs Google Finance** (gradient, grille discrète, crosshair) — ✅ (ZoomableTimeChart)
 
 ### G5 — Graph Futur : toutes les icônes d'événements, individuellement ✅ FAIT (2026-05-22)
 > Une pastille emoji par événement (fin de la fusion « A | B | C »), cliquable →
@@ -673,9 +667,10 @@ fichiers distincts si le moteur grossit.
 - [ ] Export PDF Future avec scénarios — reporté (1h+, builder dédié)
 - ❌ Dark/light mode toggle — **reporté** (app en `darkMode: 'class'` sans variables CSS light, re-thémer = gros chantier)
 - [x] **PWA install prompt customisé** ✅ 2026-05-21 (banner emerald discret en bas, dismiss 30 jours)
-- [ ] Loading skeleton pour les chartes Future pendant calcul (>1s)
+- 🟡 Loading skeleton chartes Future (>1s) — **partiel** : spinner « Recalcul en cours »
+  présent (FutureProjection.tsx) ; skeleton dédié non fait (faible valeur ajoutée).
 - [x] **Keyboard shortcuts Alt+1..9 pour switcher onglets** ✅ 2026-05-21
-- [ ] Vue mobile : optimiser Future tab (responsive)
+- [x] **Vue mobile : optimiser Future tab (responsive)** ✅ (Batch 14, 2026-05-22)
 - [x] **U5 Warning fixtures CSV manquant un symbole** ✅ 2026-05-21
 - [x] **Q8 Validation format clés API** ✅ 2026-05-21 (Anthropic `sk-ant-*`, Finnhub alphanum ≥15)
 

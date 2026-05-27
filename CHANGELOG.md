@@ -36,6 +36,11 @@ Lot de 4 merges (`3167a55`, `20abca8`, `4af08b2`, `6042fe9`) partis de `f257efb`
   en passant par `computeCurrentLiquidity` (`services/portfolio.ts`) comme source unique.
 - **Sécurité MEDIUM** : `eraContext` ne propage plus le corps HTTP brut dans le message
   d'erreur.
+- **CI verte — screenshots cross-platform** : les baselines Playwright générées sous Windows
+  divergeaient du runner Linux (rendu de police → ~3 % de pixels, > seuil 2 %), faisant échouer
+  le job E2E. Les tests `@visual` sont désormais exclus du gate CI (`npm run test:e2e:ci`,
+  `--grep-invert @visual`) et restent un filet de régression visuelle en local ; les tests
+  fonctionnels (smoke / navigation / KPI, platform-agnostic) continuent de garder la CI verte.
 
 ### Supprimé
 - **4 fonctions IA mortes** retirées de `services/claude.ts` : `getInvestmentAdvice`,

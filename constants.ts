@@ -1,28 +1,5 @@
 
-import { BudgetCategory, BudgetConfig, ProjectionConfig, User, RealEstateGoal, ChildGoal, Debt } from "./types";
-
-// ============================================================
-// CATÉGORIES PAR DÉFAUT — Génériques (non spécifiques à un profil)
-// ============================================================
-export const DEFAULT_CATEGORIES = [
-  "Loyer / Hypothèque", "Voyage", "Meubles & Déco", "Tech", "Costco / Vrac",
-  "Hydro-Québec", "Resto / Sorties", "Vape", "Épicerie", "Activités / Sorties",
-  "Internet / Wifi", "Assurance Habitation", "Streaming", "Alcool / SAQ",
-  "Beuh", "Pharmacie", "Produits Ménagers / Entretien", "Autre", "Hobby",
-  "Cadeaux", "Entretien auto", "Essence", "Vêtements", "Coiffeur", "Jeux Vidéo",
-  "Sport", "Finances", "Café / Snacks", "Stationnement"
-];
-
-export const CATEGORY_ICONS: Record<string, string> = {
-  "Loyer / Hypothèque": "🏠", "Voyage": "✈️", "Meubles & Déco": "🛋️",
-  "Tech": "💻", "Costco / Vrac": "📦", "Hydro-Québec": "⚡", "Resto / Sorties": "🍽️",
-  "Vape": "💨", "Épicerie": "🛒", "Activités / Sorties": "🎟️", "Internet / Wifi": "📶",
-  "Assurance Habitation": "🛡️", "Streaming": "📺", "Alcool / SAQ": "🍷",
-  "Beuh": "🥬", "Pharmacie": "💊", "Produits Ménagers / Entretien": "🧽",
-  "Autre": "📌", "Hobby": "🎨", "Cadeaux": "🎁", "Entretien auto": "🔧",
-  "Essence": "⛽", "Vêtements": "👕", "Coiffeur": "✂️", "Jeux Vidéo": "🎮",
-  "Sport": "🏋️", "Finances": "💰", "Café / Snacks": "☕", "Stationnement": "🅿️"
-};
+import { BudgetCategory, BudgetConfig, ProjectionConfig, User, RealEstateGoal, ChildGoal } from "./types";
 
 // ============================================================
 // PROFIL PAR DÉFAUT — Neutre, à configurer dans Settings

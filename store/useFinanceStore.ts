@@ -430,7 +430,8 @@ export const useFinanceStore = create<FinanceState>()(
                 return state;
             },
             partialize: (state) => {
-                const { apiKeys, activeTab, isPrivacyMode, lastProjection, pendingFocus, ...persistable } = state;
+                // Exclut les clés API et les états UI transitoires de la persistance.
+                const { apiKeys: _apiKeys, activeTab: _activeTab, isPrivacyMode: _isPrivacyMode, lastProjection: _lastProjection, pendingFocus: _pendingFocus, ...persistable } = state;
                 return persistable;
             },
         }

@@ -24,6 +24,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import { axe } from 'vitest-axe';
+import type * as AxeCore from 'axe-core';
 import type { AppState, BudgetConfig } from '../../types';
 
 // Mocks globaux : i18n et services réseau
@@ -51,14 +52,13 @@ vi.mock('../../services/finance', () => ({
 async function expectNoSeriousViolations(container: HTMLElement) {
     const results = await axe(container);
     const serious = (results.violations || []).filter(
-        (v: any) => v.impact === 'serious' || v.impact === 'critical'
+        (v: AxeCore.Result) => v.impact === 'serious' || v.impact === 'critical'
     );
     if (serious.length > 0) {
-        // eslint-disable-next-line no-console
-        console.error('Violations a11y sérieuses :', JSON.stringify(serious.map((v: any) => ({
+        console.error('Violations a11y sérieuses :', JSON.stringify(serious.map((v: AxeCore.Result) => ({
             id: v.id,
             description: v.description,
-            nodes: v.nodes.map((n: any) => n.html).slice(0, 3),
+            nodes: v.nodes.map((n: AxeCore.NodeResult) => n.html).slice(0, 3),
         })), null, 2));
     }
     expect(serious).toHaveLength(0);
@@ -69,7 +69,7 @@ const emptyConfig: BudgetConfig = {
     users: [
         { name: '', grossSalary: 0, netSalary: 0, color: '#10b981' },
         { name: '', grossSalary: 0, netSalary: 0, color: '#3b82f6' },
-    ] as any,
+    ],
     splitMode: '50/50',
 };
 

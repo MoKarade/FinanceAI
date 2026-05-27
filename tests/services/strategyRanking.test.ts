@@ -79,7 +79,7 @@ describe('rankStrategies', () => {
             { ...fireEarly, strategyName: 'Gestion A', kind: 'strategy' as const },
             { ...taxLow, strategyName: 'Gestion B', kind: 'strategy' as const },
         ];
-        const r = rankStrategies(list, 'wealth', { eligible: (s: any) => s.kind === 'strategy' });
+        const r = rankStrategies(list, 'wealth', { eligible: (s: RankableScenario & { kind?: string }) => s.kind === 'strategy' });
         // le stress (index 0, plus gros patrimoine) est EXCLU du classement
         expect(r.ranked).toHaveLength(2);
         expect(r.ranked.every((x) => x.strategyName !== 'Monde chanceux')).toBe(true);

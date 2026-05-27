@@ -2,7 +2,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { withCache, clearMarketDataCache, getCacheSize } from '../../services/marketData/cache';
-import { configureMarketDataProvider, getQuote, getProfile, getActiveProviderName, clearMarketDataCache as clearViaIndex } from '../../services/marketData';
+import { configureMarketDataProvider, getQuote, getActiveProviderName, clearMarketDataCache as clearViaIndex } from '../../services/marketData';
 import { FinnhubProvider } from '../../services/marketData/providers/finnhub';
 import { MarketDataError } from '../../services/marketData/types';
 

@@ -21,7 +21,16 @@ type RunScenarioFn = (
     enableMonteCarlo: boolean,
     delayPensions: boolean,
     mcIterationIndex: number,
-) => any;
+) => {
+    chartData: { NetWorth: number }[];
+    finalNetWorth: number;
+    minNetWorth: number;
+    estateNetWorth: number;
+    totalTaxesPaid: number;
+    totalGrowth: number;
+    totalExpenses: number;
+    shortfallRate: number;
+};
 
 export interface StrategyRobustness {
     strategy: AllocationStrategy;

@@ -4,17 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> Dernière session : 2026-05-25 — **État production final** :
+> Dernière session : 2026-05-27 — **État production final** :
 > - Cloudflare Access activé (login Google, session 24h) ✅
 > - Clés API chiffrées AES-256-GCM (services/secureKeyStore.ts) ✅
 > - Import CSV universel (100% local, parseBankCsv.ts) ✅
 > - Crypto pricing CoinGecko + Stock pricing Finnhub ✅
 > - Era integration dormante (MCP-only, UI retirée) ✅
-> Voir [AUTH_SETUP.md](AUTH_SETUP.md), [SECURITY_STRATEGY.md](SECURITY_STRATEGY.md). Tests 573/573 verts.
+> - G21 : Optimiseur de stratégie (strategySearch + drawdownOptimizer + bouton Annuler) ✅
+> - G22 : GuidedTour, ProjectionExplains, Settings en sous-sections, Budget+Planif fusionnés ✅
+> Voir [AUTH_SETUP.md](AUTH_SETUP.md), [SECURITY_STRATEGY.md](SECURITY_STRATEGY.md). Tests 742/742 verts.
 >
-> Session précédente : 2026-05-21 (cycles 17-18) — **mode test complet** +
-> **mode strict centralisation calculs** (Future = source unique).
-> Tests 573 → **596 verts**. App live sur https://www.hubperso.com.
+> Session précédente : 2026-05-25 (cycles 19-22) — refonte UX (G22) + optimiseur stratégie (G21).
+> Tests 596 → **742 verts**. App live sur https://www.hubperso.com.
 >
 > **Cycle 17-18 highlights** :
 > - Mode test fixtures (couple Alex/Sam, 5 actifs réels Yahoo, REEE/dettes/immo)
@@ -38,7 +39,7 @@
 | **Branche principale** | `main` |
 | **Dernière PR mergée** | **#116** (fix Lighthouse a11y 95→100 + SW cache) |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push main) |
-| **Tests** | **573/573 verts** (51 fichiers, ~30s en local) |
+| **Tests** | **742/742 verts** (73 fichiers, ~52s en local) |
 | **Typecheck** | Clean en mode strict |
 | **Build** | OK — bundle index ~528 KB gzip ~166 KB (vendor jspdf 391 KB lazy) |
 | **Schema store** | v6 (Zustand persist avec migrations v1→v6) |
@@ -160,6 +161,28 @@ de Future (badge "Scénario actif : {strategyName}" dans subtitle).
 **Tests** : 573 → 596 verts (+23 : 16 convergence + 5 nouveaux Tier 1-2
 + 2 nouveaux Tier 3). +131 tests manuels checklist.
 
+### G21 — Optimiseur de stratégie (cycles post-#116)
+
+- `services/projection/strategySearch.ts` : recherche automatique de la meilleure stratégie d'allocation parmi toutes les combinaisons
+- `services/projection/drawdownOptimizer.ts` : optimisation du calendrier de décaissement
+- `services/projection/strategyRanking.ts` / `strategyRobustness.ts` : classement et robustesse des stratégies
+- Bouton « Annuler » dans l'UI FutureProjection pour interrompre le calcul long
+- Bouton « Appliquer la stratégie gagnante » (bascule le scénario actif sur le résultat optimal)
+- Budget adaptatif : watchdog 15 min, estimation ~8ms/sim
+- `lastProjection.bestStrategyIdx` : index de la stratégie gagnante dans `allResults`
+
+### G22 — Refonte UX (cycles post-G21)
+
+| Item | Description |
+|---|---|
+| G22-N3 | Planning + Abonnements fusionnés dans Budget (sous-onglets via `BudgetWorkspace.tsx`) |
+| G22-N4 | Settings.tsx découpé en sous-sections (`settings/sections/` : Profile, Accounts, Integrations, Patrimoine, Backup) |
+| G22-N5 | Onglet Système fusionné dans Configuration (sous-onglet « Système & diagnostics ») |
+| G22-F1 | `components/projection/ProjectionExplains.tsx` : explorateur data-driven des données de projection |
+| G22-F4 | `components/tour/GuidedTour.tsx` : tutoriel guidé lancé après l'onboarding (relançable depuis Profil) |
+| G22-B1 | Valeur nette complète dans FutureProjection (placements reconstruits + cash) |
+| G22-B2 | Bascule directe Couple/Individuel depuis la sidebar |
+
 ### Phase 3 — Lighthouse prod fixes (PR #116)
 
 | PR | Description |
@@ -219,7 +242,7 @@ npm install --no-audit --no-fund  # PAS de package-lock.json committé (commit 9
 ### Commandes utiles
 ```bash
 npm run dev          # localhost:3000 — Vite HMR
-npm test             # vitest, doit rester 573/573
+npm test             # vitest, doit rester 742/742
 npm run typecheck    # tsc --noEmit, strict
 npm run build        # bundle prod (vérifie pas de regression de size)
 npm run lint         # eslint
@@ -235,6 +258,22 @@ npx tsx scripts/check-contrast.ts  # audit WCAG AA contrast
 5. Créer PR DRAFT via `mcp__github__create_pull_request` (base `main`, draft `true`)
 6. Attendre review/merge de l'user
 7. Ne PAS push à `main` directement, ne PAS merger soi-même
+
+### Onglets actifs (Alt+1..9)
+
+| Alt | Onglet | Notes |
+|---|---|---|
+| Alt+1 | Dashboard | |
+| Alt+2 | Transactions | |
+| Alt+3 | Budget | Inclut Planification et Abonnements (sous-onglets internes — G22-N3) |
+| Alt+4 | Dettes | Ancien Alt+4 était Planning, maintenant fusionné dans Budget |
+| Alt+5 | Investments | |
+| Alt+6 | Future | Sous-onglet « Explications » (ProjectionExplains — G22-F1) |
+| Alt+7 | Retraite | |
+| Alt+8 | Impôts | |
+| Alt+9 | Assistant | |
+
+Onglets retirés : Planning (fusionné dans Budget — G22-N3), Système (fusionné dans Configuration — G22-N5).
 
 ### Architecture clés
 - **Entry** : `index.tsx` → `App.tsx` (root) → `Layout.tsx` (sidebar + bottom nav)
@@ -275,7 +314,7 @@ npx tsx scripts/check-contrast.ts  # audit WCAG AA contrast
 | `docs/PROJECTION_OUTPUT_SCHEMA.md` | Inventaire exhaustif des champs `lastProjection.chartData[i]` (~50 champs) |
 | **`docs/AUTH_SETUP.md`** | **Auth Cloudflare Access — config réelle + journal de debug. À lire si l'accès au site casse** |
 | `docs/SECURITY_STRATEGY.md` | Analyse de menace + options auth (Option A = Cloudflare Access, implémentée 2026-05-22) |
-| `docs/HANDOVER.md` | Vue exhaustive du projet, historique complet PRs analysées |
+| `docs/ARCHITECTURE.md` | Vue exhaustive de la stack, topologie, store, pipeline IA |
 | `docs/ARCHITECTURE.md` | Stack détaillé, topologie, store, pipeline IA |
 | `docs/PROJECTION.md` | Moteur de projection (9 phases, 7 scénarios, MC) |
 | `docs/WIRING_NOTES.md` | Wirings inter-onglets (lastProjection, deep-links) |
@@ -297,7 +336,7 @@ npx tsx scripts/check-contrast.ts  # audit WCAG AA contrast
 3. **Si bugs trouvés** : fixer en priorité avant d'ouvrir un nouveau chantier.
 
 ### Si l'user veut une feature précise
-1. Lire `docs/HANDOVER.md` §1-2 pour comprendre le projet
+1. Lire `docs/ARCHITECTURE.md` pour comprendre la stack et la topologie
 2. Identifier le composant/service à toucher via `grep`/`find` (pas Read en aveugle)
 3. Suivre le workflow Git de la section 6
 4. Toujours respecter les 5 contraintes cardinales (§2)

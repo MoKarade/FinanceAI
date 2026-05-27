@@ -107,10 +107,11 @@ describe('computeMonthlyBudgetAggregates', () => {
   it('calcule income, expenses, savings (exclut Epargne)', () => {
     const config: BudgetConfig = {
       users: [
-        { name: 'Marc', netSalary: 4000, age: 34 } as any,
-        { name: 'Anna', netSalary: 3000, age: 32 } as any,
+        { name: 'Marc', netSalary: 4000, grossSalary: 0, color: '#0f0', age: 34 },
+        { name: 'Anna', netSalary: 3000, grossSalary: 0, color: '#3b4', age: 32 },
       ],
-    } as BudgetConfig;
+      splitMode: '50/50',
+    };
     const budget: BudgetCategory[] = [
       { name: 'Loyer', target: 1600, frequency: 'Monthly', nature: 'Logement' } as unknown as BudgetCategory,
       { name: 'Epicerie', target: 800, frequency: 'Monthly', nature: 'Alimentation' } as unknown as BudgetCategory,
@@ -123,7 +124,7 @@ describe('computeMonthlyBudgetAggregates', () => {
   });
 
   it('plafonne savings a 0 si les depenses depassent', () => {
-    const config = { users: [{ netSalary: 1000 } as any] } as unknown as BudgetConfig;
+    const config = { users: [{ name: '', netSalary: 1000, grossSalary: 0, color: '#0f0' }, { name: '', netSalary: 0, grossSalary: 0, color: '#f00' }], splitMode: '50/50' } as BudgetConfig;
     const budget: BudgetCategory[] = [
       { name: 'X', target: 2000, frequency: 'Monthly', nature: 'Autre' } as unknown as BudgetCategory,
     ];
@@ -143,6 +144,6 @@ describe('computeTotalDebt', () => {
 
   it('renvoie 0 pour un tableau vide ou indefini', () => {
     expect(computeTotalDebt([])).toBe(0);
-    expect(computeTotalDebt(undefined as any)).toBe(0);
+    expect(computeTotalDebt(undefined as unknown as Debt[])).toBe(0);
   });
 });

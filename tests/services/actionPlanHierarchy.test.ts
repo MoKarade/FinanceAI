@@ -22,7 +22,7 @@ const makePoints = (months: number, opts: { startPast?: number } = {}) => {
     return pts;
 };
 
-const child = (data: any[], parent: PlanBucket, label?: string): PlanBucket => {
+const child = (data: Record<string, unknown>[], parent: PlanBucket, label?: string): PlanBucket => {
     const kids = getChildBuckets(data, parent);
     return label ? kids.find((k) => k.label.includes(label)) ?? kids[0] : kids[0];
 };

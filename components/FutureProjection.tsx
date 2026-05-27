@@ -9,6 +9,7 @@ import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Refere
 import { BudgetConfig, BudgetCategory, Asset, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Transaction, Debt, ProjectionConfig, FinancialGoal, User, RegisteredAccountType } from '../types';
 import { fetchPortfolioHistory } from '../services/finance';
 import { calculateFutureProjection, SimulationParams } from '../services/projection';
+import { ProjectionResult, ProjectionChartPoint } from '../services/projection/types';
 import { runProjectionAsync, terminateProjectionWorker } from '../services/projection/runAsync';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { useShallow } from 'zustand/shallow';
@@ -22,7 +23,7 @@ import { ExpertTooltip, ClickableEventIcon, RefLineLabel } from './projection/Pr
 import { FutureDetailModal } from './projection/FutureDetailModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ProjectionControls } from './projection/ProjectionControls';
-import { rankStrategies, type OptimizeObjective } from '../services/projection/strategyRanking';
+import { rankStrategies, type OptimizeObjective, type RankableScenario } from '../services/projection/strategyRanking';
 import { usePastPortfolioHistory } from '../hooks/usePastPortfolioHistory';
 import { reconstructCashHistory } from '../services/history/reconstructCashHistory';
 import { reconstructRealEstateEquityByYear } from '../services/history/reconstructRealEstateEquity';
@@ -129,7 +130,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     }, [config]);
     const baseMonthlyExpenses = (baseNetAnnual / 12) - calculatedMonthlySavings;
 
-    const [liveCSVBalances, setLiveCSVBalances] = useState({ CELI: 0, REER: 0, NON_ENREG: 0, CRYPTO: 0, REEE: 0, TOTAL: 0, historicalRate: 0 });
+    const [liveCSVBalances, setLiveCSVBalances] = useState({ CELI: 0, CELIAPP: 0, REER: 0, NON_ENREG: 0, CRYPTO: 0, REEE: 0, TOTAL: 0, historicalRate: 0 });
 
     useEffect(() => {
         const fetchLiveTotals = async () => {
@@ -179,7 +180,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     }
                 }
 
-                setLiveCSVBalances({ CELI: celi, REER: reer, NON_ENREG: nonReg, CRYPTO: crypto, REEE: reee, TOTAL: total, historicalRate });
+                setLiveCSVBalances({ CELI: celi, CELIAPP: 0, REER: reer, NON_ENREG: nonReg, CRYPTO: crypto, REEE: reee, TOTAL: total, historicalRate });
         };
         fetchLiveTotals();
     }, [assets]);
@@ -274,7 +275,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     //  - Mode déterministe (runMC=false): synchrone + debounce 300ms (rapide ~150ms)
     //  - Mode MC (runMC=true): exécuté dans Web Worker via runProjectionAsync
     //    (libère le main thread pendant les 1.5-3s de calcul)
-    const syncResults = useDebouncedMemo<any>(() => {
+    const syncResults = useDebouncedMemo<ProjectionResult | null>(() => {
         if (runMC) return null; // Sera calculé par l'effect ci-dessous
         try {
             return calculateFutureProjection(params, false, selectedScenarioIdx);
@@ -298,7 +299,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         }
     }, [params, runMC, selectedScenarioIdx], 300);
 
-    const [asyncResults, setAsyncResults] = useState<any>(null);
+    const [asyncResults, setAsyncResults] = useState<ProjectionResult | null>(null);
     const [isComputing, setIsComputing] = useState(false);
 
     useEffect(() => {
@@ -326,7 +327,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     }, []);
 
     const results = runMC ? asyncResults : syncResults;
-    const { chartData = [], fireNumber = 0, aiNote = "", allResults = [] } = (results || {}) as any;
+    const { chartData = [] as ProjectionChartPoint[], fireNumber = 0, aiNote = "", allResults = [] as ProjectionResult[] } = results ?? {};
 
     // G21 C5 — « Appliquer » la stratégie gagnante de l'optimiseur aux paramètres
     // réels du Futur. Les leviers orthogonaux + âge/dépenses/coussin/Smith sont
@@ -336,10 +337,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const applied = applyConfigToSettings(config, projection, retirementGoal);
         setProjection(applied.projection);
         setRetirementGoal?.(applied.retirementGoal);
-        const idx = (allResults as any[]).findIndex(
-            (r) => r.strategy === applied.strategy && r.delayPensions === applied.delayPensions,
+        const idx = allResults.findIndex(
+            (r) => r.strategyName === applied.strategy && r.delayPensions === applied.delayPensions,
         );
-        const fallbackIdx = (allResults as any[]).findIndex((r) => r.strategy === applied.strategy);
+        const fallbackIdx = allResults.findIndex((r) => r.strategyName === applied.strategy);
         const targetIdx = idx >= 0 ? idx : fallbackIdx;
         if (targetIdx >= 0) setSelectedScenarioIdx(targetIdx);
     };
@@ -438,7 +439,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const DEDUP_GAP = 3;
         const lastLife: Record<string, number> = {};
         const lastFlow: Record<string, number> = {};
-        chartData.forEach((d: any) => {
+        chartData.forEach((d: ProjectionChartPoint) => {
             const meta = { monthIndex: d.monthIndex, year: d.year, age: d.age, dateLabel: d.dateLabel };
             let lifeSub = 0;
             (d.lifeEvents || []).forEach((label: string) => {
@@ -446,9 +447,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 lastLife[label] = d.monthIndex;
                 lifes.push({ ...meta, val: d.NetWorth, netWorth: d.NetWorth, label, subIdx: lifeSub++, index: lifeIdx++, kind: 'life' });
             });
-            if (d.flowEvents?.length > 0 && (d.FluxImpots < 0 || d.flowEvents.some((x: any) => x.includes('-')))) {
+            if ((d.flowEvents?.length ?? 0) > 0 && ((d.FluxImpots ?? 0) < 0 || (d.flowEvents || []).some((x: string) => x.includes('-')))) {
                 let flowSub = 0;
-                d.flowEvents.forEach((label: string) => {
+                (d.flowEvents || []).forEach((label: string) => {
                     if (lastFlow[label] != null && d.monthIndex - lastFlow[label] <= DEDUP_GAP) return;
                     lastFlow[label] = d.monthIndex;
                     flows.push({ ...meta, val: d.ImpotLatent || 0, netWorth: d.NetWorth, label, subIdx: flowSub++, index: flowIdx++, kind: 'flow' });
@@ -475,17 +476,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // pas les stress-tests. Repli : si rien n'est tagué (cache ancien), on classe tout.
     const ranking = useMemo(() => {
         const list = allResults || EMPTY_ARRAY;
-        const hasStrategyKind = list.some((r: any) => r?.kind === 'strategy');
-        return rankStrategies(list, optimizeObjective, hasStrategyKind ? { eligible: (s: any) => s?.kind === 'strategy' } : undefined);
+        const hasStrategyKind = list.some((r: ProjectionResult) => r?.kind === 'strategy');
+        return rankStrategies(list as RankableScenario[], optimizeObjective, hasStrategyKind ? { eligible: (s: RankableScenario) => s?.kind === 'strategy' } : undefined);
     }, [allResults, optimizeObjective]);
     const bestScenario = ranking.ranked[0] || null;
 
     // G4 — zoom molette / pan / sélecteur de période sur la courbe (remplace <Brush>).
     // A3 — consomme displayData (passé réel préfixé + futur projeté).
-    const zoom = useTimeChartZoom<any>(displayData);
+    const zoom = useTimeChartZoom<ProjectionChartPoint>(displayData as ProjectionChartPoint[]);
 
     // G5 — événement sélectionné (clic sur une pastille) → fiche détail.
-    const [detailPoint, setDetailPoint] = useState<any>(null);
+    const [detailPoint, setDetailPoint] = useState<ProjectionChartPoint | null>(null);
 
     // G10 — légende interactive : on stocke les séries MASQUÉES (le delta vs
     // défaut « tout visible »), persistées en localStorage. Même convention que
@@ -518,7 +519,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // « seul le clic sur un événement marche »). `lastHoverPointRef` (rempli par
     // le survol recharts) sert de repli. On ignore les glissers (pan) via la
     // distance parcourue depuis le mousedown.
-    const lastHoverPointRef = useRef<any>(null);
+    const lastHoverPointRef = useRef<ProjectionChartPoint | null>(null);
     const pointerDownPosRef = useRef<{ x: number; y: number } | null>(null);
     const handleChartContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
         const down = pointerDownPosRef.current;
@@ -527,7 +528,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         if (!data.length) return;
         const grid = zoom.containerEl.current?.querySelector('.recharts-cartesian-grid');
         const rect = grid?.getBoundingClientRect();
-        let point: any = null;
+        let point: ProjectionChartPoint | null | undefined = null;
         if (rect && rect.width > 0) {
             const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
             point = data[Math.round(frac * (data.length - 1))];
@@ -564,7 +565,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const shownFlowEvents = thinEvents(visibleFlowEvents, 24);
     const lastMonthIndex = chartData.length > 0 ? chartData[chartData.length - 1].monthIndex : 0;
     const idxForYears = (yrs: number) => {
-        const i = chartData.findIndex((d: any) => d.monthIndex >= yrs * 12);
+        const i = chartData.findIndex((d: ProjectionChartPoint) => d.monthIndex >= yrs * 12);
         return i === -1 ? chartData.length - 1 : i;
     };
 
@@ -629,7 +630,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 sous-vue pour rappeler quelle stratégie pilote Dashboard, Retraite,
                 Enfant. Masqué quand un seul scénario (AUTO_MARGINAL). */}
             {allResults.length > 1 && (() => {
-                const active = allResults[selectedScenarioIdx] as any;
+                const active = allResults[selectedScenarioIdx];
                 const isBest = active && bestScenario && active.strategyName === bestScenario.strategyName;
                 return (
                     <div
@@ -788,8 +789,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         <ComposedChart
                             data={zoom.visibleData}
                             margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
-                            onMouseMove={(s: any) => { const p = s?.activePayload?.[0]?.payload; if (p) lastHoverPointRef.current = p; }}
-                            onClick={(s: any) => { const p = s?.activePayload?.[0]?.payload; if (p) setDetailPoint(p); }}
+                            onMouseMove={((s: { activePayload?: Array<{ payload: ProjectionChartPoint }> }) => { const p = s?.activePayload?.[0]?.payload; if (p) lastHoverPointRef.current = p; }) as unknown as (nextState: unknown, event: unknown) => void}
+                            onClick={((s: { activePayload?: Array<{ payload: ProjectionChartPoint }> }) => { const p = s?.activePayload?.[0]?.payload; if (p) setDetailPoint(p); }) as unknown as (nextState: unknown, event: unknown) => void}
                         >
                             <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
 
@@ -798,9 +799,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 stroke="#666"
                                 tick={{fontSize: 10}}
                                 minTickGap={50}
-                                tickFormatter={(val) => {
-                                    const match = displayData.find((d:any) => d.monthIndex === val);
-                                    return match ? `${match.year}` : val;
+                                tickFormatter={(val: number) => {
+                                    const match = displayData.find((d: ProjectionChartPoint) => d.monthIndex === val);
+                                    return match ? `${match.year}` : `${val}`;
                                 }}
                             />
 
@@ -815,7 +816,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             <ReferenceLine y={0} stroke="#444" strokeWidth={2} />
                             {isVisible('aujourdhui') && <ReferenceLine x={todayMonthIndex} stroke="rgba(255,255,255,0.6)" strokeDasharray="5 5" label={<RefLineLabel value="Aujourd'hui" color="#ffffff" />} />}
 
-                            <Tooltip content={<ExpertTooltip isPrivacyMode={isPrivacyMode} userName1={config.users[0]?.name} userName2={config.users[1]?.name} />} />
+                            <Tooltip content={<ExpertTooltip userName1={config.users[0]?.name} userName2={config.users[1]?.name} />} />
                             {isVisible('fire') && <ReferenceLine y={fireNumber} stroke="#f97316" strokeDasharray="5 5" label={<RefLineLabel value="Objectif FIRE" color="#f97316" />} />}
 
                             {isVisible('Liquidites') && <Area type="monotone" dataKey="Liquidites" stackId="1" stroke="#4b5563" fill="#4b5563" name="Cash" isAnimationActive={false} />}
@@ -852,7 +853,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                         <ClickableEventIcon
                                             kind="life"
                                             payload={evt}
-                                            onSelect={(ev: { monthIndex: number }) => setDetailPoint(chartData.find((d: any) => d.monthIndex === ev.monthIndex) || ev)}
+                                            onSelect={() => { const found = chartData.find((d: ProjectionChartPoint) => d.monthIndex === evt.monthIndex); if (found) setDetailPoint(found); }}
                                         />
                                     }
                                 />
@@ -868,7 +869,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                         <ClickableEventIcon
                                             kind="flow"
                                             payload={evt}
-                                            onSelect={(ev: { monthIndex: number }) => setDetailPoint(chartData.find((d: any) => d.monthIndex === ev.monthIndex) || ev)}
+                                            onSelect={() => { const found = chartData.find((d: ProjectionChartPoint) => d.monthIndex === evt.monthIndex); if (found) setDetailPoint(found); }}
                                         />
                                     }
                                 />

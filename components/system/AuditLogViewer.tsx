@@ -28,7 +28,11 @@ export const AuditLogViewer: React.FC = () => {
     const [confirmClear, setConfirmClear] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
 
+    // refreshKey force le recalcul volontairement (incrémenté par le bouton Rafraîchir et handleClear).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const entries = useMemo(() => getAuditLog(), [refreshKey]);
+    // refreshKey force le recalcul volontairement (incrémenté par le bouton Rafraîchir et handleClear).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const stats = useMemo(() => getAuditStats(), [refreshKey]);
     const allFields = useMemo(() => Array.from(new Set(entries.map(e => e.field))).sort(), [entries]);
 

@@ -33,7 +33,7 @@ function toFinnhubSymbol(ours: string): string {
     return ours;
 }
 
-async function finnhubFetch(path: string, apiKey: string): Promise<any> {
+async function finnhubFetch(path: string, apiKey: string): Promise<Record<string, unknown>> {
     // Sprint 3 SH4 (sécurité) — Passage de la clé Finnhub depuis URL query string
     // (token=xxx, visible dans Network tab + Referer header + historique nav)
     // vers le header X-Finnhub-Token. Finnhub supporte ce header officiellement.
@@ -55,7 +55,7 @@ async function finnhubFetch(path: string, apiKey: string): Promise<any> {
         if (!res.ok) {
             throw new MarketDataError(`Finnhub erreur ${res.status}`, 'UNKNOWN', 'finnhub');
         }
-        return await res.json();
+        return await res.json() as Record<string, unknown>;
     } catch (e) {
         if (e instanceof MarketDataError) throw e;
         if (e instanceof DOMException && e.name === 'AbortError') {
@@ -81,14 +81,18 @@ export class FinnhubProvider implements MarketDataProvider {
         try {
             const data = await finnhubFetch(`/quote?symbol=${encodeURIComponent(fnSymbol)}`, this.apiKey);
             // Finnhub renvoie { c: current, d: change, dp: changePercent, t: timestamp }
-            if (!data || typeof data.c !== 'number' || data.c === 0) return null;
+            const c = data.c as number | undefined;
+            const d = data.d as number | undefined;
+            const dp = data.dp as number | undefined;
+            const t = data.t as number | undefined;
+            if (!data || typeof c !== 'number' || c === 0) return null;
             return {
                 symbol,
-                price: data.c,
-                change: data.d ?? 0,
-                changePercent: data.dp ?? 0,
+                price: c,
+                change: d ?? 0,
+                changePercent: dp ?? 0,
                 currency: this.inferCurrency(symbol),
-                timestamp: (data.t ?? Math.floor(Date.now() / 1000)) * 1000,
+                timestamp: (t ?? Math.floor(Date.now() / 1000)) * 1000,
             };
         } catch (e) {
             console.warn(`[Finnhub] getQuote(${symbol}) failed:`, e);
@@ -105,14 +109,20 @@ export class FinnhubProvider implements MarketDataProvider {
                 `/stock/candle?symbol=${encodeURIComponent(fnSymbol)}&resolution=D&from=${fromTs}&to=${toTs}`,
                 this.apiKey,
             );
-            if (!data || data.s !== 'ok' || !Array.isArray(data.t)) return [];
-            return data.t.map((ts: number, i: number) => ({
+            const tArr = data.t as number[] | undefined;
+            const cArr = data.c as number[] | undefined;
+            const oArr = data.o as number[] | undefined;
+            const hArr = data.h as number[] | undefined;
+            const lArr = data.l as number[] | undefined;
+            const vArr = data.v as number[] | undefined;
+            if (!data || data.s !== 'ok' || !Array.isArray(tArr)) return [];
+            return tArr.map((ts: number, i: number) => ({
                 date: new Date(ts * 1000).toISOString().slice(0, 10),
-                close: data.c[i],
-                open: data.o?.[i],
-                high: data.h?.[i],
-                low: data.l?.[i],
-                volume: data.v?.[i],
+                close: cArr?.[i] ?? 0,
+                open: oArr?.[i],
+                high: hArr?.[i],
+                low: lArr?.[i],
+                volume: vArr?.[i],
             }));
         } catch (e) {
             console.warn(`[Finnhub] getHistory(${symbol}) failed:`, e);
@@ -124,16 +134,20 @@ export class FinnhubProvider implements MarketDataProvider {
         const fnSymbol = toFinnhubSymbol(symbol);
         try {
             const data = await finnhubFetch(`/stock/profile2?symbol=${encodeURIComponent(fnSymbol)}`, this.apiKey);
-            if (!data || !data.name) return null;
+            const name = data.name as string | undefined;
+            const finnhubIndustry = data.finnhubIndustry as string | undefined;
+            const country = data.country as string | undefined;
+            const currency = data.currency as string | undefined;
+            if (!data || !name) return null;
             return {
                 symbol,
-                name: data.name,
-                sector: this.sectorFromFinnhub(data.finnhubIndustry),
-                region: this.regionFromCountry(data.country),
+                name,
+                sector: this.sectorFromFinnhub(finnhubIndustry),
+                region: this.regionFromCountry(country),
                 dividendYield: 0, // Finnhub profile2 ne renvoie pas le yield, à enrichir via /stock/metric
-                currency: data.currency ?? this.inferCurrency(symbol),
-                country: data.country,
-                industry: data.finnhubIndustry,
+                currency: currency ?? this.inferCurrency(symbol),
+                country,
+                industry: finnhubIndustry,
             };
         } catch (e) {
             console.warn(`[Finnhub] getProfile(${symbol}) failed:`, e);

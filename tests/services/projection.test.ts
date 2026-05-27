@@ -6,6 +6,7 @@ import type {
     RetirementGoal,
     Debt,
 } from '../../types';
+import type { ProjectionResult, ProjectionChartPoint } from '../../services/projection/types';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -95,8 +96,8 @@ const makeParams = (overrides: Partial<SimulationParams> = {}): SimulationParams
 
 describe('calculateFutureProjection', () => {
     it('renvoie 11 scénarios dans allResults (6 stress/base + 5 variantes de gestion C3)', () => {
-        const result = calculateFutureProjection(makeParams()) as any;
-        const scenarios = result.allResults as any[];
+        const result: ProjectionResult = calculateFutureProjection(makeParams());
+        const scenarios = result.allResults as ProjectionResult[];
         expect(Array.isArray(scenarios)).toBe(true);
         expect(scenarios).toHaveLength(11);
         const types = scenarios.map(r => r.stratType);
@@ -108,35 +109,35 @@ describe('calculateFutureProjection', () => {
         );
         // C3 — 5 façons de gérer comparables (kind 'strategy', toutes sous le monde BASE).
         // AUTO_MARGINAL, PRIO_CELI, PRIO_REER, MELTDOWN_REER, PRIO_CELI_NO_RAP.
-        expect(scenarios.filter(r => r.kind === 'strategy')).toHaveLength(5);
+        expect(scenarios.filter(r => (r as ProjectionResult & { kind?: string }).kind === 'strategy')).toHaveLength(5);
     });
 
     it('G21 C5 — appliedAssetLocation augmente le patrimoine (bonus rendement mélangé)', () => {
         // Le bonus s'applique à TOUS les comptes (pas seulement NonReg, que le moteur
         // draine) → l'effet ne s'évapore plus. Patrimoine successoral strictement supérieur.
-        const base = calculateFutureProjection(makeParams()) as any;
-        const withAL = calculateFutureProjection(makeParams({
+        const base: ProjectionResult = calculateFutureProjection(makeParams());
+        const withAL: ProjectionResult = calculateFutureProjection(makeParams({
             projection: makeProjection({ appliedAssetLocation: true }),
-        })) as any;
-        expect(withAL.allResults[0].estateNetWorth).toBeGreaterThan(base.allResults[0].estateNetWorth);
+        }));
+        expect(withAL.allResults![0].estateNetWorth).toBeGreaterThan(base.allResults![0].estateNetWorth!);
     });
 
     it('G21 C5 — appliedContributionOrder modifie la répartition (levier threadé)', () => {
-        const celi = calculateFutureProjection(makeParams({
+        const celi: ProjectionResult = calculateFutureProjection(makeParams({
             projection: makeProjection({ appliedContributionOrder: 'CELI_FIRST' }),
-        })) as any;
-        const reer = calculateFutureProjection(makeParams({
+        }));
+        const reer: ProjectionResult = calculateFutureProjection(makeParams({
             projection: makeProjection({ appliedContributionOrder: 'REER_FIRST' }),
-        })) as any;
+        }));
         // Le levier est threadé jusqu'au moteur : les deux ordres produisent des
         // trajectoires distinctes (fiscalité différente) → patrimoine successoral différent.
-        expect(reer.allResults[0].estateNetWorth).not.toBe(celi.allResults[0].estateNetWorth);
+        expect(reer.allResults![0].estateNetWorth).not.toBe(celi.allResults![0].estateNetWorth);
     });
 
     it('chaque scénario a un chartData non vide proche de years*12 entrées', () => {
         const params = makeParams();
-        const result = calculateFutureProjection(params) as any;
-        const scenarios = result.allResults as any[];
+        const result: ProjectionResult = calculateFutureProjection(params);
+        const scenarios = result.allResults as ProjectionResult[];
         const expectedMonths = (params.projection.years || 5) * 12;
         for (const r of scenarios) {
             expect(r.chartData.length).toBeGreaterThan(expectedMonths - 2);
@@ -145,16 +146,16 @@ describe('calculateFutureProjection', () => {
     });
 
     it('gainVsAuto vaut 0 pour le scénario BASE', () => {
-        const result = calculateFutureProjection(makeParams()) as any;
-        const scenarios = result.allResults as any[];
+        const result: ProjectionResult = calculateFutureProjection(makeParams());
+        const scenarios = result.allResults as ProjectionResult[];
         const base = scenarios.find(r => r.stratType === 'BASE');
         expect(base).toBeDefined();
-        expect(base.gainVsAuto).toBe(0);
+        expect(base!.gainVsAuto).toBe(0);
     });
 
     it('estateNetWorth est numérique non-NaN dans tous les scénarios', () => {
-        const result = calculateFutureProjection(makeParams()) as any;
-        const scenarios = result.allResults as any[];
+        const result: ProjectionResult = calculateFutureProjection(makeParams());
+        const scenarios = result.allResults as ProjectionResult[];
         for (const r of scenarios) {
             expect(typeof r.estateNetWorth).toBe('number');
             expect(Number.isNaN(r.estateNetWorth)).toBe(false);
@@ -162,28 +163,28 @@ describe('calculateFutureProjection', () => {
         }
     });
 
-    it('WINDFALL augmente le patrimoine vs BASE (héritage 250k $)', () => {
-        const result = calculateFutureProjection(makeParams()) as any;
-        const scenarios = result.allResults as any[];
+    it('WINDFALL augmente le patrimoine vs BASE (héritage 250k $)', () => {
+        const result: ProjectionResult = calculateFutureProjection(makeParams());
+        const scenarios = result.allResults as ProjectionResult[];
         const base = scenarios.find(r => r.stratType === 'BASE');
         const windfall = scenarios.find(r => r.stratType === 'WINDFALL');
-        expect(windfall.estateNetWorth).toBeGreaterThan(base.estateNetWorth);
+        expect(windfall!.estateNetWorth).toBeGreaterThan(base!.estateNetWorth!);
     });
 
     it('HYPER_INFLATION dégrade le patrimoine vs BASE (en réel)', () => {
-        const result = calculateFutureProjection(makeParams()) as any;
-        const scenarios = result.allResults as any[];
+        const result: ProjectionResult = calculateFutureProjection(makeParams());
+        const scenarios = result.allResults as ProjectionResult[];
         const base = scenarios.find(r => r.stratType === 'BASE');
         const hyper = scenarios.find(r => r.stratType === 'HYPER_INFLATION');
         // L'inflation 5.5% érode la valeur réelle nette même avec rendements similaires
-        expect(hyper.estateNetWorth).toBeLessThan(base.estateNetWorth);
+        expect(hyper!.estateNetWorth).toBeLessThan(base!.estateNetWorth!);
     });
 
     it('patrimoine positif avec cash + revenus normaux et 5 ans d\'horizon', () => {
-        const result = calculateFutureProjection(makeParams()) as any;
-        const scenarios = result.allResults as any[];
+        const result: ProjectionResult = calculateFutureProjection(makeParams());
+        const scenarios = result.allResults as ProjectionResult[];
         const base = scenarios.find(r => r.stratType === 'BASE');
-        expect(base.estateNetWorth).toBeGreaterThan(0);
+        expect(base!.estateNetWorth).toBeGreaterThan(0);
     });
 
     it('ne crash pas avec des dettes en input', () => {
@@ -205,8 +206,8 @@ describe('calculateFutureProjection', () => {
     });
 
     it('shortfallRate ∈ [0, 1] dans tous les scénarios', () => {
-        const result = calculateFutureProjection(makeParams()) as any;
-        const scenarios = result.allResults as any[];
+        const result: ProjectionResult = calculateFutureProjection(makeParams());
+        const scenarios = result.allResults as ProjectionResult[];
         for (const r of scenarios) {
             expect(r.shortfallRate).toBeGreaterThanOrEqual(0);
             expect(r.shortfallRate).toBeLessThanOrEqual(1);
@@ -214,10 +215,10 @@ describe('calculateFutureProjection', () => {
     });
 
     it('chaque entrée de chartData expose NetWorth numérique', () => {
-        const result = calculateFutureProjection(makeParams()) as any;
-        const scenarios = result.allResults as any[];
+        const result: ProjectionResult = calculateFutureProjection(makeParams());
+        const scenarios = result.allResults as ProjectionResult[];
         const base = scenarios.find(r => r.stratType === 'BASE');
-        for (const d of base.chartData) {
+        for (const d of base!.chartData) {
             expect(typeof d.NetWorth).toBe('number');
             expect(Number.isFinite(d.NetWorth)).toBe(true);
         }
@@ -239,8 +240,8 @@ describe('calculateFutureProjection', () => {
                 ] as BudgetConfig['users'],
             },
         };
-        const result = calculateFutureProjection(makeParams(zeroIncome)) as any;
-        const scenarios = result.allResults as any[];
+        const result: ProjectionResult = calculateFutureProjection(makeParams(zeroIncome));
+        const scenarios = result.allResults as ProjectionResult[];
         expect(scenarios).toHaveLength(11);
         for (const r of scenarios) {
             expect(Number.isFinite(r.estateNetWorth)).toBe(true);
@@ -250,71 +251,71 @@ describe('calculateFutureProjection', () => {
     // Cycle 4 — W5.x conteneurs câblés au moteur
     describe('W5.x conteneurs câblés', () => {
         it('Assurances: primes mensuelles augmentent les dépenses (patrimoine final plus bas)', () => {
-            const noIns = calculateFutureProjection(makeParams({ projection: makeProjection({ years: 20 }) })) as any;
-            const withIns = calculateFutureProjection(makeParams({
+            const noIns: ProjectionResult = calculateFutureProjection(makeParams({ projection: makeProjection({ years: 20 }) }));
+            const withIns: ProjectionResult = calculateFutureProjection(makeParams({
                 projection: makeProjection({ years: 20 }),
                 insurancePolicies: [
                     { id: 'p1', kind: 'life-term', monthlyPremium: 200, faceAmount: 500000 },
                     { id: 'p2', kind: 'disability-lt', monthlyPremium: 150 },
                 ],
-            } as any)) as any;
-            const noBase = noIns.allResults.find((s: any) => s.stratType === 'BASE');
-            const insBase = withIns.allResults.find((s: any) => s.stratType === 'BASE');
-            expect(insBase.estateNetWorth).toBeLessThan(noBase.estateNetWorth);
+            }));
+            const noBase = noIns.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const insBase = withIns.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            expect(insBase!.estateNetWorth).toBeLessThan(noBase!.estateNetWorth!);
         });
 
         it('Véhicules cycliques: dépense ponctuelle tous les N ans', () => {
-            const result = calculateFutureProjection(makeParams({
+            const result: ProjectionResult = calculateFutureProjection(makeParams({
                 projection: makeProjection({ years: 20 }),
                 vehicleReplacements: [{ id: 'v1', cyclYears: 8, costEstimate: 35000 }],
-            } as any)) as any;
+            }));
             expect(Number.isFinite(result.estateNetWorth)).toBe(true);
         });
 
         it('Rénovation planifiée: ne crashe pas si date hors fenêtre', () => {
-            const result = calculateFutureProjection(makeParams({
+            const result: ProjectionResult = calculateFutureProjection(makeParams({
                 projection: makeProjection({ years: 5 }),
                 majorRenovations: [{ id: 'r1', date: '2030-06-01', cost: 50000, description: 'cuisine' }],
-            } as any)) as any;
+            }));
             expect(Number.isFinite(result.estateNetWorth)).toBe(true);
         });
 
         it('Don charitable: ajoute aux dépenses mais réduit l\'impôt (effet net négatif modeste)', () => {
-            const noCharity = calculateFutureProjection(makeParams({ projection: makeProjection({ years: 20 }) })) as any;
-            const withCharity = calculateFutureProjection(makeParams({
+            const noCharity: ProjectionResult = calculateFutureProjection(makeParams({ projection: makeProjection({ years: 20 }) }));
+            const withCharity: ProjectionResult = calculateFutureProjection(makeParams({
                 projection: makeProjection({ years: 20 }),
                 charitableGoals: [{ id: 'c1', annualAmount: 5000 }],
-            } as any)) as any;
-            const noBase = noCharity.allResults.find((s: any) => s.stratType === 'BASE');
-            const chBase = withCharity.allResults.find((s: any) => s.stratType === 'BASE');
+            }));
+            const noBase = noCharity.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const chBase = withCharity.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
             // Le don sort du patrimoine mais le crédit fiscal compense partiellement
-            expect(chBase.estateNetWorth).toBeLessThan(noBase.estateNetWorth);
+            expect(chBase!.estateNetWorth).toBeLessThan(noBase!.estateNetWorth!);
         });
 
         it('Immeuble locatif: NOI positif augmente le revenu et le patrimoine', () => {
-            const noRental = calculateFutureProjection(makeParams({ projection: makeProjection({ years: 20 }) })) as any;
-            const withRental = calculateFutureProjection(makeParams({
+            const noRental: ProjectionResult = calculateFutureProjection(makeParams({ projection: makeProjection({ years: 20 }) }));
+            const withRental: ProjectionResult = calculateFutureProjection(makeParams({
                 projection: makeProjection({ years: 20 }),
                 rentalProperties: [{
                     id: 'rp1', name: 'Triplex',
                     purchasePrice: 500000, currentValue: 500000, mortgageBalance: 300000,
                     mortgageRate: 5.5, monthlyRent: 4500, vacancyPct: 5, monthlyExpenses: 1500,
                 }],
-            } as any)) as any;
-            const noBase = noRental.allResults.find((s: any) => s.stratType === 'BASE');
-            const rpBase = withRental.allResults.find((s: any) => s.stratType === 'BASE');
+            }));
+            const noBase = noRental.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const rpBase = withRental.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
             // NOI net positif (4500*0.95 - 1500 = 2775/mois - tax 45%) > 0 → patrimoine plus élevé
-            expect(rpBase.estateNetWorth).toBeGreaterThan(noBase.estateNetWorth);
+            expect(rpBase!.estateNetWorth).toBeGreaterThan(noBase!.estateNetWorth!);
         });
     });
 
     // D2.9 — Inflation par poste
     describe('Inflation par poste', () => {
         it('quand activée et que tous les postes valent 2%, le résultat est proche de l\'inflation globale 2%', () => {
-            const flat = calculateFutureProjection(makeParams({
+            const flat: ProjectionResult = calculateFutureProjection(makeParams({
                 projection: makeProjection({ years: 10, inflationRate: 2 })
-            })) as any;
-            const perCat = calculateFutureProjection(makeParams({
+            }));
+            const perCat: ProjectionResult = calculateFutureProjection(makeParams({
                 projection: makeProjection({
                     years: 10,
                     inflationRate: 2,
@@ -322,23 +323,23 @@ describe('calculateFutureProjection', () => {
                     inflationHousing: 2, inflationFood: 2, inflationTransport: 2,
                     inflationHealth: 2, inflationLeisure: 2, inflationOther: 2,
                 })
-            })) as any;
-            const flatBase = flat.allResults.find((s: any) => s.stratType === 'BASE');
-            const perBase = perCat.allResults.find((s: any) => s.stratType === 'BASE');
+            }));
+            const flatBase = flat.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const perBase = perCat.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
             // Tolérance: le bonus santé +0.5% sur la part 5% n'est qu'à 75+, hors fenêtre 10 ans
-            expect(Math.abs(perBase.estateNetWorth - flatBase.estateNetWorth)).toBeLessThan(flatBase.estateNetWorth * 0.05);
+            expect(Math.abs(perBase!.estateNetWorth! - flatBase!.estateNetWorth!)).toBeLessThan(flatBase!.estateNetWorth! * 0.05);
         });
 
         it('logement 6% (vs 4% défaut) augmente le multiplicateur des dépenses → patrimoine plus faible', () => {
-            const low = calculateFutureProjection(makeParams({
+            const low: ProjectionResult = calculateFutureProjection(makeParams({
                 projection: makeProjection({ years: 20, usePerCategoryInflation: true, inflationHousing: 4 })
-            })) as any;
-            const high = calculateFutureProjection(makeParams({
+            }));
+            const high: ProjectionResult = calculateFutureProjection(makeParams({
                 projection: makeProjection({ years: 20, usePerCategoryInflation: true, inflationHousing: 6 })
-            })) as any;
-            const lowBase = low.allResults.find((s: any) => s.stratType === 'BASE');
-            const highBase = high.allResults.find((s: any) => s.stratType === 'BASE');
-            expect(highBase.estateNetWorth).toBeLessThan(lowBase.estateNetWorth);
+            }));
+            const lowBase = low.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const highBase = high.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            expect(highBase!.estateNetWorth).toBeLessThan(lowBase!.estateNetWorth!);
         });
     });
 
@@ -348,26 +349,26 @@ describe('calculateFutureProjection', () => {
             const baseProj = makeProjection({ years: 20, usEquityShareCeli: 0 });
             const dragProj = makeProjection({ years: 20, usEquityShareCeli: 100, usEquityDividendYield: 2 });
 
-            const noDrag = calculateFutureProjection(makeParams({ projection: baseProj })) as any;
-            const drag = calculateFutureProjection(makeParams({ projection: dragProj })) as any;
+            const noDrag: ProjectionResult = calculateFutureProjection(makeParams({ projection: baseProj }));
+            const drag: ProjectionResult = calculateFutureProjection(makeParams({ projection: dragProj }));
 
-            const noBase = noDrag.allResults.find((s: any) => s.stratType === 'BASE');
-            const drBase = drag.allResults.find((s: any) => s.stratType === 'BASE');
+            const noBase = noDrag.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const drBase = drag.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
 
             // Drag 100% × 2% × 15% = 0.30 pp annuels sur le CELI → patrimoine final plus bas
-            expect(drBase.estateNetWorth).toBeLessThan(noBase.estateNetWorth);
+            expect(drBase!.estateNetWorth).toBeLessThan(noBase!.estateNetWorth!);
         });
 
         it('share=0 ne produit aucun drag (idempotent vs valeur défaut)', () => {
-            const r1 = calculateFutureProjection(makeParams({
+            const r1: ProjectionResult = calculateFutureProjection(makeParams({
                 projection: makeProjection({ years: 10, usEquityShareCeli: 0 })
-            })) as any;
-            const r2 = calculateFutureProjection(makeParams({
+            }));
+            const r2: ProjectionResult = calculateFutureProjection(makeParams({
                 projection: makeProjection({ years: 10 })
-            })) as any;
-            const b1 = r1.allResults.find((s: any) => s.stratType === 'BASE');
-            const b2 = r2.allResults.find((s: any) => s.stratType === 'BASE');
-            expect(b1.estateNetWorth).toBe(b2.estateNetWorth);
+            }));
+            const b1 = r1.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const b2 = r2.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            expect(b1!.estateNetWorth).toBe(b2!.estateNetWorth);
         });
     });
 
@@ -377,14 +378,15 @@ describe('calculateFutureProjection', () => {
             const params = makeParams({
                 projection: makeProjection({ years: 10 }),
             });
-            const result = calculateFutureProjection(params, /* runMC */ true) as any;
+            const result: ProjectionResult = calculateFutureProjection(params, /* runMC */ true);
             expect(result.expertMetrics).toBeTruthy();
-            expect(typeof result.expertMetrics.sequenceRiskPct).toBe('number');
-            expect(typeof result.expertMetrics.worstDecadeDrawdown).toBe('number');
-            expect(result.expertMetrics.sequenceRiskPct).toBeGreaterThanOrEqual(0);
-            expect(result.expertMetrics.sequenceRiskPct).toBeLessThanOrEqual(100);
-            expect(result.expertMetrics.worstDecadeDrawdown).toBeGreaterThanOrEqual(0);
-            expect(result.expertMetrics.worstDecadeDrawdown).toBeLessThanOrEqual(1);
+            const em = result.expertMetrics as { sequenceRiskPct: number; worstDecadeDrawdown: number; criticalDecadeStartYear: number; criticalDecadeEndYear: number };
+            expect(typeof em.sequenceRiskPct).toBe('number');
+            expect(typeof em.worstDecadeDrawdown).toBe('number');
+            expect(em.sequenceRiskPct).toBeGreaterThanOrEqual(0);
+            expect(em.sequenceRiskPct).toBeLessThanOrEqual(100);
+            expect(em.worstDecadeDrawdown).toBeGreaterThanOrEqual(0);
+            expect(em.worstDecadeDrawdown).toBeLessThanOrEqual(1);
         });
 
         it('expose la fenêtre décennie critique (start/end year) cohérente avec targetAge', () => {
@@ -396,13 +398,13 @@ describe('calculateFutureProjection', () => {
                 retirementGoal: makeRetirementGoal({ targetAge: 60 }),
                 projection: makeProjection({ years: 30 }),
             });
-            const r = calculateFutureProjection(params, true) as any;
-            const m = r.expertMetrics;
+            const r: ProjectionResult = calculateFutureProjection(params, true);
+            const m = r.expertMetrics as { criticalDecadeStartYear: number; criticalDecadeEndYear: number } | undefined;
             // Décennie critique = [retraite-5, retraite+5] = [15, 25] années après start
-            expect(m.criticalDecadeStartYear).toBeGreaterThanOrEqual(14);
-            expect(m.criticalDecadeStartYear).toBeLessThanOrEqual(16);
-            expect(m.criticalDecadeEndYear).toBeGreaterThanOrEqual(24);
-            expect(m.criticalDecadeEndYear).toBeLessThanOrEqual(26);
+            expect(m?.criticalDecadeStartYear).toBeGreaterThanOrEqual(14);
+            expect(m?.criticalDecadeStartYear).toBeLessThanOrEqual(16);
+            expect(m?.criticalDecadeEndYear).toBeGreaterThanOrEqual(24);
+            expect(m?.criticalDecadeEndYear).toBeLessThanOrEqual(26);
         });
     });
 
@@ -420,17 +422,17 @@ describe('calculateFutureProjection', () => {
         };
 
         it('avec smile curve ON, les dépenses ne sont pas identiques à sans (impact mesurable)', () => {
-            const off = calculateFutureProjection(buildLongRetirement(false)) as any;
-            const on = calculateFutureProjection(buildLongRetirement(true)) as any;
-            const offBase = off.allResults.find((s: any) => s.stratType === 'BASE');
-            const onBase = on.allResults.find((s: any) => s.stratType === 'BASE');
+            const off: ProjectionResult = calculateFutureProjection(buildLongRetirement(false));
+            const on: ProjectionResult = calculateFutureProjection(buildLongRetirement(true));
+            const offBase = off.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const onBase = on.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
             // Smile ON majore les go-go years → dépenses plus élevées tôt
-            expect(offBase.estateNetWorth).not.toBe(onBase.estateNetWorth);
+            expect(offBase!.estateNetWorth).not.toBe(onBase!.estateNetWorth);
         });
 
         it('le flag useSmileCurve est respecté (par défaut OFF, multiplicateur = 1)', () => {
             const params = buildLongRetirement(false);
-            const result = calculateFutureProjection(params) as any;
+            const result: ProjectionResult = calculateFutureProjection(params);
             expect(Number.isFinite(result.estateNetWorth)).toBe(true);
         });
     });
@@ -450,20 +452,20 @@ describe('calculateFutureProjection', () => {
         };
 
         it('sans pension DB, le revenu retraite reflète uniquement RRQ+PSV', () => {
-            const r = calculateFutureProjection(buildAtRetirement({})) as any;
-            const base = r.allResults.find((s: any) => s.stratType === 'BASE');
-            const post65 = base.chartData.filter((d: any) => d.age >= 65);
+            const r: ProjectionResult = calculateFutureProjection(buildAtRetirement({}));
+            const base = r.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const post65 = base!.chartData.filter((d: ProjectionChartPoint) => (d.age ?? 0) >= 65);
             expect(post65.length).toBeGreaterThan(0);
         });
 
         it('avec pension DB de 2000$/mois, le patrimoine successoral augmente', () => {
-            const noPension = calculateFutureProjection(buildAtRetirement({ dbPensionMonthly: 0 })) as any;
-            const withPension = calculateFutureProjection(buildAtRetirement({ dbPensionMonthly: 2000 })) as any;
+            const noPension: ProjectionResult = calculateFutureProjection(buildAtRetirement({ dbPensionMonthly: 0 }));
+            const withPension: ProjectionResult = calculateFutureProjection(buildAtRetirement({ dbPensionMonthly: 2000 }));
 
-            const noBase = noPension.allResults.find((s: any) => s.stratType === 'BASE');
-            const withBase = withPension.allResults.find((s: any) => s.stratType === 'BASE');
+            const noBase = noPension.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const withBase = withPension.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
 
-            expect(withBase.estateNetWorth).toBeGreaterThan(noBase.estateNetWorth);
+            expect(withBase!.estateNetWorth).toBeGreaterThan(noBase!.estateNetWorth!);
         });
 
         it('la pension DB ne se déclenche pas avant dbPensionStartAge', () => {
@@ -480,49 +482,49 @@ describe('calculateFutureProjection', () => {
                 }),
                 projection: makeProjection({ years: 5 }),
             });
-            const result = calculateFutureProjection(params) as any;
+            const result: ProjectionResult = calculateFutureProjection(params);
             expect(Number.isFinite(result.estateNetWorth)).toBe(true);
         });
 
         it('indexation 0% rend la pension DB nominale (érodée par l\'inflation)', () => {
-            const fullIndex = calculateFutureProjection(buildAtRetirement({
+            const fullIndex: ProjectionResult = calculateFutureProjection(buildAtRetirement({
                 dbPensionMonthly: 2000,
                 dbPensionIndexationPct: 100,
-            })) as any;
-            const noIndex = calculateFutureProjection(buildAtRetirement({
+            }));
+            const noIndex: ProjectionResult = calculateFutureProjection(buildAtRetirement({
                 dbPensionMonthly: 2000,
                 dbPensionIndexationPct: 0,
-            })) as any;
-            const fullBase = fullIndex.allResults.find((s: any) => s.stratType === 'BASE');
-            const noBase = noIndex.allResults.find((s: any) => s.stratType === 'BASE');
+            }));
+            const fullBase = fullIndex.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const noBase = noIndex.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
             // Pleine indexation > pas d'indexation (avec inflation positive)
-            expect(fullBase.estateNetWorth).toBeGreaterThanOrEqual(noBase.estateNetWorth);
+            expect(fullBase!.estateNetWorth).toBeGreaterThanOrEqual(noBase!.estateNetWorth!);
         });
     });
 
     // W3.x — Événements de vie stochastiques (couverture manquante signalée par silent-failure-hunter)
     describe('Événements de vie stochastiques (W3.x)', () => {
-        const longHorizonMc = (overrides: any) => makeParams({
+        const longHorizonMc = (overrides: Partial<ProjectionConfig>) => makeParams({
             projection: makeProjection({ years: 30, ...overrides }),
         });
 
         it('Divorce: avec divorceEnabled=ON, certaines itérations MC ont un patrimoine réduit', () => {
-            const result = calculateFutureProjection(longHorizonMc({
+            const result: ProjectionResult = calculateFutureProjection(longHorizonMc({
                 divorceEnabled: true,
                 divorceAnnualProbability: 0.5, // forcé haut pour test
                 divorceSplitPct: 50,
-            }), /* runMC */ true) as any;
+            }), /* runMC */ true);
             expect(Number.isFinite(result.estateNetWorth)).toBe(true);
             expect(result.expertMetrics).toBeTruthy();
         });
 
         it('LTD: avec ltdEnabled=ON, le moteur termine sans NaN', () => {
-            const result = calculateFutureProjection(longHorizonMc({
+            const result: ProjectionResult = calculateFutureProjection(longHorizonMc({
                 ltdEnabled: true,
                 ltdAnnualProbability: 0.1,
                 ltdIncomeReplacementPct: 60,
                 ltdDurationMonths: 24,
-            }), true) as any;
+            }), true);
             expect(Number.isFinite(result.estateNetWorth)).toBe(true);
         });
 
@@ -530,23 +532,23 @@ describe('calculateFutureProjection', () => {
             // Avec proba 90%/an sur 30 ans, en non-MC la branche ne se déclenche pas
             // (criticalIllnessEnabled requiert MC). En MC, ciTriggered devient true
             // après la 1re trigger.
-            const result = calculateFutureProjection(longHorizonMc({
+            const result: ProjectionResult = calculateFutureProjection(longHorizonMc({
                 criticalIllnessEnabled: true,
                 ciAnnualProbability: 0.9,
                 ciPayoutAmount: 100000,
                 ciExtraMonthlyExpense: 500,
-            }), true) as any;
+            }), true);
             expect(Number.isFinite(result.estateNetWorth)).toBe(true);
         });
 
         it('Héritage probabilisé: ne crashe pas avec uncertaintyYears=0 (événement ponctuel)', () => {
-            const result = calculateFutureProjection(longHorizonMc({
+            const result: ProjectionResult = calculateFutureProjection(longHorizonMc({
                 inheritanceEnabled: true,
                 inheritanceExpectedAmount: 200000,
                 inheritanceExpectedAtAge: 50,
                 inheritanceUncertaintyYears: 0, // cas limite signalé par agent
                 inheritanceProbability: 0.8,
-            }), true) as any;
+            }), true);
             expect(Number.isFinite(result.estateNetWorth)).toBe(true);
         });
 
@@ -554,11 +556,11 @@ describe('calculateFutureProjection', () => {
             const config = makeConfig();
             config.users[0] = { ...config.users[0], age: 60, birthYear: 1966 };
             config.users[1] = { ...config.users[1], age: 60, birthYear: 1966 };
-            const result = calculateFutureProjection(makeParams({
+            const result: ProjectionResult = calculateFutureProjection(makeParams({
                 config,
                 retirementGoal: makeRetirementGoal({ targetAge: 60 }),
                 projection: makeProjection({ years: 30, modelSurvivor: true }),
-            }), true) as any;
+            }), true);
             expect(Number.isFinite(result.estateNetWorth)).toBe(true);
         });
 
@@ -566,12 +568,12 @@ describe('calculateFutureProjection', () => {
             const config = makeConfig();
             config.users[0] = { ...config.users[0], age: 64, birthYear: 1962 };
             config.users[1] = { ...config.users[1], age: 64, birthYear: 1962 };
-            const noSnowbird = calculateFutureProjection(makeParams({
+            const noSnowbird: ProjectionResult = calculateFutureProjection(makeParams({
                 config,
                 retirementGoal: makeRetirementGoal({ targetAge: 65 }),
                 projection: makeProjection({ years: 20 }),
-            })) as any;
-            const withSnowbird = calculateFutureProjection(makeParams({
+            }));
+            const withSnowbird: ProjectionResult = calculateFutureProjection(makeParams({
                 config,
                 retirementGoal: makeRetirementGoal({ targetAge: 65 }),
                 projection: makeProjection({
@@ -580,26 +582,26 @@ describe('calculateFutureProjection', () => {
                     snowbirdMonthsPerYear: 5,
                     snowbirdExtraMonthlyCost: 1500,
                 }),
-            })) as any;
-            const noBase = noSnowbird.allResults.find((s: any) => s.stratType === 'BASE');
-            const swBase = withSnowbird.allResults.find((s: any) => s.stratType === 'BASE');
+            }));
+            const noBase = noSnowbird.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const swBase = withSnowbird.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
             // Snowbird modifie le profil de dépenses retraite (impact mesurable, sens dépendant du fiscal mix)
-            expect(swBase.estateNetWorth).not.toBe(noBase.estateNetWorth);
+            expect(swBase!.estateNetWorth).not.toBe(noBase!.estateNetWorth);
         });
 
         it('Bootstrap historique: impacte les métriques MC (P10/P50/P90, successRate)', () => {
             // Bootstrap n'agit qu'en MC (runScenario.enableMonteCarlo=true).
             // Les scénarios déterministes (BASE etc.) ne changent pas; on vérifie
             // que les métriques MC (chartData P10/P50/P90) diffèrent.
-            const gaussian = calculateFutureProjection(longHorizonMc({}), true) as any;
-            const bootstrap = calculateFutureProjection(longHorizonMc({
+            const gaussian: ProjectionResult = calculateFutureProjection(longHorizonMc({}), true);
+            const bootstrap: ProjectionResult = calculateFutureProjection(longHorizonMc({
                 useHistoricalBootstrap: true,
-            }), true) as any;
+            }), true);
             expect(Number.isFinite(gaussian.estateNetWorth)).toBe(true);
             expect(Number.isFinite(bootstrap.estateNetWorth)).toBe(true);
             // Les bandes P10/P50/P90 doivent différer entre gaussien et bootstrap.
-            const gP50 = gaussian.chartData.find((d: any) => d.P50 != null)?.P50 ?? null;
-            const bP50 = bootstrap.chartData.find((d: any) => d.P50 != null)?.P50 ?? null;
+            const gP50 = gaussian.chartData.find((d: ProjectionChartPoint) => d.P50 != null)?.P50 ?? null;
+            const bP50 = bootstrap.chartData.find((d: ProjectionChartPoint) => d.P50 != null)?.P50 ?? null;
             if (gP50 !== null && bP50 !== null) {
                 expect(gP50).not.toBe(bP50);
             } else {
@@ -608,22 +610,22 @@ describe('calculateFutureProjection', () => {
         });
 
         it('Replay krach 2008: produit un patrimoine final concret', () => {
-            const result = calculateFutureProjection(longHorizonMc({
+            const result: ProjectionResult = calculateFutureProjection(longHorizonMc({
                 replayHistoricalYear: 2008,
-            })) as any;
+            }));
             expect(Number.isFinite(result.estateNetWorth)).toBe(true);
         });
 
         it('US Withholding CELI: avec part US et yield positif, drag mesurable sur 20 ans', () => {
-            const noUs = calculateFutureProjection(makeParams({
+            const noUs: ProjectionResult = calculateFutureProjection(makeParams({
                 projection: makeProjection({ years: 20, usEquityShareCeli: 0 })
-            })) as any;
-            const withUs = calculateFutureProjection(makeParams({
+            }));
+            const withUs: ProjectionResult = calculateFutureProjection(makeParams({
                 projection: makeProjection({ years: 20, usEquityShareCeli: 100, usEquityDividendYield: 2 })
-            })) as any;
-            const noBase = noUs.allResults.find((s: any) => s.stratType === 'BASE');
-            const usBase = withUs.allResults.find((s: any) => s.stratType === 'BASE');
-            expect(usBase.estateNetWorth).toBeLessThan(noBase.estateNetWorth);
+            }));
+            const noBase = noUs.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const usBase = withUs.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            expect(usBase!.estateNetWorth).toBeLessThan(noBase!.estateNetWorth!);
         });
     });
 
@@ -634,7 +636,7 @@ describe('calculateFutureProjection', () => {
             projection: makeProjection({
                 years: 15,
                 returnRates: { celi: 5, reer: 5, nonReg: 5, crypto: 0, cash: 2 },
-                ...((overrides as any).projection || {}),
+                ...(overrides.projection ?? {}),
             }),
             liveCSVBalances: { CELI: 200_000, CELIAPP: 0, REER: 500_000, NON_ENREG: 0, CRYPTO: 0, REEE: 0 },
             calculatedStartingCash: 30_000,
@@ -648,11 +650,11 @@ describe('calculateFutureProjection', () => {
         });
 
         it('Retraité avec REER abondant: la cascade puise effectivement dans le REER (RetraitREER > 0)', () => {
-            const result = calculateFutureProjection(makeRetireeParams()) as any;
-            const base = result.allResults.find((s: any) => s.stratType === 'BASE');
-            const totalReerWithdrawals = base.chartData
-                .filter((p: any) => p.isRetired)
-                .reduce((sum: number, p: any) => sum + (p.RetraitREER ?? 0), 0);
+            const result: ProjectionResult = calculateFutureProjection(makeRetireeParams());
+            const base = result.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const totalReerWithdrawals = base!.chartData
+                .filter((p: ProjectionChartPoint) => p.isRetired)
+                .reduce((sum: number, p: ProjectionChartPoint) => sum + (p.RetraitREER ?? 0), 0);
             expect(totalReerWithdrawals).toBeGreaterThan(0);
         });
 
@@ -661,25 +663,25 @@ describe('calculateFutureProjection', () => {
             // que les retraits sont des fonctions différentes selon la stratégie.
             // On vérifie surtout que les deux stratégies produisent des résultats
             // mesurablement différents (sinon le strategy switch est mort).
-            const result = calculateFutureProjection(makeRetireeParams()) as any;
-            const base = result.allResults.find((s: any) => s.stratType === 'BASE');
-            const liberte = result.allResults.find((s: any) => s.stratType === 'LIBERTE_55');
+            const result: ProjectionResult = calculateFutureProjection(makeRetireeParams());
+            const base = result.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const liberte = result.allResults!.find((s: ProjectionResult) => s.stratType === 'LIBERTE_55');
             expect(base).toBeDefined();
             expect(liberte).toBeDefined();
             // estateNetWorth doit différer (au moins de 1$) — sinon les stratégies
             // sont identiques en pratique.
-            expect(Math.abs(base.estateNetWorth - liberte.estateNetWorth)).toBeGreaterThan(1);
+            expect(Math.abs(base!.estateNetWorth! - liberte!.estateNetWorth!)).toBeGreaterThan(1);
         });
 
         it('Retraité sans REER initial: la cascade utilise principalement CELI', () => {
             // Note: RetraitREER peut être non-nul à cause des transferts NonReg→REER
             // ou meltdown stratégique en pré-retraite. On vérifie surtout que CELI
             // domine fortement les retraits.
-            const result = calculateFutureProjection(makeRetireeParams({
+            const result: ProjectionResult = calculateFutureProjection(makeRetireeParams({
                 liveCSVBalances: { CELI: 400_000, CELIAPP: 0, REER: 0, NON_ENREG: 0, CRYPTO: 0, REEE: 0 },
-            })) as any;
-            const base = result.allResults.find((s: any) => s.stratType === 'BASE');
-            const totalCeli = base.chartData.reduce((s: number, p: any) => s + (p.RetraitCELI ?? 0), 0);
+            }));
+            const base = result.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const totalCeli = base!.chartData.reduce((s: number, p: ProjectionChartPoint) => s + (p.RetraitCELI ?? 0), 0);
             expect(totalCeli).toBeGreaterThan(0);
         });
     });
@@ -708,19 +710,20 @@ describe('calculateFutureProjection', () => {
             heatingMonthly: 200,
             condoFees: 0,
             rentalIncomeMonthly: 0,
+            monthlyPayment: 0,
         });
 
         it('un goal inactif ne réduit pas le liquide au mois de purchaseDate', () => {
             const inactiveGoal = makeInactiveGoal();
-            const baseline = calculateFutureProjection(makeParams({ realEstateGoals: [] })) as any;
-            const withInactive = calculateFutureProjection(makeParams({
-                realEstateGoals: [inactiveGoal] as any,
-            })) as any;
-            const noBase = baseline.allResults.find((s: any) => s.stratType === 'BASE');
-            const inactiveBase = withInactive.allResults.find((s: any) => s.stratType === 'BASE');
+            const baseline: ProjectionResult = calculateFutureProjection(makeParams({ realEstateGoals: [] }));
+            const withInactive: ProjectionResult = calculateFutureProjection(makeParams({
+                realEstateGoals: [inactiveGoal],
+            }));
+            const noBase = baseline.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const inactiveBase = withInactive.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
             // ±5% de tolérance pour les arrondis (le moteur a des micro-variations
             // selon les init paths). Inactif ≈ inexistant.
-            const ratio = Math.abs(inactiveBase.estateNetWorth - noBase.estateNetWorth) / Math.max(1, noBase.estateNetWorth);
+            const ratio = Math.abs(inactiveBase!.estateNetWorth! - noBase!.estateNetWorth!) / Math.max(1, noBase!.estateNetWorth!);
             expect(ratio).toBeLessThan(0.05);
         });
 
@@ -740,25 +743,25 @@ describe('calculateFutureProjection', () => {
             };
             const active = { ...makeInactiveGoal(), isActive: true, id: 'active_house' };
             const inactive = makeInactiveGoal();
-            const withActive = calculateFutureProjection(makeParams({
+            const withActive: ProjectionResult = calculateFutureProjection(makeParams({
                 calculatedStartingCash: 200000,
                 liveCSVBalances: richBalances,
-                realEstateGoals: [active] as any,
-            })) as any;
-            const withInactive = calculateFutureProjection(makeParams({
+                realEstateGoals: [active],
+            }));
+            const withInactive: ProjectionResult = calculateFutureProjection(makeParams({
                 calculatedStartingCash: 200000,
                 liveCSVBalances: richBalances,
-                realEstateGoals: [inactive] as any,
-            })) as any;
+                realEstateGoals: [inactive],
+            }));
             // L'achat actif consomme du liquide (down payment + welcome tax) → estate
             // immédiatement après doit refléter une équité différente d'un cas inactif.
-            const activeBase = withActive.allResults.find((s: any) => s.stratType === 'BASE');
-            const inactiveBase = withInactive.allResults.find((s: any) => s.stratType === 'BASE');
+            const activeBase = withActive.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const inactiveBase = withInactive.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
             // Différence significative attendue (>1% du patrimoine inactif) — l'équité
             // immobilière finale après 3 ans de détention + l'amortissement du prêt
             // créent un écart mesurable.
-            const diff = Math.abs(activeBase.estateNetWorth - inactiveBase.estateNetWorth);
-            expect(diff).toBeGreaterThan(Math.max(1, inactiveBase.estateNetWorth * 0.01));
+            const diff = Math.abs(activeBase!.estateNetWorth! - inactiveBase!.estateNetWorth!);
+            expect(diff).toBeGreaterThan(Math.max(1, inactiveBase!.estateNetWorth! * 0.01));
         });
     });
 
@@ -795,40 +798,41 @@ describe('calculateFutureProjection', () => {
                 heatingMonthly: 200,
                 condoFees: 0,
                 rentalIncomeMonthly: 0,
-            }] as any,
+                monthlyPayment: 0,
+            }],
         });
 
         // rapBalance = rapRepaymentDueTotal (monthlyOutput). Pic sur la projection.
-        const maxRapBalance = (res: any): number =>
-            res.chartData.reduce((mx: number, p: any) => Math.max(mx, p.rapBalance ?? 0), 0);
+        const maxRapBalance = (res: ProjectionResult): number =>
+            res.chartData.reduce((mx: number, p: ProjectionChartPoint) => Math.max(mx, p.rapBalance ?? 0), 0);
 
-        const findByStrategy = (result: any, name: string) => {
-            const r = result.allResults.find((s: any) => s.strategyName === name);
+        const findByStrategy = (result: ProjectionResult, name: string) => {
+            const r = result.allResults!.find((s: ProjectionResult) => s.strategyName === name);
             expect(r, `scénario "${name}" introuvable`).toBeDefined();
-            return r;
+            return r!;
         };
 
         it('PRIO_CELI emprunte au RAP à l\'achat (rapBalance > 0)', () => {
-            const result = calculateFutureProjection(makePurchaseParams()) as any;
+            const result: ProjectionResult = calculateFutureProjection(makePurchaseParams());
             const prioCeli = findByStrategy(result, "Gestion : CELI d'abord");
             expect(maxRapBalance(prioCeli)).toBeGreaterThan(0);
         });
 
         it('PRIO_CELI_NO_RAP ne touche jamais au RAP (rapBalance reste 0)', () => {
-            const result = calculateFutureProjection(makePurchaseParams()) as any;
+            const result: ProjectionResult = calculateFutureProjection(makePurchaseParams());
             const noRap = findByStrategy(result, 'Achat : CELI sans RAP');
             expect(maxRapBalance(noRap)).toBe(0);
         });
 
         it('non-régression : les deux stratégies produisent un patrimoine fini et divergent', () => {
-            const result = calculateFutureProjection(makePurchaseParams()) as any;
+            const result: ProjectionResult = calculateFutureProjection(makePurchaseParams());
             const noRap = findByStrategy(result, 'Achat : CELI sans RAP');
             const prioCeli = findByStrategy(result, "Gestion : CELI d'abord");
             expect(Number.isFinite(noRap.estateNetWorth)).toBe(true);
             expect(Number.isFinite(prioCeli.estateNetWorth)).toBe(true);
             // L'achat a bien lieu dans les deux cas (équité immobilière créée).
-            expect(noRap.chartData.some((p: any) => (p.Immobilier ?? 0) > 0)).toBe(true);
-            expect(prioCeli.chartData.some((p: any) => (p.Immobilier ?? 0) > 0)).toBe(true);
+            expect(noRap.chartData.some((p: ProjectionChartPoint) => (p.Immobilier ?? 0) > 0)).toBe(true);
+            expect(prioCeli.chartData.some((p: ProjectionChartPoint) => (p.Immobilier ?? 0) > 0)).toBe(true);
             // Flux d'achat différents (RAP vs CELI/REER imposable) → l'issue diverge.
             expect(noRap.estateNetWorth).not.toBe(prioCeli.estateNetWorth);
         });
@@ -836,27 +840,27 @@ describe('calculateFutureProjection', () => {
 
     describe('Scénarios compound (Phase 4 #4)', () => {
         it('COMPOUND_STRESS: patrimoine final inférieur à ECONOMIC_WINTER (cumul + LTC)', () => {
-            const result = calculateFutureProjection(makeParams({
+            const result: ProjectionResult = calculateFutureProjection(makeParams({
                 projection: makeProjection({ years: 15 }),
-            })) as any;
-            const winter = result.allResults.find((s: any) => s.stratType === 'ECONOMIC_WINTER');
-            const stress = result.allResults.find((s: any) => s.stratType === 'COMPOUND_STRESS');
+            }));
+            const winter = result.allResults!.find((s: ProjectionResult) => s.stratType === 'ECONOMIC_WINTER');
+            const stress = result.allResults!.find((s: ProjectionResult) => s.stratType === 'COMPOUND_STRESS');
             expect(stress).toBeDefined();
             expect(winter).toBeDefined();
             // Cumul inflation 5% + rendements anémiques + LTC forcé → pire que winter seul.
-            expect(stress.estateNetWorth).toBeLessThanOrEqual(winter.estateNetWorth);
+            expect(stress!.estateNetWorth).toBeLessThanOrEqual(winter!.estateNetWorth!);
         });
 
         it('LATE_INHERITANCE: patrimoine final ≥ BASE (héritage tardif aide quand même)', () => {
-            const result = calculateFutureProjection(makeParams({
+            const result: ProjectionResult = calculateFutureProjection(makeParams({
                 projection: makeProjection({ years: 25 }), // assez long pour atteindre m=240
-            })) as any;
-            const base = result.allResults.find((s: any) => s.stratType === 'BASE');
-            const late = result.allResults.find((s: any) => s.stratType === 'LATE_INHERITANCE');
+            }));
+            const base = result.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const late = result.allResults!.find((s: ProjectionResult) => s.stratType === 'LATE_INHERITANCE');
             expect(late).toBeDefined();
             expect(base).toBeDefined();
             // Pas strict > car le seed est différent, mais ≥ raisonnable
-            expect(late.estateNetWorth).toBeGreaterThanOrEqual(base.estateNetWorth * 0.95);
+            expect(late!.estateNetWorth).toBeGreaterThanOrEqual(base!.estateNetWorth! * 0.95);
         });
     });
 
@@ -877,16 +881,16 @@ describe('calculateFutureProjection', () => {
                 governmentBenefits: 0,
                 parentalLeaveIncomeDrop: 0,
             };
-            const result = calculateFutureProjection(makeParams({
+            const result: ProjectionResult = calculateFutureProjection(makeParams({
                 projection: makeProjection({ years: 18 }),
                 childGoals: [child],
                 calculatedStartingCash: 250000, // assez pour cotiser sans contrainte liquide
-            })) as any;
+            }));
             // On itère sur le scénario BASE pour examiner les cotisations REEE cumulées
-            const base = result.allResults.find((s: any) => s.stratType === 'BASE');
+            const base = result.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
             expect(base).toBeDefined();
-            const totalReeeContrib = (base.chartData ?? []).reduce(
-                (acc: number, pt: any) => acc + (pt.ReeeContrib || 0), 0
+            const totalReeeContrib = (base!.chartData ?? []).reduce(
+                (acc: number, pt: ProjectionChartPoint) => acc + (pt.ReeeContrib ?? 0), 0
             );
             // Le cap est 50 000$, on tolère ±5% (grants SCEE/IQEE empilés dessus mais
             // ne comptent pas comme cotisations de l'utilisateur).
@@ -898,7 +902,7 @@ describe('calculateFutureProjection', () => {
             // simu jusqu'en 2062+, le moteur doit cesser d'ouvrir de la room FHSA.
             // On simule 40 ans (jusqu'en 2066) — User1 a 75 ans à la fin, User2 a 73.
             // Les 2 ont >= 71 → tous les flux FHSA doivent être à 0 ou transférés.
-            const result = calculateFutureProjection(makeParams({
+            const result: ProjectionResult = calculateFutureProjection(makeParams({
                 projection: makeProjection({ years: 40 }),
                 config: {
                     users: [
@@ -912,48 +916,48 @@ describe('calculateFutureProjection', () => {
                             age: 33, birthYear: 1993, canadaArrivalYear: 1993,
                             hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0,
                         },
-                    ] as any,
+                    ] as BudgetConfig['users'],
                     splitMode: '50/50',
-                } as any,
-            })) as any;
+                },
+            }));
             // Pas de NaN propagé + le moteur termine sans crash
-            const base = result.allResults.find((s: any) => s.stratType === 'BASE');
+            const base = result.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
             expect(base).toBeDefined();
-            expect(base.estateNetWorth).toBeGreaterThan(0);
-            expect(Number.isFinite(base.estateNetWorth)).toBe(true);
+            expect(base!.estateNetWorth).toBeGreaterThan(0);
+            expect(Number.isFinite(base!.estateNetWorth)).toBe(true);
         });
     });
 
     describe('Wiring goals (2026-05)', () => {
         it('SavingsGoal: une deadline drainante réduit le patrimoine final', () => {
             const targetDate = '2027-06';
-            const baseline = calculateFutureProjection(makeParams({
+            const baseline: ProjectionResult = calculateFutureProjection(makeParams({
                 savingsGoals: [],
-            })) as any;
-            const withGoal = calculateFutureProjection(makeParams({
+            }));
+            const withGoal: ProjectionResult = calculateFutureProjection(makeParams({
                 savingsGoals: [
                     { id: 'sg1', name: 'Voyage Europe', targetAmount: 15000, currentAmount: 0, deadline: targetDate, icon: '✈️' },
                 ],
-            })) as any;
-            const noBase = baseline.allResults.find((s: any) => s.stratType === 'BASE');
-            const goalBase = withGoal.allResults.find((s: any) => s.stratType === 'BASE');
-            expect(goalBase.estateNetWorth).toBeLessThan(noBase.estateNetWorth);
+            }));
+            const noBase = baseline.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const goalBase = withGoal.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            expect(goalBase!.estateNetWorth).toBeLessThan(noBase!.estateNetWorth!);
         });
 
         it('FinancialGoal avec targetAccount=CELI: réduit le solde CELI projeté', () => {
-            const baseline = calculateFutureProjection(makeParams({
+            const baseline: ProjectionResult = calculateFutureProjection(makeParams({
                 financialGoals: [],
-            })) as any;
-            const withGoal = calculateFutureProjection(makeParams({
+            }));
+            const withGoal: ProjectionResult = calculateFutureProjection(makeParams({
                 financialGoals: [
-                    { id: 'fg1', name: 'Mise de fonds maison', type: 'savings' as any, targetAmount: 20000, deadline: '2028-03', targetAccount: 'CELI' },
+                    { id: 'fg1', name: 'Mise de fonds maison', type: 'CUSTOM' as const, targetAmount: 20000, deadline: '2028-03', targetAccount: 'CELI' },
                 ],
-            })) as any;
-            const noBase = baseline.allResults.find((s: any) => s.stratType === 'BASE');
-            const goalBase = withGoal.allResults.find((s: any) => s.stratType === 'BASE');
+            }));
+            const noBase = baseline.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
+            const goalBase = withGoal.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
             // CELI moins élevé au mois 27 (mars 2028) après retrait du goal
-            const noBaseCeli = noBase.chartData[30]?.CELI ?? 0;
-            const goalBaseCeli = goalBase.chartData[30]?.CELI ?? 0;
+            const noBaseCeli = noBase!.chartData[30]?.CELI ?? 0;
+            const goalBaseCeli = goalBase!.chartData[30]?.CELI ?? 0;
             expect(goalBaseCeli).toBeLessThan(noBaseCeli);
         });
     });

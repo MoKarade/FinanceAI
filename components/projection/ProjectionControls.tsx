@@ -5,6 +5,7 @@ import { CollapsibleSection } from '../ui/CollapsibleSection';
 import { Badge } from '../ui/Badge';
 import { ProjectionConfig, RealEstateGoal, BudgetConfig } from '../../types';
 import { AdvancedProjectionParams } from '../AdvancedProjectionParams';
+import { ProjectionResult } from '../../services/projection/types';
 
 interface LiveCSVBalances {
     CELI: number;
@@ -25,7 +26,7 @@ interface ProjectionControlsProps {
     isComputing: boolean;
     selectedScenarioIdx: number;
     setSelectedScenarioIdx: (i: number) => void;
-    allResults: any[];
+    allResults: ProjectionResult[];
     fireNumber: number;
     aiNote: string;
     liveCSVBalances: LiveCSVBalances;
@@ -74,13 +75,14 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
     aiNote, liveCSVBalances, applyHistoricalRate,
     realEstateGoals, setRealEstateGoals,
 }) => {
-    const activeStochasticCount = STOCHASTIC_TOGGLES.filter(t => !!(projection as any)[t.key]).length;
+    const projAsMap = projection as unknown as Record<string, unknown>;
+    const activeStochasticCount = STOCHASTIC_TOGGLES.filter(t => !!projAsMap[t.key]).length;
     return (
         <>
             {/* Scenario Selector — pas dans une collapsible: choix structurant.
                 7 cartes (Phase 4 #4): 4+3 sur lg, 7 sur xl. */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
-                {allResults.map((res: any, idx: number) => {
+                {allResults.map((res, idx: number) => {
                     const isCompoundNew = res.stratType === 'COMPOUND_STRESS' || res.stratType === 'LATE_INHERITANCE';
                     return (
                         <button
@@ -96,7 +98,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                                 <span className="text-h1" aria-hidden="true">{res.icon}</span>
                                 <div className="min-w-0">
                                     <div className="text-meta font-bold text-ink-50 leading-tight truncate">{res.strategyName}</div>
-                                    <div className="text-tiny text-ink-400 mt-0.5">Patrimoine: {(res.estateNetWorth / 1000000).toFixed(2)}M$</div>
+                                    <div className="text-tiny text-ink-400 mt-0.5">Patrimoine: {((res.estateNetWorth ?? 0) / 1000000).toFixed(2)}M$</div>
                                 </div>
                             </div>
                             {isCompoundNew && selectedScenarioIdx !== idx && (
@@ -138,17 +140,66 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                 </Card>
             )}
 
-            {/* Toolbar Monte Carlo + Smile Curve — actions principales toujours visibles */}
-            <div className="flex flex-wrap items-center gap-2">
-                <Button
-                    onClick={() => setRunMC(!runMC)}
-                    variant={runMC ? 'primary' : 'ghost'}
-                    size="sm"
+            {/* Toolbar simulation — radio-group MC prominent (U3).
+                Le mode MC est structurant : il change la forme des courbes sur
+                tous les onglets (Futur, Retraite, Enfant…) via la projection
+                partagée. Un simple bouton toggle était invisible pour un
+                nouvel utilisateur.
+                Implémenté avec de vrais <input type="radio"> stylés via <label>
+                plutôt que role="radio" sur <button> — les navigateurs gèrent
+                nativement la navigation fléchée (ArrowLeft/Right) et l'état
+                checked, sans avoir à implémenter le onKeyDown manuellement
+                (fix HIGH a11y review). */}
+            <div className="flex flex-wrap items-center gap-3">
+                <fieldset
+                    className="flex items-center bg-black/50 border border-white/10 rounded-xl p-1 gap-0.5"
                     disabled={isComputing}
-                    loading={isComputing}
                 >
-                    🎲 Monte Carlo {runMC ? 'ON' : 'OFF'}
-                </Button>
+                    <legend className="sr-only">Mode de simulation</legend>
+
+                    <label
+                        className={`px-3 py-1.5 rounded-lg text-meta font-semibold transition-all cursor-pointer select-none ${
+                            !runMC
+                                ? 'bg-success-500/20 text-success-300 border border-success-500/30 shadow-sm'
+                                : 'text-ink-400 hover:text-ink-200 border border-transparent'
+                        } ${isComputing ? 'pointer-events-none opacity-50' : ''}`}
+                        title="Projection unique, sans aléatoire. Rapide (~150 ms). Pas de bandes P10-P90."
+                    >
+                        <input
+                            type="radio"
+                            name="simulation-mode"
+                            value="deterministic"
+                            checked={!runMC}
+                            onChange={() => setRunMC(false)}
+                            className="sr-only"
+                        />
+                        📊 Déterministe
+                    </label>
+
+                    <label
+                        className={`px-3 py-1.5 rounded-lg text-meta font-semibold transition-all cursor-pointer select-none ${
+                            runMC
+                                ? 'bg-primary/20 text-primary border border-primary/30 shadow-sm'
+                                : 'text-ink-400 hover:text-ink-200 border border-transparent'
+                        } ${isComputing ? 'pointer-events-none opacity-50' : ''}`}
+                        title="100 scénarios aléatoires — affiche les bandes P10/P90. Impacte Retraite et Enfant."
+                    >
+                        <input
+                            type="radio"
+                            name="simulation-mode"
+                            value="montecarlo"
+                            checked={runMC}
+                            onChange={() => setRunMC(true)}
+                            className="sr-only"
+                        />
+                        🎲 Monte Carlo{isComputing && runMC ? ' …' : ''}
+                    </label>
+                </fieldset>
+                {runMC && (
+                    <span className="text-tiny text-ink-400 hidden sm:inline select-none">
+                        Impacte tous les onglets
+                    </span>
+                )}
                 <Button
                     onClick={() => updateProj('useSmileCurve', !projection.useSmileCurve)}
                     variant={projection.useSmileCurve ? 'primary' : 'ghost'}
@@ -297,11 +348,11 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                                     <div key={item.key}>
                                         <label className="flex justify-between text-meta text-ink-300 mb-1">
                                             <span>{item.label} ({item.weight}%)</span>
-                                            <span className="text-warning-400 font-bold">{((projection as any)[item.key] ?? item.def).toFixed(1)}%</span>
+                                            <span className="text-warning-400 font-bold">{((projAsMap[item.key] as number | undefined) ?? item.def).toFixed(1)}%</span>
                                         </label>
                                         <input
                                             type="range" min="0" max="10" step="0.1"
-                                            value={(projection as any)[item.key] ?? item.def}
+                                            value={(projAsMap[item.key] as number | undefined) ?? item.def}
                                             onChange={e => updateProj(item.key as keyof ProjectionConfig, Number(e.target.value))}
                                             className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-warning-500"
                                         />
@@ -369,7 +420,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
             >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
                     {STOCHASTIC_TOGGLES.map(({ key, label, title }) => {
-                        const isOn = !!(projection as any)[key];
+                        const isOn = !!projAsMap[key];
                         return (
                             <Button
                                 key={key}

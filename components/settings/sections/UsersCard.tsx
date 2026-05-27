@@ -8,7 +8,7 @@
 import React from 'react';
 import { Card } from '../../ui/Card';
 import { showToast } from '../../ui/Toast';
-import type { AppState, BudgetConfig } from '../../../types';
+import type { AppState, BudgetConfig, User, Gender, CanadianProvince, MaritalStatus, EmploymentType, Industry, PensionPlan, HealthRating } from '../../../types';
 
 interface UsersCardProps {
   config: AppState['config'];
@@ -117,7 +117,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                 onClick={() => {
                   const newUsers = [...config.users];
                   newUsers.pop();
-                  setConfig({ ...config, users: newUsers as [any, any] });
+                  setConfig({ ...config, users: newUsers as [User, User] });
                 }}
                 className="bg-red-900/40 text-red-300 px-3 py-1 rounded text-xs hover:bg-red-900/60"
               >
@@ -128,7 +128,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
               <button
                 onClick={() => {
                   const newUsers = [...config.users, { name: 'Conjoint(e)', age: 30, grossSalary: 0, netSalary: 0, canadaArrivalYear: new Date().getFullYear() - 5, color: '#ec4899' }];
-                  setConfig({ ...config, users: newUsers as [any, any] });
+                  setConfig({ ...config, users: newUsers as [User, User] });
                 }}
                 className="bg-green-900/40 text-green-300 px-3 py-1 rounded text-xs hover:bg-green-900/60"
               >
@@ -152,7 +152,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   type="text"
                   value={user.name}
                   onChange={(e) => {
-                    const newUsers = [...config.users] as [any, any];
+                    const newUsers = [...config.users] as [User, User];
                     newUsers[idx] = { ...user, name: e.target.value };
                     setConfig({ ...config, users: newUsers });
                   }}
@@ -166,7 +166,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                     type="number"
                     value={user.age || 30}
                     onChange={(e) => {
-                      const newUsers = [...config.users] as [any, any];
+                      const newUsers = [...config.users] as [User, User];
                       newUsers[idx] = { ...user, age: parseInt(e.target.value) || 30 };
                       setConfig({ ...config, users: newUsers });
                     }}
@@ -180,7 +180,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                     type="number"
                     value={user.canadaArrivalYear || new Date().getFullYear() - 5}
                     onChange={(e) => {
-                      const newUsers = [...config.users] as [any, any];
+                      const newUsers = [...config.users] as [User, User];
                       newUsers[idx] = { ...user, canadaArrivalYear: parseInt(e.target.value) || 2020 };
                       setConfig({ ...config, users: newUsers });
                     }}
@@ -197,7 +197,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                     type="number"
                     value={user.grossSalary || 0}
                     onChange={(e) => {
-                      const newUsers = [...config.users] as [any, any];
+                      const newUsers = [...config.users] as [User, User];
                       newUsers[idx] = { ...user, grossSalary: parseFloat(e.target.value) || 0 };
                       setConfig({ ...config, users: newUsers });
                     }}
@@ -210,7 +210,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                     type="number"
                     value={user.netSalary || user.salary || 0}
                     onChange={(e) => {
-                      const newUsers = [...config.users] as [any, any];
+                      const newUsers = [...config.users] as [User, User];
                       newUsers[idx] = { ...user, netSalary: parseFloat(e.target.value) || 0 };
                       setConfig({ ...config, users: newUsers });
                     }}
@@ -227,7 +227,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                       type="checkbox"
                       checked={!user.hasOwnedPropertyLast4Years}
                       onChange={(e) => {
-                        const newUsers = [...config.users] as [any, any];
+                        const newUsers = [...config.users] as [User, User];
                         newUsers[idx] = { ...user, hasOwnedPropertyLast4Years: !e.target.checked };
                         setConfig({ ...config, users: newUsers });
                       }}
@@ -243,7 +243,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                       type="checkbox"
                       checked={user.hasChildren}
                       onChange={(e) => {
-                        const newUsers = [...config.users] as [any, any];
+                        const newUsers = [...config.users] as [User, User];
                         newUsers[idx] = { ...user, hasChildren: e.target.checked };
                         setConfig({ ...config, users: newUsers });
                       }}
@@ -256,7 +256,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                       type="number"
                       value={user.childCount || 1}
                       onChange={(e) => {
-                        const newUsers = [...config.users] as [any, any];
+                        const newUsers = [...config.users] as [User, User];
                         newUsers[idx] = { ...user, childCount: parseInt(e.target.value) || 1 };
                         setConfig({ ...config, users: newUsers });
                       }}
@@ -273,7 +273,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                     placeholder="Facteur Equiv. (ex: 0)"
                     value={user.facteurEquivalence ?? 0}
                     onChange={(e) => {
-                      const newUsers = [...config.users] as [any, any];
+                      const newUsers = [...config.users] as [User, User];
                       newUsers[idx] = { ...user, facteurEquivalence: parseFloat(e.target.value) || 0 };
                       setConfig({ ...config, users: newUsers });
                     }}
@@ -289,14 +289,14 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   <div className="grid grid-cols-3 gap-1">
                     <select
                       value={user.gender ?? ''}
-                      onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,gender:e.target.value||undefined}; setConfig({...config,users:u}); }}
+                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,gender:(e.target.value||undefined) as Gender|undefined}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
                     >
                       <option value="">Sexe</option><option value="M">Homme</option><option value="F">Femme</option><option value="X">Autre</option>
                     </select>
                     <select
                       value={user.province ?? ''}
-                      onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,province:e.target.value||undefined}; setConfig({...config,users:u}); }}
+                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,province:(e.target.value||undefined) as CanadianProvince|undefined}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
                     >
                       <option value="">Province</option>
@@ -307,7 +307,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                     </select>
                     <select
                       value={user.citizenship ?? ''}
-                      onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,citizenship:e.target.value||undefined}; setConfig({...config,users:u}); }}
+                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,citizenship:(e.target.value||undefined) as 'CA'|'US-person-CA'|'other'|undefined}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
                     >
                       <option value="">Citoyenneté</option><option value="CA">Canadien</option><option value="US-person-CA">Dual CA/US (PFIC!)</option><option value="other">Autre</option>
@@ -316,7 +316,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   <div className="grid grid-cols-2 gap-1">
                     <select
                       value={user.maritalStatus ?? ''}
-                      onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,maritalStatus:e.target.value||undefined}; setConfig({...config,users:u}); }}
+                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,maritalStatus:(e.target.value||undefined) as MaritalStatus|undefined}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
                     >
                       <option value="">Statut civil</option>
@@ -325,7 +325,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                     </select>
                     <select
                       value={user.employmentType ?? ''}
-                      onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,employmentType:e.target.value||undefined}; setConfig({...config,users:u}); }}
+                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,employmentType:(e.target.value||undefined) as EmploymentType|undefined}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
                     >
                       <option value="">Type emploi</option>
@@ -336,7 +336,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   </div>
                   <div className="grid grid-cols-3 gap-1">
                     <select value={user.industry ?? ''}
-                      onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,industry:e.target.value || undefined}; setConfig({...config,users:u}); }}
+                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,industry:(e.target.value||undefined) as Industry|undefined}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white">
                       <option value="">Industrie...</option>
                       <option value="tech">Tech</option><option value="finance">Finance</option><option value="health">Santé</option>
@@ -347,11 +347,11 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                       <option value="media">Médias</option><option value="other">Autre</option>
                     </select>
                     <input aria-label="Années d'expérience professionnelle" type="number" placeholder="Ans expérience" value={user.yearsOfExperience ?? ''}
-                      onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,yearsOfExperience:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
+                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,yearsOfExperience:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                     <select
                       value={user.pensionPlan ?? ''}
-                      onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,pensionPlan:e.target.value||undefined}; setConfig({...config,users:u}); }}
+                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,pensionPlan:(e.target.value||undefined) as PensionPlan|undefined}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
                     >
                       <option value="">Régime retraite</option>
@@ -363,14 +363,14 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   <div className="grid grid-cols-2 gap-1">
                     <select
                       value={user.healthRating ?? ''}
-                      onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,healthRating:e.target.value||undefined}; setConfig({...config,users:u}); }}
+                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,healthRating:(e.target.value||undefined) as HealthRating|undefined}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
                     >
                       <option value="">État santé</option><option value="excellent">Excellent</option><option value="good">Bon</option><option value="average">Moyen</option><option value="poor">Faible</option>
                     </select>
                     <select
                       value={user.activityLevel ?? ''}
-                      onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,activityLevel:e.target.value||undefined}; setConfig({...config,users:u}); }}
+                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,activityLevel:(e.target.value||undefined) as 'sedentary'|'light'|'moderate'|'active'|undefined}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
                     >
                       <option value="">Activité physique</option><option value="sedentary">Sédentaire</option><option value="light">Légère</option><option value="moderate">Modérée</option><option value="active">Active</option>
@@ -379,35 +379,35 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   <div className="grid grid-cols-3 gap-1">
                     <label className="flex items-center gap-1 text-tiny text-gray-400">
                       <input type="checkbox" checked={user.isSmoker ?? false}
-                        onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,isSmoker:e.target.checked}; setConfig({...config,users:u}); }} />
+                        onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,isSmoker:e.target.checked}; setConfig({...config,users:u}); }} />
                       🚬 Fumeur
                     </label>
                     <input aria-label="Âge au décès de la mère (espérance vie hérédité)" type="number" placeholder="Mère ✝ âge" value={user.parentAgeAtDeath?.mother ?? ''}
-                      onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user, parentAgeAtDeath:{...user.parentAgeAtDeath, mother:Number(e.target.value)||undefined}}; setConfig({...config,users:u}); }}
+                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user, parentAgeAtDeath:{...user.parentAgeAtDeath, mother:Number(e.target.value)||undefined}}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                     <input aria-label="Âge au décès du père (espérance vie hérédité)" type="number" placeholder="Père ✝ âge" value={user.parentAgeAtDeath?.father ?? ''}
-                      onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user, parentAgeAtDeath:{...user.parentAgeAtDeath, father:Number(e.target.value)||undefined}}; setConfig({...config,users:u}); }}
+                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user, parentAgeAtDeath:{...user.parentAgeAtDeath, father:Number(e.target.value)||undefined}}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                   </div>
                   <div className="text-tiny text-gray-500 uppercase tracking-widest mt-2">Rémunération variable</div>
                   <div className="grid grid-cols-3 gap-1">
                     <input aria-label="Bonus en pourcentage du brut" type="number" placeholder="Bonus % brut" value={user.bonusPctOfGross ?? ''}
-                      onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,bonusPctOfGross:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
+                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,bonusPctOfGross:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                     <input aria-label="RSU vesting annuel (dollars)" type="number" placeholder="RSU $/an" value={user.rsuVestingPerYear ?? ''}
-                      onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,rsuVestingPerYear:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
+                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,rsuVestingPerYear:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                     <input aria-label="Valeur stock options (dollars)" type="number" placeholder="Stock opts $" value={user.stockOptionsValue ?? ''}
-                      onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,stockOptionsValue:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
+                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,stockOptionsValue:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                   </div>
                   <div className="grid grid-cols-2 gap-1">
                     <input aria-label="Revenus secondaires annuels (freelance, etc.)" type="number" placeholder="Side income $/an" value={user.sideIncomeAnnual ?? ''}
-                      onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,sideIncomeAnnual:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
+                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,sideIncomeAnnual:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                     <select
                       value={user.payFrequency ?? ''}
-                      onChange={e => { const u=[...config.users] as [any,any]; u[idx]={...user,payFrequency:e.target.value||undefined}; setConfig({...config,users:u}); }}
+                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,payFrequency:(e.target.value||undefined) as 'biweekly'|'semimonthly'|'monthly'|'weekly'|undefined}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
                     >
                       <option value="">Périodicité paie</option>

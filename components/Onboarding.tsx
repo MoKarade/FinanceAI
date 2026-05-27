@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AppState, BudgetConfig } from '../types';
+import { AppState, BudgetConfig, User } from '../types';
 import { INITIAL_BUDGET, INITIAL_PROJECTION, INITIAL_REAL_ESTATE_GOAL, INITIAL_CHILD_GOAL, DEFAULT_FX_RATES } from '../constants';
 import { Button } from './ui/Button';
 
@@ -54,7 +54,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             users: [
                 { ...user1, color: '#4f46e5' },
                 hasCoupleMode ? { ...user2, color: '#ec4899' } : { name: '', grossSalary: 0, netSalary: 0, color: '#ec4899', age: 30, canadaArrivalYear: 2020 }
-            ] as [any, any],
+            ] as [User, User],
             splitMode: 'prorata'
         };
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Settings } from '../../components/Settings';
-import type { AppState, BudgetConfig } from '../../types';
+import type { AppState, BudgetConfig, User } from '../../types';
 
 vi.mock('../../services/cloudBackup', () => ({
     downloadBackup: vi.fn().mockResolvedValue(undefined),
@@ -15,8 +15,8 @@ vi.mock('react-i18next', () => ({
 const defaultApiKeys: AppState['apiKeys'] = { anthropic: 'ANT_SECRET', eraContext: 'ERA_SECRET', finnhub: '' };
 const defaultConfig: BudgetConfig = {
     users: [
-        { name: 'Marc', monthlyGross: 7000, rrspContribution: 0, fhsaContribution: 0, birthYear: 1990, canadaArrivalYear: 2009 } as any,
-        { name: 'Anna', monthlyGross: 5000, rrspContribution: 0, fhsaContribution: 0, birthYear: 1992, canadaArrivalYear: 2009 } as any,
+        { name: 'Marc', monthlyGross: 7000, rrspContribution: 0, fhsaContribution: 0, birthYear: 1990, canadaArrivalYear: 2009 } as unknown as User,
+        { name: 'Anna', monthlyGross: 5000, rrspContribution: 0, fhsaContribution: 0, birthYear: 1992, canadaArrivalYear: 2009 } as unknown as User,
     ],
     splitMode: '50/50',
 };

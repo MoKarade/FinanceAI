@@ -59,7 +59,7 @@ export const MultiPropertyComparison: React.FC<MultiPropertyComparisonProps> = (
     }
 
     // G7b — zoom molette / pan sur la comparaison multi-propriétés (x = année).
-    const zoom = useTimeChartZoom<any>(chartData);
+    const zoom = useTimeChartZoom(chartData);
     if (goals.length < 2) return null;
 
     return (

@@ -4,6 +4,7 @@ import { formatNumber, formatPercent } from '../../utils/format';
 import { useHasUserData } from '../../utils/useHasUserData';
 import { EmptyDataPrompt } from '../ui/EmptyDataPrompt';
 import { useProjectionSelector } from '../../hooks/useProjectionSelector';
+import { computeCurrentLiquidity } from '../../services/portfolio';
 
 /**
  * Phase D.6 — indicateur de santé financière paramétrable.
@@ -101,6 +102,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
     const debts = useFinanceStore(s => s.debts);
     const assets = useFinanceStore(s => s.assets);
     const initialBalances = useFinanceStore(s => s.initialBalances);
+    const transactions = useFinanceStore(s => s.transactions);
     // Centralisation : FireTarget vient de la projection si disponible
     const projectionFireTarget = useProjectionSelector(selectFireTarget, 0);
 
@@ -111,10 +113,19 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
             0,
         );
         const monthlyExpenses = (budgetItems || []).reduce((sum, b) => sum + (b.target || 0), 0);
-        const liquidity = (initialBalances?.liquidity || 0) + (initialBalances?.checking || 0) + (initialBalances?.savings || 0);
+        // Liquidités = cash de TOUS les comptes. initialBalances a des clés
+        // DYNAMIQUES : noms de comptes bancaires en usage réel (ex : « Compte
+        // chèque BMO »), ou types en mode test (CELI, REER, LIQUIDITE…). On
+        // somme donc toutes les valeurs via la source unique computeCurrentLiquidity
+        // (idem Dashboard) au lieu de deviner des clés fixes « liquidity »/
+        // « checking »/« celi » qui n'existent jamais → bug : coussin d'urgence
+        // toujours à 0, patrimoine sous-estimé.
+        const liquidity = computeCurrentLiquidity(initialBalances, transactions);
         const totalDebts = (debts || []).reduce((sum, d) => sum + (d.balance || 0), 0);
         const investmentValue = (assets || []).reduce((sum, a) => sum + (a.quantity || 0) * (a.currentPrice || 0), 0);
-        const totalAssets = investmentValue + (initialBalances?.celi || 0) + (initialBalances?.reer || 0) + liquidity;
+        // Patrimoine = placements + liquidités (la liquidité inclut déjà tout
+        // le cash : CELI, REER, comptes courants…).
+        const totalAssets = investmentValue + liquidity;
 
         // 1. Taux d'épargne
         const savingsRateRaw = monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100 : 0;
@@ -170,7 +181,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                     : "La cible FIRE vient de l'onglet Future (moteur de projection). Calculez-la d'abord.",
             },
         ];
-    }, [config, budgetItems, debts, assets, initialBalances, projectionFireTarget]);
+    }, [config, budgetItems, debts, assets, initialBalances, transactions, projectionFireTarget]);
 
     // Score global pondéré (normalisation au cas où la somme des poids ≠ 100)
     const totalScore = useMemo(() => {

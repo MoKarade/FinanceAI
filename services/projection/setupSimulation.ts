@@ -158,7 +158,7 @@ export interface ScenarioOverrideResult {
  * - LIBERTE_55: pas d'override macro (juste retirement age, géré ailleurs)
  */
 export function computeScenarioOverrides(
-    projection: { inflationRate?: number; returnRates?: { celi: number; reer: number; nonReg: number; crypto: number; cash: number } } & Record<string, any>,
+    projection: { inflationRate?: number; returnRates?: { celi: number; reer: number; nonReg: number; crypto: number; cash: number }; [key: string]: unknown },
     scenarioType: FutureScenarioType,
 ): ScenarioOverrideResult {
     let simInflation = projection.inflationRate || 2.0;

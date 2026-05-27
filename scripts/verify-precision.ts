@@ -1,4 +1,6 @@
 // scripts/verify-precision.ts
+// Script CLI : la sortie console est volontaire.
+/* eslint-disable no-console */
 // Script de vérification: hash + dump complet de chaque champ de chartData sur
 // plusieurs scénarios déterministes. Permet de comparer 2 commits.
 
@@ -6,6 +8,7 @@ import { createHash } from 'crypto';
 import { writeFileSync } from 'fs';
 import { calculateFutureProjection, type SimulationParams } from '../services/projection';
 import type { ProjectionConfig, BudgetConfig, RetirementGoal } from '../types';
+import type { ProjectionResult } from '../services/projection/types';
 
 const makeProjection = (overrides: Partial<ProjectionConfig> = {}): ProjectionConfig => ({
     years: 20,
@@ -67,25 +70,49 @@ const cases = [
     { name: 'mc-200-iterations', params: makeParams({ projection: makeProjection({ monteCarloIterations: 200 }) }), runMC: true, idx: 0 },
 ];
 
-const snapshot: Record<string, any> = {};
+// Snapshot : valeurs de sortie agrégées par scénario (scalaires + échantillons chartData).
+// `unknown` pour les champs chartData dont la forme exacte est opaque depuis ce script.
+type SnapshotEntry = {
+    durationMs: number;
+    finalNetWorth: number | undefined;
+    estateNetWorth: number | undefined;
+    totalEstateTax: number | undefined;
+    totalTaxesPaid: number | undefined;
+    totalGrowth: number | undefined;
+    totalExpenses: number | undefined;
+    minNetWorth: number | undefined;
+    shortfallRate: number | undefined;
+    startNW: number | undefined;
+    fireNumber: number | undefined;
+    successRate: number | null | undefined;
+    fvi: number | null | undefined;
+    chartDataLength: number;
+    chartDataHash: string;
+    sampleM0: unknown;
+    sampleM60: unknown;
+    sampleM120: unknown;
+    sampleM180: unknown;
+    sampleM240: unknown;
+};
+const snapshot: Record<string, SnapshotEntry | number> = {};
 const t0 = Date.now();
 
 for (const c of cases) {
     const tStart = Date.now();
-    const res = calculateFutureProjection(c.params, c.runMC, c.idx) as any;
+    const res: ProjectionResult = calculateFutureProjection(c.params, c.runMC, c.idx);
     const tEnd = Date.now();
 
     snapshot[c.name] = {
         durationMs: tEnd - tStart,
         finalNetWorth: res.finalNetWorth,
         estateNetWorth: res.estateNetWorth,
-        totalEstateTax: res.totalEstateTax,
+        totalEstateTax: res.totalEstateTax as number | undefined,
         totalTaxesPaid: res.totalTaxesPaid,
         totalGrowth: res.totalGrowth,
         totalExpenses: res.totalExpenses,
         minNetWorth: res.minNetWorth,
         shortfallRate: res.shortfallRate,
-        startNW: res.startNW,
+        startNW: res.startNW as number | undefined,
         fireNumber: res.fireNumber,
         successRate: res.successRate,
         fvi: res.fvi,
@@ -105,5 +132,6 @@ snapshot._totalDurationMs = Date.now() - t0;
 writeFileSync(process.argv[2] || 'snapshot.json', JSON.stringify(snapshot, null, 2));
 console.log(`Snapshot écrit. Total: ${snapshot._totalDurationMs}ms`);
 for (const c of cases) {
-    console.log(`  ${c.name}: ${snapshot[c.name].durationMs}ms — hash=${snapshot[c.name].chartDataHash.slice(0, 16)}`);
+    const entry = snapshot[c.name] as SnapshotEntry;
+    console.log(`  ${c.name}: ${entry.durationMs}ms — hash=${entry.chartDataHash.slice(0, 16)}`);
 }

@@ -109,6 +109,8 @@ export const fetchFxRates = async (): Promise<{ USD: number; EUR: number; CAD: n
                 // Persistance dans localStorage si disponible (no-op en Node)
                 safeSetItem('fx_rates_cache', JSON.stringify(rates));
 
+                // Confirmation de mise à jour des taux : log informatif, pas une erreur.
+                // eslint-disable-next-line no-console
                 console.log(`Taux FX mis a jour (Banque du Canada): USD=${usdCad.toFixed(4)}, EUR=${eurCad.toFixed(4)}`);
                 return rates;
             }
@@ -136,7 +138,7 @@ export const fetchPortfolioHistory = async (): Promise<MarketDataPoint[]> => {
 };
 
 
-export const fetchAssetHistory = async (symbol: string, currency: string, currentPrice: number, performance: number) => {
+export const fetchAssetHistory = async (symbol: string, _currency: string, _currentPrice: number, _performance: number) => {
     const data = await fetchPortfolioHistory();
     const cleanSym = symbol.split('.')[0];
     const keys = data.length > 0 ? Object.keys(data[0]) : [];

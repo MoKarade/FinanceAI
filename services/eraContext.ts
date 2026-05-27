@@ -146,6 +146,8 @@ export const fetchTransactions = async (
         }
 
         const endStr = endDate.toISOString().split('T')[0];
+        // Log de progression fetch : information opérationnelle, pas une erreur.
+        // eslint-disable-next-line no-console
         console.log(`[EraContext] Fetching ${startStr} → ${endStr}`);
 
         let allRaw: z.infer<typeof EraContextTxSchema>[] = [];
@@ -185,8 +187,13 @@ export const fetchTransactions = async (
             }
 
             if (!response.ok) {
+                // Sécurité (audit MEDIUM) : on logge le corps brut pour le debug
+                // local mais on ne le propage PAS dans le message d'erreur — il
+                // peut contenir des détails internes de l'API. L'UI ne voit que
+                // le code de statut.
                 const text = await response.text();
-                throw new Error(`Era Context API (${response.status}): ${text}`);
+                console.warn(`[eraContext] Era API ${response.status}:`, text);
+                throw new Error(`Era Context API a répondu ${response.status}`);
             }
 
             const rawData = await response.json();

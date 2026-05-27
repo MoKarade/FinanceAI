@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { processCashflowAllocation, type CashflowState, type CashflowCtx } from '../../services/projection/cashflowAllocation';
+import type { FiscalReport } from '../../utils/tax';
 import type { Debt } from '../../types';
 
 // G21 C5 commit 1 — tests de sensibilité des leviers découplés (contributionOrder,
@@ -28,7 +29,7 @@ const makeCtx = (over: Partial<CashflowCtx> = {}): CashflowCtx => ({
 
 // marginalRate bas (20%) → la dérivation auto ne force PAS REER d'abord ; on isole
 // donc l'effet de contributionOrder.
-const fiscalStub = () => ({ marginalRate: 20 } as any);
+const fiscalStub = () => ({ marginalRate: 20 } as unknown as FiscalReport);
 const grossStub = (net: number) => ({ gross: net / 0.7 });
 
 describe('cashflowAllocation — levier contributionOrder', () => {

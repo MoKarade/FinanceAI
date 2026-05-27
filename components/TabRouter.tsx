@@ -69,8 +69,8 @@ export interface TabRouterProps {
  * pour chaque page.
  */
 export const TabRouter: React.FC<TabRouterProps> = ({
-    activeTab, state, setAppState, setActiveTab, isPrivacyMode, isLoading,
-    globalNetWorth, calculatedMonthlySavings, assetBreakdown, currentLiquidity,
+    activeTab, state, setAppState, setActiveTab, isPrivacyMode, isLoading: _isLoading,
+    globalNetWorth, calculatedMonthlySavings, assetBreakdown, currentLiquidity: _currentLiquidity,
     onUpdateApiKeys, onManualImport,
 }) => {
     return (

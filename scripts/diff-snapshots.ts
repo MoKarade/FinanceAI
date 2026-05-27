@@ -1,4 +1,6 @@
 // scripts/diff-snapshots.ts
+// Script CLI : la sortie console est volontaire.
+/* eslint-disable no-console */
 // Compare deux snapshots produits par verify-precision.ts.
 // Identifie les champs qui diffèrent (montants + clés manquantes).
 

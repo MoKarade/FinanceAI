@@ -39,7 +39,7 @@ export interface PwaInstallState {
 function isStandalone(): boolean {
     if (typeof window === 'undefined') return false;
     // iOS Safari : navigator.standalone. Chrome/Edge : matchMedia.
-    if ((window.navigator as any).standalone) return true;
+    if ((window.navigator as Navigator & { standalone?: boolean }).standalone) return true;
     return window.matchMedia?.('(display-mode: standalone)').matches ?? false;
 }
 

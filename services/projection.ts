@@ -2,7 +2,7 @@
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness, SavingsGoal, FinancialGoal } from '../types';
 import { calculateFiscalReport, getMarginalRate, calculateDividendTax, calculateGrossWithholdingRRSP, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
 import { RRIF_RATES, welcomeTax } from './projection/helpers';
-import { runMonteCarlo } from './projection/monteCarlo';
+import { runMonteCarlo, type MonteCarloResult } from './projection/monteCarlo';
 import { rankStrategiesByRobustness, type RobustnessRanking, type RankRobustnessOptions } from './projection/strategyRobustness';
 import type { EngineOverrides, StrategyConfig } from './projection/strategyConfig';
 import { runStrategySearch, type StrategySearchResult, type RunStrategySearchOptions } from './projection/strategySearch';
@@ -48,10 +48,22 @@ export {
     type DecisiveLever,
 } from './projection/strategyConfigRanking';
 
+/** Balances en direct lues depuis les comptes (CSV ou saisie manuelle). */
+export interface LiveCSVBalances {
+    CELI: number;
+    CELIAPP: number;
+    REER: number;
+    NON_ENREG: number;
+    CRYPTO: number;
+    REEE: number;
+    /** Champs supplémentaires éventuels — tolérance aux sources externes. */
+    [key: string]: number;
+}
+
 export interface SimulationParams {
     projection: ProjectionConfig;
     calculatedStartingCash: number;
-    liveCSVBalances: any;
+    liveCSVBalances: LiveCSVBalances;
     realEstateGoals: RealEstateGoal[];
     debts: Debt[];
     childGoals: ChildGoal[];
@@ -85,8 +97,15 @@ export interface SimulationParams {
 // une fois la cause corrigée.
 let _tb3LiquidLogged = false;
 
+// Cœur du moteur de projection. Simule un scénario complet, mois par mois, sur
+// l'horizon choisi. Chaque mois enchaîne dans l'ordre : croissance des
+// placements (rendements ± aléa Monte Carlo), revenus (salaires/rentes),
+// dépenses de vie + service des dettes, impôts, immobilier (hypothèque, valeur),
+// puis agrégation de la valeur nette du mois. En mode Monte Carlo, runScenario
+// est rappelée N fois avec un RNG seedé déterministe (reproductible).
+// Retourne la série temporelle (chartData) + les agrégats de fin (estate, FIRE).
 const runScenario = (params: SimulationParams, strategy: AllocationStrategy, enableMonteCarlo = false, delayPensions = false, mcIterationIndex = 0, scenarioType: FutureScenarioType = 'BASE', overrides: EngineOverrides = {}) => {
-    const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0, insurancePolicies = [], vehicleReplacements = [], majorRenovations = [], charitableGoals = [], rentalProperties = [], privateBusinesses = [], savingsGoals = [], financialGoals = [] } = params;
+    const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual: _baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0, insurancePolicies = [], vehicleReplacements = [], majorRenovations = [], charitableGoals = [], rentalProperties = [], privateBusinesses = [], savingsGoals = [], financialGoals = [] } = params;
     
     // Cycle 22 split: RNG seedé déterministique → ./projection/setupSimulation
     const rng = buildSeededRng(scenarioType, strategy, mcIterationIndex);
@@ -182,7 +201,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     });
 
     // Cycle 22 split: scenario overrides (inflation + rates) → ./projection/setupSimulation
-    const { simInflation, baseRates } = computeScenarioOverrides(projection as any, scenarioType);
+    const { simInflation, baseRates } = computeScenarioOverrides(projection as unknown as { inflationRate?: number; returnRates?: { celi: number; reer: number; nonReg: number; crypto: number; cash: number } } & Record<string, unknown>, scenarioType);
 
     let overrideRetirementAge = retirementGoal.targetAge || 65;
     if (scenarioType === 'LIBERTE_55') overrideRetirementAge = 55;
@@ -191,11 +210,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
     const effectiveBaseExpenses = projection.useTheoretical ? (projection.theoreticalExpenses || 4000) : baseMonthlyExpenses;
     const fireTargetAnnual = effectiveBaseExpenses * 12;
+    // Règle des 4% (Trinity Study, 1998) : on peut retirer 4%/an d'un
+    // portefeuille sans l'épuiser → capital cible = dépenses annuelles × 25.
     const fireTargetNetWorth = fireTargetAnnual * 25;
-
-    const RE_PURCHASE_MONTH_OFFSET = realEstateGoals.find(g => g.isActive && g.isPrimaryResidence)?.purchaseDate
-        ? getMonthOffset(realEstateGoals.find(g => g.isActive && g.isPrimaryResidence)!.purchaseDate)
-        : -1;
 
     // FIX cycle 2 TS reviewer: type explicite pour éviter inférence `null` (cascade strict)
     let month1ActionPlan: { monthlyCashflow: number; strategy: AllocationStrategy } | null = null;
@@ -248,8 +265,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         inflationShock: effProj.stressTestInflationShock || 0,
     } : null;
 
-    // Cycle 22 split: RRQ adjustment + pensions baseline → ./projection/setupSimulation
-    const { rrqAdjustmentFactor, rrqBasePension, psvBasePension } = computeRrqAdjustment(delayPensions, retirementGoal);
+    // Cycle 22 split: la baseline RRQ (facteur d'ajustement + pension de base) est
+    // recalculée dans les sous-modules de retraite. Seul psvBasePension (PSV) est
+    // consommé directement ici.
+    const { psvBasePension } = computeRrqAdjustment(delayPensions, retirementGoal);
 
     // D2.2: RRIF_RATES et welcomeTax → ./projection/helpers
 
@@ -755,7 +774,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         activeDebts.forEach(d => {
             if (d.balance > 0) {
                 const interest = (d.balance * (d.interestRate / 100)) / 12;
-                const principalFloor = d.balance / 300; // 25 ans
+                const principalFloor = d.balance / 300; // 300 = 25 ans × 12 mois
                 const effectiveMinimum = Math.max(d.minimumPayment, interest + principalFloor);
                 const payment = Math.min(d.balance + interest, effectiveMinimum);
                 d.balance = d.balance + interest - payment;
@@ -1029,7 +1048,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         liquid = g.liquid.newVal; growthLiquid = g.liquid.growth; growthPctLiquid = g.liquid.pct;
         reee = g.reee.newVal; growthREEE = g.reee.growth; growthPctREEE = g.reee.pct;
         totalGrowth += g.totalGrowth;
-        totalTaxesPaid += fluxImpots + taxOnRrif + retraitReerMois * (0.15); // approximation for mid-year witholdings not yet filed
+        // Retenue à la source ~15% sur les retraits REER de l'année courante,
+        // pas encore régularisée par la déclaration de revenus (approx. mi-année).
+        // 15% = tranche intermédiaire de retenue REER au QC (cf RRSP_WITHHOLDING_QC).
+        totalTaxesPaid += fluxImpots + taxOnRrif + retraitReerMois * 0.15;
         totalExpenses += monthlyExpenses;
 
         const rawNetWorth = liquid + celi + celiapp + reer + nonReg + crypto + reee + realEstateEquity - mortgageBalance;
@@ -1179,7 +1201,7 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
     // V90 + Cycle 7 split: Avenirs de Vie (5 Distinct Futures)
     // Metadata extraite dans ./projection/scenarios. Itère sur SCENARIO_DEFINITIONS
     // (7 scénarios depuis Phase 4 #4) au lieu de blocs hardcodés ~10 lignes chacun.
-    const results = SCENARIO_DEFINITIONS.map(def => ({
+    const results: ProjectionResult[] = SCENARIO_DEFINITIONS.map(def => ({
         ...runScenario(effectiveParams, def.strategy, false, def.delayPensions, 0, def.stratType, appliedOverrides),
         strategy: def.strategy,
         strategyName: def.strategyName,
@@ -1194,21 +1216,19 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
     const resBase = results[0]; // BASE est la référence pour gainVsAuto
 
     // V50: Stable indexing for the UI (we don't sort the main results array anymore)
-    const sortedByEstate = [...results].sort((a, b) => b.estateNetWorth - a.estateNetWorth);
+    const sortedByEstate = [...results].sort((a, b) => (b.estateNetWorth ?? 0) - (a.estateNetWorth ?? 0));
     const best = sortedByEstate[0];
-    const pire = sortedByEstate[results.length - 1];
-    const diffSaves = best.estateNetWorth - pire.estateNetWorth;
 
     // Add gain info to each result relative to the standard 'Base' scenario (resBase)
     results.forEach(res => {
-        (res as any).gainVsAuto = res.estateNetWorth - resBase.estateNetWorth;
+        res.gainVsAuto = (res.estateNetWorth ?? 0) - (resBase.estateNetWorth ?? 0);
     });
 
     // V42: Run MC on the targeted/selected strategy
     const target = results[selectedIdx] || best;
     let successRate: number | null = null;
     let fvi: number | null = null;
-    let expertMetrics: any = null;
+    let expertMetrics: MonteCarloResult['expertMetrics'] | null = null;
 
     if (runMC) {
         // Cycle 5 audit UI: monteCarloIterations désormais lu depuis ProjectionConfig
@@ -1218,33 +1238,33 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
         // Cycle 7 split: runScenario injecté pour éviter dépendance circulaire.
         // G21 C4 fix : utilise la stratégie réelle du scénario ciblé (avant,
         // 'AUTO_MARGINAL' était hardcodé → le MC ignorait le scénario sélectionné).
-        const mcResult = runMonteCarlo(runScenario, effectiveParams, (target as any).strategy ?? 'AUTO_MARGINAL', target.delayPensions, MC_ITERATIONS, appliedOverrides);
+        const mcResult = runMonteCarlo(runScenario, effectiveParams, (target.strategy as AllocationStrategy) ?? 'AUTO_MARGINAL', target.delayPensions as boolean, MC_ITERATIONS, appliedOverrides);
         successRate = mcResult.successRate;
         fvi = mcResult.fvi;
         expertMetrics = mcResult.expertMetrics;
-        
-        (target.chartData as any[]).forEach((d, i) => {
+
+        target.chartData.forEach((d, i) => {
             d.P10 = mcResult.p10Data[i] ?? null;
             d.P50 = mcResult.p50Data[i] ?? null;
             d.P90 = mcResult.p90Data[i] ?? null;
         });
 
         const delayStr = target.delayPensions ? 'repousser vos rentes gouvernementales à 70 ans' : 'prendre vos rentes gouvernementales aux âges normaux';
-        const stratStr = target.strategyName.split(' / ')[0];
+        const stratStr = (target.strategyName as string ?? '').split(' / ')[0];
         const isBest = target === best;
-        (target as any).aiNote = `${isBest ? '🌟 Stratégie Optimale : ' : ''}Simulation basée sur **${stratStr}** et **${delayStr}**. Indice de Vitalité : ${fvi}%.`;
+        target.aiNote = `${isBest ? '🌟 Stratégie Optimale : ' : ''}Simulation basée sur **${stratStr}** et **${delayStr}**. Indice de Vitalité : ${fvi}%.`;
     } else {
-        (target.chartData as any[]).forEach((d) => { d.P10 = null; d.P50 = null; d.P90 = null; });
+        target.chartData.forEach((d) => { d.P10 = null; d.P50 = null; d.P90 = null; });
         const delayStr = target.delayPensions ? 'repousser les rentes (70 ans)' : 'prendre les rentes normalement';
-        const stratStr = target.strategyName.split(' / ')[0];
-        (target as any).aiNote = `Simulation déterministe (**${stratStr}** + **${delayStr}**).`;
+        const stratStr = (target.strategyName as string ?? '').split(' / ')[0];
+        target.aiNote = `Simulation déterministe (**${stratStr}** + **${delayStr}**).`;
     }
 
     return {
         ...target,
         successRate: fvi || successRate, // V65: Display FVI as health score
         fvi,
-        expertMetrics,
+        expertMetrics: expertMetrics ?? undefined,
         allResults: results,
         bestStrategyIdx: results.indexOf(best)
     };

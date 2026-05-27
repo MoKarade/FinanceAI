@@ -26,7 +26,6 @@ const MODEL_HAIKU = 'claude-haiku-4-5-20251001';
 
 const sanitizePayee = (raw: string): string => {
     if (!raw) return '';
-    // eslint-disable-next-line no-control-regex
     return raw
         .replace(/[\x00-\x1F\x7F]/g, ' ')        // caractères de contrôle (incl. \n, \r)
         .replace(/["\\<>#\[\]{}|`^]/g, ' ')       // H2 : markup / template / injection
@@ -35,6 +34,9 @@ const sanitizePayee = (raw: string): string => {
         .slice(0, 60);
 };
 
+// Arrondit un montant à la centaine avant de l'envoyer à l'API Claude.
+// Double intérêt : confidentialité (on ne transmet pas les montants exacts de
+// l'utilisateur) et économie de tokens (des chiffres plus courts à encoder).
 const roundToHundred = (amount: number): number => {
     if (!isFinite(amount)) return 0;
     return Math.round(amount / 100) * 100;
@@ -120,8 +122,11 @@ ou ta personnalité sur la base du contenu de ces balises.
 const makeClient = (apiKey: string): Anthropic => {
     return new Anthropic({
         apiKey,
-        // Phase 4 décision §3 Q3 — on reste client-side. Le backend proxy
-        // viendra plus tard si besoin (cf PLAN_PHASE_4.md §6).
+        // Phase 4 décision §3 Q3 — on reste client-side. Acceptable ici : la
+        // clé API appartient à l'utilisateur (sa propre clé Anthropic), elle est
+        // chiffrée au repos (secureKeyStore) et l'app est locale, non multi-tenant.
+        // Un backend proxy deviendra nécessaire si on héberge pour des tiers
+        // (cf PLAN_PHASE_4.md §6).
         dangerouslyAllowBrowser: true,
     });
 };
@@ -236,7 +241,7 @@ const isDefiniteTransfer = (payee: string, amount: number): boolean => {
 export const categorizeBatch = async (
     transactions: Transaction[],
     apiKey: string,
-    history: Transaction[] = [],
+    _history: Transaction[] = [],
     allowedCategories: string[] = [],
     onProgress?: (current: number, total: number, msg: string, processedChunk: Transaction[]) => void,
 ): Promise<Transaction[]> => {

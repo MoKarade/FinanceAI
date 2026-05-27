@@ -44,7 +44,7 @@ describe('useDebouncedMemo - comportement (logique débounce)', () => {
     });
 
     it('factory crash au mount: utilise le fallback', () => {
-        const useStateLikeWithFallback = (factory: () => any) => {
+        const useStateLikeWithFallback = (factory: () => unknown) => {
             try {
                 return factory();
             } catch {

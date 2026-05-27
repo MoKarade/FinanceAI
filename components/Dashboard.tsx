@@ -49,8 +49,8 @@ Object.entries(ASSET_META).forEach(([k, v]) => {
 });
 
 export const Dashboard: React.FC<DashboardProps> = ({
-    transactions, assets, initialBalances, realEstateGoals, childGoals = [], debts = [],
-    lifeEvents = [], onNavigate, isPrivacyMode = false, calculatedMonthlySavings = 0,
+    transactions, assets, initialBalances, realEstateGoals, childGoals: _childGoals = [], debts = [],
+    lifeEvents: _lifeEvents = [], onNavigate: _onNavigate, isPrivacyMode = false, calculatedMonthlySavings = 0,
     config,
 }) => {
     const { t } = useTranslation();
@@ -259,7 +259,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 }
                 txIdx++;
             }
-            const point: any = { date: rowDateStr };
+            const point: Record<string, number | string> = { date: rowDateStr };
             let total = 0;
             cashAccountsList.forEach(acc => { point[acc] = rc[acc]; total += rc[acc]; });
 
@@ -305,12 +305,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
             segmentedData: { assets: indAssets, cash: cashList, credit: creditList },
             totalMonthlyPassive: passiveIncome
         };
-    }, [marketData, assets, timeRange, customStart, customEnd, transactions, initialBalances, debts]);
+    }, [marketData, assets, timeRange, customStart, customEnd, transactions, initialBalances, debts, realEstateGoals]);
 
     const performance = useMemo(() => {
         if (unifiedHistory.length < 2) return { global: 0, diff: 0 };
-        const start = unifiedHistory[0].Total || 0;
-        const end = unifiedHistory[unifiedHistory.length - 1].Total || 0;
+        const start = Number(unifiedHistory[0].Total) || 0;
+        const end = Number(unifiedHistory[unifiedHistory.length - 1].Total) || 0;
         const diff = end - start;
         const pct = start > 0 ? (diff / start) * 100 : 0;
         return { global: pct, diff };
@@ -330,7 +330,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <KPIStat
                     label={t('dashboard.global_net_worth')}
                     icon="💰"
-                    value={formatCAD(latestTotals?.Total || 0)}
+                    value={formatCAD(Number(latestTotals?.Total) || 0)}
                     sublabel={t('dashboard.consolidated', 'Tous comptes')}
                     privacy
                     variant="primary"
@@ -377,7 +377,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                     <div className="text-kpi text-ink-50 privacy-blur tabular-nums">
                         {(() => {
-                            const projected = calculateFutureValue(latestTotals?.Total || 0, calculatedMonthlySavings || 0, futureYears);
+                            const projected = calculateFutureValue(Number(latestTotals?.Total) || 0, calculatedMonthlySavings || 0, futureYears);
                             return projected != null
                                 ? formatCAD(projected)
                                 : <ProjectionRequired variant="inline" feature="cette projection" />;

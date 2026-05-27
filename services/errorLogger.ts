@@ -131,6 +131,8 @@ export function logError(input: {
     if (typeof console !== 'undefined') {
         const fn = severity === 'critical' || severity === 'error' ? console.error
             : severity === 'warning' ? console.warn
+            // Logger central : écriture console.info volontaire (routing par sévérité).
+            // eslint-disable-next-line no-console
             : console.info;
         fn(`[${input.source}] ${message}`, input.context ?? '');
     }

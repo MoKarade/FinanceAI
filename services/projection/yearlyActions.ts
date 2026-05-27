@@ -33,19 +33,21 @@ export interface YearlyAction {
  * Agrège le flux net par compte et par année à partir du chartData mensuel d'un
  * scénario. Ignore les mois passés (monthIndex < 0) si présents.
  */
-export function computeYearlyActions(chartData: Array<Record<string, any>>): YearlyAction[] {
+export function computeYearlyActions(chartData: Array<Record<string, unknown>>): YearlyAction[] {
     if (!chartData || chartData.length === 0) return [];
     const byYear = new Map<number, YearlyAction>();
 
     for (const d of chartData) {
-        if ((d.monthIndex ?? 0) < 0) continue; // passé réel : pas d'action future
-        const year = d.year;
+        const monthIndex = (d.monthIndex as number | undefined) ?? 0;
+        if (monthIndex < 0) continue; // passé réel : pas d'action future
+        const year = d.year as number | undefined;
         if (year == null) continue;
+        const age = (d.age as number | null | undefined) ?? null;
         let entry = byYear.get(year);
         if (!entry) {
             entry = {
                 year,
-                age: d.age ?? null,
+                age,
                 isRetired: false,
                 flows: { Liquidites: 0, CELI: 0, CELIAPP: 0, REER: 0, REEE: 0, NonReg: 0, Crypto: 0 },
                 deposited: 0,
@@ -53,10 +55,10 @@ export function computeYearlyActions(chartData: Array<Record<string, any>>): Yea
             };
             byYear.set(year, entry);
         }
-        entry.age = d.age ?? entry.age; // dernier âge vu dans l'année
+        entry.age = age ?? entry.age; // dernier âge vu dans l'année
         if (d.isRetired) entry.isRetired = true;
         for (const a of ACTION_ACCOUNTS) {
-            const v = d[a.field] || 0;
+            const v = ((d[a.field] as number | undefined) || 0);
             entry.flows[a.key] += v;
         }
     }

@@ -11,6 +11,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Lot de 4 merges (`3167a55`, `20abca8`, `4af08b2`, `6042fe9`) partis de `f257efb`.
 
 ### Ajouté
+- **Copilote — finitions** : import de positions courtier en lot (CSV Wealthsimple /
+  Questrade / Disnat…) via `parseBrokerCsv` (pur, 11 tests) + modal `ImportBrokerPositions`
+  dans Investissements (dédup par symbole) ; cache de prix Finnhub persisté en IndexedDB
+  (`persistentCache.ts`, TTL history 1h → 24h — prix passés quasi-immuables). « Appliquer
+  le gagnant » de l'optimiseur était déjà en place.
 - **Option « Immigré au Canada » (par personne)** — bascule dans Config et Onboarding.
   Un immigrant n'accumule du droit CELI qu'à partir de son année de résidence fiscale
   (et son droit REER depuis son revenu canadien) ; défaut = non-immigrant (droit complet

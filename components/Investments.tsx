@@ -28,6 +28,7 @@ import { formatCAD } from '../utils/format';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { getRebalanceJustifications, type RebalanceActionInput } from '../services/claude';
 import { AddStockForm } from './investments/AddStockForm';
+import { ImportBrokerPositions } from './investments/ImportBrokerPositions';
 import { computePurchaseStats } from '../utils/assetPurchases';
 import { useFinanceStore } from '../store/useFinanceStore';
 
@@ -153,6 +154,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
     const [isFetchingJustifications, setIsFetchingJustifications] = useState(false);
     // Phase E.9 — modal d'ajout manuel d'une action
     const [showAddStockForm, setShowAddStockForm] = useState(false);
+    const [showImportBroker, setShowImportBroker] = useState(false);
 
     // --- INSTANT DATA LOAD ---
     // Sprint 3B M3 + test-mode-complet : utilise usePortfolioHistory hook qui
@@ -976,7 +978,14 @@ export const Investments: React.FC<InvestmentsProps> = ({
             {/* 5. STOCK CARDS GRID — Phase E.3 sub-tab 'detail' */}
             {subTab === 'detail' && <>
                 {/* Phase E.9 — bouton d'ajout manuel d'action */}
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setShowImportBroker(true)}
+                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/15 text-ink-200 text-tiny font-bold rounded-card transition-colors focus-ring"
+                    >
+                        📥 Importer (CSV courtier)
+                    </button>
                     <button
                         type="button"
                         onClick={() => setShowAddStockForm(true)}
@@ -1084,6 +1093,20 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 onAdd={(newAsset) => {
                     if (setAssets) {
                         setAssets([...assets, newAsset]);
+                    }
+                }}
+            />
+
+            {/* Import positions courtier en lot (CSV). Dédup par symbole : on
+                n'ajoute que les titres pas déjà présents (l'utilisateur garde la main). */}
+            <ImportBrokerPositions
+                isOpen={showImportBroker}
+                onClose={() => setShowImportBroker(false)}
+                onImport={(newAssets) => {
+                    if (setAssets) {
+                        const existing = new Set(assets.map(a => a.symbol));
+                        const toAdd = newAssets.filter(a => !existing.has(a.symbol));
+                        setAssets([...assets, ...toAdd]);
                     }
                 }}
             />

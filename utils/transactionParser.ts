@@ -131,9 +131,13 @@ export const parseTransactions = (rawData: string): Transaction[] => {
     const line = lines[i].trim();
     if (!line) continue;
 
-    // Detect separator
+    // Détection du séparateur : tabulation > point-virgule > virgule.
+    // L'ordre compte : les CSV FR (Excel Québec) utilisent ';' car la virgule y
+    // est le séparateur décimal ; la virgule en dernier recours couvre les
+    // exports nord-américains standards (décimale = point).
     let parts = line.split('\t');
-    if (parts.length < 2) parts = line.split(';'); // Fallback
+    if (parts.length < 2) parts = line.split(';');
+    if (parts.length < 2) parts = line.split(',');
 
     if (parts.length >= 2) {
       try {

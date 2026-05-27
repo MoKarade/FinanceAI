@@ -12,6 +12,7 @@ Décisions structurantes documentées au format ADR léger (1-2 pages chacune).
 | [006](006-no-fake-data-convention.md) | Convention "valeurs réelles ou rien" | 2026-05-21 | Acceptée |
 | [007](007-auth-cloudflare-access.md) | Authentification via Cloudflare Access + Google OAuth | 2026-05-22 | Acceptée (implémentée) |
 | [008](008-strategy-config-decoupling.md) | Optimiseur : leviers découplés + adaptateur moteur fin | 2026-05-26 | Acceptée (implémentée) |
+| [009](009-fiscalite-quebec-centralisee.md) | Calculs fiscaux QC centralisés (crédits 65+, RAMQ, FSS, SRG) + règles immobilières | 2026-05 | Acceptée (implémentée) |
 
 ## Format
 

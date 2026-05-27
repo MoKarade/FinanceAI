@@ -12,6 +12,24 @@
 
 ---
 
+## 📍 Session 2026-05-27 — Qualité & purge (G23)
+
+4 merges sur `main`. Aucun item nouveau ouvert.
+
+- [x] **U3** — toggle MC → radio-group accessible (clavier natif) ✅
+- [x] **U4** — tooltip Futur : tous les événements du mois ✅
+- [x] **DT4** — split testFixtures en 6 modules ✅
+- [x] **DT2** — 0 warning ESLint (484→0), typage `any` éliminé ✅
+- [x] **Bug HealthIndicator + NextBestAction** — coussin et patrimoine retournaient 0 ; corrigé via `computeCurrentLiquidity` ✅
+- [x] **Era retiré entièrement** — ~1 224 lignes supprimées (eraContext.ts, aiOrchestrator.ts, EraContextInsights.tsx, clé apiKeys.eraContext) ; ADR 002 SUPERSEDED ✅
+- [x] **Code mort purgé** — 53→36 unused exports (hasSeenTour, PLAN_LEVELS, annualToMonthly, getAssetMeta*, getDividends, clearApiKeys, loadApiKeys, 4 fonctions IA) ✅
+- [x] **0 warning ESLint, tsc strict 0 erreur, build OK** ✅
+- **Tests : 742 → 732** (71 fichiers ; delta = 2 fichiers test era retirés, compensé par test de régression coussin).
+
+**Prochains items ouverts recommandés** : T2 (Playwright E2E) · T3 (coverage 80%) · U7 (sidebar flicker) · B3 (findEarliestRetirementAge timeout) · P3 (refactor god-components).
+
+---
+
 ## 📍 Session 2026-05-26 (soir) — Lot UX/refonte demandé par Marc (G22)
 
 > Chaque item est un **long chantier** : plan + questions + implémentation, un par un.
@@ -425,14 +443,15 @@ les autres onglets en dépendent maintenant.
 - [x] Badge "Scénario actif : &lt;nom&gt;" dans Future header (vert si meilleur, ambre sinon).
   Masqué quand un seul scénario disponible. Texte "pas le meilleur" + lien vers Paramètres.
 
-### U3 — Toggle déterministe vs MC plus visible
+### U3 — Toggle déterministe vs MC plus visible ✅ FAIT (2026-05-27)
 Avec C1 (centralisation), le toggle MC dans Future impacte tous les onglets.
-Le rendre prominent (radio button ?).
+- [x] Transformé en radio-group accessible (vrais `<input type="radio">` stylés,
+  navigation clavier native) dans `ProjectionControls`.
 
-### U4 — Tooltip Future : groupes événements
-L'agent a noté que le tooltip avec 10+ événements peut devenir long. Bien que
-fixed-height OK, on pourrait grouper "Maison • Hypo • Charges • Capital • Intérêts"
-sous une section pliable.
+### U4 — Tooltip Future : groupes événements ✅ FAIT (2026-05-27)
+L'agent a noté que le tooltip avec 10+ événements peut devenir long.
+- [x] `ProjectionTooltip` affiche désormais TOUS les événements du mois
+  (avant : seulement le 1er + « +N »).
 
 ### U5 — Dashboard Évolution Détaillée : exporter PNG
 Bouton "Télécharger PNG" pour partager le graph.
@@ -647,7 +666,7 @@ CATEGORY_ICONS/BudgetConfig divers. Validé typecheck + 604 tests.
   `exhaustive-deps` (revue prudente requise), `no-explicit-any` (= DT2).
   Aucun n'est un import mort.
 
-### DT2 — Types `any` résiduels 🟡 PASSE FAITE (2026-05-27)
+### DT2 — Types `any` résiduels ✅ TERMINÉ (2026-05-27)
 - [x] Audit + **36 `any` remplacés** par des types précis / `unknown` (haute confiance)
   sur 15 fichiers : store (migrations typées `MigratingState`/`LegacyUser`),
   FutureProjection (`ChartEvent`, génériques), hooks, Budget/ChildPlanning/Dashboard
@@ -661,10 +680,10 @@ CATEGORY_ICONS/BudgetConfig divers. Validé typecheck + 604 tests.
 ### DT3 — ChildPlanning duplique TEST_DEBTS-like logique
 Cf B2 — Reste à aligner totalement UI et moteur.
 
-### DT4 — `services/testFixtures.ts` 300+ lignes
-Pourrait être splitté en `testAssets.ts`, `testGoals.ts`, etc.
-- **Effort** : 1 h
-- **Risque** : low
+### DT4 — `services/testFixtures.ts` 300+ lignes ✅ FAIT (2026-05-27)
+- [x] Splitté en 6 modules : `testConfig`, `testAssets`, `testBudget`, `testGoals`,
+  `testTransactions`, `testMarketData`. `testFixtures.ts` (380 lignes) reste le point
+  d'entrée. 0 warning ESLint, 0 erreur tsc.
 
 ### DT5 — Worker projection trop monolithique
 Le worker fait : projection + Monte Carlo + scénarios. À splitter en
@@ -728,11 +747,11 @@ Priorité de traitement :
 | P1 Centralisation | C2 (brancher TaxCenter/Investments/RealEstate) + C4 (code mort) | ~4 h | C1 moteur ✅ complet |
 | P1 Bugs | **TB3 cards à 0 = NaN confirmé**, G1 boutons « aller Futur » cassés ; TB4 (Marc), B3/B4 reportés | ~2 h | TB3+G1 = vrais bugs |
 | 🎨 Refonte graphs & Futur | G2 overlaps, G3 sous-onglets+plein écran, G4 zoom/pan/style Google Finance (tous graphs), G5 icônes events, G6 tooltip | ~20-25 h | demandé 2026-05-22, gros chantier |
-| P2 UX | U3 toggle MC, U4 tooltip groups, export PNG/PDF, **U7 sidebar (icônes stables + pas de flicker)** | ~6 h | U2/U5/U6 ✅, dark mode rejeté |
+| P2 UX | export PNG/PDF, **U7 sidebar (icônes stables + pas de flicker)** | ~4 h | U2/U3/U4/U5/U6 ✅, dark mode rejeté |
 | P2 Performance | P1 bundle audit, P3 profiler worker | ~4 h | P2 SW cache ✅ |
 | P2 Tests | T2 Playwright, T3 coverage 64→80%, T4 automatiser manuels | ~8 h | T1 convergence ✅ |
 | P3 Docs | — | — | D1-D4 ✅ + AUTH_SETUP ✅ |
-| P3 Dette tech | DT2 `any`, DT4 split testFixtures, DT5 split worker | ~5 h | DT1 imports ✅ fait |
+| P3 Dette tech | DT5 split worker | ~2 h | DT1 imports ✅, DT2 any ✅, DT4 split fixtures ✅ |
 | **Total restant** | **~19 items actionnables** | **~55 h** | gros poste = refonte graphs/Futur |
 
 **Progression session 2026-05-25** :

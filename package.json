@@ -12,6 +12,7 @@
     "lint": "eslint . --ext ts,tsx",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "knip": "knip",
     "check-contrast": "tsx scripts/check-contrast.ts",
     "mcp:dev": "tsx mcp/stdio.ts"
@@ -29,6 +30,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",

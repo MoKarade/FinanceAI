@@ -26,7 +26,7 @@
 - [x] **0 warning ESLint, tsc strict 0 erreur, build OK** ✅
 - **Tests : 742 → 732** (71 fichiers ; delta = 2 fichiers test era retirés, compensé par test de régression coussin).
 
-**Prochains items ouverts recommandés** : T2 (Playwright E2E) · T3 (coverage 80%) · U7 (sidebar flicker) · B3 (findEarliestRetirementAge timeout) · P3 (refactor god-components).
+**Prochains items ouverts recommandés** : T2 en CI (E2E local fait) · T3 (coverage 80%) · U7 (sidebar flicker) · B3 (findEarliestRetirementAge timeout) · P3 (refactor god-components) · robustesse multi-users (IndexedDB + backup auto).
 
 ---
 
@@ -609,9 +609,12 @@ keystroke latency dans Future sliders.
 - [ ] Test E2E mode test (E2E Playwright reporté → T2)
 - [x] Test ProjectionRequired affichage ✅ (2026-05-27 — `tests/components/ProjectionRequired.test.tsx`, block+inline+nav)
 
-### T2 — Tests visuels (Playwright)
-- [ ] Screenshot baseline Dashboard / Future / Retraite / Enfant
-- [ ] Détecter régression visuelle automatiquement en CI
+### T2 — Tests visuels (Playwright) ✅ FAIT (2026-05-27)
+- [x] Setup Playwright + Chromium, `playwright.config.ts` (webServer vite port 3000, headless)
+- [x] Screenshot baseline Dashboard / Futur / Retraite / Enfant (4 baselines dans `e2e/__snapshots__/`)
+- [x] Smoke navigation tous onglets (0 erreur console) + assertions KPI (patrimoine > 0, coussin > 0 mois)
+- [x] Script `npm run test:e2e` ; 15 tests verts ; `e2e/` exclu de Vitest (732 inchangé)
+- [ ] Brancher en CI (reste à faire — actuellement local)
 
 ### T3 — Coverage 80% target
 Actuel : ~64 % estimé. Cibles à couvrir :

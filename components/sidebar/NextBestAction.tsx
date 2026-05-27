@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { getNextBestActions, type NextBestAction as NBAction, type FinancialSnapshot } from '../../services/claude';
 import { buildEnrichedContext } from '../../services/aiOrchestrator';
+import { computeCurrentLiquidity, computeInvestmentsValue, computeAssetBreakdown } from '../../services/portfolio';
 import { formatCAD } from '../../utils/format';
 import { useHasUserData } from '../../utils/useHasUserData';
 import { Tab } from '../../types';
@@ -68,6 +69,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen })
     const { hasData } = useHasUserData();
     const assets = useFinanceStore(s => s.assets);
     const initialBalances = useFinanceStore(s => s.initialBalances);
+    const transactions = useFinanceStore(s => s.transactions);
     const debts = useFinanceStore(s => s.debts);
     const config = useFinanceStore(s => s.config);
     const budgetItems = useFinanceStore(s => s.budgetItems);
@@ -76,11 +78,15 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen })
     const lastProjection = useFinanceStore(s => s.lastProjection);
 
     const snapshot: Omit<FinancialSnapshot, 'eraContextSummary'> = useMemo(() => {
+        // Patrimoine net = placements + liquidités (cash de TOUS les comptes :
+        // initialBalances a des clés dynamiques, donc source unique) − dettes.
+        // Avant, on lisait des clés fixes celi/reer/liquidity qui n'existent
+        // jamais → patrimoine sous-estimé envoyé à l'IA.
+        const investmentsValue = computeInvestmentsValue(assets || [], {});
+        const assetBreakdown = computeAssetBreakdown(assets || [], {});
         const netWorth =
-            (assets || []).reduce((acc, a) => acc + (a.quantity || 0) * (a.currentPrice || 0), 0)
-            + (initialBalances?.celi || 0)
-            + (initialBalances?.reer || 0)
-            + (initialBalances?.liquidity || 0)
+            investmentsValue
+            + computeCurrentLiquidity(initialBalances, transactions)
             - (debts || []).reduce((acc, d) => acc + (d.balance || 0), 0);
 
         // `netSalary` est en MENSUEL dans le store (cf Budget.tsx + Retirement.tsx).
@@ -95,8 +101,9 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen })
             netWorth,
             monthlyIncome,
             monthlyExpenses,
-            celiBalance: initialBalances?.celi || 0,
-            reerBalance: initialBalances?.reer || 0,
+            // Soldes CELI/REER = valeur des placements de ce type (par accountType).
+            celiBalance: assetBreakdown.celi,
+            reerBalance: assetBreakdown.reer,
             currentAge: config?.users?.[0]?.age || 30,
             retirementAge: retirementGoal?.targetAge || 65,
             topDebts: (debts || []).slice(0, 3).map(d => ({ name: d.name, balance: d.balance, rate: d.interestRate })),
@@ -112,7 +119,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen })
             projectedNetWorth20y: projected,
             coupleMode: Boolean(config?.users?.[1]?.name && config.users[1].name.trim() !== ''),
         };
-    }, [assets, initialBalances, debts, config, budgetItems, retirementGoal, financialGoals, lastProjection]);
+    }, [assets, initialBalances, transactions, debts, config, budgetItems, retirementGoal, financialGoals, lastProjection]);
 
     const fetchActions = useCallback(async (force = false) => {
         if (!apiKey || !hasData) {

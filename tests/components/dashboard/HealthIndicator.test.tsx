@@ -80,9 +80,12 @@ describe('HealthIndicator', () => {
     });
 
     it('score élevé avec finances saines (≥70)', () => {
-        // État favorable : épargne élevée, dettes nulles, FIRE bien avancé.
-        // FireTarget = expenses × 12 × 25. On met expenses=2000 et assets=600000 →
-        // fireProgressPct = 600000 / (2000×12×25) = 100% → fireScore = 100.
+        // État favorable : épargne élevée (80%), zéro dette, gros coussin.
+        // Les clés de initialBalances sont arbitraires (comme en usage réel) :
+        // computeCurrentLiquidity somme toutes les valeurs = 600 000 $ de cash.
+        // Coussin = 600000/2000 = 300 mois → 100. Épargne (10000-2000)/10000 =
+        // 80% → 100. Dette 0 → 100. FIRE = 0 (mode strict : pas de projection).
+        // Score = (100×30 + 100×20 + 100×20 + 0×30) / 100 = 70.
         useFinanceStore.setState({
             config: {
                 ...initialState.config,
@@ -94,7 +97,8 @@ describe('HealthIndicator', () => {
             budgetItems: [{ id: 'food', name: 'Food', target: 2000, nature: 'Besoin', frequency: 'Monthly' } as never],
             debts: [],
             assets: [],
-            initialBalances: { celi: 300000, reer: 200000, liquidity: 100000 },
+            transactions: [],
+            initialBalances: { CELI: 300000, REER: 200000, 'Compte courant': 100000 },
         });
         const { container } = render(<HealthIndicator />);
         // Le score principal est le seul `.text-2xl.font-black` à côté de "/ 100"
@@ -102,6 +106,32 @@ describe('HealthIndicator', () => {
         expect(scoreEl).toBeTruthy();
         const score = parseInt(scoreEl!.textContent || '0', 10);
         expect(score).toBeGreaterThanOrEqual(70);
+    });
+
+    it("coussin d'urgence reflète la vraie liquidité, clés de compte dynamiques (régression)", () => {
+        // Régression : avant, le code lisait initialBalances.liquidity/.checking/
+        // .savings (clés fixes qui n'existent jamais dans les vraies données) →
+        // coussin toujours « 0,00 mois ». Les vraies clés sont des noms de comptes
+        // dynamiques. On vérifie qu'un solde sur une clé arbitraire est bien pris
+        // en compte via computeCurrentLiquidity.
+        useFinanceStore.setState({
+            config: {
+                ...initialState.config,
+                users: [
+                    { ...initialState.config.users[0], name: 'Bob', netSalary: 5000, grossSalary: 6000 },
+                    { ...initialState.config.users[1], name: '' },
+                ],
+            },
+            budgetItems: [{ id: 'rent', name: 'Loyer', target: 2000, nature: 'Besoin', frequency: 'Monthly' } as never],
+            debts: [],
+            assets: [],
+            transactions: [],
+            initialBalances: { 'Compte chèque BMO': 24000 }, // 24000 / 2000 = 12 mois
+        });
+        render(<HealthIndicator />);
+        // Le coussin affiche un nombre de mois > 0, surtout PAS « 0,00 mois ».
+        expect(screen.queryByText(/^0[.,]00\s+mois$/)).not.toBeInTheDocument();
+        expect(screen.getByText(/\bmois\b/)).toBeInTheDocument();
     });
 
     it('changement de slider sauvegarde dans localStorage', () => {

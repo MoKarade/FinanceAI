@@ -586,7 +586,7 @@ keystroke latency dans Future sliders.
 - [x] Test liquidityRunway en retraite
 - [x] 3 invariants généraux ajoutés (NetWorth ≥ composants, Expenses > 0, isRetired monotone)
 - [ ] Test E2E mode test (E2E Playwright reporté → T2)
-- [ ] Test ProjectionRequired affichage (composant rendering test reporté)
+- [x] Test ProjectionRequired affichage ✅ (2026-05-27 — `tests/components/ProjectionRequired.test.tsx`, block+inline+nav)
 
 ### T2 — Tests visuels (Playwright)
 - [ ] Screenshot baseline Dashboard / Future / Retraite / Enfant
@@ -594,8 +594,12 @@ keystroke latency dans Future sliders.
 
 ### T3 — Coverage 80% target
 Actuel : ~64 % estimé. Cibles à couvrir :
-- [ ] Hooks (`usePortfolioHistory`, `useProjectionSelector`)
-- [ ] Composants critiques (Retirement, FutureProjection, ChildPlanning)
+- [x] Hooks (`usePortfolioHistory`, `useProjectionSelector`) ✅ (2026-05-27 — 10 tests :
+  selector/batch/hasProjection + test-mode/cache/erreur portfolio)
+- 🟡 Composants critiques (Retirement, FutureProjection, ChildPlanning) — **partiel** :
+  ces composants sont lourds (recharts + canvas non implémenté en jsdom) ; smoke-tests a11y
+  couvrent déjà SystemView/Onboarding/Dashboard. Rendering complet reporté (faible ROI vs
+  fragilité ; la logique est testée via `projection.convergence` + `estateCalculation`).
 
 ### T4 — Vérifier que les 131 tests manuels passent en CI
 Le checklist `MANUAL_TEST_CHECKLIST.md` est manuel. Étape : automatiser

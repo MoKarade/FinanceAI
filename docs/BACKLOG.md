@@ -99,7 +99,10 @@
   événements, comptes mouvementés) avec compteur + auto-expand des années matchées. Section
   **« Comment ça marche »** (méthodologie : projection, ordre de retrait, RAP, CELIAPP, impôts,
   Monte Carlo). Empty state honnête si aucune projection. 5 tests. Typecheck OK, build OK.
-- [ ] **G22-F2 — Version de l'app auto-tenue à jour + affichée**.
+- [x] **G22-F2 — Version de l'app auto-tenue à jour + affichée** — ✅ FAIT. `vite.config.ts`
+  injecte `__APP_VERSION__` en **CalVer** (`AAAA.M.J`, auto au build), `__GIT_SHA__` et
+  `__BUILD_DATE__`. Affiché dans la sidebar (`v… • sha`, tooltip date de build) et dans la
+  carte « Version & build » de Système (N5). Fin du bump manuel.
 - [x] **G22-F3 — Onboarding accueillant** — ✅ FAIT. Étape « Bienvenue » réécrite pour
   mener avec la valeur (vision claire, simulateur du futur, assistant IA, données locales)
   au lieu des seuls détails techniques. Tutoiement aligné sur le reste de l'app (les étapes

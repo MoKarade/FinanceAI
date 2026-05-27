@@ -17,7 +17,7 @@ import { PageHeader } from './ui/PageHeader';
 import {
   AppState, BudgetCategory, Transaction, Asset, SavingsGoal, TravelGoal, Debt,
   InvestmentAccount, InvestmentTransaction, LifeEvent, RetirementGoal, FinancialGoal,
-  RealEstateGoal, Tab,
+  RealEstateGoal, ChildGoal, Tab,
 } from '../types';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { MissingDataChecklist } from './ui/MissingDataBanner';
@@ -51,8 +51,8 @@ interface SettingsProps {
   retirementGoal?: RetirementGoal;
   realEstateGoals?: RealEstateGoal[];
   setRealEstateGoals?: (g: RealEstateGoal[]) => void;
-  childGoal?: any;
-  childGoals?: any[];
+  childGoal?: ChildGoal;
+  childGoals?: ChildGoal[];
   financialGoals?: FinancialGoal[];
   // G22-N5 — état complet, forwardé à SystemView (sous-onglet diagnostics).
   appState: AppState;

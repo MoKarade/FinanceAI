@@ -12,6 +12,12 @@ interface SystemViewProps {
 
 type LogLine = { text: string; level: 'info' | 'warn' | 'err' };
 
+const logLevelClass: Record<LogLine['level'], string> = {
+    err: 'text-red-400',
+    warn: 'text-yellow-400',
+    info: 'text-green-400/80',
+};
+
 // G22-N5 — Infos de build injectées par Vite (vite.config define) : version
 // CalVer, hash git court, horodatage du build. Source unique, auto-tenue à jour
 // à chaque déploiement — remplace l'ancien CHANGELOG écrit à la main.
@@ -193,11 +199,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                             {logs.map((line, i) => (
                                 <div key={i} className="flex gap-2">
                                     <span className="text-gray-600 select-none">{(i + 1).toString().padStart(3, '0')}</span>
-                                    <span className={
-                                        line.level === 'err' ? 'text-red-400' :
-                                            line.level === 'warn' ? 'text-yellow-400' :
-                                                'text-green-400/80'
-                                    }>
+                                    <span className={logLevelClass[line.level]}>
                                         {line.text}
                                     </span>
                                 </div>

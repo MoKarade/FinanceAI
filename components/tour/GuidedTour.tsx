@@ -26,6 +26,20 @@ interface AnchorRect {
 const BUBBLE_WIDTH = 340;
 const SPOTLIGHT_PAD = 6;
 
+function computeBubbleStyle(rect: AnchorRect): React.CSSProperties {
+  const left = Math.min(rect.left + rect.width + 16, window.innerWidth - BUBBLE_WIDTH - 16);
+  const top = Math.min(Math.max(rect.top, 16), window.innerHeight - 260);
+  return { position: 'fixed', left: Math.max(16, left), top, width: BUBBLE_WIDTH };
+}
+
+const BUBBLE_CENTERED: React.CSSProperties = {
+  position: 'fixed',
+  left: '50%',
+  top: '50%',
+  transform: 'translate(-50%, -50%)',
+  width: `min(${BUBBLE_WIDTH}px, calc(100vw - 32px))`,
+};
+
 export const GuidedTour: React.FC = () => {
   const setActiveTab = useFinanceStore((s) => s.setActiveTab);
   const [active, setActive] = useState(false);
@@ -122,13 +136,7 @@ export const GuidedTour: React.FC = () => {
 
   // Placement de la bulle : à droite de l'ancre (sidebar à gauche) si mesurée,
   // sinon centrée. Clampée dans le viewport.
-  const bubbleStyle: React.CSSProperties = anchored
-    ? (() => {
-        const left = Math.min(rect!.left + rect!.width + 16, window.innerWidth - BUBBLE_WIDTH - 16);
-        const top = Math.min(Math.max(rect!.top, 16), window.innerHeight - 260);
-        return { position: 'fixed', left: Math.max(16, left), top, width: BUBBLE_WIDTH };
-      })()
-    : { position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: `min(${BUBBLE_WIDTH}px, calc(100vw - 32px))` };
+  const bubbleStyle = anchored ? computeBubbleStyle(rect!) : BUBBLE_CENTERED;
 
   return createPortal(
     <div className="fixed inset-0 z-[9990]" role="dialog" aria-modal="true" aria-label="Tutoriel guidé">

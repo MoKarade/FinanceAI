@@ -2,6 +2,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { withCache, clearMarketDataCache, getCacheSize } from '../../services/marketData/cache';
+import { idbGetEntry, idbSetEntry } from '../../services/marketData/persistentCache';
 import { configureMarketDataProvider, getQuote, getActiveProviderName, clearMarketDataCache as clearViaIndex } from '../../services/marketData';
 import { FinnhubProvider } from '../../services/marketData/providers/finnhub';
 import { MarketDataError } from '../../services/marketData/types';
@@ -40,6 +41,25 @@ describe('marketData.cache', () => {
         await withCache('profile', 'A', async () => 2);
         clearMarketDataCache();
         expect(getCacheSize()).toBe(0);
+    });
+
+    it('cache un bucket persistant (history) via L1 mémoire, sans crash sans IndexedDB', async () => {
+        // history est un bucket persistant : en jsdom (pas d'IndexedDB) la couche L2
+        // est un no-op et on retombe sur le cache mémoire — sans erreur.
+        let calls = 0;
+        const fetcher = async () => { calls++; return { px: [1, 2, 3] }; };
+        const a = await withCache('history', 'AAPL', fetcher);
+        const b = await withCache('history', 'AAPL', fetcher);
+        expect(a).toEqual({ px: [1, 2, 3] });
+        expect(b).toEqual({ px: [1, 2, 3] });
+        expect(calls).toBe(1);
+    });
+});
+
+describe('persistentCache (couche IndexedDB, dégradation propre)', () => {
+    it('idbGetEntry retourne null et idbSetEntry ne throw pas sans IndexedDB (jsdom)', async () => {
+        await expect(idbSetEntry('k', { value: 1, expiresAt: Date.now() + 1000 })).resolves.toBeUndefined();
+        expect(await idbGetEntry('k')).toBeNull();
     });
 });
 

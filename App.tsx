@@ -544,7 +544,11 @@ export const App: React.FC = () => {
                             buildDebtsRows,
                             buildGoalsRows,
                             buildFiscalSummary,
+                            buildScenariosRows,
                         } = await import('./services/pdfReport');
+                        // Snapshot store hors React pour éviter la dépendance sur state
+                        // (lastProjection est délibérément exclu du selector App.tsx).
+                        const { lastProjection } = useFinanceStore.getState();
 
                         await generateFinancialReport({
                             netWorth: globalNetWorth,
@@ -571,6 +575,13 @@ export const App: React.FC = () => {
                             holdings: buildHoldingsRows(state),
                             debtsDetail: buildDebtsRows(state),
                             goalsDetail: buildGoalsRows(state),
+                            // PDF Futur — comparaison scénarios (allResults depuis lastProjection)
+                            scenarios: lastProjection?.allResults
+                                ? buildScenariosRows(
+                                      lastProjection.allResults,
+                                      lastProjection.bestStrategyIdx as number | undefined,
+                                  )
+                                : [],
                         });
                         showToast('Rapport PDF genere avec succes !', 'success');
                     } catch (e) {

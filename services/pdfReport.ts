@@ -9,6 +9,7 @@
 // Le chargement de jspdf reste lazy (595KB vendor) — import dynamique au clic.
 
 import type { AppState, Asset, Debt, FinancialGoal } from '../types';
+import type { ProjectionResult } from './projection/types';
 import { calculateFiscalReport } from '../utils/tax';
 
 // ============================================================================
@@ -64,6 +65,19 @@ export interface FiscalSummary {
     totalTax: number;
 }
 
+export interface ScenarioRow {
+    strategyName: string;
+    stratType: string;
+    finalNetWorth: number;
+    estateNetWorth: number;
+    fvi: number | null;
+    successRate: number | null;
+    gainVsAuto: number | null;
+    isBest: boolean;
+    pros: string[];
+    cons: string[];
+}
+
 export interface ReportData {
     netWorth: number;
     monthlySavings: number;
@@ -85,6 +99,8 @@ export interface ReportData {
     holdings?: HoldingRow[];
     debtsDetail?: DebtRow[];
     goalsDetail?: GoalRow[];
+    // PDF Futur — comparaison de scénarios de projection
+    scenarios?: ScenarioRow[];
 }
 
 // ============================================================================
@@ -181,6 +197,31 @@ export function buildFiscalSummary(state: Pick<AppState, 'config'>, year: number
     return { year, perUser, totalGross, totalNet, totalTax };
 }
 
+/**
+ * Convertit allResults d'une ProjectionResult en ScenarioRow[].
+ * @param allResults - tableau des scénarios calculés par le moteur
+ * @param bestIdx - index du meilleur scénario (bestStrategyIdx du parent)
+ */
+export function buildScenariosRows(
+    allResults: ProjectionResult[],
+    bestIdx?: number,
+): ScenarioRow[] {
+    return allResults
+        .filter(r => Boolean(r.strategyName || r.stratType))
+        .map((r, i) => ({
+            strategyName: r.strategyName || String(r.stratType || '—'),
+            stratType: String(r.stratType || ''),
+            finalNetWorth: typeof r.finalNetWorth === 'number' ? r.finalNetWorth : 0,
+            estateNetWorth: typeof r.estateNetWorth === 'number' ? r.estateNetWorth : 0,
+            fvi: typeof r.fvi === 'number' ? r.fvi : null,
+            successRate: typeof r.successRate === 'number' ? r.successRate : null,
+            gainVsAuto: typeof r.gainVsAuto === 'number' ? r.gainVsAuto : null,
+            isBest: i === (bestIdx ?? -1),
+            pros: Array.isArray(r.pros) ? r.pros.slice(0, 2) : [],
+            cons: Array.isArray(r.cons) ? r.cons.slice(0, 2) : [],
+        }));
+}
+
 // ============================================================================
 // Format helpers
 // ============================================================================
@@ -250,6 +291,16 @@ export async function generateFinancialReport(data: ReportData): Promise<void> {
         noHoldings: isFr ? 'Aucun placement.' : 'No holdings.',
         noDebts: isFr ? 'Aucune dette.' : 'No debts.',
         noGoals: isFr ? 'Aucun objectif financier actif.' : 'No active financial goals.',
+        scenariosPage: isFr ? 'Projections & Scénarios' : 'Projections & Scenarios',
+        scenBest: isFr ? 'RECOMMANDE' : 'RECOMMENDED',
+        scenFinal: isFr ? 'Actif net final' : 'Final net worth',
+        scenEstate: isFr ? 'Succession' : 'Estate',
+        scenSurvival: isFr ? 'Survie MC' : 'MC survival',
+        scenFvi: isFr ? 'Score FVI' : 'FVI score',
+        scenGain: isFr ? 'Gain vs auto' : 'Gain vs auto',
+        scenPros: isFr ? 'Avantages' : 'Pros',
+        scenCons: isFr ? 'Inconvénients' : 'Cons',
+        scenNoData: isFr ? 'Aucune projection disponible. Lance une simulation dans l\'onglet Futur.' : 'No projection available. Run a simulation in the Future tab.',
         footer: (p: number, total: number) => isFr
             ? `FinanceAI — Document confidentiel généré le ${data.generatedAt} — Page ${p}/${total}`
             : `FinanceAI — Confidential document generated on ${data.generatedAt} — Page ${p}/${total}`,
@@ -541,6 +592,129 @@ export async function generateFinancialReport(data: ReportData): Promise<void> {
                 );
                 y += 8;
             });
+        }
+
+        // ------- PAGE: PROJECTIONS & SCÉNARIOS -------
+        if (data.scenarios !== undefined) {
+            addPage(L.scenariosPage);
+            resetY();
+
+            sectionTitle(L.scenariosPage);
+
+            if (data.scenarios.length === 0) {
+                doc.setFont('helvetica', 'italic');
+                doc.setFontSize(9);
+                doc.setTextColor(...gray);
+                doc.text(L.scenNoData, 20, y);
+                y += 12;
+            } else {
+                data.scenarios.forEach(sc => {
+                    ensureRoom(12, L.scenariosPage);
+
+                    // --- Nom du scénario + badge meilleur ---
+                    const headerY = y;
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(10);
+                    if (sc.isBest) {
+                        doc.setTextColor(...primary);
+                    } else {
+                        doc.setTextColor(220, 225, 235);
+                    }
+                    doc.text(sc.strategyName.slice(0, 45), 20, headerY);
+
+                    if (sc.isBest) {
+                        doc.setFontSize(7);
+                        doc.setTextColor(...primary);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text(`[ ${L.scenBest} ]`, W - 20, headerY, { align: 'right' });
+                    } else if (sc.fvi !== null) {
+                        doc.setFontSize(8);
+                        doc.setTextColor(...gray);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(`${L.scenFvi}: ${sc.fvi.toFixed(1)}`, W - 20, headerY, { align: 'right' });
+                    }
+                    y += 6;
+
+                    // --- Métriques principales sur une ligne ---
+                    const gainColor: [number, number, number] = sc.gainVsAuto !== null && sc.gainVsAuto > 0
+                        ? [34, 197, 94]
+                        : sc.gainVsAuto !== null && sc.gainVsAuto < 0
+                            ? [239, 68, 68]
+                            : [...gray] as [number, number, number];
+
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(8);
+                    doc.setTextColor(...gray);
+
+                    const col1 = 20;
+                    const col2 = 75;
+                    const col3 = 135;
+
+                    // Actif net final
+                    doc.text(L.scenFinal + ':', col1, y);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(220, 225, 235);
+                    doc.text(formatCAD(sc.finalNetWorth), col1, y + 4);
+
+                    // Succession
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(...gray);
+                    doc.text(L.scenEstate + ':', col2, y);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(220, 225, 235);
+                    doc.text(formatCAD(sc.estateNetWorth), col2, y + 4);
+
+                    // Survie MC ou Gain
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(...gray);
+                    if (sc.successRate !== null) {
+                        doc.text(L.scenSurvival + ':', col3, y);
+                        doc.setFont('helvetica', 'bold');
+                        doc.setTextColor(sc.successRate >= 80 ? 34 : 239, sc.successRate >= 80 ? 197 : 68, sc.successRate >= 80 ? 94 : 68);
+                        doc.text(formatPct(sc.successRate), col3, y + 4);
+                    } else if (sc.gainVsAuto !== null && sc.stratType !== 'BASE') {
+                        doc.text(L.scenGain + ':', col3, y);
+                        doc.setFont('helvetica', 'bold');
+                        doc.setTextColor(...gainColor);
+                        const gainSign = sc.gainVsAuto > 0 ? '+' : '';
+                        doc.text(`${gainSign}${formatCAD(sc.gainVsAuto)}`, col3, y + 4);
+                    }
+
+                    y += 12;
+
+                    // --- Pros / Cons (max 2 chacun) ---
+                    const hasPros = sc.pros.length > 0;
+                    const hasCons = sc.cons.length > 0;
+
+                    if (hasPros || hasCons) {
+                        doc.setFont('helvetica', 'normal');
+                        doc.setFontSize(7.5);
+
+                        if (hasPros) {
+                            doc.setTextColor(34, 197, 94);
+                            sc.pros.forEach(p => {
+                                ensureRoom(2, L.scenariosPage);
+                                doc.text(`+ ${p.slice(0, 85)}`, 22, y);
+                                y += 4.5;
+                            });
+                        }
+
+                        if (hasCons) {
+                            doc.setTextColor(239, 68, 68);
+                            sc.cons.forEach(c => {
+                                ensureRoom(2, L.scenariosPage);
+                                doc.text(`- ${c.slice(0, 85)}`, 22, y);
+                                y += 4.5;
+                            });
+                        }
+                    }
+
+                    // Séparateur
+                    doc.setDrawColor(45, 50, 65);
+                    doc.line(20, y + 1, W - 20, y + 1);
+                    y += 7;
+                });
+            }
         }
 
         // ------- PAGE: RETRAITE & IMMO -------

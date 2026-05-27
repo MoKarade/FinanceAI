@@ -674,7 +674,11 @@ fichiers distincts si le moteur grossit.
 
 - ❌ Bouton "Reset to defaults" dans Configuration — **reporté** (trop dangereux pour un quick win, perte irréversible)
 - [x] Confirm dialog avant `enableTestMode` si données existantes — ✅ déjà fait
-- [ ] Export PDF Future avec scénarios — reporté (1h+, builder dédié)
+- [x] **Export PDF Future avec scénarios** — ✅ FAIT 2026-05-27. Nouvelle page
+  « Projections & Scénarios » dans le rapport PDF : comparaison de tous les
+  allResults (actif net final, succession, FVI, taux survie MC, gain vs AUTO,
+  pros/cons). `buildScenariosRows()` builder pur testé (8 tests). `ScenarioRow`
+  type exporté. Câblage via `useFinanceStore.getState().lastProjection` au clic.
 - ❌ Dark/light mode toggle — **reporté** (app en `darkMode: 'class'` sans variables CSS light, re-thémer = gros chantier)
 - [x] **PWA install prompt customisé** ✅ 2026-05-21 (banner emerald discret en bas, dismiss 30 jours)
 - 🟡 Loading skeleton chartes Future (>1s) — **partiel** : spinner « Recalcul en cours »

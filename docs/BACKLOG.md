@@ -773,6 +773,22 @@ Priorité de traitement :
 
 ## Snapshot de tailles approximatives
 
+> ⚠️ MIS À JOUR 2026-05-27 — le tableau d'origine ci-dessous est **périmé** (la plupart
+> des items sont faits). État réel des chantiers ENCORE ouverts :
+>
+> | Catégorie | Encore ouvert | Note |
+> |---|---|---|
+> | Produit | Valider le passé réel A3 (tes données + clé Finnhub) · ouverture multi-user (accès public + onboarding inconnu + sync) | dépend de toi / décision |
+> | Exactitude fiscale | Reconfirmer FSS, SRG mensuel, QC ligne 361 vs sources officielles 2026 | pas de source fiable trouvée |
+> | Dette tech | DT5 (split worker monolithique), DT3 (ChildPlanning duplique le moteur) | quand on touche ces zones |
+> | Perf | B3 (bissection findEarliestRetirementAge), P3 (profiler latence sliders) | non critiques |
+> | Sécurité | H1 — chiffrement au repos par passphrase | ta décision, faible valeur isolée |
+>
+> Livré (ne plus traiter) : refonte graphs G2-G20, Copilote A/B/C + import courtier +
+> cache prix persistant + « appliquer le gagnant », CI durcie + cross-platform, audit
+> fiscal (BPA/RRQ/PSV/crédit-âge), option immigrant, era retiré, U7, T2/CI, T3 hooks,
+> robustesse, TB3 (corrigé + tripwire retiré).
+
 | Catégorie | Items ouverts | Effort | Note |
 |-----------|---------------|--------|------|
 | P0 Sécurité | S2 IndexedDB backup (reporté, dépend décision A8) | ~3 h | S1 auth ✅, B0 #310 ✅, gate lint ✅ |

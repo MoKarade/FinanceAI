@@ -230,9 +230,7 @@ User input ──► AiAssistant.tsx
 **Services IA exposés** (refonte v3.0, tous gratuits avec clé utilisateur) :
 - `chat()` / `chatStream()` — one-shot et streaming Sonnet
 - `categorizeBatch()` — catégorisation transactions par lot (Haiku)
-- `analyzeBudgetAI()` / streaming — diagnostic budget (Sonnet)
 - `analyzePayslip()` — Vision IA fiches de paie (Sonnet Vision)
-- `generateSmartGoals()` — suggestions Planning (Sonnet)
 - `detectSubscriptionsAI()` — détection abonnements récurrents (Haiku)
 - `getNextBestActions()` — Phase B.3, sidebar widget IA (Haiku, cache 1h localStorage)
 - `getRebalanceJustifications()` — Phase E.7, batch justifs Investments (Haiku)

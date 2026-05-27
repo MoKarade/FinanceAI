@@ -2,7 +2,7 @@
 // Cycle 23 split (depuis taxCycle.ts): réinitialisation annuelle de janvier.
 // Cycle 12 (origine): exécuté uniquement en janvier (currentMonthIndex === 0 && m > 0).
 
-import { FHSA_LIFETIME_LIMIT_PER_USER, FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
+import { FHSA_LIFETIME_LIMIT_PER_USER, FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, getResidencyStartYear, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
 //
 // Janvier — Réinitialisation annuelle + recalcul plafonds CELI/FHSA/REER + FERR.
 //
@@ -25,7 +25,7 @@ export interface JanuaryContext {
     hasPurchasedPrimary: boolean;
     celiappOpeningYear: number;
     fhsaEligibleUsersCount: number;
-    users: Array<{ birthYear?: number; age?: number; canadaArrivalYear?: number; hasOwnedPropertyLast4Years?: boolean; facteurEquivalence?: number } | undefined>;
+    users: Array<{ birthYear?: number; age?: number; canadaArrivalYear?: number; isImmigrant?: boolean; hasOwnedPropertyLast4Years?: boolean; facteurEquivalence?: number } | undefined>;
     // Soldes courants (read-only)
     celiapp: number;
     reer: number;
@@ -94,9 +94,9 @@ export function processJanuaryReset(
     let totalCeliLimitThisYear = 0;
     ctx.users.filter(u => u).forEach(u => {
         const birthYear = u!.birthYear || (ctx.startYear - (u!.age || 30));
-        const arrivalYear = u!.canadaArrivalYear || (ctx.startYear - 5);
+        const residencyStart = getResidencyStartYear(birthYear, u!.isImmigrant, u!.canadaArrivalYear);
         const ageThisYear = nextLoopYear - birthYear;
-        if (ageThisYear >= 18 && nextLoopYear >= arrivalYear) {
+        if (ageThisYear >= 18 && nextLoopYear >= residencyStart) {
             totalCeliLimitThisYear += celiLimitThisYear;
         }
     });
@@ -108,10 +108,10 @@ export function processJanuaryReset(
     const anyUserEligibleFhsa = !ctx.hasPurchasedPrimary && ctx.users.some(u => {
         if (!u) return false;
         const birthYear = u.birthYear || (ctx.startYear - (u.age || 30));
-        const arrivalYear = u.canadaArrivalYear || (ctx.startYear - 5);
+        const residencyStart = getResidencyStartYear(birthYear, u.isImmigrant, u.canadaArrivalYear);
         const ageThisYear = nextLoopYear - birthYear;
         const isFirstBuyer = !u.hasOwnedPropertyLast4Years;
-        return ageThisYear >= 18 && ageThisYear < 71 && nextLoopYear >= arrivalYear && isFirstBuyer;
+        return ageThisYear >= 18 && ageThisYear < 71 && nextLoopYear >= residencyStart && isFirstBuyer;
     });
 
     const allUsersExceeded71 = ctx.users.every(u => {

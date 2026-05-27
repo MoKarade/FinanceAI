@@ -31,8 +31,8 @@ const STEP_LABELS: Record<OnboardingStep, string> = {
 export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     const [step, setStep] = useState<OnboardingStep>('welcome');
     const [anthropicKey, setAnthropicKey] = useState('');
-    const [user1, setUser1] = useState({ name: 'Moi', grossSalary: 70000, netSalary: 4500, age: 30, canadaArrivalYear: 2020 });
-    const [user2, setUser2] = useState({ name: 'Partenaire', grossSalary: 60000, netSalary: 3800, age: 30, canadaArrivalYear: 2020 });
+    const [user1, setUser1] = useState({ name: 'Moi', grossSalary: 70000, netSalary: 4500, age: 30, canadaArrivalYear: 2020, isImmigrant: false });
+    const [user2, setUser2] = useState({ name: 'Partenaire', grossSalary: 60000, netSalary: 3800, age: 30, canadaArrivalYear: 2020, isImmigrant: false });
     const [hasCoupleMode, setHasCoupleMode] = useState(false);
     const [celiBalance, setCeliBalance] = useState(0);
     const [reerBalance, setReerBalance] = useState(0);
@@ -156,8 +156,13 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                                     <input id="user1-net" type="number" inputMode="decimal" className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body mt-1 font-mono focus-ring" value={user1.netSalary} onChange={e => setUser1({ ...user1, netSalary: Math.max(0, Math.min(1000000, parseInt(e.target.value) || 0)) })} />
                                 </div>
                                 <div className="col-span-2">
-                                    <label htmlFor="user1-arrival" className="text-meta text-warning-400">Année d'arrivée au Canada <span className="text-ink-400">(pour calcul CELI)</span></label>
-                                    <input id="user1-arrival" type="number" inputMode="numeric" className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body mt-1 font-mono focus-ring" value={user1.canadaArrivalYear} onChange={e => setUser1({ ...user1, canadaArrivalYear: Math.max(2009, Math.min(new Date().getFullYear(), parseInt(e.target.value) || 2020)) })} min={2009} max={new Date().getFullYear()} />
+                                    <label className="flex items-center gap-2 text-meta text-warning-400 cursor-pointer">
+                                        <input type="checkbox" checked={!!user1.isImmigrant} onChange={e => setUser1({ ...user1, isImmigrant: e.target.checked })} className="w-4 h-4 rounded focus-ring" />
+                                        Je suis immigré au Canada <span className="text-ink-400">(ajuste le droit CELI/REER et la PSV)</span>
+                                    </label>
+                                    {user1.isImmigrant && (
+                                        <input id="user1-arrival" type="number" inputMode="numeric" className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body mt-2 font-mono focus-ring" value={user1.canadaArrivalYear || ''} onChange={e => setUser1({ ...user1, canadaArrivalYear: parseInt(e.target.value) || 0 })} min={1950} max={new Date().getFullYear()} placeholder="Année de résidence fiscale (ex: 2018)" />
+                                    )}
                                 </div>
                             </div>
                         </div>

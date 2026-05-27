@@ -242,9 +242,9 @@ describe('Barèmes fiscaux 2026 (régression)', () => {
     expect(BASIC_PERSONAL_AMOUNT_QC).toBe(18952);
   });
 
-  it('RRQ max 2026 ≈ 4 569,60$ (taux 6.4% x (MPE 74 900 - exemption 3 500))', () => {
-    // Correction audit fiscal: taux 2026 = 6.4% (5.4% base + 1% volet 1), MPE = 74 900$
-    expect(RRQ_MAX).toBeCloseTo(4569.60, 2);
+  it('RRQ max 2026 ≈ 4 479,30$ (taux 6,30% x (MGA 74 600 - exemption 3 500))', () => {
+    // Vérifié 2026-05 (Revenu Québec) : taux 6,30% (5,30% base + 1% volet 1), MGA 74 600$
+    expect(RRQ_MAX).toBeCloseTo(4479.30, 2);
   });
 
   it('RQAP max 2026 = 442,90 $', () => {

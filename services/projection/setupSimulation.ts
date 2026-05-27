@@ -9,7 +9,7 @@
 // dérivées.
 
 import { mulberry32 } from './helpers';
-import { calculateCeliRoom, RRSP_ANNUAL_LIMITS } from '../../utils/tax';
+import { calculateCeliRoom, getResidencyStartYear, RRSP_ANNUAL_LIMITS } from '../../utils/tax';
 import type { FutureScenarioType } from '../projection';
 
 /**
@@ -44,7 +44,7 @@ export interface ContributionRoomResult {
  * et l'espace REER depuis l'arrivée (18% du salaire passé - FE).
  */
 export function computeHistoricalContributionRoom(
-    users: Array<{ birthYear?: number; age?: number; canadaArrivalYear?: number; facteurEquivalence?: number } | undefined>,
+    users: Array<{ birthYear?: number; age?: number; canadaArrivalYear?: number; isImmigrant?: boolean; facteurEquivalence?: number } | undefined>,
     baseGrossAnnual: number,
     startYear: number,
 ): ContributionRoomResult {
@@ -56,9 +56,11 @@ export function computeHistoricalContributionRoom(
     activeUsers.forEach(u => {
         activeUsersCount++;
         const birthYear = u!.birthYear || (startYear - (u!.age || 30));
-        const arrivalYear = u!.canadaArrivalYear || (startYear - 5);
-        totalHistoricalCeliRoom += calculateCeliRoom(birthYear, arrivalYear, startYear);
-        const yearsInCanadaBeforeStart = Math.max(0, startYear - arrivalYear);
+        const residencyStart = getResidencyStartYear(birthYear, u!.isImmigrant, u!.canadaArrivalYear);
+        totalHistoricalCeliRoom += calculateCeliRoom(birthYear, residencyStart, startYear);
+        // REER : droit accumulé depuis le plus tard de {18 ans, début de résidence}.
+        const reerStartYear = Math.max(birthYear + 18, residencyStart);
+        const yearsInCanadaBeforeStart = Math.max(0, startYear - reerStartYear);
         if (yearsInCanadaBeforeStart > 0) {
             const individualSalaryPortion = baseGrossAnnual / (activeUsers.length || 1);
             const totalFE = users.reduce((acc, user) => acc + (user?.facteurEquivalence || 0), 0);

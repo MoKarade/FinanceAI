@@ -8,7 +8,7 @@
 import React from 'react';
 import { Card } from '../../ui/Card';
 import { showToast } from '../../ui/Toast';
-import type { AppState } from '../../../types';
+import type { AppState, BudgetConfig } from '../../../types';
 
 interface UsersCardProps {
   config: AppState['config'];
@@ -425,7 +425,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
           <label className="block text-sm text-gray-400 mb-2">Mode de Repartition</label>
           <select
             value={config.splitMode}
-            onChange={(e) => setConfig({ ...config, splitMode: e.target.value as any })}
+            onChange={(e) => setConfig({ ...config, splitMode: e.target.value as BudgetConfig['splitMode'] })}
             className="w-full bg-dark border border-border rounded px-3 py-2 text-white"
           >
             <option value="prorata">Prorata des Salaires Nets</option>

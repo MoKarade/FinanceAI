@@ -13,7 +13,7 @@ import type { ProjectionConfig } from '../types';
 
 interface AdvancedProjectionParamsProps {
     projection: ProjectionConfig;
-    updateProj: (key: keyof ProjectionConfig, val: any) => void;
+    updateProj: (key: keyof ProjectionConfig, val: ProjectionConfig[keyof ProjectionConfig]) => void;
 }
 
 export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> = ({ projection, updateProj }) => {

@@ -92,7 +92,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
                                     <input aria-label="Paiement minimum mensuel (dollars)" type="number" placeholder="Min. Payment $" className="bg-dark border border-white/10 rounded px-2 py-1 text-xs text-white" value={newDebt.minimumPayment || ''} onChange={e => setNewDebt({...newDebt, minimumPayment: parseFloat(e.target.value)})} />
-                                    <select aria-label="Catégorie de la dette" className="bg-dark border border-white/10 rounded px-2 py-1 text-xs text-white" value={newDebt.category} onChange={e => setNewDebt({...newDebt, category: e.target.value as any})}><option value="CreditCard">Carte Crédit</option><option value="Car">Auto</option><option value="Student">Étudiant</option><option value="Personal">Personnel</option></select>
+                                    <select aria-label="Catégorie de la dette" className="bg-dark border border-white/10 rounded px-2 py-1 text-xs text-white" value={newDebt.category} onChange={e => setNewDebt({...newDebt, category: e.target.value as Debt['category']})}><option value="CreditCard">Carte Crédit</option><option value="Car">Auto</option><option value="Student">Étudiant</option><option value="Personal">Personnel</option></select>
                                 </div>
                                 <button onClick={handleAdd} className="w-full bg-red-600 hover:bg-red-500 text-white text-xs font-bold py-2 rounded">Enregistrer</button>
                             </div>

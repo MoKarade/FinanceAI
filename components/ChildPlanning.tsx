@@ -64,7 +64,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     // + 2 useMemo) étaient appelés conditionnellement → violation des règles
     // des Hooks → instabilité potentielle si `goal` passait de undefined à défini.
 
-    const update = (field: keyof ChildGoal, value: any) => {
+    const update = (field: keyof ChildGoal, value: ChildGoal[keyof ChildGoal]) => {
         if (!goals.length) return;
         const newGoals = [...goals];
         newGoals[activeTabIndex] = { ...newGoals[activeTabIndex], [field]: value };
@@ -179,7 +179,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
         let prevGrantsCum = 0;
         for (let age = 0; age <= 17; age++) {
             const targetYear = birthYear + age;
-            const point = lastProjection.chartData.find(p => p.year === targetYear) as any;
+            const point = lastProjection.chartData.find(p => p.year === targetYear);
             if (!point || typeof point.REEE !== 'number') continue;
             const solde = point.REEE;
             const contribCum = point.reeeContribCum ?? prevContribCum;

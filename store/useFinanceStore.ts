@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { AppState, Tab, BudgetCategory } from '../types';
+import { AppState, Tab, BudgetCategory, FinancialGoal, RealEstateGoal } from '../types';
 import { INITIAL_BUDGET, INITIAL_CONFIG, INITIAL_PROJECTION, INITIAL_REAL_ESTATE_GOAL, INITIAL_CHILD_GOAL, DEFAULT_FX_RATES } from '../constants';
 import type { ProjectionResult } from '../services/projection/types';
 
@@ -75,8 +75,10 @@ const migrateBudgetItems = (items: BudgetCategory[]): BudgetCategory[] => {
     });
 };
 
-const migrateUserConfig = (config: any): any => {
-    const newUsers = config.users.map((u: any) => {
+type LegacyUser = { netSalary?: number; salary?: number; grossSalary?: number; [k: string]: unknown };
+type LegacyBudgetConfig = { users: LegacyUser[]; [k: string]: unknown };
+const migrateUserConfig = (config: LegacyBudgetConfig): LegacyBudgetConfig => {
+    const newUsers = config.users.map((u) => {
         const net = u.netSalary || u.salary || 0;
         const gross = u.grossSalary || (net * 1.35);
         return {
@@ -84,7 +86,7 @@ const migrateUserConfig = (config: any): any => {
             netSalary: net,
             grossSalary: Math.round(gross)
         };
-    }) as [any, any];
+    });
     return { ...config, users: newUsers };
 };
 
@@ -195,9 +197,9 @@ export const getInitialStateWithMigration = (): AppState => {
         config = migrateUserConfig(config);
 
         let finGoals = savedFinancialGoals ? JSON.parse(savedFinancialGoals) : [];
-        finGoals = finGoals.map((g: any) => ({ ...g, status: g.status || 'active' }));
+        finGoals = finGoals.map((g: FinancialGoal) => ({ ...g, status: g.status || 'active' }));
 
-        let realEstateGoals: any[];
+        let realEstateGoals: RealEstateGoal[];
         if (savedRealEstateArray) {
             realEstateGoals = JSON.parse(savedRealEstateArray);
         } else if (savedRealEstate) {
@@ -352,29 +354,36 @@ export const useFinanceStore = create<FinanceState>()(
             // utilisateurs existants (cf audit 2026-05 §State management).
             version: 6,
             migrate: (persistedState: unknown, fromVersion: number) => {
-                let state = persistedState as Partial<FinanceState>;
+                // Type de migration : union de l'état courant + champs legacy des versions
+                // précédentes (apiKeys.gemini retiré en v3). Remplace les (state as any).
+                type MigratingState = Partial<FinanceState> & {
+                    apiKeys?: { eraContext?: string; gemini?: string; anthropic?: string; finnhub?: string };
+                    retirementGoal?: Partial<FinanceState['retirementGoal']> & { lifeExpectancy?: number };
+                    assets?: unknown[];
+                };
+                let state = persistedState as MigratingState;
                 // v0/undefined → v1 : intro versioning
                 if (fromVersion === undefined || fromVersion < 1) {
-                    state = state as Partial<FinanceState>;
+                    state = state as MigratingState;
                 }
                 // v1 → v2 : Phase 4 A1 — ajout apiKeys.anthropic (gemini gardé)
                 // v2 → v3 : Phase 4 A5 — suppression de apiKeys.gemini.
                 //   On ne copie PAS la clé gemini vers anthropic (formats différents).
-                if (fromVersion < 3 && (state as any)?.apiKeys) {
-                    const apiKeys = (state as any).apiKeys as { eraContext?: string; gemini?: string; anthropic?: string };
+                if (fromVersion < 3 && state?.apiKeys) {
+                    const apiKeys = state.apiKeys;
                     state = {
                         ...state,
                         apiKeys: {
                             eraContext: apiKeys.eraContext || '',
                             anthropic: apiKeys.anthropic || '',
                         },
-                    } as Partial<FinanceState>;
+                    } as MigratingState;
                 }
                 // v3 → v4 : §7.F.5 — ajout apiKeys.finnhub pour le data sourcing
                 //   marketData (Finnhub provider). Default vide → mode dégradé
                 //   (assetMeta seed hardcodé utilisé en fallback).
-                if (fromVersion < 4 && (state as any)?.apiKeys) {
-                    const apiKeys = (state as any).apiKeys as { eraContext?: string; anthropic?: string; finnhub?: string };
+                if (fromVersion < 4 && state?.apiKeys) {
+                    const apiKeys = state.apiKeys;
                     state = {
                         ...state,
                         apiKeys: {
@@ -382,27 +391,27 @@ export const useFinanceStore = create<FinanceState>()(
                             anthropic: apiKeys.anthropic || '',
                             finnhub: apiKeys.finnhub || '',
                         },
-                    } as Partial<FinanceState>;
+                    } as MigratingState;
                 }
                 // v4 → v5 : Phase C.3 — `lifeExpectancy` migré du state local
                 //   Retirement.tsx vers retirementGoal global. Default 90.
-                if (fromVersion < 5 && (state as any)?.retirementGoal) {
-                    const rg = (state as any).retirementGoal as { lifeExpectancy?: number };
+                if (fromVersion < 5 && state?.retirementGoal) {
+                    const rg = state.retirementGoal;
                     if (rg.lifeExpectancy === undefined) {
                         state = {
                             ...state,
-                            retirementGoal: { ...(state as any).retirementGoal, lifeExpectancy: 90 },
-                        } as Partial<FinanceState>;
+                            retirementGoal: { ...rg, lifeExpectancy: 90 },
+                        } as MigratingState;
                     }
                 }
                 // v5 → v6 : Phase E.8 — DCA multi-achat. Convertit dateBought +
                 //   buyPrice + quantity en purchases: [{date, quantity, price}].
                 //   Les champs legacy restent pour rétrocompat.
-                if (fromVersion < 6 && Array.isArray((state as any)?.assets)) {
+                if (fromVersion < 6 && Array.isArray(state?.assets)) {
                     type LegacyAsset = { dateBought?: string; buyPrice?: number; quantity?: number; purchases?: unknown };
                     state = {
                         ...state,
-                        assets: (state as any).assets.map((a: LegacyAsset) => {
+                        assets: (state.assets as LegacyAsset[]).map((a: LegacyAsset) => {
                             if (Array.isArray(a.purchases) && a.purchases.length > 0) return a;
                             if (a.dateBought && typeof a.buyPrice === 'number' && a.buyPrice > 0 && a.quantity && a.quantity > 0) {
                                 return {

@@ -212,8 +212,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
             }).sort((a, b) => b.value - a.value);
 
         // B & C) Cash & Crédit
-        const cashList: any[] = [];
-        const creditList: any[] = [];
+        type CashEntry = { name: string; value: number; diffCAD: number; revMensuel?: number; isManual?: boolean };
+        const cashList: CashEntry[] = [];
+        const creditList: CashEntry[] = [];
 
         Object.keys(runningCash).forEach(acc => {
             const val = runningCash[acc];

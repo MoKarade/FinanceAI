@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { Tab, AppState } from '../types';
+import { Tab, AppState, Transaction } from '../types';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 // P1 fix — wrap React.lazy avec retry + reload sur chunk-load-error
 // (cf hubperso.com regression : "Failed to fetch dynamically imported module")
@@ -99,7 +99,7 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                 {activeTab === Tab.TRANSACTIONS && (
                     <Transactions
                         transactions={state.transactions}
-                        setTransactions={(t) => setAppState({ transactions: typeof t === 'function' ? (t as any)(state.transactions) : t })}
+                        setTransactions={(t) => setAppState({ transactions: typeof t === 'function' ? (t as (prev: Transaction[]) => Transaction[])(state.transactions) : t })}
                         apiKey={state.apiKeys.anthropic}
                         budgetItems={state.budgetItems}
                         categorizationRules={state.categorizationRules || []}

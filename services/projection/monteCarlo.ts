@@ -53,7 +53,7 @@ export function runMonteCarlo(
         totalExpenses: number;
         shortfallRate: number;
         estateNetWorth: number;
-        chartData: any[];
+        chartData: { NetWorth: number }[];
     }[] = [];
     const nMonths = params.projection.years * 12;
 
@@ -62,7 +62,7 @@ export function runMonteCarlo(
         // progrès régulier même sur une config qui prend > 60s à elle seule.
         if (onIteration && i % Math.max(25, Math.floor(iterations / 20)) === 0) onIteration(i, iterations);
         const result = runScenario(params, strategy, true, delayPensions, i, 'BASE', overrides);
-        const nwHistory = result.chartData.map((d: any) => d.NetWorth);
+        const nwHistory = result.chartData.map((d: { NetWorth: number }) => d.NetWorth);
         while (nwHistory.length <= nMonths) nwHistory.push(0);
         allRuns.push({
             netWorthByMonth: nwHistory,

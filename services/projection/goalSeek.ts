@@ -46,12 +46,12 @@ export function findRequiredMonthlySavings(
             ...baseParams,
             projection: { ...baseParams.projection, manualContribution: savings, savingsMode: 'manual' },
         };
-        const r = calculateFutureProjection(params) as any;
-        const base = r.allResults?.find((s: any) => s.stratType === 'BASE');
+        const r = calculateFutureProjection(params);
+        const base = r.allResults?.find((s) => s.stratType === 'BASE');
         if (!base) return 0;
         if (targetAge) {
-            const pt = base.chartData.find((d: any) => d.age >= targetAge);
-            return pt?.NetWorth ?? base.finalNetWorth ?? 0;
+            const pt = base.chartData.find((d) => (d.age ?? 0) >= targetAge);
+            return (pt?.NetWorth ?? base.finalNetWorth) ?? 0;
         }
         return base.finalNetWorth ?? 0;
     };
@@ -111,8 +111,8 @@ export function findEarliestRetirementAge(
             retirementGoal: { ...baseParams.retirementGoal, targetAge: age },
             projection: { ...baseParams.projection, years: Math.max(baseParams.projection.years, 95 - age + 5) },
         };
-        const r = calculateFutureProjection(params) as any;
-        const base = r.allResults?.find((s: any) => s.stratType === 'BASE');
+        const r = calculateFutureProjection(params);
+        const base = r.allResults?.find((s) => s.stratType === 'BASE');
         if (!base) return -1;
         return base.minNetWorth ?? -1;
     };

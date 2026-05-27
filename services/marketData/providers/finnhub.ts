@@ -152,11 +152,11 @@ export class FinnhubProvider implements MarketDataProvider {
                 this.apiKey,
             );
             if (!Array.isArray(data)) return [];
-            return data.map((d: any) => ({
+            return data.map((d: { amount?: number; exDate?: string; payDate?: string }) => ({
                 symbol,
-                amount: d.amount,
-                exDate: d.exDate,
-                payDate: d.payDate,
+                amount: d.amount ?? 0,
+                exDate: d.exDate ?? '',
+                payDate: d.payDate ?? '',
                 frequency: 4, // estimation par défaut, Finnhub ne renvoie pas
             }));
         } catch (e) {

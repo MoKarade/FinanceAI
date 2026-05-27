@@ -108,7 +108,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // JSX final. Les hooks tolèrent les props undefined via `?.` et `|| 0`
     // (déjà en place avant ce fix). Voir guard early-return ligne ~285.
 
-    const updateProj = (key: keyof ProjectionConfig, val: any) => {
+    const updateProj = <K extends keyof ProjectionConfig>(key: K, val: ProjectionConfig[K]) => {
         setProjection({ ...projection, [key]: val });
     };
 
@@ -355,7 +355,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // VN laissée vide → pas de fausse ligne à 0). Carry-forward des placements pour
     // une courbe continue. Le cash actuel = cash au début de projection (jan 2026).
     const pastHistory = usePastPortfolioHistory();
-    const pastPrefix = useMemo<any[]>(() => {
+    const pastPrefix = useMemo(() => {
         const miOf = (ym: string): number => {
             const [y, m] = ym.split('-').map(Number);
             return (y - startYear) * 12 + (m - 1);
@@ -364,7 +364,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const cashRes = reconstructCashHistory(transactions, calculatedStartingCash || 0, nowMonthKey);
         const equityByYear = reconstructRealEstateEquityByYear(realEstateGoals, startYear);
 
-        const invByMi = new Map<number, any>();
+        const invByMi = new Map<number, import('../services/history/reconstructPortfolioHistory').PortfolioHistoryPoint>();
         for (const p of pastHistory.points) {
             const mi = miOf(p.date);
             if (mi < 0) invByMi.set(mi, p);
@@ -379,8 +379,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const minMi = Math.min(...mis);
         const firstTxnMi = cashRes.firstMonth ? miOf(cashRes.firstMonth) : 1; // 1 = jamais de passé connu
 
-        const out: any[] = [];
-        let lastInv: any = null;
+        type InvPoint = import('../services/history/reconstructPortfolioHistory').PortfolioHistoryPoint;
+        type PastPrefixPoint = { monthIndex: number; year: number; dateLabel: string; Liquidites: number; Immobilier: number; CELI: number; CELIAPP: number; REER: number; REEE: number; NonReg: number; Crypto: number; NetWorth: number | undefined; isPast: boolean };
+        const out: PastPrefixPoint[] = [];
+        let lastInv: InvPoint | null = null;
         for (let mi = minMi; mi < 0; mi++) {
             const invHere = invByMi.get(mi);
             if (invHere) lastInv = invHere;
@@ -406,7 +408,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         }
         return out;
     }, [pastHistory.points, startYear, startMonth, transactions, calculatedStartingCash, realEstateGoals]);
-    const displayData = useMemo<any[]>(
+    const displayData = useMemo(
         () => (pastPrefix.length ? [...pastPrefix, ...chartData] : chartData),
         [pastPrefix, chartData],
     );
@@ -425,8 +427,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // year/age/dateLabel par événement pour la fiche au clic, et `subIdx` pour
     // empiler verticalement les événements d'un même mois.
     const { lifeChartEvents, flowChartEvents } = useMemo(() => {
-        const lifes: any[] = [];
-        const flows: any[] = [];
+        type ChartEvent = { monthIndex: number; year: number | undefined; age: number | undefined; dateLabel: string | undefined; val: number | undefined; netWorth: number | undefined; label: string; subIdx: number; index: number; kind: 'life' | 'flow' };
+        const lifes: ChartEvent[] = [];
+        const flows: ChartEvent[] = [];
         let lifeIdx = 0;
         let flowIdx = 0;
         // Anti-spam : le moteur ré-émet certains labels (renouvellements, stress
@@ -548,14 +551,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // dans la plage zoomée et borner le sélecteur de période.
     const visMinMonth = zoom.visibleData[0]?.monthIndex ?? Number.NEGATIVE_INFINITY;
     const visMaxMonth = zoom.visibleData[zoom.visibleData.length - 1]?.monthIndex ?? Number.POSITIVE_INFINITY;
-    const visibleLifeEvents = lifeChartEvents.filter((e: any) => e.monthIndex >= visMinMonth && e.monthIndex <= visMaxMonth);
-    const visibleFlowEvents = flowChartEvents.filter((e: any) => e.monthIndex >= visMinMonth && e.monthIndex <= visMaxMonth);
+    const visibleLifeEvents = lifeChartEvents.filter((e) => e.monthIndex >= visMinMonth && e.monthIndex <= visMaxMonth);
+    const visibleFlowEvents = flowChartEvents.filter((e) => e.monthIndex >= visMinMonth && e.monthIndex <= visMaxMonth);
     // Plafond de densité : en vue large on échantillonne uniformément (lisibilité
     // + fluidité). En zoomant, la fenêtre contient moins d'événements → tous visibles.
-    const thinEvents = (arr: any[], cap: number) => {
+    const thinEvents = <T,>(arr: T[], cap: number): T[] => {
         if (arr.length <= cap) return arr;
         const step = Math.ceil(arr.length / cap);
-        return arr.filter((_: any, i: number) => i % step === 0);
+        return arr.filter((_, i) => i % step === 0);
     };
     const shownLifeEvents = thinEvents(visibleLifeEvents, 40);
     const shownFlowEvents = thinEvents(visibleFlowEvents, 24);
@@ -814,7 +817,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
                             {isVisible('NetWorth') && <Line type="monotone" dataKey="NetWorth" stroke="#fff" strokeWidth={3} dot={false} name="Valeur Nette Totale" isAnimationActive={false}/>}
 
-                            {isVisible('events') && shownLifeEvents.map((evt: any, i: number) => (
+                            {isVisible('events') && shownLifeEvents.map((evt, i) => (
                                 <ReferenceDot
                                     key={`life-${i}`}
                                     x={evt.monthIndex}
@@ -824,13 +827,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                         <ClickableEventIcon
                                             kind="life"
                                             payload={evt}
-                                            onSelect={(ev: any) => setDetailPoint(chartData.find((d: any) => d.monthIndex === ev.monthIndex) || ev)}
+                                            onSelect={(ev: { monthIndex: number }) => setDetailPoint(chartData.find((d: any) => d.monthIndex === ev.monthIndex) || ev)}
                                         />
                                     }
                                 />
                             ))}
 
-                            {isVisible('events') && shownFlowEvents.map((evt: any, i: number) => (
+                            {isVisible('events') && shownFlowEvents.map((evt, i) => (
                                 <ReferenceDot
                                     key={`flow-${i}`}
                                     x={evt.monthIndex}
@@ -840,7 +843,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                         <ClickableEventIcon
                                             kind="flow"
                                             payload={evt}
-                                            onSelect={(ev: any) => setDetailPoint(chartData.find((d: any) => d.monthIndex === ev.monthIndex) || ev)}
+                                            onSelect={(ev: { monthIndex: number }) => setDetailPoint(chartData.find((d: any) => d.monthIndex === ev.monthIndex) || ev)}
                                         />
                                     }
                                 />

@@ -17,12 +17,13 @@ import {
     type MinimalAsset,
     type PortfolioHistoryResult,
 } from '../services/history/reconstructPortfolioHistory';
+import type { Asset } from '../types';
 
 const EMPTY_RESULT: PortfolioHistoryResult = { points: [], coverage: 1, firstDate: null };
 
 // Convertit un Asset du store en entrée minimale pour la reconstruction, en
 // utilisant getEffectivePurchases (gère le legacy dateBought/buyPrice).
-function toMinimal(asset: any, priceHistoryOverride?: Array<{ date: string; price: number }>): MinimalAsset {
+function toMinimal(asset: Asset, priceHistoryOverride?: Array<{ date: string; price: number }>): MinimalAsset {
     return {
         symbol: asset.symbol,
         quantity: asset.quantity || 0,
@@ -32,7 +33,7 @@ function toMinimal(asset: any, priceHistoryOverride?: Array<{ date: string; pric
         dateBought: asset.dateBought,
         purchases: getEffectivePurchases(asset),
         priceHistory: priceHistoryOverride
-            ?? (asset.priceHistory || []).map((p: any) => ({ date: p.date, price: p.price })),
+            ?? (asset.priceHistory || []).map((p) => ({ date: p.date, price: p.price })),
     };
 }
 
@@ -55,7 +56,7 @@ export function usePastPortfolioHistory(): UsePastPortfolioHistoryResult {
     // + ce qui a déjà été récupéré en réel).
     const result = useMemo<PortfolioHistoryResult>(() => {
         if (!assets || assets.length === 0) return EMPTY_RESULT;
-        const minimal = assets.map((a: any) => toMinimal(a, fetched[a.symbol]));
+        const minimal = assets.map((a) => toMinimal(a, fetched[a.symbol]));
         return reconstructPortfolioHistory(minimal, fxRates as Record<string, number>);
     }, [assets, fxRates, fetched]);
 
@@ -63,14 +64,14 @@ export function usePastPortfolioHistory(): UsePastPortfolioHistoryResult {
     useEffect(() => {
         if (isTestMode || !finnhubKey || !assets || assets.length === 0) return;
 
-        const missing = assets.filter((a: any) => {
+        const missing = assets.filter((a) => {
             const hasLocal = (a.priceHistory && a.priceHistory.length > 0) || fetched[a.symbol];
             return !hasLocal && a.symbol && (a.quantity || 0) !== 0;
         });
         if (missing.length === 0) return;
 
         // Évite de relancer le même lot de symboles en boucle.
-        const sig = missing.map((a: any) => a.symbol).sort().join('|');
+        const sig = missing.map((a) => a.symbol).sort().join('|');
         if (requestedRef.current === sig) return;
         requestedRef.current = sig;
 

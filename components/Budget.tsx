@@ -88,7 +88,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         let val = item.target;
         if (item.frequency === 'Yearly') val = item.target / 12;
         if (item.frequency === 'Weekly') val = item.target * 4.33;
-        if (item.frequency === 'Quarterly' as any) val = item.target / 3;
+        if (item.frequency === 'Quarterly') val = item.target / 3;
         return val;
     };
 
@@ -311,7 +311,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
     const setAppState = useFinanceStore(s => s.setAppState);
 
-    const handleUpdateItem = (index: number, field: keyof BudgetCategory, value: any) => {
+    const handleUpdateItem = (index: number, field: keyof BudgetCategory, value: BudgetCategory[keyof BudgetCategory]) => {
         const newItems = [...budgetItems];
         const oldItem = newItems[index];
         newItems[index] = { ...oldItem, [field]: value };

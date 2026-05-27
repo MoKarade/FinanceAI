@@ -645,10 +645,16 @@ CATEGORY_ICONS/BudgetConfig divers. Validé typecheck + 604 tests.
   `exhaustive-deps` (revue prudente requise), `no-explicit-any` (= DT2).
   Aucun n'est un import mort.
 
-### DT2 — Types `any` résiduels
-Le projet utilise encore `any` dans certains endroits (rapidité).
-- [ ] Audit `as any` et `: any` → préférer `unknown` ou type précis
-- Sprint 3B TH4 a déjà migré `catch (e: any) → unknown`. Reste les composants.
+### DT2 — Types `any` résiduels 🟡 PASSE FAITE (2026-05-27)
+- [x] Audit + **36 `any` remplacés** par des types précis / `unknown` (haute confiance)
+  sur 15 fichiers : store (migrations typées `MigratingState`/`LegacyUser`),
+  FutureProjection (`ChartEvent`, génériques), hooks, Budget/ChildPlanning/Dashboard
+  (`X[keyof X]`), Toast (`CustomEvent`), goalSeek/drawdown/monteCarlo, finnhub, etc.
+  Pur typage, 0 changement de comportement. Typecheck OK, 734 tests OK, build OK.
+- **Laissés intentionnellement** (documentés) : frontière Worker (`postMessage`),
+  payloads recharts (types tiers), `config.users` tuple legacy, `expertMetrics?: any`
+  (forme variable selon mode MC), accès dynamiques de toggles via tableau `as const`.
+- Sprint 3B TH4 avait déjà migré `catch (e: any) → unknown`.
 
 ### DT3 — ChildPlanning duplique TEST_DEBTS-like logique
 Cf B2 — Reste à aligner totalement UI et moteur.

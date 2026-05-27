@@ -36,7 +36,7 @@ export const ToastContainer: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        const handleToast = (event: any) => {
+        const handleToast = (event: CustomEvent<{ message: string; type?: 'success' | 'error' | 'info' }>) => {
             const { message, type = 'info' } = event.detail;
             const id = safeRandomId();
             setToasts(prev => [...prev, { id, message, type }]);
@@ -44,8 +44,8 @@ export const ToastContainer: React.FC = () => {
             setTimeout(() => removeToast(id), TOAST_LIFETIME_MS);
         };
 
-        window.addEventListener('app-toast', handleToast);
-        return () => window.removeEventListener('app-toast', handleToast);
+        window.addEventListener('app-toast', handleToast as EventListener);
+        return () => window.removeEventListener('app-toast', handleToast as EventListener);
     }, [removeToast]);
 
     return (

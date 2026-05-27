@@ -32,8 +32,8 @@ export interface ScenarioComparison {
 
 export function compareLifeScenarios(params: SimulationParams): ScenarioComparison {
     // UN SEUL appel — le moteur produit déjà les 5 scénarios.
-    const r = calculateFutureProjection(params) as any;
-    const allResults = (r.allResults || []) as any[];
+    const r = calculateFutureProjection(params);
+    const allResults = r.allResults || [];
 
     // FIX silent-failure cycle 2 (MEDIUM): allResults vide → signal explicite.
     if (allResults.length === 0) {
@@ -47,8 +47,8 @@ export function compareLifeScenarios(params: SimulationParams): ScenarioComparis
     }
 
     const results = allResults.map(s => ({
-        scenarioType: s.stratType,
-        strategyName: s.strategyName ?? s.stratType,
+        scenarioType: s.stratType ?? '—',
+        strategyName: s.strategyName ?? s.stratType ?? '—',
         estateNetWorth: s.estateNetWorth ?? 0,
         finalNetWorth: s.finalNetWorth ?? 0,
         totalTaxesPaid: s.totalTaxesPaid ?? 0,

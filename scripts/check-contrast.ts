@@ -1,4 +1,6 @@
 #!/usr/bin/env tsx
+// Script CLI : la sortie console est volontaire.
+/* eslint-disable no-console */
 /**
  * §7.D.1 — Audit WCAG AA contrast pour les tokens sémantiques.
  *

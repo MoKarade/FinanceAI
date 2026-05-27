@@ -41,10 +41,10 @@ function effectiveValues<K extends keyof StrategyConfig>(
     ctx: SpaceContext,
 ): Array<StrategyConfig[K]> {
     const picked = selection[key];
-    // Typage interne volontairement souple (any[]) : l'indexation générique
+    // Typage interne souple (unknown[]) : l'indexation générique
     // StrategyConfig[K] sur une union hétérogène fait trébucher TS sans gain de
     // sûreté réel ici. On caste au retour.
-    let values: any[] = picked && picked.length > 0 ? [...picked] : [defaultOf(key)];
+    let values: unknown[] = picked && picked.length > 0 ? [...picked] : [defaultOf(key)];
 
     if (key === 'retirementAge') {
         const filtered = (values as number[]).filter(a => a >= ctx.currentAge);

@@ -24,7 +24,7 @@ const DashboardEvolutionChart: React.FC<Props> = ({
     showTotalLine = false,
 }) => {
     const visibleKeys = accountKeys.filter(k => !hiddenAccounts.has(k));
-    const series: ZoomableSeries[] = visibleKeys.map((key, idx) => ({
+    const series: ZoomableSeries[] = visibleKeys.map((key) => ({
         key,
         color: colors[accountKeys.indexOf(key) % colors.length],
         name: key,

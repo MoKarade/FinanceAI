@@ -69,7 +69,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     const totalMinPayment = debts.reduce((sum, d) => sum + d.minimumPayment, 0);
 
     // G7a — zoom molette / pan sur la courbe d'extinction (x = mois).
-    const zoom = useTimeChartZoom<any>(simulation.chart);
+    const zoom = useTimeChartZoom(simulation.chart);
 
     return (
         <div className="space-y-6 animate-fade-in pb-20">

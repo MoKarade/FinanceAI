@@ -14,7 +14,16 @@ type RunScenarioFn = (
     mcIterationIndex: number,
     scenarioType?: FutureScenarioType,
     overrides?: EngineOverrides,
-) => any;
+) => {
+    chartData: { NetWorth: number }[];
+    finalNetWorth: number;
+    estateNetWorth: number;
+    totalTaxesPaid: number;
+    totalGrowth: number;
+    totalExpenses: number;
+    minNetWorth: number;
+    shortfallRate: number;
+};
 
 export interface MonteCarloResult {
     successRate: number;

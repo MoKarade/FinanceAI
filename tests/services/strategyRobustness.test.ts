@@ -5,6 +5,7 @@ import {
 } from '../../services/projection/strategyRobustness';
 import { calculateRobustnessRanking } from '../../services/projection';
 import type { SimulationParams, AllocationStrategy } from '../../services/projection';
+import type { BudgetConfig } from '../../types';
 
 // ---------------------------------------------------------------------------
 // Faux runScenario : consommé par le VRAI runMonteCarlo (intégration réelle des
@@ -63,7 +64,7 @@ const makeParams = (): SimulationParams => ({
             hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0,
         }],
         splitMode: '50/50',
-    } as any,
+    } as unknown as BudgetConfig,
     baseGrossAnnual: 114000,
     baseNetAnnual: 80400,
     currentRentExpense: 1500,

@@ -205,8 +205,8 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     const totalResp = respProjection[respProjection.length - 1]?.Solde ?? null;
 
     // G7d — zoom molette / pan sur les deux graphes Enfant (x = âge).
-    const zoomCost = useTimeChartZoom<any>(costTimeline.data);
-    const zoomResp = useTimeChartZoom<any>(respProjection);
+    const zoomCost = useTimeChartZoom(costTimeline.data);
+    const zoomResp = useTimeChartZoom(respProjection);
     const totalStudiesCost = uniInfo.yearlyCost * uniInfo.years;
     const respCovers = totalResp != null && totalStudiesCost > 0
         ? Math.min(100, (totalResp / totalStudiesCost) * 100)

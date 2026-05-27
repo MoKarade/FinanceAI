@@ -5,6 +5,7 @@ import { CollapsibleSection } from '../ui/CollapsibleSection';
 import { Badge } from '../ui/Badge';
 import { ProjectionConfig, RealEstateGoal, BudgetConfig } from '../../types';
 import { AdvancedProjectionParams } from '../AdvancedProjectionParams';
+import { ProjectionResult } from '../../services/projection/types';
 
 interface LiveCSVBalances {
     CELI: number;
@@ -25,7 +26,7 @@ interface ProjectionControlsProps {
     isComputing: boolean;
     selectedScenarioIdx: number;
     setSelectedScenarioIdx: (i: number) => void;
-    allResults: any[];
+    allResults: ProjectionResult[];
     fireNumber: number;
     aiNote: string;
     liveCSVBalances: LiveCSVBalances;
@@ -74,13 +75,14 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
     aiNote, liveCSVBalances, applyHistoricalRate,
     realEstateGoals, setRealEstateGoals,
 }) => {
-    const activeStochasticCount = STOCHASTIC_TOGGLES.filter(t => !!(projection as any)[t.key]).length;
+    const projAsMap = projection as unknown as Record<string, unknown>;
+    const activeStochasticCount = STOCHASTIC_TOGGLES.filter(t => !!projAsMap[t.key]).length;
     return (
         <>
             {/* Scenario Selector — pas dans une collapsible: choix structurant.
                 7 cartes (Phase 4 #4): 4+3 sur lg, 7 sur xl. */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
-                {allResults.map((res: any, idx: number) => {
+                {allResults.map((res, idx: number) => {
                     const isCompoundNew = res.stratType === 'COMPOUND_STRESS' || res.stratType === 'LATE_INHERITANCE';
                     return (
                         <button
@@ -96,7 +98,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                                 <span className="text-h1" aria-hidden="true">{res.icon}</span>
                                 <div className="min-w-0">
                                     <div className="text-meta font-bold text-ink-50 leading-tight truncate">{res.strategyName}</div>
-                                    <div className="text-tiny text-ink-400 mt-0.5">Patrimoine: {(res.estateNetWorth / 1000000).toFixed(2)}M$</div>
+                                    <div className="text-tiny text-ink-400 mt-0.5">Patrimoine: {((res.estateNetWorth ?? 0) / 1000000).toFixed(2)}M$</div>
                                 </div>
                             </div>
                             {isCompoundNew && selectedScenarioIdx !== idx && (
@@ -346,11 +348,11 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                                     <div key={item.key}>
                                         <label className="flex justify-between text-meta text-ink-300 mb-1">
                                             <span>{item.label} ({item.weight}%)</span>
-                                            <span className="text-warning-400 font-bold">{((projection as any)[item.key] ?? item.def).toFixed(1)}%</span>
+                                            <span className="text-warning-400 font-bold">{((projAsMap[item.key] as number | undefined) ?? item.def).toFixed(1)}%</span>
                                         </label>
                                         <input
                                             type="range" min="0" max="10" step="0.1"
-                                            value={(projection as any)[item.key] ?? item.def}
+                                            value={(projAsMap[item.key] as number | undefined) ?? item.def}
                                             onChange={e => updateProj(item.key as keyof ProjectionConfig, Number(e.target.value))}
                                             className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-warning-500"
                                         />
@@ -418,7 +420,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
             >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
                     {STOCHASTIC_TOGGLES.map(({ key, label, title }) => {
-                        const isOn = !!(projection as any)[key];
+                        const isOn = !!projAsMap[key];
                         return (
                             <Button
                                 key={key}

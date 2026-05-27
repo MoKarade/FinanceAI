@@ -8,6 +8,7 @@ import {
     type SpaceContext,
 } from '../../services/projection/strategySpace';
 import type { SimulationParams } from '../../services/projection';
+import type { BudgetConfig, ProjectionConfig } from '../../types';
 
 const ctx = (over: Partial<SpaceContext> = {}): SpaceContext => ({
     hasPrimaryPurchase: true, currentAge: 35, ...over,
@@ -72,12 +73,12 @@ describe('strategySpace — configToEngine', () => {
             returnRates: { celi: 6, reer: 6, nonReg: 6, crypto: 8, cash: 2 },
             emergencyFundMonths: 6, salaryGrowth: 2, propertyGrowthRate: 3,
             useSmithManoeuvre: false,
-        } as any,
+        } as unknown as ProjectionConfig,
         calculatedStartingCash: 25000,
         liveCSVBalances: { CELI: 30000, CELIAPP: 0, REER: 50000, NON_ENREG: 10000, CRYPTO: 0, REEE: 0 },
         realEstateGoals: [], debts: [], childGoals: [], travelGoals: [], lifeEvents: [],
         retirementGoal: { targetAge: 65, targetMonthlyIncome: 5000, governmentPension: 1500 },
-        config: { users: [{ name: 'T', grossSalary: 5000, netSalary: 3500, color: '#0f0', age: 35, birthYear: 1991, canadaArrivalYear: 1991, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 }], splitMode: '50/50' } as any,
+        config: { users: [{ name: 'T', grossSalary: 5000, netSalary: 3500, color: '#0f0', age: 35, birthYear: 1991, canadaArrivalYear: 1991, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 }], splitMode: '50/50' } as unknown as BudgetConfig,
         baseGrossAnnual: 114000, baseNetAnnual: 80400, currentRentExpense: 1500,
         baseMonthlyExpenses: 5000, startYear: 2026, startMonth: 0,
     });
@@ -95,7 +96,7 @@ describe('strategySpace — configToEngine', () => {
         expect(args.params.retirementGoal.targetAge).toBe(60);
         expect(args.params.retirementGoal.targetMonthlyIncome).toBe(5500); // 5000 × 1.1
         expect(args.params.projection.emergencyFundMonths).toBe(12);
-        expect((args.params.projection as any).useSmithManoeuvre).toBe(true);
+        expect((args.params.projection as ProjectionConfig & { useSmithManoeuvre?: boolean }).useSmithManoeuvre).toBe(true);
         expect(args.overrides).toEqual({
             skipRapForPurchase: true, contributionOrder: 'REER_FIRST', debtFirst: true,
         });

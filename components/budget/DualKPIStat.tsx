@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatCAD, formatSigned } from '../../utils/format';
+import { formatCAD } from '../../utils/format';
 
 /**
  * Phase D'.5 — tuile fusionnée "Prévu / Réel" pour le Budget.

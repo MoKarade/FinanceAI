@@ -156,7 +156,15 @@ export interface ProjectionResult {
     gainVsAuto?: number;
     successRate?: number | null;
     fvi?: number | null;
-    expertMetrics?: any;
+    expertMetrics?: {
+        swr: number;
+        taxLeakage: number;
+        shortfallRisk: number;
+        sequenceRiskPct: number;
+        worstDecadeDrawdown: number;
+        criticalDecadeStartYear: number;
+        criticalDecadeEndYear: number;
+    } | null;
     allResults?: ProjectionResult[];
     bestStrategyIdx?: number;
     actionPlan?: { monthlyCashflow: number; strategy: AllocationStrategy } | null;

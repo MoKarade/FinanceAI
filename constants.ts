@@ -1,5 +1,5 @@
 
-import { BudgetCategory, BudgetConfig, ProjectionConfig, User, RealEstateGoal, ChildGoal, Debt } from "./types";
+import { BudgetCategory, BudgetConfig, ProjectionConfig, User, RealEstateGoal, ChildGoal } from "./types";
 
 // ============================================================
 // PROFIL PAR DÉFAUT — Neutre, à configurer dans Settings

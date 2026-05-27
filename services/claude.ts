@@ -26,7 +26,6 @@ const MODEL_HAIKU = 'claude-haiku-4-5-20251001';
 
 const sanitizePayee = (raw: string): string => {
     if (!raw) return '';
-    // eslint-disable-next-line no-control-regex
     return raw
         .replace(/[\x00-\x1F\x7F]/g, ' ')        // caractères de contrôle (incl. \n, \r)
         .replace(/["\\<>#\[\]{}|`^]/g, ' ')       // H2 : markup / template / injection
@@ -242,7 +241,7 @@ const isDefiniteTransfer = (payee: string, amount: number): boolean => {
 export const categorizeBatch = async (
     transactions: Transaction[],
     apiKey: string,
-    history: Transaction[] = [],
+    _history: Transaction[] = [],
     allowedCategories: string[] = [],
     onProgress?: (current: number, total: number, msg: string, processedChunk: Transaction[]) => void,
 ): Promise<Transaction[]> => {

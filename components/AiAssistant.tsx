@@ -39,7 +39,7 @@ const GREETING: AiMessage = {
  *    estate net worth réels — au lieu de la formule simplifiée 5%)
  *  - Markdown bold (`**texte**`) rendu en <strong>
  */
-export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, budgetItems, assets, projection, realEstateGoal, config, initialBalances }) => {
+export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, budgetItems: _budgetItems, assets, projection, realEstateGoal, config, initialBalances }) => {
   const aiConversation = useFinanceStore(s => s.aiConversation);
   const setAppState = useFinanceStore(s => s.setAppState);
   const lastProjection = useFinanceStore(s => s.lastProjection);
@@ -65,7 +65,6 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
 
   const sanitizePayee = (raw: string): string => {
     if (!raw) return '';
-    // eslint-disable-next-line no-control-regex
     return raw
       .replace(/[\x00-\x1F\x7F]/g, ' ')        // caractères de contrôle
       .replace(/["\\<>#\[\]{}|`^]/g, ' ')       // H2 : markup / template / injection
@@ -119,7 +118,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
       .join('\n');
 
     const userAge = config.users[0]?.age || 35;
-    const retirementAge = projection.years ? userAge + projection.years : 65;
+    const _retirementAge = projection.years ? userAge + projection.years : 65;
 
     return `
       You are an elite, friendly financial advisor for Quebec residents. Speak French naturally. Use emojis sparingly.

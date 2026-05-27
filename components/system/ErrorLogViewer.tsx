@@ -33,7 +33,11 @@ export const ErrorLogViewer: React.FC = () => {
     // Force re-render quand on clear/refresh (errors lives in localStorage hors React)
     const [refreshKey, setRefreshKey] = useState(0);
 
+    // refreshKey force le recalcul volontairement (incrémenté par le bouton Rafraîchir et handleClear).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const errors = useMemo(() => getErrors(), [refreshKey]);
+    // refreshKey force le recalcul volontairement (incrémenté par le bouton Rafraîchir et handleClear).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const stats = useMemo(() => getErrorStats(), [refreshKey]);
 
     const filtered = useMemo(() => {

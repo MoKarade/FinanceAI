@@ -146,6 +146,8 @@ export const fetchTransactions = async (
         }
 
         const endStr = endDate.toISOString().split('T')[0];
+        // Log de progression fetch : information opérationnelle, pas une erreur.
+        // eslint-disable-next-line no-console
         console.log(`[EraContext] Fetching ${startStr} → ${endStr}`);
 
         let allRaw: z.infer<typeof EraContextTxSchema>[] = [];

@@ -33,10 +33,10 @@ export const Transactions: React.FC<TransactionsProps> = ({
     const [showWizard, setShowWizard] = useState(false);
 
     const [filterText, setFilterText] = useState('');
-    const [showDuplicates, setShowDuplicates] = useState(false);
-    const [dateStart, setDateStart] = useState('');
+    const [showDuplicates, _setShowDuplicates] = useState(false);
+    const [dateStart, _setDateStart] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
-    const [typeFilter, setTypeFilter] = useState<'All' | 'Income' | 'Expense' | 'Transfer'>('All');
+    const [typeFilter, _setTypeFilter] = useState<'All' | 'Income' | 'Expense' | 'Transfer'>('All');
     const [quickFilter, setQuickFilter] = useState<'NONE' | 'BIG_SPEND' | 'RECENT' | 'TO_REVIEW'>('NONE');
 
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());

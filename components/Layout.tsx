@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Tab, FinancialGoal } from '../types';
+import { Tab, FinancialGoal, User } from '../types';
 import { CoupleModeBadge } from './ui/CoupleModeBadge';
 import { NextBestAction } from './sidebar/NextBestAction';
 import { useFinanceStore } from '../store/useFinanceStore';
@@ -27,17 +27,17 @@ export const Layout: React.FC<LayoutProps> = ({
   activeTab,
   setActiveTab,
   children,
-  lastUpdate,
-  onRefresh,
-  isLoading,
+  lastUpdate: _lastUpdate,
+  onRefresh: _onRefresh,
+  isLoading: _isLoading,
   isPrivacyMode,
   togglePrivacyMode,
-  netWorth,
-  monthlySavings = 0,
-  financialGoals = [],
-  currentValues = { celi: 0, reer: 0, liquidity: 0 },
-  onOpenGuide,
-  onGeneratePDF
+  netWorth: _netWorth,
+  monthlySavings: _monthlySavings = 0,
+  financialGoals: _financialGoals = [],
+  currentValues: _currentValues = { celi: 0, reer: 0, liquidity: 0 },
+  onOpenGuide: _onOpenGuide,
+  onGeneratePDF: _onGeneratePDF
 }) => {
   const { t } = useTranslation();
   const [showMobileDrawer, setShowMobileDrawer] = React.useState(false);
@@ -103,7 +103,6 @@ export const Layout: React.FC<LayoutProps> = ({
   ];
 
   // Items utilisés par les menus mobile/legacy. Garde une liste plate.
-  const allNavItems = navGroups.flatMap(g => g.items);
   const navItems = navGroups[0].items; // shortcut Argent pour bottom-nav
   const extraItems = navGroups.slice(1).flatMap(g => g.items);
 
@@ -123,8 +122,8 @@ export const Layout: React.FC<LayoutProps> = ({
   const isCouple = Boolean(coupleConfig?.users?.[1]?.name && coupleConfig.users[1].name.trim() !== '');
   const toggleCoupleMode = () => {
     if (!coupleConfig) return;
-    const users = coupleConfig.users as any[];
-    let nextUsers: any[];
+    const users: User[] = coupleConfig.users as User[];
+    let nextUsers: User[];
     if (isCouple) {
       nextUsers = [users[0]]; // repasse en individuel : on retire le conjoint
     } else if (users.length >= 2) {
@@ -132,7 +131,7 @@ export const Layout: React.FC<LayoutProps> = ({
     } else {
       nextUsers = [...users, { name: 'Conjoint(e)', age: 30, grossSalary: 0, netSalary: 0, canadaArrivalYear: new Date().getFullYear() - 5, color: '#ec4899' }];
     }
-    setAppState({ config: { ...coupleConfig, users: nextUsers as any } });
+    setAppState({ config: { ...coupleConfig, users: nextUsers as [User, User] } });
   };
 
   return (

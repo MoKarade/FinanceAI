@@ -3,8 +3,7 @@ import { Layout } from './components/Layout';
 import { Onboarding } from './components/Onboarding';
 import { ToastContainer, showToast } from './components/ui/Toast';
 import { PwaInstallBanner } from './components/PwaInstallBanner';
-import { ErrorBoundary } from './components/ui/ErrorBoundary';
-import { Tab, AppState, Transaction, BudgetCategory } from './types';
+import { Tab, AppState, Transaction } from './types';
 import { fetchTransactions } from './services/eraContext';
 import { INITIAL_CHILD_GOAL } from './constants';
 import { markDuplicates } from './utils/transactionParser';
@@ -326,6 +325,8 @@ export const App: React.FC = () => {
             }
         };
         updateFxRates();
+    // Effet run-once au boot : fetch FX rates une seule fois, sans re-run réactif sur state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
 
@@ -333,6 +334,8 @@ export const App: React.FC = () => {
         if (state.apiKeys.eraContext && state.transactions.length === 0) {
             loadData(state.apiKeys.eraContext);
         }
+    // Effet boot : loadData et state.transactions.length omis volontairement pour éviter une boucle de sync.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [state.apiKeys.eraContext]);
 
     useEffect(() => {
@@ -371,6 +374,8 @@ export const App: React.FC = () => {
         };
         hydrateAssets();
         return () => { cancelled = true; };
+    // Effet run-once au boot : setAppState et state.assets omis pour éviter une boucle de re-fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const loadData = async (token: string, pendingState?: AppState) => {

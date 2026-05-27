@@ -29,7 +29,16 @@ type RunScenarioFn = (
     mcIterationIndex: number,
     scenarioType?: FutureScenarioType,
     overrides?: EngineOverrides,
-) => any;
+) => {
+    chartData: { NetWorth: number; monthIndex?: number; age?: number; FluxImpots?: number; FireTarget?: number }[];
+    finalNetWorth: number;
+    estateNetWorth: number;
+    totalTaxesPaid: number;
+    totalGrowth: number;
+    totalExpenses: number;
+    minNetWorth: number;
+    shortfallRate: number;
+};
 
 /** Métriques complètes d'une StrategyConfig évaluée par Monte Carlo + run déterministe. */
 export interface ConfigResult {

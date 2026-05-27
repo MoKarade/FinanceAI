@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { runStrategySearch } from '../../services/projection/strategySearch';
 import { shardContiguous } from '../../services/projection/runAsync';
 import { generateStrategySpace } from '../../services/projection/strategySpace';
-import type { StrategyConfig } from '../../services/projection/strategyConfig';
-import type { SimulationParams } from '../../services/projection';
+import type { StrategyConfig, EngineOverrides } from '../../services/projection/strategyConfig';
+import type { SimulationParams, AllocationStrategy, FutureScenarioType } from '../../services/projection';
+import type { BudgetConfig } from '../../types';
 
 // G21 C5 commit 4 — tests du moteur de recherche exhaustive. On INJECTE un faux
 // runScenario déterministe (runScenario réel est privé + trop lourd) : il produit
@@ -18,12 +19,12 @@ const baseParams = (): SimulationParams => ({
         returnRates: { celi: 6, reer: 6, nonReg: 6, crypto: 8, cash: 2 },
         emergencyFundMonths: 6, salaryGrowth: 2, propertyGrowthRate: 3,
         useSmithManoeuvre: false,
-    } as any,
+    },
     calculatedStartingCash: 25000,
     liveCSVBalances: { CELI: 30000, CELIAPP: 0, REER: 50000, NON_ENREG: 10000, CRYPTO: 0, REEE: 0 },
     realEstateGoals: [], debts: [], childGoals: [], travelGoals: [], lifeEvents: [],
     retirementGoal: { targetAge: 65, targetMonthlyIncome: 5000, governmentPension: 1500 },
-    config: { users: [{ name: 'T', grossSalary: 5000, netSalary: 3500, color: '#0f0', age: 35, birthYear: 1991, canadaArrivalYear: 1991, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 }], splitMode: '50/50' } as any,
+    config: { users: [{ name: 'T', grossSalary: 5000, netSalary: 3500, color: '#0f0', age: 35, birthYear: 1991, canadaArrivalYear: 1991, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 }, { name: 'T2', grossSalary: 0, netSalary: 0, color: '#f00' }], splitMode: '50/50' } as BudgetConfig,
     baseGrossAnnual: 114000, baseNetAnnual: 80400, currentRentExpense: 1500,
     baseMonthlyExpenses: 5000, startYear: 2026, startMonth: 0,
 });
@@ -35,12 +36,12 @@ const baseParams = (): SimulationParams => ({
 const months = 5 * 12;
 const fakeRunScenario = (
     params: SimulationParams,
-    _strategy: any,
+    _strategy: AllocationStrategy,
     enableMC: boolean,
     _delay: boolean,
     iterationIndex: number,
-    _scenarioType?: any,
-    overrides?: any,
+    _scenarioType?: FutureScenarioType,
+    overrides?: EngineOverrides,
 ) => {
     const retAge = params.retirementGoal.targetAge ?? 65;
     const reerBonus = overrides?.contributionOrder === 'REER_FIRST' ? 50000 : 0;
@@ -111,7 +112,7 @@ describe('strategySearch — runStrategySearch', () => {
         const lowEngine = (...args: Parameters<typeof fakeRunScenario>) => {
             const r = fakeRunScenario(...args);
             // Écrase les NetWorth sous la cible pour le run déterministe.
-            if (!args[2]) r.chartData = r.chartData.map((d: any) => ({ ...d, NetWorth: 100000 }));
+            if (!args[2]) r.chartData = r.chartData.map((d) => ({ ...d, NetWorth: 100000 }));
             return r;
         };
         const configs = generateStrategySpace({ retirementAge: [55] }, ctx);

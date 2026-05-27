@@ -20,13 +20,13 @@ import { Skeleton } from '../../components/ui/Skeleton';
 async function expectNoSeriousViolations(container: HTMLElement) {
     const results = await axe(container);
     const serious = (results.violations || []).filter(
-        (v: any) => v.impact === 'serious' || v.impact === 'critical'
+        (v) => v.impact === 'serious' || v.impact === 'critical'
     );
     if (serious.length > 0) {
-        console.error('Violations a11y sérieuses :', JSON.stringify(serious.map((v: any) => ({
+        console.error('Violations a11y sérieuses :', JSON.stringify(serious.map((v) => ({
             id: v.id,
             description: v.description,
-            nodes: v.nodes.map((n: any) => n.html),
+            nodes: v.nodes.map((n) => n.html),
         })), null, 2));
     }
     expect(serious).toHaveLength(0);

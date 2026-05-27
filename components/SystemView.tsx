@@ -126,6 +126,8 @@ const computeDiagnostics = (state: AppState): LogLine[] => {
 export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
     const [refreshKey, setRefreshKey] = useState(0);
 
+    // refreshKey force le recalcul volontairement (incrémenté par le bouton Refresh).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const logs = useMemo(() => computeDiagnostics(state), [state, refreshKey]);
 
     const dbSize = useMemo(() => {

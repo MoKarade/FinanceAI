@@ -65,6 +65,33 @@ const COLORS_REGION: Record<string, string> = {
 
 type TimeRange = '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'ALL';
 
+interface AllocationItem {
+    id: string;
+    value: number;
+    trend24h: number;
+    weight: number;
+    dividendYearly: number;
+    name: string;
+    sector: string;
+    region: string;
+    yield: number;
+    freq: number;
+    nextPayMonth?: number;
+    symbol?: string;
+}
+
+interface SeriesWithTrend {
+    id: string;
+    name: string;
+    trend: number;
+    isTotal: boolean;
+}
+
+interface DividendItem extends AllocationItem {
+    nextPayout: string;
+    amountPerPayout: number;
+}
+
 const DEFAULT_TARGET_MODEL = [
     { id: 'index', label: 'Index Mondial (CW8)', targetPct: 40, sectors: ['Index'], icon: '🌍', color: '#8b5cf6' },
     { id: 'tech', label: 'Technologie', targetPct: 30, sectors: ['Technologie'], icon: '💻', color: '#3b82f6' },
@@ -256,7 +283,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     ...meta
                 };
             })
-            .filter(Boolean) as any[];
+            .filter((x): x is AllocationItem => x !== null);
 
         allocation.sort((a, b) => b.value - a.value);
 
@@ -275,7 +302,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
         const sectorData = Object.entries(sectorMap).map(([name, value]) => ({ name, value, percent: (value / totalPortfolio) * 100 })).sort((a, b) => b.value - a.value);
 
         // 5. Dividend Calendar
-        const dividendList: any[] = [];
+        const dividendList: DividendItem[] = [];
         let totalDivs = 0;
         const today = new Date();
 
@@ -316,7 +343,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 trend,
                 isTotal
             };
-        }).filter((x): x is NonNullable<typeof x> => x !== null).sort((a, b) => {
+        }).filter((x): x is SeriesWithTrend => x !== null).sort((a, b) => {
             if (a.isTotal) return -1;
             if (b.isTotal) return 1;
             return b.trend - a.trend; // Sort by momentum
@@ -363,7 +390,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
             benchmarkTrend,
             indexWeight
         };
-    }, [marketData]);
+    }, [marketData, assets]);
 
     // --- FILTERED DATA FOR CHART ---
     const filteredMarketData = useMemo(() => {
@@ -755,10 +782,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
 
             {/* 4. VISUAL PORTFOLIO REBALANCING (V16) — Phase E.3 sub-tab 'rebalance' */}
             {subTab === 'rebalance' && currentAllocation.length > 0 && (() => {
-                const totalPortfolio = currentAllocation.reduce((s, a) => s + a.value, 0);
+                const alloc = currentAllocation as AllocationItem[];
+                const totalPortfolio = alloc.reduce((s, a) => s + a.value, 0);
 
                 const rebalancingActions = targetModel.map(target => {
-                    const currentVal = currentAllocation
+                    const currentVal = alloc
                         .filter(a => target.sectors.some(s => a.sector === s))
                         .reduce((s, a) => s + a.value, 0);
                     const currentPct = totalPortfolio > 0 ? (currentVal / totalPortfolio) * 100 : 0;
@@ -1013,7 +1041,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     <span className={asset.yield > 0 ? "text-emerald-400 font-bold" : "text-gray-500"}>{asset.yield}%</span>
                                 </div>
                                 <select
-                                    aria-label={`Type de compte pour ${asset.symbol}`}
+                                    aria-label={`Type de compte pour ${asset.id}`}
                                     value={accountType}
                                     onChange={(e) => handleAssetAccountChange(asset.id, e.target.value)}
                                     className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-tiny text-gray-300 font-bold outline-none hover:bg-white/10 cursor-pointer transition-colors"

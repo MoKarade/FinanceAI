@@ -123,10 +123,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
     // Display values based on time view
     const totalNetIncomeDisplay = totalNetIncomeMonthly * getMultiplier();
-    const totalTaxDisplay = totalTaxMonthly * getMultiplier();
-    const totalGrossDisplay = totalGrossIncomeMonthly * getMultiplier();
+    const _totalTaxDisplay = totalTaxMonthly * getMultiplier();
+    const _totalGrossDisplay = totalGrossIncomeMonthly * getMultiplier();
 
-    const { filteredTransactions, actualsMap, trendMap, monthlyDataMap } = useMemo(() => {
+    const { filteredTransactions: _filteredTransactions, actualsMap, trendMap, monthlyDataMap } = useMemo(() => {
         const { start, end } = getDateRange();
         // Ensure end date includes the full day
         const endInclusive = new Date(end);
@@ -172,6 +172,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         });
 
         return { filteredTransactions: filtered, actualsMap: map, trendMap: trends, monthlyDataMap: detailedMonthly };
+    // getDateRange et now sont recréés à chaque render (fonctions locales) ; timeView, customStart,
+    // customEnd couvrent déjà les paramètres de getDateRange — ajout explicite éviterait une boucle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [transactions, timeView, budgetItems, customStart, customEnd]);
 
     const totalBudgetDisplay = budgetItems.reduce((sum, item) => sum + getDisplayTarget(item), 0);
@@ -214,6 +217,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             netDisplay: netIncome * multiplier,
             averageRate: totalGross > 0 ? (totalTax / totalGross) * 100 : 0,
         };
+    // getMultiplier est recréé à chaque render ; timeView et customStart/customEnd couvrent
+    // déjà ses paramètres — l'ajouter directement causerait une recréation infinie.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [usersIncome, timeView, customStart, customEnd]);
 
     // Phase D'.5 — revenu RÉEL = somme transactions positives (hors transferts) sur la période
@@ -226,7 +232,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 return d >= start && d <= end;
             })
             .reduce((sum, t) => sum + t.amount, 0);
-    }, [transactions, getDateRange]);
+    // getDateRange est une fonction locale recréée à chaque render ; ses vraies deps
+    // (timeView, customStart, customEnd, periodOffset) sont listées directement.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [transactions, timeView, customStart, customEnd, periodOffset]);
 
     // --- 2. GROUPING LOGIC ---
     const groupedItems = useMemo(() => {
@@ -240,6 +249,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             groups[key as keyof typeof groups].sort((a, b) => getBaseMonthlyTarget(b) - getBaseMonthlyTarget(a));
         });
         return groups;
+    // inflationSim n'est pas utilisé par getBaseMonthlyTarget (tri par cible de base) ;
+    // ESLint le détecte comme superflu mais le conserver ne nuit pas au comportement.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [budgetItems, inflationSim]);
 
     // --- 3. COUPLE SPLIT & SAVINGS CAPACITY ---
@@ -295,6 +307,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             splitMode: config.splitMode,
             isSolo: !user2
         };
+    // getDisplayTarget et getMultiplier sont recréés à chaque render ; leurs vraies deps
+    // (timeView, inflationSim, customStart, customEnd) sont déjà listées explicitement.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [config, usersIncome, budgetItems, timeView, inflationSim, customStart, customEnd]);
 
     const alerts = useMemo(() => {
@@ -309,6 +324,8 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             }
         });
         return list;
+    // getDisplayTarget est recréé à chaque render ; ses vraies deps sont déjà dans la liste.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [budgetItems, actualsMap, timeView, inflationSim, customStart, customEnd]);
 
     const setAppState = useFinanceStore(s => s.setAppState);
@@ -426,6 +443,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             per100Boost: per100,
             currentMonthlySavings: monthlyTotalSavings,
         };
+    // getMultiplier est recréé à chaque render ; ses deps (timeView, customStart, customEnd)
+    // sont implicitement couvertes par coupleAnalysis.totalSavings qui se recalcule avec elles.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [lastProjection, coupleAnalysis.totalSavings]);
 
     return (

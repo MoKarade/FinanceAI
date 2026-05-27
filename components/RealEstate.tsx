@@ -71,7 +71,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
 
     const price = activeGoal.price || 450000;
     const downPayment = activeGoal.downPayment || (price * 0.2);
-    const downPaymentPercent = Math.round((downPayment / price) * 100);
+    const _downPaymentPercent = Math.round((downPayment / price) * 100);
     const rate = activeGoal.mortgageRate || 4.5;
     const amortization = activeGoal.amortization || 25;
     const targetDate = activeGoal.purchaseDate || new Date().toISOString().split('T')[0];
@@ -92,6 +92,9 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
         setTaxesYearly(activeGoal.taxesYearly ?? 3000);
         setHeatingMonthly(activeGoal.heatingMonthly ?? 150);
         setCondoFees(activeGoal.condoFees ?? 0);
+    // activeGoal.taxesYearly/heatingMonthly/condoFees omis volontairement : seul activeGoalId
+    // doit déclencher la réinitialisation des sliders locaux (pas les changements en cours de saisie).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeGoalId]);
 
     // AUTO: compute from price and persist to store
@@ -104,6 +107,9 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
             setCondoFees(0);
             setGoals(goals.map(g => g.id === activeGoal.id ? { ...g, taxesYearly: t, heatingMonthly: h, condoFees: 0 } : g));
         }
+    // goals, setGoals et activeGoal.id omis volontairement : seuls price et mode
+    // doivent déclencher ce recalcul ; ajouter goals provoquerait des boucles d'update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [price, mode]);
 
     const [currentRent, setCurrentRent] = useState(1600);
@@ -198,7 +204,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
     const initialInterest = totalMortgage * monthlyRate;
     const unrecoverableMonthly = Math.max(0, initialInterest + monthlyTaxes + heatingMonthly + condoFees + maintenanceMonthly - rentalIncomeMonthly);
 
-    const buyVsRentData = useMemo(() => {
+    const _buyVsRentData = useMemo(() => {
         const data = [];
         let rentScenarioNetWorth = totalCashNeeded;
         let buyNetWorth = downPayment + initialRenovations;
@@ -262,7 +268,14 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
             'Valeur Propriété': Math.round(propValue),
         };
     }), [amortization, totalCashNeeded, currentRent, netMonthlyCost, maintenanceMonthly, marketReturn, price, localRentalAppreciation, localStockReturn, netAnnualIncome, amortizationData.data]);
-    const zoom = useTimeChartZoom<any>(combinedData);
+    const zoom = useTimeChartZoom<{
+        year: number;
+        'Acheter (Résidence)': number;
+        'Louer + Investir Reste': number;
+        'Investissement Locatif (Équité+Loyer)': number;
+        'Bourse (Placer Cash Initial)': number;
+        'Valeur Propriété': number;
+    }>(combinedData);
 
     return (
         <div className="space-y-6 animate-fade-in pb-10">

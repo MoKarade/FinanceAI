@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { ComposedChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceDot } from 'recharts';
 import { useTimeChartZoom } from '../../hooks/useTimeChartZoom';
 import { splitEventIcon, ClickableEventIcon } from './ProjectionTooltip';
+import { ProjectionChartPoint } from '../../services/projection/types';
 
 /**
  * G9 P1 — fenêtre détaillée du graphique Futur (clic sur la courbe).
@@ -47,14 +48,15 @@ const ACCOUNTS: AccountDef[] = [
 // + cotisations(Y). L'espace dispo = Max (espace + solde) − solde. Capture aussi
 // le réajout d'espace CELI après retrait. Année 1 : pas de référence → gained=null.
 interface RoomYear { year: number; gained: number | null; avail: number }
-function computeRoomByYear(chartData: any[], balanceKey: string, maxKey: string, contribKey: string): RoomYear[] {
+function computeRoomByYear(chartData: ProjectionChartPoint[], balanceKey: string, maxKey: string, contribKey: string): RoomYear[] {
     const byYear = new Map<number, { availLast: number; contribs: number }>();
     for (const d of chartData) {
-        const avail = (d[maxKey] || 0) - (d[balanceKey] || 0);
-        const cur = byYear.get(d.year) || { availLast: 0, contribs: 0 };
+        const avail = (Number(d[maxKey]) || 0) - (Number(d[balanceKey]) || 0);
+        const yr = d.year ?? 0;
+        const cur = byYear.get(yr) || { availLast: 0, contribs: 0 };
         cur.availLast = avail; // dernier mois vu = décembre
-        cur.contribs += d[contribKey] || 0;
-        byYear.set(d.year, cur);
+        cur.contribs += Number(d[contribKey]) || 0;
+        byYear.set(yr, cur);
     }
     const years = [...byYear.keys()].sort((a, b) => a - b);
     return years.map((y, i) => {
@@ -103,10 +105,17 @@ const REASON_TONE_CLASS: Record<ReasonTone, string> = {
     out: 'text-orange-300 bg-orange-500/10',
 };
 
+interface AccountDrillTooltipProps {
+    active?: boolean;
+    payload?: Array<{ payload: AccountPoint }>;
+    accountLabel: string;
+    isPrivacyMode: boolean;
+}
+
 // G13 — infobulle du drill-down : valeur du mois + le « pourquoi » (gain marché,
 // apport/retrait + origine) + événements. Niveau module → recharts y injecte
 // `active`/`payload`, on lui passe `accountLabel`/`isPrivacyMode` en props.
-const AccountDrillTooltip: React.FC<any> = ({ active, payload, accountLabel, isPrivacyMode }) => {
+const AccountDrillTooltip: React.FC<AccountDrillTooltipProps> = ({ active, payload, accountLabel, isPrivacyMode }) => {
     if (!active || !payload?.length) return null;
     const d = payload[0].payload as AccountPoint;
     const reasons = explainMovement(d);
@@ -147,8 +156,8 @@ const AccountDrillTooltip: React.FC<any> = ({ active, payload, accountLabel, isP
 };
 
 interface FutureDetailModalProps {
-    point: any;
-    chartData: any[];
+    point: ProjectionChartPoint;
+    chartData: ProjectionChartPoint[];
     userName1?: string;
     userName2?: string;
     isPrivacyMode?: boolean;
@@ -167,10 +176,10 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
     const prev = idx > 0 ? chartData[idx - 1] : null;
 
     const accounts = ACCOUNTS.map((a) => {
-        const value = point[a.key] || 0;
-        const variation = value - (prev ? (prev[a.key] || 0) : value);
-        const gain = a.gainKey ? (point[a.gainKey] || 0) : null;   // croissance marché du mois
-        const flow = a.flowKey ? (point[a.flowKey] || 0) : null;   // apport net (dépôt − retrait)
+        const value = Number(point[a.key]) || 0;
+        const variation = value - (prev ? (Number(prev[a.key]) || 0) : value);
+        const gain: number | null = a.gainKey ? (Number(point[a.gainKey]) || 0) : null;   // croissance marché du mois
+        const flow: number | null = a.flowKey ? (Number(point[a.flowKey]) || 0) : null;   // apport net (dépôt − retrait)
         return { ...a, value, variation, gain, flow };
     }).filter((a) => a.value !== 0 || a.variation !== 0);
 
@@ -181,11 +190,11 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
         const hasDecomp = !!(selected.gainKey || selected.flowKey);
         return chartData.map((d) => ({
             monthIndex: d.monthIndex,
-            year: d.year,
+            year: d.year ?? 0,
             dateLabel: d.dateLabel,
-            value: d[selected.key] || 0,
-            gain: selected.gainKey ? (d[selected.gainKey] || 0) : 0,
-            flow: selected.flowKey ? (d[selected.flowKey] || 0) : 0,
+            value: Number(d[selected.key]) || 0,
+            gain: selected.gainKey ? (Number(d[selected.gainKey]) || 0) : 0,
+            flow: selected.flowKey ? (Number(d[selected.flowKey]) || 0) : 0,
             events: [...(d.lifeEvents || []), ...(d.flowEvents || [])],
             hasDecomp,
         }));
@@ -344,7 +353,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                         </div>
 
                         {/* Événements */}
-                        {(point.lifeEvents?.length > 0 || point.flowEvents?.length > 0) && (
+                        {((point.lifeEvents?.length ?? 0) > 0 || (point.flowEvents?.length ?? 0) > 0) && (
                             <div className="border-t border-white/10 pt-3">
                                 <div className="text-tiny uppercase tracking-widest text-yellow-500 font-bold mb-2">Événements ce mois</div>
                                 <ul className="space-y-1.5">
@@ -374,7 +383,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                         <div className="flex items-center gap-2 mb-3">
                             <span className="w-3 h-3 rounded-full" style={{ background: selected.color }} />
                             <span className="font-bold text-white">{selected.label}</span>
-                            <span className={`ml-auto font-mono text-sm text-white ${blur}`}>{fmt(point[selected.key] || 0)}</span>
+                            <span className={`ml-auto font-mono text-sm text-white ${blur}`}>{fmt(Number(point[selected.key]) || 0)}</span>
                         </div>
 
                         {/* Sélecteur de période */}
@@ -434,7 +443,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                             x={mk.monthIndex}
                                             y={mk.value}
                                             r={2}
-                                            shape={<ClickableEventIcon kind="flow" payload={{ label: mk.label, monthIndex: mk.monthIndex }} />}
+                                            shape={<ClickableEventIcon kind="flow" payload={{ label: mk.label }} />}
                                         />
                                     ))}
                                 </ComposedChart>

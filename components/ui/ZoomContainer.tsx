@@ -14,7 +14,7 @@ import type { TimeChartZoom } from '../../hooks/useTimeChartZoom';
  *   </ZoomContainer>
  */
 interface ZoomContainerProps {
-    zoom: TimeChartZoom<any>;
+    zoom: TimeChartZoom<unknown>;
     className?: string;
     style?: React.CSSProperties;
     children: React.ReactNode;

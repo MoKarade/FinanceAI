@@ -3,6 +3,7 @@ import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
 import { Badge } from './ui/Badge';
 import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset, RegisteredAccountType } from '../types';
+import { ProjectionChartPoint } from '../services/projection/types';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend, AreaChart } from 'recharts';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ZoomContainer } from './ui/ZoomContainer';
@@ -27,7 +28,7 @@ interface RetirementProps {
     currentCELI: number;
     currentNonReg: number;
     calculatedMonthlySavings: number;
-    grossIncome: number;
+    grossIncome?: number;
     projection: ProjectionConfig;
     config: BudgetConfig;
     assets?: Asset[];
@@ -43,16 +44,17 @@ interface RetirementProps {
 export const Retirement: React.FC<RetirementProps> = ({
     goal, setGoal,
     currentREER, currentCELI, currentNonReg,
-    calculatedMonthlySavings, grossIncome,
+    calculatedMonthlySavings,
     projection, config,
     assets = [], initialBalances = {}, budgetItems = [],
     realEstateGoals = [], childGoals = [], travelGoals = [], lifeEvents = [], debts = []
 }) => {
     const setAppState = useFinanceStore(s => s.setAppState);
-    // Sprint 2 PH3 — Regroupement W5.x via useShallow (avant : 6 selectors
-    // séparés + `?? []` créaient des refs nouvelles à chaque render, invalidant
-    // les useMemo deps de la projection cachée).
-    const { insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, savingsGoals, financialGoals } = useFinanceStore(useShallow(s => ({
+    // Sprint 2 PH3 — Regroupement W5.x via useShallow. Ces valeurs sont lues
+    // depuis le store pour que le composant se re-render si elles changent
+    // (cohérence avec FutureProjection qui les consomme), même si Retirement
+    // ne les utilise pas directement (il consomme lastProjection.chartData).
+    useFinanceStore(useShallow(s => ({
         insurancePolicies: s.insurancePolicies ?? EMPTY_ARRAY,
         vehicleReplacements: s.vehicleReplacements ?? EMPTY_ARRAY,
         majorRenovations: s.majorRenovations ?? EMPTY_ARRAY,
@@ -160,16 +162,20 @@ export const Retirement: React.FC<RetirementProps> = ({
     // approximatives quand la source canonique est indisponible.
     const projectionFromStore = useFinanceStore(s => s.lastProjection?.chartData ?? null);
     const activeScenarioName = useFinanceStore(s => s.lastProjection?.strategyName ?? null);
+    // chartData dérivé de projectionFromStore : utilisé uniquement dans le JSX
+    // après les hooks. Pour les useMemo, on dépend de projectionFromStore directement
+    // afin d'éviter la nouvelle référence `?? []` qui invaliderait les deps à chaque render.
     const chartData = projectionFromStore ?? [];
     const hasProjection = chartData.length > 0;
 
     const yearlyData = useMemo(() => {
-        if (chartData.length === 0) return [];
-        return chartData.filter(d => d.monthIndex % 12 === 0).map(d => ({
+        // Dépend de projectionFromStore (stable) et non de chartData (expr. logique instable)
+        if (!projectionFromStore || projectionFromStore.length === 0) return [];
+        return projectionFromStore.filter(d => d.monthIndex % 12 === 0).map(d => ({
             ...d,
             TotalCapital: (d.CELI ?? 0) + (d.REER ?? 0) + (d.NonReg ?? 0) + (d.Liquidites ?? 0) + (d.CELIAPP ?? 0),
         }));
-    }, [chartData]);
+    }, [projectionFromStore]);
 
     const retirementPoint = yearlyData.find(d => (d.age ?? 0) >= goal.targetAge);
     const retirementNetWorth = retirementPoint?.NetWorth || 0;
@@ -181,8 +187,9 @@ export const Retirement: React.FC<RetirementProps> = ({
     const bankruptcyPoint = retirementData.find(d => d.TotalCapital <= 0);
 
     // G7c — zoom molette / pan sur les deux graphes Retraite (x = âge).
-    const zoomAccum = useTimeChartZoom<any>(lifeExpectancyData);
-    const zoomCashflow = useTimeChartZoom<any>(retirementData);
+    type YearlyPoint = ProjectionChartPoint & { TotalCapital: number };
+    const zoomAccum = useTimeChartZoom<YearlyPoint>(lifeExpectancyData as YearlyPoint[]);
+    const zoomCashflow = useTimeChartZoom<YearlyPoint>(retirementData as YearlyPoint[]);
     const bankruptcyAge = bankruptcyPoint?.age;
 
     // Mode strict : pas de projection = pas de données. Aucune invention.
@@ -455,7 +462,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
                                             <XAxis dataKey="age" stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => `${val}a`} />
                                             <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} width={50} tickFormatter={(val) => `${(val / 1000).toFixed(0)}k`} />
-                                            <Tooltip contentStyle={{ backgroundColor: '#0B0E14', borderColor: '#1e293b', borderRadius: '10px', color: '#fff' }} formatter={(val: any, name: string) => [`${Number(val).toLocaleString()}$`, name]} />
+                                            <Tooltip contentStyle={{ backgroundColor: '#0B0E14', borderColor: '#1e293b', borderRadius: '10px', color: '#fff' }} formatter={(val: number | string, name: string) => [`${Number(val).toLocaleString()}$`, name]} />
                                             <Legend iconType="circle" />
                                             <Area type="monotone" dataKey="IncomeRetirement" fill="#3b82f620" stroke="#3b82f6" strokeWidth={2} name="Rente Gouv. + PSV" />
                                             <Area type="monotone" dataKey="Income" fill="#10b98115" stroke="#10b981" strokeWidth={2} name="Revenu Total" />
@@ -475,10 +482,16 @@ export const Retirement: React.FC<RetirementProps> = ({
     );
 };
 
-const RetirementTooltip = React.memo(({ active, payload, label }: any) => {
+interface RetirementTooltipProps {
+    active?: boolean;
+    payload?: Array<{ payload: ProjectionChartPoint & { TotalCapital?: number; RetirementAge?: number; Savings?: number } }>;
+    label?: number | string;
+}
+
+const RetirementTooltip = React.memo(({ active, payload }: RetirementTooltipProps) => {
     if (!active || !payload || !payload.length) return null;
     const data = payload[0].payload;
-    const isRetired = data.age >= data.RetirementAge;
+    const isRetired = (data.age ?? 0) >= (data.RetirementAge ?? 65);
 
     return (
         <div className="bg-[#0B0E14]/95 backdrop-blur-md border border-white/10 p-4 rounded-xl shadow-2xl max-w-[280px] z-50">
@@ -523,7 +536,7 @@ const RetirementTooltip = React.memo(({ active, payload, label }: any) => {
                     <div className="bg-black/30 rounded-lg p-3 border border-red-500/20 space-y-2">
                         <div className="flex justify-between text-xs"><span className="text-gray-400">Revenu total</span><span className="text-emerald-400 font-bold privacy-blur">+{(data.Income || 0).toLocaleString()}$</span></div>
                         <div className="flex justify-between text-xs"><span className="text-gray-400">Depenses (Infl.)</span><span className="text-red-400 font-bold privacy-blur">-{(data.Expenses || 0).toLocaleString()}$</span></div>
-                        <div className="flex justify-between text-xs pt-1 border-t border-white/5"><span className="text-gray-400">Cashflow</span><span className={`font-bold privacy-blur ${(data.Income - data.Expenses) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{(data.Income - data.Expenses).toLocaleString()}$</span></div>
+                        <div className="flex justify-between text-xs pt-1 border-t border-white/5"><span className="text-gray-400">Cashflow</span><span className={`font-bold privacy-blur ${((data.Income ?? 0) - (data.Expenses ?? 0)) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{((data.Income ?? 0) - (data.Expenses ?? 0)).toLocaleString()}$</span></div>
                     </div>
                 </div>
             ) : (

@@ -25,7 +25,7 @@ interface PlanningProps {
     section?: 'all' | 'fixed' | 'goals';
 }
 
-export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals = [], setSavingsGoals, budgetItems, setBudgetItems, config, apiKey, section = 'all' }) => {
+export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals = [], setSavingsGoals, budgetItems: _budgetItems, setBudgetItems: _setBudgetItems, config: _config, apiKey, section = 'all' }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [aiSubs, setAiSubs] = useState<RecurringItem[] | null>(null);
@@ -45,8 +45,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
             groups[key].push(t);
         });
         const detected: RecurringItem[] = [];
-        const subKeywords = ['netflix', 'spotify', 'apple', 'google', 'disney', 'hbo', 'crave', 'bell', 'rogers', 'fido', 'videotron', 'hydro', 'gym', 'fitness', 'adobe', 'chatgpt', 'openai', 'icloud', 'dropbox', 'assurance', 'loyer', 'rent', 'intact', 'ia', 'desjardins', 'ssq'];
-        Object.entries(groups).forEach(([key, txs]) => {
+        Object.entries(groups).forEach(([_key, txs]) => {
             if (txs.length >= 2) {
                 txs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
                 const amounts = txs.map(t => Math.abs(t.amount));

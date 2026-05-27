@@ -1,4 +1,5 @@
 import React from 'react';
+import type { ProjectionChartPoint } from '../../services/projection/types';
 
 // Normalise un label d'event : extrait l'emoji du début pour l'aligner dans
 // un slot fixe, et garde le reste du texte. Si pas d'emoji détecté, retourne
@@ -54,7 +55,7 @@ const TOOLTIP_ACCOUNTS: Array<{ key: string; label: string; color: string; gainK
 // G15 : libellés explicites (« Rendement » = marché, « Dépôts » = ce que tu
 // ajoutes, gros chiffre = « Variation ce mois »). Le détail exhaustif + le
 // « pourquoi » par compte reste au CLIC (FutureDetailModal).
-export const ExpertTooltip = ({ active, payload, userName1, userName2 }: any) => {
+export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { active?: boolean; payload?: { payload: ProjectionChartPoint }[]; userName1?: string; userName2?: string }) => {
     if (!active || !payload || !payload.length) return null;
     const data = payload[0].payload;
     const fmt = (n: number) => Math.round(n).toLocaleString('fr-CA');
@@ -67,7 +68,7 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: any) =>
     const portfolioOutflow = (data.RetraitREER || 0) + (data.RetraitCELI || 0);
     const events: string[] = [...(data.lifeEvents || []), ...(data.flowEvents || [])];
     const accounts = TOOLTIP_ACCOUNTS
-        .map((a) => ({ ...a, value: data[a.key] || 0, gain: a.gainKey ? (data[a.gainKey] || 0) : 0 }))
+        .map((a) => ({ ...a, value: (data[a.key] as number | undefined) || 0, gain: a.gainKey ? ((data[a.gainKey] as number | undefined) || 0) : 0 }))
         .filter((a) => a.value !== 0);
 
     return (
@@ -107,11 +108,11 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: any) =>
 
             {/* Revenus / dépenses du mois */}
             <div className="space-y-1 mb-2.5 text-xs">
-                {(data.IncomeMarc || 0) > 0 && <div className="flex justify-between"><span className="text-gray-400">Paye {userName1 || 'Util. 1'}</span><span className="font-mono text-green-400 privacy-blur">+{fmt(data.IncomeMarc)}$</span></div>}
-                {(data.IncomeAnna || 0) > 0 && <div className="flex justify-between"><span className="text-gray-400">Paye {userName2 || 'Util. 2'}</span><span className="font-mono text-green-400 privacy-blur">+{fmt(data.IncomeAnna)}$</span></div>}
-                {(data.IncomeRetirement || 0) > 0 && <div className="flex justify-between"><span className="text-gray-400">Rentes / retraite</span><span className="font-mono text-green-400 privacy-blur">+{fmt(data.IncomeRetirement)}$</span></div>}
+                {(data.IncomeMarc || 0) > 0 && <div className="flex justify-between"><span className="text-gray-400">Paye {userName1 || 'Util. 1'}</span><span className="font-mono text-green-400 privacy-blur">+{fmt(data.IncomeMarc || 0)}$</span></div>}
+                {(data.IncomeAnna || 0) > 0 && <div className="flex justify-between"><span className="text-gray-400">Paye {userName2 || 'Util. 2'}</span><span className="font-mono text-green-400 privacy-blur">+{fmt(data.IncomeAnna || 0)}$</span></div>}
+                {(data.IncomeRetirement || 0) > 0 && <div className="flex justify-between"><span className="text-gray-400">Rentes / retraite</span><span className="font-mono text-green-400 privacy-blur">+{fmt(data.IncomeRetirement || 0)}$</span></div>}
                 {portfolioOutflow > 0 && <div className="flex justify-between"><span className="text-gray-400">Décaissement portfolio</span><span className="font-mono text-amber-400 privacy-blur">+{fmt(portfolioOutflow)}$</span></div>}
-                {(data.Expenses || 0) > 0 && <div className="flex justify-between"><span className="text-gray-400">Dépenses de vie</span><span className="font-mono text-red-400 privacy-blur">-{fmt(data.Expenses)}$</span></div>}
+                {(data.Expenses || 0) > 0 && <div className="flex justify-between"><span className="text-gray-400">Dépenses de vie</span><span className="font-mono text-red-400 privacy-blur">-{fmt(data.Expenses || 0)}$</span></div>}
             </div>
 
             {/* Répartition par compte : valeur + rendement du mois (G14) */}
@@ -171,7 +172,7 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: any) =>
 // propre icône (plus de labels texte fusionnés « A | B | C »). Les événements
 // d'un même mois s'empilent verticalement via `subIdx` : vie au-dessus du
 // point, flux en dessous. Le clic remonte le payload via `onSelect`.
-export const ClickableEventIcon = (props: any) => {
+export const ClickableEventIcon = (props: { payload?: { label?: string; subIdx?: number }; onSelect?: (p: { label?: string; subIdx?: number }) => void; kind?: string; selected?: boolean; cx?: number; cy?: number; x?: number; y?: number; viewBox?: { x?: number; y?: number } }) => {
     const { payload, onSelect, kind = 'life', selected = false } = props;
     // Recharts v3 : utilisé via le prop `shape` du ReferenceDot → coords en cx/cy.
     // Fallbacks (x/y, viewBox) au cas où l'API change.
@@ -208,7 +209,7 @@ export const ClickableEventIcon = (props: any) => {
 // centré qui passe par-dessus les aires et devient illisible). Ligne horizontale
 // (Objectif FIRE) → pill en haut à droite ; ligne verticale (Aujourd'hui) → pill
 // en haut, décalée à droite du trait pour ne pas chevaucher l'axe Y.
-export const RefLineLabel = (props: any) => {
+export const RefLineLabel = (props: { viewBox?: { x?: number; y?: number; width?: number; height?: number }; value?: string | number; color?: string }) => {
     const { viewBox, value, color = '#ffffff' } = props;
     if (!viewBox) return null;
     const { x = 0, y = 0, width = 0, height = 0 } = viewBox;

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { Dashboard } from '../../components/Dashboard';
-import type { Transaction, RetirementGoal, BudgetConfig } from '../../types';
+import type { Transaction, RetirementGoal, BudgetConfig, User } from '../../types';
 
 vi.mock('../../services/finance', () => ({
     fetchPortfolioHistory: vi.fn().mockResolvedValue([]),
@@ -32,8 +32,8 @@ const defaultGoal: RetirementGoal = {
 
 const defaultConfig: BudgetConfig = {
     users: [
-        { name: 'Marc', monthlyGross: 7000, rrspContribution: 0, fhsaContribution: 0, birthYear: 1990, canadaArrivalYear: 2009 } as any,
-        { name: 'Anna', monthlyGross: 5000, rrspContribution: 0, fhsaContribution: 0, birthYear: 1992, canadaArrivalYear: 2009 } as any,
+        { name: 'Marc', monthlyGross: 7000, rrspContribution: 0, fhsaContribution: 0, birthYear: 1990, canadaArrivalYear: 2009 } as unknown as User,
+        { name: 'Anna', monthlyGross: 5000, rrspContribution: 0, fhsaContribution: 0, birthYear: 1992, canadaArrivalYear: 2009 } as unknown as User,
     ],
     splitMode: '50/50',
 };

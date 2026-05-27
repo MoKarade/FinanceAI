@@ -9,7 +9,6 @@ export const BackupSchema = z.object({
   timestamp: z.number().optional(),
   apiKeys: z.object({
     gemini: z.string().optional(),
-    eraContext: z.string().optional(),
     lunchMoney: z.string().optional(),
   }).passthrough().optional(),
   config: z.unknown().optional(),

@@ -30,22 +30,22 @@ describe('useFinanceStore', () => {
     });
 
     it('updateApiKeys merge clé par clé sans écraser les autres', () => {
-        useFinanceStore.getState().updateApiKeys({ anthropic: 'key1', eraContext: '' });
-        useFinanceStore.getState().updateApiKeys({ anthropic: 'key1', eraContext: 'token2' });
+        useFinanceStore.getState().updateApiKeys({ anthropic: 'key1', finnhub: '' });
+        useFinanceStore.getState().updateApiKeys({ anthropic: 'key2' });
         const { apiKeys } = useFinanceStore.getState();
-        expect(apiKeys.anthropic).toBe('key1');
-        expect(apiKeys.eraContext).toBe('token2');
+        expect(apiKeys.anthropic).toBe('key2');
+        expect(apiKeys.finnhub).toBe('');
     });
 
     it('persiste le state mais EXCLUT apiKeys du localStorage (audit 2026-05)', () => {
-        useFinanceStore.getState().updateApiKeys({ anthropic: 'SECRET123', eraContext: 'TOKEN456' });
+        useFinanceStore.getState().updateApiKeys({ anthropic: 'SECRET123', finnhub: 'FINNHUB456' });
         // Force trigger persist (Zustand persiste sur set)
         useFinanceStore.getState().setActiveTab(Tab.SETTINGS);
         const raw = localStorage.getItem('financeai-storage');
         expect(raw).toBeTruthy();
         // Les clés ne doivent JAMAIS être persistées en clair.
         expect(raw).not.toContain('SECRET123');
-        expect(raw).not.toContain('TOKEN456');
+        expect(raw).not.toContain('FINNHUB456');
         expect(raw).not.toContain('apiKeys');
     });
 

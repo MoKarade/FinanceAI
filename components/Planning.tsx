@@ -4,11 +4,6 @@ import { Card } from './ui/Card';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 // Phase 4 A5: bascule sur services/claude.ts (Haiku 4.5)
 import { detectSubscriptionsAI } from '../services/claude';
-// Phase 4 B8: Era Context fournit aussi une détection récurrence — on l'utilise
-// en priorité quand le token est configuré (plus rapide, gratuit, plus précis
-// car basé sur l'historique complet du compte).
-import { listRecurringCharges } from '../services/eraContext';
-import { useFinanceStore } from '../store/useFinanceStore';
 import { showToast } from './ui/Toast';
 import { ConfirmModal } from './ui/ConfirmModal';
 
@@ -107,29 +102,6 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
     const handleAiAnalysis = async () => {
         setIsAnalyzing(true);
         try {
-            // Phase 4 B8: Era Context primaire (rapide, gratuit, basé sur l'historique
-            // complet du compte). Fallback Claude pour les transactions résiduelles ou
-            // si Era Context n'est pas configuré.
-            const eraToken = useFinanceStore.getState().apiKeys.eraContext;
-            if (eraToken) {
-                const eraRecurring = await listRecurringCharges(eraToken).catch(() => []);
-                if (eraRecurring.length > 0) {
-                    // Mappe vers RecurringItem (cf type) pour matcher le state existant
-                    const mapped = eraRecurring.map((r) => ({
-                        payee: r.merchant_name,
-                        averageAmount: r.average_amount,
-                        dayOfMonth: r.next_expected_date ? new Date(r.next_expected_date).getDate() : 1,
-                        category: r.category || 'Autre',
-                        lastDate: r.next_expected_date || new Date().toISOString().split('T')[0],
-                        yearlyCost: r.frequency === 'Yearly' ? r.average_amount : r.average_amount * 12,
-                    }));
-                    setAiSubs(mapped);
-                    showToast(`${mapped.length} abonnement(s) détecté(s) via Era Context (gratuit).`, 'success');
-                    return;
-                }
-            }
-            // Fallback Claude (utilisé si pas d'Era Context OU si Era Context ne
-            // retourne rien — typiquement compte vide ou nouveau)
             if (!apiKey) {
                 showToast('Configure une clé Anthropic pour analyser tes abonnements.', 'info');
                 return;

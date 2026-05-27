@@ -3,8 +3,7 @@ import { Layout } from './components/Layout';
 import { Onboarding } from './components/Onboarding';
 import { ToastContainer, showToast } from './components/ui/Toast';
 import { PwaInstallBanner } from './components/PwaInstallBanner';
-import { Tab, AppState, Transaction } from './types';
-import { fetchTransactions } from './services/eraContext';
+import { Tab, AppState } from './types';
 import { INITIAL_CHILD_GOAL } from './constants';
 import { markDuplicates } from './utils/transactionParser';
 import { parseBankCsv } from './services/import/parseBankCsv';
@@ -54,10 +53,10 @@ export const App: React.FC = () => {
     const isPrivacyMode = state.isPrivacyMode;
     const togglePrivacyMode = state.togglePrivacyMode;
 
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading] = useState(false);
     const [showGuide, setShowGuide] = useState(false);
     const isHydrated = useRef(false);
-    const currentSyncController = useRef<AbortController | null>(null);
+
 
     // P1 — installation des handlers d'erreur globaux au boot (une seule fois)
     const errorHandlersInstalled = useRef(false);
@@ -187,7 +186,7 @@ export const App: React.FC = () => {
     // C5 les avait rendues mémoire-seulement → elles disparaissaient à chaque
     // rechargement. Désormais : on les recharge tout seul au démarrage (donc
     // dès que Cloudflare Access t'a laissé entrer via Google). Quand la clé est
-    // posée dans le store, les effets réactifs ci-dessous (Finnhub, era) partent
+    // posée dans le store, les effets réactifs ci-dessous (Finnhub) partent
     // automatiquement. Best-effort : si le coffre est indisponible (vieux
     // navigateur, pas de Web Crypto), on ne casse pas le boot.
     useEffect(() => {
@@ -205,14 +204,14 @@ export const App: React.FC = () => {
                     );
                     return;
                 }
-                if (result.status === 'ok' && (result.keys.eraContext || result.keys.anthropic || result.keys.finnhub)) {
+                if (result.status === 'ok' && (result.keys.anthropic || result.keys.finnhub)) {
                     useFinanceStore.getState().updateApiKeys(result.keys);
                     return;
                 }
                 // Migration : clés legacy encore lues en clair au boot (avant C5)
                 // mais pas encore dans le coffre → on les chiffre maintenant.
                 const current = useFinanceStore.getState().apiKeys;
-                if (current.eraContext || current.anthropic || current.finnhub) {
+                if (current.anthropic || current.finnhub) {
                     await saveApiKeys(current);
                 }
             } catch (e) {
@@ -222,33 +221,6 @@ export const App: React.FC = () => {
         return () => { cancelled = true; };
     }, []);
 
-    // Phase C.6 — sync Era au boot. Si l'utilisateur a un token Era configuré,
-    // pré-chauffe le cache `buildEnrichedContext` (1h TTL) pour que les widgets
-    // IA (NextBestAction, EraContextInsights) répondent instantanément. Silent
-    // fail si l'API est indisponible — pas critique pour l'usage core.
-    useEffect(() => {
-        if (!state.apiKeys.eraContext) return;
-        const ctrl = new AbortController();
-        const timer = setTimeout(async () => {
-            try {
-                const { buildEnrichedContext } = await import('./services/aiOrchestrator');
-                await buildEnrichedContext(state.apiKeys.eraContext, { signal: ctrl.signal });
-            } catch {
-                // silencieux — le cache reste vide, les widgets feront leur fetch eux-mêmes
-            }
-        }, 500); // léger debounce pour ne pas bloquer le 1er paint
-        return () => {
-            clearTimeout(timer);
-            ctrl.abort();
-        };
-    }, [state.apiKeys.eraContext]);
-
-    // Cancel toute sync en cours quand le composant est démonté
-    useEffect(() => {
-        return () => {
-            currentSyncController.current?.abort();
-        };
-    }, []);
 
     const handleSetTab = (tab: Tab) => {
         setActiveTab(tab);
@@ -281,7 +253,7 @@ export const App: React.FC = () => {
             group: 'Actions',
             icon: '🔄',
             keywords: ['sync', 'refresh', 'reload'],
-            onSelect: () => { loadData(state.apiKeys.eraContext); window.dispatchEvent(new Event('resize')); },
+            onSelect: () => { window.dispatchEvent(new Event('resize')); },
         },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ], [isPrivacyMode, handleSetTab]);
@@ -331,14 +303,6 @@ export const App: React.FC = () => {
 
 
     useEffect(() => {
-        if (state.apiKeys.eraContext && state.transactions.length === 0) {
-            loadData(state.apiKeys.eraContext);
-        }
-    // Effet boot : loadData et state.transactions.length omis volontairement pour éviter une boucle de sync.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [state.apiKeys.eraContext]);
-
-    useEffect(() => {
         let cancelled = false;
         const hydrateAssets = async () => {
             const updates = new Map();
@@ -378,114 +342,7 @@ export const App: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const loadData = async (token: string, pendingState?: AppState) => {
-        if (!token) return;
-
-        // Abort la sync précédente si encore en cours
-        currentSyncController.current?.abort();
-        const controller = new AbortController();
-        currentSyncController.current = controller;
-
-        setIsLoading(true);
-        try {
-            const currentState = pendingState || useFinanceStore.getState();
-            let startDateToFetch: string | undefined = undefined;
-
-            if (currentState.transactions.length > 0) {
-                const sorted = [...currentState.transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                const latestTx = sorted[0];
-                if (latestTx && latestTx.date) {
-                    const d = new Date(latestTx.date);
-                    d.setDate(d.getDate() - 7);
-                    startDateToFetch = d.toISOString().split('T')[0];
-                }
-            } else {
-                startDateToFetch = '2000-01-01';
-            }
-
-            const newTxs = await fetchTransactions(token, startDateToFetch || '2000-01-01', controller.signal);
-
-            // Vérifier qu'on n'a pas été remplacés par une sync plus récente avant d'écrire le state
-            if (controller.signal.aborted) return;
-
-            if (newTxs.length === 0) {
-                // No-silent-failure : si l'utilisateur n'a AUCUNE transaction et qu'Era
-                // n'en renvoie aucune, on le dit (compte Era non lié à une banque, clé
-                // invalide, ou rien sur la période) au lieu de rester muet.
-                if (currentState.transactions.length === 0) {
-                    showToast("Era Context : 0 transaction reçue. Vérifie que ton compte Era est bien connecté à ta banque et que ta clé est valide.", 'info');
-                }
-                return;
-            }
-
-            const base = pendingState || useFinanceStore.getState();
-            const existingTxMap = new Map<number, Transaction>(base.transactions.map(t => [t.id, t]));
-            const mergedList = [...base.transactions];
-
-            newTxs.forEach(fetchedTx => {
-                if (existingTxMap.has(fetchedTx.id)) {
-                    const existing = existingTxMap.get(fetchedTx.id)!;
-                    const idx = mergedList.findIndex(t => t.id === fetchedTx.id);
-                    if (idx !== -1) {
-                        mergedList[idx] = {
-                            ...fetchedTx,
-                            category: (existing.category !== 'Uncategorized' && existing.category !== 'Autre' && existing.category !== 'Inconnu') ? existing.category : fetchedTx.category,
-                            payee: existing.payee,
-                            status: existing.status && existing.status !== 'pending' ? existing.status : fetchedTx.status,
-                            isAiProcessed: existing.isAiProcessed,
-                            isVerified: existing.isVerified,
-                            isTransfer: existing.isTransfer,
-                            isDuplicate: existing.isDuplicate,
-                            originalCategory: fetchedTx.category
-                        };
-                    }
-                } else {
-                    mergedList.push(fetchedTx);
-                }
-            });
-
-            const deduplicatedList = markDuplicates(mergedList);
-
-            let balances = { ...base.initialBalances };
-            if (Object.keys(balances).length === 0) {
-                const accs = Array.from(new Set(deduplicatedList.map(t => t.accountName)));
-                accs.forEach(acc => {
-                    if (acc && (acc.toLowerCase().includes('courant') || acc.toLowerCase().includes('checking'))) {
-                        balances[acc] = 2000;
-                    } else if (acc) {
-                        balances[acc] = 0;
-                    }
-                });
-            }
-
-            if (controller.signal.aborted) return;
-
-            setAppState({
-                transactions: deduplicatedList,
-                initialBalances: balances,
-                lastUpdate: Date.now()
-            });
-            showToast('Donnees synchronisees', 'success');
-        } catch (e: unknown) {
-            // TH4 fix : catch typé unknown au lieu de any (respect du tsconfig
-            // useUnknownInCatchVariables). AbortError = sync remplacée par
-            // une plus récente, silencieux.
-            const isAbort = e instanceof DOMException && e.name === 'AbortError';
-            if (isAbort || controller.signal.aborted) return;
-            console.error('[FinanceAI] Sync Error:', e);
-            const msg = e instanceof Error ? e.message : '';
-            showToast(msg ? `Sync echouee : ${msg}` : 'Erreur de synchronisation Era Context.', 'error');
-        } finally {
-            // Ne reset isLoading que si on est toujours le sync actif
-            if (currentSyncController.current === controller) {
-                currentSyncController.current = null;
-                setIsLoading(false);
-            }
-        }
-    };
-
     const handleUpdateApiKeys = async (keys: AppState['apiKeys']) => {
-        const prevEra = state.apiKeys.eraContext;
         state.updateApiKeys(keys);
         // Persistance chiffrée : saisies une fois → rechargées tout seul au
         // prochain boot. No-silent-failure : si le coffre est indisponible, on
@@ -500,9 +357,6 @@ export const App: React.FC = () => {
                     : "Clés non sauvegardées : coffre chiffré indisponible. Elles resteront valides jusqu'au rechargement.",
                 'error'
             );
-        }
-        if (keys.eraContext !== prevEra && keys.eraContext) {
-            loadData(keys.eraContext, undefined);
         }
     };
 
@@ -528,9 +382,6 @@ export const App: React.FC = () => {
                     setAppState({ ...data, lastUpdate: Date.now() });
                     localStorage.setItem('app_onboarding_done', 'true');
                     setIsFirstLaunch(false);
-                    if (data.apiKeys?.eraContext) {
-                        setTimeout(() => loadData(data.apiKeys!.eraContext), 500);
-                    }
                     // G22-F4 — lance le tutoriel guidé juste après l'onboarding (1re fois).
                     setTimeout(() => startGuidedTour(), 700);
                 }} />
@@ -540,7 +391,6 @@ export const App: React.FC = () => {
                 setActiveTab={handleSetTab}
                 lastUpdate={state.lastUpdate}
                 onRefresh={() => {
-                    loadData(state.apiKeys.eraContext);
                     window.dispatchEvent(new Event('resize'));
                 }}
                 isLoading={isLoading}

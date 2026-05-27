@@ -1,16 +1,16 @@
 # ADR-002 : Era Context comme moteur de qualité IA
 
 **Date** : 2026-05
-**Statut** : ⚠️ SUPERSEDED EN PRATIQUE (2026-05-25)
+**Statut** : SUPERSEDED — intégration complètement retirée (2026-05-27)
 
-> **Résumé du changement** : Era Context était prévu comme source de données
-> principale (transactions, cash-flow, analyses). En production, seule la
-> fonctionnalité **MCP** (Model Context Protocol) est utilisée. L'intégration
-> REST vers l'app FinanceAI a été **retirée de l'UI** (non-callable depuis
-> le navigateur, pas d'API CORS sur `api.era.app`). Les données proviennent
-> désormais d'**import CSV local** (parseBankCsv.ts), **CoinGecko** (crypto),
-> et **Finnhub** (stocks/ETF). Le code backend `services/eraContext.ts`
-> demeure **dormant** mais fonctionnel pour une future réactivation.
+> **Résumé du changement** : Era Context ciblait `api.era.app` (REST), qui
+> n'expose aucun endpoint CORS-compatible depuis un navigateur. Era est
+> exclusivement MCP-only. Tous les appels échouaient silencieusement.
+> L'intégration a été **entièrement supprimée** (2026-05-27) : `services/eraContext.ts`,
+> `services/aiOrchestrator.ts`, `EraContextInsights.tsx`, `apiKeys.eraContext`.
+> Les données proviennent désormais d'**import CSV local** (parseBankCsv.ts),
+> **CoinGecko** (crypto), et **Finnhub** (stocks/ETF). AiAssistant et
+> NextBestAction fonctionnent via `generateContext()` (snapshot store local).
 
 ## Contexte original
 

@@ -89,13 +89,12 @@ const computeDiagnostics = (state: AppState): LogLine[] => {
         level: fxAge === 0 ? 'warn' : 'info',
     });
 
-    const hasEra = !!state.apiKeys.eraContext;
     const hasAnthropic = !!state.apiKeys.anthropic;
     lines.push({
         text: stamp(
-            `API_KEYS: Era Context ${hasEra ? '✓' : '✗'} · Anthropic Claude ${hasAnthropic ? '✓' : '✗'}`
+            `API_KEYS: Anthropic Claude ${hasAnthropic ? '✓' : '✗'}`
         ),
-        level: (hasEra && hasAnthropic) ? 'info' : 'warn',
+        level: hasAnthropic ? 'info' : 'warn',
     });
 
     lines.push({

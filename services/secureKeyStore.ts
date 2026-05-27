@@ -6,8 +6,8 @@
  * L'audit C5 (2026-05-21) avait retiré les clés API du localStorage en clair
  * (exfiltrables via XSS / extension malveillante) et les avait rendues
  * « mémoire uniquement ». Effet de bord non voulu : les clés disparaissaient à
- * CHAQUE rechargement → Marc devait les re-saisir, et era / Finnhub ne se
- * chargeaient jamais tout seuls (clé vide au boot).
+ * CHAQUE rechargement → Marc devait les re-saisir, et Finnhub ne se
+ * chargeait jamais tout seul (clé vide au boot).
  *
  * Choix (2026-05-25)
  * ------------------
@@ -38,7 +38,6 @@
  */
 
 export interface PersistedApiKeys {
-    eraContext: string;
     anthropic: string;
     finnhub: string;
 }

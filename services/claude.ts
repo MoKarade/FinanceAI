@@ -374,7 +374,6 @@ export interface FinancialSnapshot {
     topDebts: Array<{ name: string; balance: number; rate: number }>;
     activeGoals: Array<{ name: string; targetAmount: number; currentAmount: number; deadline: string }>;
     projectedNetWorth20y?: number;
-    eraContextSummary?: string;
     coupleMode?: boolean;
 }
 
@@ -419,9 +418,7 @@ export const getNextBestActions = async (
                 .join('\n')}`,
         );
     }
-    if (snapshot.eraContextSummary) {
-        lines.push(`Contexte Era (90j):\n${snapshot.eraContextSummary}`);
-    }
+
 
     const userPrompt = `AGIS COMME UN CONSEILLER FINANCIER QUÉBÉCOIS EXPERT.
 Analyse ce snapshot financier complet et propose EXACTEMENT 3 prochaines meilleures actions concrètes pour cette personne, classées par ordre d'impact financier estimé (la plus rentable d'abord).

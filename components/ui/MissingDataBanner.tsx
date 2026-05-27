@@ -32,8 +32,7 @@ export type MissingDataField =
     | 'user2.name'
     | 'user2.grossSalary'
     | 'user2.netSalary'
-    | 'anthropicKey'
-    | 'eraToken';
+    | 'anthropicKey';
 
 interface FieldDescriptor {
     label: string;
@@ -115,13 +114,6 @@ export const MISSING_DATA_FIELDS: Record<MissingDataField, FieldDescriptor> = {
         tab: Tab.SETTINGS,
         isMissing: (s) => !s.apiKeys?.anthropic?.trim(),
         helpText: 'Active les diagnostics IA (budget, prochaine action, etc.).',
-    },
-    eraToken: {
-        label: 'Token Era Context',
-        section: 'apiKeys-eraContext',
-        tab: Tab.SETTINGS,
-        isMissing: (s) => !s.apiKeys?.eraContext?.trim(),
-        helpText: 'Sync auto des transactions/comptes via api.era.app.',
     },
 };
 

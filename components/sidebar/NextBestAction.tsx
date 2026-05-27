@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { getNextBestActions, type NextBestAction as NBAction, type FinancialSnapshot } from '../../services/claude';
-import { buildEnrichedContext } from '../../services/aiOrchestrator';
 import { computeCurrentLiquidity, computeInvestmentsValue, computeAssetBreakdown } from '../../services/portfolio';
-import { formatCAD } from '../../utils/format';
 import { useHasUserData } from '../../utils/useHasUserData';
 import { Tab } from '../../types';
 
@@ -63,7 +61,6 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen })
     const [lastFetch, setLastFetch] = useState<number | null>(null);
 
     const apiKey = useFinanceStore(s => s.apiKeys.anthropic);
-    const eraToken = useFinanceStore(s => s.apiKeys.eraContext);
     const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
     // P1 gating — pas de recommandation pertinente sans données utilisateur
     const { hasData } = useHasUserData();
@@ -77,7 +74,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen })
     const financialGoals = useFinanceStore(s => s.financialGoals);
     const lastProjection = useFinanceStore(s => s.lastProjection);
 
-    const snapshot: Omit<FinancialSnapshot, 'eraContextSummary'> = useMemo(() => {
+    const snapshot: FinancialSnapshot = useMemo(() => {
         // Patrimoine net = placements + liquidités (cash de TOUS les comptes :
         // initialBalances a des clés dynamiques, donc source unique) − dettes.
         // Avant, on lisait des clés fixes celi/reer/liquidity qui n'existent
@@ -137,24 +134,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen })
         setIsLoading(true);
         setHasError(false);
         try {
-            // Era enriched context optionnel — n'attend pas trop si ça échoue.
-            let eraContextSummary: string | undefined;
-            if (eraToken) {
-                try {
-                    const enriched = await buildEnrichedContext(eraToken);
-                    if (enriched.hasEraContext) {
-                        eraContextSummary = [
-                            enriched.cashFlow ? `Net cash flow 90j: ${formatCAD(enriched.cashFlow.net_cash_flow)}` : '',
-                            enriched.spending && enriched.spending.top_categories.length > 0
-                                ? `Top dépense: ${enriched.spending.top_categories[0].category} (${formatCAD(enriched.spending.top_categories[0].amount)})`
-                                : '',
-                        ].filter(Boolean).join(' • ') || undefined;
-                    }
-                } catch {
-                    // ignore — pas critique
-                }
-            }
-            const snap: FinancialSnapshot = { ...snapshot, eraContextSummary };
+            const snap: FinancialSnapshot = { ...snapshot };
             const result = await getNextBestActions(snap, apiKey);
             if (result.length > 0) {
                 setActions(result);
@@ -180,7 +160,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen })
         } finally {
             setIsLoading(false);
         }
-    }, [apiKey, eraToken, snapshot, hasData]);
+    }, [apiKey, snapshot, hasData]);
 
     // Initial fetch (depuis cache si dispo).
     useEffect(() => {

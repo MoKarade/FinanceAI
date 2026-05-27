@@ -6,9 +6,6 @@ vi.mock('../../../services/claude', () => ({
     getNextBestActions: vi.fn(),
 }));
 
-vi.mock('../../../services/aiOrchestrator', () => ({
-    buildEnrichedContext: vi.fn(),
-}));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockGetNextBestActions: any = (await import('../../../services/claude')).getNextBestActions;

@@ -39,7 +39,7 @@ FinanceAI/
 ├── components/              UI React, 1 composant ≈ 1 onglet/page
 │   ├── ui/                  Primitives (Button, Card, KPIStat, …)
 │   ├── projection/          Sous-composants FutureProjection
-│   ├── dashboard/           EraContextInsights
+│   ├── dashboard/           sous-composants Dashboard
 │   ├── investments/         DividendPanel
 │   ├── budget/              BudgetGroupTable, BudgetAiModal
 │   ├── realestate/          PropertyConfigurator, MultiPropertyComparison
@@ -50,7 +50,6 @@ FinanceAI/
 │   ├── projection/          31 sous-modules (split Phase 3)
 │   ├── projection.worker.ts Worker MC
 │   ├── claude.ts            Wrapper Anthropic SDK
-│   ├── aiOrchestrator.ts    Compositeur Era + Claude
 │   ├── secureKeyStore.ts    AES-256-GCM + IndexedDB (clé device)
 │   ├── tax.ts               Calcul impôt QC/Fed
 │   ├── import/              parseBankCsv.ts (CSV universel)
@@ -90,9 +89,9 @@ Règles structurelles :
 ```ts
 {
   config: BudgetConfig;          // utilisateurs, devises, locale
-  apiKeys: {                     // schema v3 — gemini supprimé
-    eraContext: string;
+  apiKeys: {                     // schema v6 — gemini + eraContext supprimés
     anthropic: string;
+    finnhub: string;
   };
   assets: Asset[];
   budgetItems: BudgetCategory[];
@@ -202,20 +201,7 @@ API keys (Anthropic, Finnhub)
 ```
 User input ──► AiAssistant.tsx
                  │
-                 ├─ Si message commence par "remember:" / "souviens-toi:"
-                 │    └─► aiOrchestrator.maybeRememberFromMessage()
-                 │         └─► eraContext.rememberFact()    [persiste côté Era]
-                 │
-                 ├─ Sinon :
-                 │    └─► aiOrchestrator.buildEnrichedContext(eraToken) — OPTIONNEL
-                 │         ├─ Promise.all en parallèle :
-                 │         │  ├─ eraContext.getCashFlow()       [si token configuré]
-                 │         │  ├─ eraContext.analyzeSpending()
-                 │         │  ├─ eraContext.forecastSpending()
-                 │         │  └─ eraContext.recallHistory()
-                 │         └─ Format pour system prompt Claude
-                 │
-                 └─► claude.chatStream(messages, apiKey, { system: enriched })
+                 └─► claude.chatStream(messages, apiKey, { system: generateContext() })
                       └─ Anthropic SDK (model: claude-sonnet-4-6)
                          └─ Stream chunks → UI
 ```
@@ -223,9 +209,6 @@ User input ──► AiAssistant.tsx
 **Séparation des modèles** :
 - `claude-sonnet-4-6` — chat, analyses budget, suggestions Planning, vision payslip
 - `claude-haiku-4-5` — catégorisation batch transactions (volume + vitesse), justifications rééquilibrage, NextBestAction, optimisation fiscale couple, conseils Immobilier (refonte v3.0)
-
-**Cache** : `services/eraContext.ts` cache les requêtes pendant 1h en mémoire
-(Map). Évite les hits réseau répétés (ex: ouvrir/fermer Dashboard).
 
 **Services IA exposés** (refonte v3.0, tous gratuits avec clé utilisateur) :
 - `chat()` / `chatStream()` — one-shot et streaming Sonnet
@@ -265,7 +248,7 @@ tests/
 ## 8. Décisions clés (voir aussi `docs/adr/`)
 
 - **ADR-001** : Migration Gemini → Claude Anthropic
-- **ADR-002** : Era Context comme moteur de qualité (insights + categorizer)
+- **ADR-002** : ~~Era Context comme moteur de qualité~~ — SUPERSEDED (era est MCP-only, REST API inexistante)
 - **ADR-003** : Projection.ts split en 31 sous-modules
 - **ADR-004** : Design system primitives custom (vs shadcn/Radix)
 

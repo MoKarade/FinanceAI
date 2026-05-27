@@ -58,6 +58,13 @@ Lot de 4 merges (`3167a55`, `20abca8`, `4af08b2`, `6042fe9`) partis de `f257efb`
 - **Constantes RRQ 2026** : taux 1er volet 6,40 % → 6,30 % (base 5,40 → 5,30 %), MGA
   74 900 → 74 600 $, MGAS 85 100 → 85 000 $. Vérifié contre Revenu Québec (le RPC fédéral
   partage le même MGA). RRQ_MAX 4 569,60 → 4 479,30 $.
+- **Audit fiscal 2026 « à fond » (PSV + crédit d'âge fédéral)** : seuil de récupération PSV
+  (OAS clawback) 93 454 → **95 323 $** (93 454 était la valeur 2025) ; crédit d'âge fédéral
+  (ligne 30100) 8 966 → **9 208 $** (l'ancien indexait par erreur la base 2024). Le reste des
+  constantes 2026 (RQAP, AE, crédit d'âge QC ligne 361, seuils SRG, BPA fédéral + QC, RAMQ)
+  **vérifié correct** contre sources officielles. 3 tests de régression ajoutés (figent les
+  valeurs). À reconfirmer quand publié/stabilisé : seuils FSS (Annexe F), montant SRG mensuel
+  (fluctue par trimestre), seuils QC ligne 361.
 
 ### Supprimé
 - **4 fonctions IA mortes** retirées de `services/claude.ts` : `getInvestmentAdvice`,

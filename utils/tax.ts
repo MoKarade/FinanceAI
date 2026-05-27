@@ -57,7 +57,7 @@ export const CAPITAL_GAINS_INCLUSION_STANDARD = 0.50;
 // Source : Budget fédéral 2024-2026. À mettre à jour à chaque budget.
 export const RAP_LIMIT_PER_USER = 60000;                    // Régime Accession Propriété
 export const PBMA_THRESHOLD_PER_USER = 17183;               // Palier de base montant ajusté
-export const OAS_CLAWBACK_THRESHOLD_2026 = 93454;           // Seuil PSV clawback 2026 (indexé 2024→2026)
+export const OAS_CLAWBACK_THRESHOLD_2026 = 95323;           // Seuil récupération PSV 2026 (ARC). 93 454 était la valeur 2025 — vérifié 2026-05.
 export const FHSA_LIFETIME_LIMIT_PER_USER = 40000;          // CELIAPP plafond à vie
 export const FHSA_ANNUAL_LIMIT_PER_USER = 8000;             // CELIAPP plafond annuel
 
@@ -69,7 +69,7 @@ export const FHSA_ANNUAL_LIMIT_PER_USER = 8000;             // CELIAPP plafond a
 // Crédit en raison de l'âge (ligne 30100). Source: ARC, indexation 2026 = 2.0%.
 // Base 2025: 8 790$ max, seuil 45 522$, réduction 15% au-delà.
 // Voir https://www.canada.ca/.../line-30100-amount.html
-export const AGE_AMOUNT_FED_2026 = 8966;                    // 8790 × 1.02
+export const AGE_AMOUNT_FED_2026 = 9208;                    // 9 028 (2025) × 1,02. Vérifié 2026-05 (Fidelity/ARC). L'ancien 8 966 indexait par erreur la base 2024.
 export const AGE_AMOUNT_FED_THRESHOLD_2026 = 46432;         // 45522 × 1.02
 export const AGE_AMOUNT_FED_REDUCTION_RATE = 0.15;
 export const AGE_AMOUNT_FED_MIN_AGE = 65;

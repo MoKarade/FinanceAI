@@ -19,6 +19,7 @@ import {
   RRQ_MAX,
   RQAP_MAX,
   AE_MAX_QC,
+  OAS_CLAWBACK_THRESHOLD_2026,
   AGE_AMOUNT_FED_2026,
   AGE_AMOUNT_FED_THRESHOLD_2026,
   PENSION_INCOME_AMOUNT_FED,
@@ -253,6 +254,19 @@ describe('Barèmes fiscaux 2026 (régression)', () => {
 
   it('AE QC max 2026 = 895,70 $', () => {
     expect(AE_MAX_QC).toBeCloseTo(895.70, 2);
+  });
+
+  it('Seuil recuperation PSV (OAS clawback) 2026 = 95323', () => {
+    expect(OAS_CLAWBACK_THRESHOLD_2026).toBe(95323);
+  });
+
+  it('Credit age federal (ligne 30100) 2026 = 9208, seuil 46432', () => {
+    expect(AGE_AMOUNT_FED_2026).toBe(9208);
+    expect(AGE_AMOUNT_FED_THRESHOLD_2026).toBe(46432);
+  });
+
+  it('Montant en raison de l age Quebec (ligne 361) 2026 = 3986', () => {
+    expect(AGE_AMOUNT_QC_2026).toBe(3986);
   });
 });
 

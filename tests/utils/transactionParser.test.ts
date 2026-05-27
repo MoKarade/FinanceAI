@@ -117,4 +117,20 @@ describe('parseTransactions', () => {
         const result = parseTransactions(raw);
         expect(result[0].amount).toBe(-12.5);
     });
+
+    it('parse un CSV séparé par virgules (exports nord-américains, décimale = point)', () => {
+        const raw = `08/01/2026,Costco,-99.99,Épicerie,Courant`;
+        const result = parseTransactions(raw);
+        expect(result).toHaveLength(1);
+        expect(result[0].payee).toBe('Costco');
+        expect(result[0].amount).toBe(-99.99);
+    });
+
+    it('tolère un BOM UTF-8 en tête de fichier (export Excel/Windows)', () => {
+        const raw = `﻿01/01/2026\tMaxi\t-50\tÉpicerie\tCourant`;
+        const result = parseTransactions(raw);
+        expect(result).toHaveLength(1);
+        expect(result[0].date).toBe('2026-01-01');
+        expect(result[0].payee).toBe('Maxi');
+    });
 });

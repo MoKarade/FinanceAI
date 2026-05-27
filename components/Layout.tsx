@@ -5,6 +5,7 @@ import { Tab, FinancialGoal, User } from '../types';
 import { CoupleModeBadge } from './ui/CoupleModeBadge';
 import { NextBestAction } from './sidebar/NextBestAction';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { BackupReminder } from './BackupReminder';
 
 interface LayoutProps {
   activeTab: Tab;
@@ -362,6 +363,7 @@ export const Layout: React.FC<LayoutProps> = ({
           de la sidebar (w-72) overlay le contenu sans push (pas de jump). */}
       <main id="main" tabIndex={-1} className="flex-1 p-3 md:p-10 md:ml-16 mt-16 md:mt-0 overflow-y-auto min-h-[100dvh] pb-24 md:pb-10 relative z-0 scroll-smooth focus:outline-none">
         <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 animate-premium-in">
+          <BackupReminder onNavigateToSettings={() => setActiveTab(Tab.SETTINGS)} />
           {children}
         </div>
       </main>

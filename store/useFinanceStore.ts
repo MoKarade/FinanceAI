@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { AppState, Tab, BudgetCategory, FinancialGoal, RealEstateGoal } from '../types';
 import { INITIAL_BUDGET, INITIAL_CONFIG, INITIAL_PROJECTION, INITIAL_REAL_ESTATE_GOAL, INITIAL_CHILD_GOAL, DEFAULT_FX_RATES } from '../constants';
 import type { ProjectionResult } from '../services/projection/types';
+import { quotaStorage } from '../services/quotaStorage';
 
 // Phase B2 — Deep-link cross-tab: un onglet pose un "intent" de focus, la page
 // destination le consomme au mount (scroll, highlight, focus, etc.).
@@ -345,6 +346,7 @@ export const useFinanceStore = create<FinanceState>()(
         }),
         {
             name: 'financeai-storage',
+            storage: createJSONStorage(() => quotaStorage),
             // Schema versioning: incrémenter à chaque changement non-rétrocompatible
             // de la forme du state, et ajouter une étape dans `migrate`.
             // Sans version, toute évolution casse silencieusement le boot des

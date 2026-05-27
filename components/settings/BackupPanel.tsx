@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Card } from '../ui/Card';
 import { showToast } from '../ui/Toast';
 import { downloadBackup, readBackupFile, defaultBackupFilename, CloudBackupError } from '../../services/cloudBackup';
+import { markBackupDone } from '../../services/backupReminder';
 
 const BackupSchema = z.object({
   version: z.string().optional(),
@@ -67,6 +68,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
     a.href = url;
     a.download = `financeai_backup_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
+    markBackupDone();
     showToast("Sauvegarde téléchargée (clés API exclues — utilise l'export chiffré pour les inclure).", "info");
   };
 
@@ -83,6 +85,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
     try {
       const { apiKeys: _stripped, ...payloadWithoutKeys } = buildPayload() as { apiKeys: unknown };
       await downloadBackup(payloadWithoutKeys, exportPassphrase, defaultBackupFilename());
+      markBackupDone();
       showToast("✅ Sauvegarde chiffrée téléchargée. Conserve la passphrase précieusement.", "success");
       setShowExportEncModal(false);
       setExportPassphrase('');

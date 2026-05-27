@@ -204,10 +204,6 @@ export interface ProjectionConfig {
   stressTestDrop?: number;
   stressTestRecoveryMonths?: number;
   stressTestInflationShock?: number;
-  /** @deprecated Cycle 5 audit: déclaré mais jamais lu par moteur. À retirer une fois consumers vérifiés. */
-  scenarioB?: ProjectionConfig;
-  /** @deprecated idem. */
-  scenarioBLabel?: string;
   propertyGrowthRate?: number;
   useManualBalances?: boolean;
   manualCELI?: number;

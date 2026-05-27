@@ -91,12 +91,6 @@ export interface SimulationParams {
 
 // Cycle 7 split: calculateGrossNeeded retiré (dead code, jamais appelé)
 
-// TB3 instrumentation (2026-05-22) : trace la 1re mutation qui rend `liquid`
-// NaN (→ finalRawNetWorth NaN → estate NaN → cards 0.00M$). Module-level pour
-// throttle (le worker appelle runScenario des centaines de fois). À retirer
-// une fois la cause corrigée.
-let _tb3LiquidLogged = false;
-
 // Cœur du moteur de projection. Simule un scénario complet, mois par mois, sur
 // l'horizon choisi. Chaque mois enchaîne dans l'ordre : croissance des
 // placements (rendements ± aléa Monte Carlo), revenus (salaires/rentes),
@@ -811,7 +805,6 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             getMarginalRate,
         );
         liquid = reState.liquid; celi = reState.celi; celiapp = reState.celiapp;
-        if (!Number.isFinite(liquid) && !_tb3LiquidLogged) { _tb3LiquidLogged = true; console.warn(`[TB3/liquid] NaN après realEstate (mois ${m}, scénario ${scenarioType})`); }
         reer = reState.reer; nonReg = reState.nonReg; nonRegACB = reState.nonRegACB;
         capitalLossBank = reState.capitalLossBank;
         monthlyIncome = reState.monthlyIncome; monthlyExpenses = reState.monthlyExpenses;
@@ -891,7 +884,6 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             result.flowEventLogs.forEach(msg => logEvent(flowEventsLog, msg));
         });
         liquid = _childLiquid;
-        if (!Number.isFinite(liquid) && !_tb3LiquidLogged) { _tb3LiquidLogged = true; console.warn(`[TB3/liquid] NaN après childLiquid (mois ${m}, scénario ${scenarioType})`); }
         reee = _childReee;
         monthlyIncome = _childMonthlyIncome;
         incomeAnna = _childIncomeAnna;
@@ -981,7 +973,6 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             calculateGrossWithholdingRRSP,
         );
         liquid = cashState.liquid; celi = cashState.celi; reer = cashState.reer;
-        if (!Number.isFinite(liquid) && !_tb3LiquidLogged) { _tb3LiquidLogged = true; console.warn(`[TB3/liquid] NaN après cashflow (mois ${m}, scénario ${scenarioType})`); }
         celiapp = cashState.celiapp; nonReg = cashState.nonReg; nonRegACB = cashState.nonRegACB;
         capitalLossBank = cashState.capitalLossBank; crypto = cashState.crypto;
         celiRoom = cashState.celiRoom; rrspRoom = cashState.rrspRoom; fhsaRoom = cashState.fhsaRoom;

@@ -12,6 +12,32 @@
 
 ---
 
+## 📍 Session 2026-05-27 (suite) — CI durcie + audit fiscal 2026 + immigrant
+
+Merges sur `main`, CI verte vérifiée à chaque fois.
+- **CI réparée + durcie** : fix screenshots cross-platform (tests `@visual` hors gate, locaux) ;
+  bump actions Node 24 (checkout@v6 / setup-node@v6 / upload-artifact@v7) ; workflow Pages
+  orphelin supprimé ; ~40 branches mergées prunées (origin = `main` seul).
+- **Récupération branches orphelines** : tests csvExport (PR #121), parser CSV séparateur
+  virgule, ADR-009 (fiscalité QC centralisée). Reste jeté (régressif/redondant).
+- **Audit fiscal 2026 « à fond »** — corrigés : BPA QC (18 571 → 18 952), BPA fédéral
+  (16 444 → 16 452), RRQ (taux 6,40 → 6,30 %, MGA 74 900 → 74 600, MGAS 85 100 → 85 000),
+  PSV clawback (93 454 → 95 323), crédit d'âge fédéral (8 966 → 9 208). Vérifiés corrects :
+  plafonds CELI/REER par année, RQAP, AE, crédit d'âge QC (ligne 361), seuils SRG, RAMQ.
+  3 tests de régression figent les valeurs. À reconfirmer (sources 2026 non publiées /
+  fluctuantes) : seuils FSS (Annexe F), montant SRG mensuel (trimestriel), seuils QC ligne 361.
+- **Option « Immigré au Canada »** (par personne, Config + Onboarding) : droit CELI/REER/PSV
+  calculé depuis l'année de résidence fiscale ; corrige un défaut qui sous-estimait le droit
+  de tout résident de naissance laissant le champ vide.
+- **Tests : 868 verts** · lint + tsc + build OK · couverture `utils/tax.ts` 98,6 %.
+
+**Prochains items ouverts (recommandés)** : import positions courtier CSV · valider le passé
+réel A3 (tes données + clé Finnhub) · ouverture multi-user (accès public + onboarding inconnu
++ sync cross-device chiffrée). NB : le détail des sections plus bas est partiellement périmé
+(U7 ✅, T2-en-CI ✅, T3 hooks ✅, robustesse ✅) — à nettoyer lors d'une passe doc dédiée.
+
+---
+
 ## 📍 Session 2026-05-27 — Qualité & purge (G23)
 
 4 merges sur `main`. Aucun item nouveau ouvert.

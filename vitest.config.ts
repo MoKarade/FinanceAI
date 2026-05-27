@@ -18,5 +18,15 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['tests/**/*.test.{ts,tsx}'],
     setupFiles: ['./tests/setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text'],
+      include: ['services/**/*.ts', 'utils/**/*.ts', 'hooks/**/*.ts'],
+      exclude: [
+        'services/test*.ts',
+        'services/*.worker.ts',
+        'node_modules/**',
+      ],
+    },
   },
 });

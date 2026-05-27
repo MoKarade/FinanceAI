@@ -13,6 +13,11 @@ Lot de 4 merges (`3167a55`, `20abca8`, `4af08b2`, `6042fe9`) partis de `f257efb`
 ### Ajouté
 - **Test de régression coussin d'urgence** — couvre le bug HealthIndicator/NextBestAction
   (coussin et patrimoine retournaient 0 avant correction).
+- **Filet E2E Playwright (T2)** — `playwright.config.ts` + 15 tests dans `e2e/` : smoke
+  navigation tous onglets (0 erreur console), assertions KPI (patrimoine > 0, coussin
+  > 0 mois — aurait attrapé le bug HealthIndicator), screenshots baselines (Dashboard,
+  Futur, Retraite, Enfant). Mode test activé via l'UI pour des données déterministes.
+  Script `npm run test:e2e`. N'affecte pas les 732 tests Vitest (`e2e/` hors de l'include).
 
 ### Modifié
 - **U3 — Radio-group Monte Carlo** : le toggle déterministe/MC dans ProjectionControls

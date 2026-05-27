@@ -15,6 +15,12 @@ dist-ssr
 # P1.6 — Lighthouse CI artifacts locaux
 .lighthouseci/
 
+# Playwright E2E — artifacts (exclus du commit)
+test-results/
+playwright-report/
+blob-report/
+# Note : e2e/__snapshots__/ est inclus (baselines committées)
+
 # Env files (secrets) - Phase 0 hardening
 .env
 .env.*

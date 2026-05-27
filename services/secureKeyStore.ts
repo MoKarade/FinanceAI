@@ -191,9 +191,48 @@ export const saveApiKeys = async (keys: PersistedApiKeys): Promise<void> => {
 };
 
 /**
+ * Résultat discriminé de `loadApiKeysDetailed`.
+ *  - 'ok'            : clés déchiffrées avec succès
+ *  - 'empty'         : rien stocké (1er lancement ou coffre vidé proprement)
+ *  - 'decrypt_failed': blob présent mais clé IDB absente / blob altéré
+ *                      → l'UI doit informer l'utilisateur de re-saisir ses clés
+ */
+export type LoadApiKeysResult =
+    | { status: 'ok'; keys: PersistedApiKeys }
+    | { status: 'empty' }
+    | { status: 'decrypt_failed' };
+
+/**
+ * Variante discriminée de `loadApiKeys` : permet à l'UI de distinguer
+ * « rien stocké » de « déchiffrement impossible » et d'afficher un toast
+ * d'avertissement dans le second cas.
+ */
+export const loadApiKeysDetailed = async (): Promise<LoadApiKeysResult> => {
+    if (!isSecureKeyStoreSupported()) return { status: 'empty' };
+    const blob = localStorage.getItem(LS_BLOB_KEY);
+    if (!blob) return { status: 'empty' };
+    try {
+        const db = await openDb();
+        let key: CryptoKey | undefined;
+        try {
+            key = await idbGet<CryptoKey>(db, DEVICE_KEY_ID);
+        } finally {
+            db.close();
+        }
+        // Blob présent mais clé IDB absente → indéchiffrable (ex: IndexedDB vidé).
+        if (!key) return { status: 'decrypt_failed' };
+        const keys = await decryptJson<PersistedApiKeys>(key, blob);
+        return { status: 'ok', keys };
+    } catch {
+        return { status: 'decrypt_failed' }; // blob altéré / clé tournée
+    }
+};
+
+/**
  * Charge et déchiffre les clés API persistées. Retourne `null` si rien n'est
  * stocké, si la clé de device manque, ou si le blob est corrompu — jamais
  * une exception (le boot ne doit pas casser à cause des clés).
+ * @deprecated Préférer `loadApiKeysDetailed` pour distinguer les cas d'erreur.
  */
 export const loadApiKeys = async (): Promise<PersistedApiKeys | null> => {
     if (!isSecureKeyStoreSupported()) return null;

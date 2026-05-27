@@ -33,6 +33,10 @@
          tous les scripts inline ont été migrés. CSP est aligné avec netlify.toml. -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.googletagmanager.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.anthropic.com https://api.era.app https://finnhub.io https://api.coingecko.com https://www.bankofcanada.ca https://www.google-analytics.com https://*.analytics.google.com https://*.google-analytics.com https://cloudflareinsights.com; worker-src 'self' blob:;">
 
+    <!-- Permissions-Policy : aligné avec netlify.toml [[headers]] pour les
+         hébergeurs qui ne lisent pas les headers HTTP (ex: GitHub Pages). -->
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
+
     <!-- Google Analytics 4 — Measurement ID G-5WLQGBF1VL -->
     <!-- Tag chargé async (non-bloquant). Code d'init externalisé dans /ga-init.js pour respecter la CSP stricte (pas d'unsafe-inline dans netlify.toml script-src). -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-5WLQGBF1VL"></script>

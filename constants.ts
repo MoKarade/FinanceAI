@@ -1,5 +1,5 @@
 
-import { BudgetCategory, BudgetConfig, InvestmentAccount, InvestmentTransaction, ProjectionConfig, User, Asset, RealEstateGoal, ChildGoal, Debt } from "./types";
+import { BudgetCategory, BudgetConfig, ProjectionConfig, User, RealEstateGoal, ChildGoal, Debt } from "./types";
 
 // ============================================================
 // CATÉGORIES PAR DÉFAUT — Génériques (non spécifiques à un profil)
@@ -118,16 +118,6 @@ export const INITIAL_CHILD_GOAL: ChildGoal = {
   governmentBenefits: 563,     // Allocation canadienne pour enfants (revenu moyen)
   parentalLeaveIncomeDrop: 800 // Baisse de revenu pendant le congé parental
 };
-
-export const MOCK_ASSETS: Asset[] = [];
-
-export const INITIAL_INVESTMENT_ACCOUNTS: InvestmentAccount[] = [
-  { id: 'acc_1', userId: 0, name: 'CELI', type: 'CELI' },
-  { id: 'acc_2', userId: 0, name: 'REER', type: 'REER' },
-  { id: 'acc_3', userId: 0, name: 'Non-Enreg', type: 'NON-ENREG' }
-];
-
-export const INITIAL_INVESTMENT_TRANSACTIONS: InvestmentTransaction[] = [];
 
 // ============================================================
 // TAUX DE CHANGE PAR DÉFAUT (Fallback si API indisponible)

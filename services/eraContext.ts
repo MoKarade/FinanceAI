@@ -413,41 +413,7 @@ export const recallHistory = async (
     return result ?? [];
 };
 
-// ─── Phase 4 B8 — Recherche libre + abonnements récurrents ──────────────────
-
-const SearchResultSchema = z.object({
-    transactions: z.array(EraContextTxSchema),
-    total_count: z.number().optional(),
-}).passthrough();
-
-/**
- * Recherche libre de transactions via Era Context.
- * Plus puissant que filter local: peut chercher par catégorie sémantique,
- * période flexible ("ce mois-ci"), montant approximatif, etc.
- */
-export const searchTransactions = async (
-    token: string,
-    query: string,
-    options: { limit?: number; signal?: AbortSignal } = {},
-): Promise<Transaction[]> => {
-    const result = await eraRequest('/transactions/search', token, SearchResultSchema, {
-        params: { q: query, limit: String(options.limit ?? 50) },
-        signal: options.signal,
-        useCache: false, // recherche dynamique, pas de cache
-    });
-    if (!result) return [];
-    return result.transactions.map((t): Transaction => ({
-        id: Number(t.id),
-        date: t.date,
-        payee: t.merchant_name || t.payee || 'Inconnu',
-        amount: parseFloat(String(t.amount)) || 0,
-        category: t.category || 'Uncategorized',
-        originalCategory: t.category || undefined,
-        status: t.is_pending ? 'pending' : 'processed',
-        isTransfer: false,
-        accountName: t.account_name || t.account_group_key || 'Unknown',
-    }));
-};
+// ─── Phase 4 B8 — Abonnements récurrents ────────────────────────────────────
 
 const RecurringChargeSchema = z.object({
     merchant_name: z.string(),
@@ -478,12 +444,3 @@ export const listRecurringCharges = async (
     return result?.recurring_charges ?? [];
 };
 
-// ─── Utilities ──────────────────────────────────────────────────────────────
-
-/**
- * Vide le cache d'insights (pour forcer un refresh, ex: après une transaction).
- * Appelé après loadData() typiquement.
- */
-export const clearInsightCache = (): void => {
-    insightCache.clear();
-};

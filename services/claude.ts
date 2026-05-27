@@ -28,8 +28,8 @@ const sanitizePayee = (raw: string): string => {
     if (!raw) return '';
     // eslint-disable-next-line no-control-regex
     return raw
-        .replace(/[\x00-\x1F\x7F]/g, ' ')
-        .replace(/["\\]/g, ' ')
+        .replace(/[\x00-\x1F\x7F]/g, ' ')        // caractères de contrôle (incl. \n, \r)
+        .replace(/["\\<>#\[\]{}|`^]/g, ' ')       // H2 : markup / template / injection
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, 60);

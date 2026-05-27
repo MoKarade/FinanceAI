@@ -151,17 +151,18 @@
   déclencheur récurrent + un rappel « aucune sauvegarde ». (architect)
 - **[MOY] Migrer la persistance vers IndexedDB** (quota localStorage ~5 Mo + parsing
   synchrone bloquant au boot). (architect)
-- **[MOY] Sécurité H2 — prompt injection via `payee`** : `sanitizePayee` ne filtre que
-  les caractères de contrôle ; un libellé bancaire malveillant peut injecter un prompt
-  vers Claude. À durcir. (security-reviewer, ex-S4)
-- **[MOY] `loadApiKeys`** : distinguer « rien stocké » de « blob présent mais
-  déchiffrement échoué » + toast « clés non restaurées ». (silent-failure-hunter)
-- **[BAS] Code mort à retirer** (refactor-cleaner + knip) : `MOCK_ASSETS` /
-  `INITIAL_INVESTMENT_ACCOUNTS` / `INITIAL_INVESTMENT_TRANSACTIONS` (constants.ts, 0 réf) ;
-  alias `optimizeDrawdownOrder` (drawdownOptimizer.ts) ; `searchTransactions` /
-  `clearInsightCache` (eraContext, dormants). Attention aux imports de types orphelins.
-- **[BAS] `Permissions-Policy`** absent du `<meta>` CSP (présent seulement dans les
-  headers Netlify) → à ajouter avant ouverture publique non-Netlify.
+- **[MOY] Sécurité H2 — prompt injection via `payee`** : ✅ FAIT 2026-05-27 —
+  `sanitizePayee` dans `services/claude.ts` et `components/AiAssistant.tsx` durcis :
+  `<>#[]{}\`^|` maintenant filtrés en plus des caractères de contrôle.
+- **[MOY] `loadApiKeys`** : ✅ FAIT 2026-05-27 — `loadApiKeysDetailed()` retourne
+  `{ status: 'ok'|'empty'|'decrypt_failed' }` ; App.tsx affiche un toast d'erreur
+  si `decrypt_failed` (blob présent mais clé IDB absente).
+- **[BAS] Code mort à retirer** : ✅ FAIT 2026-05-27 — `MOCK_ASSETS` / `INITIAL_INVESTMENT_ACCOUNTS` /
+  `INITIAL_INVESTMENT_TRANSACTIONS` retirés de constants.ts (imports nettoyés) ;
+  `searchTransactions` / `clearInsightCache` / `SearchResultSchema` retirés d'eraContext.ts.
+  `optimizeDrawdownOrder` conservé (import actif dans GoalSeekerCard.tsx).
+- **[BAS] `Permissions-Policy`** : ✅ FAIT 2026-05-27 — `<meta http-equiv="Permissions-Policy">` ajouté
+  dans index.html (aligné avec netlify.toml). Couvre hébergeurs sans headers HTTP.
 
 ### 🚀 Prochaines étapes produit (préparées avec Marc)
 - **Import positions courtier (CSV)** : même mécanique que la banque, pour saisir les
@@ -418,10 +419,11 @@ Le test passe mais le moteur s'alourdit. Si plus de fixes ajoutent du poids :
 - [x] Dashboard : indicateur Futur → ProjectionRequired + fallback 5% supprimé (C3)
 - [x] TaxCenter : 100% temps présent, badge non pertinent (C3)
 
-### U2 — Onglet Future : badge "Scénario actif"
+### U2 — Onglet Future : badge "Scénario actif" — ✅ FAIT 2026-05-27
 Indiquer clairement quel scénario est sélectionné dans Future, vu que
 les autres onglets en dépendent maintenant.
-- [ ] Sticky banner "Scénario : BASE / LIBERTE_55 / etc." dans Future header
+- [x] Badge "Scénario actif : &lt;nom&gt;" dans Future header (vert si meilleur, ambre sinon).
+  Masqué quand un seul scénario disponible. Texte "pas le meilleur" + lien vers Paramètres.
 
 ### U3 — Toggle déterministe vs MC plus visible
 Avec C1 (centralisation), le toggle MC dans Future impacte tous les onglets.

@@ -625,6 +625,31 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     variant={results?.fvi != null && results.fvi >= 70 ? 'success' : results?.fvi != null && results.fvi >= 40 ? 'warning' : 'danger'}
                 />
             </StatGrid>
+            {/* U2 — Badge scénario actif : toujours visible quelle que soit la
+                sous-vue pour rappeler quelle stratégie pilote Dashboard, Retraite,
+                Enfant. Masqué quand un seul scénario (AUTO_MARGINAL). */}
+            {allResults.length > 1 && (() => {
+                const active = allResults[selectedScenarioIdx] as any;
+                const isBest = active && bestScenario && active.strategyName === bestScenario.strategyName;
+                return (
+                    <div
+                        role="status"
+                        aria-live="polite"
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-card text-meta border w-fit ${
+                            isBest
+                                ? 'bg-green-500/10 border-green-500/30 text-green-300'
+                                : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                        }`}
+                    >
+                        <span aria-hidden="true">{isBest ? '★' : '○'}</span>
+                        <span>Scénario actif&nbsp;: <strong className="privacy-blur">{active?.strategyName || '—'}</strong></span>
+                        {!isBest && (
+                            <span className="text-ink-500 text-tiny hidden sm:inline">— pas le meilleur · modifier dans Paramètres</span>
+                        )}
+                    </div>
+                );
+            })()}
+
             {/* G3 — bascule Graphique / Paramètres */}
             <div className="flex gap-1 p-1 rounded-card bg-surface/40 border border-white/5 w-fit" role="tablist" aria-label="Vue Future">
                 <button

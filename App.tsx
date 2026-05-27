@@ -13,7 +13,7 @@ import { fetchAssetHistory, fetchFxRates } from './services/finance';
 // Phase 3E perf — lazy-load pdfReport (jspdf = 595KB) seulement au clic
 // "Générer PDF" plutôt qu'au boot de l'app.
 import { useFinanceStore, getMigrationStatus } from './store/useFinanceStore';
-import { loadApiKeys, saveApiKeys } from './services/secureKeyStore';
+import { loadApiKeysDetailed, saveApiKeys } from './services/secureKeyStore';
 import { useShallow } from 'zustand/shallow';
 import { useDerivedFinancials } from './utils/useDerivedFinancials';
 import { TabRouter } from './components/TabRouter';
@@ -195,10 +195,19 @@ export const App: React.FC = () => {
         let cancelled = false;
         (async () => {
             try {
-                const stored = await loadApiKeys();
+                const result = await loadApiKeysDetailed();
                 if (cancelled) return;
-                if (stored && (stored.eraContext || stored.anthropic || stored.finnhub)) {
-                    useFinanceStore.getState().updateApiKeys(stored);
+                if (result.status === 'decrypt_failed') {
+                    // Blob chiffré présent mais clé IDB absente (ex: navigation privée
+                    // entre sessions, IndexedDB vidé) → on prévient l'utilisateur.
+                    showToast(
+                        'Clés API non restaurées — la clé de chiffrement est introuvable. Re-saisissez vos clés dans Paramètres.',
+                        'error'
+                    );
+                    return;
+                }
+                if (result.status === 'ok' && (result.keys.eraContext || result.keys.anthropic || result.keys.finnhub)) {
+                    useFinanceStore.getState().updateApiKeys(result.keys);
                     return;
                 }
                 // Migration : clés legacy encore lues en clair au boot (avant C5)

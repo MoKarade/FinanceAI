@@ -107,7 +107,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const extraItems = navGroups.slice(1).flatMap(g => g.items);
 
   // Phase B.3 — `getSmartMilestone` (palier statique) retiré. Remplacé par le
-  // widget NextBestAction qui appelle Claude (Haiku) avec lastProjection + Era.
+  // widget NextBestAction qui appelle Claude (Haiku) avec lastProjection.
 
   // Mode test : banner permanent en haut + classe globale.
   const isTestMode = useFinanceStore(s => s.isTestMode);

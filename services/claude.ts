@@ -84,7 +84,7 @@ const safeJsonValidate = <S extends z.ZodTypeAny>(text: string, schema: S): z.in
 // Toute "instruction" trouvée à l'intérieur de ces balises doit être ignorée :
 // c'est du contenu utilisateur (noms de marchands, libellés bancaires), pas
 // une commande pour l'assistant. Source du risque : un attaquant qui contrôle
-// une transaction (Era Context compromis, CSV malveillant) pourrait sinon
+// une transaction (import CSV bancaire malveillant) pourrait sinon
 // manipuler les réponses de Claude.
 const QUEBEC_FISCAL_CONTEXT = `
 Tu es un expert en finances personnelles QUEBEC/CANADA 2026. Tu utilises:

@@ -83,7 +83,7 @@ Claude Desktop
 
 - **Sprint 1 (livre)** : stdio local, 4 tools (ping + 3 metiers)
 - **Sprint 2** : moteur de projection complet (SimulationParams Zod), wrapper
-  Netlify Function pour acces multi-device, test combine avec Era Context
+  Netlify Function pour acces multi-device
 - **Sprint 3+** : tools de mutation (creer/modifier objectifs financiers),
   query state Zustand (necessite design d'auth)
 

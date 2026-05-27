@@ -9,7 +9,7 @@ import { BudgetCategory, BudgetConfig, ProjectionConfig, User, RealEstateGoal, C
 // "je veux vide tant que j'ai pas rentré les infos moi").
 // L'Onboarding remplit ces valeurs avec les vraies données utilisateur au
 // premier launch. Couleurs préservées car cosmétiques.
-export const INITIAL_USERS: [User, User] = [
+const INITIAL_USERS: [User, User] = [
   {
     name: "",
     grossSalary: 0,

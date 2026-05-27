@@ -4,7 +4,7 @@ import { Card } from '../ui/Card';
 import { showToast } from '../ui/Toast';
 import { downloadBackup, readBackupFile, defaultBackupFilename, CloudBackupError } from '../../services/cloudBackup';
 
-export const BackupSchema = z.object({
+const BackupSchema = z.object({
   version: z.string().optional(),
   timestamp: z.number().optional(),
   apiKeys: z.object({
@@ -40,7 +40,7 @@ export const BackupSchema = z.object({
   { message: "doit contenir au moins 'version' ou 'transactions'" }
 );
 
-export type BackupData = z.infer<typeof BackupSchema>;
+type BackupData = z.infer<typeof BackupSchema>;
 
 interface BackupPanelProps {
   buildPayload: () => object;

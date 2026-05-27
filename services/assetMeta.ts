@@ -10,8 +10,6 @@
 // compatibles tant qu'ils ne sont pas mis à jour. Nouveau code doit utiliser
 // `getAssetMeta(symbol)` async.
 
-import { getProfile, type AssetProfile } from './marketData';
-
 export interface AssetMeta {
   sector: string;
   region: string;
@@ -47,48 +45,4 @@ export const ASSET_META: Record<string, AssetMeta> = {
   "EPA:PAAS": { name: "Pan American", sector: "Mines/Or", region: "Ameriques", yield: 1.2, freq: 4, nextPayMonth: 2 },
 };
 
-const UNKNOWN_META: AssetMeta = {
-  name: 'Inconnu',
-  sector: 'Autre',
-  region: 'Global',
-  yield: 0,
-  freq: 1,
-};
 
-/** Convertit un AssetProfile (marketData) vers notre AssetMeta historique. */
-function profileToMeta(profile: AssetProfile): AssetMeta {
-  return {
-    name: profile.name,
-    sector: profile.sector,
-    region: profile.region,
-    yield: profile.dividendYield,
-    freq: 4, // valeur sentinel — Finnhub /profile2 ne renvoie pas la freq
-  };
-}
-
-/**
- * Récupère la metadata d'un actif. Priorité :
- *   1. marketData provider dynamique (si configuré)
- *   2. ASSET_META seed hardcodé
- *   3. UNKNOWN_META par défaut
- *
- * Async pour permettre le fetch réseau. Cache TTL 24h géré par marketData/cache.
- */
-export async function getAssetMeta(symbol: string): Promise<AssetMeta> {
-  // 1. Tente le provider dynamique
-  try {
-    const profile = await getProfile(symbol);
-    if (profile) return profileToMeta(profile);
-  } catch {
-    // silently fallback to seed
-  }
-  // 2. Seed hardcodé
-  if (ASSET_META[symbol]) return ASSET_META[symbol];
-  // 3. Unknown — pas de crash sur un nouveau symbole inconnu
-  return { ...UNKNOWN_META, name: symbol };
-}
-
-/** Version sync (rétrocompat). Lit uniquement le seed sans tenter le provider. */
-export function getAssetMetaSync(symbol: string): AssetMeta {
-  return ASSET_META[symbol] ?? { ...UNKNOWN_META, name: symbol };
-}

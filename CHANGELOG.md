@@ -41,6 +41,12 @@ Lot de 4 merges (`3167a55`, `20abca8`, `4af08b2`, `6042fe9`) partis de `f257efb`
   le job E2E. Les tests `@visual` sont désormais exclus du gate CI (`npm run test:e2e:ci`,
   `--grep-invert @visual`) et restent un filet de régression visuelle en local ; les tests
   fonctionnels (smoke / navigation / KPI, platform-agnostic) continuent de garder la CI verte.
+- **Barème fiscal 2026 — montant personnel de base QC corrigé** : `BASIC_PERSONAL_AMOUNT_QC`
+  était resté à la valeur 2025 (18 571 $) étiquetée « 2026 ». Valeur officielle 2026 = 18 952 $
+  (= 18 571 × indexation 2,05 %), vérifiée contre Revenu Québec. BPA fédéral aussi ajusté
+  16 444 → 16 452 $ (ARC, indexation 2,0 %). Les paliers d'impôt fédéraux et québécois ont été
+  vérifiés contre les tables officielles 2026 : ils étaient déjà corrects. Impact de la
+  correction : impôt QC surestimé d'environ 53 $/an/personne avant le fix.
 
 ### Supprimé
 - **4 fonctions IA mortes** retirées de `services/claude.ts` : `getInvestmentAdvice`,

@@ -19,15 +19,15 @@ export const QC_BRACKETS = [
     { upTo: Infinity, rate: 0.2575, label: "25.75%" }
 ];
 
-// §7.E.3 / F22 — BPA 2026 ajustés aux valeurs officielles définitives.
-// Source ARC (Montant personnel de base augmenté, ligne 30000) : 16 129$ (palier
-//   réduit > 173k$) → 16 444$ (palier max < 173k$). On retient le palier max.
-// Source RQ 2026 (Montant personnel de base) : 18 571$.
-// Anciennes valeurs (16 452 et 18 952) étaient des estimations basées sur
-// l'indexation annoncée — légèrement décalées vs publication finale ARC/RQ.
-// Impact unitaire : ~165$/personne/an de crédit ajusté (cf audit F22).
-export const BASIC_PERSONAL_AMOUNT_FED = 16444;
-export const BASIC_PERSONAL_AMOUNT_QC = 18571;
+// BPA 2026 — montants personnels de base (crédit non remboursable au taux le plus bas).
+// Vérifiés 2026-05 contre les sources officielles (indexation féd 2,0 %, QC 2,05 %).
+// Fédéral : BPA dégressif de 16 452$ (revenu ≤ ~177k$) à 14 829$ (hauts revenus) ;
+//   on retient le palier maximal — la dégressivité haut-revenu n'est pas modélisée.
+// Québec : 18 952$ (= 18 571$ de 2025 × 1,0205).
+// NB : un audit antérieur (« F22 ») avait par erreur retenu les valeurs 2025
+//   (16 444 / 18 571) en les croyant définitives — corrigé ici.
+export const BASIC_PERSONAL_AMOUNT_FED = 16452;
+export const BASIC_PERSONAL_AMOUNT_QC = 18952;
 
 // RRQ 2026: 5.4% base + 1% supplémentaire (volet 1) = 6.4%
 // Source: Retraite Québec 2026

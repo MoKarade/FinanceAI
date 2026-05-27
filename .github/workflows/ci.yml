@@ -56,8 +56,11 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       # playwright.config.ts démarre automatiquement `npm run dev` (port 3000)
-      - name: Run E2E tests
-        run: npm run test:e2e
+      # test:e2e:ci exclut les tests @visual (screenshots) : la comparaison
+      # pixel-à-pixel échoue en cross-platform (baselines Windows vs runner Linux).
+      # Les screenshots restent un filet de régression VISUELLE en local.
+      - name: Run E2E tests (fonctionnels — sans screenshots)
+        run: npm run test:e2e:ci
 
       - name: Upload rapport Playwright (si échec)
         if: failure()

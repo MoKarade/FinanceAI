@@ -235,11 +235,11 @@ describe('Barèmes fiscaux 2026 (régression)', () => {
   });
 
   it('BPA fédéral 2026 = 16 452 $', () => {
-    expect(BASIC_PERSONAL_AMOUNT_FED).toBe(16444);
+    expect(BASIC_PERSONAL_AMOUNT_FED).toBe(16452);
   });
 
   it('BPA Québec 2026 = 18 952 $', () => {
-    expect(BASIC_PERSONAL_AMOUNT_QC).toBe(18571);
+    expect(BASIC_PERSONAL_AMOUNT_QC).toBe(18952);
   });
 
   it('RRQ max 2026 ≈ 4 569,60$ (taux 6.4% x (MPE 74 900 - exemption 3 500))', () => {

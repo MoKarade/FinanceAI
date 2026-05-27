@@ -29,16 +29,17 @@ export const QC_BRACKETS = [
 export const BASIC_PERSONAL_AMOUNT_FED = 16452;
 export const BASIC_PERSONAL_AMOUNT_QC = 18952;
 
-// RRQ 2026: 5.4% base + 1% supplémentaire (volet 1) = 6.4%
-// Source: Retraite Québec 2026
-export const RRQ_RATE = 0.064;
-export const RRQ_MPE = 74900;
+// RRQ 2026 : 5,30 % base + 1,00 % volet 1 = 6,30 %. Le taux de base a été réduit
+// de 5,40 % à 5,30 % en 2026 (cotisation totale employé+employeur 10,8 % → 10,6 %).
+// Vérifié 2026-05 contre Revenu Québec / Retraite Québec.
+export const RRQ_RATE = 0.063;
+export const RRQ_MPE = 74600;            // MGA 2026 (= YMPE RPC ; +4,6 % vs 71 300 $ en 2025)
 export const RRQ_EXEMPTION = 3500;
-export const RRQ_MAX = (RRQ_MPE - RRQ_EXEMPTION) * RRQ_RATE; // ≈ 4 569.60$
+export const RRQ_MAX = (RRQ_MPE - RRQ_EXEMPTION) * RRQ_RATE; // ≈ 4 479,30 $
 
-export const RRQ_PART2_RATE = 0.04;
-export const RRQ_YAMPE = 85100;
-export const RRQ_PART2_MAX = (RRQ_YAMPE - RRQ_MPE) * RRQ_PART2_RATE;
+export const RRQ_PART2_RATE = 0.04;      // volet 2 (MGA → MGAS), inchangé
+export const RRQ_YAMPE = 85000;          // MGAS 2026 (2e plafond)
+export const RRQ_PART2_MAX = (RRQ_YAMPE - RRQ_MPE) * RRQ_PART2_RATE; // = 416 $
 
 export const RQAP_RATE = 0.0043;
 export const RQAP_MAX_INCOME = 103000;

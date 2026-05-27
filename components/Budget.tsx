@@ -302,6 +302,8 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         budgetItems.forEach(item => {
             const spent = actualsMap[item.name] || 0;
             const target = getDisplayTarget(item);
+            // Alerte seulement au-delà de 10% de dépassement (tolérance anti-bruit
+            // pour les petits écarts normaux).
             if (target > 0 && spent > target * 1.1) {
                 list.push(`${item.name} (${(spent - target).toFixed(0)}$ dépassé)`);
             }

@@ -2,7 +2,7 @@
 
 > **Source unique** des tests manuels à exécuter à chaque livraison majeure.
 > **Mise à jour** : à chaque nouveau fix ou feature, ajouter une entrée dans la section pertinente.
-> Cible : ~100 tests couvrant chaque onglet, exécutables en ~30 min.
+> Cible : ~160-200 tests couvrant chaque onglet, exécutables en ~45 min.
 
 ## Procédure standard
 
@@ -82,7 +82,7 @@ Couple **Alex + Sam** (mode test, `services/testFixtures.ts`) :
 | 2.8 | Tri par perf, par valeur, par symbole fonctionne | OK |
 | 2.9 | Si clé Finnhub manquante : message clair, pas de crash | OK |
 
-## Section 3 — Budget
+## Section 3 — Budget (inclut abonnements/récurrents)
 
 | # | Test | Attendu |
 |---|------|---------|
@@ -93,6 +93,10 @@ Couple **Alex + Sam** (mode test, `services/testFixtures.ts`) :
 | 3.5 | Aucun champ "tax annuel" affiché en mensuel par erreur | Bug historique : impôts en monthly seulement |
 | 3.6 | Ajout/édition d'une catégorie persiste après reload | OK |
 | 3.7 | Drag&drop catégories réordonne sans perte | OK |
+| 3.8 | Sous-onglet **Abonnements** (ex-Planning) accessible depuis Budget | OK — G22-N3 : Planning fusionné |
+| 3.9 | Sous-onglet Abonnements : **total fixe mensuel** ~3 484 $, **5 abonnements** listés | OK |
+| 3.10 | Sous-onglet Abonnements : calendrier des paiements par jour du mois visible | OK |
+| 3.11 | Sous-onglet Abonnements : ajout récurrent persiste | OK |
 
 ## Section 4 — Transactions
 
@@ -118,7 +122,7 @@ Couple **Alex + Sam** (mode test, `services/testFixtures.ts`) :
 | 5.6 | Optimiseur REER affiche recommandation | OK |
 | 5.7 | Crédits CIVTÉ/Solidarité visibles si applicable | OK |
 
-## Section 6 — Future (projection)
+## Section 6 — Futur (projection)
 
 | # | Test | Attendu |
 |---|------|---------|
@@ -126,10 +130,12 @@ Couple **Alex + Sam** (mode test, `services/testFixtures.ts`) :
 | 6.2 | KPI **Patrimoine final** | > 0 $, format "1.6M$" ou "450k$" (PAS "0.0M$" — bug fixé 2026-05-21) |
 | 6.3 | **7 cards scénarios** affichent un Patrimoine M$ ≠ 0,00 | OK depuis fix Math.round |
 | 6.4 | Cliquer un scénario change le graph principal | OK |
-| 6.5 | Slider Monte Carlo activé/désactivé sans crash | OK |
+| 6.5 | **Radio-group simulation** : option "Déterministe" affichée et sélectionnable par défaut | OK — G22 U3 (remplace l'ancien slider toggle) |
+| 6.5.b | **Radio-group simulation** : option "Monte Carlo" sélectionnable, active le cône P10-P90 | OK |
+| 6.5.c | Basculer Déterministe ↔ Monte Carlo sans crash, courbes cohérentes | OK |
 | 6.6 | Hover graph → **tooltip taille fixe** (320 px largeur) | Ne s'étend plus selon contenu |
 | 6.7 | Tooltip en retraite affiche ligne **"Décaissement portfolio"** | > 0 $ pendant phase de décumulation |
-| 6.8 | Tooltip événements alignés avec **icônes** colonne fixe `w-5` | ✈️🏠🚗🔨🩺🎁🏛️💰 selon type |
+| 6.8 | Tooltip événements alignés avec **icônes** colonne fixe `w-5` | selon type d'événement |
 | 6.9 | Événements **Voyage Italie / Japon** visibles aux dates prévues | OK |
 | 6.10 | Événement **Rénovation** visible | OK |
 | 6.11 | Événement **Naissance enfant** + cadeau voiture 18 ans visible | OK depuis refactor childCosts.ts 2026-05-21 |
@@ -139,6 +145,31 @@ Couple **Alex + Sam** (mode test, `services/testFixtures.ts`) :
 | 6.14 | Graph étalé jusqu'à age 95 (lifeExpectancy) | OK |
 | 6.15 | Ligne pension RRQ visible après 65 ans | OK |
 | 6.16 | Pas de NaN dans aucune card scénario | OK |
+| 6.17 | Sous-onglet **Explications** accessible (3e onglet du bandeau Graphique/Paramètres/Explications) | OK — G22-F1 |
+| 6.18 | Explications : drill-down **année 2026** s'ouvre, affiche comptes (CELI, REER, Liquidités, etc.) | Données réelles moteur, pas de 0 global |
+| 6.19 | Explications : drill-down **mois** à l'intérieur d'une année affiche flux (cotisation, croissance, retrait) | OK |
+| 6.20 | Explications : **barre de recherche** filtre les libellés visibles | OK |
+| 6.21 | Explications : section **Méthodologie** affiche les 6 questions/réponses | RAP, CELIAPP, Monte Carlo, impôts, ordre de retrait |
+| 6.22 | Explications : aucune valeur affichée n'est `NaN` ni `0 $` global si la projection a tourné | Critique |
+
+## Section 6b — Optimiseur de stratégie (Futur → Paramètres)
+
+| # | Test | Attendu |
+|---|------|---------|
+| 6b.1 | Sous-onglet **Paramètres** contient le panneau "Optimiseur de stratégie" | Visible après scroll |
+| 6b.2 | Section **Composer l'espace de recherche** affiche des leviers cochables | OK — LEVER_LIBRARY |
+| 6b.3 | Cocher 0 levier → compteur de configs = 0, bouton "Lancer" désactivé | OK |
+| 6b.4 | Cocher 1 levier (ex : taux d'épargne) → compteur affiche N configs et temps estimé | > 0 configs, format "~X s" ou "~X min" |
+| 6b.5 | Sélectionner un **objectif** (Équilibre / Patrimoine max / Impôts min / FIRE rapide) sans crash | OK |
+| 6b.6 | Cliquer **Lancer la recherche** → barre de progression visible, compteur "X / Y" s'incrémente | OK |
+| 6b.7 | Cliquer **Annuler** pendant la recherche → arrêt propre, retour à l'état "idle" | OK — SEARCH_CANCELLED |
+| 6b.8 | Recherche terminée → tableau de résultats trié par score du meilleur au moins bon | OK |
+| 6b.9 | Changer **l'objectif après la recherche** → tri change sans recalcul moteur | OK — rankConfigResults en mémoire |
+| 6b.10 | Panneau **Verdict** affiche la stratégie gagnante avec score global et sous-scores | OK — explainWinner |
+| 6b.11 | Bouton **Appliquer la stratégie gagnante** applique les paramètres et le bouton passe "Appliqué" | OK — applyConfigToSettings |
+| 6b.12 | Après application → sous-onglet Graphique reflète la nouvelle configuration | Recalcul déclenché |
+| 6b.13 | Avertissement visible si configCount > 300 (seuil WARN_THRESHOLD) | OK |
+| 6b.14 | Pas de crash si projectionParams incomplets (âge manquant, etc.) | Fallback ou erreur claire |
 
 ## Section 7 — Retraite
 
@@ -210,14 +241,18 @@ Couple **Alex + Sam** (mode test, `services/testFixtures.ts`) :
 | 11.6 | Suppression d'une dette via modal | OK |
 | 11.7 | Carte de crédit à intérêts ≥ minimumPayment **s'éteint quand même** | Garde-fou effectiveMinimum |
 
-## Section 12 — Planning (récurrents)
+## Section 12 — Planning / Abonnements (fusionné dans Budget)
+
+> Depuis G22-N3, le contenu Planning est intégré comme sous-onglet dans Budget.
+> Les tests ci-dessous sont désormais couverts par Section 3 (tests 3.8 à 3.11).
+> Cette section reste en référence pour l'historique.
 
 | # | Test | Attendu |
 |---|------|---------|
-| 12.1 | **Total fixe mensuel** ~3 484 $ | OK |
-| 12.2 | **5 abonnements** listés | OK |
-| 12.3 | Calendrier des paiements par jour du mois visible | OK |
-| 12.4 | Ajout récurrent persiste | OK |
+| 12.1 | Onglet "Planning" autonome n'existe plus dans la navigation | Absent — contenu déplacé dans Budget |
+| 12.2 | Budget → Abonnements : **Total fixe mensuel** ~3 484 $ | OK (voir 3.9) |
+| 12.3 | Budget → Abonnements : **5 abonnements** listés | OK (voir 3.9) |
+| 12.4 | Budget → Abonnements : calendrier des paiements visible | OK (voir 3.10) |
 
 ## Section 13 — Documents
 
@@ -229,32 +264,48 @@ Couple **Alex + Sam** (mode test, `services/testFixtures.ts`) :
 
 ## Section 14 — Data (legacy)
 
-| # | Test | Attendu |
-|---|------|---------|
-| 14.1 | Onglet ouvrable sans crash | OK |
-| 14.2 | Si Google Sheet non configuré : empty state honnête | Pas de "données fictives" |
-| 14.3 | Pas d'appel réseau bloquant | OK |
-
-## Section 15 — Configuration
+> Cet onglet n'est plus exposé dans la navigation principale depuis G22.
+> Les tests ci-dessous conservent leur historique mais ne s'appliquent plus.
 
 | # | Test | Attendu |
 |---|------|---------|
-| 15.1 | Profil utilisateur 1 + utilisateur 2 éditables | OK |
-| 15.2 | Champs **apiKey Anthropic / Finnhub** masqués (password) | OK |
-| 15.3 | Clés **NON commit en backup par défaut** | OK depuis Sprint 1 C5 |
-| 15.4 | Export JSON contient pas les apiKeys | OK |
-| 15.5 | Card **Mode test** : Activer/Désactiver fonctionnent | OK |
-| 15.6 | Slider ProjectionConfig réactif | OK |
-| 15.7 | Toggle Privacy Mode global | OK |
+| 14.1 | Onglet "Data" absent de la navigation principale | OK — retiré G22 |
+| 14.2 | Aucune régression sur les données (le contenu a migré dans Settings) | OK |
+| 14.3 | Pas d'appel réseau bloquant à l'import | OK |
 
-## Section 16 — Système
+## Section 15 — Paramètres (ex-Configuration, refonte G22-N4)
+
+> Depuis G22-N4, Configuration est renommé "Paramètres" et restructuré en 6 sous-onglets :
+> Profil | Comptes & soldes | Patrimoine | Clés API | Sauvegarde | Système & diagnostics.
 
 | # | Test | Attendu |
 |---|------|---------|
-| 16.1 | Onglet ouvrable | OK |
-| 16.2 | Version build affichée | OK |
-| 16.3 | Bouton "Effacer toutes les données" demande **confirmation 2-step** | Sinon = bug |
-| 16.4 | Stats stockage localStorage visibles | OK |
+| 15.1 | Sous-onglets **Profil / Comptes & soldes / Patrimoine / Clés API / Sauvegarde / Système & diagnostics** tous accessibles | OK — G22-N4 |
+| 15.2 | **Profil** : utilisateur 1 + utilisateur 2 éditables | OK |
+| 15.3 | **Profil** : card Mode test — Activer/Désactiver fonctionnent | OK |
+| 15.4 | **Profil** : bouton "Relancer le tutoriel" déclenche le GuidedTour | OK — G22-F4 |
+| 15.5 | **Comptes & soldes** : soldes initiaux CELI/REER/NonReg/Crypto modifiables | OK |
+| 15.6 | **Clés API** : champs Anthropic / Finnhub masqués (type password) | OK |
+| 15.7 | **Clés API** : clés NON exposées en clair dans localStorage (coffre IndexedDB) | OK depuis Sprint 1 C5 |
+| 15.8 | **Sauvegarde** : Export JSON ne contient pas les apiKeys | OK |
+| 15.9 | **Sauvegarde** : import CSV bancaire fonctionne | OK |
+| 15.10 | **Système & diagnostics** : version build affichée | OK |
+| 15.11 | **Système & diagnostics** : bouton "Effacer toutes les données" demande confirmation 2-step | Sinon = bug |
+| 15.12 | **Système & diagnostics** : stats stockage localStorage visibles | OK |
+| 15.13 | Onglet "Système" autonome absent de la navigation principale | OK — G22-N5 : fusionné dans Paramètres |
+| 15.14 | Toggle Privacy Mode global accessible depuis Paramètres | OK |
+
+## Section 16 — Système & diagnostics (fusionné dans Paramètres)
+
+> Depuis G22-N5, SystemView n'est plus un onglet top-level.
+> Son contenu est dans Paramètres → Système & diagnostics (voir Section 15, tests 15.10-15.12).
+
+| # | Test | Attendu |
+|---|------|---------|
+| 16.1 | Onglet "Système" absent de la navigation top-level | OK — G22-N5 |
+| 16.2 | Paramètres → Système & diagnostics : version build affichée | OK (voir 15.10) |
+| 16.3 | Paramètres → Système & diagnostics : confirmation 2-step pour effacement | OK (voir 15.11) |
+| 16.4 | Paramètres → Système & diagnostics : stats stockage visibles | OK (voir 15.12) |
 
 ## Section 17 — Assistant (IA Claude)
 
@@ -266,6 +317,27 @@ Couple **Alex + Sam** (mode test, `services/testFixtures.ts`) :
 | 17.4 | Boutons rapides (suggestions) cliquables | OK |
 | 17.5 | Memory facts encadrés `<memory>...</memory>` (pas de prompt injection) | Sprint 1 C4 |
 | 17.6 | Sanitization context errorLogger : aucun amount/payee en clair | Sprint 3 SH5 |
+
+## Section 18a — Tutoriel guidé (GuidedTour, G22-F4)
+
+| # | Test | Attendu |
+|---|------|---------|
+| 18a.1 | **Premier lancement** (localStorage `app_onboarding_done` absent) → tutoriel démarre automatiquement après l'onboarding | GuidedTour overlay visible |
+| 18a.2 | Tutoriel : **15 étapes** numérotées, barre de progression visible | "Étape 1 / 15" → "Étape 15 / 15" |
+| 18a.3 | Étape 1 : carte centrée "Bienvenue" (pas d'onglet ouvert) | OK — tab: null |
+| 18a.4 | Étape 2 (Dashboard) → onglet Dashboard ouvert automatiquement | OK |
+| 18a.5 | Chaque étape ouvre l'onglet correspondant (Transactions, Budget, Dettes, Investissements, Futur, Immobilier, Enfant, Projets de vie, Retraite, Impôts, Paramètres, Assistant, puis carte finale) | OK — TOUR_STEPS |
+| 18a.6 | Spotlight (surbrillance) visible autour de l'item de navigation actif | box-shadow géant |
+| 18a.7 | Sur mobile (sidebar masquée) : fallback carte centrée sans crash | OK — ancre null si DOMRect vide |
+| 18a.8 | Bouton **Suivant** avance d'une étape | OK |
+| 18a.9 | Bouton **Précédent** recule d'une étape (invisible à l'étape 1) | OK |
+| 18a.10 | Touche **→** (flèche droite) avance d'une étape | OK |
+| 18a.11 | Touche **←** (flèche gauche) recule d'une étape | OK |
+| 18a.12 | Bouton **Passer ✕** ou touche **Échap** ferme le tutoriel proprement | markTourSeen() appelé |
+| 18a.13 | Dernière étape : bouton "Suivant" devient "Terminer" | isLast = true |
+| 18a.14 | Après clôture : relancer via **Paramètres → Profil → Relancer le tutoriel** | startGuidedTour() déclenche TOUR_EVENT |
+| 18a.15 | Tutoriel déjà vu : ne redémarre **pas** automatiquement au rechargement | localStorage flag posé |
+| 18a.16 | Tutoriel accessible au clavier (Tab/Enter sur boutons Suivant/Passer) | OK a11y |
 
 ## Section 18 — Cross-cutting (transverse)
 
@@ -281,7 +353,7 @@ Couple **Alex + Sam** (mode test, `services/testFixtures.ts`) :
 | 18.8 | Navigation au clavier (Tab/Enter/Esc) fonctionne sur modaux | a11y |
 | 18.9 | Aucun `console.error` rouge dans toute la session | Critical |
 | 18.10 | Aucun warning React Hooks order | OK |
-| 18.11 | **Keyboard shortcut Alt+1** → Dashboard, Alt+2 → Transactions, … Alt+9 → Assistant | 9 raccourcis OK |
+| 18.11 | **Keyboard shortcuts** : Alt+1 → Dashboard, Alt+2 → Transactions, Alt+3 → Budget, Alt+4 → Dettes, Alt+5 → Investissements, Alt+6 → Futur, Alt+7 → Retraite, Alt+8 → Impôts, Alt+9 → Assistant | G22-N3 : Alt+4 = Dettes (plus Planning) |
 | 18.12 | Alt+N dans un input texte **ne déclenche pas** la navigation | OK |
 | 18.13 | **PWA install banner** custom (bas écran emerald) apparaît si non installée | OK |
 | 18.14 | Bouton "Plus tard" dismiss le banner pour **30 jours** (localStorage) | OK |
@@ -364,26 +436,31 @@ Quand on livre un fix ou une feature :
 
 | Onglet | # tests actuels | Cible |
 |---|---|---|
-| Dashboard | 14 | 15-20 |
+| Dashboard | 18 | 18-22 |
 | Investissements | 9 | 10-15 |
-| Budget | 7 | 8-10 |
+| Budget (+ abonnements) | 11 | 12-15 |
 | Transactions | 7 | 8-10 |
 | Impôts | 7 | 8-10 |
-| Future | 16 | 18-22 |
+| Futur — graphique + paramètres | 22 | 22-28 |
+| Futur — Optimiseur (G21) | 14 | 14-16 |
+| Futur — Explications (G22-F1) | 6 | 6-8 |
 | Retraite | 9 | 10-12 |
 | Immobilier | 6 | 8 |
-| Enfant | 7 | 10 |
+| Enfant | 15 | 15-18 |
 | Projets vie | 5 | 6-8 |
 | Dettes | 7 | 8 |
-| Planning | 4 | 5-6 |
+| Planning (fusionné Budget) | 4 | — (voir Budget) |
 | Documents | 3 | 4-5 |
-| Data | 3 | 3-5 |
-| Configuration | 7 | 8-10 |
-| Système | 4 | 5-6 |
+| Data (retiré G22) | 3 | — |
+| Paramètres (ex-Config + Système) | 14 | 14-18 |
 | Assistant | 6 | 7-10 |
-| Cross-cutting | 10 | 12-15 |
+| Tutoriel guidé (G22-F4) | 16 | 16-18 |
+| Cross-cutting | 17 | 18-22 |
+| Mode strict | 10 | 10-12 |
+| Centralisation | 12 | 12-15 |
+| Auth / Sécurité | 9 | 9-12 |
 | Régressions | 6 | 8-10 |
-| **Total** | **131** | **160-200** |
+| **Total** | **~195** | **200-250** |
 
 ## Historique
 
@@ -397,4 +474,11 @@ Quand on livre un fix ou une feature :
 | 2026-05-21 | +4 tests (9.12-9.15) | Migration ChildPlanning costTimeline source unique |
 | 2026-05-21 | +6 tests Vitest convergence (Sprint 1A/1E) | HealthIndicator + ChildPlanning migrés |
 | 2026-05-21 | +32 tests manuels (Sections 18.11-18.17, 20, 21, 22) | Mode strict + Centralisation + Auth + raccourcis |
-| 2026-05-21 | Cible 160-200 atteinte : 163 tests | Voir détail dans sections |
+| 2026-05-21 | Cible 160-200 : 163 tests | Voir détail dans sections |
+| 2026-05-27 | +14 tests Section 6b (Optimiseur G21) | StrategyOptimizerPanel, LEVER_LIBRARY, rankConfigResults, bouton Annuler, Appliquer |
+| 2026-05-27 | +6 tests Section 6 (Explications G22-F1, radio-group Monte Carlo) | ProjectionExplains, radio-group simulation (déterministe/MC) |
+| 2026-05-27 | +4 tests Section 3 (Budget sous-onglet Abonnements G22-N3) | BudgetWorkspace remplace Planning onglet séparé |
+| 2026-05-27 | +14 tests Section 15 (Paramètres refonte G22-N4, sous-onglets) | Settings 6 sous-onglets, Système fusionné |
+| 2026-05-27 | +16 tests Section 18a (GuidedTour G22-F4) | GuidedTour : 15 étapes, spotlight, clavier, relance |
+| 2026-05-27 | Sections 12/14/16 archivées (onglets supprimés G22) | Planning, Data, Système supprimés navigation top-level |
+| 2026-05-27 | Total recompté : ~195 tests manuels | Voir tableau couverture |

@@ -330,7 +330,7 @@ export async function generateFinancialReport(data: ReportData): Promise<void> {
         const dark = [13, 15, 20] as [number, number, number];
         const gray = [100, 110, 130] as [number, number, number];
         const W = doc.internal.pageSize.getWidth();
-        const PAGE_BOTTOM_LIMIT = 250;
+        const PAGE_BOTTOM_LIMIT = 250; // mm — au-delà on saute de page (letter ~279mm - marge basse)
 
         // -------- Helpers de rendu --------
 

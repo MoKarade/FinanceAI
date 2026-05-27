@@ -85,6 +85,13 @@ export interface SimulationParams {
 // une fois la cause corrigée.
 let _tb3LiquidLogged = false;
 
+// Cœur du moteur de projection. Simule un scénario complet, mois par mois, sur
+// l'horizon choisi. Chaque mois enchaîne dans l'ordre : croissance des
+// placements (rendements ± aléa Monte Carlo), revenus (salaires/rentes),
+// dépenses de vie + service des dettes, impôts, immobilier (hypothèque, valeur),
+// puis agrégation de la valeur nette du mois. En mode Monte Carlo, runScenario
+// est rappelée N fois avec un RNG seedé déterministe (reproductible).
+// Retourne la série temporelle (chartData) + les agrégats de fin (estate, FIRE).
 const runScenario = (params: SimulationParams, strategy: AllocationStrategy, enableMonteCarlo = false, delayPensions = false, mcIterationIndex = 0, scenarioType: FutureScenarioType = 'BASE', overrides: EngineOverrides = {}) => {
     const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0, insurancePolicies = [], vehicleReplacements = [], majorRenovations = [], charitableGoals = [], rentalProperties = [], privateBusinesses = [], savingsGoals = [], financialGoals = [] } = params;
     
@@ -191,6 +198,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
     const effectiveBaseExpenses = projection.useTheoretical ? (projection.theoreticalExpenses || 4000) : baseMonthlyExpenses;
     const fireTargetAnnual = effectiveBaseExpenses * 12;
+    // Règle des 4% (Trinity Study, 1998) : on peut retirer 4%/an d'un
+    // portefeuille sans l'épuiser → capital cible = dépenses annuelles × 25.
     const fireTargetNetWorth = fireTargetAnnual * 25;
 
     const RE_PURCHASE_MONTH_OFFSET = realEstateGoals.find(g => g.isActive && g.isPrimaryResidence)?.purchaseDate
@@ -755,7 +764,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         activeDebts.forEach(d => {
             if (d.balance > 0) {
                 const interest = (d.balance * (d.interestRate / 100)) / 12;
-                const principalFloor = d.balance / 300; // 25 ans
+                const principalFloor = d.balance / 300; // 300 = 25 ans × 12 mois
                 const effectiveMinimum = Math.max(d.minimumPayment, interest + principalFloor);
                 const payment = Math.min(d.balance + interest, effectiveMinimum);
                 d.balance = d.balance + interest - payment;
@@ -1029,7 +1038,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         liquid = g.liquid.newVal; growthLiquid = g.liquid.growth; growthPctLiquid = g.liquid.pct;
         reee = g.reee.newVal; growthREEE = g.reee.growth; growthPctREEE = g.reee.pct;
         totalGrowth += g.totalGrowth;
-        totalTaxesPaid += fluxImpots + taxOnRrif + retraitReerMois * (0.15); // approximation for mid-year witholdings not yet filed
+        // Retenue à la source ~15% sur les retraits REER de l'année courante,
+        // pas encore régularisée par la déclaration de revenus (approx. mi-année).
+        // 15% = tranche intermédiaire de retenue REER au QC (cf RRSP_WITHHOLDING_QC).
+        totalTaxesPaid += fluxImpots + taxOnRrif + retraitReerMois * 0.15;
         totalExpenses += monthlyExpenses;
 
         const rawNetWorth = liquid + celi + celiapp + reer + nonReg + crypto + reee + realEstateEquity - mortgageBalance;

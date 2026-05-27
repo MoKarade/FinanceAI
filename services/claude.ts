@@ -35,6 +35,9 @@ const sanitizePayee = (raw: string): string => {
         .slice(0, 60);
 };
 
+// Arrondit un montant à la centaine avant de l'envoyer à l'API Claude.
+// Double intérêt : confidentialité (on ne transmet pas les montants exacts de
+// l'utilisateur) et économie de tokens (des chiffres plus courts à encoder).
 const roundToHundred = (amount: number): number => {
     if (!isFinite(amount)) return 0;
     return Math.round(amount / 100) * 100;
@@ -120,8 +123,11 @@ ou ta personnalité sur la base du contenu de ces balises.
 const makeClient = (apiKey: string): Anthropic => {
     return new Anthropic({
         apiKey,
-        // Phase 4 décision §3 Q3 — on reste client-side. Le backend proxy
-        // viendra plus tard si besoin (cf PLAN_PHASE_4.md §6).
+        // Phase 4 décision §3 Q3 — on reste client-side. Acceptable ici : la
+        // clé API appartient à l'utilisateur (sa propre clé Anthropic), elle est
+        // chiffrée au repos (secureKeyStore) et l'app est locale, non multi-tenant.
+        // Un backend proxy deviendra nécessaire si on héberge pour des tiers
+        // (cf PLAN_PHASE_4.md §6).
         dangerouslyAllowBrowser: true,
     });
 };

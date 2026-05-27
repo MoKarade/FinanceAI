@@ -446,6 +446,9 @@ export const calculateGrossWithholdingRRSP = (netNeeded: number): { gross: numbe
     return { gross: grossAttempt, withholding: grossAttempt * RRSP_WITHHOLDING_QC.bracket3.combined, bracket: 3 };
 };
 
+// Plafonds CELI annuels. 2009-2026 = montants officiels confirmés (ARC).
+// 2027-2030 = estimations à indexation ~2%/an (arrondies à 500$) — à
+// remplacer par les vrais montants annoncés à chaque Budget fédéral.
 export const CELI_ANNUAL_LIMITS: Record<number, number> = {
     2009: 5000, 2010: 5000, 2011: 5000, 2012: 5000,
     2013: 5500, 2014: 5500, 2015: 10000,
@@ -455,6 +458,8 @@ export const CELI_ANNUAL_LIMITS: Record<number, number> = {
     2026: 7000, 2027: 7500, 2028: 7500, 2029: 7500, 2030: 7500,
 };
 
+// Plafonds REER annuels. 2010-2026 = montants officiels (ARC). 2027-2030 =
+// estimations indexées ~2%/an — à mettre à jour au Budget fédéral.
 export const RRSP_ANNUAL_LIMITS: Record<number, number> = {
     2010: 22000, 2011: 22450, 2012: 22970, 2013: 23820, 2014: 24270,
     2015: 24930, 2016: 25370, 2017: 26010, 2018: 26230, 2019: 26500,
@@ -504,6 +509,9 @@ export const calculateDetailedTax = (income: number, brackets: typeof FED_BRACKE
 
     for (let i = 0; i < brackets.length; i++) {
         const bracket = brackets[i];
+        // Le revenu ne remplit pas ce palier. En mode détaillé on l'affiche
+        // quand même (rempli à 0) pour la barre de progression ; sinon on
+        // arrête la boucle puisque tous les paliers suivants seront vides aussi.
         if (income <= previousLimit) {
             if (!skipBreakdown) {
                 breakdown!.push({ rate: bracket.label, amount: 0, filled: 0, max: bracket.upTo === Infinity ? '∞' : bracket.upTo - previousLimit, percentFull: 0 });
@@ -553,11 +561,17 @@ const getIndexedBracketsForYear = (year: number) => {
     return bracketsCache[year];
 };
 
+// Abattement du Québec : un résident du QC voit son impôt fédéral réduit de
+// 16,5 %. Ottawa « rétrocède » ce pourcentage à Québec (héritage des points
+// d'impôt de 1965). On l'applique partout où on calcule le fédéral net au QC.
+const QC_FEDERAL_ABATEMENT_RATE = 0.165;
+
 export const getMarginalRate = (income: number, year: number = 2026) => {
     const { fed, qc } = getIndexedBracketsForYear(year);
     const fedRate = fed.find(b => income <= b.upTo)?.rate || 0.33;
     const qcRate = qc.find(b => income <= b.upTo)?.rate || 0.2575;
-    const effectiveFedRate = fedRate * (1 - 0.165);
+    // Fédéral effectif au QC = taux fédéral diminué de l'abattement de 16,5 %.
+    const effectiveFedRate = fedRate * (1 - QC_FEDERAL_ABATEMENT_RATE);
     return effectiveFedRate + qcRate;
 };
 
@@ -593,7 +607,7 @@ export const calculateFiscalReport = (
     // §6.2 — crédits âge fédéral + pension fédéral (appliqués AVANT abatement QC).
     // Le clamp final à 0 sur totalTax couvre déjà le cas où fedTax devient négatif.
     fedTax -= ageCredits.fedCredit;
-    const abatement = fedTax * 0.165;
+    const abatement = fedTax * QC_FEDERAL_ABATEMENT_RATE;
     fedTax -= abatement;
 
     const qcData = calculateDetailedTax(netTaxable, indexedQcBrackets, skipBreakdown);
@@ -639,6 +653,12 @@ export const calculateNetFromGross = (monthlyGross: number) => {
     return report.netIncome / 12;
 };
 
+// Inverse de calculateNetFromGross : trouve le revenu BRUT annuel qui produit
+// un NET cible donné. L'impôt n'a pas d'inverse analytique simple (paliers +
+// crédits), donc on cherche par dichotomie dans l'intervalle [net, 2×net].
+// 20 itérations suffisent : la fonction impôt est monotone et lisse, donc
+// l'intervalle est divisé par 2^20 (~1 million) — convergence bien sous le
+// dollar. Tolérance d'arrêt : 1$ (assez précis pour de la projection).
 export const calculateGrossFromNet = (targetNetAnnual: number): number => {
     if (targetNetAnnual <= 0) return 0;
     let low = targetNetAnnual;

@@ -11,6 +11,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Lot de 4 merges (`3167a55`, `20abca8`, `4af08b2`, `6042fe9`) partis de `f257efb`.
 
 ### Ajouté
+- **Option « Immigré au Canada » (par personne)** — bascule dans Config et Onboarding.
+  Un immigrant n'accumule du droit CELI qu'à partir de son année de résidence fiscale
+  (et son droit REER depuis son revenu canadien) ; défaut = non-immigrant (droit complet
+  depuis 18 ans). Helper `getResidencyStartYear` + `tests/utils/residency.test.ts`.
 - **Test de régression coussin d'urgence** — couvre le bug HealthIndicator/NextBestAction
   (coussin et patrimoine retournaient 0 avant correction).
 - **Filet E2E Playwright (T2)** — `playwright.config.ts` + 15 tests dans `e2e/` : smoke
@@ -47,6 +51,13 @@ Lot de 4 merges (`3167a55`, `20abca8`, `4af08b2`, `6042fe9`) partis de `f257efb`
   16 444 → 16 452 $ (ARC, indexation 2,0 %). Les paliers d'impôt fédéraux et québécois ont été
   vérifiés contre les tables officielles 2026 : ils étaient déjà corrects. Impact de la
   correction : impôt QC surestimé d'environ 53 $/an/personne avant le fix.
+- **Bug de défaut résidence (CELI + PSV)** : quand l'année d'arrivée était vide, le moteur
+  supposait « arrivé il y a 5 ans », sous-estimant gravement le droit CELI et la résidence PSV
+  d'un résident de naissance. Corrigé via le statut immigrant explicite (défaut non-immigrant
+  = droit complet depuis 18 ans). Le défaut bugué `startYear - 5` est retiré des 3 sites moteur.
+- **Constantes RRQ 2026** : taux 1er volet 6,40 % → 6,30 % (base 5,40 → 5,30 %), MGA
+  74 900 → 74 600 $, MGAS 85 100 → 85 000 $. Vérifié contre Revenu Québec (le RPC fédéral
+  partage le même MGA). RRQ_MAX 4 569,60 → 4 479,30 $.
 
 ### Supprimé
 - **4 fonctions IA mortes** retirées de `services/claude.ts` : `getInvestmentAdvice`,

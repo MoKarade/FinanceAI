@@ -132,6 +132,7 @@ export interface User {
   birthDay?: number;                     // W5.1 (1-31)
   gender?: Gender;                       // W5.1 — table mortalité diffère
   canadaArrivalYear?: number;
+  isImmigrant?: boolean;                 // immigré au Canada → droits CELI/REER + résidence PSV calculés depuis canadaArrivalYear (sinon depuis la naissance)
   hasOwnedPropertyLast4Years?: boolean;
   hasChildren?: boolean;
   childCount?: number;

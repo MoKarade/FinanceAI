@@ -469,6 +469,21 @@ export const RRSP_ANNUAL_LIMITS: Record<number, number> = {
     2026: 33810, 2027: 34480, 2028: 35170, 2029: 35870, 2030: 36590,
 };
 
+/**
+ * Année de début de résidence fiscale canadienne, utilisée pour les droits de
+ * cotisation (CELI/REER) et la résidence PSV.
+ * - Non-immigrant (résident de naissance) : retourne l'année de naissance ;
+ *   combiné au plancher `birthYear + 18` côté appelant, ça donne le droit
+ *   complet depuis 18 ans / 2009.
+ * - Immigrant : l'année d'arrivée déclarée. Le droit CELI et la résidence PSV
+ *   ne commencent à s'accumuler qu'à partir de cette date.
+ */
+export const getResidencyStartYear = (
+    birthYear: number,
+    isImmigrant: boolean | undefined,
+    canadaArrivalYear: number | undefined,
+): number => (isImmigrant && canadaArrivalYear ? canadaArrivalYear : birthYear);
+
 export const calculateCeliRoom = (birthYear: number, arrivalYear: number, currentYear: number): number => {
     let room = 0;
     const yearTurning18 = birthYear + 18;

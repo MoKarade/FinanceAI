@@ -175,19 +175,33 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-orange-300">Arrivee au Canada</label>
-                  <input
-                    type="number"
-                    value={user.canadaArrivalYear || new Date().getFullYear() - 5}
-                    onChange={(e) => {
-                      const newUsers = [...config.users] as [User, User];
-                      newUsers[idx] = { ...user, canadaArrivalYear: parseInt(e.target.value) || 2020 };
-                      setConfig({ ...config, users: newUsers });
-                    }}
-                    className="w-full bg-dark border border-border rounded px-2 py-1 text-sm text-white font-mono"
-                    min={2009} max={new Date().getFullYear()}
-                    placeholder="ex: 2020"
-                  />
+                  <label className="flex items-center gap-2 text-xs text-orange-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!user.isImmigrant}
+                      onChange={(e) => {
+                        const newUsers = [...config.users] as [User, User];
+                        newUsers[idx] = { ...user, isImmigrant: e.target.checked };
+                        setConfig({ ...config, users: newUsers });
+                      }}
+                      className="w-3.5 h-3.5 rounded"
+                    />
+                    Immigré au Canada
+                  </label>
+                  {user.isImmigrant && (
+                    <input
+                      type="number"
+                      value={user.canadaArrivalYear || ''}
+                      onChange={(e) => {
+                        const newUsers = [...config.users] as [User, User];
+                        newUsers[idx] = { ...user, canadaArrivalYear: parseInt(e.target.value) || undefined };
+                        setConfig({ ...config, users: newUsers });
+                      }}
+                      className="w-full mt-1 bg-dark border border-border rounded px-2 py-1 text-sm text-white font-mono"
+                      min={1950} max={new Date().getFullYear()}
+                      placeholder="Année de résidence fiscale (ex: 2018)"
+                    />
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">

@@ -317,7 +317,18 @@ et que ca me mette une erreur ou un msg si pas dispo". Statut :
 
 ### TB1 — Hash navigation au boot ✅ FIXÉ (commit e888564, validé prod)
 ### TB2 — Worker crash `slice undefined` ✅ FIXÉ (commit e888564, validé prod)
-### TB3 — 7 cards scénarios Future à `0.00M$` 🟡 DORMANT — tripwire posé (2026-05-22)
+### TB3 — 7 cards scénarios Future à `0.00M$` ✅ FIX ROBUSTE (2026-05-27)
+**Résolution finale** : `computeEstateNetWorth` (estateCalculation.ts) sanitise désormais
+TOUTES ses entrées numériques via `Number.isFinite(v) ? v : 0` (validation aux frontières,
+cf. CLAUDE.md). Un champ de config vide/NaN contribue **0** au lieu de zéroter tout le
+patrimoine successoral → plus jamais de card à `0.00M$` sur input fautif. `?? 0` ne suffisait
+pas (NaN ∉ {null,undefined}). Bloc diagnostic estate + `_tb3DiagLogged` retirés (cause traitée
+à la source). Le tripwire **par-mois** dans `projection.ts` (3 points `liquid`) est **conservé**
+comme monitoring de la source amont (non reproductible). 5 tests de régression
+(`tests/services/estateCalculation.test.ts` : liquide NaN, config undefined, soldes multiples
+NaN → tous finis). Typecheck OK.
+
+_Historique diagnostic ci-dessous (conservé pour référence) :_
 **Hypothèse initiale RÉFUTÉE** : le worker NE tronque PAS `allResults`.
 `calculateFutureProjection` (projection.ts:1129) calcule chaque scénario via
 `runScenario(..., false, ...)` de façon déterministe → chaque `allResults[i]`

@@ -59,24 +59,47 @@ export interface EstateResult {
     startNW: number;
 }
 
-// TB3 diagnostic : ne logue qu'UNE fois par chargement (le worker appelle cette
-// fonction des centaines de fois — 7 scénarios × N itérations Monte Carlo).
-let _tb3DiagLogged = false;
-
 export function computeEstateNetWorth(
     inputs: Readonly<EstateCalcInputs>,
     calculateFiscalReport: FiscalFn,
 ): EstateResult {
-    const {
-        liquid, celi, celiapp, reer, nonReg, nonRegACB, crypto, reee,
-        realEstateEquity, mortgageBalance, smithManoeuvreDebt,
-        incomeRetirement, accRentesYear, accRetraitsReerYear,
-        grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
-        simulationYears, startYear, currentAge, retirementTargetAge,
-        governmentPension, activeUsersCount, simInflation, enableMonteCarlo,
-        startingCash, startingCELI, startingCELIAPP, startingREER,
-        startingNonReg, startingCrypto, startingREEE,
-    } = inputs;
+    // TB3 fix (2026-05-27) — validation aux frontières (cf. CLAUDE.md « never trust
+    // external data »). Un champ de config numérique vide/NaN ne doit JAMAIS produire
+    // un NaN qui se propage à finalRawNetWorth → estate → 7 cards à 0.00M$. `?? 0` ne
+    // suffit pas (NaN n'est ni null ni undefined), d'où `Number.isFinite`. Un champ
+    // fautif contribue 0 (au lieu de zéroter tout le patrimoine successoral).
+    const fin = (v: number): number => (Number.isFinite(v) ? v : 0);
+    const liquid = fin(inputs.liquid);
+    const celi = fin(inputs.celi);
+    const celiapp = fin(inputs.celiapp);
+    const reer = fin(inputs.reer);
+    const nonReg = fin(inputs.nonReg);
+    const nonRegACB = fin(inputs.nonRegACB);
+    const crypto = fin(inputs.crypto);
+    const reee = fin(inputs.reee);
+    const realEstateEquity = fin(inputs.realEstateEquity);
+    const mortgageBalance = fin(inputs.mortgageBalance);
+    const smithManoeuvreDebt = fin(inputs.smithManoeuvreDebt);
+    const incomeRetirement = fin(inputs.incomeRetirement);
+    const accRentesYear = fin(inputs.accRentesYear);
+    const accRetraitsReerYear = fin(inputs.accRetraitsReerYear);
+    const grossMarcBaseAnnual = fin(inputs.grossMarcBaseAnnual);
+    const grossAnnaBaseAnnual = fin(inputs.grossAnnaBaseAnnual);
+    const simSalaryGrowth = fin(inputs.simSalaryGrowth);
+    const simulationYears = fin(inputs.simulationYears);
+    const startYear = fin(inputs.startYear);
+    const currentAge = fin(inputs.currentAge);
+    const retirementTargetAge = fin(inputs.retirementTargetAge);
+    const governmentPension = fin(inputs.governmentPension);
+    const simInflation = fin(inputs.simInflation);
+    const startingCash = fin(inputs.startingCash);
+    const startingCELI = fin(inputs.startingCELI);
+    const startingCELIAPP = fin(inputs.startingCELIAPP);
+    const startingREER = fin(inputs.startingREER);
+    const startingNonReg = fin(inputs.startingNonReg);
+    const startingCrypto = fin(inputs.startingCrypto);
+    const startingREEE = fin(inputs.startingREEE);
+    const { activeUsersCount, enableMonteCarlo } = inputs;
 
     // V48: Smith Manoeuvre Bug — la dette HELOC est soustraite car l'actif réinvesti existe dans le Non-Enreg.
     const finalRawNetWorth = liquid + celi + celiapp + reer + nonReg + crypto + reee + realEstateEquity - mortgageBalance - smithManoeuvreDebt;
@@ -115,33 +138,14 @@ export function computeEstateNetWorth(
 
     const startNW = startingCash + startingCELI + startingCELIAPP + startingREER + startingNonReg + startingCrypto + startingREEE;
 
-    // TB3 (2026-05-22) — diagnostic NON-masquant : si estateNetWorth est non-fini,
-    // la garde plus bas le force à 0 → les 7 cards scénarios affichent 0.00M$.
-    // On logue l'input/intermédiaire fautif pour tracer la source sans inventer
-    // de valeur (cf. ADR 006). À retirer une fois la cause corrigée.
-    if (!Number.isFinite(estateNetWorth) && !_tb3DiagLogged) {
-        _tb3DiagLogged = true;
-        const probe: Record<string, number> = {
-            liquid, celi, celiapp, reer, nonReg, nonRegACB, crypto, reee,
-            realEstateEquity, mortgageBalance, smithManoeuvreDebt,
-            incomeRetirement, accRentesYear, accRetraitsReerYear,
-            grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
-            currentAge, retirementTargetAge, finalAge, remainingYearsAtEnd,
-            governmentPension, activeUsersCount, simInflation,
-            finalRawNetWorth, estateCurrentIncome, totalEstateLiquidation,
-            totalEstateTax, npvFactor, rrqNPV, psvNPV,
-        };
-        const bad = Object.entries(probe)
-            .filter(([, v]) => !Number.isFinite(v))
-            .map(([k, v]) => `${k}=${v}`)
-            .join(' | ');
-        console.warn(`[TB3/estate] estateNetWorth NaN → 0. Fautifs: ${bad || '(aucun input simple — voir calc)'}`);
-    }
-
+    // Garde de sortie (belt-and-suspenders) : avec les entrées sanitisées ci-dessus,
+    // ces valeurs sont déjà finies tant que calculateFiscalReport l'est. On conserve
+    // `fin()` au cas où le rapport fiscal renverrait un non-fini (sécurité, jamais 0
+    // « magique » caché : tous les inputs sont déjà validés).
     return {
-        finalRawNetWorth: Number.isNaN(finalRawNetWorth) ? 0 : finalRawNetWorth,
-        estateNetWorth: Number.isNaN(estateNetWorth) ? 0 : estateNetWorth,
-        totalEstateTax: Number.isNaN(totalEstateTax) ? 0 : totalEstateTax,
+        finalRawNetWorth: fin(finalRawNetWorth),
+        estateNetWorth: fin(estateNetWorth),
+        totalEstateTax: fin(totalEstateTax),
         startNW,
     };
 }

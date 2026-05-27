@@ -8,13 +8,11 @@
 // Décisions par usage (cf docs/PLAN_PHASE_4.md §3):
 //   - chat / chatStream      → claude-sonnet-4-6  (équilibre qualité/coût)
 //   - categorizeBatch        → claude-haiku-4-5   (vitesse, gros volumes)
-//   - analyzeBudget          → claude-sonnet-4-6
-//   - generateSmartGoals     → claude-sonnet-4-6
 //   - detectSubscriptions    → claude-haiku-4-5
 
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
-import { Transaction, RecurringItem, FinancialGoal, GoalType } from '../types';
+import { Transaction, RecurringItem } from '../types';
 import { logError } from './errorLogger';
 
 // ─── Modèles ─────────────────────────────────────────────────────────────────
@@ -62,19 +60,6 @@ const SubscriptionItemSchema = z.object({
 });
 const SubscriptionArraySchema = z.array(SubscriptionItemSchema);
 
-const SmartGoalItemSchema = z.object({
-    name: z.string(),
-    type: z.enum(['NET_WORTH', 'CELI', 'REER', 'LIQUIDITY', 'CUSTOM']),
-    targetAmount: z.number(),
-    deadline: z.string(),
-    rationale: z.string(),
-    actionPlan: z.array(z.string()),
-    monthlyContributionReq: z.number().optional(),
-    targetAccount: z.enum(['CELI', 'REER', 'NON-ENREG', 'CRYPTO']).optional(),
-});
-const SmartGoalArraySchema = z.array(SmartGoalItemSchema);
-
-const BudgetAnalysisArraySchema = z.array(z.string());
 
 const safeJsonValidate = <S extends z.ZodTypeAny>(text: string, schema: S): z.infer<S> | null => {
     try {
@@ -364,120 +349,6 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict (pas de markdown):
     }
 };
 
-// ─── Conseil investissement (compat gemini.ts) ───────────────────────────────
-
-export const getInvestmentAdvice = async (holdings: string, apiKey: string): Promise<string> => {
-    if (!apiKey) return 'Clé API Anthropic requise.';
-    try {
-        return await chat(
-            [{ role: 'user', content: `Voici mes placements actuels:\n${holdings}\n\nDonne-moi 3 recommandations concrètes pour rééquilibrer mon portefeuille (max 4 phrases au total).` }],
-            apiKey,
-            { system: QUEBEC_FISCAL_CONTEXT, maxTokens: 512, temperature: 0.7 },
-        );
-    } catch (e) {
-        console.error('[Claude] getInvestmentAdvice failed:', e);
-        return 'Erreur lors de l\'analyse. Vérifie ta clé API.';
-    }
-};
-
-// ─── Génération objectifs intelligents (compat gemini.ts) ────────────────────
-
-export const generateSmartGoals = async (
-    profile: { netWorth: number; monthlyIncome: number; age: number; existingGoals: FinancialGoal[]; topPriority: string },
-    apiKey: string,
-): Promise<FinancialGoal[]> => {
-    if (!apiKey) return [];
-    const userPrompt = `Profil financier:
-- Patrimoine net: ${roundToHundred(profile.netWorth)}$
-- Revenu mensuel: ${roundToHundred(profile.monthlyIncome)}$
-- Âge: ${profile.age} ans
-- Priorité utilisateur: ${profile.topPriority || 'aucune'}
-- Objectifs existants: ${profile.existingGoals.map(g => g.name).join(', ') || 'aucun'}
-
-Suggère 3 objectifs financiers SMART pour cette personne, complémentaires (pas de doublon avec les existants).
-RÉPONDS UNIQUEMENT avec un JSON Array strict (pas de markdown):
-[{
-  "name": string,
-  "type": "NET_WORTH"|"CELI"|"REER"|"LIQUIDITY"|"CUSTOM",
-  "targetAmount": number,
-  "deadline": "YYYY-MM-DD",
-  "rationale": string (max 1 phrase),
-  "actionPlan": [string, string, string],
-  "monthlyContributionReq"?: number,
-  "targetAccount"?: "CELI"|"REER"|"NON-ENREG"|"CRYPTO"
-}]`;
-
-    try {
-        const text = await chat(
-            [{ role: 'user', content: userPrompt }],
-            apiKey,
-            { system: QUEBEC_FISCAL_CONTEXT, maxTokens: 2048, temperature: 0.5 },
-        );
-        const validated = safeJsonValidate(text, SmartGoalArraySchema);
-        if (!validated) return [];
-        // Map vers FinancialGoal complet (id + status par défaut)
-        return validated.map(v => ({
-            id: `ai_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-            name: v.name,
-            type: v.type as GoalType,
-            targetAmount: v.targetAmount,
-            deadline: v.deadline,
-            rationale: v.rationale,
-            actionPlan: v.actionPlan,
-            monthlyContributionReq: v.monthlyContributionReq,
-            targetAccount: v.targetAccount,
-            status: 'suggestion' as const,
-        }));
-    } catch (e) {
-        console.error('[Claude] generateSmartGoals failed:', e);
-        return [];
-    }
-};
-
-// ─── Diagnostic budget (compat gemini.ts analyzeBudgetAI) ────────────────────
-
-export const analyzeBudgetAI = async (
-    budgetData: {
-        totalNetIncome: number;
-        totalBudget: number;
-        totalSpent: number;
-        alerts: string[];
-        categories: { name: string; target: number; spent: number; nature: string }[];
-    },
-    apiKey: string,
-): Promise<string[]> => {
-    if (!apiKey) return ['Clé API Anthropic requise pour le diagnostic IA.'];
-
-    const userPrompt = `AGIS COMME UN CONSEILLER FINANCIER QUÉBÉCOIS EXPERT, STRICT ET BIENVEILLANT.
-Analyse ce budget mensuel et fournis EXACTEMENT 3 recommandations courtes (1-2 phrases max) très concrètes et orientées action.
-
-DONNÉES DU MOIS (montants arrondis à 100$):
-- Revenu net mensuel: ${roundToHundred(budgetData.totalNetIncome)}$
-- Budget prévu: ${roundToHundred(budgetData.totalBudget)}$
-- Dépenses réelles: ${roundToHundred(budgetData.totalSpent)}$
-- Alertes de dépassement: ${budgetData.alerts.length > 0 ? budgetData.alerts.join(', ') : 'Aucune'}
-
-DÉTAIL DES CATÉGORIES (Prévu vs Réel, arrondis à 100$):
-${budgetData.categories.map(c => `- ${c.name} (${c.nature}): ${roundToHundred(c.target).toFixed(0)}$ prévu, ${roundToHundred(c.spent).toFixed(0)}$ dépensé`).join('\n')}
-
-RÉPONDS UNIQUEMENT avec un JSON Array strict de 3 strings (pas de markdown):
-["recommandation 1", "recommandation 2", "recommandation 3"]`;
-
-    try {
-        const text = await chat(
-            [{ role: 'user', content: userPrompt }],
-            apiKey,
-            { system: QUEBEC_FISCAL_CONTEXT, maxTokens: 1024, temperature: 0.7 },
-        );
-        const validated = safeJsonValidate(text, BudgetAnalysisArraySchema);
-        return validated && validated.length > 0
-            ? validated
-            : ['L\'IA n\'a pas pu générer de recommandations valides.'];
-    } catch (e) {
-        logError({ source: 'ai', message: 'analyzeBudgetAI failed', error: e });
-        return ['Erreur lors de l\'analyse du budget. Vérifie ta clé API Anthropic.'];
-    }
-};
 
 // ─── Phase B.3 — "Prochaine Meilleure Action" ───────────────────────────────
 
@@ -867,66 +738,3 @@ export const analyzePayslip = async (file: File, apiKey: string): Promise<Paysli
     return validated;
 };
 
-// ─── Vision: analyse générique de documents (compat gemini.ts) ──────────────
-
-export const analyzeDocuments = async (
-    files: File[],
-    apiKey: string,
-    onProgress?: (current: number, total: number) => void,
-): Promise<{ summary: string; extracted: Record<string, unknown>[] }> => {
-    if (!apiKey) return { summary: 'Clé API Anthropic requise.', extracted: [] };
-    if (files.length === 0) return { summary: 'Aucun fichier à analyser.', extracted: [] };
-
-    const extracted: Record<string, unknown>[] = [];
-    let summary = '';
-
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        onProgress?.(i + 1, files.length);
-
-        // Lit le fichier en base64 (Anthropic Vision accepte les images base64)
-        const base64 = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-                const result = reader.result as string;
-                // strip "data:image/png;base64," prefix
-                resolve(result.split(',')[1] || result);
-            };
-            reader.onerror = () => reject(new Error('Lecture fichier échouée'));
-            reader.readAsDataURL(file);
-        });
-
-        const mediaType = (file.type || 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
-        if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mediaType)) {
-            console.warn(`[Claude] Type ${mediaType} non supporté, skip ${file.name}`);
-            continue;
-        }
-
-        try {
-            const client = makeClient(apiKey);
-            const response = await client.messages.create({
-                model: MODEL_SONNET,
-                max_tokens: 1024,
-                system: `${QUEBEC_FISCAL_CONTEXT}\nTu analyses des documents fiscaux québécois (T4, RL-1, relevés, factures). Extrais les chiffres clés.`,
-                messages: [{
-                    role: 'user',
-                    content: [
-                        { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-                        { type: 'text', text: 'Analyse ce document fiscal. Extrais les montants importants (revenu brut, impôt fédéral retenu, impôt provincial retenu, RRQ, AE, etc.) et résume en 2-3 phrases.' },
-                    ],
-                }],
-            });
-            const text = response.content
-                .filter(b => b.type === 'text')
-                .map(b => (b as { type: 'text'; text: string }).text)
-                .join('');
-            summary += `\n--- ${file.name} ---\n${text}\n`;
-            extracted.push({ file: file.name, analysis: text });
-        } catch (e) {
-            console.error(`[Claude] analyzeDocuments error on ${file.name}:`, e);
-            summary += `\n--- ${file.name} ---\nErreur: ${(e as Error).message}\n`;
-        }
-    }
-
-    return { summary: summary.trim(), extracted };
-};

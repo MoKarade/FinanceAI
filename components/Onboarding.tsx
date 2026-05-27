@@ -60,7 +60,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
         onComplete({
             config,
-            apiKeys: { eraContext: '', anthropic: anthropicKey, finnhub: '' },
+            apiKeys: { anthropic: anthropicKey, finnhub: '' },
             fxRates: DEFAULT_FX_RATES,
             budgetItems: INITIAL_BUDGET,
             projection: INITIAL_PROJECTION,

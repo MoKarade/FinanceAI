@@ -20,7 +20,7 @@ Le moteur `calculateFutureProjection()` consomme déjà :
 | **Life Events**      | `lifeEvents[]` (mariage, krach, vente immo, héritage)                                |
 | **Retirement**       | `retirementGoal` (targetAge, monthlyIncome, govPension, dbPension)                   |
 | **Transactions**     | `transactions[]` → `calculatedStartingCash`                                          |
-| **Settings**         | `apiKeys.anthropic` + `apiKeys.eraContext` (Phase 4 — insights AI Claude), `config.users` (citoyenneté, province, santé…) |
+| **Settings**         | `apiKeys.anthropic` (Phase 4 — insights AI Claude) + `apiKeys.finnhub` (market data), `config.users` (citoyenneté, province, santé…) |
 | **W5.x extensions**  | InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness |
 | **🆕 Savings Goals** | `savingsGoals[]` (deadlines déclenchent dépenses sur le liquide)                     |
 | **🆕 Financial Goals**| `financialGoals[]` (deadlines retirent du compte ciblé CELI/REER/NonReg/Crypto)     |
@@ -228,7 +228,7 @@ nouveaux scénarios portent un badge "Nouveau" pour les mettre en évidence.
 | Page | État | Pattern primitive utilisé |
 |---|---|---|
 | FutureProjection (C1) | ✅ | PageHeader + 4-KPI StatGrid + 4 CollapsibleSection + grille 7 scenario cards |
-| Dashboard (C2) | ✅ | PageHeader + 4-KPI StatGrid + EraContextInsights + chart Brush |
+| Dashboard (C2) | ✅ | PageHeader + 4-KPI StatGrid + chart Brush |
 | Budget (C3) | ✅ | PageHeader + 4-KPI StatGrid + BudgetGroupTable extrait |
 | Investments (C4) | ✅ | PageHeader + KPIStat/StatGrid dans card Portefeuille projeté + 3 CollapsibleSection (Allocation / Rééquilibrage / Portefeuille Détaillé) |
 | RealEstate (C5) | ✅ | PageHeader + 4-KPI StatGrid + PropertyConfigurator + MultiPropertyComparison extraits |

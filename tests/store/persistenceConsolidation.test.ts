@@ -31,7 +31,7 @@ describe('getInitialStateWithMigration — consolidation persistance', () => {
         const s = getInitialStateWithMigration();
         expect(s.transactions).toEqual([]);
         expect(s.budgetItems).toEqual([]);
-        expect(s.apiKeys).toEqual({ eraContext: '', anthropic: '', finnhub: '' });
+        expect(s.apiKeys).toEqual({ anthropic: '', finnhub: '' });
     });
 
     it('ne perd pas les données : financeai-storage présent + legacy présent → on garde la voie persist', () => {

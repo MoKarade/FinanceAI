@@ -34,10 +34,6 @@ vi.mock('react-i18next', () => ({
         i18n: { language: 'fr', changeLanguage: () => Promise.resolve() },
     }),
 }));
-vi.mock('../../services/eraContext', () => ({
-    fetchTransactions: vi.fn().mockResolvedValue([]),
-    fetchEraContextTransactions: vi.fn().mockResolvedValue([]),
-}));
 vi.mock('../../services/marketData', () => ({
     configureMarketDataProvider: vi.fn(),
     getQuote: vi.fn().mockResolvedValue(null),
@@ -90,7 +86,7 @@ const emptyState: AppState = {
     retirementGoal: { targetAge: 65, targetMonthlyIncome: 4000, governmentPension: 1200 },
     financialGoals: [],
     initialBalances: {},
-    apiKeys: { eraContext: '', anthropic: '', finnhub: '' },
+    apiKeys: { anthropic: '', finnhub: '' },
     fxRates: { USD: 1.35, EUR: 1.45, CAD: 1 },
     lastUpdate: Date.now(),
     categorizationRules: [],

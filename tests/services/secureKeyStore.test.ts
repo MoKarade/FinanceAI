@@ -19,7 +19,6 @@ const makeKey = (): Promise<CryptoKey> =>
     ) as Promise<CryptoKey>;
 
 const SAMPLE: PersistedApiKeys = {
-    eraContext: 'era_live_abc123',
     anthropic: 'sk-ant-secret-xyz',
     finnhub: 'fh_test_456',
 };
@@ -35,7 +34,6 @@ describe('secureKeyStore — cœur crypto', () => {
     it('le blob ne contient pas les clés en clair', async () => {
         const key = await makeKey();
         const blob = await encryptJson(key, SAMPLE);
-        expect(blob).not.toContain('era_live_abc123');
         expect(blob).not.toContain('sk-ant-secret-xyz');
         expect(blob).not.toContain('fh_test_456');
     });
@@ -73,7 +71,7 @@ describe('secureKeyStore — cœur crypto', () => {
 
     it('round-trip de clés vides (cas par défaut)', async () => {
         const key = await makeKey();
-        const empty: PersistedApiKeys = { eraContext: '', anthropic: '', finnhub: '' };
+        const empty: PersistedApiKeys = { anthropic: '', finnhub: '' };
         const blob = await encryptJson(key, empty);
         expect(await decryptJson<PersistedApiKeys>(key, blob)).toEqual(empty);
     });

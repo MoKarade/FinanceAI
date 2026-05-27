@@ -78,7 +78,7 @@ describe('MissingDataChecklist', () => {
                 ],
             },
             retirementGoal: { targetAge: 65, lifeExpectancy: 92, targetMonthlyIncome: 5000, governmentPension: 1200 },
-            apiKeys: { eraContext: 'tok', anthropic: 'sk-x', finnhub: '' },
+            apiKeys: { anthropic: 'sk-x', finnhub: '' },
         });
         render(<MissingDataChecklist />);
         expect(screen.getByText(/Configuration complète/)).toBeInTheDocument();
@@ -86,12 +86,12 @@ describe('MissingDataChecklist', () => {
 
     it('lists missing fields as inline banners', () => {
         useFinanceStore.setState({
-            apiKeys: { eraContext: '', anthropic: '', finnhub: '' },
+            apiKeys: { anthropic: '', finnhub: '' },
             retirementGoal: { ...initialState.retirementGoal, lifeExpectancy: undefined },
         });
         render(<MissingDataChecklist />);
-        // au moins 3 champs manquants (anthropic, era, lifeExpectancy)
+        // au moins 2 champs manquants (anthropic, lifeExpectancy)
         const buttons = screen.getAllByRole('button');
-        expect(buttons.length).toBeGreaterThanOrEqual(3);
+        expect(buttons.length).toBeGreaterThanOrEqual(2);
     });
 });

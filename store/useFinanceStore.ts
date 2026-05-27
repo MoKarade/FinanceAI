@@ -37,7 +37,7 @@ export interface FinanceState extends AppState {
     /** Called by the destination page after it has consumed the focus intent. */
     clearPendingFocus: () => void;
     updateFxRates: (rates: { USD: number; EUR: number; CAD: number; lastFetched?: number }) => void;
-    updateApiKeys: (keys: { eraContext: string; anthropic: string }) => void;
+    updateApiKeys: (keys: { anthropic: string; finnhub?: string }) => void;
     updateLastUpdate: () => void;
     resetState: () => void;
     /** Active le mode test : sauvegarde l'état actuel + applique des fixtures. */
@@ -109,7 +109,7 @@ export const getInitialStateWithMigration = (): AppState => {
         retirementGoal: { targetAge: 65, targetMonthlyIncome: 4000, governmentPension: 1200 },
         financialGoals: [],
         initialBalances: {},
-        apiKeys: { eraContext: '', anthropic: '', finnhub: '' },
+        apiKeys: { anthropic: '', finnhub: '' },
         fxRates: DEFAULT_FX_RATES,
         lastUpdate: Date.now(),
         categorizationRules: [],
@@ -140,11 +140,9 @@ export const getInitialStateWithMigration = (): AppState => {
 
     try {
         const savedApiKeysStr = localStorage.getItem('app_api_keys');
-        const legacyToken = localStorage.getItem('lm_token');
         // Phase 4 A5: Gemini retiré — pas de migration depuis l'ancienne clé.
         // L'utilisateur doit fournir une clé Anthropic Claude.
-        let safeApiKeys: { eraContext: string; anthropic: string; finnhub: string } = {
-            eraContext: legacyToken || '',
+        let safeApiKeys: { anthropic: string; finnhub: string } = {
             anthropic: '',
             finnhub: '',
         };
@@ -163,7 +161,6 @@ export const getInitialStateWithMigration = (): AppState => {
             try {
                 const parsed = JSON.parse(savedApiKeysStr);
                 safeApiKeys = {
-                    eraContext: parsed.eraContext || parsed.lunchMoney || safeApiKeys.eraContext,
                     anthropic: parsed.anthropic || '',
                     finnhub: parsed.finnhub || '',
                 };
@@ -326,7 +323,7 @@ export const useFinanceStore = create<FinanceState>()(
                     ...fixtures,
                     // BUG fix : les clés API sont des credentials, pas des données
                     // financières. Le mode test ne doit jamais les écraser, sinon
-                    // eraContext / market data (actions) tombent en panne et il faut
+                    // market data (actions) tombe en panne et il faut
                     // tout re-saisir au retour. On garde toujours les vraies clés.
                     apiKeys: prev.apiKeys,
                     isTestMode: true,
@@ -357,7 +354,7 @@ export const useFinanceStore = create<FinanceState>()(
                 // Type de migration : union de l'état courant + champs legacy des versions
                 // précédentes (apiKeys.gemini retiré en v3). Remplace les (state as any).
                 type MigratingState = Partial<FinanceState> & {
-                    apiKeys?: { eraContext?: string; gemini?: string; anthropic?: string; finnhub?: string };
+                    apiKeys?: { gemini?: string; anthropic?: string; finnhub?: string };
                     retirementGoal?: Partial<FinanceState['retirementGoal']> & { lifeExpectancy?: number };
                     assets?: unknown[];
                 };
@@ -374,7 +371,6 @@ export const useFinanceStore = create<FinanceState>()(
                     state = {
                         ...state,
                         apiKeys: {
-                            eraContext: apiKeys.eraContext || '',
                             anthropic: apiKeys.anthropic || '',
                         },
                     } as MigratingState;
@@ -387,7 +383,6 @@ export const useFinanceStore = create<FinanceState>()(
                     state = {
                         ...state,
                         apiKeys: {
-                            eraContext: apiKeys.eraContext || '',
                             anthropic: apiKeys.anthropic || '',
                             finnhub: apiKeys.finnhub || '',
                         },

@@ -9,13 +9,14 @@
 > - Clés API chiffrées AES-256-GCM (services/secureKeyStore.ts) ✅
 > - Import CSV universel (100% local, parseBankCsv.ts) ✅
 > - Crypto pricing CoinGecko + Stock pricing Finnhub ✅
-> - Era integration dormante (MCP-only, UI retirée) ✅
+> - Era retiré entièrement (API REST inexistante — MCP-only) ✅
 > - G21 : Optimiseur de stratégie (strategySearch + drawdownOptimizer + bouton Annuler) ✅
 > - G22 : GuidedTour, ProjectionExplains, Settings en sous-sections, Budget+Planif fusionnés ✅
-> Voir [AUTH_SETUP.md](AUTH_SETUP.md), [SECURITY_STRATEGY.md](SECURITY_STRATEGY.md). Tests 742/742 verts.
+> - G23 : U3/U4 accessibilité + DT4 split fixtures + bug HealthIndicator + 0 warning ESLint + code mort purgé ✅
+> Voir [AUTH_SETUP.md](AUTH_SETUP.md), [SECURITY_STRATEGY.md](SECURITY_STRATEGY.md). Tests **732/732 verts** (71 fichiers).
 >
-> Session précédente : 2026-05-25 (cycles 19-22) — refonte UX (G22) + optimiseur stratégie (G21).
-> Tests 596 → **742 verts**. App live sur https://www.hubperso.com.
+> Session précédente : 2026-05-26 (G22) — refonte UX + navigation.
+> Tests 742 → **732 verts** (delta : 2 fichiers test era retirés, compensé par test régression coussin).
 >
 > **Cycle 17-18 highlights** :
 > - Mode test fixtures (couple Alex/Sam, 5 actifs réels Yahoo, REEE/dettes/immo)
@@ -39,12 +40,12 @@
 | **Branche principale** | `main` |
 | **Dernière PR mergée** | **#116** (fix Lighthouse a11y 95→100 + SW cache) |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push main) |
-| **Tests** | **742/742 verts** (73 fichiers, ~52s en local) |
+| **Tests** | **732/732 verts** (71 fichiers, ~52s en local) |
 | **Typecheck** | Clean en mode strict |
 | **Build** | OK — bundle index ~528 KB gzip ~166 KB (vendor jspdf 391 KB lazy) |
 | **Schema store** | v6 (Zustand persist avec migrations v1→v6) |
 | **Stack IA** | `@anthropic-ai/sdk` (Sonnet 4.6 + Haiku 4.5) — Gemini retiré |
-| **Banque** | CSV universel (100% local, parseBankCsv.ts) — Era Context MCP-only (UI retirée) |
+| **Banque** | CSV universel (100% local, parseBankCsv.ts) — Era Context retiré entièrement |
 | **Crypto** | CoinGecko (gratuit, sans clé) |
 | **Stock/ETF** | Finnhub REST (gratuit) |
 | **Sécurité storage** | AES-256-GCM + IndexedDB non-extractible (services/secureKeyStore.ts) |
@@ -183,6 +184,17 @@ de Future (badge "Scénario actif : {strategyName}" dans subtitle).
 | G22-B1 | Valeur nette complète dans FutureProjection (placements reconstruits + cash) |
 | G22-B2 | Bascule directe Couple/Individuel depuis la sidebar |
 
+### G23 — Qualité & purge (session 2026-05-27, 4 merges directs sur main)
+
+| Commit | Description |
+|---|---|
+| `3167a55` | U3 radio-group MC (clavier natif) + U4 tooltip tous événements + DT4 split testFixtures (6 modules) + bug HealthIndicator/NextBestAction (coussin = 0) + lisibilité tax.ts/projection.ts + sécurité MEDIUM eraContext + 0 warning ESLint (484→0) + resync docs |
+| `20abca8` | Retrait 4 fonctions IA mortes de services/claude.ts (getInvestmentAdvice, generateSmartGoals, analyzeBudgetAI, analyzeDocuments) + schémas Zod orphelins |
+| `4af08b2` | Retrait COMPLET era Context (~1 224 lignes) : services/eraContext.ts, services/aiOrchestrator.ts, components/dashboard/EraContextInsights.tsx, clé apiKeys.eraContext. ADR 002 marqué SUPERSEDED |
+| `6042fe9` | Purge résidus era (CSP index.html + netlify.toml, source log errorLogger) + code mort knip (53→36 unused exports : hasSeenTour, PLAN_LEVELS, annualToMonthly, getAssetMeta*, getDividends, clearApiKeys, loadApiKeys) |
+
+Tests après session : **732 verts / 71 fichiers** (delta : 2 fichiers test era retirés, compensé par test de régression coussin).
+
 ### Phase 3 — Lighthouse prod fixes (PR #116)
 
 | PR | Description |
@@ -242,7 +254,7 @@ npm install --no-audit --no-fund  # PAS de package-lock.json committé (commit 9
 ### Commandes utiles
 ```bash
 npm run dev          # localhost:3000 — Vite HMR
-npm test             # vitest, doit rester 742/742
+npm test             # vitest, doit rester 732/732
 npm run typecheck    # tsc --noEmit, strict
 npm run build        # bundle prod (vérifie pas de regression de size)
 npm run lint         # eslint
@@ -283,8 +295,7 @@ Onglets retirés : Planning (fusionné dans Budget — G22-N3), Système (fusion
 - **Projection moteur** : `services/projection.ts` (9 phases mensuelles, 7 scénarios) — voir `docs/PROJECTION.md`
 - **Fiscal** : `utils/tax.ts` (barèmes 2026 fédéral + QC + RRQ + RQAP + AE)
 - **PDF** : `services/pdfReport.ts` (jspdf lazy)
-- **IA** : `services/claude.ts` (Anthropic SDK) + `services/aiOrchestrator.ts`
-- **Era Context** : `services/eraContext.ts` (9 endpoints + cache TTL 1h)
+- **IA** : `services/claude.ts` (Anthropic SDK) — `aiOrchestrator.ts` et `eraContext.ts` supprimés (era retiré)
 - **Market data** : `services/marketData/` (façade Finnhub)
 - **Backup** : `services/backupAuto.ts` (IndexedDB rolling 7-day) + `services/cloudBackup.ts` (export chiffré)
 - **Audit/logs** : `services/errorLogger.ts` + `services/auditLog.ts` (rolling localStorage)

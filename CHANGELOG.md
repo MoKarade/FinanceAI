@@ -6,6 +6,58 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — G23 · qualité & purge] — 2026-05-27
+
+Lot de 4 merges (`3167a55`, `20abca8`, `4af08b2`, `6042fe9`) partis de `f257efb`.
+
+### Ajouté
+- **Test de régression coussin d'urgence** — couvre le bug HealthIndicator/NextBestAction
+  (coussin et patrimoine retournaient 0 avant correction).
+
+### Modifié
+- **U3 — Radio-group Monte Carlo** : le toggle déterministe/MC dans ProjectionControls
+  est désormais un vrai `<input type="radio">` stylé, navigable au clavier nativement.
+- **U4 — Tooltip Futur : tous les événements** : ProjectionTooltip affiche maintenant
+  TOUS les événements du mois (avant : seulement le 1er + « +N »).
+- **DT4 — Split testFixtures** : `services/testFixtures.ts` (380 lignes) découpé en
+  6 modules (`testConfig`, `testAssets`, `testBudget`, `testGoals`, `testTransactions`,
+  `testMarketData`) ; `testFixtures.ts` reste le point d'entrée unique.
+- **Lisibilité fiscale** : `tax.ts` — constante `QC_FEDERAL_ABATEMENT_RATE` pour le 0,165,
+  commentaires barèmes ; `projection.ts` — commentaires règle des 4 % et amortissement.
+
+### Corrigé
+- **Bug HealthIndicator et NextBestAction** : coussin d'urgence et patrimoine affichaient 0
+  car le code lisait des clés fixes `initialBalances.liquidity/.celi` inexistantes. Corrigé
+  en passant par `computeCurrentLiquidity` (`services/portfolio.ts`) comme source unique.
+- **Sécurité MEDIUM** : `eraContext` ne propage plus le corps HTTP brut dans le message
+  d'erreur.
+
+### Supprimé
+- **4 fonctions IA mortes** retirées de `services/claude.ts` : `getInvestmentAdvice`,
+  `generateSmartGoals`, `analyzeBudgetAI`, `analyzeDocuments` + leurs schémas Zod
+  orphelins. Aucun appelant.
+- **Era Context retiré entièrement** (ADR 002 marqué SUPERSEDED) : `services/eraContext.ts`,
+  `services/aiOrchestrator.ts`, `components/dashboard/EraContextInsights.tsx`, clé
+  `apiKeys.eraContext` — environ 1 224 lignes supprimées. Raison : l'API REST
+  `api.era.app` n'existe pas (Era est MCP-only), tous les appels échouaient. `AiAssistant`
+  et `NextBestAction` dégradent proprement (Claude sans enrichissement era).
+- **Résidus era** purgés : CSP `api.era.app` retirée d'`index.html` et `netlify.toml`,
+  source de log `'era'` retirée d'`errorLogger`.
+- **Code mort confirmé via knip** (53 → 36 unused exports) : `hasSeenTour`, `PLAN_LEVELS`,
+  `annualToMonthly`, `getAssetMeta`/`getAssetMetaSync`, `getDividends`, `clearApiKeys`,
+  `loadApiKeys`. Les 36 exports restants = barèmes fiscaux/immobiliers protégés intentionnellement.
+
+### Qualité
+- **0 warning ESLint** : 484 warnings éliminés (371 `no-explicit-any` typés précisément,
+  64 `no-unused-vars`, 26 `no-console`, 20 `react-hooks/exhaustive-deps`, 3 directives
+  obsolètes). Aucun override de config ESLint ajouté. 93 erreurs `tsc` induites par le
+  typage strict réconciliées.
+- Docs resync : README, SESSION_HANDOVER, USER_GUIDE, MANUAL_TEST_CHECKLIST.
+- **Tests : 742 → 732** verts (71 fichiers). Delta = retrait des 2 fichiers de test era,
+  partiellement compensé par le test de régression coussin.
+
+---
+
 ## [unreleased — G22 · lisibilité, navigation & pédagogie] — 2026-05-26
 
 Lot de 13 items axés sur la clarté pour un utilisateur non expert.

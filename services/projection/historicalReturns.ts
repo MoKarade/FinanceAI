@@ -21,7 +21,7 @@ export interface YearReturn {
 
 // Données 1928-2024 (rendements en %). Source: Aswath Damodaran (NYU Stern).
 // Format compact. Pour usage projection on convertit en mois.
-export const HISTORICAL_RETURNS_US: YearReturn[] = [
+const HISTORICAL_RETURNS_US: YearReturn[] = [
     { year: 1928, sp500TotalReturn: 43.81, bondReturn:  0.84, inflationRate: -1.15 },
     { year: 1929, sp500TotalReturn: -8.30, bondReturn:  4.20, inflationRate:  0.58 },
     { year: 1930, sp500TotalReturn:-25.12, bondReturn:  4.54, inflationRate: -6.40 },
@@ -125,7 +125,7 @@ export const HISTORICAL_RETURNS_US: YearReturn[] = [
  * Échantillonne un bloc de N années consécutives parmi l'historique.
  * Si le bloc dépasse la fin du dataset, on wrap-around (concat début).
  */
-export function sampleHistoricalBlock(
+function sampleHistoricalBlock(
     rng: () => number,
     blockYears: number,
 ): YearReturn[] {
@@ -172,14 +172,6 @@ export function buildReplaySequence(
         seq.push(HISTORICAL_RETURNS_US[(idx + i) % HISTORICAL_RETURNS_US.length]);
     }
     return seq;
-}
-
-/**
- * Convertit un rendement annuel en rendement mensuel équivalent.
- * (1 + r_annual)^(1/12) - 1
- */
-export function annualToMonthly(annualPct: number): number {
-    return (Math.pow(1 + annualPct / 100, 1 / 12) - 1) * 100;
 }
 
 // ───────────────────────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@
 //
 // Toutes les requêtes passent par le cache TTL automatique.
 
-import type { Quote, HistoryPoint, AssetProfile, DividendInfo, MarketDataProvider } from './types';
+import type { Quote, HistoryPoint, AssetProfile, MarketDataProvider } from './types';
 import { withCache, clearMarketDataCache } from './cache';
 import { FinnhubProvider } from './providers/finnhub';
 import { CoinGeckoProvider, coinGeckoIdFor } from './providers/coingecko';
@@ -71,14 +71,6 @@ export async function getProfile(symbol: string): Promise<AssetProfile | null> {
     const provider = pickProvider(symbol);
     if (!provider) return null;
     return withCache('profile', symbol, () => provider.getProfile(symbol));
-}
-
-/** Prochains dividendes connus. Optional — provider peut ne pas l'implémenter. */
-export async function getDividends(symbol: string): Promise<DividendInfo[]> {
-    const provider = pickProvider(symbol);
-    if (!provider || !provider.getDividends) return []; // crypto → pas de dividendes
-    const result = await withCache('dividends', symbol, () => provider.getDividends!(symbol));
-    return result ?? [];
 }
 
 /** Diagnostic : retourne le nom du provider actif ou 'none'. */

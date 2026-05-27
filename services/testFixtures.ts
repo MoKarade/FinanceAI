@@ -21,7 +21,7 @@
 // (TestModePanel, usePortfolioHistory, tests) n'ont pas à changer.
 
 import type { AppState } from '../types';
-import { TEST_CONFIG, TEST_USERS } from './testConfig';
+import { TEST_CONFIG } from './testConfig';
 import { TEST_ASSETS } from './testAssets';
 import { TEST_BUDGET_ITEMS, TEST_DEBTS, TEST_REAL_ESTATE } from './testBudget';
 import {
@@ -36,9 +36,6 @@ import { generateTestTransactions } from './testTransactions';
 // Re-export pour les consommateurs qui importaient directement depuis ce
 // fichier (ex : tests unitaires qui mockent generateTestMarketData).
 export { generateTestMarketData } from './testMarketData';
-// Re-export TEST_USERS pour les tests qui vérifient les utilisateurs.
-export { TEST_USERS };
-
 /**
  * Retourne un état complet de test. Les balances et soldes sont cohérents
  * (CELI ~30k, REER ~12k, NonReg ~3.5k, Crypto ~14k = total ~60k).

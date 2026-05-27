@@ -14,7 +14,7 @@
 const STORAGE_KEY = 'financeai:errorLog:v1';
 const MAX_ENTRIES = 100;
 
-export type ErrorSource = 'ai' | 'era' | 'projection' | 'ui' | 'network' | 'storage' | 'unknown';
+export type ErrorSource = 'ai' | 'projection' | 'ui' | 'network' | 'storage' | 'unknown';
 
 export type ErrorSeverity = 'info' | 'warning' | 'error' | 'critical';
 

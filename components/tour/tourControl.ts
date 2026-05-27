@@ -15,15 +15,6 @@ export function startGuidedTour(): void {
   window.dispatchEvent(new CustomEvent(TOUR_EVENT));
 }
 
-/** Le tutoriel a-t-il déjà été terminé/passé au moins une fois ? */
-export function hasSeenTour(): boolean {
-  try {
-    return localStorage.getItem(TOUR_DONE_KEY) === 'true';
-  } catch {
-    return false;
-  }
-}
-
 /** Marque le tutoriel comme vu (terminé ou passé). */
 export function markTourSeen(): void {
   try {

@@ -14,9 +14,6 @@ import { ACTION_ACCOUNTS, type ActionAccountKey } from './yearlyActions';
 
 export type PlanLevel = 'global' | 'decade' | 'triennium' | 'year' | 'semester' | 'quarter' | 'month';
 
-/** Du plus large au plus fin. */
-export const PLAN_LEVELS: PlanLevel[] = ['global', 'decade', 'triennium', 'year', 'semester', 'quarter', 'month'];
-
 /** Niveau enfant atteint en cliquant un bucket de ce niveau (null = feuille). */
 const CHILD_LEVEL: Record<PlanLevel, PlanLevel | null> = {
     global: 'decade',

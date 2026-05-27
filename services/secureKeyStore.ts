@@ -60,7 +60,7 @@ const getSubtle = (): SubtleCrypto | null => {
  * contexte sécurisé (HTTPS ou localhost). Sinon on dégrade proprement vers
  * « mémoire uniquement » (les clés restent valides pour la session).
  */
-export const isSecureKeyStoreSupported = (): boolean =>
+const isSecureKeyStoreSupported = (): boolean =>
     typeof indexedDB !== 'undefined' &&
     getSubtle() !== null &&
     typeof localStorage !== 'undefined';
@@ -143,14 +143,6 @@ const idbPut = (db: IDBDatabase, key: string, value: unknown): Promise<void> =>
         tx.onerror = () => reject(tx.error ?? new Error('Écriture IndexedDB échouée'));
     });
 
-const idbDelete = (db: IDBDatabase, key: string): Promise<void> =>
-    new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        tx.objectStore(STORE_NAME).delete(key);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error ?? new Error('Suppression IndexedDB échouée'));
-    });
-
 /**
  * Récupère la clé de device existante, ou en génère une nouvelle
  * (non-extractible) et la persiste. Une seule clé par navigateur/profil.
@@ -227,52 +219,4 @@ export const loadApiKeysDetailed = async (): Promise<LoadApiKeysResult> => {
     }
 };
 
-/**
- * Charge et déchiffre les clés API persistées. Retourne `null` si rien n'est
- * stocké, si la clé de device manque, ou si le blob est corrompu — jamais
- * une exception (le boot ne doit pas casser à cause des clés).
- * @deprecated Préférer `loadApiKeysDetailed` pour distinguer les cas d'erreur.
- */
-export const loadApiKeys = async (): Promise<PersistedApiKeys | null> => {
-    if (!isSecureKeyStoreSupported()) return null;
-    const blob = localStorage.getItem(LS_BLOB_KEY);
-    if (!blob) return null;
-    // Contrat : ne JAMAIS lever (le boot ne doit pas casser à cause des clés).
-    // openDb() lui-même peut échouer (quota, navigation privée) → tout est
-    // sous try/catch, on repart à vide en cas de pépin.
-    try {
-        const db = await openDb();
-        let key: CryptoKey | undefined;
-        try {
-            key = await idbGet<CryptoKey>(db, DEVICE_KEY_ID);
-        } finally {
-            db.close();
-        }
-        if (!key) return null; // blob sans clé → indéchiffrable, on repart à vide
-        return await decryptJson<PersistedApiKeys>(key, blob);
-    } catch {
-        return null; // coffre indispo / blob altéré / clé changée
-    }
-};
 
-/**
- * Efface le blob chiffré ET la clé de device (reset / déconnexion).
- */
-export const clearApiKeys = async (): Promise<void> => {
-    try {
-        if (typeof localStorage !== 'undefined') localStorage.removeItem(LS_BLOB_KEY);
-    } catch {
-        /* quota / privacy */
-    }
-    if (typeof indexedDB === 'undefined') return;
-    try {
-        const db = await openDb();
-        try {
-            await idbDelete(db, DEVICE_KEY_ID);
-        } finally {
-            db.close();
-        }
-    } catch {
-        /* best-effort */
-    }
-};

@@ -10,7 +10,7 @@ import { Tab } from '../../types';
  *
  * Remplace l'ancien widget statique "prochain palier / cible" par une zone
  * d'analyse IA temps réel : Claude Haiku 4.5 produit 1-3 actions concrètes
- * en se basant sur la projection vivante et le contexte Era.
+ * en se basant sur la projection vivante.
  *
  * Cache localStorage 1h ; rafraîchissement manuel via bouton. Quand la
  * sidebar est collapsed, n'affiche qu'une pastille avec couleur d'urgence.

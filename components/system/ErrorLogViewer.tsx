@@ -11,7 +11,6 @@ import { showToast } from '../ui/Toast';
 
 const SOURCE_ICONS: Record<ErrorSource, string> = {
     ai: '✨',
-    era: '🏦',
     projection: '🔮',
     ui: '🖥️',
     network: '🌐',
@@ -68,7 +67,7 @@ export const ErrorLogViewer: React.FC = () => {
         showToast('Journal des erreurs vidé.', 'info');
     }, []);
 
-    const allSources: Array<ErrorSource | 'all'> = ['all', 'ai', 'era', 'projection', 'ui', 'network', 'storage', 'unknown'];
+    const allSources: Array<ErrorSource | 'all'> = ['all', 'ai', 'projection', 'ui', 'network', 'storage', 'unknown'];
     const allSeverities: Array<ErrorSeverity | 'all'> = ['all', 'info', 'warning', 'error', 'critical'];
 
     return (
@@ -83,7 +82,7 @@ export const ErrorLogViewer: React.FC = () => {
             />
             <div className="space-y-4">
                 <p className="text-tiny text-gray-400 leading-snug">
-                    Captures locales des erreurs IA / Era / UI. Rolling buffer 100 entrées en
+                    Captures locales des erreurs IA / projection / UI. Rolling buffer 100 entrées en
                     localStorage. <strong>Aucune donnée envoyée sur le réseau.</strong>
                 </p>
 

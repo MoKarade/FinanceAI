@@ -21,7 +21,7 @@ import type { FinanceState } from '../../store/useFinanceStore';
  * configurer.
  */
 
-export type MissingDataField =
+type MissingDataField =
     | 'lifeExpectancy'
     | 'retirementAge'
     | 'retirementIncome'
@@ -44,7 +44,7 @@ interface FieldDescriptor {
 
 // Note : `Tab.SETTINGS` est l'ancien nom ; sera renommé "Configuration" en C.1
 // (la valeur d'enum reste identique pour préserver la rétrocompat).
-export const MISSING_DATA_FIELDS: Record<MissingDataField, FieldDescriptor> = {
+const MISSING_DATA_FIELDS: Record<MissingDataField, FieldDescriptor> = {
     lifeExpectancy: {
         label: 'Espérance de vie',
         section: 'profile-lifeExpectancy',

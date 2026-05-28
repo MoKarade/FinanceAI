@@ -177,6 +177,25 @@
   RÉPLIQUES de la logique (toutes deux correctes), pas le vrai chemin du composant
   (`fetchPortfolioHistory`). Leçon appliquée : fonction pure unique testée = composant exécuté.
 
+### P2 — Onglet Futur : déplacer TOUTE l'optimisation dans un sous-onglet dédié
+> Demande Marc : « toute la partie optimisation de la courbe du futur dans un autre tab
+> dans l'onglet Futur ». But : épurer la vue Graphique (courbe + KPIs seulement) et
+> regrouper l'optimisation au même endroit.
+
+- **Sous-onglets actuels** (`FutureProjection.tsx:628-649`) : 📈 Graphique · ⚙️ Paramètres
+  · 📖 Explications. → Ajouter un 4e onglet, ex. **🎯 Optimiseur** (ou « Optimisation »).
+- **Éléments « optimisation » à déplacer** (aujourd'hui inline dans la vue Graphique) :
+  - Bandeau **« Verdict »** (B1, `FutureProjection.tsx:~686`) — meilleure façon de gérer en 1 phrase.
+  - **`StrategyOptimizerPanel`** (`components/projection/StrategyOptimizerPanel.tsx`, monté
+    `FutureProjection.tsx:~913`) — objectif, comparaison des scénarios, explication, bouton « Appliquer ».
+  - Badge **« scénario actif »** (U2, `FutureProjection.tsx:~603-622`) + lien « modifier dans Paramètres ».
+  - Le classement (`rankStrategies` / `OptimizeObjective`, `services/projection/strategyRanking.ts`)
+    reste au MOTEUR ; seul l'**affichage** bouge.
+- **Vue Graphique après refonte** : courbe passé↔futur + KPIs + légende + zoom/période, sans bloc d'optimisation.
+- **À trancher** : déplacer le « Verdict » EN ENTIER, ou garder un mini-teaser en haut du
+  Graphique qui renvoie vers l'onglet Optimiseur (1 clic).
+- **Effort** : faible-moyen (réorganisation JSX + 1 état d'onglet ; aucune logique moteur touchée).
+
 ### ✅ Fait 2026-05-28 — Continuité PARFAITE passé↔futur : la projection démarre AUJOURD'HUI
 > Résout le « palier résiduel ~+30 % » (anciennement P2). Décidé avec Marc : démarrer
 > au mois courant + passé personas sur 24 mois, sans fausses données.

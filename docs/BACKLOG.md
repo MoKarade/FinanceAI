@@ -70,6 +70,62 @@
 
 ---
 
+## 📦 Backlog 2026-05-28 — Persistance multi-user + icônes Futur exhaustives
+
+### P1 — Persistance solide & restauration complète par utilisateur (multi-user)
+> Demandé par Marc : « mettre en place quelque chose de solide pour sauvegarder
+> mes données utilisateur et que ça me donne bien tout ce qu'il faut quand je me
+> connecte (pareil pour tous les autres utilisateurs) ».
+
+- **Problème** : aujourd'hui local-first (localStorage + backup IndexedDB chiffré).
+  Les données vivent dans LE navigateur local → pas de restauration cross-device
+  ni par-compte. À la connexion (Cloudflare Access / Google OAuth), l'utilisateur
+  doit retrouver **l'intégralité** de SES données. Idem pour chaque utilisateur.
+- **Objectif** : sauvegarde auto robuste + restauration complète au login, par user.
+- **Options à trancher** :
+  1. **Sync cloud chiffré E2E** keyed par identité (chiffrement côté client, 1 blob
+     par user → Vercel Blob/KV ou Cloudflare R2/KV). Respecte « local-first +
+     données chiffrées + gratuit ». **Piste recommandée.**
+  2. Backend Postgres par user (plus lourd ; tension avec « tout gratuit »).
+  3. Export/import manuel renforcé (déjà partiel via backup IndexedDB).
+- **Contraintes Marc** : tout gratuit, local-first (les données ne quittent le PC
+  que chiffrées), multi-user (produit pour d'autres gens).
+- **Existant à réutiliser** : auth Cloudflare Access (S1), backup IndexedDB chiffré
+  + secureKeyStore (S2), `realDataSnapshot` du store.
+- **Sous-tâches** : identité user (header/JWT Cloudflare Access) → clé de chiffrement
+  par user → stockage cloud chiffré → sync auto (debounce) → résolution de conflits
+  (last-write-wins + horodatage) → hydratation au boot → tests round-trip + tamper.
+
+### P2 — Icônes Futur exhaustives + densité adaptative au zoom
+> Demandé par Marc : « je veux une icône pour LITTÉRALEMENT tout ce qu'il se passe
+> (transferts entre comptes, payer le prêt maison, vente d'actions, achats enfants,
+> etc.). Ça va vite devenir un bordel → je veux voir une partie, et quand je zoome
+> j'en vois plus ».
+
+- **État actuel** : seuls les *life events* majeurs ont une icône (G5/G16). Beaucoup
+  d'événements moteur ne sont PAS marqués (transferts inter-comptes, remboursement/
+  paiement hypothèque, RAP, ventes NonReg, retraits REEE pour enfants, cotisations…).
+- **Cible** : une icône typée pour **chaque** événement + **niveau de détail (LOD)**
+  lié au zoom — sous-ensemble (événements majeurs) au zoom arrière, de plus en plus
+  d'icônes au zoom avant ; **clustering** des icônes proches (badge « +N ») qui se
+  déplient au zoom/clic.
+- **Source** : le moteur émet déjà `lifeEventsLog` + `flowEventsLog` par mois
+  (realEstateMonth, cashflowAllocation, childrenReee…). Il faut : (a) **taxonomie**
+  d'événements (type → icône + priorité), (b) exposer les **flowEvents structurés**
+  dans `chartData` (aujourd'hui surtout lifeEvents), (c) composant d'icônes avec
+  **clustering + LOD** branché sur `useTimeChartZoom` (existe déjà).
+- **Sous-tâches** : taxonomie + mapping icônes/priorité ; émettre flowEvents typés
+  dans le moteur (monthlyOutput) ; couche d'affichage clustering + LOD par niveau de
+  zoom ; budget perf (potentiellement 100+ icônes) ; tests.
+- **Note effort** : moyen-élevé (touche moteur `monthlyOutput` + UI graphe). Bien
+  cadrer la taxonomie d'abord (brainstorming).
+
+### ✅ Fait 2026-05-28 — Sélecteur de persona dans la bannière (CI-1000x axe F)
+- Menu déroulant des 7 personas directement dans le banner orange du mode test
+  → changer d'utilisateur sans passer par Réglages. `components/Layout.tsx`.
+
+---
+
 ## 📍 Session 2026-05-27 (suite) — CI durcie + audit fiscal 2026 + immigrant
 
 Merges sur `main`, CI verte vérifiée à chaque fois.

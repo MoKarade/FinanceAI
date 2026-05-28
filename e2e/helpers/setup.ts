@@ -37,15 +37,13 @@ export async function activateTestMode(page: Page): Promise<void> {
   await btnSauvegarde.waitFor({ state: 'visible', timeout: 10_000 });
   await btnSauvegarde.click();
 
-  // Cliquer "Activer le mode test" (bouton ghost, 1re étape)
+  // Cliquer "Activer le mode test" — charge le persona par défaut (couple
+  // Alex/Sam) IMMÉDIATEMENT. Le flux de confirmation à 2 étapes ("Oui, charger
+  // les fixtures") a été retiré avec l'arrivée du sélecteur de personas
+  // (le menu déroulant charge directement). Cf components/settings/TestModePanel.tsx.
   const btnActivate = page.getByRole('button', { name: 'Activer le mode test' });
   await btnActivate.waitFor({ state: 'visible', timeout: 8_000 });
   await btnActivate.click();
-
-  // Confirmer ("Oui, charger les fixtures")
-  const btnConfirm = page.getByRole('button', { name: 'Oui, charger les fixtures' });
-  await btnConfirm.waitFor({ state: 'visible', timeout: 5_000 });
-  await btnConfirm.click();
 
   // Attendre que le banner "MODE TEST" apparaisse (confirmation visuelle)
   await page.waitForFunction(

@@ -128,6 +128,13 @@ export interface IncomeBaselineResult {
  * Mode useTheoretical: split 55/45 du theoreticalIncome.
  * Mode réel: lit netSalary/grossSalary depuis config.users.
  * Brut estimé à net*1.35 si grossSalary manquant (proxy taux marginal moyen).
+ *
+ * IMPORTANT — unités : `grossSalary` et `netSalary` sont stockés MENSUELS dans
+ * le store (cf Budget.tsx, FutureProjection.tsx, Retirement.tsx, TaxCenter.tsx,
+ * pdfReport.ts qui les multiplient tous par 12). On annualise donc le brut ici
+ * (× 12) car le moteur fiscal en aval attend un revenu brut ANNUEL.
+ * Bug historique : le brut mensuel était lu tel quel comme un brut annuel →
+ * revenu 12× trop bas → impôt d'emploi ~0 sur toute la projection.
  */
 export function computeIncomeBaseline(
     projection: { useTheoretical?: boolean; theoreticalIncome?: number },
@@ -140,10 +147,10 @@ export function computeIncomeBaseline(
     const incomeAnnaNetMonthly = useTheo ? (theoIncome * 0.45) : (users[1]?.netSalary || 0);
     const grossMarcBaseAnnual = useTheo
         ? (incomeMarcNetMonthly * 12 * 1.35)
-        : (users[0]?.grossSalary || (incomeMarcNetMonthly * 12 * 1.35));
+        : (users[0]?.grossSalary ? users[0].grossSalary * 12 : incomeMarcNetMonthly * 12 * 1.35);
     const grossAnnaBaseAnnual = useTheo
         ? (incomeAnnaNetMonthly * 12 * 1.35)
-        : (users[1]?.grossSalary || (incomeAnnaNetMonthly * 12 * 1.35));
+        : (users[1]?.grossSalary ? users[1].grossSalary * 12 : incomeAnnaNetMonthly * 12 * 1.35);
 
     return { incomeMarcNetMonthly, incomeAnnaNetMonthly, grossMarcBaseAnnual, grossAnnaBaseAnnual };
 }

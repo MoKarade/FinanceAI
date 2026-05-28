@@ -118,7 +118,8 @@ export function logError(input: {
         stack,
         // SH5 : context sanitisé pour ne JAMAIS persister/exporter de PII.
         context: input.context ? sanitizeContext(input.context) as Record<string, unknown> : undefined,
-        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+        // S-C+ : UA tronqué (le log est exportable via SystemView → on limite le fingerprint).
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 120) : undefined,
         url: typeof window !== 'undefined' ? window.location.pathname : undefined,
     };
 

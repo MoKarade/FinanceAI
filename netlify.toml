@@ -26,7 +26,7 @@
   [headers.values]
     # Sprint 3 SM3 (sécurité) — frame-src https://cdn.plaid.com retiré : aucun
     # usage de Plaid dans le code, c'était une fuite de surface d'attaque.
-    Content-Security-Policy = "default-src 'self'; script-src 'self' https://www.googletagmanager.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.anthropic.com https://finnhub.io https://api.coingecko.com https://www.bankofcanada.ca https://www.google-analytics.com https://*.analytics.google.com https://*.google-analytics.com https://cloudflareinsights.com; worker-src 'self' blob:;"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' https://www.googletagmanager.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.anthropic.com https://finnhub.io https://api.coingecko.com https://www.bankofcanada.ca https://www.google-analytics.com https://*.analytics.google.com https://*.google-analytics.com https://cloudflareinsights.com; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; object-src 'none';"
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"

@@ -6,7 +6,7 @@ import { CoupleModeBadge } from './ui/CoupleModeBadge';
 import { NextBestAction } from './sidebar/NextBestAction';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { BackupReminder } from './BackupReminder';
-import { getPersonaById } from '../services/testFixtures';
+import { getPersonaById, getPersonaOrDefault, TEST_PERSONAS } from '../services/testFixtures';
 
 interface LayoutProps {
   activeTab: Tab;
@@ -115,6 +115,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const isTestMode = useFinanceStore(s => s.isTestMode);
   const activeTestPersonaId = useFinanceStore(s => s.activeTestPersonaId);
   const activeTestPersona = getPersonaById(activeTestPersonaId);
+  const enableTestMode = useFinanceStore(s => s.enableTestMode);
 
   // G22-B2 — bascule directe Couple ⇄ Individuel depuis la sidebar. Ajoute/retire
   // le 2e utilisateur dans `config.users` ; tout l'app lit `config.users.length`
@@ -156,10 +157,25 @@ export const Layout: React.FC<LayoutProps> = ({
           className="fixed top-0 left-0 right-0 z-[150] bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 text-white text-center py-2 px-4 font-bold text-sm shadow-lg flex items-center justify-center gap-3"
         >
           <span aria-hidden="true">🧪</span>
-          <span>
-            MODE TEST{activeTestPersona ? ` — ${activeTestPersona.emoji} ${activeTestPersona.label}` : ''}
-            {' '}— données fictives, vos vraies données sont sauvegardées
-          </span>
+          <span className="font-bold">MODE TEST</span>
+          {/* Sélecteur de persona directement dans la bannière : changer
+              d'utilisateur sans passer par Réglages (demandé par Marc). */}
+          <select
+            aria-label="Changer de persona de test"
+            value={activeTestPersona?.id ?? TEST_PERSONAS[0].id}
+            onChange={(e) => {
+              const persona = getPersonaOrDefault(e.target.value);
+              enableTestMode(persona.build(), persona.id);
+            }}
+            className="bg-amber-900/70 text-white text-xs rounded px-2 py-1 border border-white/40 font-normal cursor-pointer max-w-[55vw] truncate focus:outline-none focus:ring-2 focus:ring-white/60"
+          >
+            {TEST_PERSONAS.map((p) => (
+              <option key={p.id} value={p.id} className="bg-gray-900 text-white">
+                {p.emoji} {p.label}
+              </option>
+            ))}
+          </select>
+          <span className="hidden md:inline font-normal text-xs opacity-90">— données fictives, vraies données sauvegardées</span>
           <span aria-hidden="true">🧪</span>
         </div>
       )}

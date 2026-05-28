@@ -93,4 +93,68 @@ describe('errorLogger', () => {
         logError({ source: 'ui', message: 'After corruption' });
         expect(getErrors()).toHaveLength(1);
     });
+
+    // ── Sécurité (SH5/S-C) : la redaction PII/secrets du `context` n'était PAS
+    // testée. Ces tests verrouillent qu'aucune donnée sensible n'est persistée
+    // (donc jamais exportée via SystemView). ────────────────────────────────
+    describe('redaction PII/secrets du context', () => {
+        it('masque les clés sensibles de 1er niveau', () => {
+            logError({
+                source: 'ai',
+                message: 'X',
+                context: { amount: 50000, salary: 90000, apiKey: 'sk-ant-secret', balance: 12000 },
+            });
+            const ctx = getErrors()[0].context!;
+            expect(ctx.amount).toBe('[redacted]');
+            expect(ctx.salary).toBe('[redacted]');
+            expect(ctx.apiKey).toBe('[redacted]');
+            expect(ctx.balance).toBe('[redacted]');
+        });
+
+        it('masque diverses formes (password, email, sin, token, netWorth, grossSalary)', () => {
+            logError({
+                source: 'ui',
+                message: 'X',
+                context: { password: 'p', email: 'a@b.c', sin: '123', token: 't', netWorth: 1, grossSalary: 2 },
+            });
+            const ctx = getErrors()[0].context!;
+            for (const k of ['password', 'email', 'sin', 'token', 'netWorth', 'grossSalary']) {
+                expect(ctx[k], `${k} doit être masqué`).toBe('[redacted]');
+            }
+        });
+
+        it('masque récursivement (objet imbriqué)', () => {
+            logError({
+                source: 'ai',
+                message: 'X',
+                context: { user: { name: 'Marc', salary: 90000 }, tab: 'budget' },
+            });
+            const ctx = getErrors()[0].context as { user: Record<string, unknown>; tab: string };
+            expect(ctx.tab).toBe('budget'); // non sensible conservé
+            expect(ctx.user.name).toBe('Marc'); // non sensible conservé
+            expect(ctx.user.salary).toBe('[redacted]'); // sensible imbriqué masqué
+        });
+
+        it('conserve les clés non sensibles', () => {
+            logError({ source: 'ui', message: 'X', context: { tab: 'budget', count: 3, ok: true } });
+            expect(getErrors()[0].context).toEqual({ tab: 'budget', count: 3, ok: true });
+        });
+
+        it('tronque les tableaux à 10 éléments', () => {
+            logError({ source: 'ui', message: 'X', context: { items: Array.from({ length: 25 }, (_, i) => i) } });
+            const ctx = getErrors()[0].context as { items: number[] };
+            expect(ctx.items).toHaveLength(10);
+        });
+
+        it('tronque la profondeur excessive ([truncated])', () => {
+            // 6 niveaux d'imbrication > MAX_DEPTH(4)
+            logError({ source: 'ui', message: 'X', context: { a: { b: { c: { d: { e: { f: 1 } } } } } } });
+            const ctx = getErrors()[0].context as Record<string, unknown>;
+            // À profondeur ≥ 4, la valeur devient '[truncated]'.
+            const a = ctx.a as Record<string, unknown>;
+            const b = a.b as Record<string, unknown>;
+            const c = b.c as Record<string, unknown>;
+            expect(c.d).toBe('[truncated]');
+        });
+    });
 });

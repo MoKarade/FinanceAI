@@ -134,7 +134,10 @@ export function logError(input: {
             // Logger central : écriture console.info volontaire (routing par sévérité).
             // eslint-disable-next-line no-console
             : console.info;
-        fn(`[${input.source}] ${message}`, input.context ?? '');
+        // SH5/S-C : on loggue le context SANITISÉ (entry.context), pas l'input brut —
+        // sinon la PII (montants, salaires, clés) fuiterait dans la console DevTools
+        // alors que l'entrée stockée/exportée est, elle, déjà nettoyée.
+        fn(`[${input.source}] ${message}`, entry.context ?? '');
     }
 }
 

@@ -22,11 +22,21 @@ export const TEST_REAL_ESTATE: RealEstateGoal[] = [
     {
         id: 're-1', name: 'Maison principale (test)', price: 450000, downPayment: 90000,
         rate: 4.5, mortgageRate: 4.5, amortization: 25, isActive: true,
-        isPrimaryResidence: true, purchaseOffset: 0,
-        // Fix bug Future : la projection lit `purchaseDate` via getMonthOffset
-        // (services/projection.ts:170 + realEstateMonth.ts:111). Sans cette
-        // date, .slice() crashe dans le Worker.
-        purchaseDate: new Date().toISOString().split('T')[0],
+        isPrimaryResidence: true,
+        // Date d'achat FIXE et FUTURE (la sim démarre en 2026, cf.
+        // FutureProjection.tsx:218 `startYear = 2026`). Trois raisons :
+        //  1. Achat « planifié » = forcément dans le futur. Avec une date au jour
+        //     même (ancien `new Date()`), `realEstateMonth.ts:115` (`m < purchaseOffset`)
+        //     ne protégeait jamais le bloc immo : dès le mois 1 la ligne 147 vidait
+        //     tout le CELIAPP vers les liquidités pour l'achat « imminent ». Le solde
+        //     CELIAPP restait donc ~1 mois de cotisation → invisible sur la courbe,
+        //     alors que la reco (flux cumulé) s'affichait quand même. Avec une date
+        //     en 2030, le CELIAPP s'accumule ~4 ans puis sert à l'achat (vrai rôle
+        //     du FHSA : croissance à l'abri de l'impôt, retrait non imposable).
+        //  2. Déterminisme (cf. projection.ts D2.3) : plus de dépendance à l'horloge.
+        //  3. `getMonthOffset` lit `purchaseDate` ; une string valide évite le crash
+        //     `.slice` sur undefined vu en mode test.
+        purchaseDate: '2030-06-01',
         propertyGrowthRate: 3.0, monthlyTaxes: 280, monthlyInsurance: 95,
         monthlyMaintenance: 250, totalClosingCosts: 8000,
         monthlyPayment: 2000, isFirstTimeBuyer: false, isNewConstruction: false,

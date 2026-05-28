@@ -22,8 +22,10 @@ describe('computeEstateNetWorth — robustesse aux entrées (garde TB3)', () => 
         const r = computeEstateNetWorth(base, fiscalStub);
         expect(Number.isFinite(r.finalRawNetWorth)).toBe(true);
         expect(Number.isFinite(r.estateNetWorth)).toBe(true);
-        // 50k+100k+0+200k+80k+10k+20k+300k -150k -0
-        expect(r.finalRawNetWorth).toBe(610000);
+        // realEstateEquity (300k) est DÉJÀ net d'hypothèque → plus de soustraction
+        // de mortgageBalance (fix double-comptage 2026-05).
+        // 50k+100k+0+200k+80k+10k+20k+300k −0(smith) = 760k
+        expect(r.finalRawNetWorth).toBe(760000);
         expect(r.estateNetWorth).toBeGreaterThan(0);
     });
 
@@ -31,8 +33,8 @@ describe('computeEstateNetWorth — robustesse aux entrées (garde TB3)', () => 
         const r = computeEstateNetWorth({ ...base, liquid: NaN }, fiscalStub);
         expect(Number.isFinite(r.finalRawNetWorth)).toBe(true);
         expect(Number.isFinite(r.estateNetWorth)).toBe(true);
-        // liquid NaN → 0 : 610000 - 50000
-        expect(r.finalRawNetWorth).toBe(560000);
+        // liquid NaN → 0 : 760000 - 50000
+        expect(r.finalRawNetWorth).toBe(710000);
     });
 
     it('TB3 : un champ de config undefined (coercé NaN) reste fini', () => {
@@ -51,8 +53,9 @@ describe('computeEstateNetWorth — robustesse aux entrées (garde TB3)', () => 
         );
         expect(Number.isFinite(r.finalRawNetWorth)).toBe(true);
         expect(Number.isFinite(r.estateNetWorth)).toBe(true);
-        // seuls liquid(50k)+crypto(10k)+reee(20k) restent, -mortgage(150k) = -70000
-        expect(r.finalRawNetWorth).toBe(-70000);
+        // realEstateEquity NaN→0 ; seuls liquid(50k)+crypto(10k)+reee(20k) restent.
+        // Plus de soustraction d'hypothèque → 80000 (au lieu de l'ancien -70000).
+        expect(r.finalRawNetWorth).toBe(80000);
     });
 
     it('startNW fini même si soldes initiaux NaN', () => {

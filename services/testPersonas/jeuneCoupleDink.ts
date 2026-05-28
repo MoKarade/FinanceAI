@@ -36,18 +36,20 @@ export function buildJeuneCoupleDink(): Partial<AppState> {
                 id: 'jc-a1', symbol: 'VFV.TO', name: 'Vanguard S&P 500 (CAD)', region: 'us-equity',
                 sector: 'index', accountType: 'CELI', currentPrice: 182.18,
                 priceHistory: genHistory(155.0, 182.18),
-                purchases: [{ date: '2023-04-01', price: 155.0, quantity: 70 }],
-                dateBought: '2023-04-01', buyPrice: 155.0, quantity: 70,
+                purchases: [{ date: '2023-04-01', price: 155.0, quantity: 77 }],
+                dateBought: '2023-04-01', buyPrice: 155.0, quantity: 77,
             },
             {
                 id: 'jc-a2', symbol: 'XEQT.TO', name: 'iShares All-Equity', region: 'global',
                 sector: 'index', accountType: 'NON-ENREG', currentPrice: 43.82,
                 priceHistory: genHistory(36.0, 43.82),
-                purchases: [{ date: '2023-08-01', price: 36.0, quantity: 200 }],
-                dateBought: '2023-08-01', buyPrice: 36.0, quantity: 200,
+                purchases: [{ date: '2023-08-01', price: 36.0, quantity: 205 }],
+                dateBought: '2023-08-01', buyPrice: 36.0, quantity: 205,
             },
         ] as unknown as AppState['assets'],
-        initialBalances: { CELI: 14000, REER: 6000, 'NON-ENREG': 9000, CRYPTO: 1500, LIQUIDITE: 18000 },
+        // Cash uniquement ; CELI 14k + NonReg 9k portés par `assets`. Le REER/Crypto
+        // résiduels sont regroupés dans le cash (épargne pour la mise de fonds).
+        initialBalances: { CELI: 0, REER: 0, 'NON-ENREG': 0, CRYPTO: 0, LIQUIDITE: 25500 },
         transactions: buildPersonaTransactions({
             incomes: [
                 { payee: 'Agence Pub - Paie', netBiweekly: 1800 },

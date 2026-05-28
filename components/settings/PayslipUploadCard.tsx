@@ -60,8 +60,8 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
             const targetUser = newUsers[target];
             newUsers[target] = {
                 ...targetUser,
-                grossSalary: Math.round(annualGross),
-                netSalary: Math.round(annualNet),
+                grossSalary: Math.round(annualGross / 12), // stocké MENSUEL (convention store)
+                netSalary: Math.round(annualNet / 12), // stocké MENSUEL (convention store)
             };
             setAppState({ config: { ...config, users: newUsers } });
 

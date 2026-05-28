@@ -40,7 +40,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
         const newConfig = { ...config };
         newConfig.users[0] = {
             ...newConfig.users[0],
-            grossSalary: Math.round(scannedPay.gross), // always stored as annual
+            grossSalary: Math.round(scannedPay.gross / 12), // always stored as monthly
             netSalary: Math.round(scannedPay.net / 12) // always stored as monthly
         };
         setConfig(newConfig);

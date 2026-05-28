@@ -50,10 +50,15 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     };
 
     const handleFinish = () => {
+        // Le champ brut est saisi en ANNUEL (label UI) mais stocké MENSUEL dans
+        // le store (convention canonique, cf computeIncomeBaseline × 12). Le net
+        // est déjà saisi/stocké mensuel → on n'y touche pas.
         const config: BudgetConfig = {
             users: [
-                { ...user1, color: '#4f46e5' },
-                hasCoupleMode ? { ...user2, color: '#ec4899' } : { name: '', grossSalary: 0, netSalary: 0, color: '#ec4899', age: 30, canadaArrivalYear: 2020 }
+                { ...user1, grossSalary: Math.round(user1.grossSalary / 12), color: '#4f46e5' },
+                hasCoupleMode
+                    ? { ...user2, grossSalary: Math.round(user2.grossSalary / 12), color: '#ec4899' }
+                    : { name: '', grossSalary: 0, netSalary: 0, color: '#ec4899', age: 30, canadaArrivalYear: 2020 }
             ] as [User, User],
             splitMode: 'prorata'
         };

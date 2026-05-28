@@ -114,9 +114,10 @@ const checkPassphrase = (passphrase: string): void => {
 
 /**
  * Chiffre un payload (typiquement l'AppState complet) et retourne une
- * chaine base64 portable.
+ * chaine base64 portable. Exporté (avec decryptBackup) pour tester le cœur
+ * crypto directement : round-trip, mauvaise passphrase, tampering, format.
  */
-const encryptBackup = async (payload: unknown, passphrase: string): Promise<string> => {
+export const encryptBackup = async (payload: unknown, passphrase: string): Promise<string> => {
     checkPassphrase(passphrase);
     const subtle = getCrypto();
 
@@ -145,7 +146,7 @@ const encryptBackup = async (payload: unknown, passphrase: string): Promise<stri
  * dechiffrement (pour separer une mauvaise passphrase d'un fichier
  * corrompu / version incompatible).
  */
-const decryptBackup = async <T = unknown>(encoded: string, passphrase: string): Promise<T> => {
+export const decryptBackup = async <T = unknown>(encoded: string, passphrase: string): Promise<T> => {
     checkPassphrase(passphrase);
     const subtle = getCrypto();
 

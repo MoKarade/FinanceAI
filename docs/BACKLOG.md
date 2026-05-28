@@ -152,6 +152,14 @@
   ni par-compte. À la connexion (Cloudflare Access / Google OAuth), l'utilisateur
   doit retrouver **l'intégralité** de SES données. Idem pour chaque utilisateur.
 - **Objectif** : sauvegarde auto robuste + restauration complète au login, par user.
+- **Critère d'acceptation (Marc, 2026-05-28)** : ouvrir l'app dans une fenêtre de
+  **navigation privée** puis se connecter avec Google ⇒ **toutes mes données reviennent**.
+  ⇒ Implication forte : AUCUNE donnée ne peut dépendre du stockage local. La source de
+  vérité par-compte doit être le **cloud chiffré (option 1)**, hydraté au boot après auth ;
+  le local-first (localStorage/IndexedDB) devient un simple cache, plus la source. Une
+  fenêtre privée a un stockage vierge → seul un fetch cloud post-login peut restaurer.
+  **Priorité relevée** (était « P-future »). Design/ADR requis avant implémentation
+  (tension assumée avec « local-first » : on garde le chiffrement E2E côté client).
 - **Options à trancher** :
   1. **Sync cloud chiffré E2E** keyed par identité (chiffrement côté client, 1 blob
      par user → Vercel Blob/KV ou Cloudflare R2/KV). Respecte « local-first +

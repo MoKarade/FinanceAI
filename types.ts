@@ -27,6 +27,14 @@ export interface AssetPurchase {
   price: number;
 }
 
+/**
+ * CI-1000x B1 — propriétaire d'un actif/compte dans un couple. Les comptes
+ * enregistrés (CELI/REER/CELIAPP/REEE) sont individuels par la loi ; le
+ * non-enregistré, le cash et la crypto peuvent être conjoints. `owner` absent
+ * ⇒ défaut heuristique appliqué par `services/couple/netWorthByOwner.ts`.
+ */
+export type AssetOwner = 'user1' | 'user2' | 'joint';
+
 export interface Asset {
   symbol: string;
   quantity: number;
@@ -43,6 +51,8 @@ export interface Asset {
   priceHistory?: Array<{ date: string; price: number; rawPrice?: number; fxRate?: number }>;
   lastHistorySync?: number;
   accountType?: RegisteredAccountType;
+  /** CI-1000x B1 — propriétaire (user1 | user2 | joint). Absent ⇒ défaut heuristique. */
+  owner?: AssetOwner;
   dividendYield?: number;
   dividendFreq?: 'Monthly' | 'Quarterly' | 'Yearly';
   nextDividendDate?: string;

@@ -31,6 +31,7 @@ import { AddStockForm } from './investments/AddStockForm';
 import { ImportBrokerPositions } from './investments/ImportBrokerPositions';
 import { computePurchaseStats } from '../utils/assetPurchases';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { NetWorthByOwnerCard } from './investments/NetWorthByOwnerCard';
 
 interface InvestmentsProps {
     assets: Asset[];
@@ -438,6 +439,9 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     </Badge>
                 }
             />
+
+            {/* CI-1000x Phase 1 (axe B) — répartition du portefeuille par personne (mode couple). */}
+            <NetWorthByOwnerCard assets={assets} setAssets={setAssets} />
 
             {/* Phase E.3 — Sous-onglets + Phase E.1 — TimeRange global au sommet */}
             <div className="flex flex-wrap items-center justify-center gap-3">

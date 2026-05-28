@@ -12,6 +12,64 @@
 
 ---
 
+## 🚀 Initiative « Couple / Individuel 1000x » (CI-1000x) — démarrée 2026-05-28
+
+> Demandé par Marc : rendre le mode couple/individuel **1000× meilleur**.
+> 4 axes priorisés (A, B, C, D) + 2 transversaux (E, F). **Fondation = B**
+> (propriété par personne) car A/C/D en dépendent tous.
+
+### État actuel & faiblesses
+- Toggle (sidebar + boutons) qui empile un 2ᵉ `User` dans `config.users` (tuple `[User, User]`).
+- Le type `User` est déjà riche, mais **sous-exploité** côté couple.
+- **Impôt approximé** en divisant le revenu du ménage **également** entre conjoints (`calculateFiscalReport(gross / activeUsersCount)`) → faux quand les revenus diffèrent (sur/sous-imposition).
+- **Aucune notion de propriété** d'actif/compte (qui possède le REER ?).
+- **Aucune optimisation fiscale de couple** (fractionnement, REER de conjoint, crédits transférables).
+- Bascule couple↔individuel **perd les données** du conjoint (valeurs par défaut).
+
+### Axes (tous priorisés par Marc)
+**A. Fiscalité de couple** _(le plus payant)_
+- A1 — Impôt **exact par conjoint** (chacun sur son revenu réel, pas la division égale).
+- A2 — Fractionnement du revenu de pension à la retraite (≤ 50 %).
+- A3 — REER de conjoint (spousal RRSP) : cotiser au conjoint à plus bas revenu.
+- A4 — « Qui cotise quoi » : attribuer REER/déductions au conjoint à plus haut taux marginal.
+- A5 — Crédits transférables/combinables (frais médicaux au plus bas revenu, montant en raison de l'âge, crédit pour conjoint).
+
+**B. Propriété & vue par personne** _(FONDATION)_
+- B1 — `owner` sur `Asset`/`Debt`/comptes (`user1` | `user2` | `joint`). Comptes enregistrés (CELI/REER/CELIAPP) = individuels ; non-enreg/cash = joint possible.
+- B2 — Util pur `netWorthByOwner` → patrimoine de chacun + commun.
+- B3 — Vue « Répartition par personne » (patrimoine, revenus, dépenses).
+
+**C. Scénarios séparation / décès**
+- C1 — Séparation : partage du **patrimoine familial** (règles QC), impact chiffré sur chacun.
+- C2 — Décès : succession, **roulement REER/CELI au conjoint** sans impôt, RRQ survivant (60 %), PSV qui cesse, assurance.
+- C3 — Comparateur « rester ensemble vs séparé ».
+
+**D. Optimisation conjugale auto** _(étend l'optimiseur G21)_
+- D1 — L'optimiseur teste les stratégies couple (spousal RRSP, fractionnement, ordre de décaissement à 2 têtes) et **chiffre l'économie** vs gérer séparément.
+
+**E. Décaissement à 2 têtes** _(transversal)_
+- E1 — Âges de retraite différents par conjoint ; demande RRQ/PSV optimale (60-70) par personne ; ordre de retrait optimal entre les 2 REER/CELI.
+
+**F. UX** _(transversal)_
+- F1 — Bascule couple↔individuel **sans perte** (mémoriser le conjoint).
+- F2 — Couleurs/avatars par personne partout ; saisie rapide du conjoint ; libellés clairs.
+
+### Plan par phases
+| Phase | Contenu | Effort | Risque |
+|---|---|---|---|
+| **1 (B) — EN COURS** | `owner` sur `Asset` + util `netWorthByOwner` + sélecteur propriétaire + carte « Répartition par personne » (mode couple). Additif. | Faible | Faible |
+| 2 (A1) | Impôt **exact par conjoint** dans le moteur (chacun sur son revenu réel). | Élevé | Élevé (moteur fiscal + MAJ baselines) |
+| 3 (A2-A5) | Fractionnement pension, REER de conjoint, crédits transférables. | Élevé | Moyen |
+| 4 (C) | Séparation (patrimoine familial QC) + décès (roulement, survivant). | Moyen-élevé | Moyen |
+| 5 (D + E) | Optimiseur couple + décaissement coordonné à 2 têtes. | Élevé | Moyen |
+| 6 (F) | Polish UX (bascule sans perte, avatars, libellés). | Faible | Faible |
+
+> **Note** : A1 (Phase 2) est le plus gros gain financier mais touche le moteur fiscal
+> et les baselines → à faire avec soin après la fondation B. Démarrage par B (faible
+> risque, débloque tout le reste).
+
+---
+
 ## 📍 Session 2026-05-27 (suite) — CI durcie + audit fiscal 2026 + immigrant
 
 Merges sur `main`, CI verte vérifiée à chaque fois.

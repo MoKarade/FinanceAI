@@ -6,6 +6,26 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Audit multi-agents · corrections] — 2026-05-28
+
+Fleet de 5 agents (sécurité, TypeScript, silent-failures, performance, fintech) lancé sur
+FinanceAI (rapport complet : `docs/AUDIT_2026-05-28.md`). Aucun problème CRITICAL. Corrections
+sûres et à fort impact appliquées d'abord ; les changements de logique money (F4) et les
+silent-failures du flux principal (F1/F3) + perf (F9-11) sont documentés et planifiés à part
+(à faire avec soin + tests, pas en vrac) ; les règles fiscales incertaines restent en attente
+de source (Tier 🟢, non modifiées).
+
+### Sécurité / robustesse
+- **F5 — `BudgetAiModal` injection de prompt** : noms/natures de catégories + alertes sanitisés
+  (`sanitizePromptText`) + bloc `<DONNEES>` + note d'isolation (comble un trou laissé par S-D).
+- **F7 — CSP durcie** : ajout `frame-ancestors 'none'` + `base-uri 'self'` + `object-src 'none'`
+  dans `index.html` **et** `netlify.toml` (X-Frame-Options seul ne suffit pas).
+- **F8 — `errorLogger`** : `userAgent` tronqué à 120 car. dans le log exportable (anti-fingerprint).
+- **F6 — Limite de taille des uploads** : `PayslipUploadCard` et `TaxCenter` rejettent les fichiers
+  > 10 Mo avant lecture/encodage base64 + envoi à l'API Vision (anti-saturation mémoire).
+
+---
+
 ## [unreleased — Lot 2 · filet de tests moteur money-critical] — 2026-05-28
 
 Filet de régression sur 11 modules money/sécurité auparavant **sans test unitaire direct**

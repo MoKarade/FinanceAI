@@ -39,6 +39,13 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
         }
 
         const file = e.target.files[0];
+        // Audit F6 — borne la taille avant lecture/encodage base64 + envoi API Vision
+        // (évite la saturation mémoire navigateur sur un fichier énorme).
+        const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 Mo
+        if (file.size > MAX_UPLOAD_BYTES) {
+            showToast(`Fichier trop volumineux (${(file.size / 1048576).toFixed(1)} Mo). Maximum 10 Mo.`, 'info');
+            return;
+        }
         setIsAnalyzing(true);
         setStatus(`Analyse en cours… (${file.name})`);
         setResult(null);

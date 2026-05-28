@@ -6,8 +6,7 @@ import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { Pill } from './ui/Pill';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ReferenceArea, Line, ComposedChart, Bar, ReferenceDot } from 'recharts';
-import { BudgetConfig, BudgetCategory, Asset, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Transaction, Debt, ProjectionConfig, FinancialGoal, User, RegisteredAccountType } from '../types';
-import { fetchPortfolioHistory } from '../services/finance';
+import { BudgetConfig, BudgetCategory, Asset, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Transaction, Debt, ProjectionConfig, FinancialGoal, User } from '../types';
 import { calculateFutureProjection, SimulationParams } from '../services/projection';
 import { ProjectionResult, ProjectionChartPoint } from '../services/projection/types';
 import { runProjectionAsync, terminateProjectionWorker } from '../services/projection/runAsync';
@@ -25,6 +24,7 @@ import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ProjectionControls } from './projection/ProjectionControls';
 import { rankStrategies, type OptimizeObjective, type RankableScenario } from '../services/projection/strategyRanking';
 import { usePastPortfolioHistory } from '../hooks/usePastPortfolioHistory';
+import { deriveStartingBalancesFromHistory } from '../services/history/startingBalancesFromHistory';
 import { reconstructCashHistory } from '../services/history/reconstructCashHistory';
 import { reconstructRealEstateEquityByYear } from '../services/history/reconstructRealEstateEquity';
 import { ActionPlanDrilldown } from './projection/ActionPlanDrilldown';
@@ -130,60 +130,21 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     }, [config]);
     const baseMonthlyExpenses = (baseNetAnnual / 12) - calculatedMonthlySavings;
 
-    const [liveCSVBalances, setLiveCSVBalances] = useState({ CELI: 0, CELIAPP: 0, REER: 0, NON_ENREG: 0, CRYPTO: 0, REEE: 0, TOTAL: 0, historicalRate: 0 });
-
-    useEffect(() => {
-        const fetchLiveTotals = async () => {
-            const history = await fetchPortfolioHistory();
-                if (!history || history.length === 0) {
-                    // LOW-4 fix (audit 2026-05-21) : log seulement en DEV. État
-                    // normal pour un nouvel utilisateur sans historique CSV.
-                    if (import.meta.env.DEV) {
-                        console.warn("FutureProjection: No history found, using default balances.");
-                    }
-                    return;
-                }
-                const lastRow = history[history.length - 1];
-                if (!lastRow) return;
-
-                let celi = 0, reer = 0, nonReg = 0, crypto = 0, reee = 0, total = 0;
-
-                Object.keys(lastRow).forEach(key => {
-                    if (key === 'date' || key === 'Date' || key.startsWith('Taux')) return;
-                    const val = Number(lastRow[key]) || 0;
-                    if (key.includes('TOTAL')) { total = val; return; }
-
-                    const mappedAsset = assets.find(a => key.includes(a.symbol));
-                    const type: RegisteredAccountType = mappedAsset?.accountType || 'NON-ENREG';
-
-                    if (type === 'CELI') celi += val;
-                    else if (type === 'REER') reer += val;
-                    else if (type === 'CRYPTO') crypto += val;
-                    else if (key.includes('REEE')) reee += val;
-                    else nonReg += val;
-                });
-
-                let historicalRate = 7.0;
-                if (history.length > 1) {
-                    const firstRow = history[0];
-                    const firstTotalKey = Object.keys(firstRow).find(k => k.includes('TOTAL'));
-                    if (firstTotalKey) {
-                        const firstTotal = Number(firstRow[firstTotalKey]) || 0;
-                        const lastTotal = Number(lastRow[firstTotalKey]) || 0;
-
-                        const days = (new Date(lastRow.date as string).getTime() - new Date(firstRow.date as string).getTime()) / (1000 * 3600 * 24);
-                        if (days > 30 && firstTotal > 0 && lastTotal > 0) {
-                            const years = days / 365.25;
-                            historicalRate = (Math.pow(lastTotal / firstTotal, 1 / years) - 1) * 100;
-                            historicalRate = Math.min(Math.max(historicalRate, -10), 30);
-                        }
-                    }
-                }
-
-                setLiveCSVBalances({ CELI: celi, CELIAPP: 0, REER: reer, NON_ENREG: nonReg, CRYPTO: crypto, REEE: reee, TOTAL: total, historicalRate });
-        };
-        fetchLiveTotals();
-    }, [assets]);
+    // A1/A3 — Soldes de placement de DÉPART du futur, dérivés de la MÊME
+    // reconstruction que la courbe passée (usePastPortfolioHistory) → garantit la
+    // continuité passé↔futur au mois 0 (le futur démarre sur le portefeuille réel).
+    //
+    // Bug historique (la « falaise ») : ces soldes étaient peuplés par un effet qui
+    // appelait fetchPortfolioHistory() — un stub mort renvoyant toujours [] — donc
+    // setLiveCSVBalances n'était JAMAIS appelé et le futur démarrait avec ZÉRO
+    // placement (REER/CELI/NonReg = 0), pendant que le passé affichait le vrai
+    // portefeuille (centaines de k$). Le futur perdait donc tout le portefeuille
+    // au mois 0, pour TOUS les personas/utilisateurs (et en mode réel aussi).
+    const pastHistory = usePastPortfolioHistory();
+    const liveCSVBalances = useMemo(
+        () => deriveStartingBalancesFromHistory(pastHistory.points),
+        [pastHistory.points],
+    );
 
     const applyHistoricalRate = () => {
         if (liveCSVBalances.historicalRate > 0) {
@@ -355,7 +316,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // ne démarre qu'à la 1re transaction connue (avant = données cash inconnues,
     // VN laissée vide → pas de fausse ligne à 0). Carry-forward des placements pour
     // une courbe continue. Le cash actuel = cash au début de projection (jan 2026).
-    const pastHistory = usePastPortfolioHistory();
+    // (pastHistory est déclaré plus haut — il sert aussi à amorcer liveCSVBalances.)
     const pastPrefix = useMemo(() => {
         const miOf = (ym: string): number => {
             const [y, m] = ym.split('-').map(Number);

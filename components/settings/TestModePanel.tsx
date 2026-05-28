@@ -5,6 +5,10 @@
 // pré-retraite…). Les vraies données sont sauvegardées via realDataSnapshot du
 // store et restaurées en sortie. Un banner orange permanent (Layout.tsx) +
 // le nom du persona signalent le mode en continu.
+//
+// UX : EN mode test, changer le menu déroulant bascule le persona IMMÉDIATEMENT
+// (sélection = application). HORS mode test, on exige le bouton « Activer » pour
+// ne pas écraser les vraies données juste en parcourant la liste.
 
 import React, { useState } from 'react';
 import { Card } from '../ui/Card';
@@ -24,11 +28,22 @@ export const TestModePanel: React.FC = () => {
 
     const selected = getPersonaOrDefault(selectedId);
     const active = isTestMode ? getPersonaOrDefault(activeTestPersonaId) : null;
-    const isActivePersona = isTestMode && active?.id === selectedId;
 
-    const loadPersona = () => {
-        enableTestMode(selected.build(), selected.id);
-        showToast(`🧪 Persona « ${selected.label} » chargé. Tes vraies données sont sauvegardées.`, 'success');
+    const applyPersona = (id: string) => {
+        const persona = getPersonaOrDefault(id);
+        setSelectedId(persona.id);
+        enableTestMode(persona.build(), persona.id);
+        showToast(`🧪 Persona « ${persona.label} » chargé. Tes vraies données sont sauvegardées.`, 'success');
+    };
+
+    // EN mode test : changer la liste bascule immédiatement. HORS mode test :
+    // on met juste à jour l'aperçu (le bouton « Activer » applique).
+    const onSelectChange = (id: string) => {
+        if (isTestMode) {
+            applyPersona(id);
+        } else {
+            setSelectedId(id);
+        }
     };
 
     const handleDisable = () => {
@@ -43,8 +58,8 @@ export const TestModePanel: React.FC = () => {
                 {isTestMode && active ? (
                     <p className="text-sm text-amber-300 leading-snug">
                         Persona actif : <strong>{active.emoji} {active.label}</strong> — {active.tagline}.
-                        Tes <strong>vraies données sont sauvegardées</strong> et seront restaurées dès que
-                        tu désactives le mode.
+                        Choisis-en un autre dans la liste pour <strong>basculer instantanément</strong>.
+                        Tes vraies données sont sauvegardées et seront restaurées à la sortie.
                     </p>
                 ) : (
                     <p className="text-sm text-gray-300 leading-snug">
@@ -56,10 +71,12 @@ export const TestModePanel: React.FC = () => {
                 )}
 
                 <label className="block">
-                    <span className="text-xs font-medium text-gray-400">Choisir un persona</span>
+                    <span className="text-xs font-medium text-gray-400">
+                        {isTestMode ? 'Changer de persona' : 'Choisir un persona'}
+                    </span>
                     <select
                         value={selectedId}
-                        onChange={(e) => setSelectedId(e.target.value)}
+                        onChange={(e) => onSelectChange(e.target.value)}
                         className="mt-1 w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     >
                         {TEST_PERSONAS.map((p) => (
@@ -73,13 +90,11 @@ export const TestModePanel: React.FC = () => {
                 <p className="text-xs text-gray-400 leading-snug">{selected.description}</p>
 
                 <div className="flex flex-wrap gap-2 items-center">
-                    <Button variant="primary" onClick={loadPersona} disabled={isActivePersona}>
-                        {!isTestMode
-                            ? 'Activer le mode test'
-                            : isActivePersona
-                                ? 'Persona déjà chargé'
-                                : 'Charger ce persona'}
-                    </Button>
+                    {!isTestMode && (
+                        <Button variant="primary" onClick={() => applyPersona(selectedId)}>
+                            Activer le mode test
+                        </Button>
+                    )}
                     {isTestMode && (
                         !confirmDisable ? (
                             <Button variant="ghost" onClick={() => setConfirmDisable(true)}>

@@ -75,6 +75,18 @@ describe('TEST_PERSONAS', () => {
         }
     });
 
+    it('un persona à 1 seul utilisateur ne génère AUCUN revenu pour user 2 (IncomeAnna=0)', () => {
+        for (const persona of TEST_PERSONAS) {
+            const state = persona.build();
+            const users = ((state.config as BudgetConfig)?.users ?? []).filter(Boolean);
+            if (users.length !== 1) continue;
+            const result = calculateFutureProjection(paramsFromPersona(state));
+            const base = (result.allResults as ProjectionResult[]).find((r) => r.stratType === 'BASE')!;
+            const maxIncomeAnna = Math.max(...base.chartData.map((d) => Number(d.IncomeAnna) || 0));
+            expect(maxIncomeAnna, `${persona.label} ne devrait pas avoir de revenu user 2`).toBe(0);
+        }
+    });
+
     for (const persona of TEST_PERSONAS) {
         describe(`${persona.emoji} ${persona.label}`, () => {
             const state = persona.build();

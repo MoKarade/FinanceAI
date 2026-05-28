@@ -12,7 +12,8 @@
 declare global {
     interface Window {
         gtag?: (
-            command: 'event' | 'config' | 'set' | 'js',
+            // 'consent' : Consent Mode v2 (S-B / Loi 25) — cf services/consent.ts.
+            command: 'event' | 'config' | 'set' | 'js' | 'consent',
             targetOrEventName: string,
             params?: Record<string, unknown>,
         ) => void;

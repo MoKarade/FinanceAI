@@ -33,10 +33,13 @@
   *même-appareil* par nature ; l'export portable (`BackupPanel`) est une voie distincte, inchangée. Logique
   extraite en fonctions pures testées (`buildStoredPayload`/`readStoredPayload`) — 6 tests (chiffrement,
   non-leak PII, round-trip, rétro-compat clair, clé absente, blob altéré). `tests/services/backupAuto.test.ts`.
-- **[S-B | MEDIUM] GA4 sans consentement (Loi 25 QC)** — `index.html:42` + `ga-init.js` +
-  `services/analytics.ts:32` : tracking actif au boot sans opt-in. Pour un produit multi-user QC,
-  Loi 25 exige un consentement explicite → bannière opt-in + ne charger GA qu'après accord. ID
-  `G-5WLQGBF1VL` public dans le repo. Test : non.
+- **[S-B | MEDIUM] GA4 sans consentement (Loi 25 QC)** — ✅ FAIT 2026-05-28 : Google Consent Mode v2.
+  `public/ga-init.js` refuse `analytics_storage` PAR DÉFAUT (aucun cookie/identifiant avant accord) et
+  rétablit si un consentement précédent est persisté. Nouveau `services/consent.ts` (clé localStorage
+  partagée avec ga-init, `getStoredConsent`/`setConsent`/`applyGtagConsent`) + `ConsentBanner` (bandeau
+  discret bas, non bloquant, Accepter/Refuser) monté dans `App` + `AnalyticsConsentCard` dans Réglages
+  (droit de retrait à tout moment). `analytics.ts` : type gtag étendu (`consent`). 6 tests
+  `tests/services/consent.test.ts`. Choix Marc : Consent Mode v2 + bandeau discret.
 - **[S-C | MEDIUM] `errorLogger` redaction PII non testée** — ✅ FAIT 2026-05-28 (6c888a8) :
   `sanitizeContext` est déjà récursif ; ajout de 6 tests de redaction (clés 1er niveau, formes variées
   password/email/sin/token/netWorth/grossSalary, imbriqué, non-sensibles conservés, troncature

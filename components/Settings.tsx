@@ -26,6 +26,7 @@ import { ProfileSection } from './settings/sections/ProfileSection';
 import { AccountsSection } from './settings/sections/AccountsSection';
 import { PatrimoineSection } from './settings/sections/PatrimoineSection';
 import { IntegrationsSection } from './settings/sections/IntegrationsSection';
+import { AnalyticsConsentCard } from './settings/sections/AnalyticsConsentCard';
 import { BackupSection } from './settings/sections/BackupSection';
 // G22-N5 — Système fusionné dans Config (6e sous-onglet « Système & diagnostics »).
 import { SystemView } from './SystemView';
@@ -193,7 +194,10 @@ export const Settings: React.FC<SettingsProps> = ({
       )}
       {sub === 'patrimoine' && <PatrimoineSection />}
       {sub === 'integrations' && (
-        <IntegrationsSection apiKeys={apiKeys} setApiKeys={setApiKeys} />
+        <div className="space-y-6">
+          <IntegrationsSection apiKeys={apiKeys} setApiKeys={setApiKeys} />
+          <AnalyticsConsentCard />
+        </div>
       )}
       {sub === 'backup' && <BackupSection buildPayload={buildBackupPayload} />}
       {sub === 'system' && <SystemView state={appState} />}

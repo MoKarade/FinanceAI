@@ -26,10 +26,13 @@
   (la crypto a un test round-trip mais les **chemins d'erreur** ne sont pas exercés).
 
 ### 🔐 LOT 1 — Sécurité & conformité (CHOISI — EN PREMIER)
-- **[S-A | MEDIUM] Backup auto chiffré** — `services/backupAuto.ts:57-64` : le backup quotidien
-  snapshote tout `financeai-storage` (transactions, soldes, dettes, revenus = PII financière) **en
-  clair dans IndexedDB**. (`apiKeys` bien exclus du persist, OK.) → chiffrer via `encryptJson`
-  (réutiliser `secureKeyStore`). Test : non (le test existant ne vérifie pas le contenu/chiffrement).
+- **[S-A | MEDIUM] Backup auto chiffré** — ✅ FAIT 2026-05-28 : `createBackupNow` chiffre désormais le
+  payload (AES-GCM) avec la clé de device partagée exportée par `secureKeyStore` (`getOrCreateDeviceKey`) ;
+  `restoreBackup` déchiffre et reste rétro-compatible avec les anciens backups en clair (champ `encrypted?`).
+  Dégradation propre en clair si crypto indisponible (mieux qu'aucun backup). Le backup rolling reste
+  *même-appareil* par nature ; l'export portable (`BackupPanel`) est une voie distincte, inchangée. Logique
+  extraite en fonctions pures testées (`buildStoredPayload`/`readStoredPayload`) — 6 tests (chiffrement,
+  non-leak PII, round-trip, rétro-compat clair, clé absente, blob altéré). `tests/services/backupAuto.test.ts`.
 - **[S-B | MEDIUM] GA4 sans consentement (Loi 25 QC)** — `index.html:42` + `ga-init.js` +
   `services/analytics.ts:32` : tracking actif au boot sans opt-in. Pour un produit multi-user QC,
   Loi 25 exige un consentement explicite → bannière opt-in + ne charger GA qu'après accord. ID

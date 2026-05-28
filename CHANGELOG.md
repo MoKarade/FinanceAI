@@ -8,10 +8,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Lot 1 · sécurité & conformité] — 2026-05-28
 
-Audit du 2026-05-28 → durcissement sécurité multi-utilisateur. Ordre : S-C, S-D faits ;
-S-A (backup chiffré), S-B (consentement GA4 / Loi 25), S-E (quick-wins) à suivre.
+Audit du 2026-05-28 → durcissement sécurité multi-utilisateur. Ordre : S-C, S-D, S-A faits ;
+S-B (consentement GA4 / Loi 25), S-E (quick-wins) à suivre.
 
 ### Sécurité
+- **S-A — Backup auto chiffré au repos** : `services/backupAuto.ts` chiffre désormais le payload des
+  backups rolling IndexedDB (transactions, soldes, dettes, revenus = PII financière) en AES-GCM, avec
+  la clé de device non-extractible partagée avec `secureKeyStore` (`getOrCreateDeviceKey` désormais
+  exportée). `restoreBackup` déchiffre et reste rétro-compatible avec les anciens backups en clair
+  (champ `encrypted?`). Dégradation propre en clair si la crypto est indisponible (mieux qu'aucun
+  backup). Le backup rolling reste *même-appareil* par nature ; l'export portable (`BackupPanel`) est
+  une voie distincte, inchangée. Logique extraite en fonctions pures testées
+  (`buildStoredPayload`/`readStoredPayload`) — 6 tests (chiffrement, non-leak PII, round-trip,
+  rétro-compat clair, clé absente, blob altéré).
 - **S-D — Défense anti-injection de prompt (Claude)** : nouveau module partagé et testé
   `utils/promptSafety.ts` — `sanitizePromptText` (neutralise caractères de contrôle + markup
   d'injection par arithmétique de code points, 0 octet de contrôle dans la source),

@@ -146,8 +146,14 @@ const idbPut = (db: IDBDatabase, key: string, value: unknown): Promise<void> =>
 /**
  * Récupère la clé de device existante, ou en génère une nouvelle
  * (non-extractible) et la persiste. Une seule clé par navigateur/profil.
+ *
+ * Exportée car partagée : sert aussi au chiffrement au repos des backups
+ * locaux (`services/backupAuto.ts`). Même modèle de menace (protège un dump
+ * passif d'IndexedDB/localStorage, pas un XSS actif). Réutilisation sûre —
+ * `encryptJson` tire un IV aléatoire à chaque appel, donc aucune réutilisation
+ * de nonce GCM même si la clé chiffre plusieurs payloads.
  */
-const getOrCreateDeviceKey = async (): Promise<CryptoKey> => {
+export const getOrCreateDeviceKey = async (): Promise<CryptoKey> => {
     const subtle = getSubtle();
     if (!subtle) throw new Error('Web Crypto indisponible');
     const db = await openDb();

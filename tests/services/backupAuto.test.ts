@@ -1,7 +1,26 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
+import { webcrypto } from 'node:crypto';
 
-// fake-indexeddb : monte une impl IndexedDB en mémoire pour les tests.
-// Pas de dépendance npm — on stub via vi.stubGlobal pour les tests basiques.
+// IndexedDB n'est pas dispo en jsdom → les tests « glue » stubent via
+// vi.stubGlobal. Le cœur métier S-A (chiffrement du payload) est, lui, testé
+// purement en injectant une CryptoKey (modèle identique à secureKeyStore.test).
+beforeAll(() => {
+    if (!globalThis.crypto?.subtle) {
+        (globalThis as { crypto?: Crypto }).crypto = webcrypto as unknown as Crypto;
+    }
+});
+
+const makeKey = (): Promise<CryptoKey> =>
+    globalThis.crypto.subtle.generateKey(
+        { name: 'AES-GCM', length: 256 },
+        true,
+        ['encrypt', 'decrypt'],
+    ) as Promise<CryptoKey>;
+
+// Snapshot localStorage représentatif (PII financière) pour vérifier le non-leak.
+const SAMPLE_PAYLOAD = JSON.stringify({
+    state: { transactions: [{ payee: 'Loyer', amount: -1850 }], users: [{ salary: 92000 }] },
+});
 
 describe('backupAuto', () => {
     beforeEach(() => {
@@ -48,5 +67,53 @@ describe('backupAuto', () => {
         const result = await restoreBackup('nonexistent-id');
         expect(result).toBe(false);
         vi.unstubAllGlobals();
+    });
+});
+
+describe('backupAuto — chiffrement au repos (S-A)', () => {
+    it('buildStoredPayload chiffre quand une clé est fournie (pas de PII en clair)', async () => {
+        const { buildStoredPayload } = await import('../../services/backupAuto');
+        const stored = await buildStoredPayload(SAMPLE_PAYLOAD, await makeKey());
+        expect(stored.encrypted).toBe(true);
+        expect(stored.payload).not.toBe(SAMPLE_PAYLOAD);
+        expect(stored.payload).not.toContain('Loyer');
+        expect(stored.payload).not.toContain('92000');
+    });
+
+    it('buildStoredPayload dégrade en clair sans clé (backup quand même)', async () => {
+        const { buildStoredPayload } = await import('../../services/backupAuto');
+        const stored = await buildStoredPayload(SAMPLE_PAYLOAD, null);
+        expect(stored.encrypted).toBe(false);
+        expect(stored.payload).toBe(SAMPLE_PAYLOAD);
+    });
+
+    it('round-trip : readStoredPayload restitue fidèlement le plaintext chiffré', async () => {
+        const { buildStoredPayload, readStoredPayload } = await import('../../services/backupAuto');
+        const key = await makeKey();
+        const stored = await buildStoredPayload(SAMPLE_PAYLOAD, key);
+        const back = await readStoredPayload({ payload: stored.payload, encrypted: true }, key);
+        expect(back).toBe(SAMPLE_PAYLOAD);
+    });
+
+    it('readStoredPayload lit un ancien backup en clair (encrypted absent ou false)', async () => {
+        const { readStoredPayload } = await import('../../services/backupAuto');
+        expect(await readStoredPayload({ payload: SAMPLE_PAYLOAD }, null)).toBe(SAMPLE_PAYLOAD);
+        const key = await makeKey();
+        expect(await readStoredPayload({ payload: SAMPLE_PAYLOAD, encrypted: false }, key)).toBe(SAMPLE_PAYLOAD);
+    });
+
+    it('readStoredPayload lève si chiffré mais clé absente', async () => {
+        const { readStoredPayload } = await import('../../services/backupAuto');
+        await expect(readStoredPayload({ payload: 'blob', encrypted: true }, null)).rejects.toThrow();
+    });
+
+    it('readStoredPayload rejette un blob altéré (AES-GCM authentifie)', async () => {
+        const { buildStoredPayload, readStoredPayload } = await import('../../services/backupAuto');
+        const key = await makeKey();
+        const stored = await buildStoredPayload(SAMPLE_PAYLOAD, key);
+        const bytes = Buffer.from(stored.payload, 'base64');
+        bytes[bytes.length - 1] ^= 0xff; // flip dans le tag GCM
+        const tampered = bytes.toString('base64');
+        await expect(readStoredPayload({ payload: tampered, encrypted: true }, key)).rejects.toThrow();
     });
 });

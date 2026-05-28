@@ -1,0 +1,63 @@
+name: Refresh Playwright screenshot baselines
+
+# Workflow manuel : régénère les baselines des screenshots E2E sur ubuntu-latest
+# afin qu'elles matchent l'environnement de rendu utilisé par le job CI E2E
+# (sinon les comparaisons pixel-à-pixel échouent à cause des différences de
+# rendu de fontes entre l'OS qui a généré les baselines et le runner CI).
+#
+# Usage : Actions → "Refresh Playwright screenshot baselines" → Run workflow.
+# Le workflow crée une branche, commit les baselines mises à jour et ouvre
+# une PR draft à fusionner pour débloquer le job E2E.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  refresh:
+    name: Update screenshot baselines (ubuntu-latest)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Playwright Chromium + deps système
+        run: npx playwright install --with-deps chromium
+
+      - name: Régénérer les baselines (screenshots.spec.ts uniquement)
+        run: npx playwright test e2e/screenshots.spec.ts --update-snapshots
+
+      - name: Configurer git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit, push et ouverture d'une PR draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="chore/refresh-screenshots-${{ github.run_id }}"
+          git checkout -b "$BRANCH"
+          git add e2e/__snapshots__
+          if git diff --staged --quiet; then
+            echo "Aucune différence dans les baselines — rien à publier."
+            exit 0
+          fi
+          git commit -m "chore(e2e): refresh Playwright screenshot baselines (ubuntu-latest)"
+          git push -u origin "$BRANCH"
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --draft \
+            --title "chore(e2e): refresh screenshot baselines (ubuntu-latest)" \
+            --body "Baselines régénérées sur ubuntu-latest pour matcher l'environnement du job E2E (Playwright / Chromium). Note: les pushs faits via GITHUB_TOKEN ne re-déclenchent pas automatiquement les workflows — fermer + rouvrir la PR (ou pousser un commit vide) pour faire tourner le job E2E sur les nouvelles baselines."

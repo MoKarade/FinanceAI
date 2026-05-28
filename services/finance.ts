@@ -119,7 +119,22 @@ export const fetchFxRates = async (): Promise<{ USD: number; EUR: number; CAD: n
         console.warn("Impossible de recuperer les taux FX (Banque du Canada), utilisation des valeurs en cache/defaut:", e);
     }
 
-    // Fallback: valeurs par defaut approximatives si tout echoue
+    // Fallback (audit Tier 🟡) — préférer le DERNIER taux réel connu, même périmé (>24h),
+    // à un taux inventé : un taux d'hier est plus honnête qu'une approximation hardcodée.
+    // (Le check de fraîcheur 24h plus haut a échoué OU le réseau est tombé ; ici on
+    // accepte volontairement un cache vieux comme repli réaliste.)
+    const lastKnown = safeGetItem('fx_rates_cache');
+    if (lastKnown) {
+        try {
+            const parsed = JSON.parse(lastKnown);
+            if (parsed && typeof parsed.USD === 'number' && typeof parsed.EUR === 'number' && typeof parsed.CAD === 'number') {
+                return parsed; // périmé mais réel
+            }
+        } catch { /* cache corrompu : on tombe sur les défauts */ }
+    }
+
+    // Dernier recours : défauts approximatifs. `lastFetched: 0` = signal « jamais récupéré »
+    // (contrat qu'un futur badge UI « taux estimé » pourra détecter).
     const fallback = { USD: 1.40, EUR: 1.47, CAD: 1.00, lastFetched: 0 };
     return fallback;
 };

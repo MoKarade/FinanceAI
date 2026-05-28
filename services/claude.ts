@@ -68,7 +68,14 @@ export const safeJsonValidate = <S extends z.ZodTypeAny>(text: string, schema: S
     } catch (e) {
         // S-E : ne plus loguer le contenu brut de la réponse LLM (peut contenir des
         // libellés/marchands utilisateur) ; la longueur suffit au diagnostic.
-        console.warn('[Claude] JSON validation failed:', e, `(réponse ${text.length} car.)`);
+        // Tier 🟡 : via le logger borné (errorLogger, 100 entrées) plutôt que console.warn
+        // → visible/exportable dans SystemView pour diagnostiquer les réponses LLM malformées.
+        logError({
+            source: 'ai',
+            severity: 'warning',
+            message: `Validation JSON LLM échouée (réponse ${text.length} car.)`,
+            error: e instanceof Error ? e : new Error(String(e)),
+        });
         return null;
     }
 };
@@ -171,9 +178,10 @@ export async function chat(
             messages,
         }, { signal });
         // La réponse Anthropic est un array de content blocks; on concatène les text.
+        // Tier 🟡 : flatMap type-safe — `block.type === 'text'` narrow le bloc, donc
+        // `block.text` est accessible SANS cast `as` (le filter+map+cast perdait le narrowing).
         return response.content
-            .filter(block => block.type === 'text')
-            .map(block => (block as { type: 'text'; text: string }).text)
+            .flatMap(block => block.type === 'text' ? [block.text] : [])
             .join('');
     } finally {
         cleanup();
@@ -723,8 +731,7 @@ export const analyzePayslip = async (file: File, apiKey: string): Promise<Paysli
     });
 
     const text = response.content
-        .filter(b => b.type === 'text')
-        .map(b => (b as { type: 'text'; text: string }).text)
+        .flatMap(b => b.type === 'text' ? [b.text] : [])
         .join('');
     const validated = safeJsonValidate(text, PayslipSchema);
     if (!validated) {

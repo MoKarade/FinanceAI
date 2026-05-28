@@ -54,6 +54,20 @@ performance (F9-F11). Les règles fiscales incertaines restent en attente de sou
   `useCallback` (lecture `range`/`dataLength` via refs) + objet `handlers` mémoïsé → plus de re-render
   du graphe à chaque frame à cause d'identités de props recréées.
 
+### Tier 🟡 — opportuniste (Batch D)
+- **Robustesse FX (no-fake-data)** : `finance.ts` — sur échec réseau, le fallback préfère désormais le
+  **dernier taux réel connu** (cache localStorage, même périmé) aux défauts hardcodés 1.40/1.47. Un taux
+  d'hier est plus honnête qu'une approximation inventée.
+- **Backup en clair signalé** : `backupAuto.tryGetDeviceKey` journalise (une fois/session) quand la crypto
+  est indisponible et que les backups tombent en clair — au lieu d'un `null` totalement silencieux.
+- **Validation backup durcie** : `BackupSchema` exige « tableau d'objets » pour `transactions`/`assets`
+  (vs `z.unknown()`) — attrape la corruption grossière sans rejeter un backup légitime (chemin restauration).
+- **Qualité TS `claude.ts`** : extraction des blocs texte Anthropic en `flatMap` type-safe (supprime le cast
+  `as`) ; `safeJsonValidate` loggue via `errorLogger` (borné, exportable) au lieu de `console.warn`.
+- **Non corrigé (jugement)** : `pdfReport` `window.open`/`document.write` sans `noopener` — faux positif
+  (`noopener` ferait retourner `null`, cassant la feature ; fenêtre blanche même-origine, contenu qu'on
+  génère → risque nul). `monteCarlo.allRuns` mémoire — reste au backlog (touche des consumers).
+
 ---
 
 ## [unreleased — Lot 2 · filet de tests moteur money-critical] — 2026-05-28

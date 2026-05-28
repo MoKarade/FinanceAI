@@ -1163,7 +1163,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 // Cycle 7 split: runMonteCarlo extrait dans ./projection/monteCarlo
 
 
-export const calculateFutureProjection = (params: SimulationParams, runMC: boolean = false, selectedIdx: number = 0): ProjectionResult => {
+export const calculateFutureProjection = (params: SimulationParams, runMC: boolean = false, selectedIdx: number = 0, onlyStratTypes?: string[]): ProjectionResult => {
     // G21 C5 — leviers « appliqués » depuis l'optimiseur (orthogonaux à l'axe
     // scénario). EngineOverrides threadés à TOUS les scénarios + bonus de rendement
     // NonReg pour l'asset location (clone immutable, effet modulé par le solde réel).
@@ -1192,7 +1192,13 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
     // V90 + Cycle 7 split: Avenirs de Vie (5 Distinct Futures)
     // Metadata extraite dans ./projection/scenarios. Itère sur SCENARIO_DEFINITIONS
     // (7 scénarios depuis Phase 4 #4) au lieu de blocs hardcodés ~10 lignes chacun.
-    const results: ProjectionResult[] = SCENARIO_DEFINITIONS.map(def => ({
+    // B3 perf — certains appelants (goalSeek) n'ont besoin que du scénario BASE :
+    // éviter de lancer les 7 inutilement. Filtre optionnel ; défaut = tous (inchangé).
+    const requestedDefs = onlyStratTypes
+        ? SCENARIO_DEFINITIONS.filter(d => onlyStratTypes.includes(d.stratType))
+        : SCENARIO_DEFINITIONS;
+    const activeDefs = requestedDefs.length > 0 ? requestedDefs : SCENARIO_DEFINITIONS;
+    const results: ProjectionResult[] = activeDefs.map(def => ({
         ...runScenario(effectiveParams, def.strategy, false, def.delayPensions, 0, def.stratType, appliedOverrides),
         strategy: def.strategy,
         strategyName: def.strategyName,

@@ -46,7 +46,9 @@ export function findRequiredMonthlySavings(
             ...baseParams,
             projection: { ...baseParams.projection, manualContribution: savings, savingsMode: 'manual' },
         };
-        const r = calculateFutureProjection(params);
+        // B3 perf — goalSeek n'utilise que le NW du scénario BASE ; ne lancer
+        // que celui-là (≈7× moins de CPU par itération de bissection).
+        const r = calculateFutureProjection(params, false, 0, ['BASE']);
         const base = r.allResults?.find((s) => s.stratType === 'BASE');
         if (!base) return 0;
         if (targetAge) {
@@ -111,7 +113,9 @@ export function findEarliestRetirementAge(
             retirementGoal: { ...baseParams.retirementGoal, targetAge: age },
             projection: { ...baseParams.projection, years: Math.max(baseParams.projection.years, 95 - age + 5) },
         };
-        const r = calculateFutureProjection(params);
+        // B3 perf — goalSeek n'utilise que le NW du scénario BASE ; ne lancer
+        // que celui-là (≈7× moins de CPU par itération de bissection).
+        const r = calculateFutureProjection(params, false, 0, ['BASE']);
         const base = r.allResults?.find((s) => s.stratType === 'BASE');
         if (!base) return -1;
         return base.minNetWorth ?? -1;

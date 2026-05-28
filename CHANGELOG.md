@@ -6,6 +6,35 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Lot 2 · filet de tests moteur money-critical] — 2026-05-28
+
+Filet de régression sur 11 modules money/sécurité auparavant **sans test unitaire direct**
+(~119 nouveaux tests). C'est là qu'avaient surgi les 3 bugs silencieux de la semaine.
+
+### Tests
+- **cloudBackup** : round-trip AES-GCM/PBKDF2, salt+IV aléatoires, entête `FAI1`, non-leak du
+  payload, codes d'erreur distincts (WRONG_PASSPHRASE vs INVALID_FORMAT), gate passphrase <12.
+- **setupSimulation** : régression *revenu brut ×12* (annualisation) + *sliders returnRates*,
+  ajustement RRQ, RNG seedé déterministe, smile curve, droits CELI/REER (immigrant < natif).
+- **childrenReee** : régression *RQAP fantôme parent seul* (le calcul fiscal n'est même pas appelé,
+  vérifié par spy), plafond REEE viager 50k$ (F13), fermeture 25 ans, clawback allocation, études.
+- **taxJanuary** : gate janvier/m>0, plafonds CELI/REER, FERR 72+, fermeture CELIAPP 15 ans, Guyton-Klinger.
+- **portfolioOps** : ACB + gains/pertes en capital, consommation de la banque de pertes, bornes.
+- **meltdownReer** : gardes (null), paliers de patrimoine net, retenue 30 %/38 %.
+- **monthlyCalcs** : inflation effective (bonus santé 75+, pondération CPI) + retenue T1213 (optim. déductions).
+- **growthApplication** : agrégation des 7 actifs, base de croissance hors contributions du mois.
+- **monteCarlo** : agrégation successRate / P10-P50-P90 / FVI (via `runScenario` injecté et stubé).
+- **stochasticEvents** : déclencheurs (maladie grave, héritage, mortalité, LTC, perte d'emploi, divorce)
+  via `rng` injecté → triggers et gardes déterministes.
+- **claude** : `safeJsonValidate` (robustesse parsing/Zod des réponses LLM, nettoyage ```json),
+  `isDefiniteTransfer` (pré-filtre), court-circuits sans réseau.
+
+### Findings (caractérisation → candidats Lot 4)
+- `handleNonRegSale` ne modélise pas les pertes en capital NonReg (branche inatteignable) — comportement pinné.
+- `defaultBackupFilename` : 2ᵉ `replace` mort → millisecondes conservées dans le nom (cosmétique) — pinné.
+
+---
+
 ## [unreleased — Lot 1 · sécurité & conformité] — 2026-05-28
 
 Audit du 2026-05-28 → durcissement sécurité multi-utilisateur. **Lot 1 complet** : S-A, S-B, S-C, S-D, S-E.

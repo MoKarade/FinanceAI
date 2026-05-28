@@ -65,7 +65,14 @@
   Anthropic circule dans le header depuis le navigateur (visible DevTools). OK derrière Cloudflare
   Access perso ; pour le public → proxy backend OU documenter + recommander des clés à budget limité.
 
-### 🧪 LOT 2 — Filet de tests sur le moteur money-critical (assurance anti-régression)
+### 🧪 LOT 2 — Filet de tests sur le moteur money-critical — ✅ FAIT 2026-05-28 (~119 tests, 11 modules)
+> **Fait** : 11 modules money/sécu sans test direct désormais couverts — cloudBackup (crypto
+> round-trip/tamper/format), setupSimulation (régression revenu ×12 + sliders returnRates),
+> childrenReee (RQAP fantôme parent seul via spy), taxJanuary (FERR/CELI/REER/CELIAPP/Guyton-Klinger),
+> portfolioOps (ACB/gains), meltdownReer (paliers NW + retenue), monthlyCalcs (inflation 75+/retenue
+> T1213), growthApplication (agrégation 7 actifs), monteCarlo (agrégation via runScenario stubé),
+> stochasticEvents (triggers via rng injecté), claude (safeJsonValidate + isDefiniteTransfer + court-circuits).
+> 2 findings de caractérisation → « Compléments Lot 4 » ci-dessous. _(contexte original conservé :)_
 > Le moteur a une bonne couverture d'INTÉGRATION (personas/convergence) mais les sous-modules
 > « cœur du mois » n'ont **aucun test unitaire direct** → c'est exactement là qu'ont surgi les 3 bugs
 > silencieux de la semaine (revenu ×12, falaise, RQAP fantôme). Top lacunes (risque × exposition) :
@@ -79,6 +86,13 @@
   proposé par le bouton « appliquer le rendement réel » compare 1er vs dernier point **sans** retirer
   les apports → surestime le rendement (mélange marché + épargne). → note UI OU exiger ≥ 3 ans d'historique.
 - **[connu] Congé parental parent seul** sous-modélisé (déjà listé dans Suivis continuité).
+- **[LOW · finding Lot 2] `handleNonRegSale` ne modélise PAS les pertes en capital NonReg** :
+  `proportion = min(1, ACB/nonReg)` → `rawGain ≥ 0` toujours → la branche `capitalLossBank +=` est
+  **inatteignable** (la banque de pertes est consommée mais jamais alimentée par cette fonction).
+  Théorique en marché haussier, sous-estime l'efficacité fiscale en scénario baissier (ECONOMIC_WINTER).
+  Comportement actuel pinné par `tests/services/portfolioOps.test.ts`.
+- **[TRIVIAL · finding Lot 2] `defaultBackupFilename`** : le 2ᵉ `.replace(/\.\d+Z$/)` est du code mort
+  (le 1ᵉʳ `replace` a déjà retiré le « . ») → le nom conserve les millisecondes (`-000Z`). Cosmétique, pinné.
 
 ---
 

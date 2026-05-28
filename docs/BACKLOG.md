@@ -177,6 +177,43 @@
   RÉPLIQUES de la logique (toutes deux correctes), pas le vrai chemin du composant
   (`fetchPortfolioHistory`). Leçon appliquée : fonction pure unique testée = composant exécuté.
 
+### P1 — Zoom du graphe Futur 100 % FLUIDE (actuellement lent/saccadé)
+> Demande Marc : « quand je zoom sur la courbe future c'est pas fluide, lent et chiant ;
+> je veux 100 % fluide ».
+
+- **Cause** : chaque cran de molette (`useTimeChartZoom.handleWheel`) et chaque `mousemove`
+  de pan (`onMouseMove`) appelle `setRange` → re-render COMPLET d'un `ComposedChart` recharts
+  lourd (8 aires empilées + barres FluxImpots + `ImpotLatent` + 3 lignes Monte-Carlo + ligne
+  VN + `ReferenceDot` par événement + `ReferenceLine`/`ReferenceArea`), sur ~589 points.
+  Aucun **rAF / throttle** : une rotation de molette = rafale de re-renders → saccades.
+- **Pistes (cumulables)** :
+  1. **Coalescer molette + pan en `requestAnimationFrame`** : 1 seul `setRange` par frame
+     (`hooks/useTimeChartZoom.ts`). Gain immédiat le plus gros.
+  2. **Downsampling/LOD** : ne tracer que ~150-200 points à l'écran (échantillonner
+     `visibleData`) — la courbe est visuellement identique, recharts beaucoup plus léger.
+  3. **Mémoïser le sous-arbre graphe** (`React.memo`) pour ne re-rendre que sur changement
+     de `visibleData`/séries visibles, pas sur tout state du composant.
+  4. Optionnel : masquer les `ReferenceDot` d'événements PENDANT le pan/zoom actif, les
+     re-afficher au repos (ils sont coûteux en grand nombre).
+- **Cible** : interaction à 60 fps (test : molette rapide + pan sur Diane, 589 pts).
+- **Effort** : moyen. Concerne `useTimeChartZoom.ts` + le rendu chart de `FutureProjection.tsx`
+  (et bénéficie aussi à `ZoomableTimeChart` : Dette/Immo/Retraite/Enfant).
+
+### P1 — Pendant le calcul de la courbe : écran de chargement À LA PLACE de la courbe
+> Demande Marc : « quand ça charge / quand je crée la courbe, je veux pas voir la courbe
+> mais un petit écran de chargement à la place, ou juste un texte qui dit que ça charge ».
+
+- **Cause** : `isComputing` existe (`FutureProjection.tsx:271`) mais ne sert qu'à un `action`
+  d'en-tête (~ligne 678) ; le `ComposedChart` (~ligne 764, `data={zoom.visibleData}`) reste
+  rendu pendant le recalcul (MC en worker 1.5-3 s) → l'ancienne courbe reste visible / clignote.
+- **Fix** : remplacer le graphe par un état de chargement tant que `isComputing` (ou pas
+  encore de données) : `{isComputing || !hasData ? <LoadingState/> : <Chart/>}`. Réutiliser
+  le skeleton existant (tâche U6, #89) ou un placeholder simple (texte « Calcul de ta
+  projection… » + spinner) **de la même hauteur** que le graphe (zéro layout shift).
+- **Bonus** : ne PAS afficher de courbe partielle/périmée ; au tout 1er calcul comme aux
+  recalculs (changement de scénario, sliders, persona).
+- **Effort** : faible (1 branche de rendu + le placeholder).
+
 ### P2 — Infobulle Futur : afficher l'impôt dormant + l'impôt payé dans l'année
 > Demande Marc : dans l'infobulle (survol du graphe Futur), voir (1) « combien d'impôt
 > dormant il y a » et (2) « combien d'impôt je paie à la fin de l'année ».

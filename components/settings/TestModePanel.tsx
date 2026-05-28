@@ -36,14 +36,12 @@ export const TestModePanel: React.FC = () => {
         showToast(`🧪 Persona « ${persona.label} » chargé. Tes vraies données sont sauvegardées.`, 'success');
     };
 
-    // EN mode test : changer la liste bascule immédiatement. HORS mode test :
-    // on met juste à jour l'aperçu (le bouton « Activer » applique).
+    // Choisir un persona dans la liste l'APPLIQUE toujours, qu'on soit déjà en
+    // mode test ou non (active le mode test au besoin). L'utilisateur s'attend à
+    // « choisir = charger » : sans ça, sélectionner « Léa » (seule) laissait le
+    // persona précédent (couple) actif → 2 salaires affichés à tort.
     const onSelectChange = (id: string) => {
-        if (isTestMode) {
-            applyPersona(id);
-        } else {
-            setSelectedId(id);
-        }
+        applyPersona(id);
     };
 
     const handleDisable = () => {
@@ -75,6 +73,7 @@ export const TestModePanel: React.FC = () => {
                         {isTestMode ? 'Changer de persona' : 'Choisir un persona'}
                     </span>
                     <select
+                        aria-label="Choisir un persona de test"
                         value={selectedId}
                         onChange={(e) => onSelectChange(e.target.value)}
                         className="mt-1 w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500"

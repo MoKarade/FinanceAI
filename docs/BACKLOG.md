@@ -140,6 +140,39 @@
   bug « 60 $ » (tâche #56, tooltip retraite).
 - **Effort** : faible-moyen (lecture + 1 cas repro + éventuel ajustement display).
 
+### P1 — Unité de `grossSalary` incohérente : 3 écritures stockent de l'ANNUEL (doit être MENSUEL)
+> Bug frère trouvé en corrigeant l'impôt d'emploi (cf « ✅ Fait » ci-dessous).
+> `grossSalary`/`netSalary` sont **mensuels** partout (engine après fix, Budget,
+> FutureProjection, Retirement, TaxCenter display, pdfReport, tous les personas,
+> `testConfig` où `Alex=7500` n'a de sens que mensuel). MAIS 3 chemins de saisie
+> écrivent de l'**annuel** → revenu ~12× trop haut pour ces utilisateurs.
+
+- **Écritures fautives** :
+  - `components/Onboarding.tsx:151-152` — label « Salaire brut **annuel** », stocké brut (net est « mensuel » juste en dessous → incohérence interne). Défauts 70000/60000.
+  - `components/settings/PayslipUploadCard.tsx:63-64` — stocke `annualGross` ET `annualNet` (les deux annuels).
+  - `components/TaxCenter.tsx:43` — `grossSalary: Math.round(scannedPay.gross) // always stored as annual` (le net ligne 44 est bien `/12`).
+- **Fix proposé** : convention canonique = **MENSUEL**. Convertir à l'écriture :
+  Onboarding `grossSalary/12` au commit (garder le label « annuel » côté UI),
+  PayslipUploadCard `annualGross/12` + `annualNet/12`, TaxCenter `scannedPay.gross/12`.
+  Ajouter un test garde (un profil saisi via chaque chemin → `grossSalary` plausible mensuel).
+- **Impact** : seuls les users onboardés / scan de paie sont touchés (le produit est
+  récent ; les personas + saisie manuelle sont déjà mensuels). À faire bientôt.
+- **Effort** : faible (3 `/12` + ajustement défauts Onboarding + 1 test garde).
+
+### ✅ Fait 2026-05-28 — Impôt d'emploi : brut mensuel annualisé dans le moteur (CI-1000x A1)
+- **Bug** : `computeIncomeBaseline` (`services/projection/setupSimulation.ts`) lisait
+  `grossSalary` (mensuel) **tel quel comme annuel** → revenu 12× trop bas → impôt
+  d'emploi ~0 sur toute la projection (un « 120 k$ » taxé comme 10 k$, sous l'exemption).
+- **Fix** : annualisation `× 12` (cohérent avec le fallback `net×12×1.35` et les 6 autres
+  consommateurs). Les 966 tests existants passent inchangés (suite basée invariants).
+- **Garde** : `tests/services/coupleTaxation.test.ts` (8 tests) — annualisation ×12,
+  progressivité de `calculateFiscalReport` (un 120 k$ > deux 60 k$ → bénéfice du calcul
+  par conjoint), et bout-en-bout (taux marginal élevé à 120 k$). Commit b1be263.
+- **Découverte structurelle** : l'impôt **par conjoint** était déjà correct (chaque
+  conjoint taxé séparément via `computeMonthlyWithholding`) ; le bug était l'**entrée**
+  (revenu 12× trop bas), pas la structure. Reste A2 (fractionnement pension au décaissement)
+  et A3 (REER de conjoint).
+
 ### ✅ Fait 2026-05-28 — Sélecteur de persona dans la bannière (CI-1000x axe F)
 - Menu déroulant des 7 personas directement dans le banner orange du mode test
   → changer d'utilisateur sans passer par Réglages. `components/Layout.tsx`.

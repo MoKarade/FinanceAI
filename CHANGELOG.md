@@ -8,10 +8,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Lot 1 · sécurité & conformité] — 2026-05-28
 
-Audit du 2026-05-28 → durcissement sécurité multi-utilisateur. Ordre : S-C, S-D, S-A faits ;
-S-B (consentement GA4 / Loi 25), S-E (quick-wins) à suivre.
+Audit du 2026-05-28 → durcissement sécurité multi-utilisateur. Ordre : S-C, S-D, S-A, S-B faits ;
+S-E (quick-wins) à suivre.
 
 ### Sécurité
+- **S-B — Consentement GA4 (Loi 25 QC)** : Google Consent Mode v2. `public/ga-init.js` refuse
+  `analytics_storage` par défaut (aucun cookie/identifiant avant accord) et rétablit si un consentement
+  a été persisté. Nouveau `services/consent.ts` (clé localStorage partagée avec ga-init) + bandeau
+  discret `ConsentBanner` (non bloquant, Accepter/Refuser) monté dans `App`, + `AnalyticsConsentCard`
+  dans Réglages → Clés API & Services pour accorder/retirer le consentement à tout moment (droit de
+  retrait). `analytics.ts` : type gtag étendu (`consent`). 6 tests `tests/services/consent.test.ts`.
 - **S-A — Backup auto chiffré au repos** : `services/backupAuto.ts` chiffre désormais le payload des
   backups rolling IndexedDB (transactions, soldes, dettes, revenus = PII financière) en AES-GCM, avec
   la clé de device non-extractible partagée avec `secureKeyStore` (`getOrCreateDeviceKey` désormais

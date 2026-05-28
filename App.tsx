@@ -3,6 +3,7 @@ import { Layout } from './components/Layout';
 import { Onboarding } from './components/Onboarding';
 import { ToastContainer, showToast } from './components/ui/Toast';
 import { PwaInstallBanner } from './components/PwaInstallBanner';
+import { ConsentBanner } from './components/ConsentBanner';
 import { Tab, AppState } from './types';
 import { INITIAL_CHILD_GOAL } from './constants';
 import { markDuplicates } from './utils/transactionParser';
@@ -479,6 +480,8 @@ export const App: React.FC = () => {
             </Layout>
             <ToastContainer />
             <PwaInstallBanner />
+            {/* S-B (Loi 25) — consentement mesure d'audience, bandeau discret. */}
+            <ConsentBanner />
             <CommandPalette open={cmdK.isOpen} onClose={cmdK.close} actions={cmdActions} />
             {/* G22-F4 — tutoriel guidé (overlay global, démarré par event). */}
             <GuidedTour />

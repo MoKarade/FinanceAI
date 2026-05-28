@@ -11,6 +11,7 @@ import { TEST_PERSONAS } from '../../services/testPersonas';
 import { generateTestMarketData } from '../../services/testMarketData';
 import { calculateFutureProjection, type SimulationParams } from '../../services/projection';
 import type { ProjectionResult, ProjectionChartPoint } from '../../services/projection/types';
+import { reconstructPortfolioHistory } from '../../services/history/reconstructPortfolioHistory';
 import type { AppState, BudgetConfig, BudgetCategory, Asset, Debt, User } from '../../types';
 
 // ── Réplication du pipeline FutureProjection.tsx ────────────────────────────
@@ -171,6 +172,45 @@ describe('Audit personas — données + calculs', () => {
                     expect(investedTotal).toBeGreaterThan(1000);
                 }
             });
+        });
+    }
+
+    // ── CONTINUITÉ PASSÉ ↔ FUTUR ───────────────────────────────────────────
+    // Garde-fou contre la « falaise » : le patrimoine reconstruit juste AVANT
+    // aujourd'hui (passé réel) doit ≈ le patrimoine de DÉPART de la projection.
+    // Le bug (generateTestMarketData non persona-aware) faisait démarrer le futur
+    // sur le portfolio du couple par défaut (~52k) pendant que le passé montrait
+    // les vrais actifs du persona (ex: Diane ~890k) → discontinuité énorme.
+    for (const persona of TEST_PERSONAS) {
+        it(`${persona.emoji} ${persona.label} — pas de falaise entre passé et futur`, () => {
+            const state = persona.build();
+            const assets = (state.assets ?? []) as Asset[];
+            const balances = (state.initialBalances ?? {}) as unknown as Record<string, number>;
+
+            // Patrimoine de DÉPART du futur = chartData[0].NetWorth.
+            const result = calculateFutureProjection(buildFaithfulParams(state));
+            const base = (result.allResults as ProjectionResult[]).find((r) => r.stratType === 'BASE')!;
+            const futureStart = base.chartData[0]?.NetWorth ?? 0;
+
+            // Patrimoine reconstruit en fin de passé = placements (dernier point)
+            // + cash actuel (identique au liquide de départ du futur).
+            const minimal = assets.map((a) => ({
+                symbol: a.symbol, quantity: a.quantity || 0, currency: a.currency || 'CAD',
+                currentPrice: a.currentPrice || 0, accountType: a.accountType,
+                dateBought: a.dateBought, purchases: a.purchases,
+                priceHistory: (a.priceHistory || []).map((p) => ({ date: p.date, price: p.price })),
+            }));
+            const past = reconstructPortfolioHistory(minimal, {});
+            const investedPast = past.points.length ? past.points[past.points.length - 1].NetWorth : 0;
+            const cashNow = calcStartingCash(balances, state.transactions);
+            const pastEnd = investedPast + cashNow;
+
+            const denom = Math.max(pastEnd, futureStart, 1);
+            const gap = Math.abs(pastEnd - futureStart) / denom;
+            expect(
+                gap,
+                `${persona.label}: passé ${Math.round(pastEnd).toLocaleString('fr-CA')}$ vs futur ${Math.round(futureStart).toLocaleString('fr-CA')}$ (écart ${(gap * 100).toFixed(0)}%)`,
+            ).toBeLessThan(0.2);
         });
     }
 

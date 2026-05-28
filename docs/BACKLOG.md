@@ -219,6 +219,36 @@
   recalculs (changement de scénario, sliders, persona).
 - **Effort** : faible (1 branche de rendu + le placeholder).
 
+### P2 — Animations de qualité PARTOUT (chargements, navigation, changements de paramètres…)
+> Demande Marc : « mettre des animations de qualité de partout — chargements, changements
+> de page, changements de paramètres, etc. ». Objectif : app qui donne une impression
+> premium et vivante, sans jamais nuire à la perf ni au confort.
+
+- **Surfaces à animer** :
+  - **Chargements** : skeletons / placeholders animés (shimmer), spinner « calcul de la
+    projection » (lié à la tâche « écran de chargement » ci-dessus), boutons en état busy.
+  - **Navigation onglets/pages** : transition douce d'entrée/sortie (`Layout.tsx`/`TabRouter.tsx`)
+    — fondu + léger slide, pas de saut brutal.
+  - **Changements de paramètres** : tween des **compteurs KPI** (le chiffre monte/descend),
+    feedback visuel quand un slider modifie la projection (pulse léger sur la carte impactée).
+  - **Cartes / modales / toasts** : entrée/sortie animées (`FutureDetailModal`, `Toast`,
+    cartes scénarios), `details`/accordéons qui s'ouvrent en douceur.
+  - **Listes** : apparition/réordonnancement (transactions, dettes, objectifs).
+  - **Micro-interactions** : hover/focus/active « designés » (déjà partiellement là), états de succès.
+- **Contraintes (règles web de Marc)** :
+  - **Pas de framer-motion** (retiré pour le bundle, −80 KB, tâche #34). Préférer **CSS
+    transitions/animations + Web Animations API**, ou une micro-lib (ex. `@formkit/auto-animate`
+    ~2-3 KB pour listes/layout) — **décision à prendre** (pur CSS vs micro-lib).
+  - **Propriétés compositor-friendly uniquement** : `transform`, `opacity`, `clip-path`
+    (jamais width/height/top/left).
+  - **`prefers-reduced-motion`** respecté globalement (désactive/atténue tout).
+  - **Perf d'abord** : ne PAS animer le redraw du gros graphe recharts (`isAnimationActive`
+    reste `false`, cf zoom fluide) — animer les KPIs/cartes autour, pas la courbe lourde.
+  - Tokens centralisés dans `index.css` (durées/easings déjà amorcés) → réutiliser, pas de magie éparpillée.
+- **Approche** : 1) poser tokens + util classes + respect reduced-motion ; 2) animer surface
+  par surface (chargements → navigation → KPIs/paramètres → modales/listes). Mesurer le bundle.
+- **Effort** : grand (transversal) → à phaser. Forte valeur perçue.
+
 ### P2 — Infobulle Futur : afficher l'impôt dormant + l'impôt payé dans l'année
 > Demande Marc : dans l'infobulle (survol du graphe Futur), voir (1) « combien d'impôt
 > dormant il y a » et (2) « combien d'impôt je paie à la fin de l'année ».

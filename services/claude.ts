@@ -55,7 +55,8 @@ const SubscriptionItemSchema = z.object({
 const SubscriptionArraySchema = z.array(SubscriptionItemSchema);
 
 
-const safeJsonValidate = <S extends z.ZodTypeAny>(text: string, schema: S): z.infer<S> | null => {
+// Exporté pour test (Lot 2) : robustesse du parsing/validation des réponses LLM.
+export const safeJsonValidate = <S extends z.ZodTypeAny>(text: string, schema: S): z.infer<S> | null => {
     try {
         // Claude renvoie parfois du JSON entouré de ```json ... ``` — on nettoie.
         const cleaned = text
@@ -214,7 +215,7 @@ export async function* chatStream(
 
 const cleanMerchantName = (raw: string): string => sanitizePromptText(raw);
 
-const isDefiniteTransfer = (payee: string, amount: number): boolean => {
+export const isDefiniteTransfer = (payee: string, amount: number): boolean => {
     const p = (payee || '').toLowerCase();
     return /transfert|virement|interac/.test(p) || (Math.abs(amount) > 5000 && /paiement carte/.test(p));
 };

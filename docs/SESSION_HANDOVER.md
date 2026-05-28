@@ -4,16 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> Dernière session : 2026-05-27 — **État production final** :
-> - Cloudflare Access activé (login Google, session 24h) ✅
-> - Clés API chiffrées AES-256-GCM (services/secureKeyStore.ts) ✅
-> - Import CSV universel (100% local, parseBankCsv.ts) ✅
-> - Crypto pricing CoinGecko + Stock pricing Finnhub ✅
-> - Era retiré entièrement (API REST inexistante — MCP-only) ✅
-> - G21 : Optimiseur de stratégie (strategySearch + drawdownOptimizer + bouton Annuler) ✅
-> - G22 : GuidedTour, ProjectionExplains, Settings en sous-sections, Budget+Planif fusionnés ✅
-> - G23 : U3/U4 accessibilité + DT4 split fixtures + bug HealthIndicator + 0 warning ESLint + code mort purgé ✅
-> Voir [AUTH_SETUP.md](AUTH_SETUP.md), [SECURITY_STRATEGY.md](SECURITY_STRATEGY.md). Tests **732/732 verts** (71 fichiers).
+> Dernière session : 2026-05-28 — **Lot 1 (sécu) + Lot 2 (tests) + Audit multi-agents (Lot 3)** :
+> - **Lot 1 — Sécurité & conformité** : backup auto chiffré AES-GCM (S-A), Google Consent Mode v2
+>   pour GA4/Loi 25 (S-B), redaction PII errorLogger testée (S-C), anti-injection prompt partagé
+>   `utils/promptSafety.ts` (S-D), quick-wins (S-E). ✅
+> - **Lot 2 — Filet de tests moteur money-critical** : ~119 tests sur 11 modules sans test unitaire
+>   direct (cloudBackup, taxJanuary, meltdownReer, monteCarlo, monthlyCalcs, etc.). ✅
+> - **Audit 5 agents → corrections (Lot 3)** : aucun CRITICAL. Shippé en batches isolés (CI verte) :
+>   F5/F7/F8/F6 (sécu), **F4** (retenue REER 21/26/30→19/24/29 % via `RRSP_WITHHOLDING_QC` — money fix),
+>   **F1/F3** (silent-failures projection : stack worker préservée + `_hasError` lu → erreur honnête),
+>   **F9/F10/F11** (perf : hoist `Math.pow`, Map O(1) tickFormatter, handlers pan stables). Rapport :
+>   [AUDIT_2026-05-28.md](AUDIT_2026-05-28.md). Tier 🟢 (règles fiscales incertaines) **non modifié** sans source.
+> Voir aussi [AUTH_SETUP.md](AUTH_SETUP.md), [SECURITY_STRATEGY.md](SECURITY_STRATEGY.md). Tests **1154/1154 verts** (106 fichiers).
+>
+> Session 2026-05-27 — **État production** (Cloudflare Access, clés chiffrées, CSV universel,
+> CoinGecko/Finnhub, era retiré, G21 optimiseur, G22 UX, G23 a11y). Tests 732/732 alors.
 >
 > Session précédente : 2026-05-26 (G22) — refonte UX + navigation.
 > Tests 742 → **732 verts** (delta : 2 fichiers test era retirés, compensé par test régression coussin).
@@ -40,7 +45,7 @@
 | **Branche principale** | `main` |
 | **Dernière PR mergée** | **#116** (fix Lighthouse a11y 95→100 + SW cache) |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push main) |
-| **Tests** | **732/732 verts** (71 fichiers, ~52s en local) |
+| **Tests** | **1154/1154 verts** (106 fichiers, ~278s en local, `fileParallelism: false`) |
 | **Typecheck** | Clean en mode strict |
 | **Build** | OK — bundle index ~528 KB gzip ~166 KB (vendor jspdf 391 KB lazy) |
 | **Schema store** | v6 (Zustand persist avec migrations v1→v6) |

@@ -53,6 +53,20 @@ interface WorkerRequest {
 }
 
 /**
+ * F3 (audit 2026-05-28) — reconstruit une Error depuis le payload d'erreur du worker
+ * en réattachant la stack d'origine. Sans ça, `new Error(__error)` repart d'une stack
+ * pointant ici (runAsync) au lieu du vrai site du crash dans le worker → debug aveugle.
+ */
+export function reconstructWorkerError(
+    data: { __error?: string; __errorStack?: string },
+    prefix = '',
+): Error {
+    const err = new Error(prefix + (data.__error ?? 'Worker error'));
+    if (data.__errorStack) err.stack = data.__errorStack;
+    return err;
+}
+
+/**
  * Exécute calculateFutureProjection de manière asynchrone via Web Worker
  * si disponible. Fallback synchrone autrement (Node, tests).
  *
@@ -86,7 +100,7 @@ export async function runProjectionAsync(
             // Ne réagir qu'au message correspondant à ce requestId
             if (!e.data || e.data.__requestId !== id) return;
             cleanup();
-            if (e.data.__error) reject(new Error(e.data.__error));
+            if (e.data.__error) reject(reconstructWorkerError(e.data));
             else resolve(e.data.result);
         };
         const onError = (e: ErrorEvent) => {
@@ -166,7 +180,7 @@ export async function runRobustnessRankingAsync(
                 return;
             }
             cleanup();
-            if (e.data.__error) reject(new Error(e.data.__error));
+            if (e.data.__error) reject(reconstructWorkerError(e.data));
             else resolve(e.data.result);
         };
         const onError = (e: ErrorEvent) => {
@@ -334,7 +348,7 @@ export async function runStrategySearchAsync(
                     return;
                 }
                 if (e.data.__error) {
-                    fail(new Error(`Worker ${k}: ${e.data.__error}`));
+                    fail(reconstructWorkerError(e.data, `Worker ${k}: `));
                     return;
                 }
                 const shardResult = e.data.result as StrategySearchResult;

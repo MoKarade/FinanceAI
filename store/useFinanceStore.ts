@@ -28,6 +28,8 @@ export interface FinanceState extends AppState {
     /** Snapshot des vraies données sauvegardé AVANT activation du mode test.
      *  Restauré quand l'utilisateur sort du mode test. */
     realDataSnapshot: Partial<AppState> | null;
+    /** Id du persona de test actuellement chargé (null hors mode test). */
+    activeTestPersonaId: string | null;
     setActiveTab: (tab: Tab) => void;
     setPrivacyMode: (v: boolean) => void;
     togglePrivacyMode: () => void;
@@ -41,8 +43,9 @@ export interface FinanceState extends AppState {
     updateApiKeys: (keys: { anthropic: string; finnhub?: string }) => void;
     updateLastUpdate: () => void;
     resetState: () => void;
-    /** Active le mode test : sauvegarde l'état actuel + applique des fixtures. */
-    enableTestMode: (fixtures: Partial<AppState>) => void;
+    /** Active le mode test : sauvegarde l'état actuel + applique des fixtures.
+     *  `personaId` (optionnel) identifie le persona chargé pour le banner. */
+    enableTestMode: (fixtures: Partial<AppState>, personaId?: string | null) => void;
     /** Désactive le mode test : restaure l'état sauvegardé. */
     disableTestMode: () => void;
 }
@@ -277,6 +280,7 @@ export const useFinanceStore = create<FinanceState>()(
             pendingFocus: null,
             isTestMode: false,
             realDataSnapshot: null,
+            activeTestPersonaId: null,
 
             // Navigation : on synchronise window.location.hash AVANT le set.
             // Sinon l'effet applyHash (App.tsx, deps [activeTab]) se relance au
@@ -314,11 +318,22 @@ export const useFinanceStore = create<FinanceState>()(
 
             // Mode test : sauve l'état "vrai" actuel, applique les fixtures,
             // active le flag (banner visible via Layout).
-            enableTestMode: (fixtures) => set((prev) => {
-                if (prev.isTestMode) return prev; // déjà en mode test
+            enableTestMode: (fixtures, personaId) => set((prev) => {
+                // Si déjà en mode test (changement de persona), on garde le snapshot
+                // initial des vraies données et on remplace seulement les fixtures.
+                if (prev.isTestMode) {
+                    return {
+                        ...prev,
+                        ...fixtures,
+                        apiKeys: prev.apiKeys,
+                        isTestMode: true,
+                        realDataSnapshot: prev.realDataSnapshot,
+                        activeTestPersonaId: personaId ?? null,
+                    };
+                }
                 // Snapshot des données utilisateur courantes (hors flags UI).
-                const { apiKeys: _ak, activeTab: _at, isPrivacyMode: _pm, lastProjection: _lp, pendingFocus: _pf, isTestMode: _tm, realDataSnapshot: _rds, ...persistable } = prev as FinanceState;
-                void _ak; void _at; void _pm; void _lp; void _pf; void _tm; void _rds;
+                const { apiKeys: _ak, activeTab: _at, isPrivacyMode: _pm, lastProjection: _lp, pendingFocus: _pf, isTestMode: _tm, realDataSnapshot: _rds, activeTestPersonaId: _atp, ...persistable } = prev as FinanceState;
+                void _ak; void _at; void _pm; void _lp; void _pf; void _tm; void _rds; void _atp;
                 return {
                     ...prev,
                     ...fixtures,
@@ -329,18 +344,20 @@ export const useFinanceStore = create<FinanceState>()(
                     apiKeys: prev.apiKeys,
                     isTestMode: true,
                     realDataSnapshot: persistable as Partial<AppState>,
+                    activeTestPersonaId: personaId ?? null,
                 };
             }),
             // Restaure les vraies données sauvegardées + désactive le flag.
             disableTestMode: () => set((prev) => {
                 if (!prev.isTestMode) return prev;
                 const snap = prev.realDataSnapshot;
-                if (!snap) return { ...prev, isTestMode: false, realDataSnapshot: null };
+                if (!snap) return { ...prev, isTestMode: false, realDataSnapshot: null, activeTestPersonaId: null };
                 return {
                     ...prev,
                     ...snap,
                     isTestMode: false,
                     realDataSnapshot: null,
+                    activeTestPersonaId: null,
                 };
             }),
         }),

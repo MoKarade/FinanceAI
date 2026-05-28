@@ -5,7 +5,9 @@
 //   - Rolling buffer 7 jours (les plus vieux supprimés)
 //   - Chaque backup contient le snapshot complet du localStorage `financeai-storage`
 //   - Stockés dans IndexedDB (50 MB+ vs ~5 MB pour localStorage)
-//   - Pas de chiffrement par défaut (le user peut activer dans Configuration)
+//   - S-A : payload CHIFFRÉ au repos (AES-GCM, clé de device non-extractible
+//     partagée avec secureKeyStore). Les anciens backups en clair restent
+//     restaurables. Dégradation propre en clair si la crypto est indisponible.
 //
 // API :
 //   - initAutoBackup()       — à appeler au boot, fait le check daily
@@ -14,6 +16,8 @@
 //   - restoreBackup(id)      — restaure un backup, recharge la page
 //   - deleteBackup(id)
 //   - clearAllBackups()
+
+import { getOrCreateDeviceKey, encryptJson, decryptJson } from './secureKeyStore';
 
 const DB_NAME = 'financeai-backups';
 const STORE_NAME = 'backups';
@@ -25,10 +29,14 @@ export interface BackupEntry {
     id: string;
     timestamp: number;
     sizeBytes: number;
-    /** Snapshot complet (string JSON) du localStorage financeai-storage */
+    /** Snapshot du localStorage financeai-storage. Chiffré (base64 AES-GCM) si
+     *  `encrypted` est vrai ; sinon JSON en clair (anciens backups). */
     payload: string;
     /** Source du backup pour debug : 'auto' (daily) ou 'manual' */
     source: 'auto' | 'manual';
+    /** S-A — vrai si `payload` est chiffré avec la clé de device. Absent/false
+     *  sur les anciens backups, qui restent restaurables en clair. */
+    encrypted?: boolean;
 }
 
 function openDB(): Promise<IDBDatabase> {
@@ -63,20 +71,78 @@ function getCurrentPayload(): string | null {
     }
 }
 
+// ─── S-A : chiffrement au repos du payload ───────────────────────────────────
+// Le payload (snapshot complet : transactions, soldes, dettes, revenus = PII
+// financière) était stocké EN CLAIR dans IndexedDB. On le chiffre désormais avec
+// la clé de device partagée (secureKeyStore), en réutilisant encryptJson/decryptJson.
+// Ces fonctions pures (clé injectée) portent la logique métier et sont testées
+// sans IndexedDB — la glue IDB n'a, elle, pas de logique propre.
+
+/** Chiffre un payload de backup (string JSON localStorage). */
+export const encryptBackupPayload = (key: CryptoKey, payload: string): Promise<string> =>
+    encryptJson(key, payload);
+
+/** Déchiffre un payload de backup. Lève si clé incorrecte / blob altéré. */
+export const decryptBackupPayload = (key: CryptoKey, blob: string): Promise<string> =>
+    decryptJson<string>(key, blob);
+
+export interface StoredPayload {
+    payload: string;
+    encrypted: boolean;
+}
+
+/**
+ * Prépare la représentation à stocker : chiffrée si une clé de device est
+ * disponible, sinon en clair (dégradation propre en contexte non sécurisé —
+ * on préfère un backup en clair à pas de backup du tout).
+ */
+export async function buildStoredPayload(plaintext: string, key: CryptoKey | null): Promise<StoredPayload> {
+    if (!key) return { payload: plaintext, encrypted: false };
+    return { payload: await encryptBackupPayload(key, plaintext), encrypted: true };
+}
+
+/**
+ * Inverse : retourne le plaintext, que l'entrée soit chiffrée (nouveau format)
+ * ou en clair (ancien backup). Lève si chiffré mais clé absente (indéchiffrable).
+ */
+export async function readStoredPayload(
+    entry: { payload: string; encrypted?: boolean },
+    key: CryptoKey | null,
+): Promise<string> {
+    if (!entry.encrypted) return entry.payload;
+    if (!key) throw new Error('Clé de device absente : backup chiffré indéchiffrable');
+    return decryptBackupPayload(key, entry.payload);
+}
+
+/** Récupère la clé de device sans lever (null si crypto/IndexedDB indisponible). */
+async function tryGetDeviceKey(): Promise<CryptoKey | null> {
+    try {
+        return await getOrCreateDeviceKey();
+    } catch {
+        return null;
+    }
+}
+
 /**
  * Crée un nouveau backup (manuel ou auto).
  * Retourne le BackupEntry créé, ou null si rien à sauvegarder.
  */
 export async function createBackupNow(source: 'auto' | 'manual' = 'manual'): Promise<BackupEntry | null> {
-    const payload = getCurrentPayload();
-    if (!payload || payload.length === 0) return null;
+    const plaintext = getCurrentPayload();
+    if (!plaintext || plaintext.length === 0) return null;
+
+    // S-A — chiffre avant stockage (clé de device). Crypto indisponible →
+    // dégradation en clair pour ne pas perdre la capacité de backup.
+    const deviceKey = await tryGetDeviceKey();
+    const stored = await buildStoredPayload(plaintext, deviceKey);
 
     const entry: BackupEntry = {
         id: makeId(),
         timestamp: Date.now(),
-        sizeBytes: payload.length,
-        payload,
+        sizeBytes: stored.payload.length,
+        payload: stored.payload,
         source,
+        encrypted: stored.encrypted,
     };
 
     try {
@@ -165,10 +231,14 @@ export async function restoreBackup(id: string): Promise<boolean> {
     if (!entry) return false;
     try {
         if (typeof localStorage === 'undefined') return false;
+        // S-A — déchiffre (si besoin) AVANT toute écriture : un backup
+        // indéchiffrable lève ici → catch → false, sans rien écraser.
+        const deviceKey = await tryGetDeviceKey();
+        const plaintext = await readStoredPayload(entry, deviceKey);
         // Backup la version actuelle d'abord (insurance)
         await createBackupNow('manual');
         // Restaure
-        localStorage.setItem(STORE_KEY_LOCALSTORAGE, entry.payload);
+        localStorage.setItem(STORE_KEY_LOCALSTORAGE, plaintext);
         // Reload pour rehydrater
         if (typeof window !== 'undefined') window.location.reload();
         return true;

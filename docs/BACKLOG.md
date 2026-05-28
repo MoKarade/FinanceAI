@@ -780,8 +780,8 @@ Priorité de traitement :
 > |---|---|---|
 > | Produit | Valider le passé réel A3 (tes données + clé Finnhub) · ouverture multi-user (accès public + onboarding inconnu + sync) | dépend de toi / décision |
 > | Exactitude fiscale | Reconfirmer FSS, SRG mensuel, QC ligne 361 vs sources officielles 2026 | pas de source fiable trouvée |
-> | Dette tech | DT5 (split worker monolithique), DT3 (ChildPlanning duplique le moteur) | quand on touche ces zones |
-> | Perf | B3 (bissection findEarliestRetirementAge), P3 (profiler latence sliders) | non critiques |
+> | Dette tech | DT5 — extraire `runScenario` de projection.ts : gros refactor risqué (closure ~15 vars), **non prioritaire** | DT3 ✅ vérifié OK (lit déjà chartData + childCosts centralisé) |
+> | Perf | — | B3 ✅ (goalSeek BASE-only → ~7× moins de CPU) · P3 ✅ vérifié OK (debounce 300 ms + Monte Carlo en Web Worker) |
 > | Sécurité | H1 — chiffrement au repos par passphrase | ta décision, faible valeur isolée |
 >
 > Livré (ne plus traiter) : refonte graphs G2-G20, Copilote A/B/C + import courtier +

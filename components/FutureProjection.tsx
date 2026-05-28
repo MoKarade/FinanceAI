@@ -467,6 +467,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     }, [allResults, optimizeObjective]);
     const bestScenario = ranking.ranked[0] || null;
 
+    // F10 (audit 2026-05-28) — index monthIndex → année pour le tickFormatter du XAxis.
+    // Avant : displayData.find() O(n) à CHAQUE tick, et recharts ré-appelle le formatter
+    // pendant le zoom/pan → O(ticks × n) par frame. Map O(1) mémoïsée sur displayData.
+    const monthIndexToYear = useMemo(() => {
+        const map = new Map<number, number>();
+        for (const d of displayData as ProjectionChartPoint[]) {
+            if (d.year !== undefined) map.set(d.monthIndex, d.year);
+        }
+        return map;
+    }, [displayData]);
+
     // G4 — zoom molette / pan / sélecteur de période sur la courbe (remplace <Brush>).
     // A3 — consomme displayData (passé réel préfixé + futur projeté).
     const zoom = useTimeChartZoom<ProjectionChartPoint>(displayData as ProjectionChartPoint[]);
@@ -803,8 +814,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 tick={{fontSize: 10}}
                                 minTickGap={50}
                                 tickFormatter={(val: number) => {
-                                    const match = displayData.find((d: ProjectionChartPoint) => d.monthIndex === val);
-                                    return match ? `${match.year}` : `${val}`;
+                                    const year = monthIndexToYear.get(val);
+                                    return year !== undefined ? `${year}` : `${val}`;
                                 }}
                             />
 

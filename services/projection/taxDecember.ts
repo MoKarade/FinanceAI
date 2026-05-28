@@ -146,8 +146,10 @@ export function processDecemberTaxFiling(
 
     // ---- 1. Impôt sur revenu salarial ou retraite ----
     if (!ctx.isRetired) {
-        const grossMarc = ctx.grossMarcBaseAnnual * Math.pow(1 + ctx.simSalaryGrowth / 100, ctx.yearsElapsed);
-        const grossAnna = ctx.grossAnnaBaseAnnual * Math.pow(1 + ctx.simSalaryGrowth / 100, ctx.yearsElapsed);
+        // F9 (audit 2026-05-28) — même facteur de croissance salariale pour Marc et Anna : hissé une fois.
+        const salaryGrowthFactor = Math.pow(1 + ctx.simSalaryGrowth / 100, ctx.yearsElapsed);
+        const grossMarc = ctx.grossMarcBaseAnnual * salaryGrowthFactor;
+        const grossAnna = ctx.grossAnnaBaseAnnual * salaryGrowthFactor;
         const totalDeductions = ctx.accRrspYear + ctx.accFhsaYear + ctx.smithInterestDeductibleYear;
         const grossMarcReal = grossMarc / ctx.inflationFactor;
         const grossAnnaReal = grossAnna / ctx.inflationFactor;

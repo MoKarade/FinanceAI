@@ -66,6 +66,11 @@ export function useTimeChartZoom<T>(
     dataLengthRef.current = dataLength;
     const minPointsRef = useRef(minPoints);
     minPointsRef.current = minPoints;
+    // F11 (audit 2026-05-28) — range lu via ref dans les handlers de pan, pour que
+    // onMouseDown reste stable (sinon recréé à chaque changement de range, donc pendant
+    // tout le pan). Combiné au useCallback/useMemo plus bas → objet `handlers` stable.
+    const rangeRef = useRef(range);
+    rangeRef.current = range;
 
     const visibleData = useMemo(() => {
         if (!range) return data as T[];
@@ -119,30 +124,32 @@ export function useTimeChartZoom<T>(
         }
     }, [handleWheel]);
 
-    const onMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (dataLength < 2 || !range) return; // pan désactivé en vue complète
-        panRef.current = { startX: e.clientX, startStart: range[0], startEnd: range[1] };
+    const onMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        const r = rangeRef.current;
+        if (dataLengthRef.current < 2 || !r) return; // pan désactivé en vue complète
+        panRef.current = { startX: e.clientX, startStart: r[0], startEnd: r[1] };
         setIsPanning(true);
-    };
+    }, []);
 
-    const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const onMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         const pan = panRef.current;
         if (!pan) return;
         const rect = elRef.current?.getBoundingClientRect();
         if (!rect) return;
+        const dl = dataLengthRef.current;
         const span = pan.startEnd - pan.startStart;
         const deltaIdx = -((e.clientX - pan.startX) / rect.width) * span;
-        const newStart = Math.max(0, Math.min(dataLength - 1, pan.startStart + deltaIdx));
-        const newEnd = Math.min(dataLength - 1, newStart + span);
+        const newStart = Math.max(0, Math.min(dl - 1, pan.startStart + deltaIdx));
+        const newEnd = Math.min(dl - 1, newStart + span);
         applyRange(Math.max(0, newEnd - span), newEnd);
-    };
+    }, [applyRange]);
 
-    const endPan = () => {
+    const endPan = useCallback(() => {
         if (panRef.current) {
             panRef.current = null;
             setIsPanning(false);
         }
-    };
+    }, []);
 
     const reset = useCallback(() => setRange(null), []);
 
@@ -154,6 +161,13 @@ export function useTimeChartZoom<T>(
         applyRange(lo, hi);
     }, [applyRange]);
 
+    // F11 — objet handlers mémoïsé : tous les handlers sont stables (useCallback),
+    // donc cette référence ne change jamais → le graphe consommateur (et ses enfants
+    // mémoïsés) ne re-render pas à cause d'une nouvelle identité de prop à chaque frame.
+    const handlers = useMemo<TimeChartZoomHandlers>(() => ({
+        onMouseDown, onMouseMove, onMouseUp: endPan, onMouseLeave: endPan, onDoubleClick: reset,
+    }), [onMouseDown, onMouseMove, endPan, reset]);
+
     return {
         containerRef,
         containerEl: elRef,
@@ -161,7 +175,7 @@ export function useTimeChartZoom<T>(
         isZoomed: range !== null,
         isPanning,
         range,
-        handlers: { onMouseDown, onMouseMove, onMouseUp: endPan, onMouseLeave: endPan, onDoubleClick: reset },
+        handlers,
         reset,
         showRange,
     };

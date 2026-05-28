@@ -176,13 +176,20 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         return 1600;
     }, [budgetItems]);
 
-    const startYear = 2026;
-    const startMonth = 0;
+    // La projection démarre AUJOURD'HUI (mois courant), pas au 1er janvier en dur.
+    // → le passé reconstruit et le futur projeté se rejoignent au point « aujourd'hui »
+    //   (= valeur actuelle réelle du portefeuille) : jonction continue, sans palier.
+    // Le moteur gère un départ ≠ janvier (currentMonthIndex = mois calendaire réel).
+    const { startYear, startMonth } = useMemo(() => {
+        const d = new Date();
+        return { startYear: d.getFullYear(), startMonth: d.getMonth() };
+    }, []);
 
+    // Aujourd'hui = mois 0 de la projection (puisqu'elle démarre aujourd'hui).
     const todayMonthIndex = useMemo(() => {
         const now = new Date();
         return Math.max(0, (now.getFullYear() - startYear) * 12 + (now.getMonth() - startMonth));
-    }, []);
+    }, [startYear, startMonth]);
     const [selectedScenarioIdx, setSelectedScenarioIdx] = useState(0);
     const [runMC, setRunMC] = useState(true);
 
@@ -230,7 +237,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         privateBusinesses,
         savingsGoals,
         financialGoals,
-    }), [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, savingsGoals, financialGoals]);
+    }), [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, savingsGoals, financialGoals, startYear, startMonth]);
 
     // Perf fix:
     //  - Mode déterministe (runMC=false): synchrone + debounce 300ms (rapide ~150ms)
@@ -320,7 +327,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const pastPrefix = useMemo(() => {
         const miOf = (ym: string): number => {
             const [y, m] = ym.split('-').map(Number);
-            return (y - startYear) * 12 + (m - 1);
+            // Index relatif au DÉBUT de projection (mois 0 = startYear/startMonth).
+            // Le « -startMonth » est indispensable quand la projection démarre ≠ janvier.
+            return (y - startYear) * 12 + (m - 1 - startMonth);
         };
         const nowMonthKey = `${startYear}-${String(startMonth + 1).padStart(2, '0')}`;
         const cashRes = reconstructCashHistory(transactions, calculatedStartingCash || 0, nowMonthKey);
@@ -350,8 +359,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             if (invHere) lastInv = invHere;
             const inv = invHere ?? lastInv;
             const cash = cashByMi.get(mi);
-            const year = startYear + Math.floor(mi / 12);
-            const month = (((mi % 12) + 12) % 12) + 1;
+            // Date calendaire réelle du point = startMonth + mi (mi est négatif au
+            // passé). Le « + startMonth » est indispensable quand la projection
+            // démarre ≠ janvier, sinon les libellés de date du passé sont décalés.
+            const absMonth = startMonth + mi;
+            const year = startYear + Math.floor(absMonth / 12);
+            const month = (((absMonth % 12) + 12) % 12) + 1;
             const immo = equityByYear.get(year) ?? 0;
             const celi = inv?.CELI ?? 0, celiapp = inv?.CELIAPP ?? 0, reer = inv?.REER ?? 0,
                 reee = inv?.REEE ?? 0, nonReg = inv?.NonReg ?? 0, crypto = inv?.Crypto ?? 0;

@@ -52,7 +52,7 @@ export function buildPersonaTransactions(profile: PersonaTxProfile, seed = 42): 
     const rand = mulberry32(seed);
     const out: Transaction[] = [];
     const now = new Date();
-    const months = profile.months ?? 3;
+    const months = profile.months ?? 24;
     let idc = 1;
 
     const mk = (daysAgo: number, payee: string, amount: number, category: string): Transaction => {
@@ -70,6 +70,23 @@ export function buildPersonaTransactions(profile: PersonaTxProfile, seed = 42): 
         } as unknown as Transaction;
     };
 
+    // Équilibrage du compte de cash : surplus mensuel FIXE = revenus − (logement +
+    // charges + virements + dettes + dépenses variables ATTENDUES), routé vers un
+    // virement d'épargne automatique. Résultat : le flux net mensuel ≈ 0 → le solde
+    // de cash reste STABLE (~LIQUIDITE) sur tout l'historique, même sur 24 mois (pas
+    // de ballonnement, pas de négatif). No-fake : vrai mouvement (surplus épargné, ou
+    // retrait si déficit), cohérent avec « transactions = mouvements du compte chèque ».
+    const monthlyIncome = profile.incomes.reduce((s, i) => s + i.netBiweekly * 2, 0);
+    const expectedVariable =
+        (profile.groceries ? profile.groceries.perMonth * profile.groceries.avg : 0)
+        + (profile.dining ? profile.dining.perMonth * profile.dining.avg : 0)
+        + (profile.transport ? profile.transport.perMonth * profile.transport.avg : 0);
+    const monthlyFixedOut = Math.abs(profile.housing.monthly)
+        + (profile.recurring ?? []).reduce((s, r) => s + Math.abs(r.amount), 0)
+        + (profile.transfers ?? []).reduce((s, t) => s + Math.abs(t.amount), 0)
+        + (profile.debtPayments ?? []).reduce((s, d) => s + Math.abs(d.amount), 0);
+    const monthlyBalance = Math.round(monthlyIncome - monthlyFixedOut - expectedVariable);
+
     // Flux mensuels réguliers (paie, logement, charges, virements, dettes).
     for (let m = 0; m < months; m++) {
         const base = 30 * m;
@@ -86,6 +103,11 @@ export function buildPersonaTransactions(profile: PersonaTxProfile, seed = 42): 
         }
         for (const dp of profile.debtPayments ?? []) {
             out.push(mk(base + 4, dp.payee, -Math.abs(dp.amount), 'Dette'));
+        }
+        // Surplus → épargne (montant négatif = sort du cash) ; déficit → retrait
+        // d'épargne (positif = entre dans le cash). Garde le solde de cash stable.
+        if (monthlyBalance !== 0) {
+            out.push(mk(base + 3, monthlyBalance > 0 ? 'Virement épargne (surplus)' : 'Retrait épargne (équilibre)', -monthlyBalance, 'Transfert'));
         }
     }
 

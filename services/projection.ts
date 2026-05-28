@@ -341,8 +341,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     }
 
     for (let m = 0; m <= projection.years * 12; m++) {
-        const currentMonthIndex = m % 12;
         const currentLoopDate = loopDates[m];
+        // Mois CALENDAIRE réel (0=jan … 11=déc), PAS le mois-dans-la-projection.
+        // Indispensable quand la projection démarre ≠ janvier : les déclencheurs
+        // annuels (reset janvier, règlement d'impôt d'avril, year-end décembre)
+        // doivent tomber aux vrais mois civils. No-op quand startMonth=0 (=== m%12).
+        const currentMonthIndex = currentLoopDate.getMonth();
         const loopYear = currentLoopDate.getFullYear();
 
 
@@ -843,8 +847,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         activeChild.forEach((child, idx) => {
             const birthOffset = getMonthOffset(child.birthDate);
             if (!child.isActive || m < Math.max(0, birthOffset)) return;
-            const childAgeMonths = m - Math.max(0, birthOffset);
-            const isFirstMonth = m === Math.max(0, birthOffset);
+            // birthOffset < 0 = enfant né AVANT le début de projection : il a déjà
+            // son âge réel (m − birthOffset, donc > m) et n'est PAS « nouveau-né »
+            // au mois 0. Le « first month » (congé parental, 1ers frais…) ne se
+            // déclenche QUE s'il naît pendant la projection. Avant ce fix, un enfant
+            // déjà né était traité comme nouveau-né à m=0 (revenu de congé parental
+            // fantôme, ex. 2e parent inexistant chez un parent seul). Exposé par le
+            // démarrage « aujourd'hui » (tout enfant existant a birthOffset < 0).
+            const childAgeMonths = m - birthOffset;
+            const isFirstMonth = m === birthOffset;
             const childId = child.id || `enfant_${idx}`;
             const tracker = reeeTracker[childId] ?? { scee: 0, iqee: 0, contribLifetime: 0 };
             const result = processOneChild(

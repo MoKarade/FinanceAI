@@ -1,5 +1,19 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { TEST_PERSONAS } from '../../services/testPersonas';
+
+// Horloge GELÉE pour tout le fichier : les personas génèrent des données
+// relatives à `new Date()` (transactions sur 24 mois, âges d'enfants). Sans gel,
+// l'instant exact de `new Date()` au moment du build variait d'un run à l'autre
+// (surtout sous charge parallèle), rendant certains calculs date-dépendants
+// intermittents (ex. revenu d'enfant pour un parent seul selon la date). Gel =
+// déterministe et reproductible (no-fake : c'est une date de référence fixe).
+beforeAll(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-06-15T12:00:00'));
+});
+afterAll(() => {
+    vi.useRealTimers();
+});
 import { calculateFutureProjection, type SimulationParams } from '../../services/projection';
 import type { ProjectionResult } from '../../services/projection/types';
 import type { AppState, BudgetConfig, BudgetCategory } from '../../types';

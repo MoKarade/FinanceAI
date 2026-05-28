@@ -165,7 +165,13 @@ export function processOneChild(
             if (childAgeYears === 16) cMonthly += 500 / 12;
         }
 
-        const annaIsOnMatLeave = childAgeMonths < 12;
+        // Congé parental « Anna » (2e parent) : UNIQUEMENT si un 2e parent existe
+        // et a un salaire. Sans ce garde-fou, un PARENT SEUL (grossAnnaBaseAnnual=0)
+        // recevait un RQAP fantôme : calculateFiscalReport(0) renvoie un net POSITIF
+        // (crédits remboursables QC sur revenu nul) → newIncomeAnna > 0 = revenu d'un
+        // 2e parent inexistant. (Le congé du parent seul n'est pas modélisé ici — à
+        // faire séparément ; au minimum on ne fabrique plus de revenu.)
+        const annaIsOnMatLeave = childAgeMonths < 12 && grossAnnaBaseAnnual > 0;
         if (annaIsOnMatLeave) {
             const yearsElapsed = Math.floor(m / 12);
             const annaGrossAnnual = grossAnnaBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);

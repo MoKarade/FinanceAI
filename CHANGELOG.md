@@ -24,6 +24,14 @@ de source (Tier 🟢, non modifiées).
 - **F6 — Limite de taille des uploads** : `PayslipUploadCard` et `TaxCenter` rejettent les fichiers
   > 10 Mo avant lecture/encodage base64 + envoi à l'API Vision (anti-saturation mémoire).
 
+### Exactitude fiscale (money)
+- **F4 — Retenue REER alignée sur la source de vérité** : `cashflowAllocation.ts:rrspWithholding`
+  utilisait des taux hardcodés **21/26/30 %** (sur-retenue de ~1-3 k$/retraité) et incohérents avec
+  `calculateGrossWithholdingRRSP` appelé juste avant dans la même cascade. Branché sur la constante
+  `RRSP_WITHHOLDING_QC` (combinés QC **19/24/29 %**). Vérifié : **1148 tests verts, zéro régression**
+  (aucun test n'assumait les anciens chiffres). `meltdownReer.ts` laissé tel quel — son `0.38/0.30`
+  est le taux marginal ciblé par la stratégie meltdown, pas la retenue forfaitaire (Tier 🟢).
+
 ---
 
 ## [unreleased — Lot 2 · filet de tests moteur money-critical] — 2026-05-28

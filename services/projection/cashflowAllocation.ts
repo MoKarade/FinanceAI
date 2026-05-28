@@ -11,11 +11,11 @@
 import type { Debt } from '../../types';
 import type { AllocationStrategy } from './types';
 import type { ContributionOrder } from './strategyConfig';
-import { PBMA_THRESHOLD_PER_USER, OAS_CLAWBACK_THRESHOLD_2026, type FiscalReport } from '../../utils/tax';
+import { PBMA_THRESHOLD_PER_USER, OAS_CLAWBACK_THRESHOLD_2026, RRSP_WITHHOLDING_QC, type FiscalReport } from '../../utils/tax';
 
 // Plafond du palier 1 (14% fédéral + 14% Québec) par utilisateur. Combinaison
-// marginale ≈ 28%, comparable à la retenue REER de 21% — donc encore avantageux
-// de puiser dans le REER plutôt que dans le CELI quand on est sous ce seuil.
+// marginale ≈ 28%, comparable à la retenue REER de 19-24% (cf RRSP_WITHHOLDING_QC)
+// — donc encore avantageux de puiser dans le REER plutôt que dans le CELI sous ce seuil.
 // Source: utils/tax.ts QC_BRACKETS[0].upTo + FED_BRACKETS[0].upTo (le plus restrictif des deux).
 const SAFE_REER_BRACKET_TOP_PER_USER = 54345;
 
@@ -89,10 +89,15 @@ export interface CashflowCtx {
 
 import { handleNonRegSale } from './portfolioOps';
 
+// F4 (audit 2026-05-28) — alignement sur la source de vérité RRSP_WITHHOLDING_QC
+// (combinés QC 19/24/29 %, cf utils/tax.ts). Les anciens taux hardcodés 21/26/30 %
+// étaient faux (sur-retenue ~1-3k$/retraité) ET incohérents avec
+// calculateGrossWithholdingRRSP — déjà corrigé — utilisé juste avant dans la cascade.
 function rrspWithholding(grossDraw: number): number {
-    if (grossDraw <= 5000) return grossDraw * 0.21;
-    if (grossDraw <= 15000) return grossDraw * 0.26;
-    return grossDraw * 0.30;
+    const w = RRSP_WITHHOLDING_QC;
+    if (grossDraw <= w.bracket1.upTo) return grossDraw * w.bracket1.combined;
+    if (grossDraw <= w.bracket2.upTo) return grossDraw * w.bracket2.combined;
+    return grossDraw * w.bracket3.combined;
 }
 
 /**

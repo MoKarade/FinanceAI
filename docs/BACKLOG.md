@@ -159,6 +159,34 @@
   récent ; les personas + saisie manuelle sont déjà mensuels). À faire bientôt.
 - **Effort** : faible (3 `/12` + ajustement défauts Onboarding + 1 test garde).
 
+### ✅ Fait 2026-05-28 — Falaise passé↔futur : le futur démarre sur le vrai portefeuille
+- **Bug** (signalé 2× par Marc, vérifié dans Chrome) : sur l'onglet Futur, le futur
+  démarrait avec ZÉRO placement pendant que le passé reconstruit affichait le vrai
+  portefeuille → chute massive « peu importe le personnage ». Cause : `FutureProjection.tsx`
+  peuplait `liveCSVBalances` via un effet appelant `fetchPortfolioHistory()` —
+  **stub mort renvoyant `[]`** (`services/finance.ts`) — donc `setLiveCSVBalances`
+  n'était jamais appelé. Touchait test ET mode réel.
+- **Preuve Chrome (mode test)** : Diane & Robert futur mois 0 = **63 k$ → 956 k$** (REER
+  `0 → 722 739`) ; Karim `0 → 87 k$`. Courbe désormais continue.
+- **Fix** : `liveCSVBalances` dérivé de la MÊME reconstruction que la courbe passée
+  (`usePastPortfolioHistory`) → jonction continue, fx/bucketing hérités. Logique extraite
+  dans `services/history/startingBalancesFromHistory.ts` (PURE) + partagée composant/test.
+- **Garde** : `tests/services/futureSeedContinuity.test.ts` (10 tests) — exerce la VRAIE
+  fonction (pas une réplique : c'était le piège de l'ancienne garde). 984 tests verts.
+- **Pourquoi l'audit précédent l'avait raté** : la garde de continuité comparait deux
+  RÉPLIQUES de la logique (toutes deux correctes), pas le vrai chemin du composant
+  (`fetchPortfolioHistory`). Leçon appliquée : fonction pure unique testée = composant exécuté.
+
+### P2 — Palier résiduel à la jonction passé/futur (~+30 %, montée)
+> Après le fix « falaise », il reste un petit palier MONTANT à la jonction (ex. Diane
+> 734 k$ passé → 956 k$ futur). Deux causes, plus profondes et moins graves :
+- **Décalage date de début** : la projection démarre en **janvier** (`startMonth=0`) mais
+  est valorisée au portefeuille **actuel** → ~5 mois d'appréciation apparaissent au seam.
+  Fix propre : démarrer la projection au mois courant (impacte FIRE/timing → à évaluer).
+- **Cash non tracé au passé** : la VN passée masque le cash quand les transactions sont
+  toutes futures (`hasNW` faux pour les personas) → le cash « apparaît » au mois 0.
+- **Effort** : moyen (alignement date-début↔aujourd'hui) ; à faire après accord de Marc.
+
 ### ✅ Fait 2026-05-28 — Impôt d'emploi : brut mensuel annualisé dans le moteur (CI-1000x A1)
 - **Bug** : `computeIncomeBaseline` (`services/projection/setupSimulation.ts`) lisait
   `grossSalary` (mensuel) **tel quel comme annuel** → revenu 12× trop bas → impôt

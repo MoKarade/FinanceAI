@@ -120,6 +120,26 @@
 - **Note effort** : moyen-élevé (touche moteur `monthlyOutput` + UI graphe). Bien
   cadrer la taxonomie d'abord (brainstorming).
 
+### P2 — Rente de retraite à ~80 $ pendant quelques mois/années (à vérifier)
+> Signalé par Marc : « pendant quelques mois/années après la retraite la rente
+> n'est que de 80 $, c'est bizarre ».
+
+- **Analyse préliminaire** (`services/projection/retirementIncome.ts`) :
+  - `rrqStartAge = max(60, âge retraite)` mais `psvStartAge = max(65, âge retraite)`
+    → si retraite **avant 65**, **trou PSV** (0 jusqu'à 65) et RRQ pénalisé avant 65
+    (facteur ×0.64 à 60 ans, ligne 121). Pendant ce trou, rente = RRQ partiel seul.
+  - Prorata RRQ = `workedYears/39 × min(1, gross/MGA)` et split `governmentPension
+    × 0.65 (RRQ) / × 0.35 (PSV)` → pour un bas revenu ou un immigré (peu d'années
+    cotisées / PSV prorata 1/40, voire 0 si < 10 ans résidence), la rente partielle
+    peut tomber très bas.
+  - Le « 80 $ » est probablement ce trou (retraite < 65), OU un prorata minuscule.
+- **À faire** : reproduire avec le persona + âge de retraite qui montre le 80 $
+  (Marc n'a pas précisé lequel) → trancher **trou-normal vs vrai bug** ; vérifier
+  `rrqProrata`, facteur d'anticipation RRQ, trou PSV, split 0.65/0.35, et l'affichage
+  (la tooltip doit clarifier « RRQ seul, PSV à partir de 65 »). Lien avec l'ancien
+  bug « 60 $ » (tâche #56, tooltip retraite).
+- **Effort** : faible-moyen (lecture + 1 cas repro + éventuel ajustement display).
+
 ### ✅ Fait 2026-05-28 — Sélecteur de persona dans la bannière (CI-1000x axe F)
 - Menu déroulant des 7 personas directement dans le banner orange du mode test
   → changer d'utilisateur sans passer par Réglages. `components/Layout.tsx`.

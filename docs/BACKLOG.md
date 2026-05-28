@@ -34,14 +34,19 @@
   `services/analytics.ts:32` : tracking actif au boot sans opt-in. Pour un produit multi-user QC,
   Loi 25 exige un consentement explicite → bannière opt-in + ne charger GA qu'après accord. ID
   `G-5WLQGBF1VL` public dans le repo. Test : non.
-- **[S-C | MEDIUM] `errorLogger` redaction PII non testée** — `services/errorLogger.ts:72`
-  (`SENSITIVE_KEY_PATTERNS`) : tests présents mais **aucun** ne vérifie que `amount`/`salary`/`apiKey`
-  dans `context` sont bien `[redacted]`. + la sanitisation s'arrête à la clé directe (objets imbriqués
-  sous clé non-sensible fuient). → 3-4 tests de redaction + rendre récursif.
-- **[S-D | MEDIUM] `AiAssistant` injection de prompt** — `components/AiAssistant.tsx:122-143` : le
-  contexte financier (transactions, noms d'objectifs/marchands) est concaténé dans le *system prompt*
-  **sans** les balises d'isolation `<DONNEES>` présentes dans `QUEBEC_FISCAL_CONTEXT`. Un marchand
-  nommé « Ignore previous instructions… » pourrait influencer le modèle. → encadrer le bloc data.
+- **[S-C | MEDIUM] `errorLogger` redaction PII non testée** — ✅ FAIT 2026-05-28 (6c888a8) :
+  `sanitizeContext` est déjà récursif ; ajout de 6 tests de redaction (clés 1er niveau, formes variées
+  password/email/sin/token/netWorth/grossSalary, imbriqué, non-sensibles conservés, troncature
+  tableau→10 + profondeur→`[truncated]`) + fix console qui loggait l'`input` brut (logue désormais
+  `entry.context` sanitisé). `tests/services/errorLogger.test.ts`.
+- **[S-D | MEDIUM] `AiAssistant` injection de prompt** — ✅ FAIT 2026-05-28 : util partagé et testé
+  `utils/promptSafety.ts` (`sanitizePromptText` — neutralisation par arithmétique de code points,
+  0 caractère de contrôle dans la source ; `wrapUserData` encadre en `<DONNEES>` et retire toute balise
+  `</DONNEES>` injectée ; `PROMPT_DATA_ISOLATION_NOTE`), 15 tests `tests/utils/promptSafety.test.ts`.
+  `AiAssistant.generateContext` : marchands + symboles d'actions + nom de projet immo sanitisés, bloc
+  data complet encadré `<DONNEES>` + note d'isolation dans la zone d'instructions. `claude.ts` : 3ᵉ copie
+  locale de `sanitizePayee` supprimée (DRY → util partagé) ; `detectSubscriptionsAI` reçoit l'isolation
+  `<DONNEES>` (parité avec `categorizeBatch`, qui passe maintenant par `wrapUserData`).
 - **[S-E | LOW, quick-wins]** : `BackupPanel` schéma Zod trop permissif (`.passthrough()` + `z.unknown()`
   → import corrompu non détecté, `components/settings/BackupPanel.tsx:8-42`) ; `console.warn` qui fuient
   (`claude.ts:74` slice réponse LLM ; `BackupPanel.tsx:180`) ; pas de SRI sur GTM (`index.html`).

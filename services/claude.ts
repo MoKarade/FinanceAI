@@ -14,23 +14,17 @@ import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { Transaction, RecurringItem } from '../types';
 import { logError } from './errorLogger';
+import { sanitizePromptText, wrapUserData } from '../utils/promptSafety';
 
 // ─── Modèles ─────────────────────────────────────────────────────────────────
 
 const MODEL_SONNET = 'claude-sonnet-4-6';
 const MODEL_HAIKU = 'claude-haiku-4-5-20251001';
 
-// ─── Privacy hardening (préservé tel quel depuis gemini.ts) ──────────────────
-
-const sanitizePayee = (raw: string): string => {
-    if (!raw) return '';
-    return raw
-        .replace(/[\x00-\x1F\x7F]/g, ' ')        // caractères de contrôle (incl. \n, \r)
-        .replace(/["\\<>#\[\]{}|`^]/g, ' ')       // H2 : markup / template / injection
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 60);
-};
+// ─── Privacy hardening ───────────────────────────────────────────────────────
+// La neutralisation des libellés utilisateur est centralisée dans
+// utils/promptSafety.ts (sanitizePromptText) — partagée avec AiAssistant et testée.
+// On évite ici une copie locale qui dériverait.
 
 // Arrondit un montant à la centaine avant de l'envoyer à l'API Claude.
 // Double intérêt : confidentialité (on ne transmet pas les montants exacts de
@@ -216,7 +210,7 @@ export async function* chatStream(
 
 // ─── Catégorisation batch (compat gemini.ts) ─────────────────────────────────
 
-const cleanMerchantName = (raw: string): string => sanitizePayee(raw);
+const cleanMerchantName = (raw: string): string => sanitizePromptText(raw);
 
 const isDefiniteTransfer = (payee: string, amount: number): boolean => {
     const p = (payee || '').toLowerCase();
@@ -257,14 +251,13 @@ export const categorizeBatch = async (
 
         const txList = toAnalyze.map(t => `- {id: ${t.id}, payee: "${cleanMerchantName(t.payee || '')}", amount: ${roundToHundred(t.amount)}}`).join('\n');
 
-        // C3 fix : données utilisateur encadrées <DONNEES> + allowlist stricte.
-        // Le system prompt instruit Claude d'ignorer toute instruction à
-        // l'intérieur des balises.
+        // C3 fix : données utilisateur encadrées <DONNEES> (via wrapUserData, qui
+        // retire aussi toute balise </DONNEES> littérale injectée) + allowlist
+        // stricte. Le system prompt (QUEBEC_FISCAL_CONTEXT) instruit Claude
+        // d'ignorer toute instruction à l'intérieur des balises.
         const userPrompt = `CATÉGORIES AUTORISÉES (utilise UNIQUEMENT ces valeurs): ${JSON.stringify(safeCategories)}.
 
-<DONNEES>
-${txList}
-</DONNEES>
+${wrapUserData(txList)}
 
 Règle: Si tu ne peux pas déterminer la catégorie avec >50% de confiance, utilise "Autre".
 La catégorie DOIT être un élément exact de la liste autorisée — toute autre valeur sera rejetée.
@@ -317,12 +310,14 @@ export const detectSubscriptionsAI = async (
     if (!apiKey || transactions.length === 0) return [];
 
     const sample = transactions.slice(0, 200)
-        .map(t => `${t.date}: ${cleanMerchantName(t.payee || '')} (${roundToHundred(t.amount)}$)`)
+        .map(t => `${sanitizePromptText(t.date, 10)}: ${cleanMerchantName(t.payee || '')} (${roundToHundred(t.amount)}$)`)
         .join('\n');
 
+    // Parité avec categorizeBatch : on isole les données dans <DONNEES> pour que
+    // l'instruction de sécurité du system prompt (QUEBEC_FISCAL_CONTEXT) s'applique.
     const userPrompt = `Voici l'historique des transactions (dates + marchand + montant arrondi). Identifie les ABONNEMENTS RÉCURRENTS (Netflix, Spotify, hypothèque, gym...).
 
-${sample}
+${wrapUserData(sample)}
 
 Pour chaque abonnement, calcule le coût annuel approximatif et la catégorie (Loisir/Logement/etc.).
 RÉPONDS UNIQUEMENT avec un JSON Array strict (pas de markdown):

@@ -62,7 +62,10 @@ export function runMonteCarlo(
         totalExpenses: number;
         shortfallRate: number;
         estateNetWorth: number;
-        chartData: { NetWorth: number }[];
+        // Tier 🟡 perf — on ne garde QUE la longueur (seul usage : nb de mois pour le SWR).
+        // Les valeurs NetWorth sont déjà dans `netWorthByMonth` ; stocker le chartData complet
+        // sur chaque run dupliquait ~nMonths objets × `iterations` (jusqu'à ~600k objets retenus).
+        chartDataLength: number;
     }[] = [];
     const nMonths = params.projection.years * 12;
 
@@ -82,7 +85,7 @@ export function runMonteCarlo(
             totalExpenses: result.totalExpenses,
             shortfallRate: result.shortfallRate,
             estateNetWorth: result.estateNetWorth,
-            chartData: result.chartData,
+            chartDataLength: result.chartData.length,
         });
     }
 
@@ -130,7 +133,7 @@ export function runMonteCarlo(
 
     const representativeRun = sorted[p50Index] || sorted[0];
     const expertMetrics = {
-        swr: representativeRun ? (representativeRun.totalExpenses / (representativeRun.chartData?.length || 1) * 12) / (startNW || 1) : 0,
+        swr: representativeRun ? (representativeRun.totalExpenses / (representativeRun.chartDataLength || 1) * 12) / (startNW || 1) : 0,
         taxLeakage: representativeRun ? (representativeRun.totalTaxesPaid / (representativeRun.totalGrowth || 1)) : 0,
         shortfallRisk: representativeRun ? representativeRun.shortfallRate : 0,
         sequenceRiskPct,

@@ -64,9 +64,12 @@ performance (F9-F11). Les règles fiscales incertaines restent en attente de sou
   (vs `z.unknown()`) — attrape la corruption grossière sans rejeter un backup légitime (chemin restauration).
 - **Qualité TS `claude.ts`** : extraction des blocs texte Anthropic en `flatMap` type-safe (supprime le cast
   `as`) ; `safeJsonValidate` loggue via `errorLogger` (borné, exportable) au lieu de `console.warn`.
+- **Mémoire Monte-Carlo (Batch E)** : `monteCarlo` ne retient plus le `chartData` complet par run (duplication
+  intégrale de `netWorthByMonth` : jusqu'à ~600k objets retenus sur 1000 itérations × ~600 mois). Seule
+  `chartDataLength` est conservée (unique usage restant). `allRuns` est interne → sortie strictement identique.
 - **Non corrigé (jugement)** : `pdfReport` `window.open`/`document.write` sans `noopener` — faux positif
   (`noopener` ferait retourner `null`, cassant la feature ; fenêtre blanche même-origine, contenu qu'on
-  génère → risque nul). `monteCarlo.allRuns` mémoire — reste au backlog (touche des consumers).
+  génère → risque nul). Micro-memo `ExpertTooltip` (`React.memo`) + badge UI « taux FX estimé » → backlog (nice-to-have).
 
 ---
 

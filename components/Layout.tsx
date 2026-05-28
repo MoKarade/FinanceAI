@@ -6,6 +6,7 @@ import { CoupleModeBadge } from './ui/CoupleModeBadge';
 import { NextBestAction } from './sidebar/NextBestAction';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { BackupReminder } from './BackupReminder';
+import { getPersonaById } from '../services/testFixtures';
 
 interface LayoutProps {
   activeTab: Tab;
@@ -112,6 +113,8 @@ export const Layout: React.FC<LayoutProps> = ({
 
   // Mode test : banner permanent en haut + classe globale.
   const isTestMode = useFinanceStore(s => s.isTestMode);
+  const activeTestPersonaId = useFinanceStore(s => s.activeTestPersonaId);
+  const activeTestPersona = getPersonaById(activeTestPersonaId);
 
   // G22-B2 — bascule directe Couple ⇄ Individuel depuis la sidebar. Ajoute/retire
   // le 2e utilisateur dans `config.users` ; tout l'app lit `config.users.length`
@@ -153,7 +156,10 @@ export const Layout: React.FC<LayoutProps> = ({
           className="fixed top-0 left-0 right-0 z-[150] bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 text-white text-center py-2 px-4 font-bold text-sm shadow-lg flex items-center justify-center gap-3"
         >
           <span aria-hidden="true">🧪</span>
-          <span>MODE TEST — données fictives, vos vraies données sont sauvegardées</span>
+          <span>
+            MODE TEST{activeTestPersona ? ` — ${activeTestPersona.emoji} ${activeTestPersona.label}` : ''}
+            {' '}— données fictives, vos vraies données sont sauvegardées
+          </span>
           <span aria-hidden="true">🧪</span>
         </div>
       )}

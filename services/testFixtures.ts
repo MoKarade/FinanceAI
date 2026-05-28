@@ -1,73 +1,29 @@
 // services/testFixtures.ts
 //
-// Fixtures pour le "Mode Test" — permet de remplir l'app avec des données
-// réalistes Québec/Canada 2026 pour tester rapidement les flows sans saisir.
-// Activable via Settings → Outils dev → "Activer mode test". Un backup
-// IndexedDB est créé automatiquement avant le switch (cf cloudBackup auto).
+// Point d'entrée historique du « Mode Test ». Délègue désormais au registre de
+// personas (services/testPersonas/) : buildTestFixtures() retourne le persona
+// PAR DÉFAUT (« Couple à l'aise »), conservé pour la rétrocompat. Le sélecteur
+// de personas (TestModePanel) appelle directement persona.build().
 //
-// Convention "no fake data" du CLAUDE.md : ces fixtures NE sont JAMAIS
-// chargées au boot ni dans un état par défaut. Elles ne s'activent que
-// sur action utilisateur explicite, et un banner permanent signale le mode.
-//
-// DT4 — Fichier splitté en modules plus petits pour la lisibilité :
-//   testConfig.ts       → utilisateurs + config couple
-//   testAssets.ts       → actifs CELI/REER/NonReg/Crypto
-//   testBudget.ts       → catégories budget, immobilier, dettes
-//   testGoals.ts        → retraite, enfants, voyages, life events, objectifs
-//   testTransactions.ts → 60 transactions de test sur 3 mois
-//   testMarketData.ts   → generateTestMarketData (CSV Yahoo Finance bundlé)
-//
-// Ce fichier est le point d'entrée unique — les importeurs extérieurs
-// (TestModePanel, usePortfolioHistory, tests) n'ont pas à changer.
+// Convention "no fake data" du CLAUDE.md : ces fixtures NE sont JAMAIS chargées
+// au boot ni dans un état par défaut. Elles ne s'activent que sur action
+// utilisateur explicite, et un banner permanent (Layout.tsx) signale le mode.
 
 import type { AppState } from '../types';
-import { TEST_CONFIG } from './testConfig';
-import { TEST_ASSETS } from './testAssets';
-import { TEST_BUDGET_ITEMS, TEST_DEBTS, TEST_REAL_ESTATE } from './testBudget';
-import {
-    TEST_CHILD_GOALS,
-    TEST_FINANCIAL_GOALS,
-    TEST_LIFE_EVENTS,
-    TEST_RETIREMENT,
-    TEST_TRAVEL,
-} from './testGoals';
-import { generateTestTransactions } from './testTransactions';
+import { getPersonaOrDefault, DEFAULT_PERSONA_ID } from './testPersonas';
 
-// Re-export pour les consommateurs qui importaient directement depuis ce
-// fichier (ex : tests unitaires qui mockent generateTestMarketData).
+// Re-export pour les consommateurs qui importaient depuis ce fichier (hooks,
+// tests qui mockent generateTestMarketData).
 export { generateTestMarketData } from './testMarketData';
+
+// Re-export du registre pour un accès centralisé.
+export { TEST_PERSONAS, DEFAULT_PERSONA_ID, getPersonaById, getPersonaOrDefault } from './testPersonas';
+export type { TestPersona } from './testPersonas';
+
 /**
- * Retourne un état complet de test. Les balances et soldes sont cohérents
- * (CELI ~30k, REER ~12k, NonReg ~3.5k, Crypto ~14k = total ~60k).
+ * Jeu de données par défaut (persona « couple à l'aise »). Conservé pour les
+ * consommateurs historiques ; le sélecteur de personas appelle persona.build().
  */
 export function buildTestFixtures(): Partial<AppState> {
-    return {
-        config: TEST_CONFIG,
-        budgetItems: TEST_BUDGET_ITEMS,
-        assets: TEST_ASSETS,
-        initialBalances: {
-            CELI: 32000,
-            REER: 12500,
-            'NON-ENREG': 3500,
-            CRYPTO: 14250,
-            LIQUIDITE: 8500,
-        },
-        transactions: generateTestTransactions(),
-        debts: TEST_DEBTS,
-        retirementGoal: TEST_RETIREMENT,
-        realEstateGoals: TEST_REAL_ESTATE,
-        childGoals: TEST_CHILD_GOALS,
-        travelGoals: TEST_TRAVEL,
-        lifeEvents: TEST_LIFE_EVENTS,
-        financialGoals: TEST_FINANCIAL_GOALS,
-        savingsGoals: [],
-        investmentAccounts: [],
-        investmentTransactions: [],
-        insurancePolicies: [],
-        rentalProperties: [],
-        privateBusinesses: [],
-        vehicleReplacements: [],
-        majorRenovations: [],
-        charitableGoals: [],
-    };
+    return getPersonaOrDefault(DEFAULT_PERSONA_ID).build();
 }

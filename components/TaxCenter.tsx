@@ -69,6 +69,12 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
+            // Audit F6 — borne la taille avant lecture/encodage base64 + envoi API Vision.
+            if (file.size > 10 * 1024 * 1024) {
+                showToast(`${file.name} ignoré : trop volumineux (max 10 Mo).`, 'info');
+                setProgress({ current: i + 1, total: files.length });
+                continue;
+            }
             setAnalysisStatus(`Analyse de ${file.name} (${i + 1}/${files.length})...`);
 
             let res;

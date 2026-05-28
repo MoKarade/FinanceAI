@@ -177,27 +177,32 @@
   RÉPLIQUES de la logique (toutes deux correctes), pas le vrai chemin du composant
   (`fetchPortfolioHistory`). Leçon appliquée : fonction pure unique testée = composant exécuté.
 
-### P1 — Zoom du graphe Futur 100 % FLUIDE (actuellement lent/saccadé)
-> Demande Marc : « quand je zoom sur la courbe future c'est pas fluide, lent et chiant ;
-> je veux 100 % fluide ».
+### P1 — Zoom 100 % FLUIDE sur TOUS les graphiques (actuellement lent/saccadé)
+> Demande Marc : « le zoom pas fluide, lent et chiant — je veux 100 % fluide, et pour
+> TOUS les graphiques » (pas seulement le Futur).
 
-- **Cause** : chaque cran de molette (`useTimeChartZoom.handleWheel`) et chaque `mousemove`
-  de pan (`onMouseMove`) appelle `setRange` → re-render COMPLET d'un `ComposedChart` recharts
-  lourd (8 aires empilées + barres FluxImpots + `ImpotLatent` + 3 lignes Monte-Carlo + ligne
-  VN + `ReferenceDot` par événement + `ReferenceLine`/`ReferenceArea`), sur ~589 points.
-  Aucun **rAF / throttle** : une rotation de molette = rafale de re-renders → saccades.
+- **Périmètre** = tous les graphes zoomables :
+  - **Futur** (`FutureProjection.tsx`, rendu propre + le plus lourd : ~589 pts, 8 aires +
+    barres + 3 lignes Monte-Carlo + pastilles d'événements).
+  - **`ZoomableTimeChart`** (composant partagé) : Dashboard, Investissements, Dette
+    (`DebtManager`), Immobilier (`RealEstate` + `MultiPropertyComparison`), Retraite (×2),
+    Enfant (×2).
+- **Cause commune** : le zoom passe par le hook PARTAGÉ `hooks/useTimeChartZoom.ts`. Chaque
+  cran de molette (`handleWheel`) et chaque `mousemove` de pan (`onMouseMove`) appelle
+  `setRange` → re-render COMPLET du graphe recharts, **sans rAF / throttle** → rafale de
+  re-renders → saccades. Le problème est le même partout (hook commun).
 - **Pistes (cumulables)** :
-  1. **Coalescer molette + pan en `requestAnimationFrame`** : 1 seul `setRange` par frame
-     (`hooks/useTimeChartZoom.ts`). Gain immédiat le plus gros.
-  2. **Downsampling/LOD** : ne tracer que ~150-200 points à l'écran (échantillonner
-     `visibleData`) — la courbe est visuellement identique, recharts beaucoup plus léger.
-  3. **Mémoïser le sous-arbre graphe** (`React.memo`) pour ne re-rendre que sur changement
-     de `visibleData`/séries visibles, pas sur tout state du composant.
-  4. Optionnel : masquer les `ReferenceDot` d'événements PENDANT le pan/zoom actif, les
-     re-afficher au repos (ils sont coûteux en grand nombre).
-- **Cible** : interaction à 60 fps (test : molette rapide + pan sur Diane, 589 pts).
-- **Effort** : moyen. Concerne `useTimeChartZoom.ts` + le rendu chart de `FutureProjection.tsx`
-  (et bénéficie aussi à `ZoomableTimeChart` : Dette/Immo/Retraite/Enfant).
+  1. **Coalescer molette + pan en `requestAnimationFrame`** DANS LE HOOK
+     (`useTimeChartZoom.ts`) : 1 seul `setRange` par frame → **corrige TOUS les graphes
+     d'un coup** (Futur + tous ceux via `ZoomableTimeChart`). Gain le plus gros, 1 endroit.
+  2. **Downsampling/LOD** : limiter à ~150-200 points tracés (échantillonner `visibleData`) —
+     à mettre dans le hook (option) ou dans `ZoomableTimeChart` + rendu Futur. Courbe identique.
+  3. **Mémoïser les sous-arbres graphe** (`React.memo`) : ne re-rendre que sur changement de
+     `visibleData`/séries visibles. À faire dans `ZoomableTimeChart` et le rendu Futur.
+  4. Optionnel : masquer les `ReferenceDot` d'événements PENDANT le pan/zoom actif (coûteux).
+- **Cible** : 60 fps sur tous les graphes (test : molette rapide + pan sur le Futur de Diane,
+  589 pts ; puis Dette/Immo/Retraite/Enfant/Dashboard/Investissements).
+- **Effort** : moyen. Le gros du gain (#1) est centralisé dans le hook → bénéficie à tout.
 
 ### P1 — Pendant le calcul de la courbe : écran de chargement À LA PLACE de la courbe
 > Demande Marc : « quand ça charge / quand je crée la courbe, je veux pas voir la courbe

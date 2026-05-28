@@ -6,6 +6,29 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Lot 1 · sécurité & conformité] — 2026-05-28
+
+Audit du 2026-05-28 → durcissement sécurité multi-utilisateur. Ordre : S-C, S-D faits ;
+S-A (backup chiffré), S-B (consentement GA4 / Loi 25), S-E (quick-wins) à suivre.
+
+### Sécurité
+- **S-D — Défense anti-injection de prompt (Claude)** : nouveau module partagé et testé
+  `utils/promptSafety.ts` — `sanitizePromptText` (neutralise caractères de contrôle + markup
+  d'injection par arithmétique de code points, 0 octet de contrôle dans la source),
+  `wrapUserData` (encadre les données en `<DONNEES>` et retire toute balise `</DONNEES>`
+  injectée), `PROMPT_DATA_ISOLATION_NOTE`. 15 tests `tests/utils/promptSafety.test.ts`.
+  `AiAssistant.generateContext` neutralise désormais marchands **+ symboles d'actions + nom
+  de projet immobilier** (auparavant non assainis) et isole tout le bloc de données dans
+  `<DONNEES>` avec la note d'isolation. `services/claude.ts` : copie locale redondante de
+  `sanitizePayee` supprimée (DRY → util partagé) ; `detectSubscriptionsAI` encadre maintenant
+  ses données dans `<DONNEES>` (parité avec `categorizeBatch`, routé via `wrapUserData`).
+- **S-C — Tests de redaction PII de `errorLogger`** : `sanitizeContext` (déjà récursif) est
+  désormais verrouillé par 6 tests (clés sensibles 1er niveau, formes variées, objets imbriqués,
+  conservation des clés non-sensibles, troncature tableau→10 et profondeur→`[truncated]`) ; le
+  log console émet le `context` **sanitisé** au lieu de l'`input` brut. `tests/services/errorLogger.test.ts`.
+
+---
+
 ## [unreleased — G23 · qualité & purge] — 2026-05-27
 
 Lot de 4 merges (`3167a55`, `20abca8`, `4af08b2`, `6042fe9`) partis de `f257efb`.

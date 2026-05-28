@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Transaction, BudgetCategory, Asset, ProjectionConfig, RealEstateGoal, BudgetConfig, AiMessage } from '../types';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { chatStream } from '../services/claude';
+import { sanitizePromptText, wrapUserData, PROMPT_DATA_ISOLATION_NOTE } from '../utils/promptSafety';
 
 interface AiAssistantProps {
   apiKey: string;
@@ -62,15 +63,9 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
     if (isOpen) setTimeout(() => inputRef.current?.focus(), 100);
   }, [isOpen]);
 
-  const sanitizePayee = (raw: string): string => {
-    if (!raw) return '';
-    return raw
-      .replace(/[\x00-\x1F\x7F]/g, ' ')        // caractères de contrôle
-      .replace(/["\\<>#\[\]{}|`^]/g, ' ')       // H2 : markup / template / injection
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 60);
-  };
+  // S-D — la neutralisation des libellés utilisateur est centralisée dans
+  // utils/promptSafety.ts (sanitizePromptText), partagée et testée. On évite
+  // ici une copie locale qui dériverait.
   const roundToHundred = (amount: number): number => Math.round(amount / 100) * 100;
 
   const generateContext = () => {
@@ -78,7 +73,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
     const totalCash = (Object.values(initialBalances) as number[]).reduce((a, b) => a + b, 0) + transactions.reduce((sum, t) => !t.isDuplicate && !t.isTransfer ? sum + t.amount : sum, 0);
     const netWorth = totalAssets + totalCash;
 
-    const topAssets = [...assets].sort((a, b) => b.performance - a.performance).slice(0, 3).map(a => `${a.symbol}: +${a.performance}%`).join(', ');
+    const topAssets = [...assets].sort((a, b) => b.performance - a.performance).slice(0, 3).map(a => `${sanitizePromptText(a.symbol, 12)}: +${a.performance}%`).join(', ');
 
     const now = new Date();
     const threeMonthsAgo = new Date();
@@ -109,31 +104,41 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
     }
 
     const realEstateContext = realEstateGoal
-      ? `Projet immo : ${realEstateGoal.name || 'principal'} à ${roundToHundred(realEstateGoal.price || 0).toLocaleString()}$ (mise de fonds ${roundToHundred(realEstateGoal.downPayment || 0).toLocaleString()}$, taux ${realEstateGoal.mortgageRate || 0}%).`
+      ? `Projet immo : ${sanitizePromptText(realEstateGoal.name, 40) || 'principal'} à ${roundToHundred(realEstateGoal.price || 0).toLocaleString()}$ (mise de fonds ${roundToHundred(realEstateGoal.downPayment || 0).toLocaleString()}$, taux ${realEstateGoal.mortgageRate || 0}%).`
       : 'Aucun projet immobilier actif.';
 
     const last20Txs = transactions.slice(0, 20)
-      .map(t => `${t.date}: ${sanitizePayee(t.payee)} (${roundToHundred(t.amount)}$)`)
+      .map(t => `${sanitizePromptText(t.date, 10)}: ${sanitizePromptText(t.payee)} (${roundToHundred(t.amount)}$)`)
       .join('\n');
 
     const userAge = config.users[0]?.age || 35;
     const _retirementAge = projection.years ? userAge + projection.years : 65;
 
+    // S-D — Toutes les données dérivées de saisies utilisateur (placements, projet
+    // immo, transactions) sont déjà neutralisées via sanitizePromptText, puis le
+    // bloc complet est isolé dans <DONNEES>. La note d'isolation reste, elle, dans
+    // la zone d'instructions de confiance (hors <DONNEES>) pour cadrer le modèle.
+    const userDataBlock = wrapUserData(
+`=== USER SNAPSHOT ===
+- Age principal: ${userAge} ans
+- Net Worth: ${roundToHundred(netWorth).toLocaleString()} CAD (Cash: ${roundToHundred(totalCash).toLocaleString()}, Stocks: ${roundToHundred(totalAssets).toLocaleString()})
+- Burn mensuel: ~${roundToHundred(monthlyBurn).toLocaleString()}$
+- Runway: ${runway} mois
+- Top placements: ${topAssets || 'aucun'}
+- ${projectionLine}
+- ${realEstateContext}
+
+=== RECENT TRANSACTIONS ===
+${last20Txs}`
+    );
+
     return `
       You are an elite, friendly financial advisor for Quebec residents. Speak French naturally. Use emojis sparingly.
       Use **bold** in your responses to highlight key numbers and recommendations.
 
-      === USER SNAPSHOT ===
-      - Age principal: ${userAge} ans
-      - Net Worth: ${roundToHundred(netWorth).toLocaleString()} CAD (Cash: ${roundToHundred(totalCash).toLocaleString()}, Stocks: ${roundToHundred(totalAssets).toLocaleString()})
-      - Burn mensuel: ~${roundToHundred(monthlyBurn).toLocaleString()}$
-      - Runway: ${runway} mois
-      - Top placements: ${topAssets || 'aucun'}
-      - ${projectionLine}
-      - ${realEstateContext}
+      ${PROMPT_DATA_ISOLATION_NOTE}
 
-      === RECENT TRANSACTIONS ===
-      ${last20Txs}
+      ${userDataBlock}
 
       === RULES ===
       - Sois concis (max 4-5 phrases sauf demande de détail).

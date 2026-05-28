@@ -13,9 +13,14 @@ const BackupSchema = z.object({
     lunchMoney: z.string().optional(),
   }).optional(),
   config: z.unknown().optional(),
-  transactions: z.array(z.unknown()).optional(),
+  // Tier 🟡 : au moins « tableau d'objets » (vs z.unknown()) pour les 2 collections les plus
+  // lourdes — attrape une corruption grossière (transactions/assets = string/null) sans rejeter
+  // un enregistrement valide qui a évolué (passthrough garde les champs inconnus ; les
+  // migrations du store gèrent la forme exacte). C'est un chemin de RESTAURATION : on préfère
+  // accepter large plutôt que rejeter un backup légitime.
+  transactions: z.array(z.object({}).passthrough()).optional(),
   budgetItems: z.array(z.unknown()).optional(),
-  assets: z.array(z.unknown()).optional(),
+  assets: z.array(z.object({}).passthrough()).optional(),
   initialBalances: z.record(z.string(), z.number()).optional(),
   savingsGoals: z.array(z.unknown()).optional(),
   travelGoals: z.array(z.unknown()).optional(),

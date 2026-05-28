@@ -18,6 +18,11 @@
 //   - clearAllBackups()
 
 import { getOrCreateDeviceKey, encryptJson, decryptJson } from './secureKeyStore';
+import { logError } from './errorLogger';
+
+// Tier 🟡 — n'avertir qu'UNE fois par session que les backups tombent en clair
+// (les auto-backups sont périodiques : éviter de spammer le log borné).
+let _cleartextBackupWarned = false;
 
 const DB_NAME = 'financeai-backups';
 const STORE_NAME = 'backups';
@@ -118,7 +123,19 @@ export async function readStoredPayload(
 async function tryGetDeviceKey(): Promise<CryptoKey | null> {
     try {
         return await getOrCreateDeviceKey();
-    } catch {
+    } catch (e) {
+        // Tier 🟡 : clé absente → buildStoredPayload tombe en clair. Avant, ce repli était
+        // TOTALEMENT silencieux (backups financiers non chiffrés sans aucune trace). On
+        // journalise une fois (log borné) pour que l'utilisateur/dev le sache.
+        if (!_cleartextBackupWarned) {
+            _cleartextBackupWarned = true;
+            logError({
+                source: 'storage',
+                severity: 'warning',
+                message: 'Crypto/IndexedDB indisponible : les backups sont stockés EN CLAIR (non chiffrés).',
+                error: e instanceof Error ? e : new Error(String(e)),
+            });
+        }
         return null;
     }
 }

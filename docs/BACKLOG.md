@@ -12,6 +12,60 @@
 
 ---
 
+## 🔎 Audit 2026-05-28 — Sécurité + couverture + revue (3 agents + couverture) — À TRAITER
+
+> Lancé à la demande de Marc (« lis tout le backlog, tout le code/sécu non testé, lance les
+> agents, priorise »). **Synthèse** : code récent SAIN (0 régression, 0 CRITIQUE sécu) ; 2 dettes =
+> (1) moteur money-critical **sous-testé en unitaire** (couvert seulement en intégration → régressions
+> masquées) ; (2) quelques **trous sécu/conformité** multi-user. **Ordre choisi par Marc : Lot 1 d'abord.**
+
+### Couverture (`vitest --coverage`, 996 tests verts)
+- Global **~73 % lignes / 66 % branches**. Bien couverts : `utils` (fiscalité) 91 % · `services/history`
+  97 % · `services/couple` 100 % · `services/import` 92 %.
+- **Sous-couverts** : `services` (moteur) **57,6 %** · `hooks` **36 %** · `secureKeyStore` **45,9 %**
+  (la crypto a un test round-trip mais les **chemins d'erreur** ne sont pas exercés).
+
+### 🔐 LOT 1 — Sécurité & conformité (CHOISI — EN PREMIER)
+- **[S-A | MEDIUM] Backup auto chiffré** — `services/backupAuto.ts:57-64` : le backup quotidien
+  snapshote tout `financeai-storage` (transactions, soldes, dettes, revenus = PII financière) **en
+  clair dans IndexedDB**. (`apiKeys` bien exclus du persist, OK.) → chiffrer via `encryptJson`
+  (réutiliser `secureKeyStore`). Test : non (le test existant ne vérifie pas le contenu/chiffrement).
+- **[S-B | MEDIUM] GA4 sans consentement (Loi 25 QC)** — `index.html:42` + `ga-init.js` +
+  `services/analytics.ts:32` : tracking actif au boot sans opt-in. Pour un produit multi-user QC,
+  Loi 25 exige un consentement explicite → bannière opt-in + ne charger GA qu'après accord. ID
+  `G-5WLQGBF1VL` public dans le repo. Test : non.
+- **[S-C | MEDIUM] `errorLogger` redaction PII non testée** — `services/errorLogger.ts:72`
+  (`SENSITIVE_KEY_PATTERNS`) : tests présents mais **aucun** ne vérifie que `amount`/`salary`/`apiKey`
+  dans `context` sont bien `[redacted]`. + la sanitisation s'arrête à la clé directe (objets imbriqués
+  sous clé non-sensible fuient). → 3-4 tests de redaction + rendre récursif.
+- **[S-D | MEDIUM] `AiAssistant` injection de prompt** — `components/AiAssistant.tsx:122-143` : le
+  contexte financier (transactions, noms d'objectifs/marchands) est concaténé dans le *system prompt*
+  **sans** les balises d'isolation `<DONNEES>` présentes dans `QUEBEC_FISCAL_CONTEXT`. Un marchand
+  nommé « Ignore previous instructions… » pourrait influencer le modèle. → encadrer le bloc data.
+- **[S-E | LOW, quick-wins]** : `BackupPanel` schéma Zod trop permissif (`.passthrough()` + `z.unknown()`
+  → import corrompu non détecté, `components/settings/BackupPanel.tsx:8-42`) ; `console.warn` qui fuient
+  (`claude.ts:74` slice réponse LLM ; `BackupPanel.tsx:180`) ; pas de SRI sur GTM (`index.html`).
+- **[INFO, acceptable perso] `dangerouslyAllowBrowser:true`** — `services/claude.ts:115` : la clé
+  Anthropic circule dans le header depuis le navigateur (visible DevTools). OK derrière Cloudflare
+  Access perso ; pour le public → proxy backend OU documenter + recommander des clés à budget limité.
+
+### 🧪 LOT 2 — Filet de tests sur le moteur money-critical (assurance anti-régression)
+> Le moteur a une bonne couverture d'INTÉGRATION (personas/convergence) mais les sous-modules
+> « cœur du mois » n'ont **aucun test unitaire direct** → c'est exactement là qu'ont surgi les 3 bugs
+> silencieux de la semaine (revenu ×12, falaise, RQAP fantôme). Top lacunes (risque × exposition) :
+> `setupSimulation`, `meltdownReer`, `monthlyCalcs`, `growthApplication`, `childrenReee`, `taxJanuary`,
+> `stochasticEvents`, `monteCarlo`, `portfolioOps`. + **zéro test** : `cloudBackup.ts` (crypto + perte
+> de données → round-trip/tamper comme secureKeyStore) et `claude.ts` (construction requêtes + validation
+> Zod + non-leak clé). Cible : couverture ~80 % sur le code argent/sécurité.
+
+### Compléments Lot 4 (trouvés par la revue de code)
+- **[MEDIUM] Biais CAGR** — `services/history/startingBalancesFromHistory.ts` : le « taux historique »
+  proposé par le bouton « appliquer le rendement réel » compare 1er vs dernier point **sans** retirer
+  les apports → surestime le rendement (mélange marché + épargne). → note UI OU exiger ≥ 3 ans d'historique.
+- **[connu] Congé parental parent seul** sous-modélisé (déjà listé dans Suivis continuité).
+
+---
+
 ## 🚀 Initiative « Couple / Individuel 1000x » (CI-1000x) — démarrée 2026-05-28
 
 > Demandé par Marc : rendre le mode couple/individuel **1000× meilleur**.

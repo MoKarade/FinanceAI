@@ -24,6 +24,17 @@ de source (Tier 🟢, non modifiées).
 - **F6 — Limite de taille des uploads** : `PayslipUploadCard` et `TaxCenter` rejettent les fichiers
   > 10 Mo avant lecture/encodage base64 + envoi à l'API Vision (anti-saturation mémoire).
 
+### Silent-failures (flux projection)
+- **F3 — Stack trace préservée à travers le Web Worker** : `projection.worker.ts` poste désormais
+  `{ __error: message, __errorStack: stack }` au lieu de `String(err)` (qui écrasait la stack →
+  debug aveugle). `runAsync.ts` reconstruit l'Error et réattache la stack d'origine aux 3 points de
+  réception (projection / robustness / strategySearch). Nouveau test `runAsync.test.ts` (6 cas).
+- **F1 — Erreur de projection rendue honnêtement** : le chemin worker Monte-Carlo posait un résultat
+  vide (`$0`) **sans** drapeau `_hasError` ; on affichait alors le graphe à zéro comme s'il était
+  valide. Désormais `_hasError` est posé (sync ET worker) **et lu** : une garde de rendu affiche une
+  erreur claire au lieu des zéros. Le store n'était déjà pas pollué (`setLastProjection` gate sur
+  `chartData.length > 0`).
+
 ### Exactitude fiscale (money)
 - **F4 — Retenue REER alignée sur la source de vérité** : `cashflowAllocation.ts:rrspWithholding`
   utilisait des taux hardcodés **21/26/30 %** (sur-retenue de ~1-3 k$/retraité) et incohérents avec

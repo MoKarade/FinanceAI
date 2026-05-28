@@ -279,8 +279,20 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 .then(r => { if (!cancelled) { setAsyncResults(r); setIsComputing(false); } })
                 .catch(e => {
                     if (!cancelled) {
+                        // F1 (audit 2026-05-28) — même traitement que le chemin sync (SF3) :
+                        // flag `_hasError` + journalisation. Avant, le crash worker MC écrivait
+                        // un résultat vide SANS flag → le graphe s'affichait à $0 comme s'il
+                        // était valide (et risquait de polluer le store via setLastProjection).
                         console.error("CRITICAL SIMULATION ERROR (worker):", e);
-                        setAsyncResults({ chartData: [], fireNumber: 0, aiNote: "Error", allResults: [] });
+                        import('../services/errorLogger').then(({ logError }) => {
+                            logError({
+                                source: 'projection',
+                                severity: 'critical',
+                                message: 'runProjectionAsync (worker MC) crashed',
+                                error: e instanceof Error ? e : new Error(String(e)),
+                            });
+                        }).catch(() => { /* logger HS, silent */ });
+                        setAsyncResults({ chartData: [], fireNumber: 0, aiNote: "Error", allResults: [], _hasError: true });
                         setIsComputing(false);
                     }
                 });
@@ -519,6 +531,23 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         console.error("FutureProjection: Missing critical initialization data.", { budgetItems, projection, config, initialBalances });
         return <div className="p-8 text-center text-red-400 font-bold bg-surface/50 rounded-2xl border border-red-500/20">
             ⚠️ Données d'initialisation manquantes. Veuillez vérifier vos comptes et votre budget.
+        </div>;
+    }
+
+    // F1 (audit 2026-05-28) — projection plantée (sync ou worker MC) : `_hasError` est
+    // vrai et chartData est vide. Avant, on rendait tout le graphe avec des $0 partout,
+    // que l'utilisateur prenait pour une vraie projection à zéro. On affiche désormais
+    // une erreur honnête. (Le store n'est pas pollué : setLastProjection gate sur
+    // chartData.length > 0, donc Dashboard/Investments/Budget gardent la dernière
+    // projection valide plutôt que d'afficher ces zéros.)
+    if (results?._hasError) {
+        return <div className="p-8 text-center bg-surface/50 rounded-2xl border border-red-500/20 space-y-2">
+            <div className="text-2xl" aria-hidden="true">⚠️</div>
+            <div className="text-red-400 font-bold">Le calcul de la projection a échoué.</div>
+            <div className="text-sm text-ink-300 max-w-md mx-auto">
+                Vérifie tes paramètres (revenus, dépenses, comptes, objectifs). L'erreur a été
+                journalisée.{runMC ? ' Tu peux aussi désactiver le mode Monte-Carlo et réessayer.' : ''}
+            </div>
         </div>;
     }
 

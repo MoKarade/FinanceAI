@@ -50,6 +50,9 @@ interface WorkerResultMessage {
 interface WorkerErrorMessage {
     __requestId: string | undefined;
     __error: string;
+    // F3 (audit 2026-05-28) — stack du worker transmise séparément pour ne pas la
+    // perdre à la frontière postMessage (le main thread la réattache à l'Error).
+    __errorStack?: string;
 }
 
 type WorkerOutMessage = WorkerProgressMessage | WorkerResultMessage | WorkerErrorMessage;
@@ -81,6 +84,11 @@ self.onmessage = (e: MessageEvent<RunMessage>) => {
             workerSelf.postMessage({ __requestId: requestId, result });
         }
     } catch (err) {
-        workerSelf.postMessage({ __requestId: requestId, __error: String(err) });
+        // F3 (audit 2026-05-28) — `String(err)` écrasait la stack (debug aveugle des
+        // crashes worker). On transmet message + stack séparément ; runAsync.ts
+        // reconstruit l'Error et lui réattache la stack d'origine.
+        const message = err instanceof Error ? err.message : String(err);
+        const stack = err instanceof Error ? err.stack : undefined;
+        workerSelf.postMessage({ __requestId: requestId, __error: message, __errorStack: stack });
     }
 };

@@ -177,6 +177,27 @@
   RÉPLIQUES de la logique (toutes deux correctes), pas le vrai chemin du composant
   (`fetchPortfolioHistory`). Leçon appliquée : fonction pure unique testée = composant exécuté.
 
+### P2 — Infobulle Futur : afficher l'impôt dormant + l'impôt payé dans l'année
+> Demande Marc : dans l'infobulle (survol du graphe Futur), voir (1) « combien d'impôt
+> dormant il y a » et (2) « combien d'impôt je paie à la fin de l'année ».
+
+- **Où** : `components/projection/ProjectionTooltip.tsx` (infobulle de survol du graphe Futur).
+- **(1) Impôt dormant (latent)** — impôt qui sera dû au décaissement/décès (surtout REER +
+  gains non réalisés). Donnée **déjà calculée et émise** : `chartData[].ImpotLatent`
+  (`services/projection/monthlyOutput.ts:244`, via `computeLatentTax`). ⚠️ Le champ
+  `ImpotLatent` n'est PAS déclaré dans le type `ProjectionChartPoint`
+  (`services/projection/types.ts`) — l'ajouter (`ImpotLatent?: number`) puis l'afficher.
+- **(2) Impôt payé dans l'année** — somme `TaxPaidRevenu + TaxPaidGains + TaxPaidDivers +
+  TaxPaidREER` (déjà dans `chartData` + type). À afficher pour le point survolé (et/ou cumul annuel).
+  ⚠️ **À vérifier d'abord** : ces `TaxPaid*` sont les flux de RÉGULARISATION (avril/déc.),
+  pas forcément l'impôt TOTAL de l'année (la retenue à la source est implicite dans le net).
+  Pour un « impôt payé cette année » juste, sommer retenue + régularisation, OU émettre un
+  champ dédié `ImpotAnnuelTotal` depuis le moteur (cf calculateFiscalReport sur le brut de l'année).
+- **Effort** : faible pour l'impôt dormant (1 ligne de type + UI) ; faible-moyen pour l'impôt
+  annuel (vérif sémantique + éventuel champ moteur dédié). Aucune autre logique moteur touchée.
+- **Libellés (langage simple)** : « Impôt dormant (à payer plus tard sur ton REER/gains) » et
+  « Impôt payé cette année-là ».
+
 ### P2 — Onglet Futur : déplacer TOUTE l'optimisation dans un sous-onglet dédié
 > Demande Marc : « toute la partie optimisation de la courbe du futur dans un autre tab
 > dans l'onglet Futur ». But : épurer la vue Graphique (courbe + KPIs seulement) et

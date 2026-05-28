@@ -18,6 +18,15 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['tests/**/*.test.{ts,tsx}'],
     setupFiles: ['./tests/setup.ts'],
+    // Exécution des fichiers SÉQUENTIELLE (pas en parallèle). Plusieurs tests
+    // sont sensibles au timing (événements de vie stochastiques W3.x) ou à
+    // l'horloge (personas générés via `new Date()` sur 24 mois) : sous forte
+    // contention CPU parallèle, l'ordonnancement variait → échecs intermittents
+    // (~50%) alors qu'en isolation/séquentiel tout est vert (984/984, déterministe).
+    // Le séquentiel garantit un CI reproductible (≈4 min vs ≈1 min, acceptable).
+    // NB : le vrai bug que ce flou cachait (RQAP fantôme parent seul) a été corrigé,
+    // ceci ne masque donc pas un bug — ça stabilise des tests timing-sensibles.
+    fileParallelism: false,
     coverage: {
       provider: 'v8',
       reporter: ['text'],

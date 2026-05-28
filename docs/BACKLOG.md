@@ -177,15 +177,38 @@
   RÉPLIQUES de la logique (toutes deux correctes), pas le vrai chemin du composant
   (`fetchPortfolioHistory`). Leçon appliquée : fonction pure unique testée = composant exécuté.
 
-### P2 — Palier résiduel à la jonction passé/futur (~+30 %, montée)
-> Après le fix « falaise », il reste un petit palier MONTANT à la jonction (ex. Diane
-> 734 k$ passé → 956 k$ futur). Deux causes, plus profondes et moins graves :
-- **Décalage date de début** : la projection démarre en **janvier** (`startMonth=0`) mais
-  est valorisée au portefeuille **actuel** → ~5 mois d'appréciation apparaissent au seam.
-  Fix propre : démarrer la projection au mois courant (impacte FIRE/timing → à évaluer).
-- **Cash non tracé au passé** : la VN passée masque le cash quand les transactions sont
-  toutes futures (`hasNW` faux pour les personas) → le cash « apparaît » au mois 0.
-- **Effort** : moyen (alignement date-début↔aujourd'hui) ; à faire après accord de Marc.
+### ✅ Fait 2026-05-28 — Continuité PARFAITE passé↔futur : la projection démarre AUJOURD'HUI
+> Résout le « palier résiduel ~+30 % » (anciennement P2). Décidé avec Marc : démarrer
+> au mois courant + passé personas sur 24 mois, sans fausses données.
+- **Démarrage = aujourd'hui** (`FutureProjection.tsx`) : `startYear/startMonth` = mois
+  courant (au lieu du 1er janvier en dur). Le point « aujourd'hui » = mois 0 du futur
+  (valeur réelle) → passé et futur se rejoignent exactement. `miOf` + libellés de date
+  du passé corrigés pour `startMonth`. **Chrome (Diane)** : seam avril→mai 2026 continu,
+  cash passé tracé, patrimoine futur 0.01M$→1.6M$, courbe lisse de 2017 à la retraite.
+- **3 bugs moteur exposés/corrigés** par le démarrage ≠ janvier :
+  - `currentMonthIndex = currentLoopDate.getMonth()` (mois CIVIL réel, pas `m%12`) →
+    reset janvier / impôt avril / year-end décembre tombent aux bons mois. No-op si janvier.
+  - enfant né AVANT le départ : `childAgeMonths/isFirstMonth` via `birthOffset` (pas
+    `max(0,…)`) → plus de « nouveau-né à m=0 » fantôme (frais/RQAP) pour un enfant existant.
+  - RQAP « Anna » (2e parent) seulement si `grossAnnaBaseAnnual>0` → fin du revenu de congé
+    parental fantôme chez un **parent seul** (calculateFiscalReport(0) renvoie un net positif).
+- **Personas 24 mois** (`testPersonas/transactions.ts`) : `months 3→24` + équilibrage
+  auto du flux (surplus→épargne) → flux net ≈ 0 → cash passé stable, pas de ballonnement.
+- **Infra tests** : `vitest fileParallelism=false` (tests timing/stochastiques flakaient
+  ~50 % en parallèle, verts/déterministes en séquentiel — 996/996). Horloge gelée dans
+  `testPersonas.test.ts`. Nouveau `personaCashHistory.test.ts` (cash passé plausible 24 mois).
+- **Mode réel** : même bascule ; passé = vraies transactions importées + Finnhub ; rien si
+  rien (pastPrefix vide → pas de fausse courbe). Honnête, no-fake.
+
+### P2 — Suivis « continuité » (non bloquants)
+- **`couple-confort` (persona défaut) sur 24 mois** : il garde les fixtures legacy
+  (`generateTestTransactions`, ~3 mois, `Math.random` non seedé) pour ne pas casser les
+  baselines E2E. Le migrer vers le générateur 24 mois (comme les 6 autres) demande de
+  mettre à jour les baselines E2E + revoir ses `initialBalances` (CELI/REER en double
+  avec les assets). Effort moyen.
+- **Congé parental d'un PARENT SEUL** : non modélisé (on a seulement retiré le RQAP
+  fantôme du 2e parent). Modéliser la baisse de revenu du parent unique pendant son congé
+  serait plus juste. Effort faible-moyen.
 
 ### ✅ Fait 2026-05-28 — Impôt d'emploi : brut mensuel annualisé dans le moteur (CI-1000x A1)
 - **Bug** : `computeIncomeBaseline` (`services/projection/setupSimulation.ts`) lisait

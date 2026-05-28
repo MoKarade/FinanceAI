@@ -39,6 +39,11 @@
 
     <!-- Google Analytics 4 — Measurement ID G-5WLQGBF1VL -->
     <!-- Tag chargé async (non-bloquant). Code d'init externalisé dans /ga-init.js pour respecter la CSP stricte (pas d'unsafe-inline dans netlify.toml script-src). -->
+    <!-- S-E : pas de SRI (integrity=) sur gtag.js — Google fait tourner ce fichier ;
+         un hash figé casserait GA à chaque rotation (Google ne supporte pas SRI ici).
+         La protection d'un script tiers non-épinglable est l'allow-list d'origine via
+         CSP (script-src googletagmanager.com), déjà en place dans netlify.toml.
+         + Consent Mode v2 (ga-init.js) : aucun stockage analytics avant consentement. -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-5WLQGBF1VL"></script>
     <script src="/ga-init.js"></script>
   </head>

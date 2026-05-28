@@ -53,9 +53,14 @@
   data complet encadré `<DONNEES>` + note d'isolation dans la zone d'instructions. `claude.ts` : 3ᵉ copie
   locale de `sanitizePayee` supprimée (DRY → util partagé) ; `detectSubscriptionsAI` reçoit l'isolation
   `<DONNEES>` (parité avec `categorizeBatch`, qui passe maintenant par `wrapUserData`).
-- **[S-E | LOW, quick-wins]** : `BackupPanel` schéma Zod trop permissif (`.passthrough()` + `z.unknown()`
-  → import corrompu non détecté, `components/settings/BackupPanel.tsx:8-42`) ; `console.warn` qui fuient
-  (`claude.ts:74` slice réponse LLM ; `BackupPanel.tsx:180`) ; pas de SRI sur GTM (`index.html`).
+- **[S-E | LOW, quick-wins]** — ✅ FAIT 2026-05-28 : (1) `BackupPanel` — retrait des deux `.passthrough()`
+  (top-level + apiKeys) : clés inconnues écartées (strip) au lieu d'être propagées ; `doRestore` ne lisant
+  que des clés connues, aucun impact fonctionnel. (2) `claude.ts` `safeJsonValidate` — la `console.warn` ne
+  logue PLUS le contenu brut de la réponse LLM (`text.slice(0,200)`, pouvait contenir des marchands) →
+  seulement la longueur. (`BackupPanel.tsx:180` ne fuit aucune donnée — message seul, laissé tel quel.)
+  (3) SRI GTM : **non applicable** — Google fait tourner `gtag.js`, un hash figé casserait GA ; la protection
+  d'un script tiers non-épinglable est l'allow-list CSP (`script-src googletagmanager.com`, déjà en place)
+  → documenté en commentaire dans `index.html`.
 - **[INFO, acceptable perso] `dangerouslyAllowBrowser:true`** — `services/claude.ts:115` : la clé
   Anthropic circule dans le header depuis le navigateur (visible DevTools). OK derrière Cloudflare
   Access perso ; pour le public → proxy backend OU documenter + recommander des clés à budget limité.

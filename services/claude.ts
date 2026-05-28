@@ -65,7 +65,9 @@ const safeJsonValidate = <S extends z.ZodTypeAny>(text: string, schema: S): z.in
         const parsed = JSON.parse(cleaned);
         return schema.parse(parsed);
     } catch (e) {
-        console.warn('[Claude] JSON validation failed:', e, 'raw:', text.slice(0, 200));
+        // S-E : ne plus loguer le contenu brut de la réponse LLM (peut contenir des
+        // libellés/marchands utilisateur) ; la longueur suffit au diagnostic.
+        console.warn('[Claude] JSON validation failed:', e, `(réponse ${text.length} car.)`);
         return null;
     }
 };

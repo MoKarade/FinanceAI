@@ -11,7 +11,7 @@ const BackupSchema = z.object({
   apiKeys: z.object({
     gemini: z.string().optional(),
     lunchMoney: z.string().optional(),
-  }).passthrough().optional(),
+  }).optional(),
   config: z.unknown().optional(),
   transactions: z.array(z.unknown()).optional(),
   budgetItems: z.array(z.unknown()).optional(),
@@ -36,7 +36,10 @@ const BackupSchema = z.object({
   majorRenovations: z.array(z.unknown()).optional(),
   charitableGoals: z.array(z.unknown()).optional(),
   aiConversation: z.array(z.unknown()).optional(),
-}).passthrough().refine(
+  // S-E : pas de .passthrough() — les clés inconnues sont écartées (strip) au lieu
+  // d'être propagées. doRestore ne lit que des clés connues → aucun impact
+  // fonctionnel ; on évite de conserver du contenu non validé en mémoire.
+}).refine(
   (data) => data.version !== undefined || data.transactions !== undefined,
   { message: "doit contenir au moins 'version' ou 'transactions'" }
 );

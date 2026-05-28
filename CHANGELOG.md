@@ -8,10 +8,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Lot 1 · sécurité & conformité] — 2026-05-28
 
-Audit du 2026-05-28 → durcissement sécurité multi-utilisateur. Ordre : S-C, S-D, S-A, S-B faits ;
-S-E (quick-wins) à suivre.
+Audit du 2026-05-28 → durcissement sécurité multi-utilisateur. **Lot 1 complet** : S-A, S-B, S-C, S-D, S-E.
 
 ### Sécurité
+- **S-E — Quick-wins de durcissement** : (1) `BackupPanel` — retrait des deux `.passthrough()` Zod (les
+  clés inconnues d'un backup sont écartées plutôt que propagées ; sans impact fonctionnel car `doRestore`
+  ne lit que des clés connues). (2) `claude.ts` `safeJsonValidate` — la `console.warn` ne logue plus le
+  contenu brut de la réponse LLM (pouvait contenir des marchands), seulement sa longueur. (3) SRI sur
+  `gtag.js` : documenté comme **non applicable** (Google rotationne le fichier → un hash figé casserait GA ;
+  la protection est l'allow-list d'origine CSP, déjà en place).
 - **S-B — Consentement GA4 (Loi 25 QC)** : Google Consent Mode v2. `public/ga-init.js` refuse
   `analytics_storage` par défaut (aucun cookie/identifiant avant accord) et rétablit si un consentement
   a été persisté. Nouveau `services/consent.ts` (clé localStorage partagée avec ga-init) + bandeau

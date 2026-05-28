@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { chatStream } from '../../services/claude';
 import { z } from 'zod';
+import { sanitizePromptText, wrapUserData, PROMPT_DATA_ISOLATION_NOTE } from '../../utils/promptSafety';
 
 export interface BudgetAiPayload {
     totalNetIncome: number;
@@ -19,21 +20,29 @@ interface BudgetAiModalProps {
 
 const RecosSchema = z.array(z.string()).min(1).max(5);
 
-const QUEBEC_SYSTEM = `Tu es un conseiller financier québécois expert, strict et bienveillant. Tes recommandations doivent être concrètes (montants, dates) et pertinentes pour le contexte fiscal QC (REER, CELI, RAMQ, etc.).`;
+const QUEBEC_SYSTEM = `Tu es un conseiller financier québécois expert, strict et bienveillant. Tes recommandations doivent être concrètes (montants, dates) et pertinentes pour le contexte fiscal QC (REER, CELI, RAMQ, etc.).
 
-const buildPrompt = (p: BudgetAiPayload): string => `Analyse ce budget mensuel et fournis EXACTEMENT 3 recommandations courtes (1-2 phrases max) très concrètes et orientées action.
+${PROMPT_DATA_ISOLATION_NOTE}`;
 
-DONNÉES DU MOIS (montants arrondis à 100$):
+// S-D (étendu) — les libellés utilisateur (noms/natures de catégories, alertes)
+// sont neutralisés via sanitizePromptText et le bloc de données isolé en <DONNEES>.
+const buildPrompt = (p: BudgetAiPayload): string => {
+    const dataBlock = wrapUserData(`DONNÉES DU MOIS (montants arrondis à 100$):
 - Revenu net mensuel: ${Math.round(p.totalNetIncome / 100) * 100}$
 - Budget prévu: ${Math.round(p.totalBudget / 100) * 100}$
 - Dépenses réelles: ${Math.round(p.totalSpent / 100) * 100}$
-- Alertes de dépassement: ${p.alerts.length > 0 ? p.alerts.join(', ') : 'Aucune'}
+- Alertes de dépassement: ${p.alerts.length > 0 ? p.alerts.map(a => sanitizePromptText(a, 80)).join(', ') : 'Aucune'}
 
 DÉTAIL DES CATÉGORIES (Prévu vs Réel):
-${p.categories.map(c => `- ${c.name} (${c.nature}): ${Math.round(c.target)}$ prévu, ${Math.round(c.spent)}$ dépensé`).join('\n')}
+${p.categories.map(c => `- ${sanitizePromptText(c.name, 40)} (${sanitizePromptText(c.nature, 20)}): ${Math.round(c.target)}$ prévu, ${Math.round(c.spent)}$ dépensé`).join('\n')}`);
+
+    return `Analyse ce budget mensuel et fournis EXACTEMENT 3 recommandations courtes (1-2 phrases max) très concrètes et orientées action.
+
+${dataBlock}
 
 RÉPONDS UNIQUEMENT avec un JSON Array strict de 3 strings (pas de markdown):
 ["recommandation 1", "recommandation 2", "recommandation 3"]`;
+};
 
 export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, onClose }) => {
     const [isStreaming, setIsStreaming] = useState(true);

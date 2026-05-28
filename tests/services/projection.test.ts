@@ -5,6 +5,7 @@ import type {
     BudgetConfig,
     RetirementGoal,
     Debt,
+    RealEstateGoal,
 } from '../../types';
 import type { ProjectionResult, ProjectionChartPoint } from '../../services/projection/types';
 
@@ -203,6 +204,39 @@ describe('calculateFutureProjection', () => {
             travelGoals: [],
             lifeEvents: [],
         }))).not.toThrow();
+    });
+
+    it('CELIAPP — un achat de résidence principale FUTUR laisse le FHSA s\'accumuler à un solde visible avant l\'achat', () => {
+        // Régression du bug « on me recommande le CELIAPP mais je ne le vois jamais
+        // sur la courbe ». Cause racine : la fixture test datait l'achat « aujourd'hui »
+        // (offset 0). realEstateMonth.ts:147 vidait alors TOUT le CELIAPP vers les
+        // liquidités CHAQUE mois pour l'achat « imminent » → le solde restait ≈ 1 mois
+        // de cotisation (invisible à l'échelle du patrimoine), alors que la reco lit le
+        // flux cumulé (contribCELIAPP) et s'affichait quand même. Avec une date FUTURE,
+        // la garde realEstateMonth.ts:115 (`m < purchaseOffset`) protège le compte
+        // jusqu'à l'achat → le FHSA s'accumule puis sert à l'achat (son vrai rôle).
+        const mkGoal = (purchaseDate: string, id: string): RealEstateGoal => ({
+            id, name: 'Maison', price: 450000, downPayment: 90000,
+            mortgageRate: 4.5, amortization: 25, isActive: true, isPrimaryResidence: true,
+            purchaseDate, propertyGrowthRate: 3, totalClosingCosts: 8000,
+        } as unknown as RealEstateGoal);
+
+        const maxCeliapp = (goal: RealEstateGoal): number => {
+            const result = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 6 }), // horizon couvre l'achat 2030
+                realEstateGoals: [goal],
+            }));
+            const base = (result.allResults as ProjectionResult[]).find(r => r.stratType === 'BASE')!;
+            return Math.max(...base.chartData.map((d: ProjectionChartPoint) => d.CELIAPP ?? 0));
+        };
+
+        const future = maxCeliapp(mkGoal('2030-06-01', 're-future'));   // ~4,4 ans après 2026
+        const immediate = maxCeliapp(mkGoal('2026-01-01', 're-now'));   // = startYear/startMonth → offset 0
+
+        // Achat futur : le CELIAPP atteint un solde clairement visible (FHSA accumulé).
+        expect(future).toBeGreaterThan(10000);
+        // Achat immédiat (ancien comportement) : le CELIAPP reste résiduel.
+        expect(immediate).toBeLessThan(future / 2);
     });
 
     it('shortfallRate ∈ [0, 1] dans tous les scénarios', () => {

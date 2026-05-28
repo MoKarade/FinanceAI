@@ -48,8 +48,12 @@ export function usePortfolioHistory(): UsePortfolioHistoryResult {
     // données à afficher. Sans ce hook, l'utilisateur en mode test voit
     // "Aucun actif trouvé" partout malgré 5 assets dans le store.
     const isTestMode = useFinanceStore(s => s.isTestMode);
+    // Persona-aware : le marketData de test reflète les actifs + soldes du persona
+    // ACTIF (sinon tous les personas affichaient le portfolio du couple par défaut).
+    const testAssets = useFinanceStore(s => s.assets);
+    const testBalances = useFinanceStore(s => s.initialBalances);
     const [history, setHistory] = useState<MarketDataPoint[]>(() => {
-        if (isTestMode) return generateTestMarketData();
+        if (isTestMode) return generateTestMarketData(testAssets, testBalances as Record<string, number>);
         return cached ?? [];
     });
     const [isLoading, setIsLoading] = useState(() => !isTestMode && cached === null);
@@ -57,8 +61,8 @@ export function usePortfolioHistory(): UsePortfolioHistoryResult {
 
     useEffect(() => {
         if (isTestMode) {
-            // Régénère à chaque fois pour rester aligné si les fixtures changent
-            setHistory(generateTestMarketData());
+            // Régénère quand le persona (assets/soldes) change pour rester aligné.
+            setHistory(generateTestMarketData(testAssets, testBalances as Record<string, number>));
             setIsLoading(false);
             return;
         }
@@ -82,7 +86,7 @@ export function usePortfolioHistory(): UsePortfolioHistoryResult {
                 }
             });
         return () => { cancelled = true; };
-    }, [isTestMode]);
+    }, [isTestMode, testAssets, testBalances]);
 
     return { history, isLoading, error };
 }

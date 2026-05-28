@@ -27,7 +27,11 @@ export function buildLeaFauchee(): Partial<AppState> {
             { id: 'lea-b7', name: 'CELI', target: 150, nature: 'Épargne', frequency: 'Monthly' },
         ] as unknown as AppState['budgetItems'],
         assets: [],
-        initialBalances: { CELI: 1500, REER: 0, 'NON-ENREG': 0, CRYPTO: 0, LIQUIDITE: 1200 },
+        // Soldes = cash uniquement (LIQUIDITE) ; aucun placement. Convention
+        // persona : les comptes investis (CELI/REER/NonReg/Crypto) sont portés
+        // par `assets`, jamais doublés dans initialBalances (sinon le liquide
+        // les recompte — cf calculatedStartingCash dans FutureProjection).
+        initialBalances: { CELI: 0, REER: 0, 'NON-ENREG': 0, CRYPTO: 0, LIQUIDITE: 2700 },
         transactions: buildPersonaTransactions({
             incomes: [{ payee: 'Café Régal - Dépôt paie', netBiweekly: 1225 }],
             housing: { label: 'Loyer - Gestion Immobilière', monthly: 1100 },

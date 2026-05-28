@@ -41,8 +41,8 @@ export function buildKarimImmigre(): Partial<AppState> {
                 id: 'kar-a2', symbol: 'VEQT.TO', name: 'Vanguard All-Equity', region: 'global',
                 sector: 'index', accountType: 'REER', currentPrice: 59.19,
                 priceHistory: genHistory(50.0, 59.19),
-                purchases: [{ date: '2023-03-01', price: 50.0, quantity: 250 }],
-                dateBought: '2023-03-01', buyPrice: 50.0, quantity: 250,
+                purchases: [{ date: '2023-03-01', price: 50.0, quantity: 253 }],
+                dateBought: '2023-03-01', buyPrice: 50.0, quantity: 253,
             },
             {
                 id: 'kar-a3', symbol: 'XEQT.TO', name: 'iShares All-Equity', region: 'global',
@@ -59,7 +59,9 @@ export function buildKarimImmigre(): Partial<AppState> {
                 dateBought: '2024-02-01', buyPrice: 95000.0, quantity: 0.075,
             },
         ] as unknown as AppState['assets'],
-        initialBalances: { CELI: 20000, REER: 15000, 'NON-ENREG': 25000, CRYPTO: 8000, LIQUIDITE: 14000 },
+        // Cash uniquement ; les comptes investis (CELI 20k, REER 15k, NonReg 25k,
+        // Crypto 8k) sont portés par `assets` ci-dessus (pas de double-comptage).
+        initialBalances: { CELI: 0, REER: 0, 'NON-ENREG': 0, CRYPTO: 0, LIQUIDITE: 14000 },
         transactions: buildPersonaTransactions({
             incomes: [{ payee: 'Shopify - Dépôt paie', netBiweekly: 3200 }],
             housing: { label: 'Loyer - Condo Griffintown', monthly: 1750 },

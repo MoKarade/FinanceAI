@@ -32,18 +32,20 @@ export function buildAutonomeMonoparentale(): Partial<AppState> {
                 id: 'na-a1', symbol: 'VEQT.TO', name: 'Vanguard All-Equity', region: 'global',
                 sector: 'index', accountType: 'REER', currentPrice: 59.19,
                 priceHistory: genHistory(45.0, 59.19),
-                purchases: [{ date: '2021-02-01', price: 45.0, quantity: 400 }],
-                dateBought: '2021-02-01', buyPrice: 45.0, quantity: 400,
+                purchases: [{ date: '2021-02-01', price: 45.0, quantity: 473 }],
+                dateBought: '2021-02-01', buyPrice: 45.0, quantity: 473,
             },
             {
                 id: 'na-a2', symbol: 'VFV.TO', name: 'Vanguard S&P 500 (CAD)', region: 'us-equity',
                 sector: 'index', accountType: 'CELI', currentPrice: 182.18,
                 priceHistory: genHistory(150.0, 182.18),
-                purchases: [{ date: '2022-07-01', price: 150.0, quantity: 55 }],
-                dateBought: '2022-07-01', buyPrice: 150.0, quantity: 55,
+                purchases: [{ date: '2022-07-01', price: 150.0, quantity: 60 }],
+                dateBought: '2022-07-01', buyPrice: 150.0, quantity: 60,
             },
         ] as unknown as AppState['assets'],
-        initialBalances: { CELI: 11000, REER: 28000, 'NON-ENREG': 4000, CRYPTO: 0, LIQUIDITE: 9000 },
+        // Cash uniquement ; CELI 11k + REER 28k portés par `assets`. Le NonReg
+        // résiduel est regroupé dans le cash.
+        initialBalances: { CELI: 0, REER: 0, 'NON-ENREG': 0, CRYPTO: 0, LIQUIDITE: 13000 },
         transactions: buildPersonaTransactions({
             incomes: [{ payee: 'Honoraires clients (virement)', netBiweekly: 2100 }],
             housing: { label: 'Loyer - Rosemont', monthly: 1500 },

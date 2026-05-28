@@ -376,7 +376,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         prevCELI = celi;
         prevREER = reer;
         prevLiquid = liquid;
-        prevNW = (liquid + celi + reer + nonReg + crypto + reee + realEstateEquity - mortgageBalance);
+        // realEstateEquity est DÉJÀ net d'hypothèque (currentValue − mortgage, cf
+        // realEstateMonth.ts:326). Ne PAS re-soustraire mortgageBalance (sinon
+        // l'hypothèque est comptée 2×, ce qui faisait plonger le NW dès l'achat).
+        prevNW = (liquid + celi + reer + nonReg + crypto + reee + realEstateEquity);
 
         let monthlyIncome = 0;
         let monthlyExpenses = 0;
@@ -1045,7 +1048,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         totalTaxesPaid += fluxImpots + taxOnRrif + retraitReerMois * 0.15;
         totalExpenses += monthlyExpenses;
 
-        const rawNetWorth = liquid + celi + celiapp + reer + nonReg + crypto + reee + realEstateEquity - mortgageBalance;
+        // realEstateEquity DÉJÀ net d'hypothèque → pas de re-soustraction de
+        // mortgageBalance (corrige le double-comptage de l'hypothèque).
+        const rawNetWorth = liquid + celi + celiapp + reer + nonReg + crypto + reee + realEstateEquity;
         if (rawNetWorth < minNetWorth) minNetWorth = rawNetWorth;
         const activeDebtsTotal = activeDebts.reduce((s, d) => s + d.balance, 0);
 
@@ -1155,7 +1160,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         totalGrowth: totalGrowth || 0,
         totalExpenses,
         minNetWorth,
-        shortfallRate: shortfallMonths / (projection.years * 12),
+        // Borné à [0, 1] : la boucle peut tourner 1 mois de plus que years*12
+        // (extension retraite/horizon) → un ratio brut > 1 était possible (vu
+        // en audit : persona « couple endetté » à 100,2 %). Un taux de manque
+        // est par définition une fraction.
+        shortfallRate: Math.min(1, shortfallMonths / (projection.years * 12)),
         startNW: estate.startNW,
     };
 };

@@ -78,7 +78,8 @@ export function computeEstateNetWorth(
     const crypto = fin(inputs.crypto);
     const reee = fin(inputs.reee);
     const realEstateEquity = fin(inputs.realEstateEquity);
-    const mortgageBalance = fin(inputs.mortgageBalance);
+    // mortgageBalance n'est plus soustrait ici (realEstateEquity est déjà net) ;
+    // le champ reste dans l'interface car les appelants le fournissent encore.
     const smithManoeuvreDebt = fin(inputs.smithManoeuvreDebt);
     const incomeRetirement = fin(inputs.incomeRetirement);
     const accRentesYear = fin(inputs.accRentesYear);
@@ -101,8 +102,12 @@ export function computeEstateNetWorth(
     const startingREEE = fin(inputs.startingREEE);
     const { activeUsersCount, enableMonteCarlo } = inputs;
 
-    // V48: Smith Manoeuvre Bug — la dette HELOC est soustraite car l'actif réinvesti existe dans le Non-Enreg.
-    const finalRawNetWorth = liquid + celi + celiapp + reer + nonReg + crypto + reee + realEstateEquity - mortgageBalance - smithManoeuvreDebt;
+    // realEstateEquity est DÉJÀ net d'hypothèque (currentValue − mortgage, cf
+    // realEstateMonth.ts:326) → ne PAS re-soustraire mortgageBalance (double-
+    // comptage corrigé 2026-05, trouvé via l'audit personas). On garde la
+    // soustraction de smithManoeuvreDebt (dette HELOC réelle, dont l'actif
+    // réinvesti existe dans le Non-Enreg).
+    const finalRawNetWorth = liquid + celi + celiapp + reer + nonReg + crypto + reee + realEstateEquity - smithManoeuvreDebt;
 
     const finalYear = startYear + simulationYears;
     const finalAge = currentAge + simulationYears;

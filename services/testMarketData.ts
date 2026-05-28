@@ -9,7 +9,18 @@
 // cellule est manquante (rare), le point est ignoré pour ce symbole.
 
 import type { MarketDataPoint } from './finance';
+import type { Asset } from '../types';
 import { USD_CAD_RATE, TEST_ASSETS } from './testAssets';
+
+// Soldes cash par défaut (persona « couple à l'aise »). Servent de repli quand
+// generateTestMarketData est appelé sans argument (rétrocompat).
+const DEFAULT_TEST_INITIAL_BALANCES: Record<string, number> = {
+    CELI: 32000,
+    REER: 12500,
+    'NON-ENREG': 3500,
+    CRYPTO: 14250,
+    LIQUIDITE: 8500,
+};
 
 // Import raw du CSV historique réel (Yahoo Finance v8, weekly close,
 // 2024-05-20 → 2026-05-21 — 106 points hebdo). Bundlé via Vite `?raw`,
@@ -72,15 +83,11 @@ const PARSED_CSV = parseTestMarketCsv();
  * En production : ce hook n'est pas appelé — le vrai CSV
  * `/portfolio-history.csv` (vrai portefeuille) prime.
  */
-export function generateTestMarketData(): MarketDataPoint[] {
-    const initialBalances = {
-        CELI: 32000,
-        REER: 12500,
-        'NON-ENREG': 3500,
-        CRYPTO: 14250,
-        LIQUIDITE: 8500,
-    };
-    const cashTotal = Object.values(initialBalances).reduce((s, v) => s + v, 0);
+export function generateTestMarketData(
+    assets: Asset[] = TEST_ASSETS,
+    initialBalances: Record<string, number> = DEFAULT_TEST_INITIAL_BALANCES,
+): MarketDataPoint[] {
+    const cashTotal = Object.values(initialBalances).reduce((s, v) => s + (Number(v) || 0), 0);
     const out: MarketDataPoint[] = [];
 
     for (const row of PARSED_CSV) {
@@ -90,7 +97,7 @@ export function generateTestMarketData(): MarketDataPoint[] {
         let nonRegTotal = 0;
         let cryptoTotal = 0;
 
-        for (const a of TEST_ASSETS) {
+        for (const a of assets) {
             const price = row.prices[a.symbol];
             if (price == null) continue; // pas de fake — on saute si manquant
             const qty = a.quantity || a.purchases?.[0]?.quantity || 0;

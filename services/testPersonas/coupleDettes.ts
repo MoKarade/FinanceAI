@@ -31,7 +31,9 @@ export function buildCoupleDettes(): Partial<AppState> {
             { id: 'cd-b7', name: 'Santé', target: 90, nature: 'Santé', frequency: 'Monthly' },
         ] as unknown as AppState['budgetItems'],
         assets: [],
-        initialBalances: { CELI: 800, REER: 2500, 'NON-ENREG': 0, CRYPTO: 0, LIQUIDITE: 600 },
+        // Soldes = cash uniquement (LIQUIDITE). Couple endetté sans placements :
+        // leurs maigres soldes registered (CELI/REER) sont du cash, regroupés ici.
+        initialBalances: { CELI: 0, REER: 0, 'NON-ENREG': 0, CRYPTO: 0, LIQUIDITE: 3900 },
         transactions: buildPersonaTransactions({
             incomes: [
                 { payee: 'Centre Hospitalier - Paie', netBiweekly: 1300 },

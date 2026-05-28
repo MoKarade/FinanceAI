@@ -9,11 +9,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased — Audit multi-agents · corrections] — 2026-05-28
 
 Fleet de 5 agents (sécurité, TypeScript, silent-failures, performance, fintech) lancé sur
-FinanceAI (rapport complet : `docs/AUDIT_2026-05-28.md`). Aucun problème CRITICAL. Corrections
-sûres et à fort impact appliquées d'abord ; les changements de logique money (F4) et les
-silent-failures du flux principal (F1/F3) + perf (F9-11) sont documentés et planifiés à part
-(à faire avec soin + tests, pas en vrac) ; les règles fiscales incertaines restent en attente
-de source (Tier 🟢, non modifiées).
+FinanceAI (rapport complet : `docs/AUDIT_2026-05-28.md`). Aucun problème CRITICAL. Toutes les
+corrections sûres et à fort impact shippées en batches isolés (CI verte à chaque fois) :
+sécurité (F5-F8), silent-failures du flux projection (F1/F3), exactitude fiscale (F4) et
+performance (F9-F11). Les règles fiscales incertaines restent en attente de source
+(Tier 🟢, **non modifiées** sans validation officielle / décision Marc).
 
 ### Sécurité / robustesse
 - **F5 — `BudgetAiModal` injection de prompt** : noms/natures de catégories + alertes sanitisés
@@ -42,6 +42,17 @@ de source (Tier 🟢, non modifiées).
   `RRSP_WITHHOLDING_QC` (combinés QC **19/24/29 %**). Vérifié : **1148 tests verts, zéro régression**
   (aucun test n'assumait les anciens chiffres). `meltdownReer.ts` laissé tel quel — son `0.38/0.30`
   est le taux marginal ciblé par la stratégie meltdown, pas la retenue forfaitaire (Tier 🟢).
+
+### Performance (Batch C)
+- **F9 — `Math.pow` hissé** là où le **même** facteur de croissance salariale était recalculé dans un
+  même scope : `activeIncome.ts` (6× → 1, boucle mensuelle), `monthlyCalcs.ts` (2× → 1),
+  `taxDecember.ts` (2× → 1). Résultat numérique identique (vérifié : suite complète verte). Les usages
+  uniques par bloc conditionnel laissés (les hisser pessimiserait les chemins gardés).
+- **F10 — `tickFormatter` Futur en O(1)** : remplacement du `displayData.find()` O(n) par tick par une
+  `Map<monthIndex, year>` mémoïsée. Évite O(ticks × n) par frame pendant le zoom/pan.
+- **F11 — handlers de pan stables** : `useTimeChartZoom` enveloppe `onMouseDown/Move`/`endPan` dans
+  `useCallback` (lecture `range`/`dataLength` via refs) + objet `handlers` mémoïsé → plus de re-render
+  du graphe à chaque frame à cause d'identités de props recréées.
 
 ---
 

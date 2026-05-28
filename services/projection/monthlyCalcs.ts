@@ -90,8 +90,10 @@ export function computeMonthlyWithholding(
 
     const yearsElapsed = Math.floor(m / 12);
     const inflationFactor = Math.pow(1 + simInflation / 100, yearsElapsed);
-    const grossMarcReal = (grossMarcBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed)) / inflationFactor;
-    const grossAnnaReal = (grossAnnaBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed)) / inflationFactor;
+    // F9 (audit 2026-05-28) — même facteur de croissance salariale pour Marc et Anna : hissé une fois.
+    const salaryGrowthFactor = Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
+    const grossMarcReal = (grossMarcBaseAnnual * salaryGrowthFactor) / inflationFactor;
+    const grossAnnaReal = (grossAnnaBaseAnnual * salaryGrowthFactor) / inflationFactor;
 
     let monthlyDeductionsMarc = 0;
     let monthlyDeductionsAnna = 0;

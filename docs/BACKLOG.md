@@ -91,8 +91,11 @@
   **inatteignable** (la banque de pertes est consommée mais jamais alimentée par cette fonction).
   Théorique en marché haussier, sous-estime l'efficacité fiscale en scénario baissier (ECONOMIC_WINTER).
   Comportement actuel pinné par `tests/services/portfolioOps.test.ts`.
-- **[TRIVIAL · finding Lot 2] `defaultBackupFilename`** : le 2ᵉ `.replace(/\.\d+Z$/)` est du code mort
-  (le 1ᵉʳ `replace` a déjà retiré le « . ») → le nom conserve les millisecondes (`-000Z`). Cosmétique, pinné.
+- **[TRIVIAL · finding Lot 2] `defaultBackupFilename`** — ✅ FAIT 2026-05-29 : les deux `replace`
+  étaient dans le mauvais ordre (le 1ᵉʳ `/[:.]/g` neutralisait déjà le « . » des ms → le strip
+  `/\.\d+Z$/` ne matchait plus = code mort, nom finissant par `-000Z`). Réordonnés (strip des ms
+  d'abord) → nom propre à la seconde `financeai-…T20-30-00Z.bak` (intention de la docstring). Test
+  `cloudBackup` mis à jour (assertion « pas de `-000` »).
 
 ---
 
@@ -1224,7 +1227,7 @@ Priorité de traitement :
 |-----------|---------------|--------|------|
 | P0 Sécurité | S2 IndexedDB backup (reporté, dépend décision A8) | ~3 h | S1 auth ✅, B0 #310 ✅, gate lint ✅ |
 | P1 Centralisation | C2 (brancher TaxCenter/Investments/RealEstate) + C4 (code mort) | ~4 h | C1 moteur ✅ complet |
-| P1 Bugs | **TB3 cards à 0 = NaN confirmé**, G1 boutons « aller Futur » cassés ; TB4 (Marc), B3/B4 reportés | ~2 h | TB3+G1 = vrais bugs |
+| P1 Bugs | TB3 ✅ (fix robuste 2026-05-27, §TB3) · G1 ✅ (confirmé en prod, cf cycle) ; TB4 (Marc), B3/B4 reportés | — | plus de vrai bug ouvert ici |
 | 🎨 Refonte graphs & Futur | G2 overlaps, G3 sous-onglets+plein écran, G4 zoom/pan/style Google Finance (tous graphs), G5 icônes events, G6 tooltip | ~20-25 h | demandé 2026-05-22, gros chantier |
 | P2 UX | export PNG/PDF, **U7 sidebar (icônes stables + pas de flicker)** | ~4 h | U2/U3/U4/U5/U6 ✅, dark mode rejeté |
 | P2 Performance | P1 bundle audit, P3 profiler worker | ~4 h | P2 SW cache ✅ |

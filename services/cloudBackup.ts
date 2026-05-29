@@ -238,9 +238,12 @@ export const readBackupFile = async <T = unknown>(file: File, passphrase: string
 };
 
 /**
- * Nom de fichier par defaut : financeai-2026-05-13T20-30-00.bak
+ * Nom de fichier par defaut : financeai-2026-05-13T20-30-00Z.bak
+ * (UTC, sans « : » illégal sous Windows ni millisecondes).
  */
 export const defaultBackupFilename = (now: Date = new Date()): string => {
-    const iso = now.toISOString().replace(/[:.]/g, '-').replace(/\.\d+Z$/, 'Z');
+    // Retirer les millisecondes (« .\d+Z » → « Z ») AVANT de neutraliser « : »/« . »,
+    // sinon le « . » des ms est déjà remplacé et le strip ne matche plus (code mort).
+    const iso = now.toISOString().replace(/\.\d+Z$/, 'Z').replace(/[:.]/g, '-');
     return `financeai-${iso}.bak`;
 };

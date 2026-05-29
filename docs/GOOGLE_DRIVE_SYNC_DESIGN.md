@@ -59,9 +59,20 @@ Local : `syncState` = `{ connectedEmail, lastSyncedAt, lastPulledUpdatedAt, last
 | Drive absent, local non-vide | `PUSH` (première sync) |
 | Drive absent, local vide | `NOOP` (rien à faire) |
 | Drive présent, local **vide** | `PULL` (restaure — incognito/nouvel appareil) |
+| Drive présent, local non-vide, **gate** (`restoreIntent`) **et** appareil **jamais synchronisé** (`lastPulledUpdatedAt == 0` **et** `lastLocalHash == ''`) | `PULL` (restaure — login = « récupérer mon compte »; backup local avant écrasement) |
 | Drive présent, local non-vide, `drive.updatedAt > lastPulledUpdatedAt` **et** local **inchangé** (`hash == lastLocalHash`) | `PULL` (Drive plus récent, local pas touché) |
 | Drive présent, local non-vide, local **modifié** (`hash != lastLocalHash`) **et** Drive **aussi** avancé (`drive.updatedAt > lastPulledUpdatedAt`) | `CONFLICT` → bandeau « garder local / garder Drive » |
 | Sinon (local en avance) | `PUSH` |
+
+**`restoreIntent`** = login explicite **par le gate** (`connectAndSync` / `gateSilentResume`). Sur un
+appareil jamais synchronisé, l'utilisateur s'est connecté pour **récupérer son compte** → Drive gagne,
+même si le local n'est pas strictement vide (défaut du store / restes d'un test). Le **boot normal**
+(`runBootSync`, `restoreIntent=false`) garde la garde stricte → `CONFLICT` plutôt qu'écraser. Sans cette
+règle, le gate classait tout en conflit et affichait le local (bug Marc 2026-05-29).
+
+**Hash de détection-de-changement = payload SEUL** (pas les clés API) : au gate les clés ne sont pas
+encore hydratées, un hash incluant les clés serait instable selon le moment → `push` parasite effaçant
+les clés dans Drive après un pull. Les clés restent incluses dans l'**enveloppe** poussée.
 
 **Au changement (push) :** debounce ; **ne jamais pousser un payload vide** par-dessus un Drive
 non-vide. Comme le login fait `PULL` d'abord, le cas « incognito vide → efface Drive » est

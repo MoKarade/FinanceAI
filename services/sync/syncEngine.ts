@@ -17,7 +17,7 @@ const decision = (action: SyncDecision['action'], reason: string): SyncDecision 
  * (choix laissé à l'utilisateur, jamais d'écrasement automatique).
  */
 export function decideOnLoad(input: DecideOnLoadInput): SyncDecision {
-    const { drive, localIsEmpty, localHash, meta } = input;
+    const { drive, localIsEmpty, localHash, meta, restoreIntent = false } = input;
 
     // 1) Drive n'existe pas encore.
     if (!drive) {
@@ -29,6 +29,19 @@ export function decideOnLoad(input: DecideOnLoadInput): SyncDecision {
     // 2) Local vide (incognito / nouvel appareil) → restaurer depuis Drive. Aucun conflit possible.
     if (localIsEmpty) {
         return decision('pull', 'local-vide-restaurer');
+    }
+
+    // 2.5) RESTAURATION EXPLICITE (login par le gate) sur un appareil JAMAIS synchronisé via ce
+    //      système : la méta est vierge (`lastPulledUpdatedAt=0` ET `lastLocalHash=''`). Sans cette
+    //      règle, n'importe quelle donnée locale (défaut du store, restes d'un test, autre appareil)
+    //      ferait croire à une divergence → `conflict`, et le gate — qui ne sait PAS résoudre un
+    //      conflit — afficherait le LOCAL au lieu de restaurer Drive (bug Marc 2026-05-29 :
+    //      « mes données ne sont pas celles sauvegardées »). L'utilisateur s'est connecté pour
+    //      RÉCUPÉRER son compte → Drive gagne. Filet : l'orchestrateur backupe le local avant
+    //      d'écraser. Réservé au gate (`restoreIntent`) : au boot normal on garde le `conflict` (sûr).
+    const deviceNeverSynced = meta.lastPulledUpdatedAt === 0 && meta.lastLocalHash === '';
+    if (restoreIntent && deviceNeverSynced) {
+        return decision('pull', 'gate-restaure-appareil-neuf');
     }
 
     // 3) Les deux côtés existent : comparer l'avancement.

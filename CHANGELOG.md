@@ -77,10 +77,32 @@ jusqu'à activation. Activation : `docs/GOOGLE_DRIVE_SETUP.md`.
   `PushResult` typé et la carte affiche un message **honnête** : « Sauvegardé », « Rien à
   sauvegarder » ou « Mode test actif » — fini le faux « Sauvegardé ». +5 tests.
 
+### Corrigé — le login par le gate ne restaurait pas les bonnes données (2026-05-29)
+- **Bug** : après login au gate (`LoginGate`), Marc voyait ses **données locales** (défaut/restes
+  d'un test), pas celles sauvegardées dans Drive → il devait restaurer **manuellement** via Réglages.
+  Cause : `decideOnLoad` ne faisait un `pull` auto que si le local était **strictement vide**. Dès
+  qu'il y avait la moindre donnée locale + une méta de sync **vierge** (1er login sur cet appareil :
+  `lastPulledUpdatedAt=0`, `lastLocalHash=''`), tout était classé **`conflict`** — et le gate, qui
+  ne sait pas résoudre un conflit (UI réservée à Réglages), affichait le local.
+- **Fix (TDD, décision Marc : auto-restaure)** : nouvelle intention `restoreIntent` sur `decideOnLoad`.
+  Au **gate** (`connectAndSync` + `gateSilentResume`), si Drive a des données et que l'appareil n'a
+  **jamais synchronisé** via ce système → `pull` (restaure). Filet : `applyPulledPayload` backupe le
+  local avant d'écraser. Le **boot normal** (`runBootSync`) garde la garde anti-perte stricte
+  (`conflict`, jamais d'écrasement auto). +5 tests.
+- **Anti-régression clés API** : le hash de détection-de-changement (`getLocalPayload` / meta de
+  `pullNow`) couvrait payload **+ clés API**. Or au gate les clés ne sont pas encore hydratées
+  (`currentApiKeys()` vide) → après un pull+reload, le local paraissait « modifié » → `push` parasite
+  qui **effaçait les clés dans Drive**. Hash rendu **invariant** (payload seul) ; les clés restent
+  incluses dans l'enveloppe poussée. → après restauration : `noop` (pas de push parasite, clés Drive
+  préservées).
+
 ### Décisions clés
 - Données dans le Drive de l'utilisateur (on n'héberge rien) ; **pas de chiffrement applicatif**
   (choix confort assumé de Marc — passphrase optionnelle en backlog) ; sync **auto avec garde
   anti-perte** (pull au login, push debouncé, conflit → choix utilisateur).
+- **Gate = intention de restauration** : se connecter au gate signifie « récupérer mon compte ».
+  Sur un appareil jamais synchronisé, Drive gagne (auto-restaure, avec backup local de sécurité).
+  Le boot normal reste prudent (conflit → choix utilisateur).
 
 ---
 

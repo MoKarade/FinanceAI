@@ -136,8 +136,13 @@ function getLocalPayload(): LocalPayload {
     }
     const payload = stripApiKeys(parsed);
     const apiKeys = currentApiKeys();
-    // Le hash couvre payload + clés : un changement de clé déclenche aussi une sauvegarde.
-    return { payload, apiKeys, isEmpty: computeIsEmpty(payload), hash: hashPayload({ payload, apiKeys }) };
+    // Hash de détection-de-changement = PAYLOAD SEUL (pas les clés API). Raison : au gate, les clés
+    // ne sont pas encore hydratées (currentApiKeys() = vide tant que App.tsx n'a pas restauré depuis
+    // secureKeyStore en async). Les inclure rendrait le hash instable selon le MOMENT du calcul →
+    // après un pull+reload, le local paraîtrait « modifié » → push parasite qui EFFACERAIT les clés
+    // dans Drive (régression Sync v2). Payload-only = invariant. Les clés restent incluses dans
+    // l'enveloppe poussée (cf buildEnvelope) → elles se synchronisent au prochain push de données.
+    return { payload, apiKeys, isEmpty: computeIsEmpty(payload), hash: hashPayload(payload) };
 }
 
 /** Réapplique un payload tiré de Drive : backup d'assurance, clés API, écriture, reload (rehydrate). */
@@ -302,14 +307,13 @@ export async function pullNow(): Promise<void> {
             return;
         }
         const meta = currentMeta();
-        const restoredKeys = drive.apiKeys ?? { anthropic: '', finnhub: '' };
         writeSyncMeta({
             ...meta,
             lastSyncedAt: Date.now(),
             lastPulledUpdatedAt: drive.updatedAt,
-            // Hash du même format que getLocalPayload ({payload, apiKeys}) pour qu'au prochain boot
-            // l'état soit vu « inchangé » (pas de push redondant).
-            lastLocalHash: hashPayload({ payload: drive.payload, apiKeys: restoredKeys }),
+            // Même hash que getLocalPayload (PAYLOAD seul) → au prochain boot/gate l'état est vu
+            // « inchangé » (pas de push parasite, et donc pas d'effacement des clés dans Drive).
+            lastLocalHash: hashPayload(drive.payload),
         });
         setStatus({ conflict: false });
         await applyPulledPayload(drive.payload, drive.apiKeys); // déclenche un reload
@@ -331,7 +335,7 @@ export async function connectAndSync(): Promise<void> {
         const meta = currentMeta();
         writeSyncMeta({ ...meta, connectedEmail: email });
         setStatus({ connected: true, email });
-        await runDecision(token);
+        await runDecision(token, true); // login explicite → intention de restauration
     } catch (e) {
         handleError('connect', e);
     }
@@ -355,7 +359,7 @@ export async function gateSilentResume(): Promise<boolean> {
         const meta = currentMeta();
         writeSyncMeta({ ...meta, connectedEmail: email });
         setStatus({ connected: true, email });
-        await runDecision(token); // pull auto si local vide ; conflit → l'UI tranchera
+        await runDecision(token, true); // reprise au gate → intention de restauration (pull si Drive a des données)
         return true;
     } catch {
         // Échec silencieux attendu (pas de session / pas de consentement) → cas nominal au 1er
@@ -373,7 +377,7 @@ export async function runBootSync(): Promise<void> {
     try {
         const token = await getValidAccessToken(); // silencieux (refresh)
         setStatus({ connected: true });
-        await runDecision(token);
+        await runDecision(token, false); // boot normal (hors gate) → garde anti-perte stricte
     } catch (e) {
         // Échec silencieux du refresh (session Google expirée) → l'utilisateur recliquera.
         setStatus({ connected: false });
@@ -381,8 +385,13 @@ export async function runBootSync(): Promise<void> {
     }
 }
 
-/** Applique decideOnLoad puis exécute l'action résultante. */
-async function runDecision(token: string): Promise<void> {
+/**
+ * Applique decideOnLoad puis exécute l'action résultante.
+ * `restoreIntent` = login PAR LE GATE (l'utilisateur se connecte pour récupérer son compte) : sur un
+ * appareil jamais synchronisé, Drive gagne (restaure) au lieu de bloquer sur un faux « conflit ».
+ * Au boot normal (`false`), on garde la garde anti-perte stricte.
+ */
+async function runDecision(token: string, restoreIntent = false): Promise<void> {
     setStatus({ busy: true, error: null });
     const drive = await readDrive(token);
     const local = getLocalPayload();
@@ -392,6 +401,7 @@ async function runDecision(token: string): Promise<void> {
         localIsEmpty: local.isEmpty,
         localHash: local.hash,
         meta,
+        restoreIntent,
     });
     switch (decision.action) {
         case 'pull':

@@ -157,6 +157,14 @@
 ## 📦 Backlog 2026-05-28 — Persistance multi-user + icônes Futur exhaustives
 
 ### P1 — Persistance solide & restauration complète par utilisateur (multi-user)
+> ✅ **IMPLÉMENTÉ 2026-05-29 (livré « dark »)** — Sync Google Drive : données dans le Drive de
+> chaque user (`appDataFolder`), pull au login / push debouncé, garde anti-perte. Diffère de la
+> reco initiale ci-dessous : stockage dans le **Drive de l'user** (pas Vercel/CF KV) et **sans
+> chiffrement E2E** (choix confort assumé de Marc, passphrase optionnelle en backlog). Inerte tant
+> que `VITE_GOOGLE_CLIENT_ID` n'est pas défini. Design `docs/GOOGLE_DRIVE_SYNC_DESIGN.md`, activation
+> `docs/GOOGLE_DRIVE_SETUP.md`. **Reste à faire** : badge UI « taux estimé » lié, passphrase optionnelle,
+> bouton « supprimer mes données Drive ». Le texte ci-dessous est conservé pour l'historique de décision.
+
 > Demandé par Marc : « mettre en place quelque chose de solide pour sauvegarder
 > mes données utilisateur et que ça me donne bien tout ce qu'il faut quand je me
 > connecte (pareil pour tous les autres utilisateurs) ».

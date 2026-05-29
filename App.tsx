@@ -22,6 +22,7 @@ import { configureMarketDataProvider } from './services/marketData';
 import { installGlobalErrorHandlers } from './services/errorLogger';
 import { lazyWithRetry, clearChunkReloadFlag } from './utils/lazyWithRetry';
 import { initAutoBackup } from './services/backupAuto';
+import { initSync, runBootSync, schedulePush } from './services/sync/syncOrchestrator';
 import { trackPageView } from './services/analytics';
 import { GuidedTour } from './components/tour/GuidedTour';
 import { startGuidedTour } from './components/tour/tourControl';
@@ -92,7 +93,17 @@ export const App: React.FC = () => {
             }
         }
 
-        return () => clearTimeout(timer);
+        // Sync Google Drive — inerte si VITE_GOOGLE_CLIENT_ID absent. Init + sync silencieuse au
+        // boot (uniquement si déjà connecté), puis push debouncé sur chaque changement du store.
+        initSync(import.meta.env.VITE_GOOGLE_CLIENT_ID);
+        const syncTimer = setTimeout(() => { void runBootSync(); }, 2500);
+        const unsubSync = useFinanceStore.subscribe(() => schedulePush());
+
+        return () => {
+            clearTimeout(timer);
+            clearTimeout(syncTimer);
+            unsubSync();
+        };
     }, []);
 
     // GA4 — page_view explicite à chaque changement d'onglet. GA4 ne

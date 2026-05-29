@@ -6,6 +6,33 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Feature · Sync Google Drive] — 2026-05-29
+
+Synchronisation des données dans le **Drive de chaque utilisateur** (dossier caché `appDataFolder`)
+pour les retrouver sur un autre appareil / en navigation privée après login Google. Conçu +
+approuvé par Marc (design : `docs/GOOGLE_DRIVE_SYNC_DESIGN.md`). **Livré « dark »** : inerte tant
+que `VITE_GOOGLE_CLIENT_ID` n'est pas défini (carte masquée, zéro appel) → aucun impact prod
+jusqu'à activation. Activation : `docs/GOOGLE_DRIVE_SETUP.md`.
+
+### Ajouté (par batches isolés, CI verte)
+- **S1 — cœur logique anti-perte (pur, testé)** : `services/sync/syncEngine` (matrice
+  `decideOnLoad` pull/push/conflict/noop, garde « jamais d'écrasement d'une cible plus récente »),
+  `syncState` (métadonnées locales + deviceId), `syncTypes`. 23 tests.
+- **S2 — intégration Google** : `services/googleDrive/gisAuth` (token GIS, scope `drive.appdata`)
+  + `driveAppData` (REST appData find/create/read/update, fetch injectable, erreurs typées). 23 tests.
+- **S3 — câblage + UI** : `syncOrchestrator` (glue + statut observable, snapshot sans clés API,
+  apply avec backup d'assurance + reload, push debouncé), carte `GoogleDriveSyncCard` (Réglages →
+  Système), boot sync + abonnement store dans `App.tsx`, CSP élargie à Google (index.html +
+  netlify.toml), `VITE_GOOGLE_CLIENT_ID` (`.env.example` + `vite-env.d.ts`). 7 tests helpers.
+
+### Décisions clés
+- Données dans le Drive de l'utilisateur (on n'héberge rien) ; **pas de chiffrement applicatif**
+  (choix confort assumé de Marc — passphrase optionnelle en backlog) ; **clés API non synchronisées**
+  (credentials actifs) ; sync **auto avec garde anti-perte** (pull au login, push debouncé,
+  conflit → choix utilisateur).
+
+---
+
 ## [unreleased — Audit multi-agents · corrections] — 2026-05-28
 
 Fleet de 5 agents (sécurité, TypeScript, silent-failures, performance, fintech) lancé sur

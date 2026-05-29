@@ -1,5 +1,14 @@
 /// <reference types="vite/client" />
 
+// Variables d'env exposées au front (préfixe VITE_). VITE_GOOGLE_CLIENT_ID active la sync
+// Google Drive (feature inerte si absent) — cf docs/GOOGLE_DRIVE_SYNC_DESIGN.md.
+interface ImportMetaEnv {
+    readonly VITE_GOOGLE_CLIENT_ID?: string;
+}
+interface ImportMeta {
+    readonly env: ImportMetaEnv;
+}
+
 // Phase A.4 — version exacte, injectée par Vite define au build.
 declare const __APP_VERSION__: string;
 declare const __GIT_SHA__: string;

@@ -68,10 +68,11 @@ export const GoogleDriveSyncCard: React.FC = () => {
                     les retrouver sur un autre appareil ou en navigation privée, après connexion Google.
                 </p>
 
-                {/* Honnêteté : pas de chiffrement applicatif (choix confort). */}
+                {/* Honnêteté : pas de chiffrement applicatif (choix confort) — la sauvegarde inclut les clés API (sync v2). */}
                 <p className="text-tiny text-amber-400/90 leading-snug">
-                    ⚠️ Données non chiffrées par l'app : lisibles via ton compte Google. Les clés API ne sont
-                    jamais synchronisées (à ressaisir sur chaque appareil).
+                    ⚠️ Données non chiffrées par l'app : lisibles via ton compte Google. Tes clés API
+                    (Anthropic, Finnhub) sont incluses dans la sauvegarde pour les retrouver sur tes autres
+                    appareils — donc elles aussi en clair dans ton Drive.
                 </p>
 
                 {status.conflict && (

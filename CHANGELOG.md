@@ -28,12 +28,17 @@ jusqu'à activation. Activation : `docs/GOOGLE_DRIVE_SETUP.md`.
   `deleteRemoteData` (supprime le blob Drive puis déconnecte). Bouton « Supprimer mes données de
   Google Drive » dans la carte (confirmation 2 clics ; les données locales restent). +3 tests.
   Vérifié au navigateur : carte visible, CSP OK, flux OAuth s'initie (faux Client ID → invalid_client).
+- **R1 — sync v2 : clés API incluses** : les clés Anthropic/Finnhub sont désormais synchronisées
+  (champ optionnel `apiKeys` de l'enveloppe) et restaurées au pull (`saveApiKeys`), pour tout
+  retrouver d'un seul login Google. **En clair** dans Drive (cohérent avec « pas de chiffrement
+  applicatif »). Rétro-compatible v1 (champ absent = ancien blob). Message d'honnêteté de la carte
+  mis à jour en conséquence. +tests `syncEngine`/orchestrateur.
 
 ### Décisions clés
 - Données dans le Drive de l'utilisateur (on n'héberge rien) ; **pas de chiffrement applicatif**
-  (choix confort assumé de Marc — passphrase optionnelle en backlog) ; **clés API non synchronisées**
-  (credentials actifs) ; sync **auto avec garde anti-perte** (pull au login, push debouncé,
-  conflit → choix utilisateur).
+  (choix confort assumé de Marc — passphrase optionnelle en backlog) ; **clés API incluses dans la
+  sauvegarde** (sync v2, en clair — cf R1 ci-dessus) ; sync **auto avec garde anti-perte** (pull au
+  login, push debouncé, conflit → choix utilisateur).
 
 ---
 

@@ -116,7 +116,10 @@ des niveaux d'accès** (*Add or remove scopes*) :
 
 - **Pas de chiffrement applicatif** (choix assumé) : le blob dans Drive est lisible via ton compte
   Google. Passphrase optionnelle (zéro-knowledge) possible plus tard (champ `enc` réservé).
-- **Clés API non synchronisées** (credentials actifs) — à ressaisir par appareil.
+- **Clés API incluses dans la sauvegarde** (sync v2) : tes clés Anthropic/Finnhub sont
+  synchronisées et restaurées automatiquement sur tes autres appareils. Comme le reste,
+  **en clair** dans Drive (cohérent avec « pas de chiffrement applicatif ») — donc lisibles via
+  ton compte Google.
 - **Multi-appareils concurrents** : garde anti-perte au login (bandeau conflit) ; pendant une session,
   last-write-wins.
 - **Révoquer / supprimer** : carte → **Déconnecter** (révoque le token + efface les métadonnées

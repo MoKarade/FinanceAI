@@ -72,10 +72,16 @@ ancienne, soit (b) choix explicite de l'utilisateur.
 
 ## 5. Ce qui est synchronisé
 
-- Snapshot `financeai-storage` (même source que `backupAuto`) **moins `apiKeys`**.
-- **Exclusion des clés API** (sécurité) : une clé Anthropic/Finnhub est un *credential actif*
-  (risque de facture/abus). En clair dans Drive = pire que les données. Restent par-appareil
-  (comportement actuel). L'utilisateur ré-entre ses clés sur chaque appareil.
+- Snapshot `financeai-storage` (même source que `backupAuto`), **sans les `apiKeys`** dans le
+  payload — les clés voyagent dans un champ `apiKeys` dédié de l'enveloppe (cf ci-dessous).
+- **Clés API incluses** (sync v2 — décision Marc 2026-05-29, « V2-C ») : les clés Anthropic/Finnhub
+  sont synchronisées (champ optionnel `apiKeys` de l'enveloppe) et restaurées au pull, pour tout
+  retrouver d'un seul login. **En clair** dans Drive, cohérent avec le choix « pas de chiffrement
+  applicatif » (D3). Rétro-compatible v1 (champ absent = ancien blob).
+  > **Historique v1** : les clés étaient volontairement **exclues** (un credential actif → risque
+  > facture/abus si le Drive fuite, jugé pire que les données). V2 assume ce risque au profit du
+  > confort : un seul endroit à protéger, le compte Google. Le chiffrement par passphrase
+  > optionnelle (champ `enc`) reste en backlog pour qui veut durcir.
 
 ## 6. Modules (fichiers petits, isolés, testables)
 
@@ -129,4 +135,5 @@ Ajouter (dans `index.html` **et** `netlify.toml`) :
 
 - Pas de chiffrement applicatif (D3) → passphrase optionnelle en backlog (champ `enc` réservé).
 - Conflit résolu par choix utilisateur (pas de merge granulaire) — suffisant pour un usage perso.
-- Clés API non synchronisées (volontaire).
+- Clés API **incluses** dans la sync depuis la v2 (« V2-C ») — **en clair** (cf §5). Le chiffrement
+  optionnel par passphrase (champ `enc`) reste le moyen de durcir ce point plus tard.

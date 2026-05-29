@@ -6,7 +6,7 @@
 >
 > Session 2026-05-29 — **Feature Sync Google Drive** (livrée « dark », inerte sans `VITE_GOOGLE_CLIENT_ID`) :
 > données dans le Drive de chaque user (appDataFolder), auto + garde anti-perte, pas de chiffrement
-> applicatif (choix Marc), clés API non synchronisées. Code : `services/sync/*` + `services/googleDrive/*`
+> applicatif (choix Marc), **clés API incluses (sync v2, en clair)**. Code : `services/sync/*` + `services/googleDrive/*`
 > + carte Réglages→Système. **Pour activer** : suivre `docs/GOOGLE_DRIVE_SETUP.md` (créer le Client ID
 > OAuth + mettre `VITE_GOOGLE_CLIENT_ID`). Design : `docs/GOOGLE_DRIVE_SYNC_DESIGN.md`. Tests +53.
 >

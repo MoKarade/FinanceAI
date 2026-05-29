@@ -6,6 +6,30 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Fix · warning React clés dupliquées CELI/REER (Dashboard)] — 2026-05-29
+
+Au chargement du Dashboard (onglet Accueil), la console émettait des warnings React
+répétés « Encountered two children with the same key, `CELI` » (et `REER`) — reproduits
+sous le persona « Diane & Robert ». Régression du suivi G8/G9 (le warning n'avait été
+que *noté* non-bloquant, cf. plus bas, jamais corrigé).
+
+### Corrigé
+- **Cause racine** : un compte cash peut porter le même nom qu'une catégorie
+  d'investissement hardcodée. Le persona a `initialBalances: { CELI: 0, REER: 0, … }`,
+  donc `cashAccountsList` contenait déjà 'CELI'/'REER', puis `Dashboard.tsx` faisait
+  `.concat(['Immobilier','CELI','REER',…])` → les clés 'CELI'/'REER' apparaissaient
+  **deux fois** dans `accountKeys`, alimentant les chips de bascule (`key={key}`) et les
+  séries recharts (rendu non garanti). Seules 'CELI'/'REER' collisionnaient exactement
+  ('CRYPTO'≠'Crypto', 'NON-ENREG'≠'NonReg'), cohérent avec les deux warnings observés.
+- **Fix** (`components/Dashboard.tsx`) : dédoublonnage de `combinedKeys` via `new Set`
+  (ordre préservé, cash d'abord). Le dataset ne porte qu'une valeur par clé
+  (`point.CELI`/`point.REER` agrègent l'investissement), le dédoublonnage est donc exact.
+- **Régression** : `tests/components/Dashboard.duplicateKeys.test.tsx` monte le vrai
+  Dashboard sous le scénario Diane & Robert et vérifie (a) aucun `console.error`
+  « same key », (b) un seul chip par compte. 1209 tests verts.
+
+---
+
 ## [unreleased — Feature · Sync Google Drive] — 2026-05-29
 
 Synchronisation des données dans le **Drive de chaque utilisateur** (dossier caché `appDataFolder`)

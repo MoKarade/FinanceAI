@@ -146,7 +146,17 @@ function getLocalPayload(): LocalPayload {
     return { payload, apiKeys, isEmpty: computeIsEmpty(payload), hash: hashPayload(payload) };
 }
 
-/** Réapplique un payload tiré de Drive : backup d'assurance, clés API, écriture, reload (rehydrate). */
+/**
+ * Réapplique un payload tiré de Drive : backup d'assurance → clés API → écriture localStorage →
+ * réhydratation EN PLACE du store (sans reload).
+ *
+ * Pourquoi PAS `window.location.reload()` (l'ancienne approche) : le reload perdait le jeton Google
+ * (en mémoire) → 2e login + `connected` repassait à false → l'auto-push ne partait plus
+ * (« ça n'enregistre pas mes données »), et l'onboarding « nouvel utilisateur » clignotait avant que
+ * les données n'arrivent. `persist.rehydrate()` relit le localStorage, applique les migrations, et
+ * met à jour le store VIVANT → les composants se re-render avec les données restaurées, la session
+ * reste connectée, les pushes suivants fonctionnent. (Bugs Marc 2026-05-29.)
+ */
 async function applyPulledPayload(payload: unknown, apiKeys?: ApiKeys): Promise<void> {
     if (typeof localStorage === 'undefined') return;
     // Filet : backup local de l'état courant avant d'écraser (réutilise backupAuto).
@@ -156,18 +166,30 @@ async function applyPulledPayload(payload: unknown, apiKeys?: ApiKeys): Promise<
     } catch {
         /* le backup d'assurance est best-effort, on ne bloque pas la restauration */
     }
-    // Sync v2 : ré-applique les clés API AVANT le reload (chiffrées dans secureKeyStore → elles
-    // survivent au reload et sont rechargées au boot). Best-effort : si le coffre est indispo, on
-    // restaure quand même les données (l'utilisateur ressaisira ses clés).
+    // Sync v2 : ré-applique les clés API. Chiffrées dans secureKeyStore (persistées) ET injectées
+    // dans le store vivant tout de suite (utilisables sans reload). Best-effort : si le coffre est
+    // indispo, on restaure quand même les données (l'utilisateur ressaisira ses clés).
     if (apiKeys && hasAnyKey(apiKeys)) {
         try {
             await saveApiKeys(apiKeys);
         } catch {
             /* coffre indispo — données restaurées quand même */
         }
+        try {
+            useFinanceStore.getState().updateApiKeys(apiKeys);
+        } catch {
+            /* le store réhydratera les clés au prochain boot via secureKeyStore */
+        }
     }
     localStorage.setItem(STORE_KEY, JSON.stringify(payload));
-    if (typeof window !== 'undefined') window.location.reload();
+    // Réhydratation en place : relit le localStorage qu'on vient d'écrire → met à jour le store.
+    try {
+        await useFinanceStore.persist.rehydrate();
+    } catch {
+        // Filet ultime : si rehydrate échoue (très rare), on retombe sur un reload pour garantir
+        // que l'utilisateur voie ses données (au prix d'un éventuel 2e login).
+        if (typeof window !== 'undefined') window.location.reload();
+    }
 }
 
 // ── Statut observable (pour l'UI) ────────────────────────────────────────────

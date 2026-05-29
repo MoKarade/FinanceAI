@@ -8,6 +8,24 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Feature · Sync Google Drive] — 2026-05-29
 
+### Corrigé — restauration EN PLACE (sans reload) : onboarding + sauvegarde + 1 login (2026-05-29, suite 2)
+- **Symptômes Marc** : après login au gate → écran « nouvel utilisateur » (onboarding) + données pas
+  restaurées (restauration manuelle obligatoire) + « ça n'enregistre pas mes données ».
+- **Cause racine commune : `window.location.reload()`** dans la restauration. Le reload (a) perdait le
+  jeton Google (en mémoire) → `connected` repassait à false → l'auto-push ne partait plus
+  (« ça n'enregistre pas ») ; (b) faisait clignoter l'onboarding « nouvel utilisateur » avant l'arrivée
+  des données ; (c) imposait potentiellement un 2e login.
+- **Fix** : `applyPulledPayload` réhydrate désormais le store **en place** via `persist.rehydrate()`
+  (Zustand v5) au lieu de recharger la page. Les clés API sont aussi injectées dans le store vivant
+  (`updateApiKeys`) tout de suite. Résultat : les données apparaissent sans rechargement, la session
+  reste connectée (→ l'auto-push fonctionne), pas d'onboarding parasite. La carte Réglages confirme la
+  restauration par un toast (plus de reload).
+- **Test d'intégration (demande Marc « teste toi-même »)** : `tests/services/syncOrchestrator.flow.test.ts`
+  rejoue tout le flux avec Drive/Google mockés et **prouve** que (1) `gateSilentResume` et
+  `connectAndSync` restaurent les vraies données dans le store (profil, retraite, espérance de vie,
+  documents, transactions, actions) sans reload, en restant connecté ; (2) `pushNow` **embarque
+  l'intégralité** du state local (rien de tronqué). +4 tests.
+
 Synchronisation des données dans le **Drive de chaque utilisateur** (dossier caché `appDataFolder`)
 pour les retrouver sur un autre appareil / en navigation privée après login Google. Conçu +
 approuvé par Marc (design : `docs/GOOGLE_DRIVE_SYNC_DESIGN.md`). **Livré « dark »** : inerte tant

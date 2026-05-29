@@ -59,8 +59,9 @@ export const GoogleDriveSyncCard: React.FC = () => {
         // 'error' : message rouge déjà affiché via le statut ; 'not-configured' : carte masquée.
     };
     const onPull = async () => {
-        // pullNow recharge la page en cas de succès ; pas de toast nécessaire.
+        // pullNow réhydrate le store EN PLACE (plus de reload) → on confirme par un toast.
         await pullNow();
+        if (!getSyncStatus().error) showToast('Données restaurées depuis Google Drive.', 'success');
     };
     const onDisconnect = () => {
         disconnectSync();

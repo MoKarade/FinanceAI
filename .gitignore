@@ -19,6 +19,9 @@ dist-ssr
 test-results/
 playwright-report/
 blob-report/
+.playwright-mcp/
+# Captures ad-hoc de tests navigateur à la racine (les vrais assets vivent dans public/).
+/*.png
 # Note : e2e/__snapshots__/ est inclus (baselines committées)
 
 # Env files (secrets) - Phase 0 hardening

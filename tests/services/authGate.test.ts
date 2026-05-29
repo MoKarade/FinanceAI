@@ -1,12 +1,19 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { isGateEnabled, isGateEscaped, setGateEscaped, gateRequiresLogin } from '../../services/sync/authGate';
 
 beforeEach(() => {
+    // Déterministe : on neutralise un éventuel .env.local (sinon VITE_GOOGLE_* fausse les défauts
+    // des arguments → les cas `undefined` liraient l'env au lieu de « absent »).
+    vi.stubEnv('VITE_GOOGLE_CLIENT_ID', '');
+    vi.stubEnv('VITE_GOOGLE_GATE', '');
     try {
         sessionStorage.clear();
     } catch {
         /* sessionStorage indispo en CI : les tests de trappe se contentent du défaut */
     }
+});
+afterEach(() => {
+    vi.unstubAllEnvs();
 });
 
 describe('isGateEnabled — capacité (Client ID) + activation (flag)', () => {

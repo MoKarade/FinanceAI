@@ -45,6 +45,18 @@ function hasAnyKey(k: ApiKeys): boolean {
     return Boolean(k.anthropic || k.finnhub);
 }
 
+/**
+ * Vrai si l'app tourne en MODE TEST (fixtures persona). On ne synchronise JAMAIS ces données :
+ * sinon l'auto-push écraserait la vraie sauvegarde Drive par des données de démo (bug 2026-05-29).
+ */
+function isTestModeActive(): boolean {
+    try {
+        return useFinanceStore.getState().isTestMode === true;
+    } catch {
+        return false;
+    }
+}
+
 // Doit correspondre au `name` du persist Zustand (store/useFinanceStore.ts) et à backupAuto.
 const STORE_KEY = 'financeai-storage';
 // `__APP_VERSION__` est injecté par Vite (define). `typeof` évite un ReferenceError en test
@@ -203,7 +215,7 @@ async function readDrive(token: string): Promise<SyncEnvelope | null> {
 export async function pushNow(): Promise<void> {
     if (!isGoogleAuthConfigured()) return;
     const local = getLocalPayload();
-    if (!shouldPush(local.isEmpty)) return; // jamais pousser un état vide
+    if (!shouldPush(local.isEmpty, isTestModeActive())) return; // jamais pousser un état vide ou de test
     setStatus({ busy: true, error: null });
     try {
         const token = await getValidAccessToken();

@@ -104,6 +104,12 @@ describe('shouldPush — garde push-au-changement', () => {
     it('autorise le push si local non-vide', () => {
         expect(shouldPush(false)).toBe(true);
     });
+    it('refuse de pousser en mode test (anti-écrasement par données persona)', () => {
+        expect(shouldPush(false, true)).toBe(false);
+    });
+    it('autorise le push hors mode test si local non-vide', () => {
+        expect(shouldPush(false, false)).toBe(true);
+    });
 });
 
 describe('hashPayload / canonicalJson', () => {

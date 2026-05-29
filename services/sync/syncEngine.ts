@@ -52,12 +52,13 @@ export function decideOnLoad(input: DecideOnLoadInput): SyncDecision {
 }
 
 /**
- * Garde du push « au changement » (debouncé) : on ne pousse JAMAIS un état vide.
- * Combiné au `decideOnLoad` (qui pull d'abord en incognito), ça rend impossible le cas
- * catastrophe « incognito vide → efface Drive ».
+ * Garde du push « au changement » (debouncé) : on ne pousse JAMAIS
+ *  - un état vide → anti-catastrophe « incognito vide → efface Drive » (combiné à decideOnLoad) ;
+ *  - un état en MODE TEST (fixtures persona) → sinon l'auto-push enverrait des données de démo
+ *    dans Drive et écraserait la vraie sauvegarde de l'utilisateur (bug 2026-05-29).
  */
-export function shouldPush(localIsEmpty: boolean): boolean {
-    return !localIsEmpty;
+export function shouldPush(localIsEmpty: boolean, isTestMode = false): boolean {
+    return !localIsEmpty && !isTestMode;
 }
 
 /**

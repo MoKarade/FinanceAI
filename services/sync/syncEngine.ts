@@ -31,23 +31,25 @@ export function decideOnLoad(input: DecideOnLoadInput): SyncDecision {
         return decision('pull', 'local-vide-restaurer');
     }
 
-    // 2.5) RESTAURATION EXPLICITE (login par le gate) sur un appareil JAMAIS synchronisé via ce
-    //      système : la méta est vierge (`lastPulledUpdatedAt=0` ET `lastLocalHash=''`). Sans cette
-    //      règle, n'importe quelle donnée locale (défaut du store, restes d'un test, autre appareil)
-    //      ferait croire à une divergence → `conflict`, et le gate — qui ne sait PAS résoudre un
-    //      conflit — afficherait le LOCAL au lieu de restaurer Drive (bug Marc 2026-05-29 :
-    //      « mes données ne sont pas celles sauvegardées »). L'utilisateur s'est connecté pour
-    //      RÉCUPÉRER son compte → Drive gagne. Filet : l'orchestrateur backupe le local avant
-    //      d'écraser. Réservé au gate (`restoreIntent`) : au boot normal on garde le `conflict` (sûr).
-    const deviceNeverSynced = meta.lastPulledUpdatedAt === 0 && meta.lastLocalHash === '';
-    if (restoreIntent && deviceNeverSynced) {
-        return decision('pull', 'gate-restaure-appareil-neuf');
-    }
-
     // 3) Les deux côtés existent : comparer l'avancement.
+    const deviceNeverSynced = meta.lastPulledUpdatedAt === 0 && meta.lastLocalHash === '';
     const driveAdvanced = drive.updatedAt > meta.lastPulledUpdatedAt;
     const localChanged = localHash !== meta.lastLocalHash;
 
+    // 3a) RESTAURATION EXPLICITE (login par le gate) : « je me connecte pour RÉCUPÉRER mon compte ».
+    //     Drive gagne dès qu'il a avancé (ou appareil jamais syncé : méta vierge). Le LOCAL ne gagne
+    //     que s'il est STRICTEMENT en avance (Drive pas avancé + local modifié). JAMAIS de `conflict`
+    //     au gate : il n'a pas d'UI pour le résoudre (réservée à Réglages) → sans ça il restait coincé
+    //     et affichait le local (bug Marc 2026-05-29 : « mes données ne sont pas celles sauvegardées »).
+    //     Filet anti-perte : l'orchestrateur backupe le local AVANT d'écraser (applyPulledPayload).
+    //     Le boot normal (`restoreIntent=false`) garde la garde stricte en 3b.
+    if (restoreIntent) {
+        if (deviceNeverSynced || driveAdvanced) return decision('pull', 'gate-restaure');
+        if (localChanged) return decision('push', 'gate-local-en-avance');
+        return decision('noop', 'gate-deja-sync');
+    }
+
+    // 3b) Boot normal — garde anti-perte stricte (jamais d'écrasement auto d'une cible divergente).
     if (driveAdvanced && localChanged) {
         // Les deux ont divergé depuis la dernière sync → décision à l'utilisateur.
         return decision('conflict', 'divergence-deux-cotes');

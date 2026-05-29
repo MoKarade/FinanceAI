@@ -78,9 +78,12 @@ Le **boot normal** (`runBootSync`, `restoreIntent=false`) garde la garde stricte
 `CONFLICT`). Sans `restoreIntent`, le gate classait tout en conflit et affichait le local (bug Marc
 2026-05-29 : « mes données ne sont pas celles sauvegardées »).
 
-**Pas de 2e login après un reload** : une restauration fait `window.location.reload()` ; le jeton Google
-(en mémoire) est perdu, mais un flag `sessionStorage` (`isGateAuthedThisSession`) évite de re-bloquer
-derrière l'écran de login — l'app ré-acquiert le jeton en silencieux au boot. → **une seule connexion**.
+**Restauration EN PLACE (pas de reload)** : `applyPulledPayload` réhydrate le store vivant via
+`persist.rehydrate()` (Zustand v5) au lieu de `window.location.reload()`. Le reload perdait le jeton
+Google (→ 2e login + `connected=false` → l'auto-push ne partait plus → « ça n'enregistre pas »), et
+faisait clignoter l'onboarding. En place : données affichées sans rechargement, session connectée
+préservée, pas d'onboarding parasite. Un flag `sessionStorage` (`isGateAuthedThisSession`) reste posé
+comme filet si un reload survenait par ailleurs. → **une seule connexion**.
 
 **Hash de détection-de-changement = payload SEUL** (pas les clés API) : au gate les clés ne sont pas
 encore hydratées, un hash incluant les clés serait instable selon le moment → `push` parasite effaçant

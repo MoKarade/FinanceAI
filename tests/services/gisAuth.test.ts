@@ -110,3 +110,40 @@ describe('requestAccessToken (GIS mocké)', () => {
         expect(initTokenClient).toHaveBeenCalledTimes(1);
     });
 });
+
+// Persistance du jeton en sessionStorage : sans elle, un simple rafraîchissement perdait le jeton
+// (en mémoire) → l'app se croyait déconnectée et il fallait re-cliquer « Connecter » à chaque refresh
+// (friction majeure signalée par Marc 2026-05-29). Le jeton doit survivre au refresh, dans la session.
+const TOKEN_KEY = 'financeai:gis:token:v1';
+describe('persistance du jeton (sessionStorage) — survit au refresh', () => {
+    it('getCachedToken restaure un jeton VALIDE depuis sessionStorage (= après un refresh)', () => {
+        // _resetForTests (beforeEach) a vidé la mémoire ET la session → on simule un jeton laissé par
+        // une session précédente, puis un « refresh » (mémoire vide, session conservée).
+        sessionStorage.setItem(TOKEN_KEY, JSON.stringify({ accessToken: 'tok-sess', expiresAt: Date.now() + 3_600_000 }));
+        expect(getCachedToken()).toBe('tok-sess');
+    });
+
+    it('ignore ET purge un jeton EXPIRÉ en session', () => {
+        sessionStorage.setItem(TOKEN_KEY, JSON.stringify({ accessToken: 'tok-old', expiresAt: Date.now() - 1000 }));
+        expect(getCachedToken()).toBeNull();
+        expect(sessionStorage.getItem(TOKEN_KEY)).toBeNull(); // purgé
+    });
+
+    it('requestAccessToken persiste le jeton en session', async () => {
+        stubGis({ access_token: 'tok-new', expires_in: 3600 });
+        configureGoogleAuth('cid');
+        await requestAccessToken(true);
+        const stored = JSON.parse(sessionStorage.getItem(TOKEN_KEY) as string);
+        expect(stored.accessToken).toBe('tok-new');
+    });
+
+    it('revokeAccess efface le jeton persisté', async () => {
+        stubGis({ access_token: 'tok-rev', expires_in: 3600 });
+        configureGoogleAuth('cid');
+        await requestAccessToken(true);
+        expect(sessionStorage.getItem(TOKEN_KEY)).not.toBeNull();
+        const { revokeAccess } = await import('../../services/googleDrive/gisAuth');
+        revokeAccess();
+        expect(sessionStorage.getItem(TOKEN_KEY)).toBeNull();
+    });
+});

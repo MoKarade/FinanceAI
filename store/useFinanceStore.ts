@@ -270,6 +270,82 @@ export const getInitialStateWithMigration = (): AppState => {
 
 const initialState: AppState = getInitialStateWithMigration();
 
+/** Type de migration : union de l'état courant + champs legacy des versions précédentes. */
+type MigratingState = Partial<FinanceState> & {
+    apiKeys?: { gemini?: string; anthropic?: string; finnhub?: string };
+    retirementGoal?: Partial<FinanceState['retirementGoal']> & { lifeExpectancy?: number };
+    assets?: unknown[];
+    isTestMode?: boolean;
+    realDataSnapshot?: Partial<AppState> | null;
+    activeTestPersonaId?: string | null;
+};
+
+/**
+ * Migrations du state persisté (`financeai-storage`). Extrait du `persist()` pour être testable
+ * unitairement (cf tests/store/migratePersistedState.test.ts). Chaque palier est chaîné : un vieux
+ * blob v3 traverse v3→v4→…→v7. Sans ça, toute évolution de la forme du state casse silencieusement
+ * le boot des utilisateurs existants.
+ */
+export function migratePersistedState(persistedState: unknown, fromVersion: number): unknown {
+    let state = persistedState as MigratingState;
+    // v0/undefined → v1 : intro versioning
+    if (fromVersion === undefined || fromVersion < 1) {
+        state = state as MigratingState;
+    }
+    // v1 → v2 : Phase 4 A1 — ajout apiKeys.anthropic (gemini gardé).
+    // v2 → v3 : Phase 4 A5 — suppression de apiKeys.gemini (pas de copie vers anthropic, formats ≠).
+    if (fromVersion < 3 && state?.apiKeys) {
+        const apiKeys = state.apiKeys;
+        state = { ...state, apiKeys: { anthropic: apiKeys.anthropic || '' } } as MigratingState;
+    }
+    // v3 → v4 : §7.F.5 — ajout apiKeys.finnhub pour le data sourcing marketData (default vide).
+    if (fromVersion < 4 && state?.apiKeys) {
+        const apiKeys = state.apiKeys;
+        state = {
+            ...state,
+            apiKeys: { anthropic: apiKeys.anthropic || '', finnhub: apiKeys.finnhub || '' },
+        } as MigratingState;
+    }
+    // v4 → v5 : Phase C.3 — `lifeExpectancy` migré du state local Retirement.tsx vers
+    //   retirementGoal global (default 90).
+    if (fromVersion < 5 && state?.retirementGoal) {
+        const rg = state.retirementGoal;
+        if (rg.lifeExpectancy === undefined) {
+            state = { ...state, retirementGoal: { ...rg, lifeExpectancy: 90 } } as MigratingState;
+        }
+    }
+    // v5 → v6 : Phase E.8 — DCA multi-achat (dateBought+buyPrice+quantity → purchases[]).
+    //   Les champs legacy restent pour rétrocompat.
+    if (fromVersion < 6 && Array.isArray(state?.assets)) {
+        type LegacyAsset = { dateBought?: string; buyPrice?: number; quantity?: number; purchases?: unknown };
+        state = {
+            ...state,
+            assets: (state.assets as LegacyAsset[]).map((a: LegacyAsset) => {
+                if (Array.isArray(a.purchases) && a.purchases.length > 0) return a;
+                if (a.dateBought && typeof a.buyPrice === 'number' && a.buyPrice > 0 && a.quantity && a.quantity > 0) {
+                    return { ...a, purchases: [{ date: a.dateBought, quantity: a.quantity, price: a.buyPrice }] };
+                }
+                return a;
+            }),
+        } as MigratingState;
+    }
+    // v6 → v7 : le MODE TEST ne doit JAMAIS être persisté (bug 2026-05-29 : l'auto-push Drive
+    //   envoyait des données persona et écrasait la vraie sauvegarde). Si un blob a été figé en
+    //   mode test, on restaure les vraies données depuis realDataSnapshot, puis on purge les
+    //   champs de test (ils ne seront plus jamais réécrits — cf partialize).
+    if (fromVersion < 7) {
+        if (state?.isTestMode && state.realDataSnapshot) {
+            state = { ...state, ...state.realDataSnapshot } as MigratingState;
+        }
+        const cleaned = { ...(state as Record<string, unknown>) };
+        delete cleaned.isTestMode;
+        delete cleaned.realDataSnapshot;
+        delete cleaned.activeTestPersonaId;
+        state = cleaned as MigratingState;
+    }
+    return state;
+}
+
 export const useFinanceStore = create<FinanceState>()(
     persist(
         (set) => ({
@@ -368,84 +444,24 @@ export const useFinanceStore = create<FinanceState>()(
             // de la forme du state, et ajouter une étape dans `migrate`.
             // Sans version, toute évolution casse silencieusement le boot des
             // utilisateurs existants (cf audit 2026-05 §State management).
-            version: 6,
-            migrate: (persistedState: unknown, fromVersion: number) => {
-                // Type de migration : union de l'état courant + champs legacy des versions
-                // précédentes (apiKeys.gemini retiré en v3). Remplace les (state as any).
-                type MigratingState = Partial<FinanceState> & {
-                    apiKeys?: { gemini?: string; anthropic?: string; finnhub?: string };
-                    retirementGoal?: Partial<FinanceState['retirementGoal']> & { lifeExpectancy?: number };
-                    assets?: unknown[];
-                };
-                let state = persistedState as MigratingState;
-                // v0/undefined → v1 : intro versioning
-                if (fromVersion === undefined || fromVersion < 1) {
-                    state = state as MigratingState;
-                }
-                // v1 → v2 : Phase 4 A1 — ajout apiKeys.anthropic (gemini gardé)
-                // v2 → v3 : Phase 4 A5 — suppression de apiKeys.gemini.
-                //   On ne copie PAS la clé gemini vers anthropic (formats différents).
-                if (fromVersion < 3 && state?.apiKeys) {
-                    const apiKeys = state.apiKeys;
-                    state = {
-                        ...state,
-                        apiKeys: {
-                            anthropic: apiKeys.anthropic || '',
-                        },
-                    } as MigratingState;
-                }
-                // v3 → v4 : §7.F.5 — ajout apiKeys.finnhub pour le data sourcing
-                //   marketData (Finnhub provider). Default vide → mode dégradé
-                //   (assetMeta seed hardcodé utilisé en fallback).
-                if (fromVersion < 4 && state?.apiKeys) {
-                    const apiKeys = state.apiKeys;
-                    state = {
-                        ...state,
-                        apiKeys: {
-                            anthropic: apiKeys.anthropic || '',
-                            finnhub: apiKeys.finnhub || '',
-                        },
-                    } as MigratingState;
-                }
-                // v4 → v5 : Phase C.3 — `lifeExpectancy` migré du state local
-                //   Retirement.tsx vers retirementGoal global. Default 90.
-                if (fromVersion < 5 && state?.retirementGoal) {
-                    const rg = state.retirementGoal;
-                    if (rg.lifeExpectancy === undefined) {
-                        state = {
-                            ...state,
-                            retirementGoal: { ...rg, lifeExpectancy: 90 },
-                        } as MigratingState;
-                    }
-                }
-                // v5 → v6 : Phase E.8 — DCA multi-achat. Convertit dateBought +
-                //   buyPrice + quantity en purchases: [{date, quantity, price}].
-                //   Les champs legacy restent pour rétrocompat.
-                if (fromVersion < 6 && Array.isArray(state?.assets)) {
-                    type LegacyAsset = { dateBought?: string; buyPrice?: number; quantity?: number; purchases?: unknown };
-                    state = {
-                        ...state,
-                        assets: (state.assets as LegacyAsset[]).map((a: LegacyAsset) => {
-                            if (Array.isArray(a.purchases) && a.purchases.length > 0) return a;
-                            if (a.dateBought && typeof a.buyPrice === 'number' && a.buyPrice > 0 && a.quantity && a.quantity > 0) {
-                                return {
-                                    ...a,
-                                    purchases: [{
-                                        date: a.dateBought,
-                                        quantity: a.quantity,
-                                        price: a.buyPrice,
-                                    }],
-                                };
-                            }
-                            return a;
-                        }),
-                    } as Partial<FinanceState>;
-                }
-                return state;
-            },
+            version: 7,
+            migrate: migratePersistedState,
             partialize: (state) => {
-                // Exclut les clés API et les états UI transitoires de la persistance.
-                const { apiKeys: _apiKeys, activeTab: _activeTab, isPrivacyMode: _isPrivacyMode, lastProjection: _lastProjection, pendingFocus: _pendingFocus, ...persistable } = state;
+                // Exclut de la persistance : les clés API (chiffrées ailleurs), les états UI
+                // transitoires, ET le mode test. Le mode test (fixtures persona) ne doit JAMAIS
+                // être persisté ni synchronisé — sinon l'auto-push Drive écrase la vraie sauvegarde
+                // par des données de démo (bug 2026-05-29).
+                const {
+                    apiKeys: _apiKeys,
+                    activeTab: _activeTab,
+                    isPrivacyMode: _isPrivacyMode,
+                    lastProjection: _lastProjection,
+                    pendingFocus: _pendingFocus,
+                    isTestMode: _isTestMode,
+                    realDataSnapshot: _realDataSnapshot,
+                    activeTestPersonaId: _activeTestPersonaId,
+                    ...persistable
+                } = state;
                 return persistable;
             },
         }

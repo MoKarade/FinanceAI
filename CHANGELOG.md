@@ -29,11 +29,22 @@ jusqu'à activation. Activation : `docs/GOOGLE_DRIVE_SETUP.md`.
   Google Drive » dans la carte (confirmation 2 clics ; les données locales restent). +3 tests.
   Vérifié au navigateur : carte visible, CSP OK, flux OAuth s'initie (faux Client ID → invalid_client).
 
+### Corrigé — le mode test ne contamine plus la sync (2026-05-29)
+- **Bug critique de perte de données** : `isTestMode`, `realDataSnapshot` et `activeTestPersonaId`
+  étaient persistés dans `financeai-storage` (oubli dans `partialize`). Conséquence : en mode test,
+  l'auto-push poussait les **données du persona** dans Drive et **écrasait la vraie sauvegarde** ;
+  une « Restauration » ramenait alors des données de démo (symptôme Marc : espérance de vie + config
+  utilisateur revenues aux valeurs par défaut).
+- **Fix (3 volets, TDD)** : (1) `partialize` exclut désormais les 3 champs de mode test → jamais
+  persistés ni synchronisés ; (2) garde `shouldPush(isEmpty, isTestMode)` + `pushNow` refusent de
+  pousser en mode test ; (3) migration **v6 → v7** : un blob figé en mode test est auto-réparé
+  (vraies données restaurées depuis `realDataSnapshot`, champs de test purgés). `migrate` extrait
+  en `migratePersistedState` (exporté, testable). +6 tests.
+
 ### Décisions clés
 - Données dans le Drive de l'utilisateur (on n'héberge rien) ; **pas de chiffrement applicatif**
-  (choix confort assumé de Marc — passphrase optionnelle en backlog) ; **clés API non synchronisées**
-  (credentials actifs) ; sync **auto avec garde anti-perte** (pull au login, push debouncé,
-  conflit → choix utilisateur).
+  (choix confort assumé de Marc — passphrase optionnelle en backlog) ; sync **auto avec garde
+  anti-perte** (pull au login, push debouncé, conflit → choix utilisateur).
 
 ---
 

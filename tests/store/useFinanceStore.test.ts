@@ -49,12 +49,27 @@ describe('useFinanceStore', () => {
         expect(raw).not.toContain('apiKeys');
     });
 
-    it('a une version persist = 6 (Phase E.8 — DCA multi-achat purchases[])', () => {
+    it('a une version persist = 7 (v6→v7 — mode test jamais persisté)', () => {
         useFinanceStore.getState().setActiveTab(Tab.SETTINGS);
         const raw = localStorage.getItem('financeai-storage');
         if (!raw) throw new Error('Persist did not write');
         const parsed = JSON.parse(raw);
-        expect(parsed.version).toBe(6);
+        expect(parsed.version).toBe(7);
+    });
+
+    it('NE persiste PAS le mode test (les fixtures persona ne doivent jamais aller dans localStorage/sync)', () => {
+        // Active le mode test : enableTestMode pose isTestMode/realDataSnapshot/activeTestPersonaId.
+        useFinanceStore.getState().enableTestMode({}, 'persona-x');
+        // Déclenche une écriture persist.
+        useFinanceStore.getState().setActiveTab(Tab.SETTINGS);
+        const raw = localStorage.getItem('financeai-storage');
+        if (!raw) throw new Error('Persist did not write');
+        const parsed = JSON.parse(raw);
+        expect(parsed.state.isTestMode).toBeUndefined();
+        expect(parsed.state.realDataSnapshot).toBeUndefined();
+        expect(parsed.state.activeTestPersonaId).toBeUndefined();
+        // Ceinture + bretelles : aucune trace de la clé snapshot dans le blob brut.
+        expect(raw).not.toContain('realDataSnapshot');
     });
 
     it('retirementGoal.lifeExpectancy peut être mis à jour via setAppState (Phase C.3)', () => {

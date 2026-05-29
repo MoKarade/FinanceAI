@@ -30,7 +30,7 @@ import { useFinanceStore } from '../../store/useFinanceStore';
 
 type ApiKeys = { anthropic: string; finnhub: string };
 
-/** Lit les clés API courantes depuis le store (vide si indispo). Sync v2 (V2-C). */
+/** Lit les clés API courantes depuis le store (vide si indispo). Sync v2 (V2-C — cf docs/SYNC_V2_DESIGN.md). */
 function currentApiKeys(): ApiKeys {
     try {
         const k = useFinanceStore.getState().apiKeys;

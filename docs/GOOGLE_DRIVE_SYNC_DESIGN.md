@@ -74,7 +74,8 @@ ancienne, soit (b) choix explicite de l'utilisateur.
 
 - Snapshot `financeai-storage` (même source que `backupAuto`), **sans les `apiKeys`** dans le
   payload — les clés voyagent dans un champ `apiKeys` dédié de l'enveloppe (cf ci-dessous).
-- **Clés API incluses** (sync v2 — décision Marc 2026-05-29, « V2-C ») : les clés Anthropic/Finnhub
+- **Clés API incluses** (sync v2 — décision Marc 2026-05-29, « V2-C » — détail :
+  [SYNC_V2_DESIGN.md](SYNC_V2_DESIGN.md)) : les clés Anthropic/Finnhub
   sont synchronisées (champ optionnel `apiKeys` de l'enveloppe) et restaurées au pull, pour tout
   retrouver d'un seul login. **En clair** dans Drive, cohérent avec le choix « pas de chiffrement
   applicatif » (D3). Rétro-compatible v1 (champ absent = ancien blob).

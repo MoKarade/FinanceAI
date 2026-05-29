@@ -14,6 +14,7 @@
 
 const ESCAPE_STORAGE_KEY = 'financeai:gate:escape';
 const ESCAPE_URL_PARAMS = ['nogate', 'skipgate'];
+const AUTHED_STORAGE_KEY = 'financeai:gate:authed';
 
 /** Un flag d'env « truthy » ? (1 / true / on / yes, insensible à la casse). */
 function isFlagOn(value: string | undefined): boolean {
@@ -55,6 +56,40 @@ export function setGateEscaped(): void {
         if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(ESCAPE_STORAGE_KEY, '1');
     } catch {
         /* best-effort : si le storage est indispo, l'état React du gate suffit pour la session */
+    }
+}
+
+/**
+ * Le gate a-t-il DÉJÀ authentifié l'utilisateur dans CETTE session (onglet) ? Sert à ne PAS
+ * redemander le login après un reload programmatique (ex : restauration → `window.location.reload`).
+ * Le jeton Google ne survit pas au reload (en mémoire), mais l'app le ré-acquiert en silencieux au
+ * boot → inutile de re-bloquer derrière l'écran de login (sinon : « je me connecte, ça recharge,
+ * et ça me redemande de me connecter » — friction signalée par Marc). sessionStorage = effacé à la
+ * fermeture de l'onglet → on redemande proprement au prochain démarrage.
+ */
+export function isGateAuthedThisSession(): boolean {
+    try {
+        return typeof sessionStorage !== 'undefined' && sessionStorage.getItem(AUTHED_STORAGE_KEY) === '1';
+    } catch {
+        return false;
+    }
+}
+
+/** Mémorise « déjà connecté » pour la session (à appeler après une authentification réussie). */
+export function setGateAuthedThisSession(): void {
+    try {
+        if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(AUTHED_STORAGE_KEY, '1');
+    } catch {
+        /* best-effort */
+    }
+}
+
+/** Oublie l'authentification de session (déconnexion explicite → on re-demande le login). */
+export function clearGateAuthedThisSession(): void {
+    try {
+        if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(AUTHED_STORAGE_KEY);
+    } catch {
+        /* best-effort */
     }
 }
 

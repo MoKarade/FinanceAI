@@ -98,17 +98,17 @@ describe('decideOnLoad — matrice anti-perte', () => {
 });
 
 /**
- * restoreIntent = login PAR LE GATE (« je me connecte pour récupérer mon compte »). Sur un appareil
- * jamais synchronisé via ce système (méta vierge : lastPulledUpdatedAt=0 ET lastLocalHash=''),
- * Drive doit gagner même si le local n'est pas strictement vide (défaut/restes d'un autre device).
- * Bug Marc 2026-05-29 : sans ça, le gate classait tout en « conflit » et montrait le local (mauvaises
- * données) au lieu de restaurer. Le boot normal (restoreIntent absent/false) garde la garde stricte.
+ * restoreIntent = login PAR LE GATE (« je me connecte pour RÉCUPÉRER mon compte »). Au gate, Drive
+ * gagne dès qu'il a avancé (ou appareil jamais syncé) ; le local ne gagne que s'il est STRICTEMENT
+ * en avance. JAMAIS de `conflict` (le gate n'a pas d'UI pour le résoudre). Bug Marc 2026-05-29 :
+ * sans ça, le gate classait tout en conflit et montrait le local (mauvaises données) au lieu de
+ * restaurer. Le boot normal (restoreIntent absent/false) garde la garde stricte (conflict possible).
  */
 describe('decideOnLoad — restoreIntent (gate : restauration explicite)', () => {
     const fresh = (over: Partial<SyncMeta> = {}): SyncMeta =>
         meta({ lastPulledUpdatedAt: 0, lastLocalHash: '', ...over });
 
-    it('GATE + appareil jamais syncé + local NON-vide + Drive présent → pull (restaure)', () => {
+    it('GATE + appareil jamais syncé (méta vierge) + local NON-vide → pull (restaure)', () => {
         const d = decideOnLoad({
             drive: envelope({ updatedAt: 2000 }),
             localIsEmpty: false,
@@ -117,24 +117,10 @@ describe('decideOnLoad — restoreIntent (gate : restauration explicite)', () =>
             restoreIntent: true,
         });
         expect(d.action).toBe('pull');
-        expect(d.reason).toBe('gate-restaure-appareil-neuf');
+        expect(d.reason).toBe('gate-restaure');
     });
 
-    it('BOOT normal (sans restoreIntent) + même situation → conflict (garde anti-perte stricte)', () => {
-        const d = decideOnLoad({
-            drive: envelope({ updatedAt: 2000 }),
-            localIsEmpty: false,
-            localHash: 'bbbbbbbb',
-            meta: fresh(),
-            // restoreIntent absent → false
-        });
-        expect(d.action).toBe('conflict');
-        expect(d.reason).toBe('divergence-deux-cotes');
-    });
-
-    it('GATE + appareil DÉJÀ syncé (méta non-vierge) → matrice normale (pas de pull forcé)', () => {
-        // Drive a avancé + local modifié → conflit, même avec restoreIntent : un appareil qui a
-        // déjà synchronisé a un historique de confiance, on ne force pas l'écrasement.
+    it('GATE + Drive a avancé + local modifié (ex-conflit) → pull (Drive gagne, plus de blocage)', () => {
         const d = decideOnLoad({
             drive: envelope({ updatedAt: 2000 }),
             localIsEmpty: false,
@@ -142,11 +128,47 @@ describe('decideOnLoad — restoreIntent (gate : restauration explicite)', () =>
             meta: meta({ lastPulledUpdatedAt: 1000, lastLocalHash: 'aaaaaaaa' }),
             restoreIntent: true,
         });
+        expect(d.action).toBe('pull');
+        expect(d.reason).toBe('gate-restaure');
+    });
+
+    it('GATE + Drive PAS avancé + local modifié (local strictement en avance) → push', () => {
+        const d = decideOnLoad({
+            drive: envelope({ updatedAt: 1000 }),
+            localIsEmpty: false,
+            localHash: 'cccccccc',
+            meta: meta({ lastPulledUpdatedAt: 1000, lastLocalHash: 'aaaaaaaa' }),
+            restoreIntent: true,
+        });
+        expect(d.action).toBe('push');
+        expect(d.reason).toBe('gate-local-en-avance');
+    });
+
+    it('GATE + rien n a bougé des deux côtés → noop', () => {
+        const d = decideOnLoad({
+            drive: envelope({ updatedAt: 1000 }),
+            localIsEmpty: false,
+            localHash: 'aaaaaaaa',
+            meta: meta({ lastPulledUpdatedAt: 1000, lastLocalHash: 'aaaaaaaa' }),
+            restoreIntent: true,
+        });
+        expect(d.action).toBe('noop');
+        expect(d.reason).toBe('gate-deja-sync');
+    });
+
+    it('BOOT normal (sans restoreIntent) + Drive avancé + local modifié → conflict (garde stricte)', () => {
+        const d = decideOnLoad({
+            drive: envelope({ updatedAt: 2000 }),
+            localIsEmpty: false,
+            localHash: 'bbbbbbbb',
+            meta: meta({ lastPulledUpdatedAt: 1000, lastLocalHash: 'aaaaaaaa' }),
+            // restoreIntent absent → false
+        });
         expect(d.action).toBe('conflict');
         expect(d.reason).toBe('divergence-deux-cotes');
     });
 
-    it('GATE + local VIDE → pull (inchangé : la règle local-vide prime)', () => {
+    it('GATE + local VIDE → pull (la règle local-vide prime, avant la logique restoreIntent)', () => {
         const d = decideOnLoad({
             drive: envelope(),
             localIsEmpty: true,

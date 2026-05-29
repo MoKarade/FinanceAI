@@ -59,16 +59,28 @@ Local : `syncState` = `{ connectedEmail, lastSyncedAt, lastPulledUpdatedAt, last
 | Drive absent, local non-vide | `PUSH` (première sync) |
 | Drive absent, local vide | `NOOP` (rien à faire) |
 | Drive présent, local **vide** | `PULL` (restaure — incognito/nouvel appareil) |
-| Drive présent, local non-vide, **gate** (`restoreIntent`) **et** appareil **jamais synchronisé** (`lastPulledUpdatedAt == 0` **et** `lastLocalHash == ''`) | `PULL` (restaure — login = « récupérer mon compte »; backup local avant écrasement) |
 | Drive présent, local non-vide, `drive.updatedAt > lastPulledUpdatedAt` **et** local **inchangé** (`hash == lastLocalHash`) | `PULL` (Drive plus récent, local pas touché) |
-| Drive présent, local non-vide, local **modifié** (`hash != lastLocalHash`) **et** Drive **aussi** avancé (`drive.updatedAt > lastPulledUpdatedAt`) | `CONFLICT` → bandeau « garder local / garder Drive » |
+| Drive présent, local non-vide, local **modifié** (`hash != lastLocalHash`) **et** Drive **aussi** avancé (`drive.updatedAt > lastPulledUpdatedAt`) | `CONFLICT` → bandeau « garder local / garder Drive » *(boot normal uniquement)* |
 | Sinon (local en avance) | `PUSH` |
 
-**`restoreIntent`** = login explicite **par le gate** (`connectAndSync` / `gateSilentResume`). Sur un
-appareil jamais synchronisé, l'utilisateur s'est connecté pour **récupérer son compte** → Drive gagne,
-même si le local n'est pas strictement vide (défaut du store / restes d'un test). Le **boot normal**
-(`runBootSync`, `restoreIntent=false`) garde la garde stricte → `CONFLICT` plutôt qu'écraser. Sans cette
-règle, le gate classait tout en conflit et affichait le local (bug Marc 2026-05-29).
+**`restoreIntent` (login par le gate — `connectAndSync` / `gateSilentResume`)** court-circuite la
+matrice ci-dessus : « je me connecte pour **récupérer mon compte** ». Logique déterministe, **jamais de
+`CONFLICT`** (le gate n'a pas d'UI pour le résoudre — elle est réservée à Réglages) :
+
+| Situation (gate) | Action |
+|------------------|--------|
+| local **vide** | `PULL` |
+| appareil **jamais synchronisé** (`lastPulledUpdatedAt == 0` **et** `lastLocalHash == ''`) **ou** Drive a avancé | `PULL` (Drive gagne ; backup local avant écrasement) |
+| Drive **pas** avancé **et** local modifié (local strictement en avance) | `PUSH` |
+| rien n'a bougé | `NOOP` |
+
+Le **boot normal** (`runBootSync`, `restoreIntent=false`) garde la garde stricte (table principale, avec
+`CONFLICT`). Sans `restoreIntent`, le gate classait tout en conflit et affichait le local (bug Marc
+2026-05-29 : « mes données ne sont pas celles sauvegardées »).
+
+**Pas de 2e login après un reload** : une restauration fait `window.location.reload()` ; le jeton Google
+(en mémoire) est perdu, mais un flag `sessionStorage` (`isGateAuthedThisSession`) évite de re-bloquer
+derrière l'écran de login — l'app ré-acquiert le jeton en silencieux au boot. → **une seule connexion**.
 
 **Hash de détection-de-changement = payload SEUL** (pas les clés API) : au gate les clés ne sont pas
 encore hydratées, un hash incluant les clés serait instable selon le moment → `push` parasite effaçant

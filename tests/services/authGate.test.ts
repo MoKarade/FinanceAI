@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { isGateEnabled, isGateEscaped, setGateEscaped, gateRequiresLogin } from '../../services/sync/authGate';
+import {
+    isGateEnabled,
+    isGateEscaped,
+    setGateEscaped,
+    gateRequiresLogin,
+    isGateAuthedThisSession,
+    setGateAuthedThisSession,
+    clearGateAuthedThisSession,
+} from '../../services/sync/authGate';
 
 beforeEach(() => {
     // Déterministe : on neutralise un éventuel .env.local (sinon VITE_GOOGLE_* fausse les défauts
@@ -57,5 +65,20 @@ describe('trappe anti-lockout (sessionStorage)', () => {
     it('vrai après setGateEscaped (pour la session)', () => {
         setGateEscaped();
         expect(isGateEscaped()).toBe(true);
+    });
+});
+
+describe('flag « déjà connecté cette session » (anti 2e login après reload)', () => {
+    it('faux par défaut', () => {
+        expect(isGateAuthedThisSession()).toBe(false);
+    });
+    it('vrai après setGateAuthedThisSession (survit au reload de restauration)', () => {
+        setGateAuthedThisSession();
+        expect(isGateAuthedThisSession()).toBe(true);
+    });
+    it('re-faux après clearGateAuthedThisSession (déconnexion → on re-demande le login)', () => {
+        setGateAuthedThisSession();
+        clearGateAuthedThisSession();
+        expect(isGateAuthedThisSession()).toBe(false);
     });
 });

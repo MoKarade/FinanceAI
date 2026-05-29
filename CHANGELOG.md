@@ -77,6 +77,25 @@ jusqu'à activation. Activation : `docs/GOOGLE_DRIVE_SETUP.md`.
   `PushResult` typé et la carte affiche un message **honnête** : « Sauvegardé », « Rien à
   sauvegarder » ou « Mode test actif » — fini le faux « Sauvegardé ». +5 tests.
 
+### Corrigé — UNE seule connexion + restauration fiable au gate (2026-05-29, suite)
+- **Problème (test Marc) : 3 connexions** (Cloudflare + Google + Google encore) **+ restauration
+  manuelle obligatoire + données incomplètes**. Causes : (a) la 1ʳᵉ règle `restoreIntent` ne couvrait
+  que l'appareil « jamais synchronisé » (méta vierge) — sur un appareil avec une méta accumulée (tests
+  répétés), le gate retombait en `conflict`/`noop` → pas de restauration auto ; (b) après le reload
+  d'une restauration, le gate **redemandait le login** (jeton Google perdu au reload) ; (c) « il manque
+  des données » = Drive était **en retard** (jamais entièrement poussé), pas un bug de restauration.
+- **Fix (décision Marc : gate seul, Cloudflare retiré → une connexion)** :
+  - `decideOnLoad` **élargi** au gate : Drive gagne dès qu'il a **avancé** (plus seulement « jamais
+    syncé ») ; le local ne gagne que s'il est **strictement en avance** ; **plus jamais de `conflict`**
+    au gate (déterministe pull/push/noop : `gate-restaure` / `gate-local-en-avance` / `gate-deja-sync`).
+    Le boot normal garde la garde stricte. Tests `restoreIntent` réécrits (7 cas).
+  - **Anti 2e login** : flag `sessionStorage` `isGateAuthedThisSession` posé dès l'auth réussie (avant
+    le reload de restauration) → au remount le gate rend l'app directement, l'app ré-acquiert le jeton
+    en silencieux. Effacé à la déconnexion. +3 tests.
+  - Docs : matrice §4 réécrite (sous-table gate).
+- **Note data** : les données « manquantes » ne sont pas perdues — elles sont sur l'appareil source ;
+  il faut les **pousser** vers Drive (« Sauvegarder maintenant ») pour que Drive devienne complet.
+
 ### Corrigé — le login par le gate ne restaurait pas les bonnes données (2026-05-29)
 - **Bug** : après login au gate (`LoginGate`), Marc voyait ses **données locales** (défaut/restes
   d'un test), pas celles sauvegardées dans Drive → il devait restaurer **manuellement** via Réglages.

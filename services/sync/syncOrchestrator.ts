@@ -24,6 +24,7 @@ import {
 } from '../googleDrive/driveAppData';
 import { decideOnLoad, shouldPush, hashPayload, buildEnvelope } from './syncEngine';
 import { getOrCreateDeviceId, readSyncMeta, writeSyncMeta, clearSyncMeta } from './syncState';
+import { setGateAuthedThisSession, clearGateAuthedThisSession } from './authGate';
 import type { SyncEnvelope, SyncMeta } from './syncTypes';
 import { saveApiKeys } from '../secureKeyStore';
 import { useFinanceStore } from '../../store/useFinanceStore';
@@ -335,6 +336,9 @@ export async function connectAndSync(): Promise<void> {
         const meta = currentMeta();
         writeSyncMeta({ ...meta, connectedEmail: email });
         setStatus({ connected: true, email });
+        // Marqué AVANT runDecision : un pull déclenche un reload → au remount, le gate voit ce flag
+        // et n'affiche pas une 2e fois l'écran de login (le jeton, en mémoire, est ré-acquis au boot).
+        setGateAuthedThisSession();
         await runDecision(token, true); // login explicite → intention de restauration
     } catch (e) {
         handleError('connect', e);
@@ -359,6 +363,7 @@ export async function gateSilentResume(): Promise<boolean> {
         const meta = currentMeta();
         writeSyncMeta({ ...meta, connectedEmail: email });
         setStatus({ connected: true, email });
+        setGateAuthedThisSession(); // survit au reload d'une restauration → pas de 2e écran de login
         await runDecision(token, true); // reprise au gate → intention de restauration (pull si Drive a des données)
         return true;
     } catch {
@@ -431,6 +436,7 @@ export async function resolveConflict(keep: 'local' | 'drive'): Promise<void> {
 export function disconnectSync(): void {
     revokeAccess();
     clearSyncMeta();
+    clearGateAuthedThisSession(); // re-demande le login au prochain accès (sinon le gate serait sauté)
     setStatus({ connected: false, email: null, conflict: false, lastSyncedAt: 0 });
 }
 

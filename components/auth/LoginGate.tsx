@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { isGateEnabled, isGateEscaped, setGateEscaped } from '../../services/sync/authGate';
+import { isGateEnabled, isGateEscaped, setGateEscaped, isGateAuthedThisSession } from '../../services/sync/authGate';
 import { initSync, gateSilentResume, connectAndSync, getSyncStatus } from '../../services/sync/syncOrchestrator';
 
 /**
@@ -25,6 +25,11 @@ export function LoginGate({ children }: LoginGateProps): React.ReactElement {
     const [phase, setPhase] = useState<Phase>(() => {
         if (!isGateEnabled()) return 'authenticated'; // gate off → app directe (dark)
         if (isGateEscaped()) return 'escaped'; // trappe anti-lockout déjà choisie
+        // Déjà connecté cette session (onglet) → on rend l'app directement, SANS re-bloquer derrière
+        // l'écran de login. Cas clé : une restauration fait window.location.reload() ; le jeton Google
+        // (en mémoire) est perdu mais l'app le ré-acquiert en silencieux au boot (runBootSync). Sans
+        // ça, Marc devait se reconnecter une 2e fois après le reload (friction signalée 2026-05-29).
+        if (isGateAuthedThisSession()) return 'authenticated';
         return 'checking';
     });
     const [error, setError] = useState<string | null>(null);

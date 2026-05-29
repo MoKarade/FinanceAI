@@ -8,6 +8,7 @@ import React from 'react';
 import { BackupPanel } from '../BackupPanel';
 import { AutoBackupPanel } from '../AutoBackupPanel';
 import { TestModePanel } from '../TestModePanel';
+import { GoogleDriveSyncCard } from '../GoogleDriveSyncCard';
 
 interface BackupSectionProps {
   buildPayload: (opts?: { includeApiKeys?: boolean }) => Record<string, unknown>;
@@ -19,6 +20,8 @@ export const BackupSection: React.FC<BackupSectionProps> = ({ buildPayload }) =>
       <BackupPanel buildPayload={buildPayload} />
       {/* P1.3 — Backup auto rolling IndexedDB (complémentaire à l'export JSON manuel) */}
       <AutoBackupPanel />
+      {/* Sync Google Drive (masquée si VITE_GOOGLE_CLIENT_ID non configuré) */}
+      <GoogleDriveSyncCard />
       {/* Mode test — fixtures de test avec backup auto avant switch */}
       <TestModePanel />
     </div>

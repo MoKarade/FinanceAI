@@ -120,5 +120,7 @@ des niveaux d'accès** (*Add or remove scopes*) :
 - **Multi-appareils concurrents** : garde anti-perte au login (bandeau conflit) ; pendant une session,
   last-write-wins.
 - **Révoquer / supprimer** : carte → **Déconnecter** (révoque le token + efface les métadonnées
-  locales). Le fichier dans Drive reste — supprimable depuis myaccount.google.com → Données et
-  confidentialité → Applications tierces (un bouton « supprimer mes données Drive » est au backlog).
+  locales, garde le fichier Drive) ; ou **« Supprimer mes données de Google Drive »** (lien rouge,
+  confirmation en 2 clics) qui supprime le fichier de sync dans Drive puis déconnecte — tes données
+  **sur l'appareil** sont conservées. (On peut aussi supprimer manuellement via myaccount.google.com
+  → Données et confidentialité → Applications tierces.)

@@ -134,6 +134,14 @@ export async function updateSyncFile(
     if (!res.ok) await failFromResponse(res);
 }
 
+/** Supprime le fichier de sync de l'appDataFolder. Idempotent : un 404 (déjà absent) = succès. */
+export async function deleteSyncFile(token: string, fileId: string, fetchFn?: FetchLike): Promise<void> {
+    const f = resolveFetch(fetchFn);
+    const res = await f(`${DRIVE_FILES}/${fileId}`, { method: 'DELETE', headers: authHeader(token) });
+    // 204 No Content = succès ; 404 = fichier déjà supprimé → on tolère (idempotent).
+    if (!res.ok && res.status !== 404) await failFromResponse(res);
+}
+
 /** Récupère l'email du compte Google connecté (nécessite le scope email). null si indispo. */
 export async function fetchUserEmail(token: string, fetchFn?: FetchLike): Promise<string | null> {
     const f = resolveFetch(fetchFn);

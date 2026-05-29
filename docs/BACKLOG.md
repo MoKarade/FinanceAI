@@ -162,8 +162,9 @@
 > reco initiale ci-dessous : stockage dans le **Drive de l'user** (pas Vercel/CF KV) et **sans
 > chiffrement E2E** (choix confort assumé de Marc, passphrase optionnelle en backlog). Inerte tant
 > que `VITE_GOOGLE_CLIENT_ID` n'est pas défini. Design `docs/GOOGLE_DRIVE_SYNC_DESIGN.md`, activation
-> `docs/GOOGLE_DRIVE_SETUP.md`. **Reste à faire** : badge UI « taux estimé » lié, passphrase optionnelle,
-> bouton « supprimer mes données Drive ». Le texte ci-dessous est conservé pour l'historique de décision.
+> `docs/GOOGLE_DRIVE_SETUP.md`. Bouton « Supprimer mes données de Drive » ✅ ajouté (S4, 2026-05-29).
+> **Reste à faire** : badge UI « taux estimé » lié, passphrase optionnelle (zéro-knowledge). Le texte
+> ci-dessous est conservé pour l'historique de décision.
 
 > Demandé par Marc : « mettre en place quelque chose de solide pour sauvegarder
 > mes données utilisateur et que ça me donne bien tout ce qu'il faut quand je me

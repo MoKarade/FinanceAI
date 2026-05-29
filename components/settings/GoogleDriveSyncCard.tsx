@@ -8,6 +8,7 @@ import {
     pushNow,
     pullNow,
     disconnectSync,
+    deleteRemoteData,
     resolveConflict,
     type SyncStatus,
 } from '../../services/sync/syncOrchestrator';
@@ -37,6 +38,7 @@ function formatWhen(ts: number): string {
 
 export const GoogleDriveSyncCard: React.FC = () => {
     const status = useSyncStatus();
+    const [confirmDelete, setConfirmDelete] = useState(false);
 
     // Ship dark : invisible tant que le Client ID OAuth n'est pas configuré.
     if (!status.configured) return null;
@@ -134,6 +136,39 @@ export const GoogleDriveSyncCard: React.FC = () => {
                                 Déconnecter
                             </button>
                         </div>
+
+                        {/* Suppression des données cloud — contrôle total de l'utilisateur (2 clics). */}
+                        {!confirmDelete ? (
+                            <button
+                                onClick={() => setConfirmDelete(true)}
+                                disabled={status.busy}
+                                className="text-tiny text-rose-400/80 underline underline-offset-2 hover:text-rose-300 disabled:opacity-50"
+                            >
+                                Supprimer mes données de Google Drive
+                            </button>
+                        ) : (
+                            <div className="p-3 rounded-card bg-rose-500/10 border border-rose-500/30 space-y-2">
+                                <p className="text-tiny text-ink-300">
+                                    Supprimer le fichier de sauvegarde dans <strong>ton</strong> Google Drive ? Tes données
+                                    <strong> sur cet appareil</strong> sont conservées. Action irréversible côté Drive.
+                                </p>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={async () => { setConfirmDelete(false); await deleteRemoteData(); }}
+                                        disabled={status.busy}
+                                        className="px-3 py-1.5 rounded-card bg-rose-500/20 border border-rose-500/40 text-rose-200 text-meta font-medium hover:bg-rose-500/30 disabled:opacity-50"
+                                    >
+                                        Oui, supprimer de Drive
+                                    </button>
+                                    <button
+                                        onClick={() => setConfirmDelete(false)}
+                                        className="px-3 py-1.5 rounded-card bg-white/5 border border-white/10 text-ink-200 text-meta font-medium hover:bg-white/10"
+                                    >
+                                        Annuler
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 

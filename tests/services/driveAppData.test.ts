@@ -4,6 +4,7 @@ import {
     createSyncFile,
     readSyncFile,
     updateSyncFile,
+    deleteSyncFile,
     fetchUserEmail,
     DriveAuthError,
     DriveError,
@@ -113,6 +114,26 @@ describe('driveAppData — updateSyncFile', () => {
     it('401 → DriveAuthError', async () => {
         const f: FetchLike = vi.fn(async () => res('no', { ok: false, status: 401 }));
         await expect(updateSyncFile('tok', 'f', env, f)).rejects.toBeInstanceOf(DriveAuthError);
+    });
+});
+
+describe('driveAppData — deleteSyncFile', () => {
+    it('DELETE sur le bon fichier (204 = succès)', async () => {
+        const f = vi.fn<FetchLike>(async () => res(null, { ok: true, status: 204 }));
+        await expect(deleteSyncFile('tok', 'file-1', f)).resolves.toBeUndefined();
+        const [url, init] = f.mock.calls[0];
+        expect(url).toContain('/files/file-1');
+        expect((init as RequestInit).method).toBe('DELETE');
+    });
+
+    it('404 toléré (fichier déjà absent → idempotent, pas d erreur)', async () => {
+        const f: FetchLike = vi.fn(async () => res('not found', { ok: false, status: 404 }));
+        await expect(deleteSyncFile('tok', 'file-x', f)).resolves.toBeUndefined();
+    });
+
+    it('401 → DriveAuthError', async () => {
+        const f: FetchLike = vi.fn(async () => res('no', { ok: false, status: 401 }));
+        await expect(deleteSyncFile('tok', 'file-1', f)).rejects.toBeInstanceOf(DriveAuthError);
     });
 });
 

@@ -52,6 +52,19 @@ jusqu'à activation. Activation : `docs/GOOGLE_DRIVE_SETUP.md`.
   (vraies données restaurées depuis `realDataSnapshot`, champs de test purgés). `migrate` extrait
   en `migratePersistedState` (exporté, testable). +6 tests.
 
+### Corrigé / Doc — finitions sync (2026-05-29)
+- **Onboarding « du début » réapparaissait après une restauration** : `isFirstLaunch` ne regardait
+  que le flag local `app_onboarding_done` (non synchronisé). Sur un nouvel appareil / en navigation
+  privée, un restore Drive ramenait les données mais pas le flag → l'écran d'accueil s'affichait à
+  tort. Fix : `utils/onboarding.ts` `shouldShowOnboarding(flag, hasData)` — on n'accueille plus un
+  utilisateur qui a déjà des transactions/actifs. +4 tests.
+- **Texte UI périmé corrigé** : la carte de sync (et `GOOGLE_DRIVE_SETUP` / `SESSION_HANDOVER`)
+  affirmait encore « clés API jamais synchronisées » — faux depuis R1. Remplacé par un message
+  honnête (clés incluses, en clair, lisibles via le compte Google).
+- **ADR 010** (`docs/adr/010-auth-google-in-app-gate.md`) : acte le login Google in-app comme gate
+  d'accès, supersede partiellement l'ADR 007 (note ajoutée à 007 + index README). Réf ADR corrigée
+  dans `SYNC_V2_DESIGN` (008 → 010, 008/009 étant déjà pris).
+
 ### Décisions clés
 - Données dans le Drive de l'utilisateur (on n'héberge rien) ; **pas de chiffrement applicatif**
   (choix confort assumé de Marc — passphrase optionnelle en backlog) ; sync **auto avec garde

@@ -1,7 +1,7 @@
 # ADR 007 — Authentification via Cloudflare Access + Google OAuth
 
 **Date** : 2026-05-21 (proposé) · 2026-05-22 (implémenté)
-**Statut** : **Accepté — implémenté et validé en production**
+**Statut** : **Accepté — implémenté et validé en production** · le *gate d'accès* est partiellement remplacé par [ADR 010](010-auth-google-in-app-gate.md) (login Google in-app, sync v2)
 **Décideurs** : Marc (user)
 
 > Setup réalisé le 2026-05-22. Procédure exacte, config de référence et journal

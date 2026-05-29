@@ -68,10 +68,11 @@ export const GoogleDriveSyncCard: React.FC = () => {
                     les retrouver sur un autre appareil ou en navigation privée, après connexion Google.
                 </p>
 
-                {/* Honnêteté : pas de chiffrement applicatif (choix confort). */}
+                {/* Honnêteté : pas de chiffrement applicatif ; les clés API SONT incluses (sync v2). */}
                 <p className="text-tiny text-amber-400/90 leading-snug">
-                    ⚠️ Données non chiffrées par l'app : lisibles via ton compte Google. Les clés API ne sont
-                    jamais synchronisées (à ressaisir sur chaque appareil).
+                    ⚠️ Sauvegarde non chiffrée par l'app — tes données <strong>et tes clés API</strong> sont
+                    incluses, donc lisibles via ton compte Google. Choix assumé : tu retrouves tout sur chaque
+                    appareil, sans rien ressaisir.
                 </p>
 
                 {status.conflict && (

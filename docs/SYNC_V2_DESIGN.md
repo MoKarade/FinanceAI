@@ -64,13 +64,15 @@ Sans Cloudflare, qui peut **ouvrir** l'app ?
 
 ## 7. Plan de build (batches isolés : branche → tsc+eslint+Vitest → merge → CI verte)
 
-- **R1 — login in-app + auto-restore** : écran de connexion Google (identité + drive.appdata, 1 consentement),
-  remplace la carte « Connecter » par un flux unique ; au login → pull auto ; au boot → token silencieux
-  → pull auto si possible. Trappe de secours. Tests.
-- **R2 — clés API dans la sync** : inclure `apiKeys` au payload (push) + les ré-appliquer via
+> **Statut au 2026-05-29** (les libellés de commit ont inversé R1/R2 vs ce plan — contenu identique) :
+- **Clés API dans la sync** — ✅ FAIT (commit « R1 ») : `apiKeys` au payload (push) + ré-appliquées via
   `secureKeyStore` au restore (pull). Tests round-trip.
-- **R3 — docs + ADR 008** : MAJ SETUP/DESIGN, ADR 008 (auth in-app, supersede 007 §gate), étapes Marc
-  (consent screen + retrait Cloudflare).
+- **Login in-app + auto-restore** — ✅ FAIT (commit « R2 », livré *dark*) : `LoginGate` (un seul login
+  Google = accès + jeton Drive), reprise silencieuse au boot → pull auto, trappe anti-lockout, flag
+  **séparé** `VITE_GOOGLE_GATE` (« déployer ≠ activer »). Tests.
+- **Docs + ADR** — ✅ FAIT : MAJ SETUP/DESIGN, [ADR 010](adr/010-auth-google-in-app-gate.md) (auth
+  in-app, supersede 007 §gate). Reste à Marc : publier le consent screen + activer `VITE_GOOGLE_GATE`
+  + retirer Cloudflare (cf §5).
 
 ## 8. Réutilisé tel quel
 - `syncEngine` (garde anti-perte), `driveAppData` (REST appData), `syncState`, `syncOrchestrator`

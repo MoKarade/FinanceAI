@@ -116,7 +116,7 @@ des niveaux d'accès** (*Add or remove scopes*) :
 
 - **Pas de chiffrement applicatif** (choix assumé) : le blob dans Drive est lisible via ton compte
   Google. Passphrase optionnelle (zéro-knowledge) possible plus tard (champ `enc` réservé).
-- **Clés API non synchronisées** (credentials actifs) — à ressaisir par appareil.
+- **Clés API synchronisées** (sync v2, en clair dans le blob) — tu les retrouves sur chaque appareil, sans ressaisie. Lisibles via ton compte Google (cohérent avec « pas de chiffrement »).
 - **Multi-appareils concurrents** : garde anti-perte au login (bandeau conflit) ; pendant une session,
   last-write-wins.
 - **Révoquer / supprimer** : carte → **Déconnecter** (révoque le token + efface les métadonnées

@@ -65,4 +65,12 @@ export interface DecideOnLoadInput {
     localHash: string;
     /** Métadonnées locales (dernière sync connue). */
     meta: SyncMeta;
+    /**
+     * Intention de RESTAURATION explicite (login par le gate). L'utilisateur s'est connecté pour
+     * RÉCUPÉRER son compte : si Drive a des données et que cet appareil n'a JAMAIS synchronisé via
+     * ce système (méta vierge), on restaure depuis Drive même si le local n'est pas strictement vide
+     * (le local est alors un défaut/des restes, pas un état synchronisé de confiance). Au boot normal
+     * (`false`), on garde la garde anti-perte stricte → `conflict` plutôt qu'écraser. Défaut : `false`.
+     */
+    restoreIntent?: boolean;
 }

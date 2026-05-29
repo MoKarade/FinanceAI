@@ -48,6 +48,56 @@ let _pendingReject: ((e: Error) => void) | null = null;
 /** Marge avant expiration pour rafraîchir un peu en avance (évite un appel sur un token mourant). */
 const EXPIRY_MARGIN_MS = 60_000;
 
+// Persistance du jeton DANS LA SESSION (sessionStorage). Le jeton GIS ne vit qu'en mémoire : un simple
+// rafraîchissement de page le perdait → l'app se croyait déconnectée et il fallait re-cliquer
+// « Connecter » à chaque refresh (friction majeure signalée par Marc 2026-05-29, surtout en navigation
+// privée où la ré-auth silencieuse est souvent bloquée par les cookies tiers). On le persiste pour la
+// durée de la session (effacé à la fermeture de l'onglet ET à la révocation). C'est un jeton de portée
+// drive.appdata + email (pas un secret long terme) ; compromis UX assumé.
+const TOKEN_STORAGE_KEY = 'financeai:gis:token:v1';
+
+/** Persiste le jeton courant en session (best-effort). */
+function persistCached(): void {
+    try {
+        if (typeof sessionStorage !== 'undefined' && _cached) {
+            sessionStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(_cached));
+        }
+    } catch {
+        /* sessionStorage indispo — le jeton reste en mémoire pour cette page */
+    }
+}
+
+/** Restaure le jeton depuis la session s'il est encore valide (sinon purge). No-op si déjà en mémoire. */
+function restoreCachedFromSession(): void {
+    if (_cached) return;
+    try {
+        if (typeof sessionStorage === 'undefined') return;
+        const raw = sessionStorage.getItem(TOKEN_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as { accessToken?: unknown; expiresAt?: unknown };
+        if (
+            typeof parsed.accessToken === 'string' &&
+            typeof parsed.expiresAt === 'number' &&
+            !isTokenExpired(parsed.expiresAt, Date.now())
+        ) {
+            _cached = { accessToken: parsed.accessToken, expiresAt: parsed.expiresAt };
+        } else {
+            sessionStorage.removeItem(TOKEN_STORAGE_KEY); // expiré / corrompu → purge
+        }
+    } catch {
+        /* illisible — on repartira d'une ré-authentification */
+    }
+}
+
+/** Efface le jeton persisté (déconnexion / reset). */
+function clearCachedSession(): void {
+    try {
+        if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+    } catch {
+        /* best-effort */
+    }
+}
+
 /** Le Client ID OAuth est-il configuré ? (feature inerte sinon — cf VITE_GOOGLE_CLIENT_ID). */
 export function isGoogleAuthConfigured(): boolean {
     return Boolean(_clientId);
@@ -156,6 +206,7 @@ export function requestAccessToken(interactive: boolean): Promise<string> {
                     const accessToken = resp.access_token;
                     const expiresAt = Date.now() + (resp.expires_in ?? 3600) * 1000;
                     _cached = { accessToken, expiresAt };
+                    persistCached(); // survit à un refresh → plus de reconnexion à chaque rafraîchissement
                     settle(() => resolve(accessToken));
                 };
                 client.requestAccessToken({ prompt: interactive ? 'consent' : '' });
@@ -163,21 +214,23 @@ export function requestAccessToken(interactive: boolean): Promise<string> {
     );
 }
 
-/** Retourne un token valide : le cache s'il est encore bon, sinon un renouvellement silencieux. */
+/** Retourne un token valide : le cache (mémoire ou session) s'il est bon, sinon un renouvellement silencieux. */
 export function getValidAccessToken(): Promise<string> {
+    restoreCachedFromSession(); // récupère le jeton d'un refresh précédent (évite une reconnexion)
     if (_cached && !isTokenExpired(_cached.expiresAt, Date.now())) {
         return Promise.resolve(_cached.accessToken);
     }
     return requestAccessToken(false);
 }
 
-/** Token en cache (sans réseau), ou null. Pour savoir si on est « connecté » cette session. */
+/** Token en cache (mémoire ou session, sans réseau), ou null. Pour savoir si on est « connecté ». */
 export function getCachedToken(): string | null {
+    restoreCachedFromSession();
     if (_cached && !isTokenExpired(_cached.expiresAt, Date.now())) return _cached.accessToken;
     return null;
 }
 
-/** Révoque l'accès et purge le cache (déconnexion). */
+/** Révoque l'accès et purge le cache mémoire + session (déconnexion). */
 export function revokeAccess(): void {
     const oauth2 = getGis();
     if (_cached && oauth2) {
@@ -188,6 +241,7 @@ export function revokeAccess(): void {
         }
     }
     _cached = null;
+    clearCachedSession();
 }
 
 /** Réinitialise l'état module — réservé aux tests. */
@@ -197,4 +251,5 @@ export function _resetForTests(): void {
     _cached = null;
     _scriptPromise = null;
     _pendingReject = null;
+    clearCachedSession();
 }

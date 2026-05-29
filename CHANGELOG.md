@@ -8,6 +8,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Feature · Sync Google Drive] — 2026-05-29
 
+### Corrigé — jeton persistant : fini la reconnexion à chaque rafraîchissement (2026-05-29, suite 3)
+- **Symptôme Marc** : connexion Drive qui saute à chaque rafraîchissement → bouton « Sauvegarder » grisé
+  (= déconnecté), restauration qui échoue tant qu'on n'a pas re-cliqué « Connecter », reconnexions à
+  répétition. La sync finissait par marcher (le changement privé→principal est bien arrivé) mais au prix
+  de nombreuses manips.
+- **Cause** : le jeton Google ne vivait **qu'en mémoire** → perdu à chaque refresh → l'app se croyait
+  déconnectée jusqu'à une ré-auth silencieuse, souvent **bloquée en navigation privée** (cookies tiers).
+- **Fix** : `gisAuth` persiste le jeton en **`sessionStorage`** (clé `financeai:gis:token:v1`) → il survit
+  aux rafraîchissements (jusqu'à ~1 h ou fermeture de l'onglet). `getValidAccessToken`/`getCachedToken`
+  le restaurent ; `revokeAccess` l'efface. Jeton de portée `drive.appdata` + email, pas un secret long
+  terme. Résultat : **on reste connecté** après un refresh → l'auto-sauvegarde et la restauration ne
+  réclament plus de reconnexion. +4 tests.
+
 ### Corrigé — restauration EN PLACE (sans reload) : onboarding + sauvegarde + 1 login (2026-05-29, suite 2)
 - **Symptômes Marc** : après login au gate → écran « nouvel utilisateur » (onboarding) + données pas
   restaurées (restauration manuelle obligatoire) + « ça n'enregistre pas mes données ».

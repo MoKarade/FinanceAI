@@ -65,6 +65,18 @@ jusqu'à activation. Activation : `docs/GOOGLE_DRIVE_SETUP.md`.
   d'accès, supersede partiellement l'ADR 007 (note ajoutée à 007 + index README). Réf ADR corrigée
   dans `SYNC_V2_DESIGN` (008 → 010, 008/009 étant déjà pris).
 
+### Corrigé — sauvegarde « vide » + faux toast « Sauvegardé » (2026-05-29)
+- **Bug bloquant** : `computeIsEmpty` ne comptait QUE les transactions et les actifs. Un setup
+  « profil + salaire + retraite » (sans transaction ni placement) était jugé **vide** → `pushNow`
+  sautait l'écriture… mais le bouton affichait quand même **« Sauvegardé vers Google Drive »**
+  (faux positif). Résultat : Drive restait vide, et « Restaurer » ne ramenait rien (symptôme Marc).
+- **Fix** : (1) `computeIsEmpty` reconnaît désormais toute donnée utilisateur réelle — n'importe
+  quel tableau de données non vide (transactions, actifs, dettes, objectifs…) **ou** un profil
+  renseigné (nom ou salaire) ; le défaut frais (`users` sans nom/salaire + tableaux vides) reste
+  « vide » → garde anti-écrasement en navigation privée préservée. (2) `pushNow` retourne un
+  `PushResult` typé et la carte affiche un message **honnête** : « Sauvegardé », « Rien à
+  sauvegarder » ou « Mode test actif » — fini le faux « Sauvegardé ». +5 tests.
+
 ### Décisions clés
 - Données dans le Drive de l'utilisateur (on n'héberge rien) ; **pas de chiffrement applicatif**
   (choix confort assumé de Marc — passphrase optionnelle en backlog) ; sync **auto avec garde

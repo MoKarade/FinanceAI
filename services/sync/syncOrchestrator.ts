@@ -30,6 +30,9 @@ import { useFinanceStore } from '../../store/useFinanceStore';
 
 type ApiKeys = { anthropic: string; finnhub: string };
 
+/** Résultat d'un push — permet à l'UI d'être honnête (toast réel vs « rien à sauvegarder »). */
+export type PushResult = 'pushed' | 'skipped-empty' | 'skipped-testmode' | 'not-configured' | 'error';
+
 /** Lit les clés API courantes depuis le store (vide si indispo). Sync v2 (V2-C). */
 function currentApiKeys(): ApiKeys {
     try {
@@ -77,16 +80,36 @@ export function stripApiKeys(snapshot: unknown): unknown {
     return snapshot;
 }
 
-/** « Vide » = pas de snapshot, ou state sans transactions ni actifs (incognito/nouvel appareil). */
+/**
+ * « Vide » = état par défaut d'un appareil neuf / navigation privée (rien à sauvegarder, et surtout
+ * rien qui doive écraser Drive). NON-vide dès qu'il y a une vraie donnée utilisateur : une entrée
+ * dans un tableau de données, OU un profil renseigné (nom ou salaire). Le défaut frais a
+ * `users:[{name:'', salaires:0}]` + tous les tableaux vides → bien classé « vide ».
+ *
+ * Avant, on ne comptait QUE transactions+actifs → un setup « profil + retraite » (sans transactions
+ * ni placements) était vu à tort comme vide → jamais sauvegardé (bug Marc 2026-05-29).
+ */
 export function computeIsEmpty(snapshot: unknown): boolean {
     if (!snapshot || typeof snapshot !== 'object') return true;
     const state = (snapshot as { state?: Record<string, unknown> }).state;
     if (!state) return true;
-    const tx = state.transactions;
-    const assets = state.assets;
-    const hasTx = Array.isArray(tx) && tx.length > 0;
-    const hasAssets = Array.isArray(assets) && assets.length > 0;
-    return !hasTx && !hasAssets;
+
+    // Tableaux de données utilisateur : un seul élément suffit à dire « non-vide ».
+    // (On exclut realEstateGoals/childGoals : ils contiennent 1 entrée par défaut.)
+    const DATA_ARRAYS = [
+        'transactions', 'assets', 'investmentTransactions', 'debts', 'savingsGoals',
+        'financialGoals', 'budgetItems', 'travelGoals', 'lifeEvents', 'insurancePolicies',
+        'rentalProperties', 'privateBusinesses', 'charitableGoals',
+    ];
+    const hasAnyItem = DATA_ARRAYS.some((k) => Array.isArray(state[k]) && (state[k] as unknown[]).length > 0);
+    if (hasAnyItem) return false;
+
+    // Profil renseigné : un utilisateur avec un nom OU un salaire (défaut frais = nom '' + salaires 0).
+    const config = state.config as { users?: Array<{ name?: string; netSalary?: number; grossSalary?: number }> } | undefined;
+    const hasProfile = !!config && Array.isArray(config.users) && config.users.some(
+        (u) => (u?.name?.trim()?.length ?? 0) > 0 || (u?.netSalary ?? 0) > 0 || (u?.grossSalary ?? 0) > 0,
+    );
+    return !hasProfile;
 }
 
 interface LocalPayload {
@@ -212,10 +235,15 @@ async function readDrive(token: string): Promise<SyncEnvelope | null> {
 }
 
 /** Pousse le payload local vers Drive (create ou update) et met à jour la meta. */
-export async function pushNow(): Promise<void> {
-    if (!isGoogleAuthConfigured()) return;
+export async function pushNow(): Promise<PushResult> {
+    if (!isGoogleAuthConfigured()) return 'not-configured';
+    const testMode = isTestModeActive();
     const local = getLocalPayload();
-    if (!shouldPush(local.isEmpty, isTestModeActive())) return; // jamais pousser un état vide ou de test
+    if (!shouldPush(local.isEmpty, testMode)) {
+        // On NE pousse jamais un état vide (anti-écrasement) ni en mode test (anti-démo). On RETOURNE
+        // la raison pour que l'UI soit honnête (avant : skip silencieux + faux toast « Sauvegardé »).
+        return testMode ? 'skipped-testmode' : 'skipped-empty';
+    }
     setStatus({ busy: true, error: null });
     try {
         const token = await getValidAccessToken();
@@ -238,8 +266,10 @@ export async function pushNow(): Promise<void> {
             lastLocalHash: local.hash,
         });
         setStatus({ busy: false, lastSyncedAt: now, connected: true, conflict: false });
+        return 'pushed';
     } catch (e) {
         handleError('push', e);
+        return 'error';
     }
 }
 

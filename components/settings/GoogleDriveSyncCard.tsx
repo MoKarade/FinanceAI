@@ -48,8 +48,15 @@ export const GoogleDriveSyncCard: React.FC = () => {
         if (getSyncStatus().connected) showToast('Google Drive connecté.', 'success');
     };
     const onPush = async () => {
-        await pushNow();
-        if (!getSyncStatus().error) showToast('Sauvegardé vers Google Drive.', 'success');
+        const result = await pushNow();
+        if (result === 'pushed') {
+            showToast('Sauvegardé vers Google Drive.', 'success');
+        } else if (result === 'skipped-empty') {
+            showToast('Rien à sauvegarder : aucune donnée détectée sur cet appareil.', 'info');
+        } else if (result === 'skipped-testmode') {
+            showToast('Mode test actif — sauvegarde désactivée (sors du mode test d’abord).', 'info');
+        }
+        // 'error' : message rouge déjà affiché via le statut ; 'not-configured' : carte masquée.
     };
     const onPull = async () => {
         // pullNow recharge la page en cas de succès ; pas de toast nécessaire.

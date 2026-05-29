@@ -41,14 +41,29 @@ function authHeader(token: string): Record<string, string> {
     return { Authorization: `Bearer ${token}` };
 }
 
-/** Convertit une réponse non-ok en erreur typée (401 → DriveAuthError). */
+/**
+ * Convertit une réponse non-ok en erreur typée. On lit d'abord le corps (Google y met la vraie
+ * raison) puis on distingue :
+ *  - 401 = token réellement invalide/expiré → re-auth aide (DriveAuthError, silencieux au boot).
+ *  - 403 = refusé MALGRÉ un token valide (API Drive non activée, scope drive.appdata manquant,
+ *    consentement à refaire). Re-cliquer « Connecter » ne suffit PAS → message explicite + détail
+ *    Google, surfacé comme DriveError (pas avalé silencieusement au boot).
+ */
 async function failFromResponse(res: Response): Promise<never> {
-    if (res.status === 401 || res.status === 403) throw new DriveAuthError();
     let detail = '';
     try {
-        detail = (await res.text()).slice(0, 200);
+        detail = (await res.text()).slice(0, 300);
     } catch {
         /* corps illisible — on garde juste le status */
+    }
+    if (res.status === 401) throw new DriveAuthError();
+    if (res.status === 403) {
+        throw new DriveError(
+            'Accès Drive refusé (403). Causes fréquentes : API Google Drive non activée dans le projet, ' +
+                'ou autorisation « drive.appdata » non accordée (ajoute le scope puis Déconnecte/Reconnecte). ' +
+                `Détail Google : ${detail || 'aucun'}`,
+            403,
+        );
     }
     throw new DriveError(`Drive a répondu ${res.status}${detail ? `: ${detail}` : ''}`, res.status);
 }

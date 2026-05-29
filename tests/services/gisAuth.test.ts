@@ -61,6 +61,29 @@ describe('getCachedToken', () => {
     });
 });
 
+/** Faux GIS qui déclenche l'`error_callback` (échec SANS réponse token : pas de session, etc.). */
+function stubGisError(errType = 'access_denied') {
+    let errorCb: ((e: { type?: string }) => void) | undefined;
+    const fakeClient = {
+        callback: (_r: unknown) => { void _r; },
+        requestAccessToken() { errorCb?.({ type: errType }); },
+    };
+    const initTokenClient = vi.fn((cfg: { error_callback?: (e: { type?: string }) => void }) => {
+        errorCb = cfg.error_callback;
+        return fakeClient;
+    });
+    vi.stubGlobal('google', { accounts: { oauth2: { initTokenClient, revoke: vi.fn() } } });
+}
+
+describe('requestAccessToken — error_callback (anti-hang)', () => {
+    it('rejette proprement quand GIS déclenche error_callback (pas de session)', async () => {
+        stubGisError('access_denied');
+        configureGoogleAuth('cid');
+        await expect(requestAccessToken(false)).rejects.toThrow(/autorisation Google/i);
+        expect(getCachedToken()).toBeNull();
+    });
+});
+
 describe('requestAccessToken (GIS mocké)', () => {
     it('résout le token et le met en cache', async () => {
         stubGis({ access_token: 'tok-123', expires_in: 3600 });

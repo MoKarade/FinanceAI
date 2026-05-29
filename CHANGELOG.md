@@ -8,6 +8,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Feature · Sync Google Drive] — 2026-05-29
 
+### Corrigé — l'onboarding écrasait les profils + clés restaurés (2026-05-29, suite 4)
+- **Symptôme Marc** : après restauration, l'âge de retraite et l'espérance de vie revenaient, mais
+  **jamais les profils utilisateurs ni les clés API**.
+- **Cause** : l'écran d'onboarding « nouvel utilisateur » s'affichait (car la détection « a des données »
+  ne regardait QUE transactions+actifs → une restauration profil/retraite sans transactions était vue
+  « vide »). En se terminant, `Onboarding.handleFinish` fait `setAppState({ config, apiKeys, … })` →
+  **écrasait `config.users` (profils) ET `apiKeys` (clés)** par les valeurs vides du formulaire.
+  `retirementGoal` n'étant pas dans l'onboarding, il survivait → d'où le symptôme exact.
+- **Fix (3 protections)** :
+  1. `applyPulledPayload` pose `app_onboarding_done` dès qu'une restauration a lieu (restaurer =
+     utilisateur existant → jamais d'onboarding).
+  2. `hasMeaningfulData` (nouveau, dans `utils/onboarding`) reconnaît un **profil renseigné** (nom ou
+     salaire) ou tout tableau de données (dettes, objectifs…), pas seulement transactions/actifs.
+  3. Garde **réactive** dans `App` : si des données arrivent après le mount (restauration asynchrone),
+     l'onboarding se masque tout seul → il ne peut plus écraser les profils/clés. +4 tests.
+
 ### Corrigé — jeton persistant : fini la reconnexion à chaque rafraîchissement (2026-05-29, suite 3)
 - **Symptôme Marc** : connexion Drive qui saute à chaque rafraîchissement → bouton « Sauvegarder » grisé
   (= déconnecté), restauration qui échoue tant qu'on n'a pas re-cliqué « Connecter », reconnexions à

@@ -182,6 +182,15 @@ async function applyPulledPayload(payload: unknown, apiKeys?: ApiKeys): Promise<
         }
     }
     localStorage.setItem(STORE_KEY, JSON.stringify(payload));
+    // Restaurer des données = utilisateur EXISTANT → ne JAMAIS réafficher l'onboarding « nouvel
+    // utilisateur ». Sans ça, l'onboarding s'affichait puis, en se terminant, faisait un setAppState
+    // qui ÉCRASAIT les profils (config.users) ET les clés API restaurés par des valeurs vides du
+    // formulaire — d'où « âge retraite OK mais profils/clés absents » (bug Marc 2026-05-29).
+    try {
+        localStorage.setItem('app_onboarding_done', 'true');
+    } catch {
+        /* best-effort */
+    }
     // Réhydratation en place : relit le localStorage qu'on vient d'écrire → met à jour le store.
     try {
         await useFinanceStore.persist.rehydrate();

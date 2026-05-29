@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { Layout } from './components/Layout';
 import { Onboarding } from './components/Onboarding';
-import { shouldShowOnboarding } from './utils/onboarding';
+import { shouldShowOnboarding, hasMeaningfulData } from './utils/onboarding';
 import { ToastContainer, showToast } from './components/ui/Toast';
 import { PwaInstallBanner } from './components/PwaInstallBanner';
 import { ConsentBanner } from './components/ConsentBanner';
@@ -276,10 +276,11 @@ export const App: React.FC = () => {
             const flag = localStorage.getItem('app_onboarding_done');
             // On n'accueille pas un utilisateur qui a déjà des données : après un restore Drive
             // (nouvel appareil / navigation privée), le flag local n'est pas posé mais les données
-            // sont là → sans ce garde, l'onboarding « du début » réapparaissait (retour Marc).
-            const s = useFinanceStore.getState();
-            const hasData = (s.transactions?.length ?? 0) > 0 || (s.assets?.length ?? 0) > 0;
-            return shouldShowOnboarding(flag, hasData);
+            // sont là → sans ce garde, l'onboarding « du début » réapparaissait (retour Marc). On
+            // regarde PROFIL + tableaux de données (pas seulement transactions/actifs) : sinon une
+            // restauration profil/retraite sans transactions affichait l'onboarding, qui écrasait
+            // ensuite les profils + clés restaurés (bug Marc 2026-05-29).
+            return shouldShowOnboarding(flag, hasMeaningfulData(useFinanceStore.getState()));
         } catch (err) {
             console.error("Hydration error:", err);
             return true;
@@ -287,6 +288,20 @@ export const App: React.FC = () => {
     });
 
     useEffect(() => { isHydrated.current = true; }, []);
+
+    // Garde réactive : si des données arrivent APRÈS le mount (restauration Drive asynchrone, gate),
+    // on masque l'onboarding pour qu'il ne s'affiche pas puis n'écrase les profils/clés restaurés.
+    useEffect(() => {
+        if (!isFirstLaunch) return;
+        if (hasMeaningfulData(useFinanceStore.getState())) {
+            setIsFirstLaunch(false);
+            return;
+        }
+        const unsub = useFinanceStore.subscribe((s) => {
+            if (hasMeaningfulData(s)) setIsFirstLaunch(false);
+        });
+        return unsub;
+    }, [isFirstLaunch]);
 
     useEffect(() => {
         if (!state.childGoals || state.childGoals.length === 0) {

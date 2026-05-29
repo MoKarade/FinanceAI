@@ -61,6 +61,17 @@ describe('driveAppData — findSyncFile', () => {
         await expect(findSyncFile('tok', f)).rejects.toBeInstanceOf(DriveAuthError);
     });
 
+    it('403 → DriveError clair (config), PAS DriveAuthError, avec le détail Google', async () => {
+        const body = 'Google Drive API has not been used in project ... or it is disabled';
+        const f: FetchLike = vi.fn(async () => res(body, { ok: false, status: 403 }));
+        const err = await findSyncFile('tok', f).catch((e: unknown) => e);
+        expect(err).toBeInstanceOf(DriveError);
+        expect(err).not.toBeInstanceOf(DriveAuthError);
+        expect((err as DriveError).status).toBe(403);
+        expect((err as Error).message).toContain('403');
+        expect((err as Error).message).toContain('disabled'); // détail Google propagé
+    });
+
     it('500 → DriveError avec status', async () => {
         const f: FetchLike = vi.fn(async () => res('boom', { ok: false, status: 500 }));
         await expect(findSyncFile('tok', f)).rejects.toBeInstanceOf(DriveError);

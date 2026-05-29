@@ -2,8 +2,11 @@
 
 // Variables d'env exposées au front (préfixe VITE_). VITE_GOOGLE_CLIENT_ID active la sync
 // Google Drive (feature inerte si absent) — cf docs/GOOGLE_DRIVE_SYNC_DESIGN.md.
+// VITE_GOOGLE_GATE (R2) active le login Google OBLIGATOIRE (gate qui remplace Cloudflare Access) :
+// nécessite AUSSI un Client ID. Découplé du Client ID pour que « déployer ≠ activer ».
 interface ImportMetaEnv {
     readonly VITE_GOOGLE_CLIENT_ID?: string;
+    readonly VITE_GOOGLE_GATE?: string;
 }
 interface ImportMeta {
     readonly env: ImportMetaEnv;

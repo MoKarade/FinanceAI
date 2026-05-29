@@ -28,6 +28,17 @@ jusqu'à activation. Activation : `docs/GOOGLE_DRIVE_SETUP.md`.
   `deleteRemoteData` (supprime le blob Drive puis déconnecte). Bouton « Supprimer mes données de
   Google Drive » dans la carte (confirmation 2 clics ; les données locales restent). +3 tests.
   Vérifié au navigateur : carte visible, CSP OK, flux OAuth s'initie (faux Client ID → invalid_client).
+- **R1 — clés API synchronisées** : `apiKeys` incluses dans l'enveloppe (push) + ré-appliquées via
+  `secureKeyStore` au restore (pull). Rétro-compat v1 (champ absent = ancien blob). +2 tests.
+- **R2 — login Google unique + restauration automatique** (livré « dark », flag séparé) :
+  `LoginGate` (enveloppe l'app dans `index.tsx`) → au boot, reprise **silencieuse** (zéro clic si
+  session Google active), sinon écran « Se connecter avec Google » ; la connexion déclenche le
+  **pull auto**. Un seul login sert l'accès à l'app ET la sync (remplace le rôle de Cloudflare
+  Access). `authGate` (décision pure : capacité + activation + trappe anti-lockout),
+  `gateSilentResume` (orchestrateur), `gisAuth` durci (`error_callback` + timeout → plus de boot
+  figé sur un échec silencieux). Nouveau flag **`VITE_GOOGLE_GATE`** (défaut off) **distinct** de
+  `VITE_GOOGLE_CLIENT_ID` : le gate ne s'active que si les deux sont là → « déployer ≠ activer ».
+  Trappe anti-lockout : `?nogate=1` ou « continuer sans me connecter ». +20 tests.
 
 ### Corrigé — le mode test ne contamine plus la sync (2026-05-29)
 - **Bug critique de perte de données** : `isTestMode`, `realDataSnapshot` et `activeTestPersonaId`

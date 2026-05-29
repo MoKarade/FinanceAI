@@ -40,6 +40,10 @@ let _clientId: string | null = null;
 let _tokenClient: GisTokenClient | null = null;
 let _cached: { accessToken: string; expiresAt: number } | null = null;
 let _scriptPromise: Promise<void> | null = null;
+// Rejet de la requête de token en cours, routé depuis l'`error_callback` GIS (défini une seule
+// fois à l'init du client). Sans ça, un échec SANS réponse token (pas de session Google, popup
+// bloqué…) ne rejetterait jamais la promesse → boot / gate figé indéfiniment.
+let _pendingReject: ((e: Error) => void) | null = null;
 
 /** Marge avant expiration pour rafraîchir un peu en avance (évite un appel sur un token mourant). */
 const EXPIRY_MARGIN_MS = 60_000;
@@ -95,6 +99,13 @@ function ensureTokenClient(): GisTokenClient {
             client_id: _clientId,
             scope: DRIVE_SCOPES,
             callback: () => { /* remplacé par requête avant chaque appel */ },
+            // GIS route ici les échecs SANS réponse token (pas de session, popup bloqué…).
+            // On les renvoie vers le rejet de la requête courante (cf _pendingReject).
+            error_callback: (err) => {
+                const reject = _pendingReject;
+                _pendingReject = null;
+                if (reject) reject(new Error(`Échec de l'autorisation Google${err?.type ? ` (${err.type})` : ''}`));
+            },
         });
     }
     return _tokenClient;
@@ -115,14 +126,37 @@ export function requestAccessToken(interactive: boolean): Promise<string> {
                     reject(e instanceof Error ? e : new Error(String(e)));
                     return;
                 }
+                // Garde-fou : on ne règle la promesse qu'une fois (callback succès, error_callback,
+                // ou timeout), et on nettoie systématiquement le rejet en attente + le minuteur.
+                let settled = false;
+                let timer: ReturnType<typeof setTimeout> | undefined;
+                const settle = (fn: () => void): void => {
+                    if (settled) return;
+                    settled = true;
+                    if (_pendingReject === onError) _pendingReject = null;
+                    if (timer) clearTimeout(timer);
+                    fn();
+                };
+                const onError = (e: Error): void => settle(() => reject(e));
+                // Route l'error_callback GIS (défini à l'init) vers CE rejet.
+                _pendingReject = onError;
+                // Filet anti-hang : si GIS ne rappelle ni callback ni error_callback (cas limite).
+                // Court en silencieux (échec attendu rapide), large en interactif (l'utilisateur agit).
+                timer = setTimeout(
+                    () => settle(() => reject(new Error("Délai dépassé pour l'autorisation Google"))),
+                    interactive ? 120_000 : 15_000,
+                );
                 client.callback = (resp: GisTokenResponse) => {
                     if (resp.error || !resp.access_token) {
-                        reject(new Error(`Autorisation Google refusée${resp.error ? `: ${resp.error}` : ''}`));
+                        settle(() => reject(new Error(`Autorisation Google refusée${resp.error ? `: ${resp.error}` : ''}`)));
                         return;
                     }
+                    // Capturé en const : `resp.access_token` est narrowé à `string` ici, mais TS
+                    // re-élargit dans la closure `settle(() => …)` ; la const préserve le type.
+                    const accessToken = resp.access_token;
                     const expiresAt = Date.now() + (resp.expires_in ?? 3600) * 1000;
-                    _cached = { accessToken: resp.access_token, expiresAt };
-                    resolve(resp.access_token);
+                    _cached = { accessToken, expiresAt };
+                    settle(() => resolve(accessToken));
                 };
                 client.requestAccessToken({ prompt: interactive ? 'consent' : '' });
             }),
@@ -162,4 +196,5 @@ export function _resetForTests(): void {
     _tokenClient = null;
     _cached = null;
     _scriptPromise = null;
+    _pendingReject = null;
 }

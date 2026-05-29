@@ -307,6 +307,34 @@ export async function connectAndSync(): Promise<void> {
     }
 }
 
+/**
+ * R2 — reprise SILENCIEUSE pour le gate de login : tente un jeton Google sans interaction. Si on
+ * l'obtient (session Google active + consentement déjà donné, y compris en navigation privée), on
+ * récupère l'email, met à jour la meta et exécute la décision de sync (→ pull auto si le local est
+ * vide → restauration « tout automatique »).
+ *
+ * Retourne `true` si authentifié (le gate rend l'app), `false` sinon (le gate montre le bouton de
+ * login). Ne lève jamais : un échec silencieux est le cas NORMAL d'un 1er accès non consenti.
+ */
+export async function gateSilentResume(): Promise<boolean> {
+    if (!isGoogleAuthConfigured()) return false;
+    setStatus({ busy: true, error: null });
+    try {
+        const token = await getValidAccessToken(); // silencieux (cache ou refresh sans prompt)
+        const email = await fetchUserEmail(token);
+        const meta = currentMeta();
+        writeSyncMeta({ ...meta, connectedEmail: email });
+        setStatus({ connected: true, email });
+        await runDecision(token); // pull auto si local vide ; conflit → l'UI tranchera
+        return true;
+    } catch {
+        // Échec silencieux attendu (pas de session / pas de consentement) → cas nominal au 1er
+        // accès, pas un bug. Le gate basculera sur le login interactif.
+        setStatus({ busy: false, connected: false });
+        return false;
+    }
+}
+
 /** Sync au boot (silencieux) si l'utilisateur a déjà connecté Drive. Ne bloque jamais l'app. */
 export async function runBootSync(): Promise<void> {
     if (!isGoogleAuthConfigured()) return;

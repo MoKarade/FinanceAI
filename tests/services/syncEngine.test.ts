@@ -141,5 +141,12 @@ describe('buildEnvelope', () => {
             enc: false,
             payload: { k: 'v' },
         });
+        expect(env.apiKeys).toBeUndefined(); // pas de champ clés si non fourni (rétro-compat v1)
+    });
+
+    it('inclut apiKeys quand fournies (sync v2)', () => {
+        const keys = { anthropic: 'sk-x', finnhub: 'fh-y' };
+        const env = buildEnvelope({ k: 'v' }, 'dev-9', '2.1.0', 4242, keys);
+        expect(env.apiKeys).toEqual(keys);
     });
 });

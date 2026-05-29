@@ -25,6 +25,25 @@ import {
 import { decideOnLoad, shouldPush, hashPayload, buildEnvelope } from './syncEngine';
 import { getOrCreateDeviceId, readSyncMeta, writeSyncMeta, clearSyncMeta } from './syncState';
 import type { SyncEnvelope, SyncMeta } from './syncTypes';
+import { saveApiKeys } from '../secureKeyStore';
+import { useFinanceStore } from '../../store/useFinanceStore';
+
+type ApiKeys = { anthropic: string; finnhub: string };
+
+/** Lit les clés API courantes depuis le store (vide si indispo). Sync v2 (V2-C). */
+function currentApiKeys(): ApiKeys {
+    try {
+        const k = useFinanceStore.getState().apiKeys;
+        return { anthropic: k?.anthropic ?? '', finnhub: k?.finnhub ?? '' };
+    } catch {
+        return { anthropic: '', finnhub: '' };
+    }
+}
+
+/** Vrai s'il y a au moins une clé à synchroniser (évite d'écrire un objet de clés vides). */
+function hasAnyKey(k: ApiKeys): boolean {
+    return Boolean(k.anthropic || k.finnhub);
+}
 
 // Doit correspondre au `name` du persist Zustand (store/useFinanceStore.ts) et à backupAuto.
 const STORE_KEY = 'financeai-storage';
@@ -60,6 +79,7 @@ export function computeIsEmpty(snapshot: unknown): boolean {
 
 interface LocalPayload {
     payload: unknown;
+    apiKeys: ApiKeys;
     isEmpty: boolean;
     hash: string;
 }
@@ -80,11 +100,13 @@ function getLocalPayload(): LocalPayload {
         }
     }
     const payload = stripApiKeys(parsed);
-    return { payload, isEmpty: computeIsEmpty(payload), hash: hashPayload(payload) };
+    const apiKeys = currentApiKeys();
+    // Le hash couvre payload + clés : un changement de clé déclenche aussi une sauvegarde.
+    return { payload, apiKeys, isEmpty: computeIsEmpty(payload), hash: hashPayload({ payload, apiKeys }) };
 }
 
-/** Réapplique un payload tiré de Drive : backup d'assurance, écriture, reload (rehydrate). */
-async function applyPulledPayload(payload: unknown): Promise<void> {
+/** Réapplique un payload tiré de Drive : backup d'assurance, clés API, écriture, reload (rehydrate). */
+async function applyPulledPayload(payload: unknown, apiKeys?: ApiKeys): Promise<void> {
     if (typeof localStorage === 'undefined') return;
     // Filet : backup local de l'état courant avant d'écraser (réutilise backupAuto).
     try {
@@ -92,6 +114,16 @@ async function applyPulledPayload(payload: unknown): Promise<void> {
         await createBackupNow('auto');
     } catch {
         /* le backup d'assurance est best-effort, on ne bloque pas la restauration */
+    }
+    // Sync v2 : ré-applique les clés API AVANT le reload (chiffrées dans secureKeyStore → elles
+    // survivent au reload et sont rechargées au boot). Best-effort : si le coffre est indispo, on
+    // restaure quand même les données (l'utilisateur ressaisira ses clés).
+    if (apiKeys && hasAnyKey(apiKeys)) {
+        try {
+            await saveApiKeys(apiKeys);
+        } catch {
+            /* coffre indispo — données restaurées quand même */
+        }
     }
     localStorage.setItem(STORE_KEY, JSON.stringify(payload));
     if (typeof window !== 'undefined') window.location.reload();
@@ -176,7 +208,13 @@ export async function pushNow(): Promise<void> {
     try {
         const token = await getValidAccessToken();
         const now = Date.now();
-        const envelope = buildEnvelope(local.payload, getOrCreateDeviceId(), APP_VERSION, now);
+        const envelope = buildEnvelope(
+            local.payload,
+            getOrCreateDeviceId(),
+            APP_VERSION,
+            now,
+            hasAnyKey(local.apiKeys) ? local.apiKeys : undefined,
+        );
         const ref = await findSyncFile(token);
         if (ref) await updateSyncFile(token, ref.id, envelope);
         else await createSyncFile(token, envelope);
@@ -222,14 +260,17 @@ export async function pullNow(): Promise<void> {
             return;
         }
         const meta = currentMeta();
+        const restoredKeys = drive.apiKeys ?? { anthropic: '', finnhub: '' };
         writeSyncMeta({
             ...meta,
             lastSyncedAt: Date.now(),
             lastPulledUpdatedAt: drive.updatedAt,
-            lastLocalHash: hashPayload(drive.payload),
+            // Hash du même format que getLocalPayload ({payload, apiKeys}) pour qu'au prochain boot
+            // l'état soit vu « inchangé » (pas de push redondant).
+            lastLocalHash: hashPayload({ payload: drive.payload, apiKeys: restoredKeys }),
         });
         setStatus({ conflict: false });
-        await applyPulledPayload(drive.payload); // déclenche un reload
+        await applyPulledPayload(drive.payload, drive.apiKeys); // déclenche un reload
     } catch (e) {
         handleError('pull', e);
     }

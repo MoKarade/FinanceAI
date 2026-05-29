@@ -102,8 +102,9 @@ export function buildEnvelope(
     deviceId: string,
     appVersion: string,
     now: number,
+    apiKeys?: { anthropic: string; finnhub: string },
 ): SyncEnvelope {
-    return {
+    const envelope: SyncEnvelope = {
         schemaVersion: SYNC_SCHEMA_VERSION,
         updatedAt: now,
         deviceId,
@@ -111,4 +112,7 @@ export function buildEnvelope(
         enc: false,
         payload,
     };
+    // Sync v2 : on n'inclut le champ que s'il y a des clés (enveloppe propre + rétro-compat v1).
+    if (apiKeys) envelope.apiKeys = apiKeys;
+    return envelope;
 }

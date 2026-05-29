@@ -24,6 +24,10 @@ jusqu'à activation. Activation : `docs/GOOGLE_DRIVE_SETUP.md`.
   apply avec backup d'assurance + reload, push debouncé), carte `GoogleDriveSyncCard` (Réglages →
   Système), boot sync + abonnement store dans `App.tsx`, CSP élargie à Google (index.html +
   netlify.toml), `VITE_GOOGLE_CLIENT_ID` (`.env.example` + `vite-env.d.ts`). 7 tests helpers.
+- **S4 — suppression des données cloud** : `deleteSyncFile` (DELETE idempotent, 404 toléré) +
+  `deleteRemoteData` (supprime le blob Drive puis déconnecte). Bouton « Supprimer mes données de
+  Google Drive » dans la carte (confirmation 2 clics ; les données locales restent). +3 tests.
+  Vérifié au navigateur : carte visible, CSP OK, flux OAuth s'initie (faux Client ID → invalid_client).
 
 ### Décisions clés
 - Données dans le Drive de l'utilisateur (on n'héberge rien) ; **pas de chiffrement applicatif**

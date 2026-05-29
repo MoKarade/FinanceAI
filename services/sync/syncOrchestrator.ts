@@ -18,6 +18,7 @@ import {
     createSyncFile,
     readSyncFile,
     updateSyncFile,
+    deleteSyncFile,
     fetchUserEmail,
     DriveAuthError,
 } from '../googleDrive/driveAppData';
@@ -310,6 +311,26 @@ export function disconnectSync(): void {
     revokeAccess();
     clearSyncMeta();
     setStatus({ connected: false, email: null, conflict: false, lastSyncedAt: 0 });
+}
+
+/**
+ * Supprime le blob de sync dans le Drive de l'utilisateur, puis déconnecte (révoque + efface meta).
+ * Donne à l'utilisateur le contrôle total sur ses données cloud (important sans chiffrement E2E).
+ * Les données LOCALES (cet appareil) ne sont pas touchées.
+ */
+export async function deleteRemoteData(): Promise<void> {
+    if (!isGoogleAuthConfigured()) return;
+    setStatus({ busy: true, error: null });
+    try {
+        const token = await getValidAccessToken();
+        const ref = await findSyncFile(token);
+        if (ref) await deleteSyncFile(token, ref.id);
+        revokeAccess();
+        clearSyncMeta();
+        setStatus({ busy: false, connected: false, email: null, conflict: false, lastSyncedAt: 0 });
+    } catch (e) {
+        handleError('delete', e);
+    }
 }
 
 function handleError(phase: string, e: unknown): void {

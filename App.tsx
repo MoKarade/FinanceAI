@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { Layout } from './components/Layout';
 import { Onboarding } from './components/Onboarding';
+import { shouldShowOnboarding } from './utils/onboarding';
 import { ToastContainer, showToast } from './components/ui/Toast';
 import { PwaInstallBanner } from './components/PwaInstallBanner';
 import { ConsentBanner } from './components/ConsentBanner';
@@ -272,8 +273,13 @@ export const App: React.FC = () => {
 
     const [isFirstLaunch, setIsFirstLaunch] = useState<boolean>(() => {
         try {
-            const hasBeenConfigured = localStorage.getItem('app_onboarding_done');
-            return hasBeenConfigured !== 'true';
+            const flag = localStorage.getItem('app_onboarding_done');
+            // On n'accueille pas un utilisateur qui a déjà des données : après un restore Drive
+            // (nouvel appareil / navigation privée), le flag local n'est pas posé mais les données
+            // sont là → sans ce garde, l'onboarding « du début » réapparaissait (retour Marc).
+            const s = useFinanceStore.getState();
+            const hasData = (s.transactions?.length ?? 0) > 0 || (s.assets?.length ?? 0) > 0;
+            return shouldShowOnboarding(flag, hasData);
         } catch (err) {
             console.error("Hydration error:", err);
             return true;

@@ -24,8 +24,13 @@ export interface SyncEnvelope {
     appVersion: string;
     /** Réservé : `false` = payload en clair, `true` = payload chiffré (futur). */
     enc: boolean;
-    /** Snapshot d'état applicatif (sans les clés API). */
+    /** Snapshot d'état applicatif (financeai-storage, sans les clés API). */
     payload: unknown;
+    /**
+     * Sync v2 (décision Marc 2026-05-29) : clés API incluses pour tout retrouver sur un autre
+     * appareil. En clair (cohérent avec « pas de chiffrement »). Absent = ancien blob v1.
+     */
+    apiKeys?: { anthropic: string; finnhub: string };
 }
 
 /** Métadonnées locales de sync, persistées hors du store applicatif. */

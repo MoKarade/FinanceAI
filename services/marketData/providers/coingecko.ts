@@ -11,6 +11,7 @@
 
 import type { Quote, HistoryPoint, AssetProfile, MarketDataProvider } from '../types';
 import { MarketDataError } from '../types';
+import { logProviderError } from './providerError';
 
 const BASE_URL = 'https://api.coingecko.com/api/v3';
 const FETCH_TIMEOUT_MS = 12_000;
@@ -115,7 +116,7 @@ export class CoinGeckoProvider implements MarketDataProvider {
                 timestamp: Date.now(),
             };
         } catch (e) {
-            console.warn(`[CoinGecko] getQuote(${symbol}) failed:`, (e as Error).message);
+            logProviderError('CoinGecko', 'getQuote', symbol, e);
             return null;
         }
     }
@@ -137,7 +138,7 @@ export class CoinGeckoProvider implements MarketDataProvider {
             if (!data || !Array.isArray(data.prices)) return [];
             return toDailyPoints(data.prices, from, to);
         } catch (e) {
-            console.warn(`[CoinGecko] getHistory(${symbol}) failed:`, (e as Error).message);
+            logProviderError('CoinGecko', 'getHistory', symbol, e);
             return [];
         }
     }

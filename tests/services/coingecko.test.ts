@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { CoinGeckoProvider, coinGeckoIdFor } from '../../services/marketData/providers/coingecko';
+import { logError } from '../../services/errorLogger';
+
+// SF-2 — une vraie erreur de cours (réseau/AUTH/rate limit) ne doit plus être avalée
+// en console.warn (invisible en prod) mais journalisée ; un NOT_FOUND (crypto inconnue)
+// reste un cas légitime → PAS de log.
+vi.mock('../../services/errorLogger', () => ({ logError: vi.fn() }));
 
 const jsonRes = (body: unknown, status = 200) => ({
     ok: status >= 200 && status < 300,
@@ -77,5 +83,21 @@ describe('CoinGeckoProvider', () => {
     it('getQuote : erreur réseau → null (ne lève pas)', async () => {
         globalThis.fetch = vi.fn(async () => jsonRes({}, 500)) as unknown as typeof fetch;
         expect(await cg.getQuote('BTC-CAD')).toBeNull();
+    });
+
+    it('getQuote : erreur 500 → logError appelé (non silencieux) + null', async () => {
+        vi.mocked(logError).mockClear();
+        globalThis.fetch = vi.fn(async () => jsonRes({}, 500)) as unknown as typeof fetch;
+        expect(await cg.getQuote('BTC-CAD')).toBeNull();
+        expect(logError).toHaveBeenCalledWith(
+            expect.objectContaining({ message: expect.stringContaining('getQuote') }),
+        );
+    });
+
+    it('getQuote : 404 NOT_FOUND (crypto inconnue) → PAS de logError (cas légitime) + null', async () => {
+        vi.mocked(logError).mockClear();
+        globalThis.fetch = vi.fn(async () => jsonRes({}, 404)) as unknown as typeof fetch;
+        expect(await cg.getQuote('BTC-CAD')).toBeNull();
+        expect(logError).not.toHaveBeenCalled();
     });
 });

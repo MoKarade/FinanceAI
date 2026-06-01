@@ -10,6 +10,7 @@
 
 import type { Quote, HistoryPoint, AssetProfile, DividendInfo, MarketDataProvider } from '../types';
 import { MarketDataError } from '../types';
+import { logProviderError } from './providerError';
 
 const BASE_URL = 'https://finnhub.io/api/v1';
 const FETCH_TIMEOUT_MS = 10_000;
@@ -95,7 +96,7 @@ export class FinnhubProvider implements MarketDataProvider {
                 timestamp: (t ?? Math.floor(Date.now() / 1000)) * 1000,
             };
         } catch (e) {
-            console.warn(`[Finnhub] getQuote(${symbol}) failed:`, e);
+            logProviderError('Finnhub', 'getQuote', symbol, e);
             return null;
         }
     }
@@ -125,7 +126,7 @@ export class FinnhubProvider implements MarketDataProvider {
                 volume: vArr?.[i],
             }));
         } catch (e) {
-            console.warn(`[Finnhub] getHistory(${symbol}) failed:`, e);
+            logProviderError('Finnhub', 'getHistory', symbol, e);
             return [];
         }
     }
@@ -150,7 +151,7 @@ export class FinnhubProvider implements MarketDataProvider {
                 industry: finnhubIndustry,
             };
         } catch (e) {
-            console.warn(`[Finnhub] getProfile(${symbol}) failed:`, e);
+            logProviderError('Finnhub', 'getProfile', symbol, e);
             return null;
         }
     }
@@ -174,7 +175,7 @@ export class FinnhubProvider implements MarketDataProvider {
                 frequency: 4, // estimation par défaut, Finnhub ne renvoie pas
             }));
         } catch (e) {
-            console.warn(`[Finnhub] getDividends(${symbol}) failed:`, e);
+            logProviderError('Finnhub', 'getDividends', symbol, e);
             return [];
         }
     }

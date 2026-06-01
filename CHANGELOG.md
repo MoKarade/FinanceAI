@@ -8,6 +8,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Feature · Sync Google Drive] — 2026-05-29
 
+### Échecs silencieux — lot SF-1 + SF-3 (« ne jamais avaler les erreurs ») (2026-06-01)
+- **SF-1 `backupAuto.ts`** : les 6 catches (createBackupNow / restoreBackup / listBackups / deleteBackup /
+  clearAllBackups / initAutoBackup) utilisaient `console.warn` → invisible en prod (aucune console ouverte,
+  pas de backend) → un échec de **backup/restauration** était donc silencieux côté utilisateur. Convertis en
+  `logError` (logger borné, alimente diagnostics/UI) en gardant le contrat de retour (null/[]/false/void).
+  +1 test (échec IndexedDB → `logError` appelé). C'est l'alignement sur le pattern déjà utilisé par
+  `tryGetDeviceKey` dans le même fichier.
+- **SF-3** : `claude.ts` (categorizeBatch / detectSubscriptionsAI) passait par `console.error` → `logError`
+  (`source: 'ai'`). `syncOrchestrator.ts` (pull) : le déchiffrement raté des clés API était un `catch {}`
+  totalement muet → `logError` (warning) pour signaler « clés non restaurées, reconfigurer dans Paramètres »
+  (les données financières, elles, sont bien restaurées).
+- **Choix de stratégie** (décision Marc « sois réaliste ») : **logguer sans changer le contrat de retour**
+  plutôt que propager une exception — sur du local-first sans backend, faire remonter au milieu d'un backup
+  auto en arrière-plan casserait des flux ; logguer rend l'échec visible sans risque.
+- Suite **1434 verts**, tsc + eslint propres, zéro régression. **SF-2 (market data : erreur réseau/AUTH
+  masquée en NOT_FOUND) reste à faire** (distinction de types d'erreur, batch séparé).
+
 ### Correctifs bugs money — B-AUDIT-1 (bonus/RSU chômage) + B-AUDIT-4 (ratio RRQ) (2026-06-01)
 - **B-AUDIT-1** : pendant un chômage/invalidité, le bonus et les RSU de Marc (revenu d'EMPLOI)
   continuaient d'alimenter le revenu NET **et** le brut REER. Réaliste (décision Marc « sois réaliste ») :

@@ -178,7 +178,10 @@ export async function createBackupNow(source: 'auto' | 'manual' = 'manual'): Pro
             };
         });
     } catch (err) {
-        console.warn('[backupAuto] createBackupNow failed:', err);
+        // SF-1 — échec d'écriture du backup : NE PAS avaler (l'utilisateur croirait
+        // être sauvegardé). On journalise via le logger borné (visible diagnostics/UI)
+        // tout en gardant le contrat null (l'appelant décide quoi afficher).
+        logError({ source: 'storage', severity: 'error', message: 'createBackupNow: échec écriture du backup (IndexedDB)', error: err instanceof Error ? err : new Error(String(err)) });
         return null;
     }
 }
@@ -203,7 +206,9 @@ export async function listBackups(): Promise<BackupEntry[]> {
             };
         });
     } catch (err) {
-        console.warn('[backupAuto] listBackups failed:', err);
+        // SF-1 — distinguer « base vide » (légitime) de « base inaccessible » : on
+        // journalise l'erreur d'accès (sinon [] est indistinguable de 0 backup).
+        logError({ source: 'storage', severity: 'error', message: 'listBackups: échec lecture des backups (IndexedDB)', error: err instanceof Error ? err : new Error(String(err)) });
         return [];
     }
 }
@@ -219,7 +224,7 @@ export async function deleteBackup(id: string): Promise<void> {
             tx.onerror = () => { db.close(); reject(tx.error); };
         });
     } catch (err) {
-        console.warn('[backupAuto] deleteBackup failed:', err);
+        logError({ source: 'storage', severity: 'warning', message: 'deleteBackup: échec suppression du backup', error: err instanceof Error ? err : new Error(String(err)) });
     }
 }
 
@@ -234,7 +239,7 @@ export async function clearAllBackups(): Promise<void> {
             tx.onerror = () => { db.close(); reject(tx.error); };
         });
     } catch (err) {
-        console.warn('[backupAuto] clearAllBackups failed:', err);
+        logError({ source: 'storage', severity: 'warning', message: 'clearAllBackups: échec du vidage des backups', error: err instanceof Error ? err : new Error(String(err)) });
     }
 }
 
@@ -260,7 +265,9 @@ export async function restoreBackup(id: string): Promise<boolean> {
         if (typeof window !== 'undefined') window.location.reload();
         return true;
     } catch (err) {
-        console.warn('[backupAuto] restoreBackup failed:', err);
+        // SF-1 — échec de restauration (déchiffrement ou écriture) : critique pour
+        // l'utilisateur qui attend ses données. Journalisé en 'error', contrat false gardé.
+        logError({ source: 'storage', severity: 'error', message: 'restoreBackup: échec de la restauration du backup', error: err instanceof Error ? err : new Error(String(err)) });
         return false;
     }
 }
@@ -292,7 +299,7 @@ export async function initAutoBackup(): Promise<void> {
             await pruneOldBackups();
         }
     } catch (err) {
-        console.warn('[backupAuto] init failed:', err);
+        logError({ source: 'storage', severity: 'warning', message: 'initAutoBackup: échec du backup quotidien automatique', error: err instanceof Error ? err : new Error(String(err)) });
     }
 }
 

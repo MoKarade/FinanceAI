@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { webcrypto } from 'node:crypto';
 
+// SF-1 — on vérifie que les échecs IndexedDB ne sont plus avalés silencieusement
+// (console.warn invisible en prod sans backend) mais journalisés via le logger
+// borné (errorLogger), SANS changer le contrat de retour (null/[]/false/void).
+vi.mock('../../services/errorLogger', () => ({ logError: vi.fn() }));
+import { logError } from '../../services/errorLogger';
+
 // IndexedDB n'est pas dispo en jsdom → les tests « glue » stubent via
 // vi.stubGlobal. Le cœur métier S-A (chiffrement du payload) est, lui, testé
 // purement en injectant une CryptoKey (modèle identique à secureKeyStore.test).
@@ -43,6 +49,20 @@ describe('backupAuto', () => {
         localStorage.clear();
         const result = await createBackupNow('manual');
         expect(result).toBeNull();
+    });
+
+    it('createBackupNow : échec IndexedDB avec payload → logError (non silencieux) + null', async () => {
+        const { createBackupNow } = await import('../../services/backupAuto');
+        localStorage.setItem('financeai-storage', SAMPLE_PAYLOAD);
+        vi.stubGlobal('indexedDB', undefined);
+        vi.mocked(logError).mockClear();
+        const result = await createBackupNow('manual');
+        expect(result).toBeNull();
+        expect(logError).toHaveBeenCalledWith(
+            expect.objectContaining({ message: expect.stringContaining('createBackupNow') }),
+        );
+        vi.unstubAllGlobals();
+        localStorage.clear();
     });
 
     it('getBackupStats returns count=0 sur état initial', async () => {

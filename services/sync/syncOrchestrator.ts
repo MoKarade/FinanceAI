@@ -355,8 +355,12 @@ export async function pullNow(): Promise<void> {
             if (sub) {
                 try {
                     restoredKeys = await decryptApiKeys(drive.apiKeysEnc, sub);
-                } catch {
-                    /* mauvais sub / blob altéré → clés non restaurées (données OK) */
+                } catch (e) {
+                    // SF-3 — clés non restaurées (mauvais sub / blob altéré). Les données
+                    // financières le sont quand même, mais l'IA + les cours d'actions seraient
+                    // silencieusement HS. On journalise (non silencieux) pour signaler qu'il
+                    // faut reconfigurer les clés dans Paramètres.
+                    logError({ source: 'storage', severity: 'warning', message: 'pullNow: clés API non restaurées (déchiffrement échoué) — données OK, reconfigurer les clés dans Paramètres', error: e instanceof Error ? e : new Error(String(e)) });
                 }
             }
         } else if (drive.apiKeys) {

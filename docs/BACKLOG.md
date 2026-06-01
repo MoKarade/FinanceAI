@@ -95,13 +95,13 @@
 - 📄 **C2 [écarté]** nom de profil → clé localStorage : le préfixe `profile_` empêche tout écrasement de clé
   système. Reste de l'hygiène LOW (valider `[a-z0-9_-]`), pas un risque réel.
 
-### Échecs silencieux (règle Marc « ne jamais avaler les erreurs ») — lot à faire
-- 🔧 **SF-1 [CRITICAL]** `backupAuto.ts` (`createBackupNow`/`restoreBackup`/`listBackups`) : échecs IndexedDB
-  avalés (`null`/`false` + `console.warn`, pas de `logError`) → l'utilisateur croit être sauvegardé.
-- 🔧 **SF-2 [HIGH]** `marketData/providers/*` : erreurs réseau/AUTH retournent `null`/`[]` comme un symbole
-  inconnu → cours périmés silencieux. Distinguer NOT_FOUND (ok) de NETWORK/AUTH (à remonter).
-- 🔧 **SF-3 [MEDIUM]** `syncOrchestrator.ts` (déchiffrement clés au pull) + `claude.ts:304/352`
-  (`console.error` au lieu de `logError`) : passer par le logger borné + exposer un flag UI.
+### Échecs silencieux (règle Marc « ne jamais avaler les erreurs »)
+- ✅ **SF-1 [CRITICAL] CORRIGÉ 2026-06-01** `backupAuto.ts` : les 6 catches `console.warn` → `logError`
+  (logger borné, visible diagnostics/UI), contrat de retour gardé. +1 test (échec IndexedDB → logError).
+- 🔧 **SF-2 [HIGH] — à faire** `marketData/providers/*` : erreurs réseau/AUTH retournent `null`/`[]` comme un
+  symbole inconnu → cours périmés silencieux. Distinguer NOT_FOUND (ok) de NETWORK/AUTH (à remonter). Batch séparé.
+- ✅ **SF-3 [MEDIUM] CORRIGÉ 2026-06-01** `syncOrchestrator.ts` (déchiffrement clés au pull) + `claude.ts`
+  (categorizeBatch/detectSubscriptionsAI) : `console.error`/`catch {}` muet → `logError`. Flag UI = futur.
 
 ### Tests
 - ✅ **+9 `retirementIncome`** (report/survivant/immigrant/bonus 75+) — ce cycle.

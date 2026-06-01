@@ -291,12 +291,22 @@ export function processDecemberTaxFiling(
         const incomeForGains = ctx.isRetired
             ? (ctx.incomeRetirementMonthly * 12 + ctx.accRentesYear + ctx.accRetraitsReerYear)
             : (ctx.grossMarcBaseAnnual + ctx.grossAnnaBaseAnnual) * Math.pow(1 + ctx.simSalaryGrowth / 100, ctx.yearsElapsed);
-        const currentMargForGains = helpers.getMarginalRate(incomeForGains / ctx.activeUsersCount, ctx.loopYear);
 
         // Inclusion gains capitaux: 50% uniforme (annulation 66.67% > 250k$ mars 2025).
         const taxableCapGains = ctx.accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD;
 
-        const tax = taxableCapGains * currentMargForGains;
+        // B-AUDIT-2 — impôt INCRÉMENTAL empilé (progressif) plutôt qu'un taux marginal
+        // plat. Les gains s'empilent SUR le revenu : on impose la BANDE
+        // [revenu, revenu+gains] = impôt(revenu+gains) − impôt(revenu), au lieu de taxer
+        // tout le gain au taux d'ENTRÉE (ce qui sous-estimait l'impôt quand un gros gain
+        // franchit un palier). Calculé par adulte (le revenu est familial) puis ×N. Le
+        // BPA s'annule dans la soustraction ; un gain qui reste dans le même palier donne
+        // un incrément ≈ gain × taux marginal (cohérent avec l'ancien comportement).
+        const perAdultIncome = incomeForGains / ctx.activeUsersCount;
+        const perAdultGains = taxableCapGains / ctx.activeUsersCount;
+        const taxBase = helpers.calculateFiscalReport(perAdultIncome, 0, 0, ctx.loopYear, true).totalTax;
+        const taxTop = helpers.calculateFiscalReport(perAdultIncome + perAdultGains, 0, 0, ctx.loopYear, true).totalTax;
+        const tax = Math.max(0, taxTop - taxBase) * ctx.activeUsersCount;
         taxCurrent.gains += tax;
         if (tax > 100) logs.push(`↳ Impôt Gains Cap Accumulés: +${Math.round(tax).toLocaleString('fr-CA')}$`);
     }

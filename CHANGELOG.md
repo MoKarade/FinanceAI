@@ -8,6 +8,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Feature · Sync Google Drive] — 2026-05-29
 
+### Perf — zoom 100 % fluide sur TOUS les graphes (coalescence rAF) (2026-05-29)
+- **Problème** : molette/pan émettent 60-120 events/s ; chaque event faisait un `setRange` synchrone
+  → re-render complet du graphe (8 aires + barres + ~64 ReferenceDot) à chaque event → thread saturé
+  → zoom saccadé. Touchait TOUS les graphes (hook partagé `hooks/useTimeChartZoom.ts` : Futur,
+  Dashboard, Investissements, Dette, Immobilier, Retraite, Enfant).
+- **Fix** : coalescence en `requestAnimationFrame` — au plus UN `setRange` (un re-render) par frame.
+  La cible est suivie en synchrone (`rangeRef`) pour que les events d'un même burst se composent.
+  Actions discrètes (période, reset) commitent immédiatement (annulent le frame en attente) ; nettoyage
+  du frame au démontage. +2 tests (renderHook : burst molette → 1 commit ; reset). Correction centralisée
+  dans le hook → bénéficie à tous les graphes d'un coup.
+
 ### Corrigé — bug MONEY-CRITICAL : `grossSalary` annuel stocké comme mensuel (2026-05-29)
 - **Bug** : 3 chemins de saisie stockaient le salaire BRUT en **annuel**, alors que la convention
   canonique du store est **mensuelle** (le moteur ré-annualise ×12). Résultat : revenu ~12× trop

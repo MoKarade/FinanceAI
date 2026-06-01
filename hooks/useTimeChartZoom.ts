@@ -20,6 +20,13 @@ import { useState, useRef, useMemo, useCallback } from 'react';
  * listener suit toujours l'élément vivant. Corrige le bug « zoom mort après
  * changement d'onglet » (le conteneur remontait sans que le useEffect ne se
  * réexécute → listener attaché à un nœud détaché).
+ *
+ * PERF (2026-05-29) — les bursts molette/pan (60-120 events/s) sont **coalescés**
+ * en `requestAnimationFrame` : au plus UN `setRange` (donc un re-render du graphe)
+ * par frame, au lieu d'un par event. Sans ça, chaque cran re-rendait tout le graphe
+ * (8 aires + barres + ~64 ReferenceDot) → thread saturé → zoom saccadé. La cible
+ * est suivie en synchrone via `rangeRef` pour que les events du même burst se
+ * composent correctement même avant le commit.
  */
 
 export interface TimeChartZoomHandlers {
@@ -66,26 +73,66 @@ export function useTimeChartZoom<T>(
     dataLengthRef.current = dataLength;
     const minPointsRef = useRef(minPoints);
     minPointsRef.current = minPoints;
-    // F11 (audit 2026-05-28) — range lu via ref dans les handlers de pan, pour que
-    // onMouseDown reste stable (sinon recréé à chaque changement de range, donc pendant
-    // tout le pan). Combiné au useCallback/useMemo plus bas → objet `handlers` stable.
-    const rangeRef = useRef(range);
-    rangeRef.current = range;
+
+    // Cible courante de la plage, possédée EXCLUSIVEMENT par commitRange/scheduleRange (jamais
+    // écrasée par un render). Sert de base de calcul synchrone aux handlers (wheel/pan) même
+    // pendant qu'un frame rAF est en attente.
+    const rangeRef = useRef<[number, number] | null>(range);
+
+    // Coalescence rAF : on n'applique au plus qu'un setRange par frame.
+    const rafIdRef = useRef<number | null>(null);
+    const pendingRef = useRef<[number, number] | null>(null);
+    const hasPendingRef = useRef(false);
 
     const visibleData = useMemo(() => {
         if (!range) return data as T[];
         return (data as T[]).slice(range[0], range[1] + 1);
     }, [data, range]);
 
-    // Normalise puis applique une plage : si elle couvre tout, on repasse en
-    // vue complète (range = null) pour réafficher le hint « molette = zoom ».
-    const applyRange = useCallback((start: number, end: number) => {
-        if (start <= 0 && end >= dataLengthRef.current - 1) {
-            setRange(null);
-        } else {
-            setRange([Math.round(start), Math.round(end)]);
-        }
+    // Normalise : si la plage couvre tout, on repasse en vue complète (range = null) pour
+    // réafficher le hint « molette = zoom ».
+    const normalizeRange = useCallback((start: number, end: number): [number, number] | null => {
+        if (start <= 0 && end >= dataLengthRef.current - 1) return null;
+        return [Math.round(start), Math.round(end)];
     }, []);
+
+    const cancelPending = useCallback(() => {
+        if (rafIdRef.current !== null && typeof cancelAnimationFrame !== 'undefined') {
+            cancelAnimationFrame(rafIdRef.current);
+        }
+        rafIdRef.current = null;
+        hasPendingRef.current = false;
+    }, []);
+
+    // Commit IMMÉDIAT (actions discrètes : sélecteur de période, reset) — annule tout frame en attente.
+    const commitRange = useCallback((start: number, end: number) => {
+        cancelPending();
+        const next = normalizeRange(start, end);
+        rangeRef.current = next;
+        setRange(next);
+    }, [cancelPending, normalizeRange]);
+
+    // Commit COALESCÉ (bursts : molette, pan) — au plus un setRange par frame.
+    const scheduleRange = useCallback((start: number, end: number) => {
+        const next = normalizeRange(start, end);
+        rangeRef.current = next;            // base synchrone pour l'event suivant du même burst
+        pendingRef.current = next;
+        hasPendingRef.current = true;
+        if (typeof requestAnimationFrame === 'undefined') {
+            hasPendingRef.current = false;  // environnement sans rAF → commit direct
+            setRange(next);
+            return;
+        }
+        if (rafIdRef.current === null) {
+            rafIdRef.current = requestAnimationFrame(() => {
+                rafIdRef.current = null;
+                if (hasPendingRef.current) {
+                    hasPendingRef.current = false;
+                    setRange(pendingRef.current);
+                }
+            });
+        }
+    }, [normalizeRange]);
 
     // Molette via listener natif non-passif (onWheel JSX est passif en React →
     // preventDefault y serait ignoré et la page scrollerait pendant le zoom).
@@ -98,22 +145,21 @@ export function useTimeChartZoom<T>(
         const mp = minPointsRef.current;
         const rect = el.getBoundingClientRect();
         const cursorRel = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-        setRange((prev) => {
-            const start = prev?.[0] ?? 0;
-            const end = prev?.[1] ?? dl - 1;
-            const span = end - start;
-            const cursorIdx = start + cursorRel * span;
-            const factor = e.deltaY < 0 ? 0.85 : 1.15; // zoom in / out
-            const newSpan = Math.max(mp, Math.min(dl - 1, span * factor));
-            const newStart = Math.max(0, cursorIdx - cursorRel * newSpan);
-            const newEnd = Math.min(dl - 1, newStart + newSpan);
-            const adjustedStart = Math.max(0, newEnd - newSpan);
-            if (adjustedStart <= 0 && newEnd >= dl - 1) return null;
-            return [Math.round(adjustedStart), Math.round(newEnd)];
-        });
-    }, []);
+        const prev = rangeRef.current; // base = dernière cible (synchrone), pas l'état committé
+        const start = prev?.[0] ?? 0;
+        const end = prev?.[1] ?? dl - 1;
+        const span = end - start;
+        const cursorIdx = start + cursorRel * span;
+        const factor = e.deltaY < 0 ? 0.85 : 1.15; // zoom in / out
+        const newSpan = Math.max(mp, Math.min(dl - 1, span * factor));
+        const newStart = Math.max(0, cursorIdx - cursorRel * newSpan);
+        const newEnd = Math.min(dl - 1, newStart + newSpan);
+        const adjustedStart = Math.max(0, newEnd - newSpan);
+        scheduleRange(adjustedStart, newEnd);
+    }, [scheduleRange]);
 
-    // Callback ref : (ré)attache le listener à chaque montage du nœud.
+    // Callback ref : (ré)attache le listener à chaque montage du nœud ; nettoie le frame en
+    // attente au démontage (évite un setRange sur un composant démonté).
     const containerRef = useCallback((node: HTMLDivElement | null) => {
         if (elRef.current) {
             elRef.current.removeEventListener('wheel', handleWheel);
@@ -121,8 +167,10 @@ export function useTimeChartZoom<T>(
         elRef.current = node;
         if (node) {
             node.addEventListener('wheel', handleWheel, { passive: false });
+        } else {
+            cancelPending();
         }
-    }, [handleWheel]);
+    }, [handleWheel, cancelPending]);
 
     const onMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         const r = rangeRef.current;
@@ -141,8 +189,8 @@ export function useTimeChartZoom<T>(
         const deltaIdx = -((e.clientX - pan.startX) / rect.width) * span;
         const newStart = Math.max(0, Math.min(dl - 1, pan.startStart + deltaIdx));
         const newEnd = Math.min(dl - 1, newStart + span);
-        applyRange(Math.max(0, newEnd - span), newEnd);
-    }, [applyRange]);
+        scheduleRange(Math.max(0, newEnd - span), newEnd);
+    }, [scheduleRange]);
 
     const endPan = useCallback(() => {
         if (panRef.current) {
@@ -151,15 +199,19 @@ export function useTimeChartZoom<T>(
         }
     }, []);
 
-    const reset = useCallback(() => setRange(null), []);
+    const reset = useCallback(() => {
+        cancelPending();
+        rangeRef.current = null;
+        setRange(null);
+    }, [cancelPending]);
 
     const showRange = useCallback((from: number, to: number) => {
         const dl = dataLengthRef.current;
         if (dl < 2) return;
         const lo = Math.max(0, Math.min(from, dl - 1));
         const hi = Math.max(lo + 1, Math.min(to, dl - 1));
-        applyRange(lo, hi);
-    }, [applyRange]);
+        commitRange(lo, hi);
+    }, [commitRange]);
 
     // F11 — objet handlers mémoïsé : tous les handlers sont stables (useCallback),
     // donc cette référence ne change jamais → le graphe consommateur (et ses enfants

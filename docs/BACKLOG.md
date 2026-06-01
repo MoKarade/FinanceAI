@@ -43,6 +43,12 @@
 **Une seule connexion (quand tu veux)**
 - [ ] Retirer Cloudflare Access (guidé par Claude) → vérifier qu'il ne reste **qu'un** login Google (le gate de l'app).
 
+### Cycle 2026-06-01 — Correctif moteur : espace REER pendant chômage/invalidité
+
+**Espace REER non gagné (bug money corrigé)**
+- [ ] Dans **Futur**, activer un scénario de **chômage** ou d'**invalidité** sur quelques mois en phase active, puis ouvrir le **détail annuel de l'espace de cotisation gagné** (G19) : les années touchées doivent montrer **moins d'espace REER** (le salaire de base ne compte plus pendant ces mois — l'AE et l'invalidité ne sont pas du « revenu gagné »). Avant le fix, l'espace restait calculé sur le salaire plein.
+- [ ] Vérifier que le **patrimoine REER final** d'un scénario avec chômage/invalidité est **≤** au même scénario sans (moins de cotisations autorisées → moins de capital REER), sans incohérence ailleurs.
+
 ---
 
 ## 🔎 Audit 2026-05-28 — Sécurité + couverture + revue (3 agents + couverture) — À TRAITER

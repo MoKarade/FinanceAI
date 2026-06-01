@@ -100,8 +100,17 @@ export function computeActiveIncome(
 
     const monthlyIncome = incomeMarc + incomeAnna;
 
-    // Brut annualisé pour le calcul de la cotisation REER en décembre
-    const baseGrossMarc = grossMarcBaseAnnual * salaryGrowthFactor;
+    // Brut annualisé pour le calcul de la cotisation REER en décembre.
+    // §REER — l'assurance-emploi et l'assurance-invalidité ne sont PAS du « revenu
+    // gagné » au sens de l'art. 146(1) LIR : elles ne génèrent aucun droit de
+    // cotisation REER. Pendant un mois de chômage/LTD, le salaire d'emploi de base
+    // de Marc ne compte donc pas dans l'espace REER (newRrspRoom = 18 % du brut,
+    // taxJanuary.ts). On neutralise son brut de base aux mêmes conditions que la
+    // réduction du revenu net plus haut. Les revenus variables (bonus/RSU/side)
+    // restent inchangés ici — leur traitement fin pendant le chômage est un
+    // raffinement laissé hors périmètre (faible matérialité, cf. CHANGELOG).
+    const marcEmploymentActive = !(wasUnemployed || jobLossResult.triggered || wasLtd || ltdResult.duration > 0);
+    const baseGrossMarc = marcEmploymentActive ? grossMarcBaseAnnual * salaryGrowthFactor : 0;
     const baseGrossAnna = survivorMode ? 0 : (grossAnnaBaseAnnual * salaryGrowthFactor);
     const currentGrossMarcAnnual = baseGrossMarc + (bonusMonthly1 + rsuMonthly1 + sideMonthly1) * 12;
     const currentGrossAnnaAnnual = baseGrossAnna + (bonusMonthly2 + rsuMonthly2 + sideMonthly2) * 12;

@@ -162,6 +162,28 @@ describe('Push : ce qui est exporté embarque TOUT (demande Marc)', () => {
     });
 });
 
+describe('Verrou anti-double-sync (boot : gate + runBootSync)', () => {
+    it('deux reprises concurrentes → UNE seule décision (pas de double lecture / écriture Drive)', async () => {
+        const driveApi = await import('../../services/googleDrive/driveAppData');
+        const findSpy = driveApi.findSyncFile as ReturnType<typeof vi.fn>;
+        findSpy.mockClear();
+        // On bloque la 1re lecture Drive le temps que les DEUX reprises atteignent runDecision : la 2e
+        // doit alors réutiliser la décision déjà en vol (verrou _decisionInFlight) au lieu d'en lancer
+        // une seconde. Sans verrou : 2 décisions → 4 findSyncFile (chacune readDrive + pullNow).
+        let release: () => void = () => {};
+        const gate = new Promise<void>((r) => { release = r; });
+        findSpy.mockImplementationOnce(async () => { await gate; return { id: 'file-1', modifiedTime: '2024' }; });
+
+        const both = Promise.all([gateSilentResume(), gateSilentResume()]);
+        await new Promise((r) => setTimeout(r, 0)); // laisse les 2 atteindre runDecision
+        release();
+        await both;
+
+        // 1 décision = readDrive (1) + pullNow→readDrive (1) = 2 appels. Le verrou a évité le doublon.
+        expect(findSpy).toHaveBeenCalledTimes(2);
+    });
+});
+
 // Garde-fou : l'enveloppe construite n'oublie aucun champ du payload (sérialisation fidèle).
 describe('buildEnvelope — fidélité du payload', () => {
     it('préserve le payload tel quel + clés si fournies', () => {

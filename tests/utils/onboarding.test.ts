@@ -36,4 +36,9 @@ describe('hasMeaningfulData — reconnaît un PROFIL/retraite restauré (pas que
         expect(hasMeaningfulData({ debts: [{ id: 'd' }] })).toBe(true);
         expect(hasMeaningfulData({ savingsGoals: [{ id: 'g' }] })).toBe(true);
     });
+    it('liste canonique élargie : budget / voyages / assurances comptent aussi (alignée sur la sync)', () => {
+        expect(hasMeaningfulData({ budgetItems: [{ id: 'b' }] })).toBe(true);
+        expect(hasMeaningfulData({ travelGoals: [{ id: 't' }] })).toBe(true);
+        expect(hasMeaningfulData({ insurancePolicies: [{ id: 'i' }] })).toBe(true);
+    });
 });

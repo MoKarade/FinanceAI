@@ -26,9 +26,9 @@ export function LoginGate({ children }: LoginGateProps): React.ReactElement {
         if (!isGateEnabled()) return 'authenticated'; // gate off → app directe (dark)
         if (isGateEscaped()) return 'escaped'; // trappe anti-lockout déjà choisie
         // Déjà connecté cette session (onglet) → on rend l'app directement, SANS re-bloquer derrière
-        // l'écran de login. Cas clé : une restauration fait window.location.reload() ; le jeton Google
-        // (en mémoire) est perdu mais l'app le ré-acquiert en silencieux au boot (runBootSync). Sans
-        // ça, Marc devait se reconnecter une 2e fois après le reload (friction signalée 2026-05-29).
+        // l'écran de login. La restauration réhydrate en place (sans reload), mais en cas de refresh
+        // manuel le jeton (en mémoire) peut être perdu → l'app le ré-acquiert en silencieux au boot
+        // (runBootSync). Sans ce flag, Marc devait se reconnecter une 2e fois (friction 2026-05-29).
         if (isGateAuthedThisSession()) return 'authenticated';
         return 'checking';
     });
@@ -42,7 +42,7 @@ export function LoginGate({ children }: LoginGateProps): React.ReactElement {
         initSync(import.meta.env.VITE_GOOGLE_CLIENT_ID);
         let cancelled = false;
         void (async () => {
-            const ok = await gateSilentResume(); // un pull réussi recharge la page
+            const ok = await gateSilentResume(); // restaure en place ; ok=true si authentifié
             if (cancelled) return;
             setPhase(ok ? 'authenticated' : 'needs-login');
         })();
@@ -59,7 +59,7 @@ export function LoginGate({ children }: LoginGateProps): React.ReactElement {
         setError(null);
         setPhase('logging-in');
         try {
-            await connectAndSync(); // interactif ; un pull réussi recharge la page
+            await connectAndSync(); // interactif ; restaure en place (réhydratation, sans reload)
             if (getSyncStatus().connected) {
                 setPhase('authenticated');
             } else {

@@ -7,6 +7,7 @@ import { BudgetConfig, Asset } from '../types';
 // Phase 4 A4: bascule sur services/claude.ts (Sonnet 4.6 + Vision)
 import { analyzePayslip } from '../services/claude';
 import { calculateFiscalReport, calculateGrossFromNet } from '../services/tax';
+import { annualSalaryToMonthly } from '../utils/salary';
 
 interface TaxCenterProps {
     config: BudgetConfig;
@@ -40,8 +41,10 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
         const newConfig = { ...config };
         newConfig.users[0] = {
             ...newConfig.users[0],
-            grossSalary: Math.round(scannedPay.gross), // always stored as annual
-            netSalary: Math.round(scannedPay.net / 12) // always stored as monthly
+            // scannedPay.gross/net sont ANNUELS → on STOCKE en MENSUEL (convention canonique).
+            // Avant : le brut annuel était stocké tel quel → moteur ré-annualisait → revenu ~12× trop haut.
+            grossSalary: annualSalaryToMonthly(scannedPay.gross),
+            netSalary: annualSalaryToMonthly(scannedPay.net),
         };
         setConfig(newConfig);
         showToast("Configuration mise à jour avec succès !", "success");

@@ -85,12 +85,20 @@ export function computeActiveIncome(
         incomeMarc *= (proj.ltdIncomeReplacementPct ?? 60) / 100;
     }
 
-    // Bonus + RSU + Side income (lissés mensuellement, taxés ~45% marginal)
+    // marcEmploymentActive : Marc touche-t-il un revenu d'EMPLOI ce mois-ci ?
+    // Faux pendant chômage (AE) ou invalidité (LTD). Hissé ici car il gate à la fois
+    // le revenu variable d'emploi (bonus/RSU) ET le brut de base servant à l'espace REER.
+    const marcEmploymentActive = !(wasUnemployed || jobLossResult.triggered || wasLtd || ltdResult.duration > 0);
+
+    // Bonus + RSU + Side income (lissés mensuellement, taxés ~45% marginal).
+    // §réalisme (B-AUDIT-1) — bonus et RSU sont du revenu d'EMPLOI : ils cessent
+    // pendant un chômage/LTD (on a quitté l'employeur) → gated par marcEmploymentActive.
+    // Le side income (travail autonome) CONTINUE et reste du « revenu gagné » (espace REER).
     const u1 = users[0];
     const u2 = users[1];
-    const bonusMonthly1 = (u1?.bonusPctOfGross ? (grossMarcBaseAnnual * salaryGrowthFactor) * (u1.bonusPctOfGross / 100) / 12 : 0);
+    const bonusMonthly1 = (marcEmploymentActive && u1?.bonusPctOfGross ? (grossMarcBaseAnnual * salaryGrowthFactor) * (u1.bonusPctOfGross / 100) / 12 : 0);
     const bonusMonthly2 = (!survivorMode && u2?.bonusPctOfGross ? (grossAnnaBaseAnnual * salaryGrowthFactor) * (u2.bonusPctOfGross / 100) / 12 : 0);
-    const rsuMonthly1 = (u1?.rsuVestingPerYear && (u1.rsuYearsRemaining ?? 99) > yearsElapsed) ? u1.rsuVestingPerYear / 12 : 0;
+    const rsuMonthly1 = (marcEmploymentActive && u1?.rsuVestingPerYear && (u1.rsuYearsRemaining ?? 99) > yearsElapsed) ? u1.rsuVestingPerYear / 12 : 0;
     const rsuMonthly2 = (!survivorMode && u2?.rsuVestingPerYear && (u2.rsuYearsRemaining ?? 99) > yearsElapsed) ? u2.rsuVestingPerYear / 12 : 0;
     const sideMonthly1 = (u1?.sideIncomeAnnual || 0) / 12;
     const sideMonthly2 = survivorMode ? 0 : (u2?.sideIncomeAnnual || 0) / 12;
@@ -101,15 +109,10 @@ export function computeActiveIncome(
     const monthlyIncome = incomeMarc + incomeAnna;
 
     // Brut annualisé pour le calcul de la cotisation REER en décembre.
-    // §REER — l'assurance-emploi et l'assurance-invalidité ne sont PAS du « revenu
-    // gagné » au sens de l'art. 146(1) LIR : elles ne génèrent aucun droit de
-    // cotisation REER. Pendant un mois de chômage/LTD, le salaire d'emploi de base
-    // de Marc ne compte donc pas dans l'espace REER (newRrspRoom = 18 % du brut,
-    // taxJanuary.ts). On neutralise son brut de base aux mêmes conditions que la
-    // réduction du revenu net plus haut. Les revenus variables (bonus/RSU/side)
-    // restent inchangés ici — leur traitement fin pendant le chômage est un
-    // raffinement laissé hors périmètre (faible matérialité, cf. CHANGELOG).
-    const marcEmploymentActive = !(wasUnemployed || jobLossResult.triggered || wasLtd || ltdResult.duration > 0);
+    // §REER (art. 146(1) LIR) — l'AE et l'invalidité ne sont PAS du « revenu gagné »
+    // et ne génèrent aucun droit REER. Pendant un chômage/LTD : le salaire de base de
+    // Marc est neutralisé ci-dessous (marcEmploymentActive) et bonus/RSU le sont déjà
+    // plus haut. Seul le side income (autonome) subsiste comme revenu gagné.
     const baseGrossMarc = marcEmploymentActive ? grossMarcBaseAnnual * salaryGrowthFactor : 0;
     const baseGrossAnna = survivorMode ? 0 : (grossAnnaBaseAnnual * salaryGrowthFactor);
     const currentGrossMarcAnnual = baseGrossMarc + (bonusMonthly1 + rsuMonthly1 + sideMonthly1) * 12;

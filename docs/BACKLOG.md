@@ -69,17 +69,19 @@
 | **Global** | **~90 %** | **~72 %** |
 
 ### Bugs money (moteur) — à corriger en priorité
-- 🔧 **B-AUDIT-1 [HIGH]** `activeIncome.ts` : bonus/RSU NET de Marc non réduits pendant chômage/LTD
-  (le `*0.55` ligne 70 s'applique avant l'ajout des variables ligne 98) → cashflow fantôme. Jumeau du fix
-  REER. 🧭 décider : bonus/RSU cessent pendant le chômage (oui en réalité), side income (autonome) continue.
-- 🔧 **B-AUDIT-2 [HIGH]** `taxDecember.ts:289-311` : gains en capital + dividendes imposés au taux marginal
-  calculé sur le revenu AVANT empilement → sous-estimation d'impôt quand un gros gain franchit un palier
-  (~1-3 k$/événement). Fix : impôt incrémental `tax(revenu+gains) − tax(revenu)`.
+- ✅ **B-AUDIT-1 [HIGH] CORRIGÉ 2026-06-01** : bonus/RSU de Marc (revenu d'emploi) gated par
+  `marcEmploymentActive` pendant chômage/LTD (revenu net ET brut REER) ; side income (autonome) conservé
+  (revenu gagné). Décision Marc « sois réaliste » → bonus/RSU cessent. +7 tests.
+- 🔧 **B-AUDIT-2 [HIGH] — REPORTÉ (session dédiée)** `taxDecember.ts:289-311` : gains en capital + dividendes
+  imposés au taux marginal calculé sur le revenu AVANT empilement → sous-estimation quand un gros gain franchit
+  un palier (~1-3 k$/événement). Fix : impôt incrémental `tax(revenu+gains) − tax(revenu)`. Change un
+  comportement fondamental (linéaire→progressif) caractérisé par ~5 tests à stub plat → rework du modèle de
+  stub + revue des baselines avec gains requis. Ne pas rusher (money-engine).
 - 🔧 **B-AUDIT-3 [HIGH]** `taxDecember.ts` + `taxJanuary.ts` : crédits d'âge/pension (féd + ligne 361 QC,
   bonus PSV 75+) basés sur `ctx.age` = âge de Marc pour les DEUX conjoints → erreur 1.5-2.5 k$/an pour les
   couples à âges décalés. Fix : âge par conjoint. (Lié à A1 « impôt par conjoint », plus lourd.)
-- 🔧 **B-AUDIT-4 [MEDIUM]** `retirementIncome.ts:79-80` : ratio RRQ utilise le salaire courant NON indexé
-  vs un MGA projeté → RRQ sous-évaluée pour départs lointains. Fix : indexer `currentGrossUser`.
+- ✅ **B-AUDIT-4 [MEDIUM] CORRIGÉ 2026-06-01** : `currentGrossUser` indexé par inflation+0,5 % (même facteur
+  que la MGA projetée) → ratio earnings/MGA stable sur la carrière, RRQ plus juste pour départs lointains. +1 test.
 - 📄 **B-AUDIT-5 [LOW, faible impact]** `retirementIncome.ts:171-177` + `taxDecember.ts:29` : le SRG est
   inclus dans le revenu servant au clawback PSV. Incorrect (SRG non imposable) mais un bénéficiaire du SRG
   est sous le seuil de récupération → impact pratique ~0. À corriger pour la propreté si on y touche.

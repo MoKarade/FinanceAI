@@ -76,7 +76,12 @@ export function computeRetirementIncome(
     const rrqMpeProjected = RRQ_MPE * Math.pow(1 + (simInflation + 0.5) / 100, yearsElapsed);
 
     users.filter(u => u).forEach((u, idx) => {
-        const currentGrossUser = u.grossSalary || (baseGrossAnnual / activeUsersCount);
+        // B-AUDIT-4 — indexer le salaire courant par le MÊME facteur que la MGA projetée
+        // (rrqMpeProjected). Sinon le ratio currentGross/MGA rétrécit artificiellement avec
+        // les années → RRQ sous-évaluée pour les départs lointains. Hypothèse standard : le
+        // salaire suit la croissance de la MGA sur la carrière → ratio earnings/MGA stable.
+        const currentGrossUser = (u.grossSalary || (baseGrossAnnual / activeUsersCount))
+            * Math.pow(1 + (simInflation + 0.5) / 100, yearsElapsed);
         totalRrqMpeRatio += Math.min(1.0, currentGrossUser / rrqMpeProjected);
 
         // PSV résidence: prorata 1/40, mais 0 si < 10 ans (règle Service Canada)

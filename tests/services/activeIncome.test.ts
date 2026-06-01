@@ -201,6 +201,51 @@ describe('computeActiveIncome — espace REER pendant chômage/invalidité (reve
     });
 });
 
+describe('computeActiveIncome — bonus/RSU stoppés pendant chômage/LTD (B-AUDIT-1)', () => {
+    // Réalisme : bonus et RSU sont du revenu d'EMPLOI → cessent quand Marc quitte
+    // l'employeur (chômage/invalidité), dans le net ET le brut REER. Le side income
+    // (travail autonome) CONTINUE et reste du « revenu gagné ».
+    const bonusUser: User[] = [user({ bonusPctOfGross: 10 }), user()];
+    const rsuUser: User[] = [user({ rsuVestingPerYear: 24000, rsuYearsRemaining: 5 }), user()];
+    const sideUser: User[] = [user({ sideIncomeAnnual: 12000 }), user()];
+
+    it('chômage → bonus de Marc EXCLU du revenu net (= base × 0.55 seulement)', () => {
+        const r = computeActiveIncome(baseCtx({ unemployedMonthsRemaining: 4 }), proj(), bonusUser);
+        expect(r.incomeMarc).toBeCloseTo(5000 * 0.55, 6);
+    });
+
+    it('chômage → RSU de Marc EXCLU du revenu net', () => {
+        const r = computeActiveIncome(baseCtx({ unemployedMonthsRemaining: 4 }), proj(), rsuUser);
+        expect(r.incomeMarc).toBeCloseTo(5000 * 0.55, 6);
+    });
+
+    it('LTD → bonus de Marc EXCLU du revenu net (= base × 0.60)', () => {
+        const r = computeActiveIncome(baseCtx({ ltdMonthsRemaining: 12 }), proj(), bonusUser);
+        expect(r.incomeMarc).toBeCloseTo(5000 * 0.6, 6);
+    });
+
+    it('chômage → side income (autonome) CONSERVÉ dans le revenu net', () => {
+        const r = computeActiveIncome(baseCtx({ unemployedMonthsRemaining: 4 }), proj(), sideUser);
+        expect(r.incomeMarc).toBeCloseTo((5000 + 1000) * 0.55, 6); // base×0.55 + side(1000/mois)×0.55
+    });
+
+    it('chômage → bonus EXCLU de accGrossAdd (espace REER) → brut = Anna seule', () => {
+        const r = computeActiveIncome(baseCtx({ unemployedMonthsRemaining: 4 }), proj(), bonusUser);
+        expect(r.accGrossAdd).toBeCloseTo(80000 / 12, 6);
+    });
+
+    it('chômage → side income CONSERVÉ dans accGrossAdd (revenu gagné)', () => {
+        const r = computeActiveIncome(baseCtx({ unemployedMonthsRemaining: 4 }), proj(), sideUser);
+        expect(r.accGrossAdd).toBeCloseTo((12000 + 80000) / 12, 6); // baseMarc=0, side 12k + Anna 80k
+    });
+
+    it('employé (sans chômage) → bonus toujours pris en compte (non-régression)', () => {
+        const r = computeActiveIncome(baseCtx(), proj(), bonusUser);
+        const bonusNet = (100000 * 0.10 / 12) * 0.55;
+        expect(r.incomeMarc).toBeCloseTo(5000 + bonusNet, 6);
+    });
+});
+
 describe('computeActiveIncome — bonus / RSU / side income', () => {
     it('bonus lissé /12 et taxé ×0.55 ajouté au net de Marc', () => {
         // bonus = 10% de 100k = 10000/an → 833.33/mois brut → ×0.55 net

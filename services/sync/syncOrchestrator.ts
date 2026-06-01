@@ -28,6 +28,7 @@ import { setGateAuthedThisSession, clearGateAuthedThisSession } from './authGate
 import type { SyncEnvelope, SyncMeta } from './syncTypes';
 import { saveApiKeys } from '../secureKeyStore';
 import { useFinanceStore } from '../../store/useFinanceStore';
+import { hasMeaningfulData } from '../../utils/onboarding';
 
 type ApiKeys = { anthropic: string; finnhub: string };
 
@@ -83,34 +84,15 @@ export function stripApiKeys(snapshot: unknown): unknown {
 
 /**
  * « Vide » = état par défaut d'un appareil neuf / navigation privée (rien à sauvegarder, et surtout
- * rien qui doive écraser Drive). NON-vide dès qu'il y a une vraie donnée utilisateur : une entrée
- * dans un tableau de données, OU un profil renseigné (nom ou salaire). Le défaut frais a
- * `users:[{name:'', salaires:0}]` + tous les tableaux vides → bien classé « vide ».
- *
- * Avant, on ne comptait QUE transactions+actifs → un setup « profil + retraite » (sans transactions
- * ni placements) était vu à tort comme vide → jamais sauvegardé (bug Marc 2026-05-29).
+ * rien qui doive écraser Drive). NON-vide dès qu'il y a une vraie donnée utilisateur. La logique
+ * « a des données » est partagée avec l'onboarding via `hasMeaningfulData` (source unique : avant,
+ * deux listes divergentes faisaient afficher l'onboarding sur des données que la sync refusait
+ * d'écraser — revue archi 2026-05-29). Le défaut frais (profil vide + tableaux vides) → « vide ».
  */
 export function computeIsEmpty(snapshot: unknown): boolean {
     if (!snapshot || typeof snapshot !== 'object') return true;
-    const state = (snapshot as { state?: Record<string, unknown> }).state;
-    if (!state) return true;
-
-    // Tableaux de données utilisateur : un seul élément suffit à dire « non-vide ».
-    // (On exclut realEstateGoals/childGoals : ils contiennent 1 entrée par défaut.)
-    const DATA_ARRAYS = [
-        'transactions', 'assets', 'investmentTransactions', 'debts', 'savingsGoals',
-        'financialGoals', 'budgetItems', 'travelGoals', 'lifeEvents', 'insurancePolicies',
-        'rentalProperties', 'privateBusinesses', 'charitableGoals',
-    ];
-    const hasAnyItem = DATA_ARRAYS.some((k) => Array.isArray(state[k]) && (state[k] as unknown[]).length > 0);
-    if (hasAnyItem) return false;
-
-    // Profil renseigné : un utilisateur avec un nom OU un salaire (défaut frais = nom '' + salaires 0).
-    const config = state.config as { users?: Array<{ name?: string; netSalary?: number; grossSalary?: number }> } | undefined;
-    const hasProfile = !!config && Array.isArray(config.users) && config.users.some(
-        (u) => (u?.name?.trim()?.length ?? 0) > 0 || (u?.netSalary ?? 0) > 0 || (u?.grossSalary ?? 0) > 0,
-    );
-    return !hasProfile;
+    const state = (snapshot as { state?: unknown }).state;
+    return !hasMeaningfulData(state as Parameters<typeof hasMeaningfulData>[0]);
 }
 
 interface LocalPayload {
@@ -327,7 +309,7 @@ export function schedulePush(): void {
     }, PUSH_DEBOUNCE_MS);
 }
 
-/** Tire Drive et applique (reload). Met à jour la meta avant le reload. */
+/** Tire Drive et applique (réhydratation EN PLACE). Met à jour la meta avant d'appliquer. */
 export async function pullNow(): Promise<void> {
     if (!isGoogleAuthConfigured()) return;
     setStatus({ busy: true, error: null });
@@ -348,7 +330,7 @@ export async function pullNow(): Promise<void> {
             lastLocalHash: hashPayload(drive.payload),
         });
         setStatus({ conflict: false });
-        await applyPulledPayload(drive.payload, drive.apiKeys); // déclenche un reload
+        await applyPulledPayload(drive.payload, drive.apiKeys); // réhydrate le store EN PLACE (pas de reload)
     } catch (e) {
         handleError('pull', e);
     }
@@ -367,8 +349,8 @@ export async function connectAndSync(): Promise<void> {
         const meta = currentMeta();
         writeSyncMeta({ ...meta, connectedEmail: email });
         setStatus({ connected: true, email });
-        // Marqué AVANT runDecision : un pull déclenche un reload → au remount, le gate voit ce flag
-        // et n'affiche pas une 2e fois l'écran de login (le jeton, en mémoire, est ré-acquis au boot).
+        // La restauration réhydrate en place (pas de reload). Le flag sert de filet : si un reload
+        // survient (rehydrate en échec, ou refresh manuel), le gate ne re-bloque pas sur le login.
         setGateAuthedThisSession();
         await runDecision(token, true); // login explicite → intention de restauration
     } catch (e) {
@@ -394,7 +376,7 @@ export async function gateSilentResume(): Promise<boolean> {
         const meta = currentMeta();
         writeSyncMeta({ ...meta, connectedEmail: email });
         setStatus({ connected: true, email });
-        setGateAuthedThisSession(); // survit au reload d'une restauration → pas de 2e écran de login
+        setGateAuthedThisSession(); // filet si un reload survient → pas de 2e écran de login
         await runDecision(token, true); // reprise au gate → intention de restauration (pull si Drive a des données)
         return true;
     } catch {
@@ -421,6 +403,12 @@ export async function runBootSync(): Promise<void> {
     }
 }
 
+// Garde anti-réentrance. Au boot avec le gate actif, `gateSilentResume` ET `runBootSync` (T+2.5 s)
+// peuvent déclencher `runDecision` quasi en même temps. Sans verrou, deux décisions se chevauchent →
+// double pull/rehydrate, voire double `createSyncFile` (fichier Drive en double). On déduplique : un
+// appel concurrent réutilise la décision déjà en vol (revue archi 2026-05-29).
+let _decisionInFlight: Promise<void> | null = null;
+
 /**
  * Applique decideOnLoad puis exécute l'action résultante.
  * `restoreIntent` = login PAR LE GATE (l'utilisateur se connecte pour récupérer son compte) : sur un
@@ -428,31 +416,40 @@ export async function runBootSync(): Promise<void> {
  * Au boot normal (`false`), on garde la garde anti-perte stricte.
  */
 async function runDecision(token: string, restoreIntent = false): Promise<void> {
-    setStatus({ busy: true, error: null });
-    const drive = await readDrive(token);
-    const local = getLocalPayload();
-    const meta = currentMeta();
-    const decision = decideOnLoad({
-        drive,
-        localIsEmpty: local.isEmpty,
-        localHash: local.hash,
-        meta,
-        restoreIntent,
-    });
-    switch (decision.action) {
-        case 'pull':
-            await pullNow();
-            break;
-        case 'push':
-            await pushNow();
-            break;
-        case 'conflict':
-            setStatus({ busy: false, conflict: true });
-            break;
-        case 'noop':
-        default:
-            setStatus({ busy: false, conflict: false });
-            break;
+    if (_decisionInFlight) return _decisionInFlight; // une décision concurrente est déjà en cours
+    const run = (async () => {
+        setStatus({ busy: true, error: null });
+        const drive = await readDrive(token);
+        const local = getLocalPayload();
+        const meta = currentMeta();
+        const decision = decideOnLoad({
+            drive,
+            localIsEmpty: local.isEmpty,
+            localHash: local.hash,
+            meta,
+            restoreIntent,
+        });
+        switch (decision.action) {
+            case 'pull':
+                await pullNow();
+                break;
+            case 'push':
+                await pushNow();
+                break;
+            case 'conflict':
+                setStatus({ busy: false, conflict: true });
+                break;
+            case 'noop':
+            default:
+                setStatus({ busy: false, conflict: false });
+                break;
+        }
+    })();
+    _decisionInFlight = run;
+    try {
+        await run;
+    } finally {
+        _decisionInFlight = null;
     }
 }
 

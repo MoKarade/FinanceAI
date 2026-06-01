@@ -61,11 +61,11 @@ export function setGateEscaped(): void {
 
 /**
  * Le gate a-t-il DÉJÀ authentifié l'utilisateur dans CETTE session (onglet) ? Sert à ne PAS
- * redemander le login après un reload programmatique (ex : restauration → `window.location.reload`).
- * Le jeton Google ne survit pas au reload (en mémoire), mais l'app le ré-acquiert en silencieux au
- * boot → inutile de re-bloquer derrière l'écran de login (sinon : « je me connecte, ça recharge,
- * et ça me redemande de me connecter » — friction signalée par Marc). sessionStorage = effacé à la
- * fermeture de l'onglet → on redemande proprement au prochain démarrage.
+ * redemander le login si un reload survient (refresh manuel, ou filet si la réhydratation échoue).
+ * La restauration normale réhydrate EN PLACE (sans reload). Le jeton Google (en mémoire) ne survit
+ * pas à un reload, mais l'app le ré-acquiert en silencieux au boot → inutile de re-bloquer derrière
+ * l'écran de login (sinon : « je me connecte, ça recharge, et ça me redemande de me connecter » —
+ * friction signalée par Marc). sessionStorage = effacé à la fermeture de l'onglet.
  */
 export function isGateAuthedThisSession(): boolean {
     try {

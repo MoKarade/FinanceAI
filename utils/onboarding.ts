@@ -17,29 +17,33 @@ export function shouldShowOnboarding(onboardingDoneFlag: string | null, hasMeani
 }
 
 /** Forme minimale de l'état lue pour décider « a des données » (tolérante aux champs absents). */
-interface MeaningfulDataState {
-    transactions?: unknown[];
-    assets?: unknown[];
-    investmentTransactions?: unknown[];
-    debts?: unknown[];
-    savingsGoals?: unknown[];
-    financialGoals?: unknown[];
+type MeaningfulDataState = Partial<Record<DataArrayKey, unknown[]>> & {
     config?: { users?: Array<{ name?: string; netSalary?: number; grossSalary?: number }> };
-}
+};
+
+/**
+ * Liste CANONIQUE des tableaux de données utilisateur. Source unique partagée entre l'onboarding
+ * (`hasMeaningfulData`) et la sync (`computeIsEmpty` dans syncOrchestrator), pour éviter la
+ * divergence qui faisait afficher l'onboarding sur des données que la sync refusait d'écraser
+ * (revue archi 2026-05-29). On EXCLUT `realEstateGoals`/`childGoals` : ils contiennent 1 entrée
+ * par défaut → ne comptent pas comme « données saisies ».
+ */
+export const DATA_ARRAY_KEYS = [
+    'transactions', 'assets', 'investmentTransactions', 'debts', 'savingsGoals',
+    'financialGoals', 'budgetItems', 'travelGoals', 'lifeEvents', 'insurancePolicies',
+    'rentalProperties', 'privateBusinesses', 'charitableGoals',
+] as const;
+type DataArrayKey = (typeof DATA_ARRAY_KEYS)[number];
 
 /**
  * L'utilisateur a-t-il des données « réelles » ? Avant on ne regardait QUE transactions+actifs : une
  * restauration qui ramenait un profil/retraite sans transactions était vue « vide » → l'onboarding
  * s'affichait et, en se terminant, écrasait les profils + clés restaurés (bug Marc 2026-05-29).
- * Désormais : un tableau de données non vide OU un profil renseigné (nom ou salaire) compte.
+ * Désormais : un tableau de données non vide (liste canonique) OU un profil renseigné (nom/salaire).
  */
 export function hasMeaningfulData(state: MeaningfulDataState | null | undefined): boolean {
     if (!state) return false;
-    const arrays = [
-        state.transactions, state.assets, state.investmentTransactions,
-        state.debts, state.savingsGoals, state.financialGoals,
-    ];
-    if (arrays.some((a) => Array.isArray(a) && a.length > 0)) return true;
+    if (DATA_ARRAY_KEYS.some((k) => Array.isArray(state[k]) && (state[k] as unknown[]).length > 0)) return true;
     const users = state.config?.users;
     return (
         Array.isArray(users) &&

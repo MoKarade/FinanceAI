@@ -8,6 +8,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Feature · Sync Google Drive] — 2026-05-29
 
+### Durci — verrou anti-double-sync + unification état-vide + snapshot (2026-05-29, suite 5)
+- **Audit 4 agents** (sécurité, archi, tests, frontend) → snapshot visuel `docs/SNAPSHOT_2026-05-29.md`.
+- **Verrou anti-double-sync** (`syncOrchestrator.runDecision`) : au boot avec le gate actif,
+  `gateSilentResume` ET `runBootSync` (T+2,5 s) pouvaient lancer deux décisions concurrentes →
+  double pull/rehydrate, voire double `createSyncFile` (fichier Drive en double). `_decisionInFlight`
+  déduplique : un appel concurrent réutilise la décision en vol. +1 test (déterministe).
+- **Unification « état vide »** : `computeIsEmpty` (sync) et `hasMeaningfulData` (onboarding)
+  encodaient la même notion avec des listes divergentes (13 vs 6 tableaux) → un état avec seulement
+  budget/voyages était « non-vide » pour la sync mais « vide » pour l'onboarding. Liste CANONIQUE
+  partagée `DATA_ARRAY_KEYS` (`utils/onboarding`). +1 test.
+- **Docs** : commentaires « reload » périmés alignés sur la réhydratation en place (le module
+  anti-perte ne recharge plus la page). 1263 tests verts.
+- **Arbitrages sécu laissés à Marc** (pas corrigés aveuglément car ils dégraderaient l'UX / le
+  multi-appareils) : C1 clés API en clair dans Drive → nécessite une **passphrase** (la clé de device
+  casse le multi-appareils) ; C2 token en sessionStorage → le retirer ré-introduit la reconnexion en
+  navigation privée. Documentés dans le snapshot.
+
 ### Corrigé — l'onboarding écrasait les profils + clés restaurés (2026-05-29, suite 4)
 - **Symptôme Marc** : après restauration, l'âge de retraite et l'espérance de vie revenaient, mais
   **jamais les profils utilisateurs ni les clés API**.

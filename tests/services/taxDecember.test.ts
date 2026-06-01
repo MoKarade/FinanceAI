@@ -28,6 +28,9 @@ import {
     RAMQ_EXEMPTION_SINGLE_2026,
     FSS_THRESHOLD_ZERO,
     FSS_THRESHOLD_FLAT,
+    calculateFiscalReport,
+    getMarginalRate,
+    calculateDividendTax,
     type FiscalReport,
 } from '../../utils/tax';
 
@@ -356,28 +359,31 @@ describe('processDecemberTaxFiling — gains en capital (palier 250k)', () => {
         expect(r.newTaxCurrentYear.gains).toBe(0);
     });
 
-    it('gain positif → impôt sur gains PINNÉ = gain × 50% × taux marginal', () => {
-        // accCapitalGainsYear=100000 → taxable = 50000 ; marginal stubé 40% → 20000.
+    it('gain positif → impôt sur gains = gain × 50% × impôt incrémental (stub linéaire)', () => {
+        // accCapitalGainsYear=100000 → taxable 50000. Stub calculateFiscalReport linéaire
+        // (STUB_RATE=25%) → incrément = 50000 × 0.25 = 12500. (B-AUDIT-2 : gains désormais
+        // imposés par impôt incrémental empilé, pas par un taux marginal plat.)
         const r = processDecemberTaxFiling(
             DECEMBER,
             baseCtx({ accCapitalGainsYear: 100000, grossMarcBaseAnnual: 60000, optimizeSourceDeductions: false }),
             makeHelpers(),
             ZERO_TAX,
         );
-        expect(r.newTaxCurrentYear.gains).toBeCloseTo(100000 * CAPITAL_GAINS_INCLUSION_STANDARD * STUB_MARGINAL, 5);
+        expect(r.newTaxCurrentYear.gains).toBeCloseTo(100000 * CAPITAL_GAINS_INCLUSION_STANDARD * STUB_RATE, 5);
         expect(r.logs.some((l) => l.includes('Gains Cap'))).toBe(true);
     });
 
     it('CARACTÉRISATION : gain > 250k garde le MÊME taux d\'inclusion 50% (pas de palier supérieur)', () => {
-        // Comportement actuel : inclusion uniforme 50% (annulation du 66.67% mars 2025).
-        // 300 000 × 0.50 × 0.40 = 60 000. Si un palier 66.67% existait, ce serait plus.
+        // Inclusion uniforme 50% (annulation du 66.67% mars 2025). Stub linéaire 25% :
+        // 300 000 × 0.50 × 0.25 = 37 500. (L'empilement progressif réel est testé à part
+        // avec le vrai barème ; ici le stub est linéaire pour figer un montant exact.)
         const r = processDecemberTaxFiling(
             DECEMBER,
             baseCtx({ accCapitalGainsYear: 300000, grossMarcBaseAnnual: 60000, optimizeSourceDeductions: false }),
             makeHelpers(),
             ZERO_TAX,
         );
-        expect(r.newTaxCurrentYear.gains).toBeCloseTo(300000 * 0.50 * STUB_MARGINAL, 5);
+        expect(r.newTaxCurrentYear.gains).toBeCloseTo(300000 * 0.50 * STUB_RATE, 5);
     });
 
     it('linéaire : double le gain → double l\'impôt sur gains (inclusion plate)', () => {
@@ -394,6 +400,41 @@ describe('processDecemberTaxFiling — gains en capital (palier 250k)', () => {
             ZERO_TAX,
         ).newTaxCurrentYear.gains;
         expect(g2).toBeCloseTo(2 * g1, 5);
+    });
+});
+
+describe('processDecemberTaxFiling — gains en capital EMPILÉS sur le barème réel (B-AUDIT-2)', () => {
+    // Avec le VRAI barème progressif : un gros gain qui franchit des paliers doit être
+    // imposé PLUS que (gain imposable × taux marginal du revenu de base). L'ancien calcul
+    // (taux marginal plat sur le revenu AVANT gain) sous-estimait cet impôt.
+    const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
+
+    it('gros gain franchissant des paliers → impôt > gain × taux marginal de base (empilement)', () => {
+        const baseIncome = 50000;   // revenu modeste
+        const accGains = 400000;    // taxable 200k empilé sur 50k → franchit plusieurs paliers
+        const r = processDecemberTaxFiling(
+            DECEMBER,
+            baseCtx({ accCapitalGainsYear: accGains, grossMarcBaseAnnual: baseIncome, optimizeSourceDeductions: false }),
+            realHelpers,
+            ZERO_TAX,
+        );
+        const taxableGains = accGains * CAPITAL_GAINS_INCLUSION_STANDARD;
+        const flatNaive = taxableGains * getMarginalRate(baseIncome, 2026); // ancien calcul plat
+        expect(r.newTaxCurrentYear.gains).toBeGreaterThan(flatNaive);
+    });
+
+    it('cohérence : petit gain dans le même palier → ≈ gain × taux marginal (pas de sur-imposition)', () => {
+        const baseIncome = 60000;
+        const accGains = 4000; // taxable 2000, reste dans le même palier
+        const r = processDecemberTaxFiling(
+            DECEMBER,
+            baseCtx({ accCapitalGainsYear: accGains, grossMarcBaseAnnual: baseIncome, optimizeSourceDeductions: false }),
+            realHelpers,
+            ZERO_TAX,
+        );
+        const taxableGains = accGains * CAPITAL_GAINS_INCLUSION_STANDARD;
+        const flat = taxableGains * getMarginalRate(baseIncome, 2026);
+        expect(r.newTaxCurrentYear.gains).toBeCloseTo(flat, 0); // même palier → empilé ≈ plat
     });
 });
 
@@ -420,7 +461,8 @@ describe('processDecemberTaxFiling — dividendes Non-Reg', () => {
     });
 
     it('gains capitaux ET dividendes s\'additionnent dans le bucket gains', () => {
-        // gains cap : 100000×0.5×0.4 = 20000 ; dividendes : 1200 → total 21200.
+        // gains cap : 100000×0.5×0.25 = 12500 (incrémental, stub linéaire) ;
+        // dividendes : 3000 × marginal 0.40 = 1200 → total 13700.
         const r = processDecemberTaxFiling(
             DECEMBER,
             baseCtx({
@@ -433,7 +475,7 @@ describe('processDecemberTaxFiling — dividendes Non-Reg', () => {
             makeHelpers(),
             ZERO_TAX,
         );
-        expect(r.newTaxCurrentYear.gains).toBeCloseTo(20000 + 1200, 5);
+        expect(r.newTaxCurrentYear.gains).toBeCloseTo(100000 * CAPITAL_GAINS_INCLUSION_STANDARD * STUB_RATE + 1200, 5);
     });
 });
 

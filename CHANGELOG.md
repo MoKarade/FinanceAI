@@ -8,6 +8,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Feature · Sync Google Drive] — 2026-05-29
 
+### Correctif money — B-AUDIT-2 : gains en capital imposés en progressif (empilés) (2026-06-01)
+- **Bug** : `taxDecember.ts` imposait les gains en capital à un **taux marginal plat** calculé sur le revenu
+  AVANT le gain (`taxableGains × getMarginalRate(revenu)`). Un gros gain qui franchit un palier était donc
+  sous-imposé (tout le gain au taux d'entrée au lieu du barème progressif sur la bande).
+- **Fix** : impôt **incrémental empilé** = `impôt(revenu + gains) − impôt(revenu)` via `calculateFiscalReport`
+  (champ `totalTax` = fédéral abattu + provincial), par adulte puis ×N. Le BPA s'annule dans la soustraction.
+  **Propriété de cohérence** : un gain qui reste dans le même palier donne un incrément ≈ `gain × taux marginal`
+  (identique à l'ancien) → **aucune baseline d'intégration décalée**. Seuls les gains franchissant un palier
+  changent (correctement, à la hausse).
+- **TDD** : nouveau test à **barème réel** prouvant l'empilement (gros gain → impôt > flat) + test de cohérence
+  (petit gain ≈ flat). Les ~5 tests à stub plat existants reworkés sur le nouveau mécanisme (`STUB_RATE` au lieu
+  de `STUB_MARGINAL`, le stub `calculateFiscalReport` étant linéaire → reproduit le résultat linéaire).
+- **Hors périmètre** : les **dividendes** Non-Reg utilisent encore `calculateDividendTax(div, tauxMarginal)`
+  (mécanisme de crédit d'impôt sur dividendes distinct) — leur empilement est un raffinement séparé, plus petit.
+- Suite **1438 verts**, tsc + eslint propres, zéro régression.
+
 ### Échecs silencieux — SF-2 market data (lot SF complet) (2026-06-01)
 - **SF-2** : les providers de cours (`finnhub.ts`, `coingecko.ts`) attrapaient TOUTES les erreurs en
   `console.warn` + retour `null`/`[]` → une erreur réseau ou une **clé invalide** produisait le même signal

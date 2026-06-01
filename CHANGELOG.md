@@ -8,6 +8,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Feature · Sync Google Drive] — 2026-05-29
 
+### Correctif — sur-cotisation REER pendant chômage/invalidité (money) (2026-06-01)
+- **Symptôme** : pendant un mois de chômage (AE 55 %) ou d'invalidité (LTD 60 %), le moteur réduisait
+  bien le revenu NET de Marc, mais le BRUT servant à l'espace REER (`accGrossAdd` → `accGrossIncomeYear`
+  → `newRrspRoom = 18 %` en janvier, `taxJanuary.ts:151`) restait PLEIN.
+- **Cause racine** : `activeIncome.ts` appliquait les réductions 0.55/0.60 au seul revenu net, jamais au
+  brut REER. Or l'assurance-emploi et l'assurance-invalidité ne sont PAS du « revenu gagné » (art. 146(1)
+  LIR) → elles ne génèrent aucun droit de cotisation REER. Conséquence : espace REER surévalué →
+  sur-investissement REER possible les années suivantes (`cashflowAllocation` remplit jusqu'à `rrspRoom`).
+  Ex. 100k$, 6 mois de chômage : ~18k$ d'espace généré au lieu de ~9k$ réels.
+- **Fix (minimal)** : le brut d'emploi de BASE de Marc est neutralisé pendant les mois de chômage/LTD
+  (mêmes gates que la réduction du net). Seul Marc est concerné (Anna inchangée). +4 tests RED→GREEN,
+  suite complète **1413 verts**, zéro régression.
+- **Hors périmètre** (faible matérialité, à trancher) : pendant le chômage, le bonus/RSU de Marc
+  continuent d'alimenter le brut REER alors qu'en réalité ils cesseraient ; le side income (travail
+  autonome) est lui correctement conservé (c'est du revenu gagné).
+
 ### Tests — +135 tests sur les zones à risque (moteur argent + sync) (2026-05-29)
 - Demande Marc : « beaucoup de tests pour que tout marche 100 % sans bugs » + checklist manuelle vivante.
 - **Checklist manuelle** : nouvelle section `✅ TESTS MANUELS À FAIRE (Marc)` en tête de `BACKLOG.md`
@@ -24,8 +40,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   (non corrigés) consignés ci-dessous pour arbitrage.
 
 #### À trancher (comportements relevés en testant — pas des bugs confirmés)
-- **[money] `activeIncome` `accGrossAdd`** : la cotisation REER de décembre semble calculée sur le brut
-  PLEIN pendant chômage/invalidité (ignore les réductions 0.55/0.60) → possible sur-cotisation. À vérifier.
+- ~~**[money] `activeIncome` `accGrossAdd`** : cotisation REER calculée sur le brut PLEIN pendant
+  chômage/invalidité~~ → **CONFIRMÉ et CORRIGÉ le 2026-06-01** (voir Correctif en tête de section).
 - **[modélisation, doc OK]** gains >250k : inclusion 50 % uniforme (palier 66.67 % retiré mars 2025) ·
   crédit 65+ couple basé sur Marc · FSS exclut les travailleurs autonomes · OAS clawback : 2 indexations.
 - **[cashflow]** seuil critique de liquidités = contrainte sur la 1re ponction seulement (le net retiré

@@ -169,6 +169,38 @@ describe('computeActiveIncome — invalidité longue durée (LTD)', () => {
     });
 });
 
+describe('computeActiveIncome — espace REER pendant chômage/invalidité (revenu non gagné)', () => {
+    // Au Québec/Canada, les prestations d'assurance-emploi (AE) et d'assurance-
+    // invalidité ne sont PAS du « revenu gagné » au sens de l'art. 146(1) LIR :
+    // elles ne génèrent aucun droit de cotisation REER. accGrossAdd alimente
+    // accGrossIncomeYear → newRrspRoom = 18 % (taxJanuary.ts). Le salaire d'emploi
+    // de base de Marc doit donc être EXCLU de accGrossAdd pendant ces mois.
+    it('chômage en cours → brut de base de Marc exclu de accGrossAdd (= brutAnna / 12)', () => {
+        const r = computeActiveIncome(baseCtx({ unemployedMonthsRemaining: 4 }), proj(), plainUsers);
+        expect(r.accGrossAdd).toBeCloseTo(80000 / 12, 6);
+    });
+
+    it('invalidité LTD en cours → brut de base de Marc exclu de accGrossAdd (= brutAnna / 12)', () => {
+        const r = computeActiveIncome(baseCtx({ ltdMonthsRemaining: 12 }), proj(), plainUsers);
+        expect(r.accGrossAdd).toBeCloseTo(80000 / 12, 6);
+    });
+
+    it('chômage + survivorMode (Anna décédée) → aucun brut gagné → accGrossAdd = 0', () => {
+        const r = computeActiveIncome(
+            baseCtx({ unemployedMonthsRemaining: 4, survivorMode: true }),
+            proj(),
+            plainUsers,
+        );
+        expect(r.accGrossAdd).toBeCloseTo(0, 6);
+    });
+
+    it('contre-épreuve : seul le brut de Marc disparaît, celui d\'Anna reste plein', () => {
+        const normal = computeActiveIncome(baseCtx(), proj(), plainUsers);
+        const marcUnemployed = computeActiveIncome(baseCtx({ unemployedMonthsRemaining: 4 }), proj(), plainUsers);
+        expect(normal.accGrossAdd - marcUnemployed.accGrossAdd).toBeCloseTo(100000 / 12, 6);
+    });
+});
+
 describe('computeActiveIncome — bonus / RSU / side income', () => {
     it('bonus lissé /12 et taxé ×0.55 ajouté au net de Marc', () => {
         // bonus = 10% de 100k = 10000/an → 833.33/mois brut → ×0.55 net

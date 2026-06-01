@@ -12,6 +12,7 @@ import type { SyncMeta } from '../../services/sync/syncTypes';
 
 const sample = (): SyncMeta => ({
     connectedEmail: 'a@b.com',
+    connectedSub: 'sub-x',
     lastSyncedAt: 123,
     lastPulledUpdatedAt: 456,
     lastLocalHash: 'deadbeef',

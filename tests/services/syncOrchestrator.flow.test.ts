@@ -51,13 +51,20 @@ vi.mock('../../services/googleDrive/driveAppData', () => {
         updateSyncFile: vi.fn(async () => undefined),
         deleteSyncFile: vi.fn(async () => undefined),
         fetchUserEmail: vi.fn(async () => 'marc@example.com'),
+        fetchUserIdentity: vi.fn(async () => ({ email: 'marc@example.com', sub: 'sub-123' })),
     };
 });
 
-vi.mock('../../services/secureKeyStore', () => ({
-    saveApiKeys: (...args: unknown[]) => saveApiKeysMock(...args),
-    loadApiKeysDetailed: vi.fn(async () => ({ status: 'ok', keys: { anthropic: '', finnhub: '' } })),
-}));
+// On garde le VRAI crypto (encryptJson/decryptJson, utilisés par keyCipher pour le round-trip de
+// chiffrement) et on ne mocke QUE les fonctions qui touchent IndexedDB (saveApiKeys/load).
+vi.mock('../../services/secureKeyStore', async (orig) => {
+    const actual = (await orig()) as typeof import('../../services/secureKeyStore');
+    return {
+        ...actual,
+        saveApiKeys: (...args: unknown[]) => saveApiKeysMock(...args),
+        loadApiKeysDetailed: vi.fn(async () => ({ status: 'ok', keys: { anthropic: '', finnhub: '' } })),
+    };
+});
 
 vi.mock('../../services/backupAuto', () => ({
     createBackupNow: (...args: unknown[]) => createBackupMock(...args),
@@ -69,6 +76,7 @@ import {
     gateSilentResume,
     connectAndSync,
     pushNow,
+    pullNow,
     getSyncStatus,
 } from '../../services/sync/syncOrchestrator';
 import { buildEnvelope } from '../../services/sync/syncEngine';
@@ -186,10 +194,36 @@ describe('Verrou anti-double-sync (boot : gate + runBootSync)', () => {
 
 // Garde-fou : l'enveloppe construite n'oublie aucun champ du payload (sérialisation fidèle).
 describe('buildEnvelope — fidélité du payload', () => {
-    it('préserve le payload tel quel + clés si fournies', () => {
+    it('préserve le payload tel quel + le blob de clés CHIFFRÉ (jamais en clair)', () => {
         const payload = { state: { transactions: [{ id: 'z' }], documents: [{ id: 'p' }] }, version: 7 };
-        const env = buildEnvelope(payload, 'dev', '1.0', 123, { anthropic: 'a', finnhub: 'f' });
+        const env = buildEnvelope(payload, 'dev', '1.0', 123, 'ENC_BLOB');
         expect(env.payload).toEqual(payload);
-        expect(env.apiKeys).toEqual({ anthropic: 'a', finnhub: 'f' });
+        expect(env.apiKeysEnc).toBe('ENC_BLOB');
+        expect(env.apiKeys).toBeUndefined();
+    });
+});
+
+describe('Chiffrement des clés API (C1) — round-trip push→pull', () => {
+    it('push CHIFFRE les clés (apiKeysEnc, pas de clair) et pull les RESTAURE via le sub', async () => {
+        const driveApi = await import('../../services/googleDrive/driveAppData');
+        // 1) Local avec des clés + des données → push.
+        useFinanceStore.getState().updateApiKeys({ anthropic: 'sk-secret-xyz', finnhub: 'fh-secret' });
+        localStorage.setItem(STORE_KEY, JSON.stringify({ state: { transactions: [{ id: 't' }] }, version: 7 }));
+        (driveApi.findSyncFile as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null); // pas encore de fichier
+        const result = await pushNow();
+        expect(result).toBe('pushed');
+
+        // L'enveloppe créée contient un blob CHIFFRÉ, jamais les clés en clair.
+        const created = (driveApi.createSyncFile as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[1];
+        expect(created.apiKeysEnc).toBeTypeOf('string');
+        expect(created.apiKeys).toBeUndefined();
+        expect(JSON.stringify(created)).not.toContain('sk-secret-xyz');
+
+        // 2) On vide les clés locales, puis on tire CETTE enveloppe → les clés doivent revenir déchiffrées.
+        useFinanceStore.getState().updateApiKeys({ anthropic: '', finnhub: '' });
+        (driveApi.readSyncFile as ReturnType<typeof vi.fn>).mockResolvedValueOnce(created);
+        await pullNow();
+        expect(useFinanceStore.getState().apiKeys.anthropic).toBe('sk-secret-xyz');
+        expect(useFinanceStore.getState().apiKeys.finnhub).toBe('fh-secret');
     });
 });

@@ -27,16 +27,23 @@ export interface SyncEnvelope {
     /** Snapshot d'état applicatif (financeai-storage, sans les clés API). */
     payload: unknown;
     /**
-     * Sync v2 (décision Marc 2026-05-29) : clés API incluses pour tout retrouver sur un autre
-     * appareil. En clair (cohérent avec « pas de chiffrement »). Absent = ancien blob v1.
+     * LEGACY (anciens blobs) : clés API EN CLAIR. Plus jamais écrit depuis 2026-05-29 (remplacé par
+     * `apiKeysEnc`). Encore LU en rétro-compat — un ancien blob sera ré-écrit chiffré au prochain push.
      */
     apiKeys?: { anthropic: string; finnhub: string };
+    /**
+     * Clés API CHIFFRÉES (AES-GCM, clé dérivée du `sub` Google — cf keyCipher). Format actuel.
+     * Sort les clés du clair dans Drive (C1, 2026-05-29). Absent si aucune clé / crypto indispo.
+     */
+    apiKeysEnc?: string;
 }
 
 /** Métadonnées locales de sync, persistées hors du store applicatif. */
 export interface SyncMeta {
     /** Email du compte Google connecté pour Drive (affichage + invalidation si changement). */
     connectedEmail: string | null;
+    /** Identifiant Google STABLE (`sub`) — sert à dériver la clé de chiffrement des clés API (keyCipher). */
+    connectedSub?: string | null;
     /** Epoch ms de la dernière sync réussie (pull ou push). */
     lastSyncedAt: number;
     /** `updatedAt` du dernier blob Drive vu (pull ou push) — base de comparaison « Drive a avancé ». */

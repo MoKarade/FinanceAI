@@ -69,6 +69,7 @@ export function readSyncMeta(): SyncMeta | null {
         }
         return {
             connectedEmail: typeof parsed.connectedEmail === 'string' ? parsed.connectedEmail : null,
+            connectedSub: typeof parsed.connectedSub === 'string' ? parsed.connectedSub : null,
             lastSyncedAt: typeof parsed.lastSyncedAt === 'number' ? parsed.lastSyncedAt : 0,
             lastPulledUpdatedAt: parsed.lastPulledUpdatedAt,
             lastLocalHash: parsed.lastLocalHash,

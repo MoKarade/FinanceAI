@@ -8,6 +8,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Feature · Sync Google Drive] — 2026-05-29
 
+### Sécurité — clés API CHIFFRÉES dans Drive (C1, sans passphrase) (2026-05-29)
+- **Avant** : les clés API (Anthropic, Finnhub) partaient EN CLAIR dans le fichier Drive (`apiKeys`,
+  `enc:false`). **Décision Marc** : « crypte mais pas de passphrase ».
+- **Fix** : nouveau `services/sync/keyCipher.ts` — la clé de chiffrement (AES-GCM 256) est DÉRIVÉE du
+  `sub` Google (PBKDF2), donc déterministe → **cross-appareils sans passphrase**. L'enveloppe stocke
+  désormais `apiKeysEnc` (blob chiffré) au lieu de `apiKeys`. Push chiffre, pull déchiffre via le `sub`.
+  **Rétro-compat** : un ancien blob en clair (`apiKeys`) est encore lu, puis ré-écrit chiffré au push
+  suivant. `sub` récupéré via `fetchUserIdentity` + persisté dans la meta (`connectedSub`). Best-effort :
+  si crypto/`sub` indispo, on pousse SANS les clés (jamais en clair).
+- **Honnêteté** : `sub` n'est pas secret (il est dans le jeton) → ça sort les clés du clair mais ne
+  protège PAS contre un vol du compte Google (zéro-connaissance = passphrase, déclinée). Documenté.
+- Tests : `keyCipher` (round-trip, mauvais sub, altération — 5) + round-trip push→pull dans le flow
+  test (le blob ne contient jamais la clé en clair). 1274 tests verts.
+
 ### UX — écran de chargement pendant le calcul de la courbe Futur (2026-05-29)
 - **Demande Marc** : « quand ça calcule la courbe, je veux pas voir la (vieille) courbe mais un petit
   écran de chargement ». Avant : le `ComposedChart` restait rendu pendant le recalcul (Monte Carlo en

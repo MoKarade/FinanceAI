@@ -8,6 +8,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Feature · Sync Google Drive] — 2026-05-29
 
+### Échecs silencieux — SF-2 market data (lot SF complet) (2026-06-01)
+- **SF-2** : les providers de cours (`finnhub.ts`, `coingecko.ts`) attrapaient TOUTES les erreurs en
+  `console.warn` + retour `null`/`[]` → une erreur réseau ou une **clé invalide** produisait le même signal
+  qu'un symbole inconnu → cours périmé/absent SILENCIEUX. Nouveau helper partagé `providerError.ts`
+  (`logProviderError`) qui **distingue** : `NOT_FOUND` (symbole/crypto inconnu = légitime → pas de log) ·
+  `AUTH` (clé invalide = action requise → severity `error`) · réseau/rate-limit/inconnu → `warning`. Le
+  contrat de retour (null/[]) des méthodes reste inchangé (dégradation propre, portefeuille toujours affiché).
+  +2 tests (erreur 500 → `logError` ; 404 NOT_FOUND → PAS de `logError`).
+- **Le lot « échecs silencieux » est COMPLET** : SF-1 (backupAuto), SF-3 (sync/IA), SF-2 (market data).
+  Suite **1436 verts**, tsc + eslint propres, zéro régression.
+
 ### Échecs silencieux — lot SF-1 + SF-3 (« ne jamais avaler les erreurs ») (2026-06-01)
 - **SF-1 `backupAuto.ts`** : les 6 catches (createBackupNow / restoreBackup / listBackups / deleteBackup /
   clearAllBackups / initAutoBackup) utilisaient `console.warn` → invisible en prod (aucune console ouverte,

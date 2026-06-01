@@ -98,8 +98,9 @@
 ### Échecs silencieux (règle Marc « ne jamais avaler les erreurs »)
 - ✅ **SF-1 [CRITICAL] CORRIGÉ 2026-06-01** `backupAuto.ts` : les 6 catches `console.warn` → `logError`
   (logger borné, visible diagnostics/UI), contrat de retour gardé. +1 test (échec IndexedDB → logError).
-- 🔧 **SF-2 [HIGH] — à faire** `marketData/providers/*` : erreurs réseau/AUTH retournent `null`/`[]` comme un
-  symbole inconnu → cours périmés silencieux. Distinguer NOT_FOUND (ok) de NETWORK/AUTH (à remonter). Batch séparé.
+- ✅ **SF-2 [HIGH] CORRIGÉ 2026-06-01** `marketData/providers/*` : helper partagé `providerError.ts` qui
+  distingue NOT_FOUND (légitime, pas de log) / AUTH (error) / réseau-rate-limit (warning). 6 catches convertis
+  (finnhub ×4, coingecko ×2), contrat de retour gardé. +2 tests. **Lot échecs silencieux COMPLET (SF-1/2/3).**
 - ✅ **SF-3 [MEDIUM] CORRIGÉ 2026-06-01** `syncOrchestrator.ts` (déchiffrement clés au pull) + `claude.ts`
   (categorizeBatch/detectSubscriptionsAI) : `console.error`/`catch {}` muet → `logError`. Flag UI = futur.
 

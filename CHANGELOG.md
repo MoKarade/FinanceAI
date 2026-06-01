@@ -8,6 +8,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Feature · Sync Google Drive] — 2026-05-29
 
+### UX — écran de chargement pendant le calcul de la courbe Futur (2026-05-29)
+- **Demande Marc** : « quand ça calcule la courbe, je veux pas voir la (vieille) courbe mais un petit
+  écran de chargement ». Avant : le `ComposedChart` restait rendu pendant le recalcul (Monte Carlo en
+  worker, 1,5-3 s) → ancienne courbe visible / clignotement.
+- **Fix** : pendant `isComputing`, le conteneur du graphe affiche un état de chargement (spinner +
+  « Calcul de ta projection… ») **à la place** de la courbe, de la MÊME hauteur (`h-[380px]/500/650`)
+  → zéro décalage de mise en page, jamais de courbe partielle/périmée. `components/FutureProjection.tsx`.
+
 ### Perf — zoom 100 % fluide sur TOUS les graphes (coalescence rAF) (2026-05-29)
 - **Problème** : molette/pan émettent 60-120 events/s ; chaque event faisait un `setRange` synchrone
   → re-render complet du graphe (8 aires + barres + ~64 ReferenceDot) à chaque event → thread saturé

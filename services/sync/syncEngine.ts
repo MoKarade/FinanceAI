@@ -112,13 +112,18 @@ export function hashPayload(payload: unknown): string {
     return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
-/** Construit l'enveloppe à écrire dans Drive. `now`/`appVersion` injectés pour testabilité. */
+/**
+ * Construit l'enveloppe à écrire dans Drive. `now`/`appVersion` injectés pour testabilité.
+ * `apiKeysEnc` = blob de clés API DÉJÀ CHIFFRÉ (cf keyCipher) — buildEnvelope reste pur (le
+ * chiffrement, asynchrone, est fait par l'orchestrateur avant l'appel). On n'écrit plus jamais de
+ * clés en clair (le champ legacy `apiKeys` n'est plus produit, seulement lu en rétro-compat).
+ */
 export function buildEnvelope(
     payload: unknown,
     deviceId: string,
     appVersion: string,
     now: number,
-    apiKeys?: { anthropic: string; finnhub: string },
+    apiKeysEnc?: string,
 ): SyncEnvelope {
     const envelope: SyncEnvelope = {
         schemaVersion: SYNC_SCHEMA_VERSION,
@@ -128,7 +133,7 @@ export function buildEnvelope(
         enc: false,
         payload,
     };
-    // Sync v2 : on n'inclut le champ que s'il y a des clés (enveloppe propre + rétro-compat v1).
-    if (apiKeys) envelope.apiKeys = apiKeys;
+    // On n'inclut le champ chiffré que s'il y a des clés (enveloppe propre + rétro-compat).
+    if (apiKeysEnc) envelope.apiKeysEnc = apiKeysEnc;
     return envelope;
 }

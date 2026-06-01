@@ -157,15 +157,27 @@ export async function deleteSyncFile(token: string, fileId: string, fetchFn?: Fe
     if (!res.ok && res.status !== 404) await failFromResponse(res);
 }
 
-/** Récupère l'email du compte Google connecté (nécessite le scope email). null si indispo. */
-export async function fetchUserEmail(token: string, fetchFn?: FetchLike): Promise<string | null> {
+/**
+ * Récupère l'identité Google : `email` (affichage) + `sub` (identifiant STABLE, sert à dériver la
+ * clé de chiffrement des clés API — cf keyCipher). `{ null, null }` si indispo. Le scope
+ * `userinfo.email` suffit : l'endpoint v3 renvoie `sub` et `email`.
+ */
+export async function fetchUserIdentity(
+    token: string,
+    fetchFn?: FetchLike,
+): Promise<{ email: string | null; sub: string | null }> {
     const f = resolveFetch(fetchFn);
     try {
         const res = await f(USERINFO, { headers: authHeader(token) });
-        if (!res.ok) return null;
-        const data = (await res.json()) as { email?: string };
-        return data.email ?? null;
+        if (!res.ok) return { email: null, sub: null };
+        const data = (await res.json()) as { email?: string; sub?: string };
+        return { email: data.email ?? null, sub: data.sub ?? null };
     } catch {
-        return null;
+        return { email: null, sub: null };
     }
+}
+
+/** Récupère l'email du compte Google connecté (nécessite le scope email). null si indispo. */
+export async function fetchUserEmail(token: string, fetchFn?: FetchLike): Promise<string | null> {
+    return (await fetchUserIdentity(token, fetchFn)).email;
 }

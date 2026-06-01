@@ -19,9 +19,10 @@ import {
     readSyncFile,
     updateSyncFile,
     deleteSyncFile,
-    fetchUserEmail,
+    fetchUserIdentity,
     DriveAuthError,
 } from '../googleDrive/driveAppData';
+import { encryptApiKeys, decryptApiKeys } from './keyCipher';
 import { decideOnLoad, shouldPush, hashPayload, buildEnvelope } from './syncEngine';
 import { getOrCreateDeviceId, readSyncMeta, writeSyncMeta, clearSyncMeta } from './syncState';
 import { setGateAuthedThisSession, clearGateAuthedThisSession } from './authGate';
@@ -253,6 +254,23 @@ async function readDrive(token: string): Promise<SyncEnvelope | null> {
     return readSyncFile(token, ref.id);
 }
 
+/**
+ * Récupère le `sub` Google (id stable) qui sert à chiffrer/déchiffrer les clés API (keyCipher).
+ * Depuis la meta si déjà connu (cas normal : écrit au login) ; sinon fetch via le token et persiste.
+ * `null` si indispo (userinfo HS) → l'appelant ne chiffrera pas (clés non synchronisées plutôt qu'en clair).
+ */
+async function resolveSub(token: string): Promise<string | null> {
+    const existing = currentMeta().connectedSub;
+    if (existing) return existing;
+    try {
+        const { sub } = await fetchUserIdentity(token);
+        if (sub) writeSyncMeta({ ...currentMeta(), connectedSub: sub });
+        return sub;
+    } catch {
+        return null;
+    }
+}
+
 /** Pousse le payload local vers Drive (create ou update) et met à jour la meta. */
 export async function pushNow(): Promise<PushResult> {
     if (!isGoogleAuthConfigured()) return 'not-configured';
@@ -267,13 +285,21 @@ export async function pushNow(): Promise<PushResult> {
     try {
         const token = await getValidAccessToken();
         const now = Date.now();
-        const envelope = buildEnvelope(
-            local.payload,
-            getOrCreateDeviceId(),
-            APP_VERSION,
-            now,
-            hasAnyKey(local.apiKeys) ? local.apiKeys : undefined,
-        );
+        // Clés API : CHIFFRÉES avant d'entrer dans l'enveloppe (C1). Dérivé du sub Google → déchiffrable
+        // sur tous les appareils du compte. Best-effort : si pas de sub / crypto indispo, on pousse SANS
+        // les clés (jamais en clair) — l'utilisateur les ressaisira sur l'autre appareil.
+        let apiKeysEnc: string | undefined;
+        if (hasAnyKey(local.apiKeys)) {
+            const sub = await resolveSub(token);
+            if (sub) {
+                try {
+                    apiKeysEnc = await encryptApiKeys(local.apiKeys, sub);
+                } catch {
+                    /* crypto indispo → push sans clés (jamais de clés en clair dans Drive) */
+                }
+            }
+        }
+        const envelope = buildEnvelope(local.payload, getOrCreateDeviceId(), APP_VERSION, now, apiKeysEnc);
         const ref = await findSyncFile(token);
         if (ref) await updateSyncFile(token, ref.id, envelope);
         else await createSyncFile(token, envelope);
@@ -320,6 +346,22 @@ export async function pullNow(): Promise<void> {
             setStatus({ busy: false });
             return;
         }
+        // Clés API : nouveau format CHIFFRÉ (apiKeysEnc) → déchiffré via le sub ; sinon ancien blob
+        // EN CLAIR (rétro-compat — sera ré-écrit chiffré au prochain push). Échec de déchiffrement
+        // (mauvais sub / blob altéré) → clés non restaurées, mais les DONNÉES le sont quand même.
+        let restoredKeys: ApiKeys = { anthropic: '', finnhub: '' };
+        if (drive.apiKeysEnc) {
+            const sub = await resolveSub(token);
+            if (sub) {
+                try {
+                    restoredKeys = await decryptApiKeys(drive.apiKeysEnc, sub);
+                } catch {
+                    /* mauvais sub / blob altéré → clés non restaurées (données OK) */
+                }
+            }
+        } else if (drive.apiKeys) {
+            restoredKeys = drive.apiKeys;
+        }
         const meta = currentMeta();
         writeSyncMeta({
             ...meta,
@@ -330,7 +372,7 @@ export async function pullNow(): Promise<void> {
             lastLocalHash: hashPayload(drive.payload),
         });
         setStatus({ conflict: false });
-        await applyPulledPayload(drive.payload, drive.apiKeys); // réhydrate le store EN PLACE (pas de reload)
+        await applyPulledPayload(drive.payload, restoredKeys); // réhydrate le store EN PLACE (pas de reload)
     } catch (e) {
         handleError('pull', e);
     }
@@ -345,9 +387,9 @@ export async function connectAndSync(): Promise<void> {
     setStatus({ busy: true, error: null });
     try {
         const token = await requestAccessToken(true);
-        const email = await fetchUserEmail(token);
+        const { email, sub } = await fetchUserIdentity(token); // sub → clé de chiffrement des clés API
         const meta = currentMeta();
-        writeSyncMeta({ ...meta, connectedEmail: email });
+        writeSyncMeta({ ...meta, connectedEmail: email, connectedSub: sub ?? meta.connectedSub ?? null });
         setStatus({ connected: true, email });
         // La restauration réhydrate en place (pas de reload). Le flag sert de filet : si un reload
         // survient (rehydrate en échec, ou refresh manuel), le gate ne re-bloque pas sur le login.
@@ -372,9 +414,9 @@ export async function gateSilentResume(): Promise<boolean> {
     setStatus({ busy: true, error: null });
     try {
         const token = await getValidAccessToken(); // silencieux (cache ou refresh sans prompt)
-        const email = await fetchUserEmail(token);
+        const { email, sub } = await fetchUserIdentity(token); // sub → clé de chiffrement des clés API
         const meta = currentMeta();
-        writeSyncMeta({ ...meta, connectedEmail: email });
+        writeSyncMeta({ ...meta, connectedEmail: email, connectedSub: sub ?? meta.connectedSub ?? null });
         setStatus({ connected: true, email });
         setGateAuthedThisSession(); // filet si un reload survient → pas de 2e écran de login
         await runDecision(token, true); // reprise au gate → intention de restauration (pull si Drive a des données)

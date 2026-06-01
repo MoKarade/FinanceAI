@@ -87,7 +87,8 @@ comme filet si un reload survenait par ailleurs. → **une seule connexion**.
 
 **Hash de détection-de-changement = payload SEUL** (pas les clés API) : au gate les clés ne sont pas
 encore hydratées, un hash incluant les clés serait instable selon le moment → `push` parasite effaçant
-les clés dans Drive après un pull. Les clés restent incluses dans l'**enveloppe** poussée.
+les clés dans Drive après un pull. Les clés sont incluses dans l'**enveloppe** poussée, **chiffrées**
+(`apiKeysEnc`, clé dérivée du `sub` Google — cf §5 et `keyCipher`).
 
 **Au changement (push) :** debounce ; **ne jamais pousser un payload vide** par-dessus un Drive
 non-vide. Comme le login fait `PULL` d'abord, le cas « incognito vide → efface Drive » est
@@ -98,10 +99,14 @@ ancienne, soit (b) choix explicite de l'utilisateur.
 
 ## 5. Ce qui est synchronisé
 
-- Snapshot `financeai-storage` (même source que `backupAuto`) **moins `apiKeys`**.
-- **Exclusion des clés API** (sécurité) : une clé Anthropic/Finnhub est un *credential actif*
-  (risque de facture/abus). En clair dans Drive = pire que les données. Restent par-appareil
-  (comportement actuel). L'utilisateur ré-entre ses clés sur chaque appareil.
+- Snapshot `financeai-storage` (même source que `backupAuto`) — le payload est en clair (D3), les
+  `apiKeys` en sont retirées (`partialize`) et voyagent dans un champ séparé **chiffré**.
+- **Clés API : CHIFFRÉES** (`apiKeysEnc`, sync v2 + C1 2026-05-29). Une clé Anthropic/Finnhub est un
+  *credential actif* → jamais en clair dans Drive. Chiffrement AES-GCM, clé **dérivée du `sub` Google**
+  (PBKDF2, `services/sync/keyCipher.ts`) → déterministe donc déchiffrable sur tous les appareils du
+  compte, sans passphrase. Rétro-compat : un ancien blob `apiKeys` en clair est lu puis ré-écrit chiffré.
+  Limite honnête : `sub` n'est pas secret → protège du clair/fuite, pas d'un vol du compte Google
+  (zéro-connaissance = passphrase, écartée par Marc). Si crypto/`sub` indispo → push SANS les clés.
 
 ## 6. Modules (fichiers petits, isolés, testables)
 

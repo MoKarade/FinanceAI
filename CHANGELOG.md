@@ -8,6 +8,29 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Feature · Sync Google Drive] — 2026-05-29
 
+### Tests — +135 tests sur les zones à risque (moteur argent + sync) (2026-05-29)
+- Demande Marc : « beaucoup de tests pour que tout marche 100 % sans bugs » + checklist manuelle vivante.
+- **Checklist manuelle** : nouvelle section `✅ TESTS MANUELS À FAIRE (Marc)` en tête de `BACKLOG.md`
+  (sync, clés chiffrées, zoom, chargement, salaire, Cloudflare). Repeuplée à chaque livraison.
+- **+135 tests automatisés** (caractérisation + invariants, mutation-validés) sur les modules
+  money-critical historiquement sous-testés (audit) + chemins d'échec sync :
+  - `taxDecember.ts` (fiscal le plus dense, 0 test → **46**) : OAS clawback, RAMQ, FSS, gains >250k,
+    dividendes, T1213, actif vs retraité.
+  - `cashflowAllocation.ts` branche shortfall (**44**) : cascade de retraits, PBMA 0 %, cap OAS, banque de pertes.
+  - `activeIncome.ts` (**30**) : chômage 0.55, LTD 60 %, bonus/RSU lissés, survivorMode.
+  - `syncOrchestrator` chemins d'échec (**15**) : token KO → `'error'` + meta NON corrompue, pas de crash,
+    données locales préservées. Confirme l'invariant anti-perte.
+- Total suite : **1409 tests verts** (123 fichiers). 5 comportements suspects relevés par les agents
+  (non corrigés) consignés ci-dessous pour arbitrage.
+
+#### À trancher (comportements relevés en testant — pas des bugs confirmés)
+- **[money] `activeIncome` `accGrossAdd`** : la cotisation REER de décembre semble calculée sur le brut
+  PLEIN pendant chômage/invalidité (ignore les réductions 0.55/0.60) → possible sur-cotisation. À vérifier.
+- **[modélisation, doc OK]** gains >250k : inclusion 50 % uniforme (palier 66.67 % retiré mars 2025) ·
+  crédit 65+ couple basé sur Marc · FSS exclut les travailleurs autonomes · OAS clawback : 2 indexations.
+- **[cashflow]** seuil critique de liquidités = contrainte sur la 1re ponction seulement (le net retiré
+  est recrédité) · retrait REER sous-couvre le shortfall de la retenue (le bucket suivant éponge).
+
 ### Sécurité — clés API CHIFFRÉES dans Drive (C1, sans passphrase) (2026-05-29)
 - **Avant** : les clés API (Anthropic, Finnhub) partaient EN CLAIR dans le fichier Drive (`apiKeys`,
   `enc:false`). **Décision Marc** : « crypte mais pas de passphrase ».

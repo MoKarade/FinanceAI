@@ -12,6 +12,39 @@
 
 ---
 
+## ✅ TESTS MANUELS À FAIRE (Marc) — liste vivante, mise à jour chaque cycle
+
+> Ce que Claude **ne peut PAS** vérifier seul (compte Google de Marc, vrai Drive, Cloudflare, ressenti
+> visuel) → à valider en navigateur. Coche au fur et à mesure. **Claude ajoute ici les nouveaux tests
+> à chaque livraison.** Détail exhaustif par onglet : voir `docs/MANUAL_TEST_CHECKLIST.md`.
+
+### Cycle 2026-05-29 — Sync + sécurité + UX (à tester sur version FRAÎCHE : F12 → Application → Service Workers → Unregister, puis recharger)
+
+**Sync Google Drive (le plus important)**
+- [ ] Fenêtre **privée** neuve → login Google → **toutes** les données reviennent (transactions, profils, âge retraite, espérance de vie, documents, actions/placements).
+- [ ] Les **clés API** reviennent aussi (l'IA et les cours d'actions fonctionnent sans les ressaisir).
+- [ ] Après un **rafraîchissement** de page, tu **restes connecté** (pas de re-login).
+- [ ] L'onboarding « nouvel utilisateur » **ne réapparaît PAS** après une restauration.
+- [ ] Modifier une donnée → « Dernière sync » (Réglages → Système) se met à jour **toute seule** (~10 s), sans cliquer « Sauvegarder ».
+- [ ] « Sauvegarder maintenant » depuis le navigateur principal → message vert « Sauvegardé ».
+
+**Chiffrement des clés (C1)**
+- [ ] Après « Sauvegarder », les clés dans Drive sont chiffrées (invisible côté UI — vérif : la restauration sur un AUTRE appareil/fenêtre ramène bien les clés → preuve que le `sub` déchiffre).
+
+**Zoom (doit être 100 % fluide partout)**
+- [ ] Molette + glisser fluides (60 fps, pas de saccade) sur : **Accueil, Investissements, Futur, Dette, Immobilier, Retraite (×2), Enfant (×2)**.
+
+**Courbe Futur**
+- [ ] Pendant un (re)calcul (changement de scénario/sliders/persona) → **écran « Calcul de ta projection… »** au lieu de l'ancienne courbe.
+
+**Revenu (bug money corrigé)**
+- [ ] Un profil saisi via **Onboarding** OU **scan de paie** OU **TaxCenter** → le salaire affiché dans Budget/Impôts/Futur est **mensuel cohérent** (PAS ~12× trop haut).
+
+**Une seule connexion (quand tu veux)**
+- [ ] Retirer Cloudflare Access (guidé par Claude) → vérifier qu'il ne reste **qu'un** login Google (le gate de l'app).
+
+---
+
 ## 🔎 Audit 2026-05-28 — Sécurité + couverture + revue (3 agents + couverture) — À TRAITER
 
 > Lancé à la demande de Marc (« lis tout le backlog, tout le code/sécu non testé, lance les

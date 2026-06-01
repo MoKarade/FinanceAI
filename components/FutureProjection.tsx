@@ -799,6 +799,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     onClick={handleChartContainerClick}
                     className={`chart-fullscreen relative w-full h-[380px] sm:h-[500px] lg:h-[650px] select-none ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-pointer'}`}
                 >
+                     {isComputing ? (
+                        // Pendant le (re)calcul : on masque la courbe (potentiellement périmée) et on
+                        // affiche un état de chargement de la MÊME hauteur que le graphe → zéro layout
+                        // shift, et on ne montre jamais une courbe partielle/obsolète (demande Marc).
+                        <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-ink-300" role="status" aria-live="polite">
+                            <svg className="animate-spin h-8 w-8 text-amber-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="40" strokeDashoffset="20" opacity="0.5" />
+                            </svg>
+                            <span className="text-meta">Calcul de ta projection…</span>
+                        </div>
+                     ) : (
                      <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart
                             data={zoom.visibleData}
@@ -890,6 +901,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             ))}
                         </ComposedChart>
                     </ResponsiveContainer>
+                     )}
                 </div>
 
                 {detailPoint && (

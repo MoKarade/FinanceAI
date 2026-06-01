@@ -8,6 +8,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Feature · Sync Google Drive] — 2026-05-29
 
+### Corrigé — bug MONEY-CRITICAL : `grossSalary` annuel stocké comme mensuel (2026-05-29)
+- **Bug** : 3 chemins de saisie stockaient le salaire BRUT en **annuel**, alors que la convention
+  canonique du store est **mensuelle** (le moteur ré-annualise ×12). Résultat : revenu ~12× trop
+  haut → impôt/cotisations/projection faux pour les utilisateurs onboardés ou via scan de paie.
+  - `Onboarding.tsx` (« Salaire brut annuel » stocké tel quel),
+  - `PayslipUploadCard.tsx` (brut ET net annuels stockés),
+  - `TaxCenter.tsx` (`grossSalary: Math.round(scannedPay.gross) // always stored as annual`).
+- **Fix** : helper pur partagé `utils/salary.annualSalaryToMonthly()` (÷12 arrondi, garde 0/NaN) câblé
+  dans les 3 chemins → stockage MENSUEL cohérent. Les libellés UI restent « annuel » (saisie annuelle,
+  stockage mensuel). +3 tests garde (`tests/utils/salary.test.ts`). Saisie manuelle + personas déjà
+  mensuels → non touchés.
+
 ### Durci — verrou anti-double-sync + unification état-vide + snapshot (2026-05-29, suite 5)
 - **Audit 4 agents** (sécurité, archi, tests, frontend) → snapshot visuel `docs/SNAPSHOT_2026-05-29.md`.
 - **Verrou anti-double-sync** (`syncOrchestrator.runDecision`) : au boot avec le gate actif,

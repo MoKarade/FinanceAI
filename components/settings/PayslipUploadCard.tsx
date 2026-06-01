@@ -4,6 +4,7 @@ import { showToast } from '../ui/Toast';
 import { Card } from '../ui/Card';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { formatCAD } from '../../utils/format';
+import { annualSalaryToMonthly } from '../../utils/salary';
 
 /**
  * Phase C.2 — upload IA de relevé de salaire dans le Hub Configuration.
@@ -67,8 +68,10 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
             const targetUser = newUsers[target];
             newUsers[target] = {
                 ...targetUser,
-                grossSalary: Math.round(annualGross),
-                netSalary: Math.round(annualNet),
+                // Le scan donne de l'ANNUEL → on STOCKE en MENSUEL (convention canonique du store ;
+                // le moteur ré-annualise ×12). Avant : annuel stocké → revenu ~12× trop haut.
+                grossSalary: annualSalaryToMonthly(annualGross),
+                netSalary: annualSalaryToMonthly(annualNet),
             };
             setAppState({ config: { ...config, users: newUsers } });
 

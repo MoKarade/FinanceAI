@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AppState, BudgetConfig, User } from '../types';
 import { INITIAL_BUDGET, INITIAL_PROJECTION, INITIAL_REAL_ESTATE_GOAL, INITIAL_CHILD_GOAL, DEFAULT_FX_RATES } from '../constants';
+import { annualSalaryToMonthly } from '../utils/salary';
 import { Button } from './ui/Button';
 
 interface OnboardingProps {
@@ -52,8 +53,12 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     const handleFinish = () => {
         const config: BudgetConfig = {
             users: [
-                { ...user1, color: '#4f46e5' },
-                hasCoupleMode ? { ...user2, color: '#ec4899' } : { name: '', grossSalary: 0, netSalary: 0, color: '#ec4899', age: 30, canadaArrivalYear: 2020 }
+                // Le champ « Salaire brut annuel » est saisi en ANNUEL → on stocke en MENSUEL
+                // (convention canonique du store ; le moteur ré-annualise ×12). Net déjà mensuel.
+                { ...user1, grossSalary: annualSalaryToMonthly(user1.grossSalary), color: '#4f46e5' },
+                hasCoupleMode
+                    ? { ...user2, grossSalary: annualSalaryToMonthly(user2.grossSalary), color: '#ec4899' }
+                    : { name: '', grossSalary: 0, netSalary: 0, color: '#ec4899', age: 30, canadaArrivalYear: 2020 }
             ] as [User, User],
             splitMode: 'prorata'
         };

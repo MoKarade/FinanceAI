@@ -51,6 +51,72 @@
 
 ---
 
+## 🐛 Bugs audit 2026-06-01 (5 agents parallèles) — priorisés
+
+> Audit complet à la demande de Marc. 5 agents (sécurité, bugs moteur, tests, échecs silencieux,
+> complétude). Findings **vérifiés manuellement** (2 surévalués écartés). Légende : ✅ corrigé ce cycle ·
+> 🔧 à corriger (TDD ciblé) · 🧭 décision de modélisation requise · 📄 documenté/assumé.
+
+### Complétude (verdict analyste)
+| Thème | Solo (Marc) | Produit multi-user |
+|---|---|---|
+| Moteur fiscal/projection | 90 % | 90 % |
+| Sync Drive | 90 % (code) | **55 %** (jamais prouvée en réel) |
+| UI/UX | 80 % | 80 % |
+| Sécurité/confidentialité | 85 % | **70 %** |
+| Tests/qualité | 85 % | 85 % |
+| Robustesse multi-user | n/a | **45 %** |
+| **Global** | **~90 %** | **~72 %** |
+
+### Bugs money (moteur) — à corriger en priorité
+- 🔧 **B-AUDIT-1 [HIGH]** `activeIncome.ts` : bonus/RSU NET de Marc non réduits pendant chômage/LTD
+  (le `*0.55` ligne 70 s'applique avant l'ajout des variables ligne 98) → cashflow fantôme. Jumeau du fix
+  REER. 🧭 décider : bonus/RSU cessent pendant le chômage (oui en réalité), side income (autonome) continue.
+- 🔧 **B-AUDIT-2 [HIGH]** `taxDecember.ts:289-311` : gains en capital + dividendes imposés au taux marginal
+  calculé sur le revenu AVANT empilement → sous-estimation d'impôt quand un gros gain franchit un palier
+  (~1-3 k$/événement). Fix : impôt incrémental `tax(revenu+gains) − tax(revenu)`.
+- 🔧 **B-AUDIT-3 [HIGH]** `taxDecember.ts` + `taxJanuary.ts` : crédits d'âge/pension (féd + ligne 361 QC,
+  bonus PSV 75+) basés sur `ctx.age` = âge de Marc pour les DEUX conjoints → erreur 1.5-2.5 k$/an pour les
+  couples à âges décalés. Fix : âge par conjoint. (Lié à A1 « impôt par conjoint », plus lourd.)
+- 🔧 **B-AUDIT-4 [MEDIUM]** `retirementIncome.ts:79-80` : ratio RRQ utilise le salaire courant NON indexé
+  vs un MGA projeté → RRQ sous-évaluée pour départs lointains. Fix : indexer `currentGrossUser`.
+- 📄 **B-AUDIT-5 [LOW, faible impact]** `retirementIncome.ts:171-177` + `taxDecember.ts:29` : le SRG est
+  inclus dans le revenu servant au clawback PSV. Incorrect (SRG non imposable) mais un bénéficiaire du SRG
+  est sous le seuil de récupération → impact pratique ~0. À corriger pour la propreté si on y touche.
+
+### Sécurité
+- ✅ **C1 [HIGH] CORRIGÉ 2026-06-01** : injection de prompt dans `getRebalanceJustifications` (sanitize + `<DONNEES>`).
+- 🧭 **H3 [HIGH]** `services/claude.ts:119` `dangerouslyAllowBrowser` : clé Anthropic exposée côté navigateur.
+  Acceptable solo, **inacceptable** pour des tiers → proxy backend (P0 multi-user, cf. ci-dessous).
+- 📄 **H1/H2 [HIGH, assumés]** sel PBKDF2 fixe + `sub` non secret (clés Drive) ; token GIS en sessionStorage.
+  Limites déjà documentées et acceptées par Marc (« crypte sans passphrase »). À redire clairement à un user tiers.
+- 📄 **C2 [écarté]** nom de profil → clé localStorage : le préfixe `profile_` empêche tout écrasement de clé
+  système. Reste de l'hygiène LOW (valider `[a-z0-9_-]`), pas un risque réel.
+
+### Échecs silencieux (règle Marc « ne jamais avaler les erreurs ») — lot à faire
+- 🔧 **SF-1 [CRITICAL]** `backupAuto.ts` (`createBackupNow`/`restoreBackup`/`listBackups`) : échecs IndexedDB
+  avalés (`null`/`false` + `console.warn`, pas de `logError`) → l'utilisateur croit être sauvegardé.
+- 🔧 **SF-2 [HIGH]** `marketData/providers/*` : erreurs réseau/AUTH retournent `null`/`[]` comme un symbole
+  inconnu → cours périmés silencieux. Distinguer NOT_FOUND (ok) de NETWORK/AUTH (à remonter).
+- 🔧 **SF-3 [MEDIUM]** `syncOrchestrator.ts` (déchiffrement clés au pull) + `claude.ts:304/352`
+  (`console.error` au lieu de `logError`) : passer par le logger borné + exposer un flag UI.
+
+### Tests
+- ✅ **+9 `retirementIncome`** (report/survivant/immigrant/bonus 75+) — ce cycle.
+- 🔧 Prochains hauts-ROI (test-architect) : `childCosts.ts` (0 test), property-tests de conservation de flux
+  sur `cashflowAllocation`/`projection` (fast-check), `parseBankCsv` roundtrip, `drawdownOptimizer`/`meltdownReer`.
+
+### Recommandations produit — P0/P1/P2
+- **P0 (bloquant multi-user)** : (1) prouver la sync Drive en réel (créer le Client ID, tester en navigation
+  privée sur version fraîche) ; (2) ouvrir Cloudflare Access (any Google login) OU basculer sur le gate
+  in-app ; (3) proxy backend pour la clé Anthropic (Vercel Edge, free tier).
+- **P1** : migrer la persistance localStorage → IndexedDB (quota + boot non bloquant) ; corriger B-AUDIT-1/2/3 ;
+  lot échecs silencieux SF-1/2/3 ; brancher l'E2E Playwright en CI.
+- **P2** : impôt exact par conjoint (A1, lourd) ; refonte des god-files (Investments 1120 l., FutureProjection) ;
+  polish (icônes LOD, animations) ; B-AUDIT-4/5.
+
+---
+
 ## 🔎 Audit 2026-05-28 — Sécurité + couverture + revue (3 agents + couverture) — À TRAITER
 
 > Lancé à la demande de Marc (« lis tout le backlog, tout le code/sécu non testé, lance les

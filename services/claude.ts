@@ -632,6 +632,36 @@ export interface RebalanceActionInput {
 }
 
 /**
+ * Phase E.7 — construit le prompt de justification de rééquilibrage. Extrait et
+ * exporté pour être testable et pour GARANTIR l'anti-injection (C1) : chaque champ
+ * texte libre (label/secteur/région, potentiellement saisissables) passe par
+ * sanitizePromptText, et tout le bloc de données est encadré par wrapUserData (le
+ * system prompt QUEBEC_FISCAL_CONTEXT isole <DONNEES>). Parité avec categorizeBatch
+ * / detectSubscriptionsAI qui appliquaient déjà ces deux protections.
+ */
+export function buildRebalancePrompt(actions: RebalanceActionInput[]): string {
+    const dataLines = actions.map(a => {
+        const label = sanitizePromptText(a.label, 80);
+        const sector = a.sector ? ` | secteur ${sanitizePromptText(a.sector, 40)}` : '';
+        const region = a.region ? ` | région ${sanitizePromptText(a.region, 40)}` : '';
+        return `[${a.id}] ${label} | ${a.action} | actuel ${a.currentPct.toFixed(1)}% vs cible ${a.targetPct.toFixed(1)}% (Δ ${roundToHundred(a.diffAmount)}$)${sector}${region}`;
+    }).join('\n');
+
+    return `Tu es conseiller financier québécois expert. Pour CHAQUE action de rééquilibrage ci-dessous, fournis UNE SEULE phrase claire (max 20 mots) qui justifie le mouvement.
+
+CONTRAINTES :
+- Ton concis, factuel, sans jargon excessif
+- Mention de la différence concrète (% ou $) quand pertinent
+- Pertinence québécoise (CELI/REER si applicable)
+- Pour action='OK', dire pourquoi c'est aligné (juste 1 phrase de validation)
+
+${wrapUserData(dataLines)}
+
+RÉPONDS UNIQUEMENT par un JSON Array strict (pas de markdown) :
+[{ "actionId": "id1", "reason": "phrase 1" }, { "actionId": "id2", "reason": "phrase 2" }, ...]`;
+}
+
+/**
  * Phase E.7 — pour chaque action de rééquilibrage, génère 1 phrase IA
  * justifiant le mouvement (ex: "Tesla dépasse 18% du portefeuille — réduire
  * pour respecter la cible 10% et diversifier").
@@ -642,19 +672,7 @@ export const getRebalanceJustifications = async (
 ): Promise<RebalanceJustification[]> => {
     if (!apiKey || actions.length === 0) return [];
 
-    const userPrompt = `Tu es conseiller financier québécois expert. Pour CHAQUE action de rééquilibrage ci-dessous, fournis UNE SEULE phrase claire (max 20 mots) qui justifie le mouvement.
-
-CONTRAINTES :
-- Ton concis, factuel, sans jargon excessif
-- Mention de la différence concrète (% ou $) quand pertinent
-- Pertinence québécoise (CELI/REER si applicable)
-- Pour action='OK', dire pourquoi c'est aligné (juste 1 phrase de validation)
-
-DONNÉES :
-${actions.map(a => `[${a.id}] ${a.label} | ${a.action} | actuel ${a.currentPct.toFixed(1)}% vs cible ${a.targetPct.toFixed(1)}% (Δ ${roundToHundred(a.diffAmount)}$)${a.sector ? ' | secteur ' + a.sector : ''}${a.region ? ' | région ' + a.region : ''}`).join('\n')}
-
-RÉPONDS UNIQUEMENT par un JSON Array strict (pas de markdown) :
-[{ "actionId": "id1", "reason": "phrase 1" }, { "actionId": "id2", "reason": "phrase 2" }, ...]`;
+    const userPrompt = buildRebalancePrompt(actions);
 
     try {
         const text = await chat(

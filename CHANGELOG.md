@@ -8,6 +8,33 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Feature · Sync Google Drive] — 2026-05-29
 
+### Audit complet (5 agents parallèles) + correctif sécurité C1 + tests retraite (2026-06-01)
+- **Demande Marc** : « plus de tests + analyse complète : le projet est-il 100 % fait, trouve tous les
+  bugs et corrige-les, recommandations ». 5 agents lecture-seule en parallèle (sécurité, bugs moteur,
+  trous de tests, échecs silencieux, complétude). Findings **vérifiés manuellement** (« trust but verify »
+  — 2 findings d'agents étaient surévalués/faux : ex. l'« écrasement de `financeai-storage` via un nom de
+  profil » est impossible, le préfixe `profile_` l'empêche).
+- **Correctif sécurité C1** : `getRebalanceJustifications` (`services/claude.ts`) interpolait
+  `label / secteur / région` dans le prompt IA SANS `sanitizePromptText` / `wrapUserData`, alors que ses
+  jumelles (`categorizeBatch`, `detectSubscriptionsAI`) le faisaient → injection de prompt possible via un
+  nom d'actif. Fix : helper pur exporté `buildRebalancePrompt` qui sanitize chaque champ + encadre le bloc
+  en `<DONNEES>`. +3 tests anti-injection (RED→GREEN).
+- **Tests** : +9 sur `retirementIncome.ts` (le #1 trou de couverture) : report de rentes (1.42 / 1.36),
+  bonus PSV +10 % exact à 75 ans, mode survivant (×0.8 RRQ), prorata immigrant <10 ans → PSV 0, écrêtement
+  PSV clampé ≥ 0, rentes nulles avant l'âge, DB à partir de l'âge. Suite : **1425 verts** (123 fichiers),
+  tsc + eslint propres, **zéro régression**.
+- **Verdict complétude** (analyste) : ~90 % pour l'usage solo (Marc derrière Cloudflare), mais **~72 %
+  comme produit multi-utilisateurs fiable**. Les 3 derniers mètres solo→multi-user ne sont pas franchis :
+  sync Drive jamais prouvée en réel (Client ID absent), Cloudflare verrouillé sur l'email de Marc, clé
+  Anthropic exposée côté navigateur (`dangerouslyAllowBrowser`). Plan P0/P1/P2 dans `docs/BACKLOG.md`.
+- **Bugs fiscaux confirmés mais NON corrigés ce cycle** (chacun = TDD ciblé + parfois décision de
+  modélisation — consignés dans `docs/BACKLOG.md` § « Bugs audit 2026-06-01 ») :
+  - [money] revenus variables (bonus/RSU) NET de Marc non réduits pendant chômage/LTD (jumeau du fix REER) ;
+  - [money] gains en capital imposés au taux marginal NON empilé → sous-estimation d'impôt sur gros gains ;
+  - [money] crédits d'âge/pension basés sur l'âge de Marc pour les DEUX conjoints (couples à âges décalés) ;
+  - [money, faible impact] SRG inclus dans le revenu du clawback PSV (mais un bénéficiaire du SRG est sous le seuil) ;
+  - [money, mineur] ratio RRQ : salaire courant non indexé vs MGA projeté → RRQ sous-évaluée pour départs tardifs.
+
 ### Correctif — sur-cotisation REER pendant chômage/invalidité (money) (2026-06-01)
 - **Symptôme** : pendant un mois de chômage (AE 55 %) ou d'invalidité (LTD 60 %), le moteur réduisait
   bien le revenu NET de Marc, mais le BRUT servant à l'espace REER (`accGrossAdd` → `accGrossIncomeYear`

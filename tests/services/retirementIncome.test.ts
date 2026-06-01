@@ -92,3 +92,78 @@ describe('computeRetirementIncome — SRG §7.G regression', () => {
         expect(income.total).toBeGreaterThan(rawPsvRrq * 0.85);
     });
 });
+
+// Goal à revenu élevé : RRQ assez haut pour annuler le SRG (GIS=0), ce qui isole
+// la PSV pure et permet d'asserter le bonus 75+ exactement (sinon le SRG, non
+// bonifié, dilue le ratio).
+const highPensionGoal: RetirementGoal = {
+    ...baseGoal,
+    rrqEstimateMonthly: 4000,
+    psvEstimateMonthly: 700,
+};
+
+describe('computeRetirementIncome — report / survivant / immigrant / bonus 75+', () => {
+    it('report des rentes (delayPensions) → RRQ plus élevée qu\'un départ standard à 70 ans', () => {
+        const ctx70 = { ...baseCtx, age: 70 };
+        const standard = computeRetirementIncome({ ...ctx70, delayPensions: false }, baseGoal, [baseUser]);
+        const delayed = computeRetirementIncome({ ...ctx70, delayPensions: true }, baseGoal, [baseUser]);
+        // delayPensions force rrqFactor 1.42 / psvFactor 1.36 → rentes strictement supérieures
+        expect(delayed.rrq).toBeGreaterThan(standard.rrq);
+        expect(delayed.psv).toBeGreaterThanOrEqual(standard.psv);
+    });
+
+    it('bonification PSV +10% exactement à 75 ans (pas à 74), SRG neutralisé', () => {
+        const at74 = computeRetirementIncome({ ...baseCtx, age: 74 }, highPensionGoal, [baseUser]);
+        const at75 = computeRetirementIncome({ ...baseCtx, age: 75 }, highPensionGoal, [baseUser]);
+        // même m → même inflFactor ; GIS=0 (revenu RRQ élevé) → seul le bonus ×1.10 diffère
+        expect(at75.psv / at74.psv).toBeCloseTo(1.10, 2);
+    });
+
+    it('survivorMode → RRQ × (0.5 + 0.5·rrqSurvivorPct) = ×0.8 par défaut (rrqSurvivorPct=0.6)', () => {
+        const std = computeRetirementIncome(baseCtx, baseGoal, [baseUser]);
+        const surv = computeRetirementIncome({ ...baseCtx, survivorMode: true }, baseGoal, [baseUser]);
+        // la RRQ n'inclut pas le SRG → ratio exact indépendant du GIS
+        expect(surv.rrq / std.rrq).toBeCloseTo(0.8, 4);
+        expect(surv.total).toBeLessThanOrEqual(std.total);
+    });
+
+    it('résidence < 10 ans → PSV = 0 (règle Service Canada), RRQ inchangée', () => {
+        const immigrant = computeRetirementIncome({ ...baseCtx, psvResidencyYears: [5] }, baseGoal, [baseUser]);
+        expect(immigrant.psv).toBeCloseTo(0, 6);
+        expect(immigrant.rrq).toBeGreaterThan(0);
+    });
+
+    it('résidence partielle (20/40) → PSV strictement inférieure à la pleine résidence (40/40)', () => {
+        const full = computeRetirementIncome({ ...baseCtx, psvResidencyYears: [40] }, highPensionGoal, [baseUser]);
+        const half = computeRetirementIncome({ ...baseCtx, psvResidencyYears: [20] }, highPensionGoal, [baseUser]);
+        expect(half.psv).toBeLessThan(full.psv);
+    });
+
+    it('avant l\'âge d\'admissibilité (60 ans, départ 65) → aucune rente versée', () => {
+        const young = computeRetirementIncome({ ...baseCtx, age: 60 }, baseGoal, [baseUser]);
+        expect(young.rrq).toBeCloseTo(0, 6);
+        expect(young.psv).toBeCloseTo(0, 6);
+    });
+
+    it('écrêtement PSV supérieur au revenu → total clampé à 0 (jamais négatif)', () => {
+        const clamped = computeRetirementIncome({ ...baseCtx, monthlyOasReduction: 999999 }, baseGoal, [baseUser]);
+        expect(clamped.total).toBe(0);
+        expect(clamped.oasReduction).toBe(999999);
+    });
+
+    it('pension privée DB versée seulement à partir de dbPensionStartAge', () => {
+        const goalDb: RetirementGoal = { ...baseGoal, dbPensionMonthly: 1000, dbPensionStartAge: 65 };
+        const before = computeRetirementIncome({ ...baseCtx, age: 64 }, goalDb, [baseUser]);
+        const after = computeRetirementIncome({ ...baseCtx, age: 65 }, goalDb, [baseUser]);
+        expect(before.privee).toBeCloseTo(0, 6);
+        expect(after.privee).toBeGreaterThan(0);
+    });
+
+    it('invariant : toutes les composantes finies et ≥ 0 (cas âgé, longue projection)', () => {
+        const r = computeRetirementIncome({ ...baseCtx, age: 80, simInflation: 3, m: 180 }, highPensionGoal, [baseUser]);
+        for (const v of [r.total, r.rrq, r.psv, r.privee, r.oasReduction]) {
+            expect(Number.isFinite(v)).toBe(true);
+            expect(v).toBeGreaterThanOrEqual(0);
+        }
+    });
+});

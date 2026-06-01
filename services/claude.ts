@@ -301,7 +301,7 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict, sans markdown, sans commentaire:
                 out.push(...toAnalyze);
             }
         } catch (e) {
-            console.error('[Claude] categorizeBatch chunk failed:', e);
+            logError({ source: 'ai', message: 'categorizeBatch: échec du chunk (transactions non catégorisées)', error: e });
             out.push(...toAnalyze);
         }
 
@@ -350,7 +350,7 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict (pas de markdown):
         const validated = safeJsonValidate(text, SubscriptionArraySchema);
         return validated ?? [];
     } catch (e) {
-        console.error('[Claude] detectSubscriptionsAI failed:', e);
+        logError({ source: 'ai', message: 'detectSubscriptionsAI: échec de la détection des abonnements', error: e });
         return [];
     }
 };

@@ -8,6 +8,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Feature · Sync Google Drive] — 2026-05-29
 
+### Correctifs bugs money — B-AUDIT-1 (bonus/RSU chômage) + B-AUDIT-4 (ratio RRQ) (2026-06-01)
+- **B-AUDIT-1** : pendant un chômage/invalidité, le bonus et les RSU de Marc (revenu d'EMPLOI)
+  continuaient d'alimenter le revenu NET **et** le brut REER. Réaliste (décision Marc « sois réaliste ») :
+  ils cessent quand on quitte l'employeur → gated par `marcEmploymentActive` dans `activeIncome.ts`. Le
+  side income (travail autonome) est conservé (c'est du revenu gagné). +7 tests RED→GREEN.
+- **B-AUDIT-4** : le ratio RRQ (`currentGross / MGA`) comparait un salaire NON indexé à une MGA projetée
+  (indexée) → ratio rétréci → RRQ sous-évaluée pour les départs lointains. Fix : indexer le salaire par le
+  même facteur (inflation + 0,5 %) → ratio earnings/MGA stable sur la carrière. +1 test.
+- Suite **1433 verts**, tsc + eslint propres, **zéro régression** (aucune baseline d'intégration décalée).
+- **B-AUDIT-2 (gains en capital empilés) REPORTÉ** : le fix change un comportement fondamental (impôt
+  linéaire → progressif) explicitement caractérisé par ~5 tests à stub plat → mérite sa session dédiée
+  (rework du modèle de stub + revue des baselines avec gains). Le rusher serait l'imprudence money-engine
+  à éviter. B-AUDIT-3 (impôt par conjoint) reste en attente d'un go explicite (gros refactor).
+
 ### Audit complet (5 agents parallèles) + correctif sécurité C1 + tests retraite (2026-06-01)
 - **Demande Marc** : « plus de tests + analyse complète : le projet est-il 100 % fait, trouve tous les
   bugs et corrige-les, recommandations ». 5 agents lecture-seule en parallèle (sécurité, bugs moteur,

@@ -167,3 +167,18 @@ describe('computeRetirementIncome — report / survivant / immigrant / bonus 75+
         }
     });
 });
+
+describe('computeRetirementIncome — ratio RRQ indexé (B-AUDIT-4)', () => {
+    it('la RRQ réelle (déflatée) d\'un même salarié ne rétrécit pas selon les années avant la retraite', () => {
+        // Salaire SOUS la MGA (sinon ratio capé à 1, effet masqué). Même personne,
+        // même âge de départ (65) : seul m (années écoulées) change. Le ratio
+        // earnings/MGA doit rester stable → la RRQ réelle (hors inflation) identique.
+        // Avant le fix : currentGross non indexé vs MGA indexée → ratio rétrécit → RRQ
+        // sous-évaluée pour un départ lointain.
+        const earner = { ...baseUser, grossSalary: 50000 } as User;
+        const now = computeRetirementIncome({ ...baseCtx, age: 65, m: 0, simInflation: 2 }, baseGoal, [earner]);
+        const later = computeRetirementIncome({ ...baseCtx, age: 65, m: 240, simInflation: 2 }, baseGoal, [earner]);
+        const deflate = (rrq: number, m: number) => rrq / Math.pow(1.02, m / 12);
+        expect(deflate(later.rrq, 240)).toBeCloseTo(deflate(now.rrq, 0), 0);
+    });
+});

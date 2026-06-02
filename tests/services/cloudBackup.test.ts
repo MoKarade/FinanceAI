@@ -112,14 +112,14 @@ describe('cloudBackup — codes d\'erreur distincts', () => {
 });
 
 describe('cloudBackup — defaultBackupFilename', () => {
-    it('produit un nom sans « : » (illégal sous Windows) et suffixé .bak', () => {
+    it('produit un nom sans « : » (illégal sous Windows), sans millisecondes, suffixé .bak', () => {
         const name = defaultBackupFilename(new Date('2026-05-13T20:30:00.000Z'));
         expect(name.startsWith('financeai-')).toBe(true);
         expect(name.endsWith('.bak')).toBe(true);
         expect(name).not.toContain(':');
-        // Comportement réel actuel : les millisecondes restent (« -000 ») car le
-        // premier replace mange déjà le « . » → le second replace est inopérant.
-        // Cosmétique, pinné ici pour détecter tout changement involontaire.
-        expect(name).toBe('financeai-2026-05-13T20-30-00-000Z.bak');
+        // Les millisecondes sont retirées (strip « .000Z » → « Z ») avant la
+        // neutralisation des « : »/« . » → horodatage propre à la seconde (UTC).
+        expect(name).not.toContain('-000');
+        expect(name).toBe('financeai-2026-05-13T20-30-00Z.bak');
     });
 });

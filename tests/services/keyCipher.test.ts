@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { encryptApiKeys, decryptApiKeys } from '../../services/sync/keyCipher';
 
 describe('keyCipher — chiffrement des clés API dérivé du sub Google', () => {
@@ -35,5 +35,26 @@ describe('keyCipher — chiffrement des clés API dérivé du sub Google', () =>
 
     it('sub manquant → lève (on ne chiffre pas avec une clé vide)', async () => {
         await expect(encryptApiKeys(keys, '')).rejects.toThrow();
+    });
+});
+
+describe('keyCipher — Web Crypto indisponible (navigateur dégradé / contexte non sécurisé)', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals(); // restaure globalThis.crypto pour les autres tests/fichiers
+    });
+
+    it('encryptApiKeys lève « Web Crypto indisponible » si crypto.subtle est absent', async () => {
+        // sub NON vide pour dépasser le garde « sub manquant » et atteindre deriveKeyFromSub → getSubtle().
+        vi.stubGlobal('crypto', {} as Crypto); // crypto présent mais sans .subtle
+        await expect(encryptApiKeys({ anthropic: 'a', finnhub: 'b' }, 'sub-x')).rejects.toThrow(
+            /Web Crypto indisponible/,
+        );
+    });
+
+    it('decryptApiKeys lève « Web Crypto indisponible » si crypto.subtle est absent', async () => {
+        vi.stubGlobal('crypto', {} as Crypto);
+        await expect(decryptApiKeys('blob-base64-quelconque', 'sub-x')).rejects.toThrow(
+            /Web Crypto indisponible/,
+        );
     });
 });

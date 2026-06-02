@@ -160,4 +160,4 @@ Ajouter (dans `index.html` **et** `netlify.toml`) :
 
 - Pas de chiffrement applicatif (D3) → passphrase optionnelle en backlog (champ `enc` réservé).
 - Conflit résolu par choix utilisateur (pas de merge granulaire) — suffisant pour un usage perso.
-- Clés API non synchronisées (volontaire).
+- Clés API **synchronisées et chiffrées** (`apiKeysEnc`, clé dérivée du `sub` Google — cf §5).

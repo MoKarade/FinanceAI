@@ -17,7 +17,7 @@
 |---|----------|
 | V2-A | **Login Google in-app unique** : un seul « Se connecter avec Google » (scopes identité + `drive.appdata` en **un** consentement) sert d'auth ET de source du jeton Drive. Remplace le rôle de gate de Cloudflare Access. |
 | V2-B | **Tout automatique** : restauration au login (pull auto), sauvegarde auto (push debouncé). Aucun clic manuel en usage normal. |
-| V2-C | **Clés API synchronisées** : `apiKeys` incluses dans le blob (en clair, cohérent avec le choix « pas de chiffrement »). Risque assumé : lisibles via le compte Google. |
+| V2-C | **Clés API synchronisées** : incluses dans le blob. *Décision initiale : en clair ; livré CHIFFRÉ (C1)* — `apiKeysEnc`, clé dérivée du `sub` Google (`keyCipher`), sans passphrase. Sort les clés du clair ; `sub` non secret → protège d'une fuite du fichier, pas d'un accès au compte Google lui-même. |
 
 ## 3. Nouveau flux
 
@@ -39,8 +39,9 @@ App publique (plus de gate Cloudflare) → au boot :
 - **Clé Anthropic (`dangerouslyAllowBrowser`)** : déjà saisie par chaque utilisateur (jamais dans le
   bundle). Sans Cloudflare, elle perd le « bouclier réseau » au repos, mais reste dans le navigateur de
   l'utilisateur. Défense principale = CSP stricte (déjà en place). Pas d'exposition cross-utilisateur.
-- **Clés API synchronisées en clair** (V2-C) : lisibles via le compte Google de l'utilisateur. Risque
-  accepté par Marc. Atténuation possible plus tard : passphrase optionnelle (chiffre tout le blob).
+- **Clés API synchronisées, CHIFFRÉES** (V2-C, livré avec C1) : `apiKeysEnc` (AES-GCM, clé dérivée du
+  `sub` Google — `keyCipher`, sans passphrase). Sort les clés du clair ; mais `sub` n'étant pas secret,
+  ne protège pas d'un accès au compte Google lui-même. Zéro-connaissance = passphrase optionnelle (déclinée).
 - **Anti-lock-out** : le gate n'est actif que si `VITE_GOOGLE_CLIENT_ID` est défini, ET il existe une
   **trappe de secours** (cf §6) pour ne jamais se retrouver enfermé dehors si Google tombe.
 

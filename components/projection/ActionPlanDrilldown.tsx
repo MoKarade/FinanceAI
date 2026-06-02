@@ -110,7 +110,7 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
                     <span className="text-xs font-bold text-white">
                         {current.label}
                         {current.ageStart != null && (
-                            <span className="text-ink-500 font-normal">
+                            <span className="text-ink-400 font-normal">
                                 {' · '}{current.ageStart}{current.ageEnd != null && current.ageEnd !== current.ageStart ? `–${current.ageEnd}` : ''} ans
                             </span>
                         )}

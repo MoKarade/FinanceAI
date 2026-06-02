@@ -209,7 +209,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                                     </span>
                                     <span className="text-red-300 font-mono shrink-0">−{formatCAD(r.annualLossIfUnchanged)}/an</span>
                                 </div>
-                                <p className="text-ink-500 leading-snug">{r.rationale}</p>
+                                <p className="text-ink-400 leading-snug">{r.rationale}</p>
                             </div>
                         ))}
                     </div>

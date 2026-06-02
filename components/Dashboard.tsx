@@ -295,7 +295,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
             const dDate = new Date(d.date); return dDate >= startDate && dDate <= endDate;
         });
         const lastPoint = filteredHist[filteredHist.length - 1] || hist[hist.length - 1] || { Total: 0 };
-        const combinedKeys = Array.from(cashAccountsList).concat(['Immobilier', 'CELI', 'REER', 'NonReg', 'Crypto', 'Dettes']).filter(k => lastPoint[k] !== 0);
+        // Clés UNIQUES : un compte cash peut porter le même nom qu'une catégorie
+        // d'investissement (ex. persona « Diane & Robert » → soldes cash CELI/REER).
+        // Sans `new Set`, 'CELI'/'REER' apparaissent deux fois → warning React
+        // « same key » dans les chips de bascule + les séries recharts (rendu non
+        // garanti). Le dataset ne porte qu'UNE valeur par clé (point.CELI/REER), le
+        // dédoublonnage est donc correct ; l'ordre (cash d'abord) est préservé.
+        const combinedKeys = Array.from(new Set([
+            ...cashAccountsList,
+            'Immobilier', 'CELI', 'REER', 'NonReg', 'Crypto', 'Dettes',
+        ])).filter(k => lastPoint[k] !== 0);
 
         return {
             unifiedHistory: filteredHist,

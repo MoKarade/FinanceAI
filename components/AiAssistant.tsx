@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { logError } from '../services/errorLogger';
 import { Transaction, BudgetCategory, Asset, ProjectionConfig, RealEstateGoal, BudgetConfig, AiMessage } from '../types';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { chatStream } from '../services/claude';
@@ -201,7 +202,7 @@ ${last20Txs}`
       }
     } catch (e: unknown) {
       // TH4 fix : unknown au lieu de any (useUnknownInCatchVariables tsconfig)
-      console.error('[Assistant] Claude error:', e);
+      logError({ source: 'ai', severity: 'error', message: 'Assistant Claude : échec du streaming', error: e });
       appendMessage({
         role: 'model',
         text: "⚠️ Oups, je n'arrive pas à réfléchir. Vérifie ta clé API Anthropic.",

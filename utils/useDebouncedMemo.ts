@@ -24,6 +24,17 @@ export function useDebouncedMemo<T>(
             return factory();
         } catch (e) {
             console.error('[useDebouncedMemo] factory crash at mount:', e);
+            try {
+                // Import dynamique pour éviter dépendance circulaire au boot (cf chemin update).
+                import('../services/errorLogger').then(({ logError }) => {
+                    logError({
+                        source: 'ui',
+                        severity: 'critical',
+                        message: 'useDebouncedMemo factory crash (mount)',
+                        error: e instanceof Error ? e : new Error(String(e)),
+                    });
+                }).catch(() => { /* logger lui-même HS, silent */ });
+            } catch { /* ignore */ }
             // Retourne undefined casté — le caller doit gérer.
             return undefined as unknown as T;
         }

@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { logError } from '../services/errorLogger';
 import { Transaction, BudgetCategory, CategorizationRule } from '../types';
 import { showToast } from './ui/Toast';
 // Phase 4 A3: bascule sur services/claude.ts (Haiku 4.5 pour vitesse)
@@ -244,7 +245,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
 
         } catch (e: unknown) {
             // TH4 fix : unknown au lieu de any (useUnknownInCatchVariables tsconfig)
-            console.error('[Transactions] Categorisation batch failed:', e);
+            logError({ source: 'ai', severity: 'error', message: 'Catégorisation batch des transactions échouée', error: e });
             const msg = e instanceof Error ? e.message : 'inconnue';
             setLiveLogs(prev => [...prev, `Erreur : ${msg}`]);
         } finally {

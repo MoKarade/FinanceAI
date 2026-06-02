@@ -15,6 +15,7 @@ import type {
     StrategySearchResult,
     ConfigResult,
 } from '../projection';
+import { logError } from '../errorLogger';
 
 let _worker: Worker | null = null;
 let _nextRequestId = 1;
@@ -27,12 +28,12 @@ function getWorker(): Worker | null {
         _worker = new Worker(new URL('../projection.worker.ts', import.meta.url), { type: 'module' });
         _workerDead = false;
         _worker.addEventListener('error', (e) => {
-            console.warn('[projection] Worker error, marqué dead pour recréation:', e.message);
+            logError({ source: 'projection', severity: 'warning', message: `Worker projection en erreur (recréation au prochain appel): ${e.message}` });
             _workerDead = true;
         });
         return _worker;
     } catch (err) {
-        console.warn('[projection] Worker indisponible (CSP/MIME?), fallback synchrone:', err);
+        logError({ source: 'projection', severity: 'warning', message: 'Worker projection indisponible (CSP/MIME?), fallback synchrone', error: err });
         return null;
     }
 }

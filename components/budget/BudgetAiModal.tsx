@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { logError } from '../../services/errorLogger';
 import { Modal } from '../ui/Modal';
 import { chatStream } from '../../services/claude';
 import { z } from 'zod';
@@ -83,7 +84,7 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
                     if (!cancelled) setRecommendations([accumulator]);
                 }
             } catch (err) {
-                console.error('[BudgetAiModal] streaming failed:', err);
+                logError({ source: 'ai', severity: 'error', message: 'Diagnostic budget IA : échec du streaming', error: err });
                 if (!cancelled) setHasError(true);
             } finally {
                 if (!cancelled) setIsStreaming(false);

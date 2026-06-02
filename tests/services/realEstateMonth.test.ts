@@ -202,3 +202,65 @@ describe('realEstateMonth — flux post-achat', () => {
         expect(state.totalRentalIncome).toBeCloseTo(2000, 6);
     });
 });
+
+describe('realEstateMonth — chemins-bords', () => {
+    it('Smith Manoeuvre : le capital remboursé est réemprunté en non-enregistré + intérêts capitalisés', () => {
+        const state = makeState();
+        const goal = makeGoal({ mortgageRate: 6, isPrimaryResidence: true, propertyGrowthRate: 0 });
+        // solde 300 000 @ 6 % → intérêt 1 500 ; PMT 2 000 → capital 500. Valeur haute → pas d'appel de marge.
+        const prop = makeProp({ isBought: true, mortgage: 300000, currentValue: 1000000, calculatedPmt: 2000 });
+
+        processRealEstate(state, makeCtx({ m: 12, useSmithManoeuvre: true }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+
+        expect(state.nonReg).toBeCloseTo(500, 6);
+        expect(state.nonRegACB).toBeCloseTo(500, 6);
+        // dette Smith = capital 500 + intérêt capitalisé (500 × 0,05/12)
+        const smithInterest = 500 * (0.05 / 12);
+        expect(state.smithManoeuvreDebt).toBeCloseTo(500 + smithInterest, 4);
+        expect(state.smithInterestDeductibleYear).toBeCloseTo(smithInterest, 4);
+    });
+
+    it('remboursement RAP : déplace ~1/180 du montant emprunté de liquide vers REER, après le délai de grâce', () => {
+        const state = makeState({
+            liquid: 10000, reer: 5000,
+            hasUsedRap: true, rapBorrowed: 30000, rapRepaymentDueTotal: 30000, rapRepaymentStartOffset: 24,
+        });
+
+        // m = 24 = début du remboursement ; aucune propriété active (on isole le RAP).
+        processRealEstate(state, makeCtx({ m: 24 }), [], [], offset0, noWelcomeTax, marginal40);
+
+        const monthly = (30000 / 15) / 12; // 166,67 $
+        expect(state.liquid).toBeCloseTo(10000 - monthly, 4);
+        expect(state.reer).toBeCloseTo(5000 + monthly, 4);
+        expect(state.rapRepaymentDueTotal).toBeCloseTo(30000 - monthly, 4);
+    });
+
+    it('ne rembourse pas le RAP avant le délai de grâce (m < rapRepaymentStartOffset)', () => {
+        const state = makeState({
+            liquid: 10000, reer: 5000,
+            hasUsedRap: true, rapBorrowed: 30000, rapRepaymentDueTotal: 30000, rapRepaymentStartOffset: 24,
+        });
+
+        processRealEstate(state, makeCtx({ m: 12 }), [], [], offset0, noWelcomeTax, marginal40);
+
+        expect(state.liquid).toBe(10000);
+        expect(state.reer).toBe(5000);
+        expect(state.rapRepaymentDueTotal).toBe(30000);
+    });
+
+    it('renouvellement à 5 ans (m=60) : recalcule le PMT sur la durée résiduelle', () => {
+        const state = makeState();
+        // id 'p1' → charCodeAt(0)=112, 112%3=1 → choc de taux nul → renouvellement au même taux 6 %.
+        const goal = makeGoal({ mortgageRate: 6, amortization: 25, isPrimaryResidence: false, propertyGrowthRate: 0 });
+        const prop = makeProp({ id: 'p1', isBought: true, mortgage: 280000, currentValue: 600000, calculatedPmt: 1 });
+
+        processRealEstate(state, makeCtx({ m: 60 }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+
+        // 240 mois restants @ 6 % sur 280 000.
+        const nr = 0.06 / 12;
+        const rem = 240;
+        const expectedPmt = (280000 * nr * Math.pow(1 + nr, rem)) / (Math.pow(1 + nr, rem) - 1);
+        expect(prop.calculatedPmt).toBeCloseTo(expectedPmt, 2);
+        expect(state.lifeEventLogs.some((l) => l.includes('Renouvellement'))).toBe(true);
+    });
+});

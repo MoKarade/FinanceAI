@@ -137,3 +137,28 @@ export function buildEnvelope(
     if (apiKeysEnc) envelope.apiKeysEnc = apiKeysEnc;
     return envelope;
 }
+
+/**
+ * Variante CHIFFRÉE (`enc:true`) de l'enveloppe — chemin passphrase zéro-knowledge (D-3, opt-in).
+ * Restée PURE : le ciphertext (`encPayload`) est calculé en amont par l'orchestrateur via
+ * `encryptBackup` (asynchrone), exactement comme `apiKeysEnc` pour `buildEnvelope`. Le payload clair
+ * et les clés API ne sont PAS dans l'enveloppe (ils sont déjà DANS `encPayload`) : `payload` vaut
+ * `null` et il n'y a pas d'`apiKeysEnc`. On garde une fonction séparée (plutôt qu'un paramètre de
+ * `buildEnvelope`) pour que le chemin clair par défaut reste strictement inchangé — anti-régression.
+ */
+export function buildEncryptedEnvelope(
+    encPayload: string,
+    deviceId: string,
+    appVersion: string,
+    now: number,
+): SyncEnvelope {
+    return {
+        schemaVersion: SYNC_SCHEMA_VERSION,
+        updatedAt: now,
+        deviceId,
+        appVersion,
+        enc: true,
+        payload: null,
+        encPayload,
+    };
+}

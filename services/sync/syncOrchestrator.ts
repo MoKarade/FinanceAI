@@ -23,7 +23,9 @@ import {
     DriveAuthError,
 } from '../googleDrive/driveAppData';
 import { encryptApiKeys, decryptApiKeys } from './keyCipher';
-import { decideOnLoad, shouldPush, hashPayload, buildEnvelope } from './syncEngine';
+import { decideOnLoad, shouldPush, hashPayload, buildEnvelope, buildEncryptedEnvelope } from './syncEngine';
+import { getPassphrase, setPassphrase, clearPassphrase, hasPassphrase } from './passphraseStore';
+import { encryptBackup, decryptBackup, CloudBackupError } from '../cloudBackup';
 import { getOrCreateDeviceId, readSyncMeta, writeSyncMeta, clearSyncMeta } from './syncState';
 import { setGateAuthedThisSession, clearGateAuthedThisSession } from './authGate';
 import type { SyncEnvelope, SyncMeta } from './syncTypes';
@@ -194,6 +196,18 @@ export interface SyncStatus {
     busy: boolean;
     conflict: boolean;
     error: string | null;
+    /**
+     * `true` quand un pull a rencontré un blob CHIFFRÉ (`enc:true`) alors qu'aucune passphrase n'est
+     * active dans cette session : l'UI doit la demander puis re-puller. Aucune donnée locale n'a été
+     * touchée (zéro perte). Repasse à `false` dès qu'un pull aboutit (passphrase fournie) ou qu'on se
+     * déconnecte.
+     */
+    needsPassphrase: boolean;
+    /**
+     * `true` si une passphrase est active pour cette session (le prochain push chiffrera en `enc:true`).
+     * Reflet de `passphraseStore` pour l'UI (afficher l'état + le bon libellé du bouton activer/effacer).
+     */
+    passphraseActive: boolean;
 }
 
 let _status: SyncStatus = {
@@ -204,6 +218,8 @@ let _status: SyncStatus = {
     busy: false,
     conflict: false,
     error: null,
+    needsPassphrase: false,
+    passphraseActive: false,
 };
 const _listeners = new Set<(s: SyncStatus) => void>();
 
@@ -232,6 +248,8 @@ export function initSync(clientId: string | undefined | null): void {
         configured: isGoogleAuthConfigured(),
         email: meta?.connectedEmail ?? null,
         lastSyncedAt: meta?.lastSyncedAt ?? 0,
+        // Réhydrate l'état passphrase depuis sessionStorage (survit à un reload de page).
+        passphraseActive: hasPassphrase(),
     });
 }
 
@@ -285,21 +303,34 @@ export async function pushNow(): Promise<PushResult> {
     try {
         const token = await getValidAccessToken();
         const now = Date.now();
-        // Clés API : CHIFFRÉES avant d'entrer dans l'enveloppe (C1). Dérivé du sub Google → déchiffrable
-        // sur tous les appareils du compte. Best-effort : si pas de sub / crypto indispo, on pousse SANS
-        // les clés (jamais en clair) — l'utilisateur les ressaisira sur l'autre appareil.
-        let apiKeysEnc: string | undefined;
-        if (hasAnyKey(local.apiKeys)) {
-            const sub = await resolveSub(token);
-            if (sub) {
-                try {
-                    apiKeysEnc = await encryptApiKeys(local.apiKeys, sub);
-                } catch {
-                    /* crypto indispo → push sans clés (jamais de clés en clair dans Drive) */
+        // Passphrase optionnelle active (D-3) → chemin ZÉRO-KNOWLEDGE : on chiffre le payload COMPLET
+        // ET les clés API ensemble avec `encryptBackup` (la passphrase ne quitte jamais l'appareil).
+        // Sinon → chemin historique INCHANGÉ (`enc:false`, payload en clair, clés via `apiKeysEnc`).
+        const passphrase = getPassphrase();
+        let envelope: SyncEnvelope;
+        if (passphrase !== null) {
+            // Bundle chiffré = payload + clés (les clés voyagent DANS le ciphertext, pas en `apiKeysEnc`).
+            // encryptBackup valide la passphrase (≥12 caractères) et lève sinon → capté par le catch
+            // global qui publie un statut d'erreur honnête sans rien écrire dans Drive.
+            const encPayload = await encryptBackup({ payload: local.payload, apiKeys: local.apiKeys }, passphrase);
+            envelope = buildEncryptedEnvelope(encPayload, getOrCreateDeviceId(), APP_VERSION, now);
+        } else {
+            // Clés API : CHIFFRÉES avant d'entrer dans l'enveloppe (C1). Dérivé du sub Google → déchiffrable
+            // sur tous les appareils du compte. Best-effort : si pas de sub / crypto indispo, on pousse SANS
+            // les clés (jamais en clair) — l'utilisateur les ressaisira sur l'autre appareil.
+            let apiKeysEnc: string | undefined;
+            if (hasAnyKey(local.apiKeys)) {
+                const sub = await resolveSub(token);
+                if (sub) {
+                    try {
+                        apiKeysEnc = await encryptApiKeys(local.apiKeys, sub);
+                    } catch {
+                        /* crypto indispo → push sans clés (jamais de clés en clair dans Drive) */
+                    }
                 }
             }
+            envelope = buildEnvelope(local.payload, getOrCreateDeviceId(), APP_VERSION, now, apiKeysEnc);
         }
-        const envelope = buildEnvelope(local.payload, getOrCreateDeviceId(), APP_VERSION, now, apiKeysEnc);
         const ref = await findSyncFile(token);
         if (ref) await updateSyncFile(token, ref.id, envelope);
         else await createSyncFile(token, envelope);
@@ -346,26 +377,69 @@ export async function pullNow(): Promise<void> {
             setStatus({ busy: false });
             return;
         }
-        // Clés API : nouveau format CHIFFRÉ (apiKeysEnc) → déchiffré via le sub ; sinon ancien blob
-        // EN CLAIR (rétro-compat — sera ré-écrit chiffré au prochain push). Échec de déchiffrement
-        // (mauvais sub / blob altéré) → clés non restaurées, mais les DONNÉES le sont quand même.
+
+        // Payload + clés EFFECTIFS à appliquer. Pour un blob clair (`enc:false`), ce sont directement
+        // ceux de l'enveloppe ; pour un blob chiffré (`enc:true`), ils sortent du déchiffrement.
+        let effectivePayload: unknown = drive.payload;
         let restoredKeys: ApiKeys = { anthropic: '', finnhub: '' };
-        if (drive.apiKeysEnc) {
-            const sub = await resolveSub(token);
-            if (sub) {
-                try {
-                    restoredKeys = await decryptApiKeys(drive.apiKeysEnc, sub);
-                } catch (e) {
-                    // SF-3 — clés non restaurées (mauvais sub / blob altéré). Les données
-                    // financières le sont quand même, mais l'IA + les cours d'actions seraient
-                    // silencieusement HS. On journalise (non silencieux) pour signaler qu'il
-                    // faut reconfigurer les clés dans Paramètres.
-                    logError({ source: 'storage', severity: 'warning', message: 'pullNow: clés API non restaurées (déchiffrement échoué) — données OK, reconfigurer les clés dans Paramètres', error: e instanceof Error ? e : new Error(String(e)) });
-                }
+
+        if (drive.enc) {
+            // Chemin ZÉRO-KNOWLEDGE : il FAUT la passphrase de cette session pour déchiffrer.
+            const passphrase = getPassphrase();
+            if (passphrase === null) {
+                // Pas de passphrase en session → on N'APPLIQUE RIEN (zéro perte) et on signale à l'UI
+                // qu'elle doit la demander, puis re-puller. Pas une erreur : cas nominal d'un nouvel
+                // appareil/onglet. busy retombe, pas d'écriture locale, meta intacte.
+                setStatus({ busy: false, needsPassphrase: true });
+                return;
             }
-        } else if (drive.apiKeys) {
-            restoredKeys = drive.apiKeys;
+            const decoded = drive.encPayload;
+            if (typeof decoded !== 'string') {
+                // Blob marqué chiffré mais sans ciphertext (corruption) → échec gracieux, rien d'écrasé.
+                logError({ source: 'storage', severity: 'warning', message: 'pullNow: blob enc:true sans encPayload (corrompu) — données locales conservées' });
+                setStatus({ busy: false, error: 'Sync (pull) : sauvegarde chiffrée corrompue (champ manquant).' });
+                return;
+            }
+            let bundle: { payload: unknown; apiKeys?: ApiKeys };
+            try {
+                bundle = await decryptBackup<{ payload: unknown; apiKeys?: ApiKeys }>(decoded, passphrase);
+            } catch (e) {
+                // Passphrase FAUSSE / blob altéré → AES-GCM échoue. On NE TOUCHE PAS au local (zéro perte),
+                // on journalise un avertissement (non silencieux) et on publie un message clair pour que
+                // l'UI re-demande la passphrase. `needsPassphrase` reste vrai → le prompt reste ouvert.
+                logError({ source: 'storage', severity: 'warning', message: 'pullNow: déchiffrement de la sauvegarde échoué (passphrase incorrecte ou blob corrompu) — données locales conservées', error: e instanceof Error ? e : new Error(String(e)) });
+                const msg = e instanceof CloudBackupError && e.code === 'WRONG_PASSPHRASE'
+                    ? 'Sync (pull) : passphrase incorrecte (ou sauvegarde corrompue). Données locales conservées.'
+                    : 'Sync (pull) : sauvegarde chiffrée illisible. Données locales conservées.';
+                setStatus({ busy: false, needsPassphrase: true, error: msg });
+                return;
+            }
+            effectivePayload = bundle.payload ?? null;
+            const k = bundle.apiKeys;
+            restoredKeys = { anthropic: k?.anthropic ?? '', finnhub: k?.finnhub ?? '' };
+        } else {
+            // Chemin EN CLAIR historique (INCHANGÉ). Clés API : nouveau format CHIFFRÉ (apiKeysEnc) →
+            // déchiffré via le sub ; sinon ancien blob EN CLAIR (rétro-compat — sera ré-écrit au prochain
+            // push). Échec de déchiffrement (mauvais sub / blob altéré) → clés non restaurées, mais les
+            // DONNÉES le sont quand même.
+            if (drive.apiKeysEnc) {
+                const sub = await resolveSub(token);
+                if (sub) {
+                    try {
+                        restoredKeys = await decryptApiKeys(drive.apiKeysEnc, sub);
+                    } catch (e) {
+                        // SF-3 — clés non restaurées (mauvais sub / blob altéré). Les données
+                        // financières le sont quand même, mais l'IA + les cours d'actions seraient
+                        // silencieusement HS. On journalise (non silencieux) pour signaler qu'il
+                        // faut reconfigurer les clés dans Paramètres.
+                        logError({ source: 'storage', severity: 'warning', message: 'pullNow: clés API non restaurées (déchiffrement échoué) — données OK, reconfigurer les clés dans Paramètres', error: e instanceof Error ? e : new Error(String(e)) });
+                    }
+                }
+            } else if (drive.apiKeys) {
+                restoredKeys = drive.apiKeys;
+            }
         }
+
         const meta = currentMeta();
         writeSyncMeta({
             ...meta,
@@ -373,10 +447,11 @@ export async function pullNow(): Promise<void> {
             lastPulledUpdatedAt: drive.updatedAt,
             // Même hash que getLocalPayload (PAYLOAD seul) → au prochain boot/gate l'état est vu
             // « inchangé » (pas de push parasite, et donc pas d'effacement des clés dans Drive).
-            lastLocalHash: hashPayload(drive.payload),
+            lastLocalHash: hashPayload(effectivePayload),
         });
-        setStatus({ conflict: false });
-        await applyPulledPayload(drive.payload, restoredKeys); // réhydrate le store EN PLACE (pas de reload)
+        // Pull réussi → plus besoin de passphrase (réinitialise le drapeau s'il était posé).
+        setStatus({ conflict: false, needsPassphrase: false });
+        await applyPulledPayload(effectivePayload, restoredKeys); // réhydrate le store EN PLACE (pas de reload)
     } catch (e) {
         handleError('pull', e);
     }
@@ -506,12 +581,57 @@ export async function resolveConflict(keep: 'local' | 'drive'): Promise<void> {
     else await pullNow();
 }
 
+/** Longueur minimale de passphrase — DOIT rester alignée sur `checkPassphrase` de cloudBackup. */
+export const MIN_PASSPHRASE_LENGTH = 12;
+
+export type SetPassphraseResult = 'too-short' | 'set' | 'set-and-pulled';
+
+/**
+ * Active/définit la passphrase optionnelle de sync (D-3). Validée ici (≥12 caractères) pour un retour
+ * immédiat à l'UI, en cohérence avec `encryptBackup`. Effets :
+ *  - stocke le secret en SESSION (mémoire + sessionStorage), jamais en localStorage ni dans Drive ;
+ *  - si un pull attendait la passphrase (`needsPassphrase`), RE-PULLE aussitôt pour déchiffrer ;
+ *  - sinon, ne touche pas à Drive : le PROCHAIN push ré-écrira le blob en `enc:true` (cycle de migration).
+ *
+ * NE déclenche PAS de push automatique : laisser l'utilisateur (ou l'auto-push debouncé) pousser évite
+ * de ré-écrire Drive juste pour avoir tapé une passphrase, et garde le contrôle côté utilisateur.
+ */
+export async function setSyncPassphrase(passphrase: string): Promise<SetPassphraseResult> {
+    if (typeof passphrase !== 'string' || passphrase.length < MIN_PASSPHRASE_LENGTH) {
+        return 'too-short';
+    }
+    const wasWaiting = _status.needsPassphrase;
+    setPassphrase(passphrase);
+    setStatus({ passphraseActive: true, error: null });
+    if (wasWaiting) {
+        // Un blob chiffré attendait : on re-pull pour le déchiffrer maintenant qu'on a le secret.
+        // pullNow remet `needsPassphrase:false` en cas de succès, ou le laisse vrai + message clair
+        // si la passphrase est fausse (données locales intactes dans tous les cas).
+        await pullNow();
+        return 'set-and-pulled';
+    }
+    return 'set';
+}
+
+/**
+ * Efface la passphrase de session → le prochain push REVIENT au format EN CLAIR (`enc:false`).
+ * Les données LOCALES ne sont pas touchées. Si un blob chiffré était en attente, le drapeau
+ * `needsPassphrase` est levé (sans passphrase, on ne peut plus le lire — état cohérent pour l'UI).
+ */
+export function clearSyncPassphrase(): void {
+    clearPassphrase();
+    setStatus({ passphraseActive: false });
+}
+
 /** Déconnexion : révoque le token et efface la meta de sync. */
 export function disconnectSync(): void {
     revokeAccess();
     clearSyncMeta();
     clearGateAuthedThisSession(); // re-demande le login au prochain accès (sinon le gate serait sauté)
-    setStatus({ connected: false, email: null, conflict: false, lastSyncedAt: 0 });
+    // La passphrase est un secret de SESSION : on la purge à la déconnexion (sinon elle resterait
+    // déchiffrer un blob d'un autre compte reconnecté dans le même onglet).
+    clearPassphrase();
+    setStatus({ connected: false, email: null, conflict: false, lastSyncedAt: 0, needsPassphrase: false });
 }
 
 /**
@@ -528,7 +648,8 @@ export async function deleteRemoteData(): Promise<void> {
         if (ref) await deleteSyncFile(token, ref.id);
         revokeAccess();
         clearSyncMeta();
-        setStatus({ busy: false, connected: false, email: null, conflict: false, lastSyncedAt: 0 });
+        clearPassphrase(); // secret de session purgé avec la déconnexion qui suit la suppression
+        setStatus({ busy: false, connected: false, email: null, conflict: false, lastSyncedAt: 0, needsPassphrase: false });
     } catch (e) {
         handleError('delete', e);
     }

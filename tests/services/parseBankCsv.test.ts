@@ -61,6 +61,27 @@ describe('parseBankCsv', () => {
         expect(find(r, 'salaire')!.amount).toBeCloseTo(3000); // crédit → positif
     });
 
+    it('ignore (skip) les lignes au montant vide / non numérique — garde anti-corruption money', () => {
+        // L'import CSV est le seul vecteur de données externes non contrôlées : une ligne au
+        // montant illisible NE DOIT PAS entrer dans le store (sinon patrimoine corrompu).
+        const raw = [
+            'Date,Description,Amount',
+            '2026-04-01,Valide,-10.00',
+            '2026-04-02,Montant vide,',
+            '2026-04-03,Montant texte,N/A',
+            '2026-04-04,Montant illisible,abc',
+        ].join('\n');
+        const r = parseBankCsv(raw);
+        expect(r.total).toBe(4);
+        expect(r.imported).toBe(1);
+        expect(r.skipped).toBe(3);
+        expect(r.imported + r.skipped).toBe(r.total);
+        // Aucune transaction importée n'a un montant non-fini.
+        expect(r.transactions.every((t) => Number.isFinite(t.amount))).toBe(true);
+        expect(r.transactions).toHaveLength(1);
+        expect(find(r, 'valide')!.amount).toBeCloseTo(-10);
+    });
+
     it('détecte MM/DD/YYYY quand le 2e nombre dépasse 12', () => {
         const raw = ['Date,Description,Amount', '01/25/2026,Cafe,-5.00'].join('\n');
         const r = parseBankCsv(raw);

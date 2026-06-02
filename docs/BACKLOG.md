@@ -77,9 +77,12 @@
   s'annule ; gain dans le même palier ≈ inchangé → zéro baseline décalée. +2 tests (barème réel : empilement
   + cohérence) ; 5 tests à stub plat reworkés (STUB_RATE). **Dividendes Non-Reg encore au marginal** (crédit
   d'impôt dividende distinct) → raffinement séparé, plus petit, noté pour plus tard.
-- 🔧 **B-AUDIT-3 [HIGH]** `taxDecember.ts` + `taxJanuary.ts` : crédits d'âge/pension (féd + ligne 361 QC,
-  bonus PSV 75+) basés sur `ctx.age` = âge de Marc pour les DEUX conjoints → erreur 1.5-2.5 k$/an pour les
-  couples à âges décalés. Fix : âge par conjoint. (Lié à A1 « impôt par conjoint », plus lourd.)
+- ✅ **B-AUDIT-3 [HIGH] CORRIGÉ 2026-06-01 (volet crédits)** `taxDecember.ts` : crédits d'âge/pension (féd +
+  ligne 361 QC) désormais calculés PAR conjoint (champ `ageSpouse` threadé depuis `projection.ts`), blocs actif
+  ET retraité. Couple de même âge → identique à l'ancien (zéro baseline décalée). +2 tests barème réel.
+  🔧 **Reste les gates de TIMING par conjoint** (suite, plus profond, vraie 2e piste d'âge) : conversion FERR
+  à 72 ans + reset espace REER à 71 ans (`taxJanuary.ts`) + bonus PSV +10 % à 75 ans (`retirementIncome.ts`)
+  restent sur l'âge principal. + dividendes Non-Reg empilés (B-AUDIT-2 résiduel).
 - ✅ **B-AUDIT-4 [MEDIUM] CORRIGÉ 2026-06-01** : `currentGrossUser` indexé par inflation+0,5 % (même facteur
   que la MGA projetée) → ratio earnings/MGA stable sur la carrière, RRQ plus juste pour départs lointains. +1 test.
 - 📄 **B-AUDIT-5 [LOW, faible impact]** `retirementIncome.ts:171-177` + `taxDecember.ts:29` : le SRG est

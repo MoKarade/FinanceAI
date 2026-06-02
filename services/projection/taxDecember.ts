@@ -106,6 +106,14 @@ export interface DecemberContext {
     /** Âge courant de l'utilisateur principal — sert aux crédits §6.2 (65+ et revenu retraite). */
     age?: number;
     /**
+     * B-AUDIT-3 — âge courant du conjoint (user[1]). Permet d'appliquer les crédits
+     * d'âge/pension PAR conjoint (chacun selon SON âge) au lieu de l'âge de Marc pour
+     * les deux. `undefined` si pas de conjoint → repli conservateur (aucun crédit
+     * d'âge pour le 2e). N'affecte PAS encore les gates de timing (FERR 72, reset REER
+     * 71, bonus PSV 75+) qui restent sur l'âge principal — voir BACKLOG.
+     */
+    ageSpouse?: number;
+    /**
      * Nombre d'enfants à charge — sert au seuil d'exemption RAMQ (§6.4).
      * Optionnel, défaut 0.
      */
@@ -160,31 +168,29 @@ export function processDecemberTaxFiling(
         const deductionsAnna = grossMarcReal > grossAnnaReal ? 0 : deductionsReal;
 
         // §6.2 — crédits 65+ pour salarié actif 65+ (audit silent-failure FINDING 2).
-        // Cas : senior qui continue à travailler après 65 ans. Sans ce passage,
-        // le crédit âge fédéral + ligne 361 QC seraient silencieusement nuls.
-        // Limite : on utilise ctx.age (user[0] = Marc) pour les deux conjoints.
-        // Si seul Anna a 65+ et pas Marc, la prudence préfère 0 crédit (faux négatif)
-        // à un crédit indu (faux positif). Marc fait foi pour la simplicité ici.
+        // Cas : senior qui continue à travailler après 65 ans.
+        // B-AUDIT-3 — chaque conjoint selon SON âge (ctx.age / ctx.ageSpouse) : un 65+ qui
+        // travaille a le crédit d'âge, un conjoint <65 ne l'a pas (corrige l'ancien biais
+        // qui appliquait l'âge de Marc aux deux). eligiblePensionIncome=0 (aucune pension
+        // admissible en mode actif) ; familyIncome = revenu familial (réduction ligne 361).
         const familyGrossReal = grossMarcReal + grossAnnaReal;
-        const ageOptsActive: AgeCreditOptions | undefined = (ctx.age !== undefined && ctx.age >= 65)
-            ? {
-                age: ctx.age,
-                eligiblePensionIncome: 0, // pas de pension admissible en mode actif
-                hasSpouse: ctx.activeUsersCount > 1,
-                familyIncome: familyGrossReal,
-            }
-            : undefined;
+        const mkActiveAgeOpts = (a: number | undefined): AgeCreditOptions | undefined =>
+            (a !== undefined && a >= 65)
+                ? { age: a, eligiblePensionIncome: 0, hasSpouse: ctx.activeUsersCount > 1, familyIncome: familyGrossReal }
+                : undefined;
+        const ageOptsMarc = mkActiveAgeOpts(ctx.age);
+        const ageOptsAnna = mkActiveAgeOpts(ctx.ageSpouse);
 
-        const taxMarcReal = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, deductionsMarc, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsActive).totalTax : 0;
-        const taxAnnaReal = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, deductionsAnna, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsActive).totalTax : 0;
+        const taxMarcReal = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, deductionsMarc, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsMarc).totalTax : 0;
+        const taxAnnaReal = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, deductionsAnna, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsAnna).totalTax : 0;
         const totalAnnualTax = (taxMarcReal + taxAnnaReal) * ctx.inflationFactor;
 
         // V49: Retenue source (T1213 ou non)
         let taxMarcEmployer = taxMarcReal;
         let taxAnnaEmployer = taxAnnaReal;
         if (!ctx.optimizeSourceDeductions) {
-            taxMarcEmployer = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsActive).totalTax : 0;
-            taxAnnaEmployer = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsActive).totalTax : 0;
+            taxMarcEmployer = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsMarc).totalTax : 0;
+            taxAnnaEmployer = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsAnna).totalTax : 0;
         }
         const totalEmployerTax = (taxMarcEmployer + taxAnnaEmployer) * ctx.inflationFactor;
         const estimatedWithholding = totalEmployerTax * 0.92;
@@ -201,15 +207,17 @@ export function processDecemberTaxFiling(
             // FIX audit code-reviewer MEDIUM 5 : familyIncome inclut aussi les retraits REER de l'année
             // pour ne pas surestimer le crédit ligne 361 QC.
             const reerRealForFamily = ctx.accRetraitsReerYear / ctx.inflationFactor;
-            const ageOpts: AgeCreditOptions | undefined = ctx.age !== undefined
-                ? {
-                    age: ctx.age,
-                    eligiblePensionIncome: incomeIndividualReal,
-                    hasSpouse: ctx.activeUsersCount > 1,
-                    familyIncome: basePensionReal + reerRealForFamily,
-                }
-                : undefined;
-            const taxReal = helpers.calculateFiscalReport(incomeIndividualReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOpts).totalTax * ctx.activeUsersCount;
+            // B-AUDIT-3 — crédit d'âge/pension PAR conjoint : chacun selon SON âge. Le revenu
+            // par adulte est identique (split égal, hypothèse du modèle) ; seul l'âge diffère.
+            // Couple de même âge → taxMarc + taxAnna == ancien per-adulte × N (pas de régression).
+            const mkRetiredAgeOpts = (a: number | undefined): AgeCreditOptions | undefined =>
+                a !== undefined
+                    ? { age: a, eligiblePensionIncome: incomeIndividualReal, hasSpouse: ctx.activeUsersCount > 1, familyIncome: basePensionReal + reerRealForFamily }
+                    : undefined;
+            const taxMarcR = helpers.calculateFiscalReport(incomeIndividualReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, mkRetiredAgeOpts(ctx.age)).totalTax;
+            const taxReal = ctx.activeUsersCount > 1
+                ? taxMarcR + helpers.calculateFiscalReport(incomeIndividualReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, mkRetiredAgeOpts(ctx.ageSpouse)).totalTax
+                : taxMarcR * ctx.activeUsersCount;
             const totalTax = taxReal * ctx.inflationFactor;
             const diff = totalTax * 0.05;
             if (diff > 100) taxCurrent.revenu += diff;

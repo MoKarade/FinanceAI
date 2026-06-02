@@ -1,7 +1,9 @@
 // services/googleDrive/gisAuth.ts
 // Authentification Google Drive via Google Identity Services (GIS) — token client navigateur.
 // Scope minimal : drive.appdata (dossier app caché) + userinfo.email (afficher le compte).
-// Aucun secret client (flux token GIS public). Le token vit en mémoire (jamais persisté).
+// Aucun secret client (flux token GIS public). Le token est gardé en mémoire ET mis en cache
+// dans sessionStorage (effacé à la fermeture de l'onglet) pour éviter une reconnexion à chaque
+// rechargement ; scope minimal drive.appdata → un vol éventuel ne donne accès qu'au dossier app.
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 export const DRIVE_SCOPES = [

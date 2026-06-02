@@ -1,4 +1,4 @@
-# FinanceAI — Architecture (2026-05)
+# FinanceAI — Architecture (màj 2026-06)
 
 > Vue d'ensemble destinée aux nouveaux contributeurs (humains ou agents).
 > Pour le détail du moteur de projection, voir [PROJECTION.md](PROJECTION.md).
@@ -13,14 +13,14 @@
 | UI | React 19 + TypeScript (strict) | `noImplicitAny`, `strictNullChecks`, `useUnknownInCatchVariables` |
 | Bundler | Vite 6 | esbuild en dev, Rollup pour le bundle prod, source-maps activées |
 | Styling | Tailwind CSS + index.css | Design tokens custom (couleurs sémantiques, scale typo) |
-| State | Zustand 5 + `persist` middleware | Schema versionné (v1 → v6), migrations en code |
+| State | Zustand 5 + `persist` middleware | Schema versionné (v1 → v7), migrations en code |
 | Charts | Recharts 2 | Bundle dédié `recharts-*.js` (~445 KB) |
 | IA | `@anthropic-ai/sdk` (client-side) | `dangerouslyAllowBrowser: true` |
 | Storage sécurisé | AES-256-GCM IndexedDB | services/secureKeyStore.ts (clé device non-extractible) |
 | Import données | CSV universel + Finnhub + CoinGecko | parseBankCsv.ts (100% local) |
 | Crypto pricing | CoinGecko REST | Gratuit, sans clé, CORS-friendly |
 | Stock/ETF pricing | Finnhub REST | Clé gratuite optionnelle |
-| Tests | Vitest + React Testing Library | 573 tests, 51 fichiers |
+| Tests | Vitest + React Testing Library | ~1440 tests, 123 fichiers |
 | Auth | Cloudflare Access | Google OAuth, session 24h |
 | Hébergement | Vercel (auto) + GitHub Pages (workflow) | Preview par PR |
 
@@ -46,7 +46,7 @@ FinanceAI/
 │   ├── settings/            BackupPanel, ImportBankStatement
 │   └── retirement/          AssetLocationCard, GoalSeekerCard
 ├── services/                Logique métier pure (testable, sans React)
-│   ├── projection.ts        Orchestrateur (1111 lignes)
+│   ├── projection.ts        Orchestrateur (~1310 lignes)
 │   ├── projection/          31 sous-modules (split Phase 3)
 │   ├── projection.worker.ts Worker MC
 │   ├── claude.ts            Wrapper Anthropic SDK
@@ -58,7 +58,7 @@ FinanceAI/
 │   ├── realEstate.ts        Amortissement hypothèque
 │   └── …                    finance, macroApi, pdfReport, cloudBackup
 ├── store/
-│   └── useFinanceStore.ts   Zustand store unique (schema v6, persist)
+│   └── useFinanceStore.ts   Zustand store unique (schema v7, persist)
 ├── utils/
 │   ├── tax.ts               Constantes fiscales (paliers, plafonds)
 │   ├── safeNumber.ts        Helper anti-NaN
@@ -89,7 +89,7 @@ Règles structurelles :
 ```ts
 {
   config: BudgetConfig;          // utilisateurs, devises, locale
-  apiKeys: {                     // schema v6 — gemini + eraContext supprimés
+  apiKeys: {                     // gemini + eraContext supprimés (≤ v3) — chiffrées hors persist
     anthropic: string;
     finnhub: string;
   };
@@ -113,6 +113,7 @@ Règles structurelles :
 - **v3 → v4** : ajout `apiKeys.finnhub` (Phase 7.F.5)
 - **v4 → v5** : ajout `retirementGoal.lifeExpectancy` (default 90, Phase C.3)
 - **v5 → v6** : conversion `dateBought + buyPrice + quantity` → `purchases[]` DCA multi-achat (Phase E.8)
+- **v6 → v7** : le mode test n'est plus persisté (bug 2026-05-29 : l'auto-push Drive envoyait les fixtures de test dans le Drive de l'utilisateur)
 
 ### Onglets (Tab enum, 18 entries)
 
@@ -241,7 +242,7 @@ tests/
     └── useFinanceStore.test.ts
 ```
 
-**573/573 tests verts** au 2026-05 (1 flaky pré-existant sur `projection.goalSeek > findEarliestRetirementAge` à surveiller). Tous les scénarios MC, les helpers de projection, les primitives UI et les migrations de store sont couverts.
+**~1440 tests verts** (123 fichiers) au 2026-06. Tous les scénarios MC, les helpers de projection, les primitives UI, les migrations de store, la fiscalité (dont `taxDecember`/`taxJanuary`) et le moteur de sync Drive sont couverts.
 
 ---
 
@@ -251,6 +252,11 @@ tests/
 - **ADR-002** : ~~Era Context comme moteur de qualité~~ — SUPERSEDED (era est MCP-only, REST API inexistante)
 - **ADR-003** : Projection.ts split en 31 sous-modules
 - **ADR-004** : Design system primitives custom (vs shadcn/Radix)
+- **ADR-005** : Future = source unique pour les calculs projetés
+- **ADR-006** : Convention « valeurs réelles ou rien » (no-fake-data)
+- **ADR-007** : Authentification Cloudflare Access + Google OAuth
+- **ADR-008** : Optimiseur — leviers découplés + adaptateur moteur fin
+- **ADR-009** : Calculs fiscaux QC centralisés (crédits 65+, RAMQ, FSS, SRG) + règles immobilières
 
 ---
 
@@ -260,7 +266,7 @@ tests/
 npm install
 npm run dev        # localhost:3000
 npm run typecheck  # tsc --noEmit, doit rester clean
-npm test           # vitest, doit rester 573/573
+npm test           # vitest, doit rester vert (~1440 tests)
 npm run build      # vérifie le bundle prod (vite build --mode production)
 ```
 
@@ -271,7 +277,8 @@ Toutes les PR doivent passer **typecheck + tests + build**. Le pipeline CI
 
 ## 10. Pour aller plus loin
 
-- [HANDOVER.md](HANDOVER.md) — vue d'ensemble + roadmap + recommandations (lire en premier)
+- [CLAUDE_MEMORY.md](CLAUDE_MEMORY.md) — mémoire de session inter-PC : reprendre vite (lire en premier)
+- [SESSION_HANDOVER.md](SESSION_HANDOVER.md) — vue d'ensemble + roadmap + recommandations
 - [PROJECTION.md](PROJECTION.md) — détail du moteur de projection (9 phases mensuelles, scénarios, MC)
 - [WIRING_NOTES.md](WIRING_NOTES.md) — wirings inter-onglets, `lastProjection`, deep-links
 - [adr/](adr/) — Architecture Decision Records (décisions structurantes)

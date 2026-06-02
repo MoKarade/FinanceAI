@@ -652,6 +652,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     accRrspYear, accFhsaYear, smithInterestDeductibleYear,
                     accRentesYear, accRetraitsReerYear, accCapitalGainsYear,
                     age,
+                    // B-AUDIT-3 — âge courant du conjoint (user[1]) pour les crédits d'âge/
+                    // pension PAR conjoint dans l'impôt de décembre. undefined si pas de conjoint.
+                    ageSpouse: config.users[1] ? (config.users[1].age || 30) + yearsElapsed : undefined,
                     // §6.4 RAMQ: nombre d'enfants à charge (relève le seuil d'exemption).
                     // Approximé via childGoals.length faute de champ dédié dans User.
                     // TODO: ajouter `User.dependentChildrenCount` pour précision.

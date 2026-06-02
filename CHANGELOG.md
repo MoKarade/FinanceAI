@@ -8,6 +8,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Feature · Sync Google Drive] — 2026-05-29
 
+### Correctif money — B-AUDIT-3 : crédits d'âge/pension PAR conjoint (2026-06-01)
+- **Bug** : `taxDecember.ts` appliquait l'âge de Marc (`ctx.age`) aux DEUX conjoints pour les crédits
+  d'âge/pension (crédit d'âge fédéral + ligne 361 QC). Erreur ~1,5-2,5 k$/an pour les couples à âges décalés
+  (ex. Marc 67 → Anna 60 recevait à tort le crédit d'âge ; ou l'inverse, Anna 67 → crédit manqué).
+- **Fix** : nouveau champ `ageSpouse` dans `DecemberContext`, threadé depuis `projection.ts`
+  (`config.users[1].age + yearsElapsed`). Le **bloc actif** (déjà 2 appels par conjoint) et le **bloc
+  retraité** (splitté en per-conjoint) utilisent désormais chacun l'âge du bon conjoint. **Propriété de
+  sûreté** : couple de même âge → `taxMarc + taxAnna` == ancien per-adulte × N → **aucune baseline décalée**.
+- **TDD** : +2 tests à barème réel (retraité 70/60 → impôt > 70/70 ; actif 65+/conjoint <65). RED→GREEN.
+- **Hors périmètre (gates de timing, suite)** : conversion FERR à 72 ans, reset espace REER à 71 ans, bonus
+  PSV +10 % à 75 ans restent gatés sur l'âge principal. Ce sont des événements de TIMING par conjoint (vraie
+  2e piste d'âge) — changement plus profond, consigné dans BACKLOG.
+- Suite **1440 verts**, tsc + eslint propres, zéro régression.
+
 ### Correctif money — B-AUDIT-2 : gains en capital imposés en progressif (empilés) (2026-06-01)
 - **Bug** : `taxDecember.ts` imposait les gains en capital à un **taux marginal plat** calculé sur le revenu
   AVANT le gain (`taxableGains × getMarginalRate(revenu)`). Un gros gain qui franchit un palier était donc

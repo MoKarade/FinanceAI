@@ -438,6 +438,34 @@ describe('processDecemberTaxFiling — gains en capital EMPILÉS sur le barème 
     });
 });
 
+describe('processDecemberTaxFiling — crédits d\'âge PAR conjoint (B-AUDIT-3)', () => {
+    // Le stub calculateFiscalReport ignore les ageOpts → on utilise le VRAI barème,
+    // seul à appliquer les crédits d'âge/pension. Avant le fix, ctx.age (Marc) servait
+    // aux DEUX conjoints ; après, chacun selon SON âge (ctx.age / ctx.ageSpouse).
+    const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
+
+    it('couple retraité à âges décalés : le conjoint <65 ne reçoit PAS le crédit d\'âge → impôt plus élevé', () => {
+        const retiredCtx = (ageSpouse: number) => baseCtx({
+            isRetired: true, age: 70, ageSpouse, activeUsersCount: 2,
+            incomeRetirementMonthly: 5000, // basePensionAnnual 60000 → per-adulte 30000 (crédit d'âge plein)
+        });
+        const equal = processDecemberTaxFiling(DECEMBER, retiredCtx(70), realHelpers, ZERO_TAX);
+        const gap = processDecemberTaxFiling(DECEMBER, retiredCtx(60), realHelpers, ZERO_TAX);
+        // 70/70 → les deux ont le crédit ; 70/60 → le conjoint de 60 ans ne l'a pas → impôt couple supérieur.
+        expect(gap.newTaxCurrentYear.revenu).toBeGreaterThan(equal.newTaxCurrentYear.revenu);
+    });
+
+    it('actif 65+ avec conjoint <65 : seul le 65+ reçoit le crédit d\'âge', () => {
+        const mk = (ageSpouse: number) => baseCtx({
+            isRetired: false, age: 67, ageSpouse, activeUsersCount: 2,
+            grossMarcBaseAnnual: 40000, grossAnnaBaseAnnual: 40000, optimizeSourceDeductions: true,
+        });
+        const gap = processDecemberTaxFiling(DECEMBER, mk(60), realHelpers, ZERO_TAX);
+        const both = processDecemberTaxFiling(DECEMBER, mk(67), realHelpers, ZERO_TAX);
+        expect(gap.newTaxCurrentYear.revenu).toBeGreaterThan(both.newTaxCurrentYear.revenu);
+    });
+});
+
 describe('processDecemberTaxFiling — dividendes Non-Reg', () => {
     it('Non-Reg nul → aucun impôt de dividende', () => {
         const r = processDecemberTaxFiling(

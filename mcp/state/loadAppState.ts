@@ -24,6 +24,10 @@ import {
 } from '../../constants';
 import { validateAppStateShape } from './appStateSchema';
 
+// Ré-export pour les consommateurs (tools / tests) qui veulent valider une forme
+// sans connaître le module de schéma.
+export { validateAppStateShape } from './appStateSchema';
+
 /** Variable d'environnement portant le chemin du fichier d'état (mode stdio). */
 export const STATE_FILE_ENV = 'FINANCEAI_STATE_FILE';
 

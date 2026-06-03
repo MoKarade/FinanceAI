@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { logError } from '../services/errorLogger';
 import { Transaction, BudgetCategory, CategorizationRule } from '../types';
 import { showToast } from './ui/Toast';
 // Phase 4 A3: bascule sur services/claude.ts (Haiku 4.5 pour vitesse)
@@ -244,7 +245,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
 
         } catch (e: unknown) {
             // TH4 fix : unknown au lieu de any (useUnknownInCatchVariables tsconfig)
-            console.error('[Transactions] Categorisation batch failed:', e);
+            logError({ source: 'ai', severity: 'error', message: 'Catégorisation batch des transactions échouée', error: e });
             const msg = e instanceof Error ? e.message : 'inconnue';
             setLiveLogs(prev => [...prev, `Erreur : ${msg}`]);
         } finally {
@@ -581,7 +582,21 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                     className={`border-b border-border/50 transition-colors ${selectedIds.has(t.id) ? 'bg-primary/10' : 'hover:bg-white/5'} ${t.category === 'Inconnu' ? 'bg-red-900/10' : ''}`}
                                     onClick={(e) => { if ((e.target as HTMLElement).tagName !== 'BUTTON' && (e.target as HTMLElement).tagName !== 'SELECT') handleSelectOne(t.id, e.shiftKey); }}
                                 >
-                                    <td className="p-3"><input type="checkbox" checked={selectedIds.has(t.id)} readOnly aria-label={`Selectionner ${t.payee}`} className="rounded bg-[#1e2330]" /></td>
+                                    <td className="p-3">
+                                        {/* UI6 (a11y) : checkbox pilotable au clavier (Espace/Entrée déclenchent
+                                            un click) ET à la souris. On lit shiftKey sur onClick pour préserver la
+                                            sélection par plage (shift-clic), et on stoppe la propagation pour éviter
+                                            un double-toggle avec le onClick du <tr>. onChange no-op = input contrôlé
+                                            sans warning React. */}
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedIds.has(t.id)}
+                                            onChange={() => { /* géré par onClick (porte shiftKey) */ }}
+                                            onClick={(e) => { e.stopPropagation(); handleSelectOne(t.id, e.shiftKey); }}
+                                            aria-label={`Selectionner ${t.payee}`}
+                                            className="rounded bg-[#1e2330]"
+                                        />
+                                    </td>
                                     <td className="p-3 text-gray-400 whitespace-nowrap">{t.date}</td>
                                     <td className="p-3 font-medium text-white">{t.payee}</td>
 

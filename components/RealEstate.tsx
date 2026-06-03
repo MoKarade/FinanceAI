@@ -143,8 +143,10 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
 
     const monthlyRate = rate / 100 / 12;
     const numberOfPayments = amortization * 12;
+    // Facteur d'amortissement calculé une seule fois (évitait 2 Math.pow par render).
+    const mortgagePowFactor = monthlyRate > 0 ? Math.pow(1 + monthlyRate, numberOfPayments) : 0;
     const monthlyMortgage = monthlyRate > 0
-        ? (monthlyRate * totalMortgage * Math.pow(1 + monthlyRate, numberOfPayments)) / (Math.pow(1 + monthlyRate, numberOfPayments) - 1)
+        ? (monthlyRate * totalMortgage * mortgagePowFactor) / (mortgagePowFactor - 1)
         : totalMortgage / numberOfPayments;
 
     const amortizationData = useMemo(() => {

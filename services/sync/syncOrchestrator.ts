@@ -449,9 +449,14 @@ export async function pullNow(): Promise<void> {
             // « inchangé » (pas de push parasite, et donc pas d'effacement des clés dans Drive).
             lastLocalHash: hashPayload(effectivePayload),
         });
+        const syncedAt = Date.now();
         // Pull réussi → plus besoin de passphrase (réinitialise le drapeau s'il était posé).
         setStatus({ conflict: false, needsPassphrase: false });
         await applyPulledPayload(effectivePayload, restoredKeys); // réhydrate le store EN PLACE (pas de reload)
+        // Le pull réussi DOIT retomber busy:false : sinon le spinner « Synchronisation… » reste figé
+        // après une restauration (applyPulledPayload ne touche pas au statut). Bug : seuls les chemins
+        // early-return (drive null) et erreur (handleError) remettaient busy:false. (EPIC 1, 2026-06.)
+        setStatus({ busy: false, connected: true, lastSyncedAt: syncedAt });
     } catch (e) {
         handleError('pull', e);
     }

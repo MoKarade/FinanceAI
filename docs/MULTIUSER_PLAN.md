@@ -1,8 +1,9 @@
 # Plan multi-utilisateurs — FinanceAI
 
-> **Statut : BROUILLON — préparé pour review de Marc (2026-06-02).**
-> **Ne rien implémenter avant validation des décisions §1.** Destination confirmée par Marc :
-> faire de FinanceAI un vrai produit multi-utilisateurs (pas juste l'outil perso de Marc).
+> **Statut : décisions D-1..D-5 VERROUILLÉES (2026-06, cf §1bis).** Le §1 reste comme trace de la
+> review ; en cas de divergence, le §1bis fait foi (notamment D-1 = hard gate).
+> Destination confirmée par Marc : faire de FinanceAI un vrai produit multi-utilisateurs (pas juste
+> l'outil perso de Marc).
 > Sources : `CLAUDE_MEMORY.md` §7, `SYNC_V2_DESIGN.md`, `docs/adr/010`, `SNAPSHOT_2026-05-29.md`.
 
 ---
@@ -30,6 +31,47 @@
 | **D-3** | Chiffrement au repos des clés | garder `keyCipher` (dérivé du `sub`, **pas** zéro-knowledge) · ajouter **passphrase optionnelle** (H1, vrai zéro-knowledge) | garder `keyCipher`, passphrase **optionnelle** en P2 |
 | **D-4** | Écran de consentement OAuth Google | rester en **Test** (≤ 100 users, re-login ~hebდo) · passer en **Production** (vérification Google, scope `drive.appdata` sensible) | **Test** pour bêta restreinte → Production quand on ouvre large |
 | **D-5** | Périmètre des « utilisateurs » au lancement | cercle restreint (proches, bêta) · public ouvert | **bêta restreinte** d'abord (valide tout sans risque d'échelle) |
+
+---
+
+## 1bis. Décisions verrouillées (2026-06)
+
+> Tranchées par Marc en review (2026-06). Elles **remplacent** les recommandations §1 quand elles
+> divergent (notamment D-1 : Marc choisit le **hard gate**, pas le soft). Ces choix figent le
+> contenu des épics ci-dessous.
+
+| # | Décision verrouillée | Option retenue | Conséquence |
+|---|----------------------|----------------|-------------|
+| **D-1** | Modèle d'accès | **HARD gate** : rien d'accessible sans login Google, **+ trappe anti-lock-out** obligatoire | Le `LoginGate` bloque l'app tant que l'utilisateur n'est pas authentifié ; une trappe (`isGateEscaped`) garantit qu'on n'enferme jamais personne dehors si Google tombe (cf T2.4). Diffère de la reco §1 (soft). |
+| **D-2** | Clé API Anthropic (IA) | **BYO** : chaque utilisateur saisit SA propre clé Anthropic (≈ comportement actuel) | Zéro coût/backend, zéro clé partagée dans le bundle. Le proxy (T3.2) reste un *optionnel futur*, hors-scope tant que BYO suffit. |
+| **D-3** | Chiffrement au repos des clés | **Passphrase OPTIONNELLE** — réservée à un **build dédié futur**, **PAS** dans ce lot | On garde `keyCipher` (clé dérivée du `sub`, *pas* zéro-knowledge) comme défaut. La passphrase (vrai zéro-knowledge) viendra dans un build dédié ultérieur (T6.3) ; ne rien livrer maintenant. |
+| **D-4** | Écran de consentement OAuth | **Mode Test** (≤ 100 users, re-login périodique accepté) | Pas de vérification Google requise pour la bêta restreinte ; passage en Production seulement à l'ouverture large. |
+| **D-5** | Périmètre de lancement | **Cercle restreint** (proches / bêta) | Valide toute la chaîne sans risque d'échelle ni de conformité grand public. |
+
+### Prérequis EPIC 1 — état réel (2026-06)
+
+**DÉJÀ FAIT (vérifié dans le code, verrouillé par tests) :**
+
+- **T1.4 — `computeIsEmpty` unifié avec `hasMeaningfulData`.** `services/sync/syncOrchestrator.ts:96`
+  délègue à `hasMeaningfulData` (`utils/onboarding.ts`) : une **seule** notion de « vide » partagée
+  entre l'onboarding et la sync (fini les deux listes divergentes qui affichaient l'onboarding sur des
+  données que la sync refusait d'écraser — revue archi 2026-05-29).
+- **T1.3 — Garde anti-réentrance au boot.** `services/sync/syncOrchestrator.ts` (~ligne 452) :
+  le verrou `_decisionInFlight` se pose **entre** `gateSilentResume` et `runBootSync`. Concrètement,
+  `runDecision` court-circuite tout appel concurrent en réutilisant la décision déjà en vol (la
+  vérification `if (_decisionInFlight) return _decisionInFlight` et l'affectation sont sur le **même
+  tick synchrone**, sans `await` intermédiaire → pas de fenêtre de réentrance). Résultat : au boot avec
+  gate actif, **un seul** pull/rehydrate, **un seul** `createSyncFile` (pas de doublon Drive). Verrouillé
+  par un test de non-réentrance (cf `tests/services/syncOrchestrator.flow.test.ts`).
+
+**DÉPEND ENCORE DE MARC (rien de tout ça n'est faisable côté Claude) :**
+
+- **T1.1 — créer `VITE_GOOGLE_CLIENT_ID`** (client OAuth web) et le poser sur Vercel + `.env`. Tant
+  qu'il est absent, toute la sync est **inerte** (`isGoogleAuthConfigured()` → faux) — c'est la garde
+  « déployer ≠ activer ».
+- **T2.2/T2.3 — activer le gate** (`VITE_GOOGLE_GATE`) puis **retirer Cloudflare Access** (ouvrir l'app à
+  des comptes Google tiers, supprimer l'allowlist email). Ordre impératif : gate prouvé **avant** de
+  retirer Cloudflare, sinon fenêtre d'app ouverte sans aucun contrôle.
 
 ---
 

@@ -111,13 +111,21 @@ describe('computeOasClawback — seuil de revenu de pension', () => {
         expect(r.clawbackAnnual).toBeGreaterThan(0);
     });
 
-    it('expenseMultiplier relève le seuil effectif (réel vs nominal)', () => {
-        // revenu = 100 000. Avec multiplier=1 (>95 323) → clawback. Avec multiplier=1.2
-        // (seuil = 114 388 > 100 000) → nul.
-        const nominal = computeOasClawback(DECEMBER, 24, true, 70, 1, 100000 / 12, 0, 0, 5000, 0);
-        const inflated = computeOasClawback(DECEMBER, 24, true, 70, 1.2, 100000 / 12, 0, 0, 5000, 0);
-        expect(nominal.clawbackAnnual).toBeGreaterThan(0);
-        expect(inflated.clawbackAnnual).toBe(0);
+    it('seuil indexé par l\'inflation NOMINALE du revenu (simInflation), PAS expenseMultiplier', () => {
+        // BONUS FIX (Marc, 2026-06) — le seuil PSV suit désormais l'inflation nominale du
+        // revenu (Math.pow(1+simInflation/100, m/12)), pas l'inflation des dépenses.
+        // Preuve 1 : expenseMultiplier n'a plus AUCUN effet (5e arg), à simInflation égal.
+        const mult1 = computeOasClawback(DECEMBER, 24, true, 70, 1.0, 100000 / 12, 0, 0, 5000, 0);
+        const mult2 = computeOasClawback(DECEMBER, 24, true, 70, 1.2, 100000 / 12, 0, 0, 5000, 0);
+        expect(mult2.clawbackAnnual).toBeCloseTo(mult1.clawbackAnnual, 5);
+
+        // Preuve 2 : c'est bien simInflation (dernier arg) qui relève le seuil.
+        // revenu nominal = 100 000. Sans inflation (seuil 95 323) → clawback > 0.
+        // Avec simInflation=10 % sur m=24 (2 ans) → seuil ≈ 95 323 × 1.21 ≈ 115 341 > 100 000 → nul.
+        const noInfl = computeOasClawback(DECEMBER, 24, true, 70, 1, 100000 / 12, 0, 0, 5000, 0);
+        const withInfl = computeOasClawback(DECEMBER, 24, true, 70, 1, 100000 / 12, 0, 0, 5000, 10);
+        expect(noInfl.clawbackAnnual).toBeGreaterThan(0);
+        expect(withInfl.clawbackAnnual).toBe(0);
     });
 });
 
@@ -308,26 +316,97 @@ describe('processDecemberTaxFiling — actif : régularisation salariale (T1213)
     });
 });
 
-describe('processDecemberTaxFiling — retraité : petit ajustement ~5%', () => {
-    it('ajustement retraité = 5% de l\'impôt total quand > 100$', () => {
-        // pension = 5000×12 = 60000. impôt réel = 60000×0.25 = 15000. diff = 15000×0.05 = 750.
+describe('processDecemberTaxFiling — retraité : impôt marginal réel réconcilié', () => {
+    // FIX FISCAL (Marc, 2026-06) — l'ancien comportement n'ajoutait que 5 % du vrai
+    // impôt (« 95 % retenu à la source »), MAIS il n'existe aucune retenue mensuelle
+    // pour les retraités. Le nouveau comportement régularise au taux marginal RÉEL :
+    //   complément .revenu = vrai impôt annuel − retenue déjà captée dans .reer.
+    // La somme (.reer + complément) == vrai impôt annuel, en miroir de la phase active.
+
+    it('sans retenue REER préalable : régularise au VRAI impôt total (≈100 %, plus 5 %)', () => {
+        // pension = 5000×12 = 60000, aucun retrait REER, .reer initial = 0.
+        // Stub linéaire 25 % → vrai impôt = 60000×0.25 = 15000. Réconciliation = 15000 − 0 = 15000.
+        // (Avant le fix : seulement 750. Le retraité était sous-imposé d'un facteur ~20.)
         const r = processDecemberTaxFiling(
             DECEMBER,
             baseCtx({ isRetired: true, incomeRetirementMonthly: 5000 }),
             makeHelpers(),
             ZERO_TAX,
         );
-        expect(r.newTaxCurrentYear.revenu).toBeCloseTo(750, 5);
+        expect(r.newTaxCurrentYear.revenu).toBeCloseTo(15000, 5);
     });
 
-    it('aucun ajustement si la pension est nulle', () => {
+    it('retraits REER inclus dans l\'assiette imposable retraité', () => {
+        // pension 60000 + retraits REER 40000 = assiette 100000. Stub 25 % → vrai impôt 25000.
+        // .reer initial = 0 (aucune retenue préalable simulée ici) → réconciliation = 25000.
         const r = processDecemberTaxFiling(
             DECEMBER,
-            baseCtx({ isRetired: true, incomeRetirementMonthly: 0, accRentesYear: 0 }),
+            baseCtx({ isRetired: true, incomeRetirementMonthly: 5000, accRetraitsReerYear: 40000 }),
+            makeHelpers(),
+            ZERO_TAX,
+        );
+        expect(r.newTaxCurrentYear.revenu).toBeCloseTo(25000, 5);
+    });
+
+    it('MÉCANISME de réconciliation : crédite la retenue déjà captée dans .reer (pas de double-comptage)', () => {
+        // pension 60000 + retraits REER 40000 = assiette 100000. Stub 25 % → vrai impôt 25000.
+        // La retenue à la source déjà prélevée pendant l'année (.reer = 8000) est CRÉDITÉE :
+        //   complément .revenu = 25000 − 8000 = 17000.
+        // Total impôt retraité de l'année = .reer (8000, payé en avril) + complément (17000)
+        //                                  = 25000 = vrai impôt → AUCUN double-comptage.
+        const reerWithheld = 8000;
+        const r = processDecemberTaxFiling(
+            DECEMBER,
+            baseCtx({ isRetired: true, incomeRetirementMonthly: 5000, accRetraitsReerYear: 40000 }),
+            makeHelpers(),
+            { ...ZERO_TAX, reer: reerWithheld },
+        );
+        expect(r.newTaxCurrentYear.revenu).toBeCloseTo(17000, 5);
+        // Le bucket .reer n'est PAS modifié par la régularisation revenu (il sera payé tel quel).
+        expect(r.newTaxCurrentYear.reer).toBeCloseTo(reerWithheld, 5);
+        // Invariant clé : .reer + complément.revenu == vrai impôt annuel (25000).
+        expect(r.newTaxCurrentYear.reer + r.newTaxCurrentYear.revenu).toBeCloseTo(25000, 5);
+    });
+
+    it('retenue REER supérieure à l\'impôt réel → complément négatif (remboursement en avril)', () => {
+        // pension 60000 → vrai impôt 15000 (stub 25 %). Retenue déjà captée 18000 (> impôt).
+        // complément = 15000 − 18000 = -3000 → remboursé en avril. Total = 18000 − 3000 = 15000.
+        const r = processDecemberTaxFiling(
+            DECEMBER,
+            baseCtx({ isRetired: true, incomeRetirementMonthly: 5000 }),
+            makeHelpers(),
+            { ...ZERO_TAX, reer: 18000 },
+        );
+        expect(r.newTaxCurrentYear.revenu).toBeCloseTo(-3000, 5);
+        expect(r.newTaxCurrentYear.reer + r.newTaxCurrentYear.revenu).toBeCloseTo(15000, 5);
+    });
+
+    it('aucun ajustement si l\'assiette imposable est nulle', () => {
+        const r = processDecemberTaxFiling(
+            DECEMBER,
+            baseCtx({ isRetired: true, incomeRetirementMonthly: 0, accRentesYear: 0, accRetraitsReerYear: 0 }),
             makeHelpers(),
             ZERO_TAX,
         );
         expect(r.newTaxCurrentYear.revenu).toBe(0);
+    });
+
+    it('VRAI barème : retraité avec pension 60 000$ paie ~le vrai impôt (milliers de $), PAS 750$', () => {
+        // Régression money-critical : au vrai barème QC+fed (crédits d'âge/pension 70 ans,
+        // célibataire), l'impôt sur 60 000$ de pension est de l'ordre de ~9 000-10 000$,
+        // PAS ~750$ (l'ancien 5 % du stub). On vérifie l'ordre de grandeur réel.
+        const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
+        const r = processDecemberTaxFiling(
+            DECEMBER,
+            baseCtx({ isRetired: true, incomeRetirementMonthly: 5000, age: 70, activeUsersCount: 1, ramqExempt: true }),
+            realHelpers,
+            ZERO_TAX,
+        );
+        // Vrai impôt attendu ≈ 9 772$ (cf utils/tax). Bornes larges mais excluant l'ancien bug.
+        expect(r.newTaxCurrentYear.revenu).toBeGreaterThan(5000);
+        expect(r.newTaxCurrentYear.revenu).toBeLessThan(13000);
+        // Et surtout : loin au-dessus de l'ancien ~750$ (preuve que le bug est corrigé).
+        expect(r.newTaxCurrentYear.revenu).toBeGreaterThan(2000);
     });
 
     it('actif vs retraité : même brut/pension → régularisations DIFFÉRENTES', () => {

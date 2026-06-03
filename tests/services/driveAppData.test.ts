@@ -11,6 +11,20 @@ import {
     SYNC_FILE_NAME,
     type FetchLike,
 } from '../../services/googleDrive/driveAppData';
+
+/**
+ * Réponse 2xx dont le corps n'est PAS du JSON valide (ex: HTML d'erreur, troncature réseau). On
+ * reproduit le comportement réel de fetch : `text()` rend la chaîne brute, `json()` REJETTE (parse
+ * raté). Sert à prouver que readSyncFile transforme ça en erreur TYPÉE plutôt que d'appliquer undefined.
+ */
+function corruptJsonRes(text: string): Response {
+    return {
+        ok: true,
+        status: 200,
+        json: async () => JSON.parse(text), // lève SyntaxError comme un vrai Response.json()
+        text: async () => text,
+    } as Response;
+}
 import { SYNC_SCHEMA_VERSION, type SyncEnvelope } from '../../services/sync/syncTypes';
 
 const env: SyncEnvelope = {
@@ -109,6 +123,21 @@ describe('driveAppData — readSyncFile', () => {
         const f = vi.fn<FetchLike>(async () => res(env));
         await readSyncFile('tok', 'file-9', f);
         expect(f.mock.calls[0][0]).toContain('file-9?alt=media');
+    });
+
+    it('JSON corrompu (200 mais corps « not-json{{ ») → DriveError typée, n applique PAS undefined', async () => {
+        const f: FetchLike = vi.fn(async () => corruptJsonRes('not-json{{'));
+        const err = await readSyncFile('tok', 'file-1', f).catch((e: unknown) => e);
+        // Rejet PROPRE et typé : l'appelant (pullNow) le traite comme une lecture Drive ratée
+        // (données locales préservées) au lieu d'écraser le store avec `undefined`.
+        expect(err).toBeInstanceOf(DriveError);
+        expect(err).not.toBeInstanceOf(DriveAuthError);
+        expect((err as Error).message).toContain('JSON invalide');
+    });
+
+    it('réponse vide (corps tronqué à zéro octet) → DriveError typée (pas un undefined silencieux)', async () => {
+        const f: FetchLike = vi.fn(async () => corruptJsonRes(''));
+        await expect(readSyncFile('tok', 'file-1', f)).rejects.toBeInstanceOf(DriveError);
     });
 });
 

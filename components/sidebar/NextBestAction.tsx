@@ -301,7 +301,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen })
                                 return (
                                     <div key={i} className="text-tiny border-l-2 pl-2" style={{ borderColor: 'currentColor' }}>
                                         <div className={`font-bold ${c.text}`}>{action.title}</div>
-                                        <div className="text-ink-500">{action.reason}</div>
+                                        <div className="text-ink-400">{action.reason}</div>
                                     </div>
                                 );
                             })}

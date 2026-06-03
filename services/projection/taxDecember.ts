@@ -25,9 +25,19 @@ export function computeOasClawback(
     if (currentMonthIndex !== 11 || m === 0 || !isRetired || age < 65) {
         return { clawbackAnnual: 0 };
     }
-    const OAS_THRESHOLD = OAS_CLAWBACK_THRESHOLD_2026 * expenseMultiplier;
+    // BONUS FIX (Marc, 2026-06) — le seuil de récupération PSV doit être indexé par
+    // l'inflation NOMINALE du revenu (Math.pow(1+simInflation/100, m/12)), PAS par
+    // expenseMultiplier (inflation des DÉPENSES, qui diverge via l'inflation par
+    // catégorie ou le bonus santé 75+). annualPensionIncome ci-dessous est nominal
+    // (la pension croît au taux nominal, cf incomeRetirement) → comparer à un seuil
+    // indexé sur les dépenses sous-évaluait/sur-évaluait le clawback selon l'écart
+    // CPI dépenses vs revenu. Cohérent désormais avec psvAnnualBase (même facteur).
+    // expenseMultiplier est conservé dans la signature (compat appelant) mais inutilisé.
+    void expenseMultiplier;
+    const nominalIncomeFactor = Math.pow(1 + simInflation / 100, m / 12);
+    const OAS_THRESHOLD = OAS_CLAWBACK_THRESHOLD_2026 * nominalIncomeFactor;
     const annualPensionIncome = (incomeRetirementMonthly * 12) + accRetraitsReerYear + accRentesYear;
-    const psvAnnualBase = psvBasePension * 12 * Math.pow(1 + simInflation / 100, m / 12);
+    const psvAnnualBase = psvBasePension * 12 * nominalIncomeFactor;
     if (annualPensionIncome <= OAS_THRESHOLD) return { clawbackAnnual: 0 };
 
     const excess = annualPensionIncome - OAS_THRESHOLD;
@@ -76,7 +86,9 @@ export function processTaxLossHarvesting(
  * V30 — Régularisation fiscale de décembre.
  * Calcule l'impôt final sur l'année écoulée :
  *  - Cas actif: paie ou rembourse selon retenue employeur vs impôt réel
- *  - Cas retraité: petit ajustement (~5% du total)
+ *  - Cas retraité: impôt marginal réel sur pension + rentes + retraits REER/FERR,
+ *    moins la retenue à la source déjà captée dans le bucket .reer (réconciliation
+ *    en miroir de la phase active, sans double-comptage — voir détail dans le corps).
  * Plus gains en capital (palier 250k) et dividendes éligibles Non-Reg.
  *
  * Retourne le nouveau taxCurrentYear et les logs émis.
@@ -198,29 +210,69 @@ export function processDecemberTaxFiling(
         // V30: Override 12-month approximation
         taxCurrent.revenu = Math.max(-100000, totalAnnualTax - estimatedWithholding);
     } else {
-        // Retraité: petit ajustement ~5%
+        // ---- Retraité : régularisation au taux marginal réel (MIROIR de la phase active) ----
+        //
+        // FIX FISCAL CRITIQUE (Marc, 2026-06) — l'ancien code n'ajoutait que 5 % du
+        // vrai impôt sur la pension (« 95 % retenu à la source »), MAIS aucune retenue
+        // mensuelle n'existe pour les retraités (computeMonthlyWithholding est gardé par
+        // `if (!isRetired)`). Et les retraits REER/FERR (ctx.accRetraitsReerYear) étaient
+        // EXCLUS de l'assiette imposable → ils restaient au seul taux de retenue à la
+        // source (19/24/29 %), jamais réconciliés au taux marginal réel. Résultat :
+        // retraités massivement sous-imposés (patrimoine/revenu net surévalués).
+        //
+        // Assiette imposable retraité = pension (incomeRetirementMonthly×12) + rentes
+        // gouvernementales (accRentesYear) + retraits REER/FERR (accRetraitsReerYear,
+        // 100 % imposables comme revenu ordinaire). On calcule le VRAI impôt annuel sur
+        // cette assiette, par conjoint (crédits d'âge/pension B-AUDIT-3 selon SON âge),
+        // en traitement réel puis re-nominal (/ inflationFactor … × inflationFactor).
+        //
+        // RÉCONCILIATION SANS DOUBLE-COMPTAGE : le bucket `.reer` (taxCurrentYearInitial.reer)
+        // contient DÉJÀ la retenue à la source prélevée pendant l'année sur les retraits
+        // REER/FERR (via cashflowAllocation/realEstate/meltdown/FERR janvier). Cette retenue
+        // sera payée en avril (taxApril débite liquid de revenu+gains+divers+reer). On
+        // ajoute donc à `.revenu` SEULEMENT le complément = vrai impôt − retenue déjà
+        // captée dans `.reer`. Ainsi la somme des impôts retraité de l'année
+        // (`.reer` + complément `.revenu`) == vrai impôt annuel, exactement comme la
+        // phase active fait `revenu = totalAnnualTax − estimatedWithholding`. La retenue
+        // `.reer` n'est ni ignorée (sinon double imposition) ni recomptée (sinon le
+        // complément la ré-ajouterait).
         const basePensionAnnual = (ctx.incomeRetirementMonthly * 12) + ctx.accRentesYear;
-        if (basePensionAnnual > 0) {
+        const taxableAnnual = basePensionAnnual + ctx.accRetraitsReerYear;
+        if (taxableAnnual > 0) {
+            const taxableReal = taxableAnnual / ctx.inflationFactor;
+            const incomeIndividualReal = taxableReal / ctx.activeUsersCount;
+            // §6.2 — crédits 65+ et revenu de retraite (ARC ligne 30100/31400 + Revenu Québec
+            // ligne 361). eligiblePensionIncome = revenu de PENSION admissible par adulte
+            // (pension + rentes, HORS retraits REER qui ne sont pas du « revenu de pension
+            // admissible » au sens du crédit pension fédéral ligne 31400). familyIncome inclut
+            // tout le revenu imposable (retraits REER compris) pour réduire correctement la
+            // ligne 361 QC.
             const basePensionReal = basePensionAnnual / ctx.inflationFactor;
-            const incomeIndividualReal = basePensionReal / ctx.activeUsersCount;
-            // §6.2 — crédits 65+ et revenu de retraite (ARC ligne 30100/31400 + Revenu Québec ligne 361).
-            // FIX audit code-reviewer MEDIUM 5 : familyIncome inclut aussi les retraits REER de l'année
-            // pour ne pas surestimer le crédit ligne 361 QC.
-            const reerRealForFamily = ctx.accRetraitsReerYear / ctx.inflationFactor;
+            const eligiblePensionPerAdult = basePensionReal / ctx.activeUsersCount;
             // B-AUDIT-3 — crédit d'âge/pension PAR conjoint : chacun selon SON âge. Le revenu
             // par adulte est identique (split égal, hypothèse du modèle) ; seul l'âge diffère.
             // Couple de même âge → taxMarc + taxAnna == ancien per-adulte × N (pas de régression).
             const mkRetiredAgeOpts = (a: number | undefined): AgeCreditOptions | undefined =>
                 a !== undefined
-                    ? { age: a, eligiblePensionIncome: incomeIndividualReal, hasSpouse: ctx.activeUsersCount > 1, familyIncome: basePensionReal + reerRealForFamily }
+                    ? { age: a, eligiblePensionIncome: eligiblePensionPerAdult, hasSpouse: ctx.activeUsersCount > 1, familyIncome: taxableReal }
                     : undefined;
             const taxMarcR = helpers.calculateFiscalReport(incomeIndividualReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, mkRetiredAgeOpts(ctx.age)).totalTax;
             const taxReal = ctx.activeUsersCount > 1
                 ? taxMarcR + helpers.calculateFiscalReport(incomeIndividualReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, mkRetiredAgeOpts(ctx.ageSpouse)).totalTax
                 : taxMarcR * ctx.activeUsersCount;
-            const totalTax = taxReal * ctx.inflationFactor;
-            const diff = totalTax * 0.05;
-            if (diff > 100) taxCurrent.revenu += diff;
+            const totalAnnualTax = taxReal * ctx.inflationFactor;
+            // Retenue à la source déjà captée sur les retraits REER/FERR de l'année
+            // (présente dans le bucket .reer au moment de décembre). On la crédite pour ne
+            // payer en avril que la différence avec l'impôt marginal réel.
+            const withholdingAlreadyTaken = Number.isFinite(taxCurrent.reer) ? taxCurrent.reer : 0;
+            const reconciliation = totalAnnualTax - withholdingAlreadyTaken;
+            // Garde-fous NaN/Infinity (comme ailleurs). Le plancher -100000 borne un
+            // sur-crédit théorique (retenue REER > impôt réel, p. ex. gros meltdown à
+            // 38 % sous un taux marginal faible) → remboursement en avril, cohérent avec
+            // la borne de la phase active.
+            if (Number.isFinite(reconciliation) && Math.abs(reconciliation) > 1) {
+                taxCurrent.revenu += Math.max(-100000, reconciliation);
+            }
         }
     }
 

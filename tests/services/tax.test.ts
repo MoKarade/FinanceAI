@@ -165,6 +165,53 @@ describe('calculateGrossWithholdingRRSP', () => {
     expect(calculateGrossWithholdingRRSP(0).gross).toBe(0);
     expect(calculateGrossWithholdingRRSP(-1000).gross).toBe(0);
   });
+
+  // Couverture (audit) — bornes exactes des tranches (gross 5 000$ / 15 000$).
+  // La logique borne sur le GROSS (pas le net) : on choisit le 1er palier dont
+  // le gross reconstitué reste ≤ son plafond. Les valeurs net ci-dessous placent
+  // le gross PILE sur la borne, puis 1$ au-dessus pour franchir la tranche.
+  describe('bornes de tranche (gross 5 000$ / 15 000$)', () => {
+    it('gross PILE à 5 000$ → reste bracket 1 (≤ 5 000), retenue 19% = 950$', () => {
+      // net = 5000 * (1 - 0.19) = 4050 → gross = 4050 / 0.81 = 5000 exactement.
+      const r = calculateGrossWithholdingRRSP(4050);
+      expect(r.gross).toBeCloseTo(5000, 2);
+      expect(r.bracket).toBe(1);
+      expect(r.withholding).toBeCloseTo(950, 2); // 5000 × 19%
+    });
+
+    it('juste au-dessus de 5 000$ de gross → bascule bracket 2 (24%)', () => {
+      const r = calculateGrossWithholdingRRSP(4051);
+      // bracket 1 donnerait 4051/0.81 = 5001.2 > 5000 → on retombe sur bracket 2.
+      expect(r.bracket).toBe(2);
+      // gross recalculé en bracket 2 : 4051 / (1 - 0.24) = 5330.26$.
+      expect(r.gross).toBeCloseTo(5330.26, 1);
+      expect(r.withholding).toBeCloseTo(5330.26 * 0.24, 1);
+    });
+
+    it('milieu de bracket 2 : retenue 24%', () => {
+      const r = calculateGrossWithholdingRRSP(8000);
+      // 8000 / (1 - 0.24) = 10526.32$, withholding = 2526.32$.
+      expect(r.bracket).toBe(2);
+      expect(r.gross).toBeCloseTo(10526.32, 1);
+      expect(r.withholding).toBeCloseTo(2526.32, 1);
+    });
+
+    it('gross PILE à 15 000$ → reste bracket 2 (≤ 15 000), retenue 24% = 3 600$', () => {
+      // net = 15000 * (1 - 0.24) = 11400 → gross = 11400 / 0.76 = 15000 exactement.
+      const r = calculateGrossWithholdingRRSP(11400);
+      expect(r.gross).toBeCloseTo(15000, 2);
+      expect(r.bracket).toBe(2);
+      expect(r.withholding).toBeCloseTo(3600, 2); // 15000 × 24%
+    });
+
+    it('juste au-dessus de 15 000$ de gross → bascule bracket 3 (29%)', () => {
+      const r = calculateGrossWithholdingRRSP(11401);
+      expect(r.bracket).toBe(3);
+      // gross recalculé en bracket 3 : 11401 / (1 - 0.29) = 16057.75$.
+      expect(r.gross).toBeCloseTo(16057.75, 1);
+      expect(r.withholding).toBeCloseTo(16057.75 * 0.29, 1);
+    });
+  });
 });
 
 describe('calculateCapitalGainsTax', () => {

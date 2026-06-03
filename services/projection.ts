@@ -286,6 +286,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     };
 
     let incomeRetirement = 0; // Scoped outside for Estate NW calculation
+    // A1 — revenu de retraite mensuel ATTRIBUABLE par conjoint (RRQ/PSV/DB), pour
+    // l'impôt par conjoint en décembre. Total == incomeRetirement.
+    let incomeRetirementPerUser: number[] = [];
     // Phase 3 Tier 3 — split par source (RRQ + PSV + privée) pour chartData
     let pensionRRQ = 0;
     let pensionPSV = 0;
@@ -390,6 +393,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         let incomeMarc = 0;
         let incomeAnna = 0;
         incomeRetirement = 0;
+        incomeRetirementPerUser = [];
         pensionRRQ = 0;
         pensionPSV = 0;
         pensionPrivee = 0;
@@ -492,6 +496,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 config.users,
             );
             incomeRetirement = retirementBreakdown.total;
+            incomeRetirementPerUser = retirementBreakdown.perUser.map(p => p.total);
             pensionRRQ = retirementBreakdown.rrq;
             pensionPSV = retirementBreakdown.psv;
             pensionPrivee = retirementBreakdown.privee;
@@ -648,6 +653,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
                     optimizeSourceDeductions: effProj.optimizeSourceDeductions,
                     incomeRetirementMonthly: incomeRetirement,
+                    // A1 — décomposition par conjoint pour imposer chacun sur SON revenu de
+                    // retraite réel (split égal sinon, cf. taxDecember). Vide hors retraite.
+                    incomeRetirementPerUserMonthly: incomeRetirementPerUser,
                     nonReg, baseNonRegRate: baseRates.nonReg,
                     accRrspYear, accFhsaYear, smithInterestDeductibleYear,
                     accRentesYear, accRetraitsReerYear, accCapitalGainsYear,

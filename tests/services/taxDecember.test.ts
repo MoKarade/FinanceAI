@@ -545,6 +545,54 @@ describe('processDecemberTaxFiling — crédits d\'âge PAR conjoint (B-AUDIT-3)
     });
 });
 
+describe('processDecemberTaxFiling — impôt de retraite PAR conjoint (A1)', () => {
+    // Avec le VRAI barème (progressif + crédits), taxer chaque conjoint sur SON revenu
+    // de retraite réel doit donner un impôt ≥ celui du split égal (qui minimise sous un
+    // barème progressif). Un couple à revenus de retraite ÉGAUX ne doit PAS bouger.
+    const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
+
+    // 6000$/mois de pension ménage = 72 000$/an ; + 60 000$ de retraits REER → assiette
+    // 132 000$. Assez haut pour qu'un split inégal franchisse des paliers.
+    const coupleCtx = (perUser: number[] | undefined) => baseCtx({
+        isRetired: true, age: 67, ageSpouse: 67, activeUsersCount: 2,
+        incomeRetirementMonthly: 6000,
+        incomeRetirementPerUserMonthly: perUser,
+        accRetraitsReerYear: 60000,
+    });
+
+    it('pension ÉGALE par conjoint → identique au split égal historique (zéro régression)', () => {
+        const equalSplit = processDecemberTaxFiling(DECEMBER, coupleCtx(undefined), realHelpers, ZERO_TAX);
+        const perUserEqual = processDecemberTaxFiling(DECEMBER, coupleCtx([3000, 3000]), realHelpers, ZERO_TAX);
+        expect(perUserEqual.newTaxCurrentYear.revenu).toBeCloseTo(equalSplit.newTaxCurrentYear.revenu, 4);
+    });
+
+    it('pension INÉGALE par conjoint → impôt ≥ split égal (barème progressif)', () => {
+        const equalSplit = processDecemberTaxFiling(DECEMBER, coupleCtx(undefined), realHelpers, ZERO_TAX);
+        // Même total ménage (6000), mais 4500/1500 → le conjoint aisé franchit un palier.
+        const perUserUnequal = processDecemberTaxFiling(DECEMBER, coupleCtx([4500, 1500]), realHelpers, ZERO_TAX);
+        expect(perUserUnequal.newTaxCurrentYear.revenu).toBeGreaterThan(equalSplit.newTaxCurrentYear.revenu);
+    });
+
+    it('breakdown incohérent (mauvaise longueur) → repli sur le split égal', () => {
+        const equalSplit = processDecemberTaxFiling(DECEMBER, coupleCtx(undefined), realHelpers, ZERO_TAX);
+        const badLen = processDecemberTaxFiling(DECEMBER, coupleCtx([6000]), realHelpers, ZERO_TAX);
+        expect(badLen.newTaxCurrentYear.revenu).toBeCloseTo(equalSplit.newTaxCurrentYear.revenu, 4);
+    });
+
+    it('solo (activeUsersCount=1) → le breakdown par conjoint est ignoré (split inchangé)', () => {
+        const solo = baseCtx({
+            isRetired: true, age: 67, activeUsersCount: 1,
+            incomeRetirementMonthly: 4000, incomeRetirementPerUserMonthly: [4000],
+        });
+        const soloNoBreakdown = baseCtx({
+            isRetired: true, age: 67, activeUsersCount: 1, incomeRetirementMonthly: 4000,
+        });
+        const a = processDecemberTaxFiling(DECEMBER, solo, realHelpers, ZERO_TAX);
+        const b = processDecemberTaxFiling(DECEMBER, soloNoBreakdown, realHelpers, ZERO_TAX);
+        expect(a.newTaxCurrentYear.revenu).toBeCloseTo(b.newTaxCurrentYear.revenu, 6);
+    });
+});
+
 describe('processDecemberTaxFiling — dividendes Non-Reg', () => {
     it('Non-Reg nul → aucun impôt de dividende', () => {
         const r = processDecemberTaxFiling(

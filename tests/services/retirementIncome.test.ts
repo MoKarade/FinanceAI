@@ -168,6 +168,58 @@ describe('computeRetirementIncome — report / survivant / immigrant / bonus 75+
     });
 });
 
+describe('computeRetirementIncome — décomposition PAR conjoint (A1)', () => {
+    const mkEarner = (gross: number): User =>
+        ({ ...baseUser, grossSalary: gross } as User);
+
+    it('solo : perUser a 1 entrée et perUser[0].total == total famille', () => {
+        const r = computeRetirementIncome(baseCtx, baseGoal, [mkEarner(50000)]);
+        expect(r.perUser).toHaveLength(1);
+        expect(r.perUser[0].total).toBeCloseTo(r.total, 4);
+    });
+
+    it('couple : invariant — la somme des perUser.total == total famille', () => {
+        const coupleCtx: RetirementIncomeCtx = {
+            ...baseCtx, activeUsersCount: 2, psvResidencyYears: [40, 40],
+        };
+        const r = computeRetirementIncome(coupleCtx, baseGoal, [mkEarner(80000), mkEarner(20000)]);
+        expect(r.perUser).toHaveLength(2);
+        const sum = r.perUser.reduce((s, p) => s + p.total, 0);
+        expect(sum).toBeCloseTo(r.total, 3);
+        // Idem composante par composante (rrq/psv/privée).
+        expect(r.perUser.reduce((s, p) => s + p.rrq, 0)).toBeCloseTo(r.rrq, 3);
+        expect(r.perUser.reduce((s, p) => s + p.psv, 0)).toBeCloseTo(r.psv, 3);
+        expect(r.perUser.reduce((s, p) => s + p.privee, 0)).toBeCloseTo(r.privee, 3);
+    });
+
+    it('couple à salaires INÉGAUX → RRQ par conjoint inégale (le plus haut salaire a plus de RRQ)', () => {
+        const coupleCtx: RetirementIncomeCtx = {
+            ...baseCtx, activeUsersCount: 2, psvResidencyYears: [40, 40],
+        };
+        // 80k vs 20k, tous deux SOUS la MGA (74 600) pour le 20k → ratios distincts.
+        const r = computeRetirementIncome(coupleCtx, baseGoal, [mkEarner(70000), mkEarner(20000)]);
+        expect(r.perUser[0].rrq).toBeGreaterThan(r.perUser[1].rrq);
+    });
+
+    it('couple à salaires ÉGAUX → RRQ par conjoint identique (chacun la moitié)', () => {
+        const coupleCtx: RetirementIncomeCtx = {
+            ...baseCtx, activeUsersCount: 2, psvResidencyYears: [40, 40],
+        };
+        const r = computeRetirementIncome(coupleCtx, baseGoal, [mkEarner(50000), mkEarner(50000)]);
+        expect(r.perUser[0].rrq).toBeCloseTo(r.perUser[1].rrq, 4);
+        expect(r.perUser[0].total).toBeCloseTo(r.perUser[1].total, 4);
+    });
+
+    it('résidence PSV inégale → PSV (volet OAS) plus élevée pour le conjoint résident plus longtemps', () => {
+        const coupleCtx: RetirementIncomeCtx = {
+            ...baseCtx, activeUsersCount: 2, psvResidencyYears: [40, 20],
+        };
+        const r = computeRetirementIncome(coupleCtx, highPensionGoal, [mkEarner(50000), mkEarner(50000)]);
+        // highPensionGoal annule le SRG (réparti également) → la PSV reflète la résidence.
+        expect(r.perUser[0].psv).toBeGreaterThan(r.perUser[1].psv);
+    });
+});
+
 describe('computeRetirementIncome — ratio RRQ indexé (B-AUDIT-4)', () => {
     it('la RRQ réelle (déflatée) d\'un même salarié ne rétrécit pas selon les années avant la retraite', () => {
         // Salaire SOUS la MGA (sinon ratio capé à 1, effet masqué). Même personne,

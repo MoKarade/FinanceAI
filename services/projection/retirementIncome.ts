@@ -37,6 +37,24 @@ export interface RetirementIncomeCtx {
  * retournait `number` (juste le total). Les onglets ne pouvaient pas afficher
  * "RRQ : 1200\$ / PSV : 700\$ / DB : 500\$" sans dupliquer le calcul.
  */
+/**
+ * Revenu de retraite mensuel ATTRIBUABLE à un conjoint donné (avant clamp).
+ * A1 (impôt par conjoint) : la RRQ et la PSV dépendent de l'historique de salaire
+ * et de la résidence de CHAQUE personne — donc elles sont attribuables par conjoint.
+ * Les composantes non attribuables au modèle actuel (pension privée DB « cumulée
+ * pour le couple », SRG calculé au niveau familial) sont réparties également.
+ */
+export interface RetirementIncomePerUser {
+    /** Revenu de retraite total de ce conjoint (rrq + psv + privée − part écrêtement). */
+    total: number;
+    /** RRQ attribuable à ce conjoint (selon SON ratio salaire/MGA et SA résidence). */
+    rrq: number;
+    /** PSV + part du SRG (le SRG est familial → réparti également). */
+    psv: number;
+    /** Part de la pension privée DB (household → réparti également, faute de donnée par conjoint). */
+    privee: number;
+}
+
 export interface RetirementIncomeBreakdown {
     /** Revenu mensuel total après écrêtement PSV. = ce que retournait le legacy `number`. */
     total: number;
@@ -48,6 +66,20 @@ export interface RetirementIncomeBreakdown {
     privee: number;
     /** Écrêtement PSV pour revenus > seuil (montant déduit). */
     oasReduction: number;
+    /**
+     * A1 — décomposition PAR CONJOINT du revenu de retraite (index aligné sur `users`
+     * filtrés non-nuls). Permet à `taxDecember` d'imposer chaque conjoint sur SON revenu
+     * réel au lieu de la moitié du ménage (le barème étant progressif, le split égal
+     * sous-estime l'impôt d'un couple à revenus inégaux). La somme des `total` par
+     * conjoint == `total` famille (invariant vérifié par test).
+     *
+     * Limite honnête : la pension privée DB et le SRG restent répartis également (le
+     * modèle ne distingue pas la DB par conjoint — `RetirementGoal.dbPensionMonthly`
+     * est « cumulée pour le couple » ; le SRG est calculé au niveau familial). Seules
+     * RRQ et PSV (qui dépendent du salaire/résidence individuels) sont vraiment
+     * attribuées par conjoint.
+     */
+    perUser: RetirementIncomePerUser[];
 }
 
 /**
@@ -75,20 +107,28 @@ export function computeRetirementIncome(
     // MGA RRQ projeté: base 2026 (RRQ_MPE) indexée à inflation + croissance salariale ~0.5%/an
     const rrqMpeProjected = RRQ_MPE * Math.pow(1 + (simInflation + 0.5) / 100, yearsElapsed);
 
-    users.filter(u => u).forEach((u, idx) => {
+    // A1 — on conserve les ratios PAR CONJOINT (et pas seulement leur somme) pour
+    // attribuer RRQ/PSV à chaque personne selon SON salaire / SA résidence.
+    const filteredUsers = users.filter(u => u);
+    const perUserRrqRatio: number[] = [];
+    const perUserPsvProrata: number[] = [];
+    filteredUsers.forEach((u, idx) => {
         // B-AUDIT-4 — indexer le salaire courant par le MÊME facteur que la MGA projetée
         // (rrqMpeProjected). Sinon le ratio currentGross/MGA rétrécit artificiellement avec
         // les années → RRQ sous-évaluée pour les départs lointains. Hypothèse standard : le
         // salaire suit la croissance de la MGA sur la carrière → ratio earnings/MGA stable.
         const currentGrossUser = (u.grossSalary || (baseGrossAnnual / activeUsersCount))
             * Math.pow(1 + (simInflation + 0.5) / 100, yearsElapsed);
-        totalRrqMpeRatio += Math.min(1.0, currentGrossUser / rrqMpeProjected);
+        const rrqRatioUser = Math.min(1.0, currentGrossUser / rrqMpeProjected);
+        perUserRrqRatio.push(rrqRatioUser);
+        totalRrqMpeRatio += rrqRatioUser;
 
         // PSV résidence: prorata 1/40, mais 0 si < 10 ans (règle Service Canada)
         const residencyYears = psvResidencyYears[idx] ?? 0;
         const psvIndividualProrata = residencyYears < PSV_MIN_RESIDENCY_YEARS
             ? 0
             : Math.min(1.0, residencyYears / PSV_FULL_RESIDENCY_YEARS);
+        perUserPsvProrata.push(psvIndividualProrata);
         totalPsvProrata += psvIndividualProrata;
     });
     const psvProrata = totalPsvProrata / activeUsersCount;
@@ -178,13 +218,42 @@ export function computeRetirementIncome(
     // Phase 3 Tier 3 — split par source avant clamp Math.max(0, ...)
     const rrq = rrqMonthly * inflFactor;
     const psv = (psvMonthly + gisMonthly) * inflFactor;
+    const psvOasOnly = psvMonthly * inflFactor;   // PSV hors SRG (attribuable par résidence)
+    const gisTotal = gisMonthly * inflFactor;     // SRG (familial → réparti également)
     const privee = dbMonthly;
     const totalRaw = rrq + psv + privee - monthlyOasReduction;
+
+    // A1 — décomposition PAR CONJOINT. RRQ ∝ ratio salaire/MGA individuel ; PSV (volet
+    // OAS) ∝ prorata de résidence individuel. Le SRG (familial), la pension DB
+    // (« cumulée pour le couple ») et l'écrêtement PSV sont répartis également faute
+    // de donnée par conjoint. On répartit les TOTAUX famille au prorata des ratios
+    // individuels : la somme par conjoint == total famille (invariant exact, même quand
+    // un ratio est nul — fallback part égale).
+    const n = Math.max(1, filteredUsers.length);
+    const sumRrqRatio = perUserRrqRatio.reduce((s, r) => s + r, 0);
+    const sumPsvProrata = perUserPsvProrata.reduce((s, p) => s + p, 0);
+    const perUser: RetirementIncomePerUser[] = filteredUsers.map((_, i) => {
+        const rrqShare = sumRrqRatio > 0 ? perUserRrqRatio[i] / sumRrqRatio : 1 / n;
+        const psvShare = sumPsvProrata > 0 ? perUserPsvProrata[i] / sumPsvProrata : 1 / n;
+        const rrqUser = rrq * rrqShare;
+        // PSV individuelle = volet OAS au prorata résidence + part égale du SRG familial.
+        const psvUser = psvOasOnly * psvShare + gisTotal / n;
+        const priveeUser = privee / n;            // DB household → part égale
+        const oasReductionUser = monthlyOasReduction / n;
+        return {
+            total: Math.max(0, rrqUser + psvUser + priveeUser - oasReductionUser),
+            rrq: Math.max(0, rrqUser),
+            psv: Math.max(0, psvUser),
+            privee: Math.max(0, priveeUser),
+        };
+    });
+
     return {
         total: Math.max(0, totalRaw),
         rrq: Math.max(0, rrq),
         psv: Math.max(0, psv),
         privee: Math.max(0, privee),
         oasReduction: monthlyOasReduction,
+        perUser,
     };
 }

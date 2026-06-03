@@ -582,7 +582,21 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                     className={`border-b border-border/50 transition-colors ${selectedIds.has(t.id) ? 'bg-primary/10' : 'hover:bg-white/5'} ${t.category === 'Inconnu' ? 'bg-red-900/10' : ''}`}
                                     onClick={(e) => { if ((e.target as HTMLElement).tagName !== 'BUTTON' && (e.target as HTMLElement).tagName !== 'SELECT') handleSelectOne(t.id, e.shiftKey); }}
                                 >
-                                    <td className="p-3"><input type="checkbox" checked={selectedIds.has(t.id)} readOnly aria-label={`Selectionner ${t.payee}`} className="rounded bg-[#1e2330]" /></td>
+                                    <td className="p-3">
+                                        {/* UI6 (a11y) : checkbox pilotable au clavier (Espace/Entrée déclenchent
+                                            un click) ET à la souris. On lit shiftKey sur onClick pour préserver la
+                                            sélection par plage (shift-clic), et on stoppe la propagation pour éviter
+                                            un double-toggle avec le onClick du <tr>. onChange no-op = input contrôlé
+                                            sans warning React. */}
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedIds.has(t.id)}
+                                            onChange={() => { /* géré par onClick (porte shiftKey) */ }}
+                                            onClick={(e) => { e.stopPropagation(); handleSelectOne(t.id, e.shiftKey); }}
+                                            aria-label={`Selectionner ${t.payee}`}
+                                            className="rounded bg-[#1e2330]"
+                                        />
+                                    </td>
                                     <td className="p-3 text-gray-400 whitespace-nowrap">{t.date}</td>
                                     <td className="p-3 font-medium text-white">{t.payee}</td>
 

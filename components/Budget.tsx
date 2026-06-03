@@ -308,9 +308,11 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             isSolo: !user2
         };
     // getDisplayTarget et getMultiplier sont recréés à chaque render ; leurs vraies deps
-    // (timeView, inflationSim, customStart, customEnd) sont déjà listées explicitement.
+    // (timeView, inflationSim, customStart, customEnd, periodOffset) sont déjà listées explicitement.
+    // periodOffset : getMultiplier→getDateRange en dépend → sans lui, les KPIs d'épargne couple
+    // restaient figés sur la période courante en navigant vers le passé (cohérent avec le useMemo voisin).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [config, usersIncome, budgetItems, timeView, inflationSim, customStart, customEnd]);
+    }, [config, usersIncome, budgetItems, timeView, inflationSim, customStart, customEnd, periodOffset]);
 
     const alerts = useMemo(() => {
         const list: string[] = [];

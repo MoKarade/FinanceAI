@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { logError } from '../services/errorLogger';
 import { Transaction, RecurringItem, SavingsGoal, BudgetConfig, BudgetCategory } from '../types';
 import { Card } from './ui/Card';
 import { ProjectionRequired } from './ui/ProjectionRequired';
@@ -110,7 +111,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
             if (results.length > 0) setAiSubs(results);
             else showToast("L'IA n'a rien détecté de plus.", 'info');
         } catch (e) {
-            console.error('AI Analysis Error:', e);
+            logError({ source: 'ai', severity: 'error', message: 'Détection IA des abonnements échouée', error: e });
             showToast("Erreur lors de l'analyse IA", 'error');
         } finally {
             setIsAnalyzing(false);

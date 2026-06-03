@@ -60,8 +60,28 @@ export function sanitizePromptText(raw: unknown, maxLen: number = DEFAULT_MAX_PR
  * pour empêcher une sortie prématurée de la zone protégée.
  */
 export function wrapUserData(content: string): string {
-    const safe = String(content ?? '').replace(/<\/?DONNEES>/gi, ' ');
-    return `<DONNEES>\n${safe}\n</DONNEES>`;
+    return `<DONNEES>\n${neutralizeFrameTags(content)}\n</DONNEES>`;
+}
+
+/**
+ * Neutralise UNIQUEMENT les balises de cadre littérales <DONNEES>/</DONNEES>
+ * (insensible à la casse) en les rendant inertes, SANS rien tronquer ni
+ * supprimer du reste du texte.
+ *
+ * Usage (H3) : le message de chat utilisateur ET l'historique de conversation
+ * sont envoyés à Claude comme tours `messages` bruts. Un libellé importé qui
+ * ressort dans l'historique — ou une saisie directe — pourrait contenir une
+ * fausse balise </DONNEES> pour casser l'isolation du contexte (le system
+ * prompt place les données réelles dans <DONNEES>…</DONNEES>). On remplace donc
+ * la balise par une forme visible mais inerte (chevrons retirés) afin que le
+ * modèle ne puisse pas la confondre avec le vrai cadre, tout en gardant le
+ * message lisible (contrairement à sanitizePromptText, on ne borne PAS la
+ * longueur ni ne retire le markdown : c'est du dialogue libre).
+ */
+export function neutralizeFrameTags(raw: unknown): string {
+    if (typeof raw !== 'string' || !raw) return '';
+    // </DONNEES> -> (/DONNEES) et <DONNEES> -> (DONNEES) : inerte, lisible, non re-falsifiable.
+    return raw.replace(/<(\/?)DONNEES>/gi, '($1DONNEES)');
 }
 
 /** Phrase d'isolation à placer dans le system prompt, au-dessus des <DONNEES>. */

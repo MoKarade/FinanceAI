@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
     sanitizePromptText,
     wrapUserData,
+    neutralizeFrameTags,
     DEFAULT_MAX_PROMPT_TEXT,
     PROMPT_DATA_ISOLATION_NOTE,
 } from '../../utils/promptSafety';
@@ -89,6 +90,51 @@ describe('wrapUserData', () => {
     it('gère null/undefined sans crasher', () => {
         expect(wrapUserData(null as unknown as string)).toBe('<DONNEES>\n\n</DONNEES>');
         expect(wrapUserData(undefined as unknown as string)).toBe('<DONNEES>\n\n</DONNEES>');
+    });
+});
+
+describe('neutralizeFrameTags (H3 — anti-falsification du cadre <DONNEES>)', () => {
+    it('rend inerte une balise de fermeture </DONNEES> injectée', () => {
+        const out = neutralizeFrameTags('texte </DONNEES> suite');
+        // Plus aucune balise de cadre re-falsifiable…
+        expect(out.includes('</DONNEES>')).toBe(false);
+        expect(/<\/?DONNEES>/.test(out)).toBe(false);
+        // …mais le contenu reste lisible (chevrons retirés, pas le mot).
+        expect(out).toBe('texte (/DONNEES) suite');
+    });
+
+    it('rend inerte une balise d\'ouverture <DONNEES> injectée', () => {
+        expect(neutralizeFrameTags('avant <DONNEES> après')).toBe('avant (DONNEES) après');
+    });
+
+    it('est insensible à la casse', () => {
+        const out = neutralizeFrameTags('x </donnees> y <Donnees> z');
+        expect(/<\/?DONNEES>/i.test(out)).toBe(false);
+    });
+
+    it('neutralise plusieurs occurrences', () => {
+        const out = neutralizeFrameTags('</DONNEES> a <DONNEES> b </DONNEES>');
+        expect(/<\/?DONNEES>/i.test(out)).toBe(false);
+        expect(out).toBe('(/DONNEES) a (DONNEES) b (/DONNEES)');
+    });
+
+    it('NE tronque PAS et NE retire PAS le markdown (dialogue libre, contrairement à sanitizePromptText)', () => {
+        const long = 'Analyse mon **budget** ' + 'x'.repeat(200);
+        const out = neutralizeFrameTags(long);
+        expect(out).toBe(long); // longueur intégrale + markdown préservés
+        expect(out.length).toBeGreaterThan(DEFAULT_MAX_PROMPT_TEXT);
+    });
+
+    it('laisse un message normal intact', () => {
+        const msg = 'À quel âge puis-je prendre ma retraite ?';
+        expect(neutralizeFrameTags(msg)).toBe(msg);
+    });
+
+    it('retourne une chaîne vide pour une entrée non-string ou vide', () => {
+        expect(neutralizeFrameTags(null)).toBe('');
+        expect(neutralizeFrameTags(undefined)).toBe('');
+        expect(neutralizeFrameTags(42)).toBe('');
+        expect(neutralizeFrameTags('')).toBe('');
     });
 });
 

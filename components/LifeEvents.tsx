@@ -236,7 +236,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                             const isPast = new Date(item.date) < new Date();
                             const isSelected = selectedEventId === item.uniqueKey;
                             return (
-                                <div key={item.uniqueKey} className={`relative pl-8 group cursor-pointer transition-all duration-300 ${isSelected ? 'scale-105' : 'hover:pl-9'}`} onClick={() => setSelectedEventId(item.uniqueKey)}>
+                                <div key={item.uniqueKey} role="button" tabIndex={0} aria-pressed={isSelected} className={`relative pl-8 group cursor-pointer transition-all duration-300 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${isSelected ? 'scale-105' : 'hover:pl-9'}`} onClick={() => setSelectedEventId(item.uniqueKey)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedEventId(item.uniqueKey); } }}>
                                     <div className={`absolute -left-[9px] top-4 w-4 h-4 rounded-full border-4 border-[#0B0E14] transition-colors ${isSelected ? 'bg-white shadow-[0_0_10px_white]' : item.type === 'TRAVEL' ? 'bg-blue-500' : 'bg-purple-500'}`}></div>
                                     <div className={`p-4 rounded-xl border transition-all ${isSelected ? 'bg-white/10 border-white/30 shadow-xl' : 'bg-[#151922] border-white/5 hover:bg-white/10'} ${isPast ? 'opacity-50 grayscale' : ''}`}>
                                         <div className="flex justify-between items-start">

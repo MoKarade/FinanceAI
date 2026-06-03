@@ -4,6 +4,8 @@
 // boursières. La source de vérité unique est désormais Finnhub via
 // services/marketData/.
 
+import { logError } from './errorLogger';
+
 export interface MarketDataPoint {
     date: string;
     [key: string]: string | number;
@@ -116,7 +118,7 @@ export const fetchFxRates = async (): Promise<{ USD: number; EUR: number; CAD: n
             }
         }
     } catch (e) {
-        console.warn("Impossible de recuperer les taux FX (Banque du Canada), utilisation des valeurs en cache/defaut:", e);
+        logError({ source: 'network', severity: 'warning', message: 'Taux FX (Banque du Canada) indisponibles — fallback cache/défaut', error: e });
     }
 
     // Fallback (audit Tier 🟡) — préférer le DERNIER taux réel connu, même périmé (>24h),

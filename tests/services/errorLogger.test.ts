@@ -157,4 +157,59 @@ describe('errorLogger', () => {
             expect(c.d).toBe('[truncated]');
         });
     });
+
+    // ── Sécurité (S2) : `message` et `stack` sont persistés ET exportables via
+    // SystemView, mais n'étaient PAS filtrés. On verrouille le scrub léger qui
+    // masque montants ($/argent) et secrets (sk-ant-…, tokens longs) AVANT
+    // persistance, sans dénaturer les messages de diagnostic. ────────────────
+    describe('scrub PII du message/stack (S2)', () => {
+        it('masque les montants en dollars dans le message', () => {
+            logError({ source: 'ui', message: 'retrait de 12 500,00$ refusé' });
+            expect(getErrors()[0].message).toBe('retrait de [montant] refusé');
+        });
+
+        it('masque diverses formes monétaires ($ devant, code devise, décimales)', () => {
+            logError({ source: 'ui', message: 'Solde $1,234.56 ; coût 99.99 ; total 1 234 567,89 CAD ; payé 5000$' });
+            const m = getErrors()[0].message;
+            expect(m).not.toMatch(/\d{3}/);          // plus aucun gros nombre en clair
+            expect(m).not.toContain('1,234.56');
+            expect(m).not.toContain('5000$');
+            expect((m.match(/\[montant\]/g) || []).length).toBeGreaterThanOrEqual(4);
+        });
+
+        it('masque une clé API Anthropic (sk-ant-…)', () => {
+            logError({ source: 'ai', message: 'échec avec clé sk-ant-api03-AbCdEf12345_xyz invalide' });
+            const m = getErrors()[0].message;
+            expect(m).toContain('[secret]');
+            expect(m).not.toContain('sk-ant-');
+        });
+
+        it('masque un jeton long et un Bearer token', () => {
+            logError({ source: 'network', message: 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9 rejeté' });
+            const m = getErrors()[0].message;
+            expect(m).toContain('[secret]');
+            expect(m).not.toContain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
+        });
+
+        it('scrube aussi la stack (extraite d\'une Error)', () => {
+            const err = new Error('clé sk-ant-api03-SuperSecretValue123 leak');
+            err.stack = 'Error: paiement 9 999,99$\n    at f (sk-ant-api03-SuperSecretValue123:1:1)';
+            logError({ source: 'ai', message: '', error: err });
+            const e = getErrors()[0];
+            expect(e.message).toContain('[secret]');     // message scrubé
+            expect(e.stack).toBeDefined();
+            expect(e.stack!).not.toContain('sk-ant-');    // secret hors de la stack
+            expect(e.stack!).not.toContain('9 999,99');   // montant hors de la stack
+        });
+
+        it('NE dénature PAS un message diagnostique sans PII (entiers nus, codes, lignes)', () => {
+            // Garde anti-faux-positif : les messages existants (« Error 149 », codes
+            // HTTP, numéros de ligne) doivent rester intacts pour le debug.
+            for (const msg of ['Error 149', 'HTTP 404 not found', 'crash at line 42 col 7', 'timeout après 30s']) {
+                clearErrors();
+                logError({ source: 'ui', message: msg });
+                expect(getErrors()[0].message, `"${msg}" doit rester intact`).toBe(msg);
+            }
+        });
+    });
 });

@@ -4,6 +4,7 @@ import { AppState, Tab, BudgetCategory, FinancialGoal, RealEstateGoal } from '..
 import { INITIAL_BUDGET, INITIAL_CONFIG, INITIAL_PROJECTION, INITIAL_REAL_ESTATE_GOAL, INITIAL_CHILD_GOAL, DEFAULT_FX_RATES } from '../constants';
 import type { ProjectionResult } from '../services/projection/types';
 import { quotaStorage } from '../services/quotaStorage';
+import { logError } from '../services/errorLogger';
 
 // Phase B2 — Deep-link cross-tab: un onglet pose un "intent" de focus, la page
 // destination le consomme au mount (scroll, highlight, focus, etc.).
@@ -231,19 +232,19 @@ export const getInitialStateWithMigration = (): AppState => {
             apiKeys: safeApiKeys,
             fxRates: storedFxRates ? JSON.parse(storedFxRates) : DEFAULT_FX_RATES,
             lastUpdate: Date.now(),
-            categorizationRules: (() => { try { const r = localStorage.getItem('categorization_rules'); return r ? JSON.parse(r) : []; } catch (e) { console.warn('[store migration] parse failed:', e); return []; } })(),
+            categorizationRules: (() => { try { const r = localStorage.getItem('categorization_rules'); return r ? JSON.parse(r) : []; } catch (e) { logError({ source: 'storage', severity: 'warning', message: 'Migration store : parse localStorage échoué (champ ignoré, défaut appliqué)', error: e }); return []; } })(),
             aiConversation: [],
             // FIX agents (HIGH code-reviewer): defaults manquants dans le retour de migration
-            insurancePolicies: (() => { try { const r = localStorage.getItem('app_insurance_policies'); return r ? JSON.parse(r) : []; } catch (e) { console.warn('[store migration] parse failed:', e); return []; } })(),
-            rentalProperties: (() => { try { const r = localStorage.getItem('app_rental_properties'); return r ? JSON.parse(r) : []; } catch (e) { console.warn('[store migration] parse failed:', e); return []; } })(),
-            privateBusinesses: (() => { try { const r = localStorage.getItem('app_private_businesses'); return r ? JSON.parse(r) : []; } catch (e) { console.warn('[store migration] parse failed:', e); return []; } })(),
-            vehicleReplacements: (() => { try { const r = localStorage.getItem('app_vehicle_replacements'); return r ? JSON.parse(r) : []; } catch (e) { console.warn('[store migration] parse failed:', e); return []; } })(),
-            majorRenovations: (() => { try { const r = localStorage.getItem('app_major_renovations'); return r ? JSON.parse(r) : []; } catch (e) { console.warn('[store migration] parse failed:', e); return []; } })(),
-            charitableGoals: (() => { try { const r = localStorage.getItem('app_charitable_goals'); return r ? JSON.parse(r) : []; } catch (e) { console.warn('[store migration] parse failed:', e); return []; } })(),
+            insurancePolicies: (() => { try { const r = localStorage.getItem('app_insurance_policies'); return r ? JSON.parse(r) : []; } catch (e) { logError({ source: 'storage', severity: 'warning', message: 'Migration store : parse localStorage échoué (champ ignoré, défaut appliqué)', error: e }); return []; } })(),
+            rentalProperties: (() => { try { const r = localStorage.getItem('app_rental_properties'); return r ? JSON.parse(r) : []; } catch (e) { logError({ source: 'storage', severity: 'warning', message: 'Migration store : parse localStorage échoué (champ ignoré, défaut appliqué)', error: e }); return []; } })(),
+            privateBusinesses: (() => { try { const r = localStorage.getItem('app_private_businesses'); return r ? JSON.parse(r) : []; } catch (e) { logError({ source: 'storage', severity: 'warning', message: 'Migration store : parse localStorage échoué (champ ignoré, défaut appliqué)', error: e }); return []; } })(),
+            vehicleReplacements: (() => { try { const r = localStorage.getItem('app_vehicle_replacements'); return r ? JSON.parse(r) : []; } catch (e) { logError({ source: 'storage', severity: 'warning', message: 'Migration store : parse localStorage échoué (champ ignoré, défaut appliqué)', error: e }); return []; } })(),
+            majorRenovations: (() => { try { const r = localStorage.getItem('app_major_renovations'); return r ? JSON.parse(r) : []; } catch (e) { logError({ source: 'storage', severity: 'warning', message: 'Migration store : parse localStorage échoué (champ ignoré, défaut appliqué)', error: e }); return []; } })(),
+            charitableGoals: (() => { try { const r = localStorage.getItem('app_charitable_goals'); return r ? JSON.parse(r) : []; } catch (e) { logError({ source: 'storage', severity: 'warning', message: 'Migration store : parse localStorage échoué (champ ignoré, défaut appliqué)', error: e }); return []; } })(),
         };
     } catch (e) {
         const errorStr = String(e);
-        console.error("[FinanceAI] Migration de l'etat echouee:", e);
+        logError({ source: 'storage', severity: 'critical', message: "Migration de l'état échouée — retour à un état par défaut (données possiblement non chargées)", error: e });
         let backupKey: string | null = null;
         try {
             const corruptedDump: Record<string, string | null> = {};
@@ -260,7 +261,7 @@ export const getInitialStateWithMigration = (): AppState => {
             localStorage.setItem(backupKey, JSON.stringify({ error: errorStr, dump: corruptedDump }));
             console.warn(`[FinanceAI] Backup sauvegarde sous ${backupKey}`);
         } catch (backupErr) {
-            console.error("[FinanceAI] Impossible de sauvegarder le backup:", backupErr);
+            logError({ source: 'storage', severity: 'error', message: 'Échec de la sauvegarde du dump de migration corrompu', error: backupErr });
             backupKey = null;
         }
         _migrationStatus = { failed: true, backupKey, error: errorStr };

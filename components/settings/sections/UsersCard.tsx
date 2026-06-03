@@ -82,7 +82,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
           {savedProfiles.length === 0 && <span className="text-xs text-gray-500 italic">Aucun profil enregistre.</span>}
           {savedProfiles.map(p => (
             <div key={p} className="flex items-center bg-primary/20 text-blue-300 text-xs px-3 py-1.5 rounded-full border border-primary/30">
-              <span className="font-bold cursor-pointer" onClick={() => loadProfile(p)}>{p}</span>
+              <button type="button" className="font-bold cursor-pointer hover:underline rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" onClick={() => loadProfile(p)} aria-label={`Charger le profil ${p}`}>{p}</button>
               <button
                 onClick={() => deleteProfile(p)}
                 className={`ml-2 font-bold px-1.5 rounded ${profileToDelete === p ? 'bg-red-500 text-white' : 'text-white/50 hover:text-red-400'}`}

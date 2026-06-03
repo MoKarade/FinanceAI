@@ -72,6 +72,56 @@ function makeId(): string {
 const SENSITIVE_KEY_PATTERNS = /^(amount|balance|payee|fact|salary|netSalary|grossSalary|income|expense|cost|price|debt|net.*worth|api.*key|token|password|passphrase|email|phone|sin|nas|account.*number)$/i;
 const MAX_DEPTH = 4;
 
+// S2 (sécurité/PII) — Le `message` et la `stack` des erreurs sont persistés en
+// localStorage et EXPORTABLES via SystemView, mais n'étaient jamais filtrés
+// (seul le `context` l'était via sanitizeContext). Un message d'erreur peut
+// pourtant contenir un montant (« retrait de 12 500,00$ refusé ») ou un secret
+// (clé API loggée par erreur). On applique donc un scrub LÉGER sur le texte
+// libre avant persistance. Volontairement conservateur : on ne masque que ce
+// qui ressemble à de l'argent (avec marqueur $ ou séparateurs décimaux/milliers)
+// ou à un secret, jamais un entier nu (ex. « Error 149 », codes HTTP, line
+// numbers de stack), pour garder les messages diagnostiquables.
+const SECRET_PATTERNS: Array<{ re: RegExp; tag: string }> = [
+    // Clés API Anthropic (sk-ant-...) et OpenAI-like (sk-...) — préfixe + corps base64/hex.
+    { re: /sk-ant-[A-Za-z0-9_-]{6,}/g, tag: '[secret]' },
+    { re: /sk-[A-Za-z0-9]{16,}/g, tag: '[secret]' },
+    // Bearer tokens.
+    { re: /\bBearer\s+[A-Za-z0-9._-]{12,}/gi, tag: 'Bearer [secret]' },
+    // Jetons longs « bruts » (≥ 24 chars, mélange lettres+chiffres) — JWT, clés, hash.
+    // Ancré sur des frontières de « mot » pour ne pas couper un identifiant court.
+    { re: /\b(?=[A-Za-z0-9._-]*[A-Za-z])(?=[A-Za-z0-9._-]*\d)[A-Za-z0-9._-]{24,}\b/g, tag: '[secret]' },
+];
+
+// Argent : nombre AVEC marqueur monétaire ($ devant/derrière, code devise) OU
+// avec séparateurs de milliers/décimales (1 234,56 / 1,234.56 / 12500.00). On
+// exige un signal « monétaire » pour ne PAS masquer un entier nu (Error 149,
+// HTTP 404, line 42…). NB : pas de \b après « $ » (non-word char) — ça ne
+// matcherait jamais devant une espace.
+const MONEY_PATTERNS: RegExp[] = [
+    // $ devant : $1 234,56 / $ 12500 / $5000
+    /\$\s?\d[\d\s.,]*\d|\$\s?\d/g,
+    // montant SUIVI de $ (collé ou espacé) : 12 500,00$ / 5000 $ / 99.99$
+    /\d[\d\s.,]*\d\s?\$|\d\s?\$/g,
+    // montant suivi d'un code devise : 1 234,56 CAD / 5000 USD
+    /\d[\d\s.,]*\d\s?(?:CAD|USD|EUR)\b|\d\s?(?:CAD|USD|EUR)\b/gi,
+    // nombre avec séparateur de milliers OU décimale type argent (au moins un groupe
+    // de 3 chiffres précédé d'un séparateur, ou 2 décimales) : 1,234 / 12 500,00 / 99.99
+    /\b\d{1,3}(?:[ .,]\d{3})+(?:[.,]\d{1,2})?\b|\b\d+[.,]\d{2}\b/g,
+];
+
+/**
+ * Scrub léger d'un texte libre (message/stack) avant persistance : masque les
+ * secrets puis les montants. Conservateur — laisse les entiers nus et le reste
+ * du message intacts pour le diagnostic.
+ */
+function scrubFreeText(input: string | undefined): string | undefined {
+    if (typeof input !== 'string' || input === '') return input;
+    let out = input;
+    for (const { re, tag } of SECRET_PATTERNS) out = out.replace(re, tag);
+    for (const re of MONEY_PATTERNS) out = out.replace(re, '[montant]');
+    return out;
+}
+
 function sanitizeContext(value: unknown, depth = 0): unknown {
     if (value === null || value === undefined) return value;
     if (depth >= MAX_DEPTH) return '[truncated]';
@@ -114,8 +164,10 @@ export function logError(input: {
         timestamp: Date.now(),
         severity,
         source: input.source,
-        message,
-        stack,
+        // S2 : message/stack scrubés (montants + secrets masqués) AVANT persistance,
+        // car ils sont exportables via SystemView au même titre que le context.
+        message: scrubFreeText(message) ?? message,
+        stack: scrubFreeText(stack),
         // SH5 : context sanitisé pour ne JAMAIS persister/exporter de PII.
         context: input.context ? sanitizeContext(input.context) as Record<string, unknown> : undefined,
         // S-C+ : UA tronqué (le log est exportable via SystemView → on limite le fingerprint).
@@ -135,10 +187,10 @@ export function logError(input: {
             // Logger central : écriture console.info volontaire (routing par sévérité).
             // eslint-disable-next-line no-console
             : console.info;
-        // SH5/S-C : on loggue le context SANITISÉ (entry.context), pas l'input brut —
-        // sinon la PII (montants, salaires, clés) fuiterait dans la console DevTools
-        // alors que l'entrée stockée/exportée est, elle, déjà nettoyée.
-        fn(`[${input.source}] ${message}`, entry.context ?? '');
+        // SH5/S-C/S2 : on loggue le message ET le context SANITISÉS (entry.*), pas
+        // l'input brut — sinon la PII (montants, salaires, clés) fuiterait dans la
+        // console DevTools alors que l'entrée stockée/exportée est déjà nettoyée.
+        fn(`[${input.source}] ${entry.message}`, entry.context ?? '');
     }
 }
 

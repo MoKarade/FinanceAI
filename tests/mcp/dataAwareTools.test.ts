@@ -117,6 +117,26 @@ describe('Lot 1 — get_retirement_outlook', () => {
         expect(typeof out.verdict).toBe('string');
         expect(Number.isFinite(out.estateNetWorth as number)).toBe(true);
     });
+
+    it("exprime le revenu en $ d'aujourd'hui (déflaté ≤ nominal) et compare la cible apples-to-apples", async () => {
+        const h = captureTool(registerGetRetirementOutlook, providerFor(karimState()));
+        const out = await callJson(h, { monteCarlo: false });
+        const real = out.projectedRetirementIncomeMonthly as number;
+        const nominal = out.projectedRetirementIncomeMonthlyNominal as number;
+        expect(Number.isFinite(real)).toBe(true);
+        expect(Number.isFinite(nominal)).toBe(true);
+        // Le moteur produit du NOMINAL (futur) ; le tool déflate en $ d'aujourd'hui.
+        expect(real).toBeLessThanOrEqual(nominal);
+        // Retraite dans le futur + inflation > 0 ⇒ déflation stricte quand il y a un revenu.
+        if (nominal > 0) expect(real).toBeLessThan(nominal);
+        const src = out.incomeSources as Record<string, number>;
+        expect(src.governmentPensionsNominal).toBeGreaterThanOrEqual(src.governmentPensions);
+        expect(src.privatePensionsNominal).toBeGreaterThanOrEqual(src.privatePensions);
+        // RÉGRESSION CLÉ : le verdict compare le revenu RÉEL à la cible (en $ d'aujourd'hui),
+        // PAS le nominal (sinon un revenu 2064 « battait » une cible 2026 à tort).
+        const target = out.targetMonthlyIncome as number;
+        expect(out.meetsIncomeTarget).toBe(target > 0 && real >= target);
+    });
 });
 
 describe('Lot 1 — get_next_best_actions', () => {

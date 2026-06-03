@@ -9,6 +9,7 @@ import React from 'react';
 import { Card } from '../../ui/Card';
 import { showToast } from '../../ui/Toast';
 import type { AppState, BudgetConfig, User, Gender, CanadianProvince, MaritalStatus, EmploymentType, Industry, PensionPlan, HealthRating } from '../../../types';
+import { annualSalaryToMonthly } from '../../../utils/salary';
 
 interface UsersCardProps {
   config: AppState['config'];
@@ -19,6 +20,11 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
   const [savedProfiles, setSavedProfiles] = React.useState<string[]>([]);
   const [newProfileName, setNewProfileName] = React.useState('');
   const [profileToDelete, setProfileToDelete] = React.useState<string | null>(null);
+  // Brouillon ANNUEL du salaire brut, par index d'utilisateur. Le store reste
+  // MENSUEL (convention canonique : le moteur ré-annualise ×12, cf utils/salary) ;
+  // on convertit à la saisie. Sans brouillon, un input contrôlé affichant
+  // grossSalary×12 mangerait chaque chiffre tapé (round-trip ×12 ÷12 destructeur).
+  const [grossAnnualDraft, setGrossAnnualDraft] = React.useState<Record<number, string>>({});
 
   React.useEffect(() => {
     try {
@@ -49,6 +55,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
         const data = JSON.parse(dataStr);
         if (data.config) {
           setConfig(data.config);
+          setGrossAnnualDraft({}); // brut affiché = grossSalary×12 du profil chargé
           showToast(`Profil "${name}" charge !`, 'success');
         }
       }
@@ -118,6 +125,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   const newUsers = [...config.users];
                   newUsers.pop();
                   setConfig({ ...config, users: newUsers as [User, User] });
+                  setGrossAnnualDraft({}); // les index changent → on repart du store
                 }}
                 className="bg-red-900/40 text-red-300 px-3 py-1 rounded text-xs hover:bg-red-900/60"
               >
@@ -129,6 +137,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                 onClick={() => {
                   const newUsers = [...config.users, { name: 'Conjoint(e)', age: 30, grossSalary: 0, netSalary: 0, canadaArrivalYear: new Date().getFullYear() - 5, color: '#ec4899' }];
                   setConfig({ ...config, users: newUsers as [User, User] });
+                  setGrossAnnualDraft({}); // les index changent → on repart du store
                 }}
                 className="bg-green-900/40 text-green-300 px-3 py-1 rounded text-xs hover:bg-green-900/60"
               >
@@ -206,20 +215,23 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div data-focus-section={`profile-user${idx + 1}-grossSalary`}>
-                  <label className="text-xs text-gray-400 font-bold text-green-300">Salaire Brut ($)</label>
+                  <label className="text-xs text-gray-400 font-bold text-green-300">Salaire Brut annuel ($)</label>
                   <input
                     type="number"
-                    value={user.grossSalary || 0}
+                    value={grossAnnualDraft[idx] ?? String((user.grossSalary || 0) * 12)}
                     onChange={(e) => {
+                      const raw = e.target.value;
+                      setGrossAnnualDraft((d) => ({ ...d, [idx]: raw }));
                       const newUsers = [...config.users] as [User, User];
-                      newUsers[idx] = { ...user, grossSalary: parseFloat(e.target.value) || 0 };
+                      // Saisi en ANNUEL → stocké en MENSUEL (convention du store/moteur).
+                      newUsers[idx] = { ...user, grossSalary: annualSalaryToMonthly(parseFloat(raw) || 0) };
                       setConfig({ ...config, users: newUsers });
                     }}
                     className="w-full bg-dark border border-border rounded px-2 py-1 text-sm text-white font-mono"
                   />
                 </div>
                 <div data-focus-section={`profile-user${idx + 1}-netSalary`}>
-                  <label className="text-xs text-gray-400 font-bold text-blue-300">Salaire Net ($)</label>
+                  <label className="text-xs text-gray-400 font-bold text-blue-300">Salaire Net mensuel ($)</label>
                   <input
                     type="number"
                     value={user.netSalary || user.salary || 0}

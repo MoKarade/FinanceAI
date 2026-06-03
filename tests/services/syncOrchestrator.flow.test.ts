@@ -82,6 +82,7 @@ import {
 import { buildEnvelope } from '../../services/sync/syncEngine';
 import { isGateAuthedThisSession } from '../../services/sync/authGate';
 import { useFinanceStore } from '../../store/useFinanceStore';
+import * as errorLogger from '../../services/errorLogger';
 
 beforeEach(() => {
     useFinanceStore.getState().resetState(); // état store par défaut (isolation entre tests)
@@ -123,6 +124,9 @@ describe('Flux gate → restauration (intégration, Drive mocké)', () => {
         expect(isGateAuthedThisSession()).toBe(true);
         // Reste connecté → l'auto-push fonctionnera (corrige « ça n'enregistre pas »).
         expect(getSyncStatus().connected).toBe(true);
+        // Après une restauration RÉUSSIE, le spinner doit retomber (busy:false) — sinon « Synchronisation… »
+        // reste figé en permanence après un pull (régression corrigée EPIC 1, 2026-06).
+        expect(getSyncStatus().busy).toBe(false);
     });
 
     it('connectAndSync (login interactif) restaure aussi dans le store, sans reload', async () => {
@@ -190,6 +194,39 @@ describe('Verrou anti-double-sync (boot : gate + runBootSync)', () => {
         // 1 décision = readDrive (1) + pullNow→readDrive (1) = 2 appels. Le verrou a évité le doublon.
         expect(findSpy).toHaveBeenCalledTimes(2);
     });
+
+    it('local NON-vide + Drive SANS fichier : deux reprises concurrentes → UN SEUL createSyncFile (anti-doublon Drive)', async () => {
+        // Scénario le plus dangereux nommé dans le code (~ligne 452) : sans verrou, deux décisions
+        // « push » concurrentes appelleraient chacune createSyncFile → DEUX fichiers financeai-sync.json
+        // dans le Drive (doublon impossible à réconcilier ensuite).
+        const driveApi = await import('../../services/googleDrive/driveAppData');
+        const findSpy = driveApi.findSyncFile as ReturnType<typeof vi.fn>;
+        const createSpy = driveApi.createSyncFile as ReturnType<typeof vi.fn>;
+        findSpy.mockClear();
+        createSpy.mockClear();
+        // Local non-vide (sinon la décision serait noop/pull) ET Drive vide (findSyncFile → null) →
+        // la décision est « push » → createSyncFile.
+        localStorage.setItem(STORE_KEY, JSON.stringify({ state: { transactions: [{ id: 'local-1' }] }, version: 7 }));
+        let release: () => void = () => {};
+        const gate = new Promise<void>((r) => { release = r; });
+        try {
+            // La 1re lecture Drive (readDrive de runDecision) est bloquée le temps que les DEUX reprises
+            // entrent dans runDecision ; toutes les lectures Drive renvoient « aucun fichier ».
+            findSpy.mockImplementation(async () => { await gate; return null; });
+
+            const both = Promise.all([gateSilentResume(), gateSilentResume()]);
+            await new Promise((r) => setTimeout(r, 0));
+            release();
+            await both;
+
+            // Le verrou _decisionInFlight a dédupliqué : une seule décision → un seul createSyncFile.
+            expect(createSpy).toHaveBeenCalledTimes(1);
+        } finally {
+            // mockImplementation PERSISTE (vi.clearAllMocks ne restaure pas l'impl du factory vi.mock) :
+            // on rétablit le défaut pour ne pas polluer les tests suivants (sinon findSyncFile=null fuit).
+            findSpy.mockImplementation(async () => ({ id: 'file-1', modifiedTime: '2024' }));
+        }
+    });
 });
 
 // Garde-fou : l'enveloppe construite n'oublie aucun champ du payload (sérialisation fidèle).
@@ -225,5 +262,45 @@ describe('Chiffrement des clés API (C1) — round-trip push→pull', () => {
         await pullNow();
         expect(useFinanceStore.getState().apiKeys.anthropic).toBe('sk-secret-xyz');
         expect(useFinanceStore.getState().apiKeys.finnhub).toBe('fh-secret');
+    });
+});
+
+describe('pullNow — déchiffrement des clés ÉCHOUE (SF-3 : données OK, clés vides, pas de crash)', () => {
+    it('apiKeysEnc indéchiffrable (sub/blob KO) : DONNÉES restaurées, clés vides, logError warning, busy:false', async () => {
+        const driveApi = await import('../../services/googleDrive/driveAppData');
+        const logSpy = vi.spyOn(errorLogger, 'logError').mockImplementation(() => {});
+        try {
+            // Enveloppe Drive avec de VRAIES données + un blob de clés syntaxiquement valide (base64)
+            // mais INDÉCHIFFRABLE avec le sub mocké (sub-123) → decryptApiKeys rejette (AES-GCM).
+            const badEnvelope = {
+                ...driveEnvelope,
+                apiKeys: undefined, // pas d'ancien format en clair → on force le chemin chiffré
+                apiKeysEnc: 'A'.repeat(40), // base64 valide (30 octets > IV) mais auth GCM échouera
+            };
+            (driveApi.readSyncFile as ReturnType<typeof vi.fn>).mockResolvedValueOnce(badEnvelope);
+            // Clés locales vides au départ (on vérifie qu'elles le RESTENT, pas de fantôme).
+            useFinanceStore.getState().updateApiKeys({ anthropic: '', finnhub: '' });
+
+            await expect(pullNow()).resolves.toBeUndefined(); // pas de crash
+
+            const s = useFinanceStore.getState();
+            // CŒUR : les DONNÉES financières sont restaurées malgré l'échec sur les clés.
+            expect(s.transactions).toEqual([{ id: 'tx-drive-1', amount: 42 }]);
+            expect(s.config.users[0].name).toBe('Marc');
+            // Les clés restent VIDES (jamais de clés à moitié déchiffrées injectées).
+            expect(s.apiKeys.anthropic).toBe('');
+            expect(s.apiKeys.finnhub).toBe('');
+            // L'échec est JOURNALISÉ (non silencieux) en severity 'warning', source 'storage'.
+            const warnCall = logSpy.mock.calls.find(
+                ([arg]) => (arg as { severity?: string })?.severity === 'warning',
+            );
+            expect(warnCall).toBeTruthy();
+            expect((warnCall?.[0] as { source?: string })?.source).toBe('storage');
+            // Statut propre : la sync n'est pas restée « busy ».
+            expect(getSyncStatus().busy).toBe(false);
+            expect(getSyncStatus().conflict).toBe(false);
+        } finally {
+            logSpy.mockRestore();
+        }
     });
 });

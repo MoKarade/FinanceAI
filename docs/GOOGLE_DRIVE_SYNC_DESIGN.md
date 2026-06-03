@@ -23,10 +23,12 @@ l'utilisateur**, pas sur notre infra.
 | D3 | **Pas de chiffrement applicatif** (blob en clair dans appDataFolder) | Choix explicite de Marc : confort > zéro-knowledge. appDataFolder est privé au compte Google + à l'app | Passphrase E2E (AES-GCM/PBKDF2) — proposé et **écarté par Marc** ; passphrase optionnelle — écartée aussi |
 | D4 | **Sync auto + garde anti-perte** | « Ça marche tout seul » sans risque d'écrasement de données financières | Manuel (risque d'oubli) ; auto silencieux last-write-wins (risque d'écrasement) |
 
-> ⚠️ **Conséquence assumée de D3** : les données financières (patrimoine, comptes, transactions)
-> sont lisibles par quiconque a accès au compte Google de l'utilisateur, et techniquement par
-> Google. C'est un écart conscient à la règle « backup chiffré ». Une passphrase optionnelle
-> pourra être ajoutée plus tard sans rien casser (le format du blob réserve un champ `enc`).
+> ⚠️ **Conséquence assumée de D3** (chemin par DÉFAUT) : les données financières (patrimoine, comptes,
+> transactions) sont lisibles par quiconque a accès au compte Google de l'utilisateur, et techniquement
+> par Google. C'est un écart conscient à la règle « backup chiffré ».
+> **Mise à jour D-3 (2026-06)** : une **passphrase optionnelle** (§12) lève cet écart quand l'utilisateur
+> l'active (vrai zéro-knowledge via le champ `enc:true` / `encPayload`), sans rien casser pour qui ne
+> l'active pas (D3 reste le défaut).
 
 ## 3. Architecture & flux
 
@@ -158,6 +160,53 @@ Ajouter (dans `index.html` **et** `netlify.toml`) :
 
 ## 11. Limites connues / backlog
 
-- Pas de chiffrement applicatif (D3) → passphrase optionnelle en backlog (champ `enc` réservé).
+- Chiffrement applicatif **optionnel** désormais disponible (D-3, §12) — opt-in, par défaut on reste sur
+  D3 (clair). Récupération en cas d'oubli de passphrase : **impossible par conception** (zéro-knowledge).
 - Conflit résolu par choix utilisateur (pas de merge granulaire) — suffisant pour un usage perso.
-- Clés API **synchronisées et chiffrées** (`apiKeysEnc`, clé dérivée du `sub` Google — cf §5).
+- Clés API **synchronisées et chiffrées** (`apiKeysEnc` en clair-D3 ; ou DANS `encPayload` si passphrase — cf §5/§12).
+
+## 12. Passphrase optionnelle — chiffrement zéro-knowledge (D-3, 2026-06)
+
+Surcouche **opt-in** au-dessus de D3. **Zéro régression** : sans passphrase, tout le chemin §4/§5 est
+strictement inchangé (enveloppe `enc:false` identique, tests existants verts). C'est un ajout, pas un
+remplacement.
+
+**Où vit le secret.** `services/sync/passphraseStore.ts` : mémoire (autorité) + miroir `sessionStorage`
+(`financeai:sync:passphrase:v1`). **Jamais** dans `localStorage`, **jamais** envoyé à Drive. `sessionStorage`
+survit à un reload de page (filet `reload()` d'`applyPulledPayload`, F5 manuel) mais est purgé à la
+fermeture de l'onglet. Purgé aussi à la déconnexion / suppression Drive.
+
+**Format `enc:true`.** `encPayload` = blob `encryptBackup` (réutilise `cloudBackup.ts` : PBKDF2 600k +
+AES-256-GCM, magic « FAI1 ») du **bundle complet** `{ payload, apiKeys }`. `payload` vaut alors `null`
+(aucun clair) et `apiKeysEnc` est **absent** (les clés sont DANS le ciphertext). Construit par la fonction
+pure `buildEncryptedEnvelope` (`syncEngine.ts`), séparée de `buildEnvelope` pour ne pas contaminer le
+chemin clair.
+
+**Flux.**
+- **Push** (`pushNow`) : si `getPassphrase() !== null` → chiffre le bundle → enveloppe `enc:true`. Sinon →
+  chemin clair historique INCHANGÉ. `encryptBackup` valide la longueur (≥12) et lève sinon → statut
+  d'erreur honnête, **rien écrit dans Drive**.
+- **Pull** (`pullNow`) : si `enc:false` → chemin clair inchangé. Si `enc:true` :
+  - pas de passphrase en session → `needsPassphrase:true`, **on n'applique RIEN** (zéro perte), l'UI demande
+    la passphrase puis re-pull ;
+  - passphrase **fausse** / blob altéré → `decryptBackup` lève (`WRONG_PASSPHRASE`) → `logError` *warning*,
+    message clair, `needsPassphrase` reste vrai, **données locales jamais touchées** ;
+  - passphrase **bonne** → bundle déchiffré, payload + clés restaurés (réhydratation EN PLACE), `needsPassphrase:false`.
+
+**Cycle de migration (rétro-compat totale).**
+- Un ancien blob `enc:false` reste **toujours** lisible sans passphrase.
+- **Activer** une passphrase (`setSyncPassphrase`, ≥12) → le **prochain push** ré-écrit le blob en `enc:true`.
+- **Effacer** (`clearSyncPassphrase`) → le **prochain push** revient à `enc:false` (clair).
+- `setSyncPassphrase` ne pousse pas tout seul (laisse le contrôle / l'auto-push debouncé) ; il re-pull
+  seulement si un `needsPassphrase` était en attente.
+
+**Propriétés de sécurité & LIMITES honnêtes.**
+- ✅ Vrai zéro-knowledge vis-à-vis de Drive/Google : sans la passphrase, le blob est opaque (PBKDF2 600k +
+  AES-GCM authentifié). Ni Google, ni un accès au compte Google, ni nous ne peut le déchiffrer.
+- ⚠️ **Oubli = perte définitive** : aucun mécanisme de récupération (c'est le prix du zéro-knowledge).
+  Avertissement très clair dans l'UI.
+- ⚠️ `sessionStorage` est lisible par tout JS de l'origine pendant la session → pas une protection contre
+  un XSS qui exécute déjà du code dans l'onglet. Le gain est contre l'exposition côté Drive/cloud, pas
+  contre un attaquant in-page.
+- ⚠️ Multi-appareils : la passphrase n'étant pas synchronisée (par conception), il faut la **ressaisir sur
+  chaque appareil/onglet**. C'est volontaire (sinon elle transiterait → plus zéro-knowledge).

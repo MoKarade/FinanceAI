@@ -11,8 +11,18 @@ export const SYNC_SCHEMA_VERSION = 1;
 
 /**
  * Enveloppe stockée dans le fichier `financeai-sync.json` du dossier appData Drive.
- * `enc` est réservé : `false` aujourd'hui (pas de chiffrement applicatif — décision D3),
- * passera à `true` si on ajoute une passphrase optionnelle plus tard, sans casser le format.
+ *
+ * `enc` pilote DEUX formats interopérables (rétro-compat totale) :
+ *  - `enc:false` (défaut, décision D3) → `payload` EN CLAIR + clés dans `apiKeysEnc` (clé dérivée
+ *    du `sub` Google). C'est le chemin historique, INCHANGÉ.
+ *  - `enc:true` (passphrase optionnelle activée, D-3 2026-06) → vrai zéro-knowledge : `encPayload`
+ *    contient le payload COMPLET **et les clés API** chiffrés par `encryptBackup` (PBKDF2 600k +
+ *    AES-256-GCM, format « FAI1 »), la passphrase n'allant JAMAIS dans Drive. `payload` vaut alors
+ *    `null` (aucun clair) et `apiKeysEnc` est absent (les clés sont dans `encPayload`).
+ *
+ * Le flag étant un simple booléen, un lecteur qui voit `enc:false` suit le chemin clair comme avant :
+ * un ancien blob reste lisible sans passphrase, et activer/désactiver la passphrase ré-écrit
+ * simplement l'autre forme au prochain push.
  */
 export interface SyncEnvelope {
     schemaVersion: number;
@@ -22,10 +32,16 @@ export interface SyncEnvelope {
     deviceId: string;
     /** Version de l'app au moment de l'écriture (diagnostic). */
     appVersion: string;
-    /** Réservé : `false` = payload en clair, `true` = payload chiffré (futur). */
+    /** `false` = payload en clair (+ `apiKeysEnc`) ; `true` = `encPayload` chiffré zéro-knowledge. */
     enc: boolean;
-    /** Snapshot d'état applicatif (financeai-storage, sans les clés API). */
+    /** Snapshot d'état applicatif (financeai-storage, sans les clés API). `null` quand `enc:true`. */
     payload: unknown;
+    /**
+     * Présent UNIQUEMENT si `enc:true`. Blob `encryptBackup` (« FAI1 » base64) du payload COMPLET +
+     * des clés API. Indéchiffrable sans la passphrase de l'utilisateur (zéro-knowledge). Absent en
+     * `enc:false`.
+     */
+    encPayload?: string;
     /**
      * LEGACY (anciens blobs) : clés API EN CLAIR. Plus jamais écrit depuis 2026-05-29 (remplacé par
      * `apiKeysEnc`). Encore LU en rétro-compat — un ancien blob sera ré-écrit chiffré au prochain push.

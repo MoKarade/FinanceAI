@@ -83,6 +83,23 @@ L'état persisté de l'app est stocké sous la clé `financeai-storage` (format 
 
 ## Configuration Claude Desktop
 
+### Option recommandée — une commande
+
+```bash
+npm run mcp:setup
+# ou avec un chemin d'état explicite :
+npm run mcp:setup -- "/chemin/vers/financeai-state.json"
+```
+
+Écrit (ou met à jour) l'entrée `financeai` dans le `claude_desktop_config.json` de
+Claude Desktop avec des **chemins absolus** (`node` courant + `tsx` + `mcp/stdio.ts`),
+sans dépendre de `npx`/PATH et en gérant les espaces dans le chemin (OneDrive…).
+Les autres serveurs MCP déjà configurés sont préservés. Par défaut, l'état est
+attendu à `~/financeai-state.json`. Ensuite : quitter **complètement** Claude
+Desktop et le rouvrir ; vérifier **Settings → Developer** (`financeai` = `running`).
+
+### Option manuelle
+
 Éditer le fichier de config :
 - **Windows** : `%APPDATA%\Claude\claude_desktop_config.json`
 - **macOS** : `~/Library/Application Support/Claude/claude_desktop_config.json`

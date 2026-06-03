@@ -671,17 +671,33 @@ export const calculateNetFromGross = (monthlyGross: number) => {
 
 // Inverse de calculateNetFromGross : trouve le revenu BRUT annuel qui produit
 // un NET cible donné. L'impôt n'a pas d'inverse analytique simple (paliers +
-// crédits), donc on cherche par dichotomie dans l'intervalle [net, 2×net].
-// 20 itérations suffisent : la fonction impôt est monotone et lisse, donc
-// l'intervalle est divisé par 2^20 (~1 million) — convergence bien sous le
-// dollar. Tolérance d'arrêt : 1$ (assez précis pour de la projection).
+// crédits), donc on cherche par dichotomie sur [net, high].
+//
+// ITEM 2b — la borne haute était figée à 2×net. Or, dès que le taux moyen dépasse
+// 50 % (très hauts revenus : ~600 k$ net au QC), le brut requis est > 2×net et la
+// dichotomie convergeait vers la borne (brut sous-estimé de plusieurs milliers à
+// > 100 k$). On EXPAND désormais la borne haute (doublements successifs) jusqu'à ce
+// que net(high) dépasse la cible, garantissant que la racine est encerclée avant la
+// dichotomie. Le taux moyen tend vers le marginal max (~53 % au QC) sans jamais
+// l'atteindre → net(high) > target finit toujours par être vrai ; la garde
+// d'itérations borne le pire cas.
 export const calculateGrossFromNet = (targetNetAnnual: number): number => {
     if (targetNetAnnual <= 0) return 0;
-    let low = targetNetAnnual;
+    const low0 = targetNetAnnual;
     let high = targetNetAnnual * 2;
-    let iterations = 0;
 
-    while (iterations < 20) {
+    // Expansion de la borne haute : tant que net(high) reste sous la cible, on
+    // double. Plafond d'expansion (40 doublements ≈ ×10^12) = garde-fou anti-boucle
+    // si la fonction n'était pas monotone/atteignable (ne devrait jamais arriver).
+    let expand = 0;
+    while (calculateFiscalReport(high, 0, 0).netIncome < targetNetAnnual && expand < 40) {
+        high *= 2;
+        expand++;
+    }
+
+    let low = low0;
+    let iterations = 0;
+    while (iterations < 40) {
         const mid = (low + high) / 2;
         const net = calculateFiscalReport(mid, 0, 0).netIncome;
         if (Math.abs(net - targetNetAnnual) < 1) return mid;

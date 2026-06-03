@@ -156,7 +156,11 @@ export interface DecemberContext {
 export interface DecemberHelpers {
     calculateFiscalReport: (gross: number, deductions: number, withheld: number, year: number, mc?: boolean, ageOpts?: AgeCreditOptions) => FiscalReport;
     getMarginalRate: (income: number, year: number) => number;
-    calculateDividendTax: (annualDiv: number, marginalRate: number) => number;
+    // ITEM 2d — 4e arg optionnel : impôt brut PROGRESSIF (bande sur le montant majoré).
+    // Quand fourni, il remplace le calcul plat (montant majoré × taux marginal).
+    calculateDividendTax: (annualDiv: number, marginalRate: number, kind?: 'eligible' | 'non-eligible', progressiveGrossTax?: number) => number;
+    // ITEM 2d — taux de majoration du dividende (pour empiler le montant majoré).
+    getDividendGrossUpRate?: (kind?: 'eligible' | 'non-eligible') => number;
 }
 
 export interface DecemberResult {
@@ -438,7 +442,22 @@ export function processDecemberTaxFiling(
             : (ctx.grossMarcBaseAnnual + ctx.grossAnnaBaseAnnual) * Math.pow(1 + ctx.simSalaryGrowth / 100, ctx.yearsElapsed)
         ) / ctx.activeUsersCount;
         const currentMarginal = helpers.getMarginalRate(incomeForDiv, ctx.loopYear);
-        const divTax = helpers.calculateDividendTax(annualDiv, currentMarginal);
+        // ITEM 2d — empilement PROGRESSIF du dividende majoré (comme B-AUDIT-2 pour les
+        // gains). Le dividende MAJORÉ (gross-up) s'empile sur le revenu : l'impôt brut =
+        // bande [revenu, revenu+majoré] par adulte, ×N. L'ancien taux marginal PLAT au
+        // revenu de base sous-estimait (voire annulait via le crédit d'impôt dividende)
+        // l'impôt d'un gros dividende franchissant un palier. Le crédit (CID) reste géré
+        // dans calculateDividendTax. Repli sur le plat si le helper gross-up est absent.
+        const grossUpRate = helpers.getDividendGrossUpRate ? helpers.getDividendGrossUpRate('eligible') : undefined;
+        let progressiveGrossTax: number | undefined;
+        if (grossUpRate !== undefined) {
+            const annualDivPerAdult = annualDiv / ctx.activeUsersCount;
+            const grossedUpPerAdult = annualDivPerAdult * grossUpRate;
+            const taxBase = helpers.calculateFiscalReport(incomeForDiv, 0, 0, ctx.loopYear, true).totalTax;
+            const taxTop = helpers.calculateFiscalReport(incomeForDiv + grossedUpPerAdult, 0, 0, ctx.loopYear, true).totalTax;
+            progressiveGrossTax = Math.max(0, taxTop - taxBase) * ctx.activeUsersCount;
+        }
+        const divTax = helpers.calculateDividendTax(annualDiv, currentMarginal, 'eligible', progressiveGrossTax);
         if (divTax > 1) taxCurrent.gains += divTax;
     }
 

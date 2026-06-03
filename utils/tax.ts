@@ -720,16 +720,38 @@ export const calculateCapitalGainsTax = (realizedGain: number, marginalRate: num
 
 export type DividendKind = 'eligible' | 'non-eligible';
 
+// Taux de majoration (gross-up) du dividende selon le type. Exposé pour permettre
+// au moteur de calculer le montant MAJORÉ à empiler progressivement (ITEM 2d) avec
+// exactement le même taux que calculateDividendTax → cohérence garantie.
+export const getDividendGrossUpRate = (kind: DividendKind = 'eligible'): number =>
+    kind === 'eligible' ? 1.38 : 1.15;
+
 // Dividendes 2026 (Québec):
 // - Admissibles (grandes sociétés cotées): gross-up 38%, CID fédéral 15.0198% + CID QC 11.7% du majoré
 // - Non-admissibles (SPCC, sociétés privées): gross-up 15%, CID fédéral 9.0301% + CID QC 3.42% du majoré
-export const calculateDividendTax = (dividendAmount: number, marginalRate: number, kind: DividendKind = 'eligible'): number => {
+//
+// ITEM 2d — empilement PROGRESSIF (comme B-AUDIT-2 pour les gains). Le dividende
+// MAJORÉ s'empile sur le revenu : son impôt « brut » doit être l'impôt INCRÉMENTAL
+// de la bande [revenu, revenu+majoré], PAS le montant majoré × un taux marginal PLAT
+// au niveau du revenu de base (qui sous-estime quand le dividende franchit un palier,
+// voire renvoie 0 à cause du crédit d'impôt pour dividende quand le revenu de base est
+// bas). Le caller passe ce `progressiveGrossTax` ; le crédit (CID) reste calculé ici
+// sur le montant majoré → un seul endroit pour les taux. Sans override → ancien calcul
+// plat (rétro-compat : montant majoré × marginalRate).
+export const calculateDividendTax = (
+    dividendAmount: number,
+    marginalRate: number,
+    kind: DividendKind = 'eligible',
+    progressiveGrossTax?: number,
+): number => {
     if (dividendAmount <= 0) return 0;
-    const grossUpRate = kind === 'eligible' ? 1.38 : 1.15;
+    const grossUpRate = getDividendGrossUpRate(kind);
     const cidFedRate = kind === 'eligible' ? 0.150198 : 0.090301;
     const cidQcRate = kind === 'eligible' ? 0.117 : 0.0342;
     const grossedUpAmount = dividendAmount * grossUpRate;
-    const grossTax = grossedUpAmount * marginalRate;
+    const grossTax = (progressiveGrossTax !== undefined && Number.isFinite(progressiveGrossTax))
+        ? Math.max(0, progressiveGrossTax)
+        : grossedUpAmount * marginalRate;
     const cidAmount = grossedUpAmount * (cidFedRate + cidQcRate);
     return Math.max(0, grossTax - cidAmount);
 };

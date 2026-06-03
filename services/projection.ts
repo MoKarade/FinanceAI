@@ -1,6 +1,6 @@
 // services/projection.ts — moteur de projection financière (migré depuis utils/useFutureSimulation.ts)
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness, SavingsGoal, FinancialGoal } from '../types';
-import { calculateFiscalReport, getMarginalRate, calculateDividendTax, calculateGrossWithholdingRRSP, getResidencyStartYear, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
+import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate, calculateGrossWithholdingRRSP, getResidencyStartYear, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
 import { RRIF_RATES, welcomeTax } from './projection/helpers';
 import { runMonteCarlo, type MonteCarloResult } from './projection/monteCarlo';
 import { rankStrategiesByRobustness, type RobustnessRanking, type RankRobustnessOptions } from './projection/strategyRobustness';
@@ -672,7 +672,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     // false (paie au régime public) — conservateur pour FinanceAI.
                     ramqExempt: false,
                 },
-                { calculateFiscalReport, getMarginalRate, calculateDividendTax },
+                { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate },
                 taxCurrentYear,
             );
             taxCurrentYear = decResult.newTaxCurrentYear;

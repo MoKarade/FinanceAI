@@ -31,6 +31,7 @@ import {
     calculateFiscalReport,
     getMarginalRate,
     calculateDividendTax,
+    getDividendGrossUpRate,
     type FiscalReport,
 } from '../../utils/tax';
 
@@ -631,6 +632,43 @@ describe('processDecemberTaxFiling — dividendes Non-Reg', () => {
             ZERO_TAX,
         );
         expect(r.newTaxCurrentYear.gains).toBeCloseTo(100000 * CAPITAL_GAINS_INCLUSION_STANDARD * STUB_RATE + 1200, 5);
+    });
+});
+
+describe('processDecemberTaxFiling — dividendes Non-Reg EMPILÉS sur le barème réel (ITEM 2d)', () => {
+    // Avec le VRAI barème + le helper gross-up, le dividende majoré s'empile
+    // progressivement sur le revenu. Un gros dividende sur un revenu modeste franchit
+    // des paliers → impôt > le calcul PLAT (taux marginal au revenu de base), qui
+    // sous-estimait (voire annulait via le crédit d'impôt dividende).
+    const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate };
+
+    it('gros dividende sur revenu modeste → impôt > calcul plat (empilement)', () => {
+        // nonReg=2 000 000, rate=5% → annualDiv = 30 000. Sur 50 000$ de revenu (solo),
+        // le majoré (~41 400$) franchit des paliers.
+        const ctxDiv = baseCtx({
+            nonReg: 2_000_000, baseNonRegRate: 5, grossMarcBaseAnnual: 50000,
+            optimizeSourceDeductions: false, activeUsersCount: 1,
+        });
+        const progressive = processDecemberTaxFiling(DECEMBER, ctxDiv, realHelpers, ZERO_TAX);
+        // Calcul plat (ancien) : marginal au revenu de base, crédit dividende → souvent 0.
+        const annualDiv = 2_000_000 * 0.05 * 0.30;
+        const flat = calculateDividendTax(annualDiv, getMarginalRate(50000, 2026), 'eligible');
+        expect(progressive.newTaxCurrentYear.gains).toBeGreaterThan(flat);
+        expect(progressive.newTaxCurrentYear.gains).toBeGreaterThan(1000); // non nul, contrairement au plat
+    });
+
+    it('cohérence : petit dividende dans le même palier → empilé ≈ plat (zéro régression)', () => {
+        // Revenu 80 000$ (palier stable), petit dividende → le majoré reste dans le palier.
+        // nonReg=200 000, rate=5% → annualDiv=3 000 → majoré ~4 140$.
+        const ctxDiv = baseCtx({
+            nonReg: 200000, baseNonRegRate: 5, grossMarcBaseAnnual: 80000,
+            optimizeSourceDeductions: false, activeUsersCount: 1,
+        });
+        const progressive = processDecemberTaxFiling(DECEMBER, ctxDiv, realHelpers, ZERO_TAX);
+        // Plat avec le VRAI marginal au même revenu.
+        const annualDiv = 200000 * 0.05 * 0.30;
+        const flat = calculateDividendTax(annualDiv, getMarginalRate(80000, 2026), 'eligible');
+        expect(progressive.newTaxCurrentYear.gains).toBeCloseTo(flat, 0);
     });
 });
 

@@ -255,6 +255,18 @@ describe('calculateDividendTax', () => {
   it('renvoie 0 pour un dividende nul', () => {
     expect(calculateDividendTax(0, 0.40)).toBe(0);
   });
+
+  it('ITEM 2d — progressiveGrossTax override remplace le calcul plat (gross-up × marginal)', () => {
+    // Majoré = 10000 × 1.38 = 13800. CID éligible = 13800 × (0.150198 + 0.117).
+    const cid = 13800 * (0.150198 + 0.117);
+    const flat = calculateDividendTax(10000, 0.40, 'eligible');
+    // Override : impôt brut progressif imposé (6000) → tax = 6000 − CID.
+    const prog = calculateDividendTax(10000, 0.40, 'eligible', 6000);
+    expect(prog).toBeCloseTo(6000 - cid, 2);
+    expect(prog).toBeGreaterThan(flat);
+    // Override nul/négatif → clampé (jamais d'impôt négatif).
+    expect(calculateDividendTax(10000, 0.40, 'eligible', 0)).toBe(0);
+  });
 });
 
 describe('getMarginalRate', () => {

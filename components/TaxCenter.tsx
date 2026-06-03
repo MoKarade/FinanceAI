@@ -368,28 +368,28 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <Card className="!p-4 border-l-4 border-l-red-500 bg-surface/50">
-                            <div className="text-tiny text-gray-500 uppercase font-bold">Impôt Total</div>
+                            <div className="text-tiny text-ink-400 uppercase font-bold">Impôt Total</div>
                             <div className="text-2xl font-black text-white">{report.totalTax.toLocaleString('fr-CA', { maximumFractionDigits: 0 })} $</div>
-                            <div className="text-tiny text-gray-500">Fed + Qc</div>
+                            <div className="text-tiny text-ink-400">Fed + Qc</div>
                         </Card>
                         <Card className="!p-4 border-l-4 border-l-green-500 bg-surface/50">
-                            <div className="text-tiny text-gray-500 uppercase font-bold">Revenu Net</div>
+                            <div className="text-tiny text-ink-400 uppercase font-bold">Revenu Net</div>
                             <div className="text-2xl font-black text-green-400">{report.netIncome.toLocaleString('fr-CA', { maximumFractionDigits: 0 })} $</div>
-                            <div className="text-tiny text-gray-500">Dans vos poches</div>
+                            <div className="text-tiny text-ink-400">Dans vos poches</div>
                         </Card>
                         <Card className="!p-4 border-l-4 border-l-yellow-500 bg-surface/50">
-                            <div className="text-tiny text-gray-500 uppercase font-bold">Taux Marginal</div>
+                            <div className="text-tiny text-ink-400 uppercase font-bold">Taux Marginal</div>
                             {/* Bug fix : utils/tax.ts:getMarginalRate retourne un DÉCIMAL
                                 (ex: 0.4 pour 40%), pas un pourcentage. Multiplier par 100. */}
                             <div className="text-2xl font-black text-yellow-400">{(report.marginalRate * 100).toFixed(1)}%</div>
-                            <div className="text-tiny text-gray-500">Sur le prochain $</div>
+                            <div className="text-tiny text-ink-400">Sur le prochain $</div>
                         </Card>
                         <Card className="!p-4 border-l-4 border-l-blue-500 bg-surface/50">
-                            <div className="text-tiny text-gray-500 uppercase font-bold">Remboursement Est.</div>
+                            <div className="text-tiny text-ink-400 uppercase font-bold">Remboursement Est.</div>
                             <div className={`text-2xl font-black ${report.refundOrOwe > 0 ? 'text-green-400' : 'text-red-400'}`}>
                                 {report.refundOrOwe > 0 ? '+' : ''}{report.refundOrOwe.toLocaleString('fr-CA', { maximumFractionDigits: 0 })} $
                             </div>
-                            <div className="text-tiny text-gray-500">Basé sur docs reçus</div>
+                            <div className="text-tiny text-ink-400">Basé sur docs reçus</div>
                         </Card>
                     </div>
 
@@ -406,7 +406,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                             <div key={i} className="relative">
                                                 <div className="flex justify-between text-tiny mb-1">
                                                     <span className="text-gray-300 font-bold">{b.rate}</span>
-                                                    <span className="text-gray-500">{b.amount > 0 ? `${b.amount.toFixed(0)}$ taxés` : '0$'}</span>
+                                                    <span className="text-ink-400">{b.amount > 0 ? `${b.amount.toFixed(0)}$ taxés` : '0$'}</span>
                                                 </div>
                                                 <div className="h-4 w-full bg-gray-800 rounded overflow-hidden relative border border-white/5">
                                                     <div className="h-full bg-red-600/80 transition-all duration-500" style={{ width: `${b.percentFull}%` }}></div>
@@ -424,7 +424,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                             <div key={i} className="relative">
                                                 <div className="flex justify-between text-tiny mb-1">
                                                     <span className="text-gray-300 font-bold">{b.rate}</span>
-                                                    <span className="text-gray-500">{b.amount > 0 ? `${b.amount.toFixed(0)}$ taxés` : '0$'}</span>
+                                                    <span className="text-ink-400">{b.amount > 0 ? `${b.amount.toFixed(0)}$ taxés` : '0$'}</span>
                                                 </div>
                                                 <div className="h-4 w-full bg-gray-800 rounded overflow-hidden relative border border-white/5">
                                                     <div className="h-full bg-blue-600/80 transition-all duration-500" style={{ width: `${b.percentFull}%` }}></div>

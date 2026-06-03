@@ -1036,11 +1036,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
 
                                 <div className="grid grid-cols-2 gap-3 text-tiny mb-4 relative z-10">
                                     <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/5 backdrop-blur-sm">
-                                        <div className="text-gray-500 mb-1 font-bold">Valeur</div>
+                                        <div className="text-ink-400 mb-1 font-bold">Valeur</div>
                                         <div className="text-white font-mono font-bold text-xs">{asset.value.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
                                     </div>
                                     <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/5 backdrop-blur-sm">
-                                        <div className="text-gray-500 mb-1 font-bold">Variation 24h</div>
+                                        <div className="text-ink-400 mb-1 font-bold">Variation 24h</div>
                                         <div className={`font-bold text-xs ${asset.trend24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                             {asset.trend24h > 0 ? '+' : ''}{asset.trend24h.toFixed(1)}%
                                         </div>

@@ -6,6 +6,86 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Exactitude fiscale : A1 impôt de retraite par conjoint + résidus] — 2026-06-03
+
+Suite de l'initiative couple (A1) et des résidus money. Priorité = impôt **par conjoint**
+en retraite (plus gros impact). Discipline : invariant des baselines (couple de même
+âge/revenu → impôt inchangé), trust-but-verify sur l'état réel du code.
+
+### A1 — Impôt de retraite PAR conjoint (chacun sur sa pension réelle)
+- **Bug** : le bloc retraité de `taxDecember.ts` splittait le revenu de retraite ÉGALEMENT
+  (`taxableReal / activeUsersCount`). Sous un barème progressif, le split égal **minimise**
+  l'impôt → sous-estimation pour un couple à revenus de retraite inégaux. (Le volet
+  *crédits* par conjoint était déjà fait — B-AUDIT-3 ; c'est le *revenu* qui restait splitté.)
+- **Fix** : `computeRetirementIncome` expose désormais une décomposition `perUser` (RRQ/PSV
+  attribués par conjoint selon SON ratio salaire/MGA et SA résidence — ces ratios étaient
+  déjà calculés puis MOYENNÉS ; on les conserve). `taxDecember` taxe chaque conjoint sur SA
+  pension + sa part ÉGALE des composantes non attribuables. Repli sur le split égal si la
+  décomposition est absente/incohérente (solo, etc.).
+- **Invariant** : couple à revenus de retraite ÉGAUX → impôt identique (delta 0, vérifié).
+  Couple inégal → impôt ≥ split égal (sens correct). Ex. pension 4 500$/1 500$ + 40 k$ de
+  retraits REER : +427$/an d'impôt de retraite.
+- **Limite honnête (documentée dans le code)** : les rentes gouvernementales (`accRentesYear`)
+  et les retraits REER/FERR (`accRetraitsReerYear`) restent répartis ÉGALEMENT — le moteur ne
+  les attribue pas par conjoint. La pension privée DB (« cumulée pour le couple ») et le SRG
+  (familial) aussi. Lever cela exige un suivi PAR CONJOINT des comptes REER/FERR (structure de
+  données, hors scope → décision de Marc).
+- +10 tests (invariant somme perUser == total ; RRQ/PSV inégaux vs égaux ; impôt égal==historique,
+  inégal>égal, replis).
+
+### ITEM 2b — calculateGrossFromNet : borne haute extensible (très hauts revenus)
+- **Bug** : dichotomie bornée à `[net, 2×net]`. Dès que le taux moyen dépasse 50 % (~600 k$
+  net au QC), le brut requis > 2×net → convergence vers la borne, brut sous-estimé (−9 k$ à
+  600 k$ ; −101 k$ à 2 M$).
+- **Fix** : doublement de la borne haute jusqu'à `net(high) > cible`, puis dichotomie (40 itér).
+  Round-trip net→brut→net sous 1 $ jusqu'à 5 M$. +1 test.
+
+### ITEM 2d — Dividendes Non-Reg empilés progressivement (résiduel B-AUDIT-2)
+- **Bug** : dividendes éligibles taxés à un taux marginal PLAT au revenu de base, puis CID. Sur
+  un revenu modeste, un gros dividende renvoyait souvent un impôt de **0** (le CID annulait
+  l'impôt brut au bas taux) alors que le dividende majoré pousse en réalité dans les hauts paliers.
+- **Fix** (miroir B-AUDIT-2) : le dividende MAJORÉ s'empile → impôt brut = bande
+  `impôt(revenu+majoré) − impôt(revenu)`, CID inchangé. Param optionnel `progressiveGrossTax` ;
+  sans lui → calcul plat (rétro-compat). Petit dividende dans le même palier → empilé ≈ plat
+  (zéro baseline décalée). Ex. 50 k$ revenu + 30 k$ dividende : 0$ → 3 211$ ; +100 k$ : 0$ → 20 654$.
+  +3 tests.
+
+### ITEM 2a — Indexation des paliers par simInflation : NON corrigé (décision Marc requise)
+- **Investigué, fix proposé écarté car INCORRECT.** Le moteur déflate le revenu en dollars réels
+  2026 (÷ `(1+simInflation)^t`), calcule l'impôt « réel » avec des paliers indexés (+2 %/an codé
+  en dur), puis réinflate (× `(1+simInflation)^t`). Le fix proposé (indexer les paliers par
+  `simInflation`) a été **vérifié numériquement et rejeté** : il aggrave fortement le cas dominant
+  (revenu réel). À simInflation=5 %, t=20 ans : la réf. ARC réaliste (revenu nominal vs paliers
+  indexés à l'inflation) donne ~29 353$ ; le fix « index par simInflation » donne ~7 712$ (pire
+  que l'actuel ~22 313$).
+- **Cause racine plus profonde** : l'aller-retour déflate→impôt→réinflate est **intrinsèquement
+  lossy** car l'impôt n'est PAS homogène (BPA + crédits en dollars FIXES brisent l'invariance
+  d'échelle). L'écart vs la réf. ARC réaliste atteint 12–60 % à forte inflation / long horizon,
+  **même à simInflation=2 %**, et AUCUN choix de taux d'indexation (ni `simInflation`, ni 0) ne le
+  corrige par cet aller-retour.
+- **Décision Marc** : le correctif propre = calculer l'impôt sur le revenu **NOMINAL** avec paliers
+  indexés par `simInflation` (supprimer l'aller-retour déflate/réinflate). C'est un changement
+  structurel touchant ~12 sites d'appel (convention réel↔nominal incohérente aujourd'hui : la
+  réconciliation de revenu/FERR/latent passe du RÉEL ; succession/gains/dividendes/affichage
+  passent du NOMINAL) et reblesserait de nombreuses baselines. À arbitrer hors de cette PR.
+
+### ITEM 2c — Gates de timing par conjoint (FERR 72, reset REER 71, bonus PSV 75+) : bloqué structurellement
+- **Investigué ; non corrigeable de façon bornée et cohérente.** (1) FERR 72 et reset REER 71
+  (`taxJanuary.ts`) opèrent sur le **pool REER ménage** (`reer`) et l'**espace REER ménage**
+  (`rrspRoom`) — scalaires, **aucun** suivi par conjoint (confirmé : zéro `reerMarc/reerAnna`,
+  zéro room par user). Les attribuer par âge de chaque conjoint exige des soldes REER par conjoint
+  (changement structurel partout où `reer` circule). (2) Bonus PSV 75+ (`retirementIncome.ts`) :
+  techniquement faisable maintenant (split PSV par conjoint dispo), mais tout le **timing** des
+  rentes (âges de début RRQ 60 / PSV 65, facteurs de report, gate `isRetired`) suppose un **âge
+  principal unique** partagé. Corriger SEULEMENT le bonus 75+ serait un demi-fix incohérent
+  (pourquoi l'âge du bonus et pas celui du début de PSV ?). Le fix propre = rendre
+  `computeRetirementIncome` per-conjoint de bout en bout (timing inclus) → décision de Marc.
+- *Note* : la fermeture CELIAPP à 71 ans utilise DÉJÀ correctement `allUsersExceeded71` (par conjoint).
+
+Suite **1548 verts** (132 fichiers, +14 tests), tsc + eslint propres, zéro régression.
+
+---
+
 ## [unreleased — Fix · warning React clés dupliquées CELI/REER (Dashboard)] — 2026-05-29
 
 Au chargement du Dashboard (onglet Accueil), la console émettait des warnings React

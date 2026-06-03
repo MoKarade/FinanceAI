@@ -80,11 +80,32 @@
 - ✅ **B-AUDIT-3 [HIGH] CORRIGÉ 2026-06-01 (volet crédits)** `taxDecember.ts` : crédits d'âge/pension (féd +
   ligne 361 QC) désormais calculés PAR conjoint (champ `ageSpouse` threadé depuis `projection.ts`), blocs actif
   ET retraité. Couple de même âge → identique à l'ancien (zéro baseline décalée). +2 tests barème réel.
-  🔧 **Reste les gates de TIMING par conjoint** (suite, plus profond, vraie 2e piste d'âge) : conversion FERR
-  à 72 ans + reset espace REER à 71 ans (`taxJanuary.ts`) + bonus PSV +10 % à 75 ans (`retirementIncome.ts`)
-  restent sur l'âge principal. + dividendes Non-Reg empilés (B-AUDIT-2 résiduel).
-- ✅ **B-AUDIT-4 [MEDIUM] CORRIGÉ 2026-06-01** : `currentGrossUser` indexé par inflation+0,5 % (même facteur
+  🔧 **Reste les gates de TIMING par conjoint** — voir A1 (ci-dessous) : volet REVENU corrigé ; les gates FERR
+  72 / reset REER 71 / bonus PSV 75+ restent bloqués structurellement (pool REER ménage + âge principal unique).
+- ✅ **A1 [HIGH] CORRIGÉ 2026-06-03 (volet REVENU de retraite)** : le bloc retraité de `taxDecember.ts`
+  splittait le revenu de retraite ÉGALEMENT → sous-estimation sous barème progressif pour couples inégaux.
+  `computeRetirementIncome` expose une décomposition `perUser` (RRQ/PSV par conjoint selon salaire/résidence) ;
+  chaque conjoint est taxé sur SA pension + part égale du non-attribuable. Couple égal → inchangé ; inégal →
+  impôt ≥ (sens correct). +10 tests. **Limite** : rentes gouv. + retraits REER/FERR + DB + SRG restent répartis
+  également (le moteur ne les attribue pas par conjoint — exigerait des soldes REER/FERR par conjoint).
+- ✅ **B-AUDIT-2 résiduel [MEDIUM] CORRIGÉ 2026-06-03** : dividendes Non-Reg désormais empilés progressivement
+  (dividende majoré sur la bande de revenu) au lieu d'un taux marginal plat ; le CID reste inchangé. Petit
+  dividende même palier → ≈ plat (zéro régression). +3 tests.
+- 🧭 **ITEM 2a [decision Marc] indexation des paliers vs déflation** : `getIndexedBracketsForYear` code en dur
+  +2 %/an. Le moteur déflate le revenu par `simInflation` puis réinflate. **Le fix « indexer par simInflation »
+  a été investigué et REJETÉ** (vérifié numériquement) : il aggrave le cas dominant (revenu réel) — à
+  simInflation=5 %/20 ans, réf. ARC ~29 353$ vs fix ~7 712$ vs actuel ~22 313$. Cause profonde : l'aller-retour
+  déflate→impôt→réinflate est lossy (BPA/crédits en dollars FIXES → impôt non homogène) ; écart 12–60 % vs ARC
+  même à 2 %. Correctif propre = impôt sur revenu NOMINAL + paliers indexés par `simInflation` (supprime
+  l'aller-retour) → structurel, ~12 sites d'appel (convention réel↔nominal incohérente), reblesse des baselines.
+- 🧭 **B-AUDIT-4 [MEDIUM] CORRIGÉ 2026-06-01** : `currentGrossUser` indexé par inflation+0,5 % (même facteur
   que la MGA projetée) → ratio earnings/MGA stable sur la carrière, RRQ plus juste pour départs lointains. +1 test.
+- 🧭 **ITEM 2c [decision Marc] gates de timing par conjoint** : FERR 72 + reset REER 71 (`taxJanuary.ts`)
+  opèrent sur le pool REER ménage (`reer`) + l'espace REER ménage (`rrspRoom`) — scalaires, AUCUN suivi par
+  conjoint → attribution par âge impossible sans soldes REER par conjoint (structurel). Bonus PSV 75+
+  (`retirementIncome.ts`) faisable techniquement mais tout le timing des rentes suppose un âge principal unique
+  → un demi-fix serait incohérent. Fix propre = `computeRetirementIncome` per-conjoint de bout en bout.
+  (La fermeture CELIAPP à 71 ans utilise DÉJÀ correctement `allUsersExceeded71`.)
 - 📄 **B-AUDIT-5 [LOW, faible impact]** `retirementIncome.ts:171-177` + `taxDecember.ts:29` : le SRG est
   inclus dans le revenu servant au clawback PSV. Incorrect (SRG non imposable) mais un bénéficiaire du SRG
   est sous le seuil de récupération → impact pratique ~0. À corriger pour la propreté si on y touche.

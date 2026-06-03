@@ -31,6 +31,7 @@ import {
     calculateFiscalReport,
     getMarginalRate,
     calculateDividendTax,
+    getDividendGrossUpRate,
     type FiscalReport,
 } from '../../utils/tax';
 
@@ -545,6 +546,54 @@ describe('processDecemberTaxFiling — crédits d\'âge PAR conjoint (B-AUDIT-3)
     });
 });
 
+describe('processDecemberTaxFiling — impôt de retraite PAR conjoint (A1)', () => {
+    // Avec le VRAI barème (progressif + crédits), taxer chaque conjoint sur SON revenu
+    // de retraite réel doit donner un impôt ≥ celui du split égal (qui minimise sous un
+    // barème progressif). Un couple à revenus de retraite ÉGAUX ne doit PAS bouger.
+    const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
+
+    // 6000$/mois de pension ménage = 72 000$/an ; + 60 000$ de retraits REER → assiette
+    // 132 000$. Assez haut pour qu'un split inégal franchisse des paliers.
+    const coupleCtx = (perUser: number[] | undefined) => baseCtx({
+        isRetired: true, age: 67, ageSpouse: 67, activeUsersCount: 2,
+        incomeRetirementMonthly: 6000,
+        incomeRetirementPerUserMonthly: perUser,
+        accRetraitsReerYear: 60000,
+    });
+
+    it('pension ÉGALE par conjoint → identique au split égal historique (zéro régression)', () => {
+        const equalSplit = processDecemberTaxFiling(DECEMBER, coupleCtx(undefined), realHelpers, ZERO_TAX);
+        const perUserEqual = processDecemberTaxFiling(DECEMBER, coupleCtx([3000, 3000]), realHelpers, ZERO_TAX);
+        expect(perUserEqual.newTaxCurrentYear.revenu).toBeCloseTo(equalSplit.newTaxCurrentYear.revenu, 4);
+    });
+
+    it('pension INÉGALE par conjoint → impôt ≥ split égal (barème progressif)', () => {
+        const equalSplit = processDecemberTaxFiling(DECEMBER, coupleCtx(undefined), realHelpers, ZERO_TAX);
+        // Même total ménage (6000), mais 4500/1500 → le conjoint aisé franchit un palier.
+        const perUserUnequal = processDecemberTaxFiling(DECEMBER, coupleCtx([4500, 1500]), realHelpers, ZERO_TAX);
+        expect(perUserUnequal.newTaxCurrentYear.revenu).toBeGreaterThan(equalSplit.newTaxCurrentYear.revenu);
+    });
+
+    it('breakdown incohérent (mauvaise longueur) → repli sur le split égal', () => {
+        const equalSplit = processDecemberTaxFiling(DECEMBER, coupleCtx(undefined), realHelpers, ZERO_TAX);
+        const badLen = processDecemberTaxFiling(DECEMBER, coupleCtx([6000]), realHelpers, ZERO_TAX);
+        expect(badLen.newTaxCurrentYear.revenu).toBeCloseTo(equalSplit.newTaxCurrentYear.revenu, 4);
+    });
+
+    it('solo (activeUsersCount=1) → le breakdown par conjoint est ignoré (split inchangé)', () => {
+        const solo = baseCtx({
+            isRetired: true, age: 67, activeUsersCount: 1,
+            incomeRetirementMonthly: 4000, incomeRetirementPerUserMonthly: [4000],
+        });
+        const soloNoBreakdown = baseCtx({
+            isRetired: true, age: 67, activeUsersCount: 1, incomeRetirementMonthly: 4000,
+        });
+        const a = processDecemberTaxFiling(DECEMBER, solo, realHelpers, ZERO_TAX);
+        const b = processDecemberTaxFiling(DECEMBER, soloNoBreakdown, realHelpers, ZERO_TAX);
+        expect(a.newTaxCurrentYear.revenu).toBeCloseTo(b.newTaxCurrentYear.revenu, 6);
+    });
+});
+
 describe('processDecemberTaxFiling — dividendes Non-Reg', () => {
     it('Non-Reg nul → aucun impôt de dividende', () => {
         const r = processDecemberTaxFiling(
@@ -583,6 +632,43 @@ describe('processDecemberTaxFiling — dividendes Non-Reg', () => {
             ZERO_TAX,
         );
         expect(r.newTaxCurrentYear.gains).toBeCloseTo(100000 * CAPITAL_GAINS_INCLUSION_STANDARD * STUB_RATE + 1200, 5);
+    });
+});
+
+describe('processDecemberTaxFiling — dividendes Non-Reg EMPILÉS sur le barème réel (ITEM 2d)', () => {
+    // Avec le VRAI barème + le helper gross-up, le dividende majoré s'empile
+    // progressivement sur le revenu. Un gros dividende sur un revenu modeste franchit
+    // des paliers → impôt > le calcul PLAT (taux marginal au revenu de base), qui
+    // sous-estimait (voire annulait via le crédit d'impôt dividende).
+    const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate };
+
+    it('gros dividende sur revenu modeste → impôt > calcul plat (empilement)', () => {
+        // nonReg=2 000 000, rate=5% → annualDiv = 30 000. Sur 50 000$ de revenu (solo),
+        // le majoré (~41 400$) franchit des paliers.
+        const ctxDiv = baseCtx({
+            nonReg: 2_000_000, baseNonRegRate: 5, grossMarcBaseAnnual: 50000,
+            optimizeSourceDeductions: false, activeUsersCount: 1,
+        });
+        const progressive = processDecemberTaxFiling(DECEMBER, ctxDiv, realHelpers, ZERO_TAX);
+        // Calcul plat (ancien) : marginal au revenu de base, crédit dividende → souvent 0.
+        const annualDiv = 2_000_000 * 0.05 * 0.30;
+        const flat = calculateDividendTax(annualDiv, getMarginalRate(50000, 2026), 'eligible');
+        expect(progressive.newTaxCurrentYear.gains).toBeGreaterThan(flat);
+        expect(progressive.newTaxCurrentYear.gains).toBeGreaterThan(1000); // non nul, contrairement au plat
+    });
+
+    it('cohérence : petit dividende dans le même palier → empilé ≈ plat (zéro régression)', () => {
+        // Revenu 80 000$ (palier stable), petit dividende → le majoré reste dans le palier.
+        // nonReg=200 000, rate=5% → annualDiv=3 000 → majoré ~4 140$.
+        const ctxDiv = baseCtx({
+            nonReg: 200000, baseNonRegRate: 5, grossMarcBaseAnnual: 80000,
+            optimizeSourceDeductions: false, activeUsersCount: 1,
+        });
+        const progressive = processDecemberTaxFiling(DECEMBER, ctxDiv, realHelpers, ZERO_TAX);
+        // Plat avec le VRAI marginal au même revenu.
+        const annualDiv = 200000 * 0.05 * 0.30;
+        const flat = calculateDividendTax(annualDiv, getMarginalRate(80000, 2026), 'eligible');
+        expect(progressive.newTaxCurrentYear.gains).toBeCloseTo(flat, 0);
     });
 });
 

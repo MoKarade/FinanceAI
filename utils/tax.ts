@@ -671,17 +671,33 @@ export const calculateNetFromGross = (monthlyGross: number) => {
 
 // Inverse de calculateNetFromGross : trouve le revenu BRUT annuel qui produit
 // un NET cible donné. L'impôt n'a pas d'inverse analytique simple (paliers +
-// crédits), donc on cherche par dichotomie dans l'intervalle [net, 2×net].
-// 20 itérations suffisent : la fonction impôt est monotone et lisse, donc
-// l'intervalle est divisé par 2^20 (~1 million) — convergence bien sous le
-// dollar. Tolérance d'arrêt : 1$ (assez précis pour de la projection).
+// crédits), donc on cherche par dichotomie sur [net, high].
+//
+// ITEM 2b — la borne haute était figée à 2×net. Or, dès que le taux moyen dépasse
+// 50 % (très hauts revenus : ~600 k$ net au QC), le brut requis est > 2×net et la
+// dichotomie convergeait vers la borne (brut sous-estimé de plusieurs milliers à
+// > 100 k$). On EXPAND désormais la borne haute (doublements successifs) jusqu'à ce
+// que net(high) dépasse la cible, garantissant que la racine est encerclée avant la
+// dichotomie. Le taux moyen tend vers le marginal max (~53 % au QC) sans jamais
+// l'atteindre → net(high) > target finit toujours par être vrai ; la garde
+// d'itérations borne le pire cas.
 export const calculateGrossFromNet = (targetNetAnnual: number): number => {
     if (targetNetAnnual <= 0) return 0;
-    let low = targetNetAnnual;
+    const low0 = targetNetAnnual;
     let high = targetNetAnnual * 2;
-    let iterations = 0;
 
-    while (iterations < 20) {
+    // Expansion de la borne haute : tant que net(high) reste sous la cible, on
+    // double. Plafond d'expansion (40 doublements ≈ ×10^12) = garde-fou anti-boucle
+    // si la fonction n'était pas monotone/atteignable (ne devrait jamais arriver).
+    let expand = 0;
+    while (calculateFiscalReport(high, 0, 0).netIncome < targetNetAnnual && expand < 40) {
+        high *= 2;
+        expand++;
+    }
+
+    let low = low0;
+    let iterations = 0;
+    while (iterations < 40) {
         const mid = (low + high) / 2;
         const net = calculateFiscalReport(mid, 0, 0).netIncome;
         if (Math.abs(net - targetNetAnnual) < 1) return mid;
@@ -704,16 +720,38 @@ export const calculateCapitalGainsTax = (realizedGain: number, marginalRate: num
 
 export type DividendKind = 'eligible' | 'non-eligible';
 
+// Taux de majoration (gross-up) du dividende selon le type. Exposé pour permettre
+// au moteur de calculer le montant MAJORÉ à empiler progressivement (ITEM 2d) avec
+// exactement le même taux que calculateDividendTax → cohérence garantie.
+export const getDividendGrossUpRate = (kind: DividendKind = 'eligible'): number =>
+    kind === 'eligible' ? 1.38 : 1.15;
+
 // Dividendes 2026 (Québec):
 // - Admissibles (grandes sociétés cotées): gross-up 38%, CID fédéral 15.0198% + CID QC 11.7% du majoré
 // - Non-admissibles (SPCC, sociétés privées): gross-up 15%, CID fédéral 9.0301% + CID QC 3.42% du majoré
-export const calculateDividendTax = (dividendAmount: number, marginalRate: number, kind: DividendKind = 'eligible'): number => {
+//
+// ITEM 2d — empilement PROGRESSIF (comme B-AUDIT-2 pour les gains). Le dividende
+// MAJORÉ s'empile sur le revenu : son impôt « brut » doit être l'impôt INCRÉMENTAL
+// de la bande [revenu, revenu+majoré], PAS le montant majoré × un taux marginal PLAT
+// au niveau du revenu de base (qui sous-estime quand le dividende franchit un palier,
+// voire renvoie 0 à cause du crédit d'impôt pour dividende quand le revenu de base est
+// bas). Le caller passe ce `progressiveGrossTax` ; le crédit (CID) reste calculé ici
+// sur le montant majoré → un seul endroit pour les taux. Sans override → ancien calcul
+// plat (rétro-compat : montant majoré × marginalRate).
+export const calculateDividendTax = (
+    dividendAmount: number,
+    marginalRate: number,
+    kind: DividendKind = 'eligible',
+    progressiveGrossTax?: number,
+): number => {
     if (dividendAmount <= 0) return 0;
-    const grossUpRate = kind === 'eligible' ? 1.38 : 1.15;
+    const grossUpRate = getDividendGrossUpRate(kind);
     const cidFedRate = kind === 'eligible' ? 0.150198 : 0.090301;
     const cidQcRate = kind === 'eligible' ? 0.117 : 0.0342;
     const grossedUpAmount = dividendAmount * grossUpRate;
-    const grossTax = grossedUpAmount * marginalRate;
+    const grossTax = (progressiveGrossTax !== undefined && Number.isFinite(progressiveGrossTax))
+        ? Math.max(0, progressiveGrossTax)
+        : grossedUpAmount * marginalRate;
     const cidAmount = grossedUpAmount * (cidFedRate + cidQcRate);
     return Math.max(0, grossTax - cidAmount);
 };

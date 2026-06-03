@@ -107,6 +107,20 @@ export interface DecemberContext {
     simSalaryGrowth: number;
     optimizeSourceDeductions: boolean | undefined;
     incomeRetirementMonthly: number;
+    /**
+     * A1 — revenu de retraite mensuel ATTRIBUABLE à chaque conjoint (RRQ+PSV+DB),
+     * issu de `computeRetirementIncome().perUser[i].total`. Quand fourni (couple),
+     * l'impôt de retraite de décembre est calculé en taxant chaque conjoint sur SON
+     * revenu réel (RRQ/PSV dépendent du salaire et de la résidence individuels) plutôt
+     * que sur la moitié du ménage — corrige la sous-estimation due au split égal sous
+     * un barème progressif. La somme == `incomeRetirementMonthly`.
+     *
+     * Limite : les rentes gouvernementales (`accRentesYear`) et les retraits REER/FERR
+     * (`accRetraitsReerYear`) restent répartis également (le moteur ne les attribue pas
+     * par conjoint). Seule la pension RRQ/PSV/DB est attribuée. Si `undefined` ou
+     * longueur ≠ activeUsersCount → repli sur l'ancien split égal (rétro-compat).
+     */
+    incomeRetirementPerUserMonthly?: number[];
     nonReg: number;
     baseNonRegRate: number;
     accRrspYear: number;
@@ -142,7 +156,11 @@ export interface DecemberContext {
 export interface DecemberHelpers {
     calculateFiscalReport: (gross: number, deductions: number, withheld: number, year: number, mc?: boolean, ageOpts?: AgeCreditOptions) => FiscalReport;
     getMarginalRate: (income: number, year: number) => number;
-    calculateDividendTax: (annualDiv: number, marginalRate: number) => number;
+    // ITEM 2d — 4e arg optionnel : impôt brut PROGRESSIF (bande sur le montant majoré).
+    // Quand fourni, il remplace le calcul plat (montant majoré × taux marginal).
+    calculateDividendTax: (annualDiv: number, marginalRate: number, kind?: 'eligible' | 'non-eligible', progressiveGrossTax?: number) => number;
+    // ITEM 2d — taux de majoration du dividende (pour empiler le montant majoré).
+    getDividendGrossUpRate?: (kind?: 'eligible' | 'non-eligible') => number;
 }
 
 export interface DecemberResult {
@@ -240,26 +258,71 @@ export function processDecemberTaxFiling(
         const taxableAnnual = basePensionAnnual + ctx.accRetraitsReerYear;
         if (taxableAnnual > 0) {
             const taxableReal = taxableAnnual / ctx.inflationFactor;
-            const incomeIndividualReal = taxableReal / ctx.activeUsersCount;
+            const n = Math.max(1, ctx.activeUsersCount);
+
+            // A1 — impôt PAR CONJOINT sur SON revenu de retraite réel. Quand le moteur
+            // fournit la décomposition par conjoint (`incomeRetirementPerUserMonthly`),
+            // on taxe chaque personne sur SA pension RRQ/PSV/DB (qui dépend de son salaire
+            // et de sa résidence) + sa part ÉGALE des rentes gouvernementales et des
+            // retraits REER/FERR (non attribuables par conjoint dans le modèle actuel).
+            // Sinon (solo, ou breakdown absent/incohérent) on retombe sur le split égal
+            // historique. Le barème étant progressif, taxer les vrais revenus inégaux
+            // donne un impôt ≥ celui du split égal (qui le minimisait).
+            const perUserPension = ctx.incomeRetirementPerUserMonthly;
+            const usePerUser = ctx.activeUsersCount > 1
+                && Array.isArray(perUserPension)
+                && perUserPension.length === ctx.activeUsersCount
+                && perUserPension.every(v => Number.isFinite(v));
+
+            // Part ÉGALE des composantes non attribuables par conjoint (rentes gouv. +
+            // retraits REER/FERR), en dollars réels.
+            const nonAttributableRealPerAdult =
+                (ctx.accRentesYear + ctx.accRetraitsReerYear) / ctx.inflationFactor / n;
+
+            // Revenu imposable réel et pension admissible réelle, par conjoint.
+            // - splitÉgal : tout le taxable / N (comportement historique).
+            // - perUser   : pension_i × 12 + part égale du non-attribuable.
+            const ages = [ctx.age, ctx.ageSpouse];
+            const taxableRealByUser: number[] = [];
+            const eligiblePensionRealByUser: number[] = [];
+            if (usePerUser) {
+                for (let i = 0; i < n; i++) {
+                    const pensionRealUser = (perUserPension![i] * 12) / ctx.inflationFactor;
+                    taxableRealByUser.push(pensionRealUser + nonAttributableRealPerAdult);
+                    // eligiblePensionIncome (crédit pension féd ligne 31400 + revenu retraite
+                    // QC ligne 361) = pension + rentes gouv., HORS retraits REER. La pension
+                    // RRQ/PSV/DB est attribuée ; les rentes gouv. sont réparties également.
+                    eligiblePensionRealByUser.push(
+                        pensionRealUser + (ctx.accRentesYear / ctx.inflationFactor / n),
+                    );
+                }
+            } else {
+                const incomeIndividualReal = taxableReal / n;
+                const eligiblePensionPerAdult = basePensionAnnual / ctx.inflationFactor / n;
+                for (let i = 0; i < n; i++) {
+                    taxableRealByUser.push(incomeIndividualReal);
+                    eligiblePensionRealByUser.push(eligiblePensionPerAdult);
+                }
+            }
+
             // §6.2 — crédits 65+ et revenu de retraite (ARC ligne 30100/31400 + Revenu Québec
-            // ligne 361). eligiblePensionIncome = revenu de PENSION admissible par adulte
-            // (pension + rentes, HORS retraits REER qui ne sont pas du « revenu de pension
-            // admissible » au sens du crédit pension fédéral ligne 31400). familyIncome inclut
-            // tout le revenu imposable (retraits REER compris) pour réduire correctement la
-            // ligne 361 QC.
-            const basePensionReal = basePensionAnnual / ctx.inflationFactor;
-            const eligiblePensionPerAdult = basePensionReal / ctx.activeUsersCount;
-            // B-AUDIT-3 — crédit d'âge/pension PAR conjoint : chacun selon SON âge. Le revenu
-            // par adulte est identique (split égal, hypothèse du modèle) ; seul l'âge diffère.
-            // Couple de même âge → taxMarc + taxAnna == ancien per-adulte × N (pas de régression).
-            const mkRetiredAgeOpts = (a: number | undefined): AgeCreditOptions | undefined =>
+            // ligne 361). familyIncome inclut tout le revenu imposable (retraits REER compris)
+            // pour réduire correctement la ligne 361 QC.
+            // B-AUDIT-3 — crédit d'âge/pension PAR conjoint : chacun selon SON âge.
+            // Couple de même âge ET revenu → taxMarc + taxAnna == ancien per-adulte × N.
+            const mkRetiredAgeOpts = (a: number | undefined, eligible: number): AgeCreditOptions | undefined =>
                 a !== undefined
-                    ? { age: a, eligiblePensionIncome: eligiblePensionPerAdult, hasSpouse: ctx.activeUsersCount > 1, familyIncome: taxableReal }
+                    ? { age: a, eligiblePensionIncome: eligible, hasSpouse: ctx.activeUsersCount > 1, familyIncome: taxableReal }
                     : undefined;
-            const taxMarcR = helpers.calculateFiscalReport(incomeIndividualReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, mkRetiredAgeOpts(ctx.age)).totalTax;
-            const taxReal = ctx.activeUsersCount > 1
-                ? taxMarcR + helpers.calculateFiscalReport(incomeIndividualReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, mkRetiredAgeOpts(ctx.ageSpouse)).totalTax
-                : taxMarcR * ctx.activeUsersCount;
+            let taxReal = 0;
+            for (let i = 0; i < n; i++) {
+                // Pour le 2e+ conjoint sans âge fourni (ageSpouse undefined), on réplique
+                // l'absence de crédit d'âge (repli conservateur, comme avant).
+                const ageOpts = mkRetiredAgeOpts(ages[i], eligiblePensionRealByUser[i]);
+                taxReal += helpers.calculateFiscalReport(
+                    taxableRealByUser[i], 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOpts,
+                ).totalTax;
+            }
             const totalAnnualTax = taxReal * ctx.inflationFactor;
             // Retenue à la source déjà captée sur les retraits REER/FERR de l'année
             // (présente dans le bucket .reer au moment de décembre). On la crédite pour ne
@@ -379,7 +442,22 @@ export function processDecemberTaxFiling(
             : (ctx.grossMarcBaseAnnual + ctx.grossAnnaBaseAnnual) * Math.pow(1 + ctx.simSalaryGrowth / 100, ctx.yearsElapsed)
         ) / ctx.activeUsersCount;
         const currentMarginal = helpers.getMarginalRate(incomeForDiv, ctx.loopYear);
-        const divTax = helpers.calculateDividendTax(annualDiv, currentMarginal);
+        // ITEM 2d — empilement PROGRESSIF du dividende majoré (comme B-AUDIT-2 pour les
+        // gains). Le dividende MAJORÉ (gross-up) s'empile sur le revenu : l'impôt brut =
+        // bande [revenu, revenu+majoré] par adulte, ×N. L'ancien taux marginal PLAT au
+        // revenu de base sous-estimait (voire annulait via le crédit d'impôt dividende)
+        // l'impôt d'un gros dividende franchissant un palier. Le crédit (CID) reste géré
+        // dans calculateDividendTax. Repli sur le plat si le helper gross-up est absent.
+        const grossUpRate = helpers.getDividendGrossUpRate ? helpers.getDividendGrossUpRate('eligible') : undefined;
+        let progressiveGrossTax: number | undefined;
+        if (grossUpRate !== undefined) {
+            const annualDivPerAdult = annualDiv / ctx.activeUsersCount;
+            const grossedUpPerAdult = annualDivPerAdult * grossUpRate;
+            const taxBase = helpers.calculateFiscalReport(incomeForDiv, 0, 0, ctx.loopYear, true).totalTax;
+            const taxTop = helpers.calculateFiscalReport(incomeForDiv + grossedUpPerAdult, 0, 0, ctx.loopYear, true).totalTax;
+            progressiveGrossTax = Math.max(0, taxTop - taxBase) * ctx.activeUsersCount;
+        }
+        const divTax = helpers.calculateDividendTax(annualDiv, currentMarginal, 'eligible', progressiveGrossTax);
         if (divTax > 1) taxCurrent.gains += divTax;
     }
 

@@ -104,6 +104,17 @@ describe('calculateGrossFromNet', () => {
     expect(calculateGrossFromNet(0)).toBe(0);
     expect(calculateGrossFromNet(-1000)).toBe(0);
   });
+
+  it('ITEM 2b — très hauts revenus (taux moyen > 50%) : la borne haute s\'étend', () => {
+    // À ces nets, le brut requis dépasse 2×net (taux moyen QC > 50%). Avec l'ancienne
+    // borne figée à 2×net, le brut était sous-estimé de plusieurs milliers à >100k$.
+    for (const targetNet of [600000, 1000000, 2000000]) {
+      const gross = calculateGrossFromNet(targetNet);
+      const netRebuilt = calculateFiscalReport(gross, 0, 0).netIncome;
+      expect(Math.abs(netRebuilt - targetNet)).toBeLessThan(50);
+      expect(gross).toBeGreaterThan(targetNet * 2); // preuve que la borne 2×net est dépassée
+    }
+  });
 });
 
 describe('calculateCeliRoom', () => {
@@ -243,6 +254,18 @@ describe('calculateDividendTax', () => {
 
   it('renvoie 0 pour un dividende nul', () => {
     expect(calculateDividendTax(0, 0.40)).toBe(0);
+  });
+
+  it('ITEM 2d — progressiveGrossTax override remplace le calcul plat (gross-up × marginal)', () => {
+    // Majoré = 10000 × 1.38 = 13800. CID éligible = 13800 × (0.150198 + 0.117).
+    const cid = 13800 * (0.150198 + 0.117);
+    const flat = calculateDividendTax(10000, 0.40, 'eligible');
+    // Override : impôt brut progressif imposé (6000) → tax = 6000 − CID.
+    const prog = calculateDividendTax(10000, 0.40, 'eligible', 6000);
+    expect(prog).toBeCloseTo(6000 - cid, 2);
+    expect(prog).toBeGreaterThan(flat);
+    // Override nul/négatif → clampé (jamais d'impôt négatif).
+    expect(calculateDividendTax(10000, 0.40, 'eligible', 0)).toBe(0);
   });
 });
 

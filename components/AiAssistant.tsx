@@ -3,7 +3,7 @@ import { logError } from '../services/errorLogger';
 import { Transaction, BudgetCategory, Asset, ProjectionConfig, RealEstateGoal, BudgetConfig, AiMessage } from '../types';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { chatStream } from '../services/claude';
-import { sanitizePromptText, wrapUserData, PROMPT_DATA_ISOLATION_NOTE } from '../utils/promptSafety';
+import { sanitizePromptText, wrapUserData, neutralizeFrameTags, PROMPT_DATA_ISOLATION_NOTE } from '../utils/promptSafety';
 
 interface AiAssistantProps {
   apiKey: string;
@@ -180,13 +180,19 @@ ${last20Txs}`
       const systemPrompt = generateContext();
 
       // Phase 4 A2: streaming via services/claude.ts (Sonnet 4.6)
+      // H3 (sécurité) — les données réelles sont isolées dans <DONNEES> côté
+      // system prompt. On neutralise donc toute fausse balise de cadre littérale
+      // (<DONNEES>/</DONNEES>) dans le message utilisateur ET dans l'historique
+      // (un libellé importé peut y ressortir) pour empêcher une falsification de
+      // l'isolation. On ne tronque/encadre PAS le tour utilisateur : c'est du
+      // dialogue, pas une donnée à wrapper.
       const recent = useFinanceStore.getState().aiConversation.slice(-10);
       const messages = [
         ...recent.map(m => ({
           role: (m.role === 'model' ? 'assistant' : 'user') as 'user' | 'assistant',
-          content: m.text,
+          content: neutralizeFrameTags(m.text),
         })),
-        { role: 'user' as const, content: userText },
+        { role: 'user' as const, content: neutralizeFrameTags(userText) },
       ];
 
       // On crée un message "vide" qu'on va remplir progressivement

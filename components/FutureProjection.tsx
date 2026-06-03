@@ -8,6 +8,7 @@ import { Pill } from './ui/Pill';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ReferenceArea, Line, ComposedChart, Bar, ReferenceDot } from 'recharts';
 import { BudgetConfig, BudgetCategory, Asset, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Transaction, Debt, ProjectionConfig, FinancialGoal, User } from '../types';
 import { calculateFutureProjection, SimulationParams } from '../services/projection';
+import { buildSimulationParams } from '../services/projection/buildSimulationParams';
 import { ProjectionResult, ProjectionChartPoint } from '../services/projection/types';
 import { runProjectionAsync, terminateProjectionWorker } from '../services/projection/runAsync';
 import { useFinanceStore } from '../store/useFinanceStore';
@@ -120,15 +121,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         });
     };
 
-    const baseNetAnnual = useMemo<number>(() => {
-        const users: User[] = (config?.users ?? []) as unknown as User[];
-        return users.reduce((sum: number, u: User) => sum + ((u.netSalary || u.salary || 0) * 12), 0);
-    }, [config]);
+    // baseGrossAnnual reste local : consommé par AssetLocationPanel ci-dessous.
+    // baseNetAnnual / baseMonthlyExpenses / currentRentExpense ont migré dans
+    // l'adaptateur pur buildSimulationParams (Lot 0) — plus recalculés ici.
     const baseGrossAnnual = useMemo<number>(() => {
         const users: User[] = (config?.users ?? []) as unknown as User[];
         return users.reduce((sum: number, u: User) => sum + ((u.grossSalary || 0) * 12), 0);
     }, [config]);
-    const baseMonthlyExpenses = (baseNetAnnual / 12) - calculatedMonthlySavings;
 
     // A1/A3 — Soldes de placement de DÉPART du futur, dérivés de la MÊME
     // reconstruction que la courbe passée (usePastPortfolioHistory) → garantit la
@@ -164,17 +163,6 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         });
         return cash;
     }, [initialBalances, transactions]);
-
-    const currentRentExpense = useMemo(() => {
-        const rentItem = budgetItems.find(b => b.name.toLowerCase().includes('loyer') || b.name.toLowerCase().includes('rent') || b.name.toLowerCase().includes('hypothèque'));
-        if (rentItem) {
-            let val = rentItem.target;
-            if (rentItem.frequency === 'Yearly') val /= 12;
-            if (rentItem.frequency === 'Weekly') val *= 4.33;
-            return val;
-        }
-        return 1600;
-    }, [budgetItems]);
 
     // La projection démarre AUJOURD'HUI (mois courant), pas au 1er janvier en dur.
     // → le passé reconstruit et le futur projeté se rejoignent au point « aujourd'hui »
@@ -212,21 +200,29 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         savingsGoals: s.savingsGoals ?? EMPTY_ARRAY,
     })));
 
-    const params: SimulationParams = useMemo(() => ({
+    // Lot 0 — l'assemblage AppState → SimulationParams est désormais une FONCTION
+    // PURE (services/projection/buildSimulationParams), réutilisable hors React
+    // (serveur MCP). Le `useMemo` n'enrobe plus que l'appel pur ; les pièces
+    // dérivées par les hooks du composant (liveCSVBalances, calculatedStartingCash)
+    // lui sont passées telles quelles → comportement strictement identique
+    // (verrouillé par un test de parité). baseGrossAnnual/baseNetAnnual/
+    // currentRentExpense/baseMonthlyExpenses sont recalculés à l'identique dans la
+    // fonction pure (mêmes formules) ; on conserve les memos locaux car d'autres
+    // parties du composant (AssetLocationPanel) les consomment directement.
+    const params: SimulationParams = useMemo(() => buildSimulationParams({
         projection,
-        calculatedStartingCash,
+        config,
         liveCSVBalances,
-        realEstateGoals: realEstateGoals.filter(Boolean),
+        calculatedStartingCash,
+        realEstateGoals,
         debts: debts || [],
-        childGoals: childGoals.filter(Boolean),
+        childGoals,
         travelGoals,
         lifeEvents,
         retirementGoal,
-        config,
-        baseGrossAnnual,
-        baseNetAnnual,
-        currentRentExpense,
-        baseMonthlyExpenses,
+        financialGoals,
+        budgetItems,
+        calculatedMonthlySavings,
         startYear,
         startMonth,
         insurancePolicies,
@@ -236,8 +232,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         rentalProperties,
         privateBusinesses,
         savingsGoals,
-        financialGoals,
-    }), [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, savingsGoals, financialGoals, startYear, startMonth]);
+    }), [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, budgetItems, calculatedMonthlySavings, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, savingsGoals, financialGoals, startYear, startMonth]);
 
     // Perf fix:
     //  - Mode déterministe (runMC=false): synchrone + debounce 300ms (rapide ~150ms)

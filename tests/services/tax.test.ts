@@ -876,6 +876,14 @@ describe('calculateGISBenefit (§6.3)', () => {
     expect(calculateGISBenefit(-1000, false)).toBe(0);
   });
 
+  it('guard entrées invalides — valeurs exactes spec : NaN célibataire, Infinity couple, -1 célibataire', () => {
+    // Garde ligne 395 : !Number.isFinite(otherIncomeAnnual) || otherIncomeAnnual < 0
+    // Indépendante de hasSpouseWithOAS → Infinity doit retourner 0 quelle que soit la modalité.
+    expect(calculateGISBenefit(NaN, false)).toBe(0);       // NaN célibataire
+    expect(calculateGISBenefit(Infinity, true)).toBe(0);   // Infinity couple (spec)
+    expect(calculateGISBenefit(-1, false)).toBe(0);        // négatif strict (1$ de moins que 0)
+  });
+
   it('cohérence — clawback rate exposé à 50%', () => {
     expect(GIS_CLAWBACK_RATE).toBe(0.50);
   });

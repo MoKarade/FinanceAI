@@ -38,7 +38,7 @@ export const InsurancePanel: React.FC<{
         <Card title="🛡️ Assurances">
             <div className="space-y-2">
                 {policies.length === 0 && (
-                    <p className="text-meta text-gray-500 italic">Aucune assurance enregistrée. Ajoute tes polices pour modéliser leur impact (primes mensuelles, capital décès, capital invalidité, etc.).</p>
+                    <p className="text-meta text-ink-400 italic">Aucune assurance enregistrée. Ajoute tes polices pour modéliser leur impact (primes mensuelles, capital décès, capital invalidité, etc.).</p>
                 )}
                 {policies.map((p, i) => (
                     <div key={p.id} className="grid grid-cols-12 gap-1 items-center p-2 bg-black/30 rounded border border-white/5">
@@ -105,7 +105,7 @@ export const RentalPropertyPanel: React.FC<{
         <Card title="🏘️ Immeubles locatifs">
             <div className="space-y-2">
                 {properties.length === 0 && (
-                    <p className="text-meta text-gray-500 italic">Pour mesurer cap rate, NOI, vacancy. La résidence principale reste dans l'onglet Real Estate.</p>
+                    <p className="text-meta text-ink-400 italic">Pour mesurer cap rate, NOI, vacancy. La résidence principale reste dans l'onglet Real Estate.</p>
                 )}
                 {properties.map((rp, i) => {
                     const annualRent = rp.monthlyRent * 12 * (1 - rp.vacancyPct / 100);
@@ -155,7 +155,7 @@ export const BusinessPanel: React.FC<{
         <Card title="🏢 Entreprises privées (CCPC)">
             <div className="space-y-2">
                 {businesses.length === 0 && (
-                    <p className="text-meta text-gray-500 italic">Pour les actionnaires de société par actions (CCPC). Modélise dividende reçu, BNR, accès DPE.</p>
+                    <p className="text-meta text-ink-400 italic">Pour les actionnaires de société par actions (CCPC). Modélise dividende reçu, BNR, accès DPE.</p>
                 )}
                 {businesses.map((b, i) => (
                     <div key={b.id} className="grid grid-cols-6 gap-1 items-center p-2 bg-black/30 rounded border border-white/5">

@@ -74,15 +74,15 @@ PageHeader (cohérent, bon) · tooltips pédagogiques · états vides (`EmptySta
 
 ### D1 — Exactitude financière (moteur) · **P0** · garde-fous obligatoires
 > Règle : tests verts + liste de chaque chiffre qui change ; demander avant tout **changement de modélisation**.
-- **CF-1** ✅ corrigé (création d'argent coussin, `cashflowAllocation` `Math.min`).
-- **CF-3 / unit `marginal >= 40`** (`cashflowAllocation.ts:306`) — `marginalRate` décimal → toujours faux → **AUTO_MARGINAL ne cotise jamais REER-d'abord**. Fix = `>= 0.40`. *Bug d'unité clair, mais change le comportement par défaut → décale des baselines.* **[décision Marc : seuil 40 % ?]**
-- **M-1 / FERR `/100`** (`taxJanuary.ts:174-176`) — retenue FERR `* (marginalRate/100)` → ~**100× trop faible** (même famille). Annuel réconcilié en décembre, mais retenue mensuelle + `WithheldTaxRrif` faux. Fix = retirer `/100` + corriger le stub de test (`taxJanuary.test.ts:17` à `0.30`). **[bug d'unité — à corriger]**
-- **CF-2 / SHORTFALL insuffisant** (`cashflowAllocation.ts`) — produit de vente ré-alimente le liquide sans redéduire la dépense → patrimoine ne baisse pas du plein déficit. **[décision Marc : sémantique de décaissement]**
-- **M-8 / remboursement d'impôt salarial** (`taxApril.ts:60-63`) — possiblement compté en liquide ET en NonReg (double-comptage). **[à confirmer + test conservation]**
-- **M-2 / impôt successoral** (`estateCalculation.ts:127-129`) — base `/N` mais liquidation non `/N` → incrément incohérent (impôt successoral surévalué pour un couple). **[décision : tout `/N` ou tout familial]**
-- **M-3 / crédit garderie** (`childrenReee.ts:199-201`) — `careMonthly *= 0.30` dès > 400 $/mois → sous-estime le coût net de garde privée. **[décision modélisation]**
-- **M-4 / crypto en shortfall** (`cashflowAllocation.ts:245`) — 100 % du produit en gain imposable (pas d'ACB crypto) → surimpose. **[décision : suivre un ACB crypto ?]**
-- **B-AUDIT-5 / SRG dans clawback PSV** (`retirementIncome.ts`, `taxDecember.ts:29`) — impact ~0 mais incorrect.
+- **CF-1** ✅ CORRIGÉ (création d'argent coussin, `cashflowAllocation` `Math.min`).
+- **CF-3** ✅ CORRIGÉ 2026-06-04 (`cashflowAllocation.ts:306` `>= 40` → `>= 0.40`, seuil 40 %). AUTO_MARGINAL cotise REER-d'abord à taux marginal élevé. Zéro baseline déplacée (CELI/REER = même valeur nette). +1 test.
+- **M-1** ✅ CORRIGÉ 2026-06-04 (`taxJanuary.ts:176` retrait du `/100`). Retenue FERR juste. Zéro baseline (réconciliée en décembre) ; stub de test corrigé à `0.30`.
+- **CF-2** ✅ CORRIGÉ 2026-06-04 (`cashflowAllocation.ts` : liquide rétabli après dépense directe → conservation du plein déficit). Zéro baseline (chemin non atteint par les personas). Tests conservation MAJ.
+- **M-2** ✅ CORRIGÉ 2026-06-04 (`estateCalculation.ts:127` retrait du `/N` sur la base → symétrie base/final). Impôt successoral couple plus juste. Zéro baseline ; +1 test couple.
+- **M-8 / remboursement d'impôt salarial** (`taxApril.ts:60-63`) — possiblement compté en liquide ET en NonReg (double-comptage). **[à confirmer + test conservation — PENDING]**
+- **M-3 / crédit garderie** (`childrenReee.ts:199-201`) — 🧭 **REVU 2026-06-04 : NE PAS appliquer tel quel.** `careMonthly *= 0.30` (net = 30 % du brut ⇔ crédit ~70 %) est en fait **réaliste pour le Québec** : le crédit d'impôt remboursable QC pour frais de garde est de **67–78 %** selon le revenu familial → net réel ≈ 22–33 % du brut. Le finding initial (et l'option soumise « crédit ~20-30 % ») supposait un crédit FAIBLE, ce qui est faux ici → « corriger » surévaluerait le coût de garde. **Reco : laisser tel quel**, ou (mieux, plus tard) rendre le crédit *income-tested* (78 % bas revenu → 67 % haut). **[décision Marc : confirmer]**
+- **M-4 / crypto sans ACB** (`cashflowAllocation.ts:245`, `projection.ts:950`, `estate`/`latent`) — 🧭 100 % du produit en gain imposable → surimpose. **Pas un one-liner** : aucun `cryptoACB` n'existe ; le fix consistant = ajouter une dimension `cryptoACB` (init = valeur de départ, comme `nonRegACB`) câblée dans ~5 sites + estate/latent, et décale les baselines des personas crypto. **[décision Marc : confirmer la convention ACB=valeur de départ + go pour la PR dédiée — PENDING]**
+- **B-AUDIT-5 / SRG dans clawback PSV** (`retirementIncome.ts`, `taxDecember.ts:29`) — impact ~0 mais incorrect. **[PENDING]**
 - **Tests money manquants** : `assetLocation.ts` (0 test), `taxJanuary` FERR (stub d'unité faux), conservation `taxApril`/`estateCalculation`, `applyDocument` valeurs aberrantes.
 - *Améliorations modélisation (backlog futur)* : Monte-Carlo 100→500-1000 itérations ; EAP REEE taxé chez l'étudiant ; seuils 2027+ codés en dur (dette de maintenance) ; BPA fédéral dégressif haut-revenu.
 

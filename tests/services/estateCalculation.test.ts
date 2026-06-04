@@ -8,7 +8,7 @@ const fiscalStub = (gross: number): FiscalReport =>
 
 const base: EstateCalcInputs = {
     liquid: 50000, celi: 100000, celiapp: 0, reer: 200000, nonReg: 80000, nonRegACB: 60000,
-    crypto: 10000, reee: 20000, realEstateEquity: 300000, mortgageBalance: 150000, smithManoeuvreDebt: 0,
+    crypto: 10000, cryptoACB: 0, reee: 20000, realEstateEquity: 300000, mortgageBalance: 150000, smithManoeuvreDebt: 0,
     incomeRetirement: 4000, accRentesYear: 0, accRetraitsReerYear: 0,
     grossMarcBaseAnnual: 70000, grossAnnaBaseAnnual: 0, simSalaryGrowth: 2,
     simulationYears: 30, startYear: 2026, currentAge: 35, retirementTargetAge: 65,
@@ -68,6 +68,15 @@ describe('computeEstateNetWorth — robustesse aux entrées (garde TB3)', () => 
         const couple = computeEstateNetWorth({ ...base, activeUsersCount: 2 }, fiscalStub);
         expect(single.totalEstateTax).toBeCloseTo(64500, 0);
         expect(couple.totalEstateTax).toBeCloseTo(64500, 0); // même impôt incrémental, peu importe N
+    });
+
+    it('M-4 : seul le GAIN crypto est imposable au décès (coût de base déduit)', () => {
+        // crypto 10000. ACB=0 → gain 10000 (taxable 5000) ; ACB=10000 → gain 0.
+        const allGain = computeEstateNetWorth({ ...base, crypto: 10000, cryptoACB: 0 }, fiscalStub);
+        const noGain = computeEstateNetWorth({ ...base, crypto: 10000, cryptoACB: 10000 }, fiscalStub);
+        expect(noGain.totalEstateTax).toBeLessThan(allGain.totalEstateTax);
+        // écart = impôt (stub 0.3) sur la portion gain imposable : 0.3 × (10000 × 0.5) = 1500.
+        expect(allGain.totalEstateTax - noGain.totalEstateTax).toBeCloseTo(1500, 0);
     });
 
     it('startNW fini même si soldes initiaux NaN', () => {

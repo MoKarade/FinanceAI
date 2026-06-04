@@ -27,6 +27,7 @@ const makeCtx = (overrides: Partial<LatentTaxCtx> = {}): LatentTaxCtx => ({
     nonReg: 50000,
     nonRegACB: 30000,
     crypto: 20000,
+    cryptoACB: 0,
     enableMonteCarlo: false,
     ...overrides,
 });
@@ -81,6 +82,13 @@ describe('computeLatentTax', () => {
         // Assert — les deux doivent être négatifs (valides), peu importe la magnitude
         expect(latentActif).toBeLessThan(0);
         expect(latentRetraite).toBeLessThan(0);
+    });
+
+    it('M-4 : un coût de base crypto élevé réduit l\'impôt latent (moins de gain imposable)', () => {
+        const fullGain = computeLatentTax(makeCtx({ crypto: 50000, cryptoACB: 0 }), realFiscal);
+        const noGain = computeLatentTax(makeCtx({ crypto: 50000, cryptoACB: 50000 }), realFiscal);
+        // moins de gain crypto → obligation latente plus faible (moins négative).
+        expect(noGain).toBeGreaterThan(fullGain);
     });
 
     it('impôt latent nul si tous les actifs imposables valent 0', () => {

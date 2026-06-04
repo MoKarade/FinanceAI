@@ -23,7 +23,7 @@ import {
 
 const makeState = (over: Partial<CashflowState> = {}): CashflowState => ({
     liquid: 0, celi: 0, reer: 0, celiapp: 0, nonReg: 0, nonRegACB: 0,
-    capitalLossBank: 0, crypto: 0, celiRoom: 0, rrspRoom: 0, fhsaRoom: 0,
+    capitalLossBank: 0, crypto: 0, cryptoACB: 0, celiRoom: 0, rrspRoom: 0, fhsaRoom: 0,
     taxCurrentYearReer: 0, accRetraitsReerYear: 0, accCapitalGainsYear: 0,
     accRrspYear: 0, accFhsaYear: 0, fhsaLifetimeContrib: 0, celiWithdrawalsThisYear: 0,
     retraitReerMois: 0, retraitCeliMois: 0, withdrawalREER: 0, withdrawalCELI: 0,

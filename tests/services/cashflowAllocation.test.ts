@@ -19,7 +19,7 @@ const fiscalStub = (marginalDecimal = 0.30) =>
 const withholdingStub = (netDesired: number) => ({ gross: netDesired / 0.75 });
 
 const baseState = (over: Partial<CashflowState> = {}): CashflowState => ({
-    liquid: 0, celi: 0, reer: 0, celiapp: 0, nonReg: 0, nonRegACB: 0, capitalLossBank: 0, crypto: 0,
+    liquid: 0, celi: 0, reer: 0, celiapp: 0, nonReg: 0, nonRegACB: 0, capitalLossBank: 0, crypto: 0, cryptoACB: 0,
     celiRoom: 0, rrspRoom: 0, fhsaRoom: 0, taxCurrentYearReer: 0, accRetraitsReerYear: 0,
     accCapitalGainsYear: 0, accRrspYear: 0, accFhsaYear: 0, fhsaLifetimeContrib: 0,
     celiWithdrawalsThisYear: 0, retraitReerMois: 0, retraitCeliMois: 0,
@@ -88,6 +88,17 @@ describe('processCashflowAllocation — conservation des flux', () => {
         expect(s.withdrawalCELI).toBe(4000);
         expect(s.shortfallMonths).toBe(1);
         expect(assets(s) - before).toBeCloseTo(-5000); // conservation : plein déficit (CELI sans impôt)
+    });
+
+    it('M-4 : vente crypto en shortfall ne taxe que le GAIN (coût de base déduit)', () => {
+        // crypto 10000, coût de base 6000 (gain latent 4000). Vente de 5000 (dernier recours) :
+        // coût de base proportionnel = 5000 × 6000/10000 = 3000 → gain imposable = 2000 (pas 5000).
+        const s = baseState({ liquid: 0, crypto: 10000, cryptoACB: 6000 });
+        processCashflowAllocation(s, baseCtx({ monthlyCashflow: -5000, criticalThreshold: 0, strategy: 'PRIO_CELI' }), [], fiscalStub(), withholdingStub);
+        expect(s.withdrawalCrypto).toBe(5000);
+        expect(s.accCapitalGainsYear).toBeCloseTo(2000); // GAIN seulement, pas 100 % du produit
+        expect(s.cryptoACB).toBeCloseTo(3000);           // 6000 − 3000 (coût de base consommé)
+        expect(s.crypto).toBe(5000);
     });
 
     it('SHORTFALL non couvrable (aucun actif) : incrémente shortfallMonths', () => {

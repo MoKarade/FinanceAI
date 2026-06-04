@@ -38,6 +38,8 @@ export interface CashflowState {
     nonRegACB: number;
     capitalLossBank: number;
     crypto: number;
+    /** M-4 : coût de base crypto (= valeur de départ par convention) → ne taxer que le gain à la vente. */
+    cryptoACB: number;
     celiRoom: number;
     rrspRoom: number;
     fhsaRoom: number;
@@ -245,11 +247,14 @@ export function processCashflowAllocation(
                     drawReer(reerCap, 'Standard');
                 } else if (bucket === 'CRYPTO' && state.crypto > 0) {
                     const drawn = Math.min(state.crypto, shortfall);
+                    // M-4 : ne taxer que le GAIN (produit − coût de base proportionnel), pas 100 %.
+                    const cryptoCostBasis = drawn * Math.min(1, state.cryptoACB / state.crypto);
                     state.crypto -= drawn;
+                    state.cryptoACB = Math.max(0, state.cryptoACB - cryptoCostBasis);
                     state.liquid += drawn;
                     shortfall -= drawn;
                     state.withdrawalCrypto += drawn;
-                    state.accCapitalGainsYear += drawn;
+                    state.accCapitalGainsYear += Math.max(0, drawn - cryptoCostBasis);
                     state.flowEventLogs.push(`🚨 Vente de crypto (dernier recours) : +${Math.round(drawn).toLocaleString('fr-CA')} $`);
                 }
             }

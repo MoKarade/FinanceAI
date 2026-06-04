@@ -238,6 +238,14 @@ export function subscribeSyncStatus(cb: (s: SyncStatus) => void): () => void {
     return () => _listeners.delete(cb);
 }
 
+/**
+ * A-t-on DÉJÀ connecté un compte Drive sur cet appareil ? (méta locale présente). Sert à l'app pour
+ * ne jamais afficher l'écran d'accueil à un utilisateur de retour, même avant le pull (cf onboarding).
+ */
+export function hasConnectedBefore(): boolean {
+    return !!readSyncMeta()?.connectedEmail;
+}
+
 // ── Cycle de vie ─────────────────────────────────────────────────────────────
 
 /** À appeler au boot : configure le Client ID et publie l'état initial (a-t-on déjà connecté ?). */

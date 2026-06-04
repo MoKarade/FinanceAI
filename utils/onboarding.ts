@@ -7,13 +7,38 @@
 // l'utilisateur revoyait « le texte du début » malgré ses données restaurées (retour Marc 2026-05-29).
 
 /**
+ * Signaux de synchronisation qui prouvent que l'utilisateur a DÉJÀ un compte (donc : jamais
+ * l'écran d'accueil, même si les données locales ne sont pas encore arrivées du Drive).
+ */
+export interface OnboardingSyncSignals {
+    /** Une méta Drive locale existe (un compte a déjà été connecté sur cet appareil). */
+    connectedBefore?: boolean;
+    /** Connecté au Drive dans cette session. */
+    syncConnected?: boolean;
+    /** Un pull est en cours (les données arrivent). */
+    syncBusy?: boolean;
+    /** Le blob Drive est chiffré et attend la passphrase (coffre verrouillé). */
+    needsPassphrase?: boolean;
+}
+
+/**
  * @param onboardingDoneFlag valeur de `localStorage['app_onboarding_done']` (ou null).
  * @param hasMeaningfulData l'utilisateur a-t-il déjà des données ?
+ * @param sync signaux de sync (compte Drive existant / pull en cours / coffre verrouillé).
  * @returns true s'il faut afficher l'onboarding (vrai premier lancement uniquement).
  */
-export function shouldShowOnboarding(onboardingDoneFlag: string | null, hasMeaningfulData: boolean): boolean {
+export function shouldShowOnboarding(
+    onboardingDoneFlag: string | null,
+    hasMeaningfulData: boolean,
+    sync: OnboardingSyncSignals = {},
+): boolean {
     if (onboardingDoneFlag === 'true') return false; // onboarding déjà complété
-    return !hasMeaningfulData; // pas de données → vrai 1er lancement → accueillir
+    if (hasMeaningfulData) return false; // a déjà des données → pas un 1er lancement
+    // Utilisateur de RETOUR : un compte Drive existe / une sync est en cours / le coffre est verrouillé
+    // → on n'affiche JAMAIS l'accueil (les vraies données vont arriver). Évite le flash d'onboarding
+    // avant le pull, et le prompt de passphrase masqué derrière l'accueil (retours Marc).
+    if (sync.connectedBefore || sync.syncConnected || sync.syncBusy || sync.needsPassphrase) return false;
+    return true; // pas de données, pas de compte → vrai 1er lancement → accueillir
 }
 
 /** Forme minimale de l'état lue pour décider « a des données » (tolérante aux champs absents). */

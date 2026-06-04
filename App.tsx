@@ -23,10 +23,11 @@ import { configureMarketDataProvider } from './services/marketData';
 import { installGlobalErrorHandlers } from './services/errorLogger';
 import { lazyWithRetry, clearChunkReloadFlag } from './utils/lazyWithRetry';
 import { initAutoBackup } from './services/backupAuto';
-import { initSync, runBootSync, schedulePush } from './services/sync/syncOrchestrator';
+import { initSync, runBootSync, schedulePush, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, type SyncStatus } from './services/sync/syncOrchestrator';
 import { trackPageView } from './services/analytics';
 import { GuidedTour } from './components/tour/GuidedTour';
 import { startGuidedTour } from './components/tour/tourControl';
+import { PassphraseGate } from './components/auth/PassphraseGate';
 
 const GuideModal = lazyWithRetry(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })), 'GuideModal');
 
@@ -280,14 +281,27 @@ export const App: React.FC = () => {
             // regarde PROFIL + tableaux de données (pas seulement transactions/actifs) : sinon une
             // restauration profil/retraite sans transactions affichait l'onboarding, qui écrasait
             // ensuite les profils + clés restaurés (bug Marc 2026-05-29).
-            return shouldShowOnboarding(flag, hasMeaningfulData(useFinanceStore.getState()));
+            return shouldShowOnboarding(flag, hasMeaningfulData(useFinanceStore.getState()), { connectedBefore: hasConnectedBefore() });
         } catch (err) {
             console.error("Hydration error:", err);
             return true;
         }
     });
 
+    // État de la sync Drive (observable) — pilote le gate passphrase + la suppression de l'accueil.
+    const [syncStatus, setSyncStatus] = useState<SyncStatus>(getSyncStatus);
+    useEffect(() => subscribeSyncStatus(setSyncStatus), []);
+
     useEffect(() => { isHydrated.current = true; }, []);
+
+    // Utilisateur de RETOUR détecté par la sync (compte Drive connecté, pull en cours, ou coffre
+    // verrouillé) → on masque l'écran d'accueil : il ne doit jamais s'afficher à quelqu'un qui a déjà
+    // un compte (les vraies données arrivent du Drive juste après).
+    useEffect(() => {
+        if (isFirstLaunch && (syncStatus.connected || syncStatus.busy || syncStatus.needsPassphrase)) {
+            setIsFirstLaunch(false);
+        }
+    }, [isFirstLaunch, syncStatus.connected, syncStatus.busy, syncStatus.needsPassphrase]);
 
     // Garde réactive : si des données arrivent APRÈS le mount (restauration Drive asynchrone, gate),
     // on masque l'onboarding pour qu'il ne s'affiche pas puis n'écrase les profils/clés restaurés.
@@ -407,6 +421,13 @@ export const App: React.FC = () => {
 
     // Phase 3B — memos extraits dans utils/useDerivedFinancials.ts
     const { globalNetWorth, calculatedMonthlySavings, assetBreakdown, currentLiquidity } = useDerivedFinancials(state);
+
+    // Coffre Drive verrouillé (blob chiffré) → on déverrouille AVANT tout le reste : le prompt de
+    // passphrase est LE premier message (jamais l'écran d'accueil par-dessus). Tous les hooks sont
+    // au-dessus de ce point → l'early-return ne casse pas l'ordre des hooks.
+    if (syncStatus.needsPassphrase) {
+        return <PassphraseGate status={syncStatus} />;
+    }
 
     return (
         <div>

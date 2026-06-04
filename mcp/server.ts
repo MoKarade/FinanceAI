@@ -23,6 +23,9 @@ import { registerGetRetirementOutlook } from './tools/getRetirementOutlook.tool'
 import { registerGetNextBestActions } from './tools/getNextBestActions.tool';
 import { registerSearchTransactions } from './tools/searchTransactions.tool';
 import { registerApplyPayslip } from './tools/applyPayslip.tool';
+import { registerApplyBankStatement } from './tools/applyBankStatement.tool';
+import { registerApplyBrokerStatement } from './tools/applyBrokerStatement.tool';
+import { registerApplyTaxSlip } from './tools/applyTaxSlip.tool';
 import type { StateProvider } from './tools/_dataAware';
 import type { StateStore } from './state/stateStore';
 
@@ -73,6 +76,9 @@ export const createServer = (options: CreateServerOptions = {}): McpServer => {
     // Le tool verifie lui-meme canWrite et renvoie une erreur claire si lecture seule.
     if (options.store) {
         registerApplyPayslip(server, options.store);
+        registerApplyBankStatement(server, options.store);
+        registerApplyBrokerStatement(server, options.store);
+        registerApplyTaxSlip(server, options.store);
     }
 
     return server;

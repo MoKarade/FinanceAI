@@ -26,6 +26,7 @@ import { registerApplyPayslip } from './tools/applyPayslip.tool';
 import { registerApplyBankStatement } from './tools/applyBankStatement.tool';
 import { registerApplyBrokerStatement } from './tools/applyBrokerStatement.tool';
 import { registerApplyTaxSlip } from './tools/applyTaxSlip.tool';
+import { registerConnectDrive } from './tools/connectDrive.tool';
 import type { StateProvider } from './tools/_dataAware';
 import type { StateStore } from './state/stateStore';
 
@@ -55,6 +56,9 @@ export const createServer = (options: CreateServerOptions = {}): McpServer => {
     registerGetTaxRoom(server);
     registerCalculateRealEstate(server);
     registerRunProjection(server);
+
+    // Amorçage Drive (bundle .mcpb, sans terminal) : « connecte mes finances » → consentement navigateur.
+    registerConnectDrive(server);
 
     // Tools data-aware (Lot 1) — branches sur l'etat reel via getState. Si aucun
     // provider n'est fourni, on installe un provider qui explique comment en

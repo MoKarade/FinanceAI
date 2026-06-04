@@ -19,7 +19,8 @@
     "mcp:dev": "tsx mcp/stdio.ts",
     "mcp:setup": "node mcp/install-desktop.mjs",
     "mcp:auth": "tsx mcp/auth.ts",
-    "mcp:connect": "node mcp/install-desktop.mjs && tsx mcp/auth.ts"
+    "mcp:connect": "node mcp/install-desktop.mjs && tsx mcp/auth.ts",
+    "mcp:pack": "node mcp/pack.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",
@@ -38,6 +39,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
+    "@types/adm-zip": "^0.5.8",
     "@types/jsdom": "^28.0.3",
     "@types/node": "^22.14.0",
     "@types/react": "^19.0.0",
@@ -46,6 +48,7 @@
     "@typescript-eslint/parser": "^8.0.0",
     "@vitejs/plugin-react": "^5.0.0",
     "@vitest/coverage-v8": "^4.1.7",
+    "adm-zip": "^0.5.17",
     "autoprefixer": "^10.4.0",
     "axe-core": "^4.11.4",
     "eslint": "^9.0.0",

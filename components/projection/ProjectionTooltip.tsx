@@ -115,6 +115,31 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
                 {(data.Expenses || 0) > 0 && <div className="flex justify-between"><span className="text-gray-400">Dépenses de vie</span><span className="font-mono text-red-400 privacy-blur">-{fmt(data.Expenses || 0)}$</span></div>}
             </div>
 
+            {/* Impôts du point (demande Marc) : (1) régularisation réglée en avril
+                (FluxImpots = impôt réel de l'année − retenues déjà prélevées ; + = à payer,
+                − = remboursement) et (2) impôt DORMANT (ImpotLatent, latent/négatif dans le
+                moteur → on affiche la valeur absolue). On n'affiche PAS un « impôt total
+                annuel » : la retenue mensuelle est déjà implicite dans le net ci-dessus. */}
+            {(Math.abs(data.FluxImpots || 0) > 0.5 || Math.abs(data.ImpotLatent || 0) > 0.5) && (
+                <div className="bg-black/30 p-2.5 rounded-xl space-y-1 text-xs border border-white/10 mb-2.5">
+                    <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1">Impôts</div>
+                    {Math.abs(data.FluxImpots || 0) > 0.5 && (
+                        <div className="flex justify-between" title="Solde réglé en avril : impôt réel de l'année moins les retenues déjà prélevées (positif = reste à payer, négatif = remboursement).">
+                            <span className="text-gray-400">{(data.FluxImpots || 0) > 0 ? "Solde d'impôt (avril)" : "Remboursement d'impôt"}</span>
+                            <span className={`font-mono privacy-blur ${(data.FluxImpots || 0) > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                                {(data.FluxImpots || 0) > 0 ? '-' : '+'}{fmt(Math.abs(data.FluxImpots || 0))}$
+                            </span>
+                        </div>
+                    )}
+                    {Math.abs(data.ImpotLatent || 0) > 0.5 && (
+                        <div className="flex justify-between" title="Impôt « dormant » : ce que tu devrais plus tard sur ton REER et tes gains non réalisés si tu liquidais tout aujourd'hui. Ce n'est PAS un décaissement de ce mois.">
+                            <span className="text-gray-400">💤 Impôt dormant</span>
+                            <span className="font-mono text-amber-300/90 privacy-blur">{fmt(Math.abs(data.ImpotLatent || 0))}$</span>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Répartition par compte : valeur + rendement du mois (G14) */}
             {accounts.length > 0 && (
                 <div className="bg-black/30 p-2.5 rounded-xl space-y-1 text-xs border border-white/10 mb-2.5">

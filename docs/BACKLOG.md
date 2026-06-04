@@ -150,8 +150,10 @@
 
 ### Tests
 - ✅ **+9 `retirementIncome`** (report/survivant/immigrant/bonus 75+) — ce cycle.
-- 🔧 Prochains hauts-ROI (test-architect) : `childCosts.ts` (0 test), property-tests de conservation de flux
-  sur `cashflowAllocation`/`projection` (fast-check), `parseBankCsv` roundtrip, `drawdownOptimizer`/`meltdownReer`.
+- ✅ **Couverts depuis** (vérifié 2026-06-04) : `childCosts`, `meltdownReer`, `drawdownOptimizer`,
+  `parseBankCsv` ont chacun un test dédié. `ProjectionTooltip` (bloc Impôts) ajouté ce cycle.
+- 🔧 Restant (test-architect) : property-tests de conservation de flux sur `cashflowAllocation`/`projection`
+  (nécessite d'ajouter `fast-check` au projet — absent aujourd'hui).
 
 ### Recommandations produit — P0/P1/P2
 - **P0 (bloquant multi-user)** : (1) prouver la sync Drive en réel (créer le Client ID, tester en navigation
@@ -393,12 +395,19 @@
   bug « 60 $ » (tâche #56, tooltip retraite).
 - **Effort** : faible-moyen (lecture + 1 cas repro + éventuel ajustement display).
 
-### P1 — Unité de `grossSalary` incohérente : 3 écritures stockent de l'ANNUEL (doit être MENSUEL)
+### ✅ FAIT 2026-05-29 — Unité de `grossSalary` : 3 écritures convertissent annuel→mensuel
+> **CORRIGÉ** (vérifié 2026-06-04, code en place) : `utils/salary.ts` `annualSalaryToMonthly`
+> (= round(annual/12), garde 0/négatif/NaN→0) est utilisé par les 3 chemins de saisie :
+> `Onboarding.tsx` (L58/60, label « annuel » conservé), `PayslipUploadCard.tsx` (L73-74) et
+> `TaxCenter.tsx` (L46-47). Le moteur ré-annualise ×12 ; convention canonique = MENSUEL. La
+> carte Réglages → UsersCard utilise aussi un champ « annuel » converti (PR #136). _(analyse
+> d'origine conservée ci-dessous pour l'historique.)_
+
 > Bug frère trouvé en corrigeant l'impôt d'emploi (cf « ✅ Fait » ci-dessous).
 > `grossSalary`/`netSalary` sont **mensuels** partout (engine après fix, Budget,
 > FutureProjection, Retirement, TaxCenter display, pdfReport, tous les personas,
 > `testConfig` où `Alex=7500` n'a de sens que mensuel). MAIS 3 chemins de saisie
-> écrivent de l'**annuel** → revenu ~12× trop haut pour ces utilisateurs.
+> écrivaient de l'**annuel** → revenu ~12× trop haut pour ces utilisateurs.
 
 - **Écritures fautives** :
   - `components/Onboarding.tsx:151-152` — label « Salaire brut **annuel** », stocké brut (net est « mensuel » juste en dessous → incohérence interne). Défauts 70000/60000.
@@ -457,9 +466,14 @@
   589 pts ; puis Dette/Immo/Retraite/Enfant/Dashboard/Investissements).
 - **Effort** : moyen. Le gros du gain (#1) est centralisé dans le hook → bénéficie à tout.
 
-### P1 — Pendant le calcul de la courbe : écran de chargement À LA PLACE de la courbe
+### ✅ FAIT — Pendant le calcul de la courbe : écran de chargement À LA PLACE de la courbe
 > Demande Marc : « quand ça charge / quand je crée la courbe, je veux pas voir la courbe
 > mais un petit écran de chargement à la place, ou juste un texte qui dit que ça charge ».
+
+**Livré** (vérifié 2026-06-04, `FutureProjection.tsx` L797-806) : pendant `isComputing`, le
+`ComposedChart` est remplacé par un état de chargement de la **même hauteur** (spinner + « Calcul de
+ta projection… », `role="status"`/`aria-live`) → zéro layout shift, jamais de courbe périmée qui
+clignote. Un indicateur « Recalcul Monte Carlo en cours… » apparaît aussi dans l'en-tête de carte.
 
 - **Cause** : `isComputing` existe (`FutureProjection.tsx:271`) mais ne sert qu'à un `action`
   d'en-tête (~ligne 678) ; le `ComposedChart` (~ligne 764, `data={zoom.visibleData}`) reste
@@ -502,9 +516,19 @@
   par surface (chargements → navigation → KPIs/paramètres → modales/listes). Mesurer le bundle.
 - **Effort** : grand (transversal) → à phaser. Forte valeur perçue.
 
-### P2 — Infobulle Futur : afficher l'impôt dormant + l'impôt payé dans l'année
+### ✅ FAIT 2026-06-04 — Infobulle Futur : impôt dormant + régularisation affichés
 > Demande Marc : dans l'infobulle (survol du graphe Futur), voir (1) « combien d'impôt
 > dormant il y a » et (2) « combien d'impôt je paie à la fin de l'année ».
+
+**Livré** : `ProjectionTooltip.tsx` a un bloc **« Impôts »** affichant (1) l'**impôt dormant**
+(`ImpotLatent`, négatif dans le moteur → valeur absolue, libellé « 💤 Impôt dormant » + infobulle
+« ce que tu devrais plus tard sur REER + gains non réalisés ») et (2) la **régularisation d'avril**
+(`FluxImpots` ; positif = « Solde d'impôt (avril) » rouge, négatif = « Remboursement d'impôt » vert).
+Choix d'honnêteté : on N'affiche PAS un « impôt total annuel » — la retenue mensuelle est implicite
+dans le net, et les `Impot*Mois` sont remis à 0 hors avril/retraite (inutilisables comme retenue
+mensuelle). +5 tests `tests/components/projection/ProjectionTooltip.test.tsx` (valeur absolue du
+dormant, signes payé/remboursement, masquage si nul). NB : `ImpotLatent` était DÉJÀ dans le type
+(la note ci-dessous « pas déclaré » était périmée). _(analyse d'origine conservée ci-dessous.)_
 
 - **Où** : `components/projection/ProjectionTooltip.tsx` (infobulle de survol du graphe Futur).
 - **(1) Impôt dormant (latent)** — impôt qui sera dû au décaissement/décès (surtout REER +

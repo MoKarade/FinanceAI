@@ -42,3 +42,8 @@ blob-report/
 
 # Claude Code local config / mémoire (privé, ne pas committer)
 .claude/
+
+# Connecteur MCP — secrets locaux (jamais commités)
+mcp/drive/connector-client.json
+financeai-state*.json
+.financeai-mcp/

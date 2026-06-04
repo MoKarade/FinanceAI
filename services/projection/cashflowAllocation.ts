@@ -300,10 +300,13 @@ export function processCashflowAllocation(
             const marginal = calculateFiscalReport(estAnnualGross / activeUsersCount, 0, 0, loopYear, enableMonteCarlo).marginalRate;
 
             // Ordre de cotisation : override explicite sinon dérivé de l'enum (REER
-            // d'abord si PRIO_REER, ou si AUTO_MARGINAL à taux marginal élevé).
+            // d'abord si PRIO_REER, ou si AUTO_MARGINAL à taux marginal élevé ≥ 40 %).
+            // CF-3 (2026-06) : `marginal` (= FiscalReport.marginalRate) est un DÉCIMAL (~0,27–0,53),
+            // pas un pourcentage. L'ancien seuil `>= 40` était donc TOUJOURS faux → AUTO_MARGINAL ne
+            // cotisait JAMAIS REER-d'abord. Seuil correct = `>= 0.40` (40 %, choix Marc).
             const reerFirstContrib = contributionOrder
                 ? contributionOrder === 'REER_FIRST'
-                : (strategy === 'PRIO_REER' || (strategy === 'AUTO_MARGINAL' && marginal >= 40));
+                : (strategy === 'PRIO_REER' || (strategy === 'AUTO_MARGINAL' && marginal >= 0.40));
 
             if (debtFirstActive && hasRemainingDebtPostPay) {
                 // Skip investments — excess will flow to liquid below

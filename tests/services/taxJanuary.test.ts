@@ -14,7 +14,8 @@ import type { FiscalReport } from '../../utils/tax';
 
 const helpers: JanuaryHelpers = {
     RRIF_RATES: { 72: 0.054, 80: 0.0682 },
-    calculateFiscalReport: () => ({ marginalRate: 30, netIncome: 50000 } as unknown as FiscalReport),
+    // marginalRate est un DÉCIMAL dans le vrai moteur (0.30 = 30%), cf. getMarginalRate.
+    calculateFiscalReport: () => ({ marginalRate: 0.30, netIncome: 50000 } as unknown as FiscalReport),
 };
 
 const baseCtx = (o: Partial<JanuaryContext> = {}): JanuaryContext => ({
@@ -69,7 +70,7 @@ describe('processJanuaryReset — FERR (retrait minimum à 72+)', () => {
     it('à 72 ans : brut = REER × taux RRIF, impôt = brut × taux marginal stubé', () => {
         const r = processJanuaryReset(0, baseCtx({ age: 72, reer: 100000 }), helpers)!;
         expect(r.ferrMandatoryGross).toBeCloseTo(100000 * 0.054, 5); // 5400
-        expect(r.ferrTaxOnRrif).toBeCloseTo(5400 * 0.3, 5); // marginalRate stubé = 30 %
+        expect(r.ferrTaxOnRrif).toBeCloseTo(5400 * 0.3, 5); // 5400 × marginalRate(0.30 décimal), SANS /100
         expect(r.ferrLogMsg).toBeDefined();
     });
 });

@@ -98,11 +98,20 @@ describe('processCashflowAllocation — conservation des flux', () => {
 });
 
 describe('processCashflowAllocation — ordre de cotisation & dettes', () => {
-    it('défaut (taux marginal bas) : cotise le CELI avant le REER', () => {
+    it('AUTO_MARGINAL à taux marginal bas (< 40 %) : cotise le CELI avant le REER', () => {
         const s = baseState({ liquid: 10000, celiRoom: 100000, rrspRoom: 100000 });
         processCashflowAllocation(s, baseCtx({ monthlyCashflow: 4000, strategy: 'AUTO_MARGINAL' }), [], fiscalStub(0.30), withholdingStub);
         expect(s.celi).toBeCloseTo(4000);
         expect(s.reer).toBe(0);
+    });
+
+    it('AUTO_MARGINAL à taux marginal élevé (≥ 40 %) : cotise le REER avant le CELI (CF-3)', () => {
+        // Régression CF-3 : `marginalRate` est un décimal, donc le seuil doit être 0.40 (et non 40,
+        // jamais atteint). À taux marginal élevé, AUTO_MARGINAL doit prioriser le REER.
+        const s = baseState({ liquid: 10000, celiRoom: 100000, rrspRoom: 100000 });
+        processCashflowAllocation(s, baseCtx({ monthlyCashflow: 4000, strategy: 'AUTO_MARGINAL' }), [], fiscalStub(0.45), withholdingStub);
+        expect(s.reer).toBeCloseTo(4000);
+        expect(s.celi).toBe(0);
     });
 
     it('PRIO_REER : cotise le REER avant le CELI', () => {

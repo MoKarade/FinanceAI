@@ -173,7 +173,11 @@ export function processJanuaryReset(
         };
         const rrifMarginalRate = helpers.calculateFiscalReport(deflatedIncomeForMargRate, 0, 0, ctx.loopYear, false, ageOptsFerr).marginalRate;
 
-        ferrTaxOnRrif = ferrMandatoryGross * (rrifMarginalRate / 100);
+        // M-1 (2026-06) : `calculateFiscalReport(...).marginalRate` est un DÉCIMAL (~0,30–0,53),
+        // pas un pourcentage. L'ancien `/ 100` rendait la retenue FERR ~100× trop faible. La retenue
+        // n'impacte pas le patrimoine final (réconcilié en décembre via taxCurrentYear.reer), mais
+        // l'affichage de la retenue mensuelle / WithheldTaxRrif / ImpotRetraitREER était faux.
+        ferrTaxOnRrif = ferrMandatoryGross * rrifMarginalRate;
         const netRrif = ferrMandatoryGross - ferrTaxOnRrif;
         ferrLogMsg = `🏦 FERR (${(rrifRate * 100).toFixed(1)}%): Brut ${ferrMandatoryGross.toFixed(2)}$ → Net ${netRrif.toFixed(2)}$ → Liquidités`;
     }

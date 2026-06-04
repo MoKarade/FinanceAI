@@ -44,7 +44,7 @@ export interface CreateServerOptions {
 export const createServer = (options: CreateServerOptions = {}): McpServer => {
     const server = new McpServer({
         name: 'financeai-mcp',
-        version: '0.3.0',
+        version: '0.4.0',
     });
 
     // Tools sans etat (calculatrice conversationnelle) — conserves tels quels.

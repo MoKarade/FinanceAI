@@ -17,7 +17,8 @@
     "knip": "knip",
     "check-contrast": "tsx scripts/check-contrast.ts",
     "mcp:dev": "tsx mcp/stdio.ts",
-    "mcp:setup": "node mcp/install-desktop.mjs"
+    "mcp:setup": "node mcp/install-desktop.mjs",
+    "mcp:auth": "tsx mcp/auth.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",

@@ -59,7 +59,7 @@ describe('processAprilSettlement', () => {
         expect(mutator.logFlow).toHaveBeenCalledOnce();
     });
 
-    it('émet un remboursement et réinvestit le surplus dans nonReg quand flux < 0', () => {
+    it('émet un remboursement et réinvestit le surplus dans nonReg quand flux < 0 (M-8: pas de double-compte)', () => {
         // Arrange — remboursement de retenue à la source
         const { mutator, s } = makeMutator();
         const taxPrev = { revenu: -3000, gains: 0, divers: 0, reer: 0 };
@@ -67,12 +67,14 @@ describe('processAprilSettlement', () => {
         // Act — avril, mois 16
         const result = processAprilSettlement(3, 16, taxPrev, mutator);
 
-        // Assert — liquid augmente (subtractLiquid d'un négatif = addition)
+        // Assert — M-8 : le remboursement de 3000 est RÉINVESTI dans nonReg, donc il SORT du
+        // liquide (avant, il restait aussi en liquide → 3000+3000=6000 = argent créé).
         expect(result.fluxImpots).toBe(-3000);
-        expect(s.liquid).toBe(3000); // subtractLiquid(-3000) = liquid += 3000
-        // Le remboursement de revenu est réinvesti dans nonReg
         expect(s.nonReg).toBe(3000);
         expect(s.nonRegACB).toBe(3000);
+        expect(s.liquid).toBe(0);              // crédité (+3000) puis réinvesti (−3000) → net 0
+        // Conservation : total ajouté = exactement le remboursement (3000), pas 6000.
+        expect(s.liquid + s.nonReg).toBe(3000);
     });
 
     it('ne réinvestit pas dans nonReg si le remboursement vient de gains/divers', () => {

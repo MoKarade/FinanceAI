@@ -130,6 +130,31 @@
   inclus dans le revenu servant au clawback PSV. Incorrect (SRG non imposable) mais un bénéficiaire du SRG
   est sous le seuil de récupération → impact pratique ~0. À corriger pour la propreté si on y touche.
 
+### Findings 2026-06-04 — `cashflowAllocation.ts` (filet de tests ajouté + bugs trouvés)
+> En ajoutant le premier filet de tests direct sur `processCashflowAllocation` (« cœur du mois »,
+> 0 test auparavant — `tests/services/cashflowAllocation.test.ts`, 11 tests : conservation, cascade,
+> ordre de cotisation, dettes), 3 problèmes money sont ressortis. Légende : ✅ corrigé · 🧭 décision Marc.
+- ✅ **CF-1 [MEDIUM] CORRIGÉ 2026-06-04 — création d'argent (coussin)** : en fin de branche EXCESS,
+  `state.liquid = targetEF` était inconditionnel. Quand le surplus du mois ne suffisait PAS à remplir le
+  coussin (`liquide + surplus < targetEF`), le liquide était poussé à `targetEF` **sans source** → patrimoine
+  surévalué. Corrigé en `Math.min(state.liquid, targetEF)` (plafonne seulement ; no-op dans le cas financé ;
+  ne crée rien). **Zéro régression** : 157 tests projection/personas inchangés (le cas n'était pas couvert) +
+  test de conservation ajouté.
+- 🧭 **CF-2 [À TRANCHER avec Marc] — décaissement : conservation dans le SHORTFALL insuffisant** : quand le
+  liquide ne couvre pas le déficit (descendu au seuil critique) et qu'on **vend des actifs** (CELI/REER/NonReg)
+  pour le reste, le produit fait `liquid += drawn ; shortfall -= drawn` **sans redéduire la dépense** → le
+  liquide finit ré-alimenté (ex. déficit 5 000$, liquide 3 000$→6 000$ au lieu de 2 000$) → le patrimoine ne
+  baisse que de la part liquide, pas du plein déficit. Le cas AMPLE (liquide suffisant) fait bien `liquid -=
+  déficit` (conservation OK), d'où l'incohérence. **Non corrigé** : touche le cœur du décaissement (impact
+  retraite potentiellement large) — exige de confirmer la sémantique voulue + revue des baselines. Test pinne
+  seulement les faits sûrs (vente CELI tracée, `shortfallMonths++`), pas le niveau de liquide contesté.
+- 🧭 **CF-3 [À TRANCHER avec Marc] — `marginal >= 40` jamais vrai (L306)** : `reerFirstContrib = ... (strategy
+  === 'AUTO_MARGINAL' && marginal >= 40)`. Or `getMarginalRate`/`FiscalReport.marginalRate` est un **décimal**
+  (~0,27–0,53), donc `>= 40` est **toujours faux** → la stratégie **AUTO_MARGINAL ne cotise JAMAIS REER-d'abord**
+  même à taux marginal élevé (contredit le commentaire/l'intention ; REER-first ne survient que via `PRIO_REER`
+  ou `contributionOrder`). Fix = `>= 0.40`, MAIS change le comportement par défaut d'AUTO_MARGINAL pour les hauts
+  revenus → décale de nombreuses baselines + le seuil (40 % ?) est un choix de modélisation. À valider avant fix.
+
 ### Sécurité
 - ✅ **C1 [HIGH] CORRIGÉ 2026-06-01** : injection de prompt dans `getRebalanceJustifications` (sanitize + `<DONNEES>`).
 - 🧭 **H3 [HIGH]** `services/claude.ts:119` `dangerouslyAllowBrowser` : clé Anthropic exposée côté navigateur.
@@ -150,8 +175,10 @@
 
 ### Tests
 - ✅ **+9 `retirementIncome`** (report/survivant/immigrant/bonus 75+) — ce cycle.
-- 🔧 Prochains hauts-ROI (test-architect) : `childCosts.ts` (0 test), property-tests de conservation de flux
-  sur `cashflowAllocation`/`projection` (fast-check), `parseBankCsv` roundtrip, `drawdownOptimizer`/`meltdownReer`.
+- ✅ **Couverts depuis** (vérifié 2026-06-04) : `childCosts`, `meltdownReer`, `drawdownOptimizer`,
+  `parseBankCsv` ont chacun un test dédié. `ProjectionTooltip` (bloc Impôts) ajouté ce cycle.
+- 🔧 Restant (test-architect) : property-tests de conservation de flux sur `cashflowAllocation`/`projection`
+  (nécessite d'ajouter `fast-check` au projet — absent aujourd'hui).
 
 ### Recommandations produit — P0/P1/P2
 - **P0 (bloquant multi-user)** : (1) prouver la sync Drive en réel (créer le Client ID, tester en navigation
@@ -243,8 +270,9 @@
   **inatteignable** (la banque de pertes est consommée mais jamais alimentée par cette fonction).
   Théorique en marché haussier, sous-estime l'efficacité fiscale en scénario baissier (ECONOMIC_WINTER).
   Comportement actuel pinné par `tests/services/portfolioOps.test.ts`.
-- **[TRIVIAL · finding Lot 2] `defaultBackupFilename`** : le 2ᵉ `.replace(/\.\d+Z$/)` est du code mort
-  (le 1ᵉʳ `replace` a déjà retiré le « . ») → le nom conserve les millisecondes (`-000Z`). Cosmétique, pinné.
+- ✅ **[TRIVIAL · finding Lot 2] `defaultBackupFilename` CORRIGÉ** (vérifié 2026-06-04, `cloudBackup.ts:247`) :
+  l'ordre est désormais `.replace(/\.\d+Z$/, 'Z')` (retire les ms AVANT) puis `.replace(/[:.]/g, '-')` →
+  plus de `-000Z` résiduel. Le commentaire explique l'ordre. (Item résolu.)
 
 ---
 
@@ -393,12 +421,19 @@
   bug « 60 $ » (tâche #56, tooltip retraite).
 - **Effort** : faible-moyen (lecture + 1 cas repro + éventuel ajustement display).
 
-### P1 — Unité de `grossSalary` incohérente : 3 écritures stockent de l'ANNUEL (doit être MENSUEL)
+### ✅ FAIT 2026-05-29 — Unité de `grossSalary` : 3 écritures convertissent annuel→mensuel
+> **CORRIGÉ** (vérifié 2026-06-04, code en place) : `utils/salary.ts` `annualSalaryToMonthly`
+> (= round(annual/12), garde 0/négatif/NaN→0) est utilisé par les 3 chemins de saisie :
+> `Onboarding.tsx` (L58/60, label « annuel » conservé), `PayslipUploadCard.tsx` (L73-74) et
+> `TaxCenter.tsx` (L46-47). Le moteur ré-annualise ×12 ; convention canonique = MENSUEL. La
+> carte Réglages → UsersCard utilise aussi un champ « annuel » converti (PR #136). _(analyse
+> d'origine conservée ci-dessous pour l'historique.)_
+
 > Bug frère trouvé en corrigeant l'impôt d'emploi (cf « ✅ Fait » ci-dessous).
 > `grossSalary`/`netSalary` sont **mensuels** partout (engine après fix, Budget,
 > FutureProjection, Retirement, TaxCenter display, pdfReport, tous les personas,
 > `testConfig` où `Alex=7500` n'a de sens que mensuel). MAIS 3 chemins de saisie
-> écrivent de l'**annuel** → revenu ~12× trop haut pour ces utilisateurs.
+> écrivaient de l'**annuel** → revenu ~12× trop haut pour ces utilisateurs.
 
 - **Écritures fautives** :
   - `components/Onboarding.tsx:151-152` — label « Salaire brut **annuel** », stocké brut (net est « mensuel » juste en dessous → incohérence interne). Défauts 70000/60000.
@@ -430,9 +465,17 @@
   RÉPLIQUES de la logique (toutes deux correctes), pas le vrai chemin du composant
   (`fetchPortfolioHistory`). Leçon appliquée : fonction pure unique testée = composant exécuté.
 
-### P1 — Zoom 100 % FLUIDE sur TOUS les graphiques (actuellement lent/saccadé)
+### ✅ FAIT (2026-05-29) — Zoom 100 % FLUIDE sur TOUS les graphiques
 > Demande Marc : « le zoom pas fluide, lent et chiant — je veux 100 % fluide, et pour
 > TOUS les graphiques » (pas seulement le Futur).
+
+**Livré** (vérifié 2026-06-04, `hooks/useTimeChartZoom.ts`) : la piste #1 (la plus payante) est en
+place — molette + pan sont **coalescés en `requestAnimationFrame`** (`scheduleRange`/`commitRange` +
+`rangeRef` comme base synchrone) → au plus UN `setRange` (donc un re-render) par frame au lieu d'un par
+event. Comme c'est dans le hook PARTAGÉ, TOUS les graphes en profitent (Futur + `ZoomableTimeChart` :
+Dashboard, Investissements, Dette, Immo, Retraite, Enfant). Listener molette non-passif + handlers
+mémoïsés (identité stable). Restent optionnelles et non faites les pistes #2 (downsampling/LOD) et #3
+(mémoïsation fine des sous-arbres) — à activer seulement si une saccade subsiste sur un très gros jeu.
 
 - **Périmètre** = tous les graphes zoomables :
   - **Futur** (`FutureProjection.tsx`, rendu propre + le plus lourd : ~589 pts, 8 aires +
@@ -457,9 +500,14 @@
   589 pts ; puis Dette/Immo/Retraite/Enfant/Dashboard/Investissements).
 - **Effort** : moyen. Le gros du gain (#1) est centralisé dans le hook → bénéficie à tout.
 
-### P1 — Pendant le calcul de la courbe : écran de chargement À LA PLACE de la courbe
+### ✅ FAIT — Pendant le calcul de la courbe : écran de chargement À LA PLACE de la courbe
 > Demande Marc : « quand ça charge / quand je crée la courbe, je veux pas voir la courbe
 > mais un petit écran de chargement à la place, ou juste un texte qui dit que ça charge ».
+
+**Livré** (vérifié 2026-06-04, `FutureProjection.tsx` L797-806) : pendant `isComputing`, le
+`ComposedChart` est remplacé par un état de chargement de la **même hauteur** (spinner + « Calcul de
+ta projection… », `role="status"`/`aria-live`) → zéro layout shift, jamais de courbe périmée qui
+clignote. Un indicateur « Recalcul Monte Carlo en cours… » apparaît aussi dans l'en-tête de carte.
 
 - **Cause** : `isComputing` existe (`FutureProjection.tsx:271`) mais ne sert qu'à un `action`
   d'en-tête (~ligne 678) ; le `ComposedChart` (~ligne 764, `data={zoom.visibleData}`) reste
@@ -502,9 +550,19 @@
   par surface (chargements → navigation → KPIs/paramètres → modales/listes). Mesurer le bundle.
 - **Effort** : grand (transversal) → à phaser. Forte valeur perçue.
 
-### P2 — Infobulle Futur : afficher l'impôt dormant + l'impôt payé dans l'année
+### ✅ FAIT 2026-06-04 — Infobulle Futur : impôt dormant + régularisation affichés
 > Demande Marc : dans l'infobulle (survol du graphe Futur), voir (1) « combien d'impôt
 > dormant il y a » et (2) « combien d'impôt je paie à la fin de l'année ».
+
+**Livré** : `ProjectionTooltip.tsx` a un bloc **« Impôts »** affichant (1) l'**impôt dormant**
+(`ImpotLatent`, négatif dans le moteur → valeur absolue, libellé « 💤 Impôt dormant » + infobulle
+« ce que tu devrais plus tard sur REER + gains non réalisés ») et (2) la **régularisation d'avril**
+(`FluxImpots` ; positif = « Solde d'impôt (avril) » rouge, négatif = « Remboursement d'impôt » vert).
+Choix d'honnêteté : on N'affiche PAS un « impôt total annuel » — la retenue mensuelle est implicite
+dans le net, et les `Impot*Mois` sont remis à 0 hors avril/retraite (inutilisables comme retenue
+mensuelle). +5 tests `tests/components/projection/ProjectionTooltip.test.tsx` (valeur absolue du
+dormant, signes payé/remboursement, masquage si nul). NB : `ImpotLatent` était DÉJÀ dans le type
+(la note ci-dessous « pas déclaré » était périmée). _(analyse d'origine conservée ci-dessous.)_
 
 - **Où** : `components/projection/ProjectionTooltip.tsx` (infobulle de survol du graphe Futur).
 - **(1) Impôt dormant (latent)** — impôt qui sera dû au décaissement/décès (surtout REER +

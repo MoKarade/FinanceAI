@@ -9,7 +9,7 @@ import type { Debt } from '../../types';
 
 const makeState = (over: Partial<CashflowState> = {}): CashflowState => ({
     liquid: 0, celi: 0, reer: 0, celiapp: 0, nonReg: 0, nonRegACB: 0,
-    capitalLossBank: 0, crypto: 0, celiRoom: 0, rrspRoom: 0, fhsaRoom: 0,
+    capitalLossBank: 0, crypto: 0, cryptoACB: 0, celiRoom: 0, rrspRoom: 0, fhsaRoom: 0,
     taxCurrentYearReer: 0, accRetraitsReerYear: 0, accCapitalGainsYear: 0,
     accRrspYear: 0, accFhsaYear: 0, fhsaLifetimeContrib: 0, celiWithdrawalsThisYear: 0,
     retraitReerMois: 0, retraitCeliMois: 0, withdrawalREER: 0, withdrawalCELI: 0,
@@ -27,9 +27,10 @@ const makeCtx = (over: Partial<CashflowCtx> = {}): CashflowCtx => ({
     ...over,
 });
 
-// marginalRate bas (20%) → la dérivation auto ne force PAS REER d'abord ; on isole
-// donc l'effet de contributionOrder.
-const fiscalStub = () => ({ marginalRate: 20 } as unknown as FiscalReport);
+// marginalRate bas (0.20 = 20% ; DÉCIMAL, cf. getMarginalRate) → < seuil 0.40, donc la
+// dérivation auto ne force PAS REER d'abord ; on isole l'effet de contributionOrder.
+// (Avant CF-3, ce stub valait `20` — unité pourcentage erronée, masquée par le bug `>= 40`.)
+const fiscalStub = () => ({ marginalRate: 0.20 } as unknown as FiscalReport);
 const grossStub = (net: number) => ({ gross: net / 0.7 });
 
 describe('cashflowAllocation — levier contributionOrder', () => {

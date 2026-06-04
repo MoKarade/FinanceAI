@@ -38,6 +38,8 @@ export interface CashflowState {
     nonRegACB: number;
     capitalLossBank: number;
     crypto: number;
+    /** M-4 : coût de base crypto (= valeur de départ par convention) → ne taxer que le gain à la vente. */
+    cryptoACB: number;
     celiRoom: number;
     rrspRoom: number;
     fhsaRoom: number;
@@ -140,6 +142,13 @@ export function processCashflowAllocation(
             shortfall -= fromLiquid;
         }
 
+        // CF-2 (2026-06) : niveau du liquide APRÈS la dépense directe (puisée jusqu'au seuil
+        // critique). Le déficit restant est couvert ci-dessous par des VENTES d'actifs dont le
+        // produit finance une dépense — il ne doit donc PAS rester dans le liquide. On rétablit
+        // ce niveau en fin de branche (sinon les ventes gonflaient le liquide → le patrimoine ne
+        // baissait pas du plein déficit ; le cas AMPLE, lui, déduit déjà tout le déficit du liquide).
+        const liquidAfterDirectSpend = state.liquid;
+
         if (shortfall > 0) state.shortfallMonths++;
 
         if (shortfall > 0) {
@@ -238,15 +247,23 @@ export function processCashflowAllocation(
                     drawReer(reerCap, 'Standard');
                 } else if (bucket === 'CRYPTO' && state.crypto > 0) {
                     const drawn = Math.min(state.crypto, shortfall);
+                    // M-4 : ne taxer que le GAIN (produit − coût de base proportionnel), pas 100 %.
+                    const cryptoCostBasis = drawn * Math.min(1, state.cryptoACB / state.crypto);
                     state.crypto -= drawn;
+                    state.cryptoACB = Math.max(0, state.cryptoACB - cryptoCostBasis);
                     state.liquid += drawn;
                     shortfall -= drawn;
                     state.withdrawalCrypto += drawn;
-                    state.accCapitalGainsYear += drawn;
+                    state.accCapitalGainsYear += Math.max(0, drawn - cryptoCostBasis);
                     state.flowEventLogs.push(`🚨 Vente de crypto (dernier recours) : +${Math.round(drawn).toLocaleString('fr-CA')} $`);
                 }
             }
         }
+
+        // CF-2 : les produits de vente d'actifs ci-dessus ont financé la dépense (déficit) → ils
+        // ne s'accumulent pas dans le liquide. On rétablit le niveau post-dépense directe. (Toute
+        // retenue REER reste suivie dans taxCurrentYearReer et est réconciliée en décembre.)
+        state.liquid = liquidAfterDirectSpend;
     } else {
         // ── EXCESS ─────────────────────────────────────────────────────
         let excess = monthlyCashflow;
@@ -300,10 +317,13 @@ export function processCashflowAllocation(
             const marginal = calculateFiscalReport(estAnnualGross / activeUsersCount, 0, 0, loopYear, enableMonteCarlo).marginalRate;
 
             // Ordre de cotisation : override explicite sinon dérivé de l'enum (REER
-            // d'abord si PRIO_REER, ou si AUTO_MARGINAL à taux marginal élevé).
+            // d'abord si PRIO_REER, ou si AUTO_MARGINAL à taux marginal élevé ≥ 40 %).
+            // CF-3 (2026-06) : `marginal` (= FiscalReport.marginalRate) est un DÉCIMAL (~0,27–0,53),
+            // pas un pourcentage. L'ancien seuil `>= 40` était donc TOUJOURS faux → AUTO_MARGINAL ne
+            // cotisait JAMAIS REER-d'abord. Seuil correct = `>= 0.40` (40 %, choix Marc).
             const reerFirstContrib = contributionOrder
                 ? contributionOrder === 'REER_FIRST'
-                : (strategy === 'PRIO_REER' || (strategy === 'AUTO_MARGINAL' && marginal >= 40));
+                : (strategy === 'PRIO_REER' || (strategy === 'AUTO_MARGINAL' && marginal >= 0.40));
 
             if (debtFirstActive && hasRemainingDebtPostPay) {
                 // Skip investments — excess will flow to liquid below
@@ -347,6 +367,11 @@ export function processCashflowAllocation(
             state.nonRegACB += excess;
             state.contribNonReg += excess;
         }
-        state.liquid = targetEF;
+        // Conservation : ne JAMAIS remonter le liquide au-dessus de ce que le surplus permet.
+        // Le remplissage du coussin + le sweep ci-dessus établissent déjà le bon niveau ;
+        // un `= targetEF` inconditionnel fabriquait de l'argent quand le surplus du mois ne
+        // suffisait pas à remplir le coussin (liquide poussé à targetEF sans source). `Math.min`
+        // ne fait que plafonner (no-op dans le cas financé), sans rien créer.
+        state.liquid = Math.min(state.liquid, targetEF);
     }
 }

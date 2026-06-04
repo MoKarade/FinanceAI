@@ -272,6 +272,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // s'ajoute aux dépenses jusqu'à la fin de la simulation.
     let ltcActive = false;
     let nonRegACB = nonReg;
+    // M-4 (2026-06) : coût de base crypto, convention identique à nonRegACB (= valeur de départ →
+    // aucun gain latent sur les avoirs initiaux ; seule la croissance future est imposable). Sur une
+    // vente, on ne taxe que le gain (produit − coût de base proportionnel), pas 100 % du produit.
+    let cryptoACB = crypto;
 
     // Cycle 25 split: handleNonRegSale partagé → ./projection/portfolioOps
     // Closure-wrapper: synchronise les let locaux avec le state object.
@@ -947,7 +951,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     reer -= drawn; accRetraitsReerYear += drawn; remaining -= drawn;
                 } else if (account === 'CRYPTO') {
                     const drawn = Math.min(crypto, remaining);
-                    crypto -= drawn; accCapitalGainsYear += drawn; remaining -= drawn;
+                    // M-4 : ne compter que le GAIN (produit − coût de base proportionnel), pas 100 %.
+                    const cryptoCostBasis = crypto > 0 ? drawn * Math.min(1, cryptoACB / crypto) : 0;
+                    crypto -= drawn; cryptoACB = Math.max(0, cryptoACB - cryptoCostBasis);
+                    accCapitalGainsYear += Math.max(0, drawn - cryptoCostBasis); remaining -= drawn;
                 }
                 return amount - remaining;
             },
@@ -975,7 +982,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
         // Cycle 19 split: shortfall + excess allocation → ./projection/cashflowAllocation
         const cashState: CashflowState = {
-            liquid, celi, reer, celiapp, nonReg, nonRegACB, capitalLossBank, crypto,
+            liquid, celi, reer, celiapp, nonReg, nonRegACB, capitalLossBank, crypto, cryptoACB,
             celiRoom, rrspRoom, fhsaRoom,
             taxCurrentYearReer: taxCurrentYear.reer,
             accRetraitsReerYear, accCapitalGainsYear, accRrspYear, accFhsaYear,
@@ -999,7 +1006,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         );
         liquid = cashState.liquid; celi = cashState.celi; reer = cashState.reer;
         celiapp = cashState.celiapp; nonReg = cashState.nonReg; nonRegACB = cashState.nonRegACB;
-        capitalLossBank = cashState.capitalLossBank; crypto = cashState.crypto;
+        capitalLossBank = cashState.capitalLossBank; crypto = cashState.crypto; cryptoACB = cashState.cryptoACB;
         celiRoom = cashState.celiRoom; rrspRoom = cashState.rrspRoom; fhsaRoom = cashState.fhsaRoom;
         taxCurrentYear.reer = cashState.taxCurrentYearReer;
         accRetraitsReerYear = cashState.accRetraitsReerYear;
@@ -1087,7 +1094,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         const impotLatent = computeLatentTax(
             { m, loopYear, simInflation, simSalaryGrowth, isRetired, activeUsersCount,
               grossMarcBaseAnnual, grossAnnaBaseAnnual, accRentesYear, incomeRetirement,
-              reer, nonReg, nonRegACB, crypto, enableMonteCarlo },
+              reer, nonReg, nonRegACB, crypto, cryptoACB, enableMonteCarlo },
             calculateFiscalReport,
         );
 
@@ -1146,7 +1153,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
     // Cycle 26 split: bilan successoral → ./projection/estateCalculation
     const estate = computeEstateNetWorth({
-        liquid, celi, celiapp, reer, nonReg, nonRegACB, crypto, reee,
+        liquid, celi, celiapp, reer, nonReg, nonRegACB, crypto, cryptoACB, reee,
         realEstateEquity, mortgageBalance, smithManoeuvreDebt,
         incomeRetirement, accRentesYear, accRetraitsReerYear,
         grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,

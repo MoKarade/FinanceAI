@@ -347,6 +347,11 @@ export function processCashflowAllocation(
             state.nonRegACB += excess;
             state.contribNonReg += excess;
         }
-        state.liquid = targetEF;
+        // Conservation : ne JAMAIS remonter le liquide au-dessus de ce que le surplus permet.
+        // Le remplissage du coussin + le sweep ci-dessus établissent déjà le bon niveau ;
+        // un `= targetEF` inconditionnel fabriquait de l'argent quand le surplus du mois ne
+        // suffisait pas à remplir le coussin (liquide poussé à targetEF sans source). `Math.min`
+        // ne fait que plafonner (no-op dans le cas financé), sans rien créer.
+        state.liquid = Math.min(state.liquid, targetEF);
     }
 }

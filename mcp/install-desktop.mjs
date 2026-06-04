@@ -8,6 +8,11 @@
 //   - spawn DIRECT de node.exe (pas via npx/cmd) → pas de souci d'espaces dans le
 //     chemin (OneDrive, « Marc Richard »…) ni de `cmd /c` qui re-découpe les args.
 //
+// Écrit dans TOUS les emplacements connus où Claude Desktop lit sa config :
+//   - installeur classique : %APPDATA%/Claude (Win) / ~/Library/... (mac) / ~/.config (linux)
+//   - version MICROSOFT STORE (MSIX, sandbox) : %LOCALAPPDATA%/Packages/Claude_*/
+//     LocalCache/Roaming/Claude  (la version Store ignore le %APPDATA% normal !)
+//
 // Préserve les autres serveurs MCP déjà présents. Écrit en UTF-8 SANS BOM.
 //
 // Usage :
@@ -18,7 +23,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { homedir, platform } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, readdirSync } from 'node:fs';
 
 const require = createRequire(import.meta.url);
 const here = dirname(fileURLToPath(import.meta.url)); // .../mcp
@@ -36,8 +41,14 @@ const stdioTs = join(repoRoot, 'mcp', 'stdio.ts');
 const stateArg = process.argv[2];
 const stateFile = stateArg ? resolve(stateArg) : join(homedir(), 'financeai-state.json');
 
-// 3) Emplacement de la config Claude Desktop selon l'OS -----------------------
-function desktopConfigPath() {
+const financeaiEntry = {
+    command: nodeBin,
+    args: [tsxCli, stdioTs],
+    env: { FINANCEAI_STATE_FILE: stateFile },
+};
+
+// 3) Emplacements de la config Claude Desktop selon l'OS ----------------------
+function standardConfigPath() {
     const p = platform();
     if (p === 'win32') {
         const appData = process.env.APPDATA || join(homedir(), 'AppData', 'Roaming');
@@ -48,38 +59,52 @@ function desktopConfigPath() {
     }
     return join(homedir(), '.config', 'Claude', 'claude_desktop_config.json'); // linux & autres
 }
-const cfgPath = desktopConfigPath();
 
-// 4) Lire/fusionner la config existante (préserve les autres serveurs) --------
-let cfg = {};
-if (existsSync(cfgPath)) {
-    let raw = readFileSync(cfgPath, 'utf8');
-    if (raw.charCodeAt(0) === 0xFEFF) raw = raw.slice(1); // retire un BOM éventuel
+// Version Microsoft Store (MSIX) : %APPDATA% est redirigé vers le bac à sable du
+// paquet. On détecte tout paquet « Claude_* » et on vise son Roaming\Claude.
+function msixConfigPaths() {
+    if (platform() !== 'win32') return [];
+    const localAppData = process.env.LOCALAPPDATA || join(homedir(), 'AppData', 'Local');
+    const pkgRoot = join(localAppData, 'Packages');
+    if (!existsSync(pkgRoot)) return [];
     try {
-        cfg = raw.trim() ? JSON.parse(raw) : {};
+        return readdirSync(pkgRoot)
+            .filter((name) => name.startsWith('Claude_'))
+            .map((name) => join(pkgRoot, name, 'LocalCache', 'Roaming', 'Claude', 'claude_desktop_config.json'));
     } catch {
-        const bak = `${cfgPath}.bak`;
-        copyFileSync(cfgPath, bak);
-        console.warn(`[mcp:setup] Config existante illisible (JSON invalide) → sauvegardée: ${bak}. On repart propre.`);
-        cfg = {};
+        return [];
     }
 }
-if (typeof cfg !== 'object' || cfg === null) cfg = {};
-if (typeof cfg.mcpServers !== 'object' || cfg.mcpServers === null) cfg.mcpServers = {};
 
-cfg.mcpServers.financeai = {
-    command: nodeBin,
-    args: [tsxCli, stdioTs],
-    env: { FINANCEAI_STATE_FILE: stateFile },
-};
+const targets = [standardConfigPath(), ...msixConfigPaths()];
 
-// 5) Écrire (crée le dossier au besoin), UTF-8 sans BOM -----------------------
-mkdirSync(dirname(cfgPath), { recursive: true });
-writeFileSync(cfgPath, `${JSON.stringify(cfg, null, 2)}\n`, 'utf8');
+// 4) Pour chaque cible : lire/fusionner (préserve les autres serveurs) + écrire -
+function mergeAndWrite(cfgPath) {
+    let cfg = {};
+    if (existsSync(cfgPath)) {
+        let raw = readFileSync(cfgPath, 'utf8');
+        if (raw.charCodeAt(0) === 0xFEFF) raw = raw.slice(1); // retire un BOM éventuel
+        try {
+            cfg = raw.trim() ? JSON.parse(raw) : {};
+        } catch {
+            const bak = `${cfgPath}.bak`;
+            copyFileSync(cfgPath, bak);
+            console.warn(`[mcp:setup] Config illisible → sauvegardée: ${bak}. On repart propre.`);
+            cfg = {};
+        }
+    }
+    if (typeof cfg !== 'object' || cfg === null) cfg = {};
+    if (typeof cfg.mcpServers !== 'object' || cfg.mcpServers === null) cfg.mcpServers = {};
+    cfg.mcpServers.financeai = financeaiEntry;
+    mkdirSync(dirname(cfgPath), { recursive: true });
+    writeFileSync(cfgPath, `${JSON.stringify(cfg, null, 2)}\n`, 'utf8');
+}
+for (const t of targets) mergeAndWrite(t);
 
-// 6) Compte rendu -------------------------------------------------------------
+// 5) Compte rendu -------------------------------------------------------------
 console.log('\n[mcp:setup] Connecteur « financeai » configuré pour Claude Desktop.\n');
-console.log(`  config  : ${cfgPath}`);
+console.log('  config(s) écrite(s) :');
+for (const t of targets) console.log(`    - ${t}${t.includes('Packages') ? '   (version Microsoft Store)' : ''}`);
 console.log(`  node    : ${nodeBin}`);
 console.log(`  tsx     : ${tsxCli}`);
 console.log(`  serveur : ${stdioTs}`);

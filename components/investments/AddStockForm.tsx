@@ -5,17 +5,16 @@ import { formatCAD } from '../../utils/format';
 import type { Asset } from '../../types';
 
 /**
- * Phase E.9 — formulaire d'ajout manuel d'une action.
+ * Phase E.9 — formulaire d'ajout d'une action. DEUX chemins :
  *
- * Flow :
- *   1. Saisir le symbol (ex: AAPL, TSLA, MSFT) + valider
- *   2. L'app fetch un quote en live + propose le prix actuel
- *   3. Saisir date d'achat + quantité
- *   4. Suggestion du prix historique à cette date (via getHistory)
- *   5. Override manuel du prix possible
- *   6. Submit → ajoute l'Asset au store
+ *   A) Avec Finnhub (« Valider ») : fetch un quote live, prix actuel auto, suggestion du prix
+ *      historique à la date d'achat. Pratique mais nécessite une clé Finnhub + connexion.
+ *   B) 100% MANUEL (« À la main ») : on saisit symbole + prix actuel + quantité + prix d'achat
+ *      SOI-MÊME, sans clé ni réseau — pour un titre que Finnhub ne couvre pas (fonds, GIC, titre
+ *      étranger) ou simplement pour tout entrer à la main. C'est le « rentrer toutes les données
+ *      à la main » demandé.
  *
- * Nécessite une clé Finnhub configurée. Affichage dégradé sans clé.
+ * Dans les deux cas : Submit → ajoute l'Asset au store.
  */
 
 interface AddStockFormProps {
@@ -35,6 +34,11 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
     const [accountType, setAccountType] = useState<Asset['accountType']>('NON-ENREG');
     const [currency, setCurrency] = useState<'USD' | 'CAD' | 'EUR'>('USD');
 
+    // Saisie 100% MANUELLE (sans Finnhub) : pour ajouter une action/un placement à la main, sans clé
+    // API ni connexion, ou pour un titre que Finnhub ne couvre pas (fonds, GIC, titre étranger…).
+    const [manualMode, setManualMode] = useState(false);
+    const [manualPrice, setManualPrice] = useState(''); // prix actuel saisi à la main (manualMode)
+
     const [isValidating, setIsValidating] = useState(false);
     const [isSuggestingPrice, setIsSuggestingPrice] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -47,8 +51,22 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
         setDateBought(new Date().toISOString().split('T')[0]);
         setQuantity('');
         setBuyPrice('');
+        setManualMode(false);
+        setManualPrice('');
         setError(null);
     };
+
+    /** Bascule en saisie 100% manuelle : le symbole tapé devient le titre, sans appel Finnhub. */
+    const enterManualMode = () => {
+        const sym = symbol.trim().toUpperCase();
+        if (!sym) { setError('Entre d\'abord un symbole ou un nom court (ex: AAPL, FONDS-XYZ).'); return; }
+        setError(null);
+        setManualMode(true);
+        setStockName(sym);
+    };
+
+    /** Prêt à saisir le reste : soit le symbole est validé (Finnhub), soit on est en mode manuel. */
+    const ready = validatedSymbol !== null || manualMode;
 
     const validateSymbol = async () => {
         if (!symbol.trim()) return;
@@ -99,8 +117,10 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
     };
 
     const handleSubmit = () => {
-        if (!validatedSymbol || !currentPrice || !quantity || !buyPrice) {
-            setError("Tous les champs sont requis.");
+        const finalSymbol = (validatedSymbol ?? symbol.trim().toUpperCase()).trim();
+        const effectivePrice = manualMode ? parseFloat(manualPrice) : currentPrice;
+        if (!finalSymbol || !effectivePrice || !Number.isFinite(effectivePrice) || effectivePrice <= 0 || !quantity || !buyPrice) {
+            setError(manualMode ? 'Symbole, prix actuel, quantité et prix d\'achat sont requis.' : 'Tous les champs sont requis.');
             return;
         }
         const qty = parseFloat(quantity);
@@ -116,12 +136,12 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
         // Phase E.8 — initialise purchases[] avec le premier achat, garde
         // dateBought/buyPrice pour rétrocompat
         const asset: Asset = {
-            symbol: validatedSymbol,
-            name: stockName,
+            symbol: finalSymbol,
+            name: stockName || finalSymbol,
             quantity: qty,
             currency,
-            currentPrice,
-            performance: ((currentPrice - bp) / bp) * 100,
+            currentPrice: effectivePrice,
+            performance: ((effectivePrice - bp) / bp) * 100,
             dateBought,
             buyPrice: bp,
             purchases: [{ date: dateBought, quantity: qty, price: bp }],
@@ -145,29 +165,55 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                             type="text"
                             value={symbol}
                             onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                            placeholder="AAPL, TSLA, MSFT..."
-                            disabled={validatedSymbol !== null}
+                            placeholder="AAPL, TSLA, FONDS-XYZ..."
+                            disabled={validatedSymbol !== null || manualMode}
                             className="flex-1 bg-dark border border-white/10 rounded px-3 py-2 text-white focus:border-primary outline-none uppercase font-mono"
                         />
-                        {validatedSymbol ? (
+                        {validatedSymbol || manualMode ? (
                             <button
                                 type="button"
-                                onClick={() => { setValidatedSymbol(null); setCurrentPrice(null); }}
+                                onClick={() => { setValidatedSymbol(null); setCurrentPrice(null); setManualMode(false); setManualPrice(''); }}
                                 className="px-3 py-2 bg-white/10 text-white rounded font-bold text-sm hover:bg-white/15"
                             >
                                 Changer
                             </button>
                         ) : (
-                            <button
-                                type="button"
-                                onClick={validateSymbol}
-                                disabled={!symbol.trim() || isValidating}
-                                className="px-3 py-2 bg-primary text-white rounded font-bold text-sm hover:bg-primary/80 disabled:opacity-50"
-                            >
-                                {isValidating ? '⏳' : 'Valider'}
-                            </button>
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={validateSymbol}
+                                    disabled={!symbol.trim() || isValidating}
+                                    className="px-3 py-2 bg-primary text-white rounded font-bold text-sm hover:bg-primary/80 disabled:opacity-50"
+                                >
+                                    {isValidating ? '⏳' : 'Valider'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={enterManualMode}
+                                    disabled={!symbol.trim()}
+                                    title="Ajouter sans validation en ligne (Finnhub non requis)"
+                                    className="px-3 py-2 bg-white/10 text-white rounded font-bold text-sm hover:bg-white/15 disabled:opacity-50"
+                                >
+                                    À la main
+                                </button>
+                            </>
                         )}
                     </div>
+                    {manualMode && (
+                        <div className="mt-2">
+                            <label className="block text-xs text-gray-400 mb-1 font-bold uppercase">Prix actuel par action (manuel)</label>
+                            <input
+                                type="number"
+                                value={manualPrice}
+                                onChange={(e) => setManualPrice(e.target.value)}
+                                min={0}
+                                step={0.01}
+                                placeholder="ex: 152.30"
+                                className="w-full bg-dark border border-white/10 rounded px-3 py-2 text-white focus:border-primary outline-none font-mono"
+                            />
+                            <p className="text-tiny text-gray-500 mt-1">Sans Finnhub : entre le prix actuel toi-même (modifiable plus tard).</p>
+                        </div>
+                    )}
                     {validatedSymbol && currentPrice !== null && (
                         <div className="mt-2 p-2 bg-emerald-500/10 border border-emerald-500/30 rounded text-meta text-emerald-300 flex justify-between">
                             <span>✓ Validé : <strong className="font-mono">{validatedSymbol}</strong></span>
@@ -176,8 +222,8 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                     )}
                 </div>
 
-                {/* Step 2 : Date + qty + price */}
-                {validatedSymbol && (
+                {/* Step 2 : Date + qty + price (validé Finnhub OU saisie manuelle) */}
+                {ready && (
                     <>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
@@ -206,14 +252,16 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                         <div>
                             <label className="block text-xs text-gray-400 mb-1 font-bold uppercase flex items-center justify-between">
                                 4. Prix d'achat par action
-                                <button
-                                    type="button"
-                                    onClick={suggestHistoricalPrice}
-                                    disabled={isSuggestingPrice}
-                                    className="text-tiny text-info-400 hover:underline disabled:opacity-50"
-                                >
-                                    {isSuggestingPrice ? '⏳ Recherche…' : '💡 Suggérer prix historique'}
-                                </button>
+                                {validatedSymbol && (
+                                    <button
+                                        type="button"
+                                        onClick={suggestHistoricalPrice}
+                                        disabled={isSuggestingPrice}
+                                        className="text-tiny text-info-400 hover:underline disabled:opacity-50"
+                                    >
+                                        {isSuggestingPrice ? '⏳ Recherche…' : '💡 Suggérer prix historique'}
+                                    </button>
+                                )}
                             </label>
                             <input
                                 type="number"
@@ -290,7 +338,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                     <button
                         type="button"
                         onClick={handleSubmit}
-                        disabled={!validatedSymbol || !quantity || !buyPrice}
+                        disabled={!ready || !quantity || !buyPrice || (manualMode && !manualPrice)}
                         className="px-4 py-2 bg-primary hover:bg-primary/80 text-white rounded font-bold text-sm transition-colors disabled:opacity-50"
                     >
                         Ajouter au portefeuille

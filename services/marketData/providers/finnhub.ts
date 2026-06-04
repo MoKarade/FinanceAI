@@ -35,18 +35,18 @@ function toFinnhubSymbol(ours: string): string {
 }
 
 async function finnhubFetch(path: string, apiKey: string): Promise<Record<string, unknown>> {
-    // Sprint 3 SH4 (sécurité) — Passage de la clé Finnhub depuis URL query string
-    // (token=xxx, visible dans Network tab + Referer header + historique nav)
-    // vers le header X-Finnhub-Token. Finnhub supporte ce header officiellement.
-    // Avant ce fix, la clé apparaissait en clair dans tous les logs de requête.
-    const url = `${BASE_URL}${path}`;
+    // La clé passe en QUERY `token=` : seule méthode fiable depuis un NAVIGATEUR. Le header
+    // X-Finnhub-Token (tenté en SH4 « pour la sécurité ») est un header PERSONNALISÉ → il déclenche
+    // un PREFLIGHT CORS que l'API Finnhub ne satisfait pas → toutes les requêtes échouaient en
+    // navigateur malgré une clé valide (« ticker introuvable », retour Marc). Risque résiduel faible :
+    // clé BYO propre à l'utilisateur, sur HTTPS, visible seulement dans SON propre onglet Réseau ; le
+    // Referer envoyé à finnhub.io est l'URL de l'app, pas la clé.
+    const sep = path.includes('?') ? '&' : '?';
+    const url = `${BASE_URL}${path}${sep}token=${encodeURIComponent(apiKey)}`;
     const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     try {
-        const res = await fetch(url, {
-            signal: ctrl.signal,
-            headers: { 'X-Finnhub-Token': apiKey },
-        });
+        const res = await fetch(url, { signal: ctrl.signal });
         if (res.status === 401 || res.status === 403) {
             throw new MarketDataError('Clé API Finnhub invalide.', 'AUTH', 'finnhub');
         }

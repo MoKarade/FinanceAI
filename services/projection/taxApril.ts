@@ -56,10 +56,15 @@ export function processAprilSettlement(
         state.subtractLiquid(fluxImpots);
         if (fluxImpots < 0) {
             state.logFlow(`💸 Remboursement d'impôt: +${Math.round(Math.abs(fluxImpots)).toLocaleString('fr-CA')}$`);
-            // Le remboursement de salaire (excédent retenu) est réinvesti
+            // Le remboursement de salaire (excédent retenu) est réinvesti dans nonReg.
+            // M-8 (2026-06) : subtractLiquid(fluxImpots) ci-dessus a déjà crédité TOUT le
+            // remboursement au liquide ; on retire donc la part réinvestie du liquide, sinon
+            // elle était comptée DEUX fois (liquide + nonReg = création d'argent).
             if (taxPaidRevenu < 0) {
-                state.addNonReg(Math.abs(taxPaidRevenu));
-                state.addNonRegACB(Math.abs(taxPaidRevenu));
+                const reinvest = Math.abs(taxPaidRevenu);
+                state.addNonReg(reinvest);
+                state.addNonRegACB(reinvest);
+                state.subtractLiquid(reinvest); // réinvesti → sort du liquide
             }
         } else {
             state.logFlow(`🏛️ Fisc: Régularisation de ${Math.round(fluxImpots).toLocaleString()}$ payée.`);

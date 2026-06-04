@@ -28,6 +28,7 @@ import { formatCAD } from '../utils/format';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { getRebalanceJustifications, type RebalanceActionInput } from '../services/claude';
 import { AddStockForm } from './investments/AddStockForm';
+import { showToast } from './ui/Toast';
 import { ImportBrokerPositions } from './investments/ImportBrokerPositions';
 import { computePurchaseStats } from '../utils/assetPurchases';
 import { useFinanceStore } from '../store/useFinanceStore';
@@ -155,6 +156,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
     const [isFetchingJustifications, setIsFetchingJustifications] = useState(false);
     // Phase E.9 — modal d'ajout manuel d'une action
     const [showAddStockForm, setShowAddStockForm] = useState(false);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null); // suppression de position (2 clics)
     const [showImportBroker, setShowImportBroker] = useState(false);
 
     // --- INSTANT DATA LOAD ---
@@ -420,6 +422,15 @@ export const Investments: React.FC<InvestmentsProps> = ({
             newAssets[assetIdx] = { ...newAssets[assetIdx], accountType: newAccount as RegisteredAccountType };
             setAssets(newAssets);
         }
+    };
+
+    // Retire une position du portefeuille (le symbolKey est l'id d'allocation, qui contient le symbole).
+    const handleDeleteAsset = (symbolKey: string) => {
+        const target = assets.find(a => symbolKey.includes(a.symbol));
+        if (!target) return;
+        setAssets(assets.filter(a => a !== target));
+        setConfirmDeleteId(null);
+        showToast(`Position ${target.symbol} retirée du portefeuille.`, 'info');
     };
 
     return (
@@ -1053,17 +1064,40 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     <span className="font-medium">Yield</span>
                                     <span className={asset.yield > 0 ? "text-emerald-400 font-bold" : "text-gray-500"}>{asset.yield}%</span>
                                 </div>
-                                <select
-                                    aria-label={`Type de compte pour ${asset.id}`}
-                                    value={accountType}
-                                    onChange={(e) => handleAssetAccountChange(asset.id, e.target.value)}
-                                    className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-tiny text-gray-300 font-bold outline-none hover:bg-white/10 cursor-pointer transition-colors"
-                                >
-                                    <option value="CELI">CELI</option>
-                                    <option value="REER">REER</option>
-                                    <option value="NON-ENREG">Non-Enreg</option>
-                                    <option value="CRYPTO">Crypto</option>
-                                </select>
+                                <div className="flex items-center gap-2">
+                                    {savedAsset && (
+                                        confirmDeleteId === asset.id ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteAsset(asset.id)}
+                                                className="text-tiny font-bold text-red-100 bg-red-500/25 border border-red-500/40 px-2 py-1 rounded-lg hover:bg-red-500/35"
+                                            >
+                                                Retirer ?
+                                            </button>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={() => { setConfirmDeleteId(asset.id); window.setTimeout(() => setConfirmDeleteId(c => (c === asset.id ? null : c)), 3000); }}
+                                                aria-label={`Retirer la position ${savedAsset.symbol}`}
+                                                title="Retirer cette position"
+                                                className="text-tiny text-ink-500 hover:text-red-400 px-1.5 py-1 rounded-lg transition-colors"
+                                            >
+                                                🗑
+                                            </button>
+                                        )
+                                    )}
+                                    <select
+                                        aria-label={`Type de compte pour ${asset.id}`}
+                                        value={accountType}
+                                        onChange={(e) => handleAssetAccountChange(asset.id, e.target.value)}
+                                        className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-tiny text-gray-300 font-bold outline-none hover:bg-white/10 cursor-pointer transition-colors"
+                                    >
+                                        <option value="CELI">CELI</option>
+                                        <option value="REER">REER</option>
+                                        <option value="NON-ENREG">Non-Enreg</option>
+                                        <option value="CRYPTO">Crypto</option>
+                                    </select>
+                                </div>
                             </div>
                             {/* Phase E.8 — DCA stats si purchases[] non-vide */}
                             {purchaseStats && purchaseStats.purchaseCount > 1 && (

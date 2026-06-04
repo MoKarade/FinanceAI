@@ -23,7 +23,7 @@ import { configureMarketDataProvider } from './services/marketData';
 import { installGlobalErrorHandlers } from './services/errorLogger';
 import { lazyWithRetry, clearChunkReloadFlag } from './utils/lazyWithRetry';
 import { initAutoBackup } from './services/backupAuto';
-import { initSync, runBootSync, schedulePush, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, type SyncStatus } from './services/sync/syncOrchestrator';
+import { initSync, runBootSync, schedulePush, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, startDrivePolling, type SyncStatus } from './services/sync/syncOrchestrator';
 import { trackPageView } from './services/analytics';
 import { GuidedTour } from './components/tour/GuidedTour';
 import { startGuidedTour } from './components/tour/tourControl';
@@ -100,11 +100,15 @@ export const App: React.FC = () => {
         initSync(import.meta.env.VITE_GOOGLE_CLIENT_ID);
         const syncTimer = setTimeout(() => { void runBootSync(); }, 2500);
         const unsubSync = useFinanceStore.subscribe(() => schedulePush());
+        // Rafraîchissement « fluide » : reflète SEUL les changements de Drive (ex. doc rangé par le
+        // connecteur MCP) sur intervalle + au retour sur l'onglet (garde anti-perte réutilisée).
+        const stopPolling = startDrivePolling();
 
         return () => {
             clearTimeout(timer);
             clearTimeout(syncTimer);
             unsubSync();
+            stopPolling();
         };
     }, []);
 

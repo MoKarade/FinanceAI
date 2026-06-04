@@ -23,6 +23,7 @@ import {
     DEFAULT_FX_RATES,
 } from '../../constants';
 import { validateAppStateShape } from './appStateSchema';
+import { saveAppStateToFile, type SaveResult } from './writeAppState';
 
 // Ré-export pour les consommateurs (tools / tests) qui veulent valider une forme
 // sans connaître le module de schéma.
@@ -43,8 +44,22 @@ export interface StateSource {
     loadRaw(): Promise<string>;
 }
 
-/** Source fichier local (mode stdio). */
-export class FileStateSource implements StateSource {
+/**
+ * Source INSCRIPTIBLE (Lot 2) : sait aussi persister un AppState. Le fichier local
+ * l'implémente (écriture sûre + sauvegarde). Drive (couche fluide) l'implémentera
+ * en réécrivant le blob chiffré, sans toucher aux tools d'écriture.
+ */
+export interface WritableStateSource extends StateSource {
+    saveState(state: AppState): Promise<SaveResult>;
+}
+
+/** Garde de type : la source sait-elle écrire ? */
+export function isWritableSource(source: StateSource | null): source is WritableStateSource {
+    return !!source && typeof (source as Partial<WritableStateSource>).saveState === 'function';
+}
+
+/** Source fichier local (mode stdio). Lecture + écriture sûre (sauvegarde + atomique). */
+export class FileStateSource implements WritableStateSource {
     constructor(private readonly filePath: string) {}
     get description(): string {
         return `fichier local ${this.filePath}`;
@@ -59,6 +74,9 @@ export class FileStateSource implements StateSource {
                 `Renseigne le chemin via $${STATE_FILE_ENV} ou un argument, et exporte ton état depuis l'app.`,
             );
         }
+    }
+    async saveState(state: AppState): Promise<SaveResult> {
+        return saveAppStateToFile(this.filePath, state);
     }
 }
 

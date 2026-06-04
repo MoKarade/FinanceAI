@@ -22,7 +22,9 @@ import { registerGetTaxSituation } from './tools/getTaxSituation.tool';
 import { registerGetRetirementOutlook } from './tools/getRetirementOutlook.tool';
 import { registerGetNextBestActions } from './tools/getNextBestActions.tool';
 import { registerSearchTransactions } from './tools/searchTransactions.tool';
+import { registerApplyPayslip } from './tools/applyPayslip.tool';
 import type { StateProvider } from './tools/_dataAware';
+import type { StateStore } from './state/stateStore';
 
 export interface CreateServerOptions {
     /**
@@ -31,12 +33,18 @@ export interface CreateServerOptions {
      * source d'etat »), les tools sans etat restent utilisables.
      */
     getState?: StateProvider;
+    /**
+     * Magasin d'etat INSCRIPTIBLE (Lot 2). Si fourni, expose les tools d'ECRITURE
+     * (apply_payslip, …) qui modifient l'etat reel (avec sauvegarde horodatee).
+     * Absent => aucun tool d'ecriture (le connecteur reste en lecture seule).
+     */
+    store?: StateStore;
 }
 
 export const createServer = (options: CreateServerOptions = {}): McpServer => {
     const server = new McpServer({
         name: 'financeai-mcp',
-        version: '0.2.0',
+        version: '0.3.0',
     });
 
     // Tools sans etat (calculatrice conversationnelle) — conserves tels quels.
@@ -60,6 +68,12 @@ export const createServer = (options: CreateServerOptions = {}): McpServer => {
     registerGetRetirementOutlook(server, getState);
     registerGetNextBestActions(server, getState);
     registerSearchTransactions(server, getState);
+
+    // Tools d'ECRITURE (Lot 2) — uniquement si un magasin inscriptible est fourni.
+    // Le tool verifie lui-meme canWrite et renvoie une erreur claire si lecture seule.
+    if (options.store) {
+        registerApplyPayslip(server, options.store);
+    }
 
     return server;
 };

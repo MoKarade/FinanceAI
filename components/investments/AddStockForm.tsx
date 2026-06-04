@@ -327,6 +327,18 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                     </div>
                 )}
 
+                {/* Pourquoi « Ajouter » est grisé : on liste explicitement les champs requis manquants. */}
+                {ready && (!quantity || !buyPrice || (manualMode && !manualPrice)) && (
+                    <p className="text-tiny text-amber-300/90 text-right">
+                        Pour activer « Ajouter », renseigne{' '}
+                        {[
+                            manualMode && !manualPrice ? 'le prix actuel' : null,
+                            !quantity ? 'la quantité' : null,
+                            !buyPrice ? "le prix d'achat" : null,
+                        ].filter(Boolean).join(', ')}.
+                    </p>
+                )}
+
                 <div className="flex justify-end gap-2 pt-2">
                     <button
                         type="button"

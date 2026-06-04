@@ -396,6 +396,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <button
             key={item.id}
             type="button"
+            data-tour-id={`nav-${item.id}`}
             onClick={() => { setActiveTab(item.id as Tab); setShowMobileDrawer(false); }}
             aria-current={activeTab === item.id ? 'page' : undefined}
             className={`relative flex flex-col items-center justify-center min-w-[56px] h-full transition-all duration-200 active:scale-95 group focus-ring rounded-card`}

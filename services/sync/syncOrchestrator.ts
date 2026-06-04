@@ -636,6 +636,23 @@ export function clearSyncPassphrase(): void {
     setStatus({ passphraseActive: false });
 }
 
+export type RemovePassphraseResult = 'removed' | 'removed-and-republished';
+
+/**
+ * RETIRE la passphrase ET re-publie aussitôt le coffre EN CLAIR (`enc:false`) si on est connecté et
+ * déverrouillé. Sinon, effacer seulement le secret local laisserait le blob Drive `enc:true` → la
+ * passphrase « reviendrait » sur un autre appareil (re-prompt). Marc : « pas de passphrase, juste mon
+ * compte Google » → on rend le Drive non chiffré immédiatement. `pushNow` garde l'anti-vide/anti-test.
+ */
+export async function removeSyncPassphrase(): Promise<RemovePassphraseResult> {
+    clearSyncPassphrase();
+    if (_status.connected && !_status.needsPassphrase && isGoogleAuthConfigured()) {
+        await pushNow(); // ré-écrit le blob en clair (le secret est déjà purgé → enc:false)
+        return 'removed-and-republished';
+    }
+    return 'removed';
+}
+
 /** Déconnexion : révoque le token et efface la meta de sync. */
 export function disconnectSync(): void {
     revokeAccess();

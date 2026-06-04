@@ -11,7 +11,7 @@ import {
     deleteRemoteData,
     resolveConflict,
     setSyncPassphrase,
-    clearSyncPassphrase,
+    removeSyncPassphrase,
     MIN_PASSPHRASE_LENGTH,
     type SyncStatus,
 } from '../../services/sync/syncOrchestrator';
@@ -78,11 +78,21 @@ const PassphraseSection: React.FC<{ status: SyncStatus }> = ({ status }) => {
         }
     };
 
-    const onClear = () => {
-        clearSyncPassphrase();
-        setValue('');
-        setLocalError(null);
-        showToast('Passphrase effacée — la prochaine sauvegarde ne sera plus chiffrée.', 'info');
+    const onClear = async () => {
+        setBusy(true);
+        try {
+            const r = await removeSyncPassphrase();
+            setValue('');
+            setLocalError(null);
+            showToast(
+                r === 'removed-and-republished'
+                    ? 'Passphrase retirée — ta sauvegarde Drive est repassée EN CLAIR (plus de passphrase nulle part).'
+                    : 'Passphrase effacée — la prochaine sauvegarde ne sera plus chiffrée.',
+                'info',
+            );
+        } finally {
+            setBusy(false);
+        }
     };
 
     // Passphrase active ET aucun blob chiffré en attente → état « confirmé ».

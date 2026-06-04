@@ -8,6 +8,7 @@ import { categorizeBatch } from '../services/claude';
 import { Card } from './ui/Card';
 import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
+import { ImportBankStatement } from './import/ImportBankStatement';
 
 interface TransactionsProps {
     transactions: Transaction[];
@@ -16,6 +17,8 @@ interface TransactionsProps {
     budgetItems: BudgetCategory[];
     categorizationRules?: CategorizationRule[];
     setCategorizationRules?: (rules: CategorizationRule[]) => void;
+    /** Import d'un relevé CSV (texte brut) → l'app re-parse + fusionne + dédoublonne. */
+    onImport?: (rawText: string) => void;
 }
 
 export const Transactions: React.FC<TransactionsProps> = ({
@@ -25,7 +28,9 @@ export const Transactions: React.FC<TransactionsProps> = ({
     budgetItems,
     categorizationRules = [],
     setCategorizationRules,
+    onImport,
 }) => {
+    const [showImport, setShowImport] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [progressStatus, setProgressStatus] = useState({ current: 0, total: 0 });
     const [liveLogs, setLiveLogs] = useState<string[]>([]);
@@ -319,21 +324,41 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 title="Transactions"
                 subtitle={`${transactions.length} transactions au total · ${uncategorizedGroups.length} groupe(s) à classer`}
                 actions={
-                    transactions.length > 0 ? (
-                        <button
-                            type="button"
-                            onClick={async () => {
-                                const { exportTransactionsCSV, downloadCSV, dateForFilename } = await import('../utils/csvExport');
-                                downloadCSV(`transactions-${dateForFilename()}`, exportTransactionsCSV(transactions));
-                            }}
-                            className="px-3 py-1.5 bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded-card text-info-300 text-tiny font-bold transition-colors focus-ring"
-                            title="Exporter toutes les transactions en CSV"
-                        >
-                            📊 Export CSV
-                        </button>
-                    ) : null
+                    <div className="flex items-center gap-2">
+                        {onImport && (
+                            <button
+                                type="button"
+                                onClick={() => setShowImport(v => !v)}
+                                aria-expanded={showImport}
+                                className="px-3 py-1.5 bg-primary/15 hover:bg-primary/25 border border-primary/30 rounded-card text-primary text-tiny font-bold transition-colors focus-ring"
+                                title="Importer un relevé bancaire CSV"
+                            >
+                                📥 Importer un relevé
+                            </button>
+                        )}
+                        {transactions.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    const { exportTransactionsCSV, downloadCSV, dateForFilename } = await import('../utils/csvExport');
+                                    downloadCSV(`transactions-${dateForFilename()}`, exportTransactionsCSV(transactions));
+                                }}
+                                className="px-3 py-1.5 bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded-card text-info-300 text-tiny font-bold transition-colors focus-ring"
+                                title="Exporter toutes les transactions en CSV"
+                            >
+                                📊 Export CSV
+                            </button>
+                        )}
+                    </div>
                 }
             />
+
+            {/* Activation (D2) : import accessible DEPUIS Transactions (avant, l'écran vide disait
+                « importez un CSV » sans aucun bouton → impasse n°1). Auto-affiché quand il n'y a
+                aucune transaction ; sinon togglé via le bouton « Importer un relevé ». */}
+            {onImport && (showImport || transactions.length === 0) && (
+                <ImportBankStatement onImport={onImport} />
+            )}
 
             <div className="rounded-xl border border-indigo-500/20 bg-indigo-900/10">
                 <button

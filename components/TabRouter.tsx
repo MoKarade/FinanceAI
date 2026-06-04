@@ -104,6 +104,7 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                         budgetItems={state.budgetItems}
                         categorizationRules={state.categorizationRules || []}
                         setCategorizationRules={(rules) => setAppState({ categorizationRules: rules })}
+                        onImport={onManualImport}
                     />
                 )}
 

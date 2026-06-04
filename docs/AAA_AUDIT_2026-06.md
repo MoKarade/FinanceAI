@@ -87,7 +87,7 @@ PageHeader (cohérent, bon) · tooltips pédagogiques · états vides (`EmptySta
 - *Améliorations modélisation (backlog futur)* : Monte-Carlo 100→500-1000 itérations ; EAP REEE taxé chez l'étudiant ; seuils 2027+ codés en dur (dette de maintenance) ; BPA fédéral dégressif haut-revenu.
 
 ### D2 — Activation & onboarding flow · **P1** (forte rétention)
-- **[P0 flow] CTA import dans Transactions** (cf. Partie 2).
+- ✅ **[P0 flow] CTA import dans Transactions CORRIGÉ 2026-06-04** — bouton « 📥 Importer un relevé » dans l'en-tête + panneau `ImportBankStatement` réutilisé, auto-affiché quand il n'y a aucune transaction (fin de l'impasse). Câblé via la prop `onImport` (= `handleManualImport`). +3 tests. Reste ci-dessous.
 - Données factices par défaut → « exemple »/empty-states.
 - Tour guidé mobile-aware + réduction/just-in-time + focus-trap (cf. D6).
 - Persistance de l'avancement onboarding (localStorage).

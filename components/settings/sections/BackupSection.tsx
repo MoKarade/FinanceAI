@@ -9,6 +9,7 @@ import { BackupPanel } from '../BackupPanel';
 import { AutoBackupPanel } from '../AutoBackupPanel';
 import { TestModePanel } from '../TestModePanel';
 import { GoogleDriveSyncCard } from '../GoogleDriveSyncCard';
+import { ClaudeConnectorCard } from '../ClaudeConnectorCard';
 
 interface BackupSectionProps {
   buildPayload: (opts?: { includeApiKeys?: boolean }) => Record<string, unknown>;
@@ -22,6 +23,8 @@ export const BackupSection: React.FC<BackupSectionProps> = ({ buildPayload }) =>
       <AutoBackupPanel />
       {/* Sync Google Drive (masquée si VITE_GOOGLE_CLIENT_ID non configuré) */}
       <GoogleDriveSyncCard />
+      {/* Connecter à Claude (assistant IA) — bundle .mcpb en 1 clic */}
+      <ClaudeConnectorCard />
       {/* Mode test — fixtures de test avec backup auto avant switch */}
       <TestModePanel />
     </div>

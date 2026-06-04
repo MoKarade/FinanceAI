@@ -11,14 +11,18 @@
 
 import { runLoopbackAuth } from './drive/loopbackAuth';
 import { credentialsPath } from './drive/tokenStore';
+import { resolveSharedClient } from './drive/sharedClient';
 
-const clientId = process.env.GOOGLE_DESKTOP_CLIENT_ID || process.argv[2];
-const clientSecret = process.env.GOOGLE_DESKTOP_CLIENT_SECRET || process.argv[3];
+// Arguments explicites en priorité, sinon le client OAuth FinanceAI PARTAGÉ (env / connector-client.json)
+// → l'utilisateur n'a RIEN à créer dans Google Cloud.
+const shared = resolveSharedClient();
+const clientId = process.argv[2] || shared?.clientId;
+const clientSecret = process.argv[3] || shared?.clientSecret;
 
 if (!clientId || !clientSecret) {
-    console.error('[mcp:auth] Identifiants OAuth « Desktop » manquants.');
-    console.error('  GOOGLE_DESKTOP_CLIENT_ID=<id> GOOGLE_DESKTOP_CLIENT_SECRET=<secret> npm run mcp:auth');
-    console.error('  (ou : npm run mcp:auth -- <client_id> <client_secret>)');
+    console.error('[mcp:auth] Aucun client OAuth disponible.');
+    console.error('  Soit le client FinanceAI partagé est absent (connector-client.json / env),');
+    console.error('  soit fournis le tien : npm run mcp:auth -- <client_id> <client_secret>');
     process.exit(1);
 }
 

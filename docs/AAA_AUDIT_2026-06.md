@@ -88,11 +88,11 @@ PageHeader (cohérent, bon) · tooltips pédagogiques · états vides (`EmptySta
 
 ### D2 — Activation & onboarding flow · **P1** (forte rétention)
 - ✅ **[P0 flow] CTA import dans Transactions CORRIGÉ 2026-06-04** — bouton « 📥 Importer un relevé » dans l'en-tête + panneau `ImportBankStatement` réutilisé, auto-affiché quand il n'y a aucune transaction (fin de l'impasse). Câblé via la prop `onImport` (= `handleManualImport`). +3 tests. Reste ci-dessous.
-- Données factices par défaut → « exemple »/empty-states.
-- Tour guidé mobile-aware + réduction/just-in-time + focus-trap (cf. D6).
-- Persistance de l'avancement onboarding (localStorage).
-- Glossaire au point d'usage (tooltips `?`).
-- Empty-state « premier lancement » (Dashboard).
+- ✅ **Persistance de l'avancement onboarding CORRIGÉ 2026-06-04** — brouillon (étape + champs profil/soldes) persisté en localStorage, restauré au remontage, nettoyé à la fin. La **clé API est exclue** (secret jamais en clair). +2 tests.
+- 🧭 **« Données factices par défaut » — REVU : largement un FAUX problème.** Vérifié : `INITIAL_BUDGET = []` (vide), `INITIAL_REAL_ESTATE_GOAL`/`INITIAL_CHILD_GOAL` ont `isActive: false` + zéros (le code dit « zéro données factices »), `INITIAL_PROJECTION` = défauts raisonnables. Rien de « fictif » n'est affiché → pas de badge « exemple » à poser. Le vrai sujet adjacent = **empty-states** (RealEstate montre un formulaire à zéros au lieu d'un état vide quand aucun projet actif) → voir ci-dessous.
+- **Empty-states activation** : Dashboard « premier lancement » (au lieu de KPIs à 0 $) + RealEstate « aucun projet » (au lieu du formulaire à zéros) + Investments « aucun actif ». [PENDING]
+- **Tour guidé mobile** : ⚠️ pas un simple ajout d'ancres — le `querySelector('[data-tour-id]')` trouve d'abord l'ancre **desktop** (`hidden md:flex` → `display:none`, rect 0) ; il faut que `GuidedTour` choisisse l'élément VISIBLE (et ouvre le drawer pour les onglets « Plus »). Changement de logique d'ancrage. [PENDING]
+- Tour : réduction/just-in-time + focus-trap (cf. D6) · Glossaire au point d'usage (tooltips `?`). [PENDING]
 
 ### D3 — Design system & cohérence visuelle · **P1** · « raffiner l'existant »
 - **Sprint tokens** : codemod `text-gray-*→ink-*`, `bg-emerald-*/amber-*→success/warning-*`, hex `bg-[#151922]→surface` (636 occurrences ad hoc ; pires : Retirement 47, AdvancedProjectionParams 31, Transactions 29, ChildPlanning 27).

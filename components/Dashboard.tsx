@@ -49,7 +49,7 @@ Object.entries(ASSET_META).forEach(([k, v]) => {
 
 export const Dashboard: React.FC<DashboardProps> = ({
     transactions, assets, initialBalances, realEstateGoals, childGoals: _childGoals = [], debts = [],
-    lifeEvents: _lifeEvents = [], onNavigate: _onNavigate, isPrivacyMode = false, calculatedMonthlySavings = 0,
+    lifeEvents: _lifeEvents = [], onNavigate, isPrivacyMode = false, calculatedMonthlySavings = 0,
     config,
 }) => {
     const { t } = useTranslation();
@@ -323,6 +323,48 @@ export const Dashboard: React.FC<DashboardProps> = ({
         const pct = start > 0 ? (diff / start) * 100 : 0;
         return { global: pct, diff };
     }, [unifiedHistory]);
+
+    // D2 (activation) — « premier lancement » : tant qu'il n'y a AUCUNE donnée financière (ni
+    // transaction, ni placement, ni solde initial), on affiche un accueil avec CTA plutôt que des
+    // KPIs à 0 $ et des graphes vides qui ressemblent à un bug. Placé APRÈS tous les hooks.
+    const hasNoFinancialData = transactions.length === 0 && assets.length === 0
+        && !Object.values(initialBalances ?? {}).some((v) => Number(v) > 0);
+    if (hasNoFinancialData) {
+        return (
+            <div className="space-y-6 animate-fade-in pb-10">
+                <PageHeader
+                    icon="📊"
+                    title={t('dashboard.title', "Vue d'ensemble")}
+                    subtitle={t('dashboard.subtitle', "Patrimoine consolidé et tendance")}
+                />
+                <Card>
+                    <div className="text-center py-12 px-4 space-y-4">
+                        <div className="text-5xl" aria-hidden="true">👋</div>
+                        <h2 className="text-h2 text-ink-50 font-bold">Bienvenue ! Ajoute tes premières données</h2>
+                        <p className="text-meta text-ink-300 max-w-md mx-auto leading-snug">
+                            Ton tableau de bord s'animera dès que tu auras importé des transactions ou ajouté tes placements.
+                        </p>
+                        <div className="flex flex-wrap gap-3 justify-center pt-2">
+                            <button
+                                type="button"
+                                onClick={() => onNavigate?.(TabEnum.TRANSACTIONS)}
+                                className="px-4 py-2 rounded-card bg-primary/15 border border-primary/40 text-primary text-meta font-bold hover:bg-primary/25 transition-colors focus-ring"
+                            >
+                                📥 Importer mes transactions
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => onNavigate?.(TabEnum.INVESTMENTS)}
+                                className="px-4 py-2 rounded-card bg-info-500/15 border border-info-500/40 text-info-300 text-meta font-bold hover:bg-info-500/25 transition-colors focus-ring"
+                            >
+                                📈 Ajouter mes placements
+                            </button>
+                        </div>
+                    </div>
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 animate-fade-in pb-10">

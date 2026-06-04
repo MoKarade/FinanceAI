@@ -433,6 +433,41 @@ export const Investments: React.FC<InvestmentsProps> = ({
         showToast(`Position ${target.symbol} retirée du portefeuille.`, 'info');
     };
 
+    // D2 (activation) — sans aucun actif, la page affichait un score à 0, une allocation et des
+    // graphes vides (barren). On propose un accueil clair « ajoute ton premier placement » +
+    // le formulaire d'ajout. Early-return placé APRÈS tous les hooks.
+    if (assets.length === 0) {
+        return (
+            <div className="space-y-6 animate-fade-in pb-10 relative">
+                <PageHeader icon="📈" title="Investissements" subtitle="Performance, allocation et revenus passifs" />
+                <Card>
+                    <div className="text-center py-12 px-4 space-y-4">
+                        <div className="text-5xl" aria-hidden="true">📈</div>
+                        <h2 className="text-h2 text-ink-50 font-bold">Ajoute ton premier placement</h2>
+                        <p className="text-meta text-ink-300 max-w-md mx-auto leading-snug">
+                            Saisis un titre à la main pour voir ton score de diversification, ton allocation
+                            géographique/sectorielle et tes revenus passifs.
+                        </p>
+                        <div className="flex justify-center pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowAddStockForm(true)}
+                                className="px-4 py-2 rounded-card bg-primary/15 border border-primary/40 text-primary text-meta font-bold hover:bg-primary/25 transition-colors focus-ring"
+                            >
+                                ➕ Ajouter un titre
+                            </button>
+                        </div>
+                    </div>
+                </Card>
+                <AddStockForm
+                    isOpen={showAddStockForm}
+                    onClose={() => setShowAddStockForm(false)}
+                    onAdd={(newAsset) => { if (setAssets) { setAssets([...assets, newAsset]); } }}
+                />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6 animate-fade-in pb-10 relative">
 

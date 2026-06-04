@@ -58,6 +58,18 @@ describe('computeEstateNetWorth — robustesse aux entrées (garde TB3)', () => 
         expect(r.finalRawNetWorth).toBe(80000);
     });
 
+    it('M-2 : impôt successoral cohérent en couple (base et final à la même échelle)', () => {
+        // Stub plat 30 %. Liquidation = reer(200k) + gains NonReg imposables(20k×0.5=10k)
+        // + crypto imposable(10k×0.5=5k) = 215 000. Revenu retraite final = 4000×12 = 48 000.
+        // Symétrique : totalEstateTax = 0.3×(48 000+215 000) − 0.3×48 000 = 0.3×215 000 = 64 500,
+        // INDÉPENDANT de activeUsersCount. (Avant le fix, N=2 donnait 71 700 — terme parasite
+        // 0.3×24 000 dû à la base divisée par 2.)
+        const single = computeEstateNetWorth({ ...base, activeUsersCount: 1 }, fiscalStub);
+        const couple = computeEstateNetWorth({ ...base, activeUsersCount: 2 }, fiscalStub);
+        expect(single.totalEstateTax).toBeCloseTo(64500, 0);
+        expect(couple.totalEstateTax).toBeCloseTo(64500, 0); // même impôt incrémental, peu importe N
+    });
+
     it('startNW fini même si soldes initiaux NaN', () => {
         const r = computeEstateNetWorth(
             { ...base, startingCash: NaN, startingREER: NaN },

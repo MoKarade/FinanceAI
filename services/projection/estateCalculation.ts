@@ -123,8 +123,15 @@ export function computeEstateNetWorth(
     const taxableCryptoGain = crypto * CAPITAL_GAINS_INCLUSION_STANDARD;
     const totalEstateLiquidation = reer + taxableEstateGain + taxableCryptoGain;
 
-    // Phase 2: Double décès (fin de simulation). Impôt supporté par le survivant seul.
-    const estateReportBase = calculateFiscalReport(estateCurrentIncome / activeUsersCount, 0, 0, finalYear, enableMonteCarlo);
+    // Phase 2: Double décès (fin de simulation). Impôt supporté par le survivant SEUL → toute la
+    // liquidation est imposée sur UNE seule déclaration finale.
+    // M-2 (2026-06) : la base était divisée par `activeUsersCount` (per-capita) alors que le final
+    // empilait la liquidation sur le revenu COMPLET d'un seul déclarant → l'incrément
+    // `final − base` n'était pas cohérent (il incluait un terme parasite ≈ impôt(revenu·(1−1/N)))
+    // → impôt successoral surévalué pour un couple. Symétrisé : les deux à l'échelle d'un seul
+    // déclarant (pas de `/N`) → `totalEstateTax` = vrai impôt incrémental sur la liquidation.
+    // (≠ latentTax.ts qui est per-capita, car là les deux conjoints sont VIVANTS.)
+    const estateReportBase = calculateFiscalReport(estateCurrentIncome, 0, 0, finalYear, enableMonteCarlo);
     const estateReportFinal = calculateFiscalReport((estateCurrentIncome + totalEstateLiquidation), 0, 0, finalYear, enableMonteCarlo);
     const totalEstateTax = estateReportFinal.totalTax - estateReportBase.totalTax;
 

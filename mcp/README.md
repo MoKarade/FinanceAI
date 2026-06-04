@@ -1,15 +1,19 @@
-# FinanceAI MCP Server (v0.2.0)
+# FinanceAI MCP Server (v0.4.0)
 
-Serveur MCP (Model Context Protocol) qui expose la logique pure de FinanceAI
-sous forme de tools appelables conversationnellement par Claude. Objectif : poser
-à Claude des questions sur SES vraies finances (patrimoine, projection, impôts,
-retraite, prochaines actions) depuis Claude Desktop.
+Serveur MCP (Model Context Protocol) qui expose FinanceAI à Claude : **poser des
+questions** sur ses vraies finances (patrimoine, projection, impôts, retraite) ET
+**déposer des documents** (paie, relevés, feuillets) que Claude **range au bon
+endroit** — le tout synchronisé **automatiquement** avec l'app via Google Drive.
 
-> FinanceAI est **local-first, sans backend**. L'état vit dans le navigateur (+ le
-> Google Drive de l'utilisateur). Un serveur MCP est un process séparé : il lit
-> l'état depuis une **source**. En mode stdio (ci-dessous), la source est un
-> **fichier JSON local** exporté depuis l'app. Un loader « fetch Drive » (Lot 3)
-> se branchera plus tard SANS réécrire les tools.
+> FinanceAI est **local-first, sans backend**. L'état vit dans le navigateur + le
+> **Google Drive** de l'utilisateur (blob `financeai-sync.json`). Le serveur MCP est
+> un process séparé qui lit/écrit l'état depuis une **source** abstraite :
+> - **`FileStateSource`** — un export JSON local (`$FINANCEAI_STATE_FILE`), pour
+>   prototyper sans Google ;
+> - **`DriveStateSource`** (recommandé) — le **même blob Drive que l'app** → synchro
+>   automatique (Claude écrit, l'app récupère). Activée par `npm run mcp:auth`.
+>
+> Les tools (lecture + écriture) sont identiques quelle que soit la source.
 
 ## Tools exposés
 
@@ -38,6 +42,21 @@ ta source d'état ») au lieu de planter.
 | `get_retirement_outlook` | Perspective retraite/FIRE (âge cible et âge FIRE atteignable, revenu de retraite projeté RRQ/PSV + pensions privées, cible de revenu, verdict de suffisance) |
 | `get_next_best_actions` | Prochaines meilleures actions priorisées (REER vs CELI, dette, coussin, etc.) |
 | `search_transactions` | Recherche dans SES transactions (filtre texte/catégorie/montant) |
+
+### Écriture (Lot 2) — ingestion de documents
+Claude lit la pièce jointe (PDF/image) et en extrait les valeurs ; le tool ne fait que la **fusion sûre**
+(sauvegarde horodatée avant écriture, dédup, résumé). Exposés uniquement si une source **inscriptible**
+est configurée.
+
+| Tool | Effet |
+|------|-------|
+| `apply_payslip` | Fiche de paie → salaire brut/net (annuel → mensuel) + REER de l'utilisateur ciblé |
+| `apply_bank_statement` | Ajoute les transactions (dédup date+montant+marchand), compte optionnel |
+| `apply_broker_statement` | Met à jour / ajoute les positions (par symbole + compte fiscal) |
+| `apply_tax_slip` | T4 / RL-1 → revenu d'emploi annuel (→ brut mensuel) + cotisations REER |
+
+### Connexion (amorçage)
+| `connect_drive` | Autorise le Google Drive de l'utilisateur **dans la conversation** (consentement navigateur, client OAuth partagé) — pour l'install `.mcpb` sans terminal |
 
 ## Lancement local (stdio)
 
@@ -124,7 +143,42 @@ Desktop et le rouvrir ; vérifier **Settings → Developer** (`financeai` = `run
   `npm install` doit avoir été fait dans le projet.
 - macOS/Linux : chemins en `/Users/...` (un seul slash), reste identique.
 
-Redémarrer Claude Desktop. Les 10 tools apparaissent dans le sélecteur MCP.
+Redémarrer Claude Desktop. Les tools apparaissent dans le sélecteur MCP.
+
+## Synchronisation Google Drive (auto) — recommandé
+
+Au lieu d'exporter un fichier, le connecteur lit/écrit le **même blob Drive que l'app**
+→ Claude voit les données à jour et ses écritures reviennent dans l'app (polling app 60 s + au focus).
+
+```bash
+# autorise une fois (consentement Google, refresh token stocké en local) :
+npm run mcp:auth            # utilise le client OAuth FinanceAI PARTAGÉ (rien à créer dans Google Cloud)
+# ou ton propre client OAuth « Desktop » :
+npm run mcp:auth -- <client_id> <client_secret>
+# tout-en-un (config Claude Desktop + autorisation) :
+npm run mcp:connect
+```
+
+- Client OAuth « Desktop » partagé résolu via `$GOOGLE_DESKTOP_CLIENT_ID/SECRET` ou
+  `mcp/drive/connector-client.json` (gitignoré, cf `.example`). Secret « Desktop »
+  non-confidentiel par design (Google) — jamais commité.
+- Au boot, `stdio.ts` choisit **Drive** si autorisé (`~/.financeai-mcp/credentials.json`),
+  sinon le **fichier** local. Chaque utilisateur consent avec SON Google → SON Drive (isolé).
+- ⚠️ Une **passphrase** active (coffre chiffré) empêche le connecteur de lire le Drive
+  (message clair « retire la passphrase »).
+
+## Installation 1 clic (bundle `.mcpb`)
+
+Pour distribuer le connecteur sans terminal (Node est embarqué dans Claude Desktop) :
+
+```bash
+npm run mcp:pack            # → dist/FinanceAI.mcpb (esbuild bundle + manifest .mcpb v0.3 + client partagé)
+```
+
+L'utilisateur télécharge le `.mcpb`, l'ouvre (Claude Desktop l'installe en 1 clic), puis
+dit « connecte mes finances » (tool `connect_drive`). La carte **« Connecter à Claude »**
+(Réglages → Système de l'app) propose ce téléchargement (`VITE_CONNECTOR_MCPB_URL`,
+défaut `/financeai-connector.mcpb`).
 
 ## Test rapide depuis Claude Desktop
 
@@ -159,32 +213,32 @@ Exemples : `tools/getTaxRoom.tool.ts` (calculatrice, ~30 lignes),
 ## Architecture
 
 ```
-Claude Desktop
+Claude Desktop / bundle .mcpb
      |
-     |-- stdio --> mcp/stdio.ts ── resolveDefaultStateSource($FINANCEAI_STATE_FILE)
-                       |                         |
-                       v                         v
-                 mcp/server.ts (registry)   FileStateSource → loadAppStateFromSource
-                       |                         (JSON → validate (zod) → normalize)
-        +--------------+--------------+                    |
-        |                             |                    v
-   sans état                     data-aware  ── getState() → AppState réel
-   ping / get_tax_room /         get_financial_overview / get_projection /
-   calculate_real_estate /       get_tax_situation / get_retirement_outlook /
-   run_projection                get_next_best_actions / search_transactions
-        |                             |
-        v                             v
-   services purs (tax,          services/financialSnapshot, buildSimulationParams,
-   realEstate, …)               services/projection, utils/tax — moteur pur partagé
+     |-- stdio --> mcp/stdio.ts ── source = DriveStateSource (si autorisé)  sinon  FileStateSource
+                       |                          \__ makeStateStore (cache + get + save) __/
+                       v                                          |
+                 mcp/server.ts (registry)                         v
+        +----------------+----------------+----------------+   AppState réel (read+write)
+        |                |                |                |   (Drive blob OU fichier JSON)
+   sans état        data-aware (read)  écriture (write)  connexion
+   ping, …          get_financial_*,   apply_payslip,    connect_drive
+                    get_projection, …  apply_bank/broker/tax
+        |                |                |
+        v                v                v
+   services purs    moteur pur (projection,    applyDocument (fusion pure)
+   (tax, realEstate) tax, snapshot, params)    → store.save → sauvegarde + écriture sûre
 ```
 
 ## Roadmap
 
-- **Lot 0 (livré)** : adaptateur pur `AppState → SimulationParams` extrait de l'UI,
-  `buildFinancialSnapshot` — réutilisables hors React.
-- **Lot 1 (livré)** : 6 tools data-aware sur fichier local (stdio).
-- **Lot 2 (à venir)** : ingestion de documents (fiche de paie, relevé bancaire,
-  relevé de courtage, feuillets fiscaux) → écriture dans l'état, anti-perte, dédup.
-- **Lot 3 (à venir)** : transport HTTP + OAuth offline + source « fetch Drive »
-  pour un accès distant via claude.ai (nécessite un backend de tokens — cf
-  `docs/MCP_CONNECTOR_DESIGN.md`).
+- **Lot 0 (livré)** : adaptateur pur `AppState → SimulationParams` + `buildFinancialSnapshot`.
+- **Lot 1 (livré)** : 6 tools data-aware (lecture) sur fichier local (stdio).
+- **Lot 2 (livré)** : ingestion de documents — `apply_payslip` / `_bank_statement` /
+  `_broker_statement` / `_tax_slip` → écriture gardée (sauvegarde horodatée, dédup).
+- **Lot 3 (livré, local)** : source **`DriveStateSource`** (même blob que l'app) +
+  **OAuth local** (loopback, `mcp:auth`) + **polling app** + bundle **`.mcpb`** 1 clic +
+  client OAuth partagé. Cf `docs/MCP_CONNECTOR_DESIGN.md`.
+- **Reste (backlog)** : héberger le `.mcpb` + test install réel ; ouverture bêta
+  (mode Test Google → vérification `drive.appdata`) ; option transport HTTP distant
+  (claude.ai de partout, nécessiterait un backend de tokens).

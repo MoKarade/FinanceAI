@@ -103,11 +103,12 @@ describe('FinnhubProvider', () => {
         expect(fetchMock).toHaveBeenCalledTimes(1);
         const url = fetchMock.mock.calls[0][0] as string;
         expect(url).toContain('symbol=NVDA');
-        // Sprint 3 SH4 : la clé Finnhub est passée en header X-Finnhub-Token
-        // (pas dans l'URL — évite les fuites en logs réseau / referrer).
+        // La clé passe en query `token=` (compatible navigateur : pas de header personnalisé → pas de
+        // préflight CORS bloquant). PAS de header X-Finnhub-Token (cassait les requêtes en navigateur).
+        expect(url).toContain('token=test-key');
         const callOpts = fetchMock.mock.calls[0][1] as RequestInit | undefined;
         const headers = (callOpts?.headers || {}) as Record<string, string>;
-        expect(headers['X-Finnhub-Token']).toBe('test-key');
+        expect(headers['X-Finnhub-Token']).toBeUndefined();
         vi.unstubAllGlobals();
     });
 

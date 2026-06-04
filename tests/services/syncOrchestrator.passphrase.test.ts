@@ -73,6 +73,7 @@ import {
     pullNow,
     setSyncPassphrase,
     clearSyncPassphrase,
+    removeSyncPassphrase,
     getSyncStatus,
     disconnectSync,
 } from '../../services/sync/syncOrchestrator';
@@ -291,5 +292,42 @@ describe('Cycle de migration : activer puis effacer la passphrase', () => {
         await pushNow();
         expect(sentEnvelope().enc).toBe(false);
         expect(sentEnvelope().payload).toEqual(LOCAL);
+    });
+});
+
+describe('removeSyncPassphrase — retire la passphrase ET re-publie EN CLAIR (zéro re-prompt ailleurs)', () => {
+    it('connecté + déverrouillé → efface le secret et pousse un blob enc:false', async () => {
+        localStorage.setItem(STORE_KEY, JSON.stringify(LOCAL));
+        // 1) active + push enc:true
+        await setSyncPassphrase(PASS);
+        await pushNow();
+        const encBlob = sentEnvelope();
+        expect(encBlob.enc).toBe(true);
+        // 2) un pull connecte la session (connected:true, needsPassphrase:false, passphrase en session)
+        readSyncFileMock.mockResolvedValueOnce({
+            schemaVersion: 1, updatedAt: 2_000_000, deviceId: 'd', appVersion: 't',
+            enc: true, payload: null, encPayload: encBlob.encPayload,
+        });
+        await pullNow();
+        expect(getSyncStatus().connected).toBe(true);
+        expect(getSyncStatus().passphraseActive).toBe(true);
+        // 3) retire la passphrase → re-publie en clair, plus de re-prompt ailleurs
+        const r = await removeSyncPassphrase();
+        expect(r).toBe('removed-and-republished');
+        expect(getSyncStatus().passphraseActive).toBe(false);
+        const env = sentEnvelope();
+        expect(env.enc).toBe(false);
+        expect(env.encPayload).toBeUndefined();
+        expect(env.payload).toEqual(LOCAL);
+    });
+
+    it('déconnecté → efface seulement (aucun push)', async () => {
+        await setSyncPassphrase(PASS);
+        expect(getSyncStatus().passphraseActive).toBe(true);
+        const r = await removeSyncPassphrase();
+        expect(r).toBe('removed');
+        expect(getSyncStatus().passphraseActive).toBe(false);
+        expect(updateSyncFileMock).not.toHaveBeenCalled();
+        expect(createSyncFileMock).not.toHaveBeenCalled();
     });
 });

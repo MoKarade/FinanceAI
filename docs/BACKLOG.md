@@ -18,6 +18,26 @@
 > visuel) → à valider en navigateur. Coche au fur et à mesure. **Claude ajoute ici les nouveaux tests
 > à chaque livraison.** Détail exhaustif par onglet : voir `docs/MANUAL_TEST_CHECKLIST.md`.
 
+### Cycle 2026-06-04 — Connecteur MCP (Claude) : auto-sync Drive + install 1 clic
+
+**Activer le téléchargement « 1 clic » (le `.mcpb`) — actions Marc (le code est prêt et déployé) :**
+- [ ] Créer `mcp/drive/connector-client.json` (copier `connector-client.example.json`) avec le client OAuth **« Desktop » FinanceAI PARTAGÉ** (id + secret). **Gitignoré** — jamais commité.
+- [ ] `npm run mcp:pack` → produit `dist/FinanceAI.mcpb` (bundle vérifié : tourne en Node pur).
+- [ ] **Héberger** le `.mcpb` : déposer dans `public/financeai-connector.mcpb` (puis redéployer) **OU** pointer `VITE_CONNECTOR_MCPB_URL` vers une release. La carte « Connecter à Claude » (Réglages → Système) pointe déjà sur `/financeai-connector.mcpb`.
+- [ ] **Tester l'install 1 clic** : depuis la carte → Télécharger → ouvrir le `.mcpb` (Claude Desktop l'installe) → dans Claude « connecte mes finances » → consentement → redémarrer → « vue d'ensemble » renvoie les vraies données ; déposer un relevé → l'app se met à jour. (Seule partie non testable par Claude.)
+- [ ] Si l'install échoue : transmettre le message → ajuster `manifest.json` / le bundle (`mcp/pack.mjs`).
+
+**Tester l'auto-sync (déjà en ligne) :**
+- [ ] Après autorisation : dans Claude, « vue d'ensemble » lit le Drive **en direct** ; appliquer une fiche de paie / un relevé → **rouvrir l'app** → données à jour (polling 60 s + au focus).
+- [ ] Vérifier qu'**aucune passphrase** n'est active (sinon le connecteur ne peut PAS lire le Drive — message clair « retire la passphrase »).
+
+**Ouverture bêta (plus tard) :**
+- [ ] Écran de consentement Google en mode **Test** → ajouter les e-mails des bêta-testeurs (≤100).
+- [ ] Pour ouvrir large : **vérification Google** du scope sensible `drive.appdata` (Publish).
+- [ ] (Option) Publier `npx financeai-connector` (true one-line) si on veut éviter le clone côté dev.
+
+---
+
 ### Cycle 2026-05-29 — Sync + sécurité + UX (à tester sur version FRAÎCHE : F12 → Application → Service Workers → Unregister, puis recharger)
 
 **Sync Google Drive (le plus important)**

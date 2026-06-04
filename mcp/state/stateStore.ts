@@ -34,8 +34,9 @@ export function makeStateStore(
     const get = async (): Promise<AppState> => {
         if (!source) {
             throw new Error(
-                "Aucune source d'état configurée. En mode stdio, renseigne $FINANCEAI_STATE_FILE " +
-                "(chemin d'un export JSON de ton état FinanceAI).",
+                "Aucune source d'état FinanceAI. Demande à l'utilisateur de dire « connecte mes finances » " +
+                '(j\'ouvrirai le consentement Google Drive via le tool connect_drive), ou configure ' +
+                '$FINANCEAI_STATE_FILE (export JSON local).',
             );
         }
         const t = now();

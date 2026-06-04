@@ -14,26 +14,31 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createServer } from './server';
 import { resolveDefaultStateSource, STATE_FILE_ENV } from './state/loadAppState';
-import { makeStateProvider } from './state/stateProvider';
+import { makeStateStore } from './state/stateStore';
 
 const main = async (): Promise<void> => {
     const explicitPath = process.argv[2];
     const source = resolveDefaultStateSource(explicitPath);
-    const getState = makeStateProvider(source);
+    const store = makeStateStore(source);
 
-    const server = createServer({ getState });
+    const server = createServer({ getState: store.get, store });
     const transport = new StdioServerTransport();
     await server.connect(transport);
 
     if (source) {
         console.error(`[FinanceAI MCP] Etat charge depuis : ${source.description}`);
+        console.error(
+            store.canWrite
+                ? '[FinanceAI MCP] Ecriture activee (tools apply_* — sauvegarde horodatee avant chaque ecriture).'
+                : '[FinanceAI MCP] Source en lecture seule — tools d\'ecriture indisponibles.',
+        );
     } else {
         console.error(
             `[FinanceAI MCP] Aucune source d'etat ($${STATE_FILE_ENV} non defini) — ` +
-            'tools data-aware indisponibles tant qu\'un export JSON n\'est pas fourni.',
+            'tools data-aware et d\'ecriture indisponibles tant qu\'un export JSON n\'est pas fourni.',
         );
     }
-    console.error('[FinanceAI MCP] Server connected via stdio (v0.2.0)');
+    console.error('[FinanceAI MCP] Server connected via stdio (v0.3.0)');
 };
 
 main().catch((err) => {

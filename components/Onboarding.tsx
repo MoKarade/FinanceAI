@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppState, BudgetConfig, User } from '../types';
 import { INITIAL_BUDGET, INITIAL_PROJECTION, INITIAL_REAL_ESTATE_GOAL, INITIAL_CHILD_GOAL, DEFAULT_FX_RATES } from '../constants';
 import { annualSalaryToMonthly } from '../utils/salary';
@@ -18,6 +18,30 @@ const STEP_LABELS: Record<OnboardingStep, string> = {
     investing: 'Vos comptes',
 };
 
+// D2 (activation) — persistance du brouillon d'onboarding : recharger en plein
+// onboarding ne doit plus tout perdre (étape + champs profil/soldes). Restauré au
+// montage, nettoyé à la fin. 100% local. La CLÉ API (secret) est volontairement
+// EXCLUE (jamais de credential en localStorage clair ; elle se ressaisit à l'étape clés).
+const DRAFT_KEY = 'financeai_onboarding_draft';
+type OnboardingUserDraft = { name: string; grossSalary: number; netSalary: number; age: number; canadaArrivalYear: number; isImmigrant: boolean };
+interface OnboardingDraft {
+    step: OnboardingStep;
+    user1: OnboardingUserDraft;
+    user2: OnboardingUserDraft;
+    hasCoupleMode: boolean;
+    celiBalance: number;
+    reerBalance: number;
+}
+const loadDraft = (): Partial<OnboardingDraft> => {
+    try {
+        const raw = localStorage.getItem(DRAFT_KEY);
+        return raw ? (JSON.parse(raw) as Partial<OnboardingDraft>) : {};
+    } catch {
+        return {};
+    }
+};
+const clearDraft = () => { try { localStorage.removeItem(DRAFT_KEY); } catch { /* non critique */ } };
+
 /**
  * Phase 3D — Onboarding refondu.
  *
@@ -30,13 +54,21 @@ const STEP_LABELS: Record<OnboardingStep, string> = {
  *  - "Sauter cette étape" sur la dernière (les soldes sont configurables après)
  */
 export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
-    const [step, setStep] = useState<OnboardingStep>('welcome');
-    const [anthropicKey, setAnthropicKey] = useState('');
-    const [user1, setUser1] = useState({ name: 'Moi', grossSalary: 70000, netSalary: 4500, age: 30, canadaArrivalYear: 2020, isImmigrant: false });
-    const [user2, setUser2] = useState({ name: 'Partenaire', grossSalary: 60000, netSalary: 3800, age: 30, canadaArrivalYear: 2020, isImmigrant: false });
-    const [hasCoupleMode, setHasCoupleMode] = useState(false);
-    const [celiBalance, setCeliBalance] = useState(0);
-    const [reerBalance, setReerBalance] = useState(0);
+    const draft = React.useMemo(() => loadDraft(), []);
+    const [step, setStep] = useState<OnboardingStep>(draft.step ?? 'welcome');
+    const [anthropicKey, setAnthropicKey] = useState(''); // jamais persistée (secret)
+    const [user1, setUser1] = useState(draft.user1 ?? { name: 'Moi', grossSalary: 70000, netSalary: 4500, age: 30, canadaArrivalYear: 2020, isImmigrant: false });
+    const [user2, setUser2] = useState(draft.user2 ?? { name: 'Partenaire', grossSalary: 60000, netSalary: 3800, age: 30, canadaArrivalYear: 2020, isImmigrant: false });
+    const [hasCoupleMode, setHasCoupleMode] = useState(draft.hasCoupleMode ?? false);
+    const [celiBalance, setCeliBalance] = useState(draft.celiBalance ?? 0);
+    const [reerBalance, setReerBalance] = useState(draft.reerBalance ?? 0);
+
+    // Sauvegarde du brouillon à chaque changement (anti-perte au rechargement). Sans la clé API.
+    useEffect(() => {
+        try {
+            localStorage.setItem(DRAFT_KEY, JSON.stringify({ step, user1, user2, hasCoupleMode, celiBalance, reerBalance }));
+        } catch { /* quota plein → la persistance est un bonus, on n'échoue pas l'onboarding */ }
+    }, [step, user1, user2, hasCoupleMode, celiBalance, reerBalance]);
 
     const stepIdx = STEPS.indexOf(step);
     const progress = ((stepIdx) / (STEPS.length - 1)) * 100;
@@ -51,6 +83,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     };
 
     const handleFinish = () => {
+        clearDraft(); // onboarding terminé → plus de brouillon à restaurer
         const config: BudgetConfig = {
             users: [
                 // Le champ « Salaire brut annuel » est saisi en ANNUEL → on stocke en MENSUEL

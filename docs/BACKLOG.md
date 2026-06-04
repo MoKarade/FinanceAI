@@ -20,6 +20,14 @@
 
 ### Cycle 2026-06-04 — Connecteur MCP (Claude) : auto-sync Drive + install 1 clic
 
+> ⚠️ **Signalé par Marc (2026-06-04) : « le fichier mcp arrive pas à télécharger ».**
+> **Cause diagnostiquée** : le `.mcpb` n'est **jamais hébergé** dans `public/` (aucun `public/financeai-connector.mcpb`)
+> → l'URL `/financeai-connector.mcpb` renvoie 404 (ou le fallback SPA = HTML). C'est exactement l'étape en
+> attente ci-dessous (requiert le client OAuth partagé `connector-client.json`, absent).
+> **Atténué côté app** (fait 2026-06-04) : la carte « Connecter à Claude » vérifie maintenant que le `.mcpb`
+> est réellement servi (HEAD + rejet d'un content-type HTML) et **n'affiche plus un bouton cassé** — elle
+> montre « ⏳ pas encore disponible » tant que le fichier n'est pas hébergé. **Déblocage = les étapes ci-dessous.**
+
 **Activer le téléchargement « 1 clic » (le `.mcpb`) — actions Marc (le code est prêt et déployé) :**
 - [ ] Créer `mcp/drive/connector-client.json` (copier `connector-client.example.json`) avec le client OAuth **« Desktop » FinanceAI PARTAGÉ** (id + secret). **Gitignoré** — jamais commité.
 - [ ] `npm run mcp:pack` → produit `dist/FinanceAI.mcpb` (bundle vérifié : tourne en Node pur).

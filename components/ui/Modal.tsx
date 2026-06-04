@@ -54,6 +54,11 @@ export const Modal: React.FC<ModalProps> = ({
     const closeBtnRef = useRef<HTMLButtonElement>(null);
     const dialogRef = useRef<HTMLDivElement>(null);
     const previousFocusRef = useRef<HTMLElement | null>(null);
+    // `onClose` est souvent une fonction inline (nouvelle référence à chaque rendu du parent). On la
+    // garde dans un ref pour que l'effet de focus NE dépende PAS de son identité : sinon il se relançait
+    // à chaque frappe dans un champ → setTimeout re-focus le bouton ✕ → impossible de taper (bug Marc).
+    const onCloseRef = useRef(onClose);
+    onCloseRef.current = onClose;
     const titleId = React.useId();
 
     useEffect(() => {
@@ -65,7 +70,7 @@ export const Modal: React.FC<ModalProps> = ({
         document.body.style.overflow = 'hidden';
 
         const onKey = (e: KeyboardEvent) => {
-            if (closeOnEsc && e.key === 'Escape') { onClose(); return; }
+            if (closeOnEsc && e.key === 'Escape') { onCloseRef.current(); return; }
             if (e.key !== 'Tab' || !dialogRef.current) return;
             const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
             if (focusable.length === 0) return;
@@ -88,7 +93,7 @@ export const Modal: React.FC<ModalProps> = ({
                 target.focus();
             }
         };
-    }, [isOpen, closeOnEsc, onClose]);
+    }, [isOpen, closeOnEsc]);
 
     if (!isOpen) return null;
 

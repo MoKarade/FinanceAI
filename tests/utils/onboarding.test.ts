@@ -17,6 +17,22 @@ describe('shouldShowOnboarding', () => {
     });
 });
 
+describe('shouldShowOnboarding — utilisateur de RETOUR via la sync (jamais l accueil)', () => {
+    it('compte Drive déjà connecté sur cet appareil → n affiche pas (avant même le pull)', () => {
+        expect(shouldShowOnboarding(null, false, { connectedBefore: true })).toBe(false);
+    });
+    it('connecté / pull en cours → n affiche pas', () => {
+        expect(shouldShowOnboarding(null, false, { syncConnected: true })).toBe(false);
+        expect(shouldShowOnboarding(null, false, { syncBusy: true })).toBe(false);
+    });
+    it('coffre chiffré en attente de passphrase → n affiche pas (le prompt passphrase prend la main)', () => {
+        expect(shouldShowOnboarding(null, false, { needsPassphrase: true })).toBe(false);
+    });
+    it('aucun signal, aucune donnée, aucun flag → vrai 1er lancement → affiche', () => {
+        expect(shouldShowOnboarding(null, false, {})).toBe(true);
+    });
+});
+
 describe('hasMeaningfulData — reconnaît un PROFIL/retraite restauré (pas que transactions/actifs)', () => {
     it('vide : null / état par défaut frais', () => {
         expect(hasMeaningfulData(null)).toBe(false);

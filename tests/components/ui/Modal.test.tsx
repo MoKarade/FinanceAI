@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Modal } from '../../../components/ui/Modal';
 
@@ -92,5 +92,36 @@ describe('Modal', () => {
         // Fermer doit pas crasher
         rerender(<Modal isOpen={false} onClose={onClose} title="X">body</Modal>);
         // Aucun crash → test pass
+    });
+
+    // Régression (bug Marc) : taper dans un champ faisait sauter le focus sur ✕, parce que l'effet de
+    // focus dépendait de `onClose` (réf inline → change à chaque rendu du parent) et se relançait.
+    it('garde le focus dans un champ quand le parent re-rend (onClose change d identité)', () => {
+        const Harness: React.FC = () => {
+            const [, setN] = React.useState(0);
+            return (
+                <>
+                    <button data-testid="rerender" onClick={() => setN((n) => n + 1)}>rerender</button>
+                    {/* onClose inline = nouvelle référence à chaque rendu (comme handleClose d'AddStockForm) */}
+                    <Modal isOpen onClose={() => {}} title="X"><input aria-label="champ" /></Modal>
+                </>
+            );
+        };
+        vi.useFakeTimers();
+        try {
+            render(<Harness />);
+            act(() => { vi.advanceTimersByTime(60); }); // focus initial (50ms) sur ✕ consommé
+            const input = screen.getByLabelText('champ') as HTMLInputElement;
+            input.focus();
+            expect(document.activeElement).toBe(input);
+
+            act(() => { (screen.getByTestId('rerender') as HTMLButtonElement).click(); });
+            act(() => { vi.advanceTimersByTime(60); });
+
+            // AVANT le fix : le focus aurait sauté sur ✕. APRÈS : il reste dans le champ.
+            expect(document.activeElement).toBe(input);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 });

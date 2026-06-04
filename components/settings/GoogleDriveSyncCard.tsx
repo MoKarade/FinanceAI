@@ -10,9 +10,7 @@ import {
     disconnectSync,
     deleteRemoteData,
     resolveConflict,
-    setSyncPassphrase,
     removeSyncPassphrase,
-    MIN_PASSPHRASE_LENGTH,
     type SyncStatus,
 } from '../../services/sync/syncOrchestrator';
 
@@ -40,50 +38,20 @@ function formatWhen(ts: number): string {
 }
 
 /**
- * Bloc « passphrase optionnelle » (chiffrement zéro-knowledge, D-3). Deux états :
- *  - aucune passphrase active → champ pour en définir une + AVERTISSEMENT d'irrécupérabilité ;
- *  - passphrase active → confirmation + bouton pour l'effacer (revient au format clair au prochain push).
- *
- * Quand un pull a rencontré un blob chiffré sans passphrase (`status.needsPassphrase`), on bascule en
- * mode « invite » (libellés explicites « déchiffrer ») : saisir la bonne passphrase re-pull aussitôt.
+ * Bloc passphrase — RÉDUIT à la seule action « retirer » (choix Marc : plus aucune option pour EN
+ * créer une). Ne s'affiche QUE si une passphrase est encore active, pour permettre de revenir à
+ * « juste mon compte Google » : `removeSyncPassphrase` re-publie le Drive EN CLAIR. Sinon → rien.
+ * (Le déverrouillage d'un coffre chiffré existant est géré en plein écran par PassphraseGate.)
  */
 const PassphraseSection: React.FC<{ status: SyncStatus }> = ({ status }) => {
-    const [value, setValue] = useState('');
     const [busy, setBusy] = useState(false);
-    const [localError, setLocalError] = useState<string | null>(null);
-    const needs = status.needsPassphrase;
 
-    const onSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLocalError(null);
-        setBusy(true);
-        try {
-            const result = await setSyncPassphrase(value);
-            if (result === 'too-short') {
-                setLocalError(`Passphrase trop courte (minimum ${MIN_PASSPHRASE_LENGTH} caractères).`);
-                return;
-            }
-            setValue('');
-            if (result === 'set-and-pulled') {
-                // pullNow a (re)tenté le déchiffrement : succès → données restaurées ; échec → message
-                // d'erreur dans status.error (passphrase fausse), le prompt reste affiché.
-                if (!getSyncStatus().error && !getSyncStatus().needsPassphrase) {
-                    showToast('Sauvegarde déchiffrée et restaurée.', 'success');
-                }
-            } else {
-                showToast('Passphrase activée — la prochaine sauvegarde sera chiffrée.', 'success');
-            }
-        } finally {
-            setBusy(false);
-        }
-    };
+    if (!status.passphraseActive) return null; // aucune option pour activer une passphrase
 
     const onClear = async () => {
         setBusy(true);
         try {
             const r = await removeSyncPassphrase();
-            setValue('');
-            setLocalError(null);
             showToast(
                 r === 'removed-and-republished'
                     ? 'Passphrase retirée — ta sauvegarde Drive est repassée EN CLAIR (plus de passphrase nulle part).'
@@ -95,76 +63,21 @@ const PassphraseSection: React.FC<{ status: SyncStatus }> = ({ status }) => {
         }
     };
 
-    // Passphrase active ET aucun blob chiffré en attente → état « confirmé ».
-    if (status.passphraseActive && !needs) {
-        return (
-            <div className="p-3 rounded-card bg-emerald-500/10 border border-emerald-500/30 space-y-2">
-                <div className="text-meta font-semibold text-emerald-300">🔒 Chiffrement zéro-knowledge actif</div>
-                <p className="text-tiny text-ink-300 leading-snug">
-                    Tes prochaines sauvegardes Drive sont chiffrées avec ta passphrase. Personne — pas même via
-                    ton compte Google, pas même nous — ne peut les lire sans elle.
-                </p>
-                <button
-                    onClick={onClear}
-                    disabled={status.busy || busy}
-                    className="text-tiny text-ink-400 underline underline-offset-2 hover:text-ink-200 disabled:opacity-50"
-                >
-                    Effacer la passphrase (repasser en clair au prochain envoi)
-                </button>
-            </div>
-        );
-    }
-
-    // Sinon : formulaire pour définir/saisir la passphrase. Bandeau ambre renforcé si un pull l'attend.
     return (
-        <form
-            onSubmit={onSubmit}
-            className={`p-3 rounded-card space-y-2 border ${needs ? 'bg-amber-500/15 border-amber-500/40' : 'bg-white/5 border-white/10'}`}
-        >
-            <div className="text-meta font-semibold text-ink-200">
-                {needs ? '🔐 Passphrase requise pour déchiffrer' : '🔐 Chiffrement par passphrase (optionnel)'}
-            </div>
-            {needs ? (
-                <p className="text-tiny text-amber-200/90 leading-snug">
-                    La sauvegarde trouvée dans ton Drive est <strong>chiffrée</strong>. Saisis ta passphrase pour la
-                    déchiffrer et restaurer tes données. Tes données <strong>sur cet appareil n'ont pas été touchées</strong>.
-                </p>
-            ) : (
-                <p className="text-tiny text-rose-300/90 leading-snug">
-                    ⚠️ <strong>Si tu oublies cette passphrase, tes données sauvegardées dans Drive sont DÉFINITIVEMENT
-                    irrécupérables</strong> (chiffrement zéro-knowledge — personne, pas même via ton compte Google, ne
-                    peut les déchiffrer sans elle). Choisis-en une que tu retiendras (min {MIN_PASSPHRASE_LENGTH} caractères).
-                </p>
-            )}
-            <input
-                type="password"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                placeholder={needs ? 'Ta passphrase' : `Passphrase (min ${MIN_PASSPHRASE_LENGTH} caractères)`}
-                autoComplete="off"
-                className="w-full px-3 py-1.5 rounded-card bg-black/30 border border-white/10 text-ink-100 text-meta placeholder:text-ink-500 focus:outline-none focus:border-primary/50"
-            />
-            {localError && <p className="text-tiny text-rose-400 italic">{localError}</p>}
-            <div className="flex gap-2">
-                <button
-                    type="submit"
-                    disabled={status.busy || busy || value.length === 0}
-                    className="px-3 py-1.5 rounded-card bg-primary/15 border border-primary/40 text-primary text-meta font-medium hover:bg-primary/25 disabled:opacity-50"
-                >
-                    {busy ? '…' : needs ? 'Déchiffrer' : 'Activer le chiffrement'}
-                </button>
-                {needs && status.passphraseActive && (
-                    <button
-                        type="button"
-                        onClick={onClear}
-                        disabled={status.busy || busy}
-                        className="px-3 py-1.5 rounded-card bg-white/5 border border-white/10 text-ink-300 text-meta font-medium hover:bg-white/10 disabled:opacity-50"
-                    >
-                        Annuler le chiffrement
-                    </button>
-                )}
-            </div>
-        </form>
+        <div className="p-3 rounded-card bg-emerald-500/10 border border-emerald-500/30 space-y-2">
+            <div className="text-meta font-semibold text-emerald-300">🔒 Chiffrement par passphrase actif</div>
+            <p className="text-tiny text-ink-300 leading-snug">
+                Tes sauvegardes Drive sont chiffrées avec ta passphrase. Pour revenir à « juste mon compte
+                Google » (sans passphrase), retire-la : ta sauvegarde Drive repassera en clair.
+            </p>
+            <button
+                onClick={onClear}
+                disabled={status.busy || busy}
+                className="text-tiny text-ink-400 underline underline-offset-2 hover:text-ink-200 disabled:opacity-50"
+            >
+                {busy ? '…' : 'Effacer la passphrase (repasser en clair)'}
+            </button>
+        </div>
     );
 };
 
@@ -212,10 +125,8 @@ export const GoogleDriveSyncCard: React.FC = () => {
                     Une passphrase optionnelle (ci-dessous, une fois connecté) active le chiffrement zéro-knowledge. */}
                 {!status.passphraseActive && (
                     <p className="text-tiny text-amber-400/90 leading-snug">
-                        ⚠️ Sauvegarde non chiffrée par l'app — tes données <strong>et tes clés API</strong> sont
-                        incluses, donc lisibles via ton compte Google. Choix assumé : tu retrouves tout sur chaque
-                        appareil, sans rien ressaisir. <strong>Pour un chiffrement zéro-knowledge</strong>, définis une
-                        passphrase optionnelle ci-dessous.
+                        Sauvegarde dans <strong>ton</strong> Google Drive privé — tes données et tes clés API y sont
+                        incluses pour que tu retrouves tout sur chaque appareil sans rien ressaisir.
                     </p>
                 )}
 

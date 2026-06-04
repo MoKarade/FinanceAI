@@ -18,7 +18,8 @@ import {
 //   5. réarrangement banque de pertes en capital,
 //   6. cap OAS pour un retraité.
 //
-// On NE MODIFIE PAS le source. Comportement suspect → noté en commentaire, pas corrigé.
+// MAJ 2026-06 (CF-2) : la conservation du décaissement a été corrigée — les produits de vente
+// d'actifs financent la dépense et ne s'accumulent plus dans le liquide (rétabli au seuil critique).
 
 const makeState = (over: Partial<CashflowState> = {}): CashflowState => ({
     liquid: 0, celi: 0, reer: 0, celiapp: 0, nonReg: 0, nonRegACB: 0,
@@ -70,12 +71,12 @@ describe('cashflowAllocation shortfall — ponction des liquidités', () => {
     it('respecte le seuil critique : ne consomme que la portion de cash au-dessus du seuil', () => {
         const state = makeState({ liquid: 5000, celi: 10000 });
         processCashflowAllocation(state, makeCtx({ monthlyCashflow: -3000, criticalThreshold: 4000 }), [], fiscalStub, grossIdentity);
-        // Seuls 1000$ (5000 - 4000) sont pris dans le cash ; les 2000$ restants viennent
-        // du CELI. Le retrait CELI est crédité dans liquid (state.liquid += drawn), d'où
-        // liquid = 4000 - 0 + 2000 = 6000. C'est le comportement observé.
+        // Seuls 1000$ (5000 - 4000) sont pris dans le cash ; les 2000$ restants viennent du CELI.
+        // CF-2 (2026-06) : le produit de la vente CELI FINANCE la dépense → il ne reste pas dans le
+        // liquide, qui est rétabli au seuil critique (4000). Avant, liquide gonflait à tort à 6000.
         expect(state.withdrawalCELI).toBe(2000);
         expect(state.celi).toBe(8000);
-        expect(state.liquid).toBe(6000);
+        expect(state.liquid).toBe(4000);
         expect(state.shortfallMonths).toBe(1);
     });
 

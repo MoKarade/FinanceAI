@@ -76,18 +76,18 @@ describe('processCashflowAllocation — conservation des flux', () => {
         expect(s.shortfallMonths).toBe(0);
     });
 
-    it('SHORTFALL > liquide : pige le liquide jusqu\'au seuil critique puis VEND du CELI', () => {
-        // Faits non contestables : le liquide descend au seuil critique, le CELI est vendu pour
-        // couvrir le reste, et le mois est compté comme déficitaire (shortfallMonths++).
-        // NB : la conservation EXACTE dans ce chemin (liquide ré-alimenté par la vente sans que
-        // la dépense ne soit redéduite) est un point SUSPECT signalé dans docs/BACKLOG.md
-        // (finding « cashflowAllocation — décaissement »). On n'épingle donc PAS ici le niveau
-        // final de liquide tant que la sémantique de décaissement n'est pas tranchée avec Marc.
+    it('SHORTFALL > liquide : CONSERVATION (CF-2) — le patrimoine baisse du PLEIN déficit', () => {
+        // déficit 5000 ; liquide 3000 (puisé jusqu'au seuil critique 2000 = 1000), reste 4000 vendu
+        // en CELI (sans impôt). CF-2 : le produit de la vente finance la dépense → ne reste pas dans
+        // le liquide. Donc liquide final = 2000 (seuil critique), CELI = 16000, et Δactifs = -5000.
         const s = baseState({ liquid: 3000, celi: 20000 });
+        const before = assets(s); // 23000
         processCashflowAllocation(s, baseCtx({ monthlyCashflow: -5000, criticalThreshold: 2000, strategy: 'PRIO_CELI' }), [], fiscalStub(), withholdingStub);
-        expect(s.celi).toBe(16000);          // 4000 de CELI vendus pour couvrir le déficit
-        expect(s.shortfallMonths).toBe(1);   // mois déficitaire (le liquide ne suffisait pas)
-        expect(s.withdrawalCELI).toBe(4000); // retrait CELI tracé
+        expect(s.liquid).toBe(2000);          // rétabli au seuil critique (vente non accumulée)
+        expect(s.celi).toBe(16000);           // 4000 de CELI vendus
+        expect(s.withdrawalCELI).toBe(4000);
+        expect(s.shortfallMonths).toBe(1);
+        expect(assets(s) - before).toBeCloseTo(-5000); // conservation : plein déficit (CELI sans impôt)
     });
 
     it('SHORTFALL non couvrable (aucun actif) : incrémente shortfallMonths', () => {

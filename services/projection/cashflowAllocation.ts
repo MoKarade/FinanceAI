@@ -140,6 +140,13 @@ export function processCashflowAllocation(
             shortfall -= fromLiquid;
         }
 
+        // CF-2 (2026-06) : niveau du liquide APRÈS la dépense directe (puisée jusqu'au seuil
+        // critique). Le déficit restant est couvert ci-dessous par des VENTES d'actifs dont le
+        // produit finance une dépense — il ne doit donc PAS rester dans le liquide. On rétablit
+        // ce niveau en fin de branche (sinon les ventes gonflaient le liquide → le patrimoine ne
+        // baissait pas du plein déficit ; le cas AMPLE, lui, déduit déjà tout le déficit du liquide).
+        const liquidAfterDirectSpend = state.liquid;
+
         if (shortfall > 0) state.shortfallMonths++;
 
         if (shortfall > 0) {
@@ -247,6 +254,11 @@ export function processCashflowAllocation(
                 }
             }
         }
+
+        // CF-2 : les produits de vente d'actifs ci-dessus ont financé la dépense (déficit) → ils
+        // ne s'accumulent pas dans le liquide. On rétablit le niveau post-dépense directe. (Toute
+        // retenue REER reste suivie dans taxCurrentYearReer et est réconciliée en décembre.)
+        state.liquid = liquidAfterDirectSpend;
     } else {
         // ── EXCESS ─────────────────────────────────────────────────────
         let excess = monthlyCashflow;

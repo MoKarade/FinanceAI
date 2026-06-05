@@ -78,6 +78,7 @@ import {
     pushNow,
     pullNow,
     getSyncStatus,
+    markApiKeysHydrated,
 } from '../../services/sync/syncOrchestrator';
 import { buildEnvelope } from '../../services/sync/syncEngine';
 import { isGateAuthedThisSession } from '../../services/sync/authGate';
@@ -262,6 +263,42 @@ describe('Chiffrement des clés API (C1) — round-trip push→pull', () => {
         await pullNow();
         expect(useFinanceStore.getState().apiKeys.anthropic).toBe('sk-secret-xyz');
         expect(useFinanceStore.getState().apiKeys.finnhub).toBe('fh-secret');
+    });
+});
+
+// D5 — race : un push parti pendant le boot (clés API pas encore hydratées depuis secureKeyStore)
+// ne doit PLUS écraser l'apiKeysEnc déjà présent dans Drive (sinon clés perdues sur les autres
+// appareils). L'ORDRE compte : le flag _apiKeysHydrated ne se réinitialise pas → le cas « non
+// hydraté » doit s'exécuter AVANT le cas « hydraté » (qui appelle markApiKeysHydrated).
+describe('D5 — anti-race : clés API préservées si pas encore hydratées', () => {
+    const blobWithKeys = {
+        schemaVersion: 1, updatedAt: 1, deviceId: 'other', appVersion: 't',
+        enc: false, apiKeysEnc: 'EXISTING-ENC-BLOB',
+        payload: { state: { transactions: [{ id: 'x' }] }, version: 7 },
+    };
+
+    it('clés locales VIDES + PAS hydratées → préserve l\'apiKeysEnc déjà dans Drive (ne l\'écrase pas)', async () => {
+        const driveApi = await import('../../services/googleDrive/driveAppData');
+        useFinanceStore.getState().updateApiKeys({ anthropic: '', finnhub: '' });
+        localStorage.setItem(STORE_KEY, JSON.stringify({ state: { transactions: [{ id: 'local' }] }, version: 7 }));
+        (driveApi.readSyncFile as ReturnType<typeof vi.fn>).mockResolvedValueOnce(blobWithKeys);
+
+        expect(await pushNow()).toBe('pushed');
+        const sent = (driveApi.updateSyncFile as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[2];
+        expect(sent.apiKeysEnc).toBe('EXISTING-ENC-BLOB'); // préservé, PAS effacé
+    });
+
+    it('après markApiKeysHydrated() : clés vides = effacement volontaire → on n\'écrase plus avec les anciennes', async () => {
+        const driveApi = await import('../../services/googleDrive/driveAppData');
+        markApiKeysHydrated(); // App.tsx l'appelle après le chargement du vault (status ok)
+        useFinanceStore.getState().updateApiKeys({ anthropic: '', finnhub: '' });
+        localStorage.setItem(STORE_KEY, JSON.stringify({ state: { transactions: [{ id: 'local2' }] }, version: 7 }));
+        // Pas de mock readSyncFile ici : la branche « préserve » est skippée (flag hydraté) → readSyncFile
+        // n'est PAS appelé (et un mockResolvedValueOnce non consommé fuiterait vers le test suivant).
+
+        expect(await pushNow()).toBe('pushed');
+        const sent = (driveApi.updateSyncFile as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[2];
+        expect(sent.apiKeysEnc).toBeUndefined(); // hydraté + vide → effacement respecté
     });
 });
 

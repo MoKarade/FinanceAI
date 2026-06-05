@@ -230,7 +230,7 @@ export const Layout: React.FC<LayoutProps> = ({
               Fi
             </div>
             <div className={`min-w-0 whitespace-nowrap transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
-              <h1 className="text-lg font-bold text-white tracking-tight">FinanceAI</h1>
+              <p className="text-lg font-bold text-white tracking-tight">FinanceAI</p>
               <div className="text-tiny text-gray-500 font-mono" title={`Build ${__BUILD_DATE__}`}>
                 v{__APP_VERSION__} • {__GIT_SHA__}
               </div>
@@ -366,7 +366,7 @@ export const Layout: React.FC<LayoutProps> = ({
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0B0E14]/95 backdrop-blur-xl border-b border-white/10 z-50 flex items-center justify-between px-4 shadow-xl">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center text-white font-bold shadow-lg shadow-primary/20" aria-hidden="true">Fi</div>
-          <h1 className="text-lg font-bold text-white tracking-tight">FinanceAI</h1>
+          <p className="text-lg font-bold text-white tracking-tight">FinanceAI</p>
         </div>
         {/* Phase B.4 — info ℹ️ et Synchroniser 🔄 retirées sur mobile aussi. */}
         <div className="flex items-center gap-3">

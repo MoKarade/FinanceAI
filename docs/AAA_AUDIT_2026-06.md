@@ -117,7 +117,7 @@ PageHeader (cohérent, bon) · tooltips pédagogiques · états vides (`EmptySta
 - 🔧 Contrats silencieux : `fetchUserIdentity` (`driveAppData.ts`) → logError. [PENDING]
 
 ### D6 — Accessibilité · **P1**
-- **Double `<h1>`** : `Layout` (brand) + `PageHeader` → un seul `<h1>` par page.
+- ✅ **Double `<h1>` CORRIGÉ 2026-06-04** : le brand « FinanceAI » de `Layout` (sidebar + barre mobile) passait en `<h1>` EN PLUS du `<h1>` de `PageHeader` → 2 `<h1>` par page (hiérarchie cassée pour lecteurs d'écran). Le brand est désormais un `<p>` ; `PageHeader` reste l'unique `<h1>` de la page. (LoginGate/Onboarding gardent leur `<h1>` — écrans plein écran sans PageHeader, donc 1 seul.) +1 test.
 - Sidebar hover-only : labels `opacity-0` focusables + `disabled` bloque l'accordéon clavier → rendre pilotable au clavier.
 - `GuidedTour` : focus-trap + focus initial (a `aria-modal` mais focus reste derrière).
 - **Graphes sans alternative textuelle** : table de données masquée/`aria` ou bouton « voir les données » sous chaque graphe (gros trou pour une app financière).

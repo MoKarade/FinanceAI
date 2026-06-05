@@ -40,6 +40,14 @@ describe('Layout', () => {
         expect(main?.getAttribute('tabIndex')).toBe('-1');
     });
 
+    it('a11y — le brand « FinanceAI » n\'est PAS un titre (le <h1> est réservé au titre de page)', () => {
+        render(<Layout {...baseProps} />);
+        // le texte du brand reste présent (sidebar + barre mobile)...
+        expect(screen.getAllByText('FinanceAI').length).toBeGreaterThan(0);
+        // ...mais ce n'est plus un heading → fin du double <h1> (brand + PageHeader) par page.
+        expect(screen.queryByRole('heading', { name: 'FinanceAI' })).toBeNull();
+    });
+
     it('§B.4 — bouton Synchroniser retiré (doc directives §1)', () => {
         render(<Layout {...baseProps} />);
         expect(screen.queryByLabelText('Synchroniser')).toBeNull();

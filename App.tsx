@@ -9,6 +9,7 @@ import { Tab, AppState } from './types';
 import { INITIAL_CHILD_GOAL } from './constants';
 import { markDuplicates } from './utils/transactionParser';
 import { parseBankCsv } from './services/import/parseBankCsv';
+import { logAudit } from './services/auditLog';
 import { fetchAssetHistory, fetchFxRates } from './services/finance';
 // Phase 3E perf — lazy-load pdfReport (jspdf = 595KB) seulement au clic
 // "Générer PDF" plutôt qu'au boot de l'app.
@@ -432,6 +433,14 @@ export const App: React.FC = () => {
         const combined = [...result.transactions, ...state.transactions];
         const deduped = markDuplicates(combined);
         setAppState({ transactions: deduped, lastUpdate: Date.now() });
+        // SYS-AUDIT — trace l'import dans le journal d'audit (qui-quoi-quand).
+        logAudit({
+            field: 'transactions',
+            operation: 'add',
+            description: `Import CSV : ${result.transactions.length} ajoutée(s)${result.skipped > 0 ? `, ${result.skipped} ignorée(s)` : ''}`,
+            countBefore: state.transactions.length,
+            countAfter: deduped.length,
+        });
         // No-silent-failure : on dit combien de lignes ont été ignorées.
         const msg = result.skipped > 0
             ? `${result.transactions.length} transaction(s) importée(s), ${result.skipped} ligne(s) ignorée(s).`

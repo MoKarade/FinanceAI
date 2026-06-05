@@ -10,6 +10,7 @@ import { Card } from '../../ui/Card';
 import { showToast } from '../../ui/Toast';
 import type { AppState, BudgetConfig, User, Gender, CanadianProvince, MaritalStatus, EmploymentType, Industry, PensionPlan, HealthRating } from '../../../types';
 import { annualSalaryToMonthly } from '../../../utils/salary';
+import { logAudit } from '../../../services/auditLog';
 
 interface UsersCardProps {
   config: AppState['config'];
@@ -43,6 +44,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
     const newProfiles = [...new Set([...savedProfiles, newProfileName.trim()])];
     setSavedProfiles(newProfiles);
     localStorage.setItem('saved_profiles_list', JSON.stringify(newProfiles));
+    logAudit({ field: 'profile', operation: 'add', description: `Profil « ${newProfileName.trim()} » enregistré` });
     setNewProfileName('');
     showToast(`Profil "${newProfileName}" sauvegarde avec succes !`, 'success');
   };
@@ -56,6 +58,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
         if (data.config) {
           setConfig(data.config);
           setGrossAnnualDraft({}); // brut affiché = grossSalary×12 du profil chargé
+          logAudit({ field: 'config', operation: 'replace', description: `Profil « ${name} » chargé` });
           showToast(`Profil "${name}" charge !`, 'success');
         }
       }

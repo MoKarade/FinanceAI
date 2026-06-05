@@ -96,7 +96,7 @@
   Soldes initiaux + Import CSV bancaire), **retirer le texte inutile**, améliorer.
 - [x] **[CFG-SAUVE]** Onglet Sauvegarde : **en retirer le Mode test ET « Connecter à Claude »**
   (mauvais emplacement) → les déplacer (Mode test → Système/diagnostics ; Connecteur → sa propre carte).
-- [ ] **[SYS-REGROUP]** Refonte page **Système & diagnostics** : tout regrouper, plus simple et propre
+- [x] **[SYS-REGROUP]** Refonte page **Système & diagnostics** : tout regrouper, plus simple et propre
   (diagnostics AVEC le journal d'erreurs).
 - [ ] **[SYS-ERRLOG]** Journal d'erreurs : **bouton « actualiser » manquant** (impossible de rafraîchir).
 - [ ] **[SYS-AUDIT]** Journal d'audit **toujours à 0** → brancher `logAudit()` aux call-sites

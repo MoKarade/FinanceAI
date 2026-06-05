@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { parseBankCsv, type ParsedBankCsv } from '../../services/import/parseBankCsv';
+import { Card } from '../ui/Card';
 
 interface ImportBankStatementProps {
     /** Reçoit le texte brut du fichier ; l'app le re-parse + fusionne + dédoublonne. */
     onImport: (rawText: string) => void;
+    /** Classe optionnelle pour le conteneur Card (ex. `h-full` en grille). */
+    className?: string;
 }
 
 const cad = (v: number) => `${v.toLocaleString('fr-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
@@ -17,7 +20,7 @@ const DELIM_LABEL: Record<string, string> = { ',': 'virgule', ';': 'point-virgul
  * n'importe quelle banque (virgule/`;`/TAB, dates FR/ISO, montants `1 234,56`,
  * débit/crédit séparés).
  */
-export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImport }) => {
+export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImport, className = '' }) => {
     const [raw, setRaw] = useState('');
     const [fileName, setFileName] = useState('');
     const [preview, setPreview] = useState<ParsedBankCsv | null>(null);
@@ -51,16 +54,11 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
     };
 
     return (
-        <div className="bg-black/20 rounded-xl border border-white/5 p-4 space-y-3">
-            <div>
-                <h3 className="text-body font-bold text-white flex items-center gap-2">
-                    <span aria-hidden="true">📥</span> Importer un relevé bancaire (CSV)
-                </h3>
-                <p className="text-meta text-ink-500 mt-1">
-                    Exporte un CSV depuis ta banque et dépose-le ici. 100% local — rien ne quitte ton navigateur.
-                    Toutes les banques sont supportées (virgule/point-virgule, dates FR ou ISO, débit/crédit).
-                </p>
-            </div>
+        <Card title="📥 Importer un relevé bancaire (CSV)" className={className}>
+            <div className="space-y-3">
+            <p className="text-meta text-ink-400">
+                Exporte un CSV depuis ta banque et dépose-le ici — 100 % local, toutes banques.
+            </p>
 
             <label className="flex items-center gap-3 cursor-pointer">
                 <span className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-body text-ink-100 transition-colors focus-within:ring">
@@ -120,6 +118,7 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
                     </div>
                 </div>
             )}
-        </div>
+            </div>
+        </Card>
     );
 };

@@ -18,9 +18,11 @@ import { annualSalaryToMonthly } from '../../utils/salary';
 
 interface PayslipUploadCardProps {
     targetUserIndex?: 0 | 1; // 0 par défaut ; couple-aware via radio interne
+    /** Classe optionnelle pour le conteneur Card (ex. `h-full` en grille). */
+    className?: string;
 }
 
-export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUserIndex: initialTarget = 0 }) => {
+export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUserIndex: initialTarget = 0, className = '' }) => {
     const apiKey = useFinanceStore(s => s.apiKeys.anthropic);
     const config = useFinanceStore(s => s.config);
     const setAppState = useFinanceStore(s => s.setAppState);
@@ -90,12 +92,10 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
     };
 
     return (
-        <Card title="📄 Upload relevé de salaire (IA Vision)">
+        <Card title="📄 Upload relevé de salaire (IA Vision)" className={className}>
             <div className="space-y-4">
-                <p className="text-tiny text-ink-300 leading-snug">
-                    Téléverse un relevé de salaire (image ou PDF). L'IA Vision (Claude Sonnet)
-                    extrait automatiquement le brut, le net, l'impôt retenu et la fréquence de paie,
-                    puis remplit le profil sélectionné.
+                <p className="text-meta text-ink-400">
+                    Relevé (image/PDF) → l'IA Vision extrait brut, net, impôt et fréquence, et remplit le profil.
                 </p>
 
                 {isCouple && (

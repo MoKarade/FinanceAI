@@ -39,10 +39,10 @@ export const AccountsSection: React.FC<AccountsSectionProps> = ({
         </p>
       </header>
 
-      {/* Deux sources d'import regroupées côte à côte */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
-        <PayslipUploadCard />
-        <ImportBankStatement onImport={onImportData} />
+      {/* Deux sources d'import regroupées côte à côte, MÊME taille (hauteurs égales) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
+        <PayslipUploadCard className="h-full" />
+        <ImportBankStatement onImport={onImportData} className="h-full" />
       </div>
 
       <Card title="Soldes de départ">

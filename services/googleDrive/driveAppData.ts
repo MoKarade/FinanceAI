@@ -5,6 +5,7 @@
 // Erreurs typées : DriveAuthError (401, le token doit être rafraîchi) vs DriveError (autre).
 
 import type { SyncEnvelope } from '../sync/syncTypes';
+import { logError } from '../errorLogger';
 
 export const SYNC_FILE_NAME = 'financeai-sync.json';
 
@@ -169,10 +170,28 @@ export async function fetchUserIdentity(
     const f = resolveFetch(fetchFn);
     try {
         const res = await f(USERINFO, { headers: authHeader(token) });
-        if (!res.ok) return { email: null, sub: null };
+        if (!res.ok) {
+            // D5 « ne jamais avaler » : un échec ici prive `sub` → la clé de chiffrement
+            // des clés API ne peut plus être dérivée (clés non synchronisées/déchiffrables
+            // sur les autres appareils). On loggue (warning : le caller gère le null
+            // gracieusement, c'est best-effort) sans changer le repli existant.
+            logError({
+                source: 'network',
+                severity: 'warning',
+                message: `fetchUserIdentity: réponse Google ${res.status}`,
+                context: { status: res.status },
+            });
+            return { email: null, sub: null };
+        }
         const data = (await res.json()) as { email?: string; sub?: string };
         return { email: data.email ?? null, sub: data.sub ?? null };
-    } catch {
+    } catch (e) {
+        logError({
+            source: 'network',
+            severity: 'warning',
+            message: 'fetchUserIdentity: échec réseau',
+            error: e,
+        });
         return { email: null, sub: null };
     }
 }

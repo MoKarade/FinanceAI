@@ -79,6 +79,8 @@ export const TabRouter: React.FC<TabRouterProps> = ({
     return (
         <Suspense fallback={<TabLoader />}>
             <ErrorBoundary resetKey={activeTab} label={TAB_LABELS[activeTab]}>
+                {/* ANIM — fondu d'entrée à chaque changement d'onglet (opacité pure, key=tab). */}
+                <div key={activeTab} className="animate-tab-in motion-reduce:animate-none">
                 {activeTab === Tab.DASHBOARD && (
                     <Dashboard
                         transactions={state.transactions}
@@ -258,6 +260,7 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                         initialBalances={state.initialBalances}
                     />
                 )}
+                </div>
             </ErrorBoundary>
         </Suspense>
     );

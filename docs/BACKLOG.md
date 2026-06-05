@@ -28,10 +28,6 @@
 - [ ] **[P0-AUTH]** 👤 Sortir de Cloudflare Access → gate Google in-app (ADR 010, `A_FAIRE_MOI` O1).
 
 ## 🧭 Décisions moteur (à trancher avec Marc — money-critical)
-- [ ] **[CF-2]** Décaissement : conservation dans le *shortfall* insuffisant. Quand le liquide ne
-  couvre pas le déficit et qu'on vend des actifs, le produit ré-alimente le liquide sans redéduire
-  la dépense → le patrimoine ne baisse que de la part liquide. Touche le cœur du décaissement
-  (impact retraite potentiellement large) + rebless des baselines. **Sémantique à confirmer.**
 - [ ] **[ITEM-2A]** Indexation des paliers vs déflation : le fix « indexer par `simInflation` » a été
   **investigué et rejeté** (aggrave le cas dominant). Correctif propre = impôt sur revenu NOMINAL
   + paliers indexés (~12 sites, rebless baselines). Garder tel quel ou entreprendre le refactor ?

@@ -94,7 +94,7 @@
   enregistrés + Mode de répartition) et **améliorer** la présentation.
 - [x] **[CFG-COMPTES]** Onglet Configuration → Comptes : **regrouper** (Upload relevé de salaire IA +
   Soldes initiaux + Import CSV bancaire), **retirer le texte inutile**, améliorer.
-- [ ] **[CFG-SAUVE]** Onglet Sauvegarde : **en retirer le Mode test ET « Connecter à Claude »**
+- [x] **[CFG-SAUVE]** Onglet Sauvegarde : **en retirer le Mode test ET « Connecter à Claude »**
   (mauvais emplacement) → les déplacer (Mode test → Système/diagnostics ; Connecteur → sa propre carte).
 - [ ] **[SYS-REGROUP]** Refonte page **Système & diagnostics** : tout regrouper, plus simple et propre
   (diagnostics AVEC le journal d'erreurs).

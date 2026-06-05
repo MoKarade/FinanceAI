@@ -15,13 +15,7 @@ import { createPortal } from 'react-dom';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { TOUR_STEPS } from './tourSteps';
 import { TOUR_EVENT, markTourSeen } from './tourControl';
-
-interface AnchorRect {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
-}
+import { findVisibleAnchorRect, type AnchorRect } from './anchorRect';
 
 const BUBBLE_WIDTH = 340;
 const SPOTLIGHT_PAD = 6;
@@ -83,13 +77,9 @@ export const GuidedTour: React.FC = () => {
         setRect(null);
         return;
       }
-      const el = document.querySelector<HTMLElement>(`[data-tour-id="nav-${s.tab}"]`);
-      if (!el) {
-        setRect(null);
-        return;
-      }
-      const r = el.getBoundingClientRect();
-      setRect(r.width > 0 && r.height > 0 ? { top: r.top, left: r.left, width: r.width, height: r.height } : null);
+      // Prend la 1ʳᵉ ancre VISIBLE (mobile : la sidebar desktop est en display:none → rect 0 ;
+      // sans ça le spotlight ne s'affichait jamais sur mobile). Cf. components/tour/anchorRect.ts.
+      setRect(findVisibleAnchorRect(s.tab));
     };
     // Double rAF : laisser le switch d'onglet + le layout se stabiliser.
     // Flag `cancelled` : le 2e rAF est planifié DANS le 1er, donc un simple

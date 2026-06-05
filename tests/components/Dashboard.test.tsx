@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Dashboard } from '../../components/Dashboard';
 import type { Transaction, RetirementGoal, BudgetConfig, User } from '../../types';
 
@@ -50,6 +50,13 @@ const baseProps = {
     config: defaultConfig,
 };
 
+// D2 : le Dashboard affiche un accueil « premier lancement » tant qu'il n'y a AUCUNE donnée.
+// Les tests du dashboard plein doivent donc fournir au moins une transaction.
+const oneTx: Transaction = {
+    id: -99, date: '2026-01-10', payee: 'Test', amount: -10, category: 'Autre',
+    accountName: 'Desjardins', status: 'processed', isTransfer: false, isDuplicate: false,
+};
+
 describe('Dashboard', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -61,7 +68,7 @@ describe('Dashboard', () => {
     });
 
     it('Phase C2: affiche le PageHeader + les 4 KPI du hero', () => {
-        const { container } = render(<Dashboard {...baseProps} />);
+        const { container } = render(<Dashboard {...baseProps} transactions={[oneTx]} />);
         // useTranslation est mocké → on vérifie les clés i18n présentes.
         const text = container.textContent || '';
         expect(text).toContain('dashboard.title');
@@ -72,7 +79,7 @@ describe('Dashboard', () => {
     });
 
     it('Phase B2: l\'Indicateur Futur expose un bouton clickable vers FutureProjection', () => {
-        const { container } = render(<Dashboard {...baseProps} />);
+        const { container } = render(<Dashboard {...baseProps} transactions={[oneTx]} />);
         // Le bouton "🎯 →" est dans le KPI custom
         const buttons = container.querySelectorAll('button');
         const focusBtn = Array.from(buttons).find(b => b.getAttribute('aria-label')?.includes('FutureProjection'));
@@ -118,6 +125,24 @@ describe('Dashboard', () => {
         const onNavigate = vi.fn();
         const { container } = render(<Dashboard {...baseProps} onNavigate={onNavigate} />);
         expect(container.firstChild).toBeTruthy();
+    });
+
+    it('D2 — premier lancement (aucune donnée) : affiche l\'accueil + CTA, pas les KPIs', () => {
+        const onNavigate = vi.fn();
+        render(<Dashboard {...baseProps} onNavigate={onNavigate} />);
+        expect(screen.getByText(/Bienvenue ! Ajoute tes premières données/i)).toBeInTheDocument();
+        // les KPIs (clés i18n) ne sont PAS rendus dans l'accueil
+        expect(document.body.textContent).not.toContain('dashboard.global_net_worth');
+        // les CTA naviguent vers les bons onglets
+        fireEvent.click(screen.getByRole('button', { name: /Importer mes transactions/i }));
+        expect(onNavigate).toHaveBeenCalledWith('TRANSACTIONS');
+        fireEvent.click(screen.getByRole('button', { name: /Ajouter mes placements/i }));
+        expect(onNavigate).toHaveBeenCalledWith('INVESTMENTS');
+    });
+
+    it('avec des données (transactions/placements) : affiche le dashboard plein, pas l\'accueil', () => {
+        render(<Dashboard {...baseProps} transactions={[oneTx]} />);
+        expect(screen.queryByText(/Bienvenue ! Ajoute tes premières données/i)).toBeNull();
     });
 
     it('ignore les transactions dupliquées sans crash (isDuplicate=true)', () => {

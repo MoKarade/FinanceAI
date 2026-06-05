@@ -53,6 +53,13 @@ function hasAnyKey(k: ApiKeys): boolean {
     return Boolean(k.anthropic || k.finnhub);
 }
 
+// D5 (anti-race) — les clés API sont hydratées de façon ASYNC depuis secureKeyStore au boot
+// (App.tsx). Tant que ce flag est faux, un push avec clés locales VIDES n'écrase PAS l'apiKeysEnc
+// déjà présent dans Drive (il le préserve) → fin du bug « un push parti pendant le boot efface les
+// clés ». Une fois vrai (vault confirmé lisible), des clés vides = effacement volontaire → push normal.
+let _apiKeysHydrated = false;
+export function markApiKeysHydrated(): void { _apiKeysHydrated = true; }
+
 /**
  * Vrai si l'app tourne en MODE TEST (fixtures persona). On ne synchronise JAMAIS ces données :
  * sinon l'auto-push écraserait la vraie sauvegarde Drive par des données de démo (bug 2026-05-29).
@@ -311,6 +318,9 @@ export async function pushNow(): Promise<PushResult> {
     try {
         const token = await getValidAccessToken();
         const now = Date.now();
+        // Fichier Drive existant (s'il existe) : récupéré UNE seule fois — sert à PRÉSERVER les clés
+        // (anti-race D5) ET à décider create vs update plus bas.
+        const ref = await findSyncFile(token);
         // Passphrase optionnelle active (D-3) → chemin ZÉRO-KNOWLEDGE : on chiffre le payload COMPLET
         // ET les clés API ensemble avec `encryptBackup` (la passphrase ne quitte jamais l'appareil).
         // Sinon → chemin historique INCHANGÉ (`enc:false`, payload en clair, clés via `apiKeysEnc`).
@@ -336,10 +346,18 @@ export async function pushNow(): Promise<PushResult> {
                         /* crypto indispo → push sans clés (jamais de clés en clair dans Drive) */
                     }
                 }
+            } else if (!_apiKeysHydrated && ref) {
+                // D5 (anti-race) : clés locales pas encore hydratées depuis secureKeyStore → NE PAS
+                // écraser les clés déjà présentes dans Drive. On relit le blob existant et on PRÉSERVE
+                // son apiKeysEnc. (Après hydratation, des clés vides = effacement volontaire → on laisse
+                // tomber, comportement normal.) Lecture best-effort : un échec ne pousse pas de clés.
+                try {
+                    const existing = await readSyncFile(token, ref.id);
+                    if (existing && !existing.enc && existing.apiKeysEnc) apiKeysEnc = existing.apiKeysEnc;
+                } catch { /* best-effort */ }
             }
             envelope = buildEnvelope(local.payload, getOrCreateDeviceId(), APP_VERSION, now, apiKeysEnc);
         }
-        const ref = await findSyncFile(token);
         if (ref) await updateSyncFile(token, ref.id, envelope);
         else await createSyncFile(token, envelope);
         const meta = currentMeta();

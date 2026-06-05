@@ -23,7 +23,7 @@ import { configureMarketDataProvider } from './services/marketData';
 import { installGlobalErrorHandlers, logError } from './services/errorLogger';
 import { lazyWithRetry, clearChunkReloadFlag } from './utils/lazyWithRetry';
 import { initAutoBackup } from './services/backupAuto';
-import { initSync, runBootSync, schedulePush, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, startDrivePolling, type SyncStatus } from './services/sync/syncOrchestrator';
+import { initSync, runBootSync, schedulePush, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, startDrivePolling, markApiKeysHydrated, type SyncStatus } from './services/sync/syncOrchestrator';
 import { trackPageView } from './services/analytics';
 import { GuidedTour } from './components/tour/GuidedTour';
 import { startGuidedTour } from './components/tour/tourControl';
@@ -213,6 +213,11 @@ export const App: React.FC = () => {
             try {
                 const result = await loadApiKeysDetailed();
                 if (cancelled) return;
+                // D5 (anti-race sync) : le vault a répondu « ok » → l'état des clés est CONNU (même
+                // vide). À partir d'ici, un push avec clés vides reflète l'intention (et n'est plus
+                // bloqué/préservé). NB : on NE marque PAS sur decrypt_failed (clés présentes mais
+                // illisibles ici → mieux vaut préserver celles du Drive).
+                if (result.status === 'ok') markApiKeysHydrated();
                 if (result.status === 'decrypt_failed') {
                     // Blob chiffré présent mais clé IDB absente (ex: navigation privée
                     // entre sessions, IndexedDB vidé) → on prévient l'utilisateur.

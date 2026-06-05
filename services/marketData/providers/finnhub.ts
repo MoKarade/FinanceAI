@@ -15,8 +15,12 @@ import { logProviderError } from './providerError';
 const BASE_URL = 'https://finnhub.io/api/v1';
 const FETCH_TIMEOUT_MS = 10_000;
 
+/** Coerce en nombre fini, sinon le fallback. Défend contre un champ de type inattendu dans la
+ * réponse JSON (D5) : `?? 0` ne rattrapait QUE null/undefined, pas une chaîne/NaN. */
+const num = (v: unknown, fallback = 0): number => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
+
 /** Convertit notre format symbole vers le format Finnhub. */
-function toFinnhubSymbol(ours: string): string {
+export function toFinnhubSymbol(ours: string): string {
     // "NASDAQ:NVDA" → "NVDA" (Finnhub veut juste le ticker pour US main exchanges)
     // "NYSE:V" → "V"
     // "TSE:XEQT.TO" → "XEQT.TO" (Finnhub accepte le .TO)
@@ -90,10 +94,10 @@ export class FinnhubProvider implements MarketDataProvider {
             return {
                 symbol,
                 price: c,
-                change: d ?? 0,
-                changePercent: dp ?? 0,
+                change: num(d),
+                changePercent: num(dp),
                 currency: this.inferCurrency(symbol),
-                timestamp: (t ?? Math.floor(Date.now() / 1000)) * 1000,
+                timestamp: num(t, Math.floor(Date.now() / 1000)) * 1000,
             };
         } catch (e) {
             logProviderError('Finnhub', 'getQuote', symbol, e);
@@ -119,7 +123,7 @@ export class FinnhubProvider implements MarketDataProvider {
             if (!data || data.s !== 'ok' || !Array.isArray(tArr)) return [];
             return tArr.map((ts: number, i: number) => ({
                 date: new Date(ts * 1000).toISOString().slice(0, 10),
-                close: cArr?.[i] ?? 0,
+                close: num(cArr?.[i]),
                 open: oArr?.[i],
                 high: hArr?.[i],
                 low: lArr?.[i],
@@ -169,7 +173,7 @@ export class FinnhubProvider implements MarketDataProvider {
             if (!Array.isArray(data)) return [];
             return data.map((d: { amount?: number; exDate?: string; payDate?: string }) => ({
                 symbol,
-                amount: d.amount ?? 0,
+                amount: num(d.amount),
                 exDate: d.exDate ?? '',
                 payDate: d.payDate ?? '',
                 frequency: 4, // estimation par défaut, Finnhub ne renvoie pas

@@ -470,13 +470,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <div className="flex flex-col items-end gap-2">
                         <div className="flex bg-black/40 rounded-lg p-0.5 border border-white/10">
                             {(['1M', '3M', 'YTD', '1Y', 'ALL', 'CUSTOM'] as TimeRange[]).map(r => (
-                                <button key={r} onClick={() => setTimeRange(r)} className={`px-3 py-1 text-tiny font-bold rounded transition-all ${timeRange === r ? 'bg-white text-black shadow' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>{r}</button>
+                                <button key={r} onClick={() => setTimeRange(r)} className={`px-3 py-1 text-tiny font-bold rounded transition-all ${timeRange === r ? 'bg-white text-black shadow' : 'text-ink-300 hover:text-white hover:bg-white/5'}`}>{r}</button>
                             ))}
                         </div>
                         {timeRange === 'CUSTOM' && (
                             <div className="flex items-center gap-1.5">
                                 <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-black/40 border border-white/10 rounded px-2 py-1 text-tiny text-white focus:border-white/30 outline-none" />
-                                <span className="text-gray-500 text-tiny">→</span>
+                                <span className="text-ink-500 text-tiny">→</span>
                                 <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-black/40 border border-white/10 rounded px-2 py-1 text-tiny text-white focus:border-white/30 outline-none" />
                             </div>
                         )}
@@ -609,16 +609,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     >
                                         {isSelected && <span className="text-tiny text-white font-bold">✓</span>}
                                     </div>
-                                    <div className="w-8 h-8 rounded bg-[#1e2330] flex items-center justify-center text-xs font-bold text-gray-300 shrink-0">{asset.symbol.substring(0, 2)}</div>
+                                    <div className="w-8 h-8 rounded bg-surfaceHighlight flex items-center justify-center text-xs font-bold text-ink-200 shrink-0">{asset.symbol.substring(0, 2)}</div>
                                     <div className="min-w-0">
                                         <div className="font-bold text-white text-sm truncate">{asset.symbol}</div>
-                                        <div className="text-tiny text-gray-500 bg-black/50 px-1.5 rounded inline-block mt-0.5">{asset.accountType}</div>
+                                        <div className="text-tiny text-ink-500 bg-black/50 px-1.5 rounded inline-block mt-0.5">{asset.accountType}</div>
                                     </div>
                                 </div>
                                 <div className="text-right shrink-0">
-                                    <div className="font-mono font-bold text-gray-200 text-sm privacy-blur">{formatCAD(asset.value)}</div>
+                                    <div className="font-mono font-bold text-ink-100 text-sm privacy-blur">{formatCAD(asset.value)}</div>
                                     <div className="flex justify-end gap-2 text-tiny mt-0.5 font-bold privacy-blur">
-                                        <span className={asset.diffCAD >= 0 ? 'text-green-500' : 'text-red-500'}>
+                                        <span className={asset.diffCAD >= 0 ? 'text-green-500' : 'text-danger-500'}>
                                             {formatSigned(asset.diffCAD, { withCurrency: true })}
                                         </span>
                                         <span className="text-yellow-500" title="Revenu mensuel estimé (dividendes)">
@@ -627,7 +627,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     </div>
                                     {hasPurchaseData && gainAbs !== null && gainPct !== null ? (
                                         <div className="text-tiny mt-0.5 privacy-blur" title="Gain total depuis l'achat (cours actuel vs prix d'achat)">
-                                            <span className={`font-mono ${gainAbs >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                            <span className={`font-mono ${gainAbs >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
                                                 Achat : {formatSigned(gainAbs, { withCurrency: true })} ({formatSigned(gainPct, { decimals: 2 })}%)
                                             </span>
                                         </div>
@@ -647,7 +647,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             </div>
                         );
                     })}
-                    {segmentedData.assets.length === 0 && <div className="text-center py-4 text-gray-500 text-xs">Aucun actif trouvé.</div>}
+                    {segmentedData.assets.length === 0 && <div className="text-center py-4 text-ink-500 text-xs">Aucun actif trouvé.</div>}
                 </div>
             </Card>
 

@@ -236,35 +236,35 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
 
             {isAnalyzing && (
                 <div className="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden">
-                    <div className="bg-blue-500 h-2.5 rounded-full transition-all duration-300" style={{ width: `${(progress.current / progress.total) * 100}%` }}></div>
-                    <div className="text-center text-tiny text-gray-400 mt-1">Traitement {progress.current} / {progress.total} fichiers</div>
+                    <div className="bg-info-500 h-2.5 rounded-full transition-all duration-300" style={{ width: `${(progress.current / progress.total) * 100}%` }}></div>
+                    <div className="text-center text-tiny text-ink-300 mt-1">Traitement {progress.current} / {progress.total} fichiers</div>
                 </div>
             )}
 
             {scannedPay && (
-                <div className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 border border-blue-500/30 p-4 rounded-xl shadow-lg mt-4 animate-fade-in">
+                <div className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 border border-info-500/30 p-4 rounded-xl shadow-lg mt-4 animate-fade-in">
                     <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">📄 Fiche de Paie Détectée ({scannedPay.freq})</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                         <div className="bg-black/30 p-3 rounded border border-white/5">
-                            <div className="text-tiny text-gray-400">Brut Annuel Est.</div>
+                            <div className="text-tiny text-ink-300">Brut Annuel Est.</div>
                             <div className="text-lg font-bold text-white">{scannedPay.gross.toLocaleString()}$</div>
                         </div>
                         <div className="bg-black/30 p-3 rounded border border-white/5">
-                            <div className="text-tiny text-gray-400">Net Annuel Est.</div>
+                            <div className="text-tiny text-ink-300">Net Annuel Est.</div>
                             <div className="text-lg font-bold text-green-400">{scannedPay.net.toLocaleString()}$</div>
                         </div>
                         <div className="bg-black/30 p-3 rounded border border-white/5">
-                            <div className="text-tiny text-gray-400">Impôts Retenus Est.</div>
-                            <div className="text-lg font-bold text-red-400">-{scannedPay.tax.toLocaleString()}$</div>
+                            <div className="text-tiny text-ink-300">Impôts Retenus Est.</div>
+                            <div className="text-lg font-bold text-danger-400">-{scannedPay.tax.toLocaleString()}$</div>
                         </div>
                         <div className="bg-black/30 p-3 rounded border border-white/5">
-                            <div className="text-tiny text-gray-400">REER/RPP Retenus</div>
-                            <div className="text-lg font-bold text-blue-400">{scannedPay.rrsp.toLocaleString()}$</div>
+                            <div className="text-tiny text-ink-300">REER/RPP Retenus</div>
+                            <div className="text-lg font-bold text-info-400">{scannedPay.rrsp.toLocaleString()}$</div>
                         </div>
                     </div>
                     <div className="flex justify-end gap-2">
-                        <button onClick={() => setScannedPay(null)} className="text-xs text-gray-400 px-3 py-1.5 hover:text-white transition">Ignorer</button>
-                        <button onClick={applyToProfile} className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-1.5 rounded transition shadow-lg">
+                        <button onClick={() => setScannedPay(null)} className="text-xs text-ink-300 px-3 py-1.5 hover:text-white transition">Ignorer</button>
+                        <button onClick={applyToProfile} className="bg-info-600 hover:bg-info-500 text-white text-xs font-bold px-4 py-1.5 rounded transition shadow-lg">
                             💾 Appliquer au Profil Principal
                         </button>
                     </div>
@@ -272,7 +272,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
             )}
 
             {analysisStatus && !scannedPay && (
-                <div className="bg-blue-500/10 border border-blue-500/30 text-blue-300 px-4 py-2 rounded-lg text-sm flex items-center gap-2 animate-fade-in">
+                <div className="bg-info-500/10 border border-info-500/30 text-blue-300 px-4 py-2 rounded-lg text-sm flex items-center gap-2 animate-fade-in">
                     <span>ℹ️</span> {analysisStatus}
                 </div>
             )}
@@ -285,7 +285,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                 <div className="flex bg-black/40 p-1 rounded-lg w-fit mx-auto border border-white/5">
                     <button
                         onClick={() => setViewUser('all')}
-                        className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${viewUser === 'all' ? 'bg-white text-black shadow' : 'text-gray-400 hover:text-white'}`}
+                        className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${viewUser === 'all' ? 'bg-white text-black shadow' : 'text-ink-300 hover:text-white'}`}
                     >
                         Global (Couple)
                     </button>
@@ -293,7 +293,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                         <button
                             key={u.name}
                             onClick={() => setViewUser(u.name)}
-                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${viewUser === u.name ? 'bg-white text-black shadow' : 'text-gray-400 hover:text-white'}`}
+                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${viewUser === u.name ? 'bg-white text-black shadow' : 'text-ink-300 hover:text-white'}`}
                         >
                             {u.name}
                         </button>
@@ -307,14 +307,14 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                     <Card title="💼 Revenus & Déductions">
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-xs text-gray-400 mb-1 font-bold uppercase">
+                                <label className="block text-xs text-ink-300 mb-1 font-bold uppercase">
                                     {isGlobal ? "Revenu Brut Annuel du Couple" : `Revenu Brut (${viewUser})`}
                                 </label>
                                 <div className="p-3 bg-white/5 border border-white/10 rounded-lg flex items-center justify-between">
-                                    <span className="text-gray-400">Total Synchronisé</span>
+                                    <span className="text-ink-300">Total Synchronisé</span>
                                     <span className="text-xl font-bold text-white font-mono">{grossIncome.toLocaleString()}$</span>
                                 </div>
-                                <p className="text-tiny text-gray-500 mt-2 flex items-center gap-1">
+                                <p className="text-tiny text-ink-500 mt-2 flex items-center gap-1">
                                     <span>🔒</span> Verrouillé (* 12 mois) lié à la Configuration.
                                 </p>
                             </div>
@@ -325,7 +325,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                         <span className="text-xs text-green-400 font-bold">Impôt déjà prélevé (Source)</span>
                                         <span className="text-sm font-mono text-white">{alreadyPaidTax.toLocaleString()}$</span>
                                     </div>
-                                    <div className="text-tiny text-gray-500 mt-1">Détecté automatiquement via vos documents</div>
+                                    <div className="text-tiny text-ink-500 mt-1">Détecté automatiquement via vos documents</div>
                                 </div>
                             )}
 
@@ -335,25 +335,25 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                         <span className="text-xs text-yellow-400 font-bold">Invest. Non-Enregistrés</span>
                                         <span className="text-xs text-white">{investmentTaxData.totalNonReg.toLocaleString()}$</span>
                                     </div>
-                                    <div className="text-tiny text-gray-500">
+                                    <div className="text-tiny text-ink-500">
                                         Impact estimé sur revenu imposable: <span className="text-red-300">+{investmentTaxData.taxableAddOn.toFixed(0)}$</span>
                                     </div>
                                 </div>
                             )}
 
-                            <div className="p-4 bg-blue-900/10 border border-blue-500/20 rounded-xl space-y-3">
+                            <div className="p-4 bg-blue-900/10 border border-info-500/20 rounded-xl space-y-3">
                                 <h4 className="text-xs font-bold text-blue-300 uppercase flex items-center gap-2">
                                     📉 Réducteurs d'Impôt
                                 </h4>
                                 <div>
-                                    <label className="flex justify-between text-xs text-gray-300 mb-1">
+                                    <label className="flex justify-between text-xs text-ink-200 mb-1">
                                         <span>Cotisation REER</span>
                                         <span>{rrspContribution.toLocaleString()}$</span>
                                     </label>
-                                    <input type="range" min="0" max="30000" step="100" value={rrspContribution} onChange={e => setRrspContribution(parseFloat(e.target.value))} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                                    <input type="range" min="0" max="30000" step="100" value={rrspContribution} onChange={e => setRrspContribution(parseFloat(e.target.value))} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
                                 </div>
                                 <div>
-                                    <label className="flex justify-between text-xs text-gray-300 mb-1">
+                                    <label className="flex justify-between text-xs text-ink-200 mb-1">
                                         <span>CELIAPP</span>
                                         <span>{fhsaContribution.toLocaleString()}$</span>
                                     </label>
@@ -386,7 +386,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                         </Card>
                         <Card className="!p-4 border-l-4 border-l-blue-500 bg-surface/50">
                             <div className="text-tiny text-ink-400 uppercase font-bold">Remboursement Est.</div>
-                            <div className={`text-2xl font-black ${report.refundOrOwe > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            <div className={`text-2xl font-black ${report.refundOrOwe > 0 ? 'text-green-400' : 'text-danger-400'}`}>
                                 {report.refundOrOwe > 0 ? '+' : ''}{report.refundOrOwe.toLocaleString('fr-CA', { maximumFractionDigits: 0 })} $
                             </div>
                             <div className="text-tiny text-ink-400">Basé sur docs reçus</div>
@@ -395,7 +395,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {isGlobal ? (
-                            <div className="md:col-span-2 text-center py-6 text-gray-500 bg-white/5 rounded-xl">
+                            <div className="md:col-span-2 text-center py-6 text-ink-500 bg-white/5 rounded-xl">
                                 ℹ️ Les paliers d'imposition sont individuels. Veuillez sélectionner un profil pour voir les paliers détaillés.
                             </div>
                         ) : (
@@ -405,11 +405,11 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                         {(fedBreakdown ?? []).map((b, i) => (
                                             <div key={i} className="relative">
                                                 <div className="flex justify-between text-tiny mb-1">
-                                                    <span className="text-gray-300 font-bold">{b.rate}</span>
+                                                    <span className="text-ink-200 font-bold">{b.rate}</span>
                                                     <span className="text-ink-400">{b.amount > 0 ? `${b.amount.toFixed(0)}$ taxés` : '0$'}</span>
                                                 </div>
                                                 <div className="h-4 w-full bg-gray-800 rounded overflow-hidden relative border border-white/5">
-                                                    <div className="h-full bg-red-600/80 transition-all duration-500" style={{ width: `${b.percentFull}%` }}></div>
+                                                    <div className="h-full bg-danger-600/80 transition-all duration-500" style={{ width: `${b.percentFull}%` }}></div>
                                                     <div className="absolute inset-0 flex items-center justify-center text-tiny font-mono text-white/80 shadow-black drop-shadow-md">
                                                         {b.filled.toLocaleString()} $ / {typeof b.max === 'number' ? b.max.toLocaleString() : b.max} $
                                                     </div>
@@ -423,11 +423,11 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                         {(qcBreakdown ?? []).map((b, i) => (
                                             <div key={i} className="relative">
                                                 <div className="flex justify-between text-tiny mb-1">
-                                                    <span className="text-gray-300 font-bold">{b.rate}</span>
+                                                    <span className="text-ink-200 font-bold">{b.rate}</span>
                                                     <span className="text-ink-400">{b.amount > 0 ? `${b.amount.toFixed(0)}$ taxés` : '0$'}</span>
                                                 </div>
                                                 <div className="h-4 w-full bg-gray-800 rounded overflow-hidden relative border border-white/5">
-                                                    <div className="h-full bg-blue-600/80 transition-all duration-500" style={{ width: `${b.percentFull}%` }}></div>
+                                                    <div className="h-full bg-info-600/80 transition-all duration-500" style={{ width: `${b.percentFull}%` }}></div>
                                                     <div className="absolute inset-0 flex items-center justify-center text-tiny font-mono text-white/80 shadow-black drop-shadow-md">
                                                         {b.filled.toLocaleString()} $ / {typeof b.max === 'number' ? b.max.toLocaleString() : b.max} $
                                                     </div>

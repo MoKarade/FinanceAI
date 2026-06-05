@@ -18,7 +18,7 @@ export const Card: React.FC<CardProps> = ({ children, className = "", title, act
     >
       {(title || action) && (
         <div className={`flex justify-between items-center mb-6 pb-3 border-b border-white/5 relative z-10 ${noPadding ? 'px-6 pt-6' : ''}`}>
-          {title && <h2 className="text-lg font-bold text-white tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">{title}</h2>}
+          {title && <h2 className="text-lg font-bold text-white tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-white to-ink-300">{title}</h2>}
           {action && <div className="flex items-center">{action}</div>}
         </div>
       )}

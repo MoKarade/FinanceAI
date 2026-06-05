@@ -632,7 +632,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 <button
                     type="button"
                     onClick={() => navigateWithFocus(TabEnum.FUTURE)}
-                    className="bg-gradient-to-br from-blue-900/10 to-indigo-900/10 border border-blue-500/20 rounded-card p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full text-left hover:from-blue-900/20 hover:to-indigo-900/20 transition-colors focus-ring"
+                    className="bg-gradient-to-br from-blue-900/10 to-indigo-900/10 border border-info-500/20 rounded-card p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full text-left hover:from-blue-900/20 hover:to-indigo-900/20 transition-colors focus-ring"
                     title="Ouvrir FutureProjection"
                 >
                     <div>
@@ -640,27 +640,27 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                         <div className="text-2xl font-black text-white privacy-blur">
                             {formatCAD(projectionSummary.estateNetWorth)}
                         </div>
-                        <div className="text-tiny text-gray-500 mt-1">
+                        <div className="text-tiny text-ink-500 mt-1">
                             Patrimoine successoral projeté en {projectionSummary.finalYear} (FutureProjection actif).
                         </div>
                     </div>
                     <div className="bg-black/30 rounded-xl p-3 border border-white/5">
-                        <div className="text-tiny uppercase font-bold text-gray-400 tracking-widest mb-1">Sensibilité</div>
-                        <div className="text-base font-bold text-emerald-400 privacy-blur">
+                        <div className="text-tiny uppercase font-bold text-ink-300 tracking-widest mb-1">Sensibilité</div>
+                        <div className="text-base font-bold text-success-400 privacy-blur">
                             +{formatCAD(projectionSummary.per100Boost)}
                         </div>
-                        <div className="text-tiny text-gray-500">par +100$/mois d'épargne supplémentaire</div>
+                        <div className="text-tiny text-ink-500">par +100$/mois d'épargne supplémentaire</div>
                     </div>
                 </button>
             )}
 
             {/* ALERTS BANNER */}
             {timeView === 'MONTH' && alerts.length > 0 && (
-                <div className="bg-red-900/10 border border-red-500/20 rounded-lg p-3 flex items-start gap-3 animate-fade-in">
+                <div className="bg-red-900/10 border border-danger-500/20 rounded-lg p-3 flex items-start gap-3 animate-fade-in">
                     <span className="text-xl">🚨</span>
                     <div>
-                        <h4 className="text-sm font-bold text-red-400">Attention : Dépassements détectés</h4>
-                        <p className="text-xs text-gray-400 mt-1">
+                        <h4 className="text-sm font-bold text-danger-400">Attention : Dépassements détectés</h4>
+                        <p className="text-xs text-ink-300 mt-1">
                             {alerts.slice(0, 3).join(', ')} {alerts.length > 3 && `et ${alerts.length - 3} autres.`}
                         </p>
                     </div>
@@ -673,20 +673,20 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 <div className="lg:col-span-1 space-y-6">
 
                     {/* SAVINGS CAPACITY CARD & EXPENSE BREAKDOWN */}
-                    <Card title={coupleAnalysis.isSolo ? "Santé Financière" : "Santé Financière du Couple"} className="bg-gradient-to-br from-[#1e1e1e] to-blue-900/10 border-blue-500/20">
+                    <Card title={coupleAnalysis.isSolo ? "Santé Financière" : "Santé Financière du Couple"} className="bg-gradient-to-br from-[#1e1e1e] to-blue-900/10 border-info-500/20">
                         <div className="space-y-6">
 
                             {/* Phase D'.3 — Visualisation fiscale détaillée (fed + QC + RRQ + AE + RQAP)
                                 au lieu de la simple soustraction Brut − Net. */}
                             <div className="bg-black/30 rounded-lg p-3 border border-white/5 space-y-2">
-                                <div className="flex justify-between items-center text-tiny text-gray-400">
+                                <div className="flex justify-between items-center text-tiny text-ink-300">
                                     <span>Revenus Bruts Totaux</span>
                                     <span className="font-mono">{formatCAD(fiscalBreakdown.grossDisplay)}</span>
                                 </div>
                                 {/* Barre stackée multi-couleurs des déductions */}
                                 <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden flex">
                                     <div
-                                        className="h-full bg-red-500/80"
+                                        className="h-full bg-danger-500/80"
                                         style={{ width: `${(fiscalBreakdown.fedTaxDisplay / fiscalBreakdown.grossDisplay) * 100}%` }}
                                         title={`Fédéral : ${formatCAD(fiscalBreakdown.fedTaxDisplay)}`}
                                     />
@@ -696,7 +696,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                         title={`Québec : ${formatCAD(fiscalBreakdown.qcTaxDisplay)}`}
                                     />
                                     <div
-                                        className="h-full bg-amber-500/80"
+                                        className="h-full bg-warning-500/80"
                                         style={{ width: `${(fiscalBreakdown.rrqDisplay / fiscalBreakdown.grossDisplay) * 100}%` }}
                                         title={`RRQ : ${formatCAD(fiscalBreakdown.rrqDisplay)}`}
                                     />
@@ -710,7 +710,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                 <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-tiny">
                                     <div className="flex justify-between items-center">
                                         <span className="flex items-center gap-1 text-red-300">
-                                            <span aria-hidden="true" className="w-2 h-2 bg-red-500/80 rounded-sm" />
+                                            <span aria-hidden="true" className="w-2 h-2 bg-danger-500/80 rounded-sm" />
                                             Impôt fédéral
                                         </span>
                                         <span className="font-mono">{formatCAD(fiscalBreakdown.fedTaxDisplay)}</span>
@@ -724,7 +724,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="flex items-center gap-1 text-amber-300">
-                                            <span aria-hidden="true" className="w-2 h-2 bg-amber-500/80 rounded-sm" />
+                                            <span aria-hidden="true" className="w-2 h-2 bg-warning-500/80 rounded-sm" />
                                             RRQ
                                         </span>
                                         <span className="font-mono">{formatCAD(fiscalBreakdown.rrqDisplay)}</span>
@@ -739,11 +739,11 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                 </div>
                                 <div className="flex justify-between items-center text-tiny text-ink-500 pt-1 border-t border-white/5">
                                     <span>Total déductions ({fiscalBreakdown.averageRate.toFixed(1)}% moyen)</span>
-                                    <span className="font-mono text-red-400">−{formatCAD(fiscalBreakdown.totalTaxDisplay)}</span>
+                                    <span className="font-mono text-danger-400">−{formatCAD(fiscalBreakdown.totalTaxDisplay)}</span>
                                 </div>
                                 <div className="flex justify-between items-center font-bold text-white mt-1 pt-1 border-t border-white/5">
                                     <span>Revenu Net Disponible</span>
-                                    <span className="text-emerald-400 font-mono">{formatCAD(fiscalBreakdown.netDisplay)}</span>
+                                    <span className="text-success-400 font-mono">{formatCAD(fiscalBreakdown.netDisplay)}</span>
                                 </div>
                             </div>
 
@@ -753,9 +753,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     <span className="text-sm font-bold text-indigo-400">{coupleAnalysis.user1.name}</span>
                                     <div className="flex items-center gap-2">
                                         {coupleAnalysis.splitMode === 'prorata' && (
-                                            <span className="text-tiny text-gray-500">{(coupleAnalysis.splitRatio1 * 100).toFixed(0)}% (Net)</span>
+                                            <span className="text-tiny text-ink-500">{(coupleAnalysis.splitRatio1 * 100).toFixed(0)}% (Net)</span>
                                         )}
-                                        <span className="text-xs text-gray-500 bg-white/5 px-2 py-0.5 rounded">
+                                        <span className="text-xs text-ink-500 bg-white/5 px-2 py-0.5 rounded">
                                             Effort: {coupleAnalysis.user1Income > 0 ? ((coupleAnalysis.user1Contribution / coupleAnalysis.user1Income) * 100).toFixed(0) : 0}%
                                         </span>
                                     </div>
@@ -767,7 +767,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${coupleAnalysis.user1Savings.toFixed(0)}$`}></div>
                                 </div>
 
-                                <div className="flex justify-between text-tiny text-gray-400 px-1">
+                                <div className="flex justify-between text-tiny text-ink-300 px-1">
                                     <div className="flex flex-col">
                                         <span>Sorties: <span className="text-white font-bold">{coupleAnalysis.user1Contribution.toLocaleString()}$</span></span>
                                     </div>
@@ -784,9 +784,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                         <span className="text-sm font-bold text-pink-400">{coupleAnalysis.user2.name}</span>
                                         <div className="flex items-center gap-2">
                                             {coupleAnalysis.splitMode === 'prorata' && (
-                                                <span className="text-tiny text-gray-500">{((1 - coupleAnalysis.splitRatio1) * 100).toFixed(0)}% (Net)</span>
+                                                <span className="text-tiny text-ink-500">{((1 - coupleAnalysis.splitRatio1) * 100).toFixed(0)}% (Net)</span>
                                             )}
-                                            <span className="text-xs text-gray-500 bg-white/5 px-2 py-0.5 rounded">
+                                            <span className="text-xs text-ink-500 bg-white/5 px-2 py-0.5 rounded">
                                                 Effort: {coupleAnalysis.user2Income > 0 ? ((coupleAnalysis.user2Contribution / coupleAnalysis.user2Income) * 100).toFixed(0) : 0}%
                                             </span>
                                         </div>
@@ -798,7 +798,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                         <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${coupleAnalysis.user2Savings.toFixed(0)}$`}></div>
                                     </div>
 
-                                    <div className="flex justify-between text-tiny text-gray-400 px-1">
+                                    <div className="flex justify-between text-tiny text-ink-300 px-1">
                                         <div className="flex flex-col">
                                             <span>Sorties: <span className="text-white font-bold">{coupleAnalysis.user2Contribution.toLocaleString()}$</span></span>
                                         </div>
@@ -829,7 +829,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                             </button>
 
                             <div className="pt-2 border-t border-white/5">
-                                <div className="text-xs text-gray-400 text-center mb-2 font-medium">Comparatif visuel 50/30/20</div>
+                                <div className="text-xs text-ink-300 text-center mb-2 font-medium">Comparatif visuel 50/30/20</div>
                                 <div style={{ width: '100%', height: '180px' }}>
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>

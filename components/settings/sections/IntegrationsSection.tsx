@@ -16,7 +16,7 @@ export const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ apiKey
     <Card title="Cles API & Services">
       <div className="space-y-4">
         <div data-focus-section="apiKeys-anthropic">
-          <label htmlFor="apikey-anthropic" className="block text-sm text-gray-400 mb-1">Anthropic API Key (Claude)</label>
+          <label htmlFor="apikey-anthropic" className="block text-sm text-ink-300 mb-1">Anthropic API Key (Claude)</label>
           <input
             id="apikey-anthropic"
             type="password"
@@ -34,10 +34,10 @@ export const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ apiKey
               }
             </div>
           )}
-          <p className="text-xs text-gray-500 mt-1">Pour Claude Sonnet/Haiku — analyse, catégorisation, vision. Obtenez votre clé sur <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer" className="text-info-400 underline">console.anthropic.com</a></p>
+          <p className="text-xs text-ink-500 mt-1">Pour Claude Sonnet/Haiku — analyse, catégorisation, vision. Obtenez votre clé sur <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer" className="text-info-400 underline">console.anthropic.com</a></p>
         </div>
         <div>
-          <label htmlFor="apikey-finnhub" className="block text-sm text-gray-400 mb-1">Finnhub API Key (Données boursières)</label>
+          <label htmlFor="apikey-finnhub" className="block text-sm text-ink-300 mb-1">Finnhub API Key (Données boursières)</label>
           <input
             id="apikey-finnhub"
             type="password"
@@ -55,7 +55,7 @@ export const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ apiKey
               }
             </div>
           )}
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-ink-500 mt-1">
             §7.F : remplace l'ancien Google Sheet hardcodé. Quotes + historique + profils
             d'actifs à jour quotidiennement via <a href="https://finnhub.io/register" target="_blank" rel="noopener noreferrer" className="text-info-400 underline">finnhub.io</a> (gratuit, 60 req/min).
             Optionnel : sans clé, fallback sur le Google Sheet legacy.
@@ -63,7 +63,7 @@ export const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ apiKey
         </div>
         <div className="p-3 bg-info-bg rounded border border-info-border mt-4">
           <div className="text-xs text-info-400 font-bold mb-1">ℹ️ Source de données actives</div>
-          <p className="text-tiny text-gray-400">
+          <p className="text-tiny text-ink-300">
             {apiKeys?.finnhub
               ? <>Finnhub configuré → quotes/profils dynamiques. Google Sheet en fallback.</>
               : <>Google Sheet uniquement (mode legacy). Ajoutez une clé Finnhub pour des données dynamiques.</>

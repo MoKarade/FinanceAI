@@ -115,7 +115,7 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
                             </span>
                         )}
                     </span>
-                    <span className={`text-xs font-bold tabular-nums privacy-blur ${net >= 0 ? 'text-emerald-400' : 'text-orange-300'}`}>
+                    <span className={`text-xs font-bold tabular-nums privacy-blur ${net >= 0 ? 'text-success-400' : 'text-orange-300'}`}>
                         {net >= 0 ? 'Épargne nette +' : 'Décaissement '}{cad(net)}
                     </span>
                 </div>
@@ -161,8 +161,8 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
                                     <div className="flex items-center justify-between gap-2 mb-1.5">
                                         <span className="text-xs font-bold text-white truncate">{b.label}</span>
                                         <span className="flex items-center gap-1.5 shrink-0">
-                                            {b.isRetired && <span className="text-tiny text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded">Retraite</span>}
-                                            <span className={`text-tiny font-mono tabular-nums privacy-blur ${childNet >= 0 ? 'text-emerald-400' : 'text-orange-300'}`}>
+                                            {b.isRetired && <span className="text-tiny text-amber-300 bg-warning-500/10 px-1.5 py-0.5 rounded">Retraite</span>}
+                                            <span className={`text-tiny font-mono tabular-nums privacy-blur ${childNet >= 0 ? 'text-success-400' : 'text-orange-300'}`}>
                                                 {childNet >= 0 ? '+' : ''}{cad(childNet)}
                                             </span>
                                             {b.hasChildren && <span aria-hidden="true" className="text-ink-500">›</span>}

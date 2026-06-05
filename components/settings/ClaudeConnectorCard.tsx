@@ -41,7 +41,7 @@ export const ClaudeConnectorCard: React.FC = () => {
     return (
         <Card title="🤖 Connecter à Claude (assistant IA)">
             <div className="space-y-4">
-                <p className="text-tiny text-gray-400 leading-snug">
+                <p className="text-tiny text-ink-300 leading-snug">
                     Pose tes questions sur tes finances à Claude (« suis-je sur la bonne voie pour la retraite ? »,
                     « quel est mon taux d'impôt ? ») et <strong>envoie-lui tes documents</strong> (paie, relevés
                     bancaires/courtage, feuillets) — il les range dans <strong>ton</strong> Google Drive FinanceAI, tout seul.
@@ -75,7 +75,7 @@ export const ClaudeConnectorCard: React.FC = () => {
                                 </span>
                             )}
                             {status === 'unavailable' && (
-                                <span className="block rounded-card bg-amber-500/10 border border-amber-500/30 text-amber-200 px-3 py-2 text-tiny leading-snug">
+                                <span className="block rounded-card bg-warning-500/10 border border-warning-500/30 text-amber-200 px-3 py-2 text-tiny leading-snug">
                                     ⏳ Le connecteur n'est pas encore disponible au téléchargement. Il arrive bientôt —
                                     en attendant, l'installation manuelle est décrite dans <code>mcp/README.md</code>.
                                 </span>
@@ -91,7 +91,7 @@ export const ClaudeConnectorCard: React.FC = () => {
                     </li>
                 </ol>
 
-                <p className="text-tiny text-gray-500 leading-snug">
+                <p className="text-tiny text-ink-500 leading-snug">
                     Aucune installation technique (Node est inclus dans Claude Desktop), aucun compte développeur.
                     Tes données restent dans <strong>ton</strong> Google Drive.
                 </p>

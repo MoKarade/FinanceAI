@@ -96,7 +96,7 @@ export const AutoBackupPanel: React.FC = () => {
             />
 
             <div className="space-y-4">
-                <p className="text-tiny text-gray-400 leading-snug">
+                <p className="text-tiny text-ink-300 leading-snug">
                     L'app crée 1 backup automatique par jour dans le IndexedDB local. Rolling 7 jours
                     (les plus anciens sont supprimés). Stocké uniquement sur ton appareil — jamais envoyé.
                 </p>
@@ -141,7 +141,7 @@ export const AutoBackupPanel: React.FC = () => {
                         <button
                             type="button"
                             onClick={() => setConfirmClearAll(true)}
-                            className="ml-auto px-3 py-1.5 bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-300 text-tiny font-bold rounded-card transition-colors focus-ring"
+                            className="ml-auto px-3 py-1.5 bg-danger-500/15 hover:bg-danger-500/25 border border-danger-500/30 text-red-300 text-tiny font-bold rounded-card transition-colors focus-ring"
                         >
                             🗑️ Vider tout
                         </button>
@@ -175,7 +175,7 @@ export const AutoBackupPanel: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => setConfirmDelete(entry)}
-                                    className="px-2 py-1 text-tiny text-red-400 hover:text-red-300 transition-colors focus-ring rounded"
+                                    className="px-2 py-1 text-tiny text-danger-400 hover:text-red-300 transition-colors focus-ring rounded"
                                     title="Supprimer ce backup"
                                     aria-label={`Supprimer le backup du ${formatDate(entry.timestamp)}`}
                                 >

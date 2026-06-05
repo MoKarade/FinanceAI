@@ -42,16 +42,16 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         }
 
         return (
-            <div className="flex flex-col items-center justify-center min-h-[400px] p-8 bg-red-900/10 border border-red-500/20 rounded-2xl m-4">
+            <div className="flex flex-col items-center justify-center min-h-[400px] p-8 bg-red-900/10 border border-danger-500/20 rounded-2xl m-4">
                 <div className="text-5xl mb-4" aria-hidden="true">⚠️</div>
                 <h2 className="text-xl font-bold text-red-300 mb-2">
                     {this.props.label ? `Erreur dans « ${this.props.label} »` : 'Erreur dans cet onglet'}
                 </h2>
-                <p className="text-sm text-gray-400 mb-6 max-w-md text-center">
+                <p className="text-sm text-ink-300 mb-6 max-w-md text-center">
                     Quelque chose s'est mal passé. Tes données sont en sécurité — tu peux réessayer ou changer d'onglet.
                 </p>
                 <details className="mb-6 max-w-md w-full">
-                    <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-300 select-none">
+                    <summary className="text-xs text-ink-500 cursor-pointer hover:text-ink-200 select-none">
                         Détails techniques
                     </summary>
                     <pre className="text-tiny text-red-200/70 bg-black/40 p-3 rounded mt-2 overflow-auto max-h-48 whitespace-pre-wrap break-words">
@@ -61,7 +61,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                 </details>
                 <button
                     onClick={this.retry}
-                    className="px-4 py-2 bg-red-500/20 border border-red-500/40 rounded-lg text-red-200 text-sm font-bold hover:bg-red-500/30 transition-colors"
+                    className="px-4 py-2 bg-danger-500/20 border border-danger-500/40 rounded-lg text-red-200 text-sm font-bold hover:bg-danger-500/30 transition-colors"
                 >
                     Réessayer
                 </button>

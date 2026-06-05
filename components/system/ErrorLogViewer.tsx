@@ -20,9 +20,9 @@ const SOURCE_ICONS: Record<ErrorSource, string> = {
 
 const SEVERITY_COLORS: Record<ErrorSeverity, string> = {
     info: 'text-info-400 bg-info-500/10 border-info-500/30',
-    warning: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
-    error: 'text-red-400 bg-red-500/10 border-red-500/30',
-    critical: 'text-red-200 bg-red-700/30 border-red-500/50',
+    warning: 'text-warning-400 bg-warning-500/10 border-warning-500/30',
+    error: 'text-danger-400 bg-danger-500/10 border-danger-500/30',
+    critical: 'text-red-200 bg-red-700/30 border-danger-500/50',
 };
 
 export const ErrorLogViewer: React.FC = () => {
@@ -81,7 +81,7 @@ export const ErrorLogViewer: React.FC = () => {
                 confirmLabel="Vider"
             />
             <div className="space-y-4">
-                <p className="text-tiny text-gray-400 leading-snug">
+                <p className="text-tiny text-ink-300 leading-snug">
                     Captures locales des erreurs IA / projection / UI. Rolling buffer 100 entrées en
                     localStorage. <strong>Aucune donnée envoyée sur le réseau.</strong>
                 </p>
@@ -96,12 +96,12 @@ export const ErrorLogViewer: React.FC = () => {
                         <div className="text-tiny text-ink-400 uppercase">24h</div>
                         <div className="text-base font-bold text-white">{stats.last24h}</div>
                     </div>
-                    <div className="bg-red-500/10 rounded p-2 border border-red-500/30">
-                        <div className="text-tiny text-red-400 uppercase">Errors</div>
+                    <div className="bg-danger-500/10 rounded p-2 border border-danger-500/30">
+                        <div className="text-tiny text-danger-400 uppercase">Errors</div>
                         <div className="text-base font-bold text-red-300">{(stats.bySeverity.error ?? 0) + (stats.bySeverity.critical ?? 0)}</div>
                     </div>
-                    <div className="bg-amber-500/10 rounded p-2 border border-amber-500/30">
-                        <div className="text-tiny text-amber-400 uppercase">Warnings</div>
+                    <div className="bg-warning-500/10 rounded p-2 border border-warning-500/30">
+                        <div className="text-tiny text-warning-400 uppercase">Warnings</div>
                         <div className="text-base font-bold text-amber-300">{stats.bySeverity.warning ?? 0}</div>
                     </div>
                 </div>
@@ -151,7 +151,7 @@ export const ErrorLogViewer: React.FC = () => {
                             type="button"
                             onClick={() => setConfirmClear(true)}
                             disabled={errors.length === 0}
-                            className="px-3 py-1 text-tiny bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 rounded text-red-300 transition-colors focus-ring disabled:opacity-50"
+                            className="px-3 py-1 text-tiny bg-danger-500/15 hover:bg-danger-500/25 border border-danger-500/30 rounded text-red-300 transition-colors focus-ring disabled:opacity-50"
                         >
                             🗑️ Vider
                         </button>
@@ -160,7 +160,7 @@ export const ErrorLogViewer: React.FC = () => {
 
                 {/* Liste */}
                 {filtered.length === 0 ? (
-                    <div className="text-center py-6 text-meta text-emerald-300 bg-emerald-500/5 rounded-card border border-emerald-500/20">
+                    <div className="text-center py-6 text-meta text-emerald-300 bg-success-500/5 rounded-card border border-success-500/20">
                         {errors.length === 0
                             ? '✅ Aucune erreur enregistrée. Tout va bien.'
                             : 'Aucune erreur ne correspond aux filtres actuels.'}

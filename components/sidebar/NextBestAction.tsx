@@ -45,9 +45,9 @@ function writeCache(actions: NBAction[]) {
 }
 
 const URGENCY_COLORS: Record<NBAction['urgency'], { dot: string; border: string; text: string }> = {
-    high: { dot: 'bg-red-500', border: 'border-red-500/30', text: 'text-red-300' },
-    medium: { dot: 'bg-amber-400', border: 'border-amber-400/30', text: 'text-amber-300' },
-    low: { dot: 'bg-emerald-400', border: 'border-emerald-400/30', text: 'text-emerald-300' },
+    high: { dot: 'bg-danger-500', border: 'border-danger-500/30', text: 'text-red-300' },
+    medium: { dot: 'bg-warning-400', border: 'border-warning-400/30', text: 'text-amber-300' },
+    low: { dot: 'bg-success-400', border: 'border-success-400/30', text: 'text-emerald-300' },
 };
 
 interface NextBestActionProps {
@@ -196,7 +196,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen })
                 <button
                     type="button"
                     onClick={() => navigateWithFocus(Tab.SETTINGS, 'profile-user1-card')}
-                    className="w-full text-left p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 text-meta text-amber-300 hover:bg-amber-500/10 focus-ring transition-colors"
+                    className="w-full text-left p-3 rounded-xl bg-warning-500/5 border border-warning-500/20 text-meta text-amber-300 hover:bg-warning-500/10 focus-ring transition-colors"
                 >
                     <div className="font-bold mb-1 flex items-center gap-2">
                         <span aria-hidden="true">⚡</span> Aucune action disponible
@@ -204,7 +204,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen })
                     <div className="text-tiny text-ink-400">
                         Renseigne ton profil pour activer les recommandations IA.
                     </div>
-                    <div className="text-tiny text-amber-400 mt-1 font-medium">→ Configurer mon profil</div>
+                    <div className="text-tiny text-warning-400 mt-1 font-medium">→ Configurer mon profil</div>
                 </button>
             </div>
         );
@@ -252,7 +252,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen })
                     >
                         Générer une recommandation →
                     </button>
-                    {hasError && <div className="text-tiny text-red-400 mt-1">Erreur IA — vérifie ta clé Anthropic.</div>}
+                    {hasError && <div className="text-tiny text-danger-400 mt-1">Erreur IA — vérifie ta clé Anthropic.</div>}
                 </div>
             </div>
         );

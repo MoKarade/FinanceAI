@@ -82,14 +82,14 @@ export function LoginGate({ children }: LoginGateProps): React.ReactElement {
             <div className="w-full max-w-sm text-center space-y-6">
                 <div className="space-y-2">
                     <h1 className="text-2xl font-semibold text-white">FinanceAI</h1>
-                    <p className="text-meta text-gray-300 leading-snug">
+                    <p className="text-meta text-ink-200 leading-snug">
                         Connecte-toi avec Google pour retrouver tes données sur tous tes appareils,
                         automatiquement.
                     </p>
                 </div>
 
                 {phase === 'checking' ? (
-                    <p className="text-meta text-gray-400 animate-pulse">Connexion en cours…</p>
+                    <p className="text-meta text-ink-300 animate-pulse">Connexion en cours…</p>
                 ) : (
                     <button
                         type="button"
@@ -106,7 +106,7 @@ export function LoginGate({ children }: LoginGateProps): React.ReactElement {
                 <button
                     type="button"
                     onClick={onEscape}
-                    className="text-tiny text-gray-500 underline underline-offset-2 hover:text-gray-300"
+                    className="text-tiny text-ink-500 underline underline-offset-2 hover:text-ink-200"
                 >
                     Continuer sans me connecter
                 </button>

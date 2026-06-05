@@ -217,7 +217,7 @@ export const ProjectionExplains: React.FC<ProjectionExplainsProps> = ({ chartDat
               </div>
               <div className="text-right">
                 <div className="text-body text-ink-50 font-bold font-mono">{fmt(group.endNetWorth)}</div>
-                <div className={`text-tiny font-mono ${growth >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                <div className={`text-tiny font-mono ${growth >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
                   {fmtSigned(growth)} cette année
                 </div>
               </div>

@@ -92,7 +92,7 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
     return (
         <Card title="📄 Upload relevé de salaire (IA Vision)">
             <div className="space-y-4">
-                <p className="text-tiny text-gray-400 leading-snug">
+                <p className="text-tiny text-ink-300 leading-snug">
                     Téléverse un relevé de salaire (image ou PDF). L'IA Vision (Claude Sonnet)
                     extrait automatiquement le brut, le net, l'impôt retenu et la fréquence de paie,
                     puis remplit le profil sélectionné.
@@ -124,7 +124,7 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
 
                 <label className={`flex flex-col items-center justify-center w-full h-32 rounded-card border-2 border-dashed cursor-pointer transition-colors ${
                     isAnalyzing
-                        ? 'border-amber-400/40 bg-amber-400/5'
+                        ? 'border-warning-400/40 bg-warning-400/5'
                         : 'border-white/15 bg-white/[0.02] hover:border-primary/40 hover:bg-primary/5'
                 }`}>
                     <input
@@ -144,7 +144,7 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
                 </label>
 
                 {result && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 rounded-card bg-emerald-500/10 border border-emerald-500/30">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 rounded-card bg-success-500/10 border border-success-500/30">
                         <div>
                             <div className="text-tiny text-ink-400 uppercase tracking-wider">Brut/an</div>
                             <div className="text-meta font-bold text-emerald-300 font-mono">{formatCAD(result.gross)}</div>
@@ -165,7 +165,7 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
                 )}
 
                 {!apiKey && (
-                    <p className="text-tiny text-amber-400 italic">
+                    <p className="text-tiny text-warning-400 italic">
                         💡 Configure ta clé Anthropic dans la carte "Clés API & Services" pour activer l'upload IA.
                     </p>
                 )}

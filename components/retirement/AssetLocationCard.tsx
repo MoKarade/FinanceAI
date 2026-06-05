@@ -88,12 +88,12 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
         return Math.max(0, Math.min(100, Math.round(100 - lossRatio * 100 * 20))); // amplifié ×20
     }, [analysis, accountTotals.total]);
 
-    const scoreColor = efficiencyScore >= 80 ? 'text-emerald-400' : efficiencyScore >= 50 ? 'text-amber-400' : 'text-red-400';
+    const scoreColor = efficiencyScore >= 80 ? 'text-success-400' : efficiencyScore >= 50 ? 'text-warning-400' : 'text-danger-400';
 
     return (
         <Card title="🧭 Asset Location Optimizer">
             <div className="space-y-4">
-                <p className="text-meta text-gray-400 leading-snug">
+                <p className="text-meta text-ink-300 leading-snug">
                     Place chaque classe d'actif dans le compte optimal (CELI/REER/NonReg) selon les
                     règles fiscales canadiennes. L'objectif : minimiser l'impôt sur revenus passifs
                     (intérêts, dividendes US, gains réalisés).
@@ -102,33 +102,33 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                 {/* Score d'efficacité + synthèse comptes */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div className="bg-black/30 rounded p-3 border border-white/5 col-span-1 text-center">
-                        <div className="text-tiny text-gray-400 uppercase tracking-wide mb-1">Efficacité fiscale</div>
+                        <div className="text-tiny text-ink-300 uppercase tracking-wide mb-1">Efficacité fiscale</div>
                         <div className={`text-2xl font-black ${scoreColor} tabular-nums`}>{efficiencyScore}</div>
-                        <div className="text-tiny text-gray-500">/ 100</div>
+                        <div className="text-tiny text-ink-500">/ 100</div>
                     </div>
-                    <div className="bg-emerald-500/10 rounded p-3 border border-emerald-500/20">
-                        <div className="text-tiny text-emerald-400 uppercase tracking-wide mb-1">CELI</div>
+                    <div className="bg-success-500/10 rounded p-3 border border-success-500/20">
+                        <div className="text-tiny text-success-400 uppercase tracking-wide mb-1">CELI</div>
                         <div className="text-base font-bold text-emerald-200 font-mono">{formatCAD(accountTotals.totals.CELI)}</div>
-                        <div className="text-tiny text-gray-500">{accountTotals.total > 0 ? ((accountTotals.totals.CELI / accountTotals.total) * 100).toFixed(0) : 0}%</div>
+                        <div className="text-tiny text-ink-500">{accountTotals.total > 0 ? ((accountTotals.totals.CELI / accountTotals.total) * 100).toFixed(0) : 0}%</div>
                     </div>
                     <div className="bg-info-500/10 rounded p-3 border border-info-500/20">
                         <div className="text-tiny text-info-400 uppercase tracking-wide mb-1">REER</div>
                         <div className="text-base font-bold text-info-200 font-mono">{formatCAD(accountTotals.totals.REER)}</div>
-                        <div className="text-tiny text-gray-500">{accountTotals.total > 0 ? ((accountTotals.totals.REER / accountTotals.total) * 100).toFixed(0) : 0}%</div>
+                        <div className="text-tiny text-ink-500">{accountTotals.total > 0 ? ((accountTotals.totals.REER / accountTotals.total) * 100).toFixed(0) : 0}%</div>
                     </div>
-                    <div className="bg-amber-500/10 rounded p-3 border border-amber-500/20">
-                        <div className="text-tiny text-amber-400 uppercase tracking-wide mb-1">Non-Enreg.</div>
+                    <div className="bg-warning-500/10 rounded p-3 border border-warning-500/20">
+                        <div className="text-tiny text-warning-400 uppercase tracking-wide mb-1">Non-Enreg.</div>
                         <div className="text-base font-bold text-amber-200 font-mono">{formatCAD(accountTotals.totals.NonReg)}</div>
-                        <div className="text-tiny text-gray-500">{accountTotals.total > 0 ? ((accountTotals.totals.NonReg / accountTotals.total) * 100).toFixed(0) : 0}%</div>
+                        <div className="text-tiny text-ink-500">{accountTotals.total > 0 ? ((accountTotals.totals.NonReg / accountTotals.total) * 100).toFixed(0) : 0}%</div>
                     </div>
                 </div>
 
                 {/* Perte annuelle si inchangé */}
                 {analysis && analysis.totalAnnualLoss > 0 && (
-                    <div className="p-3 bg-red-500/10 border border-red-500/30 rounded">
+                    <div className="p-3 bg-danger-500/10 border border-danger-500/30 rounded">
                         <div className="flex items-center justify-between">
                             <span className="text-tiny text-red-300 font-bold uppercase">Manque à gagner annuel si inchangé</span>
-                            <span className="text-base font-bold text-red-400 font-mono">{formatCAD(analysis.totalAnnualLoss)}/an</span>
+                            <span className="text-base font-bold text-danger-400 font-mono">{formatCAD(analysis.totalAnnualLoss)}/an</span>
                         </div>
                         <p className="text-tiny text-ink-400 mt-1">Sur 20 ans capitalisé à 5% : ~{formatCAD(analysis.totalAnnualLoss * 33)} de patrimoine perdu.</p>
                     </div>
@@ -150,7 +150,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                             <button
                                 type="button"
                                 onClick={() => setHoldings([...holdings, { assetClass: 'us-equity', amount: 10000, currentAccount: 'CELI' }])}
-                                className="text-tiny px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 rounded text-emerald-300 transition-colors"
+                                className="text-tiny px-2 py-1 bg-success-500/15 hover:bg-success-500/25 rounded text-emerald-300 transition-colors"
                             >
                                 + Ligne
                             </button>
@@ -184,7 +184,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                             <button
                                 type="button"
                                 onClick={() => { const next = [...holdings]; next.splice(i, 1); setHoldings(next); }}
-                                className="col-span-1 text-red-400 text-xs hover:text-red-300"
+                                className="col-span-1 text-danger-400 text-xs hover:text-red-300"
                                 aria-label="Supprimer cette ligne"
                             >
                                 ×
@@ -195,7 +195,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
 
                 {/* Recommandations en temps réel */}
                 {analysis && analysis.recommendations.length > 0 && (
-                    <div className="p-3 bg-emerald-900/30 border border-emerald-500/30 rounded-lg space-y-2">
+                    <div className="p-3 bg-emerald-900/30 border border-success-500/30 rounded-lg space-y-2">
                         <p className="text-meta text-emerald-200 font-medium">{analysis.summary}</p>
                         {analysis.recommendations.map((r, i) => (
                             <div key={i} className="text-tiny p-2 bg-black/40 rounded space-y-1">
@@ -205,7 +205,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                                         <span className="text-ink-400"> {formatCAD(r.amount)}</span>
                                         <span className="text-orange-400 mx-1">{r.currentAccount}</span>
                                         <span className="text-ink-500">→</span>
-                                        <span className="text-emerald-400 mx-1">{r.recommendedAccount}</span>
+                                        <span className="text-success-400 mx-1">{r.recommendedAccount}</span>
                                     </span>
                                     <span className="text-red-300 font-mono shrink-0">−{formatCAD(r.annualLossIfUnchanged)}/an</span>
                                 </div>
@@ -216,13 +216,13 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                 )}
 
                 {analysis && analysis.recommendations.length === 0 && (
-                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded text-emerald-300 text-meta font-medium text-center">
+                    <div className="p-3 bg-success-500/10 border border-success-500/30 rounded text-emerald-300 text-meta font-medium text-center">
                         ✅ Allocation déjà optimale — aucun déplacement à faire.
                     </div>
                 )}
 
                 {annualGrossIncome <= 0 && (
-                    <p className="text-tiny text-amber-400 italic">
+                    <p className="text-tiny text-warning-400 italic">
                         ℹ️ Configure ton revenu brut dans Configuration pour activer l'analyse précise (taux marginal requis).
                     </p>
                 )}

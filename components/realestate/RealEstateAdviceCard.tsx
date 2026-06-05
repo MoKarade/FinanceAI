@@ -11,11 +11,11 @@ import { getRealEstateAdvice, type RealEstateContext, type RealEstateAdvice } fr
  */
 
 const CATEGORY_META: Record<RealEstateAdvice['insights'][number]['category'], { icon: string; label: string; color: string }> = {
-    cost: { icon: '💰', label: 'Coût', color: 'text-amber-300 border-amber-500/30 bg-amber-500/5' },
+    cost: { icon: '💰', label: 'Coût', color: 'text-amber-300 border-warning-500/30 bg-warning-500/5' },
     timing: { icon: '⏱️', label: 'Timing', color: 'text-info-300 border-info-500/30 bg-info-500/5' },
     leverage: { icon: '⚖️', label: 'Levier', color: 'text-purple-300 border-purple-500/30 bg-purple-500/5' },
-    tax: { icon: '🏛️', label: 'Fiscal', color: 'text-emerald-300 border-emerald-500/30 bg-emerald-500/5' },
-    risk: { icon: '⚠️', label: 'Risque', color: 'text-red-300 border-red-500/30 bg-red-500/5' },
+    tax: { icon: '🏛️', label: 'Fiscal', color: 'text-emerald-300 border-success-500/30 bg-success-500/5' },
+    risk: { icon: '⚠️', label: 'Risque', color: 'text-red-300 border-danger-500/30 bg-danger-500/5' },
 };
 
 interface RealEstateAdviceCardProps {
@@ -50,11 +50,11 @@ export const RealEstateAdviceCard: React.FC<RealEstateAdviceCardProps> = ({ cont
     };
 
     return (
-        <Card title="✨ Conseils IA — Projet immobilier" className="bg-gradient-to-br from-emerald-900/10 to-blue-900/10 border-emerald-500/20">
+        <Card title="✨ Conseils IA — Projet immobilier" className="bg-gradient-to-br from-emerald-900/10 to-blue-900/10 border-success-500/20">
             <div className="space-y-3">
                 {!advice && (
                     <div className="text-center py-4 space-y-2">
-                        <p className="text-tiny text-gray-400">
+                        <p className="text-tiny text-ink-300">
                             Génère 3 conseils personnalisés sur les coûts cachés, le timing, le levier
                             fiscal (RAP/CELIAPP), et les risques (stress test B-20) pour ce projet.
                         </p>
@@ -62,12 +62,12 @@ export const RealEstateAdviceCard: React.FC<RealEstateAdviceCardProps> = ({ cont
                             type="button"
                             onClick={handleGenerate}
                             disabled={isLoading || !apiKey}
-                            className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-blue-600 text-white rounded-lg font-bold text-sm hover:opacity-90 disabled:opacity-50"
+                            className="px-4 py-2 bg-gradient-to-r from-success-600 to-info-600 text-white rounded-lg font-bold text-sm hover:opacity-90 disabled:opacity-50"
                         >
                             {isLoading ? '⏳ Analyse…' : '✨ Conseiller le projet'}
                         </button>
-                        {error && <p className="text-red-400 text-tiny mt-1">{error}</p>}
-                        {!apiKey && <p className="text-amber-400 text-tiny italic">Clé Anthropic requise (Configuration)</p>}
+                        {error && <p className="text-danger-400 text-tiny mt-1">{error}</p>}
+                        {!apiKey && <p className="text-warning-400 text-tiny italic">Clé Anthropic requise (Configuration)</p>}
                     </div>
                 )}
 

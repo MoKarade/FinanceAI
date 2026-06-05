@@ -24,7 +24,7 @@ export const PwaInstallBanner: React.FC = () => {
         <div
             role="region"
             aria-label="Installer FinanceAI comme application"
-            className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 max-w-md w-[calc(100%-2rem)] bg-emerald-500/15 border border-emerald-500/40 backdrop-blur rounded-xl shadow-lg p-3 flex items-center gap-3 animate-fade-in"
+            className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 max-w-md w-[calc(100%-2rem)] bg-success-500/15 border border-success-500/40 backdrop-blur rounded-xl shadow-lg p-3 flex items-center gap-3 animate-fade-in"
         >
             <span className="text-2xl" aria-hidden="true">📱</span>
             <div className="flex-1 min-w-0">
@@ -34,7 +34,7 @@ export const PwaInstallBanner: React.FC = () => {
             <button
                 type="button"
                 onClick={handleInstall}
-                className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-meta font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400 shrink-0"
+                className="px-3 py-1.5 rounded-lg bg-success-500 hover:bg-success-600 text-white text-meta font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-success-400 shrink-0"
                 aria-label="Installer maintenant"
             >
                 Installer
@@ -42,7 +42,7 @@ export const PwaInstallBanner: React.FC = () => {
             <button
                 type="button"
                 onClick={dismissForNow}
-                className="p-1.5 rounded-lg hover:bg-emerald-500/20 text-emerald-200 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400 shrink-0"
+                className="p-1.5 rounded-lg hover:bg-success-500/20 text-emerald-200 transition-colors focus:outline-none focus:ring-2 focus:ring-success-400 shrink-0"
                 aria-label="Fermer le bandeau d'installation"
                 title="Ne plus afficher pendant 30 jours"
             >

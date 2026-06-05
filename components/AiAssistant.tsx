@@ -246,7 +246,7 @@ ${last20Txs}`
       <button
         onClick={() => setIsOpen(!isOpen)}
         aria-label={isOpen ? 'Fermer le conseiller IA' : 'Ouvrir le conseiller IA'}
-        className={`fixed bottom-24 right-4 md:bottom-8 md:right-8 z-50 w-14 h-14 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all duration-300 active:scale-95 flex items-center justify-center focus-ring ${isOpen ? 'bg-red-500 rotate-90' : 'bg-primary hover:bg-emerald-400 hover:-translate-y-1'}`}
+        className={`fixed bottom-24 right-4 md:bottom-8 md:right-8 z-50 w-14 h-14 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all duration-300 active:scale-95 flex items-center justify-center focus-ring ${isOpen ? 'bg-danger-500 rotate-90' : 'bg-primary hover:bg-success-400 hover:-translate-y-1'}`}
       >
         <span className="text-2xl text-white drop-shadow-md" aria-hidden="true">
           {isOpen ? '✕' : '✨'}
@@ -270,7 +270,7 @@ ${last20Txs}`
               </div>
             </div>
             <div className="ml-auto">
-              <button onClick={clearConversation} aria-label="Effacer la conversation" className="text-gray-400 hover:text-white p-2 text-xs bg-white/5 rounded-lg focus-ring">Effacer</button>
+              <button onClick={clearConversation} aria-label="Effacer la conversation" className="text-ink-300 hover:text-white p-2 text-xs bg-white/5 rounded-lg focus-ring">Effacer</button>
             </div>
           </div>
 
@@ -283,12 +283,12 @@ ${last20Txs}`
                 <div
                   className={`max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-relaxed shadow-md ${m.role === 'user'
                     ? 'bg-primary text-white rounded-tr-none'
-                    : 'bg-[#2a2a2a] text-gray-200 rounded-tl-none border border-white/5'
+                    : 'bg-[#2a2a2a] text-ink-100 rounded-tl-none border border-white/5'
                     }`}
                 >
                   {m.text.split('\n').map((line, idx) => renderMarkdownLine(line, idx))}
                   {m.timestamp && (
-                    <div className={`text-tiny mt-1 text-right ${m.role === 'user' ? 'text-green-200' : 'text-gray-500'}`}>
+                    <div className={`text-tiny mt-1 text-right ${m.role === 'user' ? 'text-green-200' : 'text-ink-500'}`}>
                       {formatTime(m.timestamp)}
                     </div>
                   )}
@@ -317,9 +317,9 @@ ${last20Txs}`
               <div className="flex justify-start">
                 <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mr-2 text-sm flex-shrink-0 border border-white/10" aria-hidden="true">🤖</div>
                 <div className="bg-[#2a2a2a] rounded-2xl rounded-tl-none px-4 py-4 flex gap-1.5 items-center border border-white/5" aria-label="Chargement de la réponse">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-[bounce_1.4s_infinite_0ms]"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-[bounce_1.4s_infinite_200ms]"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-[bounce_1.4s_infinite_400ms]"></div>
+                  <div className="w-2 h-2 bg-ink-300 rounded-full animate-[bounce_1.4s_infinite_0ms]"></div>
+                  <div className="w-2 h-2 bg-ink-300 rounded-full animate-[bounce_1.4s_infinite_200ms]"></div>
+                  <div className="w-2 h-2 bg-ink-300 rounded-full animate-[bounce_1.4s_infinite_400ms]"></div>
                 </div>
               </div>
             )}
@@ -336,7 +336,7 @@ ${last20Txs}`
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 placeholder="Analyser mon budget…"
                 aria-label="Question au conseiller IA"
-                className="flex-1 bg-transparent px-4 text-sm text-white outline-none disabled:opacity-50 placeholder-gray-500 font-medium"
+                className="flex-1 bg-transparent px-4 text-sm text-white outline-none disabled:opacity-50 placeholder-ink-500 font-medium"
                 disabled={isLoading}
               />
               {isLoading ? (

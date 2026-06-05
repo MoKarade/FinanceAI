@@ -61,9 +61,9 @@ const fmtMs = (ms: number): string => {
 
 function successColor(rate: number): string {
     if (rate >= 90) return 'bg-green-400';
-    if (rate >= 75) return 'bg-emerald-400';
-    if (rate >= 50) return 'bg-amber-400';
-    return 'bg-red-400';
+    if (rate >= 75) return 'bg-success-400';
+    if (rate >= 50) return 'bg-warning-400';
+    return 'bg-danger-400';
 }
 
 // Une barre de sous-score 0..1 (détail du score).
@@ -272,7 +272,7 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, onApply }) => 
                     <button
                         type="button"
                         onClick={cancel}
-                        className="mt-2 w-full rounded-lg bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 px-3 py-1.5 text-tiny font-bold text-red-200 focus-ring transition-colors"
+                        className="mt-2 w-full rounded-lg bg-danger-500/15 hover:bg-danger-500/25 border border-danger-500/30 px-3 py-1.5 text-tiny font-bold text-red-200 focus-ring transition-colors"
                     >
                         Annuler
                     </button>

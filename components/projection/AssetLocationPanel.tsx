@@ -102,7 +102,7 @@ export const AssetLocationPanel: React.FC<Props> = ({ assets, annualGrossIncome 
     const hasIssues = result.totalAnnualLoss > 0;
 
     return (
-        <div className={`mt-3 rounded-xl border p-3.5 ${hasIssues ? 'border-amber-500/30 bg-amber-500/5' : 'border-green-500/30 bg-green-500/5'}`}>
+        <div className={`mt-3 rounded-xl border p-3.5 ${hasIssues ? 'border-warning-500/30 bg-warning-500/5' : 'border-green-500/30 bg-green-500/5'}`}>
             <button
                 type="button"
                 onClick={() => setExpanded(v => !v)}

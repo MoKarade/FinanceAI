@@ -64,17 +64,17 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
 
     return (
         <Card title="Calendrier des Revenus Passifs" className="animate-premium-in" style={{ animationDelay: '0.2s' }}>
-            <div className="flex justify-between items-center mb-6 bg-gradient-to-r from-emerald-900/40 to-black/40 p-5 rounded-2xl border border-emerald-500/20 shadow-lg shadow-emerald-500/5">
+            <div className="flex justify-between items-center mb-6 bg-gradient-to-r from-emerald-900/40 to-black/40 p-5 rounded-2xl border border-success-500/20 shadow-lg shadow-success-500/5">
                 <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-3xl shadow-inner border border-emerald-500/10">💰</div>
+                    <div className="w-14 h-14 rounded-2xl bg-success-500/10 flex items-center justify-center text-3xl shadow-inner border border-success-500/10">💰</div>
                     <div>
-                        <div className="text-tiny uppercase font-bold text-emerald-500/70 tracking-widest mb-1">Rente Annuelle Estimée</div>
+                        <div className="text-tiny uppercase font-bold text-success-500/70 tracking-widest mb-1">Rente Annuelle Estimée</div>
                         <div className="text-3xl font-black text-white privacy-blur tracking-tight">{totalAnnualDividends.toLocaleString()} CAD</div>
                     </div>
                 </div>
                 <div className="text-right hidden sm:block">
-                    <div className="text-tiny uppercase font-bold text-gray-500 tracking-widest mb-1">Moyenne mensuelle</div>
-                    <div className="text-xl font-bold text-gray-300">{(totalAnnualDividends / 12).toLocaleString()} $ / mois</div>
+                    <div className="text-tiny uppercase font-bold text-ink-500 tracking-widest mb-1">Moyenne mensuelle</div>
+                    <div className="text-xl font-bold text-ink-200">{(totalAnnualDividends / 12).toLocaleString()} $ / mois</div>
                 </div>
             </div>
 
@@ -91,25 +91,25 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                     ))
                 ) : (
                     dividendCalendar.map((item, i) => (
-                        <div key={i} className="premium-card p-4 rounded-xl flex flex-col justify-between hover:border-emerald-500/30 transition-all group">
+                        <div key={i} className="premium-card p-4 rounded-xl flex flex-col justify-between hover:border-success-500/30 transition-all group">
                             <div className="flex justify-between items-start mb-2 relative z-10">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-xs font-bold text-white shadow-inner group-hover:bg-emerald-500/10 transition-colors">
+                                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-xs font-bold text-white shadow-inner group-hover:bg-success-500/10 transition-colors">
                                         {item.name.substring(0, 2).toUpperCase()}
                                     </div>
                                     <div>
                                         <div className="font-bold text-white text-sm tracking-tight">{item.name}</div>
-                                        <div className="text-tiny text-gray-500">{item.id.split(':')[0]}</div>
+                                        <div className="text-tiny text-ink-500">{item.id.split(':')[0]}</div>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-emerald-400 font-bold text-sm">+{item.amountPerPayout.toFixed(0)}$</div>
-                                    <div className="text-tiny text-gray-500 font-medium">{item.freq === 4 ? 'Trimestriel' : 'Annuel'}</div>
+                                    <div className="text-success-400 font-bold text-sm">+{item.amountPerPayout.toFixed(0)}$</div>
+                                    <div className="text-tiny text-ink-500 font-medium">{item.freq === 4 ? 'Trimestriel' : 'Annuel'}</div>
                                 </div>
                             </div>
                             <div className="mt-3 pt-2 border-t border-white/5 flex justify-between items-center relative z-10">
-                                <span className="text-tiny text-gray-500 font-medium">Prochain paiement</span>
-                                <span className="text-tiny font-bold text-white bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/10 text-emerald-300">
+                                <span className="text-tiny text-ink-500 font-medium">Prochain paiement</span>
+                                <span className="text-tiny font-bold text-white bg-success-500/20 px-2.5 py-1 rounded-lg border border-success-500/10 text-emerald-300">
                                     {item.nextPayout}
                                 </span>
                             </div>
@@ -117,44 +117,44 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                     ))
                 )}
                 {!isLoading && dividendCalendar.length === 0 && (
-                    <div className="col-span-full text-center text-gray-500 py-10 italic">
+                    <div className="col-span-full text-center text-ink-500 py-10 italic">
                         Aucune action à dividende détectée.
                     </div>
                 )}
             </div>
 
             {dividendCalendar.length > 0 && (
-                <div className="mt-8 pt-6 border-t border-emerald-500/10">
+                <div className="mt-8 pt-6 border-t border-success-500/10">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                         <div>
                             <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                                <span className="text-emerald-400">📈</span> Projection sur 12 mois
+                                <span className="text-success-400">📈</span> Projection sur 12 mois
                             </h4>
-                            <p className="text-tiny text-gray-500 mt-1">Estimation des revenus passifs futurs</p>
+                            <p className="text-tiny text-ink-500 mt-1">Estimation des revenus passifs futurs</p>
                         </div>
 
                         <div className="flex items-center gap-6 bg-black/40 p-3 rounded-xl border border-white/5 w-full sm:w-auto">
                             <label className="flex items-center gap-2 cursor-pointer group">
-                                <div className={`w-8 h-4 rounded-full transition-colors relative ${dripEnabled ? 'bg-emerald-500' : 'bg-gray-700'}`}>
+                                <div className={`w-8 h-4 rounded-full transition-colors relative ${dripEnabled ? 'bg-success-500' : 'bg-gray-700'}`}>
                                     <div className={`w-3 h-3 bg-white rounded-full absolute top-[2px] transition-all ${dripEnabled ? 'left-4 translate-x-0.5' : 'left-0.5'}`}></div>
                                 </div>
                                 <input type="checkbox" className="hidden" checked={dripEnabled} onChange={(e) => setDripEnabled(e.target.checked)} />
-                                <span className="text-tiny font-bold text-gray-300 group-hover:text-white transition-colors">DRIP (Réinvestir)</span>
+                                <span className="text-tiny font-bold text-ink-200 group-hover:text-white transition-colors">DRIP (Réinvestir)</span>
                             </label>
 
                             <div className="w-px h-6 bg-white/10 hidden sm:block"></div>
 
                             <div className="flex items-center gap-2 flex-1 sm:flex-none">
-                                <span className="text-tiny text-gray-400 whitespace-nowrap">Croissance des div. :</span>
+                                <span className="text-tiny text-ink-300 whitespace-nowrap">Croissance des div. :</span>
                                 <input
                                     type="number"
                                     min="0"
                                     max="50"
                                     value={divGrowthRate}
                                     onChange={(e) => setDivGrowthRate(Number(e.target.value))}
-                                    className="bg-black/50 border border-white/10 rounded px-2 py-0.5 text-xs text-white font-bold w-14 outline-none focus:border-emerald-500 transition-colors text-center"
+                                    className="bg-black/50 border border-white/10 rounded px-2 py-0.5 text-xs text-white font-bold w-14 outline-none focus:border-success-500 transition-colors text-center"
                                 />
-                                <span className="text-tiny text-gray-400">% / an</span>
+                                <span className="text-tiny text-ink-300">% / an</span>
                             </div>
                         </div>
                     </div>

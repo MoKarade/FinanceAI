@@ -9,10 +9,10 @@ import { showToast } from '../ui/Toast';
 import { getAuditLog, clearAuditLog, getAuditStats, exportAuditLogAsJSON, type AuditEntry } from '../../services/auditLog';
 
 const OP_COLORS: Record<AuditEntry['operation'], string> = {
-    add: 'text-emerald-300 border-emerald-500/30 bg-emerald-500/5',
-    remove: 'text-red-300 border-red-500/30 bg-red-500/5',
+    add: 'text-emerald-300 border-success-500/30 bg-success-500/5',
+    remove: 'text-red-300 border-danger-500/30 bg-danger-500/5',
     update: 'text-info-300 border-info-500/30 bg-info-500/5',
-    replace: 'text-amber-300 border-amber-500/30 bg-amber-500/5',
+    replace: 'text-amber-300 border-warning-500/30 bg-warning-500/5',
 };
 
 const OP_ICONS: Record<AuditEntry['operation'], string> = {
@@ -72,7 +72,7 @@ export const AuditLogViewer: React.FC = () => {
                 confirmLabel="Vider"
             />
             <div className="space-y-4">
-                <p className="text-tiny text-gray-400 leading-snug">
+                <p className="text-tiny text-ink-300 leading-snug">
                     Trace les changements importants du state (ajouts, suppressions, mises à jour).
                     Rolling buffer 500 entrées en localStorage. Aucune donnée envoyée.
                 </p>
@@ -86,12 +86,12 @@ export const AuditLogViewer: React.FC = () => {
                         <div className="text-tiny text-ink-400 uppercase">24h</div>
                         <div className="text-base font-bold text-white">{stats.last24h}</div>
                     </div>
-                    <div className="bg-emerald-500/10 rounded p-2 border border-emerald-500/30">
-                        <div className="text-tiny text-emerald-400 uppercase">Adds</div>
+                    <div className="bg-success-500/10 rounded p-2 border border-success-500/30">
+                        <div className="text-tiny text-success-400 uppercase">Adds</div>
                         <div className="text-base font-bold text-emerald-300">{stats.byOperation.add ?? 0}</div>
                     </div>
-                    <div className="bg-red-500/10 rounded p-2 border border-red-500/30">
-                        <div className="text-tiny text-red-400 uppercase">Removes</div>
+                    <div className="bg-danger-500/10 rounded p-2 border border-danger-500/30">
+                        <div className="text-tiny text-danger-400 uppercase">Removes</div>
                         <div className="text-base font-bold text-red-300">{stats.byOperation.remove ?? 0}</div>
                     </div>
                 </div>
@@ -123,7 +123,7 @@ export const AuditLogViewer: React.FC = () => {
                     <div className="ml-auto flex gap-2">
                         <button type="button" onClick={() => setRefreshKey(k => k + 1)} className="px-3 py-1 text-tiny bg-white/5 hover:bg-white/10 rounded text-ink-300 focus-ring">↻ Rafraîchir</button>
                         <button type="button" onClick={handleExport} disabled={entries.length === 0} className="px-3 py-1 text-tiny bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded text-info-300 focus-ring disabled:opacity-50">📤 Exporter</button>
-                        <button type="button" onClick={() => setConfirmClear(true)} disabled={entries.length === 0} className="px-3 py-1 text-tiny bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 rounded text-red-300 focus-ring disabled:opacity-50">🗑️ Vider</button>
+                        <button type="button" onClick={() => setConfirmClear(true)} disabled={entries.length === 0} className="px-3 py-1 text-tiny bg-danger-500/15 hover:bg-danger-500/25 border border-danger-500/30 rounded text-red-300 focus-ring disabled:opacity-50">🗑️ Vider</button>
                     </div>
                 </div>
 

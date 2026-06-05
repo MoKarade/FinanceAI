@@ -434,11 +434,11 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                     onChange={e => setCurrentRent(Number(e.target.value))}
                                                     className="w-full bg-purple-500/10 border border-purple-500/30 rounded px-2 py-1.5 text-purple-300 text-sm font-bold focus:outline-none focus:border-purple-400"
                                                 />
-                                                <span className="text-xs text-gray-500">$/m</span>
+                                                <span className="text-xs text-ink-500">$/m</span>
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="flex justify-between text-tiny text-emerald-400 font-bold uppercase mb-1">
+                                            <label className="flex justify-between text-tiny text-success-400 font-bold uppercase mb-1">
                                                 <span className="flex items-center gap-1">
                                                     Rendement Boursier
                                                     {!marketReturnOverridden && globalReturnRate !== undefined && (
@@ -470,7 +470,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                     setLocalStockReturn(Number(e.target.value));
                                                     setMarketReturnOverridden(true);
                                                 }}
-                                                className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-emerald-500 mt-2"
+                                                className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-success-500 mt-2"
                                             />
                                             {!marketReturnOverridden && globalReturnRate !== undefined && (
                                                 <p className="text-tiny text-info-400/70 italic mt-1">
@@ -491,10 +491,10 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                 className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-pink-500 mt-2"
                                             />
                                         </div>
-                                        <div className={`p-2 rounded-lg border flex flex-col justify-center ${netYield > 0 ? 'bg-green-900/20 border-green-500/20' : 'bg-red-900/20 border-red-500/20'}`}>
-                                            <div className="text-tiny uppercase font-bold text-gray-400">Si location (Cash-Flow)</div>
-                                            <div className={`text-lg font-black ${netYield > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                {formatCurrency(netAnnualIncome)}<span className="text-tiny font-normal text-gray-500">/an</span>
+                                        <div className={`p-2 rounded-lg border flex flex-col justify-center ${netYield > 0 ? 'bg-green-900/20 border-green-500/20' : 'bg-red-900/20 border-danger-500/20'}`}>
+                                            <div className="text-tiny uppercase font-bold text-ink-300">Si location (Cash-Flow)</div>
+                                            <div className={`text-lg font-black ${netYield > 0 ? 'text-green-400' : 'text-danger-400'}`}>
+                                                {formatCurrency(netAnnualIncome)}<span className="text-tiny font-normal text-ink-500">/an</span>
                                             </div>
                                         </div>
                                     </div>
@@ -525,7 +525,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                             </AreaChart>
                                         </ResponsiveContainer>
                                     </ZoomContainer>
-                                    <p className="text-tiny text-gray-500 mt-3 text-center">
+                                    <p className="text-tiny text-ink-500 mt-3 text-center">
                                         Note: Le graphique affiche automatiquement les scénarios pertinents (Habiter vs Louer) selon le type de propriété que vous avez configuré (Résidence Principale ou Propriété Locative).
                                     </p>
                                 </>
@@ -535,23 +535,23 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
 
                     <Card title="Amortissement et Équité">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-2">
-                            <div><div className="text-tiny text-gray-500 uppercase tracking-wider">Welcome Tax</div><div className="text-sm font-bold text-white">{formatCurrency(welcomeTax)}</div></div>
-                            <div><div className="text-tiny text-gray-500 uppercase tracking-wider">Notaire &amp; Insp.</div><div className="text-sm font-bold text-white">{formatCurrency(notaryFees + inspectionFees)}</div></div>
-                            <div><div className="text-tiny text-gray-500 uppercase tracking-wider">Rénos Initiales</div><div className="text-sm font-bold text-white">{formatCurrency(initialRenovations)}</div></div>
-                            <div><div className="text-tiny text-gray-500 uppercase tracking-wider">Maison Totale</div><div className="text-sm font-bold text-white">{formatCurrency(price + initialRenovations)}</div></div>
+                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Welcome Tax</div><div className="text-sm font-bold text-white">{formatCurrency(welcomeTax)}</div></div>
+                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Notaire &amp; Insp.</div><div className="text-sm font-bold text-white">{formatCurrency(notaryFees + inspectionFees)}</div></div>
+                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Rénos Initiales</div><div className="text-sm font-bold text-white">{formatCurrency(initialRenovations)}</div></div>
+                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Maison Totale</div><div className="text-sm font-bold text-white">{formatCurrency(price + initialRenovations)}</div></div>
                         </div>
                     </Card>
 
                     <Card title="📋 Tableau d'Amortissement Annuel">
                         <div className="overflow-x-auto">
                             <div className="mb-3 flex flex-wrap gap-4 text-xs">
-                                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />Intérêts totaux payés : <span className="font-bold text-red-400 privacy-blur">{formatCurrency(amortizationData.totalInterest)}</span></div>
-                                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />Gain Équité projeté : <span className="font-bold text-emerald-400 privacy-blur">{formatCurrency((amortizationData.data[amortizationData.data.length - 1]?.Équité || 0) - downPayment)}</span></div>
+                                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-danger-500 inline-block" />Intérêts totaux payés : <span className="font-bold text-danger-400 privacy-blur">{formatCurrency(amortizationData.totalInterest)}</span></div>
+                                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-success-500 inline-block" />Gain Équité projeté : <span className="font-bold text-success-400 privacy-blur">{formatCurrency((amortizationData.data[amortizationData.data.length - 1]?.Équité || 0) - downPayment)}</span></div>
                                 {yearlyRenovations > 0 && <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-yellow-500 inline-block" />Rénos totales : <span className="font-bold text-yellow-400 privacy-blur">{formatCurrency(yearlyRenovations * amortization)}</span></div>}
                             </div>
                             <table className="w-full text-xs text-left min-w-[700px]">
                                 <thead>
-                                    <tr className="border-b border-white/10 text-gray-500 uppercase tracking-wider">
+                                    <tr className="border-b border-white/10 text-ink-500 uppercase tracking-wider">
                                         <th className="py-2 pr-4">Année</th>
                                         <th className="py-2 pr-4">Taux</th>
                                         <th className="py-2 pr-4 text-right">Intérêts/an</th>
@@ -572,12 +572,12 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                     {isRenewal && <span className="ml-1.5 text-tiny text-orange-400 border border-orange-500/30 rounded px-1">Renouvellement</span>}
                                                 </td>
                                                 <td className="py-2 pr-4 text-orange-300">{row.TauxEnVigueur}</td>
-                                                <td className="py-2 pr-4 text-right text-red-400 privacy-blur">{formatCurrency(row.PartInteretAnnuelle)}</td>
-                                                <td className="py-2 pr-4 text-right text-blue-400 privacy-blur">{formatCurrency(row.PartPrincipalAnnuelle)}</td>
+                                                <td className="py-2 pr-4 text-right text-danger-400 privacy-blur">{formatCurrency(row.PartInteretAnnuelle)}</td>
+                                                <td className="py-2 pr-4 text-right text-info-400 privacy-blur">{formatCurrency(row.PartPrincipalAnnuelle)}</td>
                                                 <td className="py-2 pr-4 text-right text-white privacy-blur">{formatCurrency(row.Solde)}</td>
                                                 <td className="py-2 pr-4 text-right text-purple-300 privacy-blur">{formatCurrency(row.ValeuréPropriété)}</td>
                                                 <td className="py-2 text-right">
-                                                    <span className="text-emerald-400 font-bold privacy-blur">{formatCurrency(row.Équité)}</span>
+                                                    <span className="text-success-400 font-bold privacy-blur">{formatCurrency(row.Équité)}</span>
                                                     <span className="text-gray-600 ml-1">({equityPct}%)</span>
                                                 </td>
                                             </tr>

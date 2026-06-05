@@ -621,6 +621,8 @@ export enum Tab {
   DEBT = 'DEBT',
   INVESTMENTS = 'INVESTMENTS',
   FUTURE = 'FUTURE',
+  // NBA-PAGE — « Prochaine action » (ex-widget sidebar) devient un onglet à part.
+  ACTIONS = 'ACTIONS',
   REAL_ESTATE = 'REAL_ESTATE',
   CHILD = 'CHILD',
   TRAVEL = 'TRAVEL',

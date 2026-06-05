@@ -4,6 +4,7 @@ import { getNextBestActions, type NextBestAction as NBAction, type FinancialSnap
 import { computeCurrentLiquidity, computeInvestmentsValue, computeAssetBreakdown } from '../../services/portfolio';
 import { useHasUserData } from '../../utils/useHasUserData';
 import { Tab } from '../../types';
+import { PageHeader } from '../ui/PageHeader';
 
 /**
  * Phase B.3 — widget IA "Prochaine Meilleure Action".
@@ -51,10 +52,12 @@ const URGENCY_COLORS: Record<NBAction['urgency'], { dot: string; border: string;
 };
 
 interface NextBestActionProps {
-    isSidebarOpen: boolean;
+    isSidebarOpen?: boolean;
+    /** NBA-PAGE — rendu pleine page (onglet dédié) au lieu du widget sidebar. */
+    asPage?: boolean;
 }
 
-export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen }) => {
+export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen = true, asPage = false }) => {
     const [actions, setActions] = useState<NBAction[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [hasError, setHasError] = useState(false);
@@ -167,6 +170,80 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen })
         fetchActions(false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [apiKey]);
+
+    // NBA-PAGE — rendu PLEINE PAGE (onglet dédié) : réutilise toute la logique ci-dessus.
+    if (asPage) {
+        const refreshBtn = hasData && apiKey ? (
+            <button
+                type="button"
+                onClick={() => fetchActions(true)}
+                disabled={isLoading}
+                className="px-3 py-1.5 rounded-card text-meta font-bold text-ink-200 bg-white/5 hover:bg-white/10 transition-colors focus-ring disabled:opacity-50"
+            >
+                {isLoading ? '…' : '↻ Rafraîchir'}
+            </button>
+        ) : undefined;
+        return (
+            <div className="animate-fade-in">
+                <PageHeader
+                    title="Prochaine action"
+                    icon="⚡"
+                    subtitle="Recommandations IA priorisées, basées sur ta projection vivante."
+                    actions={refreshBtn}
+                />
+                {!hasData ? (
+                    <button
+                        type="button"
+                        onClick={() => navigateWithFocus(Tab.SETTINGS, 'profile-user1-card')}
+                        className="w-full text-left p-5 rounded-card bg-warning-500/5 border border-warning-500/20 hover:bg-warning-500/10 focus-ring transition-colors"
+                    >
+                        <div className="text-h2 text-warning-300 mb-1">Aucune action disponible</div>
+                        <div className="text-meta text-ink-400">Renseigne ton profil pour activer les recommandations IA. → Configurer mon profil</div>
+                    </button>
+                ) : !apiKey ? (
+                    <div className="p-5 rounded-card bg-white/5 border border-white/10">
+                        <div className="text-h2 text-ink-100 mb-1">Recommandations IA</div>
+                        <div className="text-meta text-ink-400">Configure ta clé Anthropic dans <span className="text-primary">Configuration → Clés API</span> pour activer les recommandations.</div>
+                    </div>
+                ) : isLoading && actions.length === 0 ? (
+                    <div className="p-5 rounded-card bg-white/5 border border-white/10">
+                        <div className="text-meta text-ink-300 font-bold mb-3">Analyse en cours…</div>
+                        <div className="h-2.5 w-2/3 bg-white/10 rounded animate-pulse mb-2" />
+                        <div className="h-2.5 w-full bg-white/10 rounded animate-pulse" />
+                    </div>
+                ) : actions.length === 0 ? (
+                    <div className="p-5 rounded-card bg-white/5 border border-white/10">
+                        <button type="button" onClick={() => fetchActions(true)} className="text-body text-primary hover:underline focus-ring rounded">
+                            Générer une recommandation →
+                        </button>
+                        {hasError && <div className="text-meta text-danger-400 mt-2">Erreur IA — vérifie ta clé Anthropic.</div>}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {actions.map((a, i) => {
+                            const c = URGENCY_COLORS[a.urgency];
+                            return (
+                                <div key={i} className={`p-5 rounded-card bg-surface/60 border ${c.border} transition-all duration-300 hover:bg-surface`}>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <span className={`w-2 h-2 rounded-full ${c.dot} shrink-0`} aria-hidden="true" />
+                                        <span className="text-tiny uppercase tracking-widest font-bold text-ink-400">{a.urgency === 'high' ? 'Priorité haute' : a.urgency === 'medium' ? 'Priorité moyenne' : 'Priorité basse'}</span>
+                                    </div>
+                                    <div className={`text-h2 ${c.text} mb-1.5 leading-tight`}>{a.title}</div>
+                                    <div className="text-body text-ink-300 leading-relaxed mb-3">{a.reason}</div>
+                                    {a.impact_estimate && (
+                                        <div className="text-meta font-mono text-ink-200 bg-white/5 px-2.5 py-1 rounded-card inline-block">{a.impact_estimate}</div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+                {lastFetch && actions.length > 0 && (
+                    <div className="text-tiny text-ink-500 mt-4">Mis à jour il y a {Math.round((Date.now() - lastFetch) / 60000)} min</div>
+                )}
+            </div>
+        );
+    }
 
     // État collapsed : pastille avec couleur d'urgence
     if (!isSidebarOpen) {

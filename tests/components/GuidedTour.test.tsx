@@ -52,4 +52,21 @@ describe('GuidedTour', () => {
         expect(screen.queryByRole('dialog')).toBeNull();
         expect(localStorage.getItem(TOUR_DONE_KEY)).toBe('true');
     });
+
+    it('a11y — déplace le focus sur l\'action principale à l\'ouverture', () => {
+        render(<GuidedTour />);
+        startTour();
+        // Sans gestion du focus, il restait sur l'élément déclencheur (hors dialogue).
+        expect(document.activeElement).toBe(screen.getByText(/Suivant/));
+    });
+
+    it('a11y — le focus reste sur « Suivant » après avoir avancé (pas sur « Précédent »)', () => {
+        // Régression : sans key stable, React réutilisait le nœud du bouton primaire
+        // pour « Précédent » à l'étape 2 → le focus se retrouvait sur le mauvais bouton.
+        render(<GuidedTour />);
+        startTour();
+        fireEvent.click(screen.getByText(/Suivant/));
+        expect(screen.getByText(/Précédent/)).toBeTruthy(); // étape 2 atteinte
+        expect(document.activeElement).toBe(screen.getByText(/Suivant/));
+    });
 });

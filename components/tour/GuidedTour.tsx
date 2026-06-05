@@ -10,7 +10,7 @@
 // sur mobile, élément absent), on bascule sur une carte centrée — le tour
 // continue de naviguer et d'expliquer sans dépendre du positionnement.
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { TOUR_STEPS } from './tourSteps';
@@ -39,6 +39,7 @@ export const GuidedTour: React.FC = () => {
   const [active, setActive] = useState(false);
   const [idx, setIdx] = useState(0);
   const [rect, setRect] = useState<AnchorRect | null>(null);
+  const nextBtnRef = useRef<HTMLButtonElement>(null);
 
   const total = TOUR_STEPS.length;
   const step = TOUR_STEPS[idx];
@@ -119,6 +120,17 @@ export const GuidedTour: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [active, next, prev, finish]);
 
+  // A11y — à l'ouverture ET à chaque étape, on déplace le focus sur l'action
+  // principale (Suivant/Terminer) : sans ça, ouvrir le dialogue laissait le focus
+  // sur le bouton « relancer » de Configuration, hors du tutoriel → un lecteur
+  // d'écran / la navigation clavier n'entraient jamais dans la bulle. On NE piège
+  // PAS Tab : le spotlight laisse volontairement l'élément surligné cliquable
+  // (pointer-events sur le contenu sous-jacent), un trap strict casserait l'UX.
+  useEffect(() => {
+    if (!active) return;
+    nextBtnRef.current?.focus();
+  }, [active, idx]);
+
   if (!active || typeof document === 'undefined') return null;
 
   const isLast = idx + 1 >= total;
@@ -179,6 +191,7 @@ export const GuidedTour: React.FC = () => {
         <div className="flex gap-2">
           {idx > 0 && (
             <button
+              key="prev"
               type="button"
               onClick={prev}
               className="flex-1 px-3 py-2 rounded-card text-meta font-bold text-ink-200 bg-white/5 hover:bg-white/10 transition-colors focus-ring"
@@ -187,6 +200,8 @@ export const GuidedTour: React.FC = () => {
             </button>
           )}
           <button
+            key="next"
+            ref={nextBtnRef}
             type="button"
             onClick={next}
             className="flex-1 px-3 py-2 rounded-card text-meta font-bold text-white bg-primary hover:brightness-110 transition-all focus-ring"

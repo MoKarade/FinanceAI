@@ -40,8 +40,13 @@ blob-report/
 *.sln
 *.sw?
 
-# Claude Code local config / mémoire (privé, ne pas committer)
-.claude/
+# Claude Code — la CONFIG PROJET est committée (voyage avec le repo, partagée
+# entre les 2 PC de Marc + l'exécution cloud) : CLAUDE.md (racine), .claude/agents/,
+# .claude/commands/, .claude/settings.json. On n'ignore que les surcouches LOCALES
+# (machine) et les artefacts de worktrees.
+.claude/settings.local.json
+.claude/worktrees/
+.claude/*.local
 
 # Connecteur MCP — secrets locaux (jamais commités)
 mcp/drive/connector-client.json

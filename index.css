@@ -230,6 +230,31 @@
   background: rgba(255,255,255,0.2);
 }
 
+/* LUXE — scrollbars fines aussi sur Firefox. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+
+/* LUXE — surbrillance de sélection à la marque (emerald discret). */
+::selection {
+  background: rgba(16, 185, 129, 0.28);
+  color: #f8fafc;
+}
+
+/* LUXE — select : chevron custom (appearance-none) au lieu de la flèche native datée.
+   background-image distinct du background-color (!important du base) → pas de conflit ;
+   padding-right !important réserve la place du chevron quelle que soit la classe px inline. */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238896a8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  background-size: 0.9rem;
+  padding-right: 1.75rem !important;
+}
+
 /* G3b — plein écran du graphique via la Fullscreen API. L'élément passe dans le
    « top layer » du navigateur, ce qui échappe aux ancêtres transformés
    (animate-fade-in) qui piégeaient l'approche position:fixed. */

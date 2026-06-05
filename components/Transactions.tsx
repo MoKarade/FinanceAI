@@ -364,7 +364,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 <button
                     onClick={() => setShowRulesPanel(p => !p)}
                     aria-expanded={showRulesPanel}
-                    className="w-full flex items-center justify-between px-4 py-3 text-xs font-bold text-indigo-300 hover:text-white transition-colors"
+                    className="w-full flex items-center justify-between px-4 py-3 text-meta font-bold text-indigo-300 hover:text-white transition-colors"
                 >
                     <span className="flex items-center gap-2">
                         <span aria-hidden="true">⚡</span>
@@ -384,20 +384,20 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                 onChange={e => setNewPattern(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && handleAddRule()}
                                 aria-label="Texte du marchand a matcher"
-                                className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-400 outline-none"
+                                className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-meta text-white focus:border-indigo-400 outline-none"
                             />
                             <select
                                 value={newRuleCategory}
                                 onChange={e => setNewRuleCategory(e.target.value)}
                                 aria-label="Categorie a appliquer"
-                                className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-400 outline-none"
+                                className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-meta text-white focus:border-indigo-400 outline-none"
                             >
                                 <option value="">-- Categorie --</option>
                                 {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                             <button
                                 onClick={handleAddRule}
-                                className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-colors"
+                                className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-meta font-bold rounded-lg transition-colors"
                             >
                                 + Ajouter
                             </button>
@@ -408,7 +408,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         ) : (
                             <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
                                 {categorizationRules.map(rule => (
-                                    <div key={rule.id} className="flex items-center gap-2 bg-black/30 px-3 py-2 rounded-lg border border-white/5 text-xs group">
+                                    <div key={rule.id} className="flex items-center gap-2 bg-black/30 px-3 py-2 rounded-lg border border-white/5 text-meta group">
                                         <span className="text-indigo-300 font-bold flex-1 truncate">"{rule.pattern}"</span>
                                         <span className="text-ink-500 hidden sm:inline" aria-hidden="true">-&gt;</span>
                                         <span className="text-white bg-indigo-900/40 px-2 py-0.5 rounded font-bold truncate max-w-[120px]">{rule.category}</span>
@@ -430,7 +430,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                 <h2 id="wizard-title" className="text-xl font-bold text-white flex items-center gap-2">
                                     Assistant de Classement
                                 </h2>
-                                <p className="text-xs text-ink-300 mt-1">
+                                <p className="text-meta text-ink-300 mt-1">
                                     L'IA a laisse {uncategorizedGroups.length} groupes incertains. Classez-les en masse ici.
                                 </p>
                             </div>
@@ -442,7 +442,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                 <div className="text-center py-20">
                                     <div className="text-4xl mb-2" aria-hidden="true">🎉</div>
                                     <h3 className="text-white font-bold">Tout est propre !</h3>
-                                    <p className="text-ink-500 text-sm">Plus aucune transaction inconnue.</p>
+                                    <p className="text-ink-500 text-body">Plus aucune transaction inconnue.</p>
                                 </div>
                             ) : (
                                 uncategorizedGroups.map((group) => (
@@ -454,7 +454,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                                     {group.count} trans.
                                                 </div>
                                             </div>
-                                            <div className="text-xs text-ink-300">
+                                            <div className="text-meta text-ink-300">
                                                 Total: <span className="text-white font-mono">{group.total.toFixed(2)}$</span>
                                             </div>
                                         </div>
@@ -462,7 +462,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         <div className="w-full md:w-auto flex gap-2">
                                             <select
                                                 aria-label={`Categorie pour ${group.payee}`}
-                                                className="bg-black border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:border-primary outline-none min-w-[180px]"
+                                                className="bg-black border border-gray-600 rounded-lg px-3 py-2 text-body text-white focus:border-primary outline-none min-w-[180px]"
                                                 onChange={(e) => {
                                                     if (e.target.value) handleWizardApply(group.ids, e.target.value);
                                                 }}
@@ -486,21 +486,21 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 title={`Historique (${filteredTransactions.length})`}
                 action={
                     <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                        <div className={`text-tiny sm:text-xs font-bold px-2 py-1 rounded border border-white/10 whitespace-nowrap ${filteredSum > 0 ? 'text-green-400 bg-green-500/10' : 'text-danger-400 bg-danger-500/10'}`}>
+                        <div className={`text-tiny sm:text-meta font-bold px-2 py-1 rounded border border-white/10 whitespace-nowrap ${filteredSum > 0 ? 'text-green-400 bg-green-500/10' : 'text-danger-400 bg-danger-500/10'}`}>
                             Σ {filteredSum.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}
                         </div>
                         <button
                             onClick={handleExportCSV}
                             title="Exporter en CSV (compatible Excel)"
                             aria-label="Exporter en CSV"
-                            className="text-tiny sm:text-xs flex items-center gap-1 text-green-300 hover:text-white border border-green-500/30 bg-green-500/10 px-2 sm:px-3 py-1.5 rounded-lg transition-colors font-bold"
+                            className="text-tiny sm:text-meta flex items-center gap-1 text-green-300 hover:text-white border border-green-500/30 bg-green-500/10 px-2 sm:px-3 py-1.5 rounded-lg transition-colors font-bold"
                         >
                             CSV
                         </button>
                         <button
                             onClick={() => setShowWizard(true)}
                             aria-label={`Ouvrir l'assistant de classement (${uncategorizedGroups.length} groupes)`}
-                            className="text-tiny sm:text-xs flex items-center gap-1 text-blue-300 hover:text-white border border-info-500/30 bg-info-500/10 px-2 sm:px-3 py-1.5 rounded-lg transition-colors font-bold whitespace-nowrap"
+                            className="text-tiny sm:text-meta flex items-center gap-1 text-blue-300 hover:text-white border border-info-500/30 bg-info-500/10 px-2 sm:px-3 py-1.5 rounded-lg transition-colors font-bold whitespace-nowrap"
                         >
                             <span className="hidden sm:inline">Assistant </span>({uncategorizedGroups.length})
                         </button>
@@ -515,7 +515,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                 type="text"
                                 placeholder="Rechercher..."
                                 aria-label="Rechercher dans les transactions"
-                                className="w-full bg-surfaceHighlight border border-border rounded-full pl-9 pr-3 py-2 text-sm text-white focus:border-primary outline-none shadow-inner"
+                                className="w-full bg-surfaceHighlight border border-border rounded-full pl-9 pr-3 py-2 text-body text-white focus:border-primary outline-none shadow-inner"
                                 value={filterText}
                                 onChange={(e) => { setFilterText(e.target.value); setCurrentPage(1); }}
                             />
@@ -524,7 +524,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                             onClick={handleAutoCategorizeAll}
                             disabled={processing}
                             aria-label={processing ? 'Scan IA en cours' : 'Demarrer le scan IA'}
-                            className={`px-3 sm:px-4 py-2 rounded-full text-xs font-bold text-white shadow-lg transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap ${processing ? 'bg-gray-600 cursor-not-allowed' : apiKey ? 'bg-gradient-to-r from-secondary to-purple-500 hover:brightness-110' : 'bg-gray-700'
+                            className={`px-3 sm:px-4 py-2 rounded-full text-meta font-bold text-white shadow-lg transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap ${processing ? 'bg-gray-600 cursor-not-allowed' : apiKey ? 'bg-gradient-to-r from-secondary to-purple-500 hover:brightness-110' : 'bg-gray-700'
                                 }`}
                         >
                             <span aria-hidden="true">{processing ? '⚙️' : '⚡'}</span>
@@ -550,13 +550,13 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         <button
                             onClick={() => setQuickFilter(quickFilter === 'TO_REVIEW' ? 'NONE' : 'TO_REVIEW')}
                             aria-pressed={quickFilter === 'TO_REVIEW'}
-                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border whitespace-nowrap ${quickFilter === 'TO_REVIEW' ? 'bg-yellow-500/20 border-yellow-500 text-yellow-300' : 'bg-white/5 border-white/10 text-ink-300'}`}
+                            className={`px-3 py-1.5 rounded-full text-meta font-bold transition-all border whitespace-nowrap ${quickFilter === 'TO_REVIEW' ? 'bg-yellow-500/20 border-yellow-500 text-yellow-300' : 'bg-white/5 border-white/10 text-ink-300'}`}
                         >
                             A Verifier
                         </button>
                         <select
                             aria-label="Filtre par categorie"
-                            className={`appearance-none px-4 py-1.5 rounded-full text-xs font-medium border transition-colors max-w-[150px] truncate ${selectedCategory !== 'All' ? 'bg-primary/20 border-primary text-primary' : 'bg-white/5 border-white/10 text-ink-200'}`}
+                            className={`appearance-none px-4 py-1.5 rounded-full text-meta font-medium border transition-colors max-w-[150px] truncate ${selectedCategory !== 'All' ? 'bg-primary/20 border-primary text-primary' : 'bg-white/5 border-white/10 text-ink-200'}`}
                             value={selectedCategory}
                             onChange={(e) => { setSelectedCategory(e.target.value); setCurrentPage(1); }}
                         >
@@ -573,7 +573,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                     <table className="w-full text-left border-collapse">
                         <caption className="sr-only">Liste des {filteredTransactions.length} transactions filtrees</caption>
                         <thead>
-                            <tr className="border-b border-border text-ink-300 text-xs uppercase tracking-wider">
+                            <tr className="border-b border-border text-ink-300 text-meta uppercase tracking-wider">
                                 <th className="p-3 w-8">
                                     <input
                                         type="checkbox"
@@ -600,7 +600,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                 <th className="p-3">Categorie</th>
                             </tr>
                         </thead>
-                        <tbody className="text-sm">
+                        <tbody className="text-body">
                             {paginatedTransactions.map((t) => (
                                 <tr
                                     key={t.id}
@@ -652,7 +652,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                     <td className="p-3">
                                         <select
                                             aria-label={`Categorie de ${t.payee}`}
-                                            className={`bg-surfaceHighlight border border-gray-600 rounded px-2 py-1 text-xs text-white focus:border-primary outline-none cursor-pointer w-full max-w-[180px] ${(t.category === 'Uncategorized' || t.category === 'Inconnu') ? 'border-danger-500/50 text-red-300' : ''
+                                            className={`bg-surfaceHighlight border border-gray-600 rounded px-2 py-1 text-meta text-white focus:border-primary outline-none cursor-pointer w-full max-w-[180px] ${(t.category === 'Uncategorized' || t.category === 'Inconnu') ? 'border-danger-500/50 text-red-300' : ''
                                                 }`}
                                             value={t.category}
                                             onChange={(e) => updateCategory(t.id, e.target.value)}
@@ -699,7 +699,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         />
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-1.5">
-                                                <span className="font-semibold text-white text-sm truncate">{t.payee}</span>
+                                                <span className="font-semibold text-white text-body truncate">{t.payee}</span>
                                                 {t.confidence !== undefined && (
                                                     <span
                                                         className={`w-2 h-2 rounded-full flex-shrink-0 ${getConfidenceColor(t.confidence)}`}
@@ -711,7 +711,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                             <div className="text-tiny text-ink-500 mt-0.5">{t.date}</div>
                                         </div>
                                     </div>
-                                    <div className={`font-bold text-sm privacy-blur whitespace-nowrap ${t.isTransfer ? 'text-blue-300 opacity-70' : t.amount > 0 ? 'text-green-400' : 'text-ink-100'
+                                    <div className={`font-bold text-body privacy-blur whitespace-nowrap ${t.isTransfer ? 'text-blue-300 opacity-70' : t.amount > 0 ? 'text-green-400' : 'text-ink-100'
                                         }`}>
                                         {t.amount.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}
                                     </div>
@@ -720,7 +720,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                 <div className="flex items-center gap-2">
                                     <select
                                         aria-label={`Categorie de ${t.payee}`}
-                                        className={`flex-1 bg-surfaceHighlight border rounded px-2 py-1.5 text-xs text-white focus:border-primary outline-none cursor-pointer ${isUncat ? 'border-danger-500/50 text-red-300' : 'border-gray-600'
+                                        className={`flex-1 bg-surfaceHighlight border rounded px-2 py-1.5 text-meta text-white focus:border-primary outline-none cursor-pointer ${isUncat ? 'border-danger-500/50 text-red-300' : 'border-gray-600'
                                             }`}
                                         value={t.category}
                                         onChange={(e) => updateCategory(t.id, e.target.value)}
@@ -743,9 +743,9 @@ export const Transactions: React.FC<TransactionsProps> = ({
 
                 {totalPages > 1 && (
                     <div className="flex justify-between items-center mt-4 pt-4 border-t border-white/5">
-                        <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="text-xs px-3 py-1 bg-white/10 rounded disabled:opacity-30">Precedent</button>
-                        <span className="text-xs text-ink-500">Page {currentPage} / {totalPages}</span>
-                        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="text-xs px-3 py-1 bg-white/10 rounded disabled:opacity-30">Suivant</button>
+                        <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="text-meta px-3 py-1 bg-white/10 rounded disabled:opacity-30">Precedent</button>
+                        <span className="text-meta text-ink-500">Page {currentPage} / {totalPages}</span>
+                        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="text-meta px-3 py-1 bg-white/10 rounded disabled:opacity-30">Suivant</button>
                     </div>
                 )}
             </Card>

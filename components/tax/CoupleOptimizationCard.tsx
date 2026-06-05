@@ -86,7 +86,7 @@ export const CoupleOptimizationCard: React.FC = () => {
                 {strategies.length === 0 && (
                     <div className="text-center py-4">
                         {!apiKey ? (
-                            <p className="text-warning-400 text-sm">
+                            <p className="text-warning-400 text-body">
                                 ℹ️ Configure ta clé Anthropic dans Configuration pour activer l'IA.
                             </p>
                         ) : (
@@ -94,7 +94,7 @@ export const CoupleOptimizationCard: React.FC = () => {
                                 type="button"
                                 onClick={handleGenerate}
                                 disabled={isLoading}
-                                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-bold text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+                                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-bold text-body hover:opacity-90 transition-opacity disabled:opacity-50"
                             >
                                 {isLoading ? '⏳ Analyse fiscale…' : '✨ Générer 3 stratégies IA'}
                             </button>
@@ -118,7 +118,7 @@ export const CoupleOptimizationCard: React.FC = () => {
                                             <span className="text-base shrink-0" aria-hidden="true">
                                                 {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
                                             </span>
-                                            <h4 className="font-bold text-white text-sm">{s.title}</h4>
+                                            <h4 className="font-bold text-white text-body">{s.title}</h4>
                                         </div>
                                         <span className="text-tiny font-mono opacity-70 shrink-0">{CONFIDENCE_LABELS[s.confidence]}</span>
                                     </div>

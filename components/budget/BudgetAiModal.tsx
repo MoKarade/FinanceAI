@@ -110,7 +110,7 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
                 <div className="space-y-3">
                     <div className="flex items-center gap-3">
                         <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" aria-hidden="true" />
-                        <p className="text-sm text-ink-300 animate-pulse">L'IA analyse vos lignes de budget…</p>
+                        <p className="text-body text-ink-300 animate-pulse">L'IA analyse vos lignes de budget…</p>
                     </div>
                     {streamingText && (
                         <div className="bg-white/5 border border-white/10 rounded-lg p-3 max-h-48 overflow-y-auto">
@@ -123,7 +123,7 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
                 </div>
             ) : hasError ? (
                 <div className="space-y-3">
-                    <p className="text-danger-400 text-sm">Échec de l'analyse IA. Vérifie ta clé Anthropic dans Configuration.</p>
+                    <p className="text-danger-400 text-body">Échec de l'analyse IA. Vérifie ta clé Anthropic dans Configuration.</p>
                     <button
                         onClick={onClose}
                         className="w-full py-2 bg-white/10 hover:bg-white/15 text-white rounded-lg font-bold transition-colors"
@@ -136,7 +136,7 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
                     {recommendations.map((reco, idx) => (
                         <div key={idx} className="bg-white/5 border border-white/10 rounded-lg p-4 flex gap-3 animate-slide-up" style={{ animationDelay: `${idx * 100}ms` }}>
                             <div className="text-indigo-400 mt-0.5 text-lg" aria-hidden="true">•</div>
-                            <p className="text-sm text-ink-100 leading-relaxed">{reco}</p>
+                            <p className="text-body text-ink-100 leading-relaxed">{reco}</p>
                         </div>
                     ))}
                     <button

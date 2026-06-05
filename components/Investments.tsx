@@ -673,7 +673,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
 
                     {/* REGIONS — Phase E.6 : clic = filtre stocks */}
                     <div className="bg-[#1a1a1a] rounded-xl p-4 border border-white/5 flex flex-col">
-                        <h4 className="text-ink-300 text-xs font-bold uppercase mb-4 text-center">Répartition Géographique</h4>
+                        <h4 className="text-ink-300 text-meta font-bold uppercase mb-4 text-center">Répartition Géographique</h4>
                         <div className="flex-1 flex flex-col lg:flex-row items-center gap-4">
                             <div className="flex-1 w-full h-[200px]">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -708,7 +708,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             key={item.name}
                                             type="button"
                                             onClick={() => setAllocationFilter(isActive ? null : { type: 'region', value: item.name })}
-                                            className={`w-full flex justify-between items-center text-xs p-2 rounded transition-colors focus-ring ${
+                                            className={`w-full flex justify-between items-center text-meta p-2 rounded transition-colors focus-ring ${
                                                 isActive ? 'bg-white/15 border border-white/20' : 'bg-white/5 hover:bg-white/10'
                                             }`}
                                             aria-pressed={isActive}
@@ -730,7 +730,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
 
                     {/* SECTORS — Phase E.6 : clic = filtre stocks */}
                     <div className="bg-[#1a1a1a] rounded-xl p-4 border border-white/5 flex flex-col">
-                        <h4 className="text-ink-300 text-xs font-bold uppercase mb-4 text-center">Répartition Sectorielle</h4>
+                        <h4 className="text-ink-300 text-meta font-bold uppercase mb-4 text-center">Répartition Sectorielle</h4>
                         <div className="flex-1 flex flex-col lg:flex-row items-center gap-4">
                             <div className="flex-1 w-full h-[200px]">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -765,7 +765,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             key={item.name}
                                             type="button"
                                             onClick={() => setAllocationFilter(isActive ? null : { type: 'sector', value: item.name })}
-                                            className={`w-full flex justify-between items-center text-xs p-2 rounded transition-colors focus-ring ${
+                                            className={`w-full flex justify-between items-center text-meta p-2 rounded transition-colors focus-ring ${
                                                 isActive ? 'bg-white/15 border border-white/20' : 'bg-white/5 hover:bg-white/10'
                                             }`}
                                             aria-pressed={isActive}
@@ -791,7 +791,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 {allocationFilter && (
                     <div className="mt-4 p-4 bg-gradient-to-r from-primary/5 to-info-500/5 border border-primary/20 rounded-xl">
                         <div className="flex items-center justify-between mb-3">
-                            <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                            <h4 className="text-body font-bold text-white flex items-center gap-2">
                                 <span aria-hidden="true">{allocationFilter.type === 'region' ? '🌍' : '🏢'}</span>
                                 Actions en <span className="text-primary">{allocationFilter.value}</span>
                             </h4>
@@ -810,7 +810,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                 .map(a => (
                                     <div key={a.id} className="bg-white/5 p-3 rounded-lg border border-white/5">
                                         <div className="flex justify-between items-start mb-1">
-                                            <span className="font-bold text-white text-sm truncate">{a.name}</span>
+                                            <span className="font-bold text-white text-body truncate">{a.name}</span>
                                             <span className="text-tiny text-ink-400 font-mono">{a.weight.toFixed(1)}%</span>
                                         </div>
                                         <div className="text-meta font-mono text-ink-200 privacy-blur">{formatCAD(a.value)}</div>
@@ -866,8 +866,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     >
                         <div className="mb-6 bg-gradient-to-r from-violet-900/20 to-black p-4 rounded-xl border border-violet-500/20 flex items-center justify-between">
                             <div>
-                                <div className="text-xs text-violet-400 uppercase font-bold mb-1">Diagnostic Automatique</div>
-                                <div className="text-white text-sm font-bold">
+                                <div className="text-meta text-violet-400 uppercase font-bold mb-1">Diagnostic Automatique</div>
+                                <div className="text-white text-body font-bold">
                                     {hasActions ? '⚠️ Des actions de rééquilibrage sont recommandées' : '✅ Portefeuille bien équilibré'}
                                 </div>
                             </div>
@@ -893,14 +893,14 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             setIsFetchingJustifications(false);
                                         }}
                                         disabled={isFetchingJustifications}
-                                        className="px-3 py-1.5 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 rounded-lg text-xs font-bold hover:bg-indigo-600 hover:text-white transition-colors disabled:opacity-50"
+                                        className="px-3 py-1.5 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 rounded-lg text-meta font-bold hover:bg-indigo-600 hover:text-white transition-colors disabled:opacity-50"
                                     >
                                         {isFetchingJustifications ? '⏳ Analyse…' : '✨ Pourquoi ces actions ?'}
                                     </button>
                                 )}
                                 <button
                                     onClick={() => setIsRebalanceEdit(!isRebalanceEdit)}
-                                    className="px-3 py-1.5 bg-violet-600/20 text-violet-300 border border-violet-500/30 rounded-lg text-xs font-bold hover:bg-violet-600 hover:text-white transition-colors"
+                                    className="px-3 py-1.5 bg-violet-600/20 text-violet-300 border border-violet-500/30 rounded-lg text-meta font-bold hover:bg-violet-600 hover:text-white transition-colors"
                                 >
                                     {isRebalanceEdit ? '💾 Terminer' : '⚙️ Modifier Cibles'}
                                 </button>
@@ -911,7 +911,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         </div>
 
                         {isRebalanceEdit && sumTargets !== 100 && (
-                            <div className="text-danger-400 text-xs font-bold mb-4 bg-red-900/20 p-3 rounded-lg border border-danger-500/20 animate-pulse flex items-center gap-2">
+                            <div className="text-danger-400 text-meta font-bold mb-4 bg-red-900/20 p-3 rounded-lg border border-danger-500/20 animate-pulse flex items-center gap-2">
                                 <span>⚠️</span> Le total des cibles doit être de 100% (Actuel : {sumTargets}%)
                             </div>
                         )}
@@ -926,7 +926,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         <div className="flex items-center gap-3">
                                             <span className="text-xl">{item.icon}</span>
                                             <div>
-                                                <div className="text-white font-bold text-sm">{item.label}</div>
+                                                <div className="text-white font-bold text-body">{item.label}</div>
                                                 <div className="text-tiny text-ink-500 flex items-center gap-2 mt-1">
                                                     <span>Actuel: <span className="text-ink-200 font-bold">{item.currentPct.toFixed(1)}%</span></span>
                                                     <span className="opacity-50">|</span>
@@ -958,17 +958,17 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         </div>
                                         <div className="text-right">
                                             {!isRebalanceEdit && item.action === 'SELL' && (
-                                                <div className="text-danger-400 font-bold text-sm">
+                                                <div className="text-danger-400 font-bold text-body">
                                                     → Vendre {Math.round(Math.abs(item.diffAmount)).toLocaleString()}$
                                                 </div>
                                             )}
                                             {!isRebalanceEdit && item.action === 'BUY' && (
-                                                <div className="text-green-400 font-bold text-sm">
+                                                <div className="text-green-400 font-bold text-body">
                                                     → Acheter {Math.round(Math.abs(item.diffAmount)).toLocaleString()}$
                                                 </div>
                                             )}
                                             {!isRebalanceEdit && item.action === 'OK' && (
-                                                <div className="text-ink-300 text-xs font-bold">✓ CIBLE ATTEINTE</div>
+                                                <div className="text-ink-300 text-meta font-bold">✓ CIBLE ATTEINTE</div>
                                             )}
                                         </div>
                                     </div>
@@ -1001,21 +1001,21 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         {/* Priority Suggestions */}
                         {hasActions && (
                             <div className="bg-black/40 rounded-xl p-4 border border-white/10">
-                                <h4 className="text-xs font-bold text-ink-300 uppercase mb-3">📋 Stratégie de Rééquilibrage Recommandée</h4>
+                                <h4 className="text-meta font-bold text-ink-300 uppercase mb-3">📋 Stratégie de Rééquilibrage Recommandée</h4>
                                 <div className="space-y-2">
                                     {rebalancingActions.filter(a => a.action === 'SELL').map((a, i) => (
-                                        <div key={i} className="text-xs text-red-300 flex items-start gap-2">
+                                        <div key={i} className="text-meta text-red-300 flex items-start gap-2">
                                             <span>🔴</span>
                                             <span><b>Vendre</b> {Math.round(Math.abs(a.diffAmount)).toLocaleString()}$ de <b>{a.label}</b> (surplus {a.diffPct.toFixed(1)}%) — Utilisez votre compte Non-Enregistré en priorité pour optimiser la fiscalité.</span>
                                         </div>
                                     ))}
                                     {rebalancingActions.filter(a => a.action === 'BUY').map((a, i) => (
-                                        <div key={i} className="text-xs text-green-300 flex items-start gap-2">
+                                        <div key={i} className="text-meta text-green-300 flex items-start gap-2">
                                             <span>🟢</span>
                                             <span><b>Acheter</b> {Math.round(Math.abs(a.diffAmount)).toLocaleString()}$ de <b>{a.label}</b> (déficit {Math.abs(a.diffPct).toFixed(1)}%) — Priorisez votre CELI si vous avez de l'espace disponible.</span>
                                         </div>
                                     ))}
-                                    <div className="text-xs text-ink-500 mt-3 pt-3 border-t border-white/5 italic">
+                                    <div className="text-meta text-ink-500 mt-3 pt-3 border-t border-white/5 italic">
                                         💡 Astuce fiscale : Rééquilibrer via les nouvelles contributions évite de déclencher des gains en capital dans votre compte Non-Enregistré.
                                     </div>
                                 </div>
@@ -1067,11 +1067,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
                             <div>
                                 <div className="flex justify-between items-start mb-4 relative z-10">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold text-white shadow-lg border border-white/10" style={{ backgroundColor: COLORS_SECTOR[asset.sector] || '#333' }}>
+                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-meta font-bold text-white shadow-lg border border-white/10" style={{ backgroundColor: COLORS_SECTOR[asset.sector] || '#333' }}>
                                             {asset.name.substring(0, 2).toUpperCase()}
                                         </div>
                                         <div>
-                                            <div className="font-bold text-white text-sm leading-tight tracking-tight">{asset.name}</div>
+                                            <div className="font-bold text-white text-body leading-tight tracking-tight">{asset.name}</div>
                                             <div className="text-tiny text-ink-500 font-medium uppercase tracking-wider">{asset.region}</div>
                                         </div>
                                     </div>
@@ -1083,11 +1083,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                 <div className="grid grid-cols-2 gap-3 text-tiny mb-4 relative z-10">
                                     <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/5 backdrop-blur-sm">
                                         <div className="text-ink-400 mb-1 font-bold">Valeur</div>
-                                        <div className="text-white font-mono font-bold text-xs">{asset.value.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
+                                        <div className="text-white font-mono font-bold text-meta">{asset.value.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
                                     </div>
                                     <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/5 backdrop-blur-sm">
                                         <div className="text-ink-400 mb-1 font-bold">Variation 24h</div>
-                                        <div className={`font-bold text-xs ${asset.trend24h >= 0 ? 'text-green-400' : 'text-danger-400'}`}>
+                                        <div className={`font-bold text-meta ${asset.trend24h >= 0 ? 'text-green-400' : 'text-danger-400'}`}>
                                             {asset.trend24h > 0 ? '+' : ''}{asset.trend24h.toFixed(1)}%
                                         </div>
                                     </div>

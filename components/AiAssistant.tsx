@@ -270,7 +270,7 @@ ${last20Txs}`
               </div>
             </div>
             <div className="ml-auto">
-              <button onClick={clearConversation} aria-label="Effacer la conversation" className="text-ink-300 hover:text-white p-2 text-xs bg-white/5 rounded-lg focus-ring">Effacer</button>
+              <button onClick={clearConversation} aria-label="Effacer la conversation" className="text-ink-300 hover:text-white p-2 text-meta bg-white/5 rounded-lg focus-ring">Effacer</button>
             </div>
           </div>
 
@@ -278,10 +278,10 @@ ${last20Txs}`
             {messagesToRender.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {m.role === 'model' && (
-                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mr-2 text-sm flex-shrink-0 border border-white/10" aria-hidden="true">🤖</div>
+                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mr-2 text-body flex-shrink-0 border border-white/10" aria-hidden="true">🤖</div>
                 )}
                 <div
-                  className={`max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-relaxed shadow-md ${m.role === 'user'
+                  className={`max-w-[85%] rounded-2xl px-5 py-3 text-body leading-relaxed shadow-md ${m.role === 'user'
                     ? 'bg-primary text-white rounded-tr-none'
                     : 'bg-[#2a2a2a] text-ink-100 rounded-tl-none border border-white/5'
                     }`}
@@ -315,7 +315,7 @@ ${last20Txs}`
 
             {isLoading && !streamingText && (
               <div className="flex justify-start">
-                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mr-2 text-sm flex-shrink-0 border border-white/10" aria-hidden="true">🤖</div>
+                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mr-2 text-body flex-shrink-0 border border-white/10" aria-hidden="true">🤖</div>
                 <div className="bg-[#2a2a2a] rounded-2xl rounded-tl-none px-4 py-4 flex gap-1.5 items-center border border-white/5" aria-label="Chargement de la réponse">
                   <div className="w-2 h-2 bg-ink-300 rounded-full animate-[bounce_1.4s_infinite_0ms]"></div>
                   <div className="w-2 h-2 bg-ink-300 rounded-full animate-[bounce_1.4s_infinite_200ms]"></div>
@@ -336,7 +336,7 @@ ${last20Txs}`
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 placeholder="Analyser mon budget…"
                 aria-label="Question au conseiller IA"
-                className="flex-1 bg-transparent px-4 text-sm text-white outline-none disabled:opacity-50 placeholder-ink-500 font-medium"
+                className="flex-1 bg-transparent px-4 text-body text-white outline-none disabled:opacity-50 placeholder-ink-500 font-medium"
                 disabled={isLoading}
               />
               {isLoading ? (

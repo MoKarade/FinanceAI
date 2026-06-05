@@ -121,7 +121,7 @@ const AccountDrillTooltip: React.FC<AccountDrillTooltipProps> = ({ active, paylo
     const reasons = explainMovement(d);
     const blur = isPrivacyMode ? 'privacy-blur' : '';
     return (
-        <div className="bg-[#11161f] border border-white/15 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] p-3 w-56 text-xs">
+        <div className="bg-[#11161f] border border-white/15 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] p-3 w-56 text-meta">
             <div className="flex items-center justify-between gap-2 mb-1.5">
                 <span className="font-bold text-white">{d.dateLabel || d.year}</span>
                 <span className="text-tiny text-ink-400">{accountLabel}</span>
@@ -298,10 +298,10 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                     <div className="flex items-center justify-between gap-2">
                                         <span className="flex items-center gap-2 min-w-0">
                                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: a.color }} />
-                                            <span className="text-sm text-white truncate">{a.label}</span>
+                                            <span className="text-body text-white truncate">{a.label}</span>
                                         </span>
                                         <span className="flex items-center gap-2 shrink-0">
-                                            <span className={`font-mono text-sm text-white ${blur}`}>{fmt(a.value)}</span>
+                                            <span className={`font-mono text-body text-white ${blur}`}>{fmt(a.value)}</span>
                                             <span className="text-ink-500" aria-hidden="true">›</span>
                                         </span>
                                     </div>
@@ -333,18 +333,18 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                         {/* Flux du mois */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-5">
                             {incomes.map(([label, v]) => (
-                                <div key={label} className="flex justify-between text-xs bg-white/[0.03] rounded-lg px-2.5 py-1.5">
+                                <div key={label} className="flex justify-between text-meta bg-white/[0.03] rounded-lg px-2.5 py-1.5">
                                     <span className="text-ink-400">{label}</span>
                                     <span className={`font-mono text-green-400 ${blur}`}>+{fmt(v)}</span>
                                 </div>
                             ))}
                             {(point.Expenses || 0) > 0 && (
-                                <div className="flex justify-between text-xs bg-white/[0.03] rounded-lg px-2.5 py-1.5">
+                                <div className="flex justify-between text-meta bg-white/[0.03] rounded-lg px-2.5 py-1.5">
                                     <span className="text-ink-400">Dépenses</span>
                                     <span className={`font-mono text-danger-400 ${blur}`}>-{fmt(point.Expenses || 0)}</span>
                                 </div>
                             )}
-                            <div className="flex justify-between text-xs font-bold bg-white/[0.05] rounded-lg px-2.5 py-1.5">
+                            <div className="flex justify-between text-meta font-bold bg-white/[0.05] rounded-lg px-2.5 py-1.5">
                                 <span className="text-ink-200">Variation nette (mois)</span>
                                 <span className={`font-mono ${(point.diffNW || 0) >= 0 ? 'text-green-400' : 'text-danger-400'} ${blur}`}>
                                     {(point.diffNW || 0) > 0 ? '+' : ''}{fmt(point.diffNW || 0)}
@@ -360,7 +360,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                     {[...(point.lifeEvents || []), ...(point.flowEvents || [])].map((e: string, i: number) => {
                                         const { icon, text } = splitEventIcon(e);
                                         return (
-                                            <li key={i} className="flex items-start gap-2 text-sm text-ink-100">
+                                            <li key={i} className="flex items-start gap-2 text-body text-ink-100">
                                                 <span className="shrink-0" aria-hidden="true">{icon}</span>
                                                 <span className="flex-1 break-words">{text}</span>
                                             </li>
@@ -383,7 +383,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                         <div className="flex items-center gap-2 mb-3">
                             <span className="w-3 h-3 rounded-full" style={{ background: selected.color }} />
                             <span className="font-bold text-white">{selected.label}</span>
-                            <span className={`ml-auto font-mono text-sm text-white ${blur}`}>{fmt(Number(point[selected.key]) || 0)}</span>
+                            <span className={`ml-auto font-mono text-body text-white ${blur}`}>{fmt(Number(point[selected.key]) || 0)}</span>
                         </div>
 
                         {/* Sélecteur de période */}
@@ -467,8 +467,8 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                         return (
                                             <li key={d.monthIndex} className="bg-white/[0.03] rounded-lg p-2.5">
                                                 <div className="flex items-center justify-between gap-2 mb-1">
-                                                    <span className="text-xs font-bold text-white">{d.dateLabel || d.year}</span>
-                                                    <span className={`font-mono text-xs font-bold ${d.delta >= 0 ? 'text-green-400' : 'text-danger-400'} ${blur}`}>
+                                                    <span className="text-meta font-bold text-white">{d.dateLabel || d.year}</span>
+                                                    <span className={`font-mono text-meta font-bold ${d.delta >= 0 ? 'text-green-400' : 'text-danger-400'} ${blur}`}>
                                                         {d.delta > 0 ? '+' : ''}{fmtMoney(d.delta)}
                                                     </span>
                                                 </div>
@@ -512,7 +512,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                     Droits {selected.label} qui s'ajoutent chaque année (et ré-ajout de l'espace après un retrait, pour le CELI).
                                 </p>
                                 <div className="max-h-52 overflow-y-auto rounded-lg border border-white/10">
-                                    <table className="w-full text-xs">
+                                    <table className="w-full text-meta">
                                         <thead className="sticky top-0 bg-dark">
                                             <tr className="text-tiny uppercase tracking-wide text-ink-500">
                                                 <th className="text-left font-bold px-2.5 py-1.5">Année</th>

@@ -43,15 +43,15 @@ export const CurrentCapitalCard: React.FC<CurrentCapitalCardProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                    <div className="flex justify-between text-xs">
+                    <div className="flex justify-between text-meta">
                         <span className="text-ink-300">Capital à la retraite ({targetAge} ans)</span>
                         <span className="text-white font-bold privacy-blur font-mono">{formatCAD(retirementNetWorth)}</span>
                     </div>
-                    <div className="flex justify-between text-xs">
+                    <div className="flex justify-between text-meta">
                         <span className="text-ink-300">Pic du patrimoine</span>
                         <span className="text-success-400 font-bold privacy-blur font-mono">{formatCAD(peakNetWorth)}</span>
                     </div>
-                    <div className="flex justify-between text-xs">
+                    <div className="flex justify-between text-meta">
                         <span className="text-ink-300">Héritage ({lifeExpectancy} ans)</span>
                         <span className="text-info-400 font-bold privacy-blur font-mono">{formatCAD(finalNetWorth)}</span>
                     </div>

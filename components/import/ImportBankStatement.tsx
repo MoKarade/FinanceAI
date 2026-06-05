@@ -53,20 +53,20 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
     return (
         <div className="bg-black/20 rounded-xl border border-white/5 p-4 space-y-3">
             <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <h3 className="text-body font-bold text-white flex items-center gap-2">
                     <span aria-hidden="true">📥</span> Importer un relevé bancaire (CSV)
                 </h3>
-                <p className="text-xs text-ink-500 mt-1">
+                <p className="text-meta text-ink-500 mt-1">
                     Exporte un CSV depuis ta banque et dépose-le ici. 100% local — rien ne quitte ton navigateur.
                     Toutes les banques sont supportées (virgule/point-virgule, dates FR ou ISO, débit/crédit).
                 </p>
             </div>
 
             <label className="flex items-center gap-3 cursor-pointer">
-                <span className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm text-ink-100 transition-colors focus-within:ring">
+                <span className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-body text-ink-100 transition-colors focus-within:ring">
                     Choisir un fichier…
                 </span>
-                <span className="text-xs text-ink-500 truncate">{fileName || 'Aucun fichier sélectionné'}</span>
+                <span className="text-meta text-ink-500 truncate">{fileName || 'Aucun fichier sélectionné'}</span>
                 <input
                     type="file"
                     accept=".csv,.txt,.tsv,text/csv"
@@ -77,7 +77,7 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
             </label>
 
             {error && (
-                <div className="text-xs text-red-300 bg-red-900/20 border border-danger-500/20 rounded-lg p-2">{error}</div>
+                <div className="text-meta text-red-300 bg-red-900/20 border border-danger-500/20 rounded-lg p-2">{error}</div>
             )}
 
             {preview && (
@@ -110,11 +110,11 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
                         <button
                             type="button"
                             onClick={confirm}
-                            className="px-3 py-2 bg-primary/90 hover:bg-primary text-white rounded-lg text-sm font-bold transition-colors focus-ring"
+                            className="px-3 py-2 bg-primary/90 hover:bg-primary text-white rounded-lg text-body font-bold transition-colors focus-ring"
                         >
                             Importer {preview.imported} transaction(s)
                         </button>
-                        <button type="button" onClick={reset} className="px-3 py-2 text-sm text-ink-300 hover:text-white focus-ring rounded-lg">
+                        <button type="button" onClick={reset} className="px-3 py-2 text-body text-ink-300 hover:text-white focus-ring rounded-lg">
                             Annuler
                         </button>
                     </div>

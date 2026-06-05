@@ -34,16 +34,16 @@ export const AccountsSection: React.FC<AccountsSectionProps> = ({
 
       <Card title="Soldes Initiaux des Comptes">
         <div className="space-y-4">
-          <p className="text-sm text-ink-300">
+          <p className="text-body text-ink-300">
             Definissez le montant de depart de vos comptes (Chequing, Savings).
-            <br /><span className="text-xs text-orange-400">Important : Ces montants definissent le point de depart "Cash".</span>
+            <br /><span className="text-meta text-orange-400">Important : Ces montants definissent le point de depart "Cash".</span>
           </p>
 
           {Object.keys(knownAccounts).length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.keys(knownAccounts).map(acc => (
                 <div key={acc}>
-                  <label className="block text-xs text-ink-300 mb-1">{acc}</label>
+                  <label className="block text-meta text-ink-300 mb-1">{acc}</label>
                   <input
                     type="number"
                     value={initialBalances[acc] || 0}
@@ -54,7 +54,7 @@ export const AccountsSection: React.FC<AccountsSectionProps> = ({
               ))}
             </div>
           ) : (
-            <div className="text-ink-500 text-sm italic">Aucun compte detecte. Importez des transactions d'abord.</div>
+            <div className="text-ink-500 text-body italic">Aucun compte detecte. Importez des transactions d'abord.</div>
           )}
         </div>
       </Card>

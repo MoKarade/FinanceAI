@@ -68,7 +68,7 @@ export const ToastContainer: React.FC = () => {
                     <span className="text-xl" aria-hidden="true">
                         {toast.type === 'success' ? '✅' : toast.type === 'error' ? '❌' : 'ℹ️'}
                     </span>
-                    <div className="flex-1 text-sm font-medium">{toast.message}</div>
+                    <div className="flex-1 text-body font-medium">{toast.message}</div>
                     <button
                         onClick={() => removeToast(toast.id)}
                         aria-label="Fermer la notification"

@@ -59,7 +59,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                 <Card className="border-2 border-dashed border-white/20 bg-white/5">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                         <div>
-                            <label className="text-xs text-ink-300 mb-1 block">Destination</label>
+                            <label className="text-meta text-ink-300 mb-1 block">Destination</label>
                             <input
                                 type="text" placeholder="Japon, Italie..."
                                 className="w-full bg-dark border border-white/20 rounded p-2 text-white"
@@ -68,7 +68,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                             />
                         </div>
                         <div>
-                            <label className="text-xs text-ink-300 mb-1 block">Date Départ</label>
+                            <label className="text-meta text-ink-300 mb-1 block">Date Départ</label>
                             <input
                                 type="date"
                                 className="w-full bg-dark border border-white/20 rounded p-2 text-white"
@@ -77,7 +77,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                             />
                         </div>
                         <div>
-                            <label className="text-xs text-ink-300 mb-1 block">Budget Total ($)</label>
+                            <label className="text-meta text-ink-300 mb-1 block">Budget Total ($)</label>
                             <input
                                 type="number" placeholder="5000"
                                 className="w-full bg-dark border border-white/20 rounded p-2 text-white"
@@ -102,7 +102,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                             {/* Image Header Placeholder */}
                             <div className={`h-24 ${isPast ? 'bg-gray-800' : 'bg-gradient-to-r from-blue-900 to-purple-900'} flex items-center justify-center relative overflow-hidden`}>
                                 <span className="text-6xl select-none opacity-20 transform group-hover:scale-110 transition-transform duration-500">✈️</span>
-                                <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-md px-2 py-1 rounded text-xs font-mono border border-white/10">
+                                <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-md px-2 py-1 rounded text-meta font-mono border border-white/10">
                                     {isPast ? 'Terminé' : `J-${daysLeft}`}
                                 </div>
                             </div>
@@ -113,12 +113,12 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                                     <button onClick={() => handleDelete(trip.id)} className="text-gray-600 hover:text-danger-500 transition-colors">🗑️</button>
                                 </div>
 
-                                <div className="text-sm text-ink-300 mb-4 flex items-center gap-2">
+                                <div className="text-body text-ink-300 mb-4 flex items-center gap-2">
                                     <span>📅 {new Date(trip.date).toLocaleDateString()}</span>
                                 </div>
 
                                 <div className="bg-black/30 rounded-lg p-3 flex justify-between items-center border border-white/5">
-                                    <span className="text-xs text-ink-500 uppercase font-bold">Budget</span>
+                                    <span className="text-meta text-ink-500 uppercase font-bold">Budget</span>
                                     <span className="text-lg font-bold text-green-400">{trip.totalCost.toLocaleString()} $</span>
                                 </div>
 

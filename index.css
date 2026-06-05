@@ -145,6 +145,16 @@
   animation: slideUpFade 0.7s var(--ease-premium) forwards;
 }
 
+/* ANIM — fondu d'entrée OPACITÉ PURE (aucun transform → ne crée pas de bloc
+   conteneur, ne casse pas position:fixed). Sert aux transitions d'onglet. */
+@keyframes fadeInOpacity {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-tab-in {
+  animation: fadeInOpacity 0.28s ease forwards;
+}
+
 /* Skeletons */
 .skeleton-box {
   @apply relative overflow-hidden bg-white/5 rounded;

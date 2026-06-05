@@ -432,9 +432,9 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                     step="50"
                                                     value={currentRent}
                                                     onChange={e => setCurrentRent(Number(e.target.value))}
-                                                    className="w-full bg-purple-500/10 border border-purple-500/30 rounded px-2 py-1.5 text-purple-300 text-sm font-bold focus:outline-none focus:border-purple-400"
+                                                    className="w-full bg-purple-500/10 border border-purple-500/30 rounded px-2 py-1.5 text-purple-300 text-body font-bold focus:outline-none focus:border-purple-400"
                                                 />
-                                                <span className="text-xs text-ink-500">$/m</span>
+                                                <span className="text-meta text-ink-500">$/m</span>
                                             </div>
                                         </div>
                                         <div>
@@ -535,21 +535,21 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
 
                     <Card title="Amortissement et Équité">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-2">
-                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Welcome Tax</div><div className="text-sm font-bold text-white">{formatCurrency(welcomeTax)}</div></div>
-                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Notaire &amp; Insp.</div><div className="text-sm font-bold text-white">{formatCurrency(notaryFees + inspectionFees)}</div></div>
-                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Rénos Initiales</div><div className="text-sm font-bold text-white">{formatCurrency(initialRenovations)}</div></div>
-                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Maison Totale</div><div className="text-sm font-bold text-white">{formatCurrency(price + initialRenovations)}</div></div>
+                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Welcome Tax</div><div className="text-body font-bold text-white">{formatCurrency(welcomeTax)}</div></div>
+                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Notaire &amp; Insp.</div><div className="text-body font-bold text-white">{formatCurrency(notaryFees + inspectionFees)}</div></div>
+                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Rénos Initiales</div><div className="text-body font-bold text-white">{formatCurrency(initialRenovations)}</div></div>
+                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Maison Totale</div><div className="text-body font-bold text-white">{formatCurrency(price + initialRenovations)}</div></div>
                         </div>
                     </Card>
 
                     <Card title="📋 Tableau d'Amortissement Annuel">
                         <div className="overflow-x-auto">
-                            <div className="mb-3 flex flex-wrap gap-4 text-xs">
+                            <div className="mb-3 flex flex-wrap gap-4 text-meta">
                                 <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-danger-500 inline-block" />Intérêts totaux payés : <span className="font-bold text-danger-400 privacy-blur">{formatCurrency(amortizationData.totalInterest)}</span></div>
                                 <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-success-500 inline-block" />Gain Équité projeté : <span className="font-bold text-success-400 privacy-blur">{formatCurrency((amortizationData.data[amortizationData.data.length - 1]?.Équité || 0) - downPayment)}</span></div>
                                 {yearlyRenovations > 0 && <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-yellow-500 inline-block" />Rénos totales : <span className="font-bold text-yellow-400 privacy-blur">{formatCurrency(yearlyRenovations * amortization)}</span></div>}
                             </div>
-                            <table className="w-full text-xs text-left min-w-[700px]">
+                            <table className="w-full text-meta text-left min-w-[700px]">
                                 <thead>
                                     <tr className="border-b border-white/10 text-ink-500 uppercase tracking-wider">
                                         <th className="py-2 pr-4">Année</th>

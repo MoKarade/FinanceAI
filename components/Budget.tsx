@@ -659,8 +659,8 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 <div className="bg-red-900/10 border border-danger-500/20 rounded-lg p-3 flex items-start gap-3 animate-fade-in">
                     <span className="text-xl">🚨</span>
                     <div>
-                        <h4 className="text-sm font-bold text-danger-400">Attention : Dépassements détectés</h4>
-                        <p className="text-xs text-ink-300 mt-1">
+                        <h4 className="text-body font-bold text-danger-400">Attention : Dépassements détectés</h4>
+                        <p className="text-meta text-ink-300 mt-1">
                             {alerts.slice(0, 3).join(', ')} {alerts.length > 3 && `et ${alerts.length - 3} autres.`}
                         </p>
                     </div>
@@ -750,12 +750,12 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                             {/* User 1 Breakdown */}
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center">
-                                    <span className="text-sm font-bold text-indigo-400">{coupleAnalysis.user1.name}</span>
+                                    <span className="text-body font-bold text-indigo-400">{coupleAnalysis.user1.name}</span>
                                     <div className="flex items-center gap-2">
                                         {coupleAnalysis.splitMode === 'prorata' && (
                                             <span className="text-tiny text-ink-500">{(coupleAnalysis.splitRatio1 * 100).toFixed(0)}% (Net)</span>
                                         )}
-                                        <span className="text-xs text-ink-500 bg-white/5 px-2 py-0.5 rounded">
+                                        <span className="text-meta text-ink-500 bg-white/5 px-2 py-0.5 rounded">
                                             Effort: {coupleAnalysis.user1Income > 0 ? ((coupleAnalysis.user1Contribution / coupleAnalysis.user1Income) * 100).toFixed(0) : 0}%
                                         </span>
                                     </div>
@@ -781,12 +781,12 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                             {!coupleAnalysis.isSolo && coupleAnalysis.user2 && (
                                 <div className="space-y-2 pt-2 border-t border-white/5">
                                     <div className="flex justify-between items-center">
-                                        <span className="text-sm font-bold text-pink-400">{coupleAnalysis.user2.name}</span>
+                                        <span className="text-body font-bold text-pink-400">{coupleAnalysis.user2.name}</span>
                                         <div className="flex items-center gap-2">
                                             {coupleAnalysis.splitMode === 'prorata' && (
                                                 <span className="text-tiny text-ink-500">{((1 - coupleAnalysis.splitRatio1) * 100).toFixed(0)}% (Net)</span>
                                             )}
-                                            <span className="text-xs text-ink-500 bg-white/5 px-2 py-0.5 rounded">
+                                            <span className="text-meta text-ink-500 bg-white/5 px-2 py-0.5 rounded">
                                                 Effort: {coupleAnalysis.user2Income > 0 ? ((coupleAnalysis.user2Contribution / coupleAnalysis.user2Income) * 100).toFixed(0) : 0}%
                                             </span>
                                         </div>
@@ -829,7 +829,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                             </button>
 
                             <div className="pt-2 border-t border-white/5">
-                                <div className="text-xs text-ink-300 text-center mb-2 font-medium">Comparatif visuel 50/30/20</div>
+                                <div className="text-meta text-ink-300 text-center mb-2 font-medium">Comparatif visuel 50/30/20</div>
                                 <div style={{ width: '100%', height: '180px' }}>
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>

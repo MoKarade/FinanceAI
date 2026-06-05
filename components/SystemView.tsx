@@ -138,10 +138,10 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
             <div className="flex justify-between items-end">
                 <div>
                     <h2 className="text-3xl font-bold text-white tracking-tight">Système & Logique Interne</h2>
-                    <p className="text-ink-300 text-sm">Documentation de l'architecture des données.</p>
+                    <p className="text-ink-300 text-body">Documentation de l'architecture des données.</p>
                 </div>
                 <div className="text-right">
-                    <div className="text-xs text-info-400 font-bold bg-blue-900/20 px-3 py-1 rounded-full border border-info-500/30">
+                    <div className="text-meta text-info-400 font-bold bg-blue-900/20 px-3 py-1 rounded-full border border-info-500/30">
                         ● Local First & Sync
                     </div>
                 </div>
@@ -157,7 +157,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
 
                 <div className="lg:col-span-2 space-y-6">
                     <Card title="📚 La Toile d'Araignée (Interconnexions)">
-                        <div className="space-y-4 text-sm text-ink-200 leading-relaxed">
+                        <div className="space-y-4 text-body text-ink-200 leading-relaxed">
                             <div className="bg-white/5 p-4 rounded-xl border border-white/10">
                                 <h4 className="font-bold text-white mb-2 text-lg text-info-400">1. Le Moteur "Futur" (Départ 2026)</h4>
                                 <p>L'algorithme démarre en janvier 2026 et applique chaque mois les règles suivantes :</p>
@@ -196,7 +196,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                                 ⟳ Refresh
                             </button>
                         </div>
-                        <div className="h-[260px] overflow-y-auto custom-scrollbar p-2 text-xs space-y-1">
+                        <div className="h-[260px] overflow-y-auto custom-scrollbar p-2 text-meta space-y-1">
                             {logs.map((line, i) => (
                                 <div key={i} className="flex gap-2">
                                     <span className="text-gray-600 select-none">{(i + 1).toString().padStart(3, '0')}</span>
@@ -223,7 +223,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                     </div>
 
                     <Card title="Version & build">
-                        <div className="space-y-3 text-sm">
+                        <div className="space-y-3 text-body">
                             <p className="text-tiny text-ink-500 leading-snug">
                                 Infos injectées automatiquement à chaque build/déploiement. Utile
                                 pour vérifier que tu utilises bien la dernière version (et pour le support).

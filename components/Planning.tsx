@@ -125,7 +125,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
             <div className="flex flex-col md:flex-row justify-between items-end gap-4 bg-gradient-to-r from-blue-900/20 to-purple-900/20 p-6 rounded-2xl border border-white/10">
                 <div>
                     <h2 className="text-3xl font-bold text-white tracking-tight">{section === 'all' ? 'Planification & Charges Fixes' : 'Charges Fixes & Abonnements'}</h2>
-                    <p className="text-ink-300 text-sm mt-1">{section === 'all' ? 'Abonnements, Factures Récurrentes & Objectifs.' : 'Abonnements & Factures Récurrentes.'}</p>
+                    <p className="text-ink-300 text-body mt-1">{section === 'all' ? 'Abonnements, Factures Récurrentes & Objectifs.' : 'Abonnements & Factures Récurrentes.'}</p>
                 </div>
                 <div className="flex gap-4">
                     <div className="text-right"><div className="text-tiny uppercase text-ink-500 font-bold">Fixe Mensuel</div><div className="text-2xl font-bold text-danger-400 privacy-blur">{totalMonthly.toFixed(0)} $</div></div>
@@ -144,8 +144,8 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                             {activeSubs.map((sub, idx) => (
                                 <div key={idx} className="flex justify-between items-center p-3 bg-[#1a1a1a] rounded-xl border border-white/5 hover:border-white/20 transition-all group">
                                     <div className="flex items-center gap-3 overflow-hidden">
-                                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-sm shadow-inner flex-shrink-0">{(sub.payee || '').toLowerCase().includes('netflix') ? '🍿' : (sub.payee || '').toLowerCase().includes('spotify') ? '🎵' : (sub.payee || '').toLowerCase().includes('hydro') ? '⚡' : (sub.payee || '').toLowerCase().includes('internet') ? '🌐' : (sub.payee || '').toLowerCase().includes('loyer') ? '🏠' : '💳'}</div>
-                                        <div className="min-w-0"><div className="font-bold text-white text-sm truncate">{sub.payee}</div><div className="text-tiny text-ink-500">Le {sub.dayOfMonth} du mois</div></div>
+                                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-body shadow-inner flex-shrink-0">{(sub.payee || '').toLowerCase().includes('netflix') ? '🍿' : (sub.payee || '').toLowerCase().includes('spotify') ? '🎵' : (sub.payee || '').toLowerCase().includes('hydro') ? '⚡' : (sub.payee || '').toLowerCase().includes('internet') ? '🌐' : (sub.payee || '').toLowerCase().includes('loyer') ? '🏠' : '💳'}</div>
+                                        <div className="min-w-0"><div className="font-bold text-white text-body truncate">{sub.payee}</div><div className="text-tiny text-ink-500">Le {sub.dayOfMonth} du mois</div></div>
                                     </div>
                                     <div className="text-right flex-shrink-0"><div className="font-bold text-white privacy-blur">{sub.averageAmount.toFixed(0)}$</div><div className="text-tiny text-gray-600">/mois</div></div>
                                 </div>
@@ -167,7 +167,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                     <Card title="Calendrier des Factures">
                         <div className="flex justify-between items-center mb-4 bg-white/5 p-2 rounded-lg">
                             <button onClick={() => changeMonth(-1)} aria-label="Mois précédent" className="touch-target flex items-center justify-center hover:bg-white/10 rounded text-ink-300 focus-ring">◀</button>
-                            <h2 className="text-sm font-bold text-white capitalize">{currentDate.toLocaleString('fr-CA', { month: 'long', year: 'numeric' })}</h2>
+                            <h2 className="text-body font-bold text-white capitalize">{currentDate.toLocaleString('fr-CA', { month: 'long', year: 'numeric' })}</h2>
                             <button onClick={() => changeMonth(1)} aria-label="Mois suivant" className="touch-target flex items-center justify-center hover:bg-white/10 rounded text-ink-300 focus-ring">▶</button>
                         </div>
                         <div className="grid grid-cols-7 gap-1">
@@ -181,7 +181,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                 const dailyTotal = bills.reduce((s, b) => s + b.averageAmount, 0);
                                 return (
                                     <div key={idx} className={`aspect-square rounded-lg border flex flex-col items-center justify-center relative ${isToday ? 'bg-primary/20 border-primary' : hasBills ? 'bg-danger-500/10 border-danger-500/30' : 'bg-dark/40 border-white/5'}`}>
-                                        <span className={`text-xs font-bold ${isToday ? 'text-primary' : 'text-ink-500'}`}>{day}</span>
+                                        <span className={`text-meta font-bold ${isToday ? 'text-primary' : 'text-ink-500'}`}>{day}</span>
                                         {hasBills && <div className="mt-1 text-center"><div className="text-tiny font-bold text-white leading-none">{dailyTotal.toFixed(0)}$</div><div className="flex gap-0.5 justify-center mt-0.5">{bills.slice(0, 3).map((b, bi) => <div key={bi} className="w-1 h-1 rounded-full bg-danger-400" title={b.payee}></div>)}</div></div>}
                                     </div>
                                 );
@@ -195,11 +195,11 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                     <Card title="Objectifs (Sinking Funds)" action={<button onClick={() => setIsAddingGoal(!isAddingGoal)} className="text-tiny bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-white">+ Nouveau</button>}>
                         {isAddingGoal && (
                             <div className="mb-4 p-3 bg-white/5 rounded border border-white/10 grid grid-cols-2 gap-2">
-                                <input aria-label="Nom de l'objectif" type="text" placeholder="Nom" className="bg-dark border border-white/10 rounded px-2 py-1 text-xs text-white" value={newGoal.name} onChange={e => setNewGoal({ ...newGoal, name: e.target.value })} />
-                                <input aria-label="Montant cible (dollars)" type="number" placeholder="Cible $" className="bg-dark border border-white/10 rounded px-2 py-1 text-xs text-white" value={newGoal.targetAmount || ''} onChange={e => setNewGoal({ ...newGoal, targetAmount: parseFloat(e.target.value) })} />
-                                <input aria-label="Montant actuel (dollars)" type="number" placeholder="Actuel $" className="bg-dark border border-white/10 rounded px-2 py-1 text-xs text-white" value={newGoal.currentAmount || ''} onChange={e => setNewGoal({ ...newGoal, currentAmount: parseFloat(e.target.value) })} />
-                                <input aria-label="Date d'échéance" type="date" className="bg-dark border border-white/10 rounded px-2 py-1 text-xs text-white" value={newGoal.deadline} onChange={e => setNewGoal({ ...newGoal, deadline: e.target.value })} />
-                                <button onClick={handleAddGoal} className="col-span-2 bg-primary text-white text-xs font-bold py-1 rounded">Ajouter</button>
+                                <input aria-label="Nom de l'objectif" type="text" placeholder="Nom" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newGoal.name} onChange={e => setNewGoal({ ...newGoal, name: e.target.value })} />
+                                <input aria-label="Montant cible (dollars)" type="number" placeholder="Cible $" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newGoal.targetAmount || ''} onChange={e => setNewGoal({ ...newGoal, targetAmount: parseFloat(e.target.value) })} />
+                                <input aria-label="Montant actuel (dollars)" type="number" placeholder="Actuel $" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newGoal.currentAmount || ''} onChange={e => setNewGoal({ ...newGoal, currentAmount: parseFloat(e.target.value) })} />
+                                <input aria-label="Date d'échéance" type="date" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newGoal.deadline} onChange={e => setNewGoal({ ...newGoal, deadline: e.target.value })} />
+                                <button onClick={handleAddGoal} className="col-span-2 bg-primary text-white text-meta font-bold py-1 rounded">Ajouter</button>
                             </div>
                         )}
                         <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
@@ -209,14 +209,14 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                     <div key={goal.id} className="relative p-3 bg-[#1a1a1a] rounded-xl border border-white/5 group">
                                         <button onClick={() => handleDeleteGoal(goal.id)} aria-label={`Supprimer l'objectif ${goal.name}`} className="absolute top-1 right-1 touch-target flex items-center justify-center text-gray-600 hover:text-danger-500 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity focus-ring rounded">✕</button>
                                         <div className="flex justify-between items-center mb-1">
-                                            <div className="flex items-center gap-2"><span className="text-lg">{goal.icon}</span><span className="text-sm font-bold text-white">{goal.name}</span></div>
-                                            <span className="text-xs text-ink-300">{goal.currentAmount}/{goal.targetAmount}$</span>
+                                            <div className="flex items-center gap-2"><span className="text-lg">{goal.icon}</span><span className="text-body font-bold text-white">{goal.name}</span></div>
+                                            <span className="text-meta text-ink-300">{goal.currentAmount}/{goal.targetAmount}$</span>
                                         </div>
                                         <div className="w-full bg-black/50 rounded-full h-1.5"><div className="h-full bg-gradient-to-r from-info-500 to-purple-500 rounded-full" style={{ width: `${Math.min(100, progress)}%` }}></div></div>
                                     </div>
                                 );
                             })}
-                            {savingsGoals.length === 0 && <div className="text-center text-ink-500 text-xs py-4">Aucun objectif.</div>}
+                            {savingsGoals.length === 0 && <div className="text-center text-ink-500 text-meta py-4">Aucun objectif.</div>}
                         </div>
                     </Card>
                 </div>

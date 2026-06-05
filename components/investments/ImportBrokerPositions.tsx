@@ -58,7 +58,7 @@ export const ImportBrokerPositions: React.FC<Props> = ({ isOpen, onClose, onImpo
                 </p>
 
                 <label className="flex items-center gap-3 cursor-pointer">
-                    <span className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm text-ink-100 transition-colors">
+                    <span className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-body text-ink-100 transition-colors">
                         Choisir un fichier CSV…
                     </span>
                     <input
@@ -71,7 +71,7 @@ export const ImportBrokerPositions: React.FC<Props> = ({ isOpen, onClose, onImpo
                 </label>
 
                 <div>
-                    <label className="block text-xs text-ink-300 mb-1">… ou colle le CSV ici</label>
+                    <label className="block text-meta text-ink-300 mb-1">… ou colle le CSV ici</label>
                     <textarea
                         rows={4}
                         onChange={(e) => { const v = e.target.value; if (v.trim()) parse(v); else reset(); }}
@@ -81,7 +81,7 @@ export const ImportBrokerPositions: React.FC<Props> = ({ isOpen, onClose, onImpo
                 </div>
 
                 {error && (
-                    <div className="text-xs text-red-300 bg-red-900/20 border border-danger-500/20 rounded-lg p-2">{error}</div>
+                    <div className="text-meta text-red-300 bg-red-900/20 border border-danger-500/20 rounded-lg p-2">{error}</div>
                 )}
 
                 {preview && (
@@ -124,14 +124,14 @@ export const ImportBrokerPositions: React.FC<Props> = ({ isOpen, onClose, onImpo
                 )}
 
                 <div className="flex justify-end gap-2 pt-2">
-                    <button type="button" onClick={handleClose} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-ink-200 rounded font-bold text-sm transition-colors">
+                    <button type="button" onClick={handleClose} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-ink-200 rounded font-bold text-body transition-colors">
                         Annuler
                     </button>
                     <button
                         type="button"
                         onClick={confirm}
                         disabled={!preview}
-                        className="px-4 py-2 bg-primary hover:bg-primary/80 text-white rounded font-bold text-sm transition-colors disabled:opacity-50"
+                        className="px-4 py-2 bg-primary hover:bg-primary/80 text-white rounded font-bold text-body transition-colors disabled:opacity-50"
                     >
                         Importer{preview ? ` ${preview.imported} position(s)` : ''}
                     </button>

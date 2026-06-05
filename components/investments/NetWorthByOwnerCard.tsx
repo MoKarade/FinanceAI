@@ -44,7 +44,7 @@ export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets
 
     return (
         <Card title="👥 Répartition du portefeuille par personne">
-            <p className="text-xs text-ink-300 mb-3 leading-snug">
+            <p className="text-meta text-ink-300 mb-3 leading-snug">
                 Qui possède quoi. Les comptes enregistrés (CELI/REER/CELIAPP) sont individuels ;
                 le non-enregistré et le cash peuvent être communs. « Auto » applique la règle par défaut.
             </p>
@@ -54,7 +54,7 @@ export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets
                     <div key={b.label} className="bg-black/30 rounded-lg p-3 border border-white/5 text-center">
                         <div className="flex items-center justify-center gap-1.5 mb-1">
                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: b.color }} aria-hidden="true" />
-                            <span className="text-xs text-ink-200 truncate">{b.label}</span>
+                            <span className="text-meta text-ink-200 truncate">{b.label}</span>
                         </div>
                         <div className="font-mono font-bold text-white privacy-blur">{fmt(b.value)}</div>
                         <div className="text-tiny text-ink-500">{pct(b.value, bd.total)}</div>
@@ -68,7 +68,7 @@ export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets
                     {assets.map((a) => {
                         const value = (Number(a.currentPrice) || 0) * (Number(a.quantity) || 0);
                         return (
-                            <div key={a.symbol} className="flex items-center justify-between gap-2 text-sm bg-white/5 rounded px-2 py-1.5">
+                            <div key={a.symbol} className="flex items-center justify-between gap-2 text-body bg-white/5 rounded px-2 py-1.5">
                                 <span className="text-ink-100 truncate">
                                     <span className="font-bold">{a.symbol}</span>
                                     <span className="text-ink-500"> · {a.accountType || 'NON-ENREG'} · </span>
@@ -78,7 +78,7 @@ export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets
                                     aria-label={`Propriétaire de ${a.symbol}`}
                                     value={a.owner ?? ''}
                                     onChange={(e) => setOwner(a.symbol, (e.target.value || undefined) as AssetOwner | undefined)}
-                                    className="bg-dark border border-border rounded px-2 py-1 text-xs text-white shrink-0"
+                                    className="bg-dark border border-border rounded px-2 py-1 text-meta text-white shrink-0"
                                 >
                                     <option value="">Auto ({defaultOwner(a.accountType) === 'user1' ? name1 : 'Commun'})</option>
                                     <option value="user1">{name1}</option>

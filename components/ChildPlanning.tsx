@@ -289,11 +289,11 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                     <Card title="📅 Profil & Date Prévue">
                         <div className="space-y-4">
                             <div>
-                                <label htmlFor="child-name-input" className="text-xs text-ink-300 block mb-1">Prénom ou Identifiant</label>
+                                <label htmlFor="child-name-input" className="text-meta text-ink-300 block mb-1">Prénom ou Identifiant</label>
                                 <input id="child-name-input" type="text" value={goal.name || ''} onChange={e => update('name', e.target.value)} placeholder="Ex: Léo" className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white outline-none focus:border-primary" />
                             </div>
                             <div>
-                                <label className="text-xs text-ink-300 block mb-1">Date de naissance (ou prévue)</label>
+                                <label className="text-meta text-ink-300 block mb-1">Date de naissance (ou prévue)</label>
                                 <input type="date" value={goal.birthDate} onChange={e => update('birthDate', e.target.value)} className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white focus:border-primary outline-none" />
                             </div>
                         </div>
@@ -303,65 +303,65 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                     <Card title="🎯 Choix de Vie">
                         <div className="space-y-5">
                             <div>
-                                <div className="text-xs font-bold text-pink-400 uppercase mb-2">Mode de garde (0–5 ans)</div>
+                                <div className="text-meta font-bold text-pink-400 uppercase mb-2">Mode de garde (0–5 ans)</div>
                                 <div className="space-y-1.5">
                                     {(Object.entries(DAYCARE_INFO) as [DaycareType, typeof DAYCARE_INFO[DaycareType]][]).map(([key, info]) => (
                                         <button key={key} onClick={() => setDaycareType(key)}
                                             className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${daycareType === key ? 'border-primary bg-primary/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
                                             <span className="text-xl">{info.icon}</span>
                                             <div className="flex-1">
-                                                <div className="text-xs font-bold">{info.label}</div>
+                                                <div className="text-meta font-bold">{info.label}</div>
                                                 <div className="text-tiny text-ink-500">{info.desc}</div>
                                             </div>
-                                            <div className="text-xs font-mono font-bold text-right">{info.monthly > 0 ? `${info.monthly}$/m` : 'Gratuit'}</div>
+                                            <div className="text-meta font-mono font-bold text-right">{info.monthly > 0 ? `${info.monthly}$/m` : 'Gratuit'}</div>
                                         </button>
                                     ))}
                                 </div>
                             </div>
                             <div>
-                                <div className="text-xs font-bold text-info-400 uppercase mb-2">Type d'école (6–17 ans)</div>
+                                <div className="text-meta font-bold text-info-400 uppercase mb-2">Type d'école (6–17 ans)</div>
                                 <div className="space-y-1.5">
                                     {(Object.entries(SCHOOL_INFO) as [SchoolType, typeof SCHOOL_INFO[SchoolType]][]).map(([key, info]) => (
                                         <button key={key} onClick={() => setSchoolType(key)}
                                             className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${schoolType === key ? 'border-info-500 bg-info-500/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
                                             <span className="text-xl">{info.icon}</span>
-                                            <div className="flex-1 text-xs font-bold">{info.label}</div>
-                                            <div className="text-xs font-mono font-bold text-right text-blue-300">+{(info.yearlyExtra / 1000).toFixed(0)}k$/an</div>
+                                            <div className="flex-1 text-meta font-bold">{info.label}</div>
+                                            <div className="text-meta font-mono font-bold text-right text-blue-300">+{(info.yearlyExtra / 1000).toFixed(0)}k$/an</div>
                                         </button>
                                     ))}
                                 </div>
                             </div>
                             <div>
-                                <div className="text-xs font-bold text-yellow-400 uppercase mb-2">Sports & activités</div>
+                                <div className="text-meta font-bold text-yellow-400 uppercase mb-2">Sports & activités</div>
                                 <div className="space-y-1.5">
                                     {(Object.entries(ACTIVITIES_INFO) as [ActivitiesLevel, typeof ACTIVITIES_INFO[ActivitiesLevel]][]).map(([key, info]) => (
                                         <button key={key} onClick={() => setActivitiesLevel(key)}
                                             className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${activitiesLevel === key ? 'border-yellow-500 bg-yellow-500/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
                                             <span className="text-xl">{info.icon}</span>
-                                            <div className="flex-1 text-xs font-bold">{info.label}</div>
-                                            <div className="text-xs font-mono font-bold text-right text-yellow-300">{info.yearlyExtra > 0 ? `+${info.yearlyExtra}$/an` : 'Rien'}</div>
+                                            <div className="flex-1 text-meta font-bold">{info.label}</div>
+                                            <div className="text-meta font-mono font-bold text-right text-yellow-300">{info.yearlyExtra > 0 ? `+${info.yearlyExtra}$/an` : 'Rien'}</div>
                                         </button>
                                     ))}
                                 </div>
                             </div>
                             <div>
-                                <div className="text-xs font-bold text-purple-400 uppercase mb-2">Études post-secondaires (18–25 ans)</div>
+                                <div className="text-meta font-bold text-purple-400 uppercase mb-2">Études post-secondaires (18–25 ans)</div>
                                 <div className="space-y-1.5">
                                     {(Object.entries(UNI_INFO) as [UniversityType, typeof UNI_INFO[UniversityType]][]).map(([key, info]) => (
                                         <button key={key} onClick={() => setUniversityType(key)}
                                             className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${universityType === key ? 'border-purple-500 bg-purple-500/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
                                             <span className="text-xl">{info.icon}</span>
                                             <div className="flex-1">
-                                                <div className="text-xs font-bold">{info.label}</div>
+                                                <div className="text-meta font-bold">{info.label}</div>
                                                 {info.years > 0 && <div className="text-tiny text-ink-500">{info.years} ans</div>}
                                             </div>
-                                            <div className="text-xs font-mono font-bold text-right text-purple-300">{info.yearlyCost > 0 ? `${(info.yearlyCost / 1000).toFixed(0)}k$/an` : 'Gratuit'}</div>
+                                            <div className="text-meta font-mono font-bold text-right text-purple-300">{info.yearlyCost > 0 ? `${(info.yearlyCost / 1000).toFixed(0)}k$/an` : 'Gratuit'}</div>
                                         </button>
                                     ))}
                                 </div>
                             </div>
                             <div>
-                                <div className="text-xs font-bold text-orange-400 uppercase mb-2">Voiture à 18 ans (cadeau)</div>
+                                <div className="text-meta font-bold text-orange-400 uppercase mb-2">Voiture à 18 ans (cadeau)</div>
                                 <div className="flex gap-2">
                                     {(Object.entries(CAR_INFO) as [CarGift, typeof CAR_INFO[CarGift]][]).map(([key, info]) => (
                                         <button key={key} onClick={() => setCarGift(key)}
@@ -379,20 +379,20 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                     <Card title="💰 Allocations & Coûts de base">
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
-                                <label className="text-xs text-ink-200">Allocations (ACE + Soutien QC)</label>
-                                <input type="number" value={goal.governmentBenefits} onChange={e => update('governmentBenefits', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-green-400 font-bold" />
+                                <label className="text-meta text-ink-200">Allocations (ACE + Soutien QC)</label>
+                                <input type="number" value={goal.governmentBenefits} onChange={e => update('governmentBenefits', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-body text-green-400 font-bold" />
                             </div>
                             <div className="flex justify-between items-center">
-                                <label className="text-xs text-ink-200">Nourriture / mois</label>
-                                <input type="number" value={goal.monthlyFood} onChange={e => update('monthlyFood', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-white" />
+                                <label className="text-meta text-ink-200">Nourriture / mois</label>
+                                <input type="number" value={goal.monthlyFood} onChange={e => update('monthlyFood', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-body text-white" />
                             </div>
                             <div className="flex justify-between items-center">
-                                <label className="text-xs text-ink-200">Vêtements / mois</label>
-                                <input type="number" value={goal.monthlyClothing} onChange={e => update('monthlyClothing', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-white" />
+                                <label className="text-meta text-ink-200">Vêtements / mois</label>
+                                <input type="number" value={goal.monthlyClothing} onChange={e => update('monthlyClothing', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-body text-white" />
                             </div>
                             <div className="flex justify-between items-center">
-                                <label className="text-xs text-ink-200">Coûts naissance (chambre, siège, etc.)</label>
-                                <input type="number" value={goal.initialCost} onChange={e => update('initialCost', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-white" />
+                                <label className="text-meta text-ink-200">Coûts naissance (chambre, siège, etc.)</label>
+                                <input type="number" value={goal.initialCost} onChange={e => update('initialCost', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-body text-white" />
                             </div>
                         </div>
                     </Card>
@@ -401,7 +401,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                 {/* GRAPHIQUES */}
                 <div className="lg:col-span-2 space-y-5">
                     <Card title="📊 Coût annuel par âge (décomposé)" action={
-                        <div className="text-xs text-ink-300 font-mono">Total : <span className="text-white font-bold privacy-blur">{fmt(costTimeline.totalCost)}</span></div>
+                        <div className="text-meta text-ink-300 font-mono">Total : <span className="text-white font-bold privacy-blur">{fmt(costTimeline.totalCost)}</span></div>
                     }>
                         <ZoomContainer zoom={zoomCost} className="h-[280px]">
                             <ResponsiveContainer width="100%" height="100%">
@@ -434,7 +434,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 </Badge>
                             )}
                             {respCovers != null ? (
-                                <div className={`text-xs font-bold px-2 py-1 rounded border ${respCovers >= 100 ? 'text-green-400 border-green-500/30 bg-green-500/10' : 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10'}`}>
+                                <div className={`text-meta font-bold px-2 py-1 rounded border ${respCovers >= 100 ? 'text-green-400 border-green-500/30 bg-green-500/10' : 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10'}`}>
                                     {respCovers.toFixed(0)}% des études couvertes
                                 </div>
                             ) : (
@@ -444,7 +444,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                     }>
                         <div className="space-y-3 mb-4">
                             <div>
-                                <label className="flex justify-between text-xs text-ink-200 mb-1">
+                                <label className="flex justify-between text-meta text-ink-200 mb-1">
                                     <span>Cotisation annuelle REEE</span>
                                     <span className="text-info-400 font-bold">{fmt(respContribution)}</span>
                                 </label>
@@ -501,22 +501,22 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
                             <div className="text-2xl mb-1">{DAYCARE_INFO[daycareType].icon}</div>
                             <div className="text-tiny text-ink-300">Garde mensuelle</div>
-                            <div className="text-sm font-bold text-white">{fmt(DAYCARE_INFO[daycareType].monthly)}</div>
+                            <div className="text-body font-bold text-white">{fmt(DAYCARE_INFO[daycareType].monthly)}</div>
                         </div>
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
                             <div className="text-2xl mb-1">{SCHOOL_INFO[schoolType].icon}</div>
                             <div className="text-tiny text-ink-300">Frais scolaires/an</div>
-                            <div className="text-sm font-bold text-white">{fmt(SCHOOL_INFO[schoolType].yearlyExtra)}</div>
+                            <div className="text-body font-bold text-white">{fmt(SCHOOL_INFO[schoolType].yearlyExtra)}</div>
                         </div>
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
                             <div className="text-2xl mb-1">{ACTIVITIES_INFO[activitiesLevel].icon}</div>
                             <div className="text-tiny text-ink-300">Activités/an</div>
-                            <div className="text-sm font-bold text-white">{fmt(ACTIVITIES_INFO[activitiesLevel].yearlyExtra)}</div>
+                            <div className="text-body font-bold text-white">{fmt(ACTIVITIES_INFO[activitiesLevel].yearlyExtra)}</div>
                         </div>
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
                             <div className="text-2xl mb-1">{UNI_INFO[universityType].icon}</div>
                             <div className="text-tiny text-ink-300">Études total</div>
-                            <div className="text-sm font-bold text-white">{fmt(totalStudiesCost)}</div>
+                            <div className="text-body font-bold text-white">{fmt(totalStudiesCost)}</div>
                         </div>
                     </div>
                 </div>

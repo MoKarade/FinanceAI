@@ -45,7 +45,7 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
         return (
             <div className="space-y-2">
                 <div className="flex items-baseline justify-between">
-                    <h4 className="text-xs font-bold text-white">{jurisdiction}</h4>
+                    <h4 className="text-meta font-bold text-white">{jurisdiction}</h4>
                     <div className="text-tiny font-mono">
                         <span className="text-danger-400">{formatCAD(breakdown.totalTax)}</span>
                         <span className="text-ink-500 mx-1">·</span>

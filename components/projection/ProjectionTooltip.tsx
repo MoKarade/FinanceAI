@@ -76,7 +76,7 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
             <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-primary via-purple-500 to-pink-500 opacity-80" />
 
             <div className="flex justify-between items-center gap-2 mb-2.5">
-                <span className="text-sm font-extrabold text-white tracking-tight">{data.dateLabel || 'N/A'}</span>
+                <span className="text-body font-extrabold text-white tracking-tight">{data.dateLabel || 'N/A'}</span>
                 <span className="text-tiny font-bold text-primary bg-primary/15 border border-primary/30 px-2 py-0.5 rounded-full whitespace-nowrap">Âge {data.age || '??'}</span>
             </div>
 
@@ -107,7 +107,7 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
             )}
 
             {/* Revenus / dépenses du mois */}
-            <div className="space-y-1 mb-2.5 text-xs">
+            <div className="space-y-1 mb-2.5 text-meta">
                 {(data.IncomeMarc || 0) > 0 && <div className="flex justify-between"><span className="text-ink-300">Paye {userName1 || 'Util. 1'}</span><span className="font-mono text-green-400 privacy-blur">+{fmt(data.IncomeMarc || 0)}$</span></div>}
                 {(data.IncomeAnna || 0) > 0 && <div className="flex justify-between"><span className="text-ink-300">Paye {userName2 || 'Util. 2'}</span><span className="font-mono text-green-400 privacy-blur">+{fmt(data.IncomeAnna || 0)}$</span></div>}
                 {(data.IncomeRetirement || 0) > 0 && <div className="flex justify-between"><span className="text-ink-300">Rentes / retraite</span><span className="font-mono text-green-400 privacy-blur">+{fmt(data.IncomeRetirement || 0)}$</span></div>}
@@ -121,7 +121,7 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
                 moteur → on affiche la valeur absolue). On n'affiche PAS un « impôt total
                 annuel » : la retenue mensuelle est déjà implicite dans le net ci-dessus. */}
             {(Math.abs(data.FluxImpots || 0) > 0.5 || Math.abs(data.ImpotLatent || 0) > 0.5) && (
-                <div className="bg-black/30 p-2.5 rounded-xl space-y-1 text-xs border border-white/10 mb-2.5">
+                <div className="bg-black/30 p-2.5 rounded-xl space-y-1 text-meta border border-white/10 mb-2.5">
                     <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1">Impôts</div>
                     {Math.abs(data.FluxImpots || 0) > 0.5 && (
                         <div className="flex justify-between" title="Solde réglé en avril : impôt réel de l'année moins les retenues déjà prélevées (positif = reste à payer, négatif = remboursement).">
@@ -142,7 +142,7 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
 
             {/* Répartition par compte : valeur + rendement du mois (G14) */}
             {accounts.length > 0 && (
-                <div className="bg-black/30 p-2.5 rounded-xl space-y-1 text-xs border border-white/10 mb-2.5">
+                <div className="bg-black/30 p-2.5 rounded-xl space-y-1 text-meta border border-white/10 mb-2.5">
                     <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1">Par compte (valeur · rendement)</div>
                     {accounts.map((a) => (
                         <div key={a.key} className="flex items-center justify-between gap-2">

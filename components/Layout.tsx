@@ -152,7 +152,7 @@ export const Layout: React.FC<LayoutProps> = ({
         <div
           role="status"
           aria-label="Mode test activé"
-          className="fixed top-0 left-0 right-0 z-[150] bg-gradient-to-r from-warning-600 via-orange-600 to-warning-600 text-white text-center py-2 px-4 font-bold text-sm shadow-lg flex items-center justify-center gap-3"
+          className="fixed top-0 left-0 right-0 z-[150] bg-gradient-to-r from-warning-600 via-orange-600 to-warning-600 text-white text-center py-2 px-4 font-bold text-body shadow-lg flex items-center justify-center gap-3"
         >
           <span aria-hidden="true">🧪</span>
           <span className="font-bold">MODE TEST</span>
@@ -165,7 +165,7 @@ export const Layout: React.FC<LayoutProps> = ({
               const persona = getPersonaOrDefault(e.target.value);
               enableTestMode(persona.build(), persona.id);
             }}
-            className="bg-amber-900/70 text-white text-xs rounded px-2 py-1 border border-white/40 font-normal cursor-pointer max-w-[55vw] truncate focus:outline-none focus:ring-2 focus:ring-white/60"
+            className="bg-amber-900/70 text-white text-meta rounded px-2 py-1 border border-white/40 font-normal cursor-pointer max-w-[55vw] truncate focus:outline-none focus:ring-2 focus:ring-white/60"
           >
             {TEST_PERSONAS.map((p) => (
               <option key={p.id} value={p.id} className="bg-gray-900 text-white">
@@ -173,7 +173,7 @@ export const Layout: React.FC<LayoutProps> = ({
               </option>
             ))}
           </select>
-          <span className="hidden md:inline font-normal text-xs opacity-90">— données fictives, vraies données sauvegardées</span>
+          <span className="hidden md:inline font-normal text-meta opacity-90">— données fictives, vraies données sauvegardées</span>
           <span aria-hidden="true">🧪</span>
         </div>
       )}

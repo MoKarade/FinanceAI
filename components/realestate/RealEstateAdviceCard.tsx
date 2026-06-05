@@ -62,7 +62,7 @@ export const RealEstateAdviceCard: React.FC<RealEstateAdviceCardProps> = ({ cont
                             type="button"
                             onClick={handleGenerate}
                             disabled={isLoading || !apiKey}
-                            className="px-4 py-2 bg-gradient-to-r from-success-600 to-info-600 text-white rounded-lg font-bold text-sm hover:opacity-90 disabled:opacity-50"
+                            className="px-4 py-2 bg-gradient-to-r from-success-600 to-info-600 text-white rounded-lg font-bold text-body hover:opacity-90 disabled:opacity-50"
                         >
                             {isLoading ? '⏳ Analyse…' : '✨ Conseiller le projet'}
                         </button>
@@ -85,7 +85,7 @@ export const RealEstateAdviceCard: React.FC<RealEstateAdviceCardProps> = ({ cont
                                         <div className="flex items-start gap-2 mb-1">
                                             <span aria-hidden="true" className="text-base">{meta.icon}</span>
                                             <div className="flex-1 min-w-0">
-                                                <div className="font-bold text-white text-sm">{ins.title}</div>
+                                                <div className="font-bold text-white text-body">{ins.title}</div>
                                                 <div className="text-tiny opacity-80 uppercase tracking-wide">{meta.label}</div>
                                             </div>
                                         </div>

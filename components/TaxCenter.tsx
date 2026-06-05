@@ -223,7 +223,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                     >
                         <span className="text-lg">{isAnalyzing ? '⏳' : '🤖'}</span>
                         <div className="text-left leading-tight">
-                            <div className="font-bold text-white text-xs">Calcul rapide</div>
+                            <div className="font-bold text-white text-meta">Calcul rapide</div>
                             <div className="text-tiny text-white/70">Pour archiver → onglet Documents</div>
                         </div>
                     </button>
@@ -243,7 +243,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
 
             {scannedPay && (
                 <div className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 border border-info-500/30 p-4 rounded-xl shadow-lg mt-4 animate-fade-in">
-                    <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">📄 Fiche de Paie Détectée ({scannedPay.freq})</h3>
+                    <h3 className="text-body font-bold text-white mb-3 flex items-center gap-2">📄 Fiche de Paie Détectée ({scannedPay.freq})</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                         <div className="bg-black/30 p-3 rounded border border-white/5">
                             <div className="text-tiny text-ink-300">Brut Annuel Est.</div>
@@ -263,8 +263,8 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                         </div>
                     </div>
                     <div className="flex justify-end gap-2">
-                        <button onClick={() => setScannedPay(null)} className="text-xs text-ink-300 px-3 py-1.5 hover:text-white transition">Ignorer</button>
-                        <button onClick={applyToProfile} className="bg-info-600 hover:bg-info-500 text-white text-xs font-bold px-4 py-1.5 rounded transition shadow-lg">
+                        <button onClick={() => setScannedPay(null)} className="text-meta text-ink-300 px-3 py-1.5 hover:text-white transition">Ignorer</button>
+                        <button onClick={applyToProfile} className="bg-info-600 hover:bg-info-500 text-white text-meta font-bold px-4 py-1.5 rounded transition shadow-lg">
                             💾 Appliquer au Profil Principal
                         </button>
                     </div>
@@ -272,7 +272,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
             )}
 
             {analysisStatus && !scannedPay && (
-                <div className="bg-info-500/10 border border-info-500/30 text-blue-300 px-4 py-2 rounded-lg text-sm flex items-center gap-2 animate-fade-in">
+                <div className="bg-info-500/10 border border-info-500/30 text-blue-300 px-4 py-2 rounded-lg text-body flex items-center gap-2 animate-fade-in">
                     <span>ℹ️</span> {analysisStatus}
                 </div>
             )}
@@ -285,7 +285,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                 <div className="flex bg-black/40 p-1 rounded-lg w-fit mx-auto border border-white/5">
                     <button
                         onClick={() => setViewUser('all')}
-                        className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${viewUser === 'all' ? 'bg-white text-black shadow' : 'text-ink-300 hover:text-white'}`}
+                        className={`px-4 py-2 text-body font-bold rounded-md transition-all ${viewUser === 'all' ? 'bg-white text-black shadow' : 'text-ink-300 hover:text-white'}`}
                     >
                         Global (Couple)
                     </button>
@@ -293,7 +293,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                         <button
                             key={u.name}
                             onClick={() => setViewUser(u.name)}
-                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${viewUser === u.name ? 'bg-white text-black shadow' : 'text-ink-300 hover:text-white'}`}
+                            className={`px-4 py-2 text-body font-bold rounded-md transition-all ${viewUser === u.name ? 'bg-white text-black shadow' : 'text-ink-300 hover:text-white'}`}
                         >
                             {u.name}
                         </button>
@@ -307,7 +307,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                     <Card title="💼 Revenus & Déductions">
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-xs text-ink-300 mb-1 font-bold uppercase">
+                                <label className="block text-meta text-ink-300 mb-1 font-bold uppercase">
                                     {isGlobal ? "Revenu Brut Annuel du Couple" : `Revenu Brut (${viewUser})`}
                                 </label>
                                 <div className="p-3 bg-white/5 border border-white/10 rounded-lg flex items-center justify-between">
@@ -322,8 +322,8 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                             {alreadyPaidTax > 0 && (
                                 <div className="p-3 bg-green-900/10 border border-green-500/30 rounded">
                                     <div className="flex justify-between items-center">
-                                        <span className="text-xs text-green-400 font-bold">Impôt déjà prélevé (Source)</span>
-                                        <span className="text-sm font-mono text-white">{alreadyPaidTax.toLocaleString()}$</span>
+                                        <span className="text-meta text-green-400 font-bold">Impôt déjà prélevé (Source)</span>
+                                        <span className="text-body font-mono text-white">{alreadyPaidTax.toLocaleString()}$</span>
                                     </div>
                                     <div className="text-tiny text-ink-500 mt-1">Détecté automatiquement via vos documents</div>
                                 </div>
@@ -332,8 +332,8 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                             {investmentTaxData.totalNonReg > 0 && (
                                 <div className="p-3 bg-white/5 rounded border border-white/10">
                                     <div className="flex justify-between items-center mb-1">
-                                        <span className="text-xs text-yellow-400 font-bold">Invest. Non-Enregistrés</span>
-                                        <span className="text-xs text-white">{investmentTaxData.totalNonReg.toLocaleString()}$</span>
+                                        <span className="text-meta text-yellow-400 font-bold">Invest. Non-Enregistrés</span>
+                                        <span className="text-meta text-white">{investmentTaxData.totalNonReg.toLocaleString()}$</span>
                                     </div>
                                     <div className="text-tiny text-ink-500">
                                         Impact estimé sur revenu imposable: <span className="text-red-300">+{investmentTaxData.taxableAddOn.toFixed(0)}$</span>
@@ -342,18 +342,18 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                             )}
 
                             <div className="p-4 bg-blue-900/10 border border-info-500/20 rounded-xl space-y-3">
-                                <h4 className="text-xs font-bold text-blue-300 uppercase flex items-center gap-2">
+                                <h4 className="text-meta font-bold text-blue-300 uppercase flex items-center gap-2">
                                     📉 Réducteurs d'Impôt
                                 </h4>
                                 <div>
-                                    <label className="flex justify-between text-xs text-ink-200 mb-1">
+                                    <label className="flex justify-between text-meta text-ink-200 mb-1">
                                         <span>Cotisation REER</span>
                                         <span>{rrspContribution.toLocaleString()}$</span>
                                     </label>
                                     <input type="range" min="0" max="30000" step="100" value={rrspContribution} onChange={e => setRrspContribution(parseFloat(e.target.value))} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
                                 </div>
                                 <div>
-                                    <label className="flex justify-between text-xs text-ink-200 mb-1">
+                                    <label className="flex justify-between text-meta text-ink-200 mb-1">
                                         <span>CELIAPP</span>
                                         <span>{fhsaContribution.toLocaleString()}$</span>
                                     </label>

@@ -609,14 +609,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     >
                                         {isSelected && <span className="text-tiny text-white font-bold">✓</span>}
                                     </div>
-                                    <div className="w-8 h-8 rounded bg-surfaceHighlight flex items-center justify-center text-xs font-bold text-ink-200 shrink-0">{asset.symbol.substring(0, 2)}</div>
+                                    <div className="w-8 h-8 rounded bg-surfaceHighlight flex items-center justify-center text-meta font-bold text-ink-200 shrink-0">{asset.symbol.substring(0, 2)}</div>
                                     <div className="min-w-0">
-                                        <div className="font-bold text-white text-sm truncate">{asset.symbol}</div>
+                                        <div className="font-bold text-white text-body truncate">{asset.symbol}</div>
                                         <div className="text-tiny text-ink-500 bg-black/50 px-1.5 rounded inline-block mt-0.5">{asset.accountType}</div>
                                     </div>
                                 </div>
                                 <div className="text-right shrink-0">
-                                    <div className="font-mono font-bold text-ink-100 text-sm privacy-blur">{formatCAD(asset.value)}</div>
+                                    <div className="font-mono font-bold text-ink-100 text-body privacy-blur">{formatCAD(asset.value)}</div>
                                     <div className="flex justify-end gap-2 text-tiny mt-0.5 font-bold privacy-blur">
                                         <span className={asset.diffCAD >= 0 ? 'text-green-500' : 'text-danger-500'}>
                                             {formatSigned(asset.diffCAD, { withCurrency: true })}
@@ -647,7 +647,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             </div>
                         );
                     })}
-                    {segmentedData.assets.length === 0 && <div className="text-center py-4 text-ink-500 text-xs">Aucun actif trouvé.</div>}
+                    {segmentedData.assets.length === 0 && <div className="text-center py-4 text-ink-500 text-meta">Aucun actif trouvé.</div>}
                 </div>
             </Card>
 

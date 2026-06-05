@@ -69,7 +69,7 @@ export const MultiPropertyComparison: React.FC<MultiPropertyComparisonProps> = (
         >
             <div className="flex gap-4 mb-4 flex-wrap">
                 {allSeries.map(s => (
-                    <div key={s.name} className="flex items-center gap-2 text-xs font-bold" style={{ color: s.color }}>
+                    <div key={s.name} className="flex items-center gap-2 text-meta font-bold" style={{ color: s.color }}>
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: s.color }} />
                         {s.name}
                     </div>

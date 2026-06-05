@@ -46,7 +46,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ config, setConfi
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div data-focus-section="profile-retirementAge">
-              <label className="block text-xs text-ink-300 mb-1">Âge de retraite cible</label>
+              <label className="block text-meta text-ink-300 mb-1">Âge de retraite cible</label>
               <input
                 type="number"
                 min={50}
@@ -57,7 +57,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ config, setConfi
               />
             </div>
             <div data-focus-section="profile-lifeExpectancy">
-              <label className="block text-xs text-ink-300 mb-1">
+              <label className="block text-meta text-ink-300 mb-1">
                 Espérance de vie
                 <span className="ml-1 text-tiny text-ink-500">(80–100 ans)</span>
               </label>
@@ -71,7 +71,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ config, setConfi
               />
             </div>
             <div data-focus-section="profile-retirementIncome">
-              <label className="block text-xs text-ink-300 mb-1">Revenu mensuel cible</label>
+              <label className="block text-meta text-ink-300 mb-1">Revenu mensuel cible</label>
               <input
                 type="number"
                 min={0}

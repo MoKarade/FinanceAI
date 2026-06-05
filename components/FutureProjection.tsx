@@ -550,7 +550,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         return <div className="p-8 text-center bg-surface/50 rounded-2xl border border-danger-500/20 space-y-2">
             <div className="text-2xl" aria-hidden="true">⚠️</div>
             <div className="text-danger-400 font-bold">Le calcul de la projection a échoué.</div>
-            <div className="text-sm text-ink-300 max-w-md mx-auto">
+            <div className="text-body text-ink-300 max-w-md mx-auto">
                 Vérifie tes paramètres (revenus, dépenses, comptes, objectifs). L'erreur a été
                 journalisée.{runMC ? ' Tu peux aussi désactiver le mode Monte-Carlo et réessayer.' : ''}
             </div>
@@ -724,7 +724,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     <div className={`mb-3 rounded-xl border p-3 flex items-center gap-3 ${bestScenario.fireAge != null ? 'border-green-500/30 bg-green-500/10' : 'border-warning-500/30 bg-warning-500/10'}`}>
                         <span className="text-2xl shrink-0" aria-hidden="true">{bestScenario.fireAge != null ? '✅' : '⏳'}</span>
                         <div className="min-w-0">
-                            <div className="text-sm font-black text-white leading-tight">
+                            <div className="text-body font-black text-white leading-tight">
                                 {bestScenario.fireAge != null
                                     ? `En bonne voie — libre dès ${bestScenario.fireAge} ans`
                                     : 'Objectif FIRE pas encore atteint sur l’horizon'}

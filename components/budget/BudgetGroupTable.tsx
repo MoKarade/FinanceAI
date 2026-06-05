@@ -69,10 +69,10 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
         <div className="mb-8 last:mb-0 animate-slide-up">
             <div className={`flex items-center justify-between px-4 py-2 rounded-t-lg border-b border-white/5 ${getGroupColor(nature)} bg-opacity-10`}>
                 <div className="flex items-center gap-2">
-                    <span className="font-bold uppercase tracking-wider text-xs">{nature}</span>
+                    <span className="font-bold uppercase tracking-wider text-meta">{nature}</span>
                     <span className="text-tiny opacity-70">({items.length})</span>
                 </div>
-                <div className="text-xs font-mono">
+                <div className="text-meta font-mono">
                     <span className={groupTotalSpent > groupTotalTarget ? 'text-danger-400' : 'opacity-80'}>
                         {groupTotalSpent.toLocaleString()}$
                     </span>
@@ -100,7 +100,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                             <th className="p-3 w-10"></th>
                         </tr>
                     </thead>
-                    <tbody className="text-sm divide-y divide-white/5">
+                    <tbody className="text-body divide-y divide-white/5">
                         {items.map((item) => {
                             const idx = allItems.findIndex(i => i.id === item.id);
                             const displayTarget = getDisplayTarget(item);
@@ -137,7 +137,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                 type="text"
                                                 value={item.name}
                                                 onChange={(e) => onUpdateItem(idx, 'name', e.target.value)}
-                                                className="bg-transparent text-white font-medium focus:border-primary outline-none w-full text-sm placeholder-gray-600"
+                                                className="bg-transparent text-white font-medium focus:border-primary outline-none w-full text-body placeholder-gray-600"
                                                 onClick={(e) => e.stopPropagation()}
                                             />
                                             <div className="flex gap-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -174,15 +174,15 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                         type="number"
                                                         value={item.target}
                                                         onChange={(e) => onUpdateItem(idx, 'target', parseFloat(e.target.value) || 0)}
-                                                        className={`bg-transparent text-right w-20 outline-none font-mono privacy-blur ${timeView !== 'MONTH' ? 'text-ink-500 text-xs' : 'text-white'}`}
+                                                        className={`bg-transparent text-right w-20 outline-none font-mono privacy-blur ${timeView !== 'MONTH' ? 'text-ink-500 text-meta' : 'text-white'}`}
                                                         title="Modifier le montant de base"
                                                         onClick={(e) => e.stopPropagation()}
                                                     />
-                                                    <span className="text-gray-600 text-xs ml-1">
+                                                    <span className="text-gray-600 text-meta ml-1">
                                                         {item.frequency === 'Monthly' ? '/m' : item.frequency === 'Yearly' ? '/an' : ''}
                                                     </span>
                                                 </div>
-                                                <span className="text-xs font-bold text-ink-300 tabular-nums">= {displayTarget.toLocaleString()}$</span>
+                                                <span className="text-meta font-bold text-ink-300 tabular-nums">= {displayTarget.toLocaleString()}$</span>
                                             </div>
                                         </td>
                                         <td className="p-3 text-right">
@@ -229,7 +229,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                         <tr className="bg-black/30 border-b border-white/5 animate-fade-in">
                                             <td colSpan={8} className="p-4">
                                                 <div className="flex flex-col gap-2">
-                                                    <div className="text-xs font-bold text-ink-300 uppercase">Historique (6 derniers mois)</div>
+                                                    <div className="text-meta font-bold text-ink-300 uppercase">Historique (6 derniers mois)</div>
                                                     <div style={{ width: '100%', height: '150px' }}>
                                                         <ResponsiveContainer width="100%" height="100%">
                                                             <BarChart data={monthlyDataMap[item.name] || []}>

@@ -94,16 +94,16 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                         <div key={i} className="premium-card p-4 rounded-xl flex flex-col justify-between hover:border-success-500/30 transition-all group">
                             <div className="flex justify-between items-start mb-2 relative z-10">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-xs font-bold text-white shadow-inner group-hover:bg-success-500/10 transition-colors">
+                                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-meta font-bold text-white shadow-inner group-hover:bg-success-500/10 transition-colors">
                                         {item.name.substring(0, 2).toUpperCase()}
                                     </div>
                                     <div>
-                                        <div className="font-bold text-white text-sm tracking-tight">{item.name}</div>
+                                        <div className="font-bold text-white text-body tracking-tight">{item.name}</div>
                                         <div className="text-tiny text-ink-500">{item.id.split(':')[0]}</div>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-success-400 font-bold text-sm">+{item.amountPerPayout.toFixed(0)}$</div>
+                                    <div className="text-success-400 font-bold text-body">+{item.amountPerPayout.toFixed(0)}$</div>
                                     <div className="text-tiny text-ink-500 font-medium">{item.freq === 4 ? 'Trimestriel' : 'Annuel'}</div>
                                 </div>
                             </div>
@@ -127,7 +127,7 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                 <div className="mt-8 pt-6 border-t border-success-500/10">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                         <div>
-                            <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                            <h4 className="text-body font-bold text-white flex items-center gap-2">
                                 <span className="text-success-400">📈</span> Projection sur 12 mois
                             </h4>
                             <p className="text-tiny text-ink-500 mt-1">Estimation des revenus passifs futurs</p>
@@ -152,7 +152,7 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                                     max="50"
                                     value={divGrowthRate}
                                     onChange={(e) => setDivGrowthRate(Number(e.target.value))}
-                                    className="bg-black/50 border border-white/10 rounded px-2 py-0.5 text-xs text-white font-bold w-14 outline-none focus:border-success-500 transition-colors text-center"
+                                    className="bg-black/50 border border-white/10 rounded px-2 py-0.5 text-meta text-white font-bold w-14 outline-none focus:border-success-500 transition-colors text-center"
                                 />
                                 <span className="text-tiny text-ink-300">% / an</span>
                             </div>

@@ -107,7 +107,7 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
             {/* Résumé de la période courante. */}
             <div className="bg-white/[0.03] rounded-lg p-3 mb-3">
                 <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
-                    <span className="text-xs font-bold text-white">
+                    <span className="text-meta font-bold text-white">
                         {current.label}
                         {current.ageStart != null && (
                             <span className="text-ink-400 font-normal">
@@ -115,7 +115,7 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
                             </span>
                         )}
                     </span>
-                    <span className={`text-xs font-bold tabular-nums privacy-blur ${net >= 0 ? 'text-success-400' : 'text-orange-300'}`}>
+                    <span className={`text-meta font-bold tabular-nums privacy-blur ${net >= 0 ? 'text-success-400' : 'text-orange-300'}`}>
                         {net >= 0 ? 'Épargne nette +' : 'Décaissement '}{cad(net)}
                     </span>
                 </div>
@@ -159,7 +159,7 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
                                     title={b.hasChildren ? `Creuser : ${b.label}` : b.label}
                                 >
                                     <div className="flex items-center justify-between gap-2 mb-1.5">
-                                        <span className="text-xs font-bold text-white truncate">{b.label}</span>
+                                        <span className="text-meta font-bold text-white truncate">{b.label}</span>
                                         <span className="flex items-center gap-1.5 shrink-0">
                                             {b.isRetired && <span className="text-tiny text-amber-300 bg-warning-500/10 px-1.5 py-0.5 rounded">Retraite</span>}
                                             <span className={`text-tiny font-mono tabular-nums privacy-blur ${childNet >= 0 ? 'text-success-400' : 'text-orange-300'}`}>

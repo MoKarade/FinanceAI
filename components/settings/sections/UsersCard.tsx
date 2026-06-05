@@ -84,11 +84,11 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
     <Card title="⚙️ Configuration Utilisateurs (Salaires & Macro)">
 
       <div className="mb-6 bg-black/30 p-4 rounded-xl border border-white/5 shadow-inner">
-        <h3 className="text-sm font-bold text-white mb-3">💾 Profils Enregistres</h3>
+        <h3 className="text-body font-bold text-white mb-3">💾 Profils Enregistres</h3>
         <div className="flex flex-wrap gap-2 mb-3">
-          {savedProfiles.length === 0 && <span className="text-xs text-ink-500 italic">Aucun profil enregistre.</span>}
+          {savedProfiles.length === 0 && <span className="text-meta text-ink-500 italic">Aucun profil enregistre.</span>}
           {savedProfiles.map(p => (
-            <div key={p} className="flex items-center bg-primary/20 text-blue-300 text-xs px-3 py-1.5 rounded-full border border-primary/30">
+            <div key={p} className="flex items-center bg-primary/20 text-blue-300 text-meta px-3 py-1.5 rounded-full border border-primary/30">
               <button type="button" className="font-bold cursor-pointer hover:underline rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" onClick={() => loadProfile(p)} aria-label={`Charger le profil ${p}`}>{p}</button>
               <button
                 onClick={() => deleteProfile(p)}
@@ -107,9 +107,9 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
             placeholder="Nom du profil (ex: Marc & Anna 2026)"
             value={newProfileName}
             onChange={e => setNewProfileName(e.target.value)}
-            className="flex-1 bg-white/5 border border-border rounded px-3 py-1.5 text-sm text-white"
+            className="flex-1 bg-white/5 border border-border rounded px-3 py-1.5 text-body text-white"
           />
-          <button onClick={saveProfile} className="bg-primary text-white px-4 py-1.5 rounded text-sm font-bold hover:brightness-110">
+          <button onClick={saveProfile} className="bg-primary text-white px-4 py-1.5 rounded text-body font-bold hover:brightness-110">
             Sauvegarder
           </button>
         </div>
@@ -117,7 +117,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
 
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-white">Utilisateurs</h3>
+          <h3 className="text-body font-bold text-white">Utilisateurs</h3>
           <div className="flex gap-2">
             {config.users.length > 1 && (
               <button
@@ -127,7 +127,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   setConfig({ ...config, users: newUsers as [User, User] });
                   setGrossAnnualDraft({}); // les index changent → on repart du store
                 }}
-                className="bg-red-900/40 text-red-300 px-3 py-1 rounded text-xs hover:bg-red-900/60"
+                className="bg-red-900/40 text-red-300 px-3 py-1 rounded text-meta hover:bg-red-900/60"
               >
                 - Retirer conjoint
               </button>
@@ -139,7 +139,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   setConfig({ ...config, users: newUsers as [User, User] });
                   setGrossAnnualDraft({}); // les index changent → on repart du store
                 }}
-                className="bg-green-900/40 text-green-300 px-3 py-1 rounded text-xs hover:bg-green-900/60"
+                className="bg-green-900/40 text-green-300 px-3 py-1 rounded text-meta hover:bg-green-900/60"
               >
                 + Ajouter conjoint
               </button>
@@ -156,7 +156,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
             >
               <div className="font-bold text-white mb-2 border-b border-white/5 pb-1">Utilisateur {idx + 1}</div>
               <div data-focus-section={`profile-user${idx + 1}-name`}>
-                <label className="text-xs text-ink-300">Nom</label>
+                <label className="text-meta text-ink-300">Nom</label>
                 <input
                   type="text"
                   value={user.name}
@@ -165,12 +165,12 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                     newUsers[idx] = { ...user, name: e.target.value };
                     setConfig({ ...config, users: newUsers });
                   }}
-                  className="w-full bg-dark border border-border rounded px-2 py-1 text-sm text-white"
+                  className="w-full bg-dark border border-border rounded px-2 py-1 text-body text-white"
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div data-focus-section={`profile-user${idx + 1}-age`}>
-                  <label className="text-xs text-ink-300">Age actuel</label>
+                  <label className="text-meta text-ink-300">Age actuel</label>
                   <input
                     type="number"
                     value={user.age || 30}
@@ -179,12 +179,12 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                       newUsers[idx] = { ...user, age: parseInt(e.target.value) || 30 };
                       setConfig({ ...config, users: newUsers });
                     }}
-                    className="w-full bg-dark border border-border rounded px-2 py-1 text-sm text-white font-mono"
+                    className="w-full bg-dark border border-border rounded px-2 py-1 text-body text-white font-mono"
                     min={18} max={80}
                   />
                 </div>
                 <div>
-                  <label className="flex items-center gap-2 text-xs text-orange-300 cursor-pointer">
+                  <label className="flex items-center gap-2 text-meta text-orange-300 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={!!user.isImmigrant}
@@ -206,7 +206,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                         newUsers[idx] = { ...user, canadaArrivalYear: parseInt(e.target.value) || undefined };
                         setConfig({ ...config, users: newUsers });
                       }}
-                      className="w-full mt-1 bg-dark border border-border rounded px-2 py-1 text-sm text-white font-mono"
+                      className="w-full mt-1 bg-dark border border-border rounded px-2 py-1 text-body text-white font-mono"
                       min={1950} max={new Date().getFullYear()}
                       placeholder="Année de résidence fiscale (ex: 2018)"
                     />
@@ -215,7 +215,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div data-focus-section={`profile-user${idx + 1}-grossSalary`}>
-                  <label className="text-xs text-ink-300 font-bold text-green-300">Salaire Brut annuel ($)</label>
+                  <label className="text-meta text-ink-300 font-bold text-green-300">Salaire Brut annuel ($)</label>
                   <input
                     type="number"
                     value={grossAnnualDraft[idx] ?? String((user.grossSalary || 0) * 12)}
@@ -227,11 +227,11 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                       newUsers[idx] = { ...user, grossSalary: annualSalaryToMonthly(parseFloat(raw) || 0) };
                       setConfig({ ...config, users: newUsers });
                     }}
-                    className="w-full bg-dark border border-border rounded px-2 py-1 text-sm text-white font-mono"
+                    className="w-full bg-dark border border-border rounded px-2 py-1 text-body text-white font-mono"
                   />
                 </div>
                 <div data-focus-section={`profile-user${idx + 1}-netSalary`}>
-                  <label className="text-xs text-ink-300 font-bold text-blue-300">Salaire Net mensuel ($)</label>
+                  <label className="text-meta text-ink-300 font-bold text-blue-300">Salaire Net mensuel ($)</label>
                   <input
                     type="number"
                     value={user.netSalary || user.salary || 0}
@@ -240,7 +240,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                       newUsers[idx] = { ...user, netSalary: parseFloat(e.target.value) || 0 };
                       setConfig({ ...config, users: newUsers });
                     }}
-                    className="w-full bg-dark border border-border rounded px-2 py-1 text-sm text-white font-mono"
+                    className="w-full bg-dark border border-border rounded px-2 py-1 text-body text-white font-mono"
                   />
                 </div>
               </div>
@@ -448,7 +448,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
         </div>
 
         <div>
-          <label className="block text-sm text-ink-300 mb-2">Mode de Repartition</label>
+          <label className="block text-body text-ink-300 mb-2">Mode de Repartition</label>
           <select
             value={config.splitMode}
             onChange={(e) => setConfig({ ...config, splitMode: e.target.value as BudgetConfig['splitMode'] })}

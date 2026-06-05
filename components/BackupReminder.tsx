@@ -102,7 +102,7 @@ export const BackupReminder: React.FC<BackupReminderProps> = ({ onNavigateToSett
         <div
             role="status"
             aria-label="Rappel backup"
-            className={`mx-3 mb-4 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${
+            className={`mx-3 mb-4 flex items-start gap-3 rounded-xl border px-4 py-3 text-body ${
                 quotaWarning
                     ? 'border-danger-500/30 bg-red-900/20 text-red-200'
                     : 'border-warning-500/30 bg-amber-900/15 text-amber-200'
@@ -116,7 +116,7 @@ export const BackupReminder: React.FC<BackupReminderProps> = ({ onNavigateToSett
                 <button
                     type="button"
                     onClick={handleNavigate}
-                    className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-colors focus-ring ${
+                    className={`rounded-lg px-2.5 py-1 text-meta font-bold transition-colors focus-ring ${
                         quotaWarning
                             ? 'bg-danger-600 hover:bg-danger-500 text-white'
                             : 'bg-amber-700/60 hover:bg-warning-600/70 text-white'
@@ -128,7 +128,7 @@ export const BackupReminder: React.FC<BackupReminderProps> = ({ onNavigateToSett
                     type="button"
                     onClick={handleDismiss}
                     aria-label="Ignorer ce rappel"
-                    className="rounded-lg px-2 py-1 text-xs text-ink-300 hover:text-white transition-colors focus-ring"
+                    className="rounded-lg px-2 py-1 text-meta text-ink-300 hover:text-white transition-colors focus-ring"
                 >
                     Plus tard
                 </button>

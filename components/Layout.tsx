@@ -3,7 +3,6 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tab, FinancialGoal, User } from '../types';
 import { CoupleModeBadge } from './ui/CoupleModeBadge';
-import { NextBestAction } from './sidebar/NextBestAction';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { BackupReminder } from './BackupReminder';
 import { getPersonaById, getPersonaOrDefault, TEST_PERSONAS } from '../services/testFixtures';
@@ -78,6 +77,7 @@ export const Layout: React.FC<LayoutProps> = ({
       icon: '🎯',
       items: [
         { id: Tab.FUTURE, label: t('tabs.future'), icon: '🔮' },
+        { id: Tab.ACTIONS, label: 'Prochaine action', icon: '⚡' },
         { id: Tab.INVESTMENTS, label: t('tabs.investments'), icon: '📈' },
         { id: Tab.RETIREMENT, label: t('tabs.retirement'), icon: '🏖️' },
       ],
@@ -251,8 +251,7 @@ export const Layout: React.FC<LayoutProps> = ({
           </button>
         </div>
 
-        {/* Phase B.3 — NextBestAction remplace l'ancien widget milestone. */}
-        <NextBestAction isSidebarOpen={isSidebarOpen} />
+        {/* NBA-PAGE — « Prochaine action » déplacé dans son onglet dédié (retiré de la sidebar). */}
 
         {/* Navigation principale — accordion par groupe */}
         <nav aria-label="Navigation principale" className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">

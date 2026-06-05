@@ -17,6 +17,8 @@ const Retirement = lazyWithRetry(() => import('./Retirement').then(m => ({ defau
 const TaxCenter = lazyWithRetry(() => import('./TaxCenter').then(m => ({ default: m.TaxCenter })), 'TaxCenter');
 const Settings = lazyWithRetry(() => import('./Settings').then(m => ({ default: m.Settings })), 'Settings');
 const AiAssistant = lazyWithRetry(() => import('./AiAssistant').then(m => ({ default: m.AiAssistant })), 'AiAssistant');
+// NBA-PAGE — « Prochaine action » en page dédiée (même composant que l'ex-widget, mode asPage).
+const NextBestActionsPage = lazyWithRetry(() => import('./sidebar/NextBestAction').then(m => ({ default: m.NextBestAction })), 'NextBestActionsPage');
 const FutureProjection = lazyWithRetry(() => import('./FutureProjection').then(m => ({ default: m.FutureProjection })), 'FutureProjection');
 const DebtManager = lazyWithRetry(() => import('./DebtManager').then(m => ({ default: m.DebtManager })), 'DebtManager');
 // G22-N5 — SystemView n'est plus une route top-level : fusionné dans Settings
@@ -29,6 +31,7 @@ const TAB_LABELS: Record<Tab, string> = {
     [Tab.DEBT]: 'Dettes',
     [Tab.INVESTMENTS]: 'Investissements',
     [Tab.FUTURE]: 'Futur',
+    [Tab.ACTIONS]: 'Prochaine action',
     [Tab.REAL_ESTATE]: 'Immobilier',
     [Tab.CHILD]: 'Enfant',
     [Tab.TRAVEL]: 'Voyages',
@@ -95,6 +98,8 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                         isPrivacyMode={isPrivacyMode}
                     />
                 )}
+
+                {activeTab === Tab.ACTIONS && <NextBestActionsPage asPage />}
 
                 {activeTab === Tab.TRANSACTIONS && (
                     <Transactions

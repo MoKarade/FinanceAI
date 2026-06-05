@@ -105,7 +105,7 @@
   réel ou la retirer si plus pertinente.
 - [ ] **[SYS-VERSION]** Vérifier que **Version & build** se tient bien à jour (`__APP_VERSION__`/
   `__GIT_SHA__`/`__BUILD_DATE__` via Vite define).
-- [ ] **[NBA-PAGE]** « Prochaine action » : **sortir de la sidebar → page/onglet à part** (la sidebar
+- [x] **[NBA-PAGE]** « Prochaine action » : **sortir de la sidebar → page/onglet à part** (la sidebar
   ne devrait pas porter ce widget).
 
 ## ⚡🧪🔧 P2/P3 — Perf, tests, dette

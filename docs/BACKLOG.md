@@ -77,16 +77,36 @@
 
 ## 🎨 P2 — UX & polish
 - [ ] **[U5]** Export PNG du graphe « Évolution détaillée » (Dashboard).
-- [ ] **[U7]** Sidebar : icônes à position stable repli/déploiement + transition sans flicker
-  (animer `width`/`transform`, label en `opacity`/`overflow`).
 - [ ] **[ICONS-FUT]** Icônes Futur exhaustives : une icône typée par événement moteur (transferts,
   hypothèque, ventes, RAP, REEE…) + **LOD/clustering** lié au zoom (`useTimeChartZoom`). Moyen-grand.
 - [ ] **[ANIM]** Animations de qualité partout (chargements, navigation, KPIs, modales/listes) en
   CSS/WAAPI (pas de framer-motion), compositor-friendly, `prefers-reduced-motion`. Grand, à phaser.
+  ⚠️ Piège connu (`index.css:222`) : un wrapper `transform` casse `position:fixed` → animer en opacité
+  pure ou via portails.
 - [ ] **[FUT-OPT]** Onglet Futur : déplacer toute l'optimisation (Verdict + `StrategyOptimizerPanel`
   + badge scénario) dans un 4ᵉ sous-onglet « Optimiseur » ; vue Graphique = courbe + KPIs seulement.
 - [ ] **[RENTE-80]** Rente retraite « ~80 $ pendant quelques mois » : reproduire le persona/âge →
   trancher trou PSV (< 65) normal vs bug (prorata RRQ, split 0,65/0,35, affichage tooltip).
+
+## 🛠️ Configuration & Système — retours Marc (2026-06-05)
+- [ ] **[CFG-PROFIL]** Onglet Configuration → Profil : **regrouper en UN seul ensemble cohérent**
+  (Paramètres de retraite « hub central » + Configuration Utilisateurs/Salaires & Macro + Profils
+  enregistrés + Mode de répartition) et **améliorer** la présentation.
+- [ ] **[CFG-COMPTES]** Onglet Configuration → Comptes : **regrouper** (Upload relevé de salaire IA +
+  Soldes initiaux + Import CSV bancaire), **retirer le texte inutile**, améliorer.
+- [ ] **[CFG-SAUVE]** Onglet Sauvegarde : **en retirer le Mode test ET « Connecter à Claude »**
+  (mauvais emplacement) → les déplacer (Mode test → Système/diagnostics ; Connecteur → sa propre carte).
+- [ ] **[SYS-REGROUP]** Refonte page **Système & diagnostics** : tout regrouper, plus simple et propre
+  (diagnostics AVEC le journal d'erreurs).
+- [ ] **[SYS-ERRLOG]** Journal d'erreurs : **bouton « actualiser » manquant** (impossible de rafraîchir).
+- [ ] **[SYS-AUDIT]** Journal d'audit **toujours à 0** → brancher `logAudit()` aux call-sites
+  (import CSV, suppressions en lot, restauration backup…). Infra prête depuis #103, jamais câblée.
+- [ ] **[SYS-WEB]** « Toile d'araignée » (interconnexions) **pas à jour** → la régénérer depuis l'état
+  réel ou la retirer si plus pertinente.
+- [ ] **[SYS-VERSION]** Vérifier que **Version & build** se tient bien à jour (`__APP_VERSION__`/
+  `__GIT_SHA__`/`__BUILD_DATE__` via Vite define).
+- [ ] **[NBA-PAGE]** « Prochaine action » : **sortir de la sidebar → page/onglet à part** (la sidebar
+  ne devrait pas porter ce widget).
 
 ## ⚡🧪🔧 P2/P3 — Perf, tests, dette
 - [ ] **[PERF-WK]** Profiler le worker projection (keystroke latency des sliders Futur).

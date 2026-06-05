@@ -99,7 +99,7 @@
 - [x] **[SYS-REGROUP]** Refonte page **Système & diagnostics** : tout regrouper, plus simple et propre
   (diagnostics AVEC le journal d'erreurs).
 - [ ] **[SYS-ERRLOG]** Journal d'erreurs : **bouton « actualiser » manquant** (impossible de rafraîchir).
-- [ ] **[SYS-AUDIT]** Journal d'audit **toujours à 0** → brancher `logAudit()` aux call-sites
+- [x] **[SYS-AUDIT]** Journal d'audit **toujours à 0** → brancher `logAudit()` aux call-sites
   (import CSV, suppressions en lot, restauration backup…). Infra prête depuis #103, jamais câblée.
 - [ ] **[SYS-WEB]** « Toile d'araignée » (interconnexions) **pas à jour** → la régénérer depuis l'état
   réel ou la retirer si plus pertinente.

@@ -6,11 +6,13 @@ import {
     updateSyncFile,
     deleteSyncFile,
     fetchUserEmail,
+    fetchUserIdentity,
     DriveAuthError,
     DriveError,
     SYNC_FILE_NAME,
     type FetchLike,
 } from '../../services/googleDrive/driveAppData';
+import { getErrors, clearErrors } from '../../services/errorLogger';
 
 /**
  * Réponse 2xx dont le corps n'est PAS du JSON valide (ex: HTML d'erreur, troncature réseau). On
@@ -193,5 +195,35 @@ describe('driveAppData — fetchUserEmail', () => {
             throw new Error('network down');
         });
         expect(await fetchUserEmail('tok', f)).toBeNull();
+    });
+});
+
+describe('driveAppData — fetchUserIdentity (D5 : ne jamais avaler)', () => {
+    it('réponse non-ok → null MAIS loggue un warning network (sub manquant ⇒ clés API non chiffrables)', async () => {
+        clearErrors();
+        const f: FetchLike = vi.fn(async () => res('forbidden', { ok: false, status: 403 }));
+        expect(await fetchUserIdentity('tok', f)).toEqual({ email: null, sub: null });
+        const errs = getErrors();
+        expect(errs.length).toBe(1);
+        expect(errs[0].source).toBe('network');
+        expect(errs[0].severity).toBe('warning');
+        expect(errs[0].message).toContain('403');
+    });
+
+    it('exception réseau → null MAIS loggue un warning (au lieu d\'avaler silencieusement)', async () => {
+        clearErrors();
+        const f: FetchLike = vi.fn(async () => { throw new Error('network down'); });
+        expect(await fetchUserIdentity('tok', f)).toEqual({ email: null, sub: null });
+        const errs = getErrors();
+        expect(errs.length).toBe(1);
+        expect(errs[0].source).toBe('network');
+        expect(errs[0].severity).toBe('warning');
+    });
+
+    it('succès → identité renvoyée, AUCUN log (chemin nominal silencieux)', async () => {
+        clearErrors();
+        const f: FetchLike = vi.fn(async () => res({ email: 'm@e.com', sub: 'sub-123' }));
+        expect(await fetchUserIdentity('tok', f)).toEqual({ email: 'm@e.com', sub: 'sub-123' });
+        expect(getErrors().length).toBe(0);
     });
 });

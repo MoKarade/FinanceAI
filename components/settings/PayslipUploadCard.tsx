@@ -122,7 +122,7 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
                     </div>
                 )}
 
-                <label className={`flex flex-col items-center justify-center w-full h-32 rounded-card border-2 border-dashed cursor-pointer transition-colors ${
+                <label className={`group flex flex-col items-center justify-center w-full h-36 rounded-card border-2 border-dashed cursor-pointer transition-all duration-300 ${
                     isAnalyzing
                         ? 'border-warning-400/40 bg-warning-400/5'
                         : 'border-white/15 bg-white/[0.02] hover:border-primary/40 hover:bg-primary/5'
@@ -131,15 +131,15 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
                         type="file"
                         accept="image/jpeg,image/png,image/webp,application/pdf"
                         onChange={handleFiles}
-                        disabled={isAnalyzing || !apiKey}
+                        disabled={isAnalyzing}
                         className="sr-only"
                     />
-                    <span className="text-2xl mb-2" aria-hidden="true">{isAnalyzing ? '⏳' : '📥'}</span>
+                    <span className="text-3xl mb-2 transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-0.5" aria-hidden="true">{isAnalyzing ? '⏳' : '📄'}</span>
                     <span className="text-meta font-medium text-ink-200">
-                        {isAnalyzing ? status : (apiKey ? 'Cliquer ou glisser un fichier ici' : 'Configure la clé Anthropic ci-dessous')}
+                        {isAnalyzing ? status : 'Cliquer ou glisser un fichier'}
                     </span>
                     {!isAnalyzing && (
-                        <span className="text-tiny text-ink-500 mt-1">JPG, PNG, WebP, PDF</span>
+                        <span className="text-tiny text-ink-500 mt-1">JPG · PNG · WebP · PDF</span>
                     )}
                 </label>
 
@@ -162,12 +162,6 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
                             <div className="text-meta font-bold text-ink-200">{result.freq}</div>
                         </div>
                     </div>
-                )}
-
-                {!apiKey && (
-                    <p className="text-tiny text-warning-400 italic">
-                        💡 Configure ta clé Anthropic dans la carte "Clés API & Services" pour activer l'upload IA.
-                    </p>
                 )}
             </div>
         </Card>

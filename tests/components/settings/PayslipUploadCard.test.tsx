@@ -19,10 +19,12 @@ beforeEach(() => {
 });
 
 describe('PayslipUploadCard', () => {
-    it('affiche un message "configure la clé" quand pas de clé Anthropic', () => {
+    it('affiche le dropzone même sans clé Anthropic (note inline retirée — UX épurée)', () => {
         useFinanceStore.setState({ apiKeys: { ...initialState.apiKeys, anthropic: '' } });
         render(<PayslipUploadCard />);
-        expect(screen.getByText(/Configure la clé Anthropic/i)).toBeInTheDocument();
+        // Le dropzone reste affiché (un toast gère l'absence de clé au clic) ; plus de note inline.
+        expect(screen.getByText(/Cliquer ou glisser/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Configure la clé Anthropic/i)).not.toBeInTheDocument();
     });
 
     it('affiche "Cliquer ou glisser un fichier" quand clé présente', () => {

@@ -60,11 +60,7 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
                 Exporte un CSV depuis ta banque et dépose-le ici — 100 % local, toutes banques.
             </p>
 
-            <label className="flex items-center gap-3 cursor-pointer">
-                <span className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-body text-ink-100 transition-colors focus-within:ring">
-                    Choisir un fichier…
-                </span>
-                <span className="text-meta text-ink-500 truncate">{fileName || 'Aucun fichier sélectionné'}</span>
+            <label className="group flex flex-col items-center justify-center w-full h-36 rounded-card border-2 border-dashed border-white/15 bg-white/[0.02] cursor-pointer transition-all duration-300 hover:border-primary/40 hover:bg-primary/5">
                 <input
                     type="file"
                     accept=".csv,.txt,.tsv,text/csv"
@@ -72,10 +68,13 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFile(f); e.target.value = ''; }}
                     aria-label="Choisir un relevé CSV à importer"
                 />
+                <span className="text-3xl mb-2 transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-0.5" aria-hidden="true">📥</span>
+                <span className="text-meta font-medium text-ink-200">{fileName || 'Cliquer ou glisser un fichier'}</span>
+                <span className="text-tiny text-ink-500 mt-1">CSV · TSV · toutes banques</span>
             </label>
 
             {error && (
-                <div className="text-meta text-red-300 bg-red-900/20 border border-danger-500/20 rounded-lg p-2">{error}</div>
+                <div className="text-meta text-danger-300 bg-danger-500/10 border border-danger-500/20 rounded-card p-2">{error}</div>
             )}
 
             {preview && (

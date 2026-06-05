@@ -18,8 +18,9 @@ vi.mock('../../components/ui/Toast', () => ({ showToast: vi.fn() }));
 
 const TX: Transaction = { id: 1, date: '2026-01-01', payee: 'Alpha', amount: -100, category: 'Autre', status: 'processed' };
 
-// « Choisir un fichier… » est unique au panneau ImportBankStatement (≠ libellé du bouton d'en-tête).
-const PANEL = /Choisir un fichier/i;
+// La description « Exporte un CSV… » est unique au panneau ImportBankStatement
+// (≠ libellé du bouton d'en-tête « Importer un relevé »).
+const PANEL = /Exporte un CSV/i;
 const IMPORT_BTN = /Importer un relevé/i;
 
 describe('Transactions — CTA d\'import (D2 activation)', () => {

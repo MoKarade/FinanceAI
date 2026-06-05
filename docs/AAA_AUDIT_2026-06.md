@@ -66,7 +66,7 @@ PageHeader (cohérent, bon) · tooltips pédagogiques · états vides (`EmptySta
 - **[P2] Jargon non expliqué** (FIRE, FVI/Vitalité, CELIAPP, impôt latent, Smith, RAP, P10–P90, règle des 4 %). → Tooltips `?` au point d'usage (composant `Tooltip` existe) + guide accessible.
 - **[P2] Avancement onboarding non persisté** (`step` en `useState`) — recharge = retour étape 1, champs perdus.
 - **[P2] Incohérence de nommage** « Configuration » (sidebar) vs « Paramètres » (`TAB_LABELS`) ; `document.title` = « FinanceAI - Pro ».
-- **[P2] Action « Synchroniser les données » factice** — `window.dispatchEvent(new Event('resize'))` (`App.tsx:274`) ne synchronise rien.
+- ✅ **[P2] Action « Synchroniser les données » factice CORRIGÉE 2026-06-05** — la commande (palette Cmd+K) déclenche maintenant la VRAIE sync Drive (`pushNow` + toasts, mirror de « Sauvegarder maintenant ») au lieu d'un `dispatchEvent(resize)` qui ne synchronisait rien. Le prop mort `onRefresh` de Layout (autre resize factice, inutilisé) a aussi été retiré.
 
 ---
 
@@ -133,7 +133,7 @@ PageHeader (cohérent, bon) · tooltips pédagogiques · états vides (`EmptySta
 ### D8 — Polish & finition · **P2**
 - Empty/error states manquants : Investments (aucun actif), RealEstate (aucun bien), AiAssistant/TaxCenter (clé/upload).
 - Nommage « Configuration » vs « Paramètres » ; `document.title` localisé.
-- Action « Synchroniser » factice (`App.tsx:274`) → vrai déclenchement de sync ou retrait.
+- ✅ Action « Synchroniser » factice CORRIGÉE 2026-06-05 (palette → `pushNow` réel + toasts ; prop mort `onRefresh` retiré).
 - Audit accents/coquilles FR ; i18n des libellés en dur (`locales/`).
 - Animations de qualité (KPIs/cartes/transitions) sans toucher au graphe lourd (cf. backlog historique).
 

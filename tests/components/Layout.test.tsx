@@ -12,7 +12,6 @@ const baseProps = {
     activeTab: Tab.DASHBOARD,
     setActiveTab: vi.fn(),
     lastUpdate: Date.now(),
-    onRefresh: vi.fn(),
     isLoading: false,
     isPrivacyMode: false,
     togglePrivacyMode: vi.fn(),

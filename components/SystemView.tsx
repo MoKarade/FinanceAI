@@ -5,6 +5,7 @@ import { AppState } from '../types';
 import { getMigrationStatus } from '../store/useFinanceStore';
 import { ErrorLogViewer } from './system/ErrorLogViewer';
 import { AuditLogViewer } from './system/AuditLogViewer';
+import { TestModePanel } from './settings/TestModePanel';
 
 interface SystemViewProps {
     state: AppState;
@@ -152,6 +153,9 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
 
             {/* P1.7 — Journal d'audit (changements de state, qui-quoi-quand) */}
             <AuditLogViewer />
+
+            {/* CFG-SAUVE — Mode test déplacé ici (outil dev/diagnostic), retiré de Sauvegarde */}
+            <TestModePanel />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 

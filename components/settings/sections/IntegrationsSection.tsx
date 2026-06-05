@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { Card } from '../../ui/Card';
+import { ClaudeConnectorCard } from '../ClaudeConnectorCard';
 import type { AppState } from '../../../types';
 
 interface IntegrationsSectionProps {
@@ -13,6 +14,7 @@ interface IntegrationsSectionProps {
 
 export const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ apiKeys, setApiKeys }) => {
   return (
+    <div className="space-y-6">
     <Card title="Cles API & Services">
       <div className="space-y-4">
         <div data-focus-section="apiKeys-anthropic">
@@ -72,5 +74,9 @@ export const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ apiKey
         </div>
       </div>
     </Card>
+
+      {/* CFG-SAUVE — « Connecter à Claude » déplacé ici (intégration), retiré de Sauvegarde */}
+      <ClaudeConnectorCard />
+    </div>
   );
 };

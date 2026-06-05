@@ -138,7 +138,7 @@ PageHeader (cohérent, bon) · tooltips pédagogiques · états vides (`EmptySta
 - Animations de qualité (KPIs/cartes/transitions) sans toucher au graphe lourd (cf. backlog historique).
 
 ### D9 — Sécurité · **P1/P2**
-- **`applyDocument.ts`** : bornes de plausibilité + confirmation sur deltas extrêmes (vecteur prompt-injection via pièce jointe lue par l'IA). **P1**
+- ✅ **`applyDocument.ts` — bornes de plausibilité CORRIGÉ 2026-06-05** : le contenu des documents est extrait par l'IA depuis une pièce jointe (vecteur prompt-injection). Toute valeur hors bornes très larges (revenu > 50 M$/an, REER > 1 M$/an, transaction > 100 M$, quantité > 100 M, prix > 10 M$) est désormais **ignorée** (jamais écrite) et **signalée** dans le résumé (pas d'écriture silencieuse) — sur paie, feuillet, relevé bancaire et courtage. +4 tests. **P1**
 - `keyCipher.ts` : aligner PBKDF2 sur 600k (cohérence cloudBackup). **P2**
 - `getRealEstateAdvice` / `getRealEstateAdvice` : passer par `safeJsonValidate` (regex gloutonne aujourd'hui). **P2**
 - `claude.ts` : activer le **prompt caching** Anthropic sur le contexte fiscal QC (coût/latence). **P2**

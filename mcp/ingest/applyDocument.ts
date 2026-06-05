@@ -101,6 +101,18 @@ function resolveUserIndex(state: AppState, doc: { userIndex?: 0 | 1; userName?: 
     return 0;
 }
 
+// ── Bornes de plausibilité (D9, sécurité) ───────────────────────────────────
+// Le contenu des documents est extrait par l'IA depuis une pièce jointe ; une prompt-injection sur
+// le document pourrait tenter d'écrire des valeurs ABERRANTES (salaire à 10¹², transactions énormes)
+// pour corrompre les finances. Toute valeur hors de ces bornes (très larges) est IGNORÉE — jamais
+// appliquée — et signalée dans le résumé (pas d'écriture silencieuse).
+const MAX_ANNUAL_INCOME = 50_000_000;   // 50 M$/an : couvre tout revenu personnel réaliste
+const MAX_ANNUAL_RRSP = 1_000_000;      // 1 M$/an de cotisation REER
+const MAX_TXN_AMOUNT = 100_000_000;     // 100 M$ pour une seule transaction
+const MAX_QUANTITY = 100_000_000;       // 100 M d'unités d'un même titre
+const MAX_PRICE = 10_000_000;           // 10 M$ par unité
+const plausible = (v: number, max: number): boolean => Number.isFinite(v) && Math.abs(v) <= max;
+
 // ── Fiche de paie ────────────────────────────────────────────────────────────
 function applyPayslip(state: AppState, doc: PayslipPayload): ApplyResult {
     const idx = resolveUserIndex(state, doc);
@@ -109,21 +121,30 @@ function applyPayslip(state: AppState, doc: PayslipPayload): ApplyResult {
     const u = users[idx];
     const changes: Change[] = [];
 
+    const rejected: string[] = [];
     if (typeof doc.grossAnnual === 'number' && doc.grossAnnual > 0) {
-        const monthly = annualSalaryToMonthly(doc.grossAnnual);
-        if (u.grossSalary !== monthly) {
-            changes.push({ field: `users[${idx}].grossSalary`, before: u.grossSalary, after: monthly, note: `brut annuel ${doc.grossAnnual} → mensuel` });
-            u.grossSalary = monthly;
+        if (!plausible(doc.grossAnnual, MAX_ANNUAL_INCOME)) rejected.push('brut annuel aberrant');
+        else {
+            const monthly = annualSalaryToMonthly(doc.grossAnnual);
+            if (u.grossSalary !== monthly) {
+                changes.push({ field: `users[${idx}].grossSalary`, before: u.grossSalary, after: monthly, note: `brut annuel ${doc.grossAnnual} → mensuel` });
+                u.grossSalary = monthly;
+            }
         }
     }
     if (typeof doc.netAnnual === 'number' && doc.netAnnual > 0) {
-        const monthly = annualSalaryToMonthly(doc.netAnnual);
-        if (u.netSalary !== monthly) {
-            changes.push({ field: `users[${idx}].netSalary`, before: u.netSalary, after: monthly, note: `net annuel ${doc.netAnnual} → mensuel` });
-            u.netSalary = monthly;
+        if (!plausible(doc.netAnnual, MAX_ANNUAL_INCOME)) rejected.push('net annuel aberrant');
+        else {
+            const monthly = annualSalaryToMonthly(doc.netAnnual);
+            if (u.netSalary !== monthly) {
+                changes.push({ field: `users[${idx}].netSalary`, before: u.netSalary, after: monthly, note: `net annuel ${doc.netAnnual} → mensuel` });
+                u.netSalary = monthly;
+            }
         }
     }
-    if (typeof doc.rrspContributedAnnual === 'number' && doc.rrspContributedAnnual >= 0) {
+    if (typeof doc.rrspContributedAnnual === 'number' && doc.rrspContributedAnnual >= 0 && !plausible(doc.rrspContributedAnnual, MAX_ANNUAL_RRSP)) {
+        rejected.push('cotisation REER aberrante');
+    } else if (typeof doc.rrspContributedAnnual === 'number' && doc.rrspContributedAnnual >= 0) {
         if (u.rrspContributed !== doc.rrspContributedAnnual) {
             changes.push({ field: `users[${idx}].rrspContributed`, before: u.rrspContributed ?? 0, after: doc.rrspContributedAnnual });
             u.rrspContributed = doc.rrspContributedAnnual;
@@ -133,9 +154,10 @@ function applyPayslip(state: AppState, doc: PayslipPayload): ApplyResult {
     users[idx] = u;
     const nextState: AppState = { ...state, config: { ...state.config, users: users as AppState['config']['users'] }, lastUpdate: Date.now() };
     const who = u.name?.trim() || `utilisateur ${idx + 1}`;
-    const summary = changes.length
+    const rej = rejected.length ? ` (${rejected.length} valeur(s) aberrante(s) ignorée(s) : ${rejected.join(', ')})` : '';
+    const summary = (changes.length
         ? `Fiche de paie appliquée à ${who} : ${changes.length} champ(s) mis à jour.`
-        : `Fiche de paie pour ${who} : aucune modification (valeurs déjà à jour).`;
+        : `Fiche de paie pour ${who} : aucune modification (valeurs déjà à jour).`) + rej;
     return { nextState, changes, summary };
 }
 
@@ -147,15 +169,20 @@ function applyTaxSlip(state: AppState, doc: TaxSlipPayload): ApplyResult {
     const u = users[idx];
     const changes: Change[] = [];
 
+    const rejected: string[] = [];
     if (typeof doc.employmentIncomeAnnual === 'number' && doc.employmentIncomeAnnual > 0) {
-        const monthly = annualSalaryToMonthly(doc.employmentIncomeAnnual);
-        if (u.grossSalary !== monthly) {
-            changes.push({ field: `users[${idx}].grossSalary`, before: u.grossSalary, after: monthly, note: `revenu d'emploi annuel ${doc.employmentIncomeAnnual} → mensuel` });
-            u.grossSalary = monthly;
+        if (!plausible(doc.employmentIncomeAnnual, MAX_ANNUAL_INCOME)) rejected.push("revenu d'emploi aberrant");
+        else {
+            const monthly = annualSalaryToMonthly(doc.employmentIncomeAnnual);
+            if (u.grossSalary !== monthly) {
+                changes.push({ field: `users[${idx}].grossSalary`, before: u.grossSalary, after: monthly, note: `revenu d'emploi annuel ${doc.employmentIncomeAnnual} → mensuel` });
+                u.grossSalary = monthly;
+            }
         }
     }
     if (typeof doc.rrspContributedAnnual === 'number' && doc.rrspContributedAnnual >= 0) {
-        if (u.rrspContributed !== doc.rrspContributedAnnual) {
+        if (!plausible(doc.rrspContributedAnnual, MAX_ANNUAL_RRSP)) rejected.push('cotisation REER aberrante');
+        else if (u.rrspContributed !== doc.rrspContributedAnnual) {
             changes.push({ field: `users[${idx}].rrspContributed`, before: u.rrspContributed ?? 0, after: doc.rrspContributedAnnual });
             u.rrspContributed = doc.rrspContributedAnnual;
         }
@@ -164,9 +191,10 @@ function applyTaxSlip(state: AppState, doc: TaxSlipPayload): ApplyResult {
     users[idx] = u;
     const nextState: AppState = { ...state, config: { ...state.config, users: users as AppState['config']['users'] }, lastUpdate: Date.now() };
     const who = u.name?.trim() || `utilisateur ${idx + 1}`;
-    const summary = changes.length
+    const rej = rejected.length ? ` (${rejected.length} valeur(s) aberrante(s) ignorée(s) : ${rejected.join(', ')})` : '';
+    const summary = (changes.length
         ? `Feuillet ${doc.slipType || 'fiscal'} appliqué à ${who} : ${changes.length} champ(s) mis à jour.`
-        : `Feuillet fiscal pour ${who} : aucune modification (valeurs déjà à jour).`;
+        : `Feuillet fiscal pour ${who} : aucune modification (valeurs déjà à jour).`) + rej;
     return { nextState, changes, summary };
 }
 
@@ -181,8 +209,10 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
 
     const added: Transaction[] = [];
     let dupCount = 0;
+    let rejCount = 0;
     for (const tx of doc.transactions ?? []) {
         if (!tx || typeof tx.amount !== 'number' || !tx.date) continue;
+        if (!plausible(tx.amount, MAX_TXN_AMOUNT)) { rejCount++; continue; } // D9 : montant aberrant ignoré
         const k = txnKey(tx);
         if (seen.has(k)) { dupCount++; continue; } // doublon (déjà présent OU déjà ajouté dans ce lot)
         seen.add(k);
@@ -210,9 +240,10 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
     const nextState: AppState = added.length
         ? { ...state, transactions: [...existing, ...added], lastUpdate: Date.now() }
         : state;
+    const rej = rejCount ? `, ${rejCount} montant(s) aberrant(s) ignoré(s)` : '';
     const summary = added.length
-        ? `Relevé bancaire : ${added.length} transaction(s) ajoutée(s)${dupCount ? `, ${dupCount} doublon(s) ignoré(s)` : ''}.`
-        : `Relevé bancaire : aucune nouvelle transaction${dupCount ? ` (${dupCount} doublon(s) ignoré(s))` : ''}.`;
+        ? `Relevé bancaire : ${added.length} transaction(s) ajoutée(s)${dupCount ? `, ${dupCount} doublon(s) ignoré(s)` : ''}${rej}.`
+        : `Relevé bancaire : aucune nouvelle transaction${dupCount || rejCount ? ` (${dupCount} doublon(s) ignoré(s)${rej})` : ''}.`;
     return { nextState, changes, summary };
 }
 
@@ -223,10 +254,12 @@ function applyBrokerStatement(state: AppState, doc: BrokerStatementPayload): App
     const changes: Change[] = [];
     let updated = 0;
     let addedCount = 0;
+    let rejCount = 0;
 
     for (const h of doc.holdings ?? []) {
         const sym = String(h?.symbol || '').trim().toUpperCase();
-        if (!sym || !(typeof h.quantity === 'number' && h.quantity > 0)) continue;
+        if (!sym || typeof h.quantity !== 'number' || h.quantity <= 0) continue;
+        if (!plausible(h.quantity, MAX_QUANTITY)) { rejCount++; continue; } // D9 : quantité aberrante ignorée
         const idx = assets.findIndex(
             (a) => (a.symbol || '').toUpperCase() === sym && (!doc.accountType || a.accountType === doc.accountType),
         );
@@ -235,14 +268,14 @@ function applyBrokerStatement(state: AppState, doc: BrokerStatementPayload): App
             assets[idx] = {
                 ...assets[idx],
                 quantity: h.quantity,
-                ...(typeof h.currentPrice === 'number' ? { currentPrice: h.currentPrice } : {}),
+                ...(typeof h.currentPrice === 'number' && plausible(h.currentPrice, MAX_PRICE) ? { currentPrice: h.currentPrice } : {}),
             };
             if (before !== h.quantity || typeof h.currentPrice === 'number') {
                 changes.push({ field: `position ${sym} (quantité)`, before, after: h.quantity });
                 updated++;
             }
         } else {
-            const price = typeof h.currentPrice === 'number' ? h.currentPrice : 0;
+            const price = (typeof h.currentPrice === 'number' && plausible(h.currentPrice, MAX_PRICE)) ? h.currentPrice : 0;
             assets.push({
                 symbol: sym,
                 name: h.name || sym,
@@ -261,8 +294,9 @@ function applyBrokerStatement(state: AppState, doc: BrokerStatementPayload): App
     }
 
     const nextState: AppState = changes.length ? { ...state, assets, lastUpdate: Date.now() } : state;
-    const summary = changes.length
+    const rej = rejCount ? ` (${rejCount} position(s) aberrante(s) ignorée(s))` : '';
+    const summary = (changes.length
         ? `Relevé de courtage : ${updated} position(s) mise(s) à jour, ${addedCount} ajoutée(s).`
-        : 'Relevé de courtage : aucune modification.';
+        : 'Relevé de courtage : aucune modification.') + rej;
     return { nextState, changes, summary };
 }

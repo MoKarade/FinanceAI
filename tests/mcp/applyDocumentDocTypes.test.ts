@@ -74,3 +74,41 @@ describe('applyDocument — feuillet fiscal', () => {
         expect(r.summary).toMatch(/T4/);
     });
 });
+
+describe('applyDocument — bornes de plausibilité (D9, sécurité)', () => {
+    it('fiche de paie : un brut annuel ABERRANT (1e12) est ignoré, pas appliqué', () => {
+        const s = state();
+        const before = s.config.users[0].grossSalary;
+        const r = applyDocument(s, { kind: 'payslip', userIndex: 0, grossAnnual: 1e12 });
+        expect(r.nextState.config.users[0].grossSalary).toBe(before); // inchangé
+        expect(r.changes.find((c) => String(c.field).includes('grossSalary'))).toBeUndefined();
+        expect(r.summary).toMatch(/aberrant/i);
+    });
+
+    it('fiche de paie : un brut annuel élevé mais PLAUSIBLE (40 M$) est bien appliqué', () => {
+        const r = applyDocument(state(), { kind: 'payslip', userIndex: 0, grossAnnual: 40_000_000 });
+        expect(r.nextState.config.users[0].grossSalary).toBe(Math.round(40_000_000 / 12));
+    });
+
+    it('relevé bancaire : un montant aberrant est rejeté, la transaction normale passe', () => {
+        const s = state();
+        const before = (s.transactions ?? []).length;
+        const r = applyDocument(s, {
+            kind: 'bank_statement',
+            transactions: [
+                { date: '2026-03-01', payee: 'Normal', amount: -120 },
+                { date: '2026-03-02', payee: 'INJECTION', amount: -1e12 },
+            ],
+        });
+        expect(r.nextState.transactions.length).toBe(before + 1); // seul le normal
+        expect(r.nextState.transactions.some((t) => t.payee === 'Normal')).toBe(true);
+        expect(r.nextState.transactions.some((t) => t.payee === 'INJECTION')).toBe(false);
+        expect(r.summary).toMatch(/aberrant/i);
+    });
+
+    it('relevé de courtage : une quantité aberrante est rejetée', () => {
+        const r = applyDocument(state(), { kind: 'broker_statement', holdings: [{ symbol: 'EVIL', quantity: 1e12 }] });
+        expect(r.nextState.assets.find((a) => a.symbol === 'EVIL')).toBeUndefined();
+        expect(r.summary).toMatch(/aberrant/i);
+    });
+});

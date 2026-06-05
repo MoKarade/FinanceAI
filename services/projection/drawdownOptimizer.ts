@@ -12,6 +12,7 @@
 //   en 1 seul appel.
 
 import { calculateFutureProjection, type SimulationParams } from '../projection';
+import { logError } from '../errorLogger';
 
 export interface ScenarioComparison {
     bestScenario: string;
@@ -37,7 +38,7 @@ export function compareLifeScenarios(params: SimulationParams): ScenarioComparis
 
     // FIX silent-failure cycle 2 (MEDIUM): allResults vide → signal explicite.
     if (allResults.length === 0) {
-        console.warn('[compareLifeScenarios] allResults vide — moteur n\'a pas produit de scénarios.');
+        logError({ source: 'projection', severity: 'warning', message: "compareLifeScenarios: allResults vide — le moteur n'a produit aucun scénario." });
         return {
             bestScenario: '—',
             bestEstateNetWorth: 0,

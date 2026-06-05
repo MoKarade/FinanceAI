@@ -20,7 +20,7 @@ import { TabRouter } from './components/TabRouter';
 import { CommandPalette, useCommandPalette, makeNavigationActions } from './components/ui/CommandPalette';
 import { useTranslation } from 'react-i18next';
 import { configureMarketDataProvider } from './services/marketData';
-import { installGlobalErrorHandlers } from './services/errorLogger';
+import { installGlobalErrorHandlers, logError } from './services/errorLogger';
 import { lazyWithRetry, clearChunkReloadFlag } from './utils/lazyWithRetry';
 import { initAutoBackup } from './services/backupAuto';
 import { initSync, runBootSync, schedulePush, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, startDrivePolling, type SyncStatus } from './services/sync/syncOrchestrator';
@@ -233,7 +233,9 @@ export const App: React.FC = () => {
                     await saveApiKeys(current);
                 }
             } catch (e) {
-                console.warn('[FinanceAI] Hydratation des clés chiffrées impossible:', e);
+                // Règle « ne jamais avaler les erreurs » : un échec d'hydratation des clés (l'IA et
+                // les cours d'actions ne fonctionneront pas) doit être visible dans les diagnostics.
+                logError({ source: 'storage', severity: 'error', message: 'Hydratation des clés API chiffrées impossible', error: e });
             }
         })();
         return () => { cancelled = true; };
@@ -344,7 +346,7 @@ export const App: React.FC = () => {
                     state.updateFxRates(rates);
                 }
             } catch (e) {
-                console.warn('Impossible de mettre a jour les taux FX:', e);
+                logError({ source: 'network', severity: 'warning', message: 'Mise à jour des taux FX impossible (taux de repli utilisés)', error: e });
             }
         };
         updateFxRates();
@@ -376,7 +378,7 @@ export const App: React.FC = () => {
                         }
                         if (!fromCache) await new Promise(r => setTimeout(r, 2500));
                     } catch (e) {
-                        console.warn('[FinanceAI] hydrateAssets failed for', asset.symbol, e);
+                        logError({ source: 'network', severity: 'warning', message: "Hydratation du prix d'un actif échouée", context: { symbol: asset.symbol }, error: e });
                     }
                 }
             }

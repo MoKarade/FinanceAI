@@ -2,6 +2,7 @@
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness, SavingsGoal, FinancialGoal } from '../types';
 import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate, calculateGrossWithholdingRRSP, getResidencyStartYear, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
 import { RRIF_RATES, welcomeTax } from './projection/helpers';
+import { logError } from './errorLogger';
 import { runMonteCarlo, type MonteCarloResult } from './projection/monteCarlo';
 import { rankStrategiesByRobustness, type RobustnessRanking, type RankRobustnessOptions } from './projection/strategyRobustness';
 import type { EngineOverrides, StrategyConfig } from './projection/strategyConfig';
@@ -1175,7 +1176,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // (lastProjection jamais set côté store). Trace explicite pour faciliter
     // le debug local quand on voit "Patrimoine projeté: 0.00M$" en UI.
     if (data.length === 0) {
-        console.warn('[projection] runScenario retourne chartData=[] — possible early break (mortality?) ou boucle skip. years=', projection.years, ' isDead=', isDead, ' estateNetWorth=', estate.estateNetWorth);
+        // Anomalie moteur (« Patrimoine projeté: 0.00M$ » en UI) : visible dans les diagnostics,
+        // pas seulement en console. logError est worker-safe (no-op de persistance hors localStorage).
+        logError({ source: 'projection', severity: 'warning', message: 'runScenario a retourné chartData=[] (early break mortalité ou boucle skippée ?)', context: { years: projection.years, isDead, estateNetWorth: estate.estateNetWorth } });
     }
 
     return {

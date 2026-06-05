@@ -76,7 +76,7 @@ export const TestModePanel: React.FC = () => {
                         aria-label="Choisir un persona de test"
                         value={selectedId}
                         onChange={(e) => onSelectChange(e.target.value)}
-                        className="mt-1 w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 text-body text-ink-100 focus:outline-none focus:ring-2 focus:ring-warning-500"
+                        className="mt-1 w-full bg-surfaceHighlight border border-white/10 rounded-md px-3 py-2 text-body text-ink-100 focus:outline-none focus:ring-2 focus:ring-warning-500"
                     >
                         {TEST_PERSONAS.map((p) => (
                             <option key={p.id} value={p.id}>

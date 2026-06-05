@@ -78,7 +78,7 @@ export function LoginGate({ children }: LoginGateProps): React.ReactElement {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-950 px-4">
+        <div className="min-h-screen flex items-center justify-center bg-dark px-4">
             <div className="w-full max-w-sm text-center space-y-6">
                 <div className="space-y-2">
                     <h1 className="text-2xl font-semibold text-white">FinanceAI</h1>

@@ -168,7 +168,7 @@ export const Layout: React.FC<LayoutProps> = ({
             className="bg-amber-900/70 text-white text-meta rounded px-2 py-1 border border-white/40 font-normal cursor-pointer max-w-[55vw] truncate focus:outline-none focus:ring-2 focus:ring-white/60"
           >
             {TEST_PERSONAS.map((p) => (
-              <option key={p.id} value={p.id} className="bg-gray-900 text-white">
+              <option key={p.id} value={p.id} className="bg-dark text-white">
                 {p.emoji} {p.label}
               </option>
             ))}

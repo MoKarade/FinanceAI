@@ -28,7 +28,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                     <div className="grid grid-cols-2 gap-3">
                         <button
                             onClick={() => updateProj('stressTestEnabled', !projection.stressTestEnabled)}
-                            className={`px-3 py-2 text-meta font-bold rounded-md border transition-all ${projection.stressTestEnabled ? 'bg-warning-500/20 border-warning-500/50 text-amber-300' : 'bg-gray-800 border-white/10 text-ink-300'}`}
+                            className={`px-3 py-2 text-meta font-bold rounded-md border transition-all ${projection.stressTestEnabled ? 'bg-warning-500/20 border-warning-500/50 text-amber-300' : 'bg-surfaceHighlight border-white/10 text-ink-300'}`}
                         >
                             Activer stress test {projection.stressTestEnabled ? 'ON' : 'OFF'}
                         </button>
@@ -62,21 +62,21 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                         <button
                             onClick={() => updateProj('useSmithManoeuvre', !projection.useSmithManoeuvre)}
                             title="Smith Manoeuvre: rendre l'hypothèque déductible en empruntant pour investir hors REER. Stratégie agressive."
-                            className={`px-3 py-2 text-meta font-bold rounded-md border transition-all ${projection.useSmithManoeuvre ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300' : 'bg-gray-800 border-white/10 text-ink-300'}`}
+                            className={`px-3 py-2 text-meta font-bold rounded-md border transition-all ${projection.useSmithManoeuvre ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300' : 'bg-surfaceHighlight border-white/10 text-ink-300'}`}
                         >
                             📈 Smith Manoeuvre {projection.useSmithManoeuvre ? 'ON' : 'OFF'}
                         </button>
                         <button
                             onClick={() => updateProj('optimizeSourceDeductions', !projection.optimizeSourceDeductions)}
                             title="T1213: réduction de la retenue à la source pour ne plus prêter d'argent au gouvernement pendant l'année (cotisations REER déductibles immédiates)."
-                            className={`px-3 py-2 text-meta font-bold rounded-md border transition-all ${projection.optimizeSourceDeductions ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300' : 'bg-gray-800 border-white/10 text-ink-300'}`}
+                            className={`px-3 py-2 text-meta font-bold rounded-md border transition-all ${projection.optimizeSourceDeductions ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300' : 'bg-surfaceHighlight border-white/10 text-ink-300'}`}
                         >
                             📋 T1213 retenue source {projection.optimizeSourceDeductions ? 'ON' : 'OFF'}
                         </button>
                         <button
                             onClick={() => updateProj('vehicleReplacementEnabled', !projection.vehicleReplacementEnabled)}
                             title="Achat de véhicule automatique tous les ~10 ans (utile si tu n'as pas configuré de véhicules cycliques dans Settings)."
-                            className={`px-3 py-2 text-meta font-bold rounded-md border transition-all ${projection.vehicleReplacementEnabled ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300' : 'bg-gray-800 border-white/10 text-ink-300'}`}
+                            className={`px-3 py-2 text-meta font-bold rounded-md border transition-all ${projection.vehicleReplacementEnabled ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300' : 'bg-surfaceHighlight border-white/10 text-ink-300'}`}
                         >
                             🚗 Véhicule auto-replace {projection.vehicleReplacementEnabled ? 'ON' : 'OFF'}
                         </button>
@@ -246,7 +246,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                     <h4 className="text-meta font-bold uppercase tracking-widest text-info-400 mb-2">💰 Soldes initiaux manuels</h4>
                     <button
                         onClick={() => updateProj('useManualBalances', !projection.useManualBalances)}
-                        className={`px-3 py-2 text-meta font-bold rounded-md border transition-all mb-2 ${projection.useManualBalances ? 'bg-info-500/20 border-info-500/50 text-blue-300' : 'bg-gray-800 border-white/10 text-ink-300'}`}
+                        className={`px-3 py-2 text-meta font-bold rounded-md border transition-all mb-2 ${projection.useManualBalances ? 'bg-info-500/20 border-info-500/50 text-blue-300' : 'bg-surfaceHighlight border-white/10 text-ink-300'}`}
                     >
                         Outrepasser balances live {projection.useManualBalances ? 'ON' : 'OFF'}
                     </button>

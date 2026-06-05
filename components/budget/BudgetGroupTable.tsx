@@ -137,7 +137,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                 type="text"
                                                 value={item.name}
                                                 onChange={(e) => onUpdateItem(idx, 'name', e.target.value)}
-                                                className="bg-transparent text-white font-medium focus:border-primary outline-none w-full text-body placeholder-gray-600"
+                                                className="bg-transparent text-white font-medium focus:border-primary outline-none w-full text-body placeholder-ink-500"
                                                 onClick={(e) => e.stopPropagation()}
                                             />
                                             <div className="flex gap-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -178,7 +178,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                         title="Modifier le montant de base"
                                                         onClick={(e) => e.stopPropagation()}
                                                     />
-                                                    <span className="text-gray-600 text-meta ml-1">
+                                                    <span className="text-ink-500 text-meta ml-1">
                                                         {item.frequency === 'Monthly' ? '/m' : item.frequency === 'Yearly' ? '/an' : ''}
                                                     </span>
                                                 </div>
@@ -196,7 +196,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                 {spent.toLocaleString()}$
                                             </div>
                                             {timeView === 'MONTH' && displayTarget > 0 && (
-                                                <div className="w-full bg-gray-800 h-1.5 rounded-full mt-1 overflow-hidden relative">
+                                                <div className="w-full bg-surfaceHighlight h-1.5 rounded-full mt-1 overflow-hidden relative">
                                                     <div
                                                         className="absolute top-0 bottom-0 w-0.5 bg-white z-10 opacity-50"
                                                         style={{ left: `${monthProgress}%` }}
@@ -218,7 +218,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                             <button
                                                 type="button"
                                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDeleteItem(item.id); }}
-                                                className="text-gray-600 hover:text-danger-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                className="text-ink-500 hover:text-danger-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                                                 title="Supprimer la catégorie"
                                             >
                                                 ✕

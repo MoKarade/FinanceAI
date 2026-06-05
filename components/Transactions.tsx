@@ -310,7 +310,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
     };
 
     const getConfidenceColor = (score?: number) => {
-        if (!score) return 'bg-gray-700';
+        if (!score) return 'bg-surfaceHighlight';
         if (score >= 90) return 'bg-green-500';
         if (score >= 70) return 'bg-yellow-500';
         return 'bg-danger-500';
@@ -404,7 +404,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         </div>
 
                         {categorizationRules.length === 0 ? (
-                            <p className="text-tiny text-gray-600 text-center py-2">Aucune regle. Creez-en une pour categoriser automatiquement.</p>
+                            <p className="text-tiny text-ink-500 text-center py-2">Aucune regle. Creez-en une pour categoriser automatiquement.</p>
                         ) : (
                             <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
                                 {categorizationRules.map(rule => (
@@ -462,7 +462,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         <div className="w-full md:w-auto flex gap-2">
                                             <select
                                                 aria-label={`Categorie pour ${group.payee}`}
-                                                className="bg-black border border-gray-600 rounded-lg px-3 py-2 text-body text-white focus:border-primary outline-none min-w-[180px]"
+                                                className="bg-black border border-white/10 rounded-lg px-3 py-2 text-body text-white focus:border-primary outline-none min-w-[180px]"
                                                 onChange={(e) => {
                                                     if (e.target.value) handleWizardApply(group.ids, e.target.value);
                                                 }}
@@ -524,7 +524,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                             onClick={handleAutoCategorizeAll}
                             disabled={processing}
                             aria-label={processing ? 'Scan IA en cours' : 'Demarrer le scan IA'}
-                            className={`px-3 sm:px-4 py-2 rounded-full text-meta font-bold text-white shadow-lg transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap ${processing ? 'bg-gray-600 cursor-not-allowed' : apiKey ? 'bg-gradient-to-r from-secondary to-purple-500 hover:brightness-110' : 'bg-gray-700'
+                            className={`px-3 sm:px-4 py-2 rounded-full text-meta font-bold text-white shadow-lg transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap ${processing ? 'bg-white/10 cursor-not-allowed' : apiKey ? 'bg-gradient-to-r from-secondary to-purple-500 hover:brightness-110' : 'bg-surfaceHighlight'
                                 }`}
                         >
                             <span aria-hidden="true">{processing ? '⚙️' : '⚡'}</span>
@@ -578,7 +578,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                     <input
                                         type="checkbox"
                                         aria-label="Selectionner toutes les transactions de la page"
-                                        className="rounded bg-surfaceHighlight border-gray-600"
+                                        className="rounded bg-surfaceHighlight border-white/10"
                                         checked={selectedIds.size > 0 && selectedIds.size >= paginatedTransactions.length}
                                         ref={(el) => {
                                             if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < paginatedTransactions.length;
@@ -652,7 +652,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                     <td className="p-3">
                                         <select
                                             aria-label={`Categorie de ${t.payee}`}
-                                            className={`bg-surfaceHighlight border border-gray-600 rounded px-2 py-1 text-meta text-white focus:border-primary outline-none cursor-pointer w-full max-w-[180px] ${(t.category === 'Uncategorized' || t.category === 'Inconnu') ? 'border-danger-500/50 text-red-300' : ''
+                                            className={`bg-surfaceHighlight border border-white/10 rounded px-2 py-1 text-meta text-white focus:border-primary outline-none cursor-pointer w-full max-w-[180px] ${(t.category === 'Uncategorized' || t.category === 'Inconnu') ? 'border-danger-500/50 text-red-300' : ''
                                                 }`}
                                             value={t.category}
                                             onChange={(e) => updateCategory(t.id, e.target.value)}
@@ -720,7 +720,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                 <div className="flex items-center gap-2">
                                     <select
                                         aria-label={`Categorie de ${t.payee}`}
-                                        className={`flex-1 bg-surfaceHighlight border rounded px-2 py-1.5 text-meta text-white focus:border-primary outline-none cursor-pointer ${isUncat ? 'border-danger-500/50 text-red-300' : 'border-gray-600'
+                                        className={`flex-1 bg-surfaceHighlight border rounded px-2 py-1.5 text-meta text-white focus:border-primary outline-none cursor-pointer ${isUncat ? 'border-danger-500/50 text-red-300' : 'border-white/10'
                                             }`}
                                         value={t.category}
                                         onChange={(e) => updateCategory(t.id, e.target.value)}

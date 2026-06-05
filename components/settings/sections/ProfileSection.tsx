@@ -40,9 +40,8 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ config, setConfi
           l'onglet Retraite (espérance de vie, âge cible, revenu cible). */}
       <Card title="🏖️ Paramètres de retraite (hub central)">
         <div className="space-y-4">
-          <p className="text-tiny text-ink-300 leading-snug">
-            Ces paramètres alimentent les projections retraite (capital, drawdown, RRQ/PSV) et
-            s'appliquent automatiquement aux onglets Retraite, Investissement et Futur.
+          <p className="text-meta text-ink-400">
+            Source de vérité unique — alimente Retraite, Investissement et Futur.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div data-focus-section="profile-retirementAge">
@@ -82,10 +81,6 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ config, setConfi
               />
             </div>
           </div>
-          <p className="text-tiny text-ink-500 italic">
-            💡 Ces valeurs sont la source de vérité unique. Les onglets Retraite/Futur
-            les lisent depuis ici — plus de duplication.
-          </p>
         </div>
       </Card>
 

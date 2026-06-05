@@ -88,7 +88,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
         <div className="flex flex-wrap gap-2 mb-3">
           {savedProfiles.length === 0 && <span className="text-meta text-ink-500 italic">Aucun profil enregistre.</span>}
           {savedProfiles.map(p => (
-            <div key={p} className="flex items-center bg-primary/20 text-blue-300 text-meta px-3 py-1.5 rounded-full border border-primary/30">
+            <div key={p} className="flex items-center bg-primary/15 text-info-300 text-meta px-3 py-1.5 rounded-full border border-primary/25">
               <button type="button" className="font-bold cursor-pointer hover:underline rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" onClick={() => loadProfile(p)} aria-label={`Charger le profil ${p}`}>{p}</button>
               <button
                 onClick={() => deleteProfile(p)}
@@ -127,7 +127,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   setConfig({ ...config, users: newUsers as [User, User] });
                   setGrossAnnualDraft({}); // les index changent → on repart du store
                 }}
-                className="bg-red-900/40 text-red-300 px-3 py-1 rounded text-meta hover:bg-red-900/60"
+                className="bg-danger-500/15 text-danger-300 px-3 py-1 rounded-card text-meta hover:bg-danger-500/25 transition-colors"
               >
                 - Retirer conjoint
               </button>
@@ -139,7 +139,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   setConfig({ ...config, users: newUsers as [User, User] });
                   setGrossAnnualDraft({}); // les index changent → on repart du store
                 }}
-                className="bg-green-900/40 text-green-300 px-3 py-1 rounded text-meta hover:bg-green-900/60"
+                className="bg-success-500/15 text-success-300 px-3 py-1 rounded-card text-meta hover:bg-success-500/25 transition-colors"
               >
                 + Ajouter conjoint
               </button>
@@ -147,12 +147,12 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
           {config.users.map((user, idx) => (
             <div
               key={idx}
               data-focus-section={`profile-user${idx + 1}-card`}
-              className="space-y-2 p-3 bg-white/5 rounded border border-border"
+              className="flex flex-col gap-2 p-3 bg-white/5 rounded-card border border-border h-full"
             >
               <div className="font-bold text-white mb-2 border-b border-white/5 pb-1">Utilisateur {idx + 1}</div>
               <div data-focus-section={`profile-user${idx + 1}-name`}>
@@ -184,7 +184,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   />
                 </div>
                 <div>
-                  <label className="flex items-center gap-2 text-meta text-orange-300 cursor-pointer">
+                  <label className="flex items-center gap-2 text-meta text-warning-300 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={!!user.isImmigrant}
@@ -215,7 +215,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div data-focus-section={`profile-user${idx + 1}-grossSalary`}>
-                  <label className="text-meta text-ink-300 font-bold text-green-300">Salaire Brut annuel ($)</label>
+                  <label className="text-meta font-bold text-success-300">Salaire Brut annuel ($)</label>
                   <input
                     type="number"
                     value={grossAnnualDraft[idx] ?? String((user.grossSalary || 0) * 12)}
@@ -231,7 +231,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   />
                 </div>
                 <div data-focus-section={`profile-user${idx + 1}-netSalary`}>
-                  <label className="text-meta text-ink-300 font-bold text-blue-300">Salaire Net mensuel ($)</label>
+                  <label className="text-meta font-bold text-info-300">Salaire Net mensuel ($)</label>
                   <input
                     type="number"
                     value={user.netSalary || user.salary || 0}

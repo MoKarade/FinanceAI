@@ -1,5 +1,11 @@
 # Audit « AAA / entreprise à 1 000 milliards » — FinanceAI (2026-06-04)
 
+> **STATUT (2026-06-05)** : ce document est désormais le **rapport d'audit de référence**
+> (catalogue + parcours + constats détaillés). Les items **encore ouverts** (D3 tokens, D4
+> god-files, D6-SR fuite lecteur d'écran, D7 perf boot, etc.) ont été **fondus dans
+> [`docs/BACKLOG.md`](BACKLOG.md)** avec des `[ID]` (source unique des tâches). Garder ce doc
+> pour le détail/justification de chaque constat ; suivre l'avancement dans le backlog.
+>
 > Demande de Marc : « grand nettoyage de tous les fichiers, niveau triple-A ». Décisions de cadrage :
 > viser les **4 axes** (code/archi, design/UX, perf/robustesse, exactitude financière) · livraison en
 > **PRs incrémentales par domaine** · moteur **améliorable avec garde-fous** (tests verts + liste des

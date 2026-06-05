@@ -1,7 +1,8 @@
 // components/settings/sections/AccountsSection.tsx
 // G22-N4 — extrait de Settings.tsx : soldes initiaux des comptes, upload IA de
-// relevé de salaire (Vision Claude) et import de relevé bancaire. Comportement
-// identique ; props threadées.
+// relevé de salaire (Vision Claude) et import de relevé bancaire.
+// CFG-COMPTES (2026-06) — regroupé : les 2 sources d'import côte à côte, puis les
+// soldes de départ ; en-têtes clairs, texte allégé, tokens.
 
 import React from 'react';
 import { Card } from '../../ui/Card';
@@ -27,19 +28,31 @@ export const AccountsSection: React.FC<AccountsSectionProps> = ({
     Object.keys(initialBalances).forEach(k => accs[k] = true);
     return accs;
   }, [transactions, initialBalances]);
+  const hasAccounts = Object.keys(knownAccounts).length > 0;
 
   return (
-    <div className="space-y-6">
-      <PayslipUploadCard />
+    <div className="space-y-5">
+      <header>
+        <h3 className="text-h2 text-ink-50">Comptes &amp; données</h3>
+        <p className="text-meta text-ink-400 mt-0.5">
+          Importe tes revenus et transactions, puis fixe tes soldes de départ. Tout reste local.
+        </p>
+      </header>
 
-      <Card title="Soldes Initiaux des Comptes">
+      {/* Deux sources d'import regroupées côte à côte */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+        <PayslipUploadCard />
+        <ImportBankStatement onImport={onImportData} />
+      </div>
+
+      <Card title="Soldes de départ">
         <div className="space-y-4">
-          <p className="text-body text-ink-300">
-            Definissez le montant de depart de vos comptes (Chequing, Savings).
-            <br /><span className="text-meta text-orange-400">Important : Ces montants definissent le point de depart "Cash".</span>
+          <p className="text-meta text-ink-400">
+            Le point de départ « cash » de la projection —{' '}
+            <span className="text-warning-400">le solde actuel de chaque compte (chèque, épargne).</span>
           </p>
 
-          {Object.keys(knownAccounts).length > 0 ? (
+          {hasAccounts ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.keys(knownAccounts).map(acc => (
                 <div key={acc}>
@@ -54,12 +67,10 @@ export const AccountsSection: React.FC<AccountsSectionProps> = ({
               ))}
             </div>
           ) : (
-            <div className="text-ink-500 text-body italic">Aucun compte detecte. Importez des transactions d'abord.</div>
+            <div className="text-ink-500 text-meta italic">Aucun compte détecté — importe d'abord des transactions.</div>
           )}
         </div>
       </Card>
-
-      <ImportBankStatement onImport={onImportData} />
     </div>
   );
 };

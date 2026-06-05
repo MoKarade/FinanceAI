@@ -91,6 +91,27 @@ describe('fetchFxRates', () => {
         expect(rates.EUR).toBe(1.47);
     });
 
+    it('logue (au lieu de masquer) un taux PRÉSENT mais corrompu, et applique le repli', async () => {
+        // Avant : parseFloat(v) || 1.40 confondait « absent » et « corrompu » (0/NaN/texte).
+        // logError persiste dans localStorage → on le relit via getErrors (pas de mock à fuir).
+        localStorage.clear();
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ observations: [{ FXUSDCAD: { v: '0' }, FXEURCAD: { v: 'abc' } }] }),
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const { fetchFxRates } = await import('../../services/finance');
+        const { getErrors } = await import('../../services/errorLogger');
+        const rates = await fetchFxRates();
+
+        // repli appliqué ET les deux taux corrompus loggués (pas masqués silencieusement)
+        expect(rates.USD).toBe(1.40);
+        expect(rates.EUR).toBe(1.47);
+        expect(getErrors().filter((e) => /corrompu/i.test(e.message)).length).toBe(2);
+        localStorage.clear();
+    });
+
     it('retourne les taux parsés depuis la réponse Banque du Canada', async () => {
         // Arrange — mock fetch retourne des données valides BDC
         const fetchMock = vi.fn().mockResolvedValue({

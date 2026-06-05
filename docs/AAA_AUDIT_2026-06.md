@@ -108,13 +108,13 @@ PageHeader (cohérent, bon) · tooltips pédagogiques · états vides (`EmptySta
 - **H2 — sélecteurs atomiques** : `App` re-render sur tout slice non-`lastProjection` + prop-drilling de tout l'`AppState` via `TabRouter`. Faire consommer le store directement par les pages (dette reconnue `App.tsx:47`).
 
 ### D5 — Robustesse & erreurs avalées · **P1** · règle « ne jamais avaler »
-- **`App.tsx:236`** : échec d'hydratation des clés → `logError` (violation nette).
-- **`projection.ts:1171` / `drawdownOptimizer.ts:40`** : `console.warn` sur projection vide → `logError`.
-- **Race sync push-après-pull** (`syncOrchestrator.ts` + `App.tsx:102`) : sérialiser `schedulePush` derrière la décision + garantir clés API hydratées avant push (sinon `apiKeysEnc` perdu dans Drive).
-- **`finnhub.ts`** : validation de schéma des réponses (Zod) + tests (0 test) + 401/403/429.
-- **`backupAuto.ts` / `persistentCache.ts`** : pruning des backups manuels + purge des entrées de cache IndexedDB expirées (croissance non bornée).
-- **`finance.ts:105`** : FX `0`/`NaN` retombe sur 1.40 sans distinction → logguer le cas corrompu.
-- Contrats silencieux : `fetchUserIdentity` (`driveAppData.ts:175`) → logError.
+- ✅ **`App.tsx:236` CORRIGÉ 2026-06-04** : échec d'hydratation des clés API chiffrées → `logError` (`source:'storage', severity:'error'`) — la « violation nette ». Aussi convertis : MAJ taux FX (`App.tsx`, network/warning) et hydratation prix d'un actif (network/warning).
+- ✅ **`projection.ts` + `drawdownOptimizer.ts` CORRIGÉS 2026-06-04** : `console.warn` (chartData=[] / allResults vide) → `logError` (`source:'projection'`). `logError` est worker-safe (readState/writeState gardent `typeof localStorage`).
+- ✅ **`finance.ts` (FX) CORRIGÉ 2026-06-04** : un taux PRÉSENT mais corrompu (0/NaN/texte) est désormais **loggué** (au lieu d'être masqué par `|| 1.40`) ; un taux absent garde le repli silencieux normal. +1 test (via `getErrors`).
+- 🔧 **Race sync push-après-pull** (`syncOrchestrator.ts` + `App.tsx`) : sérialiser `schedulePush` derrière la décision + garantir clés API hydratées avant push (sinon `apiKeysEnc` perdu dans Drive). [PENDING — plus gros, à traiter à part]
+- 🔧 **`finnhub.ts`** : validation de schéma des réponses (Zod) + tests (0 test) + 401/403/429. [PENDING]
+- 🔧 **`backupAuto.ts` / `persistentCache.ts`** : pruning des backups manuels + purge des entrées de cache IndexedDB expirées (croissance non bornée). [PENDING]
+- 🔧 Contrats silencieux : `fetchUserIdentity` (`driveAppData.ts`) → logError. [PENDING]
 
 ### D6 — Accessibilité · **P1**
 - **Double `<h1>`** : `Layout` (brand) + `PageHeader` → un seul `<h1>` par page.

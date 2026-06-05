@@ -102,8 +102,17 @@ export const fetchFxRates = async (): Promise<{ USD: number; EUR: number; CAD: n
             const obs = data?.observations?.[0];
 
             if (obs) {
-                const usdCad = parseFloat(obs?.FXUSDCAD?.v) || 1.40;
-                const eurCad = parseFloat(obs?.FXEURCAD?.v) || 1.47;
+                // Distingue un taux ABSENT (repli silencieux normal) d'un taux PRÉSENT mais
+                // CORROMPU (0/NaN/texte) → ce dernier est loggué au lieu d'être masqué par le repli.
+                const parseRate = (raw: unknown, fallback: number, label: string): number => {
+                    if (raw === undefined || raw === null || String(raw).trim() === '') return fallback; // absent : normal
+                    const v = parseFloat(String(raw));
+                    if (Number.isFinite(v) && v > 0) return v;
+                    logError({ source: 'network', severity: 'warning', message: `Taux de change ${label} corrompu — repli sur ${fallback}`, context: { raw: String(raw).slice(0, 24) } });
+                    return fallback;
+                };
+                const usdCad = parseRate(obs?.FXUSDCAD?.v, 1.40, 'USD/CAD');
+                const eurCad = parseRate(obs?.FXEURCAD?.v, 1.47, 'EUR/CAD');
 
                 const rates = { USD: usdCad, EUR: eurCad, CAD: 1.00, lastFetched: now };
                 cachedFxRates = rates;

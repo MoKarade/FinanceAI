@@ -230,13 +230,11 @@ export const MissingDataChecklist: React.FC<{ className?: string }> = ({ classNa
                     Configuration complète — toutes les données critiques sont renseignées.
                 </div>
             ) : (
-                <ul className="space-y-2">
+                <div className="flex flex-wrap gap-2">
                     {missingFields.map(field => (
-                        <li key={field}>
-                            <MissingDataBanner field={field} layout="inline" variant="warning" />
-                        </li>
+                        <MissingDataBanner key={field} field={field} layout="inline" variant="warning" />
                     ))}
-                </ul>
+                </div>
             )}
         </div>
     );

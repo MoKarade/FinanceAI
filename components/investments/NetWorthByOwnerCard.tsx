@@ -44,7 +44,7 @@ export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets
 
     return (
         <Card title="👥 Répartition du portefeuille par personne">
-            <p className="text-xs text-gray-400 mb-3 leading-snug">
+            <p className="text-xs text-ink-300 mb-3 leading-snug">
                 Qui possède quoi. Les comptes enregistrés (CELI/REER/CELIAPP) sont individuels ;
                 le non-enregistré et le cash peuvent être communs. « Auto » applique la règle par défaut.
             </p>
@@ -54,24 +54,24 @@ export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets
                     <div key={b.label} className="bg-black/30 rounded-lg p-3 border border-white/5 text-center">
                         <div className="flex items-center justify-center gap-1.5 mb-1">
                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: b.color }} aria-hidden="true" />
-                            <span className="text-xs text-gray-300 truncate">{b.label}</span>
+                            <span className="text-xs text-ink-200 truncate">{b.label}</span>
                         </div>
                         <div className="font-mono font-bold text-white privacy-blur">{fmt(b.value)}</div>
-                        <div className="text-tiny text-gray-500">{pct(b.value, bd.total)}</div>
+                        <div className="text-tiny text-ink-500">{pct(b.value, bd.total)}</div>
                     </div>
                 ))}
             </div>
 
             {assets.length > 0 && (
                 <div className="space-y-1.5">
-                    <div className="text-tiny text-gray-500 font-black uppercase tracking-widest mb-1">Attribuer par actif</div>
+                    <div className="text-tiny text-ink-500 font-black uppercase tracking-widest mb-1">Attribuer par actif</div>
                     {assets.map((a) => {
                         const value = (Number(a.currentPrice) || 0) * (Number(a.quantity) || 0);
                         return (
                             <div key={a.symbol} className="flex items-center justify-between gap-2 text-sm bg-white/5 rounded px-2 py-1.5">
-                                <span className="text-gray-200 truncate">
+                                <span className="text-ink-100 truncate">
                                     <span className="font-bold">{a.symbol}</span>
-                                    <span className="text-gray-500"> · {a.accountType || 'NON-ENREG'} · </span>
+                                    <span className="text-ink-500"> · {a.accountType || 'NON-ENREG'} · </span>
                                     <span className="font-mono privacy-blur">{fmt(value)}</span>
                                 </span>
                                 <select

@@ -224,21 +224,21 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
           onClick={() => !encWorking && setShowExportEncModal(false)}
         >
           <div
-            className="bg-[#151922] border border-white/15 rounded-2xl shadow-2xl w-full max-w-md p-6 animate-scale-in"
+            className="bg-surface border border-white/15 rounded-2xl shadow-2xl w-full max-w-md p-6 animate-scale-in"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-start gap-3 mb-4">
               <div className="text-2xl mt-0.5">🔐</div>
               <div className="flex-1">
                 <h3 className="text-white font-bold text-base mb-2">Sauvegarde Chiffrée</h3>
-                <p className="text-gray-400 text-xs leading-relaxed">
+                <p className="text-ink-300 text-xs leading-relaxed">
                   Le fichier sera chiffré localement (AES-256-GCM + PBKDF2 600 000 itérations). Conserve la passphrase précieusement — <span className="text-red-300 font-bold">sans elle, le fichier est irrécupérable</span>.
                 </p>
               </div>
             </div>
             <div className="space-y-3 mb-5">
               <div>
-                <label htmlFor="backup-export-passphrase" className="block text-xs text-gray-400 mb-1">Passphrase (min 8 caractères)</label>
+                <label htmlFor="backup-export-passphrase" className="block text-xs text-ink-300 mb-1">Passphrase (min 8 caractères)</label>
                 <input
                   id="backup-export-passphrase"
                   type="password"
@@ -250,7 +250,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
                 />
               </div>
               <div>
-                <label htmlFor="backup-export-confirm" className="block text-xs text-gray-400 mb-1">Confirmation</label>
+                <label htmlFor="backup-export-confirm" className="block text-xs text-ink-300 mb-1">Confirmation</label>
                 <input
                   id="backup-export-confirm"
                   type="password"
@@ -261,7 +261,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
                   disabled={encWorking}
                 />
                 {exportPassphrase && exportPassphraseConfirm && exportPassphrase !== exportPassphraseConfirm && (
-                  <p className="text-tiny text-red-400 mt-1">Les deux passphrases ne correspondent pas.</p>
+                  <p className="text-tiny text-danger-400 mt-1">Les deux passphrases ne correspondent pas.</p>
                 )}
               </div>
             </div>
@@ -269,14 +269,14 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
               <button
                 onClick={() => { setShowExportEncModal(false); setExportPassphrase(''); setExportPassphraseConfirm(''); }}
                 disabled={encWorking}
-                className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 transition-all text-sm font-medium disabled:opacity-50"
+                className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-ink-200 hover:text-white hover:bg-white/10 transition-all text-sm font-medium disabled:opacity-50"
               >
                 Annuler
               </button>
               <button
                 onClick={doEncryptedExport}
                 disabled={encWorking || exportPassphrase.length < 8 || exportPassphrase !== exportPassphraseConfirm}
-                className="px-4 py-2 rounded-xl bg-primary hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold shadow-lg active:scale-95 transition-all"
+                className="px-4 py-2 rounded-xl bg-primary hover:bg-success-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold shadow-lg active:scale-95 transition-all"
               >
                 {encWorking ? 'Chiffrement…' : 'Exporter chiffré'}
               </button>
@@ -292,18 +292,18 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
           onClick={() => !encWorking && setEncryptedFile(null)}
         >
           <div
-            className="bg-[#151922] border border-white/15 rounded-2xl shadow-2xl w-full max-w-md p-6 animate-scale-in"
+            className="bg-surface border border-white/15 rounded-2xl shadow-2xl w-full max-w-md p-6 animate-scale-in"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-start gap-3 mb-4">
               <div className="text-2xl mt-0.5">🔓</div>
               <div className="flex-1">
                 <h3 className="text-white font-bold text-base mb-1">Déchiffrer la Sauvegarde</h3>
-                <p className="text-gray-500 text-xs font-mono break-all">{encryptedFile.name}</p>
+                <p className="text-ink-500 text-xs font-mono break-all">{encryptedFile.name}</p>
               </div>
             </div>
             <div className="mb-5">
-              <label htmlFor="backup-import-passphrase" className="block text-xs text-gray-400 mb-2">Passphrase</label>
+              <label htmlFor="backup-import-passphrase" className="block text-xs text-ink-300 mb-2">Passphrase</label>
               <input
                 id="backup-import-passphrase"
                 type="password"
@@ -319,14 +319,14 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
               <button
                 onClick={() => { setEncryptedFile(null); setImportPassphrase(''); }}
                 disabled={encWorking}
-                className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 transition-all text-sm font-medium disabled:opacity-50"
+                className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-ink-200 hover:text-white hover:bg-white/10 transition-all text-sm font-medium disabled:opacity-50"
               >
                 Annuler
               </button>
               <button
                 onClick={doEncryptedImport}
                 disabled={encWorking || importPassphrase.length < 8}
-                className="px-4 py-2 rounded-xl bg-primary hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold shadow-lg active:scale-95 transition-all"
+                className="px-4 py-2 rounded-xl bg-primary hover:bg-success-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold shadow-lg active:scale-95 transition-all"
               >
                 {encWorking ? 'Déchiffrement…' : 'Déchiffrer'}
               </button>
@@ -342,33 +342,33 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
           onClick={() => { setPendingRestoreData(null); setRestoreConfirmPhrase(''); }}
         >
           <div
-            className="bg-[#151922] border border-white/15 rounded-2xl shadow-2xl w-full max-w-md p-6 animate-scale-in"
+            className="bg-surface border border-white/15 rounded-2xl shadow-2xl w-full max-w-md p-6 animate-scale-in"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-start gap-3 mb-4">
               <div className="text-2xl mt-0.5">⚠️</div>
               <div className="flex-1">
                 <h3 className="text-white font-bold text-base mb-2">Restauration Complète</h3>
-                <div className="text-gray-400 text-sm space-y-1 bg-black/30 p-3 rounded-lg mb-3">
+                <div className="text-ink-300 text-sm space-y-1 bg-black/30 p-3 rounded-lg mb-3">
                   <p>Version : <span className="text-white font-mono">{String(pendingRestoreData.version ?? 'Inconnue')}</span></p>
                   <p>Transactions : <span className="text-white font-mono">{(pendingRestoreData.transactions as unknown[])?.length ?? 0}</span></p>
                   <p>Actifs : <span className="text-white font-mono">{(pendingRestoreData.assets as unknown[])?.length ?? 0}</span></p>
                 </div>
-                <p className="text-red-400 text-xs font-bold leading-relaxed">
+                <p className="text-danger-400 text-xs font-bold leading-relaxed">
                   ⛔ Toutes les données actuelles seront effacées. Action irréversible.
                 </p>
               </div>
             </div>
             <div className="mb-5">
-              <label className="block text-xs text-gray-400 mb-2">
-                Tapez <span className="text-red-400 font-bold font-mono">RESTAURER</span> pour confirmer :
+              <label className="block text-xs text-ink-300 mb-2">
+                Tapez <span className="text-danger-400 font-bold font-mono">RESTAURER</span> pour confirmer :
               </label>
               <input
                 type="text"
                 value={restoreConfirmPhrase}
                 onChange={e => setRestoreConfirmPhrase(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && restoreConfirmPhrase === 'RESTAURER' && doRestore()}
-                className="w-full bg-black/50 border border-red-500/30 rounded-lg px-3 py-2 text-white font-mono text-sm focus:border-red-500 outline-none"
+                className="w-full bg-black/50 border border-danger-500/30 rounded-lg px-3 py-2 text-white font-mono text-sm focus:border-danger-500 outline-none"
                 placeholder="RESTAURER"
                 autoFocus
               />
@@ -376,14 +376,14 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => { setPendingRestoreData(null); setRestoreConfirmPhrase(''); }}
-                className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 transition-all text-sm font-medium"
+                className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-ink-200 hover:text-white hover:bg-white/10 transition-all text-sm font-medium"
               >
                 Annuler
               </button>
               <button
                 onClick={doRestore}
                 disabled={restoreConfirmPhrase !== 'RESTAURER'}
-                className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold shadow-lg active:scale-95 transition-all"
+                className="px-4 py-2 rounded-xl bg-danger-500 hover:bg-danger-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold shadow-lg active:scale-95 transition-all"
               >
                 Restaurer définitivement
               </button>
@@ -395,7 +395,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
       <Card title="Zone de Sauvegarde (Full Backup)" className="border border-green-900/30 bg-green-900/10">
         <div className="space-y-4">
           <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-ink-300">
               <p className="font-bold text-white mb-1">📄 JSON en clair</p>
               <p className="text-xs">Sauvegarde lisible (debugging, audit). À conserver localement uniquement — ne contient pas les clés API.</p>
             </div>
@@ -425,14 +425,14 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
           </div>
 
           <div className="border-t border-white/5 pt-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-ink-300">
               <p className="font-bold text-white mb-1">🔐 Sauvegarde chiffrée (.bak)</p>
               <p className="text-xs">AES-256-GCM + PBKDF2 600 000 itérations. Stockage cloud safe (Drive, Gist…) car illisible sans passphrase.</p>
             </div>
             <div className="flex gap-3 flex-shrink-0">
               <button
                 onClick={() => { setExportPassphrase(''); setExportPassphraseConfirm(''); setShowExportEncModal(true); }}
-                className="px-4 py-2 bg-primary hover:bg-emerald-500 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg"
+                className="px-4 py-2 bg-primary hover:bg-success-500 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg"
               >
                 🔐 Exporter chiffré
               </button>

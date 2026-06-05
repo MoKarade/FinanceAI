@@ -50,7 +50,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                         />
                         <div className="flex-1">
                             <div className="text-sm font-bold text-white">Résidence Principale</div>
-                            <div className="text-tiny text-gray-500">Si coché, le loyer actuel sera supprimé.</div>
+                            <div className="text-tiny text-ink-500">Si coché, le loyer actuel sera supprimé.</div>
                         </div>
                     </label>
 
@@ -70,7 +70,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                             />
                             <div className="flex-1">
                                 <div className="text-sm font-bold text-white">Propriété Locative</div>
-                                <div className="text-tiny text-gray-500">Génère des revenus de location.</div>
+                                <div className="text-tiny text-ink-500">Génère des revenus de location.</div>
                             </div>
                         </label>
                     )}
@@ -103,7 +103,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
             <Card title="💵 Prix et Financement">
                 <div className="space-y-4">
                     <div>
-                        <label className="flex justify-between text-xs text-gray-400 mb-1">
+                        <label className="flex justify-between text-xs text-ink-300 mb-1">
                             <span>Prix d'achat</span>
                             <span className="text-white font-bold privacy-blur">{fmt(price)}</span>
                         </label>
@@ -111,16 +111,16 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                             className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-primary" />
                     </div>
                     <div>
-                        <label className="flex justify-between text-xs text-gray-400 mb-1">
+                        <label className="flex justify-between text-xs text-ink-300 mb-1">
                             <span>Mise de fonds</span>
                             <span className="text-blue-300 font-bold privacy-blur">{fmt(downPayment)} ({downPaymentPercent}%)</span>
                         </label>
                         <input type="range" min={price * 0.05} max={price} step="5000" value={downPayment} onChange={e => updateActiveGoal({ downPayment: Number(e.target.value) })}
-                            className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                            className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label htmlFor="amortization-select" className="block text-xs text-gray-400 mb-1">Amortissement</label>
+                            <label htmlFor="amortization-select" className="block text-xs text-ink-300 mb-1">Amortissement</label>
                             <select id="amortization-select" value={amortization} onChange={e => updateActiveGoal({ amortization: Number(e.target.value) })} className="w-full bg-white/5 border border-border rounded px-2 py-1.5 text-white text-sm">
                                 <option value="15">15 ans</option>
                                 <option value="20">20 ans</option>
@@ -129,7 +129,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs text-gray-400 mb-1">Date cible</label>
+                            <label className="block text-xs text-ink-300 mb-1">Date cible</label>
                             <input type="date" value={targetDate} onChange={e => updateActiveGoal({ purchaseDate: e.target.value })} className="w-full bg-white/5 border border-border rounded px-2 py-1.5 text-white text-sm" />
                         </div>
                     </div>
@@ -144,18 +144,18 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                             <input type="number" step="0.1" value={rate} onChange={e => updateActiveGoal({ mortgageRate: Number(e.target.value) })} className="w-full bg-orange-500/10 border border-orange-500/30 rounded px-2 py-1.5 text-orange-400 text-sm font-bold" />
                         </div>
                         <div>
-                            <label className="block text-xs text-red-400 mb-1 font-bold">Taux Renouvellement</label>
-                            <input type="number" step="0.1" value={renewalRate} onChange={e => updateActiveGoal({ renewalRateProjection: Number(e.target.value) })} className="w-full bg-red-500/10 border border-red-500/30 rounded px-2 py-1.5 text-red-400 text-sm font-bold" />
+                            <label className="block text-xs text-danger-400 mb-1 font-bold">Taux Renouvellement</label>
+                            <input type="number" step="0.1" value={renewalRate} onChange={e => updateActiveGoal({ renewalRateProjection: Number(e.target.value) })} className="w-full bg-danger-500/10 border border-danger-500/30 rounded px-2 py-1.5 text-danger-400 text-sm font-bold" />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-xs text-blue-400 mb-1 font-bold">Appréciation Immo (%/an)</label>
+                            <label className="block text-xs text-info-400 mb-1 font-bold">Appréciation Immo (%/an)</label>
                             <input type="number" step="0.5" value={propertyGrowthRate} onChange={e => updateActiveGoal({ propertyGrowthRate: Number(e.target.value) })} className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm" />
                         </div>
                         <div>
-                            <label className="block text-xs text-emerald-400 mb-1 font-bold">Rénos annuelles ($)</label>
-                            <input type="number" step="500" value={yearlyRenovations} onChange={e => updateActiveGoal({ yearlyRenovations: Number(e.target.value) })} className="w-full bg-emerald-500/10 border border-emerald-500/30 rounded px-2 py-1.5 text-emerald-400 text-sm font-bold" />
+                            <label className="block text-xs text-success-400 mb-1 font-bold">Rénos annuelles ($)</label>
+                            <input type="number" step="500" value={yearlyRenovations} onChange={e => updateActiveGoal({ yearlyRenovations: Number(e.target.value) })} className="w-full bg-success-500/10 border border-success-500/30 rounded px-2 py-1.5 text-success-400 text-sm font-bold" />
                         </div>
                     </div>
                     <div>
@@ -164,7 +164,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                             <span>{maxValue > 0 ? fmt(maxValue) : 'Aucun plafond'}</span>
                         </label>
                         <input type="range" min="0" max={price * 4} step={price * 0.1} value={maxValue} onChange={e => updateActiveGoal({ maxValue: Number(e.target.value) })} className="w-full h-1.5 bg-black/50 rounded-lg appearance-none cursor-pointer accent-purple-500" />
-                        <p className="text-tiny text-gray-500 mt-1">Limite l'appréciation projetée de la propriété à un maximum réaliste.</p>
+                        <p className="text-tiny text-ink-500 mt-1">Limite l'appréciation projetée de la propriété à un maximum réaliste.</p>
                     </div>
                 </div>
             </Card>
@@ -172,20 +172,20 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
             <Card title="💰 Frais Récurrents">
                 <div className="space-y-3">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-gray-400">Mode de calcul</span>
+                        <span className="text-xs text-ink-300">Mode de calcul</span>
                         <button
                             onClick={() => setMode(mode === 'AUTO' ? 'MANUAL' : 'AUTO')}
                             className={`text-xs px-3 py-1 rounded-full font-bold border transition-all ${
                                 mode === 'AUTO'
                                 ? 'bg-primary/20 border-primary text-primary'
-                                : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+                                : 'bg-white/5 border-white/10 text-ink-300 hover:text-white'
                             }`}
                         >
                             {mode === 'AUTO' ? 'AUTO' : 'MANUEL'}
                         </button>
                     </div>
                     <div>
-                        <label className="text-xs text-gray-400">Taxes foncières ($/an)</label>
+                        <label className="text-xs text-ink-300">Taxes foncières ($/an)</label>
                         <input
                             type="number"
                             step="100"
@@ -196,7 +196,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                         />
                     </div>
                     <div>
-                        <label className="text-xs text-gray-400">Chauffage ($/mois)</label>
+                        <label className="text-xs text-ink-300">Chauffage ($/mois)</label>
                         <input
                             type="number"
                             step="10"
@@ -207,7 +207,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                         />
                     </div>
                     <div>
-                        <label className="text-xs text-gray-400">Frais de condo ($/mois)</label>
+                        <label className="text-xs text-ink-300">Frais de condo ($/mois)</label>
                         <input
                             type="number"
                             step="50"

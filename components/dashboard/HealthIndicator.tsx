@@ -74,9 +74,9 @@ function saveWeights(w: Weights) {
 const clamp01 = (x: number) => Math.max(0, Math.min(100, x));
 
 const colorForScore = (score: number): { ring: string; text: string; bg: string } => {
-    if (score >= 70) return { ring: 'stroke-emerald-400', text: 'text-emerald-300', bg: 'bg-emerald-500/10' };
-    if (score >= 40) return { ring: 'stroke-amber-400', text: 'text-amber-300', bg: 'bg-amber-500/10' };
-    return { ring: 'stroke-red-400', text: 'text-red-300', bg: 'bg-red-500/10' };
+    if (score >= 70) return { ring: 'stroke-success-400', text: 'text-emerald-300', bg: 'bg-success-500/10' };
+    if (score >= 40) return { ring: 'stroke-warning-400', text: 'text-amber-300', bg: 'bg-warning-500/10' };
+    return { ring: 'stroke-danger-400', text: 'text-red-300', bg: 'bg-danger-500/10' };
 };
 
 interface MetricRow {
@@ -283,7 +283,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                                 <div className="flex items-center gap-2 mt-0.5">
                                     <div className="flex-1 h-1 bg-black/40 rounded-full overflow-hidden">
                                         <div
-                                            className={`h-full transition-all duration-500 ${m.value >= 70 ? 'bg-emerald-400' : m.value >= 40 ? 'bg-amber-400' : 'bg-red-400'}`}
+                                            className={`h-full transition-all duration-500 ${m.value >= 70 ? 'bg-success-400' : m.value >= 40 ? 'bg-warning-400' : 'bg-danger-400'}`}
                                             style={{ width: `${m.value}%` }}
                                         />
                                     </div>
@@ -301,7 +301,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-meta font-bold text-ink-200">Pondérations</span>
                         <div className="flex items-center gap-2">
-                            <span className={`text-tiny font-mono ${totalWeight === 100 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                            <span className={`text-tiny font-mono ${totalWeight === 100 ? 'text-success-400' : 'text-warning-400'}`}>
                                 Total : {totalWeight}%
                             </span>
                             <button
@@ -330,7 +330,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                         </div>
                     ))}
                     {totalWeight !== 100 && (
-                        <p className="text-tiny text-amber-400 italic mt-2">
+                        <p className="text-tiny text-warning-400 italic mt-2">
                             ⓘ La somme des poids n'est pas 100%, mais c'est OK : le score est normalisé automatiquement.
                         </p>
                     )}

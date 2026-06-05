@@ -129,7 +129,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                         aria-label="Progression de la configuration"
                     >
                         <div
-                            className="h-full bg-gradient-to-r from-primary to-emerald-400 transition-all duration-500"
+                            className="h-full bg-gradient-to-r from-primary to-success-400 transition-all duration-500"
                             style={{ width: `${progress}%` }}
                         />
                     </div>

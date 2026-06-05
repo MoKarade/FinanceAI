@@ -100,7 +100,7 @@ function explainMovement(d: AccountPoint): MovementReason[] {
 
 const REASON_TONE_CLASS: Record<ReasonTone, string> = {
     pos: 'text-green-300 bg-green-500/10',
-    neg: 'text-red-300 bg-red-500/10',
+    neg: 'text-red-300 bg-danger-500/10',
     in: 'text-sky-300 bg-sky-500/10',
     out: 'text-orange-300 bg-orange-500/10',
 };
@@ -258,7 +258,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
             aria-label="Détail du mois"
         >
             <div
-                className="bg-[#0B0E14] border border-white/15 rounded-2xl shadow-[0_20px_70px_rgba(0,0,0,0.85)] w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5"
+                className="bg-dark border border-white/15 rounded-2xl shadow-[0_20px_70px_rgba(0,0,0,0.85)] w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* En-tête */}
@@ -314,14 +314,14 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                                 </span>
                                             )}
                                             {a.gain !== null && (
-                                                <span className={`px-1.5 py-0.5 rounded ${a.gain >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-red-500/10'} ${blur}`}>
+                                                <span className={`px-1.5 py-0.5 rounded ${a.gain >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-danger-500/10'} ${blur}`}>
                                                     Gain {a.gain > 0 ? '+' : ''}{fmt(a.gain)}
                                                 </span>
                                             )}
                                         </div>
                                     ) : (
                                         <div className="mt-1.5 pl-[18px] text-tiny font-mono">
-                                            <span className={`px-1.5 py-0.5 rounded ${a.variation >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-red-500/10'} ${blur}`}>
+                                            <span className={`px-1.5 py-0.5 rounded ${a.variation >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-danger-500/10'} ${blur}`}>
                                                 {a.variation > 0 ? '+' : ''}{fmt(a.variation)} ce mois
                                             </span>
                                         </div>
@@ -341,12 +341,12 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                             {(point.Expenses || 0) > 0 && (
                                 <div className="flex justify-between text-xs bg-white/[0.03] rounded-lg px-2.5 py-1.5">
                                     <span className="text-ink-400">Dépenses</span>
-                                    <span className={`font-mono text-red-400 ${blur}`}>-{fmt(point.Expenses || 0)}</span>
+                                    <span className={`font-mono text-danger-400 ${blur}`}>-{fmt(point.Expenses || 0)}</span>
                                 </div>
                             )}
                             <div className="flex justify-between text-xs font-bold bg-white/[0.05] rounded-lg px-2.5 py-1.5">
                                 <span className="text-ink-200">Variation nette (mois)</span>
-                                <span className={`font-mono ${(point.diffNW || 0) >= 0 ? 'text-green-400' : 'text-red-400'} ${blur}`}>
+                                <span className={`font-mono ${(point.diffNW || 0) >= 0 ? 'text-green-400' : 'text-danger-400'} ${blur}`}>
                                     {(point.diffNW || 0) > 0 ? '+' : ''}{fmt(point.diffNW || 0)}
                                 </span>
                             </div>
@@ -468,7 +468,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                             <li key={d.monthIndex} className="bg-white/[0.03] rounded-lg p-2.5">
                                                 <div className="flex items-center justify-between gap-2 mb-1">
                                                     <span className="text-xs font-bold text-white">{d.dateLabel || d.year}</span>
-                                                    <span className={`font-mono text-xs font-bold ${d.delta >= 0 ? 'text-green-400' : 'text-red-400'} ${blur}`}>
+                                                    <span className={`font-mono text-xs font-bold ${d.delta >= 0 ? 'text-green-400' : 'text-danger-400'} ${blur}`}>
                                                         {d.delta > 0 ? '+' : ''}{fmtMoney(d.delta)}
                                                     </span>
                                                 </div>
@@ -513,7 +513,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                 </p>
                                 <div className="max-h-52 overflow-y-auto rounded-lg border border-white/10">
                                     <table className="w-full text-xs">
-                                        <thead className="sticky top-0 bg-[#0B0E14]">
+                                        <thead className="sticky top-0 bg-dark">
                                             <tr className="text-tiny uppercase tracking-wide text-ink-500">
                                                 <th className="text-left font-bold px-2.5 py-1.5">Année</th>
                                                 <th className="text-right font-bold px-2.5 py-1.5">Espace gagné</th>

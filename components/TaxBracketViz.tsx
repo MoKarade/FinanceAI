@@ -47,9 +47,9 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                 <div className="flex items-baseline justify-between">
                     <h4 className="text-xs font-bold text-white">{jurisdiction}</h4>
                     <div className="text-tiny font-mono">
-                        <span className="text-red-400">{formatCAD(breakdown.totalTax)}</span>
+                        <span className="text-danger-400">{formatCAD(breakdown.totalTax)}</span>
                         <span className="text-ink-500 mx-1">·</span>
-                        <span className="text-amber-400">{formatPercent(breakdown.effectiveRate * 100, 2)} effectif</span>
+                        <span className="text-warning-400">{formatPercent(breakdown.effectiveRate * 100, 2)} effectif</span>
                         <span className="text-ink-500 mx-1">·</span>
                         <span className="text-info-400">{formatPercent(breakdown.marginalRate * 100, 0)} marginal</span>
                     </div>
@@ -85,7 +85,7 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                         <div className="absolute -top-1 -translate-x-1/2 w-2 h-2 bg-yellow-400 rounded-full" />
                     </div>
                 </div>
-                <div className="flex justify-between text-tiny text-gray-500">
+                <div className="flex justify-between text-tiny text-ink-500">
                     <span>0 $</span>
                     <span className="text-yellow-400 font-bold">{formatCAD(annualGrossIncome)}</span>
                     <span>{formatCAD(maxIncome)}</span>
@@ -120,7 +120,7 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
     return (
         <Card title={`💰 Tranches d'imposition${label ? ` (${label})` : ''}`}>
             <div className="space-y-4">
-                <p className="text-tiny text-gray-400 leading-snug">
+                <p className="text-tiny text-ink-300 leading-snug">
                     Marqueur jaune = revenu brut annuel ({formatCAD(annualGrossIncome)}).
                     Effectif = moyen pondéré sur toutes les tranches consommées.
                     Marginal = taux appliqué au prochain dollar gagné.
@@ -130,14 +130,14 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                 <div className="grid grid-cols-2 gap-3 p-3 bg-white/5 rounded border border-white/10">
                     <div>
                         <div className="text-tiny text-ink-400 uppercase tracking-wide">Combiné effectif</div>
-                        <div className="text-base font-bold text-amber-400 font-mono">{combinedEffective.toFixed(2)}%</div>
+                        <div className="text-base font-bold text-warning-400 font-mono">{combinedEffective.toFixed(2)}%</div>
                     </div>
                     <div>
                         <div className="text-tiny text-ink-400 uppercase tracking-wide">Combiné marginal</div>
                         <div className="text-base font-bold text-info-400 font-mono">{combinedMarginal.toFixed(1)}%</div>
                     </div>
                 </div>
-                <p className="text-tiny text-gray-500 italic">
+                <p className="text-tiny text-ink-500 italic">
                     💡 Pour optimiser : préfère REER si revenu actuel &gt; revenu à la retraite ;
                     privilégie CELI sinon. Bracket creep = augmenter dans une tranche fait BONDIR le marginal.
                 </p>

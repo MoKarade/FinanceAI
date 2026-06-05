@@ -64,7 +64,7 @@ const PassphraseSection: React.FC<{ status: SyncStatus }> = ({ status }) => {
     };
 
     return (
-        <div className="p-3 rounded-card bg-emerald-500/10 border border-emerald-500/30 space-y-2">
+        <div className="p-3 rounded-card bg-success-500/10 border border-success-500/30 space-y-2">
             <div className="text-meta font-semibold text-emerald-300">🔒 Chiffrement par passphrase actif</div>
             <p className="text-tiny text-ink-300 leading-snug">
                 Tes sauvegardes Drive sont chiffrées avec ta passphrase. Pour revenir à « juste mon compte
@@ -116,7 +116,7 @@ export const GoogleDriveSyncCard: React.FC = () => {
     return (
         <Card title="☁️ Synchronisation Google Drive">
             <div className="space-y-4">
-                <p className="text-tiny text-gray-400 leading-snug">
+                <p className="text-tiny text-ink-300 leading-snug">
                     Sauvegarde tes données dans <strong>ton</strong> Google Drive (dossier privé de l'app) pour
                     les retrouver sur un autre appareil ou en navigation privée, après connexion Google.
                 </p>
@@ -124,14 +124,14 @@ export const GoogleDriveSyncCard: React.FC = () => {
                 {/* Honnêteté : par défaut pas de chiffrement applicatif ; les clés API SONT incluses (sync v2).
                     Une passphrase optionnelle (ci-dessous, une fois connecté) active le chiffrement zéro-knowledge. */}
                 {!status.passphraseActive && (
-                    <p className="text-tiny text-amber-400/90 leading-snug">
+                    <p className="text-tiny text-warning-400/90 leading-snug">
                         Sauvegarde dans <strong>ton</strong> Google Drive privé — tes données et tes clés API y sont
                         incluses pour que tu retrouves tout sur chaque appareil sans rien ressaisir.
                     </p>
                 )}
 
                 {status.conflict && (
-                    <div className="p-3 rounded-card bg-amber-500/10 border border-amber-500/30 space-y-2">
+                    <div className="p-3 rounded-card bg-warning-500/10 border border-warning-500/30 space-y-2">
                         <div className="text-meta font-semibold text-amber-300">Conflit de synchronisation</div>
                         <p className="text-tiny text-ink-300">
                             Cet appareil et Google Drive ont divergé depuis la dernière sync. Que garder ?

@@ -60,7 +60,7 @@ export const TestModePanel: React.FC = () => {
                         Tes vraies données sont sauvegardées et seront restaurées à la sortie.
                     </p>
                 ) : (
-                    <p className="text-sm text-gray-300 leading-snug">
+                    <p className="text-sm text-ink-200 leading-snug">
                         Remplit l'app avec un persona réaliste Québec/Canada 2026 pour tester les flows
                         (projection, fiscalité, dettes, retraite…) sans saisie manuelle. Tes
                         <strong> vraies données ne sont pas perdues</strong> : sauvegardées en mémoire et
@@ -69,14 +69,14 @@ export const TestModePanel: React.FC = () => {
                 )}
 
                 <label className="block">
-                    <span className="text-xs font-medium text-gray-400">
+                    <span className="text-xs font-medium text-ink-300">
                         {isTestMode ? 'Changer de persona' : 'Choisir un persona'}
                     </span>
                     <select
                         aria-label="Choisir un persona de test"
                         value={selectedId}
                         onChange={(e) => onSelectChange(e.target.value)}
-                        className="mt-1 w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="mt-1 w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 text-sm text-ink-100 focus:outline-none focus:ring-2 focus:ring-warning-500"
                     >
                         {TEST_PERSONAS.map((p) => (
                             <option key={p.id} value={p.id}>
@@ -86,7 +86,7 @@ export const TestModePanel: React.FC = () => {
                     </select>
                 </label>
 
-                <p className="text-xs text-gray-400 leading-snug">{selected.description}</p>
+                <p className="text-xs text-ink-300 leading-snug">{selected.description}</p>
 
                 <div className="flex flex-wrap gap-2 items-center">
                     {!isTestMode && (
@@ -101,7 +101,7 @@ export const TestModePanel: React.FC = () => {
                             </Button>
                         ) : (
                             <div className="flex gap-2 items-center">
-                                <span className="text-sm text-gray-300">Restaurer tes vraies données ?</span>
+                                <span className="text-sm text-ink-200">Restaurer tes vraies données ?</span>
                                 <Button variant="primary" onClick={handleDisable}>Oui</Button>
                                 <Button variant="ghost" onClick={() => setConfirmDisable(false)}>Annuler</Button>
                             </div>

@@ -29,11 +29,11 @@ export const ProjectionRequired: React.FC<ProjectionRequiredProps> = ({
 
     if (variant === 'inline') {
         return (
-            <span className="text-tiny text-amber-400 italic" role="status">
+            <span className="text-tiny text-warning-400 italic" role="status">
                 Projection requise —{' '}
                 <button
                     onClick={goToFuture}
-                    className="underline hover:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-400 rounded"
+                    className="underline hover:text-amber-300 focus:outline-none focus:ring-2 focus:ring-warning-400 rounded"
                     aria-label="Ouvrir l'onglet Future pour calculer la projection"
                 >
                     ouvrir Future
@@ -44,7 +44,7 @@ export const ProjectionRequired: React.FC<ProjectionRequiredProps> = ({
 
     return (
         <div
-            className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-6 text-center"
+            className="rounded-xl border border-warning-500/30 bg-warning-500/5 p-6 text-center"
             role="status"
             aria-live="polite"
         >
@@ -59,7 +59,7 @@ export const ProjectionRequired: React.FC<ProjectionRequiredProps> = ({
             </div>
             <button
                 onClick={goToFuture}
-                className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-meta font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className="px-4 py-2 rounded-lg bg-warning-500 hover:bg-warning-600 text-white text-meta font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-warning-400"
                 aria-label="Naviguer vers l'onglet Future"
             >
                 Ouvrir Future →

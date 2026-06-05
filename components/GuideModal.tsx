@@ -88,7 +88,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
             <div
-                className="bg-[#151922] border border-white/20 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden relative"
+                className="bg-surface border border-white/20 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden relative"
                 onClick={e => e.stopPropagation()}
             >
                 <div className="bg-gradient-to-r from-blue-900/50 to-purple-900/50 p-6 border-b border-white/10">
@@ -100,17 +100,17 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
                                 <p className="text-blue-200 text-sm mt-1">{content.desc}</p>
                             </div>
                         </div>
-                        <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl transition-colors" aria-label="Fermer le guide">✕</button>
+                        <button onClick={onClose} className="text-ink-300 hover:text-white text-2xl transition-colors" aria-label="Fermer le guide">✕</button>
                     </div>
                 </div>
 
                 <div className="p-6 space-y-6">
                     <div>
-                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3">Guide Contextuel</h3>
+                        <h3 className="text-sm font-bold text-ink-300 uppercase tracking-widest mb-3">Guide Contextuel</h3>
                         <ul className="space-y-3">
                             {content.features?.map((feat, idx) => (
-                                <li key={idx} className="flex gap-3 text-sm text-gray-300 leading-relaxed">
-                                    <span className="text-blue-500 mt-1">●</span>
+                                <li key={idx} className="flex gap-3 text-sm text-ink-200 leading-relaxed">
+                                    <span className="text-info-500 mt-1">●</span>
                                     <span>{renderBoldMarkdown(feat)}</span>
                                 </li>
                             ))}
@@ -118,11 +118,11 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
                     </div>
 
                     {content.tip && (
-                        <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-xl p-4 flex gap-4">
+                        <div className="bg-emerald-900/20 border border-success-500/30 rounded-xl p-4 flex gap-4">
                             <span className="text-2xl">💡</span>
                             <div>
-                                <h4 className="text-emerald-400 font-bold text-sm mb-1">Astuce de Pro</h4>
-                                <p className="text-xs text-gray-300 leading-relaxed">{content.tip}</p>
+                                <h4 className="text-success-400 font-bold text-sm mb-1">Astuce de Pro</h4>
+                                <p className="text-xs text-ink-200 leading-relaxed">{content.tip}</p>
                             </div>
                         </div>
                     )}

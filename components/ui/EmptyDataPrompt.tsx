@@ -36,7 +36,7 @@ export const EmptyDataPrompt: React.FC<EmptyDataPromptProps> = ({
             <button
                 type="button"
                 onClick={() => navigateWithFocus(Tab.SETTINGS, 'profile-user1-card')}
-                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-card border border-amber-500/30 bg-amber-500/10 text-amber-300 text-meta hover:bg-amber-500/20 focus-ring transition-colors ${className}`}
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-card border border-warning-500/30 bg-warning-500/10 text-amber-300 text-meta hover:bg-warning-500/20 focus-ring transition-colors ${className}`}
             >
                 <span aria-hidden="true">{icon}</span>
                 <span className="font-medium">{title}</span>
@@ -46,7 +46,7 @@ export const EmptyDataPrompt: React.FC<EmptyDataPromptProps> = ({
     }
 
     return (
-        <div className={`rounded-card border border-amber-500/20 bg-amber-500/5 p-5 ${className}`}>
+        <div className={`rounded-card border border-warning-500/20 bg-warning-500/5 p-5 ${className}`}>
             <div className="flex items-start gap-3">
                 <span className="text-2xl shrink-0" aria-hidden="true">{icon}</span>
                 <div className="flex-1 min-w-0">

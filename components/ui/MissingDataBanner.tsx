@@ -130,8 +130,8 @@ interface MissingDataBannerProps {
 
 const VARIANT_STYLES: Record<NonNullable<MissingDataBannerProps['variant']>, string> = {
     info: 'bg-info-500/10 border-info-500/30 text-info-300',
-    warning: 'bg-amber-500/10 border-amber-500/30 text-amber-300',
-    danger: 'bg-red-500/10 border-red-500/30 text-red-300',
+    warning: 'bg-warning-500/10 border-warning-500/30 text-amber-300',
+    danger: 'bg-danger-500/10 border-danger-500/30 text-red-300',
 };
 
 export const MissingDataBanner: React.FC<MissingDataBannerProps> = ({
@@ -219,7 +219,7 @@ export const MissingDataChecklist: React.FC<{ className?: string }> = ({ classNa
             </div>
             <div className="w-full h-2 bg-black/40 rounded-full overflow-hidden mb-4 border border-white/5">
                 <div
-                    className={`h-full rounded-full transition-all duration-700 ${completedPct === 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-amber-400 to-emerald-400'}`}
+                    className={`h-full rounded-full transition-all duration-700 ${completedPct === 100 ? 'bg-success-500' : 'bg-gradient-to-r from-warning-400 to-success-400'}`}
                     style={{ width: `${completedPct}%` }}
                     aria-hidden="true"
                 />

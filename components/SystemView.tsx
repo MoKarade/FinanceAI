@@ -13,7 +13,7 @@ interface SystemViewProps {
 type LogLine = { text: string; level: 'info' | 'warn' | 'err' };
 
 const logLevelClass: Record<LogLine['level'], string> = {
-    err: 'text-red-400',
+    err: 'text-danger-400',
     warn: 'text-yellow-400',
     info: 'text-green-400/80',
 };
@@ -138,10 +138,10 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
             <div className="flex justify-between items-end">
                 <div>
                     <h2 className="text-3xl font-bold text-white tracking-tight">Système & Logique Interne</h2>
-                    <p className="text-gray-400 text-sm">Documentation de l'architecture des données.</p>
+                    <p className="text-ink-300 text-sm">Documentation de l'architecture des données.</p>
                 </div>
                 <div className="text-right">
-                    <div className="text-xs text-blue-400 font-bold bg-blue-900/20 px-3 py-1 rounded-full border border-blue-500/30">
+                    <div className="text-xs text-info-400 font-bold bg-blue-900/20 px-3 py-1 rounded-full border border-info-500/30">
                         ● Local First & Sync
                     </div>
                 </div>
@@ -157,11 +157,11 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
 
                 <div className="lg:col-span-2 space-y-6">
                     <Card title="📚 La Toile d'Araignée (Interconnexions)">
-                        <div className="space-y-4 text-sm text-gray-300 leading-relaxed">
+                        <div className="space-y-4 text-sm text-ink-200 leading-relaxed">
                             <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                                <h4 className="font-bold text-white mb-2 text-lg text-blue-400">1. Le Moteur "Futur" (Départ 2026)</h4>
+                                <h4 className="font-bold text-white mb-2 text-lg text-info-400">1. Le Moteur "Futur" (Départ 2026)</h4>
                                 <p>L'algorithme démarre en janvier 2026 et applique chaque mois les règles suivantes :</p>
-                                <ul className="list-disc pl-5 mt-1 space-y-1 text-gray-400">
+                                <ul className="list-disc pl-5 mt-1 space-y-1 text-ink-300">
                                     <li><strong>Dettes :</strong> Déduit le paiement (Min + Extra) jusqu'à extinction, augmentant le cashflow dispo.</li>
                                     <li><strong>Immobilier :</strong> À la date d'achat, le budget "Loyer" est annulé. L'Hypothèque, les taxes et l'entretien s'activent. La valeur de la maison croît jusqu'à son plafond maximum.</li>
                                     <li><strong>Enfant :</strong> Un coût mensuel s'applique jusqu'à 18 ans, suivi d'un retrait massif (30k$) pour les études supérieures simulées.</li>
@@ -169,28 +169,28 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                             </div>
 
                             <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                                <h4 className="font-bold text-white mb-2 text-lg text-red-400">2. L'Axe Fédéral/Provincial (Impôts)</h4>
+                                <h4 className="font-bold text-white mb-2 text-lg text-danger-400">2. L'Axe Fédéral/Provincial (Impôts)</h4>
                                 <p>Pour éviter les erreurs de saisie :</p>
-                                <ul className="list-disc pl-5 mt-1 space-y-1 text-gray-400">
+                                <ul className="list-disc pl-5 mt-1 space-y-1 text-ink-300">
                                     <li>L'onglet "Impôts & Docs" est <strong>verrouillé</strong>. Il lit le Salaire Net défini dans "Config" et extrapole le Brut via un ratio (x1.35).</li>
                                     <li>L'IA lit vos T4 pour déduire vos impôts payés. Tout surplus génère un "Remboursement", toute carence augmente la dette fiscale à payer en avril dans le Futur.</li>
                                 </ul>
                             </div>
 
                             <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                                <h4 className="font-bold text-white mb-2 text-lg text-emerald-400">3. Persistance Global State</h4>
+                                <h4 className="font-bold text-white mb-2 text-lg text-success-400">3. Persistance Global State</h4>
                                 <p>Aucun rafraîchissement ne vous fera perdre vos données.</p>
-                                <p className="text-gray-400 mt-1">Le composant racine (App.tsx) agit comme un Singleton. Chaque manipulation de slider ou d'objectif déclenche un <code>localStorage.setItem()</code>. Le passage d'un onglet à l'autre ne démonte que l'UI, pas la Data.</p>
+                                <p className="text-ink-300 mt-1">Le composant racine (App.tsx) agit comme un Singleton. Chaque manipulation de slider ou d'objectif déclenche un <code>localStorage.setItem()</code>. Le passage d'un onglet à l'autre ne démonte que l'UI, pas la Data.</p>
                             </div>
                         </div>
                     </Card>
 
                     <Card title="Diagnostic Système" className="bg-[#0c0c0c] border border-white/10 font-mono">
                         <div className="flex justify-between items-center mb-2 px-2">
-                            <span className="text-tiny text-gray-500 uppercase tracking-widest">État runtime</span>
+                            <span className="text-tiny text-ink-500 uppercase tracking-widest">État runtime</span>
                             <button
                                 onClick={() => setRefreshKey(k => k + 1)}
-                                className="text-tiny text-emerald-400 hover:text-emerald-300 px-2 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors"
+                                className="text-tiny text-success-400 hover:text-emerald-300 px-2 py-0.5 rounded bg-success-500/10 hover:bg-success-500/20 transition-colors"
                                 aria-label="Rafraîchir le diagnostic"
                             >
                                 ⟳ Refresh
@@ -213,32 +213,32 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                 <div className="lg:col-span-1 space-y-6">
                     <div className="grid grid-cols-2 gap-4">
                         <Card className="!p-4 bg-white/5 border-white/10">
-                            <div className="text-tiny text-gray-500 uppercase font-bold">Base de Données</div>
+                            <div className="text-tiny text-ink-500 uppercase font-bold">Base de Données</div>
                             <div className="text-xl font-bold text-white">{dbSize.toFixed(0)} KB</div>
                         </Card>
                         <Card className="!p-4 bg-white/5 border-white/10">
-                            <div className="text-tiny text-gray-500 uppercase font-bold">Objectifs</div>
+                            <div className="text-tiny text-ink-500 uppercase font-bold">Objectifs</div>
                             <div className="text-xl font-bold text-white">{state.financialGoals.length}</div>
                         </Card>
                     </div>
 
                     <Card title="Version & build">
                         <div className="space-y-3 text-sm">
-                            <p className="text-tiny text-gray-500 leading-snug">
+                            <p className="text-tiny text-ink-500 leading-snug">
                                 Infos injectées automatiquement à chaque build/déploiement. Utile
                                 pour vérifier que tu utilises bien la dernière version (et pour le support).
                             </p>
                             <div className="flex items-center justify-between py-2 border-b border-white/5">
-                                <span className="text-gray-400">Version</span>
+                                <span className="text-ink-300">Version</span>
                                 <span className="font-mono font-bold text-white">v{BUILD_INFO.version}</span>
                             </div>
                             <div className="flex items-center justify-between py-2 border-b border-white/5">
-                                <span className="text-gray-400">Commit</span>
-                                <span className="font-mono text-emerald-400">{BUILD_INFO.sha}</span>
+                                <span className="text-ink-300">Commit</span>
+                                <span className="font-mono text-success-400">{BUILD_INFO.sha}</span>
                             </div>
                             <div className="flex items-center justify-between py-2">
-                                <span className="text-gray-400">Build</span>
-                                <span className="font-mono text-gray-300">{BUILD_INFO.builtAt}</span>
+                                <span className="text-ink-300">Build</span>
+                                <span className="font-mono text-ink-200">{BUILD_INFO.builtAt}</span>
                             </div>
                         </div>
                     </Card>

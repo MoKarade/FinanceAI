@@ -138,7 +138,7 @@ export const Layout: React.FC<LayoutProps> = ({
   };
 
   return (
-    <div className={`min-h-screen flex flex-col md:flex-row text-gray-200 font-sans ${isPrivacyMode ? 'privacy-active' : ''} ${isTestMode ? 'test-mode-active' : ''}`}>
+    <div className={`min-h-screen flex flex-col md:flex-row text-ink-100 font-sans ${isPrivacyMode ? 'privacy-active' : ''} ${isTestMode ? 'test-mode-active' : ''}`}>
       {/* A11y (Audit Phase 5.1): skip link — invisible jusqu'à focus clavier. */}
       <a
         href="#main"
@@ -152,7 +152,7 @@ export const Layout: React.FC<LayoutProps> = ({
         <div
           role="status"
           aria-label="Mode test activé"
-          className="fixed top-0 left-0 right-0 z-[150] bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 text-white text-center py-2 px-4 font-bold text-sm shadow-lg flex items-center justify-center gap-3"
+          className="fixed top-0 left-0 right-0 z-[150] bg-gradient-to-r from-warning-600 via-orange-600 to-warning-600 text-white text-center py-2 px-4 font-bold text-sm shadow-lg flex items-center justify-center gap-3"
         >
           <span aria-hidden="true">🧪</span>
           <span className="font-bold">MODE TEST</span>
@@ -209,7 +209,7 @@ export const Layout: React.FC<LayoutProps> = ({
           expand au survol/focus (w-72). Le main a `md:ml-16` pour préserver la
           place du rail collapsé ; l'expansion overlay le contenu (pas de shift). */}
       <aside
-        className={`hidden md:flex fixed top-0 left-0 bottom-0 z-40 flex-col bg-[#0B0E14] border-r border-white/10 overflow-hidden shadow-2xl transition-[width] duration-200 motion-reduce:transition-none ${
+        className={`hidden md:flex fixed top-0 left-0 bottom-0 z-40 flex-col bg-dark border-r border-white/10 overflow-hidden shadow-2xl transition-[width] duration-200 motion-reduce:transition-none ${
           isSidebarOpen ? 'w-72' : 'w-16'
         }`}
         onMouseEnter={() => setSidebarHovered(true)}
@@ -229,7 +229,7 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
             <div className={`min-w-0 whitespace-nowrap transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
               <p className="text-lg font-bold text-white tracking-tight">FinanceAI</p>
-              <div className="text-tiny text-gray-500 font-mono" title={`Build ${__BUILD_DATE__}`}>
+              <div className="text-tiny text-ink-500 font-mono" title={`Build ${__BUILD_DATE__}`}>
                 v{__APP_VERSION__} • {__GIT_SHA__}
               </div>
             </div>
@@ -241,7 +241,7 @@ export const Layout: React.FC<LayoutProps> = ({
             aria-pressed={isPrivacyMode}
             title="Mode Discret"
             className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-colors ${
-              isPrivacyMode ? 'bg-white/10 text-white' : 'text-gray-500 hover:bg-white/5 hover:text-white'
+              isPrivacyMode ? 'bg-white/10 text-white' : 'text-ink-500 hover:bg-white/5 hover:text-white'
             }`}
           >
             <span aria-hidden="true" className="text-base shrink-0">{isPrivacyMode ? '🙈' : '👁️'}</span>
@@ -361,9 +361,9 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       </aside>
 
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0B0E14]/95 backdrop-blur-xl border-b border-white/10 z-50 flex items-center justify-between px-4 shadow-xl">
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-dark/95 backdrop-blur-xl border-b border-white/10 z-50 flex items-center justify-between px-4 shadow-xl">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center text-white font-bold shadow-lg shadow-primary/20" aria-hidden="true">Fi</div>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-success-400 flex items-center justify-center text-white font-bold shadow-lg shadow-primary/20" aria-hidden="true">Fi</div>
           <p className="text-lg font-bold text-white tracking-tight">FinanceAI</p>
         </div>
         {/* Phase B.4 — info ℹ️ et Synchroniser 🔄 retirées sur mobile aussi. */}

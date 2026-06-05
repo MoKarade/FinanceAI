@@ -24,10 +24,10 @@ interface DualKPIStatProps {
 
 const VARIANT_STYLES: Record<Variant, { border: string; bg: string; label: string }> = {
     primary: { border: 'border-l-primary', bg: 'bg-primary/5', label: 'text-primary' },
-    success: { border: 'border-l-emerald-500', bg: 'bg-emerald-500/5', label: 'text-emerald-400' },
+    success: { border: 'border-l-emerald-500', bg: 'bg-success-500/5', label: 'text-success-400' },
     info: { border: 'border-l-info-500', bg: 'bg-info-500/5', label: 'text-info-400' },
-    warning: { border: 'border-l-amber-500', bg: 'bg-amber-500/5', label: 'text-amber-400' },
-    danger: { border: 'border-l-red-500', bg: 'bg-red-500/5', label: 'text-red-400' },
+    warning: { border: 'border-l-amber-500', bg: 'bg-warning-500/5', label: 'text-warning-400' },
+    danger: { border: 'border-l-red-500', bg: 'bg-danger-500/5', label: 'text-danger-400' },
 };
 
 export const DualKPIStat: React.FC<DualKPIStatProps> = ({
@@ -47,7 +47,7 @@ export const DualKPIStat: React.FC<DualKPIStatProps> = ({
     //   - Dépenses (invertGoodBad=true) : réel > prévu = rouge (dépassement)
     //   - Reste (default) : réel > prévu = vert (mieux que prévu)
     const isGood = invertGoodBad ? ecart <= 0 : ecart >= 0;
-    const ecartColor = ecart === 0 ? 'text-ink-400' : isGood ? 'text-emerald-400' : 'text-red-400';
+    const ecartColor = ecart === 0 ? 'text-ink-400' : isGood ? 'text-success-400' : 'text-danger-400';
 
     return (
         <div className={`rounded-card border border-white/5 border-l-4 ${styles.border} ${styles.bg} backdrop-blur-sm p-4 flex flex-col gap-2 hover:bg-white/[0.04] transition-colors`}>

@@ -159,7 +159,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
             <div className="space-y-4">
                 {/* Step 1 : Symbol */}
                 <div>
-                    <label className="block text-xs text-gray-400 mb-1 font-bold uppercase">1. Symbole / Ticker</label>
+                    <label className="block text-xs text-ink-300 mb-1 font-bold uppercase">1. Symbole / Ticker</label>
                     <div className="flex gap-2">
                         <input
                             type="text"
@@ -201,7 +201,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                     </div>
                     {manualMode && (
                         <div className="mt-2">
-                            <label className="block text-xs text-gray-400 mb-1 font-bold uppercase">Prix actuel par action (manuel)</label>
+                            <label className="block text-xs text-ink-300 mb-1 font-bold uppercase">Prix actuel par action (manuel)</label>
                             <input
                                 type="number"
                                 value={manualPrice}
@@ -211,11 +211,11 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                 placeholder="ex: 152.30"
                                 className="w-full bg-dark border border-white/10 rounded px-3 py-2 text-white focus:border-primary outline-none font-mono"
                             />
-                            <p className="text-tiny text-gray-500 mt-1">Sans Finnhub : entre le prix actuel toi-même (modifiable plus tard).</p>
+                            <p className="text-tiny text-ink-500 mt-1">Sans Finnhub : entre le prix actuel toi-même (modifiable plus tard).</p>
                         </div>
                     )}
                     {validatedSymbol && currentPrice !== null && (
-                        <div className="mt-2 p-2 bg-emerald-500/10 border border-emerald-500/30 rounded text-meta text-emerald-300 flex justify-between">
+                        <div className="mt-2 p-2 bg-success-500/10 border border-success-500/30 rounded text-meta text-emerald-300 flex justify-between">
                             <span>✓ Validé : <strong className="font-mono">{validatedSymbol}</strong></span>
                             <span className="font-mono">Prix actuel : {formatCAD(currentPrice)}</span>
                         </div>
@@ -227,7 +227,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                     <>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs text-gray-400 mb-1 font-bold uppercase">2. Date d'achat</label>
+                                <label className="block text-xs text-ink-300 mb-1 font-bold uppercase">2. Date d'achat</label>
                                 <input
                                     type="date"
                                     value={dateBought}
@@ -237,7 +237,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs text-gray-400 mb-1 font-bold uppercase">3. Quantité</label>
+                                <label className="block text-xs text-ink-300 mb-1 font-bold uppercase">3. Quantité</label>
                                 <input
                                     type="number"
                                     value={quantity}
@@ -250,7 +250,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                             </div>
                         </div>
                         <div>
-                            <label className="block text-xs text-gray-400 mb-1 font-bold uppercase flex items-center justify-between">
+                            <label className="block text-xs text-ink-300 mb-1 font-bold uppercase flex items-center justify-between">
                                 4. Prix d'achat par action
                                 {validatedSymbol && (
                                     <button
@@ -272,11 +272,11 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                 placeholder="150.00"
                                 className="w-full bg-dark border border-white/10 rounded px-3 py-2 text-white focus:border-primary outline-none font-mono"
                             />
-                            <p className="text-tiny text-gray-500 mt-1">Override possible si le prix suggéré ne correspond pas à ta transaction réelle.</p>
+                            <p className="text-tiny text-ink-500 mt-1">Override possible si le prix suggéré ne correspond pas à ta transaction réelle.</p>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs text-gray-400 mb-1 font-bold uppercase">5. Compte fiscal</label>
+                                <label className="block text-xs text-ink-300 mb-1 font-bold uppercase">5. Compte fiscal</label>
                                 <select
                                     value={accountType}
                                     onChange={(e) => setAccountType(e.target.value as Asset['accountType'])}
@@ -290,7 +290,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs text-gray-400 mb-1 font-bold uppercase">Devise</label>
+                                <label className="block text-xs text-ink-300 mb-1 font-bold uppercase">Devise</label>
                                 <select
                                     value={currency}
                                     onChange={(e) => setCurrency(e.target.value as 'USD' | 'CAD' | 'EUR')}
@@ -322,7 +322,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                 )}
 
                 {error && (
-                    <div className="p-2 bg-red-500/10 border border-red-500/30 rounded text-meta text-red-300">
+                    <div className="p-2 bg-danger-500/10 border border-danger-500/30 rounded text-meta text-red-300">
                         {error}
                     </div>
                 )}

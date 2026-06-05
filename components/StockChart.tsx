@@ -69,14 +69,14 @@ export const StockChart: React.FC<StockChartProps> = ({ data, visibleKeys, isPri
                     <button
                         type="button"
                         onClick={() => setMode('PRICE')}
-                        className={`px-3 py-1 text-tiny font-bold rounded transition-colors ${mode === 'PRICE' ? 'bg-blue-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}
+                        className={`px-3 py-1 text-tiny font-bold rounded transition-colors ${mode === 'PRICE' ? 'bg-info-600 text-white shadow' : 'text-ink-300 hover:text-white'}`}
                     >
                         Prix ($)
                     </button>
                     <button
                         type="button"
                         onClick={() => setMode('PERFORMANCE')}
-                        className={`px-3 py-1 text-tiny font-bold rounded transition-colors ${mode === 'PERFORMANCE' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}
+                        className={`px-3 py-1 text-tiny font-bold rounded transition-colors ${mode === 'PERFORMANCE' ? 'bg-purple-600 text-white shadow' : 'text-ink-300 hover:text-white'}`}
                     >
                         Base 100 (%)
                     </button>

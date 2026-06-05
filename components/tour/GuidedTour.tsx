@@ -183,7 +183,7 @@ export const GuidedTour: React.FC = () => {
         {/* Barre de progression */}
         <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mb-4" aria-hidden="true">
           <div
-            className="h-full bg-gradient-to-r from-primary to-emerald-400 transition-all duration-300"
+            className="h-full bg-gradient-to-r from-primary to-success-400 transition-all duration-300"
             style={{ width: `${((idx + 1) / total) * 100}%` }}
           />
         </div>

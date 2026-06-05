@@ -72,7 +72,7 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
         .filter((a) => a.value !== 0);
 
     return (
-        <div className="relative bg-gradient-to-b from-[#11161f]/95 to-[#0B0E14]/95 backdrop-blur-md border border-white/15 ring-1 ring-white/5 p-3.5 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.85)] w-72 max-h-[480px] overflow-y-auto z-50 animate-fade-in">
+        <div className="relative bg-gradient-to-b from-[#11161f]/95 to-dark/95 backdrop-blur-md border border-white/15 ring-1 ring-white/5 p-3.5 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.85)] w-72 max-h-[480px] overflow-y-auto z-50 animate-fade-in">
             <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-primary via-purple-500 to-pink-500 opacity-80" />
 
             <div className="flex justify-between items-center gap-2 mb-2.5">
@@ -84,7 +84,7 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
             <div className="rounded-xl bg-gradient-to-r from-primary/20 to-purple-500/15 border border-white/15 p-2.5 mb-2.5">
                 <div className="flex items-center justify-between gap-2">
                     <span className="text-tiny uppercase tracking-widest text-ink-300 font-bold">Valeur nette</span>
-                    <span className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded ${diffNW >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-red-500/15'}`}>
+                    <span className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded ${diffNW >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-danger-500/15'}`}>
                         Variation {diffNW > 0 ? '+' : ''}{fmt(diffNW)}$
                     </span>
                 </div>
@@ -98,7 +98,7 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
                         <span className={`flex-1 text-center px-1.5 py-1 rounded ${totalFlow >= 0 ? 'text-sky-300 bg-sky-500/10' : 'text-orange-300 bg-orange-500/10'} privacy-blur`} title="Argent que tu ajoutes toi-même (dépôts − retraits)">
                             Dépôts {totalFlow > 0 ? '+' : ''}{fmt(totalFlow)}$
                         </span>
-                        <span className={`flex-1 text-center px-1.5 py-1 rounded ${totalGain >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-red-500/10'} privacy-blur`} title="Ce que tes placements rapportent (rendement du marché)">
+                        <span className={`flex-1 text-center px-1.5 py-1 rounded ${totalGain >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-danger-500/10'} privacy-blur`} title="Ce que tes placements rapportent (rendement du marché)">
                             Rendement {totalGain > 0 ? '+' : ''}{fmt(totalGain)}$
                         </span>
                     </div>
@@ -108,11 +108,11 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
 
             {/* Revenus / dépenses du mois */}
             <div className="space-y-1 mb-2.5 text-xs">
-                {(data.IncomeMarc || 0) > 0 && <div className="flex justify-between"><span className="text-gray-400">Paye {userName1 || 'Util. 1'}</span><span className="font-mono text-green-400 privacy-blur">+{fmt(data.IncomeMarc || 0)}$</span></div>}
-                {(data.IncomeAnna || 0) > 0 && <div className="flex justify-between"><span className="text-gray-400">Paye {userName2 || 'Util. 2'}</span><span className="font-mono text-green-400 privacy-blur">+{fmt(data.IncomeAnna || 0)}$</span></div>}
-                {(data.IncomeRetirement || 0) > 0 && <div className="flex justify-between"><span className="text-gray-400">Rentes / retraite</span><span className="font-mono text-green-400 privacy-blur">+{fmt(data.IncomeRetirement || 0)}$</span></div>}
-                {portfolioOutflow > 0 && <div className="flex justify-between"><span className="text-gray-400">Décaissement portfolio</span><span className="font-mono text-amber-400 privacy-blur">+{fmt(portfolioOutflow)}$</span></div>}
-                {(data.Expenses || 0) > 0 && <div className="flex justify-between"><span className="text-gray-400">Dépenses de vie</span><span className="font-mono text-red-400 privacy-blur">-{fmt(data.Expenses || 0)}$</span></div>}
+                {(data.IncomeMarc || 0) > 0 && <div className="flex justify-between"><span className="text-ink-300">Paye {userName1 || 'Util. 1'}</span><span className="font-mono text-green-400 privacy-blur">+{fmt(data.IncomeMarc || 0)}$</span></div>}
+                {(data.IncomeAnna || 0) > 0 && <div className="flex justify-between"><span className="text-ink-300">Paye {userName2 || 'Util. 2'}</span><span className="font-mono text-green-400 privacy-blur">+{fmt(data.IncomeAnna || 0)}$</span></div>}
+                {(data.IncomeRetirement || 0) > 0 && <div className="flex justify-between"><span className="text-ink-300">Rentes / retraite</span><span className="font-mono text-green-400 privacy-blur">+{fmt(data.IncomeRetirement || 0)}$</span></div>}
+                {portfolioOutflow > 0 && <div className="flex justify-between"><span className="text-ink-300">Décaissement portfolio</span><span className="font-mono text-warning-400 privacy-blur">+{fmt(portfolioOutflow)}$</span></div>}
+                {(data.Expenses || 0) > 0 && <div className="flex justify-between"><span className="text-ink-300">Dépenses de vie</span><span className="font-mono text-danger-400 privacy-blur">-{fmt(data.Expenses || 0)}$</span></div>}
             </div>
 
             {/* Impôts du point (demande Marc) : (1) régularisation réglée en avril
@@ -125,15 +125,15 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
                     <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1">Impôts</div>
                     {Math.abs(data.FluxImpots || 0) > 0.5 && (
                         <div className="flex justify-between" title="Solde réglé en avril : impôt réel de l'année moins les retenues déjà prélevées (positif = reste à payer, négatif = remboursement).">
-                            <span className="text-gray-400">{(data.FluxImpots || 0) > 0 ? "Solde d'impôt (avril)" : "Remboursement d'impôt"}</span>
-                            <span className={`font-mono privacy-blur ${(data.FluxImpots || 0) > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                            <span className="text-ink-300">{(data.FluxImpots || 0) > 0 ? "Solde d'impôt (avril)" : "Remboursement d'impôt"}</span>
+                            <span className={`font-mono privacy-blur ${(data.FluxImpots || 0) > 0 ? 'text-danger-400' : 'text-green-400'}`}>
                                 {(data.FluxImpots || 0) > 0 ? '-' : '+'}{fmt(Math.abs(data.FluxImpots || 0))}$
                             </span>
                         </div>
                     )}
                     {Math.abs(data.ImpotLatent || 0) > 0.5 && (
                         <div className="flex justify-between" title="Impôt « dormant » : ce que tu devrais plus tard sur ton REER et tes gains non réalisés si tu liquidais tout aujourd'hui. Ce n'est PAS un décaissement de ce mois.">
-                            <span className="text-gray-400">💤 Impôt dormant</span>
+                            <span className="text-ink-300">💤 Impôt dormant</span>
                             <span className="font-mono text-amber-300/90 privacy-blur">{fmt(Math.abs(data.ImpotLatent || 0))}$</span>
                         </div>
                     )}
@@ -146,14 +146,14 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
                     <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1">Par compte (valeur · rendement)</div>
                     {accounts.map((a) => (
                         <div key={a.key} className="flex items-center justify-between gap-2">
-                            <span className="flex items-center gap-1.5 text-gray-300 min-w-0">
+                            <span className="flex items-center gap-1.5 text-ink-200 min-w-0">
                                 <span className="w-2 h-2 rounded-full shrink-0" style={{ background: a.color }} />
                                 <span className="truncate">{a.label}</span>
                             </span>
                             <span className="flex items-center gap-1.5 shrink-0 font-mono">
                                 <span className="privacy-blur text-white">{fmt(a.value)}$</span>
                                 {Math.abs(a.gain) > 0.5 && (
-                                    <span className={`text-[10px] ${a.gain >= 0 ? 'text-green-400' : 'text-red-400'}`}>{a.gain > 0 ? '+' : ''}{fmt(a.gain)}</span>
+                                    <span className={`text-[10px] ${a.gain >= 0 ? 'text-green-400' : 'text-danger-400'}`}>{a.gain > 0 ? '+' : ''}{fmt(a.gain)}</span>
                                 )}
                             </span>
                         </div>

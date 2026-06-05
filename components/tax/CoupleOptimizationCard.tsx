@@ -19,8 +19,8 @@ import { formatCAD } from '../../utils/format';
  */
 
 const CONFIDENCE_COLORS: Record<CoupleOptimizationStrategy['confidence'], string> = {
-    high: 'text-emerald-300 border-emerald-500/30 bg-emerald-500/5',
-    medium: 'text-amber-300 border-amber-500/30 bg-amber-500/5',
+    high: 'text-emerald-300 border-success-500/30 bg-success-500/5',
+    medium: 'text-amber-300 border-warning-500/30 bg-warning-500/5',
     low: 'text-ink-300 border-white/10 bg-white/5',
 };
 
@@ -77,7 +77,7 @@ export const CoupleOptimizationCard: React.FC = () => {
     return (
         <Card title="✨ Optimisation fiscale couple (IA)" className="bg-gradient-to-br from-purple-900/10 to-pink-900/10 border-purple-500/20">
             <div className="space-y-4">
-                <p className="text-tiny text-gray-400 leading-snug">
+                <p className="text-tiny text-ink-300 leading-snug">
                     Génère 3 stratégies concrètes d'optimisation fiscale croisée :
                     fractionnement REER, allocation CELI, pension splitting, transfert de crédits.
                     Calculé pour <strong className="text-white">{u1.name}</strong> et <strong className="text-white">{u2.name}</strong>.
@@ -86,7 +86,7 @@ export const CoupleOptimizationCard: React.FC = () => {
                 {strategies.length === 0 && (
                     <div className="text-center py-4">
                         {!apiKey ? (
-                            <p className="text-amber-400 text-sm">
+                            <p className="text-warning-400 text-sm">
                                 ℹ️ Configure ta clé Anthropic dans Configuration pour activer l'IA.
                             </p>
                         ) : (
@@ -100,7 +100,7 @@ export const CoupleOptimizationCard: React.FC = () => {
                             </button>
                         )}
                         {hasError && (
-                            <p className="text-red-400 text-tiny mt-2">
+                            <p className="text-danger-400 text-tiny mt-2">
                                 Erreur lors de la génération. Vérifie ta clé Anthropic.
                             </p>
                         )}
@@ -124,7 +124,7 @@ export const CoupleOptimizationCard: React.FC = () => {
                                     </div>
                                     <p className="text-tiny text-ink-200 leading-relaxed">{s.description}</p>
                                     {s.estimated_savings_cad !== undefined && s.estimated_savings_cad > 0 && (
-                                        <div className="mt-2 inline-block px-2 py-1 bg-emerald-500/15 border border-emerald-500/30 rounded text-tiny font-mono font-bold text-emerald-300">
+                                        <div className="mt-2 inline-block px-2 py-1 bg-success-500/15 border border-success-500/30 rounded text-tiny font-mono font-bold text-emerald-300">
                                             Économie estimée : {formatCAD(s.estimated_savings_cad)}/an
                                         </div>
                                     )}

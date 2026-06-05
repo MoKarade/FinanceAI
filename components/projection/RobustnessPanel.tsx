@@ -21,9 +21,9 @@ type Status = 'idle' | 'running' | 'done' | 'error';
 // Couleur de la barre selon le taux de succès (sémantique, pas décorative).
 function successColor(rate: number): string {
     if (rate >= 90) return 'bg-green-400';
-    if (rate >= 75) return 'bg-emerald-400';
-    if (rate >= 50) return 'bg-amber-400';
-    return 'bg-red-400';
+    if (rate >= 75) return 'bg-success-400';
+    if (rate >= 50) return 'bg-warning-400';
+    return 'bg-danger-400';
 }
 
 export const RobustnessPanel: React.FC<Props> = ({ params, iterationsPerStrategy = 1000 }) => {

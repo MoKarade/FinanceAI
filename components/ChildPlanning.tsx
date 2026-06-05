@@ -277,7 +277,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                 <button
                     type="button"
                     onClick={handleAddChild}
-                    className="px-3 py-1.5 rounded-pill text-meta font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors focus-ring"
+                    className="px-3 py-1.5 rounded-pill text-meta font-bold bg-success-500/10 text-emerald-300 border border-success-500/30 hover:bg-success-500/20 transition-colors focus-ring"
                 >
                     + Ajouter
                 </button>
@@ -289,15 +289,15 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                     <Card title="📅 Profil & Date Prévue">
                         <div className="space-y-4">
                             <div>
-                                <label htmlFor="child-name-input" className="text-xs text-gray-400 block mb-1">Prénom ou Identifiant</label>
+                                <label htmlFor="child-name-input" className="text-xs text-ink-300 block mb-1">Prénom ou Identifiant</label>
                                 <input id="child-name-input" type="text" value={goal.name || ''} onChange={e => update('name', e.target.value)} placeholder="Ex: Léo" className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white outline-none focus:border-primary" />
                             </div>
                             <div>
-                                <label className="text-xs text-gray-400 block mb-1">Date de naissance (ou prévue)</label>
+                                <label className="text-xs text-ink-300 block mb-1">Date de naissance (ou prévue)</label>
                                 <input type="date" value={goal.birthDate} onChange={e => update('birthDate', e.target.value)} className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white focus:border-primary outline-none" />
                             </div>
                         </div>
-                        <p className="text-tiny text-gray-500 mt-2">Cette date sera utilisée dans la simulation de l'onglet Futur.</p>
+                        <p className="text-tiny text-ink-500 mt-2">Cette date sera utilisée dans la simulation de l'onglet Futur.</p>
                     </Card>
 
                     <Card title="🎯 Choix de Vie">
@@ -307,11 +307,11 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 <div className="space-y-1.5">
                                     {(Object.entries(DAYCARE_INFO) as [DaycareType, typeof DAYCARE_INFO[DaycareType]][]).map(([key, info]) => (
                                         <button key={key} onClick={() => setDaycareType(key)}
-                                            className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${daycareType === key ? 'border-primary bg-primary/10 text-white' : 'border-white/5 bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+                                            className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${daycareType === key ? 'border-primary bg-primary/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
                                             <span className="text-xl">{info.icon}</span>
                                             <div className="flex-1">
                                                 <div className="text-xs font-bold">{info.label}</div>
-                                                <div className="text-tiny text-gray-500">{info.desc}</div>
+                                                <div className="text-tiny text-ink-500">{info.desc}</div>
                                             </div>
                                             <div className="text-xs font-mono font-bold text-right">{info.monthly > 0 ? `${info.monthly}$/m` : 'Gratuit'}</div>
                                         </button>
@@ -319,11 +319,11 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 </div>
                             </div>
                             <div>
-                                <div className="text-xs font-bold text-blue-400 uppercase mb-2">Type d'école (6–17 ans)</div>
+                                <div className="text-xs font-bold text-info-400 uppercase mb-2">Type d'école (6–17 ans)</div>
                                 <div className="space-y-1.5">
                                     {(Object.entries(SCHOOL_INFO) as [SchoolType, typeof SCHOOL_INFO[SchoolType]][]).map(([key, info]) => (
                                         <button key={key} onClick={() => setSchoolType(key)}
-                                            className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${schoolType === key ? 'border-blue-500 bg-blue-500/10 text-white' : 'border-white/5 bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+                                            className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${schoolType === key ? 'border-info-500 bg-info-500/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
                                             <span className="text-xl">{info.icon}</span>
                                             <div className="flex-1 text-xs font-bold">{info.label}</div>
                                             <div className="text-xs font-mono font-bold text-right text-blue-300">+{(info.yearlyExtra / 1000).toFixed(0)}k$/an</div>
@@ -336,7 +336,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 <div className="space-y-1.5">
                                     {(Object.entries(ACTIVITIES_INFO) as [ActivitiesLevel, typeof ACTIVITIES_INFO[ActivitiesLevel]][]).map(([key, info]) => (
                                         <button key={key} onClick={() => setActivitiesLevel(key)}
-                                            className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${activitiesLevel === key ? 'border-yellow-500 bg-yellow-500/10 text-white' : 'border-white/5 bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+                                            className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${activitiesLevel === key ? 'border-yellow-500 bg-yellow-500/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
                                             <span className="text-xl">{info.icon}</span>
                                             <div className="flex-1 text-xs font-bold">{info.label}</div>
                                             <div className="text-xs font-mono font-bold text-right text-yellow-300">{info.yearlyExtra > 0 ? `+${info.yearlyExtra}$/an` : 'Rien'}</div>
@@ -349,11 +349,11 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 <div className="space-y-1.5">
                                     {(Object.entries(UNI_INFO) as [UniversityType, typeof UNI_INFO[UniversityType]][]).map(([key, info]) => (
                                         <button key={key} onClick={() => setUniversityType(key)}
-                                            className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${universityType === key ? 'border-purple-500 bg-purple-500/10 text-white' : 'border-white/5 bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+                                            className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${universityType === key ? 'border-purple-500 bg-purple-500/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
                                             <span className="text-xl">{info.icon}</span>
                                             <div className="flex-1">
                                                 <div className="text-xs font-bold">{info.label}</div>
-                                                {info.years > 0 && <div className="text-tiny text-gray-500">{info.years} ans</div>}
+                                                {info.years > 0 && <div className="text-tiny text-ink-500">{info.years} ans</div>}
                                             </div>
                                             <div className="text-xs font-mono font-bold text-right text-purple-300">{info.yearlyCost > 0 ? `${(info.yearlyCost / 1000).toFixed(0)}k$/an` : 'Gratuit'}</div>
                                         </button>
@@ -365,7 +365,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 <div className="flex gap-2">
                                     {(Object.entries(CAR_INFO) as [CarGift, typeof CAR_INFO[CarGift]][]).map(([key, info]) => (
                                         <button key={key} onClick={() => setCarGift(key)}
-                                            className={`flex-1 flex flex-col items-center p-2.5 rounded-lg border text-center transition-all ${carGift === key ? 'border-orange-500 bg-orange-500/10 text-white' : 'border-white/5 bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+                                            className={`flex-1 flex flex-col items-center p-2.5 rounded-lg border text-center transition-all ${carGift === key ? 'border-orange-500 bg-orange-500/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
                                             <span className="text-xl mb-1">{info.icon}</span>
                                             <div className="text-tiny font-bold leading-tight">{info.label.split(' (')[0]}</div>
                                             {info.cost > 0 && <div className="text-tiny font-mono text-orange-300 mt-0.5">{(info.cost / 1000).toFixed(0)}k$</div>}
@@ -379,19 +379,19 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                     <Card title="💰 Allocations & Coûts de base">
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
-                                <label className="text-xs text-gray-300">Allocations (ACE + Soutien QC)</label>
+                                <label className="text-xs text-ink-200">Allocations (ACE + Soutien QC)</label>
                                 <input type="number" value={goal.governmentBenefits} onChange={e => update('governmentBenefits', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-green-400 font-bold" />
                             </div>
                             <div className="flex justify-between items-center">
-                                <label className="text-xs text-gray-300">Nourriture / mois</label>
+                                <label className="text-xs text-ink-200">Nourriture / mois</label>
                                 <input type="number" value={goal.monthlyFood} onChange={e => update('monthlyFood', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-white" />
                             </div>
                             <div className="flex justify-between items-center">
-                                <label className="text-xs text-gray-300">Vêtements / mois</label>
+                                <label className="text-xs text-ink-200">Vêtements / mois</label>
                                 <input type="number" value={goal.monthlyClothing} onChange={e => update('monthlyClothing', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-white" />
                             </div>
                             <div className="flex justify-between items-center">
-                                <label className="text-xs text-gray-300">Coûts naissance (chambre, siège, etc.)</label>
+                                <label className="text-xs text-ink-200">Coûts naissance (chambre, siège, etc.)</label>
                                 <input type="number" value={goal.initialCost} onChange={e => update('initialCost', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-sm text-white" />
                             </div>
                         </div>
@@ -401,7 +401,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                 {/* GRAPHIQUES */}
                 <div className="lg:col-span-2 space-y-5">
                     <Card title="📊 Coût annuel par âge (décomposé)" action={
-                        <div className="text-xs text-gray-400 font-mono">Total : <span className="text-white font-bold privacy-blur">{fmt(costTimeline.totalCost)}</span></div>
+                        <div className="text-xs text-ink-300 font-mono">Total : <span className="text-white font-bold privacy-blur">{fmt(costTimeline.totalCost)}</span></div>
                     }>
                         <ZoomContainer zoom={zoomCost} className="h-[280px]">
                             <ResponsiveContainer width="100%" height="100%">
@@ -444,26 +444,26 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                     }>
                         <div className="space-y-3 mb-4">
                             <div>
-                                <label className="flex justify-between text-xs text-gray-300 mb-1">
+                                <label className="flex justify-between text-xs text-ink-200 mb-1">
                                     <span>Cotisation annuelle REEE</span>
-                                    <span className="text-blue-400 font-bold">{fmt(respContribution)}</span>
+                                    <span className="text-info-400 font-bold">{fmt(respContribution)}</span>
                                 </label>
-                                <input type="range" min="0" max="5000" step="100" value={respContribution} onChange={e => setRespContribution(Number(e.target.value))} className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-blue-500" />
-                                <p className="text-tiny text-gray-500 mt-1">Optimal : 2 500$/an pour maximiser les subventions (30% = fed 20% + QC 10%)</p>
+                                <input type="range" min="0" max="5000" step="100" value={respContribution} onChange={e => setRespContribution(Number(e.target.value))} className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-info-500" />
+                                <p className="text-tiny text-ink-500 mt-1">Optimal : 2 500$/an pour maximiser les subventions (30% = fed 20% + QC 10%)</p>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
-                                <div className="bg-blue-900/20 p-3 rounded-lg border border-blue-500/20 text-center">
-                                    <div className="text-tiny text-gray-500 uppercase mb-1">Capital à 17 ans</div>
+                                <div className="bg-blue-900/20 p-3 rounded-lg border border-info-500/20 text-center">
+                                    <div className="text-tiny text-ink-500 uppercase mb-1">Capital à 17 ans</div>
                                     <div className="text-lg font-black text-white privacy-blur">
                                         {totalResp != null ? fmt(totalResp) : <ProjectionRequired variant="inline" />}
                                     </div>
                                 </div>
                                 <div className="bg-green-900/20 p-3 rounded-lg border border-green-500/20 text-center">
-                                    <div className="text-tiny text-gray-500 uppercase mb-1">Coût études prévu</div>
+                                    <div className="text-tiny text-ink-500 uppercase mb-1">Coût études prévu</div>
                                     <div className="text-lg font-black text-white privacy-blur">{fmt(totalStudiesCost)}</div>
                                 </div>
                                 <div className="bg-purple-900/20 p-3 rounded-lg border border-purple-500/20 text-center">
-                                    <div className="text-tiny text-gray-500 uppercase mb-1">Couverture</div>
+                                    <div className="text-tiny text-ink-500 uppercase mb-1">Couverture</div>
                                     <div className={`text-lg font-black ${respCovers != null && respCovers >= 100 ? 'text-green-400' : 'text-yellow-400'}`}>
                                         {respCovers != null ? `${respCovers.toFixed(0)}%` : '—'}
                                     </div>
@@ -500,22 +500,22 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
                             <div className="text-2xl mb-1">{DAYCARE_INFO[daycareType].icon}</div>
-                            <div className="text-tiny text-gray-400">Garde mensuelle</div>
+                            <div className="text-tiny text-ink-300">Garde mensuelle</div>
                             <div className="text-sm font-bold text-white">{fmt(DAYCARE_INFO[daycareType].monthly)}</div>
                         </div>
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
                             <div className="text-2xl mb-1">{SCHOOL_INFO[schoolType].icon}</div>
-                            <div className="text-tiny text-gray-400">Frais scolaires/an</div>
+                            <div className="text-tiny text-ink-300">Frais scolaires/an</div>
                             <div className="text-sm font-bold text-white">{fmt(SCHOOL_INFO[schoolType].yearlyExtra)}</div>
                         </div>
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
                             <div className="text-2xl mb-1">{ACTIVITIES_INFO[activitiesLevel].icon}</div>
-                            <div className="text-tiny text-gray-400">Activités/an</div>
+                            <div className="text-tiny text-ink-300">Activités/an</div>
                             <div className="text-sm font-bold text-white">{fmt(ACTIVITIES_INFO[activitiesLevel].yearlyExtra)}</div>
                         </div>
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
                             <div className="text-2xl mb-1">{UNI_INFO[universityType].icon}</div>
-                            <div className="text-tiny text-gray-400">Études total</div>
+                            <div className="text-tiny text-ink-300">Études total</div>
                             <div className="text-sm font-bold text-white">{fmt(totalStudiesCost)}</div>
                         </div>
                     </div>

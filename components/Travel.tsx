@@ -59,7 +59,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                 <Card className="border-2 border-dashed border-white/20 bg-white/5">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                         <div>
-                            <label className="text-xs text-gray-400 mb-1 block">Destination</label>
+                            <label className="text-xs text-ink-300 mb-1 block">Destination</label>
                             <input
                                 type="text" placeholder="Japon, Italie..."
                                 className="w-full bg-dark border border-white/20 rounded p-2 text-white"
@@ -68,7 +68,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                             />
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 mb-1 block">Date Départ</label>
+                            <label className="text-xs text-ink-300 mb-1 block">Date Départ</label>
                             <input
                                 type="date"
                                 className="w-full bg-dark border border-white/20 rounded p-2 text-white"
@@ -77,7 +77,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                             />
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 mb-1 block">Budget Total ($)</label>
+                            <label className="text-xs text-ink-300 mb-1 block">Budget Total ($)</label>
                             <input
                                 type="number" placeholder="5000"
                                 className="w-full bg-dark border border-white/20 rounded p-2 text-white"
@@ -110,20 +110,20 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                             <div className="p-5">
                                 <div className="flex justify-between items-start mb-2">
                                     <h3 className="text-xl font-bold text-white">{trip.destination}</h3>
-                                    <button onClick={() => handleDelete(trip.id)} className="text-gray-600 hover:text-red-500 transition-colors">🗑️</button>
+                                    <button onClick={() => handleDelete(trip.id)} className="text-gray-600 hover:text-danger-500 transition-colors">🗑️</button>
                                 </div>
 
-                                <div className="text-sm text-gray-400 mb-4 flex items-center gap-2">
+                                <div className="text-sm text-ink-300 mb-4 flex items-center gap-2">
                                     <span>📅 {new Date(trip.date).toLocaleDateString()}</span>
                                 </div>
 
                                 <div className="bg-black/30 rounded-lg p-3 flex justify-between items-center border border-white/5">
-                                    <span className="text-xs text-gray-500 uppercase font-bold">Budget</span>
+                                    <span className="text-xs text-ink-500 uppercase font-bold">Budget</span>
                                     <span className="text-lg font-bold text-green-400">{trip.totalCost.toLocaleString()} $</span>
                                 </div>
 
                                 {!isPast && (
-                                    <div className="mt-4 text-tiny text-gray-500 text-center">
+                                    <div className="mt-4 text-tiny text-ink-500 text-center">
                                         Ce montant sera déduit de vos liquidités dans la simulation du futur.
                                     </div>
                                 )}

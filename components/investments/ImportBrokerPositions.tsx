@@ -51,7 +51,7 @@ export const ImportBrokerPositions: React.FC<Props> = ({ isOpen, onClose, onImpo
     return (
         <Modal isOpen={isOpen} onClose={handleClose} title="Importer mes positions (CSV courtier)" icon="📥" size="lg">
             <div className="space-y-4">
-                <p className="text-meta text-gray-400">
+                <p className="text-meta text-ink-300">
                     Exporte tes positions depuis ton courtier (Wealthsimple, Questrade, Disnat, RBC DI…) en CSV,
                     puis dépose le fichier ou colle son contenu. 100 % local — rien ne quitte ton navigateur.
                     Colonnes reconnues : symbole, quantité, coût moyen (ou coût total), devise, type de compte, date.
@@ -71,7 +71,7 @@ export const ImportBrokerPositions: React.FC<Props> = ({ isOpen, onClose, onImpo
                 </label>
 
                 <div>
-                    <label className="block text-xs text-gray-400 mb-1">… ou colle le CSV ici</label>
+                    <label className="block text-xs text-ink-300 mb-1">… ou colle le CSV ici</label>
                     <textarea
                         rows={4}
                         onChange={(e) => { const v = e.target.value; if (v.trim()) parse(v); else reset(); }}
@@ -81,18 +81,18 @@ export const ImportBrokerPositions: React.FC<Props> = ({ isOpen, onClose, onImpo
                 </div>
 
                 {error && (
-                    <div className="text-xs text-red-300 bg-red-900/20 border border-red-500/20 rounded-lg p-2">{error}</div>
+                    <div className="text-xs text-red-300 bg-red-900/20 border border-danger-500/20 rounded-lg p-2">{error}</div>
                 )}
 
                 {preview && (
                     <div className="space-y-2 animate-fade-in">
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-tiny text-gray-400">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-tiny text-ink-300">
                             <span><span className="text-ink-200 font-bold">{preview.imported}</span> position(s) prête(s)</span>
                             {preview.skipped > 0 && <span className="text-amber-300">{preview.skipped} ligne(s) ignorée(s)</span>}
                         </div>
                         <div className="rounded-lg border border-white/5 max-h-48 overflow-y-auto">
                             <table className="w-full text-tiny">
-                                <thead className="bg-black/30 text-gray-500 sticky top-0">
+                                <thead className="bg-black/30 text-ink-500 sticky top-0">
                                     <tr>
                                         <th className="text-left p-2">Symbole</th>
                                         <th className="text-right p-2">Qté</th>
@@ -104,18 +104,18 @@ export const ImportBrokerPositions: React.FC<Props> = ({ isOpen, onClose, onImpo
                                     {preview.holdings.slice(0, 8).map((h, i) => (
                                         <tr key={`${h.symbol}-${i}`}>
                                             <td className="p-2 font-mono text-ink-200">{h.symbol}</td>
-                                            <td className="p-2 text-right font-mono text-gray-400 privacy-blur">{h.quantity}</td>
-                                            <td className="p-2 text-right font-mono text-gray-400 privacy-blur">{fmt(h.avgCost)} {h.currency}</td>
-                                            <td className="p-2 text-gray-400">{h.accountType ?? 'NON-ENREG'}</td>
+                                            <td className="p-2 text-right font-mono text-ink-300 privacy-blur">{h.quantity}</td>
+                                            <td className="p-2 text-right font-mono text-ink-300 privacy-blur">{fmt(h.avgCost)} {h.currency}</td>
+                                            <td className="p-2 text-ink-300">{h.accountType ?? 'NON-ENREG'}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
                         {preview.holdings.length > 8 && (
-                            <p className="text-tiny text-gray-500">… et {preview.holdings.length - 8} autre(s).</p>
+                            <p className="text-tiny text-ink-500">… et {preview.holdings.length - 8} autre(s).</p>
                         )}
-                        <p className="text-tiny text-gray-500">
+                        <p className="text-tiny text-ink-500">
                             Le prix actuel se met à jour via Finnhub si ta clé est configurée ; sinon le coût moyen
                             sert de base (performance 0 % jusqu'au prochain rafraîchissement). Les symboles déjà
                             présents ne sont pas dupliqués.

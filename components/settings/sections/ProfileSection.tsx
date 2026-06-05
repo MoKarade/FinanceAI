@@ -40,13 +40,13 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ config, setConfi
           l'onglet Retraite (espérance de vie, âge cible, revenu cible). */}
       <Card title="🏖️ Paramètres de retraite (hub central)">
         <div className="space-y-4">
-          <p className="text-tiny text-gray-400 leading-snug">
+          <p className="text-tiny text-ink-300 leading-snug">
             Ces paramètres alimentent les projections retraite (capital, drawdown, RRQ/PSV) et
             s'appliquent automatiquement aux onglets Retraite, Investissement et Futur.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div data-focus-section="profile-retirementAge">
-              <label className="block text-xs text-gray-400 mb-1">Âge de retraite cible</label>
+              <label className="block text-xs text-ink-300 mb-1">Âge de retraite cible</label>
               <input
                 type="number"
                 min={50}
@@ -57,9 +57,9 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ config, setConfi
               />
             </div>
             <div data-focus-section="profile-lifeExpectancy">
-              <label className="block text-xs text-gray-400 mb-1">
+              <label className="block text-xs text-ink-300 mb-1">
                 Espérance de vie
-                <span className="ml-1 text-tiny text-gray-500">(80–100 ans)</span>
+                <span className="ml-1 text-tiny text-ink-500">(80–100 ans)</span>
               </label>
               <input
                 type="number"
@@ -71,7 +71,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ config, setConfi
               />
             </div>
             <div data-focus-section="profile-retirementIncome">
-              <label className="block text-xs text-gray-400 mb-1">Revenu mensuel cible</label>
+              <label className="block text-xs text-ink-300 mb-1">Revenu mensuel cible</label>
               <input
                 type="number"
                 min={0}
@@ -82,7 +82,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ config, setConfi
               />
             </div>
           </div>
-          <p className="text-tiny text-gray-500 italic">
+          <p className="text-tiny text-ink-500 italic">
             💡 Ces valeurs sont la source de vérité unique. Les onglets Retraite/Futur
             les lisent depuis ici — plus de duplication.
           </p>

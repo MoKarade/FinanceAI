@@ -86,13 +86,13 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
       <div className="mb-6 bg-black/30 p-4 rounded-xl border border-white/5 shadow-inner">
         <h3 className="text-sm font-bold text-white mb-3">💾 Profils Enregistres</h3>
         <div className="flex flex-wrap gap-2 mb-3">
-          {savedProfiles.length === 0 && <span className="text-xs text-gray-500 italic">Aucun profil enregistre.</span>}
+          {savedProfiles.length === 0 && <span className="text-xs text-ink-500 italic">Aucun profil enregistre.</span>}
           {savedProfiles.map(p => (
             <div key={p} className="flex items-center bg-primary/20 text-blue-300 text-xs px-3 py-1.5 rounded-full border border-primary/30">
               <button type="button" className="font-bold cursor-pointer hover:underline rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" onClick={() => loadProfile(p)} aria-label={`Charger le profil ${p}`}>{p}</button>
               <button
                 onClick={() => deleteProfile(p)}
-                className={`ml-2 font-bold px-1.5 rounded ${profileToDelete === p ? 'bg-red-500 text-white' : 'text-white/50 hover:text-red-400'}`}
+                className={`ml-2 font-bold px-1.5 rounded ${profileToDelete === p ? 'bg-danger-500 text-white' : 'text-white/50 hover:text-danger-400'}`}
                 title={profileToDelete === p ? 'Cliquez encore pour confirmer' : 'Supprimer'}
                 aria-label={profileToDelete === p ? 'Confirmer la suppression' : `Supprimer le profil ${p}`}
               >
@@ -156,7 +156,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
             >
               <div className="font-bold text-white mb-2 border-b border-white/5 pb-1">Utilisateur {idx + 1}</div>
               <div data-focus-section={`profile-user${idx + 1}-name`}>
-                <label className="text-xs text-gray-400">Nom</label>
+                <label className="text-xs text-ink-300">Nom</label>
                 <input
                   type="text"
                   value={user.name}
@@ -170,7 +170,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div data-focus-section={`profile-user${idx + 1}-age`}>
-                  <label className="text-xs text-gray-400">Age actuel</label>
+                  <label className="text-xs text-ink-300">Age actuel</label>
                   <input
                     type="number"
                     value={user.age || 30}
@@ -215,7 +215,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div data-focus-section={`profile-user${idx + 1}-grossSalary`}>
-                  <label className="text-xs text-gray-400 font-bold text-green-300">Salaire Brut annuel ($)</label>
+                  <label className="text-xs text-ink-300 font-bold text-green-300">Salaire Brut annuel ($)</label>
                   <input
                     type="number"
                     value={grossAnnualDraft[idx] ?? String((user.grossSalary || 0) * 12)}
@@ -231,7 +231,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   />
                 </div>
                 <div data-focus-section={`profile-user${idx + 1}-netSalary`}>
-                  <label className="text-xs text-gray-400 font-bold text-blue-300">Salaire Net mensuel ($)</label>
+                  <label className="text-xs text-ink-300 font-bold text-blue-300">Salaire Net mensuel ($)</label>
                   <input
                     type="number"
                     value={user.netSalary || user.salary || 0}
@@ -246,7 +246,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
               </div>
 
               <div className="pt-2 border-t border-white/5 space-y-2">
-                <div className="text-tiny text-gray-500 font-black uppercase tracking-widest">Options Fiscales</div>
+                <div className="text-tiny text-ink-500 font-black uppercase tracking-widest">Options Fiscales</div>
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2 cursor-pointer group">
                     <input
@@ -257,9 +257,9 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                         newUsers[idx] = { ...user, hasOwnedPropertyLast4Years: !e.target.checked };
                         setConfig({ ...config, users: newUsers });
                       }}
-                      className="w-3 h-3 rounded border-gray-600 bg-black text-blue-500 focus:ring-blue-500/50"
+                      className="w-3 h-3 rounded border-gray-600 bg-black text-info-500 focus:ring-info-500/50"
                     />
-                    <span className="text-tiny text-gray-400 group-hover:text-blue-400 transition-colors">Premier Acheteur (CELIAPP)</span>
+                    <span className="text-tiny text-ink-300 group-hover:text-info-400 transition-colors">Premier Acheteur (CELIAPP)</span>
                   </label>
                 </div>
 
@@ -273,9 +273,9 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                         newUsers[idx] = { ...user, hasChildren: e.target.checked };
                         setConfig({ ...config, users: newUsers });
                       }}
-                      className="w-3 h-3 rounded border-gray-600 bg-black text-blue-500 focus:ring-blue-500/50"
+                      className="w-3 h-3 rounded border-gray-600 bg-black text-info-500 focus:ring-info-500/50"
                     />
-                    <span className="text-tiny text-gray-400 group-hover:text-pink-400 transition-colors">A des enfants (REEE)</span>
+                    <span className="text-tiny text-ink-300 group-hover:text-pink-400 transition-colors">A des enfants (REEE)</span>
                   </label>
                   {user.hasChildren && (
                     <input
@@ -293,7 +293,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                 </div>
 
                 <div className="flex items-center gap-2 bg-black/20 p-1.5 rounded border border-white/5">
-                  <span className="text-tiny text-gray-400 uppercase font-black shrink-0">FE ⚖️</span>
+                  <span className="text-tiny text-ink-300 uppercase font-black shrink-0">FE ⚖️</span>
                   <input
                     type="number"
                     placeholder="Facteur Equiv. (ex: 0)"
@@ -310,7 +310,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
 
               {/* W5.1 — Profil détaillé (santé, carrière, identité) */}
               <details className="mt-3 pt-3 border-t border-white/5">
-                <summary className="text-tiny font-bold text-gray-300 cursor-pointer hover:text-white">🩺 Profil détaillé (santé, carrière, identité)</summary>
+                <summary className="text-tiny font-bold text-ink-200 cursor-pointer hover:text-white">🩺 Profil détaillé (santé, carrière, identité)</summary>
                 <div className="mt-2 space-y-2">
                   <div className="grid grid-cols-3 gap-1">
                     <select
@@ -385,7 +385,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                       <option value="RPDB">RPDB</option><option value="none">Aucun</option>
                     </select>
                   </div>
-                  <div className="text-tiny text-gray-500 uppercase tracking-widest mt-2">Santé & longévité</div>
+                  <div className="text-tiny text-ink-500 uppercase tracking-widest mt-2">Santé & longévité</div>
                   <div className="grid grid-cols-2 gap-1">
                     <select
                       value={user.healthRating ?? ''}
@@ -403,7 +403,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                     </select>
                   </div>
                   <div className="grid grid-cols-3 gap-1">
-                    <label className="flex items-center gap-1 text-tiny text-gray-400">
+                    <label className="flex items-center gap-1 text-tiny text-ink-300">
                       <input type="checkbox" checked={user.isSmoker ?? false}
                         onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,isSmoker:e.target.checked}; setConfig({...config,users:u}); }} />
                       🚬 Fumeur
@@ -415,7 +415,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                       onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user, parentAgeAtDeath:{...user.parentAgeAtDeath, father:Number(e.target.value)||undefined}}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                   </div>
-                  <div className="text-tiny text-gray-500 uppercase tracking-widest mt-2">Rémunération variable</div>
+                  <div className="text-tiny text-ink-500 uppercase tracking-widest mt-2">Rémunération variable</div>
                   <div className="grid grid-cols-3 gap-1">
                     <input aria-label="Bonus en pourcentage du brut" type="number" placeholder="Bonus % brut" value={user.bonusPctOfGross ?? ''}
                       onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,bonusPctOfGross:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
@@ -448,7 +448,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
         </div>
 
         <div>
-          <label className="block text-sm text-gray-400 mb-2">Mode de Repartition</label>
+          <label className="block text-sm text-ink-300 mb-2">Mode de Repartition</label>
           <select
             value={config.splitMode}
             onChange={(e) => setConfig({ ...config, splitMode: e.target.value as BudgetConfig['splitMode'] })}

@@ -54,7 +54,7 @@ export const PassphraseGate: React.FC<{ status: SyncStatus }> = ({ status }) => 
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-dark/95 backdrop-blur-sm p-4">
             <form
                 onSubmit={onSubmit}
-                className="w-full max-w-md space-y-4 rounded-2xl border border-amber-500/30 bg-black/60 p-6 shadow-2xl"
+                className="w-full max-w-md space-y-4 rounded-2xl border border-warning-500/30 bg-black/60 p-6 shadow-2xl"
             >
                 <div className="text-lg font-bold text-amber-300">🔒 Coffre verrouillé</div>
                 <p className="text-sm text-ink-200 leading-snug">

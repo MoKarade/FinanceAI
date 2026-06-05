@@ -535,7 +535,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // 21 hooks ci-dessus) → 21 violations react-hooks/rules-of-hooks.
     if (!budgetItems || !projection || !config || !initialBalances) {
         console.error("FutureProjection: Missing critical initialization data.", { budgetItems, projection, config, initialBalances });
-        return <div className="p-8 text-center text-red-400 font-bold bg-surface/50 rounded-2xl border border-red-500/20">
+        return <div className="p-8 text-center text-danger-400 font-bold bg-surface/50 rounded-2xl border border-danger-500/20">
             ⚠️ Données d'initialisation manquantes. Veuillez vérifier vos comptes et votre budget.
         </div>;
     }
@@ -547,9 +547,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // chartData.length > 0, donc Dashboard/Investments/Budget gardent la dernière
     // projection valide plutôt que d'afficher ces zéros.)
     if (results?._hasError) {
-        return <div className="p-8 text-center bg-surface/50 rounded-2xl border border-red-500/20 space-y-2">
+        return <div className="p-8 text-center bg-surface/50 rounded-2xl border border-danger-500/20 space-y-2">
             <div className="text-2xl" aria-hidden="true">⚠️</div>
-            <div className="text-red-400 font-bold">Le calcul de la projection a échoué.</div>
+            <div className="text-danger-400 font-bold">Le calcul de la projection a échoué.</div>
             <div className="text-sm text-ink-300 max-w-md mx-auto">
                 Vérifie tes paramètres (revenus, dépenses, comptes, objectifs). L'erreur a été
                 journalisée.{runMC ? ' Tu peux aussi désactiver le mode Monte-Carlo et réessayer.' : ''}
@@ -648,7 +648,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-card text-meta border w-fit ${
                             isBest
                                 ? 'bg-green-500/10 border-green-500/30 text-green-300'
-                                : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                                : 'bg-warning-500/10 border-warning-500/30 text-amber-300'
                         }`}
                     >
                         <span aria-hidden="true">{isBest ? '★' : '○'}</span>
@@ -711,7 +711,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             {futureSubTab === 'graph' && (
             <Card title={`La Courbe de Vie - ${allResults[selectedScenarioIdx]?.strategyName || 'Simulation'}`}
                 action={isComputing ? (
-                    <span className="flex items-center gap-2 text-tiny text-amber-400" role="status" aria-live="polite">
+                    <span className="flex items-center gap-2 text-tiny text-warning-400" role="status" aria-live="polite">
                         <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="40" strokeDashoffset="20" opacity="0.5"/>
                         </svg>
@@ -721,7 +721,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 {/* B1 — Couche 0 « Verdict » : une phrase + un chiffre + une pastille,
                     lisible en 2 secondes. Le détail (stratégie, pourquoi) est en dessous. */}
                 {bestScenario && (
-                    <div className={`mb-3 rounded-xl border p-3 flex items-center gap-3 ${bestScenario.fireAge != null ? 'border-green-500/30 bg-green-500/10' : 'border-amber-500/30 bg-amber-500/10'}`}>
+                    <div className={`mb-3 rounded-xl border p-3 flex items-center gap-3 ${bestScenario.fireAge != null ? 'border-green-500/30 bg-green-500/10' : 'border-warning-500/30 bg-warning-500/10'}`}>
                         <span className="text-2xl shrink-0" aria-hidden="true">{bestScenario.fireAge != null ? '✅' : '⏳'}</span>
                         <div className="min-w-0">
                             <div className="text-sm font-black text-white leading-tight">
@@ -799,7 +799,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         // affiche un état de chargement de la MÊME hauteur que le graphe → zéro layout
                         // shift, et on ne montre jamais une courbe partielle/obsolète (demande Marc).
                         <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-ink-300" role="status" aria-live="polite">
-                            <svg className="animate-spin h-8 w-8 text-amber-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <svg className="animate-spin h-8 w-8 text-warning-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="40" strokeDashoffset="20" opacity="0.5" />
                             </svg>
                             <span className="text-meta">Calcul de ta projection…</span>

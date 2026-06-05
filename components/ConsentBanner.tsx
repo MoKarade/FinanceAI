@@ -24,7 +24,7 @@ export const ConsentBanner: React.FC = () => {
             aria-label="Consentement à la mesure d'audience"
             className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 max-w-xl w-[calc(100%-2rem)] bg-slate-800/95 border border-white/10 backdrop-blur rounded-xl shadow-lg p-4 flex flex-col sm:flex-row sm:items-center gap-3 animate-fade-in"
         >
-            <p className="text-sm text-gray-300 flex-1">
+            <p className="text-sm text-ink-200 flex-1">
                 On utilise <strong className="text-white">Google Analytics</strong> pour comprendre
                 quelles pages sont utilisées et améliorer l'app.{' '}
                 <strong className="text-white">Aucune donnée financière</strong> n'est transmise.
@@ -34,7 +34,7 @@ export const ConsentBanner: React.FC = () => {
                 <button
                     type="button"
                     onClick={() => choose('denied')}
-                    className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-gray-200 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
+                    className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-ink-100 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
                 >
                     Refuser
                 </button>

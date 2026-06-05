@@ -268,7 +268,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                     {selectedItem && impactAnalysis ? (
                         <div className="sticky top-6 space-y-6 animate-fade-in">
                             <Card className="!p-0 overflow-hidden border-2 border-white/10">
-                                <div className="bg-gradient-to-r from-gray-900 to-black p-6 border-b border-white/10 flex justify-between items-start">
+                                <div className="bg-gradient-to-r from-dark to-black p-6 border-b border-white/10 flex justify-between items-start">
                                     <div>
                                         <div className="text-meta text-ink-500 uppercase tracking-widest font-bold mb-1">Analyse d'Impact</div>
                                         <h3 className="text-2xl font-black text-white">{selectedItem.name}</h3>
@@ -279,7 +279,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                 <div className="p-6 space-y-6">
                                     <div>
                                         <div className="flex justify-between text-body mb-2"><span className="text-ink-200">Coût Immédiat</span><span className="text-white font-bold">{impactAnalysis.immediateCost.toLocaleString()} $</span></div>
-                                        <div className="w-full bg-gray-800 rounded-full h-2"><div className="h-full bg-danger-500 rounded-full" style={{ width: `${Math.min(100, impactAnalysis.liquidityRatio)}%` }}></div></div>
+                                        <div className="w-full bg-surfaceHighlight rounded-full h-2"><div className="h-full bg-danger-500 rounded-full" style={{ width: `${Math.min(100, impactAnalysis.liquidityRatio)}%` }}></div></div>
                                         <div className="text-tiny text-right text-danger-400 mt-1">{impactAnalysis.liquidityRatio.toFixed(1)}% de votre patrimoine actuel</div>
                                     </div>
                                     <div className="bg-blue-900/10 border border-info-500/20 rounded-xl p-4">

@@ -199,7 +199,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                         <div className="h-[260px] overflow-y-auto custom-scrollbar p-2 text-meta space-y-1">
                             {logs.map((line, i) => (
                                 <div key={i} className="flex gap-2">
-                                    <span className="text-gray-600 select-none">{(i + 1).toString().padStart(3, '0')}</span>
+                                    <span className="text-ink-500 select-none">{(i + 1).toString().padStart(3, '0')}</span>
                                     <span className={logLevelClass[line.level]}>
                                         {line.text}
                                     </span>

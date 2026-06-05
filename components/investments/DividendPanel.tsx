@@ -135,7 +135,7 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
 
                         <div className="flex items-center gap-6 bg-black/40 p-3 rounded-xl border border-white/5 w-full sm:w-auto">
                             <label className="flex items-center gap-2 cursor-pointer group">
-                                <div className={`w-8 h-4 rounded-full transition-colors relative ${dripEnabled ? 'bg-success-500' : 'bg-gray-700'}`}>
+                                <div className={`w-8 h-4 rounded-full transition-colors relative ${dripEnabled ? 'bg-success-500' : 'bg-surfaceHighlight'}`}>
                                     <div className={`w-3 h-3 bg-white rounded-full absolute top-[2px] transition-all ${dripEnabled ? 'left-4 translate-x-0.5' : 'left-0.5'}`}></div>
                                 </div>
                                 <input type="checkbox" className="hidden" checked={dripEnabled} onChange={(e) => setDripEnabled(e.target.checked)} />

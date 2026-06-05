@@ -391,7 +391,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                 <div className="text-center">
                                     <div className="text-4xl mb-3">⏳</div>
                                     <p>Chargement des donnees de portefeuille...</p>
-                                    <p className="text-meta mt-2 text-gray-600">Assurez-vous d'avoir importe un CSV de portefeuille.</p>
+                                    <p className="text-meta mt-2 text-ink-500">Assurez-vous d'avoir importe un CSV de portefeuille.</p>
                                 </div>
                             </div>
                         </Card>
@@ -510,16 +510,16 @@ const RetirementTooltip = React.memo(({ active, payload }: RetirementTooltipProp
 
                 <div className="grid grid-cols-2 gap-2">
                     <div className="bg-black/30 p-2 rounded-lg border border-white/5">
-                        <div className="text-tiny text-[#10b981] font-bold mb-1">CELI</div>
+                        <div className="text-tiny text-primary font-bold mb-1">CELI</div>
                         <div className="text-meta font-black text-ink-50 privacy-blur">{(data.CELI || 0).toLocaleString()}$</div>
                     </div>
                     <div className="bg-black/30 p-2 rounded-lg border border-white/5">
-                        <div className="text-tiny text-[#3b82f6] font-bold mb-1">REER</div>
+                        <div className="text-tiny text-info-500 font-bold mb-1">REER</div>
                         <div className="text-meta font-black text-ink-50 privacy-blur">{(data.REER || 0).toLocaleString()}$</div>
                     </div>
                     {(data.NonReg || 0) > 0 && (
                         <div className="bg-black/30 p-2 rounded-lg border border-white/5">
-                            <div className="text-tiny text-[#f59e0b] font-bold mb-1">Non-Enreg.</div>
+                            <div className="text-tiny text-warning-500 font-bold mb-1">Non-Enreg.</div>
                             <div className="text-meta font-black text-ink-50 privacy-blur">{(data.NonReg || 0).toLocaleString()}$</div>
                         </div>
                     )}

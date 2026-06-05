@@ -235,7 +235,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
             </div>
 
             {isAnalyzing && (
-                <div className="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden">
+                <div className="w-full bg-surfaceHighlight rounded-full h-2.5 overflow-hidden">
                     <div className="bg-info-500 h-2.5 rounded-full transition-all duration-300" style={{ width: `${(progress.current / progress.total) * 100}%` }}></div>
                     <div className="text-center text-tiny text-ink-300 mt-1">Traitement {progress.current} / {progress.total} fichiers</div>
                 </div>
@@ -408,7 +408,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                                     <span className="text-ink-200 font-bold">{b.rate}</span>
                                                     <span className="text-ink-400">{b.amount > 0 ? `${b.amount.toFixed(0)}$ taxés` : '0$'}</span>
                                                 </div>
-                                                <div className="h-4 w-full bg-gray-800 rounded overflow-hidden relative border border-white/5">
+                                                <div className="h-4 w-full bg-surfaceHighlight rounded overflow-hidden relative border border-white/5">
                                                     <div className="h-full bg-danger-600/80 transition-all duration-500" style={{ width: `${b.percentFull}%` }}></div>
                                                     <div className="absolute inset-0 flex items-center justify-center text-tiny font-mono text-white/80 shadow-black drop-shadow-md">
                                                         {b.filled.toLocaleString()} $ / {typeof b.max === 'number' ? b.max.toLocaleString() : b.max} $
@@ -426,7 +426,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                                     <span className="text-ink-200 font-bold">{b.rate}</span>
                                                     <span className="text-ink-400">{b.amount > 0 ? `${b.amount.toFixed(0)}$ taxés` : '0$'}</span>
                                                 </div>
-                                                <div className="h-4 w-full bg-gray-800 rounded overflow-hidden relative border border-white/5">
+                                                <div className="h-4 w-full bg-surfaceHighlight rounded overflow-hidden relative border border-white/5">
                                                     <div className="h-full bg-info-600/80 transition-all duration-500" style={{ width: `${b.percentFull}%` }}></div>
                                                     <div className="absolute inset-0 flex items-center justify-center text-tiny font-mono text-white/80 shadow-black drop-shadow-md">
                                                         {b.filled.toLocaleString()} $ / {typeof b.max === 'number' ? b.max.toLocaleString() : b.max} $

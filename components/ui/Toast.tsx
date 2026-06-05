@@ -60,9 +60,10 @@ export const ToastContainer: React.FC = () => {
                 <div
                     key={toast.id}
                     role={toast.type === 'error' ? 'alert' : 'status'}
-                    className={`${toast.isExiting ? 'animate-toast-out' : 'animate-toast-in'} pointer-events-auto min-w-[300px] p-4 rounded-xl border shadow-2xl flex items-center gap-3 ${toast.type === 'success' ? 'bg-emerald-900/90 border-success-500/50 text-emerald-100' :
-                            toast.type === 'error' ? 'bg-red-900/90 border-danger-500/50 text-red-100' :
-                                'bg-blue-900/90 border-info-500/50 text-blue-100'
+                    className={`${toast.isExiting ? 'animate-toast-out' : 'animate-toast-in'} pointer-events-auto min-w-[300px] p-4 rounded-xl border shadow-2xl flex items-center gap-3 bg-surfaceHighlight/95 backdrop-blur-sm text-ink-50 ${
+                        toast.type === 'success' ? 'border-success-500/60' :
+                            toast.type === 'error' ? 'border-danger-500/60' :
+                                'border-info-500/60'
                         }`}
                 >
                     <span className="text-xl" aria-hidden="true">

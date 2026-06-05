@@ -684,7 +684,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     <span className="font-mono">{formatCAD(fiscalBreakdown.grossDisplay)}</span>
                                 </div>
                                 {/* Barre stackée multi-couleurs des déductions */}
-                                <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden flex">
+                                <div className="w-full bg-surfaceHighlight h-2 rounded-full overflow-hidden flex">
                                     <div
                                         className="h-full bg-danger-500/80"
                                         style={{ width: `${(fiscalBreakdown.fedTaxDisplay / fiscalBreakdown.grossDisplay) * 100}%` }}

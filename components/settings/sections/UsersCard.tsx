@@ -257,7 +257,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                         newUsers[idx] = { ...user, hasOwnedPropertyLast4Years: !e.target.checked };
                         setConfig({ ...config, users: newUsers });
                       }}
-                      className="w-3 h-3 rounded border-gray-600 bg-black text-info-500 focus:ring-info-500/50"
+                      className="w-3 h-3 rounded border-white/10 bg-black text-info-500 focus:ring-info-500/50"
                     />
                     <span className="text-tiny text-ink-300 group-hover:text-info-400 transition-colors">Premier Acheteur (CELIAPP)</span>
                   </label>
@@ -273,7 +273,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                         newUsers[idx] = { ...user, hasChildren: e.target.checked };
                         setConfig({ ...config, users: newUsers });
                       }}
-                      className="w-3 h-3 rounded border-gray-600 bg-black text-info-500 focus:ring-info-500/50"
+                      className="w-3 h-3 rounded border-white/10 bg-black text-info-500 focus:ring-info-500/50"
                     />
                     <span className="text-tiny text-ink-300 group-hover:text-pink-400 transition-colors">A des enfants (REEE)</span>
                   </label>

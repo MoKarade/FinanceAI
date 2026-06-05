@@ -630,7 +630,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     }`}
                             >
                                 <div className="flex items-center gap-1">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${isActive ? (asset.isTotal ? 'bg-green-400' : 'bg-info-400') : 'bg-gray-600'}`}></span>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isActive ? (asset.isTotal ? 'bg-green-400' : 'bg-info-400') : 'bg-white/10'}`}></span>
                                     {asset.name}
                                 </div>
                                 {Math.abs(asset.trend) > 0.5 && (

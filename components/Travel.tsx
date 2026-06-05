@@ -98,9 +98,9 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                     const isPast = daysLeft < 0;
 
                     return (
-                        <div key={trip.id} className={`relative group overflow-hidden rounded-2xl border ${isPast ? 'border-gray-800 bg-gray-900/50 grayscale' : 'border-white/10 bg-[#1e1e1e] hover:border-primary/50'} transition-all duration-300 shadow-xl`}>
+                        <div key={trip.id} className={`relative group overflow-hidden rounded-2xl border ${isPast ? 'border-white/10 bg-dark/50 grayscale' : 'border-white/10 bg-[#1e1e1e] hover:border-primary/50'} transition-all duration-300 shadow-xl`}>
                             {/* Image Header Placeholder */}
-                            <div className={`h-24 ${isPast ? 'bg-gray-800' : 'bg-gradient-to-r from-blue-900 to-purple-900'} flex items-center justify-center relative overflow-hidden`}>
+                            <div className={`h-24 ${isPast ? 'bg-surfaceHighlight' : 'bg-gradient-to-r from-blue-900 to-purple-900'} flex items-center justify-center relative overflow-hidden`}>
                                 <span className="text-6xl select-none opacity-20 transform group-hover:scale-110 transition-transform duration-500">✈️</span>
                                 <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-md px-2 py-1 rounded text-meta font-mono border border-white/10">
                                     {isPast ? 'Terminé' : `J-${daysLeft}`}
@@ -110,7 +110,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                             <div className="p-5">
                                 <div className="flex justify-between items-start mb-2">
                                     <h3 className="text-xl font-bold text-white">{trip.destination}</h3>
-                                    <button onClick={() => handleDelete(trip.id)} className="text-gray-600 hover:text-danger-500 transition-colors">🗑️</button>
+                                    <button onClick={() => handleDelete(trip.id)} className="text-ink-500 hover:text-danger-500 transition-colors">🗑️</button>
                                 </div>
 
                                 <div className="text-body text-ink-300 mb-4 flex items-center gap-2">

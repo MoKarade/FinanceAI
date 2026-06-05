@@ -578,7 +578,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                 <td className="py-2 pr-4 text-right text-purple-300 privacy-blur">{formatCurrency(row.ValeuréPropriété)}</td>
                                                 <td className="py-2 text-right">
                                                     <span className="text-success-400 font-bold privacy-blur">{formatCurrency(row.Équité)}</span>
-                                                    <span className="text-gray-600 ml-1">({equityPct}%)</span>
+                                                    <span className="text-ink-500 ml-1">({equityPct}%)</span>
                                                 </td>
                                             </tr>
                                         );

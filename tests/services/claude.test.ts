@@ -44,6 +44,17 @@ describe('safeJsonValidate', () => {
     it('chaîne vide → null', () => {
         expect(safeJsonValidate('', schema)).toBeNull();
     });
+
+    it('D9 — tableau JSON entouré de PROSE (sans fences) → extrait + parsé', () => {
+        const out = safeJsonValidate("Voici le résultat : [{\"id\":3,\"category\":\"Loisirs\"}] — j'espère que ça aide.", schema);
+        expect(out).toEqual([{ id: 3, category: 'Loisirs' }]);
+    });
+
+    it('D9 — objet JSON entouré de prose → extrait (cas getRealEstateAdvice unifié)', () => {
+        const objSchema = z.object({ summary: z.string() });
+        const out = safeJsonValidate('Bien sûr !\n{"summary":"Achat sain"}\nVoilà.', objSchema);
+        expect(out).toEqual({ summary: 'Achat sain' });
+    });
 });
 
 describe('isDefiniteTransfer', () => {

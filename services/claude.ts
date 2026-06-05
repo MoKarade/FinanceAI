@@ -63,7 +63,17 @@ export const safeJsonValidate = <S extends z.ZodTypeAny>(text: string, schema: S
             .trim()
             .replace(/^```(?:json)?\s*/i, '')
             .replace(/\s*```\s*$/i, '');
-        const parsed = JSON.parse(cleaned);
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(cleaned);
+        } catch {
+            // Fallback robustesse : le LLM entoure parfois le JSON de prose. On extrait le 1er
+            // objet/tableau (1re accolade/crochet → dernier). Unifie l'ancien parsing ad hoc de
+            // getRealEstateAdvice (regex gloutonne) → un seul chemin testé pour tous les appels.
+            const m = cleaned.match(/[[{][\s\S]*[\]}]/);
+            if (!m) throw new Error('aucun JSON détecté dans la réponse');
+            parsed = JSON.parse(m[0]);
+        }
         return schema.parse(parsed);
     } catch (e) {
         // S-E : ne plus loguer le contenu brut de la réponse LLM (peut contenir des
@@ -532,11 +542,9 @@ RÉPONDS UNIQUEMENT par un JSON strict (pas de markdown) :
             apiKey,
             { model: MODEL_HAIKU, system: QUEBEC_FISCAL_CONTEXT, maxTokens: 1500, temperature: 0.5, timeoutMs: 25000 },
         );
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) return null;
-        const parsed = JSON.parse(jsonMatch[0]);
-        const validated = RealEstateAdviceSchema.safeParse(parsed);
-        return validated.success ? validated.data : null;
+        // Unifié sur safeJsonValidate (tolère les fences ```json ET la prose autour du JSON,
+        // valide via Zod, journalise une réponse malformée) — cohérent avec les autres appels LLM.
+        return safeJsonValidate(text, RealEstateAdviceSchema);
     } catch (e) {
         logError({ source: 'ai', message: 'getRealEstateAdvice failed', error: e });
         return null;

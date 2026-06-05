@@ -140,7 +140,7 @@ PageHeader (cohérent, bon) · tooltips pédagogiques · états vides (`EmptySta
 ### D9 — Sécurité · **P1/P2**
 - ✅ **`applyDocument.ts` — bornes de plausibilité CORRIGÉ 2026-06-05** : le contenu des documents est extrait par l'IA depuis une pièce jointe (vecteur prompt-injection). Toute valeur hors bornes très larges (revenu > 50 M$/an, REER > 1 M$/an, transaction > 100 M$, quantité > 100 M, prix > 10 M$) est désormais **ignorée** (jamais écrite) et **signalée** dans le résumé (pas d'écriture silencieuse) — sur paie, feuillet, relevé bancaire et courtage. +4 tests. **P1**
 - `keyCipher.ts` : aligner PBKDF2 sur 600k (cohérence cloudBackup). **P2**
-- `getRealEstateAdvice` / `getRealEstateAdvice` : passer par `safeJsonValidate` (regex gloutonne aujourd'hui). **P2**
+- ✅ **`getRealEstateAdvice` CORRIGÉ 2026-06-05** : unifié sur `safeJsonValidate` (au lieu d'une regex gloutonne + `JSON.parse` brut ad hoc). Au passage, `safeJsonValidate` a été **renforcé** d'un fallback d'extraction `{…}`/`[…]` quand le LLM entoure le JSON de prose → net gain de robustesse pour TOUS les appels LLM (catégorisation, abonnements, optimisation couple, paie…). +2 tests. **P2**
 - `claude.ts` : activer le **prompt caching** Anthropic sur le contexte fiscal QC (coût/latence). **P2**
 - Finnhub clé en query string (risque résiduel, documenté).
 

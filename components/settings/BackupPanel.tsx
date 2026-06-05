@@ -4,6 +4,7 @@ import { Card } from '../ui/Card';
 import { showToast } from '../ui/Toast';
 import { downloadBackup, readBackupFile, defaultBackupFilename, CloudBackupError } from '../../services/cloudBackup';
 import { markBackupDone } from '../../services/backupReminder';
+import { logAudit } from '../../services/auditLog';
 
 const BackupSchema = z.object({
   version: z.string().optional(),
@@ -211,6 +212,12 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
     safeSet('app_major_renovations', data.majorRenovations);
     safeSet('app_charitable_goals', data.charitableGoals);
 
+    // SYS-AUDIT — trace la restauration (écrite APRÈS les writes → survit au reload).
+    logAudit({
+      field: 'backup',
+      operation: 'replace',
+      description: `Restauration depuis un backup (${data.transactions?.length ?? 0} transactions)`,
+    });
     showToast("✅ Restauration reussie ! Re-entrez vos cles API si necessaire.", "success");
     window.location.reload();
   };

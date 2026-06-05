@@ -13,7 +13,6 @@ interface LayoutProps {
   setActiveTab: (tab: Tab) => void;
   children: React.ReactNode;
   lastUpdate: number;
-  onRefresh: () => void;
   isLoading: boolean;
   isPrivacyMode: boolean;
   togglePrivacyMode: () => void;
@@ -30,7 +29,6 @@ export const Layout: React.FC<LayoutProps> = ({
   setActiveTab,
   children,
   lastUpdate: _lastUpdate,
-  onRefresh: _onRefresh,
   isLoading: _isLoading,
   isPrivacyMode,
   togglePrivacyMode,

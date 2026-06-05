@@ -23,7 +23,7 @@ import { configureMarketDataProvider } from './services/marketData';
 import { installGlobalErrorHandlers, logError } from './services/errorLogger';
 import { lazyWithRetry, clearChunkReloadFlag } from './utils/lazyWithRetry';
 import { initAutoBackup } from './services/backupAuto';
-import { initSync, runBootSync, schedulePush, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, startDrivePolling, markApiKeysHydrated, type SyncStatus } from './services/sync/syncOrchestrator';
+import { initSync, runBootSync, schedulePush, pushNow, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, startDrivePolling, markApiKeysHydrated, type SyncStatus } from './services/sync/syncOrchestrator';
 import { trackPageView } from './services/analytics';
 import { GuidedTour } from './components/tour/GuidedTour';
 import { startGuidedTour } from './components/tour/tourControl';
@@ -273,12 +273,21 @@ export const App: React.FC = () => {
             onSelect: () => setShowGuide(true),
         },
         {
-            id: 'action:refresh',
+            id: 'action:sync',
             label: 'Synchroniser les données',
             group: 'Actions',
             icon: '🔄',
-            keywords: ['sync', 'refresh', 'reload'],
-            onSelect: () => { window.dispatchEvent(new Event('resize')); },
+            keywords: ['sync', 'refresh', 'reload', 'sauvegarder', 'drive'],
+            onSelect: async () => {
+                // D8 : déclenche la VRAIE sync Drive (avant : un dispatch de resize factice qui ne
+                // synchronisait rien). Mirror du bouton « Sauvegarder maintenant » (GoogleDriveSyncCard).
+                const result = await pushNow();
+                if (result === 'pushed') showToast('Données synchronisées vers Google Drive.', 'success');
+                else if (result === 'not-configured') showToast("Connecte d'abord Google Drive (Réglages → Sauvegarde).", 'info');
+                else if (result === 'skipped-empty') showToast('Rien à synchroniser : aucune donnée sur cet appareil.', 'info');
+                else if (result === 'skipped-testmode') showToast('Mode test actif — synchronisation désactivée.', 'info');
+                else if (result === 'error') showToast('Échec de la synchronisation (voir Réglages → Système).', 'error');
+            },
         },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ], [isPrivacyMode, handleSetTab]);
@@ -455,9 +464,6 @@ export const App: React.FC = () => {
                 activeTab={activeTab}
                 setActiveTab={handleSetTab}
                 lastUpdate={state.lastUpdate}
-                onRefresh={() => {
-                    window.dispatchEvent(new Event('resize'));
-                }}
                 isLoading={isLoading}
                 isPrivacyMode={isPrivacyMode}
                 togglePrivacyMode={togglePrivacyMode}

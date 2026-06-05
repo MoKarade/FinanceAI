@@ -39,11 +39,12 @@ Le code est prêt et déployé ; il manque l'hébergement du bundle (Marc avait 
 ---
 
 ## Blocages / trous remontés par Claude (gouvernance G0, 2026-06-05)
-- [ ] **Action `backlog-autocheck` à créer** : CLAUDE.md (cochage auto du backlog via préfixe
-  `[ID]`) et le garde `[skip-backlog]` de `ci.yml` la supposent, mais aucun workflow
-  `.github/workflows/backlog-autocheck.yml` n'existe. Tant qu'elle manque, **Claude coche le
-  backlog à la main** (exception documentée). C'est un bot qui **commit sur `main`** → Marc
-  doit valider l'approche avant que Claude le crée (risque de boucle CI / commits auto).
+- [ ] **Action `backlog-autocheck` — CRÉÉE (2026-06-05), à valider en prod** :
+  `.github/workflows/backlog-autocheck.yml` + `scripts/backlog-autocheck.mjs`. Sur push `main`,
+  elle coche dans `docs/BACKLOG.md` toute case **ouverte qui porte son `[ID]`** (les tests manuels
+  sans `[ID]` sont laissés intacts), puis commit `[skip-backlog]` (pas de boucle CI/Action). **À
+  vérifier** : que le `GITHUB_TOKEN` du bot a le droit de **pousser sur `main`** (sinon protection
+  de branche à ajuster). Désormais Claude ne coche plus à la main (sauf cet item méta).
 - [x] **9 agents projet + `/review-all`** : étaient absents (`.claude/` était gitignoré en
   entier) → **créés par Claude** dans G0 et `.claude/` désormais committé pour les parties projet.
 - [x] **CLAUDE.md + hooks absents du repo** → installés dans G0 (push/merge autonome, guard

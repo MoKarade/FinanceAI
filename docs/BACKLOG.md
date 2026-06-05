@@ -92,7 +92,7 @@
 - [ ] **[CFG-PROFIL]** Onglet Configuration → Profil : **regrouper en UN seul ensemble cohérent**
   (Paramètres de retraite « hub central » + Configuration Utilisateurs/Salaires & Macro + Profils
   enregistrés + Mode de répartition) et **améliorer** la présentation.
-- [ ] **[CFG-COMPTES]** Onglet Configuration → Comptes : **regrouper** (Upload relevé de salaire IA +
+- [x] **[CFG-COMPTES]** Onglet Configuration → Comptes : **regrouper** (Upload relevé de salaire IA +
   Soldes initiaux + Import CSV bancaire), **retirer le texte inutile**, améliorer.
 - [ ] **[CFG-SAUVE]** Onglet Sauvegarde : **en retirer le Mode test ET « Connecter à Claude »**
   (mauvais emplacement) → les déplacer (Mode test → Système/diagnostics ; Connecteur → sa propre carte).

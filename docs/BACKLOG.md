@@ -89,7 +89,7 @@
   trancher trou PSV (< 65) normal vs bug (prorata RRQ, split 0,65/0,35, affichage tooltip).
 
 ## 🛠️ Configuration & Système — retours Marc (2026-06-05)
-- [ ] **[CFG-PROFIL]** Onglet Configuration → Profil : **regrouper en UN seul ensemble cohérent**
+- [x] **[CFG-PROFIL]** Onglet Configuration → Profil : **regrouper en UN seul ensemble cohérent**
   (Paramètres de retraite « hub central » + Configuration Utilisateurs/Salaires & Macro + Profils
   enregistrés + Mode de répartition) et **améliorer** la présentation.
 - [x] **[CFG-COMPTES]** Onglet Configuration → Comptes : **regrouper** (Upload relevé de salaire IA +

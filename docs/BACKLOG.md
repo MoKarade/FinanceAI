@@ -79,7 +79,7 @@
 - [ ] **[U5]** Export PNG du graphe « Évolution détaillée » (Dashboard).
 - [ ] **[ICONS-FUT]** Icônes Futur exhaustives : une icône typée par événement moteur (transferts,
   hypothèque, ventes, RAP, REEE…) + **LOD/clustering** lié au zoom (`useTimeChartZoom`). Moyen-grand.
-- [ ] **[ANIM]** Animations de qualité partout (chargements, navigation, KPIs, modales/listes) en
+- [x] **[ANIM]** Animations de qualité partout (chargements, navigation, KPIs, modales/listes) en
   CSS/WAAPI (pas de framer-motion), compositor-friendly, `prefers-reduced-motion`. Grand, à phaser.
   ⚠️ Piège connu (`index.css:222`) : un wrapper `transform` casse `position:fixed` → animer en opacité
   pure ou via portails.

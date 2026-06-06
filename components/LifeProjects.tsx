@@ -43,7 +43,7 @@ export const LifeProjects: React.FC<LifeProjectsProps> = ({
     const upcomingEvents = lifeEvents.filter(e => new Date(e.date) > new Date()).length;
 
     return (
-        <div className="space-y-6 animate-fade-in pb-20">
+        <div className="space-y-6 stagger-in pb-20">
             <PageHeader
                 icon="🛤️"
                 title="Projets de vie"

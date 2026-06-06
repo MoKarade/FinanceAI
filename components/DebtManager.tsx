@@ -72,7 +72,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     const zoom = useTimeChartZoom(simulation.chart);
 
     return (
-        <div className="space-y-6 animate-fade-in pb-20">
+        <div className="space-y-6 stagger-in pb-20">
             <ConfirmModal isOpen={!!confirmDeleteId} onConfirm={doConfirmDelete} onCancel={() => setConfirmDeleteId(null)} title="Supprimer la dette" message="Supprimer cette dette définitivement ?" confirmLabel="Supprimer" />
             <PageHeader
                 icon="💸"

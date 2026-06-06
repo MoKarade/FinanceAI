@@ -280,7 +280,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
     }>(combinedData);
 
     return (
-        <div className="space-y-6 animate-fade-in pb-10">
+        <div className="space-y-6 stagger-in pb-10">
             <ConfirmModal
                 isOpen={!!confirmDeleteGoalId}
                 onConfirm={doConfirmDeleteGoal}

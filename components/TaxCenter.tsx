@@ -203,7 +203,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
     const openDrive = () => window.open(DRIVE_FOLDER_URL, '_blank');
 
     return (
-        <div className="space-y-6 animate-fade-in pb-20">
+        <div className="space-y-6 stagger-in pb-20">
 
             <PageHeader
                 icon="🏛️"

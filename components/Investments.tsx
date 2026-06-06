@@ -438,7 +438,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
     // le formulaire d'ajout. Early-return placé APRÈS tous les hooks.
     if (assets.length === 0) {
         return (
-            <div className="space-y-6 animate-fade-in pb-10 relative">
+            <div className="space-y-6 stagger-in pb-10 relative">
                 <PageHeader icon="📈" title="Investissements" subtitle="Performance, allocation et revenus passifs" />
                 <Card>
                     <div className="text-center py-12 px-4 space-y-4">
@@ -469,7 +469,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
     }
 
     return (
-        <div className="space-y-6 animate-fade-in pb-10 relative">
+        <div className="space-y-6 stagger-in pb-10 relative">
 
             <PageHeader
                 icon="📈"

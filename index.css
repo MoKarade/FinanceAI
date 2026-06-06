@@ -142,13 +142,15 @@
 
 /* Animations */
 @keyframes slideUpFade {
+  /* transform absent du keyframe 100% (cf cardRise) : `forwards` ne fige que
+     l'opacité → pas de translateY(0) résiduel qui supprimerait le lift au survol
+     des cartes ni ne créerait un bloc conteneur cassant position:fixed. */
   from {
     opacity: 0;
     transform: translateY(20px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -164,6 +166,42 @@
 }
 .animate-tab-in {
   animation: fadeInOpacity 0.28s ease forwards;
+}
+
+/* LUXE — entrée chorégraphiée : les enfants DIRECTS d'un conteneur `.stagger-in`
+   montent en fondu, en cascade (style Apple/Google). Le transform est TRANSIENT
+   (≤0.75s incl. décalage) puis libéré (cf keyframe) → AUCUN bloc conteneur
+   résiduel (ne casse pas position:fixed) et le `:hover { transform }` des cartes
+   reste fonctionnel. */
+@keyframes cardRise {
+  /* Le transform n'est PAS dans le keyframe 100% : avec `forwards`, seul l'état
+     du dernier keyframe (opacity:1) est figé. Le transform redevient donc libre
+     après l'entrée → le `:hover { transform }` des cartes n'est plus supprimé,
+     et aucun bloc conteneur transform résiduel ne casse position:fixed. */
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; }
+}
+.stagger-in > * {
+  opacity: 0;
+  animation: cardRise 0.42s var(--ease-premium) forwards;
+}
+.stagger-in > *:nth-child(1)  { animation-delay: 0.03s; }
+.stagger-in > *:nth-child(2)  { animation-delay: 0.075s; }
+.stagger-in > *:nth-child(3)  { animation-delay: 0.12s; }
+.stagger-in > *:nth-child(4)  { animation-delay: 0.165s; }
+.stagger-in > *:nth-child(5)  { animation-delay: 0.21s; }
+.stagger-in > *:nth-child(6)  { animation-delay: 0.255s; }
+.stagger-in > *:nth-child(7)  { animation-delay: 0.30s; }
+.stagger-in > *:nth-child(n+8) { animation-delay: 0.33s; }
+/* Garde-fou : un enfant direct en position:fixed (overlay/modale) ne doit PAS
+   hériter du transform transitoire — sinon son positionnement viewport casse.
+   Rend `.stagger-in` sûr à poser sur n'importe quelle racine de page. */
+.stagger-in > .fixed,
+.stagger-in > [role="dialog"],
+.stagger-in > [aria-modal="true"] {
+  opacity: 1;
+  animation: none;
+  transform: none;
 }
 
 /* Skeletons */
@@ -362,6 +400,14 @@ select {
   }
 
   .lift-on-hover:hover {
+    transform: none !important;
+  }
+
+  /* La cascade d'entrée part de opacity:0 — sans animation, il faut forcer la
+     visibilité, sinon le contenu resterait invisible. */
+  .stagger-in > * {
+    opacity: 1 !important;
+    animation: none !important;
     transform: none !important;
   }
 }

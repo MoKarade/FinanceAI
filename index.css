@@ -142,13 +142,15 @@
 
 /* Animations */
 @keyframes slideUpFade {
+  /* transform absent du keyframe 100% (cf cardRise) : `forwards` ne fige que
+     l'opacité → pas de translateY(0) résiduel qui supprimerait le lift au survol
+     des cartes ni ne créerait un bloc conteneur cassant position:fixed. */
   from {
     opacity: 0;
     transform: translateY(20px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -168,12 +170,16 @@
 
 /* LUXE — entrée chorégraphiée : les enfants DIRECTS d'un conteneur `.stagger-in`
    montent en fondu, en cascade (style Apple/Google). Le transform est TRANSIENT
-   (≤0.75s incl. décalage) et se termine à `transform: none` (pas translateY(0)) →
-   AUCUN bloc conteneur résiduel, donc ne casse pas durablement position:fixed.
-   Rien en position:fixed ne s'ouvre pendant la ~0.45s d'entrée d'une page fraîche. */
+   (≤0.75s incl. décalage) puis libéré (cf keyframe) → AUCUN bloc conteneur
+   résiduel (ne casse pas position:fixed) et le `:hover { transform }` des cartes
+   reste fonctionnel. */
 @keyframes cardRise {
+  /* Le transform n'est PAS dans le keyframe 100% : avec `forwards`, seul l'état
+     du dernier keyframe (opacity:1) est figé. Le transform redevient donc libre
+     après l'entrée → le `:hover { transform }` des cartes n'est plus supprimé,
+     et aucun bloc conteneur transform résiduel ne casse position:fixed. */
   from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: none; }
+  to   { opacity: 1; }
 }
 .stagger-in > * {
   opacity: 0;

@@ -14,7 +14,9 @@ test.describe('Mode test — sélecteur de persona', () => {
     await page.addInitScript(scriptBypassOnboarding());
     await page.goto('/#SETTINGS');
     await page.waitForLoadState('domcontentloaded');
-    await page.getByRole('tab', { name: /Sauvegarde/i }).click();
+    // TestModePanel vit désormais dans le sous-onglet « Système & diagnostics »
+    // (déplacé hors de « Sauvegarde » lors du regroupement UI).
+    await page.getByRole('tab', { name: /Système/i }).click();
   });
 
   test('choisir un persona seul (Léa) l\'applique immédiatement, sans bouton', async ({ page }) => {

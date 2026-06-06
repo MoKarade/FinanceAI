@@ -216,7 +216,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     if (!goal) return null;
 
     return (
-        <div className="space-y-6 animate-fade-in pb-10">
+        <div className="space-y-6 stagger-in pb-10">
             <ConfirmModal
                 isOpen={!!confirmRemove}
                 onConfirm={doRemoveChild}

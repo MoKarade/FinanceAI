@@ -155,7 +155,7 @@ export const Settings: React.FC<SettingsProps> = ({
   });
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 stagger-in">
       <PageHeader
         icon="⚙️"
         title="Configuration"

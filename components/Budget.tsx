@@ -451,7 +451,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     }, [lastProjection, coupleAnalysis.totalSavings]);
 
     return (
-        <div className="space-y-6 animate-fade-in pb-20">
+        <div className="space-y-6 stagger-in pb-20">
             <ConfirmModal
                 isOpen={!!confirmDeleteId}
                 onConfirm={doConfirmDelete}

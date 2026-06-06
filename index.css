@@ -166,6 +166,38 @@
   animation: fadeInOpacity 0.28s ease forwards;
 }
 
+/* LUXE — entrée chorégraphiée : les enfants DIRECTS d'un conteneur `.stagger-in`
+   montent en fondu, en cascade (style Apple/Google). Le transform est TRANSIENT
+   (≤0.75s incl. décalage) et se termine à `transform: none` (pas translateY(0)) →
+   AUCUN bloc conteneur résiduel, donc ne casse pas durablement position:fixed.
+   Rien en position:fixed ne s'ouvre pendant la ~0.45s d'entrée d'une page fraîche. */
+@keyframes cardRise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.stagger-in > * {
+  opacity: 0;
+  animation: cardRise 0.42s var(--ease-premium) forwards;
+}
+.stagger-in > *:nth-child(1)  { animation-delay: 0.03s; }
+.stagger-in > *:nth-child(2)  { animation-delay: 0.075s; }
+.stagger-in > *:nth-child(3)  { animation-delay: 0.12s; }
+.stagger-in > *:nth-child(4)  { animation-delay: 0.165s; }
+.stagger-in > *:nth-child(5)  { animation-delay: 0.21s; }
+.stagger-in > *:nth-child(6)  { animation-delay: 0.255s; }
+.stagger-in > *:nth-child(7)  { animation-delay: 0.30s; }
+.stagger-in > *:nth-child(n+8) { animation-delay: 0.33s; }
+/* Garde-fou : un enfant direct en position:fixed (overlay/modale) ne doit PAS
+   hériter du transform transitoire — sinon son positionnement viewport casse.
+   Rend `.stagger-in` sûr à poser sur n'importe quelle racine de page. */
+.stagger-in > .fixed,
+.stagger-in > [role="dialog"],
+.stagger-in > [aria-modal="true"] {
+  opacity: 1;
+  animation: none;
+  transform: none;
+}
+
 /* Skeletons */
 .skeleton-box {
   @apply relative overflow-hidden bg-white/5 rounded;
@@ -362,6 +394,14 @@ select {
   }
 
   .lift-on-hover:hover {
+    transform: none !important;
+  }
+
+  /* La cascade d'entrée part de opacity:0 — sans animation, il faut forcer la
+     visibilité, sinon le contenu resterait invisible. */
+  .stagger-in > * {
+    opacity: 1 !important;
+    animation: none !important;
     transform: none !important;
   }
 }

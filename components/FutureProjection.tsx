@@ -579,7 +579,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     };
 
     return (
-        <div className="space-y-6 animate-fade-in pb-24">
+        <div className="space-y-6 stagger-in pb-24">
 
             <PageHeader
                 icon="🔮"

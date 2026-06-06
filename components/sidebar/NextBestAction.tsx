@@ -184,7 +184,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen = 
             </button>
         ) : undefined;
         return (
-            <div className="animate-fade-in">
+            <div className="stagger-in">
                 <PageHeader
                     title="Prochaine action"
                     icon="⚡"

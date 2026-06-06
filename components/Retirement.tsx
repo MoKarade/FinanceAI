@@ -195,7 +195,7 @@ export const Retirement: React.FC<RetirementProps> = ({
     // Mode strict : pas de projection = pas de données. Aucune invention.
     if (!hasProjection) {
         return (
-            <div className="space-y-6 animate-premium-in pb-20">
+            <div className="space-y-6 stagger-in pb-20">
                 <PageHeader
                     icon="🏖️"
                     title="Planification Retraite"
@@ -207,7 +207,7 @@ export const Retirement: React.FC<RetirementProps> = ({
     }
 
     return (
-        <div className="space-y-6 animate-premium-in pb-20">
+        <div className="space-y-6 stagger-in pb-20">
             <PageHeader
                 icon="🏖️"
                 title="Planification Retraite"

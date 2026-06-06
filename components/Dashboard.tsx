@@ -367,7 +367,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
 
     return (
-        <div className="space-y-6 animate-fade-in pb-10">
+        <div className="pb-10">
+            {/* stagger-in : entrée chorégraphiée des sections. La modale (position:fixed)
+                reste HORS du conteneur staggé pour ne pas hériter du transform transitoire. */}
+            <div className="space-y-6 stagger-in">
 
             <PageHeader
                 icon="📊"
@@ -650,6 +653,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     {segmentedData.assets.length === 0 && <div className="text-center py-4 text-ink-500 text-meta">Aucun actif trouvé.</div>}
                 </div>
             </Card>
+
+            </div>
 
             <StockComparisonModal
                 symbols={Array.from(selectedStockSymbols)}

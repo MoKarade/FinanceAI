@@ -633,7 +633,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 <button
                     type="button"
                     onClick={() => navigateWithFocus(TabEnum.FUTURE)}
-                    className="bg-gradient-to-br from-blue-900/10 to-indigo-900/10 border border-info-500/20 rounded-card p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full text-left hover:from-blue-900/20 hover:to-indigo-900/20 transition-colors focus-ring"
+                    className="bg-white/[0.03] border border-white/10 rounded-card p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full text-left hover:bg-white/[0.05] transition-colors focus-ring"
                     title="Ouvrir FutureProjection"
                 >
                     <div>
@@ -820,7 +820,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     </Card>
 
                     {/* AMELIORER MON BUDGET & 50/30/20 THEORETICAL */}
-                    <Card title="Améliorer mon budget" className="bg-gradient-to-br from-indigo-900/10 to-purple-900/10 border-indigo-500/20">
+                    <Card title="Améliorer mon budget" className="bg-white/[0.03] border-white/10">
                         <div className="flex flex-col gap-4">
                             <button
                                 onClick={handleAiDiagnosis}

@@ -556,7 +556,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 <ProjectionRequired feature="Le portefeuille projeté à l'horizon retraite" />
             )}
             {subTab === 'overview' && horizonSnapshot && (
-                <Card title={`🔮 Portefeuille projeté en ${horizonSnapshot.year} (${projectionHorizonYears} ans)`} className="bg-gradient-to-br from-blue-900/10 to-indigo-900/10 border-info-500/20">
+                <Card title={`🔮 Portefeuille projeté en ${horizonSnapshot.year} (${projectionHorizonYears} ans)`} className="bg-white/[0.03] border-white/10">
                     <StatGrid cols={horizonSnapshot.crypto > 0 ? 5 : 4}>
                         <KPIStat
                             label="CELI"
@@ -865,7 +865,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         badge={hasActions ? <Badge variant="warning" size="sm">Action requise</Badge> : <Badge variant="success" size="sm">OK</Badge>}
                         className="mt-2"
                     >
-                        <div className="mb-6 bg-gradient-to-r from-violet-900/20 to-black p-4 rounded-xl border border-violet-500/20 flex items-center justify-between">
+                        <div className="mb-6 bg-white/[0.03] p-4 rounded-xl border border-white/10 flex items-center justify-between">
                             <div>
                                 <div className="text-meta text-violet-400 uppercase font-bold mb-1">Diagnostic Automatique</div>
                                 <div className="text-white text-body font-bold">

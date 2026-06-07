@@ -95,7 +95,7 @@ export const CoupleOptimizationCard: React.FC = () => {
                                 type="button"
                                 onClick={handleGenerate}
                                 disabled={isLoading}
-                                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-bold text-body hover:opacity-90 transition-opacity disabled:opacity-50"
+                                className="px-4 py-2 bg-primary/15 border border-primary/40 text-primary rounded-lg font-bold text-body hover:bg-primary/25 transition-colors disabled:opacity-50"
                             >
                                 {isLoading ? '⏳ Analyse fiscale…' : '✨ Générer 3 stratégies IA'}
                             </button>

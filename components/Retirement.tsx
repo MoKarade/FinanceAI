@@ -217,7 +217,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                     : "Simulation complète basée sur le moteur FIRE — mêmes données que l'onglet Future."}
                 badge={
                     <Badge variant={bankruptcyAge ? 'danger' : 'success'} size="md">
-                        {bankruptcyAge ? `⚠️ Capital épuisé à ${bankruptcyAge} ans` : `🚀 Succès jusqu'à ${lifeExpectancy} ans`}
+                        {bankruptcyAge ? `Capital épuisé à ${bankruptcyAge} ans` : `Succès jusqu'à ${lifeExpectancy} ans`}
                     </Badge>
                 }
             />

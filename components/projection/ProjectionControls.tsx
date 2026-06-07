@@ -38,16 +38,16 @@ interface ProjectionControlsProps {
 }
 
 const STOCHASTIC_TOGGLES = [
-    { key: 'useStochasticMortality', label: '⚰️ Mortalité', title: "Active des tirages aléatoires de date de décès (tables Stats Can 2020-2022) en mode Monte Carlo. La simulation s'arrête à la mort." },
-    { key: 'ltcEnabled', label: '🏥 Soins LD', title: "Soins de longue durée (CHSLD/RPA). Probabilité croissante après 65 ans (1% → 25%/an)." },
-    { key: 'jobLossEnabled', label: '💼 Perte emploi', title: "Perte d'emploi stochastique en MC. Probabilité annuelle ~3% (Stats Can). Pendant N mois, revenu du user principal = 55% (assurance-emploi)." },
-    { key: 'modelSurvivor', label: '🖤 Survivant', title: "Modélise le décès du conjoint en MC (RRQ survivant 60%, PSV cesse, DB selon election)." },
-    { key: 'useHistoricalBootstrap', label: '📜 Bootstrap historique', title: "Échantillonne l'historique réel S&P 500 + inflation US 1928-2024 (97 ans)." },
-    { key: 'divorceEnabled', label: '💔 Divorce', title: "Divorce stochastique (MC). Probabilité annuelle ~1.5% (cumul ~36% sur 30 ans)." },
-    { key: 'ltdEnabled', label: '♿ Invalidité', title: "Invalidité longue durée stochastique. Probabilité annuelle ~0.5%." },
-    { key: 'criticalIllnessEnabled', label: '🩺 Maladie grave', title: "Maladie grave stochastique. Probabilité ~0.3%/an." },
-    { key: 'inheritanceEnabled', label: '🎁 Héritage', title: "Héritage probabilisé. Tirage dans la fenêtre [âge attendu ± uncertaintyY]." },
-    { key: 'snowbirdEnabled', label: '🌴 Snowbird', title: "Snowbird (4-6 mois en US/Mexique en hiver à la retraite). Surcoût mensuel ~1500$." },
+    { key: 'useStochasticMortality', label: 'Mortalité', title: "Active des tirages aléatoires de date de décès (tables Stats Can 2020-2022) en mode Monte Carlo. La simulation s'arrête à la mort." },
+    { key: 'ltcEnabled', label: 'Soins LD', title: "Soins de longue durée (CHSLD/RPA). Probabilité croissante après 65 ans (1% → 25%/an)." },
+    { key: 'jobLossEnabled', label: 'Perte emploi', title: "Perte d'emploi stochastique en MC. Probabilité annuelle ~3% (Stats Can). Pendant N mois, revenu du user principal = 55% (assurance-emploi)." },
+    { key: 'modelSurvivor', label: 'Survivant', title: "Modélise le décès du conjoint en MC (RRQ survivant 60%, PSV cesse, DB selon election)." },
+    { key: 'useHistoricalBootstrap', label: 'Bootstrap historique', title: "Échantillonne l'historique réel S&P 500 + inflation US 1928-2024 (97 ans)." },
+    { key: 'divorceEnabled', label: 'Divorce', title: "Divorce stochastique (MC). Probabilité annuelle ~1.5% (cumul ~36% sur 30 ans)." },
+    { key: 'ltdEnabled', label: 'Invalidité', title: "Invalidité longue durée stochastique. Probabilité annuelle ~0.5%." },
+    { key: 'criticalIllnessEnabled', label: 'Maladie grave', title: "Maladie grave stochastique. Probabilité ~0.3%/an." },
+    { key: 'inheritanceEnabled', label: 'Héritage', title: "Héritage probabilisé. Tirage dans la fenêtre [âge attendu ± uncertaintyY]." },
+    { key: 'snowbirdEnabled', label: 'Snowbird', title: "Snowbird (4-6 mois en US/Mexique en hiver à la retraite). Surcoût mensuel ~1500$." },
 ] as const;
 
 const INFLATION_CATEGORIES = [

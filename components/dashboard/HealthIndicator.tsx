@@ -237,7 +237,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                     aria-label="Paramétrer les pondérations"
                     className="text-tiny text-ink-400 hover:text-ink-200 transition-colors focus-ring rounded px-2 py-1"
                 >
-                    {showSettings ? '✕ Fermer' : '⚙️ Paramétrer'}
+                    {showSettings ? 'Fermer' : 'Paramétrer'}
                 </button>
             </div>
 

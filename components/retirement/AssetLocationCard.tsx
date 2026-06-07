@@ -21,13 +21,13 @@ interface AssetLocationCardProps {
 type Holding = { assetClass: AssetClass; amount: number; currentAccount: AccountType };
 
 const ASSET_CLASS_LABELS: Record<AssetClass, string> = {
-    bonds: '📋 Obligations',
-    'us-equity': '🇺🇸 Actions US',
-    'ca-equity': '🇨🇦 Actions CAD',
-    international: '🌏 International',
-    'growth-small': '🚀 Croissance/Small',
-    reit: '🏢 REIT',
-    cash: '💵 Cash',
+    bonds: 'Obligations',
+    'us-equity': 'Actions US',
+    'ca-equity': 'Actions CAD',
+    international: 'International',
+    'growth-small': 'Croissance/Small',
+    reit: 'REIT',
+    cash: 'Cash',
 };
 
 // Heuristique : classifier les holdings du store en assetClass basé sur le symbol

@@ -129,7 +129,7 @@ export const AutoBackupPanel: React.FC = () => {
                         disabled={isCreating}
                         className="px-3 py-1.5 bg-primary/15 hover:bg-primary/25 border border-primary/40 text-primary text-tiny font-bold rounded-card transition-colors focus-ring disabled:opacity-50"
                     >
-                        {isCreating ? '⏳ Création…' : '+ Backup maintenant'}
+                        {isCreating ? 'Création…' : '+ Backup maintenant'}
                     </button>
                     <button
                         type="button"

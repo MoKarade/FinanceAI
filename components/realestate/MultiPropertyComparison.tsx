@@ -64,7 +64,7 @@ export const MultiPropertyComparison: React.FC<MultiPropertyComparisonProps> = (
 
     return (
         <Card
-            title={`📊 Comparaison des ${goals.length} Propriétés — Équité Projectée`}
+            title={`Comparaison des ${goals.length} Propriétés — Équité Projectée`}
             className="mt-4"
         >
             <div className="flex gap-4 mb-4 flex-wrap">

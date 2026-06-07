@@ -65,7 +65,7 @@ export const RealEstateAdviceCard: React.FC<RealEstateAdviceCardProps> = ({ cont
                             disabled={isLoading || !apiKey}
                             className="px-4 py-2 bg-gradient-to-r from-success-600 to-info-600 text-white rounded-lg font-bold text-body hover:opacity-90 disabled:opacity-50"
                         >
-                            {isLoading ? '⏳ Analyse…' : '✨ Conseiller le projet'}
+                            {isLoading ? 'Analyse…' : 'Conseiller le projet'}
                         </button>
                         {error && <p className="text-danger-400 text-tiny mt-1">{error}</p>}
                         {!apiKey && <p className="text-warning-400 text-tiny italic">Clé Anthropic requise (Configuration)</p>}

@@ -267,8 +267,8 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                         </div>
                         <div className="space-y-3">
                             {[
-                                { label: '🌿 CELI', key: 'celi', value: celiBalance, onChange: setCeliBalance, hint: 'Compte Épargne Libre-Impôt' },
-                                { label: '🔒 REER', key: 'reer', value: reerBalance, onChange: setReerBalance, hint: "Régime Épargne-Retraite" },
+                                { label: 'CELI', key: 'celi', value: celiBalance, onChange: setCeliBalance, hint: 'Compte Épargne Libre-Impôt' },
+                                { label: 'REER', key: 'reer', value: reerBalance, onChange: setReerBalance, hint: "Régime Épargne-Retraite" },
                             ].map(({ label, key, value, onChange, hint }) => (
                                 <div key={key} className="p-4 bg-white/5 rounded-card border border-white/10">
                                     <label htmlFor={`balance-${key}`} className="text-body font-bold text-ink-50 flex items-center gap-2 mb-1">{label} <span className="text-tiny text-ink-400 font-normal">{hint}</span></label>

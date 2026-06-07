@@ -26,7 +26,7 @@ const SUGGESTED_PROMPTS: Array<{ icon: string; label: string; prompt: string }> 
 
 const GREETING: AiMessage = {
   role: 'model',
-  text: "👋 Bonjour ! Je suis ton conseiller financier personnel. Je connais ton budget, tes actions et tes projets.\n\nPose-moi une question ou clique sur une suggestion ci-dessous.",
+  text: "Bonjour ! Je suis ton conseiller financier personnel. Je connais ton budget, tes actions et tes projets.\n\nPose-moi une question ou clique sur une suggestion ci-dessous.",
   timestamp: '',
 };
 
@@ -211,7 +211,7 @@ ${last20Txs}`
       logError({ source: 'ai', severity: 'error', message: 'Assistant Claude : échec du streaming', error: e });
       appendMessage({
         role: 'model',
-        text: "⚠️ Oups, je n'arrive pas à réfléchir. Vérifie ta clé API Anthropic.",
+        text: "Oups, je n'arrive pas à réfléchir. Vérifie ta clé API Anthropic.",
         timestamp: new Date().toISOString(),
       });
     } finally {

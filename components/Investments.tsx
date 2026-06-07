@@ -556,7 +556,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 <ProjectionRequired feature="Le portefeuille projeté à l'horizon retraite" />
             )}
             {subTab === 'overview' && horizonSnapshot && (
-                <Card title={`🔮 Portefeuille projeté en ${horizonSnapshot.year} (${projectionHorizonYears} ans)`} className="bg-white/[0.03] border-white/10">
+                <Card title={`Portefeuille projeté en ${horizonSnapshot.year} (${projectionHorizonYears} ans)`} className="bg-white/[0.03] border-white/10">
                     <StatGrid cols={horizonSnapshot.crypto > 0 ? 5 : 4}>
                         <KPIStat
                             label="CELI"
@@ -869,7 +869,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                             <div>
                                 <div className="text-meta text-violet-400 uppercase font-bold mb-1">Diagnostic Automatique</div>
                                 <div className="text-white text-body font-bold">
-                                    {hasActions ? '⚠️ Des actions de rééquilibrage sont recommandées' : '✅ Portefeuille bien équilibré'}
+                                    {hasActions ? 'Des actions de rééquilibrage sont recommandées' : 'Portefeuille bien équilibré'}
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -896,14 +896,14 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         disabled={isFetchingJustifications}
                                         className="px-3 py-1.5 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 rounded-lg text-meta font-bold hover:bg-indigo-600 hover:text-white transition-colors disabled:opacity-50"
                                     >
-                                        {isFetchingJustifications ? '⏳ Analyse…' : '✨ Pourquoi ces actions ?'}
+                                        {isFetchingJustifications ? 'Analyse…' : 'Pourquoi ces actions ?'}
                                     </button>
                                 )}
                                 <button
                                     onClick={() => setIsRebalanceEdit(!isRebalanceEdit)}
                                     className="px-3 py-1.5 bg-violet-600/20 text-violet-300 border border-violet-500/30 rounded-lg text-meta font-bold hover:bg-violet-600 hover:text-white transition-colors"
                                 >
-                                    {isRebalanceEdit ? '💾 Terminer' : '⚙️ Modifier Cibles'}
+                                    {isRebalanceEdit ? 'Terminer' : 'Modifier Cibles'}
                                 </button>
                                 <div className="text-3xl font-black text-white privacy-blur hidden sm:block">
                                     {formatCAD(totalPortfolio)}

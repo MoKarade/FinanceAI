@@ -163,7 +163,7 @@ export const ErrorLogViewer: React.FC = () => {
                 {filtered.length === 0 ? (
                     <div className="text-center py-6 text-meta text-emerald-300 bg-success-500/5 rounded-card border border-success-500/20">
                         {errors.length === 0
-                            ? '✅ Aucune erreur enregistrée. Tout va bien.'
+                            ? 'Aucune erreur enregistrée. Tout va bien.'
                             : 'Aucune erreur ne correspond aux filtres actuels.'}
                     </div>
                 ) : (

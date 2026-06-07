@@ -95,13 +95,13 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
       const { apiKeys: _stripped, ...payloadWithoutKeys } = buildPayload() as { apiKeys: unknown };
       await downloadBackup(payloadWithoutKeys, exportPassphrase, defaultBackupFilename());
       markBackupDone();
-      showToast("✅ Sauvegarde chiffrée téléchargée. Conserve la passphrase précieusement.", "success");
+      showToast("Sauvegarde chiffrée téléchargée. Conserve la passphrase précieusement.", "success");
       setShowExportEncModal(false);
       setExportPassphrase('');
       setExportPassphraseConfirm('');
     } catch (e) {
       const msg = e instanceof CloudBackupError ? e.message : (e as Error).message;
-      showToast(`❌ Echec chiffrement : ${msg}`, "error");
+      showToast(`Echec chiffrement : ${msg}`, "error");
     } finally {
       setEncWorking(false);
     }
@@ -124,7 +124,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
       if (!parsed.success) {
         const issue = parsed.error.issues[0];
         const path = issue.path.length > 0 ? issue.path.join('.') : 'racine';
-        showToast(`❌ Backup déchiffré invalide (${path}) : ${issue.message}`, "error");
+        showToast(`Backup déchiffré invalide (${path}) : ${issue.message}`, "error");
         return;
       }
       setEncryptedFile(null);
@@ -133,7 +133,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
       setPendingRestoreData(parsed.data);
     } catch (e) {
       const msg = e instanceof CloudBackupError ? e.message : (e as Error).message;
-      showToast(`❌ ${msg}`, "error");
+      showToast(`${msg}`, "error");
     } finally {
       setEncWorking(false);
     }
@@ -152,14 +152,14 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
         if (!parsed.success) {
           const issue = parsed.error.issues[0];
           const path = issue.path.length > 0 ? issue.path.join('.') : 'racine';
-          showToast(`❌ Backup invalide (${path}) : ${issue.message}`, "error");
+          showToast(`Backup invalide (${path}) : ${issue.message}`, "error");
           return;
         }
         setRestoreConfirmPhrase('');
         setPendingRestoreData(parsed.data);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'inconnu';
-        showToast(`❌ Echec lecture : ${msg}`, "error");
+        showToast(`Echec lecture : ${msg}`, "error");
       }
     };
     reader.readAsText(file);
@@ -218,7 +218,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
       operation: 'replace',
       description: `Restauration depuis un backup (${data.transactions?.length ?? 0} transactions)`,
     });
-    showToast("✅ Restauration reussie ! Re-entrez vos cles API si necessaire.", "success");
+    showToast("Restauration reussie ! Re-entrez vos cles API si necessaire.", "success");
     window.location.reload();
   };
 

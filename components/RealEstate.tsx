@@ -301,7 +301,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                         variant={activeGoal.isActive ? 'danger' : 'primary'}
                         size="md"
                     >
-                        {activeGoal.isActive ? '❌ Désactiver' : '✅ Activer dans Simulation'}
+                        {activeGoal.isActive ? 'Désactiver' : 'Activer dans Simulation'}
                     </Button>
                 }
             />
@@ -377,7 +377,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                             label="Cash nécessaire"
                             icon={<Icon name="cash" size={16} />}
                             value={formatCurrency(totalCashNeeded)}
-                            sublabel={availableCash >= totalCashNeeded ? '✓ Disponible' : `Manque ${formatCurrency(totalCashNeeded - availableCash)}`}
+                            sublabel={availableCash >= totalCashNeeded ? 'Disponible' : `Manque ${formatCurrency(totalCashNeeded - availableCash)}`}
                             privacy
                             variant={availableCash >= totalCashNeeded ? 'success' : 'danger'}
                         />

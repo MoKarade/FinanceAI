@@ -476,7 +476,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 }
                 badge={
                     <Badge variant={totalNetIncomeDisplay >= totalBudgetDisplay ? 'success' : 'danger'} size="md">
-                        {totalNetIncomeDisplay >= totalBudgetDisplay ? '✅ Excédentaire' : '⚠️ Déficitaire'}
+                        {totalNetIncomeDisplay >= totalBudgetDisplay ? 'Excédentaire' : 'Déficitaire'}
                         <span className="ml-1 tabular-nums">{(totalNetIncomeDisplay - totalBudgetDisplay).toLocaleString()}$</span>
                     </Badge>
                 }

@@ -33,7 +33,7 @@ export const TestModePanel: React.FC = () => {
         const persona = getPersonaOrDefault(id);
         setSelectedId(persona.id);
         enableTestMode(persona.build(), persona.id);
-        showToast(`🧪 Persona « ${persona.label} » chargé. Tes vraies données sont sauvegardées.`, 'success');
+        showToast(`Persona « ${persona.label} » chargé. Tes vraies données sont sauvegardées.`, 'success');
     };
 
     // Choisir un persona dans la liste l'APPLIQUE toujours, qu'on soit déjà en
@@ -47,11 +47,11 @@ export const TestModePanel: React.FC = () => {
     const handleDisable = () => {
         disableTestMode();
         setConfirmDisable(false);
-        showToast('✅ Mode test désactivé — tes vraies données sont restaurées.', 'success');
+        showToast('Mode test désactivé — tes vraies données sont restaurées.', 'success');
     };
 
     return (
-        <Card title={isTestMode ? '🧪 Mode test ACTIF' : '🧪 Mode test (dev)'}>
+        <Card title={isTestMode ? 'Mode test ACTIF' : 'Mode test (dev)'}>
             <div className="space-y-3">
                 {isTestMode && active ? (
                     <p className="text-body text-amber-300 leading-snug">

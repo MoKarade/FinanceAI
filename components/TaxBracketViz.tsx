@@ -118,15 +118,15 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
     const combinedEffective = (fedBreakdown.effectiveRate + qcBreakdown.effectiveRate) * 100;
 
     return (
-        <Card title={`💰 Tranches d'imposition${label ? ` (${label})` : ''}`}>
+        <Card title={`Tranches d'imposition${label ? ` (${label})` : ''}`}>
             <div className="space-y-4">
                 <p className="text-tiny text-ink-300 leading-snug">
                     Marqueur jaune = revenu brut annuel ({formatCAD(annualGrossIncome)}).
                     Effectif = moyen pondéré sur toutes les tranches consommées.
                     Marginal = taux appliqué au prochain dollar gagné.
                 </p>
-                {renderBracketBar(FED_BRACKETS as never, '🇨🇦 Fédéral (ARC)', '59, 130, 246', fedBreakdown)}
-                {renderBracketBar(QC_BRACKETS as never, '🟦 Québec (Revenu Québec)', '236, 72, 153', qcBreakdown)}
+                {renderBracketBar(FED_BRACKETS as never, 'Fédéral (ARC)', '59, 130, 246', fedBreakdown)}
+                {renderBracketBar(QC_BRACKETS as never, 'Québec (Revenu Québec)', '236, 72, 153', qcBreakdown)}
                 <div className="grid grid-cols-2 gap-3 p-3 bg-white/5 rounded border border-white/10">
                     <div>
                         <div className="text-tiny text-ink-400 uppercase tracking-wide">Combiné effectif</div>

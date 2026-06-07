@@ -97,7 +97,7 @@ export const CoupleOptimizationCard: React.FC = () => {
                                 disabled={isLoading}
                                 className="px-4 py-2 bg-primary/15 border border-primary/40 text-primary rounded-lg font-bold text-body hover:bg-primary/25 transition-colors disabled:opacity-50"
                             >
-                                {isLoading ? '⏳ Analyse fiscale…' : '✨ Générer 3 stratégies IA'}
+                                {isLoading ? 'Analyse fiscale…' : 'Générer 3 stratégies IA'}
                             </button>
                         )}
                         {hasError && (
@@ -138,7 +138,7 @@ export const CoupleOptimizationCard: React.FC = () => {
                             disabled={isLoading}
                             className="w-full py-2 bg-white/5 hover:bg-white/10 text-ink-200 rounded-lg text-tiny font-bold transition-colors disabled:opacity-50"
                         >
-                            {isLoading ? '⏳ Régénération…' : '↻ Régénérer les stratégies'}
+                            {isLoading ? 'Régénération…' : '↻ Régénérer les stratégies'}
                         </button>
                     </div>
                 )}

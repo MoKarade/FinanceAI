@@ -195,7 +195,7 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, onApply }) => 
                     className="mt-3 w-full flex items-center justify-between gap-2 rounded-lg bg-white/5 hover:bg-white/10 px-3 py-2 text-tiny text-ink-200 focus-ring transition-colors"
                 >
                     <span><strong className="text-white tabular-nums">{configCount.toLocaleString('fr-CA')}</strong> configuration{configCount > 1 ? 's' : ''} — leviers</span>
-                    <span aria-hidden="true">{composerOpen ? '▲ replier' : '▼ modifier'}</span>
+                    <span aria-hidden="true">{composerOpen ? 'replier' : 'modifier'}</span>
                 </button>
             )}
 
@@ -380,7 +380,7 @@ const WinnerCard: React.FC<{
                     disabled={applied}
                     className="mt-3 w-full rounded-lg bg-green-500/20 hover:bg-green-500/30 disabled:opacity-60 disabled:cursor-not-allowed border border-green-500/40 px-3 py-2 text-meta font-bold text-green-200 focus-ring transition-colors"
                 >
-                    {applied ? '✓ Appliquée à tes paramètres' : 'Appliquer cette stratégie'}
+                    {applied ? 'Appliquée à tes paramètres' : 'Appliquer cette stratégie'}
                 </button>
             )}
             {onApply && (

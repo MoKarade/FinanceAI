@@ -177,7 +177,7 @@ export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
                     title={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
                     aria-label={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
                 >
-                    {isFullscreen ? '✕ Réduire' : '⛶ Plein écran'}
+                    {isFullscreen ? 'Réduire' : 'Plein écran'}
                 </button>
             )}
             <ResponsiveContainer width="100%" height="100%">

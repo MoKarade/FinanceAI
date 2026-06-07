@@ -260,7 +260,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                         disabled={isSuggestingPrice}
                                         className="text-tiny text-info-400 hover:underline disabled:opacity-50"
                                     >
-                                        {isSuggestingPrice ? '⏳ Recherche…' : '💡 Suggérer prix historique'}
+                                        {isSuggestingPrice ? 'Recherche…' : 'Suggérer prix historique'}
                                     </button>
                                 )}
                             </label>

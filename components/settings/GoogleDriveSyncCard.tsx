@@ -169,6 +169,9 @@ export const GoogleDriveSyncCard: React.FC = () => {
                             <span className="block text-tiny text-ink-400">
                                 Dernière sync : {formatWhen(status.lastSyncedAt)}
                             </span>
+                            <span className="block text-tiny text-ink-400">
+                                Synchronisation automatique active · sauvegarde manuelle ci-dessous.
+                            </span>
                         </div>
 
                         {/* Passphrase optionnelle (zéro-knowledge) + invite si un pull a trouvé un blob chiffré. */}

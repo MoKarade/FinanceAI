@@ -4,6 +4,7 @@ import { Card } from './ui/Card';
 import { EmptyState } from './ui/EmptyState';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { PageHeader } from './ui/PageHeader';
+import { Icon } from './ui/Icon';
 import { Button } from './ui/Button';
 import { TravelGoal } from '../types';
 
@@ -45,7 +46,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                 confirmLabel="Supprimer"
             />
             <PageHeader
-                icon="✈️"
+                icon={<Icon name="plane" size={28} />}
                 title="Mes Voyages"
                 subtitle="Planifiez vos prochaines aventures"
                 actions={
@@ -135,7 +136,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
 
             {sortedTrips.length === 0 && !isAdding && (
                 <EmptyState
-                    icon="🌍"
+                    icon={<Icon name="globe" size={30} />}
                     title="Aucun voyage prévu"
                     description="Ajoutez un voyage pour voir son impact sur vos finances et votre projection long terme."
                 />

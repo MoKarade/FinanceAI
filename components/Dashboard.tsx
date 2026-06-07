@@ -6,6 +6,7 @@ const DashboardEvolutionChart = React.lazy(() => import('./dashboard/DashboardEv
 import { Transaction, Asset, BudgetCategory, RealEstateGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Tab, Debt } from '../types';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
+import { Icon } from './ui/Icon';
 import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { Skeleton } from './ui/Skeleton';
@@ -333,7 +334,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         return (
             <div className="space-y-6 animate-fade-in pb-10">
                 <PageHeader
-                    icon="📊"
+                    icon={<Icon name="dashboard" size={28} />}
                     title={t('dashboard.title', "Vue d'ensemble")}
                     subtitle={t('dashboard.subtitle', "Patrimoine consolidé et tendance")}
                 />
@@ -373,7 +374,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="space-y-6 stagger-in">
 
             <PageHeader
-                icon="📊"
+                icon={<Icon name="dashboard" size={28} />}
                 title={t('dashboard.title', "Vue d'ensemble")}
                 subtitle={t('dashboard.subtitle', "Patrimoine consolidé et tendance")}
             />
@@ -382,7 +383,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <StatGrid cols={5}>
                 <KPIStat
                     label={t('dashboard.global_net_worth')}
-                    icon="💰"
+                    icon={<Icon name="money" size={16} />}
                     value={formatCAD(Number(latestTotals?.Total) || 0)}
                     sublabel={t('dashboard.consolidated', 'Tous comptes')}
                     privacy
@@ -390,7 +391,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 />
                 <KPIStat
                     label={`${t('dashboard.global_variation')} (${timeRange})`}
-                    icon="📈"
+                    icon={<Icon name="investments" size={16} />}
                     value={formatPercent(performance.global)}
                     sublabel={formatSigned(performance.diff || 0, { withCurrency: true, decimals: 2 })}
                     privacy
@@ -400,7 +401,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     `netSalary` est en MENSUEL dans le store (cf Budget.tsx). */}
                 <KPIStat
                     label="Revenu actif"
-                    icon="💼"
+                    icon={<Icon name="portfolio" size={16} />}
                     value={formatCAD(totalMonthlyActiveIncome)}
                     sublabel="/ mois (net)"
                     privacy
@@ -408,7 +409,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 />
                 <KPIStat
                     label={t('dashboard.passive_income_month')}
-                    icon="✨"
+                    icon={<Icon name="sparkles" size={16} />}
                     value={`+${formatCAD(totalMonthlyPassive)}`}
                     sublabel="/ mois"
                     privacy

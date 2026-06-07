@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Modal } from '../ui/Modal';
+import { Icon } from '../ui/Icon';
 import { parseBrokerCsv, holdingsToAssets, type ParsedBrokerCsv } from '../../services/import/parseBrokerCsv';
 import type { Asset } from '../../types';
 
@@ -49,7 +50,7 @@ export const ImportBrokerPositions: React.FC<Props> = ({ isOpen, onClose, onImpo
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title="Importer mes positions (CSV courtier)" icon="📥" size="lg">
+        <Modal isOpen={isOpen} onClose={handleClose} title="Importer mes positions (CSV courtier)" icon={<Icon name="import" size={22} />} size="lg">
             <div className="space-y-4">
                 <p className="text-meta text-ink-300">
                     Exporte tes positions depuis ton courtier (Wealthsimple, Questrade, Disnat, RBC DI…) en CSV,

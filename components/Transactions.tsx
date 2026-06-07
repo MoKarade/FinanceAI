@@ -8,6 +8,7 @@ import { categorizeBatch } from '../services/claude';
 import { Card } from './ui/Card';
 import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
+import { Icon } from './ui/Icon';
 import { ImportBankStatement } from './import/ImportBankStatement';
 
 interface TransactionsProps {
@@ -320,7 +321,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
         <div className="space-y-6 relative stagger-in">
 
             <PageHeader
-                icon="💳"
+                icon={<Icon name="transactions" size={28} />}
                 title="Transactions"
                 subtitle={`${transactions.length} transactions au total · ${uncategorizedGroups.length} groupe(s) à classer`}
                 actions={
@@ -673,7 +674,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         <li>
                             <EmptyState
                                 variant="subtle"
-                                icon="🔍"
+                                icon={<Icon name="search" size={30} />}
                                 title="Aucune transaction"
                                 description="Importez un CSV ou ajustez les filtres pour voir vos transactions."
                             />

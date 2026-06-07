@@ -13,6 +13,7 @@ import { RealEstateAdviceCard } from './realestate/RealEstateAdviceCard';
 import { calculateWelcomeTax } from '../services/realEstate';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { PageHeader } from './ui/PageHeader';
+import { Icon } from './ui/Icon';
 import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { Button } from './ui/Button';
@@ -290,7 +291,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                 confirmLabel="Supprimer"
             />
             <PageHeader
-                icon="🏡"
+                icon={<Icon name="real-estate" size={28} />}
                 title="Immobilier"
                 subtitle={`${goals.length} propriété${goals.length > 1 ? 's' : ''} configurée${goals.length > 1 ? 's' : ''} · Mensualité nette ${formatCurrency(netMonthlyCost)}`}
                 badge={activeGoal.isActive ? <Badge variant="success" size="md">✓ Active dans simulation</Badge> : <Badge variant="neutral" size="md">Inactive</Badge>}
@@ -374,7 +375,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                     <StatGrid cols={4} gap="sm">
                         <KPIStat
                             label="Cash nécessaire"
-                            icon="💵"
+                            icon={<Icon name="cash" size={16} />}
                             value={formatCurrency(totalCashNeeded)}
                             sublabel={availableCash >= totalCashNeeded ? '✓ Disponible' : `Manque ${formatCurrency(totalCashNeeded - availableCash)}`}
                             privacy
@@ -382,7 +383,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                         />
                         <KPIStat
                             label="Prêt Initial"
-                            icon="🏦"
+                            icon={<Icon name="bank" size={16} />}
                             value={formatCurrency(totalMortgage)}
                             sublabel={`Ratio Prêt/Valeur: ${Math.round((totalMortgage / price) * 100)}%`}
                             privacy
@@ -390,7 +391,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                         />
                         <KPIStat
                             label="Perte Sèche (Mens.)"
-                            icon="💸"
+                            icon={<Icon name="debt" size={16} />}
                             value={formatCurrency(unrecoverableMonthly)}
                             sublabel="Intérêts + taxes + entretien"
                             privacy
@@ -398,7 +399,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                         />
                         <KPIStat
                             label="Valeur à terme"
-                            icon="📈"
+                            icon={<Icon name="investments" size={16} />}
                             value={formatCurrency(amortizationData.finalValue)}
                             sublabel={`Dans ${amortization} ans`}
                             privacy

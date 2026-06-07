@@ -9,6 +9,7 @@ import { BudgetGroupTable } from './budget/BudgetGroupTable';
 import { BudgetAiModal } from './budget/BudgetAiModal';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { PageHeader } from './ui/PageHeader';
+import { Icon } from './ui/Icon';
 import { Pill } from './ui/Pill';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
@@ -465,7 +466,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 confirmLabel="Supprimer"
             />
             <PageHeader
-                icon="⚖️"
+                icon={<Icon name="budget" size={28} />}
                 title="Pilotage Budget"
                 subtitle={
                     timeView === 'MONTH' ? 'Vision tactique (Mois en cours)' :
@@ -481,7 +482,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 }
                 actions={
                     <>
-                        <Button onClick={handleAiDiagnosis} variant="primary" size="sm" icon="✨">
+                        <Button onClick={handleAiDiagnosis} variant="primary" size="sm" icon={<Icon name="sparkles" size={16} />}>
                             Diagnostic IA
                         </Button>
                         <Pill
@@ -570,7 +571,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <DualKPIStat
                     label="Budget"
-                    icon="🎯"
+                    icon={<Icon name="goal" size={16} />}
                     prevu={totalBudgetDisplay}
                     reel={totalSpentDisplay}
                     sublabel={`Cible (×${getMultiplier().toFixed(1)})`}
@@ -578,7 +579,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 />
                 <DualKPIStat
                     label="Revenus"
-                    icon="💰"
+                    icon={<Icon name="money" size={16} />}
                     prevu={totalNetIncomeDisplay}
                     reel={totalActualIncomeDisplay}
                     sublabel="Net (transactions ≥ 0)"
@@ -586,7 +587,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 />
                 <DualKPIStat
                     label="Dépenses"
-                    icon="💸"
+                    icon={<Icon name="debt" size={16} />}
                     prevu={totalBudgetDisplay}
                     reel={totalSpentDisplay}
                     sublabel={projectedTotalDisplay > totalBudgetDisplay ? `Projection +${formatCAD(projectedTotalDisplay - totalBudgetDisplay)}` : 'Sous le budget'}
@@ -595,7 +596,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 />
                 <DualKPIStat
                     label="Restant"
-                    icon="🟢"
+                    icon={<Icon name="status" size={16} />}
                     prevu={totalNetIncomeDisplay - totalBudgetDisplay}
                     reel={totalRemainingDisplay}
                     sublabel="Revenu − Dépenses"

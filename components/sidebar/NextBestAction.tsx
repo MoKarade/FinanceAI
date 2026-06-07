@@ -5,6 +5,7 @@ import { computeCurrentLiquidity, computeInvestmentsValue, computeAssetBreakdown
 import { useHasUserData } from '../../utils/useHasUserData';
 import { Tab } from '../../types';
 import { PageHeader } from '../ui/PageHeader';
+import { Icon } from '../ui/Icon';
 
 /**
  * Phase B.3 — widget IA "Prochaine Meilleure Action".
@@ -187,7 +188,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen = 
             <div className="stagger-in">
                 <PageHeader
                     title="Prochaine action"
-                    icon="⚡"
+                    icon={<Icon name="actions" size={28} />}
                     subtitle="Recommandations IA priorisées, basées sur ta projection vivante."
                     actions={refreshBtn}
                 />

@@ -13,7 +13,7 @@ type Variant = 'primary' | 'success' | 'info' | 'warning' | 'danger';
 
 interface DualKPIStatProps {
     label: string;
-    icon?: string;
+    icon?: React.ReactNode;
     prevu: number;
     reel: number;
     sublabel?: string;

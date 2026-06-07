@@ -15,8 +15,8 @@ interface EmptyDataPromptProps {
     title?: string;
     /** Sous-titre explicatif */
     description?: string;
-    /** Icône émoji optionnel */
-    icon?: string;
+    /** Icône (composant <Icon> ou emoji) */
+    icon?: React.ReactNode;
     /** Compact = inline tile vs block = card pleine */
     layout?: 'inline' | 'block';
     className?: string;

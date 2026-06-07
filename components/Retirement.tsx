@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
+import { Icon } from './ui/Icon';
 import { Badge } from './ui/Badge';
 import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset, RegisteredAccountType } from '../types';
 import { ProjectionChartPoint } from '../services/projection/types';
@@ -197,7 +198,7 @@ export const Retirement: React.FC<RetirementProps> = ({
         return (
             <div className="space-y-6 stagger-in pb-20">
                 <PageHeader
-                    icon="🏖️"
+                    icon={<Icon name="retirement" size={28} />}
                     title="Planification Retraite"
                     subtitle="Simulation complète basée sur le moteur FIRE — mêmes données que l'onglet Future."
                 />
@@ -209,7 +210,7 @@ export const Retirement: React.FC<RetirementProps> = ({
     return (
         <div className="space-y-6 stagger-in pb-20">
             <PageHeader
-                icon="🏖️"
+                icon={<Icon name="retirement" size={28} />}
                 title="Planification Retraite"
                 subtitle={activeScenarioName
                     ? `Scénario actif : ${activeScenarioName} — synchronisé avec Future`

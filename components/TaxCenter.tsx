@@ -305,7 +305,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
                 <div className="lg:col-span-4 space-y-6 order-2 lg:order-1">
-                    <Card title="💼 Revenus & Déductions">
+                    <Card icon={<Icon name="portfolio" size={18} />} title="Revenus & Déductions">
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-meta text-ink-300 mb-1 font-bold uppercase">

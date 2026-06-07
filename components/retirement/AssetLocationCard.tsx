@@ -12,6 +12,7 @@ import { Card } from '../ui/Card';
 import { optimizeAssetLocation, type AssetClass, type AccountType } from '../../services/projection/assetLocation';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { formatCAD } from '../../utils/format';
+import { Icon } from '../ui/Icon';
 
 interface AssetLocationCardProps {
     annualGrossIncome: number;
@@ -91,7 +92,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
     const scoreColor = efficiencyScore >= 80 ? 'text-success-400' : efficiencyScore >= 50 ? 'text-warning-400' : 'text-danger-400';
 
     return (
-        <Card title="🧭 Asset Location Optimizer">
+        <Card icon={<Icon name="compass" size={18} />} title="Asset Location Optimizer">
             <div className="space-y-4">
                 <p className="text-meta text-ink-300 leading-snug">
                     Place chaque classe d'actif dans le compte optimal (CELI/REER/NonReg) selon les

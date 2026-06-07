@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Icon } from '../ui/Icon';
 import { parseBankCsv, type ParsedBankCsv } from '../../services/import/parseBankCsv';
 import { Card } from '../ui/Card';
 
@@ -54,7 +55,7 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
     };
 
     return (
-        <Card title="📥 Importer un relevé bancaire (CSV)" className={className}>
+        <Card icon={<Icon name="import" size={18} />} title="Importer un relevé bancaire (CSV)" className={className}>
             <div className="space-y-3">
             <p className="text-meta text-ink-400">
                 Exporte un CSV depuis ta banque et dépose-le ici — 100 % local, toutes banques.

@@ -12,6 +12,7 @@
 import React, { useMemo, useState } from 'react';
 import { Card } from '../ui/Card';
 import type { ProjectionChartPoint } from '../../services/projection/types';
+import { Icon } from '../ui/Icon';
 
 interface ProjectionExplainsProps {
   chartData: ProjectionChartPoint[];
@@ -161,7 +162,7 @@ export const ProjectionExplains: React.FC<ProjectionExplainsProps> = ({ chartDat
 
   if (months.length === 0) {
     return (
-      <Card title="📖 Explications">
+      <Card icon={<Icon name="book" size={18} />} title="Explications">
         <p className="text-body text-ink-300">
           Lance d'abord une simulation (onglet Paramètres) — les explications détaillées,
           année par année et compte par compte, apparaîtront ici.
@@ -172,7 +173,7 @@ export const ProjectionExplains: React.FC<ProjectionExplainsProps> = ({ chartDat
 
   return (
     <div className="space-y-4">
-      <Card title="📖 Explications — ton avenir, ligne par ligne">
+      <Card icon={<Icon name="book" size={18} />} title="Explications — ton avenir, ligne par ligne">
         <p className="text-meta text-ink-400 mb-3 leading-relaxed">
           Voici tout ce que l'app calcule pour toi : pour chaque année (clique pour ouvrir le
           détail mois par mois), ce qui arrive à chaque compte et pourquoi. Cherche un mot
@@ -268,7 +269,7 @@ export const ProjectionExplains: React.FC<ProjectionExplainsProps> = ({ chartDat
       })}
 
       {/* Méthodologie : comment ça marche (concepts) */}
-      <Card title="🎓 Comment ça marche">
+      <Card icon={<Icon name="graduation" size={18} />} title="Comment ça marche">
         <button
           type="button"
           onClick={() => setShowMethodo(v => !v)}

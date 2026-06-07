@@ -7,6 +7,7 @@ import { Card } from '../ui/Card';
 import { findRequiredMonthlySavings, findEarliestRetirementAge } from '../../services/projection/goalSeek';
 import { optimizeDrawdownOrder } from '../../services/projection/drawdownOptimizer';
 import type { SimulationParams } from '../../services/projection';
+import { Icon } from '../ui/Icon';
 
 interface GoalSeekerCardProps {
     paramsBuilder: () => SimulationParams;
@@ -50,7 +51,7 @@ export const GoalSeekerCard: React.FC<GoalSeekerCardProps> = ({ paramsBuilder, t
     const anyBusy = busySavings || busyAge || busyDrawdown;
 
     return (
-        <Card title="🎯 Projection inverse (Goal seeker)">
+        <Card icon={<Icon name="goal" size={18} />} title="Projection inverse (Goal seeker)">
             <div className="space-y-4">
                 <p className="text-meta text-ink-300">
                     Au lieu de tâtonner les sliders, dis-nous combien tu veux avoir et on calcule l'épargne nécessaire.

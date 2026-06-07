@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Icon } from '../ui/Icon';
 import { analyzePayslip } from '../../services/claude';
 import { showToast } from '../ui/Toast';
 import { Card } from '../ui/Card';
@@ -92,7 +93,7 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
     };
 
     return (
-        <Card title="📄 Upload relevé de salaire (IA Vision)" className={className}>
+        <Card icon={<Icon name="document" size={18} />} title="Upload relevé de salaire (IA Vision)" className={className}>
             <div className="space-y-4">
                 <p className="text-meta text-ink-400">
                     Relevé (image/PDF) → l'IA Vision extrait brut, net, impôt et fréquence, et remplit le profil.

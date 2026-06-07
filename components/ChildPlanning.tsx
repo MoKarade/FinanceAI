@@ -287,7 +287,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* CONFIGURATEUR */}
                 <div className="space-y-5">
-                    <Card title="📅 Profil & Date Prévue">
+                    <Card icon={<Icon name="calendar" size={18} />} title="Profil & Date Prévue">
                         <div className="space-y-4">
                             <div>
                                 <label htmlFor="child-name-input" className="text-meta text-ink-300 block mb-1">Prénom ou Identifiant</label>
@@ -301,7 +301,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                         <p className="text-tiny text-ink-500 mt-2">Cette date sera utilisée dans la simulation de l'onglet Futur.</p>
                     </Card>
 
-                    <Card title="🎯 Choix de Vie">
+                    <Card icon={<Icon name="goal" size={18} />} title="Choix de Vie">
                         <div className="space-y-5">
                             <div>
                                 <div className="text-meta font-bold text-pink-400 uppercase mb-2">Mode de garde (0–5 ans)</div>
@@ -377,7 +377,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                         </div>
                     </Card>
 
-                    <Card title="💰 Allocations & Coûts de base">
+                    <Card icon={<Icon name="money" size={18} />} title="Allocations & Coûts de base">
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
                                 <label className="text-meta text-ink-200">Allocations (ACE + Soutien QC)</label>
@@ -401,7 +401,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
 
                 {/* GRAPHIQUES */}
                 <div className="lg:col-span-2 space-y-5">
-                    <Card title="📊 Coût annuel par âge (décomposé)" action={
+                    <Card icon={<Icon name="chart" size={18} />} title="Coût annuel par âge (décomposé)" action={
                         <div className="text-meta text-ink-300 font-mono">Total : <span className="text-white font-bold privacy-blur">{fmt(costTimeline.totalCost)}</span></div>
                     }>
                         <ZoomContainer zoom={zoomCost} className="h-[280px]">
@@ -422,7 +422,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                         </ZoomContainer>
                     </Card>
 
-                    <Card title="🎓 Simulateur REEE — Croissance jusqu'à 17 ans" action={
+                    <Card icon={<Icon name="graduation" size={18} />} title="Simulateur REEE — Croissance jusqu'à 17 ans" action={
                         <div className="flex items-center gap-2">
                             {projectedReeeAt18 !== null && projectedReeeAt18 > 0 && (
                                 <Badge

@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { Card } from './ui/Card';
+import { Icon } from './ui/Icon';
 import type {
     InsurancePolicy, InsuranceKind,
     RentalProperty,
@@ -35,7 +36,7 @@ export const InsurancePanel: React.FC<{
     };
 
     return (
-        <Card title="🛡️ Assurances">
+        <Card icon={<Icon name="shield" size={18} />} title="Assurances">
             <div className="space-y-2">
                 {policies.length === 0 && (
                     <p className="text-meta text-ink-400 italic">Aucune assurance enregistrée. Ajoute tes polices pour modéliser leur impact (primes mensuelles, capital décès, capital invalidité, etc.).</p>
@@ -102,7 +103,7 @@ export const RentalPropertyPanel: React.FC<{
     const remove = (i: number) => { const next = [...properties]; next.splice(i, 1); onChange(next); };
 
     return (
-        <Card title="🏘️ Immeubles locatifs">
+        <Card icon={<Icon name="building" size={18} />} title="Immeubles locatifs">
             <div className="space-y-2">
                 {properties.length === 0 && (
                     <p className="text-meta text-ink-400 italic">Pour mesurer cap rate, NOI, vacancy. La résidence principale reste dans l'onglet Real Estate.</p>
@@ -152,7 +153,7 @@ export const BusinessPanel: React.FC<{
     const remove = (i: number) => { const next = [...businesses]; next.splice(i, 1); onChange(next); };
 
     return (
-        <Card title="🏢 Entreprises privées (CCPC)">
+        <Card icon={<Icon name="building" size={18} />} title="Entreprises privées (CCPC)">
             <div className="space-y-2">
                 {businesses.length === 0 && (
                     <p className="text-meta text-ink-400 italic">Pour les actionnaires de société par actions (CCPC). Modélise dividende reçu, BNR, accès DPE.</p>
@@ -184,7 +185,7 @@ export const CyclicalGoalsPanel: React.FC<{
     onCharity: (c: CharitableGoal[]) => void;
 }> = ({ vehicles, renovations, charity, onVehicles, onRenovations, onCharity }) => {
     return (
-        <Card title="🎯 Objectifs cycliques et planifiés">
+        <Card icon={<Icon name="goal" size={18} />} title="Objectifs cycliques et planifiés">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Vehicles */}
                 <div>

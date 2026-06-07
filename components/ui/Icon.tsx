@@ -15,6 +15,8 @@ import {
   Bitcoin, Check, Sparkles, Globe, Thermometer, Wind, Sprout, PartyPopper,
   Dices, Building2, Banknote, Briefcase, BarChart3, Download, Package, Search,
   CircleDot, HeartPulse,
+  CalendarDays, GraduationCap, Shield, ClipboardList, Users, BookOpen,
+  LifeBuoy, Bot, Cloud, FileText, Percent,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -61,6 +63,20 @@ const REGISTRY = {
   import: Download,
   check: Check,
   status: CircleDot,
+  // Titres de cartes / sections
+  calendar: CalendarDays,
+  graduation: GraduationCap,
+  shield: Shield,
+  building: Building2,
+  clipboard: ClipboardList,
+  users: Users,
+  book: BookOpen,
+  compass: Compass,
+  lifebuoy: LifeBuoy,
+  bot: Bot,
+  cloud: Cloud,
+  document: FileText,
+  rate: Percent,
   // Divers
   more: MoreHorizontal,
   eye: Eye,

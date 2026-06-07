@@ -7,6 +7,7 @@ import { Card } from '../ui/Card';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { showToast } from '../ui/Toast';
 import { getAuditLog, clearAuditLog, getAuditStats, exportAuditLogAsJSON, type AuditEntry } from '../../services/auditLog';
+import { Icon } from '../ui/Icon';
 
 const OP_COLORS: Record<AuditEntry['operation'], string> = {
     add: 'text-emerald-300 border-success-500/30 bg-success-500/5',
@@ -62,7 +63,7 @@ export const AuditLogViewer: React.FC = () => {
     }, []);
 
     return (
-        <Card title="📋 Journal d'audit (changements de state)">
+        <Card icon={<Icon name="clipboard" size={18} />} title="Journal d'audit (changements de state)">
             <ConfirmModal
                 isOpen={confirmClear}
                 onConfirm={handleClear}

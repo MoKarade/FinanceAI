@@ -11,6 +11,7 @@ import { showToast } from '../../ui/Toast';
 import type { AppState, BudgetConfig, User, Gender, CanadianProvince, MaritalStatus, EmploymentType, Industry, PensionPlan, HealthRating } from '../../../types';
 import { annualSalaryToMonthly } from '../../../utils/salary';
 import { logAudit } from '../../../services/auditLog';
+import { Icon } from '../../ui/Icon';
 
 interface UsersCardProps {
   config: AppState['config'];
@@ -84,7 +85,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
   };
 
   return (
-    <Card title="⚙️ Configuration Utilisateurs (Salaires & Macro)">
+    <Card icon={<Icon name="settings" size={18} />} title="Configuration Utilisateurs (Salaires & Macro)">
 
       <div className="mb-6 bg-black/30 p-4 rounded-xl border border-white/5 shadow-inner">
         <h3 className="text-body font-bold text-white mb-3">💾 Profils Enregistres</h3>

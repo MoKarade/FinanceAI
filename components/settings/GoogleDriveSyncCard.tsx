@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Icon } from '../ui/Icon';
 import { Card } from '../ui/Card';
 import { showToast } from '../ui/Toast';
 import {
@@ -114,7 +115,7 @@ export const GoogleDriveSyncCard: React.FC = () => {
     };
 
     return (
-        <Card title="☁️ Synchronisation Google Drive">
+        <Card icon={<Icon name="cloud" size={18} />} title="Synchronisation Google Drive">
             <div className="space-y-4">
                 <p className="text-tiny text-ink-300 leading-snug">
                     Sauvegarde tes données dans <strong>ton</strong> Google Drive (dossier privé de l'app) pour

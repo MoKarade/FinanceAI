@@ -9,6 +9,7 @@ import { Card } from '../ui/Card';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import type { Asset, AssetOwner } from '../../types';
 import { computeNetWorthByOwner, defaultOwner } from '../../services/couple/netWorthByOwner';
+import { Icon } from '../ui/Icon';
 
 interface NetWorthByOwnerCardProps {
     assets: Asset[];
@@ -43,7 +44,7 @@ export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets
     ];
 
     return (
-        <Card title="👥 Répartition du portefeuille par personne">
+        <Card icon={<Icon name="users" size={18} />} title="Répartition du portefeuille par personne">
             <p className="text-meta text-ink-300 mb-3 leading-snug">
                 Qui possède quoi. Les comptes enregistrés (CELI/REER/CELIAPP) sont individuels ;
                 le non-enregistré et le cash peuvent être communs. « Auto » applique la règle par défaut.

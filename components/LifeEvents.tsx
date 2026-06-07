@@ -155,7 +155,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                 // L'ancien `const [dragOverYear, setDragOverYear] = React.useState(null)` ici
                 // était une violation de la règle des Hooks (hook dans callback IIFE).
                 return (
-                    <Card title="🗓️ Timeline Interactive — Glissez pour déplacer un événement">
+                    <Card icon={<Icon name="calendar" size={18} />} title="Timeline Interactive — Glissez pour déplacer un événement">
                         <div className="text-tiny text-ink-500 mb-4">Faites glisser les événements sur les années pour ajuster votre calendrier de vie.</div>
                         <div className="overflow-x-auto pb-3">
                             <div className="flex gap-2 min-w-max">

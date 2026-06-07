@@ -9,6 +9,7 @@ import { Card } from '../ui/Card';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { showToast } from '../ui/Toast';
 import { formatDate } from '../../utils/format';
+import { Icon } from '../ui/Icon';
 import {
     listBackups, createBackupNow, deleteBackup, clearAllBackups, restoreBackup,
     getBackupStats, type BackupEntry,
@@ -69,7 +70,7 @@ export const AutoBackupPanel: React.FC = () => {
     };
 
     return (
-        <Card title="🛟 Backups automatiques (IndexedDB rolling 7 jours)">
+        <Card icon={<Icon name="lifebuoy" size={18} />} title="Backups automatiques (IndexedDB rolling 7 jours)">
             <ConfirmModal
                 isOpen={!!confirmRestore}
                 onConfirm={handleRestore}

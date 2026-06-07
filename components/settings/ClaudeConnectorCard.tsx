@@ -10,6 +10,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card } from '../ui/Card';
+import { Icon } from '../ui/Icon';
 
 const MCPB_URL = (import.meta.env.VITE_CONNECTOR_MCPB_URL as string | undefined) || '/financeai-connector.mcpb';
 const CLAUDE_DOWNLOAD = 'https://claude.ai/download';
@@ -39,7 +40,7 @@ export const ClaudeConnectorCard: React.FC = () => {
     }, []);
 
     return (
-        <Card title="🤖 Connecter à Claude (assistant IA)">
+        <Card icon={<Icon name="bot" size={18} />} title="Connecter à Claude (assistant IA)">
             <div className="space-y-4">
                 <p className="text-tiny text-ink-300 leading-snug">
                     Pose tes questions sur tes finances à Claude (« suis-je sur la bonne voie pour la retraite ? »,

@@ -6,6 +6,7 @@ import { getMigrationStatus } from '../store/useFinanceStore';
 import { ErrorLogViewer } from './system/ErrorLogViewer';
 import { AuditLogViewer } from './system/AuditLogViewer';
 import { TestModePanel } from './settings/TestModePanel';
+import { Icon } from './ui/Icon';
 
 interface SystemViewProps {
     state: AppState;
@@ -154,7 +155,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
 
                 <div className="lg:col-span-2 space-y-6">
                     {/* SYS-WEB — « Toile d'araignée » (doc figée, périmée) retirée. */}
-                    <Card title="🩺 Diagnostic système" className="bg-dark border border-white/10 font-mono">
+                    <Card icon={<Icon name="health" size={18} />} title="Diagnostic système" className="bg-dark border border-white/10 font-mono">
                         <div className="flex justify-between items-center mb-2 px-2">
                             <span className="text-tiny text-ink-500 uppercase tracking-widest">État runtime</span>
                             <button

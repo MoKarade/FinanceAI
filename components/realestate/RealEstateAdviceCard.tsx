@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Icon } from '../ui/Icon';
 import { Card } from '../ui/Card';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { getRealEstateAdvice, type RealEstateContext, type RealEstateAdvice } from '../../services/claude';
@@ -50,7 +51,7 @@ export const RealEstateAdviceCard: React.FC<RealEstateAdviceCardProps> = ({ cont
     };
 
     return (
-        <Card title="✨ Conseils IA — Projet immobilier" className="bg-gradient-to-br from-emerald-900/10 to-blue-900/10 border-success-500/20">
+        <Card icon={<Icon name="sparkles" size={18} />} title="Conseils IA — Projet immobilier" className="bg-gradient-to-br from-emerald-900/10 to-blue-900/10 border-success-500/20">
             <div className="space-y-3">
                 {!advice && (
                     <div className="text-center py-4 space-y-2">

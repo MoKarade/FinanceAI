@@ -8,6 +8,7 @@ import { Card } from '../ui/Card';
 import { getErrors, clearErrors, getErrorStats, exportErrorsAsJSON, type LoggedError, type ErrorSource, type ErrorSeverity } from '../../services/errorLogger';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { showToast } from '../ui/Toast';
+import { Icon } from '../ui/Icon';
 
 const SOURCE_ICONS: Record<ErrorSource, string> = {
     ai: '✨',
@@ -71,7 +72,7 @@ export const ErrorLogViewer: React.FC = () => {
     const allSeverities: Array<ErrorSeverity | 'all'> = ['all', 'info', 'warning', 'error', 'critical'];
 
     return (
-        <Card title="🛡️ Journal d'erreurs (local)">
+        <Card icon={<Icon name="shield" size={18} />} title="Journal d'erreurs (local)">
             <ConfirmModal
                 isOpen={confirmClear}
                 onConfirm={handleClear}

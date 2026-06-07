@@ -10,6 +10,7 @@
 import React from 'react';
 import { Card } from './ui/Card';
 import type { ProjectionConfig } from '../types';
+import { Icon } from './ui/Icon';
 
 interface AdvancedProjectionParamsProps {
     projection: ProjectionConfig;
@@ -18,7 +19,7 @@ interface AdvancedProjectionParamsProps {
 
 export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> = ({ projection, updateProj }) => {
     return (
-        <Card title="⚙️ Paramètres Avancés (utilisation 100% du moteur)">
+        <Card icon={<Icon name="settings" size={18} />} title="Paramètres Avancés (utilisation 100% du moteur)">
             <details className="space-y-4">
                 <summary className="cursor-pointer text-body text-ink-200 hover:text-white">Déplier — paramètres habituellement masqués</summary>
 

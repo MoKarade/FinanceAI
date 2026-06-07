@@ -9,6 +9,7 @@ import { useFinanceStore } from '../../../store/useFinanceStore';
 import { UsersCard } from './UsersCard';
 import { startGuidedTour } from '../../tour/tourControl';
 import type { AppState, RetirementGoal } from '../../../types';
+import { Icon } from '../../ui/Icon';
 
 interface ProfileSectionProps {
   config: AppState['config'];
@@ -38,7 +39,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ config, setConfi
 
       {/* Phase C.1 — Hub retraite : centralise les paramètres absorbés depuis
           l'onglet Retraite (espérance de vie, âge cible, revenu cible). */}
-      <Card title="🏖️ Paramètres de retraite (hub central)">
+      <Card icon={<Icon name="retirement" size={18} />} title="Paramètres de retraite (hub central)">
         <div className="space-y-4">
           <p className="text-meta text-ink-400">
             Source de vérité unique — alimente Retraite, Investissement et Futur.

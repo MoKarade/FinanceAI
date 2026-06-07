@@ -1,4 +1,5 @@
 import React from 'react';
+import { Icon } from '../ui/Icon';
 import { Card } from '../ui/Card';
 import { RealEstateGoal } from '../../types';
 
@@ -100,7 +101,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                 </div>
             </Card>
 
-            <Card title="💵 Prix et Financement">
+            <Card icon={<Icon name="cash" size={18} />} title="Prix et Financement">
                 <div className="space-y-4">
                     <div>
                         <label className="flex justify-between text-meta text-ink-300 mb-1">
@@ -136,7 +137,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                 </div>
             </Card>
 
-            <Card title="📉 Taux et Rendement">
+            <Card icon={<Icon name="rate" size={18} />} title="Taux et Rendement">
                 <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                         <div>
@@ -169,7 +170,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                 </div>
             </Card>
 
-            <Card title="💰 Frais Récurrents">
+            <Card icon={<Icon name="money" size={18} />} title="Frais Récurrents">
                 <div className="space-y-3">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-meta text-ink-300">Mode de calcul</span>

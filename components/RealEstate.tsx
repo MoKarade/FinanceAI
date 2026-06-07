@@ -407,7 +407,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                         />
                     </StatGrid>
 
-                    <Card title="📊 Scénarios Comparatifs (Habiter vs Louer vs Bourse)" action={
+                    <Card icon={<Icon name="chart" size={18} />} title="Scénarios Comparatifs (Habiter vs Louer vs Bourse)" action={
                         projectedEquityAtAmortEnd !== null && projectedEquityAtAmortEnd > 0 ? (
                             <Badge
                                 variant="info"
@@ -543,7 +543,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                         </div>
                     </Card>
 
-                    <Card title="📋 Tableau d'Amortissement Annuel">
+                    <Card icon={<Icon name="clipboard" size={18} />} title="Tableau d'Amortissement Annuel">
                         <div className="overflow-x-auto">
                             <div className="mb-3 flex flex-wrap gap-4 text-meta">
                                 <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-danger-500 inline-block" />Intérêts totaux payés : <span className="font-bold text-danger-400 privacy-blur">{formatCurrency(amortizationData.totalInterest)}</span></div>

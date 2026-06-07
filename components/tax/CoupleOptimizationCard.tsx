@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Icon } from '../ui/Icon';
 import { Card } from '../ui/Card';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { getCoupleOptimizationStrategies, type CoupleOptimizationStrategy, type CoupleTaxContext } from '../../services/claude';
@@ -75,7 +76,7 @@ export const CoupleOptimizationCard: React.FC = () => {
     };
 
     return (
-        <Card title="✨ Optimisation fiscale couple (IA)" className="bg-gradient-to-br from-purple-900/10 to-pink-900/10 border-purple-500/20">
+        <Card icon={<Icon name="sparkles" size={18} />} title="Optimisation fiscale couple (IA)" className="bg-gradient-to-br from-purple-900/10 to-pink-900/10 border-purple-500/20">
             <div className="space-y-4">
                 <p className="text-tiny text-ink-300 leading-snug">
                     Génère 3 stratégies concrètes d'optimisation fiscale croisée :

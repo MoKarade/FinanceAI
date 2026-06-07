@@ -260,7 +260,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                         finalNetWorth={finalNetWorth}
                     />
 
-                    <Card title="Revenus & Besoins (Retraite)">
+                    <Card title="Revenus & besoins">
                         <div className="space-y-5">
                             <div>
                                 <label className="block text-meta text-ink-300 mb-1">Besoin Mensuel (Aujourd'hui)</label>
@@ -397,7 +397,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                         </Card>
                     ) : (
                         <>
-                            <Card icon={<Icon name="investments" size={18} />} title="Accumulation & Epuisement du Capital (Moteur FIRE)">
+                            <Card icon={<Icon name="investments" size={18} />} title="Accumulation & épuisement">
                                 <ZoomContainer zoom={zoomAccum} className="h-[420px] w-full" style={{ minHeight: '420px' }}>
                                     <ResponsiveContainer width="100%" height="100%">
                                         <AreaChart data={zoomAccum.visibleData} margin={{ top: 20, right: 30, left: 10, bottom: 0 }}>
@@ -455,7 +455,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                 </div>
                             </Card>
 
-                            <Card icon={<Icon name="debt" size={18} />} title="Flux Financier durant la Retraite (Revenus vs Besoin)">
+                            <Card icon={<Icon name="debt" size={18} />} title="Flux à la retraite">
                                 <ZoomContainer zoom={zoomCashflow} className="h-[280px] w-full" style={{ minHeight: '280px' }}>
                                     <ResponsiveContainer width="100%" height="100%">
                                         <ComposedChart data={zoomCashflow.visibleData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>

@@ -532,7 +532,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     </div>
                 </Card>
 
-                <Card className="md:col-span-2 flex flex-col justify-center" title="Performance vs Marché (24h)">
+                <Card className="md:col-span-2 flex flex-col justify-center" title="Performance (24h)">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="card-subtle p-4 flex flex-col items-center justify-center">
                             <div className="kpi-label mb-1">Votre Portefeuille</div>
@@ -856,7 +856,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
 
                 return (
                     <CollapsibleSection
-                        title="Rééquilibrage du Portefeuille"
+                        title="Rééquilibrage"
                         icon={<Icon name="budget" size={20} />}
                         subtitle={hasActions ? "Actions de rééquilibrage recommandées" : "Allocation conforme aux cibles"}
                         defaultOpen={hasActions}

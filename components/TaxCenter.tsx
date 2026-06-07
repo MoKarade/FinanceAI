@@ -208,7 +208,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
 
             <PageHeader
                 icon={<Icon name="tax" size={28} />}
-                title="Simulateur d'Impôts (Québec)"
+                title="Simulateur d'impôts"
             />
 
             <div className="flex justify-end gap-2 w-full md:w-auto md:ml-auto -mt-2">
@@ -400,7 +400,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                             </div>
                         ) : (
                             <>
-                                <Card title="Paliers Fédéraux (Canada)">
+                                <Card title="Paliers fédéraux">
                                     <div className="space-y-4 mt-2">
                                         {(fedBreakdown ?? []).map((b, i) => (
                                             <div key={i} className="relative">
@@ -418,7 +418,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                         ))}
                                     </div>
                                 </Card>
-                                <Card title="Paliers Provinciaux (Québec)">
+                                <Card title="Paliers provinciaux">
                                     <div className="space-y-4 mt-2">
                                         {(qcBreakdown ?? []).map((b, i) => (
                                             <div key={i} className="relative">

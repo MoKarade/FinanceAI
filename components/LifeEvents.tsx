@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Card } from './ui/Card';
 import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
-import { Icon } from './ui/Icon';
+import { Icon, type IconName } from './ui/Icon';
 import { Button } from './ui/Button';
 import { LifeEvent, LifeEventType, TravelGoal } from '../types';
 import { ResponsiveContainer, PieChart, Pie, Cell, Legend, Tooltip } from 'recharts';
@@ -45,8 +45,8 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
     const [dragOverYear, setDragOverYear] = useState<number | null>(null);
 
     const allItems = useMemo(() => {
-        const tItems = travelGoals.map(t => ({ id: t.id, uniqueKey: `travel_${t.id}`, date: t.date, name: `Voyage: ${t.destination}`, cost: t.totalCost, type: 'TRAVEL', icon: t.image || '✈️', details: t.destination }));
-        const eItems = events.map(e => ({ id: e.id, uniqueKey: `event_${e.id}`, date: e.date, name: e.name, cost: e.impactAmount || 0, type: e.type, icon: e.type === 'KRACH' ? '📉' : e.type === 'ACCIDENT' ? '🚑' : e.type === 'GROS_ACHAT' ? '💸' : e.type === 'PERTE_EMPLOI' ? '💼' : e.type === 'MARIAGE' ? '💍' : e.type === 'RENOVATION' ? '🔨' : e.type === 'AUTO' ? '🚗' : e.type === 'SABBATIQUE' ? '🧘' : e.type === 'BUSINESS' ? '🚀' : '⛱️', details: e.type === 'KRACH' ? `Chute ${e.impactPercent}%` : (e.durationMonths ? `Durée ${e.durationMonths} mois` : '') }));
+        const tItems = travelGoals.map(t => ({ id: t.id, uniqueKey: `travel_${t.id}`, date: t.date, name: `Voyage: ${t.destination}`, cost: t.totalCost, type: 'TRAVEL', icon: 'plane' as IconName, details: t.destination }));
+        const eItems = events.map(e => ({ id: e.id, uniqueKey: `event_${e.id}`, date: e.date, name: e.name, cost: e.impactAmount || 0, type: e.type, icon: (e.type === 'KRACH' ? 'debt' : e.type === 'ACCIDENT' ? 'ambulance' : e.type === 'GROS_ACHAT' ? 'cart' : e.type === 'PERTE_EMPLOI' ? 'portfolio' : e.type === 'MARIAGE' ? 'heart' : e.type === 'RENOVATION' ? 'hammer' : e.type === 'AUTO' ? 'car' : e.type === 'SABBATIQUE' ? 'retirement' : e.type === 'BUSINESS' ? 'rocket' : 'calendar') as IconName, details: e.type === 'KRACH' ? `Chute ${e.impactPercent}%` : (e.durationMonths ? `Durée ${e.durationMonths} mois` : '') }));
         return [...tItems, ...eItems].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }, [events, travelGoals]);
 
@@ -154,7 +154,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                 // L'ancien `const [dragOverYear, setDragOverYear] = React.useState(null)` ici
                 // était une violation de la règle des Hooks (hook dans callback IIFE).
                 return (
-                    <Card icon={<Icon name="calendar" size={18} />} title="Timeline Interactive — Glissez pour déplacer un événement">
+                    <Card icon={<Icon name="calendar" size={18} />} title="Timeline">
                         <div className="text-tiny text-ink-500 mb-4">Faites glisser les événements sur les années pour ajuster votre calendrier de vie.</div>
                         <div className="overflow-x-auto pb-3">
                             <div className="flex gap-2 min-w-max">
@@ -175,7 +175,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                                 <div key={item.uniqueKey} draggable onDragStart={(e) => handleDragStart(e, item.uniqueKey)}
                                                     className={`px-1.5 py-1 rounded text-tiny font-bold cursor-grab active:cursor-grabbing flex items-center gap-1 select-none transition-opacity hover:opacity-80 ${item.type === 'KRACH' || item.type === 'ACCIDENT' || item.type === 'PERTE_EMPLOI' ? 'bg-red-900/60 text-red-300 border border-danger-500/30' : item.uniqueKey.startsWith('travel') ? 'bg-blue-900/60 text-blue-300 border border-info-500/30' : 'bg-purple-900/60 text-purple-300 border border-purple-500/30'}`}
                                                     title={`${item.name} — ${item.cost.toLocaleString()}$`}>
-                                                    <span>{item.icon}</span>
+                                                    <Icon name={item.icon} size={14} />
                                                     <span className="truncate max-w-[55px]">{item.name}</span>
                                                 </div>
                                             ))}
@@ -241,7 +241,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                     <div className={`p-4 rounded-xl border transition-all ${isSelected ? 'bg-white/10 border-white/30 shadow-xl' : 'bg-surface border-white/5 hover:bg-white/10'} ${isPast ? 'opacity-50 grayscale' : ''}`}>
                                         <div className="flex justify-between items-start">
                                             <div className="flex items-center gap-3">
-                                                <span className="text-2xl bg-black/30 p-2 rounded-lg">{item.icon}</span>
+                                                <span className="bg-black/30 p-2 rounded-lg text-ink-200 inline-flex"><Icon name={item.icon} size={20} /></span>
                                                 <div>
                                                     <div className="font-bold text-white">{item.name}</div>
                                                     <div className="text-meta text-ink-300">{item.date} • {item.details || 'Aucun détail'}</div>

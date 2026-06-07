@@ -18,6 +18,7 @@ import {
   CalendarDays, GraduationCap, Shield, ClipboardList, Users, BookOpen,
   LifeBuoy, Bot, Cloud, FileText, Percent, Clock,
   Trash2, AlertTriangle, Smartphone, Link, Lock,
+  Heart, Hammer, Car, Rocket, ShoppingCart, Ambulance,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -69,6 +70,12 @@ const REGISTRY = {
   smartphone: Smartphone,
   link: Link,
   lock: Lock,
+  heart: Heart,
+  hammer: Hammer,
+  car: Car,
+  rocket: Rocket,
+  cart: ShoppingCart,
+  ambulance: Ambulance,
   status: CircleDot,
   // Titres de cartes / sections
   calendar: CalendarDays,

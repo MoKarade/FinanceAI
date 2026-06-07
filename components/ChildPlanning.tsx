@@ -376,7 +376,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                         </div>
                     </Card>
 
-                    <Card icon={<Icon name="money" size={18} />} title="Allocations & Coûts de base">
+                    <Card icon={<Icon name="money" size={18} />} title="Allocations">
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
                                 <label className="text-meta text-ink-200">Allocations (ACE + Soutien QC)</label>
@@ -400,7 +400,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
 
                 {/* GRAPHIQUES */}
                 <div className="lg:col-span-2 space-y-5">
-                    <Card icon={<Icon name="chart" size={18} />} title="Coût annuel par âge (décomposé)" action={
+                    <Card icon={<Icon name="chart" size={18} />} title="Coût par âge" action={
                         <div className="text-meta text-ink-300 font-mono">Total : <span className="text-white font-bold privacy-blur">{fmt(costTimeline.totalCost)}</span></div>
                     }>
                         <ZoomContainer zoom={zoomCost} className="h-[280px]">
@@ -421,7 +421,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                         </ZoomContainer>
                     </Card>
 
-                    <Card icon={<Icon name="graduation" size={18} />} title="Simulateur REEE — Croissance jusqu'à 17 ans" action={
+                    <Card icon={<Icon name="graduation" size={18} />} title="Simulateur REEE" action={
                         <div className="flex items-center gap-2">
                             {projectedReeeAt18 !== null && projectedReeeAt18 > 0 && (
                                 <Badge

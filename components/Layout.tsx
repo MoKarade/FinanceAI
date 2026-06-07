@@ -3,6 +3,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tab, FinancialGoal, User } from '../types';
 import { CoupleModeBadge } from './ui/CoupleModeBadge';
+import { Icon, type IconName } from './ui/Icon';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { BackupReminder } from './BackupReminder';
 import { getPersonaById, getPersonaOrDefault, TEST_PERSONAS } from '../services/testFixtures';
@@ -62,42 +63,42 @@ export const Layout: React.FC<LayoutProps> = ({
   }, []);
 
   // Phase B1 — Regroupement thématique (cf docs/UI_REFOUNDATION_PLAN.md §3.1)
-  const navGroups: Array<{ label: string; icon: string; items: Array<{ id: Tab; label: string; icon: string }> }> = [
+  const navGroups: Array<{ label: string; icon: IconName; items: Array<{ id: Tab; label: string; icon: IconName }> }> = [
     {
       label: 'Argent',
-      icon: '💰',
+      icon: 'group-money',
       items: [
-        { id: Tab.DASHBOARD, label: t('tabs.dashboard'), icon: '📊' },
-        { id: Tab.TRANSACTIONS, label: t('tabs.transactions'), icon: '💳' },
-        { id: Tab.BUDGET, label: t('tabs.budget'), icon: '⚖️' },
+        { id: Tab.DASHBOARD, label: t('tabs.dashboard'), icon: 'dashboard' },
+        { id: Tab.TRANSACTIONS, label: t('tabs.transactions'), icon: 'transactions' },
+        { id: Tab.BUDGET, label: t('tabs.budget'), icon: 'budget' },
       ],
     },
     {
       label: 'Plan',
-      icon: '🎯',
+      icon: 'group-plan',
       items: [
-        { id: Tab.FUTURE, label: t('tabs.future'), icon: '🔮' },
-        { id: Tab.ACTIONS, label: 'Prochaine action', icon: '⚡' },
-        { id: Tab.INVESTMENTS, label: t('tabs.investments'), icon: '📈' },
-        { id: Tab.RETIREMENT, label: t('tabs.retirement'), icon: '🏖️' },
+        { id: Tab.FUTURE, label: t('tabs.future'), icon: 'future' },
+        { id: Tab.ACTIONS, label: 'Prochaine action', icon: 'actions' },
+        { id: Tab.INVESTMENTS, label: t('tabs.investments'), icon: 'investments' },
+        { id: Tab.RETIREMENT, label: t('tabs.retirement'), icon: 'retirement' },
       ],
     },
     {
       label: 'Objectifs',
-      icon: '🎁',
+      icon: 'group-goals',
       items: [
-        { id: Tab.REAL_ESTATE, label: t('tabs.real_estate'), icon: '🏡' },
-        { id: Tab.CHILD, label: t('tabs.child'), icon: '👶' },
+        { id: Tab.REAL_ESTATE, label: t('tabs.real_estate'), icon: 'real-estate' },
+        { id: Tab.CHILD, label: t('tabs.child'), icon: 'child' },
         // Phase F.12 — fusion Voyages + Parcours de vie → "Projets de vie" (doc directives §8)
-        { id: Tab.LIFE_PROJECTS, label: 'Projets de vie', icon: '🛤️' },
+        { id: Tab.LIFE_PROJECTS, label: 'Projets de vie', icon: 'life-projects' },
       ],
     },
     {
       label: 'Outils',
-      icon: '🛠️',
+      icon: 'group-tools',
       items: [
-        { id: Tab.TAX, label: t('tabs.tax'), icon: '🏛️' },
-        { id: Tab.DEBT, label: t('tabs.debt'), icon: '💸' },
+        { id: Tab.TAX, label: t('tabs.tax'), icon: 'tax' },
+        { id: Tab.DEBT, label: t('tabs.debt'), icon: 'debt' },
       ],
     },
   ];
@@ -244,7 +245,7 @@ export const Layout: React.FC<LayoutProps> = ({
               isPrivacyMode ? 'bg-white/10 text-white' : 'text-ink-500 hover:bg-white/5 hover:text-white'
             }`}
           >
-            <span aria-hidden="true" className="text-base shrink-0">{isPrivacyMode ? '🙈' : '👁️'}</span>
+            <Icon name={isPrivacyMode ? 'eye-off' : 'eye'} size={16} className="shrink-0" />
             <span className={`text-meta whitespace-nowrap transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
               {isPrivacyMode ? 'Quitter discret' : 'Mode discret'}
             </span>
@@ -274,7 +275,7 @@ export const Layout: React.FC<LayoutProps> = ({
                     isSidebarOpen ? 'hover:bg-white/5 cursor-pointer' : 'cursor-default'
                   }`}
                 >
-                  <span className="text-base shrink-0" aria-hidden="true">{group.icon}</span>
+                  <Icon name={group.icon} size={18} className="shrink-0 text-ink-500" />
                   <span className={`text-tiny uppercase font-bold text-ink-500 tracking-widest whitespace-nowrap flex-1 text-left transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
                     {group.label}
                   </span>
@@ -304,7 +305,7 @@ export const Layout: React.FC<LayoutProps> = ({
                           }`}
                         >
                           {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-primary rounded-r" aria-hidden="true"></span>}
-                          <span aria-hidden="true" className={`text-base shrink-0 ${isActive ? 'text-primary' : ''}`}>{item.icon}</span>
+                          <Icon name={item.icon} size={18} className={`shrink-0 ${isActive ? 'text-primary' : ''}`} />
                           <span className={`font-medium text-meta whitespace-nowrap transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
                             {item.label}
                           </span>
@@ -326,7 +327,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <nav aria-label="Outils système" className="flex flex-col gap-0.5">
             {[
               // G22-N5 — Système fusionné dans Configuration (sous-onglet « Système & diagnostics »).
-              { id: Tab.SETTINGS, icon: '⚙️', label: 'Configuration' },
+              { id: Tab.SETTINGS, icon: 'settings' as IconName, label: 'Configuration' },
             ].map(item => (
               <button
                 key={item.id}
@@ -339,7 +340,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   activeTab === item.id ? 'bg-white/10 text-ink-50' : 'text-ink-400 hover:bg-white/5 hover:text-ink-100'
                 }`}
               >
-                <span className="text-base shrink-0" aria-hidden="true">{item.icon}</span>
+                <Icon name={item.icon} size={18} className="shrink-0" />
                 <span className={`whitespace-nowrap transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
                   {item.label}
                 </span>
@@ -371,9 +372,9 @@ export const Layout: React.FC<LayoutProps> = ({
             onClick={togglePrivacyMode}
             aria-label={isPrivacyMode ? 'Quitter le mode discret' : 'Activer le mode discret'}
             aria-pressed={isPrivacyMode}
-            className="w-11 h-11 rounded-full bg-white/5 flex items-center justify-center text-lg active:scale-90 transition-transform focus-ring"
+            className="w-11 h-11 rounded-full bg-white/5 flex items-center justify-center text-ink-200 active:scale-90 transition-transform focus-ring"
           >
-            {isPrivacyMode ? '🙈' : '👁️'}
+            <Icon name={isPrivacyMode ? 'eye-off' : 'eye'} size={20} />
           </button>
         </div>
       </div>
@@ -398,7 +399,7 @@ export const Layout: React.FC<LayoutProps> = ({
             aria-current={activeTab === item.id ? 'page' : undefined}
             className={`relative flex flex-col items-center justify-center min-w-[56px] h-full transition-all duration-200 active:scale-95 group focus-ring rounded-card`}
           >
-            <div aria-hidden="true" className={`text-2xl mb-1 transition-transform duration-300 ${activeTab === item.id ? 'scale-110 -translate-y-0.5 text-ink-50 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'text-ink-400 group-hover:text-ink-200'}`}>{item.icon}</div>
+            <div aria-hidden="true" className={`mb-1 transition-transform duration-300 ${activeTab === item.id ? 'scale-110 -translate-y-0.5 text-ink-50 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'text-ink-400 group-hover:text-ink-200'}`}><Icon name={item.icon} size={24} /></div>
             <span className={`text-tiny font-medium transition-colors ${activeTab === item.id ? 'text-primary' : 'text-ink-400'}`}>{item.label}</span>
             {activeTab === item.id && <span aria-hidden="true" className="absolute top-1.5 w-1 h-1 bg-primary rounded-full shadow-[0_0_5px_#10b981]"></span>}
           </button>
@@ -409,7 +410,7 @@ export const Layout: React.FC<LayoutProps> = ({
           aria-expanded={showMobileDrawer}
           className={`relative flex flex-col items-center justify-center min-w-[56px] h-full transition-all duration-200 active:scale-95 focus-ring rounded-card ${showMobileDrawer || extraItems.some(e => e.id === activeTab) || activeTab === Tab.SETTINGS ? 'text-primary' : 'text-ink-400'}`}
         >
-          <div aria-hidden="true" className={`text-2xl mb-1 transition-transform ${showMobileDrawer ? 'rotate-90' : ''}`}>⋯</div>
+          <div aria-hidden="true" className={`mb-1 transition-transform ${showMobileDrawer ? 'rotate-90' : ''}`}><Icon name="more" size={24} /></div>
           <span className="text-tiny font-medium">Plus</span>
           {(extraItems.some(e => e.id === activeTab) || activeTab === Tab.SETTINGS) && <span aria-hidden="true" className="absolute top-1.5 w-1 h-1 bg-primary rounded-full"></span>}
         </button>
@@ -422,7 +423,7 @@ export const Layout: React.FC<LayoutProps> = ({
             {navGroups.slice(1).map((group) => (
               <div key={group.label} className="mb-4 last:mb-0">
                 <div className="text-tiny uppercase text-ink-400 font-bold tracking-widest mb-2 flex items-center gap-2">
-                  <span aria-hidden="true">{group.icon}</span>
+                  <Icon name={group.icon} size={16} />
                   <span>{group.label}</span>
                 </div>
                 <div className="grid grid-cols-4 gap-2">
@@ -437,7 +438,7 @@ export const Layout: React.FC<LayoutProps> = ({
                         : 'bg-white/5 border-white/5 text-ink-300 hover:text-ink-50 hover:bg-white/10'
                         }`}
                     >
-                      <span aria-hidden="true" className="text-xl mb-1">{item.icon}</span>
+                      <Icon name={item.icon} size={20} className="mb-1" />
                       <span className="text-tiny font-medium text-center leading-tight">{item.label}</span>
                     </button>
                   ))}
@@ -446,11 +447,11 @@ export const Layout: React.FC<LayoutProps> = ({
             ))}
 
             <div className="text-tiny uppercase text-ink-400 font-bold tracking-widest mb-2 flex items-center gap-2">
-              <span aria-hidden="true">⚙️</span><span>Configuration</span>
+              <Icon name="settings" size={16} /><span>Configuration</span>
             </div>
             <div className="grid grid-cols-3 gap-2">
               {/* G22-N5 — Système fusionné dans Configuration (sous-onglet interne). */}
-              {[{ id: Tab.SETTINGS, icon: '⚙️', label: 'Configuration' }].map(item => (
+              {[{ id: Tab.SETTINGS, icon: 'settings' as IconName, label: 'Configuration' }].map(item => (
                 <button
                   key={item.id}
                   type="button"
@@ -461,7 +462,7 @@ export const Layout: React.FC<LayoutProps> = ({
                     : 'bg-white/5 border-white/5 text-ink-300 hover:text-ink-50'
                     }`}
                 >
-                  <span aria-hidden="true" className="text-xl mb-1">{item.icon}</span>
+                  <Icon name={item.icon} size={20} className="mb-1" />
                   <span className="text-tiny font-medium">{item.label}</span>
                 </button>
               ))}

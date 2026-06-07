@@ -443,7 +443,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                 <span className="flex items-center gap-1">
                                                     Rendement Boursier
                                                     {!marketReturnOverridden && globalReturnRate !== undefined && (
-                                                        <span title="Synchronisé avec hypothèse globale (Futur)" className="text-info-400 font-normal text-tiny normal-case">🔗</span>
+                                                        <span title="Synchronisé avec hypothèse globale (Futur)" className="inline-flex text-ink-400"><Icon name="link" size={12} /></span>
                                                     )}
                                                 </span>
                                                 <span className="flex items-center gap-2">

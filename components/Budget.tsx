@@ -658,7 +658,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             {/* ALERTS BANNER */}
             {timeView === 'MONTH' && alerts.length > 0 && (
                 <div className="bg-red-900/10 border border-danger-500/20 rounded-lg p-3 flex items-start gap-3 animate-fade-in">
-                    <span className="text-xl">🚨</span>
+                    <Icon name="alert" size={18} className="text-warning-400 shrink-0" />
                     <div>
                         <h4 className="text-body font-bold text-danger-400">Attention : Dépassements détectés</h4>
                         <p className="text-meta text-ink-300 mt-1">

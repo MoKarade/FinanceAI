@@ -9,6 +9,7 @@
 // Style minimal pour ne pas distraire — bouton "Installer" + ✕ pour fermer.
 
 import React from 'react';
+import { Icon } from './ui/Icon';
 import { usePwaInstallPrompt } from '../hooks/usePwaInstallPrompt';
 
 export const PwaInstallBanner: React.FC = () => {
@@ -26,7 +27,7 @@ export const PwaInstallBanner: React.FC = () => {
             aria-label="Installer FinanceAI comme application"
             className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 max-w-md w-[calc(100%-2rem)] bg-success-500/15 border border-success-500/40 backdrop-blur rounded-xl shadow-lg p-3 flex items-center gap-3 animate-fade-in"
         >
-            <span className="text-2xl" aria-hidden="true">📱</span>
+            <Icon name="smartphone" size={22} className="text-ink-200 shrink-0" />
             <div className="flex-1 min-w-0">
                 <div className="text-meta font-bold text-emerald-200">Installer FinanceAI</div>
                 <div className="text-tiny text-emerald-100/70">Accès rapide, offline, comme une vraie app.</div>

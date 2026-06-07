@@ -217,7 +217,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                     )}
                     {validatedSymbol && currentPrice !== null && (
                         <div className="mt-2 p-2 bg-success-500/10 border border-success-500/30 rounded text-meta text-emerald-300 flex justify-between">
-                            <span>✓ Validé : <strong className="font-mono">{validatedSymbol}</strong></span>
+                            <span>Validé : <strong className="font-mono">{validatedSymbol}</strong></span>
                             <span className="font-mono">Prix actuel : {formatCAD(currentPrice)}</span>
                         </div>
                     )}

@@ -127,7 +127,7 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
 
             {/* Conseils de la période. */}
             <div className="mb-3">
-                <div className="text-tiny font-bold text-ink-400 uppercase tracking-wide mb-1.5">💡 Conseils</div>
+                <div className="text-tiny font-bold text-ink-400 uppercase tracking-wide mb-1.5">Conseils</div>
                 <ul className="space-y-1">
                     {current.advice.map((line, i) => (
                         <li key={`${current.id}-${i}`} className="text-tiny text-ink-200 flex items-start gap-1.5">

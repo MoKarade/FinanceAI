@@ -174,7 +174,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                             onChange={() => setRunMC(false)}
                             className="sr-only"
                         />
-                        📊 Déterministe
+                        Déterministe
                     </label>
 
                     <label
@@ -193,7 +193,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                             onChange={() => setRunMC(true)}
                             className="sr-only"
                         />
-                        🎲 Monte Carlo{isComputing && runMC ? ' …' : ''}
+                        Monte Carlo{isComputing && runMC ? ' …' : ''}
                     </label>
                 </fieldset>
                 {runMC && (
@@ -207,7 +207,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                     size="sm"
                     title="Courbe en U des dépenses retraite (étude CIBC): go-go +15%, slow-go base, no-go -10%"
                 >
-                    😊 Smile Curve {projection.useSmileCurve ? 'ON' : 'OFF'}
+                    Smile Curve {projection.useSmileCurve ? 'ON' : 'OFF'}
                 </Button>
                 {activeStochasticCount > 0 && (
                     <Badge variant="warning" size="sm">
@@ -278,7 +278,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                                     title="Appliquer le rendement historique réel de votre Google Sheet"
                                     className="!px-2 !py-0.5 !text-tiny"
                                 >
-                                    🪴 Auto ({liveCSVBalances.historicalRate.toFixed(1)}%)
+                                    Auto ({liveCSVBalances.historicalRate.toFixed(1)}%)
                                 </Button>
                             )}
                         </h4>
@@ -341,7 +341,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                             size="sm"
                             title="Décompose l'inflation en 6 postes (logement, alim, transport, santé, loisirs, autres) avec pondérations CPI 2023."
                         >
-                            📊 Inflation par poste {projection.usePerCategoryInflation ? 'ON' : 'OFF'}
+                            Inflation par poste {projection.usePerCategoryInflation ? 'ON' : 'OFF'}
                         </Button>
                         {projection.usePerCategoryInflation && (
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3 p-3 rounded-card border border-warning-border bg-warning-bg">
@@ -365,7 +365,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
 
                     {/* Replay krach */}
                     <div className="flex items-center gap-2 flex-wrap">
-                        <label className="text-meta text-ink-300" htmlFor="replay-select">🎬 Replay krach historique:</label>
+                        <label className="text-meta text-ink-300" htmlFor="replay-select">Replay krach historique:</label>
                         <select
                             id="replay-select"
                             value={projection.replayHistoricalYear ?? ''}

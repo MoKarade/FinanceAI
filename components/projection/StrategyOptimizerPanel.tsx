@@ -239,7 +239,7 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, onApply }) => 
                     {' · '}{fmtMs(estMs)} sur {nWorkers} cœur{nWorkers > 1 ? 's' : ''}
                 </span>
                 {configCount > WARN_THRESHOLD && (
-                    <span className="text-tiny font-bold text-amber-300">⚠️ calcul long</span>
+                    <span className="text-tiny font-bold text-amber-300">calcul long</span>
                 )}
             </div>
             </>)}

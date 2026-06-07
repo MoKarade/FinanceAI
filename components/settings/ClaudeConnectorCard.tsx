@@ -65,7 +65,7 @@ export const ClaudeConnectorCard: React.FC = () => {
                                         download
                                         className="inline-block px-3 py-1.5 rounded-card bg-primary/15 border border-primary/40 text-primary font-medium hover:bg-primary/25"
                                     >
-                                        ⬇ Télécharger le connecteur FinanceAI
+                                        Télécharger le connecteur FinanceAI
                                     </a>
                                     <span className="block mt-1">puis <strong>ouvre le fichier</strong> → Claude Desktop l'installe en un clic.</span>
                                 </>
@@ -77,7 +77,7 @@ export const ClaudeConnectorCard: React.FC = () => {
                             )}
                             {status === 'unavailable' && (
                                 <span className="block rounded-card bg-warning-500/10 border border-warning-500/30 text-amber-200 px-3 py-2 text-tiny leading-snug">
-                                    ⏳ Le connecteur n'est pas encore disponible au téléchargement. Il arrive bientôt —
+                                    Le connecteur n'est pas encore disponible au téléchargement. Il arrive bientôt —
                                     en attendant, l'installation manuelle est décrite dans <code>mcp/README.md</code>.
                                 </span>
                             )}

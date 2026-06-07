@@ -25,7 +25,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
 
                 {/* ─────────────────────────────────────────────────────────── */}
                 <div className="mt-4 pt-3 border-t border-white/5">
-                    <h4 className="text-meta font-bold uppercase tracking-widest text-warning-400 mb-2">🔥 Stress Test (krach + inflation programmé)</h4>
+                    <h4 className="text-meta font-bold uppercase tracking-widest text-warning-400 mb-2">Stress Test (krach + inflation programmé)</h4>
                     <div className="grid grid-cols-2 gap-3">
                         <button
                             onClick={() => updateProj('stressTestEnabled', !projection.stressTestEnabled)}
@@ -58,35 +58,35 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
 
                 {/* ─────────────────────────────────────────────────────────── */}
                 <div className="pt-3 border-t border-white/5">
-                    <h4 className="text-meta font-bold uppercase tracking-widest text-indigo-400 mb-2">🎯 Optimisations fiscales avancées</h4>
+                    <h4 className="text-meta font-bold uppercase tracking-widest text-indigo-400 mb-2">Optimisations fiscales avancées</h4>
                     <div className="grid grid-cols-2 gap-3">
                         <button
                             onClick={() => updateProj('useSmithManoeuvre', !projection.useSmithManoeuvre)}
                             title="Smith Manoeuvre: rendre l'hypothèque déductible en empruntant pour investir hors REER. Stratégie agressive."
                             className={`px-3 py-2 text-meta font-bold rounded-md border transition-all ${projection.useSmithManoeuvre ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300' : 'bg-surfaceHighlight border-white/10 text-ink-300'}`}
                         >
-                            📈 Smith Manoeuvre {projection.useSmithManoeuvre ? 'ON' : 'OFF'}
+                            Smith Manoeuvre {projection.useSmithManoeuvre ? 'ON' : 'OFF'}
                         </button>
                         <button
                             onClick={() => updateProj('optimizeSourceDeductions', !projection.optimizeSourceDeductions)}
                             title="T1213: réduction de la retenue à la source pour ne plus prêter d'argent au gouvernement pendant l'année (cotisations REER déductibles immédiates)."
                             className={`px-3 py-2 text-meta font-bold rounded-md border transition-all ${projection.optimizeSourceDeductions ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300' : 'bg-surfaceHighlight border-white/10 text-ink-300'}`}
                         >
-                            📋 T1213 retenue source {projection.optimizeSourceDeductions ? 'ON' : 'OFF'}
+                            T1213 retenue source {projection.optimizeSourceDeductions ? 'ON' : 'OFF'}
                         </button>
                         <button
                             onClick={() => updateProj('vehicleReplacementEnabled', !projection.vehicleReplacementEnabled)}
                             title="Achat de véhicule automatique tous les ~10 ans (utile si tu n'as pas configuré de véhicules cycliques dans Settings)."
                             className={`px-3 py-2 text-meta font-bold rounded-md border transition-all ${projection.vehicleReplacementEnabled ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300' : 'bg-surfaceHighlight border-white/10 text-ink-300'}`}
                         >
-                            🚗 Véhicule auto-replace {projection.vehicleReplacementEnabled ? 'ON' : 'OFF'}
+                            Véhicule auto-replace {projection.vehicleReplacementEnabled ? 'ON' : 'OFF'}
                         </button>
                     </div>
                 </div>
 
                 {/* ─────────────────────────────────────────────────────────── */}
                 <div className="pt-3 border-t border-white/5">
-                    <h4 className="text-meta font-bold uppercase tracking-widest text-violet-400 mb-2">🎲 Monte Carlo & Bootstrap</h4>
+                    <h4 className="text-meta font-bold uppercase tracking-widest text-violet-400 mb-2">Monte Carlo & Bootstrap</h4>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="text-tiny text-ink-300">Itérations Monte Carlo</label>
@@ -104,11 +104,11 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                 {/* ─────────────────────────────────────────────────────────── */}
                 {(projection.divorceEnabled || projection.ltdEnabled || projection.criticalIllnessEnabled || projection.inheritanceEnabled || projection.jobLossEnabled || projection.modelSurvivor) && (
                     <div className="pt-3 border-t border-white/5">
-                        <h4 className="text-meta font-bold uppercase tracking-widest text-rose-400 mb-2">🎭 Détails événements stochastiques</h4>
+                        <h4 className="text-meta font-bold uppercase tracking-widest text-rose-400 mb-2">Détails événements stochastiques</h4>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             {projection.divorceEnabled && <>
                                 <div>
-                                    <label className="text-tiny text-rose-300">💔 Divorce: proba annuelle %</label>
+                                    <label className="text-tiny text-rose-300">Divorce: proba annuelle %</label>
                                     <input type="number" step="0.1" value={(projection.divorceAnnualProbability ?? 0.015) * 100} onChange={e => updateProj('divorceAnnualProbability', Number(e.target.value) / 100)} className="w-full bg-dark border border-rose-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
@@ -122,7 +122,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                             </>}
                             {projection.ltdEnabled && <>
                                 <div>
-                                    <label className="text-tiny text-yellow-300">♿ LTD: proba annuelle %</label>
+                                    <label className="text-tiny text-yellow-300">LTD: proba annuelle %</label>
                                     <input type="number" step="0.1" value={(projection.ltdAnnualProbability ?? 0.005) * 100} onChange={e => updateProj('ltdAnnualProbability', Number(e.target.value) / 100)} className="w-full bg-dark border border-yellow-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
@@ -136,7 +136,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                             </>}
                             {projection.criticalIllnessEnabled && <>
                                 <div>
-                                    <label className="text-tiny text-pink-300">🩺 CI: proba annuelle %</label>
+                                    <label className="text-tiny text-pink-300">CI: proba annuelle %</label>
                                     <input type="number" step="0.1" value={(projection.ciAnnualProbability ?? 0.003) * 100} onChange={e => updateProj('ciAnnualProbability', Number(e.target.value) / 100)} className="w-full bg-dark border border-pink-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
@@ -150,7 +150,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                             </>}
                             {projection.inheritanceEnabled && <>
                                 <div>
-                                    <label className="text-tiny text-amber-300">🎁 Héritage attendu $</label>
+                                    <label className="text-tiny text-amber-300">Héritage attendu $</label>
                                     <input type="number" value={projection.inheritanceExpectedAmount ?? 0} onChange={e => updateProj('inheritanceExpectedAmount', Number(e.target.value))} className="w-full bg-dark border border-warning-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
@@ -168,7 +168,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                             </>}
                             {projection.jobLossEnabled && <>
                                 <div>
-                                    <label className="text-tiny text-orange-300">💼 Perte emploi: proba annuelle %</label>
+                                    <label className="text-tiny text-orange-300">Perte emploi: proba annuelle %</label>
                                     <input type="number" step="0.5" value={(projection.jobLossAnnualProbability ?? 0.03) * 100} onChange={e => updateProj('jobLossAnnualProbability', Number(e.target.value) / 100)} className="w-full bg-dark border border-orange-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
@@ -178,7 +178,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                             </>}
                             {projection.modelSurvivor && <>
                                 <div>
-                                    <label className="text-tiny text-slate-300">🖤 Survivant: % RRQ versé</label>
+                                    <label className="text-tiny text-slate-300">Survivant: % RRQ versé</label>
                                     <input type="number" value={projection.rrqSurvivorPct ?? 60} onChange={e => updateProj('rrqSurvivorPct', Number(e.target.value))} className="w-full bg-dark border border-slate-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
@@ -192,7 +192,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
 
                 {/* ─────────────────────────────────────────────────────────── */}
                 <div className="pt-3 border-t border-white/5">
-                    <h4 className="text-meta font-bold uppercase tracking-widest text-cyan-400 mb-2">🌴 Snowbird (détails)</h4>
+                    <h4 className="text-meta font-bold uppercase tracking-widest text-cyan-400 mb-2">Snowbird (détails)</h4>
                     {projection.snowbirdEnabled && (
                         <div className="grid grid-cols-2 gap-3">
                             <div>
@@ -212,7 +212,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
 
                 {/* ─────────────────────────────────────────────────────────── */}
                 <div className="pt-3 border-t border-white/5">
-                    <h4 className="text-meta font-bold uppercase tracking-widest text-success-400 mb-2">🧒 Sandwich Generation</h4>
+                    <h4 className="text-meta font-bold uppercase tracking-widest text-success-400 mb-2">Sandwich Generation</h4>
                     <p className="text-tiny text-ink-500 mb-2 italic">Aide aux enfants adultes (boomerang) et/ou parents âgés (caregiving).</p>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         <div>
@@ -244,7 +244,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
 
                 {/* ─────────────────────────────────────────────────────────── */}
                 <div className="pt-3 border-t border-white/5">
-                    <h4 className="text-meta font-bold uppercase tracking-widest text-info-400 mb-2">💰 Soldes initiaux manuels</h4>
+                    <h4 className="text-meta font-bold uppercase tracking-widest text-info-400 mb-2">Soldes initiaux manuels</h4>
                     <button
                         onClick={() => updateProj('useManualBalances', !projection.useManualBalances)}
                         className={`px-3 py-2 text-meta font-bold rounded-md border transition-all mb-2 ${projection.useManualBalances ? 'bg-info-500/20 border-info-500/50 text-blue-300' : 'bg-surfaceHighlight border-white/10 text-ink-300'}`}
@@ -287,7 +287,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
 
                 {/* ─────────────────────────────────────────────────────────── */}
                 <div className="pt-3 border-t border-white/5">
-                    <h4 className="text-meta font-bold uppercase tracking-widest text-teal-400 mb-2">📊 Rendements affinés</h4>
+                    <h4 className="text-meta font-bold uppercase tracking-widest text-teal-400 mb-2">Rendements affinés</h4>
                     <p className="text-tiny text-ink-500 mb-2 italic">Override des taux par défaut (crypto/cash absents de la grille principale).</p>
                     <div className="grid grid-cols-2 gap-3">
                         <div>

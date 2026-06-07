@@ -61,7 +61,7 @@ export const StockComparisonModal: React.FC<StockComparisonModalProps> = ({
             <div className="space-y-3">
                 {symbols.length > 1 && (
                     <p className="text-tiny text-ink-400 italic">
-                        💡 Astuce : bascule en mode <strong>Base 100 (%)</strong> pour comparer la
+                        Astuce : bascule en mode <strong>Base 100 (%)</strong> pour comparer la
                         performance relative depuis le début de la période, indépendamment du prix.
                     </p>
                 )}

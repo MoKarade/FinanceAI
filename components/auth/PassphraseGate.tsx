@@ -56,7 +56,7 @@ export const PassphraseGate: React.FC<{ status: SyncStatus }> = ({ status }) => 
                 onSubmit={onSubmit}
                 className="w-full max-w-md space-y-4 rounded-2xl border border-warning-500/30 bg-black/60 p-6 shadow-2xl"
             >
-                <div className="text-lg font-bold text-amber-300">🔒 Coffre verrouillé</div>
+                <div className="text-lg font-bold text-amber-300">Coffre verrouillé</div>
                 <p className="text-body text-ink-200 leading-snug">
                     La sauvegarde trouvée dans ton Google Drive est <strong>chiffrée</strong>. Saisis ta passphrase
                     pour la déverrouiller et restaurer tes données.

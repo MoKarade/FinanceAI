@@ -234,7 +234,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                     <div className="flex items-center gap-2">
                         {/* Phase F.9 — indicateur d'activation FUTUR uniformisé avec Immobilier */}
                         {goal.isActive
-                            ? <Badge variant="success" size="md">✓ Active dans simulation</Badge>
+                            ? <Badge variant="success" size="md">Active dans simulation</Badge>
                             : <Badge variant="neutral" size="md">Inactive</Badge>
                         }
                         <Badge variant="info" size="md">Coût total: {fmt(costTimeline.totalCost)}</Badge>

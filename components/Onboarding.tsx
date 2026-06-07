@@ -175,7 +175,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                         </div>
 
                         <div className="space-y-4 p-4 bg-white/5 rounded-card border border-white/10">
-                            <div className="font-bold text-ink-50 text-body">👤 Utilisateur principal</div>
+                            <div className="font-bold text-ink-50 text-body">Utilisateur principal</div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <label htmlFor="user1-name" className="text-meta text-ink-400">Prénom</label>
@@ -212,7 +212,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
                         {hasCoupleMode && (
                             <div className="space-y-4 p-4 bg-white/5 rounded-card border border-white/10 animate-fade-in">
-                                <div className="font-bold text-ink-50 text-body">💑 Partenaire</div>
+                                <div className="font-bold text-ink-50 text-body">Partenaire</div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label htmlFor="user2-name" className="text-meta text-ink-400">Prénom</label>
@@ -239,7 +239,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                             <h2 className="text-h1 text-ink-50">Clés API</h2>
                             <p className="text-meta text-ink-400 mt-1">Optionnelles — l'app fonctionne sans, mais avec moins de fonctionnalités.</p>
                             <p className="text-meta text-warning-400 mt-2 leading-relaxed">
-                                ⚠️ En activant Claude (Anthropic), tu consens à ce que des données (marchands tronqués + montants arrondis à 100$) soient envoyées à Anthropic.
+                                En activant Claude (Anthropic), tu consens à ce que des données (marchands tronqués + montants arrondis à 100$) soient envoyées à Anthropic.
                             </p>
                         </div>
                         <div className="space-y-4">

@@ -144,7 +144,7 @@ export const AutoBackupPanel: React.FC = () => {
                             onClick={() => setConfirmClearAll(true)}
                             className="ml-auto px-3 py-1.5 bg-danger-500/15 hover:bg-danger-500/25 border border-danger-500/30 text-red-300 text-tiny font-bold rounded-card transition-colors focus-ring"
                         >
-                            🗑️ Vider tout
+                            Vider tout
                         </button>
                     )}
                 </div>

@@ -146,7 +146,7 @@ export const ErrorLogViewer: React.FC = () => {
                             disabled={errors.length === 0}
                             className="px-3 py-1 text-tiny bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded text-info-300 transition-colors focus-ring disabled:opacity-50"
                         >
-                            📤 Exporter JSON
+                            Exporter JSON
                         </button>
                         <button
                             type="button"
@@ -154,7 +154,7 @@ export const ErrorLogViewer: React.FC = () => {
                             disabled={errors.length === 0}
                             className="px-3 py-1 text-tiny bg-danger-500/15 hover:bg-danger-500/25 border border-danger-500/30 rounded text-red-300 transition-colors focus-ring disabled:opacity-50"
                         >
-                            🗑️ Vider
+                            Vider
                         </button>
                     </div>
                 </div>

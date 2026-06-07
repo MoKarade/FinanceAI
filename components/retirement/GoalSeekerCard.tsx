@@ -71,14 +71,14 @@ export const GoalSeekerCard: React.FC<GoalSeekerCardProps> = ({ paramsBuilder, t
                         disabled={busySavings}
                         className="px-3 py-2 bg-purple-500/20 border border-purple-500/50 rounded-md text-purple-300 text-meta font-bold hover:bg-purple-500/30 disabled:opacity-50"
                     >
-                        💰 Trouver épargne $/mois
+                        Trouver épargne $/mois
                     </button>
                     <button
                         onClick={handleAge}
                         disabled={busyAge}
                         className="px-3 py-2 bg-purple-500/20 border border-purple-500/50 rounded-md text-purple-300 text-meta font-bold hover:bg-purple-500/30 disabled:opacity-50"
                     >
-                        🗓️ Âge retraite minimum
+                        Âge retraite minimum
                     </button>
                 </div>
                 <button
@@ -86,7 +86,7 @@ export const GoalSeekerCard: React.FC<GoalSeekerCardProps> = ({ paramsBuilder, t
                     disabled={busyDrawdown}
                     className="w-full px-3 py-2 bg-indigo-500/20 border border-indigo-500/50 rounded-md text-indigo-300 text-meta font-bold hover:bg-indigo-500/30 disabled:opacity-50"
                 >
-                    🎲 Optimiser ordre de décaissement
+                    Optimiser ordre de décaissement
                 </button>
                 {drawdownResult && !busyDrawdown && (
                     <div className="p-3 bg-indigo-900/30 border border-indigo-500/30 rounded-lg space-y-2">
@@ -103,18 +103,18 @@ export const GoalSeekerCard: React.FC<GoalSeekerCardProps> = ({ paramsBuilder, t
                         </div>
                     </div>
                 )}
-                {anyBusy && <p className="text-meta text-ink-300">⏳ Calcul en cours…</p>}
+                {anyBusy && <p className="text-meta text-ink-300">Calcul en cours…</p>}
                 {goalSeekResult && !busySavings && !busyAge && (
                     <div className="p-3 bg-purple-900/30 border border-purple-500/30 rounded-lg">
                         {goalSeekResult.savings !== undefined && (
                             <p className="text-body text-purple-200">
-                                💰 Tu dois épargner <strong className="text-purple-400">{goalSeekResult.savings.toLocaleString('fr-CA')}$/mois</strong>
+                                Tu dois épargner <strong className="text-purple-400">{goalSeekResult.savings.toLocaleString('fr-CA')}$/mois</strong>
                                 {goalSeekResult.error && <span className="block text-meta text-orange-300 mt-1">⚠️ {goalSeekResult.error}</span>}
                             </p>
                         )}
                         {goalSeekResult.age !== undefined && (
                             <p className="text-body text-purple-200">
-                                🗓️ Tu peux prendre ta retraite dès <strong className="text-purple-400">{goalSeekResult.age} ans</strong> sans tomber en faillite.
+                                Tu peux prendre ta retraite dès <strong className="text-purple-400">{goalSeekResult.age} ans</strong> sans tomber en faillite.
                             </p>
                         )}
                     </div>

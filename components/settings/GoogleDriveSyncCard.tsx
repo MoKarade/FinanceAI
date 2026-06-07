@@ -66,7 +66,7 @@ const PassphraseSection: React.FC<{ status: SyncStatus }> = ({ status }) => {
 
     return (
         <div className="p-3 rounded-card bg-success-500/10 border border-success-500/30 space-y-2">
-            <div className="text-meta font-semibold text-emerald-300">🔒 Chiffrement par passphrase actif</div>
+            <div className="text-meta font-semibold text-emerald-300">Chiffrement par passphrase actif</div>
             <p className="text-tiny text-ink-300 leading-snug">
                 Tes sauvegardes Drive sont chiffrées avec ta passphrase. Pour revenir à « juste mon compte
                 Google » (sans passphrase), retire-la : ta sauvegarde Drive repassera en clair.

@@ -180,7 +180,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                                     <span className="truncate max-w-[55px]">{item.name}</span>
                                                 </div>
                                             ))}
-                                            {isDragOver && <div className="text-tiny text-info-400 text-center mt-auto pt-1 animate-pulse">⬇ Déposer ici</div>}
+                                            {isDragOver && <div className="text-tiny text-info-400 text-center mt-auto pt-1 animate-pulse">Déposer ici</div>}
                                         </div>
                                     );
                                 })}
@@ -193,8 +193,8 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
             {isAdding && (
                 <Card className="border-2 border-dashed border-white/20 bg-white/5 animate-slide-up">
                     <div className="mb-4 flex gap-4 border-b border-white/10 pb-2">
-                        <button onClick={() => setEventTypeCategory('TRAVEL')} className={`text-body font-bold pb-1 px-2 transition-colors ${eventTypeCategory === 'TRAVEL' ? 'text-white border-b-2 border-info-500' : 'text-ink-500'}`}>✈️ Voyage</button>
-                        <button onClick={() => setEventTypeCategory('EVENT')} className={`text-body font-bold pb-1 px-2 transition-colors ${eventTypeCategory === 'EVENT' ? 'text-white border-b-2 border-purple-500' : 'text-ink-500'}`}>🎲 Aléas & Projets</button>
+                        <button onClick={() => setEventTypeCategory('TRAVEL')} className={`text-body font-bold pb-1 px-2 transition-colors ${eventTypeCategory === 'TRAVEL' ? 'text-white border-b-2 border-info-500' : 'text-ink-500'}`}>Voyage</button>
+                        <button onClick={() => setEventTypeCategory('EVENT')} className={`text-body font-bold pb-1 px-2 transition-colors ${eventTypeCategory === 'EVENT' ? 'text-white border-b-2 border-purple-500' : 'text-ink-500'}`}>Aléas & Projets</button>
                     </div>
                     {eventTypeCategory === 'TRAVEL' ? (
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
@@ -208,8 +208,8 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                             <div className="lg:col-span-1">
                                 <label className="text-meta text-ink-300 mb-1 block">Type</label>
                                 <select className="w-full bg-dark border border-white/20 rounded p-2 text-white text-meta" value={newLifeEvent.type} onChange={e => setNewLifeEvent({ ...newLifeEvent, type: e.target.value as LifeEventType })}>
-                                    <optgroup label="Projets de Vie"><option value="GROS_ACHAT">💸 Gros Achat</option><option value="MARIAGE">💍 Mariage</option><option value="RENOVATION">🔨 Rénovations</option><option value="AUTO">🚗 Achat Auto</option><option value="SABBATIQUE">🧘 Année Sabbatique</option><option value="BUSINESS">🚀 Lancer Business</option></optgroup>
-                                    <optgroup label="Risques & Aléas"><option value="ACCIDENT">🚑 Accident / Santé</option><option value="PERTE_EMPLOI">💼 Perte d'Emploi</option><option value="KRACH">📉 Krach Boursier</option><option value="HERITAGE">⛱️ Héritage / Gain</option></optgroup>
+                                    <optgroup label="Projets de Vie"><option value="GROS_ACHAT">Gros Achat</option><option value="MARIAGE">Mariage</option><option value="RENOVATION">Rénovations</option><option value="AUTO">Achat Auto</option><option value="SABBATIQUE">Année Sabbatique</option><option value="BUSINESS">Lancer Business</option></optgroup>
+                                    <optgroup label="Risques & Aléas"><option value="ACCIDENT">Accident / Santé</option><option value="PERTE_EMPLOI">Perte d'Emploi</option><option value="KRACH">Krach Boursier</option><option value="HERITAGE">Héritage / Gain</option></optgroup>
                                 </select>
                             </div>
                             <div><label className="text-meta text-ink-300 mb-1 block">Nom</label><input type="text" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.name} onChange={e => setNewLifeEvent({ ...newLifeEvent, name: e.target.value })} /></div>

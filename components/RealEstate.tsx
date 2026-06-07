@@ -294,7 +294,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                 icon={<Icon name="real-estate" size={28} />}
                 title="Immobilier"
                 subtitle={`${goals.length} propriété${goals.length > 1 ? 's' : ''} configurée${goals.length > 1 ? 's' : ''} · Mensualité nette ${formatCurrency(netMonthlyCost)}`}
-                badge={activeGoal.isActive ? <Badge variant="success" size="md">✓ Active dans simulation</Badge> : <Badge variant="neutral" size="md">Inactive</Badge>}
+                badge={activeGoal.isActive ? <Badge variant="success" size="md">Active dans simulation</Badge> : <Badge variant="neutral" size="md">Inactive</Badge>}
                 actions={
                     <Button
                         onClick={() => updateActiveGoal({ isActive: !activeGoal.isActive })}
@@ -415,7 +415,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                 onClick={() => navigateWithFocus(TabEnum.FUTURE)}
                                 title={`Équité immo projetée par FutureProjection à l'année ${amortization} — clic pour ouvrir`}
                             >
-                                🔗 Projection: {formatCurrency(projectedEquityAtAmortEnd)}
+                                Projection: {formatCurrency(projectedEquityAtAmortEnd)}
                             </Badge>
                         ) : <ProjectionRequired variant="inline" feature="l'équité immo projetée" />
                     }>

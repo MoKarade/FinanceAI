@@ -133,7 +133,7 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
                     )}
                     {Math.abs(data.ImpotLatent || 0) > 0.5 && (
                         <div className="flex justify-between" title="Impôt « dormant » : ce que tu devrais plus tard sur ton REER et tes gains non réalisés si tu liquidais tout aujourd'hui. Ce n'est PAS un décaissement de ce mois.">
-                            <span className="text-ink-300">💤 Impôt dormant</span>
+                            <span className="text-ink-300">Impôt dormant</span>
                             <span className="font-mono text-amber-300/90 privacy-blur">{fmt(Math.abs(data.ImpotLatent || 0))}$</span>
                         </div>
                     )}

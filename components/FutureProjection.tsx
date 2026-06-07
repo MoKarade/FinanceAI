@@ -537,7 +537,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     if (!budgetItems || !projection || !config || !initialBalances) {
         console.error("FutureProjection: Missing critical initialization data.", { budgetItems, projection, config, initialBalances });
         return <div className="p-8 text-center text-danger-400 font-bold bg-surface/50 rounded-2xl border border-danger-500/20">
-            ⚠️ Données d'initialisation manquantes. Veuillez vérifier vos comptes et votre budget.
+            Données d'initialisation manquantes. Veuillez vérifier vos comptes et votre budget.
         </div>;
     }
 
@@ -585,7 +585,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             <PageHeader
                 icon={<Icon name="future" size={28} />}
                 title="Projection Future"
-                subtitle="Analyse des flux mensuels projetés avec Loyer → Hypothèque automatique et frais enfants dynamiques."
+                subtitle="Projection mensuelle de ton patrimoine"
                 actions={
                     <Pill
                         aria-label="Mode de données"
@@ -668,21 +668,21 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     onClick={() => setFutureSubTab('graph')}
                     className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === 'graph' ? 'bg-primary text-white' : 'text-ink-300 hover:text-ink-100'}`}
                 >
-                    📈 Graphique
+                    Graphique
                 </button>
                 <button
                     type="button" role="tab" aria-selected={futureSubTab === 'params'}
                     onClick={() => setFutureSubTab('params')}
                     className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === 'params' ? 'bg-primary text-white' : 'text-ink-300 hover:text-ink-100'}`}
                 >
-                    ⚙️ Paramètres
+                    Paramètres
                 </button>
                 <button
                     type="button" role="tab" aria-selected={futureSubTab === 'explains'}
                     onClick={() => setFutureSubTab('explains')}
                     className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === 'explains' ? 'bg-primary text-white' : 'text-ink-300 hover:text-ink-100'}`}
                 >
-                    📖 Explications
+                    Explications
                 </button>
             </div>
 
@@ -723,7 +723,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     lisible en 2 secondes. Le détail (stratégie, pourquoi) est en dessous. */}
                 {bestScenario && (
                     <div className={`mb-3 rounded-xl border p-3 flex items-center gap-3 ${bestScenario.fireAge != null ? 'border-green-500/30 bg-green-500/10' : 'border-warning-500/30 bg-warning-500/10'}`}>
-                        <span className="text-2xl shrink-0" aria-hidden="true">{bestScenario.fireAge != null ? '✅' : '⏳'}</span>
+                        {bestScenario.fireAge != null
+                            ? <Icon name="check" size={22} className="text-green-400 shrink-0" />
+                            : <Icon name="clock" size={22} className="text-warning-400 shrink-0" />}
                         <div className="min-w-0">
                             <div className="text-body font-black text-white leading-tight">
                                 {bestScenario.fireAge != null
@@ -773,7 +775,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             className="px-2 py-1 text-tiny font-bold rounded text-ink-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors focus-ring"
                             title="Plein écran (Échap pour quitter)"
                         >
-                            ⛶ Plein écran
+                            Plein écran
                         </button>
                     </div>
                 </div>

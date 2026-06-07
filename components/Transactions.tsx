@@ -334,7 +334,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                 className="px-3 py-1.5 bg-primary/15 hover:bg-primary/25 border border-primary/30 rounded-card text-primary text-tiny font-bold transition-colors focus-ring"
                                 title="Importer un relevé bancaire CSV"
                             >
-                                📥 Importer un relevé
+                                Importer un relevé
                             </button>
                         )}
                         {transactions.length > 0 && (
@@ -347,7 +347,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                 className="px-3 py-1.5 bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded-card text-info-300 text-tiny font-bold transition-colors focus-ring"
                                 title="Exporter toutes les transactions en CSV"
                             >
-                                📊 Export CSV
+                                Export CSV
                             </button>
                         )}
                     </div>

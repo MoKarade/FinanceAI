@@ -98,8 +98,7 @@ export const AutoBackupPanel: React.FC = () => {
 
             <div className="space-y-4">
                 <p className="text-tiny text-ink-300 leading-snug">
-                    L'app crée 1 backup automatique par jour dans le IndexedDB local. Rolling 7 jours
-                    (les plus anciens sont supprimés). Stocké uniquement sur ton appareil — jamais envoyé.
+                    1 backup auto/jour en local (rolling 7 jours). Jamais envoyé.
                 </p>
 
                 {/* Stats + actions */}

@@ -53,9 +53,7 @@ export const ImportBrokerPositions: React.FC<Props> = ({ isOpen, onClose, onImpo
         <Modal isOpen={isOpen} onClose={handleClose} title="Importer mes positions (CSV courtier)" icon={<Icon name="import" size={22} />} size="lg">
             <div className="space-y-4">
                 <p className="text-meta text-ink-300">
-                    Exporte tes positions depuis ton courtier (Wealthsimple, Questrade, Disnat, RBC DI…) en CSV,
-                    puis dépose le fichier ou colle son contenu. 100 % local — rien ne quitte ton navigateur.
-                    Colonnes reconnues : symbole, quantité, coût moyen (ou coût total), devise, type de compte, date.
+                    Dépose un CSV de positions (Wealthsimple, Questrade, Disnat…) — 100 % local.
                 </p>
 
                 <label className="flex items-center gap-3 cursor-pointer">

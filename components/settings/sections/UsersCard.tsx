@@ -113,7 +113,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
             onChange={e => setNewProfileName(e.target.value)}
             className="flex-1 bg-white/5 border border-border rounded px-3 py-1.5 text-body text-white"
           />
-          <button onClick={saveProfile} className="bg-primary text-white px-4 py-1.5 rounded text-body font-bold hover:brightness-110">
+          <button onClick={saveProfile} className="bg-primary text-dark px-4 py-1.5 rounded text-body font-bold hover:brightness-110">
             Sauvegarder
           </button>
         </div>

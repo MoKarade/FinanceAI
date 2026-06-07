@@ -51,7 +51,7 @@ export function Pill<T extends string>({
                             SIZE_CLASSES[size],
                             fullWidth ? 'flex-1' : '',
                             isSelected
-                                ? 'bg-primary text-white shadow'
+                                ? 'bg-primary text-dark shadow'
                                 : 'text-ink-300 hover:text-ink-50 hover:bg-white/5',
                         ].filter(Boolean).join(' ')}
                     >

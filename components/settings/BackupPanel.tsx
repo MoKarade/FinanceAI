@@ -283,7 +283,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
               <button
                 onClick={doEncryptedExport}
                 disabled={encWorking || exportPassphrase.length < 8 || exportPassphrase !== exportPassphraseConfirm}
-                className="px-4 py-2 rounded-xl bg-primary hover:bg-success-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-body font-bold shadow-lg active:scale-95 transition-all"
+                className="px-4 py-2 rounded-xl bg-primary hover:bg-success-500 disabled:opacity-40 disabled:cursor-not-allowed text-dark text-body font-bold shadow-lg active:scale-95 transition-all"
               >
                 {encWorking ? 'Chiffrement…' : 'Exporter chiffré'}
               </button>
@@ -333,7 +333,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
               <button
                 onClick={doEncryptedImport}
                 disabled={encWorking || importPassphrase.length < 8}
-                className="px-4 py-2 rounded-xl bg-primary hover:bg-success-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-body font-bold shadow-lg active:scale-95 transition-all"
+                className="px-4 py-2 rounded-xl bg-primary hover:bg-success-500 disabled:opacity-40 disabled:cursor-not-allowed text-dark text-body font-bold shadow-lg active:scale-95 transition-all"
               >
                 {encWorking ? 'Déchiffrement…' : 'Déchiffrer'}
               </button>
@@ -439,7 +439,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
             <div className="flex gap-3 flex-shrink-0">
               <button
                 onClick={() => { setExportPassphrase(''); setExportPassphraseConfirm(''); setShowExportEncModal(true); }}
-                className="px-4 py-2 bg-primary hover:bg-success-500 text-white rounded-lg text-body font-bold flex items-center gap-2 shadow-lg"
+                className="px-4 py-2 bg-primary hover:bg-success-500 text-dark rounded-lg text-body font-bold flex items-center gap-2 shadow-lg"
               >
                 Exporter chiffré
               </button>

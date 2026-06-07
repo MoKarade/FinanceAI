@@ -283,7 +283,7 @@ ${last20Txs}`
                 )}
                 <div
                   className={`max-w-[85%] rounded-2xl px-5 py-3 text-body leading-relaxed shadow-md ${m.role === 'user'
-                    ? 'bg-primary text-white rounded-tr-none'
+                    ? 'bg-primary text-dark rounded-tr-none'
                     : 'bg-[#2a2a2a] text-ink-100 rounded-tl-none border border-white/5'
                     }`}
                 >
@@ -354,7 +354,7 @@ ${last20Txs}`
                 onClick={() => handleSend()}
                 disabled={isLoading || !input.trim()}
                 aria-label="Envoyer le message"
-                className="bg-primary hover:bg-green-500 disabled:opacity-50 text-white w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg shadow-primary/20 focus-ring"
+                className="bg-primary hover:bg-green-500 disabled:opacity-50 text-dark w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg shadow-primary/20 focus-ring"
               >
                 ➚
               </button>

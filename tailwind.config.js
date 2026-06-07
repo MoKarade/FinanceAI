@@ -18,11 +18,12 @@ export default {
       },
       colors: {
         // Tokens historiques (préservés — ne pas casser les composants existants)
-        primary: '#10b981',
+        // Accent neutre « argent/blanc » + fond noir profond (refonte luxe, choix Marc 2026-06).
+        primary: '#e6eaf2',
         secondary: '#8b5cf6',
-        dark: '#0B0E14',
-        surface: '#151922',
-        surfaceHighlight: '#1E2330',
+        dark: '#07090D',
+        surface: '#0E1014',
+        surfaceHighlight: '#15181E',
         border: 'rgba(255, 255, 255, 0.06)',
 
         // Phase A1 (2026-05): tokens sémantiques pour la refonte UI.

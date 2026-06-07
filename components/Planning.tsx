@@ -199,7 +199,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                 <input aria-label="Montant cible (dollars)" type="number" placeholder="Cible $" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newGoal.targetAmount || ''} onChange={e => setNewGoal({ ...newGoal, targetAmount: parseFloat(e.target.value) })} />
                                 <input aria-label="Montant actuel (dollars)" type="number" placeholder="Actuel $" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newGoal.currentAmount || ''} onChange={e => setNewGoal({ ...newGoal, currentAmount: parseFloat(e.target.value) })} />
                                 <input aria-label="Date d'échéance" type="date" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newGoal.deadline} onChange={e => setNewGoal({ ...newGoal, deadline: e.target.value })} />
-                                <button onClick={handleAddGoal} className="col-span-2 bg-primary text-white text-meta font-bold py-1 rounded">Ajouter</button>
+                                <button onClick={handleAddGoal} className="col-span-2 bg-primary text-dark text-meta font-bold py-1 rounded">Ajouter</button>
                             </div>
                         )}
                         <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">

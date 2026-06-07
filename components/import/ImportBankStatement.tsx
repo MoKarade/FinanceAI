@@ -108,7 +108,7 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
                         <button
                             type="button"
                             onClick={confirm}
-                            className="px-3 py-2 bg-primary/90 hover:bg-primary text-white rounded-lg text-body font-bold transition-colors focus-ring"
+                            className="px-3 py-2 bg-primary/90 hover:bg-primary text-dark rounded-lg text-body font-bold transition-colors focus-ring"
                         >
                             Importer {preview.imported} transaction(s)
                         </button>

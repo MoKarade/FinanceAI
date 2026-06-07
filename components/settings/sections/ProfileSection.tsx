@@ -31,7 +31,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ config, setConfi
         <button
           type="button"
           onClick={startGuidedTour}
-          className="shrink-0 px-3 py-1.5 rounded-card text-meta font-bold text-white bg-primary hover:brightness-110 transition-all focus-ring"
+          className="shrink-0 px-3 py-1.5 rounded-card text-meta font-bold text-dark bg-primary hover:brightness-110 transition-all focus-ring"
         >
           Revoir le tutoriel
         </button>

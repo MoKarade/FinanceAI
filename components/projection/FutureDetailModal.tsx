@@ -395,7 +395,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                         key={y}
                                         type="button"
                                         onClick={() => zoom.showRange(0, idxForYears(y))}
-                                        className={`px-2 py-0.5 text-tiny font-bold rounded transition-colors focus-ring ${active ? 'bg-primary text-white' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
+                                        className={`px-2 py-0.5 text-tiny font-bold rounded transition-colors focus-ring ${active ? 'bg-primary text-dark' : 'text-ink-300 hover:text-dark hover:bg-white/10'}`}
                                     >
                                         {y} ans
                                     </button>
@@ -404,7 +404,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                             <button
                                 type="button"
                                 onClick={zoom.reset}
-                                className={`px-2 py-0.5 text-tiny font-bold rounded transition-colors focus-ring ${!zoom.isZoomed ? 'bg-primary text-white' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
+                                className={`px-2 py-0.5 text-tiny font-bold rounded transition-colors focus-ring ${!zoom.isZoomed ? 'bg-primary text-dark' : 'text-ink-300 hover:text-dark hover:bg-white/10'}`}
                             >
                                 Tout
                             </button>

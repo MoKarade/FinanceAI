@@ -143,7 +143,7 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* A11y (Audit Phase 5.1): skip link — invisible jusqu'à focus clavier. */}
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[200] focus:px-4 focus:py-2 focus:rounded-card focus:bg-primary focus:text-white focus:font-bold focus:shadow-xl"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[200] focus:px-4 focus:py-2 focus:rounded-card focus:bg-primary focus:text-dark focus:font-bold focus:shadow-xl"
       >
         Aller au contenu principal
       </a>

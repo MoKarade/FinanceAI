@@ -132,7 +132,7 @@ export const ImportBrokerPositions: React.FC<Props> = ({ isOpen, onClose, onImpo
                         type="button"
                         onClick={confirm}
                         disabled={!preview}
-                        className="px-4 py-2 bg-primary hover:bg-primary/80 text-white rounded font-bold text-body transition-colors disabled:opacity-50"
+                        className="px-4 py-2 bg-primary hover:bg-primary/80 text-dark rounded font-bold text-body transition-colors disabled:opacity-50"
                     >
                         Importer{preview ? ` ${preview.imported} position(s)` : ''}
                     </button>

@@ -666,21 +666,21 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 <button
                     type="button" role="tab" aria-selected={futureSubTab === 'graph'}
                     onClick={() => setFutureSubTab('graph')}
-                    className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === 'graph' ? 'bg-primary text-white' : 'text-ink-300 hover:text-ink-100'}`}
+                    className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === 'graph' ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-100'}`}
                 >
                     Graphique
                 </button>
                 <button
                     type="button" role="tab" aria-selected={futureSubTab === 'params'}
                     onClick={() => setFutureSubTab('params')}
-                    className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === 'params' ? 'bg-primary text-white' : 'text-ink-300 hover:text-ink-100'}`}
+                    className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === 'params' ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-100'}`}
                 >
                     Paramètres
                 </button>
                 <button
                     type="button" role="tab" aria-selected={futureSubTab === 'explains'}
                     onClick={() => setFutureSubTab('explains')}
-                    className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === 'explains' ? 'bg-primary text-white' : 'text-ink-300 hover:text-ink-100'}`}
+                    className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === 'explains' ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-100'}`}
                 >
                     Explications
                 </button>
@@ -751,7 +751,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                     key={y}
                                     type="button"
                                     onClick={() => zoom.showRange(0, idxForYears(y))}
-                                    className={`px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring ${active ? 'bg-primary text-white' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
+                                    className={`px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring ${active ? 'bg-primary text-dark' : 'text-ink-300 hover:text-dark hover:bg-white/10'}`}
                                 >
                                     {y} ans
                                 </button>
@@ -760,7 +760,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         <button
                             type="button"
                             onClick={zoom.reset}
-                            className={`px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring ${!zoom.isZoomed ? 'bg-primary text-white' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
+                            className={`px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring ${!zoom.isZoomed ? 'bg-primary text-dark' : 'text-ink-300 hover:text-dark hover:bg-white/10'}`}
                         >
                             Tout
                         </button>

@@ -44,7 +44,7 @@ export const BudgetWorkspace: React.FC<BudgetWorkspaceProps> = ({
                         role="tab"
                         aria-selected={sub === s.id}
                         onClick={() => setSub(s.id)}
-                        className={`px-3 py-1.5 text-meta font-bold rounded whitespace-nowrap transition-colors focus-ring ${sub === s.id ? 'bg-primary text-white' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
+                        className={`px-3 py-1.5 text-meta font-bold rounded whitespace-nowrap transition-colors focus-ring ${sub === s.id ? 'bg-primary text-dark' : 'text-ink-300 hover:text-dark hover:bg-white/10'}`}
                     >
                         <span aria-hidden="true" className="mr-1">{s.icon}</span>{s.label}
                     </button>

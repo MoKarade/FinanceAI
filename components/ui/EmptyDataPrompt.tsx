@@ -55,7 +55,7 @@ export const EmptyDataPrompt: React.FC<EmptyDataPromptProps> = ({
                     <button
                         type="button"
                         onClick={() => navigateWithFocus(Tab.SETTINGS, 'profile-user1-card')}
-                        className="px-3 py-1.5 rounded-card bg-primary text-white text-meta font-bold hover:bg-primary/80 focus-ring transition-colors"
+                        className="px-3 py-1.5 rounded-card bg-primary text-dark text-meta font-bold hover:bg-primary/80 focus-ring transition-colors"
                     >
                         → Configurer mon profil
                     </button>

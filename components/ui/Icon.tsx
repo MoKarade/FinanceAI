@@ -16,7 +16,7 @@ import {
   Dices, Building2, Banknote, Briefcase, BarChart3, Download, Package, Search,
   CircleDot, HeartPulse,
   CalendarDays, GraduationCap, Shield, ClipboardList, Users, BookOpen,
-  LifeBuoy, Bot, Cloud, FileText, Percent,
+  LifeBuoy, Bot, Cloud, FileText, Percent, Clock,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -62,6 +62,7 @@ const REGISTRY = {
   search: Search,
   import: Download,
   check: Check,
+  clock: Clock,
   status: CircleDot,
   // Titres de cartes / sections
   calendar: CalendarDays,

@@ -607,7 +607,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             {/* Simulateur d'inflation — toggle inline (avant: caché en hover sur Card 1) */}
             <details className="bg-surface/40 rounded-card border border-white/5 group">
                 <summary className="cursor-pointer px-4 py-2 text-meta text-ink-300 hover:text-ink-50 transition-colors flex items-center justify-between focus-ring">
-                    <span>🔥 Simulateur d'inflation {inflationSim > 0 && <Badge variant="warning" size="sm" className="ml-2">+{inflationSim}%</Badge>}</span>
+                    <span>Simulateur d'inflation {inflationSim > 0 && <Badge variant="warning" size="sm" className="ml-2">+{inflationSim}%</Badge>}</span>
                     <span className="text-ink-400 group-open:rotate-180 transition-transform" aria-hidden="true">▾</span>
                 </summary>
                 <div className="px-4 pb-4 pt-2 border-t border-white/5">
@@ -637,7 +637,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     title="Ouvrir FutureProjection"
                 >
                     <div>
-                        <div className="text-tiny uppercase font-bold text-info-400 tracking-widest mb-1">🔗 Impact à long terme →</div>
+                        <div className="text-tiny uppercase font-bold text-info-400 tracking-widest mb-1">Impact à long terme →</div>
                         <div className="text-2xl font-black text-white privacy-blur">
                             {formatCAD(projectionSummary.estateNetWorth)}
                         </div>

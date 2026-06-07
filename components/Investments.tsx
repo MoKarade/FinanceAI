@@ -455,7 +455,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                 onClick={() => setShowAddStockForm(true)}
                                 className="px-4 py-2 rounded-card bg-primary/15 border border-primary/40 text-primary text-meta font-bold hover:bg-primary/25 transition-colors focus-ring"
                             >
-                                ➕ Ajouter un titre
+                                Ajouter un titre
                             </button>
                         </div>
                     </div>
@@ -601,7 +601,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         onClick={() => navigateWithFocus(TabEnum.FUTURE)}
                         className="text-tiny text-info-400 mt-3 hover:underline font-bold focus-ring rounded inline-flex items-center gap-1"
                     >
-                        🔗 Synchronisé avec FutureProjection — ouvrir →
+                        Synchronisé avec FutureProjection — ouvrir →
                     </button>
                 </Card>
             )}
@@ -801,7 +801,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                 onClick={() => setAllocationFilter(null)}
                                 className="text-tiny text-ink-400 hover:text-ink-100 px-2 py-1 rounded transition-colors focus-ring"
                             >
-                                ✕ Effacer filtre
+                                Effacer filtre
                             </button>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
@@ -969,7 +969,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                                 </div>
                                             )}
                                             {!isRebalanceEdit && item.action === 'OK' && (
-                                                <div className="text-ink-300 text-meta font-bold">✓ CIBLE ATTEINTE</div>
+                                                <div className="text-ink-300 text-meta font-bold">CIBLE ATTEINTE</div>
                                             )}
                                         </div>
                                     </div>
@@ -1002,7 +1002,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         {/* Priority Suggestions */}
                         {hasActions && (
                             <div className="bg-black/40 rounded-xl p-4 border border-white/10">
-                                <h4 className="text-meta font-bold text-ink-300 uppercase mb-3">📋 Stratégie de Rééquilibrage Recommandée</h4>
+                                <h4 className="text-meta font-bold text-ink-300 uppercase mb-3">Stratégie de Rééquilibrage Recommandée</h4>
                                 <div className="space-y-2">
                                     {rebalancingActions.filter(a => a.action === 'SELL').map((a, i) => (
                                         <div key={i} className="text-meta text-red-300 flex items-start gap-2">
@@ -1017,7 +1017,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         </div>
                                     ))}
                                     <div className="text-meta text-ink-500 mt-3 pt-3 border-t border-white/5 italic">
-                                        💡 Astuce fiscale : Rééquilibrer via les nouvelles contributions évite de déclencher des gains en capital dans votre compte Non-Enregistré.
+                                        Astuce fiscale : Rééquilibrer via les nouvelles contributions évite de déclencher des gains en capital dans votre compte Non-Enregistré.
                                     </div>
                                 </div>
                             </div>
@@ -1035,7 +1035,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         onClick={() => setShowImportBroker(true)}
                         className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/15 text-ink-200 text-tiny font-bold rounded-card transition-colors focus-ring"
                     >
-                        📥 Importer (CSV courtier)
+                        Importer (CSV courtier)
                     </button>
                     <button
                         type="button"

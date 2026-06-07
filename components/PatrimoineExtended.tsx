@@ -189,7 +189,7 @@ export const CyclicalGoalsPanel: React.FC<{
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Vehicles */}
                 <div>
-                    <h4 className="text-tiny font-bold uppercase tracking-widest text-ink-300 mb-2">🚗 Véhicules cycliques</h4>
+                    <h4 className="text-tiny font-bold uppercase tracking-widest text-ink-300 mb-2">Véhicules cycliques</h4>
                     {vehicles.map((v, i) => (
                         <div key={v.id} className="flex gap-1 mb-1">
                             <input aria-label="Fréquence de remplacement (années)" type="number" placeholder="Tous les N ans" value={v.cyclYears} onChange={e => { const next = [...vehicles]; next[i] = { ...v, cyclYears: Number(e.target.value) || 0 }; onVehicles(next); }} className="w-16 bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
@@ -201,7 +201,7 @@ export const CyclicalGoalsPanel: React.FC<{
                 </div>
                 {/* Renovations */}
                 <div>
-                    <h4 className="text-tiny font-bold uppercase tracking-widest text-ink-300 mb-2">🔨 Rénovations majeures</h4>
+                    <h4 className="text-tiny font-bold uppercase tracking-widest text-ink-300 mb-2">Rénovations majeures</h4>
                     {renovations.map((r, i) => (
                         <div key={r.id} className="flex gap-1 mb-1">
                             <input aria-label="Date de la rénovation" type="date" value={r.date} onChange={e => { const next = [...renovations]; next[i] = { ...r, date: e.target.value }; onRenovations(next); }} className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
@@ -213,7 +213,7 @@ export const CyclicalGoalsPanel: React.FC<{
                 </div>
                 {/* Charity */}
                 <div>
-                    <h4 className="text-tiny font-bold uppercase tracking-widest text-ink-300 mb-2">❤️ Dons charitables</h4>
+                    <h4 className="text-tiny font-bold uppercase tracking-widest text-ink-300 mb-2">Dons charitables</h4>
                     {charity.map((c, i) => (
                         <div key={c.id} className="flex gap-1 mb-1">
                             <input aria-label="Don annuel (dollars)" type="number" placeholder="$/an" value={c.annualAmount} onChange={e => { const next = [...charity]; next[i] = { ...c, annualAmount: Number(e.target.value) || 0 }; onCharity(next); }} className="flex-1 bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />

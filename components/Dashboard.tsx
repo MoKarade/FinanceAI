@@ -457,7 +457,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 className="text-tiny text-info-400 font-bold hover:underline focus-ring rounded"
                                 title="Ouvrir la projection future"
                             >
-                                🔗 Sync
+                                Sync
                             </button>
                         )}
                     </div>

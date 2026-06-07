@@ -244,7 +244,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
 
             {scannedPay && (
                 <div className="bg-white/[0.03] border border-white/10 p-4 rounded-xl mt-4 animate-fade-in">
-                    <h3 className="text-body font-bold text-white mb-3 flex items-center gap-2">📄 Fiche de Paie Détectée ({scannedPay.freq})</h3>
+                    <h3 className="text-body font-bold text-white mb-3 flex items-center gap-2">Fiche de Paie Détectée ({scannedPay.freq})</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                         <div className="bg-black/30 p-3 rounded border border-white/5">
                             <div className="text-tiny text-ink-300">Brut Annuel Est.</div>
@@ -266,7 +266,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                     <div className="flex justify-end gap-2">
                         <button onClick={() => setScannedPay(null)} className="text-meta text-ink-300 px-3 py-1.5 hover:text-white transition">Ignorer</button>
                         <button onClick={applyToProfile} className="bg-info-600 hover:bg-info-500 text-white text-meta font-bold px-4 py-1.5 rounded transition shadow-lg">
-                            💾 Appliquer au Profil Principal
+                            Appliquer au Profil Principal
                         </button>
                     </div>
                 </div>
@@ -344,7 +344,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
 
                             <div className="p-4 bg-blue-900/10 border border-info-500/20 rounded-xl space-y-3">
                                 <h4 className="text-meta font-bold text-blue-300 uppercase flex items-center gap-2">
-                                    📉 Réducteurs d'Impôt
+                                    Réducteurs d'Impôt
                                 </h4>
                                 <div>
                                     <label className="flex justify-between text-meta text-ink-200 mb-1">

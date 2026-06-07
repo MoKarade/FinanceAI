@@ -285,7 +285,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                     <p className="text-tiny text-ink-500 mt-1">Max 2025: 1 433$/mois. Consulte ton relevé RRQ.</p>
                                 </div>
                                 <div>
-                                    <label className="block text-meta text-ink-300 mb-1">🍁 PSV projetée / mois</label>
+                                    <label className="block text-meta text-ink-300 mb-1">PSV projetée / mois</label>
                                     <input
                                         type="number"
                                         value={goal.psvEstimateMonthly ?? ''}

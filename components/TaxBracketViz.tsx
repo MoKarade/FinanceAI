@@ -138,7 +138,7 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                     </div>
                 </div>
                 <p className="text-tiny text-ink-500 italic">
-                    💡 Pour optimiser : préfère REER si revenu actuel &gt; revenu à la retraite ;
+                    Pour optimiser : préfère REER si revenu actuel &gt; revenu à la retraite ;
                     privilégie CELI sinon. Bracket creep = augmenter dans une tranche fait BONDIR le marginal.
                 </p>
             </div>

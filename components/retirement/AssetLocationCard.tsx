@@ -218,7 +218,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
 
                 {analysis && analysis.recommendations.length === 0 && (
                     <div className="p-3 bg-success-500/10 border border-success-500/30 rounded text-emerald-300 text-meta font-medium text-center">
-                        ✅ Allocation déjà optimale — aucun déplacement à faire.
+                        Allocation déjà optimale — aucun déplacement à faire.
                     </div>
                 )}
 

@@ -88,7 +88,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
     <Card icon={<Icon name="settings" size={18} />} title="Configuration Utilisateurs (Salaires & Macro)">
 
       <div className="mb-6 bg-black/30 p-4 rounded-xl border border-white/5 shadow-inner">
-        <h3 className="text-body font-bold text-white mb-3">💾 Profils Enregistres</h3>
+        <h3 className="text-body font-bold text-white mb-3">Profils Enregistres</h3>
         <div className="flex flex-wrap gap-2 mb-3">
           {savedProfiles.length === 0 && <span className="text-meta text-ink-500 italic">Aucun profil enregistre.</span>}
           {savedProfiles.map(p => (
@@ -314,7 +314,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
 
               {/* W5.1 — Profil détaillé (santé, carrière, identité) */}
               <details className="mt-3 pt-3 border-t border-white/5">
-                <summary className="text-tiny font-bold text-ink-200 cursor-pointer hover:text-white">🩺 Profil détaillé (santé, carrière, identité)</summary>
+                <summary className="text-tiny font-bold text-ink-200 cursor-pointer hover:text-white">Profil détaillé (santé, carrière, identité)</summary>
                 <div className="mt-2 space-y-2">
                   <div className="grid grid-cols-3 gap-1">
                     <select
@@ -410,7 +410,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                     <label className="flex items-center gap-1 text-tiny text-ink-300">
                       <input type="checkbox" checked={user.isSmoker ?? false}
                         onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,isSmoker:e.target.checked}; setConfig({...config,users:u}); }} />
-                      🚬 Fumeur
+                      Fumeur
                     </label>
                     <input aria-label="Âge au décès de la mère (espérance vie hérédité)" type="number" placeholder="Mère ✝ âge" value={user.parentAgeAtDeath?.mother ?? ''}
                       onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user, parentAgeAtDeath:{...user.parentAgeAtDeath, mother:Number(e.target.value)||undefined}}; setConfig({...config,users:u}); }}

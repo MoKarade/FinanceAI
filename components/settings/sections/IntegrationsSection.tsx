@@ -31,8 +31,8 @@ export const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ apiKey
           {apiKeys?.anthropic && (
             <div id="apikey-anthropic-format" className="text-meta mt-1" role="status" aria-live="polite">
               {apiKeys.anthropic.startsWith('sk-ant-') && apiKeys.anthropic.length >= 20
-                ? <span className="text-green-400">✓ Format valide</span>
-                : <span className="text-yellow-400">⚠️ Format inattendu (devrait commencer par <code className="bg-white/10 px-1 rounded">sk-ant-</code>)</span>
+                ? <span className="text-green-400">Format valide</span>
+                : <span className="text-yellow-400">Format inattendu (devrait commencer par <code className="bg-white/10 px-1 rounded">sk-ant-</code>)</span>
               }
             </div>
           )}
@@ -52,8 +52,8 @@ export const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ apiKey
           {apiKeys?.finnhub && (
             <div id="apikey-finnhub-format" className="text-meta mt-1" role="status" aria-live="polite">
               {/^[a-z0-9]{15,}$/i.test(apiKeys.finnhub)
-                ? <span className="text-green-400">✓ Format valide</span>
-                : <span className="text-yellow-400">⚠️ Format inattendu (alphanumeric ≥ 15 chars)</span>
+                ? <span className="text-green-400">Format valide</span>
+                : <span className="text-yellow-400">Format inattendu (alphanumeric ≥ 15 chars)</span>
               }
             </div>
           )}

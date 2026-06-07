@@ -362,7 +362,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
                   <p>Actifs : <span className="text-white font-mono">{(pendingRestoreData.assets as unknown[])?.length ?? 0}</span></p>
                 </div>
                 <p className="text-danger-400 text-meta font-bold leading-relaxed">
-                  ⛔ Toutes les données actuelles seront effacées. Action irréversible.
+                  Toutes les données actuelles seront effacées. Action irréversible.
                 </p>
               </div>
             </div>
@@ -403,7 +403,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
         <div className="space-y-4">
           <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
             <div className="text-body text-ink-300">
-              <p className="font-bold text-white mb-1">📄 JSON en clair</p>
+              <p className="font-bold text-white mb-1">JSON en clair</p>
               <p className="text-meta">Sauvegarde lisible (debugging, audit). À conserver localement uniquement — ne contient pas les clés API.</p>
             </div>
             <div className="flex gap-3 flex-shrink-0">
@@ -411,14 +411,14 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
                 onClick={handleExport}
                 className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-body font-bold flex items-center gap-2 shadow-lg"
               >
-                ⬇️ Exporter JSON
+                Exporter JSON
               </button>
               <div className="relative">
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-body font-bold flex items-center gap-2 border border-white/20"
                 >
-                  ⬆️ Restaurer JSON
+                  Restaurer JSON
                 </button>
                 <input
                   type="file"
@@ -433,7 +433,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
 
           <div className="border-t border-white/5 pt-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
             <div className="text-body text-ink-300">
-              <p className="font-bold text-white mb-1">🔐 Sauvegarde chiffrée (.bak)</p>
+              <p className="font-bold text-white mb-1">Sauvegarde chiffrée (.bak)</p>
               <p className="text-meta">AES-256-GCM + PBKDF2 600 000 itérations. Stockage cloud safe (Drive, Gist…) car illisible sans passphrase.</p>
             </div>
             <div className="flex gap-3 flex-shrink-0">
@@ -441,14 +441,14 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
                 onClick={() => { setExportPassphrase(''); setExportPassphraseConfirm(''); setShowExportEncModal(true); }}
                 className="px-4 py-2 bg-primary hover:bg-success-500 text-white rounded-lg text-body font-bold flex items-center gap-2 shadow-lg"
               >
-                🔐 Exporter chiffré
+                Exporter chiffré
               </button>
               <div className="relative">
                 <button
                   onClick={() => encryptedFileRef.current?.click()}
                   className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-body font-bold flex items-center gap-2 border border-white/20"
                 >
-                  🔓 Restaurer chiffré
+                  Restaurer chiffré
                 </button>
                 <input
                   type="file"

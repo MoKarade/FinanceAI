@@ -123,8 +123,8 @@ export const AuditLogViewer: React.FC = () => {
                     </select>
                     <div className="ml-auto flex gap-2">
                         <button type="button" onClick={() => setRefreshKey(k => k + 1)} className="px-3 py-1 text-tiny bg-white/5 hover:bg-white/10 rounded text-ink-300 focus-ring">↻ Rafraîchir</button>
-                        <button type="button" onClick={handleExport} disabled={entries.length === 0} className="px-3 py-1 text-tiny bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded text-info-300 focus-ring disabled:opacity-50">📤 Exporter</button>
-                        <button type="button" onClick={() => setConfirmClear(true)} disabled={entries.length === 0} className="px-3 py-1 text-tiny bg-danger-500/15 hover:bg-danger-500/25 border border-danger-500/30 rounded text-red-300 focus-ring disabled:opacity-50">🗑️ Vider</button>
+                        <button type="button" onClick={handleExport} disabled={entries.length === 0} className="px-3 py-1 text-tiny bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded text-info-300 focus-ring disabled:opacity-50">Exporter</button>
+                        <button type="button" onClick={() => setConfirmClear(true)} disabled={entries.length === 0} className="px-3 py-1 text-tiny bg-danger-500/15 hover:bg-danger-500/25 border border-danger-500/30 rounded text-red-300 focus-ring disabled:opacity-50">Vider</button>
                     </div>
                 </div>
 

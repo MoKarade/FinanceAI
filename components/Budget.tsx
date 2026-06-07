@@ -482,8 +482,8 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 }
                 actions={
                     <>
-                        <Button onClick={handleAiDiagnosis} variant="primary" size="sm" icon={<Icon name="sparkles" size={16} />}>
-                            Diagnostic IA
+                        <Button onClick={handleAiDiagnosis} variant="primary" size="sm">
+                            Diagnostic
                         </Button>
                         <Pill
                             aria-label="Période"
@@ -824,9 +824,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                         <div className="flex flex-col gap-4">
                             <button
                                 onClick={handleAiDiagnosis}
-                                className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95"
+                                className="w-full py-3 bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors active:scale-95"
                             >
-                                <span>✨</span> Diagnostic IA
+                                Diagnostic
                             </button>
 
                             <div className="pt-2 border-t border-white/5">

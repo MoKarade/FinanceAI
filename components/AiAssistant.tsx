@@ -263,7 +263,7 @@ ${last20Txs}`
               </div>
             </div>
             <div>
-              <h3 id="ai-assistant-title" className="font-bold text-white text-base">Conseiller IA</h3>
+              <h3 id="ai-assistant-title" className="font-bold text-white text-base">Assistant</h3>
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                 <span className="text-tiny text-green-300 font-medium">{isLoading ? 'Réflexion…' : 'En ligne'}</span>

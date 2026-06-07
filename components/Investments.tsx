@@ -440,7 +440,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
     if (assets.length === 0) {
         return (
             <div className="space-y-6 stagger-in pb-10 relative">
-                <PageHeader icon={<Icon name="investments" size={28} />} title="Investissements" subtitle="Performance, allocation et revenus passifs" />
+                <PageHeader icon={<Icon name="investments" size={28} />} title="Investissements" />
                 <Card>
                     <div className="text-center py-12 px-4 space-y-4">
                         <Icon name="investments" size={44} className="text-ink-500 block mx-auto" />

@@ -140,7 +140,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
             <div className="flex justify-between items-end gap-3">
                 <div>
                     <h2 className="text-h1 text-ink-50 tracking-tight">Système &amp; diagnostics</h2>
-                    <p className="text-meta text-ink-400 mt-0.5">État runtime, journaux et build — tout est local.</p>
+                    <p className="text-meta text-ink-400 mt-0.5">Local-first.</p>
                 </div>
                 <span className="shrink-0 text-meta text-info-400 font-bold bg-info-500/10 px-3 py-1 rounded-full border border-info-500/30">
                     ● Local-first

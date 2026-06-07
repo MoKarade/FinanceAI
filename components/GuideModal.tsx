@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Tab } from '../types';
+import { Icon } from './ui/Icon';
 
 interface GuideModalProps {
     activeTab: Tab;
@@ -94,10 +95,10 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
                 <div className="bg-white/[0.04] p-6 border-b border-white/10">
                     <div className="flex justify-between items-start">
                         <div className="flex items-center gap-3">
-                            <div className="text-4xl">ℹ️</div>
+                            <Icon name="book" size={28} className="text-primary shrink-0" />
                             <div>
                                 <h2 className="text-2xl font-bold text-white">{content.title}</h2>
-                                <p className="text-blue-200 text-body mt-1">{content.desc}</p>
+                                <p className="text-ink-300 text-body mt-1">{content.desc}</p>
                             </div>
                         </div>
                         <button onClick={onClose} className="text-ink-300 hover:text-white text-2xl transition-colors" aria-label="Fermer le guide">✕</button>
@@ -118,10 +119,9 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
                     </div>
 
                     {content.tip && (
-                        <div className="bg-emerald-900/20 border border-success-500/30 rounded-xl p-4 flex gap-4">
-                            <span className="text-2xl">💡</span>
+                        <div className="bg-emerald-900/20 border border-success-500/30 rounded-xl p-4">
                             <div>
-                                <h4 className="text-success-400 font-bold text-body mb-1">Astuce de Pro</h4>
+                                <h4 className="text-success-400 font-bold text-body mb-1">Astuce</h4>
                                 <p className="text-meta text-ink-200 leading-relaxed">{content.tip}</p>
                             </div>
                         </div>

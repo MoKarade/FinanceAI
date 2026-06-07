@@ -108,7 +108,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                             {debts.length === 0 && (
                                 <EmptyState
                                     variant="subtle"
-                                    icon="🎉"
+                                    icon={<Icon name="celebrate" size={30} />}
                                     title="Aucune dette"
                                     description="Bravo ! Votre santé financière est au beau fixe."
                                 />

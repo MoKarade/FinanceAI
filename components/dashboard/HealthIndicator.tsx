@@ -3,6 +3,7 @@ import { useFinanceStore } from '../../store/useFinanceStore';
 import { formatNumber, formatPercent } from '../../utils/format';
 import { useHasUserData } from '../../utils/useHasUserData';
 import { EmptyDataPrompt } from '../ui/EmptyDataPrompt';
+import { Icon } from '../ui/Icon';
 import { useProjectionSelector } from '../../hooks/useProjectionSelector';
 import { computeCurrentLiquidity } from '../../services/portfolio';
 
@@ -194,7 +195,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
     if (!hasData) {
         return (
             <EmptyDataPrompt
-                icon="🩺"
+                icon={<Icon name="health" size={24} />}
                 title="Score de santé financière indisponible"
                 description="Renseigne ton profil (salaire, dépenses) pour calculer ton score 0-100 et tes 4 ratios (épargne, coussin, dette, FIRE)."
                 className={className}

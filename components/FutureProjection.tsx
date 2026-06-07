@@ -604,7 +604,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             <StatGrid cols={4}>
                 <KPIStat
                     label="Objectif FIRE"
-                    icon="🎯"
+                    icon={<Icon name="goal" size={16} />}
                     value={`${(fireNumber / 1000).toFixed(0)}k $`}
                     sublabel="Règle des 4%"
                     privacy
@@ -612,7 +612,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 />
                 <KPIStat
                     label="Patrimoine projeté"
-                    icon="💼"
+                    icon={<Icon name="portfolio" size={16} />}
                     // Fallback : si estateNetWorth est 0 (rare en réalité ou bug
                     // silencieux du moteur), utiliser finalNetWorth puis fireNumber
                     // comme proxy. Évite d'afficher "0.00M$" trompeur en mode test.
@@ -623,14 +623,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 />
                 <KPIStat
                     label="Taux de succès"
-                    icon="✓"
+                    icon={<Icon name="check" size={16} />}
                     value={results?.successRate != null ? `${results.successRate}%` : '—'}
                     sublabel={runMC ? 'Monte Carlo (100 itér.)' : 'Active MC pour calculer'}
                     variant={results?.successRate != null && results.successRate >= 80 ? 'success' : results?.successRate != null && results.successRate >= 50 ? 'warning' : 'danger'}
                 />
                 <KPIStat
                     label="Vitalité financière"
-                    icon="🌡️"
+                    icon={<Icon name="thermometer" size={16} />}
                     value={results?.fvi != null ? `${results.fvi}/100` : '—'}
                     sublabel={runMC ? '30/30/20/20 split' : 'Active MC pour calculer'}
                     variant={results?.fvi != null && results.fvi >= 70 ? 'success' : results?.fvi != null && results.fvi >= 40 ? 'warning' : 'danger'}

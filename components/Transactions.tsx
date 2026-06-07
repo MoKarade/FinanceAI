@@ -674,7 +674,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         <li>
                             <EmptyState
                                 variant="subtle"
-                                icon="🔍"
+                                icon={<Icon name="search" size={30} />}
                                 title="Aucune transaction"
                                 description="Importez un CSV ou ajustez les filtres pour voir vos transactions."
                             />

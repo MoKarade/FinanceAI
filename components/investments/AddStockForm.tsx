@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Modal } from '../ui/Modal';
+import { Icon } from '../ui/Icon';
 import { getQuote, getHistory } from '../../services/marketData';
 import { formatCAD } from '../../utils/format';
 import type { Asset } from '../../types';
@@ -155,7 +156,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
     const handleClose = () => { reset(); onClose(); };
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title="Ajouter une action manuellement" icon="📈" size="lg">
+        <Modal isOpen={isOpen} onClose={handleClose} title="Ajouter une action manuellement" icon={<Icon name="investments" size={22} />} size="lg">
             <div className="space-y-4">
                 {/* Step 1 : Symbol */}
                 <div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { logError } from '../../services/errorLogger';
 import { Modal } from '../ui/Modal';
+import { Icon } from '../ui/Icon';
 import { chatStream } from '../../services/claude';
 import { z } from 'zod';
 import { sanitizePromptText, wrapUserData, PROMPT_DATA_ISOLATION_NOTE } from '../../utils/promptSafety';
@@ -103,7 +104,7 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
             isOpen
             onClose={onClose}
             title="Diagnostic IA du Budget"
-            icon="✨"
+            icon={<Icon name="sparkles" size={22} />}
             size="lg"
         >
             {isStreaming && recommendations.length === 0 ? (

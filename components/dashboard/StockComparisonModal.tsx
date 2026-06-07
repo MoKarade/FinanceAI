@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Modal } from '../ui/Modal';
+import { Icon } from '../ui/Icon';
 import { StockChart } from '../StockChart';
 import { fetchPortfolioHistory, type MarketDataPoint } from '../../services/finance';
 import { Skeleton } from '../ui/Skeleton';
@@ -56,7 +57,7 @@ export const StockComparisonModal: React.FC<StockComparisonModalProps> = ({
         : `Comparaison — ${symbols.length} actions`;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={title} icon="📈" size="xl">
+        <Modal isOpen={isOpen} onClose={onClose} title={title} icon={<Icon name="investments" size={22} />} size="xl">
             <div className="space-y-3">
                 {symbols.length > 1 && (
                     <p className="text-tiny text-ink-400 italic">

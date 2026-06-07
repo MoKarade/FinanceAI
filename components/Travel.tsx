@@ -136,7 +136,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
 
             {sortedTrips.length === 0 && !isAdding && (
                 <EmptyState
-                    icon="🌍"
+                    icon={<Icon name="globe" size={30} />}
                     title="Aucun voyage prévu"
                     description="Ajoutez un voyage pour voir son impact sur vos finances et votre projection long terme."
                 />

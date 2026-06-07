@@ -375,7 +375,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                     <StatGrid cols={4} gap="sm">
                         <KPIStat
                             label="Cash nécessaire"
-                            icon="💵"
+                            icon={<Icon name="cash" size={16} />}
                             value={formatCurrency(totalCashNeeded)}
                             sublabel={availableCash >= totalCashNeeded ? '✓ Disponible' : `Manque ${formatCurrency(totalCashNeeded - availableCash)}`}
                             privacy
@@ -383,7 +383,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                         />
                         <KPIStat
                             label="Prêt Initial"
-                            icon="🏦"
+                            icon={<Icon name="bank" size={16} />}
                             value={formatCurrency(totalMortgage)}
                             sublabel={`Ratio Prêt/Valeur: ${Math.round((totalMortgage / price) * 100)}%`}
                             privacy
@@ -391,7 +391,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                         />
                         <KPIStat
                             label="Perte Sèche (Mens.)"
-                            icon="💸"
+                            icon={<Icon name="debt" size={16} />}
                             value={formatCurrency(unrecoverableMonthly)}
                             sublabel="Intérêts + taxes + entretien"
                             privacy
@@ -399,7 +399,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                         />
                         <KPIStat
                             label="Valeur à terme"
-                            icon="📈"
+                            icon={<Icon name="investments" size={16} />}
                             value={formatCurrency(amortizationData.finalValue)}
                             sublabel={`Dans ${amortization} ans`}
                             privacy

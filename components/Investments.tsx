@@ -560,21 +560,21 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     <StatGrid cols={horizonSnapshot.crypto > 0 ? 5 : 4}>
                         <KPIStat
                             label="CELI"
-                            icon="🌱"
+                            icon={<Icon name="sprout" size={16} />}
                             value={formatCAD(horizonSnapshot.celi)}
                             privacy
                             variant="success"
                         />
                         <KPIStat
                             label="REER"
-                            icon="🏦"
+                            icon={<Icon name="bank" size={16} />}
                             value={formatCAD(horizonSnapshot.reer)}
                             privacy
                             variant="primary"
                         />
                         <KPIStat
                             label="Non-Enreg"
-                            icon="📊"
+                            icon={<Icon name="chart" size={16} />}
                             value={formatCAD(horizonSnapshot.nonReg)}
                             privacy
                             variant="warning"
@@ -582,7 +582,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         {horizonSnapshot.crypto > 0 && (
                             <KPIStat
                                 label="Crypto"
-                                icon="₿"
+                                icon={<Icon name="bitcoin" size={16} />}
                                 value={formatCAD(horizonSnapshot.crypto)}
                                 privacy
                                 variant="danger"
@@ -590,7 +590,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         )}
                         <KPIStat
                             label="Patrimoine Net"
-                            icon="💼"
+                            icon={<Icon name="portfolio" size={16} />}
                             value={formatCAD(horizonSnapshot.netWorth)}
                             privacy
                             variant="info"
@@ -666,7 +666,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
             {/* 2. ALLOCATION PANORAMIQUE — Phase E.3 sub-tab 'allocation' */}
             {subTab === 'allocation' && <CollapsibleSection
                 title="Analyse de l'Allocation"
-                icon="🎯"
+                icon={<Icon name="goal" size={16} />}
                 subtitle="Répartition géographique et sectorielle"
                 defaultOpen={true}
             >
@@ -859,7 +859,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 return (
                     <CollapsibleSection
                         title="Rééquilibrage du Portefeuille"
-                        icon="⚖️"
+                        icon={<Icon name="budget" size={20} />}
                         subtitle={hasActions ? "Actions de rééquilibrage recommandées" : "Allocation conforme aux cibles"}
                         defaultOpen={hasActions}
                         badge={hasActions ? <Badge variant="warning" size="sm">Action requise</Badge> : <Badge variant="success" size="sm">OK</Badge>}
@@ -1047,7 +1047,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 </div>
                 <CollapsibleSection
                 title="Portefeuille Détaillé"
-                icon="📦"
+                icon={<Icon name="package" size={20} />}
                 subtitle="Tous les actifs avec performance et compte fiscal"
                 defaultOpen={true}
                 badge={<Badge variant="neutral" size="sm">{currentAllocation.length} actifs</Badge>}

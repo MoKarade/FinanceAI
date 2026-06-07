@@ -27,9 +27,9 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
                     title: "Accueil : Le Hub",
                     desc: "Vue unifiee de votre sante financiere.",
                     features: [
-                        "📊 **Graphique Multi-Comptes** : Visualisez l'evolution separee de vos liquidites et de votre portefeuille boursier.",
-                        "⏱️ **Selecteur Temporel** : Zoomez dynamiquement. L'axe Y s'ajuste automatiquement (Auto-Scale).",
-                        "💰 **Revenus Passifs** : L'accueil calcule les dividendes et interets percus sur le mois selectionne."
+                        "**Graphique Multi-Comptes** : Visualisez l'evolution separee de vos liquidites et de votre portefeuille boursier.",
+                        "**Selecteur Temporel** : Zoomez dynamiquement. L'axe Y s'ajuste automatiquement (Auto-Scale).",
+                        "**Revenus Passifs** : L'accueil calcule les dividendes et interets percus sur le mois selectionne."
                     ],
                     tip: "Les donnees boursieres proviennent directement de votre Google Sheet en lecture seule. Les dettes ont ete integrees dans la section Credit."
                 };
@@ -38,12 +38,12 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
                     title: "Machine a Voyager dans le Temps",
                     desc: "Simulation mensuelle de votre vie financiere. Inclut la gestion des objectifs (anciennement onglet Objectifs).",
                     features: [
-                        "📅 **Depart en 2026** : Le simulateur projette mois par mois votre avenir a partir de Janvier 2026.",
-                        "🔄 **Moteur Hybride** : Basculez entre vos donnees reelles (Budget) et des donnees theoriques via les sliders.",
-                        "👶 **Enfant & Maison** : Les achats de maison coupent le loyer et activent l'hypotheque. L'enfant coute de l'argent jusqu'a 18 ans avec une pique pour les etudes.",
-                        "📉 **Impot Latent** : Represente sous la barre du zero, c'est la dette fiscale accumulee sur vos gains non-realises.",
-                        "✨ **Objectifs IA** : Cliquez sur le bouton IA pour que Claude lise vos comptes et vous propose des objectifs pertinents (ex: remplir REER, rembourser telle dette).",
-                        "🔗 **Connexion Auto** : Un objectif de type 'CELI' se mettra a jour tout seul quand la valeur de votre CELI monte dans le Google Sheet."
+                        "**Depart en 2026** : Le simulateur projette mois par mois votre avenir a partir de Janvier 2026.",
+                        "**Moteur Hybride** : Basculez entre vos donnees reelles (Budget) et des donnees theoriques via les sliders.",
+                        "**Enfant & Maison** : Les achats de maison coupent le loyer et activent l'hypotheque. L'enfant coute de l'argent jusqu'a 18 ans avec une pique pour les etudes.",
+                        "**Impot Latent** : Represente sous la barre du zero, c'est la dette fiscale accumulee sur vos gains non-realises.",
+                        "**Objectifs IA** : Cliquez sur le bouton IA pour que Claude lise vos comptes et vous propose des objectifs pertinents (ex: remplir REER, rembourser telle dette).",
+                        "**Connexion Auto** : Un objectif de type 'CELI' se mettra a jour tout seul quand la valeur de votre CELI monte dans le Google Sheet."
                     ],
                     tip: "Survolez le graphique avec la souris : l'info-bulle Expert montre la variation exacte (+/- X$) de votre patrimoine et de vos comptes par rapport au mois precedent !"
                 };
@@ -52,9 +52,9 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
                     title: "Investissements & Actifs",
                     desc: "Analyse profonde de votre Google Sheet.",
                     features: [
-                        "📈 **Lecture Directe CSV** : Aucune saisie requise. Le systeme lit votre fichier Google et applique un 'Forward Fill' pour combler les trous de donnees.",
-                        "🌍 **Repartition** : Decouvrez instantanement votre exposition Geographique et Sectorielle.",
-                        "📆 **Calendrier de Rente** : Estimation de la date et du montant de vos prochains dividendes."
+                        "**Lecture Directe CSV** : Aucune saisie requise. Le systeme lit votre fichier Google et applique un 'Forward Fill' pour combler les trous de donnees.",
+                        "**Repartition** : Decouvrez instantanement votre exposition Geographique et Sectorielle.",
+                        "**Calendrier de Rente** : Estimation de la date et du montant de vos prochains dividendes."
                     ],
                     tip: "Utilisez le bouton 'Base 100 (%)' sur le graphique pour comparer la performance relative de chaque actif depuis le debut de la periode."
                 };
@@ -63,9 +63,9 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
                     title: "Simulateur Fiscal Verrouille",
                     desc: "Calculateur de l'impot sur le revenu (Quebec/Canada).",
                     features: [
-                        "🔒 **Sync Globale** : Vos revenus bruts sont directement extraits de l'onglet 'Reglages'. Plus besoin de les saisir manuellement.",
-                        "🤖 **IA Documentaire** : Deposez vos T4/Releves. L'IA Claude lira les montants d'impots deja payes pour calculer votre remboursement.",
-                        "📊 **Paliers Marginaux** : Observez visuellement comment votre dernier dollar est taxe a travers les tranches."
+                        "**Sync Globale** : Vos revenus bruts sont directement extraits de l'onglet 'Reglages'. Plus besoin de les saisir manuellement.",
+                        "**IA Documentaire** : Deposez vos T4/Releves. L'IA Claude lira les montants d'impots deja payes pour calculer votre remboursement.",
+                        "**Paliers Marginaux** : Observez visuellement comment votre dernier dollar est taxe a travers les tranches."
                     ],
                     tip: "Modifiez votre salaire dans Reglages -> Profils, et regardez les barres rouges s'ajuster ici."
                 };
@@ -74,9 +74,9 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
                     title: "Bienvenue sur FinanceAI",
                     desc: "L'Architecte Patrimonial (v4.0)",
                     features: [
-                        "💾 **Local First & Persistance** : Vos donnees restent dans votre navigateur. Si vous changez de page, le systeme sauvegarde votre etat.",
-                        "👁️ **Mode Discret** : Le bouton Oeil en haut masque absolument tous les montants pour plus d'intimite.",
-                        "🧠 **Cerveau Central** : La 'Config' (Salaires, Budget) irrigue tous les autres onglets automatiquement."
+                        "**Local First & Persistance** : Vos donnees restent dans votre navigateur. Si vous changez de page, le systeme sauvegarde votre etat.",
+                        "**Mode Discret** : Le bouton Oeil en haut masque absolument tous les montants pour plus d'intimite.",
+                        "**Cerveau Central** : La 'Config' (Salaires, Budget) irrigue tous les autres onglets automatiquement."
                     ],
                     tip: "Naviguez sans crainte. Le systeme conserve tout en memoire."
                 };

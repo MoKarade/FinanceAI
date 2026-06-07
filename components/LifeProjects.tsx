@@ -48,7 +48,6 @@ export const LifeProjects: React.FC<LifeProjectsProps> = ({
             <PageHeader
                 icon={<Icon name="life-projects" size={28} />}
                 title="Projets de vie"
-                subtitle="Projets et jalons à venir"
             />
 
             {/* Recap rapide + sous-onglet selector */}

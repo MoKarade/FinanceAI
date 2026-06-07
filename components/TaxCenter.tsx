@@ -209,7 +209,6 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
             <PageHeader
                 icon={<Icon name="tax" size={28} />}
                 title="Simulateur d'Impôts (Québec)"
-                subtitle="Pré-rempli et verrouillé avec votre profil global"
             />
 
             <div className="flex justify-end gap-2 w-full md:w-auto md:ml-auto -mt-2">

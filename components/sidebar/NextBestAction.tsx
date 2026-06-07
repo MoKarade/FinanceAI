@@ -189,7 +189,6 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen = 
                 <PageHeader
                     title="Prochaine action"
                     icon={<Icon name="actions" size={28} />}
-                    subtitle="Recommandations priorisées"
                     actions={refreshBtn}
                 />
                 {!hasData ? (

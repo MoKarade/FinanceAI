@@ -22,12 +22,10 @@ interface DualKPIStatProps {
     invertGoodBad?: boolean;
 }
 
+// Refonte sobre (choix Marc) : variantes neutralisées (plus de liseré coloré).
+const NEUTRAL = { border: 'border-l-white/10', bg: 'bg-white/[0.02]', label: 'text-ink-300' };
 const VARIANT_STYLES: Record<Variant, { border: string; bg: string; label: string }> = {
-    primary: { border: 'border-l-primary', bg: 'bg-primary/5', label: 'text-primary' },
-    success: { border: 'border-l-emerald-500', bg: 'bg-success-500/5', label: 'text-success-400' },
-    info: { border: 'border-l-info-500', bg: 'bg-info-500/5', label: 'text-info-400' },
-    warning: { border: 'border-l-amber-500', bg: 'bg-warning-500/5', label: 'text-warning-400' },
-    danger: { border: 'border-l-red-500', bg: 'bg-danger-500/5', label: 'text-danger-400' },
+    primary: NEUTRAL, success: NEUTRAL, info: NEUTRAL, warning: NEUTRAL, danger: NEUTRAL,
 };
 
 export const DualKPIStat: React.FC<DualKPIStatProps> = ({

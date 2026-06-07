@@ -336,7 +336,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <PageHeader
                     icon={<Icon name="dashboard" size={28} />}
                     title={t('dashboard.title', "Vue d'ensemble")}
-                    subtitle={t('dashboard.subtitle', "Patrimoine consolidé et tendance")}
                 />
                 <Card>
                     <div className="text-center py-12 px-4 space-y-4">
@@ -376,7 +375,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <PageHeader
                 icon={<Icon name="dashboard" size={28} />}
                 title={t('dashboard.title', "Vue d'ensemble")}
-                subtitle={t('dashboard.subtitle', "Patrimoine consolidé et tendance")}
             />
 
             {/* Hero KPI strip — Phase D.8 : 5 KPIs incluant Active Income */}
@@ -416,7 +414,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     variant="warning"
                 />
                 {/* Indicateur Futur — custom car contient un input année */}
-                <div className="bg-info-bg backdrop-blur-sm rounded-card p-4 border-l-4 border-l-info-500 border-r border-t border-b border-white/5 flex flex-col gap-1 hover:bg-info-500/15 transition-colors group">
+                <div className="bg-white/[0.02] backdrop-blur-sm rounded-card p-4 border-l-2 border-l-white/10 border-r border-t border-b border-white/5 flex flex-col gap-1 hover:bg-white/[0.04] transition-colors group">
                     <div className="flex items-center justify-between">
                         <span className="kpi-label">{t('dashboard.future_predictor', 'Indicateur Futur')}</span>
                         <button

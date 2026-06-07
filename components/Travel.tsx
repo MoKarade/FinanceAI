@@ -48,7 +48,6 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
             <PageHeader
                 icon={<Icon name="plane" size={28} />}
                 title="Mes Voyages"
-                subtitle="Voyages à venir"
                 actions={
                     <Button onClick={() => setIsAdding(!isAdding)} variant={isAdding ? 'ghost' : 'primary'} size="md">
                         {isAdding ? 'Annuler' : '+ Nouveau Voyage'}

@@ -200,7 +200,6 @@ export const Retirement: React.FC<RetirementProps> = ({
                 <PageHeader
                     icon={<Icon name="retirement" size={28} />}
                     title="Planification Retraite"
-                    subtitle="Projection de retraite"
                 />
                 <ProjectionRequired feature="La simulation de retraite" />
             </div>

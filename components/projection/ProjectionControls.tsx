@@ -220,7 +220,6 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
             <CollapsibleSection
                 title="Hypothèses macroéconomiques"
                 icon={<Icon name="cash" size={20} />}
-                subtitle="Horizon, inflation, rendements, paramètres de base"
                 defaultOpen={true}
             >
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -329,7 +328,6 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
             <CollapsibleSection
                 title="Variabilité & Stress-test"
                 icon={<Icon name="dice" size={20} />}
-                subtitle="Inflation par poste, replay krach, withholding US"
                 defaultOpen={runMC}
             >
                 <div className="space-y-4">
@@ -415,7 +413,6 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
             <CollapsibleSection
                 title="Événements de vie stochastiques"
                 icon={<Icon name="wind" size={20} />}
-                subtitle="Mortalité, soins LD, divorce, perte d'emploi… (requiert Monte Carlo)"
                 defaultOpen={false}
                 badge={activeStochasticCount > 0 ? <Badge variant="warning" size="sm">{activeStochasticCount} actifs</Badge> : undefined}
             >
@@ -458,7 +455,6 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
             <CollapsibleSection
                 title="Paramètres avancés"
                 icon={<Icon name="settings" size={20} />}
-                subtitle="DB Pension, Asset Location, options détaillées"
                 defaultOpen={false}
             >
                 <AdvancedProjectionParams projection={projection} updateProj={updateProj} />

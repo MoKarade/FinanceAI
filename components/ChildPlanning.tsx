@@ -229,7 +229,6 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
             <PageHeader
                 icon={<Icon name="child" size={28} />}
                 title="Planification Enfant"
-                subtitle="Coûts et impact jusqu'à 25 ans"
                 badge={
                     <div className="flex items-center gap-2">
                         {/* Phase F.9 — indicateur d'activation FUTUR uniformisé avec Immobilier */}

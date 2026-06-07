@@ -475,7 +475,6 @@ export const Investments: React.FC<InvestmentsProps> = ({
             <PageHeader
                 icon={<Icon name="investments" size={28} />}
                 title="Investissements"
-                subtitle="Performance, allocation et revenus passifs"
                 badge={
                     <Badge
                         variant={healthScore >= 80 ? 'success' : healthScore >= 50 ? 'warning' : 'danger'}
@@ -667,7 +666,6 @@ export const Investments: React.FC<InvestmentsProps> = ({
             {subTab === 'allocation' && <CollapsibleSection
                 title="Analyse de l'Allocation"
                 icon={<Icon name="goal" size={16} />}
-                subtitle="Répartition géographique et sectorielle"
                 defaultOpen={true}
             >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 min-h-[300px]">
@@ -1048,7 +1046,6 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 <CollapsibleSection
                 title="Portefeuille Détaillé"
                 icon={<Icon name="package" size={20} />}
-                subtitle="Tous les actifs avec performance et compte fiscal"
                 defaultOpen={true}
                 badge={<Badge variant="neutral" size="sm">{currentAllocation.length} actifs</Badge>}
             >

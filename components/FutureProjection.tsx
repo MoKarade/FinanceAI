@@ -585,7 +585,6 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             <PageHeader
                 icon={<Icon name="future" size={28} />}
                 title="Projection Future"
-                subtitle="Projection mensuelle de ton patrimoine"
                 actions={
                     <Pill
                         aria-label="Mode de données"

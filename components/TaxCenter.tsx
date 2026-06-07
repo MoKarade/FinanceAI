@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { showToast } from './ui/Toast';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
+import { Icon } from './ui/Icon';
 import { CoupleOptimizationCard } from './tax/CoupleOptimizationCard';
 import { BudgetConfig, Asset } from '../types';
 // Phase 4 A4: bascule sur services/claude.ts (Sonnet 4.6 + Vision)
@@ -206,7 +207,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
         <div className="space-y-6 stagger-in pb-20">
 
             <PageHeader
-                icon="🏛️"
+                icon={<Icon name="tax" size={28} />}
                 title="Simulateur d'Impôts (Québec)"
                 subtitle="Pré-rempli et verrouillé avec votre profil global"
             />

@@ -13,6 +13,7 @@ import { RealEstateAdviceCard } from './realestate/RealEstateAdviceCard';
 import { calculateWelcomeTax } from '../services/realEstate';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { PageHeader } from './ui/PageHeader';
+import { Icon } from './ui/Icon';
 import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { Button } from './ui/Button';
@@ -290,7 +291,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                 confirmLabel="Supprimer"
             />
             <PageHeader
-                icon="🏡"
+                icon={<Icon name="real-estate" size={28} />}
                 title="Immobilier"
                 subtitle={`${goals.length} propriété${goals.length > 1 ? 's' : ''} configurée${goals.length > 1 ? 's' : ''} · Mensualité nette ${formatCurrency(netMonthlyCost)}`}
                 badge={activeGoal.isActive ? <Badge variant="success" size="md">✓ Active dans simulation</Badge> : <Badge variant="neutral" size="md">Inactive</Badge>}

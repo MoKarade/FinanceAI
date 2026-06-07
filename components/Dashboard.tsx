@@ -6,6 +6,7 @@ const DashboardEvolutionChart = React.lazy(() => import('./dashboard/DashboardEv
 import { Transaction, Asset, BudgetCategory, RealEstateGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Tab, Debt } from '../types';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
+import { Icon } from './ui/Icon';
 import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { Skeleton } from './ui/Skeleton';
@@ -333,7 +334,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         return (
             <div className="space-y-6 animate-fade-in pb-10">
                 <PageHeader
-                    icon="📊"
+                    icon={<Icon name="dashboard" size={28} />}
                     title={t('dashboard.title', "Vue d'ensemble")}
                     subtitle={t('dashboard.subtitle', "Patrimoine consolidé et tendance")}
                 />
@@ -373,7 +374,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="space-y-6 stagger-in">
 
             <PageHeader
-                icon="📊"
+                icon={<Icon name="dashboard" size={28} />}
                 title={t('dashboard.title', "Vue d'ensemble")}
                 subtitle={t('dashboard.subtitle', "Patrimoine consolidé et tendance")}
             />

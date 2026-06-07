@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useDebouncedMemo } from '../utils/useDebouncedMemo';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
+import { Icon } from './ui/Icon';
 import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { Pill } from './ui/Pill';
@@ -582,7 +583,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         <div className="space-y-6 stagger-in pb-24">
 
             <PageHeader
-                icon="🔮"
+                icon={<Icon name="future" size={28} />}
                 title="Projection Future"
                 subtitle="Analyse des flux mensuels projetés avec Loyer → Hypothèque automatique et frais enfants dynamiques."
                 actions={

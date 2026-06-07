@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
+import { Icon } from './ui/Icon';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Area, ReferenceLine, ComposedChart } from 'recharts';
@@ -226,7 +227,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                 confirmLabel="Supprimer"
             />
             <PageHeader
-                icon="👶"
+                icon={<Icon name="child" size={28} />}
                 title="Planification Enfant"
                 subtitle="Configurez les choix de vie et visualisez l'impact financier complet jusqu'à 25 ans."
                 badge={

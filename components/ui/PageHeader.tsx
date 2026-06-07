@@ -20,7 +20,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
     return (
         <header className={`flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-section ${className}`}>
             <div className="flex items-start gap-3 min-w-0">
-                {icon && <span className="flex-shrink-0 text-display" aria-hidden="true">{icon}</span>}
+                {icon && <span className="flex-shrink-0 text-primary mt-0.5" aria-hidden="true">{icon}</span>}
                 <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-3">
                         <h1 className="text-display text-ink-50 tracking-tight">{title}</h1>

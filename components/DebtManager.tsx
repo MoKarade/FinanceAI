@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Card } from './ui/Card';
 import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
+import { Icon } from './ui/Icon';
 import { Badge } from './ui/Badge';
 import { Debt } from '../types';
 import { ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
@@ -75,7 +76,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
         <div className="space-y-6 stagger-in pb-20">
             <ConfirmModal isOpen={!!confirmDeleteId} onConfirm={doConfirmDelete} onCancel={() => setConfirmDeleteId(null)} title="Supprimer la dette" message="Supprimer cette dette définitivement ?" confirmLabel="Supprimer" />
             <PageHeader
-                icon="💸"
+                icon={<Icon name="debt" size={28} />}
                 title="Gestion de la Dette"
                 subtitle="Éliminez vos dettes toxiques (cartes, prêts)."
                 badge={<Badge variant={totalDebt > 0 ? 'danger' : 'success'} size="md">Total Dû: {totalDebt.toLocaleString()} $</Badge>}

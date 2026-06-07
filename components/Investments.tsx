@@ -13,6 +13,7 @@ import {
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip } from 'recharts';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
+import { Icon } from './ui/Icon';
 import { Pill } from './ui/Pill';
 import { Badge } from './ui/Badge';
 import { KPIStat } from './ui/KPIStat';
@@ -439,7 +440,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
     if (assets.length === 0) {
         return (
             <div className="space-y-6 stagger-in pb-10 relative">
-                <PageHeader icon="📈" title="Investissements" subtitle="Performance, allocation et revenus passifs" />
+                <PageHeader icon={<Icon name="investments" size={28} />} title="Investissements" subtitle="Performance, allocation et revenus passifs" />
                 <Card>
                     <div className="text-center py-12 px-4 space-y-4">
                         <div className="text-5xl" aria-hidden="true">📈</div>
@@ -472,7 +473,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
         <div className="space-y-6 stagger-in pb-10 relative">
 
             <PageHeader
-                icon="📈"
+                icon={<Icon name="investments" size={28} />}
                 title="Investissements"
                 subtitle="Performance, allocation et revenus passifs"
                 badge={

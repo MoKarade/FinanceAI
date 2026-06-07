@@ -14,6 +14,7 @@
 
 import React, { useState } from 'react';
 import { PageHeader } from './ui/PageHeader';
+import { Icon } from './ui/Icon';
 import {
   AppState, BudgetCategory, Transaction, Asset, SavingsGoal, TravelGoal, Debt,
   InvestmentAccount, InvestmentTransaction, LifeEvent, RetirementGoal, FinancialGoal,
@@ -157,7 +158,7 @@ export const Settings: React.FC<SettingsProps> = ({
   return (
     <div className="max-w-4xl mx-auto space-y-6 stagger-in">
       <PageHeader
-        icon="⚙️"
+        icon={<Icon name="settings" size={28} />}
         title="Configuration"
         subtitle="Hub central — profil, comptes, patrimoine, intégrations, sauvegarde. Modifie ici, l'app suit."
       />

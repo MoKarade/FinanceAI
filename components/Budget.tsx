@@ -9,6 +9,7 @@ import { BudgetGroupTable } from './budget/BudgetGroupTable';
 import { BudgetAiModal } from './budget/BudgetAiModal';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { PageHeader } from './ui/PageHeader';
+import { Icon } from './ui/Icon';
 import { Pill } from './ui/Pill';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
@@ -465,7 +466,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 confirmLabel="Supprimer"
             />
             <PageHeader
-                icon="⚖️"
+                icon={<Icon name="budget" size={28} />}
                 title="Pilotage Budget"
                 subtitle={
                     timeView === 'MONTH' ? 'Vision tactique (Mois en cours)' :

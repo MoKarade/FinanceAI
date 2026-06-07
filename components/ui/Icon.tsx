@@ -11,7 +11,7 @@ import React from 'react';
 import {
   LayoutDashboard, CreditCard, Scale, LineChart, TrendingUp, TrendingDown,
   Palmtree, Home, Baby, Route, Landmark, Wallet, Compass, Target, Wrench,
-  Settings, MoreHorizontal, Zap, Eye, EyeOff,
+  Settings, MoreHorizontal, Zap, Eye, EyeOff, Plane,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -28,6 +28,7 @@ const REGISTRY = {
   'real-estate': Home,
   child: Baby,
   'life-projects': Route,
+  plane: Plane,
   tax: Landmark,
   debt: TrendingDown,
   settings: Settings,

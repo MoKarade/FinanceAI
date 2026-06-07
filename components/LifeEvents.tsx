@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Card } from './ui/Card';
 import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
+import { Icon } from './ui/Icon';
 import { Button } from './ui/Button';
 import { LifeEvent, LifeEventType, TravelGoal } from '../types';
 import { ResponsiveContainer, PieChart, Pie, Cell, Legend, Tooltip } from 'recharts';
@@ -117,7 +118,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
             />
 
             <PageHeader
-                icon="🛤️"
+                icon={<Icon name="life-projects" size={28} />}
                 title="Parcours de Vie"
                 subtitle="Simulez l'impact financier de vos projets (voyages, mariage) et des aléas (accidents, krach)."
                 actions={

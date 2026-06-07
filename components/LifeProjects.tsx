@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { PageHeader } from './ui/PageHeader';
+import { Icon } from './ui/Icon';
 import { Pill } from './ui/Pill';
 import { Travel } from './Travel';
 import { LifeEvents } from './LifeEvents';
@@ -45,7 +46,7 @@ export const LifeProjects: React.FC<LifeProjectsProps> = ({
     return (
         <div className="space-y-6 stagger-in pb-20">
             <PageHeader
-                icon="🛤️"
+                icon={<Icon name="life-projects" size={28} />}
                 title="Projets de vie"
                 subtitle="Voyages, événements ponctuels et grands jalons à venir — vue unifiée."
             />

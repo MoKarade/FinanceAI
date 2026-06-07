@@ -78,7 +78,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
             <PageHeader
                 icon={<Icon name="debt" size={28} />}
                 title="Gestion de la Dette"
-                subtitle="Éliminez vos dettes toxiques (cartes, prêts)."
+                subtitle="Stratégie de remboursement"
                 badge={<Badge variant={totalDebt > 0 ? 'danger' : 'success'} size="md">Total Dû: {totalDebt.toLocaleString()} $</Badge>}
             />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

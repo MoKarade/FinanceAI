@@ -91,7 +91,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
                 className="bg-surface border border-white/20 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden relative"
                 onClick={e => e.stopPropagation()}
             >
-                <div className="bg-gradient-to-r from-blue-900/50 to-purple-900/50 p-6 border-b border-white/10">
+                <div className="bg-white/[0.04] p-6 border-b border-white/10">
                     <div className="flex justify-between items-start">
                         <div className="flex items-center gap-3">
                             <div className="text-4xl">ℹ️</div>

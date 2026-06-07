@@ -243,7 +243,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
             )}
 
             {scannedPay && (
-                <div className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 border border-info-500/30 p-4 rounded-xl shadow-lg mt-4 animate-fade-in">
+                <div className="bg-white/[0.03] border border-white/10 p-4 rounded-xl mt-4 animate-fade-in">
                     <h3 className="text-body font-bold text-white mb-3 flex items-center gap-2">📄 Fiche de Paie Détectée ({scannedPay.freq})</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                         <div className="bg-black/30 p-3 rounded border border-white/5">

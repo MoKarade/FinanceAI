@@ -426,7 +426,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
             {showWizard && (
                 <div role="dialog" aria-modal="true" aria-labelledby="wizard-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in">
                     <div className="bg-surface border border-white/10 w-full max-w-4xl max-h-[85vh] rounded-2xl shadow-2xl flex flex-col">
-                        <div className="p-6 border-b border-white/10 flex justify-between items-center bg-gradient-to-r from-blue-900/20 to-transparent rounded-t-2xl">
+                        <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/[0.03] rounded-t-2xl">
                             <div>
                                 <h2 id="wizard-title" className="text-xl font-bold text-white flex items-center gap-2">
                                     Assistant de Classement
@@ -528,9 +528,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
                             className={`px-3 sm:px-4 py-2 rounded-full text-meta font-bold text-white shadow-lg transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap ${processing ? 'bg-white/10 cursor-not-allowed' : apiKey ? 'bg-gradient-to-r from-secondary to-purple-500 hover:brightness-110' : 'bg-surfaceHighlight'
                                 }`}
                         >
-                            <span aria-hidden="true">{processing ? '⚙️' : '⚡'}</span>
-                            <span className="hidden sm:inline">{processing ? 'Scan en cours...' : 'IA Auto-Scan'}</span>
-                            <span className="sm:hidden">{processing ? 'Scan' : 'IA'}</span>
+                            <span className="hidden sm:inline">{processing ? 'Catégorisation…' : 'Auto-catégoriser'}</span>
+                            <span className="sm:hidden">{processing ? '…' : 'Auto'}</span>
                         </button>
                     </div>
 
@@ -541,7 +540,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                 <div key={i} className="opacity-90">{`> ${log}`}</div>
                             ))}
                             <div className="sticky bottom-0 bg-black/90 pb-2 border-t border-green-500/20 pt-2 flex items-center justify-between">
-                                <span className="animate-pulse">TRAITEMENT IA (Claude Sonnet 4.6)...</span>
+                                <span className="animate-pulse">Catégorisation en cours…</span>
                                 <span>{progressStatus.current}/{progressStatus.total}</span>
                             </div>
                         </div>
@@ -595,7 +594,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                 </th>
                                 <th className="p-3">Date</th>
                                 <th className="p-3">Marchand</th>
-                                <th className="p-3 w-10">IA</th>
+                                <th className="p-3 w-10">Auto</th>
                                 <th className="p-3">Type</th>
                                 <th className="p-3">Montant</th>
                                 <th className="p-3">Categorie</th>
@@ -630,7 +629,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         {t.confidence !== undefined && (
                                             <div
                                                 className={`w-2 h-2 rounded-full ${getConfidenceColor(t.confidence)}`}
-                                                title={`Confiance IA: ${t.confidence}%`}
+                                                title={`Confiance: ${t.confidence}%`}
                                                 aria-label={`Confiance IA ${t.confidence}%`}
                                             ></div>
                                         )}
@@ -704,7 +703,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                                 {t.confidence !== undefined && (
                                                     <span
                                                         className={`w-2 h-2 rounded-full flex-shrink-0 ${getConfidenceColor(t.confidence)}`}
-                                                        title={`Confiance IA: ${t.confidence}%`}
+                                                        title={`Confiance: ${t.confidence}%`}
                                                         aria-label={`Confiance IA ${t.confidence}%`}
                                                     ></span>
                                                 )}

@@ -48,7 +48,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
             <PageHeader
                 icon={<Icon name="plane" size={28} />}
                 title="Mes Voyages"
-                subtitle="Planifiez vos prochaines aventures"
+                subtitle="Voyages à venir"
                 actions={
                     <Button onClick={() => setIsAdding(!isAdding)} variant={isAdding ? 'ghost' : 'primary'} size="md">
                         {isAdding ? 'Annuler' : '+ Nouveau Voyage'}
@@ -101,7 +101,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                     return (
                         <div key={trip.id} className={`relative group overflow-hidden rounded-2xl border ${isPast ? 'border-white/10 bg-dark/50 grayscale' : 'border-white/10 bg-[#1e1e1e] hover:border-primary/50'} transition-all duration-300 shadow-xl`}>
                             {/* Image Header Placeholder */}
-                            <div className={`h-24 ${isPast ? 'bg-surfaceHighlight' : 'bg-gradient-to-r from-blue-900 to-purple-900'} flex items-center justify-center relative overflow-hidden`}>
+                            <div className={`h-24 ${isPast ? 'bg-surfaceHighlight' : 'bg-white/[0.04]'} flex items-center justify-center relative overflow-hidden`}>
                                 <span className="text-6xl select-none opacity-20 transform group-hover:scale-110 transition-transform duration-500">✈️</span>
                                 <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-md px-2 py-1 rounded text-meta font-mono border border-white/10">
                                     {isPast ? 'Terminé' : `J-${daysLeft}`}

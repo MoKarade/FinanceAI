@@ -443,7 +443,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 <PageHeader icon={<Icon name="investments" size={28} />} title="Investissements" subtitle="Performance, allocation et revenus passifs" />
                 <Card>
                     <div className="text-center py-12 px-4 space-y-4">
-                        <div className="text-5xl" aria-hidden="true">📈</div>
+                        <Icon name="investments" size={44} className="text-ink-500 block mx-auto" />
                         <h2 className="text-h2 text-ink-50 font-bold">Ajoute ton premier placement</h2>
                         <p className="text-meta text-ink-300 max-w-md mx-auto leading-snug">
                             Saisis un titre à la main pour voir ton score de diversification, ton allocation

@@ -549,7 +549,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // projection valide plutôt que d'afficher ces zéros.)
     if (results?._hasError) {
         return <div className="p-8 text-center bg-surface/50 rounded-2xl border border-danger-500/20 space-y-2">
-            <div className="text-2xl" aria-hidden="true">⚠️</div>
+            <Icon name="alert" size={22} className="text-warning-400 shrink-0" />
             <div className="text-danger-400 font-bold">Le calcul de la projection a échoué.</div>
             <div className="text-body text-ink-300 max-w-md mx-auto">
                 Vérifie tes paramètres (revenus, dépenses, comptes, objectifs). L'erreur a été

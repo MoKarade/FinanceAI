@@ -441,7 +441,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         <div className="flex-1 overflow-y-auto p-6 space-y-2 custom-scrollbar">
                             {uncategorizedGroups.length === 0 ? (
                                 <div className="text-center py-20">
-                                    <div className="text-4xl mb-2" aria-hidden="true">🎉</div>
+                                    <Icon name="check" size={40} className="text-success-500 block mx-auto mb-2" />
                                     <h3 className="text-white font-bold">Tout est propre !</h3>
                                     <p className="text-ink-500 text-body">Plus aucune transaction inconnue.</p>
                                 </div>
@@ -511,7 +511,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 <div className="flex flex-col gap-3 mb-4">
                     <div className="flex gap-2">
                         <div className="relative flex-1">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500" aria-hidden="true">🔍</span>
+                            <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500" />
                             <input
                                 type="text"
                                 placeholder="Rechercher..."

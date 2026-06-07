@@ -130,13 +130,13 @@ describe('Dashboard', () => {
     it('D2 — premier lancement (aucune donnée) : affiche l\'accueil + CTA, pas les KPIs', () => {
         const onNavigate = vi.fn();
         render(<Dashboard {...baseProps} onNavigate={onNavigate} />);
-        expect(screen.getByText(/Bienvenue ! Ajoute tes premières données/i)).toBeInTheDocument();
+        expect(screen.getByText(/Tableau de bord vide/i)).toBeInTheDocument();
         // les KPIs (clés i18n) ne sont PAS rendus dans l'accueil
         expect(document.body.textContent).not.toContain('dashboard.global_net_worth');
         // les CTA naviguent vers les bons onglets
-        fireEvent.click(screen.getByRole('button', { name: /Importer mes transactions/i }));
+        fireEvent.click(screen.getByRole('button', { name: /Importer des transactions/i }));
         expect(onNavigate).toHaveBeenCalledWith('TRANSACTIONS');
-        fireEvent.click(screen.getByRole('button', { name: /Ajouter mes placements/i }));
+        fireEvent.click(screen.getByRole('button', { name: /Ajouter des placements/i }));
         expect(onNavigate).toHaveBeenCalledWith('INVESTMENTS');
     });
 

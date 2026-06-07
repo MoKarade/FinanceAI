@@ -340,10 +340,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 />
                 <Card>
                     <div className="text-center py-12 px-4 space-y-4">
-                        <div className="text-5xl" aria-hidden="true">👋</div>
-                        <h2 className="text-h2 text-ink-50 font-bold">Bienvenue ! Ajoute tes premières données</h2>
-                        <p className="text-meta text-ink-300 max-w-md mx-auto leading-snug">
-                            Ton tableau de bord s'animera dès que tu auras importé des transactions ou ajouté tes placements.
+                        <Icon name="dashboard" size={44} className="text-ink-500 block mx-auto" />
+                        <h2 className="text-h2 text-ink-50 font-bold">Tableau de bord vide</h2>
+                        <p className="text-meta text-ink-400 max-w-sm mx-auto leading-snug">
+                            Importe des transactions ou ajoute tes placements pour commencer.
                         </p>
                         <div className="flex flex-wrap gap-3 justify-center pt-2">
                             <button
@@ -351,14 +351,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 onClick={() => onNavigate?.(TabEnum.TRANSACTIONS)}
                                 className="px-4 py-2 rounded-card bg-primary/15 border border-primary/40 text-primary text-meta font-bold hover:bg-primary/25 transition-colors focus-ring"
                             >
-                                📥 Importer mes transactions
+                                Importer des transactions
                             </button>
                             <button
                                 type="button"
                                 onClick={() => onNavigate?.(TabEnum.INVESTMENTS)}
-                                className="px-4 py-2 rounded-card bg-info-500/15 border border-info-500/40 text-info-300 text-meta font-bold hover:bg-info-500/25 transition-colors focus-ring"
+                                className="px-4 py-2 rounded-card bg-white/5 border border-white/10 text-ink-200 text-meta font-bold hover:bg-white/10 transition-colors focus-ring"
                             >
-                                📈 Ajouter mes placements
+                                Ajouter des placements
                             </button>
                         </div>
                     </div>
@@ -426,7 +426,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             title="Ouvrir la projection future"
                             aria-label="Aller à FutureProjection"
                         >
-                            🎯 →
+                            →
                         </button>
                     </div>
                     <div className="text-kpi text-ink-50 privacy-blur tabular-nums">

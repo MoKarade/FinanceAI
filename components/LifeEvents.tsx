@@ -120,7 +120,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
             <PageHeader
                 icon={<Icon name="life-projects" size={28} />}
                 title="Parcours de Vie"
-                subtitle="Simulez l'impact financier de vos projets (voyages, mariage) et des aléas (accidents, krach)."
+                subtitle="Projets et aléas de la vie"
                 actions={
                     <Button onClick={() => setIsAdding(!isAdding)} variant={isAdding ? 'ghost' : 'secondary'} size="md">
                         {isAdding ? 'Fermer' : '➕ Ajouter un Événement'}

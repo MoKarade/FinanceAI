@@ -160,7 +160,7 @@ export const Settings: React.FC<SettingsProps> = ({
       <PageHeader
         icon={<Icon name="settings" size={28} />}
         title="Configuration"
-        subtitle="Hub central — profil, comptes, patrimoine, intégrations, sauvegarde. Modifie ici, l'app suit."
+        subtitle="Profil, comptes, patrimoine et intégrations"
       />
 
       {/* État global de la configuration : %completion + champs manquants (toujours visible) */}

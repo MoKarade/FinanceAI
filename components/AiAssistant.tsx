@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Icon } from './ui/Icon';
 import { logError } from '../services/errorLogger';
 import { Transaction, BudgetCategory, Asset, ProjectionConfig, RealEstateGoal, BudgetConfig, AiMessage } from '../types';
 import { useFinanceStore } from '../store/useFinanceStore';
@@ -259,7 +260,7 @@ ${last20Txs}`
           <div className="bg-gradient-to-r from-emerald-900/50 to-purple-900/50 p-4 border-b border-white/5 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-emerald-300 p-0.5">
               <div className="w-full h-full bg-black rounded-full flex items-center justify-center">
-                <span className="text-lg" aria-hidden="true">🤖</span>
+                <Icon name="bot" size={18} className="text-primary" />
               </div>
             </div>
             <div>
@@ -278,7 +279,7 @@ ${last20Txs}`
             {messagesToRender.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {m.role === 'model' && (
-                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mr-2 text-body flex-shrink-0 border border-white/10" aria-hidden="true">🤖</div>
+                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mr-2 flex-shrink-0 border border-white/10 text-ink-200" aria-hidden="true"><Icon name="bot" size={16} /></div>
                 )}
                 <div
                   className={`max-w-[85%] rounded-2xl px-5 py-3 text-body leading-relaxed shadow-md ${m.role === 'user'

@@ -390,7 +390,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                         <Card title="Simulation">
                             <div className="flex items-center justify-center h-64 text-ink-500">
                                 <div className="text-center">
-                                    <div className="text-4xl mb-3">⏳</div>
+                                    <Icon name="clock" size={40} className="text-ink-500 block mx-auto mb-3" />
                                     <p>Chargement des donnees de portefeuille...</p>
                                     <p className="text-meta mt-2 text-ink-500">Assurez-vous d'avoir importe un CSV de portefeuille.</p>
                                 </div>

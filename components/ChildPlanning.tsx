@@ -250,7 +250,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                             {goal.isActive ? 'Désactiver dans Futur' : 'Activer dans Futur'}
                         </Button>
                         {goals.length > 1 && (
-                            <Button onClick={handleRemoveChild} variant="ghost" size="md" title="Supprimer ce profil">🗑️</Button>
+                            <Button onClick={handleRemoveChild} variant="ghost" size="md" title="Supprimer ce profil"><Icon name="trash" size={16} /></Button>
                         )}
                     </>
                 }

@@ -17,6 +17,7 @@ import {
   CircleDot, HeartPulse,
   CalendarDays, GraduationCap, Shield, ClipboardList, Users, BookOpen,
   LifeBuoy, Bot, Cloud, FileText, Percent, Clock,
+  Trash2, AlertTriangle, Smartphone, Link, Lock,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -63,6 +64,11 @@ const REGISTRY = {
   import: Download,
   check: Check,
   clock: Clock,
+  trash: Trash2,
+  alert: AlertTriangle,
+  smartphone: Smartphone,
+  link: Link,
+  lock: Lock,
   status: CircleDot,
   // Titres de cartes / sections
   calendar: CalendarDays,

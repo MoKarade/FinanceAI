@@ -250,7 +250,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                             </div>
                                             {item.cost > 0 && <div className="font-bold text-danger-400 text-lg">-{item.cost.toLocaleString()}$</div>}
                                         </div>
-                                        <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteKey(item.uniqueKey); }} className="absolute top-3 right-3 text-ink-500 hover:text-danger-500 p-2 transition-colors z-10 hover:bg-white/5 rounded-full" title="Supprimer cet événement">🗑️</button>
+                                        <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteKey(item.uniqueKey); }} className="absolute top-3 right-3 text-ink-500 hover:text-danger-500 p-2 transition-colors z-10 hover:bg-white/5 rounded-full" title="Supprimer cet événement"><Icon name="trash" size={16} /></button>
                                     </div>
                                 </div>
                             );
@@ -275,7 +275,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                         <h3 className="text-2xl font-black text-white">{selectedItem.name}</h3>
                                         <div className="text-body text-ink-300 mt-1">{new Date(selectedItem.date).toLocaleDateString()}</div>
                                     </div>
-                                    <button onClick={() => setConfirmDeleteKey(selectedItem.uniqueKey)} className="text-ink-500 hover:text-danger-500 p-2 transition-colors hover:bg-white/5 rounded-full" title="Supprimer">🗑️</button>
+                                    <button onClick={() => setConfirmDeleteKey(selectedItem.uniqueKey)} className="text-ink-500 hover:text-danger-500 p-2 transition-colors hover:bg-white/5 rounded-full" title="Supprimer"><Icon name="trash" size={16} /></button>
                                 </div>
                                 <div className="p-6 space-y-6">
                                     <div>

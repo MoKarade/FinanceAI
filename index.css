@@ -136,9 +136,11 @@
   mix-blend-mode: screen;
 }
 
-.blob-1 { top: -10%; left: -10%; width: 60vw; height: 60vw; background: #10b981; animation-delay: 0s; opacity: 0.15; }
-.blob-2 { bottom: -20%; right: -10%; width: 70vw; height: 70vw; background: #8b5cf6; animation-delay: 4s; opacity: 0.15; }
-.blob-3 { top: 30%; left: 30%; width: 40vw; height: 40vw; background: #3b82f6; animation-delay: 8s; opacity: 0.1; }
+/* Aurora « sobre » : un seul accent (emerald) + profondeur neutre slate, au lieu
+   d'emerald+violet+bleu. Fond plus restreint, style Apple/Google. */
+.blob-1 { top: -10%; left: -10%; width: 60vw; height: 60vw; background: #10b981; animation-delay: 0s; opacity: 0.13; }
+.blob-2 { bottom: -20%; right: -10%; width: 70vw; height: 70vw; background: #3f5168; animation-delay: 4s; opacity: 0.14; }
+.blob-3 { top: 30%; left: 30%; width: 40vw; height: 40vw; background: #10b981; animation-delay: 8s; opacity: 0.05; }
 
 /* Animations */
 @keyframes slideUpFade {

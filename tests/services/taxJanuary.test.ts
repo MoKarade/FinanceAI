@@ -67,6 +67,14 @@ describe('processJanuaryReset — FERR (retrait minimum à 72+)', () => {
         expect(r.ferrMandatoryGross).toBe(0);
         expect(r.ferrLogMsg).toBeUndefined();
     });
+    it('à 71 ans : AUCUN retrait minimum forcé (régression — règle ARC, choix Marc 2026-06)', () => {
+        // Verrou anti-régression : un FERR ouvert à l'échéance des 71 ans n'a aucun retrait minimum
+        // l'année d'ouverture. Le gate DOIT rester >= 72 (un commit l'avait passé à 71 → corrigé).
+        const r = processJanuaryReset(0, baseCtx({ age: 71, reer: 100000 }), helpers)!;
+        expect(r.ferrMandatoryGross).toBe(0);
+        expect(r.ferrTaxOnRrif).toBe(0);
+        expect(r.ferrLogMsg).toBeUndefined();
+    });
     it('à 72 ans : brut = REER × taux RRIF, impôt = brut × taux marginal stubé', () => {
         const r = processJanuaryReset(0, baseCtx({ age: 72, reer: 100000 }), helpers)!;
         expect(r.ferrMandatoryGross).toBeCloseTo(100000 * 0.054, 5); // 5400

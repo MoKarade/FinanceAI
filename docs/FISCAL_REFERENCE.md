@@ -193,6 +193,27 @@ Source du début de rente choisi par l'utilisateur. Implémentation : `services/
 2024 : 31 560 · 2025 : 32 490 · **2026 : 33 810** · 2027 : 34 480 · 2028 : 35 170 ·
 2029 : 35 870 · 2030 : 36 590 (2027+ estimés, à confirmer au Budget). Espace gagné = 18 % du brut.
 
+### FERR / RRIF — conversion et retrait minimum (`services/projection/helpers.ts:RRIF_RATES`)
+**Règle ARC.** La conversion REER→FERR est obligatoire **au plus tard à la fin de l'année des
+71 ans**. Mais **aucun retrait minimum n'est dû l'année d'ouverture** du FERR. Pour le cas standard
+(conversion à l'échéance des 71 ans), le **1er retrait minimum obligatoire tombe l'année des 72 ans**.
+Le facteur 71 ans (5,28 %) ne s'applique qu'à une conversion **volontaire précoce**.
+> **Implémentation** (`taxJanuary.ts` §4) : le moteur force le retrait minimum à partir de **72 ans**
+> (`if (ctx.age >= 72)`). Le facteur 71 reste dans la table pour complétude (conversion précoce non
+> modélisée). Montant = solde FERR (1er janvier) × facteur prescrit selon l'âge.
+
+| Âge | Facteur | Âge | Facteur | Âge | Facteur |
+|---|---|---|---|---|---|
+| 71 | 5,28 % | 79 | 6,58 % | 87 | 9,55 % |
+| 72 | 5,40 % | 80 | 6,82 % | 88 | 10,21 % |
+| 73 | 5,53 % | 81 | 7,08 % | 89 | 10,99 % |
+| 74 | 5,67 % | 82 | 7,38 % | 90 | 11,92 % |
+| 75 | 5,82 % | 83 | 7,71 % | 91 | 13,06 % |
+| 76 | 5,98 % | 84 | 8,08 % | 92 | 14,49 % |
+| 77 | 6,17 % | 85 | 8,51 % | 93 | 16,34 % |
+| 78 | 6,36 % | 86 | 8,99 % | 94 | 20,00 % |
+> 95 ans et + : plafond **20 %** (fallback). Source : ARC, facteurs FERR prescrits (post-2015).
+
 ---
 
 ## 8. Immobilier (SCHL / OSFI) — `services/realEstate.ts`

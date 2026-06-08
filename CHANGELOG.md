@@ -512,6 +512,12 @@ performance (F9-F11). Les règles fiscales incertaines restent en attente de sou
   `RRSP_WITHHOLDING_QC` (combinés QC **19/24/29 %**). Vérifié : **1148 tests verts, zéro régression**
   (aucun test n'assumait les anciens chiffres). `meltdownReer.ts` laissé tel quel — son `0.38/0.30`
   est le taux marginal ciblé par la stratégie meltdown, pas la retenue forfaitaire (Tier 🟢).
+  > **Correction (Phase 0, 2026-06)** : cette dernière affirmation était FAUSSE. Dans
+  > `projection.ts`, `meltResult.withholding` alimente le slot **retenue à la source**
+  > (`taxCurrentYear.reer`, réconcilié en décembre au barème), pas l'impôt final. Le `0.38/0.30`
+  > en dur jouait donc bien le rôle de retenue → désormais aligné sur `RRSP_WITHHOLDING_QC`
+  > (19/24/29 % par tranche, via `withholdingForGrossRRSP`). Le net réinvesti et la retenue
+  > intra-année sont maintenant justes (l'impact patrimonial restait limité au timing).
 
 ### Performance (Batch C)
 - **F9 — `Math.pow` hissé** là où le **même** facteur de croissance salariale était recalculé dans un

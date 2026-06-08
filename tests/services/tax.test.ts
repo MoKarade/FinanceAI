@@ -5,6 +5,7 @@ import {
   calculateCeliRoom,
   calculateCeliAvailableRoom,
   calculateGrossWithholdingRRSP,
+  withholdingForGrossRRSP,
   calculateCapitalGainsTax,
   calculateDividendTax,
   calculateAgeAndPensionCredits,
@@ -222,6 +223,49 @@ describe('calculateGrossWithholdingRRSP', () => {
       expect(r.gross).toBeCloseTo(16057.75, 1);
       expect(r.withholding).toBeCloseTo(16057.75 * 0.29, 1);
     });
+  });
+});
+
+// withholdingForGrossRRSP : INVERSE de calculateGrossWithholdingRRSP — prend un BRUT (gross) connu
+// (ex. meltdown REER, FERR) et applique la retenue à la source par tranche du brut mensuel
+// (RRSP_WITHHOLDING_QC : 19/24/29 %). Tranche sélectionnée directement sur le brut (≤5000, ≤15000, +).
+describe('withholdingForGrossRRSP (retenue à partir du brut)', () => {
+  it('brut ≤ 5 000$ → bracket 1, retenue 19 %', () => {
+    const r = withholdingForGrossRRSP(3000);
+    expect(r.bracket).toBe(1);
+    expect(r.rate).toBeCloseTo(0.19, 5);
+    expect(r.withholding).toBeCloseTo(3000 * 0.19, 5); // 570
+  });
+
+  it('borne PILE à 5 000$ → reste bracket 1 (19 %)', () => {
+    const r = withholdingForGrossRRSP(5000);
+    expect(r.bracket).toBe(1);
+    expect(r.withholding).toBeCloseTo(5000 * 0.19, 5); // 950
+  });
+
+  it('juste au-dessus de 5 000$ → bracket 2 (24 %)', () => {
+    const r = withholdingForGrossRRSP(5000.01);
+    expect(r.bracket).toBe(2);
+    expect(r.rate).toBeCloseTo(0.24, 5);
+    expect(r.withholding).toBeCloseTo(5000.01 * 0.24, 5);
+  });
+
+  it('borne PILE à 15 000$ → reste bracket 2 (24 %)', () => {
+    const r = withholdingForGrossRRSP(15000);
+    expect(r.bracket).toBe(2);
+    expect(r.withholding).toBeCloseTo(15000 * 0.24, 5); // 3600
+  });
+
+  it('juste au-dessus de 15 000$ → bracket 3 (29 %)', () => {
+    const r = withholdingForGrossRRSP(15000.01);
+    expect(r.bracket).toBe(3);
+    expect(r.rate).toBeCloseTo(0.29, 5);
+    expect(r.withholding).toBeCloseTo(15000.01 * 0.29, 5);
+  });
+
+  it('brut nul ou négatif → retenue 0 (garde)', () => {
+    expect(withholdingForGrossRRSP(0).withholding).toBe(0);
+    expect(withholdingForGrossRRSP(-1000).withholding).toBe(0);
   });
 });
 

@@ -151,6 +151,18 @@ S'applique surtout aux retraités/indépendants (les salariés sont couverts par
 
 ## 6. Programmes de retraite fédéraux
 
+### Report / anticipation des rentes publiques (facteurs d'ajustement)
+Source du début de rente choisi par l'utilisateur. Implémentation : `services/projection/retirementIncome.ts`
++ `services/projection/setupSimulation.ts`.
+| Rente | Ajustement / mois | Plage | Facteur aux bornes | Source |
+|---|---|---|---|---|
+| RRQ — **report** après 65 (`rrqFactor`) | **+0,7 %/mois** | 65 → 70 (max +60 mois) | **1,42** à 70 ans (60 × 0,7 %) | Retraite Québec |
+| RRQ — **anticipation** avant 65 | **−0,6 %/mois** | 60 → 65 (max −60 mois) | 0,64 à 60 ans (−36 %) | Retraite Québec |
+| PSV / OAS — **report** après 65 (`psvFactor`) | **+0,6 %/mois** | 65 → 70 (max +60 mois) | **1,36** à 70 ans (60 × 0,6 %) | Service Canada |
+| PSV / OAS — **bonus 75+** (`PSV_BONUS_75_PLUS`) | n/a | dès 75 ans | **+10 %** | Service Canada (depuis juillet 2022) |
+> Le report RRQ/PSV est **découplé** de l'âge d'arrêt de travail (`delayPensions` ne fixe que l'âge de
+> début des rentes ; correctif C-1, 2026-06). La PSV ne se reporte pas au-delà de 70 ans.
+
 ### PSV / OAS — récupération (clawback)
 - Seuil de récupération 2026 (`OAS_CLAWBACK_THRESHOLD_2026`) : **95 323 $** (ARC ; 93 454 $ en 2025).
 
@@ -180,6 +192,27 @@ S'applique surtout aux retraités/indépendants (les salariés sont couverts par
 ### REER — plafonds annuels (`RRSP_ANNUAL_LIMITS`)
 2024 : 31 560 · 2025 : 32 490 · **2026 : 33 810** · 2027 : 34 480 · 2028 : 35 170 ·
 2029 : 35 870 · 2030 : 36 590 (2027+ estimés, à confirmer au Budget). Espace gagné = 18 % du brut.
+
+### FERR / RRIF — conversion et retrait minimum (`services/projection/helpers.ts:RRIF_RATES`)
+**Règle ARC.** La conversion REER→FERR est obligatoire **au plus tard à la fin de l'année des
+71 ans**. Mais **aucun retrait minimum n'est dû l'année d'ouverture** du FERR. Pour le cas standard
+(conversion à l'échéance des 71 ans), le **1er retrait minimum obligatoire tombe l'année des 72 ans**.
+Le facteur 71 ans (5,28 %) ne s'applique qu'à une conversion **volontaire précoce**.
+> **Implémentation** (`taxJanuary.ts` §4) : le moteur force le retrait minimum à partir de **72 ans**
+> (`if (ctx.age >= 72)`). Le facteur 71 reste dans la table pour complétude (conversion précoce non
+> modélisée). Montant = solde FERR (1er janvier) × facteur prescrit selon l'âge.
+
+| Âge | Facteur | Âge | Facteur | Âge | Facteur |
+|---|---|---|---|---|---|
+| 71 | 5,28 % | 79 | 6,58 % | 87 | 9,55 % |
+| 72 | 5,40 % | 80 | 6,82 % | 88 | 10,21 % |
+| 73 | 5,53 % | 81 | 7,08 % | 89 | 10,99 % |
+| 74 | 5,67 % | 82 | 7,38 % | 90 | 11,92 % |
+| 75 | 5,82 % | 83 | 7,71 % | 91 | 13,06 % |
+| 76 | 5,98 % | 84 | 8,08 % | 92 | 14,49 % |
+| 77 | 6,17 % | 85 | 8,51 % | 93 | 16,34 % |
+| 78 | 6,36 % | 86 | 8,99 % | 94 | 20,00 % |
+> 95 ans et + : plafond **20 %** (fallback). Source : ARC, facteurs FERR prescrits (post-2015).
 
 ---
 

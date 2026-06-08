@@ -57,8 +57,13 @@ export function applyMidMonthGrowth(startVal: number, endVal: number, rateAnnual
 }
 
 // ---- Table de retrait minimum FERR (RRIF) par âge (Canada) ----
-// Source: ARC. À 94+ on plafonne à 20% (fallback via `RRIF_RATES[age] ?? 0.20`).
+// Source: ARC, facteurs FERR prescrits (post-2015), cf docs/FISCAL_REFERENCE.md §6.
+// À 95+ on plafonne à 20% (fallback via `RRIF_RATES[age] ?? 0.20`).
+// NB 71 (5,28%) : présent pour COMPLÉTUDE (cas de conversion REER→FERR volontaire précoce).
+// Le moteur ne FORCE le retrait minimum qu'à partir de 72 ans (cf taxJanuary §4) : pour une
+// conversion standard à l'échéance des 71 ans, aucun minimum n'est dû l'année d'ouverture du FERR.
 export const RRIF_RATES: Record<number, number> = {
+    71: 0.0528,
     72: 0.0540, 73: 0.0553, 74: 0.0567, 75: 0.0582, 76: 0.0598,
     77: 0.0617, 78: 0.0636, 79: 0.0658, 80: 0.0682, 81: 0.0708,
     82: 0.0738, 83: 0.0771, 84: 0.0808, 85: 0.0851, 86: 0.0899,

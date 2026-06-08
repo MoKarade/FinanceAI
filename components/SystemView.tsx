@@ -5,7 +5,6 @@ import { AppState } from '../types';
 import { getMigrationStatus } from '../store/useFinanceStore';
 import { ErrorLogViewer } from './system/ErrorLogViewer';
 import { AuditLogViewer } from './system/AuditLogViewer';
-import { TestModePanel } from './settings/TestModePanel';
 import { Icon } from './ui/Icon';
 
 interface SystemViewProps {
@@ -215,9 +214,6 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
 
             {/* P1.7 — Journal d'audit (changements de state) */}
             <AuditLogViewer />
-
-            {/* Mode test — outil dev/diagnostic (déplacé depuis Sauvegarde) */}
-            <TestModePanel />
         </div>
     );
 };

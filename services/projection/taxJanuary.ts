@@ -64,7 +64,7 @@ export interface JanuaryResult {
     accGrossIncomeYearReset: number;         // 0
     // CELIAPP fermeture 15 ans
     celiappTransferToReer: number;           // si fermeture: solde transféré
-    // FERR (only if age >= 72)
+    // FERR (only if age >= 71)
     ferrMandatoryGross: number;
     ferrTaxOnRrif: number;
     ferrLogMsg?: string;
@@ -150,10 +150,17 @@ export function processJanuaryReset(
     const totalFE = ctx.users.reduce((acc, u) => acc + (u?.facteurEquivalence || 0), 0);
     const newRrspRoom = Math.max(0, Math.min(rrspYearlyCap * ctx.activeUsersCount, ctx.accGrossIncomeYear * 0.18) - totalFE);
 
-    // === 4. FERR conversion à 71+ ===
+    // === 4. FERR — retrait minimum obligatoire (dès 72 ans) ===
     let ferrMandatoryGross = 0;
     let ferrTaxOnRrif = 0;
     let ferrLogMsg: string | undefined;
+    // Règle ARC (cf docs/FISCAL_REFERENCE.md §6) : la conversion REER→FERR est obligatoire AU PLUS
+    // TARD à la fin de l'année des 71 ans, mais AUCUN retrait minimum n'est dû l'année d'ouverture du
+    // FERR. Pour le cas standard (conversion à l'échéance des 71 ans), le 1er retrait minimum
+    // obligatoire tombe donc l'année des 72 ans → gate `>= 72`. Le facteur 71 (5,28 %, RRIF_RATES[71])
+    // n'existe que pour une conversion VOLONTAIRE précoce (non modélisée ici).
+    // (Révision 2026-06 : un commit avait passé le gate à 71 — anticipait d'un an le revenu imposable
+    // + la retenue + le clawback PSV/SRG. Corrigé après audit fiscal-accuracy, choix de Marc.)
     if (ctx.age >= 72) {
         const rrifRate = helpers.RRIF_RATES[ctx.age] || 0.20;
         ferrMandatoryGross = ctx.reer * rrifRate;

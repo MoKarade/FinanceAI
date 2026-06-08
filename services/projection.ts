@@ -200,7 +200,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
     let overrideRetirementAge = retirementGoal.targetAge || 65;
     if (scenarioType === 'LIBERTE_55') overrideRetirementAge = 55;
-    const effectiveRetirementAge = delayPensions ? 70 : overrideRetirementAge;
+    // C1-fix (audit 2026-06) : « reporter les rentes » (delayPensions) ne force PLUS
+    // l'âge d'arrêt de travail. delayPensions ne pilote QUE le début RRQ/PSV (à 70,
+    // cf retirementIncome). L'âge de retraite reste celui choisi → permet le cas clé
+    // « arrêter à 60, vivre du REER/CELI, reporter RRQ/PSV à 70 » (le moteur ponte le
+    // revenu via le décaissement des comptes entre l'arrêt et le début des rentes).
+    const effectiveRetirementAge = overrideRetirementAge;
     const retirementMonthIndex = (effectiveRetirementAge - currentAge) * 12;
 
     const effectiveBaseExpenses = projection.useTheoretical ? (projection.theoreticalExpenses || 4000) : baseMonthlyExpenses;

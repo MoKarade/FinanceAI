@@ -447,6 +447,23 @@ export const calculateGrossWithholdingRRSP = (netNeeded: number): { gross: numbe
     return { gross: grossAttempt, withholding: grossAttempt * RRSP_WITHHOLDING_QC.bracket3.combined, bracket: 3 };
 };
 
+/**
+ * Retenue à la source pour un retrait REER dont on connaît déjà le BRUT (résident
+ * QC) — inverse de `calculateGrossWithholdingRRSP` (qui part du net). Même source
+ * de vérité (`RRSP_WITHHOLDING_QC`, 19/24/29 %), tranche déterminée sur le brut.
+ * Utilisé par le meltdown REER (qui cible un brut, pas un net).
+ */
+export const withholdingForGrossRRSP = (gross: number): { withholding: number; rate: number; bracket: 1 | 2 | 3 } => {
+    if (gross <= 0) return { withholding: 0, rate: RRSP_WITHHOLDING_QC.bracket1.combined, bracket: 1 };
+    if (gross <= RRSP_WITHHOLDING_QC.bracket1.upTo) {
+        return { withholding: gross * RRSP_WITHHOLDING_QC.bracket1.combined, rate: RRSP_WITHHOLDING_QC.bracket1.combined, bracket: 1 };
+    }
+    if (gross <= RRSP_WITHHOLDING_QC.bracket2.upTo) {
+        return { withholding: gross * RRSP_WITHHOLDING_QC.bracket2.combined, rate: RRSP_WITHHOLDING_QC.bracket2.combined, bracket: 2 };
+    }
+    return { withholding: gross * RRSP_WITHHOLDING_QC.bracket3.combined, rate: RRSP_WITHHOLDING_QC.bracket3.combined, bracket: 3 };
+};
+
 // Plafonds CELI annuels. 2009-2026 = montants officiels confirmés (ARC).
 // 2027-2030 = estimations à indexation ~2%/an (arrondies à 500$) — à
 // remplacer par les vrais montants annoncés à chaque Budget fédéral.

@@ -27,6 +27,11 @@ export default defineConfig({
     // NB : le vrai bug que ce flou cachait (RQAP fantôme parent seul) a été corrigé,
     // ceci ne masque donc pas un bug — ça stabilise des tests timing-sensibles.
     fileParallelism: false,
+    // Restaure les globaux stubés (vi.stubGlobal) AVANT chaque test → empêche la pollution
+    // inter-fichiers (audit projection-validator 2026-06 : `finance.test.ts` stubbe `fetch`
+    // sans le nettoyer → flake ~1/3 sur des tests purs selon l'ordre d'exécution). Filet global,
+    // rend le gate/CI déterministe sans dépendre du nettoyage manuel de chaque fichier.
+    unstubGlobals: true,
     coverage: {
       provider: 'v8',
       reporter: ['text'],

@@ -1,7 +1,7 @@
 // Registry des tools MCP exposes par FinanceAI.
 // Construit a partir des services purs (services/tax, services/realEstate, etc.)
 // et de l'adaptateur pur AppState -> SimulationParams (Lot 0).
-// Aucune dependance React, importable depuis stdio (Node local) ou HTTP (Netlify).
+// Aucune dependance React, importable depuis stdio (Node local) ou HTTP.
 //
 // Deux familles de tools :
 //   - SANS ETAT (calculatrice) : ping, get_tax_room, calculate_real_estate,

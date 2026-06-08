@@ -14,7 +14,7 @@ const CACHE_NAME = 'financeai-v3';
 const PRECACHE_URLS = ['/', '/manifest.json', '/icon.svg'];
 
 // P2.9 fix : précache individuel (vs cache.addAll qui échoue all-or-nothing).
-// Sur Vercel/Netlify, '/index.html' peut 404 (rewrite vers '/'), ce qui
+// Sur Vercel, '/index.html' peut 404 (rewrite vers '/'), ce qui
 // faisait tomber tout le batch. Maintenant chaque resource est tentée
 // séparément, on continue même si une échoue.
 async function precacheIndividually(cache) {

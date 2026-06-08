@@ -91,9 +91,9 @@ L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCH
 - ✅ **Pas de secret hardcodé**. Clés via UI seulement (jamais dans `.env` versionné).
 - ✅ **apiKeys excluses du localStorage** et des deux formats de backup (JSON clair + chiffré).
 - ✅ **Backup chiffré** AES-256-GCM avec PBKDF2 600 000 itérations.
-- ✅ **CSP stricte** (Netlify + `<meta>` pour GitHub Pages) — aucun domaine LLM tiers résiduel.
+- ✅ **CSP stricte** (`vercel.json` headers + `<meta>` défense-en-profondeur) — aucun domaine LLM tiers résiduel.
 - ✅ **Validation Zod** des réponses LLM (anti-prompt injection).
-- ✅ **Pas de Google Sheet** — le proxy Netlify Sheet a été supprimé (cycle 14). `services/finance.ts` ne fait plus de fetch CSV vers docs.google.com.
+- ✅ **Pas de Google Sheet** — le proxy Sheet legacy a été supprimé (cycle 14). `services/finance.ts` ne fait plus de fetch CSV vers docs.google.com.
 - ✅ **No-fake-data** : refus catégorique de mockups en prod.
 
 ## 🛠️ Stack
@@ -103,7 +103,7 @@ L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCH
 - **Tests** : Vitest 2.1 + @testing-library/react + axe-core (742 tests, 73 fichiers)
 - **Validation** : Zod 3
 - **Charts** : Recharts (lazy-loaded)
-- **Backend** : Netlify Functions v2 (Web Standard Request/Response)
+- **Backend** : aucun — 100 % navigateur, déploiement statique **Vercel** (`vercel.json`)
 - **LLM** : Anthropic Claude (Sonnet 4.6 + Haiku 4.5 via `@anthropic-ai/sdk`)
 - **Data marché** : Finnhub REST API (cours actions + ETF, cache 1h)
 - **MCP** : Model Context Protocol server (Node.js)

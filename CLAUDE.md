@@ -82,7 +82,7 @@ Seule limite : la PERTINENCE. Lancer tous les agents qui s'appliquent ; aucun ho
 React 19.2 + Vite 6 + TS 5.8 strict + Tailwind 3 · Zustand 5 (persist+partialize, schema v7,
 migrations v1→v7) · Zod 3 · Recharts 3 (lazy) · Vitest 4 + Testing Library + axe-core ·
 @anthropic-ai/sdk (Sonnet 4.6 + Haiku 4.5) · @modelcontextprotocol/sdk · Finnhub + CoinGecko ·
-i18next · jspdf. Prod : **Vercel** (`netlify.toml` présent mais Vercel = cible).
+i18next · jspdf. Prod : **Vercel** (`vercel.json` : headers sécurité + cache + SPA).
 
 ## Structure (PLAT — pas de src/)
 Racine : `App.tsx`, `index.tsx`, `constants.ts`, `types.ts`, `i18n.ts`.

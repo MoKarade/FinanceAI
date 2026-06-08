@@ -87,7 +87,7 @@ appareil de plus » qui lit/écrit le même fichier.
 1. **Où vit le refresh token OAuth du process MCP.** C'est LE problème. Le flux GIS actuel ne donne
    pas de refresh token. Deux sous-variantes :
    - **A1 — connecteur distant (claude.ai), OAuth serveur** : on crée un **2ᵉ client OAuth Google de
-     type "Web", AVEC client secret**, hébergé (Vercel/Netlify). Claude redirige l'utilisateur vers le
+     type "Web", AVEC client secret**, hébergé (Vercel). Claude redirige l'utilisateur vers le
      consentement Google `drive.appdata`, le serveur échange le code contre un **refresh token** (en
      demandant `access_type=offline`) et le **chiffre au repos** (clé serveur, jamais exposée à Claude).
      Isolation : un refresh token **par utilisateur**, indexé par son `sub` Google. C'est faisable
@@ -314,7 +314,7 @@ clé transitent par le serveur** → à arbitrer (Loi 25). En **A2 local**, tout
 | Mode | Comment | Implications |
 |---|---|---|
 | **Claude Desktop (stdio)** — Options A2 / B | Éditer `claude_desktop_config.json` (cf `mcp/README.md`) pour lancer `mcp/stdio.ts`. | Zéro serveur, données restent locales, mais **mono-poste** + config manuelle. Idéal pour **prototyper la valeur** des tools sur les vraies données. |
-| **Connecteur custom claude.ai (MCP distant HTTP + OAuth)** — Option A1 | Héberger le serveur MCP (Streamable HTTP) sur Vercel/Netlify ; déclarer l'**OAuth Google** (consentement `drive.appdata`) ; ajouter l'URL comme connecteur dans claude.ai. | **De partout**, multi-appareils, toujours à jour. Exige le **2ᵉ client OAuth avec secret** + **stockage serveur de refresh tokens chiffrés** (petit backend) + transport HTTP MCP **pas encore présent** (le scaffold est stdio-only). |
+| **Connecteur custom claude.ai (MCP distant HTTP + OAuth)** — Option A1 | Héberger le serveur MCP (Streamable HTTP) sur Vercel ; déclarer l'**OAuth Google** (consentement `drive.appdata`) ; ajouter l'URL comme connecteur dans claude.ai. | **De partout**, multi-appareils, toujours à jour. Exige le **2ᵉ client OAuth avec secret** + **stockage serveur de refresh tokens chiffrés** (petit backend) + transport HTTP MCP **pas encore présent** (le scaffold est stdio-only). |
 
 Le scaffold actuel (`mcp/server.ts` + `mcp/stdio.ts`, SDK `^1.0`) couvre **stdio** ; le **transport
 HTTP** (StreamableHTTP) reste à ajouter pour le mode claude.ai.

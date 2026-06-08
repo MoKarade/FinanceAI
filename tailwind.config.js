@@ -20,7 +20,7 @@ export default {
         // Tokens historiques (préservés — ne pas casser les composants existants)
         // Accent neutre « argent/blanc » + fond noir profond (refonte luxe, choix Marc 2026-06).
         primary: '#e6eaf2',
-        secondary: '#8b5cf6',
+        secondary: '#8a7cc0',
         dark: '#07090D',
         surface: '#0E1014',
         surfaceHighlight: '#15181E',

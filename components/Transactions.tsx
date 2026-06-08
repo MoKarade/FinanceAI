@@ -525,7 +525,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                             onClick={handleAutoCategorizeAll}
                             disabled={processing}
                             aria-label={processing ? 'Scan IA en cours' : 'Demarrer le scan IA'}
-                            className={`px-3 sm:px-4 py-2 rounded-full text-meta font-bold text-white shadow-lg transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap ${processing ? 'bg-white/10 cursor-not-allowed' : apiKey ? 'bg-gradient-to-r from-secondary to-purple-500 hover:brightness-110' : 'bg-surfaceHighlight'
+                            className={`px-3 sm:px-4 py-2 rounded-full text-meta font-bold shadow-lg transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap ${processing ? 'bg-white/10 text-white cursor-not-allowed' : apiKey ? 'bg-primary text-dark hover:bg-white' : 'bg-surfaceHighlight text-white'
                                 }`}
                         >
                             <span className="hidden sm:inline">{processing ? 'Catégorisation…' : 'Auto-catégoriser'}</span>

@@ -139,7 +139,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
             {config.users.length < 2 && (
               <button
                 onClick={() => {
-                  const newUsers = [...config.users, { name: 'Conjoint(e)', age: 30, grossSalary: 0, netSalary: 0, canadaArrivalYear: new Date().getFullYear() - 5, color: '#ec4899' }];
+                  const newUsers = [...config.users, { name: 'Conjoint(e)', age: 30, grossSalary: 0, netSalary: 0, canadaArrivalYear: new Date().getFullYear() - 5, color: '#bd7d9c' }];
                   setConfig({ ...config, users: newUsers as [User, User] });
                   setGrossAnnualDraft({}); // les index changent → on repart du store
                 }}

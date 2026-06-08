@@ -150,7 +150,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                 {section !== 'goals' && (
                 <div className="xl:col-span-1 space-y-6">
                     <Card title="Abonnements & Récurrents" action={
-                        <div className="flex gap-2">{!aiSubs ? (<button onClick={handleAiAnalysis} disabled={isAnalyzing} className="text-tiny bg-gradient-to-r from-secondary to-purple-600 px-2 py-1 rounded text-white font-bold hover:brightness-110 disabled:opacity-50">{isAnalyzing ? '...' : 'IA'}</button>) : (<button onClick={() => setAiSubs(null)} className="text-tiny bg-white/10 px-2 py-1 rounded text-ink-300">Reset</button>)}</div>
+                        <div className="flex gap-2">{!aiSubs ? (<button onClick={handleAiAnalysis} disabled={isAnalyzing} className="text-tiny bg-primary text-dark px-2 py-1 rounded font-bold hover:bg-white disabled:opacity-50">{isAnalyzing ? '...' : 'IA'}</button>) : (<button onClick={() => setAiSubs(null)} className="text-tiny bg-white/10 px-2 py-1 rounded text-ink-300">Reset</button>)}</div>
                     }>
                         <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
                             {activeSubs.map((sub, idx) => (

@@ -91,8 +91,8 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 // (convention canonique du store ; le moteur ré-annualise ×12). Net déjà mensuel.
                 { ...user1, grossSalary: annualSalaryToMonthly(user1.grossSalary), color: '#4f46e5' },
                 hasCoupleMode
-                    ? { ...user2, grossSalary: annualSalaryToMonthly(user2.grossSalary), color: '#ec4899' }
-                    : { name: '', grossSalary: 0, netSalary: 0, color: '#ec4899', age: 30, canadaArrivalYear: 2020 }
+                    ? { ...user2, grossSalary: annualSalaryToMonthly(user2.grossSalary), color: '#bd7d9c' }
+                    : { name: '', grossSalary: 0, netSalary: 0, color: '#bd7d9c', age: 30, canadaArrivalYear: 2020 }
             ] as [User, User],
             splitMode: 'prorata'
         };

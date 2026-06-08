@@ -133,7 +133,7 @@ export const Layout: React.FC<LayoutProps> = ({
     } else if (users.length >= 2) {
       nextUsers = [users[0], { ...users[1], name: users[1]?.name || 'Conjoint(e)' }]; // 2e user existant sans nom → on le nomme
     } else {
-      nextUsers = [...users, { name: 'Conjoint(e)', age: 30, grossSalary: 0, netSalary: 0, canadaArrivalYear: new Date().getFullYear() - 5, color: '#ec4899' }];
+      nextUsers = [...users, { name: 'Conjoint(e)', age: 30, grossSalary: 0, netSalary: 0, canadaArrivalYear: new Date().getFullYear() - 5, color: '#bd7d9c' }];
     }
     setAppState({ config: { ...coupleConfig, users: nextUsers as [User, User] } });
   };
@@ -400,7 +400,7 @@ export const Layout: React.FC<LayoutProps> = ({
           >
             <div aria-hidden="true" className={`mb-1 transition-transform duration-300 ${activeTab === item.id ? 'scale-110 -translate-y-0.5 text-ink-50 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'text-ink-400 group-hover:text-ink-200'}`}><Icon name={item.icon} size={24} /></div>
             <span className={`text-tiny font-medium transition-colors ${activeTab === item.id ? 'text-primary' : 'text-ink-400'}`}>{item.label}</span>
-            {activeTab === item.id && <span aria-hidden="true" className="absolute top-1.5 w-1 h-1 bg-primary rounded-full shadow-[0_0_5px_#10b981]"></span>}
+            {activeTab === item.id && <span aria-hidden="true" className="absolute top-1.5 w-1 h-1 bg-primary rounded-full shadow-[0_0_6px_rgba(230,234,242,0.55)]"></span>}
           </button>
         ))}
         <button

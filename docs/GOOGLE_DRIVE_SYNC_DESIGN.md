@@ -139,7 +139,7 @@ Procédure pas-à-pas détaillée : `docs/GOOGLE_DRIVE_SETUP.md` (créé au batc
 
 ## 8. CSP & config
 
-Ajouter (dans `index.html` **et** `netlify.toml`) :
+Ajouter (dans `index.html` **et** `vercel.json`) :
 - `script-src` : `https://accounts.google.com/gsi/client`
 - `connect-src` : `https://www.googleapis.com https://accounts.google.com`
 - `frame-src` : `https://accounts.google.com`

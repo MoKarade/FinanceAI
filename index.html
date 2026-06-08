@@ -26,23 +26,23 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="/index.css">
-    <!-- CSP for GitHub Pages (Netlify headers don't apply on GH Pages). -->
-    <!-- Keep in sync with netlify.toml [[headers]] Content-Security-Policy. -->
+    <!-- CSP en <meta> : défense-en-profondeur (s'applique même si les headers HTTP manquent). -->
+    <!-- Keep in sync with vercel.json [[headers]] Content-Security-Policy. -->
     <!-- Sprint 3 SH2 (sécurité) — `unsafe-inline` retiré de script-src.
          Possible maintenant car ga-init.js est externalisé dans /public et
-         tous les scripts inline ont été migrés. CSP est aligné avec netlify.toml. -->
+         tous les scripts inline ont été migrés. CSP est aligné avec vercel.json. -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.googletagmanager.com https://static.cloudflareinsights.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.anthropic.com https://finnhub.io https://api.coingecko.com https://www.bankofcanada.ca https://www.google-analytics.com https://*.analytics.google.com https://*.google-analytics.com https://cloudflareinsights.com https://www.googleapis.com https://accounts.google.com; worker-src 'self' blob:; frame-src https://accounts.google.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none';">
 
-    <!-- Permissions-Policy : aligné avec netlify.toml [[headers]] pour les
+    <!-- Permissions-Policy : aligné avec vercel.json [[headers]] pour les
          hébergeurs qui ne lisent pas les headers HTTP (ex: GitHub Pages). -->
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
 
     <!-- Google Analytics 4 — Measurement ID G-5WLQGBF1VL -->
-    <!-- Tag chargé async (non-bloquant). Code d'init externalisé dans /ga-init.js pour respecter la CSP stricte (pas d'unsafe-inline dans netlify.toml script-src). -->
+    <!-- Tag chargé async (non-bloquant). Code d'init externalisé dans /ga-init.js pour respecter la CSP stricte (pas d'unsafe-inline dans vercel.json script-src). -->
     <!-- S-E : pas de SRI (integrity=) sur gtag.js — Google fait tourner ce fichier ;
          un hash figé casserait GA à chaque rotation (Google ne supporte pas SRI ici).
          La protection d'un script tiers non-épinglable est l'allow-list d'origine via
-         CSP (script-src googletagmanager.com), déjà en place dans netlify.toml.
+         CSP (script-src googletagmanager.com), déjà en place dans vercel.json.
          + Consent Mode v2 (ga-init.js) : aucun stockage analytics avant consentement. -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-5WLQGBF1VL"></script>
     <script src="/ga-init.js"></script>

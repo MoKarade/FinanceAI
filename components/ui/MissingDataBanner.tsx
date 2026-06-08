@@ -3,6 +3,7 @@ import { useFinanceStore } from '../../store/useFinanceStore';
 import { Tab } from '../../types';
 import type { FinanceState } from '../../store/useFinanceStore';
 import { Icon } from './Icon';
+import { REQUIREMENTS } from '../setup/requirements';
 
 /**
  * Phase C.5 — bannière "Données manquantes" avec redirect vers le Hub.
@@ -76,7 +77,8 @@ const MISSING_DATA_FIELDS: Record<MissingDataField, FieldDescriptor> = {
         label: 'Salaire brut (vous)',
         section: 'profile-user1-grossSalary',
         tab: Tab.SETTINGS,
-        isMissing: (s) => !s.config?.users?.[0]?.grossSalary || s.config.users[0].grossSalary <= 0,
+        // Source unique : délègue la condition au registre central (gate ↔ bannière).
+        isMissing: (s) => !REQUIREMENTS.salary.isMet(s),
         helpText: 'Permet calcul exact impôt fédéral + QC.',
     },
     'user1.netSalary': {

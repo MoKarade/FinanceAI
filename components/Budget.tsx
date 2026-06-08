@@ -421,9 +421,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         setShowAiModal(true);
     };
     const goldenRuleData = [
-        { name: 'Besoins', value: groupedItems['Besoin'].reduce((s, i) => s + getDisplayTarget(i), 0), fill: '#4ade80' },
-        { name: 'Envies', value: groupedItems['Envie'].reduce((s, i) => s + getDisplayTarget(i), 0), fill: '#facc15' },
-        { name: 'Épargne Théorique', value: Math.max(0, coupleAnalysis.totalSavings), fill: '#60a5fa' }
+        { name: 'Besoins', value: groupedItems['Besoin'].reduce((s, i) => s + getDisplayTarget(i), 0), fill: '#5fa88f' },
+        { name: 'Envies', value: groupedItems['Envie'].reduce((s, i) => s + getDisplayTarget(i), 0), fill: '#d8c06a' },
+        { name: 'Épargne Théorique', value: Math.max(0, coupleAnalysis.totalSavings), fill: '#7ba0cf' }
     ];
 
     // Wiring 2026-05: snapshot final de la projection vivante.

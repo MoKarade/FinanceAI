@@ -209,7 +209,7 @@ export const ClickableEventIcon = (props: { payload?: { label?: string; subIdx?:
     const sub = payload.subIdx || 0;
     const dy = isLife ? -(20 + sub * 24) : (20 + sub * 20);
     const r = isLife ? 12 : 9;
-    const color = isLife ? '#facc15' : '#60a5fa';
+    const color = isLife ? '#d8c06a' : '#7ba0cf';
     return (
         <g
             transform={`translate(${px}, ${py})`}

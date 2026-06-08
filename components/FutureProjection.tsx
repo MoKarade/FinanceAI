@@ -857,9 +857,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 cône d'incertitude : P10/P90 pointillés + médiane pleine. */}
                             {runMC && isVisible('montecarlo') && (
                                 <>
-                                    <Line type="monotone" dataKey="P90" stroke="#60a5fa" strokeWidth={1.5} strokeDasharray="5 4" dot={false} name="Optimiste (P90)" isAnimationActive={false} />
-                                    <Line type="monotone" dataKey="P10" stroke="#f87171" strokeWidth={1.5} strokeDasharray="5 4" dot={false} name="Pessimiste (P10)" isAnimationActive={false} />
-                                    <Line type="monotone" dataKey="P50" stroke="#c084fc" strokeWidth={2.5} dot={false} name="Scénario médian (P50)" isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="P90" stroke="#7ba0cf" strokeWidth={1.5} strokeDasharray="5 4" dot={false} name="Optimiste (P90)" isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="P10" stroke="#cf8a8a" strokeWidth={1.5} strokeDasharray="5 4" dot={false} name="Pessimiste (P10)" isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="P50" stroke="#a99fce" strokeWidth={2.5} dot={false} name="Scénario médian (P50)" isAnimationActive={false} />
                                 </>
                             )}
 

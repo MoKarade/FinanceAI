@@ -2,6 +2,7 @@
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness, SavingsGoal, FinancialGoal } from '../types';
 import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate, calculateGrossWithholdingRRSP, getResidencyStartYear, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
 import { RRIF_RATES, welcomeTax } from './projection/helpers';
+import { salaryShares, splitByShares, stepReerByUser } from './projection/perUserBalances';
 import { logError } from './errorLogger';
 import { runMonteCarlo, type MonteCarloResult } from './projection/monteCarlo';
 import { rankStrategiesByRobustness, type RobustnessRanking, type RankRobustnessOptions } from './projection/strategyRobustness';
@@ -253,6 +254,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // Cycle 22 split: revenus net/brut baseline → ./projection/setupSimulation
     const { incomeMarcNetMonthly, incomeAnnaNetMonthly, grossMarcBaseAnnual, grossAnnaBaseAnnual } =
         computeIncomeBaseline(projection, config.users);
+
+    // Phase 1 refactor « REER par conjoint » (cf docs/REFACTOR_REER_PAR_CONJOINT.md) : registre
+    // REER par conjoint maintenu EN PARALLÈLE du solde commun (qui reste la vérité). Clé = part
+    // salariale. Invariant Σ(reerByUser) == reer garanti par stepReerByUser. Shadow en Phase 1
+    // (non consommé par la fiscalité encore) → zéro changement de résultat.
+    const reerShares = salaryShares(
+        activeUsersCount > 1 ? [grossMarcBaseAnnual, grossAnnaBaseAnnual] : [grossMarcBaseAnnual + grossAnnaBaseAnnual],
+    );
+    let reerByUser = splitByShares(reer, reerShares);
 
     const simSalaryGrowth = effProj.salaryGrowth ?? 2.5;
     const simEFMonths = effProj.emergencyFundMonths || 3;
@@ -1072,6 +1082,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         celi = g.celi.newVal; growthCELI = g.celi.growth; growthPctCELI = g.celi.pct;
         celiapp = g.celiapp.newVal; growthCELIAPP = g.celiapp.growth; growthPctCELIAPP = g.celiapp.pct;
         reer = g.reer.newVal; growthREER = g.reer.growth; growthPctREER = g.reer.pct;
+        // Registre REER par conjoint : retrait pro-rata, cotisation par part salariale, croissance
+        // (et RAP/meltdown) absorbées pro-rata par la réconciliation au solde commun final `reer`.
+        reerByUser = stepReerByUser(reerByUser, { withdrawal: withdrawalREER, contribution: contribREER, poolEnd: reer, shares: reerShares });
         nonReg = g.nonReg.newVal; growthNonReg = g.nonReg.growth; growthPctNonReg = g.nonReg.pct;
         crypto = g.crypto.newVal; growthCrypto = g.crypto.growth; growthPctCrypto = g.crypto.pct;
         liquid = g.liquid.newVal; growthLiquid = g.liquid.growth; growthPctLiquid = g.liquid.pct;
@@ -1192,6 +1205,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         fireNumber: fireTargetNetWorth || 0,
         finalNetWorth: estate.finalRawNetWorth,
         estateNetWorth: estate.estateNetWorth,
+        reerByUserFinal: reerByUser,
         totalEstateTax: estate.totalEstateTax,
         totalTaxesPaid: totalTaxesPaid || 0,
         totalGrowth: totalGrowth || 0,

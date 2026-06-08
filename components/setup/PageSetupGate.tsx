@@ -78,6 +78,52 @@ export const PAGE_SETUP: Partial<Record<Tab, PageSetup>> = {
             "et ton profil retraite. Voici ce qui manque :",
         requirementIds: ['salary', 'assets', 'retirementProfile'],
     },
+    [Tab.TRANSACTIONS]: {
+        mode: 'hard',
+        title: 'Transactions',
+        intro:
+            'Importe un relevé bancaire (CSV) ou ajoute une transaction pour démarrer. ' +
+            'Tu peux aussi explorer avec des données de test.',
+        requirementIds: ['transactions'],
+        allowCreateInPage: true,
+    },
+    [Tab.BUDGET]: {
+        mode: 'hard',
+        title: 'Budget',
+        intro:
+            'Pour bâtir ton budget, il me faut ton salaire (la base de la répartition). ' +
+            'Saisis-le, importe un talon, ou explore avec des données de test.',
+        requirementIds: ['salary'],
+    },
+    [Tab.INVESTMENTS]: {
+        mode: 'hard',
+        title: 'Investissements',
+        intro:
+            'Ajoute au moins un placement (action, ETF, crypto…) — manuellement ou via un import ' +
+            'courtier — pour suivre et projeter ton portefeuille.',
+        requirementIds: ['assets'],
+        allowCreateInPage: true,
+    },
+    [Tab.DEBT]: {
+        mode: 'hard',
+        title: 'Dettes',
+        intro:
+            "Ajoute tes dettes (prêt, carte, marge…) pour planifier leur remboursement — " +
+            "ou indique que tu n'en as pas.",
+        requirementIds: ['debts'],
+        optOut: { key: 'debts', label: "Je n'ai pas de dettes" },
+        allowCreateInPage: true,
+    },
+    [Tab.LIFE_PROJECTS]: {
+        mode: 'hard',
+        title: 'Projets de vie',
+        intro:
+            'Planifie un projet ou un voyage (sabbatique, achat, rénovation…) — ' +
+            "ou passe pour l'instant, tu pourras revenir.",
+        requirementIds: ['lifeProjects'],
+        optOut: { key: 'lifeProjects', label: "Aucun projet pour l'instant" },
+        allowCreateInPage: true,
+    },
 };
 
 const EMPTY_FIELDS: RequirementField[] = [];
@@ -88,7 +134,7 @@ const IMPORT_COMPONENTS: Partial<Record<ImportKind, React.FC>> = {
 };
 
 // ───────────────────────────────────────────────────── Requirement card ────
-const RequirementCard: React.FC<{ req: Requirement }> = ({ req }) => {
+const RequirementCard: React.FC<{ req: Requirement; currentTab?: Tab }> = ({ req, currentTab }) => {
     const fields = req.fields ?? EMPTY_FIELDS;
     // Souscriptions ÉTROITES : `met` + signature des valeurs (resync), pas l'état entier.
     const met = useFinanceStore((s) => req.isMet(s));
@@ -179,8 +225,9 @@ const RequirementCard: React.FC<{ req: Requirement }> = ({ req }) => {
                 </div>
             )}
 
-            {/* Prérequis « liste » non-saisissable inline, mais avec une page dédiée → on y navigue. */}
-            {fields.length === 0 && !met && req.focus && (
+            {/* Prérequis « liste » non-saisissable inline, avec une page dédiée AUTRE
+                que celle-ci → on y navigue (sinon c'est le bouton « Créer via la page »). */}
+            {fields.length === 0 && !met && req.focus && req.focus.tab !== currentTab && (
                 <button
                     type="button"
                     onClick={() => navigateWithFocus(req.focus!.tab, req.focus!.section || undefined)}
@@ -206,8 +253,9 @@ const RequirementCard: React.FC<{ req: Requirement }> = ({ req }) => {
 const FullSetupScreen: React.FC<{
     config: PageSetup;
     requirements: Requirement[];
+    currentTab: Tab;
     onCreateInPage?: () => void;
-}> = ({ config, requirements, onCreateInPage }) => {
+}> = ({ config, requirements, currentTab, onCreateInPage }) => {
     const enableTestMode = useFinanceStore((s) => s.enableTestMode);
     const setAppState = useFinanceStore((s) => s.setAppState);
     const total = requirements.length;
@@ -282,14 +330,14 @@ const FullSetupScreen: React.FC<{
                 </div>
             </div>
             {requirements.map((req) => (
-                <RequirementCard key={req.id} req={req} />
+                <RequirementCard key={req.id} req={req} currentTab={currentTab} />
             ))}
         </div>
     );
 };
 
 // ──────────────────────────────────────── Bannière de complétion (soft) ────
-const SoftSetupBanner: React.FC<{ title: string; requirements: Requirement[] }> = ({ title, requirements }) => {
+const SoftSetupBanner: React.FC<{ title: string; requirements: Requirement[]; currentTab: Tab }> = ({ title, requirements, currentTab }) => {
     const [open, setOpen] = useState(false);
     const missing = useFinanceStore((s) => requirements.filter((r) => !r.isMet(s)).length);
     if (missing === 0) return null;
@@ -312,7 +360,7 @@ const SoftSetupBanner: React.FC<{ title: string; requirements: Requirement[] }> 
             </div>
             {open && (
                 <div className="mt-4 space-y-4">
-                    {requirements.map((req) => <RequirementCard key={req.id} req={req} />)}
+                    {requirements.map((req) => <RequirementCard key={req.id} req={req} currentTab={currentTab} />)}
                 </div>
             )}
         </div>
@@ -337,7 +385,7 @@ export const PageSetupGate: React.FC<{ tab: Tab; children: React.ReactNode }> = 
     if (!config) return <>{children}</>;
 
     if (config.mode === 'soft') {
-        return <><SoftSetupBanner title={config.title} requirements={requirements} />{children}</>;
+        return <><SoftSetupBanner title={config.title} requirements={requirements} currentTab={tab} />{children}</>;
     }
 
     if (allMet || optedOut || forceShow) return <>{children}</>;
@@ -346,6 +394,7 @@ export const PageSetupGate: React.FC<{ tab: Tab; children: React.ReactNode }> = 
         <FullSetupScreen
             config={config}
             requirements={requirements}
+            currentTab={tab}
             onCreateInPage={config.allowCreateInPage ? () => setForceShow(true) : undefined}
         />
     );

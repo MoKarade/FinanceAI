@@ -48,7 +48,15 @@ export interface Requirement {
 const patchUser = (users: [User, User], idx: number, patch: Partial<User>): [User, User] =>
     users.map((u, i) => (i === idx ? { ...u, ...patch } : u)) as [User, User];
 
-export type RequirementId = 'salary' | 'retirementProfile' | 'assets' | 'realEstate' | 'children';
+export type RequirementId =
+    | 'salary'
+    | 'retirementProfile'
+    | 'assets'
+    | 'realEstate'
+    | 'children'
+    | 'transactions'
+    | 'debts'
+    | 'lifeProjects';
 
 export const REQUIREMENTS: Record<RequirementId, Requirement> = {
     salary: {
@@ -137,6 +145,27 @@ export const REQUIREMENTS: Record<RequirementId, Requirement> = {
         icon: 'child',
         // Idem : l'objectif par défaut a isActive:false → gate sur l'activation.
         isMet: (s) => (s.childGoals ?? []).some((g) => g.isActive),
+    },
+    transactions: {
+        id: 'transactions',
+        label: 'Transactions',
+        help: 'Au moins une transaction (import de relevé CSV ou ajout manuel).',
+        icon: 'transactions',
+        isMet: (s) => (s.transactions?.length ?? 0) > 0,
+    },
+    debts: {
+        id: 'debts',
+        label: 'Dettes',
+        help: 'Au moins une dette (prêt, carte, marge…).',
+        icon: 'debt',
+        isMet: (s) => (s.debts?.length ?? 0) > 0,
+    },
+    lifeProjects: {
+        id: 'lifeProjects',
+        label: 'Projets de vie',
+        help: 'Au moins un projet ou voyage planifié.',
+        icon: 'life-projects',
+        isMet: (s) => (s.travelGoals?.length ?? 0) > 0 || (s.lifeEvents?.length ?? 0) > 0,
     },
 };
 

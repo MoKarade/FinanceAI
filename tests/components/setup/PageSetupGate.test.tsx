@@ -47,12 +47,13 @@ describe('PageSetupGate (pilote Impôts)', () => {
     });
 
     it('laisse passer une page sans prérequis déclarés (pas de gate)', () => {
+        // Assistant/Dashboard ne sont pas gatés (pages agrégées/dérivées).
         render(
-            <PageSetupGate tab={Tab.DEBT}>
-                <div>CONTENU_DETTES</div>
+            <PageSetupGate tab={Tab.ASSISTANT}>
+                <div>CONTENU_LIBRE</div>
             </PageSetupGate>,
         );
-        expect(screen.getByText('CONTENU_DETTES')).toBeInTheDocument();
+        expect(screen.getByText('CONTENU_LIBRE')).toBeInTheDocument();
     });
 });
 

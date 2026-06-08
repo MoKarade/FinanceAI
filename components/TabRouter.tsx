@@ -105,47 +105,55 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                 {activeTab === Tab.ACTIONS && <NextBestActionsPage asPage />}
 
                 {activeTab === Tab.TRANSACTIONS && (
-                    <Transactions
-                        transactions={state.transactions}
-                        setTransactions={(t) => setAppState({ transactions: typeof t === 'function' ? (t as (prev: Transaction[]) => Transaction[])(state.transactions) : t })}
-                        apiKey={state.apiKeys.anthropic}
-                        budgetItems={state.budgetItems}
-                        categorizationRules={state.categorizationRules || []}
-                        setCategorizationRules={(rules) => setAppState({ categorizationRules: rules })}
-                        onImport={onManualImport}
-                    />
+                    <PageSetupGate tab={Tab.TRANSACTIONS}>
+                        <Transactions
+                            transactions={state.transactions}
+                            setTransactions={(t) => setAppState({ transactions: typeof t === 'function' ? (t as (prev: Transaction[]) => Transaction[])(state.transactions) : t })}
+                            apiKey={state.apiKeys.anthropic}
+                            budgetItems={state.budgetItems}
+                            categorizationRules={state.categorizationRules || []}
+                            setCategorizationRules={(rules) => setAppState({ categorizationRules: rules })}
+                            onImport={onManualImport}
+                        />
+                    </PageSetupGate>
                 )}
 
                 {activeTab === Tab.BUDGET && (
-                    <BudgetWorkspace
-                        transactions={state.transactions}
-                        config={state.config}
-                        budgetItems={state.budgetItems}
-                        setBudgetItems={(items) => setAppState({ budgetItems: items })}
-                        apiKey={state.apiKeys.anthropic}
-                        savingsGoals={state.savingsGoals}
-                        setSavingsGoals={(goals) => setAppState({ savingsGoals: goals })}
-                    />
+                    <PageSetupGate tab={Tab.BUDGET}>
+                        <BudgetWorkspace
+                            transactions={state.transactions}
+                            config={state.config}
+                            budgetItems={state.budgetItems}
+                            setBudgetItems={(items) => setAppState({ budgetItems: items })}
+                            apiKey={state.apiKeys.anthropic}
+                            savingsGoals={state.savingsGoals}
+                            setSavingsGoals={(goals) => setAppState({ savingsGoals: goals })}
+                        />
+                    </PageSetupGate>
                 )}
 
                 {activeTab === Tab.DEBT && (
-                    <DebtManager debts={state.debts} setDebts={(d) => setAppState({ debts: d })} />
+                    <PageSetupGate tab={Tab.DEBT}>
+                        <DebtManager debts={state.debts} setDebts={(d) => setAppState({ debts: d })} />
+                    </PageSetupGate>
                 )}
 
                 {activeTab === Tab.INVESTMENTS && (
-                    <Investments
-                        assets={state.assets} setAssets={(a) => setAppState({ assets: a })}
-                        investmentAccounts={state.investmentAccounts}
-                        setInvestmentAccounts={(accs) => setAppState({ investmentAccounts: accs })}
-                        investmentTransactions={state.investmentTransactions}
-                        setInvestmentTransactions={(txs) => setAppState({ investmentTransactions: txs })}
-                        apiKey={state.apiKeys.anthropic}
-                        transactions={state.transactions}
-                        budgetItems={state.budgetItems}
-                        config={state.config}
-                        projection={state.projection}
-                        setProjection={(p) => setAppState({ projection: p })}
-                    />
+                    <PageSetupGate tab={Tab.INVESTMENTS}>
+                        <Investments
+                            assets={state.assets} setAssets={(a) => setAppState({ assets: a })}
+                            investmentAccounts={state.investmentAccounts}
+                            setInvestmentAccounts={(accs) => setAppState({ investmentAccounts: accs })}
+                            investmentTransactions={state.investmentTransactions}
+                            setInvestmentTransactions={(txs) => setAppState({ investmentTransactions: txs })}
+                            apiKey={state.apiKeys.anthropic}
+                            transactions={state.transactions}
+                            budgetItems={state.budgetItems}
+                            config={state.config}
+                            projection={state.projection}
+                            setProjection={(p) => setAppState({ projection: p })}
+                        />
+                    </PageSetupGate>
                 )}
 
                 {activeTab === Tab.TAX && (
@@ -206,14 +214,16 @@ export const TabRouter: React.FC<TabRouterProps> = ({
 
                 {/* Phase F.12 — Tab.TRAVEL et Tab.LIFE_EVENTS forwardent vers le nouvel onglet unifié */}
                 {(activeTab === Tab.LIFE_PROJECTS || activeTab === Tab.TRAVEL || activeTab === Tab.LIFE_EVENTS) && (
-                    <LifeProjects
-                        travelGoals={state.travelGoals}
-                        setTravelGoals={(g) => setAppState({ travelGoals: g })}
-                        lifeEvents={state.lifeEvents}
-                        setLifeEvents={(e) => setAppState({ lifeEvents: e })}
-                        netWorth={globalNetWorth}
-                        returnRate={state.projection.returnRate}
-                    />
+                    <PageSetupGate tab={Tab.LIFE_PROJECTS}>
+                        <LifeProjects
+                            travelGoals={state.travelGoals}
+                            setTravelGoals={(g) => setAppState({ travelGoals: g })}
+                            lifeEvents={state.lifeEvents}
+                            setLifeEvents={(e) => setAppState({ lifeEvents: e })}
+                            netWorth={globalNetWorth}
+                            returnRate={state.projection.returnRate}
+                        />
+                    </PageSetupGate>
                 )}
 
                 {activeTab === Tab.RETIREMENT && (

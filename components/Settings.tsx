@@ -21,7 +21,7 @@ import {
   RealEstateGoal, ChildGoal, Tab,
 } from '../types';
 import { useFinanceStore } from '../store/useFinanceStore';
-import { MissingDataChecklist } from './ui/MissingDataBanner';
+import { SetupHub } from './setup/SetupHub';
 import { usePendingFocus } from '../utils/usePendingFocus';
 import { ProfileSection } from './settings/sections/ProfileSection';
 import { AccountsSection } from './settings/sections/AccountsSection';
@@ -162,8 +162,8 @@ export const Settings: React.FC<SettingsProps> = ({
         title="Configuration"
       />
 
-      {/* État global de la configuration : %completion + champs manquants (toujours visible) */}
-      <MissingDataChecklist />
+      {/* Hub de complétude PAR ONGLET : ce qui manque pour débloquer chaque page + remplir ici. */}
+      <SetupHub />
 
       {/* Navigation sous-onglets thématiques */}
       <div className="flex gap-1 p-0.5 rounded-card bg-black/30 border border-white/5 w-fit overflow-x-auto" role="tablist" aria-label="Sections Configuration">

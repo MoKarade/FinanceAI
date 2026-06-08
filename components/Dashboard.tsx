@@ -40,7 +40,7 @@ interface DashboardProps {
 
 type TimeRange = '1M' | '3M' | 'YTD' | '1Y' | 'ALL' | 'CUSTOM';
 
-const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#a855f7', '#ec4899', '#06b6d4', '#84cc16', '#6366f1'];
+const COLORS = ['#4f9d86', '#5b82bf', '#c2974f', '#9277bd', '#bd7d9c', '#5093a8', '#8ba85a', '#6f72c4'];
 
 // ✅ FIX #6 : Utiliser ASSET_META centralisé au lieu d'une copie locale désynchronisée
 const ASSET_YIELDS: Record<string, number> = {};

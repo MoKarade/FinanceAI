@@ -51,20 +51,20 @@ interface InvestmentsProps {
 }
 
 const COLORS_SECTOR: Record<string, string> = {
-    "Technologie": "#3b82f6", // Blue
-    "Industrie": "#f59e0b", // Orange
-    "Finance": "#10b981", // Green
-    "Mines/Or": "#eab308", // Yellow
-    "Index": "#8b5cf6", // Purple
+    "Technologie": "#5b82bf", // Blue
+    "Industrie": "#c2974f", // Orange
+    "Finance": "#4f9d86", // Green
+    "Mines/Or": "#b8a45e", // Yellow
+    "Index": "#8a7cc0", // Purple
     "Autre": "#6b7280"
 };
 
 const COLORS_REGION: Record<string, string> = {
-    "USA": "#3b82f6",
-    "Europe": "#10b981",
+    "USA": "#5b82bf",
+    "Europe": "#4f9d86",
     "Asie": "#ef4444",
-    "Global": "#8b5cf6",
-    "Ameriques": "#f59e0b"
+    "Global": "#8a7cc0",
+    "Ameriques": "#c2974f"
 };
 
 type TimeRange = '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'ALL';
@@ -97,11 +97,11 @@ interface DividendItem extends AllocationItem {
 }
 
 const DEFAULT_TARGET_MODEL: Array<{ id: string; label: string; targetPct: number; sectors: string[]; icon: IconName; color: string }> = [
-    { id: 'index', label: 'Index Mondial (CW8)', targetPct: 40, sectors: ['Index'], icon: 'globe', color: '#8b5cf6' },
-    { id: 'tech', label: 'Technologie', targetPct: 30, sectors: ['Technologie'], icon: 'cpu', color: '#3b82f6' },
-    { id: 'ind_fin', label: 'Industrie & Finance', targetPct: 15, sectors: ['Industrie', 'Finance'], icon: 'factory', color: '#f59e0b' },
-    { id: 'gold', label: 'Or & Matières', targetPct: 10, sectors: ['Mines/Or'], icon: 'gem', color: '#eab308' },
-    { id: 'cash', label: 'Liquidités', targetPct: 5, sectors: [], icon: 'cash', color: '#10b981' },
+    { id: 'index', label: 'Index Mondial (CW8)', targetPct: 40, sectors: ['Index'], icon: 'globe', color: '#8a7cc0' },
+    { id: 'tech', label: 'Technologie', targetPct: 30, sectors: ['Technologie'], icon: 'cpu', color: '#5b82bf' },
+    { id: 'ind_fin', label: 'Industrie & Finance', targetPct: 15, sectors: ['Industrie', 'Finance'], icon: 'factory', color: '#c2974f' },
+    { id: 'gold', label: 'Or & Matières', targetPct: 10, sectors: ['Mines/Or'], icon: 'gem', color: '#b8a45e' },
+    { id: 'cash', label: 'Liquidités', targetPct: 5, sectors: [], icon: 'cash', color: '#4f9d86' },
 ];
 
 export const Investments: React.FC<InvestmentsProps> = ({

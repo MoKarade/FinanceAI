@@ -34,14 +34,14 @@ interface AccountDef {
 }
 
 const ACCOUNTS: AccountDef[] = [
-    { key: 'Liquidites', label: 'Cash (Coussin)', color: '#4b5563', gainKey: 'MarketGrowthLiquid', flowKey: 'NetTransferLiquid' },
-    { key: 'CELI', label: 'CELI', color: '#10b981', gainKey: 'MarketGrowthCELI', flowKey: 'NetTransferCELI', roomMaxKey: 'CELIMax', contribKey: 'ContribCELI' },
-    { key: 'CELIAPP', label: 'CELIAPP (FHSA)', color: '#2dd4bf', gainKey: 'MarketGrowthCELIAPP', flowKey: 'NetTransferCELIAPP', roomMaxKey: 'CELIAPPMax', contribKey: 'ContribCELIAPP' },
-    { key: 'REER', label: 'REER', color: '#3b82f6', gainKey: 'MarketGrowthREER', flowKey: 'NetTransferREER', roomMaxKey: 'REERMax', contribKey: 'ContribREER' },
-    { key: 'REEE', label: 'REEE (Études)', color: '#06b6d4', gainKey: 'MarketGrowthREEE', flowKey: 'NetTransferREEE' },
-    { key: 'NonReg', label: 'Non-Enregistré', color: '#f59e0b', gainKey: 'MarketGrowthNonReg', flowKey: 'NetTransferNonReg' },
-    { key: 'Crypto', label: 'Crypto', color: '#a855f7', gainKey: 'MarketGrowthCrypto', flowKey: 'NetTransferCrypto' },
-    { key: 'Immobilier', label: 'Immobilier', color: '#ec4899' },
+    { key: 'Liquidites', label: 'Cash (Coussin)', color: '#5a6478', gainKey: 'MarketGrowthLiquid', flowKey: 'NetTransferLiquid' },
+    { key: 'CELI', label: 'CELI', color: '#4f9d86', gainKey: 'MarketGrowthCELI', flowKey: 'NetTransferCELI', roomMaxKey: 'CELIMax', contribKey: 'ContribCELI' },
+    { key: 'CELIAPP', label: 'CELIAPP (FHSA)', color: '#5cae9f', gainKey: 'MarketGrowthCELIAPP', flowKey: 'NetTransferCELIAPP', roomMaxKey: 'CELIAPPMax', contribKey: 'ContribCELIAPP' },
+    { key: 'REER', label: 'REER', color: '#5b82bf', gainKey: 'MarketGrowthREER', flowKey: 'NetTransferREER', roomMaxKey: 'REERMax', contribKey: 'ContribREER' },
+    { key: 'REEE', label: 'REEE (Études)', color: '#5093a8', gainKey: 'MarketGrowthREEE', flowKey: 'NetTransferREEE' },
+    { key: 'NonReg', label: 'Non-Enregistré', color: '#c2974f', gainKey: 'MarketGrowthNonReg', flowKey: 'NetTransferNonReg' },
+    { key: 'Crypto', label: 'Crypto', color: '#9277bd', gainKey: 'MarketGrowthCrypto', flowKey: 'NetTransferCrypto' },
+    { key: 'Immobilier', label: 'Immobilier', color: '#bd7d9c' },
 ];
 
 // G19 — espace de cotisation gagné par année (CELI/REER). Dérivation par

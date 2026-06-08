@@ -172,9 +172,9 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                                     labelStyle={{ color: '#9ca3af', fontSize: '10px', marginBottom: '4px' }}
                                     formatter={(val: number) => [(val || 0).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' }), 'Revenu Mensuel']}
                                 />
-                                <Bar dataKey="Revenu" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                                <Bar dataKey="Revenu" fill="#4f9d86" radius={[4, 4, 0, 0]} maxBarSize={40}>
                                     {dividendProjectionData.map((_, index) => (
-                                        <Cell key={`cell-${index}`} fill={index === 11 ? '#059669' : '#10b98180'} />
+                                        <Cell key={`cell-${index}`} fill={index === 11 ? '#3f8470' : '#4f9d8680'} />
                                     ))}
                                 </Bar>
                             </BarChart>

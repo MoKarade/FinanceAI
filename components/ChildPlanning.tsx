@@ -412,10 +412,10 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     <Tooltip contentStyle={{ backgroundColor: '#151922', borderColor: '#333', borderRadius: 8 }} formatter={(v: number, name: string) => [fmt(Math.abs(v)), name === 'Bénéfices' ? '↩ Allocations' : name]} labelFormatter={l => `Âge ${l} ans`} />
                                     <Legend />
                                     <ReferenceLine y={0} stroke="#555" />
-                                    <Bar dataKey="Essentiel" stackId="a" fill="#6366f1" name="Essentiel" />
-                                    <Bar dataKey="Garde_École_Activités" stackId="a" fill="#ec4899" name="Garde / École / Activités" />
-                                    <Bar dataKey="Ponctuel" stackId="a" fill="#f59e0b" name="Ponctuel (naissance, voiture…)" />
-                                    <Bar dataKey="Bénéfices" stackId="a" fill="#10b981" name="Allocations (négatif = bénéfice)" />
+                                    <Bar dataKey="Essentiel" stackId="a" fill="#6f72c4" name="Essentiel" />
+                                    <Bar dataKey="Garde_École_Activités" stackId="a" fill="#bd7d9c" name="Garde / École / Activités" />
+                                    <Bar dataKey="Ponctuel" stackId="a" fill="#c2974f" name="Ponctuel (naissance, voiture…)" />
+                                    <Bar dataKey="Bénéfices" stackId="a" fill="#4f9d86" name="Allocations (négatif = bénéfice)" />
                                 </BarChart>
                             </ResponsiveContainer>
                         </ZoomContainer>
@@ -479,8 +479,8 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 <ComposedChart data={zoomResp.visibleData} margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="respGrad" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                            <stop offset="5%" stopColor="#5b82bf" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#5b82bf" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
@@ -488,8 +488,8 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     <YAxis stroke="#666" tick={{ fontSize: 10 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
                                     <Tooltip contentStyle={{ backgroundColor: '#151922', borderColor: '#333', borderRadius: 8 }} formatter={(v: number) => fmt(v)} labelFormatter={l => `Âge ${l} ans`} />
                                     <Legend />
-                                    <Area type="monotone" dataKey="Solde" stroke="#3b82f6" fill="url(#respGrad)" strokeWidth={2} name="Solde Total" />
-                                    <Bar dataKey="Subvention" fill="#10b981" name="Subventions reçues" />
+                                    <Area type="monotone" dataKey="Solde" stroke="#5b82bf" fill="url(#respGrad)" strokeWidth={2} name="Solde Total" />
+                                    <Bar dataKey="Subvention" fill="#4f9d86" name="Subventions reçues" />
                                 </ComposedChart>
                             </ResponsiveContainer>
                             </ZoomContainer>

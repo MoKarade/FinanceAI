@@ -15,7 +15,7 @@ interface StockChartProps {
 
 // Palette pour les actions individuelles
 const COLORS = [
-    '#3b82f6', '#8b5cf6', '#ec4899', '#f97316', '#eab308', '#84cc16', '#06b6d4', '#6366f1',
+    '#5b82bf', '#8a7cc0', '#bd7d9c', '#f97316', '#b8a45e', '#8ba85a', '#5093a8', '#6f72c4',
 ];
 
 export const StockChart: React.FC<StockChartProps> = ({ data, visibleKeys, isPrivacyMode = false }) => {
@@ -50,7 +50,7 @@ export const StockChart: React.FC<StockChartProps> = ({ data, visibleKeys, isPri
         const isTotal = key.includes('TOTAL');
         return {
             key,
-            color: isTotal ? '#10b981' : COLORS[idx % COLORS.length],
+            color: isTotal ? '#4f9d86' : COLORS[idx % COLORS.length],
             name: key.replace(/.*:/, ''), // strip NASDAQ:/NYSE: prefix
             type: 'line', // overlay non-stacké pour comparaison
             strokeWidth: isTotal ? 3 : 2,

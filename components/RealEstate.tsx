@@ -509,11 +509,11 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                 <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: 11, fontWeight: 'bold' }} />
 
                                                 {(activeGoal.isPrimaryResidence || !activeGoal.isRented) && (
-                                                    <Area type="monotone" dataKey="Acheter (Résidence)" stroke="#10b981" fill="#10b981" fillOpacity={0.1} strokeWidth={3} />
+                                                    <Area type="monotone" dataKey="Acheter (Résidence)" stroke="#4f9d86" fill="#4f9d86" fillOpacity={0.1} strokeWidth={3} />
                                                 )}
 
                                                 {(activeGoal.isPrimaryResidence || !activeGoal.isRented) && (
-                                                    <Area type="monotone" dataKey="Louer + Investir Reste" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.1} strokeWidth={3} />
+                                                    <Area type="monotone" dataKey="Louer + Investir Reste" stroke="#8a7cc0" fill="#8a7cc0" fillOpacity={0.1} strokeWidth={3} />
                                                 )}
 
                                                 {(!activeGoal.isPrimaryResidence && activeGoal.isRented) && (
@@ -521,7 +521,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                 )}
 
                                                 {(!activeGoal.isPrimaryResidence && activeGoal.isRented) && (
-                                                    <Area type="monotone" dataKey="Bourse (Placer Cash Initial)" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.1} strokeWidth={3} />
+                                                    <Area type="monotone" dataKey="Bourse (Placer Cash Initial)" stroke="#c2974f" fill="#c2974f" fillOpacity={0.1} strokeWidth={3} />
                                                 )}
                                             </AreaChart>
                                         </ResponsiveContainer>

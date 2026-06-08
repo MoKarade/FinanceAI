@@ -313,6 +313,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // A1 — revenu de retraite mensuel ATTRIBUABLE par conjoint (RRQ/PSV/DB), pour
     // l'impôt par conjoint en décembre. Total == incomeRetirement.
     let incomeRetirementPerUser: number[] = [];
+    // Phase 3 (fractionnement 65+) : composante DB (rente viagère) mensuelle PAR CONJOINT — partie
+    // ADMISSIBLE au fractionnement à tout âge (vs RRQ/PSV non fractionnables). Cf taxDecember.
+    let incomeRetirementDbPerUser: number[] = [];
     // Phase 3 Tier 3 — split par source (RRQ + PSV + privée) pour chartData
     let pensionRRQ = 0;
     let pensionPSV = 0;
@@ -418,6 +421,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         let incomeAnna = 0;
         incomeRetirement = 0;
         incomeRetirementPerUser = [];
+        incomeRetirementDbPerUser = [];
         pensionRRQ = 0;
         pensionPSV = 0;
         pensionPrivee = 0;
@@ -521,6 +525,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             );
             incomeRetirement = retirementBreakdown.total;
             incomeRetirementPerUser = retirementBreakdown.perUser.map(p => p.total);
+            incomeRetirementDbPerUser = retirementBreakdown.perUser.map(p => p.privee);
             pensionRRQ = retirementBreakdown.rrq;
             pensionPSV = retirementBreakdown.psv;
             pensionPrivee = retirementBreakdown.privee;
@@ -680,6 +685,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     // A1 — décomposition par conjoint pour imposer chacun sur SON revenu de
                     // retraite réel (split égal sinon, cf. taxDecember). Vide hors retraite.
                     incomeRetirementPerUserMonthly: incomeRetirementPerUser,
+                    // Phase 3 — composante DB mensuelle par conjoint (fractionnement 65+).
+                    incomeRetirementDbPerUserMonthly: incomeRetirementDbPerUser,
                     nonReg, baseNonRegRate: baseRates.nonReg,
                     accRrspYear, accFhsaYear, smithInterestDeductibleYear,
                     accRentesYear, accRetraitsReerYear, accRetraitsReerYearByUser, accCapitalGainsYear,

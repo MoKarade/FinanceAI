@@ -121,6 +121,10 @@ export interface DecemberContext {
      * longueur ≠ activeUsersCount → repli sur l'ancien split égal (rétro-compat).
      */
     incomeRetirementPerUserMonthly?: number[];
+    /** Phase 3 — composante DB (rente viagère) mensuelle PAR CONJOINT. Partie ADMISSIBLE au
+     *  fractionnement de pension dès 65 ans (les retraits FERR/RIF le sont dès 72 ans). Sert à
+     *  borner le transfert ≤ 50 % de l'admissible. Absent → aucun fractionnement (repli sûr). */
+    incomeRetirementDbPerUserMonthly?: number[];
     nonReg: number;
     baseNonRegRate: number;
     accRrspYear: number;
@@ -330,15 +334,51 @@ export function processDecemberTaxFiling(
                 a !== undefined
                     ? { age: a, eligiblePensionIncome: eligible, hasSpouse: ctx.activeUsersCount > 1, familyIncome: taxableReal }
                     : undefined;
-            let taxReal = 0;
-            for (let i = 0; i < n; i++) {
-                // Pour le 2e+ conjoint sans âge fourni (ageSpouse undefined), on réplique
-                // l'absence de crédit d'âge (repli conservateur, comme avant).
-                const ageOpts = mkRetiredAgeOpts(ages[i], eligiblePensionRealByUser[i]);
-                taxReal += helpers.calculateFiscalReport(
-                    taxableRealByUser[i], 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOpts,
-                ).totalTax;
+            // Impôt combiné du ménage pour une répartition imposable donnée (crédits d'âge/pension
+            // par conjoint, familyIncome = total inchangé). Le 2e conjoint sans âge → pas de crédit.
+            const combinedTaxFor = (taxables: number[]): number => {
+                let t = 0;
+                for (let i = 0; i < n; i++) {
+                    const ageOpts = mkRetiredAgeOpts(ages[i], eligiblePensionRealByUser[i]);
+                    t += helpers.calculateFiscalReport(taxables[i], 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOpts).totalTax;
+                }
+                return t;
+            };
+
+            // Sans fractionnement (Phase 2). C'est le PLANCHER : le fractionnement étant une élection
+            // OPTIONNELLE, on ne le retient que s'il BAISSE l'impôt → impossible d'augmenter à tort.
+            let taxReal = combinedTaxFor(taxableRealByUser);
+
+            // === Phase 3 — Fractionnement de pension 65+ ===
+            // Transfert de ≤ 50 % du revenu de pension ADMISSIBLE du conjoint au revenu imposable le
+            // plus élevé vers l'autre, pour minimiser l'impôt combiné. Admissible (ARC ligne 116 /
+            // RQ Annexe Q) : rente viagère DB dès 65 ans ; retraits FERR/RIF dès 72 ans (post-conversion
+            // REER→FERR). NON admissibles : RRQ/PSV et retraits REER pré-72 → exclus de l'assiette
+            // fractionnable. Repli sûr (aucun fractionnement) si solo, âges inconnus, ou rien d'admissible.
+            if (n === 2 && ctx.activeUsersCount > 1 && ctx.age !== undefined && ctx.ageSpouse !== undefined) {
+                const dbReal = (i: number) => ((ctx.incomeRetirementDbPerUserMonthly?.[i] ?? 0) * 12) / ctx.inflationFactor;
+                const reerReal = (i: number) => (useReerPerUser ? perUserReer![i] : ctx.accRetraitsReerYear / n) / ctx.inflationFactor;
+                const splittable = [0, 1].map((i) => {
+                    const a = ages[i];
+                    if (a === undefined) return 0;
+                    return (a >= 65 ? Math.max(0, dbReal(i)) : 0) + (a >= 72 ? Math.max(0, reerReal(i)) : 0);
+                });
+                const H = taxableRealByUser[0] >= taxableRealByUser[1] ? 0 : 1; // transféreur = plus haut revenu
+                const L = 1 - H;
+                const maxTransfer = Math.min(0.5 * splittable[H], taxableRealByUser[H]); // ≤ 50 % de l'admissible, borné par l'assiette
+                if (maxTransfer > 1) {
+                    // Recherche en grille du transfert optimal (impôt combiné convexe en T → 1 min).
+                    const STEPS = 40;
+                    for (let k = 1; k <= STEPS; k++) {
+                        const tr = maxTransfer * (k / STEPS);
+                        const cand = taxableRealByUser.slice();
+                        cand[H] -= tr; cand[L] += tr;
+                        const ct = combinedTaxFor(cand);
+                        if (ct < taxReal) taxReal = ct; // on ne garde que si ça BAISSE l'impôt
+                    }
+                }
             }
+
             const totalAnnualTax = taxReal * ctx.inflationFactor;
             // Retenue à la source déjà captée sur les retraits REER/FERR de l'année
             // (présente dans le bucket .reer au moment de décembre). On la crédite pour ne

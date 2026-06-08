@@ -57,8 +57,11 @@ export function applyMidMonthGrowth(startVal: number, endVal: number, rateAnnual
 }
 
 // ---- Table de retrait minimum FERR (RRIF) par âge (Canada) ----
-// Source: ARC. À 94+ on plafonne à 20% (fallback via `RRIF_RATES[age] ?? 0.20`).
+// Source: ARC (facteurs FERR prescrits). À 95+ on plafonne à 20% (fallback via
+// `RRIF_RATES[age] ?? 0.20`). 71 = 5,28% ajouté (audit 2026-06) : un FERR actif à
+// 71 ans a un retrait minimum ; le moteur le modélise désormais dès 71 (cf taxJanuary).
 export const RRIF_RATES: Record<number, number> = {
+    71: 0.0528,
     72: 0.0540, 73: 0.0553, 74: 0.0567, 75: 0.0582, 76: 0.0598,
     77: 0.0617, 78: 0.0636, 79: 0.0658, 80: 0.0682, 81: 0.0708,
     82: 0.0738, 83: 0.0771, 84: 0.0808, 85: 0.0851, 86: 0.0899,

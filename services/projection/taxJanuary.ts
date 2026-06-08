@@ -64,7 +64,7 @@ export interface JanuaryResult {
     accGrossIncomeYearReset: number;         // 0
     // CELIAPP fermeture 15 ans
     celiappTransferToReer: number;           // si fermeture: solde transféré
-    // FERR (only if age >= 72)
+    // FERR (only if age >= 71)
     ferrMandatoryGross: number;
     ferrTaxOnRrif: number;
     ferrLogMsg?: string;
@@ -154,7 +154,9 @@ export function processJanuaryReset(
     let ferrMandatoryGross = 0;
     let ferrTaxOnRrif = 0;
     let ferrLogMsg: string | undefined;
-    if (ctx.age >= 72) {
+    // Fix audit 2026-06 : retrait minimum FERR modélisé dès 71 ans (facteur 5,28 %,
+    // RRIF_RATES[71]) — avant : gate à 72 → une année (71) sans retrait min forcé.
+    if (ctx.age >= 71) {
         const rrifRate = helpers.RRIF_RATES[ctx.age] || 0.20;
         ferrMandatoryGross = ctx.reer * rrifRate;
 

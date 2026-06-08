@@ -87,21 +87,21 @@ export interface RrqAdjustmentResult {
 /**
  * Facteur d'ajustement RRQ selon l'âge de prise des pensions:
  * - Anticipation (60-65): -0.6%/mois (max -36% à 60)
- * - Report (65-70): +0.7%/mois (max +42% à 70)
+ * - Report (65-72): +0.7%/mois (max +58,8% à 72 — report étendu à 72 depuis 2024)
  * RRQ = 65% du governmentPension; PSV = 35%.
  *
  * Note: effectivePensionStartAge est l'âge de déblocage des pensions
- * gouvernementales (65 par défaut, 70 si delayPensions). Distinct de
+ * gouvernementales (65 par défaut, 72 si delayPensions). Distinct de
  * effectiveRetirementAge (âge où la personne arrête de travailler).
  */
 export function computeRrqAdjustment(
     delayPensions: boolean,
     retirementGoal: { governmentPension: number },
 ): RrqAdjustmentResult {
-    const effectivePensionStartAge = delayPensions ? 70 : 65;
+    const effectivePensionStartAge = delayPensions ? 72 : 65;
     const rrqMonthsFromRef = (effectivePensionStartAge - 65) * 12;
-    // Facteur d'ajustement RRQ : source unique utils/tax.ts (anticipation −0,6 %/mois,
-    // report +0,7 %/mois, plafond ±60 mois). Identique à l'ancien calcul en dur.
+    // Facteur d'ajustement RRQ : source unique utils/tax.ts (anticipation −0,6 %/mois max −60 mois,
+    // report +0,7 %/mois max +84 mois → ×1,588 à 72 ans).
     const rrqAdjustmentFactor = computeRrqFactor(rrqMonthsFromRef);
 
     return {

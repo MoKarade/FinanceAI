@@ -64,11 +64,11 @@ describe('computeRrqAdjustment', () => {
         expect(r.psvBasePension).toBeCloseTo(350, 5);
     });
 
-    it('report à 70 : +0.7 %/mois × 60 = +42 % sur la part RRQ (PSV inchangée)', () => {
+    it('report à 72 : +0.7 %/mois × 84 = +58,8 % sur la part RRQ (report étendu à 72 depuis 2024)', () => {
         const r = computeRrqAdjustment(true, goal);
-        expect(r.effectivePensionStartAge).toBe(70);
-        expect(r.rrqAdjustmentFactor).toBeCloseTo(1.42, 5);
-        expect(r.rrqBasePension).toBeCloseTo(1000 * 0.65 * 1.42, 5);
+        expect(r.effectivePensionStartAge).toBe(72);
+        expect(r.rrqAdjustmentFactor).toBeCloseTo(1.588, 5);
+        expect(r.rrqBasePension).toBeCloseTo(1000 * 0.65 * 1.588, 5);
         expect(r.psvBasePension).toBeCloseTo(350, 5);
     });
 });

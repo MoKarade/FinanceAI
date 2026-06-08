@@ -272,17 +272,21 @@ describe('withholdingForGrossRRSP (retenue à partir du brut)', () => {
 });
 
 // Facteurs de report/anticipation des rentes — source unique (avant : dupliqués dans
-// retirementIncome.ts + setupSimulation.ts). Verrouille les valeurs aux bornes : ×1,42 (RRQ à 70),
-// ×1,36 (PSV à 70), ×0,64 (RRQ à 60), et les plafonds ±60 mois. Cf docs/FISCAL_REFERENCE.md §6.
+// retirementIncome.ts + setupSimulation.ts). Verrouille les bornes officielles 2026 : RRQ report
+// jusqu'à 72 ans (×1,588, depuis 2024), anticipation à 60 ans (×0,64) ; PSV report à 70 (×1,36).
+// Cf docs/FISCAL_REFERENCE.md §6.
 describe('rrqAdjustmentFactor (report/anticipation RRQ)', () => {
   it('à 65 ans (0 mois) → 1,0 (aucun ajustement)', () => {
     expect(rrqAdjustmentFactor(0)).toBeCloseTo(1.0, 10);
   });
-  it('report 5 ans (+60 mois, = 70 ans) → 1,42', () => {
+  it('report à 70 ans (+60 mois) → 1,42', () => {
     expect(rrqAdjustmentFactor(60)).toBeCloseTo(1.42, 10);
   });
-  it('report plafonné à 60 mois : au-delà reste 1,42', () => {
-    expect(rrqAdjustmentFactor(72)).toBeCloseTo(1.42, 10);
+  it('report à 72 ans (+84 mois) → 1,588 (report étendu à 72 depuis 2024)', () => {
+    expect(rrqAdjustmentFactor(84)).toBeCloseTo(1.588, 10);
+  });
+  it('report plafonné à 84 mois (72 ans) : au-delà reste 1,588', () => {
+    expect(rrqAdjustmentFactor(96)).toBeCloseTo(1.588, 10);
   });
   it('anticipation 5 ans (−60 mois, = 60 ans) → 0,64', () => {
     expect(rrqAdjustmentFactor(-60)).toBeCloseTo(0.64, 10);

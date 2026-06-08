@@ -349,6 +349,28 @@ describe('processDecemberTaxFiling — retraité : impôt marginal réel réconc
         expect(r.newTaxCurrentYear.revenu).toBeCloseTo(25000, 5);
     });
 
+    it('Phase 2 — retraits REER attribués PAR CONJOINT : la concentration paie plus (progressivité)', () => {
+        // Stub PROGRESSIF (20 % jusqu'à 50k, 45 % au-delà) pour révéler l'effet du split.
+        // Couple retraité, pension nulle, 100 000 $ de retraits REER dans l'année.
+        const progressive = makeHelpers({
+            calculateFiscalReport: ((gross: number) =>
+                ({ totalTax: gross <= 50000 ? gross * 0.2 : 10000 + (gross - 50000) * 0.45 } as unknown as FiscalReport)
+            ) as DecemberHelpers['calculateFiscalReport'],
+        });
+        const coupleRetired = (byUser?: number[]): Partial<DecemberContext> => ({
+            isRetired: true, activeUsersCount: 2, incomeRetirementMonthly: 0,
+            incomeRetirementPerUserMonthly: [0, 0], age: 70, ageSpouse: 70,
+            accRetraitsReerYear: 100000, accRetraitsReerYearByUser: byUser,
+        });
+        // Split ÉGAL (attribution absente) : 50k chacun → 10k + 10k = 20 000.
+        const equal = processDecemberTaxFiling(DECEMBER, baseCtx(coupleRetired(undefined)), progressive, ZERO_TAX);
+        expect(equal.newTaxCurrentYear.revenu).toBeCloseTo(20000, 5);
+        // Tout sur UN conjoint (100k / 0) : 32 500 + 0 → impôt combiné PLUS élevé, plus exact.
+        const concentrated = processDecemberTaxFiling(DECEMBER, baseCtx(coupleRetired([100000, 0])), progressive, ZERO_TAX);
+        expect(concentrated.newTaxCurrentYear.revenu).toBeCloseTo(32500, 5);
+        expect(concentrated.newTaxCurrentYear.revenu).toBeGreaterThan(equal.newTaxCurrentYear.revenu);
+    });
+
     it('MÉCANISME de réconciliation : crédite la retenue déjà captée dans .reer (pas de double-comptage)', () => {
         // pension 60000 + retraits REER 40000 = assiette 100000. Stub 25 % → vrai impôt 25000.
         // La retenue à la source déjà prélevée pendant l'année (.reer = 8000) est CRÉDITÉE :

@@ -2,7 +2,7 @@
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness, SavingsGoal, FinancialGoal } from '../types';
 import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate, calculateGrossWithholdingRRSP, getResidencyStartYear, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
 import { RRIF_RATES, welcomeTax } from './projection/helpers';
-import { salaryShares, splitByShares, stepReerByUser } from './projection/perUserBalances';
+import { salaryShares, splitByShares, stepReerByUser, addByWeights } from './projection/perUserBalances';
 import { logError } from './errorLogger';
 import { runMonteCarlo, type MonteCarloResult } from './projection/monteCarlo';
 import { rankStrategiesByRobustness, type RobustnessRanking, type RankRobustnessOptions } from './projection/strategyRobustness';
@@ -263,6 +263,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         activeUsersCount > 1 ? [grossMarcBaseAnnual, grossAnnaBaseAnnual] : [grossMarcBaseAnnual + grossAnnaBaseAnnual],
     );
     let reerByUser = splitByShares(reer, reerShares);
+    // Phase 2 : retraits REER de l'ANNÉE attribués par conjoint (au prorata des soldes au moment du
+    // retrait). Invariant Σ == accRetraitsReerYear. Consommé par taxDecember (impôt par conjoint sur
+    // les vrais retraits, au lieu du split 50/50). Reset chaque janvier comme l'accumulateur commun.
+    let accRetraitsReerYearByUser: number[] = reerShares.map(() => 0);
 
     const simSalaryGrowth = effProj.salaryGrowth ?? 2.5;
     const simEFMonths = effProj.emergencyFundMonths || 3;
@@ -678,7 +682,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     incomeRetirementPerUserMonthly: incomeRetirementPerUser,
                     nonReg, baseNonRegRate: baseRates.nonReg,
                     accRrspYear, accFhsaYear, smithInterestDeductibleYear,
-                    accRentesYear, accRetraitsReerYear, accCapitalGainsYear,
+                    accRentesYear, accRetraitsReerYear, accRetraitsReerYearByUser, accCapitalGainsYear,
                     age,
                     // B-AUDIT-3 — âge courant du conjoint (user[1]) pour les crédits d'âge/
                     // pension PAR conjoint dans l'impôt de décembre. undefined si pas de conjoint.
@@ -756,6 +760,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         );
         if (janResult) {
             accRetraitsReerYear = janResult.accRetraitsReerYearReset;
+            accRetraitsReerYearByUser = accRetraitsReerYearByUser.map(() => 0);
             accRentesYear = janResult.accRentesYearReset;
             monthlyOasReduction = janResult.monthlyOasReduction;
             celiRoom += janResult.celiRoomDelta;
@@ -777,6 +782,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 taxCurrentYear.reer += janResult.ferrTaxOnRrif;
                 impotReerMois += janResult.ferrTaxOnRrif;
                 accRetraitsReerYear += janResult.ferrMandatoryGross;
+                accRetraitsReerYearByUser = addByWeights(accRetraitsReerYearByUser, janResult.ferrMandatoryGross, reerByUser);
                 liquid += janResult.ferrMandatoryGross;
                 if (janResult.ferrLogMsg) flowEventsLog.push(janResult.ferrLogMsg);
             }
@@ -965,6 +971,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 } else if (account === 'REER') {
                     const drawn = Math.min(reer, remaining);
                     reer -= drawn; accRetraitsReerYear += drawn; remaining -= drawn;
+                    accRetraitsReerYearByUser = addByWeights(accRetraitsReerYearByUser, drawn, reerByUser);
                 } else if (account === 'CRYPTO') {
                     const drawn = Math.min(crypto, remaining);
                     // M-4 : ne compter que le GAIN (produit − coût de base proportionnel), pas 100 %.
@@ -1025,6 +1032,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         capitalLossBank = cashState.capitalLossBank; crypto = cashState.crypto; cryptoACB = cashState.cryptoACB;
         celiRoom = cashState.celiRoom; rrspRoom = cashState.rrspRoom; fhsaRoom = cashState.fhsaRoom;
         taxCurrentYear.reer = cashState.taxCurrentYearReer;
+        accRetraitsReerYearByUser = addByWeights(accRetraitsReerYearByUser, cashState.accRetraitsReerYear - accRetraitsReerYear, reerByUser);
         accRetraitsReerYear = cashState.accRetraitsReerYear;
         accCapitalGainsYear = cashState.accCapitalGainsYear;
         accRrspYear = cashState.accRrspYear; accFhsaYear = cashState.accFhsaYear;

@@ -128,6 +128,10 @@ export interface DecemberContext {
     smithInterestDeductibleYear: number;
     accRentesYear: number;
     accRetraitsReerYear: number;
+    /** Phase 2 — retraits REER/FERR de l'année ATTRIBUÉS par conjoint (au prorata des soldes au
+     *  retrait ; Σ == accRetraitsReerYear). Quand fourni (couple), chacun est taxé sur SES vrais
+     *  retraits au lieu du split 50/50. Absent/incohérent → repli sur le split égal. */
+    accRetraitsReerYearByUser?: number[];
     accCapitalGainsYear: number;
     /** Âge courant de l'utilisateur principal — sert aux crédits §6.2 (65+ et revenu retraite). */
     age?: number;
@@ -274,27 +278,33 @@ export function processDecemberTaxFiling(
                 && perUserPension.length === ctx.activeUsersCount
                 && perUserPension.every(v => Number.isFinite(v));
 
-            // Part ÉGALE des composantes non attribuables par conjoint (rentes gouv. +
-            // retraits REER/FERR), en dollars réels.
-            const nonAttributableRealPerAdult =
-                (ctx.accRentesYear + ctx.accRetraitsReerYear) / ctx.inflationFactor / n;
+            // Rentes gouvernementales (non attribuables) : part ÉGALE par conjoint, en réel.
+            const rentesRealPerAdult = ctx.accRentesYear / ctx.inflationFactor / n;
+            // Phase 2 — retraits REER/FERR attribués PAR CONJOINT (accRetraitsReerYearByUser, au
+            // prorata des soldes au retrait) : chacun est taxé sur SES vrais retraits au lieu du
+            // split 50/50. Le TOTAL imposable est inchangé (Σ == accRetraitsReerYear) ; seule la
+            // répartition entre conjoints bouge → impôt plus exact sous barème progressif. Repli
+            // égal si l'attribution est absente/incohérente (solo, ou breakdown manquant).
+            const perUserReer = ctx.accRetraitsReerYearByUser;
+            const useReerPerUser = ctx.activeUsersCount > 1
+                && Array.isArray(perUserReer)
+                && perUserReer.length === n
+                && perUserReer.every(v => Number.isFinite(v));
 
             // Revenu imposable réel et pension admissible réelle, par conjoint.
             // - splitÉgal : tout le taxable / N (comportement historique).
-            // - perUser   : pension_i × 12 + part égale du non-attribuable.
+            // - perUser   : pension_i + part égale des rentes + SES retraits REER (Phase 2).
             const ages = [ctx.age, ctx.ageSpouse];
             const taxableRealByUser: number[] = [];
             const eligiblePensionRealByUser: number[] = [];
             if (usePerUser) {
                 for (let i = 0; i < n; i++) {
                     const pensionRealUser = (perUserPension![i] * 12) / ctx.inflationFactor;
-                    taxableRealByUser.push(pensionRealUser + nonAttributableRealPerAdult);
+                    const reerRealUser = (useReerPerUser ? perUserReer![i] : ctx.accRetraitsReerYear / n) / ctx.inflationFactor;
+                    taxableRealByUser.push(pensionRealUser + rentesRealPerAdult + reerRealUser);
                     // eligiblePensionIncome (crédit pension féd ligne 31400 + revenu retraite
-                    // QC ligne 361) = pension + rentes gouv., HORS retraits REER. La pension
-                    // RRQ/PSV/DB est attribuée ; les rentes gouv. sont réparties également.
-                    eligiblePensionRealByUser.push(
-                        pensionRealUser + (ctx.accRentesYear / ctx.inflationFactor / n),
-                    );
+                    // QC ligne 361) = pension + rentes gouv., HORS retraits REER (inchangé).
+                    eligiblePensionRealByUser.push(pensionRealUser + rentesRealPerAdult);
                 }
             } else {
                 const incomeIndividualReal = taxableReal / n;

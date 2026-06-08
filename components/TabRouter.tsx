@@ -4,6 +4,7 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 // P1 fix — wrap React.lazy avec retry + reload sur chunk-load-error
 // (cf hubperso.com regression : "Failed to fetch dynamically imported module")
 import { lazyWithRetry } from '../utils/lazyWithRetry';
+import { PageSetupGate } from './setup/PageSetupGate';
 
 const Dashboard = lazyWithRetry(() => import('./Dashboard').then(m => ({ default: m.Dashboard })), 'Dashboard');
 const Transactions = lazyWithRetry(() => import('./Transactions').then(m => ({ default: m.Transactions })), 'Transactions');
@@ -148,10 +149,12 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                 )}
 
                 {activeTab === Tab.TAX && (
-                    <TaxCenter
-                        config={state.config} setConfig={(c) => setAppState({ config: c })}
-                        assets={state.assets} apiKey={state.apiKeys.anthropic}
-                    />
+                    <PageSetupGate tab={Tab.TAX}>
+                        <TaxCenter
+                            config={state.config} setConfig={(c) => setAppState({ config: c })}
+                            assets={state.assets} apiKey={state.apiKeys.anthropic}
+                        />
+                    </PageSetupGate>
                 )}
 
                 {activeTab === Tab.REAL_ESTATE && (

@@ -16,8 +16,10 @@ import { PBMA_THRESHOLD_PER_USER, OAS_CLAWBACK_THRESHOLD_2026, RRSP_WITHHOLDING_
 // Plafond du palier 1 (14% fédéral + 14% Québec) par utilisateur. Combinaison
 // marginale ≈ 28%, comparable à la retenue REER de 19-24% (cf RRSP_WITHHOLDING_QC)
 // — donc encore avantageux de puiser dans le REER plutôt que dans le CELI sous ce seuil.
-// Dérivé des barèmes (le plus restrictif des deux 1ers paliers) → suit l'indexation
-// automatiquement, au lieu d'un 54 345 $ en dur (audit 2026-06). Vaut 54 345 $ en 2026.
+// Dérivé du 1er palier brut le plus restrictif des deux, au lieu d'un 54 345 $ « nombre magique »
+// (audit 2026-06) : la valeur se met à jour avec les barèmes de base. NB : ce sont les brackets BRUTS
+// (non réindexés par année de projection via getIndexedBracketsForYear) — comportement inchangé vs
+// l'ancien 54 345 $ en dur. Vaut 54 345 $ en 2026.
 const SAFE_REER_BRACKET_TOP_PER_USER = Math.min(QC_BRACKETS[0].upTo, FED_BRACKETS[0].upTo);
 
 type FiscalReportFn = (

@@ -9,6 +9,9 @@ import {
     _resetForTests,
 } from '../../services/googleDrive/gisAuth';
 
+// Clé sessionStorage du jeton GIS (doit rester alignée sur TOKEN_STORAGE_KEY de gisAuth.ts).
+const TOKEN_KEY = 'financeai:gis:token:v1';
+
 beforeEach(() => {
     _resetForTests();
 });
@@ -76,11 +79,35 @@ function stubGisError(errType = 'access_denied') {
 }
 
 describe('requestAccessToken — error_callback (anti-hang)', () => {
-    it('rejette proprement quand GIS déclenche error_callback (pas de session)', async () => {
-        stubGisError('access_denied');
+    it('interactif : rejette proprement quand GIS déclenche error_callback (popup bloqué / pas de session)', async () => {
+        stubGisError('popup_failed_to_open');
         configureGoogleAuth('cid');
-        await expect(requestAccessToken(false)).rejects.toThrow(/autorisation Google/i);
+        // Le popup (donc l'error_callback) n'existe QUE sur le chemin interactif (geste utilisateur).
+        await expect(requestAccessToken(true)).rejects.toThrow(/autorisation Google/i);
         expect(getCachedToken()).toBeNull();
+    });
+});
+
+// Fix `popup_failed_to_open` (Marc 2026-06) : la reprise SILENCIEUSE (interactive=false) ne doit
+// JAMAIS ouvrir de popup. Au boot / hard-refresh il n'y a pas de geste utilisateur → un popup serait
+// bloqué et GIS lèverait `popup_failed_to_open` à chaque chargement. Le chemin silencieux s'appuie
+// donc uniquement sur le cache (mémoire/sessionStorage).
+describe('requestAccessToken(false) — silencieux : cache uniquement, jamais de popup', () => {
+    it('sans jeton en cache : rejette SANS appeler GIS (aucun popup tenté)', async () => {
+        const { initTokenClient } = stubGis({ access_token: 'never', expires_in: 3600 });
+        configureGoogleAuth('cid');
+        await expect(requestAccessToken(false)).rejects.toThrow(/reconnexion requise/i);
+        // GIS n'est même pas sollicité : pas d'init de client → pas de requestAccessToken → pas de popup.
+        expect(initTokenClient).not.toHaveBeenCalled();
+        expect(getCachedToken()).toBeNull();
+    });
+
+    it('avec un jeton VALIDE en session : résout depuis le cache, sans popup', async () => {
+        sessionStorage.setItem(TOKEN_KEY, JSON.stringify({ accessToken: 'tok-cache', expiresAt: Date.now() + 3_600_000 }));
+        const { initTokenClient } = stubGis({ access_token: 'never', expires_in: 3600 });
+        configureGoogleAuth('cid');
+        await expect(requestAccessToken(false)).resolves.toBe('tok-cache');
+        expect(initTokenClient).not.toHaveBeenCalled();
     });
 });
 
@@ -114,7 +141,6 @@ describe('requestAccessToken (GIS mocké)', () => {
 // Persistance du jeton en sessionStorage : sans elle, un simple rafraîchissement perdait le jeton
 // (en mémoire) → l'app se croyait déconnectée et il fallait re-cliquer « Connecter » à chaque refresh
 // (friction majeure signalée par Marc 2026-05-29). Le jeton doit survivre au refresh, dans la session.
-const TOKEN_KEY = 'financeai:gis:token:v1';
 describe('persistance du jeton (sessionStorage) — survit au refresh', () => {
     it('getCachedToken restaure un jeton VALIDE depuis sessionStorage (= après un refresh)', () => {
         // _resetForTests (beforeEach) a vidé la mémoire ET la session → on simule un jeton laissé par

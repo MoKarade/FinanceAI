@@ -544,12 +544,22 @@ export async function runBootSync(): Promise<void> {
     if (!isGoogleAuthConfigured()) return;
     const meta = readSyncMeta();
     if (!meta?.connectedEmail) return; // jamais connecté → rien au boot
+    // 1) Jeton silencieux (cache only — cf gisAuth : pas de popup au boot). Un échec ICI est le cas
+    //    NORMAL après expiration du jeton (~1 h) : reprise silencieuse impossible sans geste utilisateur.
+    //    On le traite comme un no-op SANS journaliser d'erreur (sinon bruit à chaque boot + faux
+    //    positifs dans SystemView). L'utilisateur recliquera « Connecter ».
+    let token: string;
     try {
-        const token = await getValidAccessToken(); // silencieux (refresh)
+        token = await getValidAccessToken();
+    } catch {
+        setStatus({ connected: false });
+        return;
+    }
+    // 2) Le jeton est en main → une erreur APRÈS (lecture/écriture Drive) est, elle, anormale → handleError.
+    try {
         setStatus({ connected: true });
         await runDecision(token, false); // boot normal (hors gate) → garde anti-perte stricte
     } catch (e) {
-        // Échec silencieux du refresh (session Google expirée) → l'utilisateur recliquera.
         setStatus({ connected: false });
         if (!(e instanceof DriveAuthError)) handleError('boot', e);
     }

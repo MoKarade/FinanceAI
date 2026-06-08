@@ -164,10 +164,26 @@ function ensureTokenClient(): GisTokenClient {
 }
 
 /**
- * Demande un access token. `interactive=true` force le consentement (1er login / re-grant) ;
- * `false` tente un renouvellement silencieux.
+ * Demande un access token. `interactive=true` force le consentement (1er login / re-grant) et
+ * ouvre le popup Google (à n'appeler que SOUS un geste utilisateur — clic).
+ *
+ * `interactive=false` = reprise SILENCIEUSE : on s'appuie UNIQUEMENT sur le cache (mémoire +
+ * sessionStorage). Raison (fix `popup_failed_to_open`, Marc 2026-06) : le token client GIS n'a
+ * aucun flux sans UI — toute acquisition réseau passe par un popup, lequel exige un geste
+ * utilisateur. Au boot / hard-refresh (Ctrl+Shift+R) il n'y a pas de geste → le navigateur bloque
+ * le popup et GIS lève `popup_failed_to_open` à CHAQUE chargement. On ne tente donc jamais de popup
+ * en silencieux : sans jeton valide en cache, on rejette proprement et l'appelant (gate / boot)
+ * bascule sur le bouton « Connecter ». La ré-auth réseau silencieuse étant de toute façon bloquée
+ * par les cookies tiers dans les navigateurs modernes, on ne perd rien d'utile.
  */
 export function requestAccessToken(interactive: boolean): Promise<string> {
+    if (!interactive) {
+        restoreCachedFromSession();
+        if (_cached && !isTokenExpired(_cached.expiresAt, Date.now())) {
+            return Promise.resolve(_cached.accessToken);
+        }
+        return Promise.reject(new Error('Session Google expirée — reconnexion requise'));
+    }
     return loadGisScript().then(
         () =>
             new Promise<string>((resolve, reject) => {

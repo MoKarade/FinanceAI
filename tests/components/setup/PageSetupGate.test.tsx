@@ -47,11 +47,65 @@ describe('PageSetupGate (pilote Impôts)', () => {
     });
 
     it('laisse passer une page sans prérequis déclarés (pas de gate)', () => {
+        // Configuration n'est pas gatée (c'est là qu'on saisit les données).
         render(
-            <PageSetupGate tab={Tab.DEBT}>
-                <div>CONTENU_DETTES</div>
+            <PageSetupGate tab={Tab.SETTINGS}>
+                <div>CONTENU_LIBRE</div>
             </PageSetupGate>,
         );
-        expect(screen.getByText('CONTENU_DETTES')).toBeInTheDocument();
+        expect(screen.getByText('CONTENU_LIBRE')).toBeInTheDocument();
+    });
+});
+
+describe('PageSetupGate — déroulé (Retraite / Immo opt-out / Futur)', () => {
+    it('Retraite : verrouillée tant que le profil retraite manque (même avec salaire)', () => {
+        useFinanceStore.setState({
+            ...withGross(5000),
+            retirementGoal: { ...initial.retirementGoal, targetAge: 0, targetMonthlyIncome: 0 },
+        });
+        render(
+            <PageSetupGate tab={Tab.RETIREMENT}>
+                <div>CONTENU_RETRAITE</div>
+            </PageSetupGate>,
+        );
+        expect(screen.getByText(/Page verrouillée/i)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Profil retraite/i })).toBeInTheDocument();
+        expect(screen.queryByText('CONTENU_RETRAITE')).not.toBeInTheDocument();
+    });
+
+    it('Immobilier : propose un opt-out, et l\'opt-out débloque la page', () => {
+        useFinanceStore.setState({ realEstateGoals: [], setupOptOut: {} });
+        const { rerender } = render(
+            <PageSetupGate tab={Tab.REAL_ESTATE}>
+                <div>CONTENU_IMMO</div>
+            </PageSetupGate>,
+        );
+        // Verrouillée + bouton opt-out présent.
+        expect(screen.queryByText('CONTENU_IMMO')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /pas de projet immobilier/i })).toBeInTheDocument();
+        // Opt-out persistant → page débloquée.
+        useFinanceStore.setState({ setupOptOut: { realEstate: true } });
+        rerender(
+            <PageSetupGate tab={Tab.REAL_ESTATE}>
+                <div>CONTENU_IMMO</div>
+            </PageSetupGate>,
+        );
+        expect(screen.getByText('CONTENU_IMMO')).toBeInTheDocument();
+    });
+
+    it('Futur : verrouillé liste ce qui manque (salaire + actifs + profil retraite)', () => {
+        useFinanceStore.setState({
+            ...withGross(0),
+            assets: [],
+            retirementGoal: { ...initial.retirementGoal, targetAge: 0, targetMonthlyIncome: 0 },
+        });
+        render(
+            <PageSetupGate tab={Tab.FUTURE}>
+                <div>CONTENU_FUTUR</div>
+            </PageSetupGate>,
+        );
+        expect(screen.queryByText('CONTENU_FUTUR')).not.toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Placements \/ actifs/i })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Profil retraite/i })).toBeInTheDocument();
     });
 });

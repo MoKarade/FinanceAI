@@ -667,6 +667,10 @@ export interface AppState {
   lifeEvents: LifeEvent[];
   retirementGoal: RetirementGoal;
   financialGoals: FinancialGoal[];
+  // Setup-first : pages où l'utilisateur a explicitement choisi « pas concerné »
+  // (ex. immobilier, enfant). Clé = id d'opt-out. Optionnel → migration-safe
+  // (persisté via la denylist partialize ; défaut absent = non opté).
+  setupOptOut?: Record<string, boolean>;
   initialBalances: Record<string, number>;
   apiKeys: {
     anthropic: string; // Phase 4 A5 — Claude API key (Anthropic) — remplace Gemini

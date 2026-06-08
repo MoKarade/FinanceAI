@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// PreToolUse (Bash) : avant tout `git commit`, exige typecheck + test + build verts. exit 2 = bloque.
-import { readFileSync } from 'node:fs';
+// PreToolUse (Bash) : avant tout `git commit`, exige typecheck + tests (ciblés) + build verts. exit 2 = bloque.
+import { readFileSync, existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
 let cmd = '';
@@ -17,7 +17,17 @@ const stagedFiles = staged.split('\n').filter(Boolean);
 const touchesSource = stagedFiles.length === 0 || stagedFiles.some(f => /\.(ts|tsx)$/.test(f));
 if (!touchesSource) process.exit(0);
 
-for (const [name, c] of [['typecheck','npm run typecheck'],['tests','npm run test'],['build','npm run build']]) {
+// Tests CIBLÉS : on ne lance que les tests AFFECTÉS par les fichiers stagés
+// (`vitest related` suit le graphe d'imports) au lieu de toute la suite
+// (~3.5 min → quelques secondes). La suite COMPLÈTE reste exécutée en CI
+// (push/PR). Fallback sûr = suite complète si la liste des fichiers stagés est
+// indisponible (touchesSource via stagedFiles vide).
+const sourceFiles = stagedFiles.filter(f => /\.(ts|tsx)$/.test(f) && existsSync(f));
+const testCmd = sourceFiles.length > 0
+  ? `npx vitest related --run ${sourceFiles.map(f => `'${f}'`).join(' ')}`
+  : 'npm run test';
+
+for (const [name, c] of [['typecheck','npm run typecheck'],['tests (affectés)', testCmd],['build','npm run build']]) {
   try { execSync(c, { stdio: 'pipe' }); }
   catch (e) {
     const tail = ((e.stdout?.toString() || '') + (e.stderr?.toString() || '')).split('\n').slice(-25).join('\n');

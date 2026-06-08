@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Tab, AppState } from '../../types';
 import { useFinanceStore, type FinanceState } from '../../store/useFinanceStore';
 import { Icon } from '../ui/Icon';
@@ -10,14 +10,15 @@ import { REQUIREMENTS, type Requirement, type RequirementId, type RequirementFie
 /**
  * Setup-first par page (demande Marc 2026-06).
  *
- * Chaque page déclare ses PRÉREQUIS (par IDs vers le registre central
- * `REQUIREMENTS`). Tant qu'ils ne sont pas remplis :
- *  - mode `hard` → RIEN du contenu réel ne s'affiche, on rend l'écran de setup
- *    (saisie manuelle + import + données de test) ;
- *  - mode `soft` → le contenu s'affiche AVEC une bannière de complétion (pour
- *    les pages où « vide » est un état légitime : Dettes, Immo, Enfant…).
- *
- * Le registre central est partagé avec `MissingDataBanner` (source unique).
+ * Chaque page déclare ses PRÉREQUIS (IDs → registre central `REQUIREMENTS`).
+ * Tant qu'ils ne sont pas remplis :
+ *  - mode `hard` → RIEN du contenu réel ; on rend l'écran de setup (saisie +
+ *    import + données de test). Trois façons de débloquer :
+ *      • remplir / importer la donnée,
+ *      • « Créer via la page » (forceShow) pour les prérequis non-saisissables
+ *        inline (listes : projets immo, objectifs enfant…),
+ *      • opt-out « pas concerné » (persisté, réversible) si déclaré.
+ *  - mode `soft` → contenu visible + bannière de complétion repliable.
  */
 
 // ─────────────────────────────────────────────────────────── Registre ──────
@@ -26,9 +27,12 @@ interface PageSetup {
     title: string;
     intro: string;
     requirementIds: RequirementId[];
+    /** L'utilisateur peut déclarer « pas concerné » (persisté, réversible). */
+    optOut?: { key: string; label: string };
+    /** Prérequis « liste » non-saisissables inline : autorise « Créer via la page ». */
+    allowCreateInPage?: boolean;
 }
 
-// Pilote = Impôts (hard, prérequis `salary` partagé avec Retraite/Futur au déroulé).
 export const PAGE_SETUP: Partial<Record<Tab, PageSetup>> = {
     [Tab.TAX]: {
         mode: 'hard',
@@ -37,6 +41,110 @@ export const PAGE_SETUP: Partial<Record<Tab, PageSetup>> = {
             "Pour calculer ton impôt fédéral + Québec, il me faut au moins ton salaire brut. " +
             "Saisis-le à la main, ou importe un talon de paie — l'IA Vision le lit et remplit le profil.",
         requirementIds: ['salary'],
+    },
+    [Tab.RETIREMENT]: {
+        mode: 'hard',
+        title: 'Retraite',
+        intro:
+            "Pour projeter ta retraite, il me faut ton salaire et ton profil retraite (âge cible, revenu visé). " +
+            "Saisis-les, importe un talon, ou explore avec des données de test.",
+        requirementIds: ['salary', 'retirementProfile'],
+    },
+    [Tab.REAL_ESTATE]: {
+        mode: 'hard',
+        title: 'Immobilier',
+        intro:
+            "Cette page planifie un projet immobilier (achat, louer vs acheter, refinancement). " +
+            "Crée ton premier projet, ou indique que tu n'es pas concerné — tu pourras changer d'avis plus tard.",
+        requirementIds: ['realEstate'],
+        optOut: { key: 'realEstate', label: "Je n'ai pas de projet immobilier" },
+        allowCreateInPage: true,
+    },
+    [Tab.CHILD]: {
+        mode: 'hard',
+        title: 'Enfant',
+        intro:
+            "Cette page planifie les coûts d'un enfant (REEE, garde, etc.). " +
+            "Crée ton premier objectif, ou indique que tu n'es pas concerné — réversible à tout moment.",
+        requirementIds: ['children'],
+        optOut: { key: 'children', label: 'Je ne suis pas concerné' },
+        allowCreateInPage: true,
+    },
+    [Tab.FUTURE]: {
+        mode: 'hard',
+        title: 'Projection Future',
+        intro:
+            "Pour une projection fiable, il me faut l'essentiel : ton salaire, au moins un placement, " +
+            "et ton profil retraite. Voici ce qui manque :",
+        requirementIds: ['salary', 'assets', 'retirementProfile'],
+    },
+    [Tab.TRANSACTIONS]: {
+        mode: 'hard',
+        title: 'Transactions',
+        intro:
+            'Importe un relevé bancaire (CSV) ou ajoute une transaction pour démarrer. ' +
+            'Tu peux aussi explorer avec des données de test.',
+        requirementIds: ['transactions'],
+        allowCreateInPage: true,
+    },
+    [Tab.BUDGET]: {
+        mode: 'hard',
+        title: 'Budget',
+        intro:
+            'Pour bâtir ton budget, il me faut ton salaire (la base de la répartition). ' +
+            'Saisis-le, importe un talon, ou explore avec des données de test.',
+        requirementIds: ['salary'],
+    },
+    [Tab.INVESTMENTS]: {
+        mode: 'hard',
+        title: 'Investissements',
+        intro:
+            'Ajoute au moins un placement (action, ETF, crypto…) — manuellement ou via un import ' +
+            'courtier — pour suivre et projeter ton portefeuille.',
+        requirementIds: ['assets'],
+        allowCreateInPage: true,
+    },
+    [Tab.DEBT]: {
+        mode: 'hard',
+        title: 'Dettes',
+        intro:
+            "Ajoute tes dettes (prêt, carte, marge…) pour planifier leur remboursement — " +
+            "ou indique que tu n'en as pas.",
+        requirementIds: ['debts'],
+        optOut: { key: 'debts', label: "Je n'ai pas de dettes" },
+        allowCreateInPage: true,
+    },
+    [Tab.LIFE_PROJECTS]: {
+        mode: 'hard',
+        title: 'Projets de vie',
+        intro:
+            'Planifie un projet ou un voyage (sabbatique, achat, rénovation…) — ' +
+            "ou passe pour l'instant, tu pourras revenir.",
+        requirementIds: ['lifeProjects'],
+        optOut: { key: 'lifeProjects', label: "Aucun projet pour l'instant" },
+        allowCreateInPage: true,
+    },
+    [Tab.DASHBOARD]: {
+        mode: 'hard',
+        title: "Vue d'ensemble",
+        intro:
+            "Pour un aperçu utile (et non un tableau de bord vide), il me faut au moins ton salaire. " +
+            'Saisis-le, importe un talon, ou explore avec des données de test.',
+        requirementIds: ['salary'],
+    },
+    [Tab.ACTIONS]: {
+        mode: 'hard',
+        title: 'Prochaine action',
+        intro:
+            'Pour te suggérer la meilleure prochaine action (analyse IA), il me faut ta clé API ' +
+            'Anthropic et ton salaire.',
+        requirementIds: ['anthropicKey', 'salary'],
+    },
+    [Tab.ASSISTANT]: {
+        mode: 'hard',
+        title: 'Assistant IA',
+        intro: "L'assistant a besoin de ta clé API Anthropic (Claude) pour répondre à tes questions.",
+        requirementIds: ['anthropicKey'],
     },
 };
 
@@ -48,19 +156,20 @@ const IMPORT_COMPONENTS: Partial<Record<ImportKind, React.FC>> = {
 };
 
 // ───────────────────────────────────────────────────── Requirement card ────
-const RequirementCard: React.FC<{ req: Requirement }> = ({ req }) => {
+const RequirementCard: React.FC<{ req: Requirement; currentTab?: Tab }> = ({ req, currentTab }) => {
     const fields = req.fields ?? EMPTY_FIELDS;
     // Souscriptions ÉTROITES : `met` + signature des valeurs (resync), pas l'état entier.
     const met = useFinanceStore((s) => req.isMet(s));
     const fieldsSig = useFinanceStore((s) => fields.map((f) => f.get(s)).join('|'));
     const setAppState = useFinanceStore((s) => s.setAppState);
+    const navigateWithFocus = useFinanceStore((s) => s.navigateWithFocus);
 
     const [vals, setVals] = useState<Record<string, string>>(() =>
         Object.fromEntries(fields.map((f) => [f.id, String(f.get(useFinanceStore.getState()) || '')])),
     );
 
-    // Resync quand le store change SOUS la carte (import talon, données de test).
-    useEffect(() => {
+    // Resync quand le store change SOUS la carte (import, données de test).
+    React.useEffect(() => {
         const s = useFinanceStore.getState();
         setVals(Object.fromEntries(fields.map((f) => [f.id, String(f.get(s) || '')])));
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -69,7 +178,6 @@ const RequirementCard: React.FC<{ req: Requirement }> = ({ req }) => {
     const save = () => {
         const err = req.validate?.(vals);
         if (err) { showToast(err, 'error'); return; }
-        // État LIVE ; compose les écritures via `draft`.
         let draft = useFinanceStore.getState();
         const touched = new Set<keyof AppState>();
         for (const f of fields) {
@@ -139,6 +247,18 @@ const RequirementCard: React.FC<{ req: Requirement }> = ({ req }) => {
                 </div>
             )}
 
+            {/* Prérequis « liste » non-saisissable inline, avec une page dédiée AUTRE
+                que celle-ci → on y navigue (sinon c'est le bouton « Créer via la page »). */}
+            {fields.length === 0 && !met && req.focus && req.focus.tab !== currentTab && (
+                <button
+                    type="button"
+                    onClick={() => navigateWithFocus(req.focus!.tab, req.focus!.section || undefined)}
+                    className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-card border border-white/15 bg-white/5 text-meta font-medium text-ink-100 hover:bg-white/10 hover:text-ink-50 transition-colors focus-ring"
+                >
+                    <Icon name="settings" size={14} /> Configurer / ajouter →
+                </button>
+            )}
+
             {ImportComp && (
                 <div className="space-y-3">
                     <div className="flex items-center gap-3 text-tiny uppercase tracking-widest text-ink-500" aria-hidden="true">
@@ -152,16 +272,27 @@ const RequirementCard: React.FC<{ req: Requirement }> = ({ req }) => {
 };
 
 // ──────────────────────────────────────────── Écran setup plein (hard) ─────
-const FullSetupScreen: React.FC<{ title: string; intro: string; requirements: Requirement[] }> = ({ title, intro, requirements }) => {
+const FullSetupScreen: React.FC<{
+    config: PageSetup;
+    requirements: Requirement[];
+    currentTab: Tab;
+    onCreateInPage?: () => void;
+}> = ({ config, requirements, currentTab, onCreateInPage }) => {
     const enableTestMode = useFinanceStore((s) => s.enableTestMode);
+    const setAppState = useFinanceStore((s) => s.setAppState);
     const total = requirements.length;
     const done = useFinanceStore((s) => requirements.filter((r) => r.isMet(s)).length);
 
-    // Option « données de test » : charge le persona par défaut (remplit tout →
-    // la page se débloque) en activant le MODE TEST (bannière explicite = fictif).
     const loadTestData = () => {
         const persona = getPersonaOrDefault(DEFAULT_PERSONA_ID);
         enableTestMode(persona.build(), persona.id);
+    };
+
+    const optOut = () => {
+        if (!config.optOut) return;
+        const cur = useFinanceStore.getState().setupOptOut ?? {};
+        setAppState({ setupOptOut: { ...cur, [config.optOut.key]: true } });
+        showToast('Noté — tu pourras activer cette page quand tu veux.', 'info');
     };
 
     return (
@@ -174,45 +305,61 @@ const FullSetupScreen: React.FC<{ title: string; intro: string; requirements: Re
                 <div className="flex items-center gap-2 text-tiny uppercase tracking-widest text-warning-400 mb-2">
                     <Icon name="lock" size={14} /> Page verrouillée — configuration requise
                 </div>
-                <h1 id="page-setup-title" className="text-display font-bold text-ink-50">{title}</h1>
-                <p className="text-body text-ink-300 mt-2 max-w-xl">{intro}</p>
+                <h1 id="page-setup-title" className="text-display font-bold text-ink-50">{config.title}</h1>
+                <p className="text-body text-ink-300 mt-2 max-w-xl">{config.intro}</p>
                 <p className="text-meta text-ink-500 mt-1.5 max-w-xl">
-                    Rien ne s'affiche tant que les prérequis ci-dessous ne sont pas remplis — saisie manuelle, import,
-                    ou données de test.
+                    Rien ne s'affiche tant que les prérequis ci-dessous ne sont pas remplis.
                 </p>
-                <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
+                <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-3">
                     <div
-                        className="flex items-center gap-3 min-w-[180px]"
+                        className="flex items-center gap-3 min-w-[170px]"
                         role="progressbar"
                         aria-valuenow={done}
                         aria-valuemin={0}
                         aria-valuemax={total}
                         aria-label={`Configuration : ${done} sur ${total} prérequis prêts`}
                     >
-                        <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden max-w-[12rem]">
+                        <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden max-w-[10rem]">
                             <div className="h-full bg-primary rounded-full transition-[width] duration-300" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
                         </div>
                         <span className="text-meta text-ink-400 font-mono shrink-0" aria-hidden="true">{done}/{total} prêt{done > 1 ? 's' : ''}</span>
                     </div>
+                    {onCreateInPage && (
+                        <button
+                            type="button"
+                            onClick={onCreateInPage}
+                            className="inline-flex items-center gap-2 min-h-[44px] px-3 py-1.5 rounded-card bg-primary text-dark text-meta font-bold hover:bg-white transition-colors focus-ring"
+                        >
+                            <Icon name="plus" size={14} /> Créer via la page
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={loadTestData}
                         className="inline-flex items-center gap-2 min-h-[44px] px-3 py-1.5 rounded-card border border-white/15 bg-white/5 text-meta font-medium text-ink-200 hover:bg-white/10 hover:text-ink-50 transition-colors focus-ring"
                     >
-                        <Icon name="flask" size={14} />
-                        Explorer avec des données de test
+                        <Icon name="flask" size={14} /> Données de test
                     </button>
+                    {config.optOut && (
+                        <button
+                            type="button"
+                            onClick={optOut}
+                            className="inline-flex items-center gap-2 min-h-[44px] px-3 py-1.5 rounded-card text-meta font-medium text-ink-400 hover:text-ink-100 transition-colors focus-ring"
+                        >
+                            {config.optOut.label}
+                        </button>
+                    )}
                 </div>
             </div>
             {requirements.map((req) => (
-                <RequirementCard key={req.id} req={req} />
+                <RequirementCard key={req.id} req={req} currentTab={currentTab} />
             ))}
         </div>
     );
 };
 
 // ──────────────────────────────────────── Bannière de complétion (soft) ────
-const SoftSetupBanner: React.FC<{ title: string; requirements: Requirement[] }> = ({ title, requirements }) => {
+const SoftSetupBanner: React.FC<{ title: string; requirements: Requirement[]; currentTab: Tab }> = ({ title, requirements, currentTab }) => {
     const [open, setOpen] = useState(false);
     const missing = useFinanceStore((s) => requirements.filter((r) => !r.isMet(s)).length);
     if (missing === 0) return null;
@@ -235,7 +382,7 @@ const SoftSetupBanner: React.FC<{ title: string; requirements: Requirement[] }> 
             </div>
             {open && (
                 <div className="mt-4 space-y-4">
-                    {requirements.map((req) => <RequirementCard key={req.id} req={req} />)}
+                    {requirements.map((req) => <RequirementCard key={req.id} req={req} currentTab={currentTab} />)}
                 </div>
             )}
         </div>
@@ -249,17 +396,28 @@ export const PageSetupGate: React.FC<{ tab: Tab; children: React.ReactNode }> = 
         () => (config ? config.requirementIds.map((id) => REQUIREMENTS[id]) : []),
         [config],
     );
-    // Souscrit UNIQUEMENT au booléen dérivé → la page enfant ne re-render pas à
-    // chaque mutation du store (seulement quand le verrou bascule).
+    // Souscrit à des dérivés (booléens) → pas de re-render de la page enfant
+    // à chaque mutation du store, seulement quand le verrou bascule.
     const allMet = useFinanceStore((s) => requirements.every((r) => r.isMet(s)));
+    const optedOut = useFinanceStore((s) => !!(config?.optOut && s.setupOptOut?.[config.optOut.key]));
+    // « Créer via la page » : éphémère (par instance de gate = par onglet ; reset
+    // au changement d'onglet car TabRouter démonte/remonte le gate).
+    const [forceShow, setForceShow] = useState(false);
 
     if (!config) return <>{children}</>;
 
     if (config.mode === 'soft') {
-        // « Vide » légitime : contenu visible + bannière de complétion.
-        return <><SoftSetupBanner title={config.title} requirements={requirements} />{children}</>;
+        return <><SoftSetupBanner title={config.title} requirements={requirements} currentTab={tab} />{children}</>;
     }
 
-    if (allMet) return <>{children}</>;
-    return <FullSetupScreen title={config.title} intro={config.intro} requirements={requirements} />;
+    if (allMet || optedOut || forceShow) return <>{children}</>;
+
+    return (
+        <FullSetupScreen
+            config={config}
+            requirements={requirements}
+            currentTab={tab}
+            onCreateInPage={config.allowCreateInPage ? () => setForceShow(true) : undefined}
+        />
+    );
 };

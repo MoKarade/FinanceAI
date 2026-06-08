@@ -224,7 +224,7 @@ export const Layout: React.FC<LayoutProps> = ({
         {/* Brand + privacy toggle */}
         <div className="p-3 pb-2 shrink-0 space-y-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-emerald-300 flex items-center justify-center text-white text-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0" aria-hidden="true">
+            <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-ink-50 text-xl font-bold shadow-[0_0_20px_rgba(230,234,242,0.12)] shrink-0" aria-hidden="true">
               Fi
             </div>
             <div className={`min-w-0 whitespace-nowrap transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
@@ -257,26 +257,57 @@ export const Layout: React.FC<LayoutProps> = ({
         <nav aria-label="Navigation principale" className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
           {navGroups.map((group) => {
             const isGroupExpanded = openGroups.has(group.label);
-            // Quand la sidebar est collapsée, on montre toujours les items
-            // (icônes seules — labels masqués par opacity). Quand elle est
-            // ouverte, on respecte l'état accordion.
-            const showItems = !isSidebarOpen || isGroupExpanded;
+            // U-sidebar — le repli RESPECTE désormais l'accordion : un sous-groupe
+            // rangé (replié) n'empile plus toutes ses icônes ; il montre l'icône
+            // du groupe + un badge compteur (nombre d'items cachés). Déplié, on
+            // affiche les items (icônes seules en rail, icônes + labels ouvert).
+            const showItems = isGroupExpanded;
+            const count = group.items.length;
+            const hasActive = group.items.some((it) => it.id === activeTab);
+            const tidied = !isGroupExpanded; // groupe « rangé »
 
             return (
-              <div key={group.label} className="mb-1">
+              <div key={group.label} className="mb-1.5">
                 <button
                   type="button"
                   onClick={() => isSidebarOpen && toggleGroup(group.label)}
                   aria-expanded={isSidebarOpen ? isGroupExpanded : undefined}
+                  aria-label={!isSidebarOpen ? `${group.label} — ${count} onglets${tidied ? ' (rangé)' : ''}` : undefined}
                   disabled={!isSidebarOpen}
-                  title={!isSidebarOpen ? group.label : undefined}
+                  title={!isSidebarOpen ? `${group.label} (${count})` : undefined}
                   className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-card transition-colors ${
                     isSidebarOpen ? 'hover:bg-white/5 cursor-pointer' : 'cursor-default'
                   }`}
                 >
-                  <Icon name={group.icon} size={18} className="shrink-0 text-ink-500" />
-                  <span className={`text-tiny uppercase font-bold text-ink-500 tracking-widest whitespace-nowrap flex-1 text-left transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
+                  <span className="relative shrink-0 flex items-center justify-center">
+                    <Icon
+                      name={group.icon}
+                      size={18}
+                      className={`shrink-0 transition-colors ${hasActive && tidied ? 'text-primary' : 'text-ink-300'}`}
+                    />
+                    {/* Badge compteur visible en rail replié quand le groupe est rangé. */}
+                    {!isSidebarOpen && tidied && (
+                      <span
+                        className={`absolute -top-1.5 -right-2 min-w-[15px] h-[15px] px-1 flex items-center justify-center rounded-full text-[9px] font-bold leading-none ring-2 ring-dark ${
+                          hasActive ? 'bg-primary text-dark' : 'bg-white/15 text-ink-100'
+                        }`}
+                        aria-hidden="true"
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </span>
+                  <span className={`text-tiny uppercase font-bold tracking-widest whitespace-nowrap flex-1 text-left transition-opacity duration-150 ${hasActive ? 'text-ink-200' : 'text-ink-400'} ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
                     {group.label}
+                  </span>
+                  {/* Pastille compteur (panneau ouvert) — sous-groupes plus lisibles. */}
+                  <span
+                    className={`shrink-0 flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold leading-none transition-opacity duration-150 ${
+                      tidied ? 'bg-white/12 text-ink-100' : 'bg-white/5 text-ink-400'
+                    } ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}
+                    aria-hidden="true"
+                  >
+                    {count}
                   </span>
                   <span
                     className={`shrink-0 text-ink-500 text-meta transition-all duration-150 ${
@@ -288,7 +319,8 @@ export const Layout: React.FC<LayoutProps> = ({
                   </span>
                 </button>
                 <div className={`overflow-hidden transition-[max-height] duration-200 motion-reduce:transition-none ${showItems ? 'max-h-[600px]' : 'max-h-0'}`}>
-                  <div className="space-y-0.5 pt-0.5">
+                  {/* Filet + léger retrait pour matérialiser l'appartenance au groupe (panneau ouvert). */}
+                  <div className={`space-y-0.5 pt-0.5 ${isSidebarOpen ? 'ml-[1.35rem] pl-1 border-l border-white/10' : ''}`}>
                     {group.items.map((item) => {
                       const isActive = activeTab === item.id;
                       return (
@@ -362,7 +394,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-dark/95 backdrop-blur-xl border-b border-white/10 z-50 flex items-center justify-between px-4 shadow-xl">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-success-400 flex items-center justify-center text-white font-bold shadow-lg shadow-primary/20" aria-hidden="true">Fi</div>
+          <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/10 flex items-center justify-center text-ink-50 font-bold" aria-hidden="true">Fi</div>
           <p className="text-lg font-bold text-white tracking-tight">FinanceAI</p>
         </div>
         {/* Phase B.4 — info ℹ️ et Synchroniser 🔄 retirées sur mobile aussi. */}

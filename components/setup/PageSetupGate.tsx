@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tab, AppState, User } from '../../types';
 import { useFinanceStore, type FinanceState } from '../../store/useFinanceStore';
 import { Icon, type IconName } from '../ui/Icon';
+import { showToast } from '../ui/Toast';
 import { PayslipUploadCard } from '../settings/PayslipUploadCard';
 import { getPersonaOrDefault, DEFAULT_PERSONA_ID } from '../../services/testFixtures';
 
@@ -11,23 +12,30 @@ import { getPersonaOrDefault, DEFAULT_PERSONA_ID } from '../../services/testFixt
  * Chaque page déclare ses PRÉREQUIS (données + import du bon document). Tant
  * qu'ils ne sont pas remplis, `PageSetupGate` n'affiche RIEN du contenu réel
  * de la page : il rend un écran de setup listant ce qu'il manque, avec
- * SAISIE MANUELLE inline + IMPORT du document pertinent. Une fois les prérequis
- * satisfaits, la page s'affiche normalement.
+ * SAISIE MANUELLE inline + IMPORT du document pertinent + DONNÉES DE TEST.
+ * Une fois les prérequis satisfaits, la page s'affiche normalement.
  *
  * Pilote : Tab.TAX (Impôts). À dérouler ensuite sur les autres pages via le
  * registre `PAGE_SETUP` ci-dessous.
+ *
+ * Perf : le gate/écran ne souscrivent QUE des dérivés (booléen `allMet`,
+ * compteur `done`, valeurs des champs) — jamais l'état entier — pour ne pas
+ * re-render la page enfant à chaque mutation du store. Les handlers lisent
+ * l'état LIVE via `useFinanceStore.getState()`.
  */
 
 // ──────────────────────────────────────────────────────────── Types ────────
 interface SetupField {
     id: string;
     label: string;
+    /** Champ optionnel : n'entre pas dans `isMet`, juste proposé à la saisie. */
+    optional?: boolean;
     unit?: string;
     placeholder?: string;
     get: (s: FinanceState) => number;
-    /** Retourne le slice à fusionner via setAppState. Reçoit l'état « courant »
-     *  (déjà patché par les champs précédents) pour composer plusieurs écritures. */
-    toState: (s: FinanceState, v: number) => Partial<AppState>;
+    /** Retourne le slice à fusionner. Reçoit le brouillon d'état déjà patché par
+     *  les champs précédents (`draft`) — relire UNIQUEMENT `draft`, jamais le store. */
+    toState: (draft: FinanceState, v: number) => Partial<AppState>;
 }
 
 /** Documents importables (mappés vers un composant d'import autonome). */
@@ -41,6 +49,8 @@ interface SetupRequirement {
     isMet: (s: FinanceState) => boolean;
     /** Saisie manuelle (toujours proposée si présente). */
     fields?: SetupField[];
+    /** Validation bloquante à l'enregistrement (message d'erreur ou null). */
+    validate?: (vals: Record<string, string>) => string | null;
     /** Import du document pertinent (alternative à la saisie). */
     importKind?: ImportKind;
 }
@@ -52,6 +62,8 @@ interface PageSetupConfig {
 }
 
 // ──────────────────────────────────────────────────────────── Helpers ──────
+const EMPTY_FIELDS: SetupField[] = [];
+
 const patchUser = (users: [User, User], idx: number, patch: Partial<User>): [User, User] =>
     users.map((u, i) => (i === idx ? { ...u, ...patch } : u)) as [User, User];
 
@@ -61,25 +73,32 @@ export const PAGE_SETUP: Partial<Record<Tab, PageSetupConfig>> = {
     [Tab.TAX]: {
         title: 'Impôts & Docs',
         intro:
-            "Pour calculer ton impôt fédéral + Québec, il me faut au moins ton salaire. " +
+            "Pour calculer ton impôt fédéral + Québec, il me faut au moins ton salaire brut. " +
             "Saisis-le à la main, ou importe un talon de paie — l'IA Vision le lit et remplit le profil.",
         requirements: [
             {
                 id: 'salary',
                 label: 'Salaire — utilisateur principal',
-                help: "Brut et net MENSUELS. Base du calcul d'impôt et des optimisations.",
+                help: "Brut MENSUEL (le net est optionnel). Base du calcul d'impôt et des optimisations.",
                 icon: 'tax',
-                isMet: (s) => (s.config?.users?.[0]?.grossSalary ?? 0) > 0,
+                isMet: (s) => (s.config.users[0]?.grossSalary ?? 0) > 0,
+                validate: (vals) => {
+                    const gross = Number(vals.gross) || 0;
+                    const net = Number(vals.net) || 0;
+                    if (gross <= 0) return 'Saisis un salaire brut mensuel (> 0).';
+                    if (net > gross) return 'Le salaire net ne peut pas dépasser le brut.';
+                    return null;
+                },
                 fields: [
                     {
-                        id: 'gross', label: 'Salaire brut', unit: '$/mois',
+                        id: 'gross', label: 'Salaire brut', unit: '$/mois', placeholder: 'ex. 5 000',
                         get: (s) => s.config.users[0]?.grossSalary ?? 0,
-                        toState: (s, v) => ({ config: { ...s.config, users: patchUser(s.config.users, 0, { grossSalary: v }) } }),
+                        toState: (d, v) => ({ config: { ...d.config, users: patchUser(d.config.users, 0, { grossSalary: v }) } }),
                     },
                     {
-                        id: 'net', label: 'Salaire net', unit: '$/mois',
+                        id: 'net', label: 'Salaire net (optionnel)', optional: true, unit: '$/mois', placeholder: 'ex. 3 500',
                         get: (s) => s.config.users[0]?.netSalary ?? 0,
-                        toState: (s, v) => ({ config: { ...s.config, users: patchUser(s.config.users, 0, { netSalary: v }) } }),
+                        toState: (d, v) => ({ config: { ...d.config, users: patchUser(d.config.users, 0, { netSalary: v }) } }),
                     },
                 ],
                 importKind: 'payslip',
@@ -93,23 +112,45 @@ const IMPORT_COMPONENTS: Record<ImportKind, React.FC> = {
 };
 
 // ───────────────────────────────────────────────────── Requirement card ────
-const RequirementCard: React.FC<{ req: SetupRequirement; met: boolean }> = ({ req, met }) => {
-    const state = useFinanceStore((s) => s);
+const RequirementCard: React.FC<{ req: SetupRequirement }> = ({ req }) => {
+    const fields = req.fields ?? EMPTY_FIELDS;
+    // Souscriptions ÉTROITES : le booléen `met` + une signature des valeurs des
+    // champs (pour resync après import/données-de-test), pas l'état entier.
+    const met = useFinanceStore((s) => req.isMet(s));
+    const fieldsSig = useFinanceStore((s) => fields.map((f) => f.get(s)).join('|'));
     const setAppState = useFinanceStore((s) => s.setAppState);
+
     const [vals, setVals] = useState<Record<string, string>>(() =>
-        Object.fromEntries((req.fields ?? []).map((f) => [f.id, String(f.get(state) || '')])),
+        Object.fromEntries(fields.map((f) => [f.id, String(f.get(useFinanceStore.getState()) || '')])),
     );
 
+    // Resync quand le store change SOUS la carte (import talon, données de test) —
+    // corrige le bug « init une seule fois » qui faisait écraser des valeurs importées.
+    useEffect(() => {
+        const s = useFinanceStore.getState();
+        setVals(Object.fromEntries(fields.map((f) => [f.id, String(f.get(s) || '')])));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fieldsSig]);
+
     const save = () => {
-        let working = state;
-        let acc: Partial<AppState> = {};
-        for (const f of req.fields ?? []) {
+        const err = req.validate?.(vals);
+        if (err) { showToast(err, 'error'); return; }
+        // État LIVE (pas la closure du render) ; compose les écritures via `draft`.
+        let draft = useFinanceStore.getState();
+        const touched = new Set<keyof AppState>();
+        for (const f of fields) {
             const v = Number(vals[f.id]) || 0;
-            const partial = f.toState(working, v);
-            acc = { ...acc, ...partial };
-            working = { ...working, ...partial } as FinanceState;
+            const partial = f.toState(draft, v);
+            (Object.keys(partial) as (keyof AppState)[]).forEach((k) => touched.add(k));
+            draft = { ...draft, ...partial } as FinanceState;
         }
-        setAppState(acc);
+        // N'envoie que les slices touchés, avec leur valeur finale composée.
+        const finalPatch: Partial<AppState> = {};
+        const fp = finalPatch as unknown as Record<string, unknown>;
+        const draftRec = draft as unknown as Record<string, unknown>;
+        touched.forEach((k) => { fp[k as string] = draftRec[k as string]; });
+        setAppState(finalPatch);
+        showToast('Données enregistrées.', 'success');
     };
 
     const ImportComp = req.importKind ? IMPORT_COMPONENTS[req.importKind] : null;
@@ -127,24 +168,24 @@ const RequirementCard: React.FC<{ req: SetupRequirement; met: boolean }> = ({ re
                 </span>
                 <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                        <h3 className="text-body font-bold text-ink-50">{req.label}</h3>
+                        <h2 className="text-body font-bold text-ink-50">{req.label}</h2>
                         {met && <span className="text-tiny font-bold text-success-400 uppercase tracking-wider">Prêt</span>}
                     </div>
                     {req.help && <p className="text-meta text-ink-400 mt-0.5">{req.help}</p>}
                 </div>
             </div>
 
-            {req.fields && req.fields.length > 0 && (
+            {fields.length > 0 && (
                 <div className="space-y-3">
                     <div className="grid sm:grid-cols-2 gap-3">
-                        {req.fields.map((f) => (
+                        {fields.map((f) => (
                             <label key={f.id} className="block">
                                 <span className="text-tiny uppercase tracking-wider text-ink-400 font-semibold">{f.label}</span>
                                 <div className="mt-1 flex items-center gap-2 rounded-card bg-white/5 border border-white/10 px-3 focus-within:border-primary/40 transition-colors">
                                     <input
                                         type="number"
                                         inputMode="decimal"
-                                        value={vals[f.id]}
+                                        value={vals[f.id] ?? ''}
                                         placeholder={f.placeholder ?? '0'}
                                         onChange={(e) => setVals((p) => ({ ...p, [f.id]: e.target.value }))}
                                         aria-label={f.label}
@@ -158,7 +199,7 @@ const RequirementCard: React.FC<{ req: SetupRequirement; met: boolean }> = ({ re
                     <button
                         type="button"
                         onClick={save}
-                        className="px-4 py-2 rounded-card bg-primary text-dark text-meta font-bold hover:bg-white transition-colors focus-ring"
+                        className="inline-flex items-center justify-center min-h-[44px] px-4 py-2 rounded-card bg-primary text-dark text-meta font-bold hover:bg-white transition-colors focus-ring"
                     >
                         Enregistrer
                     </button>
@@ -167,7 +208,7 @@ const RequirementCard: React.FC<{ req: SetupRequirement; met: boolean }> = ({ re
 
             {ImportComp && (
                 <div className="space-y-3">
-                    <div className="flex items-center gap-3 text-tiny uppercase tracking-widest text-ink-500">
+                    <div className="flex items-center gap-3 text-tiny uppercase tracking-widest text-ink-500" aria-hidden="true">
                         <span className="h-px flex-1 bg-white/10" /> ou importer <span className="h-px flex-1 bg-white/10" />
                     </div>
                     <ImportComp />
@@ -179,10 +220,10 @@ const RequirementCard: React.FC<{ req: SetupRequirement; met: boolean }> = ({ re
 
 // ──────────────────────────────────────────────────────── Setup screen ─────
 const PageSetup: React.FC<{ config: PageSetupConfig }> = ({ config }) => {
-    const state = useFinanceStore((s) => s);
     const enableTestMode = useFinanceStore((s) => s.enableTestMode);
     const total = config.requirements.length;
-    const done = config.requirements.filter((r) => r.isMet(state)).length;
+    // Dérivé : ne re-render que quand le compteur change (pas tout le store).
+    const done = useFinanceStore((s) => config.requirements.filter((r) => r.isMet(s)).length);
 
     // Option « données de test » : charge le persona par défaut (remplit tout →
     // la page se débloque) en activant le MODE TEST (bannière explicite = données
@@ -193,28 +234,39 @@ const PageSetup: React.FC<{ config: PageSetupConfig }> = ({ config }) => {
     };
 
     return (
-        <div className="max-w-3xl mx-auto space-y-6 animate-fade-in pb-20">
+        <div
+            className="max-w-3xl mx-auto space-y-6 animate-fade-in pb-20"
+            role="region"
+            aria-labelledby="page-setup-title"
+        >
             <div className="rounded-2xl border border-warning-500/25 bg-gradient-to-b from-warning-500/[0.06] to-transparent p-6">
                 <div className="flex items-center gap-2 text-tiny uppercase tracking-widest text-warning-400 mb-2">
                     <Icon name="lock" size={14} /> Page verrouillée — configuration requise
                 </div>
-                <h1 className="text-display font-bold text-ink-50">{config.title}</h1>
+                <h1 id="page-setup-title" className="text-display font-bold text-ink-50">{config.title}</h1>
                 <p className="text-body text-ink-300 mt-2 max-w-xl">{config.intro}</p>
                 <p className="text-meta text-ink-500 mt-1.5 max-w-xl">
                     Rien ne s'affiche tant que les prérequis ci-dessous ne sont pas remplis — saisie manuelle, import,
                     ou données de test.
                 </p>
                 <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
-                    <div className="flex items-center gap-3 min-w-[180px]">
+                    <div
+                        className="flex items-center gap-3 min-w-[180px]"
+                        role="progressbar"
+                        aria-valuenow={done}
+                        aria-valuemin={0}
+                        aria-valuemax={total}
+                        aria-label={`Configuration : ${done} sur ${total} prérequis prêts`}
+                    >
                         <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden max-w-[12rem]">
                             <div className="h-full bg-primary rounded-full transition-[width] duration-300" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
                         </div>
-                        <span className="text-meta text-ink-400 font-mono shrink-0">{done}/{total} prêt{done > 1 ? 's' : ''}</span>
+                        <span className="text-meta text-ink-400 font-mono shrink-0" aria-hidden="true">{done}/{total} prêt{done > 1 ? 's' : ''}</span>
                     </div>
                     <button
                         type="button"
                         onClick={loadTestData}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-card border border-white/15 bg-white/5 text-meta font-medium text-ink-200 hover:bg-white/10 hover:text-ink-50 transition-colors focus-ring"
+                        className="inline-flex items-center gap-2 min-h-[44px] px-3 py-1.5 rounded-card border border-white/15 bg-white/5 text-meta font-medium text-ink-200 hover:bg-white/10 hover:text-ink-50 transition-colors focus-ring"
                     >
                         <Icon name="flask" size={14} />
                         Explorer avec des données de test
@@ -222,7 +274,7 @@ const PageSetup: React.FC<{ config: PageSetupConfig }> = ({ config }) => {
                 </div>
             </div>
             {config.requirements.map((req) => (
-                <RequirementCard key={req.id} req={req} met={req.isMet(state)} />
+                <RequirementCard key={req.id} req={req} />
             ))}
         </div>
     );
@@ -230,10 +282,10 @@ const PageSetup: React.FC<{ config: PageSetupConfig }> = ({ config }) => {
 
 // ────────────────────────────────────────────────────────────── Gate ───────
 export const PageSetupGate: React.FC<{ tab: Tab; children: React.ReactNode }> = ({ tab, children }) => {
-    const state = useFinanceStore((s) => s);
     const config = PAGE_SETUP[tab];
-    if (!config) return <>{children}</>;
-    const allMet = config.requirements.every((r) => r.isMet(state));
-    if (allMet) return <>{children}</>;
+    // Souscrit UNIQUEMENT au booléen dérivé → la page enfant ne re-render pas à
+    // chaque mutation du store (seulement quand le verrou bascule).
+    const allMet = useFinanceStore((s) => !config || config.requirements.every((r) => r.isMet(s)));
+    if (!config || allMet) return <>{children}</>;
     return <PageSetup config={config} />;
 };

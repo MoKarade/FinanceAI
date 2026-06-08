@@ -6,6 +6,7 @@ import { Card } from '../ui/Card';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { formatCAD } from '../../utils/format';
 import { annualSalaryToMonthly } from '../../utils/salary';
+import { logError } from '../../services/errorLogger';
 
 /**
  * Phase C.2 — upload IA de relevé de salaire dans le Hub Configuration.
@@ -82,7 +83,7 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
             setStatus('');
             showToast(`Profil ${target === 0 ? 'principal' : 'conjoint'} mis à jour.`, 'success');
         } catch (err) {
-            console.error('[PayslipUpload] analyzePayslip failed:', err);
+            logError({ source: 'ai', severity: 'error', message: 'Analyse talon de paie (Vision) échouée', error: err });
             setStatus('');
             showToast('Analyse échouée. Vérifie le fichier (JPG/PNG/PDF) et ta clé Anthropic.', 'error');
         } finally {
@@ -100,7 +101,7 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
                 </p>
 
                 {isCouple && (
-                    <div className="flex gap-2">
+                    <div className="flex gap-2" role="radiogroup" aria-label="Profil cible du relevé">
                         {[0, 1].map(idx => (
                             <label
                                 key={idx}
@@ -133,6 +134,7 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
                         accept="image/jpeg,image/png,image/webp,application/pdf"
                         onChange={handleFiles}
                         disabled={isAnalyzing}
+                        aria-label="Importer un relevé de salaire (image ou PDF)"
                         className="sr-only"
                     />
                     <span className="mb-2 transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-0.5" aria-hidden="true"><Icon name={isAnalyzing ? 'clock' : 'document'} size={28} className="text-ink-300" /></span>

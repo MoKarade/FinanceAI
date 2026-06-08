@@ -22,8 +22,9 @@ export function scriptBypassOnboarding(): string {
 
 /**
  * Active le mode test (fixtures Alex/Sam) en naviguant vers l'onglet
- * Configuration → sous-onglet « Système & diagnostics » (qui contient
- * TestModePanel ; déplacé hors de « Sauvegarde » lors du regroupement UI).
+ * Configuration → sous-onglet « Profil » (qui contient TestModePanel ;
+ * déplacé depuis « Système & diagnostics » — charger un persona est une
+ * action profil).
  *
  * Méthode UI choisie : plus robuste que page.evaluate() sur un module
  * ES bundlé (le store Zustand n'est pas exposé sur window).
@@ -33,10 +34,10 @@ export async function activateTestMode(page: Page): Promise<void> {
   await page.goto('/#SETTINGS');
   await page.waitForLoadState('domcontentloaded');
 
-  // Cliquer le sous-onglet "Système & diagnostics" (contient TestModePanel)
-  const btnSysteme = page.getByRole('tab', { name: /Système/i });
-  await btnSysteme.waitFor({ state: 'visible', timeout: 10_000 });
-  await btnSysteme.click();
+  // Cliquer le sous-onglet "Profil" (contient TestModePanel)
+  const btnProfil = page.getByRole('tab', { name: /Profil/i });
+  await btnProfil.waitFor({ state: 'visible', timeout: 10_000 });
+  await btnProfil.click();
 
   // Cliquer "Activer le mode test" — charge le persona par défaut (couple
   // Alex/Sam) IMMÉDIATEMENT. Le flux de confirmation à 2 étapes ("Oui, charger

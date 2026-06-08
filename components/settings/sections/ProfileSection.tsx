@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { UsersCard } from './UsersCard';
+import { TestModePanel } from '../TestModePanel';
 import { startGuidedTour } from '../../tour/tourControl';
 import type { AppState } from '../../../types';
 import { Icon } from '../../ui/Icon';
@@ -33,6 +34,11 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ config, setConfi
       </div>
 
       <UsersCard config={config} setConfig={setConfig} />
+
+      {/* Mode test (dev) — déplacé ici depuis « Système & diagnostics » (demande Marc) :
+          charger un persona réaliste est une action « profil », sa place est avec les
+          profils utilisateurs. Les vraies données sont sauvegardées/restaurées. */}
+      <TestModePanel />
     </div>
   );
 };

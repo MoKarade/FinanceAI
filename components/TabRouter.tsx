@@ -158,44 +158,50 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                 )}
 
                 {activeTab === Tab.REAL_ESTATE && (
-                    <RealEstate
-                        availableCash={globalNetWorth - state.assets.reduce((sum, a) => sum + (a.quantity * a.currentPrice * (state.fxRates[a.currency] || 1)), 0)}
-                        goals={state.realEstateGoals}
-                        setGoals={(g) => setAppState({ realEstateGoals: g })}
-                    />
+                    <PageSetupGate tab={Tab.REAL_ESTATE}>
+                        <RealEstate
+                            availableCash={globalNetWorth - state.assets.reduce((sum, a) => sum + (a.quantity * a.currentPrice * (state.fxRates[a.currency] || 1)), 0)}
+                            goals={state.realEstateGoals}
+                            setGoals={(g) => setAppState({ realEstateGoals: g })}
+                        />
+                    </PageSetupGate>
                 )}
 
                 {activeTab === Tab.FUTURE && (
-                    <FutureProjection
-                        assets={state.assets}
-                        initialBalances={state.initialBalances}
-                        transactions={state.transactions}
-                        budgetItems={state.budgetItems}
-                        config={state.config}
-                        realEstateGoals={state.realEstateGoals}
-                        setRealEstateGoals={(g) => setAppState({ realEstateGoals: g })}
-                        childGoals={state.childGoals || []}
-                        setChildGoals={(g) => setAppState({ childGoals: g })}
-                        travelGoals={state.travelGoals}
-                        lifeEvents={state.lifeEvents}
-                        debts={state.debts}
-                        retirementGoal={state.retirementGoal}
-                        setRetirementGoal={(g) => setAppState({ retirementGoal: g })}
-                        calculatedMonthlySavings={calculatedMonthlySavings}
-                        projection={state.projection}
-                        setProjection={(p) => setAppState({ projection: p })}
-                        financialGoals={state.financialGoals}
-                        isPrivacyMode={isPrivacyMode}
-                    />
+                    <PageSetupGate tab={Tab.FUTURE}>
+                        <FutureProjection
+                            assets={state.assets}
+                            initialBalances={state.initialBalances}
+                            transactions={state.transactions}
+                            budgetItems={state.budgetItems}
+                            config={state.config}
+                            realEstateGoals={state.realEstateGoals}
+                            setRealEstateGoals={(g) => setAppState({ realEstateGoals: g })}
+                            childGoals={state.childGoals || []}
+                            setChildGoals={(g) => setAppState({ childGoals: g })}
+                            travelGoals={state.travelGoals}
+                            lifeEvents={state.lifeEvents}
+                            debts={state.debts}
+                            retirementGoal={state.retirementGoal}
+                            setRetirementGoal={(g) => setAppState({ retirementGoal: g })}
+                            calculatedMonthlySavings={calculatedMonthlySavings}
+                            projection={state.projection}
+                            setProjection={(p) => setAppState({ projection: p })}
+                            financialGoals={state.financialGoals}
+                            isPrivacyMode={isPrivacyMode}
+                        />
+                    </PageSetupGate>
                 )}
 
                 {activeTab === Tab.CHILD && (
-                    <ChildPlanning
-                        goals={state.childGoals || []}
-                        setGoals={(g) => setAppState({ childGoals: g })}
-                        projection={state.projection}
-                        currentRESP={assetBreakdown.reee}
-                    />
+                    <PageSetupGate tab={Tab.CHILD}>
+                        <ChildPlanning
+                            goals={state.childGoals || []}
+                            setGoals={(g) => setAppState({ childGoals: g })}
+                            projection={state.projection}
+                            currentRESP={assetBreakdown.reee}
+                        />
+                    </PageSetupGate>
                 )}
 
                 {/* Phase F.12 — Tab.TRAVEL et Tab.LIFE_EVENTS forwardent vers le nouvel onglet unifié */}
@@ -211,22 +217,24 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                 )}
 
                 {activeTab === Tab.RETIREMENT && (
-                    <Retirement
-                        goal={state.retirementGoal} setGoal={(g) => setAppState({ retirementGoal: g })}
-                        currentREER={assetBreakdown.reer} currentCELI={assetBreakdown.celi} currentNonReg={assetBreakdown.nonReg}
-                        calculatedMonthlySavings={calculatedMonthlySavings}
-                        grossIncome={state.config.users.reduce((acc, u) => acc + (u.grossSalary || u.salary || 0), 0)}
-                        projection={state.projection}
-                        config={state.config}
-                        assets={state.assets}
-                        initialBalances={state.initialBalances}
-                        budgetItems={state.budgetItems}
-                        realEstateGoals={state.realEstateGoals}
-                        childGoals={state.childGoals || []}
-                        travelGoals={state.travelGoals}
-                        lifeEvents={state.lifeEvents}
-                        debts={state.debts}
-                    />
+                    <PageSetupGate tab={Tab.RETIREMENT}>
+                        <Retirement
+                            goal={state.retirementGoal} setGoal={(g) => setAppState({ retirementGoal: g })}
+                            currentREER={assetBreakdown.reer} currentCELI={assetBreakdown.celi} currentNonReg={assetBreakdown.nonReg}
+                            calculatedMonthlySavings={calculatedMonthlySavings}
+                            grossIncome={state.config.users.reduce((acc, u) => acc + (u.grossSalary || u.salary || 0), 0)}
+                            projection={state.projection}
+                            config={state.config}
+                            assets={state.assets}
+                            initialBalances={state.initialBalances}
+                            budgetItems={state.budgetItems}
+                            realEstateGoals={state.realEstateGoals}
+                            childGoals={state.childGoals || []}
+                            travelGoals={state.travelGoals}
+                            lifeEvents={state.lifeEvents}
+                            debts={state.debts}
+                        />
+                    </PageSetupGate>
                 )}
 
                 {activeTab === Tab.SETTINGS && (

@@ -1058,6 +1058,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             nonReg += meltResult.nonRegAdd;
             nonRegACB += meltResult.nonRegAdd;
             accRetraitsReerYear += meltResult.reerDrawn;
+            // 5e source de retrait REER (audit fiscal-accuracy) : attribuer le meltdown par conjoint
+            // comme FERR/goals/cashflow, sinon Σ(byUser) < accRetraitsReerYear → sous-imposition sous
+            // le scénario MELTDOWN_REER (l'opposé du but de la Phase 2).
+            accRetraitsReerYearByUser = addByWeights(accRetraitsReerYearByUser, meltResult.reerDrawn, reerByUser);
             taxCurrentYear.reer += meltResult.withholding;
             if (meltResult.log) logEvent(flowEventsLog, meltResult.log);
         }

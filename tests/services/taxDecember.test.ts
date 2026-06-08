@@ -369,6 +369,12 @@ describe('processDecemberTaxFiling — retraité : impôt marginal réel réconc
         const concentrated = processDecemberTaxFiling(DECEMBER, baseCtx(coupleRetired([100000, 0])), progressive, ZERO_TAX);
         expect(concentrated.newTaxCurrentYear.revenu).toBeCloseTo(32500, 5);
         expect(concentrated.newTaxCurrentYear.revenu).toBeGreaterThan(equal.newTaxCurrentYear.revenu);
+
+        // Garde-fou (audit) : si l'attribution NE somme PAS au total (retrait non attribué en amont),
+        // on retombe sur le split égal CONSERVATEUR (20 000 $) au lieu de taxer 60k sous-compté (→14 500,
+        // sous-imposition). Σ([60000,0])=60000 ≠ accRetraitsReerYear=100000 → repli.
+        const undercounted = processDecemberTaxFiling(DECEMBER, baseCtx(coupleRetired([60000, 0])), progressive, ZERO_TAX);
+        expect(undercounted.newTaxCurrentYear.revenu).toBeCloseTo(20000, 5);
     });
 
     it('MÉCANISME de réconciliation : crédite la retenue déjà captée dans .reer (pas de double-comptage)', () => {

@@ -286,10 +286,16 @@ export function processDecemberTaxFiling(
             // répartition entre conjoints bouge → impôt plus exact sous barème progressif. Repli
             // égal si l'attribution est absente/incohérente (solo, ou breakdown manquant).
             const perUserReer = ctx.accRetraitsReerYearByUser;
+            // Garde-fou (audit fiscal-accuracy) : on n'attribue par conjoint QUE si la somme
+            // par conjoint reconstitue bien le total (Σ == accRetraitsReerYear, à epsilon près).
+            // Sinon (un retrait non attribué en amont — ex. meltdown oublié), on retombe sur le
+            // split égal CONSERVATEUR plutôt que de taxer une assiette sous-comptée (sous-imposition).
+            const perUserReerSum = Array.isArray(perUserReer) ? perUserReer.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0) : NaN;
             const useReerPerUser = ctx.activeUsersCount > 1
                 && Array.isArray(perUserReer)
                 && perUserReer.length === n
-                && perUserReer.every(v => Number.isFinite(v));
+                && perUserReer.every(v => Number.isFinite(v))
+                && Math.abs(perUserReerSum - ctx.accRetraitsReerYear) <= Math.max(1, Math.abs(ctx.accRetraitsReerYear) * 1e-6);
 
             // Revenu imposable réel et pension admissible réelle, par conjoint.
             // - splitÉgal : tout le taxable / N (comportement historique).

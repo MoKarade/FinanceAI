@@ -582,6 +582,11 @@ export interface RetirementGoal {
   // W1.3 — Plages personnalisées RRQ/PSV (override de governmentPension)
   rrqEstimateMonthly?: number;     // rente RRQ projetée individuelle
   psvEstimateMonthly?: number;     // rente PSV projetée
+  // Âge de DÉBUT des rentes — indépendant de l'âge d'arrêt de travail (targetAge).
+  // Défaut : min(targetAge, 65). Bornes légales : RRQ 60-72 (report étendu à 72 depuis 2024),
+  // PSV 65-70 (0 avant 65). Cf docs/FISCAL_REFERENCE.md §6.
+  rrqStartAge?: number;            // 60-72, défaut min(targetAge, 65)
+  psvStartAge?: number;            // 65-70, défaut min(targetAge, 65) (→ borné à 65)
   // W4.6 — Semi-retraite
   isPhasedRetirement?: boolean;
   phasedStartAge?: number;

@@ -151,15 +151,22 @@ export function computeRetirementIncome(
     const workedYearsAtRetirement = Math.max(0, retirementGoal.targetAge - arrivalAge);
     const rrqProrata = Math.min(1, workedYearsAtRetirement / RRQ_DENOMINATOR_YEARS) * rrqMpeRatio;
 
-    let rrqStartAge = Math.max(60, retirementGoal.targetAge);
-    let psvStartAge = Math.max(65, retirementGoal.targetAge);
+    // Début des rentes = CHOIX INDÉPENDANT de l'âge d'arrêt de travail (correctif Marc 2026-06 :
+    // l'ancien `max(60/65, targetAge)` FORÇAIT les rentes à démarrer à l'âge de retraite → « pas de
+    // rente avant 71 » si on prévoyait d'arrêter tard, alors qu'on touche le RRQ dès 65 même en
+    // travaillant). Défaut = min(targetAge, 65) : plafonne le début à l'âge NORMAL (65) tout en
+    // préservant l'anticipation d'un retraité précoce. Champs `rrqStartAge`/`psvStartAge` pour un
+    // choix explicite. Bornes légales : RRQ 60-72 (report étendu à 72 depuis 2024), PSV 65-70.
+    // delayPensions (stratégie de report optimal) → RRQ 72, PSV 70.
+    const defaultStart = Math.min(retirementGoal.targetAge, 65);
+    let rrqStartAge = Math.min(72, Math.max(60, retirementGoal.rrqStartAge ?? defaultStart));
+    let psvStartAge = Math.min(70, Math.max(65, retirementGoal.psvStartAge ?? defaultStart));
     if (delayPensions) {
-        rrqStartAge = 70;
+        rrqStartAge = 72;
         psvStartAge = 70;
     }
     // Facteurs de report/anticipation dérivés des âges de début (source unique utils/tax.ts).
-    // delayPensions → start 70 → (70−65)×12 = 60 mois → ×1,42 (RRQ) / ×1,36 (PSV), identiques aux
-    // anciennes constantes en dur. La PSV ne s'anticipe pas (psvDeferralFactor = 1,0 si ≤ 65).
+    // delayPensions → RRQ 72 = +84 mois ×1,588 ; PSV 70 = +60 mois ×1,36. La PSV ne s'anticipe pas.
     const rrqFactor = rrqAdjustmentFactor((rrqStartAge - 65) * 12);
     const psvFactor = psvDeferralFactor((psvStartAge - 65) * 12);
 

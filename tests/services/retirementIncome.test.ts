@@ -103,13 +103,23 @@ const highPensionGoal: RetirementGoal = {
 };
 
 describe('computeRetirementIncome — report / survivant / immigrant / bonus 75+', () => {
-    it('report des rentes (delayPensions) → RRQ plus élevée qu\'un départ standard à 70 ans', () => {
-        const ctx70 = { ...baseCtx, age: 70 };
-        const standard = computeRetirementIncome({ ...ctx70, delayPensions: false }, baseGoal, [baseUser]);
-        const delayed = computeRetirementIncome({ ...ctx70, delayPensions: true }, baseGoal, [baseUser]);
-        // delayPensions force rrqFactor 1.42 / psvFactor 1.36 → rentes strictement supérieures
-        expect(delayed.rrq).toBeGreaterThan(standard.rrq);
-        expect(delayed.psv).toBeGreaterThanOrEqual(standard.psv);
+    it('report des rentes (delayPensions) → RRQ démarre à 72 (×1,588) et PSV à 70 (×1,36)', () => {
+        // delayPensions → RRQ 72 (report étendu depuis 2024) / PSV 70. À 72 ans, les deux ont démarré.
+        const ctx72 = { ...baseCtx, age: 72 };
+        const standard = computeRetirementIncome({ ...ctx72, delayPensions: false }, baseGoal, [baseUser]);
+        const delayed = computeRetirementIncome({ ...ctx72, delayPensions: true }, baseGoal, [baseUser]);
+        expect(delayed.rrq).toBeGreaterThan(standard.rrq); // ×1,588 vs ×1,0
+        expect(delayed.psv).toBeGreaterThanOrEqual(standard.psv); // ×1,36 vs ×1,0
+    });
+
+    it('CORRECTIF — retraite TARDIVE (targetAge 71) : rentes touchées dès 65, pas à 71', () => {
+        // Bug Marc 2026-06 : l'ancien max(60/65, targetAge) ne versait aucune rente avant l'âge
+        // d'arrêt. Désormais début = min(targetAge, 65) = 65 → rente présente à 65 même si on
+        // prévoit d'arrêter à 71.
+        const lateGoal: RetirementGoal = { ...baseGoal, targetAge: 71 };
+        const at65 = computeRetirementIncome({ ...baseCtx, age: 65 }, lateGoal, [baseUser]);
+        expect(at65.rrq).toBeGreaterThan(0);
+        expect(at65.psv).toBeGreaterThan(0);
     });
 
     it('bonification PSV +10% exactement à 75 ans (pas à 74), SRG neutralisé', () => {

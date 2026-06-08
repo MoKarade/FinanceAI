@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { showToast } from './ui/Toast';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
+import { UserConfigFields } from './settings/UserConfigFields';
 import { Icon } from './ui/Icon';
 import { CoupleOptimizationCard } from './tax/CoupleOptimizationCard';
 import { BudgetConfig, Asset } from '../types';
@@ -210,6 +211,12 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                 icon={<Icon name="tax" size={28} />}
                 title="Simulateur d'impôts"
             />
+
+            {/* Déplacés depuis Configuration (demande Marc) : salaires + options fiscales. */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <UserConfigFields section="salary" />
+                <UserConfigFields section="fiscal" />
+            </div>
 
             <div className="flex justify-end gap-2 w-full md:w-auto md:ml-auto -mt-2">
                     {/* Phase G.2 — upload migré vers l'onglet Documents global (doc directives §9).

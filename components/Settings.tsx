@@ -182,7 +182,7 @@ export const Settings: React.FC<SettingsProps> = ({
       </div>
 
       {sub === 'profile' && (
-        <ProfileSection config={config} setConfig={setConfig} retirementGoal={retirementGoal} />
+        <ProfileSection config={config} setConfig={setConfig} />
       )}
       {sub === 'accounts' && (
         <AccountsSection

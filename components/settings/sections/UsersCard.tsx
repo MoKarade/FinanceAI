@@ -1,15 +1,14 @@
 // components/settings/sections/UsersCard.tsx
-// G22-N4 — extrait de Settings.tsx : carte « Configuration Utilisateurs ».
-// Contient les profils enregistrés (localStorage), l'éditeur par utilisateur
-// (salaires, profil détaillé santé/carrière, options fiscales) et le mode de
-// répartition. Comportement identique à l'ancien bloc inline ; seules les
-// props config/setConfig sont threadées.
+// Carte « Profils & utilisateurs » : profils enregistrés (localStorage) +
+// identité de base par utilisateur (nom, âge, immigré) + ajout/retrait conjoint.
+// NB (demande Marc) : les autres parties ont été déplacées dans leurs onglets —
+// salaires + options fiscales (CELIAPP/FE) → Impôts ; enfants (REEE) → Enfant ;
+// profil détaillé (santé/carrière) → Retraite ; mode de répartition → Budget.
 
 import React from 'react';
 import { Card } from '../../ui/Card';
 import { showToast } from '../../ui/Toast';
-import type { AppState, BudgetConfig, User, Gender, CanadianProvince, MaritalStatus, EmploymentType, Industry, PensionPlan, HealthRating } from '../../../types';
-import { annualSalaryToMonthly } from '../../../utils/salary';
+import type { AppState, User } from '../../../types';
 import { logAudit } from '../../../services/auditLog';
 import { Icon } from '../../ui/Icon';
 
@@ -22,11 +21,6 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
   const [savedProfiles, setSavedProfiles] = React.useState<string[]>([]);
   const [newProfileName, setNewProfileName] = React.useState('');
   const [profileToDelete, setProfileToDelete] = React.useState<string | null>(null);
-  // Brouillon ANNUEL du salaire brut, par index d'utilisateur. Le store reste
-  // MENSUEL (convention canonique : le moteur ré-annualise ×12, cf utils/salary) ;
-  // on convertit à la saisie. Sans brouillon, un input contrôlé affichant
-  // grossSalary×12 mangerait chaque chiffre tapé (round-trip ×12 ÷12 destructeur).
-  const [grossAnnualDraft, setGrossAnnualDraft] = React.useState<Record<number, string>>({});
 
   React.useEffect(() => {
     try {
@@ -58,7 +52,6 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
         const data = JSON.parse(dataStr);
         if (data.config) {
           setConfig(data.config);
-          setGrossAnnualDraft({}); // brut affiché = grossSalary×12 du profil chargé
           logAudit({ field: 'config', operation: 'replace', description: `Profil « ${name} » chargé` });
           showToast(`Profil "${name}" charge !`, 'success');
         }
@@ -85,7 +78,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
   };
 
   return (
-    <Card icon={<Icon name="settings" size={18} />} title="Configuration Utilisateurs (Salaires & Macro)">
+    <Card icon={<Icon name="settings" size={18} />} title="Profils & utilisateurs">
 
       <div className="mb-6 bg-black/30 p-4 rounded-xl border border-white/5 shadow-inner">
         <h3 className="text-body font-bold text-white mb-3">Profils Enregistres</h3>
@@ -129,7 +122,6 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   const newUsers = [...config.users];
                   newUsers.pop();
                   setConfig({ ...config, users: newUsers as [User, User] });
-                  setGrossAnnualDraft({}); // les index changent → on repart du store
                 }}
                 className="bg-danger-500/15 text-danger-300 px-3 py-1 rounded-card text-meta hover:bg-danger-500/25 transition-colors"
               >
@@ -141,7 +133,6 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                 onClick={() => {
                   const newUsers = [...config.users, { name: 'Conjoint(e)', age: 30, grossSalary: 0, netSalary: 0, canadaArrivalYear: new Date().getFullYear() - 5, color: '#bd7d9c' }];
                   setConfig({ ...config, users: newUsers as [User, User] });
-                  setGrossAnnualDraft({}); // les index changent → on repart du store
                 }}
                 className="bg-success-500/15 text-success-300 px-3 py-1 rounded-card text-meta hover:bg-success-500/25 transition-colors"
               >
@@ -217,252 +208,15 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   )}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div data-focus-section={`profile-user${idx + 1}-grossSalary`}>
-                  <label className="text-meta font-bold text-success-300">Salaire Brut annuel ($)</label>
-                  <input
-                    type="number"
-                    value={grossAnnualDraft[idx] ?? String((user.grossSalary || 0) * 12)}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      setGrossAnnualDraft((d) => ({ ...d, [idx]: raw }));
-                      const newUsers = [...config.users] as [User, User];
-                      // Saisi en ANNUEL → stocké en MENSUEL (convention du store/moteur).
-                      newUsers[idx] = { ...user, grossSalary: annualSalaryToMonthly(parseFloat(raw) || 0) };
-                      setConfig({ ...config, users: newUsers });
-                    }}
-                    className="w-full bg-dark border border-border rounded px-2 py-1 text-body text-white font-mono"
-                  />
-                </div>
-                <div data-focus-section={`profile-user${idx + 1}-netSalary`}>
-                  <label className="text-meta font-bold text-info-300">Salaire Net mensuel ($)</label>
-                  <input
-                    type="number"
-                    value={user.netSalary || user.salary || 0}
-                    onChange={(e) => {
-                      const newUsers = [...config.users] as [User, User];
-                      newUsers[idx] = { ...user, netSalary: parseFloat(e.target.value) || 0 };
-                      setConfig({ ...config, users: newUsers });
-                    }}
-                    className="w-full bg-dark border border-border rounded px-2 py-1 text-body text-white font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-white/5 space-y-2">
-                <div className="text-tiny text-ink-500 font-black uppercase tracking-widest">Options Fiscales</div>
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={!user.hasOwnedPropertyLast4Years}
-                      onChange={(e) => {
-                        const newUsers = [...config.users] as [User, User];
-                        newUsers[idx] = { ...user, hasOwnedPropertyLast4Years: !e.target.checked };
-                        setConfig({ ...config, users: newUsers });
-                      }}
-                      className="w-3 h-3 rounded border-white/10 bg-black text-info-500 focus:ring-info-500/50"
-                    />
-                    <span className="text-tiny text-ink-300 group-hover:text-info-400 transition-colors">Premier Acheteur (CELIAPP)</span>
-                  </label>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={user.hasChildren}
-                      onChange={(e) => {
-                        const newUsers = [...config.users] as [User, User];
-                        newUsers[idx] = { ...user, hasChildren: e.target.checked };
-                        setConfig({ ...config, users: newUsers });
-                      }}
-                      className="w-3 h-3 rounded border-white/10 bg-black text-info-500 focus:ring-info-500/50"
-                    />
-                    <span className="text-tiny text-ink-300 group-hover:text-pink-400 transition-colors">A des enfants (REEE)</span>
-                  </label>
-                  {user.hasChildren && (
-                    <input
-                      type="number"
-                      value={user.childCount || 1}
-                      onChange={(e) => {
-                        const newUsers = [...config.users] as [User, User];
-                        newUsers[idx] = { ...user, childCount: parseInt(e.target.value) || 1 };
-                        setConfig({ ...config, users: newUsers });
-                      }}
-                      className="w-12 bg-black/40 border border-white/10 rounded px-1.5 py-0.5 text-tiny text-white font-mono text-center"
-                      min={1} max={10}
-                    />
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 bg-black/20 p-1.5 rounded border border-white/5">
-                  <span className="text-tiny text-ink-300 uppercase font-black shrink-0 inline-flex items-center gap-1">FE <Icon name="budget" size={11} /></span>
-                  <input
-                    type="number"
-                    placeholder="Facteur Equiv. (ex: 0)"
-                    value={user.facteurEquivalence ?? 0}
-                    onChange={(e) => {
-                      const newUsers = [...config.users] as [User, User];
-                      newUsers[idx] = { ...user, facteurEquivalence: parseFloat(e.target.value) || 0 };
-                      setConfig({ ...config, users: newUsers });
-                    }}
-                    className="w-full bg-transparent border-none text-tiny text-white font-mono focus:ring-0 text-right p-0"
-                  />
-                </div>
-              </div>
-
-              {/* W5.1 — Profil détaillé (santé, carrière, identité) */}
-              <details className="mt-3 pt-3 border-t border-white/5">
-                <summary className="text-tiny font-bold text-ink-200 cursor-pointer hover:text-white">Profil détaillé (santé, carrière, identité)</summary>
-                <div className="mt-2 space-y-2">
-                  <div className="grid grid-cols-3 gap-1">
-                    <select
-                      value={user.gender ?? ''}
-                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,gender:(e.target.value||undefined) as Gender|undefined}; setConfig({...config,users:u}); }}
-                      className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
-                    >
-                      <option value="">Sexe</option><option value="M">Homme</option><option value="F">Femme</option><option value="X">Autre</option>
-                    </select>
-                    <select
-                      value={user.province ?? ''}
-                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,province:(e.target.value||undefined) as CanadianProvince|undefined}; setConfig({...config,users:u}); }}
-                      className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
-                    >
-                      <option value="">Province</option>
-                      <option value="QC">Québec</option><option value="ON">Ontario</option><option value="AB">Alberta</option>
-                      <option value="BC">C.-B.</option><option value="MB">Manitoba</option><option value="SK">Saskatchewan</option>
-                      <option value="NS">N.-É.</option><option value="NB">N.-B.</option><option value="NL">T.-N.</option>
-                      <option value="PE">Î.-P.-É.</option><option value="YT">Yukon</option><option value="NT">T.-N.-O.</option><option value="NU">Nunavut</option>
-                    </select>
-                    <select
-                      value={user.citizenship ?? ''}
-                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,citizenship:(e.target.value||undefined) as 'CA'|'US-person-CA'|'other'|undefined}; setConfig({...config,users:u}); }}
-                      className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
-                    >
-                      <option value="">Citoyenneté</option><option value="CA">Canadien</option><option value="US-person-CA">Dual CA/US (PFIC!)</option><option value="other">Autre</option>
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1">
-                    <select
-                      value={user.maritalStatus ?? ''}
-                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,maritalStatus:(e.target.value||undefined) as MaritalStatus|undefined}; setConfig({...config,users:u}); }}
-                      className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
-                    >
-                      <option value="">Statut civil</option>
-                      <option value="single">Célibataire</option><option value="married">Marié</option><option value="common-law">Conjoint de fait</option>
-                      <option value="separated">Séparé</option><option value="divorced">Divorcé</option><option value="widowed">Veuf</option>
-                    </select>
-                    <select
-                      value={user.employmentType ?? ''}
-                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,employmentType:(e.target.value||undefined) as EmploymentType|undefined}; setConfig({...config,users:u}); }}
-                      className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
-                    >
-                      <option value="">Type emploi</option>
-                      <option value="employee">Employé</option><option value="self-employed">Autonome</option>
-                      <option value="contractor">Contractuel</option><option value="business-owner">Entrepreneur</option>
-                      <option value="unemployed">Sans emploi</option><option value="retired">Retraité</option><option value="student">Étudiant</option>
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1">
-                    <select value={user.industry ?? ''}
-                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,industry:(e.target.value||undefined) as Industry|undefined}; setConfig({...config,users:u}); }}
-                      className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white">
-                      <option value="">Industrie...</option>
-                      <option value="tech">Tech</option><option value="finance">Finance</option><option value="health">Santé</option>
-                      <option value="public-sector">Secteur public</option><option value="education">Éducation</option>
-                      <option value="construction">Construction</option><option value="retail">Commerce</option>
-                      <option value="manufacturing">Manufacture</option><option value="energy">Énergie</option>
-                      <option value="transportation">Transport</option><option value="agriculture">Agriculture</option>
-                      <option value="media">Médias</option><option value="other">Autre</option>
-                    </select>
-                    <input aria-label="Années d'expérience professionnelle" type="number" placeholder="Ans expérience" value={user.yearsOfExperience ?? ''}
-                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,yearsOfExperience:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
-                      className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                    <select
-                      value={user.pensionPlan ?? ''}
-                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,pensionPlan:(e.target.value||undefined) as PensionPlan|undefined}; setConfig({...config,users:u}); }}
-                      className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
-                    >
-                      <option value="">Régime retraite</option>
-                      <option value="DB">DB (prestations dét.)</option><option value="DC">DC (cotisations dét.)</option>
-                      <option value="RPDB">RPDB</option><option value="none">Aucun</option>
-                    </select>
-                  </div>
-                  <div className="text-tiny text-ink-500 uppercase tracking-widest mt-2">Santé & longévité</div>
-                  <div className="grid grid-cols-2 gap-1">
-                    <select
-                      value={user.healthRating ?? ''}
-                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,healthRating:(e.target.value||undefined) as HealthRating|undefined}; setConfig({...config,users:u}); }}
-                      className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
-                    >
-                      <option value="">État santé</option><option value="excellent">Excellent</option><option value="good">Bon</option><option value="average">Moyen</option><option value="poor">Faible</option>
-                    </select>
-                    <select
-                      value={user.activityLevel ?? ''}
-                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,activityLevel:(e.target.value||undefined) as 'sedentary'|'light'|'moderate'|'active'|undefined}; setConfig({...config,users:u}); }}
-                      className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
-                    >
-                      <option value="">Activité physique</option><option value="sedentary">Sédentaire</option><option value="light">Légère</option><option value="moderate">Modérée</option><option value="active">Active</option>
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1">
-                    <label className="flex items-center gap-1 text-tiny text-ink-300">
-                      <input type="checkbox" checked={user.isSmoker ?? false}
-                        onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,isSmoker:e.target.checked}; setConfig({...config,users:u}); }} />
-                      Fumeur
-                    </label>
-                    <input aria-label="Âge au décès de la mère (espérance vie hérédité)" type="number" placeholder="Mère — âge décès" value={user.parentAgeAtDeath?.mother ?? ''}
-                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user, parentAgeAtDeath:{...user.parentAgeAtDeath, mother:Number(e.target.value)||undefined}}; setConfig({...config,users:u}); }}
-                      className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                    <input aria-label="Âge au décès du père (espérance vie hérédité)" type="number" placeholder="Père — âge décès" value={user.parentAgeAtDeath?.father ?? ''}
-                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user, parentAgeAtDeath:{...user.parentAgeAtDeath, father:Number(e.target.value)||undefined}}; setConfig({...config,users:u}); }}
-                      className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                  </div>
-                  <div className="text-tiny text-ink-500 uppercase tracking-widest mt-2">Rémunération variable</div>
-                  <div className="grid grid-cols-3 gap-1">
-                    <input aria-label="Bonus en pourcentage du brut" type="number" placeholder="Bonus % brut" value={user.bonusPctOfGross ?? ''}
-                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,bonusPctOfGross:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
-                      className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                    <input aria-label="RSU vesting annuel (dollars)" type="number" placeholder="RSU $/an" value={user.rsuVestingPerYear ?? ''}
-                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,rsuVestingPerYear:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
-                      className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                    <input aria-label="Valeur stock options (dollars)" type="number" placeholder="Stock opts $" value={user.stockOptionsValue ?? ''}
-                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,stockOptionsValue:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
-                      className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-1">
-                    <input aria-label="Revenus secondaires annuels (freelance, etc.)" type="number" placeholder="Side income $/an" value={user.sideIncomeAnnual ?? ''}
-                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,sideIncomeAnnual:Number(e.target.value)||undefined}; setConfig({...config,users:u}); }}
-                      className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                    <select
-                      value={user.payFrequency ?? ''}
-                      onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,payFrequency:(e.target.value||undefined) as 'biweekly'|'semimonthly'|'monthly'|'weekly'|undefined}; setConfig({...config,users:u}); }}
-                      className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white"
-                    >
-                      <option value="">Périodicité paie</option>
-                      <option value="weekly">Hebdo (52)</option><option value="biweekly">Bihebdo (26)</option>
-                      <option value="semimonthly">Bimensuel (24)</option><option value="monthly">Mensuel (12)</option>
-                    </select>
-                  </div>
-                </div>
-              </details>
             </div>
           ))}
         </div>
 
-        <div>
-          <label className="block text-body text-ink-300 mb-2">Mode de Repartition</label>
-          <select
-            value={config.splitMode}
-            onChange={(e) => setConfig({ ...config, splitMode: e.target.value as BudgetConfig['splitMode'] })}
-            className="w-full bg-dark border border-border rounded px-3 py-2 text-white"
-          >
-            <option value="prorata">Prorata des Salaires Nets</option>
-            <option value="50/50">50 / 50</option>
-            <option value="custom">Personnalise</option>
-          </select>
-        </div>
+        <p className="text-meta text-ink-500 italic">
+          Salaires &amp; options fiscales → onglet <strong className="text-ink-300">Impôts</strong> · Enfants (REEE) →
+          {' '}<strong className="text-ink-300">Enfant</strong> · Profil détaillé (santé/carrière) →
+          {' '}<strong className="text-ink-300">Retraite</strong> · Mode de répartition → <strong className="text-ink-300">Budget</strong>.
+        </p>
       </div>
     </Card>
   );

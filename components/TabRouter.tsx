@@ -83,26 +83,32 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                 {/* ANIM — fondu d'entrée à chaque changement d'onglet (opacité pure, key=tab). */}
                 <div key={activeTab} className="animate-tab-in motion-reduce:animate-none">
                 {activeTab === Tab.DASHBOARD && (
-                    <Dashboard
-                        transactions={state.transactions}
-                        assets={state.assets}
-                        initialBalances={state.initialBalances}
-                        budgetItems={state.budgetItems}
-                        realEstateGoals={state.realEstateGoals}
-                        childGoals={state.childGoals || []}
-                        travelGoals={state.travelGoals}
-                        lifeEvents={state.lifeEvents}
-                        retirementGoal={state.retirementGoal}
-                        debts={state.debts}
-                        config={state.config}
-                        apiKey={state.apiKeys.anthropic}
-                        calculatedMonthlySavings={calculatedMonthlySavings}
-                        onNavigate={setActiveTab}
-                        isPrivacyMode={isPrivacyMode}
-                    />
+                    <PageSetupGate tab={Tab.DASHBOARD}>
+                        <Dashboard
+                            transactions={state.transactions}
+                            assets={state.assets}
+                            initialBalances={state.initialBalances}
+                            budgetItems={state.budgetItems}
+                            realEstateGoals={state.realEstateGoals}
+                            childGoals={state.childGoals || []}
+                            travelGoals={state.travelGoals}
+                            lifeEvents={state.lifeEvents}
+                            retirementGoal={state.retirementGoal}
+                            debts={state.debts}
+                            config={state.config}
+                            apiKey={state.apiKeys.anthropic}
+                            calculatedMonthlySavings={calculatedMonthlySavings}
+                            onNavigate={setActiveTab}
+                            isPrivacyMode={isPrivacyMode}
+                        />
+                    </PageSetupGate>
                 )}
 
-                {activeTab === Tab.ACTIONS && <NextBestActionsPage asPage />}
+                {activeTab === Tab.ACTIONS && (
+                    <PageSetupGate tab={Tab.ACTIONS}>
+                        <NextBestActionsPage asPage />
+                    </PageSetupGate>
+                )}
 
                 {activeTab === Tab.TRANSACTIONS && (
                     <PageSetupGate tab={Tab.TRANSACTIONS}>
@@ -269,17 +275,19 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                 )}
 
                 {activeTab === Tab.ASSISTANT && (
-                    <AiAssistant
-                        // Phase 4 A5: clé Anthropic Claude (Gemini retiré)
-                        apiKey={state.apiKeys.anthropic}
-                        transactions={state.transactions}
-                        budgetItems={state.budgetItems}
-                        assets={state.assets}
-                        projection={state.projection}
-                        realEstateGoal={state.realEstateGoals[0]}
-                        config={state.config}
-                        initialBalances={state.initialBalances}
-                    />
+                    <PageSetupGate tab={Tab.ASSISTANT}>
+                        <AiAssistant
+                            // Phase 4 A5: clé Anthropic Claude (Gemini retiré)
+                            apiKey={state.apiKeys.anthropic}
+                            transactions={state.transactions}
+                            budgetItems={state.budgetItems}
+                            assets={state.assets}
+                            projection={state.projection}
+                            realEstateGoal={state.realEstateGoals[0]}
+                            config={state.config}
+                            initialBalances={state.initialBalances}
+                        />
+                    </PageSetupGate>
                 )}
                 </div>
             </ErrorBoundary>

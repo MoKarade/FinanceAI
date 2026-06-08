@@ -124,6 +124,28 @@ export const PAGE_SETUP: Partial<Record<Tab, PageSetup>> = {
         optOut: { key: 'lifeProjects', label: "Aucun projet pour l'instant" },
         allowCreateInPage: true,
     },
+    [Tab.DASHBOARD]: {
+        mode: 'hard',
+        title: "Vue d'ensemble",
+        intro:
+            "Pour un aperçu utile (et non un tableau de bord vide), il me faut au moins ton salaire. " +
+            'Saisis-le, importe un talon, ou explore avec des données de test.',
+        requirementIds: ['salary'],
+    },
+    [Tab.ACTIONS]: {
+        mode: 'hard',
+        title: 'Prochaine action',
+        intro:
+            'Pour te suggérer la meilleure prochaine action (analyse IA), il me faut ta clé API ' +
+            'Anthropic et ton salaire.',
+        requirementIds: ['anthropicKey', 'salary'],
+    },
+    [Tab.ASSISTANT]: {
+        mode: 'hard',
+        title: 'Assistant IA',
+        intro: "L'assistant a besoin de ta clé API Anthropic (Claude) pour répondre à tes questions.",
+        requirementIds: ['anthropicKey'],
+    },
 };
 
 const EMPTY_FIELDS: RequirementField[] = [];

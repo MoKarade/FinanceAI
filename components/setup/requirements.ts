@@ -56,7 +56,8 @@ export type RequirementId =
     | 'children'
     | 'transactions'
     | 'debts'
-    | 'lifeProjects';
+    | 'lifeProjects'
+    | 'anthropicKey';
 
 export const REQUIREMENTS: Record<RequirementId, Requirement> = {
     salary: {
@@ -166,6 +167,14 @@ export const REQUIREMENTS: Record<RequirementId, Requirement> = {
         help: 'Au moins un projet ou voyage planifié.',
         icon: 'life-projects',
         isMet: (s) => (s.travelGoals?.length ?? 0) > 0 || (s.lifeEvents?.length ?? 0) > 0,
+    },
+    anthropicKey: {
+        id: 'anthropicKey',
+        label: 'Clé API Anthropic (Claude)',
+        help: 'Nécessaire pour les fonctions IA. Se saisit dans Configuration (jamais stockée dans les backups).',
+        icon: 'sparkles',
+        isMet: (s) => !!(s.apiKeys?.anthropic && s.apiKeys.anthropic.trim()),
+        focus: { tab: Tab.SETTINGS, section: 'apiKeys-anthropic' },
     },
 };
 

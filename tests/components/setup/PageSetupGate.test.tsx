@@ -47,9 +47,9 @@ describe('PageSetupGate (pilote Impôts)', () => {
     });
 
     it('laisse passer une page sans prérequis déclarés (pas de gate)', () => {
-        // Assistant/Dashboard ne sont pas gatés (pages agrégées/dérivées).
+        // Configuration n'est pas gatée (c'est là qu'on saisit les données).
         render(
-            <PageSetupGate tab={Tab.ASSISTANT}>
+            <PageSetupGate tab={Tab.SETTINGS}>
                 <div>CONTENU_LIBRE</div>
             </PageSetupGate>,
         );

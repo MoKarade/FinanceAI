@@ -9,7 +9,7 @@
 // dérivées.
 
 import { mulberry32 } from './helpers';
-import { calculateCeliRoom, getResidencyStartYear, RRSP_ANNUAL_LIMITS } from '../../utils/tax';
+import { calculateCeliRoom, getResidencyStartYear, RRSP_ANNUAL_LIMITS, rrqAdjustmentFactor as computeRrqFactor } from '../../utils/tax';
 import type { FutureScenarioType } from '../projection';
 
 /**
@@ -100,13 +100,9 @@ export function computeRrqAdjustment(
 ): RrqAdjustmentResult {
     const effectivePensionStartAge = delayPensions ? 70 : 65;
     const rrqMonthsFromRef = (effectivePensionStartAge - 65) * 12;
-
-    let rrqAdjustmentFactor = 1.0;
-    if (rrqMonthsFromRef < 0) {
-        rrqAdjustmentFactor = 1 + Math.max(rrqMonthsFromRef, -60) * 0.006;
-    } else if (rrqMonthsFromRef > 0) {
-        rrqAdjustmentFactor = 1 + Math.min(rrqMonthsFromRef, 60) * 0.007;
-    }
+    // Facteur d'ajustement RRQ : source unique utils/tax.ts (anticipation −0,6 %/mois,
+    // report +0,7 %/mois, plafond ±60 mois). Identique à l'ancien calcul en dur.
+    const rrqAdjustmentFactor = computeRrqFactor(rrqMonthsFromRef);
 
     return {
         effectivePensionStartAge,

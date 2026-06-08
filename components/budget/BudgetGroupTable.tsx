@@ -1,5 +1,6 @@
 import React from 'react';
 import { BudgetCategory } from '../../types';
+import { Icon } from '../ui/Icon';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip } from 'recharts';
 import { LineChart, Line, YAxis as LYAxis } from 'recharts';
 
@@ -218,10 +219,11 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                             <button
                                                 type="button"
                                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDeleteItem(item.id); }}
-                                                className="text-ink-500 hover:text-danger-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                className="inline-flex text-ink-500 hover:text-danger-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                                                 title="Supprimer la catégorie"
+                                                aria-label="Supprimer la catégorie"
                                             >
-                                                ✕
+                                                <Icon name="close" size={14} />
                                             </button>
                                         </td>
                                     </tr>

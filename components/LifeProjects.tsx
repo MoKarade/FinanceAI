@@ -48,7 +48,6 @@ export const LifeProjects: React.FC<LifeProjectsProps> = ({
             <PageHeader
                 icon={<Icon name="life-projects" size={28} />}
                 title="Projets de vie"
-                subtitle="Projets et jalons à venir"
             />
 
             {/* Recap rapide + sous-onglet selector */}
@@ -73,9 +72,9 @@ export const LifeProjects: React.FC<LifeProjectsProps> = ({
                     value={view}
                     onChange={(v) => setView(v as typeof view)}
                     options={[
-                        { value: 'all', label: 'Tout', icon: '🗺️' },
-                        { value: 'travel', label: 'Voyages', icon: '✈️' },
-                        { value: 'events', label: 'Événements', icon: '🎯' },
+                        { value: 'all', label: 'Tout' },
+                        { value: 'travel', label: 'Voyages' },
+                        { value: 'events', label: 'Événements' },
                     ]}
                 />
             </div>

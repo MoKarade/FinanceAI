@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal } from './Modal';
 import { Button } from './Button';
+import { Icon } from './Icon';
 
 interface ConfirmModalProps {
     isOpen: boolean;
@@ -32,7 +33,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         warning: 'primary',
         primary: 'primary',
     };
-    const icon = confirmVariant === 'danger' ? '⚠️' : '❓';
+    const icon = <Icon name={confirmVariant === 'danger' ? 'alert' : 'status'} size={20} className={confirmVariant === 'danger' ? 'text-danger-400' : 'text-info-400'} />;
 
     return (
         <Modal

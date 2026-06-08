@@ -184,7 +184,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                     type="button"
                                     onClick={validateSymbol}
                                     disabled={!symbol.trim() || isValidating}
-                                    className="px-3 py-2 bg-primary text-white rounded font-bold text-body hover:bg-primary/80 disabled:opacity-50"
+                                    className="px-3 py-2 bg-primary text-dark rounded font-bold text-body hover:bg-primary/80 disabled:opacity-50"
                                 >
                                     {isValidating ? '⏳' : 'Valider'}
                                 </button>
@@ -352,7 +352,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                         type="button"
                         onClick={handleSubmit}
                         disabled={!ready || !quantity || !buyPrice || (manualMode && !manualPrice)}
-                        className="px-4 py-2 bg-primary hover:bg-primary/80 text-white rounded font-bold text-body transition-colors disabled:opacity-50"
+                        className="px-4 py-2 bg-primary hover:bg-primary/80 text-dark rounded font-bold text-body transition-colors disabled:opacity-50"
                     >
                         Ajouter au portefeuille
                     </button>

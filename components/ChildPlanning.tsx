@@ -229,7 +229,6 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
             <PageHeader
                 icon={<Icon name="child" size={28} />}
                 title="Planification Enfant"
-                subtitle="Coûts et impact jusqu'à 25 ans"
                 badge={
                     <div className="flex items-center gap-2">
                         {/* Phase F.9 — indicateur d'activation FUTUR uniformisé avec Immobilier */}
@@ -377,7 +376,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                         </div>
                     </Card>
 
-                    <Card icon={<Icon name="money" size={18} />} title="Allocations & Coûts de base">
+                    <Card icon={<Icon name="money" size={18} />} title="Allocations">
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
                                 <label className="text-meta text-ink-200">Allocations (ACE + Soutien QC)</label>
@@ -401,7 +400,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
 
                 {/* GRAPHIQUES */}
                 <div className="lg:col-span-2 space-y-5">
-                    <Card icon={<Icon name="chart" size={18} />} title="Coût annuel par âge (décomposé)" action={
+                    <Card icon={<Icon name="chart" size={18} />} title="Coût par âge" action={
                         <div className="text-meta text-ink-300 font-mono">Total : <span className="text-white font-bold privacy-blur">{fmt(costTimeline.totalCost)}</span></div>
                     }>
                         <ZoomContainer zoom={zoomCost} className="h-[280px]">
@@ -413,16 +412,16 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     <Tooltip contentStyle={{ backgroundColor: '#151922', borderColor: '#333', borderRadius: 8 }} formatter={(v: number, name: string) => [fmt(Math.abs(v)), name === 'Bénéfices' ? '↩ Allocations' : name]} labelFormatter={l => `Âge ${l} ans`} />
                                     <Legend />
                                     <ReferenceLine y={0} stroke="#555" />
-                                    <Bar dataKey="Essentiel" stackId="a" fill="#6366f1" name="Essentiel" />
-                                    <Bar dataKey="Garde_École_Activités" stackId="a" fill="#ec4899" name="Garde / École / Activités" />
-                                    <Bar dataKey="Ponctuel" stackId="a" fill="#f59e0b" name="Ponctuel (naissance, voiture…)" />
-                                    <Bar dataKey="Bénéfices" stackId="a" fill="#10b981" name="Allocations (négatif = bénéfice)" />
+                                    <Bar dataKey="Essentiel" stackId="a" fill="#6f72c4" name="Essentiel" />
+                                    <Bar dataKey="Garde_École_Activités" stackId="a" fill="#bd7d9c" name="Garde / École / Activités" />
+                                    <Bar dataKey="Ponctuel" stackId="a" fill="#c2974f" name="Ponctuel (naissance, voiture…)" />
+                                    <Bar dataKey="Bénéfices" stackId="a" fill="#4f9d86" name="Allocations (négatif = bénéfice)" />
                                 </BarChart>
                             </ResponsiveContainer>
                         </ZoomContainer>
                     </Card>
 
-                    <Card icon={<Icon name="graduation" size={18} />} title="Simulateur REEE — Croissance jusqu'à 17 ans" action={
+                    <Card icon={<Icon name="graduation" size={18} />} title="Simulateur REEE" action={
                         <div className="flex items-center gap-2">
                             {projectedReeeAt18 !== null && projectedReeeAt18 > 0 && (
                                 <Badge
@@ -431,7 +430,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     onClick={() => navigateWithFocus(TabEnum.FUTURE)}
                                     title="Projection officielle (FutureProjection) au 17e anniversaire — clic pour ouvrir"
                                 >
-                                    🔗 {fmt(projectedReeeAt18)}
+                                    <Icon name="link" size={11} className="inline mr-1" />{fmt(projectedReeeAt18)}
                                 </Badge>
                             )}
                             {respCovers != null ? (
@@ -480,8 +479,8 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 <ComposedChart data={zoomResp.visibleData} margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="respGrad" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                            <stop offset="5%" stopColor="#5b82bf" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#5b82bf" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
@@ -489,8 +488,8 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     <YAxis stroke="#666" tick={{ fontSize: 10 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
                                     <Tooltip contentStyle={{ backgroundColor: '#151922', borderColor: '#333', borderRadius: 8 }} formatter={(v: number) => fmt(v)} labelFormatter={l => `Âge ${l} ans`} />
                                     <Legend />
-                                    <Area type="monotone" dataKey="Solde" stroke="#3b82f6" fill="url(#respGrad)" strokeWidth={2} name="Solde Total" />
-                                    <Bar dataKey="Subvention" fill="#10b981" name="Subventions reçues" />
+                                    <Area type="monotone" dataKey="Solde" stroke="#5b82bf" fill="url(#respGrad)" strokeWidth={2} name="Solde Total" />
+                                    <Bar dataKey="Subvention" fill="#4f9d86" name="Subventions reçues" />
                                 </ComposedChart>
                             </ResponsiveContainer>
                             </ZoomContainer>

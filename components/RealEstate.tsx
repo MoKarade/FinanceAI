@@ -320,7 +320,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                     : 'bg-white/5 border-white/10 text-ink-300 hover:bg-white/10'
                             }`}
                         >
-                            <span>🏠 {g.name || (g.isPrimaryResidence ? 'Résidence' : `Propriété ${idx + 1}`)}</span>
+                            <span className="inline-flex items-center gap-1.5"><Icon name="real-estate" size={14} />{g.name || (g.isPrimaryResidence ? 'Résidence' : `Propriété ${idx + 1}`)}</span>
                             {g.isActive && <span className="w-2 h-2 rounded-full bg-success-500 animate-pulse" aria-label="active" />}
                             {goals.length > 1 && (
                                 <span
@@ -329,7 +329,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                     role="button"
                                     aria-label={`Supprimer ${g.name}`}
                                 >
-                                    ✕
+                                    <Icon name="close" size={13} />
                                 </span>
                             )}
                         </button>
@@ -345,7 +345,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
 
             {/* Property name editor */}
             <div className="flex items-center gap-3">
-                <span className="text-h1 text-ink-50">🏢 {propertyName}</span>
+                <span className="text-h1 text-ink-50 inline-flex items-center gap-2"><Icon name="building" size={20} className="text-ink-400" />{propertyName}</span>
                 <input
                     type="text"
                     value={propertyName}
@@ -407,7 +407,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                         />
                     </StatGrid>
 
-                    <Card icon={<Icon name="chart" size={18} />} title="Scénarios Comparatifs (Habiter vs Louer vs Bourse)" action={
+                    <Card icon={<Icon name="chart" size={18} />} title="Scénarios comparatifs" action={
                         projectedEquityAtAmortEnd !== null && projectedEquityAtAmortEnd > 0 ? (
                             <Badge
                                 variant="info"
@@ -443,7 +443,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                 <span className="flex items-center gap-1">
                                                     Rendement Boursier
                                                     {!marketReturnOverridden && globalReturnRate !== undefined && (
-                                                        <span title="Synchronisé avec hypothèse globale (Futur)" className="text-info-400 font-normal text-tiny normal-case">🔗</span>
+                                                        <span title="Synchronisé avec hypothèse globale (Futur)" className="inline-flex text-ink-400"><Icon name="link" size={12} /></span>
                                                     )}
                                                 </span>
                                                 <span className="flex items-center gap-2">
@@ -509,11 +509,11 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                 <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: 11, fontWeight: 'bold' }} />
 
                                                 {(activeGoal.isPrimaryResidence || !activeGoal.isRented) && (
-                                                    <Area type="monotone" dataKey="Acheter (Résidence)" stroke="#10b981" fill="#10b981" fillOpacity={0.1} strokeWidth={3} />
+                                                    <Area type="monotone" dataKey="Acheter (Résidence)" stroke="#4f9d86" fill="#4f9d86" fillOpacity={0.1} strokeWidth={3} />
                                                 )}
 
                                                 {(activeGoal.isPrimaryResidence || !activeGoal.isRented) && (
-                                                    <Area type="monotone" dataKey="Louer + Investir Reste" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.1} strokeWidth={3} />
+                                                    <Area type="monotone" dataKey="Louer + Investir Reste" stroke="#8a7cc0" fill="#8a7cc0" fillOpacity={0.1} strokeWidth={3} />
                                                 )}
 
                                                 {(!activeGoal.isPrimaryResidence && activeGoal.isRented) && (
@@ -521,7 +521,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                 )}
 
                                                 {(!activeGoal.isPrimaryResidence && activeGoal.isRented) && (
-                                                    <Area type="monotone" dataKey="Bourse (Placer Cash Initial)" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.1} strokeWidth={3} />
+                                                    <Area type="monotone" dataKey="Bourse (Placer Cash Initial)" stroke="#c2974f" fill="#c2974f" fillOpacity={0.1} strokeWidth={3} />
                                                 )}
                                             </AreaChart>
                                         </ResponsiveContainer>
@@ -543,7 +543,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                         </div>
                     </Card>
 
-                    <Card icon={<Icon name="clipboard" size={18} />} title="Tableau d'Amortissement Annuel">
+                    <Card icon={<Icon name="clipboard" size={18} />} title="Amortissement">
                         <div className="overflow-x-auto">
                             <div className="mb-3 flex flex-wrap gap-4 text-meta">
                                 <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-danger-500 inline-block" />Intérêts totaux payés : <span className="font-bold text-danger-400 privacy-blur">{formatCurrency(amortizationData.totalInterest)}</span></div>

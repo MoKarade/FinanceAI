@@ -78,7 +78,6 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
             <PageHeader
                 icon={<Icon name="debt" size={28} />}
                 title="Gestion de la Dette"
-                subtitle="Stratégie de remboursement"
                 badge={<Badge variant={totalDebt > 0 ? 'danger' : 'success'} size="md">Total Dû: {totalDebt.toLocaleString()} $</Badge>}
             />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -115,7 +114,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                             )}
                         </div>
                     </Card>
-                    <Card title="Stratégie de Remboursement">
+                    <Card title="Remboursement">
                         <div className="space-y-4">
                             <div>
                                 <label className="flex justify-between text-meta text-ink-200 mb-1"><span>Paiement Mensuel Supplémentaire</span><span className="font-bold text-green-400">{extraPayment}$</span></label>
@@ -130,7 +129,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                     </Card>
                 </div>
                 <div className="lg:col-span-2">
-                    <Card title="Projection d'Extinction de la Dette">
+                    <Card title="Extinction de la dette">
                         <ZoomContainer zoom={zoom} style={{ width: '100%', height: '350px', minHeight: '350px' }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={zoom.visibleData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>

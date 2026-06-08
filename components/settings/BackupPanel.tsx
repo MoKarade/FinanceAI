@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { z } from 'zod';
 import { Card } from '../ui/Card';
+import { Icon } from '../ui/Icon';
 import { showToast } from '../ui/Toast';
 import { downloadBackup, readBackupFile, defaultBackupFilename, CloudBackupError } from '../../services/cloudBackup';
 import { markBackupDone } from '../../services/backupReminder';
@@ -235,7 +236,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-start gap-3 mb-4">
-              <div className="text-2xl mt-0.5">🔐</div>
+              <Icon name="lock" size={22} className="mt-0.5 text-ink-300 shrink-0" />
               <div className="flex-1">
                 <h3 className="text-white font-bold text-base mb-2">Sauvegarde Chiffrée</h3>
                 <p className="text-ink-300 text-meta leading-relaxed">
@@ -283,7 +284,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
               <button
                 onClick={doEncryptedExport}
                 disabled={encWorking || exportPassphrase.length < 8 || exportPassphrase !== exportPassphraseConfirm}
-                className="px-4 py-2 rounded-xl bg-primary hover:bg-success-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-body font-bold shadow-lg active:scale-95 transition-all"
+                className="px-4 py-2 rounded-xl bg-primary hover:bg-success-500 disabled:opacity-40 disabled:cursor-not-allowed text-dark text-body font-bold shadow-lg active:scale-95 transition-all"
               >
                 {encWorking ? 'Chiffrement…' : 'Exporter chiffré'}
               </button>
@@ -303,7 +304,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-start gap-3 mb-4">
-              <div className="text-2xl mt-0.5">🔓</div>
+              <Icon name="unlock" size={22} className="mt-0.5 text-ink-300 shrink-0" />
               <div className="flex-1">
                 <h3 className="text-white font-bold text-base mb-1">Déchiffrer la Sauvegarde</h3>
                 <p className="text-ink-500 text-meta font-mono break-all">{encryptedFile.name}</p>
@@ -333,7 +334,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
               <button
                 onClick={doEncryptedImport}
                 disabled={encWorking || importPassphrase.length < 8}
-                className="px-4 py-2 rounded-xl bg-primary hover:bg-success-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-body font-bold shadow-lg active:scale-95 transition-all"
+                className="px-4 py-2 rounded-xl bg-primary hover:bg-success-500 disabled:opacity-40 disabled:cursor-not-allowed text-dark text-body font-bold shadow-lg active:scale-95 transition-all"
               >
                 {encWorking ? 'Déchiffrement…' : 'Déchiffrer'}
               </button>
@@ -353,7 +354,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-start gap-3 mb-4">
-              <div className="text-2xl mt-0.5">⚠️</div>
+              <Icon name="alert" size={22} className="mt-0.5 text-warning-400 shrink-0" />
               <div className="flex-1">
                 <h3 className="text-white font-bold text-base mb-2">Restauration Complète</h3>
                 <div className="text-ink-300 text-body space-y-1 bg-black/30 p-3 rounded-lg mb-3">
@@ -439,7 +440,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
             <div className="flex gap-3 flex-shrink-0">
               <button
                 onClick={() => { setExportPassphrase(''); setExportPassphraseConfirm(''); setShowExportEncModal(true); }}
-                className="px-4 py-2 bg-primary hover:bg-success-500 text-white rounded-lg text-body font-bold flex items-center gap-2 shadow-lg"
+                className="px-4 py-2 bg-primary hover:bg-success-500 text-dark rounded-lg text-body font-bold flex items-center gap-2 shadow-lg"
               >
                 Exporter chiffré
               </button>

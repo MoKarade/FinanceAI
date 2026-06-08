@@ -7,6 +7,7 @@
 // barre de progression alimentée par les messages de progrès du worker.
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Icon } from '../ui/Icon';
 import type { SimulationParams, RobustnessRanking } from '../../services/projection';
 import { runRobustnessRankingAsync, type RobustnessProgress } from '../../services/projection/runAsync';
 
@@ -62,7 +63,7 @@ export const RobustnessPanel: React.FC<Props> = ({ params, iterationsPerStrategy
         <div className="mt-3 rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3.5">
             <div className="flex items-center justify-between gap-2">
                 <span className="text-meta font-black text-white tracking-tight flex items-center gap-1.5">
-                    <span aria-hidden="true">🎲</span> Robustesse des stratégies
+                    <Icon name="dice" size={14} className="text-ink-300" /> Robustesse des stratégies
                 </span>
                 {status === 'done' && bestRate !== null && (
                     <span className="text-tiny font-bold text-indigo-300">
@@ -101,7 +102,7 @@ export const RobustnessPanel: React.FC<Props> = ({ params, iterationsPerStrategy
             )}
 
             {status === 'error' && (
-                <p className="mt-3 text-tiny text-red-300">⚠️ {error}</p>
+                <p className="mt-3 text-tiny text-red-300 flex items-center gap-1.5"><Icon name="alert" size={12} /> {error}</p>
             )}
 
             {status === 'done' && ranking && (

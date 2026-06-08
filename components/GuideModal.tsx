@@ -101,7 +101,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
                                 <p className="text-ink-300 text-body mt-1">{content.desc}</p>
                             </div>
                         </div>
-                        <button onClick={onClose} className="text-ink-300 hover:text-white text-2xl transition-colors" aria-label="Fermer le guide">✕</button>
+                        <button onClick={onClose} className="inline-flex text-ink-300 hover:text-white transition-colors" aria-label="Fermer le guide"><Icon name="close" size={22} /></button>
                     </div>
                 </div>
 

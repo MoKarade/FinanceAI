@@ -70,7 +70,7 @@ export function compareLifeScenarios(params: SimulationParams): ScenarioComparis
         bestEstateNetWorth: best?.estateNetWorth ?? 0,
         results,
         explanation: best
-            ? `Meilleur avenir: ${best.icon} ${best.strategyName}. Écart entre le meilleur et le pire: ${Math.round(gain).toLocaleString('fr-CA')}\$ (+${gainPct.toFixed(1)}%).`
+            ? `Meilleur avenir: ${best.strategyName}. Écart entre le meilleur et le pire: ${Math.round(gain).toLocaleString('fr-CA')}\$ (+${gainPct.toFixed(1)}%).`
             : 'Aucun résultat disponible.',
     };
 }

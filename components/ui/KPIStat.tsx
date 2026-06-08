@@ -19,13 +19,17 @@ interface KPIStatProps {
     onClick?: () => void;
 }
 
+// Refonte sobre (choix Marc) : plus de bordure gauche colorée par variante —
+// bordure neutre uniforme. La sémantique (positif/négatif) reste portée par la
+// couleur des VALEURS, pas par un liseré « rainbow ».
+const NEUTRAL_BORDER = 'border-l-2 border-l-white/10 border-r border-t border-b border-white/5';
 const VARIANT_BORDER: Record<KPIVariant, string> = {
     default: 'border-white/5',
-    success: 'border-l-4 border-l-success-500 border-r border-t border-b border-white/5',
-    warning: 'border-l-4 border-l-warning-500 border-r border-t border-b border-white/5',
-    danger:  'border-l-4 border-l-danger-500  border-r border-t border-b border-white/5',
-    info:    'border-l-4 border-l-info-500    border-r border-t border-b border-white/5',
-    primary: 'border-l-4 border-l-primary     border-r border-t border-b border-white/5',
+    success: NEUTRAL_BORDER,
+    warning: NEUTRAL_BORDER,
+    danger:  NEUTRAL_BORDER,
+    info:    NEUTRAL_BORDER,
+    primary: NEUTRAL_BORDER,
 };
 
 const detectTrendColor = (trend: number | string | undefined): 'success' | 'danger' | 'neutral' => {

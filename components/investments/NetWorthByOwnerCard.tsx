@@ -28,8 +28,8 @@ export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets
 
     const name1 = users[0]?.name || 'Utilisateur 1';
     const name2 = users[1]?.name || 'Conjoint(e)';
-    const color1 = users[0]?.color || '#10b981';
-    const color2 = users[1]?.color || '#3b82f6';
+    const color1 = users[0]?.color || '#4f9d86';
+    const color2 = users[1]?.color || '#5b82bf';
 
     const bd = computeNetWorthByOwner(assets, 0, true);
 
@@ -40,7 +40,7 @@ export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets
     const buckets: Array<{ label: string; value: number; color: string }> = [
         { label: name1, value: bd.user1, color: color1 },
         { label: name2, value: bd.user2, color: color2 },
-        { label: 'Commun', value: bd.joint, color: '#a78bfa' },
+        { label: 'Commun', value: bd.joint, color: '#9b8fcf' },
     ];
 
     return (

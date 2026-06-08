@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { ComposedChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceDot } from 'recharts';
 import { useTimeChartZoom } from '../../hooks/useTimeChartZoom';
 import { splitEventIcon, ClickableEventIcon } from './ProjectionTooltip';
+import { Icon, type IconName } from '../ui/Icon';
 import { ProjectionChartPoint } from '../../services/projection/types';
 
 /**
@@ -33,14 +34,14 @@ interface AccountDef {
 }
 
 const ACCOUNTS: AccountDef[] = [
-    { key: 'Liquidites', label: 'Cash (Coussin)', color: '#4b5563', gainKey: 'MarketGrowthLiquid', flowKey: 'NetTransferLiquid' },
-    { key: 'CELI', label: 'CELI', color: '#10b981', gainKey: 'MarketGrowthCELI', flowKey: 'NetTransferCELI', roomMaxKey: 'CELIMax', contribKey: 'ContribCELI' },
-    { key: 'CELIAPP', label: 'CELIAPP (FHSA)', color: '#2dd4bf', gainKey: 'MarketGrowthCELIAPP', flowKey: 'NetTransferCELIAPP', roomMaxKey: 'CELIAPPMax', contribKey: 'ContribCELIAPP' },
-    { key: 'REER', label: 'REER', color: '#3b82f6', gainKey: 'MarketGrowthREER', flowKey: 'NetTransferREER', roomMaxKey: 'REERMax', contribKey: 'ContribREER' },
-    { key: 'REEE', label: 'REEE (Études)', color: '#06b6d4', gainKey: 'MarketGrowthREEE', flowKey: 'NetTransferREEE' },
-    { key: 'NonReg', label: 'Non-Enregistré', color: '#f59e0b', gainKey: 'MarketGrowthNonReg', flowKey: 'NetTransferNonReg' },
-    { key: 'Crypto', label: 'Crypto', color: '#a855f7', gainKey: 'MarketGrowthCrypto', flowKey: 'NetTransferCrypto' },
-    { key: 'Immobilier', label: 'Immobilier', color: '#ec4899' },
+    { key: 'Liquidites', label: 'Cash (Coussin)', color: '#5a6478', gainKey: 'MarketGrowthLiquid', flowKey: 'NetTransferLiquid' },
+    { key: 'CELI', label: 'CELI', color: '#4f9d86', gainKey: 'MarketGrowthCELI', flowKey: 'NetTransferCELI', roomMaxKey: 'CELIMax', contribKey: 'ContribCELI' },
+    { key: 'CELIAPP', label: 'CELIAPP (FHSA)', color: '#5cae9f', gainKey: 'MarketGrowthCELIAPP', flowKey: 'NetTransferCELIAPP', roomMaxKey: 'CELIAPPMax', contribKey: 'ContribCELIAPP' },
+    { key: 'REER', label: 'REER', color: '#5b82bf', gainKey: 'MarketGrowthREER', flowKey: 'NetTransferREER', roomMaxKey: 'REERMax', contribKey: 'ContribREER' },
+    { key: 'REEE', label: 'REEE (Études)', color: '#5093a8', gainKey: 'MarketGrowthREEE', flowKey: 'NetTransferREEE' },
+    { key: 'NonReg', label: 'Non-Enregistré', color: '#c2974f', gainKey: 'MarketGrowthNonReg', flowKey: 'NetTransferNonReg' },
+    { key: 'Crypto', label: 'Crypto', color: '#9277bd', gainKey: 'MarketGrowthCrypto', flowKey: 'NetTransferCrypto' },
+    { key: 'Immobilier', label: 'Immobilier', color: '#bd7d9c' },
 ];
 
 // G19 — espace de cotisation gagné par année (CELI/REER). Dérivation par
@@ -80,7 +81,7 @@ interface AccountPoint {
 }
 
 type ReasonTone = 'pos' | 'neg' | 'in' | 'out';
-interface MovementReason { icon: string; text: string; tone: ReasonTone; }
+interface MovementReason { icon: IconName; text: string; tone: ReasonTone; }
 
 const fmtMoney = (n: number) => `${Math.round(n).toLocaleString('fr-CA')} $`;
 
@@ -91,10 +92,10 @@ const fmtMoney = (n: number) => `${Math.round(n).toLocaleString('fr-CA')} $`;
 function explainMovement(d: AccountPoint): MovementReason[] {
     if (!d.hasDecomp) return [];
     const out: MovementReason[] = [];
-    if (d.gain > 0.5) out.push({ icon: '📈', text: `Rendement placements +${fmtMoney(d.gain)}`, tone: 'pos' });
-    else if (d.gain < -0.5) out.push({ icon: '📉', text: `Perte de marché ${fmtMoney(d.gain)}`, tone: 'neg' });
-    if (d.flow > 0.5) out.push({ icon: '💰', text: `Dépôt (argent ajouté) +${fmtMoney(d.flow)}`, tone: 'in' });
-    else if (d.flow < -0.5) out.push({ icon: '🏧', text: `Retrait (argent sorti) ${fmtMoney(d.flow)}`, tone: 'out' });
+    if (d.gain > 0.5) out.push({ icon: 'investments', text: `Rendement placements +${fmtMoney(d.gain)}`, tone: 'pos' });
+    else if (d.gain < -0.5) out.push({ icon: 'debt', text: `Perte de marché ${fmtMoney(d.gain)}`, tone: 'neg' });
+    if (d.flow > 0.5) out.push({ icon: 'cash', text: `Dépôt (argent ajouté) +${fmtMoney(d.flow)}`, tone: 'in' });
+    else if (d.flow < -0.5) out.push({ icon: 'bank', text: `Retrait (argent sorti) ${fmtMoney(d.flow)}`, tone: 'out' });
     return out;
 }
 
@@ -132,7 +133,7 @@ const AccountDrillTooltip: React.FC<AccountDrillTooltipProps> = ({ active, paylo
                     <div className="text-tiny uppercase tracking-wide text-ink-500 font-bold">Ce mois</div>
                     {reasons.map((r, i) => (
                         <div key={i} className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded font-mono ${REASON_TONE_CLASS[r.tone]} ${blur}`}>
-                            <span aria-hidden="true">{r.icon}</span><span>{r.text}</span>
+                            <Icon name={r.icon} size={12} /><span>{r.text}</span>
                         </div>
                     ))}
                 </div>
@@ -275,9 +276,9 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                         type="button"
                         onClick={onClose}
                         aria-label="Fermer"
-                        className="shrink-0 text-ink-400 hover:text-white text-lg leading-none p-1 -m-1 rounded focus-ring"
+                        className="shrink-0 inline-flex text-ink-400 hover:text-white leading-none p-1 -m-1 rounded focus-ring"
                     >
-                        ✕
+                        <Icon name="close" size={18} />
                     </button>
                 </div>
 
@@ -395,7 +396,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                         key={y}
                                         type="button"
                                         onClick={() => zoom.showRange(0, idxForYears(y))}
-                                        className={`px-2 py-0.5 text-tiny font-bold rounded transition-colors focus-ring ${active ? 'bg-primary text-white' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
+                                        className={`px-2 py-0.5 text-tiny font-bold rounded transition-colors focus-ring ${active ? 'bg-primary text-dark' : 'text-ink-300 hover:text-dark hover:bg-white/10'}`}
                                     >
                                         {y} ans
                                     </button>
@@ -404,7 +405,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                             <button
                                 type="button"
                                 onClick={zoom.reset}
-                                className={`px-2 py-0.5 text-tiny font-bold rounded transition-colors focus-ring ${!zoom.isZoomed ? 'bg-primary text-white' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
+                                className={`px-2 py-0.5 text-tiny font-bold rounded transition-colors focus-ring ${!zoom.isZoomed ? 'bg-primary text-dark' : 'text-ink-300 hover:text-dark hover:bg-white/10'}`}
                             >
                                 Tout
                             </button>
@@ -476,7 +477,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                                     <div className="flex flex-wrap gap-1.5">
                                                         {reasons.map((r, i) => (
                                                             <span key={i} className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-tiny font-mono ${REASON_TONE_CLASS[r.tone]} ${blur}`}>
-                                                                <span aria-hidden="true">{r.icon}</span>{r.text}
+                                                                <Icon name={r.icon} size={11} />{r.text}
                                                             </span>
                                                         ))}
                                                     </div>

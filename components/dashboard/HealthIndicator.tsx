@@ -227,7 +227,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
         <div className={`rounded-card border border-white/10 bg-white/5 p-4 ${className}`}>
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                    <span aria-hidden="true">🩺</span>
+                    <Icon name="health" size={16} className="text-ink-300" />
                     <h2 className="font-bold text-ink-50">Santé financière</h2>
                 </div>
                 <button

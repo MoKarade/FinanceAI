@@ -9,6 +9,7 @@
 // score complet + tableau triable/filtrable de toutes les configs.
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { Icon } from '../ui/Icon';
 import type { SimulationParams, ConfigResult } from '../../services/projection';
 import {
     rankConfigResults,
@@ -171,7 +172,7 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, onApply }) => 
         <div className="mt-3 rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3.5">
             <div className="flex items-center justify-between gap-2">
                 <span className="text-meta font-black text-white tracking-tight flex items-center gap-1.5">
-                    <span aria-hidden="true">🧭</span> Optimiseur de stratégie
+                    <Icon name="compass" size={14} className="text-ink-300" /> Optimiseur de stratégie
                 </span>
                 {status === 'done' && winner && (
                     <span className="text-tiny font-bold text-indigo-300">
@@ -279,7 +280,7 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, onApply }) => 
                 </div>
             )}
 
-            {status === 'error' && <p className="mt-3 text-tiny text-red-300">⚠️ {error}</p>}
+            {status === 'error' && <p className="mt-3 text-tiny text-red-300 flex items-center gap-1.5"><Icon name="alert" size={12} /> {error}</p>}
 
             {status === 'done' && ranking && winner && (
                 <div className="mt-4 space-y-3">
@@ -337,7 +338,7 @@ const WinnerCard: React.FC<{
     return (
         <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-3">
             <div className="flex items-center gap-2">
-                <span aria-hidden="true">🏆</span>
+                <Icon name="trophy" size={15} className="text-success-400" />
                 <span className="text-meta font-black text-white">Stratégie gagnante</span>
                 {!hasSurvivor && (
                     <span className="text-tiny text-amber-300">aucune n'atteint {survivalThreshold}% de succès</span>

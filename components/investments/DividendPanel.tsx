@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Card } from '../ui/Card';
+import { Icon } from '../ui/Icon';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface DividendItem {
@@ -64,11 +65,11 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
 
     return (
         <Card title="Calendrier des Revenus Passifs" className="animate-premium-in" style={{ animationDelay: '0.2s' }}>
-            <div className="flex justify-between items-center mb-6 bg-gradient-to-r from-emerald-900/40 to-black/40 p-5 rounded-2xl border border-success-500/20 shadow-lg shadow-success-500/5">
+            <div className="flex justify-between items-center mb-6 bg-white/[0.03] p-5 rounded-2xl border border-white/10 shadow-lg shadow-black/20">
                 <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-success-500/10 flex items-center justify-center text-3xl shadow-inner border border-success-500/10">💰</div>
+                    <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center shadow-inner border border-white/10"><Icon name="cash" size={26} className="text-ink-200" /></div>
                     <div>
-                        <div className="text-tiny uppercase font-bold text-success-500/70 tracking-widest mb-1">Rente Annuelle Estimée</div>
+                        <div className="text-tiny uppercase font-bold text-ink-400 tracking-widest mb-1">Rente Annuelle Estimée</div>
                         <div className="text-3xl font-black text-white privacy-blur tracking-tight">{totalAnnualDividends.toLocaleString()} CAD</div>
                     </div>
                 </div>
@@ -128,9 +129,8 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                         <div>
                             <h4 className="text-body font-bold text-white flex items-center gap-2">
-                                <span className="text-success-400">📈</span> Projection sur 12 mois
+                                <Icon name="investments" size={16} className="text-ink-300" /> Projection sur 12 mois
                             </h4>
-                            <p className="text-tiny text-ink-500 mt-1">Estimation des revenus passifs futurs</p>
                         </div>
 
                         <div className="flex items-center gap-6 bg-black/40 p-3 rounded-xl border border-white/5 w-full sm:w-auto">
@@ -172,9 +172,9 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                                     labelStyle={{ color: '#9ca3af', fontSize: '10px', marginBottom: '4px' }}
                                     formatter={(val: number) => [(val || 0).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' }), 'Revenu Mensuel']}
                                 />
-                                <Bar dataKey="Revenu" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                                <Bar dataKey="Revenu" fill="#4f9d86" radius={[4, 4, 0, 0]} maxBarSize={40}>
                                     {dividendProjectionData.map((_, index) => (
-                                        <Cell key={`cell-${index}`} fill={index === 11 ? '#059669' : '#10b98180'} />
+                                        <Cell key={`cell-${index}`} fill={index === 11 ? '#3f8470' : '#4f9d8680'} />
                                     ))}
                                 </Bar>
                             </BarChart>

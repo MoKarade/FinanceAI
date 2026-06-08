@@ -3,6 +3,7 @@ import { AppState, BudgetConfig, User } from '../types';
 import { INITIAL_BUDGET, INITIAL_PROJECTION, INITIAL_REAL_ESTATE_GOAL, INITIAL_CHILD_GOAL, DEFAULT_FX_RATES } from '../constants';
 import { annualSalaryToMonthly } from '../utils/salary';
 import { Button } from './ui/Button';
+import { Icon, type IconName } from './ui/Icon';
 
 interface OnboardingProps {
     onComplete: (data: Partial<AppState>) => void;
@@ -90,8 +91,8 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 // (convention canonique du store ; le moteur ré-annualise ×12). Net déjà mensuel.
                 { ...user1, grossSalary: annualSalaryToMonthly(user1.grossSalary), color: '#4f46e5' },
                 hasCoupleMode
-                    ? { ...user2, grossSalary: annualSalaryToMonthly(user2.grossSalary), color: '#ec4899' }
-                    : { name: '', grossSalary: 0, netSalary: 0, color: '#ec4899', age: 30, canadaArrivalYear: 2020 }
+                    ? { ...user2, grossSalary: annualSalaryToMonthly(user2.grossSalary), color: '#bd7d9c' }
+                    : { name: '', grossSalary: 0, netSalary: 0, color: '#bd7d9c', age: 30, canadaArrivalYear: 2020 }
             ] as [User, User],
             splitMode: 'prorata'
         };
@@ -148,14 +149,14 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                             </p>
                         </div>
                         <div className="grid grid-cols-1 gap-3 text-left">
-                            {[
-                                { icon: '📊', text: "Vois clairement où va ton argent chaque mois (budget, dettes, épargne)." },
-                                { icon: '🔮', text: "Simule ton futur : retraite, achat de maison, enfants — et trouve la meilleure stratégie." },
-                                { icon: '🤖', text: "Un assistant IA (optionnel) catégorise tes dépenses et te conseille." },
-                                { icon: '🔐', text: "Tes données restent sur ton appareil. Aucun serveur, aucun compte à créer." },
-                            ].map((f, i) => (
+                            {([
+                                { icon: 'budget', text: "Vois clairement où va ton argent chaque mois (budget, dettes, épargne)." },
+                                { icon: 'future', text: "Simule ton futur : retraite, achat de maison, enfants — et trouve la meilleure stratégie." },
+                                { icon: 'bot', text: "Un assistant IA (optionnel) catégorise tes dépenses et te conseille." },
+                                { icon: 'lock', text: "Tes données restent sur ton appareil. Aucun serveur, aucun compte à créer." },
+                            ] as Array<{ icon: IconName; text: string }>).map((f, i) => (
                                 <div key={i} className="flex items-center gap-3 p-3 bg-white/5 rounded-card border border-white/5">
-                                    <span className="text-2xl" aria-hidden="true">{f.icon}</span>
+                                    <Icon name={f.icon} size={22} className="text-primary shrink-0" />
                                     <span className="text-body text-ink-200">{f.text}</span>
                                 </div>
                             ))}
@@ -245,7 +246,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                         <div className="space-y-4">
                             <div className="p-4 bg-white/5 rounded-card border border-white/10">
                                 <label htmlFor="anthropic-key" className="text-body font-bold text-ink-50 flex items-center gap-2 mb-2">
-                                    <span aria-hidden="true">🤖</span> Anthropic Claude API Key
+                                    <Icon name="bot" size={18} className="text-primary" /> Anthropic Claude API Key
                                     <span className="text-tiny text-ink-400 font-normal">(Catégorisation IA + conseiller + objectifs intelligents)</span>
                                 </label>
                                 <input id="anthropic-key" type="password" placeholder="sk-ant-..." className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body font-mono focus-ring" value={anthropicKey} onChange={e => setAnthropicKey(e.target.value)} />
@@ -283,7 +284,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                         <div className="flex gap-3">
                             <Button onClick={prev} variant="ghost" size="md" fullWidth>← Retour</Button>
                             <Button onClick={handleFinish} variant="primary" size="md" fullWidth>
-                                Lancer FinanceAI 🚀
+                                Lancer FinanceAI
                             </Button>
                         </div>
                     </div>

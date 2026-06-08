@@ -189,7 +189,6 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen = 
                 <PageHeader
                     title="Prochaine action"
                     icon={<Icon name="actions" size={28} />}
-                    subtitle="Recommandations priorisées"
                     actions={refreshBtn}
                 />
                 {!hasData ? (
@@ -257,7 +256,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen = 
                 title={topAction ? `${topAction.title}\n${topAction.reason}` : 'Prochaine meilleure action IA (configurer dans Configuration)'}
             >
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${actions.length > 0 ? 'bg-white/5 border ' + colors.border : 'bg-white/[0.02] border border-white/10'}`}>
-                    <span className="text-base" aria-hidden="true">⚡</span>
+                    <Icon name="actions" size={16} className="text-ink-200" />
                     {actions.length > 0 && (
                         <span className={`absolute mt-5 ml-5 w-2 h-2 rounded-full ${colors.dot}`} aria-hidden="true" />
                     )}
@@ -277,7 +276,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen = 
                     className="w-full text-left p-3 rounded-xl bg-warning-500/5 border border-warning-500/20 text-meta text-amber-300 hover:bg-warning-500/10 focus-ring transition-colors"
                 >
                     <div className="font-bold mb-1 flex items-center gap-2">
-                        <span aria-hidden="true">⚡</span> Aucune action disponible
+                        <Icon name="actions" size={14} className="text-ink-300" />Aucune action disponible
                     </div>
                     <div className="text-tiny text-ink-400">
                         Renseigne ton profil pour activer les recommandations IA.
@@ -292,7 +291,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen = 
             <div className="px-3 pb-3">
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-meta text-ink-400">
                     <div className="font-bold text-ink-200 mb-1 flex items-center gap-2">
-                        <span aria-hidden="true">⚡</span> Prochaine meilleure action
+                        <Icon name="actions" size={14} className="text-ink-300" />Prochaine meilleure action
                     </div>
                     <div className="text-tiny">
                         Configure ta clé API Anthropic dans <span className="text-primary">Configuration</span> pour activer les recommandations IA.
@@ -307,7 +306,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen = 
             <div className="px-3 pb-3">
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                     <div className="text-meta text-ink-300 font-bold mb-2 flex items-center gap-2">
-                        <span aria-hidden="true">⚡</span> Analyse en cours…
+                        <Icon name="actions" size={14} className="text-ink-300" />Analyse en cours…
                     </div>
                     <div className="h-2 w-2/3 bg-white/10 rounded animate-pulse mb-1.5" />
                     <div className="h-2 w-full bg-white/10 rounded animate-pulse" />
@@ -321,7 +320,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen = 
             <div className="px-3 pb-3">
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-meta text-ink-400">
                     <div className="font-bold text-ink-200 mb-1 flex items-center gap-2">
-                        <span aria-hidden="true">⚡</span> Prochaine meilleure action
+                        <Icon name="actions" size={14} className="text-ink-300" />Prochaine meilleure action
                     </div>
                     <button
                         type="button"

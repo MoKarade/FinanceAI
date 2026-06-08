@@ -41,7 +41,7 @@ export const ConsentBanner: React.FC = () => {
                 <button
                     type="button"
                     onClick={() => choose('granted')}
-                    className="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-body font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-dark text-body font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                     Accepter
                 </button>

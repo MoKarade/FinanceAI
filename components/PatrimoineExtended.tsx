@@ -153,7 +153,7 @@ export const BusinessPanel: React.FC<{
     const remove = (i: number) => { const next = [...businesses]; next.splice(i, 1); onChange(next); };
 
     return (
-        <Card icon={<Icon name="building" size={18} />} title="Entreprises privées (CCPC)">
+        <Card icon={<Icon name="building" size={18} />} title="Entreprises (CCPC)">
             <div className="space-y-2">
                 {businesses.length === 0 && (
                     <p className="text-meta text-ink-400 italic">Pour les actionnaires de société par actions (CCPC). Modélise dividende reçu, BNR, accès DPE.</p>
@@ -185,7 +185,7 @@ export const CyclicalGoalsPanel: React.FC<{
     onCharity: (c: CharitableGoal[]) => void;
 }> = ({ vehicles, renovations, charity, onVehicles, onRenovations, onCharity }) => {
     return (
-        <Card icon={<Icon name="goal" size={18} />} title="Objectifs cycliques et planifiés">
+        <Card icon={<Icon name="goal" size={18} />} title="Objectifs cycliques">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Vehicles */}
                 <div>

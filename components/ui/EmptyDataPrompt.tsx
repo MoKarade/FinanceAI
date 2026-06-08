@@ -1,6 +1,7 @@
 import React from 'react';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { Tab } from '../../types';
+import { Icon } from './Icon';
 
 /**
  * P1 — Composant générique affiché à la place des widgets d'action (IA,
@@ -25,7 +26,7 @@ interface EmptyDataPromptProps {
 export const EmptyDataPrompt: React.FC<EmptyDataPromptProps> = ({
     title = 'Données manquantes',
     description = 'Renseigne ton profil dans Configuration pour activer cette section.',
-    icon = '🔒',
+    icon = <Icon name="lock" size={20} className="text-warning-400" />,
     layout = 'block',
     className = '',
 }) => {
@@ -55,7 +56,7 @@ export const EmptyDataPrompt: React.FC<EmptyDataPromptProps> = ({
                     <button
                         type="button"
                         onClick={() => navigateWithFocus(Tab.SETTINGS, 'profile-user1-card')}
-                        className="px-3 py-1.5 rounded-card bg-primary text-white text-meta font-bold hover:bg-primary/80 focus-ring transition-colors"
+                        className="px-3 py-1.5 rounded-card bg-primary text-dark text-meta font-bold hover:bg-primary/80 focus-ring transition-colors"
                     >
                         → Configurer mon profil
                     </button>

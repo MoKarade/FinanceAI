@@ -208,8 +208,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
 
             <PageHeader
                 icon={<Icon name="tax" size={28} />}
-                title="Simulateur d'Impôts (Québec)"
-                subtitle="Pré-rempli et verrouillé avec votre profil global"
+                title="Simulateur d'impôts"
             />
 
             <div className="flex justify-end gap-2 w-full md:w-auto md:ml-auto -mt-2">
@@ -219,14 +218,11 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isAnalyzing}
-                        className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-secondary to-purple-600 hover:brightness-110 border border-white/10 px-4 py-2 rounded-lg transition-all shadow-lg active:scale-95 group disabled:opacity-50"
+                        className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-lg transition-all active:scale-95 group disabled:opacity-50"
                         title="Pour archiver vos documents, utilisez plutôt l'onglet Documents"
                     >
-                        <span className="text-lg">{isAnalyzing ? '⏳' : '🤖'}</span>
-                        <div className="text-left leading-tight">
-                            <div className="font-bold text-white text-meta">Calcul rapide</div>
-                            <div className="text-tiny text-white/70">Pour archiver → onglet Documents</div>
-                        </div>
+                        <Icon name={isAnalyzing ? 'clock' : 'bot'} size={18} className="text-ink-300" />
+                        <span className="font-bold text-ink-100 text-meta">Calcul rapide</span>
                     </button>
                     <input type="file" ref={fileInputRef} className="hidden" multiple accept="image/*,application/pdf" onChange={handleFileDrop} />
 
@@ -315,8 +311,8 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                     <span className="text-ink-300">Total Synchronisé</span>
                                     <span className="text-xl font-bold text-white font-mono">{grossIncome.toLocaleString()}$</span>
                                 </div>
-                                <p className="text-tiny text-ink-500 mt-2 flex items-center gap-1">
-                                    <span>🔒</span> Verrouillé (* 12 mois) lié à la Configuration.
+                                <p className="text-tiny text-ink-500 mt-2 flex items-center gap-1.5">
+                                    <Icon name="lock" size={12} /> Lié à la Configuration (× 12 mois).
                                 </p>
                             </div>
 
@@ -401,7 +397,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                             </div>
                         ) : (
                             <>
-                                <Card title="Paliers Fédéraux (Canada)">
+                                <Card title="Paliers fédéraux">
                                     <div className="space-y-4 mt-2">
                                         {(fedBreakdown ?? []).map((b, i) => (
                                             <div key={i} className="relative">
@@ -419,7 +415,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                         ))}
                                     </div>
                                 </Card>
-                                <Card title="Paliers Provinciaux (Québec)">
+                                <Card title="Paliers provinciaux">
                                     <div className="space-y-4 mt-2">
                                         {(qcBreakdown ?? []).map((b, i) => (
                                             <div key={i} className="relative">

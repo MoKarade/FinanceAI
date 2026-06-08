@@ -113,7 +113,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
             onChange={e => setNewProfileName(e.target.value)}
             className="flex-1 bg-white/5 border border-border rounded px-3 py-1.5 text-body text-white"
           />
-          <button onClick={saveProfile} className="bg-primary text-white px-4 py-1.5 rounded text-body font-bold hover:brightness-110">
+          <button onClick={saveProfile} className="bg-primary text-dark px-4 py-1.5 rounded text-body font-bold hover:brightness-110">
             Sauvegarder
           </button>
         </div>
@@ -139,7 +139,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
             {config.users.length < 2 && (
               <button
                 onClick={() => {
-                  const newUsers = [...config.users, { name: 'Conjoint(e)', age: 30, grossSalary: 0, netSalary: 0, canadaArrivalYear: new Date().getFullYear() - 5, color: '#ec4899' }];
+                  const newUsers = [...config.users, { name: 'Conjoint(e)', age: 30, grossSalary: 0, netSalary: 0, canadaArrivalYear: new Date().getFullYear() - 5, color: '#bd7d9c' }];
                   setConfig({ ...config, users: newUsers as [User, User] });
                   setGrossAnnualDraft({}); // les index changent → on repart du store
                 }}
@@ -297,7 +297,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                 </div>
 
                 <div className="flex items-center gap-2 bg-black/20 p-1.5 rounded border border-white/5">
-                  <span className="text-tiny text-ink-300 uppercase font-black shrink-0">FE ⚖️</span>
+                  <span className="text-tiny text-ink-300 uppercase font-black shrink-0 inline-flex items-center gap-1">FE <Icon name="budget" size={11} /></span>
                   <input
                     type="number"
                     placeholder="Facteur Equiv. (ex: 0)"
@@ -412,10 +412,10 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                         onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user,isSmoker:e.target.checked}; setConfig({...config,users:u}); }} />
                       Fumeur
                     </label>
-                    <input aria-label="Âge au décès de la mère (espérance vie hérédité)" type="number" placeholder="Mère ✝ âge" value={user.parentAgeAtDeath?.mother ?? ''}
+                    <input aria-label="Âge au décès de la mère (espérance vie hérédité)" type="number" placeholder="Mère — âge décès" value={user.parentAgeAtDeath?.mother ?? ''}
                       onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user, parentAgeAtDeath:{...user.parentAgeAtDeath, mother:Number(e.target.value)||undefined}}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                    <input aria-label="Âge au décès du père (espérance vie hérédité)" type="number" placeholder="Père ✝ âge" value={user.parentAgeAtDeath?.father ?? ''}
+                    <input aria-label="Âge au décès du père (espérance vie hérédité)" type="number" placeholder="Père — âge décès" value={user.parentAgeAtDeath?.father ?? ''}
                       onChange={e => { const u=[...config.users] as [User, User]; u[idx]={...user, parentAgeAtDeath:{...user.parentAgeAtDeath, father:Number(e.target.value)||undefined}}; setConfig({...config,users:u}); }}
                       className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                   </div>

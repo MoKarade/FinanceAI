@@ -3,17 +3,17 @@
 @tailwind utilities;
 
 :root {
-  --primary: #10b981;
-  --primary-glow: rgba(16, 185, 129, 0.4);
+  --primary: #e6eaf2;
+  --primary-glow: rgba(230, 234, 242, 0.14);
   --secondary: #8b5cf6;
   --secondary-glow: rgba(139, 92, 246, 0.4);
-  --dark: #0B0E14;
-  --surface: #151922;
-  --surface-highlight: #1E2330;
+  --dark: #07090D;
+  --surface: #0E1014;
+  --surface-highlight: #15181E;
 
   /* Glassmorphism Tokens */
-  --glass-bg: rgba(21, 25, 34, 0.65);
-  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-bg: rgba(14, 16, 20, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.07);
   --glass-blur: 24px;
 
   /* Animation Timings */
@@ -23,7 +23,7 @@
 @layer base {
   body {
     @apply bg-dark text-slate-200 font-sans antialiased;
-    background-image: radial-gradient(circle at top left, #1a1e29 0%, #0B0E14 40%);
+    background-image: radial-gradient(circle at top left, #0c0f15 0%, #07090D 55%);
     min-height: 100vh;
   }
 
@@ -38,8 +38,8 @@
      global forçait le violet → incohérent. Corrigé ici, app-wide. */
   input:focus, select:focus, textarea:focus {
     background-color: rgba(11, 14, 20, 0.9) !important;
-    border-color: rgba(16, 185, 129, 0.55) !important;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+    border-color: rgba(230, 234, 242, 0.45) !important;
+    box-shadow: 0 0 0 3px rgba(230, 234, 242, 0.12);
   }
 
   /* LUXE — champs texte/select/textarea plus arrondis (moderne, cohérent).
@@ -62,7 +62,7 @@
 
   .premium-card:hover {
     @apply border-white/10;
-    background: rgba(30, 35, 48, 0.75);
+    background: rgba(22, 25, 33, 0.82);
     box-shadow: 0 12px 40px -2px rgba(0, 0, 0, 0.3);
     transform: translateY(-2px);
   }
@@ -96,7 +96,7 @@
 
   /* Glass panel (migre depuis index.html) */
   .glass-panel {
-    background: rgba(21, 25, 34, 0.65);
+    background: rgba(14, 16, 20, 0.72);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     border: 1px solid rgba(255, 255, 255, 0.06);
@@ -124,7 +124,7 @@
   height: 100vh;
   z-index: -1;
   overflow: hidden;
-  background: radial-gradient(circle at top left, #1a1e29 0%, #0B0E14 40%);
+  background: radial-gradient(circle at top left, #0c0f15 0%, #07090D 55%);
 }
 
 .aurora-blob {
@@ -136,11 +136,11 @@
   mix-blend-mode: screen;
 }
 
-/* Aurora « sobre » : un seul accent (emerald) + profondeur neutre slate, au lieu
-   d'emerald+violet+bleu. Fond plus restreint, style Apple/Google. */
-.blob-1 { top: -10%; left: -10%; width: 60vw; height: 60vw; background: #10b981; animation-delay: 0s; opacity: 0.13; }
-.blob-2 { bottom: -20%; right: -10%; width: 70vw; height: 70vw; background: #3f5168; animation-delay: 4s; opacity: 0.14; }
-.blob-3 { top: 30%; left: 30%; width: 40vw; height: 40vw; background: #10b981; animation-delay: 8s; opacity: 0.05; }
+/* Aurora neutralisée (choix Marc) : plus aucune couleur, juste une profondeur
+   grise très subtile en haut-gauche. Fond noir profond et luxe. */
+.blob-1 { top: -10%; left: -10%; width: 60vw; height: 60vw; background: #1c2230; animation-delay: 0s; opacity: 0.35; }
+.blob-2 { bottom: -20%; right: -10%; width: 70vw; height: 70vw; background: #141822; animation-delay: 4s; opacity: 0.3; }
+.blob-3 { top: 30%; left: 30%; width: 40vw; height: 40vw; background: #141822; animation-delay: 8s; opacity: 0; }
 
 /* Animations */
 @keyframes slideUpFade {
@@ -286,8 +286,8 @@
 
 /* LUXE — surbrillance de sélection à la marque (emerald discret). */
 ::selection {
-  background: rgba(16, 185, 129, 0.28);
-  color: #f8fafc;
+  background: rgba(230, 234, 242, 0.90);
+  color: #07090D;
 }
 
 /* LUXE — select : chevron custom (appearance-none) au lieu de la flèche native datée.

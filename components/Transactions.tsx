@@ -365,12 +365,12 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 <button
                     onClick={() => setShowRulesPanel(p => !p)}
                     aria-expanded={showRulesPanel}
-                    className="w-full flex items-center justify-between px-4 py-3 text-meta font-bold text-indigo-300 hover:text-white transition-colors"
+                    className="w-full flex items-center justify-between px-4 py-3 text-meta font-bold text-ink-200 hover:text-ink-50 transition-colors"
                 >
                     <span className="flex items-center gap-2">
-                        <span aria-hidden="true">⚡</span>
-                        Regles de Categorisation Automatiques
-                        <span className="bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full">{categorizationRules.length}</span>
+                        <Icon name="actions" size={15} className="text-ink-400" />
+                        Règles automatiques
+                        <span className="bg-white/10 text-ink-300 px-2 py-0.5 rounded-full">{categorizationRules.length}</span>
                     </span>
                     <span className={`transition-transform ${showRulesPanel ? 'rotate-180' : ''}`} aria-hidden="true">▼</span>
                 </button>
@@ -410,11 +410,11 @@ export const Transactions: React.FC<TransactionsProps> = ({
                             <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
                                 {categorizationRules.map(rule => (
                                     <div key={rule.id} className="flex items-center gap-2 bg-black/30 px-3 py-2 rounded-lg border border-white/5 text-meta group">
-                                        <span className="text-indigo-300 font-bold flex-1 truncate">"{rule.pattern}"</span>
-                                        <span className="text-ink-500 hidden sm:inline" aria-hidden="true">-&gt;</span>
-                                        <span className="text-white bg-indigo-900/40 px-2 py-0.5 rounded font-bold truncate max-w-[120px]">{rule.category}</span>
-                                        <button onClick={() => handleApplyRuleNow(rule)} aria-label={`Appliquer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 text-green-400 hover:text-green-300 transition-all text-tiny font-bold ml-1">Appliquer</button>
-                                        <button onClick={() => handleDeleteRule(rule.id)} aria-label={`Supprimer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 text-danger-400 hover:text-red-300 transition-all ml-1">✕</button>
+                                        <span className="text-ink-200 font-bold flex-1 truncate">"{rule.pattern}"</span>
+                                        <Icon name="chevron-right" size={12} className="text-ink-500 hidden sm:inline shrink-0" />
+                                        <span className="text-ink-100 bg-white/10 px-2 py-0.5 rounded font-bold truncate max-w-[120px]">{rule.category}</span>
+                                        <button onClick={() => handleApplyRuleNow(rule)} aria-label={`Appliquer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 text-ink-300 hover:text-primary transition-all text-tiny font-bold ml-1">Appliquer</button>
+                                        <button onClick={() => handleDeleteRule(rule.id)} aria-label={`Supprimer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 inline-flex text-danger-400 hover:text-danger-300 transition-all ml-1"><Icon name="close" size={13} /></button>
                                     </div>
                                 ))}
                             </div>
@@ -525,7 +525,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                             onClick={handleAutoCategorizeAll}
                             disabled={processing}
                             aria-label={processing ? 'Scan IA en cours' : 'Demarrer le scan IA'}
-                            className={`px-3 sm:px-4 py-2 rounded-full text-meta font-bold text-white shadow-lg transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap ${processing ? 'bg-white/10 cursor-not-allowed' : apiKey ? 'bg-gradient-to-r from-secondary to-purple-500 hover:brightness-110' : 'bg-surfaceHighlight'
+                            className={`px-3 sm:px-4 py-2 rounded-full text-meta font-bold shadow-lg transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap ${processing ? 'bg-white/10 text-white cursor-not-allowed' : apiKey ? 'bg-primary text-dark hover:bg-white' : 'bg-surfaceHighlight text-white'
                                 }`}
                         >
                             <span className="hidden sm:inline">{processing ? 'Catégorisation…' : 'Auto-catégoriser'}</span>

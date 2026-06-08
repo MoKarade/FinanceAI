@@ -118,8 +118,7 @@ export const GoogleDriveSyncCard: React.FC = () => {
         <Card icon={<Icon name="cloud" size={18} />} title="Synchronisation Google Drive">
             <div className="space-y-4">
                 <p className="text-tiny text-ink-300 leading-snug">
-                    Sauvegarde tes données dans <strong>ton</strong> Google Drive (dossier privé de l'app) pour
-                    les retrouver sur un autre appareil ou en navigation privée, après connexion Google.
+                    Sauvegarde dans <strong>ton</strong> Google Drive privé — retrouve tout sur chaque appareil.
                 </p>
 
                 {/* Honnêteté : par défaut pas de chiffrement applicatif ; les clés API SONT incluses (sync v2).
@@ -168,6 +167,9 @@ export const GoogleDriveSyncCard: React.FC = () => {
                             Connecté{status.email ? <> : <span className="font-mono">{status.email}</span></> : ''}
                             <span className="block text-tiny text-ink-400">
                                 Dernière sync : {formatWhen(status.lastSyncedAt)}
+                            </span>
+                            <span className="block text-tiny text-ink-400">
+                                Synchronisation automatique active · sauvegarde manuelle ci-dessous.
                             </span>
                         </div>
 

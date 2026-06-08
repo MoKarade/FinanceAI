@@ -14,7 +14,7 @@
 
 import React, { useState } from 'react';
 import { PageHeader } from './ui/PageHeader';
-import { Icon } from './ui/Icon';
+import { Icon, type IconName } from './ui/Icon';
 import {
   AppState, BudgetCategory, Transaction, Asset, SavingsGoal, TravelGoal, Debt,
   InvestmentAccount, InvestmentTransaction, LifeEvent, RetirementGoal, FinancialGoal,
@@ -62,13 +62,13 @@ interface SettingsProps {
 
 type SubTab = 'profile' | 'accounts' | 'patrimoine' | 'integrations' | 'backup' | 'system';
 
-const SUB_TABS: ReadonlyArray<{ id: SubTab; label: string; icon: string }> = [
-  { id: 'profile', label: 'Profil', icon: '👤' },
-  { id: 'accounts', label: 'Comptes & soldes', icon: '🏦' },
-  { id: 'patrimoine', label: 'Patrimoine', icon: '🏠' },
-  { id: 'integrations', label: 'Clés API', icon: '🔌' },
-  { id: 'backup', label: 'Sauvegarde', icon: '💾' },
-  { id: 'system', label: 'Système & diagnostics', icon: '🛠️' },
+const SUB_TABS: ReadonlyArray<{ id: SubTab; label: string; icon: IconName }> = [
+  { id: 'profile', label: 'Profil', icon: 'users' },
+  { id: 'accounts', label: 'Comptes & soldes', icon: 'bank' },
+  { id: 'patrimoine', label: 'Patrimoine', icon: 'real-estate' },
+  { id: 'integrations', label: 'Clés API', icon: 'link' },
+  { id: 'backup', label: 'Sauvegarde', icon: 'cloud' },
+  { id: 'system', label: 'Système & diagnostics', icon: 'group-tools' },
 ];
 
 /** Mappe un data-focus-section (deep-link) vers le sous-onglet qui le contient. */
@@ -160,7 +160,6 @@ export const Settings: React.FC<SettingsProps> = ({
       <PageHeader
         icon={<Icon name="settings" size={28} />}
         title="Configuration"
-        subtitle="Profil, comptes, patrimoine et intégrations"
       />
 
       {/* État global de la configuration : %completion + champs manquants (toujours visible) */}
@@ -175,9 +174,9 @@ export const Settings: React.FC<SettingsProps> = ({
             role="tab"
             aria-selected={sub === s.id}
             onClick={() => setSub(s.id)}
-            className={`px-3 py-1.5 text-meta font-bold rounded whitespace-nowrap transition-colors focus-ring ${sub === s.id ? 'bg-primary text-white' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-meta font-bold rounded whitespace-nowrap transition-colors focus-ring ${sub === s.id ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-50 hover:bg-white/10'}`}
           >
-            <span aria-hidden="true" className="mr-1">{s.icon}</span>{s.label}
+            <Icon name={s.icon} size={14} />{s.label}
           </button>
         ))}
       </div>

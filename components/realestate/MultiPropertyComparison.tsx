@@ -5,7 +5,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { useTimeChartZoom } from '../../hooks/useTimeChartZoom';
 import { ZoomContainer } from '../ui/ZoomContainer';
 
-const PROP_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#a855f7', '#ec4899', '#06b6d4'];
+const PROP_COLORS = ['#4f9d86', '#5b82bf', '#c2974f', '#9277bd', '#bd7d9c', '#5093a8'];
 
 interface MultiPropertyComparisonProps {
     goals: RealEstateGoal[];

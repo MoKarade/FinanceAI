@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Icon } from './ui/Icon';
+import { Icon, type IconName } from './ui/Icon';
 import { logError } from '../services/errorLogger';
 import { Transaction, BudgetCategory, Asset, ProjectionConfig, RealEstateGoal, BudgetConfig, AiMessage } from '../types';
 import { useFinanceStore } from '../store/useFinanceStore';
@@ -18,11 +18,11 @@ interface AiAssistantProps {
 }
 
 // Phase 4 — Prompts pré-écrits pour démarrer une conversation rapidement.
-const SUGGESTED_PROMPTS: Array<{ icon: string; label: string; prompt: string }> = [
-  { icon: '🎯', label: 'Quand retraite ?', prompt: "À quel âge puis-je raisonnablement prendre ma retraite selon mes finances actuelles ?" },
-  { icon: '💸', label: 'Budget sain ?', prompt: "Analyse mes dépenses des 3 derniers mois et dis-moi si mon budget est équilibré. Identifie les 2 catégories où je dépense le plus." },
-  { icon: '📈', label: 'Investir mieux', prompt: "Quelle stratégie d'investissement me recommandes-tu compte tenu de mon âge et de mes objectifs ? CELI ou REER en priorité ?" },
-  { icon: '🏡', label: 'Acheter maison', prompt: "Suis-je prêt à acheter une propriété ? Quels sont les 3 critères les plus importants à considérer ?" },
+const SUGGESTED_PROMPTS: Array<{ icon: IconName; label: string; prompt: string }> = [
+  { icon: 'retirement', label: 'Quand retraite ?', prompt: "À quel âge puis-je raisonnablement prendre ma retraite selon mes finances actuelles ?" },
+  { icon: 'budget', label: 'Budget sain ?', prompt: "Analyse mes dépenses des 3 derniers mois et dis-moi si mon budget est équilibré. Identifie les 2 catégories où je dépense le plus." },
+  { icon: 'investments', label: 'Investir mieux', prompt: "Quelle stratégie d'investissement me recommandes-tu compte tenu de mon âge et de mes objectifs ? CELI ou REER en priorité ?" },
+  { icon: 'real-estate', label: 'Acheter maison', prompt: "Suis-je prêt à acheter une propriété ? Quels sont les 3 critères les plus importants à considérer ?" },
 ];
 
 const GREETING: AiMessage = {
@@ -247,18 +247,16 @@ ${last20Txs}`
       <button
         onClick={() => setIsOpen(!isOpen)}
         aria-label={isOpen ? 'Fermer le conseiller IA' : 'Ouvrir le conseiller IA'}
-        className={`fixed bottom-24 right-4 md:bottom-8 md:right-8 z-50 w-14 h-14 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all duration-300 active:scale-95 flex items-center justify-center focus-ring ${isOpen ? 'bg-danger-500 rotate-90' : 'bg-primary hover:bg-success-400 hover:-translate-y-1'}`}
+        className={`fixed bottom-24 right-4 md:bottom-8 md:right-8 z-50 w-14 h-14 rounded-full transition-all duration-300 active:scale-95 flex items-center justify-center focus-ring ${isOpen ? 'bg-danger-500 rotate-90 shadow-lg shadow-black/40' : 'bg-primary text-dark shadow-[0_0_24px_rgba(230,234,242,0.22)] hover:bg-white hover:-translate-y-1'}`}
       >
-        <span className="text-2xl text-white drop-shadow-md" aria-hidden="true">
-          {isOpen ? '✕' : '✨'}
-        </span>
+        <Icon name={isOpen ? 'close' : 'sparkles'} size={24} className={isOpen ? 'text-white' : 'text-dark'} />
       </button>
 
       {isOpen && (
         <div role="dialog" aria-modal="true" aria-labelledby="ai-assistant-title" className="fixed bottom-40 right-2 left-2 md:left-auto md:bottom-24 md:right-8 z-50 w-auto md:w-[420px] h-[550px] max-h-[60vh] md:max-h-[550px] bg-[#1a1a1a]/95 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-slide-up origin-bottom-right">
 
-          <div className="bg-gradient-to-r from-emerald-900/50 to-purple-900/50 p-4 border-b border-white/5 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-emerald-300 p-0.5">
+          <div className="bg-white/[0.03] p-4 border-b border-white/5 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-white/10 p-0.5">
               <div className="w-full h-full bg-black rounded-full flex items-center justify-center">
                 <Icon name="bot" size={18} className="text-primary" />
               </div>
@@ -283,7 +281,7 @@ ${last20Txs}`
                 )}
                 <div
                   className={`max-w-[85%] rounded-2xl px-5 py-3 text-body leading-relaxed shadow-md ${m.role === 'user'
-                    ? 'bg-primary text-white rounded-tr-none'
+                    ? 'bg-primary text-dark rounded-tr-none'
                     : 'bg-[#2a2a2a] text-ink-100 rounded-tl-none border border-white/5'
                     }`}
                 >
@@ -307,7 +305,7 @@ ${last20Txs}`
                     onClick={() => handleSend(prompt)}
                     className="flex items-center gap-2 p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-card text-left transition-colors focus-ring"
                   >
-                    <span className="text-base flex-shrink-0" aria-hidden="true">{icon}</span>
+                    <Icon name={icon} size={16} className="text-ink-300 flex-shrink-0" />
                     <span className="text-meta text-ink-200 leading-tight">{label}</span>
                   </button>
                 ))}
@@ -316,7 +314,7 @@ ${last20Txs}`
 
             {isLoading && !streamingText && (
               <div className="flex justify-start">
-                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mr-2 text-body flex-shrink-0 border border-white/10" aria-hidden="true">🤖</div>
+                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mr-2 flex-shrink-0 border border-white/10"><Icon name="bot" size={16} className="text-ink-300" /></div>
                 <div className="bg-[#2a2a2a] rounded-2xl rounded-tl-none px-4 py-4 flex gap-1.5 items-center border border-white/5" aria-label="Chargement de la réponse">
                   <div className="w-2 h-2 bg-ink-300 rounded-full animate-[bounce_1.4s_infinite_0ms]"></div>
                   <div className="w-2 h-2 bg-ink-300 rounded-full animate-[bounce_1.4s_infinite_200ms]"></div>
@@ -354,9 +352,9 @@ ${last20Txs}`
                 onClick={() => handleSend()}
                 disabled={isLoading || !input.trim()}
                 aria-label="Envoyer le message"
-                className="bg-primary hover:bg-green-500 disabled:opacity-50 text-white w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg shadow-primary/20 focus-ring"
+                className="bg-primary hover:bg-white disabled:opacity-50 text-dark w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg shadow-black/30 focus-ring"
               >
-                ➚
+                <Icon name="send" size={16} />
               </button>
               )}
             </div>

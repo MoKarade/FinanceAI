@@ -133,7 +133,7 @@ export const Layout: React.FC<LayoutProps> = ({
     } else if (users.length >= 2) {
       nextUsers = [users[0], { ...users[1], name: users[1]?.name || 'Conjoint(e)' }]; // 2e user existant sans nom → on le nomme
     } else {
-      nextUsers = [...users, { name: 'Conjoint(e)', age: 30, grossSalary: 0, netSalary: 0, canadaArrivalYear: new Date().getFullYear() - 5, color: '#ec4899' }];
+      nextUsers = [...users, { name: 'Conjoint(e)', age: 30, grossSalary: 0, netSalary: 0, canadaArrivalYear: new Date().getFullYear() - 5, color: '#bd7d9c' }];
     }
     setAppState({ config: { ...coupleConfig, users: nextUsers as [User, User] } });
   };
@@ -143,7 +143,7 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* A11y (Audit Phase 5.1): skip link — invisible jusqu'à focus clavier. */}
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[200] focus:px-4 focus:py-2 focus:rounded-card focus:bg-primary focus:text-white focus:font-bold focus:shadow-xl"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[200] focus:px-4 focus:py-2 focus:rounded-card focus:bg-primary focus:text-dark focus:font-bold focus:shadow-xl"
       >
         Aller au contenu principal
       </a>
@@ -155,7 +155,7 @@ export const Layout: React.FC<LayoutProps> = ({
           aria-label="Mode test activé"
           className="fixed top-0 left-0 right-0 z-[150] bg-gradient-to-r from-warning-600 via-orange-600 to-warning-600 text-white text-center py-2 px-4 font-bold text-body shadow-lg flex items-center justify-center gap-3"
         >
-          <span aria-hidden="true">🧪</span>
+          <Icon name="flask" size={16} />
           <span className="font-bold">MODE TEST</span>
           {/* Sélecteur de persona directement dans la bannière : changer
               d'utilisateur sans passer par Réglages (demandé par Marc). */}
@@ -175,7 +175,6 @@ export const Layout: React.FC<LayoutProps> = ({
             ))}
           </select>
           <span className="hidden md:inline font-normal text-meta opacity-90">— données fictives, vraies données sauvegardées</span>
-          <span aria-hidden="true">🧪</span>
         </div>
       )}
       <style>{`
@@ -401,7 +400,7 @@ export const Layout: React.FC<LayoutProps> = ({
           >
             <div aria-hidden="true" className={`mb-1 transition-transform duration-300 ${activeTab === item.id ? 'scale-110 -translate-y-0.5 text-ink-50 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'text-ink-400 group-hover:text-ink-200'}`}><Icon name={item.icon} size={24} /></div>
             <span className={`text-tiny font-medium transition-colors ${activeTab === item.id ? 'text-primary' : 'text-ink-400'}`}>{item.label}</span>
-            {activeTab === item.id && <span aria-hidden="true" className="absolute top-1.5 w-1 h-1 bg-primary rounded-full shadow-[0_0_5px_#10b981]"></span>}
+            {activeTab === item.id && <span aria-hidden="true" className="absolute top-1.5 w-1 h-1 bg-primary rounded-full shadow-[0_0_6px_rgba(230,234,242,0.55)]"></span>}
           </button>
         ))}
         <button

@@ -19,7 +19,7 @@ interface AdvancedProjectionParamsProps {
 
 export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> = ({ projection, updateProj }) => {
     return (
-        <Card icon={<Icon name="settings" size={18} />} title="Paramètres Avancés (utilisation 100% du moteur)">
+        <Card icon={<Icon name="settings" size={18} />} title="Paramètres avancés">
             <details className="space-y-4">
                 <summary className="cursor-pointer text-body text-ink-200 hover:text-white">Déplier — paramètres habituellement masqués</summary>
 
@@ -206,7 +206,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                         </div>
                     )}
                     {!projection.snowbirdEnabled && (
-                        <p className="text-tiny text-ink-500 italic">Active d'abord le toggle 🌴 Snowbird dans la grille principale.</p>
+                        <p className="text-tiny text-ink-500 italic">Active d'abord le toggle Snowbird dans la grille principale.</p>
                     )}
                 </div>
 

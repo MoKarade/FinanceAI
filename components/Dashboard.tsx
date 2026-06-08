@@ -40,7 +40,7 @@ interface DashboardProps {
 
 type TimeRange = '1M' | '3M' | 'YTD' | '1Y' | 'ALL' | 'CUSTOM';
 
-const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#a855f7', '#ec4899', '#06b6d4', '#84cc16', '#6366f1'];
+const COLORS = ['#4f9d86', '#5b82bf', '#c2974f', '#9277bd', '#bd7d9c', '#5093a8', '#8ba85a', '#6f72c4'];
 
 // ✅ FIX #6 : Utiliser ASSET_META centralisé au lieu d'une copie locale désynchronisée
 const ASSET_YIELDS: Record<string, number> = {};
@@ -336,7 +336,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <PageHeader
                     icon={<Icon name="dashboard" size={28} />}
                     title={t('dashboard.title', "Vue d'ensemble")}
-                    subtitle={t('dashboard.subtitle', "Patrimoine consolidé et tendance")}
                 />
                 <Card>
                     <div className="text-center py-12 px-4 space-y-4">
@@ -376,7 +375,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <PageHeader
                 icon={<Icon name="dashboard" size={28} />}
                 title={t('dashboard.title', "Vue d'ensemble")}
-                subtitle={t('dashboard.subtitle', "Patrimoine consolidé et tendance")}
             />
 
             {/* Hero KPI strip — Phase D.8 : 5 KPIs incluant Active Income */}
@@ -416,7 +414,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     variant="warning"
                 />
                 {/* Indicateur Futur — custom car contient un input année */}
-                <div className="bg-info-bg backdrop-blur-sm rounded-card p-4 border-l-4 border-l-info-500 border-r border-t border-b border-white/5 flex flex-col gap-1 hover:bg-info-500/15 transition-colors group">
+                <div className="bg-white/[0.02] backdrop-blur-sm rounded-card p-4 border-l-2 border-l-white/10 border-r border-t border-b border-white/5 flex flex-col gap-1 hover:bg-white/[0.04] transition-colors group">
                     <div className="flex items-center justify-between">
                         <span className="kpi-label">{t('dashboard.future_predictor', 'Indicateur Futur')}</span>
                         <button
@@ -556,17 +554,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <button
                                 type="button"
                                 onClick={() => setShowComparisonModal(true)}
-                                className="px-3 py-1.5 bg-primary/15 hover:bg-primary/25 border border-primary/40 text-primary text-tiny font-bold rounded-card transition-colors focus-ring"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/15 hover:bg-primary/25 border border-primary/40 text-primary text-tiny font-bold rounded-card transition-colors focus-ring"
                             >
-                                📈 {selectedStockSymbols.size === 1 ? 'Voir courbe' : `Comparer (${selectedStockSymbols.size})`}
+                                <Icon name="chart" size={14} />{selectedStockSymbols.size === 1 ? 'Voir courbe' : `Comparer (${selectedStockSymbols.size})`}
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setSelectedStockSymbols(new Set())}
-                                className="px-2 py-1 text-tiny text-ink-400 hover:text-ink-200 transition-colors focus-ring rounded"
+                                className="inline-flex px-2 py-1 text-ink-400 hover:text-ink-200 transition-colors focus-ring rounded"
                                 title="Tout désélectionner"
+                                aria-label="Tout désélectionner"
                             >
-                                ✕
+                                <Icon name="close" size={14} />
                             </button>
                         </div>
                     ) : (
@@ -611,7 +610,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                             isSelected ? 'bg-primary border-primary' : 'border-white/20 group-hover:border-white/40'
                                         }`}
                                     >
-                                        {isSelected && <span className="text-tiny text-white font-bold">✓</span>}
+                                        {isSelected && <Icon name="check" size={11} className="text-dark" />}
                                     </div>
                                     <div className="w-8 h-8 rounded bg-surfaceHighlight flex items-center justify-center text-meta font-bold text-ink-200 shrink-0">{asset.symbol.substring(0, 2)}</div>
                                     <div className="min-w-0">

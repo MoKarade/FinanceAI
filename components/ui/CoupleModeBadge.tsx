@@ -1,5 +1,6 @@
 import React from 'react';
 import { useFinanceStore } from '../../store/useFinanceStore';
+import { Icon } from './Icon';
 
 /**
  * Phase A.5 — indicateur visuel read-only du mode Couple/Individuel.
@@ -31,7 +32,7 @@ export const CoupleModeBadge: React.FC<{ className?: string; compact?: boolean }
             title={isCouple ? 'Mode Couple actif (modifiable dans Configuration)' : 'Mode Individuel (modifiable dans Configuration)'}
             aria-label={isCouple ? 'Mode Couple actif' : 'Mode Individuel actif'}
         >
-            <span aria-hidden="true">{isCouple ? '👥' : '👤'}</span>
+            <Icon name="users" size={13} />
             {!compact && <span>{isCouple ? 'Couple' : 'Individuel'}</span>}
         </div>
     );

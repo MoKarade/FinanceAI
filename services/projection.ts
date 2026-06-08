@@ -1290,7 +1290,7 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
         const delayStr = target.delayPensions ? 'repousser vos rentes gouvernementales à 70 ans' : 'prendre vos rentes gouvernementales aux âges normaux';
         const stratStr = (target.strategyName as string ?? '').split(' / ')[0];
         const isBest = target === best;
-        target.aiNote = `${isBest ? '🌟 Stratégie Optimale : ' : ''}Simulation basée sur **${stratStr}** et **${delayStr}**. Indice de Vitalité : ${fvi}%.`;
+        target.aiNote = `${isBest ? 'Stratégie optimale : ' : ''}Simulation basée sur **${stratStr}** et **${delayStr}**. Indice de Vitalité : ${fvi}%.`;
     } else {
         target.chartData.forEach((d) => { d.P10 = null; d.P50 = null; d.P90 = null; });
         const delayStr = target.delayPensions ? 'repousser les rentes (70 ans)' : 'prendre les rentes normalement';

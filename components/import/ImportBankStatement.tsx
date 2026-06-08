@@ -69,7 +69,7 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFile(f); e.target.value = ''; }}
                     aria-label="Choisir un relevé CSV à importer"
                 />
-                <span className="text-3xl mb-2 transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-0.5" aria-hidden="true">📥</span>
+                <span className="mb-2 transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-0.5" aria-hidden="true"><Icon name="import" size={28} className="text-ink-300" /></span>
                 <span className="text-meta font-medium text-ink-200">{fileName || 'Cliquer ou glisser un fichier'}</span>
                 <span className="text-tiny text-ink-500 mt-1">CSV · TSV · toutes banques</span>
             </label>
@@ -108,7 +108,7 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
                         <button
                             type="button"
                             onClick={confirm}
-                            className="px-3 py-2 bg-primary/90 hover:bg-primary text-white rounded-lg text-body font-bold transition-colors focus-ring"
+                            className="px-3 py-2 bg-primary/90 hover:bg-primary text-dark rounded-lg text-body font-bold transition-colors focus-ring"
                         >
                             Importer {preview.imported} transaction(s)
                         </button>

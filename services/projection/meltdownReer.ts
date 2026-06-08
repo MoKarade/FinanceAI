@@ -4,6 +4,7 @@
 // Pure Return: retourne null si aucune action.
 
 import type { AllocationStrategy } from './types';
+import { withholdingForGrossRRSP } from '../../utils/tax';
 
 const MELTDOWN_NW_HIGH = 2_000_000;
 const MELTDOWN_NW_MID  = 1_000_000;
@@ -68,7 +69,11 @@ export function processReerMeltdown(
     const meltAmountBrut = Math.min(reer, (targetMeltGross - currentTotalGross) / 12);
     if (meltAmountBrut <= 200) return null;
 
-    const withholding = meltAmountBrut * (isVeryHighNW ? 0.38 : 0.30);
+    // F-fix (audit 2026-06) : la retenue suit la source de vérité RRSP_WITHHOLDING_QC
+    // (19/24/29 % par tranche, sur le brut mensuel — même convention que le décaissement
+    // standard). Avant : 30/38 % en dur, ne correspondant à aucune tranche → impôt
+    // (retenue) surévalué sur un meltdown. La réconciliation réelle reste en décembre.
+    const withholding = withholdingForGrossRRSP(meltAmountBrut).withholding;
     const netMelt = meltAmountBrut - withholding;
 
     return {

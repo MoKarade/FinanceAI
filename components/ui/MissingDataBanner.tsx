@@ -2,6 +2,7 @@ import React from 'react';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { Tab } from '../../types';
 import type { FinanceState } from '../../store/useFinanceStore';
+import { Icon } from './Icon';
 
 /**
  * Phase C.5 — bannière "Données manquantes" avec redirect vers le Hub.
@@ -159,7 +160,7 @@ export const MissingDataBanner: React.FC<MissingDataBannerProps> = ({
                 className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-card border ${variantClass} text-meta hover:opacity-90 focus-ring transition-opacity ${className}`}
                 aria-label={`Donnée manquante : ${descriptor.label}. Configurer.`}
             >
-                <span aria-hidden="true">⚠️</span>
+                <Icon name="alert" size={14} className="shrink-0" />
                 <span className="font-medium">{message || `${descriptor.label} manquant`}</span>
                 <span className="text-tiny opacity-70" aria-hidden="true">→</span>
             </button>
@@ -173,7 +174,7 @@ export const MissingDataBanner: React.FC<MissingDataBannerProps> = ({
             aria-live="polite"
         >
             <div className="flex items-start gap-3">
-                <span className="text-base shrink-0 mt-0.5" aria-hidden="true">⚠️</span>
+                <Icon name="alert" size={16} className="shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
                     <div className="font-bold text-meta mb-0.5">Donnée manquante</div>
                     <div className="text-tiny opacity-90 mb-1">
@@ -226,7 +227,7 @@ export const MissingDataChecklist: React.FC<{ className?: string }> = ({ classNa
             </div>
             {missingFields.length === 0 ? (
                 <div className="text-meta text-emerald-300 flex items-center gap-2">
-                    <span aria-hidden="true">✅</span>
+                    <Icon name="check" size={15} className="shrink-0" />
                     Configuration complète — toutes les données critiques sont renseignées.
                 </div>
             ) : (

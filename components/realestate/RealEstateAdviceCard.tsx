@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Icon } from '../ui/Icon';
+import { Icon, type IconName } from '../ui/Icon';
 import { Card } from '../ui/Card';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { getRealEstateAdvice, type RealEstateContext, type RealEstateAdvice } from '../../services/claude';
@@ -11,12 +11,12 @@ import { getRealEstateAdvice, type RealEstateContext, type RealEstateAdvice } fr
  * affiche 3 insights catégorisés (cost / timing / leverage / tax / risk).
  */
 
-const CATEGORY_META: Record<RealEstateAdvice['insights'][number]['category'], { icon: string; label: string; color: string }> = {
-    cost: { icon: '💰', label: 'Coût', color: 'text-amber-300 border-warning-500/30 bg-warning-500/5' },
-    timing: { icon: '⏱️', label: 'Timing', color: 'text-info-300 border-info-500/30 bg-info-500/5' },
-    leverage: { icon: '⚖️', label: 'Levier', color: 'text-purple-300 border-purple-500/30 bg-purple-500/5' },
-    tax: { icon: '🏛️', label: 'Fiscal', color: 'text-emerald-300 border-success-500/30 bg-success-500/5' },
-    risk: { icon: '⚠️', label: 'Risque', color: 'text-red-300 border-danger-500/30 bg-danger-500/5' },
+const CATEGORY_META: Record<RealEstateAdvice['insights'][number]['category'], { icon: IconName; label: string; color: string }> = {
+    cost: { icon: 'cash', label: 'Coût', color: 'text-ink-200 border-white/10 bg-white/[0.03]' },
+    timing: { icon: 'clock', label: 'Timing', color: 'text-ink-200 border-white/10 bg-white/[0.03]' },
+    leverage: { icon: 'budget', label: 'Levier', color: 'text-ink-200 border-white/10 bg-white/[0.03]' },
+    tax: { icon: 'tax', label: 'Fiscal', color: 'text-ink-200 border-white/10 bg-white/[0.03]' },
+    risk: { icon: 'alert', label: 'Risque', color: 'text-danger-300 border-danger-500/25 bg-danger-500/5' },
 };
 
 interface RealEstateAdviceCardProps {
@@ -51,19 +51,18 @@ export const RealEstateAdviceCard: React.FC<RealEstateAdviceCardProps> = ({ cont
     };
 
     return (
-        <Card icon={<Icon name="sparkles" size={18} />} title="Conseils IA — Projet immobilier" className="bg-gradient-to-br from-emerald-900/10 to-blue-900/10 border-success-500/20">
+        <Card icon={<Icon name="sparkles" size={18} />} title="Conseils IA — Projet immobilier" className="bg-white/[0.02] border-white/10">
             <div className="space-y-3">
                 {!advice && (
                     <div className="text-center py-4 space-y-2">
                         <p className="text-tiny text-ink-300">
-                            Génère 3 conseils personnalisés sur les coûts cachés, le timing, le levier
-                            fiscal (RAP/CELIAPP), et les risques (stress test B-20) pour ce projet.
+                            3 conseils : coûts cachés, timing, levier fiscal, risques.
                         </p>
                         <button
                             type="button"
                             onClick={handleGenerate}
                             disabled={isLoading || !apiKey}
-                            className="px-4 py-2 bg-gradient-to-r from-success-600 to-info-600 text-white rounded-lg font-bold text-body hover:opacity-90 disabled:opacity-50"
+                            className="px-4 py-2 bg-primary hover:bg-white text-dark rounded-lg font-bold text-body transition-colors disabled:opacity-50"
                         >
                             {isLoading ? 'Analyse…' : 'Conseiller le projet'}
                         </button>
@@ -84,7 +83,7 @@ export const RealEstateAdviceCard: React.FC<RealEstateAdviceCardProps> = ({ cont
                                 return (
                                     <div key={i} className={`p-3 rounded-lg border ${meta.color}`}>
                                         <div className="flex items-start gap-2 mb-1">
-                                            <span aria-hidden="true" className="text-base">{meta.icon}</span>
+                                            <Icon name={meta.icon} size={16} className="mt-0.5 shrink-0" />
                                             <div className="flex-1 min-w-0">
                                                 <div className="font-bold text-white text-body">{ins.title}</div>
                                                 <div className="text-tiny opacity-80 uppercase tracking-wide">{meta.label}</div>

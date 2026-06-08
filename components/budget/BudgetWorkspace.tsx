@@ -10,6 +10,7 @@ import React, { useState } from 'react';
 import type { Transaction, BudgetConfig, BudgetCategory, SavingsGoal } from '../../types';
 import { Budget } from '../Budget';
 import { Planning } from '../Planning';
+import { Icon, type IconName } from '../ui/Icon';
 
 interface BudgetWorkspaceProps {
     transactions: Transaction[];
@@ -23,10 +24,10 @@ interface BudgetWorkspaceProps {
 
 type SubTab = 'budget' | 'fixed' | 'goals';
 
-const SUB_TABS: ReadonlyArray<{ id: SubTab; label: string; icon: string }> = [
-    { id: 'budget', label: 'Budget', icon: '📊' },
-    { id: 'fixed', label: 'Charges fixes & Abos', icon: '🔁' },
-    { id: 'goals', label: 'Objectifs', icon: '🎯' },
+const SUB_TABS: ReadonlyArray<{ id: SubTab; label: string; icon: IconName }> = [
+    { id: 'budget', label: 'Budget', icon: 'chart' },
+    { id: 'fixed', label: 'Charges fixes & Abos', icon: 'clock' },
+    { id: 'goals', label: 'Objectifs', icon: 'goal' },
 ];
 
 export const BudgetWorkspace: React.FC<BudgetWorkspaceProps> = ({
@@ -44,9 +45,9 @@ export const BudgetWorkspace: React.FC<BudgetWorkspaceProps> = ({
                         role="tab"
                         aria-selected={sub === s.id}
                         onClick={() => setSub(s.id)}
-                        className={`px-3 py-1.5 text-meta font-bold rounded whitespace-nowrap transition-colors focus-ring ${sub === s.id ? 'bg-primary text-dark' : 'text-ink-300 hover:text-dark hover:bg-white/10'}`}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-meta font-bold rounded whitespace-nowrap transition-colors focus-ring ${sub === s.id ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-50 hover:bg-white/10'}`}
                     >
-                        <span aria-hidden="true" className="mr-1">{s.icon}</span>{s.label}
+                        <Icon name={s.icon} size={14} />{s.label}
                     </button>
                 ))}
             </div>

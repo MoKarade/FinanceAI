@@ -592,8 +592,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         value={projection.useTheoretical ? 'sandbox' : 'real'}
                         onChange={(v) => updateProj('useTheoretical', v === 'sandbox')}
                         options={[
-                            { value: 'real', label: 'Données Réelles', icon: '🔗' },
-                            { value: 'sandbox', label: 'Sandbox', icon: '🧪' },
+                            { value: 'real', label: 'Réel', icon: <Icon name="link" size={13} /> },
+                            { value: 'sandbox', label: 'Sandbox', icon: <Icon name="flask" size={13} /> },
                         ]}
                     />
                 }
@@ -651,7 +651,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 : 'bg-warning-500/10 border-warning-500/30 text-amber-300'
                         }`}
                     >
-                        <span aria-hidden="true">{isBest ? '★' : '○'}</span>
+                        <Icon name={isBest ? 'check' : 'alert'} size={13} />
                         <span>Scénario actif&nbsp;: <strong className="privacy-blur">{active?.strategyName || '—'}</strong></span>
                         {!isBest && (
                             <span className="text-ink-500 text-tiny hidden sm:inline">— pas le meilleur · modifier dans Paramètres</span>

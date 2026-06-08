@@ -13,7 +13,7 @@ import {
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip } from 'recharts';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
-import { Icon } from './ui/Icon';
+import { Icon, type IconName } from './ui/Icon';
 import { Pill } from './ui/Pill';
 import { Badge } from './ui/Badge';
 import { KPIStat } from './ui/KPIStat';
@@ -96,12 +96,12 @@ interface DividendItem extends AllocationItem {
     amountPerPayout: number;
 }
 
-const DEFAULT_TARGET_MODEL = [
-    { id: 'index', label: 'Index Mondial (CW8)', targetPct: 40, sectors: ['Index'], icon: '🌍', color: '#8b5cf6' },
-    { id: 'tech', label: 'Technologie', targetPct: 30, sectors: ['Technologie'], icon: '💻', color: '#3b82f6' },
-    { id: 'ind_fin', label: 'Industrie & Finance', targetPct: 15, sectors: ['Industrie', 'Finance'], icon: '🏭', color: '#f59e0b' },
-    { id: 'gold', label: 'Or & Matières', targetPct: 10, sectors: ['Mines/Or'], icon: '🥇', color: '#eab308' },
-    { id: 'cash', label: 'Liquidités', targetPct: 5, sectors: [], icon: '💵', color: '#10b981' },
+const DEFAULT_TARGET_MODEL: Array<{ id: string; label: string; targetPct: number; sectors: string[]; icon: IconName; color: string }> = [
+    { id: 'index', label: 'Index Mondial (CW8)', targetPct: 40, sectors: ['Index'], icon: 'globe', color: '#8b5cf6' },
+    { id: 'tech', label: 'Technologie', targetPct: 30, sectors: ['Technologie'], icon: 'cpu', color: '#3b82f6' },
+    { id: 'ind_fin', label: 'Industrie & Finance', targetPct: 15, sectors: ['Industrie', 'Finance'], icon: 'factory', color: '#f59e0b' },
+    { id: 'gold', label: 'Or & Matières', targetPct: 10, sectors: ['Mines/Or'], icon: 'gem', color: '#eab308' },
+    { id: 'cash', label: 'Liquidités', targetPct: 5, sectors: [], icon: 'cash', color: '#10b981' },
 ];
 
 export const Investments: React.FC<InvestmentsProps> = ({
@@ -497,10 +497,10 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     value={subTab}
                     onChange={(v) => setSubTab(v as typeof subTab)}
                     options={[
-                        { value: 'overview', label: "Vue d'ensemble", icon: '📊' },
-                        { value: 'allocation', label: 'Allocation', icon: '🎯' },
-                        { value: 'rebalance', label: 'Rééquilibrage', icon: '⚖️' },
-                        { value: 'detail', label: 'Détail', icon: '📦' },
+                        { value: 'overview', label: "Vue d'ensemble" },
+                        { value: 'allocation', label: 'Allocation' },
+                        { value: 'rebalance', label: 'Rééquilibrage' },
+                        { value: 'detail', label: 'Détail' },
                     ]}
                 />
                 <Pill
@@ -791,7 +791,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     <div className="mt-4 p-4 bg-gradient-to-r from-primary/5 to-info-500/5 border border-primary/20 rounded-xl">
                         <div className="flex items-center justify-between mb-3">
                             <h4 className="text-body font-bold text-white flex items-center gap-2">
-                                <span aria-hidden="true">{allocationFilter.type === 'region' ? '🌍' : '🏢'}</span>
+                                <Icon name={allocationFilter.type === 'region' ? 'globe' : 'building'} size={16} className="text-ink-300" />
                                 Actions en <span className="text-primary">{allocationFilter.value}</span>
                             </h4>
                             <button
@@ -911,7 +911,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
 
                         {isRebalanceEdit && sumTargets !== 100 && (
                             <div className="text-danger-400 text-meta font-bold mb-4 bg-red-900/20 p-3 rounded-lg border border-danger-500/20 animate-pulse flex items-center gap-2">
-                                <span>⚠️</span> Le total des cibles doit être de 100% (Actuel : {sumTargets}%)
+                                <Icon name="alert" size={14} /> Le total des cibles doit être de 100% (Actuel : {sumTargets}%)
                             </div>
                         )}
 
@@ -923,7 +923,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     }`}>
                                     <div className="flex items-center justify-between mb-2">
                                         <div className="flex items-center gap-3">
-                                            <span className="text-xl">{item.icon}</span>
+                                            <Icon name={item.icon} size={20} className="text-ink-300 shrink-0" />
                                             <div>
                                                 <div className="text-white font-bold text-body">{item.label}</div>
                                                 <div className="text-tiny text-ink-500 flex items-center gap-2 mt-1">
@@ -988,8 +988,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     </div>
                                     {/* Phase E.7 — justification IA */}
                                     {iaJustifications.has(item.id) && (
-                                        <div className="mt-3 pt-3 border-t border-white/5 text-tiny text-indigo-300 italic flex gap-2">
-                                            <span aria-hidden="true" className="text-indigo-400 shrink-0">✨</span>
+                                        <div className="mt-3 pt-3 border-t border-white/5 text-tiny text-ink-300 italic flex gap-2">
+                                            <Icon name="sparkles" size={12} className="text-ink-400 shrink-0 mt-0.5" />
                                             <span className="leading-relaxed">{iaJustifications.get(item.id)}</span>
                                         </div>
                                     )}
@@ -1004,13 +1004,13 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                 <div className="space-y-2">
                                     {rebalancingActions.filter(a => a.action === 'SELL').map((a, i) => (
                                         <div key={i} className="text-meta text-red-300 flex items-start gap-2">
-                                            <span>🔴</span>
+                                            <span className="w-2 h-2 rounded-full bg-danger-500 mt-1.5 shrink-0" aria-hidden="true" />
                                             <span><b>Vendre</b> {Math.round(Math.abs(a.diffAmount)).toLocaleString()}$ de <b>{a.label}</b> (surplus {a.diffPct.toFixed(1)}%) — Utilisez votre compte Non-Enregistré en priorité pour optimiser la fiscalité.</span>
                                         </div>
                                     ))}
                                     {rebalancingActions.filter(a => a.action === 'BUY').map((a, i) => (
                                         <div key={i} className="text-meta text-green-300 flex items-start gap-2">
-                                            <span>🟢</span>
+                                            <span className="w-2 h-2 rounded-full bg-success-500 mt-1.5 shrink-0" aria-hidden="true" />
                                             <span><b>Acheter</b> {Math.round(Math.abs(a.diffAmount)).toLocaleString()}$ de <b>{a.label}</b> (déficit {Math.abs(a.diffPct).toFixed(1)}%) — Priorisez votre CELI si vous avez de l'espace disponible.</span>
                                         </div>
                                     ))}
@@ -1113,9 +1113,9 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                                 onClick={() => { setConfirmDeleteId(asset.id); window.setTimeout(() => setConfirmDeleteId(c => (c === asset.id ? null : c)), 3000); }}
                                                 aria-label={`Retirer la position ${savedAsset.symbol}`}
                                                 title="Retirer cette position"
-                                                className="text-tiny text-ink-500 hover:text-danger-400 px-1.5 py-1 rounded-lg transition-colors"
+                                                className="inline-flex text-ink-500 hover:text-danger-400 px-1.5 py-1 rounded-lg transition-colors"
                                             >
-                                                🗑
+                                                <Icon name="trash" size={14} />
                                             </button>
                                         )
                                     )}

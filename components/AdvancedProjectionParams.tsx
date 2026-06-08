@@ -206,7 +206,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                         </div>
                     )}
                     {!projection.snowbirdEnabled && (
-                        <p className="text-tiny text-ink-500 italic">Active d'abord le toggle 🌴 Snowbird dans la grille principale.</p>
+                        <p className="text-tiny text-ink-500 italic">Active d'abord le toggle Snowbird dans la grille principale.</p>
                     )}
                 </div>
 

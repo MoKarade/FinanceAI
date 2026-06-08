@@ -554,17 +554,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <button
                                 type="button"
                                 onClick={() => setShowComparisonModal(true)}
-                                className="px-3 py-1.5 bg-primary/15 hover:bg-primary/25 border border-primary/40 text-primary text-tiny font-bold rounded-card transition-colors focus-ring"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/15 hover:bg-primary/25 border border-primary/40 text-primary text-tiny font-bold rounded-card transition-colors focus-ring"
                             >
-                                📈 {selectedStockSymbols.size === 1 ? 'Voir courbe' : `Comparer (${selectedStockSymbols.size})`}
+                                <Icon name="chart" size={14} />{selectedStockSymbols.size === 1 ? 'Voir courbe' : `Comparer (${selectedStockSymbols.size})`}
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setSelectedStockSymbols(new Set())}
-                                className="px-2 py-1 text-tiny text-ink-400 hover:text-ink-200 transition-colors focus-ring rounded"
+                                className="inline-flex px-2 py-1 text-ink-400 hover:text-ink-200 transition-colors focus-ring rounded"
                                 title="Tout désélectionner"
+                                aria-label="Tout désélectionner"
                             >
-                                ✕
+                                <Icon name="close" size={14} />
                             </button>
                         </div>
                     ) : (
@@ -609,7 +610,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                             isSelected ? 'bg-primary border-primary' : 'border-white/20 group-hover:border-white/40'
                                         }`}
                                     >
-                                        {isSelected && <span className="text-tiny text-white font-bold">✓</span>}
+                                        {isSelected && <Icon name="check" size={11} className="text-dark" />}
                                     </div>
                                     <div className="w-8 h-8 rounded bg-surfaceHighlight flex items-center justify-center text-meta font-bold text-ink-200 shrink-0">{asset.symbol.substring(0, 2)}</div>
                                     <div className="min-w-0">

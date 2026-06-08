@@ -159,7 +159,7 @@ export const AutoBackupPanel: React.FC = () => {
                     <div className="space-y-1 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
                         {backups.map(entry => (
                             <div key={entry.id} className="flex items-center gap-3 p-2 bg-white/5 rounded border border-white/5 text-meta">
-                                <span aria-hidden="true" className="shrink-0">{entry.source === 'auto' ? '⚙️' : '✋'}</span>
+                                <Icon name={entry.source === 'auto' ? 'settings' : 'users'} size={14} className="shrink-0 text-ink-400" />
                                 <div className="flex-1 min-w-0">
                                     <div className="text-ink-100 font-mono">{formatDate(entry.timestamp)} {new Date(entry.timestamp).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })}</div>
                                     <div className="text-tiny text-ink-500">{(entry.sizeBytes / 1024).toFixed(1)} KB · {entry.source === 'auto' ? 'auto' : 'manuel'}</div>
@@ -179,7 +179,7 @@ export const AutoBackupPanel: React.FC = () => {
                                     title="Supprimer ce backup"
                                     aria-label={`Supprimer le backup du ${formatDate(entry.timestamp)}`}
                                 >
-                                    🗑️
+                                    <Icon name="trash" size={14} />
                                 </button>
                             </div>
                         ))}

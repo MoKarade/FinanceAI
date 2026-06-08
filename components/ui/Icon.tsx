@@ -17,8 +17,10 @@ import {
   CircleDot, HeartPulse,
   CalendarDays, GraduationCap, Shield, ClipboardList, Users, BookOpen,
   LifeBuoy, Bot, Cloud, FileText, Percent, Clock,
-  Trash2, AlertTriangle, Smartphone, Link, Lock,
+  Trash2, AlertTriangle, Smartphone, Link, Lock, Unlock,
   Heart, Hammer, Car, Rocket, ShoppingCart, Ambulance,
+  X, SendHorizontal, FlaskConical, ChevronLeft, ChevronRight, Trophy,
+  Music, Tv, Wifi, Plus, Minus, Pencil, RefreshCw, Cpu, Gem, Factory,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -70,6 +72,7 @@ const REGISTRY = {
   smartphone: Smartphone,
   link: Link,
   lock: Lock,
+  unlock: Unlock,
   heart: Heart,
   hammer: Hammer,
   car: Car,
@@ -95,6 +98,22 @@ const REGISTRY = {
   more: MoreHorizontal,
   eye: Eye,
   'eye-off': EyeOff,
+  close: X,
+  send: SendHorizontal,
+  flask: FlaskConical,
+  'chevron-left': ChevronLeft,
+  'chevron-right': ChevronRight,
+  trophy: Trophy,
+  music: Music,
+  tv: Tv,
+  wifi: Wifi,
+  plus: Plus,
+  minus: Minus,
+  edit: Pencil,
+  refresh: RefreshCw,
+  cpu: Cpu,
+  gem: Gem,
+  factory: Factory,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof REGISTRY;

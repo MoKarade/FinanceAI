@@ -7,7 +7,7 @@ import { Card } from '../ui/Card';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { showToast } from '../ui/Toast';
 import { getAuditLog, clearAuditLog, getAuditStats, exportAuditLogAsJSON, type AuditEntry } from '../../services/auditLog';
-import { Icon } from '../ui/Icon';
+import { Icon, type IconName } from '../ui/Icon';
 
 const OP_COLORS: Record<AuditEntry['operation'], string> = {
     add: 'text-emerald-300 border-success-500/30 bg-success-500/5',
@@ -16,11 +16,11 @@ const OP_COLORS: Record<AuditEntry['operation'], string> = {
     replace: 'text-amber-300 border-warning-500/30 bg-warning-500/5',
 };
 
-const OP_ICONS: Record<AuditEntry['operation'], string> = {
-    add: '➕',
-    remove: '➖',
-    update: '✏️',
-    replace: '🔄',
+const OP_ICONS: Record<AuditEntry['operation'], IconName> = {
+    add: 'plus',
+    remove: 'minus',
+    update: 'edit',
+    replace: 'refresh',
 };
 
 export const AuditLogViewer: React.FC = () => {
@@ -142,7 +142,7 @@ export const AuditLogViewer: React.FC = () => {
                             return (
                                 <div key={e.id} className={`text-tiny rounded border px-3 py-2 ${colors}`}>
                                     <div className="flex items-center gap-2">
-                                        <span aria-hidden="true">{OP_ICONS[e.operation]}</span>
+                                        <Icon name={OP_ICONS[e.operation]} size={13} />
                                         <span className="font-mono opacity-60 shrink-0">{date}</span>
                                         <span className="font-bold shrink-0 uppercase text-tiny opacity-80">{e.field}</span>
                                         <span className="flex-1 min-w-0 truncate">{e.description}</span>

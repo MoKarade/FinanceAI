@@ -4,6 +4,7 @@
 // sur les règles canadiennes (PWL Capital / Canadian Couch Potato).
 
 import React, { useMemo, useState } from 'react';
+import { Icon } from '../ui/Icon';
 import type { Asset } from '../../types';
 import { optimizeAssetLocation, type AssetClass, type AccountType } from '../../services/projection/assetLocation';
 
@@ -110,7 +111,7 @@ export const AssetLocationPanel: React.FC<Props> = ({ assets, annualGrossIncome 
                 aria-expanded={expanded}
             >
                 <span className="text-meta font-black text-white tracking-tight flex items-center gap-1.5">
-                    <span aria-hidden="true">{hasIssues ? '⚠️' : '✅'}</span> Placement par compte
+                    <Icon name={hasIssues ? 'alert' : 'check'} size={14} className={hasIssues ? 'text-warning-400' : 'text-success-400'} /> Placement par compte
                 </span>
                 <span className={`text-tiny font-bold ${hasIssues ? 'text-amber-300' : 'text-green-300'}`}>
                     {hasIssues

@@ -424,7 +424,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => `${(val / 1000).toFixed(0)}k$`} width={55} />
                                             <Tooltip content={<RetirementTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.07)', strokeWidth: 2 }} />
                                             <Legend verticalAlign="top" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '12px' }} />
-                                            <ReferenceLine x={goal.targetAge} stroke="#f97316" strokeDasharray="5 3" label={{ position: 'insideTopRight', value: `Retraite (${goal.targetAge}a) 🔥`, fill: '#f97316', fontSize: 11, fontWeight: 'bold', dy: -8 }} />
+                                            <ReferenceLine x={goal.targetAge} stroke="#f97316" strokeDasharray="5 3" label={{ position: 'insideTopRight', value: `Retraite (${goal.targetAge}a)`, fill: '#f97316', fontSize: 11, fontWeight: 'bold', dy: -8 }} />
                                             <Area type="monotone" dataKey="Liquidites" stackId="1" fill="url(#retGradLiq)" stroke="#a78bfa" strokeWidth={1} name="Liquidites" fillOpacity={1} />
                                             <Area type="monotone" dataKey="NonReg" stackId="1" fill="url(#retGradNonReg)" stroke="#f59e0b" strokeWidth={1} name="Non-Enreg." fillOpacity={1} />
                                             <Area type="monotone" dataKey="CELI" stackId="1" fill="url(#retGradCELI)" stroke="#10b981" strokeWidth={1.5} name="CELI" fillOpacity={1} />
@@ -449,7 +449,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                     <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
                                         <div className="text-tiny text-ink-500 uppercase tracking-widest font-bold">Heritage ({lifeExpectancy} ans)</div>
                                         <div className={`text-2xl font-black privacy-blur mt-1 ${finalNetWorth > 0 ? 'text-white' : 'text-danger-400'}`}>
-                                            {finalNetWorth > 0 ? `${(finalNetWorth / 1000).toFixed(0)}k $` : 'Epuise ⚠️'}
+                                            {finalNetWorth > 0 ? `${(finalNetWorth / 1000).toFixed(0)}k $` : 'Épuisé'}
                                         </div>
                                     </div>
                                 </div>
@@ -498,7 +498,7 @@ const RetirementTooltip = React.memo(({ active, payload }: RetirementTooltipProp
             <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/10">
                 <span className="text-lg font-black text-white">Age: {data.age} ans</span>
                 <span className={`text-meta font-bold px-2 py-1 rounded-md ${isRetired ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 'bg-info-500/10 text-info-400 border border-info-500/20'}`}>
-                    {isRetired ? 'En Retraite 🏖️' : 'Accumulation 📈'}
+                    {isRetired ? 'En retraite' : 'Accumulation'}
                 </span>
             </div>
 

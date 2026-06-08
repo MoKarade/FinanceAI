@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Icon } from './Icon';
 
 // Sprint 2 H5 (Sprint 2 quick wins) — Migration framer-motion → CSS keyframes
 // Économie : ~80 KB gzip dans le bundle. framer-motion était utilisé UNIQUEMENT
@@ -66,16 +67,18 @@ export const ToastContainer: React.FC = () => {
                                 'border-info-500/60'
                         }`}
                 >
-                    <span className="text-xl" aria-hidden="true">
-                        {toast.type === 'success' ? '✅' : toast.type === 'error' ? '❌' : 'ℹ️'}
-                    </span>
+                    <Icon
+                        name={toast.type === 'success' ? 'check' : toast.type === 'error' ? 'alert' : 'status'}
+                        size={18}
+                        className={`shrink-0 ${toast.type === 'success' ? 'text-success-400' : toast.type === 'error' ? 'text-danger-400' : 'text-info-400'}`}
+                    />
                     <div className="flex-1 text-body font-medium">{toast.message}</div>
                     <button
                         onClick={() => removeToast(toast.id)}
                         aria-label="Fermer la notification"
                         className="touch-target flex items-center justify-center opacity-50 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 transition-opacity rounded"
                     >
-                        ✕
+                        <Icon name="close" size={16} />
                     </button>
                 </div>
             ))}

@@ -173,7 +173,7 @@ export const GuidedTour: React.FC = () => {
             onClick={finish}
             className="text-tiny text-ink-400 hover:text-ink-100 focus-ring rounded px-1"
           >
-            Passer ✕
+            Passer
           </button>
         </div>
 
@@ -206,7 +206,7 @@ export const GuidedTour: React.FC = () => {
             onClick={next}
             className="flex-1 px-3 py-2 rounded-card text-meta font-bold text-dark bg-primary hover:brightness-110 transition-all focus-ring"
           >
-            {isLast ? 'Terminer 🎉' : 'Suivant →'}
+            {isLast ? 'Terminer' : 'Suivant →'}
           </button>
         </div>
       </div>

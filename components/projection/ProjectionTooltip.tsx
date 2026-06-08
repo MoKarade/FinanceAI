@@ -73,7 +73,7 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
 
     return (
         <div className="relative bg-gradient-to-b from-[#11161f]/95 to-dark/95 backdrop-blur-md border border-white/15 ring-1 ring-white/5 p-3.5 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.85)] w-72 max-h-[480px] overflow-y-auto z-50 animate-fade-in">
-            <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-primary via-purple-500 to-pink-500 opacity-80" />
+            <div className="absolute inset-x-0 top-0 h-px rounded-t-2xl bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
 
             <div className="flex justify-between items-center gap-2 mb-2.5">
                 <span className="text-body font-extrabold text-white tracking-tight">{data.dateLabel || 'N/A'}</span>
@@ -81,7 +81,7 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
             </div>
 
             {/* Hero : valeur nette + variation du mois (libellé explicite) */}
-            <div className="rounded-xl bg-gradient-to-r from-primary/20 to-purple-500/15 border border-white/15 p-2.5 mb-2.5">
+            <div className="rounded-xl bg-white/[0.05] border border-white/15 p-2.5 mb-2.5">
                 <div className="flex items-center justify-between gap-2">
                     <span className="text-tiny uppercase tracking-widest text-ink-300 font-bold">Valeur nette</span>
                     <span className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded ${diffNW >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-danger-500/15'}`}>

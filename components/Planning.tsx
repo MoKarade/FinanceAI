@@ -2,11 +2,23 @@ import React, { useMemo, useState } from 'react';
 import { logError } from '../services/errorLogger';
 import { Transaction, RecurringItem, SavingsGoal, BudgetConfig, BudgetCategory } from '../types';
 import { Card } from './ui/Card';
+import { Icon, type IconName } from './ui/Icon';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 // Phase 4 A5: bascule sur services/claude.ts (Haiku 4.5)
 import { detectSubscriptionsAI } from '../services/claude';
 import { showToast } from './ui/Toast';
 import { ConfirmModal } from './ui/ConfirmModal';
+
+/** Icône ligne d'un abonnement selon le marchand (sobre, remplace les emoji). */
+const subIcon = (payee: string): IconName => {
+    const p = (payee || '').toLowerCase();
+    if (p.includes('netflix') || p.includes('disney') || p.includes('prime')) return 'tv';
+    if (p.includes('spotify') || p.includes('apple music') || p.includes('deezer')) return 'music';
+    if (p.includes('hydro') || p.includes('électric') || p.includes('energir')) return 'actions';
+    if (p.includes('internet') || p.includes('bell') || p.includes('videotron') || p.includes('telus')) return 'wifi';
+    if (p.includes('loyer') || p.includes('hypoth')) return 'real-estate';
+    return 'transactions';
+};
 
 interface PlanningProps {
     transactions: Transaction[];
@@ -144,7 +156,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                             {activeSubs.map((sub, idx) => (
                                 <div key={idx} className="flex justify-between items-center p-3 bg-[#1a1a1a] rounded-xl border border-white/5 hover:border-white/20 transition-all group">
                                     <div className="flex items-center gap-3 overflow-hidden">
-                                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-body shadow-inner flex-shrink-0">{(sub.payee || '').toLowerCase().includes('netflix') ? '🍿' : (sub.payee || '').toLowerCase().includes('spotify') ? '🎵' : (sub.payee || '').toLowerCase().includes('hydro') ? '⚡' : (sub.payee || '').toLowerCase().includes('internet') ? '🌐' : (sub.payee || '').toLowerCase().includes('loyer') ? '🏠' : '💳'}</div>
+                                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shadow-inner flex-shrink-0"><Icon name={subIcon(sub.payee)} size={16} className="text-ink-300" /></div>
                                         <div className="min-w-0"><div className="font-bold text-white text-body truncate">{sub.payee}</div><div className="text-tiny text-ink-500">Le {sub.dayOfMonth} du mois</div></div>
                                     </div>
                                     <div className="text-right flex-shrink-0"><div className="font-bold text-white privacy-blur">{sub.averageAmount.toFixed(0)}$</div><div className="text-tiny text-ink-500">/mois</div></div>
@@ -207,9 +219,9 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                 const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
                                 return (
                                     <div key={goal.id} className="relative p-3 bg-[#1a1a1a] rounded-xl border border-white/5 group">
-                                        <button onClick={() => handleDeleteGoal(goal.id)} aria-label={`Supprimer l'objectif ${goal.name}`} className="absolute top-1 right-1 touch-target flex items-center justify-center text-ink-500 hover:text-danger-500 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity focus-ring rounded">✕</button>
+                                        <button onClick={() => handleDeleteGoal(goal.id)} aria-label={`Supprimer l'objectif ${goal.name}`} className="absolute top-1 right-1 touch-target flex items-center justify-center text-ink-500 hover:text-danger-500 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity focus-ring rounded"><Icon name="close" size={14} /></button>
                                         <div className="flex justify-between items-center mb-1">
-                                            <div className="flex items-center gap-2"><span className="text-lg">{goal.icon}</span><span className="text-body font-bold text-white">{goal.name}</span></div>
+                                            <div className="flex items-center gap-2"><Icon name="goal" size={16} className="text-ink-300 shrink-0" /><span className="text-body font-bold text-white">{goal.name}</span></div>
                                             <span className="text-meta text-ink-300">{goal.currentAmount}/{goal.targetAmount}$</span>
                                         </div>
                                         <div className="w-full bg-black/50 rounded-full h-1.5"><div className="h-full bg-gradient-to-r from-info-500 to-purple-500 rounded-full" style={{ width: `${Math.min(100, progress)}%` }}></div></div>

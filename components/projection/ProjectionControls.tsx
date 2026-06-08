@@ -122,7 +122,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                 <Card className="bg-primary/10 border-primary/20">
                     <div className="flex gap-4 items-start">
                         <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                            <span aria-hidden="true">🤖</span>
+                            <Icon name="bot" size={18} className="text-primary" />
                         </div>
                         <div className="min-w-0">
                             <p className="text-body text-ink-100 leading-relaxed">

@@ -282,8 +282,8 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                         <div className="w-full bg-surfaceHighlight rounded-full h-2"><div className="h-full bg-danger-500 rounded-full" style={{ width: `${Math.min(100, impactAnalysis.liquidityRatio)}%` }}></div></div>
                                         <div className="text-tiny text-right text-danger-400 mt-1">{impactAnalysis.liquidityRatio.toFixed(1)}% de votre patrimoine actuel</div>
                                     </div>
-                                    <div className="bg-blue-900/10 border border-info-500/20 rounded-xl p-4">
-                                        <div className="flex items-center gap-2 mb-2"><span className="text-xl">🦋</span><h4 className="font-bold text-blue-300 text-body">Effet Papillon (20 ans)</h4></div>
+                                    <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+                                        <div className="flex items-center gap-2 mb-2"><Icon name="sprout" size={18} className="text-ink-300" /><h4 className="font-bold text-ink-100 text-body">Effet papillon (20 ans)</h4></div>
                                         <p className="text-meta text-ink-300 mb-3">Si cet argent ({impactAnalysis.immediateCost.toLocaleString()}$) avait été investi à {returnRate}% au lieu d'être dépensé...</p>
                                         <div className="flex justify-between items-end">
                                             <div><div className="text-meta text-ink-500">Coût d'Opportunité</div><div className="text-lg font-bold text-orange-400">-{Math.round(impactAnalysis.opportunityCost).toLocaleString()} $</div></div>
@@ -313,9 +313,8 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                         </div>
                     ) : (
                         <div className="sticky top-6 h-[400px] flex flex-col items-center justify-center text-ink-500 bg-white/5 rounded-2xl border border-white/5 border-dashed">
-                            <span className="text-5xl mb-4 grayscale opacity-30">👈</span>
-                            <p className="text-body">Sélectionnez un événement à gauche</p>
-                            <p className="text-meta opacity-50">pour voir l'analyse détaillée</p>
+                            <Icon name="life-projects" size={40} className="mb-4 opacity-30" />
+                            <p className="text-body">Sélectionne un événement</p>
                         </div>
                     )}
                 </div>

@@ -135,7 +135,7 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
                         disabled={isAnalyzing}
                         className="sr-only"
                     />
-                    <span className="text-3xl mb-2 transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-0.5" aria-hidden="true">{isAnalyzing ? '⏳' : '📄'}</span>
+                    <span className="mb-2 transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-0.5" aria-hidden="true"><Icon name={isAnalyzing ? 'clock' : 'document'} size={28} className="text-ink-300" /></span>
                     <span className="text-meta font-medium text-ink-200">
                         {isAnalyzing ? status : 'Cliquer ou glisser un fichier'}
                     </span>

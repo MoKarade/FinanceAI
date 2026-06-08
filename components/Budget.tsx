@@ -491,10 +491,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                             value={timeView}
                             onChange={(v) => { setTimeView(v as TimeView); setPeriodOffset(0); }}
                             options={[
-                                { value: 'MONTH', label: 'Mois', icon: '📅' },
-                                { value: 'QUARTER', label: 'Trim.', icon: '📊' },
-                                { value: 'YEAR', label: 'Année', icon: '📆' },
-                                { value: 'CUSTOM', label: 'Custom', icon: '🛠️' },
+                                { value: 'MONTH', label: 'Mois' },
+                                { value: 'QUARTER', label: 'Trim.' },
+                                { value: 'YEAR', label: 'Année' },
+                                { value: 'CUSTOM', label: 'Custom' },
                             ]}
                         />
                         {/* Phase D'.6 — navigation rapide périodes adjacentes */}
@@ -507,7 +507,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     aria-label="Période précédente"
                                     className="px-2 py-1 text-ink-300 hover:text-ink-100 hover:bg-white/10 rounded transition-colors focus-ring"
                                 >
-                                    ←
+                                    <Icon name="chevron-left" size={15} />
                                 </button>
                                 <span className="px-2 text-tiny text-ink-300 font-mono min-w-[80px] text-center">
                                     {(() => {
@@ -528,7 +528,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     aria-label="Période suivante"
                                     className="px-2 py-1 text-ink-300 hover:text-ink-100 hover:bg-white/10 rounded transition-colors focus-ring disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
                                 >
-                                    →
+                                    <Icon name="chevron-right" size={15} />
                                 </button>
                                 {periodOffset !== 0 && (
                                     <button
@@ -557,9 +557,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                 value={personFilter === null ? 'all' : (personFilter === 0 ? 'user1' : 'user2')}
                                 onChange={(v) => setPersonFilter(v === 'all' ? null : v === 'user1' ? 0 : 1)}
                                 options={[
-                                    { value: 'all', label: 'Couple', icon: '👥' },
-                                    { value: 'user1', label: coupleAnalysis.user1?.name?.split(' ')[0] || 'P1', icon: '👤' },
-                                    { value: 'user2', label: coupleAnalysis.user2?.name?.split(' ')[0] || 'P2', icon: '👤' },
+                                    { value: 'all', label: 'Couple' },
+                                    { value: 'user1', label: coupleAnalysis.user1?.name?.split(' ')[0] || 'P1' },
+                                    { value: 'user2', label: coupleAnalysis.user2?.name?.split(' ')[0] || 'P2' },
                                 ]}
                             />
                         )}

@@ -8,15 +8,15 @@ import { Card } from '../ui/Card';
 import { getErrors, clearErrors, getErrorStats, exportErrorsAsJSON, type LoggedError, type ErrorSource, type ErrorSeverity } from '../../services/errorLogger';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { showToast } from '../ui/Toast';
-import { Icon } from '../ui/Icon';
+import { Icon, type IconName } from '../ui/Icon';
 
-const SOURCE_ICONS: Record<ErrorSource, string> = {
-    ai: '✨',
-    projection: '🔮',
-    ui: '🖥️',
-    network: '🌐',
-    storage: '💾',
-    unknown: '❓',
+const SOURCE_ICONS: Record<ErrorSource, IconName> = {
+    ai: 'sparkles',
+    projection: 'future',
+    ui: 'smartphone',
+    network: 'globe',
+    storage: 'cloud',
+    unknown: 'status',
 };
 
 const SEVERITY_COLORS: Record<ErrorSeverity, string> = {
@@ -117,7 +117,7 @@ export const ErrorLogViewer: React.FC = () => {
                         className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white"
                     >
                         {allSources.map(s => (
-                            <option key={s} value={s}>{s === 'all' ? 'Toutes' : `${SOURCE_ICONS[s]} ${s}`}</option>
+                            <option key={s} value={s}>{s === 'all' ? 'Toutes' : s}</option>
                         ))}
                     </select>
                     <label className="text-tiny text-ink-400 ml-2">Severity :</label>
@@ -190,7 +190,7 @@ const ErrorRow: React.FC<{ err: LoggedError }> = ({ err }) => {
                 aria-expanded={expanded}
                 className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/5 transition-colors text-left"
             >
-                <span aria-hidden="true">{SOURCE_ICONS[err.source]}</span>
+                <Icon name={SOURCE_ICONS[err.source]} size={14} className="text-ink-400" />
                 <span className="font-mono uppercase text-tiny opacity-80 w-20 shrink-0">{err.severity}</span>
                 <span className="font-mono opacity-60 shrink-0">{dateStr}</span>
                 <span className="flex-1 min-w-0 truncate">{err.message}</span>

@@ -72,9 +72,9 @@ export const LifeProjects: React.FC<LifeProjectsProps> = ({
                     value={view}
                     onChange={(v) => setView(v as typeof view)}
                     options={[
-                        { value: 'all', label: 'Tout', icon: '🗺️' },
-                        { value: 'travel', label: 'Voyages', icon: '✈️' },
-                        { value: 'events', label: 'Événements', icon: '🎯' },
+                        { value: 'all', label: 'Tout' },
+                        { value: 'travel', label: 'Voyages' },
+                        { value: 'events', label: 'Événements' },
                     ]}
                 />
             </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Icon } from './Icon';
 
 interface ErrorBoundaryProps {
     children: React.ReactNode;
@@ -43,7 +44,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] p-8 bg-red-900/10 border border-danger-500/20 rounded-2xl m-4">
-                <div className="text-5xl mb-4" aria-hidden="true">⚠️</div>
+                <Icon name="alert" size={44} className="mb-4 text-danger-400" />
                 <h2 className="text-xl font-bold text-red-300 mb-2">
                     {this.props.label ? `Erreur dans « ${this.props.label} »` : 'Erreur dans cet onglet'}
                 </h2>

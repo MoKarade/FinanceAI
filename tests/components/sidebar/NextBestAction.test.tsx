@@ -86,8 +86,8 @@ describe('NextBestAction', () => {
         await waitFor(() => expect(mockGetNextBestActions).toHaveBeenCalled());
         // En compact, on n'affiche pas le titre/raison sous forme de texte
         expect(screen.queryByText('Y')).not.toBeInTheDocument();
-        // Mais un container présent avec l'icône ⚡
-        expect(container.textContent).toContain('⚡');
+        // Mais un container présent avec l'icône (lucide SVG line, remplace l'emoji ⚡)
+        expect(container.querySelector('svg')).toBeInTheDocument();
     });
 
     it('utilise le cache localStorage si disponible (< 1h)', async () => {

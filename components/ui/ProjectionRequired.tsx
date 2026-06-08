@@ -12,6 +12,7 @@
 import React from 'react';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { Tab } from '../../types';
+import { Icon } from './Icon';
 
 interface ProjectionRequiredProps {
     /** Section concernée (ex: "le capital à la retraite") */
@@ -48,7 +49,7 @@ export const ProjectionRequired: React.FC<ProjectionRequiredProps> = ({
             role="status"
             aria-live="polite"
         >
-            <div className="text-3xl mb-2" aria-hidden="true">📊</div>
+            <Icon name="chart" size={28} className="mb-2 text-ink-400" />
             <div className="text-meta font-bold text-amber-300 mb-1">
                 Projection nécessaire
             </div>

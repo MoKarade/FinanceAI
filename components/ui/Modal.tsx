@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { Icon } from './Icon';
 
 type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
 
@@ -134,7 +135,7 @@ export const Modal: React.FC<ModalProps> = ({
                                 aria-label="Fermer"
                                 className="w-11 h-11 inline-flex items-center justify-center rounded-card text-ink-300 hover:text-ink-50 hover:bg-white/10 transition-colors focus-ring"
                             >
-                                ✕
+                                <Icon name="close" size={18} />
                             </button>
                         </div>
                     </div>

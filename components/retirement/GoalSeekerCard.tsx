@@ -89,14 +89,14 @@ export const GoalSeekerCard: React.FC<GoalSeekerCardProps> = ({ paramsBuilder, t
                     Optimiser ordre de décaissement
                 </button>
                 {drawdownResult && !busyDrawdown && (
-                    <div className="p-3 bg-indigo-900/30 border border-indigo-500/30 rounded-lg space-y-2">
-                        <p className="text-meta text-indigo-200">{drawdownResult.explanation}</p>
+                    <div className="p-3 bg-white/[0.03] border border-white/10 rounded-lg space-y-2">
+                        <p className="text-meta text-ink-300">{drawdownResult.explanation}</p>
                         <div className="space-y-1">
                             {drawdownResult.results
                                 .sort((a, b) => b.estateNetWorth - a.estateNetWorth)
                                 .map((r, i) => (
                                     <div key={r.scenarioType} className="flex justify-between text-tiny text-ink-200">
-                                        <span>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '  '} {r.icon} {r.strategyName}</span>
+                                        <span className="flex items-center gap-2"><span className="w-4 h-4 inline-flex items-center justify-center rounded-full bg-white/10 text-[10px] font-bold text-ink-300 shrink-0">{i + 1}</span>{r.strategyName}</span>
                                         <span className="font-mono">{Math.round(r.estateNetWorth).toLocaleString('fr-CA')}$</span>
                                     </div>
                                 ))}
@@ -105,16 +105,16 @@ export const GoalSeekerCard: React.FC<GoalSeekerCardProps> = ({ paramsBuilder, t
                 )}
                 {anyBusy && <p className="text-meta text-ink-300">Calcul en cours…</p>}
                 {goalSeekResult && !busySavings && !busyAge && (
-                    <div className="p-3 bg-purple-900/30 border border-purple-500/30 rounded-lg">
+                    <div className="p-3 bg-white/[0.03] border border-white/10 rounded-lg">
                         {goalSeekResult.savings !== undefined && (
-                            <p className="text-body text-purple-200">
-                                Tu dois épargner <strong className="text-purple-400">{goalSeekResult.savings.toLocaleString('fr-CA')}$/mois</strong>
-                                {goalSeekResult.error && <span className="block text-meta text-orange-300 mt-1">⚠️ {goalSeekResult.error}</span>}
+                            <p className="text-body text-ink-200">
+                                Tu dois épargner <strong className="text-primary">{goalSeekResult.savings.toLocaleString('fr-CA')}$/mois</strong>
+                                {goalSeekResult.error && <span className="text-meta text-orange-300 mt-1 flex items-center gap-1.5"><Icon name="alert" size={13} /> {goalSeekResult.error}</span>}
                             </p>
                         )}
                         {goalSeekResult.age !== undefined && (
-                            <p className="text-body text-purple-200">
-                                Tu peux prendre ta retraite dès <strong className="text-purple-400">{goalSeekResult.age} ans</strong> sans tomber en faillite.
+                            <p className="text-body text-ink-200">
+                                Tu peux prendre ta retraite dès <strong className="text-primary">{goalSeekResult.age} ans</strong> sans tomber en faillite.
                             </p>
                         )}
                     </div>

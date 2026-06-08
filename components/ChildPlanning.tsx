@@ -430,7 +430,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     onClick={() => navigateWithFocus(TabEnum.FUTURE)}
                                     title="Projection officielle (FutureProjection) au 17e anniversaire — clic pour ouvrir"
                                 >
-                                    🔗 {fmt(projectedReeeAt18)}
+                                    <Icon name="link" size={11} className="inline mr-1" />{fmt(projectedReeeAt18)}
                                 </Badge>
                             )}
                             {respCovers != null ? (

@@ -116,8 +116,8 @@ export const CoupleOptimizationCard: React.FC = () => {
                                 <div key={i} className={`p-4 rounded-lg border ${colors}`}>
                                     <div className="flex items-start justify-between gap-2 mb-2">
                                         <div className="flex items-center gap-2 min-w-0">
-                                            <span className="text-base shrink-0" aria-hidden="true">
-                                                {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
+                                            <span className="shrink-0 w-5 h-5 inline-flex items-center justify-center rounded-full bg-white/10 text-tiny font-bold text-ink-200" aria-hidden="true">
+                                                {i + 1}
                                             </span>
                                             <h4 className="font-bold text-white text-body">{s.title}</h4>
                                         </div>

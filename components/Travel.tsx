@@ -101,7 +101,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                         <div key={trip.id} className={`relative group overflow-hidden rounded-2xl border ${isPast ? 'border-white/10 bg-dark/50 grayscale' : 'border-white/10 bg-[#1e1e1e] hover:border-primary/50'} transition-all duration-300 shadow-xl`}>
                             {/* Image Header Placeholder */}
                             <div className={`h-24 ${isPast ? 'bg-surfaceHighlight' : 'bg-white/[0.04]'} flex items-center justify-center relative overflow-hidden`}>
-                                <span className="text-6xl select-none opacity-20 transform group-hover:scale-110 transition-transform duration-500">✈️</span>
+                                <Icon name="plane" size={48} className="text-white opacity-[0.10] transform group-hover:scale-110 transition-transform duration-500" />
                                 <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-md px-2 py-1 rounded text-meta font-mono border border-white/10">
                                     {isPast ? 'Terminé' : `J-${daysLeft}`}
                                 </div>
@@ -110,21 +110,21 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                             <div className="p-5">
                                 <div className="flex justify-between items-start mb-2">
                                     <h3 className="text-xl font-bold text-white">{trip.destination}</h3>
-                                    <button onClick={() => handleDelete(trip.id)} className="text-ink-500 hover:text-danger-500 transition-colors">🗑️</button>
+                                    <button onClick={() => handleDelete(trip.id)} aria-label="Supprimer le voyage" className="inline-flex text-ink-500 hover:text-danger-500 transition-colors"><Icon name="trash" size={16} /></button>
                                 </div>
 
-                                <div className="text-body text-ink-300 mb-4 flex items-center gap-2">
-                                    <span>📅 {new Date(trip.date).toLocaleDateString()}</span>
+                                <div className="text-body text-ink-300 mb-4 flex items-center gap-1.5">
+                                    <Icon name="calendar" size={14} className="text-ink-400" />{new Date(trip.date).toLocaleDateString()}
                                 </div>
 
                                 <div className="bg-black/30 rounded-lg p-3 flex justify-between items-center border border-white/5">
                                     <span className="text-meta text-ink-500 uppercase font-bold">Budget</span>
-                                    <span className="text-lg font-bold text-green-400">{trip.totalCost.toLocaleString()} $</span>
+                                    <span className="text-lg font-bold text-ink-100">{trip.totalCost.toLocaleString()} $</span>
                                 </div>
 
                                 {!isPast && (
                                     <div className="mt-4 text-tiny text-ink-500 text-center">
-                                        Ce montant sera déduit de vos liquidités dans la simulation du futur.
+                                        Déduit des liquidités dans la simulation.
                                     </div>
                                 )}
                             </div>
@@ -137,7 +137,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                 <EmptyState
                     icon={<Icon name="globe" size={30} />}
                     title="Aucun voyage prévu"
-                    description="Ajoutez un voyage pour voir son impact sur vos finances et votre projection long terme."
+                    description="Visualise son impact sur ta projection."
                 />
             )}
         </div>

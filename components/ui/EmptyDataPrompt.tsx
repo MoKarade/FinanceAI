@@ -1,6 +1,7 @@
 import React from 'react';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { Tab } from '../../types';
+import { Icon } from './Icon';
 
 /**
  * P1 — Composant générique affiché à la place des widgets d'action (IA,
@@ -25,7 +26,7 @@ interface EmptyDataPromptProps {
 export const EmptyDataPrompt: React.FC<EmptyDataPromptProps> = ({
     title = 'Données manquantes',
     description = 'Renseigne ton profil dans Configuration pour activer cette section.',
-    icon = '🔒',
+    icon = <Icon name="lock" size={20} className="text-warning-400" />,
     layout = 'block',
     className = '',
 }) => {

@@ -24,9 +24,9 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ config, setConfi
     <div className="space-y-6">
       {/* G22-F4 — relancer le tutoriel guidé (visite de tous les onglets). */}
       <div className="flex items-center justify-between gap-3 p-3 rounded-card bg-primary/10 border border-primary/20">
-        <div className="text-meta text-ink-200">
-          <span aria-hidden="true" className="mr-1">🎓</span>
-          Nouveau ou besoin d'un rappel ? Refais la visite guidée de l'app.
+        <div className="text-meta text-ink-200 flex items-center gap-2">
+          <Icon name="graduation" size={15} className="text-primary shrink-0" />
+          Refais la visite guidée.
         </div>
         <button
           type="button"

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { ComposedChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceDot } from 'recharts';
 import { useTimeChartZoom } from '../../hooks/useTimeChartZoom';
 import { splitEventIcon, ClickableEventIcon } from './ProjectionTooltip';
+import { Icon, type IconName } from '../ui/Icon';
 import { ProjectionChartPoint } from '../../services/projection/types';
 
 /**
@@ -80,7 +81,7 @@ interface AccountPoint {
 }
 
 type ReasonTone = 'pos' | 'neg' | 'in' | 'out';
-interface MovementReason { icon: string; text: string; tone: ReasonTone; }
+interface MovementReason { icon: IconName; text: string; tone: ReasonTone; }
 
 const fmtMoney = (n: number) => `${Math.round(n).toLocaleString('fr-CA')} $`;
 
@@ -91,10 +92,10 @@ const fmtMoney = (n: number) => `${Math.round(n).toLocaleString('fr-CA')} $`;
 function explainMovement(d: AccountPoint): MovementReason[] {
     if (!d.hasDecomp) return [];
     const out: MovementReason[] = [];
-    if (d.gain > 0.5) out.push({ icon: '📈', text: `Rendement placements +${fmtMoney(d.gain)}`, tone: 'pos' });
-    else if (d.gain < -0.5) out.push({ icon: '📉', text: `Perte de marché ${fmtMoney(d.gain)}`, tone: 'neg' });
-    if (d.flow > 0.5) out.push({ icon: '💰', text: `Dépôt (argent ajouté) +${fmtMoney(d.flow)}`, tone: 'in' });
-    else if (d.flow < -0.5) out.push({ icon: '🏧', text: `Retrait (argent sorti) ${fmtMoney(d.flow)}`, tone: 'out' });
+    if (d.gain > 0.5) out.push({ icon: 'investments', text: `Rendement placements +${fmtMoney(d.gain)}`, tone: 'pos' });
+    else if (d.gain < -0.5) out.push({ icon: 'debt', text: `Perte de marché ${fmtMoney(d.gain)}`, tone: 'neg' });
+    if (d.flow > 0.5) out.push({ icon: 'cash', text: `Dépôt (argent ajouté) +${fmtMoney(d.flow)}`, tone: 'in' });
+    else if (d.flow < -0.5) out.push({ icon: 'bank', text: `Retrait (argent sorti) ${fmtMoney(d.flow)}`, tone: 'out' });
     return out;
 }
 
@@ -132,7 +133,7 @@ const AccountDrillTooltip: React.FC<AccountDrillTooltipProps> = ({ active, paylo
                     <div className="text-tiny uppercase tracking-wide text-ink-500 font-bold">Ce mois</div>
                     {reasons.map((r, i) => (
                         <div key={i} className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded font-mono ${REASON_TONE_CLASS[r.tone]} ${blur}`}>
-                            <span aria-hidden="true">{r.icon}</span><span>{r.text}</span>
+                            <Icon name={r.icon} size={12} /><span>{r.text}</span>
                         </div>
                     ))}
                 </div>
@@ -275,9 +276,9 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                         type="button"
                         onClick={onClose}
                         aria-label="Fermer"
-                        className="shrink-0 text-ink-400 hover:text-white text-lg leading-none p-1 -m-1 rounded focus-ring"
+                        className="shrink-0 inline-flex text-ink-400 hover:text-white leading-none p-1 -m-1 rounded focus-ring"
                     >
-                        ✕
+                        <Icon name="close" size={18} />
                     </button>
                 </div>
 
@@ -476,7 +477,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                                     <div className="flex flex-wrap gap-1.5">
                                                         {reasons.map((r, i) => (
                                                             <span key={i} className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-tiny font-mono ${REASON_TONE_CLASS[r.tone]} ${blur}`}>
-                                                                <span aria-hidden="true">{r.icon}</span>{r.text}
+                                                                <Icon name={r.icon} size={11} />{r.text}
                                                             </span>
                                                         ))}
                                                     </div>

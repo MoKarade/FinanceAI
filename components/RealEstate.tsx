@@ -320,7 +320,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                     : 'bg-white/5 border-white/10 text-ink-300 hover:bg-white/10'
                             }`}
                         >
-                            <span>🏠 {g.name || (g.isPrimaryResidence ? 'Résidence' : `Propriété ${idx + 1}`)}</span>
+                            <span className="inline-flex items-center gap-1.5"><Icon name="real-estate" size={14} />{g.name || (g.isPrimaryResidence ? 'Résidence' : `Propriété ${idx + 1}`)}</span>
                             {g.isActive && <span className="w-2 h-2 rounded-full bg-success-500 animate-pulse" aria-label="active" />}
                             {goals.length > 1 && (
                                 <span
@@ -329,7 +329,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                     role="button"
                                     aria-label={`Supprimer ${g.name}`}
                                 >
-                                    ✕
+                                    <Icon name="close" size={13} />
                                 </span>
                             )}
                         </button>
@@ -345,7 +345,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
 
             {/* Property name editor */}
             <div className="flex items-center gap-3">
-                <span className="text-h1 text-ink-50">🏢 {propertyName}</span>
+                <span className="text-h1 text-ink-50 inline-flex items-center gap-2"><Icon name="building" size={20} className="text-ink-400" />{propertyName}</span>
                 <input
                     type="text"
                     value={propertyName}

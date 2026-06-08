@@ -155,7 +155,7 @@ export const Layout: React.FC<LayoutProps> = ({
           aria-label="Mode test activé"
           className="fixed top-0 left-0 right-0 z-[150] bg-gradient-to-r from-warning-600 via-orange-600 to-warning-600 text-white text-center py-2 px-4 font-bold text-body shadow-lg flex items-center justify-center gap-3"
         >
-          <span aria-hidden="true">🧪</span>
+          <Icon name="flask" size={16} />
           <span className="font-bold">MODE TEST</span>
           {/* Sélecteur de persona directement dans la bannière : changer
               d'utilisateur sans passer par Réglages (demandé par Marc). */}
@@ -175,7 +175,6 @@ export const Layout: React.FC<LayoutProps> = ({
             ))}
           </select>
           <span className="hidden md:inline font-normal text-meta opacity-90">— données fictives, vraies données sauvegardées</span>
-          <span aria-hidden="true">🧪</span>
         </div>
       )}
       <style>{`

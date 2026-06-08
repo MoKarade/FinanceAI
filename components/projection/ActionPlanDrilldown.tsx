@@ -6,6 +6,7 @@ import {
     type PlanBucket,
 } from '../../services/projection/actionPlanHierarchy';
 import { ACTION_ACCOUNTS } from '../../services/projection/yearlyActions';
+import { Icon } from '../ui/Icon';
 
 interface ActionPlanDrilldownProps {
     chartData: Array<Record<string, unknown>>;
@@ -23,13 +24,13 @@ const FlowChips: React.FC<{ flows: PlanBucket['flows'] }> = ({ flows }) => {
     return (
         <div className="flex flex-wrap gap-1.5 text-tiny font-mono">
             {deposits.map((a) => (
-                <span key={a.key} className="px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-300 privacy-blur">
-                    💰 {a.label} +{cad(flows[a.key])}
+                <span key={a.key} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-300 privacy-blur">
+                    <Icon name="cash" size={11} /> {a.label} +{cad(flows[a.key])}
                 </span>
             ))}
             {withdrawals.map((a) => (
-                <span key={a.key} className="px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-300 privacy-blur">
-                    🏧 {a.label} −{cad(-flows[a.key])}
+                <span key={a.key} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-300 privacy-blur">
+                    <Icon name="bank" size={11} /> {a.label} −{cad(-flows[a.key])}
                 </span>
             ))}
         </div>
@@ -74,7 +75,7 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
         <div className="mt-6 bg-black/20 p-4 rounded-xl border border-white/5">
             <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
                 <span className="text-meta font-black text-white flex items-center gap-1.5">
-                    <span aria-hidden="true">📋</span> Plan d'action
+                    <Icon name="clipboard" size={14} className="text-ink-300" /> Plan d'action
                 </span>
                 {strategyName && <span className="text-tiny text-ink-500">selon {strategyName}</span>}
             </div>

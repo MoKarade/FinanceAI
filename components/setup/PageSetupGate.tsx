@@ -1,121 +1,56 @@
-import React, { useState, useEffect } from 'react';
-import { Tab, AppState, User } from '../../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Tab, AppState } from '../../types';
 import { useFinanceStore, type FinanceState } from '../../store/useFinanceStore';
-import { Icon, type IconName } from '../ui/Icon';
+import { Icon } from '../ui/Icon';
 import { showToast } from '../ui/Toast';
 import { PayslipUploadCard } from '../settings/PayslipUploadCard';
 import { getPersonaOrDefault, DEFAULT_PERSONA_ID } from '../../services/testFixtures';
+import { REQUIREMENTS, type Requirement, type RequirementId, type RequirementField, type ImportKind } from './requirements';
 
 /**
  * Setup-first par page (demande Marc 2026-06).
  *
- * Chaque page déclare ses PRÉREQUIS (données + import du bon document). Tant
- * qu'ils ne sont pas remplis, `PageSetupGate` n'affiche RIEN du contenu réel
- * de la page : il rend un écran de setup listant ce qu'il manque, avec
- * SAISIE MANUELLE inline + IMPORT du document pertinent + DONNÉES DE TEST.
- * Une fois les prérequis satisfaits, la page s'affiche normalement.
+ * Chaque page déclare ses PRÉREQUIS (par IDs vers le registre central
+ * `REQUIREMENTS`). Tant qu'ils ne sont pas remplis :
+ *  - mode `hard` → RIEN du contenu réel ne s'affiche, on rend l'écran de setup
+ *    (saisie manuelle + import + données de test) ;
+ *  - mode `soft` → le contenu s'affiche AVEC une bannière de complétion (pour
+ *    les pages où « vide » est un état légitime : Dettes, Immo, Enfant…).
  *
- * Pilote : Tab.TAX (Impôts). À dérouler ensuite sur les autres pages via le
- * registre `PAGE_SETUP` ci-dessous.
- *
- * Perf : le gate/écran ne souscrivent QUE des dérivés (booléen `allMet`,
- * compteur `done`, valeurs des champs) — jamais l'état entier — pour ne pas
- * re-render la page enfant à chaque mutation du store. Les handlers lisent
- * l'état LIVE via `useFinanceStore.getState()`.
+ * Le registre central est partagé avec `MissingDataBanner` (source unique).
  */
 
-// ──────────────────────────────────────────────────────────── Types ────────
-interface SetupField {
-    id: string;
-    label: string;
-    /** Champ optionnel : n'entre pas dans `isMet`, juste proposé à la saisie. */
-    optional?: boolean;
-    unit?: string;
-    placeholder?: string;
-    get: (s: FinanceState) => number;
-    /** Retourne le slice à fusionner. Reçoit le brouillon d'état déjà patché par
-     *  les champs précédents (`draft`) — relire UNIQUEMENT `draft`, jamais le store. */
-    toState: (draft: FinanceState, v: number) => Partial<AppState>;
-}
-
-/** Documents importables (mappés vers un composant d'import autonome). */
-type ImportKind = 'payslip';
-
-interface SetupRequirement {
-    id: string;
-    label: string;
-    help?: string;
-    icon?: IconName;
-    isMet: (s: FinanceState) => boolean;
-    /** Saisie manuelle (toujours proposée si présente). */
-    fields?: SetupField[];
-    /** Validation bloquante à l'enregistrement (message d'erreur ou null). */
-    validate?: (vals: Record<string, string>) => string | null;
-    /** Import du document pertinent (alternative à la saisie). */
-    importKind?: ImportKind;
-}
-
-interface PageSetupConfig {
+// ─────────────────────────────────────────────────────────── Registre ──────
+interface PageSetup {
+    mode: 'hard' | 'soft';
     title: string;
     intro: string;
-    requirements: SetupRequirement[];
+    requirementIds: RequirementId[];
 }
 
-// ──────────────────────────────────────────────────────────── Helpers ──────
-const EMPTY_FIELDS: SetupField[] = [];
-
-const patchUser = (users: [User, User], idx: number, patch: Partial<User>): [User, User] =>
-    users.map((u, i) => (i === idx ? { ...u, ...patch } : u)) as [User, User];
-
-// ─────────────────────────────────────────────────────────── Registre ──────
-// NB : pilote = Impôts. Les autres pages seront ajoutées ici (1 entrée / Tab).
-export const PAGE_SETUP: Partial<Record<Tab, PageSetupConfig>> = {
+// Pilote = Impôts (hard, prérequis `salary` partagé avec Retraite/Futur au déroulé).
+export const PAGE_SETUP: Partial<Record<Tab, PageSetup>> = {
     [Tab.TAX]: {
+        mode: 'hard',
         title: 'Impôts & Docs',
         intro:
             "Pour calculer ton impôt fédéral + Québec, il me faut au moins ton salaire brut. " +
             "Saisis-le à la main, ou importe un talon de paie — l'IA Vision le lit et remplit le profil.",
-        requirements: [
-            {
-                id: 'salary',
-                label: 'Salaire — utilisateur principal',
-                help: "Brut MENSUEL (le net est optionnel). Base du calcul d'impôt et des optimisations.",
-                icon: 'tax',
-                isMet: (s) => (s.config.users[0]?.grossSalary ?? 0) > 0,
-                validate: (vals) => {
-                    const gross = Number(vals.gross) || 0;
-                    const net = Number(vals.net) || 0;
-                    if (gross <= 0) return 'Saisis un salaire brut mensuel (> 0).';
-                    if (net > gross) return 'Le salaire net ne peut pas dépasser le brut.';
-                    return null;
-                },
-                fields: [
-                    {
-                        id: 'gross', label: 'Salaire brut', unit: '$/mois', placeholder: 'ex. 5 000',
-                        get: (s) => s.config.users[0]?.grossSalary ?? 0,
-                        toState: (d, v) => ({ config: { ...d.config, users: patchUser(d.config.users, 0, { grossSalary: v }) } }),
-                    },
-                    {
-                        id: 'net', label: 'Salaire net (optionnel)', optional: true, unit: '$/mois', placeholder: 'ex. 3 500',
-                        get: (s) => s.config.users[0]?.netSalary ?? 0,
-                        toState: (d, v) => ({ config: { ...d.config, users: patchUser(d.config.users, 0, { netSalary: v }) } }),
-                    },
-                ],
-                importKind: 'payslip',
-            },
-        ],
+        requirementIds: ['salary'],
     },
 };
 
-const IMPORT_COMPONENTS: Record<ImportKind, React.FC> = {
+const EMPTY_FIELDS: RequirementField[] = [];
+
+/** Composants d'import autonomes par type de document (complété au déroulé). */
+const IMPORT_COMPONENTS: Partial<Record<ImportKind, React.FC>> = {
     payslip: () => <PayslipUploadCard />,
 };
 
 // ───────────────────────────────────────────────────── Requirement card ────
-const RequirementCard: React.FC<{ req: SetupRequirement }> = ({ req }) => {
+const RequirementCard: React.FC<{ req: Requirement }> = ({ req }) => {
     const fields = req.fields ?? EMPTY_FIELDS;
-    // Souscriptions ÉTROITES : le booléen `met` + une signature des valeurs des
-    // champs (pour resync après import/données-de-test), pas l'état entier.
+    // Souscriptions ÉTROITES : `met` + signature des valeurs (resync), pas l'état entier.
     const met = useFinanceStore((s) => req.isMet(s));
     const fieldsSig = useFinanceStore((s) => fields.map((f) => f.get(s)).join('|'));
     const setAppState = useFinanceStore((s) => s.setAppState);
@@ -124,8 +59,7 @@ const RequirementCard: React.FC<{ req: SetupRequirement }> = ({ req }) => {
         Object.fromEntries(fields.map((f) => [f.id, String(f.get(useFinanceStore.getState()) || '')])),
     );
 
-    // Resync quand le store change SOUS la carte (import talon, données de test) —
-    // corrige le bug « init une seule fois » qui faisait écraser des valeurs importées.
+    // Resync quand le store change SOUS la carte (import talon, données de test).
     useEffect(() => {
         const s = useFinanceStore.getState();
         setVals(Object.fromEntries(fields.map((f) => [f.id, String(f.get(s) || '')])));
@@ -135,7 +69,7 @@ const RequirementCard: React.FC<{ req: SetupRequirement }> = ({ req }) => {
     const save = () => {
         const err = req.validate?.(vals);
         if (err) { showToast(err, 'error'); return; }
-        // État LIVE (pas la closure du render) ; compose les écritures via `draft`.
+        // État LIVE ; compose les écritures via `draft`.
         let draft = useFinanceStore.getState();
         const touched = new Set<keyof AppState>();
         for (const f of fields) {
@@ -144,7 +78,6 @@ const RequirementCard: React.FC<{ req: SetupRequirement }> = ({ req }) => {
             (Object.keys(partial) as (keyof AppState)[]).forEach((k) => touched.add(k));
             draft = { ...draft, ...partial } as FinanceState;
         }
-        // N'envoie que les slices touchés, avec leur valeur finale composée.
         const finalPatch: Partial<AppState> = {};
         const fp = finalPatch as unknown as Record<string, unknown>;
         const draftRec = draft as unknown as Record<string, unknown>;
@@ -218,16 +151,14 @@ const RequirementCard: React.FC<{ req: SetupRequirement }> = ({ req }) => {
     );
 };
 
-// ──────────────────────────────────────────────────────── Setup screen ─────
-const PageSetup: React.FC<{ config: PageSetupConfig }> = ({ config }) => {
+// ──────────────────────────────────────────── Écran setup plein (hard) ─────
+const FullSetupScreen: React.FC<{ title: string; intro: string; requirements: Requirement[] }> = ({ title, intro, requirements }) => {
     const enableTestMode = useFinanceStore((s) => s.enableTestMode);
-    const total = config.requirements.length;
-    // Dérivé : ne re-render que quand le compteur change (pas tout le store).
-    const done = useFinanceStore((s) => config.requirements.filter((r) => r.isMet(s)).length);
+    const total = requirements.length;
+    const done = useFinanceStore((s) => requirements.filter((r) => r.isMet(s)).length);
 
     // Option « données de test » : charge le persona par défaut (remplit tout →
-    // la page se débloque) en activant le MODE TEST (bannière explicite = données
-    // fictives). Alternative à la saisie manuelle / l'import.
+    // la page se débloque) en activant le MODE TEST (bannière explicite = fictif).
     const loadTestData = () => {
         const persona = getPersonaOrDefault(DEFAULT_PERSONA_ID);
         enableTestMode(persona.build(), persona.id);
@@ -243,8 +174,8 @@ const PageSetup: React.FC<{ config: PageSetupConfig }> = ({ config }) => {
                 <div className="flex items-center gap-2 text-tiny uppercase tracking-widest text-warning-400 mb-2">
                     <Icon name="lock" size={14} /> Page verrouillée — configuration requise
                 </div>
-                <h1 id="page-setup-title" className="text-display font-bold text-ink-50">{config.title}</h1>
-                <p className="text-body text-ink-300 mt-2 max-w-xl">{config.intro}</p>
+                <h1 id="page-setup-title" className="text-display font-bold text-ink-50">{title}</h1>
+                <p className="text-body text-ink-300 mt-2 max-w-xl">{intro}</p>
                 <p className="text-meta text-ink-500 mt-1.5 max-w-xl">
                     Rien ne s'affiche tant que les prérequis ci-dessous ne sont pas remplis — saisie manuelle, import,
                     ou données de test.
@@ -273,9 +204,40 @@ const PageSetup: React.FC<{ config: PageSetupConfig }> = ({ config }) => {
                     </button>
                 </div>
             </div>
-            {config.requirements.map((req) => (
+            {requirements.map((req) => (
                 <RequirementCard key={req.id} req={req} />
             ))}
+        </div>
+    );
+};
+
+// ──────────────────────────────────────── Bannière de complétion (soft) ────
+const SoftSetupBanner: React.FC<{ title: string; requirements: Requirement[] }> = ({ title, requirements }) => {
+    const [open, setOpen] = useState(false);
+    const missing = useFinanceStore((s) => requirements.filter((r) => !r.isMet(s)).length);
+    if (missing === 0) return null;
+
+    return (
+        <div className="mb-6">
+            <div className="rounded-2xl border border-warning-500/25 bg-warning-500/[0.06] p-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-meta text-warning-300">
+                    <Icon name="alert" size={16} className="shrink-0" />
+                    <span>{missing} donnée{missing > 1 ? 's' : ''} recommandée{missing > 1 ? 's' : ''} pour enrichir « {title} ».</span>
+                </div>
+                <button
+                    type="button"
+                    onClick={() => setOpen((o) => !o)}
+                    aria-expanded={open}
+                    className="inline-flex items-center gap-2 min-h-[40px] px-3 py-1.5 rounded-card border border-white/15 bg-white/5 text-meta font-medium text-ink-200 hover:bg-white/10 hover:text-ink-50 transition-colors focus-ring"
+                >
+                    <Icon name="settings" size={14} /> {open ? 'Masquer' : 'Compléter'}
+                </button>
+            </div>
+            {open && (
+                <div className="mt-4 space-y-4">
+                    {requirements.map((req) => <RequirementCard key={req.id} req={req} />)}
+                </div>
+            )}
         </div>
     );
 };
@@ -283,9 +245,21 @@ const PageSetup: React.FC<{ config: PageSetupConfig }> = ({ config }) => {
 // ────────────────────────────────────────────────────────────── Gate ───────
 export const PageSetupGate: React.FC<{ tab: Tab; children: React.ReactNode }> = ({ tab, children }) => {
     const config = PAGE_SETUP[tab];
+    const requirements = useMemo(
+        () => (config ? config.requirementIds.map((id) => REQUIREMENTS[id]) : []),
+        [config],
+    );
     // Souscrit UNIQUEMENT au booléen dérivé → la page enfant ne re-render pas à
     // chaque mutation du store (seulement quand le verrou bascule).
-    const allMet = useFinanceStore((s) => !config || config.requirements.every((r) => r.isMet(s)));
-    if (!config || allMet) return <>{children}</>;
-    return <PageSetup config={config} />;
+    const allMet = useFinanceStore((s) => requirements.every((r) => r.isMet(s)));
+
+    if (!config) return <>{children}</>;
+
+    if (config.mode === 'soft') {
+        // « Vide » légitime : contenu visible + bannière de complétion.
+        return <><SoftSetupBanner title={config.title} requirements={requirements} />{children}</>;
+    }
+
+    if (allMet) return <>{children}</>;
+    return <FullSetupScreen title={config.title} intro={config.intro} requirements={requirements} />;
 };

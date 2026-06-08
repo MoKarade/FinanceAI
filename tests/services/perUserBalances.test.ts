@@ -87,4 +87,19 @@ describe('stepReerByUser — flux mensuel + invariant', () => {
         });
         expect(sum(next)).toBe(0);
     });
+    it('sur-retrait > solde + cotisation (un conjoint négatif, Σ>0) → invariant tient quand même', () => {
+        // Garde anti-régression (revue Phase 1) : afterFlows = [10−250×0,05+100, 190−250×0,95] = [97,5 ; −47,5].
+        // Sans le floor-first, le clamp post-scaling donnait Σ=97,5 ≠ pool. Désormais Σ == poolEnd.
+        const next = stepReerByUser([10, 190], {
+            withdrawal: 250, contribution: 100, poolEnd: 50, shares: [1, 0],
+        });
+        expect(sum(next)).toBeCloseTo(50, 9); // INVARIANT strict
+        expect(next.every(x => x >= 0)).toBe(true);
+    });
+    it('retrait > solde total avec poolEnd>0 → Σ == poolEnd (jamais > pool)', () => {
+        const next = stepReerByUser([100], {
+            withdrawal: 999, contribution: 0, poolEnd: 50, shares: [1],
+        });
+        expect(next).toEqual([50]);
+    });
 });

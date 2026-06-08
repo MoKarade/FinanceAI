@@ -27,6 +27,14 @@
   retraits REER/FERR seulement si le conjoint cédant est **65+**) vers le conjoint à plus
   bas revenu, en minimisant l'impôt combiné. RRQ/PSV non fractionnables (déjà par conjoint).
 
+## Notes Phase 1 (proxys volontaires — à lever en Phase 2)
+- **Clé de cotisation = part SALARIALE** (proxy), pas encore le plafond REER par conjoint
+  (18 % du brut − FE). Neutre en Phase 1 (shadow) ; la vraie clé « plafond » arrive en Phase 2.
+  Tant que les conjoints sont loin de leur plafond, salaire ≈ plafond → écart faible.
+- **Meltdown REER + opti non-enreg→REER** mutent le pool sans passer par `withdrawalREER`/
+  `contribREER` → absorbés **pro-rata du solde** par la réconciliation. OK pour le retrait
+  (meltdown), à raffiner pour la cotisation (opti) en Phase 2. L'invariant Σ tient dans tous les cas.
+
 ## Phasage (1 PR par phase)
 1. **État + attribution (sans changement fiscal)** : introduire `reerByUser/celiByUser/…`
    + `accRetraitsReerYearByUser`, initialisés et threadés en parallèle des soldes communs

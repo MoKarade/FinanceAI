@@ -37,10 +37,14 @@ export function splitByShares(pool: number, shares: number[]): number[] {
  */
 export function reconcileToPool(byUser: number[], pool: number, shares: number[]): number[] {
     const safePool = Math.max(0, Number.isFinite(pool) ? pool : 0);
-    const sum = byUser.reduce((s, x) => s + (Number.isFinite(x) ? x : 0), 0);
+    // Plancher à 0 AVANT la mise à l'échelle : un conjoint peut passer négatif après flux
+    // (cotisation à l'un + gros retrait), or scaler PUIS clamper casserait Σ==pool. En
+    // planchant d'abord, on garantit Σ(résultat) == pool exactement (k > 0, entrées ≥ 0).
+    const floored = byUser.map(x => Math.max(0, Number.isFinite(x) ? x : 0));
+    const sum = floored.reduce((s, x) => s + x, 0);
     if (!(sum > 0)) return splitByShares(safePool, shares);
     const k = safePool / sum;
-    return byUser.map(x => Math.max(0, (Number.isFinite(x) ? x : 0) * k));
+    return floored.map(x => x * k);
 }
 
 /**

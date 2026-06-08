@@ -6,6 +6,8 @@ import {
   calculateCeliAvailableRoom,
   calculateGrossWithholdingRRSP,
   withholdingForGrossRRSP,
+  rrqAdjustmentFactor,
+  psvDeferralFactor,
   calculateCapitalGainsTax,
   calculateDividendTax,
   calculateAgeAndPensionCredits,
@@ -266,6 +268,40 @@ describe('withholdingForGrossRRSP (retenue à partir du brut)', () => {
   it('brut nul ou négatif → retenue 0 (garde)', () => {
     expect(withholdingForGrossRRSP(0).withholding).toBe(0);
     expect(withholdingForGrossRRSP(-1000).withholding).toBe(0);
+  });
+});
+
+// Facteurs de report/anticipation des rentes — source unique (avant : dupliqués dans
+// retirementIncome.ts + setupSimulation.ts). Verrouille les valeurs aux bornes : ×1,42 (RRQ à 70),
+// ×1,36 (PSV à 70), ×0,64 (RRQ à 60), et les plafonds ±60 mois. Cf docs/FISCAL_REFERENCE.md §6.
+describe('rrqAdjustmentFactor (report/anticipation RRQ)', () => {
+  it('à 65 ans (0 mois) → 1,0 (aucun ajustement)', () => {
+    expect(rrqAdjustmentFactor(0)).toBeCloseTo(1.0, 10);
+  });
+  it('report 5 ans (+60 mois, = 70 ans) → 1,42', () => {
+    expect(rrqAdjustmentFactor(60)).toBeCloseTo(1.42, 10);
+  });
+  it('report plafonné à 60 mois : au-delà reste 1,42', () => {
+    expect(rrqAdjustmentFactor(72)).toBeCloseTo(1.42, 10);
+  });
+  it('anticipation 5 ans (−60 mois, = 60 ans) → 0,64', () => {
+    expect(rrqAdjustmentFactor(-60)).toBeCloseTo(0.64, 10);
+  });
+  it('anticipation plafonnée à −60 mois : en deçà reste 0,64', () => {
+    expect(rrqAdjustmentFactor(-72)).toBeCloseTo(0.64, 10);
+  });
+});
+
+describe('psvDeferralFactor (report PSV, pas d\'anticipation)', () => {
+  it('à 65 ans ou avant → 1,0 (la PSV ne s\'anticipe pas)', () => {
+    expect(psvDeferralFactor(0)).toBeCloseTo(1.0, 10);
+    expect(psvDeferralFactor(-24)).toBeCloseTo(1.0, 10);
+  });
+  it('report 5 ans (+60 mois, = 70 ans) → 1,36', () => {
+    expect(psvDeferralFactor(60)).toBeCloseTo(1.36, 10);
+  });
+  it('report plafonné à 60 mois : au-delà reste 1,36', () => {
+    expect(psvDeferralFactor(72)).toBeCloseTo(1.36, 10);
   });
 });
 

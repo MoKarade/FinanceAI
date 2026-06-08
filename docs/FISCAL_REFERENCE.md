@@ -152,8 +152,9 @@ S'applique surtout aux retraités/indépendants (les salariés sont couverts par
 ## 6. Programmes de retraite fédéraux
 
 ### Report / anticipation des rentes publiques (facteurs d'ajustement)
-Source du début de rente choisi par l'utilisateur. Implémentation : `services/projection/retirementIncome.ts`
-+ `services/projection/setupSimulation.ts`.
+Source du début de rente choisi par l'utilisateur. **Source unique** : `utils/tax.ts`
+(`rrqAdjustmentFactor` / `psvDeferralFactor` + taux `RRQ_DEFERRAL_RATE_PER_MONTH` etc.),
+consommée par `services/projection/retirementIncome.ts` + `setupSimulation.ts`.
 | Rente | Ajustement / mois | Plage | Facteur aux bornes | Source |
 |---|---|---|---|---|
 | RRQ — **report** après 65 (`rrqFactor`) | **+0,7 %/mois** | 65 → 70 (max +60 mois) | **1,42** à 70 ans (60 × 0,7 %) | Retraite Québec |

@@ -62,6 +62,37 @@ export const FHSA_LIFETIME_LIMIT_PER_USER = 40000;          // CELIAPP plafond �
 export const FHSA_ANNUAL_LIMIT_PER_USER = 8000;             // CELIAPP plafond annuel
 
 // ============================================
+// REPORT / ANTICIPATION DES RENTES PUBLIQUES (RRQ / PSV)
+// Source unique (avant : facteurs 1,42 / 1,36 et taux 0,007 / 0,006 dupliqués dans
+// retirementIncome.ts + setupSimulation.ts — audit fiscal-accuracy 2026-06).
+// Réf docs/FISCAL_REFERENCE.md §6. Retraite Québec (RRQ) + Service Canada (PSV).
+// ============================================
+export const RRQ_DEFERRAL_RATE_PER_MONTH = 0.007;  // +0,7 %/mois de report APRÈS 65 ans (RRQ)
+export const RRQ_EARLY_RATE_PER_MONTH = 0.006;     // −0,6 %/mois d'anticipation AVANT 65 ans (RRQ)
+export const PSV_DEFERRAL_RATE_PER_MONTH = 0.006;  // +0,6 %/mois de report APRÈS 65 ans (PSV/OAS)
+export const PENSION_DEFERRAL_MAX_MONTHS = 60;     // report/anticipation plafonné à 60 mois (5 ans)
+export const PSV_BONUS_75_PLUS = 0.10;             // +10 % automatique dès 75 ans (PSV, depuis juillet 2022)
+
+/**
+ * Facteur d'ajustement RRQ selon l'écart en mois vs 65 ans (référence).
+ * monthsFrom65 > 0 → report (+0,7 %/mois, max +60 mois = ×1,42 à 70 ans) ;
+ * monthsFrom65 < 0 → anticipation (−0,6 %/mois, max −60 mois = ×0,64 à 60 ans).
+ */
+export const rrqAdjustmentFactor = (monthsFrom65: number): number =>
+    monthsFrom65 >= 0
+        ? 1 + Math.min(monthsFrom65, PENSION_DEFERRAL_MAX_MONTHS) * RRQ_DEFERRAL_RATE_PER_MONTH
+        : 1 + Math.max(monthsFrom65, -PENSION_DEFERRAL_MAX_MONTHS) * RRQ_EARLY_RATE_PER_MONTH;
+
+/**
+ * Facteur de report PSV/OAS selon les mois APRÈS 65 ans (la PSV ne s'anticipe pas).
+ * +0,6 %/mois, plafonné à 60 mois → ×1,36 à 70 ans. monthsFrom65 ≤ 0 → 1,0.
+ */
+export const psvDeferralFactor = (monthsFrom65: number): number =>
+    monthsFrom65 > 0
+        ? 1 + Math.min(monthsFrom65, PENSION_DEFERRAL_MAX_MONTHS) * PSV_DEFERRAL_RATE_PER_MONTH
+        : 1.0;
+
+// ============================================
 // CRÉDITS 65+ ET REVENU DE RETRAITE (audit §6.2)
 // ============================================
 

@@ -4,13 +4,13 @@
 // avec le total ET le split par source (Phase 3 Tier 3 — split pensions).
 
 import type { RetirementGoal, User } from '../../types';
-import { RRQ_MPE, calculateGISBenefit } from '../../utils/tax';
+import { RRQ_MPE, calculateGISBenefit, rrqAdjustmentFactor, psvDeferralFactor, PSV_BONUS_75_PLUS } from '../../utils/tax';
 
 // Constantes RRQ/PSV 2026 (Retraite Québec + Service Canada)
 const RRQ_DENOMINATOR_YEARS = 39;       // Années cotisées pour pleine RRQ (8/47 plus faibles retirées)
 const PSV_MIN_RESIDENCY_YEARS = 10;     // Minimum 10 ans résidence Canada après 18 ans pour PSV
 const PSV_FULL_RESIDENCY_YEARS = 40;    // Pleine pension à 40 ans
-const PSV_BONUS_75_PLUS = 0.10;         // +10% automatique à partir de 75 ans (depuis juillet 2022)
+// (facteurs de report/anticipation RRQ/PSV + bonus 75+ : source unique utils/tax.ts)
 
 export interface RetirementIncomeCtx {
     m: number;
@@ -151,24 +151,17 @@ export function computeRetirementIncome(
     const workedYearsAtRetirement = Math.max(0, retirementGoal.targetAge - arrivalAge);
     const rrqProrata = Math.min(1, workedYearsAtRetirement / RRQ_DENOMINATOR_YEARS) * rrqMpeRatio;
 
-    let rrqFactor = 1.0;
-    let psvFactor = 1.0;
     let rrqStartAge = Math.max(60, retirementGoal.targetAge);
     let psvStartAge = Math.max(65, retirementGoal.targetAge);
-
     if (delayPensions) {
         rrqStartAge = 70;
         psvStartAge = 70;
-        rrqFactor = 1.42;
-        psvFactor = 1.36;
-    } else {
-        const monthsFrom65 = (rrqStartAge - 65) * 12;
-        if (monthsFrom65 < 0) rrqFactor = 1 + Math.max(monthsFrom65, -60) * 0.006;
-        else rrqFactor = 1 + Math.min(monthsFrom65, 60) * 0.007;
-
-        const monthsPsvFrom65 = (psvStartAge - 65) * 12;
-        if (monthsPsvFrom65 > 0) psvFactor = 1 + Math.min(monthsPsvFrom65, 60) * 0.006;
     }
+    // Facteurs de report/anticipation dérivés des âges de début (source unique utils/tax.ts).
+    // delayPensions → start 70 → (70−65)×12 = 60 mois → ×1,42 (RRQ) / ×1,36 (PSV), identiques aux
+    // anciennes constantes en dur. La PSV ne s'anticipe pas (psvDeferralFactor = 1,0 si ≤ 65).
+    const rrqFactor = rrqAdjustmentFactor((rrqStartAge - 65) * 12);
+    const psvFactor = psvDeferralFactor((psvStartAge - 65) * 12);
 
     const rrqBaseIndiv = (retirementGoal.rrqEstimateMonthly !== undefined)
         ? (retirementGoal.rrqEstimateMonthly * activeUsersCount)

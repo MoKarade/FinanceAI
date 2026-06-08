@@ -11,13 +11,14 @@
 import type { Debt } from '../../types';
 import type { AllocationStrategy } from './types';
 import type { ContributionOrder } from './strategyConfig';
-import { PBMA_THRESHOLD_PER_USER, OAS_CLAWBACK_THRESHOLD_2026, RRSP_WITHHOLDING_QC, type FiscalReport } from '../../utils/tax';
+import { PBMA_THRESHOLD_PER_USER, OAS_CLAWBACK_THRESHOLD_2026, RRSP_WITHHOLDING_QC, QC_BRACKETS, FED_BRACKETS, type FiscalReport } from '../../utils/tax';
 
 // Plafond du palier 1 (14% fédéral + 14% Québec) par utilisateur. Combinaison
 // marginale ≈ 28%, comparable à la retenue REER de 19-24% (cf RRSP_WITHHOLDING_QC)
 // — donc encore avantageux de puiser dans le REER plutôt que dans le CELI sous ce seuil.
-// Source: utils/tax.ts QC_BRACKETS[0].upTo + FED_BRACKETS[0].upTo (le plus restrictif des deux).
-const SAFE_REER_BRACKET_TOP_PER_USER = 54345;
+// Dérivé des barèmes (le plus restrictif des deux 1ers paliers) → suit l'indexation
+// automatiquement, au lieu d'un 54 345 $ en dur (audit 2026-06). Vaut 54 345 $ en 2026.
+const SAFE_REER_BRACKET_TOP_PER_USER = Math.min(QC_BRACKETS[0].upTo, FED_BRACKETS[0].upTo);
 
 type FiscalReportFn = (
     grossIncome: number,

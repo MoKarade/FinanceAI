@@ -10,6 +10,7 @@ import React, { useState } from 'react';
 import type { Transaction, BudgetConfig, BudgetCategory, SavingsGoal } from '../../types';
 import { Budget } from '../Budget';
 import { Planning } from '../Planning';
+import { RepartitionField } from '../settings/UserConfigFields';
 import { Icon, type IconName } from '../ui/Icon';
 
 interface BudgetWorkspaceProps {
@@ -51,6 +52,9 @@ export const BudgetWorkspace: React.FC<BudgetWorkspaceProps> = ({
                     </button>
                 ))}
             </div>
+
+            {/* Déplacé depuis Configuration (demande Marc) : mode de répartition (couple). */}
+            <RepartitionField />
 
             {sub === 'budget' && (
                 <Budget transactions={transactions} config={config} budgetItems={budgetItems} setBudgetItems={setBudgetItems} apiKey={apiKey} />

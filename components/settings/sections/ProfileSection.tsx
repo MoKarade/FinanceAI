@@ -1,25 +1,20 @@
 // components/settings/sections/ProfileSection.tsx
-// G22-N4 — extrait de Settings.tsx : profil & utilisateurs. Paramètres de
-// retraite (hub central, source de vérité unique) + carte Utilisateurs
-// (salaires, profil détaillé, profils enregistrés, répartition).
+// Profil & utilisateurs (salaires, profil détaillé, profils enregistrés, répartition).
+// NB : les « Paramètres de retraite » ont été déplacés dans l'onglet Retraite
+// (demande Marc : éditer chaque info dans l'onglet concerné).
 
 import React from 'react';
-import { Card } from '../../ui/Card';
-import { useFinanceStore } from '../../../store/useFinanceStore';
 import { UsersCard } from './UsersCard';
 import { startGuidedTour } from '../../tour/tourControl';
-import type { AppState, RetirementGoal } from '../../../types';
+import type { AppState } from '../../../types';
 import { Icon } from '../../ui/Icon';
 
 interface ProfileSectionProps {
   config: AppState['config'];
   setConfig: (c: AppState['config']) => void;
-  retirementGoal?: RetirementGoal;
 }
 
-export const ProfileSection: React.FC<ProfileSectionProps> = ({ config, setConfig, retirementGoal }) => {
-  const setAppState = useFinanceStore(s => s.setAppState);
-
+export const ProfileSection: React.FC<ProfileSectionProps> = ({ config, setConfig }) => {
   return (
     <div className="space-y-6">
       {/* G22-F4 — relancer le tutoriel guidé (visite de tous les onglets). */}
@@ -36,54 +31,6 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ config, setConfi
           Revoir le tutoriel
         </button>
       </div>
-
-      {/* Phase C.1 — Hub retraite : centralise les paramètres absorbés depuis
-          l'onglet Retraite (espérance de vie, âge cible, revenu cible). */}
-      <Card icon={<Icon name="retirement" size={18} />} title="Paramètres de retraite (hub central)">
-        <div className="space-y-4">
-          <p className="text-meta text-ink-400">
-            Source de vérité unique — alimente Retraite, Investissement et Futur.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div data-focus-section="profile-retirementAge">
-              <label className="block text-meta text-ink-300 mb-1">Âge de retraite cible</label>
-              <input
-                type="number"
-                min={50}
-                max={75}
-                value={retirementGoal?.targetAge ?? 65}
-                onChange={(e) => setAppState({ retirementGoal: { ...(retirementGoal as RetirementGoal), targetAge: Number(e.target.value) || 65 } })}
-                className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
-              />
-            </div>
-            <div data-focus-section="profile-lifeExpectancy">
-              <label className="block text-meta text-ink-300 mb-1">
-                Espérance de vie
-                <span className="ml-1 text-tiny text-ink-500">(80–100 ans)</span>
-              </label>
-              <input
-                type="number"
-                min={80}
-                max={105}
-                value={retirementGoal?.lifeExpectancy ?? 90}
-                onChange={(e) => setAppState({ retirementGoal: { ...(retirementGoal as RetirementGoal), lifeExpectancy: Number(e.target.value) || 90 } })}
-                className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
-              />
-            </div>
-            <div data-focus-section="profile-retirementIncome">
-              <label className="block text-meta text-ink-300 mb-1">Revenu mensuel cible</label>
-              <input
-                type="number"
-                min={0}
-                step={100}
-                value={retirementGoal?.targetMonthlyIncome ?? 4000}
-                onChange={(e) => setAppState({ retirementGoal: { ...(retirementGoal as RetirementGoal), targetMonthlyIncome: Number(e.target.value) || 0 } })}
-                className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
-              />
-            </div>
-          </div>
-        </div>
-      </Card>
 
       <UsersCard config={config} setConfig={setConfig} />
     </div>

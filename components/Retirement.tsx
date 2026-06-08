@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
+import { RetirementSettingsCard } from './retirement/RetirementSettingsCard';
+import { UserConfigFields } from './settings/UserConfigFields';
 import { Icon } from './ui/Icon';
 import { Badge } from './ui/Badge';
 import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset, RegisteredAccountType } from '../types';
@@ -221,6 +223,9 @@ export const Retirement: React.FC<RetirementProps> = ({
                 }
             />
 
+            {/* Déplacés depuis Configuration — éditables dans l'onglet concerné (demande Marc). */}
+            <RetirementSettingsCard />
+            <UserConfigFields section="detailed" />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-1 space-y-6">

@@ -138,6 +138,9 @@ export interface ProjectionResult {
     chartData: ProjectionChartPoint[];
     finalNetWorth?: number;
     estateNetWorth?: number;
+    /** Phase 1 refactor « REER par conjoint » : solde REER final attribué par conjoint
+     *  (Σ == solde REER commun final). Shadow/diagnostic ; consommé par la fiscalité en Phase 2. */
+    reerByUserFinal?: number[];
     totalTaxesPaid?: number;
     totalGrowth?: number;
     totalExpenses?: number;

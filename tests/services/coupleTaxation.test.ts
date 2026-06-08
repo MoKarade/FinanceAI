@@ -134,3 +134,33 @@ describe('Projection — le brut pilote vraiment l\'impôt (bout en bout)', () =
         for (const d of base.chartData) expect(Number.isFinite((d as ProjectionChartPoint).NetWorth)).toBe(true);
     });
 });
+
+// ── 4. PHASE 1 refactor « REER par conjoint » : registre shadow, invariant Σ == commun ──
+describe('Projection — registre REER par conjoint (invariant Σ == solde commun)', () => {
+    const withReer = (users: User[], reer: number): SimulationParams => {
+        const p = paramsForUsers(users);
+        return { ...p, liveCSVBalances: { ...p.liveCSVBalances, REER: reer } };
+    };
+    const lastReer = (res: ProjectionResult): number => {
+        const cd = res.chartData;
+        return (cd[cd.length - 1] as ProjectionChartPoint).REER ?? 0;
+    };
+    const baseOf = (p: SimulationParams): ProjectionResult =>
+        (calculateFutureProjection(p).allResults as ProjectionResult[]).find(x => x.stratType === 'BASE')!;
+
+    it('couple : 2 entrées finies ≥ 0, Σ == REER commun final, clé salariale (A>B)', () => {
+        const base = baseOf(withReer([mkUser('A', 6000, 4200), mkUser('B', 3000, 2200)], 120000));
+        const byUser = base.reerByUserFinal!;
+        expect(byUser).toHaveLength(2);
+        expect(byUser.every(x => Number.isFinite(x) && x >= 0)).toBe(true);
+        expect(byUser.reduce((s, x) => s + x, 0)).toBeCloseTo(lastReer(base), 2); // INVARIANT
+        expect(byUser[0]).toBeGreaterThan(byUser[1]); // A (plus haut salaire) détient plus de REER
+    });
+
+    it('solo : reerByUserFinal = [REER commun final]', () => {
+        const base = baseOf(withReer([mkUser('Solo', 8000, 5600)], 90000));
+        const byUser = base.reerByUserFinal!;
+        expect(byUser).toHaveLength(1);
+        expect(byUser[0]).toBeCloseTo(lastReer(base), 2);
+    });
+});

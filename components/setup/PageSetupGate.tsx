@@ -3,6 +3,7 @@ import { Tab, AppState, User } from '../../types';
 import { useFinanceStore, type FinanceState } from '../../store/useFinanceStore';
 import { Icon, type IconName } from '../ui/Icon';
 import { PayslipUploadCard } from '../settings/PayslipUploadCard';
+import { getPersonaOrDefault, DEFAULT_PERSONA_ID } from '../../services/testFixtures';
 
 /**
  * Setup-first par page (demande Marc 2026-06).
@@ -179,21 +180,45 @@ const RequirementCard: React.FC<{ req: SetupRequirement; met: boolean }> = ({ re
 // ──────────────────────────────────────────────────────── Setup screen ─────
 const PageSetup: React.FC<{ config: PageSetupConfig }> = ({ config }) => {
     const state = useFinanceStore((s) => s);
+    const enableTestMode = useFinanceStore((s) => s.enableTestMode);
     const total = config.requirements.length;
     const done = config.requirements.filter((r) => r.isMet(state)).length;
+
+    // Option « données de test » : charge le persona par défaut (remplit tout →
+    // la page se débloque) en activant le MODE TEST (bannière explicite = données
+    // fictives). Alternative à la saisie manuelle / l'import.
+    const loadTestData = () => {
+        const persona = getPersonaOrDefault(DEFAULT_PERSONA_ID);
+        enableTestMode(persona.build(), persona.id);
+    };
+
     return (
         <div className="max-w-3xl mx-auto space-y-6 animate-fade-in pb-20">
-            <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent p-6">
-                <div className="flex items-center gap-2 text-tiny uppercase tracking-widest text-ink-500 mb-2">
-                    <Icon name="settings" size={14} /> Configuration requise
+            <div className="rounded-2xl border border-warning-500/25 bg-gradient-to-b from-warning-500/[0.06] to-transparent p-6">
+                <div className="flex items-center gap-2 text-tiny uppercase tracking-widest text-warning-400 mb-2">
+                    <Icon name="lock" size={14} /> Page verrouillée — configuration requise
                 </div>
                 <h1 className="text-display font-bold text-ink-50">{config.title}</h1>
                 <p className="text-body text-ink-300 mt-2 max-w-xl">{config.intro}</p>
-                <div className="mt-4 flex items-center gap-3">
-                    <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden max-w-xs">
-                        <div className="h-full bg-primary rounded-full transition-[width] duration-300" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
+                <p className="text-meta text-ink-500 mt-1.5 max-w-xl">
+                    Rien ne s'affiche tant que les prérequis ci-dessous ne sont pas remplis — saisie manuelle, import,
+                    ou données de test.
+                </p>
+                <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
+                    <div className="flex items-center gap-3 min-w-[180px]">
+                        <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden max-w-[12rem]">
+                            <div className="h-full bg-primary rounded-full transition-[width] duration-300" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
+                        </div>
+                        <span className="text-meta text-ink-400 font-mono shrink-0">{done}/{total} prêt{done > 1 ? 's' : ''}</span>
                     </div>
-                    <span className="text-meta text-ink-400 font-mono shrink-0">{done}/{total} prêt{done > 1 ? 's' : ''}</span>
+                    <button
+                        type="button"
+                        onClick={loadTestData}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-card border border-white/15 bg-white/5 text-meta font-medium text-ink-200 hover:bg-white/10 hover:text-ink-50 transition-colors focus-ring"
+                    >
+                        <Icon name="flask" size={14} />
+                        Explorer avec des données de test
+                    </button>
                 </div>
             </div>
             {config.requirements.map((req) => (

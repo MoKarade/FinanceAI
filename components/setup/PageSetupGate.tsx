@@ -156,7 +156,8 @@ const IMPORT_COMPONENTS: Partial<Record<ImportKind, React.FC>> = {
 };
 
 // ───────────────────────────────────────────────────── Requirement card ────
-const RequirementCard: React.FC<{ req: Requirement; currentTab?: Tab }> = ({ req, currentTab }) => {
+// Exportée pour le SetupHub (Configuration) — fill inline réutilisé.
+export const RequirementCard: React.FC<{ req: Requirement; currentTab?: Tab }> = ({ req, currentTab }) => {
     const fields = req.fields ?? EMPTY_FIELDS;
     // Souscriptions ÉTROITES : `met` + signature des valeurs (resync), pas l'état entier.
     const met = useFinanceStore((s) => req.isMet(s));

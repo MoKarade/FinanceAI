@@ -232,7 +232,12 @@ export function requestAccessToken(interactive: boolean): Promise<string> {
     );
 }
 
-/** Retourne un token valide : le cache (mémoire ou session) s'il est bon, sinon un renouvellement silencieux. */
+/**
+ * Retourne un token valide DEPUIS LE CACHE (mémoire ou session) s'il est bon. Sinon REJETTE
+ * (cf `requestAccessToken(false)`, cache-only — plus de renouvellement réseau silencieux : GIS est
+ * popup-only, ce qui échouait au boot sans geste utilisateur). Pour (ré)obtenir un jeton après
+ * expiration, il faut passer par la connexion interactive (clic → `connectAndSync`).
+ */
 export function getValidAccessToken(): Promise<string> {
     restoreCachedFromSession(); // récupère le jeton d'un refresh précédent (évite une reconnexion)
     if (_cached && !isTokenExpired(_cached.expiresAt, Date.now())) {

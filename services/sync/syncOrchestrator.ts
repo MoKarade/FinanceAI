@@ -511,19 +511,23 @@ export async function connectAndSync(): Promise<void> {
 }
 
 /**
- * R2 — reprise SILENCIEUSE pour le gate de login : tente un jeton Google sans interaction. Si on
- * l'obtient (session Google active + consentement déjà donné, y compris en navigation privée), on
- * récupère l'email, met à jour la meta et exécute la décision de sync (→ pull auto si le local est
- * vide → restauration « tout automatique »).
+ * R2 — reprise SILENCIEUSE pour le gate de login : réutilise un jeton Google DÉJÀ EN CACHE (mémoire
+ * ou sessionStorage, survit à un reload tant que l'onglet reste ouvert et que le jeton n'a pas
+ * expiré ~1 h). Si présent, on récupère l'email, met à jour la meta et exécute la décision de sync
+ * (→ pull auto si le local est vide → restauration « tout automatique »).
  *
- * Retourne `true` si authentifié (le gate rend l'app), `false` sinon (le gate montre le bouton de
- * login). Ne lève jamais : un échec silencieux est le cas NORMAL d'un 1er accès non consenti.
+ * N.B. : il n'y a PLUS de renouvellement réseau silencieux (GIS est popup-only → un popup au boot
+ * sans geste utilisateur échouait avec `popup_failed_to_open`). Sans jeton en cache valide, on
+ * retourne `false` et le gate montre le bouton « Se connecter » (clic = geste → popup autorisé).
+ *
+ * Retourne `true` si authentifié (le gate rend l'app), `false` sinon. Ne lève jamais : un échec
+ * silencieux est le cas NORMAL (1er accès, ou jeton expiré/onglet rouvert).
  */
 export async function gateSilentResume(): Promise<boolean> {
     if (!isGoogleAuthConfigured()) return false;
     setStatus({ busy: true, error: null });
     try {
-        const token = await getValidAccessToken(); // silencieux (cache ou refresh sans prompt)
+        const token = await getValidAccessToken(); // cache-only : rejette si pas de jeton valide en cache
         const { email, sub } = await fetchUserIdentity(token); // sub → clé de chiffrement des clés API
         const meta = currentMeta();
         writeSyncMeta({ ...meta, connectedEmail: email, connectedSub: sub ?? meta.connectedSub ?? null });

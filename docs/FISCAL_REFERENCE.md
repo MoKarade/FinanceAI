@@ -151,6 +151,18 @@ S'applique surtout aux retraités/indépendants (les salariés sont couverts par
 
 ## 6. Programmes de retraite fédéraux
 
+### Report / anticipation des rentes publiques (facteurs d'ajustement)
+Source du début de rente choisi par l'utilisateur. Implémentation : `services/projection/retirementIncome.ts`
++ `services/projection/setupSimulation.ts`.
+| Rente | Ajustement / mois | Plage | Facteur aux bornes | Source |
+|---|---|---|---|---|
+| RRQ — **report** après 65 (`rrqFactor`) | **+0,7 %/mois** | 65 → 70 (max +60 mois) | **1,42** à 70 ans (60 × 0,7 %) | Retraite Québec |
+| RRQ — **anticipation** avant 65 | **−0,6 %/mois** | 60 → 65 (max −60 mois) | 0,64 à 60 ans (−36 %) | Retraite Québec |
+| PSV / OAS — **report** après 65 (`psvFactor`) | **+0,6 %/mois** | 65 → 70 (max +60 mois) | **1,36** à 70 ans (60 × 0,6 %) | Service Canada |
+| PSV / OAS — **bonus 75+** (`PSV_BONUS_75_PLUS`) | n/a | dès 75 ans | **+10 %** | Service Canada (depuis juillet 2022) |
+> Le report RRQ/PSV est **découplé** de l'âge d'arrêt de travail (`delayPensions` ne fixe que l'âge de
+> début des rentes ; correctif C-1, 2026-06). La PSV ne se reporte pas au-delà de 70 ans.
+
 ### PSV / OAS — récupération (clawback)
 - Seuil de récupération 2026 (`OAS_CLAWBACK_THRESHOLD_2026`) : **95 323 $** (ARC ; 93 454 $ en 2025).
 

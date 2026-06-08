@@ -26,9 +26,9 @@ test.describe('KPI Dashboard — mode test (fixtures Alex/Sam)', () => {
     // Attendre que le contenu principal soit rendu
     await expect(page.locator('#main h1').first()).toBeVisible({ timeout: 10_000 });
 
-    // La KPI "Patrimoine total" est dans une carte StatGrid. Le libellé de la
-    // traduction est dashboard.global_net_worth. On cherche le label visible.
-    const patrimoineStat = page.locator('#main').getByText(/patrimoine/i).first();
+    // La KPI patrimoine est dans une carte StatGrid. Le libellé de la
+    // traduction est dashboard.global_net_worth = « Valeur Nette Globale ».
+    const patrimoineStat = page.locator('#main').getByText(/valeur nette/i).first();
     await expect(patrimoineStat).toBeVisible({ timeout: 8_000 });
 
     // La valeur est dans le même bloc KPIStat — chercher un montant en $

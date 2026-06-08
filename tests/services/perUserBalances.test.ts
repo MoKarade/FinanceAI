@@ -8,6 +8,8 @@ import {
     splitByShares,
     reconcileToPool,
     stepReerByUser,
+    proRataByWeights,
+    addByWeights,
 } from '../../services/projection/perUserBalances';
 
 const sum = (a: number[]) => a.reduce((s, x) => s + x, 0);
@@ -101,5 +103,25 @@ describe('stepReerByUser — flux mensuel + invariant', () => {
             withdrawal: 999, contribution: 0, poolEnd: 50, shares: [1],
         });
         expect(next).toEqual([50]);
+    });
+});
+
+// Phase 2 — attribution des retraits REER de l'année par conjoint (Σ exact == montant).
+describe('proRataByWeights / addByWeights', () => {
+    it('répartit au prorata des poids, Σ == montant exact', () => {
+        const r = proRataByWeights(1000, [60000, 20000]); // 75 / 25 %
+        expect(r[0]).toBeCloseTo(750, 9);
+        expect(r[1]).toBeCloseTo(250, 9);
+        expect(sum(r)).toBeCloseTo(1000, 9);
+    });
+    it('poids nuls → répartition égale ; montant négatif → 0', () => {
+        expect(proRataByWeights(100, [0, 0])).toEqual([50, 50]);
+        expect(proRataByWeights(-50, [1, 1])).toEqual([0, 0]);
+    });
+    it('addByWeights : Σacc passe de Σprev à Σprev + delta', () => {
+        const r = addByWeights([100, 300], 80, [1, 3]); // delta 80 → 20 / 60
+        expect(r[0]).toBeCloseTo(120, 9);
+        expect(r[1]).toBeCloseTo(360, 9);
+        expect(sum(r)).toBeCloseTo(480, 9); // 400 + 80
     });
 });

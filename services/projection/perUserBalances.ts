@@ -48,6 +48,25 @@ export function reconcileToPool(byUser: number[], pool: number, shares: number[]
 }
 
 /**
+ * Répartit un montant au prorata de poids (ex. soldes REER par conjoint). La somme du résultat
+ * vaut EXACTEMENT `amount` (clé d'attribution des retraits REER de l'année). Repli ÉGAL si la
+ * somme des poids est ≤ 0. Montant négatif ramené à 0.
+ */
+export function proRataByWeights(amount: number, weights: number[]): number[] {
+    const n = Math.max(1, weights.length);
+    const a = Math.max(0, Number.isFinite(amount) ? amount : 0);
+    const total = weights.reduce((s, w) => s + Math.max(0, Number.isFinite(w) ? w : 0), 0);
+    if (!(total > 0)) return Array(n).fill(a / n);
+    return weights.map(w => a * (Math.max(0, Number.isFinite(w) ? w : 0) / total));
+}
+
+/** Ajoute `delta` (réparti au prorata de `weights`) à un accumulateur par conjoint. Σ exact. */
+export function addByWeights(acc: number[], delta: number, weights: number[]): number[] {
+    const part = proRataByWeights(delta, weights);
+    return acc.map((v, i) => (Number.isFinite(v) ? v : 0) + (part[i] ?? 0));
+}
+
+/**
  * Met à jour un registre REER par conjoint sur un mois, puis réconcilie au pool final.
  * - retrait : au prorata du solde courant de chaque conjoint (neutre).
  * - cotisation : attribuée par `shares` (proxy plafond ≈ salaire).

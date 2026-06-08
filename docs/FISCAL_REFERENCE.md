@@ -230,6 +230,11 @@ Implémenté (ADR 009) ; valeurs à transcrire ici lors de la prochaine revue fi
   pas publiés (`getIndexedBracketsForYear`).
 - **Aller-retour réel↔nominal** des paliers : écart connu vs ARC à forte inflation (ITEM 2a,
   rejeté après analyse numérique — cf BACKLOG).
-- **Attribution par conjoint** des rentes gouv./retraits REER-FERR/DB/SRG : réparties également
-  (le moteur n'a pas de soldes REER/FERR par conjoint). Volets REVENU et CRÉDITS corrigés
-  (A1, B-AUDIT-3) ; gates de TIMING par conjoint restent ouverts.
+- **Attribution par conjoint** : refactor « soldes REER par conjoint » en cours
+  (`docs/REFACTOR_REER_PAR_CONJOINT.md`). Phase 1 = registre REER par conjoint (invariant
+  Σ==commun). **Phase 2 = les retraits REER/FERR de l'année sont taxés PAR CONJOINT** (sur SES
+  vrais retraits, prorata des soldes) au lieu du split 50/50. Restent répartis également : rentes
+  gouv. et DB. Reste ouvert : **fractionnement de pension 65+** (Phase 3) et **FERR par conjoint exact**.
+- **Crédit pension sur retraits FERR 65+** (limite assumée) : les retraits FERR à 65+ sont un revenu
+  de pension admissible (crédit féd ligne 31400 = 2 000 $ + ligne 361 QC), mais le moteur les EXCLUT
+  de `eligiblePensionIncome` → léger SUR-impôt à 65+ (sens conservateur). À traiter avec la Phase 3.

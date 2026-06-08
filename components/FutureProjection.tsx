@@ -48,18 +48,18 @@ interface FutureLegendItem {
     mcOnly?: boolean; // n'apparaît que si Monte Carlo est activé
 }
 const FUTURE_LEGEND_ITEMS: FutureLegendItem[] = [
-    { key: 'Liquidites', label: 'Cash', color: '#4b5563', shape: 'area' },
-    { key: 'CELI', label: 'CELI', color: '#10b981', shape: 'area' },
-    { key: 'CELIAPP', label: 'CELIAPP (FHSA)', color: '#2dd4bf', shape: 'area' },
-    { key: 'REER', label: 'REER', color: '#3b82f6', shape: 'area' },
-    { key: 'REEE', label: 'REEE', color: '#06b6d4', shape: 'area' },
-    { key: 'NonReg', label: 'Non-Enreg', color: '#f59e0b', shape: 'area' },
-    { key: 'Crypto', label: 'Crypto', color: '#a855f7', shape: 'area' },
-    { key: 'Immobilier', label: 'Équité Immo', color: '#ec4899', shape: 'area' },
+    { key: 'Liquidites', label: 'Cash', color: '#5a6478', shape: 'area' },
+    { key: 'CELI', label: 'CELI', color: '#4f9d86', shape: 'area' },
+    { key: 'CELIAPP', label: 'CELIAPP (FHSA)', color: '#5cae9f', shape: 'area' },
+    { key: 'REER', label: 'REER', color: '#5b82bf', shape: 'area' },
+    { key: 'REEE', label: 'REEE', color: '#5093a8', shape: 'area' },
+    { key: 'NonReg', label: 'Non-Enreg', color: '#c2974f', shape: 'area' },
+    { key: 'Crypto', label: 'Crypto', color: '#9277bd', shape: 'area' },
+    { key: 'Immobilier', label: 'Équité Immo', color: '#bd7d9c', shape: 'area' },
     { key: 'NetWorth', label: 'Valeur Nette', color: '#ffffff', shape: 'line' },
     { key: 'ImpotLatent', label: 'Impôt Latent', color: '#ef4444', shape: 'dashed' },
     { key: 'FluxImpots', label: 'Paiement Impôts', color: '#ef4444', shape: 'bar' },
-    { key: 'montecarlo', label: 'Monte Carlo (P10–P90)', color: '#3b82f6', shape: 'dashed', mcOnly: true },
+    { key: 'montecarlo', label: 'Monte Carlo (P10–P90)', color: '#5b82bf', shape: 'dashed', mcOnly: true },
     { key: 'events', label: 'Événements / icônes', color: '#e5e7eb', shape: 'dot' },
     { key: 'fire', label: 'Objectif FIRE', color: '#f97316', shape: 'dashed' },
     { key: 'aujourdhui', label: "Aujourd'hui", color: '#ffffff', shape: 'dashed' },
@@ -841,14 +841,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             <Tooltip content={<ExpertTooltip userName1={config.users[0]?.name} userName2={config.users[1]?.name} />} />
                             {isVisible('fire') && <ReferenceLine y={fireNumber} stroke="#f97316" strokeDasharray="5 5" label={<RefLineLabel value="Objectif FIRE" color="#f97316" />} />}
 
-                            {isVisible('Liquidites') && <Area type="monotone" dataKey="Liquidites" stackId="1" stroke="#4b5563" fill="#4b5563" name="Cash" isAnimationActive={false} />}
-                            {isVisible('CELI') && <Area type="monotone" dataKey="CELI" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} name="CELI" isAnimationActive={false}/>}
-                            {isVisible('CELIAPP') && <Area type="monotone" dataKey="CELIAPP" stackId="1" stroke="#2dd4bf" fill="#2dd4bf" fillOpacity={0.6} name="CELIAPP (FHSA)" isAnimationActive={false}/>}
-                            {isVisible('REER') && <Area type="monotone" dataKey="REER" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} name="REER" isAnimationActive={false}/>}
-                            {isVisible('REEE') && <Area type="monotone" dataKey="REEE" stackId="1" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.6} name="REEE" isAnimationActive={false}/>}
-                            {isVisible('NonReg') && <Area type="monotone" dataKey="NonReg" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} name="Non-Enreg" isAnimationActive={false}/>}
-                            {isVisible('Crypto') && <Area type="monotone" dataKey="Crypto" stackId="1" stroke="#a855f7" fill="#a855f7" fillOpacity={0.6} name="Crypto" isAnimationActive={false}/>}
-                            {isVisible('Immobilier') && <Area type="monotone" dataKey="Immobilier" stackId="1" stroke="#ec4899" fill="#ec4899" fillOpacity={0.3} name="Équité Immo" isAnimationActive={false}/>}
+                            {isVisible('Liquidites') && <Area type="monotone" dataKey="Liquidites" stackId="1" stroke="#5a6478" fill="#5a6478" name="Cash" isAnimationActive={false} />}
+                            {isVisible('CELI') && <Area type="monotone" dataKey="CELI" stackId="1" stroke="#4f9d86" fill="#4f9d86" fillOpacity={0.6} name="CELI" isAnimationActive={false}/>}
+                            {isVisible('CELIAPP') && <Area type="monotone" dataKey="CELIAPP" stackId="1" stroke="#5cae9f" fill="#5cae9f" fillOpacity={0.6} name="CELIAPP (FHSA)" isAnimationActive={false}/>}
+                            {isVisible('REER') && <Area type="monotone" dataKey="REER" stackId="1" stroke="#5b82bf" fill="#5b82bf" fillOpacity={0.6} name="REER" isAnimationActive={false}/>}
+                            {isVisible('REEE') && <Area type="monotone" dataKey="REEE" stackId="1" stroke="#5093a8" fill="#5093a8" fillOpacity={0.6} name="REEE" isAnimationActive={false}/>}
+                            {isVisible('NonReg') && <Area type="monotone" dataKey="NonReg" stackId="1" stroke="#c2974f" fill="#c2974f" fillOpacity={0.6} name="Non-Enreg" isAnimationActive={false}/>}
+                            {isVisible('Crypto') && <Area type="monotone" dataKey="Crypto" stackId="1" stroke="#9277bd" fill="#9277bd" fillOpacity={0.6} name="Crypto" isAnimationActive={false}/>}
+                            {isVisible('Immobilier') && <Area type="monotone" dataKey="Immobilier" stackId="1" stroke="#bd7d9c" fill="#bd7d9c" fillOpacity={0.3} name="Équité Immo" isAnimationActive={false}/>}
 
                             {isVisible('ImpotLatent') && <Area type="monotone" dataKey="ImpotLatent" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} strokeDasharray="3 3" name="Impôt Latent" isAnimationActive={false}/>}
                             {isVisible('FluxImpots') && <Bar dataKey="FluxImpots" fill="#ef4444" fillOpacity={0.8} name="Paiement Impôts" barSize={4} isAnimationActive={false} />}

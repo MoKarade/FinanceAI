@@ -403,20 +403,20 @@ export const Retirement: React.FC<RetirementProps> = ({
                                         <AreaChart data={zoomAccum.visibleData} margin={{ top: 20, right: 30, left: 10, bottom: 0 }}>
                                             <defs>
                                                 <linearGradient id="retGradREER" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.75} />
-                                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05} />
+                                                    <stop offset="5%" stopColor="#5b82bf" stopOpacity={0.75} />
+                                                    <stop offset="95%" stopColor="#5b82bf" stopOpacity={0.05} />
                                                 </linearGradient>
                                                 <linearGradient id="retGradCELI" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.75} />
-                                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.05} />
+                                                    <stop offset="5%" stopColor="#4f9d86" stopOpacity={0.75} />
+                                                    <stop offset="95%" stopColor="#4f9d86" stopOpacity={0.05} />
                                                 </linearGradient>
                                                 <linearGradient id="retGradNonReg" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.75} />
-                                                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.05} />
+                                                    <stop offset="5%" stopColor="#c2974f" stopOpacity={0.75} />
+                                                    <stop offset="95%" stopColor="#c2974f" stopOpacity={0.05} />
                                                 </linearGradient>
                                                 <linearGradient id="retGradLiq" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.5} />
-                                                    <stop offset="95%" stopColor="#a78bfa" stopOpacity={0.02} />
+                                                    <stop offset="5%" stopColor="#9b8fcf" stopOpacity={0.5} />
+                                                    <stop offset="95%" stopColor="#9b8fcf" stopOpacity={0.02} />
                                                 </linearGradient>
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
@@ -425,10 +425,10 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             <Tooltip content={<RetirementTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.07)', strokeWidth: 2 }} />
                                             <Legend verticalAlign="top" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '12px' }} />
                                             <ReferenceLine x={goal.targetAge} stroke="#f97316" strokeDasharray="5 3" label={{ position: 'insideTopRight', value: `Retraite (${goal.targetAge}a)`, fill: '#f97316', fontSize: 11, fontWeight: 'bold', dy: -8 }} />
-                                            <Area type="monotone" dataKey="Liquidites" stackId="1" fill="url(#retGradLiq)" stroke="#a78bfa" strokeWidth={1} name="Liquidites" fillOpacity={1} />
-                                            <Area type="monotone" dataKey="NonReg" stackId="1" fill="url(#retGradNonReg)" stroke="#f59e0b" strokeWidth={1} name="Non-Enreg." fillOpacity={1} />
-                                            <Area type="monotone" dataKey="CELI" stackId="1" fill="url(#retGradCELI)" stroke="#10b981" strokeWidth={1.5} name="CELI" fillOpacity={1} />
-                                            <Area type="monotone" dataKey="REER" stackId="1" fill="url(#retGradREER)" stroke="#3b82f6" strokeWidth={1.5} name="REER" fillOpacity={1} />
+                                            <Area type="monotone" dataKey="Liquidites" stackId="1" fill="url(#retGradLiq)" stroke="#9b8fcf" strokeWidth={1} name="Liquidites" fillOpacity={1} />
+                                            <Area type="monotone" dataKey="NonReg" stackId="1" fill="url(#retGradNonReg)" stroke="#c2974f" strokeWidth={1} name="Non-Enreg." fillOpacity={1} />
+                                            <Area type="monotone" dataKey="CELI" stackId="1" fill="url(#retGradCELI)" stroke="#4f9d86" strokeWidth={1.5} name="CELI" fillOpacity={1} />
+                                            <Area type="monotone" dataKey="REER" stackId="1" fill="url(#retGradREER)" stroke="#5b82bf" strokeWidth={1.5} name="REER" fillOpacity={1} />
                                         </AreaChart>
                                     </ResponsiveContainer>
                                 </ZoomContainer>
@@ -464,8 +464,8 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} width={50} tickFormatter={(val) => `${(val / 1000).toFixed(0)}k`} />
                                             <Tooltip contentStyle={{ backgroundColor: '#0B0E14', borderColor: '#1e293b', borderRadius: '10px', color: '#fff' }} formatter={(val: number | string, name: string) => [`${Number(val).toLocaleString()}$`, name]} />
                                             <Legend iconType="circle" />
-                                            <Area type="monotone" dataKey="IncomeRetirement" fill="#3b82f620" stroke="#3b82f6" strokeWidth={2} name="Rente Gouv. + PSV" />
-                                            <Area type="monotone" dataKey="Income" fill="#10b98115" stroke="#10b981" strokeWidth={2} name="Revenu Total" />
+                                            <Area type="monotone" dataKey="IncomeRetirement" fill="#5b82bf20" stroke="#5b82bf" strokeWidth={2} name="Rente Gouv. + PSV" />
+                                            <Area type="monotone" dataKey="Income" fill="#4f9d8615" stroke="#4f9d86" strokeWidth={2} name="Revenu Total" />
                                             <Line type="monotone" dataKey="Expenses" stroke="#ef4444" strokeWidth={3} dot={false} name="Besoin (Infl.)" style={{ filter: 'drop-shadow(0px 2px 6px rgba(239,68,68,0.5))' }} />
                                         </ComposedChart>
                                     </ResponsiveContainer>
@@ -524,7 +524,7 @@ const RetirementTooltip = React.memo(({ active, payload }: RetirementTooltipProp
                         </div>
                     )}
                     <div className="bg-black/30 p-2 rounded-lg border border-white/5">
-                        <div className="text-tiny text-[#a78bfa] font-bold mb-1">Liquidites</div>
+                        <div className="text-tiny text-[#9b8fcf] font-bold mb-1">Liquidites</div>
                         <div className="text-meta font-black text-ink-50 privacy-blur">{(data.Liquidites || 0).toLocaleString()}$</div>
                     </div>
                 </div>

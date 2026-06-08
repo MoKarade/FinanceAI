@@ -41,14 +41,14 @@ export const splitEventIcon = (label: string): { icon: string; text: string } =>
 
 // Comptes affichés dans la répartition de l'infobulle (valeur + rendement du mois).
 const TOOLTIP_ACCOUNTS: Array<{ key: string; label: string; color: string; gainKey?: string }> = [
-    { key: 'Liquidites', label: 'Cash', color: '#4b5563', gainKey: 'MarketGrowthLiquid' },
-    { key: 'CELI', label: 'CELI', color: '#10b981', gainKey: 'MarketGrowthCELI' },
-    { key: 'CELIAPP', label: 'CELIAPP (FHSA)', color: '#2dd4bf', gainKey: 'MarketGrowthCELIAPP' },
-    { key: 'REER', label: 'REER', color: '#3b82f6', gainKey: 'MarketGrowthREER' },
-    { key: 'REEE', label: 'REEE', color: '#06b6d4', gainKey: 'MarketGrowthREEE' },
-    { key: 'NonReg', label: 'Non-Enreg', color: '#f59e0b', gainKey: 'MarketGrowthNonReg' },
-    { key: 'Crypto', label: 'Crypto', color: '#a855f7', gainKey: 'MarketGrowthCrypto' },
-    { key: 'Immobilier', label: 'Immobilier', color: '#ec4899' },
+    { key: 'Liquidites', label: 'Cash', color: '#5a6478', gainKey: 'MarketGrowthLiquid' },
+    { key: 'CELI', label: 'CELI', color: '#4f9d86', gainKey: 'MarketGrowthCELI' },
+    { key: 'CELIAPP', label: 'CELIAPP (FHSA)', color: '#5cae9f', gainKey: 'MarketGrowthCELIAPP' },
+    { key: 'REER', label: 'REER', color: '#5b82bf', gainKey: 'MarketGrowthREER' },
+    { key: 'REEE', label: 'REEE', color: '#5093a8', gainKey: 'MarketGrowthREEE' },
+    { key: 'NonReg', label: 'Non-Enreg', color: '#c2974f', gainKey: 'MarketGrowthNonReg' },
+    { key: 'Crypto', label: 'Crypto', color: '#9277bd', gainKey: 'MarketGrowthCrypto' },
+    { key: 'Immobilier', label: 'Immobilier', color: '#bd7d9c' },
 ];
 
 // Infobulle au SURVOL — résumé clair + détail par compte (gains) + dépenses.

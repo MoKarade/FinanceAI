@@ -25,6 +25,14 @@ export interface RetirementIncomeCtx {
     rrqSurvivorPct: number;
     psvResidencyYears: number[];
     startYear: number;  // pour calcul arrivalAge depuis canadaArrivalYear
+    /**
+     * FA-3b (audit fiscal 2026-06-09) — revenu imposable AUTRE de l'ANNÉE PRÉCÉDENTE
+     * (retraits REER/FERR + revenus locatifs), en dollars NOMINAUX. Le vrai SRG est calculé
+     * sur le revenu de l'année d'imposition précédente : l'ignorer affichait un SRG fictif
+     * (jusqu'à ~13 k$/an) pour les profils FIRE/meltdown qui vivent de retraits REER.
+     * Optionnel (absent → comportement RRQ+DB seul, rétro-compat).
+     */
+    otherIncomeAnnualLaggedNominal?: number;
 }
 
 /**
@@ -66,6 +74,12 @@ export interface RetirementIncomeBreakdown {
     privee: number;
     /** Écrêtement PSV pour revenus > seuil (montant déduit). */
     oasReduction: number;
+    /**
+     * FA-3a — SRG mensuel familial (déjà inclus dans `psv` et `total` : c'est du REVENU).
+     * Exposé séparément parce que le SRG est NON IMPOSABLE (Service Canada) : taxDecember
+     * le SOUSTRAIT de l'assiette imposable. Ne pas le compter deux fois.
+     */
+    gis: number;
     /**
      * A1 — décomposition PAR CONJOINT du revenu de retraite (index aligné sur `users`
      * filtrés non-nuls). Permet à `taxDecember` d'imposer chaque conjoint sur SON revenu
@@ -194,16 +208,24 @@ export function computeRetirementIncome(
     const dbMonthly = age >= dbStartAge ? dbBaseMonthly * dbInflFactor * dbSurvivorFactor : 0;
 
     // §6.3 — SRG (Supplément de revenu garanti) pour retraités 65+ recevant la PSV.
-    // Approximation : on estime le revenu autre que PSV via RRQ + DB pension
-    // (annualisés). Cette approximation ignore les retraits REER, gains capitaux,
-    // et rentes Non-Reg qui sont gérés ailleurs dans le moteur — donc le SRG
-    // calculé ici peut être surestimé pour ces profils. TODO : intégration plus
-    // précise via taxDecember si l'audit le requiert.
+    // FA-3b (audit fiscal 2026-06-09) : le « revenu autre que PSV » du test SRG inclut
+    // désormais le revenu imposable de l'ANNÉE PRÉCÉDENTE (retraits REER/FERR + loyers,
+    // transmis nominal et déflaté ici à la même base réelle que RRQ ; NB : dbMonthly porte
+    // déjà dbInflFactor (quasi nominal si indexation 100 %) → revenu test légèrement surévalué
+    // pour les profils DB = SRG sous-évalué, sens CONSERVATEUR) — comme le vrai
+    // SRG, calculé sur la déclaration de l'année passée. Avant : RRQ+DB seuls → SRG
+    // fictif (~13 k$/an) pour les profils FIRE/meltdown vivant de retraits REER.
+    // Limite assumée : les gains en capital réalisés ne sont pas inclus (FA-8).
     const currentYear = startYear + yearsElapsed;
+    // Garde NaN à la source (cohérence FA-1) : Math.max(0, NaN) = NaN — calculateGISBenefit a
+    // sa propre garde mais on neutralise ici pour ne jamais propager.
+    const otherLaggedReal = (Number.isFinite(ctx.otherIncomeAnnualLaggedNominal)
+        ? Math.max(0, ctx.otherIncomeAnnualLaggedNominal as number)
+        : 0) / inflFactor;
     // rrqMonthly is already family-level (rrqBaseIndiv × activeUsersCount above).
     // Computing family total first, then dividing for the per-adult figure avoids
     // the double-multiplication that caused SRG = $0 for entitled couples (§7.G).
-    const otherIncomeAnnualFamily = (rrqMonthly + dbMonthly) * 12;
+    const otherIncomeAnnualFamily = (rrqMonthly + dbMonthly) * 12 + otherLaggedReal;
     const otherIncomeAnnualPerAdult = otherIncomeAnnualFamily / Math.max(1, activeUsersCount);
     const hasSpouseWithOAS = activeUsersCount > 1 && age >= psvStartAge;
     const gisMonthlyPerAdult = (age >= psvStartAge && psvMonthly > 0)
@@ -254,6 +276,7 @@ export function computeRetirementIncome(
         psv: Math.max(0, psv),
         privee: Math.max(0, privee),
         oasReduction: monthlyOasReduction,
+        gis: Math.max(0, gisTotal),
         perUser,
     };
 }

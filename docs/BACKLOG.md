@@ -68,7 +68,18 @@
   le revenu TOTAL en `eligiblePensionIncome` (impact ≈0, réconcilié en décembre — aligner sur FA-1) ·
   `calculateCeliRoom` fallback `|| 7500` non indexé > 2030 (unifier avec l'extrapolation taxJanuary) ·
   `setupSimulation.ts:169` `inflationRate || 2.0` masque le 0 légitime (→ `??`) ·
-  NPV estate lit `governmentPension` même quand `rrqEstimateMonthly` est fourni (divergence silencieuse).
+  NPV estate lit `governmentPension` même quand `rrqEstimateMonthly` est fourni (divergence silencieuse) ·
+  assiette clawback PSV sans gains/dividendes/intérêts non-reg (revenu net 23400 les inclut — sous-estime,
+  borné au cap) · cap clawback ignore prorata résidence/`psvEstimateMonthly`/bonus 75+ (clawback fantôme
+  possible pour immigrant 10/40) · assiette FSS inclut la PSV (l'Annexe F la déduit — à sourcer) ·
+  lagged SRG déflaté du facteur du mois courant (~1 an d'écart, SRG légèrement surévalué).
+- [ ] **[FA-9]** 🔧 **Double indexation du SRG** (pré-existant, exposé par FA-3) : le revenu test est
+  en base RÉELLE mais `calculateGISBenefit` indexe seuils ET maximum ×1,02^Δ, puis le SRG est
+  re-multiplié ×inflFactor → max SRG surévalué ~49 % à 20 ans (~+6,5 k$/an fictifs). Correctif :
+  tout en base réelle (seuils de base, sans `year`) ou tout nominal — aligner sur le clawback PSV.
+- [ ] **[FA-10]** 🔧 Clawback PSV/impôt par conjoint en **survivorMode** : A1 (impôt décembre)
+  répartit encore le revenu du survivant sur 2 têtes (latent pré-existant ; le clawback FA-2 est
+  corrigé via `oasBeneficiaries`). Étendre le même traitement à l'impôt par conjoint + tests.
 - [ ] **[PV-1]** 🔧 Liquide négatif effacé silencieusement : débits directs (impôt d'avril, W5) peuvent
   rendre `liquid < 0`, puis `applyMidMonthGrowth` clampe à 0 (`helpers.ts:54`) = dette fiscale effacée.
   Garde explicite (cascade de vente ou dette comptée) + test de conservation couvrant avril.

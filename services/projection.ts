@@ -316,6 +316,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // Phase 3 (fractionnement 65+) : composante DB (rente viagère) mensuelle PAR CONJOINT — partie
     // ADMISSIBLE au fractionnement à tout âge (vs RRQ/PSV non fractionnables). Cf taxDecember.
     let incomeRetirementDbPerUser: number[] = [];
+    // FA-3a — SRG mensuel familial (NON imposable) : exclu de l'assiette de décembre.
+    let incomeRetirementGis = 0;
+    // FA-3b — revenu imposable AUTRE de l'année PRÉCÉDENTE (retraits REER + loyers, nominal),
+    // capturé au reset de janvier : assiette du test SRG (le vrai SRG regarde l'année passée).
+    let prevYearOtherIncomeForGisNominal = 0;
     // Phase 3 Tier 3 — split par source (RRQ + PSV + privée) pour chartData
     let pensionRRQ = 0;
     let pensionPSV = 0;
@@ -519,13 +524,16 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             const retirementBreakdown = computeRetirementIncome(
                 { m, age, simInflation, activeUsersCount, baseGrossAnnual, delayPensions,
                   survivorMode, monthlyOasReduction, dbSurvivorPct, rrqSurvivorPct, psvResidencyYears,
-                  startYear },
+                  startYear,
+                  // FA-3b — le test SRG regarde le revenu de l'ANNÉE PRÉCÉDENTE (retraits REER + loyers).
+                  otherIncomeAnnualLaggedNominal: prevYearOtherIncomeForGisNominal },
                 retirementGoal,
                 config.users,
             );
             incomeRetirement = retirementBreakdown.total;
             incomeRetirementPerUser = retirementBreakdown.perUser.map(p => p.total);
             incomeRetirementDbPerUser = retirementBreakdown.perUser.map(p => p.privee);
+            incomeRetirementGis = retirementBreakdown.gis;
             pensionRRQ = retirementBreakdown.rrq;
             pensionPSV = retirementBreakdown.psv;
             pensionPrivee = retirementBreakdown.privee;
@@ -701,6 +709,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
                     optimizeSourceDeductions: effProj.optimizeSourceDeductions,
                     incomeRetirementMonthly: incomeRetirement,
+                    // FA-3a — SRG mensuel familial : NON IMPOSABLE (Service Canada), soustrait
+                    // de l'assiette imposable par taxDecember (revenu cash inchangé).
+                    incomeRetirementGisMonthly: incomeRetirementGis,
                     // A1 — décomposition par conjoint pour imposer chacun sur SON revenu de
                     // retraite réel (split égal sinon, cf. taxDecember). Vide hors retraite.
                     incomeRetirementPerUserMonthly: incomeRetirementPerUser,
@@ -756,11 +767,26 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         }
 
         // Cycle 10 split: OAS Clawback → ./projection/taxCycle (computeOasClawback)
+        // FA-2 — décomposition par conjoint transmise : le seuil de récupération est PAR
+        // PARTICULIER (revenu_i vs seuil), plus jamais l'agrégat familial vs seuil individuel.
         if (currentMonthIndex === 11 && m > 0 && isRetired && age >= 65) {
+            // FA-3a — le SRG (non imposable, hors revenu net de récupération en pratique) est
+            // exclu du revenu de clawback, total ET par conjoint (réparti également).
+            // NB : pas de clamp sur (v − gisShare) — un négatif est fini, économiquement correct
+            // (très loin du seuil → aucun clawback) et PRÉSERVE l'invariant Σ(perUser) == total
+            // que computeOasClawback vérifie (garde de somme symétrique).
+            // survivorMode (retour code-reviewer FA-2) : un seul bénéficiaire VIVANT — diviser le
+            // revenu du survivant par activeUsersCount=2 sous-estimerait son clawback. n=1 et pas
+            // de décomposition (repli = revenu complet vs seuil individuel, exact pour 1 personne).
+            const oasBeneficiaries = survivorMode ? 1 : activeUsersCount;
+            const gisShare = incomeRetirementGis / Math.max(1, oasBeneficiaries);
             const oasResult = computeOasClawback(
                 currentMonthIndex, m, isRetired, age, expenseMultiplier,
-                incomeRetirement, accRetraitsReerYear, accRentesYear,
+                incomeRetirement - incomeRetirementGis, accRetraitsReerYear, accRentesYear,
                 psvBasePension, simInflation,
+                oasBeneficiaries,
+                survivorMode ? undefined : incomeRetirementPerUser.map((v) => v - gisShare),
+                survivorMode ? undefined : accRetraitsReerYearByUser,
             );
             oasClawbackNextPeriod = oasResult.clawbackAnnual;
             if (oasResult.logMsg) flowEventsLog.push(oasResult.logMsg);
@@ -785,6 +811,14 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             { RRIF_RATES, calculateFiscalReport },
         );
         if (janResult) {
+            // FA-3b — capture du revenu imposable AUTRE de l'année qui se termine (retraits
+            // REER/FERR + loyers, nominal) AVANT le reset : c'est l'assiette du test SRG de la
+            // nouvelle année (le vrai SRG est établi sur la déclaration de l'année précédente).
+            // Limites assumées (doc §6) : année 1 sans historique → assiette RRQ+DB seule (12 mois,
+            // optimiste) ; le SALAIRE de l'année précédant la retraite n'est pas compté ; janvier de
+            // l'année Y utilise l'assiette Y-2 (capture après le calcul de janvier — tolérance modèle,
+            // le vrai cycle SRG court juillet→juin).
+            prevYearOtherIncomeForGisNominal = accRetraitsReerYear + accRentesYear;
             accRetraitsReerYear = janResult.accRetraitsReerYearReset;
             accRetraitsReerYearByUser = accRetraitsReerYearByUser.map(() => 0);
             accRentesYear = janResult.accRentesYearReset;

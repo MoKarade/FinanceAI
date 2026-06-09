@@ -60,14 +60,17 @@ const makeParams = (overrides: Partial<SimulationParams> = {}): SimulationParams
     ...overrides,
 });
 
+// [UI-SCEN] — le moteur ne calcule plus que le scénario sélectionné par défaut : chaque
+// golden de stress DEMANDE explicitement son stratType (l'ancien mapping par idx renvoyait
+// silencieusement des clones de BASE — garde-fou neutralisé, attrapé par performance-optimizer).
 const cases = [
-    { name: 'base-deterministic-20y', params: makeParams(), runMC: false, idx: 0 },
-    { name: 'base-deterministic-30y', params: makeParams({ projection: makeProjection({ years: 30 }) }), runMC: false, idx: 0 },
-    { name: 'liberte-55-deterministic', params: makeParams(), runMC: false, idx: 1 },
-    { name: 'hyper-inflation', params: makeParams(), runMC: false, idx: 2 },
-    { name: 'windfall', params: makeParams(), runMC: false, idx: 3 },
-    { name: 'economic-winter', params: makeParams(), runMC: false, idx: 4 },
-    { name: 'mc-200-iterations', params: makeParams({ projection: makeProjection({ monteCarloIterations: 200 }) }), runMC: true, idx: 0 },
+    { name: 'base-deterministic-20y', params: makeParams(), runMC: false, only: undefined },
+    { name: 'base-deterministic-30y', params: makeParams({ projection: makeProjection({ years: 30 }) }), runMC: false, only: undefined },
+    { name: 'liberte-55-deterministic', params: makeParams(), runMC: false, only: ['LIBERTE_55'] },
+    { name: 'hyper-inflation', params: makeParams(), runMC: false, only: ['HYPER_INFLATION'] },
+    { name: 'windfall', params: makeParams(), runMC: false, only: ['WINDFALL'] },
+    { name: 'economic-winter', params: makeParams(), runMC: false, only: ['ECONOMIC_WINTER'] },
+    { name: 'mc-200-iterations', params: makeParams({ projection: makeProjection({ monteCarloIterations: 200 }) }), runMC: true, only: undefined },
 ];
 
 // Snapshot : valeurs de sortie agrégées par scénario (scalaires + échantillons chartData).
@@ -99,7 +102,7 @@ const t0 = Date.now();
 
 for (const c of cases) {
     const tStart = Date.now();
-    const res: ProjectionResult = calculateFutureProjection(c.params, c.runMC, c.idx);
+    const res: ProjectionResult = calculateFutureProjection(c.params, c.runMC, 0, c.only);
     const tEnd = Date.now();
 
     snapshot[c.name] = {

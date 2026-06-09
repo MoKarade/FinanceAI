@@ -35,7 +35,7 @@ export const RobustnessPanel: React.FC<Props> = ({ params, iterationsPerStrategy
     // Évite de poser un state sur un composant démonté si l'utilisateur change
     // d'onglet pendant les ~secondes de calcul.
     const aliveRef = useRef(true);
-    useEffect(() => () => { aliveRef.current = false; }, []);
+    useEffect(() => { aliveRef.current = true; return () => { aliveRef.current = false; }; }, []); // ré-armé au remount (StrictMode dev)
 
     const run = useCallback(async () => {
         setStatus('running');

@@ -147,3 +147,14 @@ export const SCENARIO_DEFINITIONS: ScenarioDefinition[] = [
         delayPensions: false,
     },
 ];
+
+// [UI-SCEN] (2026-06-09) — vues dérivées de SCENARIO_DEFINITIONS :
+// les 5 FAÇONS DE GÉRER alimentent le sélecteur « Stratégie de retrait » (Paramètres),
+// les 6 STRESS-TESTS sont calculés À LA DEMANDE (panneau de l'onglet Optimisation).
+export const STRATEGY_DEFS: ScenarioDefinition[] = SCENARIO_DEFINITIONS.filter(d => d.kind === 'strategy');
+export const STRESS_DEFS: ScenarioDefinition[] = SCENARIO_DEFINITIONS.filter(d => d.kind !== 'strategy');
+export const STRESS_STRAT_TYPES: FutureScenarioType[] = STRESS_DEFS.map(d => d.stratType);
+
+/** La définition correspondant à la stratégie choisie (défaut : la 1re = AUTO_MARGINAL). */
+export const strategyDefFor = (strategy: AllocationStrategy | undefined): ScenarioDefinition =>
+    STRATEGY_DEFS.find(d => d.strategy === strategy) ?? STRATEGY_DEFS[0];

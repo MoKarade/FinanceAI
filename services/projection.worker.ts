@@ -8,7 +8,7 @@
 //
 // Usage côté main thread:
 //   const worker = new Worker(new URL('./projection.worker.ts', import.meta.url), { type: 'module' });
-//   worker.postMessage({ params, runMC, selectedIdx });
+//   worker.postMessage({ params, runMC, selectedIdx, onlyStratTypes? });
 //   worker.onmessage = (e) => setResult(e.data);
 
 import {
@@ -28,6 +28,8 @@ interface RunMessage {
     params: SimulationParams;
     runMC?: boolean;
     selectedIdx?: number;
+    // [UI-SCEN] — types de scénarios demandés explicitement (panneau stress-tests).
+    onlyStratTypes?: string[];
     mode?: 'projection' | 'robustness' | 'strategySearch';
     iterationsPerStrategy?: number;
     // G21 C5 commit 4 — mode 'strategySearch' : ce worker traite SA part de configs
@@ -63,7 +65,7 @@ self.onmessage = (e: MessageEvent<RunMessage>) => {
     // FIX silent-failure cycle 2 (HIGH): requestId obligatoire pour corréler
     // chaque réponse à son appel — évite les résultats croisés entre appels concurrents.
     const requestId = e.data.__requestId;
-    const { params, runMC = false, selectedIdx = 0, mode = 'projection', iterationsPerStrategy, configs, iterations } = e.data;
+    const { params, runMC = false, selectedIdx = 0, onlyStratTypes, mode = 'projection', iterationsPerStrategy, configs, iterations } = e.data;
     try {
         if (mode === 'robustness') {
             const result = calculateRobustnessRanking(params, {
@@ -80,7 +82,7 @@ self.onmessage = (e: MessageEvent<RunMessage>) => {
             });
             workerSelf.postMessage({ __requestId: requestId, result });
         } else {
-            const result = calculateFutureProjection(params, runMC, selectedIdx);
+            const result = calculateFutureProjection(params, runMC, selectedIdx, onlyStratTypes);
             workerSelf.postMessage({ __requestId: requestId, result });
         }
     } catch (err) {

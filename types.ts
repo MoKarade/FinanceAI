@@ -371,6 +371,15 @@ export interface ProjectionConfig {
   appliedSkipRap?: boolean;
   appliedAssetLocation?: boolean;
   appliedGainHarvesting?: boolean;
+
+  // [UI-SCEN] (2026-06-09, demande Marc « enlève les plans de base ») — la stratégie de
+  // retrait/gestion est un PARAMÈTRE : le moteur ne calcule que CE scénario réaliste
+  // (au lieu des 11 scénarios à chaque recalcul — ÷11 en déterministe ; en mode Monte
+  // Carlo, le gain porte sur la part déterministe seulement). Les
+  // stress-tests sont calculés À LA DEMANDE dans l'onglet Optimisation.
+  // Union littérale = sous-ensemble d'AllocationStrategy ayant une ScenarioDefinition
+  // (cf services/projection/scenarios.ts). Défaut : AUTO_MARGINAL (« Le Plan de Base »).
+  withdrawalStrategy?: 'AUTO_MARGINAL' | 'PRIO_REER' | 'PRIO_CELI' | 'MELTDOWN_REER' | 'PRIO_CELI_NO_RAP';
 }
 
 // ────────────────────────────────────────────────────────────────────

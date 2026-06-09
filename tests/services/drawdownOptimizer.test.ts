@@ -68,55 +68,42 @@ describe('compareLifeScenarios', () => {
         expect(result.results).toHaveLength(0);
     });
 
-    it('identifie le meilleur scénario par estateNetWorth', () => {
-        // Arrange
-        mockCalculate.mockReturnValue({
-            allResults: [
-                makeScenario('BASE', 300000, 280000),
-                makeScenario('WINDFALL', 700000, 650000),
-                makeScenario('HYPER_INFLATION', 150000, 120000),
-            ],
-        } as unknown as ReturnType<typeof calculateFutureProjection>);
+    // [UI-SCEN] — compareLifeScenarios lance désormais UNE simulation PAR façon de gérer
+    // (withdrawalStrategy paramétré, 5 runs) et lit allResults[0] de chaque run.
+    const estateByStrategy: Record<string, number> = {
+        AUTO_MARGINAL: 300000, PRIO_CELI: 700000, PRIO_REER: 150000,
+        MELTDOWN_REER: 250000, PRIO_CELI_NO_RAP: 200000,
+    };
+    const mockPerStrategy = () => {
+        mockCalculate.mockImplementation(((params: SimulationParams) => {
+            const ws = (params.projection as { withdrawalStrategy?: string }).withdrawalStrategy ?? 'AUTO_MARGINAL';
+            return {
+                allResults: [makeScenario(ws, estateByStrategy[ws] ?? 0, estateByStrategy[ws] ?? 0)],
+            };
+        }) as unknown as typeof calculateFutureProjection);
+    };
 
-        // Act
+    it('identifie la meilleure STRATÉGIE par estateNetWorth (1 run paramétré par stratégie)', () => {
+        mockPerStrategy();
         const result = compareLifeScenarios(fakeParams);
-
-        // Assert — WINDFALL a la plus haute estateNetWorth
-        expect(result.bestScenario).toBe('Stratégie WINDFALL');
+        expect(mockCalculate).toHaveBeenCalledTimes(5); // 5 façons de gérer
+        expect(result.bestScenario).toBe('Stratégie PRIO_CELI');
         expect(result.bestEstateNetWorth).toBe(700000);
     });
 
-    it('retourne tous les scénarios dans les résultats', () => {
-        // Arrange
-        mockCalculate.mockReturnValue({
-            allResults: [
-                makeScenario('BASE', 300000, 280000),
-                makeScenario('WINDFALL', 700000, 650000),
-                makeScenario('ECONOMIC_WINTER', 100000, 80000),
-            ],
-        } as unknown as ReturnType<typeof calculateFutureProjection>);
-
-        // Act
+    it('retourne les 5 stratégies dans les résultats, gainVsBase relatif à AUTO_MARGINAL', () => {
+        mockPerStrategy();
         const result = compareLifeScenarios(fakeParams);
-
-        // Assert
-        expect(result.results).toHaveLength(3);
+        expect(result.results).toHaveLength(5);
+        const prioCeli = result.results.find(r => r.scenarioType === 'PRIO_CELI');
+        expect(prioCeli!.gainVsBase).toBe(700000 - 300000); // vs AUTO_MARGINAL (1er run)
     });
 
     it('inclut l\'écart entre meilleur et pire dans l\'explication', () => {
-        // Arrange
-        mockCalculate.mockReturnValue({
-            allResults: [
-                makeScenario('BASE', 500000, 480000),
-                makeScenario('ECONOMIC_WINTER', 200000, 180000),
-            ],
-        } as unknown as ReturnType<typeof calculateFutureProjection>);
-
-        // Act
+        mockPerStrategy();
         const result = compareLifeScenarios(fakeParams);
-
-        // Assert — écart = 300000, l'explication doit le mentionner
-        expect(result.explanation).toContain('300');
+        // Écart meilleur (PRIO_CELI 700k) − pire (PRIO_REER 150k) = 550 000.
+        expect(result.explanation).toContain('550');
         expect(result.explanation).toContain('%');
     });
 

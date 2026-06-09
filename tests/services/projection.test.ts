@@ -96,11 +96,32 @@ const makeParams = (overrides: Partial<SimulationParams> = {}): SimulationParams
 // ---------------------------------------------------------------------------
 
 describe('calculateFutureProjection', () => {
-    it('renvoie 11 scénarios dans allResults (6 stress/base + 5 variantes de gestion C3)', () => {
+
+// [UI-SCEN] (2026-06-09) — par défaut le moteur ne calcule QUE la stratégie sélectionnée
+// (projection.withdrawalStrategy, défaut AUTO_MARGINAL). Les tests qui comparent des
+// SCÉNARIOS demandent explicitement les types voulus via onlyStratTypes :
+const ALL_TYPES = ['BASE', 'LIBERTE_55', 'HYPER_INFLATION', 'WINDFALL', 'ECONOMIC_WINTER', 'COMPOUND_STRESS', 'LATE_INHERITANCE'];
+
+    it('[UI-SCEN] par DÉFAUT : UN seul scénario (la stratégie sélectionnée, AUTO_MARGINAL)', () => {
         const result: ProjectionResult = calculateFutureProjection(makeParams());
         const scenarios = result.allResults as ProjectionResult[];
-        expect(Array.isArray(scenarios)).toBe(true);
-        expect(scenarios).toHaveLength(11);
+        expect(scenarios).toHaveLength(1);
+        expect(scenarios[0].stratType).toBe('BASE');
+        expect(scenarios[0].strategyName).toBe('Le Plan de Base');
+    });
+
+    it('[UI-SCEN] withdrawalStrategy sélectionne la façon de gérer calculée', () => {
+        const result: ProjectionResult = calculateFutureProjection(makeParams({
+            projection: makeProjection({ withdrawalStrategy: 'PRIO_CELI' }),
+        }));
+        expect(result.allResults).toHaveLength(1);
+        expect(result.allResults![0].strategyName).toBe("Gestion : CELI d'abord");
+    });
+
+    it('[UI-SCEN] stress-tests demandés explicitement → stratégie sélectionnée + 6 chocs', () => {
+        const result: ProjectionResult = calculateFutureProjection(makeParams(), false, 0, ALL_TYPES);
+        const scenarios = result.allResults as ProjectionResult[];
+        expect(scenarios).toHaveLength(7); // 1 façon de gérer (la sélectionnée) + 6 stress
         const types = scenarios.map(r => r.stratType);
         expect(types).toEqual(
             expect.arrayContaining([
@@ -108,9 +129,7 @@ describe('calculateFutureProjection', () => {
                 'COMPOUND_STRESS', 'LATE_INHERITANCE',
             ])
         );
-        // C3 — 5 façons de gérer comparables (kind 'strategy', toutes sous le monde BASE).
-        // AUTO_MARGINAL, PRIO_CELI, PRIO_REER, MELTDOWN_REER, PRIO_CELI_NO_RAP.
-        expect(scenarios.filter(r => (r as ProjectionResult & { kind?: string }).kind === 'strategy')).toHaveLength(5);
+        expect(scenarios.filter(r => (r as ProjectionResult & { kind?: string }).kind === 'strategy')).toHaveLength(1);
     });
 
     it('G21 C5 — appliedAssetLocation augmente le patrimoine (bonus rendement mélangé)', () => {
@@ -165,7 +184,7 @@ describe('calculateFutureProjection', () => {
     });
 
     it('WINDFALL augmente le patrimoine vs BASE (héritage 250k $)', () => {
-        const result: ProjectionResult = calculateFutureProjection(makeParams());
+        const result: ProjectionResult = calculateFutureProjection(makeParams(), false, 0, ALL_TYPES);
         const scenarios = result.allResults as ProjectionResult[];
         const base = scenarios.find(r => r.stratType === 'BASE');
         const windfall = scenarios.find(r => r.stratType === 'WINDFALL');
@@ -173,7 +192,7 @@ describe('calculateFutureProjection', () => {
     });
 
     it('HYPER_INFLATION dégrade le patrimoine vs BASE (en réel)', () => {
-        const result: ProjectionResult = calculateFutureProjection(makeParams());
+        const result: ProjectionResult = calculateFutureProjection(makeParams(), false, 0, ALL_TYPES);
         const scenarios = result.allResults as ProjectionResult[];
         const base = scenarios.find(r => r.stratType === 'BASE');
         const hyper = scenarios.find(r => r.stratType === 'HYPER_INFLATION');
@@ -274,9 +293,9 @@ describe('calculateFutureProjection', () => {
                 ] as BudgetConfig['users'],
             },
         };
-        const result: ProjectionResult = calculateFutureProjection(makeParams(zeroIncome));
+        const result: ProjectionResult = calculateFutureProjection(makeParams(zeroIncome), false, 0, ALL_TYPES);
         const scenarios = result.allResults as ProjectionResult[];
-        expect(scenarios).toHaveLength(11);
+        expect(scenarios).toHaveLength(7);
         for (const r of scenarios) {
             expect(Number.isFinite(r.estateNetWorth)).toBe(true);
         }
@@ -697,7 +716,7 @@ describe('calculateFutureProjection', () => {
             // que les retraits sont des fonctions différentes selon la stratégie.
             // On vérifie surtout que les deux stratégies produisent des résultats
             // mesurablement différents (sinon le strategy switch est mort).
-            const result: ProjectionResult = calculateFutureProjection(makeRetireeParams());
+            const result: ProjectionResult = calculateFutureProjection(makeRetireeParams(), false, 0, ALL_TYPES);
             const base = result.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
             const liberte = result.allResults!.find((s: ProjectionResult) => s.stratType === 'LIBERTE_55');
             expect(base).toBeDefined();
@@ -846,22 +865,29 @@ describe('calculateFutureProjection', () => {
             return r!;
         };
 
+        // [UI-SCEN] — chaque stratégie est un RUN paramétré (withdrawalStrategy), plus un
+        // scénario parallèle : on lance le moteur une fois par stratégie comparée.
+        const runWithStrategy = (ws: 'PRIO_CELI' | 'PRIO_CELI_NO_RAP'): ProjectionResult => {
+            const params = makePurchaseParams();
+            return calculateFutureProjection({
+                ...params,
+                projection: { ...params.projection, withdrawalStrategy: ws },
+            });
+        };
+
         it('PRIO_CELI emprunte au RAP à l\'achat (rapBalance > 0)', () => {
-            const result: ProjectionResult = calculateFutureProjection(makePurchaseParams());
-            const prioCeli = findByStrategy(result, "Gestion : CELI d'abord");
+            const prioCeli = findByStrategy(runWithStrategy('PRIO_CELI'), "Gestion : CELI d'abord");
             expect(maxRapBalance(prioCeli)).toBeGreaterThan(0);
         });
 
         it('PRIO_CELI_NO_RAP ne touche jamais au RAP (rapBalance reste 0)', () => {
-            const result: ProjectionResult = calculateFutureProjection(makePurchaseParams());
-            const noRap = findByStrategy(result, 'Achat : CELI sans RAP');
+            const noRap = findByStrategy(runWithStrategy('PRIO_CELI_NO_RAP'), 'Achat : CELI sans RAP');
             expect(maxRapBalance(noRap)).toBe(0);
         });
 
         it('non-régression : les deux stratégies produisent un patrimoine fini et divergent', () => {
-            const result: ProjectionResult = calculateFutureProjection(makePurchaseParams());
-            const noRap = findByStrategy(result, 'Achat : CELI sans RAP');
-            const prioCeli = findByStrategy(result, "Gestion : CELI d'abord");
+            const noRap = findByStrategy(runWithStrategy('PRIO_CELI_NO_RAP'), 'Achat : CELI sans RAP');
+            const prioCeli = findByStrategy(runWithStrategy('PRIO_CELI'), "Gestion : CELI d'abord");
             expect(Number.isFinite(noRap.estateNetWorth)).toBe(true);
             expect(Number.isFinite(prioCeli.estateNetWorth)).toBe(true);
             // L'achat a bien lieu dans les deux cas (équité immobilière créée).
@@ -876,7 +902,7 @@ describe('calculateFutureProjection', () => {
         it('COMPOUND_STRESS: patrimoine final inférieur à ECONOMIC_WINTER (cumul + LTC)', () => {
             const result: ProjectionResult = calculateFutureProjection(makeParams({
                 projection: makeProjection({ years: 15 }),
-            }));
+            }), false, 0, ALL_TYPES);
             const winter = result.allResults!.find((s: ProjectionResult) => s.stratType === 'ECONOMIC_WINTER');
             const stress = result.allResults!.find((s: ProjectionResult) => s.stratType === 'COMPOUND_STRESS');
             expect(stress).toBeDefined();
@@ -888,7 +914,7 @@ describe('calculateFutureProjection', () => {
         it('LATE_INHERITANCE: patrimoine final ≥ BASE (héritage tardif aide quand même)', () => {
             const result: ProjectionResult = calculateFutureProjection(makeParams({
                 projection: makeProjection({ years: 25 }), // assez long pour atteindre m=240
-            }));
+            }), false, 0, ALL_TYPES);
             const base = result.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
             const late = result.allResults!.find((s: ProjectionResult) => s.stratType === 'LATE_INHERITANCE');
             expect(late).toBeDefined();

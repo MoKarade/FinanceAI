@@ -43,6 +43,10 @@ Doc détaillée dans `docs/`, qui fait foi.
   ≈ 5 min si `.ts/.tsx` stagés) PUIS la même suite en CI (≈ 5 min) — redondant mais voulu
   (gate = filet local, CI = vérité partagée). Pour raccourcir, l'option serait un gate allégé
   (typecheck+build+tests `related` seulement) avec la suite complète en CI — décision Marc.
+- **CLAUDE.md s'améliore À CHAQUE PUSH** (règle Marc 2026-06-09) : tout push qui a appris
+  quelque chose (bug d'infra, convention découverte, leçon, décision) met à jour CLAUDE.md
+  dans le MÊME commit — petit delta ciblé, jamais de réécriture. Un push sans leçon = OK sans delta,
+  mais se poser la question à chaque fois.
 - **Backlog tenu par Claude** (l'Action `backlog-autocheck` a été RETIRÉE — choix Marc 2026-06-09) :
   au moment du MERGE d'une PR, Claude coche lui-même les `[ID]` livrés dans `docs/BACKLOG.md`
   (dans la PR même ou la suivante), ajoute les découvertes, et route les blocages humains

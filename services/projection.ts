@@ -661,7 +661,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             const gh = processGainHarvesting({
                 enabled: !!overrides.gainHarvesting,
                 nonReg, nonRegACB, otherTaxableNominal: ghOtherNominal,
-                existingGainsNominal: accCapitalGainsYear, activeUsersCount, inflationFactor,
+                existingGainsNominal: accCapitalGainsYear, activeUsersCount, loopYear,
             });
             if (gh.harvestedGain > 0) {
                 accCapitalGainsYear += gh.harvestedGain;

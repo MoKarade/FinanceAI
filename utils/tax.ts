@@ -577,6 +577,16 @@ const getIndexedBracketsForYear = (year: number) => {
     return bracketsCache[year];
 };
 
+/**
+ * Plafond du 1er palier COMBINÉ (le plus restrictif QC/féd), indexé à `year` (×1,02/an, MÊME
+ * indexation que l'impôt réel via getIndexedBracketsForYear). Sert à la récolte de gains
+ * (remplir le palier bas en revenu NOMINAL) → cohérent avec le calcul d'impôt du moteur.
+ */
+export const firstCombinedBracketTopForYear = (year: number): number => {
+    const { fed, qc } = getIndexedBracketsForYear(year);
+    return Math.min(qc[0].upTo, fed[0].upTo);
+};
+
 // Abattement du Québec : un résident du QC voit son impôt fédéral réduit de
 // 16,5 %. Ottawa « rétrocède » ce pourcentage à Québec (héritage des points
 // d'impôt de 1965). On l'applique partout où on calcule le fédéral net au QC.

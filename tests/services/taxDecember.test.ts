@@ -193,7 +193,7 @@ describe('processGainHarvesting — remplir le 1er palier dans une année à fai
     const base = {
         enabled: true, nonReg: 200000, nonRegACB: 100000, // 100 000 $ de gain latent
         otherTaxableNominal: 20000, existingGainsNominal: 0,
-        activeUsersCount: 1, inflationFactor: 1,
+        activeUsersCount: 1, loopYear: 2026, // 2026 → 1er palier 54 345 $ (non indexé)
     };
     it('désactivé → rien', () => {
         expect(processGainHarvesting({ ...base, enabled: false }).harvestedGain).toBe(0);

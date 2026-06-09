@@ -3,7 +3,7 @@
 // Cycle 10 (computeOasClawback, processTaxLossHarvesting): décembre = mois 11.
 // Cycle 11 (processDecemberTaxFiling): régularisation annuelle d'impôt.
 
-import { OAS_CLAWBACK_THRESHOLD_2026, CAPITAL_GAINS_INCLUSION_STANDARD, calculateRamqPremium, calculateFSSPremium, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
+import { OAS_CLAWBACK_THRESHOLD_2026, CAPITAL_GAINS_INCLUSION_STANDARD, firstCombinedBracketTopForYear, calculateRamqPremium, calculateFSSPremium, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
 
 /**
  * V31 — OAS Clawback prévu (calcul annuel en décembre).
@@ -79,6 +79,53 @@ export function processTaxLossHarvesting(
         harvestedLoss,
         acbDelta,
         logMsg: `🛡️ Perte Cristallisée (TLH): +${Math.round(harvestedLoss).toLocaleString('fr-CA')}$ (Banque) | ACB ajusté à la baisse`,
+    };
+}
+
+/**
+ * Récolte de GAINS en capital (tax-gain harvesting) — complément du TLH. Levier `gainHarvesting`.
+ * Dans une année à FAIBLE revenu (typiquement le « creux » de retraite anticipée avant les rentes),
+ * réalise volontairement des gains non-enregistrés latents pour REMPLIR le 1er palier d'impôt
+ * (vente + rachat immédiat → l'ACB monte d'autant). Les gains sont alors imposés MAINTENANT à un
+ * taux bas, ce qui réduit l'impôt sur les gains futurs (quand le revenu sera plus élevé).
+ *
+ * Revenu NOMINAL comparé au 1er palier indexé de l'ANNÉE (firstCombinedBracketTopForYear, MÊME
+ * indexation ×1,02/an que l'impôt réel du moteur → l'objectif de remplissage vise exactement le
+ * palier où l'impôt est calculé, quel que soit simInflation). Assiette imposée = revenu autre +
+ * 50 % des gains. On réalise jusqu'à ce que cette assiette atteigne le plafond. Le gain réalisé est
+ * ajouté à accCapitalGainsYear (donc imposé en décembre, au barème progressif empilé) ET l'ACB est
+ * relevé du même montant (pas de fuite : le gain est bien imposé l'année où on relève l'ACB).
+ * Conservateur : ne réalise jamais au-delà du gain latent disponible ni au-delà du palier bas.
+ */
+export function processGainHarvesting(opts: {
+    enabled: boolean;
+    nonReg: number;
+    nonRegACB: number;
+    /** Revenu imposable AUTRE que les gains, nominal (salaire, ou pension+rentes+retraits REER). */
+    otherTaxableNominal: number;
+    /** Gains déjà réalisés cette année (accCapitalGainsYear), nominal. */
+    existingGainsNominal: number;
+    activeUsersCount: number;
+    /** Année de la projection (sert à indexer le 1er palier, comme l'impôt réel). */
+    loopYear: number;
+}): { harvestedGain: number; logMsg?: string } {
+    if (!opts.enabled) return { harvestedGain: 0 };
+    const unrealized = opts.nonReg - opts.nonRegACB;
+    if (!(unrealized > 1)) return { harvestedGain: 0 };
+    const n = Math.max(1, opts.activeUsersCount);
+    // Plafond du 1er palier combiné (le plus restrictif QC/féd), indexé à l'année, par tête × N.
+    const bracketTopNominal = firstCombinedBracketTopForYear(opts.loopYear) * n;
+    // Part imposable déjà occupée = revenu autre + 50 % des gains déjà réalisés cette année.
+    const occupied = opts.otherTaxableNominal + Math.max(0, opts.existingGainsNominal) * CAPITAL_GAINS_INCLUSION_STANDARD;
+    const roomTaxable = bracketTopNominal - occupied;
+    if (!(roomTaxable > 0)) return { harvestedGain: 0 };
+    // gain réalisable tel que 50 % × gain ≤ room → gain ≤ room / 0,5.
+    const maxGain = roomTaxable / CAPITAL_GAINS_INCLUSION_STANDARD;
+    const harvestedGain = Math.min(unrealized, maxGain);
+    if (!(harvestedGain > 1)) return { harvestedGain: 0 };
+    return {
+        harvestedGain,
+        logMsg: `🌱 Récolte de gains: +${Math.round(harvestedGain).toLocaleString('fr-CA')}$ réalisés au palier bas (ACB relevé)`,
     };
 }
 

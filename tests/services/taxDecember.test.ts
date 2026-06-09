@@ -18,6 +18,7 @@ import { describe, it, expect } from 'vitest';
 import {
     computeOasClawback,
     processTaxLossHarvesting,
+    processGainHarvesting,
     processDecemberTaxFiling,
     type DecemberContext,
     type DecemberHelpers,
@@ -184,6 +185,42 @@ describe('processTaxLossHarvesting — gate & déclencheurs', () => {
         // acbDelta = -(50000×0.8) + 50000×(1-0.2) = -40000 + 40000 = 0
         const r = processTaxLossHarvesting(DECEMBER, 24, 100000, 80000, -20);
         expect(r.acbDelta).toBeCloseTo(0, 5);
+    });
+});
+
+// processGainHarvesting — récolte de GAINS (timing de réalisation, levier gainHarvesting)
+describe('processGainHarvesting — remplir le 1er palier dans une année à faible revenu', () => {
+    const base = {
+        enabled: true, nonReg: 200000, nonRegACB: 100000, // 100 000 $ de gain latent
+        otherTaxableNominal: 20000, existingGainsNominal: 0,
+        activeUsersCount: 1, loopYear: 2026, // 2026 → 1er palier 54 345 $ (non indexé)
+    };
+    it('désactivé → rien', () => {
+        expect(processGainHarvesting({ ...base, enabled: false }).harvestedGain).toBe(0);
+    });
+    it('aucun gain latent (ACB ≥ solde) → rien', () => {
+        expect(processGainHarvesting({ ...base, nonRegACB: 200000 }).harvestedGain).toBe(0);
+    });
+    it('revenu déjà au-dessus du 1er palier → aucune place → rien', () => {
+        expect(processGainHarvesting({ ...base, otherTaxableNominal: 60000 }).harvestedGain).toBe(0);
+    });
+    it('faible revenu : remplit le 1er palier (revenu + 50 % du gain = plafond 54 345 $)', () => {
+        const r = processGainHarvesting(base);
+        expect(r.harvestedGain).toBeCloseTo(68690, 0); // (54345−20000)/0,5
+        expect(20000 + r.harvestedGain * 0.5).toBeCloseTo(54345, 0); // assiette pile au plafond
+        expect(r.logMsg).toContain('Récolte');
+    });
+    it('gain latent < place → borné par le latent', () => {
+        const r = processGainHarvesting({ ...base, nonReg: 130000 }); // latent 30k < 68690
+        expect(r.harvestedGain).toBeCloseTo(30000, 0);
+    });
+    it('couple (×N) : palier doublé → récolte plus', () => {
+        expect(processGainHarvesting({ ...base, activeUsersCount: 2 }).harvestedGain)
+            .toBeGreaterThan(processGainHarvesting(base).harvestedGain);
+    });
+    it('gains déjà réalisés cette année réduisent la place', () => {
+        const r = processGainHarvesting({ ...base, existingGainsNominal: 40000 });
+        expect(r.harvestedGain).toBeCloseTo(28690, 0); // room=(54345−20000−20000)/0,5
     });
 });
 

@@ -24,6 +24,8 @@ export interface EngineOverrides {
     contributionOrder?: ContributionOrder;
     /** Rembourser TOUTES les dettes avant d'investir (vs seulement les toxiques >7%). */
     debtFirst?: boolean;
+    /** Récolte de gains : réaliser des gains non-enreg dans les années à faible revenu (remplir le 1er palier). */
+    gainHarvesting?: boolean;
 }
 
 /** Une combinaison complète de leviers = une « stratégie » testable. */
@@ -39,6 +41,8 @@ export interface StrategyConfig {
     debtFirst: boolean;
     emergencyFundMonths: number;
     assetLocation: boolean;
+    /** Récolte de gains en capital dans les années à faible revenu (timing de réalisation). */
+    gainHarvesting: boolean;
 }
 
 // Bibliothèque des leviers sélectionnables in-app. `values` = valeurs candidates ;
@@ -120,6 +124,13 @@ export const LEVER_LIBRARY: ReadonlyArray<LeverDef> = [
             { value: true, label: 'Optimisé' },
         ],
     },
+    {
+        key: 'gainHarvesting', label: 'Récolte de gains (timing)', default: false,
+        options: [
+            { value: false, label: 'Non' },
+            { value: true, label: 'Oui (réaliser au palier bas)' },
+        ],
+    },
 ];
 
 /** Ordre de retrait (axe) → enum AllocationStrategy attendu par le moteur. */
@@ -172,6 +183,7 @@ export function applyConfigToSettings(
             appliedDebtFirst: config.debtFirst,
             appliedSkipRap: config.skipRap,
             appliedAssetLocation: config.assetLocation,
+            appliedGainHarvesting: config.gainHarvesting,
         },
         retirementGoal: {
             ...currentRetirementGoal,

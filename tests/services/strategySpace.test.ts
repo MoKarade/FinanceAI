@@ -89,6 +89,7 @@ describe('strategySpace — configToEngine', () => {
             withdrawalOrder: 'PRIO_REER', delayPensions: true, retirementAge: 60,
             skipRap: true, contributionOrder: 'REER_FIRST', retirementSpending: 1.1,
             smithManoeuvre: true, debtFirst: true, emergencyFundMonths: 12, assetLocation: true,
+            gainHarvesting: false,
         }, base);
 
         expect(args.strategy).toBe('PRIO_REER');
@@ -99,6 +100,7 @@ describe('strategySpace — configToEngine', () => {
         expect((args.params.projection as ProjectionConfig & { useSmithManoeuvre?: boolean }).useSmithManoeuvre).toBe(true);
         expect(args.overrides).toEqual({
             skipRapForPurchase: true, contributionOrder: 'REER_FIRST', debtFirst: true,
+            gainHarvesting: false,
         });
 
         // Immutabilité : la base n'a pas bougé.
@@ -114,11 +116,13 @@ describe('strategySpace — configToEngine', () => {
             withdrawalOrder: 'AUTO_MARGINAL', delayPensions: false, retirementAge: 65,
             skipRap: false, contributionOrder: 'CELI_FIRST', retirementSpending: 1,
             smithManoeuvre: false, debtFirst: false, emergencyFundMonths: 6, assetLocation: false,
+            gainHarvesting: false,
         }, base);
         const on = configToEngine({
             withdrawalOrder: 'AUTO_MARGINAL', delayPensions: false, retirementAge: 65,
             skipRap: false, contributionOrder: 'CELI_FIRST', retirementSpending: 1,
             smithManoeuvre: false, debtFirst: false, emergencyFundMonths: 6, assetLocation: true,
+            gainHarvesting: false,
         }, base);
 
         expect(off.params.projection.returnRates!.nonReg).toBe(baseNonReg); // inchangé sans le levier

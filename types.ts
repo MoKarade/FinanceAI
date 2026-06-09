@@ -370,6 +370,7 @@ export interface ProjectionConfig {
   appliedDebtFirst?: boolean;
   appliedSkipRap?: boolean;
   appliedAssetLocation?: boolean;
+  appliedGainHarvesting?: boolean;
 }
 
 // ────────────────────────────────────────────────────────────────────

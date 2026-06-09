@@ -102,7 +102,9 @@ export function computeEstateNetWorth(
     const startingNonReg = fin(inputs.startingNonReg);
     const startingCrypto = fin(inputs.startingCrypto);
     const startingREEE = fin(inputs.startingREEE);
-    const { activeUsersCount, enableMonteCarlo } = inputs;
+    // FA-5 : `activeUsersCount` n'est plus consommé ici (le ×N du NPV des rentes était un
+    // double-comptage) — le champ reste dans EstateCalcInputs (fourni par les appelants).
+    const { enableMonteCarlo } = inputs;
 
     // realEstateEquity est DÉJÀ net d'hypothèque (currentValue − mortgage, cf
     // realEstateMonth.ts:326) → ne PAS re-soustraire mortgageBalance (double-
@@ -139,10 +141,13 @@ export function computeEstateNetWorth(
     const totalEstateTax = estateReportFinal.totalTax - estateReportBase.totalTax;
 
     // V60: NPV des rentes publiques futures (valeur invisible en fin de simulation avant 65 ans).
+    // FA-5 (audit fiscal 2026-06-09) : `governmentPension` est déjà FAMILIAL dans tout le moteur
+    // (retirementIncome ne multiplie pas par N) — l'ancien ×activeUsersCount le comptait DEUX fois
+    // pour un couple → NPV des rentes ~doublée → estateNetWorth gonflé de dizaines de k$.
     const lifeExpectancy = 95;
     const remainingYearsAtEnd = Math.max(0, lifeExpectancy - finalAge);
-    const rrqExpected = (governmentPension * 0.65 * (activeUsersCount || 1)) * Math.pow(1 + simInflation / 100, simulationYears);
-    const psvExpected = (governmentPension * 0.35 * (activeUsersCount || 1)) * Math.pow(1 + simInflation / 100, simulationYears);
+    const rrqExpected = (governmentPension * 0.65) * Math.pow(1 + simInflation / 100, simulationYears);
+    const psvExpected = (governmentPension * 0.35) * Math.pow(1 + simInflation / 100, simulationYears);
 
     const r_npv = 0.02;
     const npvFactor = r_npv > 0 ? (1 - Math.pow(1 + r_npv, -remainingYearsAtEnd)) / r_npv : remainingYearsAtEnd;

@@ -2,7 +2,11 @@
 // Cycle 23 split (depuis taxCycle.ts): réinitialisation annuelle de janvier.
 // Cycle 12 (origine): exécuté uniquement en janvier (currentMonthIndex === 0 && m > 0).
 
-import { FHSA_LIFETIME_LIMIT_PER_USER, FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, getResidencyStartYear, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
+import { FHSA_LIFETIME_LIMIT_PER_USER, FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, CELI_ANNUAL_LIMITS, getResidencyStartYear, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
+
+// FA-4 (audit fiscal 2026-06-09) — dernière année où le plafond CELI est CONNU (annoncé, sourcé
+// dans FISCAL_REFERENCE §7 via CELI_ANNUAL_LIMITS). Au-delà : extrapolation indexée arrondie 500 $.
+const LAST_KNOWN_CELI_YEAR = Math.max(...Object.keys(CELI_ANNUAL_LIMITS).map(Number));
 //
 // Janvier — Réinitialisation annuelle + recalcul plafonds CELI/FHSA/REER + FERR.
 //
@@ -85,11 +89,15 @@ export function processJanuaryReset(
     const logs: string[] = [];
     const nextLoopYear = ctx.startYear + Math.floor(ctx.m / 12);
 
-    // === 1. Plafond CELI annuel (V38: indexé + arrondi 500$) ===
-    const celiLimitBrut = 7000 * Math.pow(1 + ctx.simInflation / 100, nextLoopYear - 2026);
-    const celiLimitThisYear = nextLoopYear >= 2026
-        ? Math.round(celiLimitBrut / 500) * 500
-        : 7000;
+    // === 1. Plafond CELI annuel ===
+    // FA-4 (audit fiscal 2026-06-09) : SOURCE UNIQUE `CELI_ANNUAL_LIMITS` pour les années connues
+    // (l'ancien recalcul local 7000×inflation donnait 7 000 $ en 2027 vs 7 500 $ au doc — divergence
+    // code↔doc). Au-delà de la dernière année connue : extrapolation indexée depuis cette valeur,
+    // arrondie au 500 $ (mécanisme légal d'indexation du plafond CELI).
+    const lastKnownCeliLimit = CELI_ANNUAL_LIMITS[LAST_KNOWN_CELI_YEAR];
+    const celiLimitThisYear = nextLoopYear <= LAST_KNOWN_CELI_YEAR
+        ? (CELI_ANNUAL_LIMITS[nextLoopYear] ?? lastKnownCeliLimit)
+        : Math.round((lastKnownCeliLimit * Math.pow(1 + ctx.simInflation / 100, nextLoopYear - LAST_KNOWN_CELI_YEAR)) / 500) * 500;
 
     let totalCeliLimitThisYear = 0;
     ctx.users.filter(u => u).forEach(u => {

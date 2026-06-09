@@ -89,3 +89,48 @@ describe('computeEstateNetWorth — robustesse aux entrées (garde TB3)', () => 
         expect(r.startNW).toBe(210000);
     });
 });
+
+describe('computeEstateNetWorth — FA-5 (audit 2026-06-09) : NPV des rentes NON multipliée par N', () => {
+    // `governmentPension` est déjà FAMILIAL dans tout le moteur (retirementIncome ne multiplie
+    // pas par N). L'ancien code multipliait rrqExpected/psvExpected par activeUsersCount →
+    // NPV ~doublée pour un couple → estateNetWorth gonflé de dizaines de k$.
+    // Extraction : estateNetWorth = finalRawNetWorth − totalEstateTax + 0,7×(rrqNPV+psvNPV)
+    //   → (rrqNPV+psvNPV) = (estateNetWorth − finalRawNetWorth + totalEstateTax) / 0,7.
+    const extractNPV = (r: ReturnType<typeof computeEstateNetWorth>): number =>
+        (r.estateNetWorth - r.finalRawNetWorth + r.totalEstateTax) / 0.7;
+
+    it('RÉGRESSION : couple et solo au même governmentPension familial → même (rrqNPV+psvNPV)', () => {
+        const solo = computeEstateNetWorth({ ...base, activeUsersCount: 1 }, fiscalStub);
+        const couple = computeEstateNetWorth({ ...base, activeUsersCount: 2 }, fiscalStub);
+        expect(extractNPV(couple)).toBeCloseTo(extractNPV(solo), 6);
+        // Le stub fiscal est plat → totalEstateTax identique (M-2) → le patrimoine successoral
+        // COMPLET doit être identique solo vs couple. Avant FA-5 : couple = solo + 0,7×NPV en trop.
+        expect(couple.estateNetWorth).toBeCloseTo(solo.estateNetWorth, 6);
+    });
+
+    it('NPV PINNÉE à la formule FAMILIALE (sans ×N) : pension×infl^années×facteur d\'annuité', () => {
+        // base : finalAge = 35+30 = 65 → branche SANS escompte pré-65 ; 95−65 = 30 ans restants.
+        const npvFactor = (1 - Math.pow(1.02, -30)) / 0.02;
+        const expected = 1200 * Math.pow(1 + 2 / 100, 30) * npvFactor; // (0,65+0,35) = 1 → familial
+        const couple = computeEstateNetWorth({ ...base, activeUsersCount: 2 }, fiscalStub);
+        expect(extractNPV(couple)).toBeCloseTo(expected, 4);
+        // Contre-preuve : l'ancienne valeur ×2 (≈ 97 k$ au lieu de ≈ 49 k$) est exclue.
+        expect(extractNPV(couple)).toBeLessThan(expected * 2 - 1000);
+    });
+
+    it('équivalence solo/couple maintenue AVANT 65 ans (branche escomptée 1,02^-(65-âge))', () => {
+        const cfg = { ...base, simulationYears: 20 }; // finalAge 55 < 65 → escompte sur 10 ans
+        const solo = computeEstateNetWorth({ ...cfg, activeUsersCount: 1 }, fiscalStub);
+        const couple = computeEstateNetWorth({ ...cfg, activeUsersCount: 2 }, fiscalStub);
+        expect(extractNPV(couple)).toBeCloseTo(extractNPV(solo), 6);
+        expect(extractNPV(couple)).toBeGreaterThan(0);
+    });
+
+    it('governmentPension = 0 → composante NPV nulle, peu importe N', () => {
+        const solo = computeEstateNetWorth({ ...base, governmentPension: 0, activeUsersCount: 1 }, fiscalStub);
+        const couple = computeEstateNetWorth({ ...base, governmentPension: 0, activeUsersCount: 2 }, fiscalStub);
+        expect(extractNPV(solo)).toBeCloseTo(0, 6);
+        expect(extractNPV(couple)).toBeCloseTo(0, 6);
+    });
+
+});

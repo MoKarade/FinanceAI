@@ -120,6 +120,18 @@
 | Âge minimum | 65 ans | |
 > Indexation 2026 : +2,05 % (QC), +2,0 % (féd).
 
+### Assiette du revenu de pension ADMISSIBLE (féd 31400 + QC 361) — règle ET implémentation
+**Règle (ARC/RQ)** : sont admissibles la rente viagère d'un régime de pension (RPA/DB) et, à 65 ans+,
+les retraits FERR/RIF et rentes REER. Sont **EXCLUS** : RRQ, PSV, SRG, et les revenus locatifs.
+> **Implémentation** (`taxDecember.ts`, FA-1 2026-06-09) : assiette = rente **DB dès 65 ans** +
+> retraits **FERR dès 72 ans** (proxy : le moteur convertit REER→FERR à 72, cf §7). Identique à
+> l'assiette FRACTIONNABLE (#211). Avant le correctif FA-1, l'assiette incluait à tort RRQ/PSV et
+> les loyers (`accRentesYear`) → crédit surévalué ~250-680 $/an/personne 65+.
+> Limite assumée (conservatrice) : les retraits FERR 65-71 (conversion volontaire précoce) ne sont
+> pas modélisés ; le revenu fractionné reçu n'alimente pas le crédit du récipiendaire (PV-3) ;
+> la rente DB avant 65 ans (admissible au FÉDÉRAL 31400 sans âge minimum) est gateée à 65 dans le
+> modèle, comme pour le fractionnement (§9) — sens conservateur.
+
 ---
 
 ## 5. Cotisations santé QC (2026)
@@ -210,6 +222,10 @@ pour minimiser l'impôt combiné (élection optionnelle).
 ### CELI — plafonds annuels (`CELI_ANNUAL_LIMITS`)
 2009-2012 : 5 000 · 2013-2014 : 5 500 · 2015 : 10 000 · 2016-2018 : 5 500 · 2019-2022 : 6 000 ·
 2023 : 6 500 · 2024-2026 : **7 000** · 2027-2030 : 7 500 (estimés, à confirmer au Budget).
+> **Implémentation** (`taxJanuary.ts`, FA-4 2026-06-09) : le moteur lit `CELI_ANNUAL_LIMITS` pour
+> les années connues (SOURCE UNIQUE — l'ancien recalcul local 7000×inflation donnait 7 000 $ en
+> 2027 au lieu de 7 500 $) ; au-delà de la dernière année connue, extrapolation indexée par
+> `simInflation` arrondie au 500 $ (mécanisme légal d'indexation).
 
 ### REER — plafonds annuels (`RRSP_ANNUAL_LIMITS`)
 2024 : 31 560 · 2025 : 32 490 · **2026 : 33 810** · 2027 : 34 480 · 2028 : 35 170 ·

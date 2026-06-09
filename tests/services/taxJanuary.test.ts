@@ -10,7 +10,7 @@ import {
     type JanuaryContext,
     type JanuaryHelpers,
 } from '../../services/projection/taxJanuary';
-import type { FiscalReport } from '../../utils/tax';
+import { CELI_ANNUAL_LIMITS, type FiscalReport } from '../../utils/tax';
 
 const helpers: JanuaryHelpers = {
     RRIF_RATES: { 72: 0.054, 80: 0.0682 },
@@ -80,6 +80,69 @@ describe('processJanuaryReset — FERR (retrait minimum à 72+)', () => {
         expect(r.ferrMandatoryGross).toBeCloseTo(100000 * 0.054, 5); // 5400
         expect(r.ferrTaxOnRrif).toBeCloseTo(5400 * 0.3, 5); // 5400 × marginalRate(0.30 décimal), SANS /100
         expect(r.ferrLogMsg).toBeDefined();
+    });
+});
+
+describe('processJanuaryReset — FA-4 (audit 2026-06-09) : plafond CELI = source unique CELI_ANNUAL_LIMITS', () => {
+    // RÉGRESSION FA-4 : l'ancien recalcul local (7000 × inflation, arrondi 500 $) donnait
+    // 7 000 $ en 2027 alors que CELI_ANNUAL_LIMITS (FISCAL_REFERENCE §7) dit 7 500 $
+    // (divergence code↔doc). Le moteur doit LIRE la table pour les années connues, puis
+    // extrapoler au-delà : dernière valeur connue × (1+simInflation)^Δans, arrondie au 500 $.
+    // Rappel mécanique : nextLoopYear = startYear + floor(m/12) ; 1 adulte éligible
+    // → celiRoomDelta == plafond individuel de l'année.
+
+    it('2026 (année connue) → 7 000 $ lu de la table', () => {
+        expect(CELI_ANNUAL_LIMITS[2026]).toBe(7000); // prémisse explicite (FISCAL_REFERENCE §7)
+        const r = processJanuaryReset(0, baseCtx({ startYear: 2025, m: 12 }), helpers)!;
+        expect(r.celiRoomDelta).toBe(7000);
+    });
+
+    it('RÉGRESSION 2027 → 7 500 $ lu de CELI_ANNUAL_LIMITS, PAS 7000×inflation', () => {
+        expect(CELI_ANNUAL_LIMITS[2027]).toBe(7500); // prémisse explicite
+        const r = processJanuaryReset(0, baseCtx({ startYear: 2026, m: 12, simInflation: 2 }), helpers)!;
+        expect(r.celiRoomDelta).toBe(7500);
+        // Contre-preuve du bug d'avant : 7000×1,02 = 7140 → arrondi 500 $ = 7 000 ≠ 7 500.
+        expect(Math.round((7000 * 1.02) / 500) * 500).toBe(7000);
+    });
+
+    it('années CONNUES : le plafond ne dépend PAS de simInflation (source unique)', () => {
+        const at0 = processJanuaryReset(0, baseCtx({ startYear: 2026, m: 12, simInflation: 0 }), helpers)!;
+        const at8 = processJanuaryReset(0, baseCtx({ startYear: 2026, m: 12, simInflation: 8 }), helpers)!;
+        expect(at0.celiRoomDelta).toBe(7500);
+        expect(at8.celiRoomDelta).toBe(7500);
+    });
+
+    it('2030 (dernière année connue de la table) → valeur de la table', () => {
+        const r = processJanuaryReset(0, baseCtx({ startYear: 2026, m: 48, simInflation: 2 }), helpers)!;
+        expect(r.celiRoomDelta).toBe(CELI_ANNUAL_LIMITS[2030]); // 7 500
+    });
+
+    it('extrapolation 2031 @ 2 % : 7500×1,02 = 7 650 → arrondi 500 $ = 7 500 (continuité à la frontière)', () => {
+        const r = processJanuaryReset(0, baseCtx({ startYear: 2026, m: 60, simInflation: 2 }), helpers)!;
+        expect(r.celiRoomDelta).toBe(7500);
+    });
+
+    it('extrapolation 2035 @ 2 % : 7500×1,02^5 ≈ 8 280,61 → arrondi 500 $ = 8 500', () => {
+        const r = processJanuaryReset(0, baseCtx({ startYear: 2026, m: 108, simInflation: 2 }), helpers)!;
+        expect(r.celiRoomDelta).toBe(8500);
+    });
+
+    it('extrapolation à inflation NULLE → reste 7 500 $ (aucune dérive)', () => {
+        const r = processJanuaryReset(0, baseCtx({ startYear: 2026, m: 108, simInflation: 0 }), helpers)!;
+        expect(r.celiRoomDelta).toBe(7500);
+    });
+
+    it('extrapolation en DÉFLATION (-2 %) : 7500×0,98^5 ≈ 6 779 → arrondi 500 $ = 7 000', () => {
+        const r = processJanuaryReset(0, baseCtx({ startYear: 2026, m: 108, simInflation: -2 }), helpers)!;
+        expect(r.celiRoomDelta).toBe(7000);
+    });
+
+    it('couple : 2 adultes éligibles → 2 × plafond (2027 → 15 000 $)', () => {
+        const r = processJanuaryReset(0, baseCtx({
+            startYear: 2026, m: 12, activeUsersCount: 2,
+            users: [{ birthYear: 1986 }, { birthYear: 1988 }],
+        }), helpers)!;
+        expect(r.celiRoomDelta).toBe(15000);
     });
 });
 

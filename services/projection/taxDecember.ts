@@ -162,7 +162,8 @@ export interface DecemberContext {
      * que sur la moitié du ménage — corrige la sous-estimation due au split égal sous
      * un barème progressif. La somme == `incomeRetirementMonthly`.
      *
-     * Limite : les rentes gouvernementales (`accRentesYear`) et les retraits REER/FERR
+     * Limite : les revenus LOCATIFS (`accRentesYear` — des loyers, PAS des rentes : cf
+     * realEstateMonth.ts:355, confusion à l'origine du bug FA-1) et les retraits REER/FERR
      * (`accRetraitsReerYear`) restent répartis également (le moteur ne les attribue pas
      * par conjoint). Seule la pension RRQ/PSV/DB est attribuée. Si `undefined` ou
      * longueur ≠ activeUsersCount → repli sur l'ancien split égal (rétro-compat).
@@ -309,6 +310,8 @@ export function processDecemberTaxFiling(
         // phase active fait `revenu = totalAnnualTax − estimatedWithholding`. La retenue
         // `.reer` n'est ni ignorée (sinon double imposition) ni recomptée (sinon le
         // complément la ré-ajouterait).
+        // NB : accRentesYear = revenus LOCATIFS annuels (loyers, realEstateMonth.ts:355) —
+        // imposables comme revenu ordinaire, mais JAMAIS admissibles au crédit pension (FA-1).
         const basePensionAnnual = (ctx.incomeRetirementMonthly * 12) + ctx.accRentesYear;
         const taxableAnnual = basePensionAnnual + ctx.accRetraitsReerYear;
         if (taxableAnnual > 0) {
@@ -318,7 +321,7 @@ export function processDecemberTaxFiling(
             // A1 — impôt PAR CONJOINT sur SON revenu de retraite réel. Quand le moteur
             // fournit la décomposition par conjoint (`incomeRetirementPerUserMonthly`),
             // on taxe chaque personne sur SA pension RRQ/PSV/DB (qui dépend de son salaire
-            // et de sa résidence) + sa part ÉGALE des rentes gouvernementales et des
+            // et de sa résidence) + sa part ÉGALE des revenus locatifs (accRentesYear) et des
             // retraits REER/FERR (non attribuables par conjoint dans le modèle actuel).
             // Sinon (solo, ou breakdown absent/incohérent) on retombe sur le split égal
             // historique. Le barème étant progressif, taxer les vrais revenus inégaux
@@ -329,8 +332,9 @@ export function processDecemberTaxFiling(
                 && perUserPension.length === ctx.activeUsersCount
                 && perUserPension.every(v => Number.isFinite(v));
 
-            // Rentes gouvernementales (non attribuables) : part ÉGALE par conjoint, en réel.
-            const rentesRealPerAdult = ctx.accRentesYear / ctx.inflationFactor / n;
+            // Revenus LOCATIFS (accRentesYear = loyers, cf realEstateMonth.ts:355 — PAS des
+            // rentes ; non attribuables par conjoint) : part ÉGALE par conjoint, en réel.
+            const rentalRealPerAdult = ctx.accRentesYear / ctx.inflationFactor / n;
             // Phase 2 — retraits REER/FERR attribués PAR CONJOINT (accRetraitsReerYearByUser, au
             // prorata des soldes au retrait) : chacun est taxé sur SES vrais retraits au lieu du
             // split 50/50. Le TOTAL imposable est inchangé (Σ == accRetraitsReerYear) ; seule la
@@ -352,23 +356,41 @@ export function processDecemberTaxFiling(
             // - splitÉgal : tout le taxable / N (comportement historique).
             // - perUser   : pension_i + part égale des rentes + SES retraits REER (Phase 2).
             const ages = [ctx.age, ctx.ageSpouse];
+
+            // FA-1 (audit fiscal 2026-06-09) — assiette du crédit pension (féd ligne 31400 + QC
+            // ligne 361) CORRIGÉE : l'ancienne assiette (pension RRQ/PSV/DB + accRentesYear)
+            // incluait RRQ/PSV (EXCLUS par l'ARC et RQ) et les revenus LOCATIFS (accRentesYear =
+            // loyers, jamais admissibles) → crédit surévalué ~250-680 $/an/personne 65+.
+            // Bonne assiette dans ce modèle = la MÊME que l'assiette FRACTIONNABLE (ligne 116 /
+            // Annexe Q, #211) : rente DB dès 65 ans + retraits FERR dès 72 ans (proxy de la
+            // conversion REER→FERR à 72). Réf. FISCAL_REFERENCE §4.
+            // Garde-fou symétrique à perUserPension/perUserReer (l.327-349) : `?? 0` ne capte PAS
+            // NaN — un NaN traverserait Math.max(0, NaN)=NaN puis serait avalé par safe() en aval
+            // (crédit zéroté en silence). Number.isFinite par valeur, repli 0 conservateur.
+            const dbRealUser = (i: number): number => {
+                const v = ctx.incomeRetirementDbPerUserMonthly?.[i];
+                return Number.isFinite(v) ? ((v as number) * 12) / ctx.inflationFactor : 0;
+            };
+            const reerRealUser = (i: number): number => (useReerPerUser ? perUserReer![i] : ctx.accRetraitsReerYear / n) / ctx.inflationFactor;
+            const eligiblePensionFor = (i: number): number => {
+                const a = ages[i];
+                if (a === undefined) return 0;
+                return (a >= 65 ? Math.max(0, dbRealUser(i)) : 0) + (a >= 72 ? Math.max(0, reerRealUser(i)) : 0);
+            };
+
             const taxableRealByUser: number[] = [];
             const eligiblePensionRealByUser: number[] = [];
             if (usePerUser) {
                 for (let i = 0; i < n; i++) {
                     const pensionRealUser = (perUserPension![i] * 12) / ctx.inflationFactor;
-                    const reerRealUser = (useReerPerUser ? perUserReer![i] : ctx.accRetraitsReerYear / n) / ctx.inflationFactor;
-                    taxableRealByUser.push(pensionRealUser + rentesRealPerAdult + reerRealUser);
-                    // eligiblePensionIncome (crédit pension féd ligne 31400 + revenu retraite
-                    // QC ligne 361) = pension + rentes gouv., HORS retraits REER (inchangé).
-                    eligiblePensionRealByUser.push(pensionRealUser + rentesRealPerAdult);
+                    taxableRealByUser.push(pensionRealUser + rentalRealPerAdult + reerRealUser(i));
+                    eligiblePensionRealByUser.push(eligiblePensionFor(i));
                 }
             } else {
                 const incomeIndividualReal = taxableReal / n;
-                const eligiblePensionPerAdult = basePensionAnnual / ctx.inflationFactor / n;
                 for (let i = 0; i < n; i++) {
                     taxableRealByUser.push(incomeIndividualReal);
-                    eligiblePensionRealByUser.push(eligiblePensionPerAdult);
+                    eligiblePensionRealByUser.push(eligiblePensionFor(i));
                 }
             }
 
@@ -403,13 +425,9 @@ export function processDecemberTaxFiling(
             // REER→FERR). NON admissibles : RRQ/PSV et retraits REER pré-72 → exclus de l'assiette
             // fractionnable. Repli sûr (aucun fractionnement) si solo, âges inconnus, ou rien d'admissible.
             if (n === 2 && ctx.activeUsersCount > 1 && ctx.age !== undefined && ctx.ageSpouse !== undefined) {
-                const dbReal = (i: number) => ((ctx.incomeRetirementDbPerUserMonthly?.[i] ?? 0) * 12) / ctx.inflationFactor;
-                const reerReal = (i: number) => (useReerPerUser ? perUserReer![i] : ctx.accRetraitsReerYear / n) / ctx.inflationFactor;
-                const splittable = [0, 1].map((i) => {
-                    const a = ages[i];
-                    if (a === undefined) return 0;
-                    return (a >= 65 ? Math.max(0, dbReal(i)) : 0) + (a >= 72 ? Math.max(0, reerReal(i)) : 0);
-                });
+                // FA-1 : assiette fractionnable == assiette du crédit pension (mêmes règles
+                // ARC/RQ dans ce modèle) → helper partagé eligiblePensionFor, plus de doublon.
+                const splittable = [0, 1].map((i) => eligiblePensionFor(i));
                 const H = taxableRealByUser[0] >= taxableRealByUser[1] ? 0 : 1; // transféreur = plus haut revenu
                 const L = 1 - H;
                 const maxTransfer = Math.min(0.5 * splittable[H], taxableRealByUser[H]); // ≤ 50 % de l'admissible, borné par l'assiette

@@ -64,7 +64,11 @@
 - [ ] **[FA-8]** 🔧 Lot mineurs fiscaux : taux clawback 0,15 nommé+sourcé · cap clawback sans facteur
   de report · prorata RRQ 39 ans / PSV 10-40 ans au doc · split 65/35 documenté · SystemView barèmes
   composés depuis les constantes (`SystemView.tsx:102`) · assiette dividendes vs gains cohérente ·
-  retenue US 15 % sourcée · libellé FSS 2025/2026.
+  retenue US 15 % sourcée · libellé FSS 2025/2026 · retenue FERR (`taxJanuary.ts:185`) passe encore
+  le revenu TOTAL en `eligiblePensionIncome` (impact ≈0, réconcilié en décembre — aligner sur FA-1) ·
+  `calculateCeliRoom` fallback `|| 7500` non indexé > 2030 (unifier avec l'extrapolation taxJanuary) ·
+  `setupSimulation.ts:169` `inflationRate || 2.0` masque le 0 légitime (→ `??`) ·
+  NPV estate lit `governmentPension` même quand `rrqEstimateMonthly` est fourni (divergence silencieuse).
 - [ ] **[PV-1]** 🔧 Liquide négatif effacé silencieusement : débits directs (impôt d'avril, W5) peuvent
   rendre `liquid < 0`, puis `applyMidMonthGrowth` clampe à 0 (`helpers.ts:54`) = dette fiscale effacée.
   Garde explicite (cascade de vente ou dette comptée) + test de conservation couvrant avril.

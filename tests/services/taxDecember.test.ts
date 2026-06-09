@@ -34,6 +34,7 @@ import {
     calculateDividendTax,
     getDividendGrossUpRate,
     type FiscalReport,
+    type AgeCreditOptions,
 } from '../../utils/tax';
 
 const DECEMBER = 11; // currentMonthIndex de décembre
@@ -678,6 +679,167 @@ describe('processDecemberTaxFiling — impôt de retraite PAR conjoint (A1)', ()
         const a = processDecemberTaxFiling(DECEMBER, solo, realHelpers, ZERO_TAX);
         const b = processDecemberTaxFiling(DECEMBER, soloNoBreakdown, realHelpers, ZERO_TAX);
         expect(a.newTaxCurrentYear.revenu).toBeCloseTo(b.newTaxCurrentYear.revenu, 6);
+    });
+});
+
+describe('processDecemberTaxFiling — FA-1 (audit 2026-06-09) : assiette du crédit pension (féd 31400 + QC 361)', () => {
+    // Assiette ADMISSIBLE corrigée = rente DB dès 65 ans + retraits FERR dès 72 ans.
+    // EXCLUS : RRQ/PSV (incomeRetirement[PerUser]Monthly hors part DB) et les revenus
+    // LOCATIFS (accRentesYear = loyers). Avant FA-1, l'assiette = pension TOTALE + loyers
+    // → crédit indu ~250-680 $/an/personne 65+ (retraité sous-imposé).
+
+    // ── MÉCANISME : stub-ESPION qui capture les ageOpts transmis au barème ──
+    // (baseCtx neutre : nonReg=0 et accCapitalGainsYear=0 → seuls les appels du bloc
+    // retraite portent un ageOpts ; RAMQ/FSS n'appellent pas les helpers injectés.)
+    const spy = () => {
+        const calls: Array<{ gross: number; ageOpts?: AgeCreditOptions }> = [];
+        const helpers = makeHelpers({
+            calculateFiscalReport: ((gross: number, _d: number, _w: number, _y: number, _mc?: boolean, ageOpts?: AgeCreditOptions) => {
+                calls.push({ gross, ageOpts });
+                return { totalTax: Math.max(0, gross) * STUB_RATE } as unknown as FiscalReport;
+            }) as DecemberHelpers['calculateFiscalReport'],
+        });
+        return { helpers, calls };
+    };
+
+    it('MÉCANISME — retraité 65+ avec UNIQUEMENT RRQ/PSV + loyers → eligiblePensionIncome = 0', () => {
+        const { helpers, calls } = spy();
+        processDecemberTaxFiling(DECEMBER, baseCtx({
+            isRetired: true, age: 70, activeUsersCount: 1,
+            incomeRetirementMonthly: 5000, // RRQ+PSV (aucune part DB déclarée)
+            accRentesYear: 12000,          // loyers — JAMAIS admissibles au crédit pension
+        }), helpers, ZERO_TAX);
+        const pensionCalls = calls.filter(c => c.ageOpts !== undefined);
+        expect(pensionCalls).toHaveLength(1);
+        // L'assiette IMPOSABLE garde tout (60 000 + 12 000)…
+        expect(pensionCalls[0].gross).toBeCloseTo(72000, 5);
+        // …mais RIEN n'est admissible au crédit pension (avant FA-1 : 72 000 transmis).
+        expect(pensionCalls[0].ageOpts!.eligiblePensionIncome).toBe(0);
+    });
+
+    it('MÉCANISME — rente DB 65+ → assiette = DB×12 SEULEMENT (ni RRQ/PSV ni loyers)', () => {
+        const { helpers, calls } = spy();
+        processDecemberTaxFiling(DECEMBER, baseCtx({
+            isRetired: true, age: 70, activeUsersCount: 1,
+            incomeRetirementMonthly: 5000, incomeRetirementDbPerUserMonthly: [1000],
+            accRentesYear: 12000,
+        }), helpers, ZERO_TAX);
+        const pensionCalls = calls.filter(c => c.ageOpts !== undefined);
+        expect(pensionCalls[0].ageOpts!.eligiblePensionIncome).toBeCloseTo(12000, 5); // 1000×12, PAS 72 000
+    });
+
+    it('FRONTIÈRE 65 ans pour la rente DB : 64 → 0 ; 65 → DB×12', () => {
+        const run = (age: number): number => {
+            const { helpers, calls } = spy();
+            processDecemberTaxFiling(DECEMBER, baseCtx({
+                isRetired: true, age, activeUsersCount: 1,
+                incomeRetirementMonthly: 5000, incomeRetirementDbPerUserMonthly: [1000],
+            }), helpers, ZERO_TAX);
+            return calls.find(c => c.ageOpts !== undefined)!.ageOpts!.eligiblePensionIncome!;
+        };
+        expect(run(64)).toBe(0);
+        expect(run(65)).toBeCloseTo(12000, 5);
+    });
+
+    it('FRONTIÈRE 72 ans pour les retraits REER/FERR : 70 → 0 ; 71 → 0 ; 72 → inclus', () => {
+        const run = (age: number): number => {
+            const { helpers, calls } = spy();
+            processDecemberTaxFiling(DECEMBER, baseCtx({
+                isRetired: true, age, activeUsersCount: 1,
+                incomeRetirementMonthly: 0, accRetraitsReerYear: 40000,
+            }), helpers, ZERO_TAX);
+            return calls.find(c => c.ageOpts !== undefined)!.ageOpts!.eligiblePensionIncome!;
+        };
+        expect(run(70)).toBe(0);               // retraits REER à 70 ans : PAS admissibles
+        expect(run(71)).toBe(0);               // 71 : toujours pas (conversion FERR modélisée à 72)
+        expect(run(72)).toBeCloseTo(40000, 5); // 72+ : retraits FERR admissibles
+    });
+
+    it('MÉCANISME — couple per-user : assiette PAR conjoint (seul celui avec DB en a une), loyers exclus', () => {
+        const { helpers, calls } = spy();
+        processDecemberTaxFiling(DECEMBER, baseCtx({
+            isRetired: true, age: 70, ageSpouse: 70, activeUsersCount: 2,
+            incomeRetirementMonthly: 5000, incomeRetirementPerUserMonthly: [3000, 2000],
+            incomeRetirementDbPerUserMonthly: [1000, 0],
+            accRentesYear: 12000, // loyers : dans l'imposable (split égal), PAS dans le crédit
+        }), helpers, ZERO_TAX);
+        const pensionCalls = calls.filter(c => c.ageOpts !== undefined);
+        // 2 premiers appels = combinedTaxFor de base, dans l'ordre [user0, user1].
+        expect(pensionCalls[0].gross).toBeCloseTo(3000 * 12 + 6000, 5);
+        expect(pensionCalls[0].ageOpts!.eligiblePensionIncome).toBeCloseTo(12000, 5);
+        expect(pensionCalls[1].gross).toBeCloseTo(2000 * 12 + 6000, 5);
+        expect(pensionCalls[1].ageOpts!.eligiblePensionIncome).toBe(0);
+        // TOUS les appels (y compris la grille de fractionnement Phase 3, qui partage
+        // désormais le helper eligiblePensionFor) gardent la même assiette {12000, 0}.
+        for (const c of pensionCalls) {
+            expect([0, 12000]).toContain(c.ageOpts!.eligiblePensionIncome);
+        }
+    });
+
+    it('GARDE — rente DB négative → clampée à 0 (jamais d\'assiette négative)', () => {
+        const { helpers, calls } = spy();
+        processDecemberTaxFiling(DECEMBER, baseCtx({
+            isRetired: true, age: 70, activeUsersCount: 1,
+            incomeRetirementMonthly: 5000, incomeRetirementDbPerUserMonthly: [-500],
+        }), helpers, ZERO_TAX);
+        expect(calls.find(c => c.ageOpts !== undefined)!.ageOpts!.eligiblePensionIncome).toBe(0);
+    });
+
+    // ── EFFET au VRAI barème (le stub ignore les ageOpts → seul le vrai barème applique le crédit) ──
+    const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
+
+    it('RÉGRESSION clé — 65+ RRQ/PSV + loyers SEULEMENT : paie PLUS qu\'avec l\'ancienne assiette (zéro crédit)', () => {
+        const r = processDecemberTaxFiling(DECEMBER, baseCtx({
+            isRetired: true, age: 70, activeUsersCount: 1,
+            incomeRetirementMonthly: 5000, accRentesYear: 12000,
+        }), realHelpers, ZERO_TAX);
+        const taxable = 5000 * 12 + 12000; // 72 000 (imposable inchangé)
+        const mkOpts = (eligible: number): AgeCreditOptions =>
+            ({ age: 70, eligiblePensionIncome: eligible, hasSpouse: false, familyIncome: taxable });
+        const expectedNoCredit = calculateFiscalReport(taxable, 0, 0, 2026, false, mkOpts(0)).totalTax;
+        // Ancienne assiette (pré-FA-1) = pension RRQ/PSV + loyers au complet.
+        const oldWithCredit = calculateFiscalReport(taxable, 0, 0, 2026, false, mkOpts(taxable)).totalTax;
+        expect(r.newTaxCurrentYear.revenu).toBeCloseTo(expectedNoCredit, 4);
+        // Le crédit indu (~250 $ féd au minimum) a disparu → impôt STRICTEMENT plus élevé.
+        expect(r.newTaxCurrentYear.revenu).toBeGreaterThan(oldWithCredit + 100);
+    });
+
+    it('EFFET réel — la rente DB ouvre le crédit : impôt plus bas qu\'à zéro DB, à imposable IDENTIQUE', () => {
+        const mk = (db: number[] | undefined) => baseCtx({
+            isRetired: true, age: 70, activeUsersCount: 1,
+            incomeRetirementMonthly: 5000, accRentesYear: 12000,
+            incomeRetirementDbPerUserMonthly: db,
+        });
+        const noDb = processDecemberTaxFiling(DECEMBER, mk(undefined), realHelpers, ZERO_TAX);
+        const withDb = processDecemberTaxFiling(DECEMBER, mk([1000]), realHelpers, ZERO_TAX);
+        expect(withDb.newTaxCurrentYear.revenu).toBeLessThan(noDb.newTaxCurrentYear.revenu);
+        const taxable = 72000;
+        const expected = calculateFiscalReport(taxable, 0, 0, 2026, false,
+            { age: 70, eligiblePensionIncome: 12000, hasSpouse: false, familyIncome: taxable }).totalTax;
+        expect(withDb.newTaxCurrentYear.revenu).toBeCloseTo(expected, 4);
+    });
+
+    it('EFFET réel — retraits FERR : 71 ans = même impôt qu\'à 70 (zéro crédit) ; 72 ans → crédit → impôt baisse', () => {
+        const mk = (age: number) => baseCtx({
+            isRetired: true, age, activeUsersCount: 1,
+            incomeRetirementMonthly: 0, accRetraitsReerYear: 40000,
+        });
+        const at70 = processDecemberTaxFiling(DECEMBER, mk(70), realHelpers, ZERO_TAX).newTaxCurrentYear.revenu;
+        const at71 = processDecemberTaxFiling(DECEMBER, mk(71), realHelpers, ZERO_TAX).newTaxCurrentYear.revenu;
+        const at72 = processDecemberTaxFiling(DECEMBER, mk(72), realHelpers, ZERO_TAX).newTaxCurrentYear.revenu;
+        expect(at71).toBeCloseTo(at70, 6); // 70→71 : aucun crédit pension dans les deux cas
+        expect(at72).toBeLessThan(at71);   // 72+ : retraits devenus FERR → crédit appliqué
+    });
+
+    it('GARDE NaN — DB [NaN] : pas de crash, traité comme zéro crédit (vrai barème)', () => {
+        const mk = (db: number[] | undefined) => baseCtx({
+            isRetired: true, age: 70, activeUsersCount: 1,
+            incomeRetirementMonthly: 5000, incomeRetirementDbPerUserMonthly: db,
+        });
+        const nan = processDecemberTaxFiling(DECEMBER, mk([NaN]), realHelpers, ZERO_TAX);
+        const zero = processDecemberTaxFiling(DECEMBER, mk(undefined), realHelpers, ZERO_TAX);
+        expect(Number.isFinite(nan.newTaxCurrentYear.revenu)).toBe(true);
+        expect(nan.newTaxCurrentYear.revenu).toBeCloseTo(zero.newTaxCurrentYear.revenu, 4);
     });
 });
 

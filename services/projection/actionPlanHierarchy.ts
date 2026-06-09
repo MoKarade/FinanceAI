@@ -46,6 +46,18 @@ const LEVEL_NAME: Record<PlanLevel, string> = {
 
 const FLOW_THRESHOLD = 100; // sous 100 $/période on n'affiche pas le mouvement
 
+/** Un conseil concret de la période, prêt pour la checklist (montant + « pourquoi » séparés). */
+export interface AdviceItem {
+    /** Action courte SANS le montant (affiché à part, aligné/coloré). */
+    text: string;
+    /** Montant signé : > 0 = déposer, < 0 = retirer ; null = pas d'action chiffrée (info). */
+    amount: number | null;
+    /** Explication « pourquoi », langage simple, repliable côté UI. */
+    why: string;
+    /** 'info' = résumé non cochable et non directionnel ; 'deposit'/'withdraw' = action cochable. */
+    kind: 'deposit' | 'withdraw' | 'info';
+}
+
 export interface PlanBucket {
     id: string;
     level: PlanLevel;
@@ -65,8 +77,8 @@ export interface PlanBucket {
     monthCount: number;
     /** true si on peut encore creuser (niveau enfant existant + plus d'un mois). */
     hasChildren: boolean;
-    /** Conseils concrets dérivés des flux (langage naturel, prêts à exécuter). */
-    advice: string[];
+    /** Conseils concrets dérivés des flux (montant + « pourquoi » structurés). */
+    advice: AdviceItem[];
 }
 
 type Point = Record<string, unknown>;
@@ -78,8 +90,6 @@ const futurePoints = (chartData: Point[]): Point[] =>
     (chartData || [])
         .filter((d) => num(d.monthIndex) >= 0 && d.year != null)
         .sort((a, b) => num(a.monthIndex) - num(b.monthIndex));
-
-const fmtCAD = (v: number): string => `${Math.round(v).toLocaleString('fr-CA')} $`;
 
 const labelFor = (level: PlanLevel, points: Point[]): string => {
     const first = points[0];
@@ -102,27 +112,86 @@ const labelFor = (level: PlanLevel, points: Point[]): string => {
     }
 };
 
+// « Pourquoi » par compte et par sens — mécanismes fiscaux en langage simple, SANS aucune
+// valeur chiffrée (les constantes fiscales vivent dans docs/FISCAL_REFERENCE.md, jamais ici).
+// Exporté pour que les tests balaient l'intégralité de la map (garde-fou anti-chiffre).
+export const ADVICE_WHY: Record<ActionAccountKey, { deposit: string; withdraw: string }> = {
+    CELI: {
+        deposit: 'Le CELI fait croître ton argent à l’abri de l’impôt ; les retraits sont libres d’impôt.',
+        withdraw: 'Retrait du CELI : non imposable, et le droit de cotisation se libère l’année suivante.',
+    },
+    CELIAPP: {
+        deposit: 'Le CELIAPP (FHSA) cumule la déduction du REER et le retrait non imposable du CELI, pour une première maison.',
+        withdraw: 'Retrait du CELIAPP pour un achat admissible : non imposable.',
+    },
+    REER: {
+        deposit: 'Cotiser au REER réduit ton revenu imposable cette année ; l’impôt est reporté au retrait.',
+        withdraw: 'Retrait du REER : imposable comme un revenu — d’où l’intérêt de le faire en année à faible revenu.',
+    },
+    REEE: {
+        deposit: 'Le REEE attire les subventions gouvernementales pour les études des enfants.',
+        withdraw: 'Retrait du REEE : seules les subventions et les gains (les PAE) sont imposés, chez l’étudiant à faible taux ; le capital que tu as cotisé te revient non imposable.',
+    },
+    NonReg: {
+        deposit: 'Compte non enregistré : pas d’abri fiscal mais aucun plafond — pour épargner au-delà des comptes enregistrés.',
+        withdraw: 'Retrait du non-enregistré : tu n’es imposé que sur le gain en capital réalisé, pas sur le capital. (Les intérêts et dividendes du compte, eux, sont imposés chaque année.)',
+    },
+    Crypto: {
+        deposit: 'Crypto : actif volatil et sans abri fiscal — à garder en petite portion.',
+        withdraw: 'Vente de crypto : le gain réalisé est imposé comme un gain en capital.',
+    },
+    Liquidites: {
+        deposit: 'Tu renforces ton coussin de sécurité — disponible en tout temps, mais ça rapporte peu.',
+        withdraw: 'Tu puises dans tes liquidités — normal pour financer une dépense ou alimenter un placement.',
+    },
+};
+
 const buildAdvice = (
     flows: Record<ActionAccountKey, number>,
     isRetired: boolean,
     deposited: number,
     withdrawn: number,
-): string[] => {
+): AdviceItem[] => {
     const moves = ACTION_ACCOUNTS.map((a) => ({ label: a.label, key: a.key, v: flows[a.key] }))
         .filter((m) => Math.abs(m.v) >= FLOW_THRESHOLD)
         .sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
 
-    const lines: string[] = [];
+    const items: AdviceItem[] = [];
     const net = deposited - withdrawn;
-    if (net > FLOW_THRESHOLD) lines.push(`Épargne nette : +${fmtCAD(net)}`);
-    else if (net < -FLOW_THRESHOLD) lines.push(`Décaissement net : ${fmtCAD(net)}`);
-    if (isRetired) lines.push('Phase retraite : on décaisse de façon fiscalement optimale.');
+    if (net > FLOW_THRESHOLD) {
+        items.push({
+            text: 'Épargne nette sur la période', amount: net, kind: 'info',
+            why: 'Tu mets de côté plus que tu ne sors : ton patrimoine grossit sur la période.',
+        });
+    } else if (net < -FLOW_THRESHOLD) {
+        items.push({
+            text: 'Décaissement net sur la période', amount: net, kind: 'info',
+            why: 'Tu sors plus que tu n’épargnes — normal en retraite ou pour financer un achat planifié.',
+        });
+    }
+    if (isRetired) {
+        items.push({
+            text: 'Phase de décaissement', amount: null, kind: 'info',
+            why: 'À la retraite, on pige dans les comptes dans l’ordre le plus avantageux fiscalement.',
+        });
+    }
 
     for (const m of moves) {
-        lines.push(m.v > 0 ? `Cotise ${fmtCAD(m.v)} au ${m.label}.` : `Retire ${fmtCAD(-m.v)} du ${m.label}.`);
+        const deposit = m.v > 0;
+        items.push({
+            text: deposit ? `Cotise au ${m.label}` : `Retire du ${m.label}`,
+            amount: m.v,
+            kind: deposit ? 'deposit' : 'withdraw',
+            why: deposit ? ADVICE_WHY[m.key].deposit : ADVICE_WHY[m.key].withdraw,
+        });
     }
-    if (lines.length === 0) lines.push('Rien de notable à faire sur cette période — laisse fructifier.');
-    return lines;
+    if (items.length === 0) {
+        items.push({
+            text: 'Rien de notable à faire — laisse fructifier', amount: null, kind: 'info',
+            why: 'Aucun mouvement marquant sur la période : tes placements continuent de croître seuls.',
+        });
+    }
+    return items;
 };
 
 /** Agrège un ensemble de points en un bucket d'un niveau donné. */

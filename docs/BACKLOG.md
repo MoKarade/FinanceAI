@@ -5,15 +5,16 @@
 > Audit qualité détaillé (référence) : [`docs/AAA_AUDIT_2026-06.md`](AAA_AUDIT_2026-06.md).
 > Actions humaines (Marc) : [`docs/A_FAIRE_MOI.md`](A_FAIRE_MOI.md).
 >
-> **Refonte « lean » : 2026-06-05.** Tests : ~1704 verts / 152 fichiers · tsc clean · build OK.
+> **Dernière mise à jour : 2026-06-09.** Tests : 1782 verts / 154 fichiers · tsc clean · build OK.
 
-## Convention (cochage automatique)
-- Chaque item Claude-faisable porte un **`[ID]`** entre crochets. Un commit `[ID] …` mergé sur
-  `main` **coche l'item tout seul** (Action `backlog-autocheck`). Ne pas cocher à la main.
-- Claude n'édite ce fichier que pour **ajouter** des items (découvertes). Les blocages humains
-  vont dans `A_FAIRE_MOI.md`.
+## Convention (cochage par Claude au merge)
+- Chaque item Claude-faisable porte un **`[ID]`** entre crochets. **Claude coche lui-même**
+  l'item au moment du merge de la PR qui le livre (l'Action `backlog-autocheck` a été retirée —
+  choix Marc, 2026-06-09).
+- Claude édite ce fichier pour **cocher** (au merge) et **ajouter** des items (découvertes).
+  Les blocages humains vont dans `A_FAIRE_MOI.md`.
 - Légende : 🔧 Claude · 🧭 décision Marc requise · 👤 action humaine (Marc) · ⏳ gros chantier.
-- Les **tests manuels** (section 👤 ci-dessous) n'ont PAS d'`[ID]` → jamais auto-cochés (à toi).
+- Les **tests manuels** (section 👤 ci-dessous) n'ont PAS d'`[ID]` (à Marc).
 
 ---
 
@@ -50,7 +51,8 @@
   (App re-render sur tout slice non-`lastProjection` + prop-drilling via `TabRouter`).
 - [ ] **[D6-SR]** Mode privé : le flou CSS laisse les montants **lisibles par lecteur d'écran**
   (fuite). Masquer le TEXTE quand le mode privé est actif (comme les graphes font déjà `***`),
-  pas seulement flouter. Touche KPI/cellules de tableau/inputs.
+  pas seulement flouter. Touche KPI/cellules de tableau/inputs. (Re-confirmé par `a11y-auditor`
+  2026-06-09 : systémique, AUCUN `privacy-blur` du codebase n'est masqué aux SR.)
 - [ ] **[D7]** Perf boot : `hydrateAssets` (`App.tsx`) boucle `await sleep(2500ms)` séquentiel par
   symbole → 10 actifs = ~25 s. Paralléliser + cacher, garde-fous anti-rate-limit. Plus gros gain
   de fluidité ressenti.
@@ -83,10 +85,12 @@
   CSS/WAAPI (pas de framer-motion), compositor-friendly, `prefers-reduced-motion`. Grand, à phaser.
   ⚠️ Piège connu (`index.css:222`) : un wrapper `transform` casse `position:fixed` → animer en opacité
   pure ou via portails.
-- [ ] **[FUT-OPT]** Onglet Futur : déplacer toute l'optimisation (Verdict + `StrategyOptimizerPanel`
-  + badge scénario) dans un 4ᵉ sous-onglet « Optimiseur » ; vue Graphique = courbe + KPIs seulement.
-- [ ] **[RENTE-80]** Rente retraite « ~80 $ pendant quelques mois » : reproduire le persona/âge →
-  trancher trou PSV (< 65) normal vs bug (prorata RRQ, split 0,65/0,35, affichage tooltip).
+- [x] **[FUT-OPT]** Onglet Futur : optimisation déplacée dans le sous-onglet « Optimisation »
+  (4 onglets Graphique/Paramètres/Optimisation/Plan d'action + écran d'amorçage, #213) ; Robustesse
+  + Optimiseur fusionnés en un outil « Comparer les stratégies » 2 modes (#215).
+- [x] **[RENTE-80]** Rente retraite « ~80 $ » : cause = rentes couplées à l'âge d'arrêt. Réglé par
+  le découplage moteur (`rrqStartAge`/`psvStartAge`, RRQ jusqu'à 72, #210) + UI âge de début des
+  rentes dans l'onglet Retraite (#214). 👤 À valider sur ton persona (tests manuels ci-dessous).
 
 ## 🛠️ Configuration & Système — retours Marc (2026-06-05)
 - [x] **[CFG-PROFIL]** Onglet Configuration → Profil : **regrouper en UN seul ensemble cohérent**
@@ -142,6 +146,12 @@
 - [ ] Clés chiffrées : restauration sur un autre appareil ramène les clés (preuve que le `sub` déchiffre).
 
 **Moteur / UX**
+- [ ] Rentes (fix #210/#214) : sur ton profil, vérifier que RRQ/PSV démarrent aux âges choisis
+  dans Retraite (indépendants de l'âge d'arrêt) et que le « ~80 $/mois » a disparu.
+- [ ] Mode test (fix #217) : switch de persona → AUCUNE donnée de l'ancien ; reload → la bannière
+  orange reste ; « Désactiver » → tes vraies données reviennent.
+- [ ] Refonte Futur (#213-#216) : les 4 sous-onglets te conviennent ? L'écran « Calculer ma
+  projection » au premier passage ? La checklist du Plan d'action (cases + « Pourquoi ? ») ?
 - [ ] Zoom molette + pan fluides (60 fps) sur tous les onglets graphiques.
 - [ ] Pendant un (re)calcul Futur → écran « Calcul de ta projection… » (pas l'ancienne courbe).
 - [ ] Salaire saisi (Onboarding/scan paie/TaxCenter) → affiché **mensuel cohérent** partout.
@@ -150,7 +160,7 @@
 ---
 
 ## Comment maintenir ce backlog
-1. **Ajouter** un item découvert → `- [ ] **[ID]** description` (l'`[ID]` permet l'auto-cochage).
-2. **Ne pas cocher à la main** : un commit `[ID] …` sur `main` coche via `backlog-autocheck`.
+1. **Ajouter** un item découvert → `- [ ] **[ID]** description`.
+2. **Cocher au merge** : Claude coche l'`[ID]` quand la PR qui le livre est mergée (+ réf PR).
 3. Blocage humain → `A_FAIRE_MOI.md`. Audit large → `code-analyzer` (ajoute des items ici).
 4. Priorité : **P0** → 🧭 décisions → grand nettoyage AAA → CIX → P2/P3 en rotation.

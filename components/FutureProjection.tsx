@@ -31,8 +31,7 @@ import { reconstructRealEstateEquityByYear } from '../services/history/reconstru
 import { ActionPlanDrilldown } from './projection/ActionPlanDrilldown';
 import { ProjectionExplains } from './projection/ProjectionExplains';
 import { AssetLocationPanel } from './projection/AssetLocationPanel';
-import { RobustnessPanel } from './projection/RobustnessPanel';
-import { StrategyOptimizerPanel } from './projection/StrategyOptimizerPanel';
+import { StrategyComparePanel } from './projection/StrategyComparePanel';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 
 // G10 — Légende interactive : une seule source de vérité pour les chips ET les
@@ -454,8 +453,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
     // G21 — objectif servant au bandeau « Verdict » (meilleur scénario en 1 phrase).
     // L'optimisation interactive complète (choix des leviers, re-tri par objectif) vit
-    // désormais dans StrategyOptimizerPanel en bas ; ici on lit juste l'objectif persisté
-    // pour désigner la meilleure façon de gérer parmi les scénarios déjà calculés.
+    // dans l'onglet Optimisation (StrategyComparePanel → Recherche avancée) ; ici on lit
+    // juste l'objectif persisté pour désigner la meilleure façon de gérer parmi les scénarios déjà calculés.
     const optimizeObjective = useMemo<OptimizeObjective>(() => {
         try {
             const raw = localStorage.getItem('future:objective:v1');
@@ -681,7 +680,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         key={t.id}
                         type="button" role="tab" aria-selected={futureSubTab === t.id}
                         onClick={() => setFutureSubTab(t.id)}
-                        className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === t.id ? 'bg-primary text-white' : 'text-ink-300 hover:text-ink-100'}`}
+                        className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === t.id ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-100'}`}
                     >
                         <span aria-hidden="true" className="mr-1">{t.emoji}</span>{t.label}
                     </button>
@@ -760,9 +759,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         </div>
                     </div>
                 )}
-                {/* G21 C5 — l'optimiseur interactif (choix des leviers, classement par
-                    objectif, explication, « Appliquer ») vit dans StrategyOptimizerPanel
-                    plus bas. Ici on ne garde que le bandeau « Verdict » d'aperçu rapide. */}
+                {/* G21 C5 — l'optimiseur interactif (choix des leviers, classement par objectif,
+                    explication, « Appliquer ») vit dans l'onglet Optimisation
+                    (StrategyComparePanel → Recherche avancée). Ici on ne garde que le bandeau « Verdict ». */}
                 {/* G4 — sélecteur de période façon Google Finance */}
                 <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                     <div className="flex gap-0.5 p-0.5 rounded-card bg-black/30 border border-white/5">
@@ -773,7 +772,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                     key={y}
                                     type="button"
                                     onClick={() => zoom.showRange(0, idxForYears(y))}
-                                    className={`px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring ${active ? 'bg-primary text-white' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
+                                    className={`px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring ${active ? 'bg-primary text-dark' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
                                 >
                                     {y} ans
                                 </button>
@@ -782,7 +781,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         <button
                             type="button"
                             onClick={zoom.reset}
-                            className={`px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring ${!zoom.isZoomed ? 'bg-primary text-white' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
+                            className={`px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring ${!zoom.isZoomed ? 'bg-primary text-dark' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
                         >
                             Tout
                         </button>
@@ -975,15 +974,16 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             </div>
             )}
 
-            {/* Optimisation : leviers + robustesse + placement par compte. */}
+            {/* Optimisation : comparer les stratégies (test rapide OU recherche avancée),
+                puis placement par compte. Les deux outils Monte Carlo (robustesse + optimiseur)
+                sont fusionnés en un seul (StrategyComparePanel) pour lever la confusion. */}
             {futureSubTab === 'optim' && (
                 <div className="space-y-6">
-                    {/* C3 — Placement par compte (asset location optimal). */}
+                    {/* C4+C5 — Comparer les stratégies : Test rapide (robustesse, 5 stratégies types)
+                        ou Recherche avancée (leviers composables, classement par objectif). */}
+                    <StrategyComparePanel params={params} onApply={setRetirementGoal ? handleApplyConfig : undefined} />
+                    {/* C3 — Placement par compte (asset location optimal) : où détenir chaque actif. */}
                     <AssetLocationPanel assets={assets} annualGrossIncome={baseGrossAnnual} />
-                    {/* C4 — Robustesse (Monte Carlo, taux de succès, Web Worker). */}
-                    <RobustnessPanel params={params} />
-                    {/* C5 — Optimiseur configurable (espace de leviers, classement par objectif). */}
-                    <StrategyOptimizerPanel params={params} onApply={setRetirementGoal ? handleApplyConfig : undefined} />
                 </div>
             )}
 

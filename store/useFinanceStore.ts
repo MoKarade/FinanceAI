@@ -28,7 +28,9 @@ export interface FinanceState extends AppState {
     isTestMode: boolean;
     /** Snapshot des vraies données sauvegardé AVANT activation du mode test.
      *  Restauré quand l'utilisateur sort du mode test. */
-    realDataSnapshot: Partial<AppState> | null;
+    // Omit<…,'apiKeys'> : invariant de sécurité GARANTI au compilateur — le snapshot des vraies
+    // données (désormais persisté en localStorage) ne peut JAMAIS contenir les clés API.
+    realDataSnapshot: Partial<Omit<AppState, 'apiKeys'>> | null;
     /** Id du persona de test actuellement chargé (null hors mode test). */
     activeTestPersonaId: string | null;
     setActiveTab: (tab: Tab) => void;
@@ -95,39 +97,56 @@ const migrateUserConfig = (config: LegacyBudgetConfig): LegacyBudgetConfig => {
     return { ...config, users: newUsers };
 };
 
+// Défauts purs de l'app (toutes les tranches vides/par défaut). SOURCE UNIQUE réutilisée par
+// l'init ET par le chargement d'un persona de test (base propre anti-fuite — cf personaResetBase).
+const DEFAULT_APP_STATE: AppState = {
+    transactions: [],
+    assets: [],
+    investmentTransactions: [],
+    investmentAccounts: [],
+    budgetItems: INITIAL_BUDGET,
+    config: INITIAL_CONFIG,
+    projection: INITIAL_PROJECTION,
+    realEstateGoals: [INITIAL_REAL_ESTATE_GOAL],
+    childGoal: INITIAL_CHILD_GOAL,
+    childGoals: [INITIAL_CHILD_GOAL],
+    savingsGoals: [],
+    debts: [],
+    travelGoals: [],
+    lifeEvents: [],
+    retirementGoal: { targetAge: 65, targetMonthlyIncome: 4000, governmentPension: 1200 },
+    financialGoals: [],
+    initialBalances: {},
+    apiKeys: { anthropic: '', finnhub: '' },
+    fxRates: DEFAULT_FX_RATES,
+    lastUpdate: Date.now(),
+    categorizationRules: [],
+    aiConversation: [],
+    // W5.x — Nouveaux containers (vide par défaut)
+    insurancePolicies: [],
+    rentalProperties: [],
+    privateBusinesses: [],
+    vehicleReplacements: [],
+    majorRenovations: [],
+    charitableGoals: [],
+    documents: [],
+};
+
+// Base PROPRE pour charger un persona de test : toutes les tranches de DONNÉES remises aux défauts
+// vides, SAUF apiKeys (credentials), fxRates (données de marché) et lastUpdate — gardées telles
+// quelles. Garantit qu'AUCUNE donnée du persona précédent (ni des vraies données) ne subsiste quand
+// le nouveau persona ne définit pas une tranche (fix « des données qui restent au switch de profil »).
+export const personaResetBase = (): Partial<AppState> => {
+    const { apiKeys: _ak, fxRates: _fx, lastUpdate: _lu, ...data } = DEFAULT_APP_STATE;
+    void _ak; void _fx; void _lu;
+    // structuredClone : copies FRAÎCHES des tranches (arrays/objets) à chaque chargement de persona.
+    // Sinon le state pointerait sur les mêmes références que DEFAULT_APP_STATE/initialState, et une
+    // mutation en place en aval corromprait silencieusement les défauts globaux partagés.
+    return structuredClone(data);
+};
+
 export const getInitialStateWithMigration = (): AppState => {
-    const defaultState: AppState = {
-        transactions: [],
-        assets: [],
-        investmentTransactions: [],
-        investmentAccounts: [],
-        budgetItems: INITIAL_BUDGET,
-        config: INITIAL_CONFIG,
-        projection: INITIAL_PROJECTION,
-        realEstateGoals: [INITIAL_REAL_ESTATE_GOAL],
-        childGoal: INITIAL_CHILD_GOAL,
-        childGoals: [INITIAL_CHILD_GOAL],
-        savingsGoals: [],
-        debts: [],
-        travelGoals: [],
-        lifeEvents: [],
-        retirementGoal: { targetAge: 65, targetMonthlyIncome: 4000, governmentPension: 1200 },
-        financialGoals: [],
-        initialBalances: {},
-        apiKeys: { anthropic: '', finnhub: '' },
-        fxRates: DEFAULT_FX_RATES,
-        lastUpdate: Date.now(),
-        categorizationRules: [],
-        aiConversation: [],
-        // W5.x — Nouveaux containers (vide par défaut)
-        insurancePolicies: [],
-        rentalProperties: [],
-        privateBusinesses: [],
-        vehicleReplacements: [],
-        majorRenovations: [],
-        charitableGoals: [],
-        documents: [],
-    };
+    const defaultState: AppState = { ...DEFAULT_APP_STATE, lastUpdate: Date.now() };
 
     if (typeof window === 'undefined') return defaultState;
 
@@ -391,36 +410,34 @@ export const useFinanceStore = create<FinanceState>()(
                 apiKeys: { ...prev.apiKeys, ...keys }
             })),
             updateLastUpdate: () => set({ lastUpdate: Date.now() }),
-            resetState: () => set(initialState),
+            // `set` fait un merge superficiel et `initialState` (AppState) ne contient PAS les flags
+            // propres au store (isTestMode/realDataSnapshot/activeTestPersonaId) → on les remet
+            // explicitement, sinon un reset déclenché EN mode test n'en sortirait jamais (bannière figée).
+            resetState: () => set({ ...initialState, isTestMode: false, realDataSnapshot: null, activeTestPersonaId: null }),
 
             // Mode test : sauve l'état "vrai" actuel, applique les fixtures,
             // active le flag (banner visible via Layout).
             enableTestMode: (fixtures, personaId) => set((prev) => {
-                // Si déjà en mode test (changement de persona), on garde le snapshot
-                // initial des vraies données et on remplace seulement les fixtures.
-                if (prev.isTestMode) {
-                    return {
-                        ...prev,
-                        ...fixtures,
-                        apiKeys: prev.apiKeys,
-                        isTestMode: true,
-                        realDataSnapshot: prev.realDataSnapshot,
-                        activeTestPersonaId: personaId ?? null,
-                    };
+                // Snapshot des VRAIES données SEULEMENT à la 1re activation (hors flags UI/credentials).
+                // Au changement de persona (déjà en test), on CONSERVE ce snapshot initial — sinon on
+                // « sauvegarderait » les données fictives par-dessus les vraies (perte définitive).
+                let realDataSnapshot = prev.realDataSnapshot;
+                if (!prev.isTestMode) {
+                    const { apiKeys: _ak, activeTab: _at, isPrivacyMode: _pm, lastProjection: _lp, pendingFocus: _pf, isTestMode: _tm, realDataSnapshot: _rds, activeTestPersonaId: _atp, ...persistable } = prev as FinanceState;
+                    void _ak; void _at; void _pm; void _lp; void _pf; void _tm; void _rds; void _atp;
+                    realDataSnapshot = persistable as Partial<Omit<AppState, 'apiKeys'>>;
                 }
-                // Snapshot des données utilisateur courantes (hors flags UI).
-                const { apiKeys: _ak, activeTab: _at, isPrivacyMode: _pm, lastProjection: _lp, pendingFocus: _pf, isTestMode: _tm, realDataSnapshot: _rds, activeTestPersonaId: _atp, ...persistable } = prev as FinanceState;
-                void _ak; void _at; void _pm; void _lp; void _pf; void _tm; void _rds; void _atp;
                 return {
                     ...prev,
+                    // Repart d'une base de données PROPRE avant d'appliquer le persona : aucune tranche
+                    // de l'ancien persona (ni des vraies données) ne subsiste (fix « données qui restent »).
+                    ...personaResetBase(),
                     ...fixtures,
-                    // BUG fix : les clés API sont des credentials, pas des données
-                    // financières. Le mode test ne doit jamais les écraser, sinon
-                    // market data (actions) tombe en panne et il faut
-                    // tout re-saisir au retour. On garde toujours les vraies clés.
+                    // Les clés API sont des credentials, jamais des données financières : le mode test
+                    // ne doit JAMAIS les écraser (sinon market data tombe en panne au retour).
                     apiKeys: prev.apiKeys,
                     isTestMode: true,
-                    realDataSnapshot: persistable as Partial<AppState>,
+                    realDataSnapshot,
                     activeTestPersonaId: personaId ?? null,
                 };
             }),
@@ -428,7 +445,15 @@ export const useFinanceStore = create<FinanceState>()(
             disableTestMode: () => set((prev) => {
                 if (!prev.isTestMode) return prev;
                 const snap = prev.realDataSnapshot;
-                if (!snap) return { ...prev, isTestMode: false, realDataSnapshot: null, activeTestPersonaId: null };
+                if (!snap) {
+                    // État corrompu : en mode test mais sans snapshot des vraies données (blob édité,
+                    // quota au moment du snapshot, futur bug de migration…). On ne PEUT PAS restaurer —
+                    // on échoue franchement (log) et on repart d'une base PROPRE plutôt que de laisser
+                    // les données fictives passer pour réelles (ce qui, le flag retombé, ré-ouvrirait le
+                    // push Drive — le bug 2026-05-29). Jamais avalé.
+                    logError({ source: 'storage', severity: 'warning', message: 'disableTestMode : mode test actif sans realDataSnapshot — vraies données non restaurables, retour à un état vide.' });
+                    return { ...prev, ...personaResetBase(), isTestMode: false, realDataSnapshot: null, activeTestPersonaId: null };
+                }
                 return {
                     ...prev,
                     ...snap,
@@ -445,22 +470,24 @@ export const useFinanceStore = create<FinanceState>()(
             // de la forme du state, et ajouter une étape dans `migrate`.
             // Sans version, toute évolution casse silencieusement le boot des
             // utilisateurs existants (cf audit 2026-05 §State management).
+            // NB : la persistance du MODE TEST (cf partialize : isTestMode/realDataSnapshot/
+            // activeTestPersonaId) est ADDITIVE/rétrocompatible (champs en plus) → pas de bump requis.
+            // Le strip <7 (cf migrate) reste pour nettoyer les blobs de l'ère buggée (≤ v6).
             version: 7,
             migrate: migratePersistedState,
             partialize: (state) => {
-                // Exclut de la persistance : les clés API (chiffrées ailleurs), les états UI
-                // transitoires, ET le mode test. Le mode test (fixtures persona) ne doit JAMAIS
-                // être persisté ni synchronisé — sinon l'auto-push Drive écrase la vraie sauvegarde
-                // par des données de démo (bug 2026-05-29).
+                // Exclut de la persistance : les clés API (chiffrées ailleurs) et les états UI
+                // transitoires (onglet, mode privé, projection calculée, focus en attente).
+                // Le MODE TEST (isTestMode/realDataSnapshot/activeTestPersonaId) EST désormais persisté
+                // pour que la bannière + le persona survivent au reload (cohérence demandée par Marc).
+                // Sûr côté Drive : `shouldPush` lit isTestMode → le push reste DÉSACTIVÉ tant qu'on est
+                // en mode test, donc aucune donnée fictive ne part en ligne (le bug 2026-05-29 reste couvert).
                 const {
                     apiKeys: _apiKeys,
                     activeTab: _activeTab,
                     isPrivacyMode: _isPrivacyMode,
                     lastProjection: _lastProjection,
                     pendingFocus: _pendingFocus,
-                    isTestMode: _isTestMode,
-                    realDataSnapshot: _realDataSnapshot,
-                    activeTestPersonaId: _activeTestPersonaId,
                     ...persistable
                 } = state;
                 return persistable;

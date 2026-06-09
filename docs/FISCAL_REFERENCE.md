@@ -171,6 +171,20 @@ consommée par `services/projection/retirementIncome.ts` + `setupSimulation.ts`.
 > retraite tardive, alors qu'on touche le RRQ dès 65 même en continuant à travailler. `delayPensions`
 > (report optimal) vise RRQ 72 / PSV 70.
 
+### Fractionnement de revenu de pension (couple) — `services/projection/taxDecember.ts`
+Sources : ARC ligne 11600 / formulaire **T1032** ; Revenu Québec **Annexe Q**. Un couple peut
+**transférer jusqu'à 50 %** du revenu de pension ADMISSIBLE du conjoint au revenu élevé vers l'autre,
+pour minimiser l'impôt combiné (élection optionnelle).
+| Revenu | Admissible au fractionnement | Dans le moteur |
+|---|---|---|
+| Rente viagère DB (RPA) | Féd : tout âge ; **QC : 65+** | gate **65** (calcul combiné QC+féd → on retient 65) |
+| Retraits **FERR/RIF** | **65+** (compte déjà FERR) | gate **72** (= âge de conversion REER→FERR du modèle, cf §7) |
+| RRQ/PSV, retraits **REER** (avant conversion) | **NON admissibles** | exclus de l'assiette |
+> **Implémentation** : `taxDecember` calcule l'impôt du ménage AVEC et SANS fractionnement et garde le
+> **minimum** (élection optionnelle → ne peut jamais augmenter l'impôt). Transfert borné à ≤ 50 % de
+> l'admissible du cédant. Limites assumées (conservatrices, cf §9) : gate DB à 65 (vs tout âge féd),
+> crédit pension non re-réparti au conjoint receveur.
+
 ### PSV / OAS — récupération (clawback)
 - Seuil de récupération 2026 (`OAS_CLAWBACK_THRESHOLD_2026`) : **95 323 $** (ARC ; 93 454 $ en 2025).
 
@@ -237,11 +251,15 @@ Implémenté (ADR 009) ; valeurs à transcrire ici lors de la prochaine revue fi
   pas publiés (`getIndexedBracketsForYear`).
 - **Aller-retour réel↔nominal** des paliers : écart connu vs ARC à forte inflation (ITEM 2a,
   rejeté après analyse numérique — cf BACKLOG).
-- **Attribution par conjoint** : refactor « soldes REER par conjoint » en cours
+- **Attribution par conjoint** : refactor « soldes REER par conjoint »
   (`docs/REFACTOR_REER_PAR_CONJOINT.md`). Phase 1 = registre REER par conjoint (invariant
-  Σ==commun). **Phase 2 = les retraits REER/FERR de l'année sont taxés PAR CONJOINT** (sur SES
-  vrais retraits, prorata des soldes) au lieu du split 50/50. Restent répartis également : rentes
-  gouv. et DB. Reste ouvert : **fractionnement de pension 65+** (Phase 3) et **FERR par conjoint exact**.
-- **Crédit pension sur retraits FERR 65+** (limite assumée) : les retraits FERR à 65+ sont un revenu
-  de pension admissible (crédit féd ligne 31400 = 2 000 $ + ligne 361 QC), mais le moteur les EXCLUT
-  de `eligiblePensionIncome` → léger SUR-impôt à 65+ (sens conservateur). À traiter avec la Phase 3.
+  Σ==commun). Phase 2 = retraits REER/FERR taxés PAR CONJOINT (prorata des soldes). **Phase 3 =
+  fractionnement de pension 65+ (FAIT, cf §6).** Restent répartis également : rentes gouv. et DB.
+  Reste ouvert : **FERR par conjoint exact** (aujourd'hui prorata des soldes).
+- **Crédit pension non re-réparti au conjoint receveur** (limite assumée, conservatrice) : le
+  fractionnement transfère du revenu imposable, mais le moteur ne recalcule PAS le crédit pension
+  (féd ligne 31400 = 2 000 $ + ligne 361 QC) du conjoint qui REÇOIT le montant fractionné → bénéfice
+  légèrement SOUS-estimé (sens sur-impôt, jamais sous-imposition).
+- **Gate DB du fractionnement à 65 ans** (limite assumée) : la rente viagère DB est fractionnable
+  dès réception à TOUT âge côté fédéral (T1032), mais le QC exige 65 ans. Le moteur faisant un calcul
+  combiné QC+féd, on retient **65** (sur-impôt léger pour une DB débutant avant 65, jamais l'inverse).

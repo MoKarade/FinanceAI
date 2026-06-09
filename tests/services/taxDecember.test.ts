@@ -377,6 +377,28 @@ describe('processDecemberTaxFiling — retraité : impôt marginal réel réconc
         expect(undercounted.newTaxCurrentYear.revenu).toBeCloseTo(20000, 5);
     });
 
+    it('Phase 3 — fractionnement 65+ : à 72 ans, retraits RIF concentrés → transfert ≤50 % baisse l\'impôt', () => {
+        const progressive = makeHelpers({
+            calculateFiscalReport: ((gross: number) =>
+                ({ totalTax: gross <= 50000 ? gross * 0.2 : 10000 + (gross - 50000) * 0.45 } as unknown as FiscalReport)
+            ) as DecemberHelpers['calculateFiscalReport'],
+        });
+        const ctx = (age: number): Partial<DecemberContext> => ({
+            isRetired: true, activeUsersCount: 2, incomeRetirementMonthly: 0,
+            incomeRetirementPerUserMonthly: [0, 0], incomeRetirementDbPerUserMonthly: [0, 0],
+            age, ageSpouse: age, accRetraitsReerYear: 100000, accRetraitsReerYearByUser: [100000, 0],
+        });
+        // À 72 ans, 100k de retraits sont du revenu FERR/RIF ADMISSIBLE concentré sur un conjoint.
+        // L'optimiseur transfère ≤ 50 % (50k) → [50k, 50k] → impôt 20 000 (vs 32 500 sans fractionnement).
+        const at72 = processDecemberTaxFiling(DECEMBER, baseCtx(ctx(72)), progressive, ZERO_TAX);
+        expect(at72.newTaxCurrentYear.revenu).toBeCloseTo(20000, 5);
+        // Contre-preuve : à 70 ans, les retraits REER ne sont PAS encore RIF (conversion FERR à 72) →
+        // rien d'admissible → aucun fractionnement → reste 32 500 (Phase 2).
+        const at70 = processDecemberTaxFiling(DECEMBER, baseCtx(ctx(70)), progressive, ZERO_TAX);
+        expect(at70.newTaxCurrentYear.revenu).toBeCloseTo(32500, 5);
+        expect(at72.newTaxCurrentYear.revenu).toBeLessThan(at70.newTaxCurrentYear.revenu);
+    });
+
     it('MÉCANISME de réconciliation : crédite la retenue déjà captée dans .reer (pas de double-comptage)', () => {
         // pension 60000 + retraits REER 40000 = assiette 100000. Stub 25 % → vrai impôt 25000.
         // La retenue à la source déjà prélevée pendant l'année (.reer = 8000) est CRÉDITÉE :

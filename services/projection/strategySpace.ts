@@ -142,6 +142,7 @@ export function configToEngine(config: StrategyConfig, baseParams: SimulationPar
         skipRapForPurchase: config.skipRap,
         contributionOrder: config.contributionOrder,
         debtFirst: config.debtFirst,
+        gainHarvesting: config.gainHarvesting,
     };
     return {
         params,

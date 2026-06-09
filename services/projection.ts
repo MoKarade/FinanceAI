@@ -12,7 +12,7 @@ import { SCENARIO_DEFINITIONS } from './projection/scenarios';
 import { applyW5Effects, applyAgeBasedExpenses } from './projection/w5Effects';
 import { tryCriticalIllness, tryInheritance, tryMortality, trySpouseMortality, tryLtcTrigger, ltcMonthlyCost, tryDivorce } from './projection/stochasticEvents';
 import { processAprilSettlement } from './projection/taxApril';
-import { computeOasClawback, processTaxLossHarvesting, processDecemberTaxFiling } from './projection/taxDecember';
+import { computeOasClawback, processTaxLossHarvesting, processGainHarvesting, processDecemberTaxFiling } from './projection/taxDecember';
 import { processJanuaryReset } from './projection/taxJanuary';
 import { processAutoVehicleReplacement } from './projection/vehicleCycle';
 import { buildHistoricalSequence, buildReplaySequence, type YearReturn } from './projection/historicalReturns';
@@ -650,6 +650,25 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         if (currentMonthIndex === 11 && m > 0) {
             const yearsElapsed = Math.floor(m / 12);
             const inflationFactor = Math.pow(1 + simInflation / 100, yearsElapsed);
+
+            // Levier « récolte de gains » (timing) : réalise des gains non-enreg latents dans une
+            // année à faible revenu pour remplir le 1er palier (ACB relevé). À FAIRE AVANT le dépôt
+            // fiscal de décembre → le gain réalisé entre dans accCapitalGainsYear et est imposé CETTE
+            // année (au taux bas), sans fuite (l'ACB monte du montant imposé).
+            const ghOtherNominal = isRetired
+                ? (incomeRetirement * 12 + accRentesYear + accRetraitsReerYear)
+                : (grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
+            const gh = processGainHarvesting({
+                enabled: !!overrides.gainHarvesting,
+                nonReg, nonRegACB, otherTaxableNominal: ghOtherNominal,
+                existingGainsNominal: accCapitalGainsYear, activeUsersCount, inflationFactor,
+            });
+            if (gh.harvestedGain > 0) {
+                accCapitalGainsYear += gh.harvestedGain;
+                nonRegACB += gh.harvestedGain;
+                if (gh.logMsg) logEvent(flowEventsLog, gh.logMsg);
+            }
+
             const decResult = processDecemberTaxFiling(
                 currentMonthIndex,
                 {
@@ -1214,6 +1233,7 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
         contributionOrder: proj.appliedContributionOrder,
         debtFirst: proj.appliedDebtFirst,
         skipRapForPurchase: proj.appliedSkipRap,
+        gainHarvesting: proj.appliedGainHarvesting,
     };
     const effectiveParams: SimulationParams = proj.appliedAssetLocation && proj.returnRates
         ? {

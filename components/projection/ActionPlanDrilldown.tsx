@@ -48,6 +48,13 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
     // On stocke le chemin par IDs (stables) et on RE-DÉRIVE les buckets à chaque
     // rendu depuis chartData → toujours frais, robuste si le scénario change.
     const [pathIds, setPathIds] = useState<string[]>([]);
+    // Aide de session (NON persistée, volontairement) : conseils cochés « fait » + « pourquoi »
+    // dépliés, indexés par clé bucket+rang. Se réinitialise au recalcul de la projection — c'est
+    // une checklist de revue, pas un suivi de tâches durable.
+    const [done, setDone] = useState<Set<string>>(new Set());
+    const [openWhy, setOpenWhy] = useState<Set<string>>(new Set());
+    const toggle = (set: React.Dispatch<React.SetStateAction<Set<string>>>, key: string) =>
+        set((prev) => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; });
 
     const { trail, children } = useMemo(() => {
         if (!root) return { trail: [] as PlanBucket[], children: [] as PlanBucket[] };
@@ -129,13 +136,54 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
             {/* Conseils de la période. */}
             <div className="mb-3">
                 <div className="text-tiny font-bold text-ink-400 uppercase tracking-wide mb-1.5">Conseils</div>
-                <ul className="space-y-1">
-                    {current.advice.map((line, i) => (
-                        <li key={`${current.id}-${i}`} className="text-tiny text-ink-200 flex items-start gap-1.5">
-                            <span aria-hidden="true" className="text-primary mt-0.5">·</span>
-                            <span className="privacy-blur">{line}</span>
-                        </li>
-                    ))}
+                <ul className="space-y-1.5">
+                    {current.advice.map((item, i) => {
+                        const key = `${current.id}-${i}`;
+                        const checkable = item.kind !== 'info';
+                        const isDone = done.has(key);
+                        const whyOpen = openWhy.has(key);
+                        const amountClass = item.kind === 'withdraw' || (item.amount ?? 0) < 0 ? 'text-orange-300' : 'text-success-400';
+                        return (
+                            <li key={key} className="rounded-lg bg-white/[0.03] border border-white/5 px-2.5 py-2">
+                                <div className="flex items-start gap-2">
+                                    {checkable ? (
+                                        <input
+                                            type="checkbox"
+                                            checked={isDone}
+                                            onChange={() => toggle(setDone, key)}
+                                            aria-label={`Marquer comme fait : ${item.text}`}
+                                            className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer accent-success-500 focus-ring rounded"
+                                        />
+                                    ) : (
+                                        <span aria-hidden="true" className="mt-0.5 w-3.5 shrink-0 text-center text-ink-500">·</span>
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-baseline justify-between gap-2">
+                                            <span className={`text-tiny ${isDone ? 'line-through text-ink-400' : checkable ? 'text-ink-100' : 'text-ink-300'}`}>
+                                                {item.text}
+                                            </span>
+                                            {item.amount != null && (
+                                                <span className={`text-tiny font-bold tabular-nums shrink-0 privacy-blur ${amountClass}`}>
+                                                    {item.amount > 0 ? '+' : ''}{cad(item.amount)}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => toggle(setOpenWhy, key)}
+                                            aria-expanded={whyOpen}
+                                            className="mt-1 inline-flex items-center gap-1 text-tiny text-primary/80 hover:text-primary focus-ring rounded"
+                                        >
+                                            Pourquoi&nbsp;? <span aria-hidden="true">{whyOpen ? '▾' : '▸'}</span>
+                                        </button>
+                                        {whyOpen && (
+                                            <p className="mt-1 text-tiny text-ink-400 leading-snug">{item.why}</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </li>
+                        );
+                    })}
                 </ul>
             </div>
 

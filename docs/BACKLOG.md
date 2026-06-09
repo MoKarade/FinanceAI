@@ -40,6 +40,64 @@
 - [ ] **[H1]** Chiffrement `localStorage` au repos par passphrase (faible valeur isolée ; cascade
   IndexedDB chiffré). Décision Marc (risque : passphrase oubliée → recovery).
 
+## 💰 Audit fiscal + moteur 2026-06-09 (3 agents : fiscal-accuracy, projection-validator, code-analyzer)
+> 0 BLOCKER. Socle exact (barèmes/BPA/RRQ/RAMQ/FSS/FERR/retenues conformes au doc). Détails dans les
+> rapports d'agents (session 2026-06-09). Chaque correctif fiscal = code + FISCAL_REFERENCE même PR.
+- [ ] **[FA-1]** 🔧 Assiette du crédit pension (féd 31400 + QC 361) inclut RRQ/PSV à tort
+  (`taxDecember.ts:362-364`) — ARC/RQ les EXCLUENT. Restreindre à DB + FERR 72+. **Non conservateur**
+  (~250-680 $/an/personne 65+). Le plus systémique des findings.
+- [ ] **[FA-2]** 🧭 Clawback PSV : revenu FAMILIAL comparé au seuil INDIVIDUEL (`taxDecember.ts:39-44`)
+  → clawback fictif jusqu'à ~14 k$/an pour un couple 95-190 k$ (conservateur mais massif).
+  Calculer par conjoint (les décompositions per-user existent) ou documenter en §9.
+- [ ] **[FA-3]** 🧭 SRG : (a) imposé à tort (non imposable) ; (b) clawback ignore retraits REER/gains
+  → SRG fictif jusqu'à ~13 k$/an en scénario FIRE bas revenu (`retirementIncome.ts:206-220`). **Non
+  conservateur** (b).
+- [ ] **[FA-4]** 🔧 CELI dupliqué : `taxJanuary.ts:89-92` recalcule 7000×inflation au lieu de lire
+  `CELI_ANNUAL_LIMITS` (2027 : 7 000 vs 7 500 au doc). Brancher sur la source unique.
+- [ ] **[FA-5]** 🔧 NPV rentes succession : `governmentPension × 0,65 × activeUsersCount`
+  (`estateCalculation.ts:144-145`) alors que le moteur le traite déjà comme FAMILIAL → ×N en double,
+  `estateNetWorth` couple gonflé de dizaines de k$.
+- [ ] **[FA-6]** 🧭 Dons charitables : crédit 33 % + relief gains 15 % en dur non sourcés
+  (`w5Effects.ts:98-101`). Sourcer au doc (vrai barème ~48-53 % > 200 $ ; don de titres = inclusion 0 %).
+- [ ] **[FA-7]** 🔧 Transcrire le §8 immobilier dans FISCAL_REFERENCE (OSFI, SCHL, primes, TPS/TVQ
+  neuf, taxes de bienvenue 2025/2026, HELOC 65 %) — valeurs déjà dans le code, doc en retard.
+- [ ] **[FA-8]** 🔧 Lot mineurs fiscaux : taux clawback 0,15 nommé+sourcé · cap clawback sans facteur
+  de report · prorata RRQ 39 ans / PSV 10-40 ans au doc · split 65/35 documenté · SystemView barèmes
+  composés depuis les constantes (`SystemView.tsx:102`) · assiette dividendes vs gains cohérente ·
+  retenue US 15 % sourcée · libellé FSS 2025/2026.
+- [ ] **[PV-1]** 🔧 Liquide négatif effacé silencieusement : débits directs (impôt d'avril, W5) peuvent
+  rendre `liquid < 0`, puis `applyMidMonthGrowth` clampe à 0 (`helpers.ts:54`) = dette fiscale effacée.
+  Garde explicite (cascade de vente ou dette comptée) + test de conservation couvrant avril.
+- [ ] **[PV-2]** 🔧 Récolte de gains ignore `capitalLossBank` (impôt payé sur gains compensables —
+  conservateur, sous-optimal).
+- [ ] **[PV-3]** 🔧 Fractionnement : le transfert n'alimente pas le crédit pension du RÉCIPIENDAIRE
+  (ARC 31400 l'admet) — conservateur.
+- [ ] **[PV-4]** 🔧 Tests des clamps hors-bornes `rrqStartAge` (55→60, 80→72) / `psvStartAge`.
+
+## 🧽 Audit code 2026-06-09 (code-analyzer) — dette actionnable
+- [ ] **[CA-01]** Code mort utils/ : `csvExport.ts` (109 l) + `safeNumber.ts` (30 l) entiers +
+  exports orphelins (addPurchase/removePurchase, formatMonthYear, formatCompactCAD,
+  getHasUserDataSnapshot). Confirmer via `npm run knip` avant suppression. (S)
+- [ ] **[CA-02]** Unifier le formatage monétaire : 11 helpers locaux divergents (« 1 234$ » vs
+  « 1 234,00 $ »…) → `formatCAD` de `utils/format.ts` ; résorber ~135 `toLocaleString`. (M)
+- [ ] **[CA-03]** Finaliser la migration `utils/tax.ts` (820 l) → `services/tax.ts` (alias 5 l
+  inachevé, ~20 imports directs restants). (S)
+- [ ] **[CA-04]** Smoke tests composants money-critical sans test direct : Investments (1187 l),
+  FutureProjection (1000), RealEstate, Retirement, TaxCenter, ChildPlanning, DebtManager, AiAssistant. (M)
+- [ ] **[CA-05]** Découper `Investments.tsx` (1187 l, +33) sous `components/investments/`. (L)
+- [ ] **[CA-06]** Découper `FutureProjection.tsx` (1000 l) + centraliser ses 32 hex dans
+  `chartColors`. (L)
+- [ ] **[CA-07]** Tokens couleur : `constants/chartColors.ts` (source Recharts), 20 hex en className
+  à bannir, 247 classes palette brute → tokens sémantiques. (Le « ~636 text-gray » du D3 est réglé :
+  0 restant.) (M)
+- [ ] **[CA-08]** Primitives `ui/Input`, `ui/Select`, `ui/Field` (label+erreur+aria) + migrer les
+  hotspots (AdvancedProjectionParams 40 inputs, PatrimoineExtended 19, Onboarding 11,
+  ProjectionControls 10). (M)
+- [ ] **[CA-09]** Découper `services/pdfReport.ts` (847 l) et `services/claude.ts` (768 l) ; évaluer
+  l'extractible restant de `projection.ts` (1387 l). (L)
+- [ ] **[CA-10]** Tests manquants : `usePastPortfolioHistory` (alimente FutureProjection — priorité),
+  assetMeta, analytics, usePwaInstallPrompt. (S)
+
 ## 🧹 Grand nettoyage AAA — items ENCORE ouverts (réf. `AAA_AUDIT_2026-06.md`)
 > D1 (money CF/M-*), D5 (robustesse), D6 (double-h1, focus tour), D9 (robustesse LLM/ingest) = ✅ **faits**
 > (détail dans l'audit). Restent les gros chantiers à décision/risque :
@@ -77,6 +135,19 @@
   retraite différents, demande RRQ/PSV optimale par personne).
 - [ ] **[CIX-F]** Bascule couple↔individuel **sans perte** (mémoriser le conjoint) + avatars/couleurs.
 
+## 🎨 Épuration UI — directives Marc 2026-06-09 (ordre validé)
+> Ordre : [UI-SCEN] plans de base → [UI-EPURE] épuration → [U5] → lot a11y (D6) → [ICONS-FUT].
+- [ ] **[UI-SCEN]** 🧭 **Enlever les « plans de base » (scénarios du Futur)** : 11 simulations
+  complètes recalculées à CHAQUE changement de paramètre (5 plans de gestion « Le Plan de Base /
+  CELI d'abord / REER d'abord / fonte du REER / Achat sans RAP » + 6 stress-tests) pour alimenter
+  le sélecteur de cartes + bandeau Verdict — redondant avec l'onglet Optimisation. Cible proposée :
+  stratégie de retrait = simple paramètre (select), stress-tests = à la demande dans Optimisation,
+  moteur ne calcule QUE le scénario réaliste par défaut (sliders ~10× plus rapides). Périmètre exact
+  à confirmer avec Marc.
+- [ ] **[UI-EPURE]** 🔧 Audit visuel global de CHAQUE onglet (Futur→Paramètres, Dashboard,
+  Configuration en premier — retours Marc) → plan d'épuration : sections à fusionner/retirer,
+  textes à couper, hiérarchie. Livrer le plan AVANT de toucher l'UI.
+
 ## 🎨 P2 — UX & polish
 - [ ] **[U5]** Export PNG du graphe « Évolution détaillée » (Dashboard).
 - [ ] **[ICONS-FUT]** Icônes Futur exhaustives : une icône typée par événement moteur (transferts,
@@ -102,13 +173,14 @@
   (mauvais emplacement) → les déplacer (Mode test → Système/diagnostics ; Connecteur → sa propre carte).
 - [x] **[SYS-REGROUP]** Refonte page **Système & diagnostics** : tout regrouper, plus simple et propre
   (diagnostics AVEC le journal d'erreurs).
-- [ ] **[SYS-ERRLOG]** Journal d'erreurs : **bouton « actualiser » manquant** (impossible de rafraîchir).
+- [x] **[SYS-ERRLOG]** Journal d'erreurs : bouton « Rafraîchir » présent (`ErrorLogViewer.tsx`,
+  refreshKey). Vérifié 2026-06-09 — était livré mais jamais coché.
 - [x] **[SYS-AUDIT]** Journal d'audit **toujours à 0** → brancher `logAudit()` aux call-sites
   (import CSV, suppressions en lot, restauration backup…). Infra prête depuis #103, jamais câblée.
-- [ ] **[SYS-WEB]** « Toile d'araignée » (interconnexions) **pas à jour** → la régénérer depuis l'état
-  réel ou la retirer si plus pertinente.
-- [ ] **[SYS-VERSION]** Vérifier que **Version & build** se tient bien à jour (`__APP_VERSION__`/
-  `__GIT_SHA__`/`__BUILD_DATE__` via Vite define).
+- [x] **[SYS-WEB]** « Toile d'araignée » : **retirée** (option « la retirer si plus pertinente » —
+  `SystemView.tsx:156`). Vérifié 2026-06-09.
+- [x] **[SYS-VERSION]** Version & build : branché sur Vite define (`vite.config.ts:31-33` →
+  `BUILD_INFO` SystemView), auto-tenu à jour à chaque build. Vérifié 2026-06-09.
 - [x] **[NBA-PAGE]** « Prochaine action » : **sortir de la sidebar → page/onglet à part** (la sidebar
   ne devrait pas porter ce widget).
 

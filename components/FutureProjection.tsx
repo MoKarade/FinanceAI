@@ -2,7 +2,6 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useDebouncedMemo } from '../utils/useDebouncedMemo';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
-import { Icon } from './ui/Icon';
 import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { Pill } from './ui/Pill';
@@ -48,18 +47,18 @@ interface FutureLegendItem {
     mcOnly?: boolean; // n'apparaît que si Monte Carlo est activé
 }
 const FUTURE_LEGEND_ITEMS: FutureLegendItem[] = [
-    { key: 'Liquidites', label: 'Cash', color: '#5a6478', shape: 'area' },
-    { key: 'CELI', label: 'CELI', color: '#4f9d86', shape: 'area' },
-    { key: 'CELIAPP', label: 'CELIAPP (FHSA)', color: '#5cae9f', shape: 'area' },
-    { key: 'REER', label: 'REER', color: '#5b82bf', shape: 'area' },
-    { key: 'REEE', label: 'REEE', color: '#5093a8', shape: 'area' },
-    { key: 'NonReg', label: 'Non-Enreg', color: '#c2974f', shape: 'area' },
-    { key: 'Crypto', label: 'Crypto', color: '#9277bd', shape: 'area' },
-    { key: 'Immobilier', label: 'Équité Immo', color: '#bd7d9c', shape: 'area' },
+    { key: 'Liquidites', label: 'Cash', color: '#4b5563', shape: 'area' },
+    { key: 'CELI', label: 'CELI', color: '#10b981', shape: 'area' },
+    { key: 'CELIAPP', label: 'CELIAPP (FHSA)', color: '#2dd4bf', shape: 'area' },
+    { key: 'REER', label: 'REER', color: '#3b82f6', shape: 'area' },
+    { key: 'REEE', label: 'REEE', color: '#06b6d4', shape: 'area' },
+    { key: 'NonReg', label: 'Non-Enreg', color: '#f59e0b', shape: 'area' },
+    { key: 'Crypto', label: 'Crypto', color: '#a855f7', shape: 'area' },
+    { key: 'Immobilier', label: 'Équité Immo', color: '#ec4899', shape: 'area' },
     { key: 'NetWorth', label: 'Valeur Nette', color: '#ffffff', shape: 'line' },
     { key: 'ImpotLatent', label: 'Impôt Latent', color: '#ef4444', shape: 'dashed' },
     { key: 'FluxImpots', label: 'Paiement Impôts', color: '#ef4444', shape: 'bar' },
-    { key: 'montecarlo', label: 'Monte Carlo (P10–P90)', color: '#5b82bf', shape: 'dashed', mcOnly: true },
+    { key: 'montecarlo', label: 'Monte Carlo (P10–P90)', color: '#3b82f6', shape: 'dashed', mcOnly: true },
     { key: 'events', label: 'Événements / icônes', color: '#e5e7eb', shape: 'dot' },
     { key: 'fire', label: 'Objectif FIRE', color: '#f97316', shape: 'dashed' },
     { key: 'aujourdhui', label: "Aujourd'hui", color: '#ffffff', shape: 'dashed' },
@@ -441,8 +440,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         return { lifeChartEvents: lifes, flowChartEvents: flows };
     }, [chartData]);
 
-    // G3 — sous-onglets Futur (Graphique = courbe + KPIs ; Paramètres = contrôles).
-    const [futureSubTab, setFutureSubTab] = useState<'graph' | 'params' | 'explains'>('graph');
+    // G3 — sous-onglets Futur (Graphique = courbe + KPIs ; Paramètres = hypothèses ;
+    // Optimisation = leviers + robustesse + placement ; Plan d'action = explications + checklist).
+    const [futureSubTab, setFutureSubTab] = useState<'graph' | 'params' | 'optim' | 'plan'>('graph');
+    // Amorçage : la courbe reste cachée tant que l'utilisateur n'a pas cliqué « Calculer »
+    // (demande Marc — écran d'amorçage d'abord). La projection tourne en fond ; on ne révèle
+    // le graphe qu'au geste explicite. Une fois révélé dans la session, ça reste affiché.
+    const [curveRevealed, setCurveRevealed] = useState(false);
+    // A11y : à la révélation, déplacer le focus sur la zone courbe (le bouton « Calculer » se
+    // démonte → sinon le focus retombe sur <body> et le lecteur d'écran perd le contexte).
+    const revealedRef = useRef<HTMLDivElement>(null);
+    useEffect(() => { if (curveRevealed) revealedRef.current?.focus(); }, [curveRevealed]);
 
     // G21 — objectif servant au bandeau « Verdict » (meilleur scénario en 1 phrase).
     // L'optimisation interactive complète (choix des leviers, re-tri par objectif) vit
@@ -536,8 +544,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // 21 hooks ci-dessus) → 21 violations react-hooks/rules-of-hooks.
     if (!budgetItems || !projection || !config || !initialBalances) {
         console.error("FutureProjection: Missing critical initialization data.", { budgetItems, projection, config, initialBalances });
-        return <div className="p-8 text-center text-danger-400 font-bold bg-surface/50 rounded-2xl border border-danger-500/20">
-            Données d'initialisation manquantes. Veuillez vérifier vos comptes et votre budget.
+        return <div className="p-8 text-center text-red-400 font-bold bg-surface/50 rounded-2xl border border-red-500/20">
+            ⚠️ Données d'initialisation manquantes. Veuillez vérifier vos comptes et votre budget.
         </div>;
     }
 
@@ -548,10 +556,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // chartData.length > 0, donc Dashboard/Investments/Budget gardent la dernière
     // projection valide plutôt que d'afficher ces zéros.)
     if (results?._hasError) {
-        return <div className="p-8 text-center bg-surface/50 rounded-2xl border border-danger-500/20 space-y-2">
-            <Icon name="alert" size={22} className="text-warning-400 shrink-0" />
-            <div className="text-danger-400 font-bold">Le calcul de la projection a échoué.</div>
-            <div className="text-body text-ink-300 max-w-md mx-auto">
+        return <div className="p-8 text-center bg-surface/50 rounded-2xl border border-red-500/20 space-y-2">
+            <div className="text-2xl" aria-hidden="true">⚠️</div>
+            <div className="text-red-400 font-bold">Le calcul de la projection a échoué.</div>
+            <div className="text-sm text-ink-300 max-w-md mx-auto">
                 Vérifie tes paramètres (revenus, dépenses, comptes, objectifs). L'erreur a été
                 journalisée.{runMC ? ' Tu peux aussi désactiver le mode Monte-Carlo et réessayer.' : ''}
             </div>
@@ -580,11 +588,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     };
 
     return (
-        <div className="space-y-6 stagger-in pb-24">
+        <div className="space-y-6 animate-fade-in pb-24">
 
             <PageHeader
-                icon={<Icon name="future" size={28} />}
+                icon="🔮"
                 title="Projection Future"
+                subtitle="Analyse des flux mensuels projetés avec Loyer → Hypothèque automatique et frais enfants dynamiques."
                 actions={
                     <Pill
                         aria-label="Mode de données"
@@ -592,8 +601,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         value={projection.useTheoretical ? 'sandbox' : 'real'}
                         onChange={(v) => updateProj('useTheoretical', v === 'sandbox')}
                         options={[
-                            { value: 'real', label: 'Réel', icon: <Icon name="link" size={13} /> },
-                            { value: 'sandbox', label: 'Sandbox', icon: <Icon name="flask" size={13} /> },
+                            { value: 'real', label: 'Données Réelles', icon: '🔗' },
+                            { value: 'sandbox', label: 'Sandbox', icon: '🧪' },
                         ]}
                     />
                 }
@@ -603,7 +612,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             <StatGrid cols={4}>
                 <KPIStat
                     label="Objectif FIRE"
-                    icon={<Icon name="goal" size={16} />}
+                    icon="🎯"
                     value={`${(fireNumber / 1000).toFixed(0)}k $`}
                     sublabel="Règle des 4%"
                     privacy
@@ -611,7 +620,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 />
                 <KPIStat
                     label="Patrimoine projeté"
-                    icon={<Icon name="portfolio" size={16} />}
+                    icon="💼"
                     // Fallback : si estateNetWorth est 0 (rare en réalité ou bug
                     // silencieux du moteur), utiliser finalNetWorth puis fireNumber
                     // comme proxy. Évite d'afficher "0.00M$" trompeur en mode test.
@@ -622,14 +631,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 />
                 <KPIStat
                     label="Taux de succès"
-                    icon={<Icon name="check" size={16} />}
+                    icon="✓"
                     value={results?.successRate != null ? `${results.successRate}%` : '—'}
                     sublabel={runMC ? 'Monte Carlo (100 itér.)' : 'Active MC pour calculer'}
                     variant={results?.successRate != null && results.successRate >= 80 ? 'success' : results?.successRate != null && results.successRate >= 50 ? 'warning' : 'danger'}
                 />
                 <KPIStat
                     label="Vitalité financière"
-                    icon={<Icon name="thermometer" size={16} />}
+                    icon="🌡️"
                     value={results?.fvi != null ? `${results.fvi}/100` : '—'}
                     sublabel={runMC ? '30/30/20/20 split' : 'Active MC pour calculer'}
                     variant={results?.fvi != null && results.fvi >= 70 ? 'success' : results?.fvi != null && results.fvi >= 40 ? 'warning' : 'danger'}
@@ -648,10 +657,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-card text-meta border w-fit ${
                             isBest
                                 ? 'bg-green-500/10 border-green-500/30 text-green-300'
-                                : 'bg-warning-500/10 border-warning-500/30 text-amber-300'
+                                : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
                         }`}
                     >
-                        <Icon name={isBest ? 'check' : 'alert'} size={13} />
+                        <span aria-hidden="true">{isBest ? '★' : '○'}</span>
                         <span>Scénario actif&nbsp;: <strong className="privacy-blur">{active?.strategyName || '—'}</strong></span>
                         {!isBest && (
                             <span className="text-ink-500 text-tiny hidden sm:inline">— pas le meilleur · modifier dans Paramètres</span>
@@ -660,32 +669,24 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 );
             })()}
 
-            {/* G3 — bascule Graphique / Paramètres */}
-            <div className="flex gap-1 p-1 rounded-card bg-surface/40 border border-white/5 w-fit" role="tablist" aria-label="Vue Future">
-                <button
-                    type="button" role="tab" aria-selected={futureSubTab === 'graph'}
-                    onClick={() => setFutureSubTab('graph')}
-                    className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === 'graph' ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-100'}`}
-                >
-                    Graphique
-                </button>
-                <button
-                    type="button" role="tab" aria-selected={futureSubTab === 'params'}
-                    onClick={() => setFutureSubTab('params')}
-                    className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === 'params' ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-100'}`}
-                >
-                    Paramètres
-                </button>
-                <button
-                    type="button" role="tab" aria-selected={futureSubTab === 'explains'}
-                    onClick={() => setFutureSubTab('explains')}
-                    className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === 'explains' ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-100'}`}
-                >
-                    Explications
-                </button>
+            {/* G3 — bascule 4 onglets : Graphique / Paramètres / Optimisation / Plan d'action */}
+            <div className="flex flex-wrap gap-1 p-1 rounded-card bg-surface/40 border border-white/5 w-fit" role="tablist" aria-label="Vue Future">
+                {([
+                    { id: 'graph', emoji: '📈', label: 'Graphique' },
+                    { id: 'params', emoji: '⚙️', label: 'Paramètres' },
+                    { id: 'optim', emoji: '🎯', label: 'Optimisation' },
+                    { id: 'plan', emoji: '🗂️', label: 'Plan d\'action' },
+                ] as const).map(t => (
+                    <button
+                        key={t.id}
+                        type="button" role="tab" aria-selected={futureSubTab === t.id}
+                        onClick={() => setFutureSubTab(t.id)}
+                        className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === t.id ? 'bg-primary text-white' : 'text-ink-300 hover:text-ink-100'}`}
+                    >
+                        <span aria-hidden="true" className="mr-1">{t.emoji}</span>{t.label}
+                    </button>
+                ))}
             </div>
-
-            {futureSubTab === 'explains' && <ProjectionExplains chartData={chartData} />}
 
             {futureSubTab === 'params' && (
             <ProjectionControls
@@ -708,10 +709,34 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             />
             )}
 
-            {futureSubTab === 'graph' && (
+            {/* Écran d'amorçage : tant que la courbe n'est pas révélée, on invite à calculer. */}
+            {futureSubTab === 'graph' && !curveRevealed && (
+                <Card className="text-center">
+                    <div className="py-10 px-4 space-y-4 max-w-lg mx-auto">
+                        <div className="text-4xl" aria-hidden="true">📈</div>
+                        <h2 className="text-h2 text-ink-50">Projette ton avenir financier</h2>
+                        <p className="text-meta text-ink-300 leading-snug">
+                            Ajuste tes hypothèses dans <strong>Paramètres</strong>, compose tes leviers dans
+                            <strong> Optimisation</strong>, puis lance le calcul pour voir ta courbe de vie
+                            et ton plan d'action.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => setCurveRevealed(true)}
+                            disabled={isComputing}
+                            className="px-6 py-2.5 rounded-card text-meta font-bold text-dark bg-primary hover:brightness-110 disabled:opacity-50 transition-all focus-ring"
+                        >
+                            {isComputing ? 'Calcul en cours…' : 'Calculer ma projection'}
+                        </button>
+                    </div>
+                </Card>
+            )}
+
+            {futureSubTab === 'graph' && curveRevealed && (
+            <div ref={revealedRef} tabIndex={-1} className="outline-none" role="region" aria-label="Projection affichée">
             <Card title={`La Courbe de Vie - ${allResults[selectedScenarioIdx]?.strategyName || 'Simulation'}`}
                 action={isComputing ? (
-                    <span className="flex items-center gap-2 text-tiny text-warning-400" role="status" aria-live="polite">
+                    <span className="flex items-center gap-2 text-tiny text-amber-400" role="status" aria-live="polite">
                         <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="40" strokeDashoffset="20" opacity="0.5"/>
                         </svg>
@@ -721,12 +746,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 {/* B1 — Couche 0 « Verdict » : une phrase + un chiffre + une pastille,
                     lisible en 2 secondes. Le détail (stratégie, pourquoi) est en dessous. */}
                 {bestScenario && (
-                    <div className={`mb-3 rounded-xl border p-3 flex items-center gap-3 ${bestScenario.fireAge != null ? 'border-green-500/30 bg-green-500/10' : 'border-warning-500/30 bg-warning-500/10'}`}>
-                        {bestScenario.fireAge != null
-                            ? <Icon name="check" size={22} className="text-green-400 shrink-0" />
-                            : <Icon name="clock" size={22} className="text-warning-400 shrink-0" />}
+                    <div className={`mb-3 rounded-xl border p-3 flex items-center gap-3 ${bestScenario.fireAge != null ? 'border-green-500/30 bg-green-500/10' : 'border-amber-500/30 bg-amber-500/10'}`}>
+                        <span className="text-2xl shrink-0" aria-hidden="true">{bestScenario.fireAge != null ? '✅' : '⏳'}</span>
                         <div className="min-w-0">
-                            <div className="text-body font-black text-white leading-tight">
+                            <div className="text-sm font-black text-white leading-tight">
                                 {bestScenario.fireAge != null
                                     ? `En bonne voie — libre dès ${bestScenario.fireAge} ans`
                                     : 'Objectif FIRE pas encore atteint sur l’horizon'}
@@ -750,7 +773,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                     key={y}
                                     type="button"
                                     onClick={() => zoom.showRange(0, idxForYears(y))}
-                                    className={`px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring ${active ? 'bg-primary text-dark' : 'text-ink-300 hover:text-dark hover:bg-white/10'}`}
+                                    className={`px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring ${active ? 'bg-primary text-white' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
                                 >
                                     {y} ans
                                 </button>
@@ -759,7 +782,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         <button
                             type="button"
                             onClick={zoom.reset}
-                            className={`px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring ${!zoom.isZoomed ? 'bg-primary text-dark' : 'text-ink-300 hover:text-dark hover:bg-white/10'}`}
+                            className={`px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring ${!zoom.isZoomed ? 'bg-primary text-white' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
                         >
                             Tout
                         </button>
@@ -774,7 +797,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             className="px-2 py-1 text-tiny font-bold rounded text-ink-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors focus-ring"
                             title="Plein écran (Échap pour quitter)"
                         >
-                            Plein écran
+                            ⛶ Plein écran
                         </button>
                     </div>
                 </div>
@@ -801,7 +824,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         // affiche un état de chargement de la MÊME hauteur que le graphe → zéro layout
                         // shift, et on ne montre jamais une courbe partielle/obsolète (demande Marc).
                         <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-ink-300" role="status" aria-live="polite">
-                            <svg className="animate-spin h-8 w-8 text-warning-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <svg className="animate-spin h-8 w-8 text-amber-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="40" strokeDashoffset="20" opacity="0.5" />
                             </svg>
                             <span className="text-meta">Calcul de ta projection…</span>
@@ -841,14 +864,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             <Tooltip content={<ExpertTooltip userName1={config.users[0]?.name} userName2={config.users[1]?.name} />} />
                             {isVisible('fire') && <ReferenceLine y={fireNumber} stroke="#f97316" strokeDasharray="5 5" label={<RefLineLabel value="Objectif FIRE" color="#f97316" />} />}
 
-                            {isVisible('Liquidites') && <Area type="monotone" dataKey="Liquidites" stackId="1" stroke="#5a6478" fill="#5a6478" name="Cash" isAnimationActive={false} />}
-                            {isVisible('CELI') && <Area type="monotone" dataKey="CELI" stackId="1" stroke="#4f9d86" fill="#4f9d86" fillOpacity={0.6} name="CELI" isAnimationActive={false}/>}
-                            {isVisible('CELIAPP') && <Area type="monotone" dataKey="CELIAPP" stackId="1" stroke="#5cae9f" fill="#5cae9f" fillOpacity={0.6} name="CELIAPP (FHSA)" isAnimationActive={false}/>}
-                            {isVisible('REER') && <Area type="monotone" dataKey="REER" stackId="1" stroke="#5b82bf" fill="#5b82bf" fillOpacity={0.6} name="REER" isAnimationActive={false}/>}
-                            {isVisible('REEE') && <Area type="monotone" dataKey="REEE" stackId="1" stroke="#5093a8" fill="#5093a8" fillOpacity={0.6} name="REEE" isAnimationActive={false}/>}
-                            {isVisible('NonReg') && <Area type="monotone" dataKey="NonReg" stackId="1" stroke="#c2974f" fill="#c2974f" fillOpacity={0.6} name="Non-Enreg" isAnimationActive={false}/>}
-                            {isVisible('Crypto') && <Area type="monotone" dataKey="Crypto" stackId="1" stroke="#9277bd" fill="#9277bd" fillOpacity={0.6} name="Crypto" isAnimationActive={false}/>}
-                            {isVisible('Immobilier') && <Area type="monotone" dataKey="Immobilier" stackId="1" stroke="#bd7d9c" fill="#bd7d9c" fillOpacity={0.3} name="Équité Immo" isAnimationActive={false}/>}
+                            {isVisible('Liquidites') && <Area type="monotone" dataKey="Liquidites" stackId="1" stroke="#4b5563" fill="#4b5563" name="Cash" isAnimationActive={false} />}
+                            {isVisible('CELI') && <Area type="monotone" dataKey="CELI" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} name="CELI" isAnimationActive={false}/>}
+                            {isVisible('CELIAPP') && <Area type="monotone" dataKey="CELIAPP" stackId="1" stroke="#2dd4bf" fill="#2dd4bf" fillOpacity={0.6} name="CELIAPP (FHSA)" isAnimationActive={false}/>}
+                            {isVisible('REER') && <Area type="monotone" dataKey="REER" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} name="REER" isAnimationActive={false}/>}
+                            {isVisible('REEE') && <Area type="monotone" dataKey="REEE" stackId="1" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.6} name="REEE" isAnimationActive={false}/>}
+                            {isVisible('NonReg') && <Area type="monotone" dataKey="NonReg" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} name="Non-Enreg" isAnimationActive={false}/>}
+                            {isVisible('Crypto') && <Area type="monotone" dataKey="Crypto" stackId="1" stroke="#a855f7" fill="#a855f7" fillOpacity={0.6} name="Crypto" isAnimationActive={false}/>}
+                            {isVisible('Immobilier') && <Area type="monotone" dataKey="Immobilier" stackId="1" stroke="#ec4899" fill="#ec4899" fillOpacity={0.3} name="Équité Immo" isAnimationActive={false}/>}
 
                             {isVisible('ImpotLatent') && <Area type="monotone" dataKey="ImpotLatent" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} strokeDasharray="3 3" name="Impôt Latent" isAnimationActive={false}/>}
                             {isVisible('FluxImpots') && <Bar dataKey="FluxImpots" fill="#ef4444" fillOpacity={0.8} name="Paiement Impôts" barSize={4} isAnimationActive={false} />}
@@ -857,9 +880,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 cône d'incertitude : P10/P90 pointillés + médiane pleine. */}
                             {runMC && isVisible('montecarlo') && (
                                 <>
-                                    <Line type="monotone" dataKey="P90" stroke="#7ba0cf" strokeWidth={1.5} strokeDasharray="5 4" dot={false} name="Optimiste (P90)" isAnimationActive={false} />
-                                    <Line type="monotone" dataKey="P10" stroke="#cf8a8a" strokeWidth={1.5} strokeDasharray="5 4" dot={false} name="Pessimiste (P10)" isAnimationActive={false} />
-                                    <Line type="monotone" dataKey="P50" stroke="#a99fce" strokeWidth={2.5} dot={false} name="Scénario médian (P50)" isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="P90" stroke="#60a5fa" strokeWidth={1.5} strokeDasharray="5 4" dot={false} name="Optimiste (P90)" isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="P10" stroke="#f87171" strokeWidth={1.5} strokeDasharray="5 4" dot={false} name="Pessimiste (P10)" isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="P50" stroke="#c084fc" strokeWidth={2.5} dot={false} name="Scénario médian (P50)" isAnimationActive={false} />
                                 </>
                             )}
 
@@ -948,23 +971,29 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </div>
                 </div>
 
-                {/* C3 suite — Placement par compte : assetLocation branchée sur
-                    le portfolio réel. Recommande CELI/REER/NonReg optimal. */}
-                <AssetLocationPanel assets={assets} annualGrossIncome={baseGrossAnnual} />
-
-                {/* C4 — Classement par robustesse (Monte Carlo, taux de succès).
-                    Bouton explicite : 5 stratégies × 1000 sims dans le Web Worker. */}
-                <RobustnessPanel params={params} />
-
-                {/* C5 — Optimiseur configurable : l'utilisateur compose l'espace de
-                    leviers, on teste toutes les combinaisons et on désigne la meilleure
-                    selon l'objectif choisi (multi-worker, re-tri instantané). */}
-                <StrategyOptimizerPanel params={params} onApply={setRetirementGoal ? handleApplyConfig : undefined} />
-
-                {/* C2 — Plan d'action HIÉRARCHIQUE : global → décennie → 3 ans → année
-                    → semestre → trimestre → mois → conseils (drill-down au clic). */}
-                <ActionPlanDrilldown chartData={chartData} strategyName={allResults[selectedScenarioIdx]?.strategyName} />
             </Card>
+            </div>
+            )}
+
+            {/* Optimisation : leviers + robustesse + placement par compte. */}
+            {futureSubTab === 'optim' && (
+                <div className="space-y-6">
+                    {/* C3 — Placement par compte (asset location optimal). */}
+                    <AssetLocationPanel assets={assets} annualGrossIncome={baseGrossAnnual} />
+                    {/* C4 — Robustesse (Monte Carlo, taux de succès, Web Worker). */}
+                    <RobustnessPanel params={params} />
+                    {/* C5 — Optimiseur configurable (espace de leviers, classement par objectif). */}
+                    <StrategyOptimizerPanel params={params} onApply={setRetirementGoal ? handleApplyConfig : undefined} />
+                </div>
+            )}
+
+            {/* Plan d'action : explications fusionnées + checklist hiérarchique. */}
+            {futureSubTab === 'plan' && (
+                <div className="space-y-6">
+                    <ProjectionExplains chartData={chartData} />
+                    {/* C2 — Plan d'action HIÉRARCHIQUE (global → mois, drill-down au clic). */}
+                    <ActionPlanDrilldown chartData={chartData} strategyName={allResults[selectedScenarioIdx]?.strategyName} />
+                </div>
             )}
         </div>
     );

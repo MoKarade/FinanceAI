@@ -6,7 +6,7 @@ import { CollapsibleSection } from '../ui/CollapsibleSection';
 import { Badge } from '../ui/Badge';
 import { ProjectionConfig, RealEstateGoal, BudgetConfig } from '../../types';
 import { AdvancedProjectionParams } from '../AdvancedProjectionParams';
-import { ProjectionResult } from '../../services/projection/types';
+import { STRATEGY_DEFS, strategyDefFor } from '../../services/projection/scenarios';
 
 interface LiveCSVBalances {
     CELI: number;
@@ -25,9 +25,6 @@ interface ProjectionControlsProps {
     runMC: boolean;
     setRunMC: (v: boolean) => void;
     isComputing: boolean;
-    selectedScenarioIdx: number;
-    setSelectedScenarioIdx: (i: number) => void;
-    allResults: ProjectionResult[];
     fireNumber: number;
     aiNote: string;
     liveCSVBalances: LiveCSVBalances;
@@ -72,7 +69,6 @@ const REPLAY_OPTIONS = [
 export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
     projection, updateProj, updateReturnRate,
     runMC, setRunMC, isComputing,
-    selectedScenarioIdx, setSelectedScenarioIdx, allResults,
     aiNote, liveCSVBalances, applyHistoricalRate,
     realEstateGoals, setRealEstateGoals,
 }) => {
@@ -80,42 +76,46 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
     const activeStochasticCount = STOCHASTIC_TOGGLES.filter(t => !!projAsMap[t.key]).length;
     return (
         <>
-            {/* Scenario Selector — pas dans une collapsible: choix structurant.
-                7 cartes (Phase 4 #4): 4+3 sur lg, 7 sur xl. */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
-                {allResults.map((res, idx: number) => {
-                    const isCompoundNew = res.stratType === 'COMPOUND_STRESS' || res.stratType === 'LATE_INHERITANCE';
-                    return (
-                        <button
-                            key={idx}
-                            onClick={() => setSelectedScenarioIdx(idx)}
-                            className={`p-4 rounded-card border transition-all text-left relative overflow-hidden focus-ring ${
-                                selectedScenarioIdx === idx
-                                    ? 'bg-primary/15 border-primary ring-1 ring-primary'
-                                    : 'bg-surface/40 border-white/5 hover:border-white/20'
-                            }`}
-                        >
-                            <div className="flex items-center gap-3 mb-2">
-                                <span className="text-h1" aria-hidden="true">{res.icon}</span>
-                                <div className="min-w-0">
-                                    <div className="text-meta font-bold text-ink-50 leading-tight truncate">{res.strategyName}</div>
-                                    <div className="text-tiny text-ink-400 mt-0.5">Patrimoine: {((res.estateNetWorth ?? 0) / 1000000).toFixed(2)}M$</div>
+            {/* [UI-SCEN] — la stratégie de gestion/retrait est un PARAMÈTRE (plus de cartes
+                de scénarios recalculées en ×11 : le moteur ne calcule que ce choix ; les
+                stress-tests vivent dans Optimisation, à la demande). */}
+            {(() => {
+                const def = strategyDefFor(projection.withdrawalStrategy);
+                return (
+                    <Card icon={<Icon name="compass" size={18} />} title="Stratégie de retrait & gestion">
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                                <div>
+                                    <label htmlFor="withdrawal-strategy" className="block text-meta text-ink-300 mb-1">
+                                        Façon de gérer l'épargne et les retraits
+                                    </label>
+                                    <select
+                                        id="withdrawal-strategy"
+                                        value={def.strategy}
+                                        onChange={(e) => updateProj('withdrawalStrategy', e.target.value as ProjectionConfig['withdrawalStrategy'])}
+                                        className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
+                                    >
+                                        {STRATEGY_DEFS.map((d) => (
+                                            <option key={d.strategy} value={d.strategy}>
+                                                {d.strategyName}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p className="text-tiny text-ink-400 mt-2 leading-snug">{def.stratDescription}</p>
+                                </div>
+                                <div className="space-y-1.5 text-tiny">
+                                    <div className="text-success-400"><strong>Pour :</strong> {def.pros.join(' · ')}</div>
+                                    <div className="text-orange-300"><strong>Contre :</strong> {def.cons.join(' · ')}</div>
+                                    <p className="text-ink-400 leading-snug mt-2">
+                                        Pas sûr du bon choix ? L'onglet <strong>Optimisation</strong> les compare
+                                        (Monte Carlo) et peut appliquer la meilleure automatiquement.
+                                    </p>
                                 </div>
                             </div>
-                            {isCompoundNew && selectedScenarioIdx !== idx && (
-                                <div className="absolute top-1 left-1">
-                                    <Badge variant="warning" size="sm">Nouveau</Badge>
-                                </div>
-                            )}
-                            {selectedScenarioIdx === idx && (
-                                <div className="absolute top-0 right-0 w-8 h-8 bg-primary/20 rounded-bl-card flex items-center justify-center">
-                                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                                </div>
-                            )}
-                        </button>
-                    );
-                })}
-            </div>
+                        </div>
+                    </Card>
+                );
+            })()}
 
             {/* AI Insight — visible si présent */}
             {aiNote && (
@@ -133,8 +133,8 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                                 )}
                             </p>
                             <div className="flex flex-wrap gap-3 mt-2">
-                                <div className="text-tiny text-success-400 font-bold">Pros: {allResults[selectedScenarioIdx]?.pros?.join(', ') || 'N/A'}</div>
-                                <div className="text-tiny text-danger-400 font-bold">Cons: {allResults[selectedScenarioIdx]?.cons?.join(', ') || 'N/A'}</div>
+                                <div className="text-tiny text-success-400 font-bold">Pros: {strategyDefFor(projection.withdrawalStrategy).pros.join(', ')}</div>
+                                <div className="text-tiny text-danger-400 font-bold">Cons: {strategyDefFor(projection.withdrawalStrategy).cons.join(', ')}</div>
                             </div>
                         </div>
                     </div>

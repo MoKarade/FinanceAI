@@ -11,6 +11,7 @@
 //   stratégies internes. On expose ces 5 résultats avec un classement honnête,
 //   en 1 seul appel.
 
+import { STRATEGY_DEFS } from './scenarios';
 import { calculateFutureProjection, type SimulationParams } from '../projection';
 import { logError } from '../errorLogger';
 
@@ -32,9 +33,13 @@ export interface ScenarioComparison {
 }
 
 export function compareLifeScenarios(params: SimulationParams): ScenarioComparison {
-    // UN SEUL appel — le moteur produit déjà les 5 scénarios.
-    const r = calculateFutureProjection(params);
-    const allResults = r.allResults || [];
+    // [UI-SCEN] — le moteur ne produit plus qu'UN scénario par défaut : on lance UNE
+    // simulation PAR façon de gérer (withdrawalStrategy paramétré), puis on compare.
+    // (L'ancien appel unique ne comparait plus rien : 1 ligne, écart 0 $ — placebo.)
+    const allResults = STRATEGY_DEFS.map((def) => calculateFutureProjection({
+        ...params,
+        projection: { ...params.projection, withdrawalStrategy: def.strategy as SimulationParams['projection']['withdrawalStrategy'] },
+    }).allResults?.[0]).filter((x): x is NonNullable<typeof x> => x != null);
 
     // FIX silent-failure cycle 2 (MEDIUM): allResults vide → signal explicite.
     if (allResults.length === 0) {
@@ -47,13 +52,14 @@ export function compareLifeScenarios(params: SimulationParams): ScenarioComparis
         };
     }
 
+    const baseEstate = allResults[0]?.estateNetWorth ?? 0; // AUTO_MARGINAL = référence
     const results = allResults.map(s => ({
         scenarioType: s.stratType ?? '—',
         strategyName: s.strategyName ?? s.stratType ?? '—',
         estateNetWorth: s.estateNetWorth ?? 0,
         finalNetWorth: s.finalNetWorth ?? 0,
         totalTaxesPaid: s.totalTaxesPaid ?? 0,
-        gainVsBase: s.gainVsAuto ?? 0,
+        gainVsBase: (s.estateNetWorth ?? 0) - baseEstate,
         pros: s.pros ?? [],
         cons: s.cons ?? [],
         icon: s.icon ?? '📊',

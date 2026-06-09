@@ -51,6 +51,8 @@ interface WorkerRequest {
     params: SimulationParams;
     runMC: boolean;
     selectedIdx: number;
+    // [UI-SCEN] — types de scénarios demandés explicitement (panneau stress-tests).
+    onlyStratTypes?: string[];
 }
 
 /**
@@ -79,11 +81,12 @@ export async function runProjectionAsync(
     params: SimulationParams,
     runMC: boolean = false,
     selectedIdx: number = 0,
+    onlyStratTypes?: string[],
 ): Promise<ProjectionResult> {
     const worker = getWorker();
     if (!worker) {
         const { calculateFutureProjection } = await import('../projection');
-        return calculateFutureProjection(params, runMC, selectedIdx);
+        return calculateFutureProjection(params, runMC, selectedIdx, onlyStratTypes);
     }
     const id = _nextRequestId++;
     return new Promise((resolve, reject) => {
@@ -122,7 +125,7 @@ export async function runProjectionAsync(
         worker.addEventListener('message', onMessage);
         worker.addEventListener('error', onError);
         worker.addEventListener('messageerror', onMessageError);
-        const req: WorkerRequest = { __requestId: id, params, runMC, selectedIdx };
+        const req: WorkerRequest = { __requestId: id, params, runMC, selectedIdx, onlyStratTypes };
         worker.postMessage(req);
     });
 }

@@ -125,7 +125,9 @@
 - [ ] **[D6-SR]** Mode privé : le flou CSS laisse les montants **lisibles par lecteur d'écran**
   (fuite). Masquer le TEXTE quand le mode privé est actif (comme les graphes font déjà `***`),
   pas seulement flouter. Touche KPI/cellules de tableau/inputs. (Re-confirmé par `a11y-auditor`
-  2026-06-09 : systémique, AUCUN `privacy-blur` du codebase n'est masqué aux SR.)
+  2026-06-09 : systémique, AUCUN `privacy-blur` du codebase n'est masqué aux SR — ~50 occurrences,
+  dont les nouveaux montants du `StressTestPanel`. Correctif cible : primitive `<PrivateAmount>`
+  partagée avec `aria-hidden` + `sr-only` « montant masqué ».)
 - [ ] **[D7]** Perf boot : `hydrateAssets` (`App.tsx`) boucle `await sleep(2500ms)` séquentiel par
   symbole → 10 actifs = ~25 s. Paralléliser + cacher, garde-fous anti-rate-limit. Plus gros gain
   de fluidité ressenti.

@@ -1,7 +1,12 @@
 # 🔮 Projection Future — Documentation détaillée du moteur
 
 > **Fichier source** : `services/projection.ts` (~2400 lignes) + `services/projection/helpers.ts` + `services/projection/goalSeek.ts` + `services/projection/drawdownOptimizer.ts` + `services/projection/historicalReturns.ts` + `services/projection/runAsync.ts` + `services/projection/assetLocation.ts` + `services/projection.worker.ts`
-> **Point d'entrée public** : `calculateFutureProjection(params, runMC = false, selectedIdx = 0): ProjectionResult`
+> **Point d'entrée public** : `calculateFutureProjection(params, runMC = false, selectedIdx = 0, onlyStratTypes?): ProjectionResult`
+> ⚠️ **[UI-SCEN] (2026-06-09) — changement de contrat** : par défaut le moteur ne calcule QUE le
+> scénario de la stratégie sélectionnée (`projection.withdrawalStrategy`, défaut AUTO_MARGINAL) —
+> `allResults` contient **1 entrée** (plus 11). Les stress-tests se demandent EXPLICITEMENT via
+> `onlyStratTypes` (ex. `['HYPER_INFLATION']`) ; comparer des stratégies = un run par
+> `withdrawalStrategy` (cf `drawdownOptimizer.compareLifeScenarios`). `selectedIdx` est legacy (0).
 > **API async** : `runProjectionAsync(params, runMC, selectedIdx): Promise<ProjectionResult>` — exécute dans un Web Worker avec timeout 30s
 > **Public** : utilisateurs non-experts qui veulent comprendre **exactement** ce que la simulation fait au mois près.
 > **UI composants** : `components/Retirement.tsx` (orchestration) + `components/retirement/GoalSeekerCard.tsx` (projection inverse) + `components/retirement/AssetLocationCard.tsx` (asset location)

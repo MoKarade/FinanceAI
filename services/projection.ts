@@ -9,7 +9,7 @@ import { rankStrategiesByRobustness, type RobustnessRanking, type RankRobustness
 import type { EngineOverrides, StrategyConfig } from './projection/strategyConfig';
 import { runStrategySearch, type StrategySearchResult, type RunStrategySearchOptions } from './projection/strategySearch';
 import { ASSET_LOCATION_BONUS_PP } from './projection/strategySpace';
-import { SCENARIO_DEFINITIONS } from './projection/scenarios';
+import { SCENARIO_DEFINITIONS, strategyDefFor } from './projection/scenarios';
 import { applyW5Effects, applyAgeBasedExpenses } from './projection/w5Effects';
 import { tryCriticalIllness, tryInheritance, tryMortality, trySpouseMortality, tryLtcTrigger, ltcMonthlyCost, tryDivorce } from './projection/stochasticEvents';
 import { processAprilSettlement } from './projection/taxApril';
@@ -1322,17 +1322,32 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
         }
         : params;
 
-    // V90 + Cycle 7 split: Avenirs de Vie (5 Distinct Futures)
-    // Metadata extraite dans ./projection/scenarios. Itère sur SCENARIO_DEFINITIONS
-    // (7 scénarios depuis Phase 4 #4) au lieu de blocs hardcodés ~10 lignes chacun.
-    // B3 perf — certains appelants (goalSeek) n'ont besoin que du scénario BASE :
-    // éviter de lancer les 7 inutilement. Filtre optionnel ; défaut = tous (inchangé).
-    const requestedDefs = onlyStratTypes
-        ? SCENARIO_DEFINITIONS.filter(d => onlyStratTypes.includes(d.stratType))
-        : SCENARIO_DEFINITIONS;
-    const activeDefs = requestedDefs.length > 0 ? requestedDefs : SCENARIO_DEFINITIONS;
+    // [UI-SCEN] (2026-06-09, demande Marc « enlève les plans de base ») — la stratégie de
+    // gestion est un PARAMÈTRE (projection.withdrawalStrategy) : par défaut le moteur ne
+    // calcule QUE ce scénario réaliste (1 simulation au lieu de 11 — ÷11 en déterministe ;
+    // en Monte Carlo le gain porte sur la part déterministe). Les stress-tests sont demandés EXPLICITEMENT via `onlyStratTypes`
+    // (panneau de l'onglet Optimisation). Parmi les façons de gérer (kind 'strategy',
+    // toutes stratType BASE), seule la SÉLECTIONNÉE est calculée — y compris quand
+    // onlyStratTypes contient 'BASE' (goalSeek : 1 sim au lieu de 5).
+    const selectedDef = strategyDefFor(proj.withdrawalStrategy);
+    let activeDefs: typeof SCENARIO_DEFINITIONS;
+    if (onlyStratTypes) {
+        const matching = SCENARIO_DEFINITIONS.filter(d => onlyStratTypes.includes(d.stratType))
+            .filter(d => d.kind !== 'strategy' || d === selectedDef);
+        activeDefs = matching.length > 0 ? matching : [selectedDef];
+    } else {
+        activeDefs = [selectedDef];
+    }
     const results: ProjectionResult[] = activeDefs.map(def => ({
-        ...runScenario(effectiveParams, def.strategy, false, def.delayPensions, 0, def.stratType, appliedOverrides),
+        // [UI-SCEN] — un stress « monde » (def.strategy AUTO_MARGINAL) tourne sous la stratégie
+        // SÉLECTIONNÉE : le delta vs réaliste mesure l'effet du CHOC seul, pas un changement de
+        // stratégie. LIBERTE_55 (PRIO_REER) garde sa stratégie voulue. Sélection par défaut =
+        // AUTO_MARGINAL → strictement identique à l'historique (goldens stables).
+        ...runScenario(
+            effectiveParams,
+            def.kind !== 'strategy' && def.strategy === 'AUTO_MARGINAL' ? selectedDef.strategy : def.strategy,
+            false, def.delayPensions, 0, def.stratType, appliedOverrides,
+        ),
         strategy: def.strategy,
         strategyName: def.strategyName,
         stratType: def.stratType,
@@ -1343,7 +1358,10 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
         icon: def.icon,
         kind: def.kind,
     }));
-    const resBase = results[0]; // BASE est la référence pour gainVsAuto
+    // [UI-SCEN] — référence du gainVsAuto = le scénario SÉLECTIONNÉ (results[0] par défaut ;
+    // pour un run stress-only, le panneau compare lui-même à lastProjection — gainVsAuto y
+    // est relatif au 1er stress, à ignorer côté UI).
+    const resBase = results[0];
 
     // V50: Stable indexing for the UI (we don't sort the main results array anymore)
     const sortedByEstate = [...results].sort((a, b) => (b.estateNetWorth ?? 0) - (a.estateNetWorth ?? 0));
@@ -1381,11 +1399,15 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
 
         const delayStr = target.delayPensions ? 'repousser vos rentes gouvernementales à 70 ans' : 'prendre vos rentes gouvernementales aux âges normaux';
         const stratStr = (target.strategyName as string ?? '').split(' / ')[0];
-        const isBest = target === best;
+        const isBest = results.length > 1 && target === best; // [UI-SCEN] 1 résultat = aucune comparaison → pas de « optimale »
         target.aiNote = `${isBest ? 'Stratégie optimale : ' : ''}Simulation basée sur **${stratStr}** et **${delayStr}**. Indice de Vitalité : ${fvi}%.`;
     } else {
         target.chartData.forEach((d) => { d.P10 = null; d.P50 = null; d.P90 = null; });
-        const delayStr = target.delayPensions ? 'repousser les rentes (70 ans)' : 'prendre les rentes normalement';
+        // [UI-SCEN] — le report des rentes passe par les âges rrqStartAge/psvStartAge (#210),
+        // plus par delayPensions (toujours false dans STRATEGY_DEFS) : on lit les âges réels.
+        const rrqStart = params.retirementGoal?.rrqStartAge;
+        const delayStr = target.delayPensions || (rrqStart !== undefined && rrqStart > 65)
+            ? `rentes reportées (RRQ ${rrqStart ?? 70} ans)` : 'rentes aux âges choisis';
         const stratStr = (target.strategyName as string ?? '').split(' / ')[0];
         target.aiNote = `Simulation déterministe (**${stratStr}** + **${delayStr}**).`;
     }

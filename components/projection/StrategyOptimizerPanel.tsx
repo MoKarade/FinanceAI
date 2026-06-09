@@ -91,7 +91,7 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, onApply }) => 
 
     const aliveRef = useRef(true);
     const abortRef = useRef<AbortController | null>(null);
-    useEffect(() => () => { aliveRef.current = false; abortRef.current?.abort(); }, []);
+    useEffect(() => { aliveRef.current = true; return () => { aliveRef.current = false; abortRef.current?.abort(); }; }, []); // ré-armé au remount (StrictMode dev)
 
     const ctx: SpaceContext = useMemo(() => ({
         hasPrimaryPurchase: (params.realEstateGoals?.length ?? 0) > 0,

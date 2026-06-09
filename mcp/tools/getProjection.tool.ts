@@ -6,7 +6,6 @@ import { z } from 'zod';
 import type { AppState } from '../../types';
 import { calculateFutureProjection } from '../../services/projection';
 import type { ProjectionChartPoint, ProjectionResult } from '../../services/projection/types';
-import { SCENARIO_DEFINITIONS } from '../../services/projection/scenarios';
 import { buildSimulationParamsFromState } from '../../services/projection/buildSimulationParams';
 import { jsonContent, withState, type StateProvider } from './_dataAware';
 
@@ -49,8 +48,13 @@ export const registerGetProjection = (server: McpServer, getState: StateProvider
             params.projection = { ...params.projection, years };
 
             const stratType = SCENARIO_MAP[scenario as ScenarioArg];
-            const selectedIdx = Math.max(0, SCENARIO_DEFINITIONS.findIndex((d) => d.stratType === stratType));
-            const result = calculateFutureProjection(params, monteCarlo, selectedIdx);
+            // [UI-SCEN] — le moteur ne calcule plus les 11 scénarios par défaut : un scénario
+            // non-BASE doit être DEMANDÉ explicitement (sinon results[idx] serait undefined et
+            // le fallback renverrait des chiffres BASE étiquetés du mauvais scénario — BLOCKER
+            // attrapé par performance-optimizer). byScenario reflète ce qui est calculé (1 entrée,
+            // ou 1+1 pour un stress demandé).
+            const result = calculateFutureProjection(params, monteCarlo, 0,
+                stratType === 'BASE' ? undefined : [stratType]);
 
             const chartData = result.chartData ?? [];
             const last = chartData[chartData.length - 1];

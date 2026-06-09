@@ -23,7 +23,6 @@ import { ExpertTooltip, ClickableEventIcon, RefLineLabel } from './projection/Pr
 import { FutureDetailModal } from './projection/FutureDetailModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ProjectionControls } from './projection/ProjectionControls';
-import { rankStrategies, type OptimizeObjective, type RankableScenario } from '../services/projection/strategyRanking';
 import { usePastPortfolioHistory } from '../hooks/usePastPortfolioHistory';
 import { deriveStartingBalancesFromHistory } from '../services/history/startingBalancesFromHistory';
 import { reconstructCashHistory } from '../services/history/reconstructCashHistory';
@@ -32,6 +31,7 @@ import { ActionPlanDrilldown } from './projection/ActionPlanDrilldown';
 import { ProjectionExplains } from './projection/ProjectionExplains';
 import { AssetLocationPanel } from './projection/AssetLocationPanel';
 import { StrategyComparePanel } from './projection/StrategyComparePanel';
+import { StressTestPanel } from './projection/StressTestPanel';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 
 // G10 — Légende interactive : une seule source de vérité pour les chips ET les
@@ -177,7 +177,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const now = new Date();
         return Math.max(0, (now.getFullYear() - startYear) * 12 + (now.getMonth() - startMonth));
     }, [startYear, startMonth]);
-    const [selectedScenarioIdx, setSelectedScenarioIdx] = useState(0);
+    // [UI-SCEN] — plus de sélecteur d'index de scénario : la stratégie est un PARAMÈTRE
+    // (projection.withdrawalStrategy) ; le moteur ne calcule que ce scénario (allResults[0]).
     const [runMC, setRunMC] = useState(true);
 
     // W5.x — Conteneurs étendus câblés au moteur
@@ -240,7 +241,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const syncResults = useDebouncedMemo<ProjectionResult | null>(() => {
         if (runMC) return null; // Sera calculé par l'effect ci-dessous
         try {
-            return calculateFutureProjection(params, false, selectedScenarioIdx);
+            return calculateFutureProjection(params, false, 0);
         } catch (e) {
             // SF3 fix (Sprint 1) : avant ce fix, un crash projection retournait
             // silencieusement `fireNumber: 0` + chartData vide → propagé via
@@ -259,7 +260,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             }).catch(() => { /* logger HS, silent */ });
             return { chartData: [], fireNumber: 0, aiNote: "Error", allResults: [], _hasError: true };
         }
-    }, [params, runMC, selectedScenarioIdx], 300);
+    }, [params, runMC], 300);
 
     const [asyncResults, setAsyncResults] = useState<ProjectionResult | null>(null);
     const [isComputing, setIsComputing] = useState(false);
@@ -269,7 +270,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         let cancelled = false;
         const timer = setTimeout(() => {
             setIsComputing(true);
-            runProjectionAsync(params, true, selectedScenarioIdx)
+            runProjectionAsync(params, true, 0)
                 .then(r => { if (!cancelled) { setAsyncResults(r); setIsComputing(false); } })
                 .catch(e => {
                     if (!cancelled) {
@@ -292,7 +293,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 });
         }, 300); // debounce 300ms même en MC
         return () => { cancelled = true; clearTimeout(timer); };
-    }, [params, runMC, selectedScenarioIdx]);
+    }, [params, runMC]);
 
     // FIX agent cycle 2 (HIGH): cleanup du Worker au démontage du composant
     // (évite fuites en HMR dev + ressource libérée propre).
@@ -303,20 +304,23 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const results = runMC ? asyncResults : syncResults;
     const { chartData = [] as ProjectionChartPoint[], fireNumber = 0, aiNote = "", allResults = [] as ProjectionResult[] } = results ?? {};
 
-    // G21 C5 — « Appliquer » la stratégie gagnante de l'optimiseur aux paramètres
-    // réels du Futur. Les leviers orthogonaux + âge/dépenses/coussin/Smith sont
-    // persistés via les setters ; l'ordre de retrait + le report des rentes sont
-    // appliqués en sélectionnant le scénario correspondant dans la liste.
+    // G21 C5 + [UI-SCEN] — « Appliquer » la stratégie gagnante de l'optimiseur aux
+    // paramètres réels : leviers orthogonaux via setters, ordre de retrait via le
+    // PARAMÈTRE withdrawalStrategy, report des rentes via rrqStartAge/psvStartAge (#210).
     const handleApplyConfig = (config: StrategyConfig) => {
         const applied = applyConfigToSettings(config, projection, retirementGoal);
-        setProjection(applied.projection);
-        setRetirementGoal?.(applied.retirementGoal);
-        const idx = allResults.findIndex(
-            (r) => r.strategyName === applied.strategy && r.delayPensions === applied.delayPensions,
-        );
-        const fallbackIdx = allResults.findIndex((r) => r.strategyName === applied.strategy);
-        const targetIdx = idx >= 0 ? idx : fallbackIdx;
-        if (targetIdx >= 0) setSelectedScenarioIdx(targetIdx);
+        // [UI-SCEN] — l'ordre de retrait devient le PARAMÈTRE withdrawalStrategy (plus de
+        // sélection de scénario) ; le report des rentes passe par les âges de début #210
+        // (rrqStartAge 72 / psvStartAge 70), cohérent avec le levier delayPensions du moteur.
+        setProjection({
+            ...applied.projection,
+            withdrawalStrategy: applied.strategy as ProjectionConfig['withdrawalStrategy'],
+        });
+        // delayPensions=false RÉINITIALISE les âges (sinon un « Appliquer » précédent avec
+        // report laisserait 72/70 en place — plan incohérent avec la config affichée).
+        setRetirementGoal?.(applied.delayPensions
+            ? { ...applied.retirementGoal, rrqStartAge: 72, psvStartAge: 70 }
+            : { ...applied.retirementGoal, rrqStartAge: undefined, psvStartAge: undefined });
     };
 
     // A1/A3 — passé réel reconstruit (valeur marché des placements) préfixé au
@@ -451,24 +455,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const revealedRef = useRef<HTMLDivElement>(null);
     useEffect(() => { if (curveRevealed) revealedRef.current?.focus(); }, [curveRevealed]);
 
-    // G21 — objectif servant au bandeau « Verdict » (meilleur scénario en 1 phrase).
-    // L'optimisation interactive complète (choix des leviers, re-tri par objectif) vit
-    // dans l'onglet Optimisation (StrategyComparePanel → Recherche avancée) ; ici on lit
-    // juste l'objectif persisté pour désigner la meilleure façon de gérer parmi les scénarios déjà calculés.
-    const optimizeObjective = useMemo<OptimizeObjective>(() => {
-        try {
-            const raw = localStorage.getItem('future:objective:v1');
-            return (raw === 'wealth' || raw === 'tax' || raw === 'fire') ? raw : 'balanced';
-        } catch { return 'balanced'; }
-    }, []);
-    // C3 — on ne classe que les FAÇONS DE GÉRER (kind 'strategy', même monde réaliste),
-    // pas les stress-tests. Repli : si rien n'est tagué (cache ancien), on classe tout.
-    const ranking = useMemo(() => {
-        const list = allResults || EMPTY_ARRAY;
-        const hasStrategyKind = list.some((r: ProjectionResult) => r?.kind === 'strategy');
-        return rankStrategies(list as RankableScenario[], optimizeObjective, hasStrategyKind ? { eligible: (s: RankableScenario) => s?.kind === 'strategy' } : undefined);
-    }, [allResults, optimizeObjective]);
-    const bestScenario = ranking.ranked[0] || null;
+    // [UI-SCEN] — bandeau « Verdict » et classement retirés : la comparaison des façons
+    // de gérer vit dans l'onglet Optimisation (StrategyComparePanel).
 
     // F10 (audit 2026-05-28) — index monthIndex → année pour le tickFormatter du XAxis.
     // Avant : displayData.find() O(n) à CHAQUE tick, et recharts ré-appelle le formatter
@@ -643,31 +631,6 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     variant={results?.fvi != null && results.fvi >= 70 ? 'success' : results?.fvi != null && results.fvi >= 40 ? 'warning' : 'danger'}
                 />
             </StatGrid>
-            {/* U2 — Badge scénario actif : toujours visible quelle que soit la
-                sous-vue pour rappeler quelle stratégie pilote Dashboard, Retraite,
-                Enfant. Masqué quand un seul scénario (AUTO_MARGINAL). */}
-            {allResults.length > 1 && (() => {
-                const active = allResults[selectedScenarioIdx];
-                const isBest = active && bestScenario && active.strategyName === bestScenario.strategyName;
-                return (
-                    <div
-                        role="status"
-                        aria-live="polite"
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-card text-meta border w-fit ${
-                            isBest
-                                ? 'bg-green-500/10 border-green-500/30 text-green-300'
-                                : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-                        }`}
-                    >
-                        <span aria-hidden="true">{isBest ? '★' : '○'}</span>
-                        <span>Scénario actif&nbsp;: <strong className="privacy-blur">{active?.strategyName || '—'}</strong></span>
-                        {!isBest && (
-                            <span className="text-ink-500 text-tiny hidden sm:inline">— pas le meilleur · modifier dans Paramètres</span>
-                        )}
-                    </div>
-                );
-            })()}
-
             {/* G3 — bascule 4 onglets : Graphique / Paramètres / Optimisation / Plan d'action */}
             <div className="flex flex-wrap gap-1 p-1 rounded-card bg-surface/40 border border-white/5 w-fit" role="tablist" aria-label="Vue Future">
                 {([
@@ -695,9 +658,6 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 runMC={runMC}
                 setRunMC={setRunMC}
                 isComputing={isComputing}
-                selectedScenarioIdx={selectedScenarioIdx}
-                setSelectedScenarioIdx={setSelectedScenarioIdx}
-                allResults={allResults}
                 fireNumber={fireNumber}
                 aiNote={aiNote}
                 liveCSVBalances={liveCSVBalances}
@@ -733,7 +693,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
             {futureSubTab === 'graph' && curveRevealed && (
             <div ref={revealedRef} tabIndex={-1} className="outline-none" role="region" aria-label="Projection affichée">
-            <Card title={`La Courbe de Vie - ${allResults[selectedScenarioIdx]?.strategyName || 'Simulation'}`}
+            <Card title={`La Courbe de Vie - ${allResults[0]?.strategyName || 'Simulation'}`}
                 action={isComputing ? (
                     <span className="flex items-center gap-2 text-tiny text-amber-400" role="status" aria-live="polite">
                         <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -742,26 +702,6 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         Recalcul Monte Carlo en cours…
                     </span>
                 ) : undefined}>
-                {/* B1 — Couche 0 « Verdict » : une phrase + un chiffre + une pastille,
-                    lisible en 2 secondes. Le détail (stratégie, pourquoi) est en dessous. */}
-                {bestScenario && (
-                    <div className={`mb-3 rounded-xl border p-3 flex items-center gap-3 ${bestScenario.fireAge != null ? 'border-green-500/30 bg-green-500/10' : 'border-amber-500/30 bg-amber-500/10'}`}>
-                        <span className="text-2xl shrink-0" aria-hidden="true">{bestScenario.fireAge != null ? '✅' : '⏳'}</span>
-                        <div className="min-w-0">
-                            <div className="text-sm font-black text-white leading-tight">
-                                {bestScenario.fireAge != null
-                                    ? `En bonne voie — libre dès ${bestScenario.fireAge} ans`
-                                    : 'Objectif FIRE pas encore atteint sur l’horizon'}
-                            </div>
-                            <div className="text-tiny text-ink-300 mt-0.5 privacy-blur">
-                                {(bestScenario.estateNetWorth / 1e6).toFixed(2)} M$ à l'horizon · meilleure stratégie : {bestScenario.strategyName}
-                            </div>
-                        </div>
-                    </div>
-                )}
-                {/* G21 C5 — l'optimiseur interactif (choix des leviers, classement par objectif,
-                    explication, « Appliquer ») vit dans l'onglet Optimisation
-                    (StrategyComparePanel → Recherche avancée). Ici on ne garde que le bandeau « Verdict ». */}
                 {/* G4 — sélecteur de période façon Google Finance */}
                 <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                     <div className="flex gap-0.5 p-0.5 rounded-card bg-black/30 border border-white/5">
@@ -982,6 +922,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     {/* C4+C5 — Comparer les stratégies : Test rapide (robustesse, 5 stratégies types)
                         ou Recherche avancée (leviers composables, classement par objectif). */}
                     <StrategyComparePanel params={params} onApply={setRetirementGoal ? handleApplyConfig : undefined} />
+                    {/* [UI-SCEN] — stress-tests à la demande (sortis du recalcul permanent). */}
+                    <StressTestPanel params={params} baselineEstateNW={allResults[0]?.estateNetWorth} />
                     {/* C3 — Placement par compte (asset location optimal) : où détenir chaque actif. */}
                     <AssetLocationPanel assets={assets} annualGrossIncome={baseGrossAnnual} />
                 </div>
@@ -992,7 +934,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 <div className="space-y-6">
                     <ProjectionExplains chartData={chartData} />
                     {/* C2 — Plan d'action HIÉRARCHIQUE (global → mois, drill-down au clic). */}
-                    <ActionPlanDrilldown chartData={chartData} strategyName={allResults[selectedScenarioIdx]?.strategyName} />
+                    <ActionPlanDrilldown chartData={chartData} strategyName={allResults[0]?.strategyName} />
                 </div>
             )}
         </div>

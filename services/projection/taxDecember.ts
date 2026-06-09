@@ -3,7 +3,7 @@
 // Cycle 10 (computeOasClawback, processTaxLossHarvesting): décembre = mois 11.
 // Cycle 11 (processDecemberTaxFiling): régularisation annuelle d'impôt.
 
-import { OAS_CLAWBACK_THRESHOLD_2026, CAPITAL_GAINS_INCLUSION_STANDARD, QC_BRACKETS, FED_BRACKETS, calculateRamqPremium, calculateFSSPremium, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
+import { OAS_CLAWBACK_THRESHOLD_2026, CAPITAL_GAINS_INCLUSION_STANDARD, firstCombinedBracketTopForYear, calculateRamqPremium, calculateFSSPremium, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
 
 /**
  * V31 — OAS Clawback prévu (calcul annuel en décembre).
@@ -89,12 +89,13 @@ export function processTaxLossHarvesting(
  * (vente + rachat immédiat → l'ACB monte d'autant). Les gains sont alors imposés MAINTENANT à un
  * taux bas, ce qui réduit l'impôt sur les gains futurs (quand le revenu sera plus élevé).
  *
- * Convention nominale (comme computeOasClawback) : on indexe le plafond du 1er palier par
- * l'inflation. Assiette imposée = revenu autre + 50 % des gains. On réalise jusqu'à ce que cette
- * assiette atteigne le plafond. Le gain réalisé est ajouté à accCapitalGainsYear (donc imposé en
- * décembre, au barème progressif empilé) ET l'ACB est relevé du même montant (pas de fuite : le
- * gain est bien imposé l'année où on relève l'ACB). Conservateur : ne réalise jamais au-delà du
- * gain latent disponible ni au-delà du palier bas.
+ * Revenu NOMINAL comparé au 1er palier indexé de l'ANNÉE (firstCombinedBracketTopForYear, MÊME
+ * indexation ×1,02/an que l'impôt réel du moteur → l'objectif de remplissage vise exactement le
+ * palier où l'impôt est calculé, quel que soit simInflation). Assiette imposée = revenu autre +
+ * 50 % des gains. On réalise jusqu'à ce que cette assiette atteigne le plafond. Le gain réalisé est
+ * ajouté à accCapitalGainsYear (donc imposé en décembre, au barème progressif empilé) ET l'ACB est
+ * relevé du même montant (pas de fuite : le gain est bien imposé l'année où on relève l'ACB).
+ * Conservateur : ne réalise jamais au-delà du gain latent disponible ni au-delà du palier bas.
  */
 export function processGainHarvesting(opts: {
     enabled: boolean;
@@ -105,14 +106,15 @@ export function processGainHarvesting(opts: {
     /** Gains déjà réalisés cette année (accCapitalGainsYear), nominal. */
     existingGainsNominal: number;
     activeUsersCount: number;
-    inflationFactor: number;
+    /** Année de la projection (sert à indexer le 1er palier, comme l'impôt réel). */
+    loopYear: number;
 }): { harvestedGain: number; logMsg?: string } {
     if (!opts.enabled) return { harvestedGain: 0 };
     const unrealized = opts.nonReg - opts.nonRegACB;
     if (!(unrealized > 1)) return { harvestedGain: 0 };
     const n = Math.max(1, opts.activeUsersCount);
-    // Plafond du 1er palier combiné (le plus restrictif QC/féd), par tête × N, indexé nominal.
-    const bracketTopNominal = Math.min(QC_BRACKETS[0].upTo, FED_BRACKETS[0].upTo) * n * opts.inflationFactor;
+    // Plafond du 1er palier combiné (le plus restrictif QC/féd), indexé à l'année, par tête × N.
+    const bracketTopNominal = firstCombinedBracketTopForYear(opts.loopYear) * n;
     // Part imposable déjà occupée = revenu autre + 50 % des gains déjà réalisés cette année.
     const occupied = opts.otherTaxableNominal + Math.max(0, opts.existingGainsNominal) * CAPITAL_GAINS_INCLUSION_STANDARD;
     const roomTaxable = bracketTopNominal - occupied;

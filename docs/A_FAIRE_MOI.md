@@ -42,6 +42,18 @@ Le code est prêt et déployé ; il manque l'hébergement du bundle (Marc avait 
 - [x] ~~Action `backlog-autocheck`~~ — **RETIRÉE (2026-06-09, demande Marc)** : workflow + script
   supprimés, conditions `[skip-backlog]` retirées de `ci.yml`. Désormais **Claude coche lui-même**
   le BACKLOG au merge de chaque PR (cf CLAUDE.md « Backlog tenu par Claude »). Plus rien à valider.
+- [ ] **Supprimer 14 branches mortes (30 s)** — le proxy git de l'exécution cloud REFUSE la
+  suppression de branches (403, Claude ne peut pousser que sur sa branche de session) ; à faire
+  depuis ton PC (ou GitHub → Branches). Toutes mergées ou de PR fermée (#123) — aucune perte :
+  ```
+  git push origin --delete claude/audit-fixes claude/couple-fiscal-a1 \
+    claude/e2e-refresh-screenshots claude/mcp-connector-design claude/mcp-lot0-lot1 \
+    claude/multiuser-epic1 claude/peaceful-bell-YaBUD claude/polish-marginal \
+    claude/post-main-salvage claude/retraite-tax-precise claude/runbook-multiuser \
+    claude/sync-passphrase claude/loving-faraday-r2GYW chore/refresh-screenshots-27157396499
+  ```
+  💡 Pour l'avenir : GitHub → Settings → General → cocher **« Automatically delete head branches »**
+  (les branches de PR mergées disparaîtront seules ; c'est déjà le cas des branches de session Claude).
 - [x] **9 agents projet + `/review-all`** : étaient absents (`.claude/` était gitignoré en
   entier) → **créés par Claude** dans G0 et `.claude/` désormais committé pour les parties projet.
 - [x] **CLAUDE.md + hooks absents du repo** → installés dans G0 (push/merge autonome, guard

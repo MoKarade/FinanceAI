@@ -244,3 +244,63 @@ describe('computeRetirementIncome — ratio RRQ indexé (B-AUDIT-4)', () => {
         expect(deflate(later.rrq, 240)).toBeCloseTo(deflate(now.rrq, 0), 0);
     });
 });
+
+// ──────────────────────────────────────────────────────────────────────────
+// FA-3 (audit 2026-06-09) : SRG — champ exposé + assiette de réduction élargie
+// ──────────────────────────────────────────────────────────────────────────
+describe('FA-3 (audit 2026-06-09) : SRG exposé (gis) + test de réduction sur le revenu de l\'année précédente', () => {
+    // Profil bas revenu : RRQ minime → SRG substantiel attendu.
+    const lowIncomeGoal: RetirementGoal = {
+        ...baseGoal,
+        rrqEstimateMonthly: 300,
+        psvEstimateMonthly: 700,
+    };
+    const lowEarner = { ...baseUser, grossSalary: 20000 } as User;
+
+    it('FA-3a — breakdown.gis exposé, > 0 pour un bas revenu 65+, et INCLUS dans psv/total (revenu cash)', () => {
+        const r = computeRetirementIncome(baseCtx, lowIncomeGoal, [lowEarner]);
+        expect(r.gis).toBeGreaterThan(0);
+        // Le SRG fait partie du revenu cash : psv (PSV+SRG) ≥ gis, et total cohérent.
+        expect(r.psv).toBeGreaterThanOrEqual(r.gis);
+        expect(r.total).toBeCloseTo(r.rrq + r.psv + r.privee - baseCtx.monthlyOasReduction, 5);
+    });
+
+    it('FA-3b — RÉGRESSION CLÉ : des retraits REER l\'année précédente RÉDUISENT le SRG (~50 ¢/$)', () => {
+        // Avant FA-3b : otherIncome = RRQ+DB seuls → un retraité FIRE vivant de retraits
+        // REER affichait un SRG fictif plein. 20 000 $ de retraits N-1 doivent réduire
+        // le SRG d'environ 10 000 $/an (taux 50 %), à m=0 (inflFactor=1, nominal=réel).
+        const sans = computeRetirementIncome({ ...baseCtx, otherIncomeAnnualLaggedNominal: 0 }, lowIncomeGoal, [lowEarner]);
+        const avec = computeRetirementIncome({ ...baseCtx, otherIncomeAnnualLaggedNominal: 20000 }, lowIncomeGoal, [lowEarner]);
+        expect(sans.gis).toBeGreaterThan(0);
+        expect(avec.gis).toBeLessThan(sans.gis);
+        const reductionAnnuelle = (sans.gis - avec.gis) * 12;
+        // ~50 % du revenu ajouté, borné par le SRG disponible (tolérance : barème par paliers).
+        expect(reductionAnnuelle).toBeGreaterThan(20000 * 0.35);
+        expect(reductionAnnuelle).toBeLessThanOrEqual(20000 * 0.55 + 1);
+    });
+
+    it('FA-3b — assez de revenu N-1 → SRG à ZÉRO (pas de SRG fictif pour un gros meltdown REER)', () => {
+        const r = computeRetirementIncome({ ...baseCtx, otherIncomeAnnualLaggedNominal: 80000 }, lowIncomeGoal, [lowEarner]);
+        expect(r.gis).toBe(0);
+    });
+
+    it('FA-3b — revenu décalé NÉGATIF clampé à 0 (jamais d\'augmentation du SRG)', () => {
+        const sans = computeRetirementIncome(baseCtx, lowIncomeGoal, [lowEarner]);
+        const neg = computeRetirementIncome({ ...baseCtx, otherIncomeAnnualLaggedNominal: -50000 }, lowIncomeGoal, [lowEarner]);
+        expect(neg.gis).toBeCloseTo(sans.gis, 5);
+    });
+
+    it('FA-3b — le revenu décalé NOMINAL est déflaté à la même base réelle que RRQ/DB (m=240, 2 %)', () => {
+        // À m=240 (20 ans, infl 2 %), 14 859 $ nominaux ≈ 10 000 $ réels : la réduction du SRG
+        // (en réel) doit être ~celle de 10 000 $ réels à m=0, pas celle de 14 859 $.
+        const m240 = { ...baseCtx, m: 240, age: 85 };
+        const inflFactor = Math.pow(1.02, 20);
+        const sans = computeRetirementIncome(m240, lowIncomeGoal, [lowEarner]);
+        const avec = computeRetirementIncome({ ...m240, otherIncomeAnnualLaggedNominal: 10000 * inflFactor }, lowIncomeGoal, [lowEarner]);
+        const ref0 = computeRetirementIncome(baseCtx, lowIncomeGoal, [lowEarner]);
+        const ref10k = computeRetirementIncome({ ...baseCtx, otherIncomeAnnualLaggedNominal: 10000 }, lowIncomeGoal, [lowEarner]);
+        const reductionRealM240 = (sans.gis - avec.gis) / inflFactor * 12;
+        const reductionRealM0 = (ref0.gis - ref10k.gis) * 12;
+        expect(reductionRealM240).toBeCloseTo(reductionRealM0, 0);
+    });
+});

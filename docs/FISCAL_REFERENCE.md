@@ -199,8 +199,27 @@ pour minimiser l'impôt combiné (élection optionnelle).
 
 ### PSV / OAS — récupération (clawback)
 - Seuil de récupération 2026 (`OAS_CLAWBACK_THRESHOLD_2026`) : **95 323 $** (ARC ; 93 454 $ en 2025).
+- Taux de récupération : **15 %** de l'excédent (ARC — impôt de récupération PSV).
+- Le seuil s'applique **PAR PARTICULIER** (revenu net individuel), jamais au revenu du ménage.
+> **Implémentation** (`taxDecember.ts:computeOasClawback`, FA-2 2026-06-09) : clawback calculé
+> PAR CONJOINT (revenu_i = pension_i + retraits REER_i + part égale des loyers, vs seuil indexé),
+> plafonné à sa part de PSV. Avant FA-2, le revenu FAMILIAL était comparé au seuil individuel →
+> clawback fictif jusqu'à ~14 k$/an pour un couple 95-190 k$. Limites assumées : part de PSV
+> répartie également entre conjoints ; cap basé sur la PSV de base (sans facteur de report — FA-8).
 
 ### SRG — Supplément de revenu garanti (Service Canada, barème 2026 Q1, indexé trimestriellement)
+> **Règle** : le SRG est **NON IMPOSABLE** (il entre dans le revenu NET — ligne 148→275 QC,
+> 14600→23600 féd — mais est déduit au revenu IMPOSABLE : ligne 295 QC / 25000 féd) ; il est réduit
+> de ~50 ¢ par dollar de revenu AUTRE que la PSV, établi sur la déclaration de l'**année précédente**
+> (tout revenu imposable : RRQ, pensions, retraits REER/FERR, loyers, gains…).
+> **Implémentation** (FA-3, 2026-06-09) : (a) le SRG est exposé séparément (`RetirementIncomeBreakdown.gis`)
+> et SOUSTRAIT de toutes les assiettes fiscales de décembre (impôt, RAMQ, FSS, empilement gains/
+> dividendes, clawback PSV) — il reste du revenu cash ; (b) le test de réduction inclut désormais
+> les retraits REER/FERR + loyers de l'ANNÉE PRÉCÉDENTE (capturés au reset de janvier, déflatés).
+> Limites assumées : gains en capital réalisés non inclus dans le test (FA-8) ; année 1 de
+> simulation sans historique (assiette RRQ+DB seule, optimiste, borné à 12 mois) ; le salaire de
+> l'année précédant la retraite n'est pas compté ; janvier de l'année Y teste l'assiette Y-2
+> (décalage d'un mois — le vrai cycle SRG court juillet→juin).
 | Paramètre | Célibataire 65+ | Couple (2 reçoivent PSV), par adulte |
 |---|---|---|
 | Maximum mensuel | 1 105 $ | 662 $ |

@@ -133,6 +133,91 @@ describe('computeOasClawback — seuil de revenu de pension', () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────
+// FA-2 (audit 2026-06-09) : clawback PSV PAR CONJOINT (seuil par particulier)
+// ──────────────────────────────────────────────────────────────────────────
+describe('FA-2 (audit 2026-06-09) : clawback PSV par conjoint — seuil PAR PARTICULIER', () => {
+    // ARC : le seuil de récupération s'applique au revenu net INDIVIDUEL. L'ancien code
+    // comparait le revenu FAMILIAL au seuil individuel → clawback fictif pour les couples.
+
+    it('RÉGRESSION CLÉ : couple 150 k$ familial (75 k$ chacun) → AUCUN clawback (ancien code : ~8 200 $/an fictif)', () => {
+        // 6 250 $/mois/conjoint × 12 = 75 000 $ chacun, < 95 323. L'ancien agrégat familial
+        // donnait (150 000 − 95 323) × 15 % ≈ 8 201,55 $ de clawback INDU.
+        const r = computeOasClawback(DECEMBER, 24, true, 70, 1, 12500, 0, 0, 800, 0,
+            2, [6250, 6250], [0, 0]);
+        expect(r.clawbackAnnual).toBe(0);
+    });
+
+    it('couple asymétrique : seul le conjoint au-dessus du seuil est récupéré, sur SON excédent', () => {
+        // [10 000, 1 000] $/mois → 120 000 / 12 000 $. Excédent user0 = 24 677 × 15 % = 3 701,55 ;
+        // cap par conjoint = 800×12/2 = 4 800 → non liant. User1 : aucun clawback.
+        const r = computeOasClawback(DECEMBER, 24, true, 70, 1, 11000, 0, 0, 800, 0,
+            2, [10000, 1000], [0, 0]);
+        expect(r.clawbackAnnual).toBeCloseTo((120000 - OAS_CLAWBACK_THRESHOLD_2026) * 0.15, 5);
+    });
+
+    it('cap PAR CONJOINT : la récupération d\'un conjoint est plafonnée à SA part de PSV (pas la PSV familiale)', () => {
+        // User0 à 600 k$ → 15 % de l'excédent ≫ cap. Cap par conjoint = 800×12/2 = 4 800 (pas 9 600).
+        const r = computeOasClawback(DECEMBER, 24, true, 70, 1, 51000, 0, 0, 800, 0,
+            2, [50000, 1000], [0, 0]);
+        expect(r.clawbackAnnual).toBeCloseTo(4800, 5);
+    });
+
+    it('retraits REER attribués par conjoint entrent dans le revenu individuel', () => {
+        // Pensions égales 40 k$ chacun ; retraits REER [80 000, 0] → user0 = 120 000 > seuil.
+        const expected = (120000 - OAS_CLAWBACK_THRESHOLD_2026) * 0.15;
+        const r = computeOasClawback(DECEMBER, 24, true, 70, 1, 80000 / 12, 80000, 0, 800, 0,
+            2, [40000 / 12, 40000 / 12], [80000, 0]);
+        expect(r.clawbackAnnual).toBeCloseTo(expected, 5);
+    });
+
+    it('SOLO : comportement strictement inchangé (n=1 par défaut)', () => {
+        // Même appel que les tests historiques : 10 000×12 = 120 000 → 15 % de l'excédent.
+        const r = computeOasClawback(DECEMBER, 24, true, 70, 1, 10000, 0, 0, 800, 0);
+        expect(r.clawbackAnnual).toBeCloseTo((120000 - OAS_CLAWBACK_THRESHOLD_2026) * 0.15, 5);
+    });
+
+    it('repli sans décomposition : split ÉGAL par adulte (jamais l\'agrégat familial)', () => {
+        // n=2 sans tableaux → 150 000/2 = 75 000 chacun < seuil → 0 (l'ancien agrégat donnait ~8 200).
+        const r = computeOasClawback(DECEMBER, 24, true, 70, 1, 12500, 0, 0, 800, 0, 2);
+        expect(r.clawbackAnnual).toBe(0);
+    });
+
+    it('garde NaN : décomposition corrompue → repli split égal, jamais NaN', () => {
+        const r = computeOasClawback(DECEMBER, 24, true, 70, 1, 12500, 0, 0, 800, 0,
+            2, [NaN, 6250], [0, 0]);
+        expect(Number.isFinite(r.clawbackAnnual)).toBe(true);
+        expect(r.clawbackAnnual).toBe(0); // split égal 75 k$ chacun → sous le seuil
+    });
+
+    it('garde somme REER incohérente : repli split égal des retraits', () => {
+        // perUserReer [100 000, 0] mais accRetraitsReerYear = 40 000 (incohérent) → split égal
+        // 20 000 chacun → user0 = 60 000 + 20 000 = 80 000 < seuil → 0.
+        const r = computeOasClawback(DECEMBER, 24, true, 70, 1, 120000 / 12, 40000, 0, 800, 0,
+            2, [60000 / 12, 60000 / 12], [100000, 0]);
+        expect(r.clawbackAnnual).toBe(0);
+    });
+
+    it('survivorMode (contrat du call-site) : 1 bénéficiaire VIVANT → revenu complet vs seuil, PAS de split ×2', () => {
+        // projection.ts passe oasBeneficiaries = survivorMode ? 1 : activeUsersCount, SANS
+        // décomposition. Un survivant à 130 k$ doit être récupéré (~5,2 k$/an) — le diviser
+        // par les 2 têtes du setup (65 k$ « chacun ») aurait donné 0 (régression évitée).
+        const survivant = computeOasClawback(DECEMBER, 24, true, 70, 1, 130000 / 12, 0, 0, 800, 0, 1);
+        expect(survivant.clawbackAnnual).toBeCloseTo(
+            Math.min(800 * 12, (130000 - OAS_CLAWBACK_THRESHOLD_2026) * 0.15), 5);
+        const splitATort = computeOasClawback(DECEMBER, 24, true, 70, 1, 130000 / 12, 0, 0, 800, 0, 2);
+        expect(splitATort.clawbackAnnual).toBe(0); // ce qu'aurait donné n=2 — d'où le ternaire survivorMode
+    });
+
+    it('revenus locatifs répartis également entre conjoints', () => {
+        // Pensions 60 k$ chacun + 80 k$ de loyers (→ +40 k$ chacun) → 100 k$ chacun > seuil.
+        const expectedPerUser = (100000 - OAS_CLAWBACK_THRESHOLD_2026) * 0.15;
+        const r = computeOasClawback(DECEMBER, 24, true, 70, 1, 120000 / 12, 0, 80000, 800, 0,
+            2, [60000 / 12, 60000 / 12], [0, 0]);
+        expect(r.clawbackAnnual).toBeCloseTo(2 * expectedPerUser, 5);
+    });
+});
+
+// ──────────────────────────────────────────────────────────────────────────
 // processTaxLossHarvesting — cristallisation de perte (décembre)
 // ──────────────────────────────────────────────────────────────────────────
 
@@ -1042,5 +1127,89 @@ describe('processDecemberTaxFiling — intégration multi-blocs', () => {
         expect(r.logs.some((l) => l.includes('RAMQ'))).toBe(true);
         expect(r.logs.some((l) => l.includes('FSS'))).toBe(true);
         expect(r.logs.some((l) => l.includes('Gains Cap'))).toBe(true);
+    });
+});
+
+// ──────────────────────────────────────────────────────────────────────────
+// FA-3a (audit 2026-06-09) : le SRG est NON IMPOSABLE — exclu de toutes les assiettes
+// ──────────────────────────────────────────────────────────────────────────
+describe('processDecemberTaxFiling — FA-3a : SRG non imposable (exclu de l\'assiette)', () => {
+    // Spy identique au bloc FA-1 : capture les (gross, ageOpts) transmis au barème.
+    const spy = () => {
+        const calls: Array<{ gross: number; ageOpts?: AgeCreditOptions }> = [];
+        const helpers = makeHelpers({
+            calculateFiscalReport: ((gross: number, _d: number, _w: number, _y: number, _mc?: boolean, ageOpts?: AgeCreditOptions) => {
+                calls.push({ gross, ageOpts });
+                return { totalTax: Math.max(0, gross) * STUB_RATE } as unknown as FiscalReport;
+            }) as DecemberHelpers['calculateFiscalReport'],
+        });
+        return { helpers, calls };
+    };
+
+    it('RÉGRESSION CLÉ — le SRG est SOUSTRAIT de l\'assiette imposable (avant FA-3a : taxé en plein)', () => {
+        // 5 000 $/mois de revenu retraite dont 1 000 $ de SRG → assiette = 4 000×12 = 48 000
+        // (l'ancien code ignorait le champ → 60 000 transmis au barème).
+        const { helpers, calls } = spy();
+        processDecemberTaxFiling(DECEMBER, baseCtx({
+            isRetired: true, age: 70, activeUsersCount: 1,
+            incomeRetirementMonthly: 5000,
+            incomeRetirementGisMonthly: 1000,
+        }), helpers, ZERO_TAX);
+        const pensionCalls = calls.filter(c => c.ageOpts !== undefined);
+        expect(pensionCalls).toHaveLength(1);
+        expect(pensionCalls[0].gross).toBeCloseTo(48000, 5);
+    });
+
+    it('équivalence : (income 5000, gis 1000) impose EXACTEMENT comme (income 4000, gis 0)', () => {
+        const run = (income: number, gis: number) => {
+            const tax = { ...ZERO_TAX };
+            processDecemberTaxFiling(DECEMBER, baseCtx({
+                isRetired: true, age: 70, activeUsersCount: 1,
+                incomeRetirementMonthly: income,
+                incomeRetirementGisMonthly: gis,
+            }), makeHelpers(), tax);
+            return tax.revenu;
+        };
+        expect(run(5000, 1000)).toBeCloseTo(run(4000, 0), 5);
+    });
+
+    it('champ absent → comportement strictement inchangé (rétro-compat)', () => {
+        const { helpers, calls } = spy();
+        processDecemberTaxFiling(DECEMBER, baseCtx({
+            isRetired: true, age: 70, activeUsersCount: 1,
+            incomeRetirementMonthly: 5000,
+        }), helpers, ZERO_TAX);
+        const pensionCalls = calls.filter(c => c.ageOpts !== undefined);
+        expect(pensionCalls[0].gross).toBeCloseTo(60000, 5);
+    });
+
+    it('couple per-user : la part de SRG (familiale, répartie également) sort du revenu de CHAQUE conjoint', () => {
+        // perUser [3000, 2000] $/mois, SRG familial 1000 → parts 500/500 →
+        // assiettes (3000−500)×12 = 30 000 et (2000−500)×12 = 18 000.
+        const { helpers, calls } = spy();
+        processDecemberTaxFiling(DECEMBER, baseCtx({
+            isRetired: true, age: 70, ageSpouse: 70, activeUsersCount: 2,
+            incomeRetirementMonthly: 5000,
+            incomeRetirementGisMonthly: 1000,
+            incomeRetirementPerUserMonthly: [3000, 2000],
+        }), helpers, ZERO_TAX);
+        const pensionCalls = calls.filter(c => c.ageOpts !== undefined);
+        expect(pensionCalls).toHaveLength(2);
+        const grosses = pensionCalls.map(c => Math.round(c.gross)).sort((a, b) => a - b);
+        expect(grosses).toEqual([18000, 30000]);
+    });
+
+    it('clamp : SRG ≥ pension d\'un conjoint → assiette 0 pour lui, jamais négative', () => {
+        const { helpers, calls } = spy();
+        processDecemberTaxFiling(DECEMBER, baseCtx({
+            isRetired: true, age: 70, ageSpouse: 70, activeUsersCount: 2,
+            incomeRetirementMonthly: 2500,
+            incomeRetirementGisMonthly: 2000, // parts 1000/1000
+            incomeRetirementPerUserMonthly: [2000, 500], // user1 : 500 − 1000 < 0 → clamp 0
+        }), helpers, ZERO_TAX);
+        const pensionCalls = calls.filter(c => c.ageOpts !== undefined);
+        const grosses = pensionCalls.map(c => Math.round(c.gross)).sort((a, b) => a - b);
+        expect(grosses[0]).toBe(0);
+        expect(grosses[1]).toBe(12000); // (2000−1000)×12 ; assiette ménage (2500−2000)×12 > 0 → gate passé
     });
 });

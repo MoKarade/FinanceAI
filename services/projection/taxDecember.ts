@@ -21,6 +21,13 @@ export function computeOasClawback(
     accRentesYear: number,
     psvBasePension: number,
     simInflation: number,
+    // FA-2 (audit fiscal 2026-06-09) — décomposition PAR CONJOINT. Le seuil de récupération
+    // PSV est PAR PARTICULIER (ARC) : comparer le revenu FAMILIAL au seuil individuel créait
+    // un clawback fictif jusqu'à ~14 k$/an pour un couple 95-190 k$. Optionnels = rétro-compat
+    // (absents → repli split égal, déjà bien meilleur que l'agrégat familial).
+    activeUsersCount: number = 1,
+    perUserIncomeMonthly?: number[],
+    perUserReerAnnual?: number[],
 ): { clawbackAnnual: number; logMsg?: string } {
     if (currentMonthIndex !== 11 || m === 0 || !isRetired || age < 65) {
         return { clawbackAnnual: 0 };
@@ -36,19 +43,48 @@ export function computeOasClawback(
     void expenseMultiplier;
     const nominalIncomeFactor = Math.pow(1 + simInflation / 100, m / 12);
     const OAS_THRESHOLD = OAS_CLAWBACK_THRESHOLD_2026 * nominalIncomeFactor;
-    const annualPensionIncome = (incomeRetirementMonthly * 12) + accRetraitsReerYear + accRentesYear;
     const psvAnnualBase = psvBasePension * 12 * nominalIncomeFactor;
-    if (annualPensionIncome <= OAS_THRESHOLD) return { clawbackAnnual: 0 };
 
-    const excess = annualPensionIncome - OAS_THRESHOLD;
-    const clawback = Math.min(psvAnnualBase, excess * 0.15);
-    if (clawback > 1) {
+    // FA-2 — clawback PAR CONJOINT : revenu_i vs seuil INDIVIDUEL, plafonné à SA part de PSV.
+    // Gardes-fous symétriques aux autres décompositions (Number.isFinite + somme cohérente) ;
+    // repli = split ÉGAL par adulte (jamais l'agrégat familial vs seuil individuel — le bug).
+    // Limites assumées (doc §6) : part de PSV répartie également (psvStartAge par conjoint non
+    // différencié ici) ; revenus locatifs répartis également (non attribuables).
+    const n = Math.max(1, activeUsersCount);
+    // Garde SYMÉTRIQUE à validReer (retour silent-failure-hunter) : une décomposition finie
+    // mais DÉSYNCHRONISÉE du total (bug amont) ne doit pas passer — Σ(perUser) ≈ total.
+    const incomeSum = Array.isArray(perUserIncomeMonthly)
+        ? perUserIncomeMonthly.reduce((s, v) => s + (Number.isFinite(v) ? v : NaN), 0)
+        : NaN;
+    const validIncome = Array.isArray(perUserIncomeMonthly)
+        && perUserIncomeMonthly.length === n
+        && Number.isFinite(incomeSum)
+        && Math.abs(incomeSum - incomeRetirementMonthly) <= Math.max(1, Math.abs(incomeRetirementMonthly) * 1e-6);
+    const reerSum = Array.isArray(perUserReerAnnual)
+        ? perUserReerAnnual.reduce((s, v) => s + (Number.isFinite(v) ? v : NaN), 0)
+        : NaN;
+    const validReer = Array.isArray(perUserReerAnnual)
+        && perUserReerAnnual.length === n
+        && Number.isFinite(reerSum)
+        && Math.abs(reerSum - accRetraitsReerYear) <= Math.max(1, Math.abs(accRetraitsReerYear) * 1e-6);
+
+    const psvCapPerUser = psvAnnualBase / n;
+    let clawbackAnnual = 0;
+    for (let i = 0; i < n; i++) {
+        const incomeUser = (validIncome ? perUserIncomeMonthly![i] * 12 : (incomeRetirementMonthly * 12) / n)
+            + (validReer ? perUserReerAnnual![i] : accRetraitsReerYear / n)
+            + accRentesYear / n;
+        const excess = incomeUser - OAS_THRESHOLD;
+        if (excess > 0) clawbackAnnual += Math.min(psvCapPerUser, excess * 0.15);
+    }
+
+    if (clawbackAnnual > 1) {
         return {
-            clawbackAnnual: clawback,
-            logMsg: `⚠️ PSV Clawback prévu: -${Math.round(clawback).toLocaleString('fr-CA')}$/an`,
+            clawbackAnnual,
+            logMsg: `⚠️ PSV Clawback prévu: -${Math.round(clawbackAnnual).toLocaleString('fr-CA')}$/an`,
         };
     }
-    return { clawbackAnnual: clawback };
+    return { clawbackAnnual };
 }
 
 /**
@@ -155,6 +191,13 @@ export interface DecemberContext {
     optimizeSourceDeductions: boolean | undefined;
     incomeRetirementMonthly: number;
     /**
+     * FA-3a (audit fiscal 2026-06-09) — SRG mensuel familial INCLUS dans
+     * `incomeRetirementMonthly` (c'est du revenu cash) mais NON IMPOSABLE (Service
+     * Canada) : soustrait de toutes les assiettes fiscales de décembre. Optionnel
+     * (absent → 0, rétro-compat).
+     */
+    incomeRetirementGisMonthly?: number;
+    /**
      * A1 — revenu de retraite mensuel ATTRIBUABLE à chaque conjoint (RRQ+PSV+DB),
      * issu de `computeRetirementIncome().perUser[i].total`. Quand fourni (couple),
      * l'impôt de retraite de décembre est calculé en taxant chaque conjoint sur SON
@@ -238,6 +281,13 @@ export function processDecemberTaxFiling(
     const logs: string[] = [];
     const taxCurrent = { ...taxCurrentYearInitial };
 
+    // FA-3a — SRG mensuel à exclure des assiettes, HOISTÉ une fois avec garde NaN
+    // (même piège que la garde DB de FA-1 : `?? 0` ne capte PAS NaN, et Math.max(0, NaN)=NaN
+    // sauterait silencieusement TOUT l'impôt annuel via `if (taxableAnnual > 0)`).
+    const gisMonthlySafe = Number.isFinite(ctx.incomeRetirementGisMonthly)
+        ? Math.max(0, ctx.incomeRetirementGisMonthly as number)
+        : 0;
+
     // ---- 1. Impôt sur revenu salarial ou retraite ----
     if (!ctx.isRetired) {
         // F9 (audit 2026-05-28) — même facteur de croissance salariale pour Marc et Anna : hissé une fois.
@@ -312,7 +362,8 @@ export function processDecemberTaxFiling(
         // complément la ré-ajouterait).
         // NB : accRentesYear = revenus LOCATIFS annuels (loyers, realEstateMonth.ts:355) —
         // imposables comme revenu ordinaire, mais JAMAIS admissibles au crédit pension (FA-1).
-        const basePensionAnnual = (ctx.incomeRetirementMonthly * 12) + ctx.accRentesYear;
+        // FA-3a : le SRG (non imposable) est RETIRÉ de l'assiette — il reste du revenu cash.
+        const basePensionAnnual = ((ctx.incomeRetirementMonthly - gisMonthlySafe) * 12) + ctx.accRentesYear;
         const taxableAnnual = basePensionAnnual + ctx.accRetraitsReerYear;
         if (taxableAnnual > 0) {
             const taxableReal = taxableAnnual / ctx.inflationFactor;
@@ -382,7 +433,9 @@ export function processDecemberTaxFiling(
             const eligiblePensionRealByUser: number[] = [];
             if (usePerUser) {
                 for (let i = 0; i < n; i++) {
-                    const pensionRealUser = (perUserPension![i] * 12) / ctx.inflationFactor;
+                    // FA-3a : la part de SRG (familial → répartie également) est retirée du
+                    // revenu IMPOSABLE de chaque conjoint (perUser[i].total l'inclut).
+                    const pensionRealUser = Math.max(0, ((perUserPension![i] - gisMonthlySafe / n) * 12) / ctx.inflationFactor);
                     taxableRealByUser.push(pensionRealUser + rentalRealPerAdult + reerRealUser(i));
                     eligiblePensionRealByUser.push(eligiblePensionFor(i));
                 }
@@ -469,8 +522,12 @@ export function processDecemberTaxFiling(
         if (ctx.isRetired) {
             // Mode retraité : revenu pension + rentes + retraits REER + gains capitaux
             // accumulés sur l'année. Tous imposables au sens de la ligne 275 TP-1.
+            // FA-3a : SRG exclu. Justification exacte : le SRG entre dans le revenu NET (148→275)
+            // mais est déduit au revenu IMPOSABLE (295 QC / 25000 féd) ; pour la RAMQ, l'exclusion
+            // est une approximation SANS effet pratique (prestataire SRG ≈ sous l'exemption de
+            // prime) qui va dans le sens de l'exemption réelle.
             familyNetIncome = (
-                ctx.incomeRetirementMonthly * 12
+                (ctx.incomeRetirementMonthly - gisMonthlySafe) * 12
                 + ctx.accRentesYear
                 + ctx.accRetraitsReerYear
                 + ctx.accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD
@@ -516,8 +573,9 @@ export function processDecemberTaxFiling(
     //     acceptable pour projections long terme — précision exacte nécessite
     //     un suivi individuel des revenus retraite (hors scope §6.1).
     if (ctx.isRetired) {
+        // FA-3a : SRG exclu du revenu net individuel (non imposable).
         const individualNetIncome = (
-            ctx.incomeRetirementMonthly * 12
+            (ctx.incomeRetirementMonthly - gisMonthlySafe) * 12
             + ctx.accRentesYear
             + ctx.accRetraitsReerYear
             + ctx.accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD
@@ -532,8 +590,9 @@ export function processDecemberTaxFiling(
 
     // ---- 2. Gains en capital accumulés (palier 250k) ----
     if (ctx.accCapitalGainsYear > 0) {
+        // FA-3a : SRG exclu de l'assiette d'empilement (non imposable).
         const incomeForGains = ctx.isRetired
-            ? (ctx.incomeRetirementMonthly * 12 + ctx.accRentesYear + ctx.accRetraitsReerYear)
+            ? ((ctx.incomeRetirementMonthly - gisMonthlySafe) * 12 + ctx.accRentesYear + ctx.accRetraitsReerYear)
             : (ctx.grossMarcBaseAnnual + ctx.grossAnnaBaseAnnual) * Math.pow(1 + ctx.simSalaryGrowth / 100, ctx.yearsElapsed);
 
         // Inclusion gains capitaux: 50% uniforme (annulation 66.67% > 250k$ mars 2025).
@@ -558,8 +617,9 @@ export function processDecemberTaxFiling(
     // ---- 3. Dividendes Non-Reg (30% du rendement) ----
     if (ctx.nonReg > 0) {
         const annualDiv = ctx.nonReg * (ctx.baseNonRegRate / 100) * 0.30;
+        // FA-3a : SRG exclu de l'assiette d'empilement (non imposable).
         const incomeForDiv = (ctx.isRetired
-            ? (ctx.incomeRetirementMonthly * 12 + ctx.accRentesYear)
+            ? ((ctx.incomeRetirementMonthly - gisMonthlySafe) * 12 + ctx.accRentesYear)
             : (ctx.grossMarcBaseAnnual + ctx.grossAnnaBaseAnnual) * Math.pow(1 + ctx.simSalaryGrowth / 100, ctx.yearsElapsed)
         ) / ctx.activeUsersCount;
         const currentMarginal = helpers.getMarginalRate(incomeForDiv, ctx.loopYear);

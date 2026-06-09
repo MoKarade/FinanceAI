@@ -1,7 +1,7 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, ~1700 tests Vitest.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, ~1780 tests Vitest.
 Tout en français.
 
 Fichier dense et court (il se charge à chaque session = coûte des tokens).
@@ -34,14 +34,30 @@ Doc détaillée dans `docs/`, qui fait foi.
   → PR (draft par défaut) → **Claude merge lui-même** (squash sur `main`) une fois
   le gate vert et `/review-all` fait. Le push sur `main` déclenche le déploiement
   Vercel : Claude en est responsable (choix de Marc, 2026-06 — plus de gate humain).
-- **Cochage AUTOMATIQUE** : l'Action `backlog-autocheck` coche `docs/BACKLOG.md` à
-  partir du préfixe `[ID]`. Claude n'édite le backlog que pour AJOUTER des tâches
-  (découvertes) ou des blocages humains (→ `docs/A_FAIRE_MOI.md`). Ne pas cocher à la main.
-  (NB : l'Action `backlog-autocheck` reste à créer — cf `docs/A_FAIRE_MOI.md`.)
+- **Backlog tenu par Claude** (l'Action `backlog-autocheck` a été RETIRÉE — choix Marc 2026-06-09) :
+  au moment du MERGE d'une PR, Claude coche lui-même les `[ID]` livrés dans `docs/BACKLOG.md`
+  (dans la PR même ou la suivante), ajoute les découvertes, et route les blocages humains
+  vers `docs/A_FAIRE_MOI.md`. Fin de session : BACKLOG + SESSION_HANDOVER à jour = partie du travail.
 - **Garde-fou (non négociable)** : avant CHAQUE commit, `typecheck` clean + `build`
   qui passe + `test` vert (hook `commit-gate`). Jamais `--no-verify`.
 - **Vigilance** (à signaler dans le plan, pas interdit) : migrations schema Zustand
   (persist v7) — une erreur corrompt les données persistées.
+
+## Exécution cloud — résilience (leçons 2026-06-09)
+- **Le conteneur peut REVERTIR le working tree** (resets périodiques) : ne JAMAIS faire confiance
+  à l'état local après une reprise. Avant tout commit/push : `git fetch origin main` puis vérifier
+  `git merge-base --is-ancestor origin/main HEAD`. Divergence → reset sur `origin/main` + ré-appliquer
+  le diff proprement (jamais de merge de branches divergées). **Origin = seule source de vérité.**
+- **CI qui ne se déclenche pas** sur une PR = symptôme n°1 d'une branche divergée → re-baser, force-push
+  (`--force-with-lease`), la CI repart.
+- **E2E rouge** : lire le log AVANT de débugger — si l'échec est infra (install navigateurs, apt mirror),
+  `rerun_failed_jobs` une fois ; n'investiguer que si ça re-échoue.
+- **`npm install` après reprise** (le conteneur peut perdre `node_modules` — symptôme : tsc casse sur
+  un module manquant type `lucide-react`).
+- **Propreté** : GitHub auto-supprime les branches mergées ; supprimer soi-même toute branche de PR
+  fermée-non-mergée. Zéro tâche de fond orpheline en fin de session (timers/agents terminés).
+- Un commit de merge GitHub (`noreply@github.com` sur `main`) signalé « Unverified » par le stop-hook
+  n'est PAS un commit local à corriger — l'ignorer.
 
 ## Agents — deux niveaux
 **Globaux** (`~/.claude/agents/` via claude-config / ECC) : dispo dans tous les projets.
@@ -117,3 +133,5 @@ Cœur : `services/projection.ts` + `services/projection/` (31 sous-modules).
 - Auth : **Cloudflare Access encore EN PLACE**. Cible = bascule sur le **gate Google in-app**
   (ADR 010, `A_FAIRE_MOI` O1) — pas encore fait.
 - Persistance : localStorage + IndexedDB chiffré (AES-256-GCM, PBKDF2 600k). apiKeys exclues.
+- Mode test : PERSISTÉ depuis #217 (bannière survit au reload) ; push Drive coupé en test
+  (`shouldPush`). Switch de persona = base propre (`personaResetBase`), zéro fuite inter-persona.

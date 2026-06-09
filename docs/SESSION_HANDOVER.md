@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> Session 2026-06-09 — **14 PR mergées (#206-#217 + gouvernance)**. Tests **1782 verts / 154 fichiers**.
+> - **Refonte Futur COMPLÈTE** : 4 sous-onglets (Graphique/Paramètres/Optimisation/Plan d'action)
+>   + écran d'amorçage (#213) ; Robustesse+Optimiseur fusionnés en « Comparer les stratégies »
+>   2 modes (#215) ; Plan d'action = checklist (case + montant + « Pourquoi ? » repliable,
+>   `AdviceItem[]` structuré, zéro chiffre fiscal en dur) (#216) ; fix contraste onglets actifs (#215).
+> - **Bug rentes bouclé** : début RRQ/PSV découplé de l'âge d'arrêt (moteur #210, RRQ→72) + UI âges
+>   dans Retraite (#214). Fiscal : fractionnement pension 65+ (#211), récolte de gains (#212).
+> - **Mode test réparé (#217)** : switch persona = base propre (zéro fuite inter-persona) ; mode test
+>   PERSISTÉ (bannière survit au reload) ; push Drive toujours coupé en test ; `resetState` sort du
+>   mode test ; `realDataSnapshot` typé `Omit<…,'apiKeys'>`.
+> - **Gouvernance** : Action `backlog-autocheck` RETIRÉE (Claude coche le BACKLOG au merge) ;
+>   CLAUDE.md § « Exécution cloud — résilience » (reverts conteneur → vérifier ancêtre origin/main,
+>   CI muette = divergence, flake E2E = rerun) ; 14 branches mortes supprimées.
+> - **Reste ouvert** : PR #150 dependabot (hono, sécu) ; P0 (proxy clé, IndexedDB, sync Drive réelle,
+>   gate Google) ; [D6-SR] fuite SR mode privé.
+>
 > Session 2026-05-29 — **Feature Sync Google Drive** (livrée « dark », inerte sans `VITE_GOOGLE_CLIENT_ID`) :
 > données dans le Drive de chaque user (appDataFolder), auto + garde anti-perte, pas de chiffrement
 > applicatif (choix Marc), clés API synchronisées (sync v2, en clair). Code : `services/sync/*` + `services/googleDrive/*`

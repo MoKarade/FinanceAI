@@ -9,11 +9,6 @@ on:
 jobs:
   quality:
     name: Lint / Typecheck / Tests / Build
-    # Saute les commits de cochage backlog ([skip-backlog]) — fusionné depuis le
-    # ci.yml « quality » de Marc. (L'Action backlog-autocheck qui produit ces
-    # commits reste à créer — cf docs/A_FAIRE_MOI.md.) Sur une PR, head_commit est
-    # null → le job tourne toujours, ce qui est voulu.
-    if: "!contains(github.event.head_commit.message, '[skip-backlog]')"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -44,7 +39,6 @@ jobs:
 
   e2e:
     name: E2E (Playwright / Chromium)
-    if: "!contains(github.event.head_commit.message, '[skip-backlog]')"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

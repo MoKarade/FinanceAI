@@ -34,6 +34,15 @@ Doc détaillée dans `docs/`, qui fait foi.
   → PR (draft par défaut) → **Claude merge lui-même** (squash sur `main`) une fois
   le gate vert et `/review-all` fait. Le push sur `main` déclenche le déploiement
   Vercel : Claude en est responsable (choix de Marc, 2026-06 — plus de gate humain).
+- **Merge SANS attente active** : après `/review-all` + gate vert → push → PR ready →
+  **`enable_pr_auto_merge` (squash)** : GitHub merge tout seul dès la CI verte. PAS de timers
+  `sleep` pour « surveiller » la CI (c'était ~7 min d'inactivité par PR). Vérifier le merge au
+  point de contrôle suivant. Échec CI réel → le webhook réveille la session de toute façon.
+  (Pré-requis repo : Settings → General → « Allow auto-merge » coché.)
+- **Pourquoi un merge prend ~10 min quand même** : commit-gate local (typecheck+tests+build
+  ≈ 5 min si `.ts/.tsx` stagés) PUIS la même suite en CI (≈ 5 min) — redondant mais voulu
+  (gate = filet local, CI = vérité partagée). Pour raccourcir, l'option serait un gate allégé
+  (typecheck+build+tests `related` seulement) avec la suite complète en CI — décision Marc.
 - **Backlog tenu par Claude** (l'Action `backlog-autocheck` a été RETIRÉE — choix Marc 2026-06-09) :
   au moment du MERGE d'une PR, Claude coche lui-même les `[ID]` livrés dans `docs/BACKLOG.md`
   (dans la PR même ou la suivante), ajoute les découvertes, et route les blocages humains

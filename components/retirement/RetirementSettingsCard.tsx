@@ -14,6 +14,12 @@ export const RetirementSettingsCard: React.FC = () => {
     const retirementGoal = useFinanceStore((s) => s.retirementGoal);
     const setAppState = useFinanceStore((s) => s.setAppState);
 
+    // Âge de DÉBUT des rentes (indépendant de l'âge d'arrêt). Défaut = min(âge retraite, 65),
+    // borné aux plages légales (RRQ 60-72 depuis 2024 ; PSV 65-70). Cf moteur retirementIncome.
+    const targetAge = retirementGoal?.targetAge ?? 65;
+    const defaultRrqStart = Math.min(72, Math.max(60, Math.min(targetAge, 65)));
+    const defaultPsvStart = Math.min(70, Math.max(65, Math.min(targetAge, 65)));
+
     return (
         <Card icon={<Icon name="retirement" size={18} />} title="Paramètres de retraite">
             <div className="space-y-4">
@@ -58,6 +64,45 @@ export const RetirementSettingsCard: React.FC = () => {
                         />
                     </div>
                 </div>
+
+                {/* Âge de DÉBUT des rentes — choix indépendant de l'âge d'arrêt de travail
+                    (correctif bug « pas de rente avant l'âge de retraite », 2026-06). */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-meta text-ink-300 mb-1">
+                            Début rente RRQ
+                            <span className="ml-1 text-tiny text-ink-500">(60–72 ans)</span>
+                        </label>
+                        <input
+                            type="number"
+                            min={60}
+                            max={72}
+                            value={retirementGoal?.rrqStartAge ?? defaultRrqStart}
+                            onChange={(e) => setAppState({ retirementGoal: { ...(retirementGoal as RetirementGoal), rrqStartAge: Math.min(72, Math.max(60, Number(e.target.value) || 65)) } })}
+                            className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-meta text-ink-300 mb-1">
+                            Début pension PSV
+                            <span className="ml-1 text-tiny text-ink-500">(65–70 ans)</span>
+                        </label>
+                        <input
+                            type="number"
+                            min={65}
+                            max={70}
+                            value={retirementGoal?.psvStartAge ?? defaultPsvStart}
+                            onChange={(e) => setAppState({ retirementGoal: { ...(retirementGoal as RetirementGoal), psvStartAge: Math.min(70, Math.max(65, Number(e.target.value) || 65)) } })}
+                            className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
+                        />
+                    </div>
+                </div>
+                <p className="text-tiny text-ink-500 leading-snug">
+                    Le début des rentes est <strong>indépendant de ton âge d'arrêt de travail</strong> :
+                    tu peux arrêter tôt et toucher le RRQ/PSV plus tard (ou l'inverse). Reporter
+                    <strong> bonifie</strong> la rente — RRQ jusqu'à 72 ans (+58,8 %), PSV jusqu'à 70 ans
+                    (+36 %). Par défaut = ton âge de retraite (plafonné à 65 ans).
+                </p>
             </div>
         </Card>
     );

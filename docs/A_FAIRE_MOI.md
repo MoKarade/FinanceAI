@@ -54,6 +54,12 @@ Le code est prêt et déployé ; il manque l'hébergement du bundle (Marc avait 
   ```
   💡 Pour l'avenir : GitHub → Settings → General → cocher **« Automatically delete head branches »**
   (les branches de PR mergées disparaîtront seules ; c'est déjà le cas des branches de session Claude).
+- [ ] **Débloquer l'auto-merge (2 min) — supprime l'attente active de Claude sur chaque PR** :
+  1. Settings → General → cocher **« Allow auto-merge »** ;
+  2. Settings → Branches → règle sur `main` → **Require status checks to pass** → cocher
+     `Lint / Typecheck / Tests / Build` et `E2E (Playwright / Chromium)`.
+  Sans checks REQUIS, GitHub refuse d'armer l'auto-merge (testé 2026-06-09 sur #219 : « unstable »).
+  Une fois fait, Claude arme l'auto-merge à la création de chaque PR et passe à la suite.
 - [x] **9 agents projet + `/review-all`** : étaient absents (`.claude/` était gitignoré en
   entier) → **créés par Claude** dans G0 et `.claude/` désormais committé pour les parties projet.
 - [x] **CLAUDE.md + hooks absents du repo** → installés dans G0 (push/merge autonome, guard

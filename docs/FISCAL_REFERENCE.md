@@ -81,6 +81,13 @@
 
 - **Inclusion gains en capital** (`CAPITAL_GAINS_INCLUSION_STANDARD`) : **50 %** uniforme
   (la proposition fédérale 66,67 % > 250 k$ a été **annulée en mars 2025**).
+- **Report de pertes nettes en capital** (LIR 111(1)(b)) : les pertes cristallisées (TLH) entrent
+  dans `capitalLossBank` et compensent les gains futurs au moment de la RÉALISATION
+  (`handleNonRegSale`). **PV-2 (2026-06-10)** : la *récolte de gains* (`processGainHarvesting`)
+  consomme la banque EN PREMIER — la part compensée est imposable à 0 $ et n'occupe AUCUNE place
+  dans le 1er palier (step-up d'ACB gratuit), le remplissage du palier porte sur le latent restant.
+  Limite connue (BACKLOG) : les ventes de **crypto** (cascade de shortfall) n'appliquent PAS la
+  banque (gain ajouté brut à `accCapitalGainsYear`) — conservateur.
 - **Dividendes** (`calculateDividendTax`, résident QC) :
   | Type | Majoration (gross-up) | CID fédéral | CID Québec |
   |---|---|---|---|

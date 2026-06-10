@@ -705,9 +705,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 enabled: !!overrides.gainHarvesting,
                 nonReg, nonRegACB, otherTaxableNominal: ghOtherNominal,
                 existingGainsNominal: accCapitalGainsYear, activeUsersCount: taxFilers, loopYear,
+                capitalLossBank,
             });
             if (gh.harvestedGain > 0) {
-                accCapitalGainsYear += gh.harvestedGain;
+                // [PV-2] Seule la part NON compensée par la banque de pertes est imposable ;
+                // l'ACB monte du gain TOTAL réalisé (la part compensée = step-up gratuit).
+                accCapitalGainsYear += gh.harvestedGain - gh.consumedLoss;
+                capitalLossBank -= gh.consumedLoss;
                 nonRegACB += gh.harvestedGain;
                 if (gh.logMsg) logEvent(flowEventsLog, gh.logMsg);
             }

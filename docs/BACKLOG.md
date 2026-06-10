@@ -117,8 +117,14 @@
   shortfalls non couverts) → NW encore surévalué du résiduel dans les scénarios DÉJÀ en ruine. Modéliser
   un passif `liquidDebt` cumulé (affiché au bilan) si on veut un NW honnête en insolvabilité. Basse
   priorité (scénarios concernés déjà signalés par shortfallRate/successRate). (M)
-- [ ] **[PV-2]** 🔧 Récolte de gains ignore `capitalLossBank` (impôt payé sur gains compensables —
-  conservateur, sous-optimal).
+- [x] **[PV-2]** 🔧 (livré) Récolte de gains ignorait `capitalLossBank` : la banque de pertes (TLH)
+  est désormais consommée EN PREMIER (LIR 111(1)(b)) — part compensée = 0 $ d'impôt et HORS palier
+  (step-up d'ACB gratuit), remplissage du palier sur le latent restant. `consumedLoss` retourné au
+  caller (seule la part non compensée entre dans `accCapitalGainsYear`). 4 tests + FISCAL_REFERENCE §3.
+- [ ] **[PV-7]** 🔧 Ventes de CRYPTO sans banque de pertes (découverte PV-2) : la cascade de shortfall
+  (`cashflowAllocation.ts:260`) ajoute le gain crypto BRUT à `accCapitalGainsYear` sans consommer
+  `capitalLossBank` (contrairement à `handleNonRegSale`). Conservateur mais incohérent — router le
+  gain crypto par la même logique de compensation. (S)
 - [ ] **[PV-3]** 🔧 Fractionnement : le transfert n'alimente pas le crédit pension du RÉCIPIENDAIRE
   (ARC 31400 l'admet) — conservateur.
 - [ ] **[PV-4]** 🔧 Tests des clamps hors-bornes `rrqStartAge` (55→60, 80→72) / `psvStartAge`.

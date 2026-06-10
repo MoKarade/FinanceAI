@@ -144,24 +144,39 @@ export function processGainHarvesting(opts: {
     activeUsersCount: number;
     /** Année de la projection (sert à indexer le 1er palier, comme l'impôt réel). */
     loopYear: number;
-}): { harvestedGain: number; logMsg?: string } {
-    if (!opts.enabled) return { harvestedGain: 0 };
+    /** [PV-2] Banque de pertes en capital (TLH) disponible — les gains récoltés la consomment
+     *  D'ABORD (LIR 111(1)(b)) : part compensée = SANS impôt et HORS palier. Absent → 0. */
+    capitalLossBank?: number;
+}): { harvestedGain: number; consumedLoss: number; logMsg?: string } {
+    if (!opts.enabled) return { harvestedGain: 0, consumedLoss: 0 };
     const unrealized = opts.nonReg - opts.nonRegACB;
-    if (!(unrealized > 1)) return { harvestedGain: 0 };
+    if (!(unrealized > 1)) return { harvestedGain: 0, consumedLoss: 0 };
+    // [PV-2] Récolte « GRATUITE » d'abord : les gains compensés par la banque de pertes
+    // (report de pertes nettes en capital, LIR 111(1)(b)) sont imposables à 0 $ et
+    // n'occupent AUCUNE place dans le palier → ACB relevé sans impôt, quel que soit le
+    // revenu de l'année. Avant : la banque était ignorée → impôt payé sur des gains
+    // compensables (conservateur, sous-optimal) et place de palier gaspillée.
+    const freeGain = Math.min(unrealized, Math.max(0, opts.capitalLossBank ?? 0));
+    const remainingUnrealized = unrealized - freeGain;
     const n = Math.max(1, opts.activeUsersCount);
     // Plafond du 1er palier combiné (le plus restrictif QC/féd), indexé à l'année, par tête × N.
     const bracketTopNominal = firstCombinedBracketTopForYear(opts.loopYear) * n;
     // Part imposable déjà occupée = revenu autre + 50 % des gains déjà réalisés cette année.
     const occupied = opts.otherTaxableNominal + Math.max(0, opts.existingGainsNominal) * CAPITAL_GAINS_INCLUSION_STANDARD;
     const roomTaxable = bracketTopNominal - occupied;
-    if (!(roomTaxable > 0)) return { harvestedGain: 0 };
-    // gain réalisable tel que 50 % × gain ≤ room → gain ≤ room / 0,5.
-    const maxGain = roomTaxable / CAPITAL_GAINS_INCLUSION_STANDARD;
-    const harvestedGain = Math.min(unrealized, maxGain);
-    if (!(harvestedGain > 1)) return { harvestedGain: 0 };
+    // gain réalisable tel que 50 % × gain ≤ room → gain ≤ room / 0,5 (sur le latent restant).
+    const bracketGain = roomTaxable > 0
+        ? Math.min(remainingUnrealized, roomTaxable / CAPITAL_GAINS_INCLUSION_STANDARD)
+        : 0;
+    const harvestedGain = freeGain + bracketGain;
+    if (!(harvestedGain > 1)) return { harvestedGain: 0, consumedLoss: 0 };
+    const freeNote = freeGain > 0.5
+        ? ` dont ${Math.round(freeGain).toLocaleString('fr-CA')}$ compensés par la banque de pertes (0$ d'impôt)`
+        : '';
     return {
         harvestedGain,
-        logMsg: `🌱 Récolte de gains: +${Math.round(harvestedGain).toLocaleString('fr-CA')}$ réalisés au palier bas (ACB relevé)`,
+        consumedLoss: freeGain,
+        logMsg: `🌱 Récolte de gains: +${Math.round(harvestedGain).toLocaleString('fr-CA')}$ réalisés au palier bas (ACB relevé)${freeNote}`,
     };
 }
 

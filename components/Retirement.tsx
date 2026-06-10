@@ -19,6 +19,7 @@ import { fetchPortfolioHistory } from '../services/finance';
 import { calculateGrossFromNet } from '../services/tax';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { useShallow } from 'zustand/shallow';
+import { numOr, numOrUndef } from '../utils/numericInput';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 
 // Sprint 2 PH3 — constante stable pour éviter de créer un nouveau [] à chaque
@@ -131,7 +132,9 @@ export const Retirement: React.FC<RetirementProps> = ({
         return () => { cancelled = true; };
     }, [assets, currentCELI, currentREER, currentNonReg]);
 
-    const updateGoal = (field: keyof RetirementGoal, value: number) => {
+    // PV-5 — `updateGoal` accepte `undefined` pour permettre aux champs optionnels (RRQ/PSV)
+    // de revenir à « non renseigné » quand on les vide (cf. numOrUndef), au lieu d'un 0 fantôme.
+    const updateGoal = (field: keyof RetirementGoal, value: number | undefined) => {
         setGoal({ ...goal, [field]: value });
     };
 
@@ -236,14 +239,14 @@ export const Retirement: React.FC<RetirementProps> = ({
                                 <div>
                                     <label className="block text-meta text-ink-300 mb-1">Age Actuel</label>
                                     <input type="number" min="18" max="80" value={currentAge} onChange={e => {
-                                        const val = Number(e.target.value);
+                                        const val = numOr(e.target.value, currentAge);
                                         setCurrentAge(val);
                                         setAppState({ config: { ...config, users: config.users.map((u, i) => i === 0 ? { ...u, age: val } : u) as BudgetConfig['users'] } });
                                     }} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-bold focus:border-primary transition-colors outline-none" />
                                 </div>
                                 <div>
                                     <label className="block text-meta text-ink-300 mb-1">Age Retraite</label>
-                                    <input type="number" value={goal.targetAge} onChange={e => updateGoal('targetAge', Number(e.target.value))} className="w-full bg-black/40 border border-info-500/30 rounded-lg px-3 py-2 text-info-400 font-bold focus:border-info-500 transition-colors outline-none" />
+                                    <input type="number" value={goal.targetAge} onChange={e => updateGoal('targetAge', numOr(e.target.value, goal.targetAge))} className="w-full bg-black/40 border border-info-500/30 rounded-lg px-3 py-2 text-info-400 font-bold focus:border-info-500 transition-colors outline-none" />
                                 </div>
                             </div>
                             <div>
@@ -270,11 +273,11 @@ export const Retirement: React.FC<RetirementProps> = ({
                         <div className="space-y-5">
                             <div>
                                 <label className="block text-meta text-ink-300 mb-1">Besoin Mensuel (Aujourd'hui)</label>
-                                <input type="number" value={goal.targetMonthlyIncome} onChange={e => updateGoal('targetMonthlyIncome', Number(e.target.value))} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-bold focus:border-primary transition-colors outline-none privacy-blur" />
+                                <input type="number" value={goal.targetMonthlyIncome} onChange={e => updateGoal('targetMonthlyIncome', numOr(e.target.value, goal.targetMonthlyIncome))} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-bold focus:border-primary transition-colors outline-none privacy-blur" />
                             </div>
                             <div>
                                 <label className="block text-meta text-ink-300 mb-1">Rente Etat agrégée (RRQ + PSV / mois) — legacy</label>
-                                <input type="number" value={goal.governmentPension} onChange={e => updateGoal('governmentPension', Number(e.target.value))} className="w-full bg-black/40 border border-info-500/20 rounded-lg px-3 py-2 text-blue-300 font-bold focus:border-info-500 transition-colors outline-none privacy-blur" />
+                                <input type="number" value={goal.governmentPension} onChange={e => updateGoal('governmentPension', numOr(e.target.value, goal.governmentPension))} className="w-full bg-black/40 border border-info-500/20 rounded-lg px-3 py-2 text-blue-300 font-bold focus:border-info-500 transition-colors outline-none privacy-blur" />
                                 <p className="text-tiny text-ink-500 mt-1">Si tu remplis les 2 champs ci-dessous, ce champ est ignoré.</p>
                             </div>
                             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
@@ -284,7 +287,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                         type="number"
                                         value={goal.rrqEstimateMonthly ?? ''}
                                         placeholder="ex: 1100"
-                                        onChange={e => updateGoal('rrqEstimateMonthly', Number(e.target.value))}
+                                        onChange={e => updateGoal('rrqEstimateMonthly', numOrUndef(e.target.value))}
                                         className="w-full bg-black/40 border border-info-500/20 rounded-lg px-3 py-2 text-blue-300 text-body focus:border-info-500 transition-colors outline-none"
                                     />
                                     <p className="text-tiny text-ink-500 mt-1">Max 2025: 1 433$/mois. Consulte ton relevé RRQ.</p>
@@ -295,7 +298,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                         type="number"
                                         value={goal.psvEstimateMonthly ?? ''}
                                         placeholder="ex: 734"
-                                        onChange={e => updateGoal('psvEstimateMonthly', Number(e.target.value))}
+                                        onChange={e => updateGoal('psvEstimateMonthly', numOrUndef(e.target.value))}
                                         className="w-full bg-black/40 border border-info-500/20 rounded-lg px-3 py-2 text-blue-300 text-body focus:border-info-500 transition-colors outline-none"
                                     />
                                     <p className="text-tiny text-ink-500 mt-1">Max 2025: 734$/mois (40 ans résidence).</p>
@@ -316,7 +319,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                         <input
                                             type="number"
                                             value={goal.dbPensionMonthly ?? 0}
-                                            onChange={e => updateGoal('dbPensionMonthly', Number(e.target.value))}
+                                            onChange={e => updateGoal('dbPensionMonthly', numOr(e.target.value, goal.dbPensionMonthly ?? 0))}
                                             placeholder="0"
                                             className="w-full bg-black/40 border border-success-500/20 rounded-lg px-3 py-2 text-emerald-300 font-bold focus:border-success-500 transition-colors outline-none privacy-blur"
                                         />
@@ -344,7 +347,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                                     min={0}
                                                     max={100}
                                                     value={goal.dbSurvivorPct ?? 60}
-                                                    onChange={e => updateGoal('dbSurvivorPct', Number(e.target.value))}
+                                                    onChange={e => updateGoal('dbSurvivorPct', numOr(e.target.value, goal.dbSurvivorPct ?? 60))}
                                                     className="w-full bg-black/40 border border-success-500/10 rounded-lg px-3 py-2 text-emerald-200 text-body"
                                                 />
                                             </div>
@@ -359,7 +362,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                                     min={0}
                                                     max={100}
                                                     value={goal.dbPensionIndexationPct ?? 100}
-                                                    onChange={e => updateGoal('dbPensionIndexationPct', Number(e.target.value))}
+                                                    onChange={e => updateGoal('dbPensionIndexationPct', numOr(e.target.value, goal.dbPensionIndexationPct ?? 100))}
                                                     className="w-full bg-black/40 border border-success-500/10 rounded-lg px-3 py-2 text-emerald-200 text-body focus:border-success-500 transition-colors outline-none"
                                                 />
                                                 <p className="text-tiny text-ink-500 mt-1">100 = pleine indexation, 50 = demi, 0 = nominale</p>
@@ -371,7 +374,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                                     min={50}
                                                     max={75}
                                                     value={goal.dbPensionStartAge ?? goal.targetAge}
-                                                    onChange={e => updateGoal('dbPensionStartAge', Number(e.target.value))}
+                                                    onChange={e => updateGoal('dbPensionStartAge', numOr(e.target.value, goal.dbPensionStartAge ?? goal.targetAge))}
                                                     className="w-full bg-black/40 border border-success-500/10 rounded-lg px-3 py-2 text-emerald-200 text-body focus:border-success-500 transition-colors outline-none"
                                                 />
                                                 <p className="text-tiny text-ink-500 mt-1">Defaut = age cible retraite</p>

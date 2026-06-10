@@ -88,13 +88,13 @@
 - [ ] **[PV-3]** 🔧 Fractionnement : le transfert n'alimente pas le crédit pension du RÉCIPIENDAIRE
   (ARC 31400 l'admet) — conservateur.
 - [ ] **[PV-4]** 🔧 Tests des clamps hors-bornes `rrqStartAge` (55→60, 80→72) / `psvStartAge`.
-- [ ] **[PV-5]** 🔧 Champs numériques Retraite avalent les NaN (découverte EP-8, silent-failure-hunter) :
-  `updateGoal('X', Number(e.target.value))` (`Retirement.tsx`, TOUS les champs number) persiste `NaN`
-  sur saisie vide/invalide. En projection (`retirementIncome.ts:203-208`) la pension DB DISPARAÎT
-  silencieusement (`dbPensionStartAge` NaN → `age >= NaN` faux → `dbMonthly=0`) ou propage NaN
-  (`dbPensionIndexationPct` → `dbInflFactor` NaN). Helper `numField(raw, fallback, label)` calqué sur
-  `parseRate` (`services/finance.ts:107`) : `logError` warning + repli au lieu de persister NaN, appliqué
-  à tous les `updateGoal` numériques du fichier. Money-relevant (pension DB annulée sans trace). (S/M)
+- [x] **[PV-5]** 🔧 (livré) Champs `number` Retraite — saisie vide écrasée silencieusement (découverte EP-8) :
+  `updateGoal('X', Number(e.target.value))` (`Retirement.tsx`) persistait `Number('')` = **0** (pas NaN ; et
+  NaN sur saisie mi-frappe « - »/« 1e »). En projection (`retirementIncome.ts:203-208`) : `dbPensionStartAge`
+  vidé ⇒ 0 ⇒ `age >= 0` toujours vrai ⇒ pension DB versée « dès 0 an » ; estimé RRQ/PSV vidé ⇒ 0 (≠ `undefined`)
+  ⇒ le moteur ne retombe plus sur la rente agrégée (`!== undefined`, l.187-191). Fix : `utils/numericInput.ts`
+  (`numOr` requis → repli valeur courante ; `numOrUndef` optionnel → `undefined`, jamais 0/NaN) appliqué aux
+  10 `<input number>` + tests unitaires. Validé par projection-validator (1835/1835, invariants OK, 0 régression). (S/M)
 
 ## 🧽 Audit code 2026-06-09 (code-analyzer) — dette actionnable
 - [ ] **[CA-01]** Code mort utils/ : `csvExport.ts` (109 l) + `safeNumber.ts` (30 l) entiers +

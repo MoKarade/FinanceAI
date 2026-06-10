@@ -111,7 +111,9 @@ export function applySavingsGoalDeadlines(
         // SavingsGoal n'a pas de compte cible → cascade depuis liquide.
         const drawn = state.withdrawFromAccount('LIQUID', effective);
         if (drawn > 0) state.addExpense(drawn);
-        state.logFlow(`🎯 Objectif (${g.name}): -${Math.round(effective).toLocaleString('fr-CA')}$`);
+        // [PV-10 suivi] log HONNÊTE : montant réellement tiré (pas la cible) + mention du manque.
+        const short = effective - drawn > 0.5 ? ` (visé ${Math.round(effective).toLocaleString('fr-CA')}$ — fonds insuffisants)` : '';
+        state.logFlow(`🎯 Objectif (${g.name}): -${Math.round(drawn).toLocaleString('fr-CA')}$${short}`);
     }
 }
 
@@ -130,7 +132,9 @@ export function applyFinancialGoalDeadlines(
         const account = g.targetAccount || 'NON-ENREG';
         const drawn = state.withdrawFromAccount(account, effective);
         if (drawn > 0) state.addExpense(drawn);
-        state.logFlow(`🏆 But financier (${g.name}): -${Math.round(effective).toLocaleString('fr-CA')}$ depuis ${account}`);
+        // [PV-10 suivi] log HONNÊTE : montant réellement tiré (pas la cible) + mention du manque.
+        const short = effective - drawn > 0.5 ? ` (visé ${Math.round(effective).toLocaleString('fr-CA')}$ — fonds insuffisants)` : '';
+        state.logFlow(`🏆 But financier (${g.name}): -${Math.round(drawn).toLocaleString('fr-CA')}$ depuis ${account}${short}`);
     }
 }
 

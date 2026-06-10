@@ -139,11 +139,14 @@
   deux tests, et le report 111(1)(b) ne les en retire PAS (déduction au revenu IMPOSABLE seulement).
   Un 65+ bas revenu avec gainHarvesting voit le levier « gratuit » alors qu'il coûterait des
   milliers de $ de SRG. Sœur de FA-8 (assiette clawback). (M)
-- [ ] **[PV-10]** 🔧 ⚠️ NON CONSERVATEUR — goal-mutator NonReg sans réalisation de gains
-  (découverte code-reviewer PV-2) : le retrait `'NON-ENREG'` des échéances d'objectifs
-  (`projection.ts` ~1055 : `nonRegACB = Math.max(0, nonRegACB − fromNR)`, PAS de handleNonRegSale)
-  ne réalise AUCUN gain en capital → gains jamais imposés sur les retraits financés par objectifs
-  + ACB faussé pour les ventes suivantes. Sous-imposition réelle — prioritaire dans la famille PV. (S)
+- [x] **[PV-10]** 🔧 (livré) ⚠️ NON CONSERVATEUR corrigé — goal-mutator NonReg : le retrait
+  `'NON-ENREG'` des échéances d'objectifs passe par `handleNonRegSale` (ACB proportionnel, banque
+  de pertes, gain → accCapitalGainsYear → imposé en décembre). Avant : ACB décrémenté du montant
+  VENDU complet et AUCUN gain réalisé (jamais imposés + ACB faussé). Test d'intégration discriminant
+  (delta TaxPaidGains avec/sans objectif — échec prouvé sans le fix). Bonus : logs d'objectifs
+  HONNÊTES (montant TIRÉ + « visé X — fonds insuffisants », au lieu de la cible toujours affichée).
+  Piège documenté : la room historique CELI/REER ignore `celiContributed` → fixture de test via
+  `useManualBalances` + rooms 0.
 - [ ] **[PV-3]** 🔧 Fractionnement : le transfert n'alimente pas le crédit pension du RÉCIPIENDAIRE
   (ARC 31400 l'admet) — conservateur.
 - [ ] **[PV-4]** 🔧 Tests des clamps hors-bornes `rrqStartAge` (55→60, 80→72) / `psvStartAge`.

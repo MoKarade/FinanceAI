@@ -152,8 +152,11 @@
   HONNÊTES (montant TIRÉ + « visé X — fonds insuffisants », au lieu de la cible toujours affichée).
   Piège documenté : la room historique CELI/REER ignore `celiContributed` → fixture de test via
   `useManualBalances` + rooms 0.
-- [ ] **[PV-3]** 🔧 Fractionnement : le transfert n'alimente pas le crédit pension du RÉCIPIENDAIRE
-  (ARC 31400 l'admet) — conservateur.
+- [x] **[PV-3]** 🔧 (livré) Fractionnement : l'assiette du crédit pension (féd 31400 / QC 361) SUIT
+  désormais la pension transférée vers le récipiendaire (ARC : le bénéficiaire du fractionnement peut
+  réclamer le crédit sur la pension reçue). `combinedTaxFor` prend l'assiette par appel ; la grille
+  passe `{splittable[H]−tr, tr}`. Avant : assiette gelée pré-split → récipiendaire jamais crédité
+  (conservateur). Test d'effet (impôt < assiette gelée, grille reproduite). FISCAL_REFERENCE §6.
 - [ ] **[PV-4]** 🔧 Tests des clamps hors-bornes `rrqStartAge` (55→60, 80→72) / `psvStartAge`.
 - [x] **[PV-5]** 🔧 (livré) Champs `number` Retraite — saisie vide écrasée silencieusement (découverte EP-8) :
   `updateGoal('X', Number(e.target.value))` (`Retirement.tsx`) persistait `Number('')` = **0** (pas NaN ; et

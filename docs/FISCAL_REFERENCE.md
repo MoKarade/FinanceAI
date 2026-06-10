@@ -146,9 +146,9 @@ les retraits FERR/RIF et rentes REER. Sont **EXCLUS** : RRQ, PSV, SRG, et les re
 > l'assiette FRACTIONNABLE (#211). Avant le correctif FA-1, l'assiette incluait à tort RRQ/PSV et
 > les loyers (`accRentesYear`) → crédit surévalué ~250-680 $/an/personne 65+.
 > Limite assumée (conservatrice) : les retraits FERR 65-71 (conversion volontaire précoce) ne sont
-> pas modélisés ; le revenu fractionné reçu n'alimente pas le crédit du récipiendaire (PV-3) ;
-> la rente DB avant 65 ans (admissible au FÉDÉRAL 31400 sans âge minimum) est gateée à 65 dans le
-> modèle, comme pour le fractionnement (§9) — sens conservateur.
+> pas modélisés ; la rente DB avant 65 ans (admissible au FÉDÉRAL 31400 sans âge minimum) est gateée
+> à 65 dans le modèle, comme pour le fractionnement (§9) — sens conservateur.
+> (Le revenu fractionné REÇU alimente bien le crédit du récipiendaire depuis **PV-3** — cf §6.)
 
 ---
 
@@ -212,8 +212,12 @@ pour minimiser l'impôt combiné (élection optionnelle).
 | RRQ/PSV, retraits **REER** (avant conversion) | **NON admissibles** | exclus de l'assiette |
 > **Implémentation** : `taxDecember` calcule l'impôt du ménage AVEC et SANS fractionnement et garde le
 > **minimum** (élection optionnelle → ne peut jamais augmenter l'impôt). Transfert borné à ≤ 50 % de
-> l'admissible du cédant. Limites assumées (conservatrices, cf §9) : gate DB à 65 (vs tout âge féd),
-> crédit pension non re-réparti au conjoint receveur.
+> l'admissible du cédant. **PV-3 (2026-06-10)** : l'assiette du crédit pension (féd 31400 / QC 361)
+> SUIT la pension fractionnée — le récipiendaire réclame le crédit sur la pension reçue (ARC : le revenu
+> fractionné L.11600 est réputé revenu de pension admissible du cessionnaire pour la L.31400, guide
+> T4040/formulaire T1032 ; QC Annexe Q pour la L.361), le cédant le perd sur la part cédée (déduit à
+> sa L.21000 ; chacun plafonné au max féd/QC). Limite assumée restante
+> (conservatrice, cf §9) : gate DB à 65 (vs tout âge au fédéral).
 
 ### PSV / OAS — récupération (clawback)
 - Seuil de récupération 2026 (`OAS_CLAWBACK_THRESHOLD_2026`) : **95 323 $** (ARC ; 93 454 $ en 2025).
@@ -344,10 +348,9 @@ Implémenté (ADR 009) ; valeurs à transcrire ici lors de la prochaine revue fi
   Σ==commun). Phase 2 = retraits REER/FERR taxés PAR CONJOINT (prorata des soldes). **Phase 3 =
   fractionnement de pension 65+ (FAIT, cf §6).** Restent répartis également : rentes gouv. et DB.
   Reste ouvert : **FERR par conjoint exact** (aujourd'hui prorata des soldes).
-- **Crédit pension non re-réparti au conjoint receveur** (limite assumée, conservatrice) : le
-  fractionnement transfère du revenu imposable, mais le moteur ne recalcule PAS le crédit pension
-  (féd ligne 31400 = 2 000 $ + ligne 361 QC) du conjoint qui REÇOIT le montant fractionné → bénéfice
-  légèrement SOUS-estimé (sens sur-impôt, jamais sous-imposition).
+- ~~**Crédit pension non re-réparti au conjoint receveur**~~ **CORRIGÉ (PV-3, 2026-06-10)** : le
+  fractionnement déplace désormais l'assiette du crédit pension (féd 31400 + QC 361) AVEC la pension
+  transférée → le récipiendaire réclame le crédit sur la pension reçue (cf §6 fractionnement).
 - **Gate DB du fractionnement à 65 ans** (limite assumée) : la rente viagère DB est fractionnable
   dès réception à TOUT âge côté fédéral (T1032), mais le QC exige 65 ans. Le moteur faisant un calcul
   combiné QC+féd, on retient **65** (sur-impôt léger pour une DB débutant avant 65, jamais l'inverse).

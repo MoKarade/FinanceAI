@@ -482,10 +482,14 @@ export function processDecemberTaxFiling(
                     : undefined;
             // Impôt combiné du ménage pour une répartition imposable donnée (crédits d'âge/pension
             // par conjoint, familyIncome = total inchangé). Le 2e conjoint sans âge → pas de crédit.
-            const combinedTaxFor = (taxables: number[]): number => {
+            // PV-3 : l'assiette du crédit pension (féd 31400 / QC 361) est passée PAR APPEL — elle
+            // SUIT le revenu de pension fractionné vers le récipiendaire (ARC : le bénéficiaire du
+            // fractionnement peut réclamer le crédit sur la pension reçue). Défaut = assiette
+            // pré-split (cas sans fractionnement, comportement inchangé).
+            const combinedTaxFor = (taxables: number[], eligibles: number[] = eligiblePensionRealByUser): number => {
                 let t = 0;
                 for (let i = 0; i < n; i++) {
-                    const ageOpts = mkRetiredAgeOpts(ages[i], eligiblePensionRealByUser[i]);
+                    const ageOpts = mkRetiredAgeOpts(ages[i], eligibles[i]);
                     t += helpers.calculateFiscalReport(taxables[i], 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOpts).totalTax;
                 }
                 return t;
@@ -515,7 +519,16 @@ export function processDecemberTaxFiling(
                         const tr = maxTransfer * (k / STEPS);
                         const cand = taxableRealByUser.slice();
                         cand[H] -= tr; cand[L] += tr;
-                        const ct = combinedTaxFor(cand);
+                        // PV-3 : le transfert `tr` est INTÉGRALEMENT de la pension admissible (borné par
+                        // 0,5 × splittable[H]) → il déplace AUSSI l'assiette du crédit pension : le
+                        // récipiendaire L gagne le crédit sur la pension reçue, le transféreur H le perd
+                        // sur la part cédée (calculateFiscalReport plafonne chacun au max féd/QC).
+                        const eligCand = eligiblePensionRealByUser.slice();
+                        // H : clamp défensif (jamais binding — tr ≤ 0,5×splittable[H] ≤ eligCand[H]).
+                        // L : pas de clamp (eligCand[L] ≥ 0 et tr > 0 ⇒ somme toujours positive).
+                        eligCand[H] = Math.max(0, eligCand[H] - tr);
+                        eligCand[L] += tr;
+                        const ct = combinedTaxFor(cand, eligCand);
                         if (ct < taxReal) taxReal = ct; // on ne garde que si ça BAISSE l'impôt
                     }
                 }

@@ -175,17 +175,15 @@
   indirecte mineure · retenue FERR estimée sur 2 têtes en survivorMode (timing seulement, réconcilié
   en décembre) · 🧭 « montant pour personne vivant seule » QC (grille TP-1.G) absent code+doc —
   pertinent pour un survivant, NE PAS chiffrer sans source Revenu Québec.
-- [ ] **[FA-12]** 🔧 Test d'intégration survivorMode SEEDÉ (découverte code-reviewer FA-10) : aucun
-  test n'exerce `runScenario` avec un décès du conjoint — la régression « quelqu'un retire un ternaire
-  du call-site » ne serait attrapée par rien. **Design validé (2026-06-10)** : (1) `runScenario` n'est
-  PAS exporté → ajouter un hook test-only ; (2) la mortalité exige `enableMonteCarlo` et la volatilité
-  MC est EN DUR (15/45/2 pts, `marketShocks.ts:58-63`) MAIS `replayHistoricalYear` OVERRIDE les taux
-  APRÈS les tirages (l.68-77) → MC + replay = trajectoires déterministes où SEULE la mortalité agit
-  (mettre crypto à 0 : seul taux non couvert par le replay) ; (3) `mortalityAnnualProbability` plafonne
-  à 0,33 (100 ans+) → décès non garanti : scanner `mcIterationIndex` k=0,1,2… et épingler le premier k
-  où le log « 🖤 Décès du conjoint » apparaît (déterministe par seed) ; (4) asserter : log présent vs
-  absent (modelSurvivor=false), et impôt de décembre post-décès ≠ run base (mêmes trajectoires
-  jusqu'au décès grâce au replay). (S/M)
+- [x] **[FA-12]** 🔧 (livré) Test d'intégration survivorMode SEEDÉ (`projection.survivor.test.ts`,
+  5 tests) via hook test-only `__runScenarioForTests`. Astuce clé : `replayHistoricalYear` override
+  les taux APRÈS les tirages MC → runs modelSurvivor ON/OFF BIT-IDENTIQUES jusqu'au décès (crypto=0,
+  tous les flags stochastiques off), la divergence NetWorth EST le décès. Conjoint 100 ans (p=0,33
+  plafond), seed k=0 épinglé → décès au PREMIER janvier (mi=12). Contrats : divergence exactement à
+  mi=12 · totalTaxesPaid survivant > base ×1,10 (FA-10, 1 contribuable — mesuré +55 %) · NW final
+  survivant < base (PSV défunt cesse) · base identique ∀ seed (aucun tirage si OFF) · série complète
+  (la sim continue). En MC le chartData est ALLÉGÉ ({NetWorth, monthIndex}) → assertions par agrégats.
+  Si un changement moteur décale la consommation rng : re-scanner k=0..7 (procédure en tête du test).
 - [x] **[FA-11]** 🔧 (résolu par DOCUMENTATION — l'option prévue au ticket) Discontinuité SRG au
   seuil documentée en limite assumée dans FISCAL_REFERENCE (§ SRG) : marche ~167 $/mois au seuil
   22 512 $, SRG surévalué (non conservateur) dans la bande ~18-22,5 k$, cause = top-up récupéré

@@ -1411,6 +1411,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
 // Cycle 7 split: runMonteCarlo extrait dans ./projection/monteCarlo
 
+// FA-12 — hook TEST-ONLY : l'API publique (calculateFutureProjection) ne lance les scénarios
+// qu'en déterministe (enableMonteCarlo=false) et AGRÈGE le Monte Carlo (percentiles). Le test
+// d'intégration survivorMode doit piloter UNE itération MC seedée précise : la mortalité du
+// conjoint (trySpouseMortality) n'est tirée que sous enableMonteCarlo. Ne pas utiliser hors tests.
+export const __runScenarioForTests = runScenario;
 
 export const calculateFutureProjection = (params: SimulationParams, runMC: boolean = false, selectedIdx: number = 0, onlyStratTypes?: string[]): ProjectionResult => {
     // G21 C5 — leviers « appliqués » depuis l'optimiseur (orthogonaux à l'axe

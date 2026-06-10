@@ -240,7 +240,7 @@ pour minimiser l'impôt combiné (élection optionnelle).
 > les retraits REER/FERR + loyers de l'ANNÉE PRÉCÉDENTE (capturés au reset de janvier, déflatés).
 > **PV-9 (2026-06-10)** : le test SRG inclut aussi les **gains en capital RÉALISÉS** de l'année
 > précédente (montant imposable ×0,5, déflaté) — `accCapitalGainsYear` est déjà net de la banque de
-> pertes et ≥ 0 (gain net de la ligne 12700). Idem **clawback PSV** : les gains imposables de l'année
+> pertes et ≥ 0 = gain RÉALISÉ net BRUT, dont l'inclusion 50 % donne la ligne 12700). Idem **clawback PSV** : les gains imposables de l'année
 > COURANTE entrent dans le revenu de récupération (ligne 23400), répartis également par conjoint.
 > Limites assumées : année 1 de simulation sans historique (assiette RRQ+DB seule, optimiste, borné à
 > 12 mois) ; le salaire de l'année précédant la retraite n'est pas compté ; janvier de l'année Y teste

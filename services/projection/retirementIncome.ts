@@ -231,7 +231,7 @@ export function computeRetirementIncome(
     // PV-9 — gains en capital RÉALISÉS de l'année précédente : le montant IMPOSABLE (×0,5) entre
     // dans le revenu net du test SRG, déflaté à la même base réelle. Avant : exclus (SRG surévalué
     // pour un 65+ bas revenu réalisant des gains). `accCapitalGainsYear` est déjà NET de la banque
-    // de pertes (PV-2/PV-7) et ≥ 0 — c'est exactement le gain net imposable de la ligne 12700.
+    // de pertes (PV-2/PV-7) et ≥ 0 — c'est le gain RÉALISÉ net (BRUT, avant inclusion) ; ×0,5 = ligne 12700.
     const gainsLaggedReal = (Number.isFinite(ctx.prevYearCapitalGainsForGisNominal)
         ? Math.max(0, ctx.prevYearCapitalGainsForGisNominal as number)
         : 0) * CAPITAL_GAINS_INCLUSION_STANDARD / inflFactor;

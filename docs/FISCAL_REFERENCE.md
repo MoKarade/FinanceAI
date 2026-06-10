@@ -146,9 +146,9 @@ les retraits FERR/RIF et rentes REER. Sont **EXCLUS** : RRQ, PSV, SRG, et les re
 > l'assiette FRACTIONNABLE (#211). Avant le correctif FA-1, l'assiette incluait à tort RRQ/PSV et
 > les loyers (`accRentesYear`) → crédit surévalué ~250-680 $/an/personne 65+.
 > Limite assumée (conservatrice) : les retraits FERR 65-71 (conversion volontaire précoce) ne sont
-> pas modélisés ; le revenu fractionné reçu n'alimente pas le crédit du récipiendaire (PV-3) ;
-> la rente DB avant 65 ans (admissible au FÉDÉRAL 31400 sans âge minimum) est gateée à 65 dans le
-> modèle, comme pour le fractionnement (§9) — sens conservateur.
+> pas modélisés ; la rente DB avant 65 ans (admissible au FÉDÉRAL 31400 sans âge minimum) est gateée
+> à 65 dans le modèle, comme pour le fractionnement (§9) — sens conservateur.
+> (Le revenu fractionné REÇU alimente bien le crédit du récipiendaire depuis **PV-3** — cf §6.)
 
 ---
 
@@ -213,8 +213,10 @@ pour minimiser l'impôt combiné (élection optionnelle).
 > **Implémentation** : `taxDecember` calcule l'impôt du ménage AVEC et SANS fractionnement et garde le
 > **minimum** (élection optionnelle → ne peut jamais augmenter l'impôt). Transfert borné à ≤ 50 % de
 > l'admissible du cédant. **PV-3 (2026-06-10)** : l'assiette du crédit pension (féd 31400 / QC 361)
-> SUIT la pension fractionnée — le récipiendaire réclame le crédit sur la pension reçue (ARC l'admet),
-> le cédant le perd sur la part cédée (chacun plafonné au max féd/QC). Limite assumée restante
+> SUIT la pension fractionnée — le récipiendaire réclame le crédit sur la pension reçue (ARC : le revenu
+> fractionné L.11600 est réputé revenu de pension admissible du cessionnaire pour la L.31400, guide
+> T4040/formulaire T1032 ; QC Annexe Q pour la L.361), le cédant le perd sur la part cédée (déduit à
+> sa L.21000 ; chacun plafonné au max féd/QC). Limite assumée restante
 > (conservatrice, cf §9) : gate DB à 65 (vs tout âge au fédéral).
 
 ### PSV / OAS — récupération (clawback)

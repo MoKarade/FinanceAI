@@ -524,6 +524,8 @@ export function processDecemberTaxFiling(
                         // récipiendaire L gagne le crédit sur la pension reçue, le transféreur H le perd
                         // sur la part cédée (calculateFiscalReport plafonne chacun au max féd/QC).
                         const eligCand = eligiblePensionRealByUser.slice();
+                        // H : clamp défensif (jamais binding — tr ≤ 0,5×splittable[H] ≤ eligCand[H]).
+                        // L : pas de clamp (eligCand[L] ≥ 0 et tr > 0 ⇒ somme toujours positive).
                         eligCand[H] = Math.max(0, eligCand[H] - tr);
                         eligCand[L] += tr;
                         const ct = combinedTaxFor(cand, eligCand);

@@ -23,6 +23,10 @@ export interface FinanceState extends AppState {
     // mis à jour par FutureProjection. Lu par Dashboard/Investments/Budget/etc.
     // pour afficher des projections cohérentes sans recalculer.
     lastProjection: ProjectionResult | null;
+    /** PH2-a (clé de voûte) — toggle Monte-Carlo de l'onglet Futur, REMONTÉ dans le store
+     *  pour survivre aux changements d'onglet (le contrôle ne se réinitialise plus au retour
+     *  sur Futur) et persisté pour survivre au reload. */
+    projectionRunMC: boolean;
     pendingFocus: PendingFocus | null;
     // Mode test : true = l'app affiche des fixtures de test, banner visible
     isTestMode: boolean;
@@ -38,6 +42,7 @@ export interface FinanceState extends AppState {
     togglePrivacyMode: () => void;
     setAppState: (state: Partial<AppState>) => void;
     setLastProjection: (r: ProjectionResult | null) => void;
+    setProjectionRunMC: (v: boolean) => void;
     /** Navigate to a tab with an optional section to scroll/focus on arrival. */
     navigateWithFocus: (tab: Tab, section?: string) => void;
     /** Called by the destination page after it has consumed the focus intent. */
@@ -373,6 +378,7 @@ export const useFinanceStore = create<FinanceState>()(
             activeTab: Tab.DASHBOARD,
             isPrivacyMode: false,
             lastProjection: null,
+            projectionRunMC: true,
             pendingFocus: null,
             isTestMode: false,
             realDataSnapshot: null,
@@ -393,6 +399,7 @@ export const useFinanceStore = create<FinanceState>()(
             togglePrivacyMode: () => set((prev) => ({ isPrivacyMode: !prev.isPrivacyMode })),
             setAppState: (state) => set((prev) => ({ ...prev, ...state })),
             setLastProjection: (r) => set({ lastProjection: r }),
+            setProjectionRunMC: (v) => set({ projectionRunMC: v }),
             navigateWithFocus: (tab, section) => {
                 if (typeof window !== 'undefined' && window.location.hash.replace('#', '') !== tab) {
                     window.location.hash = tab;

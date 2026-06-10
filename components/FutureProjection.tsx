@@ -10,7 +10,7 @@ import { BudgetConfig, BudgetCategory, RealEstateGoal, ChildGoal, TravelGoal, Li
 import { calculateFutureProjection, SimulationParams } from '../services/projection';
 import { buildSimulationParams } from '../services/projection/buildSimulationParams';
 import { ProjectionResult, ProjectionChartPoint } from '../services/projection/types';
-import { runProjectionAsync, terminateProjectionWorker } from '../services/projection/runAsync';
+import { runProjectionAsync } from '../services/projection/runAsync';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { useShallow } from 'zustand/shallow';
 import { usePendingFocus } from '../utils/usePendingFocus';
@@ -174,7 +174,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     }, [startYear, startMonth]);
     // [UI-SCEN] — plus de sélecteur d'index de scénario : la stratégie est un PARAMÈTRE
     // (projection.withdrawalStrategy) ; le moteur ne calcule que ce scénario (allResults[0]).
-    const [runMC, setRunMC] = useState(true);
+    // PH2-a — runMC REMONTÉ dans le store : le toggle Monte-Carlo survit aux changements
+    // d'onglet (ne se réinitialise plus au retour sur Futur) et au reload.
+    const runMC = useFinanceStore(s => s.projectionRunMC);
+    const setRunMC = useFinanceStore(s => s.setProjectionRunMC);
 
     // W5.x — Conteneurs étendus câblés au moteur
     // Phase B2 — consomme un éventuel deep-link entrant (cf docs/UI_REFOUNDATION_PLAN.md §5)
@@ -289,13 +292,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         return () => { cancelled = true; clearTimeout(timer); };
     }, [params, runMC]);
 
-    // FIX agent cycle 2 (HIGH): cleanup du Worker au démontage du composant
-    // (évite fuites en HMR dev + ressource libérée propre).
-    useEffect(() => {
-        return () => { terminateProjectionWorker(); };
-    }, []);
+    // PH2-a/b (clé de voûte) — le Worker N'EST PLUS terminé au démontage de l'onglet.
+    // C'est un singleton app-level (services/projection/runAsync) réutilisé d'un onglet à
+    // l'autre : revenir sur Futur réutilise le worker CHAUD au lieu d'en re-spawner un (et un
+    // calcul MC lancé puis quitté n'est plus tué). Libéré au teardown de l'app, pas du composant.
 
-    const results = runMC ? asyncResults : syncResults;
+    // PH2-a — pendant un (re)calcul, on affiche la DERNIÈRE projection publiée au store plutôt
+    // qu'un écran vide : revenir sur Futur (ou éditer un levier) montre la courbe déjà calculée,
+    // inchangée, le temps que le nouveau résultat arrive. `computed` = le calcul LOCAL frais.
+    const computed = runMC ? asyncResults : syncResults;
+    const storeLastProjection = useFinanceStore(s => s.lastProjection);
+    const results = computed ?? storeLastProjection;
     const { chartData = [] as ProjectionChartPoint[], fireNumber = 0, allResults = [] as ProjectionResult[] } = results ?? {};
 
     // G21 C5 + [UI-SCEN] — « Appliquer » la stratégie gagnante de l'optimiseur aux
@@ -395,12 +402,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
     // Wiring 2026-05 (Option A): publie le dernier résultat dans le store pour
     // que Dashboard/Investments/Budget/etc. puissent l'afficher sans recalculer.
+    // PH2-a — on ne publie QUE le calcul frais (`computed`), jamais le repli `storeLastProjection`
+    // (sinon on republierait à l'identique la valeur du store = bruit/boucle potentielle).
     const setLastProjection = useFinanceStore(s => s.setLastProjection);
     useEffect(() => {
-        if (results && Array.isArray(results.chartData) && results.chartData.length > 0) {
-            setLastProjection(results);
+        if (computed && Array.isArray(computed.chartData) && computed.chartData.length > 0) {
+            setLastProjection(computed);
         }
-    }, [results, setLastProjection]);
+    }, [computed, setLastProjection]);
 
     // G5 — un événement = une pastille (plus de fusion « A | B | C »). On garde
     // year/age/dateLabel par événement pour la fiche au clic, et `subIdx` pour

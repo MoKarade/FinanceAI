@@ -97,8 +97,16 @@ export function computeOasClawback(
 
 /**
  * V31 — Tax-Loss Harvesting actif en décembre.
- * Si le rendement Non-Reg de l'année est négatif, on vend 50% pour cristalliser
- * la perte → banque de pertes capitales (capitalLossBank) + ACB ajusté.
+ * Une année négative est le DÉCLENCHEUR (on regarde s'il y a une perte à cristalliser), mais le
+ * montant récolté est borné par la perte LATENTE RÉELLE de la tranche vendue (coût fiscal
+ * proportionnel − valeur), JAMAIS fabriqué à partir du seul rendement de l'année.
+ * PV-8 : un titre en GAIN latent (ACB < valeur) ne donne AUCUNE perte, même en année négative —
+ * le vendre réaliserait un gain, pas une perte. L'ancien code gonflait la banque de pertes sur
+ * des positions en gain (sous-imposition des gains réels abrités ensuite).
+ *
+ * Modèle : vente de 50 % + rachat immédiat à la valeur marchande (hypothèse « perte apparente »
+ * LIR 54 levée — cf docs/FISCAL_REFERENCE.md §3). La banque monte de L, l'ACB total baisse
+ * exactement de L (acbDelta = −L) → le gain futur régénéré vaut L : conservation exacte.
  *
  * Retourne {harvestedLoss, acbDelta, log}. Caller applique les mutations.
  */
@@ -110,19 +118,24 @@ export function processTaxLossHarvesting(
     currentNonRegRate: number,
 ): { harvestedLoss: number; acbDelta: number; logMsg?: string } {
     if (currentMonthIndex !== 11 || m === 0) return { harvestedLoss: 0, acbDelta: 0 };
-    if (currentNonRegRate >= 0 || nonReg <= 0) return { harvestedLoss: 0, acbDelta: 0 };
+    if (currentNonRegRate >= 0 || !(nonReg > 0)) return { harvestedLoss: 0, acbDelta: 0 }; // !(>0) capte 0, négatif ET NaN
 
-    const fakeSell = nonReg * 0.50;
-    const dropRate = Math.abs(currentNonRegRate) / 100;
-    const harvestedLoss = fakeSell * dropRate;
+    const fakeSell = nonReg * 0.50; // 50 % de la valeur marchande
+    // ACB proportionnel de la tranche vendue — VOLONTAIREMENT non plafonné à proportion 1 (contrairement à
+    // `handleNonRegSale`/`handleCryptoSale` qui font `min(1, ACB/valeur)`, portfolioOps.ts) : le TLH est le
+    // SEUL chemin qui RÉALISE une perte (cf docs/FISCAL_REFERENCE.md §3 « la banque ne s'alimente que par le
+    // TLH ») ; il doit donc voir la perte latente ENTIÈRE. Les ventes involontaires la diffèrent (conservateur).
+    // NE PAS « harmoniser » avec le plafond de handleNonRegSale : ça remettrait la récolte à zéro.
+    const costBasisSold = fakeSell * (nonRegACB / nonReg); // nonReg > 0 garanti par le gate ci-dessus
+    const harvestedLoss = costBasisSold - fakeSell; // = 0,5 × (ACB − valeur) ; ≤ 0 si gain latent
+    if (!(harvestedLoss > 0)) return { harvestedLoss: 0, acbDelta: 0 }; // gain latent → rien ; !(>0) capte aussi NaN
 
-    const proportion = nonRegACB > 0 && nonReg > 0 ? Math.min(1, nonRegACB / nonReg) : 0;
-    const acbDelta = -(fakeSell * proportion) + (fakeSell * (1 - dropRate));
+    const acbDelta = -harvestedLoss; // rachat à la valeur marchande → l'ACB baisse de la perte cristallisée
 
     return {
         harvestedLoss,
         acbDelta,
-        logMsg: `🛡️ Perte Cristallisée (TLH): +${Math.round(harvestedLoss).toLocaleString('fr-CA')}$ (Banque) | ACB ajusté à la baisse`,
+        logMsg: `🛡️ Perte Cristallisée (TLH): +${Math.round(harvestedLoss).toLocaleString('fr-CA')}$ (Banque) | ACB −${Math.round(harvestedLoss).toLocaleString('fr-CA')}$`,
     };
 }
 

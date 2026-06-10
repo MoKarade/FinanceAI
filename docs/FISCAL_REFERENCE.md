@@ -99,6 +99,22 @@
   d'ajustement 111(1.1)). Limite assumée : la part compensée sort aussi des assiettes RAMQ/FSS
   (revenu NET) alors que la déduction 111(1)(b) ne s'applique qu'au revenu IMPOSABLE — biais
   ≤ ~744 $ RAMQ + ~1 000 $ FSS les années de consommation (convention partagée avec handleNonRegSale).
+- **TLH — perte bornée par la perte LATENTE RÉELLE** (`processTaxLossHarvesting`, décembre).
+  **PV-8 (2026-06-10)** : la perte cristallisée vaut `0,5 × max(0, ACB − valeur)` (on vend 50 % de la
+  tranche, coût fiscal proportionnel − valeur), JAMAIS `valeur × |rendement|`. Une année négative est le
+  seul DÉCLENCHEUR ; un titre en GAIN latent (ACB < valeur) ne récolte RIEN, même en chute (le vendre
+  réaliserait un gain). L'ancien code fabriquait une perte à partir du seul rendement de l'année et
+  gonflait `capitalLossBank` sur des positions en gain → sous-imposition des gains réels abrités ensuite.
+  Conservation : banque +L, ACB −L (`acbDelta = −L`) → le gain futur régénéré vaut L (la récolte n'est
+  qu'un arbitrage de TIMING/taux, pas un repas gratuit). **Hypothèse « perte apparente » levée.** La *perte
+  apparente* (« superficial loss », DÉFINIE à LIR **54**) survient si le **bien identique** est racheté par
+  le contribuable **OU une personne affiliée** (conjoint, sa société, son REER/CELI) dans la fenêtre
+  **−30/+30 jours** et est encore détenu au **jour +30** : la perte est alors **réputée NULLE** (LIR
+  **40(2)g)(i)**) puis **ajoutée à l'ACB du bien racheté** (LIR **53(1)f)** — report, PAS perte sèche ; *sauf*
+  rachat par un régime enregistré où elle est définitivement perdue). Le modèle suppose un **rachat dans un
+  fonds CORRÉLÉ mais NON identique** (substitution valide, pratique courante de récolte) → pas de bien
+  identique, pas de perte apparente, perte **déductible immédiatement**. Le cas « bien identique » n'est pas
+  modélisé.
 - **Dividendes** (`calculateDividendTax`, résident QC) :
   | Type | Majoration (gross-up) | CID fédéral | CID Québec |
   |---|---|---|---|
@@ -262,6 +278,18 @@ pour minimiser l'impôt combiné (élection optionnelle).
 | Seuil de revenu (autre que PSV) | 22 512 $ | 29 760 $ (combiné) |
 | Récupération (`GIS_CLAWBACK_RATE`) | 50 ¢ / 1 $ | 50 ¢ / 1 $ |
 > Cas « conjoint sans PSV / Allocation » : non implémentés.
+>
+> **Limite assumée — discontinuité au seuil (FA-11, 2026-06-10)** : le modèle applique la
+> récupération LINÉAIRE 50 ¢/$ depuis le max (1 105 $/mois célibataire) avec coupure DURE au seuil
+> officiel (22 512 $). Or 1 105×12 / 0,50 = 26 520 $ > 22 512 $ → **marche d'environ 167 $/mois**
+> juste sous le seuil, et SRG légèrement **SURÉVALUÉ** (non conservateur) dans la bande haute
+> (~18-22,5 k$). Cause réelle : le barème Service Canada intègre un **montant complémentaire
+> (top-up)** récupéré PLUS VITE (taux additionnel ~25 ¢/$ au-delà d'un seuil propre) — la vraie
+> courbe atteint 0 $ continûment au seuil officiel. Les paramètres exacts du top-up ne sont publiés
+> que via les **tables trimestrielles** de Service Canada (pas de formule officielle) : les modéliser
+> sans source violerait la règle « aucun chiffre fiscal non sourcé » → documenté comme limite, à
+> modéliser si on transcrit un jour les tables (candidat 🧭, cf BACKLOG FA-11). Les deux ancres du
+> modèle (max à revenu 0, zéro au seuil officiel) restent exactes et sourcées.
 
 ### Décès du conjoint — survivorMode (FA-10, 2026-06-10)
 > Quand le conjoint (user2) décède (`modelSurvivor`, Monte Carlo), le moteur traite le SURVIVANT
@@ -330,10 +358,56 @@ Le facteur 71 ans (5,28 %) ne s'applique qu'à une conversion **volontaire préc
 
 ---
 
-## 8. Immobilier (SCHL / OSFI) — `services/realEstate.ts`
-Implémenté (ADR 009) ; valeurs à transcrire ici lors de la prochaine revue fiscale :
-`calculateMinDownPayment` (mise de fonds min), `validateMortgageParameters` (amortissement max),
-`calculateB20StressTest` (stress test B-20), `calculateSchlPremiumRate` (prime assurance < 20 %).
+## 8. Immobilier (SCHL / OSFI / mutations / TPS-TVQ neuf) — `services/realEstate.ts`
+> Transcrit FA-7 (2026-06-10) depuis le code implémenté (ADR 009, vérifié à la saisie 2026-05).
+
+### Stress test hypothécaire B-20 (`calculateB20StressTest`) — source OSFI, ligne directrice B-20
+| Constante | Valeur | Note |
+|---|---|---|
+| Plancher du taux de qualification (`OSFI_MQR_FLOOR`) | **5,25 %** | qualifying rate = max(plancher, contractuel + tampon) |
+| Tampon (`OSFI_MQR_BUFFER`) | **+2,00 pts** | au-dessus du taux contractuel |
+| GDS max (`OSFI_GDS_MAX`) | **39 %** | (paiement qualifiant + charges logement) / revenu brut mensuel |
+| TDS max (`OSFI_TDS_MAX`) | **44 %** | GDS + autres dettes mensuelles |
+
+### Mise de fonds minimale & amortissement (`calculateMinDownPayment`, `validateMortgageParameters`) — source SCHL
+| Prix | Mise de fonds min |
+|---|---|
+| < 500 000 $ (`SCHL_PRICE_THRESHOLD_TIER1`) | **5 %** |
+| 500 000 → 1 500 000 $ (`SCHL_PRICE_THRESHOLD_TIER2`) | 5 % du 1er 500 k$ + **10 %** de l'excédent |
+| ≥ 1 500 000 $ | **20 %** (assurance SCHL indisponible) |
+
+Amortissement max : **25 ans** assuré standard · **30 ans** assuré si 1er acheteur OU construction
+neuve (règle d'août 2024, `SCHL_AMORT_MAX_INSURED_FTB_OR_NEW`) · **30 ans** conventionnel (≥ 20 %).
+Assurance SCHL : **requise si LTV > 80 %**, indisponible si LTV > 95 % ou prix > 1,5 M$.
+
+### Prime d'assurance SCHL (`SCHL_PREMIUM_TIERS`, % du prêt de base, ajoutable au prêt)
+| LTV ≤ | 65 % | 75 % | 80 % | 85 % | 90 % | 95 % |
+|---|---|---|---|---|---|---|
+| Prime | 0,60 % | 1,70 % | 2,40 % | 2,80 % | 3,10 % | **4,00 %** |
+
+### Droits de mutation (« taxe de bienvenue », `calculateWelcomeTax`) — barème QC **2025**
+| Tranche du prix | Taux |
+|---|---|
+| ≤ 58 900 $ | 0,5 % |
+| 58 900 → 290 000 $ | 1,0 % |
+| 290 000 → 552 300 $ | 1,5 % |
+| > 552 300 $ | 2,0 % |
+> Seuils indexés annuellement (Loi concernant les droits sur les mutations immobilières) ; le code
+> porte le barème provincial de base 2025 — les paliers ADDITIONNELS municipaux (ex. Montréal > 552 300 $
+> jusqu'à 3,5 %) ne sont PAS modélisés (sous-estimation pour un achat cher à Montréal). À réindexer 2026.
+
+### TPS/TVQ résidence NEUVE — remboursements (`calculateGstNewHomeRebate`/`calculateQstNewHomeRebate`)
+- **TPS 5 %** (`GST_RATE`) : remboursement **36 %** de la TPS payée si prix ≤ **350 000 $**
+  (max **6 300 $**), dégressif linéairement jusqu'à **450 000 $** → 0. Source : ARC RC4028.
+- **TVQ 9,975 %** (`QST_RATE`) : remboursement **50 %** de la TVQ payée si prix ≤ **200 000 $**
+  (max **≈ 9 975 $**), dégressif jusqu'à **300 000 $** → 0. Source : Revenu Québec (rebate TVQ
+  modifié plusieurs fois — implémentation conservatrice, barème courant à la saisie).
+
+### Marge réavançable / Smith Manoeuvre (`realEstateMonth.ts`)
+- Plafond HELOC : `dette Smith + hypothèque ≤ 65 % de la valeur` (**LTV 65 %**, plafond B-20 de la
+  portion réavançable) ; l'excédent déclenche un **margin call** (remboursement forcé).
+- Hypothèse de modèle (PAS une constante fiscale) : **taux HELOC 5 %/an** en dur
+  (`realEstateMonth.ts:336`) — à paramétrer un jour si besoin (cf BACKLOG FA-8).
 
 ---
 

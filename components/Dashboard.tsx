@@ -2,7 +2,11 @@ import React, { useMemo, useState, useEffect, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 // Phase 7.A.1 — DashboardEvolutionChart lazy-load pour différer le chunk recharts (~445KB)
 // hors du premier paint au boot (Dashboard = tab par défaut).
-const DashboardEvolutionChart = React.lazy(() => import('./dashboard/DashboardEvolutionChart'));
+// PH1-a : via lazyWithRetry (c'était le SEUL React.lazy nu du codebase → seul chunk sans
+// retry/reload sur hash périmé après deploy — l'erreur prod « Failed to fetch dynamically
+// imported module DashboardEvolutionChart-[hash].js » venait de là).
+import { lazyWithRetry } from '../utils/lazyWithRetry';
+const DashboardEvolutionChart = lazyWithRetry(() => import('./dashboard/DashboardEvolutionChart'), 'DashboardEvolutionChart');
 import { Transaction, Asset, BudgetCategory, RealEstateGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Tab, Debt } from '../types';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';

@@ -410,3 +410,57 @@ describe('FA-10 — SRG en survivorMode : barème célibataire, une tête', () =
         expect(surv.gis).toBe(0);
     });
 });
+
+// PV-4 — clamps hors-bornes des âges de début de rentes (retirementIncome.ts:184-185).
+// Bornes légales : RRQ 60-72 (report étendu à 72 depuis 2024), PSV 65-70 (ne s'anticipe pas).
+// Une valeur persistée hors bornes (vieux store, saisie erronée) doit se comporter EXACTEMENT
+// comme la borne — jamais verser avant l'âge légal ni geler la rente au-delà du report max.
+describe('PV-4 — clamps hors-bornes rrqStartAge / psvStartAge', () => {
+    it('rrqStartAge 55 (sous la borne) → clampé à 60 : rien à 59, versé à 60, identique à un 60 explicite', () => {
+        const goal55: RetirementGoal = { ...baseGoal, rrqStartAge: 55 };
+        const goal60: RetirementGoal = { ...baseGoal, rrqStartAge: 60 };
+        expect(computeRetirementIncome({ ...baseCtx, age: 59 }, goal55, [baseUser]).rrq).toBeCloseTo(0, 6);
+        const at60 = computeRetirementIncome({ ...baseCtx, age: 60 }, goal55, [baseUser]);
+        expect(at60.rrq).toBeGreaterThan(0);
+        expect(at60.rrq).toBeCloseTo(
+            computeRetirementIncome({ ...baseCtx, age: 60 }, goal60, [baseUser]).rrq, 6);
+    });
+
+    it('rrqStartAge 80 (au-delà du report max) → clampé à 72 : rien à 71, versé à 72 au facteur du 72 explicite', () => {
+        const goal80: RetirementGoal = { ...baseGoal, rrqStartAge: 80 };
+        const goal72: RetirementGoal = { ...baseGoal, rrqStartAge: 72 };
+        expect(computeRetirementIncome({ ...baseCtx, age: 71 }, goal80, [baseUser]).rrq).toBeCloseTo(0, 6);
+        const at72 = computeRetirementIncome({ ...baseCtx, age: 72 }, goal80, [baseUser]);
+        expect(at72.rrq).toBeGreaterThan(0);
+        expect(at72.rrq).toBeCloseTo(
+            computeRetirementIncome({ ...baseCtx, age: 72 }, goal72, [baseUser]).rrq, 6);
+        // le facteur de report (×1,588) est bien appliqué : > au même RRQ débuté à 65
+        const goal65: RetirementGoal = { ...baseGoal, rrqStartAge: 65 };
+        expect(at72.rrq).toBeGreaterThan(
+            computeRetirementIncome({ ...baseCtx, age: 72 }, goal65, [baseUser]).rrq);
+    });
+
+    it('psvStartAge 60 (la PSV ne s\'anticipe PAS) → clampé à 65 : rien à 64, versé à 65 sans réduction', () => {
+        const goal60: RetirementGoal = { ...highPensionGoal, psvStartAge: 60 };
+        const goal65: RetirementGoal = { ...highPensionGoal, psvStartAge: 65 };
+        expect(computeRetirementIncome({ ...baseCtx, age: 64 }, goal60, [baseUser]).psv).toBeCloseTo(0, 6);
+        const at65 = computeRetirementIncome({ ...baseCtx, age: 65 }, goal60, [baseUser]);
+        expect(at65.psv).toBeGreaterThan(0);
+        expect(at65.psv).toBeCloseTo(
+            computeRetirementIncome({ ...baseCtx, age: 65 }, goal65, [baseUser]).psv, 6);
+    });
+
+    it('psvStartAge 80 (au-delà du report max) → clampé à 70 : rien à 69, versé à 70 au facteur ×1,36', () => {
+        const goal80: RetirementGoal = { ...highPensionGoal, psvStartAge: 80 };
+        const goal70: RetirementGoal = { ...highPensionGoal, psvStartAge: 70 };
+        expect(computeRetirementIncome({ ...baseCtx, age: 69 }, goal80, [baseUser]).psv).toBeCloseTo(0, 6);
+        const at70 = computeRetirementIncome({ ...baseCtx, age: 70 }, goal80, [baseUser]);
+        expect(at70.psv).toBeGreaterThan(0);
+        expect(at70.psv).toBeCloseTo(
+            computeRetirementIncome({ ...baseCtx, age: 70 }, goal70, [baseUser]).psv, 6);
+        // ×1,36 vs un début à 65 (psvDeferralFactor(60 mois)), GIS neutralisé par highPensionGoal
+        const goal65: RetirementGoal = { ...highPensionGoal, psvStartAge: 65 };
+        expect(at70.psv / computeRetirementIncome({ ...baseCtx, age: 70 }, goal65, [baseUser]).psv)
+            .toBeCloseTo(1.36, 2);
+    });
+});

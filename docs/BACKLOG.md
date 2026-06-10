@@ -22,6 +22,90 @@
 
 ---
 
+## 🧱 BRIEF MARC 2026-06-10 — plan séquencé en 4 phases (PRIORITAIRE)
+> Règles d'exécution (Marc) : **plan-first OBLIGATOIRE** sur les Phases 2, 3 et CHAQUE onglet de la
+> Phase 4 (plan court : UI proposée, fichiers touchés, données nécessaires → validation Marc → code).
+> **Ne JAMAIS passer à la phase suivante sans OK explicite de Marc.** Commits en français.
+> `SESSION_HANDOVER.md` mis à jour après chaque phase.
+> Questions à POSER (ne pas deviner) : **Q1** (avant PH4-FUT) — quoi annoter SUR la courbe
+> (âge retraite ? épuisement d'un compte ? bascule de stratégie ?) · **Q2** (avant toute action
+> Cloudflare) — confirmer que Cloudflare est bien devant Vercel.
+
+### Phase 1 — BUGS (exécution immédiate, sans plan)
+- [x] **[PH1-a]** 🔧 (livré) Erreur prod « Failed to fetch dynamically imported module
+  DashboardEvolutionChart-[hash].js ». Cause code CONFIRMÉE : `Dashboard.tsx:5` était le SEUL
+  `React.lazy` NU du codebase (tous les autres passent par `lazyWithRetry` P1.4 = retry 500 ms +
+  1 reload gardé) → seul chunk sans filet sur hash périmé après deploy. Fix : (1) `lazyWithRetry`
+  appliqué ; (2) filet GLOBAL `vite:preloadError` (`installPreloadErrorReload`, installé dans
+  `index.tsx` avant le render) → intercepte racine ET dépendances préchargées des imports dynamiques.
+  Revue (panel) → design durci : garde par **TIMESTAMP auto-expirant** (≤ 1 reload auto/min) au lieu
+  du flag binaire + `clearChunkReloadFlag` au mount SUPPRIMÉ (il tournait avant la résolution des
+  chunks du boot → un échec persistant bouclait reload→mount→clear→reload, en évinçant le journal
+  d'erreurs) ; PAS de `preventDefault` (sinon les `import()` résolvent `undefined`) ; filtre
+  `isChunkLoadError` (une erreur d'évaluation de module ne gaspille pas de reload) ; nom du chunk
+  fautif persisté au log ; storage indispo → pas de reload. 7 tests. **Critères ✓** : plus aucun
+  `React.lazy` nu ; boucle bornée structurellement ; ErrorBoundary en dernier recours. Audit cache
+  fait : `vercel.json` DÉJÀ conforme (index.html `no-cache`, `/assets/*` `immutable`) ; `sw.js`
+  DÉJÀ network-first `no-store` sur les navigations (2026-05-22) — rien à changer.
+- [ ] **[PH1-b]** 🧭👤 Cloudflare : analyse livrée à Marc (session 2026-06-10 — voir aussi
+  `A_FAIRE_MOI`). Verdict : [Probable] déclencheurs = deploy pendant session ouverte (chunks Vercel
+  atomiquement supprimés) et/ou redirect Cloudflare Access sur session expirée ; [Peu probable] cache
+  CF d'un index.html périmé (CF ne cache pas le HTML par défaut et respecte le `no-cache` origine —
+  à vérifier : Page Rule « Cache Everything » dans le dashboard CF). NE PAS retirer Cloudflare avant
+  P0-AUTH (gate Google in-app) : c'est l'authentification de l'app. Étapes de retrait + pertes
+  documentées dans `A_FAIRE_MOI`. **Décision Marc requise (Q2).**
+
+### Phase 2 — CLÉ DE VOÛTE ⏳ (plan-first → OK Marc → code) — dépend de : rien (débloque PH4)
+- [ ] **[PH2-a]** 🔧 État applicatif persistant inter-onglets : un onglet déjà chargé ne se
+  réinitialise PAS en naviguant ailleurs puis revenant (Futur surtout : courbe calculée = inchangée
+  au retour). **Critères** : aller-retour Futur→Dashboard→Futur sans recalcul ni reset des contrôles ;
+  pareil pour les sous-onglets de Futur.
+- [ ] **[PH2-b]** 🔧 Projection dans un **Web Worker app-level** : le calcul survit aux changements
+  de page/onglet et reprend où il en était au retour. **Critères** : lancer un calcul MC, changer
+  d'onglet, revenir → progression conservée (pas de restart) ; UI jamais bloquée. Panel
+  `projection-validator` + `performance-optimizer` OBLIGATOIRE.
+- [ ] **[PH2-c]** 🔧 Source UNIQUE de la courbe : Futur et Retraite lisent le MÊME résultat
+  (`lastProjection`) ; modifier les params dans Futur met à jour Retraite. **Critères** : même
+  série de points dans les deux onglets (assertion de test), zéro recalcul parallèle divergent.
+- [ ] **[PH2-d]** 🔧 Verrouillage + persistance **IndexedDB** : une courbe choisie et VERROUILLÉE
+  se retrouve IDENTIQUE à chaque réouverture de l'app, jusqu'à déverrouillage. **Critères** :
+  reload + réouverture → mêmes points sans recalcul ; déverrouiller → recalcul possible.
+  **Dépendance** : s'appuie sur l'infra IndexedDB existante (backups chiffrés) ou P0-IDB ;
+  ⚠️ vigilance migration persist v7.
+
+### Phase 3 — MODÈLE DE DONNÉES + ONGLET PROFIL ⏳ (plan-first) — dépend de : OK Marc post-PH2
+- [ ] **[PH3-a]** 🔧 Nouvel onglet **Profil** remplaçant ENTIÈREMENT le Profil de Configuration :
+  regroupe profil + utilisateur + paramètres de retraite + **profil détaillé** (actuellement dans
+  Retraite). **Critères** : plus aucun champ profil dans Configuration ni Retraite ; zéro perte de
+  données (mêmes clés store).
+- [ ] **[PH3-b]** 🔧 Complétude : afficher QUELLE info manque pour QUEL onglet + % de complétion.
+  **Critères** : chaque champ manquant pointe l'onglet qui en a besoin ; % global visible.
+- [ ] **[PH3-c]** 🔧 Profil détaillé : AUDIT du code pour ne garder QUE les champs réellement
+  consommés par l'app — supprimer le reste (champs + types + store + UI). **Critères** : chaque
+  champ conservé a ≥ 1 consommateur prouvé (grep consigné dans la PR) ; migration store propre.
+- [ ] **[PH3-d]** 🔧 « Paramètres de vie » retirés de Retraite → déplacés dans Profil. **Critères** :
+  Retraite n'a plus de section vie ; valeurs préservées.
+
+### Phase 4 — REFONTES ⏳ (UN plan SÉPARÉ par onglet → OK Marc par onglet) — dépend de : PH2 (+PH3 pour FUT/RET)
+- [ ] **[PH4-FUT]** 🔧⏳ Refonte **Futur** : leviers OBLIGATOIRES avant calcul (l'actuel contenu
+  d'Optimisation remonte en amont) ; la courbe affichée = toujours la MEILLEURE selon les leviers ;
+  après calcul, choix parmi les courbes retenues puis VERROUILLAGE (PH2-d) ; stratégie de retrait
+  AUTO (retirée des paramètres) ; spécificités de la stratégie optimale en langage « qu'un enfant
+  comprenne » + ANNOTÉES sur la courbe (**Q1 à poser avant de coder**) ; onglet Paramètres revu
+  (moins de texte, previews d'effet, RENOMMÉ) ; « Robustesse » = levier du calcul de départ (retirée
+  d'Optimisation) ; stress tests déplacés dans Paramètres ; Optimisation visible seulement à la 1re
+  ouverture puis dépliable ; BEAUCOUP plus de leviers, calcul accéléré mais représentatif ; conseils
+  du plan d'action REMONTÉS (pas enterrés en bas), clarifiés, déclinés mois/trimestre/semestre/année.
+- [ ] **[PH4-TX]** 🔧 Refonte **Transactions** : tri par montant/catégorie/date + refonte complète
+  (onglet vieux et peu utile).
+- [ ] **[PH4-BUD]** 🔧 Refonte **Budget** complète.
+- [ ] **[PH4-INV]** 🔧 Refonte **Investissement** : autocomplétion à la frappe pour chercher une
+  action (Finnhub symbol search) ; saisie d'actions facilitée ; VÉRIFIER l'allocation sur données
+  réelles (bug constaté sur données test) ; afficher les dividendes perçus ; refonte plus explicite,
+  plus simple, moins de pages, plus d'explications sans excès de texte.
+- [ ] **[PH4-RET]** 🔧 Refonte **Retraite** : courbes identiques à Futur (acquis via PH2-c) ;
+  refonte plus efficace/utile/lisible.
+
 ## 🚨 P0 — Bloquant pour un vrai produit multi-utilisateurs
 - [ ] **[P0-PROXY]** 🔧 Proxy backend pour la clé Anthropic (H3) : `services/claude.ts` utilise
   `dangerouslyAllowBrowser` (clé exposée navigateur — OK solo, inacceptable pour des tiers).
@@ -63,8 +147,12 @@
   `estateNetWorth` couple gonflé de dizaines de k$.
 - [ ] **[FA-6]** 🧭 Dons charitables : crédit 33 % + relief gains 15 % en dur non sourcés
   (`w5Effects.ts:98-101`). Sourcer au doc (vrai barème ~48-53 % > 200 $ ; don de titres = inclusion 0 %).
-- [ ] **[FA-7]** 🔧 Transcrire le §8 immobilier dans FISCAL_REFERENCE (OSFI, SCHL, primes, TPS/TVQ
-  neuf, taxes de bienvenue 2025/2026, HELOC 65 %) — valeurs déjà dans le code, doc en retard.
+- [x] **[FA-7]** 🔧 (livré) §8 immobilier transcrit dans FISCAL_REFERENCE : B-20 (plancher 5,25 %,
+  +2 pts, GDS 39/TDS 44), mise de fonds min + amortissements SCHL (30 ans FTB/neuve août 2024),
+  primes SCHL par LTV (0,60→4,00 %), mutations QC 2025 (paliers + note Montréal non modélisé,
+  à réindexer 2026), TPS/TVQ neuf (36 %/6 300 $ · 50 %/9 975 $, dégressifs), Smith/HELOC LTV 65 %
+  + margin call. Découverte routée vers FA-8 : taux HELOC 5 %/an EN DUR (`realEstateMonth.ts:336`)
+  — hypothèse de modèle à paramétrer.
 - [ ] **[FA-8]** 🔧 Lot mineurs fiscaux : taux clawback 0,15 nommé+sourcé · cap clawback sans facteur
   de report · prorata RRQ 39 ans / PSV 10-40 ans au doc · split 65/35 documenté · SystemView barèmes
   composés depuis les constantes (`SystemView.tsx:102`) · assiette dividendes vs gains cohérente ·
@@ -89,11 +177,13 @@
   test n'exerce `runScenario` avec un décès du conjoint — la régression « quelqu'un retire un ternaire
   du call-site » ne serait attrapée par rien. Le rng est injecté (`buildSeededRng`) : forcer le décès
   en année 1 et asserter impôt décembre survivant > scénario sans `modelSurvivor`. (S)
-- [ ] **[FA-11]** 🔧 SRG : discontinuité au seuil (découverte fiscal-accuracy FA-9) — le clawback
-  linéaire 50 ¢ depuis 1 105 $ s'annulerait à 26 520 $ mais la coupure dure est à 22 512 $ →
-  marche ~167 $/mois au seuil et SRG légèrement SURÉVALUÉ dans la bande haute (le vrai barème a une
-  récupération additionnelle du top-up près du seuil). Pré-existant, non aggravé par FA-9. Modéliser
-  le top-up (barème Service Canada) ou documenter en limite assumée §6.3. (S)
+- [x] **[FA-11]** 🔧 (résolu par DOCUMENTATION — l'option prévue au ticket) Discontinuité SRG au
+  seuil documentée en limite assumée dans FISCAL_REFERENCE (§ SRG) : marche ~167 $/mois au seuil
+  22 512 $, SRG surévalué (non conservateur) dans la bande ~18-22,5 k$, cause = top-up récupéré
+  ~25 ¢/$ supplémentaires non modélisé. Les paramètres exacts du top-up ne sont publiés que via les
+  TABLES trimestrielles Service Canada (pas de formule officielle) → les chiffrer sans source
+  violerait la règle fiscale. Reste ouvert (🧭 si voulu) : transcrire les tables et modéliser la
+  vraie courbe continue.
 - [x] **[FA-9]** 🔧 (livré) **Double indexation du SRG** corrigée : `calculateGISBenefit` appelé
   SANS `year` (barème 2026 de base = base réelle, comme RRQ/PSV) contre le revenu test réel, puis
   nominalisation UNIQUE ×inflFactor. Avant : max+seuils ×1,02^Δ dedans PUIS ×inflFactor dehors →
@@ -137,11 +227,15 @@
   (cascade de shortfall `cashflowAllocation.ts`, goal-mutator `projection.ts`). Avant : gain BRUT
   (banque ignorée) et pertes JETÉES. 5 tests unitaires. (Estate latent : NonReg ET crypto ignorent la
   banque symétriquement — hors scope.) Reste le câblage caller de gainHarvesting non testé (cf PV-11).
-- [ ] **[PV-8]** 🔧 TLH fabrique des pertes SANS regarder l'ACB (`taxDecember.ts:107-112` :
-  `harvestedLoss = fakeSell × dropRate`) : avec un gros gain latent, une vraie vente en année
-  négative réaliserait un GAIN — banque surévaluée. PV-2 AMPLIFIE l'impact (chaque $ de perte
-  fabriquée = 1 $ de step-up gratuit). Borner par `max(0, costBasis − fakeSell)` + documenter
-  l'hypothèse « perte apparente » (LIR 54, rachat fonds corrélé non identique) en §3. (S/M)
+- [x] **[PV-8]** 🔧 (livré) ⚠️ NON CONSERVATEUR corrigé — TLH fabriquait une perte à partir du seul
+  rendement (`harvestedLoss = fakeSell × dropRate`), SANS regarder l'ACB : un titre en gain latent en
+  année négative donnait une perte fictive qui gonflait `capitalLossBank` (et PV-2 transformait chaque $
+  fabriqué en step-up d'ACB gratuit → sous-imposition des gains réels). Désormais borné par la perte
+  LATENTE RÉELLE : `harvestedLoss = max(0, costBasisSold − fakeSell)` avec `costBasisSold = fakeSell ×
+  (ACB/valeur)` = `0,5 × max(0, ACB − valeur)`, indépendant du taux ; gain latent → 0 récolte.
+  Conservation `acbDelta = −L`. FISCAL_REFERENCE §3 : hypothèse « perte apparente » LIR 54/40(2)g)(i)
+  levée (rachat fonds corrélé non identique). Tests réécrits (anti-fabrication, rate-indépendance,
+  monotonie en profondeur de perte, conservation).
 - [x] **[PV-9]** 🔧 (livré) ⚠️ NON CONSERVATEUR corrigé — gains en capital désormais inclus au test
   SRG ET au clawback PSV : le gain RÉALISÉ imposable (×0,5) entre dans le revenu net des deux tests.
   SRG → `prevYearCapitalGainsForGisNominal` (lag N-1, capturé en décembre avant reset, déflaté) ;
@@ -162,7 +256,9 @@
   réclamer le crédit sur la pension reçue). `combinedTaxFor` prend l'assiette par appel ; la grille
   passe `{splittable[H]−tr, tr}`. Avant : assiette gelée pré-split → récipiendaire jamais crédité
   (conservateur). Test d'effet (impôt < assiette gelée, grille reproduite). FISCAL_REFERENCE §6.
-- [ ] **[PV-4]** 🔧 Tests des clamps hors-bornes `rrqStartAge` (55→60, 80→72) / `psvStartAge`.
+- [x] **[PV-4]** 🔧 (livré) Tests des clamps hors-bornes `rrqStartAge`/`psvStartAge`
+  (`retirementIncome.ts:184-185`) : 4 tests — 55→60 (rien à 59, identique à un 60 explicite),
+  80→72 (facteur ×1,588 appliqué), PSV 60→65 (pas d'anticipation), PSV 80→70 (×1,36 vs 65).
 - [x] **[PV-5]** 🔧 (livré) Champs `number` Retraite — saisie vide écrasée silencieusement (découverte EP-8) :
   `updateGoal('X', Number(e.target.value))` (`Retirement.tsx`) persistait `Number('')` = **0** (pas NaN ; et
   NaN sur saisie mi-frappe « - »/« 1e »). En projection (`retirementIncome.ts:203-208`) : `dbPensionStartAge`

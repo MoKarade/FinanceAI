@@ -22,7 +22,7 @@ import { CommandPalette, useCommandPalette, makeNavigationActions } from './comp
 import { useTranslation } from 'react-i18next';
 import { configureMarketDataProvider } from './services/marketData';
 import { installGlobalErrorHandlers, logError } from './services/errorLogger';
-import { lazyWithRetry, clearChunkReloadFlag } from './utils/lazyWithRetry';
+import { lazyWithRetry } from './utils/lazyWithRetry';
 import { initAutoBackup } from './services/backupAuto';
 import { initSync, runBootSync, schedulePush, pushNow, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, startDrivePolling, markApiKeysHydrated, type SyncStatus } from './services/sync/syncOrchestrator';
 import { trackPageView } from './services/analytics';
@@ -69,9 +69,10 @@ export const App: React.FC = () => {
         if (errorHandlersInstalled.current) return;
         errorHandlersInstalled.current = true;
         installGlobalErrorHandlers();
-        // P1 fix : si l'app a chargé OK, clear le flag "chunk reload attempted"
-        // pour permettre un retry futur si nouveau deploy.
-        clearChunkReloadFlag();
+        // PH1-a (revue) : le clear du flag « chunk reload attempted » au mount a été RETIRÉ —
+        // il tournait AVANT la résolution des chunks lazy du boot et neutralisait la garde
+        // anti-boucle (échec persistant ⇒ reload infini). La garde est désormais un timestamp
+        // auto-expirant dans utils/lazyWithRetry (au plus 1 reload auto/min, aucun clear requis).
         // P1.3 — auto-backup quotidien dans IndexedDB (silent fail si indispo).
         // Léger debounce (2s) pour ne pas bloquer le 1er paint.
         const timer = setTimeout(() => { initAutoBackup(); }, 2000);

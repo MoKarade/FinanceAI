@@ -420,7 +420,11 @@ export const GIS_CLAWBACK_RATE = 0.50;                // 50¢ par 1$ d'autre rev
  *                          Pour un couple : revenu FAMILIAL combiné.
  * @param hasSpouseWithOAS  Si vrai, applique le barème couple (max plus bas
  *                          par adulte, seuil revenu combiné plus haut).
- * @param year              Année fiscale pour indexation (défaut 2026).
+ * @param year              Année fiscale pour indexation (défaut 2026). ⚠️ Réservé aux usages
+ *                          NOMINAUX hors moteur de projection : dans `services/projection/`,
+ *                          appeler SANS `year` (barème 2026 = base réelle) et nominaliser
+ *                          ×inflFactor UNE seule fois en aval — sinon double indexation
+ *                          (max SRG surévalué ~49 % à 20 ans ; FA-9, 2026-06-10).
  * @returns SRG mensuel PAR ADULTE (0 à GIS_MAX_MONTHLY_*_2026 × indexation).
  */
 export const calculateGISBenefit = (

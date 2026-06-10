@@ -72,7 +72,14 @@
   assiette clawback PSV sans gains/dividendes/intérêts non-reg (revenu net 23400 les inclut — sous-estime,
   borné au cap) · cap clawback ignore prorata résidence/`psvEstimateMonthly`/bonus 75+ (clawback fantôme
   possible pour immigrant 10/40) · assiette FSS inclut la PSV (l'Annexe F la déduit — à sourcer) ·
-  lagged SRG déflaté du facteur du mois courant (~1 an d'écart, SRG légèrement surévalué).
+  lagged SRG déflaté du facteur du mois courant (~1 an d'écart, SRG légèrement surévalué) ·
+  **dbMonthly quasi-nominal dans le revenu test SRG réel** (post-FA-9 : SRG coupé de plus en plus tôt
+  pour un profil DB, conservateur mais amplitude ×1,49 à 20 ans — déflater la composante DB).
+- [ ] **[FA-11]** 🔧 SRG : discontinuité au seuil (découverte fiscal-accuracy FA-9) — le clawback
+  linéaire 50 ¢ depuis 1 105 $ s'annulerait à 26 520 $ mais la coupure dure est à 22 512 $ →
+  marche ~167 $/mois au seuil et SRG légèrement SURÉVALUÉ dans la bande haute (le vrai barème a une
+  récupération additionnelle du top-up près du seuil). Pré-existant, non aggravé par FA-9. Modéliser
+  le top-up (barème Service Canada) ou documenter en limite assumée §6.3. (S)
 - [x] **[FA-9]** 🔧 (livré) **Double indexation du SRG** corrigée : `calculateGISBenefit` appelé
   SANS `year` (barème 2026 de base = base réelle, comme RRQ/PSV) contre le revenu test réel, puis
   nominalisation UNIQUE ×inflFactor. Avant : max+seuils ×1,02^Δ dedans PUIS ×inflFactor dehors →

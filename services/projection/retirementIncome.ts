@@ -227,12 +227,12 @@ export function computeRetirementIncome(
     const otherIncomeAnnualFamily = (rrqMonthly + dbMonthly) * 12 + otherLaggedReal;
     const otherIncomeAnnualPerAdult = otherIncomeAnnualFamily / Math.max(1, activeUsersCount);
     const hasSpouseWithOAS = activeUsersCount > 1 && age >= psvStartAge;
-    // FA-9 (audit fiscal 2026-06-09) — TOUT en base RÉELLE ici, comme RRQ/PSV : appel SANS
-    // `year` (seuils/max 2026 de base) contre le revenu test déjà en base réelle, puis la
+    // FA-9 (audit 2026-06-09, fix 2026-06-10) — TOUT en base RÉELLE ici, comme RRQ/PSV : appel
+    // SANS `year` (seuils/max 2026 de base) contre le revenu test déjà en base réelle, puis la
     // nominalisation UNIQUE ×inflFactor ci-dessous (gisTotal). Avant : `year=currentYear`
     // indexait max+seuils ×1,02^Δ DANS calculateGISBenefit PUIS ×inflFactor dehors → max SRG
-    // double-indexé (surévalué ~49 % à 20 ans, ~+6,5 k$/an fictifs) et seuils nominaux face
-    // à un revenu réel (clawback trop clément, même sens non conservateur).
+    // double-indexé (surévalué ~49 % à 20 ans, ~+6,5 k$/an fictifs en $ RÉELS 2026, célibataire)
+    // et seuils nominaux face à un revenu réel (clawback trop clément, même sens non conservateur).
     const gisMonthlyPerAdult = (age >= psvStartAge && psvMonthly > 0)
         ? calculateGISBenefit(
             hasSpouseWithOAS ? otherIncomeAnnualFamily : otherIncomeAnnualPerAdult,

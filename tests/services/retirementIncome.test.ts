@@ -339,13 +339,15 @@ describe('FA-9 — SRG : indexation simple (base réelle + nominalisation unique
         expect(r240.gis / Math.pow(1.02, 20)).toBeCloseTo(r0.gis, 0);
     });
 
-    it('seuil de coupure en base réelle : 22 512 $ réels coupent le SRG à m=240 aussi', () => {
+    it('seuil de coupure en base réelle : ≥ 22 512 $ réels coupent le SRG à m=240 aussi', () => {
         // Avant FA-9 le seuil était indexé ×1,02^20 (nominal) face à un revenu test réel →
-        // un revenu réel ÉGAL au seuil de base gardait du SRG fictif à m=240.
-        const atThreshold = computeRetirementIncome(
-            { ...fullResidency, m: 240, age: 85, otherIncomeAnnualLaggedNominal: 22512 * Math.pow(1.02, 20) },
+        // un revenu réel AU seuil de base gardait du SRG fictif à m=240 (≈ 1 046 $/mois).
+        // Marge +100 $ réels : la propriété testée (« le seuil réel coupe ») n'exige pas la
+        // frontière exacte, et le round-trip ×1,02^20/1,02^20 est sensible à 1 ulp (revue FA-9).
+        const aboveThreshold = computeRetirementIncome(
+            { ...fullResidency, m: 240, age: 85, otherIncomeAnnualLaggedNominal: (22512 + 100) * Math.pow(1.02, 20) },
             zeroIncomeGoal, [baseUser],
         );
-        expect(atThreshold.gis).toBe(0);
+        expect(aboveThreshold.gis).toBe(0);
     });
 });

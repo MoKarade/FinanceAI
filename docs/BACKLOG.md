@@ -158,9 +158,31 @@
   (sélecteur dans Paramètres), moteur 1 scénario (suite moteur 82→33 s, slider déterministe ÷11),
   stress-tests à la demande dans Optimisation (`StressTestPanel`), cartes/badge/Verdict supprimés,
   optimiseur « Appliquer » → paramètre + âges de rentes #210.
-- [ ] **[UI-EPURE]** 🔧 Audit visuel global de CHAQUE onglet (Futur→Paramètres, Dashboard,
-  Configuration en premier — retours Marc) → plan d'épuration : sections à fusionner/retirer,
-  textes à couper, hiérarchie. Livrer le plan AVANT de toucher l'UI.
+- [x] **[UI-EPURE]** Audit visuel global de chaque onglet → **fait (code-analyzer 2026-06-09)**.
+  Verdict : Futur→Paramètres = l'écran le plus chargé (« usine ») ; redondances chiffrées
+  (patrimoine projeté à 4 endroits, score de santé à 3, renvois « → Futur » dans 6 onglets,
+  `UserConfigFields` dans 4 onglets). TOP 10 ci-dessous ([EP-1] seul = ~80% du « moins chargé »).
+- [ ] **[EP-1]** 🔧 Futur/Paramètres : fusionner « Variabilité » + « Événements stochastiques » en
+  une section « Risques & aléas » repliée (gate MC actif) ; 10 toggles stochastiques derrière un
+  bouton « Activer des aléas… ». 4 sections → 2, ~20 contrôles visibles → ~8. (M) **Priorité Marc n°1.**
+- [ ] **[EP-2]** 🔧 Futur/Paramètres : retirer la Card AI note + les pros/cons DUPLIQUÉS (déjà sous
+  le sélecteur de stratégie) → un seul bloc stratégie. (S)
+- [ ] **[EP-3]** 🔧 Dashboard : le 5e KPI « Indicateur Futur » est un mini-formulaire (input+Sync) dans
+  la grille → KPIStat simple (valeur projetée) ou retrait, réaligner la grille à 4. (S)
+- [ ] **[EP-4]** 🔧 Investments : supprimer la duplication du score de santé (badge header OU donut hero,
+  pas les deux) + carte perf 24h redondante. (S)
+- [ ] **[EP-5]** 🔧 Investments : retirer/replier la Card « Portefeuille projeté à l'horizon » (duplique
+  Dashboard + Futur) → un lien « voir Futur ». (S)
+- [ ] **[EP-6]** 🔧 Configuration : `SetupHub` en tête de CHAQUE sous-onglet → affiché seulement si
+  complétude < 100 %, sinon ruban discret repliable. (M)
+- [ ] **[EP-7]** 🔧 Futur/Plan d'action : condenser `ProjectionExplains` (294 l, ~15 blocs) en 3-4 points
+  + le reste dans un `CollapsibleSection` « En savoir plus ». (M)
+- [ ] **[EP-8]** 🔧 Retirement : scinder la Card géante « Revenus & besoins » (~10 champs RRQ/PSV/DB) —
+  champs DB derrière le toggle existant, bloc pensions replié par défaut. (M)
+- [ ] **[EP-9]** 🔧 Global : retirer les renvois « → ouvrir Futur » répétés dans 6 onglets (≤ 1 lien
+  discret/page) + badges décoratifs (`N événements actifs`, doublons de santé). (S)
+- [ ] **[EP-10]** 🔧 Futur/Optimisation : `StressTestPanel` + `AssetLocationPanel` repliés par défaut,
+  seul `StrategyComparePanel` ouvert ; retirer AssetLocation ici (déjà dans Retraite). (S)
 
 ## 🎨 P2 — UX & polish
 - [ ] **[U5]** Export PNG du graphe « Évolution détaillée » (Dashboard).

@@ -156,7 +156,13 @@ export function processGainHarvesting(opts: {
     // n'occupent AUCUNE place dans le palier → ACB relevé sans impôt, quel que soit le
     // revenu de l'année. Avant : la banque était ignorée → impôt payé sur des gains
     // compensables (conservateur, sous-optimal) et place de palier gaspillée.
-    const freeGain = Math.min(unrealized, Math.max(0, opts.capitalLossBank ?? 0));
+    // Garde Number.isFinite ISOLANTE (revue silent-failure) : une banque NaN/±Inf ne doit
+    // pas empoisonner freeGain→harvestedGain et désactiver TOUT le levier (la branche
+    // palier reste fonctionnelle) — précédent FA-2 du fichier : garde déterministe sans
+    // logger (fonction pure de la boucle chaude, worker-safe).
+    const rawBank = opts.capitalLossBank ?? 0;
+    const bank = Number.isFinite(rawBank) ? Math.max(0, rawBank) : 0;
+    const freeGain = Math.min(unrealized, bank);
     const remainingUnrealized = unrealized - freeGain;
     const n = Math.max(1, opts.activeUsersCount);
     // Plafond du 1er palier combiné (le plus restrictif QC/féd), indexé à l'année, par tête × N.
@@ -173,10 +179,13 @@ export function processGainHarvesting(opts: {
     const freeNote = freeGain > 0.5
         ? ` dont ${Math.round(freeGain).toLocaleString('fr-CA')}$ compensés par la banque de pertes (0$ d'impôt)`
         : '';
+    // Libellé honnête (revue) : « au palier bas » seulement si une part remplit RÉELLEMENT le
+    // palier — une récolte 100 % compensée peut avoir lieu palier PLEIN.
+    const where = bracketGain > 0.5 ? ' réalisés au palier bas' : ' réalisés';
     return {
         harvestedGain,
         consumedLoss: freeGain,
-        logMsg: `🌱 Récolte de gains: +${Math.round(harvestedGain).toLocaleString('fr-CA')}$ réalisés au palier bas (ACB relevé)${freeNote}`,
+        logMsg: `🌱 Récolte de gains: +${Math.round(harvestedGain).toLocaleString('fr-CA')}$${where} (ACB relevé)${freeNote}`,
     };
 }
 

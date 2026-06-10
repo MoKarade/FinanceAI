@@ -86,8 +86,14 @@
   (`handleNonRegSale`). **PV-2 (2026-06-10)** : la *récolte de gains* (`processGainHarvesting`)
   consomme la banque EN PREMIER — la part compensée est imposable à 0 $ et n'occupe AUCUNE place
   dans le 1er palier (step-up d'ACB gratuit), le remplissage du palier porte sur le latent restant.
-  Limite connue (BACKLOG) : les ventes de **crypto** (cascade de shortfall) n'appliquent PAS la
-  banque (gain ajouté brut à `accCapitalGainsYear`) — conservateur.
+  Limite connue (BACKLOG) : les ventes de **crypto** (cascade de shortfall ET sauvetage PV-1)
+  n'appliquent PAS la banque (gain ajouté brut) et leurs PERTES ne sont pas banquées — conservateur.
+  Nuances : la compensation MÊME ANNÉE relève de l'art. 3b) LIR (le report 111(1)(b) vise les années
+  suivantes ; report rétrospectif 3 ans non modélisé — conservateur) ; l'équivalence brut-contre-brut
+  ne tient qu'à inclusion UNIFORME (un retour d'un taux multiple type 66,67 % exigerait le facteur
+  d'ajustement 111(1.1)). Limite assumée : la part compensée sort aussi des assiettes RAMQ/FSS
+  (revenu NET) alors que la déduction 111(1)(b) ne s'applique qu'au revenu IMPOSABLE — biais
+  ≤ ~744 $ RAMQ + ~1 000 $ FSS les années de consommation (convention partagée avec handleNonRegSale).
 - **Dividendes** (`calculateDividendTax`, résident QC) :
   | Type | Majoration (gross-up) | CID fédéral | CID Québec |
   |---|---|---|---|

@@ -177,11 +177,13 @@
   test n'exerce `runScenario` avec un décès du conjoint — la régression « quelqu'un retire un ternaire
   du call-site » ne serait attrapée par rien. Le rng est injecté (`buildSeededRng`) : forcer le décès
   en année 1 et asserter impôt décembre survivant > scénario sans `modelSurvivor`. (S)
-- [ ] **[FA-11]** 🔧 SRG : discontinuité au seuil (découverte fiscal-accuracy FA-9) — le clawback
-  linéaire 50 ¢ depuis 1 105 $ s'annulerait à 26 520 $ mais la coupure dure est à 22 512 $ →
-  marche ~167 $/mois au seuil et SRG légèrement SURÉVALUÉ dans la bande haute (le vrai barème a une
-  récupération additionnelle du top-up près du seuil). Pré-existant, non aggravé par FA-9. Modéliser
-  le top-up (barème Service Canada) ou documenter en limite assumée §6.3. (S)
+- [x] **[FA-11]** 🔧 (résolu par DOCUMENTATION — l'option prévue au ticket) Discontinuité SRG au
+  seuil documentée en limite assumée dans FISCAL_REFERENCE (§ SRG) : marche ~167 $/mois au seuil
+  22 512 $, SRG surévalué (non conservateur) dans la bande ~18-22,5 k$, cause = top-up récupéré
+  ~25 ¢/$ supplémentaires non modélisé. Les paramètres exacts du top-up ne sont publiés que via les
+  TABLES trimestrielles Service Canada (pas de formule officielle) → les chiffrer sans source
+  violerait la règle fiscale. Reste ouvert (🧭 si voulu) : transcrire les tables et modéliser la
+  vraie courbe continue.
 - [x] **[FA-9]** 🔧 (livré) **Double indexation du SRG** corrigée : `calculateGISBenefit` appelé
   SANS `year` (barème 2026 de base = base réelle, comme RRQ/PSV) contre le revenu test réel, puis
   nominalisation UNIQUE ×inflFactor. Avant : max+seuils ×1,02^Δ dedans PUIS ×inflFactor dehors →

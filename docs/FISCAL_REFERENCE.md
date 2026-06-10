@@ -278,6 +278,18 @@ pour minimiser l'impôt combiné (élection optionnelle).
 | Seuil de revenu (autre que PSV) | 22 512 $ | 29 760 $ (combiné) |
 | Récupération (`GIS_CLAWBACK_RATE`) | 50 ¢ / 1 $ | 50 ¢ / 1 $ |
 > Cas « conjoint sans PSV / Allocation » : non implémentés.
+>
+> **Limite assumée — discontinuité au seuil (FA-11, 2026-06-10)** : le modèle applique la
+> récupération LINÉAIRE 50 ¢/$ depuis le max (1 105 $/mois célibataire) avec coupure DURE au seuil
+> officiel (22 512 $). Or 1 105×12 / 0,50 = 26 520 $ > 22 512 $ → **marche d'environ 167 $/mois**
+> juste sous le seuil, et SRG légèrement **SURÉVALUÉ** (non conservateur) dans la bande haute
+> (~18-22,5 k$). Cause réelle : le barème Service Canada intègre un **montant complémentaire
+> (top-up)** récupéré PLUS VITE (taux additionnel ~25 ¢/$ au-delà d'un seuil propre) — la vraie
+> courbe atteint 0 $ continûment au seuil officiel. Les paramètres exacts du top-up ne sont publiés
+> que via les **tables trimestrielles** de Service Canada (pas de formule officielle) : les modéliser
+> sans source violerait la règle « aucun chiffre fiscal non sourcé » → documenté comme limite, à
+> modéliser si on transcrit un jour les tables (candidat 🧭, cf BACKLOG FA-11). Les deux ancres du
+> modèle (max à revenu 0, zéro au seuil officiel) restent exactes et sourcées.
 
 ### Décès du conjoint — survivorMode (FA-10, 2026-06-10)
 > Quand le conjoint (user2) décède (`modelSurvivor`, Monte Carlo), le moteur traite le SURVIVANT

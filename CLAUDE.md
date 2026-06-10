@@ -88,6 +88,10 @@ Doc détaillée dans `docs/`, qui fait foi.
   des agents « 160 h » traînaient) : dès que le résultat d'un agent/timer/monitor est consommé,
   `TaskStop` s'il tourne encore ; vérifier les traînards à CHAQUE point de contrôle, pas seulement
   en fin de session. Un agent qu'on ne consulte plus = un agent qu'on arrête.
+  ⚠️ **Un resume de session peut ORPHELINER un agent en vol** (vu 2026-06-10 : projection-validator
+  interrompu en pleine investigation ; `TaskOutput` → « No task found »). Récupérer sa conclusion par
+  lecture BORNÉE du `.jsonl` (python qui ne sort que le dernier message texte — JAMAIS `Read` direct =
+  overflow du transcript), ou simplement REFAIRE ses checks ouverts à la main s'il n'a pas conclu.
 - Un commit de merge GitHub (`noreply@github.com` sur `main`) signalé « Unverified » par le stop-hook
   n'est PAS un commit local à corriger — l'ignorer.
 

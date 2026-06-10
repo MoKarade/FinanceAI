@@ -80,9 +80,11 @@ export function reconstructWorkerError(
 // PH2-b (clé de voûte) — dédup des requêtes IDENTIQUES en vol. Si on quitte l'onglet Futur
 // pendant un calcul MC puis on revient (remount → re-requête des MÊMES params), on RE-RACCROCHE
 // à la promesse déjà en vol au lieu d'en relancer une seconde : la projection « reprend où elle
-// en était » (un seul calcul worker, résultat dispo plus tôt). La clé est une signature de contenu
-// fournie par l'appelant ; l'entrée est vidée à la résolution. Sans dedupKey (appels hors-UI :
-// MCP, tests), comportement strictement inchangé.
+// en était » (un seul calcul worker, résultat dispo plus tôt). La clé EFFECTIVE combine la
+// signature de contenu fournie par l'appelant (dedupKey) ET les discriminants du calcul
+// (runMC/selectedIdx/onlyStratTypes) → deux appels ne se raccrochent que s'ils calculent VRAIMENT
+// la même chose. L'entrée est vidée à la résolution. Sans dedupKey (appels hors-UI : MCP, tests),
+// comportement strictement inchangé.
 const _inflight = new Map<string, Promise<ProjectionResult>>();
 
 // NON-async VOLONTAIREMENT : on doit retourner la MÊME référence de promesse pour la dédup
@@ -96,17 +98,24 @@ export function runProjectionAsync(
     onlyStratTypes?: string[],
     dedupKey?: string,
 ): Promise<ProjectionResult> {
-    if (dedupKey) {
-        const existing = _inflight.get(dedupKey);
+    // Clé EFFECTIVE = dedupKey (signature de contenu de l'appelant) + TOUT ce qui distingue le
+    // calcul. Sans ça, un futur appelant réutilisant la même dedupKey avec un runMC/selectedIdx
+    // différent recevrait SILENCIEUSEMENT la projection de l'autre mode (re-raccrochage à la
+    // mauvaise promesse). On encode donc le mode dans la clé, côté wrapper → aucun appelant à blinder.
+    const key = dedupKey
+        ? `${dedupKey}|mc=${runMC}|idx=${selectedIdx}|st=${onlyStratTypes ? onlyStratTypes.join(',') : ''}`
+        : undefined;
+    if (key) {
+        const existing = _inflight.get(key);
         if (existing) return existing;
     }
     const promise = computeProjectionAsync(params, runMC, selectedIdx, onlyStratTypes);
-    if (dedupKey) {
-        _inflight.set(dedupKey, promise);
+    if (key) {
+        _inflight.set(key, promise);
         // Vide l'entrée à la résolution (succès OU échec), sans écraser une requête plus récente.
         // `.then(clear, clear)` (PAS `.finally().catch()`) : le 2e handler ABSORBE le rejet de cette
         // branche interne → aucun « unhandled rejection » (le rejet user-facing reste géré par l'appelant).
-        const clearInflight = () => { if (_inflight.get(dedupKey) === promise) _inflight.delete(dedupKey); };
+        const clearInflight = () => { if (_inflight.get(key) === promise) _inflight.delete(key); };
         promise.then(clearInflight, clearInflight);
     }
     return promise;

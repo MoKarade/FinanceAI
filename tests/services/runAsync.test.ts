@@ -75,6 +75,9 @@ describe('runProjectionAsync — dédup des requêtes en vol (PH2-b)', () => {
     it('2 appels concurrents, MÊME clé → exactement la MÊME promesse (re-raccroché)', async () => {
         const p1 = runProjectionAsync(dummy, false, 0, undefined, 'SAME');
         const p2 = runProjectionAsync(dummy, false, 0, undefined, 'SAME');
+        // CANARI : si ce `toBe` casse, vérifier que runProjectionAsync est resté NON-async. Un
+        // `async function` ré-enveloppe `return existing` dans une NOUVELLE promesse → identité
+        // perdue → re-raccrochage cassé (cf « NON-async VOLONTAIREMENT » dans runAsync.ts).
         expect(p2).toBe(p1); // identité de référence : aucun second calcul lancé
         await Promise.all([settle(p1), settle(p2)]);
     });
@@ -84,6 +87,15 @@ describe('runProjectionAsync — dédup des requêtes en vol (PH2-b)', () => {
         const b = runProjectionAsync(dummy, false, 0, undefined, 'B');
         expect(b).not.toBe(a);
         await Promise.all([settle(a), settle(b)]);
+    });
+
+    it('MÊME dedupKey mais runMC différent → promesses distinctes (la clé encode le mode)', async () => {
+        // Verrou MINEUR-2 (revue PH2-b) : la dédup ne doit JAMAIS raccrocher deux calculs de modes
+        // différents sous une même dedupKey — sinon un appelant recevrait la projection de l'autre mode.
+        const det = runProjectionAsync(dummy, false, 0, undefined, 'MODE');
+        const mc = runProjectionAsync(dummy, true, 0, undefined, 'MODE');
+        expect(mc).not.toBe(det);
+        await Promise.all([settle(det), settle(mc)]);
     });
 
     it('après résolution, la clé est VIDÉE → un nouvel appel recalcule (pas de cache périmé)', async () => {

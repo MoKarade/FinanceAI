@@ -5,7 +5,11 @@
 > Audit qualité détaillé (référence) : [`docs/AAA_AUDIT_2026-06.md`](AAA_AUDIT_2026-06.md).
 > Actions humaines (Marc) : [`docs/A_FAIRE_MOI.md`](A_FAIRE_MOI.md).
 >
-> **Dernière mise à jour : 2026-06-09.** Tests : 1827 verts / 154 fichiers · tsc clean · build OK.
+> **Dernière mise à jour : 2026-06-10.** Tests : ~1874 verts / 157 fichiers · tsc clean · build OK.
+> Session 2026-06-10 (suite) — livré : **TOP 10 [UI-EPURE]** (EP-1..10) · **FA-1..5** (fiscaux majeurs) ·
+> **PV-5, PV-1, FA-9, FA-10, PV-2, PV-10, PV-7, PV-3, PV-9** (9 fix moteur/fiscal money-critical, chacun
+> panel + FISCAL_REFERENCE + zéro baseline). Découvertes routées : PV-6/8/11, FA-11/12. Reste actionnable
+> 🔧 : PV-4/8/11, FA-7/8/11/12 (+ a11y D6, U5, CA-xx). 🧭/👤 (Marc) : ITEM-2A/2C, FA-6, P0-*.
 
 ## Convention (cochage par Claude au merge)
 - Chaque item Claude-faisable porte un **`[ID]`** entre crochets. **Claude coche lui-même**

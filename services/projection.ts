@@ -29,7 +29,7 @@ import { processRealEstate, type RealEstateState } from './projection/realEstate
 import { buildMonthlyDataPoint } from './projection/monthlyOutput';
 import { applyMonthlyGrowth } from './projection/growthApplication';
 import { buildSeededRng, computeHistoricalContributionRoom, computeRrqAdjustment, computeIncomeBaseline, computeScenarioOverrides, makeSmileLifestyleFactor } from './projection/setupSimulation';
-import { handleNonRegSale as portfolioNonRegSale } from './projection/portfolioOps';
+import { handleNonRegSale as portfolioNonRegSale, handleCryptoSale as portfolioCryptoSale } from './projection/portfolioOps';
 import { computeEstateNetWorth } from './projection/estateCalculation';
 import { computeMonthlyMarketRates, type StressTestConfig } from './projection/marketShocks';
 import { computeEffectiveExpenseInflation, computeMonthlyWithholding } from './projection/monthlyCalcs';
@@ -304,6 +304,16 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         const sold = portfolioNonRegSale(ms, amount);
         nonReg = ms.nonReg;
         nonRegACB = ms.nonRegACB;
+        capitalLossBank = ms.capitalLossBank;
+        accCapitalGainsYear = ms.accCapitalGainsYear;
+        return sold;
+    };
+    // [PV-7] Closure crypto symétrique : gain proportionnel + banque de pertes (cf portfolioOps).
+    const handleCryptoSaleLocal = (amount: number): number => {
+        const ms = { crypto, cryptoACB, capitalLossBank, accCapitalGainsYear };
+        const sold = portfolioCryptoSale(ms, amount);
+        crypto = ms.crypto;
+        cryptoACB = ms.cryptoACB;
         capitalLossBank = ms.capitalLossBank;
         accCapitalGainsYear = ms.accCapitalGainsYear;
         return sold;
@@ -1069,11 +1079,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     reer -= drawn; accRetraitsReerYear += drawn; remaining -= drawn;
                     accRetraitsReerYearByUser = addByWeights(accRetraitsReerYearByUser, drawn, reerByUser);
                 } else if (account === 'CRYPTO') {
-                    const drawn = Math.min(crypto, remaining);
-                    // M-4 : ne compter que le GAIN (produit − coût de base proportionnel), pas 100 %.
-                    const cryptoCostBasis = crypto > 0 ? drawn * Math.min(1, cryptoACB / crypto) : 0;
-                    crypto -= drawn; cryptoACB = Math.max(0, cryptoACB - cryptoCostBasis);
-                    accCapitalGainsYear += Math.max(0, drawn - cryptoCostBasis); remaining -= drawn;
+                    // [PV-7] gain proportionnel + banque de pertes via le helper partagé.
+                    const drawn = handleCryptoSaleLocal(remaining);
+                    remaining -= drawn;
                 }
                 return amount - remaining;
             },

@@ -86,9 +86,11 @@
   (`handleNonRegSale`). **PV-2 (2026-06-10)** : la *récolte de gains* (`processGainHarvesting`)
   consomme la banque EN PREMIER — la part compensée est imposable à 0 $ et n'occupe AUCUNE place
   dans le 1er palier (step-up d'ACB gratuit), le remplissage du palier porte sur le latent restant.
-  Limite connue (BACKLOG) : les ventes de **crypto** (cascade de shortfall, sauvetage PV-1 ET
-  retraits d'objectifs) n'appliquent PAS la banque (gain ajouté brut) et leurs PERTES ne sont pas
-  banquées — conservateur. Note : `handleNonRegSale` ne réalise jamais de PERTE non plus (le cap
+  **PV-7 (2026-06-10)** : les ventes de **crypto** en vie (cascade de shortfall/sauvetage PV-1 +
+  retraits d'objectifs) passent désormais par `handleCryptoSale` — MÊME logique que NonReg (gain
+  proportionnel, banque de pertes, pertes banquées). Reste conservateur à la SUCCESSION : le gain
+  latent crypto (comme NonReg) y est calculé `Math.max(0, valeur − ACB)` sans appliquer la banque
+  (symétrique entre les deux actifs). Note : `handleNonRegSale` ne réalise jamais de PERTE non plus (le cap
   `min(1, ACB/valeur)` rend rawGain ≥ 0) — la banque ne s'alimente que par le TLH ; en position de
   perte latente, la vente diffère la perte (ACB résiduel conservé) au lieu de la déduire — conservateur.
   Nuances : la compensation MÊME ANNÉE relève de l'art. 3b) LIR (le report 111(1)(b) vise les années

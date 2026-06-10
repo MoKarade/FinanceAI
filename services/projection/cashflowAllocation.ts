@@ -92,7 +92,7 @@ export interface CashflowCtx {
     debtFirst?: boolean;
 }
 
-import { handleNonRegSale } from './portfolioOps';
+import { handleNonRegSale, handleCryptoSale } from './portfolioOps';
 
 // F4 (audit 2026-05-28) — alignement sur la source de vérité RRSP_WITHHOLDING_QC
 // (combinés QC 19/24/29 %, cf utils/tax.ts). Les anciens taux hardcodés 21/26/30 %
@@ -249,15 +249,13 @@ export function processCashflowAllocation(
                     const reerCap = Math.max(0, oasCap - runningGross);
                     drawReer(reerCap, 'Standard');
                 } else if (bucket === 'CRYPTO' && state.crypto > 0) {
-                    const drawn = Math.min(state.crypto, shortfall);
-                    // M-4 : ne taxer que le GAIN (produit − coût de base proportionnel), pas 100 %.
-                    const cryptoCostBasis = drawn * Math.min(1, state.cryptoACB / state.crypto);
-                    state.crypto -= drawn;
-                    state.cryptoACB = Math.max(0, state.cryptoACB - cryptoCostBasis);
+                    // [PV-7] M-4 (gain proportionnel) + banque de pertes (LIR 111(1)(b)) via le
+                    // helper partagé, comme NonReg : la part compensée n'est pas réimposée et les
+                    // pertes alimentent la banque au lieu d'être jetées.
+                    const drawn = handleCryptoSale(state, shortfall);
                     state.liquid += drawn;
                     shortfall -= drawn;
                     state.withdrawalCrypto += drawn;
-                    state.accCapitalGainsYear += Math.max(0, drawn - cryptoCostBasis);
                     state.flowEventLogs.push(`🚨 Vente de crypto (dernier recours) : +${Math.round(drawn).toLocaleString('fr-CA')} $`);
                 }
             }

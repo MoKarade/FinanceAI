@@ -48,3 +48,42 @@ export function handleNonRegSale<S extends NonRegSaleState>(state: S, amount: nu
     }
     return sold;
 }
+
+export interface CryptoSaleState {
+    crypto: number;
+    /** Coût de base crypto (= valeur de départ par convention) → ne taxer que le gain. */
+    cryptoACB: number;
+    capitalLossBank: number;
+    accCapitalGainsYear: number;
+}
+
+/**
+ * [PV-7] Vente de crypto avec calcul ACB et capital gain/loss — MÊME logique que
+ * `handleNonRegSale` (les cryptoactifs sont des immobilisations imposables comme tout
+ * placement non enregistré). Avant, les 3 sites de vente crypto faisaient
+ * `accCapitalGainsYear += Math.max(0, gain)` : ils IGNORAIENT la banque de pertes
+ * (gains compensables imposés quand même — conservateur) ET JETAIENT les pertes (perte
+ * déductible perdue — conservateur aussi, mais incohérent avec NonReg).
+ *
+ * Mute le state en place. Retourne le montant vendu (≤ amount si solde insuffisant).
+ */
+export function handleCryptoSale<S extends CryptoSaleState>(state: S, amount: number): number {
+    const sold = Math.min(state.crypto, amount);
+    if (sold > 0) {
+        const proportion = state.cryptoACB > 0 && state.crypto > 0
+            ? Math.min(1, state.cryptoACB / state.crypto) : 0;
+        const costBasis = sold * proportion;
+        state.crypto -= sold;
+        state.cryptoACB = Math.max(0, state.cryptoACB - costBasis);
+        const rawGain = sold - costBasis;
+        if (rawGain < 0) {
+            state.capitalLossBank += Math.abs(rawGain);
+        } else {
+            const usableLoss = Math.min(rawGain, state.capitalLossBank);
+            const taxableGain = rawGain - usableLoss;
+            state.capitalLossBank -= usableLoss;
+            state.accCapitalGainsYear += taxableGain;
+        }
+    }
+    return sold;
+}

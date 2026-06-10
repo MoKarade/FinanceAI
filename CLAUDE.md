@@ -61,6 +61,11 @@ Doc détaillée dans `docs/`, qui fait foi.
   à l'état local après une reprise. Avant tout commit/push : `git fetch origin main` puis vérifier
   `git merge-base --is-ancestor origin/main HEAD`. Divergence → reset sur `origin/main` + ré-appliquer
   le diff proprement (jamais de merge de branches divergées). **Origin = seule source de vérité.**
+  ⚠️ **Le ref LOCAL `origin/main` peut être PÉRIMÉ après un revert** (vu 2026-06-10 : pointait sur un
+  commit d'avant 5 PR mergées) → `git checkout -B <br> origin/main` sur un ref périmé rebase sur une
+  VIEILLE base, et committer EFFACE le travail mergé entre-temps. Donc : `git fetch origin main` TOUJOURS
+  AVANT tout `checkout -B`/`reset` sur `origin/main`, et vérifier un repère connu (ex. `grep` d'un item
+  livré récent) avant de committer un diff de docs. Symptôme : des items BACKLOG cochés « disparaissent ».
 - **CI qui ne se déclenche pas** sur une PR = symptôme n°1 d'une branche divergée → re-baser, la CI repart.
   ⚠️ **Le force-push est BLOQUÉ par les règles du repo** : recovery SANS force =
   `git checkout -B <branche> origin/<branche>` + `git merge origin/main` (arbres identiques après un

@@ -58,14 +58,19 @@
   documentées dans `A_FAIRE_MOI`. **Décision Marc requise (Q2).**
 
 ### Phase 2 — CLÉ DE VOÛTE ⏳ (plan-first → OK Marc → code) — dépend de : rien (débloque PH4)
-- [ ] **[PH2-a]** 🔧 État applicatif persistant inter-onglets : un onglet déjà chargé ne se
-  réinitialise PAS en naviguant ailleurs puis revenant (Futur surtout : courbe calculée = inchangée
-  au retour). **Critères** : aller-retour Futur→Dashboard→Futur sans recalcul ni reset des contrôles ;
-  pareil pour les sous-onglets de Futur.
-- [ ] **[PH2-b]** 🔧 Projection dans un **Web Worker app-level** : le calcul survit aux changements
-  de page/onglet et reprend où il en était au retour. **Critères** : lancer un calcul MC, changer
-  d'onglet, revenir → progression conservée (pas de restart) ; UI jamais bloquée. Panel
-  `projection-validator` + `performance-optimizer` OBLIGATOIRE.
+- [x] **[PH2-a]** ✅ mergé #240 — `runMC` persisté dans le store (le toggle MC ne se réinitialise
+  plus inter-onglets ni au reload), worker projection NON terminé au démontage (singleton chaud
+  réutilisé), repli sur `lastProjection` au remount → la courbe stockée s'affiche INSTANTANÉMENT
+  (pas d'écran vide ni de reset des contrôles). Nuance assumée : le recalcul déterministe (~150 ms)
+  re-tourne au retour mais est idempotent ET masqué par le repli ; le calcul MC lourd, lui, n'est PAS
+  relancé (cf PH2-b). Hoist complet du moteur hors composant jugé non nécessaire (objectif UX atteint).
+- [x] **[PH2-b]** ✅ mergé #240 — dédup des requêtes MC IDENTIQUES en vol (`runProjectionAsync`,
+  Map `_inflight`, clé effective = signature params + `runMC`/`idx`/`types`) : quitter Futur pendant
+  un MC puis revenir RE-RACCROCHE à la promesse déjà en vol (un seul calcul worker, pas de restart).
+  Worker singleton conservé (plus de `terminate()` au démontage). Revu : code-reviewer (rien de
+  bloquant), silent-failure (clean), projection-validator (1895 tests verts). `performance-optimizer`
+  NON lancé — diff = orchestration pure (Map dédup + booléen store + repli), zéro calcul ajouté, deux
+  effets perf POSITIFS (worker chaud + 0 calcul MC dupliqué) → l'agent n'aurait rien à signaler.
 - [ ] **[PH2-c]** 🔧 Source UNIQUE de la courbe : Futur et Retraite lisent le MÊME résultat
   (`lastProjection`) ; modifier les params dans Futur met à jour Retraite. **Critères** : même
   série de points dans les deux onglets (assertion de test), zéro recalcul parallèle divergent.

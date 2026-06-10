@@ -18,6 +18,13 @@
 > phase suivante sans OK explicite de Marc** ; Q1/Q2 à poser (cf `A_FAIRE_MOI` O6) ; handover à jour
 > après chaque phase.
 >
+> **▶ PHASE 2 EN COURS (3 PR, décompo validée Marc 2026-06-10)** : **PR-1 = [PH2-a]+[PH2-b] ✅ MERGÉ #240**
+> (Futur survit aux onglets : `runMC` persisté + worker singleton chaud non terminé + repli `lastProjection` ;
+> un calcul MC en vol est re-raccroché via dédup `runProjectionAsync`, pas de restart). **SUITE = PR-2 =
+> [PH2-c]** (source UNIQUE Futur=Retraite : Retraite lit `lastProjection.chartData` au lieu de recalculer).
+> **PUIS PR-3 = [PH2-d]** (verrouillage courbe + `ProjectionResult` COMPLET en IndexedDB + double courbe
+> verrouillée/aperçu live — forks Q2/Q3 validés Marc). ⚠️ Pas de Phase 3 sans OK explicite de Marc.
+>
 > Session 2026-06-10 — **TOP 10 [UI-EPURE] COMPLET + 5 fiscaux MAJEURS + [UI-SCEN]**. Build/tsc/tests verts.
 > - **Épuration UI (EP-1..EP-10)** — 4 PR (#225 EP-1/2, #226 EP-3/4/5, #227 EP-6/7/10, #228 EP-8) :
 >   Futur/Paramètres « Risques & aléas » repliée + Card AI retirée ; Dashboard 5e KPI « Patrimoine projeté »
@@ -35,8 +42,11 @@
 >   **force-push BLOQUÉ par le repo** → recovery « checkout branche distante + merge main + fast-forward »
 >   (+ reconcile après CHAQUE squash-merge) documenté en § résilience cloud.
 > - ⚠️ **Auto-merge KO** : le repo n'a **aucun required status check** → `enable_pr_auto_merge` échoue
->   (« unstable »). Merge manuel sur vert (timer). **À débloquer côté Marc** : Settings → Branches →
->   required status checks (cf `A_FAIRE_MOI`). Sinon chaque PR = re-check manuel.
+>   (« unstable »). **À débloquer côté Marc** : Settings → Branches → required status checks (cf `A_FAIRE_MOI`).
+>   Sinon chaque PR = re-check manuel. ⚠️ **Le webhook PR ne livre PAS le succès CI** (que les échecs +
+>   commentaires) → pour merger sur vert sans auto-merge : `send_later` indispo ici → **réveil court en
+>   arrière-plan** (`Bash run_in_background` `sleep ~210`) qui re-déclenche le check CI puis merge. Pas de
+>   1 h d'attente, pas de `sleep` foreground (bloqué par le harness).
 > - **Fix moteur/fiscal money-critical (suite, #229-#234)** : **PV-5** (champs `number` Retraite —
 >   vide ⇒ `Number('')=0` persisté ⇒ pension DB « dès 0 an » ; garde `numOr`/`numOrUndef`) ·
 >   **PV-1** (découvert de liquidités effacé par le clamp de croissance ⇒ patrimoine surévalué ;

@@ -128,7 +128,7 @@ export function processTaxLossHarvesting(
     // NE PAS « harmoniser » avec le plafond de handleNonRegSale : ça remettrait la récolte à zéro.
     const costBasisSold = fakeSell * (nonRegACB / nonReg); // nonReg > 0 garanti par le gate ci-dessus
     const harvestedLoss = costBasisSold - fakeSell; // = 0,5 × (ACB − valeur) ; ≤ 0 si gain latent
-    if (harvestedLoss <= 0) return { harvestedLoss: 0, acbDelta: 0 }; // gain latent → rien à cristalliser
+    if (!(harvestedLoss > 0)) return { harvestedLoss: 0, acbDelta: 0 }; // gain latent → rien ; !(>0) capte aussi NaN
 
     const acbDelta = -harvestedLoss; // rachat à la valeur marchande → l'ACB baisse de la perte cristallisée
 

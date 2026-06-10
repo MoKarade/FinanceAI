@@ -1064,7 +1064,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         if (m === 1 && month1ActionPlan === null) month1ActionPlan = { monthlyCashflow, strategy };
 
         // Cycle 19 split: shortfall + excess allocation → ./projection/cashflowAllocation
-        const cashState: CashflowState = {
+        // [PV-1] build/apply factorisés en closures : le MÊME état (mêmes champs, même
+        // recopie) sert à l'allocation régulière ET au sauvetage de découvert plus bas —
+        // zéro risque de divergence de champs entre les deux appels.
+        const buildCashState = (): CashflowState => ({
             liquid, celi, reer, celiapp, nonReg, nonRegACB, capitalLossBank, crypto, cryptoACB,
             celiRoom, rrspRoom, fhsaRoom,
             taxCurrentYearReer: taxCurrentYear.reer,
@@ -1075,36 +1078,49 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             contribCELI, contribREER, contribNonReg, contribCELIAPP,
             shortfallMonths,
             flowEventLogs: [],
+        });
+        const applyCashState = (cs: CashflowState): void => {
+            liquid = cs.liquid; celi = cs.celi; reer = cs.reer;
+            celiapp = cs.celiapp; nonReg = cs.nonReg; nonRegACB = cs.nonRegACB;
+            capitalLossBank = cs.capitalLossBank; crypto = cs.crypto; cryptoACB = cs.cryptoACB;
+            celiRoom = cs.celiRoom; rrspRoom = cs.rrspRoom; fhsaRoom = cs.fhsaRoom;
+            taxCurrentYear.reer = cs.taxCurrentYearReer;
+            accRetraitsReerYearByUser = addByWeights(accRetraitsReerYearByUser, cs.accRetraitsReerYear - accRetraitsReerYear, reerByUser);
+            accRetraitsReerYear = cs.accRetraitsReerYear;
+            accCapitalGainsYear = cs.accCapitalGainsYear;
+            accRrspYear = cs.accRrspYear; accFhsaYear = cs.accFhsaYear;
+            fhsaLifetimeContrib = cs.fhsaLifetimeContrib;
+            celiWithdrawalsThisYear = cs.celiWithdrawalsThisYear;
+            retraitReerMois = cs.retraitReerMois; retraitCeliMois = cs.retraitCeliMois;
+            withdrawalREER = cs.withdrawalREER; withdrawalCELI = cs.withdrawalCELI;
+            withdrawalNonReg = cs.withdrawalNonReg; withdrawalCrypto = cs.withdrawalCrypto;
+            contribCELI = cs.contribCELI; contribREER = cs.contribREER;
+            contribNonReg = cs.contribNonReg; contribCELIAPP = cs.contribCELIAPP;
+            shortfallMonths = cs.shortfallMonths;
+            cs.flowEventLogs.forEach(msg => logEvent(flowEventsLog, msg));
         };
+        // ⚠️ ctx FIGÉ ici (capture par valeur) et réutilisé par le sauvetage [PV-1] plus bas :
+        // ne pas y ajouter un champ muté entre les deux appels (le meltdown intermédiaire ne
+        // touche que reer/nonReg/taxCurrentYear/accRetraitsReerYear — hors ctx, vérifié).
+        const cashflowCtxBase = {
+            targetEF, criticalThreshold, isRetired, strategy,
+            m, loopYear, enableMonteCarlo, activeUsersCount,
+            grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
+            incomeRetirement, accRentesYear, hasFuturePurchase, hasPurchasedPrimary,
+            contributionOrder: overrides.contributionOrder, debtFirst: overrides.debtFirst,
+        };
+        // [PV-1] snapshot pour ne pas compter 2× le même mois en déficit (allocation + sauvetage).
+        const shortfallMonthsAtMonthStart = shortfallMonths;
+
+        const cashState = buildCashState();
         processCashflowAllocation(
             cashState,
-            { monthlyCashflow, targetEF, criticalThreshold, isRetired, strategy,
-              m, loopYear, enableMonteCarlo, activeUsersCount,
-              grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
-              incomeRetirement, accRentesYear, hasFuturePurchase, hasPurchasedPrimary,
-              contributionOrder: overrides.contributionOrder, debtFirst: overrides.debtFirst },
+            { monthlyCashflow, ...cashflowCtxBase },
             activeDebts,
             calculateFiscalReport,
             calculateGrossWithholdingRRSP,
         );
-        liquid = cashState.liquid; celi = cashState.celi; reer = cashState.reer;
-        celiapp = cashState.celiapp; nonReg = cashState.nonReg; nonRegACB = cashState.nonRegACB;
-        capitalLossBank = cashState.capitalLossBank; crypto = cashState.crypto; cryptoACB = cashState.cryptoACB;
-        celiRoom = cashState.celiRoom; rrspRoom = cashState.rrspRoom; fhsaRoom = cashState.fhsaRoom;
-        taxCurrentYear.reer = cashState.taxCurrentYearReer;
-        accRetraitsReerYearByUser = addByWeights(accRetraitsReerYearByUser, cashState.accRetraitsReerYear - accRetraitsReerYear, reerByUser);
-        accRetraitsReerYear = cashState.accRetraitsReerYear;
-        accCapitalGainsYear = cashState.accCapitalGainsYear;
-        accRrspYear = cashState.accRrspYear; accFhsaYear = cashState.accFhsaYear;
-        fhsaLifetimeContrib = cashState.fhsaLifetimeContrib;
-        celiWithdrawalsThisYear = cashState.celiWithdrawalsThisYear;
-        retraitReerMois = cashState.retraitReerMois; retraitCeliMois = cashState.retraitCeliMois;
-        withdrawalREER = cashState.withdrawalREER; withdrawalCELI = cashState.withdrawalCELI;
-        withdrawalNonReg = cashState.withdrawalNonReg; withdrawalCrypto = cashState.withdrawalCrypto;
-        contribCELI = cashState.contribCELI; contribREER = cashState.contribREER;
-        contribNonReg = cashState.contribNonReg; contribCELIAPP = cashState.contribCELIAPP;
-        shortfallMonths = cashState.shortfallMonths;
-        cashState.flowEventLogs.forEach(msg => logEvent(flowEventsLog, msg));
+        applyCashState(cashState);
 
         // Cycle 15 split: REER Meltdown → ./projection/meltdownReer
         const meltResult = processReerMeltdown(
@@ -1130,6 +1146,47 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         if (nonReg > 0) {
             if (celiRoom > 0) { const a = Math.min(nonReg, celiRoom); const s = handleNonRegSale(a, 'Opti.CELI'); celi += s; celiRoom -= s; }
             if (rrspRoom > 0 && nonReg > 0 && !isRetired) { const a = Math.min(nonReg, rrspRoom); const s = handleNonRegSale(a, 'Opti.REER'); reer += s; rrspRoom -= s; accRrspYear += s; }
+        }
+
+        // [PV-1] Sauvetage du liquide négatif (choix Marc 2026-06-10 : cascade de vente).
+        // Des débits DIRECTS du liquide (impôt d'avril taxApril.ts, véhicules/rénos W5,
+        // échéances d'objectifs) peuvent le rendre négatif sans passer par le cashflow ;
+        // applyMidMonthGrowth clampait ensuite à 0 (helpers.ts `Math.max`) → la dette était
+        // EFFACÉE et le patrimoine surévalué (jusqu'à plusieurs centaines de k$ sur 30 ans).
+        // Correctif : dernier point AVANT la croissance — si le liquide est négatif, on
+        // couvre le découvert par la MÊME cascade que le shortfall régulier (stratégie de
+        // retrait respectée, retenue REER comptée via taxCurrentYearReer, garde-fous PBMA/OAS).
+        // Avec liquid=0 en entrée, la cascade ne puise pas sous zéro et son invariant CF-2
+        // ramène le liquide à 0 en sortie : les ventes financent exactement le découvert.
+        // Cas insolvable (comptes épuisés ou cap OAS) : résiduel JOURNALISÉ, puis absorbé par
+        // le `liquid = 0` ci-dessous — même convention que les shortfalls réguliers non couverts
+        // (CF-2), mais désormais VISIBLE (flowEvents + shortfallMonths). Modéliser ce résiduel
+        // comme dette portée = chantier séparé (BACKLOG), pas ce fix.
+        if (liquid < -0.5) {
+            const overdraft = -liquid;
+            liquid = 0;
+            const rescueState = buildCashState();
+            const assetsBeforeRescue = rescueState.celi + rescueState.reer + rescueState.nonReg + rescueState.crypto;
+            const withholdingBeforeRescue = rescueState.taxCurrentYearReer;
+            processCashflowAllocation(
+                rescueState,
+                { monthlyCashflow: -overdraft, ...cashflowCtxBase },
+                activeDebts,
+                calculateFiscalReport,
+                calculateGrossWithholdingRRSP,
+            );
+            applyCashState(rescueState);
+            // Couvert (net) = baisse brute des actifs − retenue REER comptabilisée à part.
+            const grossDrawn = assetsBeforeRescue - (celi + reer + nonReg + crypto);
+            const covered = grossDrawn - (taxCurrentYear.reer - withholdingBeforeRescue);
+            const residual = overdraft - covered;
+            logEvent(flowEventsLog, `🏦 Découvert de liquidités couvert par vente de placements : ${Math.round(Math.min(covered, overdraft)).toLocaleString('fr-CA')} $ sur ${Math.round(overdraft).toLocaleString('fr-CA')} $`);
+            if (residual > 1) {
+                logEvent(flowEventsLog, `⚠️ Découvert NON couvert (comptes insuffisants) : ${Math.round(residual).toLocaleString('fr-CA')} $`);
+            }
+            // Un seul incrément de shortfallMonths par mois, même si l'allocation régulière
+            // ET le sauvetage ont chacun constaté un déficit.
+            shortfallMonths = Math.min(shortfallMonths, shortfallMonthsAtMonthStart + 1);
         }
 
         // Cycle 18 split: glidepath + taux effectifs → ./projection/glidepathRates

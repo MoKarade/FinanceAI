@@ -58,7 +58,13 @@ export const registerGetProjection = (server: McpServer, getState: StateProvider
 
             const chartData = result.chartData ?? [];
             const last = chartData[chartData.length - 1];
-            const finalNetWorthNominal = Math.round(result.estateNetWorth ?? result.finalNetWorth ?? last?.NetWorth ?? 0);
+            // PV-1 (2026-06-10) : nominal = NW BRUT du dernier point — même grandeur que
+            // `realNetWorth` (sa version déflatée) → l'invariant réel ≤ nominal tient par
+            // construction. Avant, nominal = estateNetWorth (succession : REER imposé au décès
+            // + NPV rentes) comparé au NW brut déflaté = grandeurs incomparables (réel > nominal
+            // possible). Le successoral est exposé SÉPARÉMENT (comme get_retirement_outlook),
+            // ce que la description du tool promettait déjà.
+            const finalNetWorthNominal = Math.round(last?.NetWorth ?? result.finalNetWorth ?? 0);
             const finalNetWorthReal = Math.round(last?.realNetWorth ?? finalNetWorthNominal);
             const fireAge = fireAgeOf(chartData);
 
@@ -69,6 +75,7 @@ export const registerGetProjection = (server: McpServer, getState: StateProvider
                 strategyName: result.strategyName ?? null,
                 finalNetWorthNominal,
                 finalNetWorthReal,
+                estateNetWorth: Math.round(result.estateNetWorth ?? result.finalNetWorth ?? 0),
                 fireNumber: Math.round(result.fireNumber ?? 0),
                 fireReached: fireAge != null,
                 fireAge,

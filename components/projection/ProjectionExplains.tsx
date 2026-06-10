@@ -11,6 +11,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Card } from '../ui/Card';
+import { CollapsibleSection } from '../ui/CollapsibleSection';
 import type { ProjectionChartPoint } from '../../services/projection/types';
 import { Icon } from '../ui/Icon';
 
@@ -107,7 +108,7 @@ interface YearGroup {
 export const ProjectionExplains: React.FC<ProjectionExplainsProps> = ({ chartData }) => {
   const [query, setQuery] = useState('');
   const [openYears, setOpenYears] = useState<Set<number>>(new Set());
-  const [showMethodo, setShowMethodo] = useState(false);
+  // [EP-7] La méthodologie passe sous <CollapsibleSection> « En savoir plus » (plus de toggle maison).
 
   // Garde uniquement les points mensuels « complets » (déterministes, avec une année).
   const months = useMemo(
@@ -268,27 +269,23 @@ export const ProjectionExplains: React.FC<ProjectionExplainsProps> = ({ chartDat
         );
       })}
 
-      {/* Méthodologie : comment ça marche (concepts) */}
-      <Card icon={<Icon name="graduation" size={18} />} title="Comment ça marche">
-        <button
-          type="button"
-          onClick={() => setShowMethodo(v => !v)}
-          aria-expanded={showMethodo}
-          className="text-meta font-bold text-primary hover:brightness-110 focus-ring rounded"
-        >
-          {showMethodo ? 'Masquer' : 'Afficher'} les explications des concepts
-        </button>
-        {showMethodo && (
-          <dl className="mt-3 space-y-3">
-            {METHODOLOGY.map((item, i) => (
-              <div key={i}>
-                <dt className="text-body font-bold text-ink-100">{item.q}</dt>
-                <dd className="text-meta text-ink-300 leading-relaxed mt-0.5">{item.a}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
-      </Card>
+      {/* [EP-7] Méthodologie (concepts didactiques RAP/CELIAPP/ordre de retrait…) repliée par
+          défaut sous « En savoir plus » — secondaire au drill-down année par année. */}
+      <CollapsibleSection
+        title="En savoir plus — comment ça marche"
+        icon={<Icon name="graduation" size={18} />}
+        defaultOpen={false}
+        variant="quiet"
+      >
+        <dl className="space-y-3">
+          {METHODOLOGY.map((item, i) => (
+            <div key={i}>
+              <dt className="text-body font-bold text-ink-100">{item.q}</dt>
+              <dd className="text-meta text-ink-300 leading-relaxed mt-0.5">{item.a}</dd>
+            </div>
+          ))}
+        </dl>
+      </CollapsibleSection>
     </div>
   );
 };

@@ -122,6 +122,12 @@
   est désormais consommée EN PREMIER (LIR 111(1)(b)) — part compensée = 0 $ d'impôt et HORS palier
   (step-up d'ACB gratuit), remplissage du palier sur le latent restant. `consumedLoss` retourné au
   caller (seule la part non compensée entre dans `accCapitalGainsYear`). 4 tests + FISCAL_REFERENCE §3.
+- [ ] **[PV-11]** 🔧 Résiduels PV-10 (revue) : (a) shortfall d'OBJECTIF (drawn < visé) visible au
+  log mais hors métriques — métrique dédiée (`goalShortfalls`/ratio financé), PAS shortfallMonths
+  (sémantique différente) ; (b) retraits de goals absents des séries `withdrawal*` de chartData
+  (sous-rapport pour les consommateurs « source unique ») ; (c) `_label` mort sur la closure
+  handleNonRegSale (suggère un log inexistant) ; (d) commentaire trompeur portfolioOps.ts:25
+  (« Pertes → bank » : branche inatteignable, cap min(1,…) — documenté en §3). (S)
 - [ ] **[PV-7]** 🔧 Ventes de CRYPTO sans banque de pertes (découverte PV-2, 2 sites) : la cascade de
   shortfall (`cashflowAllocation.ts:260`) ET le goal-mutator (`projection.ts` `withdrawFromAccount
   CRYPTO`) ajoutent le gain crypto BRUT à `accCapitalGainsYear` sans consommer `capitalLossBank`,
@@ -139,11 +145,14 @@
   deux tests, et le report 111(1)(b) ne les en retire PAS (déduction au revenu IMPOSABLE seulement).
   Un 65+ bas revenu avec gainHarvesting voit le levier « gratuit » alors qu'il coûterait des
   milliers de $ de SRG. Sœur de FA-8 (assiette clawback). (M)
-- [ ] **[PV-10]** 🔧 ⚠️ NON CONSERVATEUR — goal-mutator NonReg sans réalisation de gains
-  (découverte code-reviewer PV-2) : le retrait `'NON-ENREG'` des échéances d'objectifs
-  (`projection.ts` ~1055 : `nonRegACB = Math.max(0, nonRegACB − fromNR)`, PAS de handleNonRegSale)
-  ne réalise AUCUN gain en capital → gains jamais imposés sur les retraits financés par objectifs
-  + ACB faussé pour les ventes suivantes. Sous-imposition réelle — prioritaire dans la famille PV. (S)
+- [x] **[PV-10]** 🔧 (livré) ⚠️ NON CONSERVATEUR corrigé — goal-mutator NonReg : le retrait
+  `'NON-ENREG'` des échéances d'objectifs passe par `handleNonRegSale` (ACB proportionnel, banque
+  de pertes, gain → accCapitalGainsYear → imposé en décembre). Avant : ACB décrémenté du montant
+  VENDU complet et AUCUN gain réalisé (jamais imposés + ACB faussé). Test d'intégration discriminant
+  (delta TaxPaidGains avec/sans objectif — échec prouvé sans le fix). Bonus : logs d'objectifs
+  HONNÊTES (montant TIRÉ + « visé X — fonds insuffisants », au lieu de la cible toujours affichée).
+  Piège documenté : la room historique CELI/REER ignore `celiContributed` → fixture de test via
+  `useManualBalances` + rooms 0.
 - [ ] **[PV-3]** 🔧 Fractionnement : le transfert n'alimente pas le crédit pension du RÉCIPIENDAIRE
   (ARC 31400 l'admet) — conservateur.
 - [ ] **[PV-4]** 🔧 Tests des clamps hors-bornes `rrqStartAge` (55→60, 80→72) / `psvStartAge`.

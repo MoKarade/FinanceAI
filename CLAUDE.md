@@ -18,6 +18,8 @@ Doc détaillée dans `docs/`, qui fait foi.
 ## Réponses & reprise de session
 - Réponses **structurées** : titres courts, listes, l'essentiel d'abord.
   Étiqueter l'incertitude : [Certain] / [Probable] / [Supposition].
+- **Date + heure en tête de CHAQUE réponse** (règle Marc 2026-06-10) : commencer par
+  `[YYYY-MM-DD HH:MM UTC]` (via `date`) — toujours, sans exception.
 - **PAS d'emojis dans le chat** sauf demande explicite (docs/commits en contiennent, OK).
   Français toujours, tutoiement, ton direct et technique.
 - **À CHAQUE reprise de chat**, commencer par un point bref (lu depuis
@@ -82,7 +84,10 @@ Doc détaillée dans `docs/`, qui fait foi.
 - **`npm install` après reprise** (le conteneur peut perdre `node_modules` — symptôme : tsc casse sur
   un module manquant type `lucide-react`).
 - **Propreté** : GitHub auto-supprime les branches mergées ; supprimer soi-même toute branche de PR
-  fermée-non-mergée. Zéro tâche de fond orpheline en fin de session (timers/agents terminés).
+  fermée-non-mergée. **Agents/timers : tuer IMMÉDIATEMENT après usage** (règle Marc 2026-06-10 —
+  des agents « 160 h » traînaient) : dès que le résultat d'un agent/timer/monitor est consommé,
+  `TaskStop` s'il tourne encore ; vérifier les traînards à CHAQUE point de contrôle, pas seulement
+  en fin de session. Un agent qu'on ne consulte plus = un agent qu'on arrête.
 - Un commit de merge GitHub (`noreply@github.com` sur `main`) signalé « Unverified » par le stop-hook
   n'est PAS un commit local à corriger — l'ignorer.
 

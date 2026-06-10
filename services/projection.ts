@@ -1053,8 +1053,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     const fromLiquid = Math.min(liquid, remaining);
                     liquid -= fromLiquid; remaining -= fromLiquid;
                     if (remaining > 0 && account === 'NON-ENREG' && nonReg > 0) {
-                        const fromNR = Math.min(nonReg, remaining);
-                        nonReg -= fromNR; nonRegACB = Math.max(0, nonRegACB - fromNR); remaining -= fromNR;
+                        // [PV-10] Vente non-enregistrée RÉELLE via handleNonRegSale : gain réalisé
+                        // (ACB proportionnel, banque de pertes, accCapitalGainsYear → imposé en
+                        // décembre). Avant : ACB décrémenté du montant VENDU complet et AUCUN gain
+                        // réalisé → retraits d'objectifs jamais imposés (sous-imposition) ET ACB
+                        // sous-évalué (sur-imposition des ventes suivantes) — double erreur.
+                        const fromNR = handleNonRegSale(remaining, 'Objectif');
+                        remaining -= fromNR;
                     }
                 } else if (account === 'CELI') {
                     const drawn = Math.min(celi, remaining);

@@ -237,6 +237,27 @@ pour minimiser l'impôt combiné (élection optionnelle).
 | Récupération (`GIS_CLAWBACK_RATE`) | 50 ¢ / 1 $ | 50 ¢ / 1 $ |
 > Cas « conjoint sans PSV / Allocation » : non implémentés.
 
+### Décès du conjoint — survivorMode (FA-10, 2026-06-10)
+> Quand le conjoint (user2) décède (`modelSurvivor`, Monte Carlo), le moteur traite le SURVIVANT
+> (user1) comme **contribuable unique** :
+> 1. **Déclaration individuelle** : impôt de décembre sur UNE tête (un seul BPA, barème progressif
+>    une fois), seuils « sans conjoint » (ligne 361 QC 27 835 $, RAMQ exemption célibataire,
+>    FSS ×1), AUCUN crédit d'âge/pension du défunt. Clawback PSV idem (FA-2, `oasBeneficiaries=1`).
+> 2. **Roulement intégral au conjoint** (hypothèse) : REER/FERR roulés sans imposition immédiate
+>    (LIR 60(l)) — les retraits ultérieurs sont imposables à 100 % entre les mains du survivant ;
+>    non-enregistré roulé à l'ACB (LIR 70(6)). Pas de déclaration finale du défunt modélisée.
+> 3. **DB de survivant** : la rente réduite (`dbSurvivorPct`) reste admissible au crédit pension
+>    65+ sur la tête du survivant (assiette AGRÉGÉE, pas divisée). La rente de survivant RRQ
+>    (`rrqSurvivorPct`) transite par la composante RRQ — exclue du crédit (§4).
+> 4. **Fractionnement de pension : coupé** dès l'année du décès (l'élection T1032 au prorata avec
+>    la déclaration finale du défunt n'est pas modélisée — conservateur, borné à cette année-là).
+> 5. **SRG : barème CÉLIBATAIRE** (max 1 105 $, seuil 22 512 $) sur le revenu test COMPLET du
+>    survivant (avant : barème couple ×2 + revenu divisé par 2 → SRG fictif ~2,6 k$/an).
+> 6. Salaire du défunt = 0 (revenu actif, retenue mensuelle, récolte de gains au palier ×1).
+> Limites connues (BACKLOG FA-8) : les droits CELI/REER/CELIAPP continuent de s'accumuler ×N
+> (plafonds non survivor-aware) ; retenue FERR estimée sur 2 têtes (effet de timing seulement,
+> réconcilié en décembre) ; « montant pour personne vivant seule » QC non modélisé (à sourcer).
+
 ---
 
 ## 7. Plafonds de régimes enregistrés

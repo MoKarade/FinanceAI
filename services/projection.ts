@@ -672,7 +672,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // Cycle 29 split: retenue salariale mensuelle → ./projection/monthlyCalcs
         if (!isRetired) {
             taxCurrentYear.revenu += computeMonthlyWithholding(
-                { m, loopYear, simInflation, simSalaryGrowth, grossMarcBaseAnnual, grossAnnaBaseAnnual,
+                // FA-10 (suivi silent-failure-hunter) : salaire du défunt à 0 — sinon la retenue
+                // fantôme accrue survivait à une année de TRANSITION vers la retraite (la branche
+                // retraité de décembre fait `+=`, pas une assignation) et était PAYÉE en avril.
+                { m, loopYear, simInflation, simSalaryGrowth, grossMarcBaseAnnual,
+                  grossAnnaBaseAnnual: survivorMode ? 0 : grossAnnaBaseAnnual,
                   contribREER, contribCELIAPP, smithInterestDeductibleYear,
                   enableMonteCarlo, optimizeSourceDeductions: effProj.optimizeSourceDeductions },
                 calculateFiscalReport,
@@ -684,18 +688,23 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         if (currentMonthIndex === 11 && m > 0) {
             const yearsElapsed = Math.floor(m / 12);
             const inflationFactor = Math.pow(1 + simInflation / 100, yearsElapsed);
+            // FA-10 — nombre de CONTRIBUABLES vivants (≠ activeUsersCount qui reste la taille du
+            // ménage) : sert à la récolte de gains (palier ×1) ET au dépôt fiscal ci-dessous.
+            const taxFilers = survivorMode ? 1 : activeUsersCount;
 
             // Levier « récolte de gains » (timing) : réalise des gains non-enreg latents dans une
             // année à faible revenu pour remplir le 1er palier (ACB relevé). À FAIRE AVANT le dépôt
             // fiscal de décembre → le gain réalisé entre dans accCapitalGainsYear et est imposé CETTE
             // année (au taux bas), sans fuite (l'ACB monte du montant imposé).
+            // FA-10 : palier du SURVIVANT seul (×1) et sans le salaire fantôme du défunt — sinon le
+            // levier récoltait avec une marge de palier doublée par un contribuable mort.
             const ghOtherNominal = isRetired
                 ? (incomeRetirement * 12 + accRentesYear + accRetraitsReerYear)
-                : (grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
+                : (grossMarcBaseAnnual + (survivorMode ? 0 : grossAnnaBaseAnnual)) * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
             const gh = processGainHarvesting({
                 enabled: !!overrides.gainHarvesting,
                 nonReg, nonRegACB, otherTaxableNominal: ghOtherNominal,
-                existingGainsNominal: accCapitalGainsYear, activeUsersCount, loopYear,
+                existingGainsNominal: accCapitalGainsYear, activeUsersCount: taxFilers, loopYear,
             });
             if (gh.harvestedGain > 0) {
                 accCapitalGainsYear += gh.harvestedGain;
@@ -703,7 +712,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 if (gh.logMsg) logEvent(flowEventsLog, gh.logMsg);
             }
 
-            // FA-10 — survivorMode : UN seul contribuable (user2 décédé — activeIncome.ts:61 — ;
+            // FA-10 — survivorMode : UN seul contribuable (user2 décédé, cf. activeIncome.ts:61 ;
             // le roulement REER fait que tout le revenu de retraite est celui du SURVIVANT user1).
             // Même traitement que le clawback FA-2 (oasBeneficiaries) : n=1, pas de décomposition
             // par conjoint, pas d'ageSpouse (⇒ pas de crédits d'âge du défunt, pas de fractionnement
@@ -712,7 +721,6 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // pension / fractionnable reste complète — la diviser perdait la moitié du crédit).
             // Avant : le revenu du survivant était réparti sur 2 têtes → barème progressif appliqué
             // 2× à demi-revenu + crédits du défunt + fractionnement fictif = sous-imposition.
-            const taxFilers = survivorMode ? 1 : activeUsersCount;
             const decResult = processDecemberTaxFiling(
                 currentMonthIndex,
                 {

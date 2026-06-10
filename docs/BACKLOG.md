@@ -74,7 +74,16 @@
   possible pour immigrant 10/40) · assiette FSS inclut la PSV (l'Annexe F la déduit — à sourcer) ·
   lagged SRG déflaté du facteur du mois courant (~1 an d'écart, SRG légèrement surévalué) ·
   **dbMonthly quasi-nominal dans le revenu test SRG réel** (post-FA-9 : SRG coupé de plus en plus tôt
-  pour un profil DB, conservateur mais amplitude ×1,49 à 20 ans — déflater la composante DB).
+  pour un profil DB, conservateur mais amplitude ×1,49 à 20 ans — déflater la composante DB) ·
+  **plafonds ×N non survivor-aware** (découverte FA-10) : droits CELI/REER/CELIAPP continuent de
+  s'accumuler pour le défunt (`projection.ts` fhsaRoom, `taxJanuary.ts:159`) — sous-imposition
+  indirecte mineure · retenue FERR estimée sur 2 têtes en survivorMode (timing seulement, réconcilié
+  en décembre) · 🧭 « montant pour personne vivant seule » QC (grille TP-1.G) absent code+doc —
+  pertinent pour un survivant, NE PAS chiffrer sans source Revenu Québec.
+- [ ] **[FA-12]** 🔧 Test d'intégration survivorMode SEEDÉ (découverte code-reviewer FA-10) : aucun
+  test n'exerce `runScenario` avec un décès du conjoint — la régression « quelqu'un retire un ternaire
+  du call-site » ne serait attrapée par rien. Le rng est injecté (`buildSeededRng`) : forcer le décès
+  en année 1 et asserter impôt décembre survivant > scénario sans `modelSurvivor`. (S)
 - [ ] **[FA-11]** 🔧 SRG : discontinuité au seuil (découverte fiscal-accuracy FA-9) — le clawback
   linéaire 50 ¢ depuis 1 105 $ s'annulerait à 26 520 $ mais la coupure dure est à 22 512 $ →
   marche ~167 $/mois au seuil et SRG légèrement SURÉVALUÉ dans la bande haute (le vrai barème a une

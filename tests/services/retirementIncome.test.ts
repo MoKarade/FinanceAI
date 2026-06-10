@@ -351,3 +351,34 @@ describe('FA-9 — SRG : indexation simple (base réelle + nominalisation unique
         expect(aboveThreshold.gis).toBe(0);
     });
 });
+
+// ──────────────────────────────────────────────────────────────────────────
+// FA-10 (suivi fiscal-accuracy) — SRG en survivorMode : barème CÉLIBATAIRE
+// sur UNE tête (avant : barème couple ×2 + revenu test divisé par 2 →
+// jusqu'à ~2,6 k$/an de SRG fictif non imposable pour un survivant).
+// ──────────────────────────────────────────────────────────────────────────
+describe('FA-10 — SRG en survivorMode : barème célibataire, une tête', () => {
+    const coupleCtx: RetirementIncomeCtx = { ...baseCtx, activeUsersCount: 2, psvResidencyYears: [40, 40] };
+    const zeroIncomeGoal: RetirementGoal = {
+        ...baseGoal, rrqEstimateMonthly: 0, psvEstimateMonthly: 700, dbPensionMonthly: 0,
+    };
+    const coupleUsers: User[] = [baseUser, { ...baseUser, name: 'Partner' }];
+
+    it('survivant à revenu nul : SRG max = 1 105 $ (célibataire), PAS 1 324 $ (couple ×2)', () => {
+        const surv = computeRetirementIncome({ ...coupleCtx, survivorMode: true }, zeroIncomeGoal, coupleUsers);
+        expect(surv.gis).toBeCloseTo(1105, 0);
+        // Et le couple vivant garde bien son barème couple (non-régression FA-10).
+        const couple = computeRetirementIncome(coupleCtx, zeroIncomeGoal, coupleUsers);
+        expect(couple.gis).toBeCloseTo(662 * 2, 0);
+    });
+
+    it('le revenu test du survivant n\'est PLUS divisé par 2 : coupure au seuil célibataire', () => {
+        // 23 000 $ (> seuil célibataire 22 512) → SRG nul. L'ancien code divisait par 2
+        // (11 500 $, sous le seuil) et servait un SRG fictif au survivant.
+        const surv = computeRetirementIncome(
+            { ...coupleCtx, survivorMode: true, otherIncomeAnnualLaggedNominal: 23000 },
+            zeroIncomeGoal, coupleUsers,
+        );
+        expect(surv.gis).toBe(0);
+    });
+});

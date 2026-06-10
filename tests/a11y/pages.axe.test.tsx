@@ -129,7 +129,6 @@ describe('a11y pages (vitest-axe)', () => {
                 retirementGoal={emptyState.retirementGoal}
                 debts={[]}
                 config={emptyConfig}
-                calculatedMonthlySavings={0}
                 isPrivacyMode={false}
             />
         );

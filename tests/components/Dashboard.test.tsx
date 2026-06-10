@@ -1,10 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Dashboard } from '../../components/Dashboard';
+import { useFinanceStore } from '../../store/useFinanceStore';
+import { logError } from '../../services/errorLogger';
+import { Tab } from '../../types';
 import type { Transaction, RetirementGoal, BudgetConfig, User } from '../../types';
 
 vi.mock('../../services/finance', () => ({
     fetchPortfolioHistory: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('../../services/errorLogger', () => ({
+    logError: vi.fn(),
 }));
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (k: string) => k, i18n: { language: 'fr' } }),
@@ -57,9 +63,15 @@ const oneTx: Transaction = {
     accountName: 'Desjardins', status: 'processed', isTransfer: false, isDuplicate: false,
 };
 
+const navSpy = vi.fn();
+
 describe('Dashboard', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        navSpy.mockClear();
+        // EP-3 : on injecte un spy de navigation + une projection vide par défaut.
+        // Les tests qui veulent le chemin « avec valeur » posent leur propre lastProjection.
+        useFinanceStore.setState({ navigateWithFocus: navSpy as never, lastProjection: null });
     });
 
     it('se rend sans erreur avec des props vides', () => {
@@ -78,12 +90,48 @@ describe('Dashboard', () => {
         expect(text).toContain('dashboard.future_predictor');
     });
 
-    it('Phase B2: l\'Indicateur Futur expose un bouton clickable vers FutureProjection', () => {
-        const { container } = render(<Dashboard {...baseProps} transactions={[oneTx]} />);
-        // Le bouton "🎯 →" est dans le KPI custom
-        const buttons = container.querySelectorAll('button');
-        const focusBtn = Array.from(buttons).find(b => b.getAttribute('aria-label')?.includes('FutureProjection'));
-        expect(focusBtn).toBeTruthy();
+    // EP-3 : le KPI « Patrimoine projeté » a remplacé l'ancien mini-formulaire.
+    // Sans projection calculée → empty state <ProjectionRequired> avec un lien vers Future.
+    it('EP-3: sans projection, le KPI Futur propose un lien « ouvrir Future »', () => {
+        render(<Dashboard {...baseProps} transactions={[oneTx]} />);
+        // Le KPI rend ProjectionRequired inline → bouton « ouvrir Future » (aria-label …Future…).
+        fireEvent.click(screen.getByRole('button', { name: /Future/i }));
+        expect(navSpy).toHaveBeenCalledWith(Tab.FUTURE);
+    });
+
+    // EP-3 : avec une projection en store, le KPI affiche la valeur réelle (dernier point
+    // de chartData) et devient lui-même un bouton cliquable qui navigue vers Future.
+    it('EP-3: avec projection, le KPI Futur est cliquable et navigue vers Future', () => {
+        useFinanceStore.setState({
+            navigateWithFocus: navSpy as never,
+            lastProjection: { chartData: [{ monthIndex: 240, NetWorth: 1_234_567 }] } as never,
+        });
+        render(<Dashboard {...baseProps} transactions={[oneTx]} />);
+        const buttons = Array.from(document.querySelectorAll('button'));
+        const kpiBtn = buttons.find(b => b.textContent?.includes('dashboard.future_predictor'));
+        expect(kpiBtn).toBeTruthy();
+        fireEvent.click(kpiBtn!);
+        expect(navSpy).toHaveBeenCalledWith(Tab.FUTURE);
+    });
+
+    // EP-3 / no-silent-failure : un dernier point corrompu (NetWorth NaN) NE doit PAS
+    // s'afficher en « — » muet ni rendre le KPI cliquable — il bascule sur <ProjectionRequired>
+    // (empty state honnête) et journalise une projection corrompue.
+    it('EP-3: une projection corrompue (NetWorth NaN) bascule sur ProjectionRequired + log', () => {
+        useFinanceStore.setState({
+            navigateWithFocus: navSpy as never,
+            lastProjection: { chartData: [{ monthIndex: 240, NetWorth: NaN }] } as never,
+        });
+        render(<Dashboard {...baseProps} transactions={[oneTx]} />);
+        // Le KPI n'est PAS un bouton cliquable porteur de valeur…
+        const valueBtn = Array.from(document.querySelectorAll('button'))
+            .find(b => b.textContent?.includes('dashboard.future_predictor'));
+        expect(valueBtn).toBeFalsy();
+        // …mais l'empty state ProjectionRequired propose toujours « ouvrir Future ».
+        fireEvent.click(screen.getByRole('button', { name: /Future/i }));
+        expect(navSpy).toHaveBeenCalledWith(Tab.FUTURE);
+        // …et la corruption est journalisée (pas avalée).
+        expect(logError).toHaveBeenCalledWith(expect.objectContaining({ source: 'projection', severity: 'warning' }));
     });
 
     it('en mode privacyMode=true, se rend sans crash', () => {

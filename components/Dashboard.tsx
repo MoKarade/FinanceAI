@@ -19,6 +19,7 @@ import { StockComparisonModal } from './dashboard/StockComparisonModal';
 import { Tab as TabEnum } from '../types';
 import { formatCAD, formatPercent, formatSigned } from '../utils/format';
 import { ProjectionRequired } from './ui/ProjectionRequired';
+import { logError } from '../services/errorLogger';
 
 interface DashboardProps {
     transactions: Transaction[];
@@ -33,7 +34,6 @@ interface DashboardProps {
     debts?: Debt[]; // NEW
     config: BudgetConfig;
     apiKey?: string;
-    calculatedMonthlySavings?: number;
     onNavigate?: (tab: Tab) => void;
     isPrivacyMode?: boolean;
 }
@@ -50,7 +50,7 @@ Object.entries(ASSET_META).forEach(([k, v]) => {
 
 export const Dashboard: React.FC<DashboardProps> = ({
     transactions, assets, initialBalances, realEstateGoals, childGoals: _childGoals = [], debts = [],
-    lifeEvents: _lifeEvents = [], onNavigate, isPrivacyMode = false, calculatedMonthlySavings = 0,
+    lifeEvents: _lifeEvents = [], onNavigate, isPrivacyMode = false,
     config,
 }) => {
     const { t } = useTranslation();
@@ -58,7 +58,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const [timeRange, setTimeRange] = useState<TimeRange>('1M');
     const [customStart, setCustomStart] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
     const [customEnd, setCustomEnd] = useState(new Date().toISOString().split('T')[0]);
-    const [futureYears, setFutureYears] = useState<number>(5);
 
     // Phase D.3 — multi-comptes : chaque compte peut être masqué/affiché ; un
     // bouton "Total" superpose une ligne d'agrégat. Persistance localStorage.
@@ -98,23 +97,34 @@ export const Dashboard: React.FC<DashboardProps> = ({
         });
     };
 
-    // Wiring 2026-05: lit la vraie projection FutureProjection si dispo, sinon
-    // fallback sur formule simple. Garanti d'être sync avec l'onglet projection.
+    // [EP-3] Source unique : le KPI « Patrimoine projeté » lit le DERNIER point de
+    // lastProjection.chartData (plus de formule ad-hoc). Sync garantie avec l'onglet Futur.
     const lastProjection = useFinanceStore(s => s.lastProjection);
     const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
 
-    // Mode strict : retourne null si pas de projection. Aucune invention
-    // (avant : fallback formule 5% qui divergeait silencieusement de Future).
-    const calculateFutureValue = (_pv: number, _pmtMonthly: number, years: number): number | null => {
-        if (!lastProjection?.chartData || lastProjection.chartData.length === 0) return null;
-        const targetMonth = years * 12;
-        const point = lastProjection.chartData.find(p => p.monthIndex === targetMonth)
-            || lastProjection.chartData[Math.min(targetMonth, lastProjection.chartData.length - 1)];
-        if (point && typeof point.NetWorth === 'number' && point.NetWorth > 0) {
-            return point.NetWorth;
+    // [EP-3] KPI Futur dérivé en amont du rendu. no-silent-failure : typeof NaN === 'number'
+    // est `true` → on EXIGE une valeur FINIE. Un dernier point présent mais NetWorth non fini =
+    // projection corrompue (≠ absente) → hasValue=false (donc <ProjectionRequired>) + flag `corrupt`
+    // pour logguer une fois (cas absent = repli muet légitime, on ne log pas).
+    const futureKpi = useMemo(() => {
+        const cd = lastProjection?.chartData;
+        const last = cd && cd.length > 0 ? cd[cd.length - 1] : null;
+        const nw = last ? last.NetWorth : null;
+        const hasValue = typeof nw === 'number' && Number.isFinite(nw);
+        const corrupt = last != null && typeof nw === 'number' && !Number.isFinite(nw);
+        const horizonY = last ? Math.round((Number(last.monthIndex) || 0) / 12) : null;
+        return { netWorth: hasValue ? (nw as number) : null, hasValue, horizonY, corrupt };
+    }, [lastProjection]);
+
+    useEffect(() => {
+        if (futureKpi.corrupt) {
+            logError({
+                source: 'projection',
+                severity: 'warning',
+                message: 'Dashboard KPI Futur : dernier point chartData avec NetWorth non fini (projection corrompue)',
+            });
         }
-        return null;
-    };
+    }, [futureKpi.corrupt]);
 
     // Sprint 3B M3 — usePortfolioHistory hook avec cache singleton.
     // Avant : fetch redondant à chaque mount Dashboard (et chaque autre tab
@@ -413,53 +423,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     privacy
                     variant="warning"
                 />
-                {/* Indicateur Futur — custom car contient un input année */}
-                <div className="bg-white/[0.02] backdrop-blur-sm rounded-card p-4 border-l-2 border-l-white/10 border-r border-t border-b border-white/5 flex flex-col gap-1 hover:bg-white/[0.04] transition-colors group">
-                    <div className="flex items-center justify-between">
-                        <span className="kpi-label">{t('dashboard.future_predictor', 'Indicateur Futur')}</span>
-                        <button
-                            type="button"
-                            onClick={() => navigateWithFocus(TabEnum.FUTURE)}
-                            className="text-meta text-info-400 opacity-0 group-hover:opacity-100 focus-ring rounded transition-opacity"
-                            title="Ouvrir la projection future"
-                            aria-label="Aller à FutureProjection"
-                        >
-                            →
-                        </button>
-                    </div>
-                    <div className="text-kpi text-ink-50 privacy-blur tabular-nums">
-                        {(() => {
-                            const projected = calculateFutureValue(Number(latestTotals?.Total) || 0, calculatedMonthlySavings || 0, futureYears);
-                            return projected != null
-                                ? formatCAD(projected)
-                                : <ProjectionRequired variant="inline" feature="cette projection" />;
-                        })()}
-                    </div>
-                    <div className="flex items-center justify-between gap-2 text-meta">
-                        <div className="flex items-center gap-1.5">
-                            <span className="text-ink-400">Dans</span>
-                            <input
-                                type="number"
-                                className="w-12 bg-dark border border-white/15 rounded px-1.5 py-0.5 text-meta text-center font-bold text-ink-50 focus-ring"
-                                value={futureYears}
-                                onChange={(e) => setFutureYears(Math.max(1, Math.min(50, Number(e.target.value))))}
-                                min={1} max={50}
-                                aria-label="Horizon en années"
-                            />
-                            <span className="text-ink-400">ans</span>
-                        </div>
-                        {lastProjection?.chartData && lastProjection.chartData.length > 0 && (
-                            <button
-                                type="button"
-                                onClick={() => navigateWithFocus(TabEnum.FUTURE)}
-                                className="text-tiny text-info-400 font-bold hover:underline focus-ring rounded"
-                                title="Ouvrir la projection future"
-                            >
-                                Sync
-                            </button>
-                        )}
-                    </div>
-                </div>
+                {/* [EP-3] KPI Futur simplifié : valeur projetée à l'horizon RÉEL (lastProjection),
+                    plus de mini-formulaire (input année + Sync) — l'horizon se règle dans Futur.
+                    a11y : onClick UNIQUEMENT si hasValue — sinon KPIStat rendrait un <button> contenant
+                    le <button> interne de <ProjectionRequired> (bouton imbriqué = HTML invalide). */}
+                <KPIStat
+                    label={t('dashboard.future_predictor', 'Patrimoine projeté')}
+                    value={futureKpi.hasValue
+                        ? formatCAD(futureKpi.netWorth as number)
+                        : <ProjectionRequired variant="inline" />}
+                    sublabel={futureKpi.horizonY ? `dans ${futureKpi.horizonY} ans` : undefined}
+                    privacy
+                    onClick={futureKpi.hasValue ? () => navigateWithFocus(TabEnum.FUTURE) : undefined}
+                />
             </StatGrid>
 
             {/* Phase D.6 — Indicateur santé financière paramétrable (remplace

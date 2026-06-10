@@ -238,10 +238,14 @@ pour minimiser l'impôt combiné (élection optionnelle).
 > et SOUSTRAIT de toutes les assiettes fiscales de décembre (impôt, RAMQ, FSS, empilement gains/
 > dividendes, clawback PSV) — il reste du revenu cash ; (b) le test de réduction inclut désormais
 > les retraits REER/FERR + loyers de l'ANNÉE PRÉCÉDENTE (capturés au reset de janvier, déflatés).
-> Limites assumées : gains en capital réalisés non inclus dans le test (FA-8) ; année 1 de
-> simulation sans historique (assiette RRQ+DB seule, optimiste, borné à 12 mois) ; le salaire de
-> l'année précédant la retraite n'est pas compté ; janvier de l'année Y teste l'assiette Y-2
-> (décalage d'un mois — le vrai cycle SRG court juillet→juin).
+> **PV-9 (2026-06-10)** : le test SRG inclut aussi les **gains en capital RÉALISÉS** de l'année
+> précédente (montant imposable ×0,5, déflaté) — `accCapitalGainsYear` est déjà net de la banque de
+> pertes et ≥ 0 (gain net de la ligne 12700). Idem **clawback PSV** : les gains imposables de l'année
+> COURANTE entrent dans le revenu de récupération (ligne 23400), répartis également par conjoint.
+> Limites assumées : année 1 de simulation sans historique (assiette RRQ+DB seule, optimiste, borné à
+> 12 mois) ; le salaire de l'année précédant la retraite n'est pas compté ; janvier de l'année Y teste
+> l'assiette Y-2 (décalage d'un mois — le vrai cycle SRG court juillet→juin) ; dividendes/intérêts
+> non-reg encore hors test (FA-8).
 > **Indexation** (FA-9, 2026-06-10) : le moteur calcule le SRG **en base réelle 2026** (barème de
 > base ci-dessous contre le revenu test déflaté) puis nominalise UNE fois ×inflation simulée —
 > comme RRQ/PSV. Avant : `calculateGISBenefit(year)` indexait max+seuils ×1,02^Δ PUIS le résultat

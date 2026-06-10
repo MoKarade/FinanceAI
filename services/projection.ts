@@ -331,6 +331,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // FA-3b — revenu imposable AUTRE de l'année PRÉCÉDENTE (retraits REER + loyers, nominal),
     // capturé au reset de janvier : assiette du test SRG (le vrai SRG regarde l'année passée).
     let prevYearOtherIncomeForGisNominal = 0;
+    // PV-9 — gains en capital RÉALISÉS de l'année courante (BRUT, avant inclusion 50 %), capturés
+    // AVANT le reset de décembre. Servent à 2 assiettes : le clawback PSV de l'année N (décembre)
+    // et le test SRG de l'année N+1 (`prevYearCapitalGainsForGisNominal`, lag comme les retraits REER).
+    let capitalGainsRealizedThisYear = 0;
+    let prevYearCapitalGainsForGisNominal = 0;
     // Phase 3 Tier 3 — split par source (RRQ + PSV + privée) pour chartData
     let pensionRRQ = 0;
     let pensionPSV = 0;
@@ -538,7 +543,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                   survivorMode, monthlyOasReduction, dbSurvivorPct, rrqSurvivorPct, psvResidencyYears,
                   startYear,
                   // FA-3b — le test SRG regarde le revenu de l'ANNÉE PRÉCÉDENTE (retraits REER + loyers).
-                  otherIncomeAnnualLaggedNominal: prevYearOtherIncomeForGisNominal },
+                  otherIncomeAnnualLaggedNominal: prevYearOtherIncomeForGisNominal,
+                  // PV-9 — + gains en capital RÉALISÉS de l'année précédente (BRUT ; ×0,5 appliqué dans computeRetirementIncome).
+                  prevYearCapitalGainsForGisNominal },
                 retirementGoal,
                 config.users,
             );
@@ -780,6 +787,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             taxCurrentYear = decResult.newTaxCurrentYear;
             decResult.logs.forEach(msg => logEvent(flowEventsLog, msg));
 
+            // PV-9 : capture des gains réalisés de l'année AVANT le reset (réutilisés par le clawback
+            // PSV ci-dessous, même décembre, et par le test SRG de l'an prochain via le lag de janvier).
+            capitalGainsRealizedThisYear = accCapitalGainsYear;
             accCapitalGainsYear = 0;
             smithInterestDeductibleYear = 0;
             accRrspYear = 0;
@@ -828,6 +838,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 oasBeneficiaries,
                 survivorMode ? undefined : incomeRetirementPerUser.map((v) => v - gisShare),
                 survivorMode ? undefined : accRetraitsReerYearByUser,
+                // PV-9 : gains imposables de l'année (50 % d'inclusion appliqué dans la fonction)
+                // entrent dans le revenu net de récupération PSV (ligne 23400 ARC).
+                capitalGainsRealizedThisYear,
             );
             oasClawbackNextPeriod = oasResult.clawbackAnnual;
             if (oasResult.logMsg) flowEventsLog.push(oasResult.logMsg);
@@ -860,6 +873,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // l'année Y utilise l'assiette Y-2 (capture après le calcul de janvier — tolérance modèle,
             // le vrai cycle SRG court juillet→juin).
             prevYearOtherIncomeForGisNominal = accRetraitsReerYear + accRentesYear;
+            // PV-9 : les gains réalisés de l'année écoulée (capturés en décembre) entrent dans
+            // l'assiette du test SRG de la nouvelle année (lag, comme les retraits REER + loyers).
+            prevYearCapitalGainsForGisNominal = capitalGainsRealizedThisYear;
             accRetraitsReerYear = janResult.accRetraitsReerYearReset;
             accRetraitsReerYearByUser = accRetraitsReerYearByUser.map(() => 0);
             accRentesYear = janResult.accRentesYearReset;

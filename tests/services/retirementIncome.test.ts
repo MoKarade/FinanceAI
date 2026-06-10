@@ -290,6 +290,34 @@ describe('FA-3 (audit 2026-06-09) : SRG exposé (gis) + test de réduction sur l
         expect(neg.gis).toBeCloseTo(sans.gis, 5);
     });
 
+    // [PV-9] Les gains en capital RÉALISÉS de l'année précédente (montant imposable ×0,5) entrent
+    // dans le test de revenu du SRG → réduisent le SRG (~50 ¢ par $ d'inclusion).
+    it('PV-9 — des gains réalisés N-1 RÉDUISENT le SRG (sur le montant imposable ×0,5)', () => {
+        const sans = computeRetirementIncome({ ...baseCtx, prevYearCapitalGainsForGisNominal: 0 }, lowIncomeGoal, [lowEarner]);
+        const avec = computeRetirementIncome({ ...baseCtx, prevYearCapitalGainsForGisNominal: 20000 }, lowIncomeGoal, [lowEarner]);
+        expect(avec.gis).toBeLessThan(sans.gis);
+        // 20 000 $ bruts → 10 000 $ imposables ; réduction SRG ≈ 50 ¢/$ d'inclusion = ~5 000 $/an,
+        // bornée par le SRG disponible. On vérifie le SENS + l'ordre de grandeur (montant imposable).
+        const reductionAnnuelle = (sans.gis - avec.gis) * 12;
+        expect(reductionAnnuelle).toBeGreaterThan(10000 * 0.35);
+        expect(reductionAnnuelle).toBeLessThanOrEqual(10000 * 0.5 + 1);
+    });
+
+    it('PV-9 — gains réalisés == retraits REER pour le test SRG (même assiette imposable, ×0,5 vs ×1)', () => {
+        // 20 000 $ de gains (×0,5 = 10 000 imposables) doit réduire le SRG comme 10 000 $ de retraits REER.
+        const parGains = computeRetirementIncome({ ...baseCtx, prevYearCapitalGainsForGisNominal: 20000 }, lowIncomeGoal, [lowEarner]);
+        const parReer = computeRetirementIncome({ ...baseCtx, otherIncomeAnnualLaggedNominal: 10000 }, lowIncomeGoal, [lowEarner]);
+        expect(parGains.gis).toBeCloseTo(parReer.gis, 5);
+    });
+
+    it('PV-9 — gains N-1 négatifs/NaN clampés (jamais d\'augmentation du SRG)', () => {
+        const sans = computeRetirementIncome(baseCtx, lowIncomeGoal, [lowEarner]);
+        const neg = computeRetirementIncome({ ...baseCtx, prevYearCapitalGainsForGisNominal: -30000 }, lowIncomeGoal, [lowEarner]);
+        const nan = computeRetirementIncome({ ...baseCtx, prevYearCapitalGainsForGisNominal: NaN }, lowIncomeGoal, [lowEarner]);
+        expect(neg.gis).toBeCloseTo(sans.gis, 5);
+        expect(nan.gis).toBeCloseTo(sans.gis, 5);
+    });
+
     it('FA-3b — le revenu décalé NOMINAL est déflaté à la même base réelle que RRQ/DB (m=240, 2 %)', () => {
         // À m=240 (20 ans, infl 2 %), 14 859 $ nominaux ≈ 10 000 $ réels : la réduction du SRG
         // (en réel) doit être ~celle de 10 000 $ réels à m=0, pas celle de 14 859 $.

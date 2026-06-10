@@ -4,7 +4,7 @@
 // avec le total ET le split par source (Phase 3 Tier 3 — split pensions).
 
 import type { RetirementGoal, User } from '../../types';
-import { RRQ_MPE, calculateGISBenefit, rrqAdjustmentFactor, psvDeferralFactor, PSV_BONUS_75_PLUS } from '../../utils/tax';
+import { RRQ_MPE, calculateGISBenefit, rrqAdjustmentFactor, psvDeferralFactor, PSV_BONUS_75_PLUS, CAPITAL_GAINS_INCLUSION_STANDARD } from '../../utils/tax';
 
 // Constantes RRQ/PSV 2026 (Retraite Québec + Service Canada)
 const RRQ_DENOMINATOR_YEARS = 39;       // Années cotisées pour pleine RRQ (8/47 plus faibles retirées)
@@ -33,6 +33,14 @@ export interface RetirementIncomeCtx {
      * Optionnel (absent → comportement RRQ+DB seul, rétro-compat).
      */
     otherIncomeAnnualLaggedNominal?: number;
+    /**
+     * PV-9 (2026-06-10) — gains en capital RÉALISÉS de l'année PRÉCÉDENTE, en dollars NOMINAUX
+     * et BRUTS (avant inclusion 50 %). À l'ARC, le gain imposable (×0,5) entre dans le revenu net
+     * (ligne 23400) qui sert au test SRG : l'omettre surévalue le SRG d'un 65+ bas revenu qui a
+     * réalisé des gains (NonReg/crypto, levier `gainHarvesting`). L'inclusion 50 % est appliquée ici.
+     * Optionnel (absent → 0, rétro-compat).
+     */
+    prevYearCapitalGainsForGisNominal?: number;
 }
 
 /**
@@ -215,16 +223,22 @@ export function computeRetirementIncome(
     // pour les profils DB = SRG sous-évalué, sens CONSERVATEUR) — comme le vrai
     // SRG, calculé sur la déclaration de l'année passée. Avant : RRQ+DB seuls → SRG
     // fictif (~13 k$/an) pour les profils FIRE/meltdown vivant de retraits REER.
-    // Limite assumée : les gains en capital réalisés ne sont pas inclus (FA-8).
     // Garde NaN à la source (cohérence FA-1) : Math.max(0, NaN) = NaN — calculateGISBenefit a
     // sa propre garde mais on neutralise ici pour ne jamais propager.
     const otherLaggedReal = (Number.isFinite(ctx.otherIncomeAnnualLaggedNominal)
         ? Math.max(0, ctx.otherIncomeAnnualLaggedNominal as number)
         : 0) / inflFactor;
+    // PV-9 — gains en capital RÉALISÉS de l'année précédente : le montant IMPOSABLE (×0,5) entre
+    // dans le revenu net du test SRG, déflaté à la même base réelle. Avant : exclus (SRG surévalué
+    // pour un 65+ bas revenu réalisant des gains). `accCapitalGainsYear` est déjà NET de la banque
+    // de pertes (PV-2/PV-7) et ≥ 0 — c'est exactement le gain net imposable de la ligne 12700.
+    const gainsLaggedReal = (Number.isFinite(ctx.prevYearCapitalGainsForGisNominal)
+        ? Math.max(0, ctx.prevYearCapitalGainsForGisNominal as number)
+        : 0) * CAPITAL_GAINS_INCLUSION_STANDARD / inflFactor;
     // rrqMonthly is already family-level (rrqBaseIndiv × activeUsersCount above).
     // Computing family total first, then dividing for the per-adult figure avoids
     // the double-multiplication that caused SRG = $0 for entitled couples (§7.G).
-    const otherIncomeAnnualFamily = (rrqMonthly + dbMonthly) * 12 + otherLaggedReal;
+    const otherIncomeAnnualFamily = (rrqMonthly + dbMonthly) * 12 + otherLaggedReal + gainsLaggedReal;
     // FA-10 (suivi fiscal-accuracy) — survivorMode : UN seul bénéficiaire SRG. Avant, le
     // survivant gardait le barème COUPLE (max 662 $ ×2 = 1 324 $/mois, seuil combiné 29 760 $)
     // au lieu du barème célibataire (1 105 $, seuil 22 512 $) ET son revenu test était divisé

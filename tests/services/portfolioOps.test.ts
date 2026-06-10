@@ -98,16 +98,28 @@ describe('[PV-7] handleCryptoSale — gain en capital + banque de pertes', () =>
         expect(s.capitalLossBank).toBe(0);
     });
 
-    it('vente à PERTE : alimente la banque (n\'est plus jetée)', () => {
-        // crypto 10000, ACB 16000 → proportion cap 1 → costBasis = sold → … pas de perte.
-        // Pour une vraie perte il faut ACB > valeur SANS cap : proportion = min(1, ACB/crypto)
-        // plafonne à 1, donc rawGain ≥ 0 (limite connue, comme NonReg). On pinne ce comportement
-        // ET on vérifie le cas perte réel : cryptoACB partiel sur solde réduit.
+    it('ACB ≥ valeur : aucune perte réalisée (cap proportion=1 → rawGain≥0)', () => {
+        // Comportement pinné, identique à NonReg : le cap min(1, ACB/valeur) rend rawGain ≥ 0,
+        // donc la branche « perte → banque » est inatteignable à la VENTE (la perte latente est
+        // différée via l'ACB résiduel). La banque ne s'alimente que par le TLH explicite.
         const s = makeCrypto({ crypto: 10000, cryptoACB: 16000, capitalLossBank: 0 });
         handleCryptoSale(s, 5000);
-        // proportion = min(1, 1.6) = 1 → costBasis 5000 → rawGain 0 → ni gain ni perte.
         expect(s.accCapitalGainsYear).toBe(0);
         expect(s.capitalLossBank).toBe(0);
+    });
+
+    it('ÉQUIVALENCE stricte avec handleNonRegSale (même état → mêmes mutations)', () => {
+        // handleCryptoSale doit être le miroir byte-pour-byte de handleNonRegSale (gain
+        // proportionnel + consommation de banque). Prouvé sur un état numérique commun avec
+        // banque partielle : gain brut 3000, banque 1500 → 1500 imposable, banque vidée.
+        const cs = makeCrypto({ crypto: 10000, cryptoACB: 4000, capitalLossBank: 1500 });
+        const ns = { nonReg: 10000, nonRegACB: 4000, capitalLossBank: 1500, accCapitalGainsYear: 0 };
+        const soldC = handleCryptoSale(cs, 5000);
+        const soldN = handleNonRegSale(ns, 5000);
+        expect(soldC).toBe(soldN);
+        expect(cs.accCapitalGainsYear).toBe(ns.accCapitalGainsYear);
+        expect(cs.capitalLossBank).toBe(ns.capitalLossBank);
+        expect(cs.cryptoACB).toBe(ns.nonRegACB);
     });
 
     it('solde insuffisant : vend ce qui reste, sans planter', () => {

@@ -330,6 +330,10 @@ Implémenté (ADR 009) ; valeurs à transcrire ici lors de la prochaine revue fi
 ---
 
 ## 9. Limites connues (assumées, non-bugs)
+- **ACB initial NonReg/crypto = valeur de départ** (`nonRegACB = nonReg`, `cryptoACB = crypto`) :
+  le gain latent ACCUMULÉ avant la simulation n'est pas modélisé (coût d'acquisition historique
+  inconnu — no-fake-data). Seule la croissance future simulée devient imposable → impôt à la
+  disposition SOUS-ESTIMÉ pour un actif à fort gain latent au départ. Symétrique NonReg/crypto.
 - **BPA fédéral dégressif** haut revenu (> ~177 k$) : non modélisé (on retient le palier max).
 - **Indexation 2027+** : repose sur ~+2 %/an estimé tant que les montants officiels ne sont
   pas publiés (`getIndexedBracketsForYear`).

@@ -60,7 +60,7 @@ export interface CryptoSaleState {
 /**
  * [PV-7] Vente de crypto avec calcul ACB et capital gain/loss — MÊME logique que
  * `handleNonRegSale` (les cryptoactifs sont des immobilisations imposables comme tout
- * placement non enregistré). Avant, les 3 sites de vente crypto faisaient
+ * placement non enregistré). Avant, les sites de vente crypto faisaient
  * `accCapitalGainsYear += Math.max(0, gain)` : ils IGNORAIENT la banque de pertes
  * (gains compensables imposés quand même — conservateur) ET JETAIENT les pertes (perte
  * déductible perdue — conservateur aussi, mais incohérent avec NonReg).

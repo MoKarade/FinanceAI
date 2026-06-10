@@ -212,8 +212,10 @@ pour minimiser l'impôt combiné (élection optionnelle).
 | RRQ/PSV, retraits **REER** (avant conversion) | **NON admissibles** | exclus de l'assiette |
 > **Implémentation** : `taxDecember` calcule l'impôt du ménage AVEC et SANS fractionnement et garde le
 > **minimum** (élection optionnelle → ne peut jamais augmenter l'impôt). Transfert borné à ≤ 50 % de
-> l'admissible du cédant. Limites assumées (conservatrices, cf §9) : gate DB à 65 (vs tout âge féd),
-> crédit pension non re-réparti au conjoint receveur.
+> l'admissible du cédant. **PV-3 (2026-06-10)** : l'assiette du crédit pension (féd 31400 / QC 361)
+> SUIT la pension fractionnée — le récipiendaire réclame le crédit sur la pension reçue (ARC l'admet),
+> le cédant le perd sur la part cédée (chacun plafonné au max féd/QC). Limite assumée restante
+> (conservatrice, cf §9) : gate DB à 65 (vs tout âge au fédéral).
 
 ### PSV / OAS — récupération (clawback)
 - Seuil de récupération 2026 (`OAS_CLAWBACK_THRESHOLD_2026`) : **95 323 $** (ARC ; 93 454 $ en 2025).
@@ -344,10 +346,9 @@ Implémenté (ADR 009) ; valeurs à transcrire ici lors de la prochaine revue fi
   Σ==commun). Phase 2 = retraits REER/FERR taxés PAR CONJOINT (prorata des soldes). **Phase 3 =
   fractionnement de pension 65+ (FAIT, cf §6).** Restent répartis également : rentes gouv. et DB.
   Reste ouvert : **FERR par conjoint exact** (aujourd'hui prorata des soldes).
-- **Crédit pension non re-réparti au conjoint receveur** (limite assumée, conservatrice) : le
-  fractionnement transfère du revenu imposable, mais le moteur ne recalcule PAS le crédit pension
-  (féd ligne 31400 = 2 000 $ + ligne 361 QC) du conjoint qui REÇOIT le montant fractionné → bénéfice
-  légèrement SOUS-estimé (sens sur-impôt, jamais sous-imposition).
+- ~~**Crédit pension non re-réparti au conjoint receveur**~~ **CORRIGÉ (PV-3, 2026-06-10)** : le
+  fractionnement déplace désormais l'assiette du crédit pension (féd 31400 + QC 361) AVEC la pension
+  transférée → le récipiendaire réclame le crédit sur la pension reçue (cf §6 fractionnement).
 - **Gate DB du fractionnement à 65 ans** (limite assumée) : la rente viagère DB est fractionnable
   dès réception à TOUT âge côté fédéral (T1032), mais le QC exige 65 ans. Le moteur faisant un calcul
   combiné QC+féd, on retient **65** (sur-impôt léger pour une DB débutant avant 65, jamais l'inverse).

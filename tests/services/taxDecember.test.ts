@@ -880,16 +880,30 @@ describe('processDecemberTaxFiling — FA-1 (audit 2026-06-09) : assiette du cr�
             accRentesYear: 12000, // loyers : dans l'imposable (split égal), PAS dans le crédit
         }), helpers, ZERO_TAX);
         const pensionCalls = calls.filter(c => c.ageOpts !== undefined);
-        // 2 premiers appels = combinedTaxFor de base, dans l'ordre [user0, user1].
+        // 2 premiers appels = combinedTaxFor de BASE (sans fractionnement), ordre [user0, user1].
+        // Assiette du crédit = DB seule (12000 pour user0, 0 pour user1), loyers exclus.
         expect(pensionCalls[0].gross).toBeCloseTo(3000 * 12 + 6000, 5);
         expect(pensionCalls[0].ageOpts!.eligiblePensionIncome).toBeCloseTo(12000, 5);
         expect(pensionCalls[1].gross).toBeCloseTo(2000 * 12 + 6000, 5);
         expect(pensionCalls[1].ageOpts!.eligiblePensionIncome).toBe(0);
-        // TOUS les appels (y compris la grille de fractionnement Phase 3, qui partage
-        // désormais le helper eligiblePensionFor) gardent la même assiette {12000, 0}.
+        // [PV-3] La grille de fractionnement (Phase 3) déplace l'assiette du crédit AVEC la pension
+        // transférée : chaque candidat = {12000 − tr (user0), tr (user1)}. Invariants :
+        //  - chaque assiette ∈ [0, 12000] (jamais négative ni au-delà du splittable total) ;
+        //  - le récipiendaire (user1) gagne une assiette > 0 dans la grille (preuve PV-3 actif) —
+        //    l'ancien code la gardait figée à 0 pour lui.
         for (const c of pensionCalls) {
-            expect([0, 12000]).toContain(c.ageOpts!.eligiblePensionIncome);
+            const e = c.ageOpts!.eligiblePensionIncome;
+            expect(e).toBeGreaterThanOrEqual(0);
+            expect(e).toBeLessThanOrEqual(12000 + 1e-6);
         }
+        // Sous l'ANCIEN code, toute assiette valait EXACTEMENT 0 ou 12000 (figée). Sous PV-3, la
+        // grille produit des valeurs INTERMÉDIAIRES (12000−tr et tr) → preuve que l'assiette suit
+        // la pension fractionnée vers le récipiendaire.
+        const hasIntermediateBase = pensionCalls.some(c => {
+            const e = c.ageOpts!.eligiblePensionIncome ?? 0;
+            return e > 1 && e < 12000 - 1;
+        });
+        expect(hasIntermediateBase, 'la grille PV-3 doit produire des assiettes intermédiaires (crédit qui suit le split)').toBe(true);
     });
 
     it('GARDE — rente DB négative → clampée à 0 (jamais d\'assiette négative)', () => {
@@ -956,6 +970,47 @@ describe('processDecemberTaxFiling — FA-1 (audit 2026-06-09) : assiette du cr�
         const zero = processDecemberTaxFiling(DECEMBER, mk(undefined), realHelpers, ZERO_TAX);
         expect(Number.isFinite(nan.newTaxCurrentYear.revenu)).toBe(true);
         expect(nan.newTaxCurrentYear.revenu).toBeCloseTo(zero.newTaxCurrentYear.revenu, 4);
+    });
+
+    // [PV-3] Le crédit pension SUIT la pension fractionnée vers le récipiendaire (ARC 31400 /
+    // RQ Annexe Q) : un couple où seul un conjoint a une pension DB obtient un SECOND crédit
+    // pension après fractionnement → impôt strictement plus bas que l'assiette de crédit gelée.
+    it('PV-3 — fractionnement : le récipiendaire gagne le crédit pension → impôt < assiette gelée', () => {
+        // H = user0 : pension DB 72 000 $/an (seule pension admissible) ; L = user1 : 0 revenu.
+        // 72 k$ → après fractionnement ~36 k$/conjoint : assez d'impôt pour que le crédit pension
+        // du récipiendaire (≈ 700 $) soit mesurable (à 36 k$ total, l'impôt serait nul → indétectable).
+        const ctx = baseCtx({
+            isRetired: true, age: 70, ageSpouse: 70, activeUsersCount: 2,
+            incomeRetirementMonthly: 6000,                 // total ménage = 72 000 $/an
+            incomeRetirementPerUserMonthly: [6000, 0],     // tout sur H
+            incomeRetirementDbPerUserMonthly: [6000, 0],   // 72 000 $ DB admissibles (H), 0 (L)
+        });
+        const r = processDecemberTaxFiling(DECEMBER, ctx, realHelpers, ZERO_TAX);
+
+        // Reproduction de l'optimiseur AVEC l'assiette de crédit GELÉE (ancien comportement) :
+        // même grille de transfert, mais le récipiendaire ne reçoit JAMAIS de crédit.
+        const taxable = [72000, 0];
+        const eligibleFrozen = [72000, 0];
+        const mkOpts = (_taxable: number, eligible: number): AgeCreditOptions =>
+            ({ age: 70, eligiblePensionIncome: eligible, hasSpouse: true, familyIncome: 72000 });
+        const combined = (tx: number[], el: number[]): number =>
+            calculateFiscalReport(tx[0], 0, 0, 2026, false, mkOpts(tx[0], el[0])).totalTax
+            + calculateFiscalReport(tx[1], 0, 0, 2026, false, mkOpts(tx[1], el[1])).totalTax;
+        const maxTransfer = Math.min(0.5 * 72000, 72000); // 36 000
+        let frozenBest = combined(taxable, eligibleFrozen); // sans split
+        for (let k = 1; k <= 40; k++) {
+            const tr = maxTransfer * (k / 40);
+            const cand = [taxable[0] - tr, taxable[1] + tr];
+            const ct = combined(cand, eligibleFrozen); // assiette GELÉE {36000, 0}
+            if (ct < frozenBest) frozenBest = ct;
+        }
+        const expectedFrozen = frozenBest * 1; // inflationFactor = 1 en 2026
+
+        // PV-3 : l'impôt réel est STRICTEMENT plus bas (le récipiendaire a obtenu son crédit).
+        expect(r.newTaxCurrentYear.revenu).toBeLessThan(expectedFrozen - 50);
+        // …et reste cohérent (positif, fini).
+        expect(Number.isFinite(r.newTaxCurrentYear.revenu)).toBe(true);
+        expect(r.newTaxCurrentYear.revenu).toBeGreaterThan(0);
     });
 });
 

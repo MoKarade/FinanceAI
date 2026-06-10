@@ -114,6 +114,25 @@ describe('computeOasClawback — seuil de revenu de pension', () => {
         expect(r.clawbackAnnual).toBeGreaterThan(0);
     });
 
+    it('PV-9 — les gains en capital de l\'année (×0,5) entrent dans l\'assiette du clawback PSV', () => {
+        // Pension 7 500 $/mois = 90 000 $/an < seuil 95 323 → sans gains : clawback 0.
+        // + 30 000 $ de gains BRUTS × 50 % = 15 000 $ imposables → 105 000 $ > seuil.
+        const sansGains = computeOasClawback(DECEMBER, 24, true, 70, 1, 7500, 0, 0, 800, 0, 1, undefined, undefined, 0);
+        const avecGains = computeOasClawback(DECEMBER, 24, true, 70, 1, 7500, 0, 0, 800, 0, 1, undefined, undefined, 30000);
+        expect(sansGains.clawbackAnnual).toBe(0);
+        // excès = (90 000 + 15 000) − seuil ; clawback = excès × 15 % (sous le plafond PSV).
+        const excess = 90000 + 30000 * 0.5 - OAS_CLAWBACK_THRESHOLD_2026;
+        expect(avecGains.clawbackAnnual).toBeCloseTo(excess * 0.15, 2);
+    });
+
+    it('PV-9 — gains négatifs/NaN clampés (jamais de clawback fantôme)', () => {
+        const base = computeOasClawback(DECEMBER, 24, true, 70, 1, 7500, 0, 0, 800, 0, 1, undefined, undefined, 0);
+        const neg = computeOasClawback(DECEMBER, 24, true, 70, 1, 7500, 0, 0, 800, 0, 1, undefined, undefined, -50000);
+        const nan = computeOasClawback(DECEMBER, 24, true, 70, 1, 7500, 0, 0, 800, 0, 1, undefined, undefined, NaN);
+        expect(neg.clawbackAnnual).toBe(base.clawbackAnnual);
+        expect(nan.clawbackAnnual).toBe(base.clawbackAnnual);
+    });
+
     it('seuil indexé par l\'inflation NOMINALE du revenu (simInflation), PAS expenseMultiplier', () => {
         // BONUS FIX (Marc, 2026-06) — le seuil PSV suit désormais l'inflation nominale du
         // revenu (Math.pow(1+simInflation/100, m/12)), pas l'inflation des dépenses.

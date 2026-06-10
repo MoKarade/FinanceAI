@@ -5,7 +5,11 @@
 > Audit qualité détaillé (référence) : [`docs/AAA_AUDIT_2026-06.md`](AAA_AUDIT_2026-06.md).
 > Actions humaines (Marc) : [`docs/A_FAIRE_MOI.md`](A_FAIRE_MOI.md).
 >
-> **Dernière mise à jour : 2026-06-09.** Tests : 1827 verts / 154 fichiers · tsc clean · build OK.
+> **Dernière mise à jour : 2026-06-10.** Tests : ~1874 verts / 157 fichiers · tsc clean · build OK.
+> Session 2026-06-10 (suite) — livré : **TOP 10 [UI-EPURE]** (EP-1..10) · **FA-1..5** (fiscaux majeurs) ·
+> **PV-5, PV-1, FA-9, FA-10, PV-2, PV-10, PV-7, PV-3, PV-9** (9 fix moteur/fiscal money-critical, chacun
+> panel + FISCAL_REFERENCE + zéro baseline). Découvertes routées : PV-6/8/11, FA-11/12. Reste actionnable
+> 🔧 : PV-4/8/11, FA-7/8/11/12 (+ a11y D6, U5, CA-xx). 🧭/👤 (Marc) : ITEM-2A/2C, FA-6, P0-*.
 
 ## Convention (cochage par Claude au merge)
 - Chaque item Claude-faisable porte un **`[ID]`** entre crochets. **Claude coche lui-même**
@@ -138,12 +142,13 @@
   négative réaliserait un GAIN — banque surévaluée. PV-2 AMPLIFIE l'impact (chaque $ de perte
   fabriquée = 1 $ de step-up gratuit). Borner par `max(0, costBasis − fakeSell)` + documenter
   l'hypothèse « perte apparente » (LIR 54, rachat fonds corrélé non identique) en §3. (S/M)
-- [ ] **[PV-9]** 🔧 Gains en capital INVISIBLES au test SRG et au clawback PSV (découverte
-  fiscal-accuracy PV-2, pré-existant) : `prevYearOtherIncomeForGisNominal` (REER+loyers) et
-  `computeOasClawback` n'incluent aucun gain imposable — or ils comptent dans le revenu net des
-  deux tests, et le report 111(1)(b) ne les en retire PAS (déduction au revenu IMPOSABLE seulement).
-  Un 65+ bas revenu avec gainHarvesting voit le levier « gratuit » alors qu'il coûterait des
-  milliers de $ de SRG. Sœur de FA-8 (assiette clawback). (M)
+- [x] **[PV-9]** 🔧 (livré) ⚠️ NON CONSERVATEUR corrigé — gains en capital désormais inclus au test
+  SRG ET au clawback PSV : le gain RÉALISÉ imposable (×0,5) entre dans le revenu net des deux tests.
+  SRG → `prevYearCapitalGainsForGisNominal` (lag N-1, capturé en décembre avant reset, déflaté) ;
+  clawback PSV → `accCapitalGainsYear` de l'année N passé à `computeOasClawback` (réparti également).
+  Avant : exclus → un 65+ bas revenu avec gains/gainHarvesting voyait un SRG fictif (surévalué) et
+  aucun clawback. Pas de double-comptage (N-1 vs N). 6 tests (SRG = REER ×0,5, clawback, gardes NaN).
+  Reste hors test (FA-8) : dividendes/intérêts non-reg.
 - [x] **[PV-10]** 🔧 (livré) ⚠️ NON CONSERVATEUR corrigé — goal-mutator NonReg : le retrait
   `'NON-ENREG'` des échéances d'objectifs passe par `handleNonRegSale` (ACB proportionnel, banque
   de pertes, gain → accCapitalGainsYear → imposé en décembre). Avant : ACB décrémenté du montant

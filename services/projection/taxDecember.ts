@@ -28,6 +28,10 @@ export function computeOasClawback(
     activeUsersCount: number = 1,
     perUserIncomeMonthly?: number[],
     perUserReerAnnual?: number[],
+    // PV-9 — gains en capital RÉALISÉS de l'année (BRUT, avant inclusion 50 %). Le montant
+    // imposable (×0,5) entre dans le revenu net de récupération PSV (ligne 23400 ARC). Réparti
+    // également (gains non attribuables par conjoint dans le modèle). Absent → 0 (rétro-compat).
+    accCapitalGainsYear: number = 0,
 ): { clawbackAnnual: number; logMsg?: string } {
     if (currentMonthIndex !== 11 || m === 0 || !isRetired || age < 65) {
         return { clawbackAnnual: 0 };
@@ -69,11 +73,15 @@ export function computeOasClawback(
         && Math.abs(reerSum - accRetraitsReerYear) <= Math.max(1, Math.abs(accRetraitsReerYear) * 1e-6);
 
     const psvCapPerUser = psvAnnualBase / n;
+    // PV-9 — gain imposable (50 % d'inclusion) réparti également par adulte. Garde NaN symétrique.
+    const taxableGainsPerUser = (Number.isFinite(accCapitalGainsYear)
+        ? Math.max(0, accCapitalGainsYear) : 0) * CAPITAL_GAINS_INCLUSION_STANDARD / n;
     let clawbackAnnual = 0;
     for (let i = 0; i < n; i++) {
         const incomeUser = (validIncome ? perUserIncomeMonthly![i] * 12 : (incomeRetirementMonthly * 12) / n)
             + (validReer ? perUserReerAnnual![i] : accRetraitsReerYear / n)
-            + accRentesYear / n;
+            + accRentesYear / n
+            + taxableGainsPerUser;
         const excess = incomeUser - OAS_THRESHOLD;
         if (excess > 0) clawbackAnnual += Math.min(psvCapPerUser, excess * 0.15);
     }

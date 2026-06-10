@@ -66,6 +66,11 @@ Doc détaillée dans `docs/`, qui fait foi.
   VIEILLE base, et committer EFFACE le travail mergé entre-temps. Donc : `git fetch origin main` TOUJOURS
   AVANT tout `checkout -B`/`reset` sur `origin/main`, et vérifier un repère connu (ex. `grep` d'un item
   livré récent) avant de committer un diff de docs. Symptôme : des items BACKLOG cochés « disparaissent ».
+  ⚠️ **Le revert peut frapper UN fichier ENTRE deux commandes** (vu 2026-06-10 : fix moteur non commité
+  présent puis absent du disque au fil des minutes) → des tests qui « flip-flop » sans cause = suspecter
+  le revert AVANT toute hypothèse exotique (flake/pollution). Réflexe : `grep` d'un marqueur du diff
+  juste AVANT et APRÈS chaque run de test/trace critique sur du code non commité ; en cas de doute,
+  committer tôt (le commit protège, le gate vérifie).
 - **CI qui ne se déclenche pas** sur une PR = symptôme n°1 d'une branche divergée → re-baser, la CI repart.
   ⚠️ **Le force-push est BLOQUÉ par les règles du repo** : recovery SANS force =
   `git checkout -B <branche> origin/<branche>` + `git merge origin/main` (arbres identiques après un

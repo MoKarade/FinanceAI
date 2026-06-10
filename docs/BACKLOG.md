@@ -80,9 +80,21 @@
 - [ ] **[FA-10]** 🔧 Clawback PSV/impôt par conjoint en **survivorMode** : A1 (impôt décembre)
   répartit encore le revenu du survivant sur 2 têtes (latent pré-existant ; le clawback FA-2 est
   corrigé via `oasBeneficiaries`). Étendre le même traitement à l'impôt par conjoint + tests.
-- [ ] **[PV-1]** 🔧 Liquide négatif effacé silencieusement : débits directs (impôt d'avril, W5) peuvent
-  rendre `liquid < 0`, puis `applyMidMonthGrowth` clampe à 0 (`helpers.ts:54`) = dette fiscale effacée.
-  Garde explicite (cascade de vente ou dette comptée) + test de conservation couvrant avril.
+- [x] **[PV-1]** 🔧 (livré — choix Marc : cascade de vente) Liquide négatif effacé silencieusement :
+  les débits DIRECTS (impôt d'avril, véhicules/rénos W5, échéances d'objectifs) rendaient `liquid < 0`,
+  clampé à 0 par `applyMidMonthGrowth` = dette effacée, patrimoine SURÉVALUÉ. Fix : sauvetage unique
+  avant la croissance — découvert couvert par la MÊME cascade que le shortfall régulier (stratégie,
+  retenue REER, PBMA/OAS) ; résiduel insolvable journalisé + compté (`shortfallMonths`). Tests de
+  conservation (`projection.overdraft.test.ts`). Révélation : Karim (retraite 50, MCP 20 ans) était
+  maintenu « solvable » par ~32 k$ d'impôts d'avril avalés → ruine honnête à l'an 20 (test MCP passé
+  à 10 ans). Bonus : `get_projection` MCP — `finalNetWorthNominal` = NW brut (cohérent avec `real`),
+  successoral exposé séparément (`estateNetWorth`, comme get_retirement_outlook). ⚠️ Sémantique :
+  les mois de sauvetage comptent désormais dans `shortfallRate` (honnête — il a fallu vendre).
+- [ ] **[PV-6]** 🔧 Résiduel insolvable = dette portée : quand la cascade du sauvetage PV-1 ne couvre
+  pas tout (comptes épuisés / cap OAS), le résiduel est journalisé puis absorbé (convention CF-2 des
+  shortfalls non couverts) → NW encore surévalué du résiduel dans les scénarios DÉJÀ en ruine. Modéliser
+  un passif `liquidDebt` cumulé (affiché au bilan) si on veut un NW honnête en insolvabilité. Basse
+  priorité (scénarios concernés déjà signalés par shortfallRate/successRate). (M)
 - [ ] **[PV-2]** 🔧 Récolte de gains ignore `capitalLossBank` (impôt payé sur gains compensables —
   conservateur, sous-optimal).
 - [ ] **[PV-3]** 🔧 Fractionnement : le transfert n'alimente pas le crédit pension du RÉCIPIENDAIRE

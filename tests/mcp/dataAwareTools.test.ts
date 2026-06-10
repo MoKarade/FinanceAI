@@ -73,10 +73,15 @@ describe('Lot 1 — get_financial_overview', () => {
 });
 
 describe('Lot 1 — get_projection', () => {
-    it('patrimoine final fini et > 0 sur 20 ans (BASE)', async () => {
+    // PV-1 (2026-06-10) : horizon 10 ans (accumulation, marge robuste) au lieu de 20. À 20 ans,
+    // Karim (retraite à 50 avec actifs insuffisants) est honnêtement RUINÉ depuis que les soldes
+    // d'impôt d'avril en retraite sont réellement payés (cascade de vente) au lieu d'être effacés
+    // par le clamp — l'ancien « realNW > 0 à 20 ans » reposait sur ~32 k$ d'impôts avalés. Le but
+    // de ce test est le CÂBLAGE (handler MCP → adaptateur → moteur), pas la solvabilité du persona.
+    it('patrimoine final fini et > 0 sur 10 ans (BASE)', async () => {
         const h = captureTool(registerGetProjection, providerFor(karimState()));
-        const out = await callJson(h, { years: 20, scenario: 'BASE', monteCarlo: false });
-        expect(out.horizonYears).toBe(20);
+        const out = await callJson(h, { years: 10, scenario: 'BASE', monteCarlo: false });
+        expect(out.horizonYears).toBe(10);
         expect(Number.isFinite(out.finalNetWorthNominal as number)).toBe(true);
         expect(out.finalNetWorthNominal as number).toBeGreaterThan(0);
         expect(out.finalNetWorthReal as number).toBeGreaterThan(0);

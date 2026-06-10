@@ -5,11 +5,13 @@
 > Audit qualité détaillé (référence) : [`docs/AAA_AUDIT_2026-06.md`](AAA_AUDIT_2026-06.md).
 > Actions humaines (Marc) : [`docs/A_FAIRE_MOI.md`](A_FAIRE_MOI.md).
 >
-> **Dernière mise à jour : 2026-06-10.** Tests : ~1874 verts / 157 fichiers · tsc clean · build OK.
+> **Dernière mise à jour : 2026-06-10 (soir).** Tests : ~1886 verts / 158 fichiers · tsc clean · build OK.
 > Session 2026-06-10 (suite) — livré : **TOP 10 [UI-EPURE]** (EP-1..10) · **FA-1..5** (fiscaux majeurs) ·
-> **PV-5, PV-1, FA-9, FA-10, PV-2, PV-10, PV-7, PV-3, PV-9** (9 fix moteur/fiscal money-critical, chacun
-> panel + FISCAL_REFERENCE + zéro baseline). Découvertes routées : PV-6/8/11, FA-11/12. Reste actionnable
-> 🔧 : PV-4/8/11, FA-7/8/11/12 (+ a11y D6, U5, CA-xx). 🧭/👤 (Marc) : ITEM-2A/2C, FA-6, P0-*.
+> **PV-5, PV-1, FA-9, FA-10, PV-2, PV-10, PV-7, PV-3, PV-9** (9 fix moteur/fiscal money-critical) ·
+> **#238** : **PV-8** (TLH×ACB) + **[PH1-a]** (fix chunk périmé, Phase 1 du brief Marc) + **PV-4** +
+> **FA-7** (§8 immobilier) + **FA-11** (limite SRG documentée). Reste actionnable 🔧 : PV-11, FA-8,
+> FA-12 (design consigné au ticket) (+ a11y D6, U5, CA-xx). 🧭/👤 (Marc) : Q1/Q2 du brief (A_FAIRE_MOI
+> O6), phases 2-4 du brief (plan-first, OK requis), ITEM-2A/2C, FA-6, P0-*.
 
 ## Convention (cochage par Claude au merge)
 - Chaque item Claude-faisable porte un **`[ID]`** entre crochets. **Claude coche lui-même**
@@ -175,8 +177,15 @@
   pertinent pour un survivant, NE PAS chiffrer sans source Revenu Québec.
 - [ ] **[FA-12]** 🔧 Test d'intégration survivorMode SEEDÉ (découverte code-reviewer FA-10) : aucun
   test n'exerce `runScenario` avec un décès du conjoint — la régression « quelqu'un retire un ternaire
-  du call-site » ne serait attrapée par rien. Le rng est injecté (`buildSeededRng`) : forcer le décès
-  en année 1 et asserter impôt décembre survivant > scénario sans `modelSurvivor`. (S)
+  du call-site » ne serait attrapée par rien. **Design validé (2026-06-10)** : (1) `runScenario` n'est
+  PAS exporté → ajouter un hook test-only ; (2) la mortalité exige `enableMonteCarlo` et la volatilité
+  MC est EN DUR (15/45/2 pts, `marketShocks.ts:58-63`) MAIS `replayHistoricalYear` OVERRIDE les taux
+  APRÈS les tirages (l.68-77) → MC + replay = trajectoires déterministes où SEULE la mortalité agit
+  (mettre crypto à 0 : seul taux non couvert par le replay) ; (3) `mortalityAnnualProbability` plafonne
+  à 0,33 (100 ans+) → décès non garanti : scanner `mcIterationIndex` k=0,1,2… et épingler le premier k
+  où le log « 🖤 Décès du conjoint » apparaît (déterministe par seed) ; (4) asserter : log présent vs
+  absent (modelSurvivor=false), et impôt de décembre post-décès ≠ run base (mêmes trajectoires
+  jusqu'au décès grâce au replay). (S/M)
 - [x] **[FA-11]** 🔧 (résolu par DOCUMENTATION — l'option prévue au ticket) Discontinuité SRG au
   seuil documentée en limite assumée dans FISCAL_REFERENCE (§ SRG) : marche ~167 $/mois au seuil
   22 512 $, SRG surévalué (non conservateur) dans la bande ~18-22,5 k$, cause = top-up récupéré

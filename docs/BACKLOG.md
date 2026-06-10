@@ -122,6 +122,12 @@
   est désormais consommée EN PREMIER (LIR 111(1)(b)) — part compensée = 0 $ d'impôt et HORS palier
   (step-up d'ACB gratuit), remplissage du palier sur le latent restant. `consumedLoss` retourné au
   caller (seule la part non compensée entre dans `accCapitalGainsYear`). 4 tests + FISCAL_REFERENCE §3.
+- [ ] **[PV-11]** 🔧 Résiduels PV-10 (revue) : (a) shortfall d'OBJECTIF (drawn < visé) visible au
+  log mais hors métriques — métrique dédiée (`goalShortfalls`/ratio financé), PAS shortfallMonths
+  (sémantique différente) ; (b) retraits de goals absents des séries `withdrawal*` de chartData
+  (sous-rapport pour les consommateurs « source unique ») ; (c) `_label` mort sur la closure
+  handleNonRegSale (suggère un log inexistant) ; (d) commentaire trompeur portfolioOps.ts:25
+  (« Pertes → bank » : branche inatteignable, cap min(1,…) — documenté en §3). (S)
 - [ ] **[PV-7]** 🔧 Ventes de CRYPTO sans banque de pertes (découverte PV-2, 2 sites) : la cascade de
   shortfall (`cashflowAllocation.ts:260`) ET le goal-mutator (`projection.ts` `withdrawFromAccount
   CRYPTO`) ajoutent le gain crypto BRUT à `accCapitalGainsYear` sans consommer `capitalLossBank`,

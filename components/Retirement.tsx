@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from './ui/Card';
+import { CollapsibleSection } from './ui/CollapsibleSection';
 import { PageHeader } from './ui/PageHeader';
 import { RetirementSettingsCard } from './retirement/RetirementSettingsCard';
 import { UserConfigFields } from './settings/UserConfigFields';
@@ -300,73 +301,85 @@ export const Retirement: React.FC<RetirementProps> = ({
                                     <p className="text-tiny text-ink-500 mt-1">Max 2025: 734$/mois (40 ans résidence).</p>
                                 </div>
                             </div>
-                            <div className="pt-3 border-t border-white/5">
-                                <label className="block text-meta text-ink-300 mb-1">Pension employeur DB (prestations determinees) / mois</label>
-                                <input
-                                    type="number"
-                                    value={goal.dbPensionMonthly ?? 0}
-                                    onChange={e => updateGoal('dbPensionMonthly', Number(e.target.value))}
-                                    placeholder="0"
-                                    className="w-full bg-black/40 border border-success-500/20 rounded-lg px-3 py-2 text-emerald-300 font-bold focus:border-success-500 transition-colors outline-none privacy-blur"
-                                />
-                                <p className="text-tiny text-ink-500 mt-1">RREGOP, fonction publique federale, regime garanti viager. Laisse 0 si tu n'as que du REER/CD.</p>
-                            </div>
-                            {(goal.dbPensionMonthly ?? 0) > 0 && (
-                                <div className="grid grid-cols-2 gap-3 pb-3 border-b border-white/5">
+                            {/* [EP-8] Pension d'employeur DB repliée par défaut : moins courante que RRQ/PSV
+                                (laisse vide si tu n'as que du REER/CD). Les champs de détail restent
+                                conditionnels au montant DB > 0. */}
+                            <CollapsibleSection
+                                title="Pension d'employeur (prestations déterminées)"
+                                subtitle="Optionnel — RREGOP, fonction publique, régime garanti viager."
+                                defaultOpen={(goal.dbPensionMonthly ?? 0) > 0}
+                                variant="quiet"
+                            >
+                                <div className="space-y-4 pt-1">
                                     <div>
-                                        <label className="block text-meta text-ink-300 mb-1">Option DB (au décès)</label>
-                                        <select
-                                            value={goal.dbElectionType ?? 'joint60'}
-                                            onChange={e => setGoal({ ...goal, dbElectionType: e.target.value as RetirementGoal['dbElectionType'] })}
-                                            className="w-full bg-black/40 border border-success-500/10 rounded-lg px-3 py-2 text-emerald-200 text-body"
-                                        >
-                                            <option value="single">Vie seule (rente cesse)</option>
-                                            <option value="joint60">Conjoint à 60% (recommandé)</option>
-                                            <option value="joint66">Conjoint à 66%</option>
-                                            <option value="joint100">Conjoint à 100% (rente réduite)</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-meta text-ink-300 mb-1">% rente survivant</label>
+                                        <label className="block text-meta text-ink-300 mb-1">Pension employeur DB (prestations determinees) / mois</label>
                                         <input
                                             type="number"
-                                            min={0}
-                                            max={100}
-                                            value={goal.dbSurvivorPct ?? 60}
-                                            onChange={e => updateGoal('dbSurvivorPct', Number(e.target.value))}
-                                            className="w-full bg-black/40 border border-success-500/10 rounded-lg px-3 py-2 text-emerald-200 text-body"
+                                            value={goal.dbPensionMonthly ?? 0}
+                                            onChange={e => updateGoal('dbPensionMonthly', Number(e.target.value))}
+                                            placeholder="0"
+                                            className="w-full bg-black/40 border border-success-500/20 rounded-lg px-3 py-2 text-emerald-300 font-bold focus:border-success-500 transition-colors outline-none privacy-blur"
                                         />
+                                        <p className="text-tiny text-ink-500 mt-1">RREGOP, fonction publique federale, regime garanti viager. Laisse 0 si tu n'as que du REER/CD.</p>
                                     </div>
+                                    {(goal.dbPensionMonthly ?? 0) > 0 && (
+                                        <div className="grid grid-cols-2 gap-3 pb-3 border-b border-white/5">
+                                            <div>
+                                                <label className="block text-meta text-ink-300 mb-1">Option DB (au décès)</label>
+                                                <select
+                                                    value={goal.dbElectionType ?? 'joint60'}
+                                                    onChange={e => setGoal({ ...goal, dbElectionType: e.target.value as RetirementGoal['dbElectionType'] })}
+                                                    className="w-full bg-black/40 border border-success-500/10 rounded-lg px-3 py-2 text-emerald-200 text-body"
+                                                >
+                                                    <option value="single">Vie seule (rente cesse)</option>
+                                                    <option value="joint60">Conjoint à 60% (recommandé)</option>
+                                                    <option value="joint66">Conjoint à 66%</option>
+                                                    <option value="joint100">Conjoint à 100% (rente réduite)</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-meta text-ink-300 mb-1">% rente survivant</label>
+                                                <input
+                                                    type="number"
+                                                    min={0}
+                                                    max={100}
+                                                    value={goal.dbSurvivorPct ?? 60}
+                                                    onChange={e => updateGoal('dbSurvivorPct', Number(e.target.value))}
+                                                    className="w-full bg-black/40 border border-success-500/10 rounded-lg px-3 py-2 text-emerald-200 text-body"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                    {(goal.dbPensionMonthly ?? 0) > 0 && (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-meta text-ink-300 mb-1">Indexation IPC (%)</label>
+                                                <input
+                                                    type="number"
+                                                    min={0}
+                                                    max={100}
+                                                    value={goal.dbPensionIndexationPct ?? 100}
+                                                    onChange={e => updateGoal('dbPensionIndexationPct', Number(e.target.value))}
+                                                    className="w-full bg-black/40 border border-success-500/10 rounded-lg px-3 py-2 text-emerald-200 text-body focus:border-success-500 transition-colors outline-none"
+                                                />
+                                                <p className="text-tiny text-ink-500 mt-1">100 = pleine indexation, 50 = demi, 0 = nominale</p>
+                                            </div>
+                                            <div>
+                                                <label className="block text-meta text-ink-300 mb-1">Age debut versement</label>
+                                                <input
+                                                    type="number"
+                                                    min={50}
+                                                    max={75}
+                                                    value={goal.dbPensionStartAge ?? goal.targetAge}
+                                                    onChange={e => updateGoal('dbPensionStartAge', Number(e.target.value))}
+                                                    className="w-full bg-black/40 border border-success-500/10 rounded-lg px-3 py-2 text-emerald-200 text-body focus:border-success-500 transition-colors outline-none"
+                                                />
+                                                <p className="text-tiny text-ink-500 mt-1">Defaut = age cible retraite</p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                            {(goal.dbPensionMonthly ?? 0) > 0 && (
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block text-meta text-ink-300 mb-1">Indexation IPC (%)</label>
-                                        <input
-                                            type="number"
-                                            min={0}
-                                            max={100}
-                                            value={goal.dbPensionIndexationPct ?? 100}
-                                            onChange={e => updateGoal('dbPensionIndexationPct', Number(e.target.value))}
-                                            className="w-full bg-black/40 border border-success-500/10 rounded-lg px-3 py-2 text-emerald-200 text-body focus:border-success-500 transition-colors outline-none"
-                                        />
-                                        <p className="text-tiny text-ink-500 mt-1">100 = pleine indexation, 50 = demi, 0 = nominale</p>
-                                    </div>
-                                    <div>
-                                        <label className="block text-meta text-ink-300 mb-1">Age debut versement</label>
-                                        <input
-                                            type="number"
-                                            min={50}
-                                            max={75}
-                                            value={goal.dbPensionStartAge ?? goal.targetAge}
-                                            onChange={e => updateGoal('dbPensionStartAge', Number(e.target.value))}
-                                            className="w-full bg-black/40 border border-success-500/10 rounded-lg px-3 py-2 text-emerald-200 text-body focus:border-success-500 transition-colors outline-none"
-                                        />
-                                        <p className="text-tiny text-ink-500 mt-1">Defaut = age cible retraite</p>
-                                    </div>
-                                </div>
-                            )}
+                            </CollapsibleSection>
                         </div>
                     </Card>
 

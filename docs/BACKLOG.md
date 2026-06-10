@@ -88,6 +88,13 @@
 - [ ] **[PV-3]** 🔧 Fractionnement : le transfert n'alimente pas le crédit pension du RÉCIPIENDAIRE
   (ARC 31400 l'admet) — conservateur.
 - [ ] **[PV-4]** 🔧 Tests des clamps hors-bornes `rrqStartAge` (55→60, 80→72) / `psvStartAge`.
+- [ ] **[PV-5]** 🔧 Champs numériques Retraite avalent les NaN (découverte EP-8, silent-failure-hunter) :
+  `updateGoal('X', Number(e.target.value))` (`Retirement.tsx`, TOUS les champs number) persiste `NaN`
+  sur saisie vide/invalide. En projection (`retirementIncome.ts:203-208`) la pension DB DISPARAÎT
+  silencieusement (`dbPensionStartAge` NaN → `age >= NaN` faux → `dbMonthly=0`) ou propage NaN
+  (`dbPensionIndexationPct` → `dbInflFactor` NaN). Helper `numField(raw, fallback, label)` calqué sur
+  `parseRate` (`services/finance.ts:107`) : `logError` warning + repli au lieu de persister NaN, appliqué
+  à tous les `updateGoal` numériques du fichier. Money-relevant (pension DB annulée sans trace). (S/M)
 
 ## 🧽 Audit code 2026-06-09 (code-analyzer) — dette actionnable
 - [ ] **[CA-01]** Code mort utils/ : `csvExport.ts` (109 l) + `safeNumber.ts` (30 l) entiers +
@@ -179,10 +186,14 @@
   hub complet sinon. (M)
 - [x] **[EP-7]** 🔧 (livré) Futur/Plan d'action : `ProjectionExplains` — méthodologie (6 Q&A) sous
   `CollapsibleSection` « En savoir plus » repliée par défaut. (M)
-- [ ] **[EP-8]** 🔧 Retirement : scinder la Card géante « Revenus & besoins » (~10 champs RRQ/PSV/DB) —
-  champs DB derrière le toggle existant, bloc pensions replié par défaut. (M)
-- [ ] **[EP-9]** 🔧 Global : retirer les renvois « → ouvrir Futur » répétés dans 6 onglets (≤ 1 lien
-  discret/page) + badges décoratifs (`N événements actifs`, doublons de santé). (S)
+- [x] **[EP-8]** 🔧 (livré) Retirement : Card « Revenus & besoins » allégée — bloc « Pension d'employeur
+  (DB) » sous `CollapsibleSection` (ouvert seulement si un montant DB existe déjà) ; Besoin + RRQ + PSV
+  restent visibles ; champs DB détail toujours conditionnels au montant > 0. (M)
+- [x] **[EP-9]** 🔧 (audit ⇒ déjà satisfait) Global : les vrais doublons décoratifs ont été retirés par
+  les lots antérieurs (donut santé #226, badge « N événements actifs » #225). L'audit (Explore très
+  complet) confirme que les 5 renvois « Futur » restants sont fonctionnels et contextuels (1/onglet :
+  KPI Dashboard, bouton Placements, carte Budget, badge Immo, badge REEE) et que `<ProjectionRequired>`
+  est un empty-state honnête à GARDER → aucun code à retirer (≤ 1 lien discret/page déjà respecté). (S)
 - [x] **[EP-10]** 🔧 (livré) Futur/Optimisation : `StressTestPanel` replié par défaut, `StrategyComparePanel`
   ouvert ; `AssetLocationPanel` RETIRÉ (doublon de l'AssetLocationCard de Retraite, plus riche → fichier supprimé). (S)
 

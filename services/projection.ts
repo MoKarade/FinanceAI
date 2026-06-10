@@ -330,14 +330,16 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // probabilité de décès du user principal. Le loop arrête à la mort.
     let isDead = false;
 
-    // W1.4: Survivant. Si modelSurvivor=ON, lorsque le user1 décède,
-    // on continue avec le user2 mais avec ajustements:
-    // - RRQ user1 → 60% versés au conjoint survivant (max RRQ standard)
-    // - PSV user1 → cesse
-    // - DB user1 → continue selon dbElectionType / dbSurvivorPct
-    // - REER user1 → roulé au conjoint sans imposition immédiate
+    // W1.4: Survivant. Si modelSurvivor=ON, lorsque le CONJOINT (user2) décède
+    // (trySpouseMortality), on continue avec user1 SURVIVANT, avec ajustements :
+    // - RRQ du défunt → 60 % versés au survivant (max RRQ standard)
+    // - PSV du défunt → cesse ; revenu actif user2 → 0 (activeIncome.ts)
+    // - DB → continue selon dbElectionType / dbSurvivorPct
+    // - REER du défunt → roulé au survivant sans imposition immédiate
+    // (FA-10 : l'ancien commentaire disait l'INVERSE — « user1 mort, user2 vivant » —
+    // alors que l'implémentation zéroïse user2 ; corrigé pour éviter les contresens.)
     let spouseAlive = activeUsersCount > 1;
-    let survivorMode = false;        // user1 mort, user2 vivant
+    let survivorMode = false;        // user2 (conjoint) mort, user1 SURVIVANT
     let survivorTriggerLogged = false; // log à la prochaine itération (logEvent défini in-loop)
     const rrqSurvivorPct = (effProj.rrqSurvivorPct ?? 60) / 100;
     const dbSurvivorPct = (effProj.spouseDbSurvivorPct ?? retirementGoal.dbSurvivorPct ?? 60) / 100;
@@ -701,12 +703,25 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 if (gh.logMsg) logEvent(flowEventsLog, gh.logMsg);
             }
 
+            // FA-10 — survivorMode : UN seul contribuable (user2 décédé — activeIncome.ts:61 — ;
+            // le roulement REER fait que tout le revenu de retraite est celui du SURVIVANT user1).
+            // Même traitement que le clawback FA-2 (oasBeneficiaries) : n=1, pas de décomposition
+            // par conjoint, pas d'ageSpouse (⇒ pas de crédits d'âge du défunt, pas de fractionnement
+            // avec lui, seuils RAMQ/ligne 361 célibataire, RAMQ/FSS ×1), salaire du défunt à 0 dans
+            // la branche active. La DB par conjoint est AGRÉGÉE sur une tête (l'assiette du crédit
+            // pension / fractionnable reste complète — la diviser perdait la moitié du crédit).
+            // Avant : le revenu du survivant était réparti sur 2 têtes → barème progressif appliqué
+            // 2× à demi-revenu + crédits du défunt + fractionnement fictif = sous-imposition.
+            const taxFilers = survivorMode ? 1 : activeUsersCount;
             const decResult = processDecemberTaxFiling(
                 currentMonthIndex,
                 {
                     m, loopYear, isRetired, enableMonteCarlo,
-                    yearsElapsed, inflationFactor, activeUsersCount,
-                    grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
+                    yearsElapsed, inflationFactor,
+                    activeUsersCount: taxFilers,
+                    grossMarcBaseAnnual,
+                    grossAnnaBaseAnnual: survivorMode ? 0 : grossAnnaBaseAnnual,
+                    simSalaryGrowth,
                     optimizeSourceDeductions: effProj.optimizeSourceDeductions,
                     incomeRetirementMonthly: incomeRetirement,
                     // FA-3a — SRG mensuel familial : NON IMPOSABLE (Service Canada), soustrait
@@ -714,16 +729,20 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     incomeRetirementGisMonthly: incomeRetirementGis,
                     // A1 — décomposition par conjoint pour imposer chacun sur SON revenu de
                     // retraite réel (split égal sinon, cf. taxDecember). Vide hors retraite.
-                    incomeRetirementPerUserMonthly: incomeRetirementPerUser,
+                    incomeRetirementPerUserMonthly: survivorMode ? undefined : incomeRetirementPerUser,
                     // Phase 3 — composante DB mensuelle par conjoint (fractionnement 65+).
-                    incomeRetirementDbPerUserMonthly: incomeRetirementDbPerUser,
+                    incomeRetirementDbPerUserMonthly: survivorMode
+                        ? [incomeRetirementDbPerUser.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0)]
+                        : incomeRetirementDbPerUser,
                     nonReg, baseNonRegRate: baseRates.nonReg,
                     accRrspYear, accFhsaYear, smithInterestDeductibleYear,
-                    accRentesYear, accRetraitsReerYear, accRetraitsReerYearByUser, accCapitalGainsYear,
+                    accRentesYear, accRetraitsReerYear, accCapitalGainsYear,
+                    accRetraitsReerYearByUser: survivorMode ? undefined : accRetraitsReerYearByUser,
                     age,
                     // B-AUDIT-3 — âge courant du conjoint (user[1]) pour les crédits d'âge/
-                    // pension PAR conjoint dans l'impôt de décembre. undefined si pas de conjoint.
-                    ageSpouse: config.users[1] ? (config.users[1].age || 30) + yearsElapsed : undefined,
+                    // pension PAR conjoint dans l'impôt de décembre. undefined si pas de conjoint
+                    // (ou conjoint décédé — FA-10).
+                    ageSpouse: (!survivorMode && config.users[1]) ? (config.users[1].age || 30) + yearsElapsed : undefined,
                     // §6.4 RAMQ: nombre d'enfants à charge (relève le seuil d'exemption).
                     // Approximé via childGoals.length faute de champ dédié dans User.
                     // TODO: ajouter `User.dependentChildrenCount` pour précision.

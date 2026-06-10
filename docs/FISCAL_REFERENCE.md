@@ -99,6 +99,22 @@
   d'ajustement 111(1.1)). Limite assumée : la part compensée sort aussi des assiettes RAMQ/FSS
   (revenu NET) alors que la déduction 111(1)(b) ne s'applique qu'au revenu IMPOSABLE — biais
   ≤ ~744 $ RAMQ + ~1 000 $ FSS les années de consommation (convention partagée avec handleNonRegSale).
+- **TLH — perte bornée par la perte LATENTE RÉELLE** (`processTaxLossHarvesting`, décembre).
+  **PV-8 (2026-06-10)** : la perte cristallisée vaut `0,5 × max(0, ACB − valeur)` (on vend 50 % de la
+  tranche, coût fiscal proportionnel − valeur), JAMAIS `valeur × |rendement|`. Une année négative est le
+  seul DÉCLENCHEUR ; un titre en GAIN latent (ACB < valeur) ne récolte RIEN, même en chute (le vendre
+  réaliserait un gain). L'ancien code fabriquait une perte à partir du seul rendement de l'année et
+  gonflait `capitalLossBank` sur des positions en gain → sous-imposition des gains réels abrités ensuite.
+  Conservation : banque +L, ACB −L (`acbDelta = −L`) → le gain futur régénéré vaut L (la récolte n'est
+  qu'un arbitrage de TIMING/taux, pas un repas gratuit). **Hypothèse « perte apparente » levée.** La *perte
+  apparente* (« superficial loss », DÉFINIE à LIR **54**) survient si le **bien identique** est racheté par
+  le contribuable **OU une personne affiliée** (conjoint, sa société, son REER/CELI) dans la fenêtre
+  **−30/+30 jours** et est encore détenu au **jour +30** : la perte est alors **réputée NULLE** (LIR
+  **40(2)g)(i)**) puis **ajoutée à l'ACB du bien racheté** (LIR **53(1)f)** — report, PAS perte sèche ; *sauf*
+  rachat par un régime enregistré où elle est définitivement perdue). Le modèle suppose un **rachat dans un
+  fonds CORRÉLÉ mais NON identique** (substitution valide, pratique courante de récolte) → pas de bien
+  identique, pas de perte apparente, perte **déductible immédiatement**. Le cas « bien identique » n'est pas
+  modélisé.
 - **Dividendes** (`calculateDividendTax`, résident QC) :
   | Type | Majoration (gross-up) | CID fédéral | CID Québec |
   |---|---|---|---|

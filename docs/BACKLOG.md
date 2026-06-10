@@ -137,11 +137,15 @@
   (cascade de shortfall `cashflowAllocation.ts`, goal-mutator `projection.ts`). Avant : gain BRUT
   (banque ignorée) et pertes JETÉES. 5 tests unitaires. (Estate latent : NonReg ET crypto ignorent la
   banque symétriquement — hors scope.) Reste le câblage caller de gainHarvesting non testé (cf PV-11).
-- [ ] **[PV-8]** 🔧 TLH fabrique des pertes SANS regarder l'ACB (`taxDecember.ts:107-112` :
-  `harvestedLoss = fakeSell × dropRate`) : avec un gros gain latent, une vraie vente en année
-  négative réaliserait un GAIN — banque surévaluée. PV-2 AMPLIFIE l'impact (chaque $ de perte
-  fabriquée = 1 $ de step-up gratuit). Borner par `max(0, costBasis − fakeSell)` + documenter
-  l'hypothèse « perte apparente » (LIR 54, rachat fonds corrélé non identique) en §3. (S/M)
+- [x] **[PV-8]** 🔧 (livré) ⚠️ NON CONSERVATEUR corrigé — TLH fabriquait une perte à partir du seul
+  rendement (`harvestedLoss = fakeSell × dropRate`), SANS regarder l'ACB : un titre en gain latent en
+  année négative donnait une perte fictive qui gonflait `capitalLossBank` (et PV-2 transformait chaque $
+  fabriqué en step-up d'ACB gratuit → sous-imposition des gains réels). Désormais borné par la perte
+  LATENTE RÉELLE : `harvestedLoss = max(0, costBasisSold − fakeSell)` avec `costBasisSold = fakeSell ×
+  (ACB/valeur)` = `0,5 × max(0, ACB − valeur)`, indépendant du taux ; gain latent → 0 récolte.
+  Conservation `acbDelta = −L`. FISCAL_REFERENCE §3 : hypothèse « perte apparente » LIR 54/40(2)g)(i)
+  levée (rachat fonds corrélé non identique). Tests réécrits (anti-fabrication, rate-indépendance,
+  monotonie en profondeur de perte, conservation).
 - [x] **[PV-9]** 🔧 (livré) ⚠️ NON CONSERVATEUR corrigé — gains en capital désormais inclus au test
   SRG ET au clawback PSV : le gain RÉALISÉ imposable (×0,5) entre dans le revenu net des deux tests.
   SRG → `prevYearCapitalGainsForGisNominal` (lag N-1, capturé en décembre avant reset, déflaté) ;

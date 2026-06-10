@@ -267,29 +267,45 @@ describe('processTaxLossHarvesting — gate & déclencheurs', () => {
         expect(r.harvestedLoss).toBe(0);
     });
 
-    it('rendement NÉGATIF avec solde positif → récolte positive + log', () => {
-        const r = processTaxLossHarvesting(DECEMBER, 24, 100000, 80000, -20);
+    it('année négative + PERTE latente (ACB > valeur) → récolte positive + log', () => {
+        // valeur 80 000 < ACB 100 000 → perte latente 20 000 ; on vend 50 %
+        const r = processTaxLossHarvesting(DECEMBER, 24, 80000, 100000, -20);
         expect(r.harvestedLoss).toBeGreaterThan(0);
         expect(r.logMsg).toContain('TLH');
     });
 
-    it('perte récoltée PINNÉE = (solde × 50%) × |taux| / 100', () => {
-        // fakeSell = 100 000 × 0.5 = 50 000 ; dropRate = 0.20 → harvestedLoss = 10 000
+    it('PV-8 anti-fabrication : année négative mais GAIN latent (ACB < valeur) → AUCUNE récolte', () => {
+        // valeur 100 000 > ACB 80 000 = gain latent : vendre réaliserait un GAIN, pas une perte.
+        // (ancien bug : récoltait 10 000 $ fabriqués à partir du seul taux -20 %)
         const r = processTaxLossHarvesting(DECEMBER, 24, 100000, 80000, -20);
-        expect(r.harvestedLoss).toBeCloseTo(50000 * 0.20, 5);
+        expect(r).toEqual({ harvestedLoss: 0, acbDelta: 0 });
+        expect(r.logMsg).toBeUndefined();
     });
 
-    it('perte plus profonde → récolte plus grande (monotone en |taux|)', () => {
-        const shallow = processTaxLossHarvesting(DECEMBER, 24, 100000, 80000, -10).harvestedLoss;
-        const deep = processTaxLossHarvesting(DECEMBER, 24, 100000, 80000, -30).harvestedLoss;
+    it('perte récoltée PINNÉE = 50 % × (ACB − valeur), INDÉPENDANTE du taux', () => {
+        // fakeSell = 80 000 × 0.5 = 40 000 ; costBasisSold = 40 000 × (100000/80000) = 50 000
+        // harvestedLoss = 50 000 − 40 000 = 10 000 = 0.5 × (100000 − 80000)
+        const r = processTaxLossHarvesting(DECEMBER, 24, 80000, 100000, -20);
+        expect(r.harvestedLoss).toBeCloseTo(0.5 * (100000 - 80000), 5);
+        // même valeur/ACB, taux plus profond → MÊME récolte (le taux ne sert qu'à déclencher)
+        const deeperRate = processTaxLossHarvesting(DECEMBER, 24, 80000, 100000, -40);
+        expect(deeperRate.harvestedLoss).toBeCloseTo(r.harvestedLoss, 5);
+    });
+
+    it('perte latente plus PROFONDE → récolte plus grande (monotone en profondeur de perte)', () => {
+        // ACB fixe 100 000 ; valeur 90 000 (perte 10 000) vs 70 000 (perte 30 000)
+        const shallow = processTaxLossHarvesting(DECEMBER, 24, 90000, 100000, -20).harvestedLoss;
+        const deep = processTaxLossHarvesting(DECEMBER, 24, 70000, 100000, -20).harvestedLoss;
         expect(deep).toBeGreaterThan(shallow);
+        expect(shallow).toBeCloseTo(0.5 * (100000 - 90000), 5);
+        expect(deep).toBeCloseTo(0.5 * (100000 - 70000), 5);
     });
 
-    it('acbDelta PINNÉ avec ACB ≥ solde (proportion plafonnée à 1)', () => {
-        // proportion = min(1, 80000/100000)=0.8 ; fakeSell=50000 ; dropRate=0.2
-        // acbDelta = -(50000×0.8) + 50000×(1-0.2) = -40000 + 40000 = 0
-        const r = processTaxLossHarvesting(DECEMBER, 24, 100000, 80000, -20);
-        expect(r.acbDelta).toBeCloseTo(0, 5);
+    it('acbDelta PINNÉ = −harvestedLoss (conservation : banque +L, ACB −L)', () => {
+        const r = processTaxLossHarvesting(DECEMBER, 24, 80000, 100000, -20);
+        expect(r.harvestedLoss).toBeCloseTo(10000, 5);
+        expect(r.acbDelta).toBeCloseTo(-10000, 5);
+        expect(r.acbDelta).toBeCloseTo(-r.harvestedLoss, 5); // gain futur régénéré = perte banquée
     });
 });
 

@@ -6,8 +6,9 @@
 >
 > ## ⚡ BRIEF MARC 2026-06-10 — LE CHANTIER PRIORITAIRE (4 phases)
 > Marc a livré un brief structurant (détail COMPLET dans `BACKLOG.md` § « BRIEF MARC 2026-06-10 ») :
-> **Phase 1** bugs chunk périmé (✅ FAITE — [PH1-a] livré : `lazyWithRetry` sur le dernier `React.lazy`
-> nu + filet global `vite:preloadError` ; analyse Cloudflare livrée, décision Marc = [PH1-b]/Q2) →
+> **Phase 1** bugs chunk périmé (✅ FAITE, mergée #238 → prod : [PH1-a] `lazyWithRetry` sur le dernier
+> `React.lazy` nu + filet global `vite:preloadError` durci au panel — garde timestamp ≤ 1 reload/min,
+> clear-au-mount supprimé ; analyse Cloudflare livrée, décision Marc = [PH1-b]/Q2) →
 > **Phase 2** clé de voûte (état persistant inter-onglets, projection en Web Worker app-level, source
 > unique Futur=Retraite, verrouillage de courbe + IndexedDB) → **Phase 3** onglet Profil (remplace
 > Config/Profil, regroupe profil+retraite+profil détaillé, % complétion, purge des champs morts) →

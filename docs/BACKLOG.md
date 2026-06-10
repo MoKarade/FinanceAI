@@ -5,11 +5,13 @@
 > Audit qualité détaillé (référence) : [`docs/AAA_AUDIT_2026-06.md`](AAA_AUDIT_2026-06.md).
 > Actions humaines (Marc) : [`docs/A_FAIRE_MOI.md`](A_FAIRE_MOI.md).
 >
-> **Dernière mise à jour : 2026-06-10.** Tests : ~1874 verts / 157 fichiers · tsc clean · build OK.
+> **Dernière mise à jour : 2026-06-10 (soir).** Tests : ~1886 verts / 158 fichiers · tsc clean · build OK.
 > Session 2026-06-10 (suite) — livré : **TOP 10 [UI-EPURE]** (EP-1..10) · **FA-1..5** (fiscaux majeurs) ·
-> **PV-5, PV-1, FA-9, FA-10, PV-2, PV-10, PV-7, PV-3, PV-9** (9 fix moteur/fiscal money-critical, chacun
-> panel + FISCAL_REFERENCE + zéro baseline). Découvertes routées : PV-6/8/11, FA-11/12. Reste actionnable
-> 🔧 : PV-4/8/11, FA-7/8/11/12 (+ a11y D6, U5, CA-xx). 🧭/👤 (Marc) : ITEM-2A/2C, FA-6, P0-*.
+> **PV-5, PV-1, FA-9, FA-10, PV-2, PV-10, PV-7, PV-3, PV-9** (9 fix moteur/fiscal money-critical) ·
+> **#238** : **PV-8** (TLH×ACB) + **[PH1-a]** (fix chunk périmé, Phase 1 du brief Marc) + **PV-4** +
+> **FA-7** (§8 immobilier) + **FA-11** (limite SRG documentée). Reste actionnable 🔧 : PV-11, FA-8,
+> FA-12 (design consigné au ticket) (+ a11y D6, U5, CA-xx). 🧭/👤 (Marc) : Q1/Q2 du brief (A_FAIRE_MOI
+> O6), phases 2-4 du brief (plan-first, OK requis), ITEM-2A/2C, FA-6, P0-*.
 
 ## Convention (cochage par Claude au merge)
 - Chaque item Claude-faisable porte un **`[ID]`** entre crochets. **Claude coche lui-même**
@@ -173,10 +175,15 @@
   indirecte mineure · retenue FERR estimée sur 2 têtes en survivorMode (timing seulement, réconcilié
   en décembre) · 🧭 « montant pour personne vivant seule » QC (grille TP-1.G) absent code+doc —
   pertinent pour un survivant, NE PAS chiffrer sans source Revenu Québec.
-- [ ] **[FA-12]** 🔧 Test d'intégration survivorMode SEEDÉ (découverte code-reviewer FA-10) : aucun
-  test n'exerce `runScenario` avec un décès du conjoint — la régression « quelqu'un retire un ternaire
-  du call-site » ne serait attrapée par rien. Le rng est injecté (`buildSeededRng`) : forcer le décès
-  en année 1 et asserter impôt décembre survivant > scénario sans `modelSurvivor`. (S)
+- [x] **[FA-12]** 🔧 (livré) Test d'intégration survivorMode SEEDÉ (`projection.survivor.test.ts`,
+  5 tests) via hook test-only `__runScenarioForTests`. Astuce clé : `replayHistoricalYear` override
+  les taux APRÈS les tirages MC → runs modelSurvivor ON/OFF BIT-IDENTIQUES jusqu'au décès (crypto=0,
+  tous les flags stochastiques off), la divergence NetWorth EST le décès. Conjoint 100 ans (p=0,33
+  plafond), seed k=0 épinglé → décès au PREMIER janvier (mi=12). Contrats : divergence exactement à
+  mi=12 · totalTaxesPaid survivant > base ×1,10 (FA-10, 1 contribuable — mesuré +55 %) · NW final
+  survivant < base (PSV défunt cesse) · base identique ∀ seed (aucun tirage si OFF) · série complète
+  (la sim continue). En MC le chartData est ALLÉGÉ ({NetWorth, monthIndex}) → assertions par agrégats.
+  Si un changement moteur décale la consommation rng : re-scanner k=0..7 (procédure en tête du test).
 - [x] **[FA-11]** 🔧 (résolu par DOCUMENTATION — l'option prévue au ticket) Discontinuité SRG au
   seuil documentée en limite assumée dans FISCAL_REFERENCE (§ SRG) : marche ~167 $/mois au seuil
   22 512 $, SRG surévalué (non conservateur) dans la bande ~18-22,5 k$, cause = top-up récupéré

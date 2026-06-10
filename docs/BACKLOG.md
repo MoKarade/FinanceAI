@@ -5,7 +5,7 @@
 > Audit qualité détaillé (référence) : [`docs/AAA_AUDIT_2026-06.md`](AAA_AUDIT_2026-06.md).
 > Actions humaines (Marc) : [`docs/A_FAIRE_MOI.md`](A_FAIRE_MOI.md).
 >
-> **Dernière mise à jour : 2026-06-09.** Tests : 1782 verts / 154 fichiers · tsc clean · build OK.
+> **Dernière mise à jour : 2026-06-09.** Tests : 1827 verts / 154 fichiers · tsc clean · build OK.
 
 ## Convention (cochage par Claude au merge)
 - Chaque item Claude-faisable porte un **`[ID]`** entre crochets. **Claude coche lui-même**
@@ -43,18 +43,18 @@
 ## 💰 Audit fiscal + moteur 2026-06-09 (3 agents : fiscal-accuracy, projection-validator, code-analyzer)
 > 0 BLOCKER. Socle exact (barèmes/BPA/RRQ/RAMQ/FSS/FERR/retenues conformes au doc). Détails dans les
 > rapports d'agents (session 2026-06-09). Chaque correctif fiscal = code + FISCAL_REFERENCE même PR.
-- [ ] **[FA-1]** 🔧 Assiette du crédit pension (féd 31400 + QC 361) inclut RRQ/PSV à tort
+- [x] **[FA-1]** (livré #221) Assiette du crédit pension (féd 31400 + QC 361) inclut RRQ/PSV à tort
   (`taxDecember.ts:362-364`) — ARC/RQ les EXCLUENT. Restreindre à DB + FERR 72+. **Non conservateur**
   (~250-680 $/an/personne 65+). Le plus systémique des findings.
-- [ ] **[FA-2]** 🧭 Clawback PSV : revenu FAMILIAL comparé au seuil INDIVIDUEL (`taxDecember.ts:39-44`)
+- [x] **[FA-2]** (livré #222) Clawback PSV : revenu FAMILIAL comparé au seuil INDIVIDUEL (`taxDecember.ts:39-44`)
   → clawback fictif jusqu'à ~14 k$/an pour un couple 95-190 k$ (conservateur mais massif).
   Calculer par conjoint (les décompositions per-user existent) ou documenter en §9.
-- [ ] **[FA-3]** 🧭 SRG : (a) imposé à tort (non imposable) ; (b) clawback ignore retraits REER/gains
+- [x] **[FA-3]** (livré #222) SRG : (a) imposé à tort (non imposable) ; (b) clawback ignore retraits REER/gains
   → SRG fictif jusqu'à ~13 k$/an en scénario FIRE bas revenu (`retirementIncome.ts:206-220`). **Non
   conservateur** (b).
-- [ ] **[FA-4]** 🔧 CELI dupliqué : `taxJanuary.ts:89-92` recalcule 7000×inflation au lieu de lire
+- [x] **[FA-4]** (livré #221) CELI dupliqué : `taxJanuary.ts:89-92` recalcule 7000×inflation au lieu de lire
   `CELI_ANNUAL_LIMITS` (2027 : 7 000 vs 7 500 au doc). Brancher sur la source unique.
-- [ ] **[FA-5]** 🔧 NPV rentes succession : `governmentPension × 0,65 × activeUsersCount`
+- [x] **[FA-5]** (livré #221) NPV rentes succession : `governmentPension × 0,65 × activeUsersCount`
   (`estateCalculation.ts:144-145`) alors que le moteur le traite déjà comme FAMILIAL → ×N en double,
   `estateNetWorth` couple gonflé de dizaines de k$.
 - [ ] **[FA-6]** 🧭 Dons charitables : crédit 33 % + relief gains 15 % en dur non sourcés
@@ -154,16 +154,35 @@
 
 ## 🎨 Épuration UI — directives Marc 2026-06-09 (ordre validé)
 > Ordre : [UI-SCEN] plans de base → [UI-EPURE] épuration → [U5] → lot a11y (D6) → [ICONS-FUT].
-- [ ] **[UI-SCEN]** 🧭 **Enlever les « plans de base » (scénarios du Futur)** : 11 simulations
-  complètes recalculées à CHAQUE changement de paramètre (5 plans de gestion « Le Plan de Base /
-  CELI d'abord / REER d'abord / fonte du REER / Achat sans RAP » + 6 stress-tests) pour alimenter
-  le sélecteur de cartes + bandeau Verdict — redondant avec l'onglet Optimisation. Cible proposée :
-  stratégie de retrait = simple paramètre (select), stress-tests = à la demande dans Optimisation,
-  moteur ne calcule QUE le scénario réaliste par défaut (sliders ~10× plus rapides). Périmètre exact
-  à confirmer avec Marc.
-- [ ] **[UI-EPURE]** 🔧 Audit visuel global de CHAQUE onglet (Futur→Paramètres, Dashboard,
-  Configuration en premier — retours Marc) → plan d'épuration : sections à fusionner/retirer,
-  textes à couper, hiérarchie. Livrer le plan AVANT de toucher l'UI.
+- [x] **[UI-SCEN]** (livré #223) Enlever les « plans de base » : `withdrawalStrategy` = paramètre
+  (sélecteur dans Paramètres), moteur 1 scénario (suite moteur 82→33 s, slider déterministe ÷11),
+  stress-tests à la demande dans Optimisation (`StressTestPanel`), cartes/badge/Verdict supprimés,
+  optimiseur « Appliquer » → paramètre + âges de rentes #210.
+- [x] **[UI-EPURE]** Audit visuel global de chaque onglet → **fait (code-analyzer 2026-06-09)**.
+  Verdict : Futur→Paramètres = l'écran le plus chargé (« usine ») ; redondances chiffrées
+  (patrimoine projeté à 4 endroits, score de santé à 3, renvois « → Futur » dans 6 onglets,
+  `UserConfigFields` dans 4 onglets). TOP 10 ci-dessous ([EP-1] seul = ~80% du « moins chargé »).
+- [ ] **[EP-1]** 🔧 Futur/Paramètres : fusionner « Variabilité » + « Événements stochastiques » en
+  une section « Risques & aléas » repliée (gate MC actif) ; 10 toggles stochastiques derrière un
+  bouton « Activer des aléas… ». 4 sections → 2, ~20 contrôles visibles → ~8. (M) **Priorité Marc n°1.**
+- [ ] **[EP-2]** 🔧 Futur/Paramètres : retirer la Card AI note + les pros/cons DUPLIQUÉS (déjà sous
+  le sélecteur de stratégie) → un seul bloc stratégie. (S)
+- [ ] **[EP-3]** 🔧 Dashboard : le 5e KPI « Indicateur Futur » est un mini-formulaire (input+Sync) dans
+  la grille → KPIStat simple (valeur projetée) ou retrait, réaligner la grille à 4. (S)
+- [ ] **[EP-4]** 🔧 Investments : supprimer la duplication du score de santé (badge header OU donut hero,
+  pas les deux) + carte perf 24h redondante. (S)
+- [ ] **[EP-5]** 🔧 Investments : retirer/replier la Card « Portefeuille projeté à l'horizon » (duplique
+  Dashboard + Futur) → un lien « voir Futur ». (S)
+- [ ] **[EP-6]** 🔧 Configuration : `SetupHub` en tête de CHAQUE sous-onglet → affiché seulement si
+  complétude < 100 %, sinon ruban discret repliable. (M)
+- [ ] **[EP-7]** 🔧 Futur/Plan d'action : condenser `ProjectionExplains` (294 l, ~15 blocs) en 3-4 points
+  + le reste dans un `CollapsibleSection` « En savoir plus ». (M)
+- [ ] **[EP-8]** 🔧 Retirement : scinder la Card géante « Revenus & besoins » (~10 champs RRQ/PSV/DB) —
+  champs DB derrière le toggle existant, bloc pensions replié par défaut. (M)
+- [ ] **[EP-9]** 🔧 Global : retirer les renvois « → ouvrir Futur » répétés dans 6 onglets (≤ 1 lien
+  discret/page) + badges décoratifs (`N événements actifs`, doublons de santé). (S)
+- [ ] **[EP-10]** 🔧 Futur/Optimisation : `StressTestPanel` + `AssetLocationPanel` repliés par défaut,
+  seul `StrategyComparePanel` ouvert ; retirer AssetLocation ici (déjà dans Retraite). (S)
 
 ## 🎨 P2 — UX & polish
 - [ ] **[U5]** Export PNG du graphe « Évolution détaillée » (Dashboard).

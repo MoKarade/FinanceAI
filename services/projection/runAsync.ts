@@ -77,7 +77,42 @@ export function reconstructWorkerError(
  * que sur le message correspondant — évite la confusion lors d'appels rapides
  * concurrents (toggle MC, debounce, params qui changent).
  */
-export async function runProjectionAsync(
+// PH2-b (clé de voûte) — dédup des requêtes IDENTIQUES en vol. Si on quitte l'onglet Futur
+// pendant un calcul MC puis on revient (remount → re-requête des MÊMES params), on RE-RACCROCHE
+// à la promesse déjà en vol au lieu d'en relancer une seconde : la projection « reprend où elle
+// en était » (un seul calcul worker, résultat dispo plus tôt). La clé est une signature de contenu
+// fournie par l'appelant ; l'entrée est vidée à la résolution. Sans dedupKey (appels hors-UI :
+// MCP, tests), comportement strictement inchangé.
+const _inflight = new Map<string, Promise<ProjectionResult>>();
+
+// NON-async VOLONTAIREMENT : on doit retourner la MÊME référence de promesse pour la dédup
+// (un `async function` envelopperait `return existing` dans une nouvelle promesse → identité
+// perdue → re-raccrochage cassé). Le corps n'a aucun `await`, il relaie la promesse de
+// computeProjectionAsync.
+export function runProjectionAsync(
+    params: SimulationParams,
+    runMC: boolean = false,
+    selectedIdx: number = 0,
+    onlyStratTypes?: string[],
+    dedupKey?: string,
+): Promise<ProjectionResult> {
+    if (dedupKey) {
+        const existing = _inflight.get(dedupKey);
+        if (existing) return existing;
+    }
+    const promise = computeProjectionAsync(params, runMC, selectedIdx, onlyStratTypes);
+    if (dedupKey) {
+        _inflight.set(dedupKey, promise);
+        // Vide l'entrée à la résolution (succès OU échec), sans écraser une requête plus récente.
+        // `.then(clear, clear)` (PAS `.finally().catch()`) : le 2e handler ABSORBE le rejet de cette
+        // branche interne → aucun « unhandled rejection » (le rejet user-facing reste géré par l'appelant).
+        const clearInflight = () => { if (_inflight.get(dedupKey) === promise) _inflight.delete(dedupKey); };
+        promise.then(clearInflight, clearInflight);
+    }
+    return promise;
+}
+
+async function computeProjectionAsync(
     params: SimulationParams,
     runMC: boolean = false,
     selectedIdx: number = 0,

@@ -262,12 +262,19 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const [asyncResults, setAsyncResults] = useState<ProjectionResult | null>(null);
     const [isComputing, setIsComputing] = useState(false);
 
+    // PH2-b — signature de contenu de la requête MC : permet à runAsync de RE-RACCROCHER à un
+    // calcul déjà en vol quand on revient sur Futur (au lieu de le relancer). JSON best-effort ;
+    // en cas d'échec de sérialisation, undefined → dédup désactivée (comportement d'avant).
+    const mcDedupKey = useMemo(() => {
+        try { return JSON.stringify(params); } catch { return undefined; }
+    }, [params]);
+
     useEffect(() => {
         if (!runMC) return;
         let cancelled = false;
         const timer = setTimeout(() => {
             setIsComputing(true);
-            runProjectionAsync(params, true, 0)
+            runProjectionAsync(params, true, 0, undefined, mcDedupKey)
                 .then(r => { if (!cancelled) { setAsyncResults(r); setIsComputing(false); } })
                 .catch(e => {
                     if (!cancelled) {
@@ -290,7 +297,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 });
         }, 300); // debounce 300ms même en MC
         return () => { cancelled = true; clearTimeout(timer); };
-    }, [params, runMC]);
+    }, [params, runMC, mcDedupKey]);
 
     // PH2-a/b (clé de voûte) — le Worker N'EST PLUS terminé au démontage de l'onglet.
     // C'est un singleton app-level (services/projection/runAsync) réutilisé d'un onglet à

@@ -308,6 +308,37 @@ describe('processGainHarvesting — remplir le 1er palier dans une année à fai
         const r = processGainHarvesting({ ...base, existingGainsNominal: 40000 });
         expect(r.harvestedGain).toBeCloseTo(28690, 0); // room=(54345−20000−20000)/0,5
     });
+
+    // [PV-2] — la banque de pertes (TLH) compense les gains récoltés EN PREMIER
+    // (LIR 111(1)(b)) : part compensée = 0 $ d'impôt et HORS palier.
+    it('PV-2 : sans banque, comportement identique (consumedLoss = 0, non-régression)', () => {
+        const r = processGainHarvesting({ ...base, capitalLossBank: 0 });
+        expect(r.harvestedGain).toBeCloseTo(68690, 0);
+        expect(r.consumedLoss).toBe(0);
+    });
+    it('PV-2 : banque ≥ latent → récolte COMPLÈTE même sans aucune place de palier', () => {
+        // Revenu déjà au-dessus du palier (aucune place) MAIS banque 120k ≥ latent 100k :
+        // tout le latent est récolté gratuitement (avant : harvestedGain = 0).
+        const r = processGainHarvesting({ ...base, otherTaxableNominal: 60000, capitalLossBank: 120000 });
+        expect(r.harvestedGain).toBeCloseTo(100000, 0);
+        expect(r.consumedLoss).toBeCloseTo(100000, 0);
+        expect(r.logMsg).toContain('banque de pertes');
+    });
+    it('PV-2 : banque partielle → part gratuite (hors palier) + remplissage du palier sur le RESTE', () => {
+        // banque 30k → 30k gratuits, puis (54345−20000)/0,5 = 68 690 sur le latent restant (70k).
+        const r = processGainHarvesting({ ...base, capitalLossBank: 30000 });
+        expect(r.consumedLoss).toBeCloseTo(30000, 0);
+        expect(r.harvestedGain).toBeCloseTo(30000 + 68690, 0);
+        // Part imposable = harvestedGain − consumedLoss → remplit exactement le palier.
+        expect(20000 + (r.harvestedGain - r.consumedLoss) * 0.5).toBeCloseTo(54345, 0);
+    });
+    it('PV-2 : la part gratuite n\'occupe AUCUNE place de palier (vs ancien comportement)', () => {
+        // Avec banque 30k, la récolte totale dépasse le plafond « sans banque » (68 690) :
+        // preuve que la part compensée ne mange pas la place du palier.
+        const sans = processGainHarvesting(base);
+        const avec = processGainHarvesting({ ...base, capitalLossBank: 30000 });
+        expect(avec.harvestedGain).toBeGreaterThan(sans.harvestedGain + 29000);
+    });
 });
 
 // ──────────────────────────────────────────────────────────────────────────

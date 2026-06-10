@@ -73,6 +73,7 @@
   borné au cap) · cap clawback ignore prorata résidence/`psvEstimateMonthly`/bonus 75+ (clawback fantôme
   possible pour immigrant 10/40) · assiette FSS inclut la PSV (l'Annexe F la déduit — à sourcer) ·
   lagged SRG déflaté du facteur du mois courant (~1 an d'écart, SRG légèrement surévalué) ·
+  `ghOtherNominal` (récolte de gains, retraité) inclut le SRG non imposable → palier visé trop petit (conservateur) ·
   **dbMonthly quasi-nominal dans le revenu test SRG réel** (post-FA-9 : SRG coupé de plus en plus tôt
   pour un profil DB, conservateur mais amplitude ×1,49 à 20 ans — déflater la composante DB) ·
   **plafonds ×N non survivor-aware** (découverte FA-10) : droits CELI/REER/CELIAPP continuent de
@@ -117,8 +118,32 @@
   shortfalls non couverts) → NW encore surévalué du résiduel dans les scénarios DÉJÀ en ruine. Modéliser
   un passif `liquidDebt` cumulé (affiché au bilan) si on veut un NW honnête en insolvabilité. Basse
   priorité (scénarios concernés déjà signalés par shortfallRate/successRate). (M)
-- [ ] **[PV-2]** 🔧 Récolte de gains ignore `capitalLossBank` (impôt payé sur gains compensables —
-  conservateur, sous-optimal).
+- [x] **[PV-2]** 🔧 (livré) Récolte de gains ignorait `capitalLossBank` : la banque de pertes (TLH)
+  est désormais consommée EN PREMIER (LIR 111(1)(b)) — part compensée = 0 $ d'impôt et HORS palier
+  (step-up d'ACB gratuit), remplissage du palier sur le latent restant. `consumedLoss` retourné au
+  caller (seule la part non compensée entre dans `accCapitalGainsYear`). 4 tests + FISCAL_REFERENCE §3.
+- [ ] **[PV-7]** 🔧 Ventes de CRYPTO sans banque de pertes (découverte PV-2, 2 sites) : la cascade de
+  shortfall (`cashflowAllocation.ts:260`) ET le goal-mutator (`projection.ts` `withdrawFromAccount
+  CRYPTO`) ajoutent le gain crypto BRUT à `accCapitalGainsYear` sans consommer `capitalLossBank`,
+  et les PERTES crypto sont JETÉES (jamais banquées). Conservateur mais incohérent avec
+  handleNonRegSale — router par la même logique. Aussi : tester le câblage caller du levier
+  gainHarvesting (les 3 lignes net/banque/ACB ne sont couvertes par aucun test moteur). (S)
+- [ ] **[PV-8]** 🔧 TLH fabrique des pertes SANS regarder l'ACB (`taxDecember.ts:107-112` :
+  `harvestedLoss = fakeSell × dropRate`) : avec un gros gain latent, une vraie vente en année
+  négative réaliserait un GAIN — banque surévaluée. PV-2 AMPLIFIE l'impact (chaque $ de perte
+  fabriquée = 1 $ de step-up gratuit). Borner par `max(0, costBasis − fakeSell)` + documenter
+  l'hypothèse « perte apparente » (LIR 54, rachat fonds corrélé non identique) en §3. (S/M)
+- [ ] **[PV-9]** 🔧 Gains en capital INVISIBLES au test SRG et au clawback PSV (découverte
+  fiscal-accuracy PV-2, pré-existant) : `prevYearOtherIncomeForGisNominal` (REER+loyers) et
+  `computeOasClawback` n'incluent aucun gain imposable — or ils comptent dans le revenu net des
+  deux tests, et le report 111(1)(b) ne les en retire PAS (déduction au revenu IMPOSABLE seulement).
+  Un 65+ bas revenu avec gainHarvesting voit le levier « gratuit » alors qu'il coûterait des
+  milliers de $ de SRG. Sœur de FA-8 (assiette clawback). (M)
+- [ ] **[PV-10]** 🔧 ⚠️ NON CONSERVATEUR — goal-mutator NonReg sans réalisation de gains
+  (découverte code-reviewer PV-2) : le retrait `'NON-ENREG'` des échéances d'objectifs
+  (`projection.ts` ~1055 : `nonRegACB = Math.max(0, nonRegACB − fromNR)`, PAS de handleNonRegSale)
+  ne réalise AUCUN gain en capital → gains jamais imposés sur les retraits financés par objectifs
+  + ACB faussé pour les ventes suivantes. Sous-imposition réelle — prioritaire dans la famille PV. (S)
 - [ ] **[PV-3]** 🔧 Fractionnement : le transfert n'alimente pas le crédit pension du RÉCIPIENDAIRE
   (ARC 31400 l'admet) — conservateur.
 - [ ] **[PV-4]** 🔧 Tests des clamps hors-bornes `rrqStartAge` (55→60, 80→72) / `psvStartAge`.

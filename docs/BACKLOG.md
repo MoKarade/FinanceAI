@@ -37,11 +37,16 @@
   `React.lazy` NU du codebase (tous les autres passent par `lazyWithRetry` P1.4 = retry 500 ms +
   1 reload gardé) → seul chunk sans filet sur hash périmé après deploy. Fix : (1) `lazyWithRetry`
   appliqué ; (2) filet GLOBAL `vite:preloadError` (`installPreloadErrorReload`, installé dans
-  `index.tsx` avant le render) → couvre aussi les DÉPENDANCES préchargées des imports dynamiques ;
-  un seul reload (flag sessionStorage partagé), storage indispo → pas de reload (anti-boucle), erreur
-  loguée. 3 tests. **Critères ✓** : plus aucun `React.lazy` nu ; reload unique ; ErrorBoundary en
-  dernier recours. Audit cache fait : `vercel.json` DÉJÀ conforme (index.html `no-cache`, `/assets/*`
-  `immutable`) ; `sw.js` DÉJÀ network-first `no-store` sur les navigations (2026-05-22) — rien à changer.
+  `index.tsx` avant le render) → intercepte racine ET dépendances préchargées des imports dynamiques.
+  Revue (panel) → design durci : garde par **TIMESTAMP auto-expirant** (≤ 1 reload auto/min) au lieu
+  du flag binaire + `clearChunkReloadFlag` au mount SUPPRIMÉ (il tournait avant la résolution des
+  chunks du boot → un échec persistant bouclait reload→mount→clear→reload, en évinçant le journal
+  d'erreurs) ; PAS de `preventDefault` (sinon les `import()` résolvent `undefined`) ; filtre
+  `isChunkLoadError` (une erreur d'évaluation de module ne gaspille pas de reload) ; nom du chunk
+  fautif persisté au log ; storage indispo → pas de reload. 7 tests. **Critères ✓** : plus aucun
+  `React.lazy` nu ; boucle bornée structurellement ; ErrorBoundary en dernier recours. Audit cache
+  fait : `vercel.json` DÉJÀ conforme (index.html `no-cache`, `/assets/*` `immutable`) ; `sw.js`
+  DÉJÀ network-first `no-store` sur les navigations (2026-05-22) — rien à changer.
 - [ ] **[PH1-b]** 🧭👤 Cloudflare : analyse livrée à Marc (session 2026-06-10 — voir aussi
   `A_FAIRE_MOI`). Verdict : [Probable] déclencheurs = deploy pendant session ouverte (chunks Vercel
   atomiquement supprimés) et/ou redirect Cloudflare Access sur session expirée ; [Peu probable] cache

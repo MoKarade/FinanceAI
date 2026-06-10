@@ -9,19 +9,49 @@
 //   1. Retry l'import 1 fois après 500ms (au cas où le réseau a vacillé)
 //   2. Si fail à nouveau, recharge la page (window.location.reload())
 //      → le browser re-fetch index.html, prend les nouveaux hashes
-//   3. Marqueur sessionStorage pour éviter une boucle de reloads
+//   3. Garde anti-boucle par TIMESTAMP (sessionStorage) : au plus un reload
+//      auto par RELOAD_MIN_INTERVAL_MS, quel que soit le déclencheur.
+//
+// PH1-a (revue) : la garde était un flag binaire effacé au mount de App — un échec
+// PERSISTANT d'un chunk du chemin de boot (deploy cassé, offline avec shell servi
+// par le SW) bouclait : reload → mount → clear → échec → reload… Le timestamp borne
+// la boucle structurellement (1 reload/min max) sans AUCUN clear nécessaire.
 //
 // Inspiré de https://www.codemzy.com/blog/fix-chunkloaderror-react
 
 import React from 'react';
 import { logError } from '../services/errorLogger';
 
-const RELOAD_FLAG_KEY = 'financeai:chunkReloaded:v1';
+const RELOAD_FLAG_KEY = 'financeai:chunkReloaded:v1'; // valeur = Date.now() du dernier reload auto
+const RELOAD_MIN_INTERVAL_MS = 60_000;
 
 function isChunkLoadError(err: unknown): boolean {
     if (!err || typeof err !== 'object') return false;
     const msg = (err as Error).message ?? '';
-    return /Failed to fetch dynamically imported module|Loading chunk \d+ failed|Importing a module script failed/i.test(msg);
+    // « Unable to preload » = échec de preload d'une DÉPENDANCE (CSS ou module) signalé par Vite.
+    return /Failed to fetch dynamically imported module|Loading chunk \d+ failed|Importing a module script failed|Unable to preload/i.test(msg);
+}
+
+// Reload auto autorisé ? — jamais deux fois en moins de RELOAD_MIN_INTERVAL_MS.
+// Legacy '1' ou clé absente → Number() donne 1/0 → intervalle largement dépassé → true.
+function shouldAttemptReload(): boolean {
+    try {
+        const last = Number(sessionStorage.getItem(RELOAD_FLAG_KEY));
+        return !(Date.now() - last < RELOAD_MIN_INTERVAL_MS); // NaN-safe (NaN → comparaison false → true)
+    } catch {
+        return false; // storage indisponible : pas de reload auto (aucune garde anti-boucle possible)
+    }
+}
+
+// Retourne false si l'écriture échoue (quota/storage) : dans ce cas on NE reload PAS,
+// sinon shouldAttemptReload resterait vrai à chaque échec → boucle.
+function markReloadAttempt(): boolean {
+    try {
+        sessionStorage.setItem(RELOAD_FLAG_KEY, String(Date.now()));
+        return true;
+    } catch {
+        return false;
+    }
 }
 
 export function lazyWithRetry<T extends React.ComponentType<unknown>>(
@@ -45,19 +75,15 @@ export function lazyWithRetry<T extends React.ComponentType<unknown>>(
                     error: secondError,
                     context: { chunkName, firstError: (firstError as Error)?.message },
                 });
-                if (isChunkLoadError(secondError) && typeof window !== 'undefined') {
-                    // Garde-fou : ne reload qu'une fois pour éviter boucle infinie
-                    const alreadyReloaded = sessionStorage.getItem(RELOAD_FLAG_KEY);
-                    if (!alreadyReloaded) {
-                        sessionStorage.setItem(RELOAD_FLAG_KEY, '1');
-                        // Hard reload pour forcer le re-fetch de index.html
-                        window.location.reload();
-                        // Promise jamais résolue — la page se recharge
-                        return new Promise<{ default: T }>(() => {});
-                    }
-                    // Si on a déjà reload une fois et que ça fail encore, on remonte l'erreur
-                    // au composant pour qu'ErrorBoundary l'affiche proprement
+                if (isChunkLoadError(secondError) && typeof window !== 'undefined'
+                    && shouldAttemptReload() && markReloadAttempt()) {
+                    // Hard reload pour forcer le re-fetch de index.html
+                    window.location.reload();
+                    // Promise jamais résolue — la page se recharge
+                    return new Promise<{ default: T }>(() => {});
                 }
+                // Reload déjà tenté il y a < 1 min (ou storage KO) → on remonte l'erreur
+                // au composant pour qu'ErrorBoundary l'affiche proprement
                 throw secondError;
             }
         }
@@ -65,39 +91,32 @@ export function lazyWithRetry<T extends React.ComponentType<unknown>>(
 }
 
 /**
- * À appeler au boot pour clear le flag "reload attempted" une fois que tout
- * a chargé OK. Évite de garder le flag indéfiniment.
- */
-export function clearChunkReloadFlag(): void {
-    if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.removeItem(RELOAD_FLAG_KEY);
-    }
-}
-
-/**
- * PH1-a — filet global `vite:preloadError`. Vite émet cet événement quand le preload
- * d'une dépendance d'un import dynamique échoue (deploy entre deux navigations → hash
- * périmé, ou redirection Cloudflare Access sur session expirée). lazyWithRetry ne voit
- * que l'échec du module RACINE du chunk ; ses dépendances préchargées passent par ici.
- * Même stratégie : UN reload (flag sessionStorage partagé), sinon on laisse l'erreur
- * remonter à l'ErrorBoundary. À installer une fois au boot (index.tsx), avant le render.
+ * PH1-a — filet global `vite:preloadError`. Vite émet cet événement pour TOUT échec
+ * d'un import dynamique passé par son helper de preload : le module RACINE du chunk
+ * COMME ses dépendances préchargées (deploy entre deux navigations → hash périmé,
+ * redirection Cloudflare Access sur session expirée…). Première ligne de défense :
+ * reload immédiat (gardé par l'intervalle anti-boucle partagé) ; si le reload est
+ * refusé, on laisse Vite re-throw → lazyWithRetry (2e ligne, retry 500 ms) ou
+ * ErrorBoundary. PAS de preventDefault : l'empêcher ferait RÉSOUDRE les `import()`
+ * à `undefined` (TypeError trompeuse dans les consommateurs pendant le reload).
+ * À installer une fois au boot (index.tsx), avant le render.
  */
 export function installPreloadErrorReload(): void {
     if (typeof window === 'undefined') return;
     window.addEventListener('vite:preloadError', (event) => {
-        try {
-            if (sessionStorage.getItem(RELOAD_FLAG_KEY)) return; // déjà tenté → laisser remonter
-            sessionStorage.setItem(RELOAD_FLAG_KEY, '1');
-        } catch {
-            return; // storage indisponible : ne PAS reload (aucune garde anti-boucle possible)
-        }
+        const payload = (event as Event & { payload?: unknown }).payload;
+        // Erreur d'ÉVALUATION d'un module (bug déterministe) → un reload ne réparera
+        // rien : laisser remonter à l'ErrorBoundary sans gaspiller le quota de reload.
+        if (!isChunkLoadError(payload)) return;
+        if (!shouldAttemptReload() || !markReloadAttempt()) return;
         logError({
             source: 'ui',
             severity: 'warning',
             message: 'vite:preloadError — chunk périmé ou bloqué, rechargement',
-            error: (event as Event & { payload?: unknown }).payload,
+            error: payload,
+            // errorLogger garde `message` fourni : le nom du chunk fautif doit survivre ici.
+            context: { detail: (payload as Error)?.message },
         });
-        event.preventDefault(); // empêche Vite de re-throw (la page se recharge)
         window.location.reload();
     });
 }

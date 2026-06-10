@@ -225,8 +225,13 @@ export function computeRetirementIncome(
     // Computing family total first, then dividing for the per-adult figure avoids
     // the double-multiplication that caused SRG = $0 for entitled couples (§7.G).
     const otherIncomeAnnualFamily = (rrqMonthly + dbMonthly) * 12 + otherLaggedReal;
-    const otherIncomeAnnualPerAdult = otherIncomeAnnualFamily / Math.max(1, activeUsersCount);
-    const hasSpouseWithOAS = activeUsersCount > 1 && age >= psvStartAge;
+    // FA-10 (suivi fiscal-accuracy) — survivorMode : UN seul bénéficiaire SRG. Avant, le
+    // survivant gardait le barème COUPLE (max 662 $ ×2 = 1 324 $/mois, seuil combiné 29 760 $)
+    // au lieu du barème célibataire (1 105 $, seuil 22 512 $) ET son revenu test était divisé
+    // par 2 → jusqu'à ~2,6 k$/an de SRG fictif NON imposable (sens non conservateur).
+    const gisHeads = survivorMode ? 1 : Math.max(1, activeUsersCount);
+    const otherIncomeAnnualPerAdult = otherIncomeAnnualFamily / gisHeads;
+    const hasSpouseWithOAS = !survivorMode && activeUsersCount > 1 && age >= psvStartAge;
     // FA-9 (audit 2026-06-09, fix 2026-06-10) — TOUT en base RÉELLE ici, comme RRQ/PSV : appel
     // SANS `year` (seuils/max 2026 de base) contre le revenu test déjà en base réelle, puis la
     // nominalisation UNIQUE ×inflFactor ci-dessous (gisTotal). Avant : `year=currentYear`
@@ -239,7 +244,7 @@ export function computeRetirementIncome(
             hasSpouseWithOAS,
         )
         : 0;
-    const gisMonthly = gisMonthlyPerAdult * activeUsersCount;
+    const gisMonthly = gisMonthlyPerAdult * gisHeads;
 
     // Phase 3 Tier 3 — split par source avant clamp Math.max(0, ...)
     const rrq = rrqMonthly * inflFactor;

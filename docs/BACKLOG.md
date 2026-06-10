@@ -74,7 +74,16 @@
   possible pour immigrant 10/40) · assiette FSS inclut la PSV (l'Annexe F la déduit — à sourcer) ·
   lagged SRG déflaté du facteur du mois courant (~1 an d'écart, SRG légèrement surévalué) ·
   **dbMonthly quasi-nominal dans le revenu test SRG réel** (post-FA-9 : SRG coupé de plus en plus tôt
-  pour un profil DB, conservateur mais amplitude ×1,49 à 20 ans — déflater la composante DB).
+  pour un profil DB, conservateur mais amplitude ×1,49 à 20 ans — déflater la composante DB) ·
+  **plafonds ×N non survivor-aware** (découverte FA-10) : droits CELI/REER/CELIAPP continuent de
+  s'accumuler pour le défunt (`projection.ts` fhsaRoom, `taxJanuary.ts:159`) — sous-imposition
+  indirecte mineure · retenue FERR estimée sur 2 têtes en survivorMode (timing seulement, réconcilié
+  en décembre) · 🧭 « montant pour personne vivant seule » QC (grille TP-1.G) absent code+doc —
+  pertinent pour un survivant, NE PAS chiffrer sans source Revenu Québec.
+- [ ] **[FA-12]** 🔧 Test d'intégration survivorMode SEEDÉ (découverte code-reviewer FA-10) : aucun
+  test n'exerce `runScenario` avec un décès du conjoint — la régression « quelqu'un retire un ternaire
+  du call-site » ne serait attrapée par rien. Le rng est injecté (`buildSeededRng`) : forcer le décès
+  en année 1 et asserter impôt décembre survivant > scénario sans `modelSurvivor`. (S)
 - [ ] **[FA-11]** 🔧 SRG : discontinuité au seuil (découverte fiscal-accuracy FA-9) — le clawback
   linéaire 50 ¢ depuis 1 105 $ s'annulerait à 26 520 $ mais la coupure dure est à 22 512 $ →
   marche ~167 $/mois au seuil et SRG légèrement SURÉVALUÉ dans la bande haute (le vrai barème a une
@@ -86,9 +95,13 @@
   max surévalué ~49 % à 20 ans (~+6,5 k$/an fictifs) + seuils nominaux face à revenu réel.
   4 tests anti-régression (max simple-indexé, réel constant, seuil de coupure réel) +
   FISCAL_REFERENCE §6.3 note d'indexation. L'util garde son param `year` (usages nominaux hors moteur).
-- [ ] **[FA-10]** 🔧 Clawback PSV/impôt par conjoint en **survivorMode** : A1 (impôt décembre)
-  répartit encore le revenu du survivant sur 2 têtes (latent pré-existant ; le clawback FA-2 est
-  corrigé via `oasBeneficiaries`). Étendre le même traitement à l'impôt par conjoint + tests.
+- [x] **[FA-10]** 🔧 (livré) Impôt de décembre en **survivorMode** : le revenu du survivant était
+  réparti sur 2 têtes (barème progressif 2× à demi-revenu + crédits d'âge du défunt + fractionnement
+  fictif + RAMQ/FSS ×2 = sous-imposition). Fix au call-site (pattern FA-2) : `taxFilers = survivorMode
+  ? 1 : activeUsersCount`, `ageSpouse`/décompositions par conjoint coupés, DB AGRÉGÉE sur une tête
+  (crédit pension complet), salaire du défunt à 0 dans la branche active de décembre. 4 tests de
+  contrat (vrai barème progressif). Bonus : commentaire W1.4 INVERSÉ corrigé (survivant = user1,
+  défunt = user2 — `activeIncome.ts:61` faisait foi).
 - [x] **[PV-1]** 🔧 (livré — choix Marc : cascade de vente) Liquide négatif effacé silencieusement :
   les débits DIRECTS (impôt d'avril, véhicules/rénos W5, échéances d'objectifs) rendaient `liquid < 0`,
   clampé à 0 par `applyMidMonthGrowth` = dette effacée, patrimoine SURÉVALUÉ. Fix : sauvetage unique

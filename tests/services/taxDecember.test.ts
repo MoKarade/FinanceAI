@@ -1213,3 +1213,95 @@ describe('processDecemberTaxFiling — FA-3a : SRG non imposable (exclu de l\'as
         expect(grosses[1]).toBe(12000); // (2000−1000)×12 ; assiette ménage (2500−2000)×12 > 0 → gate passé
     });
 });
+
+// ──────────────────────────────────────────────────────────────────────────
+// FA-10 — survivorMode : contrat du call-site (projection.ts). Le moteur passe
+// activeUsersCount = 1 (taxFilers), ageSpouse = undefined, décompositions par
+// conjoint = undefined, et la DB agrégée sur une tête. Ces tests verrouillent
+// la sémantique sur laquelle ce câblage repose : taxer le revenu COMPLET du
+// survivant sur UNE tête (barème progressif), sans crédits du défunt ni
+// fractionnement fictif, RAMQ/FSS ×1.
+// ──────────────────────────────────────────────────────────────────────────
+describe('processDecemberTaxFiling — FA-10 : contrat survivorMode (1 contribuable)', () => {
+    // VRAI barème (progressif) : le stub linéaire 25 % rendrait le split fiscal neutre
+    // et ces tests tautologiques — la progressivité est précisément ce que FA-10 corrige.
+    const realHelpers = makeHelpers({
+        calculateFiscalReport: calculateFiscalReport as DecemberHelpers['calculateFiscalReport'],
+    });
+    // Revenu de retraite substantiel : 6 000 $/mois + 30 000 $ de retraits REER/an.
+    const survivorCtx = (o: Partial<DecemberContext> = {}): DecemberContext => baseCtx({
+        isRetired: true,
+        age: 70,
+        incomeRetirementMonthly: 6000,
+        accRetraitsReerYear: 30000,
+        // Ce que projection.ts passe en survivorMode :
+        activeUsersCount: 1,
+        ageSpouse: undefined,
+        incomeRetirementPerUserMonthly: undefined,
+        accRetraitsReerYearByUser: undefined,
+        incomeRetirementDbPerUserMonthly: [1000], // DB du couple AGRÉGÉE sur le survivant
+        ...o,
+    });
+
+    it('le revenu complet sur UNE tête est imposé PLUS que le split fictif sur 2 têtes', () => {
+        const survivant = processDecemberTaxFiling(DECEMBER, survivorCtx(), realHelpers, ZERO_TAX);
+        // L'ancien comportement (latent pré-FA-10) : même revenu réparti sur 2 contribuables.
+        const splitATort = processDecemberTaxFiling(DECEMBER, survivorCtx({
+            activeUsersCount: 2,
+            ageSpouse: 70,
+            incomeRetirementDbPerUserMonthly: [500, 500],
+        }), realHelpers, ZERO_TAX);
+        // Barème progressif : 1 × impôt(plein revenu) > 2 × impôt(demi-revenu).
+        expect(survivant.newTaxCurrentYear.revenu).toBeGreaterThan(splitATort.newTaxCurrentYear.revenu * 1.05);
+    });
+
+    it('sans ageSpouse, AUCUN fractionnement de pension fictif avec le défunt', () => {
+        // Avec un gros DB admissible, le fractionnement baisserait l'impôt si un conjoint
+        // existait. En survivorMode (ageSpouse undefined), le garde n===2 le désactive :
+        // l'impôt doit être EXACTEMENT celui du calcul sans fractionnement (même appel,
+        // DB agrégée, 1 tête) — toute baisse signalerait un split avec un mort.
+        const avecDb = processDecemberTaxFiling(DECEMBER, survivorCtx({
+            incomeRetirementDbPerUserMonthly: [3000],
+        }), realHelpers, ZERO_TAX);
+        const sansDb = processDecemberTaxFiling(DECEMBER, survivorCtx({
+            incomeRetirementDbPerUserMonthly: undefined,
+        }), realHelpers, ZERO_TAX);
+        // La DB sert le crédit pension (impôt avecDb ≤ sansDb) mais ne peut pas être
+        // fractionnée : l'écart reste celui du crédit, pas d'un transfert de tranche.
+        expect(avecDb.newTaxCurrentYear.revenu).toBeLessThanOrEqual(sansDb.newTaxCurrentYear.revenu);
+        expect(avecDb.newTaxCurrentYear.revenu).toBeGreaterThan(sansDb.newTaxCurrentYear.revenu * 0.85);
+    });
+
+    it('RAMQ : prime ×1 (célibataire), pas ×2', () => {
+        const un = processDecemberTaxFiling(DECEMBER, survivorCtx({ ramqExempt: false }), realHelpers, ZERO_TAX);
+        const deux = processDecemberTaxFiling(DECEMBER, survivorCtx({
+            ramqExempt: false, activeUsersCount: 2, ageSpouse: 70,
+            incomeRetirementDbPerUserMonthly: [500, 500],
+        }), realHelpers, ZERO_TAX);
+        // divers contient RAMQ(+FSS) : 2 adultes paient plus de primes qu'un seul
+        // (les primes par adulte diffèrent aussi via le revenu/seuil — on vérifie le sens).
+        expect(deux.newTaxCurrentYear.divers).toBeGreaterThan(un.newTaxCurrentYear.divers);
+    });
+
+    it('branche ACTIVE : salaire du défunt à 0 → impôt du seul survivant', () => {
+        // projection.ts passe grossAnnaBaseAnnual=0 en survivorMode : l'impôt actif de
+        // décembre ne doit plus imposer le salaire fantôme du défunt.
+        const survivantActif = processDecemberTaxFiling(DECEMBER, baseCtx({
+            isRetired: false, age: 45,
+            activeUsersCount: 1,
+            grossMarcBaseAnnual: 100000,
+            grossAnnaBaseAnnual: 0,
+            optimizeSourceDeductions: false,
+        }), realHelpers, ZERO_TAX);
+        const fantome = processDecemberTaxFiling(DECEMBER, baseCtx({
+            isRetired: false, age: 45, ageSpouse: 45,
+            activeUsersCount: 2,
+            grossMarcBaseAnnual: 100000,
+            grossAnnaBaseAnnual: 80000,
+            optimizeSourceDeductions: false,
+        }), realHelpers, ZERO_TAX);
+        // Le complément de décembre (impôt − retenue ~92 %) du ménage fantôme dépasse
+        // celui du survivant seul (l'impôt d'Anna n'existe plus).
+        expect(fantome.newTaxCurrentYear.revenu).toBeGreaterThan(survivantActif.newTaxCurrentYear.revenu);
+    });
+});

@@ -113,7 +113,7 @@ export function applySavingsGoalDeadlines(
         if (drawn > 0) state.addExpense(drawn);
         // [PV-10 suivi] log HONNÊTE : montant réellement tiré (pas la cible) + mention du manque.
         const short = effective - drawn > 0.5 ? ` (visé ${Math.round(effective).toLocaleString('fr-CA')}$ — fonds insuffisants)` : '';
-        state.logFlow(`🎯 Objectif (${g.name}): -${Math.round(drawn).toLocaleString('fr-CA')}$${short}`);
+        state.logFlow(`🎯 Objectif (${g.name}): -${Math.round(Math.max(0, drawn)).toLocaleString('fr-CA')}$${short}`);
     }
 }
 
@@ -134,7 +134,7 @@ export function applyFinancialGoalDeadlines(
         if (drawn > 0) state.addExpense(drawn);
         // [PV-10 suivi] log HONNÊTE : montant réellement tiré (pas la cible) + mention du manque.
         const short = effective - drawn > 0.5 ? ` (visé ${Math.round(effective).toLocaleString('fr-CA')}$ — fonds insuffisants)` : '';
-        state.logFlow(`🏆 But financier (${g.name}): -${Math.round(drawn).toLocaleString('fr-CA')}$ depuis ${account}${short}`);
+        state.logFlow(`🏆 But financier (${g.name}): -${Math.round(Math.max(0, drawn)).toLocaleString('fr-CA')}$ depuis ${account}${short}`);
     }
 }
 

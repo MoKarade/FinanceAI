@@ -42,15 +42,17 @@ const makeConfig = (): BudgetConfig => ({
             name: 'Alex', grossSalary: 7700, netSalary: 5300, color: '#10b981',
             age: 35, birthYear: 1991, canadaArrivalYear: 1991,
             hasOwnedPropertyLast4Years: false,
-            // Droits CELI/REER SATURÉS : sinon l'optimisation mensuelle « NonReg → CELI/REER
-            // si espace » vide le NonReg dès le mois 0 et l'objectif n'a plus rien à vendre.
-            celiContributed: 999_999, rrspContributed: 999_999,
+            // NB : celiContributed/rrspContributed n'ont AUCUN effet moteur (la room
+            // historique est calculée par âge/résidence, setupSimulation.ts) — la seule
+            // protection contre le drain « Opti NonReg→CELI/REER » est useManualBalances
+            // + rooms manuelles à 0 dans makeProjection ci-dessus.
+            celiContributed: 0, rrspContributed: 0,
         },
         {
             name: 'Sam', grossSalary: 6000, netSalary: 4210, color: '#3b82f6',
             age: 33, birthYear: 1993, canadaArrivalYear: 1993,
             hasOwnedPropertyLast4Years: false,
-            celiContributed: 999_999, rrspContributed: 999_999,
+            celiContributed: 0, rrspContributed: 0,
         },
     ],
     splitMode: '50/50',
@@ -64,7 +66,7 @@ const makeGoal = (): RetirementGoal => ({
 // de croissance à 6 % → gain latent ~45 k$ ; le retrait de 150 k$ réalise une
 // fraction proportionnelle de ce gain (≈ 150k × latent/valeur ≈ 28 k$).
 const GOAL_NONREG: FinancialGoal = {
-    id: 'fg-1', name: 'Achat chalet', type: 'other' as FinancialGoal['type'],
+    id: 'fg-1', name: 'Achat chalet', type: 'CUSTOM',
     targetAmount: 150_000, manualCurrentAmount: 0, deadline: '2029-06-15',
     targetAccount: 'NON-ENREG', status: 'active',
 };
@@ -88,16 +90,24 @@ const run = (p: SimulationParams): ProjectionResult => calculateFutureProjection
 const sumField = (r: ProjectionResult, field: string): number =>
     r.chartData.reduce((s, pt) => s + (Number(pt[field]) || 0), 0);
 
+/** Somme d'un champ sur une fenêtre de mois [from, to] inclus. */
+const sumFieldWindow = (r: ProjectionResult, field: string, from: number, to: number): number =>
+    r.chartData.reduce((s, pt) => (pt.monthIndex >= from && pt.monthIndex <= to ? s + (Number(pt[field]) || 0) : s), 0);
+
 describe('[PV-10] Retrait d\'objectif NON-ENREG — gain en capital réalisé et imposé', () => {
     const avecGoal = run(makeParams([GOAL_NONREG]));
     const sansGoal = run(makeParams([]));
 
     it('le retrait d\'objectif déclenche un impôt sur les gains (TaxPaidGains > 0)', () => {
-        const taxAvec = sumField(avecGoal, 'TaxPaidGains');
-        const taxSans = sumField(sansGoal, 'TaxPaidGains');
-        // DELTA : l'objectif ajoute la vente de ~150 k$ (gain proportionnel ~28 k$ imposé).
-        // Avant le fix : aucune réalisation → delta ≈ 0. (Assertion en delta : les resets de
-        // room de janvier peuvent générer un peu d'Opti NonReg→CELI dans les DEUX scénarios.)
+        // FENÊTRE [41..54] (revue) : les deux scénarios sont bit-identiques jusqu'à
+        // l'échéance (mi=41) et le flux TaxPaidGains de la vente sort en AVRIL suivant
+        // (mi≈51). Sous l'ANCIEN code, la vente du goal réalisait 0 gain et les effets de
+        // 2e ordre (Opti janvier 2030 sur ACB sous-évalué) ne sont imposés/payés qu'en
+        // avril 2031 (mi=63, HORS fenêtre) → delta fenêtré structurellement ≈ 0 sans le
+        // fix. Preuve mesurée (stash du fix, 2026-06-10) : delta fenêtré = 0,00 $ →
+        // l'assertion échoue ; avec le fix : delta ≈ +5-7 k$.
+        const taxAvec = sumFieldWindow(avecGoal, 'TaxPaidGains', 41, 54);
+        const taxSans = sumFieldWindow(sansGoal, 'TaxPaidGains', 41, 54);
         expect(taxAvec - taxSans).toBeGreaterThan(1000);
     });
 

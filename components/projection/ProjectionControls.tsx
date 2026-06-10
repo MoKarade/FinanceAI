@@ -1,4 +1,4 @@
-import React, { Fragment } from 'react';
+import React from 'react';
 import { Card } from '../ui/Card';
 import { Icon } from '../ui/Icon';
 import { Button } from '../ui/Button';
@@ -26,7 +26,6 @@ interface ProjectionControlsProps {
     setRunMC: (v: boolean) => void;
     isComputing: boolean;
     fireNumber: number;
-    aiNote: string;
     liveCSVBalances: LiveCSVBalances;
     applyHistoricalRate: () => void;
     realEstateGoals: RealEstateGoal[];
@@ -69,11 +68,14 @@ const REPLAY_OPTIONS = [
 export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
     projection, updateProj, updateReturnRate,
     runMC, setRunMC, isComputing,
-    aiNote, liveCSVBalances, applyHistoricalRate,
+    liveCSVBalances, applyHistoricalRate,
     realEstateGoals, setRealEstateGoals,
 }) => {
     const projAsMap = projection as unknown as Record<string, unknown>;
     const activeStochasticCount = STOCHASTIC_TOGGLES.filter(t => !!projAsMap[t.key]).length;
+    // [EP-1] les 10 toggles d'événements de vie sont cachés derrière un bouton « Activer des
+    // aléas… » (révélés si déjà actifs) — ils noyaient l'onglet sous des contrôles rarement utilisés.
+    const [showStochastic, setShowStochastic] = React.useState(activeStochasticCount > 0);
     return (
         <>
             {/* [UI-SCEN] — la stratégie de gestion/retrait est un PARAMÈTRE (plus de cartes
@@ -117,29 +119,8 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                 );
             })()}
 
-            {/* AI Insight — visible si présent */}
-            {aiNote && (
-                <Card className="bg-primary/10 border-primary/20">
-                    <div className="flex gap-4 items-start">
-                        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                            <Icon name="bot" size={18} className="text-primary" />
-                        </div>
-                        <div className="min-w-0">
-                            <p className="text-body text-ink-100 leading-relaxed">
-                                {aiNote.split(/(\*\*[^*]+\*\*)/g).map((part: string, i: number) =>
-                                    part.startsWith('**') && part.endsWith('**')
-                                        ? <strong key={i}>{part.slice(2, -2)}</strong>
-                                        : <Fragment key={i}>{part}</Fragment>
-                                )}
-                            </p>
-                            <div className="flex flex-wrap gap-3 mt-2">
-                                <div className="text-tiny text-success-400 font-bold">Pros: {strategyDefFor(projection.withdrawalStrategy).pros.join(', ')}</div>
-                                <div className="text-tiny text-danger-400 font-bold">Cons: {strategyDefFor(projection.withdrawalStrategy).cons.join(', ')}</div>
-                            </div>
-                        </div>
-                    </div>
-                </Card>
-            )}
+            {/* [EP-2] AI Insight retirée : phrase générée + pros/cons DUPLIQUÉS (déjà sous le
+                sélecteur de stratégie ci-dessus). Un seul bloc stratégie. */}
 
             {/* Toolbar simulation — radio-group MC prominent (U3).
                 Le mode MC est structurant : il change la forme des courbes sur
@@ -209,11 +190,8 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                 >
                     Smile Curve {projection.useSmileCurve ? 'ON' : 'OFF'}
                 </Button>
-                {activeStochasticCount > 0 && (
-                    <Badge variant="warning" size="sm">
-                        {activeStochasticCount} événements stochastiques actifs
-                    </Badge>
-                )}
+                {/* [EP-9] badge décoratif « N événements actifs » retiré ici (redondant avec le
+                    badge de la section « Risques & aléas » ci-dessous). */}
             </div>
 
             {/* §1 — Hypothèses macro (ouverte par défaut) */}
@@ -324,13 +302,21 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                 </div>
             </CollapsibleSection>
 
-            {/* §2 — Variabilité (ouverte si MC actif) */}
+            {/* [EP-1] §2 « Variabilité » + §3 « Événements stochastiques » FUSIONNÉS en une seule
+                section « Risques & aléas » (ouverte si MC actif ; comptent surtout en Monte Carlo). */}
             <CollapsibleSection
-                title="Variabilité & Stress-test"
+                title="Risques & aléas"
                 icon={<Icon name="dice" size={20} />}
                 defaultOpen={runMC}
+                badge={activeStochasticCount > 0 ? <Badge variant="warning" size="sm">{activeStochasticCount} aléas actifs</Badge> : undefined}
             >
                 <div className="space-y-4">
+                    {!runMC && (
+                        <p className="text-tiny text-ink-400 leading-snug">
+                            Ces réglages prennent tout leur sens en <strong className="text-ink-200">Monte Carlo</strong>
+                            {' '}(bandes P10–P90). En mode déterministe, seuls l'inflation par poste et le replay s'appliquent.
+                        </p>
+                    )}
                     {/* Inflation par poste */}
                     <div>
                         <Button
@@ -406,52 +392,60 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                             <p className="text-tiny text-ink-400 mt-1">Yield moyen S&P 500 ≈ 1.5%. Drag = part × yield × 15%.</p>
                         </div>
                     </div>
-                </div>
-            </CollapsibleSection>
 
-            {/* §3 — Événements stochastiques (FERMÉE par défaut — clé de la refonte) */}
-            <CollapsibleSection
-                title="Événements de vie stochastiques"
-                icon={<Icon name="wind" size={20} />}
-                defaultOpen={false}
-                badge={activeStochasticCount > 0 ? <Badge variant="warning" size="sm">{activeStochasticCount} actifs</Badge> : undefined}
-            >
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
-                    {STOCHASTIC_TOGGLES.map(({ key, label, title }) => {
-                        const isOn = !!projAsMap[key];
-                        return (
-                            <Button
-                                key={key}
-                                onClick={() => updateProj(key as keyof ProjectionConfig, !isOn)}
-                                variant={isOn ? 'primary' : 'ghost'}
-                                size="sm"
-                                title={title}
-                                fullWidth
-                            >
-                                {label} {isOn ? 'ON' : 'OFF'}
-                            </Button>
-                        );
-                    })}
-                </div>
-
-                {projection.ltcEnabled && (
-                    <div className="mt-3 p-3 rounded-card border border-danger-border bg-danger-bg">
-                        <label className="flex justify-between text-meta text-ink-300 mb-1">
-                            <span>Coût mensuel soins ($/mois)</span>
-                            <span className="text-danger-400 font-bold">{projection.ltcMonthlyCost ?? 5000}$</span>
-                        </label>
-                        <input
-                            type="range" min="2000" max="12000" step="500"
-                            value={projection.ltcMonthlyCost ?? 5000}
-                            onChange={e => updateProj('ltcMonthlyCost', Number(e.target.value))}
-                            className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-danger-500"
-                        />
-                        <p className="text-tiny text-ink-400 mt-1">CHSLD public ~2000$, RPA semi-privé ~4500$, soins privés à domicile 8000-12000$.</p>
+                    {/* [EP-1] Événements de vie aléatoires : 10 toggles cachés derrière un bouton. */}
+                    <div className="pt-2 border-t border-white/10">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <h4 className="text-tiny uppercase text-ink-400 flex items-center gap-1.5">
+                                <Icon name="wind" size={14} /> Événements de vie aléatoires
+                            </h4>
+                            {!showStochastic && (
+                                <Button onClick={() => setShowStochastic(true)} variant="ghost" size="sm"
+                                    title="Perte d'emploi, divorce, invalidité, soins de longue durée, héritage… (Monte Carlo)">
+                                    Activer des aléas… ({STOCHASTIC_TOGGLES.length})
+                                </Button>
+                            )}
+                        </div>
+                        {showStochastic && (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
+                                {STOCHASTIC_TOGGLES.map(({ key, label, title }) => {
+                                    const isOn = !!projAsMap[key];
+                                    return (
+                                        <Button
+                                            key={key}
+                                            onClick={() => updateProj(key as keyof ProjectionConfig, !isOn)}
+                                            variant={isOn ? 'primary' : 'ghost'}
+                                            size="sm"
+                                            title={title}
+                                            fullWidth
+                                        >
+                                            {label} {isOn ? 'ON' : 'OFF'}
+                                        </Button>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
-                )}
+
+                    {projection.ltcEnabled && (
+                        <div className="mt-3 p-3 rounded-card border border-danger-border bg-danger-bg">
+                            <label className="flex justify-between text-meta text-ink-300 mb-1">
+                                <span>Coût mensuel soins ($/mois)</span>
+                                <span className="text-danger-400 font-bold">{projection.ltcMonthlyCost ?? 5000}$</span>
+                            </label>
+                            <input
+                                type="range" min="2000" max="12000" step="500"
+                                value={projection.ltcMonthlyCost ?? 5000}
+                                onChange={e => updateProj('ltcMonthlyCost', Number(e.target.value))}
+                                className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-danger-500"
+                            />
+                            <p className="text-tiny text-ink-400 mt-1">CHSLD public ~2000$, RPA semi-privé ~4500$, soins privés à domicile 8000-12000$.</p>
+                        </div>
+                    )}
+                </div>
             </CollapsibleSection>
 
-            {/* §4 — Paramètres avancés (FERMÉE par défaut) */}
+            {/* §3 — Paramètres avancés (FERMÉE par défaut) */}
             <CollapsibleSection
                 title="Paramètres avancés"
                 icon={<Icon name="settings" size={20} />}

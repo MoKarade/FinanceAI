@@ -135,6 +135,9 @@
   l'accordéon clavier → rendre pilotable au clavier.
 - [ ] **[D6-GRAPH]** Graphes sans alternative textuelle : table de données masquée / bouton « voir
   les données » sous chaque graphe (a11y).
+- [ ] **[D6-HEADING]** `CollapsibleSection` émet son titre dans un `<div className="text-h2">` (pas
+  un `<hN>`) → saut h1→h4 dans plusieurs onglets (sous-titres `<h4>`). Ajouter une prop `headingLevel`
+  pour un vrai outline (h2/h3). Touche tout le codebase (a11y-auditor 2026-06-09).
 
 ## 🚀 [CIX] Couple/Individuel « 1000× » — grande initiative ⏳ (surtout ouverte)
 > Fait : impôt par conjoint (revenu A1 + crédits B-AUDIT-3). Reste tout le reste.

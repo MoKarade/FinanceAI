@@ -304,3 +304,50 @@ describe('FA-3 (audit 2026-06-09) : SRG exposé (gis) + test de réduction sur l
         expect(reductionRealM240).toBeCloseTo(reductionRealM0, 0);
     });
 });
+
+// ──────────────────────────────────────────────────────────────────────────
+// FA-9 (audit 2026-06-09) : SRG indexé UNE seule fois (jamais ×1,02^Δ dedans
+// PUIS ×inflFactor dehors — le max était surévalué ~49 % à 20 ans).
+// ──────────────────────────────────────────────────────────────────────────
+describe('FA-9 — SRG : indexation simple (base réelle + nominalisation unique)', () => {
+    // Revenu test NUL (RRQ explicitement 0, pas de DB, pas de revenu décalé)
+    // → SRG = max du barème, là où la double indexation est maximale.
+    const zeroIncomeGoal: RetirementGoal = {
+        ...baseGoal,
+        rrqEstimateMonthly: 0,
+        psvEstimateMonthly: 700,
+        dbPensionMonthly: 0,
+    };
+    const fullResidency = { ...baseCtx, psvResidencyYears: [40] };
+
+    it('m=0 : SRG max = barème 2026 de base (1 105 $/mois célibataire)', () => {
+        const r = computeRetirementIncome(fullResidency, zeroIncomeGoal, [baseUser]);
+        expect(r.gis).toBeCloseTo(1105, 0);
+    });
+
+    it('m=240 (20 ans, infl 2 %) : SRG max nominal = 1105 × 1,02^20 — PAS ×1,02^40', () => {
+        const r = computeRetirementIncome({ ...fullResidency, m: 240, age: 85 }, zeroIncomeGoal, [baseUser]);
+        const singleIndexed = 1105 * Math.pow(1.02, 20);   // ≈ 1 642 $/mois (attendu)
+        const doubleIndexed = 1105 * Math.pow(1.02, 40);   // ≈ 2 440 $/mois (le bug)
+        expect(r.gis).toBeCloseTo(singleIndexed, 0);
+        expect(r.gis).toBeLessThan(doubleIndexed * 0.75);
+    });
+
+    it('m=240 : le SRG en RÉEL (déflaté) est constant — pas de dérive du barème vs l\'inflation', () => {
+        const r0 = computeRetirementIncome(fullResidency, zeroIncomeGoal, [baseUser]);
+        const r240 = computeRetirementIncome({ ...fullResidency, m: 240, age: 85 }, zeroIncomeGoal, [baseUser]);
+        expect(r240.gis / Math.pow(1.02, 20)).toBeCloseTo(r0.gis, 0);
+    });
+
+    it('seuil de coupure en base réelle : ≥ 22 512 $ réels coupent le SRG à m=240 aussi', () => {
+        // Avant FA-9 le seuil était indexé ×1,02^20 (nominal) face à un revenu test réel →
+        // un revenu réel AU seuil de base gardait du SRG fictif à m=240 (≈ 1 046 $/mois).
+        // Marge +100 $ réels : la propriété testée (« le seuil réel coupe ») n'exige pas la
+        // frontière exacte, et le round-trip ×1,02^20/1,02^20 est sensible à 1 ulp (revue FA-9).
+        const aboveThreshold = computeRetirementIncome(
+            { ...fullResidency, m: 240, age: 85, otherIncomeAnnualLaggedNominal: (22512 + 100) * Math.pow(1.02, 20) },
+            zeroIncomeGoal, [baseUser],
+        );
+        expect(aboveThreshold.gis).toBe(0);
+    });
+});

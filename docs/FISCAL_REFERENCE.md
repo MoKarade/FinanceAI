@@ -220,6 +220,16 @@ pour minimiser l'impôt combiné (élection optionnelle).
 > simulation sans historique (assiette RRQ+DB seule, optimiste, borné à 12 mois) ; le salaire de
 > l'année précédant la retraite n'est pas compté ; janvier de l'année Y teste l'assiette Y-2
 > (décalage d'un mois — le vrai cycle SRG court juillet→juin).
+> **Indexation** (FA-9, 2026-06-10) : le moteur calcule le SRG **en base réelle 2026** (barème de
+> base ci-dessous contre le revenu test déflaté) puis nominalise UNE fois ×inflation simulée —
+> comme RRQ/PSV. Avant : `calculateGISBenefit(year)` indexait max+seuils ×1,02^Δ PUIS le résultat
+> était re-multiplié ×inflation → max **double-indexé** (surévalué ~49 % à 20 ans, soit ~+6,5 k$/an
+> fictifs **en $ réels 2026, célibataire** ≈ 9,6 k$ nominaux à l'an 20) et seuils nominaux face à
+> un revenu réel (réduction trop clémente). En pratique le barème SRG suit l'IPC trimestriellement :
+> la modélisation « réel + inflation simulée » est l'approximation cohérente du module retraite.
+> Effet de bord assumé (extension FA-3b) : `dbMonthly` quasi-nominal entre dans le revenu test réel
+> → un profil pension DB voit son SRG coupé de plus en plus tôt avec l'horizon (conservateur,
+> amplitude ×1,49 à 20 ans) — déflater la composante DB = candidat FA-8.
 | Paramètre | Célibataire 65+ | Couple (2 reçoivent PSV), par adulte |
 |---|---|---|
 | Maximum mensuel | 1 105 $ | 662 $ |

@@ -4,6 +4,19 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ⚡ BRIEF MARC 2026-06-10 — LE CHANTIER PRIORITAIRE (4 phases)
+> Marc a livré un brief structurant (détail COMPLET dans `BACKLOG.md` § « BRIEF MARC 2026-06-10 ») :
+> **Phase 1** bugs chunk périmé (✅ FAITE — [PH1-a] livré : `lazyWithRetry` sur le dernier `React.lazy`
+> nu + filet global `vite:preloadError` ; analyse Cloudflare livrée, décision Marc = [PH1-b]/Q2) →
+> **Phase 2** clé de voûte (état persistant inter-onglets, projection en Web Worker app-level, source
+> unique Futur=Retraite, verrouillage de courbe + IndexedDB) → **Phase 3** onglet Profil (remplace
+> Config/Profil, regroupe profil+retraite+profil détaillé, % complétion, purge des champs morts) →
+> **Phase 4** refontes par onglet (Futur leviers-d'abord/annotations/plan d'action remonté ;
+> Transactions ; Budget ; Investissement autocomplétion+dividendes ; Retraite).
+> ⚠️ RÈGLES : plan-first OBLIGATOIRE sur Ph. 2/3/et CHAQUE onglet de Ph. 4 ; **JAMAIS passer à la
+> phase suivante sans OK explicite de Marc** ; Q1/Q2 à poser (cf `A_FAIRE_MOI` O6) ; handover à jour
+> après chaque phase.
+>
 > Session 2026-06-10 — **TOP 10 [UI-EPURE] COMPLET + 5 fiscaux MAJEURS + [UI-SCEN]**. Build/tsc/tests verts.
 > - **Épuration UI (EP-1..EP-10)** — 4 PR (#225 EP-1/2, #226 EP-3/4/5, #227 EP-6/7/10, #228 EP-8) :
 >   Futur/Paramètres « Risques & aléas » repliée + Card AI retirée ; Dashboard 5e KPI « Patrimoine projeté »

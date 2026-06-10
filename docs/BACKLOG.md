@@ -22,6 +22,85 @@
 
 ---
 
+## 🧱 BRIEF MARC 2026-06-10 — plan séquencé en 4 phases (PRIORITAIRE)
+> Règles d'exécution (Marc) : **plan-first OBLIGATOIRE** sur les Phases 2, 3 et CHAQUE onglet de la
+> Phase 4 (plan court : UI proposée, fichiers touchés, données nécessaires → validation Marc → code).
+> **Ne JAMAIS passer à la phase suivante sans OK explicite de Marc.** Commits en français.
+> `SESSION_HANDOVER.md` mis à jour après chaque phase.
+> Questions à POSER (ne pas deviner) : **Q1** (avant PH4-FUT) — quoi annoter SUR la courbe
+> (âge retraite ? épuisement d'un compte ? bascule de stratégie ?) · **Q2** (avant toute action
+> Cloudflare) — confirmer que Cloudflare est bien devant Vercel.
+
+### Phase 1 — BUGS (exécution immédiate, sans plan)
+- [x] **[PH1-a]** 🔧 (livré) Erreur prod « Failed to fetch dynamically imported module
+  DashboardEvolutionChart-[hash].js ». Cause code CONFIRMÉE : `Dashboard.tsx:5` était le SEUL
+  `React.lazy` NU du codebase (tous les autres passent par `lazyWithRetry` P1.4 = retry 500 ms +
+  1 reload gardé) → seul chunk sans filet sur hash périmé après deploy. Fix : (1) `lazyWithRetry`
+  appliqué ; (2) filet GLOBAL `vite:preloadError` (`installPreloadErrorReload`, installé dans
+  `index.tsx` avant le render) → couvre aussi les DÉPENDANCES préchargées des imports dynamiques ;
+  un seul reload (flag sessionStorage partagé), storage indispo → pas de reload (anti-boucle), erreur
+  loguée. 3 tests. **Critères ✓** : plus aucun `React.lazy` nu ; reload unique ; ErrorBoundary en
+  dernier recours. Audit cache fait : `vercel.json` DÉJÀ conforme (index.html `no-cache`, `/assets/*`
+  `immutable`) ; `sw.js` DÉJÀ network-first `no-store` sur les navigations (2026-05-22) — rien à changer.
+- [ ] **[PH1-b]** 🧭👤 Cloudflare : analyse livrée à Marc (session 2026-06-10 — voir aussi
+  `A_FAIRE_MOI`). Verdict : [Probable] déclencheurs = deploy pendant session ouverte (chunks Vercel
+  atomiquement supprimés) et/ou redirect Cloudflare Access sur session expirée ; [Peu probable] cache
+  CF d'un index.html périmé (CF ne cache pas le HTML par défaut et respecte le `no-cache` origine —
+  à vérifier : Page Rule « Cache Everything » dans le dashboard CF). NE PAS retirer Cloudflare avant
+  P0-AUTH (gate Google in-app) : c'est l'authentification de l'app. Étapes de retrait + pertes
+  documentées dans `A_FAIRE_MOI`. **Décision Marc requise (Q2).**
+
+### Phase 2 — CLÉ DE VOÛTE ⏳ (plan-first → OK Marc → code) — dépend de : rien (débloque PH4)
+- [ ] **[PH2-a]** 🔧 État applicatif persistant inter-onglets : un onglet déjà chargé ne se
+  réinitialise PAS en naviguant ailleurs puis revenant (Futur surtout : courbe calculée = inchangée
+  au retour). **Critères** : aller-retour Futur→Dashboard→Futur sans recalcul ni reset des contrôles ;
+  pareil pour les sous-onglets de Futur.
+- [ ] **[PH2-b]** 🔧 Projection dans un **Web Worker app-level** : le calcul survit aux changements
+  de page/onglet et reprend où il en était au retour. **Critères** : lancer un calcul MC, changer
+  d'onglet, revenir → progression conservée (pas de restart) ; UI jamais bloquée. Panel
+  `projection-validator` + `performance-optimizer` OBLIGATOIRE.
+- [ ] **[PH2-c]** 🔧 Source UNIQUE de la courbe : Futur et Retraite lisent le MÊME résultat
+  (`lastProjection`) ; modifier les params dans Futur met à jour Retraite. **Critères** : même
+  série de points dans les deux onglets (assertion de test), zéro recalcul parallèle divergent.
+- [ ] **[PH2-d]** 🔧 Verrouillage + persistance **IndexedDB** : une courbe choisie et VERROUILLÉE
+  se retrouve IDENTIQUE à chaque réouverture de l'app, jusqu'à déverrouillage. **Critères** :
+  reload + réouverture → mêmes points sans recalcul ; déverrouiller → recalcul possible.
+  **Dépendance** : s'appuie sur l'infra IndexedDB existante (backups chiffrés) ou P0-IDB ;
+  ⚠️ vigilance migration persist v7.
+
+### Phase 3 — MODÈLE DE DONNÉES + ONGLET PROFIL ⏳ (plan-first) — dépend de : OK Marc post-PH2
+- [ ] **[PH3-a]** 🔧 Nouvel onglet **Profil** remplaçant ENTIÈREMENT le Profil de Configuration :
+  regroupe profil + utilisateur + paramètres de retraite + **profil détaillé** (actuellement dans
+  Retraite). **Critères** : plus aucun champ profil dans Configuration ni Retraite ; zéro perte de
+  données (mêmes clés store).
+- [ ] **[PH3-b]** 🔧 Complétude : afficher QUELLE info manque pour QUEL onglet + % de complétion.
+  **Critères** : chaque champ manquant pointe l'onglet qui en a besoin ; % global visible.
+- [ ] **[PH3-c]** 🔧 Profil détaillé : AUDIT du code pour ne garder QUE les champs réellement
+  consommés par l'app — supprimer le reste (champs + types + store + UI). **Critères** : chaque
+  champ conservé a ≥ 1 consommateur prouvé (grep consigné dans la PR) ; migration store propre.
+- [ ] **[PH3-d]** 🔧 « Paramètres de vie » retirés de Retraite → déplacés dans Profil. **Critères** :
+  Retraite n'a plus de section vie ; valeurs préservées.
+
+### Phase 4 — REFONTES ⏳ (UN plan SÉPARÉ par onglet → OK Marc par onglet) — dépend de : PH2 (+PH3 pour FUT/RET)
+- [ ] **[PH4-FUT]** 🔧⏳ Refonte **Futur** : leviers OBLIGATOIRES avant calcul (l'actuel contenu
+  d'Optimisation remonte en amont) ; la courbe affichée = toujours la MEILLEURE selon les leviers ;
+  après calcul, choix parmi les courbes retenues puis VERROUILLAGE (PH2-d) ; stratégie de retrait
+  AUTO (retirée des paramètres) ; spécificités de la stratégie optimale en langage « qu'un enfant
+  comprenne » + ANNOTÉES sur la courbe (**Q1 à poser avant de coder**) ; onglet Paramètres revu
+  (moins de texte, previews d'effet, RENOMMÉ) ; « Robustesse » = levier du calcul de départ (retirée
+  d'Optimisation) ; stress tests déplacés dans Paramètres ; Optimisation visible seulement à la 1re
+  ouverture puis dépliable ; BEAUCOUP plus de leviers, calcul accéléré mais représentatif ; conseils
+  du plan d'action REMONTÉS (pas enterrés en bas), clarifiés, déclinés mois/trimestre/semestre/année.
+- [ ] **[PH4-TX]** 🔧 Refonte **Transactions** : tri par montant/catégorie/date + refonte complète
+  (onglet vieux et peu utile).
+- [ ] **[PH4-BUD]** 🔧 Refonte **Budget** complète.
+- [ ] **[PH4-INV]** 🔧 Refonte **Investissement** : autocomplétion à la frappe pour chercher une
+  action (Finnhub symbol search) ; saisie d'actions facilitée ; VÉRIFIER l'allocation sur données
+  réelles (bug constaté sur données test) ; afficher les dividendes perçus ; refonte plus explicite,
+  plus simple, moins de pages, plus d'explications sans excès de texte.
+- [ ] **[PH4-RET]** 🔧 Refonte **Retraite** : courbes identiques à Futur (acquis via PH2-c) ;
+  refonte plus efficace/utile/lisible.
+
 ## 🚨 P0 — Bloquant pour un vrai produit multi-utilisateurs
 - [ ] **[P0-PROXY]** 🔧 Proxy backend pour la clé Anthropic (H3) : `services/claude.ts` utilise
   `dangerouslyAllowBrowser` (clé exposée navigateur — OK solo, inacceptable pour des tiers).

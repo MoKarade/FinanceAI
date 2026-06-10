@@ -12,6 +12,29 @@
   bascule sur le **gate Google in-app** (ADR 010) pour ouvrir à d'autres utilisateurs.
   Claude guide ; la désactivation Cloudflare est une action Marc (dashboard CF).
 
+## O6 — Questions du brief 2026-06-10 (réponses requises, Claude ne devine pas)
+- [ ] **Q2 (Phase 1 / Cloudflare)** : confirmer que le domaine prod passe bien par le proxy
+  Cloudflare (nuage ORANGE dans le dashboard DNS) devant Vercel, et vérifier s'il existe une
+  **Page Rule / Cache Rule « Cache Everything »** (c'est le seul cas où CF servirait un
+  index.html périmé — par défaut CF ne cache pas le HTML et respecte le `no-cache` d'origine).
+- [ ] **Analyse Cloudflare (PH1-b)** — est-il la cause du « Failed to fetch dynamically imported
+  module » ? [Probable] déclencheurs réels : (a) deploy Vercel pendant une session ouverte (les
+  anciens chunks hashés disparaissent atomiquement) ; (b) **Cloudflare Access** : session expirée →
+  la requête du chunk `.js` reçoit un 302 vers la page de login HTML → import échoué même si le
+  chunk existe. [Peu probable] cache CF d'un index périmé (cf Q2). Le vrai bug CÔTÉ APP (le seul
+  chunk sans filet de retry/reload) est corrigé (PH1-a).
+  **Retirer Cloudflare proprement — étapes** (NE RIEN faire avant ton feu vert ET P0-AUTH livré) :
+  1. Livrer + valider le gate Google in-app (`VITE_GOOGLE_GATE`, ADR 010) — sinon l'app devient PUBLIQUE ;
+  2. Cloudflare Zero Trust → Access → supprimer l'application/policy FinanceAI ;
+  3. DNS : passer l'enregistrement du domaine en « DNS only » (nuage gris) ou migrer vers Vercel DNS ;
+  4. (si tu retires aussi Web Analytics CF) enlever `static.cloudflareinsights.com` de la CSP
+     (`vercel.json` + `index.html`).
+  **Ce que tu perds** : l'auth devant l'app (CRITIQUE — d'où le pré-requis P0-AUTH), WAF/anti-bot/
+  DDoS Cloudflare, Web Analytics CF. TLS/CDN restent assurés par Vercel.
+- [ ] **Q1 (Phase 4 / Futur — à répondre avant que Claude code PH4-FUT)** : qu'est-ce que tu veux
+  voir ANNOTÉ sur la courbe ? (âge de retraite ? épuisement d'un compte ? bascule de stratégie ?
+  début RRQ/PSV ? autre ?)
+
 ## O2 — Connecteur MCP : héberger le `.mcpb` (1 clic)
 Le code est prêt et déployé ; il manque l'hébergement du bundle (Marc avait signalé
 « le fichier mcp arrive pas à télécharger » — cause : `.mcpb` jamais hébergé).

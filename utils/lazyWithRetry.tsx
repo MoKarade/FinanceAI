@@ -73,3 +73,31 @@ export function clearChunkReloadFlag(): void {
         sessionStorage.removeItem(RELOAD_FLAG_KEY);
     }
 }
+
+/**
+ * PH1-a — filet global `vite:preloadError`. Vite émet cet événement quand le preload
+ * d'une dépendance d'un import dynamique échoue (deploy entre deux navigations → hash
+ * périmé, ou redirection Cloudflare Access sur session expirée). lazyWithRetry ne voit
+ * que l'échec du module RACINE du chunk ; ses dépendances préchargées passent par ici.
+ * Même stratégie : UN reload (flag sessionStorage partagé), sinon on laisse l'erreur
+ * remonter à l'ErrorBoundary. À installer une fois au boot (index.tsx), avant le render.
+ */
+export function installPreloadErrorReload(): void {
+    if (typeof window === 'undefined') return;
+    window.addEventListener('vite:preloadError', (event) => {
+        try {
+            if (sessionStorage.getItem(RELOAD_FLAG_KEY)) return; // déjà tenté → laisser remonter
+            sessionStorage.setItem(RELOAD_FLAG_KEY, '1');
+        } catch {
+            return; // storage indisponible : ne PAS reload (aucune garde anti-boucle possible)
+        }
+        logError({
+            source: 'ui',
+            severity: 'warning',
+            message: 'vite:preloadError — chunk périmé ou bloqué, rechargement',
+            error: (event as Event & { payload?: unknown }).payload,
+        });
+        event.preventDefault(); // empêche Vite de re-throw (la page se recharge)
+        window.location.reload();
+    });
+}

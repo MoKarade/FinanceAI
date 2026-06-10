@@ -3,6 +3,12 @@ import './i18n';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { LoginGate } from './components/auth/LoginGate';
+import { installPreloadErrorReload } from './utils/lazyWithRetry';
+
+// PH1-a — filet anti « Failed to fetch dynamically imported module » : un chunk périmé
+// (deploy pendant la session) ou bloqué (redirect d'auth) déclenche UN reload au lieu
+// de casser l'onglet. Installé avant le render pour couvrir le tout premier preload.
+installPreloadErrorReload();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

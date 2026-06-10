@@ -97,7 +97,6 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                             debts={state.debts}
                             config={state.config}
                             apiKey={state.apiKeys.anthropic}
-                            calculatedMonthlySavings={calculatedMonthlySavings}
                             onNavigate={setActiveTab}
                             isPrivacyMode={isPrivacyMode}
                         />

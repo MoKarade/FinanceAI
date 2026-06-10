@@ -61,8 +61,12 @@ Doc détaillée dans `docs/`, qui fait foi.
   à l'état local après une reprise. Avant tout commit/push : `git fetch origin main` puis vérifier
   `git merge-base --is-ancestor origin/main HEAD`. Divergence → reset sur `origin/main` + ré-appliquer
   le diff proprement (jamais de merge de branches divergées). **Origin = seule source de vérité.**
-- **CI qui ne se déclenche pas** sur une PR = symptôme n°1 d'une branche divergée → re-baser, force-push
-  (`--force-with-lease`), la CI repart.
+- **CI qui ne se déclenche pas** sur une PR = symptôme n°1 d'une branche divergée → re-baser, la CI repart.
+  ⚠️ **Le force-push est BLOQUÉ par les règles du repo** : recovery SANS force =
+  `git checkout -B <branche> origin/<branche>` + `git merge origin/main` (arbres identiques après un
+  squash-merge → fusion propre) + ré-appliquer le diff → `git push` en fast-forward. Pareil après CHAQUE
+  squash-merge d'un lot : la branche diverge de `main` (le squash crée 1 commit absent de la branche) →
+  merger `origin/main` AVANT le lot suivant, sinon la PR ré-affiche les commits déjà mergés.
 - **E2E rouge** : lire le log AVANT de débugger — si l'échec est infra (install navigateurs, apt mirror),
   `rerun_failed_jobs` une fois ; n'investiguer que si ça re-échoue.
 - **`npm install` après reprise** (le conteneur peut perdre `node_modules` — symptôme : tsc casse sur

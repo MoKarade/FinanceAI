@@ -16,8 +16,6 @@ import { PageHeader } from './ui/PageHeader';
 import { Icon, type IconName } from './ui/Icon';
 import { Pill } from './ui/Pill';
 import { Badge } from './ui/Badge';
-import { KPIStat } from './ui/KPIStat';
-import { StatGrid } from './ui/StatGrid';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { Skeleton } from './ui/Skeleton';
 import { MarketDataPoint } from '../services/finance';
@@ -27,6 +25,7 @@ import { ASSET_META } from '../services/assetMeta';
 import { DividendPanel } from './investments/DividendPanel';
 import { formatCAD } from '../utils/format';
 import { ProjectionRequired } from './ui/ProjectionRequired';
+import { logError } from '../services/errorLogger';
 import { getRebalanceJustifications, type RebalanceActionInput } from '../services/claude';
 import { AddStockForm } from './investments/AddStockForm';
 import { showToast } from './ui/Toast';
@@ -124,21 +123,39 @@ export const Investments: React.FC<InvestmentsProps> = ({
     const lastProjection = useFinanceStore(s => s.lastProjection);
     const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
     const projectionHorizonYears = projection.years || 30;
-    const horizonSnapshot = useMemo(() => {
-        if (!lastProjection?.chartData?.length) return null;
+    const horizonData = useMemo(() => {
+        if (!lastProjection?.chartData?.length) return { snapshot: null, corrupt: false };
         const targetMonth = projectionHorizonYears * 12;
         const point = lastProjection.chartData.find(p => p.monthIndex === targetMonth)
             ?? lastProjection.chartData[lastProjection.chartData.length - 1];
-        if (!point) return null;
+        if (!point) return { snapshot: null, corrupt: false };
+        // [EP-5] détail par compte retiré → on ne garde que year + netWorth.
+        // no-silent-failure : un NetWorth non fini (NaN/±Inf) = point corrompu → snapshot null
+        // (→ <ProjectionRequired> déjà câblé) au lieu d'un « 0 $ » / « — » muet. Flag `corrupt`
+        // (présent-mais-invalide) → log via effet ; absence pure = repli muet légitime.
+        const nw = point.NetWorth;
+        if (typeof nw !== 'number' || !Number.isFinite(nw)) {
+            return { snapshot: null, corrupt: nw != null };
+        }
         return {
-            year: point.year ?? new Date().getFullYear() + projectionHorizonYears,
-            celi: point.CELI ?? 0,
-            reer: point.REER ?? 0,
-            nonReg: point.NonReg ?? 0,
-            crypto: point.Crypto ?? 0,
-            netWorth: point.NetWorth ?? 0,
+            snapshot: {
+                year: point.year ?? new Date().getFullYear() + projectionHorizonYears,
+                netWorth: nw,
+            },
+            corrupt: false,
         };
     }, [lastProjection, projectionHorizonYears]);
+    const horizonSnapshot = horizonData.snapshot;
+
+    useEffect(() => {
+        if (horizonData.corrupt) {
+            logError({
+                source: 'projection',
+                severity: 'warning',
+                message: 'Investments horizonSnapshot : NetWorth non fini au point horizon (projection corrompue)',
+            });
+        }
+    }, [horizonData.corrupt]);
 
     const [targetModel, setTargetModelLocal] = useState(() => {
         const pcts = projection?.investmentTargetPcts;
@@ -196,7 +213,6 @@ export const Investments: React.FC<InvestmentsProps> = ({
         healthScore,
         portfolioTrend,
         benchmarkTrend,
-        indexWeight
     } = useMemo(() => {
         if (marketData.length === 0) {
             // Bug fix test-mode : si pas de CSV historique, construire
@@ -231,7 +247,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 sectorBreakdown: sectorData,
                 dividendCalendar: [], totalAnnualDividends: 0,
                 availableSeriesWithTrend: [],
-                healthScore: 0, portfolioTrend: 0, benchmarkTrend: 0, indexWeight: 0,
+                healthScore: 0, portfolioTrend: 0, benchmarkTrend: 0,
             };
         }
 
@@ -394,7 +410,6 @@ export const Investments: React.FC<InvestmentsProps> = ({
             healthScore,
             portfolioTrend,
             benchmarkTrend,
-            indexWeight
         };
     }, [marketData, assets]);
 
@@ -512,96 +527,46 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 />
             </div>
 
-            {/* Hero: Score de santé (donut) + Performance vs Marché */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="md:col-span-1 flex flex-col justify-center items-center py-6">
-                    <div className="kpi-label mb-2">Score de Santé</div>
-                    <div className="relative flex items-center justify-center w-28 h-28 mb-2">
-                        <svg className="absolute w-full h-full transform -rotate-90">
-                            <circle cx="56" cy="56" r="48" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-white/5" />
-                            <circle cx="56" cy="56" r="48" stroke="currentColor" strokeWidth="8" fill="transparent"
-                                strokeDasharray="301.6"
-                                strokeDashoffset={301.6 - (301.6 * healthScore) / 100}
-                                className={`transition-all duration-1000 ${healthScore >= 80 ? 'text-success-500' : healthScore >= 50 ? 'text-warning-500' : 'text-danger-500'}`}
-                            />
-                        </svg>
-                        <div className="text-display text-ink-50">{healthScore}</div>
-                    </div>
-                    <div className="text-meta text-ink-400 text-center px-4">
-                        {indexWeight.toFixed(0)}% safe · tendance vs marché
-                    </div>
-                </Card>
-
-                <Card className="md:col-span-2 flex flex-col justify-center" title="Performance (24h)">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="card-subtle p-4 flex flex-col items-center justify-center">
-                            <div className="kpi-label mb-1">Votre Portefeuille</div>
-                            <div className={`text-kpi tabular-nums ${portfolioTrend >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                {portfolioTrend > 0 ? '+' : ''}{portfolioTrend.toFixed(2)}%
-                            </div>
-                        </div>
-                        <div className="card-subtle p-4 flex flex-col items-center justify-center">
-                            <div className="kpi-label mb-1">Marché (CW8 / MSCI)</div>
-                            <div className={`text-kpi tabular-nums ${benchmarkTrend >= 0 ? 'text-info-400' : 'text-danger-400'}`}>
-                                {benchmarkTrend > 0 ? '+' : ''}{benchmarkTrend.toFixed(2)}%
-                            </div>
+            {/* [EP-4] Donut « Score de Santé » retiré : il dupliquait le badge header « Santé X/100 ».
+                Reste la performance 24h (portefeuille vs marché), non affichée ailleurs. */}
+            <Card title="Performance (24h)">
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="card-subtle p-4 flex flex-col items-center justify-center">
+                        <div className="kpi-label mb-1">Votre Portefeuille</div>
+                        <div className={`text-kpi tabular-nums ${portfolioTrend >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                            {portfolioTrend > 0 ? '+' : ''}{portfolioTrend.toFixed(2)}%
                         </div>
                     </div>
-                </Card>
-            </div>
+                    <div className="card-subtle p-4 flex flex-col items-center justify-center">
+                        <div className="kpi-label mb-1">Marché (CW8 / MSCI)</div>
+                        <div className={`text-kpi tabular-nums ${benchmarkTrend >= 0 ? 'text-info-400' : 'text-danger-400'}`}>
+                            {benchmarkTrend > 0 ? '+' : ''}{benchmarkTrend.toFixed(2)}%
+                        </div>
+                    </div>
+                </div>
+            </Card>
 
             {/* 0.5 PROJECTION RETRAITE — Phase E.3 overview only */}
             {subTab === 'overview' && !horizonSnapshot && (
                 <ProjectionRequired feature="Le portefeuille projeté à l'horizon retraite" />
             )}
+            {/* [EP-5] Détail projeté PAR COMPTE retiré (duplique l'onglet Futur) : on garde le
+                patrimoine net projeté à l'horizon + un lien vers le détail dans Futur. */}
             {subTab === 'overview' && horizonSnapshot && (
-                <Card title={`Portefeuille projeté en ${horizonSnapshot.year} (${projectionHorizonYears} ans)`} className="bg-white/[0.03] border-white/10">
-                    <StatGrid cols={horizonSnapshot.crypto > 0 ? 5 : 4}>
-                        <KPIStat
-                            label="CELI"
-                            icon={<Icon name="sprout" size={16} />}
-                            value={formatCAD(horizonSnapshot.celi)}
-                            privacy
-                            variant="success"
-                        />
-                        <KPIStat
-                            label="REER"
-                            icon={<Icon name="bank" size={16} />}
-                            value={formatCAD(horizonSnapshot.reer)}
-                            privacy
-                            variant="primary"
-                        />
-                        <KPIStat
-                            label="Non-Enreg"
-                            icon={<Icon name="chart" size={16} />}
-                            value={formatCAD(horizonSnapshot.nonReg)}
-                            privacy
-                            variant="warning"
-                        />
-                        {horizonSnapshot.crypto > 0 && (
-                            <KPIStat
-                                label="Crypto"
-                                icon={<Icon name="bitcoin" size={16} />}
-                                value={formatCAD(horizonSnapshot.crypto)}
-                                privacy
-                                variant="danger"
-                            />
-                        )}
-                        <KPIStat
-                            label="Patrimoine Net"
-                            icon={<Icon name="portfolio" size={16} />}
-                            value={formatCAD(horizonSnapshot.netWorth)}
-                            privacy
-                            variant="info"
-                        />
-                    </StatGrid>
-                    <button
-                        type="button"
-                        onClick={() => navigateWithFocus(TabEnum.FUTURE)}
-                        className="text-tiny text-info-400 mt-3 hover:underline font-bold focus-ring rounded inline-flex items-center gap-1"
-                    >
-                        Synchronisé avec FutureProjection — ouvrir →
-                    </button>
+                <Card className="bg-white/[0.03] border-white/10">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div>
+                            <div className="kpi-label">Patrimoine net projeté en {horizonSnapshot.year} ({projectionHorizonYears} ans)</div>
+                            <div className="text-kpi text-ink-50 privacy-blur tabular-nums">{formatCAD(horizonSnapshot.netWorth)}</div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => navigateWithFocus(TabEnum.FUTURE)}
+                            className="text-tiny text-info-400 hover:underline font-bold focus-ring rounded inline-flex items-center gap-1"
+                        >
+                            Détail par compte dans Futur →
+                        </button>
+                    </div>
                 </Card>
             )}
 

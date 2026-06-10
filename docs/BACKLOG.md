@@ -73,10 +73,12 @@
   borné au cap) · cap clawback ignore prorata résidence/`psvEstimateMonthly`/bonus 75+ (clawback fantôme
   possible pour immigrant 10/40) · assiette FSS inclut la PSV (l'Annexe F la déduit — à sourcer) ·
   lagged SRG déflaté du facteur du mois courant (~1 an d'écart, SRG légèrement surévalué).
-- [ ] **[FA-9]** 🔧 **Double indexation du SRG** (pré-existant, exposé par FA-3) : le revenu test est
-  en base RÉELLE mais `calculateGISBenefit` indexe seuils ET maximum ×1,02^Δ, puis le SRG est
-  re-multiplié ×inflFactor → max SRG surévalué ~49 % à 20 ans (~+6,5 k$/an fictifs). Correctif :
-  tout en base réelle (seuils de base, sans `year`) ou tout nominal — aligner sur le clawback PSV.
+- [x] **[FA-9]** 🔧 (livré) **Double indexation du SRG** corrigée : `calculateGISBenefit` appelé
+  SANS `year` (barème 2026 de base = base réelle, comme RRQ/PSV) contre le revenu test réel, puis
+  nominalisation UNIQUE ×inflFactor. Avant : max+seuils ×1,02^Δ dedans PUIS ×inflFactor dehors →
+  max surévalué ~49 % à 20 ans (~+6,5 k$/an fictifs) + seuils nominaux face à revenu réel.
+  4 tests anti-régression (max simple-indexé, réel constant, seuil de coupure réel) +
+  FISCAL_REFERENCE §6.3 note d'indexation. L'util garde son param `year` (usages nominaux hors moteur).
 - [ ] **[FA-10]** 🔧 Clawback PSV/impôt par conjoint en **survivorMode** : A1 (impôt décembre)
   répartit encore le revenu du survivant sur 2 têtes (latent pré-existant ; le clawback FA-2 est
   corrigé via `oasBeneficiaries`). Étendre le même traitement à l'impôt par conjoint + tests.

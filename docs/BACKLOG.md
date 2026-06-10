@@ -128,12 +128,11 @@
   (sous-rapport pour les consommateurs « source unique ») ; (c) `_label` mort sur la closure
   handleNonRegSale (suggère un log inexistant) ; (d) commentaire trompeur portfolioOps.ts:25
   (« Pertes → bank » : branche inatteignable, cap min(1,…) — documenté en §3). (S)
-- [ ] **[PV-7]** 🔧 Ventes de CRYPTO sans banque de pertes (découverte PV-2, 2 sites) : la cascade de
-  shortfall (`cashflowAllocation.ts:260`) ET le goal-mutator (`projection.ts` `withdrawFromAccount
-  CRYPTO`) ajoutent le gain crypto BRUT à `accCapitalGainsYear` sans consommer `capitalLossBank`,
-  et les PERTES crypto sont JETÉES (jamais banquées). Conservateur mais incohérent avec
-  handleNonRegSale — router par la même logique. Aussi : tester le câblage caller du levier
-  gainHarvesting (les 3 lignes net/banque/ACB ne sont couvertes par aucun test moteur). (S)
+- [x] **[PV-7]** 🔧 (livré) Ventes de CRYPTO via `handleCryptoSale` (miroir de handleNonRegSale) :
+  gain proportionnel + banque de pertes (LIR 111(1)(b)) + pertes banquées, aux 2 sites de vente en vie
+  (cascade de shortfall `cashflowAllocation.ts`, goal-mutator `projection.ts`). Avant : gain BRUT
+  (banque ignorée) et pertes JETÉES. 5 tests unitaires. (Estate latent : NonReg ET crypto ignorent la
+  banque symétriquement — hors scope.) Reste le câblage caller de gainHarvesting non testé (cf PV-11).
 - [ ] **[PV-8]** 🔧 TLH fabrique des pertes SANS regarder l'ACB (`taxDecember.ts:107-112` :
   `harvestedLoss = fakeSell × dropRate`) : avec un gros gain latent, une vraie vente en année
   négative réaliserait un GAIN — banque surévaluée. PV-2 AMPLIFIE l'impact (chaque $ de perte

@@ -67,3 +67,72 @@ describe('handleNonRegSale — bornes & solde', () => {
         expect(s.accCapitalGainsYear).toBe(0); // ni gain
     });
 });
+
+// ──────────────────────────────────────────────────────────────────────────
+// [PV-7] handleCryptoSale — MÊME logique que NonReg (gain proportionnel +
+// banque de pertes). Avant, les 3 sites de vente crypto ignoraient la banque
+// et JETAIENT les pertes (accCapitalGainsYear += Math.max(0, gain)).
+// ──────────────────────────────────────────────────────────────────────────
+import { handleCryptoSale, type CryptoSaleState } from '../../services/projection/portfolioOps';
+
+const makeCrypto = (o: Partial<CryptoSaleState> = {}): CryptoSaleState => ({
+    crypto: 10000, cryptoACB: 4000, capitalLossBank: 0, accCapitalGainsYear: 0, ...o,
+});
+
+describe('[PV-7] handleCryptoSale — gain en capital + banque de pertes', () => {
+    it('vente partielle : gain proportionnel à l\'ACB', () => {
+        const s = makeCrypto({ crypto: 10000, cryptoACB: 4000 });
+        const sold = handleCryptoSale(s, 5000);
+        // proportion = 0.4 → costBasis 2000 → gain 3000
+        expect(sold).toBe(5000);
+        expect(s.crypto).toBe(5000);
+        expect(s.cryptoACB).toBe(2000);
+        expect(s.accCapitalGainsYear).toBe(3000);
+    });
+
+    it('la banque de pertes COMPENSE le gain (n\'est plus ignorée)', () => {
+        // Avant PV-7 : gain 3000 imposé en entier (banque ignorée). Maintenant : compensé.
+        const s = makeCrypto({ crypto: 10000, cryptoACB: 4000, capitalLossBank: 2000 });
+        handleCryptoSale(s, 5000); // gain brut 3000
+        expect(s.accCapitalGainsYear).toBe(1000); // 3000 − 2000 compensés
+        expect(s.capitalLossBank).toBe(0);
+    });
+
+    it('ACB ≥ valeur : aucune perte réalisée (cap proportion=1 → rawGain≥0)', () => {
+        // Comportement pinné, identique à NonReg : le cap min(1, ACB/valeur) rend rawGain ≥ 0,
+        // donc la branche « perte → banque » est inatteignable à la VENTE (la perte latente est
+        // différée via l'ACB résiduel). La banque ne s'alimente que par le TLH explicite.
+        const s = makeCrypto({ crypto: 10000, cryptoACB: 16000, capitalLossBank: 0 });
+        handleCryptoSale(s, 5000);
+        expect(s.accCapitalGainsYear).toBe(0);
+        expect(s.capitalLossBank).toBe(0);
+    });
+
+    it('ÉQUIVALENCE stricte avec handleNonRegSale (même état → mêmes mutations)', () => {
+        // handleCryptoSale doit être le miroir byte-pour-byte de handleNonRegSale (gain
+        // proportionnel + consommation de banque). Prouvé sur un état numérique commun avec
+        // banque partielle : gain brut 3000, banque 1500 → 1500 imposable, banque vidée.
+        const cs = makeCrypto({ crypto: 10000, cryptoACB: 4000, capitalLossBank: 1500 });
+        const ns = { nonReg: 10000, nonRegACB: 4000, capitalLossBank: 1500, accCapitalGainsYear: 0 };
+        const soldC = handleCryptoSale(cs, 5000);
+        const soldN = handleNonRegSale(ns, 5000);
+        expect(soldC).toBe(soldN);
+        expect(cs.accCapitalGainsYear).toBe(ns.accCapitalGainsYear);
+        expect(cs.capitalLossBank).toBe(ns.capitalLossBank);
+        expect(cs.cryptoACB).toBe(ns.nonRegACB);
+    });
+
+    it('solde insuffisant : vend ce qui reste, sans planter', () => {
+        const s = makeCrypto({ crypto: 3000, cryptoACB: 1000 });
+        const sold = handleCryptoSale(s, 9999);
+        expect(sold).toBe(3000);
+        expect(s.crypto).toBe(0);
+        expect(s.accCapitalGainsYear).toBe(2000); // gain = 3000 − 1000
+    });
+
+    it('crypto = 0 : no-op', () => {
+        const s = makeCrypto({ crypto: 0, cryptoACB: 0 });
+        expect(handleCryptoSale(s, 5000)).toBe(0);
+        expect(s.accCapitalGainsYear).toBe(0);
+    });
+});

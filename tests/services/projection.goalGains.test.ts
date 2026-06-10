@@ -130,3 +130,50 @@ describe('[PV-10] Retrait d\'objectif NON-ENREG — gain en capital réalisé et
         expect(delta).toBeLessThan(25_000);
     });
 });
+
+// [PV-7] Variante CRYPTO : un retrait d'objectif ciblant CRYPTO exerce handleCryptoSaleLocal
+// de bout en bout (chemin non couvert par les personas — filet d'intégration, revue PV-7).
+const GOAL_CRYPTO: FinancialGoal = {
+    id: 'fg-c', name: 'Sortie crypto', type: 'CUSTOM',
+    targetAmount: 80_000, manualCurrentAmount: 0, deadline: '2029-06-15',
+    targetAccount: 'CRYPTO', status: 'active',
+};
+
+const makeParamsCrypto = (financialGoals: FinancialGoal[]): SimulationParams => ({
+    ...makeParams(financialGoals),
+    // Crypto à fort gain latent : ACB initial = valeur de départ (convention) + croissance 8 %/an
+    // sur ~3,5 ans → gain (makeProjection met crypto:0 pour les autres tests → on le surcharge ici,
+    // sinon la vente ne réaliserait AUCUN gain). NonReg=0 pour isoler la voie crypto.
+    projection: { ...makeProjection(), returnRates: { celi: 6, reer: 6, nonReg: 6, crypto: 8, cash: 2 } },
+    liveCSVBalances: { CELI: 0, CELIAPP: 0, REER: 0, NON_ENREG: 0, CRYPTO: 150_000, REEE: 0 },
+    // Revenu CONFORME aux 2 users (7700+6000 $/mois = 164 400 $/an) et dépenses basses → SURPLUS
+    // garanti, donc AUCUN shortfall : la crypto n'est vendue QUE par l'objectif (isole la voie PV-7 ;
+    // sinon la cascade de shortfall vendrait la crypto dans les DEUX scénarios → delta nul).
+    baseGrossAnnual: 164_400,
+    baseNetAnnual: 114_120,
+    baseMonthlyExpenses: 3_000,
+});
+
+describe('[PV-7] Retrait d\'objectif CRYPTO — gain proportionnel réalisé (intégration)', () => {
+    const avec = run(makeParamsCrypto([GOAL_CRYPTO]));
+    const sans = run(makeParamsCrypto([]));
+
+    it('la vente crypto réalise un gain imposable (TaxPaidGains delta > 0)', () => {
+        const d = sumFieldWindow(avec, 'TaxPaidGains', 41, 54) - sumFieldWindow(sans, 'TaxPaidGains', 41, 54);
+        expect(d).toBeGreaterThan(500);
+    });
+
+    it('seul le GAIN est imposé, pas 100 % du produit (proportionnalité ACB)', () => {
+        // 80 k$ retirés d'un crypto à ~150 k$ (ACB 150 k$ + croissance) → gain latent ~45 k$ ;
+        // part réalisée ≈ 80k × latent/valeur ≈ 18-20 k$ → impôt ≪ 80k × 50 % × marginal.
+        const d = sumFieldWindow(avec, 'TaxPaidGains', 41, 54) - sumFieldWindow(sans, 'TaxPaidGains', 41, 54);
+        expect(d).toBeLessThan(15_000);
+    });
+
+    it('le solde crypto baisse réellement (vente effective)', () => {
+        const before = avec.chartData.find(p => p.monthIndex === 40);
+        const after = avec.chartData.find(p => p.monthIndex === 42);
+        const drop = Number(before!.Crypto) - Number(after!.Crypto);
+        expect(drop).toBeGreaterThan(60_000);
+    });
+});

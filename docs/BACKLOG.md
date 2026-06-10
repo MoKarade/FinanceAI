@@ -147,8 +147,12 @@
   `estateNetWorth` couple gonflé de dizaines de k$.
 - [ ] **[FA-6]** 🧭 Dons charitables : crédit 33 % + relief gains 15 % en dur non sourcés
   (`w5Effects.ts:98-101`). Sourcer au doc (vrai barème ~48-53 % > 200 $ ; don de titres = inclusion 0 %).
-- [ ] **[FA-7]** 🔧 Transcrire le §8 immobilier dans FISCAL_REFERENCE (OSFI, SCHL, primes, TPS/TVQ
-  neuf, taxes de bienvenue 2025/2026, HELOC 65 %) — valeurs déjà dans le code, doc en retard.
+- [x] **[FA-7]** 🔧 (livré) §8 immobilier transcrit dans FISCAL_REFERENCE : B-20 (plancher 5,25 %,
+  +2 pts, GDS 39/TDS 44), mise de fonds min + amortissements SCHL (30 ans FTB/neuve août 2024),
+  primes SCHL par LTV (0,60→4,00 %), mutations QC 2025 (paliers + note Montréal non modélisé,
+  à réindexer 2026), TPS/TVQ neuf (36 %/6 300 $ · 50 %/9 975 $, dégressifs), Smith/HELOC LTV 65 %
+  + margin call. Découverte routée vers FA-8 : taux HELOC 5 %/an EN DUR (`realEstateMonth.ts:336`)
+  — hypothèse de modèle à paramétrer.
 - [ ] **[FA-8]** 🔧 Lot mineurs fiscaux : taux clawback 0,15 nommé+sourcé · cap clawback sans facteur
   de report · prorata RRQ 39 ans / PSV 10-40 ans au doc · split 65/35 documenté · SystemView barèmes
   composés depuis les constantes (`SystemView.tsx:102`) · assiette dividendes vs gains cohérente ·

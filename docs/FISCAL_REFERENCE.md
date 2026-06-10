@@ -346,10 +346,56 @@ Le facteur 71 ans (5,28 %) ne s'applique qu'à une conversion **volontaire préc
 
 ---
 
-## 8. Immobilier (SCHL / OSFI) — `services/realEstate.ts`
-Implémenté (ADR 009) ; valeurs à transcrire ici lors de la prochaine revue fiscale :
-`calculateMinDownPayment` (mise de fonds min), `validateMortgageParameters` (amortissement max),
-`calculateB20StressTest` (stress test B-20), `calculateSchlPremiumRate` (prime assurance < 20 %).
+## 8. Immobilier (SCHL / OSFI / mutations / TPS-TVQ neuf) — `services/realEstate.ts`
+> Transcrit FA-7 (2026-06-10) depuis le code implémenté (ADR 009, vérifié à la saisie 2026-05).
+
+### Stress test hypothécaire B-20 (`calculateB20StressTest`) — source OSFI, ligne directrice B-20
+| Constante | Valeur | Note |
+|---|---|---|
+| Plancher du taux de qualification (`OSFI_MQR_FLOOR`) | **5,25 %** | qualifying rate = max(plancher, contractuel + tampon) |
+| Tampon (`OSFI_MQR_BUFFER`) | **+2,00 pts** | au-dessus du taux contractuel |
+| GDS max (`OSFI_GDS_MAX`) | **39 %** | (paiement qualifiant + charges logement) / revenu brut mensuel |
+| TDS max (`OSFI_TDS_MAX`) | **44 %** | GDS + autres dettes mensuelles |
+
+### Mise de fonds minimale & amortissement (`calculateMinDownPayment`, `validateMortgageParameters`) — source SCHL
+| Prix | Mise de fonds min |
+|---|---|
+| < 500 000 $ (`SCHL_PRICE_THRESHOLD_TIER1`) | **5 %** |
+| 500 000 → 1 500 000 $ (`SCHL_PRICE_THRESHOLD_TIER2`) | 5 % du 1er 500 k$ + **10 %** de l'excédent |
+| ≥ 1 500 000 $ | **20 %** (assurance SCHL indisponible) |
+
+Amortissement max : **25 ans** assuré standard · **30 ans** assuré si 1er acheteur OU construction
+neuve (règle d'août 2024, `SCHL_AMORT_MAX_INSURED_FTB_OR_NEW`) · **30 ans** conventionnel (≥ 20 %).
+Assurance SCHL : **requise si LTV > 80 %**, indisponible si LTV > 95 % ou prix > 1,5 M$.
+
+### Prime d'assurance SCHL (`SCHL_PREMIUM_TIERS`, % du prêt de base, ajoutable au prêt)
+| LTV ≤ | 65 % | 75 % | 80 % | 85 % | 90 % | 95 % |
+|---|---|---|---|---|---|---|
+| Prime | 0,60 % | 1,70 % | 2,40 % | 2,80 % | 3,10 % | **4,00 %** |
+
+### Droits de mutation (« taxe de bienvenue », `calculateWelcomeTax`) — barème QC **2025**
+| Tranche du prix | Taux |
+|---|---|
+| ≤ 58 900 $ | 0,5 % |
+| 58 900 → 290 000 $ | 1,0 % |
+| 290 000 → 552 300 $ | 1,5 % |
+| > 552 300 $ | 2,0 % |
+> Seuils indexés annuellement (Loi concernant les droits sur les mutations immobilières) ; le code
+> porte le barème provincial de base 2025 — les paliers ADDITIONNELS municipaux (ex. Montréal > 552 300 $
+> jusqu'à 3,5 %) ne sont PAS modélisés (sous-estimation pour un achat cher à Montréal). À réindexer 2026.
+
+### TPS/TVQ résidence NEUVE — remboursements (`calculateGstNewHomeRebate`/`calculateQstNewHomeRebate`)
+- **TPS 5 %** (`GST_RATE`) : remboursement **36 %** de la TPS payée si prix ≤ **350 000 $**
+  (max **6 300 $**), dégressif linéairement jusqu'à **450 000 $** → 0. Source : ARC RC4028.
+- **TVQ 9,975 %** (`QST_RATE`) : remboursement **50 %** de la TVQ payée si prix ≤ **200 000 $**
+  (max **≈ 9 975 $**), dégressif jusqu'à **300 000 $** → 0. Source : Revenu Québec (rebate TVQ
+  modifié plusieurs fois — implémentation conservatrice, barème courant à la saisie).
+
+### Marge réavançable / Smith Manoeuvre (`realEstateMonth.ts`)
+- Plafond HELOC : `dette Smith + hypothèque ≤ 65 % de la valeur` (**LTV 65 %**, plafond B-20 de la
+  portion réavançable) ; l'excédent déclenche un **margin call** (remboursement forcé).
+- Hypothèse de modèle (PAS une constante fiscale) : **taux HELOC 5 %/an** en dur
+  (`realEstateMonth.ts:336`) — à paramétrer un jour si besoin (cf BACKLOG FA-8).
 
 ---
 

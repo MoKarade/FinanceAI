@@ -6,7 +6,7 @@ import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { Pill } from './ui/Pill';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ReferenceArea, Line, ComposedChart, Bar, ReferenceDot } from 'recharts';
-import { BudgetConfig, BudgetCategory, Asset, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Transaction, Debt, ProjectionConfig, FinancialGoal, User } from '../types';
+import { BudgetConfig, BudgetCategory, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Transaction, Debt, ProjectionConfig, FinancialGoal } from '../types';
 import { calculateFutureProjection, SimulationParams } from '../services/projection';
 import { buildSimulationParams } from '../services/projection/buildSimulationParams';
 import { ProjectionResult, ProjectionChartPoint } from '../services/projection/types';
@@ -29,9 +29,9 @@ import { reconstructCashHistory } from '../services/history/reconstructCashHisto
 import { reconstructRealEstateEquityByYear } from '../services/history/reconstructRealEstateEquity';
 import { ActionPlanDrilldown } from './projection/ActionPlanDrilldown';
 import { ProjectionExplains } from './projection/ProjectionExplains';
-import { AssetLocationPanel } from './projection/AssetLocationPanel';
 import { StrategyComparePanel } from './projection/StrategyComparePanel';
 import { StressTestPanel } from './projection/StressTestPanel';
+import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 
 // G10 — Légende interactive : une seule source de vérité pour les chips ET les
@@ -73,7 +73,6 @@ const LegendSwatch: React.FC<{ shape: LegendShape; color: string; dimmed?: boole
 };
 
 interface FutureProjectionProps {
-  assets: Asset[];
   initialBalances: Record<string, number>;
   transactions: Transaction[];
   budgetItems: BudgetCategory[];
@@ -95,7 +94,7 @@ interface FutureProjectionProps {
 }
 
 export const FutureProjection: React.FC<FutureProjectionProps> = ({
-    assets = [], initialBalances = {}, transactions = [], budgetItems = [], config,
+    initialBalances = {}, transactions = [], budgetItems = [], config,
     realEstateGoals = [], setRealEstateGoals, childGoals = [], travelGoals = [], lifeEvents = [], debts = [], retirementGoal, setRetirementGoal,
     calculatedMonthlySavings, projection, setProjection, financialGoals = [], isPrivacyMode = false
 }) => {
@@ -120,13 +119,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         });
     };
 
-    // baseGrossAnnual reste local : consommé par AssetLocationPanel ci-dessous.
     // baseNetAnnual / baseMonthlyExpenses / currentRentExpense ont migré dans
     // l'adaptateur pur buildSimulationParams (Lot 0) — plus recalculés ici.
-    const baseGrossAnnual = useMemo<number>(() => {
-        const users: User[] = (config?.users ?? []) as unknown as User[];
-        return users.reduce((sum: number, u: User) => sum + ((u.grossSalary || 0) * 12), 0);
-    }, [config]);
+    // [EP-10] baseGrossAnnual retiré avec AssetLocationPanel (son seul consommateur).
 
     // A1/A3 — Soldes de placement de DÉPART du futur, dérivés de la MÊME
     // reconstruction que la courbe passée (usePastPortfolioHistory) → garantit la
@@ -205,10 +200,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // (serveur MCP). Le `useMemo` n'enrobe plus que l'appel pur ; les pièces
     // dérivées par les hooks du composant (liveCSVBalances, calculatedStartingCash)
     // lui sont passées telles quelles → comportement strictement identique
-    // (verrouillé par un test de parité). baseGrossAnnual/baseNetAnnual/
-    // currentRentExpense/baseMonthlyExpenses sont recalculés à l'identique dans la
-    // fonction pure (mêmes formules) ; on conserve les memos locaux car d'autres
-    // parties du composant (AssetLocationPanel) les consomment directement.
+    // (verrouillé par un test de parité). baseNetAnnual/currentRentExpense/
+    // baseMonthlyExpenses sont recalculés à l'identique dans la fonction pure
+    // (mêmes formules).
     const params: SimulationParams = useMemo(() => buildSimulationParams({
         projection,
         config,
@@ -913,18 +907,19 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             </div>
             )}
 
-            {/* Optimisation : comparer les stratégies (test rapide OU recherche avancée),
-                puis placement par compte. Les deux outils Monte Carlo (robustesse + optimiseur)
-                sont fusionnés en un seul (StrategyComparePanel) pour lever la confusion. */}
+            {/* Optimisation : comparer les stratégies (test rapide OU recherche avancée).
+                Les deux outils Monte Carlo (robustesse + optimiseur) sont fusionnés en un seul
+                (StrategyComparePanel) pour lever la confusion. [EP-10] Stress-tests repliés par
+                défaut ; placement par compte retiré ici (déjà dans Retraite, carte plus complète). */}
             {futureSubTab === 'optim' && (
                 <div className="space-y-6">
                     {/* C4+C5 — Comparer les stratégies : Test rapide (robustesse, 5 stratégies types)
-                        ou Recherche avancée (leviers composables, classement par objectif). */}
+                        ou Recherche avancée (leviers composables, classement par objectif). Reste ouvert. */}
                     <StrategyComparePanel params={params} onApply={setRetirementGoal ? handleApplyConfig : undefined} />
-                    {/* [UI-SCEN] — stress-tests à la demande (sortis du recalcul permanent). */}
-                    <StressTestPanel params={params} baselineEstateNW={allResults[0]?.estateNetWorth} />
-                    {/* C3 — Placement par compte (asset location optimal) : où détenir chaque actif. */}
-                    <AssetLocationPanel assets={assets} annualGrossIncome={baseGrossAnnual} />
+                    {/* [UI-SCEN] — stress-tests à la demande (sortis du recalcul permanent). [EP-10] repliés. */}
+                    <CollapsibleSection title="Stress-tests" subtitle="Scénarios adverses (krach, inflation, longévité…) — à la demande." defaultOpen={false}>
+                        <StressTestPanel params={params} baselineEstateNW={allResults[0]?.estateNetWorth} />
+                    </CollapsibleSection>
                 </div>
             )}
 

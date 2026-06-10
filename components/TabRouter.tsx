@@ -183,7 +183,6 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                 {activeTab === Tab.FUTURE && (
                     <PageSetupGate tab={Tab.FUTURE}>
                         <FutureProjection
-                            assets={state.assets}
                             initialBalances={state.initialBalances}
                             transactions={state.transactions}
                             budgetItems={state.budgetItems}

@@ -58,4 +58,15 @@ describe('ProjectionExplains', () => {
         expect(screen.getAllByText(/CELI/).length).toBeGreaterThan(0);
         expect(screen.getByText(/cotisé/)).toBeTruthy();
     });
+
+    // [EP-7] la méthodologie (concepts didactiques) est repliée par défaut sous « En savoir plus »
+    // et s'ouvre au clic — secondaire au drill-down année par année.
+    it('EP-7: « En savoir plus » est replié par défaut et révèle la méthodologie au clic', () => {
+        render(<ProjectionExplains chartData={months} />);
+        // Replié → le contenu méthodologique n'est pas dans le DOM…
+        expect(screen.queryByText(/C'est quoi le RAP/i)).toBeNull();
+        // …mais la section repliable est annoncée et s'ouvre au clic.
+        fireEvent.click(screen.getByRole('button', { name: /En savoir plus/i }));
+        expect(screen.getByText(/C'est quoi le RAP/i)).toBeTruthy();
+    });
 });

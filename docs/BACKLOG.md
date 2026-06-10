@@ -165,27 +165,26 @@
   Verdict : Futur→Paramètres = l'écran le plus chargé (« usine ») ; redondances chiffrées
   (patrimoine projeté à 4 endroits, score de santé à 3, renvois « → Futur » dans 6 onglets,
   `UserConfigFields` dans 4 onglets). TOP 10 ci-dessous ([EP-1] seul = ~80% du « moins chargé »).
-- [ ] **[EP-1]** 🔧 Futur/Paramètres : fusionner « Variabilité » + « Événements stochastiques » en
+- [x] **[EP-1]** 🔧 (livré #225) Futur/Paramètres : fusionner « Variabilité » + « Événements stochastiques » en
   une section « Risques & aléas » repliée (gate MC actif) ; 10 toggles stochastiques derrière un
   bouton « Activer des aléas… ». 4 sections → 2, ~20 contrôles visibles → ~8. (M) **Priorité Marc n°1.**
-- [ ] **[EP-2]** 🔧 Futur/Paramètres : retirer la Card AI note + les pros/cons DUPLIQUÉS (déjà sous
+- [x] **[EP-2]** 🔧 (livré #225) Futur/Paramètres : retirer la Card AI note + les pros/cons DUPLIQUÉS (déjà sous
   le sélecteur de stratégie) → un seul bloc stratégie. (S)
-- [ ] **[EP-3]** 🔧 Dashboard : le 5e KPI « Indicateur Futur » est un mini-formulaire (input+Sync) dans
-  la grille → KPIStat simple (valeur projetée) ou retrait, réaligner la grille à 4. (S)
-- [ ] **[EP-4]** 🔧 Investments : supprimer la duplication du score de santé (badge header OU donut hero,
-  pas les deux) + carte perf 24h redondante. (S)
-- [ ] **[EP-5]** 🔧 Investments : retirer/replier la Card « Portefeuille projeté à l'horizon » (duplique
-  Dashboard + Futur) → un lien « voir Futur ». (S)
-- [ ] **[EP-6]** 🔧 Configuration : `SetupHub` en tête de CHAQUE sous-onglet → affiché seulement si
-  complétude < 100 %, sinon ruban discret repliable. (M)
-- [ ] **[EP-7]** 🔧 Futur/Plan d'action : condenser `ProjectionExplains` (294 l, ~15 blocs) en 3-4 points
-  + le reste dans un `CollapsibleSection` « En savoir plus ». (M)
+- [x] **[EP-3]** 🔧 (livré #226) Dashboard : le 5e KPI « Indicateur Futur » → KPIStat simple « Patrimoine projeté »
+  (dernier point lastProjection.chartData, source unique), mini-formulaire retiré. (S)
+- [x] **[EP-4]** 🔧 (livré #226) Investments : donut « Score de Santé » retiré (doublon du badge header). (S)
+- [x] **[EP-5]** 🔧 (livré #226) Investments : Card « Portefeuille projeté » condensée → patrimoine net projeté
+  + lien « Détail par compte dans Futur ». (S)
+- [x] **[EP-6]** 🔧 (livré) Configuration : `SetupHub` → ruban discret repliable quand complétude = 100 %,
+  hub complet sinon. (M)
+- [x] **[EP-7]** 🔧 (livré) Futur/Plan d'action : `ProjectionExplains` — méthodologie (6 Q&A) sous
+  `CollapsibleSection` « En savoir plus » repliée par défaut. (M)
 - [ ] **[EP-8]** 🔧 Retirement : scinder la Card géante « Revenus & besoins » (~10 champs RRQ/PSV/DB) —
   champs DB derrière le toggle existant, bloc pensions replié par défaut. (M)
 - [ ] **[EP-9]** 🔧 Global : retirer les renvois « → ouvrir Futur » répétés dans 6 onglets (≤ 1 lien
   discret/page) + badges décoratifs (`N événements actifs`, doublons de santé). (S)
-- [ ] **[EP-10]** 🔧 Futur/Optimisation : `StressTestPanel` + `AssetLocationPanel` repliés par défaut,
-  seul `StrategyComparePanel` ouvert ; retirer AssetLocation ici (déjà dans Retraite). (S)
+- [x] **[EP-10]** 🔧 (livré) Futur/Optimisation : `StressTestPanel` replié par défaut, `StrategyComparePanel`
+  ouvert ; `AssetLocationPanel` RETIRÉ (doublon de l'AssetLocationCard de Retraite, plus riche → fichier supprimé). (S)
 
 ## 🎨 P2 — UX & polish
 - [ ] **[U5]** Export PNG du graphe « Évolution détaillée » (Dashboard).

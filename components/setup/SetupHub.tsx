@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Tab } from '../../types';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { Icon } from '../ui/Icon';
+import { CollapsibleSection } from '../ui/CollapsibleSection';
 import { PAGE_SETUP, RequirementCard } from './PageSetupGate';
 import { REQUIREMENTS } from './requirements';
 
@@ -36,22 +37,11 @@ export const SetupHub: React.FC<{ className?: string }> = ({ className = '' }) =
         return { tab: t, cfg, reqs, met, total: reqs.length, ready: met === reqs.length || optedOut, optedOut };
     });
     const readyCount = tabStatus.filter((s) => s.ready).length;
+    const allReady = tabs.length > 0 && readyCount === tabs.length;
 
-    return (
-        <div className={`rounded-card border border-white/10 bg-white/5 p-4 ${className}`}>
-            <div className="flex items-center justify-between gap-3 mb-3">
-                <div className="min-w-0">
-                    <h3 className="font-bold text-ink-50">Complétude par onglet</h3>
-                    <p className="text-meta text-ink-400">
-                        Ce qu'il faut renseigner pour débloquer chaque page. Clique un onglet pour compléter ici,
-                        ou « Ouvrir » pour y aller.
-                    </p>
-                </div>
-                <span className="text-meta text-ink-400 font-mono shrink-0">{readyCount}/{tabs.length} prêts</span>
-            </div>
-
-            <div className="space-y-2">
-                {tabStatus.map(({ tab, cfg, reqs, met, total, ready, optedOut }) => {
+    const list = (
+        <div className="space-y-2">
+            {tabStatus.map(({ tab, cfg, reqs, met, total, ready, optedOut }) => {
                     const isOpen = open === tab;
                     return (
                         <div key={tab} className="rounded-card border border-white/[0.08] bg-black/20 overflow-hidden">
@@ -95,7 +85,44 @@ export const SetupHub: React.FC<{ className?: string }> = ({ className = '' }) =
                         </div>
                     );
                 })}
+        </div>
+    );
+
+    // [EP-6] Config 100 % complète → le hub devient du bruit : ruban discret repliable
+    // (déplie pour revoir/ajuster). Sinon, hub complet (aide à l'onboarding).
+    if (allReady) {
+        return (
+            <CollapsibleSection
+                variant="quiet"
+                defaultOpen={false}
+                title="Configuration complète"
+                subtitle="Tous les onglets sont prêts — déplie pour revoir ou ajuster."
+                badge={
+                    <span className="text-meta text-success-400 font-mono shrink-0 inline-flex items-center gap-1">
+                        <Icon name="check" size={13} />{readyCount}/{tabs.length}
+                    </span>
+                }
+                className={className}
+            >
+                {list}
+            </CollapsibleSection>
+        );
+    }
+
+    return (
+        <div className={`rounded-card border border-white/10 bg-white/5 p-4 ${className}`}>
+            <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="min-w-0">
+                    {/* h2 : premier titre de section sous le h1 du PageHeader (évite le saut h1→h3, WCAG 1.3.1). */}
+                    <h2 className="font-bold text-ink-50">Complétude par onglet</h2>
+                    <p className="text-meta text-ink-400">
+                        Ce qu'il faut renseigner pour débloquer chaque page. Clique un onglet pour compléter ici,
+                        ou « Ouvrir » pour y aller.
+                    </p>
+                </div>
+                <span className="text-meta text-ink-400 font-mono shrink-0">{readyCount}/{tabs.length} prêts</span>
             </div>
+            {list}
         </div>
     );
 };

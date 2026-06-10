@@ -258,7 +258,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     error: e instanceof Error ? e : new Error(String(e)),
                 });
             }).catch(() => { /* logger HS, silent */ });
-            return { chartData: [], fireNumber: 0, aiNote: "Error", allResults: [], _hasError: true };
+            return { chartData: [], fireNumber: 0, allResults: [], _hasError: true };
         }
     }, [params, runMC], 300);
 
@@ -287,7 +287,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 error: e instanceof Error ? e : new Error(String(e)),
                             });
                         }).catch(() => { /* logger HS, silent */ });
-                        setAsyncResults({ chartData: [], fireNumber: 0, aiNote: "Error", allResults: [], _hasError: true });
+                        setAsyncResults({ chartData: [], fireNumber: 0, allResults: [], _hasError: true });
                         setIsComputing(false);
                     }
                 });
@@ -302,7 +302,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     }, []);
 
     const results = runMC ? asyncResults : syncResults;
-    const { chartData = [] as ProjectionChartPoint[], fireNumber = 0, aiNote = "", allResults = [] as ProjectionResult[] } = results ?? {};
+    const { chartData = [] as ProjectionChartPoint[], fireNumber = 0, allResults = [] as ProjectionResult[] } = results ?? {};
 
     // G21 C5 + [UI-SCEN] — « Appliquer » la stratégie gagnante de l'optimiseur aux
     // paramètres réels : leviers orthogonaux via setters, ordre de retrait via le
@@ -659,7 +659,6 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 setRunMC={setRunMC}
                 isComputing={isComputing}
                 fireNumber={fireNumber}
-                aiNote={aiNote}
                 liveCSVBalances={liveCSVBalances}
                 applyHistoricalRate={applyHistoricalRate}
                 realEstateGoals={realEstateGoals}

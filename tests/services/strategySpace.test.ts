@@ -90,7 +90,7 @@ describe('strategySpace — configToEngine', () => {
         withdrawalOrder: 'AUTO_MARGINAL', delayPensions: false, retirementAge: 65, skipRap: false,
         contributionOrder: 'CELI_FIRST', retirementSpending: 1, smithManoeuvre: false, debtFirst: false,
         emergencyFundMonths: 6, assetLocation: false, gainHarvesting: false,
-        returnRateProfile: 'balanced', ...over,
+        returnRateProfile: 'balanced', pensionSplitting: true, ...over,
     });
 
     it('traduit les leviers en clone params + overrides, sans muter la base', () => {
@@ -101,6 +101,7 @@ describe('strategySpace — configToEngine', () => {
             smithManoeuvre: true, debtFirst: true, emergencyFundMonths: 12, assetLocation: true,
             gainHarvesting: false,
             returnRateProfile: 'balanced',
+            pensionSplitting: true,
         }, base);
 
         expect(args.strategy).toBe('PRIO_REER');
@@ -110,7 +111,7 @@ describe('strategySpace — configToEngine', () => {
         expect(args.params.projection.emergencyFundMonths).toBe(12);
         expect((args.params.projection as ProjectionConfig & { useSmithManoeuvre?: boolean }).useSmithManoeuvre).toBe(true);
         // Le profil de rendement N'EST PAS un EngineOverride : il agit sur returnRates,
-        // pas sur les overrides (cf. tests dédiés plus bas).
+        // pas sur les overrides (cf. *.returnProfile.test.ts).
         expect(args.overrides).toEqual({
             skipRapForPurchase: true, contributionOrder: 'REER_FIRST', debtFirst: true,
             gainHarvesting: false,
@@ -131,6 +132,7 @@ describe('strategySpace — configToEngine', () => {
             smithManoeuvre: false, debtFirst: false, emergencyFundMonths: 6, assetLocation: false,
             gainHarvesting: false,
             returnRateProfile: 'balanced',
+            pensionSplitting: true,
         }, base);
         const on = configToEngine({
             withdrawalOrder: 'AUTO_MARGINAL', delayPensions: false, retirementAge: 65,
@@ -138,6 +140,7 @@ describe('strategySpace — configToEngine', () => {
             smithManoeuvre: false, debtFirst: false, emergencyFundMonths: 6, assetLocation: true,
             gainHarvesting: false,
             returnRateProfile: 'balanced',
+            pensionSplitting: true,
         }, base);
 
         expect(off.params.projection.returnRates!.nonReg).toBe(baseNonReg); // inchangé sans le levier
@@ -201,5 +204,16 @@ describe('strategySpace — configToEngine', () => {
         expect(args.params.projection.returnRates).toEqual({
             celi: r.celi + b, reer: r.reer + b, nonReg: r.nonReg + b, crypto: r.crypto, cash: r.cash,
         });
+    });
+
+    // ----- PH4-FUT-B : levier fractionnement de pension dans configToEngine -----
+
+    it('pensionSplitting transite par params.projection.appliedPensionSplitting (recherche ↔ courbe)', () => {
+        const off = configToEngine(cfg({ pensionSplitting: false }), baseParams());
+        expect(off.params.projection.appliedPensionSplitting).toBe(false);
+        const on = configToEngine(cfg({ pensionSplitting: true }), baseParams());
+        expect(on.params.projection.appliedPensionSplitting).toBe(true);
+        // Comme le profil, le flag n'est PAS un EngineOverride (il est lu par runScenario → DecemberContext).
+        expect(off.overrides).not.toHaveProperty('pensionSplitting');
     });
 });

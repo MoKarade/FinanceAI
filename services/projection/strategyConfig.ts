@@ -46,6 +46,9 @@ export interface StrategyConfig {
     /** PH4-FUT-B — profil de rendement : presets de `returnRates` (conservateur/équilibré/agressif).
      *  'balanced' = garde les taux actuels (non-régression + respecte les taux édités à la main). */
     returnRateProfile: 'conservative' | 'balanced' | 'aggressive';
+    /** PH4-FUT-B — fractionnement de pension 65+ : true = actif (défaut, comportement historique),
+     *  false = désactivé (compare l'impact de NE PAS fractionner). */
+    pensionSplitting: boolean;
 }
 
 /** Type des taux de rendement par compte (= ProjectionConfig.returnRates non-null). */
@@ -169,6 +172,13 @@ export const LEVER_LIBRARY: ReadonlyArray<LeverDef> = [
             { value: 'aggressive', label: 'Agressif' },
         ],
     },
+    {
+        key: 'pensionSplitting', label: 'Fractionnement de pension', default: true,
+        options: [
+            { value: true, label: 'Actif' },
+            { value: false, label: 'Inactif' },
+        ],
+    },
 ];
 
 /** Ordre de retrait (axe) → enum AllocationStrategy attendu par le moteur. */
@@ -223,6 +233,7 @@ export function applyConfigToSettings(
             appliedAssetLocation: config.assetLocation,
             appliedGainHarvesting: config.gainHarvesting,
             appliedReturnProfile: config.returnRateProfile,
+            appliedPensionSplitting: config.pensionSplitting,
         },
         retirementGoal: {
             ...currentRetirementGoal,

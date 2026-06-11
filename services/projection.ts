@@ -784,6 +784,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     // TODO: flag `User.hasPrivateDrugInsurance` à ajouter. Par défaut
                     // false (paie au régime public) — conservateur pour FinanceAI.
                     ramqExempt: false,
+                    // PH4-FUT-B — levier fractionnement de pension. Absent/true = actif (historique) ;
+                    // false → la Phase 3 d'optimisation de décembre est sautée (impôt = brut par conjoint).
+                    enablePensionSplitting: effProj.appliedPensionSplitting !== false,
                 },
                 { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate },
                 taxCurrentYear,

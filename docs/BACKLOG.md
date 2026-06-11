@@ -139,10 +139,10 @@
   RetirementSettingsCard (5), UserConfigFields salary (2×idx), UsersCard nom/âge (2×idx) ;
   aria-label sur le select RepartitionField + l'input « Nom du profil ». Reste la dette
   hors-Profil (8/30 fichiers htmlFor) — opportuniste.
-- [ ] **[DEAD-FLT]** 🧹 (découverte revue #245) — `Retirement.fetchLiveTotals` est INOPÉRANT :
-  il repose sur `services/finance.fetchPortfolioHistory` qui est un STUB `return []` → le bloc entier
-  (état liveCSVBalances + effet) ne produit jamais rien et donne une fausse impression de couverture.
-  Purger (et brancher les soldes sur la vraie source) ou implémenter réellement.
+- [x] **[DEAD-FLT]** ✅ — bloc `fetchLiveTotals` purgé (45 lignes mortes : l'async ne tournait
+  JAMAIS, stub `[]`) → `liveCSVBalances` est un simple useMemo des props (mêmes valeurs réelles
+  qu'avant). Imports/destructures morts nettoyés (useState/useEffect/fetchPortfolioHistory/logError/
+  RegisteredAccountType/assets).
 - [x] **[SF-WARN]** ✅ — fetchLiveTotals (Retirement) + restore profils (UsersCard) routés vers logError (source network/storage). (revue #244, pré-existant) — `Retirement.tsx` fetchLiveTotals + `UsersCard.tsx`
   restore : `console.warn` sur de vrais échecs I/O → router vers `logError` (convention repo).
 - [x] **[CPL-1]** ✅ (signalé Marc 2026-06-11) — switch individuel↔couple GATÉ : « + Ajouter conjoint »

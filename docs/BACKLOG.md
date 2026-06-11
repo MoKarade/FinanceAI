@@ -133,7 +133,7 @@
 - [x] **[PH3-b]** ✅ (PR Phase 3) — `SetupHub` rendu en tête de Profil : **% de complétion GLOBAL**
   (infos met/total + barre de progression) + par onglet « X/N » + quelle info manque + « Ouvrir »
   (navigateWithFocus). **Critères ✓.**
-- [ ] **[PH3-c]** 🔧 Profil détaillé — purge des champs morts. **AUDIT FAIT (2026-06-11)** : NON consommés
+- [x] **[PH3-c]** ✅ (PR PH3-c) — 19 champs morts PURGÉS (contre-audit repo COMPLET : aucun consommateur ; types compagnons orphelins retirés ; UI detailed → « Carrière & rémunération variable ») ; 5 gardés commentés avec consommateur prouvé ; ZÉRO migration persist (résiduels inertes documentés). Découvertes → PH3-c-bis. Audit initial (2026-06-11) : NON consommés
   par `services/` (moteur) → gender, province, citizenship, maritalStatus, employmentType, yearsOfExperience,
   pensionPlan, promotionLikelihood5Y, healthRating, isSmoker, bmiCategory, chronicConditions, activityLevel,
   parentAgeAtDeath, bonusVolatilityPct, stockOptionsValue, commissionPctOfGross, cryptoStakingAnnual,
@@ -166,6 +166,12 @@
   neutralisation moteur (elle fausserait les vrais couples), le gate UX est la correction. Le split
   théorique 55/45 (useTheoretical) documenté au test. ⚠️ Reste à VALIDER par Marc en visuel : créer un
   conjoint réel sans revenu DOIT changer les courbes (rentes d'État du conjoint) — c'est voulu.
+
+#### Suivis PH3-c (découvertes du contre-audit)
+- [ ] **[PH3-c-bis]** 🧭 (décision Marc) — `User.industry` : ZÉRO consommateur réel (gardé sur mandat,
+  étiqueté « informatif ») — purger ou brancher ? · `ProjectionConfig.futureProvince/MoveYear` (W2.7) :
+  orphelins, candidats audit · `rsuYearsRemaining` : consommé par le moteur mais SANS éditeur UI
+  (défaut 99 ans) — ajouter le champ à la section carrière ou retirer du moteur.
 
 ### Phase 4 — REFONTES ⏳ (UN plan SÉPARÉ par onglet → OK Marc par onglet) — dépend de : PH2 (+PH3 pour FUT/RET)
 - [ ] **[PH4-FUT]** 🔧⏳ Refonte **Futur** : leviers OBLIGATOIRES avant calcul (l'actuel contenu

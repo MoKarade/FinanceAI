@@ -1,6 +1,6 @@
 // components/Profile.tsx
 // PH3 (brief Marc) — Onglet PROFIL UNIFIÉ : regroupe TOUT le setup utilisateur (identité, salaire,
-// fiscal, répartition couple, profil détaillé santé/carrière, paramètres de retraite, enfants),
+// fiscal, répartition couple, carrière & rémunération variable, paramètres de retraite, enfants),
 // jusqu'ici éparpillé dans Configuration, Impôts, Budget, Retraite, Enfant. Migration UI PURE :
 // chaque sous-composant lit/écrit les MÊMES clés store qu'avant → ZÉRO perte de données.
 import React from 'react';
@@ -41,7 +41,8 @@ export const Profile: React.FC = () => {
             <UserConfigFields section="fiscal" />
             <RepartitionField />
 
-            <GroupTitle>Profil détaillé (santé, carrière)</GroupTitle>
+            {/* PH3-c — champs santé/civil/emploi morts purgés ; reste carrière + rémunération variable. */}
+            <GroupTitle>Carrière &amp; rémunération variable</GroupTitle>
             <UserConfigFields section="detailed" />
 
             <GroupTitle>Retraite</GroupTitle>

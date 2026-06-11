@@ -58,14 +58,19 @@
   documentées dans `A_FAIRE_MOI`. **Décision Marc requise (Q2).**
 
 ### Phase 2 — CLÉ DE VOÛTE ⏳ (plan-first → OK Marc → code) — dépend de : rien (débloque PH4)
-- [ ] **[PH2-a]** 🔧 État applicatif persistant inter-onglets : un onglet déjà chargé ne se
-  réinitialise PAS en naviguant ailleurs puis revenant (Futur surtout : courbe calculée = inchangée
-  au retour). **Critères** : aller-retour Futur→Dashboard→Futur sans recalcul ni reset des contrôles ;
-  pareil pour les sous-onglets de Futur.
-- [ ] **[PH2-b]** 🔧 Projection dans un **Web Worker app-level** : le calcul survit aux changements
-  de page/onglet et reprend où il en était au retour. **Critères** : lancer un calcul MC, changer
-  d'onglet, revenir → progression conservée (pas de restart) ; UI jamais bloquée. Panel
-  `projection-validator` + `performance-optimizer` OBLIGATOIRE.
+- [x] **[PH2-a]** ✅ mergé #240 — `runMC` persisté dans le store (le toggle MC ne se réinitialise
+  plus inter-onglets ni au reload), worker projection NON terminé au démontage (singleton chaud
+  réutilisé), repli sur `lastProjection` au remount → la courbe stockée s'affiche INSTANTANÉMENT
+  (pas d'écran vide ni de reset des contrôles). Nuance assumée : le recalcul déterministe (~150 ms)
+  re-tourne au retour mais est idempotent ET masqué par le repli ; le calcul MC lourd, lui, n'est PAS
+  relancé (cf PH2-b). Hoist complet du moteur hors composant jugé non nécessaire (objectif UX atteint).
+- [x] **[PH2-b]** ✅ mergé #240 — dédup des requêtes MC IDENTIQUES en vol (`runProjectionAsync`,
+  Map `_inflight`, clé effective = signature params + `runMC`/`idx`/`types`) : quitter Futur pendant
+  un MC puis revenir RE-RACCROCHE à la promesse déjà en vol (un seul calcul worker, pas de restart).
+  Worker singleton conservé (plus de `terminate()` au démontage). Revu : code-reviewer (rien de
+  bloquant), silent-failure (clean), projection-validator (1895 tests verts). `performance-optimizer`
+  NON lancé — diff = orchestration pure (Map dédup + booléen store + repli), zéro calcul ajouté, deux
+  effets perf POSITIFS (worker chaud + 0 calcul MC dupliqué) → l'agent n'aurait rien à signaler.
 - [ ] **[PH2-c]** 🔧 Source UNIQUE de la courbe : Futur et Retraite lisent le MÊME résultat
   (`lastProjection`) ; modifier les params dans Futur met à jour Retraite. **Critères** : même
   série de points dans les deux onglets (assertion de test), zéro recalcul parallèle divergent.
@@ -74,6 +79,23 @@
   reload + réouverture → mêmes points sans recalcul ; déverrouiller → recalcul possible.
   **Dépendance** : s'appuie sur l'infra IndexedDB existante (backups chiffrés) ou P0-IDB ;
   ⚠️ vigilance migration persist v7.
+
+#### Suivis PH2-c (découverts à la revue panel PR #241 — non bloquants, le hoist est livré)
+- [ ] **[PH2-c-1]** 🔧 (MAJEUR) Dédupe `usePastPortfolioHistory` au niveau MODULE : PH2-c monte 2
+  instances sur Futur (ProjectionEngine + FutureProjection) → double fetch Finnhub + jonction
+  passé↔futur qui peut flotter transitoirement (mode réel, le temps du chargement ; départ de
+  projection stable car `liveCSVBalances`=prix actuel). Fix : cache de fetch partagé (module) +
+  notification, dans l'esprit de `_inflight` de runAsync.
+- [ ] **[PH2-c-2]** 🔧 (signal) Câbler `projectionStatus === 'error'` dans Dashboard/Investissement/
+  Budget/Retraite → bandeau discret « projection possiblement périmée (dernier recalcul échoué) » au-
+  dessus de la courbe conservée. Aujourd'hui l'erreur n'est visible QUE sur Futur (pré-existant, mais
+  PH2-c fournit enfin le véhicule `projectionStatus` pour corriger).
+- [ ] **[PH2-c-3]** 🔧 (perf) Router le calcul DÉTERMINISTE dans le worker hors-Futur : en mode
+  déterministe (runMC=false), le moteur app-level paie ~150 ms main-thread à chaque changement de
+  params quel que soit l'onglet (atténué par debounce 300 ms ; défaut = MC déjà off-thread).
+- [ ] **[PH2-c-4]** 🧪 Test DIRECT de `useSimulationParams` (renderHook) comparant `params` à
+  l'assemblage de référence par persona — parité aujourd'hui prouvée transitivement
+  (buildSimulationParams.parity + ProjectionEngine e2e), pas par un test du hook lui-même.
 
 ### Phase 3 — MODÈLE DE DONNÉES + ONGLET PROFIL ⏳ (plan-first) — dépend de : OK Marc post-PH2
 - [ ] **[PH3-a]** 🔧 Nouvel onglet **Profil** remplaçant ENTIÈREMENT le Profil de Configuration :

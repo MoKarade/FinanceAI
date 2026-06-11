@@ -31,6 +31,11 @@ import { startGuidedTour } from './components/tour/tourControl';
 import { PassphraseGate } from './components/auth/PassphraseGate';
 
 const GuideModal = lazyWithRetry(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })), 'GuideModal');
+// PH2-c — moteur de projection app-level LAZY-chargé : garde le bundle de BOOT léger (le code du
+// moteur ~projection n'est plus tiré dans le chunk initial, comme avant via l'onglet Futur). Il monte
+// juste après le 1er paint, calcule, puis publie store.lastProjection (bref ProjectionRequired possible
+// au tout 1er boot, le temps que le chunk charge + le 1er calcul aboutisse).
+const ProjectionEngine = lazyWithRetry(() => import('./components/ProjectionEngine').then(m => ({ default: m.ProjectionEngine })), 'ProjectionEngine');
 
 export const App: React.FC = () => {
     // C1 fix (Sprint 1) — `useShallow(s => s)` ne fait PAS ce que le commentaire
@@ -48,8 +53,9 @@ export const App: React.FC = () => {
     // Refactor complet (sélecteurs atomiques, suppression du prop-drilling
     // TabRouter) reporté à Sprint 3 (issue H2).
     const state = useFinanceStore(useShallow(s => {
-        const { lastProjection: _lp, ...rest } = s;
+        const { lastProjection: _lp, projectionStatus: _ps, ...rest } = s;
         void _lp;
+        void _ps;
         return rest;
     }));
     const setAppState = state.setAppState;
@@ -461,6 +467,13 @@ export const App: React.FC = () => {
 
     return (
         <div>
+            {/* PH2-c (clé de voûte) — moteur de projection AU NIVEAU APP (headless, rend null) :
+                publie store.lastProjection pour TOUS les onglets, indépendamment de l'onglet actif.
+                Garde no-fake-data interne (prérequis Futur salaire+placements+profil retraite).
+                Lazy + Suspense → hors du bundle de boot. */}
+            <Suspense fallback={null}>
+                <ProjectionEngine calculatedMonthlySavings={calculatedMonthlySavings} />
+            </Suspense>
             {isFirstLaunch && (
                 <Onboarding onComplete={(data) => {
                     setAppState({ ...data, lastUpdate: Date.now() });

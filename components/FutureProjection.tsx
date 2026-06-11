@@ -1,18 +1,13 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { useDebouncedMemo } from '../utils/useDebouncedMemo';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
 import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { Pill } from './ui/Pill';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ReferenceArea, Line, ComposedChart, Bar, ReferenceDot } from 'recharts';
-import { BudgetConfig, BudgetCategory, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Transaction, Debt, ProjectionConfig, FinancialGoal } from '../types';
-import { calculateFutureProjection, SimulationParams } from '../services/projection';
-import { buildSimulationParams } from '../services/projection/buildSimulationParams';
+import { BudgetConfig, BudgetCategory, RealEstateGoal, RetirementGoal, Transaction, ProjectionConfig } from '../types';
 import { ProjectionResult, ProjectionChartPoint } from '../services/projection/types';
-import { runProjectionAsync } from '../services/projection/runAsync';
 import { useFinanceStore } from '../store/useFinanceStore';
-import { useShallow } from 'zustand/shallow';
 import { usePendingFocus } from '../utils/usePendingFocus';
 
 // Sprint 2 PH2 — constante stable pour éviter de créer un nouveau [] à chaque
@@ -23,8 +18,7 @@ import { ExpertTooltip, ClickableEventIcon, RefLineLabel } from './projection/Pr
 import { FutureDetailModal } from './projection/FutureDetailModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ProjectionControls } from './projection/ProjectionControls';
-import { usePastPortfolioHistory } from '../hooks/usePastPortfolioHistory';
-import { deriveStartingBalancesFromHistory } from '../services/history/startingBalancesFromHistory';
+import { useSimulationParams } from '../hooks/useSimulationParams';
 import { reconstructCashHistory } from '../services/history/reconstructCashHistory';
 import { reconstructRealEstateEquityByYear } from '../services/history/reconstructRealEstateEquity';
 import { ActionPlanDrilldown } from './projection/ActionPlanDrilldown';
@@ -79,24 +73,18 @@ interface FutureProjectionProps {
   config: BudgetConfig;
   realEstateGoals: RealEstateGoal[];
   setRealEstateGoals?: (g: RealEstateGoal[]) => void;
-  childGoals: ChildGoal[];
-  setChildGoals?: (g: ChildGoal[]) => void;
-  travelGoals: TravelGoal[];
-  lifeEvents: LifeEvent[];
-  debts?: Debt[];
   retirementGoal: RetirementGoal;
   setRetirementGoal?: (g: RetirementGoal) => void;
   calculatedMonthlySavings: number;
   projection: ProjectionConfig;
   setProjection: (p: ProjectionConfig) => void;
-  financialGoals?: FinancialGoal[];
   isPrivacyMode?: boolean;
 }
 
 export const FutureProjection: React.FC<FutureProjectionProps> = ({
     initialBalances = {}, transactions = [], budgetItems = [], config,
-    realEstateGoals = [], setRealEstateGoals, childGoals = [], travelGoals = [], lifeEvents = [], debts = [], retirementGoal, setRetirementGoal,
-    calculatedMonthlySavings, projection, setProjection, financialGoals = [], isPrivacyMode = false
+    realEstateGoals = [], setRealEstateGoals, retirementGoal, setRetirementGoal,
+    calculatedMonthlySavings, projection, setProjection, isPrivacyMode = false
 }) => {
     // C6 fix (Sprint 1B) — La garde SAFETY CHECKS qui retournait du JSX avant
     // tous les hooks ci-dessous était une violation flagrante de la règle des
@@ -133,11 +121,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // placement (REER/CELI/NonReg = 0), pendant que le passé affichait le vrai
     // portefeuille (centaines de k$). Le futur perdait donc tout le portefeuille
     // au mois 0, pour TOUS les personas/utilisateurs (et en mode réel aussi).
-    const pastHistory = usePastPortfolioHistory();
-    const liveCSVBalances = useMemo(
-        () => deriveStartingBalancesFromHistory(pastHistory.points),
-        [pastHistory.points],
-    );
+    // PH2-c (clé de voûte) — params + dérivations passé/présent depuis la SOURCE UNIQUE partagée
+    // avec le moteur app-level (hooks/useSimulationParams). `params` sert ICI uniquement aux outils
+    // À LA DEMANDE du sous-onglet « optim » (StrategyComparePanel, StressTestPanel) ; le calcul de
+    // la courbe principale, lui, est fait par ProjectionEngine et lu via store.lastProjection.
+    const { params, pastHistory, liveCSVBalances, calculatedStartingCash, startYear, startMonth, todayMonthIndex } = useSimulationParams(calculatedMonthlySavings);
 
     const applyHistoricalRate = () => {
         if (liveCSVBalances.historicalRate > 0) {
@@ -149,29 +137,6 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         }
     };
 
-    const calculatedStartingCash = useMemo(() => {
-        let cash = 0;
-        (Object.values(initialBalances) as number[]).forEach(v => cash += (Number(v) || 0));
-        transactions.forEach((t: Transaction) => {
-            if (!t.isDuplicate && !t.isTransfer) cash += (Number(t.amount) || 0);
-        });
-        return cash;
-    }, [initialBalances, transactions]);
-
-    // La projection démarre AUJOURD'HUI (mois courant), pas au 1er janvier en dur.
-    // → le passé reconstruit et le futur projeté se rejoignent au point « aujourd'hui »
-    //   (= valeur actuelle réelle du portefeuille) : jonction continue, sans palier.
-    // Le moteur gère un départ ≠ janvier (currentMonthIndex = mois calendaire réel).
-    const { startYear, startMonth } = useMemo(() => {
-        const d = new Date();
-        return { startYear: d.getFullYear(), startMonth: d.getMonth() };
-    }, []);
-
-    // Aujourd'hui = mois 0 de la projection (puisqu'elle démarre aujourd'hui).
-    const todayMonthIndex = useMemo(() => {
-        const now = new Date();
-        return Math.max(0, (now.getFullYear() - startYear) * 12 + (now.getMonth() - startMonth));
-    }, [startYear, startMonth]);
     // [UI-SCEN] — plus de sélecteur d'index de scénario : la stratégie est un PARAMÈTRE
     // (projection.withdrawalStrategy) ; le moteur ne calcule que ce scénario (allResults[0]).
     // PH2-a — runMC REMONTÉ dans le store : le toggle Monte-Carlo survit aux changements
@@ -183,133 +148,23 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // Phase B2 — consomme un éventuel deep-link entrant (cf docs/UI_REFOUNDATION_PLAN.md §5)
     usePendingFocus(TabEnum.FUTURE);
 
-    // Sprint 2 PH2 — Regroupement en un seul selector useShallow. Avant ce fix,
-    // 7 selectors séparés provoquaient des re-renders parasites et chaque `?? []`
-    // créait une nouvelle référence à chaque render, invalidant les useMemo
-    // deps en aval (`params` ci-dessous).
-    const { insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, savingsGoals } = useFinanceStore(useShallow(s => ({
-        insurancePolicies: s.insurancePolicies ?? EMPTY_ARRAY,
-        vehicleReplacements: s.vehicleReplacements ?? EMPTY_ARRAY,
-        majorRenovations: s.majorRenovations ?? EMPTY_ARRAY,
-        charitableGoals: s.charitableGoals ?? EMPTY_ARRAY,
-        rentalProperties: s.rentalProperties ?? EMPTY_ARRAY,
-        privateBusinesses: s.privateBusinesses ?? EMPTY_ARRAY,
-        // Wiring 2026-05: deux goals jusqu'ici dead-wired arrivent maintenant au moteur.
-        savingsGoals: s.savingsGoals ?? EMPTY_ARRAY,
-    })));
+    // PH2-c (clé de voûte) — le CALCUL de la projection a déménagé dans le moteur app-level
+    // (components/ProjectionEngine.tsx + hooks/useSimulationParams.ts, monté dans App). Ce
+    // composant ne construit plus `params` ni n'appelle calculateFutureProjection : il LIT le
+    // résultat publié dans store.lastProjection (source unique, toujours peuplée quel que soit
+    // l'onglet). Les dérivations passé/présent ci-dessus (pastHistory, liveCSVBalances, startYear…)
+    // restent ici : elles servent l'AFFICHAGE (préfixe « passé réel », ligne « aujourd'hui »).
 
-    // Lot 0 — l'assemblage AppState → SimulationParams est désormais une FONCTION
-    // PURE (services/projection/buildSimulationParams), réutilisable hors React
-    // (serveur MCP). Le `useMemo` n'enrobe plus que l'appel pur ; les pièces
-    // dérivées par les hooks du composant (liveCSVBalances, calculatedStartingCash)
-    // lui sont passées telles quelles → comportement strictement identique
-    // (verrouillé par un test de parité). baseNetAnnual/currentRentExpense/
-    // baseMonthlyExpenses sont recalculés à l'identique dans la fonction pure
-    // (mêmes formules).
-    const params: SimulationParams = useMemo(() => buildSimulationParams({
-        projection,
-        config,
-        liveCSVBalances,
-        calculatedStartingCash,
-        realEstateGoals,
-        debts: debts || [],
-        childGoals,
-        travelGoals,
-        lifeEvents,
-        retirementGoal,
-        financialGoals,
-        budgetItems,
-        calculatedMonthlySavings,
-        startYear,
-        startMonth,
-        insurancePolicies,
-        vehicleReplacements,
-        majorRenovations,
-        charitableGoals,
-        rentalProperties,
-        privateBusinesses,
-        savingsGoals,
-    }), [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, budgetItems, calculatedMonthlySavings, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, savingsGoals, financialGoals, startYear, startMonth]);
+    // PH2-c (clé de voûte) — le CALCUL a déménagé dans le moteur app-level (ProjectionEngine,
+    // monté dans App). Ce composant ne calcule plus : `isComputing`/`hasError` reflètent le
+    // statut du moteur publié dans le store, lus par l'UI (bouton « calcul en cours », overlay,
+    // garde d'erreur).
+    const isComputing = useFinanceStore(s => s.projectionStatus === 'computing');
+    const hasError = useFinanceStore(s => s.projectionStatus === 'error');
 
-    // Perf fix:
-    //  - Mode déterministe (runMC=false): synchrone + debounce 300ms (rapide ~150ms)
-    //  - Mode MC (runMC=true): exécuté dans Web Worker via runProjectionAsync
-    //    (libère le main thread pendant les 1.5-3s de calcul)
-    const syncResults = useDebouncedMemo<ProjectionResult | null>(() => {
-        if (runMC) return null; // Sera calculé par l'effect ci-dessous
-        try {
-            return calculateFutureProjection(params, false, 0);
-        } catch (e) {
-            // SF3 fix (Sprint 1) : avant ce fix, un crash projection retournait
-            // silencieusement `fireNumber: 0` + chartData vide → propagé via
-            // setLastProjection à Dashboard, Investments, Budget, NextBestAction
-            // (IA) qui basaient leurs recommandations sur des données invalides
-            // présentées comme valides. On ajoute un flag `_hasError` que les
-            // consumers peuvent tester, et on loggue via errorLogger.
-            console.error("CRITICAL SIMULATION ERROR:", e);
-            import('../services/errorLogger').then(({ logError }) => {
-                logError({
-                    source: 'projection',
-                    severity: 'critical',
-                    message: 'calculateFutureProjection crashed',
-                    error: e instanceof Error ? e : new Error(String(e)),
-                });
-            }).catch(() => { /* logger HS, silent */ });
-            return { chartData: [], fireNumber: 0, allResults: [], _hasError: true };
-        }
-    }, [params, runMC], 300);
-
-    const [asyncResults, setAsyncResults] = useState<ProjectionResult | null>(null);
-    const [isComputing, setIsComputing] = useState(false);
-
-    // PH2-b — signature de contenu de la requête MC : permet à runAsync de RE-RACCROCHER à un
-    // calcul déjà en vol quand on revient sur Futur (au lieu de le relancer). JSON best-effort ;
-    // en cas d'échec de sérialisation, undefined → dédup désactivée (comportement d'avant).
-    const mcDedupKey = useMemo(() => {
-        try { return JSON.stringify(params); } catch { return undefined; }
-    }, [params]);
-
-    useEffect(() => {
-        if (!runMC) return;
-        let cancelled = false;
-        const timer = setTimeout(() => {
-            setIsComputing(true);
-            runProjectionAsync(params, true, 0, undefined, mcDedupKey)
-                .then(r => { if (!cancelled) { setAsyncResults(r); setIsComputing(false); } })
-                .catch(e => {
-                    if (!cancelled) {
-                        // F1 (audit 2026-05-28) — même traitement que le chemin sync (SF3) :
-                        // flag `_hasError` + journalisation. Avant, le crash worker MC écrivait
-                        // un résultat vide SANS flag → le graphe s'affichait à $0 comme s'il
-                        // était valide (et risquait de polluer le store via setLastProjection).
-                        console.error("CRITICAL SIMULATION ERROR (worker):", e);
-                        import('../services/errorLogger').then(({ logError }) => {
-                            logError({
-                                source: 'projection',
-                                severity: 'critical',
-                                message: 'runProjectionAsync (worker MC) crashed',
-                                error: e instanceof Error ? e : new Error(String(e)),
-                            });
-                        }).catch(() => { /* logger HS, silent */ });
-                        setAsyncResults({ chartData: [], fireNumber: 0, allResults: [], _hasError: true });
-                        setIsComputing(false);
-                    }
-                });
-        }, 300); // debounce 300ms même en MC
-        return () => { cancelled = true; clearTimeout(timer); };
-    }, [params, runMC, mcDedupKey]);
-
-    // PH2-a/b (clé de voûte) — le Worker N'EST PLUS terminé au démontage de l'onglet.
-    // C'est un singleton app-level (services/projection/runAsync) réutilisé d'un onglet à
-    // l'autre : revenir sur Futur réutilise le worker CHAUD au lieu d'en re-spawner un (et un
-    // calcul MC lancé puis quitté n'est plus tué). Libéré au teardown de l'app, pas du composant.
-
-    // PH2-a — pendant un (re)calcul, on affiche la DERNIÈRE projection publiée au store plutôt
-    // qu'un écran vide : revenir sur Futur (ou éditer un levier) montre la courbe déjà calculée,
-    // inchangée, le temps que le nouveau résultat arrive. `computed` = le calcul LOCAL frais.
-    const computed = runMC ? asyncResults : syncResults;
-    const storeLastProjection = useFinanceStore(s => s.lastProjection);
-    const results = computed ?? storeLastProjection;
+    // PH2-c — résultat LU depuis la SOURCE UNIQUE (publiée par ProjectionEngine, app-level).
+    // Plus aucun calcul ni repli local : la courbe affichée EST celle du moteur.
+    const results = useFinanceStore(s => s.lastProjection);
     const { chartData = [] as ProjectionChartPoint[], fireNumber = 0, allResults = [] as ProjectionResult[] } = results ?? {};
 
     // G21 C5 + [UI-SCEN] — « Appliquer » la stratégie gagnante de l'optimiseur aux
@@ -407,16 +262,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     );
     const pastStartIndex = pastPrefix.length ? pastPrefix[0].monthIndex : 0;
 
-    // Wiring 2026-05 (Option A): publie le dernier résultat dans le store pour
-    // que Dashboard/Investments/Budget/etc. puissent l'afficher sans recalculer.
-    // PH2-a — on ne publie QUE le calcul frais (`computed`), jamais le repli `storeLastProjection`
-    // (sinon on republierait à l'identique la valeur du store = bruit/boucle potentielle).
-    const setLastProjection = useFinanceStore(s => s.setLastProjection);
-    useEffect(() => {
-        if (computed && Array.isArray(computed.chartData) && computed.chartData.length > 0) {
-            setLastProjection(computed);
-        }
-    }, [computed, setLastProjection]);
+    // PH2-c — la PUBLICATION dans store.lastProjection est faite par ProjectionEngine (app-level),
+    // plus par ce composant. Futur est désormais un pur CONSOMMATEUR de la source unique.
 
     // G5 — un événement = une pastille (plus de fusion « A | B | C »). On garde
     // year/age/dateLabel par événement pour la fiche au clic, et `subIdx` pour
@@ -546,13 +393,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         </div>;
     }
 
-    // F1 (audit 2026-05-28) — projection plantée (sync ou worker MC) : `_hasError` est
-    // vrai et chartData est vide. Avant, on rendait tout le graphe avec des $0 partout,
-    // que l'utilisateur prenait pour une vraie projection à zéro. On affiche désormais
-    // une erreur honnête. (Le store n'est pas pollué : setLastProjection gate sur
-    // chartData.length > 0, donc Dashboard/Investments/Budget gardent la dernière
-    // projection valide plutôt que d'afficher ces zéros.)
-    if (results?._hasError) {
+    // F1 (audit 2026-05-28) + PH2-c — projection plantée : le moteur app-level (ProjectionEngine)
+    // ne publie PAS un résultat en erreur dans store.lastProjection (no-fake-data) ; il bascule
+    // `projectionStatus` à 'error'. On affiche donc une erreur honnête depuis ce statut plutôt que
+    // de rendre un graphe à $0. Dashboard/Investments/Budget gardent la dernière projection valide.
+    if (hasError) {
         return <div className="p-8 text-center bg-surface/50 rounded-2xl border border-red-500/20 space-y-2">
             <div className="text-2xl" aria-hidden="true">⚠️</div>
             <div className="text-red-400 font-bold">Le calcul de la projection a échoué.</div>

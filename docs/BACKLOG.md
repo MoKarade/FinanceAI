@@ -134,6 +134,12 @@
 - [x] **[PH3-d]** ✅ (PR Phase 3) — Retraite ne contient PLUS d'éditeur de profil/vie (« Parametres de Vie »
   + « Revenus & besoins » extraits → `RetirementIncomeCard` dans Profil) ; lecteurs/graphes conservés ;
   `lifeExpectancy` reste lu du store. **Critères ✓.**
+- [ ] **[A11Y-LBL]** 🔧 (revue #244, SERIOUS hérité) — LOT labels : associer programmatiquement les
+  `<label>` aux inputs (`htmlFor`/`id` ou wrapping) dans RetirementIncomeCard, RetirementSettingsCard,
+  UserConfigFields (salary), UsersCard, RepartitionField (`aria-label` sur le select). Dette d'app
+  (8/30 fichiers seulement utilisent htmlFor) dont Profil est devenu le foyer.
+- [ ] **[SF-WARN]** 🔧 (revue #244, pré-existant) — `Retirement.tsx` fetchLiveTotals + `UsersCard.tsx`
+  restore : `console.warn` sur de vrais échecs I/O → router vers `logError` (convention repo).
 - [ ] **[CPL-1]** 🔧 ⚠️ MONEY-CRITICAL (signalé Marc 2026-06-11) — **switch individuel↔couple** : (a) BLOQUER
   le passage en mode couple tant qu'aucun partenaire n'est défini (nom/salaire du 2e user vides) ; (b) BUG :
   avec UN seul utilisateur réel, basculer en couple CHANGE les courbes — le moteur ne doit produire AUCUNE

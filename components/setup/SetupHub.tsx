@@ -71,7 +71,7 @@ export const SetupHub: React.FC<{ className?: string }> = ({ className = '' }) =
                                 <button
                                     type="button"
                                     onClick={() => navigateWithFocus(tab)}
-                                    className="shrink-0 px-2.5 py-1 rounded-card border border-white/10 bg-white/5 text-tiny font-medium text-ink-300 hover:text-ink-50 hover:bg-white/10 transition-colors focus-ring"
+                                    className="shrink-0 min-h-[44px] px-2.5 py-1 rounded-card border border-white/10 bg-white/5 text-tiny font-medium text-ink-300 hover:text-ink-50 hover:bg-white/10 transition-colors focus-ring"
                                 >
                                     Ouvrir →
                                 </button>

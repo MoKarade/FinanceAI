@@ -26,7 +26,8 @@ const EMPTY_ARRAY: never[] = [];
 
 interface RetirementProps {
     goal: RetirementGoal;
-    setGoal: (g: RetirementGoal) => void;
+    /** PH3 — plus consommé (l'édition de retirementGoal passe par Profil) ; optionnel pour compat. */
+    setGoal?: (g: RetirementGoal) => void;
     currentREER: number;
     currentCELI: number;
     currentNonReg: number;

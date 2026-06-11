@@ -229,7 +229,7 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                 {activeTab === Tab.RETIREMENT && (
                     <PageSetupGate tab={Tab.RETIREMENT}>
                         <Retirement
-                            goal={state.retirementGoal} setGoal={(g) => setAppState({ retirementGoal: g })}
+                            goal={state.retirementGoal}
                             currentREER={assetBreakdown.reer} currentCELI={assetBreakdown.celi} currentNonReg={assetBreakdown.nonReg}
                             calculatedMonthlySavings={calculatedMonthlySavings}
                             grossIncome={state.config.users.reduce((acc, u) => acc + (u.grossSalary || u.salary || 0), 0)}

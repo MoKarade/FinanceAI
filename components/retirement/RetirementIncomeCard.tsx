@@ -17,12 +17,11 @@ export const RetirementIncomeCard: React.FC = () => {
     const setGoal = (g: RetirementGoal) => setAppState({ retirementGoal: g });
 
     return (
-                    <Card title="Revenus & besoins">
+                    <Card title="Rentes & pensions">
+                        {/* Revue #244 (MAJEUR) — le champ « Besoin Mensuel » (targetMonthlyIncome) a été RETIRÉ
+                            d'ici : il dupliquait « Revenu mensuel cible » de RetirementSettingsCard (même clé
+                            store), rendu juste au-dessus dans Profil. UN seul éditeur par champ. */}
                         <div className="space-y-5">
-                            <div>
-                                <label className="block text-meta text-ink-300 mb-1">Besoin Mensuel (Aujourd'hui)</label>
-                                <input type="number" value={goal.targetMonthlyIncome} onChange={e => updateGoal('targetMonthlyIncome', numOr(e.target.value, goal.targetMonthlyIncome))} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-bold focus:border-primary transition-colors outline-none privacy-blur" />
-                            </div>
                             <div>
                                 <label className="block text-meta text-ink-300 mb-1">Rente Etat agrégée (RRQ + PSV / mois) — legacy</label>
                                 <input type="number" value={goal.governmentPension} onChange={e => updateGoal('governmentPension', numOr(e.target.value, goal.governmentPension))} className="w-full bg-black/40 border border-info-500/20 rounded-lg px-3 py-2 text-blue-300 font-bold focus:border-info-500 transition-colors outline-none privacy-blur" />

@@ -11,7 +11,7 @@ export const ProfileFieldsMoved: React.FC<{ what?: string }> = ({ what = 'Ces r√
         <button
             type="button"
             onClick={() => setActiveTab(Tab.PROFILE)}
-            className="w-full flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-surface/40 px-4 py-3 text-left hover:bg-white/5 transition-colors focus-ring"
+            className="w-full min-h-[44px] flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-surface/40 px-4 py-3 text-left hover:bg-white/5 transition-colors focus-ring"
         >
             <span className="text-meta text-ink-300">
                 {what} sont maintenant regroup√©s dans l'onglet <span className="font-bold text-ink-100">Profil</span>.

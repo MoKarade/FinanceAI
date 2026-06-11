@@ -20,6 +20,7 @@ import { calculateGrossFromNet } from '../services/tax';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { useShallow } from 'zustand/shallow';
 import { ProjectionRequired } from './ui/ProjectionRequired';
+import { logError } from '../services/errorLogger';
 
 // Sprint 2 PH3 — constante stable pour éviter de créer un nouveau [] à chaque
 // render (qui invaliderait les useMemo deps de la projection).
@@ -118,8 +119,8 @@ export const Retirement: React.FC<RetirementProps> = ({
                     });
                 }
             } catch (e) {
-                // Fix silent-failure #4 : log au lieu de swallow silencieux
-                console.warn('[Retirement] fetchLiveTotals failed:', e);
+                // [SF-WARN] — vrai échec I/O → logError (journal app), plus un simple console.warn.
+                logError({ source: 'network', severity: 'warning', message: 'Retirement: fetchLiveTotals a échoué (soldes live CSV indisponibles).', error: e instanceof Error ? e : new Error(String(e)) });
             }
         };
         fetchLiveTotals();
@@ -314,6 +315,8 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             <Area type="monotone" dataKey="Liquidites" stackId="1" fill="url(#retGradLiq)" stroke="#9b8fcf" strokeWidth={1} name="Liquidites" fillOpacity={1} />
                                             <Area type="monotone" dataKey="NonReg" stackId="1" fill="url(#retGradNonReg)" stroke="#c2974f" strokeWidth={1} name="Non-Enreg." fillOpacity={1} />
                                             <Area type="monotone" dataKey="CELI" stackId="1" fill="url(#retGradCELI)" stroke="#4f9d86" strokeWidth={1.5} name="CELI" fillOpacity={1} />
+                                            {/* [PH2-d-3] — CELIAPP manquait du stack (TotalCapital l'inclut depuis toujours). */}
+                                            <Area type="monotone" dataKey="CELIAPP" stackId="1" fill="#2dd4bf33" stroke="#2dd4bf" strokeWidth={1} name="CELIAPP" fillOpacity={1} />
                                             <Area type="monotone" dataKey="REER" stackId="1" fill="url(#retGradREER)" stroke="#5b82bf" strokeWidth={1.5} name="REER" fillOpacity={1} />
                                             {/* PH2-d — capital VERROUILLÉ (référence figée), superposé à l'aperçu live. */}
                                             {lockedCapitalByMonth && <Line type="monotone" dataKey="lockedTotalCapital" stroke="#fbbf24" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Verrouillée 🔒" isAnimationActive={false} />}

@@ -10,6 +10,7 @@ import { Card } from '../../ui/Card';
 import { showToast } from '../../ui/Toast';
 import type { AppState, User } from '../../../types';
 import { logAudit } from '../../../services/auditLog';
+import { logError } from '../../../services/errorLogger';
 import { Icon } from '../../ui/Icon';
 
 interface UsersCardProps {
@@ -51,7 +52,8 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
       const profiles = JSON.parse(localStorage.getItem('saved_profiles_list') || '[]');
       setSavedProfiles(profiles);
     } catch (err) {
-      console.warn('[UsersCard] Restore profiles error:', err);
+      // [SF-WARN] — liste de profils corrompue dans localStorage → logError (journal app).
+      logError({ source: 'storage', severity: 'warning', message: 'UsersCard: liste des profils sauvegardés illisible (localStorage).', error: err instanceof Error ? err : new Error(String(err)) });
     }
   }, []);
 

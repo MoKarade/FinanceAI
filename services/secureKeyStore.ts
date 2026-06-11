@@ -148,7 +148,8 @@ const idbPut = (db: IDBDatabase, key: string, value: unknown): Promise<void> =>
  * (non-extractible) et la persiste. Une seule clé par navigateur/profil.
  *
  * Exportée car partagée : sert aussi au chiffrement au repos des backups
- * locaux (`services/backupAuto.ts`). Même modèle de menace (protège un dump
+ * locaux (`services/backupAuto.ts`) et de la courbe de projection verrouillée
+ * (`services/lockedProjectionStore.ts`). Même modèle de menace (protège un dump
  * passif d'IndexedDB/localStorage, pas un XSS actif). Réutilisation sûre —
  * `encryptJson` tire un IV aléatoire à chaque appel, donc aucune réutilisation
  * de nonce GCM même si la clé chiffre plusieurs payloads.

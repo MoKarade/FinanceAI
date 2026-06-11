@@ -43,6 +43,17 @@
 > PH1-b/Q2, FA-6, ITEM-2A/2C, P0-*) · suivis opportunistes (PV-11e test pinnant, D6-SR-2, DEAD-FLT-2,
 > CA-xx) · **Phase 4 (refontes par onglet) : plan-first + OK Marc REQUIS par onglet.**
 >
+> **Session 2026-06-11 (suite 2) — PHASE 4 onglet FUTUR « leviers-d'abord » LIVRÉE** (5 PR) :
+> #250 PH4-FUT-A (calcul-sur-clic : courbe+KPIs cachés tant que pas cliqué, signature `params` entier ;
+> retrait des « plans » / 5 stratégies-types ; purge chaîne robustesse) · **4 nouveaux leviers de stratégie**
+> (câblage partagé recherche↔courbe : StrategyConfig+LEVER_LIBRARY+applied*+configToEngine+runScenario) :
+> #251 **profil de rendement** (conservateur/équilibré/agressif, presets) · #252 **fractionnement pension 65+**
+> (ON/OFF, gate Phase 3 taxDecember) · #253 **taux d'épargne** (multiplicateur 0.9/1/1.2) · #254 **downsizing**
+> immo retraite (vendre+racheter plus petit, libère 40% équité RP, exemption gain ARC). Chaque levier :
+> non-régression bit-près + monotonie/effet + panel (fiscal-accuracy/projection-validator). Suivi : `[RE-GAIN]`
+> (gain locatif non taxé, préexistant). ⚠️ Agents-panel s'orphelinent au resume → checks refaits à la main.
+> **Phase 4 : onglet Futur TERMINÉ. Autres onglets (Transactions/Budget/Investissement/Retraite) : OK Marc requis par onglet.**
+>
 > Session 2026-06-10 — **TOP 10 [UI-EPURE] COMPLET + 5 fiscaux MAJEURS + [UI-SCEN]**. Build/tsc/tests verts.
 > - **Épuration UI (EP-1..EP-10)** — 4 PR (#225 EP-1/2, #226 EP-3/4/5, #227 EP-6/7/10, #228 EP-8) :
 >   Futur/Paramètres « Risques & aléas » repliée + Card AI retirée ; Dashboard 5e KPI « Patrimoine projeté »

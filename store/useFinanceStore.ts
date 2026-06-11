@@ -16,6 +16,9 @@ export interface PendingFocus {
     expiresAt: number;
 }
 
+/** PH2-c — statut du moteur de projection app-level (ProjectionEngine). */
+export type ProjectionStatus = 'idle' | 'computing' | 'error';
+
 export interface FinanceState extends AppState {
     activeTab: Tab;
     isPrivacyMode: boolean;
@@ -27,6 +30,10 @@ export interface FinanceState extends AppState {
      *  pour survivre aux changements d'onglet (le contrôle ne se réinitialise plus au retour
      *  sur Futur) et persisté pour survivre au reload. */
     projectionRunMC: boolean;
+    /** PH2-c (clé de voûte) — statut du moteur de projection app-level (ProjectionEngine).
+     *  Transitoire (NON persisté) : tout onglet peut afficher « recalcul… » / erreur sans
+     *  tenir l'état de calcul localement. */
+    projectionStatus: ProjectionStatus;
     pendingFocus: PendingFocus | null;
     // Mode test : true = l'app affiche des fixtures de test, banner visible
     isTestMode: boolean;
@@ -43,6 +50,7 @@ export interface FinanceState extends AppState {
     setAppState: (state: Partial<AppState>) => void;
     setLastProjection: (r: ProjectionResult | null) => void;
     setProjectionRunMC: (v: boolean) => void;
+    setProjectionStatus: (s: ProjectionStatus) => void;
     /** Navigate to a tab with an optional section to scroll/focus on arrival. */
     navigateWithFocus: (tab: Tab, section?: string) => void;
     /** Called by the destination page after it has consumed the focus intent. */
@@ -379,6 +387,7 @@ export const useFinanceStore = create<FinanceState>()(
             isPrivacyMode: false,
             lastProjection: null,
             projectionRunMC: true,
+            projectionStatus: 'idle',
             pendingFocus: null,
             isTestMode: false,
             realDataSnapshot: null,
@@ -400,6 +409,7 @@ export const useFinanceStore = create<FinanceState>()(
             setAppState: (state) => set((prev) => ({ ...prev, ...state })),
             setLastProjection: (r) => set({ lastProjection: r }),
             setProjectionRunMC: (v) => set({ projectionRunMC: v }),
+            setProjectionStatus: (s) => set({ projectionStatus: s }),
             navigateWithFocus: (tab, section) => {
                 if (typeof window !== 'undefined' && window.location.hash.replace('#', '') !== tab) {
                     window.location.hash = tab;
@@ -494,6 +504,7 @@ export const useFinanceStore = create<FinanceState>()(
                     activeTab: _activeTab,
                     isPrivacyMode: _isPrivacyMode,
                     lastProjection: _lastProjection,
+                    projectionStatus: _projectionStatus,
                     pendingFocus: _pendingFocus,
                     ...persistable
                 } = state;

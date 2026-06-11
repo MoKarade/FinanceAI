@@ -153,6 +153,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
         <div className="flex gap-2">
           <input
             type="text"
+            aria-label="Nom du profil à sauvegarder"
             placeholder="Nom du profil (ex: Marc & Anna 2026)"
             value={newProfileName}
             onChange={e => setNewProfileName(e.target.value)}
@@ -263,8 +264,9 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
             >
               <div className="font-bold text-white mb-2 border-b border-white/5 pb-1">Utilisateur {idx + 1}</div>
               <div data-focus-section={`profile-user${idx + 1}-name`}>
-                <label className="text-meta text-ink-300">Nom</label>
+                <label htmlFor={`uc-name-${idx}`} className="text-meta text-ink-300">Nom</label>
                 <input
+                  id={`uc-name-${idx}`}
                   type="text"
                   value={user.name}
                   onChange={(e) => {
@@ -277,8 +279,9 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div data-focus-section={`profile-user${idx + 1}-age`}>
-                  <label className="text-meta text-ink-300">Age actuel</label>
+                  <label htmlFor={`uc-age-${idx}`} className="text-meta text-ink-300">Age actuel</label>
                   <input
+                    id={`uc-age-${idx}`}
                     type="number"
                     value={user.age || 30}
                     onChange={(e) => {

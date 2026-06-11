@@ -31,6 +31,7 @@ export const RepartitionField: React.FC<{ className?: string }> = ({ className =
         <Card icon={<Icon name="budget" size={18} />} title="Mode de répartition" className={className}>
             <p className="text-meta text-ink-400 mb-2">Comment répartir les dépenses communes entre les conjoints.</p>
             <select
+                aria-label="Mode de répartition des dépenses communes"
                 value={config.splitMode}
                 onChange={(e) => setAppState({ config: { ...config, splitMode: e.target.value as typeof config.splitMode } })}
                 className="w-full bg-dark border border-border rounded px-3 py-2 text-white"
@@ -82,8 +83,9 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                             {section === 'salary' && (
                                 <div className="grid grid-cols-2 gap-2">
                                     <div data-focus-section={`profile-user${idx + 1}-grossSalary`}>
-                                        <label className="text-meta font-bold text-success-300">Salaire Brut annuel ($)</label>
+                                        <label htmlFor={`ucf-gross-${idx}`} className="text-meta font-bold text-success-300">Salaire Brut annuel ($)</label>
                                         <input
+                                            id={`ucf-gross-${idx}`}
                                             type="number"
                                             value={grossAnnualDraft[idx] ?? String((user.grossSalary || 0) * 12)}
                                             onChange={(e) => {
@@ -95,8 +97,9 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                         />
                                     </div>
                                     <div data-focus-section={`profile-user${idx + 1}-netSalary`}>
-                                        <label className="text-meta font-bold text-info-300">Salaire Net mensuel ($)</label>
+                                        <label htmlFor={`ucf-net-${idx}`} className="text-meta font-bold text-info-300">Salaire Net mensuel ($)</label>
                                         <input
+                                            id={`ucf-net-${idx}`}
                                             type="number"
                                             value={user.netSalary || user.salary || 0}
                                             onChange={(e) => patch(idx, { netSalary: parseFloat(e.target.value) || 0 })}

@@ -23,14 +23,14 @@ export const RetirementIncomeCard: React.FC = () => {
                             store), rendu juste au-dessus dans Profil. UN seul éditeur par champ. */}
                         <div className="space-y-5">
                             <div>
-                                <label className="block text-meta text-ink-300 mb-1">Rente Etat agrégée (RRQ + PSV / mois) — legacy</label>
-                                <input type="number" value={goal.governmentPension} onChange={e => updateGoal('governmentPension', numOr(e.target.value, goal.governmentPension))} className="w-full bg-black/40 border border-info-500/20 rounded-lg px-3 py-2 text-blue-300 font-bold focus:border-info-500 transition-colors outline-none privacy-blur" />
+                                <label htmlFor="ric-govPension" className="block text-meta text-ink-300 mb-1">Rente Etat agrégée (RRQ + PSV / mois) — legacy</label>
+                                <input id="ric-govPension" type="number" value={goal.governmentPension} onChange={e => updateGoal('governmentPension', numOr(e.target.value, goal.governmentPension))} className="w-full bg-black/40 border border-info-500/20 rounded-lg px-3 py-2 text-blue-300 font-bold focus:border-info-500 transition-colors outline-none privacy-blur" />
                                 <p className="text-tiny text-ink-500 mt-1">Si tu remplis les 2 champs ci-dessous, ce champ est ignoré.</p>
                             </div>
                             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
                                 <div>
-                                    <label className="block text-meta text-ink-300 mb-1">🇨🇦 RRQ projetée / mois (par personne)</label>
-                                    <input
+                                    <label htmlFor="ric-rrq" className="block text-meta text-ink-300 mb-1">🇨🇦 RRQ projetée / mois (par personne)</label>
+                                    <input id="ric-rrq"
                                         type="number"
                                         value={goal.rrqEstimateMonthly ?? ''}
                                         placeholder="ex: 1100"
@@ -40,8 +40,8 @@ export const RetirementIncomeCard: React.FC = () => {
                                     <p className="text-tiny text-ink-500 mt-1">Max 2025: 1 433$/mois. Consulte ton relevé RRQ.</p>
                                 </div>
                                 <div>
-                                    <label className="block text-meta text-ink-300 mb-1">PSV projetée / mois</label>
-                                    <input
+                                    <label htmlFor="ric-psv" className="block text-meta text-ink-300 mb-1">PSV projetée / mois</label>
+                                    <input id="ric-psv"
                                         type="number"
                                         value={goal.psvEstimateMonthly ?? ''}
                                         placeholder="ex: 734"
@@ -62,8 +62,8 @@ export const RetirementIncomeCard: React.FC = () => {
                             >
                                 <div className="space-y-4 pt-1">
                                     <div>
-                                        <label className="block text-meta text-ink-300 mb-1">Pension employeur DB (prestations determinees) / mois</label>
-                                        <input
+                                        <label htmlFor="ric-dbMonthly" className="block text-meta text-ink-300 mb-1">Pension employeur DB (prestations determinees) / mois</label>
+                                        <input id="ric-dbMonthly"
                                             type="number"
                                             value={goal.dbPensionMonthly ?? 0}
                                             onChange={e => updateGoal('dbPensionMonthly', numOr(e.target.value, goal.dbPensionMonthly ?? 0))}
@@ -75,8 +75,8 @@ export const RetirementIncomeCard: React.FC = () => {
                                     {(goal.dbPensionMonthly ?? 0) > 0 && (
                                         <div className="grid grid-cols-2 gap-3 pb-3 border-b border-white/5">
                                             <div>
-                                                <label className="block text-meta text-ink-300 mb-1">Option DB (au décès)</label>
-                                                <select
+                                                <label htmlFor="ric-dbElection" className="block text-meta text-ink-300 mb-1">Option DB (au décès)</label>
+                                                <select id="ric-dbElection"
                                                     value={goal.dbElectionType ?? 'joint60'}
                                                     onChange={e => setGoal({ ...goal, dbElectionType: e.target.value as RetirementGoal['dbElectionType'] })}
                                                     className="w-full bg-black/40 border border-success-500/10 rounded-lg px-3 py-2 text-emerald-200 text-body"
@@ -88,8 +88,8 @@ export const RetirementIncomeCard: React.FC = () => {
                                                 </select>
                                             </div>
                                             <div>
-                                                <label className="block text-meta text-ink-300 mb-1">% rente survivant</label>
-                                                <input
+                                                <label htmlFor="ric-dbSurvivor" className="block text-meta text-ink-300 mb-1">% rente survivant</label>
+                                                <input id="ric-dbSurvivor"
                                                     type="number"
                                                     min={0}
                                                     max={100}
@@ -103,8 +103,8 @@ export const RetirementIncomeCard: React.FC = () => {
                                     {(goal.dbPensionMonthly ?? 0) > 0 && (
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
-                                                <label className="block text-meta text-ink-300 mb-1">Indexation IPC (%)</label>
-                                                <input
+                                                <label htmlFor="ric-dbIndex" className="block text-meta text-ink-300 mb-1">Indexation IPC (%)</label>
+                                                <input id="ric-dbIndex"
                                                     type="number"
                                                     min={0}
                                                     max={100}
@@ -115,8 +115,8 @@ export const RetirementIncomeCard: React.FC = () => {
                                                 <p className="text-tiny text-ink-500 mt-1">100 = pleine indexation, 50 = demi, 0 = nominale</p>
                                             </div>
                                             <div>
-                                                <label className="block text-meta text-ink-300 mb-1">Age debut versement</label>
-                                                <input
+                                                <label htmlFor="ric-dbStartAge" className="block text-meta text-ink-300 mb-1">Age debut versement</label>
+                                                <input id="ric-dbStartAge"
                                                     type="number"
                                                     min={50}
                                                     max={75}

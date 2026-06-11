@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useSimulationParams } from '../../hooks/useSimulationParams';
 import { buildSimulationParamsFromState } from '../../services/projection/buildSimulationParams';
-import { computeMonthlySavings } from '../../services/projection/buildSimulationParams';
+import { useDerivedFinancials } from '../../utils/useDerivedFinancials';
 import { TEST_PERSONAS } from '../../services/testPersonas';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import type { AppState } from '../../types';
@@ -23,7 +23,10 @@ describe('[PH2-c-4] useSimulationParams — parité directe hook vs fonction ét
             act(() => { useFinanceStore.getState().enableTestMode(fixtures, persona.id); });
 
             const state = useFinanceStore.getState() as unknown as AppState;
-            const savings = computeMonthlySavings(state.config, state.budgetItems ?? []);
+            // Revue #246 — `savings` vient du VRAI chemin prod (useDerivedFinancials, comme App.tsx),
+            // pas de computeMonthlySavings : si la réplique app↔fonction pure dérive, CE test casse.
+            const derived = renderHook(() => useDerivedFinancials(state));
+            const savings = derived.result.current.calculatedMonthlySavings;
 
             const { result } = renderHook(() => useSimulationParams(savings));
             // La référence utilise le MÊME point de départ temporel que le hook (date du jour).

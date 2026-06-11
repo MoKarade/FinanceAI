@@ -5,7 +5,7 @@ import { ProjectionStaleBanner } from './ui/ProjectionStaleBanner';
 import { ProfileFieldsMoved } from './settings/ProfileFieldsMoved';
 import { Icon } from './ui/Icon';
 import { Badge } from './ui/Badge';
-import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset } from '../types';
+import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory } from '../types';
 import { ProjectionChartPoint } from '../services/projection/types';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend } from 'recharts';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
@@ -35,7 +35,6 @@ interface RetirementProps {
     grossIncome?: number;
     projection: ProjectionConfig;
     config: BudgetConfig;
-    assets?: Asset[];
     initialBalances?: Record<string, number>;
     budgetItems?: BudgetCategory[];
     realEstateGoals?: RealEstateGoal[];

@@ -139,6 +139,9 @@
   RetirementSettingsCard (5), UserConfigFields salary (2×idx), UsersCard nom/âge (2×idx) ;
   aria-label sur le select RepartitionField + l'input « Nom du profil ». Reste la dette
   hors-Profil (8/30 fichiers htmlFor) — opportuniste.
+- [ ] **[DEAD-FLT-2]** 🧹 (suite #246) — purger toute la CHAÎNE du stub `fetchPortfolioHistory`
+  (`services/finance.ts` return []) : consumers restants = StockComparisonModal (+ son
+  `.catch(console.warn)` à router logError), `hooks/usePortfolioHistory`, `fetchAssetHistory`.
 - [x] **[DEAD-FLT]** ✅ — bloc `fetchLiveTotals` purgé (45 lignes mortes : l'async ne tournait
   JAMAIS, stub `[]`) → `liveCSVBalances` est un simple useMemo des props (mêmes valeurs réelles
   qu'avant). Imports/destructures morts nettoyés (useState/useEffect/fetchPortfolioHistory/logError/

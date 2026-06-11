@@ -117,6 +117,14 @@
 - [x] **[PH2-d-4]** ✅ — en-tête secureKeyStore mis à jour (3 payloads : clés API + backups + courbe verrouillée). (doc) En-tête `secureKeyStore.ts` : la clé de device chiffre désormais 3 payloads
   (clés API + backups + courbe verrouillée) — mettre à jour le commentaire.
 
+#### Suivi PV-11 (validation projection-validator — réserve documentée)
+- [ ] **[PV-11e]** 🧪 (réserve MOYEN du validator) — `withdrawalREER` du goalMutator alimente AUSSI
+  `stepReerByUser` (attribution fiscale per-conjoint, taxDecember Phase 2 ACTIVE) : dans la fenêtre
+  couple INÉGAL + goal REER + cotisation REER le MÊME mois, le registre per-conjoint bouge légèrement
+  (micro-réalignement ASSUMÉ — plus correct : aligne le décrément sur la clé fiscale déjà utilisée).
+  Baselines inchangées (1927/1927). À pinner par un test couple-inégal+goal-REER+cotisation simultanée.
+  NOTE : goalShortfallTotal agrège des $ NOMINAUX d'années différentes (sémantique à documenter à l'UI).
+
 ### Phase 3 — MODÈLE DE DONNÉES + ONGLET PROFIL ⏳ (plan-first) — dépend de : OK Marc post-PH2
 - [x] **[PH3-a]** ✅ (PR Phase 3) — onglet **Profil** unifié (`components/Profile.tsx` + Tab.PROFILE) qui
   COMPOSE tous les éditeurs de setup (UsersCard, UserConfigFields salary/fiscal/detailed/children,
@@ -378,12 +386,19 @@
 - [ ] **[D4]** God-files : scinder par impact `Investments` (1154) → `FutureProjection` (969) →
   `Budget` (892) → `Transactions` (729) → `Dashboard` (621)… + **[D4-H2]** sélecteurs atomiques
   (App re-render sur tout slice non-`lastProjection` + prop-drilling via `TabRouter`).
-- [ ] **[D6-SR]** Mode privé : le flou CSS laisse les montants **lisibles par lecteur d'écran**
-  (fuite). Masquer le TEXTE quand le mode privé est actif (comme les graphes font déjà `***`),
-  pas seulement flouter. Touche KPI/cellules de tableau/inputs. (Re-confirmé par `a11y-auditor`
-  2026-06-09 : systémique, AUCUN `privacy-blur` du codebase n'est masqué aux SR — ~50 occurrences,
-  dont les nouveaux montants du `StressTestPanel`. Correctif cible : primitive `<PrivateAmount>`
-  partagée avec `aria-hidden` + `sr-only` « montant masqué ».)
+- [x] **[D6-SR]** ✅ (gros du lot) — primitive `<PrivateAmount>` (aria-hidden + sr-only « Montant
+  masqué » en mode privé, blur CSS inchangé, 4 tests) + MIGRATION : `KPIStat` (prop privacy → couvre
+  TOUS les KPI), `DualKPIStat`, `CurrentCapitalCard` (6), + 13 sites one-liner via codemod conservateur
+  (RealEstate, Investments, Dashboard, ChildPlanning, StressTestPanel, PropertyConfigurator,
+  NetWorthByOwnerCard).
+- [ ] **[D6-SR-2]** 🔧 (reste de migration, enrichi revue #247) — ~69 occurrences `privacy-blur`
+  restantes : INPUTS (légitimes — un champ éditable doit rester utilisable par son utilisateur SR ;
+  mais SLIDERS : ajouter `aria-valuetext="Montant masqué"` quand isPrivacyMode — PropertyConfigurator
+  prix d'achat, ChildPlanning REEE) + spans MULTI-LIGNES/mixtes non codemodables + MONTANTS ADJACENTS
+  d'une même unité visuelle (Dashboard:607-619 diff/revenu/gain, StressTestPanel delta, RealEstate
+  colonnes amortissement, PropertyConfigurator mise de fonds) + ChildPlanning « Capital à 17 ans »
+  (à gater comme le fix Dashboard : value peut être un CTA <ProjectionRequired>). Migrer
+  opportunistiquement vers <PrivateAmount> au fil des refontes PH4.
 - [ ] **[D7]** Perf boot : `hydrateAssets` (`App.tsx`) boucle `await sleep(2500ms)` séquentiel par
   symbole → 10 actifs = ~25 s. Paralléliser + cacher, garde-fous anti-rate-limit. Plus gros gain
   de fluidité ressenti.

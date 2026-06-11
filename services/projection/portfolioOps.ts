@@ -22,7 +22,11 @@ export interface NonRegSaleState {
  *
  * Règles fiscales canadiennes :
  *  - Vente proportionnelle au ratio ACB/balance
- *  - Pertes capitales → bank (peut compenser gains futurs)
+ *  - Pertes capitales → bank (peut compenser gains futurs). [PV-11d] NOTE : avec le cap
+ *    `min(1, ACB/balance)`, costBasis ≤ sold donc rawGain ≥ 0 TOUJOURS — la branche
+ *    `rawGain < 0` est INATTEIGNABLE par construction (l'ACB agrégé modélisé ne dépasse
+ *    jamais la valeur marchande). Gardée en défense en profondeur si un appelant futur
+ *    injecte un état ACB > balance (import courtier réel avec perte latente).
  *  - Gains capitaux → après application de la bank, accumulés pour avril
  *
  * Mute le state en place. Retourne le montant vendu (peut être < amount si

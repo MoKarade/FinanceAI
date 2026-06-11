@@ -95,6 +95,9 @@ export interface GoalDeadlineMutator {
     withdrawFromAccount: (account: 'CELI' | 'REER' | 'NON-ENREG' | 'CRYPTO' | 'LIQUID', amount: number) => number;
     addExpense: (amt: number) => void;
     logFlow: (msg: string) => void;
+    /** [PV-11a] — remontée STRUCTURÉE d'un objectif partiellement financé (drawn < visé).
+     *  Optionnel : les appelants hors-moteur (tests) peuvent l'omettre. */
+    onGoalShortfall?: (goalName: string, asked: number, drawn: number) => void;
 }
 
 export function applySavingsGoalDeadlines(
@@ -112,7 +115,9 @@ export function applySavingsGoalDeadlines(
         const drawn = state.withdrawFromAccount('LIQUID', effective);
         if (drawn > 0) state.addExpense(drawn);
         // [PV-10 suivi] log HONNÊTE : montant réellement tiré (pas la cible) + mention du manque.
-        const short = effective - drawn > 0.5 ? ` (visé ${Math.round(effective).toLocaleString('fr-CA')}$ — fonds insuffisants)` : '';
+        const isShort = effective - drawn > 0.5;
+        if (isShort) state.onGoalShortfall?.(g.name || 'Objectif', effective, drawn);
+        const short = isShort ? ` (visé ${Math.round(effective).toLocaleString('fr-CA')}$ — fonds insuffisants)` : '';
         state.logFlow(`🎯 Objectif (${g.name}): -${Math.round(Math.max(0, drawn)).toLocaleString('fr-CA')}$${short}`);
     }
 }
@@ -133,7 +138,9 @@ export function applyFinancialGoalDeadlines(
         const drawn = state.withdrawFromAccount(account, effective);
         if (drawn > 0) state.addExpense(drawn);
         // [PV-10 suivi] log HONNÊTE : montant réellement tiré (pas la cible) + mention du manque.
-        const short = effective - drawn > 0.5 ? ` (visé ${Math.round(effective).toLocaleString('fr-CA')}$ — fonds insuffisants)` : '';
+        const isShort = effective - drawn > 0.5;
+        if (isShort) state.onGoalShortfall?.(g.name || 'But financier', effective, drawn);
+        const short = isShort ? ` (visé ${Math.round(effective).toLocaleString('fr-CA')}$ — fonds insuffisants)` : '';
         state.logFlow(`🏆 But financier (${g.name}): -${Math.round(Math.max(0, drawn)).toLocaleString('fr-CA')}$ depuis ${account}${short}`);
     }
 }

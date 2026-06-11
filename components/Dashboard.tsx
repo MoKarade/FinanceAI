@@ -25,6 +25,7 @@ import { Tab as TabEnum } from '../types';
 import { formatCAD, formatPercent, formatSigned } from '../utils/format';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { logError } from '../services/errorLogger';
+import { PrivateAmount } from './ui/PrivateAmount';
 
 interface DashboardProps {
     transactions: Transaction[];
@@ -433,14 +434,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 {/* [EP-3] KPI Futur simplifié : valeur projetée à l'horizon RÉEL (lastProjection),
                     plus de mini-formulaire (input année + Sync) — l'horizon se règle dans Futur.
                     a11y : onClick UNIQUEMENT si hasValue — sinon KPIStat rendrait un <button> contenant
-                    le <button> interne de <ProjectionRequired> (bouton imbriqué = HTML invalide). */}
+                    le <button> interne de <ProjectionRequired> (bouton imbriqué = HTML invalide).
+                    Revue #247 (MAJEUR) — privacy gated PAREIL : sans valeur, la value est le CTA
+                    <ProjectionRequired> ; le mettre sous aria-hidden (PrivateAmount) rendrait son bouton
+                    focusable-mais-muet (WCAG 4.1.2) et annoncerait « Montant masqué » sans montant. */}
                 <KPIStat
                     label={t('dashboard.future_predictor', 'Patrimoine projeté')}
                     value={futureKpi.hasValue
                         ? formatCAD(futureKpi.netWorth as number)
                         : <ProjectionRequired variant="inline" />}
                     sublabel={futureKpi.horizonY ? `dans ${futureKpi.horizonY} ans` : undefined}
-                    privacy
+                    privacy={futureKpi.hasValue}
                     onClick={futureKpi.hasValue ? () => navigateWithFocus(TabEnum.FUTURE) : undefined}
                 />
             </StatGrid>
@@ -602,7 +606,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     </div>
                                 </div>
                                 <div className="text-right shrink-0">
-                                    <div className="font-mono font-bold text-ink-100 text-body privacy-blur">{formatCAD(asset.value)}</div>
+                                    <PrivateAmount as="div" className="font-mono font-bold text-ink-100 text-body">{formatCAD(asset.value)}</PrivateAmount>
                                     <div className="flex justify-end gap-2 text-tiny mt-0.5 font-bold privacy-blur">
                                         <span className={asset.diffCAD >= 0 ? 'text-green-500' : 'text-danger-500'}>
                                             {formatSigned(asset.diffCAD, { withCurrency: true })}

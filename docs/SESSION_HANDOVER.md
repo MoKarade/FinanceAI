@@ -18,31 +18,26 @@
 > phase suivante sans OK explicite de Marc** ; Q1/Q2 à poser (cf `A_FAIRE_MOI` O6) ; handover à jour
 > après chaque phase.
 >
-> **▶ PHASE 2 (clé de voûte) TERMINÉE — 3/3 PR MERGÉES** (décompo validée Marc 2026-06-10) :
-> **[PH2-a]+[PH2-b] #240** (Futur survit aux onglets : `runMC` persisté + worker singleton chaud + dédup
-> `runProjectionAsync`) · **[PH2-c] #241** (source UNIQUE : `ProjectionEngine` headless+lazy app-level publie
-> `lastProjection` pour TOUS les onglets ; `useSimulationParams` partagé ; `projectionStatus`) · **[PH2-d]
-> #242** (verrou de courbe : snapshot persisté CHIFFRÉ en IndexedDB DÉDIÉE + double courbe verrouillée/live
-> sur Futur & Retraite ; booléen additif, ZÉRO bump v7). Chaque PR : panel complet, rien de bloquant.
-> **Suivis non bloquants au BACKLOG** : PH2-c-1..4 + PH2-d-1..4 — dont **PH2-c-1** (dédup fetch
-> `usePastPortfolioHistory` double-instance sur Futur) et **PH2-d-1 = DÉCISION MARC** (toast si verrou
-> irrécupérable au boot, façon `decrypt_failed`).
-> **▶ PHASE 3 EN COURS (1 PR, WIP sur la branche — décisions Marc : 1 PR + « tout le setup user »)** :
-> onglet PROFIL unifié regroupant TOUT le setup utilisateur. **Fait (poussé, PAS encore en PR)** :
-> tranche 1 `85cf229` (Tab.PROFILE + `components/Profile.tsx` composant les éditeurs existants — UsersCard,
-> UserConfigFields salary/fiscal/detailed/children, RepartitionField, RetirementSettingsCard — + nav
-> « Outils »/TabRouter lazy/TAB_LABELS/CommandPalette ; migration UI PURE, mêmes clés store) ; tranche 2
-> `723db21` (éditeurs profil RETIRÉS de Impôts/Enfant/Budget/Config → pointeur `ProfileFieldsMoved` « → Profil »).
-> **RESTE (3 tranches)** : (3) **Retraite — money-critical, soigner** : `RetirementSettingsCard` (déjà dans
-> Profil) couvre targetAge/lifeExp/income/rrqStart/psvStart ; mais les cartes INLINE de Retraite
-> (`Parametres de Vie`/`Revenus & besoins`, ~L251-310) ont des champs UNIQUES (currentAge, governmentPension,
-> rrqEstimateMonthly, psvEstimateMonthly) + de l'ÉTAT local (`lifeExpectancy`/`currentAge`) consommé par le
-> graphe et `CurrentCapitalCard`. → déplacer ces champs uniques vers Profil + convertir l'état éditable en
-> DÉRIVÉ (retirementGoal/config.users[0].age) sans casser les lecteurs ; garder CurrentCapitalCard + graphes.
-> (4) **PH3-b** complétion : `PAGE_SETUP[Tab.PROFILE]` + nouveaux RequirementId (réutilise SetupHub). (5)
-> **PH3-c** audit/purge des champs « profil détaillé » morts (grep consommateurs → retrait type+UI ;
-> migration persist SEULEMENT si strictement nécessaire — sinon les champs persistés résiduels sont inertes).
-> Puis tests + panel (dont a11y) + **ouvrir la PR** + merge. ⚠️ Pas de Phase 4 sans OK Marc.
+> **▶ PHASE 2 (clé de voûte) TERMINÉE — 3/3 PR** (#240 #241 #242, détail BACKLOG) · **▶ PHASE 3 TERMINÉE
+> (a/b/d) #244** : onglet PROFIL unifié (tout le setup user : identité, salaires, fiscal, répartition,
+> détaillé, retraite via RetirementSettingsCard + RetirementIncomeCard extrait, enfants) + SetupHub en tête
+> (% complétion global) ; éditeurs RETIRÉS de Impôts/Enfant/Budget/Config/Retraite (pointeur
+> `ProfileFieldsMoved`) ; Retraite = résultats/analyses only. **PH3-c (purge champs détaillé morts) RESTE**
+> (audit consigné au BACKLOG : 19 non consommés vs 5 ; purge soignée à part, tax-sensible).
+>
+> **Session 2026-06-11 (suite) — GRIND backlog (demande Marc « tout faire sans s'arrêter »)** :
+> #243 PH2-d-1 (toast verrou irrécupérable) · #244 Phase 3 + **réduction docs 47→9** (HISTORIQUE.md
+> consolidé) · #245 **[CPL-1]** (bug couple Marc : passage en couple GATÉ sur définition consciente du
+> conjoint — formulaire + bypass sidebar fermé ; conjoint vide = zéro revenu fantôme, prouvé par test)
+> + PH2-c-1 (dédup module fetch Finnhub durcie : par symbole+clé, retry, anti-fuite test) + PH2-c-2
+> (ProjectionStaleBanner inter-onglets) + PH2-d-2 (tooltip verrou) + PH2-d-3 (aire CELIAPP) + SF-WARN ·
+> #246 PH2-c-4 (parité directe du hook, 7 personas) + A11Y-LBL (18 labels) + DEAD-FLT (purge
+> fetchLiveTotals inopérant) + primitive **PrivateAmount** · **#247 (en cours de merge)** : D6-SR
+> (migration PrivateAmount : KPIStat levier + 21 sites — montants masqués aux SR en mode privé)
+> + **PV-11** (goalShortfalls structuré, retraits goals aux séries withdrawal*, clamp liquid négatif ;
+> validé projection-validator 1927/1927, réserve per-conjoint assumée → PV-11e).
+> **RESTE actionnable** : **FA-8** (lot mineurs fiscaux — fiscal-accuracy au diff) · **PH3-c** (purge) ·
+> PV-11e (test pinnant) · D6-SR-2 / DEAD-FLT-2 / A11Y hors-Profil (opportuniste). ⚠️ Phase 4 : OK Marc requis.
 >
 > Session 2026-06-10 — **TOP 10 [UI-EPURE] COMPLET + 5 fiscaux MAJEURS + [UI-SCEN]**. Build/tsc/tests verts.
 > - **Épuration UI (EP-1..EP-10)** — 4 PR (#225 EP-1/2, #226 EP-3/4/5, #227 EP-6/7/10, #228 EP-8) :

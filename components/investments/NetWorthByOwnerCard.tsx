@@ -10,6 +10,7 @@ import { useFinanceStore } from '../../store/useFinanceStore';
 import type { Asset, AssetOwner } from '../../types';
 import { computeNetWorthByOwner, defaultOwner } from '../../services/couple/netWorthByOwner';
 import { Icon } from '../ui/Icon';
+import { PrivateAmount } from '../ui/PrivateAmount';
 
 interface NetWorthByOwnerCardProps {
     assets: Asset[];
@@ -57,7 +58,7 @@ export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets
                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: b.color }} aria-hidden="true" />
                             <span className="text-meta text-ink-200 truncate">{b.label}</span>
                         </div>
-                        <div className="font-mono font-bold text-white privacy-blur">{fmt(b.value)}</div>
+                        <PrivateAmount as="div" className="font-mono font-bold text-white">{fmt(b.value)}</PrivateAmount>
                         <div className="text-tiny text-ink-500">{pct(b.value, bd.total)}</div>
                     </div>
                 ))}
@@ -73,7 +74,7 @@ export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets
                                 <span className="text-ink-100 truncate">
                                     <span className="font-bold">{a.symbol}</span>
                                     <span className="text-ink-500"> · {a.accountType || 'NON-ENREG'} · </span>
-                                    <span className="font-mono privacy-blur">{fmt(value)}</span>
+                                    <PrivateAmount className="font-mono">{fmt(value)}</PrivateAmount>
                                 </span>
                                 <select
                                     aria-label={`Propriétaire de ${a.symbol}`}

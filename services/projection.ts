@@ -248,6 +248,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let totalExpenses = 0;
     let minNetWorth = liquid + celi + celiapp + reer + nonReg + crypto + reee;
     let shortfallMonths = 0;
+    // [PV-11a] — shortfalls d'OBJECTIF (drawn < visé aux deadlines de goals) : métrique structurée
+    // (≠ shortfallMonths qui compte les mois de déficit de CASHFLOW — sémantique différente).
+    let goalShortfallCount = 0;
+    let goalShortfallTotal = 0;
 
     let reeeTracker: Record<string, { scee: number; iqee: number; contribLifetime: number }> = {};
 
@@ -299,7 +303,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
     // Cycle 25 split: handleNonRegSale partagé → ./projection/portfolioOps
     // Closure-wrapper: synchronise les let locaux avec le state object.
-    const handleNonRegSale = (amount: number, _label: string): number => {
+    // [PV-11c] — le paramètre `_label` (jamais consommé, suggérait un log inexistant) est retiré.
+    const handleNonRegSale = (amount: number): number => {
         const ms = { nonReg, nonRegACB, capitalLossBank, accCapitalGainsYear };
         const sold = portfolioNonRegSale(ms, amount);
         nonReg = ms.nonReg;
@@ -1076,33 +1081,49 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             withdrawFromAccount: (account: 'CELI' | 'REER' | 'NON-ENREG' | 'CRYPTO' | 'LIQUID', amount: number): number => {
                 let remaining = amount;
                 if (account === 'LIQUID' || account === 'NON-ENREG') {
-                    const fromLiquid = Math.min(liquid, remaining);
+                    // [PV-11 revue] clamp à 0 : `liquid` peut être NÉGATIF ici (impôt d'avril débité
+                    // AVANT les goals, sauvetage PV-1 après) — sans clamp, un goal « effaçait » le
+                    // découvert sans le payer (survente NonReg + withdrawalLiquid négatif au chart).
+                    const fromLiquid = Math.min(Math.max(0, liquid), remaining);
                     liquid -= fromLiquid; remaining -= fromLiquid;
+                    withdrawalLiquid += fromLiquid;
                     if (remaining > 0 && account === 'NON-ENREG' && nonReg > 0) {
                         // [PV-10] Vente non-enregistrée RÉELLE via handleNonRegSale : gain réalisé
                         // (ACB proportionnel, banque de pertes, accCapitalGainsYear → imposé en
                         // décembre). Avant : ACB décrémenté du montant VENDU complet et AUCUN gain
                         // réalisé → retraits d'objectifs jamais imposés (sous-imposition) ET ACB
                         // sous-évalué (sur-imposition des ventes suivantes) — double erreur.
-                        const fromNR = handleNonRegSale(remaining, 'Objectif');
+                        const fromNR = handleNonRegSale(remaining);
                         remaining -= fromNR;
+                        withdrawalNonReg += fromNR;
                     }
                 } else if (account === 'CELI') {
                     const drawn = Math.min(celi, remaining);
                     celi -= drawn; celiWithdrawalsThisYear += drawn; remaining -= drawn;
+                    withdrawalCELI += drawn;
                 } else if (account === 'REER') {
                     const drawn = Math.min(reer, remaining);
                     reer -= drawn; accRetraitsReerYear += drawn; remaining -= drawn;
                     accRetraitsReerYearByUser = addByWeights(accRetraitsReerYearByUser, drawn, reerByUser);
+                    withdrawalREER += drawn;
                 } else if (account === 'CRYPTO') {
                     // [PV-7] gain proportionnel + banque de pertes via le helper partagé.
                     const drawn = handleCryptoSaleLocal(remaining);
                     remaining -= drawn;
+                    withdrawalCrypto += drawn;
                 }
+                // [PV-11b] — les retraits de GOALS alimentent désormais les séries withdrawal* du
+                // chartData (sous-rapport pour les consommateurs « source unique » avant ce fix).
                 return amount - remaining;
             },
             addExpense: (_n: number) => { /* déjà soustrait du compte ciblé */ },
             logFlow: (s: string) => logEvent(flowEventsLog, s),
+            // [PV-11a] — remontée STRUCTURÉE du shortfall d'objectif (le log texte reste).
+            onGoalShortfall: (_goalName: string, asked: number, drawn: number) => {
+                goalShortfallCount++;
+                // Borne drawn à 0 (défense) : un drawn négatif surévaluerait le manque.
+                goalShortfallTotal += Math.max(0, asked - Math.max(0, drawn));
+            },
         };
         applySavingsGoalDeadlines(savingsGoals, currentIsoMonth, expenseMultiplier, goalMutator);
         applyFinancialGoalDeadlines(financialGoals, currentIsoMonth, expenseMultiplier, goalMutator);
@@ -1204,8 +1225,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
         // Transfert NonReg → CELI/REER si espace
         if (nonReg > 0) {
-            if (celiRoom > 0) { const a = Math.min(nonReg, celiRoom); const s = handleNonRegSale(a, 'Opti.CELI'); celi += s; celiRoom -= s; }
-            if (rrspRoom > 0 && nonReg > 0 && !isRetired) { const a = Math.min(nonReg, rrspRoom); const s = handleNonRegSale(a, 'Opti.REER'); reer += s; rrspRoom -= s; accRrspYear += s; }
+            if (celiRoom > 0) { const a = Math.min(nonReg, celiRoom); const s = handleNonRegSale(a); celi += s; celiRoom -= s; }
+            if (rrspRoom > 0 && nonReg > 0 && !isRetired) { const a = Math.min(nonReg, rrspRoom); const s = handleNonRegSale(a); reer += s; rrspRoom -= s; accRrspYear += s; }
         }
 
         // [PV-1] Sauvetage du liquide négatif (choix Marc 2026-06-10 : cascade de vente).
@@ -1405,6 +1426,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // en audit : persona « couple endetté » à 100,2 %). Un taux de manque
         // est par définition une fraction.
         shortfallRate: Math.min(1, shortfallMonths / (projection.years * 12)),
+        // [PV-11a] — objectifs partiellement financés (≠ shortfallMonths/cashflow).
+        goalShortfalls: { count: goalShortfallCount, total: Math.round(goalShortfallTotal) },
         startNW: estate.startNW,
     };
 };

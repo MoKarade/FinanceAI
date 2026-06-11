@@ -12,6 +12,7 @@ import type { ProjectionResult } from '../../services/projection/types';
 import { runProjectionAsync } from '../../services/projection/runAsync';
 import { STRESS_STRAT_TYPES } from '../../services/projection/scenarios';
 import { logError } from '../../services/errorLogger';
+import { PrivateAmount } from '../ui/PrivateAmount';
 
 interface Props {
     params: SimulationParams;
@@ -92,7 +93,7 @@ export const StressTestPanel: React.FC<Props> = ({ params, baselineEstateNW }) =
                                         <div className="text-tiny text-ink-400 truncate">{r.stratDescription}</div>
                                     </div>
                                     <div className="text-right shrink-0">
-                                        <div className="text-meta font-black text-white tabular-nums privacy-blur">{fmtM(r.estateNetWorth ?? 0)}</div>
+                                        <PrivateAmount as="div" className="text-meta font-black text-white tabular-nums">{fmtM(r.estateNetWorth ?? 0)}</PrivateAmount>
                                         {delta !== null && (
                                             <div className={`text-tiny font-bold tabular-nums privacy-blur ${delta >= 0 ? 'text-success-400' : 'text-orange-300'}`}>
                                                 {delta >= 0 ? '+' : ''}{fmtM(delta)} vs réaliste

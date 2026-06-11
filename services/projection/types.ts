@@ -145,6 +145,9 @@ export interface ProjectionResult {
     totalGrowth?: number;
     totalExpenses?: number;
     minNetWorth?: number;
+    /** [PV-11a] — objectifs PARTIELLEMENT financés à leur deadline (drawn < visé) :
+     *  count = nb d'occurrences, total = somme des manques ($). ≠ shortfallRate (cashflow). */
+    goalShortfalls?: { count: number; total: number };
     shortfallMonths?: number;
     shortfallRate?: number;
     fireNumber?: number;

@@ -196,6 +196,14 @@
   résidence principale (ARC) ; gardes underwater/locataire/une-seule-fois. Tests unitaires (effet/non-rég/
   underwater/locataire) + baselines intactes. → **PH4-FUT-B COMPLET (4/4 leviers livrés #251-#254).**
 
+#### Suivis fiscaux (découverts au panel PH4-FUT-B-4)
+- [ ] **[RE-GAIN]** 🔧 (découverte fiscal-accuracy) — le gain en capital immobilier d'un **locatif**
+  (≠ résidence principale) n'est PAS modélisé à la disposition : la vente générique
+  (`monthlyEvents.ts` `name.includes('vente')`) libère le net SANS réaliser de gain imposable et SANS
+  tester `isPrimaryResidence` ; à la succession (`estateCalculation.ts`) `realEstateEquity` entre sans
+  impôt latent immobilier. Préexistant (hors PH4-FUT-B-4, qui borne correctement le downsizing à la RP).
+  Fix : taxer le gain locatif (inclusion 50 %) à la vente/succession ; documenté FISCAL_REFERENCE §8.
+
 ### Phase 4 — REFONTES ⏳ (UN plan SÉPARÉ par onglet → OK Marc par onglet) — dépend de : PH2 (+PH3 pour FUT/RET)
 - [ ] **[PH4-FUT]** 🔧⏳ Refonte **Futur** : leviers OBLIGATOIRES avant calcul (l'actuel contenu
   d'Optimisation remonte en amont) ; la courbe affichée = toujours la MEILLEURE selon les leviers ;

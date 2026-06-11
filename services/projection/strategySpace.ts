@@ -10,6 +10,7 @@ import type { SimulationParams, AllocationStrategy } from '../projection';
 import {
     LEVER_LIBRARY,
     withdrawalOrderToStrategy,
+    returnRatesForProfile,
     type StrategyConfig,
     type EngineOverrides,
 } from './strategyConfig';
@@ -114,16 +115,18 @@ export const ASSET_LOCATION_BONUS_PP = 0.4;
  */
 export function configToEngine(config: StrategyConfig, baseParams: SimulationParams): EngineArgs {
     const baseIncome = baseParams.retirementGoal.targetMonthlyIncome ?? 0;
-    const baseReturnRates = baseParams.projection.returnRates;
+    // PH4-FUT-B — profil de rendement appliqué AVANT le bonus asset-location (presets, ou taux
+    // courants si 'balanced'). Même helper que runScenario → recherche et courbe « appliquée » identiques.
+    const profileRates = returnRatesForProfile(config.returnRateProfile, baseParams.projection.returnRates);
     const b = ASSET_LOCATION_BONUS_PP;
-    const returnRates = config.assetLocation && baseReturnRates
+    const returnRates = config.assetLocation && profileRates
         ? {
-            ...baseReturnRates,
-            celi: baseReturnRates.celi + b,
-            reer: baseReturnRates.reer + b,
-            nonReg: baseReturnRates.nonReg + b,
+            ...profileRates,
+            celi: profileRates.celi + b,
+            reer: profileRates.reer + b,
+            nonReg: profileRates.nonReg + b,
         }
-        : baseReturnRates;
+        : profileRates;
     const params: SimulationParams = {
         ...baseParams,
         projection: {

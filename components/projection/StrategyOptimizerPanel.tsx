@@ -325,7 +325,7 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, onApply }) => 
     );
 };
 
-// ── Carte du gagnant : 10 leviers en clair + explication + détail du score ──
+// ── Carte du gagnant : tous les leviers en clair + explication + détail du score ──
 const WinnerCard: React.FC<{
     winner: RankedConfig;
     explanation: string;
@@ -353,7 +353,7 @@ const WinnerCard: React.FC<{
                 <Metric label="FIRE" value={r.fireAge !== null ? `${Math.round(r.fireAge)} ans` : '—'} />
             </div>
 
-            {/* Les 10 leviers en clair */}
+            {/* Tous les leviers en clair (LEVER_LIBRARY) */}
             <div className="mt-2.5 flex flex-wrap gap-1.5">
                 {LEVER_LIBRARY.map((lever) => (
                     <span key={String(lever.key)} className="rounded bg-white/5 px-2 py-0.5 text-tiny text-ink-300">

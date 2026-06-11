@@ -352,6 +352,9 @@ export interface ProjectionConfig {
   appliedSkipRap?: boolean;
   appliedAssetLocation?: boolean;
   appliedGainHarvesting?: boolean;
+  /** PH4-FUT-B — profil de rendement appliqué (levier). Absent / 'balanced' = taux returnRates
+   *  inchangés (non-régression) ; 'conservative'/'aggressive' = preset (RETURN_RATE_PRESETS). */
+  appliedReturnProfile?: 'conservative' | 'balanced' | 'aggressive';
 
   // [UI-SCEN] (2026-06-09, demande Marc « enlève les plans de base ») — la stratégie de
   // retrait/gestion est un PARAMÈTRE : le moteur ne calcule que CE scénario réaliste

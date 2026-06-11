@@ -9,7 +9,7 @@
 // dérivées.
 
 import { mulberry32 } from './helpers';
-import { calculateCeliRoom, getResidencyStartYear, RRSP_ANNUAL_LIMITS, rrqAdjustmentFactor as computeRrqFactor } from '../../utils/tax';
+import { calculateCeliRoom, getResidencyStartYear, RRSP_ANNUAL_LIMITS, rrqAdjustmentFactor as computeRrqFactor, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE } from '../../utils/tax';
 import type { FutureScenarioType } from '../projection';
 
 /**
@@ -88,7 +88,11 @@ export interface RrqAdjustmentResult {
  * Facteur d'ajustement RRQ selon l'âge de prise des pensions:
  * - Anticipation (60-65): -0.6%/mois (max -36% à 60)
  * - Report (65-72): +0.7%/mois (max +58,8% à 72 — report étendu à 72 depuis 2024)
- * RRQ = 65% du governmentPension; PSV = 35%.
+ *
+ * Split RRQ/PSV du champ AGRÉGÉ legacy `governmentPension` : convention de MODÈLE 65/35
+ * (GOV_PENSION_*_SHARE, utils/tax.ts — PAS une règle ARC/RQ, cf FISCAL_REFERENCE §6 FA-8).
+ * Les champs précis `rrqEstimateMonthly`/`psvEstimateMonthly` priment dans retirementIncome ;
+ * ce split ne sert que de repli/ancre.
  *
  * Note: effectivePensionStartAge est l'âge de déblocage des pensions
  * gouvernementales (65 par défaut, 72 si delayPensions). Distinct de
@@ -107,8 +111,11 @@ export function computeRrqAdjustment(
     return {
         effectivePensionStartAge,
         rrqAdjustmentFactor,
-        rrqBasePension: retirementGoal.governmentPension * 0.65 * rrqAdjustmentFactor,
-        psvBasePension: retirementGoal.governmentPension * 0.35,
+        rrqBasePension: retirementGoal.governmentPension * GOV_PENSION_RRQ_SHARE * rrqAdjustmentFactor,
+        // PSV de BASE (sans facteur de report) : sert d'ANCRE legacy. Le CAP du clawback PSV
+        // utilise désormais la PSV réellement VERSÉE du breakdown (report/bonus 75+/prorata
+        // inclus — FA-8, cf computeOasClawback) ; cette base n'est plus qu'un repli rétro-compat.
+        psvBasePension: retirementGoal.governmentPension * GOV_PENSION_PSV_SHARE,
     };
 }
 

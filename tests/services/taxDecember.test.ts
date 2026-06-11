@@ -237,6 +237,99 @@ describe('FA-2 (audit 2026-06-09) : clawback PSV par conjoint — seuil PAR PART
 });
 
 // ──────────────────────────────────────────────────────────────────────────
+// FA-8 (2026-06-11) : cap du clawback = PSV réellement VERSÉE
+// (15e paramètre psvActualMonthlyNominal — mensuelle, NOMINALE, HORS SRG)
+// ──────────────────────────────────────────────────────────────────────────
+describe('FA-8 : cap clawback = PSV réellement versée (psvActualMonthlyNominal)', () => {
+    // Avant FA-8 le cap était psvBasePension (base SANS facteur de report) : clawback
+    // SOUS-estimé pour un reporteur 66-70 à haut revenu (cap réel jusqu'à ×1,36×1,10 plus
+    // haut), SURestimé si prorata de résidence < 1, et clawback FICTIF possible avant
+    // psvStartAge (PSV non versée). Le 15e param (breakdown de décembre psv − gis) corrige.
+
+    it('RÉGRESSION CLÉ (reporteur à 70 ans, ×1,36) : cap = PSV réelle ×12 = 9 792 $, PAS la base ×12 = 7 200 $', () => {
+        // base 600 $/mois ; PSV réellement versée 816 $/mois (report ×1,36). Revenu très haut
+        // (50 000 $/mois = 600 000 $/an) → 15 % de l'excédent ≈ 75 702 $ ≫ cap → le cap est liant.
+        const avecCap = computeOasClawback(DECEMBER, 24, true, 70, 1, 50000, 0, 0, 600, 0,
+            1, undefined, undefined, 0, 816);
+        expect(avecCap.clawbackAnnual).toBeCloseTo(816 * 12, 5); // 9 792 — la PSV REÇUE
+        // Contraste legacy : 15e param ABSENT → repli sur la base (l'ancien plafond sous-estimé).
+        const sansCap = computeOasClawback(DECEMBER, 24, true, 70, 1, 50000, 0, 0, 600, 0,
+            1, undefined, undefined, 0);
+        expect(sansCap.clawbackAnnual).toBeCloseTo(600 * 12, 5); // 7 200 — l'ancien comportement
+        expect(avecCap.clawbackAnnual).toBeGreaterThan(sansCap.clawbackAnnual);
+    });
+
+    it('cap déjà NOMINAL : PAS re-multiplié par l\'inflation (contrairement au repli base, indexé)', () => {
+        // simInflation 10 %, m=24 → facteur nominal 1,1² = 1,21. Le breakdown fourni est DÉJÀ
+        // nominal → cap = 816×12 exactement (re-multiplier donnerait 11 848 $, double-indexation).
+        const r = computeOasClawback(DECEMBER, 24, true, 70, 1, 100000, 0, 0, 600, 10,
+            1, undefined, undefined, 0, 816);
+        expect(r.clawbackAnnual).toBeCloseTo(816 * 12, 5);
+        // Le repli legacy (param absent), lui, indexe la base : 600×12×1,21.
+        const legacy = computeOasClawback(DECEMBER, 24, true, 70, 1, 100000, 0, 0, 600, 10);
+        expect(legacy.clawbackAnnual).toBeCloseTo(600 * 12 * Math.pow(1.1, 2), 5);
+    });
+
+    it('cap NON liant : sous le plafond, le clawback reste 15 % de l\'excédent (identique avec/sans cap)', () => {
+        // 8 000 $/mois = 96 000 $/an → excédent 677 × 15 % = 101,55 $ < cap (816×12 ou 600×12).
+        const avec = computeOasClawback(DECEMBER, 24, true, 70, 1, 8000, 0, 0, 600, 0,
+            1, undefined, undefined, 0, 816);
+        const sans = computeOasClawback(DECEMBER, 24, true, 70, 1, 8000, 0, 0, 600, 0);
+        const excess = 96000 - OAS_CLAWBACK_THRESHOLD_2026;
+        expect(avec.clawbackAnnual).toBeCloseTo(excess * 0.15, 5);
+        expect(avec.clawbackAnnual).toBeCloseTo(sans.clawbackAnnual, 5);
+    });
+
+    it('cap = 0 (PSV pas encore versée — report en cours avant psvStartAge) → AUCUN clawback même à très haut revenu', () => {
+        // 67 ans, début PSV choisi à 70 : PSV versée = 0 → récupérer une PSV non reçue serait
+        // fictif. Avant FA-8 : cap = base 600×12 → jusqu'à 7 200 $/an de clawback INDU.
+        const r = computeOasClawback(DECEMBER, 24, true, 67, 1, 50000, 0, 0, 600, 0,
+            1, undefined, undefined, 0, 0);
+        expect(r.clawbackAnnual).toBe(0);
+        expect(r.logMsg).toBeUndefined();
+    });
+
+    it('cap NÉGATIF (corruption amont) → clampé à 0 : clawback nul, jamais NaN', () => {
+        const r = computeOasClawback(DECEMBER, 24, true, 70, 1, 50000, 0, 0, 600, 0,
+            1, undefined, undefined, 0, -816);
+        expect(Number.isFinite(r.clawbackAnnual)).toBe(true);
+        expect(r.clawbackAnnual).toBe(0);
+        expect(r.logMsg).toBeUndefined(); // négatif = fini → pas le marqueur « invalide »
+    });
+
+    it('cap NaN (présent-mais-invalide) → repli sur la BASE + marqueur « invalide » dans le log', () => {
+        // Revue FA-8 (silent-failure) : présent-mais-NaN ≠ absent — la corruption amont
+        // (ex. psvResidencyYears NaN) doit laisser une trace, pas un repli silencieux.
+        const r = computeOasClawback(DECEMBER, 24, true, 70, 1, 50000, 0, 0, 600, 0,
+            1, undefined, undefined, 0, NaN);
+        expect(r.clawbackAnnual).toBeCloseTo(600 * 12, 5); // repli base — jamais NaN
+        expect(r.logMsg).toContain('[cap PSV réel invalide');
+    });
+
+    it('cap NaN avec clawback NUL → le marqueur « invalide » est quand même émis (trace de corruption)', () => {
+        // Revenu sous le seuil → clawback 0 ; sans le `|| capInvalid`, le log serait omis.
+        const r = computeOasClawback(DECEMBER, 24, true, 70, 1, 5000, 0, 0, 600, 0,
+            1, undefined, undefined, 0, NaN);
+        expect(r.clawbackAnnual).toBe(0);
+        expect(r.logMsg).toContain('[cap PSV réel invalide');
+    });
+
+    it('cap Infinity → invalide aussi (Number.isFinite) : repli base + marqueur', () => {
+        const r = computeOasClawback(DECEMBER, 24, true, 70, 1, 50000, 0, 0, 600, 0,
+            1, undefined, undefined, 0, Infinity);
+        expect(r.clawbackAnnual).toBeCloseTo(600 * 12, 5);
+        expect(r.logMsg).toContain('[cap PSV réel invalide');
+    });
+
+    it('couple : le cap RÉEL est réparti PAR CONJOINT (actual×12/n)', () => {
+        // 2 conjoints à 600 k$/an chacun → chacun plafonné à 816×12/2 = 4 896 → total 9 792.
+        const r = computeOasClawback(DECEMBER, 24, true, 70, 1, 100000, 0, 0, 600, 0,
+            2, [50000, 50000], [0, 0], 0, 816);
+        expect(r.clawbackAnnual).toBeCloseTo(816 * 12, 5);
+    });
+});
+
+// ──────────────────────────────────────────────────────────────────────────
 // processTaxLossHarvesting — cristallisation de perte (décembre)
 // ──────────────────────────────────────────────────────────────────────────
 
@@ -1127,6 +1220,54 @@ describe('processDecemberTaxFiling — dividendes Non-Reg EMPILÉS sur le barèm
     });
 });
 
+// ──────────────────────────────────────────────────────────────────────────
+// FA-8 (2026-06-11) : l'assiette d'empilement des dividendes du RETRAITÉ
+// inclut accRetraitsReerYear (alignée sur l'assiette des gains §2)
+// ──────────────────────────────────────────────────────────────────────────
+describe('processDecemberTaxFiling — FA-8 : assiette dividendes retraité inclut les retraits REER/FERR', () => {
+    // Avant FA-8, la branche retraité du bloc dividendes omettait accRetraitsReerYear
+    // (les gains §2 l'incluaient déjà) : taux d'entrée sous-évalué → impôt sur dividendes
+    // SOUS-estimé pour un retraité vivant de retraits REER (meltdown) — non conservateur.
+
+    it('MÉCANISME (stub spy) — assiette transmise au marginal = (pension − SRG)×12 + rentes + retraits REER', () => {
+        // getMarginalRate n'est appelé QUE par le bloc dividendes → on capture son 1er argument.
+        const incomes: number[] = [];
+        const helpers = makeHelpers({
+            getMarginalRate: (income: number) => { incomes.push(income); return STUB_MARGINAL; },
+        });
+        processDecemberTaxFiling(DECEMBER, baseCtx({
+            isRetired: true, age: 70, activeUsersCount: 1,
+            incomeRetirementMonthly: 3500, incomeRetirementGisMonthly: 500,
+            accRentesYear: 12000, accRetraitsReerYear: 40000,
+            nonReg: 200000, baseNonRegRate: 5,
+        }), helpers, ZERO_TAX);
+        expect(incomes).toHaveLength(1);
+        // (3500 − 500)×12 + 12 000 + 40 000 = 88 000 — avant FA-8 : 48 000 (REER omis).
+        expect(incomes[0]).toBeCloseTo(88000, 5);
+    });
+
+    it('EFFET réel PINNÉ — meltdown REER : impôt dividendes 6 351,66 $ (vs 1 750,96 $ sans retraits)', () => {
+        // Retraité solo, pension 3 000 $/mois (36 000 $/an), nonReg 2 M$ à 5 % → dividende
+        // admissible 30 000 $ (majoré 41 400 $, CID 11 062 $). Avec 60 000 $ de retraits
+        // REER/FERR, l'empilement démarre à 96 000 $ (marginal 36,12 %) au lieu de 36 000 $
+        // (25,69 %) → bande nettement plus chère. accCapitalGainsYear = 0 → `.gains` isole
+        // l'impôt de dividendes. Avant FA-8, les DEUX cas donnaient 1 750,96 $.
+        const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate };
+        const mk = (reer: number) => baseCtx({
+            isRetired: true, age: 70, activeUsersCount: 1,
+            incomeRetirementMonthly: 3000, accRetraitsReerYear: reer,
+            nonReg: 2_000_000, baseNonRegRate: 5,
+        });
+        const sansRetraits = processDecemberTaxFiling(DECEMBER, mk(0), realHelpers, ZERO_TAX);
+        const avecRetraits = processDecemberTaxFiling(DECEMBER, mk(60000), realHelpers, ZERO_TAX);
+        // Direction du fix : l'empilement démarre plus haut → impôt dividendes PLUS ÉLEVÉ.
+        expect(avecRetraits.newTaxCurrentYear.gains).toBeGreaterThan(sansRetraits.newTaxCurrentYear.gains);
+        // Valeurs PINNÉES (barème 2026 réel, inflationFactor 1) pour figer le comportement.
+        expect(sansRetraits.newTaxCurrentYear.gains).toBeCloseTo(1750.96, 0);
+        expect(avecRetraits.newTaxCurrentYear.gains).toBeCloseTo(6351.66, 0);
+    });
+});
+
 describe('processDecemberTaxFiling — RAMQ (prime médicaments publique)', () => {
     it('ramqExempt = true → aucune prime RAMQ, aucun log RAMQ', () => {
         const r = processDecemberTaxFiling(
@@ -1158,7 +1299,7 @@ describe('processDecemberTaxFiling — RAMQ (prime médicaments publique)', () =
             makeHelpers(),
             ZERO_TAX,
         );
-        // divers ne doit contenir ni RAMQ ni FSS (12000 < FSS_THRESHOLD_ZERO 18 130 aussi).
+        // divers ne doit contenir ni RAMQ ni FSS (12000 < FSS_THRESHOLD_ZERO 18 500 aussi — barème 2026, FA-8).
         expect(RAMQ_EXEMPTION_SINGLE_2026).toBeGreaterThan(12000); // garde la prémisse explicite
         expect(r.newTaxCurrentYear.divers).toBe(0);
         expect(r.logs.some((l) => l.includes('RAMQ'))).toBe(false);
@@ -1194,7 +1335,7 @@ describe('processDecemberTaxFiling — RAMQ (prime médicaments publique)', () =
 
 describe('processDecemberTaxFiling — FSS (Fonds des services de santé)', () => {
     it('retraité au-dessus du seuil FSS → cotisation FSS dans divers + log', () => {
-        // pension = 5000×12 = 60000 > FSS_THRESHOLD_FLAT (33 130) → palier 150$+.
+        // pension = 5000×12 = 60000 > FSS_THRESHOLD_FLAT (33 500 — barème 2026, FA-8) → palier 150$+.
         const r = processDecemberTaxFiling(
             DECEMBER,
             baseCtx({ ramqExempt: true, isRetired: true, incomeRetirementMonthly: 5000, activeUsersCount: 1 }),
@@ -1217,7 +1358,7 @@ describe('processDecemberTaxFiling — FSS (Fonds des services de santé)', () =
     });
 
     it('retraité sous le seuil FSS zéro → aucune cotisation FSS', () => {
-        // pension = 1000×12 = 12000 < FSS_THRESHOLD_ZERO 18 130 → 0.
+        // pension = 1000×12 = 12000 < FSS_THRESHOLD_ZERO 18 500 (barème 2026, FA-8) → 0.
         const r = processDecemberTaxFiling(
             DECEMBER,
             baseCtx({ ramqExempt: true, isRetired: true, incomeRetirementMonthly: 1000, activeUsersCount: 1 }),

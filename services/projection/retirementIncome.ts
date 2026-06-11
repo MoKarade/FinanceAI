@@ -4,12 +4,21 @@
 // avec le total ET le split par source (Phase 3 Tier 3 — split pensions).
 
 import type { RetirementGoal, User } from '../../types';
-import { RRQ_MPE, calculateGISBenefit, rrqAdjustmentFactor, psvDeferralFactor, PSV_BONUS_75_PLUS, CAPITAL_GAINS_INCLUSION_STANDARD } from '../../utils/tax';
+import { RRQ_MPE, calculateGISBenefit, rrqAdjustmentFactor, psvDeferralFactor, PSV_BONUS_75_PLUS, CAPITAL_GAINS_INCLUSION_STANDARD, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE } from '../../utils/tax';
 
-// Constantes RRQ/PSV 2026 (Retraite Québec + Service Canada)
-const RRQ_DENOMINATOR_YEARS = 39;       // Années cotisées pour pleine RRQ (8/47 plus faibles retirées)
-const PSV_MIN_RESIDENCY_YEARS = 10;     // Minimum 10 ans résidence Canada après 18 ans pour PSV
-const PSV_FULL_RESIDENCY_YEARS = 40;    // Pleine pension à 40 ans
+// Constantes RRQ/PSV 2026 (Retraite Québec + Service Canada) — règles documentées
+// FISCAL_REFERENCE §6 « Prorata RRQ / résidence PSV » (FA-8, 2026-06-11).
+// RRQ — approximation de MODÈLE « 39 meilleures années » : la rente officielle = moyenne des
+// gains ajustés sur la période cotisable (18 ans → début de rente, ≈ 47 ans à 65 ans) avec
+// retranchement de 15 % des mois les plus faibles (Retraite Québec) ≈ conserver 39 années
+// (8/47 retirées). Le moteur fait : prorata = min(1, années au Canada 18→targetAge / 39)
+// × min(1, salaire/MGA) (salaire et MGA projetés au même facteur, cf B-AUDIT-4 plus bas).
+const RRQ_DENOMINATOR_YEARS = 39;
+// PSV — règle OFFICIELLE de résidence (Service Canada) : admissible dès 10 ans de résidence au
+// Canada après 18 ans (versement au Canada) ; pension PLEINE à 40 ans ; entre les deux, prorata
+// en 40es. < 10 ans → 0 $.
+const PSV_MIN_RESIDENCY_YEARS = 10;
+const PSV_FULL_RESIDENCY_YEARS = 40;
 // (facteurs de report/anticipation RRQ/PSV + bonus 75+ : source unique utils/tax.ts)
 
 export interface RetirementIncomeCtx {
@@ -192,12 +201,15 @@ export function computeRetirementIncome(
     const rrqFactor = rrqAdjustmentFactor((rrqStartAge - 65) * 12);
     const psvFactor = psvDeferralFactor((psvStartAge - 65) * 12);
 
+    // Repli sur le champ AGRÉGÉ legacy `governmentPension` : split 65/35 = convention de MODÈLE
+    // (GOV_PENSION_*_SHARE, utils/tax.ts — PAS une règle ARC/RQ, cf FISCAL_REFERENCE §6 FA-8).
+    // Les estimés précis par rente (relevés Retraite Québec / Service Canada) priment.
     const rrqBaseIndiv = (retirementGoal.rrqEstimateMonthly !== undefined)
         ? (retirementGoal.rrqEstimateMonthly * activeUsersCount)
-        : (retirementGoal.governmentPension * 0.65);
+        : (retirementGoal.governmentPension * GOV_PENSION_RRQ_SHARE);
     const psvBaseIndiv = (retirementGoal.psvEstimateMonthly !== undefined)
         ? (retirementGoal.psvEstimateMonthly * activeUsersCount)
-        : (retirementGoal.governmentPension * 0.35);
+        : (retirementGoal.governmentPension * GOV_PENSION_PSV_SHARE);
 
     const survivorRrqFactor = survivorMode ? (1 - 0.5 + 0.5 * rrqSurvivorPct) : 1;
     const survivorPsvFactor = survivorMode ? 0.5 : 1;

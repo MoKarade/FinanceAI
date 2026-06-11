@@ -13,7 +13,7 @@
 // L'optimizer estime le gain net annuel d'une mauvaise vs bonne allocation
 // pour un patrimoine donné, sur la base du taux marginal de l'utilisateur.
 
-import { getMarginalRate } from '../../utils/tax';
+import { getMarginalRate, US_DIVIDEND_WITHHOLDING_RATE } from '../../utils/tax';
 
 export type AssetClass =
     | 'bonds'              // obligations, GIC, fonds monétaire
@@ -52,12 +52,18 @@ export interface AssetLocationResult {
     summary: string;
 }
 
-// Yields/returns estimés par classe (historiques long terme)
+// Yields/returns estimés par classe (historiques long terme — hypothèses de modèle).
+// FA-8 (2026-06-11) — la retenue étrangère 15 % est SOURCÉE : Convention fiscale
+// Canada–États-Unis (1980), art. X(2)b) (15 % sur dividendes de portefeuille) ; REER/FERR
+// exemptés (art. XXI — régimes de pension), CELI NON exempté ; en NonReg, récupérable via le
+// crédit pour impôt étranger (FTC). Constante US_DIVIDEND_WITHHOLDING_RATE (utils/tax.ts),
+// réf FISCAL_REFERENCE §3. Pour `international`, les retenues varient par pays : le taux US
+// sert d'approximation standard (même constante, hypothèse de modèle).
 const ASSET_PROFILE: Record<AssetClass, { yield: number; growth: number; foreignWithholding: number }> = {
     'bonds':         { yield: 4.0, growth: 0.0, foreignWithholding: 0 },
-    'us-equity':     { yield: 1.5, growth: 6.0, foreignWithholding: 0.15 }, // 15% US withholding sur dividendes
+    'us-equity':     { yield: 1.5, growth: 6.0, foreignWithholding: US_DIVIDEND_WITHHOLDING_RATE },
     'ca-equity':     { yield: 2.5, growth: 5.0, foreignWithholding: 0 },
-    'international': { yield: 2.5, growth: 6.0, foreignWithholding: 0.15 }, // récupérable via FTC en NonReg
+    'international': { yield: 2.5, growth: 6.0, foreignWithholding: US_DIVIDEND_WITHHOLDING_RATE }, // récupérable via FTC en NonReg
     'growth-small':  { yield: 0.5, growth: 8.0, foreignWithholding: 0 },
     'reit':          { yield: 5.0, growth: 2.0, foreignWithholding: 0 },
     'cash':          { yield: 3.5, growth: 0.0, foreignWithholding: 0 },
@@ -99,7 +105,9 @@ function annualLoss(
         if (account === 'CELI') return 0;
         if (account === 'REER') return 0; // pas d'impôt pendant l'accumulation
         // NonReg: dépend du type de revenu
-        if (assetClass === 'ca-equity') return marginalRate * 0.60; // dividende éligible (taux réduit)
+        // HYPOTHÈSE DE MODÈLE (FA-8) : taux effectif « dividende éligible » ≈ 60 % du marginal
+        // (proxy majoration 1,38 + crédits) — module CONSULTATIF (perte d'allocation), pas le moteur.
+        if (assetClass === 'ca-equity') return marginalRate * 0.60;
         if (assetClass === 'us-equity' || assetClass === 'international') {
             return marginalRate; // dividende étranger = revenu ordinaire
         }
@@ -113,11 +121,11 @@ function annualLoss(
     const taxIdeal = yieldDollars * taxRate(ideal);
 
     // FIX code-reviewer (HIGH): self-assign retiré, logique clarifiée.
-    // Drag US withholding 15% s'applique au CELI uniquement (treaty Canada-US
-    // exempte REER mais pas CELI). NonReg: récupéré via FTC, négligé.
+    // Drag US withholding 15% s'applique au CELI uniquement (convention Canada–É.-U. art. XXI :
+    // REER exempté, CELI non — cf US_DIVIDEND_WITHHOLDING_RATE). NonReg: récupéré via FTC, négligé.
     let withholdingDrag = 0;
     if (assetClass === 'us-equity' && current === 'CELI') {
-        withholdingDrag = yieldDollars * 0.15;
+        withholdingDrag = yieldDollars * US_DIVIDEND_WITHHOLDING_RATE;
     }
 
     return Math.max(0, (taxCurrent - taxIdeal) + withholdingDrag);

@@ -6,6 +6,7 @@ import { getMigrationStatus } from '../store/useFinanceStore';
 import { ErrorLogViewer } from './system/ErrorLogViewer';
 import { AuditLogViewer } from './system/AuditLogViewer';
 import { Icon } from './ui/Icon';
+import { TAX_BASE_YEAR, FED_BRACKETS, BASIC_PERSONAL_AMOUNT_FED } from '../utils/tax';
 
 interface SystemViewProps {
     state: AppState;
@@ -98,8 +99,13 @@ const computeDiagnostics = (state: AppState): LogLine[] => {
         level: hasAnthropic ? 'info' : 'warn',
     });
 
+    // FA-8 (2026-06-11) — libellé COMPOSÉ depuis les constantes réelles de utils/tax.ts
+    // (avant : « 14%, BPA 16 452$ » en dur — mentait dès qu'une constante changeait).
     lines.push({
-        text: stamp(`TAX_MODULE: barèmes 2026 chargés (fédéral 1ère tranche 14%, BPA 16 452$)`),
+        text: stamp(
+            `TAX_MODULE: barèmes ${TAX_BASE_YEAR} chargés (fédéral 1ère tranche ` +
+            `${FED_BRACKETS[0].label}, BPA ${BASIC_PERSONAL_AMOUNT_FED.toLocaleString('fr-CA')}$)`
+        ),
         level: 'info',
     });
 

@@ -4,6 +4,11 @@
 // Source: ARC + Revenu Québec
 // ============================================
 
+// FA-8 — année de BASE des barèmes de ce module : toutes les constantes *_2026 et l'indexation
+// getIndexedBracketsForYear (≈ +2 %/an, ADR 009) partent de cette année. Exposée pour que l'UI
+// (ex. SystemView « TAX_MODULE ») compose ses libellés depuis la source au lieu de les hardcoder.
+export const TAX_BASE_YEAR = 2026;
+
 export const FED_BRACKETS = [
     { upTo: 58523, rate: 0.14, label: "14.0%" },
     { upTo: 117045, rate: 0.205, label: "20.5%" },
@@ -53,11 +58,23 @@ export const AE_MAX_QC = 895.70;
 // fédérale à 66.67% > 250k$ en mars 2025.
 export const CAPITAL_GAINS_INCLUSION_STANDARD = 0.50;
 
+// FA-8 (2026-06-11) — retenue à la source AMÉRICAINE sur les dividendes US versés à un résident
+// canadien : 15 % (Convention fiscale Canada–États-Unis (1980), art. X(2)b) — taux réduit
+// « portefeuille »). L'art. XXI exempte les régimes de PENSION (REER/FERR) ; le CELI n'est PAS
+// couvert (pas un régime de pension au sens de la convention) → drag NON récupérable dans le CELI.
+// En non-enregistré, la retenue est récupérable via le crédit pour impôt étranger (FTC).
+// Réf docs/FISCAL_REFERENCE.md §3. Consommé par assetLocation + glidepathRates (D2.7).
+export const US_DIVIDEND_WITHHOLDING_RATE = 0.15;
+
 // Plafonds spécifiques aux régimes (par utilisateur).
 // Source : Budget fédéral 2024-2026. À mettre à jour à chaque budget.
 export const RAP_LIMIT_PER_USER = 60000;                    // Régime Accession Propriété
 export const PBMA_THRESHOLD_PER_USER = 17183;               // Palier de base montant ajusté
 export const OAS_CLAWBACK_THRESHOLD_2026 = 95323;           // Seuil récupération PSV 2026 (ARC). 93 454 était la valeur 2025 — vérifié 2026-05.
+// FA-8 (2026-06-11) — taux de récupération (clawback) de la PSV : 15 % du revenu net INDIVIDUEL
+// au-delà du seuil (ARC — « impôt de récupération » de la PSV, ligne 23500), plafonné à la PSV
+// réellement versée. Réf docs/FISCAL_REFERENCE.md §6. Consommé par taxDecember.computeOasClawback.
+export const OAS_CLAWBACK_RATE = 0.15;
 export const FHSA_LIFETIME_LIMIT_PER_USER = 40000;          // CELIAPP plafond à vie
 export const FHSA_ANNUAL_LIMIT_PER_USER = 8000;             // CELIAPP plafond annuel
 
@@ -77,6 +94,15 @@ export const RRQ_DEFERRAL_MAX_MONTHS = 84;         // 65 → 72 ans
 export const PENSION_EARLY_MAX_MONTHS = 60;        // 65 → 60 ans (anticipation RRQ ; PSV ne s'anticipe pas)
 export const PSV_DEFERRAL_MAX_MONTHS = 60;         // 65 → 70 ans
 export const PSV_BONUS_75_PLUS = 0.10;             // +10 % automatique dès 75 ans (PSV, depuis juillet 2022)
+
+// FA-8 (2026-06-11) — convention de MODÈLE (PAS une règle ARC/RQ) : split du champ AGRÉGÉ legacy
+// `RetirementGoal.governmentPension` (RRQ+PSV combinés) quand les champs précis
+// `rrqEstimateMonthly`/`psvEstimateMonthly` ne sont pas fournis. 65/35 ≈ ordre de grandeur d'un
+// cotisant RRQ proche du maximum (RRQ 65 ans : 1 507,65 $/mois — FISCAL_REFERENCE §6) vs PSV pleine.
+// Source unique des 3 sites (setupSimulation, retirementIncome, estateCalculation) — réf
+// docs/FISCAL_REFERENCE.md §6 (« Split 65/35 », approximation interne documentée).
+export const GOV_PENSION_RRQ_SHARE = 0.65;
+export const GOV_PENSION_PSV_SHARE = 0.35;
 
 /**
  * Facteur d'ajustement RRQ selon l'écart en mois vs 65 ans (référence).
@@ -341,20 +367,27 @@ export const calculateRamqPremium = (
 // retraités, indépendants et autres revenus non salariaux (les salariés sont
 // couverts par leur employeur via cotisation FSS de l'employeur).
 //
-// Paliers 2025 (indexés annuellement) :
-//  - 0 à 18 130$         → 0$
-//  - 18 130 à 33 130$    → 1% × (revenu - 18 130)
-//  - 33 130 à 63 060$    → 150$ fixe
-//  - 63 060 à 148 030$   → 150$ + 1% × (revenu - 63 060)
-//  - ≥ 148 030$          → 1 000$ max
+// Paliers 2026 (FA-8, vérifiés 2026-06-11 — Revenu Québec « Cotisation des particuliers au FSS »
+// + CFFP U. Sherbrooke ; remplacent le barème 2025 : 18 130/33 130/63 060/148 030) :
+//  - 0 à 18 500$         → 0$
+//  - 18 500 à 33 500$    → 1% × (revenu - 18 500)
+//  - 33 500 à 64 355$    → 150$ fixe
+//  - 64 355 à 149 355$   → 150$ + 1% × (revenu - 64 355)
+//  - ≥ 149 355$          → 1 000$ max
+// Formule officielle : « moindre de 150 $ et 1 % de l'excédent de 18 500 $ » (revenu ≤ 64 355 $),
+// puis « moindre de 1 000 $ et 150 $ + 1 % de l'excédent de 64 355 $ ». Les seuils FLAT (33 500)
+// et MAX (149 355) sont les points de bascule DÉRIVÉS de cette formule (équivalence exacte).
+// NB : 150 $ et 1 000 $ sont identiques en 2025 et 2026 (historiquement gelés) — le modèle les
+// indexe quand même au-delà de TAX_BASE_YEAR (inflationFactor) : biais CONSERVATEUR ~2 %/an
+// assumé, cf docs/FISCAL_REFERENCE.md §5.
 //
-// https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/400-a-447-impot-et-cotisations/ligne-446/
+// https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/payer-ou-etre-rembourse/paiement-des-cotisations/cotisation-des-particuliers-au-fonds-des-services-de-sante/
 // ============================================
 
-export const FSS_THRESHOLD_ZERO = 18130;       // pas de cotisation sous ce seuil
-export const FSS_THRESHOLD_FLAT = 33130;       // début palier 150$ fixe
-export const FSS_THRESHOLD_RAMP = 63060;       // début palier 150$ + 1%
-export const FSS_THRESHOLD_MAX = 148030;       // début plafond 1 000$
+export const FSS_THRESHOLD_ZERO = 18500;       // pas de cotisation sous ce seuil (2026)
+export const FSS_THRESHOLD_FLAT = 33500;       // début palier 150$ fixe (= ZERO + 15 000)
+export const FSS_THRESHOLD_RAMP = 64355;       // début palier 150$ + 1% (2026)
+export const FSS_THRESHOLD_MAX = 149355;       // début plafond 1 000$ (= RAMP + 85 000)
 export const FSS_RATE_TIER1 = 0.01;            // 1% sur première tranche progressive
 export const FSS_RATE_TIER2 = 0.01;            // 1% sur deuxième tranche progressive
 export const FSS_FLAT_AMOUNT = 150;
@@ -516,6 +549,13 @@ export const CELI_ANNUAL_LIMITS: Record<number, number> = {
     2026: 7000, 2027: 7500, 2028: 7500, 2029: 7500, 2030: 7500,
 };
 
+// FA-8 (2026-06-11) — dernière année où le plafond CELI est CONNU dans la table ci-dessus.
+// Au-delà : extrapolation indexée arrondie au 500 $ (mécanisme légal d'indexation du plafond).
+// Source unique partagée par taxJanuary (moteur — indexe par simInflation) et calculateCeliRoom
+// (droits historiques hors moteur — hypothèse ~2 %/an, ADR 009). Étendre la table suffit :
+// les deux consommateurs suivent automatiquement.
+export const LAST_KNOWN_CELI_YEAR = Math.max(...Object.keys(CELI_ANNUAL_LIMITS).map(Number));
+
 // Plafonds REER annuels. 2010-2026 = montants officiels (ARC). 2027-2030 =
 // estimations indexées ~2%/an — à mettre à jour au Budget fédéral.
 export const RRSP_ANNUAL_LIMITS: Record<number, number> = {
@@ -546,15 +586,20 @@ export const calculateCeliRoom = (birthYear: number, arrivalYear: number, curren
     const yearTurning18 = birthYear + 18;
     const startYear = Math.max(2009, Math.max(yearTurning18, arrivalYear));
 
+    // FA-8 (2026-06-11) — années au-delà de la table : MÊME formule d'extrapolation que le moteur
+    // (taxJanuary.processJanuaryReset, FA-4) : dernière limite CONNUE × (1+i)^Δ, arrondie au 500 $
+    // (mécanisme légal d'indexation du plafond CELI). Hors moteur de projection (pas de simInflation
+    // ici), i = hypothèse standard ~2 %/an (ADR 009 / FISCAL_REFERENCE « Indexation 2027+ »).
+    // Avant : `base2030 = 7500` en dur + fallback `|| 7500` NON indexé — divergeait de la table et
+    // de taxJanuary dès qu'on étendait CELI_ANNUAL_LIMITS. Le `?? lastKnownLimit` est un filet
+    // (la table est dense 2009→LAST_KNOWN_CELI_YEAR — jamais atteint en pratique).
+    const lastKnownLimit = CELI_ANNUAL_LIMITS[LAST_KNOWN_CELI_YEAR];
     for (let y = startYear; y <= currentYear; y++) {
-        if (y > 2030) {
-            const yearsSince2030 = y - 2030;
-            const approxInflation = Math.pow(1.02, yearsSince2030);
-            const base2030 = 7500;
-            const rawLimit = base2030 * approxInflation;
+        if (y > LAST_KNOWN_CELI_YEAR) {
+            const rawLimit = lastKnownLimit * Math.pow(1.02, y - LAST_KNOWN_CELI_YEAR);
             room += Math.round(rawLimit / 500) * 500;
         } else {
-            room += CELI_ANNUAL_LIMITS[y] || 7500;
+            room += CELI_ANNUAL_LIMITS[y] ?? lastKnownLimit;
         }
     }
     return room;
@@ -625,7 +670,7 @@ const bracketsCache: Record<number, {
 
 const getIndexedBracketsForYear = (year: number) => {
     if (bracketsCache[year]) return bracketsCache[year];
-    const inflationFactor = Math.pow(1.02, Math.max(0, year - 2026));
+    const inflationFactor = Math.pow(1.02, Math.max(0, year - TAX_BASE_YEAR));
     const indexedFed = FED_BRACKETS.map(b => ({ ...b, upTo: b.upTo === Infinity ? Infinity : b.upTo * inflationFactor }));
     const indexedQc = QC_BRACKETS.map(b => ({ ...b, upTo: b.upTo === Infinity ? Infinity : b.upTo * inflationFactor }));
     const basicFed = BASIC_PERSONAL_AMOUNT_FED * inflationFactor;

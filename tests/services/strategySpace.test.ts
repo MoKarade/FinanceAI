@@ -4,9 +4,11 @@ import {
     countConfigs,
     estimateRuntimeMs,
     configToEngine,
+    ASSET_LOCATION_BONUS_PP,
     type LeverSelection,
     type SpaceContext,
 } from '../../services/projection/strategySpace';
+import { RETURN_RATE_PRESETS, type StrategyConfig } from '../../services/projection/strategyConfig';
 import type { SimulationParams } from '../../services/projection';
 import type { BudgetConfig, ProjectionConfig } from '../../types';
 
@@ -83,6 +85,14 @@ describe('strategySpace — configToEngine', () => {
         baseMonthlyExpenses: 5000, startYear: 2026, startMonth: 0,
     });
 
+    // StrategyConfig « tous défauts » ; on surcharge juste le levier testé.
+    const cfg = (over: Partial<StrategyConfig> = {}): StrategyConfig => ({
+        withdrawalOrder: 'AUTO_MARGINAL', delayPensions: false, retirementAge: 65, skipRap: false,
+        contributionOrder: 'CELI_FIRST', retirementSpending: 1, smithManoeuvre: false, debtFirst: false,
+        emergencyFundMonths: 6, assetLocation: false, gainHarvesting: false,
+        returnRateProfile: 'balanced', ...over,
+    });
+
     it('traduit les leviers en clone params + overrides, sans muter la base', () => {
         const base = baseParams();
         const args = configToEngine({
@@ -90,6 +100,7 @@ describe('strategySpace — configToEngine', () => {
             skipRap: true, contributionOrder: 'REER_FIRST', retirementSpending: 1.1,
             smithManoeuvre: true, debtFirst: true, emergencyFundMonths: 12, assetLocation: true,
             gainHarvesting: false,
+            returnRateProfile: 'balanced',
         }, base);
 
         expect(args.strategy).toBe('PRIO_REER');
@@ -98,6 +109,8 @@ describe('strategySpace — configToEngine', () => {
         expect(args.params.retirementGoal.targetMonthlyIncome).toBe(5500); // 5000 × 1.1
         expect(args.params.projection.emergencyFundMonths).toBe(12);
         expect((args.params.projection as ProjectionConfig & { useSmithManoeuvre?: boolean }).useSmithManoeuvre).toBe(true);
+        // Le profil de rendement N'EST PAS un EngineOverride : il agit sur returnRates,
+        // pas sur les overrides (cf. tests dédiés plus bas).
         expect(args.overrides).toEqual({
             skipRapForPurchase: true, contributionOrder: 'REER_FIRST', debtFirst: true,
             gainHarvesting: false,
@@ -117,12 +130,14 @@ describe('strategySpace — configToEngine', () => {
             skipRap: false, contributionOrder: 'CELI_FIRST', retirementSpending: 1,
             smithManoeuvre: false, debtFirst: false, emergencyFundMonths: 6, assetLocation: false,
             gainHarvesting: false,
+            returnRateProfile: 'balanced',
         }, base);
         const on = configToEngine({
             withdrawalOrder: 'AUTO_MARGINAL', delayPensions: false, retirementAge: 65,
             skipRap: false, contributionOrder: 'CELI_FIRST', retirementSpending: 1,
             smithManoeuvre: false, debtFirst: false, emergencyFundMonths: 6, assetLocation: true,
             gainHarvesting: false,
+            returnRateProfile: 'balanced',
         }, base);
 
         expect(off.params.projection.returnRates!.nonReg).toBe(baseNonReg); // inchangé sans le levier
@@ -133,5 +148,58 @@ describe('strategySpace — configToEngine', () => {
         expect(on.params.projection.returnRates!.reer).toBeGreaterThan(base.projection.returnRates!.reer);
         // Immutabilité : la base n'a pas bougé.
         expect(base.projection.returnRates!.nonReg).toBe(baseNonReg);
+    });
+
+    // ----- PH4-FUT-B : levier profil de rendement dans configToEngine -----
+
+    it("returnRateProfile='aggressive' → params.returnRates = preset agressif (exact)", () => {
+        const base = baseParams();
+        const args = configToEngine(cfg({ returnRateProfile: 'aggressive' }), base);
+        expect(args.params.projection.returnRates).toEqual(RETURN_RATE_PRESETS.aggressive);
+        // Le profil ne fuit PAS dans les overrides (c'est un effet returnRates).
+        expect(args.overrides).not.toHaveProperty('returnRateProfile');
+        // Immutabilité : la base garde ses taux.
+        expect(base.projection.returnRates).toEqual({ celi: 6, reer: 6, nonReg: 6, crypto: 8, cash: 2 });
+    });
+
+    it("returnRateProfile='conservative' → params.returnRates = preset conservateur (exact)", () => {
+        const args = configToEngine(cfg({ returnRateProfile: 'conservative' }), baseParams());
+        expect(args.params.projection.returnRates).toEqual(RETURN_RATE_PRESETS.conservative);
+    });
+
+    it("returnRateProfile='balanced' → params.returnRates = baseRates du params (inchangés)", () => {
+        const base = baseParams();
+        const args = configToEngine(cfg({ returnRateProfile: 'balanced' }), base);
+        expect(args.params.projection.returnRates).toEqual(base.projection.returnRates);
+        expect(args.params.projection.returnRates).toEqual({ celi: 6, reer: 6, nonReg: 6, crypto: 8, cash: 2 });
+    });
+
+    it("'aggressive' + assetLocation=true → preset agressif + 0.4pp sur celi/reer/nonReg (cumul exact, pas de double application)", () => {
+        const base = baseParams();
+        const args = configToEngine(cfg({ returnRateProfile: 'aggressive', assetLocation: true }), base);
+        const p = RETURN_RATE_PRESETS.aggressive;
+        const b = ASSET_LOCATION_BONUS_PP;
+        // celi/reer/nonReg = preset + bonus UNE seule fois ; crypto/cash = preset nu (pas de bonus).
+        expect(args.params.projection.returnRates).toEqual({
+            celi: p.celi + b,     // 9   + 0.4 = 9.4
+            reer: p.reer + b,     // 8.5 + 0.4 = 8.9
+            nonReg: p.nonReg + b, // 8.5 + 0.4 = 8.9
+            crypto: p.crypto,     // 14  (pas de bonus asset-location)
+            cash: p.cash,         // 3
+        });
+        // Garde anti-régression : pas de double bonus (≠ preset + 0.8).
+        expect(args.params.projection.returnRates!.celi).toBeCloseTo(9.4, 10);
+        // Le preset source n'a pas été muté par l'addition du bonus.
+        expect(RETURN_RATE_PRESETS.aggressive).toEqual({ celi: 9, reer: 8.5, nonReg: 8.5, crypto: 14, cash: 3 });
+    });
+
+    it("'balanced' + assetLocation=true → baseRates + 0.4pp (le bonus s'empile sur les taux courants, pas sur un preset)", () => {
+        const base = baseParams();
+        const args = configToEngine(cfg({ returnRateProfile: 'balanced', assetLocation: true }), base);
+        const r = base.projection.returnRates!;
+        const b = ASSET_LOCATION_BONUS_PP;
+        expect(args.params.projection.returnRates).toEqual({
+            celi: r.celi + b, reer: r.reer + b, nonReg: r.nonReg + b, crypto: r.crypto, cash: r.cash,
+        });
     });
 });

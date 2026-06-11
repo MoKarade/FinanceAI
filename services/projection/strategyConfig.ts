@@ -43,6 +43,36 @@ export interface StrategyConfig {
     assetLocation: boolean;
     /** Récolte de gains en capital dans les années à faible revenu (timing de réalisation). */
     gainHarvesting: boolean;
+    /** PH4-FUT-B — profil de rendement : presets de `returnRates` (conservateur/équilibré/agressif).
+     *  'balanced' = garde les taux actuels (non-régression + respecte les taux édités à la main). */
+    returnRateProfile: 'conservative' | 'balanced' | 'aggressive';
+}
+
+/** Type des taux de rendement par compte (= ProjectionConfig.returnRates non-null). */
+type ReturnRates = NonNullable<ProjectionConfig['returnRates']>;
+
+// PH4-FUT-B — presets de rendement annuel nominal par compte. HYPOTHÈSES DE MODÈLE (pas des données
+// sourcées) : encadrent le défaut « équilibré » (constants.ts : celi 7 / reer 6,5 / nonReg 6,5 /
+// crypto 10 / cash 3). Conservateur = allocation obligataire-lourde ; agressif = actions-lourde.
+// 'balanced' n'a PAS de preset : il garde les `returnRates` courants (défaut OU édités à la main).
+export const RETURN_RATE_PRESETS: Record<'conservative' | 'aggressive', ReturnRates> = {
+    conservative: { celi: 4.5, reer: 4.5, nonReg: 4.5, crypto: 6, cash: 3 },
+    aggressive:   { celi: 9,   reer: 8.5, nonReg: 8.5, crypto: 14, cash: 3 },
+};
+
+/**
+ * Taux de rendement effectifs pour un profil. 'conservative'/'aggressive' → preset ; 'balanced'
+ * (ou absent) → `baseRates` INCHANGÉS (non-régression, respecte un réglage manuel). Helper PARTAGÉ
+ * par les 2 chemins (configToEngine pour la recherche, runScenario pour la courbe « appliquée ») →
+ * zéro divergence recherche↔courbe.
+ */
+export function returnRatesForProfile(
+    profile: StrategyConfig['returnRateProfile'] | undefined,
+    baseRates: ReturnRates | undefined,
+): ReturnRates | undefined {
+    if (profile === 'conservative') return RETURN_RATE_PRESETS.conservative;
+    if (profile === 'aggressive') return RETURN_RATE_PRESETS.aggressive;
+    return baseRates; // 'balanced' | undefined → inchangé
 }
 
 // Bibliothèque des leviers sélectionnables in-app. `values` = valeurs candidates ;
@@ -131,6 +161,14 @@ export const LEVER_LIBRARY: ReadonlyArray<LeverDef> = [
             { value: true, label: 'Oui (réaliser au palier bas)' },
         ],
     },
+    {
+        key: 'returnRateProfile', label: 'Profil de rendement', default: 'balanced',
+        options: [
+            { value: 'conservative', label: 'Conservateur' },
+            { value: 'balanced', label: 'Équilibré' },
+            { value: 'aggressive', label: 'Agressif' },
+        ],
+    },
 ];
 
 /** Ordre de retrait (axe) → enum AllocationStrategy attendu par le moteur. */
@@ -184,6 +222,7 @@ export function applyConfigToSettings(
             appliedSkipRap: config.skipRap,
             appliedAssetLocation: config.assetLocation,
             appliedGainHarvesting: config.gainHarvesting,
+            appliedReturnProfile: config.returnRateProfile,
         },
         retirementGoal: {
             ...currentRetirementGoal,

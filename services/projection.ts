@@ -6,6 +6,7 @@ import { salaryShares, splitByShares, stepReerByUser, addByWeights } from './pro
 import { logError } from './errorLogger';
 import { runMonteCarlo, type MonteCarloResult } from './projection/monteCarlo';
 import type { EngineOverrides, StrategyConfig } from './projection/strategyConfig';
+import { returnRatesForProfile } from './projection/strategyConfig';
 import { runStrategySearch, type StrategySearchResult, type RunStrategySearchOptions } from './projection/strategySearch';
 import { ASSET_LOCATION_BONUS_PP } from './projection/strategySpace';
 import { SCENARIO_DEFINITIONS, strategyDefFor } from './projection/scenarios';
@@ -1454,19 +1455,21 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
         skipRapForPurchase: proj.appliedSkipRap,
         gainHarvesting: proj.appliedGainHarvesting,
     };
-    const effectiveParams: SimulationParams = proj.appliedAssetLocation && proj.returnRates
+    // PH4-FUT-B — profil de rendement (levier) : remplace returnRates par le preset
+    // (conservative/aggressive ; 'balanced'/absent = inchangé → non-régression) PUIS bonus
+    // asset-location. `returnRatesForProfile` est le helper PARTAGÉ avec configToEngine (recherche)
+    // → la courbe « appliquée » reproduit EXACTEMENT ce que l'optimiseur a classé.
+    const profileRates = returnRatesForProfile(proj.appliedReturnProfile, proj.returnRates);
+    const effectiveReturnRates = proj.appliedAssetLocation && profileRates
         ? {
-            ...params,
-            projection: {
-                ...proj,
-                returnRates: {
-                    ...proj.returnRates,
-                    celi: proj.returnRates.celi + ASSET_LOCATION_BONUS_PP,
-                    reer: proj.returnRates.reer + ASSET_LOCATION_BONUS_PP,
-                    nonReg: proj.returnRates.nonReg + ASSET_LOCATION_BONUS_PP,
-                },
-            },
+            ...profileRates,
+            celi: profileRates.celi + ASSET_LOCATION_BONUS_PP,
+            reer: profileRates.reer + ASSET_LOCATION_BONUS_PP,
+            nonReg: profileRates.nonReg + ASSET_LOCATION_BONUS_PP,
         }
+        : profileRates;
+    const effectiveParams: SimulationParams = effectiveReturnRates && effectiveReturnRates !== proj.returnRates
+        ? { ...params, projection: { ...proj, returnRates: effectiveReturnRates } }
         : params;
 
     // [UI-SCEN] (2026-06-09, demande Marc « enlève les plans de base ») — la stratégie de

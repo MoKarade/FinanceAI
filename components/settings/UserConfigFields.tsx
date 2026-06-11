@@ -3,23 +3,21 @@ import { Card } from '../ui/Card';
 import { Icon } from '../ui/Icon';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { annualSalaryToMonthly } from '../../utils/salary';
-import type {
-    User, Gender, CanadianProvince, MaritalStatus, EmploymentType, Industry, PensionPlan, HealthRating,
-} from '../../types';
+import type { User, Industry } from '../../types';
 
 /**
- * Champs de config utilisateur DÉPLACÉS depuis Configuration vers les onglets
- * concernés (demande Marc : « chaque partie dans l'onglet concerné »).
+ * Champs de config utilisateur, composés dans l'onglet PROFIL unifié (PH3).
  *
  * Autonome (lit/écrit le store), couple-aware (boucle sur config.users).
- * Une section = un groupe de champs rendu dans l'onglet pertinent :
- *   - 'salary'   → Impôts
- *   - 'fiscal'   → Impôts (CELIAPP 1er acheteur + facteur d'équivalence)
- *   - 'children' → Enfant (REEE)
- *   - 'detailed' → Retraite (profil détaillé santé/carrière, pour la longévité)
+ * Une section = un groupe de champs :
+ *   - 'salary'   → salaires brut/net
+ *   - 'fiscal'   → CELIAPP 1er acheteur + facteur d'équivalence
+ *   - 'children' → enfants (REEE)
+ *   - 'detailed' → carrière & rémunération variable (bonus/RSU/side income → moteur,
+ *                  cf. services/projection/activeIncome.ts). PH3-c : champs santé/civil/emploi
+ *                  morts PURGÉS (aucun consommateur — détail au type User, types.ts).
  *
- * L'identité de base (nom/âge/immigrant) + les profils enregistrés restent dans
- * Configuration (cf. UsersCard).
+ * L'identité de base (nom/âge/immigrant) + les profils enregistrés restent dans UsersCard.
  */
 
 /** Mode de répartition (config-level, pas par-utilisateur) → déplacé dans Budget. */
@@ -50,7 +48,7 @@ const SECTION_META: Record<Section, { title: string; icon: Parameters<typeof Ico
     salary: { title: 'Salaires', icon: 'tax', help: 'Brut annuel + net mensuel, par personne. Base des impôts et de la répartition.' },
     fiscal: { title: 'Options fiscales', icon: 'tax', help: 'Premier acheteur (CELIAPP) et facteur d\'équivalence (réduit le plafond REER).' },
     children: { title: 'Enfants (REEE)', icon: 'child', help: 'Active le REEE et la subvention pour la planification des coûts.' },
-    detailed: { title: 'Profil détaillé (santé, carrière)', icon: 'retirement', help: 'Sert l\'espérance de vie et les projections de carrière.' },
+    detailed: { title: 'Carrière & rémunération variable', icon: 'tax', help: 'Bonus, RSU et revenus secondaires entrent dans les revenus projetés. Industrie : informatif.' },
 };
 
 export const UserConfigFields: React.FC<{ section: Section; className?: string }> = ({ section, className = '' }) => {
@@ -160,93 +158,18 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
 
                             {section === 'detailed' && (
                                 <div className="space-y-2">
-                                    <div className="grid grid-cols-3 gap-1">
-                                        <select value={user.gender ?? ''} aria-label="Sexe"
-                                            onChange={e => patch(idx, { gender: (e.target.value || undefined) as Gender | undefined })}
-                                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white">
-                                            <option value="">Sexe</option><option value="M">Homme</option><option value="F">Femme</option><option value="X">Autre</option>
-                                        </select>
-                                        <select value={user.province ?? ''} aria-label="Province"
-                                            onChange={e => patch(idx, { province: (e.target.value || undefined) as CanadianProvince | undefined })}
-                                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white">
-                                            <option value="">Province</option>
-                                            <option value="QC">Québec</option><option value="ON">Ontario</option><option value="AB">Alberta</option>
-                                            <option value="BC">C.-B.</option><option value="MB">Manitoba</option><option value="SK">Saskatchewan</option>
-                                            <option value="NS">N.-É.</option><option value="NB">N.-B.</option><option value="NL">T.-N.</option>
-                                            <option value="PE">Î.-P.-É.</option><option value="YT">Yukon</option><option value="NT">T.-N.-O.</option><option value="NU">Nunavut</option>
-                                        </select>
-                                        <select value={user.citizenship ?? ''} aria-label="Citoyenneté"
-                                            onChange={e => patch(idx, { citizenship: (e.target.value || undefined) as 'CA' | 'US-person-CA' | 'other' | undefined })}
-                                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white">
-                                            <option value="">Citoyenneté</option><option value="CA">Canadien</option><option value="US-person-CA">Dual CA/US (PFIC!)</option><option value="other">Autre</option>
-                                        </select>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-1">
-                                        <select value={user.maritalStatus ?? ''} aria-label="Statut civil"
-                                            onChange={e => patch(idx, { maritalStatus: (e.target.value || undefined) as MaritalStatus | undefined })}
-                                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white">
-                                            <option value="">Statut civil</option>
-                                            <option value="single">Célibataire</option><option value="married">Marié</option><option value="common-law">Conjoint de fait</option>
-                                            <option value="separated">Séparé</option><option value="divorced">Divorcé</option><option value="widowed">Veuf</option>
-                                        </select>
-                                        <select value={user.employmentType ?? ''} aria-label="Type d'emploi"
-                                            onChange={e => patch(idx, { employmentType: (e.target.value || undefined) as EmploymentType | undefined })}
-                                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white">
-                                            <option value="">Type emploi</option>
-                                            <option value="employee">Employé</option><option value="self-employed">Autonome</option>
-                                            <option value="contractor">Contractuel</option><option value="business-owner">Entrepreneur</option>
-                                            <option value="unemployed">Sans emploi</option><option value="retired">Retraité</option><option value="student">Étudiant</option>
-                                        </select>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-1">
-                                        <select value={user.industry ?? ''} aria-label="Industrie"
-                                            onChange={e => patch(idx, { industry: (e.target.value || undefined) as Industry | undefined })}
-                                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white">
-                                            <option value="">Industrie...</option>
-                                            <option value="tech">Tech</option><option value="finance">Finance</option><option value="health">Santé</option>
-                                            <option value="public-sector">Secteur public</option><option value="education">Éducation</option>
-                                            <option value="construction">Construction</option><option value="retail">Commerce</option>
-                                            <option value="manufacturing">Manufacture</option><option value="energy">Énergie</option>
-                                            <option value="transportation">Transport</option><option value="agriculture">Agriculture</option>
-                                            <option value="media">Médias</option><option value="other">Autre</option>
-                                        </select>
-                                        <input aria-label="Années d'expérience professionnelle" type="number" placeholder="Ans expérience" value={user.yearsOfExperience ?? ''}
-                                            onChange={e => patch(idx, { yearsOfExperience: Number(e.target.value) || undefined })}
-                                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                                        <select value={user.pensionPlan ?? ''} aria-label="Régime de retraite"
-                                            onChange={e => patch(idx, { pensionPlan: (e.target.value || undefined) as PensionPlan | undefined })}
-                                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white">
-                                            <option value="">Régime retraite</option>
-                                            <option value="DB">DB (prestations dét.)</option><option value="DC">DC (cotisations dét.)</option>
-                                            <option value="RPDB">RPDB</option><option value="none">Aucun</option>
-                                        </select>
-                                    </div>
-                                    <div className="text-tiny text-ink-500 uppercase tracking-widest mt-1">Santé & longévité</div>
-                                    <div className="grid grid-cols-2 gap-1">
-                                        <select value={user.healthRating ?? ''} aria-label="État de santé"
-                                            onChange={e => patch(idx, { healthRating: (e.target.value || undefined) as HealthRating | undefined })}
-                                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white">
-                                            <option value="">État santé</option><option value="excellent">Excellent</option><option value="good">Bon</option><option value="average">Moyen</option><option value="poor">Faible</option>
-                                        </select>
-                                        <select value={user.activityLevel ?? ''} aria-label="Activité physique"
-                                            onChange={e => patch(idx, { activityLevel: (e.target.value || undefined) as 'sedentary' | 'light' | 'moderate' | 'active' | undefined })}
-                                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white">
-                                            <option value="">Activité physique</option><option value="sedentary">Sédentaire</option><option value="light">Légère</option><option value="moderate">Modérée</option><option value="active">Active</option>
-                                        </select>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-1">
-                                        <label className="flex items-center gap-1 text-tiny text-ink-300">
-                                            <input type="checkbox" checked={user.isSmoker ?? false}
-                                                onChange={e => patch(idx, { isSmoker: e.target.checked })} />
-                                            Fumeur
-                                        </label>
-                                        <input aria-label="Âge au décès de la mère" type="number" placeholder="Mère — âge décès" value={user.parentAgeAtDeath?.mother ?? ''}
-                                            onChange={e => patch(idx, { parentAgeAtDeath: { ...user.parentAgeAtDeath, mother: Number(e.target.value) || undefined } })}
-                                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                                        <input aria-label="Âge au décès du père" type="number" placeholder="Père — âge décès" value={user.parentAgeAtDeath?.father ?? ''}
-                                            onChange={e => patch(idx, { parentAgeAtDeath: { ...user.parentAgeAtDeath, father: Number(e.target.value) || undefined } })}
-                                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                                    </div>
+                                    {/* PH3-c — champs santé/civil/emploi morts purgés (aucun consommateur). */}
+                                    <select value={user.industry ?? ''} aria-label="Industrie"
+                                        onChange={e => patch(idx, { industry: (e.target.value || undefined) as Industry | undefined })}
+                                        className="w-full bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white">
+                                        <option value="">Industrie...</option>
+                                        <option value="tech">Tech</option><option value="finance">Finance</option><option value="health">Santé</option>
+                                        <option value="public-sector">Secteur public</option><option value="education">Éducation</option>
+                                        <option value="construction">Construction</option><option value="retail">Commerce</option>
+                                        <option value="manufacturing">Manufacture</option><option value="energy">Énergie</option>
+                                        <option value="transportation">Transport</option><option value="agriculture">Agriculture</option>
+                                        <option value="media">Médias</option><option value="other">Autre</option>
+                                    </select>
                                     <div className="text-tiny text-ink-500 uppercase tracking-widest mt-1">Rémunération variable</div>
                                     <div className="grid grid-cols-3 gap-1">
                                         <input aria-label="Bonus en % du brut" type="number" placeholder="Bonus % brut" value={user.bonusPctOfGross ?? ''}
@@ -255,21 +178,9 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                         <input aria-label="RSU vesting annuel" type="number" placeholder="RSU $/an" value={user.rsuVestingPerYear ?? ''}
                                             onChange={e => patch(idx, { rsuVestingPerYear: Number(e.target.value) || undefined })}
                                             className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                                        <input aria-label="Valeur stock options" type="number" placeholder="Stock opts $" value={user.stockOptionsValue ?? ''}
-                                            onChange={e => patch(idx, { stockOptionsValue: Number(e.target.value) || undefined })}
-                                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-1">
                                         <input aria-label="Revenus secondaires annuels" type="number" placeholder="Side income $/an" value={user.sideIncomeAnnual ?? ''}
                                             onChange={e => patch(idx, { sideIncomeAnnual: Number(e.target.value) || undefined })}
                                             className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                                        <select value={user.payFrequency ?? ''} aria-label="Périodicité de paie"
-                                            onChange={e => patch(idx, { payFrequency: (e.target.value || undefined) as 'biweekly' | 'semimonthly' | 'monthly' | 'weekly' | undefined })}
-                                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white">
-                                            <option value="">Périodicité paie</option>
-                                            <option value="weekly">Hebdo (52)</option><option value="biweekly">Bihebdo (26)</option>
-                                            <option value="semimonthly">Bimensuel (24)</option><option value="monthly">Mensuel (12)</option>
-                                        </select>
                                     </div>
                                 </div>
                             )}

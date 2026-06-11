@@ -328,9 +328,9 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
         </div>
 
         <p className="text-meta text-ink-500 italic">
-          Salaires &amp; options fiscales → onglet <strong className="text-ink-300">Impôts</strong> · Enfants (REEE) →
-          {' '}<strong className="text-ink-300">Enfant</strong> · Profil détaillé (santé/carrière) →
-          {' '}<strong className="text-ink-300">Retraite</strong> · Mode de répartition → <strong className="text-ink-300">Budget</strong>.
+          {/* PH3/PH3-c — libellé re-véridifié : tout le setup vit désormais dans CET onglet Profil. */}
+          Salaires &amp; options fiscales, carrière &amp; rémunération variable, retraite, enfants (REEE) et
+          mode de répartition : sections suivantes de cet onglet <strong className="text-ink-300">Profil</strong>.
         </p>
       </div>
     </Card>

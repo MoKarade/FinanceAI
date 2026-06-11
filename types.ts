@@ -108,14 +108,11 @@ export interface DocumentMeta {
   notes?: string;
 }
 
-// W5.1 — Profil santé enrichi
-export type HealthRating = 'excellent' | 'good' | 'average' | 'poor';
-export type Gender = 'M' | 'F' | 'X';
+// PH3-c (2026-06-11) — types compagnons du « profil détaillé » W5.1 purgés avec leurs champs User
+// (zéro consommateur) : HealthRating, Gender, EmploymentType, PensionPlan, MaritalStatus.
+// CanadianProvince GARDÉ : consommé par ProjectionConfig.futureProvince (W2.7 geographic arbitrage).
 export type CanadianProvince =
   | 'QC' | 'ON' | 'AB' | 'BC' | 'MB' | 'SK' | 'NS' | 'NB' | 'NL' | 'PE' | 'YT' | 'NT' | 'NU';
-export type EmploymentType = 'employee' | 'self-employed' | 'contractor' | 'business-owner' | 'unemployed' | 'retired' | 'student';
-export type PensionPlan = 'DB' | 'DC' | 'RPDB' | 'none';
-export type MaritalStatus = 'single' | 'married' | 'common-law' | 'separated' | 'divorced' | 'widowed';
 // Cycle 2 type-design: union pour Industry (élimine `string` permissif).
 // Liste calibrée sur les top industries StatCan + tech moderne.
 export type Industry =
@@ -140,7 +137,6 @@ export interface User {
   birthYear?: number;
   birthMonth?: number;                   // W5.1 (1-12)
   birthDay?: number;                     // W5.1 (1-31)
-  gender?: Gender;                       // W5.1 — table mortalité diffère
   canadaArrivalYear?: number;
   isImmigrant?: boolean;                 // immigré au Canada → droits CELI/REER + résidence PSV calculés depuis canadaArrivalYear (sinon depuis la naissance)
   hasOwnedPropertyLast4Years?: boolean;
@@ -150,35 +146,20 @@ export interface User {
   celiContributed?: number;
   rrspContributed?: number;
   facteurEquivalence?: number;
-  // W5.1 — Santé et longévité
-  healthRating?: HealthRating;
-  isSmoker?: boolean;
-  bmiCategory?: 'underweight' | 'normal' | 'overweight' | 'obese';
-  chronicConditions?: string[];          // ['diabetes', 'cardio', 'cancer-history', ...]
-  parentAgeAtDeath?: { mother?: number; father?: number };
-  activityLevel?: 'sedentary' | 'light' | 'moderate' | 'active';
+  // ── PH3-c (2026-06-11) — champs « profil détaillé » historiques PURGÉS (contre-audit repo
+  // complet : aucun consommateur) : gender, healthRating, isSmoker, bmiCategory, chronicConditions,
+  // parentAgeAtDeath, activityLevel, yearsOfExperience, employmentType, promotionLikelihood5Y,
+  // pensionPlan, province, citizenship, maritalStatus, bonusVolatilityPct, stockOptionsValue,
+  // commissionPctOfGross, cryptoStakingAnnual, payFrequency.
+  // Données résiduelles persistées (localStorage/IndexedDB) = INERTES, ignorées — ZÉRO migration.
   // W5.1 — Carrière
-  industry?: Industry;                   // union stricte (cycle 2 type-design)
-  yearsOfExperience?: number;
-  employmentType?: EmploymentType;
-  promotionLikelihood5Y?: number;        // 0-100
-  pensionPlan?: PensionPlan;
-  // W5.1 — Statut civil
-  province?: CanadianProvince;
-  citizenship?: 'CA' | 'US-person-CA' | 'other';
-  maritalStatus?: MaritalStatus;
-  // W5.2 — Rémunération variable
-  bonusPctOfGross?: number;              // 0-100, bonus annuel attendu
-  bonusVolatilityPct?: number;           // ecart-type % du bonus
-  rsuVestingPerYear?: number;            // $ RSU vesting annuel attendu
-  rsuYearsRemaining?: number;            // années restantes de vesting
-  stockOptionsValue?: number;            // valeur intrinsèque actuelle
-  commissionPctOfGross?: number;         // % variable de commission
+  industry?: Industry;                   // GARDÉ (décision audit PH3-c) — éditeur UserConfigFields seul, aucun consommateur services/
+  // W5.2 — Rémunération variable (consommée par le moteur)
+  bonusPctOfGross?: number;              // 0-100, bonus annuel attendu — services/projection/activeIncome.ts
+  rsuVestingPerYear?: number;            // $ RSU vesting annuel attendu — services/projection/activeIncome.ts (lissé /12)
+  rsuYearsRemaining?: number;            // années restantes de vesting — services/projection/activeIncome.ts (expiration RSU)
   // W5.2 — Side income
-  sideIncomeAnnual?: number;             // freelance, royalties, etc.
-  cryptoStakingAnnual?: number;
-  // W5.2 — Périodicité paie
-  payFrequency?: 'biweekly' | 'semimonthly' | 'monthly' | 'weekly';
+  sideIncomeAnnual?: number;             // freelance, royalties, etc. — services/projection/activeIncome.ts
 }
 
 export interface BudgetCategory {

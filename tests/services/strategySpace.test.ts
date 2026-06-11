@@ -48,7 +48,7 @@ describe('strategySpace — génération & dédoublonnage', () => {
         expect(countConfigs(sel, ctx())).toBe(2);
     });
 
-    it('toutes les configs générées sont complètes (10 leviers définis)', () => {
+    it('toutes les configs générées sont complètes (tous les leviers définis)', () => {
         const configs = generateStrategySpace({ withdrawalOrder: ['PRIO_REER', 'PRIO_CELI'] }, ctx());
         for (const c of configs) {
             expect(c.withdrawalOrder).toBeDefined();
@@ -90,7 +90,7 @@ describe('strategySpace — configToEngine', () => {
         withdrawalOrder: 'AUTO_MARGINAL', delayPensions: false, retirementAge: 65, skipRap: false,
         contributionOrder: 'CELI_FIRST', retirementSpending: 1, smithManoeuvre: false, debtFirst: false,
         emergencyFundMonths: 6, assetLocation: false, gainHarvesting: false,
-        returnRateProfile: 'balanced', pensionSplitting: true, ...over,
+        returnRateProfile: 'balanced', pensionSplitting: true, savingsMultiplier: 1, ...over,
     });
 
     it('traduit les leviers en clone params + overrides, sans muter la base', () => {
@@ -102,6 +102,7 @@ describe('strategySpace — configToEngine', () => {
             gainHarvesting: false,
             returnRateProfile: 'balanced',
             pensionSplitting: true,
+            savingsMultiplier: 1,
         }, base);
 
         expect(args.strategy).toBe('PRIO_REER');
@@ -133,6 +134,7 @@ describe('strategySpace — configToEngine', () => {
             gainHarvesting: false,
             returnRateProfile: 'balanced',
             pensionSplitting: true,
+            savingsMultiplier: 1,
         }, base);
         const on = configToEngine({
             withdrawalOrder: 'AUTO_MARGINAL', delayPensions: false, retirementAge: 65,
@@ -141,6 +143,7 @@ describe('strategySpace — configToEngine', () => {
             gainHarvesting: false,
             returnRateProfile: 'balanced',
             pensionSplitting: true,
+            savingsMultiplier: 1,
         }, base);
 
         expect(off.params.projection.returnRates!.nonReg).toBe(baseNonReg); // inchangé sans le levier
@@ -215,5 +218,14 @@ describe('strategySpace — configToEngine', () => {
         expect(on.params.projection.appliedPensionSplitting).toBe(true);
         // Comme le profil, le flag n'est PAS un EngineOverride (il est lu par runScenario → DecemberContext).
         expect(off.overrides).not.toHaveProperty('pensionSplitting');
+    });
+
+    it('savingsMultiplier transite par params.projection.appliedSavingsMultiplier (recherche ↔ courbe)', () => {
+        const more = configToEngine(cfg({ savingsMultiplier: 1.2 }), baseParams());
+        expect(more.params.projection.appliedSavingsMultiplier).toBe(1.2);
+        const base = configToEngine(cfg({ savingsMultiplier: 1 }), baseParams());
+        expect(base.params.projection.appliedSavingsMultiplier).toBe(1);
+        // Lu par runScenario (effectiveBaseExpenses), pas un EngineOverride.
+        expect(more.overrides).not.toHaveProperty('savingsMultiplier');
     });
 });

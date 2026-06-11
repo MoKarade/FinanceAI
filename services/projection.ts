@@ -100,7 +100,7 @@ export interface SimulationParams {
 // est rappelée N fois avec un RNG seedé déterministe (reproductible).
 // Retourne la série temporelle (chartData) + les agrégats de fin (estate, FIRE).
 const runScenario = (params: SimulationParams, strategy: AllocationStrategy, enableMonteCarlo = false, delayPensions = false, mcIterationIndex = 0, scenarioType: FutureScenarioType = 'BASE', overrides: EngineOverrides = {}) => {
-    const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual: _baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0, insurancePolicies = [], vehicleReplacements = [], majorRenovations = [], charitableGoals = [], rentalProperties = [], privateBusinesses = [], savingsGoals = [], financialGoals = [] } = params;
+    const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0, insurancePolicies = [], vehicleReplacements = [], majorRenovations = [], charitableGoals = [], rentalProperties = [], privateBusinesses = [], savingsGoals = [], financialGoals = [] } = params;
     
     // Cycle 22 split: RNG seedé déterministique → ./projection/setupSimulation
     const rng = buildSeededRng(scenarioType, strategy, mcIterationIndex);
@@ -208,7 +208,17 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     const effectiveRetirementAge = overrideRetirementAge;
     const retirementMonthIndex = (effectiveRetirementAge - currentAge) * 12;
 
-    const effectiveBaseExpenses = projection.useTheoretical ? (projection.theoreticalExpenses || 4000) : baseMonthlyExpenses;
+    // PH4-FUT-B-3 — levier « taux d'épargne » : multiplie l'épargne mensuelle (net − dépenses) par
+    // `appliedSavingsMultiplier` et RÉDUIT les dépenses d'autant (conservation du revenu net : épargner
+    // plus = dépenser moins, le surplus est investi par la cascade). Appliqué seulement en mode RÉEL et
+    // sur une épargne POSITIVE (en déficit, « épargner plus » est mal défini → aucun effet). Défaut
+    // absent/1 → dépenses inchangées (non-régression). baseNetAnnual et baseMonthlyExpenses ⊂ params.
+    const savingsMult = projection.appliedSavingsMultiplier ?? 1;
+    const realMonthlySavings = baseNetAnnual / 12 - baseMonthlyExpenses;
+    const adjustedRealExpenses = (savingsMult !== 1 && realMonthlySavings > 0)
+        ? Math.max(0, baseNetAnnual / 12 - realMonthlySavings * savingsMult)
+        : baseMonthlyExpenses;
+    const effectiveBaseExpenses = projection.useTheoretical ? (projection.theoreticalExpenses || 4000) : adjustedRealExpenses;
     const fireTargetAnnual = effectiveBaseExpenses * 12;
     // Règle des 4% (Trinity Study, 1998) : on peut retirer 4%/an d'un
     // portefeuille sans l'épuiser → capital cible = dépenses annuelles × 25.

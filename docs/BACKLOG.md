@@ -186,8 +186,10 @@
 - [x] **[PH4-FUT-B-2]** ✅ (PR-B2) — levier **Fractionnement pension 65+** ON/OFF (gate la Phase 3 de
   taxDecember ; défaut actif = historique ; false = conservateur/légal). Panel fiscal-accuracy RAS, baselines
   intactes. Tests : unitaire (actif 20k < inactif 32,5k) + cohérence configToEngine + non-régression.
-- [ ] **[PH4-FUT-B-3]** 🔧 (suivant) — levier **Taux d'épargne** (+X %/mois). PIÈGE : point d'application
-  dans le cashflow mensuel (conservation revenu net), interaction savingsMode 'real'. projection-validator.
+- [x] **[PH4-FUT-B-3]** ✅ (PR-B3) — levier **Taux d'épargne** (multiplicateur 0.9/1/1.2). Modèle :
+  multiplie l'épargne RÉELLE positive (net−dépenses), réduit les dépenses d'autant (conservation revenu
+  net, surplus investi) ; mode réel + épargne>0 seulement (déficit = inerte) ; défaut 1 = non-régression.
+  Tests : non-régression bit-près + monotonie + déficit inerte + cohérence configToEngine. Baselines intactes.
 - [ ] **[PH4-FUT-B-4]** 🔧 (le plus lourd) — levier **Downsizing immo retraite** (vendre/réduire la résidence
   à l'âge de retraite, libère l'équité). N'EXISTE PAS : nouveau mécanisme via LifeEvent. PIÈGES : exemption
   gain résidence principale (non taxé), timing de vente, multi-propriétés, hypothèque résiduelle.

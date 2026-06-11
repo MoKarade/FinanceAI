@@ -71,9 +71,13 @@
   bloquant), silent-failure (clean), projection-validator (1895 tests verts). `performance-optimizer`
   NON lancé — diff = orchestration pure (Map dédup + booléen store + repli), zéro calcul ajouté, deux
   effets perf POSITIFS (worker chaud + 0 calcul MC dupliqué) → l'agent n'aurait rien à signaler.
-- [ ] **[PH2-c]** 🔧 Source UNIQUE de la courbe : Futur et Retraite lisent le MÊME résultat
-  (`lastProjection`) ; modifier les params dans Futur met à jour Retraite. **Critères** : même
-  série de points dans les deux onglets (assertion de test), zéro recalcul parallèle divergent.
+- [x] **[PH2-c]** ✅ mergé #241 — moteur de projection hoisté AU NIVEAU APP (`ProjectionEngine`
+  headless + lazy, monté dans App) : calcule + publie `lastProjection`, source TOUJOURS peuplée quel
+  que soit l'onglet (avant, seul Futur monté calculait → Dashboard/Retraite à `ProjectionRequired`).
+  `hooks/useSimulationParams` partagé moteur↔Futur (params identiques, zéro divergence) ; Futur devient
+  pur CONSOMMATEUR ; `projectionStatus` au store (transitoire, exclu persist+sélecteur App = anti-cascade).
+  Garde no-fake-data (prérequis Futur). Revu par le panel complet (rien de bloquant, invariants OK,
+  1900 tests). Suivis non bloquants → PH2-c-1..4 ci-dessous.
 - [ ] **[PH2-d]** 🔧 Verrouillage + persistance **IndexedDB** : une courbe choisie et VERROUILLÉE
   se retrouve IDENTIQUE à chaque réouverture de l'app, jusqu'à déverrouillage. **Critères** :
   reload + réouverture → mêmes points sans recalcul ; déverrouiller → recalcul possible.

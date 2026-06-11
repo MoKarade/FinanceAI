@@ -383,11 +383,14 @@
   TOUS les KPI), `DualKPIStat`, `CurrentCapitalCard` (6), + 13 sites one-liner via codemod conservateur
   (RealEstate, Investments, Dashboard, ChildPlanning, StressTestPanel, PropertyConfigurator,
   NetWorthByOwnerCard).
-- [ ] **[D6-SR-2]** 🔧 (reste de migration) — ~69 occurrences `privacy-blur` restantes : INPUTS
-  (légitimes — aria-hidden sur un champ éditable le rendrait inutilisable ; le blur visuel suffit,
-  l'utilisateur SR est l'utilisateur légitime du champ) + spans MULTI-LIGNES/contenu mixte non
-  codemodables (Budget tableaux, FutureDetailModal, tooltips projection, sélecteurs CSS génériques
-  de Layout td/font-mono). Migrer opportunistiquement vers <PrivateAmount> au fil des refontes PH4.
+- [ ] **[D6-SR-2]** 🔧 (reste de migration, enrichi revue #247) — ~69 occurrences `privacy-blur`
+  restantes : INPUTS (légitimes — un champ éditable doit rester utilisable par son utilisateur SR ;
+  mais SLIDERS : ajouter `aria-valuetext="Montant masqué"` quand isPrivacyMode — PropertyConfigurator
+  prix d'achat, ChildPlanning REEE) + spans MULTI-LIGNES/mixtes non codemodables + MONTANTS ADJACENTS
+  d'une même unité visuelle (Dashboard:607-619 diff/revenu/gain, StressTestPanel delta, RealEstate
+  colonnes amortissement, PropertyConfigurator mise de fonds) + ChildPlanning « Capital à 17 ans »
+  (à gater comme le fix Dashboard : value peut être un CTA <ProjectionRequired>). Migrer
+  opportunistiquement vers <PrivateAmount> au fil des refontes PH4.
 - [ ] **[D7]** Perf boot : `hydrateAssets` (`App.tsx`) boucle `await sleep(2500ms)` séquentiel par
   symbole → 10 actifs = ~25 s. Paralléliser + cacher, garde-fous anti-rate-limit. Plus gros gain
   de fluidité ressenti.

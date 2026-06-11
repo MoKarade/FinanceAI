@@ -5,7 +5,7 @@ import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { Pill } from './ui/Pill';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ReferenceArea, Line, ComposedChart, Bar, ReferenceDot } from 'recharts';
-import { BudgetConfig, BudgetCategory, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Transaction, Debt, ProjectionConfig, FinancialGoal } from '../types';
+import { BudgetConfig, BudgetCategory, RealEstateGoal, RetirementGoal, Transaction, ProjectionConfig } from '../types';
 import { ProjectionResult, ProjectionChartPoint } from '../services/projection/types';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { usePendingFocus } from '../utils/usePendingFocus';
@@ -73,17 +73,11 @@ interface FutureProjectionProps {
   config: BudgetConfig;
   realEstateGoals: RealEstateGoal[];
   setRealEstateGoals?: (g: RealEstateGoal[]) => void;
-  childGoals: ChildGoal[];
-  setChildGoals?: (g: ChildGoal[]) => void;
-  travelGoals: TravelGoal[];
-  lifeEvents: LifeEvent[];
-  debts?: Debt[];
   retirementGoal: RetirementGoal;
   setRetirementGoal?: (g: RetirementGoal) => void;
   calculatedMonthlySavings: number;
   projection: ProjectionConfig;
   setProjection: (p: ProjectionConfig) => void;
-  financialGoals?: FinancialGoal[];
   isPrivacyMode?: boolean;
 }
 

@@ -189,17 +189,11 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                             config={state.config}
                             realEstateGoals={state.realEstateGoals}
                             setRealEstateGoals={(g) => setAppState({ realEstateGoals: g })}
-                            childGoals={state.childGoals || []}
-                            setChildGoals={(g) => setAppState({ childGoals: g })}
-                            travelGoals={state.travelGoals}
-                            lifeEvents={state.lifeEvents}
-                            debts={state.debts}
                             retirementGoal={state.retirementGoal}
                             setRetirementGoal={(g) => setAppState({ retirementGoal: g })}
                             calculatedMonthlySavings={calculatedMonthlySavings}
                             projection={state.projection}
                             setProjection={(p) => setAppState({ projection: p })}
-                            financialGoals={state.financialGoals}
                             isPrivacyMode={isPrivacyMode}
                         />
                     </PageSetupGate>

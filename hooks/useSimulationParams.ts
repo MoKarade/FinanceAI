@@ -35,8 +35,10 @@ export interface SimulationParamsBundle {
 /**
  * Source unique des `SimulationParams`. Lit toutes les tranches du store via un seul
  * sélecteur `useShallow` (références stables → recalcul seulement quand une tranche change),
- * réplique à l'identique les dérivations qui vivaient dans `FutureProjection` (verrouillé par
- * un test de parité avec l'ancien assemblage).
+ * réplique à l'identique les dérivations qui vivaient dans `FutureProjection` (extraction LITTÉRALE ;
+ * `buildSimulationParams` est verrouillé par tests/services/buildSimulationParams.parity.test.ts et
+ * le moteur de bout en bout par tests/components/ProjectionEngine.test.tsx — pas de test DIRECT du
+ * hook, cf BACKLOG).
  */
 export function useSimulationParams(calculatedMonthlySavings: number): SimulationParamsBundle {
     const {
@@ -66,6 +68,11 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
         savingsGoals: st.savingsGoals ?? EMPTY_ARRAY,
     })));
 
+    // ⚠️ PH2-c (limite connue → BACKLOG) : ce hook est monté 2× quand l'onglet Futur est ouvert
+    // (ProjectionEngine app-level + FutureProjection). usePastPortfolioHistory ayant un fetch Finnhub
+    // PAR-INSTANCE, ça double le fetch (mode réel) et peut faire flotter transitoirement la jonction
+    // passé↔futur le temps du chargement. Le départ de projection (liveCSVBalances = prix ACTUEL, sans
+    // réseau) reste stable. Fix prévu : dédup du fetch au niveau module dans usePastPortfolioHistory.
     // A1/A3 — soldes de DÉPART dérivés de la même reconstruction que la courbe passée
     // (continuité passé↔futur au mois 0 : le futur démarre sur le portefeuille réel).
     const pastHistory = usePastPortfolioHistory();
@@ -102,7 +109,7 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
         liveCSVBalances,
         calculatedStartingCash,
         realEstateGoals,
-        debts: debts || [],
+        debts,
         childGoals,
         travelGoals,
         lifeEvents,

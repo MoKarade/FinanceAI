@@ -25,9 +25,10 @@ interface ProjectionEngineProps {
  * Budget / Futur / Retraite. Avant ce hoist, seul `FutureProjection` calculait → les autres
  * onglets restaient à `ProjectionRequired` tant qu'on n'ouvrait pas Futur.
  *
- * Headless + état local isolé : ce composant rend `null`, donc ses re-renders (toutes les ~300 ms
- * pendant un Monte-Carlo, via `asyncResults`) ne touchent NI App NI les pages — pas de cascade
- * (cf C1 fix App.tsx ; `lastProjection` ET `projectionStatus` sont exclus du sélecteur d'App).
+ * Headless + état local isolé : ce composant rend `null`. `asyncResults` ne change qu'UNE fois (à la
+ * résolution du calcul MC — runProjectionAsync mode projection ne rapporte PAS de progrès), donc ses
+ * re-renders ne touchent NI App NI les pages — pas de cascade (cf C1 fix App.tsx ; `lastProjection`
+ * ET `projectionStatus` sont exclus du sélecteur d'App).
  *
  * Garde no-fake-data : ne calcule QUE si les prérequis de Futur (salaire + placements + profil
  * retraite) sont remplis — la MÊME condition que `PageSetupGate[Tab.FUTURE]`. Sinon `lastProjection`

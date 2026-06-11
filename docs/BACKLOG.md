@@ -80,6 +80,23 @@
   **Dépendance** : s'appuie sur l'infra IndexedDB existante (backups chiffrés) ou P0-IDB ;
   ⚠️ vigilance migration persist v7.
 
+#### Suivis PH2-c (découverts à la revue panel PR #241 — non bloquants, le hoist est livré)
+- [ ] **[PH2-c-1]** 🔧 (MAJEUR) Dédupe `usePastPortfolioHistory` au niveau MODULE : PH2-c monte 2
+  instances sur Futur (ProjectionEngine + FutureProjection) → double fetch Finnhub + jonction
+  passé↔futur qui peut flotter transitoirement (mode réel, le temps du chargement ; départ de
+  projection stable car `liveCSVBalances`=prix actuel). Fix : cache de fetch partagé (module) +
+  notification, dans l'esprit de `_inflight` de runAsync.
+- [ ] **[PH2-c-2]** 🔧 (signal) Câbler `projectionStatus === 'error'` dans Dashboard/Investissement/
+  Budget/Retraite → bandeau discret « projection possiblement périmée (dernier recalcul échoué) » au-
+  dessus de la courbe conservée. Aujourd'hui l'erreur n'est visible QUE sur Futur (pré-existant, mais
+  PH2-c fournit enfin le véhicule `projectionStatus` pour corriger).
+- [ ] **[PH2-c-3]** 🔧 (perf) Router le calcul DÉTERMINISTE dans le worker hors-Futur : en mode
+  déterministe (runMC=false), le moteur app-level paie ~150 ms main-thread à chaque changement de
+  params quel que soit l'onglet (atténué par debounce 300 ms ; défaut = MC déjà off-thread).
+- [ ] **[PH2-c-4]** 🧪 Test DIRECT de `useSimulationParams` (renderHook) comparant `params` à
+  l'assemblage de référence par persona — parité aujourd'hui prouvée transitivement
+  (buildSimulationParams.parity + ProjectionEngine e2e), pas par un test du hook lui-même.
+
 ### Phase 3 — MODÈLE DE DONNÉES + ONGLET PROFIL ⏳ (plan-first) — dépend de : OK Marc post-PH2
 - [ ] **[PH3-a]** 🔧 Nouvel onglet **Profil** remplaçant ENTIÈREMENT le Profil de Configuration :
   regroupe profil + utilisateur + paramètres de retraite + **profil détaillé** (actuellement dans

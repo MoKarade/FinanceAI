@@ -358,6 +358,9 @@ export interface ProjectionConfig {
   /** PH4-FUT-B — fractionnement de pension 65+ (levier). Absent / true = actif (comportement
    *  historique, non-régression) ; false = désactivé (saute la Phase 3 d'optimisation de décembre). */
   appliedPensionSplitting?: boolean;
+  /** PH4-FUT-B — multiplicateur du taux d'épargne (levier). Absent / 1 = inchangé (non-régression) ;
+   *  1.2 = épargner 20 % de plus (dépenses réduites d'autant). Mode réel + épargne positive seulement. */
+  appliedSavingsMultiplier?: number;
 
   // [UI-SCEN] (2026-06-09, demande Marc « enlève les plans de base ») — la stratégie de
   // retrait/gestion est un PARAMÈTRE : le moteur ne calcule que CE scénario réaliste

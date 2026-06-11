@@ -49,6 +49,8 @@ export interface StrategyConfig {
     /** PH4-FUT-B — fractionnement de pension 65+ : true = actif (défaut, comportement historique),
      *  false = désactivé (compare l'impact de NE PAS fractionner). */
     pensionSplitting: boolean;
+    /** PH4-FUT-B — multiplicateur du taux d'épargne (1 = inchangé ; 1.2 = épargner 20 % de plus). */
+    savingsMultiplier: number;
 }
 
 /** Type des taux de rendement par compte (= ProjectionConfig.returnRates non-null). */
@@ -179,6 +181,14 @@ export const LEVER_LIBRARY: ReadonlyArray<LeverDef> = [
             { value: false, label: 'Inactif' },
         ],
     },
+    {
+        key: 'savingsMultiplier', label: "Taux d'épargne", default: 1,
+        options: [
+            { value: 0.9, label: '−10 %' },
+            { value: 1, label: 'Base' },
+            { value: 1.2, label: '+20 %' },
+        ],
+    },
 ];
 
 /** Ordre de retrait (axe) → enum AllocationStrategy attendu par le moteur. */
@@ -234,6 +244,7 @@ export function applyConfigToSettings(
             appliedGainHarvesting: config.gainHarvesting,
             appliedReturnProfile: config.returnRateProfile,
             appliedPensionSplitting: config.pensionSplitting,
+            appliedSavingsMultiplier: config.savingsMultiplier,
         },
         retirementGoal: {
             ...currentRetirementGoal,

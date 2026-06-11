@@ -4,7 +4,7 @@
 // (demande Marc : éditer chaque info dans l'onglet concerné).
 
 import React from 'react';
-import { UsersCard } from './UsersCard';
+import { ProfileFieldsMoved } from '../ProfileFieldsMoved';
 import { TestModePanel } from '../TestModePanel';
 import { startGuidedTour } from '../../tour/tourControl';
 import type { AppState } from '../../../types';
@@ -15,7 +15,10 @@ interface ProfileSectionProps {
   setConfig: (c: AppState['config']) => void;
 }
 
-export const ProfileSection: React.FC<ProfileSectionProps> = ({ config, setConfig }) => {
+// PH3 — les champs profil (UsersCard) ont migré dans l'onglet Profil unifié ; ce sous-onglet
+// ne garde que la visite guidée + le mode test (config/setConfig conservés dans l'interface
+// pour l'appelant, mais plus consommés ici).
+export const ProfileSection: React.FC<ProfileSectionProps> = () => {
   return (
     <div className="space-y-6">
       {/* G22-F4 — relancer le tutoriel guidé (visite de tous les onglets). */}
@@ -33,7 +36,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ config, setConfi
         </button>
       </div>
 
-      <UsersCard config={config} setConfig={setConfig} />
+      <ProfileFieldsMoved what="Ton profil (personnes, naissance, salaire…)" />
 
       {/* Mode test (dev) — déplacé ici depuis « Système & diagnostics » (demande Marc) :
           charger un persona réaliste est une action « profil », sa place est avec les

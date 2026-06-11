@@ -38,6 +38,10 @@ export const SetupHub: React.FC<{ className?: string }> = ({ className = '' }) =
     });
     const readyCount = tabStatus.filter((s) => s.ready).length;
     const allReady = tabs.length > 0 && readyCount === tabs.length;
+    // PH3-b — % de complétion GLOBAL (au niveau des INFOS, pas seulement des onglets prêts).
+    const totalMet = tabStatus.reduce((s, t) => s + t.met, 0);
+    const totalReq = tabStatus.reduce((s, t) => s + t.total, 0);
+    const pct = totalReq > 0 ? Math.round((totalMet / totalReq) * 100) : 100;
 
     const list = (
         <div className="space-y-2">
@@ -67,7 +71,7 @@ export const SetupHub: React.FC<{ className?: string }> = ({ className = '' }) =
                                 <button
                                     type="button"
                                     onClick={() => navigateWithFocus(tab)}
-                                    className="shrink-0 px-2.5 py-1 rounded-card border border-white/10 bg-white/5 text-tiny font-medium text-ink-300 hover:text-ink-50 hover:bg-white/10 transition-colors focus-ring"
+                                    className="shrink-0 min-h-[44px] px-2.5 py-1 rounded-card border border-white/10 bg-white/5 text-tiny font-medium text-ink-300 hover:text-ink-50 hover:bg-white/10 transition-colors focus-ring"
                                 >
                                     Ouvrir →
                                 </button>
@@ -120,7 +124,20 @@ export const SetupHub: React.FC<{ className?: string }> = ({ className = '' }) =
                         ou « Ouvrir » pour y aller.
                     </p>
                 </div>
-                <span className="text-meta text-ink-400 font-mono shrink-0">{readyCount}/{tabs.length} prêts</span>
+                <div className="shrink-0 text-right">
+                    <div className="text-body font-black text-ink-50 font-mono">{pct}%</div>
+                    <div className="text-tiny text-ink-500 font-mono">{readyCount}/{tabs.length} onglets prêts</div>
+                </div>
+            </div>
+            <div
+                className="h-1.5 rounded-full bg-white/10 overflow-hidden mb-3"
+                role="progressbar"
+                aria-valuenow={pct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`Profil complété à ${pct} %`}
+            >
+                <div className="h-full bg-primary rounded-full transition-[width] duration-500" style={{ width: `${pct}%` }} />
             </div>
             {list}
         </div>

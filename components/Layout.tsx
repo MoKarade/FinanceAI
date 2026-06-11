@@ -97,6 +97,7 @@ export const Layout: React.FC<LayoutProps> = ({
       label: 'Outils',
       icon: 'group-tools',
       items: [
+        { id: Tab.PROFILE, label: 'Profil', icon: 'settings' },
         { id: Tab.TAX, label: t('tabs.tax'), icon: 'tax' },
         { id: Tab.DEBT, label: t('tabs.debt'), icon: 'debt' },
       ],

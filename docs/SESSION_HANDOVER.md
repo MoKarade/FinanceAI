@@ -27,9 +27,22 @@
 > **Suivis non bloquants au BACKLOG** : PH2-c-1..4 + PH2-d-1..4 — dont **PH2-c-1** (dédup fetch
 > `usePastPortfolioHistory` double-instance sur Futur) et **PH2-d-1 = DÉCISION MARC** (toast si verrou
 > irrécupérable au boot, façon `decrypt_failed`).
-> **▶ SUITE = PHASE 3** (onglet Profil : remplace Config/Profil, regroupe profil+retraite+détaillé,
-> % complétion, purge des champs morts — cf BACKLOG PH3-a..d).
-> ⚠️⚠️ **JAMAIS démarrer la Phase 3 sans OK EXPLICITE de Marc** (règle du brief). plan-first OBLIGATOIRE.
+> **▶ PHASE 3 EN COURS (1 PR, WIP sur la branche — décisions Marc : 1 PR + « tout le setup user »)** :
+> onglet PROFIL unifié regroupant TOUT le setup utilisateur. **Fait (poussé, PAS encore en PR)** :
+> tranche 1 `85cf229` (Tab.PROFILE + `components/Profile.tsx` composant les éditeurs existants — UsersCard,
+> UserConfigFields salary/fiscal/detailed/children, RepartitionField, RetirementSettingsCard — + nav
+> « Outils »/TabRouter lazy/TAB_LABELS/CommandPalette ; migration UI PURE, mêmes clés store) ; tranche 2
+> `723db21` (éditeurs profil RETIRÉS de Impôts/Enfant/Budget/Config → pointeur `ProfileFieldsMoved` « → Profil »).
+> **RESTE (3 tranches)** : (3) **Retraite — money-critical, soigner** : `RetirementSettingsCard` (déjà dans
+> Profil) couvre targetAge/lifeExp/income/rrqStart/psvStart ; mais les cartes INLINE de Retraite
+> (`Parametres de Vie`/`Revenus & besoins`, ~L251-310) ont des champs UNIQUES (currentAge, governmentPension,
+> rrqEstimateMonthly, psvEstimateMonthly) + de l'ÉTAT local (`lifeExpectancy`/`currentAge`) consommé par le
+> graphe et `CurrentCapitalCard`. → déplacer ces champs uniques vers Profil + convertir l'état éditable en
+> DÉRIVÉ (retirementGoal/config.users[0].age) sans casser les lecteurs ; garder CurrentCapitalCard + graphes.
+> (4) **PH3-b** complétion : `PAGE_SETUP[Tab.PROFILE]` + nouveaux RequirementId (réutilise SetupHub). (5)
+> **PH3-c** audit/purge des champs « profil détaillé » morts (grep consommateurs → retrait type+UI ;
+> migration persist SEULEMENT si strictement nécessaire — sinon les champs persistés résiduels sont inertes).
+> Puis tests + panel (dont a11y) + **ouvrir la PR** + merge. ⚠️ Pas de Phase 4 sans OK Marc.
 >
 > Session 2026-06-10 — **TOP 10 [UI-EPURE] COMPLET + 5 fiscaux MAJEURS + [UI-SCEN]**. Build/tsc/tests verts.
 > - **Épuration UI (EP-1..EP-10)** — 4 PR (#225 EP-1/2, #226 EP-3/4/5, #227 EP-6/7/10, #228 EP-8) :
@@ -407,23 +420,18 @@ Onglets retirés : Planning (fusionné dans Budget — G22-N3), Système (fusion
 
 ## 7. Docs à lire si besoin de plus
 
+**Core actif (9 fichiers `docs/`)** — réduction 2026-06-11 (47→9, le reste fusionné dans HISTORIQUE) :
 | Doc | Quand le lire |
 |---|---|
-| **`docs/BACKLOG.md`** | **Source de vérité du restant à faire — à lire EN PREMIER pour savoir où en est le projet** |
-| `docs/MANUAL_TEST_CHECKLIST.md` | 131+ tests manuels à exécuter à chaque livraison (sections par onglet) |
-| `docs/CENTRALIZED_CALC_PROGRESS.md` | Suivi du refactor "Future = source unique" — Phase 1+2 done, Phase 3 Tier 1+2+3 ✅ |
-| `docs/CENTRALIZED_CALC_REFACTOR.md` | Plan stratégique du refactor (5 étapes, calculs KEEP_LOCAL identifiés) |
-| `docs/PROJECTION_OUTPUT_SCHEMA.md` | Inventaire exhaustif des champs `lastProjection.chartData[i]` (~50 champs) |
-| **`docs/AUTH_SETUP.md`** | **Auth Cloudflare Access — config réelle + journal de debug. À lire si l'accès au site casse** |
-| `docs/SECURITY_STRATEGY.md` | Analyse de menace + options auth (Option A = Cloudflare Access, implémentée 2026-05-22) |
-| `docs/ARCHITECTURE.md` | Vue exhaustive de la stack, topologie, store, pipeline IA |
-| `docs/ARCHITECTURE.md` | Stack détaillé, topologie, store, pipeline IA |
-| `docs/PROJECTION.md` | Moteur de projection (9 phases, 7 scénarios, MC) |
-| `docs/WIRING_NOTES.md` | Wirings inter-onglets (lastProjection, deep-links) |
-| `docs/PLAN_P1.md` | Plan P1 clôturé (référence pour comprendre pourquoi chaque item P1) |
-| `docs/PLAN_P2.md` | Plan P2 clôturé (idem pour P2) |
-| `docs/adr/` | 7 ADRs structurants (Claude migration, Era pattern, projection split, design system, Future source unique, no-fake, auth Cloudflare Access) |
-| `CHANGELOG.md` | Historique versionné cycles 13, 14, 15 |
+| **`docs/BACKLOG.md`** | **Restant à faire — à lire EN PREMIER** |
+| `docs/A_FAIRE_MOI.md` | Tâches HUMAINES (Marc) |
+| `docs/FISCAL_REFERENCE.md` | Valeurs fiscales — SOURCE DE VÉRITÉ (datée + sourcée) |
+| `docs/ARCHITECTURE.md` | Stack, topologie, store, pipeline IA |
+| `docs/PROJECTION.md` | Moteur de projection (phases, scénarios, MC) |
+| `docs/PROJECTION_OUTPUT_SCHEMA.md` | Champs de `lastProjection.chartData[i]` |
+| `docs/VISION.md` | Où va le projet |
+| **`docs/HISTORIQUE.md`** | **TOUT le reste fusionné** : snapshots, audits, designs LIVRÉS (auth Cloudflare, sync Drive, MCP, multiuser, sécurité), ADRs, plans finis, 131 tests manuels. Git garde le détail par fichier. |
+| `CHANGELOG.md` | Historique versionné |
 
 ---
 

@@ -1,9 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from './ui/Card';
-import { CollapsibleSection } from './ui/CollapsibleSection';
 import { PageHeader } from './ui/PageHeader';
-import { RetirementSettingsCard } from './retirement/RetirementSettingsCard';
-import { UserConfigFields } from './settings/UserConfigFields';
+import { ProfileFieldsMoved } from './settings/ProfileFieldsMoved';
 import { Icon } from './ui/Icon';
 import { Badge } from './ui/Badge';
 import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset, RegisteredAccountType } from '../types';
@@ -20,7 +18,6 @@ import { fetchPortfolioHistory } from '../services/finance';
 import { calculateGrossFromNet } from '../services/tax';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { useShallow } from 'zustand/shallow';
-import { numOr, numOrUndef } from '../utils/numericInput';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 
 // Sprint 2 PH3 — constante stable pour éviter de créer un nouveau [] à chaque
@@ -29,7 +26,8 @@ const EMPTY_ARRAY: never[] = [];
 
 interface RetirementProps {
     goal: RetirementGoal;
-    setGoal: (g: RetirementGoal) => void;
+    /** PH3 — plus consommé (l'édition de retirementGoal passe par Profil) ; optionnel pour compat. */
+    setGoal?: (g: RetirementGoal) => void;
     currentREER: number;
     currentCELI: number;
     currentNonReg: number;
@@ -48,14 +46,13 @@ interface RetirementProps {
 }
 
 export const Retirement: React.FC<RetirementProps> = ({
-    goal, setGoal,
+    goal,
     currentREER, currentCELI, currentNonReg,
     calculatedMonthlySavings,
     projection, config,
     assets = [], initialBalances = {}, budgetItems = [],
     realEstateGoals = [], childGoals = [], travelGoals = [], lifeEvents = [], debts = []
 }) => {
-    const setAppState = useFinanceStore(s => s.setAppState);
     // Sprint 2 PH3 — Regroupement W5.x via useShallow. Ces valeurs sont lues
     // depuis le store pour que le composant se re-render si elles changent
     // (cohérence avec FutureProjection qui les consomme), même si Retirement
@@ -75,15 +72,10 @@ export const Retirement: React.FC<RetirementProps> = ({
     // slider local reste pour rétrocompat et exploration rapide.
     const retirementGoalStore = useFinanceStore(s => s.retirementGoal);
     const lifeExpectancy = retirementGoalStore?.lifeExpectancy ?? 90;
-    const setLifeExpectancy = (v: number) =>
-        setAppState({ retirementGoal: { ...retirementGoalStore, lifeExpectancy: v } });
-    const [currentAge, setCurrentAge] = useState(config.users[0]?.age || 30);
     // States Goal Seeker / Asset Location déplacés dans leurs sous-composants
     // (refactor architecture cycle 2 — réduction Retirement.tsx de 700→527 lignes).
-
-    useEffect(() => {
-        if (config.users[0]?.age) setCurrentAge(config.users[0].age);
-    }, [config]);
+    // PH3 — `setLifeExpectancy` + l'état `currentAge` retirés avec les éditeurs (déplacés dans Profil).
+    // `lifeExpectancy` reste LU du store (consommé par le graphe d'accumulation et CurrentCapitalCard).
 
     const [liveCSVBalances, setLiveCSVBalances] = useState({
         CELI: currentCELI, CELIAPP: 0, REER: currentREER, NON_ENREG: currentNonReg, CRYPTO: 0, REEE: 0, TOTAL: currentCELI + currentREER + currentNonReg, historicalRate: 0
@@ -133,11 +125,7 @@ export const Retirement: React.FC<RetirementProps> = ({
         return () => { cancelled = true; };
     }, [assets, currentCELI, currentREER, currentNonReg]);
 
-    // PV-5 — `updateGoal` accepte `undefined` pour permettre aux champs optionnels (RRQ/PSV)
-    // de revenir à « non renseigné » quand on les vide (cf. numOrUndef), au lieu d'un 0 fantôme.
-    const updateGoal = (field: keyof RetirementGoal, value: number | undefined) => {
-        setGoal({ ...goal, [field]: value });
-    };
+    // PV-5 / PH3 — `updateGoal` retiré avec les éditeurs (le revenu-retraite s'édite dans Profil).
 
     const baseNetAnnual = useMemo(() => config.users.reduce((sum: number, u) => sum + ((u.netSalary || u.salary || 0) * 12), 0), [config]);
     const baseGrossAnnual = useMemo(() => config.users.reduce((sum: number, u) => {
@@ -242,37 +230,12 @@ export const Retirement: React.FC<RetirementProps> = ({
                 }
             />
 
-            {/* Déplacés depuis Configuration — éditables dans l'onglet concerné (demande Marc). */}
-            <RetirementSettingsCard />
-            <UserConfigFields section="detailed" />
+            {/* PH3 — TOUS les éditeurs de profil/retraite (paramètres, revenu-retraite, profil détaillé)
+                ont migré dans l'onglet Profil unifié. Retraite = résultats & analyses uniquement. */}
+            <ProfileFieldsMoved what="Tes paramètres de retraite, ton revenu-retraite et ton profil détaillé" />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-1 space-y-6">
-                    <Card title="Parametres de Vie">
-                        <div className="space-y-5">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-meta text-ink-300 mb-1">Age Actuel</label>
-                                    <input type="number" min="18" max="80" value={currentAge} onChange={e => {
-                                        const val = numOr(e.target.value, currentAge);
-                                        setCurrentAge(val);
-                                        setAppState({ config: { ...config, users: config.users.map((u, i) => i === 0 ? { ...u, age: val } : u) as BudgetConfig['users'] } });
-                                    }} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-bold focus:border-primary transition-colors outline-none" />
-                                </div>
-                                <div>
-                                    <label className="block text-meta text-ink-300 mb-1">Age Retraite</label>
-                                    <input type="number" value={goal.targetAge} onChange={e => updateGoal('targetAge', numOr(e.target.value, goal.targetAge))} className="w-full bg-black/40 border border-info-500/30 rounded-lg px-3 py-2 text-info-400 font-bold focus:border-info-500 transition-colors outline-none" />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="flex justify-between text-meta text-ink-300 mb-1">
-                                    <span>Esperance de vie</span>
-                                    <span className="text-white font-black">{lifeExpectancy} ans</span>
-                                </label>
-                                <input type="range" min="80" max="100" value={lifeExpectancy} onChange={e => setLifeExpectancy(Number(e.target.value))} className="w-full h-1.5 bg-black/50 rounded-lg appearance-none cursor-pointer accent-ink-300" />
-                            </div>
-                        </div>
-                    </Card>
 
                     {/* Phase F.5 — extraction Card "Capitaux Actuels" en sous-composant */}
                     <CurrentCapitalCard
@@ -284,122 +247,6 @@ export const Retirement: React.FC<RetirementProps> = ({
                         finalNetWorth={finalNetWorth}
                     />
 
-                    <Card title="Revenus & besoins">
-                        <div className="space-y-5">
-                            <div>
-                                <label className="block text-meta text-ink-300 mb-1">Besoin Mensuel (Aujourd'hui)</label>
-                                <input type="number" value={goal.targetMonthlyIncome} onChange={e => updateGoal('targetMonthlyIncome', numOr(e.target.value, goal.targetMonthlyIncome))} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white font-bold focus:border-primary transition-colors outline-none privacy-blur" />
-                            </div>
-                            <div>
-                                <label className="block text-meta text-ink-300 mb-1">Rente Etat agrégée (RRQ + PSV / mois) — legacy</label>
-                                <input type="number" value={goal.governmentPension} onChange={e => updateGoal('governmentPension', numOr(e.target.value, goal.governmentPension))} className="w-full bg-black/40 border border-info-500/20 rounded-lg px-3 py-2 text-blue-300 font-bold focus:border-info-500 transition-colors outline-none privacy-blur" />
-                                <p className="text-tiny text-ink-500 mt-1">Si tu remplis les 2 champs ci-dessous, ce champ est ignoré.</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
-                                <div>
-                                    <label className="block text-meta text-ink-300 mb-1">🇨🇦 RRQ projetée / mois (par personne)</label>
-                                    <input
-                                        type="number"
-                                        value={goal.rrqEstimateMonthly ?? ''}
-                                        placeholder="ex: 1100"
-                                        onChange={e => updateGoal('rrqEstimateMonthly', numOrUndef(e.target.value))}
-                                        className="w-full bg-black/40 border border-info-500/20 rounded-lg px-3 py-2 text-blue-300 text-body focus:border-info-500 transition-colors outline-none"
-                                    />
-                                    <p className="text-tiny text-ink-500 mt-1">Max 2025: 1 433$/mois. Consulte ton relevé RRQ.</p>
-                                </div>
-                                <div>
-                                    <label className="block text-meta text-ink-300 mb-1">PSV projetée / mois</label>
-                                    <input
-                                        type="number"
-                                        value={goal.psvEstimateMonthly ?? ''}
-                                        placeholder="ex: 734"
-                                        onChange={e => updateGoal('psvEstimateMonthly', numOrUndef(e.target.value))}
-                                        className="w-full bg-black/40 border border-info-500/20 rounded-lg px-3 py-2 text-blue-300 text-body focus:border-info-500 transition-colors outline-none"
-                                    />
-                                    <p className="text-tiny text-ink-500 mt-1">Max 2025: 734$/mois (40 ans résidence).</p>
-                                </div>
-                            </div>
-                            {/* [EP-8] Pension d'employeur DB repliée par défaut : moins courante que RRQ/PSV
-                                (laisse vide si tu n'as que du REER/CD). Les champs de détail restent
-                                conditionnels au montant DB > 0. */}
-                            <CollapsibleSection
-                                title="Pension d'employeur (prestations déterminées)"
-                                subtitle="Optionnel — RREGOP, fonction publique, régime garanti viager."
-                                defaultOpen={(goal.dbPensionMonthly ?? 0) > 0}
-                                variant="quiet"
-                            >
-                                <div className="space-y-4 pt-1">
-                                    <div>
-                                        <label className="block text-meta text-ink-300 mb-1">Pension employeur DB (prestations determinees) / mois</label>
-                                        <input
-                                            type="number"
-                                            value={goal.dbPensionMonthly ?? 0}
-                                            onChange={e => updateGoal('dbPensionMonthly', numOr(e.target.value, goal.dbPensionMonthly ?? 0))}
-                                            placeholder="0"
-                                            className="w-full bg-black/40 border border-success-500/20 rounded-lg px-3 py-2 text-emerald-300 font-bold focus:border-success-500 transition-colors outline-none privacy-blur"
-                                        />
-                                        <p className="text-tiny text-ink-500 mt-1">RREGOP, fonction publique federale, regime garanti viager. Laisse 0 si tu n'as que du REER/CD.</p>
-                                    </div>
-                                    {(goal.dbPensionMonthly ?? 0) > 0 && (
-                                        <div className="grid grid-cols-2 gap-3 pb-3 border-b border-white/5">
-                                            <div>
-                                                <label className="block text-meta text-ink-300 mb-1">Option DB (au décès)</label>
-                                                <select
-                                                    value={goal.dbElectionType ?? 'joint60'}
-                                                    onChange={e => setGoal({ ...goal, dbElectionType: e.target.value as RetirementGoal['dbElectionType'] })}
-                                                    className="w-full bg-black/40 border border-success-500/10 rounded-lg px-3 py-2 text-emerald-200 text-body"
-                                                >
-                                                    <option value="single">Vie seule (rente cesse)</option>
-                                                    <option value="joint60">Conjoint à 60% (recommandé)</option>
-                                                    <option value="joint66">Conjoint à 66%</option>
-                                                    <option value="joint100">Conjoint à 100% (rente réduite)</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-meta text-ink-300 mb-1">% rente survivant</label>
-                                                <input
-                                                    type="number"
-                                                    min={0}
-                                                    max={100}
-                                                    value={goal.dbSurvivorPct ?? 60}
-                                                    onChange={e => updateGoal('dbSurvivorPct', numOr(e.target.value, goal.dbSurvivorPct ?? 60))}
-                                                    className="w-full bg-black/40 border border-success-500/10 rounded-lg px-3 py-2 text-emerald-200 text-body"
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                    {(goal.dbPensionMonthly ?? 0) > 0 && (
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <label className="block text-meta text-ink-300 mb-1">Indexation IPC (%)</label>
-                                                <input
-                                                    type="number"
-                                                    min={0}
-                                                    max={100}
-                                                    value={goal.dbPensionIndexationPct ?? 100}
-                                                    onChange={e => updateGoal('dbPensionIndexationPct', numOr(e.target.value, goal.dbPensionIndexationPct ?? 100))}
-                                                    className="w-full bg-black/40 border border-success-500/10 rounded-lg px-3 py-2 text-emerald-200 text-body focus:border-success-500 transition-colors outline-none"
-                                                />
-                                                <p className="text-tiny text-ink-500 mt-1">100 = pleine indexation, 50 = demi, 0 = nominale</p>
-                                            </div>
-                                            <div>
-                                                <label className="block text-meta text-ink-300 mb-1">Age debut versement</label>
-                                                <input
-                                                    type="number"
-                                                    min={50}
-                                                    max={75}
-                                                    value={goal.dbPensionStartAge ?? goal.targetAge}
-                                                    onChange={e => updateGoal('dbPensionStartAge', numOr(e.target.value, goal.dbPensionStartAge ?? goal.targetAge))}
-                                                    className="w-full bg-black/40 border border-success-500/10 rounded-lg px-3 py-2 text-emerald-200 text-body focus:border-success-500 transition-colors outline-none"
-                                                />
-                                                <p className="text-tiny text-ink-500 mt-1">Defaut = age cible retraite</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </CollapsibleSection>
-                        </div>
-                    </Card>
 
                     {/* W4.1 — Tax bracket viz */}
                     <TaxBracketViz annualGrossIncome={baseGrossAnnual} label="revenu actuel" />

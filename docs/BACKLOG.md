@@ -1,8 +1,8 @@
 # BACKLOG — FinanceAI (actionnable)
 
 > Liste **courte** de ce qui RESTE à faire. L'historique complet des items livrés est
-> archivé dans [`docs/archive/BACKLOG_HISTORIQUE.md`](archive/BACKLOG_HISTORIQUE.md).
-> Audit qualité détaillé (référence) : [`docs/AAA_AUDIT_2026-06.md`](AAA_AUDIT_2026-06.md).
+> archivé dans [`docs/HISTORIQUE.md`](HISTORIQUE.md) (fusion de tous les snapshots/audits/designs livrés).
+> Audit qualité détaillé : voir `docs/HISTORIQUE.md` (section `AAA_AUDIT_2026-06.md`).
 > Actions humaines (Marc) : [`docs/A_FAIRE_MOI.md`](A_FAIRE_MOI.md).
 >
 > **Dernière mise à jour : 2026-06-10 (soir).** Tests : ~1886 verts / 158 fichiers · tsc clean · build OK.
@@ -117,17 +117,38 @@
   (clés API + backups + courbe verrouillée) — mettre à jour le commentaire.
 
 ### Phase 3 — MODÈLE DE DONNÉES + ONGLET PROFIL ⏳ (plan-first) — dépend de : OK Marc post-PH2
-- [ ] **[PH3-a]** 🔧 Nouvel onglet **Profil** remplaçant ENTIÈREMENT le Profil de Configuration :
-  regroupe profil + utilisateur + paramètres de retraite + **profil détaillé** (actuellement dans
-  Retraite). **Critères** : plus aucun champ profil dans Configuration ni Retraite ; zéro perte de
-  données (mêmes clés store).
-- [ ] **[PH3-b]** 🔧 Complétude : afficher QUELLE info manque pour QUEL onglet + % de complétion.
-  **Critères** : chaque champ manquant pointe l'onglet qui en a besoin ; % global visible.
-- [ ] **[PH3-c]** 🔧 Profil détaillé : AUDIT du code pour ne garder QUE les champs réellement
-  consommés par l'app — supprimer le reste (champs + types + store + UI). **Critères** : chaque
-  champ conservé a ≥ 1 consommateur prouvé (grep consigné dans la PR) ; migration store propre.
-- [ ] **[PH3-d]** 🔧 « Paramètres de vie » retirés de Retraite → déplacés dans Profil. **Critères** :
-  Retraite n'a plus de section vie ; valeurs préservées.
+- [x] **[PH3-a]** ✅ (PR Phase 3) — onglet **Profil** unifié (`components/Profile.tsx` + Tab.PROFILE) qui
+  COMPOSE tous les éditeurs de setup (UsersCard, UserConfigFields salary/fiscal/detailed/children,
+  RepartitionField, RetirementSettingsCard, RetirementIncomeCard). Retirés de Config/Impôts/Budget/
+  Enfant/Retraite → pointeur `ProfileFieldsMoved`. Mêmes clés store → zéro perte. **Critères ✓.**
+- [x] **[PH3-b]** ✅ (PR Phase 3) — `SetupHub` rendu en tête de Profil : **% de complétion GLOBAL**
+  (infos met/total + barre de progression) + par onglet « X/N » + quelle info manque + « Ouvrir »
+  (navigateWithFocus). **Critères ✓.**
+- [ ] **[PH3-c]** 🔧 Profil détaillé — purge des champs morts. **AUDIT FAIT (2026-06-11)** : NON consommés
+  par `services/` (moteur) → gender, province, citizenship, maritalStatus, employmentType, yearsOfExperience,
+  pensionPlan, promotionLikelihood5Y, healthRating, isSmoker, bmiCategory, chronicConditions, activityLevel,
+  parentAgeAtDeath, bonusVolatilityPct, stockOptionsValue, commissionPctOfGross, cryptoStakingAnnual,
+  payFrequency. CONSOMMÉS (garder) → industry, bonusPctOfGross, rsuVestingPerYear, rsuYearsRemaining,
+  sideIncomeAnnual. ⚠️ **RESTE (soigné, séparé)** : vérifier consommateurs HORS `services/` (UI + surtout
+  `province`/`maritalStatus` potentiellement fiscaux) + migration persist propre. Money/tax-sensible → pas à la va-vite.
+- [x] **[PH3-d]** ✅ (PR Phase 3) — Retraite ne contient PLUS d'éditeur de profil/vie (« Parametres de Vie »
+  + « Revenus & besoins » extraits → `RetirementIncomeCard` dans Profil) ; lecteurs/graphes conservés ;
+  `lifeExpectancy` reste lu du store. **Critères ✓.**
+- [ ] **[A11Y-LBL]** 🔧 (revue #244, SERIOUS hérité) — LOT labels : associer programmatiquement les
+  `<label>` aux inputs (`htmlFor`/`id` ou wrapping) dans RetirementIncomeCard, RetirementSettingsCard,
+  UserConfigFields (salary), UsersCard, RepartitionField (`aria-label` sur le select). Dette d'app
+  (8/30 fichiers seulement utilisent htmlFor) dont Profil est devenu le foyer.
+- [ ] **[SF-WARN]** 🔧 (revue #244, pré-existant) — `Retirement.tsx` fetchLiveTotals + `UsersCard.tsx`
+  restore : `console.warn` sur de vrais échecs I/O → router vers `logError` (convention repo).
+- [ ] **[CPL-1]** 🔧 ⚠️ MONEY-CRITICAL (signalé Marc 2026-06-11) — **switch individuel↔couple** : (a) BLOQUER
+  le passage en mode couple tant qu'aucun partenaire n'est défini (nom/salaire du 2e user vides) ; (b) BUG :
+  avec UN seul utilisateur réel, basculer en couple CHANGE les courbes — le moteur ne doit produire AUCUNE
+  différence si le 2e user est vide. Suspects relevés au grep : `services/projection/setupSimulation.ts:143`
+  (`useTheo` → `incomeAnnaNetMonthly = theoIncome * 0.45` = revenu FANTÔME du 2e user) et `:149` (gross-up
+  `netMonthly * 12 * 1.35` même logique) ; + `activeIncome.ts:98` (`u2 = users[1]`) ; vérifier aussi crédits/
+  fiscalité par conjoint (fractionnement, PSV par conjoint) activés par la simple PRÉSENCE de users[1].
+  **Critères** : user solo → courbes STRICTEMENT identiques solo vs couple-sans-partenaire (test de parité) ;
+  switch couple gaté sur partenaire défini ; agents fiscal-accuracy + projection-validator au diff.
 
 ### Phase 4 — REFONTES ⏳ (UN plan SÉPARÉ par onglet → OK Marc par onglet) — dépend de : PH2 (+PH3 pour FUT/RET)
 - [ ] **[PH4-FUT]** 🔧⏳ Refonte **Futur** : leviers OBLIGATOIRES avant calcul (l'actuel contenu

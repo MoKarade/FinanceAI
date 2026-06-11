@@ -361,6 +361,10 @@ export interface ProjectionConfig {
   /** PH4-FUT-B — multiplicateur du taux d'épargne (levier). Absent / 1 = inchangé (non-régression) ;
    *  1.2 = épargner 20 % de plus (dépenses réduites d'autant). Mode réel + épargne positive seulement. */
   appliedSavingsMultiplier?: number;
+  /** PH4-FUT-B — downsizing immo à la retraite (levier). Absent / false = aucun (non-régression) ;
+   *  true = à l'âge de retraite, vendre la résidence principale et racheter plus petit : libère une
+   *  fraction de l'équité en placements (exemption gain résidence principale ARC). */
+  appliedDownsize?: boolean;
 
   // [UI-SCEN] (2026-06-09, demande Marc « enlève les plans de base ») — la stratégie de
   // retrait/gestion est un PARAMÈTRE : le moteur ne calcule que CE scénario réaliste

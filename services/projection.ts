@@ -979,7 +979,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             { m, loopYear, isRetired, activeUsersCount, simInflation, simSalaryGrowth,
               grossMarcBaseAnnual, grossAnnaBaseAnnual, incomeRetirement,
               useSmithManoeuvre: effProj.useSmithManoeuvre === true, currentRentExpense,
-              skipRapForPurchase: overrides.skipRapForPurchase ?? (strategy === 'PRIO_CELI_NO_RAP') },
+              skipRapForPurchase: overrides.skipRapForPurchase ?? (strategy === 'PRIO_CELI_NO_RAP'),
+              // PH4-FUT-B-4 — downsizing déclenché au mois EXACT de la retraite (une seule fois).
+              downsizeThisMonth: effProj.appliedDownsize === true && m === retirementMonthIndex },
             activeRE,
             propertiesState,
             getMonthOffset,

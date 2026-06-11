@@ -190,10 +190,11 @@
   multiplie l'épargne RÉELLE positive (net−dépenses), réduit les dépenses d'autant (conservation revenu
   net, surplus investi) ; mode réel + épargne>0 seulement (déficit = inerte) ; défaut 1 = non-régression.
   Tests : non-régression bit-près + monotonie + déficit inerte + cohérence configToEngine. Baselines intactes.
-- [ ] **[PH4-FUT-B-4]** 🔧 (le plus lourd) — levier **Downsizing immo retraite** (vendre/réduire la résidence
-  à l'âge de retraite, libère l'équité). N'EXISTE PAS : nouveau mécanisme via LifeEvent. PIÈGES : exemption
-  gain résidence principale (non taxé), timing de vente, multi-propriétés, hypothèque résiduelle.
-  projection-validator + fiscal-accuracy. → choix de modélisation à flaguer à Marc.
+- [x] **[PH4-FUT-B-4]** ✅ (PR-B4) — levier **Downsizing immo retraite** (choix Marc : vendre + racheter
+  plus petit, à l'âge de retraite). Au mois de retraite, la résidence principale libère DOWNSIZE_RELEASE_PCT
+  (40 %) de l'équité en placements, garde 60 % dans un bien payé cash (hypothèque 0) ; EXEMPTION gain
+  résidence principale (ARC) ; gardes underwater/locataire/une-seule-fois. Tests unitaires (effet/non-rég/
+  underwater/locataire) + baselines intactes. → **PH4-FUT-B COMPLET (4/4 leviers livrés #251-#254).**
 
 ### Phase 4 — REFONTES ⏳ (UN plan SÉPARÉ par onglet → OK Marc par onglet) — dépend de : PH2 (+PH3 pour FUT/RET)
 - [ ] **[PH4-FUT]** 🔧⏳ Refonte **Futur** : leviers OBLIGATOIRES avant calcul (l'actuel contenu

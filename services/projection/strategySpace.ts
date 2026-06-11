@@ -139,6 +139,8 @@ export function configToEngine(config: StrategyConfig, baseParams: SimulationPar
             appliedPensionSplitting: config.pensionSplitting,
             // PH4-FUT-B-3 — multiplicateur d'épargne (lu par runScenario → effectiveBaseExpenses).
             appliedSavingsMultiplier: config.savingsMultiplier,
+            // PH4-FUT-B-4 — downsizing (lu par runScenario → ctx.downsizeThisMonth de processRealEstate).
+            appliedDownsize: config.downsize,
         },
         retirementGoal: {
             ...baseParams.retirementGoal,

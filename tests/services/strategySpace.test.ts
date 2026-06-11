@@ -90,7 +90,7 @@ describe('strategySpace — configToEngine', () => {
         withdrawalOrder: 'AUTO_MARGINAL', delayPensions: false, retirementAge: 65, skipRap: false,
         contributionOrder: 'CELI_FIRST', retirementSpending: 1, smithManoeuvre: false, debtFirst: false,
         emergencyFundMonths: 6, assetLocation: false, gainHarvesting: false,
-        returnRateProfile: 'balanced', pensionSplitting: true, savingsMultiplier: 1, ...over,
+        returnRateProfile: 'balanced', pensionSplitting: true, savingsMultiplier: 1, downsize: false, ...over,
     });
 
     it('traduit les leviers en clone params + overrides, sans muter la base', () => {
@@ -103,6 +103,7 @@ describe('strategySpace — configToEngine', () => {
             returnRateProfile: 'balanced',
             pensionSplitting: true,
             savingsMultiplier: 1,
+            downsize: false,
         }, base);
 
         expect(args.strategy).toBe('PRIO_REER');
@@ -135,6 +136,7 @@ describe('strategySpace — configToEngine', () => {
             returnRateProfile: 'balanced',
             pensionSplitting: true,
             savingsMultiplier: 1,
+            downsize: false,
         }, base);
         const on = configToEngine({
             withdrawalOrder: 'AUTO_MARGINAL', delayPensions: false, retirementAge: 65,
@@ -144,6 +146,7 @@ describe('strategySpace — configToEngine', () => {
             returnRateProfile: 'balanced',
             pensionSplitting: true,
             savingsMultiplier: 1,
+            downsize: false,
         }, base);
 
         expect(off.params.projection.returnRates!.nonReg).toBe(baseNonReg); // inchangé sans le levier

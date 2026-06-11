@@ -264,3 +264,55 @@ describe('realEstateMonth — chemins-bords', () => {
         expect(state.lifeEventLogs.some((l) => l.includes('Renouvellement'))).toBe(true);
     });
 });
+
+describe('realEstateMonth — downsizing à la retraite (PH4-FUT-B-4)', () => {
+    it('downsizeThisMonth=true : libère 40 % de l\'équité de la résidence principale, bien réduit à 60 %, hypothèque 0, exempt d\'impôt', () => {
+        const state = makeState({ liquid: 1000 });
+        const goal = makeGoal({ isPrimaryResidence: true, propertyGrowthRate: 0 });
+        // Bien 600k, hypothèque 200k → équité 400k. Libéré 160k (40 %), reste 240k (60 %).
+        const prop = makeProp({ isBought: true, mortgage: 200000, currentValue: 600000, calculatedPmt: 1500 });
+
+        processRealEstate(state, makeCtx({ m: 12, downsizeThisMonth: true }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+
+        expect(state.liquid).toBeCloseTo(1000 + 160000, 0);   // équité libérée → liquide (cash, pas de croissance)
+        // Bien réduit à 60 % de l'équité (240k), + ≤1 mois de croissance immo appliquée ensuite par la boucle.
+        expect(prop.currentValue).toBeGreaterThan(240000);
+        expect(prop.currentValue).toBeLessThan(241000);
+        expect(prop.mortgage).toBe(0);                        // payé cash
+        expect(prop.calculatedPmt).toBe(0);                   // plus de paiement
+        expect(state.accCapitalGainsYear).toBe(0);            // EXEMPTION résidence principale
+        expect(state.lifeEventLogs.some((l) => l.includes('Downsizing'))).toBe(true);
+    });
+
+    it('NON-RÉGRESSION : downsizeThisMonth absent/false → amortissement normal, bien intact', () => {
+        const state = makeState({ liquid: 1000 });
+        const goal = makeGoal({ isPrimaryResidence: true, propertyGrowthRate: 0 });
+        const prop = makeProp({ isBought: true, mortgage: 200000, currentValue: 600000, calculatedPmt: 1500 });
+
+        processRealEstate(state, makeCtx({ m: 12 }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+
+        expect(prop.currentValue).toBeGreaterThan(500000);    // PAS réduit à 60 % (downsizing non déclenché)
+        expect(prop.mortgage).toBeGreaterThan(0);             // amortissement normal (pas remis à 0)
+        expect(state.lifeEventLogs.some((l) => l.includes('Downsizing'))).toBe(false);
+    });
+
+    it('underwater (hypothèque > valeur) → équité 0 → aucun downsizing', () => {
+        const state = makeState({ liquid: 1000 });
+        const goal = makeGoal({ isPrimaryResidence: true, propertyGrowthRate: 0 });
+        const prop = makeProp({ isBought: true, mortgage: 700000, currentValue: 600000, calculatedPmt: 1500 });
+
+        processRealEstate(state, makeCtx({ m: 12, downsizeThisMonth: true }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+
+        expect(state.lifeEventLogs.some((l) => l.includes('Downsizing'))).toBe(false);
+    });
+
+    it('locataire (aucune résidence principale détenue) → downsizeThisMonth sans effet', () => {
+        const state = makeState({ liquid: 1000 });
+        const goal = makeGoal({ isPrimaryResidence: false, propertyGrowthRate: 0 });
+        const prop = makeProp({ isBought: true, mortgage: 100000, currentValue: 300000, calculatedPmt: 1000 });
+
+        processRealEstate(state, makeCtx({ m: 12, downsizeThisMonth: true }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+
+        expect(state.lifeEventLogs.some((l) => l.includes('Downsizing'))).toBe(false);
+    });
+});

@@ -51,6 +51,9 @@ export interface StrategyConfig {
     pensionSplitting: boolean;
     /** PH4-FUT-B — multiplicateur du taux d'épargne (1 = inchangé ; 1.2 = épargner 20 % de plus). */
     savingsMultiplier: number;
+    /** PH4-FUT-B — downsizing immo à la retraite : false = aucun (défaut) ; true = vendre la résidence
+     *  principale à l'âge de retraite et racheter plus petit (libère une fraction de l'équité). */
+    downsize: boolean;
 }
 
 /** Type des taux de rendement par compte (= ProjectionConfig.returnRates non-null). */
@@ -189,6 +192,13 @@ export const LEVER_LIBRARY: ReadonlyArray<LeverDef> = [
             { value: 1.2, label: '+20 %' },
         ],
     },
+    {
+        key: 'downsize', label: 'Downsizing à la retraite', default: false,
+        options: [
+            { value: false, label: 'Non' },
+            { value: true, label: 'Oui (résidence principale)' },
+        ],
+    },
 ];
 
 /** Ordre de retrait (axe) → enum AllocationStrategy attendu par le moteur. */
@@ -245,6 +255,7 @@ export function applyConfigToSettings(
             appliedReturnProfile: config.returnRateProfile,
             appliedPensionSplitting: config.pensionSplitting,
             appliedSavingsMultiplier: config.savingsMultiplier,
+            appliedDownsize: config.downsize,
         },
         retirementGoal: {
             ...currentRetirementGoal,

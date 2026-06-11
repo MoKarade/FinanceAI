@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
-import { UserConfigFields } from './settings/UserConfigFields';
+import { ProfileFieldsMoved } from './settings/ProfileFieldsMoved';
 import { Icon } from './ui/Icon';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
@@ -256,8 +256,8 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                 }
             />
 
-            {/* Déplacé depuis Configuration (demande Marc) : option « A des enfants (REEE) ». */}
-            <UserConfigFields section="children" />
+            {/* PH3 — infos enfants (REEE) déplacées dans l'onglet Profil unifié. */}
+            <ProfileFieldsMoved what="Les infos enfants (REEE)" />
 
             <div className="hidden">{/* spacing preserve */}
             </div>

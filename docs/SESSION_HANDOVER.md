@@ -18,23 +18,18 @@
 > phase suivante sans OK explicite de Marc** ; Q1/Q2 à poser (cf `A_FAIRE_MOI` O6) ; handover à jour
 > après chaque phase.
 >
-> **▶ PHASE 2 EN COURS (3 PR, décompo validée Marc 2026-06-10) — 2/3 MERGÉES** :
-> **PR-1 = [PH2-a]+[PH2-b] ✅ MERGÉ #240** (Futur survit aux onglets : `runMC` persisté + worker singleton
-> chaud + dédup `runProjectionAsync` re-raccroche un MC en vol). **PR-2 = [PH2-c] ✅ MERGÉ #241** (source
-> UNIQUE : moteur `ProjectionEngine` headless+lazy AU NIVEAU APP publie `lastProjection` pour TOUS les
-> onglets ; `useSimulationParams` partagé ; Futur = consommateur ; `projectionStatus` au store ; garde
-> no-fake-data ; panel complet OK, 1900 tests. Suivis non bloquants PH2-c-1..4 au BACKLOG — dont **PH2-c-1
-> = dédup fetch `usePastPortfolioHistory`** double-instance sur Futur).
-> **▶ PR-3 = [PH2-d] EN COURS** (plan validé Marc : forks Q2/Q3 + portée Futur+Retraite + bouton verrou
-> dans l'en-tête du graphe Futur). **Increment 1 LIVRÉ (poussé `59810ca`, PAS encore en PR)** : fondation
-> verrou = `services/lockedProjectionStore.ts` (persistance IndexedDB DÉDIÉE + CHIFFRÉE du `ProjectionResult`
-> complet ; best-effort) + store (`lockedProjection` transitoire + `isProjectionLocked` booléen ADDITIF
-> persisté, PAS de bump v7 ; setters lock/unlock/setLockedProjection) + restore au boot (App) + test (4).
-> **Increment 2 À FAIRE** : UI — (a) bouton « Verrouiller cette courbe / Déverrouiller » dans l'en-tête du
-> graphe Futur (appelle `lockProjection(lastProjection)` / `unlockProjection()`) ; (b) DOUBLE COURBE quand
-> verrouillé : tracer `lockedProjection.chartData` (réf, style distinct) + l'aperçu live `lastProjection`
-> sur Futur ET Retraite ; (c) tests + panel (dont `a11y-auditor`, UI notable) → ouvrir la PR → merge.
-> ⚠️ Pas de Phase 3 sans OK explicite de Marc.
+> **▶ PHASE 2 (clé de voûte) TERMINÉE — 3/3 PR MERGÉES** (décompo validée Marc 2026-06-10) :
+> **[PH2-a]+[PH2-b] #240** (Futur survit aux onglets : `runMC` persisté + worker singleton chaud + dédup
+> `runProjectionAsync`) · **[PH2-c] #241** (source UNIQUE : `ProjectionEngine` headless+lazy app-level publie
+> `lastProjection` pour TOUS les onglets ; `useSimulationParams` partagé ; `projectionStatus`) · **[PH2-d]
+> #242** (verrou de courbe : snapshot persisté CHIFFRÉ en IndexedDB DÉDIÉE + double courbe verrouillée/live
+> sur Futur & Retraite ; booléen additif, ZÉRO bump v7). Chaque PR : panel complet, rien de bloquant.
+> **Suivis non bloquants au BACKLOG** : PH2-c-1..4 + PH2-d-1..4 — dont **PH2-c-1** (dédup fetch
+> `usePastPortfolioHistory` double-instance sur Futur) et **PH2-d-1 = DÉCISION MARC** (toast si verrou
+> irrécupérable au boot, façon `decrypt_failed`).
+> **▶ SUITE = PHASE 3** (onglet Profil : remplace Config/Profil, regroupe profil+retraite+détaillé,
+> % complétion, purge des champs morts — cf BACKLOG PH3-a..d).
+> ⚠️⚠️ **JAMAIS démarrer la Phase 3 sans OK EXPLICITE de Marc** (règle du brief). plan-first OBLIGATOIRE.
 >
 > Session 2026-06-10 — **TOP 10 [UI-EPURE] COMPLET + 5 fiscaux MAJEURS + [UI-SCEN]**. Build/tsc/tests verts.
 > - **Épuration UI (EP-1..EP-10)** — 4 PR (#225 EP-1/2, #226 EP-3/4/5, #227 EP-6/7/10, #228 EP-8) :

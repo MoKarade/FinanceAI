@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 vi.mock('../../services/lockedProjectionStore', () => ({
     saveLockedProjection: vi.fn().mockResolvedValue(true),
     clearLockedProjection: vi.fn().mockResolvedValue(undefined),
-    loadLockedProjection: vi.fn().mockResolvedValue(null),
+    loadLockedProjection: vi.fn().mockResolvedValue({ status: 'empty' }),
 }));
 
 import { useFinanceStore } from '../../store/useFinanceStore';

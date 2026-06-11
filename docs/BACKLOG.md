@@ -78,11 +78,12 @@
   pur CONSOMMATEUR ; `projectionStatus` au store (transitoire, exclu persist+sélecteur App = anti-cascade).
   Garde no-fake-data (prérequis Futur). Revu par le panel complet (rien de bloquant, invariants OK,
   1900 tests). Suivis non bloquants → PH2-c-1..4 ci-dessous.
-- [ ] **[PH2-d]** 🔧 Verrouillage + persistance **IndexedDB** : une courbe choisie et VERROUILLÉE
-  se retrouve IDENTIQUE à chaque réouverture de l'app, jusqu'à déverrouillage. **Critères** :
-  reload + réouverture → mêmes points sans recalcul ; déverrouiller → recalcul possible.
-  **Dépendance** : s'appuie sur l'infra IndexedDB existante (backups chiffrés) ou P0-IDB ;
-  ⚠️ vigilance migration persist v7.
+- [x] **[PH2-d]** ✅ mergé #242 — verrou de courbe : bouton dans Futur → snapshot du `ProjectionResult`
+  COMPLET persisté CHIFFRÉ en IndexedDB DÉDIÉE (`services/lockedProjectionStore`, clé device secureKeyStore),
+  restauré au boot jusqu'au déverrouillage. **Double courbe** (verrouillée figée + aperçu live) sur Futur
+  ET Retraite. Côté Zustand : seul `isProjectionLocked` (booléen ADDITIF) persisté → **ZÉRO bump v7**, le
+  blob vit en IDB (aucun risque de corruption schema). Panel complet (code-reviewer/silent-failure/security/
+  a11y) : rien de bloquant. Suivis non bloquants → PH2-d-1..4 ci-dessous. **→ Phase 2 (clé de voûte) TERMINÉE.**
 
 #### Suivis PH2-c (découverts à la revue panel PR #241 — non bloquants, le hoist est livré)
 - [ ] **[PH2-c-1]** 🔧 (MAJEUR) Dédupe `usePastPortfolioHistory` au niveau MODULE : PH2-c monte 2
@@ -102,11 +103,10 @@
   (buildSimulationParams.parity + ProjectionEngine e2e), pas par un test du hook lui-même.
 
 #### Suivis PH2-d (découverts à la revue panel PR #242 — non bloquants, le verrou est livré)
-- [ ] **[PH2-d-1]** ⚠️ **DÉCISION MARC** (silent-failure MOYEN) : verrou présent mais clé de device
-  absente au boot (nav privée, IDB vidée) → perte SILENCIEUSE de la courbe verrouillée. Le cas JUMEAU
-  des clés API (`decrypt_failed`) fait déjà un `showToast` (App.tsx:241). Soit aligner (distinguer
-  'vide' vs 'indéchiffrable' dans `loadLockedProjection` → toast au boot), soit assumer le silence
-  pour cette feature de confort. Asymétrie probablement involontaire → trancher.
+- [x] **[PH2-d-1]** ✅ (Marc a tranché = AVERTIR) — `loadLockedProjection` retourne désormais un statut
+  DISCRIMINÉ (`ok` / `empty` / `unreadable`) ; au boot, `unreadable` (entrée présente mais clé device
+  disparue / blob altéré) → `showToast` « Ta courbe verrouillée n'a pas pu être restaurée… » (jumeau de
+  `decrypt_failed`). `empty` (rien stocké OU erreur d'accès IDB transitoire) reste silencieux. Test verrou OK.
 - [ ] **[PH2-d-2]** 🔧 (a11y) Tooltip Futur (`ExpertTooltip`) — afficher la valeur `lockedNetWorth` au
   survol (avec `privacy-blur`). La légende-texte nomme déjà la courbe ; manque la valeur au survol.
 - [ ] **[PH2-d-3]** 🔧 (pré-existant) Graphe Retraite : le stack d'aires VISIBLE omet CELIAPP (4 aires)

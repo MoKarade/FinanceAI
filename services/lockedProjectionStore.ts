@@ -103,14 +103,24 @@ export async function saveLockedProjection(result: ProjectionResult): Promise<bo
     }
 }
 
+/** PH2-d-1 — résultat de restauration DISCRIMINÉ : distingue « rien de stocké » d'« entrée illisible »
+ *  (clé absente / blob altéré), pour que le boot puisse AVERTIR l'utilisateur dans ce 2e cas. */
+export type LoadLockedResult =
+    | { status: 'ok'; result: ProjectionResult }
+    | { status: 'empty' }
+    | { status: 'unreadable' };
+
 /**
- * Restaure la courbe verrouillée. Retourne `null` si absente ou illisible (clé manquante,
- * blob altéré) — ne lève JAMAIS. L'appelant (boot) doit alors retomber « déverrouillé ».
+ * Restaure la courbe verrouillée. Retourne un statut DISCRIMINÉ (ne lève JAMAIS) :
+ *  - 'ok'         : courbe relue (clair ou déchiffré).
+ *  - 'empty'      : rien de stocké (jamais verrouillé) OU erreur d'ACCÈS IDB → silence légitime.
+ *  - 'unreadable' : une entrée EXISTE mais est indéchiffrable (clé device disparue / blob altéré)
+ *                   → l'appelant (boot) avertit l'utilisateur (PH2-d-1, jumeau de `decrypt_failed`).
  */
-export async function loadLockedProjection(): Promise<ProjectionResult | null> {
+export async function loadLockedProjection(): Promise<LoadLockedResult> {
+    let rec: LockedRecord | undefined;
     try {
         const db = await openDB();
-        let rec: LockedRecord | undefined;
         try {
             rec = await new Promise<LockedRecord | undefined>((resolve, reject) => {
                 const tx = db.transaction(STORE_NAME, 'readonly');
@@ -121,8 +131,21 @@ export async function loadLockedProjection(): Promise<ProjectionResult | null> {
         } finally {
             db.close();
         }
-        if (!rec) return null;
-        if (!rec.encrypted) return JSON.parse(rec.payload) as ProjectionResult;
+    } catch (e) {
+        // Erreur d'ACCÈS (ouverture/lecture IDB) : on ignore si une entrée existait → 'empty' (silence).
+        // Un hoquet IDB transitoire ne doit pas alarmer l'utilisateur.
+        logError({
+            source: 'storage',
+            severity: 'warning',
+            message: 'Échec d\'accès à la courbe verrouillée (IndexedDB).',
+            error: e instanceof Error ? e : new Error(String(e)),
+        });
+        return { status: 'empty' };
+    }
+
+    if (!rec) return { status: 'empty' };
+    try {
+        if (!rec.encrypted) return { status: 'ok', result: JSON.parse(rec.payload) as ProjectionResult };
         const key = await tryGetKey();
         if (!key) {
             logError({
@@ -130,17 +153,18 @@ export async function loadLockedProjection(): Promise<ProjectionResult | null> {
                 severity: 'warning',
                 message: 'Courbe verrouillée chiffrée mais clé de device absente : indéchiffrable.',
             });
-            return null;
+            return { status: 'unreadable' };
         }
-        return await decryptJson<ProjectionResult>(key, rec.payload);
+        return { status: 'ok', result: await decryptJson<ProjectionResult>(key, rec.payload) };
     } catch (e) {
+        // Une entrée EXISTE mais déchiffrement/parse a échoué (blob altéré, clé changée) → 'unreadable'.
         logError({
             source: 'storage',
             severity: 'warning',
-            message: 'Échec de lecture de la courbe verrouillée (IndexedDB).',
+            message: 'Courbe verrouillée présente mais indéchiffrable (blob altéré ?).',
             error: e instanceof Error ? e : new Error(String(e)),
         });
-        return null;
+        return { status: 'unreadable' };
     }
 }
 

@@ -77,11 +77,21 @@ export const App: React.FC = () => {
         installGlobalErrorHandlers();
         // PH2-d — restaure la courbe VERROUILLÉE depuis IndexedDB si un verrou était actif au dernier
         // reload (le booléen isProjectionLocked est persisté, le gros blob non → relu de l'IDB ici).
-        // Absence/échec → setLockedProjection(null) retombe proprement « déverrouillé ».
+        // PH2-d-1 — 'empty' (rien/erreur d'accès) → silence ; 'unreadable' (entrée présente mais clé
+        // disparue) → on AVERTIT l'utilisateur (jumeau de decrypt_failed des clés API).
         if (useFinanceStore.getState().isProjectionLocked) {
             import('./services/lockedProjectionStore')
                 .then(({ loadLockedProjection }) => loadLockedProjection())
-                .then((r) => useFinanceStore.getState().setLockedProjection(r))
+                .then((res) => {
+                    if (res.status === 'ok') {
+                        useFinanceStore.getState().setLockedProjection(res.result);
+                    } else {
+                        useFinanceStore.getState().setLockedProjection(null);
+                        if (res.status === 'unreadable') {
+                            showToast('Ta courbe verrouillée n\'a pas pu être restaurée (clé de chiffrement introuvable) et a été retirée.', 'info');
+                        }
+                    }
+                })
                 .catch(() => { /* module/IDB HS : on reste déverrouillé en mémoire */ });
         }
         // PH1-a (revue) : le clear du flag « chunk reload attempted » au mount a été RETIRÉ —

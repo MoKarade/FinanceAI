@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
+import { ProjectionStaleBanner } from './ui/ProjectionStaleBanner';
 import { ProfileFieldsMoved } from './settings/ProfileFieldsMoved';
 import { Icon } from './ui/Icon';
 import { Badge } from './ui/Badge';
@@ -217,6 +218,8 @@ export const Retirement: React.FC<RetirementProps> = ({
 
     return (
         <div className="space-y-6 stagger-in pb-20">
+            {/* [PH2-c-2] — signal inter-onglets : dernier recalcul de projection échoué. */}
+            <ProjectionStaleBanner />
             <PageHeader
                 icon={<Icon name="retirement" size={28} />}
                 title="Planification Retraite"

@@ -9,6 +9,7 @@ import { BudgetGroupTable } from './budget/BudgetGroupTable';
 import { BudgetAiModal } from './budget/BudgetAiModal';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { PageHeader } from './ui/PageHeader';
+import { ProjectionStaleBanner } from './ui/ProjectionStaleBanner';
 import { Icon } from './ui/Icon';
 import { Pill } from './ui/Pill';
 import { Button } from './ui/Button';
@@ -465,6 +466,8 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 }
                 confirmLabel="Supprimer"
             />
+            {/* [PH2-c-2] — signal inter-onglets : dernier recalcul de projection échoué. */}
+            <ProjectionStaleBanner />
             <PageHeader
                 icon={<Icon name="budget" size={28} />}
                 title="Pilotage Budget"

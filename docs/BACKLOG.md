@@ -91,7 +91,9 @@
   quel que soit le nombre d'instances, résultat poussé à toutes (jonction passé↔futur cohérente), et un
   fetch en vol SURVIT au démontage d'une instance. Tests : 2 instances → 1 appel ; montage tardif →
   servi du cache (tests/hooks/usePastPortfolioHistory.dedup.test.tsx).
-- [ ] **[PH2-c-2]** 🔧 (signal) Câbler `projectionStatus === 'error'` dans Dashboard/Investissement/
+- [x] **[PH2-c-2]** ✅ — `ProjectionStaleBanner` (composant partagé, role=status) rendu dans Dashboard/
+  Investissement/Budget/Retraite : bandeau discret quand `projectionStatus === 'error'` (« les chiffres
+  affichés datent du dernier calcul réussi »). Câblé sur `projectionStatus === 'error'` dans Dashboard/Investissement/
   Budget/Retraite → bandeau discret « projection possiblement périmée (dernier recalcul échoué) » au-
   dessus de la courbe conservée. Aujourd'hui l'erreur n'est visible QUE sur Futur (pré-existant, mais
   PH2-c fournit enfin le véhicule `projectionStatus` pour corriger).
@@ -107,8 +109,8 @@
   DISCRIMINÉ (`ok` / `empty` / `unreadable`) ; au boot, `unreadable` (entrée présente mais clé device
   disparue / blob altéré) → `showToast` « Ta courbe verrouillée n'a pas pu être restaurée… » (jumeau de
   `decrypt_failed`). `empty` (rien stocké OU erreur d'accès IDB transitoire) reste silencieux. Test verrou OK.
-- [ ] **[PH2-d-2]** 🔧 (a11y) Tooltip Futur (`ExpertTooltip`) — afficher la valeur `lockedNetWorth` au
-  survol (avec `privacy-blur`). La légende-texte nomme déjà la courbe ; manque la valeur au survol.
+- [x] **[PH2-d-2]** ✅ — `ExpertTooltip` affiche le bloc « 🔒 Verrouillée » au survol (valeur figée +
+  écart vs live, `privacy-blur`), conditionnel à `displayData.lockedNetWorth` (présent sous verrou).
 - [ ] **[PH2-d-3]** 🔧 (pré-existant) Graphe Retraite : le stack d'aires VISIBLE omet CELIAPP (4 aires)
   alors que `TotalCapital` l'inclut (5) — d'où la métrique verrouillée alignée sur le stack (sans CELIAPP)
   en attendant. Ajouter l'aire CELIAPP au stack (+ légende native `iconType` reflétant le tireté) ;

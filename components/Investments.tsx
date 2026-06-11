@@ -13,6 +13,7 @@ import {
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip } from 'recharts';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
+import { ProjectionStaleBanner } from './ui/ProjectionStaleBanner';
 import { Icon, type IconName } from './ui/Icon';
 import { Pill } from './ui/Pill';
 import { Badge } from './ui/Badge';
@@ -487,6 +488,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
     return (
         <div className="space-y-6 stagger-in pb-10 relative">
 
+            {/* [PH2-c-2] — signal inter-onglets : dernier recalcul de projection échoué. */}
+            <ProjectionStaleBanner />
             <PageHeader
                 icon={<Icon name="investments" size={28} />}
                 title="Investissements"

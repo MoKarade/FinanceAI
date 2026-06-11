@@ -10,6 +10,7 @@ const DashboardEvolutionChart = lazyWithRetry(() => import('./dashboard/Dashboar
 import { Transaction, Asset, BudgetCategory, RealEstateGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, RetirementGoal, Tab, Debt } from '../types';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
+import { ProjectionStaleBanner } from './ui/ProjectionStaleBanner';
 import { Icon } from './ui/Icon';
 import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
@@ -390,6 +391,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 icon={<Icon name="dashboard" size={28} />}
                 title={t('dashboard.title', "Vue d'ensemble")}
             />
+            {/* [PH2-c-2] — signal inter-onglets : dernier recalcul de projection échoué. */}
+            <ProjectionStaleBanner />
 
             {/* Hero KPI strip — Phase D.8 : 5 KPIs incluant Active Income */}
             <StatGrid cols={5}>

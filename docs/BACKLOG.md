@@ -134,6 +134,15 @@
 - [x] **[PH3-d]** ✅ (PR Phase 3) — Retraite ne contient PLUS d'éditeur de profil/vie (« Parametres de Vie »
   + « Revenus & besoins » extraits → `RetirementIncomeCard` dans Profil) ; lecteurs/graphes conservés ;
   `lifeExpectancy` reste lu du store. **Critères ✓.**
+- [ ] **[CPL-1]** 🔧 ⚠️ MONEY-CRITICAL (signalé Marc 2026-06-11) — **switch individuel↔couple** : (a) BLOQUER
+  le passage en mode couple tant qu'aucun partenaire n'est défini (nom/salaire du 2e user vides) ; (b) BUG :
+  avec UN seul utilisateur réel, basculer en couple CHANGE les courbes — le moteur ne doit produire AUCUNE
+  différence si le 2e user est vide. Suspects relevés au grep : `services/projection/setupSimulation.ts:143`
+  (`useTheo` → `incomeAnnaNetMonthly = theoIncome * 0.45` = revenu FANTÔME du 2e user) et `:149` (gross-up
+  `netMonthly * 12 * 1.35` même logique) ; + `activeIncome.ts:98` (`u2 = users[1]`) ; vérifier aussi crédits/
+  fiscalité par conjoint (fractionnement, PSV par conjoint) activés par la simple PRÉSENCE de users[1].
+  **Critères** : user solo → courbes STRICTEMENT identiques solo vs couple-sans-partenaire (test de parité) ;
+  switch couple gaté sur partenaire défini ; agents fiscal-accuracy + projection-validator au diff.
 
 ### Phase 4 — REFONTES ⏳ (UN plan SÉPARÉ par onglet → OK Marc par onglet) — dépend de : PH2 (+PH3 pour FUT/RET)
 - [ ] **[PH4-FUT]** 🔧⏳ Refonte **Futur** : leviers OBLIGATOIRES avant calcul (l'actuel contenu

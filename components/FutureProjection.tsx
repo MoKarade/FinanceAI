@@ -607,7 +607,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 className="px-2 py-1 text-tiny font-bold rounded text-amber-300 hover:text-amber-100 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 transition-colors focus-ring"
                                 title="Déverrouiller : revenir à la courbe live seule"
                             >
-                                🔓 Déverrouiller
+                                <span aria-hidden="true">🔓</span> Déverrouiller
                             </button>
                         ) : (
                             <button
@@ -617,7 +617,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 className="px-2 py-1 text-tiny font-bold rounded text-ink-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors focus-ring disabled:opacity-40 disabled:cursor-not-allowed"
                                 title="Verrouiller cette courbe comme référence (persistée jusqu'au déverrouillage)"
                             >
-                                🔒 Verrouiller
+                                <span aria-hidden="true">🔒</span> Verrouiller
                             </button>
                         )}
                         <button
@@ -638,6 +638,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             Passé réel des placements{pastHistory.firstDate ? ` depuis ${pastHistory.firstDate.slice(0, 7)}` : ''}
                             {pastHistory.isLoading ? ' · chargement des prix…' : (pastHistory.coverage < 0.99 ? ' · partiellement estimé aux prix actuels' : '')}
                         </span>
+                    </div>
+                )}
+                {/* PH2-d — légende TEXTE de la courbe verrouillée (la légende custom du graphe ne la
+                    liste pas) : label accessible + repère NON-couleur (trait tireté ambre). */}
+                {lockedByMonth && (
+                    <div className="-mt-1 mb-2 text-tiny text-amber-300/90 flex items-center gap-1.5 flex-wrap">
+                        <span aria-hidden="true" className="inline-block w-5 border-t-2 border-dashed border-amber-400" />
+                        <span>Courbe verrouillée — référence figée (l'aperçu live continue de se recalculer).</span>
                     </div>
                 )}
                 {/* Hauteur responsive : 380px mobile, 500px tablet, 650px desktop */}
@@ -717,7 +725,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
                             {isVisible('NetWorth') && <Line type="monotone" dataKey="NetWorth" stroke="#fff" strokeWidth={3} dot={false} name="Valeur Nette Totale" isAnimationActive={false}/>}
                             {/* PH2-d — courbe VERROUILLÉE (référence figée), superposée à l'aperçu live. */}
-                            {isProjectionLocked && <Line type="monotone" dataKey="lockedNetWorth" stroke="#fbbf24" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Courbe verrouillée 🔒" isAnimationActive={false} />}
+                            {lockedByMonth && <Line type="monotone" dataKey="lockedNetWorth" stroke="#fbbf24" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Courbe verrouillée 🔒" isAnimationActive={false} />}
 
                             {isVisible('events') && shownLifeEvents.map((evt, i) => (
                                 <ReferenceDot

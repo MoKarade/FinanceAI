@@ -101,6 +101,21 @@
   l'assemblage de référence par persona — parité aujourd'hui prouvée transitivement
   (buildSimulationParams.parity + ProjectionEngine e2e), pas par un test du hook lui-même.
 
+#### Suivis PH2-d (découverts à la revue panel PR #242 — non bloquants, le verrou est livré)
+- [ ] **[PH2-d-1]** ⚠️ **DÉCISION MARC** (silent-failure MOYEN) : verrou présent mais clé de device
+  absente au boot (nav privée, IDB vidée) → perte SILENCIEUSE de la courbe verrouillée. Le cas JUMEAU
+  des clés API (`decrypt_failed`) fait déjà un `showToast` (App.tsx:241). Soit aligner (distinguer
+  'vide' vs 'indéchiffrable' dans `loadLockedProjection` → toast au boot), soit assumer le silence
+  pour cette feature de confort. Asymétrie probablement involontaire → trancher.
+- [ ] **[PH2-d-2]** 🔧 (a11y) Tooltip Futur (`ExpertTooltip`) — afficher la valeur `lockedNetWorth` au
+  survol (avec `privacy-blur`). La légende-texte nomme déjà la courbe ; manque la valeur au survol.
+- [ ] **[PH2-d-3]** 🔧 (pré-existant) Graphe Retraite : le stack d'aires VISIBLE omet CELIAPP (4 aires)
+  alors que `TotalCapital` l'inclut (5) — d'où la métrique verrouillée alignée sur le stack (sans CELIAPP)
+  en attendant. Ajouter l'aire CELIAPP au stack (+ légende native `iconType` reflétant le tireté) ;
+  + à terme, alternative TEXTE/table SR aux graphes (manque global, hors PH2-d).
+- [ ] **[PH2-d-4]** 🧹 (doc) En-tête `secureKeyStore.ts` : la clé de device chiffre désormais 3 payloads
+  (clés API + backups + courbe verrouillée) — mettre à jour le commentaire.
+
 ### Phase 3 — MODÈLE DE DONNÉES + ONGLET PROFIL ⏳ (plan-first) — dépend de : OK Marc post-PH2
 - [ ] **[PH3-a]** 🔧 Nouvel onglet **Profil** remplaçant ENTIÈREMENT le Profil de Configuration :
   regroupe profil + utilisateur + paramètres de retraite + **profil détaillé** (actuellement dans

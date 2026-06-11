@@ -426,8 +426,10 @@ export const useFinanceStore = create<FinanceState>()(
             setLastProjection: (r) => set({ lastProjection: r }),
             setProjectionRunMC: (v) => set({ projectionRunMC: v }),
             setProjectionStatus: (s) => set({ projectionStatus: s }),
-            // PH2-d — verrou : état sync + persistance IndexedDB best-effort (fire-and-forget ; le
-            // module logue ses propres échecs et ne lève jamais, donc ne casse pas l'UI).
+            // PH2-d — verrou : état sync (source de vérité = Zustand) + persistance IndexedDB best-effort.
+            // Fire-and-forget VOULU : le set d'UI ne doit pas attendre une écriture disque, et une écriture
+            // ratée n'invalide pas le verrou en mémoire (l'IDB n'est qu'un cache de RESTAURATION au reload).
+            // Le module logue ses propres échecs et ne lève jamais.
             lockProjection: (r) => { set({ lockedProjection: r, isProjectionLocked: true }); void saveLockedProjection(r); },
             unlockProjection: () => { set({ lockedProjection: null, isProjectionLocked: false }); void clearLockedProjection(); },
             // Boot uniquement : pose le blob restauré depuis l'IDB (réconcilie le booléen persisté

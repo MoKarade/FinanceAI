@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildLockedByMonth, pointTotalCapital } from '../../utils/lockedCurveOverlay';
+import { buildLockedByMonth, pointStackedCapital } from '../../utils/lockedCurveOverlay';
 import type { ProjectionChartPoint } from '../../services/projection/types';
 
 const pt = (o: Partial<ProjectionChartPoint>): ProjectionChartPoint =>
@@ -37,11 +37,11 @@ describe('lockedCurveOverlay (PH2-d)', () => {
         });
     });
 
-    describe('pointTotalCapital', () => {
-        it('somme CELI+REER+NonReg+Liquidites+CELIAPP (champs absents comptés 0)', () => {
-            expect(pointTotalCapital(pt({ CELI: 10, REER: 20, NonReg: 30, Liquidites: 5, CELIAPP: 5 }))).toBe(70);
-            expect(pointTotalCapital(pt({ CELI: 10 }))).toBe(10);
-            expect(pointTotalCapital(pt({}))).toBe(0);
+    describe('pointStackedCapital (stack visible Retraite, SANS CELIAPP)', () => {
+        it('somme Liquidites+NonReg+CELI+REER ; CELIAPP EXCLU (aligné sur le stack d\'aires)', () => {
+            expect(pointStackedCapital(pt({ CELI: 10, REER: 20, NonReg: 30, Liquidites: 5, CELIAPP: 5 }))).toBe(65);
+            expect(pointStackedCapital(pt({ CELI: 10 }))).toBe(10);
+            expect(pointStackedCapital(pt({}))).toBe(0);
         });
     });
 });

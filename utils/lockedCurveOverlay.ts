@@ -5,9 +5,14 @@
 
 import type { ProjectionChartPoint } from '../services/projection/types';
 
-/** Capital total d'un point (CELI+REER+NonReg+Liquidités+CELIAPP) — métrique du graphe Retraite. */
-export const pointTotalCapital = (p: ProjectionChartPoint): number =>
-    (p.CELI ?? 0) + (p.REER ?? 0) + (p.NonReg ?? 0) + (p.Liquidites ?? 0) + (p.CELIAPP ?? 0);
+/**
+ * Capital « empilé » d'un point = somme des MÊMES comptes que le stack d'aires VISIBLE du graphe
+ * Retraite (Liquidites + NonReg + CELI + REER). EXCLUT volontairement CELIAPP, que le stack ne trace
+ * PAS (revue PH2-d) → la courbe verrouillée se superpose au sommet RÉEL du stack, sans flotter au-
+ * dessus. (≠ le `TotalCapital` interne de Retirement qui, lui, inclut CELIAPP.)
+ */
+export const pointStackedCapital = (p: ProjectionChartPoint): number =>
+    (p.Liquidites ?? 0) + (p.NonReg ?? 0) + (p.CELI ?? 0) + (p.REER ?? 0);
 
 /**
  * Construit l'index `monthIndex → valeur` de la courbe VERROUILLÉE pour la tracer en référence.

@@ -10,7 +10,7 @@ import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, 
 import { ProjectionChartPoint } from '../services/projection/types';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend } from 'recharts';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
-import { buildLockedByMonth, pointTotalCapital } from '../utils/lockedCurveOverlay';
+import { buildLockedByMonth, pointStackedCapital } from '../utils/lockedCurveOverlay';
 import { ZoomContainer } from './ui/ZoomContainer';
 import { TaxBracketViz } from './TaxBracketViz';
 import { GoalSeekerCard } from './retirement/GoalSeekerCard';
@@ -195,9 +195,10 @@ export const Retirement: React.FC<RetirementProps> = ({
     const finalNetWorth = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1]?.NetWorth || 0 : 0;
 
     const retirementData = yearlyData.filter(d => (d.age ?? 0) >= goal.targetAge);
-    // PH2-d — capital total de la courbe VERROUILLÉE par monthIndex (MÊME métrique que TotalCapital).
+    // PH2-d — capital de la courbe VERROUILLÉE par monthIndex, sur la MÊME métrique que le stack
+    // d'aires VISIBLE (Liquidites+NonReg+CELI+REER, sans CELIAPP) → superposition exacte au sommet.
     const lockedCapitalByMonth = useMemo(
-        () => buildLockedByMonth(lockedProjection, isProjectionLocked, pointTotalCapital),
+        () => buildLockedByMonth(lockedProjection, isProjectionLocked, pointStackedCapital),
         [isProjectionLocked, lockedProjection],
     );
     const lifeExpectancyData = useMemo(() => {
@@ -465,7 +466,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             <Area type="monotone" dataKey="CELI" stackId="1" fill="url(#retGradCELI)" stroke="#4f9d86" strokeWidth={1.5} name="CELI" fillOpacity={1} />
                                             <Area type="monotone" dataKey="REER" stackId="1" fill="url(#retGradREER)" stroke="#5b82bf" strokeWidth={1.5} name="REER" fillOpacity={1} />
                                             {/* PH2-d — capital VERROUILLÉ (référence figée), superposé à l'aperçu live. */}
-                                            {isProjectionLocked && <Line type="monotone" dataKey="lockedTotalCapital" stroke="#fbbf24" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Verrouillée 🔒" isAnimationActive={false} />}
+                                            {lockedCapitalByMonth && <Line type="monotone" dataKey="lockedTotalCapital" stroke="#fbbf24" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Verrouillée 🔒" isAnimationActive={false} />}
                                         </ComposedChart>
                                     </ResponsiveContainer>
                                 </ZoomContainer>

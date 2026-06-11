@@ -17,6 +17,7 @@ const LifeProjects = lazyWithRetry(() => import('./LifeProjects').then(m => ({ d
 const Retirement = lazyWithRetry(() => import('./Retirement').then(m => ({ default: m.Retirement })), 'Retirement');
 const TaxCenter = lazyWithRetry(() => import('./TaxCenter').then(m => ({ default: m.TaxCenter })), 'TaxCenter');
 const Settings = lazyWithRetry(() => import('./Settings').then(m => ({ default: m.Settings })), 'Settings');
+const Profile = lazyWithRetry(() => import('./Profile').then(m => ({ default: m.Profile })), 'Profile');
 const AiAssistant = lazyWithRetry(() => import('./AiAssistant').then(m => ({ default: m.AiAssistant })), 'AiAssistant');
 // NBA-PAGE — « Prochaine action » en page dédiée (même composant que l'ex-widget, mode asPage).
 const NextBestActionsPage = lazyWithRetry(() => import('./sidebar/NextBestAction').then(m => ({ default: m.NextBestAction })), 'NextBestActionsPage');
@@ -41,6 +42,7 @@ const TAB_LABELS: Record<Tab, string> = {
     [Tab.RETIREMENT]: 'Retraite',
     [Tab.TAX]: 'Impôts & Docs',
     [Tab.SETTINGS]: 'Paramètres',
+    [Tab.PROFILE]: 'Profil',
     [Tab.ASSISTANT]: 'Assistant IA',
 };
 
@@ -264,6 +266,10 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                         childGoal={state.childGoal} childGoals={state.childGoals || []} financialGoals={state.financialGoals}
                         appState={state}
                     />
+                )}
+
+                {activeTab === Tab.PROFILE && (
+                    <Profile />
                 )}
 
                 {activeTab === Tab.ASSISTANT && (

@@ -648,6 +648,8 @@ export enum Tab {
   TAX = 'TAX',
   SETTINGS = 'SETTINGS',
   // G22-N5 — SYSTEM retiré : fusionné dans Configuration (sous-onglet « Système & diagnostics »).
+  // PH3 — onglet PROFIL unifié (regroupe tout le setup utilisateur, ex-« Profil de Configuration »).
+  PROFILE = 'PROFILE',
   ASSISTANT = 'ASSISTANT',
 }
 

@@ -70,6 +70,7 @@ export function makeNavigationActions(setActiveTab: (t: Tab) => void): CommandAc
         // G22-N5 — Système fusionné dans Configuration ; keywords 'system'/'diagnostic'
         // gardés ici pour que la recherche y mène toujours.
         { tab: Tab.SETTINGS, label: 'Paramètres', icon: <Icon name="settings" size={sz} />, keywords: ['settings', 'config', 'reglages', 'system', 'systeme', 'admin', 'diagnostic', 'version'] },
+        { tab: Tab.PROFILE, label: 'Profil', icon: <Icon name="settings" size={sz} />, keywords: ['profil', 'profile', 'utilisateur', 'user', 'identite', 'salaire', 'retraite', 'sante', 'carriere'] },
     ];
     return navMap.map(({ tab, label, icon, keywords }) => ({
         id: `nav:${tab}`,

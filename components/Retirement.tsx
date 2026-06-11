@@ -8,8 +8,9 @@ import { Icon } from './ui/Icon';
 import { Badge } from './ui/Badge';
 import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset, RegisteredAccountType } from '../types';
 import { ProjectionChartPoint } from '../services/projection/types';
-import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend, AreaChart } from 'recharts';
+import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend } from 'recharts';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
+import { buildLockedByMonth, pointTotalCapital } from '../utils/lockedCurveOverlay';
 import { ZoomContainer } from './ui/ZoomContainer';
 import { TaxBracketViz } from './TaxBracketViz';
 import { GoalSeekerCard } from './retirement/GoalSeekerCard';
@@ -169,6 +170,10 @@ export const Retirement: React.FC<RetirementProps> = ({
     // approximatives quand la source canonique est indisponible.
     const projectionFromStore = useFinanceStore(s => s.lastProjection?.chartData ?? null);
     const activeScenarioName = useFinanceStore(s => s.lastProjection?.strategyName ?? null);
+    // PH2-d — courbe VERROUILLÉE : superposée en référence sur le graphe d'accumulation (le verrou
+    // se pilote depuis Futur ; Retraite ne fait que l'AFFICHER, source unique cohérente).
+    const lockedProjection = useFinanceStore(s => s.lockedProjection);
+    const isProjectionLocked = useFinanceStore(s => s.isProjectionLocked);
     // chartData dérivé de projectionFromStore : utilisé uniquement dans le JSX
     // après les hooks. Pour les useMemo, on dépend de projectionFromStore directement
     // afin d'éviter la nouvelle référence `?? []` qui invaliderait les deps à chaque render.
@@ -190,7 +195,16 @@ export const Retirement: React.FC<RetirementProps> = ({
     const finalNetWorth = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1]?.NetWorth || 0 : 0;
 
     const retirementData = yearlyData.filter(d => (d.age ?? 0) >= goal.targetAge);
-    const lifeExpectancyData = yearlyData.filter(d => (d.age ?? 0) <= lifeExpectancy);
+    // PH2-d — capital total de la courbe VERROUILLÉE par monthIndex (MÊME métrique que TotalCapital).
+    const lockedCapitalByMonth = useMemo(
+        () => buildLockedByMonth(lockedProjection, isProjectionLocked, pointTotalCapital),
+        [isProjectionLocked, lockedProjection],
+    );
+    const lifeExpectancyData = useMemo(() => {
+        const base = yearlyData.filter(d => (d.age ?? 0) <= lifeExpectancy);
+        if (!lockedCapitalByMonth) return base;
+        return base.map(d => ({ ...d, lockedTotalCapital: lockedCapitalByMonth.get(d.monthIndex) }));
+    }, [yearlyData, lifeExpectancy, lockedCapitalByMonth]);
     const bankruptcyPoint = retirementData.find(d => d.TotalCapital <= 0);
 
     // G7c — zoom molette / pan sur les deux graphes Retraite (x = âge).
@@ -421,7 +435,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                             <Card icon={<Icon name="investments" size={18} />} title="Accumulation & épuisement">
                                 <ZoomContainer zoom={zoomAccum} className="h-[420px] w-full" style={{ minHeight: '420px' }}>
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={zoomAccum.visibleData} margin={{ top: 20, right: 30, left: 10, bottom: 0 }}>
+                                        <ComposedChart data={zoomAccum.visibleData} margin={{ top: 20, right: 30, left: 10, bottom: 0 }}>
                                             <defs>
                                                 <linearGradient id="retGradREER" x1="0" y1="0" x2="0" y2="1">
                                                     <stop offset="5%" stopColor="#5b82bf" stopOpacity={0.75} />
@@ -450,7 +464,9 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             <Area type="monotone" dataKey="NonReg" stackId="1" fill="url(#retGradNonReg)" stroke="#c2974f" strokeWidth={1} name="Non-Enreg." fillOpacity={1} />
                                             <Area type="monotone" dataKey="CELI" stackId="1" fill="url(#retGradCELI)" stroke="#4f9d86" strokeWidth={1.5} name="CELI" fillOpacity={1} />
                                             <Area type="monotone" dataKey="REER" stackId="1" fill="url(#retGradREER)" stroke="#5b82bf" strokeWidth={1.5} name="REER" fillOpacity={1} />
-                                        </AreaChart>
+                                            {/* PH2-d — capital VERROUILLÉ (référence figée), superposé à l'aperçu live. */}
+                                            {isProjectionLocked && <Line type="monotone" dataKey="lockedTotalCapital" stroke="#fbbf24" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Verrouillée 🔒" isAnimationActive={false} />}
+                                        </ComposedChart>
                                     </ResponsiveContainer>
                                 </ZoomContainer>
 

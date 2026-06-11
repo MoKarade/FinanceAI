@@ -24,9 +24,17 @@
 > UNIQUE : moteur `ProjectionEngine` headless+lazy AU NIVEAU APP publie `lastProjection` pour TOUS les
 > onglets ; `useSimulationParams` partagé ; Futur = consommateur ; `projectionStatus` au store ; garde
 > no-fake-data ; panel complet OK, 1900 tests. Suivis non bloquants PH2-c-1..4 au BACKLOG — dont **PH2-c-1
-> = dédup fetch `usePastPortfolioHistory`** double-instance sur Futur). **SUITE = PR-3 = [PH2-d]** :
-> verrouillage de courbe + `ProjectionResult` COMPLET en IndexedDB + double courbe verrouillée/aperçu live
-> (forks Q2/Q3 validés Marc). **plan-first OBLIGATOIRE** avant de coder PR-3. ⚠️ Pas de Phase 3 sans OK Marc.
+> = dédup fetch `usePastPortfolioHistory`** double-instance sur Futur).
+> **▶ PR-3 = [PH2-d] EN COURS** (plan validé Marc : forks Q2/Q3 + portée Futur+Retraite + bouton verrou
+> dans l'en-tête du graphe Futur). **Increment 1 LIVRÉ (poussé `59810ca`, PAS encore en PR)** : fondation
+> verrou = `services/lockedProjectionStore.ts` (persistance IndexedDB DÉDIÉE + CHIFFRÉE du `ProjectionResult`
+> complet ; best-effort) + store (`lockedProjection` transitoire + `isProjectionLocked` booléen ADDITIF
+> persisté, PAS de bump v7 ; setters lock/unlock/setLockedProjection) + restore au boot (App) + test (4).
+> **Increment 2 À FAIRE** : UI — (a) bouton « Verrouiller cette courbe / Déverrouiller » dans l'en-tête du
+> graphe Futur (appelle `lockProjection(lastProjection)` / `unlockProjection()`) ; (b) DOUBLE COURBE quand
+> verrouillé : tracer `lockedProjection.chartData` (réf, style distinct) + l'aperçu live `lastProjection`
+> sur Futur ET Retraite ; (c) tests + panel (dont `a11y-auditor`, UI notable) → ouvrir la PR → merge.
+> ⚠️ Pas de Phase 3 sans OK explicite de Marc.
 >
 > Session 2026-06-10 — **TOP 10 [UI-EPURE] COMPLET + 5 fiscaux MAJEURS + [UI-SCEN]**. Build/tsc/tests verts.
 > - **Épuration UI (EP-1..EP-10)** — 4 PR (#225 EP-1/2, #226 EP-3/4/5, #227 EP-6/7/10, #228 EP-8) :

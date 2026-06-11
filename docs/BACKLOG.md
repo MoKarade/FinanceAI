@@ -100,9 +100,8 @@
 - [ ] **[PH2-c-3]** 🔧 (perf) Router le calcul DÉTERMINISTE dans le worker hors-Futur : en mode
   déterministe (runMC=false), le moteur app-level paie ~150 ms main-thread à chaque changement de
   params quel que soit l'onglet (atténué par debounce 300 ms ; défaut = MC déjà off-thread).
-- [ ] **[PH2-c-4]** 🧪 Test DIRECT de `useSimulationParams` (renderHook) comparant `params` à
-  l'assemblage de référence par persona — parité aujourd'hui prouvée transitivement
-  (buildSimulationParams.parity + ProjectionEngine e2e), pas par un test du hook lui-même.
+- [x] **[PH2-c-4]** ✅ — tests/hooks/useSimulationParams.parity.test.tsx : renderHook du hook RÉEL
+  comparé à `buildSimulationParamsFromState` (même startYear/startMonth), pour CHAQUE persona (7/7).
 
 #### Suivis PH2-d (découverts à la revue panel PR #242 — non bloquants, le verrou est livré)
 - [x] **[PH2-d-1]** ✅ (Marc a tranché = AVERTIR) — `loadLockedProjection` retourne désormais un statut

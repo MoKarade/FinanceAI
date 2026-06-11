@@ -1158,7 +1158,7 @@ describe('processDecemberTaxFiling — RAMQ (prime médicaments publique)', () =
             makeHelpers(),
             ZERO_TAX,
         );
-        // divers ne doit contenir ni RAMQ ni FSS (12000 < FSS_THRESHOLD_ZERO 18 130 aussi).
+        // divers ne doit contenir ni RAMQ ni FSS (12000 < FSS_THRESHOLD_ZERO 18 500 aussi — barème 2026, FA-8).
         expect(RAMQ_EXEMPTION_SINGLE_2026).toBeGreaterThan(12000); // garde la prémisse explicite
         expect(r.newTaxCurrentYear.divers).toBe(0);
         expect(r.logs.some((l) => l.includes('RAMQ'))).toBe(false);
@@ -1194,7 +1194,7 @@ describe('processDecemberTaxFiling — RAMQ (prime médicaments publique)', () =
 
 describe('processDecemberTaxFiling — FSS (Fonds des services de santé)', () => {
     it('retraité au-dessus du seuil FSS → cotisation FSS dans divers + log', () => {
-        // pension = 5000×12 = 60000 > FSS_THRESHOLD_FLAT (33 130) → palier 150$+.
+        // pension = 5000×12 = 60000 > FSS_THRESHOLD_FLAT (33 500 — barème 2026, FA-8) → palier 150$+.
         const r = processDecemberTaxFiling(
             DECEMBER,
             baseCtx({ ramqExempt: true, isRetired: true, incomeRetirementMonthly: 5000, activeUsersCount: 1 }),
@@ -1217,7 +1217,7 @@ describe('processDecemberTaxFiling — FSS (Fonds des services de santé)', () =
     });
 
     it('retraité sous le seuil FSS zéro → aucune cotisation FSS', () => {
-        // pension = 1000×12 = 12000 < FSS_THRESHOLD_ZERO 18 130 → 0.
+        // pension = 1000×12 = 12000 < FSS_THRESHOLD_ZERO 18 500 (barème 2026, FA-8) → 0.
         const r = processDecemberTaxFiling(
             DECEMBER,
             baseCtx({ ramqExempt: true, isRetired: true, incomeRetirementMonthly: 1000, activeUsersCount: 1 }),

@@ -792,44 +792,46 @@ describe('processDecemberTaxFiling intègre la prime RAMQ (§6.4)', () => {
 // Source: Revenu Québec Annexe F
 // ----------------------------------------------------------------------------
 describe('calculateFSSPremium (§6.1)', () => {
-  it('renvoie 0 sous le seuil minimum (< 18 130$)', () => {
+  // FA-8 (2026-06-11) — barème FSS 2026 (18 500/33 500/64 355/149 355, Revenu Québec/CFFP).
+  // Tests paramétriques sur les constantes : ils suivent FISCAL_REFERENCE §5.
+  it('renvoie 0 sous le seuil minimum (< 18 500$)', () => {
     expect(calculateFSSPremium(10000)).toBe(0);
     expect(calculateFSSPremium(FSS_THRESHOLD_ZERO - 1)).toBe(0);
   });
 
-  it('applique 1% sur tranche 18 130 - 33 130$', () => {
-    // Revenu 25 000$ : excès = 25 000 - 18 130 = 6 870$ × 1% = 68.70$
+  it('applique 1% sur tranche 18 500 - 33 500$', () => {
+    // Revenu 25 000$ : excès = 25 000 - 18 500 = 6 500$ × 1% = 65.00$
     const excess = 25000 - FSS_THRESHOLD_ZERO;
     expect(calculateFSSPremium(25000)).toBeCloseTo(excess * 0.01, 2);
   });
 
-  it('applique 150$ fixe entre 33 130$ et 63 060$', () => {
+  it('applique 150$ fixe entre 33 500$ et 64 355$', () => {
     expect(calculateFSSPremium(40000)).toBe(FSS_FLAT_AMOUNT);
     expect(calculateFSSPremium(60000)).toBe(FSS_FLAT_AMOUNT);
   });
 
-  it('applique 150$ + 1% sur tranche 63 060 - 148 030$', () => {
-    // Revenu 80 000$ : 150 + (80 000 - 63 060) × 1% = 150 + 169.40 = 319.40$
+  it('applique 150$ + 1% sur tranche 64 355 - 149 355$', () => {
+    // Revenu 80 000$ : 150 + (80 000 - 64 355) × 1% = 150 + 156.45 = 306.45$
     const excess = 80000 - FSS_THRESHOLD_RAMP;
     expect(calculateFSSPremium(80000)).toBeCloseTo(FSS_FLAT_AMOUNT + excess * 0.01, 2);
   });
 
-  it('plafonne à 1 000$ pour revenus élevés (≥ 148 030$)', () => {
+  it('plafonne à 1 000$ pour revenus élevés (≥ 149 355$)', () => {
     expect(calculateFSSPremium(200000)).toBe(FSS_MAX_PREMIUM);
     expect(calculateFSSPremium(FSS_THRESHOLD_MAX)).toBeCloseTo(FSS_MAX_PREMIUM, 0);
   });
 
-  it('frontière exacte seuil zéro (18 130$) → 0', () => {
+  it('frontière exacte seuil zéro (18 500$) → 0', () => {
     expect(calculateFSSPremium(FSS_THRESHOLD_ZERO)).toBe(0);
   });
 
-  it('frontière exacte seuil flat (33 130$) → 150$', () => {
-    // À 33 130$ exactement, on est au passage du palier 1% au palier 150$ fixe.
-    // Le code utilise <=, donc 33 130$ donne (33 130 - 18 130) × 1% = 150$ exactement.
+  it('frontière exacte seuil flat (33 500$) → 150$', () => {
+    // À 33 500$ exactement, on est au passage du palier 1% au palier 150$ fixe.
+    // Le code utilise <=, donc 33 500$ donne (33 500 - 18 500) × 1% = 150$ exactement.
     expect(calculateFSSPremium(FSS_THRESHOLD_FLAT)).toBeCloseTo(FSS_FLAT_AMOUNT, 0);
   });
 
-  it('frontière exacte seuil ramp (63 060$) → 150$', () => {
+  it('frontière exacte seuil ramp (64 355$) → 150$', () => {
     expect(calculateFSSPremium(FSS_THRESHOLD_RAMP)).toBeCloseTo(FSS_FLAT_AMOUNT, 0);
   });
 
@@ -840,9 +842,9 @@ describe('calculateFSSPremium (§6.1)', () => {
   });
 
   it('indexation par année — seuils augmentent en 2030 vs 2026', () => {
-    // Revenu 20 000$ (juste au-dessus du seuil zéro 2026 = 18 130$).
-    // En 2026 : (20 000 - 18 130) × 1% = 18.70$.
-    // En 2030, seuil indexé ~19 624$ : (20 000 - 19 624) × 1% = 3.76$.
+    // Revenu 20 000$ (juste au-dessus du seuil zéro 2026 = 18 500$).
+    // En 2026 : (20 000 - 18 500) × 1% = 15.00$.
+    // En 2030, seuil indexé 18 500 × 1,02⁴ ≈ 20 025$ : revenu sous le seuil → 0$.
     // L'indexation des seuils REND moins de gens redevables (cotisation baisse).
     const p2026 = calculateFSSPremium(20000, 2026);
     const p2030 = calculateFSSPremium(20000, 2030);
@@ -894,7 +896,7 @@ describe('processDecemberTaxFiling intègre FSS §6.1', () => {
   it('aucune FSS pour un retraité sous le seuil', () => {
     const result = processDecemberTaxFiling(
       11,
-      { ...retiredCtx, incomeRetirementMonthly: 1000 },  // 12k$ < 18 130$
+      { ...retiredCtx, incomeRetirementMonthly: 1000 },  // 12k$ < 18 500$ (FSS_THRESHOLD_ZERO 2026)
       helpers2,
       { revenu: 0, gains: 0, divers: 0, reer: 0 },
     );

@@ -3,7 +3,7 @@
 // Cycle 10 (computeOasClawback, processTaxLossHarvesting): décembre = mois 11.
 // Cycle 11 (processDecemberTaxFiling): régularisation annuelle d'impôt.
 
-import { OAS_CLAWBACK_THRESHOLD_2026, CAPITAL_GAINS_INCLUSION_STANDARD, firstCombinedBracketTopForYear, calculateRamqPremium, calculateFSSPremium, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
+import { OAS_CLAWBACK_THRESHOLD_2026, OAS_CLAWBACK_RATE, CAPITAL_GAINS_INCLUSION_STANDARD, firstCombinedBracketTopForYear, calculateRamqPremium, calculateFSSPremium, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
 
 /**
  * V31 — OAS Clawback prévu (calcul annuel en décembre).
@@ -32,6 +32,12 @@ export function computeOasClawback(
     // imposable (×0,5) entre dans le revenu net de récupération PSV (ligne 23400 ARC). Réparti
     // également (gains non attribuables par conjoint dans le modèle). Absent → 0 (rétro-compat).
     accCapitalGainsYear: number = 0,
+    // FA-8 (2026-06-11) — PSV familiale réellement VERSÉE (mensuelle, NOMINALE, HORS SRG : breakdown
+    // de décembre `psv − gis`). Sert de CAP au clawback : le vrai impôt de récupération est plafonné
+    // à la PSV REÇUE, qui inclut le facteur de report (×1,36 à 70 ans), le bonus 75+ (×1,10), le
+    // prorata de résidence et le facteur survivant — pas la pension de BASE. Absent → repli legacy
+    // (base sans report, rétro-compat).
+    psvActualMonthlyNominal?: number,
 ): { clawbackAnnual: number; logMsg?: string } {
     if (currentMonthIndex !== 11 || m === 0 || !isRetired || age < 65) {
         return { clawbackAnnual: 0 };
@@ -72,7 +78,16 @@ export function computeOasClawback(
         && Number.isFinite(reerSum)
         && Math.abs(reerSum - accRetraitsReerYear) <= Math.max(1, Math.abs(accRetraitsReerYear) * 1e-6);
 
-    const psvCapPerUser = psvAnnualBase / n;
+    // FA-8 (2026-06-11) — cap = PSV réellement VERSÉE quand le caller la fournit (déjà nominale :
+    // le breakdown porte ×inflFactor — ne PAS re-multiplier par nominalIncomeFactor). Avant : cap
+    // = base sans facteur de report → clawback SOUS-estimé pour un reporteur 66-70 à haut revenu
+    // (cap réel jusqu'à ×1,36×1,10 plus haut — non conservateur), SURestimé si prorata de
+    // résidence < 1, et clawback FICTIF possible avant psvStartAge (PSV non versée → cap doit
+    // être 0). Repli legacy si paramètre absent/invalide (rétro-compat tests/anciens callers).
+    const psvAnnualActual = Number.isFinite(psvActualMonthlyNominal)
+        ? Math.max(0, psvActualMonthlyNominal as number) * 12
+        : psvAnnualBase;
+    const psvCapPerUser = psvAnnualActual / n;
     // PV-9 — gain imposable (50 % d'inclusion) réparti également par adulte. Garde NaN symétrique.
     const taxableGainsPerUser = (Number.isFinite(accCapitalGainsYear)
         ? Math.max(0, accCapitalGainsYear) : 0) * CAPITAL_GAINS_INCLUSION_STANDARD / n;
@@ -83,7 +98,9 @@ export function computeOasClawback(
             + accRentesYear / n
             + taxableGainsPerUser;
         const excess = incomeUser - OAS_THRESHOLD;
-        if (excess > 0) clawbackAnnual += Math.min(psvCapPerUser, excess * 0.15);
+        // Taux de récupération PSV : 15 % de l'excédent (ARC, ligne 23500) — OAS_CLAWBACK_RATE,
+        // sourcé FISCAL_REFERENCE §6 (FA-8 : littéral 0.15 nommé).
+        if (excess > 0) clawbackAnnual += Math.min(psvCapPerUser, excess * OAS_CLAWBACK_RATE);
     }
 
     if (clawbackAnnual > 1) {
@@ -673,11 +690,19 @@ export function processDecemberTaxFiling(
     }
 
     // ---- 3. Dividendes Non-Reg (30% du rendement) ----
+    // Hypothèse de MODÈLE (pas une constante fiscale) : 30 % du rendement NonReg est versé en
+    // dividendes ADMISSIBLES chaque année (réf FISCAL_REFERENCE §3). Majoration +38 % et CID
+    // (15,0198 % féd + 11,7 % QC du majoré) appliqués dans calculateDividendTax — source unique.
     if (ctx.nonReg > 0) {
         const annualDiv = ctx.nonReg * (ctx.baseNonRegRate / 100) * 0.30;
         // FA-3a : SRG exclu de l'assiette d'empilement (non imposable).
+        // FA-8 (2026-06-11) : MÊME assiette de BASE que l'empilement des gains (§2 ci-dessus) —
+        // les retraits REER/FERR de l'année (`accRetraitsReerYear`) font partie du revenu sur
+        // lequel le dividende majoré s'empile. Avant, ils manquaient ICI mais pas pour les gains :
+        // taux d'entrée sous-évalué → impôt sur dividendes SOUS-estimé pour un retraité vivant de
+        // retraits REER (non conservateur) + incohérence d'assiette entre les deux blocs.
         const incomeForDiv = (ctx.isRetired
-            ? ((ctx.incomeRetirementMonthly - gisMonthlySafe) * 12 + ctx.accRentesYear)
+            ? ((ctx.incomeRetirementMonthly - gisMonthlySafe) * 12 + ctx.accRentesYear + ctx.accRetraitsReerYear)
             : (ctx.grossMarcBaseAnnual + ctx.grossAnnaBaseAnnual) * Math.pow(1 + ctx.simSalaryGrowth / 100, ctx.yearsElapsed)
         ) / ctx.activeUsersCount;
         const currentMarginal = helpers.getMarginalRate(incomeForDiv, ctx.loopYear);

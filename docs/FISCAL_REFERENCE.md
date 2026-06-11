@@ -1,7 +1,8 @@
 # FISCAL_REFERENCE — valeurs fiscales QC / Canada (SOURCE DE VÉRITÉ)
 
 > **Statut** : source de vérité des constantes fiscales de FinanceAI.
-> **Année de base** : **2026**. **Dernière vérification** : 2026-06-05.
+> **Année de base** : **2026**. **Dernière vérification** : 2026-06-11 (FA-8 : FSS réindexé 2026,
+> retenue US sourcée, clawback PSV nommé+cap réel, prorata RRQ/PSV et split 65/35 documentés).
 > **Règle CLAUDE.md** : toute constante fiscale du code DOIT correspondre à ce doc,
 > daté + sourcé. Aucun chiffre fiscal en dur non sourcé. Audit : agent `fiscal-accuracy`.
 >
@@ -121,6 +122,20 @@
   | Admissibles (`eligible`) | +38 % | 15,0198 % du majoré | 11,7 % du majoré |
   | Non-admissibles (`non-eligible`) | +15 % | 9,0301 % du majoré | 3,42 % du majoré |
   > Imposition par **empilement progressif** du montant majoré (ITEM 2d), CID inchangé.
+  > Hypothèse de MODÈLE (pas une constante fiscale) : **30 % du rendement NonReg** est versé
+  > en dividendes admissibles chaque année (`taxDecember` §3). **FA-8 (2026-06-11)** — assiette
+  > de BASE de l'empilement ALIGNÉE sur celle des gains : revenu retraite (hors SRG) + rentes
+  > + **retraits REER/FERR de l'année** (avant, les retraits manquaient côté dividendes → taux
+  > d'entrée sous-évalué pour un retraité en meltdown REER, non conservateur). Limite restante
+  > (OUVERTE, hors lot FA-8 — cf BACKLOG) : dividendes/intérêts non-reg toujours exclus du test
+  > SRG et du revenu de clawback PSV.
+- **Retenue à la source US sur dividendes** (`US_DIVIDEND_WITHHOLDING_RATE` = **15 %**, FA-8
+  2026-06-11) : Convention fiscale **Canada–États-Unis (1980), art. X(2)b)** (taux réduit
+  « portefeuille »). **REER/FERR exemptés** (art. XXI — régimes de pension) ; **CELI NON exempté**
+  (pas un régime de pension au sens de la convention) → drag non récupérable modélisé sur le CELI
+  (`glidepathRates` D2.7 + `assetLocation`) ; en non-enregistré, récupérable via le **crédit pour
+  impôt étranger (FTC)**. Pour `international`, retenues variables par pays — le taux US sert
+  d'approximation standard (hypothèse de modèle, même constante).
 
 ### Retenue à la source REER (résident QC, `RRSP_WITHHOLDING_QC`)
 | Tranche du retrait | Féd | QC | Combiné |
@@ -182,16 +197,24 @@ Sources : RAMQ, Revenu Québec ligne 447, CFFP U. Sherbrooke. **Prime max : 766 
 > Exemptions : couverture privée (employeur/conjoint), 65+ avec SRG max, étudiant 18-25, etc.
 > → le caller passe `exempt: true`.
 
-### FSS — Fonds des services de santé (ligne 446 / Annexe F)
+### FSS — Fonds des services de santé (ligne 446 / Annexe F) — barème **2026**
 S'applique surtout aux retraités/indépendants (les salariés sont couverts par l'employeur).
-**Cotisation max : 1 000 $.**
+**Cotisation max : 1 000 $.** Vérifié 2026-06-11 (FA-8) — sources : Revenu Québec « Cotisation
+des particuliers au FSS » + CFFP U. Sherbrooke. Remplace le barème 2025 que portait le code
+(18 130 / 33 130 / 63 060 / 148 030) sous un libellé « 2026 ».
 | Revenu net | Cotisation |
 |---|---|
-| ≤ 18 130 $ | 0 $ |
-| 18 130 → 33 130 $ | 1 % × (revenu − 18 130) |
-| 33 130 → 63 060 $ | 150 $ (fixe) |
-| 63 060 → 148 030 $ | 150 $ + 1 % × (revenu − 63 060) |
-| ≥ 148 030 $ | 1 000 $ |
+| ≤ 18 500 $ | 0 $ |
+| 18 500 → 33 500 $ | 1 % × (revenu − 18 500) |
+| 33 500 → 64 355 $ | 150 $ (fixe) |
+| 64 355 → 149 355 $ | 150 $ + 1 % × (revenu − 64 355) |
+| ≥ 149 355 $ | 1 000 $ |
+> Formule officielle : « moindre de 150 $ et 1 % de l'excédent de 18 500 $ » (revenu ≤ 64 355 $),
+> puis « moindre de 1 000 $ et 150 $ + 1 % de l'excédent de 64 355 $ ». Les seuils 33 500 $ et
+> 149 355 $ sont les points de bascule DÉRIVÉS (équivalence exacte avec la forme par paliers du
+> code). Limite assumée (conservatrice) : le modèle indexe AUSSI les montants 150 $/1 000 $ au-delà
+> de 2026 (`getIndexedBracketsForYear`) alors qu'ils sont historiquement GELÉS (identiques
+> 2025/2026) — sur-coût FSS ~2 %/an les années lointaines.
 
 ---
 
@@ -217,6 +240,30 @@ consommée par `services/projection/retirementIncome.ts` + `setupSimulation.ts`.
 > retraite tardive, alors qu'on touche le RRQ dès 65 même en continuant à travailler. `delayPensions`
 > (report optimal) vise RRQ 72 / PSV 70.
 
+### Prorata RRQ / résidence PSV (`retirementIncome.ts`) — FA-8 (2026-06-11)
+- **RRQ — approximation de MODÈLE « 39 meilleures années »** (`RRQ_DENOMINATOR_YEARS = 39`) :
+  la rente officielle = moyenne des gains ouvrant droit à pension AJUSTÉS sur la période cotisable
+  (18 ans → début de la rente, ≈ 47 ans à 65 ans), avec **retranchement de 15 % des mois les plus
+  faibles** (Retraite Québec) ≈ conserver **39 années sur 47** (8 retirées). Le moteur approxime :
+  `prorata = min(1, années au Canada entre max(18, arrivée) et targetAge / 39) × min(1, salaire/MGA)`
+  — salaire courant et MGA projetés au MÊME facteur (inflation + 0,5 %/an), donc ratio
+  gains/MGA stable sur la carrière (cf B-AUDIT-4).
+- **PSV — règle OFFICIELLE de résidence** (Service Canada) : admissible à partir de **10 ans** de
+  résidence au Canada après 18 ans (`PSV_MIN_RESIDENCY_YEARS`, versement au Canada) ; pension
+  **PLEINE à 40 ans** de résidence (`PSV_FULL_RESIDENCY_YEARS`) ; entre les deux, **prorata en
+  40ᵉˢ** (`min(1, années/40)`). Moins de 10 ans → 0 $. Résidence saisie par utilisateur
+  (`psvResidencyYears`, dérivée de `canadaArrivalYear` pour un immigrant).
+
+### Split 65/35 du champ agrégé `governmentPension` — hypothèse de MODÈLE (PAS une règle ARC/RQ)
+`GOV_PENSION_RRQ_SHARE = 0,65` / `GOV_PENSION_PSV_SHARE = 0,35` (`utils/tax.ts`, FA-8 2026-06-11) :
+quand l'utilisateur ne fournit que le champ AGRÉGÉ legacy `governmentPension` (RRQ+PSV combinés),
+le moteur le scinde 65 % RRQ / 35 % PSV — source unique des 3 sites (`setupSimulation`,
+`retirementIncome`, `estateCalculation`). Ordre de grandeur d'un cotisant proche du maximum
+(RRQ 65 ans : 1 507,65 $/mois, cf tableau ci-dessus, vs PSV pleine). Les champs PRÉCIS
+`rrqEstimateMonthly`/`psvEstimateMonthly` (relevés Retraite Québec / Service Canada) **priment** ;
+le split n'est qu'un repli. Conséquence assumée : le facteur de report/anticipation propre à
+chaque rente s'applique ensuite à la part correspondante.
+
 ### Fractionnement de revenu de pension (couple) — `services/projection/taxDecember.ts`
 Sources : ARC ligne 11600 / formulaire **T1032** ; Revenu Québec **Annexe Q**. Un couple peut
 **transférer jusqu'à 50 %** du revenu de pension ADMISSIBLE du conjoint au revenu élevé vers l'autre,
@@ -237,13 +284,20 @@ pour minimiser l'impôt combiné (élection optionnelle).
 
 ### PSV / OAS — récupération (clawback)
 - Seuil de récupération 2026 (`OAS_CLAWBACK_THRESHOLD_2026`) : **95 323 $** (ARC ; 93 454 $ en 2025).
-- Taux de récupération : **15 %** de l'excédent (ARC — impôt de récupération PSV).
+- Taux de récupération (`OAS_CLAWBACK_RATE`, nommé FA-8 2026-06-11) : **15 %** de l'excédent
+  (ARC — impôt de récupération PSV, ligne 23500).
 - Le seuil s'applique **PAR PARTICULIER** (revenu net individuel), jamais au revenu du ménage.
 > **Implémentation** (`taxDecember.ts:computeOasClawback`, FA-2 2026-06-09) : clawback calculé
 > PAR CONJOINT (revenu_i = pension_i + retraits REER_i + part égale des loyers, vs seuil indexé),
 > plafonné à sa part de PSV. Avant FA-2, le revenu FAMILIAL était comparé au seuil individuel →
-> clawback fictif jusqu'à ~14 k$/an pour un couple 95-190 k$. Limites assumées : part de PSV
-> répartie également entre conjoints ; cap basé sur la PSV de base (sans facteur de report — FA-8).
+> clawback fictif jusqu'à ~14 k$/an pour un couple 95-190 k$. Limite assumée : part de PSV
+> répartie également entre conjoints.
+> **Cap = PSV réellement VERSÉE (FA-8, 2026-06-11)** : le plafond de récupération par conjoint
+> suit désormais la PSV du breakdown de décembre (facteur de report ×1,36 max, bonus 75+ ×1,10,
+> prorata de résidence, facteur survivant — HORS SRG), plus la pension de BASE sans report.
+> Corrige : clawback SOUS-estimé pour un reporteur 66-70 à haut revenu (non conservateur),
+> SURestimé si prorata de résidence < 1, et clawback FICTIF possible avant `psvStartAge`
+> (PSV non versée → cap 0). `psvBasePension` ne sert plus que de repli rétro-compat.
 
 ### SRG — Supplément de revenu garanti (Service Canada, barème 2026 Q1, indexé trimestriellement)
 > **Règle** : le SRG est **NON IMPOSABLE** (il entre dans le revenu NET — ligne 148→275 QC,
@@ -261,7 +315,7 @@ pour minimiser l'impôt combiné (élection optionnelle).
 > Limites assumées : année 1 de simulation sans historique (assiette RRQ+DB seule, optimiste, borné à
 > 12 mois) ; le salaire de l'année précédant la retraite n'est pas compté ; janvier de l'année Y teste
 > l'assiette Y-2 (décalage d'un mois — le vrai cycle SRG court juillet→juin) ; dividendes/intérêts
-> non-reg encore hors test (FA-8).
+> non-reg encore hors test (reste OUVERT — non couvert par le lot FA-8 2026-06-11, cf BACKLOG).
 > **Indexation** (FA-9, 2026-06-10) : le moteur calcule le SRG **en base réelle 2026** (barème de
 > base ci-dessous contre le revenu test déflaté) puis nominalise UNE fois ×inflation simulée —
 > comme RRQ/PSV. Avant : `calculateGISBenefit(year)` indexait max+seuils ×1,02^Δ PUIS le résultat
@@ -271,7 +325,8 @@ pour minimiser l'impôt combiné (élection optionnelle).
 > la modélisation « réel + inflation simulée » est l'approximation cohérente du module retraite.
 > Effet de bord assumé (extension FA-3b) : `dbMonthly` quasi-nominal entre dans le revenu test réel
 > → un profil pension DB voit son SRG coupé de plus en plus tôt avec l'horizon (conservateur,
-> amplitude ×1,49 à 20 ans) — déflater la composante DB = candidat FA-8.
+> amplitude ×1,49 à 20 ans) — déflater la composante DB = reste OUVERT (non couvert par le lot
+> FA-8 2026-06-11, cf BACKLOG).
 | Paramètre | Célibataire 65+ | Couple (2 reçoivent PSV), par adulte |
 |---|---|---|
 | Maximum mensuel | 1 105 $ | 662 $ |
@@ -308,9 +363,10 @@ pour minimiser l'impôt combiné (élection optionnelle).
 > 5. **SRG : barème CÉLIBATAIRE** (max 1 105 $, seuil 22 512 $) sur le revenu test COMPLET du
 >    survivant (avant : barème couple ×2 + revenu divisé par 2 → SRG fictif ~2,6 k$/an).
 > 6. Salaire du défunt = 0 (revenu actif, retenue mensuelle, récolte de gains au palier ×1).
-> Limites connues (BACKLOG FA-8) : les droits CELI/REER/CELIAPP continuent de s'accumuler ×N
-> (plafonds non survivor-aware) ; retenue FERR estimée sur 2 têtes (effet de timing seulement,
-> réconcilié en décembre) ; « montant pour personne vivant seule » QC non modélisé (à sourcer).
+> Limites connues (restes OUVERTS — non couverts par le lot FA-8 2026-06-11, cf BACKLOG) : les
+> droits CELI/REER/CELIAPP continuent de s'accumuler ×N (plafonds non survivor-aware) ; retenue
+> FERR estimée sur 2 têtes (effet de timing seulement, réconcilié en décembre) ; « montant pour
+> personne vivant seule » QC non modélisé (à sourcer).
 
 ---
 
@@ -330,6 +386,11 @@ pour minimiser l'impôt combiné (élection optionnelle).
 > les années connues (SOURCE UNIQUE — l'ancien recalcul local 7000×inflation donnait 7 000 $ en
 > 2027 au lieu de 7 500 $) ; au-delà de la dernière année connue, extrapolation indexée par
 > `simInflation` arrondie au 500 $ (mécanisme légal d'indexation).
+> **FA-8 (2026-06-11)** : `calculateCeliRoom` (droits HISTORIQUES, hors moteur — UI/MCP/setup)
+> partage la MÊME formule via `LAST_KNOWN_CELI_YEAR` exporté (`utils/tax.ts`) : dernière limite
+> connue × (1+i)^Δ arrondie au 500 $, avec i ≈ 2 %/an hors moteur (ADR 009) vs `simInflation`
+> dans le moteur. L'ancien fallback `|| 7 500 $` FIGÉ non indexé (divergent dès 2031) est supprimé ;
+> étendre la table `CELI_ANNUAL_LIMITS` met à jour les deux consommateurs automatiquement.
 
 ### REER — plafonds annuels (`RRSP_ANNUAL_LIMITS`)
 2024 : 31 560 · 2025 : 32 490 · **2026 : 33 810** · 2027 : 34 480 · 2028 : 35 170 ·
@@ -343,6 +404,14 @@ Le facteur 71 ans (5,28 %) ne s'applique qu'à une conversion **volontaire préc
 > **Implémentation** (`taxJanuary.ts` §4) : le moteur force le retrait minimum à partir de **72 ans**
 > (`if (ctx.age >= 72)`). Le facteur 71 reste dans la table pour complétude (conversion précoce non
 > modélisée). Montant = solde FERR (1er janvier) × facteur prescrit selon l'âge.
+> **Retenue FERR — assiette du crédit pension (FA-8, 2026-06-11, aligné FA-1)** : le proxy de taux
+> marginal de la retenue passe en `eligiblePensionIncome` les retraits REER/FERR de l'année
+> précédente par tête (≈ FERR à 72+) au lieu du revenu TOTAL (qui incluait RRQ/PSV/SRG — assiette
+> surévaluée vs la règle §4). Effet chiffré NUL aujourd'hui : `marginalRate` ne dépend que des
+> paliers (pas des crédits d'âge/pension), et la retenue est réconciliée à la déclaration de
+> décembre (timing pur) — l'assiette correcte est passée pour rester juste si `marginalRate`
+> devient crédit-aware. La rente DB n'est pas isolable dans le contexte de janvier → exclue
+> (conservateur).
 
 | Âge | Facteur | Âge | Facteur | Âge | Facteur |
 |---|---|---|---|---|---|
@@ -407,7 +476,8 @@ Assurance SCHL : **requise si LTV > 80 %**, indisponible si LTV > 95 % ou prix >
 - Plafond HELOC : `dette Smith + hypothèque ≤ 65 % de la valeur` (**LTV 65 %**, plafond B-20 de la
   portion réavançable) ; l'excédent déclenche un **margin call** (remboursement forcé).
 - Hypothèse de modèle (PAS une constante fiscale) : **taux HELOC 5 %/an** en dur
-  (`realEstateMonth.ts:336`) — à paramétrer un jour si besoin (cf BACKLOG FA-8).
+  (`realEstateMonth.ts:336`) — à paramétrer un jour si besoin (reste OUVERT, non couvert par le
+  lot FA-8 2026-06-11 — cf BACKLOG).
 
 ---
 

@@ -2,6 +2,8 @@
 // Cycle 18: calcul des taux effectifs mensuels (glidepath + US drag CELI).
 // Pure function: aucun side effect.
 
+import { US_DIVIDEND_WITHHOLDING_RATE } from '../../utils/tax';
+
 export interface BaseRates {
     celi: number;
     reer: number;
@@ -64,10 +66,12 @@ export function computeGlidepathRates(ctx: Readonly<GlidepathCtx>): GlidepathRat
     const effectiveReerRate = activeReerRate * glideFactor + targetGlideRate * (1 - glideFactor);
     const effectiveNonRegRate = activeNonRegRate * glideFactor + targetGlideRate * (1 - glideFactor);
 
-    // D2.7: retenue US 15% sur dividendes dans le CELI (non récupérable)
+    // D2.7: retenue US 15% sur dividendes dans le CELI (non récupérable — convention fiscale
+    // Canada–É.-U. art. X(2)b) + XXI ; constante sourcée US_DIVIDEND_WITHHOLDING_RATE,
+    // FISCAL_REFERENCE §3 — FA-8).
     const usShare = Math.min(1, Math.max(0, (usEquityShareCeli ?? 0) / 100));
     const usDivYield = (usEquityDividendYield ?? 1.5) / 100;
-    const usCeliDrag = usShare * usDivYield * 0.15 * 100;
+    const usCeliDrag = usShare * usDivYield * US_DIVIDEND_WITHHOLDING_RATE * 100;
     const effectiveCeliRate = effectiveCeliRateRaw - usCeliDrag;
 
     return { effectiveCeliRate, effectiveReerRate, effectiveNonRegRate, activeCeliRate, activeCryptoRate, activeCashRate };

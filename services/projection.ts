@@ -846,6 +846,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 // PV-9 : gains imposables de l'année (50 % d'inclusion appliqué dans la fonction)
                 // entrent dans le revenu net de récupération PSV (ligne 23400 ARC).
                 capitalGainsRealizedThisYear,
+                // FA-8 : cap du clawback = PSV réellement VERSÉE (breakdown nominal de décembre,
+                // HORS SRG — facteur de report, bonus 75+, prorata résidence et survivant inclus),
+                // au lieu de la base sans report (psvBasePension, désormais simple repli legacy).
+                pensionPSV - incomeRetirementGis,
             );
             oasClawbackNextPeriod = oasResult.clawbackAnnual;
             if (oasResult.logMsg) flowEventsLog.push(oasResult.logMsg);

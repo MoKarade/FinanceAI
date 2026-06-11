@@ -3,7 +3,7 @@
 // V40 (bilan successoral) + V48 (Smith bug) + V60 (NPV pensions publiques).
 // Pattern: Pure Function + injection calculateFiscalReport.
 
-import { CAPITAL_GAINS_INCLUSION_STANDARD, type FiscalReport } from '../../utils/tax';
+import { CAPITAL_GAINS_INCLUSION_STANDARD, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, type FiscalReport } from '../../utils/tax';
 
 type FiscalFn = (
     grossIncome: number,
@@ -146,8 +146,10 @@ export function computeEstateNetWorth(
     // pour un couple → NPV des rentes ~doublée → estateNetWorth gonflé de dizaines de k$.
     const lifeExpectancy = 95;
     const remainingYearsAtEnd = Math.max(0, lifeExpectancy - finalAge);
-    const rrqExpected = (governmentPension * 0.65) * Math.pow(1 + simInflation / 100, simulationYears);
-    const psvExpected = (governmentPension * 0.35) * Math.pow(1 + simInflation / 100, simulationYears);
+    // Split 65/35 du champ agrégé : convention de MODÈLE (GOV_PENSION_*_SHARE, utils/tax.ts —
+    // FISCAL_REFERENCE §6 FA-8), même repli que retirementIncome/setupSimulation.
+    const rrqExpected = (governmentPension * GOV_PENSION_RRQ_SHARE) * Math.pow(1 + simInflation / 100, simulationYears);
+    const psvExpected = (governmentPension * GOV_PENSION_PSV_SHARE) * Math.pow(1 + simInflation / 100, simulationYears);
 
     const r_npv = 0.02;
     const npvFactor = r_npv > 0 ? (1 - Math.pow(1 + r_npv, -remainingYearsAtEnd)) / r_npv : remainingYearsAtEnd;

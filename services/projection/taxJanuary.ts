@@ -2,11 +2,12 @@
 // Cycle 23 split (depuis taxCycle.ts): réinitialisation annuelle de janvier.
 // Cycle 12 (origine): exécuté uniquement en janvier (currentMonthIndex === 0 && m > 0).
 
-import { FHSA_LIFETIME_LIMIT_PER_USER, FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, CELI_ANNUAL_LIMITS, getResidencyStartYear, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
+import { FHSA_LIFETIME_LIMIT_PER_USER, FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, CELI_ANNUAL_LIMITS, LAST_KNOWN_CELI_YEAR, getResidencyStartYear, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
 
 // FA-4 (audit fiscal 2026-06-09) — dernière année où le plafond CELI est CONNU (annoncé, sourcé
 // dans FISCAL_REFERENCE §7 via CELI_ANNUAL_LIMITS). Au-delà : extrapolation indexée arrondie 500 $.
-const LAST_KNOWN_CELI_YEAR = Math.max(...Object.keys(CELI_ANNUAL_LIMITS).map(Number));
+// FA-8 (2026-06-11) : LAST_KNOWN_CELI_YEAR vient de utils/tax.ts (source unique partagée avec
+// calculateCeliRoom — même formule d'extrapolation, l'ancien calcul local est supprimé).
 //
 // Janvier — Réinitialisation annuelle + recalcul plafonds CELI/FHSA/REER + FERR.
 //
@@ -180,9 +181,22 @@ export function processJanuaryReset(
         // §6.2 — applique les crédits 65+ et revenu retraite au calcul du taux marginal FERR.
         // Sans cela (audit silent-failure FINDING 1), la retenue FERR est surestimée
         // de ~1 200-1 800$/an pour un retraité 72+.
+        // FA-8 (2026-06-11, aligné FA-1) — assiette du crédit pension = pension ADMISSIBLE
+        // seulement (FERR/DB — PAS RRQ/PSV/SRG, cf FISCAL_REFERENCE §4). Proxy disponible dans
+        // ctx : les retraits REER/FERR de l'année précédente par tête, déflatés (à 72+, cas
+        // standard = retraits FERR ; la rente DB n'est pas isolable dans JanuaryContext → exclue,
+        // crédit sous-évalué = retenue surévaluée = conservateur ; l'année charnière des 72 ans,
+        // ce sont les retraits REER des 71 ans — légère surévaluation ponctuelle). Avant : le
+        // revenu TOTAL (RRQ+PSV+SRG+gains inclus) était passé — assiette surévaluée vs FA-1.
+        // Impact chiffré : NUL aujourd'hui — `calculateFiscalReport().marginalRate` =
+        // `getMarginalRate(netTaxable)`, fonction des PALIERS seulement (les crédits d'âge/
+        // pension n'y entrent pas), et la retenue FERR est réconciliée à la déclaration de
+        // décembre (effet de timing pur). On passe la bonne assiette pour que le calcul reste
+        // juste si marginalRate devient un jour crédit-aware.
+        const deflatedEligiblePension = (ctx.accRetraitsReerYearOld / ctx.activeUsersCount) / inflFactorAtNow;
         const ageOptsFerr: AgeCreditOptions = {
             age: ctx.age,
-            eligiblePensionIncome: deflatedIncomeForMargRate,
+            eligiblePensionIncome: deflatedEligiblePension,
             hasSpouse: ctx.activeUsersCount > 1,
             familyIncome: deflatedIncomeForMargRate * ctx.activeUsersCount,
         };

@@ -234,26 +234,39 @@
   à réindexer 2026), TPS/TVQ neuf (36 %/6 300 $ · 50 %/9 975 $, dégressifs), Smith/HELOC LTV 65 %
   + margin call. Découverte routée vers FA-8 : taux HELOC 5 %/an EN DUR (`realEstateMonth.ts:336`)
   — hypothèse de modèle à paramétrer.
-- [ ] **[FA-8]** 🔧 Lot mineurs fiscaux : taux clawback 0,15 nommé+sourcé · cap clawback sans facteur
-  de report · prorata RRQ 39 ans / PSV 10-40 ans au doc · split 65/35 documenté · SystemView barèmes
-  composés depuis les constantes (`SystemView.tsx:102`) · assiette dividendes vs gains cohérente ·
-  retenue US 15 % sourcée · libellé FSS 2025/2026 · retenue FERR (`taxJanuary.ts:185`) passe encore
-  le revenu TOTAL en `eligiblePensionIncome` (impact ≈0, réconcilié en décembre — aligner sur FA-1) ·
-  `calculateCeliRoom` fallback `|| 7500` non indexé > 2030 (unifier avec l'extrapolation taxJanuary) ·
-  `setupSimulation.ts:169` `inflationRate || 2.0` masque le 0 légitime (→ `??`) ·
-  NPV estate lit `governmentPension` même quand `rrqEstimateMonthly` est fourni (divergence silencieuse) ·
-  assiette clawback PSV sans gains/dividendes/intérêts non-reg (revenu net 23400 les inclut — sous-estime,
-  borné au cap) · cap clawback ignore prorata résidence/`psvEstimateMonthly`/bonus 75+ (clawback fantôme
-  possible pour immigrant 10/40) · assiette FSS inclut la PSV (l'Annexe F la déduit — à sourcer) ·
-  lagged SRG déflaté du facteur du mois courant (~1 an d'écart, SRG légèrement surévalué) ·
-  `ghOtherNominal` (récolte de gains, retraité) inclut le SRG non imposable → palier visé trop petit (conservateur) ·
-  **dbMonthly quasi-nominal dans le revenu test SRG réel** (post-FA-9 : SRG coupé de plus en plus tôt
-  pour un profil DB, conservateur mais amplitude ×1,49 à 20 ans — déflater la composante DB) ·
-  **plafonds ×N non survivor-aware** (découverte FA-10) : droits CELI/REER/CELIAPP continuent de
-  s'accumuler pour le défunt (`projection.ts` fhsaRoom, `taxJanuary.ts:159`) — sous-imposition
-  indirecte mineure · retenue FERR estimée sur 2 têtes en survivorMode (timing seulement, réconcilié
-  en décembre) · 🧭 « montant pour personne vivant seule » QC (grille TP-1.G) absent code+doc —
-  pertinent pour un survivant, NE PAS chiffrer sans source Revenu Québec.
+- [ ] **[FA-8]** 🔧 Lot mineurs fiscaux. **LIVRÉ 2026-06-11 (10 sous-items, en attente de merge)** :
+  taux clawback 15 % nommé+sourcé (`OAS_CLAWBACK_RATE`, utils/tax.ts) · **cap clawback = PSV
+  réellement VERSÉE** (breakdown décembre hors SRG : facteur de report, bonus 75+, prorata
+  résidence, survivant — couvre AUSSI « cap ignore prorata/`psvEstimateMonthly`/bonus 75+ » et le
+  clawback fantôme avant `psvStartAge` ; `psvBasePension` = repli legacy) · prorata RRQ 39 ans /
+  PSV 10-40 ans documentés (doc §6 + commentaires sourcés retirementIncome) · split 65/35 →
+  constantes de MODÈLE `GOV_PENSION_*_SHARE` (3 sites unifiés : setupSimulation, retirementIncome,
+  estateCalculation) + doc §6 · SystemView TAX_MODULE composé depuis `TAX_BASE_YEAR`/
+  `FED_BRACKETS[0].label`/`BASIC_PERSONAL_AMOUNT_FED` · assiette dividendes ALIGNÉE gains
+  (+`accRetraitsReerYear` dans `incomeForDiv`) + hypothèse « 30 % du rendement = dividendes »
+  documentée §3 · retenue US 15 % sourcée (`US_DIVIDEND_WITHHOLDING_RATE`, convention Canada–É.-U.
+  art. X(2)b)/XXI — 4 sites : assetLocation ×3 + glidepathRates) · **FSS réindexé barème 2026**
+  (18 500/33 500/64 355/149 355, RQ+CFFP vérifié 2026-06-11 — le code portait le barème 2025 sous
+  libellé 2026) · retenue FERR : `eligiblePensionIncome` = retraits REER/FERR N-1 par tête (aligné
+  FA-1 ; impact chiffré NUL — `marginalRate` est bracket-only, documenté code+doc §7) ·
+  `calculateCeliRoom` unifié sur l'extrapolation taxJanuary (`LAST_KNOWN_CELI_YEAR` exporté,
+  fallback `|| 7500` figé supprimé).
+  **RESTES (non couverts par le lot)** : `setupSimulation.ts:169` `inflationRate || 2.0` masque le
+  0 légitime (→ `??`) · NPV estate lit `governmentPension` même quand `rrqEstimateMonthly` est
+  fourni (divergence silencieuse) · assiette clawback PSV/test SRG sans dividendes/intérêts non-reg
+  (revenu net 23400 les inclut — sous-estime, borné au cap) · assiette FSS inclut la PSV — l'Annexe F
+  la DÉDUIT (✅ sourcé 2026-06-11, page RQ « Cotisation des particuliers au FSS » : PSV et SRG
+  exclues du revenu assujetti — reste à implémenter) · lagged SRG déflaté du facteur du mois courant
+  (~1 an d'écart, SRG légèrement surévalué) · `ghOtherNominal` (récolte de gains, retraité) inclut
+  le SRG non imposable → palier visé trop petit (conservateur) · **dbMonthly quasi-nominal dans le
+  revenu test SRG réel** (post-FA-9 : SRG coupé de plus en plus tôt pour un profil DB, conservateur
+  mais amplitude ×1,49 à 20 ans — déflater la composante DB) · **plafonds ×N non survivor-aware**
+  (découverte FA-10) : droits CELI/REER/CELIAPP continuent de s'accumuler pour le défunt
+  (`projection.ts` fhsaRoom, `taxJanuary.ts:159`) — sous-imposition indirecte mineure · retenue FERR
+  estimée sur 2 têtes en survivorMode (timing seulement, réconcilié en décembre) · taux HELOC
+  5 %/an en dur (`realEstateMonth.ts:336`, découverte FA-7 — hypothèse de modèle à paramétrer) ·
+  🧭 « montant pour personne vivant seule » QC (grille TP-1.G) absent code+doc — pertinent pour un
+  survivant, NE PAS chiffrer sans source Revenu Québec.
 - [x] **[FA-12]** 🔧 (livré) Test d'intégration survivorMode SEEDÉ (`projection.survivor.test.ts`,
   5 tests) via hook test-only `__runScenarioForTests`. Astuce clé : `replayHistoricalYear` override
   les taux APRÈS les tirages MC → runs modelSurvivor ON/OFF BIT-IDENTIQUES jusqu'au décès (crypto=0,

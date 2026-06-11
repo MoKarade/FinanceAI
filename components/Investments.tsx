@@ -34,6 +34,7 @@ import { ImportBrokerPositions } from './investments/ImportBrokerPositions';
 import { computePurchaseStats } from '../utils/assetPurchases';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { NetWorthByOwnerCard } from './investments/NetWorthByOwnerCard';
+import { PrivateAmount } from './ui/PrivateAmount';
 
 interface InvestmentsProps {
     assets: Asset[];
@@ -560,7 +561,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                         <div>
                             <div className="kpi-label">Patrimoine net projeté en {horizonSnapshot.year} ({projectionHorizonYears} ans)</div>
-                            <div className="text-kpi text-ink-50 privacy-blur tabular-nums">{formatCAD(horizonSnapshot.netWorth)}</div>
+                            <PrivateAmount as="div" className="text-kpi text-ink-50 tabular-nums">{formatCAD(horizonSnapshot.netWorth)}</PrivateAmount>
                         </div>
                         <button
                             type="button"
@@ -780,7 +781,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             <span className="font-bold text-white text-body truncate">{a.name}</span>
                                             <span className="text-tiny text-ink-400 font-mono">{a.weight.toFixed(1)}%</span>
                                         </div>
-                                        <div className="text-meta font-mono text-ink-200 privacy-blur">{formatCAD(a.value)}</div>
+                                        <PrivateAmount as="div" className="text-meta font-mono text-ink-200">{formatCAD(a.value)}</PrivateAmount>
                                         <div className={`text-tiny font-mono ${a.trend24h >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
                                             {a.trend24h >= 0 ? '+' : ''}{a.trend24h.toFixed(2)}% (24h)
                                         </div>

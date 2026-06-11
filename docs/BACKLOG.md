@@ -378,12 +378,16 @@
 - [ ] **[D4]** God-files : scinder par impact `Investments` (1154) → `FutureProjection` (969) →
   `Budget` (892) → `Transactions` (729) → `Dashboard` (621)… + **[D4-H2]** sélecteurs atomiques
   (App re-render sur tout slice non-`lastProjection` + prop-drilling via `TabRouter`).
-- [ ] **[D6-SR]** Mode privé : le flou CSS laisse les montants **lisibles par lecteur d'écran**
-  (fuite). Masquer le TEXTE quand le mode privé est actif (comme les graphes font déjà `***`),
-  pas seulement flouter. Touche KPI/cellules de tableau/inputs. (Re-confirmé par `a11y-auditor`
-  2026-06-09 : systémique, AUCUN `privacy-blur` du codebase n'est masqué aux SR — ~50 occurrences,
-  dont les nouveaux montants du `StressTestPanel`. Correctif cible : primitive `<PrivateAmount>`
-  partagée avec `aria-hidden` + `sr-only` « montant masqué ».)
+- [x] **[D6-SR]** ✅ (gros du lot) — primitive `<PrivateAmount>` (aria-hidden + sr-only « Montant
+  masqué » en mode privé, blur CSS inchangé, 4 tests) + MIGRATION : `KPIStat` (prop privacy → couvre
+  TOUS les KPI), `DualKPIStat`, `CurrentCapitalCard` (6), + 13 sites one-liner via codemod conservateur
+  (RealEstate, Investments, Dashboard, ChildPlanning, StressTestPanel, PropertyConfigurator,
+  NetWorthByOwnerCard).
+- [ ] **[D6-SR-2]** 🔧 (reste de migration) — ~69 occurrences `privacy-blur` restantes : INPUTS
+  (légitimes — aria-hidden sur un champ éditable le rendrait inutilisable ; le blur visuel suffit,
+  l'utilisateur SR est l'utilisateur légitime du champ) + spans MULTI-LIGNES/contenu mixte non
+  codemodables (Budget tableaux, FutureDetailModal, tooltips projection, sélecteurs CSS génériques
+  de Layout td/font-mono). Migrer opportunistiquement vers <PrivateAmount> au fil des refontes PH4.
 - [ ] **[D7]** Perf boot : `hydrateAssets` (`App.tsx`) boucle `await sleep(2500ms)` séquentiel par
   symbole → 10 actifs = ~25 s. Paralléliser + cacher, garde-fous anti-rate-limit. Plus gros gain
   de fluidité ressenti.

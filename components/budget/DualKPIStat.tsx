@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatCAD } from '../../utils/format';
+import { PrivateAmount } from '../ui/PrivateAmount';
 
 /**
  * Phase D'.5 — tuile fusionnée "Prévu / Réel" pour le Budget.
@@ -58,14 +59,15 @@ export const DualKPIStat: React.FC<DualKPIStatProps> = ({
                     {ecart >= 0 ? '+' : ''}{ecartPct.toFixed(1)}%
                 </span>
             </div>
+            {/* [D6-SR] — montants via PrivateAmount (blur visuel + masquage lecteur d'écran). */}
             <div className="flex items-baseline gap-2">
-                <span className="text-kpi text-ink-50 privacy-blur tabular-nums">
+                <PrivateAmount className="text-kpi text-ink-50 tabular-nums">
                     {formatCAD(reel)}
-                </span>
+                </PrivateAmount>
                 <span className="text-meta text-ink-500">/</span>
-                <span className="text-meta text-ink-400 privacy-blur tabular-nums">
+                <PrivateAmount className="text-meta text-ink-400 tabular-nums">
                     {formatCAD(prevu)}
-                </span>
+                </PrivateAmount>
             </div>
             <div className="flex items-center justify-between text-tiny">
                 <span className="text-ink-500">Réel / Prévu</span>

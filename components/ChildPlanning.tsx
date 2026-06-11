@@ -13,6 +13,7 @@ import { INITIAL_CHILD_GOAL } from '../constants';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { PrivateAmount } from './ui/PrivateAmount';
 import {
     DAYCARE_INFO, SCHOOL_INFO, ACTIVITIES_INFO, UNI_INFO, CAR_INFO,
     getAnnualChildCost,
@@ -406,7 +407,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                 {/* GRAPHIQUES */}
                 <div className="lg:col-span-2 space-y-5">
                     <Card icon={<Icon name="chart" size={18} />} title="Coût par âge" action={
-                        <div className="text-meta text-ink-300 font-mono">Total : <span className="text-white font-bold privacy-blur">{fmt(costTimeline.totalCost)}</span></div>
+                        <div className="text-meta text-ink-300 font-mono">Total : <PrivateAmount className="text-white font-bold">{fmt(costTimeline.totalCost)}</PrivateAmount></div>
                     }>
                         <ZoomContainer zoom={zoomCost} className="h-[280px]">
                             <ResponsiveContainer width="100%" height="100%">
@@ -465,7 +466,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 </div>
                                 <div className="bg-green-900/20 p-3 rounded-lg border border-green-500/20 text-center">
                                     <div className="text-tiny text-ink-500 uppercase mb-1">Coût études prévu</div>
-                                    <div className="text-lg font-black text-white privacy-blur">{fmt(totalStudiesCost)}</div>
+                                    <PrivateAmount as="div" className="text-lg font-black text-white">{fmt(totalStudiesCost)}</PrivateAmount>
                                 </div>
                                 <div className="bg-purple-900/20 p-3 rounded-lg border border-purple-500/20 text-center">
                                     <div className="text-tiny text-ink-500 uppercase mb-1">Couverture</div>

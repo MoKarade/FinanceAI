@@ -18,6 +18,7 @@ import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
+import { PrivateAmount } from './ui/PrivateAmount';
 
 interface RealEstateProps {
     availableCash: number;
@@ -546,9 +547,9 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                     <Card icon={<Icon name="clipboard" size={18} />} title="Amortissement">
                         <div className="overflow-x-auto">
                             <div className="mb-3 flex flex-wrap gap-4 text-meta">
-                                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-danger-500 inline-block" />Intérêts totaux payés : <span className="font-bold text-danger-400 privacy-blur">{formatCurrency(amortizationData.totalInterest)}</span></div>
-                                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-success-500 inline-block" />Gain Équité projeté : <span className="font-bold text-success-400 privacy-blur">{formatCurrency((amortizationData.data[amortizationData.data.length - 1]?.Équité || 0) - downPayment)}</span></div>
-                                {yearlyRenovations > 0 && <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-yellow-500 inline-block" />Rénos totales : <span className="font-bold text-yellow-400 privacy-blur">{formatCurrency(yearlyRenovations * amortization)}</span></div>}
+                                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-danger-500 inline-block" />Intérêts totaux payés : <PrivateAmount className="font-bold text-danger-400">{formatCurrency(amortizationData.totalInterest)}</PrivateAmount></div>
+                                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-success-500 inline-block" />Gain Équité projeté : <PrivateAmount className="font-bold text-success-400">{formatCurrency((amortizationData.data[amortizationData.data.length - 1]?.Équité || 0) - downPayment)}</PrivateAmount></div>
+                                {yearlyRenovations > 0 && <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-yellow-500 inline-block" />Rénos totales : <PrivateAmount className="font-bold text-yellow-400">{formatCurrency(yearlyRenovations * amortization)}</PrivateAmount></div>}
                             </div>
                             <table className="w-full text-meta text-left min-w-[700px]">
                                 <thead>
@@ -578,7 +579,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                 <td className="py-2 pr-4 text-right text-white privacy-blur">{formatCurrency(row.Solde)}</td>
                                                 <td className="py-2 pr-4 text-right text-purple-300 privacy-blur">{formatCurrency(row.ValeuréPropriété)}</td>
                                                 <td className="py-2 text-right">
-                                                    <span className="text-success-400 font-bold privacy-blur">{formatCurrency(row.Équité)}</span>
+                                                    <PrivateAmount className="text-success-400 font-bold">{formatCurrency(row.Équité)}</PrivateAmount>
                                                     <span className="text-ink-500 ml-1">({equityPct}%)</span>
                                                 </td>
                                             </tr>

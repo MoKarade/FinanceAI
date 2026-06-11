@@ -1,8 +1,8 @@
 # BACKLOG — FinanceAI (actionnable)
 
 > Liste **courte** de ce qui RESTE à faire. L'historique complet des items livrés est
-> archivé dans [`docs/archive/BACKLOG_HISTORIQUE.md`](archive/BACKLOG_HISTORIQUE.md).
-> Audit qualité détaillé (référence) : [`docs/AAA_AUDIT_2026-06.md`](AAA_AUDIT_2026-06.md).
+> archivé dans [`docs/HISTORIQUE.md`](HISTORIQUE.md) (fusion de tous les snapshots/audits/designs livrés).
+> Audit qualité détaillé : voir `docs/HISTORIQUE.md` (section `AAA_AUDIT_2026-06.md`).
 > Actions humaines (Marc) : [`docs/A_FAIRE_MOI.md`](A_FAIRE_MOI.md).
 >
 > **Dernière mise à jour : 2026-06-10 (soir).** Tests : ~1886 verts / 158 fichiers · tsc clean · build OK.

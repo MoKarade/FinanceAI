@@ -420,23 +420,18 @@ Onglets retirés : Planning (fusionné dans Budget — G22-N3), Système (fusion
 
 ## 7. Docs à lire si besoin de plus
 
+**Core actif (9 fichiers `docs/`)** — réduction 2026-06-11 (47→9, le reste fusionné dans HISTORIQUE) :
 | Doc | Quand le lire |
 |---|---|
-| **`docs/BACKLOG.md`** | **Source de vérité du restant à faire — à lire EN PREMIER pour savoir où en est le projet** |
-| `docs/MANUAL_TEST_CHECKLIST.md` | 131+ tests manuels à exécuter à chaque livraison (sections par onglet) |
-| `docs/CENTRALIZED_CALC_PROGRESS.md` | Suivi du refactor "Future = source unique" — Phase 1+2 done, Phase 3 Tier 1+2+3 ✅ |
-| `docs/CENTRALIZED_CALC_REFACTOR.md` | Plan stratégique du refactor (5 étapes, calculs KEEP_LOCAL identifiés) |
-| `docs/PROJECTION_OUTPUT_SCHEMA.md` | Inventaire exhaustif des champs `lastProjection.chartData[i]` (~50 champs) |
-| **`docs/AUTH_SETUP.md`** | **Auth Cloudflare Access — config réelle + journal de debug. À lire si l'accès au site casse** |
-| `docs/SECURITY_STRATEGY.md` | Analyse de menace + options auth (Option A = Cloudflare Access, implémentée 2026-05-22) |
-| `docs/ARCHITECTURE.md` | Vue exhaustive de la stack, topologie, store, pipeline IA |
-| `docs/ARCHITECTURE.md` | Stack détaillé, topologie, store, pipeline IA |
-| `docs/PROJECTION.md` | Moteur de projection (9 phases, 7 scénarios, MC) |
-| `docs/WIRING_NOTES.md` | Wirings inter-onglets (lastProjection, deep-links) |
-| `docs/PLAN_P1.md` | Plan P1 clôturé (référence pour comprendre pourquoi chaque item P1) |
-| `docs/PLAN_P2.md` | Plan P2 clôturé (idem pour P2) |
-| `docs/adr/` | 7 ADRs structurants (Claude migration, Era pattern, projection split, design system, Future source unique, no-fake, auth Cloudflare Access) |
-| `CHANGELOG.md` | Historique versionné cycles 13, 14, 15 |
+| **`docs/BACKLOG.md`** | **Restant à faire — à lire EN PREMIER** |
+| `docs/A_FAIRE_MOI.md` | Tâches HUMAINES (Marc) |
+| `docs/FISCAL_REFERENCE.md` | Valeurs fiscales — SOURCE DE VÉRITÉ (datée + sourcée) |
+| `docs/ARCHITECTURE.md` | Stack, topologie, store, pipeline IA |
+| `docs/PROJECTION.md` | Moteur de projection (phases, scénarios, MC) |
+| `docs/PROJECTION_OUTPUT_SCHEMA.md` | Champs de `lastProjection.chartData[i]` |
+| `docs/VISION.md` | Où va le projet |
+| **`docs/HISTORIQUE.md`** | **TOUT le reste fusionné** : snapshots, audits, designs LIVRÉS (auth Cloudflare, sync Drive, MCP, multiuser, sécurité), ADRs, plans finis, 131 tests manuels. Git garde le détail par fichier. |
+| `CHANGELOG.md` | Historique versionné |
 
 ---
 

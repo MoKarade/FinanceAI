@@ -32,13 +32,13 @@ npm run build         # Vite (--mode production)
 ```
 
 Tests manuels : ~195 cas couvrant les onglets actifs — voir
-[`docs/MANUAL_TEST_CHECKLIST.md`](docs/MANUAL_TEST_CHECKLIST.md).
+[`docs/HISTORIQUE.md`](docs/HISTORIQUE.md).
 
 ## 🎓 Conventions clés
 
 - **Future = source unique** : tout calcul long-terme (FIRE, capital
   retraite, coût enfant lifetime…) vient de `lastProjection.chartData`.
-  Voir [`docs/CENTRALIZED_CALC_PROGRESS.md`](docs/CENTRALIZED_CALC_PROGRESS.md)
+  Voir [`docs/HISTORIQUE.md`](docs/HISTORIQUE.md)
   et [`docs/PROJECTION_OUTPUT_SCHEMA.md`](docs/PROJECTION_OUTPUT_SCHEMA.md).
 - **Mode strict** : si la projection n'est pas calculée, les onglets
   affichent `<ProjectionRequired>` au lieu d'inventer des valeurs.
@@ -67,8 +67,8 @@ Tests manuels : ~195 cas couvrant les onglets actifs — voir
 |---|---|
 | **[`docs/BACKLOG.md`](docs/BACKLOG.md)** | **Source de vérité du restant à faire** — items P0/P1/P2/P3 |
 | [`docs/SESSION_HANDOVER.md`](docs/SESSION_HANDOVER.md) | Reprise rapide — état actuel + recommandations |
-| [`docs/MANUAL_TEST_CHECKLIST.md`](docs/MANUAL_TEST_CHECKLIST.md) | 131 tests manuels par onglet |
-| [`docs/CENTRALIZED_CALC_PROGRESS.md`](docs/CENTRALIZED_CALC_PROGRESS.md) | Suivi refactor "Future = source unique" |
+| [`docs/HISTORIQUE.md`](docs/HISTORIQUE.md) | 131 tests manuels par onglet |
+| [`docs/HISTORIQUE.md`](docs/HISTORIQUE.md) | Suivi refactor "Future = source unique" |
 | [`docs/PROJECTION_OUTPUT_SCHEMA.md`](docs/PROJECTION_OUTPUT_SCHEMA.md) | Schéma exhaustif `chartData[i]` (~50 champs) |
 | [`docs/SECURITY_STRATEGY.md`](docs/SECURITY_STRATEGY.md) | Plan auth (Cloudflare Access) |
 | [`docs/PROJECTION.md`](docs/PROJECTION.md) | Moteur de projection (9 phases, 7 scénarios, MC) |

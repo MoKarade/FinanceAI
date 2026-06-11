@@ -13,7 +13,9 @@ Doc détaillée dans `docs/`, qui fait foi.
 - `docs/SESSION_HANDOVER.md` — état actuel de l'app + reprise rapide
 - `docs/VISION.md`           — où va le projet (futur)
 - `docs/FISCAL_REFERENCE.md` — valeurs fiscales : SOURCE DE VÉRITÉ (datée + sourcée)
-- `docs/ARCHITECTURE.md`, `docs/PROJECTION.md`, `mcp/README.md`, `CHANGELOG.md`
+- `docs/ARCHITECTURE.md`, `docs/PROJECTION.md`, `docs/PROJECTION_OUTPUT_SCHEMA.md`, `mcp/README.md`, `CHANGELOG.md`
+- `docs/HISTORIQUE.md`       — archive consolidée (snapshots, audits, designs livrés, ADRs, plans finis ;
+  réduction 2026-06-11 : 47→9 fichiers docs/). Git garde l'historique fin par fichier.
 
 ## Réponses & reprise de session
 - Réponses **structurées** : titres courts, listes, l'essentiel d'abord.
@@ -146,7 +148,7 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
 
 ## Règles non négociables
 - **Future = source unique** : tout calcul long-terme vient de `lastProjection.chartData`.
-  Réf : `docs/CENTRALIZED_CALC_PROGRESS.md`, `docs/PROJECTION_OUTPUT_SCHEMA.md`.
+  Réf : `docs/PROJECTION_OUTPUT_SCHEMA.md` (détail refactor « source unique » dans `docs/HISTORIQUE.md`).
 - **No-fake-data** : zéro donnée simulée en prod. Projection non calculée → `<ProjectionRequired>`.
 - **Valeurs fiscales** : toute constante fiscale (plafonds, paliers, taux, RRQ/PSV/SRG, montants
   de base) DOIT venir de `docs/FISCAL_REFERENCE.md` (datée + sourcée). Jamais de chiffre fiscal

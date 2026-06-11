@@ -1081,7 +1081,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             withdrawFromAccount: (account: 'CELI' | 'REER' | 'NON-ENREG' | 'CRYPTO' | 'LIQUID', amount: number): number => {
                 let remaining = amount;
                 if (account === 'LIQUID' || account === 'NON-ENREG') {
-                    const fromLiquid = Math.min(liquid, remaining);
+                    // [PV-11 revue] clamp à 0 : `liquid` peut être NÉGATIF ici (impôt d'avril débité
+                    // AVANT les goals, sauvetage PV-1 après) — sans clamp, un goal « effaçait » le
+                    // découvert sans le payer (survente NonReg + withdrawalLiquid négatif au chart).
+                    const fromLiquid = Math.min(Math.max(0, liquid), remaining);
                     liquid -= fromLiquid; remaining -= fromLiquid;
                     withdrawalLiquid += fromLiquid;
                     if (remaining > 0 && account === 'NON-ENREG' && nonReg > 0) {
@@ -1118,7 +1121,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // [PV-11a] — remontée STRUCTURÉE du shortfall d'objectif (le log texte reste).
             onGoalShortfall: (_goalName: string, asked: number, drawn: number) => {
                 goalShortfallCount++;
-                goalShortfallTotal += Math.max(0, asked - drawn);
+                // Borne drawn à 0 (défense) : un drawn négatif surévaluerait le manque.
+                goalShortfallTotal += Math.max(0, asked - Math.max(0, drawn));
             },
         };
         applySavingsGoalDeadlines(savingsGoals, currentIsoMonth, expenseMultiplier, goalMutator);

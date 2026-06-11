@@ -276,6 +276,40 @@ describe('applyFinancialGoalDeadlines', () => {
     });
 });
 
+// ── [PV-11a] onGoalShortfall — remontée structurée des objectifs partiellement financés ──
+describe('onGoalShortfall (PV-11a)', () => {
+    it('appelé avec (nom, visé, tiré) quand les fonds sont insuffisants', () => {
+        const onGoalShortfall = vi.fn();
+        const mutator: GoalDeadlineMutator = {
+            withdrawFromAccount: (_a, amount) => Math.min(4000, amount), // seulement 4000 dispo
+            addExpense: vi.fn(),
+            logFlow: vi.fn(),
+            onGoalShortfall,
+        };
+        const goal: SavingsGoal = { id: '1', name: 'Auto', targetAmount: 10000, currentAmount: 0, deadline: '2027-01', icon: '🚗' };
+
+        applySavingsGoalDeadlines([goal], '2027-01', 1.0, mutator);
+
+        expect(onGoalShortfall).toHaveBeenCalledTimes(1);
+        expect(onGoalShortfall).toHaveBeenCalledWith('Auto', 10000, 4000);
+    });
+
+    it('PAS appelé quand l\'objectif est entièrement financé ; hook optionnel toléré absent', () => {
+        const onGoalShortfall = vi.fn();
+        const full: GoalDeadlineMutator = {
+            withdrawFromAccount: (_a, amount) => amount,
+            addExpense: vi.fn(), logFlow: vi.fn(), onGoalShortfall,
+        };
+        const goal: SavingsGoal = { id: '1', name: 'OK', targetAmount: 5000, currentAmount: 0, deadline: '2027-02', icon: '✅' };
+        applySavingsGoalDeadlines([goal], '2027-02', 1.0, full);
+        expect(onGoalShortfall).not.toHaveBeenCalled();
+
+        // Sans le hook (appelants tests/hors-moteur) : aucune erreur.
+        const minimal: GoalDeadlineMutator = { withdrawFromAccount: () => 0, addExpense: vi.fn(), logFlow: vi.fn() };
+        expect(() => applySavingsGoalDeadlines([goal], '2027-02', 1.0, minimal)).not.toThrow();
+    });
+});
+
 // ── computeStressTest ────────────────────────────────────────────────────────
 
 describe('computeStressTest', () => {

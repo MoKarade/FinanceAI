@@ -91,6 +91,26 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
                 <div className="mt-1 text-2xl font-black text-white font-mono privacy-blur leading-none">{fmt(data.NetWorth || 0)}$</div>
             </div>
 
+            {/* [PH2-d-2] — référence VERROUILLÉE au survol (présente seulement sous verrou, via
+                displayData.lockedNetWorth) : valeur figée + écart vs l'aperçu live. */}
+            {(() => {
+                // Revue #245 — bind unique (documente la forme réelle de displayData, zéro re-cast).
+                const locked = (data as ProjectionChartPoint & { lockedNetWorth?: number }).lockedNetWorth;
+                if (typeof locked !== 'number') return null;
+                const delta = (data.NetWorth || 0) - locked;
+                return (
+                    <div className="rounded-xl bg-amber-500/[0.08] border border-amber-500/25 p-2.5 mb-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="text-tiny uppercase tracking-widest text-amber-300 font-bold">🔒 Verrouillée</span>
+                            <span className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded privacy-blur ${delta >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-danger-500/15'}`} title="Écart entre l'aperçu live et la référence verrouillée">
+                                Live {delta >= 0 ? '+' : ''}{fmt(delta)}$
+                            </span>
+                        </div>
+                        <div className="mt-1 text-body font-black text-amber-200 font-mono privacy-blur leading-none">{fmt(locked)}$</div>
+                    </div>
+                );
+            })()}
+
             {/* Pourquoi : dépôts (ce que tu ajoutes) vs rendement (marché) */}
             {(totalFlow !== 0 || totalGain !== 0) && (
                 <div className="mb-2.5">

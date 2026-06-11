@@ -68,11 +68,9 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
         savingsGoals: st.savingsGoals ?? EMPTY_ARRAY,
     })));
 
-    // ⚠️ PH2-c (limite connue → BACKLOG) : ce hook est monté 2× quand l'onglet Futur est ouvert
-    // (ProjectionEngine app-level + FutureProjection). usePastPortfolioHistory ayant un fetch Finnhub
-    // PAR-INSTANCE, ça double le fetch (mode réel) et peut faire flotter transitoirement la jonction
-    // passé↔futur le temps du chargement. Le départ de projection (liveCSVBalances = prix ACTUEL, sans
-    // réseau) reste stable. Fix prévu : dédup du fetch au niveau module dans usePastPortfolioHistory.
+    // PH2-c-1 (résolu) : ce hook est monté 2× quand Futur est ouvert (ProjectionEngine + FutureProjection),
+    // mais le fetch Finnhub de usePastPortfolioHistory est désormais DÉDUPLIQUÉ AU NIVEAU MODULE
+    // (cache partagé + useSyncExternalStore) → un seul fetch, jonction passé↔futur cohérente.
     // A1/A3 — soldes de DÉPART dérivés de la même reconstruction que la courbe passée
     // (continuité passé↔futur au mois 0 : le futur démarre sur le portefeuille réel).
     const pastHistory = usePastPortfolioHistory();

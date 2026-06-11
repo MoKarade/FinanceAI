@@ -37,9 +37,9 @@ describe('lockedCurveOverlay (PH2-d)', () => {
         });
     });
 
-    describe('pointStackedCapital (stack visible Retraite, SANS CELIAPP)', () => {
-        it('somme Liquidites+NonReg+CELI+REER ; CELIAPP EXCLU (aligné sur le stack d\'aires)', () => {
-            expect(pointStackedCapital(pt({ CELI: 10, REER: 20, NonReg: 30, Liquidites: 5, CELIAPP: 5 }))).toBe(65);
+    describe('pointStackedCapital (stack visible Retraite, AVEC CELIAPP depuis PH2-d-3)', () => {
+        it('somme Liquidites+NonReg+CELI+CELIAPP+REER (alignée sur le stack d\'aires complet)', () => {
+            expect(pointStackedCapital(pt({ CELI: 10, REER: 20, NonReg: 30, Liquidites: 5, CELIAPP: 5 }))).toBe(70);
             expect(pointStackedCapital(pt({ CELI: 10 }))).toBe(10);
             expect(pointStackedCapital(pt({}))).toBe(0);
         });

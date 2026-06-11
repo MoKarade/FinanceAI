@@ -7,12 +7,12 @@ import type { ProjectionChartPoint } from '../services/projection/types';
 
 /**
  * Capital « empilé » d'un point = somme des MÊMES comptes que le stack d'aires VISIBLE du graphe
- * Retraite (Liquidites + NonReg + CELI + REER). EXCLUT volontairement CELIAPP, que le stack ne trace
- * PAS (revue PH2-d) → la courbe verrouillée se superpose au sommet RÉEL du stack, sans flotter au-
- * dessus. (≠ le `TotalCapital` interne de Retirement qui, lui, inclut CELIAPP.)
+ * Retraite (Liquidites + NonReg + CELI + CELIAPP + REER). [PH2-d-3] : CELIAPP réintégré — l'aire
+ * manquait au stack (alors que TotalCapital l'a toujours inclus) ; l'aire ajoutée, la métrique
+ * verrouillée doit le compter aussi pour se superposer au sommet RÉEL du stack.
  */
 export const pointStackedCapital = (p: ProjectionChartPoint): number =>
-    (p.Liquidites ?? 0) + (p.NonReg ?? 0) + (p.CELI ?? 0) + (p.REER ?? 0);
+    (p.Liquidites ?? 0) + (p.NonReg ?? 0) + (p.CELI ?? 0) + (p.CELIAPP ?? 0) + (p.REER ?? 0);
 
 /**
  * Construit l'index `monthIndex → valeur` de la courbe VERROUILLÉE pour la tracer en référence.

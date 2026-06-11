@@ -86,12 +86,14 @@
   a11y) : rien de bloquant. Suivis non bloquants → PH2-d-1..4 ci-dessous. **→ Phase 2 (clé de voûte) TERMINÉE.**
 
 #### Suivis PH2-c (découverts à la revue panel PR #241 — non bloquants, le hoist est livré)
-- [ ] **[PH2-c-1]** 🔧 (MAJEUR) Dédupe `usePastPortfolioHistory` au niveau MODULE : PH2-c monte 2
-  instances sur Futur (ProjectionEngine + FutureProjection) → double fetch Finnhub + jonction
-  passé↔futur qui peut flotter transitoirement (mode réel, le temps du chargement ; départ de
-  projection stable car `liveCSVBalances`=prix actuel). Fix : cache de fetch partagé (module) +
-  notification, dans l'esprit de `_inflight` de runAsync.
-- [ ] **[PH2-c-2]** 🔧 (signal) Câbler `projectionStatus === 'error'` dans Dashboard/Investissement/
+- [x] **[PH2-c-1]** ✅ — fetch Finnhub de `usePastPortfolioHistory` DÉDUPLIQUÉ AU NIVEAU MODULE
+  (cache + signatures de lot + `useSyncExternalStore` partagés entre instances) : 1 seul fetch par lot
+  quel que soit le nombre d'instances, résultat poussé à toutes (jonction passé↔futur cohérente), et un
+  fetch en vol SURVIT au démontage d'une instance. Tests : 2 instances → 1 appel ; montage tardif →
+  servi du cache (tests/hooks/usePastPortfolioHistory.dedup.test.tsx).
+- [x] **[PH2-c-2]** ✅ — `ProjectionStaleBanner` (composant partagé, role=status) rendu dans Dashboard/
+  Investissement/Budget/Retraite : bandeau discret quand `projectionStatus === 'error'` (« les chiffres
+  affichés datent du dernier calcul réussi »). Câblé sur `projectionStatus === 'error'` dans Dashboard/Investissement/
   Budget/Retraite → bandeau discret « projection possiblement périmée (dernier recalcul échoué) » au-
   dessus de la courbe conservée. Aujourd'hui l'erreur n'est visible QUE sur Futur (pré-existant, mais
   PH2-c fournit enfin le véhicule `projectionStatus` pour corriger).
@@ -107,13 +109,13 @@
   DISCRIMINÉ (`ok` / `empty` / `unreadable`) ; au boot, `unreadable` (entrée présente mais clé device
   disparue / blob altéré) → `showToast` « Ta courbe verrouillée n'a pas pu être restaurée… » (jumeau de
   `decrypt_failed`). `empty` (rien stocké OU erreur d'accès IDB transitoire) reste silencieux. Test verrou OK.
-- [ ] **[PH2-d-2]** 🔧 (a11y) Tooltip Futur (`ExpertTooltip`) — afficher la valeur `lockedNetWorth` au
-  survol (avec `privacy-blur`). La légende-texte nomme déjà la courbe ; manque la valeur au survol.
-- [ ] **[PH2-d-3]** 🔧 (pré-existant) Graphe Retraite : le stack d'aires VISIBLE omet CELIAPP (4 aires)
+- [x] **[PH2-d-2]** ✅ — `ExpertTooltip` affiche le bloc « 🔒 Verrouillée » au survol (valeur figée +
+  écart vs live, `privacy-blur`), conditionnel à `displayData.lockedNetWorth` (présent sous verrou).
+- [x] **[PH2-d-3]** ✅ — aire CELIAPP ajoutée au stack Retraite + métrique verrouillée recomplétée (CELIAPP inclus) ; reste l'alternative texte SR (hors PH2-d, global). Ex-périmètre (pré-existant) Graphe Retraite : le stack d'aires VISIBLE omet CELIAPP (4 aires)
   alors que `TotalCapital` l'inclut (5) — d'où la métrique verrouillée alignée sur le stack (sans CELIAPP)
   en attendant. Ajouter l'aire CELIAPP au stack (+ légende native `iconType` reflétant le tireté) ;
   + à terme, alternative TEXTE/table SR aux graphes (manque global, hors PH2-d).
-- [ ] **[PH2-d-4]** 🧹 (doc) En-tête `secureKeyStore.ts` : la clé de device chiffre désormais 3 payloads
+- [x] **[PH2-d-4]** ✅ — en-tête secureKeyStore mis à jour (3 payloads : clés API + backups + courbe verrouillée). (doc) En-tête `secureKeyStore.ts` : la clé de device chiffre désormais 3 payloads
   (clés API + backups + courbe verrouillée) — mettre à jour le commentaire.
 
 ### Phase 3 — MODÈLE DE DONNÉES + ONGLET PROFIL ⏳ (plan-first) — dépend de : OK Marc post-PH2
@@ -138,17 +140,22 @@
   `<label>` aux inputs (`htmlFor`/`id` ou wrapping) dans RetirementIncomeCard, RetirementSettingsCard,
   UserConfigFields (salary), UsersCard, RepartitionField (`aria-label` sur le select). Dette d'app
   (8/30 fichiers seulement utilisent htmlFor) dont Profil est devenu le foyer.
-- [ ] **[SF-WARN]** 🔧 (revue #244, pré-existant) — `Retirement.tsx` fetchLiveTotals + `UsersCard.tsx`
+- [ ] **[DEAD-FLT]** 🧹 (découverte revue #245) — `Retirement.fetchLiveTotals` est INOPÉRANT :
+  il repose sur `services/finance.fetchPortfolioHistory` qui est un STUB `return []` → le bloc entier
+  (état liveCSVBalances + effet) ne produit jamais rien et donne une fausse impression de couverture.
+  Purger (et brancher les soldes sur la vraie source) ou implémenter réellement.
+- [x] **[SF-WARN]** ✅ — fetchLiveTotals (Retirement) + restore profils (UsersCard) routés vers logError (source network/storage). (revue #244, pré-existant) — `Retirement.tsx` fetchLiveTotals + `UsersCard.tsx`
   restore : `console.warn` sur de vrais échecs I/O → router vers `logError` (convention repo).
-- [ ] **[CPL-1]** 🔧 ⚠️ MONEY-CRITICAL (signalé Marc 2026-06-11) — **switch individuel↔couple** : (a) BLOQUER
-  le passage en mode couple tant qu'aucun partenaire n'est défini (nom/salaire du 2e user vides) ; (b) BUG :
-  avec UN seul utilisateur réel, basculer en couple CHANGE les courbes — le moteur ne doit produire AUCUNE
-  différence si le 2e user est vide. Suspects relevés au grep : `services/projection/setupSimulation.ts:143`
-  (`useTheo` → `incomeAnnaNetMonthly = theoIncome * 0.45` = revenu FANTÔME du 2e user) et `:149` (gross-up
-  `netMonthly * 12 * 1.35` même logique) ; + `activeIncome.ts:98` (`u2 = users[1]`) ; vérifier aussi crédits/
-  fiscalité par conjoint (fractionnement, PSV par conjoint) activés par la simple PRÉSENCE de users[1].
-  **Critères** : user solo → courbes STRICTEMENT identiques solo vs couple-sans-partenaire (test de parité) ;
-  switch couple gaté sur partenaire défini ; agents fiscal-accuracy + projection-validator au diff.
+- [x] **[CPL-1]** ✅ (signalé Marc 2026-06-11) — switch individuel↔couple GATÉ : « + Ajouter conjoint »
+  ouvre désormais un FORMULAIRE de définition (nom + âge REQUIS, salaire optionnel, bouton disabled sinon)
+  + avertissement explicite « passer en couple change les calculs » — plus de placeholder silencieux
+  (age 30/salaires 0). **Diagnostic calculs** (tests/services/coupleParity.test.ts) : en mode RÉEL, un
+  conjoint vide = ZÉRO revenu fantôme (computeIncomeBaseline neutre — le ×1.35 ne s'applique qu'à un net
+  non nul) ; la différence de courbes venait des RENTES D'ÉTAT/fiscalité du placeholder (PSV/SRG à ses
+  65 ans, imposition 2 têtes) — effets LÉGITIMES pour un vrai conjoint même sans revenu → PAS de
+  neutralisation moteur (elle fausserait les vrais couples), le gate UX est la correction. Le split
+  théorique 55/45 (useTheoretical) documenté au test. ⚠️ Reste à VALIDER par Marc en visuel : créer un
+  conjoint réel sans revenu DOIT changer les courbes (rentes d'État du conjoint) — c'est voulu.
 
 ### Phase 4 — REFONTES ⏳ (UN plan SÉPARÉ par onglet → OK Marc par onglet) — dépend de : PH2 (+PH3 pour FUT/RET)
 - [ ] **[PH4-FUT]** 🔧⏳ Refonte **Futur** : leviers OBLIGATOIRES avant calcul (l'actuel contenu

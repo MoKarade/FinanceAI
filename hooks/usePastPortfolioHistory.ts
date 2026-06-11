@@ -7,11 +7,20 @@
 // Toujours non bloquant : on rend d'abord la reconstruction avec ce qu'on a
 // (couverture éventuellement partielle), puis on l'enrichit quand le réseau
 // répond. No-fake : `coverage` < 1 signale la part estimée au prix actuel.
+//
+// [PH2-c-1] — le fetch Finnhub est DÉDUPLIQUÉ AU NIVEAU MODULE (cache + signatures de lot +
+// notification partagés entre TOUTES les instances du hook, via useSyncExternalStore). Depuis
+// PH2-c, le hook est monté 2× quand Futur est ouvert (ProjectionEngine app-level + FutureProjection) :
+// avec l'état par-instance d'avant, chaque instance refaisait les MÊMES requêtes (double fetch,
+// rate-limit) et pouvait diverger transitoirement (jonction passé↔futur flottante). Désormais :
+// un lot de symboles n'est fetché qu'UNE fois, le résultat est poussé à toutes les instances,
+// et un fetch en vol SURVIT au démontage d'une instance (l'autre en profite).
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { getEffectivePurchases } from '../utils/assetPurchases';
 import { getHistory, configureMarketDataProvider } from '../services/marketData';
+import { logError } from '../services/errorLogger';
 import {
     reconstructPortfolioHistory,
     type MinimalAsset,
@@ -20,6 +29,29 @@ import {
 import type { Asset } from '../types';
 
 const EMPTY_RESULT: PortfolioHistoryResult = { points: [], coverage: 1, firstDate: null };
+
+// ── [PH2-c-1] Cache de fetch au niveau MODULE (partagé entre instances) ──────
+type FetchedMap = Record<string, Array<{ date: string; price: number }>>;
+let _fetchedCache: FetchedMap = {};
+let _loadingCount = 0;
+/** Symboles déjà demandés (clé incluse : `finnhubKey::symbol`). Un symbole demandé SANS résultat
+ *  est RETIRÉ en fin de lot → retry possible (rate-limit transitoire, clé corrigée). */
+const _requestedSymbols = new Set<string>();
+const _listeners = new Set<() => void>();
+const _notify = () => { for (const l of _listeners) l(); };
+const _subscribe = (cb: () => void) => { _listeners.add(cb); return () => { _listeners.delete(cb); }; };
+// Snapshots STABLES entre notifications (réassignés uniquement avant _notify) — requis par
+// useSyncExternalStore pour ne pas boucler.
+const _getFetched = (): FetchedMap => _fetchedCache;
+const _getLoading = (): boolean => _loadingCount > 0;
+
+/** Reset (tests uniquement) : vide cache + symboles demandés + compteur. */
+export function _resetPastHistoryFetchCache(): void {
+    _fetchedCache = {};
+    _requestedSymbols.clear();
+    _loadingCount = 0;
+    _notify();
+}
 
 // Convertit un Asset du store en entrée minimale pour la reconstruction, en
 // utilisant getEffectivePurchases (gère le legacy dateBought/buyPrice).
@@ -47,18 +79,20 @@ export function usePastPortfolioHistory(): UsePastPortfolioHistoryResult {
     const finnhubKey = useFinanceStore((s) => s.apiKeys.finnhub);
     const isTestMode = useFinanceStore((s) => s.isTestMode);
 
-    // priceHistory récupéré via Finnhub (mode réel), indexé par symbole.
-    const [fetched, setFetched] = useState<Record<string, Array<{ date: string; price: number }>>>({});
-    const [isLoading, setIsLoading] = useState(false);
-    const requestedRef = useRef<string>('');
+    // [PH2-c-1] priceHistory récupéré via Finnhub — lu depuis le cache MODULE partagé :
+    // toutes les instances voient le même état, en même temps.
+    const fetched = useSyncExternalStore(_subscribe, _getFetched);
+    const isLoading = useSyncExternalStore(_subscribe, _getLoading);
 
     // Reconstruction immédiate avec ce qu'on a (priceHistory du store en test,
-    // + ce qui a déjà été récupéré en réel).
+    // + ce qui a déjà été récupéré en réel). ⚠️ Revue #245 (M3) : en mode TEST, on n'applique PAS
+    // le cache Finnhub — un fetch réel résolu APRÈS la bascule en test polluerait sinon la fixture
+    // d'un symbole partagé (XEQT réel vs XEQT persona) → fuite réel→test.
     const result = useMemo<PortfolioHistoryResult>(() => {
         if (!assets || assets.length === 0) return EMPTY_RESULT;
-        const minimal = assets.map((a) => toMinimal(a, fetched[a.symbol]));
+        const minimal = assets.map((a) => toMinimal(a, isTestMode ? undefined : fetched[a.symbol]));
         return reconstructPortfolioHistory(minimal, fxRates as Record<string, number>);
-    }, [assets, fxRates, fetched]);
+    }, [assets, fxRates, fetched, isTestMode]);
 
     // Mode réel : compléter priceHistory via Finnhub pour les titres qui n'en ont pas.
     useEffect(() => {
@@ -70,38 +104,58 @@ export function usePastPortfolioHistory(): UsePastPortfolioHistoryResult {
         });
         if (missing.length === 0) return;
 
-        // Évite de relancer le même lot de symboles en boucle.
-        const sig = missing.map((a) => a.symbol).sort().join('|');
-        if (requestedRef.current === sig) return;
-        requestedRef.current = sig;
+        // [PH2-c-1, durci revue #245] Dédup GLOBALE par SYMBOLE (pas par lot) et par CLÉ :
+        //  - par symbole : un actif ajouté pendant un fetch en vol ne re-déclenche QUE lui ;
+        //  - clé incluse : corriger une clé Finnhub invalide ré-autorise le fetch ;
+        //  - un symbole demandé SANS résultat est RETIRÉ du Set en fin de lot → retry possible au
+        //    prochain changement de deps (rate-limit transitoire ≠ blocage de session).
+        const toFetch = missing.filter((a) => !_requestedSymbols.has(`${finnhubKey}::${a.symbol}`));
+        if (toFetch.length === 0) return;
+        for (const a of toFetch) _requestedSymbols.add(`${finnhubKey}::${a.symbol}`);
 
-        let cancelled = false;
-        setIsLoading(true);
-        configureMarketDataProvider({ finnhubKey });
+        _loadingCount++;
+        _notify();
 
         const today = new Date();
+        // PAS de flag `cancelled` : le fetch écrit le cache MODULE même si CETTE instance se
+        // démonte (l'autre instance — ou un remount — en profite ; cf PH2-b worker chaud).
         (async () => {
-            const next: Record<string, Array<{ date: string; price: number }>> = {};
-            for (const a of missing) {
-                const purchases = getEffectivePurchases(a);
-                const firstDate = purchases.length ? purchases[0].date : a.dateBought;
-                if (!firstDate) continue;
-                try {
-                    const hist = await getHistory(a.symbol, new Date(`${firstDate}T00:00:00Z`), today);
-                    if (hist.length > 0) {
-                        next[a.symbol] = hist.map((h) => ({ date: h.date, price: h.close }));
+            const next: FetchedMap = {};
+            try {
+                configureMarketDataProvider({ finnhubKey });
+                for (const a of toFetch) {
+                    const purchases = getEffectivePurchases(a);
+                    const firstDate = purchases.length ? purchases[0].date : a.dateBought;
+                    if (!firstDate) continue;
+                    try {
+                        const hist = await getHistory(a.symbol, new Date(`${firstDate}T00:00:00Z`), today);
+                        if (hist.length > 0) {
+                            next[a.symbol] = hist.map((h) => ({ date: h.date, price: h.close }));
+                        }
+                    } catch (e) {
+                        // Les échecs provider « normaux » (introuvable, rate-limit) sont déjà
+                        // journalisés en amont et reviennent en [] — ce catch n'attrape que
+                        // l'EXOTIQUE (couche cache/transport) : on le journalise.
+                        logError({ source: 'network', severity: 'warning', message: `Historique ${a.symbol} : échec inattendu (couche transport).`, error: e instanceof Error ? e : new Error(String(e)) });
                     }
-                } catch {
-                    // titre introuvable / rate limit : on laisse l'estimation au prix actuel.
                 }
+            } finally {
+                // Revue #245 (M2) — décrément GARANTI (état module : un compteur coincé figerait
+                // isLoading=true pour toutes les instances).
+                if (Object.keys(next).length > 0) {
+                    _fetchedCache = { ..._fetchedCache, ...next };
+                }
+                // Retry : les symboles demandés restés SANS données redeviennent demandables.
+                for (const a of toFetch) {
+                    if (!next[a.symbol]) _requestedSymbols.delete(`${finnhubKey}::${a.symbol}`);
+                }
+                _loadingCount = Math.max(0, _loadingCount - 1);
+                _notify();
             }
-            if (!cancelled && Object.keys(next).length > 0) {
-                setFetched((prev) => ({ ...prev, ...next }));
-            }
-            if (!cancelled) setIsLoading(false);
-        })();
-
-        return () => { cancelled = true; };
+        })().catch((e) => {
+            // Filet final (un throw dans _notify/listeners) : jamais d'unhandled rejection muette.
+            logError({ source: 'network', severity: 'warning', message: 'usePastPortfolioHistory: échec du lot de fetch.', error: e instanceof Error ? e : new Error(String(e)) });
+        });
     }, [assets, finnhubKey, isTestMode, fetched]);
 
     return { ...result, isLoading };

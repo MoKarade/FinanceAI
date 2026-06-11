@@ -1,9 +1,9 @@
 // components/settings/sections/UsersCard.tsx
 // Carte « Profils & utilisateurs » : profils enregistrés (localStorage) +
 // identité de base par utilisateur (nom, âge, immigré) + ajout/retrait conjoint.
-// NB (demande Marc) : les autres parties ont été déplacées dans leurs onglets —
-// salaires + options fiscales (CELIAPP/FE) → Impôts ; enfants (REEE) → Enfant ;
-// profil détaillé (santé/carrière) → Retraite ; mode de répartition → Budget.
+// PH3/PH3-c : TOUT le setup utilisateur vit désormais dans l'onglet PROFIL (salaires, fiscal,
+// répartition, carrière & rémunération variable, retraite, enfants) — cette carte = identité
+// de base + profils enregistrés, rendue en tête de Profil.
 
 import React from 'react';
 import { Card } from '../../ui/Card';

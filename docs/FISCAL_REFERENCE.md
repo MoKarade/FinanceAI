@@ -430,6 +430,17 @@ Le facteur 71 ans (5,28 %) ne s'applique qu'à une conversion **volontaire préc
 ## 8. Immobilier (SCHL / OSFI / mutations / TPS-TVQ neuf) — `services/realEstate.ts`
 > Transcrit FA-7 (2026-06-10) depuis le code implémenté (ADR 009, vérifié à la saisie 2026-05).
 
+### Gain en capital immobilier — règles & limites de modélisation (PH4-FUT-B-4, 2026-06-11)
+- **Exemption pour résidence principale** (LIR 40(2)b) : le gain sur la vente de la RÉSIDENCE PRINCIPALE
+  est **exempt d'impôt** (100 % si RP unique sur toute la période de détention). Appliqué par le levier
+  **downsizing** (`realEstateMonth.ts` : l'équité libérée n'incrémente PAS `accCapitalGainsYear`) → aucun
+  impôt, aucun effet sur les assiettes de revenu (clawback PSV/SRG, FSS, RAMQ). Conforme.
+- ⚠️ **Limite assumée** : le gain immobilier d'un **locatif** (≠ RP) n'est PAS modélisé à la disposition
+  (vente générique `monthlyEvents`) ni à la succession (`estateCalculation`) — préexistant, cf BACKLOG
+  `[RE-GAIN]`. Le downsizing, lui, est correctement borné à `isPrimaryResidence`.
+- `DOWNSIZE_RELEASE_PCT = 0.4` est une **hypothèse de modèle** (fraction d'équité libérée en rachetant
+  plus petit), **pas une valeur fiscale** — ajustable, non sourcée.
+
 ### Stress test hypothécaire B-20 (`calculateB20StressTest`) — source OSFI, ligne directrice B-20
 | Constante | Valeur | Note |
 |---|---|---|

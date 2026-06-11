@@ -79,7 +79,16 @@ export interface RealEstateCtx {
     currentRentExpense: number;
     /** C3 suite — si true, saute le RAP à l'achat (CELI avant REER non-imposable). */
     skipRapForPurchase?: boolean;
+    /** PH4-FUT-B-4 — true UNIQUEMENT au mois exact de la retraite si le levier downsizing est actif :
+     *  déclenche la vente+rachat-plus-petit de la résidence principale (cf. DOWNSIZE_RELEASE_PCT). */
+    downsizeThisMonth?: boolean;
 }
+
+// PH4-FUT-B-4 — fraction de l'équité de la résidence principale LIBÉRÉE en placements lors du
+// downsizing (le reste finance un bien plus petit payé cash). HYPOTHÈSE DE MODÈLE (ni fiscale ni
+// sourcée) : ~40 % = vendre une maison et en racheter une à ~60 % de l'équité (ordre de grandeur
+// d'un downsizing réel maison → condo/plus petit). Le gain est EXEMPT d'impôt (résidence principale, ARC).
+export const DOWNSIZE_RELEASE_PCT = 0.4;
 
 import { handleNonRegSale } from './portfolioOps';
 
@@ -101,7 +110,32 @@ export function processRealEstate(
         grossMarcBaseAnnual, grossAnnaBaseAnnual, incomeRetirement,
         useSmithManoeuvre, currentRentExpense,
         skipRapForPurchase = false,
+        downsizeThisMonth = false,
     } = ctx;
+
+    // PH4-FUT-B-4 — DOWNSIZING (au mois exact de la retraite) : vendre la résidence principale et
+    // racheter plus petit. Libère DOWNSIZE_RELEASE_PCT de l'équité nette en LIQUIDE (réinvesti par la
+    // cascade des mois suivants) ; le reste reste en immobilier dans un bien payé cash (hypothèque 0,
+    // plus de paiement). Gain EXEMPT d'impôt (résidence principale, ARC) → on ne touche PAS
+    // accCapitalGainsYear. Underwater (hypothèque > valeur) → équité 0 → aucun effet (garde). Locataire
+    // (aucune résidence principale) → findIndex −1 → aucun effet. S'exécute une seule fois (mois unique).
+    if (downsizeThisMonth) {
+        const idx = activeRE.findIndex((g) => g.isPrimaryResidence);
+        const prop = idx >= 0 ? propertiesState[idx] : undefined;
+        if (prop && prop.isBought && !prop.isSold) {
+            const equity = Math.max(0, prop.currentValue - prop.mortgage);
+            if (equity > 0) {
+                const released = equity * DOWNSIZE_RELEASE_PCT;
+                state.liquid += released;                 // exemption résidence principale : zéro impôt
+                prop.currentValue = equity - released;    // bien plus petit, payé cash
+                prop.mortgage = 0;
+                prop.calculatedPmt = 0;                   // plus d'hypothèque à payer
+                state.lifeEventLogs.push(
+                    `🏠 Downsizing retraite : équité libérée +${Math.round(released).toLocaleString('fr-CA')}$ → placements`,
+                );
+            }
+        }
+    }
 
     let totalImmoHypo = 0;
     let totalImmoEquity = 0;

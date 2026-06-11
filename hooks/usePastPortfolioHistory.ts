@@ -7,8 +7,16 @@
 // Toujours non bloquant : on rend d'abord la reconstruction avec ce qu'on a
 // (couverture éventuellement partielle), puis on l'enrichit quand le réseau
 // répond. No-fake : `coverage` < 1 signale la part estimée au prix actuel.
+//
+// [PH2-c-1] — le fetch Finnhub est DÉDUPLIQUÉ AU NIVEAU MODULE (cache + signatures de lot +
+// notification partagés entre TOUTES les instances du hook, via useSyncExternalStore). Depuis
+// PH2-c, le hook est monté 2× quand Futur est ouvert (ProjectionEngine app-level + FutureProjection) :
+// avec l'état par-instance d'avant, chaque instance refaisait les MÊMES requêtes (double fetch,
+// rate-limit) et pouvait diverger transitoirement (jonction passé↔futur flottante). Désormais :
+// un lot de symboles n'est fetché qu'UNE fois, le résultat est poussé à toutes les instances,
+// et un fetch en vol SURVIT au démontage d'une instance (l'autre en profite).
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { getEffectivePurchases } from '../utils/assetPurchases';
 import { getHistory, configureMarketDataProvider } from '../services/marketData';
@@ -20,6 +28,29 @@ import {
 import type { Asset } from '../types';
 
 const EMPTY_RESULT: PortfolioHistoryResult = { points: [], coverage: 1, firstDate: null };
+
+// ── [PH2-c-1] Cache de fetch au niveau MODULE (partagé entre instances) ──────
+type FetchedMap = Record<string, Array<{ date: string; price: number }>>;
+let _fetchedCache: FetchedMap = {};
+let _loadingCount = 0;
+/** Lots (signatures de symboles) déjà demandés — jamais re-fetchés (même sémantique que
+ *  l'ancien `requestedRef` par-instance, mais global). */
+const _requestedSigs = new Set<string>();
+const _listeners = new Set<() => void>();
+const _notify = () => { for (const l of _listeners) l(); };
+const _subscribe = (cb: () => void) => { _listeners.add(cb); return () => { _listeners.delete(cb); }; };
+// Snapshots STABLES entre notifications (réassignés uniquement avant _notify) — requis par
+// useSyncExternalStore pour ne pas boucler.
+const _getFetched = (): FetchedMap => _fetchedCache;
+const _getLoading = (): boolean => _loadingCount > 0;
+
+/** Reset (tests uniquement) : vide cache + signatures + compteur. */
+export function _resetPastHistoryFetchCache(): void {
+    _fetchedCache = {};
+    _requestedSigs.clear();
+    _loadingCount = 0;
+    _notify();
+}
 
 // Convertit un Asset du store en entrée minimale pour la reconstruction, en
 // utilisant getEffectivePurchases (gère le legacy dateBought/buyPrice).
@@ -47,10 +78,10 @@ export function usePastPortfolioHistory(): UsePastPortfolioHistoryResult {
     const finnhubKey = useFinanceStore((s) => s.apiKeys.finnhub);
     const isTestMode = useFinanceStore((s) => s.isTestMode);
 
-    // priceHistory récupéré via Finnhub (mode réel), indexé par symbole.
-    const [fetched, setFetched] = useState<Record<string, Array<{ date: string; price: number }>>>({});
-    const [isLoading, setIsLoading] = useState(false);
-    const requestedRef = useRef<string>('');
+    // [PH2-c-1] priceHistory récupéré via Finnhub — lu depuis le cache MODULE partagé :
+    // toutes les instances voient le même état, en même temps.
+    const fetched = useSyncExternalStore(_subscribe, _getFetched);
+    const isLoading = useSyncExternalStore(_subscribe, _getLoading);
 
     // Reconstruction immédiate avec ce qu'on a (priceHistory du store en test,
     // + ce qui a déjà été récupéré en réel).
@@ -70,18 +101,21 @@ export function usePastPortfolioHistory(): UsePastPortfolioHistoryResult {
         });
         if (missing.length === 0) return;
 
-        // Évite de relancer le même lot de symboles en boucle.
+        // [PH2-c-1] Dédup GLOBALE : si une autre instance a déjà demandé ce lot (ou le demande
+        // en ce moment), on ne relance rien — le résultat arrivera par la notification du cache.
         const sig = missing.map((a) => a.symbol).sort().join('|');
-        if (requestedRef.current === sig) return;
-        requestedRef.current = sig;
+        if (_requestedSigs.has(sig)) return;
+        _requestedSigs.add(sig);
 
-        let cancelled = false;
-        setIsLoading(true);
+        _loadingCount++;
+        _notify();
         configureMarketDataProvider({ finnhubKey });
 
         const today = new Date();
+        // PAS de flag `cancelled` : le fetch écrit le cache MODULE même si CETTE instance se
+        // démonte (l'autre instance — ou un remount — en profite ; cf PH2-b worker chaud).
         (async () => {
-            const next: Record<string, Array<{ date: string; price: number }>> = {};
+            const next: FetchedMap = {};
             for (const a of missing) {
                 const purchases = getEffectivePurchases(a);
                 const firstDate = purchases.length ? purchases[0].date : a.dateBought;
@@ -95,13 +129,12 @@ export function usePastPortfolioHistory(): UsePastPortfolioHistoryResult {
                     // titre introuvable / rate limit : on laisse l'estimation au prix actuel.
                 }
             }
-            if (!cancelled && Object.keys(next).length > 0) {
-                setFetched((prev) => ({ ...prev, ...next }));
+            if (Object.keys(next).length > 0) {
+                _fetchedCache = { ..._fetchedCache, ...next };
             }
-            if (!cancelled) setIsLoading(false);
+            _loadingCount = Math.max(0, _loadingCount - 1);
+            _notify();
         })();
-
-        return () => { cancelled = true; };
     }, [assets, finnhubKey, isTestMode, fetched]);
 
     return { ...result, isLoading };

@@ -86,11 +86,11 @@
   a11y) : rien de bloquant. Suivis non bloquants → PH2-d-1..4 ci-dessous. **→ Phase 2 (clé de voûte) TERMINÉE.**
 
 #### Suivis PH2-c (découverts à la revue panel PR #241 — non bloquants, le hoist est livré)
-- [ ] **[PH2-c-1]** 🔧 (MAJEUR) Dédupe `usePastPortfolioHistory` au niveau MODULE : PH2-c monte 2
-  instances sur Futur (ProjectionEngine + FutureProjection) → double fetch Finnhub + jonction
-  passé↔futur qui peut flotter transitoirement (mode réel, le temps du chargement ; départ de
-  projection stable car `liveCSVBalances`=prix actuel). Fix : cache de fetch partagé (module) +
-  notification, dans l'esprit de `_inflight` de runAsync.
+- [x] **[PH2-c-1]** ✅ — fetch Finnhub de `usePastPortfolioHistory` DÉDUPLIQUÉ AU NIVEAU MODULE
+  (cache + signatures de lot + `useSyncExternalStore` partagés entre instances) : 1 seul fetch par lot
+  quel que soit le nombre d'instances, résultat poussé à toutes (jonction passé↔futur cohérente), et un
+  fetch en vol SURVIT au démontage d'une instance. Tests : 2 instances → 1 appel ; montage tardif →
+  servi du cache (tests/hooks/usePastPortfolioHistory.dedup.test.tsx).
 - [ ] **[PH2-c-2]** 🔧 (signal) Câbler `projectionStatus === 'error'` dans Dashboard/Investissement/
   Budget/Retraite → bandeau discret « projection possiblement périmée (dernier recalcul échoué) » au-
   dessus de la courbe conservée. Aujourd'hui l'erreur n'est visible QUE sur Futur (pré-existant, mais

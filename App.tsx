@@ -75,6 +75,15 @@ export const App: React.FC = () => {
         if (errorHandlersInstalled.current) return;
         errorHandlersInstalled.current = true;
         installGlobalErrorHandlers();
+        // PH2-d — restaure la courbe VERROUILLÉE depuis IndexedDB si un verrou était actif au dernier
+        // reload (le booléen isProjectionLocked est persisté, le gros blob non → relu de l'IDB ici).
+        // Absence/échec → setLockedProjection(null) retombe proprement « déverrouillé ».
+        if (useFinanceStore.getState().isProjectionLocked) {
+            import('./services/lockedProjectionStore')
+                .then(({ loadLockedProjection }) => loadLockedProjection())
+                .then((r) => useFinanceStore.getState().setLockedProjection(r))
+                .catch(() => { /* module/IDB HS : on reste déverrouillé en mémoire */ });
+        }
         // PH1-a (revue) : le clear du flag « chunk reload attempted » au mount a été RETIRÉ —
         // il tournait AVANT la résolution des chunks lazy du boot et neutralisait la garde
         // anti-boucle (échec persistant ⇒ reload infini). La garde est désormais un timestamp

@@ -9,6 +9,7 @@ import { BudgetConfig, BudgetCategory, RealEstateGoal, RetirementGoal, Transacti
 import { ProjectionResult, ProjectionChartPoint } from '../services/projection/types';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { usePendingFocus } from '../utils/usePendingFocus';
+import { buildLockedByMonth } from '../utils/lockedCurveOverlay';
 
 // Sprint 2 PH2 — constante stable pour éviter de créer un nouveau [] à chaque
 // render (qui invaliderait les useMemo deps en aval).
@@ -167,6 +168,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const results = useFinanceStore(s => s.lastProjection);
     const { chartData = [] as ProjectionChartPoint[], fireNumber = 0, allResults = [] as ProjectionResult[] } = results ?? {};
 
+    // PH2-d — courbe VERROUILLÉE (référence figée) : lue du store ; le moteur continue de publier
+    // `results` en direct (aperçu). Verrouiller/déverrouiller = snapshot + persistance IndexedDB.
+    const lockedProjection = useFinanceStore(s => s.lockedProjection);
+    const isProjectionLocked = useFinanceStore(s => s.isProjectionLocked);
+    const lockProjection = useFinanceStore(s => s.lockProjection);
+    const unlockProjection = useFinanceStore(s => s.unlockProjection);
+
     // G21 C5 + [UI-SCEN] — « Appliquer » la stratégie gagnante de l'optimiseur aux
     // paramètres réels : leviers orthogonaux via setters, ordre de retrait via le
     // PARAMÈTRE withdrawalStrategy, report des rentes via rrqStartAge/psvStartAge (#210).
@@ -256,10 +264,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         }
         return out;
     }, [pastHistory.points, startYear, startMonth, transactions, calculatedStartingCash, realEstateGoals]);
-    const displayData = useMemo(
-        () => (pastPrefix.length ? [...pastPrefix, ...chartData] : chartData),
-        [pastPrefix, chartData],
+    // PH2-d — index NetWorth de la courbe VERROUILLÉE par monthIndex (référence à superposer).
+    const lockedByMonth = useMemo(
+        () => buildLockedByMonth(lockedProjection, isProjectionLocked, (p) => p.NetWorth ?? NaN),
+        [isProjectionLocked, lockedProjection],
     );
+    const displayData = useMemo(() => {
+        const base = pastPrefix.length ? [...pastPrefix, ...chartData] : chartData;
+        // Sous verrou : on ajoute `lockedNetWorth` à chaque point (référence figée) → 2e courbe tracée.
+        if (!lockedByMonth) return base;
+        return base.map((d) => ({ ...d, lockedNetWorth: lockedByMonth.get((d as { monthIndex: number }).monthIndex) }));
+    }, [pastPrefix, chartData, lockedByMonth]);
     const pastStartIndex = pastPrefix.length ? pastPrefix[0].monthIndex : 0;
 
     // PH2-c — la PUBLICATION dans store.lastProjection est faite par ProjectionEngine (app-level),
@@ -584,6 +599,27 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         <span className="text-tiny text-ink-500 hidden md:block" aria-hidden="true">
                             Clic = détail · molette = zoom · glisser = défiler
                         </span>
+                        {/* PH2-d — verrou de courbe : fige la courbe courante comme référence (persistée IDB). */}
+                        {isProjectionLocked ? (
+                            <button
+                                type="button"
+                                onClick={unlockProjection}
+                                className="px-2 py-1 text-tiny font-bold rounded text-amber-300 hover:text-amber-100 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 transition-colors focus-ring"
+                                title="Déverrouiller : revenir à la courbe live seule"
+                            >
+                                <span aria-hidden="true">🔓</span> Déverrouiller
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => { if (results) lockProjection(results); }}
+                                disabled={!results || isComputing}
+                                className="px-2 py-1 text-tiny font-bold rounded text-ink-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors focus-ring disabled:opacity-40 disabled:cursor-not-allowed"
+                                title="Verrouiller cette courbe comme référence (persistée jusqu'au déverrouillage)"
+                            >
+                                <span aria-hidden="true">🔒</span> Verrouiller
+                            </button>
+                        )}
                         <button
                             type="button"
                             onClick={() => zoom.containerEl.current?.requestFullscreen?.()}
@@ -602,6 +638,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             Passé réel des placements{pastHistory.firstDate ? ` depuis ${pastHistory.firstDate.slice(0, 7)}` : ''}
                             {pastHistory.isLoading ? ' · chargement des prix…' : (pastHistory.coverage < 0.99 ? ' · partiellement estimé aux prix actuels' : '')}
                         </span>
+                    </div>
+                )}
+                {/* PH2-d — légende TEXTE de la courbe verrouillée (la légende custom du graphe ne la
+                    liste pas) : label accessible + repère NON-couleur (trait tireté ambre). */}
+                {lockedByMonth && (
+                    <div className="-mt-1 mb-2 text-tiny text-amber-300/90 flex items-center gap-1.5 flex-wrap">
+                        <span aria-hidden="true" className="inline-block w-5 border-t-2 border-dashed border-amber-400" />
+                        <span>Courbe verrouillée — référence figée (l'aperçu live continue de se recalculer).</span>
                     </div>
                 )}
                 {/* Hauteur responsive : 380px mobile, 500px tablet, 650px desktop */}
@@ -680,6 +724,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             )}
 
                             {isVisible('NetWorth') && <Line type="monotone" dataKey="NetWorth" stroke="#fff" strokeWidth={3} dot={false} name="Valeur Nette Totale" isAnimationActive={false}/>}
+                            {/* PH2-d — courbe VERROUILLÉE (référence figée), superposée à l'aperçu live. */}
+                            {lockedByMonth && <Line type="monotone" dataKey="lockedNetWorth" stroke="#fbbf24" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Courbe verrouillée 🔒" isAnimationActive={false} />}
 
                             {isVisible('events') && shownLifeEvents.map((evt, i) => (
                                 <ReferenceDot

@@ -71,9 +71,13 @@
   bloquant), silent-failure (clean), projection-validator (1895 tests verts). `performance-optimizer`
   NON lancé — diff = orchestration pure (Map dédup + booléen store + repli), zéro calcul ajouté, deux
   effets perf POSITIFS (worker chaud + 0 calcul MC dupliqué) → l'agent n'aurait rien à signaler.
-- [ ] **[PH2-c]** 🔧 Source UNIQUE de la courbe : Futur et Retraite lisent le MÊME résultat
-  (`lastProjection`) ; modifier les params dans Futur met à jour Retraite. **Critères** : même
-  série de points dans les deux onglets (assertion de test), zéro recalcul parallèle divergent.
+- [x] **[PH2-c]** ✅ mergé #241 — moteur de projection hoisté AU NIVEAU APP (`ProjectionEngine`
+  headless + lazy, monté dans App) : calcule + publie `lastProjection`, source TOUJOURS peuplée quel
+  que soit l'onglet (avant, seul Futur monté calculait → Dashboard/Retraite à `ProjectionRequired`).
+  `hooks/useSimulationParams` partagé moteur↔Futur (params identiques, zéro divergence) ; Futur devient
+  pur CONSOMMATEUR ; `projectionStatus` au store (transitoire, exclu persist+sélecteur App = anti-cascade).
+  Garde no-fake-data (prérequis Futur). Revu par le panel complet (rien de bloquant, invariants OK,
+  1900 tests). Suivis non bloquants → PH2-c-1..4 ci-dessous.
 - [ ] **[PH2-d]** 🔧 Verrouillage + persistance **IndexedDB** : une courbe choisie et VERROUILLÉE
   se retrouve IDENTIQUE à chaque réouverture de l'app, jusqu'à déverrouillage. **Critères** :
   reload + réouverture → mêmes points sans recalcul ; déverrouiller → recalcul possible.
@@ -96,6 +100,21 @@
 - [ ] **[PH2-c-4]** 🧪 Test DIRECT de `useSimulationParams` (renderHook) comparant `params` à
   l'assemblage de référence par persona — parité aujourd'hui prouvée transitivement
   (buildSimulationParams.parity + ProjectionEngine e2e), pas par un test du hook lui-même.
+
+#### Suivis PH2-d (découverts à la revue panel PR #242 — non bloquants, le verrou est livré)
+- [ ] **[PH2-d-1]** ⚠️ **DÉCISION MARC** (silent-failure MOYEN) : verrou présent mais clé de device
+  absente au boot (nav privée, IDB vidée) → perte SILENCIEUSE de la courbe verrouillée. Le cas JUMEAU
+  des clés API (`decrypt_failed`) fait déjà un `showToast` (App.tsx:241). Soit aligner (distinguer
+  'vide' vs 'indéchiffrable' dans `loadLockedProjection` → toast au boot), soit assumer le silence
+  pour cette feature de confort. Asymétrie probablement involontaire → trancher.
+- [ ] **[PH2-d-2]** 🔧 (a11y) Tooltip Futur (`ExpertTooltip`) — afficher la valeur `lockedNetWorth` au
+  survol (avec `privacy-blur`). La légende-texte nomme déjà la courbe ; manque la valeur au survol.
+- [ ] **[PH2-d-3]** 🔧 (pré-existant) Graphe Retraite : le stack d'aires VISIBLE omet CELIAPP (4 aires)
+  alors que `TotalCapital` l'inclut (5) — d'où la métrique verrouillée alignée sur le stack (sans CELIAPP)
+  en attendant. Ajouter l'aire CELIAPP au stack (+ légende native `iconType` reflétant le tireté) ;
+  + à terme, alternative TEXTE/table SR aux graphes (manque global, hors PH2-d).
+- [ ] **[PH2-d-4]** 🧹 (doc) En-tête `secureKeyStore.ts` : la clé de device chiffre désormais 3 payloads
+  (clés API + backups + courbe verrouillée) — mettre à jour le commentaire.
 
 ### Phase 3 — MODÈLE DE DONNÉES + ONGLET PROFIL ⏳ (plan-first) — dépend de : OK Marc post-PH2
 - [ ] **[PH3-a]** 🔧 Nouvel onglet **Profil** remplaçant ENTIÈREMENT le Profil de Configuration :

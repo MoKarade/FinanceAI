@@ -32,12 +32,16 @@
 > + PH2-c-1 (dédup module fetch Finnhub durcie : par symbole+clé, retry, anti-fuite test) + PH2-c-2
 > (ProjectionStaleBanner inter-onglets) + PH2-d-2 (tooltip verrou) + PH2-d-3 (aire CELIAPP) + SF-WARN ·
 > #246 PH2-c-4 (parité directe du hook, 7 personas) + A11Y-LBL (18 labels) + DEAD-FLT (purge
-> fetchLiveTotals inopérant) + primitive **PrivateAmount** · **#247 (en cours de merge)** : D6-SR
+> fetchLiveTotals inopérant) + primitive **PrivateAmount** · #247 : D6-SR
 > (migration PrivateAmount : KPIStat levier + 21 sites — montants masqués aux SR en mode privé)
 > + **PV-11** (goalShortfalls structuré, retraits goals aux séries withdrawal*, clamp liquid négatif ;
 > validé projection-validator 1927/1927, réserve per-conjoint assumée → PV-11e).
-> **RESTE actionnable** : **FA-8** (lot mineurs fiscaux — fiscal-accuracy au diff) · **PH3-c** (purge) ·
-> PV-11e (test pinnant) · D6-SR-2 / DEAD-FLT-2 / A11Y hors-Profil (opportuniste). ⚠️ Phase 4 : OK Marc requis.
+> · **#248 FA-8** (lot fiscal : 2 vrais bugs — cap clawback PSV versée + assiette dividendes ; panel
+> fiscal-accuracy AUCUN BLOQUANT ; 11 tests preuve-par-mutation) · **#249 PH3-c** (19 champs profil morts
+> purgés, contre-audit complet, zéro migration — Phase 3 100 % TERMINÉE).
+> **BACKLOG ACTIONNABLE VIDÉ** (10 PR mergées 2026-06-11). Restent : 🧭 décisions Marc (PH3-c-bis,
+> PH1-b/Q2, FA-6, ITEM-2A/2C, P0-*) · suivis opportunistes (PV-11e test pinnant, D6-SR-2, DEAD-FLT-2,
+> CA-xx) · **Phase 4 (refontes par onglet) : plan-first + OK Marc REQUIS par onglet.**
 >
 > Session 2026-06-10 — **TOP 10 [UI-EPURE] COMPLET + 5 fiscaux MAJEURS + [UI-SCEN]**. Build/tsc/tests verts.
 > - **Épuration UI (EP-1..EP-10)** — 4 PR (#225 EP-1/2, #226 EP-3/4/5, #227 EP-6/7/10, #228 EP-8) :

@@ -173,6 +173,20 @@
   orphelins, candidats audit · `rsuYearsRemaining` : consommé par le moteur mais SANS éditeur UI
   (défaut 99 ans) — ajouter le champ à la section carrière ou retirer du moteur.
 
+#### Phase 4 — onglet FUTUR « leviers-d'abord » (en cours)
+- [x] **[PH4-FUT-A]** ✅ (PR-A) — calcul-sur-clic + retrait des « plans ». La courbe ET le bandeau
+  KPI ne s'affichent QUE sur clic « Calculer » (signe `params` ENTIER → aucune entrée ne met la courbe
+  à jour en douce ; état « périmé » si une entrée change après calcul). Mode « Test rapide » (5
+  stratégies-types / RobustnessPanel) RETIRÉ → l'Optimisation montre directement les leviers (recherche
+  Monte-Carlo). Chaîne morte robustesse purgée (strategyRobustness.ts, runRobustnessRankingAsync,
+  branche worker 'robustness'). Panel : code-reviewer (MAJEUR signature corrigé), silent-failure (RAS),
+  a11y (propre, aria-busy ajouté).
+- [ ] **[PH4-FUT-B]** 🔧 (PR-B, suivant) — 4 nouveaux leviers (choix Marc) : Fractionnement pension 65+
+  (moteur déjà capable → ON/OFF, fiscal-accuracy) · Taux d'épargne (+X %/mois) · Profil de rendement
+  (conservateur/équilibré/agressif → presets returnRates) · Downsizing immo retraite (le plus lourd).
+  Pattern : StrategyConfig + LEVER_LIBRARY + applied* (ProjectionConfig) + runScenario + strategySpace +
+  tests + panel (projection-validator + fiscal-accuracy + perf).
+
 ### Phase 4 — REFONTES ⏳ (UN plan SÉPARÉ par onglet → OK Marc par onglet) — dépend de : PH2 (+PH3 pour FUT/RET)
 - [ ] **[PH4-FUT]** 🔧⏳ Refonte **Futur** : leviers OBLIGATOIRES avant calcul (l'actuel contenu
   d'Optimisation remonte en amont) ; la courbe affichée = toujours la MEILLEURE selon les leviers ;

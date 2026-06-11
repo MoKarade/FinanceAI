@@ -5,7 +5,6 @@ import { RRIF_RATES, welcomeTax } from './projection/helpers';
 import { salaryShares, splitByShares, stepReerByUser, addByWeights } from './projection/perUserBalances';
 import { logError } from './errorLogger';
 import { runMonteCarlo, type MonteCarloResult } from './projection/monteCarlo';
-import { rankStrategiesByRobustness, type RobustnessRanking, type RankRobustnessOptions } from './projection/strategyRobustness';
 import type { EngineOverrides, StrategyConfig } from './projection/strategyConfig';
 import { runStrategySearch, type StrategySearchResult, type RunStrategySearchOptions } from './projection/strategySearch';
 import { ASSET_LOCATION_BONUS_PP } from './projection/strategySpace';
@@ -35,7 +34,6 @@ import { computeMonthlyMarketRates, type StressTestConfig } from './projection/m
 import { computeEffectiveExpenseInflation, computeMonthlyWithholding } from './projection/monthlyCalcs';
 import { type AllocationStrategy, type FutureScenarioType, type ProjectionResult } from './projection/types';
 export type { AllocationStrategy, FutureScenarioType, ProjectionChartPoint, ProjectionResult } from './projection/types';
-export type { RobustnessRanking, StrategyRobustness, RankRobustnessOptions } from './projection/strategyRobustness';
 export type { StrategySearchResult, ConfigResult, RunStrategySearchOptions } from './projection/strategySearch';
 export type { StrategyConfig } from './projection/strategyConfig';
 export {
@@ -1570,15 +1568,6 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
         bestStrategyIdx: results.indexOf(best)
     };
 };
-
-// G21 C4 — point d'entrée du classement par robustesse. Injecte le runScenario
-// privé dans rankStrategiesByRobustness (qui ne peut pas l'importer sans créer
-// une dépendance circulaire). Coûteux (5 × jusqu'à 1000 sims) → appeler via le
-// Web Worker (runRobustnessRankingAsync), pas sur le thread de rendu.
-export const calculateRobustnessRanking = (
-    params: SimulationParams,
-    opts: RankRobustnessOptions = {},
-): RobustnessRanking => rankStrategiesByRobustness(runScenario, params, opts);
 
 // G21 C5 commit 4 — évalue un sous-ensemble de StrategyConfig par Monte Carlo.
 // Injecte le runScenario privé dans runStrategySearch. Très coûteux (N configs ×

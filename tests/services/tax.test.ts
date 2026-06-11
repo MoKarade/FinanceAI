@@ -842,12 +842,13 @@ describe('calculateFSSPremium (§6.1)', () => {
   });
 
   it('indexation par année — seuils augmentent en 2030 vs 2026', () => {
-    // Revenu 20 000$ (juste au-dessus du seuil zéro 2026 = 18 500$).
-    // En 2026 : (20 000 - 18 500) × 1% = 15.00$.
-    // En 2030, seuil indexé 18 500 × 1,02⁴ ≈ 20 025$ : revenu sous le seuil → 0$.
-    // L'indexation des seuils REND moins de gens redevables (cotisation baisse).
-    const p2026 = calculateFSSPremium(20000, 2026);
-    const p2030 = calculateFSSPremium(20000, 2030);
+    // Revue FA-8 (m3) — revenu 21 000$ : AU-DESSUS du seuil zéro dans les DEUX années
+    // (2026 : 18 500$ ; 2030 indexé ≈ 20 025$) → deux cotisations POSITIVES prouvant
+    // l'indexation progressive (robuste à un léger changement d'hypothèse d'indexation).
+    const p2026 = calculateFSSPremium(21000, 2026);
+    const p2030 = calculateFSSPremium(21000, 2030);
+    expect(p2026).toBeGreaterThan(0);
+    expect(p2030).toBeGreaterThan(0);
     expect(p2030).toBeLessThan(p2026);
   });
 });

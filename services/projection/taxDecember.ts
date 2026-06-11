@@ -83,7 +83,10 @@ export function computeOasClawback(
     // = base sans facteur de report → clawback SOUS-estimé pour un reporteur 66-70 à haut revenu
     // (cap réel jusqu'à ×1,36×1,10 plus haut — non conservateur), SURestimé si prorata de
     // résidence < 1, et clawback FICTIF possible avant psvStartAge (PSV non versée → cap doit
-    // être 0). Repli legacy si paramètre absent/invalide (rétro-compat tests/anciens callers).
+    // être 0). Repli legacy si paramètre ABSENT (rétro-compat tests/anciens callers).
+    // Revue FA-8 (silent-failure) — présent-mais-NaN ≠ absent : une corruption amont (ex.
+    // psvResidencyYears NaN) prendrait le repli SANS trace ; on le signale via le logMsg.
+    const capInvalid = psvActualMonthlyNominal !== undefined && !Number.isFinite(psvActualMonthlyNominal);
     const psvAnnualActual = Number.isFinite(psvActualMonthlyNominal)
         ? Math.max(0, psvActualMonthlyNominal as number) * 12
         : psvAnnualBase;
@@ -103,10 +106,12 @@ export function computeOasClawback(
         if (excess > 0) clawbackAnnual += Math.min(psvCapPerUser, excess * OAS_CLAWBACK_RATE);
     }
 
-    if (clawbackAnnual > 1) {
+    // Revue FA-8 — cap NaN signalé même si le clawback résultant est nul (corruption amont).
+    const invalidNote = capInvalid ? ' [cap PSV réel invalide (NaN) — repli sur la base, corruption amont ?]' : '';
+    if (clawbackAnnual > 1 || capInvalid) {
         return {
             clawbackAnnual,
-            logMsg: `⚠️ PSV Clawback prévu: -${Math.round(clawbackAnnual).toLocaleString('fr-CA')}$/an`,
+            logMsg: `⚠️ PSV Clawback prévu: -${Math.round(clawbackAnnual).toLocaleString('fr-CA')}$/an${invalidNote}`,
         };
     }
     return { clawbackAnnual };

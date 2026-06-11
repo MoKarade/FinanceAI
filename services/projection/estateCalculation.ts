@@ -147,7 +147,9 @@ export function computeEstateNetWorth(
     const lifeExpectancy = 95;
     const remainingYearsAtEnd = Math.max(0, lifeExpectancy - finalAge);
     // Split 65/35 du champ agrégé : convention de MODÈLE (GOV_PENSION_*_SHARE, utils/tax.ts —
-    // FISCAL_REFERENCE §6 FA-8), même repli que retirementIncome/setupSimulation.
+    // FISCAL_REFERENCE §6 FA-8). Ici le split est INCONDITIONNEL (ignore rrqEstimateMonthly/
+    // psvEstimateMonthly, contrairement à retirementIncome où les estimés priment) — reste
+    // FA-8 au BACKLOG (« NPV estate lit governmentPension même quand les estimés sont fournis »).
     const rrqExpected = (governmentPension * GOV_PENSION_RRQ_SHARE) * Math.pow(1 + simInflation / 100, simulationYears);
     const psvExpected = (governmentPension * GOV_PENSION_PSV_SHARE) * Math.pow(1 + simInflation / 100, simulationYears);
 

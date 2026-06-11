@@ -105,7 +105,9 @@ function annualLoss(
         if (account === 'CELI') return 0;
         if (account === 'REER') return 0; // pas d'impôt pendant l'accumulation
         // NonReg: dépend du type de revenu
-        if (assetClass === 'ca-equity') return marginalRate * 0.60; // dividende éligible (taux réduit)
+        // HYPOTHÈSE DE MODÈLE (FA-8) : taux effectif « dividende éligible » ≈ 60 % du marginal
+        // (proxy majoration 1,38 + crédits) — module CONSULTATIF (perte d'allocation), pas le moteur.
+        if (assetClass === 'ca-equity') return marginalRate * 0.60;
         if (assetClass === 'us-equity' || assetClass === 'international') {
             return marginalRate; // dividende étranger = revenu ordinaire
         }

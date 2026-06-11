@@ -140,15 +140,16 @@
   (8/30 fichiers seulement utilisent htmlFor) dont Profil est devenu le foyer.
 - [ ] **[SF-WARN]** 🔧 (revue #244, pré-existant) — `Retirement.tsx` fetchLiveTotals + `UsersCard.tsx`
   restore : `console.warn` sur de vrais échecs I/O → router vers `logError` (convention repo).
-- [ ] **[CPL-1]** 🔧 ⚠️ MONEY-CRITICAL (signalé Marc 2026-06-11) — **switch individuel↔couple** : (a) BLOQUER
-  le passage en mode couple tant qu'aucun partenaire n'est défini (nom/salaire du 2e user vides) ; (b) BUG :
-  avec UN seul utilisateur réel, basculer en couple CHANGE les courbes — le moteur ne doit produire AUCUNE
-  différence si le 2e user est vide. Suspects relevés au grep : `services/projection/setupSimulation.ts:143`
-  (`useTheo` → `incomeAnnaNetMonthly = theoIncome * 0.45` = revenu FANTÔME du 2e user) et `:149` (gross-up
-  `netMonthly * 12 * 1.35` même logique) ; + `activeIncome.ts:98` (`u2 = users[1]`) ; vérifier aussi crédits/
-  fiscalité par conjoint (fractionnement, PSV par conjoint) activés par la simple PRÉSENCE de users[1].
-  **Critères** : user solo → courbes STRICTEMENT identiques solo vs couple-sans-partenaire (test de parité) ;
-  switch couple gaté sur partenaire défini ; agents fiscal-accuracy + projection-validator au diff.
+- [x] **[CPL-1]** ✅ (signalé Marc 2026-06-11) — switch individuel↔couple GATÉ : « + Ajouter conjoint »
+  ouvre désormais un FORMULAIRE de définition (nom + âge REQUIS, salaire optionnel, bouton disabled sinon)
+  + avertissement explicite « passer en couple change les calculs » — plus de placeholder silencieux
+  (age 30/salaires 0). **Diagnostic calculs** (tests/services/coupleParity.test.ts) : en mode RÉEL, un
+  conjoint vide = ZÉRO revenu fantôme (computeIncomeBaseline neutre — le ×1.35 ne s'applique qu'à un net
+  non nul) ; la différence de courbes venait des RENTES D'ÉTAT/fiscalité du placeholder (PSV/SRG à ses
+  65 ans, imposition 2 têtes) — effets LÉGITIMES pour un vrai conjoint même sans revenu → PAS de
+  neutralisation moteur (elle fausserait les vrais couples), le gate UX est la correction. Le split
+  théorique 55/45 (useTheoretical) documenté au test. ⚠️ Reste à VALIDER par Marc en visuel : créer un
+  conjoint réel sans revenu DOIT changer les courbes (rentes d'État du conjoint) — c'est voulu.
 
 ### Phase 4 — REFONTES ⏳ (UN plan SÉPARÉ par onglet → OK Marc par onglet) — dépend de : PH2 (+PH3 pour FUT/RET)
 - [ ] **[PH4-FUT]** 🔧⏳ Refonte **Futur** : leviers OBLIGATOIRES avant calcul (l'actuel contenu

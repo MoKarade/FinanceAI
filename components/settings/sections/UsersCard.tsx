@@ -21,6 +21,30 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
   const [savedProfiles, setSavedProfiles] = React.useState<string[]>([]);
   const [newProfileName, setNewProfileName] = React.useState('');
   const [profileToDelete, setProfileToDelete] = React.useState<string | null>(null);
+  // [CPL-1] (Marc 2026-06-11) — passage en couple GATÉ sur une définition CONSCIENTE du partenaire.
+  // Avant : « + Ajouter conjoint » créait un placeholder silencieux (age 30, salaires 0) dont la simple
+  // PRÉSENCE change la projection (PSV/SRG du conjoint à ses 65 ans, fractionnement, imposition 2 têtes).
+  const [showPartnerForm, setShowPartnerForm] = React.useState(false);
+  const [partnerDraft, setPartnerDraft] = React.useState({ name: '', age: '', netSalary: '' });
+  const addPartner = () => {
+    const name = partnerDraft.name.trim();
+    const age = Number(partnerDraft.age);
+    if (!name || !Number.isFinite(age) || age < 18 || age > 100) {
+      showToast('Nom et âge (18-100) du conjoint requis avant de passer en couple.', 'error');
+      return;
+    }
+    const newUsers = [...config.users, {
+      name, age,
+      grossSalary: 0,
+      netSalary: Number(partnerDraft.netSalary) || 0,
+      canadaArrivalYear: new Date().getFullYear() - 5,
+      color: '#bd7d9c',
+    }];
+    setConfig({ ...config, users: newUsers as [User, User] });
+    setShowPartnerForm(false);
+    setPartnerDraft({ name: '', age: '', netSalary: '' });
+    showToast(`${name} ajouté(e) — les calculs passent en mode couple.`, 'success');
+  };
 
   React.useEffect(() => {
     try {
@@ -130,17 +154,76 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
             )}
             {config.users.length < 2 && (
               <button
-                onClick={() => {
-                  const newUsers = [...config.users, { name: 'Conjoint(e)', age: 30, grossSalary: 0, netSalary: 0, canadaArrivalYear: new Date().getFullYear() - 5, color: '#bd7d9c' }];
-                  setConfig({ ...config, users: newUsers as [User, User] });
-                }}
-                className="bg-success-500/15 text-success-300 px-3 py-1 rounded-card text-meta hover:bg-success-500/25 transition-colors"
+                onClick={() => setShowPartnerForm((v) => !v)}
+                aria-expanded={showPartnerForm}
+                className="bg-success-500/15 text-success-300 px-3 py-1 rounded-card text-meta hover:bg-success-500/25 transition-colors focus-ring"
               >
                 + Ajouter conjoint
               </button>
             )}
           </div>
         </div>
+
+        {/* [CPL-1] — définition OBLIGATOIRE du partenaire avant le passage en couple. */}
+        {showPartnerForm && config.users.length < 2 && (
+          <div className="rounded-card border border-success-500/25 bg-success-500/[0.06] p-4 space-y-3">
+            <p className="text-meta text-ink-200 font-bold">Définir le conjoint pour passer en couple</p>
+            <p className="text-tiny text-ink-400">
+              ⚠️ Passer en couple change les calculs : imposition par conjoint, rentes RRQ/PSV/SRG du
+              partenaire, fractionnement de pension. Un conjoint même sans revenu a un impact (rentes d'État).
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <label className="block">
+                <span className="text-tiny uppercase tracking-wider text-ink-400 font-semibold">Nom *</span>
+                <input
+                  type="text"
+                  value={partnerDraft.name}
+                  onChange={(e) => setPartnerDraft((p) => ({ ...p, name: e.target.value }))}
+                  placeholder="ex: Anna"
+                  className="mt-1 w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-body text-white focus:border-primary outline-none"
+                />
+              </label>
+              <label className="block">
+                <span className="text-tiny uppercase tracking-wider text-ink-400 font-semibold">Âge *</span>
+                <input
+                  type="number"
+                  min={18}
+                  max={100}
+                  value={partnerDraft.age}
+                  onChange={(e) => setPartnerDraft((p) => ({ ...p, age: e.target.value }))}
+                  placeholder="ex: 32"
+                  className="mt-1 w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-body text-white focus:border-primary outline-none"
+                />
+              </label>
+              <label className="block">
+                <span className="text-tiny uppercase tracking-wider text-ink-400 font-semibold">Salaire net /mois</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={partnerDraft.netSalary}
+                  onChange={(e) => setPartnerDraft((p) => ({ ...p, netSalary: e.target.value }))}
+                  placeholder="0 si sans revenu"
+                  className="mt-1 w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-body text-white focus:border-primary outline-none"
+                />
+              </label>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={addPartner}
+                disabled={!partnerDraft.name.trim() || !partnerDraft.age}
+                className="min-h-[44px] bg-primary text-dark px-4 py-1.5 rounded-card text-meta font-bold hover:brightness-110 transition-all focus-ring disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Créer le profil conjoint
+              </button>
+              <button
+                onClick={() => { setShowPartnerForm(false); setPartnerDraft({ name: '', age: '', netSalary: '' }); }}
+                className="min-h-[44px] px-3 py-1.5 rounded-card text-meta text-ink-400 hover:text-ink-100 transition-colors focus-ring"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
           {config.users.map((user, idx) => (

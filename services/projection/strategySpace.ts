@@ -134,6 +134,9 @@ export function configToEngine(config: StrategyConfig, baseParams: SimulationPar
             emergencyFundMonths: config.emergencyFundMonths,
             useSmithManoeuvre: config.smithManoeuvre,
             returnRates,
+            // PH4-FUT-B — fractionnement de pension (lu par runScenario → DecemberContext). Comme
+            // les autres applied*, le flag transite par params.projection (pas par EngineOverrides).
+            appliedPensionSplitting: config.pensionSplitting,
         },
         retirementGoal: {
             ...baseParams.retirementGoal,

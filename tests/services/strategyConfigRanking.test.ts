@@ -15,7 +15,7 @@ import type { ProjectionConfig, RetirementGoal } from '../../types';
 const cfg = (over: Partial<StrategyConfig> = {}): StrategyConfig => ({
     withdrawalOrder: 'AUTO_MARGINAL', delayPensions: false, retirementAge: 65, skipRap: false,
     contributionOrder: 'CELI_FIRST', retirementSpending: 1, smithManoeuvre: false, debtFirst: false,
-    emergencyFundMonths: 6, assetLocation: false, gainHarvesting: false, returnRateProfile: 'balanced', ...over,
+    emergencyFundMonths: 6, assetLocation: false, gainHarvesting: false, returnRateProfile: 'balanced', pensionSplitting: true, ...over,
 });
 
 const res = (over: Partial<ConfigResult> = {}): ConfigResult => ({

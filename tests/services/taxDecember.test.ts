@@ -681,6 +681,31 @@ describe('processDecemberTaxFiling — retraité : impôt marginal réel réconc
         expect(at72.newTaxCurrentYear.revenu).toBeLessThan(at70.newTaxCurrentYear.revenu);
     });
 
+    it('Phase 3 — LEVIER enablePensionSplitting (PH4-FUT-B) : false saute le fractionnement, absent == true', () => {
+        const progressive = makeHelpers({
+            calculateFiscalReport: ((gross: number) =>
+                ({ totalTax: gross <= 50000 ? gross * 0.2 : 10000 + (gross - 50000) * 0.45 } as unknown as FiscalReport)
+            ) as DecemberHelpers['calculateFiscalReport'],
+        });
+        // Couple 72 ans, 100k de retraits FERR/RIF admissibles concentrés sur un conjoint.
+        const ctx = (enablePensionSplitting?: boolean): Partial<DecemberContext> => ({
+            isRetired: true, activeUsersCount: 2, incomeRetirementMonthly: 0,
+            incomeRetirementPerUserMonthly: [0, 0], incomeRetirementDbPerUserMonthly: [0, 0],
+            age: 72, ageSpouse: 72, accRetraitsReerYear: 100000, accRetraitsReerYearByUser: [100000, 0],
+            enablePensionSplitting,
+        });
+        // ACTIF (true) → transfert ≤50 % → [50k, 50k] → 20 000.
+        const on = processDecemberTaxFiling(DECEMBER, baseCtx(ctx(true)), progressive, ZERO_TAX);
+        expect(on.newTaxCurrentYear.revenu).toBeCloseTo(20000, 5);
+        // INACTIF (false) → Phase 3 SAUTÉE → impôt brut concentré 32 500 (plus élevé, conservateur).
+        const off = processDecemberTaxFiling(DECEMBER, baseCtx(ctx(false)), progressive, ZERO_TAX);
+        expect(off.newTaxCurrentYear.revenu).toBeCloseTo(32500, 5);
+        expect(off.newTaxCurrentYear.revenu).toBeGreaterThan(on.newTaxCurrentYear.revenu);
+        // NON-RÉGRESSION : absent (undefined) == true (au bit près) → comportement historique.
+        const absent = processDecemberTaxFiling(DECEMBER, baseCtx(ctx(undefined)), progressive, ZERO_TAX);
+        expect(absent.newTaxCurrentYear.revenu).toBe(on.newTaxCurrentYear.revenu);
+    });
+
     it('MÉCANISME de réconciliation : crédite la retenue déjà captée dans .reer (pas de double-comptage)', () => {
         // pension 60000 + retraits REER 40000 = assiette 100000. Stub 25 % → vrai impôt 25000.
         // La retenue à la source déjà prélevée pendant l'année (.reer = 8000) est CRÉDITÉE :

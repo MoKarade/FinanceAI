@@ -181,11 +181,17 @@
   Monte-Carlo). Chaîne morte robustesse purgée (strategyRobustness.ts, runRobustnessRankingAsync,
   branche worker 'robustness'). Panel : code-reviewer (MAJEUR signature corrigé), silent-failure (RAS),
   a11y (propre, aria-busy ajouté).
-- [ ] **[PH4-FUT-B]** 🔧 (PR-B, suivant) — 4 nouveaux leviers (choix Marc) : Fractionnement pension 65+
-  (moteur déjà capable → ON/OFF, fiscal-accuracy) · Taux d'épargne (+X %/mois) · Profil de rendement
-  (conservateur/équilibré/agressif → presets returnRates) · Downsizing immo retraite (le plus lourd).
-  Pattern : StrategyConfig + LEVER_LIBRARY + applied* (ProjectionConfig) + runScenario + strategySpace +
-  tests + panel (projection-validator + fiscal-accuracy + perf).
+- [x] **[PH4-FUT-B-1]** ✅ #251 — levier **Profil de rendement** (conservateur/équilibré/agressif → presets
+  returnRates ; 'balanced' = inchangé, non-régression). Helper partagé recherche↔courbe. 20 tests, monotonie.
+- [x] **[PH4-FUT-B-2]** ✅ (PR-B2) — levier **Fractionnement pension 65+** ON/OFF (gate la Phase 3 de
+  taxDecember ; défaut actif = historique ; false = conservateur/légal). Panel fiscal-accuracy RAS, baselines
+  intactes. Tests : unitaire (actif 20k < inactif 32,5k) + cohérence configToEngine + non-régression.
+- [ ] **[PH4-FUT-B-3]** 🔧 (suivant) — levier **Taux d'épargne** (+X %/mois). PIÈGE : point d'application
+  dans le cashflow mensuel (conservation revenu net), interaction savingsMode 'real'. projection-validator.
+- [ ] **[PH4-FUT-B-4]** 🔧 (le plus lourd) — levier **Downsizing immo retraite** (vendre/réduire la résidence
+  à l'âge de retraite, libère l'équité). N'EXISTE PAS : nouveau mécanisme via LifeEvent. PIÈGES : exemption
+  gain résidence principale (non taxé), timing de vente, multi-propriétés, hypothèque résiduelle.
+  projection-validator + fiscal-accuracy. → choix de modélisation à flaguer à Marc.
 
 ### Phase 4 — REFONTES ⏳ (UN plan SÉPARÉ par onglet → OK Marc par onglet) — dépend de : PH2 (+PH3 pour FUT/RET)
 - [ ] **[PH4-FUT]** 🔧⏳ Refonte **Futur** : leviers OBLIGATOIRES avant calcul (l'actuel contenu

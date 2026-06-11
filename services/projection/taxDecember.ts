@@ -283,6 +283,9 @@ export interface DecemberContext {
      *  fractionnement de pension dès 65 ans (les retraits FERR/RIF le sont dès 72 ans). Sert à
      *  borner le transfert ≤ 50 % de l'admissible. Absent → aucun fractionnement (repli sûr). */
     incomeRetirementDbPerUserMonthly?: number[];
+    /** PH4-FUT-B — levier fractionnement de pension. Absent/true = Phase 3 active (comportement
+     *  historique) ; false = sautée (compare l'impact de NE PAS fractionner). */
+    enablePensionSplitting?: boolean;
     nonReg: number;
     baseNonRegRate: number;
     accRrspYear: number;
@@ -548,7 +551,8 @@ export function processDecemberTaxFiling(
             // RQ Annexe Q) : rente viagère DB dès 65 ans ; retraits FERR/RIF dès 72 ans (post-conversion
             // REER→FERR). NON admissibles : RRQ/PSV et retraits REER pré-72 → exclus de l'assiette
             // fractionnable. Repli sûr (aucun fractionnement) si solo, âges inconnus, ou rien d'admissible.
-            if (n === 2 && ctx.activeUsersCount > 1 && ctx.age !== undefined && ctx.ageSpouse !== undefined) {
+            // PH4-FUT-B — levier : `enablePensionSplitting === false` saute la Phase 3 (défaut absent/true = actif).
+            if (ctx.enablePensionSplitting !== false && n === 2 && ctx.activeUsersCount > 1 && ctx.age !== undefined && ctx.ageSpouse !== undefined) {
                 // FA-1 : assiette fractionnable == assiette du crédit pension (mêmes règles
                 // ARC/RQ dans ce modèle) → helper partagé eligiblePensionFor, plus de doublon.
                 const splittable = [0, 1].map((i) => eligiblePensionFor(i));

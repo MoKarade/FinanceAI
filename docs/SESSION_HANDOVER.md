@@ -27,9 +27,22 @@
 > **Suivis non bloquants au BACKLOG** : PH2-c-1..4 + PH2-d-1..4 — dont **PH2-c-1** (dédup fetch
 > `usePastPortfolioHistory` double-instance sur Futur) et **PH2-d-1 = DÉCISION MARC** (toast si verrou
 > irrécupérable au boot, façon `decrypt_failed`).
-> **▶ SUITE = PHASE 3** (onglet Profil : remplace Config/Profil, regroupe profil+retraite+détaillé,
-> % complétion, purge des champs morts — cf BACKLOG PH3-a..d).
-> ⚠️⚠️ **JAMAIS démarrer la Phase 3 sans OK EXPLICITE de Marc** (règle du brief). plan-first OBLIGATOIRE.
+> **▶ PHASE 3 EN COURS (1 PR, WIP sur la branche — décisions Marc : 1 PR + « tout le setup user »)** :
+> onglet PROFIL unifié regroupant TOUT le setup utilisateur. **Fait (poussé, PAS encore en PR)** :
+> tranche 1 `85cf229` (Tab.PROFILE + `components/Profile.tsx` composant les éditeurs existants — UsersCard,
+> UserConfigFields salary/fiscal/detailed/children, RepartitionField, RetirementSettingsCard — + nav
+> « Outils »/TabRouter lazy/TAB_LABELS/CommandPalette ; migration UI PURE, mêmes clés store) ; tranche 2
+> `723db21` (éditeurs profil RETIRÉS de Impôts/Enfant/Budget/Config → pointeur `ProfileFieldsMoved` « → Profil »).
+> **RESTE (3 tranches)** : (3) **Retraite — money-critical, soigner** : `RetirementSettingsCard` (déjà dans
+> Profil) couvre targetAge/lifeExp/income/rrqStart/psvStart ; mais les cartes INLINE de Retraite
+> (`Parametres de Vie`/`Revenus & besoins`, ~L251-310) ont des champs UNIQUES (currentAge, governmentPension,
+> rrqEstimateMonthly, psvEstimateMonthly) + de l'ÉTAT local (`lifeExpectancy`/`currentAge`) consommé par le
+> graphe et `CurrentCapitalCard`. → déplacer ces champs uniques vers Profil + convertir l'état éditable en
+> DÉRIVÉ (retirementGoal/config.users[0].age) sans casser les lecteurs ; garder CurrentCapitalCard + graphes.
+> (4) **PH3-b** complétion : `PAGE_SETUP[Tab.PROFILE]` + nouveaux RequirementId (réutilise SetupHub). (5)
+> **PH3-c** audit/purge des champs « profil détaillé » morts (grep consommateurs → retrait type+UI ;
+> migration persist SEULEMENT si strictement nécessaire — sinon les champs persistés résiduels sont inertes).
+> Puis tests + panel (dont a11y) + **ouvrir la PR** + merge. ⚠️ Pas de Phase 4 sans OK Marc.
 >
 > Session 2026-06-10 — **TOP 10 [UI-EPURE] COMPLET + 5 fiscaux MAJEURS + [UI-SCEN]**. Build/tsc/tests verts.
 > - **Épuration UI (EP-1..EP-10)** — 4 PR (#225 EP-1/2, #226 EP-3/4/5, #227 EP-6/7/10, #228 EP-8) :

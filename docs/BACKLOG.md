@@ -302,12 +302,10 @@
   est désormais consommée EN PREMIER (LIR 111(1)(b)) — part compensée = 0 $ d'impôt et HORS palier
   (step-up d'ACB gratuit), remplissage du palier sur le latent restant. `consumedLoss` retourné au
   caller (seule la part non compensée entre dans `accCapitalGainsYear`). 4 tests + FISCAL_REFERENCE §3.
-- [ ] **[PV-11]** 🔧 Résiduels PV-10 (revue) : (a) shortfall d'OBJECTIF (drawn < visé) visible au
-  log mais hors métriques — métrique dédiée (`goalShortfalls`/ratio financé), PAS shortfallMonths
-  (sémantique différente) ; (b) retraits de goals absents des séries `withdrawal*` de chartData
-  (sous-rapport pour les consommateurs « source unique ») ; (c) `_label` mort sur la closure
-  handleNonRegSale (suggère un log inexistant) ; (d) commentaire trompeur portfolioOps.ts:25
-  (« Pertes → bank » : branche inatteignable, cap min(1,…) — documenté en §3). (S)
+- [x] **[PV-11]** ✅ mergé #247 — (a) métrique `goalShortfalls {count,total}` (hook onGoalShortfall,
+  3 tests) ; (b) retraits de goals aux séries withdrawal* ; (c) `_label` retiré ; (d) docstring
+  portfolioOps précisé. + clamp liquid négatif (un goal n'efface plus un découvert). Validé
+  projection-validator (1927/1927, baselines intactes) ; réserve per-conjoint → PV-11e.
 - [x] **[PV-7]** 🔧 (livré) Ventes de CRYPTO via `handleCryptoSale` (miroir de handleNonRegSale) :
   gain proportionnel + banque de pertes (LIR 111(1)(b)) + pertes banquées, aux 2 sites de vente en vie
   (cascade de shortfall `cashflowAllocation.ts`, goal-mutator `projection.ts`). Avant : gain BRUT

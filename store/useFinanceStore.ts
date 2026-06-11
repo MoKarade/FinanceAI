@@ -5,6 +5,7 @@ import { INITIAL_BUDGET, INITIAL_CONFIG, INITIAL_PROJECTION, INITIAL_REAL_ESTATE
 import type { ProjectionResult } from '../services/projection/types';
 import { quotaStorage } from '../services/quotaStorage';
 import { logError } from '../services/errorLogger';
+import { saveLockedProjection, clearLockedProjection } from '../services/lockedProjectionStore';
 
 // Phase B2 — Deep-link cross-tab: un onglet pose un "intent" de focus, la page
 // destination le consomme au mount (scroll, highlight, focus, etc.).
@@ -34,6 +35,13 @@ export interface FinanceState extends AppState {
      *  Transitoire (NON persisté) : tout onglet peut afficher « recalcul… » / erreur sans
      *  tenir l'état de calcul localement. */
     projectionStatus: ProjectionStatus;
+    /** PH2-d — courbe VERROUILLÉE : snapshot complet d'un ProjectionResult choisi par l'utilisateur.
+     *  TRANSITOIRE en mémoire (NON dans le persist localStorage — trop gros) ; persisté CHIFFRÉ en
+     *  IndexedDB (services/lockedProjectionStore) et restauré au boot si `isProjectionLocked`. */
+    lockedProjection: ProjectionResult | null;
+    /** PH2-d — vrai si une courbe est verrouillée. Persisté (booléen ADDITIF, pas de bump v7) ;
+     *  le gros blob `lockedProjection` vit en IndexedDB. */
+    isProjectionLocked: boolean;
     pendingFocus: PendingFocus | null;
     // Mode test : true = l'app affiche des fixtures de test, banner visible
     isTestMode: boolean;
@@ -51,6 +59,12 @@ export interface FinanceState extends AppState {
     setLastProjection: (r: ProjectionResult | null) => void;
     setProjectionRunMC: (v: boolean) => void;
     setProjectionStatus: (s: ProjectionStatus) => void;
+    /** PH2-d — verrouille la courbe courante (snapshot mémoire + persistance IndexedDB chiffrée). */
+    lockProjection: (r: ProjectionResult) => void;
+    /** PH2-d — déverrouille (efface le snapshot mémoire ET l'entrée IndexedDB). */
+    unlockProjection: () => void;
+    /** PH2-d — restaure la courbe verrouillée depuis IndexedDB au boot (sans ré-écrire l'IDB). */
+    setLockedProjection: (r: ProjectionResult | null) => void;
     /** Navigate to a tab with an optional section to scroll/focus on arrival. */
     navigateWithFocus: (tab: Tab, section?: string) => void;
     /** Called by the destination page after it has consumed the focus intent. */
@@ -388,6 +402,8 @@ export const useFinanceStore = create<FinanceState>()(
             lastProjection: null,
             projectionRunMC: true,
             projectionStatus: 'idle',
+            lockedProjection: null,
+            isProjectionLocked: false,
             pendingFocus: null,
             isTestMode: false,
             realDataSnapshot: null,
@@ -410,6 +426,13 @@ export const useFinanceStore = create<FinanceState>()(
             setLastProjection: (r) => set({ lastProjection: r }),
             setProjectionRunMC: (v) => set({ projectionRunMC: v }),
             setProjectionStatus: (s) => set({ projectionStatus: s }),
+            // PH2-d — verrou : état sync + persistance IndexedDB best-effort (fire-and-forget ; le
+            // module logue ses propres échecs et ne lève jamais, donc ne casse pas l'UI).
+            lockProjection: (r) => { set({ lockedProjection: r, isProjectionLocked: true }); void saveLockedProjection(r); },
+            unlockProjection: () => { set({ lockedProjection: null, isProjectionLocked: false }); void clearLockedProjection(); },
+            // Boot uniquement : pose le blob restauré depuis l'IDB (réconcilie le booléen persisté
+            // avec le contenu réel — si l'IDB est vide/illisible, r=null → on retombe déverrouillé).
+            setLockedProjection: (r) => set({ lockedProjection: r, isProjectionLocked: r !== null }),
             navigateWithFocus: (tab, section) => {
                 if (typeof window !== 'undefined' && window.location.hash.replace('#', '') !== tab) {
                     window.location.hash = tab;
@@ -505,6 +528,7 @@ export const useFinanceStore = create<FinanceState>()(
                     isPrivacyMode: _isPrivacyMode,
                     lastProjection: _lastProjection,
                     projectionStatus: _projectionStatus,
+                    lockedProjection: _lockedProjection,
                     pendingFocus: _pendingFocus,
                     ...persistable
                 } = state;

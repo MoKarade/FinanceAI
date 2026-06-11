@@ -10,7 +10,6 @@
 import type {
     SimulationParams,
     ProjectionResult,
-    RobustnessRanking,
     StrategyConfig,
     StrategySearchResult,
     ConfigResult,
@@ -174,86 +173,6 @@ async function computeProjectionAsync(
     });
 }
 
-export interface RobustnessProgress {
-    done: number;
-    total: number;
-    current: string;
-}
-
-/**
- * G21 C4 — lance le classement par robustesse (5 stratégies × jusqu'à 1000 sims)
- * dans le Web Worker. Fallback synchrone si pas de worker (Node/tests).
- *
- * Contrairement à runProjectionAsync (timeout fixe 30s), on utilise un watchdog
- * réarmé à chaque message de progression : 5000 sims peuvent largement dépasser
- * 30s sur une machine modeste, mais tant que le worker progresse (une stratégie
- * terminée régulièrement) on ne le tue pas. Le watchdog ne déclenche que sur un
- * vrai hang (aucun progrès pendant IDLE_MS).
- */
-export async function runRobustnessRankingAsync(
-    params: SimulationParams,
-    opts: { iterationsPerStrategy?: number; onProgress?: (p: RobustnessProgress) => void } = {},
-): Promise<RobustnessRanking> {
-    const worker = getWorker();
-    if (!worker) {
-        const { calculateRobustnessRanking } = await import('../projection');
-        return calculateRobustnessRanking(params, {
-            iterationsPerStrategy: opts.iterationsPerStrategy,
-            onProgress: (done, total, current) => opts.onProgress?.({ done, total, current }),
-        });
-    }
-    const id = _nextRequestId++;
-    return new Promise((resolve, reject) => {
-        const IDLE_MS = 45_000; // hang = aucun progrès pendant 45s
-        let watchdog: ReturnType<typeof setTimeout>;
-        const cleanup = () => {
-            worker.removeEventListener('message', onMessage);
-            worker.removeEventListener('error', onError);
-            worker.removeEventListener('messageerror', onMessageError);
-            clearTimeout(watchdog);
-        };
-        const armWatchdog = () => {
-            clearTimeout(watchdog);
-            watchdog = setTimeout(() => {
-                cleanup();
-                _workerDead = true;
-                reject(new Error(`Robustesse: aucun progrès depuis ${IDLE_MS}ms (requestId=${id})`));
-            }, IDLE_MS);
-        };
-        const onMessage = (e: MessageEvent) => {
-            if (!e.data || e.data.__requestId !== id) return;
-            if (e.data.__progress) {
-                opts.onProgress?.(e.data.__progress as RobustnessProgress);
-                armWatchdog(); // progrès → on réarme, pas de timeout
-                return;
-            }
-            cleanup();
-            if (e.data.__error) reject(reconstructWorkerError(e.data));
-            else resolve(e.data.result);
-        };
-        const onError = (e: ErrorEvent) => {
-            cleanup();
-            _workerDead = true;
-            reject(new Error(e.message || 'Worker error'));
-        };
-        const onMessageError = (e: MessageEvent) => {
-            cleanup();
-            _workerDead = true;
-            reject(new Error('Worker messageerror (payload non-clonable): ' + String(e.data ?? '')));
-        };
-        worker.addEventListener('message', onMessage);
-        worker.addEventListener('error', onError);
-        worker.addEventListener('messageerror', onMessageError);
-        armWatchdog();
-        worker.postMessage({
-            __requestId: id,
-            params,
-            mode: 'robustness',
-            iterationsPerStrategy: opts.iterationsPerStrategy,
-        });
-    });
-}
-
 export interface StrategySearchProgress {
     done: number;
     total: number;
@@ -279,7 +198,7 @@ export function shardContiguous<T>(items: ReadonlyArray<T>, n: number): T[][] {
  * POOL de Web Workers (un par cœur logique). Chaque worker traite sa tranche de
  * configs et rapporte sa progression locale ; on agrège la progression globale.
  *
- * Pool dédié (PAS le singleton `_worker` réservé à projection/robustness) : on
+ * Pool dédié (PAS le singleton `_worker` réservé à la projection) : on
  * crée les workers à la volée et on les termine à la fin de la recherche — c'est
  * une opération lourde et ponctuelle, pas un canal réutilisé.
  *

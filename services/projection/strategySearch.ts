@@ -2,8 +2,8 @@
 // G21 C5 commit 4 — recherche exhaustive : lance un Monte Carlo sur CHAQUE
 // StrategyConfig de l'espace de recherche et collecte les métriques par config.
 //
-// PUR (hors RNG) : runScenario injecté en argument (comme monteCarlo.ts /
-// strategyRobustness.ts) → pas de dépendance circulaire avec projection.ts, et
+// PUR (hors RNG) : runScenario injecté en argument (comme monteCarlo.ts)
+// → pas de dépendance circulaire avec projection.ts, et
 // testable en Node avec un faux runScenario. Le sharding multi-worker est géré
 // en amont (runAsync.ts) : ce module reçoit un sous-ensemble de configs et le
 // traite séquentiellement.

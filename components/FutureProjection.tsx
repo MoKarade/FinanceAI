@@ -24,7 +24,7 @@ import { reconstructCashHistory } from '../services/history/reconstructCashHisto
 import { reconstructRealEstateEquityByYear } from '../services/history/reconstructRealEstateEquity';
 import { ActionPlanDrilldown } from './projection/ActionPlanDrilldown';
 import { ProjectionExplains } from './projection/ProjectionExplains';
-import { StrategyComparePanel } from './projection/StrategyComparePanel';
+import { StrategyOptimizerPanel } from './projection/StrategyOptimizerPanel';
 import { StressTestPanel } from './projection/StressTestPanel';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
@@ -124,7 +124,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // au mois 0, pour TOUS les personas/utilisateurs (et en mode réel aussi).
     // PH2-c (clé de voûte) — params + dérivations passé/présent depuis la SOURCE UNIQUE partagée
     // avec le moteur app-level (hooks/useSimulationParams). `params` sert ICI uniquement aux outils
-    // À LA DEMANDE du sous-onglet « optim » (StrategyComparePanel, StressTestPanel) ; le calcul de
+    // À LA DEMANDE du sous-onglet « optim » (StrategyOptimizerPanel, StressTestPanel) ; le calcul de
     // la courbe principale, lui, est fait par ProjectionEngine et lu via store.lastProjection.
     const { params, pastHistory, liveCSVBalances, calculatedStartingCash, startYear, startMonth, todayMonthIndex } = useSimulationParams(calculatedMonthlySavings);
 
@@ -316,19 +316,39 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     }, [chartData]);
 
     // G3 — sous-onglets Futur (Graphique = courbe + KPIs ; Paramètres = hypothèses ;
-    // Optimisation = leviers + robustesse + placement ; Plan d'action = explications + checklist).
+    // Optimisation = leviers (recherche Monte-Carlo) + stress-tests ; Plan d'action = explications + checklist).
     const [futureSubTab, setFutureSubTab] = useState<'graph' | 'params' | 'optim' | 'plan'>('graph');
-    // Amorçage : la courbe reste cachée tant que l'utilisateur n'a pas cliqué « Calculer »
-    // (demande Marc — écran d'amorçage d'abord). La projection tourne en fond ; on ne révèle
-    // le graphe qu'au geste explicite. Une fois révélé dans la session, ça reste affiché.
-    const [curveRevealed, setCurveRevealed] = useState(false);
+    // PH4 (refonte Futur « leviers-d'abord », demande Marc) — la courbe ET les KPIs ne s'affichent
+    // QUE sur un calcul EXPLICITE. Avant : le moteur app-level recalculait en continu et la courbe +
+    // le bandeau KPI s'affichaient tout seuls (« le graphique s'applique alors que j'ai pas fait les
+    // calculs avec les leviers »). On lie la révélation à une SIGNATURE de ce qui PILOTE la courbe :
+    //   - jamais calculé (revealedSig null)         → écran d'invite « Calculer » ;
+    //   - calculé PUIS une entrée a changé (sig ≠)  → état PÉRIMÉ → ré-invite « Recalculer » ;
+    //   - sig identique                             → révélé (courbe + KPIs).
+    // Revue PH4 (MAJEUR) — on signe `params` ENTIER (la source UNIQUE qui pilote le moteur app-level,
+    // agrégeant les ~20 entrées du store : projection, config, dettes, objectifs, événements, budget,
+    // splitMode, soldes…) et NON un sous-ensemble cueilli à la main — sinon la courbe se remettrait à
+    // jour seule pour toute entrée non listée (le bug exact que PH4 tue). `params` est mémoïsé par
+    // référence dans useSimulationParams → le stringify ne se refait qu'au vrai changement. Conséquence
+    // assumée : l'arrivée tardive des prix (liveCSVBalances ⊂ params) marque « périmé » une fois —
+    // cohérent (les chiffres ont changé), et au pire avant le 1er clic.
+    // Local au composant (zéro persist) : survit aux bascules de SOUS-onglets ; un aller-retour vers
+    // un autre onglet principal ré-invite — cohérent avec « seulement sur clic ».
+    const currentSig = useMemo<string | null>(() => {
+        try { return JSON.stringify({ p: params, mc: runMC }); }
+        catch { return null; } // illisible (inatteignable : params est sérialisable) → jamais révélé
+    }, [params, runMC]);
+    const [revealedSig, setRevealedSig] = useState<string | null>(null);
+    const curveRevealed = revealedSig !== null && currentSig !== null && revealedSig === currentSig;
+    const isStale = revealedSig !== null && revealedSig !== currentSig; // calculé, puis entrées modifiées
+    const revealCurve = () => setRevealedSig(currentSig);
     // A11y : à la révélation, déplacer le focus sur la zone courbe (le bouton « Calculer » se
     // démonte → sinon le focus retombe sur <body> et le lecteur d'écran perd le contexte).
     const revealedRef = useRef<HTMLDivElement>(null);
     useEffect(() => { if (curveRevealed) revealedRef.current?.focus(); }, [curveRevealed]);
 
     // [UI-SCEN] — bandeau « Verdict » et classement retirés : la comparaison des façons
-    // de gérer vit dans l'onglet Optimisation (StrategyComparePanel).
+    // de gérer vit dans l'onglet Optimisation (StrategyOptimizerPanel).
 
     // F10 (audit 2026-05-28) — index monthIndex → année pour le tickFormatter du XAxis.
     // Avant : displayData.find() O(n) à CHAQUE tick, et recharts ré-appelle le formatter
@@ -465,7 +485,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 }
             />
 
-            {/* Hero KPI strip — instant comprehension */}
+            {/* Hero KPI strip — PH4 : caché tant que la projection n'est pas calculée explicitement
+                (cf revealedSig) ; sinon les chiffres projetés s'affichaient sans geste de l'utilisateur. */}
+            {curveRevealed && (
             <StatGrid cols={4}>
                 <KPIStat
                     label="Objectif FIRE"
@@ -501,6 +523,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     variant={results?.fvi != null && results.fvi >= 70 ? 'success' : results?.fvi != null && results.fvi >= 40 ? 'warning' : 'danger'}
                 />
             </StatGrid>
+            )}
             {/* G3 — bascule 4 onglets : Graphique / Paramètres / Optimisation / Plan d'action */}
             <div className="flex flex-wrap gap-1 p-1 rounded-card bg-surface/40 border border-white/5 w-fit" role="tablist" aria-label="Vue Future">
                 {([
@@ -537,24 +560,30 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             />
             )}
 
-            {/* Écran d'amorçage : tant que la courbe n'est pas révélée, on invite à calculer. */}
+            {/* Écran d'invite : tant que la courbe n'est pas révélée (jamais calculée OU entrées
+                modifiées depuis le dernier calcul), on invite à (re)calculer — jamais de courbe auto. */}
             {futureSubTab === 'graph' && !curveRevealed && (
                 <Card className="text-center">
                     <div className="py-10 px-4 space-y-4 max-w-lg mx-auto">
-                        <div className="text-4xl" aria-hidden="true">📈</div>
-                        <h2 className="text-h2 text-ink-50">Projette ton avenir financier</h2>
+                        <div className="text-4xl" aria-hidden="true">{isStale ? '🔄' : '📈'}</div>
+                        <h2 className="text-h2 text-ink-50">{isStale ? 'Paramètres modifiés' : 'Projette ton avenir financier'}</h2>
                         <p className="text-meta text-ink-300 leading-snug">
-                            Ajuste tes hypothèses dans <strong>Paramètres</strong>, compose tes leviers dans
-                            <strong> Optimisation</strong>, puis lance le calcul pour voir ta courbe de vie
-                            et ton plan d'action.
+                            {isStale ? (
+                                'Tes hypothèses ou tes leviers ont changé depuis le dernier calcul. Relance le calcul pour mettre ta courbe et ton plan d\'action à jour.'
+                            ) : (
+                                <>Ajuste tes hypothèses dans <strong>Paramètres</strong>, compose tes leviers dans
+                                <strong> Optimisation</strong>, puis lance le calcul pour voir ta courbe de vie
+                                et ton plan d'action.</>
+                            )}
                         </p>
                         <button
                             type="button"
-                            onClick={() => setCurveRevealed(true)}
+                            onClick={revealCurve}
                             disabled={isComputing}
+                            aria-busy={isComputing}
                             className="px-6 py-2.5 rounded-card text-meta font-bold text-dark bg-primary hover:brightness-110 disabled:opacity-50 transition-all focus-ring"
                         >
-                            {isComputing ? 'Calcul en cours…' : 'Calculer ma projection'}
+                            {isComputing ? 'Calcul en cours…' : (isStale ? 'Recalculer ma projection' : 'Calculer ma projection')}
                         </button>
                     </div>
                 </Card>
@@ -814,15 +843,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             </div>
             )}
 
-            {/* Optimisation : comparer les stratégies (test rapide OU recherche avancée).
-                Les deux outils Monte Carlo (robustesse + optimiseur) sont fusionnés en un seul
-                (StrategyComparePanel) pour lever la confusion. [EP-10] Stress-tests repliés par
-                défaut ; placement par compte retiré ici (déjà dans Retraite, carte plus complète). */}
+            {/* Optimisation — PH4 « leviers-d'abord » (demande Marc) : les 5 stratégies-types
+                (RobustnessPanel / mode « Test rapide ») sont RETIRÉES ; on compose directement ses
+                leviers et on cherche la meilleure combinaison par Monte-Carlo. [EP-10] Stress-tests repliés. */}
             {futureSubTab === 'optim' && (
                 <div className="space-y-6">
-                    {/* C4+C5 — Comparer les stratégies : Test rapide (robustesse, 5 stratégies types)
-                        ou Recherche avancée (leviers composables, classement par objectif). Reste ouvert. */}
-                    <StrategyComparePanel params={params} onApply={setRetirementGoal ? handleApplyConfig : undefined} />
+                    <StrategyOptimizerPanel params={params} onApply={setRetirementGoal ? handleApplyConfig : undefined} />
                     {/* [UI-SCEN] — stress-tests à la demande (sortis du recalcul permanent). [EP-10] repliés. */}
                     <CollapsibleSection title="Stress-tests" subtitle="Scénarios adverses (krach, inflation, longévité…) — à la demande." defaultOpen={false}>
                         <StressTestPanel params={params} baselineEstateNW={allResults[0]?.estateNetWorth} />
@@ -830,8 +856,20 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 </div>
             )}
 
-            {/* Plan d'action : explications fusionnées + checklist hiérarchique. */}
-            {futureSubTab === 'plan' && (
+            {/* Plan d'action : explications fusionnées + checklist hiérarchique.
+                PH4 — gated comme la courbe : pas de résultats tant que la projection n'est pas calculée. */}
+            {futureSubTab === 'plan' && !curveRevealed && (
+                <Card className="text-center">
+                    <div className="py-10 px-4 space-y-3 max-w-md mx-auto">
+                        <div className="text-3xl" aria-hidden="true">🗂️</div>
+                        <p className="text-meta text-ink-300 leading-snug">
+                            {isStale ? 'Tes paramètres ont changé — relance le calcul' : 'Calcule ta projection'} dans
+                            l'onglet <strong>Graphique</strong> pour voir ton plan d'action.
+                        </p>
+                    </div>
+                </Card>
+            )}
+            {futureSubTab === 'plan' && curveRevealed && (
                 <div className="space-y-6">
                     <ProjectionExplains chartData={chartData} />
                     {/* C2 — Plan d'action HIÉRARCHIQUE (global → mois, drill-down au clic). */}

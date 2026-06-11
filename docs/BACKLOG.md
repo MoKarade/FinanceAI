@@ -117,17 +117,23 @@
   (clés API + backups + courbe verrouillée) — mettre à jour le commentaire.
 
 ### Phase 3 — MODÈLE DE DONNÉES + ONGLET PROFIL ⏳ (plan-first) — dépend de : OK Marc post-PH2
-- [ ] **[PH3-a]** 🔧 Nouvel onglet **Profil** remplaçant ENTIÈREMENT le Profil de Configuration :
-  regroupe profil + utilisateur + paramètres de retraite + **profil détaillé** (actuellement dans
-  Retraite). **Critères** : plus aucun champ profil dans Configuration ni Retraite ; zéro perte de
-  données (mêmes clés store).
-- [ ] **[PH3-b]** 🔧 Complétude : afficher QUELLE info manque pour QUEL onglet + % de complétion.
-  **Critères** : chaque champ manquant pointe l'onglet qui en a besoin ; % global visible.
-- [ ] **[PH3-c]** 🔧 Profil détaillé : AUDIT du code pour ne garder QUE les champs réellement
-  consommés par l'app — supprimer le reste (champs + types + store + UI). **Critères** : chaque
-  champ conservé a ≥ 1 consommateur prouvé (grep consigné dans la PR) ; migration store propre.
-- [ ] **[PH3-d]** 🔧 « Paramètres de vie » retirés de Retraite → déplacés dans Profil. **Critères** :
-  Retraite n'a plus de section vie ; valeurs préservées.
+- [x] **[PH3-a]** ✅ (PR Phase 3) — onglet **Profil** unifié (`components/Profile.tsx` + Tab.PROFILE) qui
+  COMPOSE tous les éditeurs de setup (UsersCard, UserConfigFields salary/fiscal/detailed/children,
+  RepartitionField, RetirementSettingsCard, RetirementIncomeCard). Retirés de Config/Impôts/Budget/
+  Enfant/Retraite → pointeur `ProfileFieldsMoved`. Mêmes clés store → zéro perte. **Critères ✓.**
+- [x] **[PH3-b]** ✅ (PR Phase 3) — `SetupHub` rendu en tête de Profil : **% de complétion GLOBAL**
+  (infos met/total + barre de progression) + par onglet « X/N » + quelle info manque + « Ouvrir »
+  (navigateWithFocus). **Critères ✓.**
+- [ ] **[PH3-c]** 🔧 Profil détaillé — purge des champs morts. **AUDIT FAIT (2026-06-11)** : NON consommés
+  par `services/` (moteur) → gender, province, citizenship, maritalStatus, employmentType, yearsOfExperience,
+  pensionPlan, promotionLikelihood5Y, healthRating, isSmoker, bmiCategory, chronicConditions, activityLevel,
+  parentAgeAtDeath, bonusVolatilityPct, stockOptionsValue, commissionPctOfGross, cryptoStakingAnnual,
+  payFrequency. CONSOMMÉS (garder) → industry, bonusPctOfGross, rsuVestingPerYear, rsuYearsRemaining,
+  sideIncomeAnnual. ⚠️ **RESTE (soigné, séparé)** : vérifier consommateurs HORS `services/` (UI + surtout
+  `province`/`maritalStatus` potentiellement fiscaux) + migration persist propre. Money/tax-sensible → pas à la va-vite.
+- [x] **[PH3-d]** ✅ (PR Phase 3) — Retraite ne contient PLUS d'éditeur de profil/vie (« Parametres de Vie »
+  + « Revenus & besoins » extraits → `RetirementIncomeCard` dans Profil) ; lecteurs/graphes conservés ;
+  `lifeExpectancy` reste lu du store. **Critères ✓.**
 
 ### Phase 4 — REFONTES ⏳ (UN plan SÉPARÉ par onglet → OK Marc par onglet) — dépend de : PH2 (+PH3 pour FUT/RET)
 - [ ] **[PH4-FUT]** 🔧⏳ Refonte **Futur** : leviers OBLIGATOIRES avant calcul (l'actuel contenu

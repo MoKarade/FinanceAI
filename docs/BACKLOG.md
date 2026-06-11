@@ -140,6 +140,10 @@
   `<label>` aux inputs (`htmlFor`/`id` ou wrapping) dans RetirementIncomeCard, RetirementSettingsCard,
   UserConfigFields (salary), UsersCard, RepartitionField (`aria-label` sur le select). Dette d'app
   (8/30 fichiers seulement utilisent htmlFor) dont Profil est devenu le foyer.
+- [ ] **[DEAD-FLT]** 🧹 (découverte revue #245) — `Retirement.fetchLiveTotals` est INOPÉRANT :
+  il repose sur `services/finance.fetchPortfolioHistory` qui est un STUB `return []` → le bloc entier
+  (état liveCSVBalances + effet) ne produit jamais rien et donne une fausse impression de couverture.
+  Purger (et brancher les soldes sur la vraie source) ou implémenter réellement.
 - [x] **[SF-WARN]** ✅ — fetchLiveTotals (Retirement) + restore profils (UsersCard) routés vers logError (source network/storage). (revue #244, pré-existant) — `Retirement.tsx` fetchLiveTotals + `UsersCard.tsx`
   restore : `console.warn` sur de vrais échecs I/O → router vers `logError` (convention repo).
 - [x] **[CPL-1]** ✅ (signalé Marc 2026-06-11) — switch individuel↔couple GATÉ : « + Ajouter conjoint »

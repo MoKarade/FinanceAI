@@ -53,4 +53,19 @@ describe('[PH2-c-1] usePastPortfolioHistory — dédup module du fetch', () => {
         await waitFor(() => expect(late.result.current.points.length).toBeGreaterThan(0));
         expect(getHistory).toHaveBeenCalledTimes(1); // pas de re-fetch
     });
+
+    it('échec total (lot sans données) → isLoading retombe ET retry possible après correction de la clé', async () => {
+        // Revue #245 (M1/M2) : un rate-limit/clé invalide ne doit PAS figer la session.
+        vi.mocked(getHistory).mockResolvedValueOnce([]); // provider en échec → []
+        const a = renderHook(() => usePastPortfolioHistory());
+        await waitFor(() => expect(a.result.current.isLoading).toBe(false));
+        expect(getHistory).toHaveBeenCalledTimes(1);
+
+        // L'utilisateur corrige sa clé → l'effet re-tourne (dep finnhubKey) → le symbole SANS
+        // résultat a été purgé du Set → re-fetch autorisé (la sig inclut la clé).
+        act(() => { useFinanceStore.setState({ apiKeys: { anthropic: '', finnhub: 'k-fixed' } }); });
+        await waitFor(() => expect(getHistory).toHaveBeenCalledTimes(2));
+        await waitFor(() => expect(a.result.current.isLoading).toBe(false));
+        expect(a.result.current.points.length).toBeGreaterThan(0); // 2e tentative OK (mock par défaut)
+    });
 });

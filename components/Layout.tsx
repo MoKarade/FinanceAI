@@ -3,6 +3,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tab, FinancialGoal, User } from '../types';
 import { CoupleModeBadge } from './ui/CoupleModeBadge';
+import { showToast } from './ui/Toast';
 import { Icon, type IconName } from './ui/Icon';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { BackupReminder } from './BackupReminder';
@@ -128,15 +129,16 @@ export const Layout: React.FC<LayoutProps> = ({
   const toggleCoupleMode = () => {
     if (!coupleConfig) return;
     const users: User[] = coupleConfig.users as User[];
-    let nextUsers: User[];
     if (isCouple) {
-      nextUsers = [users[0]]; // repasse en individuel : on retire le conjoint
-    } else if (users.length >= 2) {
-      nextUsers = [users[0], { ...users[1], name: users[1]?.name || 'Conjoint(e)' }]; // 2e user existant sans nom → on le nomme
-    } else {
-      nextUsers = [...users, { name: 'Conjoint(e)', age: 30, grossSalary: 0, netSalary: 0, canadaArrivalYear: new Date().getFullYear() - 5, color: '#bd7d9c' }];
+      // repasse en individuel : on retire le conjoint
+      setAppState({ config: { ...coupleConfig, users: [users[0]] as unknown as [User, User] } });
+      return;
     }
-    setAppState({ config: { ...coupleConfig, users: nextUsers as [User, User] } });
+    // [CPL-1] (revue #245 MAJEUR-1) — plus AUCUNE création/nommage de conjoint placeholder ici :
+    // la simple présence d'un 2e user change les calculs (PSV/SRG à ses 65 ans, imposition 2 têtes).
+    // Passage en couple = définition CONSCIENTE via le formulaire gaté de Profil.
+    showToast('Définis d\'abord ton conjoint (nom + âge) dans Profil pour passer en couple.', 'info');
+    useFinanceStore.getState().setActiveTab(Tab.PROFILE);
   };
 
   return (

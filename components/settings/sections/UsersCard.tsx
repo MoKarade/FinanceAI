@@ -27,9 +27,11 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
   // PRÉSENCE change la projection (PSV/SRG du conjoint à ses 65 ans, fractionnement, imposition 2 têtes).
   const [showPartnerForm, setShowPartnerForm] = React.useState(false);
   const [partnerDraft, setPartnerDraft] = React.useState({ name: '', age: '', netSalary: '' });
+  const partnerToggleRef = React.useRef<HTMLButtonElement>(null);
   const addPartner = () => {
     const name = partnerDraft.name.trim();
-    const age = Number(partnerDraft.age);
+    // Revue #245 — âge ENTIER (cohérent avec l'éditeur existant en parseInt).
+    const age = Math.round(Number(partnerDraft.age));
     if (!name || !Number.isFinite(age) || age < 18 || age > 100) {
       showToast('Nom et âge (18-100) du conjoint requis avant de passer en couple.', 'error');
       return;
@@ -37,8 +39,11 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
     const newUsers = [...config.users, {
       name, age,
       grossSalary: 0,
-      netSalary: Number(partnerDraft.netSalary) || 0,
-      canadaArrivalYear: new Date().getFullYear() - 5,
+      // Revue #245 — pas de négatif (min={0} de l'input ne bloque pas la saisie clavier).
+      netSalary: Math.max(0, Number(partnerDraft.netSalary) || 0),
+      // Revue #245 — PAS de canadaArrivalYear par défaut : ce champ alimente le prorata
+      // RRQ/PSV (résidence) ; un « arrivé il y a 5 ans » fantôme sous-estimerait les rentes.
+      // Laisser vide force une saisie explicite si « Immigré » est coché ensuite.
       color: '#bd7d9c',
     }];
     setConfig({ ...config, users: newUsers as [User, User] });
@@ -46,11 +51,23 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
     setPartnerDraft({ name: '', age: '', netSalary: '' });
     showToast(`${name} ajouté(e) — les calculs passent en mode couple.`, 'success');
   };
+  const cancelPartnerForm = () => {
+    setShowPartnerForm(false);
+    setPartnerDraft({ name: '', age: '', netSalary: '' });
+    // Revue #245 (a11y M2) — refocus le toggle au cancel (le panneau qui contenait le focus disparaît).
+    partnerToggleRef.current?.focus();
+  };
 
   React.useEffect(() => {
     try {
       const profiles = JSON.parse(localStorage.getItem('saved_profiles_list') || '[]');
-      setSavedProfiles(profiles);
+      // Revue #245 (B2) — JSON valide mais non-tableau (donnée corrompue) → garde + journal,
+      // sinon crash .map au render.
+      if (Array.isArray(profiles)) {
+        setSavedProfiles(profiles);
+      } else {
+        logError({ source: 'storage', severity: 'warning', message: 'UsersCard: saved_profiles_list n\'est pas un tableau (corrompu) — ignoré.' });
+      }
     } catch (err) {
       // [SF-WARN] — liste de profils corrompue dans localStorage → logError (journal app).
       logError({ source: 'storage', severity: 'warning', message: 'UsersCard: liste des profils sauvegardés illisible (localStorage).', error: err instanceof Error ? err : new Error(String(err)) });
@@ -80,10 +97,19 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
           setConfig(data.config);
           logAudit({ field: 'config', operation: 'replace', description: `Profil « ${name} » chargé` });
           showToast(`Profil "${name}" charge !`, 'success');
+        } else {
+          // Revue #245 (B3) — profil présent mais SANS config : avant, clic = rien (muet).
+          logError({ source: 'storage', severity: 'warning', message: `UsersCard: profil « ${name} » sans données config.` });
+          showToast(`Le profil "${name}" est vide ou invalide.`, 'error');
         }
+      } else {
+        // Profil listé mais clé absente du localStorage (désynchronisation).
+        logError({ source: 'storage', severity: 'warning', message: `UsersCard: profil « ${name} » introuvable (clé absente).` });
+        showToast(`Le profil "${name}" est introuvable.`, 'error');
       }
     } catch (err: unknown) {
-      console.error('[UsersCard] Profile load error:', err);
+      // Revue #245 (B3) — journal app en plus du toast (console.error ne laissait pas de trace).
+      logError({ source: 'storage', severity: 'warning', message: `UsersCard: échec de chargement du profil « ${name} ».`, error: err instanceof Error ? err : new Error(String(err)) });
       const msg = err instanceof Error ? err.message : 'inconnu';
       showToast(`Erreur sur "${name}": ${msg}`, 'error');
     }
@@ -149,16 +175,17 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   newUsers.pop();
                   setConfig({ ...config, users: newUsers as [User, User] });
                 }}
-                className="bg-danger-500/15 text-danger-300 px-3 py-1 rounded-card text-meta hover:bg-danger-500/25 transition-colors"
+                className="bg-danger-500/15 text-danger-400 min-h-[44px] px-3 py-1 rounded-card text-meta hover:bg-danger-500/25 transition-colors focus-ring"
               >
                 - Retirer conjoint
               </button>
             )}
             {config.users.length < 2 && (
               <button
+                ref={partnerToggleRef}
                 onClick={() => setShowPartnerForm((v) => !v)}
                 aria-expanded={showPartnerForm}
-                className="bg-success-500/15 text-success-300 px-3 py-1 rounded-card text-meta hover:bg-success-500/25 transition-colors focus-ring"
+                className="bg-success-500/15 text-success-400 min-h-[44px] px-3 py-1 rounded-card text-meta hover:bg-success-500/25 transition-colors focus-ring"
               >
                 + Ajouter conjoint
               </button>
@@ -218,7 +245,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                 Créer le profil conjoint
               </button>
               <button
-                onClick={() => { setShowPartnerForm(false); setPartnerDraft({ name: '', age: '', netSalary: '' }); }}
+                onClick={cancelPartnerForm}
                 className="min-h-[44px] px-3 py-1.5 rounded-card text-meta text-ink-400 hover:text-ink-100 transition-colors focus-ring"
               >
                 Annuler

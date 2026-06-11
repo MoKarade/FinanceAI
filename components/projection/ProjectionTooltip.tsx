@@ -93,8 +93,10 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
 
             {/* [PH2-d-2] — référence VERROUILLÉE au survol (présente seulement sous verrou, via
                 displayData.lockedNetWorth) : valeur figée + écart vs l'aperçu live. */}
-            {typeof (data as { lockedNetWorth?: number }).lockedNetWorth === 'number' && (() => {
-                const locked = (data as { lockedNetWorth?: number }).lockedNetWorth as number;
+            {(() => {
+                // Revue #245 — bind unique (documente la forme réelle de displayData, zéro re-cast).
+                const locked = (data as ProjectionChartPoint & { lockedNetWorth?: number }).lockedNetWorth;
+                if (typeof locked !== 'number') return null;
                 const delta = (data.NetWorth || 0) - locked;
                 return (
                     <div className="rounded-xl bg-amber-500/[0.08] border border-amber-500/25 p-2.5 mb-2.5">

@@ -100,9 +100,8 @@
 - [ ] **[PH2-c-3]** 🔧 (perf) Router le calcul DÉTERMINISTE dans le worker hors-Futur : en mode
   déterministe (runMC=false), le moteur app-level paie ~150 ms main-thread à chaque changement de
   params quel que soit l'onglet (atténué par debounce 300 ms ; défaut = MC déjà off-thread).
-- [ ] **[PH2-c-4]** 🧪 Test DIRECT de `useSimulationParams` (renderHook) comparant `params` à
-  l'assemblage de référence par persona — parité aujourd'hui prouvée transitivement
-  (buildSimulationParams.parity + ProjectionEngine e2e), pas par un test du hook lui-même.
+- [x] **[PH2-c-4]** ✅ — tests/hooks/useSimulationParams.parity.test.tsx : renderHook du hook RÉEL
+  comparé à `buildSimulationParamsFromState` (même startYear/startMonth), pour CHAQUE persona (7/7).
 
 #### Suivis PH2-d (découverts à la revue panel PR #242 — non bloquants, le verrou est livré)
 - [x] **[PH2-d-1]** ✅ (Marc a tranché = AVERTIR) — `loadLockedProjection` retourne désormais un statut
@@ -136,14 +135,17 @@
 - [x] **[PH3-d]** ✅ (PR Phase 3) — Retraite ne contient PLUS d'éditeur de profil/vie (« Parametres de Vie »
   + « Revenus & besoins » extraits → `RetirementIncomeCard` dans Profil) ; lecteurs/graphes conservés ;
   `lifeExpectancy` reste lu du store. **Critères ✓.**
-- [ ] **[A11Y-LBL]** 🔧 (revue #244, SERIOUS hérité) — LOT labels : associer programmatiquement les
-  `<label>` aux inputs (`htmlFor`/`id` ou wrapping) dans RetirementIncomeCard, RetirementSettingsCard,
-  UserConfigFields (salary), UsersCard, RepartitionField (`aria-label` sur le select). Dette d'app
-  (8/30 fichiers seulement utilisent htmlFor) dont Profil est devenu le foyer.
-- [ ] **[DEAD-FLT]** 🧹 (découverte revue #245) — `Retirement.fetchLiveTotals` est INOPÉRANT :
-  il repose sur `services/finance.fetchPortfolioHistory` qui est un STUB `return []` → le bloc entier
-  (état liveCSVBalances + effet) ne produit jamais rien et donne une fausse impression de couverture.
-  Purger (et brancher les soldes sur la vraie source) ou implémenter réellement.
+- [x] **[A11Y-LBL]** ✅ — 18 associations posées : htmlFor/id sur RetirementIncomeCard (8),
+  RetirementSettingsCard (5), UserConfigFields salary (2×idx), UsersCard nom/âge (2×idx) ;
+  aria-label sur le select RepartitionField + l'input « Nom du profil ». Reste la dette
+  hors-Profil (8/30 fichiers htmlFor) — opportuniste.
+- [ ] **[DEAD-FLT-2]** 🧹 (suite #246) — purger toute la CHAÎNE du stub `fetchPortfolioHistory`
+  (`services/finance.ts` return []) : consumers restants = StockComparisonModal (+ son
+  `.catch(console.warn)` à router logError), `hooks/usePortfolioHistory`, `fetchAssetHistory`.
+- [x] **[DEAD-FLT]** ✅ — bloc `fetchLiveTotals` purgé (45 lignes mortes : l'async ne tournait
+  JAMAIS, stub `[]`) → `liveCSVBalances` est un simple useMemo des props (mêmes valeurs réelles
+  qu'avant). Imports/destructures morts nettoyés (useState/useEffect/fetchPortfolioHistory/logError/
+  RegisteredAccountType/assets).
 - [x] **[SF-WARN]** ✅ — fetchLiveTotals (Retirement) + restore profils (UsersCard) routés vers logError (source network/storage). (revue #244, pré-existant) — `Retirement.tsx` fetchLiveTotals + `UsersCard.tsx`
   restore : `console.warn` sur de vrais échecs I/O → router vers `logError` (convention repo).
 - [x] **[CPL-1]** ✅ (signalé Marc 2026-06-11) — switch individuel↔couple GATÉ : « + Ajouter conjoint »

@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
 import { ProjectionStaleBanner } from './ui/ProjectionStaleBanner';
 import { ProfileFieldsMoved } from './settings/ProfileFieldsMoved';
 import { Icon } from './ui/Icon';
 import { Badge } from './ui/Badge';
-import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Asset, RegisteredAccountType } from '../types';
+import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory } from '../types';
 import { ProjectionChartPoint } from '../services/projection/types';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend } from 'recharts';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
@@ -15,12 +15,10 @@ import { TaxBracketViz } from './TaxBracketViz';
 import { GoalSeekerCard } from './retirement/GoalSeekerCard';
 import { AssetLocationCard } from './retirement/AssetLocationCard';
 import { CurrentCapitalCard } from './retirement/CurrentCapitalCard';
-import { fetchPortfolioHistory } from '../services/finance';
 import { calculateGrossFromNet } from '../services/tax';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { useShallow } from 'zustand/shallow';
 import { ProjectionRequired } from './ui/ProjectionRequired';
-import { logError } from '../services/errorLogger';
 
 // Sprint 2 PH3 — constante stable pour éviter de créer un nouveau [] à chaque
 // render (qui invaliderait les useMemo deps de la projection).
@@ -37,7 +35,6 @@ interface RetirementProps {
     grossIncome?: number;
     projection: ProjectionConfig;
     config: BudgetConfig;
-    assets?: Asset[];
     initialBalances?: Record<string, number>;
     budgetItems?: BudgetCategory[];
     realEstateGoals?: RealEstateGoal[];
@@ -52,7 +49,7 @@ export const Retirement: React.FC<RetirementProps> = ({
     currentREER, currentCELI, currentNonReg,
     calculatedMonthlySavings,
     projection, config,
-    assets = [], initialBalances = {}, budgetItems = [],
+    initialBalances = {}, budgetItems = [],
     realEstateGoals = [], childGoals = [], travelGoals = [], lifeEvents = [], debts = []
 }) => {
     // Sprint 2 PH3 — Regroupement W5.x via useShallow. Ces valeurs sont lues
@@ -79,53 +76,13 @@ export const Retirement: React.FC<RetirementProps> = ({
     // PH3 — `setLifeExpectancy` + l'état `currentAge` retirés avec les éditeurs (déplacés dans Profil).
     // `lifeExpectancy` reste LU du store (consommé par le graphe d'accumulation et CurrentCapitalCard).
 
-    const [liveCSVBalances, setLiveCSVBalances] = useState({
-        CELI: currentCELI, CELIAPP: 0, REER: currentREER, NON_ENREG: currentNonReg, CRYPTO: 0, REEE: 0, TOTAL: currentCELI + currentREER + currentNonReg, historicalRate: 0
-    });
-
-    useEffect(() => {
-        setLiveCSVBalances(prev => ({ ...prev, CELI: currentCELI, REER: currentREER, NON_ENREG: currentNonReg, TOTAL: currentCELI + currentREER + currentNonReg }));
-
-        let cancelled = false;
-        const fetchLiveTotals = async () => {
-            try {
-                const history = await fetchPortfolioHistory();
-                if (cancelled) return;
-                if (history.length > 0) {
-                    const lastRow = history[history.length - 1];
-                    let celi = 0, celiapp = 0, reer = 0, nonReg = 0, crypto = 0, reee = 0, total = 0;
-                    Object.keys(lastRow).forEach(key => {
-                        if (key === 'date' || key === 'Date' || key.startsWith('Taux')) return;
-                        const val = Number(lastRow[key]) || 0;
-                        if (key.includes('TOTAL')) { total = val; return; }
-                        const mappedAsset = assets.find(a => key.includes(a.symbol));
-                        // Fix TS2367 : `type` elargi en string pour autoriser CELIAPP (pas dans Asset.accountType union).
-                        // CELIAPP / FHSA est un compte legitime au Canada (Compte d'epargne libre d'impot pour
-                        // l'achat d'une premiere propriete) que le type Asset.accountType ne prevoit pas encore.
-                        const type: RegisteredAccountType = mappedAsset?.accountType || 'NON-ENREG';
-                        if (type === 'CELI') celi += val;
-                        else if (type === 'CELIAPP') celiapp += val;
-                        else if (type === 'REER') reer += val;
-                        else if (type === 'CRYPTO') crypto += val;
-                        else if (key.includes('REEE')) reee += val;
-                        else nonReg += val;
-                    });
-                    if (cancelled) return;
-                    setLiveCSVBalances({
-                        CELI: celi || currentCELI, CELIAPP: celiapp,
-                        REER: reer || currentREER, NON_ENREG: nonReg || currentNonReg,
-                        CRYPTO: crypto, REEE: reee, TOTAL: total || (currentCELI + currentREER + currentNonReg),
-                        historicalRate: 0
-                    });
-                }
-            } catch (e) {
-                // [SF-WARN] — vrai échec I/O → logError (journal app), plus un simple console.warn.
-                logError({ source: 'network', severity: 'warning', message: 'Retirement: fetchLiveTotals a échoué (soldes live CSV indisponibles).', error: e instanceof Error ? e : new Error(String(e)) });
-            }
-        };
-        fetchLiveTotals();
-        return () => { cancelled = true; };
-    }, [assets, currentCELI, currentREER, currentNonReg]);
+    // [DEAD-FLT] (revue #245) — l'ancien effet `fetchLiveTotals` était INOPÉRANT : il reposait sur
+    // `services/finance.fetchPortfolioHistory`, un STUB `return []` (le corps async ne tournait
+    // jamais). Purgé → simple dérivé des props (mêmes valeurs que ce que l'état affichait réellement).
+    const liveCSVBalances = useMemo(() => ({
+        CELI: currentCELI, CELIAPP: 0, REER: currentREER, NON_ENREG: currentNonReg,
+        CRYPTO: 0, REEE: 0, TOTAL: currentCELI + currentREER + currentNonReg, historicalRate: 0,
+    }), [currentCELI, currentREER, currentNonReg]);
 
     // PV-5 / PH3 — `updateGoal` retiré avec les éditeurs (le revenu-retraite s'édite dans Profil).
 

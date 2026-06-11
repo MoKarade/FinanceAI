@@ -28,8 +28,8 @@ export const RetirementSettingsCard: React.FC = () => {
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div data-focus-section="profile-retirementAge">
-                        <label className="block text-meta text-ink-300 mb-1">Âge de retraite cible</label>
-                        <input
+                        <label htmlFor="rsc-targetAge" className="block text-meta text-ink-300 mb-1">Âge de retraite cible</label>
+                        <input id="rsc-targetAge"
                             type="number"
                             min={50}
                             max={75}
@@ -39,11 +39,11 @@ export const RetirementSettingsCard: React.FC = () => {
                         />
                     </div>
                     <div data-focus-section="profile-lifeExpectancy">
-                        <label className="block text-meta text-ink-300 mb-1">
+                        <label htmlFor="rsc-lifeExp" className="block text-meta text-ink-300 mb-1">
                             Espérance de vie
                             <span className="ml-1 text-tiny text-ink-500">(80–100 ans)</span>
                         </label>
-                        <input
+                        <input id="rsc-lifeExp"
                             type="number"
                             min={80}
                             max={105}
@@ -53,8 +53,8 @@ export const RetirementSettingsCard: React.FC = () => {
                         />
                     </div>
                     <div data-focus-section="profile-retirementIncome">
-                        <label className="block text-meta text-ink-300 mb-1">Revenu mensuel cible</label>
-                        <input
+                        <label htmlFor="rsc-income" className="block text-meta text-ink-300 mb-1">Revenu mensuel cible</label>
+                        <input id="rsc-income"
                             type="number"
                             min={0}
                             step={100}
@@ -69,11 +69,11 @@ export const RetirementSettingsCard: React.FC = () => {
                     (correctif bug « pas de rente avant l'âge de retraite », 2026-06). */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-meta text-ink-300 mb-1">
+                        <label htmlFor="rsc-rrqStart" className="block text-meta text-ink-300 mb-1">
                             Début rente RRQ
                             <span className="ml-1 text-tiny text-ink-500">(60–72 ans)</span>
                         </label>
-                        <input
+                        <input id="rsc-rrqStart"
                             type="number"
                             min={60}
                             max={72}
@@ -83,11 +83,11 @@ export const RetirementSettingsCard: React.FC = () => {
                         />
                     </div>
                     <div>
-                        <label className="block text-meta text-ink-300 mb-1">
+                        <label htmlFor="rsc-psvStart" className="block text-meta text-ink-300 mb-1">
                             Début pension PSV
                             <span className="ml-1 text-tiny text-ink-500">(65–70 ans)</span>
                         </label>
-                        <input
+                        <input id="rsc-psvStart"
                             type="number"
                             min={65}
                             max={70}

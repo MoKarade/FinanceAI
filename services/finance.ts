@@ -156,9 +156,9 @@ export const fetchFxRates = async (): Promise<{ USD: number; EUR: number; CAD: n
 // boursières est désormais Finnhub (services/marketData/) ou les saisies
 // manuelles de l'utilisateur dans Configuration/Investments.
 //
-// Cette fonction est conservée pour ne pas casser les ~5 consumers
-// (Dashboard, Investments, Retirement, FutureProjection, JsonDataView)
-// qui l'attendent — elle retourne désormais toujours un tableau vide.
+// Conservée pour ses consumers restants (StockComparisonModal, usePortfolioHistory,
+// fetchAssetHistory ci-dessous) — retourne toujours un tableau vide. [DEAD-FLT] : Retirement
+// purgé 2026-06-11 ; candidat : purger toute la chaîne du stub (cf BACKLOG).
 export const fetchPortfolioHistory = async (): Promise<MarketDataPoint[]> => {
     return [];
 };

@@ -103,11 +103,10 @@
   (buildSimulationParams.parity + ProjectionEngine e2e), pas par un test du hook lui-même.
 
 #### Suivis PH2-d (découverts à la revue panel PR #242 — non bloquants, le verrou est livré)
-- [ ] **[PH2-d-1]** ⚠️ **DÉCISION MARC** (silent-failure MOYEN) : verrou présent mais clé de device
-  absente au boot (nav privée, IDB vidée) → perte SILENCIEUSE de la courbe verrouillée. Le cas JUMEAU
-  des clés API (`decrypt_failed`) fait déjà un `showToast` (App.tsx:241). Soit aligner (distinguer
-  'vide' vs 'indéchiffrable' dans `loadLockedProjection` → toast au boot), soit assumer le silence
-  pour cette feature de confort. Asymétrie probablement involontaire → trancher.
+- [x] **[PH2-d-1]** ✅ (Marc a tranché = AVERTIR) — `loadLockedProjection` retourne désormais un statut
+  DISCRIMINÉ (`ok` / `empty` / `unreadable`) ; au boot, `unreadable` (entrée présente mais clé device
+  disparue / blob altéré) → `showToast` « Ta courbe verrouillée n'a pas pu être restaurée… » (jumeau de
+  `decrypt_failed`). `empty` (rien stocké OU erreur d'accès IDB transitoire) reste silencieux. Test verrou OK.
 - [ ] **[PH2-d-2]** 🔧 (a11y) Tooltip Futur (`ExpertTooltip`) — afficher la valeur `lockedNetWorth` au
   survol (avec `privacy-blur`). La légende-texte nomme déjà la courbe ; manque la valeur au survol.
 - [ ] **[PH2-d-3]** 🔧 (pré-existant) Graphe Retraite : le stack d'aires VISIBLE omet CELIAPP (4 aires)

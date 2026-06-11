@@ -10,6 +10,7 @@ import { Icon } from './ui/Icon';
 import { UsersCard } from './settings/sections/UsersCard';
 import { UserConfigFields, RepartitionField } from './settings/UserConfigFields';
 import { RetirementSettingsCard } from './retirement/RetirementSettingsCard';
+import { RetirementIncomeCard } from './retirement/RetirementIncomeCard';
 
 /** Petit intertitre de regroupement (les sous-composants rendent déjà leurs propres Cards). */
 const GroupTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -41,6 +42,7 @@ export const Profile: React.FC = () => {
 
             <GroupTitle>Retraite</GroupTitle>
             <RetirementSettingsCard />
+            <RetirementIncomeCard />
 
             <GroupTitle>Enfants</GroupTitle>
             <UserConfigFields section="children" />

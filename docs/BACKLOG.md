@@ -78,11 +78,12 @@
   pur CONSOMMATEUR ; `projectionStatus` au store (transitoire, exclu persist+sélecteur App = anti-cascade).
   Garde no-fake-data (prérequis Futur). Revu par le panel complet (rien de bloquant, invariants OK,
   1900 tests). Suivis non bloquants → PH2-c-1..4 ci-dessous.
-- [ ] **[PH2-d]** 🔧 Verrouillage + persistance **IndexedDB** : une courbe choisie et VERROUILLÉE
-  se retrouve IDENTIQUE à chaque réouverture de l'app, jusqu'à déverrouillage. **Critères** :
-  reload + réouverture → mêmes points sans recalcul ; déverrouiller → recalcul possible.
-  **Dépendance** : s'appuie sur l'infra IndexedDB existante (backups chiffrés) ou P0-IDB ;
-  ⚠️ vigilance migration persist v7.
+- [x] **[PH2-d]** ✅ mergé #242 — verrou de courbe : bouton dans Futur → snapshot du `ProjectionResult`
+  COMPLET persisté CHIFFRÉ en IndexedDB DÉDIÉE (`services/lockedProjectionStore`, clé device secureKeyStore),
+  restauré au boot jusqu'au déverrouillage. **Double courbe** (verrouillée figée + aperçu live) sur Futur
+  ET Retraite. Côté Zustand : seul `isProjectionLocked` (booléen ADDITIF) persisté → **ZÉRO bump v7**, le
+  blob vit en IDB (aucun risque de corruption schema). Panel complet (code-reviewer/silent-failure/security/
+  a11y) : rien de bloquant. Suivis non bloquants → PH2-d-1..4 ci-dessous. **→ Phase 2 (clé de voûte) TERMINÉE.**
 
 #### Suivis PH2-c (découverts à la revue panel PR #241 — non bloquants, le hoist est livré)
 - [ ] **[PH2-c-1]** 🔧 (MAJEUR) Dédupe `usePastPortfolioHistory` au niveau MODULE : PH2-c monte 2

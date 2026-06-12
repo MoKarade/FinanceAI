@@ -542,7 +542,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             <div className="flex flex-wrap gap-1 p-1 rounded-card bg-surface/40 border border-white/5 w-fit" role="tablist" aria-label="Vue Future">
                 {([
                     { id: 'graph', emoji: '🎯', label: 'Projection' },
-                    { id: 'params', emoji: '⚙️', label: 'Paramètres' },
+                    { id: 'params', emoji: '⚙️', label: 'Hypothèses' },
                     { id: 'plan', emoji: '🗂️', label: 'Plan d\'action' },
                 ] as const).map(t => (
                     <button

@@ -45,6 +45,13 @@ export const Transactions: React.FC<TransactionsProps> = ({
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [typeFilter, _setTypeFilter] = useState<'All' | 'Income' | 'Expense' | 'Transfer'>('All');
     const [quickFilter, setQuickFilter] = useState<'NONE' | 'BIG_SPEND' | 'RECENT' | 'TO_REVIEW'>('NONE');
+    // PH4-TX — tri par colonne (date / marchand / montant / catégorie). Défaut : date décroissante.
+    const [sortKey, setSortKey] = useState<'date' | 'payee' | 'amount' | 'category'>('date');
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+    const toggleSort = (key: 'date' | 'payee' | 'amount' | 'category') => {
+        if (sortKey === key) { setSortDir((d) => (d === 'asc' ? 'desc' : 'asc')); }
+        else { setSortKey(key); setSortDir(key === 'amount' || key === 'date' ? 'desc' : 'asc'); }
+    };
 
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [lastSelectedId, setLastSelectedId] = useState<number | null>(null);
@@ -140,6 +147,21 @@ export const Transactions: React.FC<TransactionsProps> = ({
             return true;
         });
     }, [transactions, filterText, showDuplicates, dateStart, selectedCategory, typeFilter, quickFilter]);
+
+    // PH4-TX — tri appliqué APRÈS le filtre. localeCompare 'fr' pour marchand/catégorie ; numérique
+    // pour le montant ; comparaison de chaîne ISO pour la date (YYYY-MM-DD trie correctement).
+    const sortedTransactions = useMemo(() => {
+        const dir = sortDir === 'asc' ? 1 : -1;
+        return [...filteredTransactions].sort((a, b) => {
+            switch (sortKey) {
+                case 'amount': return (a.amount - b.amount) * dir;
+                case 'payee': return (a.payee || '').localeCompare(b.payee || '', 'fr') * dir;
+                case 'category': return (a.category || '').localeCompare(b.category || '', 'fr') * dir;
+                case 'date':
+                default: return (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) * dir;
+            }
+        });
+    }, [filteredTransactions, sortKey, sortDir]);
 
     const uncategorizedGroups = useMemo(() => {
         if (!showWizard) return [];
@@ -264,7 +286,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
     };
 
     const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
-    const paginatedTransactions = filteredTransactions.slice(
+    const paginatedTransactions = sortedTransactions.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
@@ -592,12 +614,22 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         }}
                                     />
                                 </th>
-                                <th className="p-3">Date</th>
-                                <th className="p-3">Marchand</th>
+                                {([['date', 'Date'], ['payee', 'Marchand']] as const).map(([k, label]) => (
+                                    <th key={k} className="p-3" aria-sort={sortKey === k ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                                        <button type="button" onClick={() => toggleSort(k)} className="flex items-center gap-1 uppercase tracking-wider hover:text-white focus-ring rounded">
+                                            {label}{sortKey === k && <span aria-hidden="true">{sortDir === 'asc' ? '▲' : '▼'}</span>}
+                                        </button>
+                                    </th>
+                                ))}
                                 <th className="p-3 w-10">Auto</th>
                                 <th className="p-3">Type</th>
-                                <th className="p-3">Montant</th>
-                                <th className="p-3">Categorie</th>
+                                {([['amount', 'Montant'], ['category', 'Categorie']] as const).map(([k, label]) => (
+                                    <th key={k} className="p-3" aria-sort={sortKey === k ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                                        <button type="button" onClick={() => toggleSort(k)} className="flex items-center gap-1 uppercase tracking-wider hover:text-white focus-ring rounded">
+                                            {label}{sortKey === k && <span aria-hidden="true">{sortDir === 'asc' ? '▲' : '▼'}</span>}
+                                        </button>
+                                    </th>
+                                ))}
                             </tr>
                         </thead>
                         <tbody className="text-body">

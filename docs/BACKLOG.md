@@ -410,9 +410,8 @@
   « 1 234,00 $ »…) → `formatCAD` de `utils/format.ts` ; résorber ~135 `toLocaleString`. (M)
 - [ ] **[CA-03]** Finaliser la migration `utils/tax.ts` (820 l) → `services/tax.ts` (alias 5 l
   inachevé, ~20 imports directs restants). (S)
-- [~] **[CA-04]** 🔧 Smoke tests composants money-critical — ENTAMÉ : DebtManager + ChildPlanning (rendent
-  sans crash). Restent : Investments, FutureProjection, RealEstate, Retirement, TaxCenter, AiAssistant. (M)
-- [ ] **[CA-05]** Découper `Investments.tsx` (1187 l, +33) sous `components/investments/`. (L)
+- [x] **[CA-04]** ✅ Smoke tests des 8 composants money-critical sans test direct (DebtManager,
+  ChildPlanning, TaxCenter, RealEstate, Retirement, Investments, FutureProjection, AiAssistant) — rendent sans crash.
 - [ ] **[CA-06]** Découper `FutureProjection.tsx` (1000 l) + centraliser ses 32 hex dans
   `chartColors`. (L)
 - [ ] **[CA-07]** Tokens couleur : `constants/chartColors.ts` (source Recharts), 20 hex en className

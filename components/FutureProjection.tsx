@@ -315,8 +315,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         return { lifeChartEvents: lifes, flowChartEvents: flows };
     }, [chartData]);
 
-    // G3 — sous-onglets Futur (Graphique = courbe + KPIs ; Paramètres = hypothèses ;
-    // Optimisation = leviers (recherche Monte-Carlo) + stress-tests ; Plan d'action = explications + checklist).
+    // G3 + PH4-FUT « leviers-d'abord » — 3 sous-onglets : Projection (composeur de leviers EN AMONT puis
+    // courbe + KPIs) ; Paramètres (hypothèses) ; Plan d'action (explications + checklist). Plus d'onglet
+    // « Optimisation » : le composeur de leviers est remonté dans l'écran d'amorçage du sous-onglet Projection.
     // PH4-FUT « leviers-d'abord » — sous-onglet « Optimisation » RETIRÉ : le composeur de leviers est
     // remonté dans l'écran d'amorçage du Graphique (en amont du calcul).
     const [futureSubTab, setFutureSubTab] = useState<'graph' | 'params' | 'plan'>('graph');
@@ -347,6 +348,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // PH4-FUT (leviers-d'abord) — « Appliquer la stratégie gagnante PUIS révéler la courbe » : on ne peut
     // pas figer la signature dans le même tick que l'application (les params changent juste après).
     // Un flag déclenche la révélation au render SUIVANT, quand currentSig reflète les params appliqués.
+    // Invariant : handleApplyConfig fait 2 setAppState (projection + retirementGoal) BATCHÉS en 1 render
+    // (handler synchrone, React 19) → currentSig recalculé une seule fois, COMPLET (pas de sig intermédiaire,
+    // pas de flash). ⚠️ Si un de ces set devenait async, ce flux re-cacherait la courbe (revue PH4-FUT).
     const [revealAfterApply, setRevealAfterApply] = useState(false);
     useEffect(() => {
         if (revealAfterApply) { setRevealedSig(currentSig); setRevealAfterApply(false); }
@@ -534,7 +538,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 />
             </StatGrid>
             )}
-            {/* G3 — bascule 4 onglets : Graphique / Paramètres / Optimisation / Plan d'action */}
+            {/* PH4-FUT « leviers-d'abord » — 3 sous-onglets : Projection / Paramètres / Plan d'action */}
             <div className="flex flex-wrap gap-1 p-1 rounded-card bg-surface/40 border border-white/5 w-fit" role="tablist" aria-label="Vue Future">
                 {([
                     { id: 'graph', emoji: '🎯', label: 'Projection' },

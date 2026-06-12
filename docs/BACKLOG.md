@@ -477,14 +477,22 @@
   colonnes amortissement) + ChildPlanning « Capital à 17 ans »
   (à gater comme le fix Dashboard : value peut être un CTA <ProjectionRequired>). Migrer
   opportunistiquement vers <PrivateAmount> au fil des refontes PH4.
-- [~] **[A11Y-SLIDERS]** 🔧 (découverte revue a11y) — nom accessible (WCAG 4.1.2) sur les sliders dont le
-  `<label>` n'est PAS associé. **✅ FAIT** : **ProjectionControls** (Horizon, Inflation, Hausse salaire, CELI,
-  NonReg/REER, Coussin, Inflation/poste ×6 via la boucle, Part actions US, Rendement div. US, Coût soins LD —
-  `aria-label` = texte visible) + **PropertyConfigurator:172** « Plafond Valeur Max » (incohérence résolue) ;
-  tests `ProjectionControls.a11y.test.tsx` (10 sliders trouvés par nom + boucle) + PropertyConfigurator (3ᵉ slider).
-  **RESTE** : RealEstate:466/490, DebtManager/TaxCenter/Budget/ChildPlanning/HealthIndicator (au cas par cas —
-  vérifier d'abord s'ils ont déjà un label associé). NB : j'ai utilisé `aria-label` (uniformité avec les 5
-  monétaires) ; pour la suite, `aria-labelledby` sur le `<span>` de nom évite la dérive label↔aria si on préfère.
+- [x] **[A11Y-SLIDERS]** ✅ COMPLET — nom accessible (WCAG 4.1.2/2.5.3) sur TOUS les sliders dont le `<label>`
+  n'était pas associé. **ProjectionControls** (10 : Horizon, Inflation, Hausse salaire, CELI, NonReg/REER,
+  Coussin, Inflation/poste ×6, Part actions US, Rendement div. US, Coût soins LD) + **PropertyConfigurator**
+  (Prix, Mise de fonds, Plafond) + **RealEstate** (Rendement Boursier, Appréciation Immo) + **DebtManager**
+  (Paiement suppl.) + **TaxCenter** (Cotisation REER, CELIAPP) + **ChildPlanning** (Cotisation REEE) — tous
+  `aria-label` = texte visible. **Budget:622** avait déjà un nom ; **HealthIndicator:322** déjà associé via
+  `htmlFor`/`id` (SKIP, corrects). Tests : `ProjectionControls.a11y` (13 sliders) + PropertyConfigurator (3) +
+  DebtManager.smoke (1) + TaxCenter.smoke (2) ; RealEstate/ChildPlanning vérifiés statiquement (render =
+  fixtures goal/enfant, disproportionné pour attribut statique). NB : `aria-label` partout (uniformité) ;
+  `aria-labelledby` serait + robuste contre la dérive label↔aria si refonte un jour.
+- [ ] **[D6-PRIV-MONTANTS]** ❓DÉCISION MARC (découverte audit a11y du lot sliders) — incohérence produit :
+  les montants $ des sliders REER/CELIAPP (TaxCenter), REEE (ChildPlanning) et paiement suppl. (DebtManager)
+  s'affichent EN CLAIR en mode privé (pas de `<PrivateAmount>`/`privacy-blur`), alors que prix immo, revenus/
+  dépenses théoriques, mise de fonds y sont masqués. Veux-tu ces montants privés aussi ? Si oui : envelopper
+  la valeur dans `<PrivateAmount>` + ajouter `{...maskedSliderAria(isPrivacyMode)}` au slider (les deux ensemble).
+  Sinon, fermer. Pas un bug a11y — pur choix de confidentialité produit. (S)
 - [ ] **[D7]** Perf boot : `hydrateAssets` (`App.tsx`) boucle `await sleep(2500ms)` séquentiel par
   symbole → 10 actifs = ~25 s. Paralléliser + cacher, garde-fous anti-rate-limit. Plus gros gain
   de fluidité ressenti.

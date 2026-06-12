@@ -464,6 +464,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                             </label>
                                             <input
                                                 type="range"
+                                                aria-label="Rendement Boursier"
                                                 min="3"
                                                 max="15"
                                                 step="0.5"
@@ -488,6 +489,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                             </label>
                                             <input
                                                 type="range"
+                                                aria-label="Appréciation Immo"
                                                 min="0" max="10" step="0.5"
                                                 value={localRentalAppreciation}
                                                 onChange={e => setLocalRentalAppreciation(Number(e.target.value))}

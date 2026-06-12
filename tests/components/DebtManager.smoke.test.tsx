@@ -27,5 +27,7 @@ describe('DebtManager — smoke (CA-04)', () => {
         ];
         render(<DebtManager debts={debts} setDebts={vi.fn()} />);
         expect(screen.getByText(/Carte Visa/)).toBeTruthy();
+        // [A11Y-SLIDERS] le slider de paiement supplémentaire porte un nom accessible.
+        expect(screen.getByRole('slider', { name: 'Paiement Mensuel Supplémentaire' })).toBeInTheDocument();
     });
 });

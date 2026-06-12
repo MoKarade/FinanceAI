@@ -163,3 +163,49 @@ describe('computeEstateNetWorth — FA-5 (audit 2026-06-09) : NPV des rentes NON
     });
 
 });
+
+describe('computeEstateNetWorth — FA-8 : estimés précis par rente priment sur le split 65/35', () => {
+    const extractNPV = (r: ReturnType<typeof computeEstateNetWorth>): number =>
+        (r.estateNetWorth - r.finalRawNetWorth + r.totalEstateTax) / 0.7;
+    // base : finalAge 35+30 = 65 → branche SANS escompte pré-65 ; 95−65 = 30 ans restants.
+    const npvFactor = (1 - Math.pow(1.02, -30)) / 0.02;
+    const inflPow = Math.pow(1 + 2 / 100, 30);
+
+    it('estimés fournis (solo) → NPV basée sur RRQ+PSV estimés, PAS sur le split 65/35 de l\'agrégé', () => {
+        // estimés per-personne 800+600 = 1400/mois familial (solo) ≠ split de governmentPension (1200).
+        const r = computeEstateNetWorth({ ...base, rrqEstimateMonthly: 800, psvEstimateMonthly: 600, activeUsersCount: 1 }, fiscalStub);
+        expect(extractNPV(r)).toBeCloseTo((800 + 600) * inflPow * npvFactor, 4);
+        // Contre-preuve : différent du repli agrégé (1200) — les estimés ont bien primé.
+        const fallback = computeEstateNetWorth({ ...base, activeUsersCount: 1 }, fiscalStub);
+        expect(extractNPV(r)).not.toBeCloseTo(extractNPV(fallback), 0);
+    });
+
+    it('estimés PER-PERSONNE → ×activeUsersCount (comme retirementIncome) ; le repli AGRÉGÉ reste SANS ×N (garde FA-5)', () => {
+        // couple : estimés (800+600)×2 = 2800/mois familial.
+        const couple = computeEstateNetWorth({ ...base, rrqEstimateMonthly: 800, psvEstimateMonthly: 600, activeUsersCount: 2 }, fiscalStub);
+        expect(extractNPV(couple)).toBeCloseTo((800 + 600) * 2 * inflPow * npvFactor, 4);
+        // Le repli agrégé (sans estimé) ne prend toujours PAS de ×N : couple == solo (FA-5 non régressé).
+        const fallbackCouple = computeEstateNetWorth({ ...base, activeUsersCount: 2 }, fiscalStub);
+        expect(extractNPV(fallbackCouple)).toBeCloseTo(1200 * inflPow * npvFactor, 4);
+    });
+
+    it('estimés absents → repli sur le split 65/35 (non-régression stricte)', () => {
+        const withUndef = computeEstateNetWorth({ ...base, rrqEstimateMonthly: undefined, psvEstimateMonthly: undefined }, fiscalStub);
+        const baseline = computeEstateNetWorth(base, fiscalStub);
+        expect(withUndef.estateNetWorth).toBe(baseline.estateNetWorth);
+    });
+
+    it('un seul estimé fourni → indépendance par rente : l\'estimé pour la sienne, le split 65/35 pour l\'autre', () => {
+        // rrqEstimate 900 fourni, psv absent → psv = 0,35 × 1200 = 420. Σ = 1320.
+        const r = computeEstateNetWorth({ ...base, rrqEstimateMonthly: 900, activeUsersCount: 1 }, fiscalStub);
+        expect(extractNPV(r)).toBeCloseTo((900 + 1200 * 0.35) * inflPow * npvFactor, 4);
+    });
+
+    it('garde fin() : un rrqEstimateMonthly NaN ne propage pas de NaN (estateNetWorth reste fini)', () => {
+        // Les estimés sont lus BRUTS (sans fin(), pour préserver `undefined` → repli) ; un NaN (chemin
+        // nominal impossible via numOrUndef, mais belt-and-suspenders) est neutralisé par le fin() de SORTIE.
+        const r = computeEstateNetWorth({ ...base, rrqEstimateMonthly: NaN, activeUsersCount: 1 }, fiscalStub);
+        expect(Number.isFinite(r.estateNetWorth)).toBe(true);
+        expect(Number.isFinite(r.totalEstateTax)).toBe(true);
+    });
+});

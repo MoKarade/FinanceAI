@@ -173,7 +173,11 @@ export function computeScenarioOverrides(
     projection: { inflationRate?: number; returnRates?: { celi: number; reer: number; nonReg: number; crypto: number; cash: number }; [key: string]: unknown },
     scenarioType: FutureScenarioType,
 ): ScenarioOverrideResult {
-    let simInflation = projection.inflationRate || 2.0;
+    // `??` (pas `||`) : une inflation de 0 % est un choix LÉGITIME (« et si l'inflation
+    // s'arrêtait ») que `|| 2.0` écrasait silencieusement à 2 %. Depuis PV-5, les <input number>
+    // rendent un champ vide en `undefined` (jamais 0), donc `?? 2.0` ne défaut que sur l'absence
+    // réelle de valeur — le 0 saisi est respecté.
+    let simInflation = projection.inflationRate ?? 2.0;
     if (scenarioType === 'HYPER_INFLATION') simInflation = 5.5;
     // Phase 4 #4: COMPOUND_STRESS empile l'inflation soutenue ET les rendements
     // anémiques. La gestion de LTC se fait via le flag projection.ltcEnabled

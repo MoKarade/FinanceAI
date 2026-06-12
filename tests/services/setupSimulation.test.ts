@@ -101,6 +101,20 @@ describe('computeScenarioOverrides — régression « sliders sans effet »', ()
         const r = computeScenarioOverrides({ inflationRate: 2 }, 'BASE');
         expect(r.baseRates).toEqual({ celi: 7, reer: 6.5, nonReg: 6.5, crypto: 10, cash: 3 });
     });
+
+    // FA-8 reste — `?? 2.0` (pas `|| 2.0`) : une inflation de 0 % saisie est LÉGITIME et
+    // ne doit plus être écrasée à 2 %. `undefined` (champ jamais renseigné) défaut bien à 2 %.
+    it('inflation 0 % RESPECTÉE (n\'est plus écrasée à 2 %)', () => {
+        expect(computeScenarioOverrides({ inflationRate: 0 }, 'BASE').simInflation).toBe(0);
+    });
+
+    it('inflation absente (undefined) → défaut 2 %', () => {
+        expect(computeScenarioOverrides({}, 'BASE').simInflation).toBe(2.0);
+    });
+
+    it('inflation 0 % + scénario HYPER_INFLATION → l\'override macro prime (5.5 %)', () => {
+        expect(computeScenarioOverrides({ inflationRate: 0 }, 'HYPER_INFLATION' as FutureScenarioType).simInflation).toBe(5.5);
+    });
 });
 
 describe('buildSeededRng — déterminisme Monte Carlo', () => {

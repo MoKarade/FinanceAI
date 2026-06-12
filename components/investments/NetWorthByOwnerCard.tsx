@@ -5,6 +5,7 @@
 // à un propriétaire. Visible uniquement en mode couple (2 utilisateurs nommés).
 
 import React from 'react';
+import { formatCAD } from '../../utils/format';
 import { Card } from '../ui/Card';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import type { Asset, AssetOwner } from '../../types';
@@ -17,7 +18,7 @@ interface NetWorthByOwnerCardProps {
     setAssets: (assets: Asset[]) => void;
 }
 
-const fmt = (n: number): string => `${Math.round(n).toLocaleString('fr-CA')} $`;
+const fmt = (n: number): string => formatCAD(n);
 const pct = (v: number, total: number): string => (total > 0 ? `${Math.round((v / total) * 100)} %` : '0 %');
 
 export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets, setAssets }) => {

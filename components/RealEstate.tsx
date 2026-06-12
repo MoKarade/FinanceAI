@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { formatCAD } from '../utils/format';
 import { Card } from './ui/Card';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -226,7 +227,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
         return data;
     }, [amortization, totalCashNeeded, downPayment, initialRenovations, netMonthlyCost, maintenanceMonthly, currentRent, marketReturn, amortizationData.data]);
 
-    const formatCurrency = (val: number) => new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(val);
+    const formatCurrency = (val: number) => formatCAD(val);
 
     // Wiring 2026-05: équité immo projetée par le moteur principal au terme de
     // l'amortissement, à comparer avec le calcul local de la card Buy vs Rent.

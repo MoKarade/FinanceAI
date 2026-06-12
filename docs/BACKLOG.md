@@ -406,7 +406,7 @@
 - [ ] **[CA-01]** Code mort utils/ : `csvExport.ts` (109 l) + `safeNumber.ts` (30 l) entiers +
   exports orphelins (addPurchase/removePurchase, formatMonthYear, formatCompactCAD,
   getHasUserDataSnapshot). Confirmer via `npm run knip` avant suppression. (S)
-- [ ] **[CA-02]** Unifier le formatage monétaire : 11 helpers locaux divergents (« 1 234$ » vs
+- [x] **[CA-02]** ✅ (helpers délèguent à formatCAD — source unique, format préservé) Unifier le formatage monétaire : 11 helpers locaux divergents (« 1 234$ » vs
   « 1 234,00 $ »…) → `formatCAD` de `utils/format.ts` ; résorber ~135 `toLocaleString`. (M)
 - [ ] **[CA-03]** Finaliser la migration `utils/tax.ts` (820 l) → `services/tax.ts` (alias 5 l
   inachevé, ~20 imports directs restants). (S)

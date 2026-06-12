@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { formatCAD } from '../../utils/format';
 import { createPortal } from 'react-dom';
 import { ComposedChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceDot } from 'recharts';
 import { useTimeChartZoom } from '../../hooks/useTimeChartZoom';
@@ -83,7 +84,7 @@ interface AccountPoint {
 type ReasonTone = 'pos' | 'neg' | 'in' | 'out';
 interface MovementReason { icon: IconName; text: string; tone: ReasonTone; }
 
-const fmtMoney = (n: number) => `${Math.round(n).toLocaleString('fr-CA')} $`;
+const fmtMoney = (n: number) => formatCAD(n);
 
 // G13 — décompose le mouvement d'un compte en composantes EXACTES : gain marché
 // (MarketGrowthX) vs apport/retrait net (NetTransferX). On ne devine PAS la cause
@@ -239,7 +240,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
         ? computeRoomByYear(chartData, selected.key, selected.roomMaxKey, selected.contribKey)
         : [];
 
-    const fmt = (n: number) => `${Math.round(n).toLocaleString('fr-CA')} $`;
+    const fmt = (n: number) => formatCAD(n);
     const blur = isPrivacyMode ? 'privacy-blur' : '';
 
     const portfolioOutflow = (point.RetraitREER || 0) + (point.RetraitCELI || 0);

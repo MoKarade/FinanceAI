@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { formatCAD } from '../utils/format';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
 import { ProfileFieldsMoved } from './settings/ProfileFieldsMoved';
@@ -34,7 +35,7 @@ interface ChildPlanningProps {
 // Types et constantes déplacés dans services/projection/childCosts.ts
 // (source unique partagée avec le moteur de projection).
 
-const fmt = (n: number) => n.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 });
+const fmt = (n: number) => formatCAD(n);
 
 export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoals, projection, currentRESP = 0 }) => {
     const [activeTabIndex, setActiveTabIndex] = useState(0);

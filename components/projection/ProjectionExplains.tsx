@@ -10,6 +10,7 @@
 // 100 % pilotée par les vraies données de projection — aucun chiffre inventé.
 
 import React, { useMemo, useState } from 'react';
+import { formatCAD } from '../../utils/format';
 import { Card } from '../ui/Card';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
 import type { ProjectionChartPoint } from '../../services/projection/types';
@@ -19,7 +20,7 @@ interface ProjectionExplainsProps {
   chartData: ProjectionChartPoint[];
 }
 
-const fmt = (n: number): string => `${n < 0 ? '-' : ''}${Math.abs(Math.round(n)).toLocaleString('fr-CA')} $`;
+const fmt = (n: number): string => formatCAD(n);
 const fmtSigned = (n: number): string => `${n >= 0 ? '+' : '-'}${Math.abs(Math.round(n)).toLocaleString('fr-CA')} $`;
 
 /** Définition d'un compte : libellé + champs du point de projection à lire. */

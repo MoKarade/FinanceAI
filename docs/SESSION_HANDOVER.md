@@ -25,6 +25,28 @@
 > `ProfileFieldsMoved`) ; Retraite = résultats/analyses only. **PH3-c (purge champs détaillé morts) RESTE**
 > (audit consigné au BACKLOG : 19 non consommés vs 5 ; purge soignée à part, tax-sensible).
 >
+> **Session 2026-06-12 (reprise) — GRIND autonome #267-275** (Marc « forcer basse-prio, ne pas s'arrêter ») :
+> #267 SESSION_HANDOVER consolidé · **PH4-FUT « leviers-d'abord » BOUCLÉE** : #268 composeur de leviers
+> REMONTÉ en amont (écran d'amorçage = `StrategyOptimizerPanel` obligatoire ; calcul-sur-clic via
+> `revealedSig`/`applyAndReveal`, 2 `setAppState` BATCHÉS React 19) · #269 onglet « Paramètres »→« Hypothèses »
+> + ordre de retrait AUTO (sélecteur retiré) · #270 annotations courbe (retraite/RRQ/PSV/épuisement compte) ·
+> #271 docs (leçon git merge>reset). · **#272 tests Futur-critiques** : `applyAndReveal` (révélation sans
+> flash = garde le batching) + `usePastPortfolioHistory` (mode test reconstruction directe, anti-fuite
+> réel→test M3). · **#273 inflation 0 % respectée** (`?? 2.0` vs `|| 2.0`, famille PV-5 ; + cohérence
+> moteur↔UI Retraite/Enfants) + re-scope FSS-PSV. · **#274 NPV estate** : estimés RRQ/PSV priment sur le
+> split 65/35 (×N per-personne comme retirementIncome ; garde FA-5 verrouillée) — résout une divergence
+> silencieuse estate↔revenu. · **#275 RRQ-PSV-MIN** : clamp `Math.max(0,…)` des estimés (retirementIncome
+> + estateCalculation + `min={0}` UI ; un estimé négatif ne dégrade plus `total`/NPV en silence). Chaque
+> lot : panel 3 agents (code-reviewer/silent-failure/projection-validator), suite verte (→**1996/1996**),
+> zéro baseline. Confirmé : **le repo n'a aucun required check → `enable_pr_auto_merge` échoue « unstable »**
+> → merge au vert via **timer court** (`sleep ~270` run_in_background, pattern documenté §auto-merge).
+> **▶ LANE AUTONOME « FRAÎCHE » ÉPUISÉE.** Reste = 🧭 **FEU VERT MARC** : **[FSS-PSV]** (PSV DANS l'assiette FSS
+> confirmé `taxDecember.ts:662` ; fix = câbler une PSV mensuelle au `ctx` + **transcrire la règle Annexe F
+> dans FISCAL_REFERENCE D'ABORD** — money-critical, ne pas coder sur source non transcrite) · gros refactors
+> CA-03/CA-06/CA-09 · P0 (proxy Anthropic / IndexedDB) · refontes **DESIGN** (Budget/Transactions/Retraite,
+> irritants à cadrer). Bas-bruit restant : CA-10 reste (`assetMeta` n'existe plus ; `analytics`/
+> `usePwaInstallPrompt`), D6-SR-2, DEAD-FLT-2/CA-01 (consommateurs VIVANTS → pas du code mort).
+>
 > **Session 2026-06-11 (suite) — GRIND backlog (demande Marc « tout faire sans s'arrêter »)** :
 > #243 PH2-d-1 (toast verrou irrécupérable) · #244 Phase 3 + **réduction docs 47→9** (HISTORIQUE.md
 > consolidé) · #245 **[CPL-1]** (bug couple Marc : passage en couple GATÉ sur définition consciente du

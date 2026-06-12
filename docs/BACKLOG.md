@@ -204,6 +204,9 @@
   impôt latent immobilier. Préexistant (hors PH4-FUT-B-4, qui borne correctement le downsizing à la RP).
   Fix : taxer le gain locatif (inclusion 50 %) à la vente/succession ; documenté FISCAL_REFERENCE §8.
 
+- [ ] **[PH4-FUT-TEST]** 🧪 (revue code-reviewer) — test RTL du chemin `applyAndReveal` (Futur leviers-d'abord) :
+  clic « Appliquer » → courbe révélée sans flash, `isStale` reste faux. Documente l'invariant de batching.
+
 ### Phase 4 — REFONTES ⏳ (UN plan SÉPARÉ par onglet → OK Marc par onglet) — dépend de : PH2 (+PH3 pour FUT/RET)
 - [ ] **[PH4-FUT]** 🔧⏳ Refonte **Futur** : leviers OBLIGATOIRES avant calcul (l'actuel contenu
   d'Optimisation remonte en amont) ; la courbe affichée = toujours la MEILLEURE selon les leviers ;

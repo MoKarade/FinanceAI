@@ -315,6 +315,31 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         return { lifeChartEvents: lifes, flowChartEvents: flows };
     }, [chartData]);
 
+    // PH4-FUT — ANNOTATIONS sur la courbe (choix Marc : âge de retraite, épuisement d'un compte, bascule
+    // de phase). Calculées une fois depuis chartData ; rendues en lignes verticales discrètes (masquables
+    // via le toggle « Événements » de la légende). Les ÉVÉNEMENTS DE VIE restent les pastilles cliquables.
+    const lifeMarkers = useMemo(() => {
+        const markers: { monthIndex: number; label: string; color: string }[] = [];
+        let retDone = false, rrqDone = false, psvDone = false;
+        const accounts: Array<[keyof ProjectionChartPoint, string]> = [
+            ['REER', 'REER'], ['CELI', 'CELI'], ['NonReg', 'Non-enr.'], ['CELIAPP', 'CELIAPP'],
+        ];
+        const sig: Record<string, boolean> = {};
+        const dep: Record<string, boolean> = {};
+        for (const d of chartData as ProjectionChartPoint[]) {
+            if (d.monthIndex < 0) continue; // pas d'annotation sur le passé reconstruit
+            if (!retDone && d.isRetired) { markers.push({ monthIndex: d.monthIndex, label: `Retraite${d.age ? ` ${d.age}` : ''}`, color: '#f97316' }); retDone = true; }
+            if (!rrqDone && (d.pensionRRQ ?? 0) > 0) { markers.push({ monthIndex: d.monthIndex, label: 'RRQ', color: '#22d3ee' }); rrqDone = true; }
+            if (!psvDone && (d.pensionPSV ?? 0) > 0) { markers.push({ monthIndex: d.monthIndex, label: 'PSV', color: '#2dd4bf' }); psvDone = true; }
+            for (const [key, short] of accounts) {
+                const v = (d[key] as number | undefined) ?? 0;
+                if (v > 5000) sig[key as string] = true;
+                if (sig[key as string] && !dep[key as string] && v < 1000) { markers.push({ monthIndex: d.monthIndex, label: `${short} ⌀`, color: '#ef4444' }); dep[key as string] = true; }
+            }
+        }
+        return markers;
+    }, [chartData]);
+
     // G3 + PH4-FUT « leviers-d'abord » — 3 sous-onglets : Projection (composeur de leviers EN AMONT puis
     // courbe + KPIs) ; Paramètres (hypothèses) ; Plan d'action (explications + checklist). Plus d'onglet
     // « Optimisation » : le composeur de leviers est remonté dans l'écran d'amorçage du sous-onglet Projection.
@@ -757,6 +782,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
                             <Tooltip content={<ExpertTooltip userName1={config.users[0]?.name} userName2={config.users[1]?.name} />} />
                             {isVisible('fire') && <ReferenceLine y={fireNumber} stroke="#f97316" strokeDasharray="5 5" label={<RefLineLabel value="Objectif FIRE" color="#f97316" />} />}
+
+                            {/* PH4-FUT — ANNOTATIONS de cycle de vie (retraite / rentes RRQ-PSV / épuisement
+                                de compte). Lignes verticales discrètes, masquables via le toggle « Événements ». */}
+                            {isVisible('events') && lifeMarkers.map((mk, i) => (
+                                <ReferenceLine key={`lifemark-${i}`} x={mk.monthIndex} stroke={mk.color} strokeOpacity={0.5} strokeDasharray="2 4" label={<RefLineLabel value={mk.label} color={mk.color} />} />
+                            ))}
 
                             {isVisible('Liquidites') && <Area type="monotone" dataKey="Liquidites" stackId="1" stroke="#4b5563" fill="#4b5563" name="Cash" isAnimationActive={false} />}
                             {isVisible('CELI') && <Area type="monotone" dataKey="CELI" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} name="CELI" isAnimationActive={false}/>}

@@ -230,15 +230,11 @@ export const Retirement: React.FC<RetirementProps> = ({
 
                 <div className="lg:col-span-2 space-y-6">
                     {chartData.length === 0 ? (
-                        <Card title="Simulation">
-                            <div className="flex items-center justify-center h-64 text-ink-500">
-                                <div className="text-center">
-                                    <Icon name="clock" size={40} className="text-ink-500 block mx-auto mb-3" />
-                                    <p>Chargement des donnees de portefeuille...</p>
-                                    <p className="text-meta mt-2 text-ink-500">Assurez-vous d'avoir importe un CSV de portefeuille.</p>
-                                </div>
-                            </div>
-                        </Card>
+                        // PH4-RET — projection non calculée (prérequis manquants) → invite standard, cohérente
+                        // avec Dashboard/Investissement et la règle no-fake-data. L'ancien message « importez
+                        // un CSV de portefeuille » était trompeur (le CSV Google Sheet est déprécié ; la
+                        // courbe vient désormais de la source unique lastProjection, comme l'onglet Futur).
+                        <ProjectionRequired feature="ta planification de retraite" />
                     ) : (
                         <>
                             <Card icon={<Icon name="investments" size={18} />} title="Accumulation & épuisement">

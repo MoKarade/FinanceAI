@@ -31,6 +31,10 @@ export interface PropertyStateMutable {
     mortgage: number;
     currentValue: number;
     isSold?: boolean;
+    /** RE-GAIN — coût d'achat (ACB approximé = prix payé), pour le gain en capital à la disposition. */
+    cost?: number;
+    /** RE-GAIN — résidence principale (gain EXEMPT, LIR 40(2)b) vs locatif (gain imposable). */
+    isPrimaryResidence?: boolean;
     [key: string]: unknown;
 }
 
@@ -39,6 +43,9 @@ export interface LifeEventMutator {
     addLiquid: (amt: number) => void;
     addExpense: (amt: number) => void;
     adjustRealEstate: (equityDelta: number, mortgageDelta: number) => void;
+    /** RE-GAIN — réalise un gain en capital BRUT (100 %) ; l'inclusion 50 % est appliquée en aval
+     *  (accCapitalGainsYear × 0,5). Sert à imposer la vente d'un IMMEUBLE LOCATIF. */
+    realizeCapitalGain: (grossGain: number) => void;
     logLife: (msg: string) => void;
     logFlow: (msg: string) => void;
 }
@@ -70,6 +77,16 @@ export function applyLifeEvents(
                         -(soldProp.currentValue - soldProp.mortgage),
                         -soldProp.mortgage,
                     );
+                    // RE-GAIN — gain en capital à la disposition : EXEMPT pour la résidence principale
+                    // (LIR 40(2)b) ; IMPOSABLE pour un locatif = produit net (95 %) − coût d'achat, 50 %
+                    // inclus en aval. Coût absent → 0 (conservateur : tout le produit devient gain).
+                    if (!soldProp.isPrimaryResidence) {
+                        const gain = Math.max(0, soldProp.currentValue * 0.95 - (soldProp.cost ?? 0));
+                        if (gain > 0) {
+                            state.realizeCapitalGain(gain);
+                            state.logFlow(`🏠 Gain en capital (locatif) réalisé : ${Math.round(gain).toLocaleString('fr-CA')}$ — 50 % imposable`);
+                        }
+                    }
                     soldProp.isBought = false;
                     soldProp.mortgage = 0;
                     soldProp.isSold = true;

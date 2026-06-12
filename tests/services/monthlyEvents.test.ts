@@ -81,17 +81,47 @@ describe('applyLifeEvents', () => {
     // Le state est un objet mutable partagé par le mutateur ET les assertions.
     // On NE fait pas de spread (copie valeur) pour éviter la désynchronisation.
     const makeState = () => {
-        const s = { portfolio: 100000, liquid: 50000, expense: 0 };
+        const s = { portfolio: 100000, liquid: 50000, expense: 0, capitalGain: 0 };
         const mutator: LifeEventMutator = {
             shockPortfolio: (f: number) => { s.portfolio *= f; },
             addLiquid: (n: number) => { s.liquid += n; },
             addExpense: (n: number) => { s.expense += n; },
             adjustRealEstate: vi.fn(),
+            realizeCapitalGain: (g: number) => { s.capitalGain += g; },
             logLife: vi.fn(),
             logFlow: vi.fn(),
         };
         return { mutator, s };
     };
+
+    // RE-GAIN — gain en capital à la disposition d'un immeuble (vente via LifeEvent « vente »).
+    it('RE-GAIN : vente d\'un LOCATIF réalise le gain (produit 95 % − coût) ; 50 % imposé en aval', () => {
+        const event: LifeEvent = { id: 'v', date: '2035-06', type: 'GROS_ACHAT', name: 'Vente chalet locatif' };
+        const { mutator, s } = makeState();
+        const props: PropertyStateMutable[] = [{ id: 'c', isBought: true, mortgage: 100000, currentValue: 500000, cost: 300000, isPrimaryResidence: false }];
+        applyLifeEvents([event], '2035-06', 1.0, props, mutator);
+        // produit net 500000×0.95 = 475000 ; gain BRUT = 475000 − 300000 = 175000 (l'inclusion 50 % est en aval).
+        expect(s.capitalGain).toBeCloseTo(175000, 0);
+        expect(s.liquid).toBeCloseTo(50000 + (475000 - 100000), 0); // net après hypothèque
+        expect(props[0].isSold).toBe(true);
+    });
+
+    it('RE-GAIN : vente de la RÉSIDENCE PRINCIPALE = gain EXEMPT (aucun gain réalisé)', () => {
+        const event: LifeEvent = { id: 'v', date: '2035-06', type: 'GROS_ACHAT', name: 'Vente maison' };
+        const { mutator, s } = makeState();
+        const props: PropertyStateMutable[] = [{ id: 'm', isBought: true, mortgage: 100000, currentValue: 500000, cost: 300000, isPrimaryResidence: true }];
+        applyLifeEvents([event], '2035-06', 1.0, props, mutator);
+        expect(s.capitalGain).toBe(0);        // exemption résidence principale (LIR 40(2)b)
+        expect(props[0].isSold).toBe(true);   // la vente a bien lieu, sans impôt sur le gain
+    });
+
+    it('RE-GAIN : locatif vendu à perte (produit < coût) → aucun gain négatif', () => {
+        const event: LifeEvent = { id: 'v', date: '2035-06', type: 'GROS_ACHAT', name: 'Vente locatif' };
+        const { mutator, s } = makeState();
+        const props: PropertyStateMutable[] = [{ id: 'l', isBought: true, mortgage: 50000, currentValue: 200000, cost: 250000, isPrimaryResidence: false }];
+        applyLifeEvents([event], '2035-06', 1.0, props, mutator);
+        expect(s.capitalGain).toBe(0); // max(0, 190000 − 250000) = 0
+    });
 
     it('applique un krach boursier et choque le portfolio', () => {
         // Arrange

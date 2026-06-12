@@ -94,3 +94,14 @@ Le code est prêt et déployé ; il manque l'hébergement du bundle (Marc avait 
 - [ ] **Docs périmées à resynchroniser** (non bloquant) : `SESSION_HANDOVER.md` cite encore
   1154 tests / PR #116 / Cloudflare comme auth « courante » ; réel = ~1704 tests, dernier merge
   bien plus loin. À rafraîchir lors de la prochaine grosse livraison.
+
+
+## Décisions design Phase 4 (Claude a fait tout l'autonome — 12 PR #250-261)
+> Les gains CONCRETS des onglets Futur/Investissement/Transactions/Retraite sont livrés. Restent 2
+> refontes purement DESIGN qui ont besoin de ta vision (Claude refuse de deviner = risque hors-sujet) :
+- **[PH4-BUD] Budget — refonte complète** : donne 2-3 irritants concrets (ce qui te gêne aujourd'hui)
+  pour cadrer. Pistes Claude : vue prévu/réel par groupe (Besoin/Envie/Épargne) en tête ; lien
+  budget→projection plus visible ; réduire les sous-sections.
+- **[PH4-FUT] annotations sur la courbe (Q1 de ton brief)** : QUOI annoter ? (âge retraite / épuisement
+  d'un compte / bascule de stratégie / événements de vie). + « Paramètres » renommé/allégé, conseils du
+  plan d'action déclinés mois/trimestre/semestre/année.

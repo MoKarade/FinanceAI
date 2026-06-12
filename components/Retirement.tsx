@@ -5,6 +5,7 @@ import { ProjectionStaleBanner } from './ui/ProjectionStaleBanner';
 import { ProfileFieldsMoved } from './settings/ProfileFieldsMoved';
 import { Icon } from './ui/Icon';
 import { Badge } from './ui/Badge';
+import { PrivateAmount } from './ui/PrivateAmount';
 import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory } from '../types';
 import { ProjectionChartPoint } from '../services/projection/types';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend } from 'recharts';
@@ -285,21 +286,21 @@ export const Retirement: React.FC<RetirementProps> = ({
                                 <div className="grid grid-cols-3 gap-4 mt-6">
                                     <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
                                         <div className="text-tiny text-ink-500 uppercase tracking-widest font-bold">Capital a la Retraite</div>
-                                        <div className="text-2xl font-black text-info-400 privacy-blur mt-1 drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]">
+                                        <PrivateAmount as="div" className="text-2xl font-black text-info-400 mt-1 drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]">
                                             {(retirementNetWorth / 1000).toFixed(0)}k $
-                                        </div>
+                                        </PrivateAmount>
                                     </div>
                                     <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
                                         <div className="text-tiny text-ink-500 uppercase tracking-widest font-bold">Pic du Patrimoine</div>
-                                        <div className="text-2xl font-black text-success-400 privacy-blur mt-1 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]">
+                                        <PrivateAmount as="div" className="text-2xl font-black text-success-400 mt-1 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]">
                                             {(peakNetWorth / 1000).toFixed(0)}k $
-                                        </div>
+                                        </PrivateAmount>
                                     </div>
                                     <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
                                         <div className="text-tiny text-ink-500 uppercase tracking-widest font-bold">Heritage ({lifeExpectancy} ans)</div>
-                                        <div className={`text-2xl font-black privacy-blur mt-1 ${finalNetWorth > 0 ? 'text-white' : 'text-danger-400'}`}>
+                                        <PrivateAmount as="div" className={`text-2xl font-black mt-1 ${finalNetWorth > 0 ? 'text-white' : 'text-danger-400'}`}>
                                             {finalNetWorth > 0 ? `${(finalNetWorth / 1000).toFixed(0)}k $` : 'Épuisé'}
-                                        </div>
+                                        </PrivateAmount>
                                     </div>
                                 </div>
                             </Card>
@@ -354,34 +355,34 @@ const RetirementTooltip = React.memo(({ active, payload }: RetirementTooltipProp
             <div className="mb-4 space-y-2">
                 <div className="flex justify-between items-center">
                     <span className="text-tiny font-bold text-ink-300 uppercase tracking-widest">Patrimoine Net</span>
-                    <span className="text-body font-black text-success-400 privacy-blur drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]">{data.NetWorth?.toLocaleString()}$</span>
+                    <PrivateAmount className="text-body font-black text-success-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]">{data.NetWorth?.toLocaleString()}$</PrivateAmount>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                     <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                         <div className="text-tiny text-primary font-bold mb-1">CELI</div>
-                        <div className="text-meta font-black text-ink-50 privacy-blur">{(data.CELI || 0).toLocaleString()}$</div>
+                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{(data.CELI || 0).toLocaleString()}$</PrivateAmount>
                     </div>
                     <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                         <div className="text-tiny text-info-500 font-bold mb-1">REER</div>
-                        <div className="text-meta font-black text-ink-50 privacy-blur">{(data.REER || 0).toLocaleString()}$</div>
+                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{(data.REER || 0).toLocaleString()}$</PrivateAmount>
                     </div>
                     {/* Revue #245 (a11y S1) — CELIAPP visible au stack doit avoir sa valeur TEXTE ici. */}
                     {(data.CELIAPP || 0) > 0 && (
                         <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                             <div className="text-tiny text-[#2dd4bf] font-bold mb-1">CELIAPP</div>
-                            <div className="text-meta font-black text-ink-50 privacy-blur">{(data.CELIAPP || 0).toLocaleString()}$</div>
+                            <PrivateAmount as="div" className="text-meta font-black text-ink-50">{(data.CELIAPP || 0).toLocaleString()}$</PrivateAmount>
                         </div>
                     )}
                     {(data.NonReg || 0) > 0 && (
                         <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                             <div className="text-tiny text-warning-500 font-bold mb-1">Non-Enreg.</div>
-                            <div className="text-meta font-black text-ink-50 privacy-blur">{(data.NonReg || 0).toLocaleString()}$</div>
+                            <PrivateAmount as="div" className="text-meta font-black text-ink-50">{(data.NonReg || 0).toLocaleString()}$</PrivateAmount>
                         </div>
                     )}
                     <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                         <div className="text-tiny text-[#9b8fcf] font-bold mb-1">Liquidites</div>
-                        <div className="text-meta font-black text-ink-50 privacy-blur">{(data.Liquidites || 0).toLocaleString()}$</div>
+                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{(data.Liquidites || 0).toLocaleString()}$</PrivateAmount>
                     </div>
                 </div>
             </div>
@@ -390,16 +391,16 @@ const RetirementTooltip = React.memo(({ active, payload }: RetirementTooltipProp
                 <div className="space-y-2">
                     <div className="text-tiny font-bold text-ink-300 uppercase tracking-widest mb-1">Flux Mensuel</div>
                     <div className="bg-black/30 rounded-lg p-3 border border-danger-500/20 space-y-2">
-                        <div className="flex justify-between text-meta"><span className="text-ink-300">Revenu total</span><span className="text-success-400 font-bold privacy-blur">+{(data.Income || 0).toLocaleString()}$</span></div>
-                        <div className="flex justify-between text-meta"><span className="text-ink-300">Depenses (Infl.)</span><span className="text-danger-400 font-bold privacy-blur">-{(data.Expenses || 0).toLocaleString()}$</span></div>
-                        <div className="flex justify-between text-meta pt-1 border-t border-white/5"><span className="text-ink-300">Cashflow</span><span className={`font-bold privacy-blur ${((data.Income ?? 0) - (data.Expenses ?? 0)) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>{((data.Income ?? 0) - (data.Expenses ?? 0)).toLocaleString()}$</span></div>
+                        <div className="flex justify-between text-meta"><span className="text-ink-300">Revenu total</span><PrivateAmount className="text-success-400 font-bold">+{(data.Income || 0).toLocaleString()}$</PrivateAmount></div>
+                        <div className="flex justify-between text-meta"><span className="text-ink-300">Depenses (Infl.)</span><PrivateAmount className="text-danger-400 font-bold">-{(data.Expenses || 0).toLocaleString()}$</PrivateAmount></div>
+                        <div className="flex justify-between text-meta pt-1 border-t border-white/5"><span className="text-ink-300">Cashflow</span><PrivateAmount className={`font-bold ${((data.Income ?? 0) - (data.Expenses ?? 0)) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>{((data.Income ?? 0) - (data.Expenses ?? 0)).toLocaleString()}$</PrivateAmount></div>
                     </div>
                 </div>
             ) : (
                 <div className="space-y-2">
                     <div className="text-tiny font-bold text-ink-300 uppercase tracking-widest mb-1">Epargne Mensuelle</div>
                     <div className="bg-black/30 rounded-lg p-3 border border-success-500/20">
-                        <div className="flex justify-between text-meta"><span className="text-ink-300">Cashflow</span><span className="text-success-400 font-bold privacy-blur">+{(data.Savings || 0).toLocaleString()}$</span></div>
+                        <div className="flex justify-between text-meta"><span className="text-ink-300">Cashflow</span><PrivateAmount className="text-success-400 font-bold">+{(data.Savings || 0).toLocaleString()}$</PrivateAmount></div>
                     </div>
                 </div>
             )}

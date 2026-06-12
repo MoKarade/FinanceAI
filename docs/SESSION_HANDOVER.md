@@ -48,15 +48,18 @@
 > nom accessible (`aria-label` = texte visible) sur les **10 sliders taux/% de ProjectionControls** (dont la
 > boucle inflation/poste) + PropertyConfigurator:172 ; test direct `ProjectionControls.a11y.test.tsx` · **#281**
 > [A11Y-SLIDERS] **COMPLÉTÉ** — noms sur les 6 derniers sliders (RealEstate Rendement/Appréciation, DebtManager,
-> TaxCenter REER/CELIAPP, ChildPlanning REEE) ; Budget déjà nommé, HealthIndicator déjà associé. Panel
-> a11y-auditor à chaque lot UI. Suite → **~2020** (après #281).
+> TaxCenter REER/CELIAPP, ChildPlanning REEE) ; Budget déjà nommé, HealthIndicator déjà associé · **#282**
+> [D6-SR-2] Retirement.tsx : les **13 montants** mono-valeur (3 KPIs + 10 tooltip) `privacy-blur`→`<PrivateAmount>`
+> (ferme la fuite SR : le blur est CSS-only, un SR lisait les vrais montants en mode privé). Panel
+> a11y-auditor à chaque lot UI. Suite → **~2020**.
 > **▶ Reste = 🧭 FEU VERT MARC** : **[FSS-PSV]** (PSV DANS l'assiette FSS confirmé `taxDecember.ts:662` ;
 > fix = câbler une PSV mensuelle au `ctx` + **transcrire la règle Annexe F dans FISCAL_REFERENCE D'ABORD**
 > — money-critical, ne pas coder sur source non transcrite) · gros refactors CA-03/CA-06/CA-09 · P0 (proxy
 > Anthropic / IndexedDB) · refontes **DESIGN** (Budget/Transactions/Retraite, irritants à cadrer).
-> **Bas-bruit ENCORE dispo (prêt, mandat « continuer » de Marc)** : **[A11Y-SLIDERS] ✅ FAIT** (tous les sliders
-> nommés) → reste D6-SR-2 (spans multi-lignes / montants adjacents non codemodables) · `analytics.ts` (trivial,
-> peu de valeur). DEAD-FLT-2/CA-01 = consommateurs VIVANTS → PAS du code mort (ne pas purger). **Le bas-bruit
+> **Bas-bruit ENCORE dispo (prêt, mandat « continuer » de Marc)** : **[A11Y-SLIDERS] ✅ FAIT** (tous sliders nommés) ·
+> **D6-SR-2 mono-valeur ✅ FAIT** (Retirement #282) → RESTE D6-SR-2 = blocs CONTENEUR multi-spans (Dashboard:610,
+> StressTestPanel, RealEstate amortissement) qui exigent un `<PrivateBlock>` à créer (PrivateAmount casse le flex
+> multi-enfants) · `analytics.ts` (trivial). DEAD-FLT-2/CA-01 = consommateurs VIVANTS → PAS du code mort. **Le bas-bruit
 > à fort signal est quasi épuisé — prochaine vraie valeur = un item FEU VERT (FSS-PSV / refonte DESIGN).**
 >
 > **Session 2026-06-11 (suite) — GRIND backlog (demande Marc « tout faire sans s'arrêter »)** :

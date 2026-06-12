@@ -472,11 +472,13 @@
   pour les sliders restants ; ChildPlanning REEE NON masqué visuellement → pas de parité à corriger.
   **+ `aria-label` (nom accessible) sur ces 5 sliders** (leurs `<label>` ne sont pas associés) + constante
   partagée `MASKED_AMOUNT_LABEL` (DRY entre `privacyAria` et `PrivateAmount`)) +
-  spans MULTI-LIGNES/mixtes non codemodables + MONTANTS ADJACENTS
-  d'une même unité visuelle (Dashboard:607-619 diff/revenu/gain, StressTestPanel delta, RealEstate
-  colonnes amortissement) + ChildPlanning « Capital à 17 ans »
-  (à gater comme le fix Dashboard : value peut être un CTA <ProjectionRequired>). Migrer
-  opportunistiquement vers <PrivateAmount> au fil des refontes PH4.
+  spans mono-valeur + MONTANTS ADJACENTS d'une même unité visuelle. **Retirement.tsx ✅ FAIT (#282 : les 13
+  montants mono-valeur → `<PrivateAmount>`, KPIs + tooltip, 0 privacy-blur restant).** RESTE = blocs CONTENEUR
+  multi-spans où `privacy-blur` est sur un PARENT flex (Dashboard:610 diff+revenu+gain, StressTestPanel delta,
+  RealEstate colonnes amortissement, ChildPlanning « Capital à 17 ans ») : `<PrivateAmount>` wrappe ses enfants
+  dans un `<span aria-hidden>` → casserait le layout flex multi-enfants. ⇒ créer un petit `<PrivateBlock>`
+  (aria-hidden sur le conteneur + `sr-only` « Montant masqué » en sibling, SANS wrapper les enfants), puis
+  migrer ces blocs. Tranche bornée, fait quand on veut.
 - [x] **[A11Y-SLIDERS]** ✅ COMPLET — nom accessible (WCAG 4.1.2/2.5.3) sur TOUS les sliders dont le `<label>`
   n'était pas associé. **ProjectionControls** (10 : Horizon, Inflation, Hausse salaire, CELI, NonReg/REER,
   Coussin, Inflation/poste ×6, Part actions US, Rendement div. US, Coût soins LD) + **PropertyConfigurator**

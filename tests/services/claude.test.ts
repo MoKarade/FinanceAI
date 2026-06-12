@@ -16,6 +16,7 @@ import {
     categorizeBatch,
     detectSubscriptionsAI,
     buildRebalancePrompt,
+    buildPayslipFileBlock,
 } from '../../services/claude';
 import type { RebalanceActionInput } from '../../services/claude';
 import type { Transaction } from '../../types';
@@ -130,5 +131,30 @@ describe('buildRebalancePrompt — anti-injection de prompt (C1)', () => {
     it('conserve les données légitimes (id de l\'action présent dans le prompt)', () => {
         const prompt = buildRebalancePrompt(malicious);
         expect(prompt).toContain('a1');
+    });
+});
+
+describe('buildPayslipFileBlock — PDF vs image (régression « impossible d\'uploader mes documents »)', () => {
+    // Avant : un PDF était envoyé dans un bloc `image` (ou rejeté) → l'API Anthropic
+    // échouait → toast « Analyse échouée ». Un PDF DOIT passer dans un bloc `document`.
+    it('PDF → bloc `document` base64', () => {
+        expect(buildPayslipFileBlock('application/pdf', 'BASE64DATA')).toEqual({
+            type: 'document',
+            source: { type: 'base64', media_type: 'application/pdf', data: 'BASE64DATA' },
+        });
+    });
+
+    it.each(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])(
+        '%s → bloc `image` base64',
+        (mediaType) => {
+            expect(buildPayslipFileBlock(mediaType, 'IMG')).toEqual({
+                type: 'image',
+                source: { type: 'base64', media_type: mediaType, data: 'IMG' },
+            });
+        },
+    );
+
+    it('type non supporté → throw explicite (jamais d\'envoi API silencieux)', () => {
+        expect(() => buildPayslipFileBlock('text/plain', 'X')).toThrow(/non supporté/);
     });
 });

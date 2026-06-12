@@ -708,15 +708,37 @@ const PayslipSchema = z.object({
 export type PayslipData = z.infer<typeof PayslipSchema>;
 
 /**
+ * Construit le bloc de contenu Anthropic pour un fichier uploadé :
+ *  - PDF (`application/pdf`) → bloc `document` (l'API Anthropic REFUSE un PDF
+ *    dans un bloc `image` : un bloc image n'accepte que des media_type image/*,
+ *    donc un PDF y déclenchait un échec → « Analyse échouée »).
+ *  - image (JPG/PNG/GIF/WEBP) → bloc `image`.
+ * Throw sur tout autre type. Exporté pour test (logique pure, sans réseau).
+ */
+const PAYSLIP_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const;
+export const buildPayslipFileBlock = (
+    fileType: string,
+    base64: string,
+): Anthropic.ImageBlockParam | Anthropic.DocumentBlockParam => {
+    if (fileType === 'application/pdf') {
+        return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } };
+    }
+    if (!PAYSLIP_IMAGE_TYPES.includes(fileType as (typeof PAYSLIP_IMAGE_TYPES)[number])) {
+        throw new Error(`Type ${fileType} non supporté. Utilise JPG/PNG/GIF/WEBP ou PDF.`);
+    }
+    return { type: 'image', source: { type: 'base64', media_type: fileType as (typeof PAYSLIP_IMAGE_TYPES)[number], data: base64 } };
+};
+
+/**
  * Phase 4 A4 — analyse vision d'une fiche de paie / document fiscal.
  *
  * Extrait les montants de la PÉRIODE COURANTE (pas YTD) au format
- * structuré pour TaxCenter. Modèle Sonnet 4.6 (Vision).
+ * structuré pour TaxCenter. Modèle Sonnet 4.6 (Vision image OU document PDF).
  */
 export const analyzePayslip = async (file: File, apiKey: string): Promise<PayslipData> => {
     if (!apiKey) throw new Error('Clé API Anthropic manquante.');
 
-    // Lit le fichier en base64 pour Anthropic Vision
+    // Lit le fichier en base64 pour Anthropic (Vision pour image, bloc document pour PDF)
     const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
@@ -727,10 +749,8 @@ export const analyzePayslip = async (file: File, apiKey: string): Promise<Paysli
         reader.readAsDataURL(file);
     });
 
-    const mediaType = (file.type || 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
-    if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mediaType)) {
-        throw new Error(`Type ${mediaType} non supporté. Utilise JPG/PNG/GIF/WEBP.`);
-    }
+    // PDF → bloc `document` ; image → bloc `image` (l'API Anthropic refuse un PDF dans un bloc image).
+    const fileBlock = buildPayslipFileBlock(file.type || 'image/jpeg', base64);
 
     const client = makeClient(apiKey);
     const response = await client.messages.create({
@@ -740,7 +760,7 @@ export const analyzePayslip = async (file: File, apiKey: string): Promise<Paysli
         messages: [{
             role: 'user',
             content: [
-                { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+                fileBlock,
                 {
                     type: 'text',
                     text: `Analyse cette fiche de paie. Extrais UNIQUEMENT les montants de la PÉRIODE COURANTE et retourne un JSON strict (sans markdown):

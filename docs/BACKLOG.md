@@ -214,15 +214,16 @@
   d'Optimisation) ; stress tests déplacés dans Paramètres ; Optimisation visible seulement à la 1re
   ouverture puis dépliable ; BEAUCOUP plus de leviers, calcul accéléré mais représentatif ; conseils
   du plan d'action REMONTÉS (pas enterrés en bas), clarifiés, déclinés mois/trimestre/semestre/année.
-- [ ] **[PH4-TX]** 🔧 Refonte **Transactions** : tri par montant/catégorie/date + refonte complète
-  (onglet vieux et peu utile).
-- [ ] **[PH4-BUD]** 🔧 Refonte **Budget** complète.
+- [x] **[PH4-TX]** ✅ #257 — tri par date/marchand/montant/catégorie (en-têtes cliquables, aria-sort).
+  🧭 Reste = refonte visuelle profonde (design → cadrage Marc).
+- [ ] **[PH4-BUD]** 🧭 Refonte **Budget** complète — DESIGN, besoin du cadrage Marc (irritants concrets).
+  Budget déjà sain techniquement (source unique lastProjection). Routé → `A_FAIRE_MOI`.
 - [ ] **[PH4-INV]** 🔧 Refonte **Investissement** : autocomplétion à la frappe pour chercher une
   action (Finnhub symbol search) ; saisie d'actions facilitée ; VÉRIFIER l'allocation sur données
   réelles (bug constaté sur données test) ; afficher les dividendes perçus ; refonte plus explicite,
   plus simple, moins de pages, plus d'explications sans excès de texte.
-- [ ] **[PH4-RET]** 🔧 Refonte **Retraite** : courbes identiques à Futur (acquis via PH2-c) ;
-  refonte plus efficace/utile/lisible.
+- [x] **[PH4-RET]** ✅ #258 — courbes = source unique (acquis PH2-c) ; invite ProjectionRequired (CSV
+  déprécié retiré). 🧭 Reste = lisibilité (design → cadrage Marc).
 
 ## 🚨 P0 — Bloquant pour un vrai produit multi-utilisateurs
 - [ ] **[P0-PROXY]** 🔧 Proxy backend pour la clé Anthropic (H3) : `services/claude.ts` utilise

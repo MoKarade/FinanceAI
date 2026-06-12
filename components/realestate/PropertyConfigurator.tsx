@@ -113,7 +113,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                             <span>Prix d'achat</span>
                             <PrivateAmount className="text-white font-bold">{fmt(price)}</PrivateAmount>
                         </label>
-                        <input type="range" min="150000" max="2500000" step="10000" value={price} {...maskedSliderAria(isPrivacyMode)} onChange={e => updateActiveGoal({ price: Number(e.target.value) })}
+                        <input type="range" aria-label="Prix d'achat" min="150000" max="2500000" step="10000" value={price} {...maskedSliderAria(isPrivacyMode)} onChange={e => updateActiveGoal({ price: Number(e.target.value) })}
                             className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-primary" />
                     </div>
                     <div>
@@ -121,7 +121,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                             <span>Mise de fonds</span>
                             <PrivateAmount className="text-blue-300 font-bold">{fmt(downPayment)} ({downPaymentPercent}%)</PrivateAmount>
                         </label>
-                        <input type="range" min={price * 0.05} max={price} step="5000" value={downPayment} {...maskedSliderAria(isPrivacyMode)} onChange={e => updateActiveGoal({ downPayment: Number(e.target.value) })}
+                        <input type="range" aria-label="Mise de fonds" min={price * 0.05} max={price} step="5000" value={downPayment} {...maskedSliderAria(isPrivacyMode)} onChange={e => updateActiveGoal({ downPayment: Number(e.target.value) })}
                             className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">

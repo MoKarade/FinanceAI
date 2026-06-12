@@ -469,12 +469,22 @@
   **SLIDERS ✅ FAIT** : helper partagé `maskedSliderAria(isPrivacyMode)` (`utils/privacyAria.ts`) +
   `aria-valuetext="Montant masqué"` sur les 5 sliders monétaires masqués — PropertyConfigurator
   prix/mise de fonds, ProjectionControls revenu/dépenses théoriques + plafond immo ; helper réutilisable
-  pour les sliders restants ; ChildPlanning REEE NON masqué visuellement → pas de parité à corriger) +
+  pour les sliders restants ; ChildPlanning REEE NON masqué visuellement → pas de parité à corriger.
+  **+ `aria-label` (nom accessible) sur ces 5 sliders** (leurs `<label>` ne sont pas associés) + constante
+  partagée `MASKED_AMOUNT_LABEL` (DRY entre `privacyAria` et `PrivateAmount`)) +
   spans MULTI-LIGNES/mixtes non codemodables + MONTANTS ADJACENTS
   d'une même unité visuelle (Dashboard:607-619 diff/revenu/gain, StressTestPanel delta, RealEstate
   colonnes amortissement) + ChildPlanning « Capital à 17 ans »
   (à gater comme le fix Dashboard : value peut être un CTA <ProjectionRequired>). Migrer
   opportunistiquement vers <PrivateAmount> au fil des refontes PH4.
+- [ ] **[A11Y-SLIDERS]** 🔧 (découverte revue a11y du lot sliders monétaires) — généraliser le NOM
+  accessible (WCAG 4.1.2) aux ~13 sliders restants dont le `<label>` n'est PAS associé : ProjectionControls
+  (Horizon, Inflation, Hausse salaire, CELI, NonReg/REER, Coussin, Inflation/poste ×6, Part actions US,
+  Rendement div. US, Coût LD), PropertyConfigurator:172 « Plafond Valeur Max » (incohérent : son jumeau
+  ProjectionControls a déjà un nom), RealEstate:466/490, DebtManager/TaxCenter/Budget/ChildPlanning/
+  HealthIndicator (au cas par cas). Pattern PRÉFÉRÉ : `id` sur le `<span>` de nom + `aria-labelledby`
+  sur l'input (évite la dérive label-visible ↔ aria-label) plutôt que dupliquer en `aria-label`.
+  + test de nom accessible sur les 3 sliders de ProjectionControls (couverture symétrique à PropertyConfigurator).
 - [ ] **[D7]** Perf boot : `hydrateAssets` (`App.tsx`) boucle `await sleep(2500ms)` séquentiel par
   symbole → 10 actifs = ~25 s. Paralléliser + cacher, garde-fous anti-rate-limit. Plus gros gain
   de fluidité ressenti.

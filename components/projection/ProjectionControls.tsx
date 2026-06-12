@@ -1,12 +1,10 @@
 import React from 'react';
-import { Card } from '../ui/Card';
 import { Icon } from '../ui/Icon';
 import { Button } from '../ui/Button';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
 import { Badge } from '../ui/Badge';
 import { ProjectionConfig, RealEstateGoal, BudgetConfig } from '../../types';
 import { AdvancedProjectionParams } from '../AdvancedProjectionParams';
-import { STRATEGY_DEFS, strategyDefFor } from '../../services/projection/scenarios';
 
 interface LiveCSVBalances {
     CELI: number;
@@ -78,49 +76,9 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
     const [showStochastic, setShowStochastic] = React.useState(activeStochasticCount > 0);
     return (
         <>
-            {/* [UI-SCEN] — la stratégie de gestion/retrait est un PARAMÈTRE (plus de cartes
-                de scénarios recalculées en ×11 : le moteur ne calcule que ce choix ; les
-                stress-tests vivent dans Optimisation, à la demande). */}
-            {(() => {
-                const def = strategyDefFor(projection.withdrawalStrategy);
-                return (
-                    <Card icon={<Icon name="compass" size={18} />} title="Stratégie de retrait & gestion">
-                        <div className="space-y-3">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                                <div>
-                                    <label htmlFor="withdrawal-strategy" className="block text-meta text-ink-300 mb-1">
-                                        Façon de gérer l'épargne et les retraits
-                                    </label>
-                                    <select
-                                        id="withdrawal-strategy"
-                                        value={def.strategy}
-                                        onChange={(e) => updateProj('withdrawalStrategy', e.target.value as ProjectionConfig['withdrawalStrategy'])}
-                                        className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
-                                    >
-                                        {STRATEGY_DEFS.map((d) => (
-                                            <option key={d.strategy} value={d.strategy}>
-                                                {d.strategyName}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <p className="text-tiny text-ink-400 mt-2 leading-snug">{def.stratDescription}</p>
-                                </div>
-                                <div className="space-y-1.5 text-tiny">
-                                    <div className="text-success-400"><strong>Pour :</strong> {def.pros.join(' · ')}</div>
-                                    <div className="text-orange-300"><strong>Contre :</strong> {def.cons.join(' · ')}</div>
-                                    <p className="text-ink-400 leading-snug mt-2">
-                                        Pas sûr du bon choix ? L'onglet <strong>Optimisation</strong> les compare
-                                        (Monte Carlo) et peut appliquer la meilleure automatiquement.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </Card>
-                );
-            })()}
-
-            {/* [EP-2] AI Insight retirée : phrase générée + pros/cons DUPLIQUÉS (déjà sous le
-                sélecteur de stratégie ci-dessus). Un seul bloc stratégie. */}
+            {/* PH4-FUT « leviers-d'abord » — le sélecteur « stratégie de retrait » est RETIRÉ d'ici :
+                l'ordre de retrait est désormais un LEVIER (composeur en amont, withdrawalOrder), appliqué
+                automatiquement (AUTO). Plus de doublon paramètre↔levier. */}
 
             {/* Toolbar simulation — radio-group MC prominent (U3).
                 Le mode MC est structurant : il change la forme des courbes sur

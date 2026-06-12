@@ -208,7 +208,11 @@
   clic « Appliquer » → courbe révélée sans flash, `isStale` reste faux. Documente l'invariant de batching.
 
 ### Phase 4 — REFONTES ⏳ (UN plan SÉPARÉ par onglet → OK Marc par onglet) — dépend de : PH2 (+PH3 pour FUT/RET)
-- [ ] **[PH4-FUT]** 🔧⏳ Refonte **Futur** : leviers OBLIGATOIRES avant calcul (l'actuel contenu
+- [x] **[PH4-FUT]** ✅ Refonte **Futur** « leviers-d'abord » LIVRÉE (#250 calcul-sur-clic+retrait plans ;
+  #251-254 4 leviers ; #268 composeur EN AMONT ; #269 « Hypothèses »+ordre retrait AUTO ; #270 annotations
+  courbe retraite/rentes/épuisement). Conseils déclinés mois→année = déjà ActionPlanDrilldown. Robustesse =
+  l'optimiseur MC. RESTE optionnel : remonter un résumé « prochaines actions » sur la vue Projection (cadrage Marc).
+  --- (ancien détail) leviers OBLIGATOIRES avant calcul (l'actuel contenu
   d'Optimisation remonte en amont) ; la courbe affichée = toujours la MEILLEURE selon les leviers ;
   après calcul, choix parmi les courbes retenues puis VERROUILLAGE (PH2-d) ; stratégie de retrait
   AUTO (retirée des paramètres) ; spécificités de la stratégie optimale en langage « qu'un enfant

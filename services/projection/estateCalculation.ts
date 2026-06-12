@@ -45,6 +45,12 @@ export interface EstateCalcInputs {
     currentAge: number;
     retirementTargetAge: number;
     governmentPension: number;
+    /** FA-8 — estimés PRÉCIS par rente (per-personne, mensuels ; relevés Retraite Québec / Service
+     *  Canada). Quand fournis, PRIMENT sur le split 65/35 du champ agrégé `governmentPension` (×N pour
+     *  le familial), exactement comme `retirementIncome.ts` → aligne le NPV estate sur le revenu de
+     *  retraite (plus de divergence silencieuse). Absents → repli sur le split 65/35. */
+    rrqEstimateMonthly?: number;
+    psvEstimateMonthly?: number;
     activeUsersCount: number;
     simInflation: number;
     enableMonteCarlo: boolean;
@@ -107,8 +113,14 @@ export function computeEstateNetWorth(
     const startingNonReg = fin(inputs.startingNonReg);
     const startingCrypto = fin(inputs.startingCrypto);
     const startingREEE = fin(inputs.startingREEE);
-    // FA-5 : `activeUsersCount` n'est plus consommé ici (le ×N du NPV des rentes était un
-    // double-comptage) — le champ reste dans EstateCalcInputs (fourni par les appelants).
+    // FA-5/FA-8 — `governmentPension` est déjà FAMILIAL : son split 65/35 ne prend PAS de ×N (le ×N
+    // d'antan sur l'agrégé = double-comptage, corrigé FA-5). En revanche les estimés PRÉCIS
+    // rrqEstimateMonthly/psvEstimateMonthly sont PER-PERSONNE → ×activeUsersCount pour obtenir le
+    // familial (FA-8, à l'identique de retirementIncome.ts:207-212). Donc activeUsersCount est consommé
+    // UNIQUEMENT pour scaler les estimés, JAMAIS l'agrégé — ne pas ré-introduire le ×N sur ce dernier.
+    const activeUsersCount = fin(inputs.activeUsersCount);
+    const rrqEstimateMonthly = inputs.rrqEstimateMonthly; // brut : `undefined` préservé pour la conditionnelle « estimé fourni ? »
+    const psvEstimateMonthly = inputs.psvEstimateMonthly;
     const { enableMonteCarlo } = inputs;
 
     // realEstateEquity est DÉJÀ net d'hypothèque (currentValue − mortgage, cf
@@ -155,12 +167,15 @@ export function computeEstateNetWorth(
     // pour un couple → NPV des rentes ~doublée → estateNetWorth gonflé de dizaines de k$.
     const lifeExpectancy = 95;
     const remainingYearsAtEnd = Math.max(0, lifeExpectancy - finalAge);
-    // Split 65/35 du champ agrégé : convention de MODÈLE (GOV_PENSION_*_SHARE, utils/tax.ts —
-    // FISCAL_REFERENCE §6 FA-8). Ici le split est INCONDITIONNEL (ignore rrqEstimateMonthly/
-    // psvEstimateMonthly, contrairement à retirementIncome où les estimés priment) — reste
-    // FA-8 au BACKLOG (« NPV estate lit governmentPension même quand les estimés sont fournis »).
-    const rrqExpected = (governmentPension * GOV_PENSION_RRQ_SHARE) * Math.pow(1 + simInflation / 100, simulationYears);
-    const psvExpected = (governmentPension * GOV_PENSION_PSV_SHARE) * Math.pow(1 + simInflation / 100, simulationYears);
+    // FA-8 (résolu) — les estimés PRÉCIS par rente priment, exactement comme retirementIncome.ts:207-212
+    // (estimé per-personne × activeUsersCount = familial mensuel ; repli sur le split 65/35 de l'agrégé
+    // `governmentPension` sinon — convention de MODÈLE GOV_PENSION_*_SHARE, FISCAL_REFERENCE §6). Avant :
+    // split INCONDITIONNEL → le NPV estate divergeait du revenu de retraite quand l'utilisateur saisissait
+    // des estimés RRQ/PSV ≠ 65/35. Unités préservées (`governmentPension` et les estimés sont mensuels).
+    const rrqMonthlyFamily = (rrqEstimateMonthly !== undefined) ? (rrqEstimateMonthly * activeUsersCount) : (governmentPension * GOV_PENSION_RRQ_SHARE);
+    const psvMonthlyFamily = (psvEstimateMonthly !== undefined) ? (psvEstimateMonthly * activeUsersCount) : (governmentPension * GOV_PENSION_PSV_SHARE);
+    const rrqExpected = rrqMonthlyFamily * Math.pow(1 + simInflation / 100, simulationYears);
+    const psvExpected = psvMonthlyFamily * Math.pow(1 + simInflation / 100, simulationYears);
 
     const r_npv = 0.02;
     const npvFactor = r_npv > 0 ? (1 - Math.pow(1 + r_npv, -remainingYearsAtEnd)) / r_npv : remainingYearsAtEnd;

@@ -1425,6 +1425,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         startYear, currentAge,
         retirementTargetAge: retirementGoal.targetAge,
         governmentPension: retirementGoal.governmentPension,
+        // FA-8 — estimés précis par rente (per-personne) : priment sur le split 65/35 dans le NPV estate,
+        // comme dans le revenu de retraite (plus de divergence silencieuse).
+        rrqEstimateMonthly: retirementGoal.rrqEstimateMonthly,
+        psvEstimateMonthly: retirementGoal.psvEstimateMonthly,
         activeUsersCount, simInflation, enableMonteCarlo,
         startingCash: calculatedStartingCash,
         startingCELI: liveCSVBalances.CELI || 0,

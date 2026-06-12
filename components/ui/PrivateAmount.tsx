@@ -11,6 +11,7 @@
 // `privacy-blur` lui-même).
 import React from 'react';
 import { useFinanceStore } from '../../store/useFinanceStore';
+import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
 
 export const PrivateAmount: React.FC<{
     children: React.ReactNode;
@@ -25,7 +26,7 @@ export const PrivateAmount: React.FC<{
             {isPrivacy ? (
                 <>
                     <span aria-hidden="true">{children}</span>
-                    <span className="sr-only">Montant masqué</span>
+                    <span className="sr-only">{MASKED_AMOUNT_LABEL}</span>
                 </>
             ) : (
                 children

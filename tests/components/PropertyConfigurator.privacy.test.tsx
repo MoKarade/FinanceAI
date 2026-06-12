@@ -46,4 +46,11 @@ describe('PropertyConfigurator — sliders masqués au SR en mode privé (D6-SR-
         );
         expect(masked.length).toBe(0);
     });
+
+    it('chaque slider monétaire porte un NOM accessible (aria-label) — les <label> ne sont pas associés', () => {
+        renderConfigurator();
+        // Trouvable par son nom accessible = le SR sait quel contrôle c'est (et pas juste « curseur »).
+        expect(screen.getByRole('slider', { name: 'Prix d\'achat' })).toBeInTheDocument();
+        expect(screen.getByRole('slider', { name: 'Mise de fonds' })).toBeInTheDocument();
+    });
 });

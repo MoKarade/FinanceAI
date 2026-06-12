@@ -81,6 +81,13 @@ Doc détaillée dans `docs/`, qui fait foi.
   squash-merge → fusion propre) + ré-appliquer le diff → `git push` en fast-forward. Pareil après CHAQUE
   squash-merge d'un lot : la branche diverge de `main` (le squash crée 1 commit absent de la branche) →
   merger `origin/main` AVANT le lot suivant, sinon la PR ré-affiche les commits déjà mergés.
+  ⚠️ **Après un merge de PR, reconcilier via `git merge origin/main` — JAMAIS `git reset --hard origin/main`**
+  (leçon 2026-06-12, vu 3×) : le reset aligne la branche LOCALE sur main mais laisse la branche DISTANTE
+  aux commits pré-squash → le commit suivant + `git push` est NON-fast-forward (force-push bloqué) → merge
+  + CONFLIT à résoudre à chaque lot. `git merge origin/main` garde la lignée distante → push fast-forward,
+  zéro conflit. Le `reset --hard` n'est justifié que pour ré-aligner après un REVERT conteneur (état local
+  corrompu), pas après un merge propre. Le stop-hook « commit Unverified noreply@github.com » sur le tip =
+  commit de merge GitHub partagé avec `main` → l'ignorer, NE PAS reset pour le « nettoyer ».
 - **E2E rouge** : lire le log AVANT de débugger — si l'échec est infra (install navigateurs, apt mirror),
   `rerun_failed_jobs` une fois ; n'investiguer que si ça re-échoue.
 - **`npm install` après reprise** (le conteneur peut perdre `node_modules` — symptôme : tsc casse sur

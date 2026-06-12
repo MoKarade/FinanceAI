@@ -172,8 +172,10 @@ export function computeEstateNetWorth(
     // `governmentPension` sinon — convention de MODÈLE GOV_PENSION_*_SHARE, FISCAL_REFERENCE §6). Avant :
     // split INCONDITIONNEL → le NPV estate divergeait du revenu de retraite quand l'utilisateur saisissait
     // des estimés RRQ/PSV ≠ 65/35. Unités préservées (`governmentPension` et les estimés sont mensuels).
-    const rrqMonthlyFamily = (rrqEstimateMonthly !== undefined) ? (rrqEstimateMonthly * activeUsersCount) : (governmentPension * GOV_PENSION_RRQ_SHARE);
-    const psvMonthlyFamily = (psvEstimateMonthly !== undefined) ? (psvEstimateMonthly * activeUsersCount) : (governmentPension * GOV_PENSION_PSV_SHARE);
+    // RRQ-PSV-MIN — clamp `Math.max(0, …)` symétrique à retirementIncome:207-212 (un estimé négatif
+    // ne crée pas de rente négative qui gonflerait/dégonflerait le NPV en silence).
+    const rrqMonthlyFamily = (rrqEstimateMonthly !== undefined) ? (Math.max(0, rrqEstimateMonthly) * activeUsersCount) : (governmentPension * GOV_PENSION_RRQ_SHARE);
+    const psvMonthlyFamily = (psvEstimateMonthly !== undefined) ? (Math.max(0, psvEstimateMonthly) * activeUsersCount) : (governmentPension * GOV_PENSION_PSV_SHARE);
     const rrqExpected = rrqMonthlyFamily * Math.pow(1 + simInflation / 100, simulationYears);
     const psvExpected = psvMonthlyFamily * Math.pow(1 + simInflation / 100, simulationYears);
 

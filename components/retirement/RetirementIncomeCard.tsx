@@ -32,6 +32,7 @@ export const RetirementIncomeCard: React.FC = () => {
                                     <label htmlFor="ric-rrq" className="block text-meta text-ink-300 mb-1">🇨🇦 RRQ projetée / mois (par personne)</label>
                                     <input id="ric-rrq"
                                         type="number"
+                                        min={0}
                                         value={goal.rrqEstimateMonthly ?? ''}
                                         placeholder="ex: 1100"
                                         onChange={e => updateGoal('rrqEstimateMonthly', numOrUndef(e.target.value))}
@@ -43,6 +44,7 @@ export const RetirementIncomeCard: React.FC = () => {
                                     <label htmlFor="ric-psv" className="block text-meta text-ink-300 mb-1">PSV projetée / mois</label>
                                     <input id="ric-psv"
                                         type="number"
+                                        min={0}
                                         value={goal.psvEstimateMonthly ?? ''}
                                         placeholder="ex: 734"
                                         onChange={e => updateGoal('psvEstimateMonthly', numOrUndef(e.target.value))}

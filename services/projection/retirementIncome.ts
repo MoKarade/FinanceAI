@@ -204,11 +204,13 @@ export function computeRetirementIncome(
     // Repli sur le champ AGRÉGÉ legacy `governmentPension` : split 65/35 = convention de MODÈLE
     // (GOV_PENSION_*_SHARE, utils/tax.ts — PAS une règle ARC/RQ, cf FISCAL_REFERENCE §6 FA-8).
     // Les estimés précis par rente (relevés Retraite Québec / Service Canada) priment.
+    // RRQ-PSV-MIN — clamp `Math.max(0, …)` : un estimé NÉGATIF (saisie absurde, inputs sans `min`) ne
+    // doit pas créer une rente négative qui sous-estimerait en silence le revenu (et le NPV estate, aligné).
     const rrqBaseIndiv = (retirementGoal.rrqEstimateMonthly !== undefined)
-        ? (retirementGoal.rrqEstimateMonthly * activeUsersCount)
+        ? (Math.max(0, retirementGoal.rrqEstimateMonthly) * activeUsersCount)
         : (retirementGoal.governmentPension * GOV_PENSION_RRQ_SHARE);
     const psvBaseIndiv = (retirementGoal.psvEstimateMonthly !== undefined)
-        ? (retirementGoal.psvEstimateMonthly * activeUsersCount)
+        ? (Math.max(0, retirementGoal.psvEstimateMonthly) * activeUsersCount)
         : (retirementGoal.governmentPension * GOV_PENSION_PSV_SHARE);
 
     const survivorRrqFactor = survivorMode ? (1 - 0.5 + 0.5 * rrqSurvivorPct) : 1;

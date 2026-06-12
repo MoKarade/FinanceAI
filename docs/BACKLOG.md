@@ -303,7 +303,11 @@
   baselines nul = aucun fixture à inflation 0 ; + 2 sites UI alignés : Retirement label, ChildPlanning
   coûts, sinon un scénario 0 % affichait/indexait 2 %) · ~~NPV estate lit `governmentPension` même quand `rrqEstimateMonthly` est
   fourni (divergence silencieuse)~~ ✅ FAIT (estateCalculation : les estimés RRQ/PSV priment, ×N
-  per-personne comme retirementIncome ; repli 65/35 sans ×N préservé = garde FA-5 ; 4 tests) · assiette clawback PSV/test SRG sans dividendes/intérêts non-reg
+  per-personne comme retirementIncome ; repli 65/35 sans ×N préservé = garde FA-5 ; 5 tests) ·
+  **[RRQ-PSV-MIN]** 🔧 (découverte revue #274) inputs RRQ/PSV (`RetirementIncomeCard`) sans `min={0}` →
+  un estimé NÉGATIF sous-estimerait en silence le revenu de retraite ET le NPV estate (symétrique,
+  pré-existant) ; clamp `Math.max(0, …)` dans retirementIncome + estateCalculation, ou `min={0}` UI ·
+  assiette clawback PSV/test SRG sans dividendes/intérêts non-reg
   (revenu net 23400 les inclut — sous-estime, borné au cap) · **[FSS-PSV]** 🔧 assiette FSS inclut la
   PSV — l'Annexe F la DÉDUIT (revendiqué sourcé 2026-06-11, page RQ « Cotisation des particuliers au
   FSS »). **Trace 2026-06-12** : confirmé que la PSV est DANS `incomeRetirementMonthly` (taxDecember.ts:662)

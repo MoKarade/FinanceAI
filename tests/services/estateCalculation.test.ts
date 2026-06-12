@@ -200,4 +200,12 @@ describe('computeEstateNetWorth — FA-8 : estimés précis par rente priment su
         const r = computeEstateNetWorth({ ...base, rrqEstimateMonthly: 900, activeUsersCount: 1 }, fiscalStub);
         expect(extractNPV(r)).toBeCloseTo((900 + 1200 * 0.35) * inflPow * npvFactor, 4);
     });
+
+    it('garde fin() : un rrqEstimateMonthly NaN ne propage pas de NaN (estateNetWorth reste fini)', () => {
+        // Les estimés sont lus BRUTS (sans fin(), pour préserver `undefined` → repli) ; un NaN (chemin
+        // nominal impossible via numOrUndef, mais belt-and-suspenders) est neutralisé par le fin() de SORTIE.
+        const r = computeEstateNetWorth({ ...base, rrqEstimateMonthly: NaN, activeUsersCount: 1 }, fiscalStub);
+        expect(Number.isFinite(r.estateNetWorth)).toBe(true);
+        expect(Number.isFinite(r.totalEstateTax)).toBe(true);
+    });
 });

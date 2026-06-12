@@ -30,6 +30,8 @@ export interface EstateCalcInputs {
      *  50 % à la disposition réputée au décès. RP exclue par l'appelant. Absent → 0 (non-régression). */
     realEstateLatentGain?: number;
     smithManoeuvreDebt: number;
+    /** [PV-6] Passif d'insolvabilité (découverts non couverts portés en dette). Absent → 0. */
+    liquidDebt?: number;
     // Revenus dernière période (pour taux marginal succession)
     incomeRetirement: number;
     accRentesYear: number;
@@ -114,7 +116,7 @@ export function computeEstateNetWorth(
     // comptage corrigé 2026-05, trouvé via l'audit personas). On garde la
     // soustraction de smithManoeuvreDebt (dette HELOC réelle, dont l'actif
     // réinvesti existe dans le Non-Enreg).
-    const finalRawNetWorth = liquid + celi + celiapp + reer + nonReg + crypto + reee + realEstateEquity - smithManoeuvreDebt;
+    const finalRawNetWorth = liquid + celi + celiapp + reer + nonReg + crypto + reee + realEstateEquity - smithManoeuvreDebt - fin(inputs.liquidDebt ?? 0);
 
     const finalYear = startYear + simulationYears;
     const finalAge = currentAge + simulationYears;

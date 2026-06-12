@@ -38,6 +38,19 @@ describe('computeEstateNetWorth — robustesse aux entrées (garde TB3)', () => 
         expect(withGain.estateNetWorth).toBeLessThan(without.estateNetWorth);
     });
 
+    it('PV-6 : un liquidDebt (insolvabilité) réduit finalRawNetWorth et estateNetWorth $-pour-$', () => {
+        const without = computeEstateNetWorth(base, fiscalStub);
+        const withDebt = computeEstateNetWorth({ ...base, liquidDebt: 40000 }, fiscalStub);
+        expect(without.finalRawNetWorth - withDebt.finalRawNetWorth).toBeCloseTo(40000, 0);
+        expect(withDebt.estateNetWorth).toBeLessThan(without.estateNetWorth);
+    });
+
+    it('PV-6 : liquidDebt absent == 0 (non-régression)', () => {
+        const absent = computeEstateNetWorth(base, fiscalStub);
+        const zero = computeEstateNetWorth({ ...base, liquidDebt: 0 }, fiscalStub);
+        expect(zero.estateNetWorth).toBe(absent.estateNetWorth);
+    });
+
     it('RE-GAIN-SUCC : absent == 0 (non-régression stricte)', () => {
         const absent = computeEstateNetWorth(base, fiscalStub);
         const zero = computeEstateNetWorth({ ...base, realEstateLatentGain: 0 }, fiscalStub);

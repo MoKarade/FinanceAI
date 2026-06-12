@@ -97,7 +97,7 @@
   Budget/Retraite → bandeau discret « projection possiblement périmée (dernier recalcul échoué) » au-
   dessus de la courbe conservée. Aujourd'hui l'erreur n'est visible QUE sur Futur (pré-existant, mais
   PH2-c fournit enfin le véhicule `projectionStatus` pour corriger).
-- [ ] **[PH2-c-3]** 🔧 (perf) Router le calcul DÉTERMINISTE dans le worker hors-Futur : en mode
+- [x] **[PH2-c-3]** ✅ (perf) Router le calcul DÉTERMINISTE dans le worker hors-Futur : en mode
   déterministe (runMC=false), le moteur app-level paie ~150 ms main-thread à chaque changement de
   params quel que soit l'onglet (atténué par debounce 300 ms ; défaut = MC déjà off-thread).
 - [x] **[PH2-c-4]** ✅ — tests/hooks/useSimulationParams.parity.test.tsx : renderHook du hook RÉEL
@@ -344,7 +344,7 @@
   à 10 ans). Bonus : `get_projection` MCP — `finalNetWorthNominal` = NW brut (cohérent avec `real`),
   successoral exposé séparément (`estateNetWorth`, comme get_retirement_outlook). ⚠️ Sémantique :
   les mois de sauvetage comptent désormais dans `shortfallRate` (honnête — il a fallu vendre).
-- [ ] **[PV-6]** 🔧 Résiduel insolvable = dette portée : quand la cascade du sauvetage PV-1 ne couvre
+- [x] **[PV-6]** ✅ Résiduel insolvable = dette portée : quand la cascade du sauvetage PV-1 ne couvre
   pas tout (comptes épuisés / cap OAS), le résiduel est journalisé puis absorbé (convention CF-2 des
   shortfalls non couverts) → NW encore surévalué du résiduel dans les scénarios DÉJÀ en ruine. Modéliser
   un passif `liquidDebt` cumulé (affiché au bilan) si on veut un NW honnête en insolvabilité. Basse

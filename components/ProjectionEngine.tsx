@@ -1,8 +1,6 @@
 // components/ProjectionEngine.tsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { useDebouncedMemo } from '../utils/useDebouncedMemo';
 import { useFinanceStore } from '../store/useFinanceStore';
-import { calculateFutureProjection } from '../services/projection';
 import { runProjectionAsync } from '../services/projection/runAsync';
 import type { ProjectionResult } from '../services/projection/types';
 import { useSimulationParams } from '../hooks/useSimulationParams';
@@ -46,20 +44,9 @@ const ProjectionEngineInner: React.FC<ProjectionEngineProps> = ({ calculatedMont
     // Souscription ÉTROITE à un booléen dérivé : ne re-render que quand le verrou de setup bascule.
     const reqsMet = useFinanceStore((s) => FUTURE_REQ_IDS.every((id) => REQUIREMENTS[id].isMet(s)));
 
-    // Mode déterministe : synchrone + debounce 300 ms (~150 ms de calcul).
-    const syncResults = useDebouncedMemo<ProjectionResult | null>(() => {
-        if (!reqsMet || runMC) return null; // MC traité par l'effect ci-dessous
-        try {
-            return calculateFutureProjection(params, false, 0);
-        } catch (e) {
-            console.error('CRITICAL SIMULATION ERROR (engine):', e);
-            import('../services/errorLogger').then(({ logError }) => {
-                logError({ source: 'projection', severity: 'critical', message: 'calculateFutureProjection crashed (engine)', error: e instanceof Error ? e : new Error(String(e)) });
-            }).catch(() => { /* logger HS, silent */ });
-            return { chartData: [], fireNumber: 0, allResults: [], _hasError: true };
-        }
-    }, [params, runMC, reqsMet], 300);
-
+    // PH2-c-3 — déterministe ET Monte-Carlo routés au Web Worker (libère le main thread quel que soit
+    // l'onglet ; avant, le déterministe coûtait ~150 ms sur le thread de rendu à chaque changement de
+    // params). Le calcul déterministe est IDENTIQUE (même calculateFutureProjection), juste off-thread.
     const [asyncResults, setAsyncResults] = useState<ProjectionResult | null>(null);
 
     // PH2-b — signature de contenu : permet à runAsync de RE-RACCROCHER à un calcul déjà en vol.
@@ -67,19 +54,19 @@ const ProjectionEngineInner: React.FC<ProjectionEngineProps> = ({ calculatedMont
         try { return JSON.stringify(params); } catch { return undefined; }
     }, [params]);
 
-    // Mode Monte-Carlo : exécuté dans un Web Worker (libère le main thread), debounce 300 ms.
+    // PH2-c-3 — calcul (déterministe OU Monte-Carlo selon runMC) dans un Web Worker, debounce 300 ms.
     useEffect(() => {
-        if (!reqsMet || !runMC) return;
+        if (!reqsMet) return;
         let cancelled = false;
         const timer = setTimeout(() => {
             setProjectionStatus('computing');
-            runProjectionAsync(params, true, 0, undefined, mcDedupKey)
+            runProjectionAsync(params, runMC, 0, undefined, mcDedupKey)
                 .then((r) => { if (!cancelled) setAsyncResults(r); })
                 .catch((e) => {
                     if (!cancelled) {
                         console.error('CRITICAL SIMULATION ERROR (worker, engine):', e);
                         import('../services/errorLogger').then(({ logError }) => {
-                            logError({ source: 'projection', severity: 'critical', message: 'runProjectionAsync (worker MC) crashed (engine)', error: e instanceof Error ? e : new Error(String(e)) });
+                            logError({ source: 'projection', severity: 'critical', message: 'runProjectionAsync (worker, engine) crashed', error: e instanceof Error ? e : new Error(String(e)) });
                         }).catch(() => { /* logger HS, silent */ });
                         setAsyncResults({ chartData: [], fireNumber: 0, allResults: [], _hasError: true });
                     }
@@ -88,7 +75,7 @@ const ProjectionEngineInner: React.FC<ProjectionEngineProps> = ({ calculatedMont
         return () => { cancelled = true; clearTimeout(timer); };
     }, [params, runMC, reqsMet, mcDedupKey, setProjectionStatus]);
 
-    const results = runMC ? asyncResults : syncResults;
+    const results = asyncResults;
 
     // Publie le résultat frais dans la source unique + met à jour le statut.
     useEffect(() => {

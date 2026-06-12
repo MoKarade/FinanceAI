@@ -262,6 +262,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let totalExpenses = 0;
     let minNetWorth = liquid + celi + celiapp + reer + nonReg + crypto + reee;
     let shortfallMonths = 0;
+    // [PV-6] Passif d'INSOLVABILITÉ : résiduel d'un découvert NON couvert par la cascade de sauvetage
+    // (comptes épuisés / cap OAS). Avant, il était absorbé par `liquid = 0` (CF-2) → patrimoine
+    // surévalué dans les scénarios DÉJÀ en ruine. On le porte désormais comme dette cumulée, soustraite
+    // du patrimoine net (mensuel + succession). Pas d'intérêt (conservateur ; scénario déjà ruiné).
+    let liquidDebt = 0;
     // [PV-11a] — shortfalls d'OBJECTIF (drawn < visé aux deadlines de goals) : métrique structurée
     // (≠ shortfallMonths qui compte les mois de déficit de CASHFLOW — sémantique différente).
     let goalShortfallCount = 0;
@@ -1265,10 +1270,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // retrait respectée, retenue REER comptée via taxCurrentYearReer, garde-fous PBMA/OAS).
         // Avec liquid=0 en entrée, la cascade ne puise pas sous zéro et son invariant CF-2
         // ramène le liquide à 0 en sortie : les ventes financent exactement le découvert.
-        // Cas insolvable (comptes épuisés ou cap OAS) : résiduel JOURNALISÉ, puis absorbé par
-        // le `liquid = 0` ci-dessous — même convention que les shortfalls réguliers non couverts
-        // (CF-2), mais désormais VISIBLE (flowEvents + shortfallMonths). Modéliser ce résiduel
-        // comme dette portée = chantier séparé (BACKLOG), pas ce fix.
+        // Cas insolvable (comptes épuisés ou cap OAS) : résiduel JOURNALISÉ, VISIBLE (flowEvents +
+        // shortfallMonths) ET désormais PORTÉ EN DETTE [PV-6] (`liquidDebt`, soustrait du patrimoine
+        // net mensuel et successoral) — plus d'absorption silencieuse qui surévaluait le patrimoine.
         if (liquid < -0.5) {
             const overdraft = -liquid;
             liquid = 0;
@@ -1289,7 +1293,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             const residual = overdraft - covered;
             logEvent(flowEventsLog, `🏦 Découvert de liquidités couvert par vente de placements : ${Math.round(Math.min(covered, overdraft)).toLocaleString('fr-CA')} $ sur ${Math.round(overdraft).toLocaleString('fr-CA')} $`);
             if (residual > 1) {
-                logEvent(flowEventsLog, `⚠️ Découvert NON couvert (comptes insuffisants) : ${Math.round(residual).toLocaleString('fr-CA')} $`);
+                liquidDebt += residual; // [PV-6] porté en dette (plus absorbé silencieusement)
+                logEvent(flowEventsLog, `⚠️ Découvert NON couvert (comptes insuffisants) : ${Math.round(residual).toLocaleString('fr-CA')} $ — porté en dette`);
             }
             // Un seul incrément de shortfallMonths par mois, même si l'allocation régulière
             // ET le sauvetage ont chacun constaté un déficit.
@@ -1334,7 +1339,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
         // realEstateEquity DÉJÀ net d'hypothèque → pas de re-soustraction de
         // mortgageBalance (corrige le double-comptage de l'hypothèque).
-        const rawNetWorth = liquid + celi + celiapp + reer + nonReg + crypto + reee + realEstateEquity;
+        const rawNetWorth = liquid + celi + celiapp + reer + nonReg + crypto + reee + realEstateEquity - liquidDebt;
         if (rawNetWorth < minNetWorth) minNetWorth = rawNetWorth;
         const activeDebtsTotal = activeDebts.reduce((s, d) => s + d.balance, 0);
 
@@ -1413,7 +1418,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         .reduce((s, p) => s + Math.max(0, p.currentValue - (p.cost ?? 0)), 0);
     const estate = computeEstateNetWorth({
         liquid, celi, celiapp, reer, nonReg, nonRegACB, crypto, cryptoACB, reee,
-        realEstateEquity, mortgageBalance, realEstateLatentGain, smithManoeuvreDebt,
+        realEstateEquity, mortgageBalance, realEstateLatentGain, smithManoeuvreDebt, liquidDebt,
         incomeRetirement, accRentesYear, accRetraitsReerYear,
         grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
         simulationYears: projection.years,

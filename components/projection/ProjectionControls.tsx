@@ -5,6 +5,9 @@ import { CollapsibleSection } from '../ui/CollapsibleSection';
 import { Badge } from '../ui/Badge';
 import { ProjectionConfig, RealEstateGoal, BudgetConfig } from '../../types';
 import { AdvancedProjectionParams } from '../AdvancedProjectionParams';
+import { useFinanceStore } from '../../store/useFinanceStore';
+import { maskedSliderAria } from '../../utils/privacyAria';
+import { PrivateAmount } from '../ui/PrivateAmount';
 
 interface LiveCSVBalances {
     CELI: number;
@@ -69,6 +72,9 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
     liveCSVBalances, applyHistoricalRate,
     realEstateGoals, setRealEstateGoals,
 }) => {
+    // D6-SR-2 — masque la valeur des sliders monétaires (revenu/dépenses théoriques, plafond immo) au
+    // lecteur d'écran en mode privé (parité avec le blur visuel ; les sliders de taux/% ne sont pas masqués).
+    const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
     const projAsMap = projection as unknown as Record<string, unknown>;
     const activeStochasticCount = STOCHASTIC_TOGGLES.filter(t => !!projAsMap[t.key]).length;
     // [EP-1] les 10 toggles d'événements de vie sont cachés derrière un bouton « Activer des
@@ -164,16 +170,16 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                         <div className={!projection.useTheoretical ? 'opacity-50 pointer-events-none' : ''}>
                             <label className="flex justify-between text-meta text-ink-300 mb-1">
                                 <span>Revenus (Net)</span>
-                                <span className="text-success-400 font-bold privacy-blur">{projection.theoreticalIncome || 8000}$</span>
+                                <PrivateAmount className="text-success-400 font-bold">{projection.theoreticalIncome || 8000}$</PrivateAmount>
                             </label>
-                            <input type="range" min="2000" max="20000" step="100" value={projection.theoreticalIncome || 8000} onChange={e => updateProj('theoreticalIncome', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-success-500" />
+                            <input type="range" min="2000" max="20000" step="100" value={projection.theoreticalIncome || 8000} {...maskedSliderAria(isPrivacyMode)} onChange={e => updateProj('theoreticalIncome', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-success-500" />
                         </div>
                         <div className={!projection.useTheoretical ? 'opacity-50 pointer-events-none' : ''}>
                             <label className="flex justify-between text-meta text-ink-300 mb-1">
                                 <span>Dépenses</span>
-                                <span className="text-danger-400 font-bold privacy-blur">{projection.theoreticalExpenses || 4000}$</span>
+                                <PrivateAmount className="text-danger-400 font-bold">{projection.theoreticalExpenses || 4000}$</PrivateAmount>
                             </label>
-                            <input type="range" min="1000" max="15000" step="100" value={projection.theoreticalExpenses || 4000} onChange={e => updateProj('theoreticalExpenses', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-danger-500" />
+                            <input type="range" min="1000" max="15000" step="100" value={projection.theoreticalExpenses || 4000} {...maskedSliderAria(isPrivacyMode)} onChange={e => updateProj('theoreticalExpenses', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-danger-500" />
                         </div>
                     </div>
 
@@ -245,9 +251,9 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                         <div>
                             <label className="flex justify-between text-meta text-ink-300 mb-1">
                                 <span>Valeur Max Maison</span>
-                                <span className="text-pink-400 font-bold privacy-blur">{((realEstateGoals[0]?.maxValue || 1000000) / 1000).toFixed(0)}k$</span>
+                                <PrivateAmount className="text-pink-400 font-bold">{((realEstateGoals[0]?.maxValue || 1000000) / 1000).toFixed(0)}k$</PrivateAmount>
                             </label>
-                            <input type="range" min="300000" max="3000000" step="50000" value={realEstateGoals[0]?.maxValue || 1000000} onChange={e => {
+                            <input type="range" min="300000" max="3000000" step="50000" value={realEstateGoals[0]?.maxValue || 1000000} {...maskedSliderAria(isPrivacyMode)} onChange={e => {
                                 const updated = [...realEstateGoals];
                                 if (updated[0]) {
                                     updated[0] = { ...updated[0], maxValue: Number(e.target.value) };

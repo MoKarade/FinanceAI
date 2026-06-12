@@ -3,6 +3,8 @@ import { Icon } from '../ui/Icon';
 import { Card } from '../ui/Card';
 import { RealEstateGoal } from '../../types';
 import { PrivateAmount } from '../ui/PrivateAmount';
+import { useFinanceStore } from '../../store/useFinanceStore';
+import { maskedSliderAria } from '../../utils/privacyAria';
 
 const fmt = (val: number) =>
     new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(val);
@@ -27,6 +29,8 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
     heatingMonthly, setHeatingMonthly,
     condoFees, setCondoFees,
 }) => {
+    // D6-SR-2 — masque la valeur des sliders monétaires au lecteur d'écran en mode privé (parité blur).
+    const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
     const price = activeGoal.price || 450000;
     const downPayment = activeGoal.downPayment || (price * 0.2);
     const downPaymentPercent = Math.round((downPayment / price) * 100);
@@ -109,15 +113,15 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                             <span>Prix d'achat</span>
                             <PrivateAmount className="text-white font-bold">{fmt(price)}</PrivateAmount>
                         </label>
-                        <input type="range" min="150000" max="2500000" step="10000" value={price} onChange={e => updateActiveGoal({ price: Number(e.target.value) })}
+                        <input type="range" min="150000" max="2500000" step="10000" value={price} {...maskedSliderAria(isPrivacyMode)} onChange={e => updateActiveGoal({ price: Number(e.target.value) })}
                             className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-primary" />
                     </div>
                     <div>
                         <label className="flex justify-between text-meta text-ink-300 mb-1">
                             <span>Mise de fonds</span>
-                            <span className="text-blue-300 font-bold privacy-blur">{fmt(downPayment)} ({downPaymentPercent}%)</span>
+                            <PrivateAmount className="text-blue-300 font-bold">{fmt(downPayment)} ({downPaymentPercent}%)</PrivateAmount>
                         </label>
-                        <input type="range" min={price * 0.05} max={price} step="5000" value={downPayment} onChange={e => updateActiveGoal({ downPayment: Number(e.target.value) })}
+                        <input type="range" min={price * 0.05} max={price} step="5000" value={downPayment} {...maskedSliderAria(isPrivacyMode)} onChange={e => updateActiveGoal({ downPayment: Number(e.target.value) })}
                             className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">

@@ -50,17 +50,19 @@
 > [A11Y-SLIDERS] **COMPLÉTÉ** — noms sur les 6 derniers sliders (RealEstate Rendement/Appréciation, DebtManager,
 > TaxCenter REER/CELIAPP, ChildPlanning REEE) ; Budget déjà nommé, HealthIndicator déjà associé · **#282**
 > [D6-SR-2] Retirement.tsx : les **13 montants** mono-valeur (3 KPIs + 10 tooltip) `privacy-blur`→`<PrivateAmount>`
-> (ferme la fuite SR : le blur est CSS-only, un SR lisait les vrais montants en mode privé). Panel
-> a11y-auditor à chaque lot UI. Suite → **~2020**.
+> (ferme la fuite SR : le blur est CSS-only, un SR lisait les vrais montants en mode privé) · **#283** [D6-SR-2]
+> **primitive `<PrivateBlock>` créée** (4 tests : aria-hidden conteneur + sr-only sibling, préserve le flex
+> multi-spans là où PrivateAmount le casse) **+ Dashboard liste d'actifs migré**. Panel a11y-auditor à chaque
+> lot UI. Suite → **~2024**.
 > **▶ Reste = 🧭 FEU VERT MARC** : **[FSS-PSV]** (PSV DANS l'assiette FSS confirmé `taxDecember.ts:662` ;
 > fix = câbler une PSV mensuelle au `ctx` + **transcrire la règle Annexe F dans FISCAL_REFERENCE D'ABORD**
 > — money-critical, ne pas coder sur source non transcrite) · gros refactors CA-03/CA-06/CA-09 · P0 (proxy
 > Anthropic / IndexedDB) · refontes **DESIGN** (Budget/Transactions/Retraite, irritants à cadrer).
-> **Bas-bruit ENCORE dispo (prêt, mandat « continuer » de Marc)** : **[A11Y-SLIDERS] ✅ FAIT** (tous sliders nommés) ·
-> **D6-SR-2 mono-valeur ✅ FAIT** (Retirement #282) → RESTE D6-SR-2 = blocs CONTENEUR multi-spans (Dashboard:610,
-> StressTestPanel, RealEstate amortissement) qui exigent un `<PrivateBlock>` à créer (PrivateAmount casse le flex
-> multi-enfants) · `analytics.ts` (trivial). DEAD-FLT-2/CA-01 = consommateurs VIVANTS → PAS du code mort. **Le bas-bruit
-> à fort signal est quasi épuisé — prochaine vraie valeur = un item FEU VERT (FSS-PSV / refonte DESIGN).**
+> **Bas-bruit ENCORE dispo (prêt, mandat « continuer » de Marc)** : **[A11Y-SLIDERS] ✅ FAIT** · **D6-SR-2 :
+> primitives `<PrivateAmount>`/`<PrivateBlock>` prêtes**, Retirement + Dashboard migrés → RESTE = **finition de masse**
+> (~50 `privacy-blur` sur ~16 fichiers : ProjectionTooltip 13, ActionPlanDrilldown 6, RealEstate 4, etc. — mécanique,
+> à faire par paquets de 1-2 fichiers ; outils prêts) · `analytics.ts` (trivial). DEAD-FLT-2/CA-01 = consommateurs
+> VIVANTS → PAS du code mort. **Bas-bruit à fort signal épuisé ; reste = grind de masse D6-SR-2 OU item FEU VERT.**
 >
 > **Session 2026-06-11 (suite) — GRIND backlog (demande Marc « tout faire sans s'arrêter »)** :
 > #243 PH2-d-1 (toast verrou irrécupérable) · #244 Phase 3 + **réduction docs 47→9** (HISTORIQUE.md

@@ -472,13 +472,15 @@
   pour les sliders restants ; ChildPlanning REEE NON masqué visuellement → pas de parité à corriger.
   **+ `aria-label` (nom accessible) sur ces 5 sliders** (leurs `<label>` ne sont pas associés) + constante
   partagée `MASKED_AMOUNT_LABEL` (DRY entre `privacyAria` et `PrivateAmount`)) +
-  spans mono-valeur + MONTANTS ADJACENTS d'une même unité visuelle. **Retirement.tsx ✅ FAIT (#282 : les 13
-  montants mono-valeur → `<PrivateAmount>`, KPIs + tooltip, 0 privacy-blur restant).** RESTE = blocs CONTENEUR
-  multi-spans où `privacy-blur` est sur un PARENT flex (Dashboard:610 diff+revenu+gain, StressTestPanel delta,
-  RealEstate colonnes amortissement, ChildPlanning « Capital à 17 ans ») : `<PrivateAmount>` wrappe ses enfants
-  dans un `<span aria-hidden>` → casserait le layout flex multi-enfants. ⇒ créer un petit `<PrivateBlock>`
-  (aria-hidden sur le conteneur + `sr-only` « Montant masqué » en sibling, SANS wrapper les enfants), puis
-  migrer ces blocs. Tranche bornée, fait quand on veut.
+  spans mono-valeur + MONTANTS ADJACENTS. **#282 Retirement (13 mono-valeur → PrivateAmount).** **#283 : primitive
+  `<PrivateBlock>` CRÉÉE** (`components/ui/PrivateBlock.tsx` + 4 tests : aria-hidden sur le conteneur + `sr-only`
+  sibling, SANS wrapper les enfants → préserve le flex multi-spans, là où PrivateAmount le casserait) **+ Dashboard
+  liste d'actifs migré** (bloc diff+revenu → PrivateBlock ; bloc gain → PrivateAmount). RESTE = **finition de masse**
+  (~50 `privacy-blur` sur ~16 fichiers ; les primitives PrivateAmount/PrivateBlock/KPIStat/Layout NE comptent PAS) :
+  gros = `ProjectionTooltip` (13), `ActionPlanDrilldown` (6), `RealEstate` (4), `StrategyOptimizerPanel`/`Planning`/
+  `Budget`/`BudgetGroupTable` (3 ch.), puis RetirementIncomeCard/FutureDetailModal/Transactions/Investments/
+  StressTestPanel/ChildPlanning/etc. Outils prêts : mono-valeur → `<PrivateAmount>`, bloc multi-spans → `<PrivateBlock>`.
+  Mécanique mais volumineux → à faire par paquets (1 fichier ou 2 / lot).
 - [x] **[A11Y-SLIDERS]** ✅ COMPLET — nom accessible (WCAG 4.1.2/2.5.3) sur TOUS les sliders dont le `<label>`
   n'était pas associé. **ProjectionControls** (10 : Horizon, Inflation, Hausse salaire, CELI, NonReg/REER,
   Coussin, Inflation/poste ×6, Part actions US, Rendement div. US, Coût soins LD) + **PropertyConfigurator**

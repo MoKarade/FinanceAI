@@ -54,6 +54,23 @@
 > (gain locatif non taxé, préexistant). ⚠️ Agents-panel s'orphelinent au resume → checks refaits à la main.
 > **Phase 4 : onglet Futur TERMINÉ. Autres onglets (Transactions/Budget/Investissement/Retraite) : OK Marc requis par onglet.**
 >
+> **Session 2026-06-12 — GRIND MASSIF (~20 PR #250-266, demande Marc « forcer les basse-prio »)** :
+> Phase 4 ONGLETS : Futur (#250 calcul-sur-clic gaté sur signature `params` + retrait des « plans » ; #251-254
+> **4 LEVIERS** profil de rendement / fractionnement pension 65+ / taux d'épargne / downsizing) · Investissement
+> (#255 autocomplétion Finnhub `searchSymbol` ; #256 allocation = portefeuille `assets` RÉEL + dividendes réels ;
+> #259 4→3 pages) · Transactions (#257 tri colonnes) · Retraite (#258 invite `ProjectionRequired`, CSV déprécié
+> retiré). · **RE-GAIN** #260 (vente immeuble LOCATIF → gain en capital imposé ; RP EXEMPTE) + #261 (succession,
+> disposition réputée). · #263 **PV-6** (résiduel insolvable porté en dette `liquidDebt` au lieu d'absorbé) +
+> **PH2-c-3** (calcul déterministe routé au Web Worker ; `useDebouncedMemo` purgé). · #264 **CA-02** (formatage →
+> `formatCAD`). · #265/#266 **CA-04** (smoke tests des 8 composants money-critical sans test direct). Câblage
+> leviers : StrategyConfig + LEVER_LIBRARY + applied* (ProjectionConfig) + configToEngine + runScenario (recherche
+> ↔ courbe cohérentes). FISCAL_REFERENCE §8 (RE-GAIN) à jour. ⚠️ **Agents-panel s'orphelinent au resume** → checks
+> refaits à la main (baselines + cohérence). **RESTE (FEU VERT MARC requis — gros/risqué)** : CA-03 (migration
+> `utils/tax.ts` 820 l → `services/tax.ts`), CA-05 (découpe `Investments.tsx` 1187 l), P0 (proxy Anthropic /
+> IndexedDB), DESIGN Budget + annotations Futur (routé `A_FAIRE_MOI`). **Non-tractables** : PV-11e (micro-effet
+> non observable), DEAD-FLT-2 (`fetchPortfolioHistory` stub mais consommateurs VIVANTS → `StockComparisonModal`),
+> CA-01 (`csvExport` en fait VIVANT, utilisé par Transactions).
+>
 > Session 2026-06-10 — **TOP 10 [UI-EPURE] COMPLET + 5 fiscaux MAJEURS + [UI-SCEN]**. Build/tsc/tests verts.
 > - **Épuration UI (EP-1..EP-10)** — 4 PR (#225 EP-1/2, #226 EP-3/4/5, #227 EP-6/7/10, #228 EP-8) :
 >   Futur/Paramètres « Risques & aléas » repliée + Card AI retirée ; Dashboard 5e KPI « Patrimoine projeté »

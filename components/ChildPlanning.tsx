@@ -131,7 +131,9 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     // les mêmes constantes DAYCARE_INFO/SCHOOL_INFO/etc.
     const costTimeline = useMemo(() => {
         if (!goal) return { data: [], totalCost: 0 };
-        const inflation = (projection.inflationRate || 2) / 100;
+        // `??` (pas `||`) : une inflation de 0 % saisie est respectée (cohérent avec le moteur,
+        // setupSimulation) au lieu d'indexer les coûts enfant à 2 % en douce.
+        const inflation = (projection.inflationRate ?? 2) / 100;
         const parentalLeaveYr0 = parentalLeaveMonthsCost(goal);
         // Override les choix de vie sur le goal pour matcher l'état local
         // de ce composant (les useState sont la vérité utilisateur courante,

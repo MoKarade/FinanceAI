@@ -320,7 +320,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                     </ResponsiveContainer>
                                 </ZoomContainer>
                                 <div className="mt-4 text-meta text-ink-300 text-center bg-white/5 p-3 rounded-lg border border-white/10">
-                                    La ligne rouge represente votre besoin mensuel ({goal.targetMonthlyIncome}$/mois), ajuste a l'inflation ({projection.inflationRate || 2}%) au fil du temps.
+                                    La ligne rouge represente votre besoin mensuel ({goal.targetMonthlyIncome}$/mois), ajuste a l'inflation ({projection.inflationRate ?? 2}%) au fil du temps.
                                 </div>
                             </Card>
                         </>

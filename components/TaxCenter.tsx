@@ -87,7 +87,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                 res = await analyzePayslip(file, apiKey);
             } catch (err) {
                 console.error(`[TaxCenter] analyzePayslip failed for ${file.name}:`, err);
-                showToast(`Échec analyse ${file.name}. Format JPG/PNG requis.`, 'error');
+                showToast(`Échec analyse ${file.name}. Vérifie le format (JPG/PNG/WEBP/PDF) et ta clé Anthropic.`, 'error');
                 setProgress({ current: i + 1, total: files.length });
                 continue;
             }

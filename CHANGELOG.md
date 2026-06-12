@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Fix : upload de documents PDF (Vision)] — 2026-06-12
+
+### Corrigé
+- **Upload de bulletins/relevés PDF impossible** (« impossible d'uploader mes documents ») :
+  `analyzePayslip` (`services/claude.ts`) envoyait TOUT fichier dans un bloc Anthropic `image`
+  ET rejetait explicitement les types non-image, alors que la carte d'upload (Profil) et le
+  TaxCenter annoncent accepter le PDF (`accept` + libellé « PDF »). Conséquence : chaque PDF
+  échouait avec « Analyse échouée ». Fix : nouveau helper pur exporté `buildPayslipFileBlock`
+  qui route un PDF vers un bloc `document` (source base64 `application/pdf`) et une image vers
+  un bloc `image`. **L'API Anthropic refuse un PDF dans un bloc `image` — le bloc `document` est
+  obligatoire.** Toast d'erreur TaxCenter aligné (mention WEBP/PDF). Tests ajoutés
+  (PDF → `document`, images → `image`, type non supporté → throw).
+
 ## [unreleased — Exactitude fiscale : A1 impôt de retraite par conjoint + résidus] — 2026-06-03
 
 Suite de l'initiative couple (A1) et des résidus money. Priorité = impôt **par conjoint**

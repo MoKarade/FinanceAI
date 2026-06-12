@@ -169,7 +169,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                             <span>Plafond Valeur Max</span>
                             <span>{maxValue > 0 ? fmt(maxValue) : 'Aucun plafond'}</span>
                         </label>
-                        <input type="range" min="0" max={price * 4} step={price * 0.1} value={maxValue} onChange={e => updateActiveGoal({ maxValue: Number(e.target.value) })} className="w-full h-1.5 bg-black/50 rounded-lg appearance-none cursor-pointer accent-purple-500" />
+                        <input type="range" aria-label="Plafond Valeur Max" min="0" max={price * 4} step={price * 0.1} value={maxValue} onChange={e => updateActiveGoal({ maxValue: Number(e.target.value) })} className="w-full h-1.5 bg-black/50 rounded-lg appearance-none cursor-pointer accent-purple-500" />
                         <p className="text-tiny text-ink-500 mt-1">Limite l'appréciation projetée de la propriété à un maximum réaliste.</p>
                     </div>
                 </div>

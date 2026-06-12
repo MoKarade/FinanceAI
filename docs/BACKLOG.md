@@ -477,14 +477,14 @@
   colonnes amortissement) + ChildPlanning « Capital à 17 ans »
   (à gater comme le fix Dashboard : value peut être un CTA <ProjectionRequired>). Migrer
   opportunistiquement vers <PrivateAmount> au fil des refontes PH4.
-- [ ] **[A11Y-SLIDERS]** 🔧 (découverte revue a11y du lot sliders monétaires) — généraliser le NOM
-  accessible (WCAG 4.1.2) aux ~13 sliders restants dont le `<label>` n'est PAS associé : ProjectionControls
-  (Horizon, Inflation, Hausse salaire, CELI, NonReg/REER, Coussin, Inflation/poste ×6, Part actions US,
-  Rendement div. US, Coût LD), PropertyConfigurator:172 « Plafond Valeur Max » (incohérent : son jumeau
-  ProjectionControls a déjà un nom), RealEstate:466/490, DebtManager/TaxCenter/Budget/ChildPlanning/
-  HealthIndicator (au cas par cas). Pattern PRÉFÉRÉ : `id` sur le `<span>` de nom + `aria-labelledby`
-  sur l'input (évite la dérive label-visible ↔ aria-label) plutôt que dupliquer en `aria-label`.
-  + test de nom accessible sur les 3 sliders de ProjectionControls (couverture symétrique à PropertyConfigurator).
+- [~] **[A11Y-SLIDERS]** 🔧 (découverte revue a11y) — nom accessible (WCAG 4.1.2) sur les sliders dont le
+  `<label>` n'est PAS associé. **✅ FAIT** : **ProjectionControls** (Horizon, Inflation, Hausse salaire, CELI,
+  NonReg/REER, Coussin, Inflation/poste ×6 via la boucle, Part actions US, Rendement div. US, Coût soins LD —
+  `aria-label` = texte visible) + **PropertyConfigurator:172** « Plafond Valeur Max » (incohérence résolue) ;
+  tests `ProjectionControls.a11y.test.tsx` (10 sliders trouvés par nom + boucle) + PropertyConfigurator (3ᵉ slider).
+  **RESTE** : RealEstate:466/490, DebtManager/TaxCenter/Budget/ChildPlanning/HealthIndicator (au cas par cas —
+  vérifier d'abord s'ils ont déjà un label associé). NB : j'ai utilisé `aria-label` (uniformité avec les 5
+  monétaires) ; pour la suite, `aria-labelledby` sur le `<span>` de nom évite la dérive label↔aria si on préfère.
 - [ ] **[D7]** Perf boot : `hydrateAssets` (`App.tsx`) boucle `await sleep(2500ms)` séquentiel par
   symbole → 10 actifs = ~25 s. Paralléliser + cacher, garde-fous anti-rate-limit. Plus gros gain
   de fluidité ressenti.

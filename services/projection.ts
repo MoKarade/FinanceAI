@@ -146,8 +146,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         mortgage: (g.price || 0) - (g.downPayment || 0),
         currentValue: g.price || 0,
         calculatedPmt: 0,
+        isSold: false,
         // RE-GAIN — coût d'achat (ACB approx) + nature RP/locatif, pour imposer le gain en capital
-        // à la disposition d'un immeuble locatif (vente via LifeEvent).
+        // à la disposition d'un immeuble locatif (vente via LifeEvent ou disposition réputée au décès).
         cost: g.price || 0,
         isPrimaryResidence: g.isPrimaryResidence ?? false,
     }));
@@ -1406,9 +1407,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     }
 
     // Cycle 26 split: bilan successoral → ./projection/estateCalculation
+    // RE-GAIN-SUCC — gain latent des immeubles LOCATIFS non vendus à la fin (RP exclue, exempte au décès).
+    const realEstateLatentGain = propertiesState
+        .filter(p => p.isBought && !p.isSold && !p.isPrimaryResidence)
+        .reduce((s, p) => s + Math.max(0, p.currentValue - (p.cost ?? 0)), 0);
     const estate = computeEstateNetWorth({
         liquid, celi, celiapp, reer, nonReg, nonRegACB, crypto, cryptoACB, reee,
-        realEstateEquity, mortgageBalance, smithManoeuvreDebt,
+        realEstateEquity, mortgageBalance, realEstateLatentGain, smithManoeuvreDebt,
         incomeRetirement, accRentesYear, accRetraitsReerYear,
         grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
         simulationYears: projection.years,

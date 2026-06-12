@@ -26,6 +26,9 @@ export interface EstateCalcInputs {
     reee: number;
     realEstateEquity: number;
     mortgageBalance: number;
+    /** RE-GAIN-SUCC — gain latent BRUT des immeubles LOCATIFS (Σ max(0, valeur − coût)), imposable à
+     *  50 % à la disposition réputée au décès. RP exclue par l'appelant. Absent → 0 (non-régression). */
+    realEstateLatentGain?: number;
     smithManoeuvreDebt: number;
     // Revenus dernière période (pour taux marginal succession)
     incomeRetirement: number;
@@ -126,7 +129,11 @@ export function computeEstateNetWorth(
 
     // M-4 : seul le GAIN crypto (valeur − coût de base) est imposable, pas la valeur entière.
     const taxableCryptoGain = Math.max(0, crypto - cryptoACB) * CAPITAL_GAINS_INCLUSION_STANDARD;
-    const totalEstateLiquidation = reer + taxableEstateGain + taxableCryptoGain;
+    // RE-GAIN-SUCC — disposition réputée au décès (LIR 70(5)) : le gain latent d'un IMMEUBLE LOCATIF
+    // (Σ max(0, valeur − coût), fourni par l'appelant) est imposable à 50 %. La résidence principale
+    // est EXEMPTE (exclue en amont). Absent → 0 (non-régression).
+    const taxableRealEstateGain = fin(inputs.realEstateLatentGain ?? 0) * CAPITAL_GAINS_INCLUSION_STANDARD;
+    const totalEstateLiquidation = reer + taxableEstateGain + taxableCryptoGain + taxableRealEstateGain;
 
     // Phase 2: Double décès (fin de simulation). Impôt supporté par le survivant SEUL → toute la
     // liquidation est imposée sur UNE seule déclaration finale.

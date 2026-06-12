@@ -435,9 +435,10 @@ Le facteur 71 ans (5,28 %) ne s'applique qu'à une conversion **volontaire préc
   est **exempt d'impôt** (100 % si RP unique sur toute la période de détention). Appliqué par le levier
   **downsizing** (`realEstateMonth.ts` : l'équité libérée n'incrémente PAS `accCapitalGainsYear`) → aucun
   impôt, aucun effet sur les assiettes de revenu (clawback PSV/SRG, FSS, RAMQ). Conforme.
-- ⚠️ **Limite assumée** : le gain immobilier d'un **locatif** (≠ RP) n'est PAS modélisé à la disposition
-  (vente générique `monthlyEvents`) ni à la succession (`estateCalculation`) — préexistant, cf BACKLOG
-  `[RE-GAIN]`. Le downsizing, lui, est correctement borné à `isPrimaryResidence`.
+- **Gain immobilier d'un LOCATIF (≠ RP) à la VENTE** (`monthlyEvents.applyLifeEvents`, RE-GAIN livré) :
+  produit net (95 %) − coût d'achat → gain BRUT réalisé dans `accCapitalGainsYear` (50 % inclus en aval).
+  Exempt pour la résidence principale. ⚠️ **Reste** : le gain latent immobilier d'un locatif à la
+  **succession** (`estateCalculation`) n'est pas encore modélisé — cf BACKLOG `[RE-GAIN-SUCC]`.
 - `DOWNSIZE_RELEASE_PCT = 0.4` est une **hypothèse de modèle** (fraction d'équité libérée en rachetant
   plus petit), **pas une valeur fiscale** — ajustable, non sourcée.
 

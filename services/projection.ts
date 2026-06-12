@@ -145,7 +145,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         isBought: false,
         mortgage: (g.price || 0) - (g.downPayment || 0),
         currentValue: g.price || 0,
-        calculatedPmt: 0
+        calculatedPmt: 0,
+        // RE-GAIN — coût d'achat (ACB approx) + nature RP/locatif, pour imposer le gain en capital
+        // à la disposition d'un immeuble locatif (vente via LifeEvent).
+        cost: g.price || 0,
+        isPrimaryResidence: g.isPrimaryResidence ?? false,
     }));
 
     let activeDebts = (debts || []).filter(d => !!d).map(d => ({ ...d }));
@@ -1092,6 +1096,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             addLiquid: (n) => { liquid += n; },
             addExpense: (n) => { monthlyExpenses += n; },
             adjustRealEstate: (eq, mort) => { realEstateEquity += eq; mortgageBalance += mort; },
+            realizeCapitalGain: (g) => { accCapitalGainsYear += g; },
             logLife: (s) => logEvent(lifeEventsLog, s),
             logFlow: (s) => logEvent(flowEventsLog, s),
         });

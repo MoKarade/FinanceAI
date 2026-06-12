@@ -351,14 +351,14 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                         <span>Cotisation REER</span>
                                         <span>{rrspContribution.toLocaleString()}$</span>
                                     </label>
-                                    <input type="range" min="0" max="30000" step="100" value={rrspContribution} onChange={e => setRrspContribution(parseFloat(e.target.value))} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
+                                    <input type="range" aria-label="Cotisation REER" min="0" max="30000" step="100" value={rrspContribution} onChange={e => setRrspContribution(parseFloat(e.target.value))} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
                                 </div>
                                 <div>
                                     <label className="flex justify-between text-meta text-ink-200 mb-1">
                                         <span>CELIAPP</span>
                                         <span>{fhsaContribution.toLocaleString()}$</span>
                                     </label>
-                                    <input type="range" min="0" max="8000" step="100" value={fhsaContribution} onChange={e => setFhsaContribution(parseFloat(e.target.value))} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-green-500" />
+                                    <input type="range" aria-label="CELIAPP" min="0" max="8000" step="100" value={fhsaContribution} onChange={e => setFhsaContribution(parseFloat(e.target.value))} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-green-500" />
                                 </div>
                             </div>
                         </div>

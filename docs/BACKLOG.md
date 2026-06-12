@@ -465,10 +465,13 @@
   NetWorthByOwnerCard).
 - [ ] **[D6-SR-2]** 🔧 (reste de migration, enrichi revue #247) — ~69 occurrences `privacy-blur`
   restantes : INPUTS (légitimes — un champ éditable doit rester utilisable par son utilisateur SR ;
-  mais SLIDERS : ajouter `aria-valuetext="Montant masqué"` quand isPrivacyMode — PropertyConfigurator
-  prix d'achat, ChildPlanning REEE) + spans MULTI-LIGNES/mixtes non codemodables + MONTANTS ADJACENTS
+  **SLIDERS ✅ FAIT** : helper partagé `maskedSliderAria(isPrivacyMode)` (`utils/privacyAria.ts`) +
+  `aria-valuetext="Montant masqué"` sur les 5 sliders monétaires masqués — PropertyConfigurator
+  prix/mise de fonds, ProjectionControls revenu/dépenses théoriques + plafond immo ; helper réutilisable
+  pour les sliders restants ; ChildPlanning REEE NON masqué visuellement → pas de parité à corriger) +
+  spans MULTI-LIGNES/mixtes non codemodables + MONTANTS ADJACENTS
   d'une même unité visuelle (Dashboard:607-619 diff/revenu/gain, StressTestPanel delta, RealEstate
-  colonnes amortissement, PropertyConfigurator mise de fonds) + ChildPlanning « Capital à 17 ans »
+  colonnes amortissement) + ChildPlanning « Capital à 17 ans »
   (à gater comme le fix Dashboard : value peut être un CTA <ProjectionRequired>). Migrer
   opportunistiquement vers <PrivateAmount> au fil des refontes PH4.
 - [ ] **[D7]** Perf boot : `hydrateAssets` (`App.tsx`) boucle `await sleep(2500ms)` séquentiel par

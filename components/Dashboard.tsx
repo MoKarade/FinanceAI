@@ -26,6 +26,7 @@ import { formatCAD, formatPercent, formatSigned } from '../utils/format';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { logError } from '../services/errorLogger';
 import { PrivateAmount } from './ui/PrivateAmount';
+import { PrivateBlock } from './ui/PrivateBlock';
 
 interface DashboardProps {
     transactions: Transaction[];
@@ -607,19 +608,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 </div>
                                 <div className="text-right shrink-0">
                                     <PrivateAmount as="div" className="font-mono font-bold text-ink-100 text-body">{formatCAD(asset.value)}</PrivateAmount>
-                                    <div className="flex justify-end gap-2 text-tiny mt-0.5 font-bold privacy-blur">
+                                    <PrivateBlock className="flex justify-end gap-2 text-tiny mt-0.5 font-bold">
                                         <span className={asset.diffCAD >= 0 ? 'text-green-500' : 'text-danger-500'}>
                                             {formatSigned(asset.diffCAD, { withCurrency: true })}
                                         </span>
                                         <span className="text-yellow-500" title="Revenu mensuel estimé (dividendes)">
                                             +{formatCAD(asset.revMensuel)}
                                         </span>
-                                    </div>
+                                    </PrivateBlock>
                                     {hasPurchaseData && gainAbs !== null && gainPct !== null ? (
-                                        <div className="text-tiny mt-0.5 privacy-blur" title="Gain total depuis l'achat (cours actuel vs prix d'achat)">
-                                            <span className={`font-mono ${gainAbs >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                        <div className="text-tiny mt-0.5" title="Gain total depuis l'achat (cours actuel vs prix d'achat)">
+                                            <PrivateAmount className={`font-mono ${gainAbs >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
                                                 Achat : {formatSigned(gainAbs, { withCurrency: true })} ({formatSigned(gainPct, { decimals: 2 })}%)
-                                            </span>
+                                            </PrivateAmount>
                                         </div>
                                     ) : (
                                         <div className="text-tiny mt-0.5 text-ink-600 italic">

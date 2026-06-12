@@ -11,6 +11,8 @@ import { AddStockForm } from '../../../components/investments/AddStockForm';
 vi.mock('../../../services/marketData', () => ({
     getQuote: vi.fn(async () => null),
     getHistory: vi.fn(async () => []),
+    getActiveProviderName: vi.fn(() => 'none'), // PH4-INV-1 : pas de clé → mode dégradé, pas d'autocomplétion
+    searchSymbols: vi.fn(async () => []),
 }));
 
 describe('AddStockForm — saisie 100% manuelle (sans Finnhub)', () => {

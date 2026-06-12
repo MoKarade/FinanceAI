@@ -108,3 +108,52 @@ describe('FinnhubProvider — getProfile / getDividends', () => {
         expect(d[1].amount).toBe(0); // coercé (D5)
     });
 });
+
+describe('FinnhubProvider — searchSymbol (PH4-INV-1 autocomplétion)', () => {
+    const p = new FinnhubProvider('test-key');
+
+    it('mappe result[] → SymbolSearchResult[] (symbol/description/displaySymbol/type)', async () => {
+        mockFetch({ count: 2, result: [
+            { symbol: 'AAPL', displaySymbol: 'AAPL', description: 'APPLE INC', type: 'Common Stock' },
+            { symbol: 'AAPL.SW', displaySymbol: 'AAPL.SW', description: 'APPLE INC', type: 'Common Stock' },
+        ] });
+        const r = await p.searchSymbol('apple');
+        expect(r).toHaveLength(2);
+        expect(r[0]).toEqual({ symbol: 'AAPL', description: 'APPLE INC', displaySymbol: 'AAPL', type: 'Common Stock' });
+    });
+
+    it('filtre les entrées sans symbol OU sans description', async () => {
+        mockFetch({ count: 3, result: [
+            { symbol: 'AAPL', displaySymbol: 'AAPL', description: 'APPLE INC', type: 'Common Stock' },
+            { symbol: '', description: 'vide' },
+            { symbol: 'NODESC', displaySymbol: 'NODESC', description: '' },
+        ] });
+        const r = await p.searchSymbol('x');
+        expect(r).toHaveLength(1);
+        expect(r[0].symbol).toBe('AAPL');
+    });
+
+    it('displaySymbol absent → retombe sur symbol ; type absent → undefined', async () => {
+        mockFetch({ count: 1, result: [{ symbol: 'XEQT.TO', description: 'ISHARES CORE EQUITY ETF' }] });
+        const r = await p.searchSymbol('xeqt');
+        expect(r[0].displaySymbol).toBe('XEQT.TO');
+        expect(r[0].type).toBeUndefined();
+    });
+
+    it('requête vide/espaces → [] SANS appel réseau', async () => {
+        const spy = vi.fn();
+        globalThis.fetch = spy as unknown as typeof fetch;
+        expect(await p.searchSymbol('   ')).toEqual([]);
+        expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('result absent ou non-tableau → []', async () => {
+        mockFetch({ count: 0 });
+        expect(await p.searchSymbol('zzz')).toEqual([]);
+    });
+
+    it('erreur HTTP (429 rate limit) → [] (pas de crash)', async () => {
+        mockFetch({}, 429);
+        expect(await p.searchSymbol('aapl')).toEqual([]);
+    });
+});

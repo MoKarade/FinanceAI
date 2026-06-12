@@ -64,6 +64,18 @@ export interface DividendInfo {
     frequency: number;
 }
 
+/** Résultat de recherche de symbole (autocomplétion à la frappe). */
+export interface SymbolSearchResult {
+    /** Symbole Finnhub (ex "AAPL", "SHOP.TO"). */
+    symbol: string;
+    /** Nom/description (ex "APPLE INC"). */
+    description: string;
+    /** Symbole d'affichage (souvent = symbol). */
+    displaySymbol: string;
+    /** Type d'instrument (ex "Common Stock", "ETF") si fourni. */
+    type?: string;
+}
+
 /** Interface qu'un provider de marketData doit implémenter. */
 export interface MarketDataProvider {
     /** Nom du provider pour le logging/diagnostics. */
@@ -76,6 +88,8 @@ export interface MarketDataProvider {
     getProfile(symbol: string): Promise<AssetProfile | null>;
     /** Prochains dividendes. Optionnel selon le provider. */
     getDividends?(symbol: string): Promise<DividendInfo[]>;
+    /** Recherche de symbole (autocomplétion). Optionnel selon le provider. */
+    searchSymbol?(query: string): Promise<SymbolSearchResult[]>;
 }
 
 /** Erreur de provider (rate limit, auth, network…). */

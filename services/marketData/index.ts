@@ -7,7 +7,7 @@
 //
 // Toutes les requêtes passent par le cache TTL automatique.
 
-import type { Quote, HistoryPoint, AssetProfile, MarketDataProvider } from './types';
+import type { Quote, HistoryPoint, AssetProfile, SymbolSearchResult, MarketDataProvider } from './types';
 import { withCache, clearMarketDataCache } from './cache';
 import { FinnhubProvider } from './providers/finnhub';
 import { CoinGeckoProvider, coinGeckoIdFor } from './providers/coingecko';
@@ -71,6 +71,21 @@ export async function getProfile(symbol: string): Promise<AssetProfile | null> {
     const provider = pickProvider(symbol);
     if (!provider) return null;
     return withCache('profile', symbol, () => provider.getProfile(symbol));
+}
+
+/**
+ * Recherche de symbole (autocomplétion à la frappe). Retourne [] si pas de provider configuré
+ * (mode dégradé sans clé Finnhub) ou requête vide. PAS de cache : requête dynamique éphémère ; le
+ * débounce côté UI borne le débit (free tier Finnhub 60 req/min).
+ */
+export async function searchSymbols(query: string): Promise<SymbolSearchResult[]> {
+    const q = query.trim();
+    if (q.length < 1 || !activeProvider?.searchSymbol) return [];
+    try {
+        return await activeProvider.searchSymbol(q);
+    } catch {
+        return []; // le provider journalise déjà ; pas de remontée bloquante pour une autocomplétion
+    }
 }
 
 /** Diagnostic : retourne le nom du provider actif ou 'none'. */

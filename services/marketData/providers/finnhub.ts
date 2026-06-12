@@ -8,7 +8,7 @@
 // utilise déjà ce style ("NASDAQ:NVDA") donc compat directe pour USA. Pour
 // TSX on convertit `TSE:XEQT.TO` → `TO:XEQT`.
 
-import type { Quote, HistoryPoint, AssetProfile, DividendInfo, MarketDataProvider } from '../types';
+import type { Quote, HistoryPoint, AssetProfile, DividendInfo, SymbolSearchResult, MarketDataProvider } from '../types';
 import { MarketDataError } from '../types';
 import { logProviderError } from './providerError';
 
@@ -180,6 +180,28 @@ export class FinnhubProvider implements MarketDataProvider {
             }));
         } catch (e) {
             logProviderError('Finnhub', 'getDividends', symbol, e);
+            return [];
+        }
+    }
+
+    async searchSymbol(query: string): Promise<SymbolSearchResult[]> {
+        const q = query.trim();
+        if (q.length < 1) return [];
+        try {
+            const data = await finnhubFetch(`/search?q=${encodeURIComponent(q)}`, this.apiKey);
+            // Finnhub : { count, result: [{ symbol, description, displaySymbol, type }] }
+            const result = data.result as Array<Record<string, unknown>> | undefined;
+            if (!Array.isArray(result)) return [];
+            return result
+                .map((r) => ({
+                    symbol: typeof r.symbol === 'string' ? r.symbol : '',
+                    description: typeof r.description === 'string' ? r.description : '',
+                    displaySymbol: typeof r.displaySymbol === 'string' ? r.displaySymbol : (typeof r.symbol === 'string' ? r.symbol : ''),
+                    type: typeof r.type === 'string' && r.type ? r.type : undefined,
+                }))
+                .filter((r) => r.symbol && r.description);
+        } catch (e) {
+            logProviderError('Finnhub', 'searchSymbol', query, e);
             return [];
         }
     }

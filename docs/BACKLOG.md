@@ -444,10 +444,11 @@
   ProjectionControls 10). (M)
 - [ ] **[CA-09]** Découper `services/pdfReport.ts` (847 l) et `services/claude.ts` (768 l) ; évaluer
   l'extractible restant de `projection.ts` (1387 l). (L)
-- [~] **[CA-10]** PRIORITÉ FAITE — `usePastPortfolioHistory` couvert : dédup module (PH2-c-1) +
-  `tests/hooks/usePastPortfolioHistory.modes.test.tsx` (mode test = reconstruction directe sans réseau ;
-  anti-fuite réel→test M3 ; gardes aucun-actif / sans-clé). RESTE (basse prio) : `assetMeta`, `analytics`,
-  `usePwaInstallPrompt`. (S)
+- [x] **[CA-10]** ✅ (quasi complet) — `usePastPortfolioHistory` (dédup PH2-c-1 + `.modes` : mode test,
+  anti-fuite réel→test M3, gardes) + **`usePwaInstallPrompt`** (`tests/hooks/usePwaInstallPrompt.test.ts`,
+  11 cas : recence de dismiss 30j + garde `Number.isFinite`, standalone, flux beforeinstallprompt/
+  promptInstall/appinstalled). `assetMeta` n'existe plus (module supprimé) ; `analytics.ts` = trivial
+  (`trackPageView` 40 l, un seul wrapper) → test sans valeur, laissé. (S)
 
 ## 🧹 Grand nettoyage AAA — items ENCORE ouverts (réf. `AAA_AUDIT_2026-06.md`)
 > D1 (money CF/M-*), D5 (robustesse), D6 (double-h1, focus tour), D9 (robustesse LLM/ingest) = ✅ **faits**

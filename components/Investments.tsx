@@ -216,191 +216,104 @@ export const Investments: React.FC<InvestmentsProps> = ({
         portfolioTrend,
         benchmarkTrend,
     } = useMemo(() => {
-        if (marketData.length === 0) {
-            // Bug fix test-mode : si pas de CSV historique, construire
-            // l'allocation directement depuis le store `assets` (qty × price).
-            // Avant ce fix, "0 actifs" affichés en mode test malgré 5 assets.
-            const fallbackAllocation = assets.map(a => {
-                const value = (a.quantity || 0) * (a.currentPrice || 0);
-                const meta = ASSET_META[a.symbol] || { name: a.name || a.symbol, sector: 'Autre', region: 'Autre', yield: 0, freq: 1 };
-                return {
-                    id: a.symbol,
-                    value,
-                    trend24h: 0,
-                    weight: 0, // calculé après
-                    dividendYearly: value * (meta.yield / 100),
-                    ...meta,
-                };
-            }).filter(a => a.value > 0);
-            const fallbackTotal = fallbackAllocation.reduce((s, a) => s + a.value, 0) || 1;
-            fallbackAllocation.forEach(a => { a.weight = (a.value / fallbackTotal) * 100; });
-            fallbackAllocation.sort((a, b) => b.value - a.value);
-            const geoMap: Record<string, number> = {};
-            const sectorMap: Record<string, number> = {};
-            fallbackAllocation.forEach(a => {
-                geoMap[a.region] = (geoMap[a.region] || 0) + a.value;
-                sectorMap[a.sector] = (sectorMap[a.sector] || 0) + a.value;
-            });
-            const geoData = Object.entries(geoMap).map(([name, value]) => ({ name, value, percent: (value / fallbackTotal) * 100 })).sort((a, b) => b.value - a.value);
-            const sectorData = Object.entries(sectorMap).map(([name, value]) => ({ name, value, percent: (value / fallbackTotal) * 100 })).sort((a, b) => b.value - a.value);
-            return {
-                currentAllocation: fallbackAllocation,
-                geoBreakdown: geoData,
-                sectorBreakdown: sectorData,
-                dividendCalendar: [], totalAnnualDividends: 0,
-                availableSeriesWithTrend: [],
-                healthScore: 0, portfolioTrend: 0, benchmarkTrend: 0,
-            };
-        }
+        // PH4-INV-2 — SOURCE DE VÉRITÉ de l'allocation = le portefeuille `assets` saisi (qty × prix
+        // courant), PAS le CSV historique (Google Sheet déprécié) qui divergeait du portefeuille réel
+        // (bug Marc : allocation fausse dès qu'un CSV existait). Le CSV ne sert plus qu'aux SÉRIES
+        // temporelles (tendances 24 h, benchmark, score de santé) quand il est présent.
 
-        // 1. Get Latest Valid Row scanning backwards for non-zeros
+        // (a) Dernières valeurs par colonne du CSV (si présent) — pour les TENDANCES uniquement.
         const latestValues: Record<string, number> = {};
         const prevValues: Record<string, number> = {};
-        let totalPortfolio = 1;
-
-        const allKeys = new Set<string>();
-        marketData.forEach(row => Object.keys(row).forEach(k => allKeys.add(k)));
-
-        const cleanKeys = Array.from(allKeys).filter(k =>
-            k !== 'date' && k !== 'Date' && !k.startsWith('Taux') && k.trim() !== '' && k !== '1' && k.toLowerCase() !== 'colonne 1' && k !== 'Unnamed: 1'
-        );
-
-        cleanKeys.forEach(k => {
-            let latestIdx = -1;
-            for (let i = marketData.length - 1; i >= 0; i--) {
-                const val = Number(marketData[i][k]);
-                if (val > 0) {
-                    latestValues[k] = val;
-                    latestIdx = i;
-                    break;
+        if (marketData.length > 0) {
+            const allKeys = new Set<string>();
+            marketData.forEach(row => Object.keys(row).forEach(k => allKeys.add(k)));
+            const cleanKeys = Array.from(allKeys).filter(k =>
+                k !== 'date' && k !== 'Date' && !k.startsWith('Taux') && k.trim() !== '' && k !== '1' && k.toLowerCase() !== 'colonne 1' && k !== 'Unnamed: 1',
+            );
+            cleanKeys.forEach(k => {
+                let latestIdx = -1;
+                for (let i = marketData.length - 1; i >= 0; i--) {
+                    const val = Number(marketData[i][k]);
+                    if (val > 0) { latestValues[k] = val; latestIdx = i; break; }
                 }
-            }
-            if (latestIdx > 0) {
-                prevValues[k] = Number(marketData[latestIdx - 1][k]) || 0;
-            } else {
-                prevValues[k] = 0;
-            }
+                prevValues[k] = latestIdx > 0 ? (Number(marketData[latestIdx - 1][k]) || 0) : 0;
+            });
+        }
 
-            if (k.includes('TOTAL')) {
-                totalPortfolio = latestValues[k] || 1;
-            }
-        });
-
-        // 2. Build Allocation Table (Excluding TOTAL for breakdown)
-        const allocation = cleanKeys
-            .filter(k => !k.includes('TOTAL'))
-            .map(key => {
-                const val = latestValues[key] || 0;
-                if (val === 0) return null;
-
-                const prevVal = prevValues[key] || 0;
-                const meta = ASSET_META[key] || { name: key.replace('NASDAQ:', '').replace('NYSE:', '').replace('EPA:', ''), sector: 'Autre', region: 'Autre', yield: 0, freq: 1 };
-
-                const estimatedAnnualDividend = val * (meta.yield / 100);
-
-                return {
-                    id: key,
-                    value: val,
-                    trend24h: prevVal > 0 ? ((val - prevVal) / prevVal) * 100 : 0,
-                    weight: (val / totalPortfolio) * 100,
-                    dividendYearly: estimatedAnnualDividend,
-                    ...meta
-                };
-            })
-            .filter((x): x is AllocationItem => x !== null);
-
-        allocation.sort((a, b) => b.value - a.value);
-
-        // 3. Geographic Breakdown
-        const geoMap: Record<string, number> = {};
-        allocation.forEach(a => {
-            geoMap[a.region] = (geoMap[a.region] || 0) + a.value;
-        });
-        const geoData = Object.entries(geoMap).map(([name, value]) => ({ name, value, percent: (value / totalPortfolio) * 100 })).sort((a, b) => b.value - a.value);
-
-        // 4. Sector Breakdown
-        const sectorMap: Record<string, number> = {};
-        allocation.forEach(a => {
-            sectorMap[a.sector] = (sectorMap[a.sector] || 0) + a.value;
-        });
-        const sectorData = Object.entries(sectorMap).map(([name, value]) => ({ name, value, percent: (value / totalPortfolio) * 100 })).sort((a, b) => b.value - a.value);
-
-        // 5. Dividend Calendar
-        const dividendList: DividendItem[] = [];
-        let totalDivs = 0;
-        const today = new Date();
-
-        allocation.forEach(asset => {
-            if (asset.dividendYearly > 0) {
-                totalDivs += asset.dividendYearly;
-
-                // Estimate next payout
-                let nextMonth = asset.nextPayMonth || (today.getMonth() + 2); // Default to +2 months if unknown
-                if (nextMonth > 12) nextMonth -= 12;
-
-                const monthName = new Date(today.getFullYear(), nextMonth - 1, 1).toLocaleDateString('fr-CA', { month: 'long' });
-
-                dividendList.push({
-                    ...asset,
-                    nextPayout: monthName,
-                    amountPerPayout: asset.dividendYearly / asset.freq
-                });
-            }
-        });
-
-        // Sort by value roughly
-        const sortedDividends = dividendList.sort((a, b) => b.dividendYearly - a.dividendYearly);
-
-        // 6. Trends for Toggle List (Including TOTAL)
-        const availableSeriesWithTrend = cleanKeys.map(k => {
+        // (b) Séries + tendances (depuis le CSV). Vide s'il n'y a pas de CSV.
+        const availableSeriesWithTrend = Object.keys(latestValues).map(k => {
             const current = latestValues[k] || 0;
             if (current === 0) return null;
-
             const prev = prevValues[k] || 0;
             const trend = prev > 0 ? ((current - prev) / prev) * 100 : 0;
             const isTotal = k.includes('TOTAL');
             const meta = ASSET_META[k] || { name: k.replace('NASDAQ:', '').replace('NYSE:', '') };
-
-            return {
-                id: k,
-                name: isTotal ? 'TOTAL PORTEFEUILLE' : meta.name,
-                trend,
-                isTotal
-            };
+            return { id: k, name: isTotal ? 'TOTAL PORTEFEUILLE' : meta.name, trend, isTotal };
         }).filter((x): x is SeriesWithTrend => x !== null).sort((a, b) => {
             if (a.isTotal) return -1;
             if (b.isTotal) return 1;
-            return b.trend - a.trend; // Sort by momentum
+            return b.trend - a.trend;
         });
-
-        // 7. Health Score Calculation
-        let healthScore = 0;
-        let indexWeight = 0;
-        let benchmarkTrend = 0;
-        let portfolioTrend = 0;
-
-        allocation.forEach(a => {
-            if (a.sector === 'Index' || a.sector === 'Mines/Or') indexWeight += a.weight;
-        });
-
-        let safePts = (indexWeight / 40) * 60; // Max 60 pts if 40%+ in safe assets
-        if (safePts > 60) safePts = 60;
-
         const totalSerie = availableSeriesWithTrend.find(s => s.isTotal);
         const cw8Serie = availableSeriesWithTrend.find(s => s.id.includes('CW8') || s.name.includes('MSCI'));
+        const portfolioTrend = totalSerie ? totalSerie.trend : 0;
+        const benchmarkTrend = cw8Serie ? cw8Serie.trend : 0;
 
-        portfolioTrend = totalSerie ? totalSerie.trend : 0;
-        benchmarkTrend = cw8Serie ? cw8Serie.trend : 0;
+        // (c) ALLOCATION = portefeuille réel (assets). trend24h enrichi depuis le CSV par symbole si dispo.
+        const FREQ_MAP: Record<string, number> = { Monthly: 12, Quarterly: 4, Yearly: 1 };
+        const allocation = assets.map(a => {
+            const value = (a.quantity || 0) * (a.currentPrice || 0);
+            const meta = ASSET_META[a.symbol] || { name: a.name || a.symbol, sector: 'Autre', region: 'Autre', yield: 0, freq: 1 };
+            const cur = latestValues[a.symbol] ?? 0;
+            const prev = prevValues[a.symbol] ?? 0;
+            const trend24h = cur > 0 && prev > 0 ? ((cur - prev) / prev) * 100 : 0;
+            // PH4-INV-3 — dividendes : priorité au rendement/fréquence SAISIS sur l'Asset (réels du
+            // titre) sur l'estimation de la table statique ASSET_META.
+            const effYield = a.dividendYield != null && a.dividendYield > 0 ? a.dividendYield : meta.yield;
+            const effFreq = a.dividendFreq ? (FREQ_MAP[a.dividendFreq] ?? meta.freq) : meta.freq;
+            return { id: a.symbol, value, trend24h, weight: 0, ...meta, yield: effYield, freq: effFreq, dividendYearly: value * (effYield / 100) };
+        }).filter((a): a is AllocationItem => a.value > 0);
+        const totalPortfolio = allocation.reduce((s, a) => s + a.value, 0) || 1;
+        allocation.forEach(a => { a.weight = (a.value / totalPortfolio) * 100; });
+        allocation.sort((a, b) => b.value - a.value);
 
-        let trendPts = 20; // Base points
+        // (d) Répartitions géographique / sectorielle (depuis l'allocation réelle).
+        const geoMap: Record<string, number> = {};
+        const sectorMap: Record<string, number> = {};
+        allocation.forEach(a => {
+            geoMap[a.region] = (geoMap[a.region] || 0) + a.value;
+            sectorMap[a.sector] = (sectorMap[a.sector] || 0) + a.value;
+        });
+        const geoData = Object.entries(geoMap).map(([name, value]) => ({ name, value, percent: (value / totalPortfolio) * 100 })).sort((a, b) => b.value - a.value);
+        const sectorData = Object.entries(sectorMap).map(([name, value]) => ({ name, value, percent: (value / totalPortfolio) * 100 })).sort((a, b) => b.value - a.value);
+
+        // (e) Calendrier de dividendes (depuis l'allocation réelle).
+        const dividendList: DividendItem[] = [];
+        let totalDivs = 0;
+        const today = new Date();
+        allocation.forEach(asset => {
+            if (asset.dividendYearly > 0) {
+                totalDivs += asset.dividendYearly;
+                let nextMonth = asset.nextPayMonth || (today.getMonth() + 2);
+                if (nextMonth > 12) nextMonth -= 12;
+                const monthName = new Date(today.getFullYear(), nextMonth - 1, 1).toLocaleDateString('fr-CA', { month: 'long' });
+                dividendList.push({ ...asset, nextPayout: monthName, amountPerPayout: asset.dividendYearly / asset.freq });
+            }
+        });
+        const sortedDividends = dividendList.sort((a, b) => b.dividendYearly - a.dividendYearly);
+
+        // (f) Score de santé : part « défensive » (Index/Or) depuis l'allocation réelle + momentum (CSV).
+        let indexWeight = 0;
+        allocation.forEach(a => { if (a.sector === 'Index' || a.sector === 'Mines/Or') indexWeight += a.weight; });
+        let safePts = (indexWeight / 40) * 60;
+        if (safePts > 60) safePts = 60;
+        let trendPts = 20;
         if (portfolioTrend > benchmarkTrend && portfolioTrend > 0) trendPts += 20;
         else if (portfolioTrend > 0) trendPts += 10;
         else if (portfolioTrend < 0) trendPts -= 10;
-
         if (trendPts > 40) trendPts = 40;
         if (trendPts < 0) trendPts = 0;
-
-        healthScore = Math.round(safePts + trendPts);
+        const healthScore = Math.round(safePts + trendPts);
 
         return {
             currentAllocation: allocation,

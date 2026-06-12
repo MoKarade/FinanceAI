@@ -260,13 +260,18 @@ export const Investments: React.FC<InvestmentsProps> = ({
         const benchmarkTrend = cw8Serie ? cw8Serie.trend : 0;
 
         // (c) ALLOCATION = portefeuille réel (assets). trend24h enrichi depuis le CSV par symbole si dispo.
+        const FREQ_MAP: Record<string, number> = { Monthly: 12, Quarterly: 4, Yearly: 1 };
         const allocation = assets.map(a => {
             const value = (a.quantity || 0) * (a.currentPrice || 0);
             const meta = ASSET_META[a.symbol] || { name: a.name || a.symbol, sector: 'Autre', region: 'Autre', yield: 0, freq: 1 };
             const cur = latestValues[a.symbol] ?? 0;
             const prev = prevValues[a.symbol] ?? 0;
             const trend24h = cur > 0 && prev > 0 ? ((cur - prev) / prev) * 100 : 0;
-            return { id: a.symbol, value, trend24h, weight: 0, dividendYearly: value * (meta.yield / 100), ...meta };
+            // PH4-INV-3 — dividendes : priorité au rendement/fréquence SAISIS sur l'Asset (réels du
+            // titre) sur l'estimation de la table statique ASSET_META.
+            const effYield = a.dividendYield != null && a.dividendYield > 0 ? a.dividendYield : meta.yield;
+            const effFreq = a.dividendFreq ? (FREQ_MAP[a.dividendFreq] ?? meta.freq) : meta.freq;
+            return { id: a.symbol, value, trend24h, weight: 0, ...meta, yield: effYield, freq: effFreq, dividendYearly: value * (effYield / 100) };
         }).filter((a): a is AllocationItem => a.value > 0);
         const totalPortfolio = allocation.reduce((s, a) => s + a.value, 0) || 1;
         allocation.forEach(a => { a.weight = (a.value / totalPortfolio) * 100; });

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Modal } from '../ui/Modal';
 import { Icon } from '../ui/Icon';
-import { getQuote, getHistory } from '../../services/marketData';
+import { getQuote, getHistory, searchSymbols, getActiveProviderName, type SymbolSearchResult } from '../../services/marketData';
 import { formatCAD } from '../../utils/format';
 import type { Asset } from '../../types';
 
@@ -44,6 +44,14 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
     const [isSuggestingPrice, setIsSuggestingPrice] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // PH4-INV-1 — autocomplétion à la frappe (Finnhub symbol search). Le dropdown n'apparaît que si
+    // une clé Finnhub est configurée ; sinon l'utilisateur reste sur la saisie « À la main ».
+    const [suggestions, setSuggestions] = useState<SymbolSearchResult[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const searchSeq = useRef(0); // anti-course : ne garde que la réponse de la dernière requête
+    const hasProvider = getActiveProviderName() !== 'none';
+
     const reset = () => {
         setSymbol('');
         setValidatedSymbol(null);
@@ -55,7 +63,27 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
         setManualMode(false);
         setManualPrice('');
         setError(null);
+        setSuggestions([]);
+        setShowSuggestions(false);
     };
+
+    // Débounce 300 ms : recherche tant que l'utilisateur tape (≥ 2 car.), pas encore validé/manuel.
+    useEffect(() => {
+        if (searchTimer.current) clearTimeout(searchTimer.current);
+        const q = symbol.trim();
+        if (!hasProvider || validatedSymbol !== null || manualMode || q.length < 2) {
+            setSuggestions([]);
+            return;
+        }
+        const seq = ++searchSeq.current;
+        searchTimer.current = setTimeout(async () => {
+            const res = await searchSymbols(q);
+            if (seq !== searchSeq.current) return; // une frappe plus récente a pris le relais
+            setSuggestions(res.slice(0, 8));
+            setShowSuggestions(true);
+        }, 300);
+        return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
+    }, [symbol, hasProvider, validatedSymbol, manualMode]);
 
     /** Bascule en saisie 100% manuelle : le symbole tapé devient le titre, sans appel Finnhub. */
     const enterManualMode = () => {
@@ -69,18 +97,21 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
     /** Prêt à saisir le reste : soit le symbole est validé (Finnhub), soit on est en mode manuel. */
     const ready = validatedSymbol !== null || manualMode;
 
-    const validateSymbol = async () => {
-        if (!symbol.trim()) return;
+    const validateSymbol = async (symOverride?: string, nameOverride?: string) => {
+        const sym = (symOverride ?? symbol).trim().toUpperCase();
+        if (!sym) return;
+        setShowSuggestions(false);
         setIsValidating(true);
         setError(null);
         try {
-            const quote = await getQuote(symbol.trim().toUpperCase());
+            const quote = await getQuote(sym);
             if (!quote || quote.price <= 0) {
-                setError(`Ticker "${symbol}" introuvable ou prix indisponible. Configure ta clé Finnhub si pas déjà fait.`);
+                setError(`Ticker "${sym}" introuvable ou prix indisponible. Configure ta clé Finnhub si pas déjà fait.`);
                 return;
             }
-            setValidatedSymbol(symbol.trim().toUpperCase());
-            setStockName(quote.symbol);
+            setSymbol(sym);
+            setValidatedSymbol(sym);
+            setStockName(nameOverride || quote.symbol);
             setCurrentPrice(quote.price);
             setBuyPrice(quote.price.toString()); // par défaut = prix actuel
         } catch (e) {
@@ -89,6 +120,13 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
         } finally {
             setIsValidating(false);
         }
+    };
+
+    /** Clic sur une suggestion d'autocomplétion → préremplit le symbole et le valide (quote live). */
+    const selectSuggestion = (r: SymbolSearchResult) => {
+        setSuggestions([]);
+        setShowSuggestions(false);
+        void validateSymbol(r.symbol, r.description);
     };
 
     const suggestHistoricalPrice = async () => {
@@ -161,13 +199,20 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                 {/* Step 1 : Symbol */}
                 <div>
                     <label className="block text-meta text-ink-300 mb-1 font-bold uppercase">1. Symbole / Ticker</label>
+                    <div className="relative">
                     <div className="flex gap-2">
                         <input
                             type="text"
                             value={symbol}
                             onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                            placeholder="AAPL, TSLA, FONDS-XYZ..."
+                            onFocus={() => { if (suggestions.length) setShowSuggestions(true); }}
+                            onBlur={() => { setTimeout(() => setShowSuggestions(false), 150); }}
+                            placeholder={hasProvider ? 'Tape un nom ou un ticker : Apple, AAPL, XEQT…' : 'AAPL, TSLA, FONDS-XYZ...'}
                             disabled={validatedSymbol !== null || manualMode}
+                            autoComplete="off"
+                            role="combobox"
+                            aria-expanded={showSuggestions && suggestions.length > 0}
+                            aria-controls="symbol-suggestions"
                             className="flex-1 bg-dark border border-white/10 rounded px-3 py-2 text-white focus:border-primary outline-none uppercase font-mono"
                         />
                         {validatedSymbol || manualMode ? (
@@ -182,7 +227,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                             <>
                                 <button
                                     type="button"
-                                    onClick={validateSymbol}
+                                    onClick={() => validateSymbol()}
                                     disabled={!symbol.trim() || isValidating}
                                     className="px-3 py-2 bg-primary text-dark rounded font-bold text-body hover:bg-primary/80 disabled:opacity-50"
                                 >
@@ -199,6 +244,31 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                 </button>
                             </>
                         )}
+                    </div>
+                    {/* PH4-INV-1 — dropdown d'autocomplétion (Finnhub symbol search). */}
+                    {showSuggestions && suggestions.length > 0 && !validatedSymbol && !manualMode && (
+                        <ul
+                            id="symbol-suggestions"
+                            role="listbox"
+                            aria-label="Suggestions de titres"
+                            className="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto rounded-lg border border-white/15 bg-dark shadow-xl"
+                        >
+                            {suggestions.map((r) => (
+                                <li key={r.symbol} role="option" aria-selected={false}>
+                                    <button
+                                        type="button"
+                                        onMouseDown={(e) => e.preventDefault() /* garde le focus le temps du clic */}
+                                        onClick={() => selectSuggestion(r)}
+                                        className="w-full text-left px-3 py-2 hover:bg-white/10 focus:bg-white/10 outline-none flex items-center gap-2 min-h-[44px]"
+                                    >
+                                        <span className="font-mono font-bold text-white shrink-0">{r.displaySymbol || r.symbol}</span>
+                                        <span className="text-meta text-ink-300 truncate flex-1">{r.description}</span>
+                                        {r.type && <span className="text-tiny text-ink-500 shrink-0 hidden sm:inline">{r.type}</span>}
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                     </div>
                     {manualMode && (
                         <div className="mt-2">

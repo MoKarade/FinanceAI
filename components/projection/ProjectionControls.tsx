@@ -190,21 +190,21 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                                 <span>Horizon (Années)</span>
                                 <span className="text-secondary font-bold">{projection.years || 30}</span>
                             </label>
-                            <input type="range" min="5" max="50" step="1" value={projection.years || 30} onChange={e => updateProj('years', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-secondary" />
+                            <input type="range" aria-label="Horizon (Années)" min="5" max="50" step="1" value={projection.years || 30} onChange={e => updateProj('years', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-secondary" />
                         </div>
                         <div>
                             <label className="flex justify-between text-meta text-ink-300 mb-1">
                                 <span>Inflation</span>
                                 <span className="text-danger-400 font-bold">{projection.inflationRate}%</span>
                             </label>
-                            <input type="range" min="0" max="8" step="0.1" value={projection.inflationRate} onChange={e => updateProj('inflationRate', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-danger-500" />
+                            <input type="range" aria-label="Inflation" min="0" max="8" step="0.1" value={projection.inflationRate} onChange={e => updateProj('inflationRate', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-danger-500" />
                         </div>
                         <div>
                             <label className="flex justify-between text-meta text-ink-300 mb-1">
                                 <span>Hausse Salaire (An)</span>
                                 <span className="text-info-400 font-bold">{projection.salaryGrowth ?? 2.5}%</span>
                             </label>
-                            <input type="range" min="0" max="10" step="0.1" value={projection.salaryGrowth ?? 2.5} onChange={e => updateProj('salaryGrowth', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
+                            <input type="range" aria-label="Hausse Salaire (An)" min="0" max="10" step="0.1" value={projection.salaryGrowth ?? 2.5} onChange={e => updateProj('salaryGrowth', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
                         </div>
                     </div>
 
@@ -228,14 +228,14 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                                 <span>CELI (Tax Free)</span>
                                 <span className="text-warning-400 font-bold">{projection.returnRates?.celi || 7}%</span>
                             </label>
-                            <input type="range" min="2" max="15" step="0.1" value={projection.returnRates?.celi || 7} onChange={e => updateReturnRate('celi', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-warning-500" />
+                            <input type="range" aria-label="CELI (Tax Free)" min="2" max="15" step="0.1" value={projection.returnRates?.celi || 7} onChange={e => updateReturnRate('celi', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-warning-500" />
                         </div>
                         <div>
                             <label className="flex justify-between text-meta text-ink-300 mb-1">
                                 <span>Non-Enregistré / REER</span>
                                 <span className="text-warning-400 font-bold">{projection.returnRates?.nonReg || 6.5}%</span>
                             </label>
-                            <input type="range" min="2" max="15" step="0.1" value={projection.returnRates?.nonReg || 6.5} onChange={e => { const v = Number(e.target.value); updateProj('returnRates', { ...(projection.returnRates || { celi: 7, reer: 6.5, nonReg: 6.5, crypto: 10, cash: 3 }), nonReg: v, reer: v }); }} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-warning-500" />
+                            <input type="range" aria-label="Non-Enregistré / REER" min="2" max="15" step="0.1" value={projection.returnRates?.nonReg || 6.5} onChange={e => { const v = Number(e.target.value); updateProj('returnRates', { ...(projection.returnRates || { celi: 7, reer: 6.5, nonReg: 6.5, crypto: 10, cash: 3 }), nonReg: v, reer: v }); }} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-warning-500" />
                         </div>
                     </div>
 
@@ -246,7 +246,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                                 <span>Coussin de Sécurité</span>
                                 <span className="text-info-400 font-bold">{projection.emergencyFundMonths || 3} Mois</span>
                             </label>
-                            <input type="range" min="1" max="12" step="1" value={projection.emergencyFundMonths || 3} onChange={e => updateProj('emergencyFundMonths', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
+                            <input type="range" aria-label="Coussin de Sécurité" min="1" max="12" step="1" value={projection.emergencyFundMonths || 3} onChange={e => updateProj('emergencyFundMonths', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
                         </div>
                         <div>
                             <label className="flex justify-between text-meta text-ink-300 mb-1">
@@ -300,7 +300,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                                             <span className="text-warning-400 font-bold">{((projAsMap[item.key] as number | undefined) ?? item.def).toFixed(1)}%</span>
                                         </label>
                                         <input
-                                            type="range" min="0" max="10" step="0.1"
+                                            type="range" aria-label={`${item.label} (${item.weight}%)`} min="0" max="10" step="0.1"
                                             value={(projAsMap[item.key] as number | undefined) ?? item.def}
                                             onChange={e => updateProj(item.key as keyof ProjectionConfig, Number(e.target.value))}
                                             className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-warning-500"
@@ -335,7 +335,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                                 <span className="text-info-400 font-bold">{projection.usEquityShareCeli ?? 0}%</span>
                             </label>
                             <input
-                                type="range" min="0" max="100" step="5"
+                                type="range" aria-label="Part actions US dans CELI (%)" min="0" max="100" step="5"
                                 value={projection.usEquityShareCeli ?? 0}
                                 onChange={e => updateProj('usEquityShareCeli', Number(e.target.value))}
                                 className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500"
@@ -348,7 +348,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                                 <span className="text-info-400 font-bold">{(projection.usEquityDividendYield ?? 1.5).toFixed(1)}%</span>
                             </label>
                             <input
-                                type="range" min="0" max="5" step="0.1"
+                                type="range" aria-label="Rendement dividende US (%)" min="0" max="5" step="0.1"
                                 value={projection.usEquityDividendYield ?? 1.5}
                                 onChange={e => updateProj('usEquityDividendYield', Number(e.target.value))}
                                 className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500"
@@ -398,7 +398,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                                 <span className="text-danger-400 font-bold">{projection.ltcMonthlyCost ?? 5000}$</span>
                             </label>
                             <input
-                                type="range" min="2000" max="12000" step="500"
+                                type="range" aria-label="Coût mensuel soins ($/mois)" min="2000" max="12000" step="500"
                                 value={projection.ltcMonthlyCost ?? 5000}
                                 onChange={e => updateProj('ltcMonthlyCost', Number(e.target.value))}
                                 className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-danger-500"

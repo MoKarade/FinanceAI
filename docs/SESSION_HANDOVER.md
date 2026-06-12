@@ -39,13 +39,23 @@
 > + estateCalculation + `min={0}` UI ; un estimé négatif ne dégrade plus `total`/NPV en silence). Chaque
 > lot : panel 3 agents (code-reviewer/silent-failure/projection-validator), suite verte (→**1996/1996**),
 > zéro baseline. Confirmé : **le repo n'a aucun required check → `enable_pr_auto_merge` échoue « unstable »**
-> → merge au vert via **timer court** (`sleep ~270` run_in_background, pattern documenté §auto-merge).
-> **▶ LANE AUTONOME « FRAÎCHE » ÉPUISÉE.** Reste = 🧭 **FEU VERT MARC** : **[FSS-PSV]** (PSV DANS l'assiette FSS
-> confirmé `taxDecember.ts:662` ; fix = câbler une PSV mensuelle au `ctx` + **transcrire la règle Annexe F
-> dans FISCAL_REFERENCE D'ABORD** — money-critical, ne pas coder sur source non transcrite) · gros refactors
-> CA-03/CA-06/CA-09 · P0 (proxy Anthropic / IndexedDB) · refontes **DESIGN** (Budget/Transactions/Retraite,
-> irritants à cadrer). Bas-bruit restant : CA-10 reste (`assetMeta` n'existe plus ; `analytics`/
-> `usePwaInstallPrompt`), D6-SR-2, DEAD-FLT-2/CA-01 (consommateurs VIVANTS → pas du code mort).
+> → merge au vert via **timer court** (`sleep ~290` run_in_background, pattern documenté §auto-merge).
+> **Lane fraîche épuisée → Marc a tranché « CONTINUER BAS-BRUIT »** : **#277** D6-SR-2 parité lecteur d'écran
+> sur les sliders monétaires (helper `maskedSliderAria` + `aria-valuetext` ; étiquettes `privacy-blur`→
+> `<PrivateAmount>` ; 0 privacy-blur restant dans les 2 fichiers) · **#278** CA-10 `usePwaInstallPrompt`
+> (11 tests : recence de dismiss 30j, standalone, flux install) · **#279** noms accessibles `aria-label` sur
+> les 5 sliders monétaires (WCAG 2.5.3/4.1.2) + constante partagée `MASKED_AMOUNT_LABEL` · **#280** [A11Y-SLIDERS]
+> nom accessible (`aria-label` = texte visible) sur les **10 sliders taux/% de ProjectionControls** (dont la
+> boucle inflation/poste) + PropertyConfigurator:172 ; test direct `ProjectionControls.a11y.test.tsx`. Panel
+> a11y-auditor à chaque lot UI. Suite → **~2017** (après #280).
+> **▶ Reste = 🧭 FEU VERT MARC** : **[FSS-PSV]** (PSV DANS l'assiette FSS confirmé `taxDecember.ts:662` ;
+> fix = câbler une PSV mensuelle au `ctx` + **transcrire la règle Annexe F dans FISCAL_REFERENCE D'ABORD**
+> — money-critical, ne pas coder sur source non transcrite) · gros refactors CA-03/CA-06/CA-09 · P0 (proxy
+> Anthropic / IndexedDB) · refontes **DESIGN** (Budget/Transactions/Retraite, irritants à cadrer).
+> **Bas-bruit ENCORE dispo (prêt, mandat « continuer » de Marc)** : **[A11Y-SLIDERS] RESTE** (sliders de
+> RealEstate/DebtManager/TaxCenter/Budget/ChildPlanning/HealthIndicator — vérifier d'abord label associé) ·
+> D6-SR-2 reste (spans multi-lignes / montants adjacents) · `analytics.ts` (trivial). DEAD-FLT-2/CA-01 =
+> consommateurs VIVANTS → PAS du code mort (ne pas purger).
 >
 > **Session 2026-06-11 (suite) — GRIND backlog (demande Marc « tout faire sans s'arrêter »)** :
 > #243 PH2-d-1 (toast verrou irrécupérable) · #244 Phase 3 + **réduction docs 47→9** (HISTORIQUE.md

@@ -52,5 +52,6 @@ describe('PropertyConfigurator — sliders masqués au SR en mode privé (D6-SR-
         // Trouvable par son nom accessible = le SR sait quel contrôle c'est (et pas juste « curseur »).
         expect(screen.getByRole('slider', { name: 'Prix d\'achat' })).toBeInTheDocument();
         expect(screen.getByRole('slider', { name: 'Mise de fonds' })).toBeInTheDocument();
+        expect(screen.getByRole('slider', { name: 'Plafond Valeur Max' })).toBeInTheDocument();
     });
 });

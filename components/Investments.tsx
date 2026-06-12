@@ -117,7 +117,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
     const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
     const [timeRange, setTimeRange] = useState<TimeRange>('1Y');
     // Phase E.3 — sous-onglets pour aérer la page (doc directives §4)
-    const [subTab, setSubTab] = useState<'overview' | 'allocation' | 'rebalance' | 'detail'>('overview');
+    // PH4-INV-4 — « moins de pages » : Rééquilibrage fusionné dans Allocation (4 → 3 sous-onglets).
+    const [subTab, setSubTab] = useState<'overview' | 'allocation' | 'detail'>('overview');
     // Phase E.6 — filtre interactif Geo/Sector cliqué dans la pie
     const [allocationFilter, setAllocationFilter] = useState<{ type: 'region' | 'sector'; value: string } | null>(null);
 
@@ -430,8 +431,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     onChange={(v) => setSubTab(v as typeof subTab)}
                     options={[
                         { value: 'overview', label: "Vue d'ensemble" },
-                        { value: 'allocation', label: 'Allocation' },
-                        { value: 'rebalance', label: 'Rééquilibrage' },
+                        { value: 'allocation', label: 'Allocation & rééquilibrage' },
                         { value: 'detail', label: 'Détail' },
                     ]}
                 />
@@ -713,8 +713,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 isLoading={isLoading}
             />}
 
-            {/* 4. VISUAL PORTFOLIO REBALANCING (V16) — Phase E.3 sub-tab 'rebalance' */}
-            {subTab === 'rebalance' && currentAllocation.length > 0 && (() => {
+            {/* 4. VISUAL PORTFOLIO REBALANCING (V16) — sous « Allocation Phase E.3 sub-tab 'rebalance'  rééquilibrage » (PH4-INV-4) */}
+            {subTab === 'allocation' && currentAllocation.length > 0 && (() => {
                 const alloc = currentAllocation as AllocationItem[];
                 const totalPortfolio = alloc.reduce((s, a) => s + a.value, 0);
 

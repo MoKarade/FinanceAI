@@ -464,3 +464,16 @@ describe('PV-4 — clamps hors-bornes rrqStartAge / psvStartAge', () => {
             .toBeCloseTo(1.36, 2);
     });
 });
+
+describe('computeRetirementIncome — RRQ-PSV-MIN : clamp des estimés négatifs', () => {
+    it('un rrqEstimate NÉGATIF est clampé à 0 et ne dégrade pas le `total`', () => {
+        // L'output `rrq` est DÉJÀ clampé (l.312), mais `total` (l.303/311) somme le rrq BRUT : sans le
+        // clamp d'ENTRÉE, un rrqBaseIndiv négatif tirerait `total` sous sa valeur correcte. C'est CE
+        // report dans `total` que le test discrimine (pas l'output rrq, déjà protégé).
+        const neg = computeRetirementIncome(baseCtx, { ...baseGoal, rrqEstimateMonthly: -500 }, [baseUser]);
+        const zero = computeRetirementIncome(baseCtx, { ...baseGoal, rrqEstimateMonthly: 0 }, [baseUser]);
+        expect(neg.rrq).toBe(0);
+        expect(neg.total).toBeGreaterThan(0);
+        expect(neg.total).toBeCloseTo(zero.total, 6); // discriminant : sans clamp, total(neg) < total(0)
+    });
+});

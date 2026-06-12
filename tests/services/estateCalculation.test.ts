@@ -214,6 +214,7 @@ describe('computeEstateNetWorth — FA-8 : estimés précis par rente priment su
         const neg = computeEstateNetWorth({ ...base, rrqEstimateMonthly: -500, activeUsersCount: 1 }, fiscalStub);
         expect(extractNPV(neg)).toBeCloseTo((0 + 1200 * 0.35) * inflPow * npvFactor, 4);
         const zero = computeEstateNetWorth({ ...base, rrqEstimateMonthly: 0, activeUsersCount: 1 }, fiscalStub);
+        expect(extractNPV(zero)).toBeCloseTo((0 + 1200 * 0.35) * inflPow * npvFactor, 4); // ancré en absolu
         expect(extractNPV(neg)).toBeCloseTo(extractNPV(zero), 6);
     });
 });

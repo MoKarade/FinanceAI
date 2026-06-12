@@ -197,15 +197,17 @@
   underwater/locataire) + baselines intactes. → **PH4-FUT-B COMPLET (4/4 leviers livrés #251-#254).**
 
 #### Suivis fiscaux (découverts au panel PH4-FUT-B-4)
-- [ ] **[RE-GAIN]** 🔧 (découverte fiscal-accuracy) — le gain en capital immobilier d'un **locatif**
+- [x] **[RE-GAIN]** ✅ mergé #260 (vente) + #261 (succession) — le gain en capital immobilier d'un **locatif**
   (≠ résidence principale) n'est PAS modélisé à la disposition : la vente générique
   (`monthlyEvents.ts` `name.includes('vente')`) libère le net SANS réaliser de gain imposable et SANS
   tester `isPrimaryResidence` ; à la succession (`estateCalculation.ts`) `realEstateEquity` entre sans
   impôt latent immobilier. Préexistant (hors PH4-FUT-B-4, qui borne correctement le downsizing à la RP).
   Fix : taxer le gain locatif (inclusion 50 %) à la vente/succession ; documenté FISCAL_REFERENCE §8.
 
-- [ ] **[PH4-FUT-TEST]** 🧪 (revue code-reviewer) — test RTL du chemin `applyAndReveal` (Futur leviers-d'abord) :
-  clic « Appliquer » → courbe révélée sans flash, `isStale` reste faux. Documente l'invariant de batching.
+- [x] **[PH4-FUT-TEST]** ✅ — test RTL du chemin `applyAndReveal` (Futur leviers-d'abord) :
+  clic « Appliquer » → courbe révélée (strip KPI + « Ré-optimiser »), amorçage disparu, `isStale` reste
+  faux (preuve du batching des 2 setAppState) + le geste coule au store (emergencyFundMonths/profil/rentes) ;
+  2e test : « Ré-optimiser » re-cache la courbe. `tests/components/FutureProjection.applyReveal.test.tsx`.
 
 ### Phase 4 — REFONTES ⏳ (UN plan SÉPARÉ par onglet → OK Marc par onglet) — dépend de : PH2 (+PH3 pour FUT/RET)
 - [x] **[PH4-FUT]** ✅ Refonte **Futur** « leviers-d'abord » LIVRÉE (#250 calcul-sur-clic+retrait plans ;
@@ -225,10 +227,10 @@
   🧭 Reste = refonte visuelle profonde (design → cadrage Marc).
 - [ ] **[PH4-BUD]** 🧭 Refonte **Budget** complète — DESIGN, besoin du cadrage Marc (irritants concrets).
   Budget déjà sain techniquement (source unique lastProjection). Routé → `A_FAIRE_MOI`.
-- [ ] **[PH4-INV]** 🔧 Refonte **Investissement** : autocomplétion à la frappe pour chercher une
-  action (Finnhub symbol search) ; saisie d'actions facilitée ; VÉRIFIER l'allocation sur données
-  réelles (bug constaté sur données test) ; afficher les dividendes perçus ; refonte plus explicite,
-  plus simple, moins de pages, plus d'explications sans excès de texte.
+- [x] **[PH4-INV]** ✅ Refonte **Investissement** LIVRÉE — #255 autocomplétion à la frappe (Finnhub
+  symbol search, debounce + anti-race) ; #256 allocation sur données RÉELLES (`assets`, plus le CSV
+  déprécié) + dividendes réels (priorité `Asset.dividendYield/dividendFreq`) ; #259 moins de pages
+  (4 → 3 sous-onglets, rééquilibrage fusionné dans l'allocation). 🧭 Reste = polish design (cadrage Marc).
 - [x] **[PH4-RET]** ✅ #258 — courbes = source unique (acquis PH2-c) ; invite ProjectionRequired (CSV
   déprécié retiré). 🧭 Reste = lisibilité (design → cadrage Marc).
 
@@ -429,8 +431,10 @@
   ProjectionControls 10). (M)
 - [ ] **[CA-09]** Découper `services/pdfReport.ts` (847 l) et `services/claude.ts` (768 l) ; évaluer
   l'extractible restant de `projection.ts` (1387 l). (L)
-- [ ] **[CA-10]** Tests manquants : `usePastPortfolioHistory` (alimente FutureProjection — priorité),
-  assetMeta, analytics, usePwaInstallPrompt. (S)
+- [~] **[CA-10]** PRIORITÉ FAITE — `usePastPortfolioHistory` couvert : dédup module (PH2-c-1) +
+  `tests/hooks/usePastPortfolioHistory.modes.test.tsx` (mode test = reconstruction directe sans réseau ;
+  anti-fuite réel→test M3 ; gardes aucun-actif / sans-clé). RESTE (basse prio) : `assetMeta`, `analytics`,
+  `usePwaInstallPrompt`. (S)
 
 ## 🧹 Grand nettoyage AAA — items ENCORE ouverts (réf. `AAA_AUDIT_2026-06.md`)
 > D1 (money CF/M-*), D5 (robustesse), D6 (double-h1, focus tour), D9 (robustesse LLM/ingest) = ✅ **faits**

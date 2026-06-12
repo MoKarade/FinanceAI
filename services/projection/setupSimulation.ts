@@ -173,10 +173,11 @@ export function computeScenarioOverrides(
     projection: { inflationRate?: number; returnRates?: { celi: number; reer: number; nonReg: number; crypto: number; cash: number }; [key: string]: unknown },
     scenarioType: FutureScenarioType,
 ): ScenarioOverrideResult {
-    // `??` (pas `||`) : une inflation de 0 % est un choix LÉGITIME (« et si l'inflation
-    // s'arrêtait ») que `|| 2.0` écrasait silencieusement à 2 %. Depuis PV-5, les <input number>
-    // rendent un champ vide en `undefined` (jamais 0), donc `?? 2.0` ne défaut que sur l'absence
-    // réelle de valeur — le 0 saisi est respecté.
+    // `??` (pas `||`) : une inflation de 0 % est un choix LÉGITIME (« et si l'inflation s'arrêtait »)
+    // que `|| 2.0` écrasait silencieusement à 2 %. Le slider d'inflation (ProjectionControls, range
+    // [0,8]) produit TOUJOURS un nombre — 0 inclus — donc `?? 2.0` ne retombe sur le défaut que si la
+    // valeur est réellement absente (config non initialisée, ou persistance relue `null` —
+    // `JSON.stringify(NaN) === "null"`). Cohérent avec les 2 sites UI (Retirement label, ChildPlanning coûts).
     let simInflation = projection.inflationRate ?? 2.0;
     if (scenarioType === 'HYPER_INFLATION') simInflation = 5.5;
     // Phase 4 #4: COMPOUND_STRESS empile l'inflation soutenue ET les rendements

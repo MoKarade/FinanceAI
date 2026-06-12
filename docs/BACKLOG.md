@@ -299,8 +299,9 @@
   `calculateCeliRoom` unifié sur l'extrapolation taxJanuary (`LAST_KNOWN_CELI_YEAR` exporté,
   fallback `|| 7500` figé supprimé).
   **RESTES (non couverts par le lot)** : ~~`setupSimulation.ts` `inflationRate || 2.0` masque le
-  0 légitime (→ `??`)~~ ✅ FAIT (PR tests/fix — `?? 2.0`, le 0 % saisi est respecté ; 3 tests ;
-  rayon baselines nul = aucun fixture à inflation 0) · NPV estate lit `governmentPension` même quand `rrqEstimateMonthly` est
+  0 légitime (→ `??`)~~ ✅ FAIT (PR #273 — `?? 2.0`, le 0 % saisi est respecté ; 3 tests ; rayon
+  baselines nul = aucun fixture à inflation 0 ; + 2 sites UI alignés : Retirement label, ChildPlanning
+  coûts, sinon un scénario 0 % affichait/indexait 2 %) · NPV estate lit `governmentPension` même quand `rrqEstimateMonthly` est
   fourni (divergence silencieuse) · assiette clawback PSV/test SRG sans dividendes/intérêts non-reg
   (revenu net 23400 les inclut — sous-estime, borné au cap) · **[FSS-PSV]** 🔧 assiette FSS inclut la
   PSV — l'Annexe F la DÉDUIT (revendiqué sourcé 2026-06-11, page RQ « Cotisation des particuliers au

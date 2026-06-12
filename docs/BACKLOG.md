@@ -97,7 +97,7 @@
   Budget/Retraite → bandeau discret « projection possiblement périmée (dernier recalcul échoué) » au-
   dessus de la courbe conservée. Aujourd'hui l'erreur n'est visible QUE sur Futur (pré-existant, mais
   PH2-c fournit enfin le véhicule `projectionStatus` pour corriger).
-- [ ] **[PH2-c-3]** 🔧 (perf) Router le calcul DÉTERMINISTE dans le worker hors-Futur : en mode
+- [x] **[PH2-c-3]** ✅ (perf) Router le calcul DÉTERMINISTE dans le worker hors-Futur : en mode
   déterministe (runMC=false), le moteur app-level paie ~150 ms main-thread à chaque changement de
   params quel que soit l'onglet (atténué par debounce 300 ms ; défaut = MC déjà off-thread).
 - [x] **[PH2-c-4]** ✅ — tests/hooks/useSimulationParams.parity.test.tsx : renderHook du hook RÉEL

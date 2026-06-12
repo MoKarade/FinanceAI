@@ -29,6 +29,22 @@ describe('computeEstateNetWorth — robustesse aux entrées (garde TB3)', () => 
         expect(r.estateNetWorth).toBeGreaterThan(0);
     });
 
+    // RE-GAIN-SUCC — disposition réputée au décès : gain latent locatif imposable à 50 %.
+    it('RE-GAIN-SUCC : un gain latent locatif augmente l\'impôt successoral (50 % × taux) et réduit estateNetWorth', () => {
+        const without = computeEstateNetWorth(base, fiscalStub);
+        const withGain = computeEstateNetWorth({ ...base, realEstateLatentGain: 200000 }, fiscalStub);
+        // liquidation additionnelle = 0,5 × 200000 = 100000 ; impôt (stub 30 %) = +30000.
+        expect(withGain.totalEstateTax - without.totalEstateTax).toBeCloseTo(30000, 0);
+        expect(withGain.estateNetWorth).toBeLessThan(without.estateNetWorth);
+    });
+
+    it('RE-GAIN-SUCC : absent == 0 (non-régression stricte)', () => {
+        const absent = computeEstateNetWorth(base, fiscalStub);
+        const zero = computeEstateNetWorth({ ...base, realEstateLatentGain: 0 }, fiscalStub);
+        expect(zero.estateNetWorth).toBe(absent.estateNetWorth);
+        expect(zero.totalEstateTax).toBe(absent.totalEstateTax);
+    });
+
     it('TB3 : un liquide NaN ne zérote PAS tout le patrimoine (contribue 0)', () => {
         const r = computeEstateNetWorth({ ...base, liquid: NaN }, fiscalStub);
         expect(Number.isFinite(r.finalRawNetWorth)).toBe(true);

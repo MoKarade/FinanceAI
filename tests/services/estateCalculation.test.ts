@@ -208,4 +208,12 @@ describe('computeEstateNetWorth — FA-8 : estimés précis par rente priment su
         expect(Number.isFinite(r.estateNetWorth)).toBe(true);
         expect(Number.isFinite(r.totalEstateTax)).toBe(true);
     });
+
+    it('RRQ-PSV-MIN : un estimé NÉGATIF est clampé à 0 (pas de rente négative), == estimé 0 explicite', () => {
+        // rrq -500 → max(0,-500)=0 ; psv absent → repli 0,35×1200 = 420. Σ = 420.
+        const neg = computeEstateNetWorth({ ...base, rrqEstimateMonthly: -500, activeUsersCount: 1 }, fiscalStub);
+        expect(extractNPV(neg)).toBeCloseTo((0 + 1200 * 0.35) * inflPow * npvFactor, 4);
+        const zero = computeEstateNetWorth({ ...base, rrqEstimateMonthly: 0, activeUsersCount: 1 }, fiscalStub);
+        expect(extractNPV(neg)).toBeCloseTo(extractNPV(zero), 6);
+    });
 });

@@ -14,6 +14,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   chronologique**, puis MÊME pipeline que le CSV (synthèse CSV canonique →
   `parseBankCsv` → fusion + dédup). Le **CSV reste 100 % local** ; le PDF/image est
   envoyé à Claude (consenti explicitement à l'import).
+- **Prompt d'extraction renforcé** : déduction d'année (lignes jour+mois → période du
+  relevé), convention de signe explicite (incluant les cartes de crédit), normalisation
+  des montants FR/CAD (« 1 234,56 $ » → 1234.56), complétude multi-pages, exclusion
+  soldes/totaux/reports/en-têtes.
 - **Auto-classification à l'import** : les nouvelles transactions (PDF ET CSV) sont
   catégorisées automatiquement par l'IA (`categorizeBatch`, Haiku) après import, en
   appliquant les catégories sur l'état FRAIS du store (pas d'écrasement d'un edit

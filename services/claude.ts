@@ -840,17 +840,29 @@ export const analyzeBankStatement = async (file: File, apiKey: string): Promise<
     const response = await client.messages.create({
         model: MODEL_SONNET,
         max_tokens: 16000, // un relevé peut contenir beaucoup de lignes ; non-stream OK ≤ ~16k
-        system: `${QUEBEC_FISCAL_CONTEXT}\nTu extrais les transactions d'un relevé bancaire ou de carte de crédit québécois.`,
+        system: `${QUEBEC_FISCAL_CONTEXT}
+Tu es un extracteur EXPERT de relevés bancaires et de cartes de crédit québécois (Desjardins, RBC, BMO, TD, Banque Nationale, Tangerine, etc.). Tu lis le document (image/PDF) et retournes des transactions structurées FIDÈLES au document, sans rien inventer ni omettre.`,
         messages: [{
             role: 'user',
             content: [
                 fileBlock,
                 {
                     type: 'text',
-                    text: `Extrais TOUTES les transactions de ce relevé.
-CONVENTION DE SIGNE STRICTE : montant NÉGATIF pour un débit/retrait/achat (l'argent SORT du compte), POSITIF pour un crédit/dépôt/paiement reçu (l'argent ENTRE).
-Date au format ISO "YYYY-MM-DD". Ignore les soldes, totaux, sous-totaux et lignes d'en-tête ; n'invente AUCUNE transaction.
-RÉPONDS UNIQUEMENT avec un JSON Array strict (sans markdown, sans commentaire) :
+                    text: `Extrais TOUTES les transactions de ce relevé, de la PREMIÈRE à la DERNIÈRE page, en ordre chronologique.
+
+RÈGLES :
+1. SIGNE DU MONTANT (crucial), du point de vue de l'utilisateur :
+   • NÉGATIF = argent qui SORT : achat, retrait, paiement, frais, intérêts débiteurs, prélèvement.
+   • POSITIF = argent qui ENTRE : dépôt, salaire, remboursement, crédit, intérêts créditeurs.
+   • Relevé de CARTE DE CRÉDIT : un achat = NÉGATIF ; un « paiement reçu / paiement de votre part » = POSITIF.
+   Applique cette convention QUELLE QUE SOIT la présentation (colonnes débit/crédit séparées, parenthèses, « DR »/« CR », signe).
+2. DATE → format ISO « YYYY-MM-DD ». Si la ligne n'affiche que jour+mois (« 03 FÉV », « FEB 3 »), DÉDUIS l'année depuis la PÉRIODE DU RELEVÉ (en-tête), en gérant le passage décembre→janvier.
+3. MONTANT → nombre décimal simple en dollars (1234.56 ou -42.50). Convertis « 1 234,56 $ » → 1234.56 ; retire symboles, espaces et séparateurs de milliers.
+4. DESCRIPTION → garde le libellé du marchand/opération tel qu'il apparaît (lisible et identifiable, pour permettre la catégorisation). N'invente pas, ne traduis pas, ne tronque pas à l'excès.
+5. IGNORE soldes (ouverture/clôture), totaux, sous-totaux, reports, limites de crédit, en-têtes/pieds de page : ce ne sont PAS des transactions.
+6. N'invente AUCUNE transaction ; n'en omets aucune ; ne fusionne pas deux lignes distinctes.
+
+RÉPONDS UNIQUEMENT avec un JSON Array strict (aucun markdown, aucun commentaire) :
 [{ "date": "YYYY-MM-DD", "description": string, "amount": number }]`,
                 },
             ],

@@ -454,7 +454,7 @@ export const App: React.FC = () => {
         }
     };
 
-    const handleManualImport = (rawData: string) => {
+    const handleManualImport = async (rawData: string) => {
         const result = parseBankCsv(rawData);
         const combined = [...result.transactions, ...state.transactions];
         const deduped = markDuplicates(combined);
@@ -463,15 +463,47 @@ export const App: React.FC = () => {
         logAudit({
             field: 'transactions',
             operation: 'add',
-            description: `Import CSV : ${result.transactions.length} ajoutée(s)${result.skipped > 0 ? `, ${result.skipped} ignorée(s)` : ''}`,
+            description: `Import relevé : ${result.transactions.length} ajoutée(s)${result.skipped > 0 ? `, ${result.skipped} ignorée(s)` : ''}`,
             countBefore: state.transactions.length,
             countAfter: deduped.length,
         });
         // No-silent-failure : on dit combien de lignes ont été ignorées.
-        const msg = result.skipped > 0
+        const baseMsg = result.skipped > 0
             ? `${result.transactions.length} transaction(s) importée(s), ${result.skipped} ligne(s) ignorée(s).`
-            : `${result.transactions.length} transaction(s) importée(s)`;
-        showToast(msg, 'success');
+            : `${result.transactions.length} transaction(s) importée(s).`;
+
+        // Auto-catégorisation IA (choix Marc) : classe les NOUVELLES transactions non
+        // dupliquées / non-transfert encore « à classer ». Lazy-import de claude.ts →
+        // ne tire PAS le SDK Anthropic dans le bundle de BOOT (règle CLAUDE.md).
+        const apiKey = state.apiKeys.anthropic;
+        const newIds = new Set(result.transactions.map(t => t.id));
+        const toClassify = deduped.filter(t =>
+            newIds.has(t.id) && !t.isDuplicate && !t.isTransfer &&
+            (t.category === 'Uncategorized' || t.category === 'Inconnu' || t.category === ''),
+        );
+        if (!apiKey || toClassify.length === 0) {
+            showToast(apiKey ? baseMsg : `${baseMsg} Ajoute ta clé Anthropic pour la classification auto.`, 'success');
+            return;
+        }
+        showToast(`${baseMsg} Classification IA en cours…`, 'info');
+        try {
+            const { categorizeBatch } = await import('./services/claude');
+            // 'Inconnu' EXCLU des cibles : c'est un statut « à classer », pas une destination.
+            const allowed = Array.from(new Set([
+                ...state.budgetItems.map(b => b.name),
+                'Salaire', 'Autre', 'Transfert', 'Investissement', 'Remboursement',
+            ]));
+            const classified = await categorizeBatch(toClassify, apiKey, deduped, allowed);
+            const byId = new Map(classified.map(t => [t.id, t]));
+            // Applique les catégories sur l'état FRAIS (et non le snapshot `deduped` capturé
+            // avant l'await) → un edit utilisateur survenu pendant la classification n'est pas écrasé.
+            const current = useFinanceStore.getState().transactions;
+            setAppState({ transactions: current.map(t => byId.get(t.id) ?? t), lastUpdate: Date.now() });
+            showToast(`${classified.length} nouvelle(s) transaction(s) classée(s).`, 'success');
+        } catch (e) {
+            logError({ source: 'ai', message: "Auto-catégorisation à l'import échouée", error: e });
+            showToast("Import OK, mais la classification auto a échoué — utilise « classer ».", 'error');
+        }
     };
 
     // Phase 3B — memos extraits dans utils/useDerivedFinancials.ts

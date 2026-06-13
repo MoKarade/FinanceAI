@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseBankCsv, parseAmount } from '../../services/import/parseBankCsv';
+import { parseBankCsv, parseAmount, extractedTxnsToCsv } from '../../services/import/parseBankCsv';
 
 const find = (r: ReturnType<typeof parseBankCsv>, payeeFragment: string) =>
     r.transactions.find((t) => t.payee.toLowerCase().includes(payeeFragment.toLowerCase()));
@@ -115,5 +115,39 @@ describe('parseBankCsv', () => {
         const r = parseBankCsv('');
         expect(r.imported).toBe(0);
         expect(r.transactions).toHaveLength(0);
+    });
+});
+
+describe('extractedTxnsToCsv — relevé PDF/image → CSV canonique → re-parse', () => {
+    it('produit un CSV `date,description,amount` avec en-tête', () => {
+        const csv = extractedTxnsToCsv([{ date: '2026-02-04', description: 'Metro', amount: -42.5 }]);
+        expect(csv.split('\n')[0]).toBe('date,description,amount');
+        expect(csv).toContain('2026-02-04,"Metro",-42.5');
+    });
+
+    it('échappe virgules et guillemets (RFC-4180) → survit au re-parse parseBankCsv', () => {
+        const txns = [
+            { date: '2026-02-04', description: 'EPICERIE METRO, MTL', amount: -42.5 },
+            { date: '2026-02-05', description: 'Resto "Le Chic"', amount: -88.25 },
+        ];
+        const r = parseBankCsv(extractedTxnsToCsv(txns));
+        expect(r.imported).toBe(2);
+        const t0 = r.transactions.find((t) => t.payee.includes('METRO'))!;
+        expect(t0.payee).toBe('EPICERIE METRO, MTL'); // virgule interne préservée
+        expect(t0.amount).toBeCloseTo(-42.5);
+        const t1 = r.transactions.find((t) => t.payee.includes('Chic'))!;
+        expect(t1.payee).toBe('Resto "Le Chic"');     // guillemets internes préservés
+        expect(t1.amount).toBeCloseTo(-88.25);
+    });
+
+    it('aller-retour : montants signés (+/-) et dates ISO conservés', () => {
+        const txns = [
+            { date: '2026-01-10', description: 'Depot paie', amount: 1500 },
+            { date: '2026-01-11', description: 'Achat', amount: -23.99 },
+        ];
+        const r = parseBankCsv(extractedTxnsToCsv(txns));
+        expect(r.dateOrder).toBe('ISO');
+        expect(r.transactions.find((t) => t.payee.includes('Depot'))!.amount).toBeCloseTo(1500);
+        expect(r.transactions.find((t) => t.payee.includes('Achat'))!.amount).toBeCloseTo(-23.99);
     });
 });

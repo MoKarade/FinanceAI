@@ -15,10 +15,12 @@ interface AccountsSectionProps {
   setInitialBalances: (balances: Record<string, number>) => void;
   transactions: Transaction[];
   onImportData: (data: string) => void;
+  /** Clé Anthropic — requise pour l'analyse IA des relevés PDF/image (le CSV reste local). */
+  apiKey?: string;
 }
 
 export const AccountsSection: React.FC<AccountsSectionProps> = ({
-  initialBalances, setInitialBalances, transactions, onImportData,
+  initialBalances, setInitialBalances, transactions, onImportData, apiKey,
 }) => {
   const knownAccounts = React.useMemo(() => {
     const accs: Record<string, boolean> = {};
@@ -35,14 +37,15 @@ export const AccountsSection: React.FC<AccountsSectionProps> = ({
       <header>
         <h3 className="text-h2 text-ink-50">Comptes &amp; données</h3>
         <p className="text-meta text-ink-400 mt-0.5">
-          Importe tes revenus et transactions, puis fixe tes soldes de départ. Tout reste local.
+          Importe tes revenus et transactions, puis fixe tes soldes de départ. Le CSV reste 100 % local ;
+          les PDF/images (relevé, paie) sont analysés par l'IA (Claude).
         </p>
       </header>
 
       {/* Deux sources d'import regroupées côte à côte, MÊME taille (hauteurs égales) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
         <PayslipUploadCard className="h-full" />
-        <ImportBankStatement onImport={onImportData} className="h-full" />
+        <ImportBankStatement onImport={onImportData} apiKey={apiKey} className="h-full" />
       </div>
 
       <Card title="Soldes de départ">

@@ -254,3 +254,23 @@ export const parseBankCsv = (raw: string): ParsedBankCsv => {
         columns,
     };
 };
+
+/** Forme minimale d'une transaction extraite d'un relevé PDF/image (via IA). */
+export interface RawBankTxn {
+    date: string;        // ISO YYYY-MM-DD
+    description: string;
+    amount: number;
+}
+
+/**
+ * Sérialise des transactions extraites (relevé PDF/image) en CSV canonique
+ * `date,description,amount`, pour les faire passer par le MÊME pipeline que le
+ * CSV bancaire (parseBankCsv → fusion → dédup → mêmes IDs/statuts). Les
+ * descriptions sont échappées RFC-4180 (guillemets encadrants + `"` doublés)
+ * afin de survivre au re-parse même si elles contiennent virgules/guillemets.
+ */
+export const extractedTxnsToCsv = (txns: RawBankTxn[]): string => {
+    const esc = (s: string): string => `"${String(s).replace(/"/g, '""')}"`;
+    const rows = txns.map((t) => `${t.date},${esc(t.description)},${t.amount}`);
+    return ['date,description,amount', ...rows].join('\n');
+};

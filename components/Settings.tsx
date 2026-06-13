@@ -190,6 +190,7 @@ export const Settings: React.FC<SettingsProps> = ({
           setInitialBalances={setInitialBalances}
           transactions={transactions}
           onImportData={onImportData}
+          apiKey={apiKeys.anthropic}
         />
       )}
       {sub === 'patrimoine' && <PatrimoineSection />}

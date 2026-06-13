@@ -69,6 +69,12 @@
 > helper pur exporté `buildPayslipFileBlock` → PDF en bloc `document` (base64 `application/pdf`), image en bloc `image`,
 > throw sinon ; tests ajoutés. **Leçon : un PDF NE PASSE PAS dans un bloc `image` côté API Anthropic — bloc `document`
 > obligatoire.** Validé typecheck + tests ; bout-en-bout réel (clé Anthropic + vrai PDF) reste à confirmer par Marc.
+> 🆕 **FEATURE 2026-06-13 (Marc) — import de relevé PDF + auto-classification** : `ImportBankStatement` accepte
+> désormais PDF/image (+ CSV). PDF → `analyzeBankStatement` (Claude Vision, bloc `document`) → tri chrono → CSV canonique
+> (`extractedTxnsToCsv`) → MÊME pipeline que le CSV (parseBankCsv/fusion/dédup). Helper du fix PDF généralisé
+> `buildPayslipFileBlock`→`buildVisionFileBlock`. Auto-catégorisation IA des nouvelles transactions à l'import (PDF+CSV,
+> choix Marc) sur l'état FRAIS du store, lazy-import `claude.ts` (bundle boot préservé). CSV reste 100 % local ; le PDF
+> est envoyé à Claude (consenti). Panel 4 agents → a11y status/alert + fix clobber appliqués. Bout-en-bout réel à confirmer.
 > ⏸️ **Grind D6-SR-2 EN PAUSE** : ne pas relancer la finition de masse en pilote auto — DEMANDER la direction à Marc
 > (Pause / grind D6-SR-2 / FSS-PSV / DESIGN). Outils (`PrivateAmount`/`PrivateBlock`) prêts pour reprise incrémentale.
 >

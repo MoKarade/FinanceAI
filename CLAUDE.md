@@ -24,8 +24,10 @@ Doc détaillée dans `docs/`, qui fait foi.
   `[YYYY-MM-DD HH:MM UTC]` (via `date`) — toujours, sans exception.
 - **PAS d'emojis dans le chat** sauf demande explicite (docs/commits en contiennent, OK).
   Français toujours, tutoiement, ton direct et technique.
-- **À CHAQUE reprise de chat**, commencer par un point bref (lu depuis
-  `docs/SESSION_HANDOVER.md` + `docs/BACKLOG.md`) :
+- **À CHAQUE reprise de chat**, d'abord `git fetch origin main` + `git merge --ff-only origin/main`
+  AVANT de juger l'état (le clone local du PC ne se met PAS à jour seul — vu 146 commits de retard
+  le 2026-06-15 : des PR/symboles crus « absents » étaient déjà sur origin). Puis un point bref (lu
+  depuis `docs/SESSION_HANDOVER.md` + `docs/BACKLOG.md`) :
   1. **Fait** — terminé depuis la dernière fois
   2. **État** — build/tests, chantiers ouverts
   3. **Suite proposée** — prochaine étape recommandée (+ ID)
@@ -56,10 +58,12 @@ Doc détaillée dans `docs/`, qui fait foi.
   ≈ 5 min si `.ts/.tsx` stagés) PUIS la même suite en CI (≈ 5 min) — redondant mais voulu
   (gate = filet local, CI = vérité partagée). Pour raccourcir, l'option serait un gate allégé
   (typecheck+build+tests `related` seulement) avec la suite complète en CI — décision Marc.
-- **CLAUDE.md s'améliore À CHAQUE PUSH** (règle Marc 2026-06-09) : tout push qui a appris
-  quelque chose (bug d'infra, convention découverte, leçon, décision) met à jour CLAUDE.md
-  dans le MÊME commit — petit delta ciblé, jamais de réécriture. Un push sans leçon = OK sans delta,
-  mais se poser la question à chaque fois.
+- **CLAUDE.md s'améliore À CHAQUE PUSH** (règle Marc 2026-06-09, renforcée 2026-06-15) : étape
+  OBLIGATOIRE du cycle de push — se demander explicitement « qu'ai-je appris ? » (bug d'infra,
+  convention découverte, leçon, décision, piège) AVANT le commit final. Leçon → delta ciblé dans la
+  section pertinente, **dans le MÊME commit/PR** (jamais de réécriture, juste le delta). Rien appris →
+  le dire (« push sans leçon ») au point de contrôle, pas de skip silencieux. ⚠️ Une leçon notée
+  ailleurs (chat, mémoire harness) mais PAS portée ici = perdue à la prochaine session.
 - **Backlog tenu par Claude** (l'Action `backlog-autocheck` a été RETIRÉE — choix Marc 2026-06-09) :
   au moment du MERGE d'une PR, Claude coche lui-même les `[ID]` livrés dans `docs/BACKLOG.md`
   (dans la PR même ou la suivante), ajoute les découvertes, et route les blocages humains

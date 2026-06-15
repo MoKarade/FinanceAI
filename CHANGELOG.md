@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Sécurité : Vite 6→8 (Rolldown), 0 vulnérabilité] — 2026-06-15
+
+### Sécurité / Build
+- **Vite 6 → 8** (moteur **Rolldown**, remplace Rollup + esbuild) : élimine les 2 advisories
+  esbuild *high* (GHSA-gv7w-rqvm-qjhr, GHSA-g7r4-m6w7-qqqr) → `npm audit` = **0 vulnérabilité**.
+  Le fix ciblé (override esbuild 0.28.1) était impossible sous Vite 6 (casse le build, incompat. vite 6
+  `^0.25.0`) ; Vite 8 le résout nativement (+ `npm audit fix` pour l'esbuild résiduel de `tsx`).
+- `@vitejs/plugin-react` 5 → 6. `vite.config.ts` adapté à Rolldown : `manualChunks` passé en
+  **fonction** (forme objet abandonnée), `external` remonté au **top-niveau** de `rollupOptions`.
+  Chunks vendor (react/recharts/ai/pdf) + lazy-loading **préservés** ; **2042 tests verts**, build OK.
+
+---
+
 ## [unreleased — Import de relevé : PDF (extraction IA) + auto-classification] — 2026-06-13
 
 ### Ajouté

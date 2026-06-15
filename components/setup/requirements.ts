@@ -177,6 +177,3 @@ export const REQUIREMENTS: Record<RequirementId, Requirement> = {
         focus: { tab: Tab.SETTINGS, section: 'apiKeys-anthropic' },
     },
 };
-
-/** Prédicat partagé : un prérequis est-il satisfait dans l'état donné ? */
-export const isRequirementMet = (id: RequirementId, s: FinanceState): boolean => REQUIREMENTS[id].isMet(s);

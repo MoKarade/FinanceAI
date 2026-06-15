@@ -15,6 +15,7 @@ import { z } from 'zod';
 import { Transaction, RecurringItem } from '../types';
 import { logError } from './errorLogger';
 import { sanitizePromptText, wrapUserData } from '../utils/promptSafety';
+import { isInternalTransferLabel } from '../utils/transactionParser';
 
 // ─── Modèles ─────────────────────────────────────────────────────────────────
 
@@ -235,7 +236,9 @@ const cleanMerchantName = (raw: string): string => sanitizePromptText(raw);
 
 export const isDefiniteTransfer = (payee: string, amount: number): boolean => {
     const p = (payee || '').toLowerCase();
-    return /transfert|virement|interac/.test(p) || (Math.abs(amount) > 5000 && /paiement carte/.test(p));
+    // Interac/mouvements externes exclus (cf isInternalTransferLabel) ; un gros
+    // « paiement carte » reste un remboursement de carte (transfert).
+    return isInternalTransferLabel(p) || (Math.abs(amount) > 5000 && /paiement carte/.test(p));
 };
 
 export const categorizeBatch = async (
@@ -708,25 +711,26 @@ const PayslipSchema = z.object({
 export type PayslipData = z.infer<typeof PayslipSchema>;
 
 /**
- * Construit le bloc de contenu Anthropic pour un fichier uploadé :
+ * Construit le bloc de contenu Anthropic pour un fichier uploadé (Vision) —
+ * partagé par l'analyse de bulletin de paie ET l'extraction de relevé bancaire :
  *  - PDF (`application/pdf`) → bloc `document` (l'API Anthropic REFUSE un PDF
  *    dans un bloc `image` : un bloc image n'accepte que des media_type image/*,
  *    donc un PDF y déclenchait un échec → « Analyse échouée »).
  *  - image (JPG/PNG/GIF/WEBP) → bloc `image`.
  * Throw sur tout autre type. Exporté pour test (logique pure, sans réseau).
  */
-const PAYSLIP_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const;
-export const buildPayslipFileBlock = (
+const VISION_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const;
+export const buildVisionFileBlock = (
     fileType: string,
     base64: string,
 ): Anthropic.ImageBlockParam | Anthropic.DocumentBlockParam => {
     if (fileType === 'application/pdf') {
         return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } };
     }
-    if (!PAYSLIP_IMAGE_TYPES.includes(fileType as (typeof PAYSLIP_IMAGE_TYPES)[number])) {
+    if (!VISION_IMAGE_TYPES.includes(fileType as (typeof VISION_IMAGE_TYPES)[number])) {
         throw new Error(`Type ${fileType} non supporté. Utilise JPG/PNG/GIF/WEBP ou PDF.`);
     }
-    return { type: 'image', source: { type: 'base64', media_type: fileType as (typeof PAYSLIP_IMAGE_TYPES)[number], data: base64 } };
+    return { type: 'image', source: { type: 'base64', media_type: fileType as (typeof VISION_IMAGE_TYPES)[number], data: base64 } };
 };
 
 /**
@@ -750,7 +754,7 @@ export const analyzePayslip = async (file: File, apiKey: string): Promise<Paysli
     });
 
     // PDF → bloc `document` ; image → bloc `image` (l'API Anthropic refuse un PDF dans un bloc image).
-    const fileBlock = buildPayslipFileBlock(file.type || 'image/jpeg', base64);
+    const fileBlock = buildVisionFileBlock(file.type || 'image/jpeg', base64);
 
     const client = makeClient(apiKey);
     const response = await client.messages.create({
@@ -784,5 +788,102 @@ export const analyzePayslip = async (file: File, apiKey: string): Promise<Paysli
         throw new Error('Format JSON invalide retourné par Claude.');
     }
     return validated;
+};
+
+// ─── Import de relevé bancaire PDF / image (Vision) ──────────────────────────
+// Le CSV reste 100 % LOCAL (services/import/parseBankCsv.ts). Le PDF/image, lui,
+// ne peut pas être parsé localement → on l'envoie à Claude pour en EXTRAIRE les
+// transactions (choix utilisateur consenti à l'import). On réutilise ensuite le
+// MÊME pipeline que le CSV (synthèse CSV canonique → parseBankCsv → fusion/dédup).
+
+const BankTxnSchema = z.object({
+    date: z.string(),        // ISO YYYY-MM-DD attendu
+    description: z.string(),
+    amount: z.number(),      // NÉGATIF = débit/retrait ; POSITIF = crédit/dépôt
+});
+const BankTxnArraySchema = z.array(BankTxnSchema);
+export type ExtractedBankTxn = z.infer<typeof BankTxnSchema>;
+
+/**
+ * Nettoie + TRIE (chronologique croissant — « met dans l'ordre ») les transactions
+ * brutes extraites par Claude : rejette dates non-ISO, montants non finis et
+ * descriptions vides. Pur → testable sans réseau.
+ */
+export const normalizeExtractedTxns = (raw: ExtractedBankTxn[]): ExtractedBankTxn[] =>
+    raw
+        .filter(t => /^\d{4}-\d{2}-\d{2}$/.test(t.date) && Number.isFinite(t.amount) && t.description.trim().length > 0)
+        .map(t => ({ ...t, description: t.description.trim() }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+/**
+ * Extrait les transactions d'un relevé bancaire/carte PDF (ou image) via Claude
+ * Vision (Sonnet 4.6, bloc `document` pour les PDF).
+ *
+ * ⚠️ Confidentialité : le relevé COMPLET est transmis à Anthropic (un PDF ne peut
+ * pas être parsé localement) — consenti explicitement à l'import. Renvoie les
+ * transactions triées par date ; réponse non conforme → `[]` (l'appelant affiche
+ * « aucune transaction reconnue », jamais d'exception silencieuse).
+ */
+export const analyzeBankStatement = async (file: File, apiKey: string): Promise<ExtractedBankTxn[]> => {
+    if (!apiKey) throw new Error('Clé API Anthropic manquante.');
+
+    const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1] || result);
+        };
+        reader.onerror = () => reject(new Error('Lecture fichier échouée'));
+        reader.readAsDataURL(file);
+    });
+
+    const fileBlock = buildVisionFileBlock(file.type || 'application/pdf', base64);
+
+    const client = makeClient(apiKey);
+    const response = await client.messages.create({
+        model: MODEL_SONNET,
+        max_tokens: 16000, // un relevé peut contenir beaucoup de lignes ; non-stream OK ≤ ~16k
+        system: `${QUEBEC_FISCAL_CONTEXT}
+Tu es un extracteur EXPERT de relevés bancaires et de cartes de crédit québécois (Desjardins, RBC, BMO, TD, Banque Nationale, Tangerine, etc.). Tu lis le document (image/PDF) et retournes des transactions structurées FIDÈLES au document, sans rien inventer ni omettre.`,
+        messages: [{
+            role: 'user',
+            content: [
+                fileBlock,
+                {
+                    type: 'text',
+                    text: `Extrais TOUTES les transactions de ce relevé, de la PREMIÈRE à la DERNIÈRE page, en ordre chronologique.
+
+RÈGLES :
+1. SIGNE DU MONTANT (crucial), du point de vue de l'utilisateur :
+   • NÉGATIF = argent qui SORT : achat, retrait, paiement, frais, intérêts débiteurs, prélèvement.
+   • POSITIF = argent qui ENTRE : dépôt, salaire, remboursement, crédit, intérêts créditeurs.
+   • Relevé de CARTE DE CRÉDIT : un achat = NÉGATIF ; un « paiement reçu / paiement de votre part » = POSITIF.
+   Applique cette convention QUELLE QUE SOIT la présentation (colonnes débit/crédit séparées, parenthèses, « DR »/« CR », signe).
+2. DATE → format ISO « YYYY-MM-DD ». Si la ligne n'affiche que jour+mois (« 03 FÉV », « FEB 3 »), DÉDUIS l'année depuis la PÉRIODE DU RELEVÉ (en-tête), en gérant le passage décembre→janvier.
+3. MONTANT → nombre décimal simple en dollars (1234.56 ou -42.50). Convertis « 1 234,56 $ » → 1234.56 ; retire symboles, espaces et séparateurs de milliers.
+4. DESCRIPTION → garde le libellé du marchand/opération tel qu'il apparaît (lisible et identifiable, pour permettre la catégorisation). N'invente pas, ne traduis pas, ne tronque pas à l'excès.
+5. IGNORE soldes (ouverture/clôture), totaux, sous-totaux, reports, limites de crédit, en-têtes/pieds de page : ce ne sont PAS des transactions.
+6. N'invente AUCUNE transaction ; n'en omets aucune ; ne fusionne pas deux lignes distinctes.
+
+RÉPONDS UNIQUEMENT avec un JSON Array strict (aucun markdown, aucun commentaire) :
+[{ "date": "YYYY-MM-DD", "description": string, "amount": number }]`,
+                },
+            ],
+        }],
+    });
+
+    const text = response.content
+        .flatMap(b => b.type === 'text' ? [b.text] : [])
+        .join('');
+    const validated = safeJsonValidate(text, BankTxnArraySchema);
+    if (!validated) return [];
+    const normalized = normalizeExtractedTxns(validated);
+    // Diagnostic : un rejet MASSIF au nettoyage (≠ 1-2 lignes d'en-tête) trahit un souci
+    // d'extraction (format de date, etc.). On trace le COMPTE (aucune PII) côté SystemView.
+    const rejected = validated.length - normalized.length;
+    if (rejected > 2) {
+        logError({ source: 'ai', severity: 'warning', message: `Extraction relevé : ${rejected}/${validated.length} ligne(s) rejetée(s) au nettoyage (date/montant/description invalides).` });
+    }
+    return normalized;
 };
 

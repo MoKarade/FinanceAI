@@ -16,7 +16,8 @@ import {
     categorizeBatch,
     detectSubscriptionsAI,
     buildRebalancePrompt,
-    buildPayslipFileBlock,
+    buildVisionFileBlock,
+    normalizeExtractedTxns,
 } from '../../services/claude';
 import type { RebalanceActionInput } from '../../services/claude';
 import type { Transaction } from '../../types';
@@ -60,11 +61,25 @@ describe('safeJsonValidate', () => {
 
 describe('isDefiniteTransfer', () => {
     it.each([
-        ['Virement Interac', -500],
         ['Transfert bancaire', -1000],
-        ['INTERAC e-Transfer', 200],
-    ])('%s → transfert évident', (payee, amount) => {
+        ['Virement entre comptes', -500],
+        ['Transfer - AccèsD - Internet /to PCA', -2000],
+    ])('%s → transfert interne évident', (payee, amount) => {
         expect(isDefiniteTransfer(payee, amount)).toBe(true);
+    });
+
+    // Régression (relevé Desjardins réel) : un Interac vise une PERSONNE (loyer, revenu,
+    // remboursement) et « money/funds transfer » est un mouvement externe → À CATÉGORISER,
+    // pas un transfert interne. Avant, « interac » les marquait transferts → revenus/dépenses
+    // sortis à tort du cashflow (ex. « Funds transfer received » +64 168 $).
+    it.each([
+        ['Interac e-Transfer to /Clara/', -500],
+        ['INTERAC e-Transfer from /Anna/', 200],
+        ['Virement Interac', -500],
+        ['Money transfer sent to /Valerie/Loyer', -1600],
+        ['Funds transfer received /SELARL/', 64000],
+    ])('%s → PAS un transfert interne (Interac/externe)', (payee, amount) => {
+        expect(isDefiniteTransfer(payee, amount)).toBe(false);
     });
 
     it('« Paiement carte » > 5000$ → transfert (remboursement de carte)', () => {
@@ -134,11 +149,11 @@ describe('buildRebalancePrompt — anti-injection de prompt (C1)', () => {
     });
 });
 
-describe('buildPayslipFileBlock — PDF vs image (régression « impossible d\'uploader mes documents »)', () => {
+describe('buildVisionFileBlock — PDF vs image (régression « impossible d\'uploader mes documents »)', () => {
     // Avant : un PDF était envoyé dans un bloc `image` (ou rejeté) → l'API Anthropic
     // échouait → toast « Analyse échouée ». Un PDF DOIT passer dans un bloc `document`.
     it('PDF → bloc `document` base64', () => {
-        expect(buildPayslipFileBlock('application/pdf', 'BASE64DATA')).toEqual({
+        expect(buildVisionFileBlock('application/pdf', 'BASE64DATA')).toEqual({
             type: 'document',
             source: { type: 'base64', media_type: 'application/pdf', data: 'BASE64DATA' },
         });
@@ -147,7 +162,7 @@ describe('buildPayslipFileBlock — PDF vs image (régression « impossible d\'u
     it.each(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])(
         '%s → bloc `image` base64',
         (mediaType) => {
-            expect(buildPayslipFileBlock(mediaType, 'IMG')).toEqual({
+            expect(buildVisionFileBlock(mediaType, 'IMG')).toEqual({
                 type: 'image',
                 source: { type: 'base64', media_type: mediaType, data: 'IMG' },
             });
@@ -155,6 +170,32 @@ describe('buildPayslipFileBlock — PDF vs image (régression « impossible d\'u
     );
 
     it('type non supporté → throw explicite (jamais d\'envoi API silencieux)', () => {
-        expect(() => buildPayslipFileBlock('text/plain', 'X')).toThrow(/non supporté/);
+        expect(() => buildVisionFileBlock('text/plain', 'X')).toThrow(/non supporté/);
+    });
+});
+
+describe('normalizeExtractedTxns — tri + filtrage (import relevé PDF/image)', () => {
+    it('trie par date croissante (« met dans l\'ordre »)', () => {
+        const out = normalizeExtractedTxns([
+            { date: '2026-03-10', description: 'C', amount: -3 },
+            { date: '2026-01-05', description: 'A', amount: -1 },
+            { date: '2026-02-20', description: 'B', amount: 2 },
+        ]);
+        expect(out.map((t) => t.date)).toEqual(['2026-01-05', '2026-02-20', '2026-03-10']);
+    });
+
+    it('rejette dates non-ISO, montants non finis et descriptions vides', () => {
+        const out = normalizeExtractedTxns([
+            { date: '10/03/2026', description: 'date FR', amount: -3 },      // non-ISO → rejeté
+            { date: '2026-02-02', description: '   ', amount: -1 },          // desc vide → rejeté
+            { date: '2026-02-03', description: 'NaN', amount: Number.NaN },  // montant non fini → rejeté
+            { date: '2026-02-04', description: 'OK', amount: -9.5 },         // gardé
+        ]);
+        expect(out).toEqual([{ date: '2026-02-04', description: 'OK', amount: -9.5 }]);
+    });
+
+    it('trim les descriptions conservées', () => {
+        const out = normalizeExtractedTxns([{ date: '2026-02-04', description: '  Metro  ', amount: -9.5 }]);
+        expect(out[0].description).toBe('Metro');
     });
 });

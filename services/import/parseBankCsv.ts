@@ -8,7 +8,7 @@
 // `1 234,56` (décimale virgule QC), `(50,00)` négatif. Fonction PURE → testable.
 
 import { Transaction } from '../../types';
-import { markDuplicates } from '../../utils/transactionParser';
+import { markDuplicates, isInternalTransferLabel } from '../../utils/transactionParser';
 
 export type Delimiter = ',' | ';' | '\t';
 export type DateOrder = 'ISO' | 'DMY' | 'MDY';
@@ -226,8 +226,7 @@ export const parseBankCsv = (raw: string): ParsedBankCsv => {
         const payee = at(r, columns.payee) || 'Inconnu';
         const category = at(r, columns.category) || 'Uncategorized';
         const account = at(r, columns.account) || 'Importé';
-        const lc = norm(category + ' ' + payee);
-        const isTransfer = lc.includes('virement') || lc.includes('transfert') || lc.includes('transfer');
+        const isTransfer = isInternalTransferLabel(`${category} ${payee}`);
 
         transactions.push({
             id: -(importIdCounter++),
@@ -253,4 +252,24 @@ export const parseBankCsv = (raw: string): ParsedBankCsv => {
         dateOrder,
         columns,
     };
+};
+
+/** Forme minimale d'une transaction extraite d'un relevé PDF/image (via IA). */
+export interface RawBankTxn {
+    date: string;        // ISO YYYY-MM-DD
+    description: string;
+    amount: number;
+}
+
+/**
+ * Sérialise des transactions extraites (relevé PDF/image) en CSV canonique
+ * `date,description,amount`, pour les faire passer par le MÊME pipeline que le
+ * CSV bancaire (parseBankCsv → fusion → dédup → mêmes IDs/statuts). Les
+ * descriptions sont échappées RFC-4180 (guillemets encadrants + `"` doublés)
+ * afin de survivre au re-parse même si elles contiennent virgules/guillemets.
+ */
+export const extractedTxnsToCsv = (txns: RawBankTxn[]): string => {
+    const esc = (s: string): string => `"${String(s).replace(/"/g, '""')}"`;
+    const rows = txns.map((t) => `${t.date},${esc(t.description)},${t.amount}`);
+    return ['date,description,amount', ...rows].join('\n');
 };

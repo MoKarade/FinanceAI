@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseBankCsv, parseAmount } from '../../services/import/parseBankCsv';
+import { parseBankCsv, parseAmount, extractedTxnsToCsv } from '../../services/import/parseBankCsv';
 
 const find = (r: ReturnType<typeof parseBankCsv>, payeeFragment: string) =>
     r.transactions.find((t) => t.payee.toLowerCase().includes(payeeFragment.toLowerCase()));
@@ -115,5 +115,66 @@ describe('parseBankCsv', () => {
         const r = parseBankCsv('');
         expect(r.imported).toBe(0);
         expect(r.transactions).toHaveLength(0);
+    });
+});
+
+describe('extractedTxnsToCsv — relevé PDF/image → CSV canonique → re-parse', () => {
+    it('produit un CSV `date,description,amount` avec en-tête', () => {
+        const csv = extractedTxnsToCsv([{ date: '2026-02-04', description: 'Metro', amount: -42.5 }]);
+        expect(csv.split('\n')[0]).toBe('date,description,amount');
+        expect(csv).toContain('2026-02-04,"Metro",-42.5');
+    });
+
+    it('échappe virgules et guillemets (RFC-4180) → survit au re-parse parseBankCsv', () => {
+        const txns = [
+            { date: '2026-02-04', description: 'EPICERIE METRO, MTL', amount: -42.5 },
+            { date: '2026-02-05', description: 'Resto "Le Chic"', amount: -88.25 },
+        ];
+        const r = parseBankCsv(extractedTxnsToCsv(txns));
+        expect(r.imported).toBe(2);
+        const t0 = r.transactions.find((t) => t.payee.includes('METRO'))!;
+        expect(t0.payee).toBe('EPICERIE METRO, MTL'); // virgule interne préservée
+        expect(t0.amount).toBeCloseTo(-42.5);
+        const t1 = r.transactions.find((t) => t.payee.includes('Chic'))!;
+        expect(t1.payee).toBe('Resto "Le Chic"');     // guillemets internes préservés
+        expect(t1.amount).toBeCloseTo(-88.25);
+    });
+
+    it('aller-retour : montants signés (+/-) et dates ISO conservés', () => {
+        const txns = [
+            { date: '2026-01-10', description: 'Depot paie', amount: 1500 },
+            { date: '2026-01-11', description: 'Achat', amount: -23.99 },
+        ];
+        const r = parseBankCsv(extractedTxnsToCsv(txns));
+        expect(r.dateOrder).toBe('ISO');
+        expect(r.transactions.find((t) => t.payee.includes('Depot'))!.amount).toBeCloseTo(1500);
+        expect(r.transactions.find((t) => t.payee.includes('Achat'))!.amount).toBeCloseTo(-23.99);
+    });
+});
+
+describe('détection de transfert interne (relevé Desjardins réel)', () => {
+    // Reproduit le pipeline : un libellé → la transaction parsée, on lit isTransfer.
+    const isTransfer = (desc: string): boolean =>
+        parseBankCsv(`date,description,amount\n2026-01-01,${JSON.stringify(desc)},-100`).transactions[0].isTransfer === true;
+
+    it('Interac e-Transfer (vers/depuis une personne) → PAS un transfert', () => {
+        expect(isTransfer('Interac e-Transfer to /Clara D/')).toBe(false);
+        expect(isTransfer('Interac e-Transfer from /ANNA LUCIE MAL/')).toBe(false);
+    });
+    it('« money/funds transfer » (paiement/revenu externe) → PAS un transfert', () => {
+        expect(isTransfer('Money transfer sent to /Valerie cameron/Loyer')).toBe(false);
+        expect(isTransfer('Funds transfer received /SELARL AFFIDAV/')).toBe(false);
+    });
+    it('« Transfer - AccèsD » (entre comptes propres) → transfert interne', () => {
+        expect(isTransfer('Transfer - AccèsD - Internet /to PCA')).toBe(true);
+        expect(isTransfer('Transfer - AccèsD - Internet /from TS 1')).toBe(true);
+    });
+    it('« Virement »/« Transfert » FR + « Transfer to savings » (autre banque) → transfert', () => {
+        expect(isTransfer('Virement entre comptes')).toBe(true);
+        expect(isTransfer('Transfert interne')).toBe(true);
+        expect(isTransfer('Transfer to savings')).toBe(true);
+    });
+    it('un achat normal → PAS un transfert', () => {
+        expect(isTransfer('Purchase /IGA DES SOURCES')).toBe(false);
     });
 });

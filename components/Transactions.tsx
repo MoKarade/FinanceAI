@@ -380,7 +380,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 « importez un CSV » sans aucun bouton → impasse n°1). Auto-affiché quand il n'y a
                 aucune transaction ; sinon togglé via le bouton « Importer un relevé ». */}
             {onImport && (showImport || transactions.length === 0) && (
-                <ImportBankStatement onImport={onImport} />
+                <ImportBankStatement onImport={onImport} apiKey={apiKey} />
             )}
 
             <div className="rounded-xl border border-indigo-500/20 bg-indigo-900/10">

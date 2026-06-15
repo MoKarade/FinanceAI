@@ -38,6 +38,15 @@ Doc détaillée dans `docs/`, qui fait foi.
   → PR (draft par défaut) → **Claude merge lui-même** (squash sur `main`) une fois
   le gate vert et `/review-all` fait. Le push sur `main` déclenche le déploiement
   Vercel : Claude en est responsable (choix de Marc, 2026-06 — plus de gate humain).
+- **NE PAS s'arrêter en pleine tâche** (règle Marc 2026-06-15, NON négociable) : une fois lancé,
+  Claude va **jusqu'au bout sans rendre la main** — chaque tour DOIT contenir des appels d'outils
+  tant que la tâche n'est pas finie ; JAMAIS de prose « je vais faire X » suivie d'un arrêt (exécuter
+  X dans le MÊME tour). **On ne s'arrête qu'APRÈS un merge confirmé VISUELLEMENT** (réponse de merge
+  `merged:true` + `origin/main` contient le commit), ou pour une vraie question bloquante à Marc.
+  Mécanisme = cette règle comportementale, à suivre STRICTEMENT. Un filet automatique (Stop hook qui
+  bloquerait l'arrêt tant qu'il reste des changements non commités/non poussés) est possible, mais son
+  enregistrement dans `.claude/settings.json` est bloqué par sécurité (boucle d'auto-relance) → à activer
+  uniquement sur accord EXPLICITE de Marc.
 - **Merge SANS attente active** : après `/review-all` + gate vert → push → PR ready →
   **`enable_pr_auto_merge` (squash)** : GitHub merge tout seul dès la CI verte. PAS de timers
   `sleep` pour « surveiller » la CI (c'était ~7 min d'inactivité par PR). Vérifier le merge au

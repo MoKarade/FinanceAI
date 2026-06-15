@@ -6,6 +6,37 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Import de relevé : PDF (extraction IA) + auto-classification] — 2026-06-13
+
+### Ajouté
+- **Upload d'un relevé bancaire en PDF/image** (en plus du CSV) : extraction des
+  transactions par Claude Vision (`analyzeBankStatement`, bloc `document`), **tri
+  chronologique**, puis MÊME pipeline que le CSV (synthèse CSV canonique →
+  `parseBankCsv` → fusion + dédup). Le **CSV reste 100 % local** ; le PDF/image est
+  envoyé à Claude (consenti explicitement à l'import).
+- **Prompt d'extraction renforcé** : déduction d'année (lignes jour+mois → période du
+  relevé), convention de signe explicite (incluant les cartes de crédit), normalisation
+  des montants FR/CAD (« 1 234,56 $ » → 1234.56), complétude multi-pages, exclusion
+  soldes/totaux/reports/en-têtes.
+- **Détection de transfert corrigée** (validée sur un vrai relevé Desjardins, signes
+  réconciliés à la cenne contre la colonne Solde) : un **Interac e-Transfer** (vers/depuis
+  une personne) et « money/funds transfer » ne sont **plus** marqués « transfert » — seuls
+  les vrais transferts internes (« virement/transfert », AccèsD entre comptes propres) le
+  sont. Évitait de sortir à tort revenus/dépenses du cashflow (sur l'échantillon réel,
+  **83/97 « transferts » étaient des faux**, dont un revenu de +64 168 $). Logique partagée
+  `parseBankCsv` ↔ `categorizeBatch` via `isInternalTransferLabel`.
+- **Auto-classification à l'import** : les nouvelles transactions (PDF ET CSV) sont
+  catégorisées automatiquement par l'IA (`categorizeBatch`, Haiku) après import, en
+  appliquant les catégories sur l'état FRAIS du store (pas d'écrasement d'un edit
+  concurrent). Lazy-import de `claude.ts` → le SDK Anthropic n'entre pas dans le
+  bundle de boot.
+- a11y : `role="status"`/`aria-live` pour l'extraction en cours, `role="alert"` sur
+  les erreurs d'import. Trace `warning` si un relevé voit un rejet massif au nettoyage.
+- Tests : `extractedTxnsToCsv` (aller-retour RFC-4180 : virgules/guillemets/signes),
+  `normalizeExtractedTxns` (tri + filtrage des lignes invalides).
+
+---
+
 ## [unreleased — Fix : upload de documents PDF (Vision)] — 2026-06-12
 
 ### Corrigé

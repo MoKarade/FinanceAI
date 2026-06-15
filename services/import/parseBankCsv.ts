@@ -8,7 +8,7 @@
 // `1 234,56` (décimale virgule QC), `(50,00)` négatif. Fonction PURE → testable.
 
 import { Transaction } from '../../types';
-import { markDuplicates } from '../../utils/transactionParser';
+import { markDuplicates, isInternalTransferLabel } from '../../utils/transactionParser';
 
 export type Delimiter = ',' | ';' | '\t';
 export type DateOrder = 'ISO' | 'DMY' | 'MDY';
@@ -226,8 +226,7 @@ export const parseBankCsv = (raw: string): ParsedBankCsv => {
         const payee = at(r, columns.payee) || 'Inconnu';
         const category = at(r, columns.category) || 'Uncategorized';
         const account = at(r, columns.account) || 'Importé';
-        const lc = norm(category + ' ' + payee);
-        const isTransfer = lc.includes('virement') || lc.includes('transfert') || lc.includes('transfer');
+        const isTransfer = isInternalTransferLabel(`${category} ${payee}`);
 
         transactions.push({
             id: -(importIdCounter++),

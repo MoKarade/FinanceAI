@@ -18,6 +18,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   relevé), convention de signe explicite (incluant les cartes de crédit), normalisation
   des montants FR/CAD (« 1 234,56 $ » → 1234.56), complétude multi-pages, exclusion
   soldes/totaux/reports/en-têtes.
+- **Détection de transfert corrigée** (validée sur un vrai relevé Desjardins, signes
+  réconciliés à la cenne contre la colonne Solde) : un **Interac e-Transfer** (vers/depuis
+  une personne) et « money/funds transfer » ne sont **plus** marqués « transfert » — seuls
+  les vrais transferts internes (« virement/transfert », AccèsD entre comptes propres) le
+  sont. Évitait de sortir à tort revenus/dépenses du cashflow (sur l'échantillon réel,
+  **83/97 « transferts » étaient des faux**, dont un revenu de +64 168 $). Logique partagée
+  `parseBankCsv` ↔ `categorizeBatch` via `isInternalTransferLabel`.
 - **Auto-classification à l'import** : les nouvelles transactions (PDF ET CSV) sont
   catégorisées automatiquement par l'IA (`categorizeBatch`, Haiku) après import, en
   appliquant les catégories sur l'état FRAIS du store (pas d'écrasement d'un edit

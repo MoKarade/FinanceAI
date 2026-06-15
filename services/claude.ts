@@ -15,6 +15,7 @@ import { z } from 'zod';
 import { Transaction, RecurringItem } from '../types';
 import { logError } from './errorLogger';
 import { sanitizePromptText, wrapUserData } from '../utils/promptSafety';
+import { isInternalTransferLabel } from '../utils/transactionParser';
 
 // ─── Modèles ─────────────────────────────────────────────────────────────────
 
@@ -235,7 +236,9 @@ const cleanMerchantName = (raw: string): string => sanitizePromptText(raw);
 
 export const isDefiniteTransfer = (payee: string, amount: number): boolean => {
     const p = (payee || '').toLowerCase();
-    return /transfert|virement|interac/.test(p) || (Math.abs(amount) > 5000 && /paiement carte/.test(p));
+    // Interac/mouvements externes exclus (cf isInternalTransferLabel) ; un gros
+    // « paiement carte » reste un remboursement de carte (transfert).
+    return isInternalTransferLabel(p) || (Math.abs(amount) > 5000 && /paiement carte/.test(p));
 };
 
 export const categorizeBatch = async (

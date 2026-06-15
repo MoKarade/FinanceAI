@@ -1,6 +1,21 @@
 
 import { Transaction } from "../types";
 
+/**
+ * Vrai SI le libellé désigne un transfert INTERNE entre comptes propres (à exclure
+ * du cashflow et à NE PAS catégoriser). Un Interac e-Transfer vise une PERSONNE
+ * (loyer, revenu, remboursement entre proches) → PAS un transfert interne ; idem
+ * « money/funds transfer » (paiement/revenu externe). Partagé par parseBankCsv et
+ * categorizeBatch pour une détection COHÉRENTE (régression vue sur relevé réel :
+ * 83/97 « transferts » étaient en fait des Interac/mouvements externes).
+ */
+export const isInternalTransferLabel = (text: string): boolean => {
+  const t = (text || '').toLowerCase();
+  if (/interac|e-transfer/.test(t)) return false;          // paiement/revenu entre personnes
+  if (/money transfer|funds transfer/.test(t)) return false; // mouvement externe (envoi/réception)
+  return /virement|transfert|transfer/.test(t);            // vrai transfert interne (incl. AccèsD)
+};
+
 // Helper to check if two payee strings are likely the same
 const arePayeesSimilar = (p1: string, p2: string): boolean => {
   if (!p1 || !p2) return p1 === p2;

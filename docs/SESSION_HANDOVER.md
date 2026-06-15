@@ -18,6 +18,16 @@
 > phase suivante sans OK explicite de Marc** ; Q1/Q2 à poser (cf `A_FAIRE_MOI` O6) ; handover à jour
 > après chaque phase.
 >
+> **Session 2026-06-15 — Infra/hygiène (5 PR auto-mergées #288→#292)** : reprise sur un clone local
+> **146 commits en retard** (fetch+ff → règle ajoutée à CLAUDE.md). #288 js-yaml → `npm audit` **0 vuln**.
+> #289 règle « CLAUDE.md s'améliore à chaque push » **DURCIE** (obligatoire) + fetch-first à la reprise.
+> #290 **hook `learn-on-push`** (PreToolUse : rappel « leçon→CLAUDE.md » sur chaque `git push`) + #291 fix
+> de son faux positif (nom de branche en `-push`). #292 maj `A_FAIRE_MOI`. **Ménage : 23 branches mortes
+> supprimées** (16 distantes + 7 locales) → `main` SEULE. ⚠️ **Auto-merge PROUVÉ bout-en-bout** (push→CI→
+> squash-merge→suppression auto, zéro intervention) : les notes « auto-merge KO / required checks à activer »
+> plus bas sont **PÉRIMÉES** (la ruleset `main` exige les 2 checks, ça marche). Stack : **Vite 8 (Rolldown)**,
+> schema store **v7**.
+>
 > **▶ PHASE 2 (clé de voûte) TERMINÉE — 3/3 PR** (#240 #241 #242, détail BACKLOG) · **▶ PHASE 3 TERMINÉE
 > (a/b/d) #244** : onglet PROFIL unifié (tout le setup user : identité, salaires, fiscal, répartition,
 > détaillé, retraite via RetirementSettingsCard + RetirementIncomeCard extrait, enfants) + SetupHub en tête
@@ -221,24 +231,24 @@
 | Indicateur | Valeur |
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
-| **Branche principale** | `main` |
-| **Dernière PR mergée** | **#116** (fix Lighthouse a11y 95→100 + SW cache) |
-| **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push main) |
-| **Tests** | **1154/1154 verts** (106 fichiers, ~278s en local, `fileParallelism: false`) |
+| **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
+| **Dernière PR mergée** | **#292** (cycle autonome ; #288→#292 cette session) |
+| **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
+| **Tests** | **2042/2042 verts** (Vitest 4 ; `fileParallelism: false`) |
 | **Typecheck** | Clean en mode strict |
-| **Build** | OK — bundle index ~528 KB gzip ~166 KB (vendor jspdf 391 KB lazy) |
-| **Schema store** | v6 (Zustand persist avec migrations v1→v6) |
+| **Build** | OK — **Vite 8 (Rolldown)** ; lazy-loading préservé (vendor react/recharts/ai/pdf) |
+| **Schema store** | **v7** (Zustand persist, migrations v1→v7) |
 | **Stack IA** | `@anthropic-ai/sdk` (Sonnet 4.6 + Haiku 4.5) — Gemini retiré |
-| **Banque** | CSV universel (100% local, parseBankCsv.ts) — Era Context retiré entièrement |
+| **Banque** | CSV **+ import relevé PDF** (Claude Vision, #285) → pipeline `parseBankCsv` ; CSV 100 % local |
 | **Crypto** | CoinGecko (gratuit, sans clé) |
 | **Stock/ETF** | Finnhub REST (gratuit) |
-| **Sécurité storage** | AES-256-GCM + IndexedDB non-extractible (services/secureKeyStore.ts) |
-| **Auth** | Cloudflare Access (Google OAuth, session 24h) |
-| **Lighthouse prod** | Performance 97 / A11y 100* / BP 100 / SEO 90 |
+| **Sécurité storage** | AES-256-GCM + IndexedDB non-extractible (`services/secureKeyStore.ts`) ; `npm audit` = **0** |
+| **Auth** | Cloudflare Access (Google OAuth) — migration vers gate Google in-app prévue (ADR 010, pas faite) |
+| **Lighthouse prod** | Performance 97 / A11y 100 / BP 100 / SEO 90 (dernière mesure connue) |
 | **PWA** | manifest + SW v2 (precache résilient) — installable Chrome/Edge/Mobile |
 | **WCAG** | AA conformant (sub-set AAA pour touch, focus, reduced-motion) |
 
-*A11y 100 attendu après re-run post-#116. Score initial 95 avec 2 violations corrigées.
+(Lighthouse : dernière mesure connue ; re-run recommandé après une grosse livraison UI.)
 
 ---
 
@@ -263,9 +273,9 @@
    des tests directement sur l'app utilise hubperso.com ». L'app est aussi
    sur GitHub Pages mais hubperso.com est la prod canonique.
 
-5. **🔒 Branches pattern `claude/<task-name>`** — l'user mergeait chaque
-   PR rapidement. Crée toujours un PR DRAFT, attends la review/merge avant
-   d'enchaîner la suivante.
+5. **Branches `claude/<slug>` — cycle AUTONOME** (changé depuis 2026-06) — Claude gère le cycle
+   COMPLET : branche → commits gated → push → PR → **auto-merge squash** (GitHub merge dès CI verte)
+   → sync. **Plus de gate humain, Claude merge lui-même.** Source de vérité : `CLAUDE.md` § Workflow.
 
 ---
 
@@ -432,13 +442,13 @@ Validé sur hubperso.com lors de la dernière session :
 ```bash
 git clone https://github.com/MoKarade/FinanceAI.git
 cd FinanceAI
-npm install --no-audit --no-fund  # PAS de package-lock.json committé (commit 97651b54)
+npm ci   # package-lock.json EST committé (lockfile de référence ; après reprise si node_modules manque)
 ```
 
 ### Commandes utiles
 ```bash
 npm run dev          # localhost:3000 — Vite HMR
-npm test             # vitest, doit rester 732/732
+npm test             # vitest run (suite complète)
 npm run typecheck    # tsc --noEmit, strict
 npm run build        # bundle prod (vérifie pas de regression de size)
 npm run lint         # eslint
@@ -446,14 +456,15 @@ npm run knip         # détecter dead code
 npx tsx scripts/check-contrast.ts  # audit WCAG AA contrast
 ```
 
-### Workflow Git
-1. `git checkout main && git pull origin main`
-2. `git checkout -b claude/<task-name>`
-3. Code + tests + commit
-4. `git push -u origin claude/<task-name>`
-5. Créer PR DRAFT via `mcp__github__create_pull_request` (base `main`, draft `true`)
-6. Attendre review/merge de l'user
-7. Ne PAS push à `main` directement, ne PAS merger soi-même
+### Workflow Git (cycle AUTONOME — détail dans `CLAUDE.md` § Workflow)
+1. À la reprise : `git fetch origin main && git merge --ff-only origin/main` (le clone local peut être
+   TRÈS en retard — vu 146 commits le 2026-06-15).
+2. `git checkout -b claude/<slug>` depuis `main`.
+3. Code + tests ; commit (le hook `commit-gate` relance typecheck+test+build si des `.ts/.tsx` sont stagés).
+4. `git push -u origin claude/<slug>` (le hook `learn-on-push` rappelle « leçon → CLAUDE.md ? »).
+5. `gh pr create` (ready) → `gh pr merge --auto --squash` : GitHub merge seul dès la CI verte.
+6. Au point de contrôle : vérifier `merged`, puis `git checkout main` + ff + `git branch -D <slug>` (squash ⇒ `-D`).
+7. **CLAUDE.md s'améliore à chaque push** : capturer la leçon dans la MÊME PR.
 
 ### Onglets actifs (Alt+1..9)
 

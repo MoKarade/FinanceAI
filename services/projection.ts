@@ -1216,7 +1216,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // touche que reer/nonReg/taxCurrentYear/accRetraitsReerYear — hors ctx, vérifié).
         const cashflowCtxBase = {
             targetEF, criticalThreshold, isRetired, strategy,
-            m, loopYear, enableMonteCarlo, activeUsersCount,
+            m, loopYear, enableMonteCarlo, activeUsersCount, survivorMode,
             grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
             incomeRetirement, accRentesYear, hasFuturePurchase, hasPurchasedPrimary,
             contributionOrder: overrides.contributionOrder, debtFirst: overrides.debtFirst,

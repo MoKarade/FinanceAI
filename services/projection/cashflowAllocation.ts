@@ -77,6 +77,8 @@ export interface CashflowCtx {
     loopYear: number;
     enableMonteCarlo: boolean;
     activeUsersCount: number;
+    /** FA-10 — décès modélisé : le survivant est 1 contribuable (seuils fiscaux ×1, salaire du défunt = 0). Défaut false. */
+    survivorMode?: boolean;
     grossMarcBaseAnnual: number;
     grossAnnaBaseAnnual: number;
     simSalaryGrowth: number;
@@ -119,7 +121,7 @@ export function processCashflowAllocation(
 ): void {
     const {
         monthlyCashflow, targetEF, criticalThreshold, isRetired, strategy,
-        m, loopYear, enableMonteCarlo, activeUsersCount,
+        m, loopYear, enableMonteCarlo, activeUsersCount, survivorMode = false,
         grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
         incomeRetirement, accRentesYear, hasFuturePurchase, hasPurchasedPrimary,
         contributionOrder, debtFirst,
@@ -130,6 +132,10 @@ export function processCashflowAllocation(
     // strategy === 'DEBT_FIRST' ; `reerFirstContrib` remplace la dérivation de
     // l'ordre de cotisation depuis l'ordre de retrait.
     const debtFirstActive = debtFirst ?? (strategy === 'DEBT_FIRST');
+    // FA-10 — survivant = 1 contribuable : seuils fiscaux individuels (pas ×2 du ménage),
+    // cohérent avec taxFilers (taxDecember) et oasBeneficiaries (clawback PSV). Le salaire du
+    // défunt (grossAnna par convention du moteur) est exclu des revenus de la cascade.
+    const liveFilers = survivorMode ? 1 : activeUsersCount;
 
     if (monthlyCashflow < 0) {
         // ── SHORTFALL ──────────────────────────────────────────────────
@@ -157,15 +163,15 @@ export function processCashflowAllocation(
         if (shortfall > 0) {
             const currentAnnualGrossTotal = isRetired
                 ? ((incomeRetirement * 12) + state.accRetraitsReerYear + accRentesYear)
-                : ((grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, Math.floor(m / 12)) + state.accRetraitsReerYear);
+                : ((grossMarcBaseAnnual + (survivorMode ? 0 : grossAnnaBaseAnnual)) * Math.pow(1 + simSalaryGrowth / 100, Math.floor(m / 12)) + state.accRetraitsReerYear);
 
             let runningGross = currentAnnualGrossTotal;
-            const pbmaThreshold = PBMA_THRESHOLD_PER_USER * activeUsersCount;
-            const bracket1Top = SAFE_REER_BRACKET_TOP_PER_USER * activeUsersCount;
+            const pbmaThreshold = PBMA_THRESHOLD_PER_USER * liveFilers;
+            const bracket1Top = SAFE_REER_BRACKET_TOP_PER_USER * liveFilers;
             // OAS clawback ne s'applique qu'aux 65+. On le proxy par isRetired puisque
             // l'âge n'est pas dans le contexte; les retraités < 65 ne reçoivent pas PSV
             // donc le cap est sans effet pour eux (revenus typiquement < 93k).
-            const oasCap = isRetired ? OAS_CLAWBACK_THRESHOLD_2026 * activeUsersCount : Infinity;
+            const oasCap = isRetired ? OAS_CLAWBACK_THRESHOLD_2026 * liveFilers : Infinity;
 
             // Helper local: cap-aware REER draw. Mute state, retourne brut tiré.
             const drawReer = (capRoomGross: number, label: string): number => {
@@ -314,8 +320,8 @@ export function processCashflowAllocation(
 
         if (!isRetired) {
             const yearsElapsedForMarg = Math.floor(m / 12);
-            const estAnnualGross = (grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, yearsElapsedForMarg);
-            const marginal = calculateFiscalReport(estAnnualGross / activeUsersCount, 0, 0, loopYear, enableMonteCarlo).marginalRate;
+            const estAnnualGross = (grossMarcBaseAnnual + (survivorMode ? 0 : grossAnnaBaseAnnual)) * Math.pow(1 + simSalaryGrowth / 100, yearsElapsedForMarg);
+            const marginal = calculateFiscalReport(estAnnualGross / liveFilers, 0, 0, loopYear, enableMonteCarlo).marginalRate;
 
             // Ordre de cotisation : override explicite sinon dérivé de l'enum (REER
             // d'abord si PRIO_REER, ou si AUTO_MARGINAL à taux marginal élevé ≥ 40 %).

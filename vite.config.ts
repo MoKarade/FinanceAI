@@ -53,14 +53,18 @@ export default defineConfig(({ mode }) => {
         // nativement modulepreload, le polyfill est inutile pour notre cible.
         modulePreload: { polyfill: false },
         rollupOptions: {
+          // Vite 8 = Rolldown : `external` est une option de TOP-NIVEAU (plus sous `output`),
+          // et `manualChunks` doit être une FONCTION (la forme objet n'est plus supportée).
+          external: ['html2canvas'],
           output: {
-            manualChunks: {
-              'react-vendor': ['react', 'react-dom'],
-              'recharts': ['recharts'],
-              'ai-vendor': ['@anthropic-ai/sdk'],
-              'pdf-vendor': ['jspdf'],
+            manualChunks: (id) => {
+              if (!id.includes('node_modules/')) return undefined;
+              if (/[\\/]node_modules[\\/](react|react-dom|scheduler|use-sync-external-store)[\\/]/.test(id)) return 'react-vendor';
+              if (/[\\/]node_modules[\\/](recharts|victory-vendor|d3-[^/]+|internmap)[\\/]/.test(id)) return 'recharts';
+              if (id.includes('node_modules/@anthropic-ai/')) return 'ai-vendor';
+              if (id.includes('node_modules/jspdf/')) return 'pdf-vendor';
+              return undefined;
             },
-            external: ['html2canvas'],
           },
         },
       },

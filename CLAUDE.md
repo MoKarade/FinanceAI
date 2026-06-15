@@ -149,7 +149,7 @@ Seule limite : la PERTINENCE. Lancer tous les agents qui s'appliquent ; aucun ho
 - Tests pour TOUTE nouvelle logique. Priorité `services/projection/`. Ne pas baisser la couverture.
 
 ## Stack
-React 19.2 + Vite 6 + TS 5.8 strict + Tailwind 3 · Zustand 5 (persist+partialize, schema v7,
+React 19.2 + Vite 8 (Rolldown) + TS 5.8 strict + Tailwind 3 · Zustand 5 (persist+partialize, schema v7,
 migrations v1→v7) · Zod 3 · Recharts 3 (lazy) · Vitest 4 + Testing Library + axe-core ·
 @anthropic-ai/sdk (Sonnet 4.6 + Haiku 4.5) · @modelcontextprotocol/sdk · Finnhub + CoinGecko ·
 i18next · jspdf. Prod : **Vercel** (`vercel.json` : headers sécurité + cache + SPA).

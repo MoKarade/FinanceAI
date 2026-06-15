@@ -179,8 +179,10 @@ describe('computeRetirementIncome — report / survivant / immigrant / bonus 75+
 });
 
 describe('computeRetirementIncome — décomposition PAR conjoint (A1)', () => {
-    const mkEarner = (gross: number): User =>
-        ({ ...baseUser, grossSalary: gross } as User);
+    // gross = salaire ANNUEL pour la lisibilité ; le store stocke du MENSUEL (utils/salary.ts) et le
+    // moteur annualise (FISC-RRQ-UNIT) → on divise par 12 pour refléter la convention réelle.
+    const mkEarner = (annualGross: number): User =>
+        ({ ...baseUser, grossSalary: annualGross / 12 } as User);
 
     it('solo : perUser a 1 entrée et perUser[0].total == total famille', () => {
         const r = computeRetirementIncome(baseCtx, baseGoal, [mkEarner(50000)]);
@@ -237,11 +239,24 @@ describe('computeRetirementIncome — ratio RRQ indexé (B-AUDIT-4)', () => {
         // earnings/MGA doit rester stable → la RRQ réelle (hors inflation) identique.
         // Avant le fix : currentGross non indexé vs MGA indexée → ratio rétrécit → RRQ
         // sous-évaluée pour un départ lointain.
-        const earner = { ...baseUser, grossSalary: 50000 } as User;
+        const earner = { ...baseUser, grossSalary: 50000 / 12 } as User; // 50k$/an → mensuel (store)
         const now = computeRetirementIncome({ ...baseCtx, age: 65, m: 0, simInflation: 2 }, baseGoal, [earner]);
         const later = computeRetirementIncome({ ...baseCtx, age: 65, m: 240, simInflation: 2 }, baseGoal, [earner]);
         const deflate = (rrq: number, m: number) => rrq / Math.pow(1.02, m / 12);
         expect(deflate(later.rrq, 240)).toBeCloseTo(deflate(now.rrq, 0), 0);
+    });
+});
+
+describe('FISC-RRQ-UNIT — grossSalary MENSUEL annualisé pour le ratio earnings/MGA', () => {
+    it('un haut salarié (6000$/mois = 72k$/an) a une RRQ SUPÉRIEURE au profil fallback — pas ~12× inférieure', () => {
+        // baseUser n'a pas de grossSalary → fallback baseGrossAnnual=60000 (annuel) → ratio ~0,80.
+        // highEarner gagne 6000$/MOIS = 72 000$/an (> 60k, proche MGA) → ratio attendu ~0,96 > 0,80.
+        // AVANT le fix : grossSalary 6000 (mensuel) comparé à la MGA ANNUELLE (~74 600) → ratio ~0,08
+        // → RRQ aberrante, INFÉRIEURE au profil fallback. Ce test discrimine le bug d'unité.
+        const highEarner = { ...baseUser, grossSalary: 6000 } as User; // 72k$/an
+        const base = computeRetirementIncome(baseCtx, baseGoal, [baseUser]);
+        const high = computeRetirementIncome(baseCtx, baseGoal, [highEarner]);
+        expect(high.rrq).toBeGreaterThan(base.rrq);
     });
 });
 
@@ -255,7 +270,7 @@ describe('FA-3 (audit 2026-06-09) : SRG exposé (gis) + test de réduction sur l
         rrqEstimateMonthly: 300,
         psvEstimateMonthly: 700,
     };
-    const lowEarner = { ...baseUser, grossSalary: 20000 } as User;
+    const lowEarner = { ...baseUser, grossSalary: 20000 / 12 } as User; // 20k$/an → mensuel (store)
 
     it('FA-3a — breakdown.gis exposé, > 0 pour un bas revenu 65+, et INCLUS dans psv/total (revenu cash)', () => {
         const r = computeRetirementIncome(baseCtx, lowIncomeGoal, [lowEarner]);

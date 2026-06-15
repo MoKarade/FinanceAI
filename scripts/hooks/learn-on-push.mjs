@@ -12,8 +12,10 @@ try { cmd = (JSON.parse(readFileSync(0, 'utf8')).tool_input?.command) || ''; } c
 // (`git commit -m "...git push..."`) ne doit PAS déclencher le rappel.
 const scan = cmd.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '""');
 
-// Vrai `git push` uniquement (pas à travers un séparateur de commande).
-if (!/\bgit\b[^|&;]*\bpush\b/.test(scan)) process.exit(0);
+// `push` doit être la SOUS-COMMANDE git (juste après `git` + d'éventuelles options
+// globales), PAS « push » apparaissant n'importe où — sinon faux positif sur un nom
+// de branche/chemin en -push (ex. `git branch -D claude/hook-learn-on-push`).
+if (!/(^|\s)git\s+(?:-[cC]\s+\S+\s+|-{1,2}\S+\s+)*push(?:\s|$)/.test(scan)) process.exit(0);
 
 const reminder =
   'Rappel (règle « CLAUDE.md s\'améliore à chaque push ») : AVANT ce push, qu\'as-tu appris ' +

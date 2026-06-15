@@ -185,6 +185,8 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   - `learn-on-push` → sur `git push` : RAPPEL non-bloquant « leçon apprise → delta CLAUDE.md ? »
     (applique « CLAUDE.md s'améliore à chaque push »). Pipe-tester un hook stdin : **Git Bash**
     (`echo '{...}' | node …`), PAS PowerShell 5.1 qui ne livre pas le stdin à un exe natif.
+    Matcher `push` comme SOUS-commande git (après `git` + options globales), pas « push »
+    n'importe où — sinon faux positif sur un nom de branche en -push (révélé en live par le hook).
 - Avant de merger, lancer `/review-all` (panel d'agents), puis `commit-gate` fait la vérif déterministe.
 - ⚠️ Les hooks tournent AUSSI en exécution cloud (Claude Code web) dès que `.claude/settings.json`
   est committé. `commit-gate` relance la suite complète **uniquement si des `.ts/.tsx` sont stagés**

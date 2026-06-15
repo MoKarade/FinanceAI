@@ -24,6 +24,56 @@
 
 ---
 
+## 🔎 Review multi-agents 2026-06-15 — risques confirmés (27 : 8 HIGH / 11 MEDIUM / 8 LOW)
+> Audit complet (12 agents specialises, emphase financiere). Les **HIGH financiers #1-#6 sont en
+> correction cette session**. Severite en tete de chaque item.
+
+### Fiscal / moteur (money-critical)
+- [ ] **[FISC-RRQ-UNIT]** 🔧 HIGH — `retirementIncome.ts:151` : `grossSalary` (mensuel) divise par la MGA annuelle → RRQ ~12x trop basse des qu'un salaire est saisi. Annualiser ×12 + test discriminant. ⏳ EN COURS.
+- [ ] **[FISC-MARGINAL-YEAR]** 🔧 HIGH — `tax.ts:761` : `getMarginalRate(netTaxable)` sans `year` → bracket-creep affiche + decision REER-first qui bascule trop tot. Propager `year` ; verifier `taxJanuary.ts:203` (revenu deflate → TAX_BASE_YEAR).
+- [ ] **[FISC-WELCOME-UNIFY]** 🔧 HIGH — taxe de bienvenue : `helpers.ts:80` (MTL 4%) ≠ `realEstate.ts:88` (provincial 2%). L'UI affiche ≠ ce que le moteur ponctionne (achat MTL > 538 500$). Unifier 1 fonction par municipalite + transcrire MTL dans FISCAL_REFERENCE.
+- [ ] **[FISC-SURVIVOR-DRAWDOWN]** 🔧 HIGH — `cashflowAllocation.ts:163` (+ `meltdownReer.ts:57`) : mode survivant garde des seuils fiscaux DOUBLES → retraits REER a taux 0% jusqu'au double du palier, clawback PSV reellement declenche. Propager `survivorMode`, `effectiveTaxFilers=1`, zeroïser le salaire du defunt.
+- [ ] **[FISC-ACB-RENO]** 🔧 HIGH — `projection.ts:152` : ACB locatif = `g.price` fige, ignore `initialRenovations`/`yearlyRenovations` → gain en capital surevalue (vente ET deces). Accumuler les renos capitalisees dans `cost`.
+- [ ] **[FISC-LATENT-RE]** 🔧 HIGH — `latentTax.ts:61` : impot latent immobilier absent du bilan (REER + non-enreg + crypto seulement) alors que la succession le modelise. Ajouter `realEstateLatentGain` (×50%).
+- [ ] **[FISC-TAXDEC-INCR]** 🔧 MEDIUM — `taxDecember.ts:661-729` : credit d'age omis sur incrément gains/div, gains+dividendes empiles separement (pas en cascade), FSS sur revenu moyen du couple au lieu de l'individuel.
+- [ ] **[FISC-GOVPENSION-SCALE]** 🔧 MEDIUM — `retirementIncome.ts:209` : `governmentPension` (×1) vs `rrqEstimateMonthly` (×N) → couple sur le champ agrege obtient ~½ de sa RRQ+PSV.
+- [ ] **[FISC-RRQ-PRORATA]** 🔧 MEDIUM — `retirementIncome.ts:171` : prorata residence RRQ derive de `users[0]` seul puis applique a la RRQ familiale (couples immigrants a arrivees inegales). Calculer par conjoint.
+- [ ] **[FISC-INFLATION-COUPLING]** 🔧 MEDIUM — `tax.ts:673` : indexation paliers `Math.pow(1.02,...)` codee en dur vs `simInflation` variable utilise pour deflater → casse en scenario inflation ≠ 2%. Indexer sur `simInflation`.
+- [ ] **[FISC-SURVIVOR-CAP]** 🔧 LOW — `retirementIncome.ts:216` : rente de survivant non plafonnee au max RRQ annuel (1 507,65$/mois 2026).
+- [ ] **[FISC-RAP-REPAY]** 🔧 LOW — `realEstateMonth.ts:406` : remboursement RAP manque ni re-impose (ligne 12900) ni porte en passif successoral.
+- [ ] **[FISC-CHILDCARE]** 🔧 LOW — `childrenReee.ts:200` : credit garderie 30%/400$ en dur, non source, applique sur le total au lieu de l'excedent. Sourcer (T778 / RL-24) ou etiqueter hypothese.
+- [ ] **[FISC-REEE-CONST]** 🔧 LOW — `childrenReee.ts:212-262` : REEE/SCEE/IQEE + clawback allocations en dur, absents de FISCAL_REFERENCE.
+- [ ] **[GUARD-NAN]** 🔧 LOW — `tax.ts:699` : `getMarginalRate` fallback silencieux qui masquerait un income NaN/Infinity. Guard `Number.isFinite`.
+
+### Accessibilite
+- [ ] **[A11Y-D6-SR-2]** 🔧 HIGH — ~50 `privacy-blur` bruts (`ProjectionTooltip`, `ActionPlanDrilldown`, +15) : le mode prive est lu integralement par les lecteurs d'ecran (masquage CSS only). Migrer vers `<PrivateAmount>`/`<PrivateBlock>`.
+- [ ] **[A11Y-CHARTS]** 🔧 HIGH — 14 graphes recharts sans alternative textuelle (WCAG 1.1.1 A). Composant `<ChartDataTable>` sr-only.
+- [ ] **[A11Y-INK500]** 🔧 LOW — `ink-500` (#6a7689, reserve disabled) sur ~193 contenus actifs (echec AA normal). Passer a `ink-400`.
+
+### Echecs silencieux
+- [ ] **[SF-PDF]** 🔧 MEDIUM — `pdfReport.ts:802` : echec jsPDF avale en `console.error` (invisible en prod). → `logError`.
+- [ ] **[SF-RESIDUS]** 🔧 LOW — `syncOrchestrator.ts:126,345`, `StockComparisonModal.tsx:41`, `FutureProjection.tsx:464`, `TaxCenter.tsx:89` : echecs avales en `console.*` (non money-critical). → `logError`.
+
+### Tests / dette technique
+- [ ] **[TEST-PROJ-MODULES]** 🔧 MEDIUM — 3 sous-modules projection money-critical sans test direct : `assetLocation.ts`, `monthlyOutput.ts`, `strategyConfig.ts`.
+- [ ] **[DETTE-PDF-FORMAT]** 🔧 MEDIUM — `pdfReport.ts:229` : `formatCAD` reimplemente localement (derive d'arrondi possible vs UI). Importer `utils/format.ts`.
+- [ ] **[DETTE-RE-SALE]** 🔧 LOW — `monthlyEvents.ts:70` : vente immo pilotee par sous-chaine « vente » du nom + premier immeuble hypotheque (peut vendre la RP exempte au lieu du locatif). Lier a un `propertyId`.
+- [ ] **[DETTE-DEADCODE]** 🔧 LOW — `runBuyVsRent` (`realEstate.ts:639`) jamais appele hors tests ; verifier aussi `clearCredentials`, facade `getProfile`, `buildTestFixtures`.
+- [ ] **[DETTE-GODFILES]** ⏳ — decouper par barrel : `utils/tax.ts`, `syncOrchestrator.ts`, `Investments.tsx`, `Budget.tsx`, `FutureProjection.tsx`.
+- [ ] **[DETTE-UI-PRIMITIVES]** ⏳ — `components/ui/Input|Select|Field` sur les tokens existants ; migrer 16 fichiers a `<input>` inline.
+
+### Performance
+- [ ] **[PERF-BOOT]** 🔧 — `App.tsx:401` : `hydrateAssets` `sleep(2500)` sequentiel par actif → pool concurrent borne.
+- [ ] **[PERF-WITHHOLDING]** 🔧 — `monthlyCalcs.ts:80` : memoïser `computeMonthlyWithholding` par cle d'invariance.
+- [ ] **[PERF-BUNDLE]** 🔧 — 3 `INEFFECTIVE_DYNAMIC_IMPORT` (`claude.ts`, `backupAuto.ts`, `lockedProjectionStore`) → tout-statique ou tout-dynamique par module.
+- [ ] **[PERF-MISSINGDATA]** 🔧 — `MissingDataBanner.tsx:209` : selecteur atomique (`useShallow`) pour eviter les re-renders pendant le calcul MC.
+
+### Securite (deja connu / Marc)
+- [ ] **[SECU-O4]** 👤 — avant hebergement multi-utilisateurs : proxy backend pour la cle Anthropic (retirer `dangerouslyAllowBrowser`) + Finnhub en header serveur. Cf `A_FAIRE_MOI` O4.
+- [ ] **[BACKUP-PASSPHRASE]** 🔧 LOW — `BackupPanel.tsx:120,286,336` : aligner le seuil d'import sur `MIN_PASSPHRASE_LENGTH` (12).
+
+---
+
 ## 🧱 BRIEF MARC 2026-06-10 — plan séquencé en 4 phases (PRIORITAIRE)
 > Règles d'exécution (Marc) : **plan-first OBLIGATOIRE** sur les Phases 2, 3 et CHAQUE onglet de la
 > Phase 4 (plan court : UI proposée, fichiers touchés, données nécessaires → validation Marc → code).

@@ -148,7 +148,10 @@ export function computeRetirementIncome(
         // (rrqMpeProjected). Sinon le ratio currentGross/MGA rétrécit artificiellement avec
         // les années → RRQ sous-évaluée pour les départs lointains. Hypothèse standard : le
         // salaire suit la croissance de la MGA sur la carrière → ratio earnings/MGA stable.
-        const currentGrossUser = (u.grossSalary || (baseGrossAnnual / activeUsersCount))
+        // FISC-RRQ-UNIT — grossSalary est MENSUEL (convention canonique du store, cf utils/salary.ts) ;
+        // baseGrossAnnual/activeUsersCount est ANNUEL. On annualise grossSalary (×12) pour que le ratio
+        // earnings/MGA (rrqMpeProjected, annuel) ait la bonne échelle — sinon RRQ ~12× trop basse.
+        const currentGrossUser = (u.grossSalary ? u.grossSalary * 12 : (baseGrossAnnual / activeUsersCount))
             * Math.pow(1 + (simInflation + 0.5) / 100, yearsElapsed);
         const rrqRatioUser = Math.min(1.0, currentGrossUser / rrqMpeProjected);
         perUserRrqRatio.push(rrqRatioUser);

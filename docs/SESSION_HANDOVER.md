@@ -28,6 +28,17 @@
 > plus bas sont **PÉRIMÉES** (la ruleset `main` exige les 2 checks, ça marche). Stack : **Vite 8 (Rolldown)**,
 > schema store **v7**.
 >
+> **Session 2026-06-15/16 — Review multi-agents + LOT HIGH FINANCIER BOUCLÉ (#295→#300)** : audit
+> complet (12 agents, emphase financière) → 32 findings consignés au `BACKLOG.md` (§ « Review multi-agents
+> 2026-06-15 »). **Lot HIGH financier #1-#6 entièrement traité** : 4 corrigés — #296 [FISC-RRQ-UNIT] (RRQ
+> ×12, grossSalary mensuel÷MGA annuelle), #297 [FISC-SURVIVOR-DRAWDOWN] (survivant = 1 contribuable dans
+> la cascade), #298 [FISC-LATENT-RE] (gain locatif latent au bilan successoral), #300 [FISC-WELCOME-UNIFY]
+> (taxe de bienvenue UNIFIÉE par municipalité, source unique moteur+UI, repli Montréal, fin du bug C9) — et
+> **2 FAUX POSITIFS écartés après vérif** : #2 FISC-MARGINAL-YEAR (revenu déjà déflaté), #5 FISC-ACB-RENO
+> (rénos symétriques cost/value). ⚠️ Leçon clé ajoutée à CLAUDE.md : **« findings de review = hypothèses »**
+> (33 % de faux positifs sur du code money-critical → VÉRIFIER avant de coder un fix). Restent MEDIUM/LOW au
+> BACKLOG (FISC-TAXDEC-INCR, FISC-GOVPENSION-SCALE, FISC-RRQ-PRORATA, a11y…). Tous gates verts, 2048 tests.
+>
 > **▶ PHASE 2 (clé de voûte) TERMINÉE — 3/3 PR** (#240 #241 #242, détail BACKLOG) · **▶ PHASE 3 TERMINÉE
 > (a/b/d) #244** : onglet PROFIL unifié (tout le setup user : identité, salaires, fiscal, répartition,
 > détaillé, retraite via RetirementSettingsCard + RetirementIncomeCard extrait, enfants) + SetupHub en tête

@@ -76,12 +76,34 @@
   `rawNetWorth`/`prevNW`/succession soustraient activeDebts+smithDebt via source unique
   `computeRawNetWorth` ; `diffNW` exact ; garde NaN dette ; 9 invariants de conservation +
   checklist CLAUDE.md. (Cause racine = débit one-time réno/véhicule > actifs → dette invisible.)
-- [ ] **[FISC-REER-WHT-DOUBLE]** 🔧 CRITICAL — **le « 50 000 au fisc » de Marc**. Double-comptage de la
-  retenue à la source REER (`services/projection/taxApril.ts:49-56` + `cashflowAllocation.ts:~186`) : le
-  NET est crédité au retrait ET la retenue est re-payée en avril → sur-imposition = la retenue entière,
-  prélevée 2×. Sur un gros retrait/meltdown/sauvetage-découvert (~200 k$ brut), des dizaines de k$.
-  Fix : créditer le BRUT au liquide au retrait (retenue = acompte payé via `.reer` en avril), comme la
-  convention FERR. ⚠️ Money-critical : test discriminant + re-baseline + panel `fiscal-accuracy`.
+- [x] **[FISC-REER-WHT-DOUBLE]** ✅ CRITICAL livré (2026-06-16) — **le « 50 000 au fisc » de Marc, CONFIRMÉ
+  numériquement** : impôt cumulé d'un couple retraité (600 k$ REER) **266,6 k$ → 215,1 k$ sur 11 ans (−51 k$)**.
+  Cause RÉELLE (≠ hypothèse du finding « net crédité ») : la retenue quittait le patrimoine au RETRAIT — le
+  BRUT sort du REER et le crédit net est effacé par l'invariant **CF-2** de `cashflowAllocation.ts` — ET était
+  re-débitée en avril via `.reer` → fuite ≈ retenue/mois (prouvée empiriquement : résiduel de conservation
+  négatif chaque mois sur un retraité qui décaisse). Fix = retrait **NW-NEUTRE** : la retenue (acompte d'impôt)
+  est CONSERVÉE au liquide jusqu'au règlement d'avril (`reerWithholdingPrepaid` réinjecté en CF-2 ; meltdown :
+  `liquid += withholding`). FERR/immo créditaient déjà le brut = corrects (référence de cohérence). Garde
+  permanente : **INV-10/INV-11** (`projection.moneyConservation.test.ts`) — conservation décaissement + meltdown,
+  **DISCRIMINANTS prouvés** (échouent sur le code d'avant via `git stash`). Re-baseline `projection.survivor.test.ts`
+  (le bug gonflait l'impôt du couple > celui du survivant). Panel : projection-validator + fiscal-accuracy (fix
+  fiscalement CORRECT, palier 0 % désormais remboursé) + code-reviewer + silent-failure-hunter. ⚠️ LEÇON : le
+  1er fix proposé (« shortfall -= brut ») NE conservait PAS (prouvé algébriquement + empiriquement) → c'est la
+  CONSERVATION EMPIRIQUE (exécuter le moteur, mesurer ΔNW résiduel) qui a donné le vrai fix, pas l'analyse.
+- [ ] **[FISC-BROKE-LIQUID-FLOOR]** 🔧 MEDIUM (découvert 2026-06-16 pendant FISC-REER-WHT-DOUBLE, HORS périmètre) —
+  quand TOUS les actifs de décaissement sont épuisés (REER/CELI/nonReg/crypto = 0) mais qu'un coussin de liquidité
+  protégé par `criticalThreshold` subsiste, un shortfall non couvert (`cashflowAllocation.ts:144-152`, branche `else`
+  qui ne puise pas sous le seuil critique) ne puise PAS le coussin ET n'est PAS porté en `liquidDebt` (le rescue
+  `projection.ts:~1309` ne s'arme que si liquide < 0). La dépense « s'évapore » : ΔNW ne baisse pas → résiduel de
+  conservation = +shortfall/mois (mesuré ~+3,9 k$/mois sur un retraité à sec, après épuisement du REER). Peut-être
+  un FLOOR voulu (éviter une spirale absurde une fois ruiné) MAIS viole la conservation. Triage Marc : (a) puiser le
+  coussin en dernier recours, (b) porter l'excédent en `liquidDebt`, ou (c) documenter le floor. Chemin DISTINCT et
+  préexistant (le fix REER y est inerte ; INV-10/INV-11 bornent donc la garde à la phase REER>0 « solvable »).
+- [ ] **[GUARD-NETWORTH-NAN]** 🔧 LOW (silent-failure-hunter 2026-06-16, hors périmètre FISC-REER-WHT-DOUBLE) —
+  `services/projection/netWorth.ts:33` `computeRawNetWorth` n'a AUCUNE garde `Number.isFinite` : un terme non
+  fini (`liquid`/`reer` NaN) se propage au patrimoine affiché SANS `logError` (graphe vide, sans trace). Dette
+  PRÉEXISTANTE (le fix REER ne l'aggrave pas ; décembre garde déjà `.reer` via `Number.isFinite`). Fix : garder
+  chaque terme (rabattre sur 0 + `logError(source:'projection')`), miroir de la garde NaN dette de MONEY-PHANTOM.
 - [ ] **[FISC-ESTATE-PENSION-NPV]** 🔧 MEDIUM — NPV des rentes publiques (RRQ/PSV) au bilan successoral :
   montant MENSUEL × facteur d'annuité ANNUEL sans ×12 (`estateCalculation.ts:177-187`) → composante
   sous-évaluée ~12× (ex. -370 k$ sur `estateNetWorth` pour un profil 1200 $/mois). N'affecte PAS le NW

@@ -157,6 +157,14 @@ export function processCashflowAllocation(
         // ce niveau en fin de branche (sinon les ventes gonflaient le liquide → le patrimoine ne
         // baissait pas du plein déficit ; le cas AMPLE, lui, déduit déjà tout le déficit du liquide).
         const liquidAfterDirectSpend = state.liquid;
+        // FISC-REER-WHT-DOUBLE (2026-06-16) : la retenue prélevée par la cascade `drawReer` ci-dessous
+        // (retraits du compte REER — ou FERR après 71 ans, même solde `state.reer`) est un ACOMPTE d'impôt
+        // payé en avril via le bucket .reer (taxApril débite revenu+reer). Elle doit donc RESTER dans le
+        // patrimoine jusque-là, comme la convention BRUT-au-liquide de FERR/immo (le minimum FERR obligatoire
+        // est, lui, déjà crédité BRUT au liquide en janvier — chemin séparé, hors de cette cascade). Sinon le
+        // retrait sort le BRUT du REER tandis que le net est effacé par CF-2 → la retenue quitte le NW au
+        // retrait ET est re-débitée en avril = double-comptage (fuite ≈ retenue/mois, vérifiée empiriquement).
+        let reerWithholdingPrepaid = 0;
 
         if (shortfall > 0) state.shortfallMonths++;
 
@@ -188,6 +196,7 @@ export function processCashflowAllocation(
                 state.retraitReerMois += actualGross;
                 state.withdrawalREER += actualGross;
                 state.taxCurrentYearReer += actualWithholding;
+                reerWithholdingPrepaid += actualWithholding; // acompte conservé au liquide (cf CF-2)
                 runningGross += actualGross;
                 shortfall -= actualNet;
                 state.flowEventLogs.push(`🏦 ↳ Retrait REER (${label}) : +${Math.round(actualGross).toLocaleString('fr-CA')} $ brut → +${Math.round(actualNet).toLocaleString('fr-CA')} $ net après impôt`);
@@ -268,9 +277,12 @@ export function processCashflowAllocation(
         }
 
         // CF-2 : les produits de vente d'actifs ci-dessus ont financé la dépense (déficit) → ils
-        // ne s'accumulent pas dans le liquide. On rétablit le niveau post-dépense directe. (Toute
-        // retenue REER reste suivie dans taxCurrentYearReer et est réconciliée en décembre.)
-        state.liquid = liquidAfterDirectSpend;
+        // ne s'accumulent pas dans le liquide. On rétablit le niveau post-dépense directe. EXCEPTION
+        // (FISC-REER-WHT-DOUBLE) : on RÉINJECTE la retenue REER/FERR prélevée — c'est un acompte
+        // d'impôt qui reste au patrimoine jusqu'au règlement d'avril (.reer), pas un produit de vente
+        // consommé. Le retrait devient ainsi NW-neutre (seul le net finance la dépense ; la retenue
+        // n'est débitée qu'UNE fois, en avril).
+        state.liquid = liquidAfterDirectSpend + reerWithholdingPrepaid;
     } else {
         // ── EXCESS ─────────────────────────────────────────────────────
         let excess = monthlyCashflow;

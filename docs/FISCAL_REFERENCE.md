@@ -428,6 +428,20 @@ Le facteur 71 ans (5,28 %) ne s'applique qu'à une conversion **volontaire préc
 | 78 | 6,36 % | 86 | 8,99 % | 94 | 20,00 % |
 > 95 ans et + : plafond **20 %** (fallback). Source : ARC, facteurs FERR prescrits (post-2015).
 
+### REEE — SCEE / IQEE (`services/projection/childrenReee.ts`) — FISC-REEE-CONST (2026-06-16)
+Le moteur cotise au REEE pour maximiser les subventions et applique le plafond à vie. Valeurs (vérifiées
+exactes par `fiscal-accuracy`) :
+| Élément | Valeur | Source |
+|---|---|---|
+| **SCEE** (Subvention canadienne pour l'épargne-études) | **20 %** de la cotisation, max **500 $/an** (1 000 $/an en rattrapage), **7 200 $ à vie** | ARC |
+| **IQEE** (Incitatif québécois à l'épargne-études) | **10 %** de la cotisation, max **250 $/an** (500 $/an en rattrapage), **3 600 $ à vie** | Revenu Québec |
+| **Plafond REEE** (`REEE_LIFETIME_LIMIT_PER_BENEFICIARY`) | **50 000 $/bénéficiaire à vie** | ARC §6.9 / F13 |
+| Cotisation visée | **2 500 $/an** (5 000 $/an en mode rattrapage tant que SCEE < max théorique) | optimisation subvention pleine |
+> ⚠️ Reste une dette LOW : ces valeurs sont des **littéraux en dur** dans `childrenReee.ts` (`0.20`,
+> `0.10`, `500/250`, `7200/3600`, `50000`) — extraire en constantes nommées si on y retouche (non urgent).
+> Le **clawback d'allocation** (`householdGross > 150 000 $` → dégressif sur 100 000 $) est une heuristique
+> de modèle (PAS un barème ARC/RQ officiel d'allocation), à raffiner si besoin.
+
 ---
 
 ## 8. Immobilier (SCHL / OSFI / mutations / TPS-TVQ neuf) — `services/realEstate.ts`
@@ -526,8 +540,20 @@ choisir). Calcul cumulatif par tranche (style impôt).
 - **BPA fédéral dégressif** haut revenu (> ~177 k$) : non modélisé (on retient le palier max).
 - **Indexation 2027+** : repose sur ~+2 %/an estimé tant que les montants officiels ne sont
   pas publiés (`getIndexedBracketsForYear`).
-- **Aller-retour réel↔nominal** des paliers : écart connu vs ARC à forte inflation (ITEM 2a,
-  rejeté après analyse numérique — cf BACKLOG).
+- **Aller-retour réel↔nominal** des paliers : écart connu vs ARC à forte inflation (ITEM 2a =
+  **FISC-INFLATION-COUPLING**, rejeté après analyse numérique — le « fix » naïf « indexer sur
+  `simInflation` » est PIRE : à 5 %/20 ans, ARC ~29 353 $ vs fix ~7 712 $ vs actuel ~22 313 $. Le vrai
+  correctif = impôt sur revenu NOMINAL (~12 sites, supprime l'aller-retour) → chantier structurel, décision
+  Marc requise — cf BACKLOG).
+- **Frais de garde — modèle SIMPLIFIÉ** (`childrenReee.ts:199-201`, FISC-CHILDCARE) : le moteur applique
+  un facteur de coût résiduel de **30 %** (= aide implicite ~70 %) sur la garde privée > 400 $/mois. C'est
+  une **HEURISTIQUE conservatrice**, PAS le vrai régime (féd = déduction T778 ligne 21400 plafonnée par
+  âge/revenu ; QC = crédit remboursable dégressif ~67-78 %, CPE déjà subventionné exclu). À sourcer/raffiner
+  si on veut la précision réelle — borné et conservateur en l'état.
+- **Remboursement RAP — « toujours honoré »** (`realEstateMonth.ts:405-414`, FISC-RAP-REPAY) : le moteur
+  rembourse le RAP dès que `liquid ≥ versement` ; un versement MANQUÉ est reporté en silence (le vrai régime
+  l'inclurait au revenu imposable ligne 12900) et le solde RAP impayé n'est PAS porté au revenu de la
+  déclaration finale au décès. Limite LOW assumée (impact borné pour les profils qui gardent des liquidités).
 - **Attribution par conjoint** : refactor « soldes REER par conjoint »
   (`docs/REFACTOR_REER_PAR_CONJOINT.md`). Phase 1 = registre REER par conjoint (invariant
   Σ==commun). Phase 2 = retraits REER/FERR taxés PAR CONJOINT (prorata des soldes). **Phase 3 =

@@ -695,9 +695,14 @@ export const firstCombinedBracketTopForYear = (year: number): number => {
 const QC_FEDERAL_ABATEMENT_RATE = 0.165;
 
 export const getMarginalRate = (income: number, year: number = 2026) => {
+    // GUARD-NAN — un income NON FINI (NaN/Infinity, bug amont) ne matche aucun palier (`income <= upTo`
+    // toujours faux) → tombait SILENCIEUSEMENT sur le taux MAX via `|| 0.33`. On le rabat sur 0 (1er
+    // palier) : dégradation PRÉVISIBLE et bornée plutôt qu'un taux marginal plein fantôme. `utils/tax.ts`
+    // reste sans dépendance (pas de logError importé ici) — le repli explicite EST le signal.
+    const safeIncome = Number.isFinite(income) ? income : 0;
     const { fed, qc } = getIndexedBracketsForYear(year);
-    const fedRate = fed.find(b => income <= b.upTo)?.rate || 0.33;
-    const qcRate = qc.find(b => income <= b.upTo)?.rate || 0.2575;
+    const fedRate = fed.find(b => safeIncome <= b.upTo)?.rate || 0.33;
+    const qcRate = qc.find(b => safeIncome <= b.upTo)?.rate || 0.2575;
     // Fédéral effectif au QC = taux fédéral diminué de l'abattement de 16,5 %.
     const effectiveFedRate = fedRate * (1 - QC_FEDERAL_ABATEMENT_RATE);
     return effectiveFedRate + qcRate;

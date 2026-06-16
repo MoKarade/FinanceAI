@@ -7,10 +7,29 @@
 
 ---
 
-## O1 — Auth : sortir de Cloudflare Access
-- [ ] **Cloudflare Access encore EN PLACE** (verrouillé sur l'email de Marc). Cible =
-  bascule sur le **gate Google in-app** (ADR 010) pour ouvrir à d'autres utilisateurs.
-  Claude guide ; la désactivation Cloudflare est une action Marc (dashboard CF).
+## O1 — Auth : RETIRER Cloudflare (procédure complète, demande Marc 2026-06-16)
+> Le remplaçant est **DÉJÀ CODÉ** : gate Google in-app (`LoginGate` + `authGate.ts`) enveloppe l'app
+> (`index.tsx`), **inerte** tant que les 2 variables ci-dessous ne sont pas mises. **Un seul login Google**
+> sert l'app ET la sync Drive. Détail de création OAuth : `docs/GOOGLE_DRIVE_SETUP.md` (recréé).
+>
+> ⚠️ **ORDRE NON négociable** : Cloudflare Access EST l'auth actuelle → activer+valider le gate Google
+> AVANT de retirer Cloudflare, sinon l'app devient PUBLIQUE.
+
+- [ ] **A. Créer le Client OAuth Google** (débloque aussi la sync Drive, O3) — cf `GOOGLE_DRIVE_SETUP.md`.
+- [ ] **B. Activer le gate** : dans Vercel, `VITE_GOOGLE_CLIENT_ID=<id>` + `VITE_GOOGLE_GATE=1` → redéployer.
+- [ ] **C. Valider** (AVANT de toucher CF) : fenêtre privée → « Se connecter avec Google » → app débloquée +
+  données reviennent ; tester `?nogate=1` (anti-lockout) et un reload (pas de re-login intempestif).
+- [ ] **D. Retirer Cloudflare** (seulement si C OK) : Zero Trust → Access → supprimer l'app/policy FinanceAI ;
+  DNS → enregistrement en « DNS only » (nuage GRIS) **ou** migrer vers Vercel DNS.
+- [ ] **E. (optionnel)** couper CF Web Analytics → dire à Claude : il retire `cloudflareinsights` de la CSP
+  (`vercel.json` + `index.html`) — la SEULE empreinte Cloudflare dans le code.
+- **Ce que ça engendre** : tu PERDS l'auth CF (→ gate Google, qui ouvre au multi-user), le WAF/anti-bot/DDoS
+  CF, et CF Web Analytics. Tu GARDES TLS + CDN (Vercel). Bonus : disparition d'un déclencheur du bug
+  « Failed to fetch chunk » (CF Access 302 sur session expirée, PH1-b). **Risque** : plus de WAF/DDoS CF —
+  acceptable en perso/petit groupe ; pour un vrai produit public → backend + rate-limiting (O4/P0-PROXY).
+- **Côté Claude (sur ton GO)** : CSP cleanup (E), durcir le gate (bouton « déconnexion », sélecteur de
+  compte), MAJ docs (CLAUDE.md « Cloudflare en place » → retiré, SESSION_HANDOVER). Claude ne fait RIEN
+  qui expose l'app avant ta confirmation que le gate est validé.
 
 ## O6 — Questions du brief 2026-06-10 (réponses requises, Claude ne devine pas)
 - [ ] **Q2 (Phase 1 / Cloudflare)** : confirmer que le domaine prod passe bien par le proxy
@@ -23,14 +42,8 @@
   la requête du chunk `.js` reçoit un 302 vers la page de login HTML → import échoué même si le
   chunk existe. [Peu probable] cache CF d'un index périmé (cf Q2). Le vrai bug CÔTÉ APP (le seul
   chunk sans filet de retry/reload) est corrigé (PH1-a).
-  **Retirer Cloudflare proprement — étapes** (NE RIEN faire avant ton feu vert ET P0-AUTH livré) :
-  1. Livrer + valider le gate Google in-app (`VITE_GOOGLE_GATE`, ADR 010) — sinon l'app devient PUBLIQUE ;
-  2. Cloudflare Zero Trust → Access → supprimer l'application/policy FinanceAI ;
-  3. DNS : passer l'enregistrement du domaine en « DNS only » (nuage gris) ou migrer vers Vercel DNS ;
-  4. (si tu retires aussi Web Analytics CF) enlever `static.cloudflareinsights.com` de la CSP
-     (`vercel.json` + `index.html`).
-  **Ce que tu perds** : l'auth devant l'app (CRITIQUE — d'où le pré-requis P0-AUTH), WAF/anti-bot/
-  DDoS Cloudflare, Web Analytics CF. TLS/CDN restent assurés par Vercel.
+  **Procédure de retrait Cloudflare → voir O1 ci-dessus** (consolidée 2026-06-16 ; le gate Google est
+  désormais code-ready, il reste 2 variables d'env + des clics dashboard).
 - [ ] **Q1 (Phase 4 / Futur — à répondre avant que Claude code PH4-FUT)** : qu'est-ce que tu veux
   voir ANNOTÉ sur la courbe ? (âge de retraite ? épuisement d'un compte ? bascule de stratégie ?
   début RRQ/PSV ? autre ?)

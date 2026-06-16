@@ -292,7 +292,33 @@
   synchrone bloquant au boot). ⚠️ Migration du schéma persist v7 — vigilance corruption.
 - [ ] **[P0-SYNC]** 👤 Prouver la sync Drive en réel : créer `VITE_GOOGLE_CLIENT_ID`, tester en
   fenêtre privée (cf `A_FAIRE_MOI` O3 + tests manuels ci-dessous).
-- [ ] **[P0-AUTH]** 👤 Sortir de Cloudflare Access → gate Google in-app (ADR 010, `A_FAIRE_MOI` O1).
+- [ ] **[P0-AUTH]** 👤+🔧 Sortir de Cloudflare Access → gate Google in-app. **Le gate est CODE-READY**
+  (`LoginGate`+`authGate.ts`, enveloppe l'app, inerte tant que `VITE_GOOGLE_CLIENT_ID`+`VITE_GOOGLE_GATE`
+  pas mis). Reste = action Marc (créer OAuth + activer + valider + dashboard CF) : procédure complète dans
+  `A_FAIRE_MOI` O1 + `docs/GOOGLE_DRIVE_SETUP.md`. Côté Claude **sur GO Marc** → [CF-CODE] ci-dessous.
+- [ ] **[CF-CODE]** 🔧 (sur GO Marc, après gate validé) — retrait code-side Cloudflare : (1) retirer
+  `static.cloudflareinsights.com`/`cloudflareinsights.com` de la CSP (`vercel.json` + `index.html`) si CF
+  Web Analytics coupé ; (2) durcir le gate Google (bouton « se déconnecter » via `clearGateAuthedThisSession`
+  déjà présent, sélecteur de compte `prompt:'select_account'`, indicateur de sync) ; (3) MAJ docs (CLAUDE.md
+  « Cloudflare encore EN PLACE » → retiré, SESSION_HANDOVER). NE RIEN faire qui expose l'app avant validation.
+
+## 🆕 Signalements Marc (2026-06-16)
+- [ ] **[PROFIL-SWITCH]** 🔧 HIGH (data-sensible) — le switch entre comptes/profils est compliqué et
+  instable : (a) **fuite** — garde en mémoire des infos des profils de TEST après changement ;
+  (b) choix de profil **pas assez explicite** (on ne voit pas clairement lequel/quel type est actif) ;
+  (c) calculs **pas assez précis/sûrs** selon le profil actif ; (d) **mauvaise sauvegarde** des données.
+  Plan : **reset COMPLET à chaque switch** (auditer `personaResetBase`/`personaReset` — visiblement laisse
+  passer des données test ; cf #217 mode test persisté) ; **sélecteur explicite** (nom + type réel/test +
+  bannière persistante du profil actif + confirmation au changement) ; **persistance isolée par profil**
+  (clé storage par profil, pas d'écrasement croisé, vérif d'intégrité au chargement) ; garde-fou « quel
+  profil/hypothèses alimentent ces chiffres ». ⚠️ Touche la persistance (schéma v7) → vigilance corruption,
+  lié à [P0-IDB]. Plan-first + panel avant de coder (data-critical). *Cadrage à confirmer/préciser par Marc.*
+- [ ] **[RECH-ACTION-UX]** 🔧 MEDIUM — page de **recherche d'action** (Investissement, autocomplétion
+  Finnhub #255) : (1) **agrandir** la page/zone de recherche (trop petite) ; (2) **BUG** : sélectionner le
+  prix **fait QUITTER la page** → corriger (probable submit/blur qui navigue ou ferme la modale).
+- [ ] **[FINNHUB-MISMATCH]** 🔧 MEDIUM — l'autocomplétion **propose des symboles** mais Finnhub **ne les
+  retrouve pas** ensuite (quote introuvable au lookup de prix). Réconcilier la source d'autocomplétion avec
+  le lookup Finnhub : filtrer aux symboles réellement cotés/supportés, ou fallback propre + message clair.
 
 ## 🧭 Décisions moteur (à trancher avec Marc — money-critical)
 - [ ] **[ITEM-2A]** Indexation des paliers vs déflation : le fix « indexer par `simInflation` » a été

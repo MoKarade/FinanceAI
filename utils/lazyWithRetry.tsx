@@ -93,8 +93,9 @@ export function lazyWithRetry<T extends React.ComponentType<unknown>>(
 /**
  * PH1-a — filet global `vite:preloadError`. Vite émet cet événement pour TOUT échec
  * d'un import dynamique passé par son helper de preload : le module RACINE du chunk
- * COMME ses dépendances préchargées (deploy entre deux navigations → hash périmé,
- * redirection Cloudflare Access sur session expirée…). Première ligne de défense :
+ * COMME ses dépendances préchargées (deploy entre deux navigations → hash périmé ;
+ * NB : le déclencheur « redirection Cloudflare Access sur session expirée » a disparu
+ * avec le retrait de Cloudflare le 2026-06-16). Première ligne de défense :
  * reload immédiat (gardé par l'intervalle anti-boucle partagé) ; si le reload est
  * refusé, on laisse Vite re-throw → lazyWithRetry (2e ligne, retry 500 ms) ou
  * ErrorBoundary. PAS de preventDefault : l'empêcher ferait RÉSOUDRE les `import()`

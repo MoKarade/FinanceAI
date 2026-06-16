@@ -292,15 +292,16 @@
   synchrone bloquant au boot). ⚠️ Migration du schéma persist v7 — vigilance corruption.
 - [ ] **[P0-SYNC]** 👤 Prouver la sync Drive en réel : créer `VITE_GOOGLE_CLIENT_ID`, tester en
   fenêtre privée (cf `A_FAIRE_MOI` O3 + tests manuels ci-dessous).
-- [ ] **[P0-AUTH]** 👤+🔧 Sortir de Cloudflare Access → gate Google in-app. **Le gate est CODE-READY**
-  (`LoginGate`+`authGate.ts`, enveloppe l'app, inerte tant que `VITE_GOOGLE_CLIENT_ID`+`VITE_GOOGLE_GATE`
-  pas mis). Reste = action Marc (créer OAuth + activer + valider + dashboard CF) : procédure complète dans
-  `A_FAIRE_MOI` O1 + `docs/GOOGLE_DRIVE_SETUP.md`. Côté Claude **sur GO Marc** → [CF-CODE] ci-dessous.
-- [ ] **[CF-CODE]** 🔧 (sur GO Marc, après gate validé) — retrait code-side Cloudflare : (1) retirer
-  `static.cloudflareinsights.com`/`cloudflareinsights.com` de la CSP (`vercel.json` + `index.html`) si CF
-  Web Analytics coupé ; (2) durcir le gate Google (bouton « se déconnecter » via `clearGateAuthedThisSession`
-  déjà présent, sélecteur de compte `prompt:'select_account'`, indicateur de sync) ; (3) MAJ docs (CLAUDE.md
-  « Cloudflare encore EN PLACE » → retiré, SESSION_HANDOVER). NE RIEN faire qui expose l'app avant validation.
+- [x] **[P0-AUTH]** ✅ (2026-06-16) — **Cloudflare RETIRÉ de FinanceAI**, gate Google in-app actif. Marc a :
+  créé l'OAuth client + posé `VITE_GOOGLE_CLIENT_ID`+`VITE_GOOGLE_GATE=1` (Vercel) + validé (login + données +
+  anti-lockout + pas de re-login) + supprimé l'app Cloudflare Access + dé-proxifié apex/www (DNS only → Vercel).
+  Piège rencontré : le client OAuth était PARTAGÉ avec CF Access (flux serveur, redirect_uri `cdn-cgi/access/callback`)
+  → l'avoir retiré cassait le login CF (`redirect_uri_mismatch`) ; restauré le temps de valider, puis CF retiré.
+- [x] **[CF-CODE]** ✅ (2026-06-16) — retrait code-side : CSP nettoyée (`cloudflareinsights` retiré de
+  `vercel.json` + `index.html`) ; commentaires périmés MAJ (`secureKeyStore.ts` — la sécu ne repose plus sur CF
+  Access, le gate est SOFT + clé par-appareil ; `App.tsx`, `lazyWithRetry.tsx`) ; docs MAJ (CLAUDE.md, A_FAIRE_MOI O1).
+  **RESTE optionnel (durcissement gate, séparé)** : bouton « se déconnecter », sélecteur de compte
+  `prompt:'select_account'` (aide [PROFIL-SWITCH]), indicateur de sync, client OAuth DÉDIÉ au gate (découpler de CF).
 
 ## 🆕 Signalements Marc (2026-06-16)
 - [ ] **[PROFIL-SWITCH]** 🔧 HIGH (data-sensible) — le switch entre comptes/profils est compliqué et

@@ -95,9 +95,9 @@ export const StressTestPanel: React.FC<Props> = ({ params, baselineEstateNW }) =
                                     <div className="text-right shrink-0">
                                         <PrivateAmount as="div" className="text-meta font-black text-white tabular-nums">{fmtM(r.estateNetWorth ?? 0)}</PrivateAmount>
                                         {delta !== null && (
-                                            <div className={`text-tiny font-bold tabular-nums privacy-blur ${delta >= 0 ? 'text-success-400' : 'text-orange-300'}`}>
+                                            <PrivateAmount as="div" className={`text-tiny font-bold tabular-nums ${delta >= 0 ? 'text-success-400' : 'text-orange-300'}`}>
                                                 {delta >= 0 ? '+' : ''}{fmtM(delta)} vs réaliste
-                                            </div>
+                                            </PrivateAmount>
                                         )}
                                     </div>
                                 </div>

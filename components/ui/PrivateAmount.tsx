@@ -18,11 +18,13 @@ export const PrivateAmount: React.FC<{
     className?: string;
     /** Élément racine (par défaut `span` ; `div` pour les blocs type KPI). */
     as?: 'span' | 'div';
-}> = ({ children, className = '', as = 'span' }) => {
+    /** Infobulle native conservée lors de la migration depuis un `<span title="…">` brut. */
+    title?: string;
+}> = ({ children, className = '', as = 'span', title }) => {
     const isPrivacy = useFinanceStore((s) => s.isPrivacyMode);
     const Tag = as;
     return (
-        <Tag className={`privacy-blur ${className}`}>
+        <Tag className={`privacy-blur ${className}`} title={title}>
             {isPrivacy ? (
                 <>
                     <span aria-hidden="true">{children}</span>

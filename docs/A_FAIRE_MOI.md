@@ -7,22 +7,17 @@
 
 ---
 
-## O1 — Auth : RETIRER Cloudflare (procédure complète, demande Marc 2026-06-16)
-> Le remplaçant est **DÉJÀ CODÉ** : gate Google in-app (`LoginGate` + `authGate.ts`) enveloppe l'app
-> (`index.tsx`), **inerte** tant que les 2 variables ci-dessous ne sont pas mises. **Un seul login Google**
-> sert l'app ET la sync Drive. Détail de création OAuth : `docs/GOOGLE_DRIVE_SETUP.md` (recréé).
->
-> ⚠️ **ORDRE NON négociable** : Cloudflare Access EST l'auth actuelle → activer+valider le gate Google
-> AVANT de retirer Cloudflare, sinon l'app devient PUBLIQUE.
+## O1 — Auth : RETIRER Cloudflare → ✅ **FAIT (2026-06-16)**
+> Cloudflare RETIRÉ de FinanceAI : Access (mur) supprimé + apex/www dé-proxifiés (DNS only → Vercel TLS direct).
+> Auth = **gate Google in-app** actif (`VITE_GOOGLE_GATE=1`). Le tunnel CF du `hub` reste (projet séparé).
+> ⚠️ Piège vécu : le client OAuth était PARTAGÉ avec CF Access (redirect_uri `cdn-cgi/access/callback`) → l'avoir
+> retiré cassait le login CF → restauré le temps de valider, puis CF retiré proprement.
 
-- [ ] **A. Créer le Client OAuth Google** (débloque aussi la sync Drive, O3) — cf `GOOGLE_DRIVE_SETUP.md`.
-- [ ] **B. Activer le gate** : dans Vercel, `VITE_GOOGLE_CLIENT_ID=<id>` + `VITE_GOOGLE_GATE=1` → redéployer.
-- [ ] **C. Valider** (AVANT de toucher CF) : fenêtre privée → « Se connecter avec Google » → app débloquée +
-  données reviennent ; tester `?nogate=1` (anti-lockout) et un reload (pas de re-login intempestif).
-- [ ] **D. Retirer Cloudflare** (seulement si C OK) : Zero Trust → Access → supprimer l'app/policy FinanceAI ;
-  DNS → enregistrement en « DNS only » (nuage GRIS) **ou** migrer vers Vercel DNS.
-- [ ] **E. (optionnel)** couper CF Web Analytics → dire à Claude : il retire `cloudflareinsights` de la CSP
-  (`vercel.json` + `index.html`) — la SEULE empreinte Cloudflare dans le code.
+- [x] **A. Client OAuth Google créé** (`550313627083-…`, débloque aussi la sync Drive).
+- [x] **B. Gate activé** : `VITE_GOOGLE_CLIENT_ID` + `VITE_GOOGLE_GATE=1` (Vercel) + redéployé.
+- [x] **C. Validé** : login Google → données reviennent ; `?nogate=1` OK ; reload sans re-login.
+- [x] **D. Cloudflare retiré** : app Access supprimée ; apex+www en « DNS only » (gris) → Vercel.
+- [x] **E. CSP nettoyée** par Claude (`cloudflareinsights` retiré de `vercel.json` + `index.html`) + docs MAJ.
 - **Ce que ça engendre** : tu PERDS l'auth CF (→ gate Google, qui ouvre au multi-user), le WAF/anti-bot/DDoS
   CF, et CF Web Analytics. Tu GARDES TLS + CDN (Vercel). Bonus : disparition d'un déclencheur du bug
   « Failed to fetch chunk » (CF Access 302 sur session expirée, PH1-b). **Risque** : plus de WAF/DDoS CF —

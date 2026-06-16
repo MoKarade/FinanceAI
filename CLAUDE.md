@@ -224,8 +224,12 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
 - **`knip`** : la liste « unused exports » est surtout du BRUIT (types effacés au compile, symboles sur-exportés
   utilisés en interne ou par les tests, constantes fiscales protégées). NE PAS purger en masse — vérifier chaque
   cas (grep). Repo déjà propre au 2026-06-15 : 0 fichier mort, 0 dépendance inutilisée, lint clean.
-- Auth : **Cloudflare Access encore EN PLACE**. Cible = bascule sur le **gate Google in-app**
-  (ADR 010, `A_FAIRE_MOI` O1) — pas encore fait.
+- Auth : **Cloudflare RETIRÉ de FinanceAI (2026-06-16)** — Access (mur de login) ET proxy DNS dé-proxifié
+  (apex+www en « DNS only » vers Vercel ; le tunnel CF du `hub` reste, projet séparé). L'auth = **gate Google
+  in-app** (`LoginGate`+`authGate`, actif via `VITE_GOOGLE_GATE=1`+`VITE_GOOGLE_CLIENT_ID`). ⚠️ Le gate est
+  SOFT (trappe `?nogate=1`) → l'app est publiquement accessible (modèle multi-user voulu) ; les **données
+  restent privées par compte Google** (sync Drive) et les clés chiffrées sont **par appareil** (IDB
+  non-extractible). Plus de WAF/DDoS CF → filet = chiffrement au repos + CSP. Détail : `docs/GOOGLE_DRIVE_SETUP.md`.
 - Persistance : localStorage + IndexedDB chiffré (AES-256-GCM, PBKDF2 600k). apiKeys exclues.
 - Mode test : PERSISTÉ depuis #217 (bannière survit au reload) ; push Drive coupé en test
   (`shouldPush`). Switch de persona = base propre (`personaResetBase`), zéro fuite inter-persona.

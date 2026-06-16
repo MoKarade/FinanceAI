@@ -18,17 +18,19 @@
  * donc inexploitable : il manque la clé, et celle-ci ne peut pas être
  * ré-exportée en octets bruts (`extractable: false`).
  *
- * L'application entière est déjà derrière Cloudflare Access (Google OAuth +
- * MFA) : « se connecter avec Google » = pouvoir charger l'app = déchiffrer
- * automatiquement. Zéro re-saisie.
+ * Accès à l'app : gate Google in-app (remplace Cloudflare Access, RETIRÉ 2026-06-16).
+ * La clé AES est PAR APPAREIL (IndexedDB local, non-extractible) → même si l'app est
+ * publiquement accessible, le blob chiffré d'un device n'est déchiffrable que SUR ce
+ * device. « Se connecter avec Google » = charger l'app = déchiffrer auto. Zéro re-saisie.
  *
  * Limite ASSUMÉE (honnête)
  * ------------------------
  * Ce chiffrement protège AU REPOS, pas contre un XSS *actif* dans la page : un
  * attaquant exécutant du code dans l'origine peut demander au navigateur de
  * déchiffrer avec la clé non-extractible (il l'utilise sans en lire les
- * octets). La défense contre ça reste la CSP stricte + Cloudflare Access, pas
- * le chiffrement local.
+ * octets). La défense contre ça reste la CSP stricte, pas le chiffrement local
+ * (Cloudflare Access RETIRÉ 2026-06-16 ; le gate Google in-app n'est PAS un mur dur —
+ * trappe `?nogate` — donc ne compte PAS comme barrière anti-XSS).
  *
  * Crypto
  * ------

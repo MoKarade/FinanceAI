@@ -2,6 +2,8 @@ import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { formatCAD } from '../../utils/format';
 import { useTimeChartZoom } from '../../hooks/useTimeChartZoom';
+import { ChartDataTable, type ChartDataColumn } from './ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
 
 /**
  * Phase D.2 — graphique temporel avec zoom molette + pan-on-drag.
@@ -134,7 +136,19 @@ export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
         else el.requestFullscreen?.().catch(() => {});
     }, [containerEl]);
 
+    // [A11Y-CHARTS] colonnes de la table de données sr-only (alternative texte au graphe Recharts,
+    // opaque aux lecteurs d'écran). Le mode privé masque les valeurs (parité avec l'axe/tooltip).
+    const dataColumns = useMemo<ChartDataColumn[]>(() => [
+        { key: xKey, label: 'Date', format: (v) => { const d = new Date(v as string); return isNaN(d.getTime()) ? String(v ?? '') : d.toLocaleDateString('fr-CA'); } },
+        ...series.map((s) => ({
+            key: s.key,
+            label: s.name ?? s.key,
+            format: (v: unknown) => privacyMode ? MASKED_AMOUNT_LABEL : yFormatter(Number(v) || 0),
+        })),
+    ], [xKey, series, privacyMode, yFormatter]);
+
     return (
+        <>
         <div
             ref={containerRef}
             className={`relative w-full h-full select-none ${isZoomed && isPanning ? 'cursor-grabbing' : (isZoomed ? 'cursor-grab' : 'cursor-default')} ${isFullscreen ? 'bg-ink-950 p-4' : ''}`}
@@ -257,5 +271,7 @@ export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
                 </div>
             )}
         </div>
+        <ChartDataTable caption="Graphique d'évolution dans le temps" columns={dataColumns} rows={data} />
+        </>
     );
 };

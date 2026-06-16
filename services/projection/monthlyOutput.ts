@@ -74,6 +74,10 @@ export interface MonthlyOutputCtx {
     realEstateEquity: number;
     mortgageBalance: number;
     activeDebtsTotal: number;
+    /** Découvert non couvert porté en dette [PV-6] — soustrait du patrimoine, désormais EXPOSÉ. */
+    liquidDebt: number;
+    /** HELOC du levier Smith — soustrait du patrimoine (actif réinvesti dans NonReg). */
+    smithManoeuvreDebt: number;
     // Valeurs précédentes (diff)
     prevNW: number;
     prevCELI: number;
@@ -163,6 +167,7 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         liquid, celi, celiapp, reer, reee, nonReg, crypto,
         retraitReerMois, retraitCeliMois, celiRoom, rrspRoom, fhsaRoom,
         rapRepaymentDueTotal, realEstateEquity, mortgageBalance, activeDebtsTotal,
+        liquidDebt, smithManoeuvreDebt,
         prevNW, prevCELI, prevREER, prevLiquid,
         impotLatent, fluxImpots, impotReerMois, impotSalaireMois, impotGainsMois, impotDiversMois,
         taxPaidRevenu, taxPaidGains, taxPaidDivers, taxPaidREER, taxOnRrif,
@@ -225,7 +230,12 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         Crypto: Number(crypto.toFixed(2)),
         rapBalance: Number(rapRepaymentDueTotal.toFixed(2)),
         Immobilier: Number(realEstateEquity.toFixed(2)),
-        DetteTotale: Number((mortgageBalance + activeDebtsTotal).toFixed(2)),
+        // Dette TOTALE affichée = hypothèque + prêts/cartes + découvert + HELOC Smith. Inclut
+        // désormais liquidDebt + smithManoeuvreDebt : sans eux, un patrimoine net NÉGATIF
+        // (découvert porté en dette) n'était EXPLIQUÉ par aucune ligne de l'UI (bug Marc 2026-06-16).
+        DetteTotale: Number((mortgageBalance + activeDebtsTotal + liquidDebt + smithManoeuvreDebt).toFixed(2)),
+        /** Découvert (liquidité négative non couverte) porté en dette — exposé pour l'UI. */
+        LiquidDebt: Number(liquidDebt.toFixed(2)),
         NetWorth: Number(rawNetWorth.toFixed(2)),
         // Centralisation Phase 3 Tier 1 — champs dérivés simples
         realNetWorth: Number((rawNetWorth / Math.max(1e-9, expenseMultiplier)).toFixed(2)),

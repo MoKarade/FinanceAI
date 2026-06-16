@@ -27,6 +27,7 @@ import { computeGlidepathRates } from './projection/glidepathRates';
 import { processCashflowAllocation, type CashflowState } from './projection/cashflowAllocation';
 import { processRealEstate, type RealEstateState } from './projection/realEstateMonth';
 import { buildMonthlyDataPoint } from './projection/monthlyOutput';
+import { computeRawNetWorth } from './projection/netWorth';
 import { applyMonthlyGrowth } from './projection/growthApplication';
 import { buildSeededRng, computeHistoricalContributionRoom, computeRrqAdjustment, computeIncomeBaseline, computeScenarioOverrides, makeSmileLifestyleFactor } from './projection/setupSimulation';
 import { handleNonRegSale as portfolioNonRegSale, handleCryptoSale as portfolioCryptoSale } from './projection/portfolioOps';
@@ -153,7 +154,23 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         isPrimaryResidence: g.isPrimaryResidence ?? false,
     }));
 
-    let activeDebts = (debts || []).filter(d => !!d).map(d => ({ ...d }));
+    // Sanitisation à la frontière : un champ vidé dans l'UI (`parseFloat('')` = NaN, DebtManager)
+    // contaminerait sinon `d.balance` (NaN persistant via l'amortissement) → `rawNetWorth` = NaN →
+    // patrimoine net cassé SILENCIEUSEMENT (graphe vide). On normalise à 0 et on JOURNALISE
+    // l'anomalie (jamais avalée). [silent-failure-hunter, money-critical 2026-06-16]
+    let activeDebts = (debts || []).filter(d => !!d).map(d => {
+        const balance = Number.isFinite(d.balance) ? d.balance : 0;
+        const interestRate = Number.isFinite(d.interestRate) ? d.interestRate : 0;
+        const minimumPayment = Number.isFinite(d.minimumPayment) ? d.minimumPayment : 0;
+        if (balance !== d.balance || interestRate !== d.interestRate || minimumPayment !== d.minimumPayment) {
+            logError({
+                source: 'projection', severity: 'warning',
+                message: 'Dette à champ non numérique normalisée à 0 (projection)',
+                context: { id: d.id, name: d.name },
+            });
+        }
+        return { ...d, balance, interestRate, minimumPayment };
+    });
     let hasHitFire = false;
 
     const user1 = config.users[0];
@@ -260,7 +277,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let totalTaxesPaid = 0;
     let totalGrowth = 0;
     let totalExpenses = 0;
-    let minNetWorth = liquid + celi + celiapp + reer + nonReg + crypto + reee;
+    // minNetWorth : initialisé plus bas via la SOURCE UNIQUE (computeRawNetWorth), une fois la
+    // closure currentRawNetWorth définie — sinon une copie locale incomplète (sans dettes) ferait
+    // démarrer le min surévalué pour un persona endetté. [fix MEDIUM review 2026-06-16]
     let shortfallMonths = 0;
     // [PV-6] Passif d'INSOLVABILITÉ : résiduel d'un découvert NON couvert par la cascade de sauvetage
     // (comptes épuisés / cap OAS). Avant, il était absorbé par `liquid = 0` (CF-2) → patrimoine
@@ -309,7 +328,23 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
     // D2.2: RRIF_RATES et welcomeTax → ./projection/helpers
 
-    let prevCELI = celi, prevREER = reer, prevLiquid = liquid, prevNW = (liquid + celi + reer + nonReg + crypto + reee);
+    // Patrimoine net via la SOURCE UNIQUE (computeRawNetWorth) → rawNetWorth, prevNW et la
+    // succession utilisent la MÊME formule. Closure : lit les valeurs courantes des variables de
+    // boucle à chaque appel. [audit money-critical 2026-06-16]
+    const sumActiveDebts = (): number => activeDebts.reduce((s, d) => s + (Number.isFinite(d.balance) ? d.balance : 0), 0);
+    const currentRawNetWorth = (): number => computeRawNetWorth({
+        liquid, celi, celiapp, reer, nonReg, crypto, reee, realEstateEquity,
+        liquidDebt, smithManoeuvreDebt, activeDebtsTotal: sumActiveDebts(),
+    });
+
+    let prevCELI = celi, prevREER = reer, prevLiquid = liquid;
+    // prevNW DOIT suivre la MÊME formule que rawNetWorth (celiapp + realEstateEquity − toutes les
+    // dettes), sinon diffNW = rawNetWorth − prevNW est faussé en permanence. [finding prevNW]
+    let prevNW = currentRawNetWorth();
+    // minNetWorth (suivi du plus bas patrimoine sur la projection) part du VRAI patrimoine de départ,
+    // dettes initiales incluses (même source unique que prevNW). Sinon, pour un persona endetté, le min
+    // démarrait surévalué de Σ(dettes) → safetyScore/goalSeek surestimaient la sécurité. [fix review 2026-06-16]
+    let minNetWorth = currentRawNetWorth();
 
     // D2.8: État LTC (Long-Term Care). Une fois déclenché, le coût mensuel
     // s'ajoute aux dépenses jusqu'à la fin de la simulation.
@@ -456,10 +491,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         prevCELI = celi;
         prevREER = reer;
         prevLiquid = liquid;
-        // realEstateEquity est DÉJÀ net d'hypothèque (currentValue − mortgage, cf
-        // realEstateMonth.ts:326). Ne PAS re-soustraire mortgageBalance (sinon
-        // l'hypothèque est comptée 2×, ce qui faisait plonger le NW dès l'achat).
-        prevNW = (liquid + celi + reer + nonReg + crypto + reee + realEstateEquity);
+        // prevNW = rawNetWorth du mois précédent (source unique) → diffNW = variation nette EXACTE.
+        prevNW = currentRawNetWorth();
 
         let monthlyIncome = 0;
         let monthlyExpenses = 0;
@@ -1337,11 +1370,18 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         totalTaxesPaid += fluxImpots + taxOnRrif + retraitReerMois * 0.15;
         totalExpenses += monthlyExpenses;
 
-        // realEstateEquity DÉJÀ net d'hypothèque → pas de re-soustraction de
-        // mortgageBalance (corrige le double-comptage de l'hypothèque).
-        const rawNetWorth = liquid + celi + celiapp + reer + nonReg + crypto + reee + realEstateEquity - liquidDebt;
+        // Patrimoine net = actifs − TOUTES les dettes. realEstateEquity est DÉJÀ net
+        // d'hypothèque (pas de re-soustraction de mortgageBalance). On soustrait :
+        //   • liquidDebt          — découvert non couvert porté en dette [PV-6]
+        //   • smithManoeuvreDebt  — HELOC du levier Smith (l'actif réinvesti est dans NonReg,
+        //                           déjà compté → sans cette soustraction, NW gonflé du HELOC)
+        //   • activeDebtsTotal    — prêts/cartes/auto PRÉEXISTANTS (sinon le solde dû surévalue
+        //                           le patrimoine ET rembourser le principal érode le NW au plein
+        //                           paiement au lieu du seul intérêt — money-critical, 2026-06-16).
+        // Cohérent avec la succession (estateCalculation : finalRawNetWorth).
+        const activeDebtsTotal = sumActiveDebts();
+        const rawNetWorth = currentRawNetWorth();
         if (rawNetWorth < minNetWorth) minNetWorth = rawNetWorth;
-        const activeDebtsTotal = activeDebts.reduce((s, d) => s + d.balance, 0);
 
         // V23 Fix 1: FIRE comparaison en dollars futurs (inflation-ajustée)
         const futureFireTarget = fireTargetNetWorth * Math.pow(1 + simInflation / 100, m / 12);
@@ -1402,6 +1442,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             liquid, celi, celiapp, reer, reee, nonReg, crypto,
             retraitReerMois, retraitCeliMois, celiRoom, rrspRoom, fhsaRoom,
             rapRepaymentDueTotal, realEstateEquity, mortgageBalance, activeDebtsTotal,
+            liquidDebt, smithManoeuvreDebt,
             prevNW, prevCELI, prevREER, prevLiquid,
             impotLatent, fluxImpots, impotReerMois, impotSalaireMois, impotGainsMois, impotDiversMois,
             taxPaidRevenu, taxPaidGains, taxPaidDivers, taxPaidREER, taxOnRrif,
@@ -1424,6 +1465,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     const estate = computeEstateNetWorth({
         liquid, celi, celiapp, reer, nonReg, nonRegACB, crypto, cryptoACB, reee,
         realEstateEquity, mortgageBalance, realEstateLatentGain, smithManoeuvreDebt, liquidDebt,
+        // [fix 2026-06-16] dettes actives résiduelles en fin de sim : soustraites du patrimoine
+        // successoral comme dans le NW mensuel (sinon « Patrimoine projeté » diverge du graphe).
+        activeDebtsTotal: sumActiveDebts(),
         incomeRetirement, accRentesYear, accRetraitsReerYear,
         grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
         simulationYears: projection.years,

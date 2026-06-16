@@ -174,6 +174,9 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
 
 ## Tests
 - Tests pour TOUTE nouvelle logique. Priorité `services/projection/`. Ne pas baisser la couverture.
+- **Garde-fou money-critical** : `tests/services/projection.moneyConservation.test.ts` (9 invariants de
+  conservation de l'argent). À ÉTENDRE — pas affaiblir — à chaque bug financier trouvé. Voir la checklist
+  « VALIDATION FINANCIÈRE » dans « Règles non négociables ».
 
 ## Stack
 React 19.2 + Vite 8 (Rolldown) + TS 5.8 strict + Tailwind 3 · Zustand 5 (persist+partialize, schema v7,
@@ -199,7 +202,32 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
 - **Unités argent** : `config.users[].grossSalary`/`netSalary` (store) sont **MENSUELS** (convention
   canonique, `utils/salary.ts`). Annualiser **×12** pour toute comparaison annuelle (MGA, paliers
   fiscaux) — sinon bug d'échelle ~12× (vu sur la RRQ, FISC-RRQ-UNIT 2026-06-15).
+- **Patrimoine net = source UNIQUE** (`services/projection/netWorth.ts` `computeRawNetWorth`) :
+  `NetWorth = Σ(actifs) − liquidDebt − smithManoeuvreDebt − activeDebtsTotal`. `realEstateEquity` est
+  DÉJÀ net d'hypothèque (ne JAMAIS re-soustraire `mortgageBalance`). Le moteur mensuel (`rawNetWorth` +
+  `prevNW`, donc `diffNW`) ET la succession (`estateCalculation`) appellent ce helper — jamais de copie
+  locale de la formule (une copie qui oublie un terme = patrimoine faux ; bug MONEY-PHANTOM 2026-06-16 :
+  dettes jamais soustraites + découvert invisible → « -193 k$ qui ne fait pas de sens »). `prevNW` DOIT
+  toujours = `rawNetWorth` du mois précédent (sinon `diffNW`/« Variation nette » faux). Cohérent avec
+  `financialSnapshot.ts` (`netWorth = placements + cash − dettes`).
 - **Secrets** : clés via l'UI seulement, jamais en dur/versionnées, exclues du localStorage/backups.
+
+### Checklist VALIDATION FINANCIÈRE (money-critical — à passer avant tout merge touchant un calcul $)
+> Demande Marc 2026-06-16 : « plus jamais d'erreur comme ça ». Tout changement à `services/projection/`,
+> `utils/tax.ts`, un solde, un flux, une dette ou un impôt DOIT cocher :
+- [ ] **Conservation** : `npm run test -- projection.moneyConservation` vert (9 invariants : reconstructabilité,
+  ΔNW expliqué, dette réduit le NW, principal neutre, achat immo conserve, pas de solde négatif, NaN guardé,
+  hypothèque non double-comptée). Ne JAMAIS affaiblir un invariant pour « faire passer » — corriger le code.
+- [ ] **Reconstructible** : sur tout point, `NetWorth = Σ(actifs affichés) − dettes affichées` (à l'euro près).
+  Un patrimoine net affiché ne doit JAMAIS être inexpliqué par l'UI (le modal `FutureDetailModal` montre la dette).
+- [ ] **Pas de flux fantôme** : un débit one-time (`subtractLiquid` : réno/véhicule/objectif) ne crée pas
+  d'argent ni ne disparaît sans contrepartie ; s'il dépasse les actifs, il est porté en `liquidDebt` VISIBLE.
+- [ ] **Unités** : mensuel vs annuel (×12) cohérent ; pas de double-indexation ; pas de double-imposition
+  (retenue créditée 1× ; net ≠ brut selon le poste).
+- [ ] **Test discriminant prouvé** : `git stash push -- <fichier moteur>` → le test ÉCHOUE sur le code d'avant →
+  `git stash pop` (cf « Posture de l'agent »). Un test vert qui passe AUSSI sur le bug ne prouve rien.
+- [ ] **Suite COMPLÈTE** + `typecheck` clean + panel (`projection-validator`, `fiscal-accuracy` si fiscal,
+  `silent-failure-hunter` pour les NaN/échecs avalés). Un finding = hypothèse → vérifier avant de coder.
 
 ## Automatisation (hooks `.claude/settings.json`)
 - **SessionStart** → `session-brief` injecte l'état (SESSION_HANDOVER + quick wins) : la reprise est automatique.
@@ -213,6 +241,13 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
     (`echo '{...}' | node …`), PAS PowerShell 5.1 qui ne livre pas le stdin à un exe natif.
     Matcher `push` comme SOUS-commande git (après `git` + options globales), pas « push »
     n'importe où — sinon faux positif sur un nom de branche en -push (révélé en live par le hook).
+- **Gate sécurité opsera** (plugin tiers `opsera-devsecops`, PreToolUse/Bash) bloque `git commit` jusqu'à
+  un scan. RÉSOLU 2026-06-16 : opsera AUTHENTIFIÉ (OAuth via l'outil MCP `authenticate` → URL navigateur).
+  Flux LÉGITIME du gate (zéro bypass) : `security-scan` (scan_mode `pre-commit`) avec les CLI installés —
+  `gitleaks` (winget) + `semgrep` (pip, OK Windows natif / Py 3.14) — → scan propre → `touch
+  /tmp/.opsera-pre-commit-scan-passed` (<5 min) → le commit passe. Ne JAMAIS toucher le flag sans scan réel.
+  **Aikido** (scanner préféré de Marc) : token dans l'env var UTILISATEUR `AIKIDO_API_KEY` (lue au
+  DÉMARRAGE du serveur MCP → redémarrer Claude Code ; `aikido_login` à chaud ne tient PAS pour `aikido_full_scan`).
 - Avant de merger, lancer `/review-all` (panel d'agents), puis `commit-gate` fait la vérif déterministe.
 - ⚠️ Les hooks tournent AUSSI en exécution cloud (Claude Code web) dès que `.claude/settings.json`
   est committé. `commit-gate` relance la suite complète **uniquement si des `.ts/.tsx` sont stagés**

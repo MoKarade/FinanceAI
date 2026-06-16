@@ -24,6 +24,48 @@
 
 ---
 
+## 💰 Audit money-critical 2026-06-16 (bug « -208 633 $/mois » — workflow + panel adversarial)
+> Déclencheur : Marc voit un patrimoine net -193 398 $ / variation -208 633 $ avec revenu ~10,6 k$.
+> Workflow multi-agents (12 finders + vérif adversariale 2 votes) → 9 bugs confirmés / 10 réfutés.
+> **CLUSTER PATRIMOINE NET livré cette PR** (MONEY-PHANTOM). Reste à corriger (PRs ciblées, money-critical) :
+- [x] **[MONEY-PHANTOM]** ✅ livré : découvert `liquidDebt` exposé+visible (modal « Dettes ») ;
+  `rawNetWorth`/`prevNW`/succession soustraient activeDebts+smithDebt via source unique
+  `computeRawNetWorth` ; `diffNW` exact ; garde NaN dette ; 9 invariants de conservation +
+  checklist CLAUDE.md. (Cause racine = débit one-time réno/véhicule > actifs → dette invisible.)
+- [ ] **[FISC-REER-WHT-DOUBLE]** 🔧 CRITICAL — **le « 50 000 au fisc » de Marc**. Double-comptage de la
+  retenue à la source REER (`services/projection/taxApril.ts:49-56` + `cashflowAllocation.ts:~186`) : le
+  NET est crédité au retrait ET la retenue est re-payée en avril → sur-imposition = la retenue entière,
+  prélevée 2×. Sur un gros retrait/meltdown/sauvetage-découvert (~200 k$ brut), des dizaines de k$.
+  Fix : créditer le BRUT au liquide au retrait (retenue = acompte payé via `.reer` en avril), comme la
+  convention FERR. ⚠️ Money-critical : test discriminant + re-baseline + panel `fiscal-accuracy`.
+- [ ] **[FISC-ESTATE-PENSION-NPV]** 🔧 MEDIUM — NPV des rentes publiques (RRQ/PSV) au bilan successoral :
+  montant MENSUEL × facteur d'annuité ANNUEL sans ×12 (`estateCalculation.ts:177-187`) → composante
+  sous-évaluée ~12× (ex. -370 k$ sur `estateNetWorth` pour un profil 1200 $/mois). N'affecte PAS le NW
+  mensuel. Fix : annualiser (×12) avant le facteur d'annuité.
+- [ ] **[FISC-EVENT-INCOMELOSS]** 🔧 MEDIUM — `incomeLossPercent`/`durationMonths` (PERTE_EMPLOI,
+  SABBATIQUE, ACCIDENT) collectés par l'UI mais JAMAIS appliqués par le moteur (`monthlyEvents.ts:95-100`
+  ne lit que `impactAmount`) → une perte d'emploi de 6 mois (30-60 k$) est ignorée (no-op silencieux).
+  Fix : réduire le revenu de `incomeLossPercent`% pendant `durationMonths` dès `e.date`.
+- [ ] **[FISC-RE-SALE-RESIDUAL]** 🔧 MEDIUM — vente immobilière à équité négative (hypo > 95 % valeur) :
+  `addLiquid(Math.max(0, saleNet))` (`monthlyEvents.ts:72-79`) efface la dette résiduelle (clamp à 0)
+  alors que l'équité positive est retirée → patrimoine légèrement surévalué. Fix : `addLiquid(saleNet)`
+  (laisser le découvert tomber dans la cascade liquidDebt).
+- [ ] **[FISC-ASSETLOC-INTL]** 🔧 MEDIUM — asset-location : classe `international` jamais analysée →
+  retenue étrangère 15 % en CELI/REER non comptée (`assetLocation.ts:104-132`) ; l'outil dit « optimal »
+  alors qu'une perte existe (~375 $/an sur 100 k$ international en CELI). Fix non trivial (le patch naïf
+  reste 0 : taxIdeal NonReg=marginalRate domine) — modéliser le coût de détention.
+- [ ] **[FISC-SRCDED-NOOP]** 🔧 MEDIUM/LOW — `optimizeSourceDeductions` (V49) : réduction de la retenue
+  salariale selon cotisations REER/CELIAPP toujours NULLE (ordre d'exécution, `monthlyCalcs.ts:98-112`) +
+  bug d'unité mensuel/annuel sous-jacent. Effet net ~0 (régularisé en avril) mais cashflow mensuel et
+  solde d'avril faussés. Fix : calculer la retenue APRÈS la cascade d'allocation + unité annuelle.
+- [ ] **[A11Y-DANGER-300]** 🔧 LOW — `text-danger-300` n'existe PAS dans `tailwind.config.js` (palette
+  danger = 400/500/600 seulement) → couleur ignorée. 3 sites hors périmètre MONEY-PHANTOM :
+  `ImportBankStatement.tsx:123`, `RealEstateAdviceCard.tsx:19`, `Transactions.tsx:439` (+ son hover no-op).
+  Fix : → `text-danger-400`.
+- [ ] **[A11Y-MODAL-PRIVATE]** 🔧 LOW — migrer tout `FutureDetailModal.tsx` vers `PrivateAmount` (tous les
+  montants utilisent `${blur}` brut = fuite lecteur d'écran en mode privé). La ligne « Dettes » est déjà
+  migrée cette PR ; reste valeur nette, comptes, apports/gains, flux.
+
 ## 🔎 Review multi-agents 2026-06-15 — risques confirmés (27 : 8 HIGH / 11 MEDIUM / 8 LOW)
 > Audit complet (12 agents specialises, emphase financiere). Les **HIGH financiers #1-#6 sont en
 > correction cette session**. Severite en tete de chaque item.

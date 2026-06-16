@@ -204,15 +204,20 @@ export function computeRetirementIncome(
     const rrqFactor = rrqAdjustmentFactor((rrqStartAge - 65) * 12);
     const psvFactor = psvDeferralFactor((psvStartAge - 65) * 12);
 
-    // Repli sur le champ AGRÉGÉ legacy `governmentPension` : split 65/35 = convention de MODÈLE
-    // (GOV_PENSION_*_SHARE, utils/tax.ts — PAS une règle ARC/RQ, cf FISCAL_REFERENCE §6 FA-8).
-    // Les estimés précis par rente (relevés Retraite Québec / Service Canada) priment.
+    // Base FAMILIALE (ménage) de RRQ / PSV — deux chemins qui aboutissent TOUS DEUX à un montant
+    // familial (cohérent avec estateCalculation.ts:177-178 et setupSimulation.ts:114-118) :
+    //  • `governmentPension` est DÉJÀ un agrégat MÉNAGE (RRQ+PSV combinés des 2 conjoints) → split 65/35
+    //    SANS ×N (convention de MODÈLE GOV_PENSION_*_SHARE, utils/tax.ts — PAS une règle ARC/RQ, cf
+    //    FISCAL_REFERENCE §6 FA-8). ⚠️ NE PAS ajouter ×activeUsersCount ici : ce serait un double-comptage
+    //    (bug FA-5 déjà corrigé) → un couple verrait sa rente doublée. (FISC-GOVPENSION-SCALE = faux positif.)
+    //  • `rrqEstimateMonthly`/`psvEstimateMonthly` (relevés Retraite Québec / Service Canada) sont
+    //    PER-PERSONNE → ×activeUsersCount pour reconstituer le familial. Ces estimés précis priment.
     // RRQ-PSV-MIN — clamp `Math.max(0, …)` : un estimé NÉGATIF (saisie absurde, inputs sans `min`) ne
     // doit pas créer une rente négative qui sous-estimerait en silence le revenu (et le NPV estate, aligné).
-    const rrqBaseIndiv = (retirementGoal.rrqEstimateMonthly !== undefined)
+    const rrqBaseFamily = (retirementGoal.rrqEstimateMonthly !== undefined)
         ? (Math.max(0, retirementGoal.rrqEstimateMonthly) * activeUsersCount)
         : (retirementGoal.governmentPension * GOV_PENSION_RRQ_SHARE);
-    const psvBaseIndiv = (retirementGoal.psvEstimateMonthly !== undefined)
+    const psvBaseFamily = (retirementGoal.psvEstimateMonthly !== undefined)
         ? (Math.max(0, retirementGoal.psvEstimateMonthly) * activeUsersCount)
         : (retirementGoal.governmentPension * GOV_PENSION_PSV_SHARE);
 
@@ -220,8 +225,8 @@ export function computeRetirementIncome(
     const survivorPsvFactor = survivorMode ? 0.5 : 1;
     // Bonification automatique PSV +10% à partir de 75 ans (depuis juillet 2022)
     const psv75Bonus = age >= 75 ? (1 + PSV_BONUS_75_PLUS) : 1;
-    const rrqMonthly = age >= rrqStartAge ? (rrqBaseIndiv * rrqProrata * rrqFactor * survivorRrqFactor) : 0;
-    const psvMonthly = age >= psvStartAge ? (psvBaseIndiv * psvProrata * psvFactor * psv75Bonus * survivorPsvFactor) : 0;
+    const rrqMonthly = age >= rrqStartAge ? (rrqBaseFamily * rrqProrata * rrqFactor * survivorRrqFactor) : 0;
+    const psvMonthly = age >= psvStartAge ? (psvBaseFamily * psvProrata * psvFactor * psv75Bonus * survivorPsvFactor) : 0;
 
     const inflFactor = Math.pow(1 + simInflation / 100, m / 12);
 
@@ -252,7 +257,7 @@ export function computeRetirementIncome(
     const gainsLaggedReal = (Number.isFinite(ctx.prevYearCapitalGainsForGisNominal)
         ? Math.max(0, ctx.prevYearCapitalGainsForGisNominal as number)
         : 0) * CAPITAL_GAINS_INCLUSION_STANDARD / inflFactor;
-    // rrqMonthly is already family-level (rrqBaseIndiv × activeUsersCount above).
+    // rrqMonthly is already family-level (rrqBaseFamily above — agrégat ménage, déjà ×N si estimés).
     // Computing family total first, then dividing for the per-adult figure avoids
     // the double-multiplication that caused SRG = $0 for entitled couples (§7.G).
     const otherIncomeAnnualFamily = (rrqMonthly + dbMonthly) * 12 + otherLaggedReal + gainsLaggedReal;

@@ -23,9 +23,9 @@ export const RetirementIncomeCard: React.FC = () => {
                             store), rendu juste au-dessus dans Profil. UN seul éditeur par champ. */}
                         <div className="space-y-5">
                             <div>
-                                <label htmlFor="ric-govPension" className="block text-meta text-ink-300 mb-1">Rente Etat agrégée (RRQ + PSV / mois) — legacy</label>
+                                <label htmlFor="ric-govPension" className="block text-meta text-ink-300 mb-1">Rente État agrégée (RRQ + PSV, total ménage) / mois — legacy</label>
                                 <input id="ric-govPension" type="number" value={goal.governmentPension} onChange={e => updateGoal('governmentPension', numOr(e.target.value, goal.governmentPension))} className="w-full bg-black/40 border border-info-500/20 rounded-lg px-3 py-2 text-blue-300 font-bold focus:border-info-500 transition-colors outline-none privacy-blur" />
-                                <p className="text-tiny text-ink-500 mt-1">Si tu remplis les 2 champs ci-dessous, ce champ est ignoré.</p>
+                                <p className="text-tiny text-ink-500 mt-1">Total des deux conjoints si tu es en couple. Si tu remplis les 2 champs ci-dessous (par personne), ce champ est ignoré.</p>
                             </div>
                             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
                                 <div>

@@ -466,16 +466,38 @@ Assurance SCHL : **requise si LTV > 80 %**, indisponible si LTV > 95 % ou prix >
 |---|---|---|---|---|---|---|
 | Prime | 0,60 % | 1,70 % | 2,40 % | 2,80 % | 3,10 % | **4,00 %** |
 
-### Droits de mutation (« taxe de bienvenue », `calculateWelcomeTax`) — barème QC **2025**
+### Droits de mutation (« taxe de bienvenue », `calculateWelcomeTax`) — FISC-WELCOME-UNIFY
+
+**SOURCE UNIQUE** : `services/realEstate.ts:calculateWelcomeTax(price, municipality?)`, consommée par
+l'UI (`RealEstate.tsx`/`PropertyConfigurator`) ET le moteur (`helpers.ts:welcomeTax` délègue). Le champ
+`RealEstateGoal.municipality` (`'montreal' | 'reste_qc'`) sélectionne le barème. **Non défini ⇒ repli
+CONSERVATEUR Montréal** (barème le plus élevé) — état transitoire, pas un défaut stocké (l'UI invite à
+choisir). Calcul cumulatif par tranche (style impôt).
+
+**Montréal** (surtaxe municipale — Ville de Montréal, règlement sur les droits de mutation **2026**)
+| Tranche du prix | Taux |
+|---|---|
+| ≤ 53 700 $ | 0,5 % |
+| 53 700 → 269 300 $ | 1,0 % |
+| 269 300 → 538 500 $ | 1,5 % |
+| 538 500 → 1 077 000 $ | 2,0 % |
+| 1 077 000 → 2 154 000 $ | 2,5 % |
+| 2 154 000 → 3 231 000 $ | 3,0 % |
+| 3 231 000 → 5 385 000 $ | 3,5 % |
+| > 5 385 000 $ | 4,0 % |
+
+**Reste du Québec** (barème provincial de base — Loi concernant les droits sur les mutations immobilières)
 | Tranche du prix | Taux |
 |---|---|
 | ≤ 58 900 $ | 0,5 % |
 | 58 900 → 290 000 $ | 1,0 % |
 | 290 000 → 552 300 $ | 1,5 % |
 | > 552 300 $ | 2,0 % |
-> Seuils indexés annuellement (Loi concernant les droits sur les mutations immobilières) ; le code
-> porte le barème provincial de base 2025 — les paliers ADDITIONNELS municipaux (ex. Montréal > 552 300 $
-> jusqu'à 3,5 %) ne sont PAS modélisés (sous-estimation pour un achat cher à Montréal). À réindexer 2026.
+
+> Repère : pour un achat à 500 000 $ → **5 885 $** (Montréal) vs **5 755,50 $** (reste du QC).
+> ⚠️ Seuils provinciaux 2025 (58 900 / 290 000 / 552 300) — **à réindexer 2026** (LOW, indexés
+> annuellement). Les paliers municipaux hors Montréal (Laval, Gatineau, Québec…) ne sont pas distingués :
+> ils tombent dans `'reste_qc'` (barème provincial de base, légère sous-estimation possible).
 
 ### TPS/TVQ résidence NEUVE — remboursements (`calculateGstNewHomeRebate`/`calculateQstNewHomeRebate`)
 - **TPS 5 %** (`GST_RATE`) : remboursement **36 %** de la TPS payée si prix ≤ **350 000 $**

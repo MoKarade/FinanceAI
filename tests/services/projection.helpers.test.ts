@@ -87,12 +87,18 @@ describe('projection/helpers', () => {
         });
     });
 
-    // Calcul cumulatif par tranche (paliers Montréal 2026).
-    // Paliers: 0.5% / 1% / 1.5% / 2% / 2.5% / 3% / 3.5% / 4%
-    // Seuils: 53 700 / 269 300 / 538 500 / 1 077 000 / 2 154 000 / 3 231 000 / 5 385 000
-    describe('welcomeTax (cumulatif Montréal 2026)', () => {
+    // FISC-WELCOME-UNIFY — welcomeTax délègue à realEstate.calculateWelcomeTax (source unique).
+    // Sans municipalité ⇒ repli Montréal (cumulatif par tranche, paliers 2026).
+    // Paliers MTL: 0.5% / 1% / 1.5% / 2% / 2.5% / 3% / 3.5% / 4%
+    // Seuils MTL: 53 700 / 269 300 / 538 500 / 1 077 000 / 2 154 000 / 3 231 000 / 5 385 000
+    describe('welcomeTax (défaut Montréal 2026)', () => {
         it('returns 0 for price 0', () => {
             expect(welcomeTax(0)).toBe(0);
+        });
+
+        it('reste_qc : barème provincial (500k → 5755.50$)', () => {
+            // 58900*0.005 + 231100*0.010 + 210000*0.015 = 294.50 + 2311 + 3150
+            expect(welcomeTax(500000, 'reste_qc')).toBeCloseTo(5755.5, 2);
         });
 
         it('50k → 250$ (palier 1 seul)', () => {

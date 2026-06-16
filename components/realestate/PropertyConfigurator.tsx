@@ -1,7 +1,7 @@
 import React from 'react';
 import { Icon } from '../ui/Icon';
 import { Card } from '../ui/Card';
-import { RealEstateGoal } from '../../types';
+import { RealEstateGoal, Municipality } from '../../types';
 import { PrivateAmount } from '../ui/PrivateAmount';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { maskedSliderAria } from '../../utils/privacyAria';
@@ -138,6 +138,27 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                             <label className="block text-meta text-ink-300 mb-1">Date cible</label>
                             <input type="date" value={targetDate} onChange={e => updateActiveGoal({ purchaseDate: e.target.value })} className="w-full bg-white/5 border border-border rounded px-2 py-1.5 text-white text-body" />
                         </div>
+                    </div>
+                    <div>
+                        <label htmlFor="municipality-select" className="block text-meta text-ink-300 mb-1">
+                            Municipalité <span className="text-tiny text-ink-500">(taxe de bienvenue)</span>
+                        </label>
+                        <select
+                            id="municipality-select"
+                            value={activeGoal.municipality ?? ''}
+                            onChange={e => updateActiveGoal({ municipality: e.target.value ? (e.target.value as Municipality) : undefined })}
+                            aria-describedby={!activeGoal.municipality ? 'municipality-hint' : undefined}
+                            className="w-full bg-white/5 border border-border rounded px-2 py-1.5 text-white text-body"
+                        >
+                            <option value="">À préciser…</option>
+                            <option value="montreal">Montréal (surtaxe, jusqu'à 4 %)</option>
+                            <option value="reste_qc">Reste du Québec (max 2 %)</option>
+                        </select>
+                        {!activeGoal.municipality && (
+                            <p id="municipality-hint" className="text-tiny text-amber-400/80 mt-1">
+                                Non précisé : barème Montréal (le plus élevé) appliqué par prudence.
+                            </p>
+                        )}
                     </div>
                 </div>
             </Card>

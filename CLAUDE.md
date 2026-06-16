@@ -133,6 +133,12 @@ avant commit, lancer EN PARALLÈLE tous les agents pertinents (commande `/review
 
 Seule limite : la PERTINENCE. Lancer tous les agents qui s'appliquent ; aucun hors sujet.
 
+⚠️ **Brieffer le panel PRÉ-COMMIT sur le bon diff** (leçon 2026-06-16) : avant un commit, le travail vit
+dans le **working tree** (branche locale encore à `origin/main`) → `git diff origin/main...HEAD` est **VIDE**.
+Dire aux agents de lire `git diff` (working tree) ou `git status`, JAMAIS `origin/main...HEAD`, sinon chaque
+agent gaspille un aller-retour à « découvrir » que rien n'est commité avant de pivoter. (`origin/main...HEAD`
+n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
+
 ## Qualité d'abord (coût tokens non contraint)
 - **Tâches à 100 %** : pas de stub ni de « TODO plus tard » non demandé ; tests verts avant commit.
 - Privilégier la THOROUGHNESS : passes multiples, panel d'agents en parallèle aux gates,

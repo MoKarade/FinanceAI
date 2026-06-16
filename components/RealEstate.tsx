@@ -133,12 +133,10 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
     const [localStockReturn, setLocalStockReturn] = useState(marketReturn);
 
     const totalMortgage = price - downPayment;
-    // C9 fix : était une IIFE dupliquée de services/realEstate.ts:calculateWelcomeTax.
-    // Note : le moteur de projection (services/projection/helpers.ts:welcomeTax)
-    // utilise les paliers Montréal (jusqu'à 4%), tandis qu'ici on utilise les
-    // paliers provinciaux Québec (jusqu'à 2%). Distinction volontaire, à unifier
-    // dans un futur refactor via param `city: 'montreal' | 'quebec'`.
-    const welcomeTax = calculateWelcomeTax(price);
+    // FISC-WELCOME-UNIFY : source UNIQUE partagée avec le moteur (helpers.ts:welcomeTax délègue à
+    // calculateWelcomeTax). La municipalité du bien sélectionne le barème (Montréal jusqu'à 4% vs reste
+    // du QC max 2%). Non choisie ⇒ repli conservateur Montréal (l'UI invite à choisir).
+    const welcomeTax = calculateWelcomeTax(price, activeGoal.municipality);
 
     const notaryFees = 1500;
     const inspectionFees = 800;

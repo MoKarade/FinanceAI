@@ -7,13 +7,14 @@
 // Pattern: State Object — toutes les variables mutables dans RealEstateState.
 // propertiesState est mutée en place (objets référencés).
 
-import type { RealEstateGoal } from '../../types';
+import type { RealEstateGoal, Municipality } from '../../types';
 import { RAP_LIMIT_PER_USER } from '../../utils/tax';
 import { calculateB20StressTest, validateMortgageParameters, calculateSchlPremium, calculateNewHomeRebateTotal } from '../realEstate';
 
 type GetMarginalRateFn = (annualGross: number) => number;
 type GetMonthOffsetFn = (dateStr: string) => number;
-type WelcomeTaxFn = (price: number) => number;
+// FISC-WELCOME-UNIFY — la fonction injectée porte la municipalité du bien (welcome tax MTL vs reste QC).
+type WelcomeTaxFn = (price: number, municipality?: Municipality) => number;
 
 export interface PropertyStateMutable {
     id: string;
@@ -168,7 +169,7 @@ export function processRealEstate(
                 }
             }
 
-            const welcomeFees = welcomeTax(goal.price);
+            const welcomeFees = welcomeTax(goal.price, goal.municipality);
             // §6.7 — Remboursement TPS/TVQ pour résidence neuve (réduit le coût net)
             const newHomeRebate = calculateNewHomeRebateTotal(goal.price, !!goal.isNewConstruction);
             const totalCashNeeded = Math.max(0, goal.downPayment + goal.totalClosingCosts + welcomeFees - newHomeRebate);

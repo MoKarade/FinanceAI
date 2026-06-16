@@ -101,6 +101,13 @@ Doc détaillée dans `docs/`, qui fait foi.
   zéro conflit. Le `reset --hard` n'est justifié que pour ré-aligner après un REVERT conteneur (état local
   corrompu), pas après un merge propre. Le stop-hook « commit Unverified noreply@github.com » sur le tip =
   commit de merge GitHub partagé avec `main` → l'ignorer, NE PAS reset pour le « nettoyer ».
+  ⚠️ **Branche assignée STALE/divergée** (leçon 2026-06-16, FISC-REER-WHT-DOUBLE) : la branche imposée par la
+  tâche (`claude/jolly-…`) pointait sur de VIEUX commits divergés (une migration Vite déjà refaite autrement sur
+  `main`) → committer le fix dessus tel quel aurait injecté cette divergence Vite dans la PR (risque de casser le
+  build de `main`). Symptôme : `git log origin/main..origin/<branche>` montre des commits inattendus. Réconciliation
+  SANS force : `git merge -X theirs origin/main` (`main` = canonique, écrase la divergence stale) → VÉRIFIER
+  `git diff origin/main --stat` VIDE (branche ≡ main) → `git cherry-pick` du fix (déjà commité/gaté sur la branche
+  de travail) → `git push` fast-forward. La PR ne montre alors QUE le fix.
 - **E2E rouge** : lire le log AVANT de débugger — si l'échec est infra (install navigateurs, apt mirror),
   `rerun_failed_jobs` une fois ; n'investiguer que si ça re-échoue.
 - **`npm install` après reprise** (le conteneur peut perdre `node_modules` — symptôme : tsc casse sur

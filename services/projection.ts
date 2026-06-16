@@ -1278,6 +1278,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             reer -= meltResult.reerDrawn;
             nonReg += meltResult.nonRegAdd;
             nonRegACB += meltResult.nonRegAdd;
+            // FISC-REER-WHT-DOUBLE (2026-06-16) : la retenue est un ACOMPTE d'impôt payé en avril via
+            // le bucket .reer (ci-dessous). On la conserve au patrimoine (liquide) jusque-là — sinon le
+            // brut sort du REER, seul le net entre en nonReg, et avril re-débite la retenue = double
+            // comptage. Avec cette ligne le meltdown est NW-neutre (reer −brut, nonReg +net, liquid
+            // +retenue), et la retenue n'est débitée qu'UNE fois (avril). Cohérent avec drawReer/CF-2.
+            liquid += meltResult.withholding;
             accRetraitsReerYear += meltResult.reerDrawn;
             // 5e source de retrait REER (audit fiscal-accuracy) : attribuer le meltdown par conjoint
             // comme FERR/goals/cashflow, sinon Σ(byUser) < accRetraitsReerYear → sous-imposition sous
@@ -1301,8 +1307,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // Correctif : dernier point AVANT la croissance — si le liquide est négatif, on
         // couvre le découvert par la MÊME cascade que le shortfall régulier (stratégie de
         // retrait respectée, retenue REER comptée via taxCurrentYearReer, garde-fous PBMA/OAS).
-        // Avec liquid=0 en entrée, la cascade ne puise pas sous zéro et son invariant CF-2
-        // ramène le liquide à 0 en sortie : les ventes financent exactement le découvert.
+        // Avec liquid=0 en entrée, la cascade ne puise pas sous zéro et son invariant CF-2 ramène le
+        // liquide à la retenue REER prélevée (acompte d'impôt conservé jusqu'à avril, cf FISC-REER-WHT-
+        // DOUBLE) : les ventes financent exactement le découvert (net), la retenue reste au patrimoine.
         // Cas insolvable (comptes épuisés ou cap OAS) : résiduel JOURNALISÉ, VISIBLE (flowEvents +
         // shortfallMonths) ET désormais PORTÉ EN DETTE [PV-6] (`liquidDebt`, soustrait du patrimoine
         // net mensuel et successoral) — plus d'absorption silencieuse qui surévaluait le patrimoine.

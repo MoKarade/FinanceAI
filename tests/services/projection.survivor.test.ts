@@ -95,15 +95,19 @@ describe('[FA-12] survivorMode — intégration runScenario seedée (décès du 
     it('le décès change MATÉRIELLEMENT le moteur fiscal : décaissement de survivant à 1 contribuable (FISC-SURVIVOR-DRAWDOWN)', () => {
         // CORRIGÉ 2026-06-15 (FISC-SURVIVOR-DRAWDOWN). Avant : le survivant puisait son REER aux seuils
         // DOUBLÉS du couple (pbma/bracket1/oasCap × activeUsersCount=2 dans cashflowAllocation) → sur-retrait
-        // au mauvais palier → impôt cumulé artificiellement gonflé (anciennement ≈ 412,6 k$, « > base ×1.10 »).
-        // Désormais le survivant = 1 contribuable (liveFilers=1, seuils individuels, cohérent avec le filing de
-        // décembre FA-10 taxFilers=1) → puise MOINS de REER aux paliers sûrs, comble via CELI/non-enreg →
-        // impôt cumulé PLUS BAS que le couple (1 personne sur 11 ans = moins de décaissement total).
-        // Mesuré au pin : surv ≈ 221,0 k$ vs base ≈ 266,6 k$ (Δ ~17 %, le décès reste matériel).
-        // Le contrat FA-10 « survivant = 1 contribuable au filing » reste gardé DIRECTEMENT par les tests
-        // unitaires FA-10 de retirementIncome.test.ts (SRG survivorMode = barème célibataire).
+        // au mauvais palier → impôt cumulé artificiellement gonflé. Désormais le survivant = 1 contribuable
+        // (liveFilers=1, seuils individuels, cohérent avec le filing de décembre FA-10 taxFilers=1) → puise
+        // MOINS de REER aux paliers sûrs, comble via CELI/non-enreg → impôt cumulé PLUS BAS que le couple.
+        // RE-BASELINE 2026-06-16 (FISC-REER-WHT-DOUBLE) : la retenue à la source n'est plus double-comptée.
+        // `totalTaxesPaid` est un FLUX cumulé (Σ fluxImpots + retraitReer×0,15) : comme le patrimoine n'est
+        // plus érodé par la fuite de retenue, le retraité décaisse MOINS de REER sur 11 ans → moins de revenu
+        // imposable → impôt cumulé PLUS BAS, et davantage pour le COUPLE qui décaisse le plus. MESURÉ (stash
+        // avec/sans fix) : base 266,6 → 215,1 k$ (−51 k$, « le 50 000 au fisc »), surv 221,0 → 207,0 k$.
+        // L'écart VRAI survivant↔couple = 3,8 % (8,1 k$) ; le bug le sur-affichait à 17 %. Seuil abaissé
+        // 0,05 → 0,03 EN CONSÉQUENCE (à 0,05 le test échouerait : 3,8 % < 5 %). La DIRECTION (survivant paie
+        // moins, décès matériel) tient. Contrat FA-10 « survivant = 1 contribuable » gardé par retirementIncome.test.ts.
         expect(surv.totalTaxesPaid).toBeLessThan(base.totalTaxesPaid);
-        expect(base.totalTaxesPaid - surv.totalTaxesPaid).toBeGreaterThan(base.totalTaxesPaid * 0.05);
+        expect(base.totalTaxesPaid - surv.totalTaxesPaid).toBeGreaterThan(base.totalTaxesPaid * 0.03);
     });
 
     it('le patrimoine final du survivant est PLUS BAS (PSV du défunt cesse + impôt plus lourd)', () => {

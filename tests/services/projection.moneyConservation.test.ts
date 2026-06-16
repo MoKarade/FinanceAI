@@ -46,6 +46,16 @@ const makeConfig = (): BudgetConfig => ({
 
 const makeRetirementGoal = (): RetirementGoal => ({ targetAge: 60, targetMonthlyIncome: 5500, governmentPension: 1850, lifeExpectancy: 92 });
 
+// Couple DÉJÀ retraité (62 ans) — force le décaissement REER pour couvrir les dépenses.
+const makeRetireeConfig = (extra: Partial<BudgetConfig> = {}): BudgetConfig => ({
+    users: [
+        { name: 'Marc', grossSalary: 0, netSalary: 0, color: '#10b981', age: 62, birthYear: 1964, canadaArrivalYear: 1964, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 },
+        { name: 'Anna', grossSalary: 0, netSalary: 0, color: '#3b82f6', age: 62, birthYear: 1964, canadaArrivalYear: 1964, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 },
+    ],
+    splitMode: '50/50',
+    ...extra,
+});
+
 const NO_INVEST = { CELI: 0, CELIAPP: 0, REER: 0, NON_ENREG: 0, CRYPTO: 0, REEE: 0 };
 
 const makeParams = (o: Partial<SimulationParams> = {}): SimulationParams => ({
@@ -211,5 +221,57 @@ describe('[CONSERVATION] patrimoine net toujours reconstructible et conservé', 
         const reducing = shownAssets(afterBuy as ProjectionChartPoint) - num((afterBuy as ProjectionChartPoint).NetWorth);
         expect(reducing).toBeGreaterThan(0);
         expect(reducing).toBeLessThan(25_000);   // ordre du prêt auto, PAS de l'hypothèque (~300 k$)
+    });
+
+    it('INV-10 — décaissement REER : la retenue à la source est un ACOMPTE, pas un coût double', () => {
+        // Money-critical (FISC-REER-WHT-DOUBLE — le « 50 000 au fisc » de Marc). Un retraité finance
+        // ses dépenses par retraits REER. La retenue prélevée est un ACOMPTE d'impôt payé en avril
+        // (bucket .reer). Elle ne doit PAS quitter le patrimoine au retrait (le BRUT sort du REER, le
+        // net étant effacé par l'invariant CF-2 de la cascade) ET être re-débitée en avril — sinon le
+        // retraité paie la retenue DEUX fois (sur-imposition = la retenue ENTIÈRE par an, des dizaines
+        // de k$ sur un gros décaissement). Garde : tant que le REER alimente le décaissement, ΔNW est
+        // ENTIÈREMENT expliqué (épargne + croissance + impôt). Avant le fix : fuite ≈ retenue/mois (~1 k$).
+        const cd = run(makeParams({
+            config: makeRetireeConfig(),
+            retirementGoal: { targetAge: 60, targetMonthlyIncome: 6000, governmentPension: 900, lifeExpectancy: 95 },
+            liveCSVBalances: { ...NO_INVEST, REER: 800_000 },
+            projection: makeProjection({ years: 12 }),
+            baseGrossAnnual: 0, baseNetAnnual: 0, currentRentExpense: 0, baseMonthlyExpenses: 6_000,
+            calculatedStartingCash: 12_000,
+        })).chartData;
+        let maxResid = 0, drawMonths = 0;
+        for (let i = 1; i < cd.length; i++) {
+            // Phase de décaissement (REER non épuisé). Au-delà — REER=0, le retraité est « à sec » —
+            // un bug SÉPARÉ (dépense non couverte quand seul un coussin critique reste) s'applique,
+            // hors périmètre FISC-REER-WHT-DOUBLE (consigné au BACKLOG).
+            if (num(cd[i].REER) > 1_000) {
+                maxResid = Math.max(maxResid, Math.abs(unexplained(cd[i], cd[i - 1])));
+                drawMonths++;
+            }
+        }
+        expect(drawMonths).toBeGreaterThan(60);   // le scénario décaisse RÉELLEMENT le REER (>5 ans)
+        expect(maxResid).toBeLessThan(1);          // retenue comptée 1× (acompte) — pas 2×
+    });
+
+    it('INV-11 — meltdown REER→NonReg : transfert NW-neutre (retenue non double-comptée)', () => {
+        // Le meltdown relocalise le REER vers le NonReg (évite la bombe fiscale au décès). Comme le
+        // décaissement, la retenue est un acompte payé en avril : le transfert doit être NW-NEUTRE
+        // (reer −brut, nonReg +net, retenue conservée au liquide jusqu'au règlement). Avant le fix :
+        // seul le net entrait en nonReg ET avril re-débitait la retenue → même fuite que le shortfall.
+        const cd = run(makeParams({
+            config: makeRetireeConfig(),
+            retirementGoal: { targetAge: 60, targetMonthlyIncome: 4000, governmentPension: 800, lifeExpectancy: 95 },
+            liveCSVBalances: { ...NO_INVEST, REER: 1_400_000 },
+            projection: makeProjection({ years: 10, withdrawalStrategy: 'MELTDOWN_REER' }),
+            baseGrossAnnual: 0, baseNetAnnual: 0, currentRentExpense: 0, baseMonthlyExpenses: 3_000,
+            calculatedStartingCash: 25_000,
+        })).chartData;
+        // Le meltdown transfère effectivement du REER vers le NonReg.
+        expect(cd.some(p => num(p.NonReg) > 100_000)).toBe(true);
+        let maxResid = 0;
+        for (let i = 1; i < cd.length; i++) {
+            if (num(cd[i].REER) > 1_000) maxResid = Math.max(maxResid, Math.abs(unexplained(cd[i], cd[i - 1])));
+        }
+        expect(maxResid).toBeLessThan(1);
     });
 });

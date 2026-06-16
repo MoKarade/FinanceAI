@@ -24,6 +24,50 @@
 
 ---
 
+## 🚀 MCP FinanceAI → Cloud Run [⏳ gros chantier] (brief Marc 2026-06-16)
+> Le serveur MCP perso FinanceAI (finances : Drive/BigQuery, comptes CELI/REER/CELIAPP/REEE) tourne en
+> local (stdio), token Google en **fichier**. **Symptôme** : `get_financial_overview` → `invalid_grant`
+> (« Token has been expired or revoked ») alors que `ping` répond. **But** : serveur **distant** hébergé sur
+> **Google Cloud Run**, stable, sécurisé, redéployé à chaque push. **Code : dossier `mcp/`.**
+> ⚠️ **PLAN-FIRST** : phase 0 (explore + rapport) AVANT tout code ; **OK Marc requis avant la phase d'écriture.**
+> ⚠️ **DEUX OAuth distincts** : **A** = serveur ↔ Google (lire les finances Drive/BigQuery — c'est CE token qui
+> est mort, à persister hors disque + rafraîchir) ; **B** = Claude ↔ serveur (auth du connecteur — Bearer
+> d'abord, architecture prête pour OAuth 2.1 plus tard). NE PAS les confondre.
+
+- [ ] **[MCP-CLOUDRUN-0]** 🔧 **Phase 0 — explorer + rapporter (LECTURE SEULE, ne rien modifier)** :
+  langage/framework MCP (FastMCP Python ? `@modelcontextprotocol/sdk` TS ? autre ?) ; transport actuel +
+  entrée du serveur ; où/comment le token Google est lu/écrit (fichier ? chemin ? lib OAuth ?) ; où vivent
+  `client_id`/`client_secret` (clair ? `.env` ?) ; scopes Google + `access_type`/`prompt` ; **liste
+  exhaustive des outils MCP exposés** (pour ne rien casser). → rapport court + plan → **attendre l'OK Marc**.
+- [ ] **[MCP-CLOUDRUN-A]** 🔧 **Auth A (serveur ↔ Google — le token mort)** : module `token_store` qui
+  lit/écrit le refresh token dans **Secret Manager** (`financeai-google-refresh`), jamais en fichier ;
+  `client_id`/`client_secret` depuis `financeai-google-client` ; flux `access_type=offline` + `prompt=consent` ;
+  si Google renvoie un nouveau refresh token → **réécrire le secret** ; **gérer `invalid_grant` explicitement**
+  (log clair + message MCP exploitable « reconnecte Google », pas de crash) + outil/chemin de ré-consentement.
+- [ ] **[MCP-CLOUDRUN-B]** 🔧 **Sécurité B (Claude ↔ serveur)** : middleware exigeant
+  `Authorization: Bearer <FINANCEAI_API_KEY>` (clé en secret/env) → **401** sinon ; point d'extension commenté
+  pour OAuth 2.1 (401 + `WWW-Authenticate`).
+- [ ] **[MCP-CLOUDRUN-HTTP]** 🔧 **Transport** : stdio → **Streamable HTTP**, endpoint unique `/mcp`
+  (POST + GET), écoute `0.0.0.0:$PORT` (défaut **8080**) ; garder un mode stdio via `MCP_TRANSPORT=stdio|http`
+  pour le dev local.
+- [ ] **[MCP-CLOUDRUN-DEPLOY]** 🔧 **Conteneur + CI/CD** : Dockerfile (EXPOSE 8080, démarre sur `PORT`) +
+  endpoint `/health` → 200 ; `deploy.sh` (`gcloud run deploy`, région **northamerica-northeast1**,
+  `--min-instances 0`, `--set-secrets` ×3) ; workflow **GitHub Actions** (`google-github-actions/deploy-cloudrun`)
+  qui redéploie sur push `main` ; README (créer les 3 secrets, publier l'OAuth consent en Production, déployer,
+  brancher le déploiement continu, brancher Claude : Settings → Connectors → custom connector URL
+  `https://…run.app/mcp` + clé Bearer en advanced settings, retrait de l'ancien MCP local).
+- **Critères d'acceptation** : `docker build` + `docker run -e PORT=8080` démarre en HTTP local ; appel MCP
+  GET/POST `/mcp` répond, **sans Bearer → 401** ; token lu depuis Secret Manager (jamais fichier ; `grep` = 0
+  secret clair) ; `get_financial_overview` OK une fois un refresh token valide en place ; **tous les outils MCP
+  préexistants encore enregistrés** (lister avant/après) ; `/health` → 200 ; workflow Actions valide (dry-run).
+- **Contraintes** : ne PAS renommer outils/signatures ; jamais de secret commité (vérifier `.gitignore`) ;
+  petits commits atomiques + explication ; **branche, pas `main`** ; décision Marc (région/nom service/scopes)
+  → demander au lieu de supposer.
+- 🧭👤 **[MCP-CLOUDRUN-ROOT]** **CAUSE RACINE prioritaire (action Marc — Google Cloud Console)** : l'écran de
+  consentement OAuth est probablement en mode **« Testing »** → le refresh token expire tous les **7 jours**
+  (= la vraie cause du `invalid_grant`). **Publier l'app en Production** (OAuth consent screen). À rappeler
+  comme étape OBLIGATOIRE dans le README. → aussi candidat à `A_FAIRE_MOI.md`.
+
 ## 💰 Audit money-critical 2026-06-16 (bug « -208 633 $/mois » — workflow + panel adversarial)
 > Déclencheur : Marc voit un patrimoine net -193 398 $ / variation -208 633 $ avec revenu ~10,6 k$.
 > Workflow multi-agents (12 finders + vérif adversariale 2 votes) → 9 bugs confirmés / 10 réfutés.

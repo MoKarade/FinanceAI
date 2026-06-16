@@ -1,0 +1,215 @@
+// tests/services/projection.moneyConservation.test.ts
+//
+// [CONSERVATION DE L'ARGENT] — garde-fou money-critical (demande Marc 2026-06-16,
+// suite au bug « variation nette -208 633 $ en un mois » avec revenu ~10,6 k$).
+//
+// Ces invariants encodent une RÈGLE NON NÉGOCIABLE : le patrimoine net affiché DOIT
+// toujours être RECONSTRUCTIBLE depuis ce que l'utilisateur voit, et l'argent ne peut
+// ni se créer ni se détruire sans cause visible. Chaque test est DISCRIMINANT : il
+// échoue sur un vrai bug, pas seulement « le code tourne ».
+//
+// Invariants couverts :
+//   INV-1  Reconstructabilité : NetWorth = Σ(actifs affichés) − dettes affichées (à l'euro près).
+//   INV-2  Conservation socle : un mois sans événement → ΔNW = épargne + croissance + impôt (résiduel ≈ 0).
+//   INV-3  Une dette préexistante RÉDUIT le patrimoine net (jamais ignorée).
+//   INV-4  Rembourser une dette n'érode le NW que de l'INTÉRÊT (le principal est neutre).
+//   INV-5  Achat immobilier : la mise de fonds devient de l'ÉQUITÉ (NW quasi conservé).
+//   INV-6  Aucun compte ne devient négatif (pas de solde fantôme).
+//   INV-7  Un découvert porté en dette est VISIBLE (LiquidDebt + DetteTotale l'exposent).
+
+import { describe, it, expect } from 'vitest';
+import { calculateFutureProjection, type SimulationParams } from '../../services/projection';
+import type { ProjectionResult, ProjectionChartPoint } from '../../services/projection';
+import type { ProjectionConfig, BudgetConfig, RetirementGoal, Debt } from '../../types';
+
+const makeProjection = (o: Partial<ProjectionConfig> = {}): ProjectionConfig => ({
+    years: 12,
+    returnRate: 6,
+    inflationRate: 2,
+    savingsMode: 'manual',
+    manualContribution: 0,
+    usePortfolioRate: false,
+    returnRates: { celi: 6, reer: 6, nonReg: 6, crypto: 8, cash: 2 },
+    emergencyFundMonths: 6,
+    salaryGrowth: 2,
+    propertyGrowthRate: 3,
+    ...o,
+});
+
+const makeConfig = (): BudgetConfig => ({
+    users: [
+        { name: 'Marc', grossSalary: 8200, netSalary: 5620, color: '#10b981', age: 30, birthYear: 1996, canadaArrivalYear: 1996, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 },
+        { name: 'Anna', grossSalary: 7100, netSalary: 4995, color: '#3b82f6', age: 30, birthYear: 1996, canadaArrivalYear: 1996, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 },
+    ],
+    splitMode: '50/50',
+});
+
+const makeRetirementGoal = (): RetirementGoal => ({ targetAge: 60, targetMonthlyIncome: 5500, governmentPension: 1850, lifeExpectancy: 92 });
+
+const NO_INVEST = { CELI: 0, CELIAPP: 0, REER: 0, NON_ENREG: 0, CRYPTO: 0, REEE: 0 };
+
+const makeParams = (o: Partial<SimulationParams> = {}): SimulationParams => ({
+    projection: makeProjection(),
+    calculatedStartingCash: 15_000,
+    liveCSVBalances: NO_INVEST,
+    realEstateGoals: [],
+    debts: [],
+    childGoals: [],
+    travelGoals: [],
+    lifeEvents: [],
+    retirementGoal: makeRetirementGoal(),
+    config: makeConfig(),
+    baseGrossAnnual: 183_600,
+    baseNetAnnual: 127_380,
+    currentRentExpense: 1_800,
+    baseMonthlyExpenses: 6_801,
+    startYear: 2026,
+    startMonth: 0,
+    ...o,
+});
+
+const run = (p: SimulationParams): ProjectionResult => calculateFutureProjection(p);
+const num = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0);
+
+const ASSET_KEYS = ['Liquidites', 'CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto', 'Immobilier'] as const;
+const shownAssets = (p: ProjectionChartPoint): number =>
+    ASSET_KEYS.reduce((s, k) => s + num((p as Record<string, unknown>)[k]), 0);
+
+// Résiduel mensuel inexpliqué : ΔNW − (épargne + croissance marché + règlement d'impôt).
+const unexplained = (curr: ProjectionChartPoint, prev: ProjectionChartPoint): number => {
+    const savings = num(curr.Income) - num(curr.Expenses);
+    const marketGrowth =
+        num(curr.MarketGrowthCELI) + num(curr.MarketGrowthREER) + num(curr.MarketGrowthNonReg) +
+        num(curr.MarketGrowthCrypto) + num(curr.MarketGrowthLiquid) + num(curr.MarketGrowthCELIAPP) +
+        num(curr.MarketGrowthREEE);
+    const taxSettlement = -num(curr.FluxImpots);
+    return (num(curr.NetWorth) - num(prev.NetWorth)) - (savings + marketGrowth + taxSettlement);
+};
+
+describe('[CONSERVATION] patrimoine net toujours reconstructible et conservé', () => {
+    it('INV-2 — socle salarié sans événement : ΔNW entièrement expliqué (résiduel ≈ 0)', () => {
+        const cd = run(makeParams()).chartData;
+        let maxResid = 0;
+        for (let i = 1; i < cd.length; i++) maxResid = Math.max(maxResid, Math.abs(unexplained(cd[i], cd[i - 1])));
+        expect(maxResid).toBeLessThan(1);
+    });
+
+    it('INV-1 — reconstructabilité : NetWorth = Σ(actifs affichés) − DetteTotale (sans placement)', () => {
+        // Scénario réno non-abordable (signature de la capture Marc) : un découvert massif
+        // doit RESTER reconstructible — la dette affichée explique l'écart actifs↔NW.
+        const r = run(makeParams({ majorRenovations: [{ id: 'r', date: '2031-09-15', cost: 300_000, description: 'agrandissement' }] }));
+        for (const p of r.chartData) {
+            const recon = shownAssets(p) - num(p.DetteTotale);
+            // À l'euro près (modulo CELIAPP/REEE déjà dans ASSET_KEYS, impôt latent négligeable ici).
+            expect(Math.abs(num(p.NetWorth) - recon)).toBeLessThan(2);
+        }
+    });
+
+    it('INV-7 — un découvert porté en dette est VISIBLE (LiquidDebt + DetteTotale > 0)', () => {
+        const r = run(makeParams({ majorRenovations: [{ id: 'r', date: '2031-09-15', cost: 300_000, description: 'agrandissement' }] }));
+        // Mois de la réno : le patrimoine plonge → le découvert non couvert doit apparaître.
+        const renoIdx = r.chartData.findIndex(p =>
+            [...(p.lifeEvents || []), ...(p.flowEvents || [])].some(e => /Rénovation majeure/.test(e)));
+        expect(renoIdx).toBeGreaterThan(0);
+        // Après épuisement des comptes, un découvert est porté en dette ET exposé.
+        const after = r.chartData[renoIdx];
+        const liquidDebtExposed = num((after as Record<string, unknown>).LiquidDebt);
+        expect(liquidDebtExposed).toBeGreaterThan(0);
+        // DetteTotale inclut désormais le découvert (plus d'écart invisible).
+        expect(num(after.DetteTotale)).toBeGreaterThanOrEqual(liquidDebtExposed - 1);
+        // Et le NW négatif est entièrement adossé à une dette affichée.
+        expect(num(after.NetWorth)).toBeGreaterThanOrEqual(-num(after.DetteTotale) - 2);
+    });
+
+    it('INV-3 — une dette préexistante réduit le patrimoine net dès le mois 0', () => {
+        const debt: Debt = { id: 'd', name: 'Prêt auto', balance: 30_000, interestRate: 7, minimumPayment: 500, category: 'Car' };
+        const nwNoDebt = num(run(makeParams()).chartData[0].NetWorth);
+        const nwWithDebt = num(run(makeParams({ debts: [debt] })).chartData[0].NetWorth);
+        // Le prêt de 30 k$ doit retrancher ~30 k$ du patrimoine (pas être ignoré).
+        expect(nwNoDebt - nwWithDebt).toBeGreaterThan(29_000);
+        expect(nwNoDebt - nwWithDebt).toBeLessThan(31_000);
+    });
+
+    it('INV-4 — reconstructabilité CONTINUE avec une dette préexistante (principal neutre)', () => {
+        // Propriété « le remboursement du principal est NW-neutre » : à CHAQUE mois, le patrimoine
+        // net doit rester = actifs − DetteTotale. Comme la dette est payée, son solde (dans
+        // DetteTotale) ET sa déduction du NW décroissent ENSEMBLE → le principal remboursé ne crée
+        // ni ne détruit de patrimoine. Avant le fix : NW = actifs (dette ignorée) mais DetteTotale =
+        // solde → l'identité casse de tout le solde de la dette.
+        const debt: Debt = { id: 'd', name: 'Prêt étudiant', balance: 40_000, interestRate: 5, minimumPayment: 600, category: 'Student' };
+        const cd = run(makeParams({ projection: makeProjection({ years: 8 }), debts: [debt] })).chartData;
+        let maxBreak = 0;
+        for (const p of cd) {
+            maxBreak = Math.max(maxBreak, Math.abs(num(p.NetWorth) - (shownAssets(p) - num(p.DetteTotale))));
+        }
+        expect(maxBreak).toBeLessThan(2);
+    });
+
+    it('INV-5 — achat immobilier : la mise de fonds devient de l\'équité (NW quasi conservé)', () => {
+        const r = run(makeParams({
+            calculatedStartingCash: 150_000,
+            realEstateGoals: [{
+                id: 're1', name: 'Maison', isActive: true, purchaseDate: '2028-06-01',
+                price: 400_000, downPayment: 80_000, mortgageRate: 5, amortization: 25,
+                totalClosingCosts: 6_000, monthlyPayment: 2_100, unrecoverableMonthly: 900,
+                isPrimaryResidence: true,
+            }],
+        }));
+        const buyIdx = r.chartData.findIndex(p =>
+            [...(p.lifeEvents || []), ...(p.flowEvents || [])].some(e => /Achat .*Maison|Mise de fonds/.test(e)));
+        expect(buyIdx).toBeGreaterThan(0);
+        const buy = r.chartData[buyIdx];
+        const prev = r.chartData[buyIdx - 1];
+        // L'équité immobilière apparaît (la mise de fonds n'est PAS perdue).
+        expect(num(buy.Immobilier)).toBeGreaterThan(70_000);
+        // ΔNW au mois d'achat = frais de transaction seulement (clôture + bienvenue), pas la mise.
+        const deltaNW = num(buy.NetWorth) - num(prev.NetWorth);
+        expect(deltaNW).toBeGreaterThan(-25_000);       // pas une chute de 80 k$ (la mise = équité)
+    });
+
+    it('INV-6 — aucun compte ne devient négatif (pas de solde fantôme)', () => {
+        for (const params of [makeParams(), makeParams({ majorRenovations: [{ id: 'r', date: '2031-09-15', cost: 200_000 }] })]) {
+            for (const p of run(params).chartData) {
+                for (const k of ASSET_KEYS) {
+                    expect(num((p as Record<string, unknown>)[k]), `${k} négatif au mois ${p.monthIndex}`).toBeGreaterThanOrEqual(-1);
+                }
+            }
+        }
+    });
+
+    it('INV-8 — une dette à champ NON numérique (NaN) ne casse JAMAIS le patrimoine net', () => {
+        // parseFloat('') = NaN dans DebtManager : balance/taux/paiement peuvent arriver NaN.
+        // Le moteur DOIT les normaliser (à 0, journalisé) — jamais propager NaN à NetWorth/diffNW.
+        const bad = { id: 'x', name: 'Prêt corrompu', balance: Number.NaN, interestRate: Number.NaN, minimumPayment: Number.NaN, category: 'Car' } as unknown as Debt;
+        const bad2 = { id: 'y', name: 'Prêt 2', balance: 30_000, interestRate: Number.NaN, minimumPayment: Number.NaN, category: 'Student' } as unknown as Debt;
+        for (const debts of [[bad], [bad2], [bad, bad2]]) {
+            for (const p of run(makeParams({ debts })).chartData) {
+                expect(Number.isNaN(num(p.NetWorth)), `NetWorth NaN au mois ${p.monthIndex}`).toBe(false);
+                expect(Number.isNaN(num(p.DetteTotale))).toBe(false);
+                expect(Number.isNaN(num(p.diffNW))).toBe(false);
+            }
+        }
+    });
+
+    it('INV-9 — hypothèque NON double-comptée : Σ(actifs) − NetWorth = dettes NON-immo seulement', () => {
+        // Avec une propriété hypothéquée (Immobilier = équité nette) ET un prêt auto, la dette qui
+        // réduit le NW sous les actifs affichés = prêt auto + découvert SEULEMENT. Si l'hypothèque
+        // (~300 k$) était re-soustraite (double-compte), l'écart exploserait.
+        const debt: Debt = { id: 'd', name: 'Auto', balance: 20_000, interestRate: 6, minimumPayment: 400, category: 'Car' };
+        const cd = run(makeParams({
+            calculatedStartingCash: 150_000,
+            debts: [debt],
+            realEstateGoals: [{
+                id: 're', name: 'Maison', isActive: true, purchaseDate: '2028-06-01',
+                price: 400_000, downPayment: 80_000, mortgageRate: 5, amortization: 25,
+                totalClosingCosts: 6_000, monthlyPayment: 2_100, unrecoverableMonthly: 900,
+                isPrimaryResidence: true,
+            }],
+        })).chartData;
+        const afterBuy = cd.find(p => num(p.Immobilier) > 50_000);
+        expect(afterBuy, 'achat immobilier attendu').toBeTruthy();
+        const reducing = shownAssets(afterBuy as ProjectionChartPoint) - num((afterBuy as ProjectionChartPoint).NetWorth);
+        expect(reducing).toBeGreaterThan(0);
+        expect(reducing).toBeLessThan(25_000);   // ordre du prêt auto, PAS de l'hypothèque (~300 k$)
+    });
+});

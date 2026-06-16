@@ -6,6 +6,42 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Money-critical : patrimoine net = dettes soustraites + découvert VISIBLE] — 2026-06-16
+
+> Bug rapporté par Marc : « patrimoine net -193 398 $ avec une variation mensuelle de -208 633 $ »
+> alors que revenu ~10,6 k$/mois et dépenses 6,8 k$. Audit total du moteur financier (workflow
+> multi-agents + panel adversarial). Cause + corrections ci-dessous.
+
+### Corrigé (patrimoine net)
+- **Découvert invisible → VISIBLE** : un débit ponctuel non couvert (réno/véhicule dépassant les
+  comptes) était porté en `liquidDebt`, **soustrait du patrimoine net mais exposé dans AUCUN champ**
+  (`DetteTotale = hypothèque + prêts` seulement) → un patrimoine NÉGATIF que rien dans l'UI n'expliquait.
+  Désormais `liquidDebt` est exposé (`LiquidDebt`), inclus dans `DetteTotale`, et le modal Futur affiche
+  une ligne **« Dettes »** (montant = Σ actifs affichés − NetWorth, reconstruction-fidèle).
+- **Dettes préexistantes désormais soustraites du patrimoine net** : `rawNetWorth` n'avait JAMAIS
+  soustrait `activeDebtsTotal` (prêts auto/étudiant/cartes) ni `smithManoeuvreDebt` (HELOC) →
+  patrimoine SURÉVALUÉ et, pire, **rembourser une dette érodait le NW au plein paiement** (le principal
+  traité comme consommation) au lieu du seul intérêt. Aligné sur `financialSnapshot` (qui soustrait déjà
+  les dettes) et sur la succession.
+- **`diffNW` (« Variation nette ») exact** : `prevNW` suivait une formule différente de `rawNetWorth`
+  (omettait celiapp + les dettes) → variation mensuelle faussée pour tout utilisateur FHSA/endetté.
+  `prevNW` = `rawNetWorth` du mois précédent (source unique).
+- **Succession cohérente** : `estateCalculation` soustrait aussi `activeDebtsTotal` (manquant) → le
+  « Patrimoine projeté » ne diverge plus du graphe quand une dette persiste en fin d'horizon.
+- **Source UNIQUE de la formule** (`services/projection/netWorth.ts` `computeRawNetWorth`) : la formule
+  était recopiée en 4 endroits (dont une copie divergente) — désormais 1 seul point de vérité.
+- **Garde NaN** : une dette à champ vidé dans l'UI (`parseFloat('')` = NaN) ne contamine plus
+  silencieusement `NetWorth` (normalisée à 0 + journalisée via `logError`).
+
+### Tests
+- **`tests/services/projection.moneyConservation.test.ts`** — 9 invariants de conservation de l'argent
+  (reconstructabilité, ΔNW expliqué, dette réduit le NW, principal neutre, achat immo conserve le NW,
+  pas de solde négatif, NaN guardé, hypothèque non double-comptée). Tous discriminants (échouent sur le
+  code d'avant). + checklist « VALIDATION FINANCIÈRE » ajoutée à `CLAUDE.md`.
+- **2069 tests verts**, typecheck clean.
+
+---
+
 ## [unreleased — Sécurité : Vite 6→8 (Rolldown), 0 vulnérabilité] — 2026-06-15
 
 ### Sécurité / Build

@@ -11,6 +11,8 @@
 import type { AppState, Asset, Debt, FinancialGoal } from '../types';
 import type { ProjectionResult } from './projection/types';
 import { calculateFiscalReport } from '../utils/tax';
+import { formatCAD } from '../utils/format';
+import { logError } from './errorLogger';
 
 // ============================================================================
 // Types — payload de report
@@ -226,8 +228,8 @@ export function buildScenariosRows(
 // Format helpers
 // ============================================================================
 
-const formatCAD = (v: number) =>
-    v.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', minimumFractionDigits: 0, maximumFractionDigits: 0 });
+// DETTE-PDF-FORMAT — `formatCAD` vient désormais de `utils/format` (source unique fr-CA, gère
+// les valeurs non finies → '—' au lieu de « NaN $ »). L'ancienne réimplémentation locale est retirée.
 
 const formatPct = (v: number, digits: number = 1) =>
     `${v.toFixed(digits)}%`;
@@ -800,8 +802,9 @@ export async function generateFinancialReport(data: ReportData): Promise<void> {
         doc.save(filename);
 
     } catch (err) {
-        // Silent debug only — production fallback opens print dialog
-        if (typeof console !== 'undefined') console.error('[PDF] jsPDF failed:', err);
+        // SF-PDF — échec jsPDF routé vers logError (visible en prod via SystemView), pas un
+        // console.error invisible. Le repli ci-dessous ouvre le dialogue d'impression du navigateur.
+        logError({ source: 'ui', severity: 'error', message: 'Génération PDF (jsPDF) échouée — repli sur le dialogue d\'impression', error: err });
         const w = typeof window !== 'undefined' ? window.open('', '_blank') : null;
         if (w) {
             w.document.write(`

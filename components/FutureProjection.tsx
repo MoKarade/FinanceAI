@@ -8,6 +8,7 @@ import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Refere
 import { BudgetConfig, BudgetCategory, RealEstateGoal, RetirementGoal, Transaction, ProjectionConfig } from '../types';
 import { ProjectionResult, ProjectionChartPoint } from '../services/projection/types';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { logError } from '../services/errorLogger';
 import { usePendingFocus } from '../utils/usePendingFocus';
 import { buildLockedByMonth } from '../utils/lockedCurveOverlay';
 
@@ -461,7 +462,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // critiques manquent. Avant ce fix, cette garde était ligne 46 (avant les
     // 21 hooks ci-dessus) → 21 violations react-hooks/rules-of-hooks.
     if (!budgetItems || !projection || !config || !initialBalances) {
-        console.error("FutureProjection: Missing critical initialization data.", { budgetItems, projection, config, initialBalances });
+        // SF-RESIDUS — routé vers logError (visible en prod). Context = QUELS champs manquent
+        // (booléens), pas les objets eux-mêmes (évite de loguer des données financières inutilement).
+        logError({ source: 'ui', severity: 'error', message: 'FutureProjection : données d\'initialisation critiques manquantes', context: { hasBudget: !!budgetItems, hasProjection: !!projection, hasConfig: !!config, hasBalances: !!initialBalances } });
         return <div className="p-8 text-center text-red-400 font-bold bg-surface/50 rounded-2xl border border-red-500/20">
             ⚠️ Données d'initialisation manquantes. Veuillez vérifier vos comptes et votre budget.
         </div>;

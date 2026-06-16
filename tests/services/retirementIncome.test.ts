@@ -492,3 +492,38 @@ describe('computeRetirementIncome — RRQ-PSV-MIN : clamp des estimés négatifs
         expect(neg.total).toBeCloseTo(zero.total, 6); // discriminant : sans clamp, total(neg) < total(0)
     });
 });
+
+describe('computeRetirementIncome — FISC-RRQ-PRORATA : prorata de résidence RRQ per-conjoint', () => {
+    // Deux conjoints même salaire (ratio gains/MGA identique) → seule la RÉSIDENCE diffère.
+    const nativeUser = { name: 'Natif', grossSalary: 5000, birthYear: 1980 } as unknown as User;
+    // Immigrant arrivé à 40 ans (2020, né 1980) → années cotisées 18→65 amputées.
+    const immigrantUser = { name: 'Immigrant', grossSalary: 5000, birthYear: 1980, isImmigrant: true, canadaArrivalYear: 2020 } as unknown as User;
+    const coupleCtx: RetirementIncomeCtx = { ...baseCtx, activeUsersCount: 2, psvResidencyYears: [40, 40] };
+
+    it('SYMÉTRIE : l\'ordre des conjoints ne change PAS la RRQ familiale (discrimine le bug u0-only)', () => {
+        // Avant (prorata dérivé de users[0] SEUL) : [immigrant, natif] ≠ [natif, immigrant].
+        // Après (moyenne per-conjoint) : les deux sont ÉGAUX. Ce test ÉCHOUE sur l'ancien code.
+        const immFirst = computeRetirementIncome(coupleCtx, baseGoal, [immigrantUser, nativeUser]);
+        const nativeFirst = computeRetirementIncome(coupleCtx, baseGoal, [nativeUser, immigrantUser]);
+        expect(immFirst.rrq).toBeGreaterThan(0);
+        expect(immFirst.rrq).toBeCloseTo(nativeFirst.rrq, 4);
+        // Le split par conjoint est aussi symétrique (somme == total famille, invariant préservé).
+        expect(immFirst.perUser[0].rrq + immFirst.perUser[1].rrq).toBeCloseTo(immFirst.rrq, 4);
+    });
+
+    it('un conjoint immigrant tardif RÉDUIT la RRQ familiale (résidence < 1 tire la moyenne)', () => {
+        const mixed = computeRetirementIncome(coupleCtx, baseGoal, [nativeUser, immigrantUser]);
+        const allNative = computeRetirementIncome(coupleCtx, baseGoal, [nativeUser, { ...nativeUser, name: 'Natif2' }]);
+        // L'immigrant a un prorata de résidence partiel (≈25/39) → famille mixte < famille 100 % native.
+        expect(mixed.rrq).toBeLessThan(allNative.rrq);
+        // Le conjoint immigrant reçoit une PART RRQ plus faible que le natif (poids résidence moindre).
+        expect(mixed.perUser[1].rrq).toBeLessThan(mixed.perUser[0].rrq);
+    });
+
+    it('couple 100 % natif : prorata résidence = 1 chacun → comportement antérieur inchangé', () => {
+        // Garde de non-régression : sans immigrant, rien ne bouge (résidence neutre).
+        const allNative = computeRetirementIncome(coupleCtx, baseGoal, [nativeUser, { ...nativeUser, name: 'N2' }]);
+        expect(allNative.rrq).toBeGreaterThan(0);
+        expect(allNative.perUser[0].rrq).toBeCloseTo(allNative.perUser[1].rrq, 4); // salaires égaux → parts égales
+    });
+});

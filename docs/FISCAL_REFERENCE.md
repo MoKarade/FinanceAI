@@ -247,7 +247,10 @@ consommée par `services/projection/retirementIncome.ts` + `setupSimulation.ts`.
   faibles** (Retraite Québec) ≈ conserver **39 années sur 47** (8 retirées). Le moteur approxime :
   `prorata = min(1, années au Canada entre max(18, arrivée) et targetAge / 39) × min(1, salaire/MGA)`
   — salaire courant et MGA projetés au MÊME facteur (inflation + 0,5 %/an), donc ratio
-  gains/MGA stable sur la carrière (cf B-AUDIT-4).
+  gains/MGA stable sur la carrière (cf B-AUDIT-4). **FISC-RRQ-PRORATA (2026-06-16)** : le prorata de
+  résidence ET le ratio gains/MGA sont calculés **PER-CONJOINT** (arrivée via `getResidencyStartYear`,
+  gate `isImmigrant` — comme la PSV/CELI/REER) puis moyennés ; avant, la résidence venait de `users[0]`
+  seul (faux pour un couple d'arrivées inégales). Un natif (`isImmigrant` faux) ⇒ arrivée = 18 ⇒ prorata plein.
 - **PSV — règle OFFICIELLE de résidence** (Service Canada) : admissible à partir de **10 ans** de
   résidence au Canada après 18 ans (`PSV_MIN_RESIDENCY_YEARS`, versement au Canada) ; pension
   **PLEINE à 40 ans** de résidence (`PSV_FULL_RESIDENCY_YEARS`) ; entre les deux, **prorata en

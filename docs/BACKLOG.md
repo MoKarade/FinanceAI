@@ -51,12 +51,12 @@
 - [ ] **[A11Y-INK500]** 🔧 LOW — `ink-500` (#6a7689, reserve disabled) sur ~193 contenus actifs (echec AA normal). Passer a `ink-400`.
 
 ### Echecs silencieux
-- [ ] **[SF-PDF]** 🔧 MEDIUM — `pdfReport.ts:802` : echec jsPDF avale en `console.error` (invisible en prod). → `logError`.
-- [ ] **[SF-RESIDUS]** 🔧 LOW — `syncOrchestrator.ts:126,345`, `StockComparisonModal.tsx:41`, `FutureProjection.tsx:464`, `TaxCenter.tsx:89` : echecs avales en `console.*` (non money-critical). → `logError`.
+- [x] **[SF-PDF]** ✅ MEDIUM (2026-06-16) — `pdfReport.ts` : échec jsPDF routé vers `logError({source:'ui'})` (visible en prod via SystemView) ; repli print conservé.
+- [x] **[SF-RESIDUS]** ✅ LOW (2026-06-16) — `StockComparisonModal.tsx:41` (→ network/warning), `FutureProjection.tsx:464` (→ ui/error, context = champs manquants, pas les objets financiers), `TaxCenter.tsx:89` (→ ai/error) routés vers `logError`. `syncOrchestrator.ts` était déjà propre (référence BACKLOG périmée).
 
 ### Tests / dette technique
 - [ ] **[TEST-PROJ-MODULES]** 🔧 MEDIUM — 3 sous-modules projection money-critical sans test direct : `assetLocation.ts`, `monthlyOutput.ts`, `strategyConfig.ts`.
-- [ ] **[DETTE-PDF-FORMAT]** 🔧 MEDIUM — `pdfReport.ts:229` : `formatCAD` reimplemente localement (derive d'arrondi possible vs UI). Importer `utils/format.ts`.
+- [x] **[DETTE-PDF-FORMAT]** ✅ MEDIUM (2026-06-16) — `pdfReport.ts` : `formatCAD` local retiré → importé de `utils/format` (source unique fr-CA ; bonus : valeurs non finies → '—' au lieu de « NaN $ »). Tests pdfReport/pdfScenarios verts.
 - [ ] **[DETTE-RE-SALE]** 🔧 LOW — `monthlyEvents.ts:70` : vente immo pilotee par sous-chaine « vente » du nom + premier immeuble hypotheque (peut vendre la RP exempte au lieu du locatif). Lier a un `propertyId`.
 - [ ] **[DETTE-DEADCODE]** 🔧 LOW — `runBuyVsRent` (`realEstate.ts:639`) jamais appele hors tests ; verifier aussi `clearCredentials`, facade `getProfile`, `buildTestFixtures`.
 - [ ] **[DETTE-GODFILES]** ⏳ — decouper par barrel : `utils/tax.ts`, `syncOrchestrator.ts`, `Investments.tsx`, `Budget.tsx`, `FutureProjection.tsx`.

@@ -8,6 +8,7 @@ import { CoupleOptimizationCard } from './tax/CoupleOptimizationCard';
 import { BudgetConfig, Asset } from '../types';
 // Phase 4 A4: bascule sur services/claude.ts (Sonnet 4.6 + Vision)
 import { analyzePayslip } from '../services/claude';
+import { logError } from '../services/errorLogger';
 import { calculateFiscalReport, calculateGrossFromNet } from '../services/tax';
 import { annualSalaryToMonthly } from '../utils/salary';
 
@@ -86,7 +87,9 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
             try {
                 res = await analyzePayslip(file, apiKey);
             } catch (err) {
-                console.error(`[TaxCenter] analyzePayslip failed for ${file.name}:`, err);
+                // SF-RESIDUS — routé vers logError (source 'ai' : analyse de paie via Claude). Le toast
+                // ci-dessous reste le retour utilisateur ; logError donne la visibilité prod (SystemView).
+                logError({ source: 'ai', severity: 'error', message: 'TaxCenter : analyse de paie (analyzePayslip) échouée', context: { fileName: file.name }, error: err instanceof Error ? err : new Error(String(err)) });
                 showToast(`Échec analyse ${file.name}. Vérifie le format (JPG/PNG/WEBP/PDF) et ta clé Anthropic.`, 'error');
                 setProgress({ current: i + 1, total: files.length });
                 continue;

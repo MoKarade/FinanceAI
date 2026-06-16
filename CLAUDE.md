@@ -150,10 +150,15 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
 - Pas de complaisance : si une approche est mauvaise, le dire et proposer mieux.
 - Pas de validation gratuite ni d'intro inutile.
 - **Findings de review = hypothèses, pas vérités** : une review multi-agents sur du code fiscal/moteur
-  a un FORT taux de faux positifs (2026-06-15 : 2 des 6 HIGH financiers étaient FAUX — #2 supposait un
-  revenu nominal alors qu'il est déflaté ; #5 prémisse fausse, le fix proposé aurait été nocif). VÉRIFIER
-  chaque finding (lecture du vrai code + panel) AVANT de coder un fix money-critical. Un faux fix dans un
-  moteur d'impôt est pire que le finding non corrigé.
+  a un FORT taux de faux positifs (≈3/8 HIGH financiers FAUX — #2 supposait un revenu nominal alors qu'il
+  est déflaté ; #5 prémisse fausse ; FISC-GOVPENSION-SCALE 2026-06-16 : `governmentPension` est un agrégat
+  MÉNAGE, pas per-personne → le « fix » ×N aurait double-compté la RRQ+PSV d'un couple). VÉRIFIER chaque
+  finding (lecture du vrai code + panel adversarial qui cherche à RÉFUTER) AVANT de coder un fix
+  money-critical. Un faux fix dans un moteur d'impôt est pire que le finding non corrigé.
+  ⚠️ **Un nom trompeur FABRIQUE des faux findings** (leçon FISC-GOVPENSION-SCALE) : la variable
+  `rrqBaseIndiv` portait en fait une valeur FAMILIALE → c'est ce qui a induit le finding en erreur. Quand
+  un faux positif vient d'un nom/commentaire trompeur, RENOMMER pour auto-documenter (ici `…Indiv→…Family`)
+  est le vrai correctif — il prévient la récidive du finding, sans toucher la logique.
 
 ## Commandes (exactes, package.json)
 - Dev `npm run dev` · Build `npm run build` (⚠️ `prebuild` = `lint` ; build CASSE si lint échoue)

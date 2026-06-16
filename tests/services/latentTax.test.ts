@@ -28,6 +28,7 @@ const makeCtx = (overrides: Partial<LatentTaxCtx> = {}): LatentTaxCtx => ({
     nonRegACB: 30000,
     crypto: 20000,
     cryptoACB: 0,
+    realEstateLatentGain: 0,
     enableMonteCarlo: false,
     ...overrides,
 });
@@ -89,6 +90,13 @@ describe('computeLatentTax', () => {
         const noGain = computeLatentTax(makeCtx({ crypto: 50000, cryptoACB: 50000 }), realFiscal);
         // moins de gain crypto → obligation latente plus faible (moins négative).
         expect(noGain).toBeGreaterThan(fullGain);
+    });
+
+    it('FISC-LATENT-RE : un gain latent immobilier locatif AUGMENTE la dette latente (plus négative)', () => {
+        const sansImmo = computeLatentTax(makeCtx({ realEstateLatentGain: 0 }), realFiscal);
+        const avecImmo = computeLatentTax(makeCtx({ realEstateLatentGain: 200000 }), realFiscal);
+        // 200k de gain latent locatif (×50% imposable) → obligation fiscale latente plus lourde.
+        expect(avecImmo).toBeLessThan(sansImmo);
     });
 
     it('impôt latent nul si tous les actifs imposables valent 0', () => {

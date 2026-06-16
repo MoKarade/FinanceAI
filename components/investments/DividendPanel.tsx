@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Card } from '../ui/Card';
 import { Icon } from '../ui/Icon';
+import { PrivateAmount } from '../ui/PrivateAmount';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface DividendItem {
@@ -70,7 +71,7 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                     <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center shadow-inner border border-white/10"><Icon name="cash" size={26} className="text-ink-200" /></div>
                     <div>
                         <div className="text-tiny uppercase font-bold text-ink-400 tracking-widest mb-1">Rente Annuelle Estimée</div>
-                        <div className="text-3xl font-black text-white privacy-blur tracking-tight">{totalAnnualDividends.toLocaleString()} CAD</div>
+                        <PrivateAmount as="div" className="text-3xl font-black text-white tracking-tight">{totalAnnualDividends.toLocaleString()} CAD</PrivateAmount>
                     </div>
                 </div>
                 <div className="text-right hidden sm:block">

@@ -12,7 +12,6 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Tab } from '../types';
 import { computeBackupNagStatus } from '../services/backupReminder';
 import { QUOTA_EXCEEDED_EVENT } from '../services/quotaStorage';
 import { useHasUserData } from '../utils/useHasUserData';
@@ -140,6 +139,3 @@ export const BackupReminder: React.FC<BackupReminderProps> = ({ onNavigateToSett
 // Valeur exportée pour les tests.
 export { DISMISS_KEY };
 export type { BackupReminderProps };
-
-// Aide au typage pour Layout.tsx (passe Tab.SETTINGS directement).
-export const SETTINGS_TAB = Tab.SETTINGS;

@@ -24,8 +24,10 @@ Doc détaillée dans `docs/`, qui fait foi.
   `[YYYY-MM-DD HH:MM UTC]` (via `date`) — toujours, sans exception.
 - **PAS d'emojis dans le chat** sauf demande explicite (docs/commits en contiennent, OK).
   Français toujours, tutoiement, ton direct et technique.
-- **À CHAQUE reprise de chat**, commencer par un point bref (lu depuis
-  `docs/SESSION_HANDOVER.md` + `docs/BACKLOG.md`) :
+- **À CHAQUE reprise de chat**, d'abord `git fetch origin main` + `git merge --ff-only origin/main`
+  AVANT de juger l'état (le clone local du PC ne se met PAS à jour seul — vu 146 commits de retard
+  le 2026-06-15 : des PR/symboles crus « absents » étaient déjà sur origin). Puis un point bref (lu
+  depuis `docs/SESSION_HANDOVER.md` + `docs/BACKLOG.md`) :
   1. **Fait** — terminé depuis la dernière fois
   2. **État** — build/tests, chantiers ouverts
   3. **Suite proposée** — prochaine étape recommandée (+ ID)
@@ -56,10 +58,12 @@ Doc détaillée dans `docs/`, qui fait foi.
   ≈ 5 min si `.ts/.tsx` stagés) PUIS la même suite en CI (≈ 5 min) — redondant mais voulu
   (gate = filet local, CI = vérité partagée). Pour raccourcir, l'option serait un gate allégé
   (typecheck+build+tests `related` seulement) avec la suite complète en CI — décision Marc.
-- **CLAUDE.md s'améliore À CHAQUE PUSH** (règle Marc 2026-06-09) : tout push qui a appris
-  quelque chose (bug d'infra, convention découverte, leçon, décision) met à jour CLAUDE.md
-  dans le MÊME commit — petit delta ciblé, jamais de réécriture. Un push sans leçon = OK sans delta,
-  mais se poser la question à chaque fois.
+- **CLAUDE.md s'améliore À CHAQUE PUSH** (règle Marc 2026-06-09, renforcée 2026-06-15) : étape
+  OBLIGATOIRE du cycle de push — se demander explicitement « qu'ai-je appris ? » (bug d'infra,
+  convention découverte, leçon, décision, piège) AVANT le commit final. Leçon → delta ciblé dans la
+  section pertinente, **dans le MÊME commit/PR** (jamais de réécriture, juste le delta). Rien appris →
+  le dire (« push sans leçon ») au point de contrôle, pas de skip silencieux. ⚠️ Une leçon notée
+  ailleurs (chat, mémoire harness) mais PAS portée ici = perdue à la prochaine session.
 - **Backlog tenu par Claude** (l'Action `backlog-autocheck` a été RETIRÉE — choix Marc 2026-06-09) :
   au moment du MERGE d'une PR, Claude coche lui-même les `[ID]` livrés dans `docs/BACKLOG.md`
   (dans la PR même ou la suivante), ajoute les découvertes, et route les blocages humains
@@ -129,6 +133,12 @@ avant commit, lancer EN PARALLÈLE tous les agents pertinents (commande `/review
 
 Seule limite : la PERTINENCE. Lancer tous les agents qui s'appliquent ; aucun hors sujet.
 
+⚠️ **Brieffer le panel PRÉ-COMMIT sur le bon diff** (leçon 2026-06-16) : avant un commit, le travail vit
+dans le **working tree** (branche locale encore à `origin/main`) → `git diff origin/main...HEAD` est **VIDE**.
+Dire aux agents de lire `git diff` (working tree) ou `git status`, JAMAIS `origin/main...HEAD`, sinon chaque
+agent gaspille un aller-retour à « découvrir » que rien n'est commité avant de pivoter. (`origin/main...HEAD`
+n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
+
 ## Qualité d'abord (coût tokens non contraint)
 - **Tâches à 100 %** : pas de stub ni de « TODO plus tard » non demandé ; tests verts avant commit.
 - Privilégier la THOROUGHNESS : passes multiples, panel d'agents en parallèle aux gates,
@@ -139,6 +149,23 @@ Seule limite : la PERTINENCE. Lancer tous les agents qui s'appliquent ; aucun ho
 ## Posture de l'agent
 - Pas de complaisance : si une approche est mauvaise, le dire et proposer mieux.
 - Pas de validation gratuite ni d'intro inutile.
+- **Findings de review = hypothèses, pas vérités** : une review multi-agents sur du code fiscal/moteur
+  a un FORT taux de faux positifs (≈3/8 HIGH financiers FAUX — #2 supposait un revenu nominal alors qu'il
+  est déflaté ; #5 prémisse fausse ; FISC-GOVPENSION-SCALE 2026-06-16 : `governmentPension` est un agrégat
+  MÉNAGE, pas per-personne → le « fix » ×N aurait double-compté la RRQ+PSV d'un couple). VÉRIFIER chaque
+  finding (lecture du vrai code + panel adversarial qui cherche à RÉFUTER) AVANT de coder un fix
+  money-critical. Un faux fix dans un moteur d'impôt est pire que le finding non corrigé.
+  ⚠️ **Un nom trompeur FABRIQUE des faux findings** (leçon FISC-GOVPENSION-SCALE) : la variable
+  `rrqBaseIndiv` portait en fait une valeur FAMILIALE → c'est ce qui a induit le finding en erreur. Quand
+  un faux positif vient d'un nom/commentaire trompeur, RENOMMER pour auto-documenter (ici `…Indiv→…Family`)
+  est le vrai correctif — il prévient la récidive du finding, sans toucher la logique.
+  ⚠️ **Prouver qu'un test DISCRIMINE le bug** (leçon FISC-RRQ-PRORATA) : pour un fix money-critical, ne pas
+  se contenter de « le test passe ». VÉRIFIER qu'il ÉCHOUE sur le code d'avant : `git stash push -- <fichier
+  moteur>` (le fix seul), relancer le test (DOIT échouer), `git stash pop`. Un test vert qui passe AUSSI sur
+  le bug ne prouve rien. Pour un bug d'ordre/symétrie (ex. prorata per-conjoint), un test de SYMÉTRIE
+  (`f([a,b]) == f([b,a])`) discrimine sans nombre magique. Et « 0 régression baseline » d'un agent ≠ vérité :
+  lancer la SUITE COMPLÈTE — un changement peut toucher des fixtures encodant un état INVALIDE inatteignable
+  en prod (ex. `canadaArrivalYear` sans `isImmigrant`, gardé par l'UI) ; ce n'est alors pas une vraie régression.
 
 ## Commandes (exactes, package.json)
 - Dev `npm run dev` · Build `npm run build` (⚠️ `prebuild` = `lint` ; build CASSE si lint échoue)
@@ -147,6 +174,9 @@ Seule limite : la PERTINENCE. Lancer tous les agents qui s'appliquent ; aucun ho
 
 ## Tests
 - Tests pour TOUTE nouvelle logique. Priorité `services/projection/`. Ne pas baisser la couverture.
+- **Garde-fou money-critical** : `tests/services/projection.moneyConservation.test.ts` (9 invariants de
+  conservation de l'argent). À ÉTENDRE — pas affaiblir — à chaque bug financier trouvé. Voir la checklist
+  « VALIDATION FINANCIÈRE » dans « Règles non négociables ».
 
 ## Stack
 React 19.2 + Vite 8 (Rolldown) + TS 5.8 strict + Tailwind 3 · Zustand 5 (persist+partialize, schema v7,
@@ -169,7 +199,35 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
 - **Valeurs fiscales** : toute constante fiscale (plafonds, paliers, taux, RRQ/PSV/SRG, montants
   de base) DOIT venir de `docs/FISCAL_REFERENCE.md` (datée + sourcée). Jamais de chiffre fiscal
   en dur non sourcé. Audit : agent `fiscal-accuracy`.
+- **Unités argent** : `config.users[].grossSalary`/`netSalary` (store) sont **MENSUELS** (convention
+  canonique, `utils/salary.ts`). Annualiser **×12** pour toute comparaison annuelle (MGA, paliers
+  fiscaux) — sinon bug d'échelle ~12× (vu sur la RRQ, FISC-RRQ-UNIT 2026-06-15).
+- **Patrimoine net = source UNIQUE** (`services/projection/netWorth.ts` `computeRawNetWorth`) :
+  `NetWorth = Σ(actifs) − liquidDebt − smithManoeuvreDebt − activeDebtsTotal`. `realEstateEquity` est
+  DÉJÀ net d'hypothèque (ne JAMAIS re-soustraire `mortgageBalance`). Le moteur mensuel (`rawNetWorth` +
+  `prevNW`, donc `diffNW`) ET la succession (`estateCalculation`) appellent ce helper — jamais de copie
+  locale de la formule (une copie qui oublie un terme = patrimoine faux ; bug MONEY-PHANTOM 2026-06-16 :
+  dettes jamais soustraites + découvert invisible → « -193 k$ qui ne fait pas de sens »). `prevNW` DOIT
+  toujours = `rawNetWorth` du mois précédent (sinon `diffNW`/« Variation nette » faux). Cohérent avec
+  `financialSnapshot.ts` (`netWorth = placements + cash − dettes`).
 - **Secrets** : clés via l'UI seulement, jamais en dur/versionnées, exclues du localStorage/backups.
+
+### Checklist VALIDATION FINANCIÈRE (money-critical — à passer avant tout merge touchant un calcul $)
+> Demande Marc 2026-06-16 : « plus jamais d'erreur comme ça ». Tout changement à `services/projection/`,
+> `utils/tax.ts`, un solde, un flux, une dette ou un impôt DOIT cocher :
+- [ ] **Conservation** : `npm run test -- projection.moneyConservation` vert (9 invariants : reconstructabilité,
+  ΔNW expliqué, dette réduit le NW, principal neutre, achat immo conserve, pas de solde négatif, NaN guardé,
+  hypothèque non double-comptée). Ne JAMAIS affaiblir un invariant pour « faire passer » — corriger le code.
+- [ ] **Reconstructible** : sur tout point, `NetWorth = Σ(actifs affichés) − dettes affichées` (à l'euro près).
+  Un patrimoine net affiché ne doit JAMAIS être inexpliqué par l'UI (le modal `FutureDetailModal` montre la dette).
+- [ ] **Pas de flux fantôme** : un débit one-time (`subtractLiquid` : réno/véhicule/objectif) ne crée pas
+  d'argent ni ne disparaît sans contrepartie ; s'il dépasse les actifs, il est porté en `liquidDebt` VISIBLE.
+- [ ] **Unités** : mensuel vs annuel (×12) cohérent ; pas de double-indexation ; pas de double-imposition
+  (retenue créditée 1× ; net ≠ brut selon le poste).
+- [ ] **Test discriminant prouvé** : `git stash push -- <fichier moteur>` → le test ÉCHOUE sur le code d'avant →
+  `git stash pop` (cf « Posture de l'agent »). Un test vert qui passe AUSSI sur le bug ne prouve rien.
+- [ ] **Suite COMPLÈTE** + `typecheck` clean + panel (`projection-validator`, `fiscal-accuracy` si fiscal,
+  `silent-failure-hunter` pour les NaN/échecs avalés). Un finding = hypothèse → vérifier avant de coder.
 
 ## Automatisation (hooks `.claude/settings.json`)
 - **SessionStart** → `session-brief` injecte l'état (SESSION_HANDOVER + quick wins) : la reprise est automatique.
@@ -178,6 +236,18 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   - `commit-gate` → avant tout `git commit` : `typecheck` + `test` + `build` doivent passer, sinon commit BLOQUÉ.
   - `guard` → bloque `rm -rf` sensible, `--no-verify`, écriture `.env`. **Le `git push` est AUTORISÉ**
     (Claude gère commit→push→PR→merge ; cf Workflow ci-dessus).
+  - `learn-on-push` → sur `git push` : RAPPEL non-bloquant « leçon apprise → delta CLAUDE.md ? »
+    (applique « CLAUDE.md s'améliore à chaque push »). Pipe-tester un hook stdin : **Git Bash**
+    (`echo '{...}' | node …`), PAS PowerShell 5.1 qui ne livre pas le stdin à un exe natif.
+    Matcher `push` comme SOUS-commande git (après `git` + options globales), pas « push »
+    n'importe où — sinon faux positif sur un nom de branche en -push (révélé en live par le hook).
+- **Gate sécurité opsera** (plugin tiers `opsera-devsecops`, PreToolUse/Bash) bloque `git commit` jusqu'à
+  un scan. RÉSOLU 2026-06-16 : opsera AUTHENTIFIÉ (OAuth via l'outil MCP `authenticate` → URL navigateur).
+  Flux LÉGITIME du gate (zéro bypass) : `security-scan` (scan_mode `pre-commit`) avec les CLI installés —
+  `gitleaks` (winget) + `semgrep` (pip, OK Windows natif / Py 3.14) — → scan propre → `touch
+  /tmp/.opsera-pre-commit-scan-passed` (<5 min) → le commit passe. Ne JAMAIS toucher le flag sans scan réel.
+  **Aikido** (scanner préféré de Marc) : token dans l'env var UTILISATEUR `AIKIDO_API_KEY` (lue au
+  DÉMARRAGE du serveur MCP → redémarrer Claude Code ; `aikido_login` à chaud ne tient PAS pour `aikido_full_scan`).
 - Avant de merger, lancer `/review-all` (panel d'agents), puis `commit-gate` fait la vérif déterministe.
 - ⚠️ Les hooks tournent AUSSI en exécution cloud (Claude Code web) dès que `.claude/settings.json`
   est committé. `commit-gate` relance la suite complète **uniquement si des `.ts/.tsx` sont stagés**
@@ -185,10 +255,16 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   mais bloque toujours `rm -rf` sensible / `--no-verify` / `.env` (en ignorant le corps des messages).
 
 ## Notes
-- `services/eraContext.ts` DORMANT (MCP-only).
 - MCP : connecteur livré (Lots 0-3) — y toucher seulement sur demande ; reste = héberger le `.mcpb`.
-- Auth : **Cloudflare Access encore EN PLACE**. Cible = bascule sur le **gate Google in-app**
-  (ADR 010, `A_FAIRE_MOI` O1) — pas encore fait.
+- **`knip`** : la liste « unused exports » est surtout du BRUIT (types effacés au compile, symboles sur-exportés
+  utilisés en interne ou par les tests, constantes fiscales protégées). NE PAS purger en masse — vérifier chaque
+  cas (grep). Repo déjà propre au 2026-06-15 : 0 fichier mort, 0 dépendance inutilisée, lint clean.
+- Auth : **Cloudflare RETIRÉ de FinanceAI (2026-06-16)** — Access (mur de login) ET proxy DNS dé-proxifié
+  (apex+www en « DNS only » vers Vercel ; le tunnel CF du `hub` reste, projet séparé). L'auth = **gate Google
+  in-app** (`LoginGate`+`authGate`, actif via `VITE_GOOGLE_GATE=1`+`VITE_GOOGLE_CLIENT_ID`). ⚠️ Le gate est
+  SOFT (trappe `?nogate=1`) → l'app est publiquement accessible (modèle multi-user voulu) ; les **données
+  restent privées par compte Google** (sync Drive) et les clés chiffrées sont **par appareil** (IDB
+  non-extractible). Plus de WAF/DDoS CF → filet = chiffrement au repos + CSP. Détail : `docs/GOOGLE_DRIVE_SETUP.md`.
 - Persistance : localStorage + IndexedDB chiffré (AES-256-GCM, PBKDF2 600k). apiKeys exclues.
 - Mode test : PERSISTÉ depuis #217 (bannière survit au reload) ; push Drive coupé en test
   (`shouldPush`). Switch de persona = base propre (`personaResetBase`), zéro fuite inter-persona.

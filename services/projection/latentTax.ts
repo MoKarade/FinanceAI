@@ -30,6 +30,8 @@ export interface LatentTaxCtx {
     nonRegACB: number;
     crypto: number;
     cryptoACB: number;
+    /** FISC-LATENT-RE — gain latent BRUT des immeubles LOCATIFS non vendus (RP exclue), Σ max(0, valeur−ACB). */
+    realEstateLatentGain: number;
     enableMonteCarlo: boolean;
 }
 
@@ -44,7 +46,7 @@ export function computeLatentTax(
     const {
         m, loopYear, simInflation, simSalaryGrowth, isRetired, activeUsersCount,
         grossMarcBaseAnnual, grossAnnaBaseAnnual, accRentesYear, incomeRetirement,
-        reer, nonReg, nonRegACB, crypto, cryptoACB, enableMonteCarlo,
+        reer, nonReg, nonRegACB, crypto, cryptoACB, realEstateLatentGain, enableMonteCarlo,
     } = ctx;
 
     const yearsElapsed = Math.floor(m / 12);
@@ -63,7 +65,9 @@ export function computeLatentTax(
 
     // M-4 : seul le GAIN crypto (valeur − coût de base) est imposable, pas la valeur entière.
     const taxableCryptoLatent = Math.max(0, crypto - cryptoACB) * CAPITAL_GAINS_INCLUSION_STANDARD;
-    const totalTaxableLatent = reer + taxableCryptoLatent + taxableLatentGain;
+    // FISC-LATENT-RE : gain latent des immeubles LOCATIFS (déjà brut Σmax(0,…) à la source ; garde NaN globale).
+    const taxableRealEstateLatent = Math.max(0, realEstateLatentGain) * CAPITAL_GAINS_INCLUSION_STANDARD;
+    const totalTaxableLatent = reer + taxableCryptoLatent + taxableLatentGain + taxableRealEstateLatent;
     const totalLatentPerUser = ((currentGrossBase + totalTaxableLatent) / activeUsersCount) / inflationFactor;
     const fullLiquidationTax = calculateFiscalReport(totalLatentPerUser, 0, 0, loopYear, enableMonteCarlo).totalTax
         * activeUsersCount * inflationFactor;

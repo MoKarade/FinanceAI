@@ -24,6 +24,142 @@
 
 ---
 
+## 🚀 MCP FinanceAI → Cloud Run [⏳ gros chantier] (brief Marc 2026-06-16)
+> Le serveur MCP perso FinanceAI (finances : Drive/BigQuery, comptes CELI/REER/CELIAPP/REEE) tourne en
+> local (stdio), token Google en **fichier**. **Symptôme** : `get_financial_overview` → `invalid_grant`
+> (« Token has been expired or revoked ») alors que `ping` répond. **But** : serveur **distant** hébergé sur
+> **Google Cloud Run**, stable, sécurisé, redéployé à chaque push. **Code : dossier `mcp/`.**
+> ⚠️ **PLAN-FIRST** : phase 0 (explore + rapport) AVANT tout code ; **OK Marc requis avant la phase d'écriture.**
+> ⚠️ **DEUX OAuth distincts** : **A** = serveur ↔ Google (lire les finances Drive/BigQuery — c'est CE token qui
+> est mort, à persister hors disque + rafraîchir) ; **B** = Claude ↔ serveur (auth du connecteur — Bearer
+> d'abord, architecture prête pour OAuth 2.1 plus tard). NE PAS les confondre.
+
+- [ ] **[MCP-CLOUDRUN-0]** 🔧 **Phase 0 — explorer + rapporter (LECTURE SEULE, ne rien modifier)** :
+  langage/framework MCP (FastMCP Python ? `@modelcontextprotocol/sdk` TS ? autre ?) ; transport actuel +
+  entrée du serveur ; où/comment le token Google est lu/écrit (fichier ? chemin ? lib OAuth ?) ; où vivent
+  `client_id`/`client_secret` (clair ? `.env` ?) ; scopes Google + `access_type`/`prompt` ; **liste
+  exhaustive des outils MCP exposés** (pour ne rien casser). → rapport court + plan → **attendre l'OK Marc**.
+- [ ] **[MCP-CLOUDRUN-A]** 🔧 **Auth A (serveur ↔ Google — le token mort)** : module `token_store` qui
+  lit/écrit le refresh token dans **Secret Manager** (`financeai-google-refresh`), jamais en fichier ;
+  `client_id`/`client_secret` depuis `financeai-google-client` ; flux `access_type=offline` + `prompt=consent` ;
+  si Google renvoie un nouveau refresh token → **réécrire le secret** ; **gérer `invalid_grant` explicitement**
+  (log clair + message MCP exploitable « reconnecte Google », pas de crash) + outil/chemin de ré-consentement.
+- [ ] **[MCP-CLOUDRUN-B]** 🔧 **Sécurité B (Claude ↔ serveur)** : middleware exigeant
+  `Authorization: Bearer <FINANCEAI_API_KEY>` (clé en secret/env) → **401** sinon ; point d'extension commenté
+  pour OAuth 2.1 (401 + `WWW-Authenticate`).
+- [ ] **[MCP-CLOUDRUN-HTTP]** 🔧 **Transport** : stdio → **Streamable HTTP**, endpoint unique `/mcp`
+  (POST + GET), écoute `0.0.0.0:$PORT` (défaut **8080**) ; garder un mode stdio via `MCP_TRANSPORT=stdio|http`
+  pour le dev local.
+- [ ] **[MCP-CLOUDRUN-DEPLOY]** 🔧 **Conteneur + CI/CD** : Dockerfile (EXPOSE 8080, démarre sur `PORT`) +
+  endpoint `/health` → 200 ; `deploy.sh` (`gcloud run deploy`, région **northamerica-northeast1**,
+  `--min-instances 0`, `--set-secrets` ×3) ; workflow **GitHub Actions** (`google-github-actions/deploy-cloudrun`)
+  qui redéploie sur push `main` ; README (créer les 3 secrets, publier l'OAuth consent en Production, déployer,
+  brancher le déploiement continu, brancher Claude : Settings → Connectors → custom connector URL
+  `https://…run.app/mcp` + clé Bearer en advanced settings, retrait de l'ancien MCP local).
+- **Critères d'acceptation** : `docker build` + `docker run -e PORT=8080` démarre en HTTP local ; appel MCP
+  GET/POST `/mcp` répond, **sans Bearer → 401** ; token lu depuis Secret Manager (jamais fichier ; `grep` = 0
+  secret clair) ; `get_financial_overview` OK une fois un refresh token valide en place ; **tous les outils MCP
+  préexistants encore enregistrés** (lister avant/après) ; `/health` → 200 ; workflow Actions valide (dry-run).
+- **Contraintes** : ne PAS renommer outils/signatures ; jamais de secret commité (vérifier `.gitignore`) ;
+  petits commits atomiques + explication ; **branche, pas `main`** ; décision Marc (région/nom service/scopes)
+  → demander au lieu de supposer.
+- 🧭👤 **[MCP-CLOUDRUN-ROOT]** **CAUSE RACINE prioritaire (action Marc — Google Cloud Console)** : l'écran de
+  consentement OAuth est probablement en mode **« Testing »** → le refresh token expire tous les **7 jours**
+  (= la vraie cause du `invalid_grant`). **Publier l'app en Production** (OAuth consent screen). À rappeler
+  comme étape OBLIGATOIRE dans le README. → aussi candidat à `A_FAIRE_MOI.md`.
+
+## 💰 Audit money-critical 2026-06-16 (bug « -208 633 $/mois » — workflow + panel adversarial)
+> Déclencheur : Marc voit un patrimoine net -193 398 $ / variation -208 633 $ avec revenu ~10,6 k$.
+> Workflow multi-agents (12 finders + vérif adversariale 2 votes) → 9 bugs confirmés / 10 réfutés.
+> **CLUSTER PATRIMOINE NET livré cette PR** (MONEY-PHANTOM). Reste à corriger (PRs ciblées, money-critical) :
+- [x] **[MONEY-PHANTOM]** ✅ livré : découvert `liquidDebt` exposé+visible (modal « Dettes ») ;
+  `rawNetWorth`/`prevNW`/succession soustraient activeDebts+smithDebt via source unique
+  `computeRawNetWorth` ; `diffNW` exact ; garde NaN dette ; 9 invariants de conservation +
+  checklist CLAUDE.md. (Cause racine = débit one-time réno/véhicule > actifs → dette invisible.)
+- [ ] **[FISC-REER-WHT-DOUBLE]** 🔧 CRITICAL — **le « 50 000 au fisc » de Marc**. Double-comptage de la
+  retenue à la source REER (`services/projection/taxApril.ts:49-56` + `cashflowAllocation.ts:~186`) : le
+  NET est crédité au retrait ET la retenue est re-payée en avril → sur-imposition = la retenue entière,
+  prélevée 2×. Sur un gros retrait/meltdown/sauvetage-découvert (~200 k$ brut), des dizaines de k$.
+  Fix : créditer le BRUT au liquide au retrait (retenue = acompte payé via `.reer` en avril), comme la
+  convention FERR. ⚠️ Money-critical : test discriminant + re-baseline + panel `fiscal-accuracy`.
+- [ ] **[FISC-ESTATE-PENSION-NPV]** 🔧 MEDIUM — NPV des rentes publiques (RRQ/PSV) au bilan successoral :
+  montant MENSUEL × facteur d'annuité ANNUEL sans ×12 (`estateCalculation.ts:177-187`) → composante
+  sous-évaluée ~12× (ex. -370 k$ sur `estateNetWorth` pour un profil 1200 $/mois). N'affecte PAS le NW
+  mensuel. Fix : annualiser (×12) avant le facteur d'annuité.
+- [ ] **[FISC-EVENT-INCOMELOSS]** 🔧 MEDIUM — `incomeLossPercent`/`durationMonths` (PERTE_EMPLOI,
+  SABBATIQUE, ACCIDENT) collectés par l'UI mais JAMAIS appliqués par le moteur (`monthlyEvents.ts:95-100`
+  ne lit que `impactAmount`) → une perte d'emploi de 6 mois (30-60 k$) est ignorée (no-op silencieux).
+  Fix : réduire le revenu de `incomeLossPercent`% pendant `durationMonths` dès `e.date`.
+- [ ] **[FISC-RE-SALE-RESIDUAL]** 🔧 MEDIUM — vente immobilière à équité négative (hypo > 95 % valeur) :
+  `addLiquid(Math.max(0, saleNet))` (`monthlyEvents.ts:72-79`) efface la dette résiduelle (clamp à 0)
+  alors que l'équité positive est retirée → patrimoine légèrement surévalué. Fix : `addLiquid(saleNet)`
+  (laisser le découvert tomber dans la cascade liquidDebt).
+- [ ] **[FISC-ASSETLOC-INTL]** 🔧 MEDIUM — asset-location : classe `international` jamais analysée →
+  retenue étrangère 15 % en CELI/REER non comptée (`assetLocation.ts:104-132`) ; l'outil dit « optimal »
+  alors qu'une perte existe (~375 $/an sur 100 k$ international en CELI). Fix non trivial (le patch naïf
+  reste 0 : taxIdeal NonReg=marginalRate domine) — modéliser le coût de détention.
+- [ ] **[FISC-SRCDED-NOOP]** 🔧 MEDIUM/LOW — `optimizeSourceDeductions` (V49) : réduction de la retenue
+  salariale selon cotisations REER/CELIAPP toujours NULLE (ordre d'exécution, `monthlyCalcs.ts:98-112`) +
+  bug d'unité mensuel/annuel sous-jacent. Effet net ~0 (régularisé en avril) mais cashflow mensuel et
+  solde d'avril faussés. Fix : calculer la retenue APRÈS la cascade d'allocation + unité annuelle.
+- [ ] **[A11Y-DANGER-300]** 🔧 LOW — `text-danger-300` n'existe PAS dans `tailwind.config.js` (palette
+  danger = 400/500/600 seulement) → couleur ignorée. 3 sites hors périmètre MONEY-PHANTOM :
+  `ImportBankStatement.tsx:123`, `RealEstateAdviceCard.tsx:19`, `Transactions.tsx:439` (+ son hover no-op).
+  Fix : → `text-danger-400`.
+- [ ] **[A11Y-MODAL-PRIVATE]** 🔧 LOW — migrer tout `FutureDetailModal.tsx` vers `PrivateAmount` (tous les
+  montants utilisent `${blur}` brut = fuite lecteur d'écran en mode privé). La ligne « Dettes » est déjà
+  migrée cette PR ; reste valeur nette, comptes, apports/gains, flux.
+
+## 🔎 Review multi-agents 2026-06-15 — risques confirmés (27 : 8 HIGH / 11 MEDIUM / 8 LOW)
+> Audit complet (12 agents specialises, emphase financiere). Les **HIGH financiers #1-#6 sont en
+> correction cette session**. Severite en tete de chaque item.
+
+### Fiscal / moteur (money-critical)
+- [x] **[FISC-RRQ-UNIT]** ✅ HIGH (#296, 2026-06-15) — `retirementIncome.ts:151` : `grossSalary` (mensuel) ÷ MGA annuelle → RRQ ~12× trop basse. Corrigé (×12) + test discriminant + panel projection-validator/fiscal-accuracy.
+- [x] ~~**[FISC-MARGINAL-YEAR]**~~ ❌ **FAUX POSITIF** (vérifié 2026-06-15, projection-validator) — le finding supposait un revenu NOMINAL ; le moteur passe un revenu RÉEL déflaté (`monthlyCalcs.ts:92-110` : déflation revenu + ré-inflation du `totalTax`). `marginalRate` sur paliers 2026 est donc DÉJÀ correct ; propager `year` introduirait un bug (taux marginal décroissant + casse REER-first/goldens). **NE PAS corriger.**
+- [x] **[FISC-WELCOME-UNIFY]** ✅ HIGH (2026-06-16) — taxe de bienvenue unifiée. Décision Marc : champ `RealEstateGoal.municipality` (`'montreal' | 'reste_qc'`, type `Municipality`) requis à la saisie (sélecteur `PropertyConfigurator`), PAS de défaut stocké ; non choisi ⇒ repli conservateur Montréal. SOURCE UNIQUE : `realEstate.ts:calculateWelcomeTax(price, municipality?)` porte les 2 barèmes (MTL 8 tranches→4% / reste QC 4 tranches→2%) ; `helpers.ts:welcomeTax` y délègue (fin du bug C9 « 3 implémentations divergentes »). Param MCP ajouté. Les 2 barèmes transcrits dans `FISCAL_REFERENCE §8`. Panel : fiscal-accuracy/projection-validator/code-reviewer/silent-failure-hunter/a11y-auditor → 0 CRITICAL/HIGH, 2048 tests verts. Restes LOW documentés : seuils provinciaux 2025 à réindexer 2026 ; municipalités hors MTL regroupées dans `reste_qc`.
+- [x] **[FISC-SURVIVOR-DRAWDOWN]** ✅ HIGH (#297, 2026-06-15) — `cashflowAllocation.ts` : seuils survivant ×2 → `liveFilers=1` (cohérent taxFilers/oasBeneficiaries) + salaire du défunt exclu. Verdict NUANCE (qualité de stratégie, pas fuite fiscale). Panel projection-validator OK. NB : `meltdownReer.ts` a le même schéma (cible ×N) — voir [FISC-MELTDOWN-SURVIVOR] ci-dessous, opt-in MC, à faire si voulu.
+- [x] ~~**[FISC-ACB-RENO]**~~ ❌ **FAUX POSITIF** (vérifié 2026-06-15, fiscal-accuracy) — prémisse fausse : les rénos n'augmentent PAS non plus `currentValue` dans le moteur (croît seulement par `propertyGrowthRate`). `cost` ET `currentValue` ignorent les rénos symétriquement → gain cohérent, pas de surimposition. ⚠️ Le fix suggéré (ajouter rénos à `cost` seul) serait NOCIF (sous-imposition). **NE PAS corriger.** (Sujet séparé hors scope : l'équité/net worth sous-estime les rénos capitalisées → [DETTE-RENO-EQUITY] à créer si voulu.)
+- [x] **[FISC-LATENT-RE]** ✅ HIGH (#298, 2026-06-15) — `latentTax.ts` : `realEstateLatentGain` (×50%) ajouté à `totalTaxableLatent`, même Σ que le bilan successoral. Seul `ImpotLatent` d'affichage bouge. Panel projection-validator OK.
+- [ ] **[FISC-TAXDEC-INCR]** 🔧 LOW (requalifié de MEDIUM, triage 2026-06-16 — `fixIsSafe:false`) — `taxDecember.ts:694-730` : 3 sous-claims RÉELS mais bornés. (a) crédit d'âge omis sur l'incrément gains/div → ne joue QUE dans la zone d'érosion du crédit (s'annule ailleurs comme le BPA), sous-imposition légère bornée. (b) gains+div empilés depuis la MÊME base (pas en cascade) → sous-imposition d'un retraité gros gains ET gros div franchissant un palier ensemble. (c) FSS sur revenu moyen du couple → **déjà documenté in situ** (taxDecember.ts:653-658, plafond 1 000 $/adulte). ⚠️ Fix RISQUÉ : un `ageOpts` mal aligné FABRIQUE un écart artificiel ; chaîner gains→div risque le double-comptage ; re-base les snapshots d'impôt de décembre → exige tests de non-régression + OK Marc. Différé.
+- [x] ~~**[FISC-GOVPENSION-SCALE]**~~ ❌ **FAUX POSITIF** (vérifié 2026-06-16, panel projection-validator + fiscal-accuracy + code-reviewer, unanime) — prémisse FAUSSE : `governmentPension` est un AGRÉGAT **MÉNAGE** (RRQ+PSV combinés des 2 conjoints), pas un per-personne. L'absence de ×N est VOULUE et cohérente sur 3 sites (`retirementIncome`, `estateCalculation:177-178`, `setupSimulation:114-118`) + documentée (utils/tax.ts:99, FISCAL_REFERENCE §6) + verrouillée par régression (`estateCalculation.test.ts:131`). Ajouter ×N = ré-introduire le bug FA-5 (couple double-compté) → **NE PAS corriger**. ✅ Corrections sûres faites (2026-06-16) : label UI clarifié « total ménage (couple combiné) » + typo « Etat→État » (`RetirementIncomeCard.tsx:26`) ; rename `rrqBaseIndiv/psvBaseIndiv → …Family` (`retirementIncome.ts`, le nom trompeur avait FABRIQUÉ le faux positif).
+- [x] **[FISC-RRQ-PRORATA]** ✅ MEDIUM (2026-06-16) — prorata de résidence RRQ rendu PER-CONJOINT (`retirementIncome.ts`), mirroir de la PSV : `arrivalAge` via `getResidencyStartYear` (corrige aussi le gate `isImmigrant` manquant → RRQ désormais cohérente avec PSV/CELI/REER), poids RRQ = ratio gains/MGA × prorata résidence per-conjoint, split par poids. Couple non-immigrant ⇒ inchangé (zéro régression baseline ; état `canadaArrivalYear` sans `isImmigrant` inatteignable en prod). 3 tests discriminants (symétrie ordre-conjoints — VÉRIFIÉ échouant sur l'ancien code via stash). Triage adversarial : REAL_BUG confirmé (seul vrai bug sur 7 findings vérifiés).
+- [x] ~~**[FISC-INFLATION-COUPLING]**~~ ❌ **DOUBLON de ITEM 2a (déjà rejeté Marc)** (triage 2026-06-16) — `tax.ts:673` indexe les paliers ×1,02/an pendant que le revenu est déflaté par `simInflation`. Le fix proposé (« indexer sur `simInflation` ») a été **prouvé numériquement PIRE** (simInflation 5 %/20 ans : ARC ~29 353 $ vs fix ~7 712 $ vs actuel ~22 313 $ — cf HISTORIQUE.md ITEM 2a). Cause : l'aller-retour déflate→impôt→réinflate est lossy (BPA/crédits en $ fixes). Le vrai correctif = impôt sur revenu NOMINAL + paliers indexés `simInflation` (supprime l'aller-retour) = chantier STRUCTUREL ~12 sites → **décision Marc + plan requis**. Documenté FISCAL_REFERENCE §9. **NE PAS appliquer le fix naïf.**
+- [ ] **[FISC-SURVIVOR-CAP]** 🔧 LOW (triage 2026-06-16, différé) — `retirementIncome.ts:224` (survivorRrqFactor) : rente de survivant non plafonnée au max RRQ combiné. ⚠️ Cap naïf `Math.min(rrqMonthly, RRQ_MAX)` serait FAUX (un couple a droit à 2 rentes jusqu'au décès) ; le cap doit s'appliquer à la portion d'UN bénéficiaire (RRQ propre survivant + part défunt ≤ max), via `perUserRrqWeight`. Money-critical + peu d'impact → différé.
+- [ ] **[FISC-RAP-REPAY]** 🔧 LOW (triage 2026-06-16, hypothèse DOCUMENTÉE, fix différé) — `realEstateMonth.ts:405-414` : remboursement RAP « toujours honoré » (versement manqué reporté en silence, pas d'inclusion ligne 12900 ; solde impayé pas porté au revenu de la déclaration finale). ✅ Limite consignée FISCAL_REFERENCE §9. Fix (inclusion au revenu + passif successoral) `fixIsSafe:false` (risque de double-comptage estate) → différé.
+- [ ] **[FISC-CHILDCARE]** 🔧 LOW (triage 2026-06-16, hypothèse DOCUMENTÉE, fix différé) — `childrenReee.ts:199-201` : facteur de coût résiduel 30 % sur garde privée > 400 $/mois = HEURISTIQUE conservatrice, PAS le vrai régime (féd T778 ligne 21400 / QC crédit remboursable dégressif ~67-78 %). ✅ Consigné FISCAL_REFERENCE §9. Précision réelle (déduction/crédit exacts) = travail dédié → différé.
+- [x] **[FISC-REEE-CONST]** ✅ LOW (2026-06-16) — valeurs REEE/SCEE/IQEE vérifiées EXACTES (SCEE 20 %/500/1000/7200 ; IQEE 10 %/250/500/3600 ; REEE 50 000 $/bénéficiaire) et **documentées** FISCAL_REFERENCE §7 (REEE — SCEE/IQEE). Reste optionnel : extraire les littéraux en constantes nommées dans `childrenReee.ts` (noté dans la doc, non urgent).
+- [x] **[GUARD-NAN]** ✅ LOW (2026-06-16) — garde `Number.isFinite` en tête de `getMarginalRate` (`utils/tax.ts`) : un income non fini est rabattu sur 0 (1er palier, dégradation prévisible) au lieu du taux MAX silencieux. Sans dépendance (tax.ts reste pur, pas de logError importé).
+
+### Accessibilite
+- [ ] **[A11Y-D6-SR-2]** 🔧 HIGH (PHASE 1 faite 2026-06-16, phase 2 restante) — fuite : le mode privé est lu intégralement par les lecteurs d'écran (masquage CSS seul). **Phase 1 LIVRÉE** : dossier `projection/` migré (`ProjectionTooltip` 13, `ActionPlanDrilldown` 6, `StressTestPanel` 1, `StrategyOptimizerPanel` 3) → `<PrivateAmount>` ; primitives `PrivateAmount`/`PrivateBlock` dotées d'un prop `title` (conserve les infobulles natives). KPIStat était déjà correct. **Phase 2 LIVRÉE (2026-06-16, 5 fichiers div)** : `DividendPanel` 1, `Budget` 3, `Planning` 3, `ChildPlanning` 1, `Investments` 1 → `<PrivateAmount as="div">`. **Phase 3 RESTE** (~16 instances) : `FutureDetailModal` (idiome `const blur=…` ×14), tables `<td>` (`RealEstate` 4 /`Transactions` 2 /`ImportBankStatement` 1 /`ImportBrokerPositions` 2 /`BudgetGroupTable` 2 → wrapper interne `<PrivateAmount>` dans le td). ⚠️ Les 3 `<input>` (`RetirementIncomeCard` ×2, `BudgetGroupTable` ×1) ne sont PAS wrappables par `<PrivateAmount>` (champ éditable) → approche dédiée ou hors scope. ⚠️ Finding a11y-auditor (phase 1) : les 3 infobulles `title` de `ProjectionTooltip` (l.106/119/122, « Écart… », « Dépôts… », « Rendement… ») sur un span au contenu aria-hidden ne sont PAS annoncées de façon fiable par les SR (limite PRÉEXISTANTE, pas une régression) → en phase 2, remplacer `title` par `aria-describedby`/`sr-only` pour que l'explication soit accessible.
+- [ ] **[A11Y-CHARTS]** 🔧 HIGH (PHASE 1 faite 2026-06-16, phase 2 restante) — graphes Recharts sans alternative textuelle (WCAG 1.1.1 A). **Phase 1 LIVRÉE** : primitif réutilisable `<ChartDataTable>` (table sr-only, caption + en-têtes scope + échantillonnage uniforme ≤40 lignes, formateurs délégués + mode privé) ; intégré dans le wrapper partagé `ZoomableTimeChart` (couvre `StockChart` + `DashboardEvolutionChart`) — placé en FRÈRE du conteneur `role="img"` (un SR ne traverse pas dedans). 3 tests. **Phase 2 RESTE** : câbler `<ChartDataTable>` aux ~12 graphes à `ResponsiveContainer` brut (FutureProjection courbe principale, Retirement, RealEstate amortissement, Investments allocation, Budget, ChildPlanning, DebtManager, LifeEvents, DividendPanel, MultiPropertyComparison, FutureDetailModal) — chacun fournit ses colonnes/données.
+- [ ] **[A11Y-INK500]** 🔧 LOW — `ink-500` (#6a7689, reserve disabled) sur ~193 contenus actifs (echec AA normal). Passer a `ink-400`.
+
+### Echecs silencieux
+- [x] **[SF-PDF]** ✅ MEDIUM (2026-06-16) — `pdfReport.ts` : échec jsPDF routé vers `logError({source:'ui'})` (visible en prod via SystemView) ; repli print conservé.
+- [x] **[SF-RESIDUS]** ✅ LOW (2026-06-16) — `StockComparisonModal.tsx:41` (→ network/warning), `FutureProjection.tsx:464` (→ ui/error, context = champs manquants, pas les objets financiers), `TaxCenter.tsx:89` (→ ai/error) routés vers `logError`. `syncOrchestrator.ts` était déjà propre (référence BACKLOG périmée).
+
+### Tests / dette technique
+- [ ] **[TEST-PROJ-MODULES]** 🔧 MEDIUM — 3 sous-modules projection money-critical sans test direct : `assetLocation.ts`, `monthlyOutput.ts`, `strategyConfig.ts`.
+- [x] **[DETTE-PDF-FORMAT]** ✅ MEDIUM (2026-06-16) — `pdfReport.ts` : `formatCAD` local retiré → importé de `utils/format` (source unique fr-CA ; bonus : valeurs non finies → '—' au lieu de « NaN $ »). Tests pdfReport/pdfScenarios verts.
+- [ ] **[DETTE-RE-SALE]** 🔧 LOW — `monthlyEvents.ts:70` : vente immo pilotee par sous-chaine « vente » du nom + premier immeuble hypotheque (peut vendre la RP exempte au lieu du locatif). Lier a un `propertyId`.
+- [ ] **[DETTE-DEADCODE]** 🔧 LOW — `runBuyVsRent` (`realEstate.ts:639`) jamais appele hors tests ; verifier aussi `clearCredentials`, facade `getProfile`, `buildTestFixtures`.
+- [ ] **[DETTE-GODFILES]** ⏳ — decouper par barrel : `utils/tax.ts`, `syncOrchestrator.ts`, `Investments.tsx`, `Budget.tsx`, `FutureProjection.tsx`.
+- [ ] **[DETTE-UI-PRIMITIVES]** ⏳ — `components/ui/Input|Select|Field` sur les tokens existants ; migrer 16 fichiers a `<input>` inline.
+
+### Performance
+- [ ] **[PERF-BOOT]** 🔧 — `App.tsx:401` : `hydrateAssets` `sleep(2500)` sequentiel par actif → pool concurrent borne.
+- [ ] **[PERF-WITHHOLDING]** 🔧 — `monthlyCalcs.ts:80` : memoïser `computeMonthlyWithholding` par cle d'invariance.
+- [ ] **[PERF-BUNDLE]** 🔧 — 3 `INEFFECTIVE_DYNAMIC_IMPORT` (`claude.ts`, `backupAuto.ts`, `lockedProjectionStore`) → tout-statique ou tout-dynamique par module.
+- [ ] **[PERF-MISSINGDATA]** 🔧 — `MissingDataBanner.tsx:209` : selecteur atomique (`useShallow`) pour eviter les re-renders pendant le calcul MC.
+
+### Securite (deja connu / Marc)
+- [ ] **[SECU-O4]** 👤 — avant hebergement multi-utilisateurs : proxy backend pour la cle Anthropic (retirer `dangerouslyAllowBrowser`) + Finnhub en header serveur. Cf `A_FAIRE_MOI` O4.
+- [ ] **[BACKUP-PASSPHRASE]** 🔧 LOW — `BackupPanel.tsx:120,286,336` : aligner le seuil d'import sur `MIN_PASSPHRASE_LENGTH` (12).
+
+---
+
 ## 🧱 BRIEF MARC 2026-06-10 — plan séquencé en 4 phases (PRIORITAIRE)
 > Règles d'exécution (Marc) : **plan-first OBLIGATOIRE** sur les Phases 2, 3 et CHAQUE onglet de la
 > Phase 4 (plan court : UI proposée, fichiers touchés, données nécessaires → validation Marc → code).
@@ -242,12 +378,47 @@
   synchrone bloquant au boot). ⚠️ Migration du schéma persist v7 — vigilance corruption.
 - [ ] **[P0-SYNC]** 👤 Prouver la sync Drive en réel : créer `VITE_GOOGLE_CLIENT_ID`, tester en
   fenêtre privée (cf `A_FAIRE_MOI` O3 + tests manuels ci-dessous).
-- [ ] **[P0-AUTH]** 👤 Sortir de Cloudflare Access → gate Google in-app (ADR 010, `A_FAIRE_MOI` O1).
+- [x] **[P0-AUTH]** ✅ (2026-06-16) — **Cloudflare RETIRÉ de FinanceAI**, gate Google in-app actif. Marc a :
+  créé l'OAuth client + posé `VITE_GOOGLE_CLIENT_ID`+`VITE_GOOGLE_GATE=1` (Vercel) + validé (login + données +
+  anti-lockout + pas de re-login) + supprimé l'app Cloudflare Access + dé-proxifié apex/www (DNS only → Vercel).
+  Piège rencontré : le client OAuth était PARTAGÉ avec CF Access (flux serveur, redirect_uri `cdn-cgi/access/callback`)
+  → l'avoir retiré cassait le login CF (`redirect_uri_mismatch`) ; restauré le temps de valider, puis CF retiré.
+- [x] **[CF-CODE]** ✅ (2026-06-16) — retrait code-side : CSP nettoyée (`cloudflareinsights` retiré de
+  `vercel.json` + `index.html`) ; commentaires périmés MAJ (`secureKeyStore.ts` — la sécu ne repose plus sur CF
+  Access, le gate est SOFT + clé par-appareil ; `App.tsx`, `lazyWithRetry.tsx`) ; docs MAJ (CLAUDE.md, A_FAIRE_MOI O1).
+  **RESTE optionnel (durcissement gate, séparé)** : bouton « se déconnecter », sélecteur de compte
+  `prompt:'select_account'` (aide [PROFIL-SWITCH]), indicateur de sync, client OAuth DÉDIÉ au gate (découpler de CF).
+
+## 🆕 Signalements Marc (2026-06-16)
+- [ ] **[PROFIL-SWITCH]** 🔧 HIGH (data-sensible) — le switch entre comptes/profils est compliqué et
+  instable : (a) **fuite** — garde en mémoire des infos des profils de TEST après changement ;
+  (b) choix de profil **pas assez explicite** (on ne voit pas clairement lequel/quel type est actif) ;
+  (c) calculs **pas assez précis/sûrs** selon le profil actif ; (d) **mauvaise sauvegarde** des données.
+  Plan : **reset COMPLET à chaque switch** (auditer `personaResetBase`/`personaReset` — visiblement laisse
+  passer des données test ; cf #217 mode test persisté) ; **sélecteur explicite** (nom + type réel/test +
+  bannière persistante du profil actif + confirmation au changement) ; **persistance isolée par profil**
+  (clé storage par profil, pas d'écrasement croisé, vérif d'intégrité au chargement) ; garde-fou « quel
+  profil/hypothèses alimentent ces chiffres ». ⚠️ Touche la persistance (schéma v7) → vigilance corruption,
+  lié à [P0-IDB]. Plan-first + panel avant de coder (data-critical). *Cadrage à confirmer/préciser par Marc.*
+- [ ] **[RECH-ACTION-UX]** 🔧 MEDIUM — page de **recherche d'action** (Investissement, autocomplétion
+  Finnhub #255) : (1) **agrandir** la page/zone de recherche (trop petite) ; (2) **BUG** : sélectionner le
+  prix **fait QUITTER la page** → corriger (probable submit/blur qui navigue ou ferme la modale).
+- [ ] **[FINNHUB-MISMATCH]** 🔧 MEDIUM — l'autocomplétion **propose des symboles** mais Finnhub **ne les
+  retrouve pas** ensuite (quote introuvable au lookup de prix). Réconcilier la source d'autocomplétion avec
+  le lookup Finnhub : filtrer aux symboles réellement cotés/supportés, ou fallback propre + message clair.
 
 ## 🧭 Décisions moteur (à trancher avec Marc — money-critical)
-- [ ] **[ITEM-2A]** Indexation des paliers vs déflation : le fix « indexer par `simInflation` » a été
-  **investigué et rejeté** (aggrave le cas dominant). Correctif propre = impôt sur revenu NOMINAL
-  + paliers indexés (~12 sites, rebless baselines). Garder tel quel ou entreprendre le refactor ?
+- [ ] **[ITEM-2A]** 🧭→🔧 **APPROCHE VALIDÉE PAR MARC (2026-06-16)** : entreprendre le refactor « impôt
+  NOMINAL » (revenu nominal + paliers/BPA/crédits indexés par `simInflation`, supprime l'aller-retour
+  déflate→impôt→réinflate lossy). **Phase 0 FAITE** (2026-06-16) : test de caractérisation
+  `tests/services/tax.item2a.characterization.test.ts` qui PIN le comportement actuel (filet golden — ex.
+  impôt 100 k$ : 25 510 $ en 2026 → 20 355 $ en 2046, dérive ~5,2 k$ du 1,02 en dur), zéro changement moteur.
+  **RESTE** : **Phase 1** — paramétrer `getIndexedBracketsForYear(year, rate)` + threader le `rate` dans
+  `calculateFiscalReport` ET ses sous-calculs indexés (BPA, `calculateAgeAndPensionCredits`, FSS, RAMQ),
+  défaut 0,02 (additif, zéro régression) ; **Phase 2** — basculer les ~10 sites d'appel sur revenu nominal +
+  `simInflation`, retirer les déflations (`monthlyCalcs.ts:92-110`, latentTax, retirementIncome, taxDecember…),
+  **re-baser les golden Phase 0 + les baselines SCIEMMENT** (prouver le rapprochement vs ARC), panel
+  fiscal-accuracy + projection-validator. ⚠️ Money-critical, plan-first à chaque phase, gate + panel.
 - [ ] **[ITEM-2C]** Gates de *timing* par conjoint (FERR 72 / reset REER 71 / bonus PSV 75+) :
   bloqués structurellement (pool REER ménage + âge principal unique). Fix propre =
   `computeRetirementIncome` per-conjoint de bout en bout (lourd). À planifier ou laisser ?

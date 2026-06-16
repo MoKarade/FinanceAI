@@ -42,4 +42,9 @@ describe('[D6-SR] PrivateAmount', () => {
         act(() => { useFinanceStore.setState({ isPrivacyMode: true }); });
         expect(container.querySelector('.sr-only')?.textContent).toBe('Montant masqué');
     });
+
+    it('conserve l\'infobulle native `title` (migration depuis un <span title="…"> brut)', () => {
+        const { container } = render(<PrivateAmount title="Écart vs référence">7$</PrivateAmount>);
+        expect(container.firstElementChild?.getAttribute('title')).toBe('Écart vs référence');
+    });
 });

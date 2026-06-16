@@ -31,22 +31,48 @@ import {
   SCHL_AMORT_MAX_INSURED_FTB_OR_NEW,
   SCHL_AMORT_MAX_CONVENTIONAL,
 } from '../../services/realEstate';
+// FISC-WELCOME-UNIFY — moteur : doit déléguer à la même fonction (invariant source unique).
+import { welcomeTax as engineWelcomeTax } from '../../services/projection/helpers';
 
-describe('calculateWelcomeTax', () => {
-  it('applique les paliers Quebec sur 500k$', () => {
+describe('calculateWelcomeTax (FISC-WELCOME-UNIFY)', () => {
+  it('reste_qc : applique les paliers provinciaux sur 500k$', () => {
     // 0.5% * 58900 + 1.0% * (290000 - 58900) + 1.5% * (500000 - 290000)
     // = 294.5 + 2311 + 3150 = 5755.5$
-    expect(calculateWelcomeTax(500000)).toBeCloseTo(5755.5, 1);
+    expect(calculateWelcomeTax(500000, 'reste_qc')).toBeCloseTo(5755.5, 1);
   });
 
-  it('applique le palier 2% au-dela de 552.3k$', () => {
-    const tax = calculateWelcomeTax(700000);
-    expect(tax).toBeGreaterThan(7000);
+  it('montreal : applique la surtaxe municipale sur 500k$', () => {
+    // 0.5% * 53700 + 1.0% * (269300 - 53700) + 1.5% * (500000 - 269300)
+    // = 268.5 + 2156 + 3460.5 = 5885$
+    expect(calculateWelcomeTax(500000, 'montreal')).toBeCloseTo(5885, 1);
   });
 
-  it('renvoie 0 pour un prix nul ou negatif', () => {
-    expect(calculateWelcomeTax(0)).toBe(0);
+  it('non defini ⇒ repli conservateur Montreal (barème le plus eleve)', () => {
+    // Pas de municipalite ⇒ Montreal = 5885 (> reste_qc 5755.5), par prudence.
+    expect(calculateWelcomeTax(500000)).toBeCloseTo(5885, 1);
+    expect(calculateWelcomeTax(500000)).toBe(calculateWelcomeTax(500000, 'montreal'));
+  });
+
+  it('Montreal toujours ≥ reste_qc (surtaxe municipale)', () => {
+    for (const price of [100000, 300000, 700000, 1200000, 2500000]) {
+      expect(calculateWelcomeTax(price, 'montreal')).toBeGreaterThanOrEqual(
+        calculateWelcomeTax(price, 'reste_qc'),
+      );
+    }
+  });
+
+  it('renvoie 0 pour un prix nul ou negatif (les deux baremes)', () => {
+    expect(calculateWelcomeTax(0, 'montreal')).toBe(0);
+    expect(calculateWelcomeTax(0, 'reste_qc')).toBe(0);
     expect(calculateWelcomeTax(-1000)).toBe(0);
+  });
+
+  it('SOURCE UNIQUE : le moteur (helpers.welcomeTax) délègue à calculateWelcomeTax (UI)', () => {
+    for (const price of [50000, 300000, 500000, 700000, 1500000]) {
+      expect(engineWelcomeTax(price, 'montreal')).toBe(calculateWelcomeTax(price, 'montreal'));
+      expect(engineWelcomeTax(price, 'reste_qc')).toBe(calculateWelcomeTax(price, 'reste_qc'));
+      expect(engineWelcomeTax(price)).toBe(calculateWelcomeTax(price));
+    }
   });
 });
 

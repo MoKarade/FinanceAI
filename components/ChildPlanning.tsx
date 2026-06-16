@@ -463,9 +463,9 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                             <div className="grid grid-cols-3 gap-2">
                                 <div className="bg-blue-900/20 p-3 rounded-lg border border-info-500/20 text-center">
                                     <div className="text-tiny text-ink-500 uppercase mb-1">Capital à 17 ans</div>
-                                    <div className="text-lg font-black text-white privacy-blur">
+                                    <PrivateAmount as="div" className="text-lg font-black text-white">
                                         {totalResp != null ? fmt(totalResp) : <ProjectionRequired variant="inline" />}
-                                    </div>
+                                    </PrivateAmount>
                                 </div>
                                 <div className="bg-green-900/20 p-3 rounded-lg border border-green-500/20 text-center">
                                     <div className="text-tiny text-ink-500 uppercase mb-1">Coût études prévu</div>

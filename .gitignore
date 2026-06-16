@@ -47,6 +47,8 @@ blob-report/
 .claude/settings.local.json
 .claude/worktrees/
 .claude/*.local
+.claude/launch.json
+.claude/scheduled_tasks.lock
 
 # Connecteur MCP — secrets locaux (jamais commités)
 mcp/drive/connector-client.json

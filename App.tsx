@@ -230,7 +230,7 @@ export const App: React.FC = () => {
     // Hydratation des clés API depuis le coffre chiffré (au boot, une fois).
     // C5 les avait rendues mémoire-seulement → elles disparaissaient à chaque
     // rechargement. Désormais : on les recharge tout seul au démarrage (donc
-    // dès que Cloudflare Access t'a laissé entrer via Google). Quand la clé est
+    // dès que le gate Google in-app t'a laissé charger l'app). Quand la clé est
     // posée dans le store, les effets réactifs ci-dessous (Finnhub) partent
     // automatiquement. Best-effort : si le coffre est indisponible (vieux
     // navigateur, pas de Web Crypto), on ne casse pas le boot.

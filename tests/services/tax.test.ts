@@ -354,6 +354,19 @@ describe('calculateDividendTax', () => {
 });
 
 describe('getMarginalRate', () => {
+  it('GUARD-NAN : un income NON FINI est rabattu sur le 1er palier, pas sur le taux MAX', () => {
+    // Avant la garde : NaN ne matche aucun palier → fallback `|| 0.33` = taux fédéral MAX (silencieux).
+    // Après : Number.isFinite faux → safeIncome=0 → 1er palier (= taux d'un revenu nul, le plus bas).
+    const lowest = getMarginalRate(0);
+    const max = getMarginalRate(1_000_000);
+    for (const bad of [NaN, Infinity, -Infinity]) {
+      const r = getMarginalRate(bad);
+      expect(Number.isFinite(r)).toBe(true);
+      expect(r).toBe(lowest);   // dégradation prévisible (1er palier), pas le taux max
+      expect(r).toBeLessThan(max);
+    }
+  });
+
   it('renvoie un taux plus eleve pour un revenu plus eleve', () => {
     const low = getMarginalRate(40000);
     const high = getMarginalRate(150000);

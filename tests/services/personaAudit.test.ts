@@ -203,9 +203,17 @@ describe('Audit personas — données + calculs', () => {
             const past = reconstructPortfolioHistory(minimal, {});
             const investedPast = past.points.length ? past.points[past.points.length - 1].NetWorth : 0;
             const cashNow = calcStartingCash(balances, state.transactions);
-            const pastEnd = investedPast + cashNow;
+            // Patrimoine net = placements + cash − DETTES (convention financialSnapshot.ts:84 et,
+            // depuis le fix money-critical 2026-06-16, la projection : rawNetWorth soustrait les
+            // dettes). Sans soustraire les dettes ici, un persona endetté afficherait une fausse
+            // « falaise » passé↔futur (le passé surévalué de ses dettes).
+            const totalDebt = ((state.debts ?? []) as Debt[]).reduce((s, d) => s + (Number(d?.balance) || 0), 0);
+            const pastEnd = investedPast + cashNow - totalDebt;
 
-            const denom = Math.max(pastEnd, futureStart, 1);
+            // Normaliser par la MAGNITUDE (un patrimoine net peut être NÉGATIF si endetté,
+            // depuis le fix dettes 2026-06-16) — sinon le dénominateur tombe à 1 et fait
+            // exploser le ratio pour un écart absolu minuscule.
+            const denom = Math.max(Math.abs(pastEnd), Math.abs(futureStart), 1);
             const gap = Math.abs(pastEnd - futureStart) / denom;
             expect(
                 gap,

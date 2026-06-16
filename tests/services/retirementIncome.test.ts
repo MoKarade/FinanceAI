@@ -179,8 +179,10 @@ describe('computeRetirementIncome — report / survivant / immigrant / bonus 75+
 });
 
 describe('computeRetirementIncome — décomposition PAR conjoint (A1)', () => {
-    const mkEarner = (gross: number): User =>
-        ({ ...baseUser, grossSalary: gross } as User);
+    // gross = salaire ANNUEL pour la lisibilité ; le store stocke du MENSUEL (utils/salary.ts) et le
+    // moteur annualise (FISC-RRQ-UNIT) → on divise par 12 pour refléter la convention réelle.
+    const mkEarner = (annualGross: number): User =>
+        ({ ...baseUser, grossSalary: annualGross / 12 } as User);
 
     it('solo : perUser a 1 entrée et perUser[0].total == total famille', () => {
         const r = computeRetirementIncome(baseCtx, baseGoal, [mkEarner(50000)]);
@@ -237,11 +239,24 @@ describe('computeRetirementIncome — ratio RRQ indexé (B-AUDIT-4)', () => {
         // earnings/MGA doit rester stable → la RRQ réelle (hors inflation) identique.
         // Avant le fix : currentGross non indexé vs MGA indexée → ratio rétrécit → RRQ
         // sous-évaluée pour un départ lointain.
-        const earner = { ...baseUser, grossSalary: 50000 } as User;
+        const earner = { ...baseUser, grossSalary: 50000 / 12 } as User; // 50k$/an → mensuel (store)
         const now = computeRetirementIncome({ ...baseCtx, age: 65, m: 0, simInflation: 2 }, baseGoal, [earner]);
         const later = computeRetirementIncome({ ...baseCtx, age: 65, m: 240, simInflation: 2 }, baseGoal, [earner]);
         const deflate = (rrq: number, m: number) => rrq / Math.pow(1.02, m / 12);
         expect(deflate(later.rrq, 240)).toBeCloseTo(deflate(now.rrq, 0), 0);
+    });
+});
+
+describe('FISC-RRQ-UNIT — grossSalary MENSUEL annualisé pour le ratio earnings/MGA', () => {
+    it('un haut salarié (6000$/mois = 72k$/an) a une RRQ SUPÉRIEURE au profil fallback — pas ~12× inférieure', () => {
+        // baseUser n'a pas de grossSalary → fallback baseGrossAnnual=60000 (annuel) → ratio ~0,80.
+        // highEarner gagne 6000$/MOIS = 72 000$/an (> 60k, proche MGA) → ratio attendu ~0,96 > 0,80.
+        // AVANT le fix : grossSalary 6000 (mensuel) comparé à la MGA ANNUELLE (~74 600) → ratio ~0,08
+        // → RRQ aberrante, INFÉRIEURE au profil fallback. Ce test discrimine le bug d'unité.
+        const highEarner = { ...baseUser, grossSalary: 6000 } as User; // 72k$/an
+        const base = computeRetirementIncome(baseCtx, baseGoal, [baseUser]);
+        const high = computeRetirementIncome(baseCtx, baseGoal, [highEarner]);
+        expect(high.rrq).toBeGreaterThan(base.rrq);
     });
 });
 
@@ -255,7 +270,7 @@ describe('FA-3 (audit 2026-06-09) : SRG exposé (gis) + test de réduction sur l
         rrqEstimateMonthly: 300,
         psvEstimateMonthly: 700,
     };
-    const lowEarner = { ...baseUser, grossSalary: 20000 } as User;
+    const lowEarner = { ...baseUser, grossSalary: 20000 / 12 } as User; // 20k$/an → mensuel (store)
 
     it('FA-3a — breakdown.gis exposé, > 0 pour un bas revenu 65+, et INCLUS dans psv/total (revenu cash)', () => {
         const r = computeRetirementIncome(baseCtx, lowIncomeGoal, [lowEarner]);
@@ -468,12 +483,47 @@ describe('PV-4 — clamps hors-bornes rrqStartAge / psvStartAge', () => {
 describe('computeRetirementIncome — RRQ-PSV-MIN : clamp des estimés négatifs', () => {
     it('un rrqEstimate NÉGATIF est clampé à 0 et ne dégrade pas le `total`', () => {
         // L'output `rrq` est DÉJÀ clampé (l.312), mais `total` (l.303/311) somme le rrq BRUT : sans le
-        // clamp d'ENTRÉE, un rrqBaseIndiv négatif tirerait `total` sous sa valeur correcte. C'est CE
+        // clamp d'ENTRÉE, un rrqBaseFamily négatif tirerait `total` sous sa valeur correcte. C'est CE
         // report dans `total` que le test discrimine (pas l'output rrq, déjà protégé).
         const neg = computeRetirementIncome(baseCtx, { ...baseGoal, rrqEstimateMonthly: -500 }, [baseUser]);
         const zero = computeRetirementIncome(baseCtx, { ...baseGoal, rrqEstimateMonthly: 0 }, [baseUser]);
         expect(neg.rrq).toBe(0);
         expect(neg.total).toBeGreaterThan(0);
         expect(neg.total).toBeCloseTo(zero.total, 6); // discriminant : sans clamp, total(neg) < total(0)
+    });
+});
+
+describe('computeRetirementIncome — FISC-RRQ-PRORATA : prorata de résidence RRQ per-conjoint', () => {
+    // Deux conjoints même salaire (ratio gains/MGA identique) → seule la RÉSIDENCE diffère.
+    const nativeUser = { name: 'Natif', grossSalary: 5000, birthYear: 1980 } as unknown as User;
+    // Immigrant arrivé à 40 ans (2020, né 1980) → années cotisées 18→65 amputées.
+    const immigrantUser = { name: 'Immigrant', grossSalary: 5000, birthYear: 1980, isImmigrant: true, canadaArrivalYear: 2020 } as unknown as User;
+    const coupleCtx: RetirementIncomeCtx = { ...baseCtx, activeUsersCount: 2, psvResidencyYears: [40, 40] };
+
+    it('SYMÉTRIE : l\'ordre des conjoints ne change PAS la RRQ familiale (discrimine le bug u0-only)', () => {
+        // Avant (prorata dérivé de users[0] SEUL) : [immigrant, natif] ≠ [natif, immigrant].
+        // Après (moyenne per-conjoint) : les deux sont ÉGAUX. Ce test ÉCHOUE sur l'ancien code.
+        const immFirst = computeRetirementIncome(coupleCtx, baseGoal, [immigrantUser, nativeUser]);
+        const nativeFirst = computeRetirementIncome(coupleCtx, baseGoal, [nativeUser, immigrantUser]);
+        expect(immFirst.rrq).toBeGreaterThan(0);
+        expect(immFirst.rrq).toBeCloseTo(nativeFirst.rrq, 4);
+        // Le split par conjoint est aussi symétrique (somme == total famille, invariant préservé).
+        expect(immFirst.perUser[0].rrq + immFirst.perUser[1].rrq).toBeCloseTo(immFirst.rrq, 4);
+    });
+
+    it('un conjoint immigrant tardif RÉDUIT la RRQ familiale (résidence < 1 tire la moyenne)', () => {
+        const mixed = computeRetirementIncome(coupleCtx, baseGoal, [nativeUser, immigrantUser]);
+        const allNative = computeRetirementIncome(coupleCtx, baseGoal, [nativeUser, { ...nativeUser, name: 'Natif2' }]);
+        // L'immigrant a un prorata de résidence partiel (≈25/39) → famille mixte < famille 100 % native.
+        expect(mixed.rrq).toBeLessThan(allNative.rrq);
+        // Le conjoint immigrant reçoit une PART RRQ plus faible que le natif (poids résidence moindre).
+        expect(mixed.perUser[1].rrq).toBeLessThan(mixed.perUser[0].rrq);
+    });
+
+    it('couple 100 % natif : prorata résidence = 1 chacun → comportement antérieur inchangé', () => {
+        // Garde de non-régression : sans immigrant, rien ne bouge (résidence neutre).
+        const allNative = computeRetirementIncome(coupleCtx, baseGoal, [nativeUser, { ...nativeUser, name: 'N2' }]);
+        expect(allNative.rrq).toBeGreaterThan(0);
+        expect(allNative.perUser[0].rrq).toBeCloseTo(allNative.perUser[1].rrq, 4); // salaires égaux → parts égales
     });
 });

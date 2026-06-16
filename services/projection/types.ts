@@ -61,6 +61,9 @@ export interface ProjectionChartPoint {
     rapBalance?: number;
     Immobilier?: number;
     DetteTotale?: number;
+    /** Découvert (liquidité négative non couverte) porté en dette [PV-6]. Inclus dans DetteTotale
+     *  et soustrait de NetWorth ; exposé pour que l'UI explique un patrimoine net négatif. */
+    LiquidDebt?: number;
     diffNW?: number;
     diffCELI?: number;
     diffREER?: number;

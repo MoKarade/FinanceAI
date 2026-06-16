@@ -5,6 +5,7 @@ import { ComposedChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Cartes
 import { useTimeChartZoom } from '../../hooks/useTimeChartZoom';
 import { splitEventIcon, ClickableEventIcon } from './ProjectionTooltip';
 import { Icon, type IconName } from '../ui/Icon';
+import { PrivateAmount } from '../ui/PrivateAmount';
 import { ProjectionChartPoint } from '../../services/projection/types';
 
 /**
@@ -243,6 +244,16 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
     const fmt = (n: number) => formatCAD(n);
     const blur = isPrivacyMode ? 'privacy-blur' : '';
 
+    // Dette qui tire le patrimoine net SOUS la somme des actifs affichés = Σ(actifs affichés) −
+    // NetWorth. C'est exactement prêts/cartes + découvert + HELOC. On N'inclut PAS l'hypothèque :
+    // « Immobilier » est déjà l'équité NETTE (valeur − hypothèque), donc l'hypothèque y est déjà
+    // déduite. Cette quantité est RECONSTRUCTION-FIDÈLE : NetWorth = Σ(actifs) − reducingDebt, toujours
+    // (sans cette ligne, un patrimoine net NÉGATIF n'était expliqué par AUCUN élément — bug Marc 2026-06-16).
+    const shownAssetsSum = ACCOUNTS.reduce((s, a) => s + (Number(point[a.key]) || 0), 0);
+    const reducingDebt = Math.max(0, shownAssetsSum - (Number(point.NetWorth) || 0));
+    const liquidDebt = Number(point.LiquidDebt) || 0;          // part « découvert » (liquidité à sec)
+    const otherReducingDebt = Math.max(0, reducingDebt - liquidDebt); // prêts/cartes + HELOC
+
     const portfolioOutflow = (point.RetraitREER || 0) + (point.RetraitCELI || 0);
     const incomes = ([
         [`Paye ${userName1 || 'Util. 1'}`, point.IncomeMarc || 0],
@@ -331,6 +342,36 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                 </button>
                             ))}
                         </div>
+
+                        {/* Dettes — explique un patrimoine net négatif (sinon invisible) */}
+                        {reducingDebt > 0.5 && (
+                            <div className="mb-5">
+                                <div className="text-tiny uppercase tracking-widest text-danger-400/80 font-bold mb-2">
+                                    Dettes
+                                </div>
+                                <div className="p-2.5 rounded-xl bg-danger-500/[0.06] border border-danger-500/20">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="flex items-center gap-2 min-w-0">
+                                            <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-danger-500" />
+                                            <span className="text-body text-white truncate">
+                                                {liquidDebt > 0.5 && otherReducingDebt <= 0.5 ? 'Découvert (liquidités à sec)' : 'Dettes (prêts, cartes, découvert)'}
+                                            </span>
+                                        </span>
+                                        <PrivateAmount className="font-mono text-body text-danger-400">-{fmt(reducingDebt)}</PrivateAmount>
+                                    </div>
+                                    {liquidDebt > 0.5 && otherReducingDebt > 0.5 && (
+                                        <div className="mt-1.5 pl-[18px] text-tiny font-mono text-danger-400/80">
+                                            <PrivateAmount className="px-1.5 py-0.5 rounded bg-danger-500/10">dont découvert non couvert : -{fmt(liquidDebt)}</PrivateAmount>
+                                        </div>
+                                    )}
+                                    {liquidDebt > 0.5 && (
+                                        <p className="mt-1.5 pl-[18px] text-tiny text-ink-400 leading-snug">
+                                            Une dépense a dépassé tes liquidités et tes comptes ce mois-ci : le manque est porté en dette (vois « Événements ce mois »).
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Flux du mois */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-5">

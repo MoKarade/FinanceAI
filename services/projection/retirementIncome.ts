@@ -4,7 +4,7 @@
 // avec le total ET le split par source (Phase 3 Tier 3 — split pensions).
 
 import type { RetirementGoal, User } from '../../types';
-import { RRQ_MPE, calculateGISBenefit, rrqAdjustmentFactor, psvDeferralFactor, PSV_BONUS_75_PLUS, CAPITAL_GAINS_INCLUSION_STANDARD, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE } from '../../utils/tax';
+import { RRQ_MPE, calculateGISBenefit, rrqAdjustmentFactor, psvDeferralFactor, PSV_BONUS_75_PLUS, CAPITAL_GAINS_INCLUSION_STANDARD, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, getResidencyStartYear } from '../../utils/tax';
 
 // Constantes RRQ/PSV 2026 (Retraite Québec + Service Canada) — règles documentées
 // FISCAL_REFERENCE §6 « Prorata RRQ / résidence PSV » (FA-8, 2026-06-11).
@@ -133,26 +133,41 @@ export function computeRetirementIncome(
     } = ctx;
 
     let totalPsvProrata = 0;
-    let totalRrqMpeRatio = 0;
+    let totalRrqWeight = 0;
     const yearsElapsed = Math.floor(m / 12);
     // MGA RRQ projeté: base 2026 (RRQ_MPE) indexée à inflation + croissance salariale ~0.5%/an
     const rrqMpeProjected = RRQ_MPE * Math.pow(1 + (simInflation + 0.5) / 100, yearsElapsed);
 
-    // A1 — on conserve les ratios PAR CONJOINT (et pas seulement leur somme) pour
+    // A1 — on conserve les POIDS PAR CONJOINT (et pas seulement leur somme) pour
     // attribuer RRQ/PSV à chaque personne selon SON salaire / SA résidence.
     const filteredUsers = users.filter(u => u);
-    const perUserRrqRatio: number[] = [];
+    const perUserRrqWeight: number[] = [];
     const perUserPsvProrata: number[] = [];
     filteredUsers.forEach((u, idx) => {
         // B-AUDIT-4 — indexer le salaire courant par le MÊME facteur que la MGA projetée
         // (rrqMpeProjected). Sinon le ratio currentGross/MGA rétrécit artificiellement avec
         // les années → RRQ sous-évaluée pour les départs lointains. Hypothèse standard : le
         // salaire suit la croissance de la MGA sur la carrière → ratio earnings/MGA stable.
-        const currentGrossUser = (u.grossSalary || (baseGrossAnnual / activeUsersCount))
+        // FISC-RRQ-UNIT — grossSalary est MENSUEL (convention canonique du store, cf utils/salary.ts) ;
+        // baseGrossAnnual/activeUsersCount est ANNUEL. On annualise grossSalary (×12) pour que le ratio
+        // earnings/MGA (rrqMpeProjected, annuel) ait la bonne échelle — sinon RRQ ~12× trop basse.
+        const currentGrossUser = (u.grossSalary ? u.grossSalary * 12 : (baseGrossAnnual / activeUsersCount))
             * Math.pow(1 + (simInflation + 0.5) / 100, yearsElapsed);
         const rrqRatioUser = Math.min(1.0, currentGrossUser / rrqMpeProjected);
-        perUserRrqRatio.push(rrqRatioUser);
-        totalRrqMpeRatio += rrqRatioUser;
+
+        // FISC-RRQ-PRORATA (2026-06-16) — prorata de RÉSIDENCE RRQ désormais PER-CONJOINT (avant :
+        // dérivé de users[0] SEUL puis appliqué à la rente du COUPLE → faux pour un couple d'arrivées
+        // inégales, ~20 % d'erreur pour un mix natif/immigrant tardif). Mirroir de la PSV : arrivalAge
+        // via getResidencyStartYear (gate isImmigrant inclus ; même repli birthYear que projection.ts:196).
+        // RRQ = années cotisées 18→retraite / 39 (modèle « 39 meilleures années », FISCAL_REFERENCE §6).
+        const birthYearU = u.birthYear || (startYear - (u.age || 30));
+        const residencyStartU = getResidencyStartYear(birthYearU, u.isImmigrant, u.canadaArrivalYear);
+        const arrivalAgeU = Math.max(18, residencyStartU - birthYearU);
+        const rrqResidenceProrataUser = Math.min(1, Math.max(0, retirementGoal.targetAge - arrivalAgeU) / RRQ_DENOMINATOR_YEARS);
+        // Poids RRQ individuel = ratio gains/MGA × prorata de résidence (les deux PER-CONJOINT).
+        const rrqWeightUser = rrqRatioUser * rrqResidenceProrataUser;
+        perUserRrqWeight.push(rrqWeightUser);
+        totalRrqWeight += rrqWeightUser;
 
         // PSV résidence: prorata 1/40, mais 0 si < 10 ans (règle Service Canada)
         const residencyYears = psvResidencyYears[idx] ?? 0;
@@ -163,24 +178,9 @@ export function computeRetirementIncome(
         totalPsvProrata += psvIndividualProrata;
     });
     const psvProrata = totalPsvProrata / activeUsersCount;
-    const rrqMpeRatio = totalRrqMpeRatio / activeUsersCount;
-
-    // Prorata RRQ basé sur années cotisées au Canada entre 18 ans et l'âge de retraite.
-    // canadaArrivalYear est une ANNÉE calendaire (ex. 2010), il faut la convertir en ÂGE
-    // via birthYear. Si pas d'immigration documentée, on suppose présence depuis 18 ans.
-    const u0 = users[0];
-    let arrivalAge = 18;
-    if (u0?.canadaArrivalYear && u0?.birthYear) {
-        arrivalAge = Math.max(18, u0.canadaArrivalYear - u0.birthYear);
-    } else if (u0?.canadaArrivalYear && !u0?.birthYear) {
-        // Fallback: si on n'a que arrivalYear, estimer via startYear et âge courant
-        const currentAge = age;
-        const currentYear = startYear + yearsElapsed;
-        const estimatedBirthYear = currentYear - currentAge;
-        arrivalAge = Math.max(18, u0.canadaArrivalYear - estimatedBirthYear);
-    }
-    const workedYearsAtRetirement = Math.max(0, retirementGoal.targetAge - arrivalAge);
-    const rrqProrata = Math.min(1, workedYearsAtRetirement / RRQ_DENOMINATOR_YEARS) * rrqMpeRatio;
+    // RRQ : moyenne des poids per-conjoint (gains/MGA × résidence). Couple non-immigrant (résidence=1
+    // chacun) ⇒ = moyenne des ratios gains/MGA = comportement antérieur EXACT (zéro régression baseline).
+    const rrqProrata = totalRrqWeight / activeUsersCount;
 
     // Début des rentes = CHOIX INDÉPENDANT de l'âge d'arrêt de travail (correctif Marc 2026-06 :
     // l'ancien `max(60/65, targetAge)` FORÇAIT les rentes à démarrer à l'âge de retraite → « pas de
@@ -201,15 +201,20 @@ export function computeRetirementIncome(
     const rrqFactor = rrqAdjustmentFactor((rrqStartAge - 65) * 12);
     const psvFactor = psvDeferralFactor((psvStartAge - 65) * 12);
 
-    // Repli sur le champ AGRÉGÉ legacy `governmentPension` : split 65/35 = convention de MODÈLE
-    // (GOV_PENSION_*_SHARE, utils/tax.ts — PAS une règle ARC/RQ, cf FISCAL_REFERENCE §6 FA-8).
-    // Les estimés précis par rente (relevés Retraite Québec / Service Canada) priment.
+    // Base FAMILIALE (ménage) de RRQ / PSV — deux chemins qui aboutissent TOUS DEUX à un montant
+    // familial (cohérent avec estateCalculation.ts:177-178 et setupSimulation.ts:114-118) :
+    //  • `governmentPension` est DÉJÀ un agrégat MÉNAGE (RRQ+PSV combinés des 2 conjoints) → split 65/35
+    //    SANS ×N (convention de MODÈLE GOV_PENSION_*_SHARE, utils/tax.ts — PAS une règle ARC/RQ, cf
+    //    FISCAL_REFERENCE §6 FA-8). ⚠️ NE PAS ajouter ×activeUsersCount ici : ce serait un double-comptage
+    //    (bug FA-5 déjà corrigé) → un couple verrait sa rente doublée. (FISC-GOVPENSION-SCALE = faux positif.)
+    //  • `rrqEstimateMonthly`/`psvEstimateMonthly` (relevés Retraite Québec / Service Canada) sont
+    //    PER-PERSONNE → ×activeUsersCount pour reconstituer le familial. Ces estimés précis priment.
     // RRQ-PSV-MIN — clamp `Math.max(0, …)` : un estimé NÉGATIF (saisie absurde, inputs sans `min`) ne
     // doit pas créer une rente négative qui sous-estimerait en silence le revenu (et le NPV estate, aligné).
-    const rrqBaseIndiv = (retirementGoal.rrqEstimateMonthly !== undefined)
+    const rrqBaseFamily = (retirementGoal.rrqEstimateMonthly !== undefined)
         ? (Math.max(0, retirementGoal.rrqEstimateMonthly) * activeUsersCount)
         : (retirementGoal.governmentPension * GOV_PENSION_RRQ_SHARE);
-    const psvBaseIndiv = (retirementGoal.psvEstimateMonthly !== undefined)
+    const psvBaseFamily = (retirementGoal.psvEstimateMonthly !== undefined)
         ? (Math.max(0, retirementGoal.psvEstimateMonthly) * activeUsersCount)
         : (retirementGoal.governmentPension * GOV_PENSION_PSV_SHARE);
 
@@ -217,8 +222,8 @@ export function computeRetirementIncome(
     const survivorPsvFactor = survivorMode ? 0.5 : 1;
     // Bonification automatique PSV +10% à partir de 75 ans (depuis juillet 2022)
     const psv75Bonus = age >= 75 ? (1 + PSV_BONUS_75_PLUS) : 1;
-    const rrqMonthly = age >= rrqStartAge ? (rrqBaseIndiv * rrqProrata * rrqFactor * survivorRrqFactor) : 0;
-    const psvMonthly = age >= psvStartAge ? (psvBaseIndiv * psvProrata * psvFactor * psv75Bonus * survivorPsvFactor) : 0;
+    const rrqMonthly = age >= rrqStartAge ? (rrqBaseFamily * rrqProrata * rrqFactor * survivorRrqFactor) : 0;
+    const psvMonthly = age >= psvStartAge ? (psvBaseFamily * psvProrata * psvFactor * psv75Bonus * survivorPsvFactor) : 0;
 
     const inflFactor = Math.pow(1 + simInflation / 100, m / 12);
 
@@ -249,7 +254,7 @@ export function computeRetirementIncome(
     const gainsLaggedReal = (Number.isFinite(ctx.prevYearCapitalGainsForGisNominal)
         ? Math.max(0, ctx.prevYearCapitalGainsForGisNominal as number)
         : 0) * CAPITAL_GAINS_INCLUSION_STANDARD / inflFactor;
-    // rrqMonthly is already family-level (rrqBaseIndiv × activeUsersCount above).
+    // rrqMonthly is already family-level (rrqBaseFamily above — agrégat ménage, déjà ×N si estimés).
     // Computing family total first, then dividing for the per-adult figure avoids
     // the double-multiplication that caused SRG = $0 for entitled couples (§7.G).
     const otherIncomeAnnualFamily = (rrqMonthly + dbMonthly) * 12 + otherLaggedReal + gainsLaggedReal;
@@ -282,17 +287,17 @@ export function computeRetirementIncome(
     const privee = dbMonthly;
     const totalRaw = rrq + psv + privee - monthlyOasReduction;
 
-    // A1 — décomposition PAR CONJOINT. RRQ ∝ ratio salaire/MGA individuel ; PSV (volet
-    // OAS) ∝ prorata de résidence individuel. Le SRG (familial), la pension DB
-    // (« cumulée pour le couple ») et l'écrêtement PSV sont répartis également faute
-    // de donnée par conjoint. On répartit les TOTAUX famille au prorata des ratios
-    // individuels : la somme par conjoint == total famille (invariant exact, même quand
-    // un ratio est nul — fallback part égale).
+    // A1 — décomposition PAR CONJOINT. RRQ ∝ POIDS individuel (ratio salaire/MGA × prorata de
+    // résidence, FISC-RRQ-PRORATA) ; PSV (volet OAS) ∝ prorata de résidence individuel. Le SRG
+    // (familial), la pension DB (« cumulée pour le couple ») et l'écrêtement PSV sont répartis
+    // également faute de donnée par conjoint. On répartit les TOTAUX famille au prorata des poids
+    // individuels : la somme par conjoint == total famille (invariant exact, même quand un poids
+    // est nul — fallback part égale).
     const n = Math.max(1, filteredUsers.length);
-    const sumRrqRatio = perUserRrqRatio.reduce((s, r) => s + r, 0);
+    const sumRrqWeight = perUserRrqWeight.reduce((s, r) => s + r, 0);
     const sumPsvProrata = perUserPsvProrata.reduce((s, p) => s + p, 0);
     const perUser: RetirementIncomePerUser[] = filteredUsers.map((_, i) => {
-        const rrqShare = sumRrqRatio > 0 ? perUserRrqRatio[i] / sumRrqRatio : 1 / n;
+        const rrqShare = sumRrqWeight > 0 ? perUserRrqWeight[i] / sumRrqWeight : 1 / n;
         const psvShare = sumPsvProrata > 0 ? perUserPsvProrata[i] / sumPsvProrata : 1 / n;
         const rrqUser = rrq * rrqShare;
         // PSV individuelle = volet OAS au prorata résidence + part égale du SRG familial.

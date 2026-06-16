@@ -10,6 +10,7 @@
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Icon } from '../ui/Icon';
+import { PrivateAmount } from '../ui/PrivateAmount';
 import type { SimulationParams, ConfigResult } from '../../services/projection';
 import {
     rankConfigResults,
@@ -397,7 +398,9 @@ const WinnerCard: React.FC<{
 const Metric: React.FC<{ label: string; value: string; blur?: boolean }> = ({ label, value, blur }) => (
     <div className="rounded-lg bg-white/5 px-2.5 py-1.5">
         <div className="text-tiny text-ink-400">{label}</div>
-        <div className={`text-meta font-black text-white tabular-nums ${blur ? 'privacy-blur' : ''}`}>{value}</div>
+        {blur
+            ? <PrivateAmount as="div" className="text-meta font-black text-white tabular-nums">{value}</PrivateAmount>
+            : <div className="text-meta font-black text-white tabular-nums">{value}</div>}
     </div>
 );
 
@@ -473,8 +476,8 @@ const ResultsTable: React.FC<{
                                     <span className={`inline-block h-1.5 w-1.5 rounded-full ${successColor(row.result.successRate)} mr-1`} aria-hidden="true" />
                                     <span className="tabular-nums text-white">{row.result.successRate}%</span>
                                 </td>
-                                <td className="px-2 py-1.5 text-right tabular-nums text-ink-200 privacy-blur">{fmtM(row.result.finalNWp50)}</td>
-                                <td className="px-2 py-1.5 text-right tabular-nums text-ink-300 privacy-blur">{fmtM(row.result.lifetimeTax)}</td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-ink-200"><PrivateAmount>{fmtM(row.result.finalNWp50)}</PrivateAmount></td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-ink-300"><PrivateAmount>{fmtM(row.result.lifetimeTax)}</PrivateAmount></td>
                                 <td className="px-2 py-1.5 text-right tabular-nums text-ink-300">{row.result.fireAge !== null ? `${Math.round(row.result.fireAge)}` : '—'}</td>
                                 <td className="px-2 py-1.5 text-right tabular-nums font-bold text-indigo-300">{Math.round(row.score * 100)}</td>
                             </tr>

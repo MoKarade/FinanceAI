@@ -8,7 +8,5 @@
     "public/sw.js",
     "public/ga-init.js"
   ],
-  "project": ["**/*.{ts,tsx,js,cjs}"],
-  "ignore": ["dist/**"],
-  "ignoreDependencies": ["axe-core"]
+  "project": ["**/*.{ts,tsx,js,cjs}"]
 }

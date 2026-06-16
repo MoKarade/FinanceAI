@@ -247,7 +247,10 @@ consommée par `services/projection/retirementIncome.ts` + `setupSimulation.ts`.
   faibles** (Retraite Québec) ≈ conserver **39 années sur 47** (8 retirées). Le moteur approxime :
   `prorata = min(1, années au Canada entre max(18, arrivée) et targetAge / 39) × min(1, salaire/MGA)`
   — salaire courant et MGA projetés au MÊME facteur (inflation + 0,5 %/an), donc ratio
-  gains/MGA stable sur la carrière (cf B-AUDIT-4).
+  gains/MGA stable sur la carrière (cf B-AUDIT-4). **FISC-RRQ-PRORATA (2026-06-16)** : le prorata de
+  résidence ET le ratio gains/MGA sont calculés **PER-CONJOINT** (arrivée via `getResidencyStartYear`,
+  gate `isImmigrant` — comme la PSV/CELI/REER) puis moyennés ; avant, la résidence venait de `users[0]`
+  seul (faux pour un couple d'arrivées inégales). Un natif (`isImmigrant` faux) ⇒ arrivée = 18 ⇒ prorata plein.
 - **PSV — règle OFFICIELLE de résidence** (Service Canada) : admissible à partir de **10 ans** de
   résidence au Canada après 18 ans (`PSV_MIN_RESIDENCY_YEARS`, versement au Canada) ; pension
   **PLEINE à 40 ans** de résidence (`PSV_FULL_RESIDENCY_YEARS`) ; entre les deux, **prorata en
@@ -425,6 +428,20 @@ Le facteur 71 ans (5,28 %) ne s'applique qu'à une conversion **volontaire préc
 | 78 | 6,36 % | 86 | 8,99 % | 94 | 20,00 % |
 > 95 ans et + : plafond **20 %** (fallback). Source : ARC, facteurs FERR prescrits (post-2015).
 
+### REEE — SCEE / IQEE (`services/projection/childrenReee.ts`) — FISC-REEE-CONST (2026-06-16)
+Le moteur cotise au REEE pour maximiser les subventions et applique le plafond à vie. Valeurs (vérifiées
+exactes par `fiscal-accuracy`) :
+| Élément | Valeur | Source |
+|---|---|---|
+| **SCEE** (Subvention canadienne pour l'épargne-études) | **20 %** de la cotisation, max **500 $/an** (1 000 $/an en rattrapage), **7 200 $ à vie** | ARC |
+| **IQEE** (Incitatif québécois à l'épargne-études) | **10 %** de la cotisation, max **250 $/an** (500 $/an en rattrapage), **3 600 $ à vie** | Revenu Québec |
+| **Plafond REEE** (`REEE_LIFETIME_LIMIT_PER_BENEFICIARY`) | **50 000 $/bénéficiaire à vie** | ARC §6.9 / F13 |
+| Cotisation visée | **2 500 $/an** (5 000 $/an en mode rattrapage tant que SCEE < max théorique) | optimisation subvention pleine |
+> ⚠️ Reste une dette LOW : ces valeurs sont des **littéraux en dur** dans `childrenReee.ts` (`0.20`,
+> `0.10`, `500/250`, `7200/3600`, `50000`) — extraire en constantes nommées si on y retouche (non urgent).
+> Le **clawback d'allocation** (`householdGross > 150 000 $` → dégressif sur 100 000 $) est une heuristique
+> de modèle (PAS un barème ARC/RQ officiel d'allocation), à raffiner si besoin.
+
 ---
 
 ## 8. Immobilier (SCHL / OSFI / mutations / TPS-TVQ neuf) — `services/realEstate.ts`
@@ -466,16 +483,38 @@ Assurance SCHL : **requise si LTV > 80 %**, indisponible si LTV > 95 % ou prix >
 |---|---|---|---|---|---|---|
 | Prime | 0,60 % | 1,70 % | 2,40 % | 2,80 % | 3,10 % | **4,00 %** |
 
-### Droits de mutation (« taxe de bienvenue », `calculateWelcomeTax`) — barème QC **2025**
+### Droits de mutation (« taxe de bienvenue », `calculateWelcomeTax`) — FISC-WELCOME-UNIFY
+
+**SOURCE UNIQUE** : `services/realEstate.ts:calculateWelcomeTax(price, municipality?)`, consommée par
+l'UI (`RealEstate.tsx`/`PropertyConfigurator`) ET le moteur (`helpers.ts:welcomeTax` délègue). Le champ
+`RealEstateGoal.municipality` (`'montreal' | 'reste_qc'`) sélectionne le barème. **Non défini ⇒ repli
+CONSERVATEUR Montréal** (barème le plus élevé) — état transitoire, pas un défaut stocké (l'UI invite à
+choisir). Calcul cumulatif par tranche (style impôt).
+
+**Montréal** (surtaxe municipale — Ville de Montréal, règlement sur les droits de mutation **2026**)
+| Tranche du prix | Taux |
+|---|---|
+| ≤ 53 700 $ | 0,5 % |
+| 53 700 → 269 300 $ | 1,0 % |
+| 269 300 → 538 500 $ | 1,5 % |
+| 538 500 → 1 077 000 $ | 2,0 % |
+| 1 077 000 → 2 154 000 $ | 2,5 % |
+| 2 154 000 → 3 231 000 $ | 3,0 % |
+| 3 231 000 → 5 385 000 $ | 3,5 % |
+| > 5 385 000 $ | 4,0 % |
+
+**Reste du Québec** (barème provincial de base — Loi concernant les droits sur les mutations immobilières)
 | Tranche du prix | Taux |
 |---|---|
 | ≤ 58 900 $ | 0,5 % |
 | 58 900 → 290 000 $ | 1,0 % |
 | 290 000 → 552 300 $ | 1,5 % |
 | > 552 300 $ | 2,0 % |
-> Seuils indexés annuellement (Loi concernant les droits sur les mutations immobilières) ; le code
-> porte le barème provincial de base 2025 — les paliers ADDITIONNELS municipaux (ex. Montréal > 552 300 $
-> jusqu'à 3,5 %) ne sont PAS modélisés (sous-estimation pour un achat cher à Montréal). À réindexer 2026.
+
+> Repère : pour un achat à 500 000 $ → **5 885 $** (Montréal) vs **5 755,50 $** (reste du QC).
+> ⚠️ Seuils provinciaux 2025 (58 900 / 290 000 / 552 300) — **à réindexer 2026** (LOW, indexés
+> annuellement). Les paliers municipaux hors Montréal (Laval, Gatineau, Québec…) ne sont pas distingués :
+> ils tombent dans `'reste_qc'` (barème provincial de base, légère sous-estimation possible).
 
 ### TPS/TVQ résidence NEUVE — remboursements (`calculateGstNewHomeRebate`/`calculateQstNewHomeRebate`)
 - **TPS 5 %** (`GST_RATE`) : remboursement **36 %** de la TPS payée si prix ≤ **350 000 $**
@@ -501,8 +540,20 @@ Assurance SCHL : **requise si LTV > 80 %**, indisponible si LTV > 95 % ou prix >
 - **BPA fédéral dégressif** haut revenu (> ~177 k$) : non modélisé (on retient le palier max).
 - **Indexation 2027+** : repose sur ~+2 %/an estimé tant que les montants officiels ne sont
   pas publiés (`getIndexedBracketsForYear`).
-- **Aller-retour réel↔nominal** des paliers : écart connu vs ARC à forte inflation (ITEM 2a,
-  rejeté après analyse numérique — cf BACKLOG).
+- **Aller-retour réel↔nominal** des paliers : écart connu vs ARC à forte inflation (ITEM 2a =
+  **FISC-INFLATION-COUPLING**, rejeté après analyse numérique — le « fix » naïf « indexer sur
+  `simInflation` » est PIRE : à 5 %/20 ans, ARC ~29 353 $ vs fix ~7 712 $ vs actuel ~22 313 $. Le vrai
+  correctif = impôt sur revenu NOMINAL (~12 sites, supprime l'aller-retour) → chantier structurel, décision
+  Marc requise — cf BACKLOG).
+- **Frais de garde — modèle SIMPLIFIÉ** (`childrenReee.ts:199-201`, FISC-CHILDCARE) : le moteur applique
+  un facteur de coût résiduel de **30 %** (= aide implicite ~70 %) sur la garde privée > 400 $/mois. C'est
+  une **HEURISTIQUE conservatrice**, PAS le vrai régime (féd = déduction T778 ligne 21400 plafonnée par
+  âge/revenu ; QC = crédit remboursable dégressif ~67-78 %, CPE déjà subventionné exclu). À sourcer/raffiner
+  si on veut la précision réelle — borné et conservateur en l'état.
+- **Remboursement RAP — « toujours honoré »** (`realEstateMonth.ts:405-414`, FISC-RAP-REPAY) : le moteur
+  rembourse le RAP dès que `liquid ≥ versement` ; un versement MANQUÉ est reporté en silence (le vrai régime
+  l'inclurait au revenu imposable ligne 12900) et le solde RAP impayé n'est PAS porté au revenu de la
+  déclaration finale au décès. Limite LOW assumée (impact borné pour les profils qui gardent des liquidités).
 - **Attribution par conjoint** : refactor « soldes REER par conjoint »
   (`docs/REFACTOR_REER_PAR_CONJOINT.md`). Phase 1 = registre REER par conjoint (invariant
   Σ==commun). Phase 2 = retraits REER/FERR taxés PAR CONJOINT (prorata des soldes). **Phase 3 =

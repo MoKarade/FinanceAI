@@ -4,6 +4,7 @@ import { Icon } from '../ui/Icon';
 import { StockChart } from '../StockChart';
 import { fetchPortfolioHistory, type MarketDataPoint } from '../../services/finance';
 import { Skeleton } from '../ui/Skeleton';
+import { logError } from '../../services/errorLogger';
 
 /**
  * Phase D.4 — modal de comparaison de stocks superposés.
@@ -38,7 +39,7 @@ export const StockComparisonModal: React.FC<StockComparisonModalProps> = ({
         let cancelled = false;
         fetchPortfolioHistory()
             .then(d => { if (!cancelled) setData(d); })
-            .catch(err => { console.warn('[StockComparison] fetchPortfolioHistory failed:', err); })
+            .catch(err => { logError({ source: 'network', severity: 'warning', message: 'StockComparisonModal : historique de portefeuille indisponible', error: err instanceof Error ? err : new Error(String(err)) }); })
             .finally(() => { if (!cancelled) setIsLoading(false); });
         return () => { cancelled = true; };
     }, [isOpen]);

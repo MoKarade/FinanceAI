@@ -277,7 +277,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let totalTaxesPaid = 0;
     let totalGrowth = 0;
     let totalExpenses = 0;
-    let minNetWorth = liquid + celi + celiapp + reer + nonReg + crypto + reee;
+    // minNetWorth : initialisé plus bas via la SOURCE UNIQUE (computeRawNetWorth), une fois la
+    // closure currentRawNetWorth définie — sinon une copie locale incomplète (sans dettes) ferait
+    // démarrer le min surévalué pour un persona endetté. [fix MEDIUM review 2026-06-16]
     let shortfallMonths = 0;
     // [PV-6] Passif d'INSOLVABILITÉ : résiduel d'un découvert NON couvert par la cascade de sauvetage
     // (comptes épuisés / cap OAS). Avant, il était absorbé par `liquid = 0` (CF-2) → patrimoine
@@ -339,6 +341,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // prevNW DOIT suivre la MÊME formule que rawNetWorth (celiapp + realEstateEquity − toutes les
     // dettes), sinon diffNW = rawNetWorth − prevNW est faussé en permanence. [finding prevNW]
     let prevNW = currentRawNetWorth();
+    // minNetWorth (suivi du plus bas patrimoine sur la projection) part du VRAI patrimoine de départ,
+    // dettes initiales incluses (même source unique que prevNW). Sinon, pour un persona endetté, le min
+    // démarrait surévalué de Σ(dettes) → safetyScore/goalSeek surestimaient la sécurité. [fix review 2026-06-16]
+    let minNetWorth = currentRawNetWorth();
 
     // D2.8: État LTC (Long-Term Care). Une fois déclenché, le coût mensuel
     // s'ajoute aux dépenses jusqu'à la fin de la simulation.

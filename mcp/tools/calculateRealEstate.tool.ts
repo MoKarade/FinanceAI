@@ -27,18 +27,21 @@ const inputSchema = {
     .describe('Plafond de valeur projetee (CAD). 0 = aucun plafond. Defaut: 0.'),
   startYear: z.number().int().min(2000).max(2050).optional()
     .describe('Annee de depart de la projection. Defaut: annee courante.'),
+  municipality: z.enum(['montreal', 'reste_qc']).optional()
+    .describe("Municipalite du bien pour la taxe de bienvenue. 'montreal' = surtaxe municipale (jusqu'a 4%), 'reste_qc' = bareme provincial (max 2%). Non defini ⇒ repli conservateur Montreal."),
 };
 
 export const registerCalculateRealEstate = (server: McpServer): void => {
   server.tool(
     'calculate_real_estate',
-    "Analyse complete d'un achat immobilier au Quebec : couts d'acquisition (mise de fonds + taxe de bienvenue avec paliers 0.5/1/1.5/2% + notaire + inspection + renovations), mensualite hypothecaire, et schema d'amortissement annuel avec renouvellement automatique tous les 5 ans, plafond optionnel sur la valeur.",
+    "Analyse complete d'un achat immobilier au Quebec : couts d'acquisition (mise de fonds + taxe de bienvenue selon la municipalite — Montreal jusqu'a 4%, reste du QC max 2% + notaire + inspection + renovations), mensualite hypothecaire, et schema d'amortissement annuel avec renouvellement automatique tous les 5 ans, plafond optionnel sur la valeur.",
     inputSchema,
     async (params) => {
       const purchaseCosts = calculatePurchaseCosts({
         price: params.price,
         downPayment: params.downPayment,
         initialRenovations: params.initialRenovations,
+        municipality: params.municipality,
       });
 
       const mortgage = calculateMortgagePayment({

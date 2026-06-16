@@ -464,6 +464,9 @@ export interface CharitableGoal {
   endYear?: number;
 }
 
+/** Municipalité pour la taxe de bienvenue (droits de mutation) : Montréal a sa propre surtaxe. */
+export type Municipality = 'montreal' | 'reste_qc';
+
 export interface RealEstateGoal {
   id: string;
   name?: string;
@@ -494,6 +497,9 @@ export interface RealEstateGoal {
   isFirstTimeBuyer?: boolean;
   /** §6.8 SCHL — Résidence neuve : idem, permet 30 ans en assuré. */
   isNewConstruction?: boolean;
+  /** FISC-WELCOME-UNIFY — municipalité pour la taxe de bienvenue. Requis à la saisie (UI), pas de
+   * défaut stocké ; non défini ⇒ repli conservateur Montréal côté moteur (état transitoire). */
+  municipality?: Municipality;
 }
 
 export interface ChildGoal {

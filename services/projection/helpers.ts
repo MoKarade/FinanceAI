@@ -3,6 +3,9 @@
 // Aucun changement de comportement: ce sont les mêmes fonctions et constantes,
 // hissées hors de runScenario() pour la lisibilité et la testabilité.
 
+import { calculateWelcomeTax } from '../realEstate';
+import type { Municipality } from '../../types';
+
 // ---- PRNG seedé (Mulberry32) — déterministe, rapide ----
 export function mulberry32(seed: number): () => number {
     return function () {
@@ -71,34 +74,14 @@ export const RRIF_RATES: Record<number, number> = {
     92: 0.1449, 93: 0.1634, 94: 0.2000,
 };
 
-// ---- Taxe de bienvenue (Montréal — Loi sur les droits de mutation) ----
-// Calcul cumulatif par tranche (style impôt). Paliers 2026 Montréal.
-// Source: Ville de Montréal — Règlement sur les droits de mutation.
-// Note: TODO D2.5 retiré — la structure cumulative est désormais correcte.
-// Pour Québec/Laval/Gatineau (paliers provinciaux 3 tranches max 1.5%),
-// utiliser realEstate.ts:calculateWelcomeTax — TODO unifier les deux APIs.
-const MTL_WELCOME_TAX_BRACKETS: Array<{ upTo: number; rate: number }> = [
-    { upTo: 53700, rate: 0.005 },     // 0.5% jusqu'à 53 700$
-    { upTo: 269300, rate: 0.010 },    // 1.0% de 53 700 à 269 300$
-    { upTo: 538500, rate: 0.015 },    // 1.5% de 269 300 à 538 500$
-    { upTo: 1077000, rate: 0.020 },   // 2.0% de 538 500 à 1 077 000$
-    { upTo: 2154000, rate: 0.025 },   // 2.5% de 1 077 000 à 2 154 000$
-    { upTo: 3231000, rate: 0.030 },   // 3.0% de 2 154 000 à 3 231 000$
-    { upTo: 5385000, rate: 0.035 },   // 3.5% de 3 231 000 à 5 385 000$
-    { upTo: Infinity, rate: 0.040 },  // 4.0% au-delà de 5 385 000$
-];
-
-export function welcomeTax(price: number): number {
-    if (price <= 0) return 0;
-    let tax = 0;
-    let previousLimit = 0;
-    for (const bracket of MTL_WELCOME_TAX_BRACKETS) {
-        if (price <= previousLimit) break;
-        const taxableInBracket = Math.min(price, bracket.upTo) - previousLimit;
-        tax += taxableInBracket * bracket.rate;
-        previousLimit = bracket.upTo;
-    }
-    return tax;
+// ---- Taxe de bienvenue (droits de mutation) — SOURCE UNIQUE : services/realEstate.ts ----
+// FISC-WELCOME-UNIFY : helpers.ts ne duplique PLUS les barèmes (avant : 8 tranches Montréal en dur,
+// divergentes du barème provincial de realEstate.ts → bug C9 « 3 implémentations divergentes »).
+// Délègue désormais à calculateWelcomeTax, qui porte les DEUX barèmes (Montréal / reste du QC).
+// `municipality` non défini ⇒ repli CONSERVATEUR Montréal (cf docs/FISCAL_REFERENCE.md §8).
+// La DI est conservée (le moteur injecte cette fonction dans processRealEstate) pour la testabilité.
+export function welcomeTax(price: number, municipality?: Municipality): number {
+    return calculateWelcomeTax(price, municipality);
 }
 
 // ---- Probabilité annuelle d'événement de soins de longue durée (LTC) ----

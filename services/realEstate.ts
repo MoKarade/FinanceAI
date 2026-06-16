@@ -1,6 +1,8 @@
 // Logique pure immobiliere canadienne (Quebec).
 // Aucune dependance React. Reutilisable par le MCP server et les tests.
 
+import type { Municipality } from '../types';
+
 export interface MortgageInput {
   price: number;
   downPayment: number;
@@ -50,6 +52,8 @@ export interface PurchaseCostsInput {
   initialRenovations?: number;
   notaryFees?: number;
   inspectionFees?: number;
+  /** FISC-WELCOME-UNIFY — municipalité du bien pour la taxe de bienvenue. Non défini ⇒ repli Montréal. */
+  municipality?: Municipality;
 }
 
 export interface PurchaseCosts {
@@ -77,22 +81,46 @@ export interface BuyVsRentYear {
   rentInvestNetWorth: number;
 }
 
+// ---- Taxe de bienvenue / droits de mutation (FISC-WELCOME-UNIFY, source unique moteur + UI) ----
+// Deux barèmes cumulatifs (cf docs/FISCAL_REFERENCE.md §8) :
+//  - Montréal : surtaxe municipale, 8 tranches jusqu'à 4 % (source : Ville de Montréal, droits de
+//    mutation 2026).
+//  - Reste du QC : barème provincial, 4 tranches max 2 % (Loi concernant les droits sur les mutations
+//    immobilières). ⚠️ Seuils 2025 (58 900 / 290 000 / 552 300) — à réindexer 2026 (LOW, non sourcé ici).
+const WELCOME_TAX_MONTREAL: ReadonlyArray<{ upTo: number; rate: number }> = [
+  { upTo: 53700, rate: 0.005 },
+  { upTo: 269300, rate: 0.010 },
+  { upTo: 538500, rate: 0.015 },
+  { upTo: 1077000, rate: 0.020 },
+  { upTo: 2154000, rate: 0.025 },
+  { upTo: 3231000, rate: 0.030 },
+  { upTo: 5385000, rate: 0.035 },
+  { upTo: Infinity, rate: 0.040 },
+];
+
+const WELCOME_TAX_QUEBEC: ReadonlyArray<{ upTo: number; rate: number }> = [
+  { upTo: 58900, rate: 0.005 },
+  { upTo: 290000, rate: 0.010 },
+  { upTo: 552300, rate: 0.015 },
+  { upTo: Infinity, rate: 0.020 },
+];
+
 /**
- * Taxe de bienvenue (droits de mutation) au Quebec.
- * Paliers 2025 :
- *  - 0%-58 900$ : 0.5%
- *  - 58 900$-290 000$ : 1.0%
- *  - 290 000$-552 300$ : 1.5%
- *  - > 552 300$ : 2.0%
+ * Taxe de bienvenue (droits de mutation) selon la municipalité du bien.
+ * `municipality` non défini ⇒ repli CONSERVATEUR sur Montréal (barème le plus élevé) : état
+ * transitoire (l'UI force le choix), PAS un défaut stocké. Consommée par le moteur ET l'UI.
  */
-export const calculateWelcomeTax = (price: number): number => {
+export const calculateWelcomeTax = (price: number, municipality?: Municipality): number => {
   if (price <= 0) return 0;
+  const brackets = municipality === 'reste_qc' ? WELCOME_TAX_QUEBEC : WELCOME_TAX_MONTREAL;
   let tax = 0;
-  let v = price;
-  if (v > 552300) { tax += (v - 552300) * 0.02; v = 552300; }
-  if (v > 290000) { tax += (v - 290000) * 0.015; v = 290000; }
-  if (v > 58900)  { tax += (v - 58900) * 0.01; v = 58900; }
-  tax += v * 0.005;
+  let previousLimit = 0;
+  for (const bracket of brackets) {
+    if (price <= previousLimit) break;
+    const taxableInBracket = Math.min(price, bracket.upTo) - previousLimit;
+    tax += taxableInBracket * bracket.rate;
+    previousLimit = bracket.upTo;
+  }
   return tax;
 };
 
@@ -623,8 +651,9 @@ export const calculatePurchaseCosts = ({
   initialRenovations = 0,
   notaryFees = 1500,
   inspectionFees = 800,
+  municipality,
 }: PurchaseCostsInput): PurchaseCosts => {
-  const welcomeTax = calculateWelcomeTax(price);
+  const welcomeTax = calculateWelcomeTax(price, municipality);
   const totalCashNeeded = downPayment + welcomeTax + notaryFees + inspectionFees + initialRenovations;
   return { welcomeTax, notaryFees, inspectionFees, initialRenovations, totalCashNeeded };
 };

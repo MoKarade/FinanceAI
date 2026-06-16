@@ -18,12 +18,14 @@ export const PrivateBlock: React.FC<{
     className?: string;
     /** Élément racine du bloc (par défaut `div`). */
     as?: 'span' | 'div';
-}> = ({ children, className = '', as = 'div' }) => {
+    /** Infobulle native conservée lors de la migration depuis un conteneur `title="…"` brut. */
+    title?: string;
+}> = ({ children, className = '', as = 'div', title }) => {
     const isPrivacy = useFinanceStore((s) => s.isPrivacyMode);
     const Tag = as;
     return (
         <>
-            <Tag className={`privacy-blur ${className}`} aria-hidden={isPrivacy || undefined}>
+            <Tag className={`privacy-blur ${className}`} title={title} aria-hidden={isPrivacy || undefined}>
                 {children}
             </Tag>
             {isPrivacy && <span className="sr-only">{MASKED_AMOUNT_LABEL}</span>}

@@ -1351,10 +1351,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         }
 
         // Cycle 17 split: impôt latent → ./projection/latentTax
+        // FISC-LATENT-RE — inclure le gain latent des immeubles LOCATIFS (RP exclue, exempte au décès),
+        // pour cohérence avec le bilan successoral (même Σ que realEstateLatentGain plus bas, estateCalculation).
+        const realEstateLatentGainNow = propertiesState
+            .filter(p => p.isBought && !p.isSold && !p.isPrimaryResidence)
+            .reduce((s, p) => s + Math.max(0, p.currentValue - (p.cost ?? 0)), 0);
         const impotLatent = computeLatentTax(
             { m, loopYear, simInflation, simSalaryGrowth, isRetired, activeUsersCount,
               grossMarcBaseAnnual, grossAnnaBaseAnnual, accRentesYear, incomeRetirement,
-              reer, nonReg, nonRegACB, crypto, cryptoACB, enableMonteCarlo },
+              reer, nonReg, nonRegACB, crypto, cryptoACB, realEstateLatentGain: realEstateLatentGainNow, enableMonteCarlo },
             calculateFiscalReport,
         );
 

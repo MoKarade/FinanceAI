@@ -143,6 +143,11 @@ Seule limite : la PERTINENCE. Lancer tous les agents qui s'appliquent ; aucun ho
 ## Posture de l'agent
 - Pas de complaisance : si une approche est mauvaise, le dire et proposer mieux.
 - Pas de validation gratuite ni d'intro inutile.
+- **Findings de review = hypothèses, pas vérités** : une review multi-agents sur du code fiscal/moteur
+  a un FORT taux de faux positifs (2026-06-15 : 2 des 6 HIGH financiers étaient FAUX — #2 supposait un
+  revenu nominal alors qu'il est déflaté ; #5 prémisse fausse, le fix proposé aurait été nocif). VÉRIFIER
+  chaque finding (lecture du vrai code + panel) AVANT de coder un fix money-critical. Un faux fix dans un
+  moteur d'impôt est pire que le finding non corrigé.
 
 ## Commandes (exactes, package.json)
 - Dev `npm run dev` · Build `npm run build` (⚠️ `prebuild` = `lint` ; build CASSE si lint échoue)

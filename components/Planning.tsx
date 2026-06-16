@@ -4,6 +4,7 @@ import { Transaction, RecurringItem, SavingsGoal, BudgetConfig, BudgetCategory }
 import { Card } from './ui/Card';
 import { Icon, type IconName } from './ui/Icon';
 import { ProjectionRequired } from './ui/ProjectionRequired';
+import { PrivateAmount } from './ui/PrivateAmount';
 // Phase 4 A5: bascule sur services/claude.ts (Haiku 4.5)
 import { detectSubscriptionsAI } from '../services/claude';
 import { showToast } from './ui/Toast';
@@ -140,9 +141,9 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                     <p className="text-ink-300 text-body mt-1">{section === 'all' ? 'Abonnements, Factures Récurrentes & Objectifs.' : 'Abonnements & Factures Récurrentes.'}</p>
                 </div>
                 <div className="flex gap-4">
-                    <div className="text-right"><div className="text-tiny uppercase text-ink-500 font-bold">Fixe Mensuel</div><div className="text-2xl font-bold text-danger-400 privacy-blur">{totalMonthly.toFixed(0)} $</div></div>
+                    <div className="text-right"><div className="text-tiny uppercase text-ink-500 font-bold">Fixe Mensuel</div><PrivateAmount as="div" className="text-2xl font-bold text-danger-400">{totalMonthly.toFixed(0)} $</PrivateAmount></div>
                     <div className="w-px bg-white/10"></div>
-                    <div className="text-right"><div className="text-tiny uppercase text-ink-500 font-bold">Coût Annuel</div><div className="text-2xl font-bold text-white privacy-blur">{totalYearly.toLocaleString()} $</div></div>
+                    <div className="text-right"><div className="text-tiny uppercase text-ink-500 font-bold">Coût Annuel</div><PrivateAmount as="div" className="text-2xl font-bold text-white">{totalYearly.toLocaleString()} $</PrivateAmount></div>
                 </div>
             </div>
             )}
@@ -159,7 +160,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                         <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shadow-inner flex-shrink-0"><Icon name={subIcon(sub.payee)} size={16} className="text-ink-300" /></div>
                                         <div className="min-w-0"><div className="font-bold text-white text-body truncate">{sub.payee}</div><div className="text-tiny text-ink-500">Le {sub.dayOfMonth} du mois</div></div>
                                     </div>
-                                    <div className="text-right flex-shrink-0"><div className="font-bold text-white privacy-blur">{sub.averageAmount.toFixed(0)}$</div><div className="text-tiny text-ink-500">/mois</div></div>
+                                    <div className="text-right flex-shrink-0"><PrivateAmount as="div" className="font-bold text-white">{sub.averageAmount.toFixed(0)}$</PrivateAmount><div className="text-tiny text-ink-500">/mois</div></div>
                                 </div>
                             ))}
                             {activeSubs.length === 0 && <div className="text-center text-ink-500 py-10">Aucun abonnement détecté.</div>}

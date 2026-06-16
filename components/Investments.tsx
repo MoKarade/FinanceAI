@@ -785,9 +785,9 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                 >
                                     {isRebalanceEdit ? 'Terminer' : 'Modifier Cibles'}
                                 </button>
-                                <div className="text-3xl font-black text-white privacy-blur hidden sm:block">
+                                <PrivateAmount as="div" className="text-3xl font-black text-white hidden sm:block">
                                     {formatCAD(totalPortfolio)}
-                                </div>
+                                </PrivateAmount>
                             </div>
                         </div>
 

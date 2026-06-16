@@ -3,6 +3,7 @@ import { Transaction, BudgetConfig, BudgetCategory, Tab as TabEnum } from '../ty
 import { Card } from './ui/Card';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { ProjectionRequired } from './ui/ProjectionRequired';
+import { PrivateAmount } from './ui/PrivateAmount';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 import { showToast } from './ui/Toast';
 import { BudgetGroupTable } from './budget/BudgetGroupTable';
@@ -641,18 +642,18 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 >
                     <div>
                         <div className="text-tiny uppercase font-bold text-info-400 tracking-widest mb-1">Impact à long terme →</div>
-                        <div className="text-2xl font-black text-white privacy-blur">
+                        <PrivateAmount as="div" className="text-2xl font-black text-white">
                             {formatCAD(projectionSummary.estateNetWorth)}
-                        </div>
+                        </PrivateAmount>
                         <div className="text-tiny text-ink-500 mt-1">
                             Patrimoine successoral projeté en {projectionSummary.finalYear} (FutureProjection actif).
                         </div>
                     </div>
                     <div className="bg-black/30 rounded-xl p-3 border border-white/5">
                         <div className="text-tiny uppercase font-bold text-ink-300 tracking-widest mb-1">Sensibilité</div>
-                        <div className="text-base font-bold text-success-400 privacy-blur">
+                        <PrivateAmount as="div" className="text-base font-bold text-success-400">
                             +{formatCAD(projectionSummary.per100Boost)}
-                        </div>
+                        </PrivateAmount>
                         <div className="text-tiny text-ink-500">par +100$/mois d'épargne supplémentaire</div>
                     </div>
                 </button>
@@ -814,9 +815,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                             )}
 
                             <div className="pt-2 text-center bg-green-500/10 rounded-lg py-2 border border-green-500/20">
-                                <div className="text-2xl font-bold text-green-400 privacy-blur">
+                                <PrivateAmount as="div" className="text-2xl font-bold text-green-400">
                                     +{coupleAnalysis.totalSavings.toLocaleString()} $
-                                </div>
+                                </PrivateAmount>
                                 <div className="text-tiny text-green-200">Potentiel d'épargne combiné (Net)</div>
                             </div>
                         </div>

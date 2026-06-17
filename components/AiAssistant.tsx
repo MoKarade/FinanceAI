@@ -5,6 +5,7 @@ import { Transaction, BudgetCategory, Asset, ProjectionConfig, RealEstateGoal, B
 import { useFinanceStore } from '../store/useFinanceStore';
 import { chatStream } from '../services/claude';
 import { sanitizePromptText, wrapUserData, neutralizeFrameTags, PROMPT_DATA_ISOLATION_NOTE } from '../utils/promptSafety';
+import { computePresentNetWorth, computeCurrentLiquidity, computeInvestmentsValue } from '../services/portfolio';
 
 interface AiAssistantProps {
   apiKey: string;
@@ -45,6 +46,8 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
   const aiConversation = useFinanceStore(s => s.aiConversation);
   const setAppState = useFinanceStore(s => s.setAppState);
   const lastProjection = useFinanceStore(s => s.lastProjection);
+  const fxRates = useFinanceStore(s => s.fxRates);
+  const debts = useFinanceStore(s => s.debts);
 
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
@@ -71,9 +74,11 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
   const roundToHundred = (amount: number): number => Math.round(amount / 100) * 100;
 
   const generateContext = () => {
-    const totalAssets = assets.reduce((sum, a) => sum + (a.quantity * a.currentPrice * (a.currency === 'USD' ? 1.38 : a.currency === 'EUR' ? 1.50 : 1)), 0);
-    const totalCash = (Object.values(initialBalances) as number[]).reduce((a, b) => a + b, 0) + transactions.reduce((sum, t) => !t.isDuplicate && !t.isTransfer ? sum + t.amount : sum, 0);
-    const netWorth = totalAssets + totalCash;
+    // [AI-CTX-FX] Source unique du NW présent : FX RÉELS (`fxRates`, fini les 1.38/1.50 en dur)
+    // ET dettes soustraites — cohérent avec le moteur, le Dashboard et le snapshot.
+    const totalCash = computeCurrentLiquidity(initialBalances, transactions);
+    const totalInvestments = computeInvestmentsValue(assets, fxRates);
+    const netWorth = computePresentNetWorth(initialBalances, transactions, assets, fxRates, debts);
 
     const topAssets = [...assets].sort((a, b) => b.performance - a.performance).slice(0, 3).map(a => `${sanitizePromptText(a.symbol, 12)}: +${a.performance}%`).join(', ');
 
@@ -123,7 +128,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
     const userDataBlock = wrapUserData(
 `=== USER SNAPSHOT ===
 - Age principal: ${userAge} ans
-- Net Worth: ${roundToHundred(netWorth).toLocaleString()} CAD (Cash: ${roundToHundred(totalCash).toLocaleString()}, Stocks: ${roundToHundred(totalAssets).toLocaleString()})
+- Net Worth: ${roundToHundred(netWorth).toLocaleString()} CAD (Cash: ${roundToHundred(totalCash).toLocaleString()}, Stocks: ${roundToHundred(totalInvestments).toLocaleString()})
 - Burn mensuel: ~${roundToHundred(monthlyBurn).toLocaleString()}$
 - Runway: ${runway} mois
 - Top placements: ${topAssets || 'aucun'}

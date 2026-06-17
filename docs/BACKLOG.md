@@ -106,14 +106,16 @@
 > Cœur money-critical = AAA (conservation prouvée ≤0,02 $/~25 scénarios, fiscalité 0 écart). **Tous les findings
 > ci-dessous sont à la PÉRIPHÉRIE** (consommateurs UI/IA/viz qui recalculent au lieu de la source unique) — aucun
 > n'altère la VALEUR du patrimoine net. Lot d'implémentation : commencer par le keystone PUIS H1/H2 (test avant fix).
-- [ ] **[NW-PARITY-INVARIANT]** 🔧 HIGH (★ garde-fou keystone) — test de PARITÉ : NW *présent* de TOUTES les surfaces
-  (`useDerivedFinancials.globalNetWorth` Dashboard, `buildFinancialSnapshot` IA, `NextBestAction`) ≡ `chartData[0].NetWorth`
-  ≡ `computeRawNetWorth`, sur un persona endetté. Attrape NW-UI-DEBT + AI-CTX-FX **et** toute future divergence. Extension
-  d'`INV-1` au présent. Effort S. → écrire AVANT les fix H1/H2 (prouve la correction, méthode discriminante).
-- [ ] **[NW-UI-DEBT]** 🔧 HIGH — `utils/useDerivedFinancials.ts:24-35` : `globalNetWorth` (NW présent, Dashboard) =
-  cash+investments SANS `− dettes` → divergence vs moteur/IA/`computeRawNetWorth`. Vérifié. Fix : `− computeTotalDebt(state.debts)`. Effort S.
-- [ ] **[AI-CTX-FX]** 🔧 HIGH — `components/AiAssistant.tsx:74-76` : NW envoyé à Claude avec FX EN DUR (1.38/1.50) +
-  sans dettes. Vérifié. Fix : `computeInvestmentsValue(assets, fxRates)` + `buildFinancialSnapshot` (purs, testés). Effort S.
+- [~] **[NW-PARITY-INVARIANT]** 🔧 HIGH (★ garde-fou keystone) — **PARTIELLEMENT LIVRÉ (PR audit)** : SOURCE UNIQUE
+  `computePresentNetWorth` (`services/portfolio.ts`) + les 3 surfaces présentes (`useDerivedFinancials`, `financialSnapshot`,
+  `AiAssistant`) y routent → parité PAR CONSTRUCTION + garde unitaire discriminant (persona endetté + devise étrangère,
+  `tests/services/portfolio.test.ts`). **RESTE** : le cross-check explicite « NW présent ≡ `chartData[0].NetWorth` (moteur
+  mois 0) » (extension d'`INV-1` au présent — vérifier d'abord l'alignement init moteur). Effort S.
+- [x] **[NW-UI-DEBT]** ✅ HIGH (livré PR audit) — `useDerivedFinancials.globalNetWorth` route vers `computePresentNetWorth`
+  (soustrait les dettes). Avant : cash+investments SANS dettes → Dashboard gonflé.
+- [x] **[AI-CTX-FX]** ✅ HIGH (livré PR audit) — `AiAssistant` : FX RÉELS (`fxRates`) + dettes soustraites via
+  `computePresentNetWorth`/`computeInvestmentsValue` ; 1.38/1.50 en dur supprimés. Régression `TabRouter.availableCash`
+  (dérivation `globalNetWorth − placements`) corrigée en passant (→ `currentLiquidity`).
 - [ ] **[FISC-DETTE-TOTALE-MORTGAGE]** (M5) 🔧 MEDIUM — `services/projection/monthlyOutput.ts:236` : `DetteTotale` INCLUT
   `mortgageBalance` alors qu'`Immobilier`=équité (déjà nette) → sous hypothèque `Σactifs−DetteTotale = NW−mortgage ≠ NW`
   (reconstructabilité d'affichage rompue ; NW correct via `computeRawNetWorth`). `INV-1` ne teste QUE sans hypothèque. Vérifié
@@ -147,6 +149,10 @@
   (58 900/290 000/552 300) à réindexer 2026. ⚠️ exiger les valeurs officielles RQ 2026 (NE PAS deviner), corriger code+doc même PR.
 - [ ] **[REEE-LITERALS]** 🔧 LOW (hygiène) — `services/projection/childrenReee.ts` : SCEE/IQEE = littéraux non nommés
   (valeurs CORRECTES). Extraire en constantes si on y retouche. Aucun impact $.
+- [ ] **[NW-ASSETBREAKDOWN-DRY]** 🔧 LOW (audit 2026-06-17, panel) — `utils/useDerivedFinancials.ts:50-62` :
+  `assetBreakdown` ET `currentLiquidity` recalculent INLINE (FX `||1`) au lieu de `computeAssetBreakdown`/
+  `computeCurrentLiquidity` (`services/portfolio.ts`) ; `assetBreakdown` local OMET `crypto` (le helper l'a).
+  Même motif « recalcul local au lieu du helper ». Router vers les helpers. Effort S.
 
 
   `services/projection/netWorth.ts:33` `computeRawNetWorth` n'a AUCUNE garde `Number.isFinite` : un terme non

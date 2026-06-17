@@ -21,6 +21,7 @@ import {
     computeCurrentLiquidity,
     computeMonthlyBudgetAggregates,
     computeTotalDebt,
+    computePresentNetWorth,
     type AssetBreakdown,
 } from './portfolio';
 
@@ -81,7 +82,8 @@ export function buildFinancialSnapshot(
     const investments = computeInvestmentsValue(assets, fx);
     const liquidity = computeCurrentLiquidity(state.initialBalances ?? {}, state.transactions ?? []);
     const totalDebt = computeTotalDebt(state.debts ?? []);
-    const netWorth = investments + liquidity - totalDebt;
+    // Source unique du NW présent (parité Dashboard/IA/moteur garantie par construction).
+    const netWorth = computePresentNetWorth(state.initialBalances ?? {}, state.transactions ?? [], assets, fx, state.debts ?? []);
 
     const users = state.config?.users ?? [];
     // `netSalary` est en MENSUEL dans le store (cf Budget.tsx / Retirement.tsx).

@@ -76,7 +76,7 @@ export interface TabRouterProps {
  */
 export const TabRouter: React.FC<TabRouterProps> = ({
     activeTab, state, setAppState, setActiveTab, isPrivacyMode, isLoading: _isLoading,
-    globalNetWorth, calculatedMonthlySavings, assetBreakdown, currentLiquidity: _currentLiquidity,
+    globalNetWorth, calculatedMonthlySavings, assetBreakdown, currentLiquidity,
     onUpdateApiKeys, onManualImport,
 }) => {
     return (
@@ -175,7 +175,10 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                 {activeTab === Tab.REAL_ESTATE && (
                     <PageSetupGate tab={Tab.REAL_ESTATE}>
                         <RealEstate
-                            availableCash={globalNetWorth - state.assets.reduce((sum, a) => sum + (a.quantity * a.currentPrice * (state.fxRates[a.currency] || 1)), 0)}
+                            /* [NW-UI-DEBT] mise de fonds = LIQUIDITÉ (pas NW − placements : depuis que
+                               globalNetWorth soustrait les dettes, cette dérivation donnait cash − dettes).
+                               currentLiquidity est la valeur juste, déjà dérivée. */
+                            availableCash={currentLiquidity}
                             goals={state.realEstateGoals}
                             setGoals={(g) => setAppState({ realEstateGoals: g })}
                         />

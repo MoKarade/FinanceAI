@@ -82,10 +82,14 @@
   par défaut → rendre les libellés visibles par défaut (ou rail plus large).
 - [ ] **[FMT-CASING-ACCOUNTTYPE]** 🔧 LOW (nouveau, trouvé en validation) — casse incohérente `CRYPTO`(enum)
   /`Crypto`(clé chart), `NON-ENREG`/`NonReg`, mappée à la main (`Dashboard.tsx:290-291`) = **bug latent**.
-  Une seule fonction `accountTypeToChartKey()`. (dedup CELI/REER déjà corrigé — `new Set`.)
-- [ ] **[UI-TX-CLEANUP]** 🔧 ◑PARTIEL LOW — Transactions : pastille **AUTO** sans légende visible
-  (`Transactions.tsx:624`, `title` seul) → légende/tooltip explicite. Colonne TYPE (toggle Transfert/Transaction)
-  = artefact data, pas constant (NON prioritaire).
+  Une seule fonction `accountTypeToChartKey()`. (dedup CELI/REER déjà corrigé — `new Set`.) ⚠️ **Analyse
+  2026-06-17** : le pattern `=== 'CRYPTO'`/`'NON-ENREG'` vit dans 3 fichiers (`Dashboard` chart-keys,
+  `TaxCenter` + `AssetLocationCard` = traitement FISCAL, pas le même mapping) → extraction = refactor plus
+  large que « LOW » (constante d'enum partagée + helper). À regrouper avec `DETTE-UI-PRIMITIVES`/un nettoyage
+  enum dédié, pas en quick-win. Le bug reste LATENT (le mapping marche aujourd'hui).
+- [x] **[UI-TX-CLEANUP]** ✅ LOW (2026-06-17) — colonne **AUTO** auto-documentée : en-tête avec `title`
+  explicite (code couleur vert ≥90 % / jaune ≥70 % / rouge <70 %) + glyphe `ⓘ` visible signalant l'info ;
+  les pastilles gardent `title`/`aria-label` par ligne. Colonne TYPE = artefact data (laissée, non prioritaire).
 - [ ] **[GATE-CTA-CONTRAST]** 🔧 ◑PARTIEL LOW — bouton Google `bg-primary/15 text-primary` (`LoginGate.tsx:98`) :
   **mesurer** le contraste (`check-contrast`) ; si < AA, CTA plus lisible (fond vert `#10b981` p.ex.).
 

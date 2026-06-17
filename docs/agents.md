@@ -5,9 +5,16 @@
 
 ## Deux niveaux
 - **Globaux** (`~/.claude/agents/`, ~184 via claude-config / ECC / toolkit) : génériques, dispo dans tous les projets.
-- **Projet** (`.claude/agents/`, **13**) : spécialisés FinanceAI, **surchargent les globaux par nom**.
+- **Projet** (`.claude/agents/`, **14**) : spécialisés FinanceAI, **surchargent les globaux par nom**. Le 14ᵉ est l'`orchestrator` (routage, cf ci-dessous).
   Overrides sains (collision volontaire d'un global générique) : `code-reviewer`, `security-privacy`
   (le global s'appelle `security-reviewer`), `performance-optimizer`, `silent-failure-hunter`.
+
+## Orchestrateur (routage à chaque message)
+`orchestrator` (sonnet, lecture seule, ne code jamais) détermine quels agents lancer selon le TYPE de demande. Le hook
+`UserPromptSubmit` (`scripts/hooks/orchestrate.mjs`) injecte sa directive à CHAQUE message → la boucle principale annonce
+les agents retenus/ignorés (+ pourquoi) avant d'agir. Message trivial → aucun agent. Routage complet dans
+`.claude/agents/orchestrator.md`. ⚠️ Claude Code ne peut pas auto-spawner un sous-agent par message : le routage est
+appliqué par la boucle principale, pas par un sous-agent.
 
 ## Principe : une décision unique par agent
 Chaque agent existe pour **la décision qu'aucun autre ne prend**. Les exclusions évitent le chevauchement

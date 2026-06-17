@@ -7,9 +7,11 @@
       { "hooks": [ { "type": "command", "command": "node scripts/hooks/orchestrate.mjs", "timeout": 10 } ] }
     ],
     "PostToolUse": [
-      { "matcher": "Edit|Write", "hooks": [ { "type": "command", "command": "node scripts/hooks/auto-lint.mjs", "timeout": 120 } ] }
+      { "matcher": "Edit|Write", "hooks": [ { "type": "command", "command": "node scripts/hooks/auto-lint.mjs", "timeout": 120 } ] },
+      { "matcher": "Task|Agent", "hooks": [ { "type": "command", "command": "node scripts/hooks/agent-status.mjs", "timeout": 10 } ] }
     ],
     "PreToolUse": [
+      { "matcher": "Task|Agent", "hooks": [ { "type": "command", "command": "node scripts/hooks/agent-status.mjs", "timeout": 10 } ] },
       { "matcher": "Bash", "hooks": [
         { "type": "command", "command": "node scripts/hooks/guard.mjs", "timeout": 10 },
         { "type": "command", "command": "node scripts/hooks/commit-gate.mjs", "timeout": 600 },

@@ -16,6 +16,11 @@
 //   INV-5  Achat immobilier : la mise de fonds devient de l'ÉQUITÉ (NW quasi conservé).
 //   INV-6  Aucun compte ne devient négatif (pas de solde fantôme).
 //   INV-7  Un découvert porté en dette est VISIBLE (LiquidDebt + DetteTotale l'exposent).
+//   INV-8  Une dette à champ NON numérique (NaN) ne casse jamais NetWorth/DetteTotale/diffNW.
+//   INV-9  Hypothèque NON double-comptée : Σ(actifs) − NetWorth = dettes non-immo seulement.
+//   INV-10 Décaissement REER : la retenue à la source est un ACOMPTE (payé 1× en avril), pas un coût double.
+//   INV-11 Meltdown REER→NonReg : transfert NW-neutre (retenue non double-comptée).
+//   INV-12 Insolvabilité : dépense non couverte (comptes épuisés, coussin gardé) portée en dette visible — pas d'évaporation.
 
 import { describe, it, expect } from 'vitest';
 import { calculateFutureProjection, type SimulationParams } from '../../services/projection';
@@ -76,6 +81,17 @@ const makeParams = (o: Partial<SimulationParams> = {}): SimulationParams => ({
     startYear: 2026,
     startMonth: 0,
     ...o,
+});
+
+// Retraité seul qui ÉPUISE son REER (modeste) vers le mois ~33 puis reste insolvable (pension
+// publique faible, dépenses > revenus, aucun autre compte). Sert à INV-12 (FISC-BROKE-LIQUID-FLOOR).
+const makeBrokeRetireeParams = (): SimulationParams => makeParams({
+    projection: makeProjection({ years: 16, returnRate: 5, returnRates: { celi: 5, reer: 5, nonReg: 5, crypto: 6, cash: 1 } }),
+    calculatedStartingCash: 8_000,
+    liveCSVBalances: { ...NO_INVEST, REER: 130_000 },
+    retirementGoal: { targetAge: 60, targetMonthlyIncome: 3500, governmentPension: 600, lifeExpectancy: 95 },
+    config: makeRetireeConfig(),
+    baseGrossAnnual: 0, baseNetAnnual: 0, currentRentExpense: 0, baseMonthlyExpenses: 3_000,
 });
 
 const run = (p: SimulationParams): ProjectionResult => calculateFutureProjection(p);
@@ -273,5 +289,35 @@ describe('[CONSERVATION] patrimoine net toujours reconstructible et conservé', 
             if (num(cd[i].REER) > 1_000) maxResid = Math.max(maxResid, Math.abs(unexplained(cd[i], cd[i - 1])));
         }
         expect(maxResid).toBeLessThan(1);
+    });
+
+    // INV-12 — FISC-BROKE-LIQUID-FLOOR : un retraité qui ÉPUISE tous ses comptes de décaissement
+    // (REER/CELI/nonReg/crypto) puis continue à dépenser ne doit PAS voir ses dépenses « s'évaporer ».
+    // Avant le fix : le déficit non couvert (coussin critique gardé) n'était NI puisé NI porté en dette
+    // → ΔNW restait ~stable (création d'argent fantôme, résiduel +shortfall/mois ~3,7 k$). Après : porté
+    // en `liquidDebt` VISIBLE → conservation rétablie, patrimoine net reconstructible même insolvable.
+    it('INV-12 — retraité insolvable : dépense non couverte portée en dette (conservation, pas d\'évaporation)', () => {
+        const cd = run(makeBrokeRetireeParams()).chartData;
+        // (a) Conservation : aucun mois ne crée d'argent fantôme, même comptes épuisés (résiduel ≈ 0).
+        let maxResid = 0, maxM = -1;
+        for (let i = 1; i < cd.length; i++) {
+            const u = Math.abs(unexplained(cd[i], cd[i - 1]));
+            if (u > maxResid) { maxResid = u; maxM = i; }
+        }
+        expect(maxResid, `résiduel inexpliqué ${maxResid.toFixed(0)} $ au mois ${maxM}`).toBeLessThan(2);
+        // (b) Le régime insolvable est bien atteint (REER épuisé, dépenses > revenus) — test non vacant.
+        const broke = cd.find(p => num(p.REER) < 1 && num(p.Expenses) - num(p.Income) > 1_000);
+        expect(broke, 'régime insolvable attendu (REER épuisé)').toBeTruthy();
+        // (c) La dette d'insolvabilité est VISIBLE (LiquidDebt + DetteTotale l'exposent).
+        const last = cd[cd.length - 1];
+        const liqDebt = num((last as Record<string, unknown>).LiquidDebt);
+        expect(liqDebt, 'dette d\'insolvabilité visible').toBeGreaterThan(1_000);
+        expect(num(last.DetteTotale)).toBeGreaterThanOrEqual(liqDebt - 1);
+        // (d) Reconstructabilité maintenue même profondément négatif : NW = Σ(actifs) − DetteTotale.
+        for (const p of cd) {
+            expect(Math.abs(num(p.NetWorth) - (shownAssets(p) - num(p.DetteTotale)))).toBeLessThan(2);
+        }
+        // (e) Le patrimoine net PLONGE (le retraité s'endette) au lieu de rester positif par magie.
+        expect(num(last.NetWorth)).toBeLessThan(-10_000);
     });
 });

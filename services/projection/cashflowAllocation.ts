@@ -64,6 +64,10 @@ export interface CashflowState {
     contribNonReg: number;
     contribCELIAPP: number;
     shortfallMonths: number;
+    /** FISC-BROKE-LIQUID-FLOOR — déficit mensuel NON couvert après épuisement de TOUS les comptes de
+     *  décaissement (le coussin critique reste protégé). Reporté par le caller en `liquidDebt` (dette
+     *  visible) au lieu de s'évaporer. 0 si entièrement couvert ou en cas d'excédent. */
+    uncoveredShortfall: number;
     flowEventLogs: string[];
 }
 
@@ -275,6 +279,12 @@ export function processCashflowAllocation(
                 }
             }
         }
+
+        // FISC-BROKE-LIQUID-FLOOR : déficit résiduel après épuisement de TOUS les comptes de
+        // décaissement (REER/CELI/nonReg/crypto = 0), le coussin critique restant protégé (choix Marc).
+        // Reporté en dette VISIBLE par le caller (liquidDebt) au lieu de s'évaporer : sans ça, ΔNW ne
+        // baisse pas du déficit → argent fantôme (résiduel de conservation +shortfall/mois mesuré).
+        state.uncoveredShortfall = Math.max(0, shortfall);
 
         // CF-2 : les produits de vente d'actifs ci-dessus ont financé la dépense (déficit) → ils
         // ne s'accumulent pas dans le liquide. On rétablit le niveau post-dépense directe. EXCEPTION

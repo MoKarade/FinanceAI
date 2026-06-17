@@ -1222,6 +1222,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             withdrawalREER, withdrawalCELI, withdrawalNonReg, withdrawalCrypto,
             contribCELI, contribREER, contribNonReg, contribCELIAPP,
             shortfallMonths,
+            uncoveredShortfall: 0,
             flowEventLogs: [],
         });
         const applyCashState = (cs: CashflowState): void => {
@@ -1266,6 +1267,18 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             calculateGrossWithholdingRRSP,
         );
         applyCashState(cashState);
+        // FISC-BROKE-LIQUID-FLOOR : un déficit mensuel non couvert (tous comptes de décaissement
+        // épuisés, coussin critique gardé) est porté en dette VISIBLE — pas évaporé. Conservation
+        // rétablie : ΔNW baisse du déficit, DetteTotale l'expose (NW reconstructible même insolvable).
+        // Pas de double-comptage avec le sauvetage de découvert [PV-6] plus bas : PV-6 ne RE-porte pas
+        // CE déficit (le liquide reste au coussin ≥0, donc il ne s'arme pas dessus). Un découvert DISTINCT
+        // créé le même mois par un débit direct (réno/impôt d'avril) peut, lui, déclencher PV-6 sur un
+        // AUTRE montant — montants disjoints, jamais le même dollar (vérifié au panel). Seuil > 1 $ :
+        // ignore les poussières d'arrondi (zone morte 0,1–1 $ négligeable), aligné sur le résiduel PV-6.
+        if (cashState.uncoveredShortfall > 1) {
+            liquidDebt += cashState.uncoveredShortfall;
+            logEvent(flowEventsLog, `⚠️ Dépense non couverte (comptes de décaissement épuisés) : ${Math.round(cashState.uncoveredShortfall).toLocaleString('fr-CA')} $ — portée en dette`);
+        }
 
         // Cycle 15 split: REER Meltdown → ./projection/meltdownReer
         const meltResult = processReerMeltdown(

@@ -14,7 +14,7 @@ const makeState = (over: Partial<CashflowState> = {}): CashflowState => ({
     accRrspYear: 0, accFhsaYear: 0, fhsaLifetimeContrib: 0, celiWithdrawalsThisYear: 0,
     retraitReerMois: 0, retraitCeliMois: 0, withdrawalREER: 0, withdrawalCELI: 0,
     withdrawalNonReg: 0, withdrawalCrypto: 0, contribCELI: 0, contribREER: 0,
-    contribNonReg: 0, contribCELIAPP: 0, shortfallMonths: 0, flowEventLogs: [],
+    contribNonReg: 0, contribCELIAPP: 0, shortfallMonths: 0, uncoveredShortfall: 0, flowEventLogs: [],
     ...over,
 });
 

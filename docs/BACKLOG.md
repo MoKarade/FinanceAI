@@ -24,6 +24,86 @@
 
 ---
 
+## 🎛️ Audit UX 2026-06-17 (VALIDÉ — voir `docs/AUDIT_UX_2026-06-17.md`)
+> Audit externe (rendu headless, 7 personas, 14 pages) **validé claim par claim** par panel de 5 agents
+> (preuve `fichier:ligne`). Robustesse app = 0 plantage. Cœur money-critical = sain (les 2 « bugs de chiffres »
+> sont un libellé + un persona insoutenable, pas des erreurs de calcul). Vrais chantiers = formatage $,
+> archi de l'info, mode discret. ⚠️ Verdict en tête de chaque item. 🧭 = décision Marc.
+
+### 🔴 Présentation money-critical (valeurs justes, mais trompeuses)
+- [ ] **[FMT-CURRENCY-UNIFY]** 🔧 ✅VÉRIDIQUE MEDIUM — **75 sites** de formatage `$` manuel hors `formatCAD`
+  (`utils/format.ts:41`) sur 12 fichiers → floats en-US (`164,400`) / sans séparateur (`1100$`) / décimales
+  variables (`746.667$`), **incohérence sur la même page** (Dettes `37,000 $` vs `1100$`). Router chaque site
+  par `formatCAD()`. Pages pires : Impôts (`TaxCenter` l.254-436), Budget (`BudgetGroupTable:186`
+  `displayTarget`=`target/12` non arrondi), Dettes (`DebtManager` 81/103/104/120/122/139/140/150). Liste
+  complète des lignes dans `docs/AUDIT_UX_2026-06-17.md`. **Critère** : `grep` = 0 montant formaté à la main
+  hors helper ; test de rendu (aucun `$` précédé d'un `.`/`,` en-US ni >2 décimales). Effort S–M.
+- [ ] **[LABEL-NW-SUCCESSORAL]** 🧭 🔧 ◑PARTIEL MEDIUM — l'écart « projection Budget ≠ reste » est un **libellé**,
+  pas un calcul : Budget affiche `estateNetWorth` (patrimoine **successoral**, net d'impôt au décès + NPV rentes,
+  `estateCalculation.ts:195`) vs `chartData[dernier].NetWorth` ailleurs. Source unique RESPECTÉE. 🧭 Décision :
+  soit Budget affiche aussi le NW fin-horizon (parité stricte), soit clarifier « successoral » vs « fin
+  d'horizon » partout (libellés + infobulle). PAS un correctif moteur. ≠ `[NW-PARITY-INVARIANT]`.
+- [ ] **[PROJ-INSOLVENCY-BADGE]** 🔧 ✗FAUX(bug)→UX MEDIUM — un NW projeté négatif (Karim −1,88 M$) n'est PAS un
+  bug : c'est de la dette liquide VISIBLE d'un persona insoutenable (retraite 50 ans). Mais l'afficher nu est
+  anxiogène. Exposer l'insolvabilité : badge « plan insoutenable / capital épuisé à l'âge X » quand
+  `shortfallRate > seuil` ou NW franchit 0. Vrai service de planification (le signal utile).
+
+### 🟠 Architecture de l'information
+- [ ] **[IA-NAV-CONSOLIDATE]** 🧭 ⏳ ✅VÉRIDIQUE — **14 destinations** (Argent 3 · Plan 4 · Objectifs 3 · Outils 3
+  + Config, `Layout.tsx:67-106`) ; recouvrements (Futur/Retraite/Prochaine-action = même projection) ; 2-4
+  coquilles par persona. Cible : ~6 dest. (Accueil · Budget · Patrimoine · Futur · Impôts&Docs · Réglages).
+  Gros chantier nav (routes, deep-links, tests) → **plan-first + OK Marc**.
+- [ ] **[IA-DEDUP-COMPLETUDE]** 🔧 ✅VÉRIDIQUE LOW — `<SetupHub />` rendu 2× (`Settings.tsx:166` + `Profile.tsx:34`).
+  Le garder à un seul endroit (Configuration).
+- [ ] **[IA-ASSETLOC-PERSIST]** 🔧 ✅VÉRIDIQUE MEDIUM — l'éditeur de holdings de l'Asset Location Optimizer
+  (`AssetLocationCard.tsx:138-195`) vit dans un `useState` LOCAL non persisté → **éditions perdues
+  silencieusement** (divergence + silent-failure). Le rendre lecture-seule (lien « éditer dans Investissements »)
+  OU persister. Une seule surface d'édition des holdings (Patrimoine) ; Retraite la lit.
+- [ ] **[UI-SCORES-UNIFY]** 🧭 🔧 ✅VÉRIDIQUE MEDIUM — **4** scores 0-100 concurrents sans grille : « Santé /100 »
+  diversif. (`Investments:417`), « Efficacité fiscale /100 » (`AssetLocationCard:106`), « Complétude % »
+  (`SetupHub`), donut « Santé financière /100 » ratios (`HealthIndicator:231`). Deux « Santé » mesurent des
+  choses différentes. → 1 score global (Accueil), les autres « sous-mesure ». 🧭.
+- [ ] **[UI-TABS-RICH]** 🔧 ◑PARTIEL MEDIUM — généraliser le pattern sous-onglets (déjà sur Investissements ET
+  Configuration) à **Retraite** (4 outils empilés `Retirement:199-230`) et **Profil** (long scroll). Plan-first.
+
+### 🔒 Vie privée & sécurité
+- [ ] **[PRIV-DISCRET-DOM]** 🔧 ✅VRAI MEDIUM — le « mode discret » = `blur(8px)` CSS (`Layout.tsx:183-208`) : la
+  vraie valeur reste en clair dans le DOM (copier-coller/inspecteur/désactivation classe) et **le survol la
+  révèle** (`.privacy-blur:hover{filter:blur(0)}`). Masquer la VALEUR (`•••`), pas la flouter ; retirer le
+  hover-to-reveal. ⚠️ Recoupe `[D6-SR-2]` (≈69 `privacy-blur`) — angle nouveau = remplacement de valeur + hover.
+- [ ] **[SEC-CSP-HEADER]** 🔧 ◑PARTIEL LOW — `index.html:34` a un `<meta>` CSP avec `frame-ancestors` **ignoré
+  en meta** (warning console). La protection est DÉJÀ active via `vercel.json:10-11` (CSP HTTP + `X-Frame-Options:
+  DENY`). → Retirer le `frame-ancestors` inutile de la meta (tue le warning). Pas une faille.
+
+### 🟡 Polish UI / onboarding / viz
+- [ ] **[IA-NAV-LABELS]** 🔧 ✅VÉRIDIQUE MEDIUM — sidebar `w-16` par défaut, libellés `opacity-0`
+  (`Layout.tsx:343`) ; icônes cryptiques (éclair/boussole/palmier). Un `title` existe mais labels invisibles
+  par défaut → rendre les libellés visibles par défaut (ou rail plus large).
+- [ ] **[FMT-CASING-ACCOUNTTYPE]** 🔧 LOW (nouveau, trouvé en validation) — casse incohérente `CRYPTO`(enum)
+  /`Crypto`(clé chart), `NON-ENREG`/`NonReg`, mappée à la main (`Dashboard.tsx:290-291`) = **bug latent**.
+  Une seule fonction `accountTypeToChartKey()`. (dedup CELI/REER déjà corrigé — `new Set`.)
+- [ ] **[UI-TX-CLEANUP]** 🔧 ◑PARTIEL LOW — Transactions : pastille **AUTO** sans légende visible
+  (`Transactions.tsx:624`, `title` seul) → légende/tooltip explicite. Colonne TYPE (toggle Transfert/Transaction)
+  = artefact data, pas constant (NON prioritaire).
+- [ ] **[GATE-CTA-CONTRAST]** 🔧 ◑PARTIEL LOW — bouton Google `bg-primary/15 text-primary` (`LoginGate.tsx:98`) :
+  **mesurer** le contraste (`check-contrast`) ; si < AA, CTA plus lisible (fond vert `#10b981` p.ex.).
+
+### ✗ Faux (validés FAUX — impression seule, effort minimal / rien à coder)
+- [ ] **[ONB-OVERLAY-SEQ]** 🔧 ✗FAUX→perception LOW — PAS 3 overlays simultanés (onboarding plein écran
+  exclusif ; backup exige `hasData`). Mais tour (700 ms post-onboarding) + ConsentBanner **peuvent** coexister
+  → option : ne pas auto-lancer le tour (cf `[ONB-TOUR-OPTIN]`) ou retarder le bandeau de consentement.
+- [ ] **[ONB-TOUR-OPTIN]** 🔧 ✗FAUX→perception LOW — le tour 15 étapes se lance **après** l'onboarding (pas au
+  1er écran ; bouton Passer présent). Perception : auto-lancement non sollicité → le rendre opt-in (bouton
+  « Visite guidée »). Lié à `[IA-NAV-CONSOLIDATE]` (le tour est un symptôme de la nav éparpillée).
+- [ ] **[NAV-IA-GATE-MSG]** 🔧 ✗FAUX→perception LOW — « Assistant IA » route correctement
+  (`TabRouter:277-291`) ; l'auditeur a heurté `PageSetupGate` (profil non configuré). Perception « page
+  cassée » → message clair « configure ton profil pour débloquer l'Assistant IA » sur la gate.
+- **Rien à coder (validés FAUX, artefacts data)** : `GATE-VALUE-PROP` (value-prop déjà avant le bouton),
+  `UI-DETTES-TITLE` (titre fixe « Gestion de la Dette »), `BUD-CATEG-DEFAULT` (`migrateBudgetItems` classe
+  l'épargne correctement — données de test), `VIZ-LEGEND-DEDUP` `TOTAL PORTEFEUILLE ×5` (artefact CSV).
+
+---
+
 ## 🚀 MCP FinanceAI → Cloud Run [⏳ gros chantier] (brief Marc 2026-06-16)
 > Le serveur MCP perso FinanceAI (finances : Drive/BigQuery, comptes CELI/REER/CELIAPP/REEE) tourne en
 > local (stdio), token Google en **fichier**. **Symptôme** : `get_financial_overview` → `invalid_grant`

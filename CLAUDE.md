@@ -121,6 +121,11 @@ Doc détaillée dans `docs/`, qui fait foi.
   interrompu en pleine investigation ; `TaskOutput` → « No task found »). Récupérer sa conclusion par
   lecture BORNÉE du `.jsonl` (python qui ne sort que le dernier message texte — JAMAIS `Read` direct =
   overflow du transcript), ou simplement REFAIRE ses checks ouverts à la main s'il n'a pas conclu.
+  ⚠️ **Sonde d'agent vs `commit-gate`** (piège 2026-06-17, FISC-BROKE-LIQUID-FLOOR) : un agent read-only
+  AVEC Bash (ex. projection-validator) peut créer un fichier-sonde temporaire dans `tests/` (vu :
+  `dc_probe.test.ts`) puis le supprimer ; si le `commit-gate` lance `vitest` PENDANT cette fenêtre, le glob
+  l'attrape puis échoue à le charger (« Cannot find module ») → commit BLOQUÉ à tort (tes vrais tests passent).
+  Ne PAS committer tant qu'un agent à Bash tourne ; sinon re-committer une fois l'agent fini (la race se résout).
 - Un commit de merge GitHub (`noreply@github.com` sur `main`) signalé « Unverified » par le stop-hook
   n'est PAS un commit local à corriger — l'ignorer.
 
@@ -236,8 +241,10 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   hypothèque non double-comptée). Ne JAMAIS affaiblir un invariant pour « faire passer » — corriger le code.
 - [ ] **Reconstructible** : sur tout point, `NetWorth = Σ(actifs affichés) − dettes affichées` (à l'euro près).
   Un patrimoine net affiché ne doit JAMAIS être inexpliqué par l'UI (le modal `FutureDetailModal` montre la dette).
-- [ ] **Pas de flux fantôme** : un débit one-time (`subtractLiquid` : réno/véhicule/objectif) ne crée pas
-  d'argent ni ne disparaît sans contrepartie ; s'il dépasse les actifs, il est porté en `liquidDebt` VISIBLE.
+- [ ] **Pas de flux fantôme** : TOUT débit qui dépasse les actifs est porté en `liquidDebt` VISIBLE — un débit
+  one-time (`subtractLiquid` : réno/véhicule/objectif) MAIS AUSSI le **shortfall mensuel** d'un retraité insolvable
+  (FISC-BROKE-LIQUID-FLOOR 2026-06-17 : le coussin `criticalThreshold` protégé masquait un déficit non financé qui
+  s'évaporait — ΔNW ne baissait pas, +shortfall/mois ; le rescue PV-6 ne l'attrapait pas car liquid restait ≥0).
 - [ ] **Unités** : mensuel vs annuel (×12) cohérent ; pas de double-indexation ; pas de double-imposition
   (retenue créditée 1× ; net ≠ brut selon le poste).
 - [ ] **Test discriminant prouvé** : `git stash push -- <fichier moteur>` → le test ÉCHOUE sur le code d'avant →

@@ -28,7 +28,7 @@ const makeState = (over: Partial<CashflowState> = {}): CashflowState => ({
     accRrspYear: 0, accFhsaYear: 0, fhsaLifetimeContrib: 0, celiWithdrawalsThisYear: 0,
     retraitReerMois: 0, retraitCeliMois: 0, withdrawalREER: 0, withdrawalCELI: 0,
     withdrawalNonReg: 0, withdrawalCrypto: 0, contribCELI: 0, contribREER: 0,
-    contribNonReg: 0, contribCELIAPP: 0, shortfallMonths: 0, flowEventLogs: [],
+    contribNonReg: 0, contribCELIAPP: 0, shortfallMonths: 0, uncoveredShortfall: 0, flowEventLogs: [],
     ...over,
 });
 
@@ -66,6 +66,29 @@ describe('cashflowAllocation shortfall — ponction des liquidités', () => {
         expect(state.celi).toBe(10000);
         expect(state.reer).toBe(10000);
         expect(state.shortfallMonths).toBe(0);
+    });
+
+    // FISC-BROKE-LIQUID-FLOOR — contrat du champ `uncoveredShortfall` (porté en liquidDebt par le
+    // caller). Garde unitaire en complément de l'invariant d'intégration INV-12 (moneyConservation).
+    it('uncoveredShortfall = 0 si le déficit est couvert (coussin OU cascade), = le résidu si insolvable', () => {
+        // (1) Couvert par le coussin de liquidités → rien d'insolvable.
+        const covered = makeState({ liquid: 5000, celi: 10000, reer: 10000 });
+        processCashflowAllocation(covered, makeCtx({ monthlyCashflow: -3000 }), [], fiscalStub, grossIdentity);
+        expect(covered.uncoveredShortfall).toBe(0);
+
+        // (2) Couvert par la cascade de ventes (liquide insuffisant, le CELI complète) → rien d'insolvable.
+        const cascade = makeState({ liquid: 1000, celi: 10000 });
+        processCashflowAllocation(cascade, makeCtx({ monthlyCashflow: -3000 }), [], fiscalStub, grossIdentity);
+        expect(cascade.uncoveredShortfall).toBe(0);
+
+        // (3) INSOLVABLE : tous les comptes de décaissement épuisés, le coussin critique reste protégé →
+        // le déficit non financé est REPORTÉ (et NON puisé dans le coussin). C'est ce montant que le caller
+        // porte en liquidDebt VISIBLE. Avant le fix : ce résidu s'évaporait (ni dette, ni baisse de NW).
+        const broke = makeState({ liquid: 2000, celi: 0, reer: 0, nonReg: 0, crypto: 0 });
+        processCashflowAllocation(broke, makeCtx({ monthlyCashflow: -3000, criticalThreshold: 2000 }), [], fiscalStub, grossIdentity);
+        expect(broke.uncoveredShortfall).toBe(3000);   // déficit ENTIER non couvert
+        expect(broke.liquid).toBe(2000);                // coussin critique INTACT (jamais puisé)
+        expect(broke.shortfallMonths).toBe(1);          // mois de tension compté
     });
 
     it('respecte le seuil critique : ne consomme que la portion de cash au-dessus du seuil', () => {

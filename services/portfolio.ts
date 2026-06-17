@@ -82,9 +82,12 @@ export const computeCurrentLiquidity = (
 };
 
 /**
- * Patrimoine global = liquidite + investissements (CAD).
+ * Actifs BRUTS = liquidité + investissements (CAD), AVANT dettes.
+ * ⚠️ Ce n'est PAS le patrimoine net (renommé de `computeGlobalNetWorth`, audit 2026-06-17 :
+ * le nom « NetWorth » invitait à OMETTRE les dettes — bug H1/AI-CTX-FX). Pour le NW présent,
+ * utiliser `computePresentNetWorth` (qui soustrait les dettes).
  */
-export const computeGlobalNetWorth = (
+export const computeGrossAssets = (
   initialBalances: Record<string, number>,
   transactions: Transaction[],
   assets: Asset[],
@@ -142,4 +145,22 @@ export const computeMonthlyBudgetAggregates = (
  */
 export const computeTotalDebt = (debts: Debt[]): number => {
   return (debts || []).reduce((sum, d) => sum + (d.balance || 0), 0);
+};
+
+/**
+ * Patrimoine net PRÉSENT = actifs bruts − dettes (CAD). SOURCE UNIQUE du NW présent pour
+ * TOUTES les surfaces (Dashboard `useDerivedFinancials`, snapshot IA `financialSnapshot`,
+ * `AiAssistant`) — pendant du `computeRawNetWorth` (futur/moteur). Audit 2026-06-17 (H1,
+ * AI-CTX-FX) : les surfaces qui recalculaient inline OMETTAIENT les dettes → NW présent
+ * gonflé vs moteur. Garde de parité : `tests/services/portfolio.test.ts` (persona endetté).
+ */
+export const computePresentNetWorth = (
+  initialBalances: Record<string, number>,
+  transactions: Transaction[],
+  assets: Asset[],
+  fxRates: Record<string, number>,
+  debts: Debt[],
+): number => {
+  return computeGrossAssets(initialBalances, transactions, assets, fxRates)
+       - computeTotalDebt(debts);
 };

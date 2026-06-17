@@ -3,7 +3,8 @@ import {
   computeAssetBreakdown,
   computeInvestmentsValue,
   computeCurrentLiquidity,
-  computeGlobalNetWorth,
+  computeGrossAssets,
+  computePresentNetWorth,
   computeMonthlyBudgetAggregates,
   computeTotalDebt,
   monthlyAmountFor,
@@ -80,12 +81,40 @@ describe('computeCurrentLiquidity', () => {
   });
 });
 
-describe('computeGlobalNetWorth', () => {
-  it('combine liquidite et investissements', () => {
+describe('computeGrossAssets', () => {
+  it('combine liquidite et investissements (AVANT dettes)', () => {
     const initial = { 'A': 1000 };
     const txs: Transaction[] = [];
     const assets: Asset[] = [makeAsset({ quantity: 10, currentPrice: 100, currency: 'CAD' })];
-    expect(computeGlobalNetWorth(initial, txs, assets, FX)).toBe(2000);
+    expect(computeGrossAssets(initial, txs, assets, FX)).toBe(2000);
+  });
+});
+
+// Garde-fou keystone (audit 2026-06-17, H1 / AI-CTX-FX) : SOURCE UNIQUE du NW présent.
+// Discrimine le bug d'omission des dettes (Dashboard `useDerivedFinancials` + `AiAssistant`
+// recalculaient cash+investments SANS dettes). Toutes les surfaces routent désormais ici → parité.
+describe('computePresentNetWorth (source unique du NW présent)', () => {
+  const initial = { 'A': 1000 };
+  const txs: Transaction[] = [];
+  const assets: Asset[] = [makeAsset({ quantity: 10, currentPrice: 100, currency: 'CAD' })]; // 1000 cash + 1000 inv = 2000 brut
+
+  it('sans dettes → = actifs bruts', () => {
+    expect(computePresentNetWorth(initial, txs, assets, FX, [])).toBe(2000);
+  });
+
+  it('persona ENDETTÉ : NW = actifs bruts − dettes (le bug H1 était l\'omission des dettes)', () => {
+    const debts: Debt[] = [{ balance: 500 } as Debt, { balance: 300 } as Debt];
+    // Discriminant : 2000 (brut) − 800 (dettes) = 1200. Le code bogué donnait 2000.
+    expect(computePresentNetWorth(initial, txs, assets, FX, debts)).toBe(1200);
+    expect(computePresentNetWorth(initial, txs, assets, FX, debts))
+      .toBeLessThan(computeGrossAssets(initial, txs, assets, FX));
+  });
+
+  it('applique les fxRates FOURNIS sur une devise étrangère (pas de taux en dur — AI-CTX-FX)', () => {
+    const usdAssets: Asset[] = [makeAsset({ quantity: 10, currentPrice: 100, currency: 'USD' })]; // 1000 USD
+    // 1000 cash + 1000 USD × 1.38 = 2380. Le NW SUIT le taux fourni → aucun 1.38/1.50 figé possible.
+    expect(computePresentNetWorth(initial, txs, usdAssets, FX, [])).toBe(2380);
+    expect(computePresentNetWorth(initial, txs, usdAssets, { CAD: 1, USD: 2 }, [])).toBe(3000);
   });
 });
 

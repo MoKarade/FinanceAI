@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { AppState, Transaction } from '../types';
+import { computePresentNetWorth } from '../services/portfolio';
 
 interface DerivedFinancials {
     globalNetWorth: number;
@@ -21,18 +22,12 @@ export function useDerivedFinancials(state: AppState): DerivedFinancials {
         [state.config.users],
     );
 
-    const globalNetWorth = useMemo(() => {
-        let cash = 0;
-        (Object.values(state.initialBalances) as number[]).forEach(v => cash += v);
-        state.transactions.forEach((t: Transaction) => {
-            if (!t.isDuplicate && !t.isTransfer) cash += t.amount;
-        });
-        const investments = state.assets.reduce(
-            (sum, a) => sum + (a.quantity * a.currentPrice * (state.fxRates[a.currency] || 1)),
-            0,
-        );
-        return cash + investments;
-    }, [state.initialBalances, state.transactions, state.assets, state.fxRates]);
+    // [NW-UI-DEBT] Source unique du NW présent : soustrait les dettes (avant : cash+investments
+    // SANS dettes → Dashboard gonflé vs moteur/IA). `computePresentNetWorth` = pendant de `computeRawNetWorth`.
+    const globalNetWorth = useMemo(
+        () => computePresentNetWorth(state.initialBalances, state.transactions, state.assets, state.fxRates, state.debts),
+        [state.initialBalances, state.transactions, state.assets, state.fxRates, state.debts],
+    );
 
     const calculatedMonthlySavings = useMemo(() => {
         const income = state.config.users.reduce((acc, u) => acc + (u.netSalary || u.salary || 0), 0);

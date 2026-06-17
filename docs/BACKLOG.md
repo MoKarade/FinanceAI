@@ -102,7 +102,59 @@
   PV-6 (ne s'arme que si liquid<0 ; après le primaire liquid reste au coussin ≥0, vérifié projection-validator +
   silent-failure-hunter). Garde : **INV-12** (`moneyConservation`), prouvé discriminant (résiduel 3496 $/mois sans le
   fix → ≈0 avec, via `git stash`). Chemin DISTINCT du fix REER (qui y était inerte ; INV-10/INV-11 = phase solvable).
-- [ ] **[GUARD-NETWORTH-NAN]** 🔧 LOW (silent-failure-hunter 2026-06-16, hors périmètre FISC-REER-WHT-DOUBLE) —
+### 🔬 Audit financier 2026-06-17 (findings vérifiés — `docs/AUDIT_FINANCIER_2026-06-17.md`)
+> Cœur money-critical = AAA (conservation prouvée ≤0,02 $/~25 scénarios, fiscalité 0 écart). **Tous les findings
+> ci-dessous sont à la PÉRIPHÉRIE** (consommateurs UI/IA/viz qui recalculent au lieu de la source unique) — aucun
+> n'altère la VALEUR du patrimoine net. Lot d'implémentation : commencer par le keystone PUIS H1/H2 (test avant fix).
+- [~] **[NW-PARITY-INVARIANT]** 🔧 HIGH (★ garde-fou keystone) — **PARTIELLEMENT LIVRÉ (PR audit)** : SOURCE UNIQUE
+  `computePresentNetWorth` (`services/portfolio.ts`) + les 3 surfaces présentes (`useDerivedFinancials`, `financialSnapshot`,
+  `AiAssistant`) y routent → parité PAR CONSTRUCTION + garde unitaire discriminant (persona endetté + devise étrangère,
+  `tests/services/portfolio.test.ts`). **RESTE** : le cross-check explicite « NW présent ≡ `chartData[0].NetWorth` (moteur
+  mois 0) » (extension d'`INV-1` au présent — vérifier d'abord l'alignement init moteur). Effort S.
+- [x] **[NW-UI-DEBT]** ✅ HIGH (livré PR audit) — `useDerivedFinancials.globalNetWorth` route vers `computePresentNetWorth`
+  (soustrait les dettes). Avant : cash+investments SANS dettes → Dashboard gonflé.
+- [x] **[AI-CTX-FX]** ✅ HIGH (livré PR audit) — `AiAssistant` : FX RÉELS (`fxRates`) + dettes soustraites via
+  `computePresentNetWorth`/`computeInvestmentsValue` ; 1.38/1.50 en dur supprimés. Régression `TabRouter.availableCash`
+  (dérivation `globalNetWorth − placements`) corrigée en passant (→ `currentLiquidity`).
+- [ ] **[FISC-DETTE-TOTALE-MORTGAGE]** (M5) 🔧 MEDIUM — `services/projection/monthlyOutput.ts:236` : `DetteTotale` INCLUT
+  `mortgageBalance` alors qu'`Immobilier`=équité (déjà nette) → sous hypothèque `Σactifs−DetteTotale = NW−mortgage ≠ NW`
+  (reconstructabilité d'affichage rompue ; NW correct via `computeRawNetWorth`). `INV-1` ne teste QUE sans hypothèque. Vérifié
+  272 mois. Fix : champ `DettesNonImmo` (additif, sûr) OU valeur BRUTE immo + ligne hypothèque ; **étendre INV-1 au cas hypothèque**. Effort M.
+- [ ] **[LLM-INJECT-PARITY]** (SEC-1) 🔧 MEDIUM — `services/claude.ts:585-586,427,434` : `getCoupleOptimizationStrategies`/
+  `getNextBestActions` interpolent des noms utilisateur BRUTS sans `sanitizePromptText`/`wrapUserData` (incohérent vs 4 autres
+  surfaces LLM). Exploitabilité faible (self, sortie Zod-validée). Vérifié. Fix : factoriser `buildSafeUserBlock()` partagé. Effort S.
+- [ ] **[FISC-WHT-HARDCODE]** (M1) 🔧 MEDIUM — `services/projection.ts:1390` : `totalTaxesPaid += retraitReerMois * 0.15`
+  (retenue en dur) au lieu de `RRSP_WITHHOLDING_QC` (19/24/29 %). Compteur d'AFFICHAGE sous-estimé > tranche 1. Vérifié. Fix :
+  `withholdingForGrossRRSP(...)` (vérifier non double-comptage déc.). Effort S.
+- [ ] **[FISC-DIV-SHARE-DRY]** (M2) 🔧 MEDIUM — `services/projection.ts:1434` + `services/projection/taxDecember.ts:706` :
+  part dividende `0.30` DUPLIQUÉE en littéral → risque de divergence assiette. Vérifié. Fix : extraire `NONREG_DIVIDEND_DISTRIBUTION_SHARE`. Effort S.
+- [ ] **[FISC-INCLUSION-DRY]** (M3) 🔧 MEDIUM — `services/projection.ts:1435` : inclusion gains `0.5` en dur au lieu de
+  `CAPITAL_GAINS_INCLUSION_STANDARD` (le seul site à hardcoder). Vérifié. Fix : importer la constante. Effort XS.
+- [ ] **[FISC-VIZ-CREDITS]** (M4) 🔧 MEDIUM — `components/TaxBracketViz.tsx:15-52` : impôt par palier SANS crédits
+  (BPA/abattement) mais libellé « exact/ultra-précis » → total/taux SURévalués vs `calculateFiscalReport`. Fix : tirer
+  total/taux de `calculateFiscalReport`, ou libeller « avant crédits ». Effort M.
+- [ ] **[FISC-CONST-LINT]** 🔧 MEDIUM (garde-fou) — test/règle ESLint : aucun littéral fiscal connu (`0.15`/`0.5`/`0.30`/
+  paliers) hors `utils/tax.ts`/`realEstate.ts`. Ferme structurellement la classe M1-M3. Effort M.
+- [ ] **[AI-SNAP-FREQ]** (L4) 🔧 LOW — `services/financialSnapshot.ts:90` + `NextBestAction.tsx:95` : `monthlyExpenses` =
+  Σ targets SANS normaliser la fréquence (un poste annuel compté ×12) → dépense fausse envoyée à l'IA. Vérifié. Fix :
+  normaliser comme `useDerivedFinancials:42-44`. Effort S.
+- [ ] **[ENG-LOOP-ORDER-TEST]** (L1) 🔧 LOW — boucle mensuelle `services/projection.ts` : l'ordre croissance↔allocation est
+  money-critical mais AUCUN invariant ne teste l'ORDRE (INV-2 attrape une fuite, pas une inversion qui conserve l'argent en
+  faussant les rendements). Fix : test « ordre » discriminant (2 scénarios). Effort S.
+- [ ] **[ENG-MONTHLYOUTPUT-TEST]** (L2) 🔧 LOW — `services/projection/monthlyOutput.ts` (102 champs) : seul sous-module (1/31)
+  sans test dédié. Fix : test unitaire de mapping ctx→point. Effort S.
+- [ ] **[ENG-TAX-NS]** (L3) 🔧 LOW/🧭 — `services/tax.ts` = alias `export *` jamais résorbé → imports incohérents
+  (`services/tax` vs `utils/tax`). Décision Marc : finir la migration ou supprimer l'alias. Effort S.
+- [ ] **[FISC-WELCOME-2026]** 🔧 LOW — `services/realEstate.ts:101-105` : seuils mutation « reste_qc » millésime **2025**
+  (58 900/290 000/552 300) à réindexer 2026. ⚠️ exiger les valeurs officielles RQ 2026 (NE PAS deviner), corriger code+doc même PR.
+- [ ] **[REEE-LITERALS]** 🔧 LOW (hygiène) — `services/projection/childrenReee.ts` : SCEE/IQEE = littéraux non nommés
+  (valeurs CORRECTES). Extraire en constantes si on y retouche. Aucun impact $.
+- [ ] **[NW-ASSETBREAKDOWN-DRY]** 🔧 LOW (audit 2026-06-17, panel) — `utils/useDerivedFinancials.ts:50-62` :
+  `assetBreakdown` ET `currentLiquidity` recalculent INLINE (FX `||1`) au lieu de `computeAssetBreakdown`/
+  `computeCurrentLiquidity` (`services/portfolio.ts`) ; `assetBreakdown` local OMET `crypto` (le helper l'a).
+  Même motif « recalcul local au lieu du helper ». Router vers les helpers. Effort S.
+
+
   `services/projection/netWorth.ts:33` `computeRawNetWorth` n'a AUCUNE garde `Number.isFinite` : un terme non
   fini (`liquid`/`reer` NaN) se propage au patrimoine affiché SANS `logError` (graphe vide, sans trace). Dette
   PRÉEXISTANTE (le fix REER ne l'aggrave pas ; décembre garde déjà `.reer` via `Number.isFinite`). Fix : garder

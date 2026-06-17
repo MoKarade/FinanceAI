@@ -1,10 +1,11 @@
-// Phase G.3 — Visualisation tranches d'imposition ultra-précise.
-//   Affiche la décomposition exacte du revenu dans chaque tranche, le taux
-//   effectif (moyen) vs marginal, et un détail $ dans chaque palier.
+// Phase G.3 — Visualisation tranches d'imposition.
+//   Les BARRES + le détail $ montrent la répartition du revenu par palier (BRUT, avant crédits) —
+//   pédagogique. Le TOTAL et le taux EFFECTIF affichés viennent de calculateFiscalReport (impôt NET,
+//   crédits inclus : BPA + abattement QC) = l'impôt réel de la projection (fix M4, audit 2026-06-17).
 
 import React from 'react';
 import { Card } from './ui/Card';
-import { FED_BRACKETS, QC_BRACKETS } from '../utils/tax';
+import { FED_BRACKETS, QC_BRACKETS, calculateFiscalReport } from '../utils/tax';
 import { formatCAD, formatPercent } from '../utils/format';
 
 interface TaxBracketVizProps {
@@ -35,21 +36,26 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
 
     const fedBreakdown = computeTaxBreakdown(annualGrossIncome, FED_BRACKETS as never);
     const qcBreakdown = computeTaxBreakdown(annualGrossIncome, QC_BRACKETS as never);
+    // [M4] Total + taux effectif = impôt NET (crédits inclus) via la source unique calculateFiscalReport,
+    // PAS la somme brute par palier (surévaluée). Les barres restent brutes (pédagogiques).
+    const report = calculateFiscalReport(annualGrossIncome, 0, 0);
+    const netRate = (net: number) => (annualGrossIncome > 0 ? net / annualGrossIncome : 0);
 
     const renderBracketBar = (
         brackets: typeof FED_BRACKETS,
         jurisdiction: string,
         colorBase: string,
         breakdown: ReturnType<typeof computeTaxBreakdown>,
+        netTax: number,
     ) => {
         return (
             <div className="space-y-2">
                 <div className="flex items-baseline justify-between">
                     <h4 className="text-meta font-bold text-white">{jurisdiction}</h4>
                     <div className="text-tiny font-mono">
-                        <span className="text-danger-400">{formatCAD(breakdown.totalTax)}</span>
+                        <span className="text-danger-400" title="Impôt net (crédits inclus)">{formatCAD(netTax)}</span>
                         <span className="text-ink-500 mx-1">·</span>
-                        <span className="text-warning-400">{formatPercent(breakdown.effectiveRate * 100, 2)} effectif</span>
+                        <span className="text-warning-400">{formatPercent(netRate(netTax) * 100, 2)} effectif</span>
                         <span className="text-ink-500 mx-1">·</span>
                         <span className="text-info-400">{formatPercent(breakdown.marginalRate * 100, 0)} marginal</span>
                     </div>
@@ -115,18 +121,19 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
     };
 
     const combinedMarginal = (fedBreakdown.marginalRate + qcBreakdown.marginalRate) * 100;
-    const combinedEffective = (fedBreakdown.effectiveRate + qcBreakdown.effectiveRate) * 100;
+    // [M4] Effectif combiné = impôt NET total / revenu (crédits inclus), pas la somme des taux bruts.
+    const combinedEffective = report.averageRate;
 
     return (
         <Card title={`Tranches d'imposition${label ? ` (${label})` : ''}`}>
             <div className="space-y-4">
                 <p className="text-tiny text-ink-300 leading-snug">
-                    Marqueur jaune = revenu brut annuel ({formatCAD(annualGrossIncome)}).
-                    Effectif = moyen pondéré sur toutes les tranches consommées.
-                    Marginal = taux appliqué au prochain dollar gagné.
+                    Marqueur jaune = revenu brut annuel ({formatCAD(annualGrossIncome)}). Barres = répartition par
+                    palier (AVANT crédits). Total/effectif = impôt NET (crédits inclus : BPA, abattement QC).
+                    Marginal = taux du prochain dollar gagné.
                 </p>
-                {renderBracketBar(FED_BRACKETS as never, 'Fédéral (ARC)', '59, 130, 246', fedBreakdown)}
-                {renderBracketBar(QC_BRACKETS as never, 'Québec (Revenu Québec)', '236, 72, 153', qcBreakdown)}
+                {renderBracketBar(FED_BRACKETS as never, 'Fédéral (ARC)', '59, 130, 246', fedBreakdown, report.fedTax)}
+                {renderBracketBar(QC_BRACKETS as never, 'Québec (Revenu Québec)', '236, 72, 153', qcBreakdown, report.qcTax)}
                 <div className="grid grid-cols-2 gap-3 p-3 bg-white/5 rounded border border-white/10">
                     <div>
                         <div className="text-tiny text-ink-400 uppercase tracking-wide">Combiné effectif</div>

@@ -77,14 +77,16 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen = 
     const retirementGoal = useFinanceStore(s => s.retirementGoal);
     const financialGoals = useFinanceStore(s => s.financialGoals);
     const lastProjection = useFinanceStore(s => s.lastProjection);
+    const fxRates = useFinanceStore(s => s.fxRates);
 
     const snapshot: FinancialSnapshot = useMemo(() => {
         // Patrimoine net = placements + liquidités (cash de TOUS les comptes :
         // initialBalances a des clés dynamiques, donc source unique) − dettes.
         // Avant, on lisait des clés fixes celi/reer/liquidity qui n'existent
         // jamais → patrimoine sous-estimé envoyé à l'IA.
-        const investmentsValue = computeInvestmentsValue(assets || [], {});
-        const assetBreakdown = computeAssetBreakdown(assets || [], {});
+        // [AI-NBA-FX] FX RÉELS (avant : {} → actifs étrangers comptés 1:1 → NW sous-estimé envoyé à l'IA).
+        const investmentsValue = computeInvestmentsValue(assets || [], fxRates || {});
+        const assetBreakdown = computeAssetBreakdown(assets || [], fxRates || {});
         const netWorth =
             investmentsValue
             + computeCurrentLiquidity(initialBalances, transactions)
@@ -121,7 +123,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen = 
             projectedNetWorth20y: projected,
             coupleMode: Boolean(config?.users?.[1]?.name && config.users[1].name.trim() !== ''),
         };
-    }, [assets, initialBalances, transactions, debts, config, budgetItems, retirementGoal, financialGoals, lastProjection]);
+    }, [assets, fxRates, initialBalances, transactions, debts, config, budgetItems, retirementGoal, financialGoals, lastProjection]);
 
     const fetchActions = useCallback(async (force = false) => {
         if (!apiKey || !hasData) {

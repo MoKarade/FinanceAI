@@ -126,10 +126,10 @@
 - [ ] **[FISC-WHT-HARDCODE]** (M1) 🔧 MEDIUM — `services/projection.ts:1390` : `totalTaxesPaid += retraitReerMois * 0.15`
   (retenue en dur) au lieu de `RRSP_WITHHOLDING_QC` (19/24/29 %). Compteur d'AFFICHAGE sous-estimé > tranche 1. Vérifié. Fix :
   `withholdingForGrossRRSP(...)` (vérifier non double-comptage déc.). Effort S.
-- [ ] **[FISC-DIV-SHARE-DRY]** (M2) 🔧 MEDIUM — `services/projection.ts:1434` + `services/projection/taxDecember.ts:706` :
-  part dividende `0.30` DUPLIQUÉE en littéral → risque de divergence assiette. Vérifié. Fix : extraire `NONREG_DIVIDEND_DISTRIBUTION_SHARE`. Effort S.
-- [ ] **[FISC-INCLUSION-DRY]** (M3) 🔧 MEDIUM — `services/projection.ts:1435` : inclusion gains `0.5` en dur au lieu de
-  `CAPITAL_GAINS_INCLUSION_STANDARD` (le seul site à hardcoder). Vérifié. Fix : importer la constante. Effort XS.
+- [x] **[FISC-DIV-SHARE-DRY]** (M2) ✅ MEDIUM (livré) — `NONREG_DIVIDEND_DISTRIBUTION_SHARE = 0.30` extraite dans
+  `projection/helpers.ts`, consommée par `projection.ts` ET `taxDecember.ts` (source unique). Value-neutral.
+- [x] **[FISC-INCLUSION-DRY]** (M3) ✅ MEDIUM (livré) — `projection.ts:1435` importe désormais
+  `CAPITAL_GAINS_INCLUSION_STANDARD` (au lieu de `0.5` en dur). Value-neutral.
 - [ ] **[FISC-VIZ-CREDITS]** (M4) 🔧 MEDIUM — `components/TaxBracketViz.tsx:15-52` : impôt par palier SANS crédits
   (BPA/abattement) mais libellé « exact/ultra-précis » → total/taux SURévalués vs `calculateFiscalReport`. Fix : tirer
   total/taux de `calculateFiscalReport`, ou libeller « avant crédits ». Effort M.

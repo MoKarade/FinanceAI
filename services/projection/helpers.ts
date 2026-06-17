@@ -6,6 +6,14 @@
 import { calculateWelcomeTax } from '../realEstate';
 import type { Municipality } from '../../types';
 
+/**
+ * Hypothèse de MODÈLE (PAS une constante fiscale, réf FISCAL_REFERENCE §3) : part du rendement
+ * NON-ENREGISTRÉ versée en dividendes ADMISSIBLES chaque année. SOURCE UNIQUE consommée par le
+ * moteur (`projection.ts`, `dividendIncome`) ET l'impôt de décembre (`taxDecember.ts`) — évite la
+ * divergence « une copie bouge, l'autre non » (audit 2026-06-17, M2). Avant : `0.30` en dur aux 2 sites.
+ */
+export const NONREG_DIVIDEND_DISTRIBUTION_SHARE = 0.30;
+
 // ---- PRNG seedé (Mulberry32) — déterministe, rapide ----
 export function mulberry32(seed: number): () => number {
     return function () {

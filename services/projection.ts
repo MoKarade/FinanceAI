@@ -1,7 +1,7 @@
 // services/projection.ts — moteur de projection financière (migré depuis utils/useFutureSimulation.ts)
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness, SavingsGoal, FinancialGoal } from '../types';
-import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate, calculateGrossWithholdingRRSP, getResidencyStartYear, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
-import { RRIF_RATES, welcomeTax } from './projection/helpers';
+import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate, calculateGrossWithholdingRRSP, getResidencyStartYear, CAPITAL_GAINS_INCLUSION_STANDARD, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
+import { RRIF_RATES, welcomeTax, NONREG_DIVIDEND_DISTRIBUTION_SHARE } from './projection/helpers';
 import { salaryShares, splitByShares, stepReerByUser, addByWeights } from './projection/perUserBalances';
 import { logError } from './errorLogger';
 import { runMonteCarlo, type MonteCarloResult } from './projection/monteCarlo';
@@ -1431,8 +1431,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // placement imposables (50% des gains capital + 100% des dividendes).
         // Approximation : rendement non-reg × 30% × balance, divisé par 12.
         const baseNonRegRateForDiv = baseRates.nonReg ?? 0;
-        const dividendIncome = (nonReg * (baseNonRegRateForDiv / 100) * 0.30) / 12;
-        const taxableInvIncome = dividendIncome + (accCapitalGainsYear * 0.5) / 12;
+        const dividendIncome = (nonReg * (baseNonRegRateForDiv / 100) * NONREG_DIVIDEND_DISTRIBUTION_SHARE) / 12;
+        const taxableInvIncome = dividendIncome + (accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD) / 12;
 
         // Phase 3 Tier 3 — taux d'imposition marginal et effectif (PAR ADULTE)
         // Source : calculateFiscalReport sur le revenu brut annuel courant.

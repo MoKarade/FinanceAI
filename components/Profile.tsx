@@ -11,7 +11,6 @@ import { UsersCard } from './settings/sections/UsersCard';
 import { UserConfigFields, RepartitionField } from './settings/UserConfigFields';
 import { RetirementSettingsCard } from './retirement/RetirementSettingsCard';
 import { RetirementIncomeCard } from './retirement/RetirementIncomeCard';
-import { SetupHub } from './setup/SetupHub';
 
 /** Petit intertitre de regroupement (les sous-composants rendent déjà leurs propres Cards). */
 const GroupTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -30,9 +29,8 @@ export const Profile: React.FC = () => {
                 subtitle="Toutes tes infos personnelles en un seul endroit — elles alimentent Impôts, Retraite, Futur et le reste."
             />
 
-            {/* PH3-b — complétude GLOBALE : % + quelle info manque pour quel onglet (lien direct). */}
-            <SetupHub />
-
+            {/* [IA-DEDUP-COMPLETUDE] La complétude (SetupHub) vit UNIQUEMENT dans Configuration
+                (audit UX 2026-06-17 : doublon Profil+Config). Ici = uniquement les champs à remplir. */}
             <GroupTitle>Identité</GroupTitle>
             <UsersCard config={config} setConfig={setConfig} />
 

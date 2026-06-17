@@ -6,6 +6,7 @@ import { showToast } from '../ui/Toast';
 import { downloadBackup, readBackupFile, defaultBackupFilename, CloudBackupError } from '../../services/cloudBackup';
 import { markBackupDone } from '../../services/backupReminder';
 import { logAudit } from '../../services/auditLog';
+import { MIN_PASSPHRASE_LENGTH } from '../../services/sync/syncOrchestrator';
 
 const BackupSchema = z.object({
   version: z.string().optional(),
@@ -83,8 +84,8 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
   };
 
   const doEncryptedExport = async () => {
-    if (exportPassphrase.length < 12) {
-      showToast("Passphrase trop courte (min 12 caractères pour résister au brute-force).", "error");
+    if (exportPassphrase.length < MIN_PASSPHRASE_LENGTH) {
+      showToast(`Passphrase trop courte (min ${MIN_PASSPHRASE_LENGTH} caractères pour résister au brute-force).`, "error");
       return;
     }
     if (exportPassphrase !== exportPassphraseConfirm) {
@@ -117,7 +118,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
   };
 
   const doEncryptedImport = async () => {
-    if (!encryptedFile || importPassphrase.length < 8) return;
+    if (!encryptedFile || importPassphrase.length < MIN_PASSPHRASE_LENGTH) return;
     setEncWorking(true);
     try {
       const decrypted = await readBackupFile<unknown>(encryptedFile, importPassphrase);
@@ -246,7 +247,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
             </div>
             <div className="space-y-3 mb-5">
               <div>
-                <label htmlFor="backup-export-passphrase" className="block text-meta text-ink-300 mb-1">Passphrase (min 8 caractères)</label>
+                <label htmlFor="backup-export-passphrase" className="block text-meta text-ink-300 mb-1">Passphrase (min {MIN_PASSPHRASE_LENGTH} caractères)</label>
                 <input
                   id="backup-export-passphrase"
                   type="password"
@@ -283,7 +284,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
               </button>
               <button
                 onClick={doEncryptedExport}
-                disabled={encWorking || exportPassphrase.length < 8 || exportPassphrase !== exportPassphraseConfirm}
+                disabled={encWorking || exportPassphrase.length < MIN_PASSPHRASE_LENGTH || exportPassphrase !== exportPassphraseConfirm}
                 className="px-4 py-2 rounded-xl bg-primary hover:bg-success-500 disabled:opacity-40 disabled:cursor-not-allowed text-dark text-body font-bold shadow-lg active:scale-95 transition-all"
               >
                 {encWorking ? 'Chiffrement…' : 'Exporter chiffré'}
@@ -317,7 +318,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
                 type="password"
                 value={importPassphrase}
                 onChange={e => setImportPassphrase(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && importPassphrase.length >= 8 && doEncryptedImport()}
+                onKeyDown={e => e.key === 'Enter' && importPassphrase.length >= MIN_PASSPHRASE_LENGTH && doEncryptedImport()}
                 className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-body focus:border-primary outline-none font-mono"
                 autoFocus
                 disabled={encWorking}
@@ -333,7 +334,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
               </button>
               <button
                 onClick={doEncryptedImport}
-                disabled={encWorking || importPassphrase.length < 8}
+                disabled={encWorking || importPassphrase.length < MIN_PASSPHRASE_LENGTH}
                 className="px-4 py-2 rounded-xl bg-primary hover:bg-success-500 disabled:opacity-40 disabled:cursor-not-allowed text-dark text-body font-bold shadow-lg active:scale-95 transition-all"
               >
                 {encWorking ? 'Déchiffrement…' : 'Déchiffrer'}

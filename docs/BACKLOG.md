@@ -56,10 +56,11 @@
   Gros chantier nav (routes, deep-links, tests) → **plan-first + OK Marc**.
 - [x] **[IA-DEDUP-COMPLETUDE]** ✅ LOW (2026-06-17) — `<SetupHub />` retiré de `Profile.tsx` ; reste UNIQUEMENT
   dans Configuration (`Settings.tsx:166`). Profil = uniquement les champs à remplir (réversible : 1 import + 1 balise).
-- [ ] **[IA-ASSETLOC-PERSIST]** 🔧 ✅VÉRIDIQUE MEDIUM — l'éditeur de holdings de l'Asset Location Optimizer
-  (`AssetLocationCard.tsx:138-195`) vit dans un `useState` LOCAL non persisté → **éditions perdues
-  silencieusement** (divergence + silent-failure). Le rendre lecture-seule (lien « éditer dans Investissements »)
-  OU persister. Une seule surface d'édition des holdings (Patrimoine) ; Retraite la lit.
+- [x] **[IA-ASSETLOC-PERSIST]** ✅ LOW (2026-06-17) — ⚠️ **finding RÉVISÉ après lecture du code** : l'éditeur
+  de holdings (`AssetLocationCard`) n'est PAS un éditeur de portefeuille mais un **bac-à-sable what-if** (titre
+  « Optimizer », bouton « ↺ Depuis portefeuille », recommandations live) → l'état local non persisté est VOULU.
+  Le « fix read-only/persister » aurait CASSÉ l'outil. Vrai risque = CLARTÉ → note « Simulation : ne modifie pas
+  ton portefeuille réel, édite-le dans Investissements ». (Discipline : vérifier AVANT de coder un « fix ».)
 - [ ] **[UI-SCORES-UNIFY]** 🧭 🔧 ✅VÉRIDIQUE MEDIUM — **4** scores 0-100 concurrents sans grille : « Santé /100 »
   diversif. (`Investments:417`), « Efficacité fiscale /100 » (`AssetLocationCard:106`), « Complétude % »
   (`SetupHub`), donut « Santé financière /100 » ratios (`HealthIndicator:231`). Deux « Santé » mesurent des

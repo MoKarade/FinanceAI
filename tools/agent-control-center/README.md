@@ -41,7 +41,7 @@ scripts/hooks/agent-status.mjs   ── écrit ──►  .claude/status.json   
 ## Fichiers
 
 - `server.mjs` — serveur Node natif (statiques + `/status` + `/health`), bind `127.0.0.1`, zéro dépendance.
-- `index.html` / `dashboard.css` / `dashboard.js` — dashboard vanilla (fintech dark, XSS-safe : aucun `innerHTML`).
-- `agents.meta.json` — métadonnées statiques des 14 agents (modèle/priorité/rôle, dérivées de `docs/agents.md`).
+- `index.html` — dashboard **auto-contenu** (CSS + JS + données d'exemple inline ; fintech dark, XSS-safe sans `innerHTML`). Beau partout : sans serveur, il affiche l'exemple ÉTIQUETÉ ; avec `npm run acc`, il poll `/status` (réel).
+- `agents.meta.json` — métadonnées statiques des 14 agents (référence ; le dashboard les embarque aussi inline).
 - `status.example.json` — exemple étiqueté (repli serveur + fixture).
 - `../../scripts/hooks/agent-status.mjs` — le hook capteur (branché dans `.claude/settings.json`).

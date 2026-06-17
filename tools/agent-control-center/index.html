@@ -1,78 +1,284 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Agent Control Center — FinanceAI</title>
-  <link rel="stylesheet" href="dashboard.css" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agent Control Center — FinanceAI</title>
+<style>
+:root{
+  --bg:#070910; --bg2:#0a0e18; --surface:rgba(255,255,255,.028); --surface-2:rgba(255,255,255,.05);
+  --glass:rgba(20,26,40,.55); --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.12);
+  --text:#eef2fb; --muted:#9aa6be; --faint:#5f6b85;
+  --accent:#7aa2ff; --accent-2:#a78bfa;
+  --ok:#3ddc97; --running:#5b9dff; --warn:#fbbf24; --crit:#ff6b6b; --pending:#7c8aa6;
+  --r:16px; --r-sm:11px; --mono:ui-monospace,"JetBrains Mono","SF Mono",Menlo,monospace;
+  --sh:0 1px 0 rgba(255,255,255,.04) inset,0 10px 30px -12px rgba(0,0,0,.7);
+  --glow-ok:0 0 0 1px color-mix(in oklab,var(--ok) 30%,transparent),0 8px 30px -10px color-mix(in oklab,var(--ok) 40%,transparent);
+}
+*{box-sizing:border-box} html{scroll-behavior:smooth}
+body{margin:0;color:var(--text);min-height:100vh;font:14px/1.55 "Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  background:
+    radial-gradient(1100px 600px at 85% -8%,rgba(122,162,255,.10),transparent 60%),
+    radial-gradient(900px 520px at 8% 0%,rgba(167,139,250,.09),transparent 55%),
+    linear-gradient(180deg,var(--bg2),var(--bg));
+  background-attachment:fixed;-webkit-font-smoothing:antialiased;padding-bottom:56px}
+h1{font-size:19px;margin:0;font-weight:700;letter-spacing:-.02em}
+h2{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.13em;color:var(--muted);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+h2::before{content:"";width:3px;height:13px;border-radius:2px;background:linear-gradient(var(--accent),var(--accent-2))}
+.wrap{max-width:1240px;margin:0 auto;padding:0 26px}
+.mono{font-family:var(--mono)} code{font-family:var(--mono);color:var(--accent);font-size:.92em;background:var(--surface-2);padding:1px 6px;border-radius:6px}
+.muted{color:var(--faint)}
+
+/* Bandeau exemple */
+.banner{display:none;align-items:center;justify-content:center;gap:8px;background:linear-gradient(90deg,rgba(251,191,36,.16),rgba(251,191,36,.08));
+  color:var(--warn);border-bottom:1px solid rgba(251,191,36,.28);padding:10px 18px;font-weight:600;font-size:12.5px;backdrop-filter:blur(6px)}
+.banner.on{display:flex}
+
+/* Header */
+.topbar{position:sticky;top:0;z-index:5;backdrop-filter:blur(14px);background:linear-gradient(180deg,rgba(8,11,20,.82),rgba(8,11,20,.45));
+  border-bottom:1px solid var(--line)}
+.topbar .row{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 26px;max-width:1240px;margin:0 auto;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:13px}
+.logo{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:18px;color:#fff;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 6px 20px -6px color-mix(in oklab,var(--accent) 60%,transparent)}
+.brand .sub{margin:2px 0 0;color:var(--muted);font-size:12px}
+.tools{display:flex;align-items:center;gap:13px;flex-wrap:wrap}
+.conn{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--ok);padding:5px 11px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}
+.conn .pip{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.conn.down{color:var(--crit)} .conn.down .pip{background:var(--crit);box-shadow:0 0 8px var(--crit)}
+.updated{color:var(--faint);font-size:12px;font-variant-numeric:tabular-nums}
+.verdict{font-weight:800;font-size:12px;letter-spacing:.07em;padding:7px 15px;border-radius:999px;border:1px solid;backdrop-filter:blur(4px)}
+.verdict.GO{color:var(--ok);border-color:color-mix(in oklab,var(--ok) 45%,transparent);background:color-mix(in oklab,var(--ok) 13%,transparent);box-shadow:0 0 22px -8px var(--ok)}
+.verdict.NOGO{color:var(--crit);border-color:color-mix(in oklab,var(--crit) 50%,transparent);background:color-mix(in oklab,var(--crit) 13%,transparent);box-shadow:0 0 22px -8px var(--crit)}
+.verdict.PENDING{color:var(--warn);border-color:color-mix(in oklab,var(--warn) 42%,transparent);background:color-mix(in oklab,var(--warn) 11%,transparent)}
+
+/* Métriques */
+.metrics{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-top:24px}
+.metric{position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--sh)}
+.metric::after{content:"";position:absolute;inset:0;background:radial-gradient(120px 60px at 100% 0,rgba(122,162,255,.08),transparent 70%);pointer-events:none}
+.metric .v{font-size:30px;font-weight:750;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+.metric .l{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.07em;margin-top:8px}
+.metric.crit .v{color:var(--crit)} .metric.warn .v{color:var(--warn)} .metric.ok .v{color:var(--ok)}
+.metric .bar{height:4px;border-radius:99px;background:var(--surface-2);margin-top:12px;overflow:hidden}
+.metric .bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .5s cubic-bezier(.2,.8,.2,1)}
+
+/* Pipeline */
+.pipeline{list-style:none;display:flex;gap:10px;padding:0;margin:0;overflow-x:auto;padding-bottom:6px}
+.pipeline li{position:relative;flex:1 0 130px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:14px 13px;display:flex;flex-direction:column;gap:7px;transition:.25s}
+.pipeline li .step{font-size:10.5px;color:var(--faint);font-variant-numeric:tabular-nums;letter-spacing:.04em}
+.pipeline li .ag{font-weight:600;font-size:12.5px}
+.pipeline li .du{font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pipeline li.running{border-color:color-mix(in oklab,var(--running) 55%,transparent);box-shadow:0 0 26px -12px var(--running)}
+.pipeline li.completed{background:color-mix(in oklab,var(--ok) 7%,var(--surface));border-color:color-mix(in oklab,var(--ok) 22%,transparent)}
+.pipeline li.failed{background:color-mix(in oklab,var(--crit) 9%,var(--surface));border-color:color-mix(in oklab,var(--crit) 30%,transparent)}
+
+/* Agents */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(262px,1fr));gap:14px}
+.agent{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--sh);transition:.22s;overflow:hidden}
+.agent:hover{border-color:var(--line-2);transform:translateY(-2px)}
+.agent.is-running{border-color:color-mix(in oklab,var(--running) 45%,transparent);box-shadow:var(--sh),0 0 30px -16px var(--running)}
+.agent.is-failed{border-color:color-mix(in oklab,var(--crit) 40%,transparent)}
+.agent .top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.agent .nm{font-weight:650;font-size:13.5px;letter-spacing:-.01em}
+.agent .meta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.agent .task{color:var(--muted);font-size:12px;min-height:17px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.agent .foot{display:flex;justify-content:space-between;color:var(--faint);font-size:11px;font-variant-numeric:tabular-nums;margin-top:11px;padding-top:10px;border-top:1px solid var(--line)}
+
+/* Badges */
+.badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.badge.opus{color:#c4b5fd;border-color:rgba(167,139,250,.35);background:rgba(167,139,250,.08)}
+.badge.haiku{color:#67e8f9;border-color:rgba(34,211,238,.3);background:rgba(34,211,238,.07)}
+.badge.sonnet{color:#93c5fd;border-color:rgba(122,162,255,.28)}
+.badge.critical{color:var(--crit);border-color:color-mix(in oklab,var(--crit) 38%,transparent);background:color-mix(in oklab,var(--crit) 9%,transparent)}
+.badge.high{color:var(--warn);border-color:color-mix(in oklab,var(--warn) 35%,transparent);background:color-mix(in oklab,var(--warn) 8%,transparent)}
+
+/* Status dot + label */
+.st{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:600;white-space:nowrap}
+.st::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--pending);box-shadow:0 0 0 0 transparent}
+.st.idle{color:var(--faint)}.st.idle::before{background:var(--faint)}
+.st.pending{color:var(--muted)}.st.pending::before{background:var(--muted)}
+.st.running{color:var(--running)}.st.running::before{background:var(--running);animation:pulse 1.5s ease-in-out infinite}
+.st.completed{color:var(--ok)}.st.completed::before{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.st.failed{color:var(--crit)}.st.failed::before{background:var(--crit)}
+.st.stale{color:var(--warn)}.st.stale::before{background:var(--warn);animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in oklab,currentColor 55%,transparent)}70%{box-shadow:0 0 0 6px transparent}}
+
+/* Listes */
+.cols{display:grid;grid-template-columns:1.5fr 1fr;gap:24px}
+.list{display:flex;flex-direction:column;gap:9px}
+.rowi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;gap:11px;align-items:flex-start;transition:.2s}
+.rowi:hover{border-color:var(--line-2)}
+.sev{font-size:10px;font-weight:800;padding:3px 8px;border-radius:7px;white-space:nowrap;letter-spacing:.03em}
+.sev.CRITIQUE{color:var(--crit);background:color-mix(in oklab,var(--crit) 16%,transparent)}
+.sev.ELEVE{color:var(--warn);background:color-mix(in oklab,var(--warn) 13%,transparent)}
+.sev.MOYEN{color:var(--accent);background:color-mix(in oklab,var(--accent) 13%,transparent)}
+.sev.FAIBLE{color:var(--muted);background:var(--surface-2)}
+.rowi .bd{min-width:0;flex:1}
+.rowi .file{font-family:var(--mono);font-size:11.5px;color:var(--accent);word-break:break-all}
+.rowi .dsc{color:var(--muted);font-size:12px;margin-top:2px}
+.rowi .who{color:var(--faint);font-size:11px;margin-top:3px}
+.res{font-size:10px;font-weight:800;padding:3px 8px;border-radius:7px;letter-spacing:.03em}
+.res.pass{color:var(--ok);background:color-mix(in oklab,var(--ok) 14%,transparent)}
+.res.fail{color:var(--crit);background:color-mix(in oklab,var(--crit) 14%,transparent)}
+.res.warn{color:var(--warn);background:color-mix(in oklab,var(--warn) 13%,transparent)}
+
+/* Verdict + scores */
+.decision{display:flex;align-items:center;gap:20px;background:linear-gradient(135deg,var(--glass),var(--surface));border:1px solid var(--line);border-radius:var(--r);padding:22px;box-shadow:var(--sh);flex-wrap:wrap}
+.decision .big{font-size:30px;font-weight:850;letter-spacing:-.03em}
+.decision.GO{border-color:color-mix(in oklab,var(--ok) 42%,var(--line));box-shadow:var(--glow-ok)}.decision.GO .big{color:var(--ok)}
+.decision.NOGO{border-color:color-mix(in oklab,var(--crit) 45%,var(--line))}.decision.NOGO .big{color:var(--crit)}
+.decision.PENDING .big{color:var(--warn)}
+.decision .reason{color:var(--muted);font-size:13px}
+.scores{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-top:14px}
+.score{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px;text-align:center}
+.score b{display:block;font-size:23px;font-weight:750;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.score b.g{color:var(--ok)} .score b.y{color:var(--warn)} .score b.r{color:var(--crit)}
+.score span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-top:5px;display:block}
+
+.tag{font-size:9.5px;font-weight:700;color:var(--faint);border:1px solid var(--line);border-radius:6px;padding:2px 7px;letter-spacing:.04em;text-transform:uppercase}
+.empty{color:var(--faint);font-size:13px;padding:18px;border:1px dashed var(--line);border-radius:12px;text-align:center;background:var(--surface)}
+.foot{max-width:1240px;margin:40px auto 0;padding:0 26px;color:var(--faint);font-size:12px;line-height:1.7}
+
+@media (max-width:920px){.metrics,.scores{grid-template-columns:repeat(3,1fr)}.cols{grid-template-columns:1fr}}
+@media (max-width:560px){.metrics,.scores{grid-template-columns:repeat(2,1fr)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
 </head>
 <body>
-  <!-- Bandeau source : "example" = données NON réelles (non masquable). -->
-  <div id="source-banner" class="banner" hidden role="alert"></div>
+<div id="banner" class="banner" role="alert"></div>
 
-  <header class="topbar">
+<header class="topbar">
+  <div class="row">
     <div class="brand">
-      <span class="logo">◆</span>
-      <div>
-        <h1>Agent Control Center</h1>
-        <p class="sub">FinanceAI — 14 agents · dev-only</p>
-      </div>
+      <div class="logo">◆</div>
+      <div><h1>Agent Control Center</h1><p class="sub">FinanceAI · 14 agents · dev-only</p></div>
     </div>
-    <div class="topbar-right">
-      <span id="verdict-pill" class="verdict pending">PENDING</span>
-      <span id="conn" class="conn" title="État de connexion au serveur ACC">● live</span>
+    <div class="tools">
+      <span id="verdict" class="verdict PENDING">PENDING</span>
       <span id="updated" class="updated"></span>
+      <span id="conn" class="conn"><span class="pip"></span><span id="conn-t">live</span></span>
     </div>
-  </header>
+  </div>
+</header>
 
-  <main aria-live="polite">
-    <!-- 1. Métriques globales -->
-    <section class="metrics" aria-label="Métriques globales">
-      <div class="metric"><span class="metric-val" id="m-active">0</span><span class="metric-lbl">actifs</span></div>
-      <div class="metric"><span class="metric-val" id="m-done">0</span><span class="metric-lbl">terminés</span></div>
-      <div class="metric"><span class="metric-val" id="m-pending">0</span><span class="metric-lbl">en attente</span></div>
-      <div class="metric crit"><span class="metric-val" id="m-crit">0</span><span class="metric-lbl">critiques</span></div>
-      <div class="metric warn"><span class="metric-val" id="m-warn">0</span><span class="metric-lbl">avertissements</span></div>
-      <div class="metric"><span class="metric-val" id="m-pct">0%</span><span class="metric-lbl">progression</span></div>
-    </section>
+<main class="wrap" aria-live="polite">
+  <section class="metrics" aria-label="Métriques">
+    <div class="metric"><div class="v" id="m-active">0</div><div class="l">actifs</div></div>
+    <div class="metric ok"><div class="v" id="m-done">0</div><div class="l">terminés</div></div>
+    <div class="metric"><div class="v" id="m-pending">0</div><div class="l">en attente</div></div>
+    <div class="metric crit"><div class="v" id="m-crit">0</div><div class="l">critiques</div></div>
+    <div class="metric warn"><div class="v" id="m-warn">0</div><div class="l">avertissements</div></div>
+    <div class="metric"><div class="v" id="m-pct">0%</div><div class="l">progression</div><div class="bar"><i id="m-bar" style="width:0%"></i></div></div>
+  </section>
 
-    <!-- 2. Pipeline -->
-    <section aria-labelledby="h-pipeline">
-      <h2 id="h-pipeline">Pipeline</h2>
-      <ol id="pipeline" class="pipeline" aria-label="Étapes du pipeline d'agents"></ol>
-    </section>
+  <h2 id="h-pipe">Pipeline</h2>
+  <ol id="pipeline" class="pipeline" aria-labelledby="h-pipe"></ol>
 
-    <!-- 3. Agents -->
-    <section aria-labelledby="h-agents">
-      <h2 id="h-agents">Agents <span class="muted" id="agents-count"></span></h2>
-      <div id="agents" class="agents-grid"></div>
-    </section>
+  <h2 id="h-ag">Agents <span class="muted" id="ag-count"></span></h2>
+  <div id="agents" class="grid" aria-labelledby="h-ag"></div>
 
-    <div class="two-col">
-      <!-- 4. Risques (best-effort / v2 en live) -->
-      <section aria-labelledby="h-risks">
-        <h2 id="h-risks">Risques <span class="tag v2" id="risks-tag" hidden>best-effort · v2</span></h2>
-        <div id="risks" class="list"></div>
-      </section>
-      <!-- 5. Audits -->
-      <section aria-labelledby="h-audits">
-        <h2 id="h-audits">Audits <span class="tag v2" id="audits-tag" hidden>v2</span></h2>
-        <div id="audits" class="list"></div>
-      </section>
-    </div>
+  <div class="cols">
+    <section><h2>Risques <span class="tag" id="risks-tag" hidden>best-effort</span></h2><div id="risks" class="list"></div></section>
+    <section><h2>Audits <span class="tag" id="audits-tag" hidden>v2</span></h2><div id="audits" class="list"></div></section>
+  </div>
 
-    <!-- 6. GO / NO-GO + scores -->
-    <section aria-labelledby="h-decision">
-      <h2 id="h-decision">Verdict <span class="tag v2" id="scores-tag" hidden>best-effort · v3</span></h2>
-      <div id="decision" class="decision"></div>
-      <div id="scores" class="scores"></div>
-    </section>
-  </main>
+  <h2>Verdict <span class="tag" id="scores-tag" hidden>best-effort</span></h2>
+  <div id="decision" class="decision"></div>
+  <div id="scores" class="scores"></div>
+</main>
 
-  <footer class="foot">
-    Données réelles via le hook <code>scripts/hooks/agent-status.mjs</code> (capté à chaque agent). Outil de dev, jamais shippé.
-  </footer>
+<footer class="foot wrap">
+  Données réelles captées par le hook <code>scripts/hooks/agent-status.mjs</code> à chaque agent lancé.
+  Lance <code>npm run acc</code> pour la vraie activité · outil de dev, jamais shippé.
+</footer>
 
-  <script src="dashboard.js"></script>
+<script>
+'use strict';
+// ── Données embarquées (repli quand le serveur ACC n'est pas lancé : aperçu beau + ÉTIQUETÉ exemple) ──
+const META=[
+ {name:'orchestrator',model:'sonnet',priority:'normal',role:'Route vers les agents pertinents.'},
+ {name:'architect',model:'sonnet',priority:'normal',role:'Structure cible + plan.'},
+ {name:'product-manager',model:'sonnet',priority:'normal',role:'Valeur / MVP / critères.'},
+ {name:'financial-integrity',model:'opus',priority:'critical',role:'Justesse des calculs $ + intégrité données.'},
+ {name:'security-privacy',model:'sonnet',priority:'high',role:'Failles / fuites / vie privée (Loi 25).'},
+ {name:'code-reviewer',model:'sonnet',priority:'high',role:'Correction / clarté / perf / tests.'},
+ {name:'ai-reviewer',model:'sonnet',priority:'normal',role:'Prompts / coût / fallback du SDK.'},
+ {name:'documentation-manager',model:'haiku',priority:'low',role:'Cohérence doc <-> code.'},
+ {name:'projection-validator',model:'opus',priority:'critical',role:'Conservation $ / 12 invariants.'},
+ {name:'silent-failure-hunter',model:'sonnet',priority:'high',role:'Erreurs avalées / fallback masquant.'},
+ {name:'test-writer',model:'sonnet',priority:'normal',role:'Tests Vitest de la logique ajoutée.'},
+ {name:'performance-optimizer',model:'sonnet',priority:'normal',role:'Profilage moteur profond.'},
+ {name:'a11y-auditor',model:'sonnet',priority:'normal',role:'Accessibilité WCAG AA.'},
+ {name:'code-analyzer',model:'sonnet',priority:'normal',role:'Dette technique large -> BACKLOG.'}];
+const PIPE_STEPS=['Request','Analysis','Architecture','Implementation','Review','Security','Financial','Testing','Documentation','Release'];
+const EXAMPLE={source:'example',updatedAt:new Date().toISOString(),currentTask:'Revue PR #325 — calcul RRQ',
+ progress:{done:3,active:1,pending:1,pct:60},activeAgents:['financial-integrity'],completedAgents:['architect','code-reviewer','silent-failure-hunter'],pendingAgents:['projection-validator'],
+ criticalIssues:0,warnings:2,decision:{verdict:'PENDING',reason:'Revue en cours (financial-integrity)',blockedBy:[]},
+ agents:{'financial-integrity':{status:'running',task:'Vérifier paliers RRQ vs FISCAL_REFERENCE.md',startedAt:new Date().toISOString(),lastRun:new Date().toISOString(),durationMs:null,critical:0,warnings:1},
+  architect:{status:'completed',task:'Plan Control Center',lastRun:new Date(Date.now()-240000).toISOString(),durationMs:18200,critical:0,warnings:0},
+  'code-reviewer':{status:'completed',task:'Revue diff PR #325',lastRun:new Date(Date.now()-200000).toISOString(),durationMs:24100,critical:0,warnings:1},
+  'silent-failure-hunter':{status:'completed',task:'Erreurs avalées',lastRun:new Date(Date.now()-190000).toISOString(),durationMs:15300,critical:0,warnings:0},
+  'projection-validator':{status:'pending',task:null,lastRun:null,durationMs:null,critical:0,warnings:0}},
+ pipeline:[{agent:'architect',status:'completed',durationMs:18200},{agent:'code-reviewer',status:'completed',durationMs:24100},{agent:'silent-failure-hunter',status:'completed',durationMs:15300},{agent:'financial-integrity',status:'running',durationMs:null},{agent:'projection-validator',status:'pending',durationMs:null}],
+ risks:[{severity:'MOYEN',agent:'code-reviewer',file:'components/TaxBracketViz.tsx:41',cause:'barèmes 2026 codés en dur',impact:'taux effectif faux en retraite',fix:'passer un prop year'}],
+ audits:[{label:'paliers RRQ 2025 vs FISCAL_REFERENCE',agent:'financial-integrity',result:'warn',detail:'MGA à revérifier 2026'},{label:'12 invariants moneyConservation',agent:'projection-validator',result:'pass',detail:'12/12 verts'}],
+ scores:{security:92,financial:98,quality:90,ux:95,documentation:88,global:93}};
+
+const POLL=2000, STALE=600000;
+const $=id=>document.getElementById(id);
+const el=(t,c,x)=>{const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;};
+const dur=ms=>ms==null?'':ms<1000?ms+' ms':(ms/1000).toFixed(1)+' s';
+const ago=iso=>{if(!iso)return 'jamais';const d=Math.round((Date.now()-Date.parse(iso))/1000);if(isNaN(d))return '—';if(d<60)return 'il y a '+d+' s';if(d<3600)return 'il y a '+Math.round(d/60)+' min';return 'il y a '+Math.round(d/3600)+' h';};
+const stLbl=s=>({idle:'inactif',pending:'en attente',running:'en cours',completed:'terminé',failed:'échec',stale:'bloqué ?'}[s]||s);
+const sevCls=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
+const stOf=(a,live)=>(live&&a.status==='running'&&a.startedAt&&Date.now()-Date.parse(a.startedAt)>STALE)?'stale':(a.status||'idle');
+const metaOf=n=>META.find(m=>m.name===n)||{name:n};
+function scoreCls(v){return v>=90?'g':v>=75?'y':'r';}
+
+function render(s){
+  const live=s.source!=='example';
+  const b=$('banner');b.classList.toggle('on',!live);if(!live)b.textContent="⚠ Données d'EXEMPLE — lance npm run acc + une revue d'agents pour la vraie activité.";
+  const v=(s.decision&&s.decision.verdict)||'PENDING',vc=v==='NO-GO'?'NOGO':v;
+  const vp=$('verdict');vp.textContent=v;vp.className='verdict '+vc;
+  $('updated').textContent=s.updatedAt?'maj '+ago(s.updatedAt):'';
+  const p=s.progress||{};
+  $('m-active').textContent=(s.activeAgents||[]).length;$('m-done').textContent=(s.completedAgents||[]).length;
+  $('m-pending').textContent=(s.pendingAgents||[]).length;$('m-crit').textContent=s.criticalIssues||0;
+  $('m-warn').textContent=s.warnings||0;$('m-pct').textContent=(p.pct||0)+'%';$('m-bar').style.width=(p.pct||0)+'%';
+
+  const pipe=$('pipeline');pipe.replaceChildren();
+  const steps=(s.pipeline&&s.pipeline.length)?s.pipeline.map(x=>({label:x.agent,status:x.status,du:x.durationMs})):PIPE_STEPS.map(l=>({label:l,status:'pending',du:null}));
+  steps.forEach((x,i)=>{const li=el('li',x.status);li.append(el('span','step','0'+(i+1)),el('span','ag',x.label),el('span','st '+x.status,stLbl(x.status)));if(x.du!=null)li.appendChild(el('span','du',dur(x.du)));pipe.appendChild(li);});
+
+  const grid=$('agents');grid.replaceChildren();$('ag-count').textContent='('+META.length+')';
+  const la=s.agents||{};
+  META.forEach(m=>{const a=la[m.name]||{status:'idle'};const st=stOf(a,live);
+    const c=el('div','agent'+(st==='running'?' is-running':st==='failed'?' is-failed':''));
+    const top=el('div','top');top.append(el('span','nm',m.name),el('span','st '+st,stLbl(st)));c.appendChild(top);
+    const mt=el('div','meta');if(m.model)mt.appendChild(el('span','badge '+m.model,m.model));if(m.priority&&m.priority!=='normal')mt.appendChild(el('span','badge '+m.priority,m.priority));c.appendChild(mt);
+    const tk=el('div','task');if(a.task)tk.textContent=a.task;else tk.appendChild(el('span','muted',m.role||'inactif'));c.appendChild(tk);
+    const ft=el('div','foot');ft.append(el('span',null,a.lastRun?ago(a.lastRun):'jamais exécuté'),el('span',null,a.durationMs!=null?dur(a.durationMs):''));c.appendChild(ft);
+    grid.appendChild(c);});
+
+  $('risks-tag').hidden=!live;
+  fillList($('risks'),s.risks||[],r=>{const row=el('div','rowi');row.appendChild(el('span','sev '+sevCls(r.severity),r.severity||'?'));const bd=el('div','bd');if(r.file)bd.appendChild(el('div','file',r.file));bd.appendChild(el('div','dsc',[r.cause,r.impact,r.fix].filter(Boolean).join(' — ')));if(r.agent)bd.appendChild(el('div','who',r.agent));row.appendChild(bd);return row;},live?'Aucun risque structuré capté.':'Aucun risque.');
+  $('audits-tag').hidden=!live;
+  fillList($('audits'),s.audits||[],a=>{const row=el('div','rowi');row.appendChild(el('span','res '+(a.result||'warn'),(a.result||'').toUpperCase()));const bd=el('div','bd');bd.appendChild(el('div',null,a.label||''));if(a.detail)bd.appendChild(el('div','dsc',a.detail));row.appendChild(bd);return row;},live?'Aucun audit structuré capté.':'Aucun audit.');
+
+  $('scores-tag').hidden=!live;
+  const dec=$('decision');dec.className='decision '+vc;dec.replaceChildren(el('span','big',v),el('span','reason',(s.decision&&s.decision.reason)||''));
+  const sc=$('scores');sc.replaceChildren();const ss=s.scores||{};
+  const keys=[['security','sécurité'],['financial','financier'],['quality','qualité'],['ux','UX'],['documentation','doc'],['global','global']];
+  if(Object.keys(ss).length)keys.forEach(([k,l])=>{const d=el('div','score');const b=el('b',null,ss[k]!=null?ss[k]:'—');if(ss[k]!=null)b.classList.add(scoreCls(ss[k]));d.appendChild(b);d.appendChild(el('span',null,l));sc.appendChild(d);});
+  else sc.appendChild(el('div','empty',live?'Scores agrégés = v3 (findings structurés requis).':'Pas de scores.'));
+}
+function fillList(node,items,fn,empty){node.replaceChildren();if(!items||!items.length){node.appendChild(el('div','empty',empty));return;}items.forEach(i=>node.appendChild(fn(i)));}
+
+async function poll(){
+  try{const r=await fetch('/status',{cache:'no-store'});const s=await r.json();$('conn-t').textContent='live';$('conn').className='conn';render(s);}
+  catch{$('conn-t').textContent='hors-ligne · exemple';$('conn').className='conn down';render(EXAMPLE);}
+}
+poll();setInterval(poll,POLL);
+</script>
 </body>
 </html>

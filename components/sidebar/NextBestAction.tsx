@@ -23,27 +23,42 @@ const CACHE_TTL_MS = 60 * 60 * 1000; // 1h
 
 interface CachedNBA {
     timestamp: number;
+    sig: string;
     actions: NBAction[];
 }
 
-function readCache(): CachedNBA | null {
+// [NBA-CACHE-STALE] signature légère du snapshot : si le profil change (patrimoine, revenu, dépenses,
+// nb dettes/objectifs, mode couple), la signature change → le cache est invalidé (on ne montre JAMAIS
+// des conseils basés sur un profil périmé jusqu'à expiration du TTL).
+function snapshotSig(s: FinancialSnapshot): string {
+    return [Math.round(s.netWorth / 100), Math.round(s.monthlyIncome), Math.round(s.monthlyExpenses), s.topDebts.length, s.activeGoals.length, s.coupleMode ? 1 : 0].join('|');
+}
+
+function readCache(sig: string): CachedNBA | null {
     try {
         const raw = localStorage.getItem(CACHE_KEY);
         if (!raw) return null;
         const parsed = JSON.parse(raw) as CachedNBA;
         if (Date.now() - parsed.timestamp > CACHE_TTL_MS) return null;
+        if (parsed.sig != null && parsed.sig !== sig) return null; // profil modifié → cache périmé (rétro-compat : ancien cache sans sig = valide par TTL, réécrit au 1er fetch)
         return parsed;
     } catch {
         return null;
     }
 }
 
-function writeCache(actions: NBAction[]) {
+function writeCache(actions: NBAction[], sig: string) {
     try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), actions }));
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), sig, actions }));
     } catch {
         // localStorage may be full or disabled — silent fail.
     }
+}
+
+// [PRIV-NBA-CACHE] purge le cache (les conseils IA sont DÉRIVÉS de la situation financière = PII) —
+// appelé quand le profil est vidé / déconnecté, pour ne pas laisser de PII en clair dans localStorage (Loi 25).
+function purgeCache() {
+    try { localStorage.removeItem(CACHE_KEY); } catch { /* localStorage indispo — silencieux */ }
 }
 
 const URGENCY_COLORS: Record<NBAction['urgency'], { dot: string; border: string; text: string }> = {
@@ -128,10 +143,12 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen = 
     const fetchActions = useCallback(async (force = false) => {
         if (!apiKey || !hasData) {
             setActions([]);
+            purgeCache(); // [PRIV-NBA-CACHE] profil vidé / déconnecté → pas de PII résiduelle en clair
             return;
         }
+        const sig = snapshotSig(snapshot);
         if (!force) {
-            const cached = readCache();
+            const cached = readCache(sig);
             if (cached) {
                 setActions(cached.actions);
                 setLastFetch(cached.timestamp);
@@ -145,7 +162,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen = 
             const result = await getNextBestActions(snap, apiKey);
             if (result.length > 0) {
                 setActions(result);
-                writeCache(result);
+                writeCache(result, sig);
                 setLastFetch(Date.now());
             } else {
                 setHasError(true);

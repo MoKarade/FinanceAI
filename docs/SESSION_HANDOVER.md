@@ -34,11 +34,19 @@
 > **Session 2026-06-17 (suite) — Environnement d'agents + Accessibilité (Vague 2)** : mise en place de
 > l'environnement d'agents (14 agents projet + orchestrateur routé à CHAQUE message via hook `UserPromptSubmit`)
 > et de l'**Agent Control Center** (dashboard dev-only live `npm run acc`, auto-démarré au lancement d'un agent —
-> PR #325→#334), puis reprise du backlog. **Vague 2 (accessibilité) DÉMARRÉE** : `A11Y-TAXBRACKET` livré
-> (`TaxBracketViz` → `role="img"`+`aria-label`+contenu `aria-hidden`, `<ChartDataTable>` sr-only, `<h4>`→`<h3>`,
-> `ink-500`→`ink-400` contraste AA VÉRIFIÉ via `check-contrast`). Reste Vague 2 : `A11Y-INK500` (codemod CIBLÉ,
-> pas global — ink-500 = couleur disabled), `A11Y-D6-SR-2` ph.3, `A11Y-CHARTS` ph.2, `A11Y-MODAL-PRIVATE`,
-> `D6-HEADING`, `D6-KBD`.
+> PR #325→#334), puis reprise du backlog. **Vague 2 (accessibilité)** : `A11Y-TAXBRACKET` (#335,
+> `TaxBracketViz` → `role="img"`+`aria-hidden`, `<ChartDataTable>` sr-only, `h4`→`h3`, `ink-500`→`ink-400`
+> contraste VÉRIFIÉ) + `D6-HEADING` (#336, `CollapsibleSection` titre dans un vrai `<hN>` + prop `headingLevel`)
+> LIVRÉS. Reste Vague 2 : `A11Y-INK500` (codemod CIBLÉ — ink-500 = disabled), `A11Y-D6-SR-2` ph.3,
+> `A11Y-CHARTS` ph.2, `A11Y-MODAL-PRIVATE`, `D6-KBD`.
+>
+> **Session 2026-06-17 (suite²) — AUDIT UX externe VALIDÉ + backlog** : audit UX (rendu headless, 7 personas,
+> 14 pages) reçu de Marc → **20 claims validés un par un** par panel de 5 agents (preuve `fichier:ligne`) →
+> `docs/AUDIT_UX_2026-06-17.md`. Verdict : robustesse OK (0 plantage), cœur money-critical sain (les 2 « bugs de
+> chiffres » = libellé `estateNetWorth` + persona insoutenable, PAS des erreurs de calcul). Vrais chantiers :
+> **FMT-CURRENCY-UNIFY** (75 sites $ manuels), **IA dispersée** (14 dest., scores/holdings/complétude dupliqués),
+> **PRIV-DISCRET-DOM** (mode discret floute sans masquer + hover révèle). Backlog rempli (§ « Audit UX 2026-06-17 »),
+> dédupliqué, + 3 nouveaux points. **PM relancé pour l'ordre d'exécution.**
 >
 > **Session 2026-06-16/17 — Durcissement MONEY-CONSERVATION (#314 #315)** : 2 bugs de conservation de
 > l'argent du moteur, trouvés via le résiduel `ΔNW − (épargne+croissance−impôt)`. **#314 [FISC-REER-WHT-DOUBLE]**

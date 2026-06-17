@@ -425,7 +425,7 @@ export const getNextBestActions = async (
     if (snapshot.topDebts.length > 0) {
         lines.push(
             `Dettes prioritaires:\n${snapshot.topDebts
-                .map(d => `  - ${d.name}: ${roundToHundred(d.balance)}$ à ${d.rate.toFixed(2)}%`)
+                .map(d => `  - ${sanitizePromptText(d.name, 40)}: ${roundToHundred(d.balance)}$ à ${d.rate.toFixed(2)}%`)
                 .join('\n')}`,
         );
     }
@@ -433,7 +433,7 @@ export const getNextBestActions = async (
         lines.push(
             `Objectifs actifs:\n${snapshot.activeGoals
                 .slice(0, 5)
-                .map(g => `  - ${g.name}: ${roundToHundred(g.currentAmount)}$ / ${roundToHundred(g.targetAmount)}$ (échéance ${g.deadline})`)
+                .map(g => `  - ${sanitizePromptText(g.name, 40)}: ${roundToHundred(g.currentAmount)}$ / ${roundToHundred(g.targetAmount)}$ (échéance ${sanitizePromptText(g.deadline, 20)})`)
                 .join('\n')}`,
         );
     }
@@ -442,8 +442,8 @@ export const getNextBestActions = async (
     const userPrompt = `AGIS COMME UN CONSEILLER FINANCIER QUÉBÉCOIS EXPERT.
 Analyse ce snapshot financier complet et propose EXACTEMENT 3 prochaines meilleures actions concrètes pour cette personne, classées par ordre d'impact financier estimé (la plus rentable d'abord).
 
-DONNÉES (montants arrondis à 100$):
-${lines.join('\n')}
+Montants arrondis à 100$. Données fournies par l'utilisateur ci-dessous :
+${wrapUserData(lines.join('\n'))}
 
 CONTRAINTES:
 - Chaque action doit être SPÉCIFIQUE (montant ou date concrète si possible)
@@ -579,13 +579,20 @@ export const getCoupleOptimizationStrategies = async (
 ): Promise<CoupleOptimizationStrategy[]> => {
     if (!apiKey) return [];
 
+    // [SEC-1] noms utilisateur (user1/user2.name) neutralisés via sanitizePromptText + bloc de données
+    // isolé en <DONNEES> — parité avec categorizeBatch/buildRebalancePrompt (le system prompt
+    // QUEBEC_FISCAL_CONTEXT instruit le modèle d'ignorer toute consigne à l'intérieur de <DONNEES>).
+    const profil = [
+        `- ${sanitizePromptText(ctx.user1.name, 40)} : brut ${roundToHundred(ctx.user1.grossAnnual)}$, net ${roundToHundred(ctx.user1.netAnnual)}$/an${ctx.user1.rrspRoom ? `, REER dispo ${roundToHundred(ctx.user1.rrspRoom)}$` : ''}${ctx.user1.tfsaRoom ? `, CELI dispo ${roundToHundred(ctx.user1.tfsaRoom)}$` : ''}`,
+        `- ${sanitizePromptText(ctx.user2.name, 40)} : brut ${roundToHundred(ctx.user2.grossAnnual)}$, net ${roundToHundred(ctx.user2.netAnnual)}$/an${ctx.user2.rrspRoom ? `, REER dispo ${roundToHundred(ctx.user2.rrspRoom)}$` : ''}${ctx.user2.tfsaRoom ? `, CELI dispo ${roundToHundred(ctx.user2.tfsaRoom)}$` : ''}`,
+        ctx.combinedAssetsCAD ? `- Patrimoine combiné : ${roundToHundred(ctx.combinedAssetsCAD)}$` : '',
+        ctx.isRetired ? '- Statut : à la retraite (fractionnement de revenus de pension applicable)' : '',
+    ].filter(Boolean).join('\n');
+
     const userPrompt = `Tu es conseiller fiscal québécois expert en stratégies pour couple.
 
-PROFIL :
-- ${ctx.user1.name} : brut ${roundToHundred(ctx.user1.grossAnnual)}$, net ${roundToHundred(ctx.user1.netAnnual)}$/an${ctx.user1.rrspRoom ? `, REER dispo ${roundToHundred(ctx.user1.rrspRoom)}$` : ''}${ctx.user1.tfsaRoom ? `, CELI dispo ${roundToHundred(ctx.user1.tfsaRoom)}$` : ''}
-- ${ctx.user2.name} : brut ${roundToHundred(ctx.user2.grossAnnual)}$, net ${roundToHundred(ctx.user2.netAnnual)}$/an${ctx.user2.rrspRoom ? `, REER dispo ${roundToHundred(ctx.user2.rrspRoom)}$` : ''}${ctx.user2.tfsaRoom ? `, CELI dispo ${roundToHundred(ctx.user2.tfsaRoom)}$` : ''}
-${ctx.combinedAssetsCAD ? `- Patrimoine combiné : ${roundToHundred(ctx.combinedAssetsCAD)}$` : ''}
-${ctx.isRetired ? '- Statut : à la retraite (fractionnement de revenus de pension applicable)' : ''}
+PROFIL (données utilisateur) :
+${wrapUserData(profil)}
 
 Propose EXACTEMENT 3 stratégies concrètes d'optimisation fiscale couple, classées par impact estimé décroissant.
 

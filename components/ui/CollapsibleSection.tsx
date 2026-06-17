@@ -6,6 +6,9 @@ interface CollapsibleSectionProps {
     subtitle?: string;
     badge?: React.ReactNode;
     defaultOpen?: boolean;
+    /** Niveau de titre sémantique (`<h2>`/`<h3>`/`<h4>`) enveloppant le bouton, pour un vrai outline
+     *  a11y (WCAG 1.3.1). Défaut `3` : nidifie sous une `Card` (h2) et supprime le saut h1→h4. */
+    headingLevel?: 2 | 3 | 4;
     /** Mode contrôlé optionnel. Si fourni, override le state interne. */
     open?: boolean;
     onToggle?: (open: boolean) => void;
@@ -24,6 +27,7 @@ const VARIANT_CLASSES = {
 export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
     title, icon, subtitle, badge,
     defaultOpen = false, open, onToggle,
+    headingLevel = 3,
     variant = 'default', className = '',
     children,
 }) => {
@@ -39,9 +43,12 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
 
     const headerId = `cs-${React.useId().replace(/:/g, '')}`;
     const panelId = `${headerId}-panel`;
+    // Le bouton d'accordéon est enveloppé d'un vrai titre (pattern WAI-ARIA Accordion) pour l'outline SR.
+    const HeadingTag = `h${headingLevel}` as 'h2' | 'h3' | 'h4';
 
     return (
         <div className={`rounded-card overflow-hidden ${VARIANT_CLASSES[variant]} ${className}`}>
+            <HeadingTag className="m-0">
             <button
                 type="button"
                 onClick={toggle}
@@ -67,6 +74,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
                     </span>
                 </div>
             </button>
+            </HeadingTag>
             {isOpen && (
                 <div
                     role="region"

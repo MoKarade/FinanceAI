@@ -48,6 +48,26 @@ describe('CollapsibleSection', () => {
         expect(onToggle).toHaveBeenCalledWith(true);
     });
 
+    it('[D6-HEADING] wraps the trigger button in a heading (default h3) for the outline', () => {
+        render(
+            <CollapsibleSection title="Settings">
+                <p>content</p>
+            </CollapsibleSection>
+        );
+        const heading = screen.getByRole('heading', { level: 3, name: /Settings/ });
+        // Pattern WAI-ARIA Accordion : le bouton est DANS le titre.
+        expect(heading.querySelector('button')).not.toBeNull();
+    });
+
+    it('[D6-HEADING] respects a custom headingLevel', () => {
+        render(
+            <CollapsibleSection title="Settings" headingLevel={2}>
+                <p>content</p>
+            </CollapsibleSection>
+        );
+        expect(screen.getByRole('heading', { level: 2, name: /Settings/ })).toBeInTheDocument();
+    });
+
     it('respects controlled `open` prop', () => {
         const { rerender } = render(
             <CollapsibleSection title="X" open={false}>

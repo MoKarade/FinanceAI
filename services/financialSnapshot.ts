@@ -88,8 +88,9 @@ export function buildFinancialSnapshot(
     const users = state.config?.users ?? [];
     // `netSalary` est en MENSUEL dans le store (cf Budget.tsx / Retirement.tsx).
     const monthlyIncome = (users[0]?.netSalary || 0) + (users[1]?.netSalary || 0);
-    // Réplique NextBestAction.tsx : somme brute des cibles (sans normalisation).
-    const monthlyExpenses = (state.budgetItems ?? []).reduce((acc, b) => acc + (b.target || 0), 0);
+    // [L4 audit 2026-06-17] Dépenses mensuelles NORMALISÉES par fréquence (annuel/trim/hebdo) et HORS
+    // épargne, via le helper partagé — avant : Σ brute des cibles (un poste annuel compté ×12, faux pour IA/MCP).
+    const monthlyExpenses = computeMonthlyBudgetAggregates(state.config, state.budgetItems ?? []).expenses;
 
     return {
         netWorth,

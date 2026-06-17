@@ -138,9 +138,13 @@
   effectif de `calculateFiscalReport`** (crédits inclus) ; GARDER la répartition par palier (pédagogique). Effort M.
 - [ ] **[FISC-CONST-LINT]** 🔧 MEDIUM (garde-fou) — test/règle ESLint : aucun littéral fiscal connu (`0.15`/`0.5`/`0.30`/
   paliers) hors `utils/tax.ts`/`realEstate.ts`. Ferme structurellement la classe M1-M3. Effort M.
-- [ ] **[AI-SNAP-FREQ]** (L4) 🔧 LOW — `services/financialSnapshot.ts:90` + `NextBestAction.tsx:95` : `monthlyExpenses` =
-  Σ targets SANS normaliser la fréquence (un poste annuel compté ×12) → dépense fausse envoyée à l'IA. Vérifié. Fix :
-  normaliser comme `useDerivedFinancials:42-44`. Effort S.
+- [x] **[AI-SNAP-FREQ]** (L4) ✅ LOW (livré) — `monthlyExpenses` NORMALISÉ par fréquence + hors épargne :
+  `financialSnapshot` via `computeMonthlyBudgetAggregates`, `NextBestAction` via `monthlyAmountFor` (excl. Epargne).
+  Avant : Σ brute des cibles (poste annuel compté ×12) envoyée à l'IA/MCP. 29 tests verts.
+- [ ] **[AI-NBA-FX]** 🔧 LOW (découvert pendant L4, mini-H2) — `components/sidebar/NextBestAction.tsx:86` :
+  `computeInvestmentsValue(assets, {})` passe des fxRates VIDES → actifs étrangers comptés à 1:1 (NW sous-estimé
+  pour l'IA). Vrai fix = router NextBestAction par `buildFinancialSnapshot(state)` (FX réels + `computePresentNetWorth`
+  + dépenses normalisées déjà corrigées), au lieu de reconstruire le snapshot inline (duplication). Effort S-M.
 - [ ] **[ENG-LOOP-ORDER-TEST]** (L1) 🔧 LOW — boucle mensuelle `services/projection.ts` : l'ordre croissance↔allocation est
   money-critical mais AUCUN invariant ne teste l'ORDRE (INV-2 attrape une fuite, pas une inversion qui conserve l'argent en
   faussant les rendements). Fix : test « ordre » discriminant (2 scénarios). Effort S.

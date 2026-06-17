@@ -44,7 +44,7 @@ h2::before{content:"";width:3px;height:13px;border-radius:2px;background:linear-
 .brand .sub{margin:2px 0 0;color:var(--muted);font-size:12px}
 .tools{display:flex;align-items:center;gap:13px;flex-wrap:wrap}
 .conn{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--ok);padding:5px 11px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}
-.conn .pip{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.conn .pip{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);animation:pulse 1.6s ease-in-out infinite}
 .conn.down{color:var(--crit)} .conn.down .pip{background:var(--crit);box-shadow:0 0 8px var(--crit)}
 .updated{color:var(--faint);font-size:12px;font-variant-numeric:tabular-nums}
 .verdict{font-weight:800;font-size:12px;letter-spacing:.07em;padding:7px 15px;border-radius:999px;border:1px solid;backdrop-filter:blur(4px)}
@@ -240,7 +240,7 @@ function render(s){
   const b=$('banner');b.classList.toggle('on',!live);if(!live)b.textContent="⚠ Données d'EXEMPLE — lance npm run acc + une revue d'agents pour la vraie activité.";
   const v=(s.decision&&s.decision.verdict)||'PENDING',vc=v==='NO-GO'?'NOGO':v;
   const vp=$('verdict');vp.textContent=v;vp.className='verdict '+vc;
-  $('updated').textContent=s.updatedAt?'maj '+ago(s.updatedAt):'';
+  lastUpd=s.updatedAt||null;$('updated').textContent=lastUpd?'maj '+ago(lastUpd):'';
   const p=s.progress||{};
   $('m-active').textContent=(s.activeAgents||[]).length;$('m-done').textContent=(s.completedAgents||[]).length;
   $('m-pending').textContent=(s.pendingAgents||[]).length;$('m-crit').textContent=s.criticalIssues||0;
@@ -278,7 +278,11 @@ async function poll(){
   try{const r=await fetch('/status',{cache:'no-store'});const s=await r.json();$('conn-t').textContent='live';$('conn').className='conn';render(s);}
   catch{$('conn-t').textContent='hors-ligne · exemple';$('conn').className='conn down';render(EXAMPLE);}
 }
+let lastUpd=null;
 poll();setInterval(poll,POLL);
+// Horloge « live » : re-tique l'âge de la dernière maj chaque seconde (le tableau de bord est VIVANT
+// même quand aucun agent ne tourne — tu vois le temps avancer + le battement de la pastille).
+setInterval(()=>{ if(lastUpd) $('updated').textContent='maj '+ago(lastUpd); },1000);
 </script>
 </body>
 </html>

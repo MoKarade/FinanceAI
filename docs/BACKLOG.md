@@ -123,12 +123,16 @@
 - [x] **[LLM-INJECT-PARITY]** (SEC-1) ✅ MEDIUM (livré) — `getCoupleOptimizationStrategies` + `getNextBestActions`
   neutralisent désormais les noms utilisateur (`sanitizePromptText`) et isolent les blocs de données en `<DONNEES>`
   (`wrapUserData`) — parité avec les 4 autres surfaces LLM. Le system prompt QUEBEC_FISCAL_CONTEXT isole déjà `<DONNEES>`.
-- [ ] **[FISC-WHT-HARDCODE]** (M1) 🔍 MEDIUM — `services/projection.ts:1390` `totalTaxesPaid += … + retraitReerMois * 0.15`.
-  ⚠️ **Analyse 2026-06-17 : NE PAS appliquer le fix de surface (0.15→0.29) tel quel.** Post-#314, la retenue REER est un
-  ACOMPTE débité en AVRIL (dans `fluxImpots` d'avril, l.738) → l'ajouter AUSSI mensuellement l.1390 est un possible
-  DOUBLE-COMPTAGE dans ce compteur d'AFFICHAGE (`totalTaxesPaid`, PAS le NW). Augmenter le taux empirerait le double-compte.
-  À FAIRE d'abord : vérifier empiriquement `totalTaxesPaid == Σ(sorties d'impôt réelles)` (cadre moneyConservation), puis
-  corriger selon le résultat (retirer la ligne si double-compte, ou aligner sur la vraie retenue si complémentaire). Effort M.
+- [ ] **[FISC-WHT-HARDCODE]** (M1) 🔍 MEDIUM — `services/projection.ts:1390` `totalTaxesPaid += fluxImpots + taxOnRrif + retraitReerMois*0.15`.
+  ⚠️ **DOUBLE-COMPTAGE CONFIRMÉ empiriquement 2026-06-17** (sonde retraité REER 800k/12 ans) : `totalTaxesPaid` = **350,7 k$**
+  vs Σ FluxImpots (impôt qui réduit RÉELLEMENT le NW = l'arbitre de conservation) = **200,9 k$** → KPI d'affichage surévalué ~75 %.
+  Post-#314 la retenue REER/FERR est un acompte débité en AVRIL (DÉJÀ dans `fluxImpots`) → l'ajouter aussi mensuellement double-compte.
+  Fix = `totalTaxesPaid += fluxImpots` SEUL. ⚠️ **MAIS effet de bord money-critical** : ce fix CASSE
+  `tests/services/projection.survivor.test.ts` (FISC-SURVIVOR-DRAWDOWN, assertion `surv.totalTaxesPaid < base`) — qui ne tenait
+  QUE par l'artefact du double-comptage (le couple décaisse plus → plus de retenue double-comptée → base gonflé) ; KPI corrigé →
+  surv (95 386) ≳ base (95 239), quasi égaux. **Fix M1 = JOINT** : corriger `totalTaxesPaid` ET re-valider le discriminant du test
+  survivant (le total survivant ≈ couple est-il fiscalement juste ? sinon quel meilleur discriminant que `totalTaxesPaid` ?).
+  **Reverté en attendant cette analyse** (display-only, n'affecte PAS le NW/conservation). Effort M (analyse survivorMode requise).
 - [x] **[FISC-DIV-SHARE-DRY]** (M2) ✅ MEDIUM (livré) — `NONREG_DIVIDEND_DISTRIBUTION_SHARE = 0.30` extraite dans
   `projection/helpers.ts`, consommée par `projection.ts` ET `taxDecember.ts` (source unique). Value-neutral.
 - [x] **[FISC-INCLUSION-DRY]** (M3) ✅ MEDIUM (livré) — `projection.ts:1435` importe désormais

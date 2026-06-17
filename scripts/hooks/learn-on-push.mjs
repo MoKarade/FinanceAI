@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-// PreToolUse (Bash) : sur un `git push`, RAPPELLE de capturer la leçon dans CLAUDE.md.
+// PreToolUse (Bash) : sur un `git push`, RAPPELLE de capturer la leçon dans CLAUDE.md
+// ET de mettre à jour un agent `.claude/agents/` si besoin.
 // NON-BLOQUANT (exit 0 toujours) — injecte juste un rappel via additionalContext.
-// Applique la règle Marc « CLAUDE.md s'améliore À CHAQUE PUSH » (cf CLAUDE.md, section Workflow) :
-// un fichier ne force rien, mais ce rappel apparaît au bon moment (juste avant le push).
+// Applique les règles Marc « CLAUDE.md s'améliore À CHAQUE PUSH » + « les agents s'améliorent à
+// chaque push » (cf CLAUDE.md, sections Workflow + Agents) : un fichier ne force rien, mais ce
+// rappel apparaît au bon moment (juste avant le push).
 import { readFileSync } from 'node:fs';
 
 let cmd = '';
@@ -18,10 +20,12 @@ const scan = cmd.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '""');
 if (!/(^|\s)git\s+(?:-[cC]\s+\S+\s+|-{1,2}\S+\s+)*push(?:\s|$)/.test(scan)) process.exit(0);
 
 const reminder =
-  'Rappel (règle « CLAUDE.md s\'améliore à chaque push ») : AVANT ce push, qu\'as-tu appris ' +
-  '(bug d\'infra, convention, leçon, décision, piège) ? Si oui -> delta ciblé dans CLAUDE.md ' +
-  '(section pertinente), dans la MÊME PR. Si non -> dire « push sans leçon » au point de contrôle. ' +
-  'Ne pas parquer la leçon ailleurs (mémoire/chat) sans la porter dans CLAUDE.md.';
+  'Rappel (règles « CLAUDE.md/agents s\'améliorent à chaque push ») : AVANT ce push — ' +
+  '(1) Qu\'as-tu appris (bug d\'infra, convention, leçon, décision, piège) ? Si oui -> delta ciblé ' +
+  'dans CLAUDE.md (section pertinente), MÊME PR ; si non -> dire « push sans leçon » au point de contrôle. ' +
+  '(2) Un agent .claude/agents/ a-t-il produit du bruit, raté un angle mort, ou une convention a-t-elle ' +
+  'changé ? Si oui -> mettre à jour le fichier de l\'agent (et docs/agents.md si le rôle bouge), MÊME PR. ' +
+  'Ne pas parquer la leçon ailleurs (mémoire/chat) sans la porter dans le repo.';
 
 process.stdout.write(JSON.stringify({
   suppressOutput: true,

@@ -58,6 +58,7 @@ const server = createServer(async (req, res) => {
   }
 });
 
+server.on('error', (e) => { if (e.code === 'EADDRINUSE') process.exit(0); throw e; }); // déjà up → cette instance s'efface
 server.listen(PORT, HOST, () => {
   console.log(`\n  Agent Control Center  →  http://${HOST}:${PORT}\n`);
   console.log(`  Lit .claude/status.json (données RÉELLES si présent, sinon EXEMPLE étiqueté).`);

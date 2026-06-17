@@ -8,12 +8,23 @@
 import { readFileSync, writeFileSync, renameSync, appendFileSync, existsSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { spawn } from 'node:child_process';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const CLAUDE_DIR = join(ROOT, '.claude');
 const STATUS = join(CLAUDE_DIR, 'status.json');
 const STATUS_TMP = join(CLAUDE_DIR, 'status.json.tmp');
 const EVENTS = join(CLAUDE_DIR, 'agent-events.jsonl');
+
+// [ACC-LIVE] Démarre le serveur du dashboard en arrière-plan dès qu'un agent se lance — SAUF s'il est
+// déjà up (le serveur s'auto-termine sur EADDRINUSE). Détaché (.unref) → survit à ce hook. Non-bloquant.
+function ensureAccServer() {
+  try {
+    const srv = join(ROOT, 'tools', 'agent-control-center', 'server.mjs');
+    if (!existsSync(srv)) return;
+    spawn(process.execPath, [srv], { detached: true, stdio: 'ignore', cwd: ROOT }).unref();
+  } catch { /* ne jamais casser le hook */ }
+}
 
 const AGENTS = [
   'orchestrator', 'architect', 'product-manager', 'financial-integrity', 'security-privacy',
@@ -118,6 +129,7 @@ try {
   if (event === 'PreToolUse') {
     a.status = 'running'; a.task = task; a.startedAt = nowIso(); a.lastRun = a.startedAt; a.partial = false; a.durationMs = null; a.risks = [];
     s.pipeline.push({ step: s.pipeline.length + 1, agent, status: 'running', durationMs: null });
+    ensureAccServer(); // [ACC-LIVE] démarre le dashboard s'il n'est pas déjà up
     try { appendFileSync(EVENTS, JSON.stringify({ ts: nowIso(), event: 'start', agent, task }) + '\n'); } catch { /* */ }
   } else {
     a.status = 'completed'; a.lastRun = nowIso();

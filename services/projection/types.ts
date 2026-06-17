@@ -61,6 +61,11 @@ export interface ProjectionChartPoint {
     rapBalance?: number;
     Immobilier?: number;
     DetteTotale?: number;
+    /** [M5 audit 2026-06-17] Dettes NON immobilières = activeDebts + liquidDebt + smithManoeuvre
+     *  (DetteTotale SANS l'hypothèque). `NetWorth = Σ(actifs affichés, dont Immobilier=équité nette)
+     *  − DettesNonImmo` tient TOUJOURS, même sous hypothèque — contrairement à DetteTotale (qui inclut
+     *  l'hypothèque, déjà nettée dans Immobilier → reconstructabilité rompue sous prêt). */
+    DettesNonImmo?: number;
     /** Découvert (liquidité négative non couverte) porté en dette [PV-6]. Inclus dans DetteTotale
      *  et soustrait de NetWorth ; exposé pour que l'UI explique un patrimoine net négatif. */
     LiquidDebt?: number;

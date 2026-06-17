@@ -116,23 +116,26 @@
 - [x] **[AI-CTX-FX]** ✅ HIGH (livré PR audit) — `AiAssistant` : FX RÉELS (`fxRates`) + dettes soustraites via
   `computePresentNetWorth`/`computeInvestmentsValue` ; 1.38/1.50 en dur supprimés. Régression `TabRouter.availableCash`
   (dérivation `globalNetWorth − placements`) corrigée en passant (→ `currentLiquidity`).
-- [ ] **[FISC-DETTE-TOTALE-MORTGAGE]** (M5) 🔧 MEDIUM — `services/projection/monthlyOutput.ts:236` : `DetteTotale` INCLUT
-  `mortgageBalance` alors qu'`Immobilier`=équité (déjà nette) → sous hypothèque `Σactifs−DetteTotale = NW−mortgage ≠ NW`
-  (reconstructabilité d'affichage rompue ; NW correct via `computeRawNetWorth`). `INV-1` ne teste QUE sans hypothèque. Vérifié
-  272 mois. Fix : champ `DettesNonImmo` (additif, sûr) OU valeur BRUTE immo + ligne hypothèque ; **étendre INV-1 au cas hypothèque**. Effort M.
+- [x] **[FISC-DETTE-TOTALE-MORTGAGE]** (M5) ✅ MEDIUM (livré, décision Marc = champ additif) — champ `DettesNonImmo`
+  (= activeDebts+liquidDebt+smithManoeuvre, SANS hypothèque) ajouté à `monthlyOutput` + `projection/types` →
+  `NetWorth = Σactifs − DettesNonImmo` tient TOUJOURS (Immobilier = équité nette). INV-9 étendu : reconstructabilité
+  via DettesNonImmo (< 2 $) + discriminant (DetteTotale NE reconstruit PAS sous hypothèque, écart = solde hypothécaire).
 - [x] **[LLM-INJECT-PARITY]** (SEC-1) ✅ MEDIUM (livré) — `getCoupleOptimizationStrategies` + `getNextBestActions`
   neutralisent désormais les noms utilisateur (`sanitizePromptText`) et isolent les blocs de données en `<DONNEES>`
   (`wrapUserData`) — parité avec les 4 autres surfaces LLM. Le system prompt QUEBEC_FISCAL_CONTEXT isole déjà `<DONNEES>`.
-- [ ] **[FISC-WHT-HARDCODE]** (M1) 🔧 MEDIUM — `services/projection.ts:1390` : `totalTaxesPaid += retraitReerMois * 0.15`
-  (retenue en dur) au lieu de `RRSP_WITHHOLDING_QC` (19/24/29 %). Compteur d'AFFICHAGE sous-estimé > tranche 1. Vérifié. Fix :
-  `withholdingForGrossRRSP(...)` (vérifier non double-comptage déc.). Effort S.
+- [ ] **[FISC-WHT-HARDCODE]** (M1) 🔍 MEDIUM — `services/projection.ts:1390` `totalTaxesPaid += … + retraitReerMois * 0.15`.
+  ⚠️ **Analyse 2026-06-17 : NE PAS appliquer le fix de surface (0.15→0.29) tel quel.** Post-#314, la retenue REER est un
+  ACOMPTE débité en AVRIL (dans `fluxImpots` d'avril, l.738) → l'ajouter AUSSI mensuellement l.1390 est un possible
+  DOUBLE-COMPTAGE dans ce compteur d'AFFICHAGE (`totalTaxesPaid`, PAS le NW). Augmenter le taux empirerait le double-compte.
+  À FAIRE d'abord : vérifier empiriquement `totalTaxesPaid == Σ(sorties d'impôt réelles)` (cadre moneyConservation), puis
+  corriger selon le résultat (retirer la ligne si double-compte, ou aligner sur la vraie retenue si complémentaire). Effort M.
 - [x] **[FISC-DIV-SHARE-DRY]** (M2) ✅ MEDIUM (livré) — `NONREG_DIVIDEND_DISTRIBUTION_SHARE = 0.30` extraite dans
   `projection/helpers.ts`, consommée par `projection.ts` ET `taxDecember.ts` (source unique). Value-neutral.
 - [x] **[FISC-INCLUSION-DRY]** (M3) ✅ MEDIUM (livré) — `projection.ts:1435` importe désormais
   `CAPITAL_GAINS_INCLUSION_STANDARD` (au lieu de `0.5` en dur). Value-neutral.
 - [ ] **[FISC-VIZ-CREDITS]** (M4) 🔧 MEDIUM — `components/TaxBracketViz.tsx:15-52` : impôt par palier SANS crédits
-  (BPA/abattement) mais libellé « exact/ultra-précis » → total/taux SURévalués vs `calculateFiscalReport`. Fix : tirer
-  total/taux de `calculateFiscalReport`, ou libeller « avant crédits ». Effort M.
+  (BPA/abattement) mais libellé « exact » → total/taux SURévalués. **Décision Marc (2026-06-17) = tirer total + taux
+  effectif de `calculateFiscalReport`** (crédits inclus) ; GARDER la répartition par palier (pédagogique). Effort M.
 - [ ] **[FISC-CONST-LINT]** 🔧 MEDIUM (garde-fou) — test/règle ESLint : aucun littéral fiscal connu (`0.15`/`0.5`/`0.30`/
   paliers) hors `utils/tax.ts`/`realEstate.ts`. Ferme structurellement la classe M1-M3. Effort M.
 - [ ] **[AI-SNAP-FREQ]** (L4) 🔧 LOW — `services/financialSnapshot.ts:90` + `NextBestAction.tsx:95` : `monthlyExpenses` =
@@ -153,6 +156,53 @@
   `assetBreakdown` ET `currentLiquidity` recalculent INLINE (FX `||1`) au lieu de `computeAssetBreakdown`/
   `computeCurrentLiquidity` (`services/portfolio.ts`) ; `assetBreakdown` local OMET `crypto` (le helper l'a).
   Même motif « recalcul local au lieu du helper ». Router vers les helpers. Effort S.
+
+### 🛡️ Durcissement structurel (brief Marc 2026-06-17, post-audit) — VALIDÉ + reformulé pour l'app
+> Objectif Marc : rendre bugs math / blocages UI / corruptions de données structurellement impossibles. Statut vérifié
+> contre le code actuel — certains tickets sont DÉJÀ faits (ne pas refaire), d'autres partiels. IDs reformulés pour FinanceAI.
+
+**ÉPIC 1 — Noyau de calcul & preuve**
+- [ ] **[HARDEN-FUZZING]** 🔧 HIGH (nouveau, ticket 1.1) — property-based testing des invariants de conservation avec
+  **fast-check** (à installer). Générateurs bornés (salaires 0-1M, dettes, rendements −40 %..+40 %, inflation, âges) →
+  boucler `calculateFutureProjection`, vérifier le résiduel-**BILAN** `ΔNW==ΔΣactifs−ΔΣdettes` ≤ 0,05 $ sur 100 % des mois
+  (PAS la forme épargne+croissance−impôt, qui faux-positive sur les flux one-time — cf CLAUDE.md). Échec → afficher la SEED.
+  ⚠️ borner les runs CI (~300-1000, pas 10 000 : 480 mois × N stratégies, coûteux). Complète les 25 scénarios fixes actuels.
+- [ ] **[HARDEN-NETWORTH-EXHAUSTIVE]** 🔧 MEDIUM (nouveau, ticket 1.2) — test d'exhaustivité sur `NetWorthParts` (la vraie
+  frontière du bilan, pas `Assets`) : forcer `Record<keyof NetWorthParts, number>` → si un futur actif/dette est ajouté au
+  bilan sans être traité par `computeRawNetWorth`, le typecheck casse. Empêche un terme oublié (classe MONEY-PHANTOM).
+- [ ] **[HARDEN-DECIMAL-STUDY]** 🔧 LOW/⏳ (nouveau, ticket 1.4, ÉTUDE) — PoC arithmétique exacte (centimes entiers OU
+  `decimal.js`) sur un sous-module (impôts). ⚠️ Priorité BASSE : la dérive flottante est DÉJÀ bornée ≤ 0,02 $ sur ~25
+  scénarios (invariants tolèrent < 2 $). Mesurer le coût Monte Carlo (480 mois × 100 iter) AVANT d'adopter. Ticket 1.3 =
+  `[FISC-CONST-LINT]` ci-dessus (déjà au backlog).
+
+**ÉPIC 2 — Exécution & UI**
+- [~] **[HARDEN-MC-WORKER]** 🔧 MEDIUM (PARTIEL, ticket 2.1) — `services/projection.worker.ts` + `runProjectionAsync`
+  (timeout 30 s) EXISTENT (W1.1). RESTE : vérifier/ajouter le **chunking** (lots 10-50 iter) + un **`onProgress(pct)`** pour
+  la barre MC ; évaluer **Comlink** (non installé) pour des types bout-en-bout. DoD : 100 iter × 40 ans sans drop de frame.
+- [~] **[HARDEN-SNAPSHOT-RACE]** 🔧 MEDIUM (PARTIEL, ticket 2.2) — le moteur est PUR (zéro mutation d'état partagé, vérifié
+  audit) ; `structuredClone` existe déjà au store ; AbortController déjà sur les appels API (claude/finnhub). RESTE :
+  garantir un snapshot immuable de l'input AVANT envoi Worker/IA + un AbortController sur le chemin Worker projection.
+
+**ÉPIC 3 — Cycle de vie**
+- [ ] **[HARDEN-FISCAL-TIMEBOMB]** 🔧 MEDIUM (nouveau, ticket 3.1) — test qui ALERTE quand la fiscalité périme. ⚠️ PAS un
+  hard `Date.now() < 2027` (casserait TOUS les déploiements le 1ᵉʳ janvier, même un hotfix non-fiscal) → lire la date
+  « Dernière vérification » de `FISCAL_REFERENCE.md` et échouer si > N mois, OU warning au build. Aligné `/audit-financier`.
+- [x] **[HARDEN-ZUSTAND-MIGRATE]** ✅ DÉJÀ FAIT (ticket 3.2) — `persist` schema **v7** + `migratePersistedState` (v1→v7,
+  optional chaining, fallback défaut + dump du localStorage corrompu) + tests `migratePersistedState.test`. Plus avancé
+  que le ticket (v2). Rien à faire.
+
+**ÉPIC 4 — Frontières & IA**
+- [ ] **[HARDEN-ZOD-GATEKEEP]** 🔧 MEDIUM (nouveau, ticket 4.1) — Zod est utilisé (sorties LLM `safeJsonValidate`, backup)
+  mais PAS en gatekeeping systématique des INPUTS UI. Ajouter des schémas stricts (`salary: z.number().min(0)`, `age:
+  z.number().min(18).max(100)`…) aux actions Zustand / handlers → le moteur ne reçoit jamais NaN/Infinity/string (défense
+  en profondeur en amont du garde NaN du moteur).
+- [x] **[HARDEN-AI-CTX]** ✅ DÉJÀ FAIT (ticket 4.2, #319) — `AiAssistant` + Dashboard routent par `computePresentNetWorth`
+  (FX réels `fxRates`, dettes soustraites). NB : le NW PRÉSENT utilise `computePresentNetWorth` (pendant de
+  `computeRawNetWorth` qui sert le FUTUR/moteur) — garde de parité keystone dans `portfolio.test`.
+- [~] **[HARDEN-SAFEBLOCK]** 🔧 LOW (PARTIEL, ticket 4.3, complète SEC-1 #321) — sanitizePromptText + wrapUserData LIVE sur
+  toutes les surfaces LLM (l'attaque `</DONNEES>Ignore…` est déjà neutralisée par `neutralizeFrameTags`). RESTE :
+  factoriser un helper unique `buildSafeUserBlock(text)` + imposer son usage (idéalement lint) pour qu'une FUTURE surface
+  LLM ne puisse pas oublier la protection.
 
 
   `services/projection/netWorth.ts:33` `computeRawNetWorth` n'a AUCUNE garde `Number.isFinite` : un terme non

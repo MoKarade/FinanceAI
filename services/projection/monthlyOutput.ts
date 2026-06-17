@@ -234,6 +234,10 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         // désormais liquidDebt + smithManoeuvreDebt : sans eux, un patrimoine net NÉGATIF
         // (découvert porté en dette) n'était EXPLIQUÉ par aucune ligne de l'UI (bug Marc 2026-06-16).
         DetteTotale: Number((mortgageBalance + activeDebtsTotal + liquidDebt + smithManoeuvreDebt).toFixed(2)),
+        /** [M5] Dettes HORS hypothèque → `NetWorth = Σ(actifs, Immobilier=équité) − DettesNonImmo`
+         *  reconstruit le patrimoine net même sous hypothèque (DetteTotale double-compterait l'hypo,
+         *  déjà nettée dans Immobilier). Garde : INV-9 (moneyConservation). */
+        DettesNonImmo: Number((activeDebtsTotal + liquidDebt + smithManoeuvreDebt).toFixed(2)),
         /** Découvert (liquidité négative non couverte) porté en dette — exposé pour l'UI. */
         LiquidDebt: Number(liquidDebt.toFixed(2)),
         NetWorth: Number(rawNetWorth.toFixed(2)),

@@ -137,17 +137,26 @@ Doc détaillée dans `docs/`, qui fait foi.
 
 ## Agents — deux niveaux
 **Globaux** (`~/.claude/agents/` via claude-config / ECC) : dispo dans tous les projets.
-**Projet** (`.claude/agents/` ici, 9) : spécialisés FinanceAI, SURCHARGENT les globaux par nom.
+**Projet** (`.claude/agents/` ici, **13**) : spécialisés FinanceAI, SURCHARGENT les globaux par nom.
+Détail complet (rôles, modèles, exclusions anti-chevauchement) : **`docs/agents.md`**. Usage des
+commandes (`/new-feature`, `/review-all`, `/release-review`) : **`docs/workflow.md`**.
+
+**Les agents s'améliorent À CHAQUE PUSH** (règle Marc 2026-06-17, sœur de « CLAUDE.md s'améliore à
+chaque push ») : un agent qui produit du bruit, rate un angle mort, ou dont une convention a changé →
+mettre à jour son fichier `.claude/agents/<nom>.md` dans la MÊME PR. Le hook `learn-on-push` le rappelle.
 
 **Déclenchement PROACTIF + PANEL** (ne pas attendre qu'on le demande). À chaque feature finie ou
 avant commit, lancer EN PARALLÈLE tous les agents pertinents (commande `/review-all`), puis synthétiser :
 - Toujours → `code-reviewer`, `silent-failure-hunter`.
-- Secrets/crypto/CSP/persistance/LLM → `security-reviewer`.
+- Calcul $ / solde / flux / dette / impôt / devise / migration store → `financial-integrity` (lit `docs/FISCAL_REFERENCE.md`).
+- Secrets/crypto/CSP/persistance/LLM/vie privée (Loi 25) → `security-privacy`.
+- Appel SDK Anthropic (`services/claude.ts` + surfaces) → `ai-reviewer`.
+- `services/projection/` ou calcul long-terme → `projection-validator`.
 - Logique métier ajoutée → `test-writer`.
-- `services/projection/` ou calcul long-terme → `projection-validator`, `performance-optimizer`.
-- Valeur fiscale (ou 1×/période d'impôts) → `fiscal-accuracy` (vs `docs/FISCAL_REFERENCE.md`).
 - UI notable → `a11y-auditor`.
-- Dette/audit large → `code-analyzer` (→ entrées BACKLOG).
+- Doc touchée par le changement → `documentation-manager` (Edit `docs/`+`.md` uniquement).
+- À LA DEMANDE : `architect` (design/dette), `product-manager` (valeur/MVP), `performance-optimizer`
+  (profilage moteur profond — la perf générale est dans `code-reviewer`), `code-analyzer` (dette large → BACKLOG).
 
 Seule limite : la PERTINENCE. Lancer tous les agents qui s'appliquent ; aucun hors sujet.
 
@@ -231,7 +240,7 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
 - **No-fake-data** : zéro donnée simulée en prod. Projection non calculée → `<ProjectionRequired>`.
 - **Valeurs fiscales** : toute constante fiscale (plafonds, paliers, taux, RRQ/PSV/SRG, montants
   de base) DOIT venir de `docs/FISCAL_REFERENCE.md` (datée + sourcée). Jamais de chiffre fiscal
-  en dur non sourcé. Audit : agent `fiscal-accuracy`.
+  en dur non sourcé. Audit : agent `financial-integrity` (ex-`fiscal-accuracy`, vs `docs/FISCAL_REFERENCE.md`).
 - **Unités argent** : `config.users[].grossSalary`/`netSalary` (store) sont **MENSUELS** (convention
   canonique, `utils/salary.ts`). Annualiser **×12** pour toute comparaison annuelle (MGA, paliers
   fiscaux) — sinon bug d'échelle ~12× (vu sur la RRQ, FISC-RRQ-UNIT 2026-06-15).
@@ -281,7 +290,7 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   (retenue créditée 1× ; net ≠ brut selon le poste).
 - [ ] **Test discriminant prouvé** : `git stash push -- <fichier moteur>` → le test ÉCHOUE sur le code d'avant →
   `git stash pop` (cf « Posture de l'agent »). Un test vert qui passe AUSSI sur le bug ne prouve rien.
-- [ ] **Suite COMPLÈTE** + `typecheck` clean + panel (`projection-validator`, `fiscal-accuracy` si fiscal,
+- [ ] **Suite COMPLÈTE** + `typecheck` clean + panel (`projection-validator`, `financial-integrity` si fiscal/calcul $,
   `silent-failure-hunter` pour les NaN/échecs avalés). Un finding = hypothèse → vérifier avant de coder.
 
 ## Automatisation (hooks `.claude/settings.json`)
@@ -291,8 +300,8 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   - `commit-gate` → avant tout `git commit` : `typecheck` + `test` + `build` doivent passer, sinon commit BLOQUÉ.
   - `guard` → bloque `rm -rf` sensible, `--no-verify`, écriture `.env`. **Le `git push` est AUTORISÉ**
     (Claude gère commit→push→PR→merge ; cf Workflow ci-dessus).
-  - `learn-on-push` → sur `git push` : RAPPEL non-bloquant « leçon apprise → delta CLAUDE.md ? »
-    (applique « CLAUDE.md s'améliore à chaque push »). Pipe-tester un hook stdin : **Git Bash**
+  - `learn-on-push` → sur `git push` : RAPPEL non-bloquant « leçon apprise → delta CLAUDE.md ? » **+ « un agent
+    `.claude/agents/` à mettre à jour ? »** (applique « CLAUDE.md/agents s'améliorent à chaque push »). Pipe-tester un hook stdin : **Git Bash**
     (`echo '{...}' | node …`), PAS PowerShell 5.1 qui ne livre pas le stdin à un exe natif.
     Matcher `push` comme SOUS-commande git (après `git` + options globales), pas « push »
     n'importe où — sinon faux positif sur un nom de branche en -push (révélé en live par le hook).

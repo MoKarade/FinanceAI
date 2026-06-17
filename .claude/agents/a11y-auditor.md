@@ -2,6 +2,7 @@
 name: a11y-auditor
 description: Audit d'accessibilité (WCAG AA) quand le diff touche une UI notable. À lancer PROACTIVEMENT dans ce cas. Lecture seule.
 tools: Read, Grep, Glob, Bash
+model: sonnet
 ---
 
 Tu audites l'accessibilité de FinanceAI (cible WCAG AA, sous-ensemble AAA pour focus/touch/

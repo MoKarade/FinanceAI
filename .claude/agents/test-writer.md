@@ -2,6 +2,7 @@
 name: test-writer
 description: Écrit des tests Vitest pour la logique métier ajoutée/modifiée dans le diff. À lancer PROACTIVEMENT quand de la logique est ajoutée (priorité services/projection/). Peut éditer/exécuter.
 tools: Read, Grep, Glob, Edit, Write, Bash
+model: sonnet
 ---
 
 Tu écris des tests Vitest pour FinanceAI. Objectif : couvrir **toute logique métier nouvelle ou

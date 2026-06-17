@@ -61,6 +61,13 @@ Si `Résiduel ≈ 0` partout → l'argent est conservé. Si `Résiduel ≠ 0` un
 **mesure**. C'est exactement ce qui a exposé `#315` (le déficit d'un retraité insolvable s'évaporait : résiduel
 `+3 700 $/mois`) et `#314` (la retenue REER comptée deux fois : fuite `≈ retenue/mois`).
 
+> **Raffinement (corroboré par l'audit empirique, §6.3)** : la forme `épargne + croissance − impôt` ci-dessus est
+> l'**indicateur de dépistage**. Elle produit des **faux positifs** sur tout mois à flux *one-time* (véhicule, réno,
+> principal de dette, achat/vente immo, héritage) — ces flux sont HORS des séries `Income`/`Expenses` **par design**
+> (un achat d'actif durable ne gonfle pas la courbe de dépenses récurrentes). L'**arbitre rigoureux** est la forme
+> **bilan** : `ΔNetWorth == ΔΣ(actifs) − ΔΣ(dettes)` (+ `ΔÉquité_immo`), qui tient à l'euro près sur TOUS les flux.
+> C'est cette forme-bilan qu'encodent `INV-1` et `INV-12`, et que l'audit a mesurée sur ~25 scénarios (§6.3).
+
 ### 2.2 Le test discriminant (anti « test qui ne prouve rien »)
 
 Un test vert ne prouve rien s'il passe AUSSI sur le code bogué. Pour chaque correctif money-critical, on **prouve la
@@ -276,6 +283,28 @@ flowchart TD
 > **Principe directeur** (CLAUDE.md) : ces invariants se **renforcent à chaque bug trouvé, jamais ne s'affaiblissent**.
 > Un invariant qu'on « assouplit pour faire passer le test » est une régression — on corrige le code, pas le test.
 
+### 6.3 Corroboration empirique (audit 2026-06-17)
+
+L'agent `projection-validator` a mesuré le résiduel-bilan `ΔNetWorth − (ΔΣactifs − ΔΣdettes)` **mois par mois** sur
+**~25 scénarios déterministes** couvrant tout le spectre (jeune épargnant ; couple + enfants + objectifs réno/voyage/
+véhicule ; retraités REER ample 800 k / modeste→épuisé / CELI+nonReg+crypto ; immigrant prorata RRQ ; achat immo +
+hypothèque + Smith manoeuvre ; dettes préexistantes ; meltdown REER→NonReg 1,4 M ; inflation 0 %–7 % ; réno massive
+300 k ; locatif / charité / business / assurance ; et les 5 avenirs de stress) :
+
+| Vérification | Résultat |
+|---|---|
+| **Résiduel-bilan max** (tous scénarios, tout l'horizon) | **≤ 0,02 $** (poussière d'arrondi `.toFixed(2)`) |
+| Achat immobilier : `ΔNW = ΔFinanciers + ΔÉquité` | résidu **0,0 $** (mise de fonds → 100 % équité) |
+| **Symétrie per-conjoint** (permutation revenus 9k/6k ↔ 6k/9k) | `Δ impôt = 0,00 $` · `Δ patrimoine final = 0,00 $` |
+| Empilement progressif (`tax(140k) − tax(40k)` vs marginal plat) | 37 151 $ > 25 690 $ → **progressif**, pas plat |
+| Unités (mensuel vs annuel ; taux marginal ×100 **une** fois) | aucune double conversion |
+| **Robustesse** : 12 entrées dégénérées (revenu 0, inflation ±, rendement ±, REER négatif, salaire 6 M$) | **zéro NaN/Infinity** propagé |
+| Suite complète `npm run test` | **2073 / 2073 verts** (185 fichiers) |
+
+**Conclusion : l'argent n'est ni créé ni détruit dans le moteur.** La seule réserve est un écart de **reconstructabilité
+d'affichage** (`DetteTotale` vs hypothèque — finding `M5`, §8.2) qui **n'affecte PAS** la valeur du patrimoine net
+(`computeRawNetWorth` reste exact), mais empêche `Σ(actifs affichés) − DetteTotale` de retomber sur le NW pendant un prêt.
+
 ---
 
 ## 7. Référence fiscale — la source de vérité (extrait vérifié)
@@ -391,6 +420,20 @@ sont donc **surévalués** et **ne correspondent pas** à l'impôt réel de la p
 répartition *par tranche* est exacte ; le *total net* ne l'est pas. → **Fix** : tirer `totalTax`/`marginalRate`/
 `effectiveRate` de `calculateFiscalReport` (crédits inclus), ou libeller explicitement « avant crédits ». Effort M.
 
+**`[M5 / DETTE-TOTALE-MORTGAGE]`** · `services/projection/monthlyOutput.ts:236` · **[Certain — vérifié empiriquement
+sur 272 mois par `projection-validator`]** `DetteTotale = mortgageBalance + activeDebtsTotal + liquidDebt +
+smithManoeuvreDebt`, combiné à `Immobilier = realEstateEquity` (DÉJÀ net d'hypothèque, ligne 232). Conséquence : pendant
+TOUTE la durée d'un prêt, `Σ(actifs affichés) − DetteTotale = NW − mortgageBalance ≠ NW` (écart = solde hypothécaire,
+jusqu'à ~360 k$). **Ce n'est PAS de l'argent fantôme** — le `NetWorth` (`computeRawNetWorth`) est correct et conservé
+(l'hypothèque est nette dans l'équité, jamais re-soustraite). Mais c'est un **trou de reconstructabilité** : la promesse
+*« `NW = Σactifs − dettes affichées` »* (esprit d'`INV-1` + checklist CLAUDE.md) **ne tient pas sous hypothèque**, et
+`INV-1` ne l'attrape pas (il ne teste la reconstructabilité que sur le cas réno, **sans** hypothèque → il contourne
+l'écart). C'est le finding le plus proche du cœur — il touche la garantie « reconstructible » de Marc. → **Fix** : rendre
+l'affichage cohérent, soit **(a)** exposer la **valeur BRUTE** de la propriété + une ligne `mortgageBalance` séparée
+(`NW = brut + autres actifs − (hypothèque + autres dettes)` reconstruit), soit **(b)** un champ `DettesNonImmo` pour que
+`NW = Σactifs − DettesNonImmo` tienne toujours. ET **étendre `INV-1` au cas hypothèque** (il échouerait aujourd'hui →
+prouve le trou, méthode du test discriminant). Effort M.
+
 ### 8.3 LOW — filets de test, normalisation, hygiène
 
 | ID | `file:line` | Description | Statut | Fix |
@@ -449,8 +492,9 @@ contournements existants, (B) ajouter les garde-fous qui rendent un nouveau cont
 | 2 | `H2` AiAssistant FX en dur + sans dettes | S (réutilise du code pur) | l'IA cesse de raisonner sur un patrimoine faux |
 | 3 | `M3`→`M2`→`M1` DRY fiscal | XS→S | une seule vérité par constante (anti « une copie oublie de bouger ») |
 | 4 | `M4` viz fiscale sans crédits | M | fin de l'affichage « exact » qui ne l'est pas |
-| 5 | `SEC-1` parité anti-injection LLM | S | aligne 2 surfaces sur le patron déjà standardisé |
-| 6 | `L4` fréquence snapshot IA | S | dépense mensuelle juste envoyée à l'IA |
+| 5 | `M5` `DetteTotale` double-compte l'hypothèque | M | `Σactifs − DetteTotale` reconstruit le NW sous prêt (+ étendre `INV-1`) — touche la garantie « reconstructible » |
+| 6 | `SEC-1` parité anti-injection LLM | S | aligne 2 surfaces sur le patron déjà standardisé |
+| 7 | `L4` fréquence snapshot IA | S | dépense mensuelle juste envoyée à l'IA |
 
 > Ce lot est **money-display / périphérie** (aucun ne touche la conservation du moteur). Chaque fix passe néanmoins la
 > checklist money-critical (test discriminant, suite complète, panel) avant merge — **plan-first**.
@@ -490,7 +534,7 @@ contournements existants, (B) ajouter les garde-fous qui rendent un nouveau cont
 | Axe audité | Note | Justification |
 |---|---|---|
 | **Exactitude fiscale** | **A+** | `fiscal-accuracy` : **0 écart** code↔`FISCAL_REFERENCE` ; toutes les constantes en source unique (`utils/tax.ts` + `realEstate.ts`), datées+sourcées ; aucun chiffre fiscal en dur divergent dans les 42 sous-modules. |
-| **Conservation de l'argent (moteur)** | **A+** | 12 invariants exécutés au `commit-gate` ; `computeRawNetWorth` source unique (moteur + succession) ; résiduel de conservation ≈ 0 ; classes `#314`/`#315` fermées et prouvées discriminantes. |
+| **Conservation de l'argent (moteur)** | **A+** | résiduel-bilan **≤ 0,02 $** mesuré sur **~25 scénarios** (§6.3) ; 12 invariants au `commit-gate` ; `computeRawNetWorth` source unique (moteur + succession) ; symétrie per-conjoint exacte ; classes `#314`/`#315` fermées et prouvées discriminantes. *(Réserve : reconstructabilité d'affichage `M5` sous hypothèque — n'altère pas la valeur du NW.)* |
 | **Échecs silencieux** | **A** | `silent-failure-hunter` : **RAS money-critical** ; gardes `Number.isFinite` + replis explicites partout ; `logError` worker-safe ; 0 `catch{}` avalant un calcul. |
 | **Sécurité des données** | **A−** | chiffrement AES-256-GCM correct (clé non-extractible), secrets exclus des backups/exports (garanti au compilateur), scrub PII des logs ; **1 MEDIUM** (2 surfaces LLM sans anti-injection). |
 | **Cohérence périphérie (UI / IA / viz)** | **B** | c'est ici que vivent **tous** les findings : `H1`/`H2` (NW présent sans dettes / FX en dur), `M1-M4` (constantes fiscales en dur, viz sans crédits). Le moteur est juste ; ses **consommateurs secondaires** recalculent au lieu de lire la source unique. |
@@ -499,12 +543,14 @@ contournements existants, (B) ajouter les garde-fous qui rendent un nouveau cont
 ### 11.2 Verdict
 
 > **Le cœur money-critical de FinanceAI est de qualité AAA et digne de confiance.** Le moteur de projection conserve
-> l'argent (prouvé par invariant exécuté), la fiscalité est exacte au dollar et sourcée, et aucun échec silencieux ne
-> détruit de valeur. Les **6 findings actionnables** (`H1`,`H2`,`SEC-1`,`M1`-`M4`,`L4`) sont **tous à la périphérie**
-> — des affichages et contextes IA qui divergent du moteur faute d'utiliser la source unique. Aucun n'altère la
-> trajectoire patrimoniale calculée ; ils altèrent ce que l'utilisateur *voit* ou ce que l'IA *reçoit*. Le **lot §10.A**
-> les corrige (effort cumulé S-M), et le **lot §10.B** (surtout l'invariant « NW unique ») transforme la convention
-> « source unique » en vérification exécutée — c'est la réponse concrète au « plus jamais ».
+> l'argent (**prouvé empiriquement** : résiduel-bilan ≤ 0,02 $ sur ~25 scénarios, §6.3), la fiscalité est exacte au
+> dollar et sourcée (0 écart), et aucun échec silencieux ne détruit de valeur. Les findings actionnables (§8 :
+> `H1`,`H2`,`SEC-1`,`M1`-`M5`,`L1`-`L4`) sont **tous à la périphérie** — affichages, contextes IA, compteurs et viz qui
+> divergent du moteur faute d'utiliser la source unique. **Aucun n'altère la VALEUR du patrimoine net calculée** ; ils
+> altèrent ce que l'utilisateur *voit* (`M5` : sa reconstructabilité sous hypothèque), ce qu'un compteur *cumule*
+> (`M1`), ou ce que l'IA *reçoit* (`H2`). Le **lot §10.A** les corrige (effort cumulé S-M), et le **lot §10.B** (surtout
+> l'invariant « NW unique » + l'extension d'`INV-1` au cas hypothèque) transforme la convention « source unique » en
+> vérification exécutée — la réponse concrète au « plus jamais ».
 
 ### 11.3 Ce qui rend ce code résistant aux erreurs d'argent (à préserver)
 

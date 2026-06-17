@@ -31,18 +31,20 @@ describe('KPIStat', () => {
         expect(onClick).toHaveBeenCalledOnce();
     });
 
-    it('applies privacy-blur class when privacy=true', () => {
-        const { container } = render(<KPIStat label="L" value="123$" privacy />);
-        expect(container.querySelector('.privacy-blur')).not.toBeNull();
+    it('privacy=true mais mode discret INACTIF : la value reste visible', () => {
+        render(<KPIStat label="L" value="123$" privacy />);
+        expect(screen.getByText('123$')).toBeInTheDocument();
     });
 
-    it('[D6-SR] privacy + mode privé : la value est aria-hidden + sr-only « Montant masqué »', async () => {
+    it('[PRIV-DISCRET-DOM] privacy + mode discret : value masquée (•••, hors DOM) + sr-only', async () => {
         const { useFinanceStore } = await import('../../../store/useFinanceStore');
         const { act } = await import('@testing-library/react');
         act(() => { useFinanceStore.setState({ isPrivacyMode: true }); });
         try {
             const { container } = render(<KPIStat label="L" value="123$" privacy />);
-            expect(screen.getByText('123$').closest('[aria-hidden="true"]')).not.toBeNull();
+            // La vraie valeur sort du DOM (masquée par •••).
+            expect(screen.queryByText('123$')).toBeNull();
+            expect(container.querySelector('[aria-hidden="true"]')?.textContent).toBe('•••');
             expect(container.querySelector('.sr-only')?.textContent).toBe('Montant masqué');
         } finally {
             act(() => { useFinanceStore.setState({ isPrivacyMode: false }); });

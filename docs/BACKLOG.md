@@ -68,10 +68,12 @@
   Configuration) à **Retraite** (4 outils empilés `Retirement:199-230`) et **Profil** (long scroll). Plan-first.
 
 ### 🔒 Vie privée & sécurité
-- [ ] **[PRIV-DISCRET-DOM]** 🔧 ✅VRAI MEDIUM — le « mode discret » = `blur(8px)` CSS (`Layout.tsx:183-208`) : la
-  vraie valeur reste en clair dans le DOM (copier-coller/inspecteur/désactivation classe) et **le survol la
-  révèle** (`.privacy-blur:hover{filter:blur(0)}`). Masquer la VALEUR (`•••`), pas la flouter ; retirer le
-  hover-to-reveal. ⚠️ Recoupe `[D6-SR-2]` (≈69 `privacy-blur`) — angle nouveau = remplacement de valeur + hover.
+- [~] **[PRIV-DISCRET-DOM]** 🔧 ✅VRAI MEDIUM — **KEYSTONE LIVRÉ (2026-06-17, choix Marc = •••)** : les primitives
+  `PrivateAmount` + `PrivateBlock` (+ `KPIStat`) MASQUENT désormais la valeur par « ••• » → la vraie valeur n'est
+  **plus dans le DOM** en mode discret (fin de la fuite copier-coller/inspecteur/SR). **Survol-révèle RETIRÉ**
+  (`.privacy-blur:hover` supprimé de `Layout.tsx`). **RESTE** = `[A11Y-D6-SR-2]` ph.3 : migrer les ~69 spots BRUTS
+  `privacy-blur` restants → `PrivateAmount` (ils floutent encore, mais SANS survol-révèle) pour que TOUTE valeur
+  masquée sorte du DOM. Les graphes (axes/tooltips Recharts) floutent encore (à traiter avec `[A11Y-CHARTS]`).
 - [x] **[SEC-CSP-HEADER]** ✅ LOW (2026-06-17) — `frame-ancestors` retiré du `<meta>` CSP (`index.html`) :
   ignoré en meta par spec → ne servait qu'à émettre un warning console. Protection anti-clickjacking intacte
   via `vercel.json` (CSP HTTP `frame-ancestors 'none'` + `X-Frame-Options: DENY`, vérifié). Pas une faille.

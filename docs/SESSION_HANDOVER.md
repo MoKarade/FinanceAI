@@ -31,6 +31,15 @@
 > AI-NBA-FX (FX réels). **Reste LOW** : L1/L2 (tests-guards), L3 (🧭 décision alias `services/tax.ts`),
 > REEE-LITERALS (hygiène), M1 (⚠️ analyse double-comptage requise). Gates verts, ~2077 tests, 12 invariants conservation.
 >
+> **Session 2026-06-17 (suite) — Environnement d'agents + Accessibilité (Vague 2)** : mise en place de
+> l'environnement d'agents (14 agents projet + orchestrateur routé à CHAQUE message via hook `UserPromptSubmit`)
+> et de l'**Agent Control Center** (dashboard dev-only live `npm run acc`, auto-démarré au lancement d'un agent —
+> PR #325→#334), puis reprise du backlog. **Vague 2 (accessibilité) DÉMARRÉE** : `A11Y-TAXBRACKET` livré
+> (`TaxBracketViz` → `role="img"`+`aria-label`+contenu `aria-hidden`, `<ChartDataTable>` sr-only, `<h4>`→`<h3>`,
+> `ink-500`→`ink-400` contraste AA VÉRIFIÉ via `check-contrast`). Reste Vague 2 : `A11Y-INK500` (codemod CIBLÉ,
+> pas global — ink-500 = couleur disabled), `A11Y-D6-SR-2` ph.3, `A11Y-CHARTS` ph.2, `A11Y-MODAL-PRIVATE`,
+> `D6-HEADING`, `D6-KBD`.
+>
 > **Session 2026-06-16/17 — Durcissement MONEY-CONSERVATION (#314 #315)** : 2 bugs de conservation de
 > l'argent du moteur, trouvés via le résiduel `ΔNW − (épargne+croissance−impôt)`. **#314 [FISC-REER-WHT-DOUBLE]**
 > (« le 50 000 au fisc » de Marc) : la retenue REER/FERR était comptée 2× (au retrait ET en avril) →

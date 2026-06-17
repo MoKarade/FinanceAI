@@ -7,6 +7,7 @@ import React from 'react';
 import { Card } from './ui/Card';
 import { FED_BRACKETS, QC_BRACKETS, calculateFiscalReport } from '../utils/tax';
 import { formatCAD, formatPercent } from '../utils/format';
+import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 
 interface TaxBracketVizProps {
     annualGrossIncome: number;
@@ -48,19 +49,35 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
         breakdown: ReturnType<typeof computeTaxBreakdown>,
         netTax: number,
     ) => {
+        // [A11Y-TAXBRACKET] alternative texte (sr-only) au graphe de barres, opaque aux lecteurs d'écran (WCAG 1.1.1 A).
+        const ladderColumns: ChartDataColumn[] = [
+            { key: 'range', label: 'Tranche de revenu' },
+            { key: 'rate', label: 'Taux marginal' },
+        ];
+        const ladderRows = brackets.map((b: { rate: number; upTo: number }, i: number) => ({
+            range: `${formatCAD(i === 0 ? 0 : brackets[i - 1].upTo)} → ${b.upTo === Infinity ? '∞' : formatCAD(b.upTo)}`,
+            rate: `${(b.rate * 100).toFixed(1)} %`,
+        }));
         return (
             <div className="space-y-2">
                 <div className="flex items-baseline justify-between">
-                    <h4 className="text-meta font-bold text-white">{jurisdiction}</h4>
+                    <h3 className="text-meta font-bold text-white">{jurisdiction}</h3>
                     <div className="text-tiny font-mono">
                         <span className="text-danger-400" title="Impôt net (crédits inclus)">{formatCAD(netTax)}</span>
-                        <span className="text-ink-500 mx-1">·</span>
+                        <span className="text-ink-400 mx-1">·</span>
                         <span className="text-warning-400">{formatPercent(netRate(netTax) * 100, 2)} effectif</span>
-                        <span className="text-ink-500 mx-1">·</span>
+                        <span className="text-ink-400 mx-1">·</span>
                         <span className="text-info-400">{formatPercent(breakdown.marginalRate * 100, 0)} marginal</span>
                     </div>
                 </div>
-                <div className="relative h-8 bg-black/40 rounded overflow-hidden border border-white/10">
+                <div
+                    className="relative h-8 bg-black/40 rounded overflow-hidden border border-white/10"
+                    role="img"
+                    aria-label={`Graphique des tranches d'imposition ${jurisdiction}. Revenu brut ${formatCAD(annualGrossIncome)}, taux marginal ${(breakdown.marginalRate * 100).toFixed(0)} %. Détail dans le tableau suivant.`}
+                >
+                    {/* Contenu purement visuel : masqué au SR (décrit par aria-label + ChartDataTable sr-only).
+                        role="img" rend déjà les enfants présentationnels, mais aria-hidden lève toute ambiguïté inter-AT. */}
+                    <div className="absolute inset-0" aria-hidden="true">
                     {brackets.map((b: { rate: number; upTo: number }, i: number) => {
                         const min = i === 0 ? 0 : brackets[i - 1].upTo;
                         const max = b.upTo === Infinity ? maxIncome : b.upTo;
@@ -90,12 +107,19 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                     >
                         <div className="absolute -top-1 -translate-x-1/2 w-2 h-2 bg-yellow-400 rounded-full" />
                     </div>
+                    </div>
                 </div>
-                <div className="flex justify-between text-tiny text-ink-500">
+                <div className="flex justify-between text-tiny text-ink-400">
                     <span>0 $</span>
                     <span className="text-yellow-400 font-bold">{formatCAD(annualGrossIncome)}</span>
                     <span>{formatCAD(maxIncome)}</span>
                 </div>
+
+                <ChartDataTable
+                    caption={`${jurisdiction} — paliers d'imposition ; revenu brut ${formatCAD(annualGrossIncome)}, taux marginal ${(breakdown.marginalRate * 100).toFixed(0)} %, impôt net ${formatCAD(netTax)}.`}
+                    columns={ladderColumns}
+                    rows={ladderRows}
+                />
 
                 {/* Phase G.3 — Détail $ par palier consommé */}
                 <details className="text-tiny">
@@ -105,7 +129,7 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                     <div className="mt-1 space-y-0.5 pl-2 border-l border-white/10">
                         {breakdown.perBracket.map((b, i) => b.income > 0 && (
                             <div key={i} className="flex justify-between font-mono">
-                                <span className="text-ink-500">
+                                <span className="text-ink-400">
                                     {formatCAD(b.from)} → {b.to === Number.MAX_SAFE_INTEGER ? '∞' : formatCAD(b.to)}
                                 </span>
                                 <span>
@@ -144,7 +168,7 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                         <div className="text-base font-bold text-info-400 font-mono">{combinedMarginal.toFixed(1)}%</div>
                     </div>
                 </div>
-                <p className="text-tiny text-ink-500 italic">
+                <p className="text-tiny text-ink-400 italic">
                     Pour optimiser : préfère REER si revenu actuel &gt; revenu à la retraite ;
                     privilégie CELI sinon. Bracket creep = augmenter dans une tranche fait BONDIR le marginal.
                 </p>

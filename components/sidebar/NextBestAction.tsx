@@ -244,6 +244,9 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen = 
                 {lastFetch && actions.length > 0 && (
                     <div className="text-tiny text-ink-500 mt-4">Mis à jour il y a {Math.round((Date.now() - lastFetch) / 60000)} min</div>
                 )}
+                {actions.length > 0 && (
+                    <p className="text-tiny text-ink-500 mt-2 italic">Recommandations générées par IA — à valider avant d'agir.</p>
+                )}
             </div>
         );
     }

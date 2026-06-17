@@ -3,6 +3,9 @@
     "SessionStart": [
       { "hooks": [ { "type": "command", "command": "node scripts/hooks/session-brief.mjs", "timeout": 15 } ] }
     ],
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "node scripts/hooks/orchestrate.mjs", "timeout": 10 } ] }
+    ],
     "PostToolUse": [
       { "matcher": "Edit|Write", "hooks": [ { "type": "command", "command": "node scripts/hooks/auto-lint.mjs", "timeout": 120 } ] }
     ],

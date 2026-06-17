@@ -237,6 +237,16 @@ describe('[CONSERVATION] patrimoine net toujours reconstructible et conservé', 
         const reducing = shownAssets(afterBuy as ProjectionChartPoint) - num((afterBuy as ProjectionChartPoint).NetWorth);
         expect(reducing).toBeGreaterThan(0);
         expect(reducing).toBeLessThan(25_000);   // ordre du prêt auto, PAS de l'hypothèque (~300 k$)
+
+        // [M5 audit 2026-06-17] Reconstructabilité d'affichage SOUS hypothèque via DettesNonImmo :
+        // `NetWorth = Σ(actifs affichés) − DettesNonImmo` à l'euro près (Immobilier = équité nette).
+        const afterP = afterBuy as ProjectionChartPoint;
+        const reconNonImmo = shownAssets(afterP) - num((afterP as Record<string, unknown>).DettesNonImmo);
+        expect(Math.abs(reconNonImmo - num(afterP.NetWorth))).toBeLessThan(2);
+        // Discriminant : DetteTotale (qui INCLUT l'hypothèque) NE reconstruit PAS — l'écart = le solde
+        // hypothécaire (> 1 k$). C'est le trou M5 que DettesNonImmo comble.
+        const reconTotale = shownAssets(afterP) - num(afterP.DetteTotale);
+        expect(num(afterP.NetWorth) - reconTotale).toBeGreaterThan(1_000);
     });
 
     it('INV-10 — décaissement REER : la retenue à la source est un ACOMPTE, pas un coût double', () => {

@@ -262,10 +262,11 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   principal de dette/immo/héritage, hors `Income`/`Expenses` par design — audit 2026-06-17, faux positif vu jusqu'à 336 k$).
 - [ ] **Reconstructible** : sur tout point, `NetWorth = Σ(actifs affichés) − dettes affichées` (à l'euro près).
   Un patrimoine net affiché ne doit JAMAIS être inexpliqué par l'UI (le modal `FutureDetailModal` montre la dette).
-  ⚠️ **Trou connu (M5, audit 2026-06-17)** : `monthlyOutput.DetteTotale` INCLUT `mortgageBalance` alors qu'`Immobilier` =
-  équité (déjà nette) → SOUS HYPOTHÈQUE `Σactifs − DetteTotale = NW − mortgage ≠ NW`. La VALEUR du NW reste correcte
-  (`computeRawNetWorth`), mais la reconstructabilité d'affichage est rompue ET `INV-1` ne teste le cas QUE SANS hypothèque.
-  Fix : valeur BRUTE immo + ligne hypothèque séparée OU champ `DettesNonImmo` ; étendre `INV-1` au cas hypothèque.
+  ✅ **Reconstructabilité sous hypothèque RÉSOLUE (M5, audit 2026-06-17)** : utiliser `monthlyOutput.DettesNonImmo`
+  (= activeDebts + liquidDebt + smithManoeuvre, SANS hypothèque) → `NetWorth = Σactifs − DettesNonImmo` tient TOUJOURS,
+  même sous prêt (`Immobilier` = équité déjà nette). `DetteTotale` garde l'hypothèque (dette BRUTE affichée), donc
+  `Σactifs − DetteTotale = NW − mortgage` SOUS prêt → pour reconstruire le NW, utiliser `DettesNonImmo`, jamais `DetteTotale`.
+  Garde : INV-9 (reconstructabilité DettesNonImmo < 2 $ + discriminant DetteTotale).
 - [ ] **Pas de flux fantôme** : TOUT débit qui dépasse les actifs est porté en `liquidDebt` VISIBLE — un débit
   one-time (`subtractLiquid` : réno/véhicule/objectif) MAIS AUSSI le **shortfall mensuel** d'un retraité insolvable
   (FISC-BROKE-LIQUID-FLOOR 2026-06-17 : le coussin `criticalThreshold` protégé masquait un déficit non financé qui

@@ -20,6 +20,11 @@ test-results/
 playwright-report/
 blob-report/
 .playwright-mcp/
+
+# Agent Control Center — état runtime local (dev-only, jamais committé)
+.claude/status.json
+.claude/status.json.tmp
+.claude/agent-events.jsonl
 # Captures ad-hoc de tests navigateur à la racine (les vrais assets vivent dans public/).
 /*.png
 # Note : e2e/__snapshots__/ est inclus (baselines committées)

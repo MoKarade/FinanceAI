@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agent Control Center — FinanceAI</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <!-- Bandeau source : "example" = données NON réelles (non masquable). -->
+  <div id="source-banner" class="banner" hidden role="alert"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">◆</span>
+      <div>
+        <h1>Agent Control Center</h1>
+        <p class="sub">FinanceAI — 14 agents · dev-only</p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span id="verdict-pill" class="verdict pending">PENDING</span>
+      <span id="conn" class="conn" title="État de connexion au serveur ACC">● live</span>
+      <span id="updated" class="updated"></span>
+    </div>
+  </header>
+
+  <main aria-live="polite">
+    <!-- 1. Métriques globales -->
+    <section class="metrics" aria-label="Métriques globales">
+      <div class="metric"><span class="metric-val" id="m-active">0</span><span class="metric-lbl">actifs</span></div>
+      <div class="metric"><span class="metric-val" id="m-done">0</span><span class="metric-lbl">terminés</span></div>
+      <div class="metric"><span class="metric-val" id="m-pending">0</span><span class="metric-lbl">en attente</span></div>
+      <div class="metric crit"><span class="metric-val" id="m-crit">0</span><span class="metric-lbl">critiques</span></div>
+      <div class="metric warn"><span class="metric-val" id="m-warn">0</span><span class="metric-lbl">avertissements</span></div>
+      <div class="metric"><span class="metric-val" id="m-pct">0%</span><span class="metric-lbl">progression</span></div>
+    </section>
+
+    <!-- 2. Pipeline -->
+    <section aria-labelledby="h-pipeline">
+      <h2 id="h-pipeline">Pipeline</h2>
+      <ol id="pipeline" class="pipeline" aria-label="Étapes du pipeline d'agents"></ol>
+    </section>
+
+    <!-- 3. Agents -->
+    <section aria-labelledby="h-agents">
+      <h2 id="h-agents">Agents <span class="muted" id="agents-count"></span></h2>
+      <div id="agents" class="agents-grid"></div>
+    </section>
+
+    <div class="two-col">
+      <!-- 4. Risques (best-effort / v2 en live) -->
+      <section aria-labelledby="h-risks">
+        <h2 id="h-risks">Risques <span class="tag v2" id="risks-tag" hidden>best-effort · v2</span></h2>
+        <div id="risks" class="list"></div>
+      </section>
+      <!-- 5. Audits -->
+      <section aria-labelledby="h-audits">
+        <h2 id="h-audits">Audits <span class="tag v2" id="audits-tag" hidden>v2</span></h2>
+        <div id="audits" class="list"></div>
+      </section>
+    </div>
+
+    <!-- 6. GO / NO-GO + scores -->
+    <section aria-labelledby="h-decision">
+      <h2 id="h-decision">Verdict <span class="tag v2" id="scores-tag" hidden>best-effort · v3</span></h2>
+      <div id="decision" class="decision"></div>
+      <div id="scores" class="scores"></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    Données réelles via le hook <code>scripts/hooks/agent-status.mjs</code> (capté à chaque agent). Outil de dev, jamais shippé.
+  </footer>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

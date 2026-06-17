@@ -331,3 +331,42 @@ describe('[CONSERVATION] patrimoine net toujours reconstructible et conservé', 
         expect(num(last.NetWorth)).toBeLessThan(-10_000);
     });
 });
+
+describe('[monthlyOutput] contrat de sortie de buildMonthlyDataPoint (L2 audit 2026-06-17)', () => {
+    // monthlyOutput.ts était le seul sous-module de services/projection/ sans test dédié. On exerce
+    // tous ses champs de dette/équité sur un scénario RICHE (immo hypothéqué + prêt auto + retraité REER)
+    // plutôt qu'un mock à 102 champs — verrouille le mapping ctx→point (arrondi, cohérence, champs dérivés).
+    const cd = run(makeParams({
+        config: makeRetireeConfig(),
+        retirementGoal: { targetAge: 60, targetMonthlyIncome: 5000, governmentPension: 1200, lifeExpectancy: 90 },
+        liveCSVBalances: { ...NO_INVEST, REER: 400_000 },
+        calculatedStartingCash: 60_000,
+        debts: [{ id: 'd', name: 'Auto', balance: 20_000, interestRate: 6, minimumPayment: 400, category: 'Car' } as Debt],
+        realEstateGoals: [{
+            id: 're', name: 'Maison', isActive: true, purchaseDate: '2027-06-01', price: 400_000,
+            downPayment: 80_000, mortgageRate: 5, amortization: 25, totalClosingCosts: 6_000,
+            monthlyPayment: 2_100, unrecoverableMonthly: 900, isPrimaryResidence: true,
+        }],
+    })).chartData;
+
+    it('tous les champs $ affichés sont arrondis à 2 décimales (pas de float brut qui fuit)', () => {
+        const moneyFields = ['NetWorth', 'DetteTotale', 'DettesNonImmo', 'LiquidDebt', 'REER', 'CELI', 'Liquidites', 'NonReg', 'Immobilier'];
+        for (const p of cd) for (const k of moneyFields) {
+            const v = num((p as Record<string, unknown>)[k]);
+            expect(Math.abs(v - Number(v.toFixed(2))), `${k} non arrondi à 2 décimales`).toBeLessThan(1e-9);
+        }
+    });
+
+    it('cohérence des dettes : LiquidDebt ≤ DettesNonImmo ≤ DetteTotale', () => {
+        for (const p of cd) {
+            expect(num(p.LiquidDebt)).toBeLessThanOrEqual(num((p as Record<string, unknown>).DettesNonImmo as number) + 1);
+            expect(num((p as Record<string, unknown>).DettesNonImmo as number)).toBeLessThanOrEqual(num(p.DetteTotale) + 1);
+        }
+    });
+
+    it('diffNW (champ dérivé) = NetWorth(m) − NetWorth(m−1) à l\'euro près', () => {
+        for (let i = 1; i < cd.length; i++) {
+            expect(Math.abs(num(cd[i].diffNW) - (num(cd[i].NetWorth) - num(cd[i - 1].NetWorth)))).toBeLessThan(2);
+        }
+    });
+});

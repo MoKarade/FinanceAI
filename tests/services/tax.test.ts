@@ -50,9 +50,9 @@ import {
   RAMQ_RATE_SINGLE_BRACKET1,
   RAMQ_RATE_SINGLE_BRACKET2,
   RAMQ_BRACKET1_AMOUNT,
-} from '../../services/tax';
+} from '../../utils/tax';
 import { processDecemberTaxFiling } from '../../services/projection/taxDecember';
-import { calculateFiscalReport as calcReport, getMarginalRate as getMarg, calculateDividendTax as calcDiv } from '../../services/tax';
+import { calculateFiscalReport as calcReport, getMarginalRate as getMarg, calculateDividendTax as calcDiv } from '../../utils/tax';
 
 describe('calculateFiscalReport', () => {
   it('renvoie zero pour un revenu nul', () => {

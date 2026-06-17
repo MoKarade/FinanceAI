@@ -255,6 +255,10 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   globalNetWorth − placements` (donnait `cash`, devenu `cash−dettes` → mise de fonds immo amputée des dettes) —
   attrapé par `silent-failure-hunter`, PAS par les 2075 tests. Réflexe : `grep` TOUS les consommateurs et vérifier
   les DÉRIVATIONS algébriques (`X − Y`), pas seulement les sites d'affichage `netWorth={X}`.
+  ⚠️ Idem pour les TESTS qui asservissent la valeur RELATIVE d'un agrégat (M1 2026-06-17 : corriger le
+  double-comptage de `totalTaxesPaid` a cassé le test survivant qui supposait `surv < base` — vrai SEULEMENT
+  par l'artefact du bug). Au fix d'un agrégat : RE-valider les tests calibrés dessus (un test peut encoder la
+  valeur BUGGÉE), ne pas flipper l'assertion à l'aveugle.
 - **Secrets** : clés via l'UI seulement, jamais en dur/versionnées, exclues du localStorage/backups.
 
 ### Checklist VALIDATION FINANCIÈRE (money-critical — à passer avant tout merge touchant un calcul $)

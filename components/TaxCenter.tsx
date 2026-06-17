@@ -9,7 +9,7 @@ import { BudgetConfig, Asset } from '../types';
 // Phase 4 A4: bascule sur services/claude.ts (Sonnet 4.6 + Vision)
 import { analyzePayslip } from '../services/claude';
 import { logError } from '../services/errorLogger';
-import { calculateFiscalReport, calculateGrossFromNet } from '../services/tax';
+import { calculateFiscalReport, calculateGrossFromNet } from '../utils/tax';
 import { annualSalaryToMonthly } from '../utils/salary';
 
 interface TaxCenterProps {

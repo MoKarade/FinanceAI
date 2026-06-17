@@ -151,10 +151,11 @@
 - [ ] **[ENG-LOOP-ORDER-TEST]** (L1) 🔧 LOW — boucle mensuelle `services/projection.ts` : l'ordre croissance↔allocation est
   money-critical mais AUCUN invariant ne teste l'ORDRE (INV-2 attrape une fuite, pas une inversion qui conserve l'argent en
   faussant les rendements). Fix : test « ordre » discriminant (2 scénarios). Effort S.
-- [ ] **[ENG-MONTHLYOUTPUT-TEST]** (L2) 🔧 LOW — `services/projection/monthlyOutput.ts` (102 champs) : seul sous-module (1/31)
-  sans test dédié. Fix : test unitaire de mapping ctx→point. Effort S.
-- [ ] **[ENG-TAX-NS]** (L3) 🔧 LOW/🧭 — `services/tax.ts` = alias `export *` jamais résorbé → imports incohérents
-  (`services/tax` vs `utils/tax`). Décision Marc : finir la migration ou supprimer l'alias. Effort S.
+- [x] **[ENG-MONTHLYOUTPUT-TEST]** (L2) ✅ LOW (livré) — describe « monthlyOutput contrat de sortie » dans
+  `moneyConservation.test` : arrondi 2 décimales de tous les champs $, cohérence LiquidDebt≤DettesNonImmo≤DetteTotale,
+  diffNW = ΔNetWorth (champ dérivé). Scénario riche (immo+dette+retraité) plutôt qu'un mock à 102 champs.
+- [x] **[ENG-TAX-NS]** (L3) ✅ LOW (livré) — alias `services/tax.ts` SUPPRIMÉ ; les 5 importeurs (TaxCenter,
+  Retirement, MCP getTaxRoom, tests) standardisés sur `utils/tax` (source unique). Plus d'imports incohérents.
 - [ ] **[FISC-WELCOME-2026]** 🔧 LOW — `services/realEstate.ts:101-105` : seuils mutation « reste_qc » millésime **2025**
   (58 900/290 000/552 300) à réindexer 2026. ⚠️ exiger les valeurs officielles RQ 2026 (NE PAS deviner), corriger code+doc même PR.
 - [ ] **[REEE-LITERALS]** 🔧 LOW (hygiène) — `services/projection/childrenReee.ts` : SCEE/IQEE = littéraux non nommés

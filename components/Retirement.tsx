@@ -16,7 +16,7 @@ import { TaxBracketViz } from './TaxBracketViz';
 import { GoalSeekerCard } from './retirement/GoalSeekerCard';
 import { AssetLocationCard } from './retirement/AssetLocationCard';
 import { CurrentCapitalCard } from './retirement/CurrentCapitalCard';
-import { calculateGrossFromNet } from '../services/tax';
+import { calculateGrossFromNet } from '../utils/tax';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { useShallow } from 'zustand/shallow';
 import { ProjectionRequired } from './ui/ProjectionRequired';

@@ -232,7 +232,7 @@
   salariale selon cotisations REER/CELIAPP toujours NULLE (ordre d'exécution, `monthlyCalcs.ts:98-112`) +
   bug d'unité mensuel/annuel sous-jacent. Effet net ~0 (régularisé en avril) mais cashflow mensuel et
   solde d'avril faussés. Fix : calculer la retenue APRÈS la cascade d'allocation + unité annuelle.
-- [ ] **[A11Y-DANGER-300]** 🔧 LOW — `text-danger-300` n'existe PAS dans `tailwind.config.js` (palette
+- [x] **[A11Y-DANGER-300]** ✅ LOW (2026-06-17) — `text-danger-300` n'existait PAS dans `tailwind.config.js` (palette
   danger = 400/500/600 seulement) → couleur ignorée. 3 sites hors périmètre MONEY-PHANTOM :
   `ImportBankStatement.tsx:123`, `RealEstateAdviceCard.tsx:19`, `Transactions.tsx:439` (+ son hover no-op).
   Fix : → `text-danger-400`.
@@ -286,7 +286,7 @@
 
 ### Securite (deja connu / Marc)
 - [ ] **[SECU-O4]** 👤 — avant hebergement multi-utilisateurs : proxy backend pour la cle Anthropic (retirer `dangerouslyAllowBrowser`) + Finnhub en header serveur. Cf `A_FAIRE_MOI` O4.
-- [ ] **[BACKUP-PASSPHRASE]** 🔧 LOW — `BackupPanel.tsx:120,286,336` : aligner le seuil d'import sur `MIN_PASSPHRASE_LENGTH` (12).
+- [x] **[BACKUP-PASSPHRASE]** ✅ LOW (2026-06-17) — `BackupPanel.tsx` : TOUS les seuils (export/import, label, boutons) alignés sur `MIN_PASSPHRASE_LENGTH` (12, importé de `syncOrchestrator` comme `PassphraseGate`). Fin de l'incohérence export-12/import-8 (l'import acceptait des passphrases de 8).
 
 ---
 
@@ -306,7 +306,7 @@
 - [ ] **[PRIV-AI-MINIMIZE]** 🔧 LOW — `NextBestAction.tsx`/`claude.ts` : âge EXACT + dates ISO d'objectifs (`deadline`) transmis à Anthropic sans minimisation. Fix : arrondir l'âge à la décennie, tronquer `deadline` à l'année.
 
 ### Doc inline / a11y (code-reviewer, a11y-auditor)
-- [ ] **[DOC-L4-JSDOC]** 🔧 LOW — `financialSnapshot.ts:69-70` : JSDoc périmé décrit le comportement AVANT le fix L4 (« Σ targets bruts non normalisés ») → fausse spec, risque de re-régression. Fix : MAJ le JSDoc (normalisé via `computeMonthlyBudgetAggregates`, hors épargne).
+- [x] **[DOC-L4-JSDOC]** ✅ LOW (2026-06-17) — `financialSnapshot.ts` JSDoc corrigé : dépenses NORMALISÉES (`computeMonthlyBudgetAggregates`, hors épargne) + NW via `computePresentNetWorth`. Fin de la fausse spec post-L4.
 - [ ] **[A11Y-TAXBRACKET]** 🔧 MEDIUM — `TaxBracketViz.tsx` : (a) barres de tranches sans alternative lecteur d'écran (WCAG 1.1.1 A, `title` seul insuffisant) → `role="img"` + `<ChartDataTable>` sr-only ; (b) saut de titre h2→h4 (WCAG 1.3.1 A, l.54) → `<h3>` ; (c) labels d'axe `ink-500` 4,14:1 < 4,5 (WCAG 1.4.3 AA, l.94) → `ink-400` (cas spécifique de [A11Y-INK500]). (a/b préexistants, recensés ici.)
 
 ---

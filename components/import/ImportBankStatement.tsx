@@ -120,7 +120,7 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
             </div>
 
             {error && (
-                <div role="alert" className="text-meta text-danger-300 bg-danger-500/10 border border-danger-500/20 rounded-card p-2">{error}</div>
+                <div role="alert" className="text-meta text-danger-400 bg-danger-500/10 border border-danger-500/20 rounded-card p-2">{error}</div>
             )}
 
             {preview && (

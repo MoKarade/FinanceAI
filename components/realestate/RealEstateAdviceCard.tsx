@@ -16,7 +16,7 @@ const CATEGORY_META: Record<RealEstateAdvice['insights'][number]['category'], { 
     timing: { icon: 'clock', label: 'Timing', color: 'text-ink-200 border-white/10 bg-white/[0.03]' },
     leverage: { icon: 'budget', label: 'Levier', color: 'text-ink-200 border-white/10 bg-white/[0.03]' },
     tax: { icon: 'tax', label: 'Fiscal', color: 'text-ink-200 border-white/10 bg-white/[0.03]' },
-    risk: { icon: 'alert', label: 'Risque', color: 'text-danger-300 border-danger-500/25 bg-danger-500/5' },
+    risk: { icon: 'alert', label: 'Risque', color: 'text-danger-400 border-danger-500/25 bg-danger-500/5' },
 };
 
 interface RealEstateAdviceCardProps {

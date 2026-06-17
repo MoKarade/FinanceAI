@@ -290,6 +290,27 @@
 
 ---
 
+## 🔬 Panel agents — validation Phase 5 (2026-06-17, findings sur #322-324 + surfaces touchées)
+> Issus du test empirique du nouvel environnement d'agents (PR #325). Vrais findings sur du code DÉJÀ mergé
+> (l'audit money-critical précédent visait le $, pas la résilience SDK / l'UX / la vie privée / l'a11y).
+> Aucun CRITIQUE/ÉLEVÉ. Sévérité en tête.
+
+### IA / SDK Anthropic (ai-reviewer)
+- [ ] **[NBA-CACHE-STALE]** 🔧 MEDIUM — `NextBestAction.tsx` : le cache `nba:cache:v1` (TTL 1h) n'est invalidé QUE par `apiKey` (le `useEffect` ne dépend pas du snapshot) → après une modif de profil (salaire, dette, actif), les recommandations restent périmées jusqu'à 1h sans signal. Fix : clé de cache dérivée d'un hash léger du snapshot (netWorth arrondi + revenu + nb dettes) ou invalidation au changement.
+- [ ] **[AI-VISION-TIMEOUT]** 🔧 MEDIUM — `claude.ts` `analyzePayslip` (~767) et `analyzeBankStatement` (~850) appellent `client.messages.create` SANS timeout/AbortSignal (contrairement à `chat()` qui passe `makeTimeoutSignal`) → spinner infini si l'API est lente / le doc complexe. Fix : router via `chat()` ou appliquer `makeTimeoutSignal` (~60 s).
+- [ ] **[AI-SNAPSHOT-DUP]** 🔧 MEDIUM — `FinancialSnapshot` déclaré 2× (`claude.ts:385` + `financialSnapshot.ts:32`, parité « verrouillée par un test » comme seul filet) ET `NextBestAction.tsx` reconstruit son propre snapshot (useMemo) au lieu d'appeler `buildFinancialSnapshot` → 2 chemins de construction, dérive future silencieuse (le structural typing masque). Fix : source unique = `buildFinancialSnapshot` (NextBestAction l'appelle) + fusionner la déclaration de type.
+- [ ] **[AI-NBA-MODEL]** 🔧 LOW — `claude.ts:464` `getNextBestActions` : Haiku + `temperature:0.5` pour un raisonnement financier multi-contraintes affiché en sidebar (pastille « Priorité haute », `impact_estimate` verbatim). Fix : `temperature:0`, envisager Sonnet (caché 1h → coût négligeable), disclaimer UI « recommandation IA ». Bonus : `impact_estimate` sans `.max()` Zod (borner) ; `safeJsonValidate` utilise `schema.parse` dans un contexte « safe » → `safeParse`.
+
+### Vie privée — Loi 25 / RGPD (security-privacy)
+- [ ] **[PRIV-NBA-CACHE]** 🔧 MEDIUM — `NextBestAction.tsx` : le cache `nba:cache:v1` contient des conseils IA DÉRIVÉS de la situation financière (PII), en CLAIR dans localStorage (hors chiffrement IDB, hors balayage à l'effacement). Fix : chiffrer le cache (même méca IDB) OU réduire aux champs non dérivables OU purger `nba:cache:v1` à la déconnexion/effacement + l'inventorier.
+- [ ] **[PRIV-AI-MINIMIZE]** 🔧 LOW — `NextBestAction.tsx`/`claude.ts` : âge EXACT + dates ISO d'objectifs (`deadline`) transmis à Anthropic sans minimisation. Fix : arrondir l'âge à la décennie, tronquer `deadline` à l'année.
+
+### Doc inline / a11y (code-reviewer, a11y-auditor)
+- [ ] **[DOC-L4-JSDOC]** 🔧 LOW — `financialSnapshot.ts:69-70` : JSDoc périmé décrit le comportement AVANT le fix L4 (« Σ targets bruts non normalisés ») → fausse spec, risque de re-régression. Fix : MAJ le JSDoc (normalisé via `computeMonthlyBudgetAggregates`, hors épargne).
+- [ ] **[A11Y-TAXBRACKET]** 🔧 MEDIUM — `TaxBracketViz.tsx` : (a) barres de tranches sans alternative lecteur d'écran (WCAG 1.1.1 A, `title` seul insuffisant) → `role="img"` + `<ChartDataTable>` sr-only ; (b) saut de titre h2→h4 (WCAG 1.3.1 A, l.54) → `<h3>` ; (c) labels d'axe `ink-500` 4,14:1 < 4,5 (WCAG 1.4.3 AA, l.94) → `ink-400` (cas spécifique de [A11Y-INK500]). (a/b préexistants, recensés ici.)
+
+---
+
 ## 🧱 BRIEF MARC 2026-06-10 — plan séquencé en 4 phases (PRIORITAIRE)
 > Règles d'exécution (Marc) : **plan-first OBLIGATOIRE** sur les Phases 2, 3 et CHAQUE onglet de la
 > Phase 4 (plan court : UI proposée, fichiers touchés, données nécessaires → validation Marc → code).

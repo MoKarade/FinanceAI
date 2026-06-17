@@ -64,6 +64,12 @@ Doc détaillée dans `docs/`, qui fait foi.
   section pertinente, **dans le MÊME commit/PR** (jamais de réécriture, juste le delta). Rien appris →
   le dire (« push sans leçon ») au point de contrôle, pas de skip silencieux. ⚠️ Une leçon notée
   ailleurs (chat, mémoire harness) mais PAS portée ici = perdue à la prochaine session.
+- **TOUTE la doc concernée s'améliore à CHAQUE PUSH** (règle Marc 2026-06-17) : pas seulement CLAUDE.md —
+  AVANT le commit final, se demander « quels docs décrivent ce que je viens de changer ? » et mettre à jour
+  TOUS les documents touchés, dans la MÊME PR : `README` (features/usage), `docs/BACKLOG.md` (cocher les ID
+  livrés + découvertes), `docs/SESSION_HANDOVER.md` (état), `CHANGELOG.md`, et les docs TECHNIQUES concernés
+  (`PROJECTION.md`, `PROJECTION_OUTPUT_SCHEMA.md`, `FISCAL_REFERENCE.md`, `ARCHITECTURE.md`…). Un champ/calcul/
+  règle/valeur fiscale ajouté SANS sa doc = doc périmée qui trompe la prochaine session (la doc « fait foi »).
 - **Backlog tenu par Claude** (l'Action `backlog-autocheck` a été RETIRÉE — choix Marc 2026-06-09) :
   au moment du MERGE d'une PR, Claude coche lui-même les `[ID]` livrés dans `docs/BACKLOG.md`
   (dans la PR même ou la suivante), ajoute les découvertes, et route les blocages humains

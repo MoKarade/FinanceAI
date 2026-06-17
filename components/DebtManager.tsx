@@ -9,6 +9,7 @@ import { ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, A
 import { ConfirmModal } from './ui/ConfirmModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ZoomContainer } from './ui/ZoomContainer';
+import { formatCAD } from '../utils/format';
 
 interface DebtManagerProps {
     debts: Debt[];
@@ -78,7 +79,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
             <PageHeader
                 icon={<Icon name="debt" size={28} />}
                 title="Gestion de la Dette"
-                badge={<Badge variant={totalDebt > 0 ? 'danger' : 'success'} size="md">Total Dû: {totalDebt.toLocaleString()} $</Badge>}
+                badge={<Badge variant={totalDebt > 0 ? 'danger' : 'success'} size="md">Total Dû: {formatCAD(totalDebt)}</Badge>}
             />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-1 space-y-6">
@@ -100,8 +101,8 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                         <div className="space-y-3">
                             {debts.map(d => (
                                 <div key={d.id} className="p-3 bg-[#1a1a1a] rounded-xl border border-white/5 flex justify-between items-center group">
-                                    <div><div className="font-bold text-white text-body">{d.name}</div><div className="text-meta text-ink-500">{d.interestRate}% • Min: {d.minimumPayment}$</div></div>
-                                    <div className="text-right"><div className="font-mono text-danger-400 font-bold">{d.balance.toLocaleString()} $</div><button onClick={() => handleDelete(d.id)} className="text-tiny text-ink-500 hover:text-danger-500 opacity-0 group-hover:opacity-100 transition-opacity">Supprimer</button></div>
+                                    <div><div className="font-bold text-white text-body">{d.name}</div><div className="text-meta text-ink-500">{d.interestRate}% • Min: {formatCAD(d.minimumPayment)}</div></div>
+                                    <div className="text-right"><div className="font-mono text-danger-400 font-bold">{formatCAD(d.balance)}</div><button onClick={() => handleDelete(d.id)} className="text-tiny text-ink-500 hover:text-danger-500 opacity-0 group-hover:opacity-100 transition-opacity">Supprimer</button></div>
                                 </div>
                             ))}
                             {debts.length === 0 && (
@@ -117,9 +118,9 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                     <Card title="Remboursement">
                         <div className="space-y-4">
                             <div>
-                                <label className="flex justify-between text-meta text-ink-200 mb-1"><span>Paiement Mensuel Supplémentaire</span><span className="font-bold text-green-400">{extraPayment}$</span></label>
+                                <label className="flex justify-between text-meta text-ink-200 mb-1"><span>Paiement Mensuel Supplémentaire</span><span className="font-bold text-green-400">{formatCAD(extraPayment)}</span></label>
                                 <input type="range" aria-label="Paiement Mensuel Supplémentaire" min="0" max="2000" step="50" value={extraPayment} onChange={e => setExtraPayment(Number(e.target.value))} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-green-500" />
-                                <div className="text-tiny text-ink-500 mt-1">En plus des minimums ({totalMinPayment}$). Total payé: <strong className="text-white">{(totalMinPayment + extraPayment).toLocaleString()}$/mois</strong>.</div>
+                                <div className="text-tiny text-ink-500 mt-1">En plus des minimums ({formatCAD(totalMinPayment)}). Total payé: <strong className="text-white">{formatCAD(totalMinPayment + extraPayment)}/mois</strong>.</div>
                             </div>
                             <div className="p-3 bg-white/5 rounded border border-white/10">
                                 <div className="flex justify-between items-center mb-1"><span className="text-meta text-ink-300">Liberté dans</span><span className="text-body font-bold text-white">{(simulation.months / 12).toFixed(1)} ans</span></div>
@@ -137,7 +138,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                     <XAxis dataKey="month" stroke="#666" tick={{fontSize: 10}} tickFormatter={(m) => `M${m}`} />
                                     <YAxis stroke="#666" tick={{fontSize: 10}} width={40} tickFormatter={(val) => `${(val/1000).toFixed(0)}k`} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => val.toLocaleString() + ' $'} />
+                                    <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => formatCAD(val)} />
                                     <Area type="monotone" dataKey="balance" stroke="#ef4444" fill="url(#colorDebt)" name="Solde Restant" strokeWidth={3} />
                                 </AreaChart>
                             </ResponsiveContainer>
@@ -147,7 +148,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                         <span className="text-2xl">ℹ️</span>
                         <div>
                             <h4 className="font-bold text-blue-300 text-body">Impact sur le Futur</h4>
-                            <p className="text-meta text-ink-200 mt-1">Ces dettes sont automatiquement prises en compte dans l'onglet <strong>Futur</strong>. Le simulateur déduit les paiements mensuels ({totalMinPayment + extraPayment}$) de vos liquidités jusqu'à ce que chaque dette soit remboursée.</p>
+                            <p className="text-meta text-ink-200 mt-1">Ces dettes sont automatiquement prises en compte dans l'onglet <strong>Futur</strong>. Le simulateur déduit les paiements mensuels ({formatCAD(totalMinPayment + extraPayment)}) de vos liquidités jusqu'à ce que chaque dette soit remboursée.</p>
                         </div>
                     </div>
                 </div>

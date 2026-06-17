@@ -30,4 +30,18 @@ describe('DebtManager — smoke (CA-04)', () => {
         // [A11Y-SLIDERS] le slider de paiement supplémentaire porte un nom accessible.
         expect(screen.getByRole('slider', { name: 'Paiement Mensuel Supplémentaire' })).toBeInTheDocument();
     });
+
+    // [FMT-CURRENCY-UNIFY] garde : aucun montant rendu en float brut « 1100$ » (sans
+    // séparateur de milliers) — tout passe par formatCAD (fr-CA : « 1 100 $ »).
+    it('formate les montants en fr-CA (pas de float brut collé au $)', () => {
+        const debts: Debt[] = [
+            { id: 'd1', name: 'Prêt auto', balance: 37000, interestRate: 6.5, minimumPayment: 1100, category: 'Car' },
+        ];
+        const { container } = render(<DebtManager debts={debts} setDebts={vi.fn()} />);
+        const text = container.textContent ?? '';
+        // 4 chiffres ou plus collés à « $ » = formatage manuel oublié (ex. « 1100$ », « 37000$ »).
+        expect(text).not.toMatch(/\d{4,}\$/);
+        // La devise est bien présente (montants formatés).
+        expect(text).toContain('$');
+    });
 });

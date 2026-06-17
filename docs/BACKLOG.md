@@ -38,6 +38,10 @@
   `displayTarget`=`target/12` non arrondi), Dettes (`DebtManager` 81/103/104/120/122/139/140/150). Liste
   complète des lignes dans `docs/AUDIT_UX_2026-06-17.md`. **Critère** : `grep` = 0 montant formaté à la main
   hors helper ; test de rendu (aucun `$` précédé d'un `.`/`,` en-US ni >2 décimales). Effort S–M.
+  **Part 1 LIVRÉE** : `DebtManager` (8 sites) + `BudgetGroupTable` (10 sites, dont `746.667$`=target/12) →
+  `formatCAD`/`formatSigned` + garde test discriminante (`/\d{4,}\$/` rejeté, prouvé via `git stash`).
+  **Part 2 RESTE** : `TaxCenter`, `Budget.tsx`, + `Retirement`/`LifeEvents`/`Investments`/`Planning`/
+  `AiAssistant`/`DividendPanel`/`Transactions`/`Travel`.
 - [ ] **[LABEL-NW-SUCCESSORAL]** 🧭 🔧 ◑PARTIEL MEDIUM — l'écart « projection Budget ≠ reste » est un **libellé**,
   pas un calcul : Budget affiche `estateNetWorth` (patrimoine **successoral**, net d'impôt au décès + NPV rentes,
   `estateCalculation.ts:195`) vs `chartData[dernier].NetWorth` ailleurs. Source unique RESPECTÉE. 🧭 Décision :

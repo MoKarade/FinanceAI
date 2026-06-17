@@ -3,6 +3,7 @@ import { BudgetCategory } from '../../types';
 import { Icon } from '../ui/Icon';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip } from 'recharts';
 import { LineChart, Line, YAxis as LYAxis } from 'recharts';
+import { formatCAD, formatSigned } from '../../utils/format';
 
 type TimeView = 'MONTH' | 'QUARTER' | 'YEAR' | 'CUSTOM';
 
@@ -75,9 +76,9 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                 </div>
                 <div className="text-meta font-mono">
                     <span className={groupTotalSpent > groupTotalTarget ? 'text-danger-400' : 'opacity-80'}>
-                        {groupTotalSpent.toLocaleString()}$
+                        {formatCAD(groupTotalSpent)}
                     </span>
-                    <span className="opacity-50"> / {groupTotalTarget.toLocaleString()}$</span>
+                    <span className="opacity-50"> / {formatCAD(groupTotalTarget)}</span>
                 </div>
             </div>
 
@@ -114,16 +115,16 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
 
                             let splitDisplay = '';
                             if (isSolo) {
-                                splitDisplay = `${userNames[0]}: ${displayTarget.toFixed(0)}$`;
+                                splitDisplay = `${userNames[0]}: ${formatCAD(displayTarget)}`;
                             } else {
                                 if (item.type === 'Commun') {
                                     const u1Share = displayTarget * splitRatio1;
                                     const u2Share = displayTarget * (1 - splitRatio1);
-                                    splitDisplay = `${userNames[0].substring(0, 3)}:${u1Share.toFixed(0)}$ / ${userNames[1].substring(0, 3)}:${u2Share.toFixed(0)}$`;
+                                    splitDisplay = `${userNames[0].substring(0, 3)}:${formatCAD(u1Share)} / ${userNames[1].substring(0, 3)}:${formatCAD(u2Share)}`;
                                 } else if (item.type === 'Perso 1') {
-                                    splitDisplay = `${userNames[0]}: ${displayTarget.toFixed(0)}$`;
+                                    splitDisplay = `${userNames[0]}: ${formatCAD(displayTarget)}`;
                                 } else {
-                                    splitDisplay = `${userNames[1]}: ${displayTarget.toFixed(0)}$`;
+                                    splitDisplay = `${userNames[1]}: ${formatCAD(displayTarget)}`;
                                 }
                             }
 
@@ -183,7 +184,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                         {item.frequency === 'Monthly' ? '/m' : item.frequency === 'Yearly' ? '/an' : ''}
                                                     </span>
                                                 </div>
-                                                <span className="text-meta font-bold text-ink-300 tabular-nums">= {displayTarget.toLocaleString()}$</span>
+                                                <span className="text-meta font-bold text-ink-300 tabular-nums">= {formatCAD(displayTarget)}</span>
                                             </div>
                                         </td>
                                         <td className="p-3 text-right">
@@ -194,7 +195,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                         </td>
                                         <td className="p-3 text-right">
                                             <div className={`font-mono font-bold ${isOver ? 'text-danger-400' : 'text-ink-100'} privacy-blur`}>
-                                                {spent.toLocaleString()}$
+                                                {formatCAD(spent)}
                                             </div>
                                             {timeView === 'MONTH' && displayTarget > 0 && (
                                                 <div className="w-full bg-surfaceHighlight h-1.5 rounded-full mt-1 overflow-hidden relative">
@@ -212,7 +213,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                         </td>
                                         <td className="p-3 text-right hidden md:table-cell">
                                             <div className={`font-mono ${remaining < 0 ? 'text-danger-500' : 'text-green-500'} opacity-80 privacy-blur`}>
-                                                {remaining > 0 ? '+' : ''}{remaining.toLocaleString()}$
+                                                {formatSigned(remaining, { withCurrency: true })}
                                             </div>
                                         </td>
                                         <td className="p-3 text-center">
@@ -241,7 +242,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                                 <Tooltip
                                                                     cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                                                                     contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }}
-                                                                    formatter={(val: number) => val.toFixed(0) + ' $'}
+                                                                    formatter={(val: number) => formatCAD(val)}
                                                                 />
                                                                 <ReferenceLine
                                                                     y={displayTarget}

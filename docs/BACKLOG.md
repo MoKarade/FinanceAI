@@ -53,8 +53,8 @@
   + Config, `Layout.tsx:67-106`) ; recouvrements (Futur/Retraite/Prochaine-action = même projection) ; 2-4
   coquilles par persona. Cible : ~6 dest. (Accueil · Budget · Patrimoine · Futur · Impôts&Docs · Réglages).
   Gros chantier nav (routes, deep-links, tests) → **plan-first + OK Marc**.
-- [ ] **[IA-DEDUP-COMPLETUDE]** 🔧 ✅VÉRIDIQUE LOW — `<SetupHub />` rendu 2× (`Settings.tsx:166` + `Profile.tsx:34`).
-  Le garder à un seul endroit (Configuration).
+- [x] **[IA-DEDUP-COMPLETUDE]** ✅ LOW (2026-06-17) — `<SetupHub />` retiré de `Profile.tsx` ; reste UNIQUEMENT
+  dans Configuration (`Settings.tsx:166`). Profil = uniquement les champs à remplir (réversible : 1 import + 1 balise).
 - [ ] **[IA-ASSETLOC-PERSIST]** 🔧 ✅VÉRIDIQUE MEDIUM — l'éditeur de holdings de l'Asset Location Optimizer
   (`AssetLocationCard.tsx:138-195`) vit dans un `useState` LOCAL non persisté → **éditions perdues
   silencieusement** (divergence + silent-failure). Le rendre lecture-seule (lien « éditer dans Investissements »)

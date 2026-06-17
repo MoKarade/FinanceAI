@@ -4,6 +4,7 @@
 // Cycle 11 (processDecemberTaxFiling): régularisation annuelle d'impôt.
 
 import { OAS_CLAWBACK_THRESHOLD_2026, OAS_CLAWBACK_RATE, CAPITAL_GAINS_INCLUSION_STANDARD, firstCombinedBracketTopForYear, calculateRamqPremium, calculateFSSPremium, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
+import { NONREG_DIVIDEND_DISTRIBUTION_SHARE } from './helpers';
 
 /**
  * V31 — OAS Clawback prévu (calcul annuel en décembre).
@@ -703,7 +704,7 @@ export function processDecemberTaxFiling(
     // dividendes ADMISSIBLES chaque année (réf FISCAL_REFERENCE §3). Majoration +38 % et CID
     // (15,0198 % féd + 11,7 % QC du majoré) appliqués dans calculateDividendTax — source unique.
     if (ctx.nonReg > 0) {
-        const annualDiv = ctx.nonReg * (ctx.baseNonRegRate / 100) * 0.30;
+        const annualDiv = ctx.nonReg * (ctx.baseNonRegRate / 100) * NONREG_DIVIDEND_DISTRIBUTION_SHARE;
         // FA-3a : SRG exclu de l'assiette d'empilement (non imposable).
         // FA-8 (2026-06-11) : MÊME assiette de BASE que l'empilement des gains (§2 ci-dessus) —
         // les retraits REER/FERR de l'année (`accRetraitsReerYear`) font partie du revenu sur

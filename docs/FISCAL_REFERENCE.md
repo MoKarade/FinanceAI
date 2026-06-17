@@ -3,6 +3,9 @@
 > **Statut** : source de vérité des constantes fiscales de FinanceAI.
 > **Année de base** : **2026**. **Dernière vérification** : 2026-06-11 (FA-8 : FSS réindexé 2026,
 > retenue US sourcée, clawback PSV nommé+cap réel, prorata RRQ/PSV et split 65/35 documentés).
+> **Ré-audité 2026-06-17** (agent `fiscal-accuracy`, audit complet `docs/AUDIT_FINANCIER_2026-06-17.md`) :
+> **0 écart code↔doc**, source unique respectée (zéro chiffre fiscal en dur divergent). Seule réserve LOW :
+> seuils mutation « reste_qc » millésime 2025 à réindexer (cf §8 + BACKLOG `[FISC-WELCOME-2026]`).
 > **Règle CLAUDE.md** : toute constante fiscale du code DOIT correspondre à ce doc,
 > daté + sourcé. Aucun chiffre fiscal en dur non sourcé. Audit : agent `fiscal-accuracy`.
 >

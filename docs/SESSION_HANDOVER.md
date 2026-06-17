@@ -18,6 +18,19 @@
 > phase suivante sans OK explicite de Marc** ; Q1/Q2 à poser (cf `A_FAIRE_MOI` O6) ; handover à jour
 > après chaque phase.
 >
+> **Session 2026-06-17 — AUDIT FINANCIER COMPLET + corrections (#318→#323)** : audit exhaustif du moteur
+> (panel 5 agents + vérif empirique → rapport AAA `docs/AUDIT_FINANCIER_2026-06-17.md`, 5 diagrammes Mermaid).
+> Verdict : **cœur money-critical AAA** (conservation prouvée ≤ 0,02 $ sur ~25 scénarios, fiscalité 0 écart,
+> 0 échec silencieux) ; TOUS les findings PÉRIPHÉRIQUES (consommateurs UI/IA qui contournaient la source unique).
+> Commande récurrente **`/audit-financier`** créée (cadence trimestre + release + période d'impôts). Corrigé :
+> **#319** H1/H2 (NW présent UI/IA omettait les dettes + FX en dur → `computePresentNetWorth` SOURCE UNIQUE +
+> garde keystone parité ; régression `availableCash` attrapée par le panel) · **#320** M2/M3 (DRY dividende/
+> inclusion) · **#321** SEC-1 (anti-injection 2 surfaces LLM) · **#322** M5 (`DettesNonImmo` → NW reconstructible
+> sous hypothèque, INV-9 étendu) + L4 (snapshot fréquence) + section BACKLOG « Durcissement structurel »
+> (11 tickets Marc validés : 2 déjà faits, 3 partiels, 5 nouveaux) · **#323** M4 (viz fiscale NETTE de crédits) +
+> AI-NBA-FX (FX réels). **Reste LOW** : L1/L2 (tests-guards), L3 (🧭 décision alias `services/tax.ts`),
+> REEE-LITERALS (hygiène), M1 (⚠️ analyse double-comptage requise). Gates verts, ~2077 tests, 12 invariants conservation.
+>
 > **Session 2026-06-16/17 — Durcissement MONEY-CONSERVATION (#314 #315)** : 2 bugs de conservation de
 > l'argent du moteur, trouvés via le résiduel `ΔNW − (épargne+croissance−impôt)`. **#314 [FISC-REER-WHT-DOUBLE]**
 > (« le 50 000 au fisc » de Marc) : la retenue REER/FERR était comptée 2× (au retrait ET en avril) →

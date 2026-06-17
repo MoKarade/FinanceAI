@@ -6,6 +6,28 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Audit financier complet (AAA) + corrections périphériques] — 2026-06-17
+
+> Audit exhaustif du moteur (panel 5 agents + vérification empirique) → `docs/AUDIT_FINANCIER_2026-06-17.md`.
+> Verdict : cœur money-critical AAA (conservation prouvée ≤ 0,02 $ sur ~25 scénarios, fiscalité 0 écart,
+> 0 échec silencieux). Tous les findings PÉRIPHÉRIQUES (UI/IA contournant la source unique). Commande
+> récurrente `/audit-financier` ajoutée (cadence trimestre + release + impôts).
+
+### Corrigé (périphérie — aucun n'altère la VALEUR du patrimoine net)
+- **Patrimoine net PRÉSENT = source unique** (`computePresentNetWorth`) : le Dashboard (`useDerivedFinancials`)
+  et l'IA (`AiAssistant`, FX en dur 1.38/1.50) OMETTAIENT les dettes → NW gonflé vs moteur. Garde keystone
+  (parité inter-surfaces) + correction de la régression `availableCash` (mise de fonds immo). (#319)
+- **Reconstructabilité sous hypothèque** : nouveau champ `DettesNonImmo` (dettes hors hypothèque) →
+  `NetWorth = Σactifs − DettesNonImmo` tient toujours ; INV-9 étendu. (#322, M5)
+- **Anti-injection LLM** : `getCoupleOptimizationStrategies` + `getNextBestActions` neutralisent les noms
+  utilisateur + isolent les données (`<DONNEES>`), parité avec les autres surfaces. (#321, SEC-1)
+- **Viz fiscale NETTE** : `TaxBracketViz` affiche l'impôt net (crédits inclus, via `calculateFiscalReport`)
+  au lieu d'un total brut « exact » trompeur. (#323, M4)
+- **DRY + cohérence** : constantes `NONREG_DIVIDEND_DISTRIBUTION_SHARE` / `CAPITAL_GAINS_INCLUSION_STANDARD`
+  (#320), dépenses snapshot normalisées par fréquence (#322 L4), FX réels dans NextBestAction (#323 AI-NBA-FX).
+
+---
+
 ## [unreleased — Money-critical : patrimoine net = dettes soustraites + découvert VISIBLE] — 2026-06-16
 
 > Bug rapporté par Marc : « patrimoine net -193 398 $ avec une variation mensuelle de -208 633 $ »

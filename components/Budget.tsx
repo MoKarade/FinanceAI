@@ -15,7 +15,7 @@ import { Icon } from './ui/Icon';
 import { Pill } from './ui/Pill';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
-import { formatCAD } from '../utils/format';
+import { formatCAD, formatSigned } from '../utils/format';
 import { DualKPIStat } from './budget/DualKPIStat';
 import { calculateFiscalReport } from '../utils/tax';
 
@@ -325,7 +325,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             // Alerte seulement au-delà de 10% de dépassement (tolérance anti-bruit
             // pour les petits écarts normaux).
             if (target > 0 && spent > target * 1.1) {
-                list.push(`${item.name} (${(spent - target).toFixed(0)}$ dépassé)`);
+                list.push(`${item.name} (${formatCAD(spent - target)} dépassé)`);
             }
         });
         return list;
@@ -481,7 +481,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 badge={
                     <Badge variant={totalNetIncomeDisplay >= totalBudgetDisplay ? 'success' : 'danger'} size="md">
                         {totalNetIncomeDisplay >= totalBudgetDisplay ? 'Excédentaire' : 'Déficitaire'}
-                        <span className="ml-1 tabular-nums">{(totalNetIncomeDisplay - totalBudgetDisplay).toLocaleString()}$</span>
+                        <span className="ml-1 tabular-nums">{formatCAD(totalNetIncomeDisplay - totalBudgetDisplay)}</span>
                     </Badge>
                 }
                 actions={
@@ -767,17 +767,17 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                 </div>
 
                                 <div className="relative h-4 w-full bg-black/50 rounded-full overflow-hidden flex">
-                                    <div className="h-full bg-indigo-600" style={{ width: `${(coupleAnalysis.user1ShareCommon / coupleAnalysis.user1Income) * 100}%` }} title={`Commun: ${coupleAnalysis.user1ShareCommon.toFixed(0)}$`}></div>
-                                    <div className="h-full bg-indigo-400" style={{ width: `${(coupleAnalysis.user1Personal / coupleAnalysis.user1Income) * 100}%` }} title={`Perso: ${coupleAnalysis.user1Personal.toFixed(0)}$`}></div>
-                                    <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${coupleAnalysis.user1Savings.toFixed(0)}$`}></div>
+                                    <div className="h-full bg-indigo-600" style={{ width: `${(coupleAnalysis.user1ShareCommon / coupleAnalysis.user1Income) * 100}%` }} title={`Commun: ${formatCAD(coupleAnalysis.user1ShareCommon)}`}></div>
+                                    <div className="h-full bg-indigo-400" style={{ width: `${(coupleAnalysis.user1Personal / coupleAnalysis.user1Income) * 100}%` }} title={`Perso: ${formatCAD(coupleAnalysis.user1Personal)}`}></div>
+                                    <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${formatCAD(coupleAnalysis.user1Savings)}`}></div>
                                 </div>
 
                                 <div className="flex justify-between text-tiny text-ink-300 px-1">
                                     <div className="flex flex-col">
-                                        <span>Sorties: <span className="text-white font-bold">{coupleAnalysis.user1Contribution.toLocaleString()}$</span></span>
+                                        <span>Sorties: <span className="text-white font-bold">{formatCAD(coupleAnalysis.user1Contribution)}</span></span>
                                     </div>
                                     <div className="flex flex-col items-end">
-                                        <span>Épargne: <span className="text-green-400 font-bold">{coupleAnalysis.user1Savings.toLocaleString()}$</span></span>
+                                        <span>Épargne: <span className="text-green-400 font-bold">{formatCAD(coupleAnalysis.user1Savings)}</span></span>
                                     </div>
                                 </div>
                             </div>
@@ -798,17 +798,17 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     </div>
 
                                     <div className="relative h-4 w-full bg-black/50 rounded-full overflow-hidden flex">
-                                        <div className="h-full bg-pink-600" style={{ width: `${(coupleAnalysis.user2ShareCommon / coupleAnalysis.user2Income) * 100}%` }} title={`Commun: ${coupleAnalysis.user2ShareCommon.toFixed(0)}$`}></div>
-                                        <div className="h-full bg-pink-400" style={{ width: `${(coupleAnalysis.user2Personal / coupleAnalysis.user2Income) * 100}%` }} title={`Perso: ${coupleAnalysis.user2Personal.toFixed(0)}$`}></div>
-                                        <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${coupleAnalysis.user2Savings.toFixed(0)}$`}></div>
+                                        <div className="h-full bg-pink-600" style={{ width: `${(coupleAnalysis.user2ShareCommon / coupleAnalysis.user2Income) * 100}%` }} title={`Commun: ${formatCAD(coupleAnalysis.user2ShareCommon)}`}></div>
+                                        <div className="h-full bg-pink-400" style={{ width: `${(coupleAnalysis.user2Personal / coupleAnalysis.user2Income) * 100}%` }} title={`Perso: ${formatCAD(coupleAnalysis.user2Personal)}`}></div>
+                                        <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${formatCAD(coupleAnalysis.user2Savings)}`}></div>
                                     </div>
 
                                     <div className="flex justify-between text-tiny text-ink-300 px-1">
                                         <div className="flex flex-col">
-                                            <span>Sorties: <span className="text-white font-bold">{coupleAnalysis.user2Contribution.toLocaleString()}$</span></span>
+                                            <span>Sorties: <span className="text-white font-bold">{formatCAD(coupleAnalysis.user2Contribution)}</span></span>
                                         </div>
                                         <div className="flex flex-col items-end">
-                                            <span>Épargne: <span className="text-green-400 font-bold">{coupleAnalysis.user2Savings.toLocaleString()}$</span></span>
+                                            <span>Épargne: <span className="text-green-400 font-bold">{formatCAD(coupleAnalysis.user2Savings)}</span></span>
                                         </div>
                                     </div>
                                 </div>
@@ -816,7 +816,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
                             <div className="pt-2 text-center bg-green-500/10 rounded-lg py-2 border border-green-500/20">
                                 <PrivateAmount as="div" className="text-2xl font-bold text-green-400">
-                                    +{coupleAnalysis.totalSavings.toLocaleString()} $
+                                    {formatSigned(coupleAnalysis.totalSavings, { withCurrency: true })}
                                 </PrivateAmount>
                                 <div className="text-tiny text-green-200">Potentiel d'épargne combiné (Net)</div>
                             </div>
@@ -848,7 +848,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                                 ))}
                                             </Pie>
                                             <Legend verticalAlign="bottom" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-                                            <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => val.toLocaleString() + '$'} />
+                                            <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => formatCAD(val)} />
                                         </PieChart>
                                     </ResponsiveContainer>
                                 </div>

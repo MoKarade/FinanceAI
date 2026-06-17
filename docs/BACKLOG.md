@@ -31,17 +31,14 @@
 > archi de l'info, mode discret. ⚠️ Verdict en tête de chaque item. 🧭 = décision Marc.
 
 ### 🔴 Présentation money-critical (valeurs justes, mais trompeuses)
-- [ ] **[FMT-CURRENCY-UNIFY]** 🔧 ✅VÉRIDIQUE MEDIUM — **75 sites** de formatage `$` manuel hors `formatCAD`
-  (`utils/format.ts:41`) sur 12 fichiers → floats en-US (`164,400`) / sans séparateur (`1100$`) / décimales
-  variables (`746.667$`), **incohérence sur la même page** (Dettes `37,000 $` vs `1100$`). Router chaque site
-  par `formatCAD()`. Pages pires : Impôts (`TaxCenter` l.254-436), Budget (`BudgetGroupTable:186`
-  `displayTarget`=`target/12` non arrondi), Dettes (`DebtManager` 81/103/104/120/122/139/140/150). Liste
-  complète des lignes dans `docs/AUDIT_UX_2026-06-17.md`. **Critère** : `grep` = 0 montant formaté à la main
-  hors helper ; test de rendu (aucun `$` précédé d'un `.`/`,` en-US ni >2 décimales). Effort S–M.
-  **Part 1 LIVRÉE** : `DebtManager` (8 sites) + `BudgetGroupTable` (10 sites, dont `746.667$`=target/12) →
-  `formatCAD`/`formatSigned` + garde test discriminante (`/\d{4,}\$/` rejeté, prouvé via `git stash`).
-  **Part 2 RESTE** : `TaxCenter`, `Budget.tsx`, + `Retirement`/`LifeEvents`/`Investments`/`Planning`/
-  `AiAssistant`/`DividendPanel`/`Transactions`/`Travel`.
+- [x] **[FMT-CURRENCY-UNIFY]** ✅ MEDIUM (2026-06-17) — montants `$` formatés à la main (floats en-US, sans
+  séparateur, décimales variables) routés par `formatCAD`/`formatSigned`/`formatCompactCAD`. **Part 1** (#338) :
+  `DebtManager` + `BudgetGroupTable` + garde test discriminante (`/\d{4,}\$/` rejeté, prouvé via `git stash`).
+  **Part 2** : `TaxCenter`, `Budget`, `Retirement`, `LifeEvents`, `Investments`, `Planning`, `DividendPanel`,
+  `Transactions`, `Travel` (9 fichiers, ~50 sites ; signés via `formatSigned`, axes/KPI via `formatCompactCAD`).
+  Laissés à dessein : `AiAssistant` (≈10 `toLocaleString` dans les PROMPTS LLM, pas de l'affichage), dates,
+  export CSV, inputs éditables. Reste 0 `toLocaleString` monétaire hors prompt. Convention figée dans CLAUDE.md
+  (« formatCAD = seul formateur $ »).
 - [ ] **[LABEL-NW-SUCCESSORAL]** 🧭 🔧 ◑PARTIEL MEDIUM — l'écart « projection Budget ≠ reste » est un **libellé**,
   pas un calcul : Budget affiche `estateNetWorth` (patrimoine **successoral**, net d'impôt au décès + NPV rentes,
   `estateCalculation.ts:195`) vs `chartData[dernier].NetWorth` ailleurs. Source unique RESPECTÉE. 🧭 Décision :

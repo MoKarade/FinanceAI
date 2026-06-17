@@ -18,6 +18,7 @@ import { AssetLocationCard } from './retirement/AssetLocationCard';
 import { CurrentCapitalCard } from './retirement/CurrentCapitalCard';
 import { calculateGrossFromNet } from '../services/tax';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { formatCAD, formatSigned, formatCompactCAD } from '../utils/format';
 import { useShallow } from 'zustand/shallow';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 
@@ -266,7 +267,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
                                             <XAxis dataKey="age" stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickMargin={10} tickFormatter={(val) => `${val} ans`} />
-                                            <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => `${(val / 1000).toFixed(0)}k$`} width={55} />
+                                            <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => formatCompactCAD(val)} width={55} />
                                             <Tooltip content={<RetirementTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.07)', strokeWidth: 2 }} />
                                             <Legend verticalAlign="top" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '12px' }} />
                                             <ReferenceLine x={goal.targetAge} stroke="#f97316" strokeDasharray="5 3" label={{ position: 'insideTopRight', value: `Retraite (${goal.targetAge}a)`, fill: '#f97316', fontSize: 11, fontWeight: 'bold', dy: -8 }} />
@@ -287,19 +288,19 @@ export const Retirement: React.FC<RetirementProps> = ({
                                     <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
                                         <div className="text-tiny text-ink-500 uppercase tracking-widest font-bold">Capital a la Retraite</div>
                                         <PrivateAmount as="div" className="text-2xl font-black text-info-400 mt-1 drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]">
-                                            {(retirementNetWorth / 1000).toFixed(0)}k $
+                                            {formatCompactCAD(retirementNetWorth)}
                                         </PrivateAmount>
                                     </div>
                                     <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
                                         <div className="text-tiny text-ink-500 uppercase tracking-widest font-bold">Pic du Patrimoine</div>
                                         <PrivateAmount as="div" className="text-2xl font-black text-success-400 mt-1 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]">
-                                            {(peakNetWorth / 1000).toFixed(0)}k $
+                                            {formatCompactCAD(peakNetWorth)}
                                         </PrivateAmount>
                                     </div>
                                     <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
                                         <div className="text-tiny text-ink-500 uppercase tracking-widest font-bold">Heritage ({lifeExpectancy} ans)</div>
                                         <PrivateAmount as="div" className={`text-2xl font-black mt-1 ${finalNetWorth > 0 ? 'text-white' : 'text-danger-400'}`}>
-                                            {finalNetWorth > 0 ? `${(finalNetWorth / 1000).toFixed(0)}k $` : 'Épuisé'}
+                                            {finalNetWorth > 0 ? formatCompactCAD(finalNetWorth) : 'Épuisé'}
                                         </PrivateAmount>
                                     </div>
                                 </div>
@@ -311,8 +312,8 @@ export const Retirement: React.FC<RetirementProps> = ({
                                         <ComposedChart data={zoomCashflow.visibleData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
                                             <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
                                             <XAxis dataKey="age" stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => `${val}a`} />
-                                            <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} width={50} tickFormatter={(val) => `${(val / 1000).toFixed(0)}k`} />
-                                            <Tooltip contentStyle={{ backgroundColor: '#0B0E14', borderColor: '#1e293b', borderRadius: '10px', color: '#fff' }} formatter={(val: number | string, name: string) => [`${Number(val).toLocaleString()}$`, name]} />
+                                            <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} width={50} tickFormatter={(val) => formatCompactCAD(val)} />
+                                            <Tooltip contentStyle={{ backgroundColor: '#0B0E14', borderColor: '#1e293b', borderRadius: '10px', color: '#fff' }} formatter={(val: number | string, name: string) => [formatCAD(Number(val)), name]} />
                                             <Legend iconType="circle" />
                                             <Area type="monotone" dataKey="IncomeRetirement" fill="#5b82bf20" stroke="#5b82bf" strokeWidth={2} name="Rente Gouv. + PSV" />
                                             <Area type="monotone" dataKey="Income" fill="#4f9d8615" stroke="#4f9d86" strokeWidth={2} name="Revenu Total" />
@@ -355,34 +356,34 @@ const RetirementTooltip = React.memo(({ active, payload }: RetirementTooltipProp
             <div className="mb-4 space-y-2">
                 <div className="flex justify-between items-center">
                     <span className="text-tiny font-bold text-ink-300 uppercase tracking-widest">Patrimoine Net</span>
-                    <PrivateAmount className="text-body font-black text-success-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]">{data.NetWorth?.toLocaleString()}$</PrivateAmount>
+                    <PrivateAmount className="text-body font-black text-success-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]">{formatCAD(data.NetWorth)}</PrivateAmount>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                     <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                         <div className="text-tiny text-primary font-bold mb-1">CELI</div>
-                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{(data.CELI || 0).toLocaleString()}$</PrivateAmount>
+                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.CELI || 0)}</PrivateAmount>
                     </div>
                     <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                         <div className="text-tiny text-info-500 font-bold mb-1">REER</div>
-                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{(data.REER || 0).toLocaleString()}$</PrivateAmount>
+                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.REER || 0)}</PrivateAmount>
                     </div>
                     {/* Revue #245 (a11y S1) — CELIAPP visible au stack doit avoir sa valeur TEXTE ici. */}
                     {(data.CELIAPP || 0) > 0 && (
                         <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                             <div className="text-tiny text-[#2dd4bf] font-bold mb-1">CELIAPP</div>
-                            <PrivateAmount as="div" className="text-meta font-black text-ink-50">{(data.CELIAPP || 0).toLocaleString()}$</PrivateAmount>
+                            <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.CELIAPP || 0)}</PrivateAmount>
                         </div>
                     )}
                     {(data.NonReg || 0) > 0 && (
                         <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                             <div className="text-tiny text-warning-500 font-bold mb-1">Non-Enreg.</div>
-                            <PrivateAmount as="div" className="text-meta font-black text-ink-50">{(data.NonReg || 0).toLocaleString()}$</PrivateAmount>
+                            <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.NonReg || 0)}</PrivateAmount>
                         </div>
                     )}
                     <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                         <div className="text-tiny text-[#9b8fcf] font-bold mb-1">Liquidites</div>
-                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{(data.Liquidites || 0).toLocaleString()}$</PrivateAmount>
+                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.Liquidites || 0)}</PrivateAmount>
                     </div>
                 </div>
             </div>
@@ -391,16 +392,16 @@ const RetirementTooltip = React.memo(({ active, payload }: RetirementTooltipProp
                 <div className="space-y-2">
                     <div className="text-tiny font-bold text-ink-300 uppercase tracking-widest mb-1">Flux Mensuel</div>
                     <div className="bg-black/30 rounded-lg p-3 border border-danger-500/20 space-y-2">
-                        <div className="flex justify-between text-meta"><span className="text-ink-300">Revenu total</span><PrivateAmount className="text-success-400 font-bold">+{(data.Income || 0).toLocaleString()}$</PrivateAmount></div>
-                        <div className="flex justify-between text-meta"><span className="text-ink-300">Depenses (Infl.)</span><PrivateAmount className="text-danger-400 font-bold">-{(data.Expenses || 0).toLocaleString()}$</PrivateAmount></div>
-                        <div className="flex justify-between text-meta pt-1 border-t border-white/5"><span className="text-ink-300">Cashflow</span><PrivateAmount className={`font-bold ${((data.Income ?? 0) - (data.Expenses ?? 0)) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>{((data.Income ?? 0) - (data.Expenses ?? 0)).toLocaleString()}$</PrivateAmount></div>
+                        <div className="flex justify-between text-meta"><span className="text-ink-300">Revenu total</span><PrivateAmount className="text-success-400 font-bold">{formatSigned(data.Income || 0, { withCurrency: true })}</PrivateAmount></div>
+                        <div className="flex justify-between text-meta"><span className="text-ink-300">Depenses (Infl.)</span><PrivateAmount className="text-danger-400 font-bold">{formatSigned(-(data.Expenses || 0), { withCurrency: true })}</PrivateAmount></div>
+                        <div className="flex justify-between text-meta pt-1 border-t border-white/5"><span className="text-ink-300">Cashflow</span><PrivateAmount className={`font-bold ${((data.Income ?? 0) - (data.Expenses ?? 0)) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>{formatCAD((data.Income ?? 0) - (data.Expenses ?? 0))}</PrivateAmount></div>
                     </div>
                 </div>
             ) : (
                 <div className="space-y-2">
                     <div className="text-tiny font-bold text-ink-300 uppercase tracking-widest mb-1">Epargne Mensuelle</div>
                     <div className="bg-black/30 rounded-lg p-3 border border-success-500/20">
-                        <div className="flex justify-between text-meta"><span className="text-ink-300">Cashflow</span><PrivateAmount className="text-success-400 font-bold">+{(data.Savings || 0).toLocaleString()}$</PrivateAmount></div>
+                        <div className="flex justify-between text-meta"><span className="text-ink-300">Cashflow</span><PrivateAmount className="text-success-400 font-bold">{formatSigned(data.Savings || 0, { withCurrency: true })}</PrivateAmount></div>
                     </div>
                 </div>
             )}

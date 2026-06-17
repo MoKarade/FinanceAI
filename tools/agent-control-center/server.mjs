@@ -16,7 +16,7 @@ const HOST = '127.0.0.1';
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8' };
 // Whitelist stricte (anti path-traversal) : seuls ces fichiers du dossier sont servables.
-const STATIC = new Set(['index.html', 'dashboard.css', 'dashboard.js', 'agents.meta.json']);
+const STATIC = new Set(['index.html']); // dashboard auto-contenu (CSS+JS inline)
 
 async function readStatus() {
   // Données RÉELLES si .claude/status.json existe (source:"live") ; sinon EXEMPLE clairement étiqueté.

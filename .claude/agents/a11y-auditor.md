@@ -15,8 +15,11 @@ Vérifie :
   géré + restauration ; ordre de tabulation logique ; rien d'interactif uniquement au survol.
 - **Clavier** : tout ce qui est cliquable est actionnable au clavier (la sidebar hover-only avec
   labels `opacity-0` focusables est un piège connu à corriger).
-- **Contraste** : tokens AA (`ink-400` #8896a8, `ink-500` #6a7689) ; signaler tout `text-gray-*`
-  ou hex sous le seuil (`npm run check-contrast` si pertinent).
+- **Contraste** : tokens AA (`ink-400` #8896a8 = 5,2-6,4:1 ✅ ; `ink-500` #6a7689 = 3,4-4,2:1, AA large
+  seulement). ⚠️ Tout finding de contraste se MESURE via `npm run check-contrast` — NE JAMAIS le déduire
+  du numéro du token : la palette `ink` va du CLAIR au foncé (ink-300 > ink-400 > ink-500), donc un numéro
+  plus BAS = plus clair = PLUS de contraste sur fond sombre. (Faux positif 2026-06-17 : « ink-400 régresse »
+  supposait l'inverse — RÉFUTÉ par check-contrast.) Signaler tout `text-gray-*`/hex sous le seuil.
 - **Cibles tactiles** : ≥ 44×44 px (`.touch-target`).
 - **Lecteurs d'écran** : alternative textuelle aux graphes (table de données / résumé) ; **mode
   privé** — le flou CSS ne doit pas laisser les montants lisibles par un SR (fuite connue).

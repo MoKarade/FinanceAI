@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Accessibilité (Vague 2)] — 2026-06-17
+
+### Accessibilité (WCAG 2.2 AA)
+- **Visualisation des tranches d'imposition** (`TaxBracketViz`) rendue lisible au lecteur d'écran :
+  barres en `role="img"` + `aria-label` (revenu, taux marginal), contenu visuel interne masqué
+  (`aria-hidden`), alternative textuelle `<ChartDataTable>` sr-only (paliers from→to + taux) par
+  juridiction ; titre de juridiction passé en `<h3>` (fin du saut de niveau h2→h4) ; couleurs de
+  contenu `ink-500`→`ink-400` (contraste AA vérifié : 5,2-6,4:1 vs 3,4-4,2:1). (A11Y-TAXBRACKET)
+
+---
+
 ## [unreleased — Audit financier complet (AAA) + corrections périphériques] — 2026-06-17
 
 > Audit exhaustif du moteur (panel 5 agents + vérification empirique) → `docs/AUDIT_FINANCIER_2026-06-17.md`.

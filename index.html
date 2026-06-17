@@ -28,10 +28,12 @@
     <link rel="stylesheet" href="/index.css">
     <!-- CSP en <meta> : défense-en-profondeur (s'applique même si les headers HTTP manquent). -->
     <!-- Keep in sync with vercel.json [[headers]] Content-Security-Policy. -->
+    <!-- [SEC-CSP-HEADER] `frame-ancestors` retiré ici : IGNORÉ en <meta> par spec (header-only) →
+         livré via vercel.json (CSP HTTP + `X-Frame-Options: DENY`). Le garder en meta = warning console. -->
     <!-- Sprint 3 SH2 (sécurité) — `unsafe-inline` retiré de script-src.
          Possible maintenant car ga-init.js est externalisé dans /public et
          tous les scripts inline ont été migrés. CSP est aligné avec vercel.json. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.googletagmanager.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.anthropic.com https://finnhub.io https://api.coingecko.com https://www.bankofcanada.ca https://www.google-analytics.com https://*.analytics.google.com https://*.google-analytics.com https://www.googleapis.com https://accounts.google.com; worker-src 'self' blob:; frame-src https://accounts.google.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.googletagmanager.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.anthropic.com https://finnhub.io https://api.coingecko.com https://www.bankofcanada.ca https://www.google-analytics.com https://*.analytics.google.com https://*.google-analytics.com https://www.googleapis.com https://accounts.google.com; worker-src 'self' blob:; frame-src https://accounts.google.com; base-uri 'self'; object-src 'none';">
 
     <!-- Permissions-Policy : aligné avec vercel.json [[headers]] pour les
          hébergeurs qui ne lisent pas les headers HTTP (ex: GitHub Pages). -->

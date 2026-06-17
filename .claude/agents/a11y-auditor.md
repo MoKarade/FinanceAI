@@ -20,6 +20,9 @@ Vérifie :
   du numéro du token : la palette `ink` va du CLAIR au foncé (ink-300 > ink-400 > ink-500), donc un numéro
   plus BAS = plus clair = PLUS de contraste sur fond sombre. (Faux positif 2026-06-17 : « ink-400 régresse »
   supposait l'inverse — RÉFUTÉ par check-contrast.) Signaler tout `text-gray-*`/hex sous le seuil.
+  Pour un BOUTON/CTA « contour fantôme » (`bg-color/15`), distinguer DEUX contrastes : (a) TEXTE vs fond du
+  bouton (lisibilité WCAG 1.4.3) ET (b) fond du bouton vs page (PROMINENCE, WCAG 1.4.11 non-text 3:1). Un CTA
+  peut avoir un texte à 12:1 mais un fond à 1,3:1 vs la page → invisible. Ne pas confondre les deux (cf GATE-CTA-CONTRAST).
 - **Cibles tactiles** : ≥ 44×44 px (`.touch-target`).
 - **Lecteurs d'écran** : alternative textuelle aux graphes (table de données / résumé) ; **mode
   privé** — le flou CSS ne doit pas laisser les montants lisibles par un SR (fuite connue).

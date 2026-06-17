@@ -72,9 +72,9 @@
   vraie valeur reste en clair dans le DOM (copier-coller/inspecteur/désactivation classe) et **le survol la
   révèle** (`.privacy-blur:hover{filter:blur(0)}`). Masquer la VALEUR (`•••`), pas la flouter ; retirer le
   hover-to-reveal. ⚠️ Recoupe `[D6-SR-2]` (≈69 `privacy-blur`) — angle nouveau = remplacement de valeur + hover.
-- [ ] **[SEC-CSP-HEADER]** 🔧 ◑PARTIEL LOW — `index.html:34` a un `<meta>` CSP avec `frame-ancestors` **ignoré
-  en meta** (warning console). La protection est DÉJÀ active via `vercel.json:10-11` (CSP HTTP + `X-Frame-Options:
-  DENY`). → Retirer le `frame-ancestors` inutile de la meta (tue le warning). Pas une faille.
+- [x] **[SEC-CSP-HEADER]** ✅ LOW (2026-06-17) — `frame-ancestors` retiré du `<meta>` CSP (`index.html`) :
+  ignoré en meta par spec → ne servait qu'à émettre un warning console. Protection anti-clickjacking intacte
+  via `vercel.json` (CSP HTTP `frame-ancestors 'none'` + `X-Frame-Options: DENY`, vérifié). Pas une faille.
 
 ### 🟡 Polish UI / onboarding / viz
 - [ ] **[IA-NAV-LABELS]** 🔧 ✅VÉRIDIQUE MEDIUM — sidebar `w-16` par défaut, libellés `opacity-0`
@@ -86,8 +86,10 @@
 - [ ] **[UI-TX-CLEANUP]** 🔧 ◑PARTIEL LOW — Transactions : pastille **AUTO** sans légende visible
   (`Transactions.tsx:624`, `title` seul) → légende/tooltip explicite. Colonne TYPE (toggle Transfert/Transaction)
   = artefact data, pas constant (NON prioritaire).
-- [ ] **[GATE-CTA-CONTRAST]** 🔧 ◑PARTIEL LOW — bouton Google `bg-primary/15 text-primary` (`LoginGate.tsx:98`) :
-  **mesurer** le contraste (`check-contrast`) ; si < AA, CTA plus lisible (fond vert `#10b981` p.ex.).
+- [x] **[GATE-CTA-CONTRAST]** ✅ LOW (2026-06-17) — MESURÉ : le TEXTE du CTA était déjà ~12:1 (description « gris
+  foncé » de l'audit inexacte), MAIS le FOND `bg-primary/15` (#282B2F) vs page `bg-dark` (#07090D) ≈ 1,3:1 → le
+  bouton ne RESSORTAIT pas (CTA fantôme). Fix on-brand : CTA **solide** `bg-primary text-dark` (prominent, ~14:1)
+  + `focus-ring` ajouté (indicateur de focus manquant). Pas de vert introduit (cohérence palette).
 
 ### ✗ Faux (validés FAUX — impression seule, effort minimal / rien à coder)
 - [ ] **[ONB-OVERLAY-SEQ]** 🔧 ✗FAUX→perception LOW — PAS 3 overlays simultanés (onboarding plein écran

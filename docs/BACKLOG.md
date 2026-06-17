@@ -120,9 +120,9 @@
   `mortgageBalance` alors qu'`Immobilier`=équité (déjà nette) → sous hypothèque `Σactifs−DetteTotale = NW−mortgage ≠ NW`
   (reconstructabilité d'affichage rompue ; NW correct via `computeRawNetWorth`). `INV-1` ne teste QUE sans hypothèque. Vérifié
   272 mois. Fix : champ `DettesNonImmo` (additif, sûr) OU valeur BRUTE immo + ligne hypothèque ; **étendre INV-1 au cas hypothèque**. Effort M.
-- [ ] **[LLM-INJECT-PARITY]** (SEC-1) 🔧 MEDIUM — `services/claude.ts:585-586,427,434` : `getCoupleOptimizationStrategies`/
-  `getNextBestActions` interpolent des noms utilisateur BRUTS sans `sanitizePromptText`/`wrapUserData` (incohérent vs 4 autres
-  surfaces LLM). Exploitabilité faible (self, sortie Zod-validée). Vérifié. Fix : factoriser `buildSafeUserBlock()` partagé. Effort S.
+- [x] **[LLM-INJECT-PARITY]** (SEC-1) ✅ MEDIUM (livré) — `getCoupleOptimizationStrategies` + `getNextBestActions`
+  neutralisent désormais les noms utilisateur (`sanitizePromptText`) et isolent les blocs de données en `<DONNEES>`
+  (`wrapUserData`) — parité avec les 4 autres surfaces LLM. Le system prompt QUEBEC_FISCAL_CONTEXT isole déjà `<DONNEES>`.
 - [ ] **[FISC-WHT-HARDCODE]** (M1) 🔧 MEDIUM — `services/projection.ts:1390` : `totalTaxesPaid += retraitReerMois * 0.15`
   (retenue en dur) au lieu de `RRSP_WITHHOLDING_QC` (19/24/29 %). Compteur d'AFFICHAGE sous-estimé > tranche 1. Vérifié. Fix :
   `withholdingForGrossRRSP(...)` (vérifier non double-comptage déc.). Effort S.

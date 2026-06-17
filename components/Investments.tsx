@@ -840,12 +840,12 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         <div className="text-right">
                                             {!isRebalanceEdit && item.action === 'SELL' && (
                                                 <div className="text-danger-400 font-bold text-body">
-                                                    → Vendre {Math.round(Math.abs(item.diffAmount)).toLocaleString()}$
+                                                    → Vendre {formatCAD(Math.round(Math.abs(item.diffAmount)))}
                                                 </div>
                                             )}
                                             {!isRebalanceEdit && item.action === 'BUY' && (
                                                 <div className="text-green-400 font-bold text-body">
-                                                    → Acheter {Math.round(Math.abs(item.diffAmount)).toLocaleString()}$
+                                                    → Acheter {formatCAD(Math.round(Math.abs(item.diffAmount)))}
                                                 </div>
                                             )}
                                             {!isRebalanceEdit && item.action === 'OK' && (
@@ -887,13 +887,13 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     {rebalancingActions.filter(a => a.action === 'SELL').map((a, i) => (
                                         <div key={i} className="text-meta text-red-300 flex items-start gap-2">
                                             <span className="w-2 h-2 rounded-full bg-danger-500 mt-1.5 shrink-0" aria-hidden="true" />
-                                            <span><b>Vendre</b> {Math.round(Math.abs(a.diffAmount)).toLocaleString()}$ de <b>{a.label}</b> (surplus {a.diffPct.toFixed(1)}%) — Utilisez votre compte Non-Enregistré en priorité pour optimiser la fiscalité.</span>
+                                            <span><b>Vendre</b> {formatCAD(Math.round(Math.abs(a.diffAmount)))} de <b>{a.label}</b> (surplus {a.diffPct.toFixed(1)}%) — Utilisez votre compte Non-Enregistré en priorité pour optimiser la fiscalité.</span>
                                         </div>
                                     ))}
                                     {rebalancingActions.filter(a => a.action === 'BUY').map((a, i) => (
                                         <div key={i} className="text-meta text-green-300 flex items-start gap-2">
                                             <span className="w-2 h-2 rounded-full bg-success-500 mt-1.5 shrink-0" aria-hidden="true" />
-                                            <span><b>Acheter</b> {Math.round(Math.abs(a.diffAmount)).toLocaleString()}$ de <b>{a.label}</b> (déficit {Math.abs(a.diffPct).toFixed(1)}%) — Priorisez votre CELI si vous avez de l'espace disponible.</span>
+                                            <span><b>Acheter</b> {formatCAD(Math.round(Math.abs(a.diffAmount)))} de <b>{a.label}</b> (déficit {Math.abs(a.diffPct).toFixed(1)}%) — Priorisez votre CELI si vous avez de l'espace disponible.</span>
                                         </div>
                                     ))}
                                     <div className="text-meta text-ink-500 mt-3 pt-3 border-t border-white/5 italic">
@@ -963,7 +963,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                 <div className="grid grid-cols-2 gap-3 text-tiny mb-4 relative z-10">
                                     <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/5 backdrop-blur-sm">
                                         <div className="text-ink-400 mb-1 font-bold">Valeur</div>
-                                        <div className="text-white font-mono font-bold text-meta">{asset.value.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
+                                        <div className="text-white font-mono font-bold text-meta">{formatCAD(asset.value)}</div>
                                     </div>
                                     <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/5 backdrop-blur-sm">
                                         <div className="text-ink-400 mb-1 font-bold">Variation 24h</div>

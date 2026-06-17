@@ -10,6 +10,7 @@ import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
 import { Icon } from './ui/Icon';
 import { ImportBankStatement } from './import/ImportBankStatement';
+import { formatCAD } from '../utils/format';
 
 interface TransactionsProps {
     transactions: Transaction[];
@@ -478,7 +479,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                                 </div>
                                             </div>
                                             <div className="text-meta text-ink-300">
-                                                Total: <span className="text-white font-mono">{group.total.toFixed(2)}$</span>
+                                                Total: <span className="text-white font-mono">{formatCAD(group.total, { decimals: 2 })}</span>
                                             </div>
                                         </div>
 
@@ -510,7 +511,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 action={
                     <div className="flex items-center gap-1.5 flex-wrap justify-end">
                         <div className={`text-tiny sm:text-meta font-bold px-2 py-1 rounded border border-white/10 whitespace-nowrap ${filteredSum > 0 ? 'text-green-400 bg-green-500/10' : 'text-danger-400 bg-danger-500/10'}`}>
-                            Σ {filteredSum.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}
+                            Σ {formatCAD(filteredSum, { decimals: 2 })}
                         </div>
                         <button
                             onClick={handleExportCSV}
@@ -678,7 +679,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                     </td>
 
                                     <td className={`p-3 font-bold privacy-blur ${t.isTransfer ? 'text-blue-300 opacity-70' : t.amount > 0 ? 'text-green-400' : 'text-ink-100'}`}>
-                                        {t.amount.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}
+                                        {formatCAD(t.amount, { decimals: 2 })}
                                     </td>
 
                                     <td className="p-3">
@@ -745,7 +746,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                     </div>
                                     <div className={`font-bold text-body privacy-blur whitespace-nowrap ${t.isTransfer ? 'text-blue-300 opacity-70' : t.amount > 0 ? 'text-green-400' : 'text-ink-100'
                                         }`}>
-                                        {t.amount.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}
+                                        {formatCAD(t.amount, { decimals: 2 })}
                                     </div>
                                 </div>
 

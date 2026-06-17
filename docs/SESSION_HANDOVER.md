@@ -18,6 +18,17 @@
 > phase suivante sans OK explicite de Marc** ; Q1/Q2 à poser (cf `A_FAIRE_MOI` O6) ; handover à jour
 > après chaque phase.
 >
+> **Session 2026-06-16/17 — Durcissement MONEY-CONSERVATION (#314 #315)** : 2 bugs de conservation de
+> l'argent du moteur, trouvés via le résiduel `ΔNW − (épargne+croissance−impôt)`. **#314 [FISC-REER-WHT-DOUBLE]**
+> (« le 50 000 au fisc » de Marc) : la retenue REER/FERR était comptée 2× (au retrait ET en avril) →
+> sur-imposition ~retenue/an ; fix = retenue CONSERVÉE au liquide (acompte), retrait NW-neutre, débitée 1× en
+> avril (INV-10/11). **#315 [FISC-BROKE-LIQUID-FLOOR]** : un retraité insolvable (tous comptes de décaissement
+> épuisés, coussin `criticalThreshold` gardé) voyait sa dépense non couverte S'ÉVAPORER (ΔNW stable, +~3,7 k$/mois
+> d'argent fantôme) ; fix (choix Marc = porter en dette) = `uncoveredShortfall` reporté en `liquidDebt` VISIBLE
+> (INV-12, prouvé discriminant via `git stash`). Garde-fou `moneyConservation` = **12 invariants**. Leçons
+> CLAUDE.md : résiduel de conservation comme ARBITRE (mesurer, pas raisonner) ; « pas de flux fantôme » étendu au
+> shortfall mensuel insolvable ; piège race sonde-agent/`commit-gate`. Gates verts, ~2073 tests.
+>
 > **Session 2026-06-15 — Infra/hygiène (5 PR auto-mergées #288→#292)** : reprise sur un clone local
 > **146 commits en retard** (fetch+ff → règle ajoutée à CLAUDE.md). #288 js-yaml → `npm audit` **0 vuln**.
 > #289 règle « CLAUDE.md s'améliore à chaque push » **DURCIE** (obligatoire) + fetch-first à la reprise.

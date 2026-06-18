@@ -333,11 +333,11 @@
   +0,67 % vs annuité mensuelle, zéro double-comptage) + projection-validator (12/12 conservation, appel post-sim).
   HYPER_INFLATION re-ciblé sur `finalNetWorth` (rentes indexées = couverture, estate nominal peut dépasser la base
   sous inflation — leçon CLAUDE.md). **Découverte** : 1 LOW silent-failure (voir [ENG-ESTATE-ESTIMATE-FIN] ci-dessous).
-- [ ] **[ENG-ESTATE-ESTIMATE-FIN]** 🔧 LOW (découvert par silent-failure-hunter, PR #352) — `estateCalculation.ts:185-186` :
-  `rrqEstimateMonthly`/`psvEstimateMonthly` ne passent PAS par `fin()` avant `Math.max(0, …)` → un estimé `NaN`
-  (chemin nominal impossible via numOrUndef, mais belt-and-suspenders) zérote SILENCIEUSEMENT toute la NPV des rentes
-  (absorbé par le `fin()` de SORTIE → estate fini, mais composante rente = 0 sans avertissement). Fix : `Math.max(0,
-  fin(rrqEstimateMonthly))`. PRÉEXISTANT, déjà mitigé (test ligne 204 garde l'estate fini) → priorité basse.
+- [x] **[ENG-ESTATE-ESTIMATE-FIN]** ✅ LOW (PR #360, 2026-06-18) — `estateCalculation.ts` : `Math.max(0, fin(rrqEstimate
+  Monthly))` (idem psv). Un estimé `NaN` zérotait SILENCIEUSEMENT TOUT l'`estateNetWorth` (le `fin()` de sortie
+  absorbait le NaN propagé, effaçant même un `finalRawNetWorth` positif). Désormais le NaN est neutralisé à la SOURCE :
+  sa rente → 0, l'autre rente + le reste du patrimoine calculent (dégradation gracieuse). Zéro changement sur les cas
+  finis (`fin(x)=x`). Discriminant prouvé (`git stash` → NaN rrq zérotait l'estate). Panel silent-failure-hunter : fermé.
 - [x] **[FISC-EVENT-INCOMELOSS]** ✅ MEDIUM (PR #354, 2026-06-18) — PERTE_EMPLOI/SABBATIQUE/ACCIDENT étaient un
   NO-OP (le moteur ne lisait que `impactAmount`, absent pour ces types) → une perte d'emploi de 6 mois était
   ignorée. Fix = `computeIncomeLossFactor` (`monthlyEvents.ts`) réduit le revenu MÉNAGE de `incomeLossPercent`%

@@ -15,6 +15,8 @@ import { ConfirmModal } from './ui/ConfirmModal';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { PrivateAmount } from './ui/PrivateAmount';
+import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import {
     DAYCARE_INFO, SCHOOL_INFO, ACTIVITIES_INFO, UNI_INFO, CAR_INFO,
     getAnnualChildCost,
@@ -218,6 +220,26 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
         ? Math.min(100, (totalResp / totalStudiesCost) * 100)
         : null;
 
+    // [A11Y-CHARTS] tables de données sr-only pour les 2 graphes Recharts (opaques aux lecteurs d'écran).
+    // Colonnes $ masquées en mode privé (parité avec PrivateAmount/blur) ; l'axe X (âge) reste visible.
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
+    const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : fmt(Number(v) || 0);
+    const costColumns: ChartDataColumn[] = [
+        { key: 'age', label: 'Âge enfant', format: (v) => `${v} ans` },
+        { key: 'Essentiel', label: 'Essentiel', format: money },
+        { key: 'Garde_École_Activités', label: 'Garde / École / Activités', format: money },
+        { key: 'Ponctuel', label: 'Ponctuel (naissance, voiture…)', format: money },
+        { key: 'Bénéfices', label: 'Allocations (négatif = bénéfice)', format: money },
+        { key: 'Total', label: 'Total net', format: money },
+    ];
+    const respColumns: ChartDataColumn[] = [
+        { key: 'age', label: 'Âge enfant', format: (v) => `${v} ans` },
+        { key: 'Solde', label: 'Solde total', format: money },
+        { key: 'Contribution', label: 'Contribution', format: money },
+        { key: 'Subvention', label: 'Subventions reçues', format: money },
+        { key: 'Intérêts', label: 'Intérêts', format: money },
+    ];
+
     // C8 fix : garde déplacée APRÈS tous les hooks ci-dessus.
     if (!goal) return null;
 
@@ -412,6 +434,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                     <Card icon={<Icon name="chart" size={18} />} title="Coût par âge" action={
                         <div className="text-meta text-ink-300 font-mono">Total : <PrivateAmount className="text-white font-bold">{fmt(costTimeline.totalCost)}</PrivateAmount></div>
                     }>
+                        <div role="img" aria-label="Graphique du coût de l'enfant par âge (essentiel, garde/école/activités, ponctuel, allocations)">
                         <ZoomContainer zoom={zoomCost} className="h-[280px]">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={zoomCost.visibleData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
@@ -428,6 +451,12 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 </BarChart>
                             </ResponsiveContainer>
                         </ZoomContainer>
+                        </div>
+                        <ChartDataTable
+                            caption="Coût net de l'enfant par âge"
+                            columns={costColumns}
+                            rows={costTimeline.data}
+                        />
                     </Card>
 
                     <Card icon={<Icon name="graduation" size={18} />} title="Simulateur REEE" action={
@@ -483,6 +512,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                             {respProjection.length === 0 ? (
                                 <ProjectionRequired feature="La projection REEE" />
                             ) : (
+                            <div role="img" aria-label="Graphique de projection de l'épargne-études REEE (solde, contributions, subventions) par âge de l'enfant" className="h-full w-full">
                             <ZoomContainer zoom={zoomResp} className="h-full w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <ComposedChart data={zoomResp.visibleData} margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
@@ -502,8 +532,16 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 </ComposedChart>
                             </ResponsiveContainer>
                             </ZoomContainer>
+                            </div>
                             )}
                         </div>
+                        {respProjection.length > 0 && (
+                            <ChartDataTable
+                                caption="Projection de l'épargne-études REEE par âge de l'enfant"
+                                columns={respColumns}
+                                rows={respProjection}
+                            />
+                        )}
                     </Card>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

@@ -91,7 +91,11 @@
   2026-06-17** : le pattern `=== 'CRYPTO'`/`'NON-ENREG'` vit dans 3 fichiers (`Dashboard` chart-keys,
   `TaxCenter` + `AssetLocationCard` = traitement FISCAL, pas le même mapping) → extraction = refactor plus
   large que « LOW » (constante d'enum partagée + helper). À regrouper avec `DETTE-UI-PRIMITIVES`/un nettoyage
-  enum dédié, pas en quick-win. Le bug reste LATENT (le mapping marche aujourd'hui).
+  enum dédié, pas en quick-win. ⚠️ **Vérif 2026-06-18 (PR #351) : le bug de CASSE est en fait THÉORIQUE** —
+  `accountType: RegisteredAccountType` est une UNION STRICTE (`'CELI'|'CELIAPP'|'REER'|'NON-ENREG'|'CRYPTO'|'REEE'|
+  'MARGE'|'AUTRE'`, tout en majuscules) → tsc garantit la casse, aucun `CRYPTO`/`Crypto` runtime possible. Et les
+  3 sites sont des CLASSIFIEURS DISTINCTS (Dashboard keyToAccount, TaxCenter filtre non-enreg, AssetLocationCard
+  3-buckets), pas une duplication réelle → un helper = abstraction spéculative (anti-YAGNI). **Déclassé.**
 - [x] **[UI-TX-CLEANUP]** ✅ LOW (2026-06-17) — colonne **AUTO** auto-documentée : en-tête avec `title`
   explicite (code couleur vert ≥90 % / jaune ≥70 % / rouge <70 %) + glyphe `ⓘ` visible signalant l'info ;
   les pastilles gardent `title`/`aria-label` par ligne. Colonne TYPE = artefact data (laissée, non prioritaire).
@@ -239,18 +243,26 @@
 - [ ] **[ENG-LOOP-ORDER-TEST]** (L1) 🔧 LOW — boucle mensuelle `services/projection.ts` : l'ordre croissance↔allocation est
   money-critical mais AUCUN invariant ne teste l'ORDRE (INV-2 attrape une fuite, pas une inversion qui conserve l'argent en
   faussant les rendements). Fix : test « ordre » discriminant (2 scénarios). Effort S.
-- [ ] **[ENG-MONTHLYOUTPUT-TEST]** (L2) 🔧 LOW — `services/projection/monthlyOutput.ts` (102 champs) : seul sous-module (1/31)
-  sans test dédié. Fix : test unitaire de mapping ctx→point. Effort S.
+- [x] **[ENG-MONTHLYOUTPUT-TEST]** (L2) ✅ LOW (PR #351, 2026-06-18) — `tests/services/monthlyOutput.test.ts` : 19
+  assertions sur `buildMonthlyDataPoint` (mode MC minimal + mappings dérivés DetteTotale/DettesNonImmo, diffNW,
+  *Max, NetTransfer, CoastFIRE, AccruedTax, ExpenseInflation, reconstructabilité, gardes div-0/Infinity). Panel
+  `code-reviewer` (arrondi IEEE-754 borderline corrigé + 4 mappings non couverts ajoutés).
 - [ ] **[ENG-TAX-NS]** (L3) 🔧 LOW/🧭 — `services/tax.ts` = alias `export *` jamais résorbé → imports incohérents
   (`services/tax` vs `utils/tax`). Décision Marc : finir la migration ou supprimer l'alias. Effort S.
-- [ ] **[FISC-WELCOME-2026]** 🔧 LOW — `services/realEstate.ts:101-105` : seuils mutation « reste_qc » millésime **2025**
-  (58 900/290 000/552 300) à réindexer 2026. ⚠️ exiger les valeurs officielles RQ 2026 (NE PAS deviner), corriger code+doc même PR.
+- [ ] **[FISC-WELCOME-2026]** 🔧 LOW (🧭👤 BLOQUÉ — routé `A_FAIRE_MOI` 2026-06-18) — `services/realEstate.ts:101-105` :
+  seuils mutation « reste_qc » millésime **2025** (58 900/290 000/552 300) à réindexer 2026. ⚠️ Marc doit fournir les
+  valeurs officielles RQ 2026 (NE PAS deviner) → puis transcrire `FISCAL_REFERENCE.md` + corriger code, même PR.
 - [ ] **[REEE-LITERALS]** 🔧 LOW (hygiène) — `services/projection/childrenReee.ts` : SCEE/IQEE = littéraux non nommés
   (valeurs CORRECTES). Extraire en constantes si on y retouche. Aucun impact $.
-- [ ] **[NW-ASSETBREAKDOWN-DRY]** 🔧 LOW (audit 2026-06-17, panel) — `utils/useDerivedFinancials.ts:50-62` :
-  `assetBreakdown` ET `currentLiquidity` recalculent INLINE (FX `||1`) au lieu de `computeAssetBreakdown`/
-  `computeCurrentLiquidity` (`services/portfolio.ts`) ; `assetBreakdown` local OMET `crypto` (le helper l'a).
-  Même motif « recalcul local au lieu du helper ». Router vers les helpers. Effort S.
+- [ ] **[NW-ASSETBREAKDOWN-DRY]** 🔧 LOW (audit 2026-06-17, panel) — `utils/useDerivedFinancials.ts:45-66` :
+  `assetBreakdown` ET `currentLiquidity` recalculent INLINE au lieu de `computeAssetBreakdown`/
+  `computeCurrentLiquidity` (`services/portfolio.ts`). ⚠️ **Analyse 2026-06-18 (PR #351) : PAS un quick win.**
+  `currentLiquidity` = router safe (logique identique). MAIS `assetBreakdown` = **3 deltas sémantiques** sur un
+  agrégat partagé : (1) le local met crypto dans `nonReg` (else), le helper le SORT → `nonReg` baisserait pour
+  `Retirement.currentNonReg` (TabRouter:236) + contexte NBA (App.tsx:569) ; (2) le local a `reee` HARDCODÉ à 0,
+  consommé par `currentRESP` (ChildPlanning, TabRouter:213) → changerait ; (3) l'interface `DerivedFinancials`
+  n'a pas de champ `crypto`. = classe « changer un agrégat partagé casse silencieusement les dérivations »
+  (CLAUDE.md). **À RESCOPER** : vérifier chaque consommateur + décider crypto/reee délibérément (effort M, pas S).
 
 ### 🛡️ Durcissement structurel (brief Marc 2026-06-17, post-audit) — VALIDÉ + reformulé pour l'app
 > Objectif Marc : rendre bugs math / blocages UI / corruptions de données structurellement impossibles. Statut vérifié
@@ -304,10 +316,18 @@
   fini (`liquid`/`reer` NaN) se propage au patrimoine affiché SANS `logError` (graphe vide, sans trace). Dette
   PRÉEXISTANTE (le fix REER ne l'aggrave pas ; décembre garde déjà `.reer` via `Number.isFinite`). Fix : garder
   chaque terme (rabattre sur 0 + `logError(source:'projection')`), miroir de la garde NaN dette de MONEY-PHANTOM.
-- [ ] **[FISC-ESTATE-PENSION-NPV]** 🔧 MEDIUM — NPV des rentes publiques (RRQ/PSV) au bilan successoral :
-  montant MENSUEL × facteur d'annuité ANNUEL sans ×12 (`estateCalculation.ts:177-187`) → composante
-  sous-évaluée ~12× (ex. -370 k$ sur `estateNetWorth` pour un profil 1200 $/mois). N'affecte PAS le NW
-  mensuel. Fix : annualiser (×12) avant le facteur d'annuité.
+- [x] **[FISC-ESTATE-PENSION-NPV]** ✅ MEDIUM (PR #352, 2026-06-18) — NPV des rentes publiques (RRQ/PSV) au bilan
+  successoral : montant MENSUEL × facteur d'annuité ANNUEL sans ×12 → ~12× sous-évaluée (~34 k$ au lieu de ~409 k$
+  sur 1200 $/mois). Fix = annualiser ×12 avant le facteur (`estateCalculation.ts`). Test discriminant PROUVÉ
+  (`git stash` → 6 tests échouent : 48 681 vs 584 180). Panel financial-integrity (×12 = bonne réannualisation,
+  +0,67 % vs annuité mensuelle, zéro double-comptage) + projection-validator (12/12 conservation, appel post-sim).
+  HYPER_INFLATION re-ciblé sur `finalNetWorth` (rentes indexées = couverture, estate nominal peut dépasser la base
+  sous inflation — leçon CLAUDE.md). **Découverte** : 1 LOW silent-failure (voir [ENG-ESTATE-ESTIMATE-FIN] ci-dessous).
+- [ ] **[ENG-ESTATE-ESTIMATE-FIN]** 🔧 LOW (découvert par silent-failure-hunter, PR #352) — `estateCalculation.ts:185-186` :
+  `rrqEstimateMonthly`/`psvEstimateMonthly` ne passent PAS par `fin()` avant `Math.max(0, …)` → un estimé `NaN`
+  (chemin nominal impossible via numOrUndef, mais belt-and-suspenders) zérote SILENCIEUSEMENT toute la NPV des rentes
+  (absorbé par le `fin()` de SORTIE → estate fini, mais composante rente = 0 sans avertissement). Fix : `Math.max(0,
+  fin(rrqEstimateMonthly))`. PRÉEXISTANT, déjà mitigé (test ligne 204 garde l'estate fini) → priorité basse.
 - [ ] **[FISC-EVENT-INCOMELOSS]** 🔧 MEDIUM — `incomeLossPercent`/`durationMonths` (PERTE_EMPLOI,
   SABBATIQUE, ACCIDENT) collectés par l'UI mais JAMAIS appliqués par le moteur (`monthlyEvents.ts:95-100`
   ne lit que `impactAmount`) → une perte d'emploi de 6 mois (30-60 k$) est ignorée (no-op silencieux).

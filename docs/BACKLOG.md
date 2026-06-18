@@ -674,12 +674,18 @@
   (clé storage par profil, pas d'écrasement croisé, vérif d'intégrité au chargement) ; garde-fou « quel
   profil/hypothèses alimentent ces chiffres ». ⚠️ Touche la persistance (schéma v7) → vigilance corruption,
   lié à [P0-IDB]. Plan-first + panel avant de coder (data-critical). *Cadrage à confirmer/préciser par Marc.*
-- [ ] **[RECH-ACTION-UX]** 🔧 MEDIUM — page de **recherche d'action** (Investissement, autocomplétion
-  Finnhub #255) : (1) **agrandir** la page/zone de recherche (trop petite) ; (2) **BUG** : sélectionner le
-  prix **fait QUITTER la page** → corriger (probable submit/blur qui navigue ou ferme la modale).
-- [ ] **[FINNHUB-MISMATCH]** 🔧 MEDIUM — l'autocomplétion **propose des symboles** mais Finnhub **ne les
-  retrouve pas** ensuite (quote introuvable au lookup de prix). Réconcilier la source d'autocomplétion avec
-  le lookup Finnhub : filtrer aux symboles réellement cotés/supportés, ou fallback propre + message clair.
+- [~] **[RECH-ACTION-UX]** ◑ MEDIUM PARTIEL (PR #355, 2026-06-18) — (1) ✅ dropdown d'autocomplétion **agrandi**
+  (`max-h-64`→`80`) ; (2) **cause la plus évidente corrigée + TESTÉE** : Escape fermait toute la modale (le `Modal`
+  écoute Escape sur `document`) → désormais Escape ferme le DROPDOWN sans fermer la fenêtre (`stopPropagation` +
+  `stopImmediatePropagation`, test composant prouve `onClose` non appelé). ⚠️ Le symptôme EXACT « sélectionner le
+  prix fait quitter » n'a pas pu être reproduit en navigateur (le dropdown exige une clé Finnhub absente en dev) →
+  **confirmation visuelle Marc requise** (routé `A_FAIRE_MOI`). Le fallback FINNHUB-MISMATCH ci-dessous améliore
+  aussi le ressenti « sélection → coincé ».
+- [x] **[FINNHUB-MISMATCH]** ✅ MEDIUM (PR #355, 2026-06-18) — l'autocomplétion Finnhub `/search` proposait des
+  symboles que le `/quote` du forfait gratuit ne sait pas coter (TSX/étrangers) → erreur sèche « introuvable ».
+  Fix : `selectSuggestion` bascule en **saisie manuelle pré-remplie** (symbole+nom) + notice informatif quand
+  le symbole n'a pas de cours (`'no-quote'`). Panel : distinction `'no-quote'` (fallback) vs `'error'` réseau
+  (erreur VISIBLE, pas de masquage silencieux — silent-failure-hunter HIGH intégré). 3 tests composant.
 
 ## 🧭 Décisions moteur (à trancher avec Marc — money-critical)
 - [ ] **[ITEM-2A]** 🧭→🔧 **APPROCHE VALIDÉE PAR MARC (2026-06-16)** : entreprendre le refactor « impôt

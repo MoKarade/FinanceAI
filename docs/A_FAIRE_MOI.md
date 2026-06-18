@@ -66,6 +66,12 @@ Le code est prêt et déployé ; il manque l'hébergement du bundle (Marc avait 
 ## O5 — Validations manuelles sur device (ressenti / prod)
 - [ ] Fluidité zoom 60 fps sur tous les onglets ; PDF complet ; iOS Safari ; Lighthouse re-run.
   Liste vivante détaillée : `docs/BACKLOG.md` § « Tests manuels ».
+- [ ] **[RECH-ACTION-UX] confirmer le bug « sélectionner le prix fait quitter la page »** avec une **clé Finnhub
+  configurée** (Investissement → Ajouter une action → tape un nom → sélectionne une suggestion). Le dropdown
+  d'autocomplétion n'apparaît qu'avec une clé, que je n'ai pas en dev → je n'ai pas pu reproduire le symptôme
+  exact. J'ai corrigé la cause la plus évidente (Escape fermait toute la modale, désormais ferme juste le menu,
+  testé) + agrandi le dropdown + fallback gracieux si le symbole n'a pas de cours. Si le bug persiste avec ta
+  clé, dis-moi **exactement** quel geste le déclenche (clic suggestion ? « Suggérer prix historique » ? Entrée ?).
 
 ---
 

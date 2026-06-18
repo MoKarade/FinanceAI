@@ -8,6 +8,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Accessibilité (Vague 2)] — 2026-06-17
 
+### Projection — Événements de perte de revenu (FISC-EVENT-INCOMELOSS)
+- **Perte d'emploi / année sabbatique / accident appliqués par le moteur** : ces événements de vie étaient
+  collectés par l'UI mais **ignorés** par la projection (no-op silencieux — une interruption de revenu de 6 mois
+  n'avait aucun effet). Ils réduisent désormais le revenu du ménage de « % perdu » pendant « durée (mois) »
+  (défauts perte d'emploi/sabbatique 100 %, accident 50 %, modifiables). Formulaire : deux champs dédiés (% perdu
+  + durée) au lieu d'un champ ambigu, avec validation (un événement sans % ni durée est refusé).
+- Conservation de l'argent préservée (résiduel < 1 $) ; l'impôt salarial de décembre n'est pas réduit (biais
+  conservateur, identique au modèle de chômage stochastique existant).
+
 ### Vie privée — Mode discret
 - **Le mode discret masque maintenant la VALEUR (« ••• ») au lieu de la flouter** : la vraie valeur n'est
   plus présente dans la page (fini la fuite par copier-coller, inspecteur, lecteur d'écran ou désactivation

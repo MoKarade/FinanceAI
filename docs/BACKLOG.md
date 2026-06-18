@@ -328,10 +328,14 @@
   (chemin nominal impossible via numOrUndef, mais belt-and-suspenders) zérote SILENCIEUSEMENT toute la NPV des rentes
   (absorbé par le `fin()` de SORTIE → estate fini, mais composante rente = 0 sans avertissement). Fix : `Math.max(0,
   fin(rrqEstimateMonthly))`. PRÉEXISTANT, déjà mitigé (test ligne 204 garde l'estate fini) → priorité basse.
-- [ ] **[FISC-EVENT-INCOMELOSS]** 🔧 MEDIUM — `incomeLossPercent`/`durationMonths` (PERTE_EMPLOI,
-  SABBATIQUE, ACCIDENT) collectés par l'UI mais JAMAIS appliqués par le moteur (`monthlyEvents.ts:95-100`
-  ne lit que `impactAmount`) → une perte d'emploi de 6 mois (30-60 k$) est ignorée (no-op silencieux).
-  Fix : réduire le revenu de `incomeLossPercent`% pendant `durationMonths` dès `e.date`.
+- [x] **[FISC-EVENT-INCOMELOSS]** ✅ MEDIUM (PR #354, 2026-06-18) — PERTE_EMPLOI/SABBATIQUE/ACCIDENT étaient un
+  NO-OP (le moteur ne lisait que `impactAmount`, absent pour ces types) → une perte d'emploi de 6 mois était
+  ignorée. Fix = `computeIncomeLossFactor` (`monthlyEvents.ts`) réduit le revenu MÉNAGE de `incomeLossPercent`%
+  pendant `durationMonths` (sémantique Marc : % perdu + durée, défauts 100/100/50). UI dédoublée (% perdu +
+  durée) + validation (refuse un événement inerte). Net + brut REER réduits ; **l'impôt salarial de décembre
+  N'est PAS réduit** (biais conservateur, identique au chômage stochastique — vérifié empiriquement par le panel).
+  Test discriminant prouvé (`git stash` → no-op → patrimoine identique). Conservation : +2 tests moneyConservation
+  (50 % + 100 %). Panel 5 agents, tous findings intégrés. **Suite possible** : per-conjoint (sélecteur « qui »).
 - [ ] **[FISC-RE-SALE-RESIDUAL]** 🔧 MEDIUM — vente immobilière à équité négative (hypo > 95 % valeur) :
   `addLiquid(Math.max(0, saleNet))` (`monthlyEvents.ts:72-79`) efface la dette résiduelle (clamp à 0)
   alors que l'équité positive est retirée → patrimoine légèrement surévalué. Fix : `addLiquid(saleNet)`

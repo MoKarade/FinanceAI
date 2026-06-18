@@ -113,7 +113,12 @@ Pour **chaque** mois `m`, le moteur exécute ces 9 phases séquentiellement. Com
     - 85+ ans : 0.90 (no-go)
 - **Soins longue durée (D2.8)** : si MC + flag, tirage stochastique par mois. Probabilité annuelle : 1% à 65 → 25% à 90+. Si déclenchés, ajoute `ltcMonthlyCost` (5000$/mois défaut) jusqu'à la fin.
 - **Mortalité stochastique (D2.8)** : si MC + flag, tirage annuel en janvier. Si décès, la boucle `break` — `estateNetWorth` devient le patrimoine **au décès** et non en fin d'horizon.
-- Événements ponctuels du `lifeEvents[]` (mariage, voyage, voiture…).
+- Événements ponctuels du `lifeEvents[]` (mariage, voyage, voiture… = dépense one-shot via `impactAmount`).
+- **Perte de revenu DATÉE (FISC-EVENT-INCOMELOSS)** : `PERTE_EMPLOI`/`SABBATIQUE`/`ACCIDENT` réduisent le revenu
+  MÉNAGE de `incomeLossPercent`% pendant `durationMonths` mois dès `e.date` (≠ la perte stochastique D2.10 ci-dessus,
+  qui est aléatoire et MC-only). `computeIncomeLossFactor` (phase active) : net + brut REER réduits ; l'impôt
+  salarial de décembre reste sur le brut de base (biais conservateur, comme le chômage stochastique). Inerte en
+  retraite (pas de revenu d'emploi). Composition multiplicative si plusieurs événements/une perte MC coïncident.
 
 ### Phase 4 — Fiscalité (calendrier réel canadien)
 

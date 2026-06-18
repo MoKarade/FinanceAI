@@ -50,6 +50,46 @@ export interface LifeEventMutator {
     logFlow: (msg: string) => void;
 }
 
+/** [FISC-EVENT-INCOMELOSS] Types d'événements de vie qui réduisent le REVENU (pas une dépense) :
+ *  perte d'emploi, année sabbatique, accident/maladie. Traités par `computeIncomeLossFactor` en
+ *  phase active — exclus du chemin « dépense one-shot » d'`applyLifeEvents`. */
+export const INCOME_LOSS_EVENT_TYPES: ReadonlySet<string> = new Set(['PERTE_EMPLOI', 'SABBATIQUE', 'ACCIDENT']);
+
+/**
+ * [FISC-EVENT-INCOMELOSS] Facteur multiplicatif (∈ [0, 1]) à appliquer au revenu MÉNAGE du mois
+ * courant pour refléter les événements de perte de revenu datés saisis par l'utilisateur
+ * (PERTE_EMPLOI / SABBATIQUE / ACCIDENT). Un événement est ACTIF si le mois courant tombe dans
+ * `[date, date + durationMonths)`. Plusieurs événements actifs se composent multiplicativement.
+ *
+ * Base de date IDENTIQUE à `applyLifeEvents` (année-mois UTC via `toISOString`) → cohérence avec le
+ * matching one-shot. Gardes « never trust » : `incomeLossPercent` non-fini (NaN d'un champ UI vidé,
+ * absent) → 0 % (aucune réduction, jamais de NaN propagé) puis clamp [0, 100] ; `durationMonths` non-fini
+ * ou ≤ 0 → événement ignoré.
+ */
+export function computeIncomeLossFactor(lifeEvents: LifeEvent[], currentLoopDate: Date): number {
+    const [cyStr, cmStr] = currentLoopDate.toISOString().substring(0, 7).split('-');
+    const curIdx = Number(cyStr) * 12 + (Number(cmStr) - 1);
+    if (!Number.isFinite(curIdx)) return 1;
+
+    let factor = 1;
+    for (const e of lifeEvents) {
+        if (!INCOME_LOSS_EVENT_TYPES.has(e.type)) continue;
+        if (!e.date || typeof e.date !== 'string') continue;
+        const [eyStr, emStr] = e.date.split('-');
+        const startIdx = Number(eyStr) * 12 + (Number(emStr) - 1);
+        if (!Number.isFinite(startIdx)) continue;
+        const dur = Math.floor(e.durationMonths ?? 0);
+        if (!(dur > 0)) continue; // NaN/0/négatif → !(… > 0) === true → ignoré
+        const offset = curIdx - startIdx;
+        if (offset < 0 || offset >= dur) continue;
+        // `?? 0` ne couvre PAS NaN (un champ UI vidé → parseFloat('') === NaN) → garde Number.isFinite explicite.
+        const rawPct = e.incomeLossPercent;
+        const lossPct = Number.isFinite(rawPct) ? Math.min(100, Math.max(0, rawPct as number)) : 0;
+        factor *= (1 - lossPct / 100);
+    }
+    return Math.max(0, Math.min(1, factor));
+}
+
 export function applyLifeEvents(
     lifeEvents: LifeEvent[],
     currentIsoMonth: string,
@@ -61,6 +101,10 @@ export function applyLifeEvents(
         // Defensive 2026-05-21 : skip si date manquante/invalide
         if (!e.date || typeof e.date !== 'string') continue;
         if (!e.date.startsWith(currentIsoMonth)) continue;
+        // [FISC-EVENT-INCOMELOSS] perte de revenu = réduction du revenu en phase active
+        // (computeIncomeLossFactor), PAS une dépense one-shot ici (impactAmount non collecté
+        // pour ces types → addExpense(0) serait un faux flux de -0 $).
+        if (INCOME_LOSS_EVENT_TYPES.has(e.type)) continue;
 
         if (e.type === 'KRACH') {
             const drop = 1 - ((e.impactPercent || 30) / 100);

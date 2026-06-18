@@ -247,9 +247,12 @@
 - [x] **[AI-NBA-FX]** ✅ LOW (livré) — `NextBestAction` utilise désormais les `fxRates` RÉELS du store (avant : `{}`
   → actifs étrangers à 1:1). NW + ventilation CELI/REER envoyés à l'IA corrects. (DRY complet via `buildFinancialSnapshot`
   reste un nice-to-have séparé — duplication du snapshot inline, consigné.)
-- [ ] **[ENG-LOOP-ORDER-TEST]** (L1) 🔧 LOW — boucle mensuelle `services/projection.ts` : l'ordre croissance↔allocation est
-  money-critical mais AUCUN invariant ne teste l'ORDRE (INV-2 attrape une fuite, pas une inversion qui conserve l'argent en
-  faussant les rendements). Fix : test « ordre » discriminant (2 scénarios). Effort S.
+- [x] **[ENG-LOOP-ORDER-TEST]** (L1) ✅ LOW (PR #362, 2026-06-18) — `tests/services/projection.loopOrder.test.ts` : garde-fou
+  de l'ordre boucle (allocation AVANT croissance). 2 scénarios : (1) actifs investis partis de 0 → croissance mois 1 > 0
+  (la contribution du mois finance sa propre demi-mois de rendement) ; (2) contrôle sans contribution → croissance investie === 0.
+  DISCRIMINANT PROUVÉ à la main : en simulant l'ordre inversé (croissance sur soldes PRÉ-allocation), le scénario 1 échoue
+  (`expected 0 to be greater than 1000`). Attrape une inversion que les 12 invariants de conservation laissent passer (l'argent
+  reste conservé, seul le rendement est décalé). Liquide exclu (démarre ≠ 0).
 - [x] **[ENG-MONTHLYOUTPUT-TEST]** (L2) ✅ LOW (PR #351, 2026-06-18) — `tests/services/monthlyOutput.test.ts` : 19
   assertions sur `buildMonthlyDataPoint` (mode MC minimal + mappings dérivés DetteTotale/DettesNonImmo, diffNW,
   *Max, NetTransfer, CoastFIRE, AccruedTax, ExpenseInflation, reconstructabilité, gardes div-0/Infinity). Panel

@@ -213,7 +213,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
         dividendCalendar,
         totalAnnualDividends,
         availableSeriesWithTrend,
-        healthScore,
+        diversificationScore,
         portfolioTrend,
         benchmarkTrend,
     } = useMemo(() => {
@@ -314,7 +314,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
         else if (portfolioTrend < 0) trendPts -= 10;
         if (trendPts > 40) trendPts = 40;
         if (trendPts < 0) trendPts = 0;
-        const healthScore = Math.round(safePts + trendPts);
+        const diversificationScore = Math.round(safePts + trendPts);
 
         return {
             currentAllocation: allocation,
@@ -323,7 +323,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
             dividendCalendar: sortedDividends,
             totalAnnualDividends: totalDivs,
             availableSeriesWithTrend,
-            healthScore,
+            diversificationScore,
             portfolioTrend,
             benchmarkTrend,
         };
@@ -410,11 +410,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 title="Investissements"
                 badge={
                     <Badge
-                        variant={healthScore >= 80 ? 'success' : healthScore >= 50 ? 'warning' : 'danger'}
+                        variant={diversificationScore >= 80 ? 'success' : diversificationScore >= 50 ? 'warning' : 'danger'}
                         size="md"
-                        title="Score basé sur la diversification et la tendance vs marché"
+                        title="Sous-mesure : diversification du portefeuille + tendance vs marché (le score de santé financière GLOBAL est sur l'Accueil)"
                     >
-                        Santé {healthScore}/100
+                        Diversification {diversificationScore}/100
                     </Badge>
                 }
             />

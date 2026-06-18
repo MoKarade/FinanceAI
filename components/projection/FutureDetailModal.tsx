@@ -112,30 +112,29 @@ interface AccountDrillTooltipProps {
     active?: boolean;
     payload?: Array<{ payload: AccountPoint }>;
     accountLabel: string;
-    isPrivacyMode: boolean;
 }
 
 // G13 — infobulle du drill-down : valeur du mois + le « pourquoi » (gain marché,
 // apport/retrait + origine) + événements. Niveau module → recharts y injecte
-// `active`/`payload`, on lui passe `accountLabel`/`isPrivacyMode` en props.
-const AccountDrillTooltip: React.FC<AccountDrillTooltipProps> = ({ active, payload, accountLabel, isPrivacyMode }) => {
+// `active`/`payload`, on lui passe `accountLabel` en prop. Le masquage des montants
+// (mode discret) est géré par `<PrivateAmount>` (lit le store directement).
+const AccountDrillTooltip: React.FC<AccountDrillTooltipProps> = ({ active, payload, accountLabel }) => {
     if (!active || !payload?.length) return null;
     const d = payload[0].payload as AccountPoint;
     const reasons = explainMovement(d);
-    const blur = isPrivacyMode ? 'privacy-blur' : '';
     return (
         <div className="bg-[#11161f] border border-white/15 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] p-3 w-56 text-meta">
             <div className="flex items-center justify-between gap-2 mb-1.5">
                 <span className="font-bold text-white">{d.dateLabel || d.year}</span>
                 <span className="text-tiny text-ink-400">{accountLabel}</span>
             </div>
-            <div className={`font-mono text-base font-black text-white mb-2 ${blur}`}>{fmtMoney(d.value)}</div>
+            <PrivateAmount as="div" className="font-mono text-base font-black text-white mb-2">{fmtMoney(d.value)}</PrivateAmount>
             {reasons.length > 0 ? (
                 <div className="space-y-1">
                     <div className="text-tiny uppercase tracking-wide text-ink-500 font-bold">Ce mois</div>
                     {reasons.map((r, i) => (
-                        <div key={i} className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded font-mono ${REASON_TONE_CLASS[r.tone]} ${blur}`}>
-                            <Icon name={r.icon} size={12} /><span>{r.text}</span>
+                        <div key={i} className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded font-mono ${REASON_TONE_CLASS[r.tone]}`}>
+                            <Icon name={r.icon} size={12} /><PrivateAmount>{r.text}</PrivateAmount>
                         </div>
                     ))}
                 </div>
@@ -242,7 +241,6 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
         : [];
 
     const fmt = (n: number) => formatCAD(n);
-    const blur = isPrivacyMode ? 'privacy-blur' : '';
 
     // Dette qui tire le patrimoine net SOUS la somme des actifs affichés = Σ(actifs affichés) −
     // NetWorth. C'est exactement prêts/cartes + découvert + HELOC. On N'inclut PAS l'hypothèque :
@@ -282,7 +280,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                     </div>
                     <div className="text-right">
                         <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold">Valeur nette</div>
-                        <div className={`text-2xl font-black text-white font-mono leading-none mt-0.5 ${blur}`}>{fmt(point.NetWorth || 0)}</div>
+                        <PrivateAmount as="div" className="text-2xl font-black text-white font-mono leading-none mt-0.5">{fmt(point.NetWorth || 0)}</PrivateAmount>
                     </div>
                     <button
                         type="button"
@@ -314,7 +312,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                             <span className="text-body text-white truncate">{a.label}</span>
                                         </span>
                                         <span className="flex items-center gap-2 shrink-0">
-                                            <span className={`font-mono text-body text-white ${blur}`}>{fmt(a.value)}</span>
+                                            <PrivateAmount className="font-mono text-body text-white">{fmt(a.value)}</PrivateAmount>
                                             <span className="text-ink-500" aria-hidden="true">›</span>
                                         </span>
                                     </div>
@@ -322,21 +320,21 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                     {(a.flow !== null || a.gain !== null) ? (
                                         <div className="flex items-center gap-2 mt-1.5 pl-[18px] text-tiny font-mono">
                                             {a.flow !== null && (
-                                                <span className={`px-1.5 py-0.5 rounded ${a.flow >= 0 ? 'text-sky-300 bg-sky-500/10' : 'text-orange-300 bg-orange-500/10'} ${blur}`}>
+                                                <PrivateAmount className={`px-1.5 py-0.5 rounded ${a.flow >= 0 ? 'text-sky-300 bg-sky-500/10' : 'text-orange-300 bg-orange-500/10'}`}>
                                                     Apport {a.flow > 0 ? '+' : ''}{fmt(a.flow)}
-                                                </span>
+                                                </PrivateAmount>
                                             )}
                                             {a.gain !== null && (
-                                                <span className={`px-1.5 py-0.5 rounded ${a.gain >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-danger-500/10'} ${blur}`}>
+                                                <PrivateAmount className={`px-1.5 py-0.5 rounded ${a.gain >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-danger-500/10'}`}>
                                                     Gain {a.gain > 0 ? '+' : ''}{fmt(a.gain)}
-                                                </span>
+                                                </PrivateAmount>
                                             )}
                                         </div>
                                     ) : (
                                         <div className="mt-1.5 pl-[18px] text-tiny font-mono">
-                                            <span className={`px-1.5 py-0.5 rounded ${a.variation >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-danger-500/10'} ${blur}`}>
+                                            <PrivateAmount className={`px-1.5 py-0.5 rounded ${a.variation >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-danger-500/10'}`}>
                                                 {a.variation > 0 ? '+' : ''}{fmt(a.variation)} ce mois
-                                            </span>
+                                            </PrivateAmount>
                                         </div>
                                     )}
                                 </button>
@@ -378,20 +376,20 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                             {incomes.map(([label, v]) => (
                                 <div key={label} className="flex justify-between text-meta bg-white/[0.03] rounded-lg px-2.5 py-1.5">
                                     <span className="text-ink-400">{label}</span>
-                                    <span className={`font-mono text-green-400 ${blur}`}>+{fmt(v)}</span>
+                                    <PrivateAmount className="font-mono text-green-400">+{fmt(v)}</PrivateAmount>
                                 </div>
                             ))}
                             {(point.Expenses || 0) > 0 && (
                                 <div className="flex justify-between text-meta bg-white/[0.03] rounded-lg px-2.5 py-1.5">
                                     <span className="text-ink-400">Dépenses</span>
-                                    <span className={`font-mono text-danger-400 ${blur}`}>-{fmt(point.Expenses || 0)}</span>
+                                    <PrivateAmount className="font-mono text-danger-400">-{fmt(point.Expenses || 0)}</PrivateAmount>
                                 </div>
                             )}
                             <div className="flex justify-between text-meta font-bold bg-white/[0.05] rounded-lg px-2.5 py-1.5">
                                 <span className="text-ink-200">Variation nette (mois)</span>
-                                <span className={`font-mono ${(point.diffNW || 0) >= 0 ? 'text-green-400' : 'text-danger-400'} ${blur}`}>
+                                <PrivateAmount className={`font-mono ${(point.diffNW || 0) >= 0 ? 'text-green-400' : 'text-danger-400'}`}>
                                     {(point.diffNW || 0) > 0 ? '+' : ''}{fmt(point.diffNW || 0)}
-                                </span>
+                                </PrivateAmount>
                             </div>
                         </div>
 
@@ -426,7 +424,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                         <div className="flex items-center gap-2 mb-3">
                             <span className="w-3 h-3 rounded-full" style={{ background: selected.color }} />
                             <span className="font-bold text-white">{selected.label}</span>
-                            <span className={`ml-auto font-mono text-body text-white ${blur}`}>{fmt(Number(point[selected.key]) || 0)}</span>
+                            <PrivateAmount className="ml-auto font-mono text-body text-white">{fmt(Number(point[selected.key]) || 0)}</PrivateAmount>
                         </div>
 
                         {/* Sélecteur de période */}
@@ -477,7 +475,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                     <YAxis stroke="#666" tick={{ fontSize: 10 }} width={50} tickFormatter={(v) => isPrivacyMode ? '***' : `${(v / 1000).toFixed(0)}k`} />
                                     <Tooltip
                                         cursor={{ stroke: selected.color, strokeOpacity: 0.4 }}
-                                        content={<AccountDrillTooltip accountLabel={selected.label} isPrivacyMode={isPrivacyMode} />}
+                                        content={<AccountDrillTooltip accountLabel={selected.label} />}
                                     />
                                     <Area type="monotone" dataKey="value" stroke={selected.color} strokeWidth={2} fill="url(#acct-grad)" isAnimationActive={false} name={selected.label} />
                                     {eventMarkers.map((mk, i) => (
@@ -511,16 +509,16 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                             <li key={d.monthIndex} className="bg-white/[0.03] rounded-lg p-2.5">
                                                 <div className="flex items-center justify-between gap-2 mb-1">
                                                     <span className="text-meta font-bold text-white">{d.dateLabel || d.year}</span>
-                                                    <span className={`font-mono text-meta font-bold ${d.delta >= 0 ? 'text-green-400' : 'text-danger-400'} ${blur}`}>
+                                                    <PrivateAmount className={`font-mono text-meta font-bold ${d.delta >= 0 ? 'text-green-400' : 'text-danger-400'}`}>
                                                         {d.delta > 0 ? '+' : ''}{fmtMoney(d.delta)}
-                                                    </span>
+                                                    </PrivateAmount>
                                                 </div>
                                                 {reasons.length > 0 ? (
                                                     <div className="flex flex-wrap gap-1.5">
                                                         {reasons.map((r, i) => (
-                                                            <span key={i} className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-tiny font-mono ${REASON_TONE_CLASS[r.tone]} ${blur}`}>
+                                                            <PrivateAmount key={i} className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-tiny font-mono ${REASON_TONE_CLASS[r.tone]}`}>
                                                                 <Icon name={r.icon} size={11} />{r.text}
-                                                            </span>
+                                                            </PrivateAmount>
                                                         ))}
                                                     </div>
                                                 ) : (
@@ -567,10 +565,10 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                             {roomByYear.map((r) => (
                                                 <tr key={r.year} className="border-t border-white/5">
                                                     <td className="px-2.5 py-1.5 text-ink-200 font-semibold">{r.year}</td>
-                                                    <td className={`px-2.5 py-1.5 text-right font-mono ${blur} ${r.gained === null ? 'text-ink-600' : r.gained > 0 ? 'text-green-300' : 'text-ink-400'}`}>
-                                                        {r.gained === null ? '—' : `+${fmtMoney(r.gained)}`}
+                                                    <td className={`px-2.5 py-1.5 text-right font-mono ${r.gained === null ? 'text-ink-600' : r.gained > 0 ? 'text-green-300' : 'text-ink-400'}`}>
+                                                        <PrivateAmount>{r.gained === null ? '—' : `+${fmtMoney(r.gained)}`}</PrivateAmount>
                                                     </td>
-                                                    <td className={`px-2.5 py-1.5 text-right font-mono text-ink-300 ${blur}`}>{fmtMoney(r.avail)}</td>
+                                                    <td className="px-2.5 py-1.5 text-right font-mono text-ink-300"><PrivateAmount>{fmtMoney(r.avail)}</PrivateAmount></td>
                                                 </tr>
                                             ))}
                                         </tbody>

@@ -95,7 +95,7 @@ export function LoginGate({ children }: LoginGateProps): React.ReactElement {
                         type="button"
                         onClick={onLogin}
                         disabled={phase === 'logging-in'}
-                        className="w-full px-4 py-2.5 rounded-card bg-primary/15 border border-primary/40 text-primary text-meta font-medium hover:bg-primary/25 disabled:opacity-50"
+                        className="w-full px-4 py-2.5 rounded-card bg-primary border border-primary text-dark text-meta font-semibold hover:bg-primary/90 disabled:opacity-50 focus-ring"
                     >
                         {phase === 'logging-in' ? 'Connexion…' : 'Se connecter avec Google'}
                     </button>

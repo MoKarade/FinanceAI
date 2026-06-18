@@ -1,6 +1,7 @@
 import React from 'react';
 import { BudgetCategory } from '../../types';
 import { Icon } from '../ui/Icon';
+import { PrivateAmount } from '../ui/PrivateAmount';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip } from 'recharts';
 import { LineChart, Line, YAxis as LYAxis } from 'recharts';
 import { formatCAD, formatSigned } from '../../utils/format';
@@ -194,9 +195,9 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                             <div className="text-tiny text-ink-300 font-mono whitespace-nowrap">{splitDisplay}</div>
                                         </td>
                                         <td className="p-3 text-right">
-                                            <div className={`font-mono font-bold ${isOver ? 'text-danger-400' : 'text-ink-100'} privacy-blur`}>
+                                            <PrivateAmount as="div" className={`font-mono font-bold ${isOver ? 'text-danger-400' : 'text-ink-100'}`}>
                                                 {formatCAD(spent)}
-                                            </div>
+                                            </PrivateAmount>
                                             {timeView === 'MONTH' && displayTarget > 0 && (
                                                 <div className="w-full bg-surfaceHighlight h-1.5 rounded-full mt-1 overflow-hidden relative">
                                                     <div
@@ -212,9 +213,9 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                             )}
                                         </td>
                                         <td className="p-3 text-right hidden md:table-cell">
-                                            <div className={`font-mono ${remaining < 0 ? 'text-danger-500' : 'text-green-500'} opacity-80 privacy-blur`}>
+                                            <PrivateAmount as="div" className={`font-mono ${remaining < 0 ? 'text-danger-500' : 'text-green-500'} opacity-80`}>
                                                 {formatSigned(remaining, { withCurrency: true })}
-                                            </div>
+                                            </PrivateAmount>
                                         </td>
                                         <td className="p-3 text-center">
                                             <button

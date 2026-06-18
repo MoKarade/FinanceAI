@@ -12,6 +12,8 @@ import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Refere
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { buildLockedByMonth, pointStackedCapital } from '../utils/lockedCurveOverlay';
 import { ZoomContainer } from './ui/ZoomContainer';
+import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { TaxBracketViz } from './TaxBracketViz';
 import { GoalSeekerCard } from './retirement/GoalSeekerCard';
 import { AssetLocationCard } from './retirement/AssetLocationCard';
@@ -123,6 +125,9 @@ export const Retirement: React.FC<RetirementProps> = ({
     // se pilote depuis Futur ; Retraite ne fait que l'AFFICHER, source unique cohérente).
     const lockedProjection = useFinanceStore(s => s.lockedProjection);
     const isProjectionLocked = useFinanceStore(s => s.isProjectionLocked);
+    // [A11Y-CHARTS] — mode discret : masque les montants de la table de données sr-only (parité
+    // avec les <PrivateAmount> / blur visuel du reste de l'onglet).
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
     // chartData dérivé de projectionFromStore : utilisé uniquement dans le JSX
     // après les hooks. Pour les useMemo, on dépend de projectionFromStore directement
     // afin d'éviter la nouvelle référence `?? []` qui invaliderait les deps à chaque render.
@@ -156,6 +161,23 @@ export const Retirement: React.FC<RetirementProps> = ({
         return base.map(d => ({ ...d, lockedTotalCapital: lockedCapitalByMonth.get(d.monthIndex) }));
     }, [yearlyData, lifeExpectancy, lockedCapitalByMonth]);
     const bankruptcyPoint = retirementData.find(d => d.TotalCapital <= 0);
+
+    // [A11Y-CHARTS] — colonnes de la table de données sr-only du graphe d'accumulation (alternative
+    // texte à la courbe Recharts, opaque aux lecteurs d'écran). Âge (axe X) + comptes empilés + capital
+    // total + patrimoine net. Mode privé masque les MONTANTS (pas l'âge).
+    const accumColumns = useMemo<ChartDataColumn[]>(() => {
+        const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCompactCAD(Number(v) || 0);
+        return [
+            { key: 'age', label: 'Âge', format: (v) => v != null ? `${v} ans` : '' },
+            { key: 'NetWorth', label: 'Patrimoine net', format: money },
+            { key: 'TotalCapital', label: 'Capital placé', format: money },
+            { key: 'Liquidites', label: 'Liquidités', format: money },
+            { key: 'NonReg', label: 'Non-Enreg.', format: money },
+            { key: 'CELI', label: 'CELI', format: money },
+            { key: 'CELIAPP', label: 'CELIAPP', format: money },
+            { key: 'REER', label: 'REER', format: money },
+        ];
+    }, [isPrivacyMode]);
 
     // G7c — zoom molette / pan sur les deux graphes Retraite (x = âge).
     type YearlyPoint = ProjectionChartPoint & { TotalCapital: number };
@@ -240,6 +262,10 @@ export const Retirement: React.FC<RetirementProps> = ({
                     ) : (
                         <>
                             <Card icon={<Icon name="investments" size={18} />} title="Accumulation & épuisement">
+                                <div
+                                    role="img"
+                                    aria-label="Graphique d'accumulation et d'épuisement — évolution du capital placé (par compte) et du patrimoine net selon l'âge, de maintenant jusqu'à l'espérance de vie."
+                                >
                                 <ZoomContainer zoom={zoomAccum} className="h-[420px] w-full" style={{ minHeight: '420px' }}>
                                     <ResponsiveContainer width="100%" height="100%">
                                         <ComposedChart data={zoomAccum.visibleData} margin={{ top: 20, right: 30, left: 10, bottom: 0 }}>
@@ -283,6 +309,14 @@ export const Retirement: React.FC<RetirementProps> = ({
                                         </ComposedChart>
                                     </ResponsiveContainer>
                                 </ZoomContainer>
+                                </div>
+                                {/* [A11Y-CHARTS] — alternative TEXTUELLE (sr-only) à la courbe d'accumulation :
+                                    mêmes données en table accessible, masquage privacy aligné sur les PrivateAmount. */}
+                                <ChartDataTable
+                                    caption="Capital placé et patrimoine net par âge (accumulation puis épuisement)"
+                                    columns={accumColumns}
+                                    rows={lifeExpectancyData}
+                                />
 
                                 <div className="grid grid-cols-3 gap-4 mt-6">
                                     <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">

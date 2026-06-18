@@ -157,6 +157,13 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                             </button>
                         </div>
                     </div>
+                    {/* [IA-ASSETLOC-PERSIST] L'éditeur est un BAC-À-SABLE what-if (état local volontaire, non
+                        persisté) : on clarifie pour que l'utilisateur ne croie pas éditer son vrai portefeuille. */}
+                    <p className="text-tiny text-ink-500 italic leading-snug">
+                        Simulation : ajuste librement pour explorer le placement optimal — ça ne modifie PAS ton
+                        portefeuille réel (édite tes avoirs dans <strong className="text-ink-300">Investissements</strong>).
+                        « ↺ Depuis portefeuille » recharge tes vrais avoirs.
+                    </p>
                     {holdings.map((h, i) => (
                         <div key={i} className="grid grid-cols-12 gap-2 items-center bg-white/[0.02] rounded p-2">
                             <select

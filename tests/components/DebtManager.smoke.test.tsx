@@ -44,4 +44,24 @@ describe('DebtManager — smoke (CA-04)', () => {
         // La devise est bien présente (montants formatés).
         expect(text).toContain('$');
     });
+
+    // [A11Y-CHARTS] la courbe d'extinction a une alternative sr-only (role="img" + ChartDataTable),
+    // et cette table MASQUE les $ en mode discret (ne réintroduit PAS la fuite vie privée).
+    it('graphe : alternative sr-only présente + masque les $ en mode discret', async () => {
+        const { useFinanceStore } = await import('../../store/useFinanceStore');
+        const { act } = await import('@testing-library/react');
+        const debts: Debt[] = [
+            { id: 'd1', name: 'Prêt', balance: 50000, interestRate: 5, minimumPayment: 500, category: 'Personal' },
+        ];
+        act(() => { useFinanceStore.setState({ isPrivacyMode: true }); });
+        try {
+            const { container } = render(<DebtManager debts={debts} setDebts={vi.fn()} />);
+            expect(container.querySelector('[role="img"]')).not.toBeNull();      // conteneur graphe
+            const srTable = container.querySelector('table.sr-only');            // alternative textuelle
+            expect(srTable).not.toBeNull();
+            expect(srTable?.textContent).toContain('Montant masqué');            // $ masqués en privacy
+        } finally {
+            act(() => { useFinanceStore.setState({ isPrivacyMode: false }); });
+        }
+    });
 });

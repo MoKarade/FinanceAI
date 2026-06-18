@@ -1,49 +1,44 @@
-// [D6-SR] — la primitive PrivateAmount masque les montants aux LECTEURS D'ÉCRAN en mode privé
-// (le blur CSS seul laissait le texte lisible par SR — fuite).
+// [PRIV-DISCRET-DOM] — PrivateAmount MASQUE la valeur (•••) en mode discret : la vraie valeur n'est PLUS
+// dans le DOM (copier-coller / inspecteur / lecteur d'écran : zéro fuite). Choix Marc 2026-06-17.
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { PrivateAmount } from '../../../components/ui/PrivateAmount';
 import { useFinanceStore } from '../../../store/useFinanceStore';
 
-describe('[D6-SR] PrivateAmount', () => {
+describe('[PRIV-DISCRET-DOM] PrivateAmount', () => {
     beforeEach(() => {
         act(() => { useFinanceStore.setState({ isPrivacyMode: false }); });
     });
 
-    it('mode privé INACTIF : la valeur est rendue telle quelle (accessible)', () => {
+    it('mode discret INACTIF : la valeur est rendue telle quelle (accessible)', () => {
         render(<PrivateAmount>123 456$</PrivateAmount>);
         const el = screen.getByText('123 456$');
         expect(el).toBeTruthy();
-        // Pas de masquage : aucun aria-hidden sur la valeur.
         expect(el.closest('[aria-hidden="true"]')).toBeNull();
     });
 
-    it('mode privé ACTIF : valeur aria-hidden + « Montant masqué » annoncé aux SR', () => {
+    it('mode discret ACTIF : la VRAIE valeur sort du DOM (masquée par •••)', () => {
         act(() => { useFinanceStore.setState({ isPrivacyMode: true }); });
         const { container } = render(<PrivateAmount>123 456$</PrivateAmount>);
-        // La valeur est toujours dans le DOM (pour le blur visuel + dé-floutage hover)…
-        const value = screen.getByText('123 456$');
-        // …mais cachée aux SR.
-        expect(value.closest('[aria-hidden="true"]')).not.toBeNull();
-        // Et un texte de remplacement est exposé aux SR.
+        // La valeur réelle ne doit PLUS être dans le DOM (fin de la fuite copier-coller/inspecteur/SR).
+        expect(screen.queryByText('123 456$')).toBeNull();
+        expect(container.textContent).not.toContain('123 456$');
+        // Le masque ••• est affiché (aria-hidden, hors arbre SR)…
+        const mask = container.querySelector('[aria-hidden="true"]');
+        expect(mask?.textContent).toBe('•••');
+        // …et un texte de remplacement est annoncé aux SR.
         expect(container.querySelector('.sr-only')?.textContent).toBe('Montant masqué');
-    });
-
-    it('porte la classe privacy-blur (le visuel CSS existant reste piloté par Layout)', () => {
-        const { container } = render(<PrivateAmount className="font-mono">99$</PrivateAmount>);
-        const root = container.firstElementChild!;
-        expect(root.className).toContain('privacy-blur');
-        expect(root.className).toContain('font-mono');
     });
 
     it('réagit au toggle du store (bascule live)', () => {
         const { container } = render(<PrivateAmount>42$</PrivateAmount>);
-        expect(container.querySelector('.sr-only')).toBeNull();
+        expect(screen.getByText('42$')).toBeTruthy();
         act(() => { useFinanceStore.setState({ isPrivacyMode: true }); });
+        expect(screen.queryByText('42$')).toBeNull();
         expect(container.querySelector('.sr-only')?.textContent).toBe('Montant masqué');
     });
 
-    it('conserve l\'infobulle native `title` (migration depuis un <span title="…"> brut)', () => {
+    it('conserve l\'infobulle native `title`', () => {
         const { container } = render(<PrivateAmount title="Écart vs référence">7$</PrivateAmount>);
         expect(container.firstElementChild?.getAttribute('title')).toBe('Écart vs référence');
     });

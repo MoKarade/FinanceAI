@@ -9,6 +9,9 @@ import { ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, A
 import { ConfirmModal } from './ui/ConfirmModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ZoomContainer } from './ui/ZoomContainer';
+import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
+import { useFinanceStore } from '../store/useFinanceStore';
 import { formatCAD } from '../utils/format';
 
 interface DebtManagerProps {
@@ -73,6 +76,20 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     // G7a — zoom molette / pan sur la courbe d'extinction (x = mois).
     const zoom = useTimeChartZoom(simulation.chart);
 
+    // [A11Y-CHARTS] — mode discret : masque les montants de la table de données sr-only.
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
+    // [A11Y-CHARTS] — colonnes de la table sr-only (alternative texte à l'AreaChart d'extinction,
+    // opaque aux lecteurs d'écran). Mois (axe X) + solde restant + intérêts cumulés. Mode privé
+    // masque les MONTANTS (pas le numéro de mois).
+    const debtColumns = useMemo<ChartDataColumn[]>(() => {
+        const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0);
+        return [
+            { key: 'month', label: 'Mois', format: (v) => `Mois ${v ?? 0}` },
+            { key: 'balance', label: 'Solde restant', format: money },
+            { key: 'interestAccumulated', label: 'Intérêts cumulés', format: money },
+        ];
+    }, [isPrivacyMode]);
+
     return (
         <div className="space-y-6 stagger-in pb-20">
             <ConfirmModal isOpen={!!confirmDeleteId} onConfirm={doConfirmDelete} onCancel={() => setConfirmDeleteId(null)} title="Supprimer la dette" message="Supprimer cette dette définitivement ?" confirmLabel="Supprimer" />
@@ -131,6 +148,10 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                 </div>
                 <div className="lg:col-span-2">
                     <Card title="Extinction de la dette">
+                        <div
+                            role="img"
+                            aria-label="Courbe d'extinction de la dette — solde total restant, mois par mois, jusqu'au remboursement complet selon le paiement supplémentaire choisi."
+                        >
                         <ZoomContainer zoom={zoom} style={{ width: '100%', height: '350px', minHeight: '350px' }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={zoom.visibleData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
@@ -143,6 +164,14 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                 </AreaChart>
                             </ResponsiveContainer>
                         </ZoomContainer>
+                        </div>
+                        {/* [A11Y-CHARTS] — alternative TEXTUELLE (sr-only) à la courbe d'extinction :
+                            mêmes données (solde + intérêts cumulés par mois) en table accessible. */}
+                        <ChartDataTable
+                            caption="Solde de dette restant et intérêts cumulés par mois"
+                            columns={debtColumns}
+                            rows={simulation.chart}
+                        />
                     </Card>
                     <div className="mt-6 p-4 bg-blue-900/10 border border-info-500/20 rounded-xl flex gap-4 items-start">
                         <span className="text-2xl">ℹ️</span>

@@ -8,6 +8,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Accessibilité (Vague 2)] — 2026-06-17
 
+### Investissement — Recherche d'action (Finnhub)
+- **Symbole proposé mais sans cours → saisie manuelle au lieu d'une erreur** : l'autocomplétion proposait des
+  titres (TSX/étrangers) que le forfait Finnhub gratuit ne sait pas coter, ce qui menait à un message d'erreur
+  sec. Désormais l'app bascule automatiquement en saisie manuelle pré-remplie (symbole + nom), avec un message
+  informatif — tu n'as plus qu'à entrer le prix. Une vraie panne réseau reste signalée comme une erreur (pas
+  masquée). Le menu d'autocomplétion est agrandi, et la touche **Échap** ferme le menu sans fermer la fenêtre.
+
 ### Projection — Événements de perte de revenu (FISC-EVENT-INCOMELOSS)
 - **Perte d'emploi / année sabbatique / accident appliqués par le moteur** : ces événements de vie étaient
   collectés par l'UI mais **ignorés** par la projection (no-op silencieux — une interruption de revenu de 6 mois

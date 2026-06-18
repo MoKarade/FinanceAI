@@ -27,8 +27,24 @@ export interface NetWorthParts {
 }
 
 /**
+ * [HARDEN-NETWORTH-EXHAUSTIVE] Signe de CHAQUE terme du patrimoine net : +1 = actif, −1 = dette.
+ * Le type `Record<keyof NetWorthParts, …>` FORCE le compilateur à classer TOUT champ de `NetWorthParts` :
+ * ajouter un champ à l'interface sans lui donner un signe ici CASSE le typecheck. Couplé au test croisé
+ * (`tests/services/netWorth.test.ts` : « formule littérale == Σ signe×valeur »), un nouveau champ ajouté à
+ * l'interface + au sign-map mais OUBLIÉ dans la formule littérale fait ÉCHOUER le test → la classe de bug
+ * MONEY-PHANTOM (terme d'actif/dette oublié = patrimoine faux, bug Marc « -193 k$ » 2026-06-16) devient
+ * STRUCTURELLEMENT impossible. ⚠️ La formule littérale ci-dessous reste la SOURCE d'exécution (hot-path
+ * du moteur mensuel × Monte-Carlo, inchangée et prouvée) — le sign-map n'est qu'un filet compile-time + test.
+ */
+export const NET_WORTH_SIGN: Record<keyof NetWorthParts, 1 | -1> = {
+    liquid: 1, celi: 1, celiapp: 1, reer: 1, nonReg: 1, crypto: 1, reee: 1, realEstateEquity: 1,
+    liquidDebt: -1, smithManoeuvreDebt: -1, activeDebtsTotal: -1,
+};
+
+/**
  * Patrimoine net = Σ(actifs) − Σ(dettes non nettées). Source unique appelée par le moteur
  * mensuel (rawNetWorth + prevNW) ET la succession (finalRawNetWorth) → jamais de dérive.
+ * Tout terme ajouté ici doit l'être dans `NET_WORTH_SIGN` (garde d'exhaustivité, voir ci-dessus).
  */
 export function computeRawNetWorth(p: NetWorthParts): number {
     return p.liquid + p.celi + p.celiapp + p.reer + p.nonReg + p.crypto + p.reee + p.realEstateEquity

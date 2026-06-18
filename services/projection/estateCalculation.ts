@@ -184,8 +184,15 @@ export function computeEstateNetWorth(
     // ne crée pas de rente négative qui gonflerait/dégonflerait le NPV en silence).
     const rrqMonthlyFamily = (rrqEstimateMonthly !== undefined) ? (Math.max(0, rrqEstimateMonthly) * activeUsersCount) : (governmentPension * GOV_PENSION_RRQ_SHARE);
     const psvMonthlyFamily = (psvEstimateMonthly !== undefined) ? (Math.max(0, psvEstimateMonthly) * activeUsersCount) : (governmentPension * GOV_PENSION_PSV_SHARE);
-    const rrqExpected = rrqMonthlyFamily * Math.pow(1 + simInflation / 100, simulationYears);
-    const psvExpected = psvMonthlyFamily * Math.pow(1 + simInflation / 100, simulationYears);
+    // [FISC-ESTATE-PENSION-NPV] ANNUALISATION (×12) — le facteur d'annuité `npvFactor` plus bas
+    // valorise des versements ANNUELS (r=2 %/an, n exprimé en ANNÉES) ; la pension doit donc être
+    // convertie mensuel→annuel AVANT de l'y appliquer. Avant : montant MENSUEL × facteur annuel
+    // = NPV ÷12 → rentes publiques (RRQ/PSV) ~12× SOUS-évaluées au bilan successoral. N'affecte
+    // PAS le NW mensuel ni les invariants de conservation (estateCalculation ne touche que
+    // `estateNetWorth`, écran Succession), mais fausse cet écran de plusieurs centaines de k$.
+    const MONTHS_PER_YEAR = 12;
+    const rrqExpected = rrqMonthlyFamily * MONTHS_PER_YEAR * Math.pow(1 + simInflation / 100, simulationYears);
+    const psvExpected = psvMonthlyFamily * MONTHS_PER_YEAR * Math.pow(1 + simInflation / 100, simulationYears);
 
     const r_npv = 0.02;
     const npvFactor = r_npv > 0 ? (1 - Math.pow(1 + r_npv, -remainingYearsAtEnd)) / r_npv : remainingYearsAtEnd;

@@ -191,13 +191,19 @@ const ALL_TYPES = ['BASE', 'LIBERTE_55', 'HYPER_INFLATION', 'WINDFALL', 'ECONOMI
         expect(windfall!.estateNetWorth).toBeGreaterThan(base!.estateNetWorth!);
     });
 
-    it('HYPER_INFLATION dégrade le patrimoine vs BASE (en réel)', () => {
+    it('HYPER_INFLATION dégrade le PORTEFEUILLE vs BASE (dépenses inflatées à 5,5 %)', () => {
         const result: ProjectionResult = calculateFutureProjection(makeParams(), false, 0, ALL_TYPES);
         const scenarios = result.allResults as ProjectionResult[];
         const base = scenarios.find(r => r.stratType === 'BASE');
         const hyper = scenarios.find(r => r.stratType === 'HYPER_INFLATION');
-        // L'inflation 5.5% érode la valeur réelle nette même avec rendements similaires
-        expect(hyper!.estateNetWorth).toBeLessThan(base!.estateNetWorth!);
+        // L'inflation 5,5 % érode le PORTEFEUILLE (`finalNetWorth` = patrimoine net de fin) : des dépenses
+        // qui inflent plus vite réduisent l'épargne mensuelle → moins d'actifs accumulés.
+        // ⚠️ On NE teste PAS `estateNetWorth` ici : depuis [FISC-ESTATE-PENSION-NPV] (annualisation ×12),
+        // la NPV des rentes publiques RRQ/PSV — qui sont INDEXÉES à l'inflation, donc une COUVERTURE
+        // contre l'inflation — est correctement dimensionnée et gonfle nominalement avec l'inflation.
+        // Sous hyper-inflation, cette couverture peut faire DÉPASSER l'estate nominal de la base
+        // (comportement économiquement correct). L'érosion se mesure donc sur le portefeuille, pas l'estate.
+        expect(hyper!.finalNetWorth).toBeLessThan(base!.finalNetWorth!);
     });
 
     it('patrimoine positif avec cash + revenus normaux et 5 ans d\'horizon', () => {

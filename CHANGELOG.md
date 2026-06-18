@@ -8,6 +8,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Accessibilité (Vague 2)] — 2026-06-17
 
+### Futur — Badge « plan insoutenable »
+- **Un patrimoine projeté qui devient négatif est maintenant expliqué, pas juste affiché** : quand la projection
+  fait passer ton patrimoine net sous zéro (capital épuisé, dette qui prend le dessus), un badge clair « Plan
+  insoutenable — capital épuisé vers X ans » apparaît dans l'en-tête de l'onglet Futur. Un plan qui reste solvable
+  jusqu'au bout n'affiche aucun badge. Transforme un chiffre négatif anxiogène en signal actionnable.
+
 ### Investissement — Recherche d'action (Finnhub)
 - **Symbole proposé mais sans cours → saisie manuelle au lieu d'une erreur** : l'autocomplétion proposait des
   titres (TSX/étrangers) que le forfait Finnhub gratuit ne sait pas coter, ce qui menait à un message d'erreur

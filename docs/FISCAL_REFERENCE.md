@@ -9,6 +9,13 @@
 > **Règle CLAUDE.md** : toute constante fiscale du code DOIT correspondre à ce doc,
 > daté + sourcé. Aucun chiffre fiscal en dur non sourcé. Audit : agent `fiscal-accuracy`.
 >
+> ⚠️ **Format des dates** : lu par `tests/utils/fiscalFreshness.ts` (garde [HARDEN-FISCAL-TIMEBOMB]).
+> Conserver les marqueurs **`Dernière vérification : YYYY-MM-DD`** et **`Ré-audité YYYY-MM-DD`** dans
+> ce format exact (la regex tolère le gras markdown `**…**`). Une restructuration de ces lignes casse le test.
+> **Bumper la date = ATTESTER une re-vérification RÉELLE des chiffres vs ARC/Revenu Québec** (acte
+> d'engagement, pas une formalité) : la garde mesure la fraîcheur de la DATE, pas l'exactitude des
+> valeurs. Avancer la date sans re-vérifier désarme la bombe et endort la vigilance qu'elle force.
+>
 > **Implémentation** : `utils/tax.ts` (particuliers) + `services/realEstate.ts`
 > (immobilier SCHL/OSFI). Indexation des années futures : `getIndexedBracketsForYear`
 > (≈ +2 %/an au-delà de 2026, sauf montants gelés indiqués). Cf ADR 009.

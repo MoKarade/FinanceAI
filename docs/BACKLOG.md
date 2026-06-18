@@ -304,9 +304,13 @@
   garantir un snapshot immuable de l'input AVANT envoi Worker/IA + un AbortController sur le chemin Worker projection.
 
 **ÉPIC 3 — Cycle de vie**
-- [ ] **[HARDEN-FISCAL-TIMEBOMB]** 🔧 MEDIUM (nouveau, ticket 3.1) — test qui ALERTE quand la fiscalité périme. ⚠️ PAS un
-  hard `Date.now() < 2027` (casserait TOUS les déploiements le 1ᵉʳ janvier, même un hotfix non-fiscal) → lire la date
-  « Dernière vérification » de `FISCAL_REFERENCE.md` et échouer si > N mois, OU warning au build. Aligné `/audit-financier`.
+- [x] **[HARDEN-FISCAL-TIMEBOMB]** ✅ MEDIUM (PR #363, 2026-06-18, ticket 3.1) — `utils/fiscalFreshness.ts` (helper pur)
+  + `tests/utils/fiscalFreshness.test.ts`. Lit la date « Dernière vérification »/« Ré-audité » la PLUS RÉCENTE de
+  `FISCAL_REFERENCE.md` (regex tolérante au gras markdown) et mesure l'ancienneté RELATIVE (pas de `Date.now() < 2027`
+  calendaire) : `console.warn` à 12 mois, **échec dur à 18 mois** (généreux → n'interrompt un travail non-fiscal qu'en
+  cas de négligence profonde ; la cadence `/audit-financier` l'évite). Date introuvable ⇒ traité comme périmé (pas de
+  désamorçage silencieux). Discrimination INTRINSÈQUE : test unitaire avec date périmée synthétique (`now` injecté) →
+  `isExpired=true`. 11 tests. Réutilisable pour un futur « warning au build ».
 - [x] **[HARDEN-ZUSTAND-MIGRATE]** ✅ DÉJÀ FAIT (ticket 3.2) — `persist` schema **v7** + `migratePersistedState` (v1→v7,
   optional chaining, fallback défaut + dump du localStorage corrompu) + tests `migratePersistedState.test`. Plus avancé
   que le ticket (v2). Rien à faire.

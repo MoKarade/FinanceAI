@@ -255,9 +255,13 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
 
 ## Tests
 - Tests pour TOUTE nouvelle logique. Priorité `services/projection/`. Ne pas baisser la couverture.
-- **Garde-fou money-critical** : `tests/services/projection.moneyConservation.test.ts` (9 invariants de
+- **Garde-fou money-critical** : `tests/services/projection.moneyConservation.test.ts` (12 invariants de
   conservation de l'argent). À ÉTENDRE — pas affaiblir — à chaque bug financier trouvé. Voir la checklist
   « VALIDATION FINANCIÈRE » dans « Règles non négociables ».
+- **Lire un fichier du repo dans un test** (doc/source à scanner — ex. fiscalFreshness, futur FISC-CONST-LINT) :
+  `readFileSync(resolve(process.cwd(), 'chemin'))` — PAS `new URL('…', import.meta.url)` : `import.meta.url`
+  n'est PAS de scheme `file://` après transform Vite → « The URL must be of scheme file » (leçon
+  HARDEN-FISCAL-TIMEBOMB 2026-06-18). Vitest tourne depuis la racine du projet.
 
 ## Stack
 React 19.2 + Vite 8 (Rolldown) + TS 5.8 strict + Tailwind 3 · Zustand 5 (persist+partialize, schema v7,

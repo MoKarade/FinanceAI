@@ -21,7 +21,7 @@ import { computeRetirementIncome } from './projection/retirementIncome';
 import { processOneChild } from './projection/childrenReee';
 import { computeActiveIncome } from './projection/activeIncome';
 import { processReerMeltdown } from './projection/meltdownReer';
-import { applyTravelExpenses, applyLifeEvents, computeStressTest, applySavingsGoalDeadlines, applyFinancialGoalDeadlines } from './projection/monthlyEvents';
+import { applyTravelExpenses, applyLifeEvents, computeStressTest, applySavingsGoalDeadlines, applyFinancialGoalDeadlines, computeIncomeLossFactor } from './projection/monthlyEvents';
 import { computeLatentTax } from './projection/latentTax';
 import { computeGlidepathRates } from './projection/glidepathRates';
 import { processCashflowAllocation, type CashflowState } from './projection/cashflowAllocation';
@@ -631,7 +631,29 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             incomeMarc = aiResult.incomeMarc;
             incomeAnna = aiResult.incomeAnna;
             monthlyIncome = aiResult.monthlyIncome;
-            accGrossIncomeYear += aiResult.accGrossAdd;
+            // [FISC-EVENT-INCOMELOSS] événements de perte de revenu DATÉS (PERTE_EMPLOI/SABBATIQUE/
+            // ACCIDENT) : réduisent le revenu MÉNAGE de incomeLossPercent % pendant durationMonths mois
+            // (sémantique Marc 2026-06-18 : % perdu + durée, niveau ménage). On réduit le NET (`monthlyIncome`,
+            // cashflow) ET `accGrossAdd` du même facteur. ⚠️ `accGrossAdd` alimente UNIQUEMENT l'espace REER
+            // de l'an+1 (`taxJanuary.ts`), PAS l'impôt salarial de décembre (calculé sur `grossMarcBaseAnnual`
+            // PLEIN — vérifié empiriquement, ΔFluxImpots = 0). Le fix NE modélise donc PAS le remboursement
+            // d'impôt qu'une vraie perte de revenu déclencherait → biais CONSERVATEUR (NW post-perte
+            // légèrement sous-estimé), IDENTIQUE au chômage STOCHASTIQUE existant (`activeIncome.ts` AE 55 %/
+            // LTD). Conservation préservée (résiduel < 1 $, moneyConservation). Appliqué AVANT le bloc enfants
+            // (prestations revenu-testées recalculées sur le revenu réduit). RETRAITE : non appliqué (pas de
+            // revenu d'EMPLOI à perdre) → un événement daté en retraite est inerte. Interaction avec une perte
+            // STOCHASTIQUE (Monte-Carlo) le même mois : composition MULTIPLICATIVE (× 0,55 × facteur), bornée
+            // [0, 1] — voulu (aléa MC + événement planifié = deux pertes distinctes).
+            const incomeLossFactor = computeIncomeLossFactor(lifeEvents, currentLoopDate);
+            let activeGrossAdd = aiResult.accGrossAdd;
+            if (incomeLossFactor < 1) {
+                incomeMarc *= incomeLossFactor;
+                incomeAnna *= incomeLossFactor;
+                monthlyIncome *= incomeLossFactor;
+                activeGrossAdd *= incomeLossFactor;
+                logEvent(lifeEventsLog, `📉 Perte de revenu planifiée (-${Math.round((1 - incomeLossFactor) * 100)} %)`);
+            }
+            accGrossIncomeYear += activeGrossAdd;
             unemployedMonthsRemaining = aiResult.newUnemployedMonths;
             ltdMonthsRemaining = aiResult.newLtdMonths;
             ltdLogged = aiResult.ltdLogged;

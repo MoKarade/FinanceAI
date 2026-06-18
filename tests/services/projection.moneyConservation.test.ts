@@ -120,6 +120,38 @@ describe('[CONSERVATION] patrimoine net toujours reconstructible et conservé', 
         expect(maxResid).toBeLessThan(1);
     });
 
+    it('[FISC-EVENT-INCOMELOSS] perte de revenu : ΔNW conservé (résiduel ≈ 0) ET patrimoine réduit vs sans événement', () => {
+        // Salarié : perte de revenu MÉNAGE de 50 % pendant 6 mois dès 2027-01 (un des deux revenus coupé).
+        const withLoss = (): SimulationParams => makeParams({
+            lifeEvents: [{ id: 'jl', type: 'PERTE_EMPLOI', name: 'Perte d\'emploi', date: '2027-01', durationMonths: 6, incomeLossPercent: 50 }],
+        });
+        const cd = run(withLoss()).chartData;
+        // Conservation : le revenu réduit flue dans `Income` → chaque mois reste expliqué (résiduel ≈ 0).
+        let maxResid = 0;
+        for (let i = 1; i < cd.length; i++) maxResid = Math.max(maxResid, Math.abs(unexplained(cd[i], cd[i - 1])));
+        expect(maxResid).toBeLessThan(1);
+        // DISCRIMINANT : la perte DOIT réduire le patrimoine final (avant le fix = no-op → identique).
+        const nwWith = num(cd.at(-1)!.NetWorth);
+        const nwWithout = num(run(makeParams()).chartData.at(-1)!.NetWorth);
+        expect(nwWith).toBeLessThan(nwWithout);
+        // Le levier n'est plus muet : au moins un mois de la fenêtre logge la perte.
+        expect(cd.some(p => (p.lifeEvents || []).some(e => /Perte de revenu/.test(e)))).toBe(true);
+    });
+
+    it('[FISC-EVENT-INCOMELOSS] perte 100 % (revenu nul, cas extrême → drawdown/insolvabilité) : conservation tient', () => {
+        // Couple actif, revenu MÉNAGE coupé à 100 % pendant 9 mois, peu de coussin → force le décaissement
+        // puis l'insolvabilité (INV-12). Le résiduel doit RESTER ≈ 0 (l'argent manquant est porté visible).
+        const cd = run(makeParams({
+            lifeEvents: [{ id: 'jl', type: 'PERTE_EMPLOI', name: 'Chômage total', date: '2027-01', durationMonths: 9, incomeLossPercent: 100 }],
+        })).chartData;
+        let maxResid = 0;
+        for (let i = 1; i < cd.length; i++) maxResid = Math.max(maxResid, Math.abs(unexplained(cd[i], cd[i - 1])));
+        expect(maxResid).toBeLessThan(1);
+        // Sur la fenêtre (mois 12..20), le revenu d'emploi tombe à ~0 (100 % coupé, persona sans bonus/side).
+        const windowIncome = cd.slice(12, 21).map(p => num(p.Income));
+        expect(Math.min(...windowIncome)).toBeLessThan(1);
+    });
+
     it('INV-1 — reconstructabilité : NetWorth = Σ(actifs affichés) − DetteTotale (sans placement)', () => {
         // Scénario réno non-abordable (signature de la capture Marc) : un découvert massif
         // doit RESTER reconstructible — la dette affichée explique l'écart actifs↔NW.

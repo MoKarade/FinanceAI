@@ -10,6 +10,8 @@ import {
     applySavingsGoalDeadlines,
     applyFinancialGoalDeadlines,
     computeStressTest,
+    computeIncomeLossFactor,
+    INCOME_LOSS_EVENT_TYPES,
 } from '../../services/projection/monthlyEvents';
 import type { PropertyStateMutable, LifeEventMutator, GoalDeadlineMutator } from '../../services/projection/monthlyEvents';
 import type { TravelGoal, LifeEvent, SavingsGoal, FinancialGoal, ProjectionConfig } from '../../types';
@@ -422,5 +424,88 @@ describe('computeStressTest', () => {
         // Assert
         expect(result.crashFactor).toBe(1);
         expect(result.recoveryFactor).toBe(1);
+    });
+});
+
+// ── [FISC-EVENT-INCOMELOSS] computeIncomeLossFactor ───────────────────────────
+
+describe('computeIncomeLossFactor', () => {
+    const ev = (over: Partial<LifeEvent> = {}): LifeEvent => ({
+        id: '1', type: 'PERTE_EMPLOI', name: 'Perte d\'emploi', date: '2028-03',
+        durationMonths: 6, incomeLossPercent: 100, ...over,
+    });
+    // m1 = mois 1-based ; on ancre au 15 pour éviter tout effet de bord de fin de mois.
+    const at = (y: number, m1: number): Date => new Date(Date.UTC(y, m1 - 1, 15));
+
+    it('facteur = (1 − %/100) pendant la fenêtre active', () => {
+        expect(computeIncomeLossFactor([ev({ incomeLossPercent: 100 })], at(2028, 3))).toBe(0);
+        expect(computeIncomeLossFactor([ev({ incomeLossPercent: 50 })], at(2028, 5))).toBe(0.5);
+    });
+
+    it('inactif AVANT la date de début → 1', () => {
+        expect(computeIncomeLossFactor([ev()], at(2028, 2))).toBe(1);
+    });
+
+    it('borne : dernier mois inclus (offset dur−1), premier mois après exclu', () => {
+        // début 2028-03, durée 6 → actif 2028-03..2028-08 (offsets 0..5).
+        expect(computeIncomeLossFactor([ev({ incomeLossPercent: 100 })], at(2028, 8))).toBe(0); // offset 5 → actif
+        expect(computeIncomeLossFactor([ev()], at(2028, 9))).toBe(1);                            // offset 6 → inactif
+    });
+
+    it('deux événements actifs se composent multiplicativement', () => {
+        const a = ev({ id: 'a', type: 'PERTE_EMPLOI', incomeLossPercent: 50 });
+        const b = ev({ id: 'b', type: 'ACCIDENT', incomeLossPercent: 50 });
+        expect(computeIncomeLossFactor([a, b], at(2028, 4))).toBeCloseTo(0.25, 10);
+    });
+
+    it('% clampé à [0, 100] (négatif → 0 ; >100 → 100)', () => {
+        expect(computeIncomeLossFactor([ev({ incomeLossPercent: 150 })], at(2028, 4))).toBe(0);
+        expect(computeIncomeLossFactor([ev({ incomeLossPercent: -10 })], at(2028, 4))).toBe(1);
+    });
+
+    it('incomeLossPercent NaN/undefined (champ UI vidé) → 0 % (facteur 1, JAMAIS de NaN propagé)', () => {
+        // parseFloat('') === NaN ; `?? 0` ne couvre PAS NaN → garde Number.isFinite explicite côté moteur.
+        expect(computeIncomeLossFactor([ev({ incomeLossPercent: NaN })], at(2028, 4))).toBe(1);
+        expect(computeIncomeLossFactor([ev({ incomeLossPercent: undefined })], at(2028, 4))).toBe(1);
+        // durationMonths NaN → événement ignoré (pas de fenêtre active).
+        expect(computeIncomeLossFactor([ev({ durationMonths: NaN })], at(2028, 4))).toBe(1);
+    });
+
+    it('durationMonths ≤ 0 ou absent → ignoré (facteur 1)', () => {
+        expect(computeIncomeLossFactor([ev({ durationMonths: 0 })], at(2028, 3))).toBe(1);
+        expect(computeIncomeLossFactor([ev({ durationMonths: undefined })], at(2028, 3))).toBe(1);
+    });
+
+    it('type NON perte-de-revenu (GROS_ACHAT) ignoré', () => {
+        expect(computeIncomeLossFactor([ev({ type: 'GROS_ACHAT' })], at(2028, 4))).toBe(1);
+    });
+
+    it('date invalide ou absente → ignorée (pas de NaN)', () => {
+        expect(computeIncomeLossFactor([ev({ date: 'pas-une-date' })], at(2028, 4))).toBe(1);
+        expect(computeIncomeLossFactor([ev({ date: undefined as unknown as string })], at(2028, 4))).toBe(1);
+    });
+
+    it('résultat toujours dans [0, 1]', () => {
+        const r = computeIncomeLossFactor([ev({ incomeLossPercent: 100 }), ev({ id: '2', type: 'SABBATIQUE', incomeLossPercent: 100 })], at(2028, 4));
+        expect(r).toBeGreaterThanOrEqual(0);
+        expect(r).toBeLessThanOrEqual(1);
+        expect(r).toBe(0); // 0 × 0 = 0, pas de revenu négatif
+    });
+});
+
+describe('applyLifeEvents — les événements de perte de revenu ne sont PAS une dépense', () => {
+    it('un PERTE_EMPLOI au mois courant n\'appelle PAS addExpense (géré par computeIncomeLossFactor)', () => {
+        const event: LifeEvent = { id: '1', type: 'PERTE_EMPLOI', name: 'Perte', date: '2028-03', durationMonths: 6, incomeLossPercent: 100, impactAmount: 9999 };
+        const addExpense = vi.fn();
+        const state: LifeEventMutator = {
+            shockPortfolio: vi.fn(), addLiquid: vi.fn(), addExpense, adjustRealEstate: vi.fn(),
+            realizeCapitalGain: vi.fn(), logLife: vi.fn(), logFlow: vi.fn(),
+        };
+        applyLifeEvents([event], '2028-03', 1.0, [], state);
+        expect(addExpense).not.toHaveBeenCalled(); // skippé : pas de faux flux de dépense
+    });
+
+    it('INCOME_LOSS_EVENT_TYPES contient les 3 types attendus', () => {
+        expect([...INCOME_LOSS_EVENT_TYPES].sort()).toEqual(['ACCIDENT', 'PERTE_EMPLOI', 'SABBATIQUE']);
     });
 });

@@ -21,6 +21,15 @@ interface LifeEventsProps {
     returnRate: number;
 }
 
+/** [FISC-EVENT-INCOMELOSS] types modélisés comme une PERTE DE REVENU (% perdu + durée), pas une
+ *  dépense one-shot. Doit rester aligné sur `INCOME_LOSS_EVENT_TYPES` (services/projection/monthlyEvents). */
+const INCOME_LOSS_TYPES: LifeEventType[] = ['PERTE_EMPLOI', 'SABBATIQUE', 'ACCIDENT'];
+/** Défaut de % de revenu perdu par type (modifiable). Sémantique validée Marc 2026-06-18 :
+ *  perte d'emploi & sabbatique = 100 % (revenu coupé), accident/maladie = 50 % (partiel). */
+const INCOME_LOSS_DEFAULT_PCT: Partial<Record<LifeEventType, number>> = { PERTE_EMPLOI: 100, SABBATIQUE: 100, ACCIDENT: 50 };
+/** parseFloat tolérant : champ vide / NaN → undefined (jamais de NaN persisté dans le store ni propagé au moteur). */
+const numOrUndef = (v: string): number | undefined => { const n = parseFloat(v); return Number.isFinite(n) ? n : undefined; };
+
 const getEventInsights = (type: string, amount: number) => {
     switch (type) {
         case 'MARIAGE': return { breakdown: [{ name: 'Réception/Traiteur', value: amount * 0.45, color: '#bd7d9c' }, { name: 'Lieu & Déco', value: amount * 0.20, color: '#8a7cc0' }, { name: 'Photo/Vidéo', value: amount * 0.12, color: '#5b82bf' }, { name: 'Tenues/Alliances', value: amount * 0.13, color: '#4f9d86' }, { name: 'Fleurs/Musique', value: amount * 0.10, color: '#c2974f' }], tips: ['Astuce : Les cadeaux des invités couvrent souvent 40% à 60% des frais de réception.', 'Coût caché : Les pourboires et les taxes sur les services (souvent non inclus dans les devis initiaux).', 'Impact : C\'est une dépense pure, sans ROI financier, mais un investissement émotionnel majeur.'] };
@@ -40,6 +49,7 @@ const getEventInsights = (type: string, amount: number) => {
 
 export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, travelGoals, setTravelGoals, netWorth, returnRate }) => {
     const [isAdding, setIsAdding] = useState(false);
+    const [eventError, setEventError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'ALL' | 'TRAVEL' | 'RISK'>('ALL');
     const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
     const [confirmDeleteKey, setConfirmDeleteKey] = useState<string | null>(null);
@@ -53,7 +63,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
 
     const allItems = useMemo(() => {
         const tItems = travelGoals.map(t => ({ id: t.id, uniqueKey: `travel_${t.id}`, date: t.date, name: `Voyage: ${t.destination}`, cost: t.totalCost, type: 'TRAVEL', icon: 'plane' as IconName, details: t.destination }));
-        const eItems = events.map(e => ({ id: e.id, uniqueKey: `event_${e.id}`, date: e.date, name: e.name, cost: e.impactAmount || 0, type: e.type, icon: (e.type === 'KRACH' ? 'debt' : e.type === 'ACCIDENT' ? 'ambulance' : e.type === 'GROS_ACHAT' ? 'cart' : e.type === 'PERTE_EMPLOI' ? 'portfolio' : e.type === 'MARIAGE' ? 'heart' : e.type === 'RENOVATION' ? 'hammer' : e.type === 'AUTO' ? 'car' : e.type === 'SABBATIQUE' ? 'retirement' : e.type === 'BUSINESS' ? 'rocket' : 'calendar') as IconName, details: e.type === 'KRACH' ? `Chute ${e.impactPercent}%` : (e.durationMonths ? `Durée ${e.durationMonths} mois` : '') }));
+        const eItems = events.map(e => ({ id: e.id, uniqueKey: `event_${e.id}`, date: e.date, name: e.name, cost: e.impactAmount || 0, type: e.type, icon: (e.type === 'KRACH' ? 'debt' : e.type === 'ACCIDENT' ? 'ambulance' : e.type === 'GROS_ACHAT' ? 'cart' : e.type === 'PERTE_EMPLOI' ? 'portfolio' : e.type === 'MARIAGE' ? 'heart' : e.type === 'RENOVATION' ? 'hammer' : e.type === 'AUTO' ? 'car' : e.type === 'SABBATIQUE' ? 'retirement' : e.type === 'BUSINESS' ? 'rocket' : 'calendar') as IconName, details: e.type === 'KRACH' ? `Chute ${e.impactPercent}%` : (INCOME_LOSS_TYPES.includes(e.type) ? (e.incomeLossPercent != null && e.durationMonths != null ? `Perte ${e.incomeLossPercent}% · ${e.durationMonths} mois` : 'Non configuré') : (e.durationMonths ? `Durée ${e.durationMonths} mois` : '')) }));
         return [...tItems, ...eItems].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }, [events, travelGoals]);
 
@@ -86,9 +96,17 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                 setTravelGoals([...travelGoals, { id: Date.now().toString(), destination: newTrip.destination || 'Inconnu', date: newTrip.date || new Date().toISOString().split('T')[0], totalCost: Number(newTrip.totalCost), image: newTrip.image || '✈️' }]);
             }
         } else {
-            if (newLifeEvent.name && newLifeEvent.date) {
-                setEvents([...events, { ...newLifeEvent, id: Date.now().toString() } as LifeEvent]);
+            if (!newLifeEvent.name || !newLifeEvent.date) { setEventError('Nom et date de l\'événement requis.'); return; }
+            // [FISC-EVENT-INCOMELOSS] un événement de perte de revenu SANS % ou durée serait inerte
+            // (le moteur l'ignorerait) → on le refuse explicitement plutôt que de créer un levier muet.
+            if (INCOME_LOSS_TYPES.includes(newLifeEvent.type as LifeEventType)
+                && (!Number.isFinite(newLifeEvent.incomeLossPercent) || (newLifeEvent.incomeLossPercent ?? 0) <= 0
+                    || !Number.isFinite(newLifeEvent.durationMonths) || (newLifeEvent.durationMonths ?? 0) <= 0)) {
+                setEventError('Perte de revenu : indique un % perdu (> 0) et une durée en mois (> 0).');
+                return;
             }
+            setEventError(null);
+            setEvents([...events, { ...newLifeEvent, id: Date.now().toString() } as LifeEvent]);
         }
         setIsAdding(false);
         setNewTrip({ destination: '', date: '', totalCost: 0, image: '✈️' });
@@ -136,7 +154,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                 icon={<Icon name="life-projects" size={28} />}
                 title="Parcours de Vie"
                 actions={
-                    <Button onClick={() => setIsAdding(!isAdding)} variant={isAdding ? 'ghost' : 'secondary'} size="md">
+                    <Button onClick={() => { setIsAdding(!isAdding); setEventError(null); }} variant={isAdding ? 'ghost' : 'secondary'} size="md">
                         {isAdding ? 'Fermer' : 'Ajouter un Événement'}
                     </Button>
                 }
@@ -221,19 +239,25 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
                             <div className="lg:col-span-1">
                                 <label className="text-meta text-ink-300 mb-1 block">Type</label>
-                                <select className="w-full bg-dark border border-white/20 rounded p-2 text-white text-meta" value={newLifeEvent.type} onChange={e => setNewLifeEvent({ ...newLifeEvent, type: e.target.value as LifeEventType })}>
+                                <select className="w-full bg-dark border border-white/20 rounded p-2 text-white text-meta" value={newLifeEvent.type} onChange={e => { const t = e.target.value as LifeEventType; const isLoss = INCOME_LOSS_TYPES.includes(t); setNewLifeEvent(prev => ({ ...prev, type: t, incomeLossPercent: isLoss ? (prev.incomeLossPercent ?? INCOME_LOSS_DEFAULT_PCT[t]) : undefined, durationMonths: isLoss ? prev.durationMonths : undefined, impactPercent: t === 'KRACH' ? prev.impactPercent : undefined, impactAmount: (!isLoss && t !== 'KRACH') ? prev.impactAmount : undefined })); }}>
                                     <optgroup label="Projets de Vie"><option value="GROS_ACHAT">Gros Achat</option><option value="MARIAGE">Mariage</option><option value="RENOVATION">Rénovations</option><option value="AUTO">Achat Auto</option><option value="SABBATIQUE">Année Sabbatique</option><option value="BUSINESS">Lancer Business</option></optgroup>
                                     <optgroup label="Risques & Aléas"><option value="ACCIDENT">Accident / Santé</option><option value="PERTE_EMPLOI">Perte d'Emploi</option><option value="KRACH">Krach Boursier</option><option value="HERITAGE">Héritage / Gain</option></optgroup>
                                 </select>
                             </div>
                             <div><label className="text-meta text-ink-300 mb-1 block">Nom</label><input type="text" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.name} onChange={e => setNewLifeEvent({ ...newLifeEvent, name: e.target.value })} /></div>
                             <div><label className="text-meta text-ink-300 mb-1 block">Date</label><input type="date" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.date} onChange={e => setNewLifeEvent({ ...newLifeEvent, date: e.target.value })} /></div>
-                            {(newLifeEvent.type === 'KRACH' || newLifeEvent.type === 'ACCIDENT' || newLifeEvent.type === 'PERTE_EMPLOI') ? (
-                                <div><label htmlFor="lifeevent-impact" className="text-meta text-ink-300 mb-1 block">Impact (%) ou Durée</label><input id="lifeevent-impact" aria-label="Impact en pourcentage ou durée en mois" type="number" placeholder="Ex: 30% ou 3 mois" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.impactPercent || newLifeEvent.durationMonths || ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, impactPercent: parseFloat(e.target.value), durationMonths: parseFloat(e.target.value) })} /></div>
+                            {newLifeEvent.type === 'KRACH' ? (
+                                <div><label htmlFor="lifeevent-krach" className="text-meta text-ink-300 mb-1 block">Chute (%)</label><input id="lifeevent-krach" type="number" min={0} max={100} placeholder="Ex: 30" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.impactPercent ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, impactPercent: numOrUndef(e.target.value) })} /></div>
+                            ) : INCOME_LOSS_TYPES.includes(newLifeEvent.type as LifeEventType) ? (
+                                <>
+                                    <div><label htmlFor="lifeevent-losspct" className="text-meta text-ink-300 mb-1 block">% de revenu perdu</label><input id="lifeevent-losspct" type="number" min={0} max={100} placeholder="Ex: 100" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.incomeLossPercent ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, incomeLossPercent: numOrUndef(e.target.value) })} /></div>
+                                    <div><label htmlFor="lifeevent-duration" className="text-meta text-ink-300 mb-1 block">Durée (mois)</label><input id="lifeevent-duration" type="number" min={1} placeholder="Ex: 6" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.durationMonths ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, durationMonths: numOrUndef(e.target.value) })} /></div>
+                                </>
                             ) : (
-                                <div><label className="text-meta text-ink-300 mb-1 block">Montant ($)</label><input type="number" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.impactAmount || ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, impactAmount: parseFloat(e.target.value) })} /></div>
+                                <div><label htmlFor="lifeevent-amount" className="text-meta text-ink-300 mb-1 block">Montant ($)</label><input id="lifeevent-amount" type="number" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.impactAmount ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, impactAmount: numOrUndef(e.target.value) })} /></div>
                             )}
                             <button onClick={handleAdd} className="bg-purple-600 hover:bg-purple-500 text-white p-2 rounded font-bold h-[42px]">Ajouter</button>
+                            {eventError && <p className="lg:col-span-5 text-meta text-red-300 mt-1" role="alert">{eventError}</p>}
                         </div>
                     )}
                 </Card>

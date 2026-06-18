@@ -284,9 +284,9 @@
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
-| **Dernière PR mergée** | **#292** (cycle autonome ; #288→#292 cette session) |
+| **Dernière PR mergée** | **#350** (cycle autonome ; campagnes A11Y-CHARTS + AUDIT-FIN + privacy, 2026-06-17/18) |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
-| **Tests** | **2042/2042 verts** (Vitest 4 ; `fileParallelism: false`) |
+| **Tests** | **~2077/2077 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
 | **Typecheck** | Clean en mode strict |
 | **Build** | OK — **Vite 8 (Rolldown)** ; lazy-loading préservé (vendor react/recharts/ai/pdf) |
 | **Schema store** | **v7** (Zustand persist, migrations v1→v7) |
@@ -295,7 +295,7 @@
 | **Crypto** | CoinGecko (gratuit, sans clé) |
 | **Stock/ETF** | Finnhub REST (gratuit) |
 | **Sécurité storage** | AES-256-GCM + IndexedDB non-extractible (`services/secureKeyStore.ts`) ; `npm audit` = **0** |
-| **Auth** | Cloudflare Access (Google OAuth) — migration vers gate Google in-app prévue (ADR 010, pas faite) |
+| **Auth** | **Gate Google in-app** (`LoginGate`+`authGate`, `VITE_GOOGLE_GATE=1`) — **Cloudflare RETIRÉ le 2026-06-16** (Access + proxy DNS). Gate SOFT (trappe `?nogate=1`) ; données privées par compte Google |
 | **Lighthouse prod** | Performance 97 / A11y 100 / BP 100 / SEO 90 (dernière mesure connue) |
 | **PWA** | manifest + SW v2 (precache résilient) — installable Chrome/Edge/Mobile |
 | **WCAG** | AA conformant (sub-set AAA pour touch, focus, reduced-motion) |

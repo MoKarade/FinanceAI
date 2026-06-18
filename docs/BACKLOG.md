@@ -274,9 +274,12 @@
   boucler `calculateFutureProjection`, vérifier le résiduel-**BILAN** `ΔNW==ΔΣactifs−ΔΣdettes` ≤ 0,05 $ sur 100 % des mois
   (PAS la forme épargne+croissance−impôt, qui faux-positive sur les flux one-time — cf CLAUDE.md). Échec → afficher la SEED.
   ⚠️ borner les runs CI (~300-1000, pas 10 000 : 480 mois × N stratégies, coûteux). Complète les 25 scénarios fixes actuels.
-- [ ] **[HARDEN-NETWORTH-EXHAUSTIVE]** 🔧 MEDIUM (nouveau, ticket 1.2) — test d'exhaustivité sur `NetWorthParts` (la vraie
-  frontière du bilan, pas `Assets`) : forcer `Record<keyof NetWorthParts, number>` → si un futur actif/dette est ajouté au
-  bilan sans être traité par `computeRawNetWorth`, le typecheck casse. Empêche un terme oublié (classe MONEY-PHANTOM).
+- [x] **[HARDEN-NETWORTH-EXHAUSTIVE]** ✅ MEDIUM (PR #356, 2026-06-18, ticket 1.2) — garde anti MONEY-PHANTOM sur
+  `NetWorthParts` (`services/projection/netWorth.ts`) : `export const NET_WORTH_SIGN: Record<keyof NetWorthParts, 1|-1>`
+  → un champ ajouté à l'interface SANS signe casse le **typecheck** (prouvé). + test croisé « littéral == Σ signe×valeur »
+  → un terme oublié dans la formule fait échouer le test (discriminant prouvé : retrait d'un terme → 3 tests rouges).
+  ⚠️ La formule littérale `computeRawNetWorth` reste **byte-identique** (hot-path inchangé, zéro régression — conservation
+  verte) : le sign-map est un filet compile-time + test, INERTE au runtime. Panel `projection-validator` : garde correcte.
 - [ ] **[HARDEN-DECIMAL-STUDY]** 🔧 LOW/⏳ (nouveau, ticket 1.4, ÉTUDE) — PoC arithmétique exacte (centimes entiers OU
   `decimal.js`) sur un sous-module (impôts). ⚠️ Priorité BASSE : la dérive flottante est DÉJÀ bornée ≤ 0,02 $ sur ~25
   scénarios (invariants tolèrent < 2 $). Mesurer le coût Monte Carlo (480 mois × 100 iter) AVANT d'adopter. Ticket 1.3 =

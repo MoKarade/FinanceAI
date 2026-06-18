@@ -10,6 +10,7 @@ import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
 import { Icon } from './ui/Icon';
 import { ImportBankStatement } from './import/ImportBankStatement';
+import { PrivateAmount } from './ui/PrivateAmount';
 import { formatCAD } from '../utils/format';
 
 interface TransactionsProps {
@@ -678,8 +679,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         </button>
                                     </td>
 
-                                    <td className={`p-3 font-bold privacy-blur ${t.isTransfer ? 'text-blue-300 opacity-70' : t.amount > 0 ? 'text-green-400' : 'text-ink-100'}`}>
-                                        {formatCAD(t.amount, { decimals: 2 })}
+                                    <td className={`p-3 font-bold ${t.isTransfer ? 'text-blue-300 opacity-70' : t.amount > 0 ? 'text-green-400' : 'text-ink-100'}`}>
+                                        <PrivateAmount>{formatCAD(t.amount, { decimals: 2 })}</PrivateAmount>
                                     </td>
 
                                     <td className="p-3">
@@ -744,10 +745,10 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                             <div className="text-tiny text-ink-500 mt-0.5">{t.date}</div>
                                         </div>
                                     </div>
-                                    <div className={`font-bold text-body privacy-blur whitespace-nowrap ${t.isTransfer ? 'text-blue-300 opacity-70' : t.amount > 0 ? 'text-green-400' : 'text-ink-100'
+                                    <PrivateAmount as="div" className={`font-bold text-body whitespace-nowrap ${t.isTransfer ? 'text-blue-300 opacity-70' : t.amount > 0 ? 'text-green-400' : 'text-ink-100'
                                         }`}>
                                         {formatCAD(t.amount, { decimals: 2 })}
-                                    </div>
+                                    </PrivateAmount>
                                 </div>
 
                                 <div className="flex items-center gap-2">

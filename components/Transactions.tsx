@@ -10,6 +10,7 @@ import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
 import { Icon } from './ui/Icon';
 import { ImportBankStatement } from './import/ImportBankStatement';
+import { PrivateAmount } from './ui/PrivateAmount';
 import { formatCAD } from '../utils/format';
 
 interface TransactionsProps {
@@ -622,7 +623,9 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         </button>
                                     </th>
                                 ))}
-                                <th className="p-3 w-10">Auto</th>
+                                <th className="p-3 w-12" title="Confiance de la catégorisation IA — vert ≥ 90 %, jaune ≥ 70 %, rouge < 70 %">
+                                    <span className="inline-flex items-center gap-1">Auto<span aria-hidden="true" className="text-ink-500 not-italic">ⓘ</span></span>
+                                </th>
                                 <th className="p-3">Type</th>
                                 {([['amount', 'Montant'], ['category', 'Categorie']] as const).map(([k, label]) => (
                                     <th key={k} className="p-3" aria-sort={sortKey === k ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
@@ -678,8 +681,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         </button>
                                     </td>
 
-                                    <td className={`p-3 font-bold privacy-blur ${t.isTransfer ? 'text-blue-300 opacity-70' : t.amount > 0 ? 'text-green-400' : 'text-ink-100'}`}>
-                                        {formatCAD(t.amount, { decimals: 2 })}
+                                    <td className={`p-3 font-bold ${t.isTransfer ? 'text-blue-300 opacity-70' : t.amount > 0 ? 'text-green-400' : 'text-ink-100'}`}>
+                                        <PrivateAmount>{formatCAD(t.amount, { decimals: 2 })}</PrivateAmount>
                                     </td>
 
                                     <td className="p-3">
@@ -744,10 +747,10 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                             <div className="text-tiny text-ink-500 mt-0.5">{t.date}</div>
                                         </div>
                                     </div>
-                                    <div className={`font-bold text-body privacy-blur whitespace-nowrap ${t.isTransfer ? 'text-blue-300 opacity-70' : t.amount > 0 ? 'text-green-400' : 'text-ink-100'
+                                    <PrivateAmount as="div" className={`font-bold text-body whitespace-nowrap ${t.isTransfer ? 'text-blue-300 opacity-70' : t.amount > 0 ? 'text-green-400' : 'text-ink-100'
                                         }`}>
                                         {formatCAD(t.amount, { decimals: 2 })}
-                                    </div>
+                                    </PrivateAmount>
                                 </div>
 
                                 <div className="flex items-center gap-2">

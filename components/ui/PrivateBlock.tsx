@@ -1,14 +1,9 @@
 // components/ui/PrivateBlock.tsx
-// [D6-SR-2] — variante de PrivateAmount pour les BLOCS de plusieurs valeurs (conteneur flex/grid).
-// PrivateAmount wrappe ses enfants dans un <span aria-hidden> → casserait un layout flex multi-enfants
-// (les enfants ne seraient plus des flex-items directs). PrivateBlock garde les enfants INTACTS (donc
-// le flex/grid du conteneur est préservé) et, en mode privé :
-//   - pose `aria-hidden` sur le conteneur lui-même (toutes les valeurs disparaissent de l'arbre SR) ;
-//   - ajoute UN `sr-only` « Montant masqué » en FRÈRE (hors du conteneur aria-hidden, donc annoncé).
-// Le flou visuel reste géré par `privacy-blur` sur le conteneur (inchangé).
-// Critère de bascule : utiliser PrivateBlock quand le `privacy-blur` portait sur un CONTENEUR flex/grid
-// dont les enfants doivent rester des items DIRECTS (sinon le wrap de PrivateAmount casse le layout) ;
-// pour une valeur unique (même dans un conteneur sans contrainte de layout sur ses enfants), <PrivateAmount>.
+// [PRIV-DISCRET-DOM] — variante de PrivateAmount pour un BLOC de plusieurs valeurs (conteneur flex/grid).
+// Mode discret (choix Marc 2026-06-17) : on MASQUE les valeurs par un unique « ••• » → les vraies valeurs
+// ne sont PLUS rendues (elles sortent du DOM, pas seulement floutées). Le conteneur est `aria-hidden` et un
+// `sr-only` « Montant masqué » est annoncé en FRÈRE (hors du conteneur masqué). Réservé aux blocs dont les
+// enfants sont des VALEURS (pas des libellés) — sinon utiliser un masquage par valeur (`<PrivateAmount>`).
 import React from 'react';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
@@ -23,12 +18,19 @@ export const PrivateBlock: React.FC<{
 }> = ({ children, className = '', as = 'div', title }) => {
     const isPrivacy = useFinanceStore((s) => s.isPrivacyMode);
     const Tag = as;
+    if (isPrivacy) {
+        return (
+            <>
+                <Tag className={className} title={title} aria-hidden="true">
+                    <span className="select-none tracking-widest">•••</span>
+                </Tag>
+                <span className="sr-only">{MASKED_AMOUNT_LABEL}</span>
+            </>
+        );
+    }
     return (
-        <>
-            <Tag className={`privacy-blur ${className}`} title={title} aria-hidden={isPrivacy || undefined}>
-                {children}
-            </Tag>
-            {isPrivacy && <span className="sr-only">{MASKED_AMOUNT_LABEL}</span>}
-        </>
+        <Tag className={className} title={title}>
+            {children}
+        </Tag>
     );
 };

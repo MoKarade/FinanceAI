@@ -4,6 +4,9 @@ import { Icon } from '../ui/Icon';
 import { PrivateAmount } from '../ui/PrivateAmount';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer, Cell } from 'recharts';
 import { formatCAD, formatSigned } from '../../utils/format';
+import { ChartDataTable, type ChartDataColumn } from '../ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
+import { useFinanceStore } from '../../store/useFinanceStore';
 
 interface DividendItem {
     id: string;
@@ -33,6 +36,9 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
 }) => {
     const [dripEnabled, setDripEnabled] = useState(false);
     const [divGrowthRate, setDivGrowthRate] = useState(5);
+    // [A11Y-CHARTS] (LOT 3) — mode discret : masque les montants de la table de données sr-only
+    // (parité avec les <PrivateAmount> du panneau).
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
 
     const dividendProjectionData = useMemo(() => {
         if (dividendCalendar.length === 0) return [];
@@ -64,6 +70,18 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
         }
         return data;
     }, [dividendCalendar, totalAnnualDividends, currentAllocation, dripEnabled, divGrowthRate]);
+
+    // [A11Y-CHARTS] (LOT 3) — colonnes de la table sr-only (alternative texte au BarChart de
+    // projection des dividendes, opaque aux lecteurs d'écran). Mois (axe X, déjà formaté = visible)
+    // + revenu mensuel + cumul annuel. Mode privé masque les MONTANTS (pas le mois).
+    const dividendColumns = useMemo<ChartDataColumn[]>(() => {
+        const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0);
+        return [
+            { key: 'month', label: 'Mois', format: (v) => String(v ?? '') },
+            { key: 'Revenu', label: 'Revenu mensuel', format: money },
+            { key: 'Accumulé', label: 'Cumul annuel', format: money },
+        ];
+    }, [isPrivacyMode]);
 
     return (
         <Card title="Calendrier des Revenus Passifs" className="animate-premium-in" style={{ animationDelay: '0.2s' }}>
@@ -161,7 +179,11 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                         </div>
                     </div>
 
-                    <div className="h-[250px] w-full">
+                    <div
+                        className="h-[250px] w-full"
+                        role="img"
+                        aria-label="Projection des revenus de dividendes sur 12 mois — revenu mensuel estimé selon le taux de croissance et l'option de réinvestissement (DRIP)."
+                    >
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={dividendProjectionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
@@ -182,6 +204,13 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
+                    {/* [A11Y-CHARTS] (LOT 3) — alternative TEXTUELLE (sr-only) au BarChart de projection
+                        des dividendes : mêmes données (revenu + cumul par mois) en table accessible. */}
+                    <ChartDataTable
+                        caption="Projection des revenus de dividendes sur 12 mois"
+                        columns={dividendColumns}
+                        rows={dividendProjectionData}
+                    />
                 </div>
             )}
         </Card>

@@ -56,22 +56,27 @@
   Gros chantier nav (routes, deep-links, tests) → **plan-first + OK Marc**.
 - [x] **[IA-DEDUP-COMPLETUDE]** ✅ LOW (2026-06-17) — `<SetupHub />` retiré de `Profile.tsx` ; reste UNIQUEMENT
   dans Configuration (`Settings.tsx:166`). Profil = uniquement les champs à remplir (réversible : 1 import + 1 balise).
-- [ ] **[IA-ASSETLOC-PERSIST]** 🔧 ✅VÉRIDIQUE MEDIUM — l'éditeur de holdings de l'Asset Location Optimizer
-  (`AssetLocationCard.tsx:138-195`) vit dans un `useState` LOCAL non persisté → **éditions perdues
-  silencieusement** (divergence + silent-failure). Le rendre lecture-seule (lien « éditer dans Investissements »)
-  OU persister. Une seule surface d'édition des holdings (Patrimoine) ; Retraite la lit.
-- [ ] **[UI-SCORES-UNIFY]** 🧭 🔧 ✅VÉRIDIQUE MEDIUM — **4** scores 0-100 concurrents sans grille : « Santé /100 »
-  diversif. (`Investments:417`), « Efficacité fiscale /100 » (`AssetLocationCard:106`), « Complétude % »
-  (`SetupHub`), donut « Santé financière /100 » ratios (`HealthIndicator:231`). Deux « Santé » mesurent des
-  choses différentes. → 1 score global (Accueil), les autres « sous-mesure ». 🧭.
+- [x] **[IA-ASSETLOC-PERSIST]** ✅ LOW (2026-06-17) — ⚠️ **finding RÉVISÉ après lecture du code** : l'éditeur
+  de holdings (`AssetLocationCard`) n'est PAS un éditeur de portefeuille mais un **bac-à-sable what-if** (titre
+  « Optimizer », bouton « ↺ Depuis portefeuille », recommandations live) → l'état local non persisté est VOULU.
+  Le « fix read-only/persister » aurait CASSÉ l'outil. Vrai risque = CLARTÉ → note « Simulation : ne modifie pas
+  ton portefeuille réel, édite-le dans Investissements ». (Discipline : vérifier AVANT de coder un « fix ».)
+- [x] **[UI-SCORES-UNIFY]** ✅ MEDIUM (2026-06-17, choix Marc) — collision « deux Santé /100 » résolue :
+  `HealthIndicator` « Santé financière /100 » (Accueil, agrège 4 ratios) = LE score global ; le badge
+  Investissements « Santé /100 » (qui mesurait la diversification) renommé **« Diversification /100 »**
+  (variable `healthScore`→`diversificationScore` + `title` « sous-mesure… le score global est sur l'Accueil »).
+  `Efficacité fiscale /100` (AssetLocation) et `Complétude %` (SetupHub) sont déjà des sous-mesures sur des
+  axes distincts → laissées. Pas de changement de formule.
 - [ ] **[UI-TABS-RICH]** 🔧 ◑PARTIEL MEDIUM — généraliser le pattern sous-onglets (déjà sur Investissements ET
   Configuration) à **Retraite** (4 outils empilés `Retirement:199-230`) et **Profil** (long scroll). Plan-first.
 
 ### 🔒 Vie privée & sécurité
-- [ ] **[PRIV-DISCRET-DOM]** 🔧 ✅VRAI MEDIUM — le « mode discret » = `blur(8px)` CSS (`Layout.tsx:183-208`) : la
-  vraie valeur reste en clair dans le DOM (copier-coller/inspecteur/désactivation classe) et **le survol la
-  révèle** (`.privacy-blur:hover{filter:blur(0)}`). Masquer la VALEUR (`•••`), pas la flouter ; retirer le
-  hover-to-reveal. ⚠️ Recoupe `[D6-SR-2]` (≈69 `privacy-blur`) — angle nouveau = remplacement de valeur + hover.
+- [~] **[PRIV-DISCRET-DOM]** 🔧 ✅VRAI MEDIUM — **KEYSTONE LIVRÉ (2026-06-17, choix Marc = •••)** : les primitives
+  `PrivateAmount` + `PrivateBlock` (+ `KPIStat`) MASQUENT désormais la valeur par « ••• » → la vraie valeur n'est
+  **plus dans le DOM** en mode discret (fin de la fuite copier-coller/inspecteur/SR). **Survol-révèle RETIRÉ**
+  (`.privacy-blur:hover` supprimé de `Layout.tsx`). **RESTE** = `[A11Y-D6-SR-2]` ph.3 : migrer les ~69 spots BRUTS
+  `privacy-blur` restants → `PrivateAmount` (ils floutent encore, mais SANS survol-révèle) pour que TOUTE valeur
+  masquée sorte du DOM. Les graphes (axes/tooltips Recharts) floutent encore (à traiter avec `[A11Y-CHARTS]`).
 - [x] **[SEC-CSP-HEADER]** ✅ LOW (2026-06-17) — `frame-ancestors` retiré du `<meta>` CSP (`index.html`) :
   ignoré en meta par spec → ne servait qu'à émettre un warning console. Protection anti-clickjacking intacte
   via `vercel.json` (CSP HTTP `frame-ancestors 'none'` + `X-Frame-Options: DENY`, vérifié). Pas une faille.
@@ -82,10 +87,14 @@
   par défaut → rendre les libellés visibles par défaut (ou rail plus large).
 - [ ] **[FMT-CASING-ACCOUNTTYPE]** 🔧 LOW (nouveau, trouvé en validation) — casse incohérente `CRYPTO`(enum)
   /`Crypto`(clé chart), `NON-ENREG`/`NonReg`, mappée à la main (`Dashboard.tsx:290-291`) = **bug latent**.
-  Une seule fonction `accountTypeToChartKey()`. (dedup CELI/REER déjà corrigé — `new Set`.)
-- [ ] **[UI-TX-CLEANUP]** 🔧 ◑PARTIEL LOW — Transactions : pastille **AUTO** sans légende visible
-  (`Transactions.tsx:624`, `title` seul) → légende/tooltip explicite. Colonne TYPE (toggle Transfert/Transaction)
-  = artefact data, pas constant (NON prioritaire).
+  Une seule fonction `accountTypeToChartKey()`. (dedup CELI/REER déjà corrigé — `new Set`.) ⚠️ **Analyse
+  2026-06-17** : le pattern `=== 'CRYPTO'`/`'NON-ENREG'` vit dans 3 fichiers (`Dashboard` chart-keys,
+  `TaxCenter` + `AssetLocationCard` = traitement FISCAL, pas le même mapping) → extraction = refactor plus
+  large que « LOW » (constante d'enum partagée + helper). À regrouper avec `DETTE-UI-PRIMITIVES`/un nettoyage
+  enum dédié, pas en quick-win. Le bug reste LATENT (le mapping marche aujourd'hui).
+- [x] **[UI-TX-CLEANUP]** ✅ LOW (2026-06-17) — colonne **AUTO** auto-documentée : en-tête avec `title`
+  explicite (code couleur vert ≥90 % / jaune ≥70 % / rouge <70 %) + glyphe `ⓘ` visible signalant l'info ;
+  les pastilles gardent `title`/`aria-label` par ligne. Colonne TYPE = artefact data (laissée, non prioritaire).
 - [x] **[GATE-CTA-CONTRAST]** ✅ LOW (2026-06-17) — MESURÉ : le TEXTE du CTA était déjà ~12:1 (description « gris
   foncé » de l'audit inexacte), MAIS le FOND `bg-primary/15` (#282B2F) vs page `bg-dark` (#07090D) ≈ 1,3:1 → le
   bouton ne RESSORTAIT pas (CTA fantôme). Fix on-brand : CTA **solide** `bg-primary text-dark` (prominent, ~14:1)
@@ -319,9 +328,9 @@
   danger = 400/500/600 seulement) → couleur ignorée. 3 sites hors périmètre MONEY-PHANTOM :
   `ImportBankStatement.tsx:123`, `RealEstateAdviceCard.tsx:19`, `Transactions.tsx:439` (+ son hover no-op).
   Fix : → `text-danger-400`.
-- [ ] **[A11Y-MODAL-PRIVATE]** 🔧 LOW — migrer tout `FutureDetailModal.tsx` vers `PrivateAmount` (tous les
-  montants utilisent `${blur}` brut = fuite lecteur d'écran en mode privé). La ligne « Dettes » est déjà
-  migrée cette PR ; reste valeur nette, comptes, apports/gains, flux.
+- [x] **[A11Y-MODAL-PRIVATE]** ✅ LOW (2026-06-17) — `FutureDetailModal` entièrement migré vers `<PrivateAmount>`
+  (idiome `const blur` ×2 supprimé ; valeur nette, comptes, apports/gains, flux, moments-clés, espace cotisation
+  enveloppés). En mode discret → ••• hors DOM. (Livré avec [A11Y-D6-SR-2] ph.3.)
 
 ## 🔎 Review multi-agents 2026-06-15 — risques confirmés (27 : 8 HIGH / 11 MEDIUM / 8 LOW)
 > Audit complet (12 agents specialises, emphase financiere). Les **HIGH financiers #1-#6 sont en
@@ -345,8 +354,15 @@
 - [x] **[GUARD-NAN]** ✅ LOW (2026-06-16) — garde `Number.isFinite` en tête de `getMarginalRate` (`utils/tax.ts`) : un income non fini est rabattu sur 0 (1er palier, dégradation prévisible) au lieu du taux MAX silencieux. Sans dépendance (tax.ts reste pur, pas de logError importé).
 
 ### Accessibilite
-- [ ] **[A11Y-D6-SR-2]** 🔧 HIGH (PHASE 1 faite 2026-06-16, phase 2 restante) — fuite : le mode privé est lu intégralement par les lecteurs d'écran (masquage CSS seul). **Phase 1 LIVRÉE** : dossier `projection/` migré (`ProjectionTooltip` 13, `ActionPlanDrilldown` 6, `StressTestPanel` 1, `StrategyOptimizerPanel` 3) → `<PrivateAmount>` ; primitives `PrivateAmount`/`PrivateBlock` dotées d'un prop `title` (conserve les infobulles natives). KPIStat était déjà correct. **Phase 2 LIVRÉE (2026-06-16, 5 fichiers div)** : `DividendPanel` 1, `Budget` 3, `Planning` 3, `ChildPlanning` 1, `Investments` 1 → `<PrivateAmount as="div">`. **Phase 3 RESTE** (~16 instances) : `FutureDetailModal` (idiome `const blur=…` ×14), tables `<td>` (`RealEstate` 4 /`Transactions` 2 /`ImportBankStatement` 1 /`ImportBrokerPositions` 2 /`BudgetGroupTable` 2 → wrapper interne `<PrivateAmount>` dans le td). ⚠️ Les 3 `<input>` (`RetirementIncomeCard` ×2, `BudgetGroupTable` ×1) ne sont PAS wrappables par `<PrivateAmount>` (champ éditable) → approche dédiée ou hors scope. ⚠️ Finding a11y-auditor (phase 1) : les 3 infobulles `title` de `ProjectionTooltip` (l.106/119/122, « Écart… », « Dépôts… », « Rendement… ») sur un span au contenu aria-hidden ne sont PAS annoncées de façon fiable par les SR (limite PRÉEXISTANTE, pas une régression) → en phase 2, remplacer `title` par `aria-describedby`/`sr-only` pour que l'explication soit accessible.
-- [ ] **[A11Y-CHARTS]** 🔧 HIGH (PHASE 1 faite 2026-06-16, phase 2 restante) — graphes Recharts sans alternative textuelle (WCAG 1.1.1 A). **Phase 1 LIVRÉE** : primitif réutilisable `<ChartDataTable>` (table sr-only, caption + en-têtes scope + échantillonnage uniforme ≤40 lignes, formateurs délégués + mode privé) ; intégré dans le wrapper partagé `ZoomableTimeChart` (couvre `StockChart` + `DashboardEvolutionChart`) — placé en FRÈRE du conteneur `role="img"` (un SR ne traverse pas dedans). 3 tests. **Phase 2 RESTE** : câbler `<ChartDataTable>` aux ~12 graphes à `ResponsiveContainer` brut (FutureProjection courbe principale, Retirement, RealEstate amortissement, Investments allocation, Budget, ChildPlanning, DebtManager, LifeEvents, DividendPanel, MultiPropertyComparison, FutureDetailModal) — chacun fournit ses colonnes/données.
+- [x] **[A11Y-D6-SR-2]** ✅ HIGH (2026-06-17 — 3 phases livrées + keystone •••) — fuite : le mode privé est lu intégralement par les lecteurs d'écran (masquage CSS seul). **Phase 1 LIVRÉE** : dossier `projection/` migré (`ProjectionTooltip` 13, `ActionPlanDrilldown` 6, `StressTestPanel` 1, `StrategyOptimizerPanel` 3) → `<PrivateAmount>` ; primitives `PrivateAmount`/`PrivateBlock` dotées d'un prop `title` (conserve les infobulles natives). KPIStat était déjà correct. **Phase 2 LIVRÉE (2026-06-16, 5 fichiers div)** : `DividendPanel` 1, `Budget` 3, `Planning` 3, `ChildPlanning` 1, `Investments` 1 → `<PrivateAmount as="div">`. **Phase 3 LIVRÉE (2026-06-17, 16 instances migrées via agent + vérif suite complète)** : `FutureDetailModal` (idiome `const blur` ×2 supprimé), tables `<td>` (`RealEstate` 4 /`Transactions` 2 /`ImportBankStatement` 1 /`ImportBrokerPositions` 2 /`BudgetGroupTable` 2 → wrapper interne `<PrivateAmount>` dans le td). ⚠️ Les 3 `<input>` (`RetirementIncomeCard` ×2, `BudgetGroupTable` ×1) ne sont PAS wrappables par `<PrivateAmount>` (champ éditable) → approche dédiée ou hors scope. ⚠️ Finding a11y-auditor (phase 1) : les 3 infobulles `title` de `ProjectionTooltip` (l.106/119/122, « Écart… », « Dépôts… », « Rendement… ») sur un span au contenu aria-hidden ne sont PAS annoncées de façon fiable par les SR (limite PRÉEXISTANTE, pas une régression) → en phase 2, remplacer `title` par `aria-describedby`/`sr-only` pour que l'explication soit accessible.
+- [x] **[A11Y-CHARTS]** ✅ HIGH (2026-06-17 — phases 1+2 COMPLÈTES) — graphes Recharts sans alternative textuelle
+  (WCAG 1.1.1 A). **Phase 1** : primitif `<ChartDataTable>` (sr-only, caption + scope + échantillonnage ≤40 +
+  mode privé) intégré dans `ZoomableTimeChart` (StockChart + DashboardEvolutionChart). **Phase 2 (3 lots, ~14
+  graphes)** : LOT 1 `FutureProjection`/`Retirement` accumulation/`DebtManager` · LOT 2 `RealEstate` scénarios/
+  `Investments` 2 donuts/`Budget` donut/`ChildPlanning` coût+REEE · LOT 3 `Retirement` cashflow/`DividendPanel`/
+  `MultiPropertyComparison`/`LifeEvents`/`FutureDetailModal` drill-down. Tous → `<ChartDataTable>` sr-only +
+  `role="img"` + **masquage privacy-aware** ($ → `Montant masqué` en mode discret ; `%` visibles). Garde-test
+  (DebtManager). ⚠️ Seul l'amortissement RealEstate non câblé car DÉJÀ un `<table>` HTML accessible (correct).
 - [ ] **[A11Y-INK500]** 🔧 LOW — `ink-500` (#6a7689, reserve disabled) sur ~193 contenus actifs (echec AA normal). Passer a `ink-400` (#8896a8, AA ✅ 5,21-6,42 cf check-contrast). **Avancement** : `TaxBracketViz.tsx` fait (4 occ., via [A11Y-TAXBRACKET], 2026-06-17). ⚠️ PAS un sed global aveugle : ne migrer QUE le contenu actif/informationnel, LAISSER `ink-500` sur les vrais éléments `disabled`.
 
 ### Echecs silencieux

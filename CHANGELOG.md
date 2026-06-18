@@ -8,6 +8,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Accessibilité (Vague 2)] — 2026-06-17
 
+### Vie privée — Mode discret
+- **Le mode discret masque maintenant la VALEUR (« ••• ») au lieu de la flouter** : la vraie valeur n'est
+  plus présente dans la page (fini la fuite par copier-coller, inspecteur, lecteur d'écran ou désactivation
+  du flou). Le **survol ne révèle plus** le montant. S'applique aux primitives `PrivateAmount`/`PrivateBlock`
+  et aux KPI ; la migration des derniers montants encore floutés suit. (PRIV-DISCRET-DOM)
+
 ### Accessibilité (WCAG 2.2 AA)
 - **Visualisation des tranches d'imposition** (`TaxBracketViz`) rendue lisible au lecteur d'écran :
   barres en `role="img"` + `aria-label` (revenu, taux marginal), contenu visuel interne masqué

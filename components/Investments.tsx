@@ -35,6 +35,8 @@ import { computePurchaseStats } from '../utils/assetPurchases';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { NetWorthByOwnerCard } from './investments/NetWorthByOwnerCard';
 import { PrivateAmount } from './ui/PrivateAmount';
+import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 
 interface InvestmentsProps {
     assets: Asset[];
@@ -111,6 +113,15 @@ export const Investments: React.FC<InvestmentsProps> = ({
     // Phase E.7 — apiKey du store (fallback prop pour rétrocompat) pour appeler Claude
     const anthropicKeyFromStore = useFinanceStore(s => s.apiKeys.anthropic);
     const claudeKey = anthropicKeyFromStore || apiKey || '';
+
+    // [A11Y-CHARTS] tables de données sr-only pour les donuts d'allocation (Recharts opaque aux
+    // lecteurs d'écran). Classe d'actif + % visibles ; Valeur $ masquée en mode privé (parité PrivateAmount).
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
+    const allocationColumns: ChartDataColumn[] = [
+        { key: 'name', label: "Classe d'actif" },
+        { key: 'value', label: 'Valeur', format: (v) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0) },
+        { key: 'percent', label: 'Part', format: (v) => `${(Number(v) || 0).toFixed(1)}%` },
+    ];
 
     const [marketData, setMarketData] = useState<MarketDataPoint[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -213,7 +224,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
         dividendCalendar,
         totalAnnualDividends,
         availableSeriesWithTrend,
-        healthScore,
+        diversificationScore,
         portfolioTrend,
         benchmarkTrend,
     } = useMemo(() => {
@@ -314,7 +325,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
         else if (portfolioTrend < 0) trendPts -= 10;
         if (trendPts > 40) trendPts = 40;
         if (trendPts < 0) trendPts = 0;
-        const healthScore = Math.round(safePts + trendPts);
+        const diversificationScore = Math.round(safePts + trendPts);
 
         return {
             currentAllocation: allocation,
@@ -323,7 +334,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
             dividendCalendar: sortedDividends,
             totalAnnualDividends: totalDivs,
             availableSeriesWithTrend,
-            healthScore,
+            diversificationScore,
             portfolioTrend,
             benchmarkTrend,
         };
@@ -410,11 +421,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 title="Investissements"
                 badge={
                     <Badge
-                        variant={healthScore >= 80 ? 'success' : healthScore >= 50 ? 'warning' : 'danger'}
+                        variant={diversificationScore >= 80 ? 'success' : diversificationScore >= 50 ? 'warning' : 'danger'}
                         size="md"
-                        title="Score basé sur la diversification et la tendance vs marché"
+                        title="Sous-mesure : diversification du portefeuille + tendance vs marché (le score de santé financière GLOBAL est sur l'Accueil)"
                     >
-                        Santé {healthScore}/100
+                        Diversification {diversificationScore}/100
                     </Badge>
                 }
             />
@@ -556,7 +567,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     <div className="bg-[#1a1a1a] rounded-xl p-4 border border-white/5 flex flex-col">
                         <h4 className="text-ink-300 text-meta font-bold uppercase mb-4 text-center">Répartition Géographique</h4>
                         <div className="flex-1 flex flex-col lg:flex-row items-center gap-4">
-                            <div className="flex-1 w-full h-[200px]">
+                            <div className="flex-1 w-full h-[200px]" role="img" aria-label="Donut de répartition géographique du portefeuille">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie
@@ -581,6 +592,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>
+                            <ChartDataTable
+                                caption="Répartition géographique du portefeuille"
+                                columns={allocationColumns}
+                                rows={geoBreakdown}
+                            />
                             <div className="flex-1 w-full space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
                                 {geoBreakdown.map(item => {
                                     const isActive = allocationFilter?.type === 'region' && allocationFilter.value === item.name;
@@ -613,7 +629,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     <div className="bg-[#1a1a1a] rounded-xl p-4 border border-white/5 flex flex-col">
                         <h4 className="text-ink-300 text-meta font-bold uppercase mb-4 text-center">Répartition Sectorielle</h4>
                         <div className="flex-1 flex flex-col lg:flex-row items-center gap-4">
-                            <div className="flex-1 w-full h-[200px]">
+                            <div className="flex-1 w-full h-[200px]" role="img" aria-label="Donut de répartition sectorielle du portefeuille">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie
@@ -638,6 +654,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>
+                            <ChartDataTable
+                                caption="Répartition sectorielle du portefeuille"
+                                columns={allocationColumns}
+                                rows={sectorBreakdown}
+                            />
                             <div className="flex-1 w-full space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
                                 {sectorBreakdown.map(item => {
                                     const isActive = allocationFilter?.type === 'sector' && allocationFilter.value === item.name;

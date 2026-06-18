@@ -181,13 +181,15 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       )}
       <style>{`
+        /* [PRIV-DISCRET-DOM] survol-révèle RETIRÉ (un survol accidentel exposait le montant). Cette classe
+           ne s'applique plus qu'aux spots BRUTS non encore migrés vers <PrivateAmount> (qui masque la VALEUR
+           par « ••• », hors DOM). À terme, migrer ces spots → plus aucun montant flouté dans le DOM. */
         .privacy-active .privacy-blur {
             filter: blur(8px) !important;
             opacity: 0.5 !important;
             transition: all 0.3s ease;
             user-select: none !important;
         }
-        .privacy-active .privacy-blur:hover { filter: blur(0px) !important; opacity: 1 !important; }
         .privacy-active table td:nth-child(n+2):not(:last-child) {
             filter: blur(5px) !important;
             opacity: 0.6 !important;

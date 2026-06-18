@@ -61,10 +61,12 @@
   « Optimizer », bouton « ↺ Depuis portefeuille », recommandations live) → l'état local non persisté est VOULU.
   Le « fix read-only/persister » aurait CASSÉ l'outil. Vrai risque = CLARTÉ → note « Simulation : ne modifie pas
   ton portefeuille réel, édite-le dans Investissements ». (Discipline : vérifier AVANT de coder un « fix ».)
-- [ ] **[UI-SCORES-UNIFY]** 🧭 🔧 ✅VÉRIDIQUE MEDIUM — **4** scores 0-100 concurrents sans grille : « Santé /100 »
-  diversif. (`Investments:417`), « Efficacité fiscale /100 » (`AssetLocationCard:106`), « Complétude % »
-  (`SetupHub`), donut « Santé financière /100 » ratios (`HealthIndicator:231`). Deux « Santé » mesurent des
-  choses différentes. → 1 score global (Accueil), les autres « sous-mesure ». 🧭.
+- [x] **[UI-SCORES-UNIFY]** ✅ MEDIUM (2026-06-17, choix Marc) — collision « deux Santé /100 » résolue :
+  `HealthIndicator` « Santé financière /100 » (Accueil, agrège 4 ratios) = LE score global ; le badge
+  Investissements « Santé /100 » (qui mesurait la diversification) renommé **« Diversification /100 »**
+  (variable `healthScore`→`diversificationScore` + `title` « sous-mesure… le score global est sur l'Accueil »).
+  `Efficacité fiscale /100` (AssetLocation) et `Complétude %` (SetupHub) sont déjà des sous-mesures sur des
+  axes distincts → laissées. Pas de changement de formule.
 - [ ] **[UI-TABS-RICH]** 🔧 ◑PARTIEL MEDIUM — généraliser le pattern sous-onglets (déjà sur Investissements ET
   Configuration) à **Retraite** (4 outils empilés `Retirement:199-230`) et **Profil** (long scroll). Plan-first.
 

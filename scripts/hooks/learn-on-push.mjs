@@ -20,12 +20,16 @@ const scan = cmd.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '""');
 if (!/(^|\s)git\s+(?:-[cC]\s+\S+\s+|-{1,2}\S+\s+)*push(?:\s|$)/.test(scan)) process.exit(0);
 
 const reminder =
-  'Rappel (règles « CLAUDE.md/agents s\'améliorent à chaque push ») : AVANT ce push — ' +
+  'Rappel (règles « CLAUDE.md/agents/docs s\'améliorent à chaque push ») : AVANT ce push — ' +
   '(1) Qu\'as-tu appris (bug d\'infra, convention, leçon, décision, piège) ? Si oui -> delta ciblé ' +
   'dans CLAUDE.md (section pertinente), MÊME PR ; si non -> dire « push sans leçon » au point de contrôle. ' +
   '(2) Un agent .claude/agents/ a-t-il produit du bruit, raté un angle mort, ou une convention a-t-elle ' +
   'changé ? Si oui -> mettre à jour le fichier de l\'agent (et docs/agents.md si le rôle bouge), MÊME PR. ' +
-  'Ne pas parquer la leçon ailleurs (mémoire/chat) sans la porter dans le repo.';
+  '(3) TOUS les docs touchés sont-ils à jour dans CETTE PR ? `docs/SESSION_HANDOVER.md` (état + bandeau de ' +
+  'tête : ce que la PR vient de livrer — NON optionnel, c\'est le job de `documentation-manager`), ' +
+  '`docs/BACKLOG.md` (ID cochés + découvertes), `CHANGELOG.md`, et les docs techniques (PROJECTION/' +
+  'FISCAL_REFERENCE/ARCHITECTURE) si un champ/calcul/règle a changé. Doc périmée = doc qui trompe la prochaine session. ' +
+  'Ne pas parquer la leçon/MAJ ailleurs (mémoire/chat) sans la porter dans le repo.';
 
 process.stdout.write(JSON.stringify({
   suppressOutput: true,

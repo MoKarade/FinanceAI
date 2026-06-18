@@ -8,14 +8,14 @@ Objectif : faire passer le **panel d'agents** de FinanceAI sur le travail couran
 1. **Périmètre** : `git diff --stat` (working tree, AVANT commit — la branche locale est encore à `origin/main`, donc `origin/main...HEAD` serait VIDE) ou `git diff --stat main...HEAD` pour une branche déjà poussée. Liste les fichiers + domaines touchés.
 
 2. **Sélection PAR PERTINENCE** (lancer en PARALLÈLE, en un seul message multi-Agent) :
-   - **Toujours** : `code-reviewer`, `silent-failure-hunter`.
+   - **Toujours** : `code-reviewer`, `silent-failure-hunter`, **`documentation-manager`** (il met à jour `docs/SESSION_HANDOVER.md` + tous les docs touchés — non optionnel : « tout à jour à chaque push », règle Marc 2026-06-18).
    - Calcul $ / solde / flux / dette / impôt / devise / migration store → `financial-integrity`.
    - `services/projection/` ou calcul long-terme → `projection-validator`.
    - Secrets / crypto / CSP / persistance / appel LLM / vie privée (Loi 25) → `security-privacy`.
    - Appel SDK Anthropic (`services/claude.ts` + surfaces) → `ai-reviewer`.
    - Logique métier ajoutée/modifiée → `test-writer`.
    - UI notable → `a11y-auditor`.
-   - Doc impactée par le changement → `documentation-manager`.
+   - (`documentation-manager` est désormais dans « Toujours » ci-dessus — il sync le handover + la doc à chaque PR.)
    - (À la demande : `performance-optimizer` pour le profilage moteur lourd ; `code-analyzer` pour la dette large.)
    N'invoque AUCUN agent hors sujet — la seule limite est la pertinence (cf CLAUDE.md).
 

@@ -623,7 +623,9 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         </button>
                                     </th>
                                 ))}
-                                <th className="p-3 w-10">Auto</th>
+                                <th className="p-3 w-12" title="Confiance de la catégorisation IA — vert ≥ 90 %, jaune ≥ 70 %, rouge < 70 %">
+                                    <span className="inline-flex items-center gap-1">Auto<span aria-hidden="true" className="text-ink-500 not-italic">ⓘ</span></span>
+                                </th>
                                 <th className="p-3">Type</th>
                                 {([['amount', 'Montant'], ['category', 'Categorie']] as const).map(([k, label]) => (
                                     <th key={k} className="p-3" aria-sort={sortKey === k ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>

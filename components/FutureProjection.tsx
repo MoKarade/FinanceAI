@@ -29,6 +29,9 @@ import { StrategyOptimizerPanel } from './projection/StrategyOptimizerPanel';
 import { StressTestPanel } from './projection/StressTestPanel';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
+import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
+import { formatCompactCAD } from '../utils/format';
 
 // G10 — Légende interactive : une seule source de vérité pour les chips ET les
 // gardes de visibilité dans le graphique. `key` correspond au dataKey recharts
@@ -405,6 +408,28 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // A3 — consomme displayData (passé réel préfixé + futur projeté).
     const zoom = useTimeChartZoom<ProjectionChartPoint>(displayData as ProjectionChartPoint[]);
 
+    // [A11Y-CHARTS] — colonnes de la table de données sr-only (alternative texte à la courbe Recharts,
+    // opaque aux lecteurs d'écran). Date (axe X) + chaque montant affiché (comptes empilés + Valeur Nette).
+    // Le mode privé masque les MONTANTS (parité avec l'axe/tooltip déjà masqués), pas la date.
+    const dataColumns = useMemo<ChartDataColumn[]>(() => {
+        const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCompactCAD(Number(v) || 0);
+        return [
+            { key: 'dateLabel', label: 'Date', format: (_v, row) => {
+                const r = row as { dateLabel?: string; year?: number };
+                return r.dateLabel ?? (r.year !== undefined ? String(r.year) : '');
+            } },
+            { key: 'NetWorth', label: 'Valeur nette', format: money },
+            { key: 'Liquidites', label: 'Cash', format: money },
+            { key: 'CELI', label: 'CELI', format: money },
+            { key: 'CELIAPP', label: 'CELIAPP (FHSA)', format: money },
+            { key: 'REER', label: 'REER', format: money },
+            { key: 'REEE', label: 'REEE', format: money },
+            { key: 'NonReg', label: 'Non-Enreg', format: money },
+            { key: 'Crypto', label: 'Crypto', format: money },
+            { key: 'Immobilier', label: 'Équité Immo', format: money },
+        ];
+    }, [isPrivacyMode]);
+
     // G5 — événement sélectionné (clic sur une pastille) → fiche détail.
     const [detailPoint, setDetailPoint] = useState<ProjectionChartPoint | null>(null);
 
@@ -740,6 +765,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     onMouseDownCapture={(e) => { pointerDownPosRef.current = { x: e.clientX, y: e.clientY }; }}
                     onClick={handleChartContainerClick}
                     className={`chart-fullscreen relative w-full h-[380px] sm:h-[500px] lg:h-[650px] select-none ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-pointer'}`}
+                    role="img"
+                    aria-label="Courbe de vie — évolution projetée du patrimoine net et de chaque compte dans le temps. Clic = détail, molette = zoom, glisser = défiler."
                 >
                      {isComputing ? (
                         // Pendant le (re)calcul : on masque la courbe (potentiellement périmée) et on
@@ -853,6 +880,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </ResponsiveContainer>
                      )}
                 </div>
+
+                {/* [A11Y-CHARTS] — alternative TEXTUELLE (sr-only) à la courbe Recharts : mêmes données
+                    en table accessible, masquage privacy aligné sur l'axe/tooltip. */}
+                <ChartDataTable
+                    caption="Projection du patrimoine net et des comptes par date"
+                    columns={dataColumns}
+                    rows={displayData}
+                />
 
                 {detailPoint && (
                     <FutureDetailModal

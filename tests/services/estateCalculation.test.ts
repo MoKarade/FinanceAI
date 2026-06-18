@@ -207,11 +207,22 @@ describe('computeEstateNetWorth — FA-8 : estimés précis par rente priment su
     });
 
     it('garde fin() : un rrqEstimateMonthly NaN ne propage pas de NaN (estateNetWorth reste fini)', () => {
-        // Les estimés sont lus BRUTS (sans fin(), pour préserver `undefined` → repli) ; un NaN (chemin
-        // nominal impossible via numOrUndef, mais belt-and-suspenders) est neutralisé par le fin() de SORTIE.
+        // [ENG-ESTATE-ESTIMATE-FIN] le NaN est neutralisé à la SOURCE (`fin()` avant `Math.max`), plus
+        // seulement au `fin()` de sortie — un estimé NaN ne contribue que 0 à SA rente.
         const r = computeEstateNetWorth({ ...base, rrqEstimateMonthly: NaN, activeUsersCount: 1 }, fiscalStub);
         expect(Number.isFinite(r.estateNetWorth)).toBe(true);
         expect(Number.isFinite(r.totalEstateTax)).toBe(true);
+    });
+
+    it('[ENG-ESTATE-ESTIMATE-FIN] DISCRIMINANT : un rrq NaN dégrade GRACIEUSEMENT (== rrq 0), sans zéroter tout l\'estate', () => {
+        // Avant le fix : NaN rrq → NPV NaN → estateNetWorth NaN → le fin() de SORTIE zérotait TOUT l'estate
+        // (même un finalRawNetWorth positif → 0). Avec fin() à la source : rrq NaN contribue 0, psv calcule.
+        const withNaN = computeEstateNetWorth({ ...base, rrqEstimateMonthly: NaN, psvEstimateMonthly: 600, activeUsersCount: 1 }, fiscalStub);
+        const withZero = computeEstateNetWorth({ ...base, rrqEstimateMonthly: 0, psvEstimateMonthly: 600, activeUsersCount: 1 }, fiscalStub);
+        // Le NaN se comporte EXACTEMENT comme 0 (et NON comme « tout l'estate à 0 », qui était l'ancien bug).
+        expect(withNaN.estateNetWorth).toBeCloseTo(withZero.estateNetWorth, 4);
+        // L'estate n'est PAS zéroté : la composante psv positive S'AJOUTE au patrimoine successoral.
+        expect(withNaN.estateNetWorth).toBeGreaterThan(withNaN.finalRawNetWorth - withNaN.totalEstateTax);
     });
 
     it('RRQ-PSV-MIN : un estimé NÉGATIF est clampé à 0 (pas de rente négative), == estimé 0 explicite', () => {

@@ -137,13 +137,15 @@ describe('computeEstateNetWorth — FA-5 (audit 2026-06-09) : NPV des rentes NON
         expect(couple.estateNetWorth).toBeCloseTo(solo.estateNetWorth, 6);
     });
 
-    it('NPV PINNÉE à la formule FAMILIALE (sans ×N) : pension×infl^années×facteur d\'annuité', () => {
+    it('NPV PINNÉE à la formule FAMILIALE (sans ×N) : pension×12×infl^années×facteur d\'annuité', () => {
         // base : finalAge = 35+30 = 65 → branche SANS escompte pré-65 ; 95−65 = 30 ans restants.
         const npvFactor = (1 - Math.pow(1.02, -30)) / 0.02;
-        const expected = 1200 * Math.pow(1 + 2 / 100, 30) * npvFactor; // (0,65+0,35) = 1 → familial
+        // [FISC-ESTATE-PENSION-NPV] ×12 : la pension mensuelle (1200) est ANNUALISÉE avant le facteur
+        // d'annuité ANNUEL (avant le fix, le ×12 manquait → NPV ÷12, ~49 k$ au lieu de ~584 k$ brut).
+        const expected = 1200 * 12 * Math.pow(1 + 2 / 100, 30) * npvFactor; // (0,65+0,35) = 1 → familial
         const couple = computeEstateNetWorth({ ...base, activeUsersCount: 2 }, fiscalStub);
         expect(extractNPV(couple)).toBeCloseTo(expected, 4);
-        // Contre-preuve : l'ancienne valeur ×2 (≈ 97 k$ au lieu de ≈ 49 k$) est exclue.
+        // Contre-preuve : l'ancienne valeur ×2 (le double-comptage ×N) est exclue.
         expect(extractNPV(couple)).toBeLessThan(expected * 2 - 1000);
     });
 
@@ -170,11 +172,14 @@ describe('computeEstateNetWorth — FA-8 : estimés précis par rente priment su
     // base : finalAge 35+30 = 65 → branche SANS escompte pré-65 ; 95−65 = 30 ans restants.
     const npvFactor = (1 - Math.pow(1.02, -30)) / 0.02;
     const inflPow = Math.pow(1 + 2 / 100, 30);
+    // [FISC-ESTATE-PENSION-NPV] NPV attendue à partir d'un montant MENSUEL familial : ANNUALISER (×12)
+    // avant le facteur d'annuité annuel. Avant le fix, le ×12 manquait (NPV ~12× sous-évaluée).
+    const expectedNPV = (monthlyFamily: number): number => monthlyFamily * 12 * inflPow * npvFactor;
 
     it('estimés fournis (solo) → NPV basée sur RRQ+PSV estimés, PAS sur le split 65/35 de l\'agrégé', () => {
         // estimés per-personne 800+600 = 1400/mois familial (solo) ≠ split de governmentPension (1200).
         const r = computeEstateNetWorth({ ...base, rrqEstimateMonthly: 800, psvEstimateMonthly: 600, activeUsersCount: 1 }, fiscalStub);
-        expect(extractNPV(r)).toBeCloseTo((800 + 600) * inflPow * npvFactor, 4);
+        expect(extractNPV(r)).toBeCloseTo(expectedNPV(800 + 600), 4);
         // Contre-preuve : différent du repli agrégé (1200) — les estimés ont bien primé.
         const fallback = computeEstateNetWorth({ ...base, activeUsersCount: 1 }, fiscalStub);
         expect(extractNPV(r)).not.toBeCloseTo(extractNPV(fallback), 0);
@@ -183,10 +188,10 @@ describe('computeEstateNetWorth — FA-8 : estimés précis par rente priment su
     it('estimés PER-PERSONNE → ×activeUsersCount (comme retirementIncome) ; le repli AGRÉGÉ reste SANS ×N (garde FA-5)', () => {
         // couple : estimés (800+600)×2 = 2800/mois familial.
         const couple = computeEstateNetWorth({ ...base, rrqEstimateMonthly: 800, psvEstimateMonthly: 600, activeUsersCount: 2 }, fiscalStub);
-        expect(extractNPV(couple)).toBeCloseTo((800 + 600) * 2 * inflPow * npvFactor, 4);
+        expect(extractNPV(couple)).toBeCloseTo(expectedNPV((800 + 600) * 2), 4);
         // Le repli agrégé (sans estimé) ne prend toujours PAS de ×N : couple == solo (FA-5 non régressé).
         const fallbackCouple = computeEstateNetWorth({ ...base, activeUsersCount: 2 }, fiscalStub);
-        expect(extractNPV(fallbackCouple)).toBeCloseTo(1200 * inflPow * npvFactor, 4);
+        expect(extractNPV(fallbackCouple)).toBeCloseTo(expectedNPV(1200), 4);
     });
 
     it('estimés absents → repli sur le split 65/35 (non-régression stricte)', () => {
@@ -198,7 +203,7 @@ describe('computeEstateNetWorth — FA-8 : estimés précis par rente priment su
     it('un seul estimé fourni → indépendance par rente : l\'estimé pour la sienne, le split 65/35 pour l\'autre', () => {
         // rrqEstimate 900 fourni, psv absent → psv = 0,35 × 1200 = 420. Σ = 1320.
         const r = computeEstateNetWorth({ ...base, rrqEstimateMonthly: 900, activeUsersCount: 1 }, fiscalStub);
-        expect(extractNPV(r)).toBeCloseTo((900 + 1200 * 0.35) * inflPow * npvFactor, 4);
+        expect(extractNPV(r)).toBeCloseTo(expectedNPV(900 + 1200 * 0.35), 4);
     });
 
     it('garde fin() : un rrqEstimateMonthly NaN ne propage pas de NaN (estateNetWorth reste fini)', () => {
@@ -212,9 +217,28 @@ describe('computeEstateNetWorth — FA-8 : estimés précis par rente priment su
     it('RRQ-PSV-MIN : un estimé NÉGATIF est clampé à 0 (pas de rente négative), == estimé 0 explicite', () => {
         // rrq -500 → max(0,-500)=0 ; psv absent → repli 0,35×1200 = 420. Σ = 420.
         const neg = computeEstateNetWorth({ ...base, rrqEstimateMonthly: -500, activeUsersCount: 1 }, fiscalStub);
-        expect(extractNPV(neg)).toBeCloseTo((0 + 1200 * 0.35) * inflPow * npvFactor, 4);
+        expect(extractNPV(neg)).toBeCloseTo(expectedNPV(0 + 1200 * 0.35), 4);
         const zero = computeEstateNetWorth({ ...base, rrqEstimateMonthly: 0, activeUsersCount: 1 }, fiscalStub);
-        expect(extractNPV(zero)).toBeCloseTo((0 + 1200 * 0.35) * inflPow * npvFactor, 4); // ancré en absolu
+        expect(extractNPV(zero)).toBeCloseTo(expectedNPV(0 + 1200 * 0.35), 4); // ancré en absolu
         expect(extractNPV(neg)).toBeCloseTo(extractNPV(zero), 6);
+    });
+});
+
+describe('computeEstateNetWorth — [FISC-ESTATE-PENSION-NPV] annualisation des rentes (×12)', () => {
+    const extractNPV = (r: ReturnType<typeof computeEstateNetWorth>): number =>
+        (r.estateNetWorth - r.finalRawNetWorth + r.totalEstateTax) / 0.7;
+
+    it('la NPV des rentes publiques est ANNUELLE (×12), pas mensuelle — discrimine le bug d\'unité', () => {
+        // base : 1200 $/mois familial, finalAge 65 (sans escompte pré-65), 30 ans restants, infl 2 %.
+        const npvFactor = (1 - Math.pow(1.02, -30)) / 0.02;
+        const inflPow = Math.pow(1 + 2 / 100, 30);
+        const r = computeEstateNetWorth(base, fiscalStub);
+        const annualNPV = 1200 * 12 * inflPow * npvFactor;   // correct
+        const monthlyNPV = 1200 * inflPow * npvFactor;        // ANCIENNE valeur buggée (÷12)
+        expect(extractNPV(r)).toBeCloseTo(annualNPV, 4);
+        // Discriminant fort : la NPV correcte vaut ~12× l'ancienne → un retour au bug échouerait ici.
+        expect(extractNPV(r)).toBeGreaterThan(monthlyNPV * 11);
+        // Ordre de grandeur : une rente viagère de 1200 $/mois vaut des CENTAINES de k$ (pas des dizaines).
+        expect(extractNPV(r)).toBeGreaterThan(400_000);
     });
 });

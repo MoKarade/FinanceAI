@@ -8,6 +8,9 @@ import { LifeEvent, LifeEventType, TravelGoal } from '../types';
 import { ResponsiveContainer, PieChart, Pie, Cell, Legend, Tooltip } from 'recharts';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { formatCAD, formatSigned } from '../utils/format';
+import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
+import { useFinanceStore } from '../store/useFinanceStore';
 
 interface LifeEventsProps {
     events: LifeEvent[];
@@ -44,6 +47,9 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
     const [newLifeEvent, setNewLifeEvent] = useState<Partial<LifeEvent>>({ type: 'GROS_ACHAT', date: new Date().toISOString().split('T')[0] });
     const [newTrip, setNewTrip] = useState<Partial<TravelGoal>>({ destination: '', date: new Date().toISOString().split('T')[0], totalCost: 0, image: '✈️' });
     const [dragOverYear, setDragOverYear] = useState<number | null>(null);
+    // [A11Y-CHARTS] (LOT 3) — mode discret : masque les montants ($) de la table de données sr-only
+    // (alternative texte au PieChart de répartition estimée).
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
 
     const allItems = useMemo(() => {
         const tItems = travelGoals.map(t => ({ id: t.id, uniqueKey: `travel_${t.id}`, date: t.date, name: `Voyage: ${t.destination}`, cost: t.totalCost, type: 'TRAVEL', icon: 'plane' as IconName, details: t.destination }));
@@ -106,6 +112,14 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
             setConfirmDeleteKey(null);
         }
     };
+
+    // [A11Y-CHARTS] (LOT 3) — colonnes de la table sr-only du PieChart « Répartition estimée »
+    // (opaque aux lecteurs d'écran). Poste de dépense (catégorie, visible) + montant estimé ($,
+    // masqué en mode privé). Le breakdown a la forme { name, value, color }.
+    const breakdownColumns: ChartDataColumn[] = [
+        { key: 'name', label: 'Poste', format: (v) => String(v ?? '') },
+        { key: 'value', label: 'Montant estimé', format: (v) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0) },
+    ];
 
     return (
         <div className="space-y-6 animate-fade-in pb-24">
@@ -298,11 +312,22 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                     {impactAnalysis.insights.breakdown.length > 0 && (
                                         <div className="mb-6">
                                             <h4 className="text-meta font-bold text-ink-300 uppercase mb-3">Répartition Estimée</h4>
-                                            <div style={{ width: '100%', height: '180px' }}>
+                                            <div
+                                                style={{ width: '100%', height: '180px' }}
+                                                role="img"
+                                                aria-label={`Répartition estimée du coût de « ${selectedItem.name} » par poste de dépense.`}
+                                            >
                                                 <ResponsiveContainer width="100%" height="100%">
                                                     <PieChart><Pie data={impactAnalysis.insights.breakdown} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={5} dataKey="value">{impactAnalysis.insights.breakdown.map((entry: { name: string; value: number; color: string }, index: number) => (<Cell key={`cell-${index}`} fill={entry.color} stroke="none" />))}</Pie><Tooltip contentStyle={{ backgroundColor: '#111', borderColor: '#333', fontSize: '12px' }} formatter={(val: number) => val.toFixed(0) + '$'} /><Legend verticalAlign="middle" align="right" layout="vertical" iconSize={8} wrapperStyle={{ fontSize: '10px' }} /></PieChart>
                                                 </ResponsiveContainer>
                                             </div>
+                                            {/* [A11Y-CHARTS] (LOT 3) — alternative TEXTUELLE (sr-only) au PieChart de
+                                                répartition : poste + montant estimé en table accessible. */}
+                                            <ChartDataTable
+                                                caption={`Répartition estimée du coût de ${selectedItem.name}`}
+                                                columns={breakdownColumns}
+                                                rows={impactAnalysis.insights.breakdown}
+                                            />
                                         </div>
                                     )}
                                     <div className="space-y-3">

@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
+import { Badge } from './ui/Badge';
 import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { Pill } from './ui/Pill';
@@ -11,6 +12,7 @@ import { useFinanceStore } from '../store/useFinanceStore';
 import { logError } from '../services/errorLogger';
 import { usePendingFocus } from '../utils/usePendingFocus';
 import { buildLockedByMonth } from '../utils/lockedCurveOverlay';
+import { findInsolvencyPoint } from '../utils/insolvency';
 
 // Sprint 2 PH2 — constante stable pour éviter de créer un nouveau [] à chaque
 // render (qui invaliderait les useMemo deps en aval).
@@ -171,6 +173,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // Plus aucun calcul ni repli local : la courbe affichée EST celle du moteur.
     const results = useFinanceStore(s => s.lastProjection);
     const { chartData = [] as ProjectionChartPoint[], fireNumber = 0, allResults = [] as ProjectionResult[] } = results ?? {};
+
+    // [PROJ-INSOLVENCY-BADGE] premier moment où le patrimoine net projeté passe sous 0 (plan
+    // insoutenable, capital épuisé). null si solvable sur tout l'horizon → aucun badge (empty state honnête).
+    const insolvency = useMemo(() => findInsolvencyPoint(chartData), [chartData]);
 
     // PH2-d — courbe VERROUILLÉE (référence figée) : lue du store ; le moteur continue de publier
     // `results` en direct (aperçu). Verrouiller/déverrouiller = snapshot + persistance IndexedDB.
@@ -538,6 +544,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 icon="🔮"
                 title="Projection Future"
                 subtitle="Analyse des flux mensuels projetés avec Loyer → Hypothèque automatique et frais enfants dynamiques."
+                badge={insolvency ? (
+                    // role="status" (live polite) : le badge apparaît après le calcul de projection →
+                    // annoncé au lecteur d'écran si le plan bascule en insoutenable lors d'un recalcul.
+                    <div role="status">
+                        <Badge variant="danger" size="md">
+                            {insolvency.age != null
+                                ? `Plan insoutenable — capital épuisé vers ${insolvency.age} ans`
+                                : 'Plan insoutenable — capital épuisé'}
+                        </Badge>
+                    </div>
+                ) : undefined}
                 actions={
                     <Pill
                         aria-label="Mode de données"

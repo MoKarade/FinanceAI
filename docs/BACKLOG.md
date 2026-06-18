@@ -44,10 +44,17 @@
   `estateCalculation.ts:195`) vs `chartData[dernier].NetWorth` ailleurs. Source unique RESPECTÉE. 🧭 Décision :
   soit Budget affiche aussi le NW fin-horizon (parité stricte), soit clarifier « successoral » vs « fin
   d'horizon » partout (libellés + infobulle). PAS un correctif moteur. ≠ `[NW-PARITY-INVARIANT]`.
-- [ ] **[PROJ-INSOLVENCY-BADGE]** 🔧 ✗FAUX(bug)→UX MEDIUM — un NW projeté négatif (Karim −1,88 M$) n'est PAS un
-  bug : c'est de la dette liquide VISIBLE d'un persona insoutenable (retraite 50 ans). Mais l'afficher nu est
-  anxiogène. Exposer l'insolvabilité : badge « plan insoutenable / capital épuisé à l'âge X » quand
-  `shortfallRate > seuil` ou NW franchit 0. Vrai service de planification (le signal utile).
+- [x] **[PROJ-INSOLVENCY-BADGE]** ✅ MEDIUM (PR #358, 2026-06-18) — onglet Futur : badge danger « Plan insoutenable —
+  capital épuisé vers X ans » dès que le patrimoine net projeté franchit 0 (vs −1,88 M$ nu anxiogène). Helper pur
+  `utils/insolvency.ts` `findInsolvencyPoint(chartData)` (1er point `NetWorth<0`, ignore le passé/NaN ; 7 tests) +
+  `<Badge>` dans le `<PageHeader>` (wrap `role="status"` pour l'annonce SR). Métrique ≠ Retraite (`TotalCapital≤0`).
+  Âge affiché en clair (cohérence Retraite, ≠ montant → non masqué en mode discret — finding code-reviewer). Plan
+  solvable → aucun badge (empty state honnête). Panel code-reviewer + a11y-auditor.
+- [ ] **[A11Y-BADGE-PROMINENCE]** 🔧 LOW (nouveau, a11y-auditor PR #358) — `components/ui/Badge.tsx:19` : le fond
+  `bg-*-bg` (opacity 10 %) donne un contraste badge↔page de ~1.1:1 (< 3:1, WCAG 1.4.11 non-text) sur TOUS les
+  variants (danger/warning/info/success), partout (Retirement, Futur…). Le TEXTE passe AA (6,3-6,7:1), seule la
+  PROMINENCE du fond est faible. Fix = ↑ alpha du fond (~0.18-0.22) ou bordure ≥ rgba(...,0.55) — décision DESIGN
+  (touche tous les badges), à mesurer `check-contrast`. Préexistant, pas introduit par #358.
 
 ### 🟠 Architecture de l'information
 - [ ] **[IA-NAV-CONSOLIDATE]** 🧭 ⏳ ✅VÉRIDIQUE — **14 destinations** (Argent 3 · Plan 4 · Objectifs 3 · Outils 3

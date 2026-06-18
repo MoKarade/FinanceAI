@@ -6,6 +6,8 @@ import { useTimeChartZoom } from '../../hooks/useTimeChartZoom';
 import { splitEventIcon, ClickableEventIcon } from './ProjectionTooltip';
 import { Icon, type IconName } from '../ui/Icon';
 import { PrivateAmount } from '../ui/PrivateAmount';
+import { ChartDataTable, type ChartDataColumn } from '../ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
 import { ProjectionChartPoint } from '../../services/projection/types';
 
 /**
@@ -252,6 +254,15 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
     const liquidDebt = Number(point.LiquidDebt) || 0;          // part « découvert » (liquidité à sec)
     const otherReducingDebt = Math.max(0, reducingDebt - liquidDebt); // prêts/cartes + HELOC
 
+    // [A11Y-CHARTS] (LOT 3) — colonnes de la table sr-only du mini-graphe de drill-down d'un compte
+    // (série temporelle de sa valeur, opaque aux lecteurs d'écran). Année (axe X via monthIndex,
+    // visible) + valeur du compte ($, masquée en mode privé — `isPrivacyMode` arrive en prop ici,
+    // pas du store). N'affichée que lorsqu'un compte est sélectionné (drill-down ouvert).
+    const accountSeriesColumns: ChartDataColumn[] = [
+        { key: 'year', label: 'Année', format: (v) => v != null ? String(v) : '' },
+        { key: 'value', label: selected ? selected.label : 'Valeur', format: (v) => isPrivacyMode ? MASKED_AMOUNT_LABEL : fmt(Number(v) || 0) },
+    ];
+
     const portfolioOutflow = (point.RetraitREER || 0) + (point.RetraitCELI || 0);
     const incomes = ([
         [`Paye ${userName1 || 'Util. 1'}`, point.IncomeMarc || 0],
@@ -454,6 +465,8 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                         <div
                             ref={zoom.containerRef}
                             {...zoom.handlers}
+                            role="img"
+                            aria-label={`Historique de la valeur du compte ${selected.label} dans le temps, année par année.`}
                             className={`relative w-full h-[300px] select-none ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-default'}`}
                         >
                             <ResponsiveContainer width="100%" height="100%">
@@ -491,6 +504,14 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                             </ResponsiveContainer>
                         </div>
                         <p className="text-tiny text-ink-600 mt-2 text-center">Molette = zoom · glisser = défiler · double-clic = reset</p>
+                        {/* [A11Y-CHARTS] (LOT 3) — alternative TEXTUELLE (sr-only) au mini-graphe de
+                            drill-down : valeur du compte par année en table accessible (donnée complète
+                            `accountSeries`, pas la vue zoomée). */}
+                        <ChartDataTable
+                            caption={`Historique de la valeur du compte ${selected.label} par année`}
+                            columns={accountSeriesColumns}
+                            rows={accountSeries as unknown as ReadonlyArray<Record<string, unknown>>}
+                        />
 
                         {/* G13 — pourquoi la valeur bouge : plus gros mouvements + raison */}
                         {keyMoments.length > 0 && (

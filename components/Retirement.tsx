@@ -179,6 +179,20 @@ export const Retirement: React.FC<RetirementProps> = ({
         ];
     }, [isPrivacyMode]);
 
+    // [A11Y-CHARTS] (LOT 3) — colonnes de la table de données sr-only du 2e graphe « Flux à la
+    // retraite » (alternative texte au ComposedChart Recharts, opaque aux lecteurs d'écran). Âge
+    // (axe X) + rente gouv./PSV + revenu total + besoin (dépenses). Mode privé masque les MONTANTS
+    // (pas l'âge). Mêmes dataKeys que le graphe : IncomeRetirement / Income / Expenses.
+    const cashflowColumns = useMemo<ChartDataColumn[]>(() => {
+        const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0);
+        return [
+            { key: 'age', label: 'Âge', format: (v) => v != null ? `${v} ans` : '' },
+            { key: 'IncomeRetirement', label: 'Rente gouv. + PSV', format: money },
+            { key: 'Income', label: 'Revenu total', format: money },
+            { key: 'Expenses', label: 'Besoin (avec inflation)', format: money },
+        ];
+    }, [isPrivacyMode]);
+
     // G7c — zoom molette / pan sur les deux graphes Retraite (x = âge).
     type YearlyPoint = ProjectionChartPoint & { TotalCapital: number };
     const zoomAccum = useTimeChartZoom<YearlyPoint>(lifeExpectancyData as YearlyPoint[]);
@@ -341,6 +355,10 @@ export const Retirement: React.FC<RetirementProps> = ({
                             </Card>
 
                             <Card icon={<Icon name="debt" size={18} />} title="Flux à la retraite">
+                                <div
+                                    role="img"
+                                    aria-label="Graphique des flux à la retraite — revenu total, rente gouvernementale + PSV et besoin mensuel (ajusté à l'inflation) selon l'âge, de la retraite jusqu'à l'espérance de vie."
+                                >
                                 <ZoomContainer zoom={zoomCashflow} className="h-[280px] w-full" style={{ minHeight: '280px' }}>
                                     <ResponsiveContainer width="100%" height="100%">
                                         <ComposedChart data={zoomCashflow.visibleData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
@@ -355,6 +373,15 @@ export const Retirement: React.FC<RetirementProps> = ({
                                         </ComposedChart>
                                     </ResponsiveContainer>
                                 </ZoomContainer>
+                                </div>
+                                {/* [A11Y-CHARTS] (LOT 3) — alternative TEXTUELLE (sr-only) au graphe « Flux à la
+                                    retraite » : mêmes flux (rente, revenu, besoin) par âge en table accessible,
+                                    masquage privacy aligné sur le reste de l'onglet. */}
+                                <ChartDataTable
+                                    caption="Flux à la retraite par âge — rente gouvernementale, revenu total et besoin mensuel"
+                                    columns={cashflowColumns}
+                                    rows={retirementData}
+                                />
                                 <div className="mt-4 text-meta text-ink-300 text-center bg-white/5 p-3 rounded-lg border border-white/10">
                                     La ligne rouge represente votre besoin mensuel ({goal.targetMonthlyIncome}$/mois), ajuste a l'inflation ({projection.inflationRate ?? 2}%) au fil du temps.
                                 </div>

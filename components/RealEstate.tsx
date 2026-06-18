@@ -5,6 +5,8 @@ import { ProjectionRequired } from './ui/ProjectionRequired';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ZoomContainer } from './ui/ZoomContainer';
+import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { RealEstateGoal, Tab as TabEnum } from '../types';
 import { INITIAL_REAL_ESTATE_GOAL } from '../constants';
 import { ConfirmModal } from './ui/ConfirmModal';
@@ -280,6 +282,21 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
         'Valeur Propriété': number;
     }>(combinedData);
 
+    // [A11Y-CHARTS] table de données sr-only pour le graphe « Scénarios comparatifs » (Recharts opaque
+    // aux lecteurs d'écran). Colonnes $ masquées en mode privé (parité avec PrivateAmount/blur) ; l'axe X
+    // (année) reste visible. Mêmes séries que l'AreaChart ; le graphe n'affiche que les scénarios pertinents
+    // selon le type de propriété, mais la table les liste tous (lecture exhaustive = signal plus riche au SR).
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
+    const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0);
+    const scenariosColumns: ChartDataColumn[] = [
+        { key: 'year', label: 'Année', format: (v) => `An ${v}` },
+        { key: 'Acheter (Résidence)', label: 'Acheter (Résidence)', format: money },
+        { key: 'Louer + Investir Reste', label: 'Louer + Investir Reste', format: money },
+        { key: 'Investissement Locatif (Équité+Loyer)', label: 'Investissement Locatif (Équité+Loyer)', format: money },
+        { key: 'Bourse (Placer Cash Initial)', label: 'Bourse (Placer Cash Initial)', format: money },
+        { key: 'Valeur Propriété', label: 'Valeur Propriété', format: money },
+    ];
+
     return (
         <div className="space-y-6 stagger-in pb-10">
             <ConfirmModal
@@ -502,6 +519,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                         </div>
                                     </div>
 
+                                    <div role="img" aria-label="Graphique des scénarios comparatifs immobiliers (Acheter, Louer + Investir, Investissement locatif, Bourse) par année">
                                     <ZoomContainer zoom={zoom} className="h-[300px] w-full mt-2">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <AreaChart data={zoom.visibleData}>
@@ -528,6 +546,12 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                             </AreaChart>
                                         </ResponsiveContainer>
                                     </ZoomContainer>
+                                    </div>
+                                    <ChartDataTable
+                                        caption="Scénarios comparatifs immobiliers par année (équité ou patrimoine net selon le scénario)"
+                                        columns={scenariosColumns}
+                                        rows={combinedData}
+                                    />
                                     <p className="text-tiny text-ink-500 mt-3 text-center">
                                         Note: Le graphique affiche automatiquement les scénarios pertinents (Habiter vs Louer) selon le type de propriété que vous avez configuré (Résidence Principale ou Propriété Locative).
                                     </p>

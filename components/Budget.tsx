@@ -18,6 +18,8 @@ import { Badge } from './ui/Badge';
 import { formatCAD, formatSigned } from '../utils/format';
 import { DualKPIStat } from './budget/DualKPIStat';
 import { calculateFiscalReport } from '../utils/tax';
+import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 
 interface BudgetProps {
     transactions: Transaction[];
@@ -428,6 +430,16 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         { name: 'Épargne Théorique', value: Math.max(0, coupleAnalysis.totalSavings), fill: '#7ba0cf' }
     ];
 
+    // [A11Y-CHARTS] table de données sr-only pour le donut 50/30/20 (Recharts opaque aux lecteurs d'écran).
+    // Colonne Catégorie visible ; colonne Montant $ masquée en mode privé (parité avec PrivateAmount/blur).
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
+    const goldenTotal = goldenRuleData.reduce((s, d) => s + d.value, 0) || 1;
+    const goldenRuleColumns: ChartDataColumn[] = [
+        { key: 'name', label: 'Catégorie' },
+        { key: 'value', label: 'Montant', format: (v) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0) },
+        { key: 'value', label: 'Part', format: (v) => `${((Number(v) || 0) / goldenTotal * 100).toFixed(1)}%` },
+    ];
+
     // Wiring 2026-05: snapshot final de la projection vivante.
     // Permet de relier "épargne théorique mensuelle" → "patrimoine fin vie".
     const lastProjection = useFinanceStore(s => s.lastProjection);
@@ -835,7 +847,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
                             <div className="pt-2 border-t border-white/5">
                                 <div className="text-meta text-ink-300 text-center mb-2 font-medium">Comparatif visuel 50/30/20</div>
-                                <div style={{ width: '100%', height: '180px' }}>
+                                <div style={{ width: '100%', height: '180px' }} role="img" aria-label="Donut comparatif 50/30/20 du budget (Besoins, Envies, Épargne théorique)">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
                                             <Pie
@@ -852,6 +864,11 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                         </PieChart>
                                     </ResponsiveContainer>
                                 </div>
+                                <ChartDataTable
+                                    caption="Répartition budgétaire 50/30/20 (Besoins, Envies, Épargne théorique)"
+                                    columns={goldenRuleColumns}
+                                    rows={goldenRuleData}
+                                />
                             </div>
                         </div>
                     </Card>

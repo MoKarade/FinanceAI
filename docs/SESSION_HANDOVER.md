@@ -276,9 +276,9 @@
 > - 8 nouveaux docs (BACKLOG, SECURITY_STRATEGY, CENTRALIZED_CALC_*,
 >   PROJECTION_OUTPUT_SCHEMA, etc.)
 
-> **Session 2026-06-18 — Durcissement MONEY-CONSERVATION + correctifs métier + UX (8 PR #351→#358)** :
-> **Lot HIGH fiscal/métier** — #352 [FISC-ESTATE-PENSION-NPV] (NPV rentes RRQ/PSV ×12 annualisée, bilan successoral ~375 k$ corrigés) · #354 [FISC-EVENT-INCOMELOSS] (perte d'emploi/sabbatique/accident : réduction revenu ménage appliquée par moteur ; défauts 100%/100%/50%, net+brut REER réduits, impôt décembre conservateur) · #355 [FINNHUB-MISMATCH][RECH-ACTION-UX] (Investissement : fallback gracieux symbole non-cotable, Escape ferme dropdown sans fermer modale) ; **Durcissement money** — #356 [HARDEN-NETWORTH-EXHAUSTIVE] (compile-guard `NET_WORTH_SIGN` dans `computeRawNetWorth`, test littéral vs Σ, zéro régression) ; **Hygiène** — #351 [ENG-MONTHLYOUTPUT-TEST] (test monthlyOutput complet, seul module sans test) + #353 [BACKLOG] (cocher livrés, découvertes, router FISC-WELCOME-2026) ; **UX + infra** — #357 [DOCS-DISCIPLINE] (`documentation-manager` devient PROPRIÉTAIRE de SESSION_HANDOVER, dans le « Toujours » de /review-all + rappel hook → handover à jour à CHAQUE push) · #358 [PROJ-INSOLVENCY-BADGE] (onglet Futur : badge danger « Plan insoutenable — capital épuisé vers X ans » quand le NW projeté franchit 0 ; helper pur `utils/insolvency.ts`). Conservation prouvée : **12 invariants OK**. Moteur stable **~2133 tests**, typecheck strict, Vite clean. État prêt déploiement.
-> ⚠️ **À FAIRE Marc** : `FISC-WELCOME-2026` (valeurs RQ 2026) · `RECH-ACTION-UX` (confirmer visuellement avec clé Finnhub, A_FAIRE_MOI O5). **Restes autonomes** : `FISC-CONST-LINT`, `HARDEN-FISCAL-TIMEBOMB`, `ENG-ESTATE-ESTIMATE-FIN`, `A11Y-BADGE-PROMINENCE` ; `HARDEN-FUZZING` (attend OK dép `fast-check`).
+> **Session 2026-06-18 — Durcissement MONEY-CONSERVATION + correctifs métier + UX (10 PR #351→#360)** :
+> **Lot HIGH fiscal/métier** — #352 [FISC-ESTATE-PENSION-NPV] (NPV rentes RRQ/PSV ×12 annualisée, bilan successoral ~375 k$ corrigés) · #354 [FISC-EVENT-INCOMELOSS] (perte d'emploi/sabbatique/accident : réduction revenu ménage appliquée par moteur ; défauts 100%/100%/50%, net+brut REER réduits, impôt décembre conservateur) · #355 [FINNHUB-MISMATCH][RECH-ACTION-UX] (Investissement : fallback gracieux symbole non-cotable, Escape ferme dropdown sans fermer modale) ; **Durcissement money** — #356 [HARDEN-NETWORTH-EXHAUSTIVE] (compile-guard `NET_WORTH_SIGN` dans `computeRawNetWorth`, test littéral vs Σ, zéro régression) ; **Hygiène** — #351 [ENG-MONTHLYOUTPUT-TEST] (test monthlyOutput complet, seul module sans test) + #353 [BACKLOG] (cocher livrés, découvertes, router FISC-WELCOME-2026) ; **UX + infra** — #357 [DOCS-DISCIPLINE] (`documentation-manager` devient PROPRIÉTAIRE de SESSION_HANDOVER, dans le « Toujours » de /review-all + rappel hook → handover à jour à CHAQUE push) · #358 [PROJ-INSOLVENCY-BADGE] (onglet Futur : badge danger « Plan insoutenable — capital épuisé vers X ans » quand le NW projeté franchit 0 ; helper pur `utils/insolvency.ts`) ; **Robustesse** — #360 [ENG-ESTATE-ESTIMATE-FIN] (`fin()` à la SOURCE : un estimé de rente NaN ne zérote plus TOUT l'estate — dégradation gracieuse). Conservation prouvée : **12 invariants OK**. Moteur stable **~2134 tests**, typecheck strict, Vite clean. État prêt déploiement.
+> ⚠️ **À FAIRE Marc** : `FISC-WELCOME-2026` (valeurs RQ 2026) · `RECH-ACTION-UX` (confirmer visuellement avec clé Finnhub, A_FAIRE_MOI O5). **Restes autonomes** : `FISC-CONST-LINT` (risque faux positifs), `HARDEN-FISCAL-TIMEBOMB` (subtil, sans Date.now) ; `HARDEN-FUZZING` (attend OK dép `fast-check`). **Déféré (décision design Marc)** : `A11Y-BADGE-PROMINENCE` (fond Badge ~1.1:1 < 3:1 WCAG 1.4.11 sur TOUS les variants ; contraste par teinte non automatisé par check-contrast).
 
 ---
 
@@ -288,9 +288,9 @@
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
-| **Dernière PR mergée** | **#358** [PROJ-INSOLVENCY-BADGE] (lot #351→#358, 2026-06-18) |
+| **Dernière PR mergée** | **#360** [ENG-ESTATE-ESTIMATE-FIN] (lot #351→#360, 2026-06-18) |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
-| **Tests** | **~2133/2133 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
+| **Tests** | **~2134/2134 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
 | **Typecheck** | Clean en mode strict |
 | **Build** | OK — **Vite 8 (Rolldown)** ; lazy-loading préservé (vendor react/recharts/ai/pdf) |
 | **Schema store** | **v7** (Zustand persist, migrations v1→v7) |

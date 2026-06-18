@@ -89,9 +89,9 @@ Le code est prêt et déployé ; il manque l'hébergement du bundle (Marc avait 
   machine. En exécution **cloud**, Claude n'y a pas accès (seuls les agents projet committés et
   les agents génériques du harness sont dispo). Sur les PC de Marc, ils restent à installer via
   claude-config / ECC si voulu.
-- [ ] **Docs périmées à resynchroniser** (non bloquant) : `SESSION_HANDOVER.md` cite encore
-  1154 tests / PR #116 / Cloudflare comme auth « courante » ; réel = ~1704 tests, dernier merge
-  bien plus loin. À rafraîchir lors de la prochaine grosse livraison.
+- [x] **Docs périmées resynchronisées (PR #351, 2026-06-18)** : table §1 de `SESSION_HANDOVER.md` mise à
+  jour (#292/2042 tests/Cloudflare → #350/~2077 tests/gate Google in-app). Le reste du HANDOVER (bandeau de
+  tête + sessions) était déjà à jour.
 
 
 ## Décisions design Phase 4 (Claude a fait tout l'autonome — 12 PR #250-261)
@@ -103,3 +103,12 @@ Le code est prêt et déployé ; il manque l'hébergement du bundle (Marc avait 
 - **[PH4-FUT] annotations sur la courbe (Q1 de ton brief)** : QUOI annoter ? (âge retraite / épuisement
   d'un compte / bascule de stratégie / événements de vie). + « Paramètres » renommé/allégé, conseils du
   plan d'action déclinés mois/trimestre/semestre/année.
+
+
+## O7 — Valeurs fiscales RQ 2026 requises (Claude ne devine JAMAIS un chiffre fiscal)
+- [ ] **[FISC-WELCOME-2026]** — les seuils de la **taxe de bienvenue** (droits de mutation immobilière)
+  pour le « reste du Québec » sont au millésime **2025** (`services/realEstate.ts:101-105` :
+  58 900 / 290 000 / 552 300 $). Fournis-moi les seuils OFFICIELS **2026** (+ la source Revenu Québec /
+  ministère) → je les transcris dans `FISCAL_REFERENCE.md` (daté + sourcé) PUIS je corrige le code, même PR.
+  Sans ces valeurs, je laisse le code en 2025 (pas de devinette). Effort Claude : < 45 min une fois les
+  valeurs reçues.

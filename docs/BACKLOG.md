@@ -394,10 +394,13 @@
   (prouvé algébrique + empirique). Tests : unitaire (`monthlyEvents.test.ts` 50k→40k) + end-to-end conservation
   (`moneyConservation` ΔNW < −13k au mois de vente), DISCRIMINANTS prouvés via `git stash` (ancien −7965). Log
   corrigé (n'affiche plus « +0$ » sur un déficit). Panel 4 agents APPROVE (conservation prouvée, 0 régression).
-- [ ] **[FISC-RE-CAPITAL-LOSS]** 🔧 MEDIUM (découverte panel #368, pré-existant) — `monthlyEvents.ts` à la vente
-  d'un LOCATIF sous coût : `gain = max(0, produit − coût)` puis `if (gain > 0)` → une PERTE en capital réalisée est
-  silencieusement IGNORÉE (ni log, ni banque de pertes type LIR 111(1)b). L'avantage fiscal (report sur gains futurs)
-  est perdu. Hors scope de #368. Fix : comptabiliser la perte (banque de pertes en capital) + log. Effort M.
+- [x] **[FISC-RE-CAPITAL-LOSS]** ✅ MEDIUM (PR #371, 2026-06-19) — `monthlyEvents.ts` à la vente d'un LOCATIF sous coût :
+  `gain = max(0, produit − coût)` + `if (gain > 0)` IGNORAIT silencieusement la perte en capital réalisée (avantage
+  fiscal LIR 111(1)b perdu). Fix : nouveau helper SOURCE UNIQUE `applyCapitalDisposition(state, rawGain signé)` dans
+  `portfolioOps.ts` (perte < 0 → banque ; gain ≥ 0 → nette la banque puis impose) ; `handleNonRegSale`/`handleCryptoSale`
+  refactorés dessus (zéro duplication) ; mutator immo `realizeCapitalGain` → `realizeCapitalDisposition` (nom honnête,
+  gère gain ET perte) + log de la perte. Discriminant prouvé (réintro `Math.max(0)` → test échoue). Panel + 12 invariants
+  conservation verts.
 - [ ] **[FISC-ASSETLOC-INTL]** 🔧 MEDIUM — asset-location : classe `international` jamais analysée →
   retenue étrangère 15 % en CELI/REER non comptée (`assetLocation.ts:104-132`) ; l'outil dit « optimal »
   alors qu'une perte existe (~375 $/an sur 100 k$ international en CELI). Fix non trivial (le patch naïf

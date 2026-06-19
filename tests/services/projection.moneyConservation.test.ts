@@ -257,6 +257,47 @@ describe('[CONSERVATION] patrimoine net toujours reconstructible et conservé', 
         // integrity ; chemin liquidDebt MESURÉ OK par projection-validator). On teste ici le cas liquide.
     });
 
+    it('[FISC-RE-CAPITAL-LOSS] locatif vendu à perte : perte banquée NON-monétaire (conservation tient) + log (end-to-end)', () => {
+        // Locatif (isPrimaryResidence:false) acheté 400 k$ puis vendu ~5 mois plus tard : la valeur a peu
+        // bougé (~405 k$) donc le produit net 95 % (≈ 384,7 k$) est SOUS le coût (400 k$) → PERTE en capital.
+        // Avant le fix, `Math.max(0, produit − coût)` IGNORAIT cette perte (ni banque, ni log). Désormais elle
+        // est portée en banque de pertes — un compteur FISCAL pur : elle ne déplace AUCUN cash au mois de vente
+        // (seul l'impôt FUTUR baisse). Donc la conservation (résiduel ≈ 0) doit RESTER intacte end-to-end, ce
+        // qui valide le câblage RÉEL du moteur (`projection.ts` mutator), pas seulement le mock unitaire.
+        const r = run(makeParams({
+            // Cash élevé → l'achat se fait À LA DATE prévue (sinon le moteur le REPORTE faute de liquidités
+            // et la vente ne trouve aucun bien acheté — vérifié en debug). Les flux annexes (allocation cascade,
+            // éventuel appel de marge) sont du comportement moteur NORMAL ; la conservation doit tenir à travers.
+            calculatedStartingCash: 300_000,
+            projection: makeProjection({ years: 6 }),
+            realEstateGoals: [{
+                id: 'rent', name: 'Plex locatif', isActive: true, purchaseDate: '2027-01-01',
+                price: 400_000, downPayment: 100_000, mortgageRate: 5, amortization: 25,
+                totalClosingCosts: 6_000, monthlyPayment: 1_750, unrecoverableMonthly: 300,
+                isPrimaryResidence: false,
+            }],
+            lifeEvents: [{ id: 'v', type: 'GROS_ACHAT', name: 'Vente plex locatif', date: '2027-06' }],
+        }));
+        const cd = r.chartData;
+        const saleIdx = cd.findIndex(p => (p.lifeEvents || []).some(e => /Vente/.test(e)));
+        expect(saleIdx).toBeGreaterThan(0);
+        // DISCRIMINANT e2e : le moteur RÉEL logge la perte en capital (l'ancien code, clamp `Math.max(0)`,
+        // ne loggait JAMAIS de perte → cette assertion échoue dessus). Prouve que le mutator projection.ts
+        // route bien par `applyCapitalDisposition` (le chemin distinct du mock unitaire).
+        expect(cd[saleIdx].flowEvents || []).toEqual(
+            expect.arrayContaining([expect.stringMatching(/Perte en capital/)]),
+        );
+        // CONSERVATION (forme reconstructabilité, INV-9 — la bonne pour un scénario immobilier : `unexplained`
+        // n'est valable QUE hors événement car il n'inclut pas le passage cash→équité). La perte banquée est un
+        // compteur FISCAL pur → elle ne change ni `NetWorth`, ni les actifs, ni `DettesNonImmo`. Donc l'identité
+        // `NetWorth = Σactifs − DettesNonImmo` doit tenir à CHAQUE mois (achat, vente à perte, re-flux), à l'euro
+        // près. Sous hypothèque, on reconstruit avec `DettesNonImmo` (jamais `DetteTotale` — leçon M5).
+        for (const p of cd) {
+            const recon = shownAssets(p) - num((p as Record<string, unknown>).DettesNonImmo);
+            expect(Math.abs(num(p.NetWorth) - recon)).toBeLessThan(2);
+        }
+    });
+
     it('INV-6 — aucun compte ne devient négatif (pas de solde fantôme)', () => {
         for (const params of [makeParams(), makeParams({ majorRenovations: [{ id: 'r', date: '2031-09-15', cost: 200_000 }] })]) {
             for (const p of run(params).chartData) {

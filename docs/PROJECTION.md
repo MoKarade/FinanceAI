@@ -252,7 +252,7 @@ Deux exécutions avec les mêmes params donnent **rigoureusement les mêmes nomb
 La conversion REER → FERR est obligatoire l'année des 71 ans. Le retrait minimum (5.4% à 72 → 20%+ à 94) peut **pousser dans une tranche supérieure** et causer un OAS clawback.
 
 ### 3.10 Banque de pertes en capital
-Une perte en capital sur le NonReg n'est PAS perdue : elle s'accumule dans `capitalLossBank` et compense les gains futurs (TLH = Tax Loss Harvesting).
+Une perte en capital n'est PAS perdue : elle s'accumule dans `capitalLossBank` et compense les gains futurs (LIR 111(1)(b)). Toute disposition d'immobilisation passe par la SOURCE UNIQUE `portfolioOps.applyCapitalDisposition(state, rawGain signé)` : NonReg (TLH), crypto, ET la vente d'un immeuble LOCATIF (FISC-RE-CAPITAL-LOSS, 2026-06-19 — auparavant un `Math.max(0,…)` effaçait la perte immobilière). Perte < 0 → banque ; gain ≥ 0 → nette d'abord la banque puis impose le reliquat.
 
 ---
 

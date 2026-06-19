@@ -30,7 +30,7 @@ import { buildMonthlyDataPoint } from './projection/monthlyOutput';
 import { computeRawNetWorth } from './projection/netWorth';
 import { applyMonthlyGrowth } from './projection/growthApplication';
 import { buildSeededRng, computeHistoricalContributionRoom, computeRrqAdjustment, computeIncomeBaseline, computeScenarioOverrides, makeSmileLifestyleFactor } from './projection/setupSimulation';
-import { handleNonRegSale as portfolioNonRegSale, handleCryptoSale as portfolioCryptoSale } from './projection/portfolioOps';
+import { handleNonRegSale as portfolioNonRegSale, handleCryptoSale as portfolioCryptoSale, applyCapitalDisposition } from './projection/portfolioOps';
 import { computeEstateNetWorth } from './projection/estateCalculation';
 import { computeMonthlyMarketRates, type StressTestConfig } from './projection/marketShocks';
 import { computeEffectiveExpenseInflation, computeMonthlyWithholding } from './projection/monthlyCalcs';
@@ -1157,7 +1157,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             addLiquid: (n) => { liquid += n; },
             addExpense: (n) => { monthlyExpenses += n; },
             adjustRealEstate: (eq, mort) => { realEstateEquity += eq; mortgageBalance += mort; },
-            realizeCapitalGain: (g) => { accCapitalGainsYear += g; },
+            realizeCapitalDisposition: (rawGain) => {
+                // Idiome copie/recopie (comme handleNonRegSale) : le helper mute un mini-state, on recopie
+                // les `let` du moteur. Une PERTE alimente `capitalLossBank` (consommée par les gains futurs).
+                const ms = { capitalLossBank, accCapitalGainsYear };
+                const result = applyCapitalDisposition(ms, rawGain);
+                capitalLossBank = ms.capitalLossBank;
+                accCapitalGainsYear = ms.accCapitalGainsYear;
+                return result;
+            },
             logLife: (s) => logEvent(lifeEventsLog, s),
             logFlow: (s) => logEvent(flowEventsLog, s),
         });

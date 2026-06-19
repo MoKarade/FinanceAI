@@ -17,6 +17,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Moteur : perte en capital d'un locatif vendu sous coût] — 2026-06-19
+
+### Correction fiscale — Vente d'un immeuble LOCATIF à perte
+- **Un locatif vendu sous son coût d'achat générait une perte en capital qui était silencieusement ignorée** : l'avantage
+  fiscal (report de la perte sur les gains en capital futurs, LIR 111(1)b) était perdu. Le moteur ne comptabilisait que les
+  gains (`max(0, produit − coût)`).
+- **Désormais la perte est portée en « banque de pertes en capital »** : elle réduit l'impôt sur tes gains en capital futurs
+  (placements, crypto ou autre vente immobilière), exactement comme une perte sur un placement non enregistré. Symétriquement,
+  un gain locatif nette d'abord les pertes accumulées avant d'être imposé. (Vente d'une résidence principale : toujours exemptée.)
+
+---
+
 ## [unreleased — Moteur : patrimoine net net de déficit immobilier] — 2026-06-19
 
 ### Correction moteur — Vente immeuble avec peu d'équité (frais > solde)

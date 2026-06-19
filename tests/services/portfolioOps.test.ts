@@ -5,10 +5,61 @@
  * ne se propageait pas. Maintenant 1 fonction pure générique, qu'on verrouille.
  */
 import { describe, it, expect } from 'vitest';
-import { handleNonRegSale, type NonRegSaleState } from '../../services/projection/portfolioOps';
+import { handleNonRegSale, applyCapitalDisposition, type NonRegSaleState, type CapitalDispositionState } from '../../services/projection/portfolioOps';
 
 const makeState = (o: Partial<NonRegSaleState> = {}): NonRegSaleState => ({
     nonReg: 10000, nonRegACB: 6000, capitalLossBank: 0, accCapitalGainsYear: 0, ...o,
+});
+
+// ──────────────────────────────────────────────────────────────────────────
+// [FISC-RE-CAPITAL-LOSS] applyCapitalDisposition — SOURCE UNIQUE de la règle
+// gain/perte en capital, partagée par NonReg, crypto ET la vente d'immeuble
+// locatif (`monthlyEvents`). Avant, la vente immo IGNORAIT les pertes (Math.max(0,…)).
+// ──────────────────────────────────────────────────────────────────────────
+const makeDisp = (o: Partial<CapitalDispositionState> = {}): CapitalDispositionState => ({
+    capitalLossBank: 0, accCapitalGainsYear: 0, ...o,
+});
+
+describe('[FISC-RE-CAPITAL-LOSS] applyCapitalDisposition', () => {
+    it('perte (rawGain < 0) → portée en banque, aucun gain imposable', () => {
+        const s = makeDisp();
+        const r = applyCapitalDisposition(s, -60000);
+        expect(r).toEqual({ bankedLoss: 60000, taxableGain: 0 });
+        expect(s.capitalLossBank).toBe(60000);
+        expect(s.accCapitalGainsYear).toBe(0);
+    });
+
+    it('gain (rawGain ≥ 0) sans banque → entièrement imposable', () => {
+        const s = makeDisp();
+        const r = applyCapitalDisposition(s, 175000);
+        expect(r).toEqual({ bankedLoss: 0, taxableGain: 175000 });
+        expect(s.accCapitalGainsYear).toBe(175000);
+        expect(s.capitalLossBank).toBe(0);
+    });
+
+    it('gain partiellement absorbé par la banque de pertes', () => {
+        const s = makeDisp({ capitalLossBank: 100000 });
+        const r = applyCapitalDisposition(s, 80000); // entièrement absorbé
+        expect(r).toEqual({ bankedLoss: 0, taxableGain: 0 });
+        expect(s.accCapitalGainsYear).toBe(0);
+        expect(s.capitalLossBank).toBe(20000); // 100000 − 80000
+    });
+
+    it('gain supérieur à la banque → reliquat imposable, banque vidée', () => {
+        const s = makeDisp({ capitalLossBank: 30000 });
+        const r = applyCapitalDisposition(s, 80000);
+        expect(r).toEqual({ bankedLoss: 0, taxableGain: 50000 }); // 80000 − 30000
+        expect(s.accCapitalGainsYear).toBe(50000);
+        expect(s.capitalLossBank).toBe(0);
+    });
+
+    it('rawGain = 0 (produit = coût) → ni perte ni gain', () => {
+        const s = makeDisp({ capitalLossBank: 5000 });
+        const r = applyCapitalDisposition(s, 0);
+        expect(r).toEqual({ bankedLoss: 0, taxableGain: 0 });
+        expect(s.capitalLossBank).toBe(5000); // banque intacte
+        expect(s.accCapitalGainsYear).toBe(0);
+    });
 });
 
 describe('handleNonRegSale — gain en capital', () => {

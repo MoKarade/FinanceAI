@@ -462,10 +462,14 @@ exactes par `fiscal-accuracy`) :
   est **exempt d'impôt** (100 % si RP unique sur toute la période de détention). Appliqué par le levier
   **downsizing** (`realEstateMonth.ts` : l'équité libérée n'incrémente PAS `accCapitalGainsYear`) → aucun
   impôt, aucun effet sur les assiettes de revenu (clawback PSV/SRG, FSS, RAMQ). Conforme.
-- **Gain immobilier d'un LOCATIF (≠ RP) à la VENTE** (`monthlyEvents.applyLifeEvents`, RE-GAIN livré) :
-  produit net (95 %) − coût d'achat → gain BRUT réalisé dans `accCapitalGainsYear` (50 % inclus en aval).
-  Exempt pour la résidence principale. ⚠️ **Reste** : le gain latent immobilier d'un locatif à la
-  **succession** (`estateCalculation`) n'est pas encore modélisé — cf BACKLOG `[RE-GAIN-SUCC]`.
+- **Gain OU perte en capital d'un LOCATIF (≠ RP) à la VENTE** (`monthlyEvents.applyLifeEvents`, RE-GAIN +
+  FISC-RE-CAPITAL-LOSS) : gain BRUT SIGNÉ = produit net (95 %) − coût d'achat, routé par la SOURCE UNIQUE
+  `portfolioOps.applyCapitalDisposition` (partagée avec NonReg/crypto). Gain ≥ 0 → nette d'abord
+  `capitalLossBank` puis alimente `accCapitalGainsYear` (50 % inclus en aval). **Perte < 0 → portée en
+  `capitalLossBank`** (LIR 111(1)(b), déductible des gains FUTURS) — avant FISC-RE-CAPITAL-LOSS (2026-06-19)
+  un `Math.max(0, …)` l'effaçait silencieusement (avantage fiscal perdu). Exempt pour la résidence principale.
+  ⚠️ **Reste** : le gain latent immobilier d'un locatif à la **succession** (`estateCalculation`) utilise
+  `Math.max(0, …)` (une perte latente au décès n'a pas de gain futur à compenser — horizon terminé) — cf BACKLOG `[RE-GAIN-SUCC]`.
 - `DOWNSIZE_RELEASE_PCT = 0.4` est une **hypothèse de modèle** (fraction d'équité libérée en rachetant
   plus petit), **pas une valeur fiscale** — ajustable, non sourcée.
 

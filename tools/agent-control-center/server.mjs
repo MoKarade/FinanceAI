@@ -7,6 +7,11 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, normalize, extname } from 'node:path';
 
+// [ACC Lot 2] lecture backlog + git — import DYNAMIQUE avec repli : un scanner corrompu ne doit PAS
+// empêcher le serveur de servir /status + le dashboard (revue silent-failure-hunter).
+let scanBacklog = () => ({ error: 'backlog-scan indisponible' });
+import('./backlog-scan.mjs').then((m) => { if (m && typeof m.scanBacklog === 'function') scanBacklog = m.scanBacklog; }).catch(() => { /* le reste du serveur fonctionne sans /backlog */ });
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
 const STATUS = join(ROOT, '.claude', 'status.json');
@@ -17,6 +22,7 @@ const HOST = '127.0.0.1';
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8' };
 // Whitelist stricte (anti path-traversal) : seuls ces fichiers du dossier sont servables.
 const STATIC = new Set(['index.html']); // dashboard auto-contenu (CSS+JS inline)
+let backlogCache = null; // [ACC Lot 2] cache court de /backlog (scan backlog+git)
 
 async function readStatus() {
   // Données RÉELLES si .claude/status.json existe (source:"live") ; sinon EXEMPLE clairement étiqueté.
@@ -46,6 +52,16 @@ const server = createServer(async (req, res) => {
       const { body, source } = await readStatus();
       res.writeHead(200, { 'Content-Type': MIME['.json'], 'Cache-Control': 'no-store', 'X-ACC-Source': source });
       return res.end(body);
+    }
+    // [ACC Lot 2] backlog + git. Cache court (2 s) : le dashboard poll, on évite de relancer git à chaque requête.
+    if (url.pathname === '/backlog') {
+      const now = Date.now();
+      if (!backlogCache || now - backlogCache.t > 2000) {
+        try { backlogCache = { t: now, body: JSON.stringify(scanBacklog()) }; }
+        catch (e) { backlogCache = { t: now, body: JSON.stringify({ error: 'scan failed', detail: String(e) }) }; }
+      }
+      res.writeHead(200, { 'Content-Type': MIME['.json'], 'Cache-Control': 'no-store' });
+      return res.end(backlogCache.body);
     }
     // Statiques (whitelist stricte)
     const name = url.pathname === '/' ? 'index.html' : normalize(url.pathname).replace(/^[/\\]+/, '');

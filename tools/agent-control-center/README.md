@@ -44,7 +44,8 @@ scripts/hooks/agent-status.mjs   ── écrit ──►  .claude/status.json   
 
 ## Fichiers
 
-- `server.mjs` — serveur Node natif (statiques + `/status` + `/health`), bind `127.0.0.1`, zéro dépendance.
+- `server.mjs` — serveur Node natif (statiques + `/status` + `/health` + **`/backlog`** [Lot 2]), bind `127.0.0.1`, zéro dépendance.
+- `backlog-scan.mjs` [Lot 2] — scan READ-ONLY (Node natif, `execFileSync` sans shell) de `docs/BACKLOG.md` + `A_FAIRE_MOI.md` + git → `/backlog` rend `{ enCours, enAttente, aVenir, fait, phases, metrics }`. Parsing TOLÉRANT (format semi-libre). « En cours » = branche `claude/<slug>` + PR ouvertes ; « en attente » = items 🧭 + A_FAIRE_MOI ; tests **lus** du HANDOVER (pas de re-run vitest). Cache 2 s côté serveur.
 - `index.html` — dashboard **auto-contenu** (CSS + JS + données d'exemple inline ; fintech dark, XSS-safe sans `innerHTML`). Beau partout : sans serveur, il affiche l'exemple ÉTIQUETÉ ; avec `npm run acc`, il poll `/status` (réel).
 - `agents.meta.json` — métadonnées statiques des 14 agents (référence ; le dashboard les embarque aussi inline).
 - `status.example.json` — exemple étiqueté (repli serveur + fixture).

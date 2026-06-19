@@ -5,13 +5,11 @@
 > Audit qualité détaillé : voir `docs/HISTORIQUE.md` (section `AAA_AUDIT_2026-06.md`).
 > Actions humaines (Marc) : [`docs/A_FAIRE_MOI.md`](A_FAIRE_MOI.md).
 >
-> **Dernière mise à jour : 2026-06-10 (soir).** Tests : ~1886 verts / 158 fichiers · tsc clean · build OK.
-> Session 2026-06-10 (suite) — livré : **TOP 10 [UI-EPURE]** (EP-1..10) · **FA-1..5** (fiscaux majeurs) ·
-> **PV-5, PV-1, FA-9, FA-10, PV-2, PV-10, PV-7, PV-3, PV-9** (9 fix moteur/fiscal money-critical) ·
-> **#238** : **PV-8** (TLH×ACB) + **[PH1-a]** (fix chunk périmé, Phase 1 du brief Marc) + **PV-4** +
-> **FA-7** (§8 immobilier) + **FA-11** (limite SRG documentée). Reste actionnable 🔧 : PV-11, FA-8,
-> FA-12 (design consigné au ticket) (+ a11y D6, U5, CA-xx). 🧭/👤 (Marc) : Q1/Q2 du brief (A_FAIRE_MOI
-> O6), phases 2-4 du brief (plan-first, OK requis), ITEM-2A/2C, FA-6, P0-*.
+> **Dernière mise à jour : 2026-06-18.** Tests : ~2159 verts (+ 10 PR #364) / 158 fichiers · tsc clean · build OK.
+> Session 2026-06-18 (suite) — livré : **#364 [FISC-CONST-LINT]** garde-fou + vraie fuite RRSP corrigée.
+> Restes autonomes : **[HARDEN-FUZZING]** (bloqué accord dép `fast-check` Marc) ; LOW-tickets découverts
+> (**[FISC-CONST-LINT-LIMITS]**, **[FISC-RRSP-PRE2010-FALLBACK]**). 🧭/👤 (Marc) : `FISC-WELCOME-2026`
+> (valeurs RQ 2026 manquantes), phases 2-4 du brief (plan-first, OK requis), P0-*, design Budget/Transactions/Retraite.
 
 ## Convention (cochage par Claude au merge)
 - Chaque item Claude-faisable porte un **`[ID]`** entre crochets. **Claude coche lui-même**
@@ -239,8 +237,23 @@
 - [x] **[FISC-VIZ-CREDITS]** (M4) ✅ MEDIUM (livré, décision Marc) — `TaxBracketViz` : total + taux effectif (par
   juridiction ET combiné) tirés de `calculateFiscalReport` (NET, crédits BPA+abattement) ; barres + détail $ restent
   BRUTS (pédagogique, libellés « avant crédits »). Fin du total « exact » surévalué.
-- [ ] **[FISC-CONST-LINT]** 🔧 MEDIUM (garde-fou) — test/règle ESLint : aucun littéral fiscal connu (`0.15`/`0.5`/`0.30`/
-  paliers) hors `utils/tax.ts`/`realEstate.ts`. Ferme structurellement la classe M1-M3. Effort M.
+- [x] **[FISC-CONST-LINT]** ✅ MEDIUM (PR #364, 2026-06-18, garde-fou) — `utils/fiscalConstantsGuard.ts` +
+  `tests/fiscalConstants.guard.test.ts` (10 tests, échec dur, choix Marc). Auto-extrait de `tax.ts`/`realEstate.ts` les littéraux
+  DISTINCTIFS non-collisionnables (entiers ≥5 chiffres ≠ `…000` + taux 4 décimales) et échoue si l'un fuite hors source.
+  Scope sûr : ronds (`60000`=60 s ms) et taux 2-décimales (`0.5`) EXCLUS. Strip des commentaires (numéros de ligne ARC ≠
+  constantes). Échappatoire `// fiscal-const-ok`. **A trouvé une vraie fuite** : `setupSimulation.ts` recopiait `32490`
+  (RRSP 2025) → nommé `RRSP_ANNUAL_LIMIT_FALLBACK` dans tax.ts (byte-identique, 180+ tests projection verts). Démo
+  (`testBudget`) exclue. Ferme structurellement M1-M3.
+- [ ] **[FISC-CONST-LINT-LIMITS]** 🔧 LOW (découverte #364) — limites connues du garde-fou, à garder en tête :
+  (1) les **taux à 2-3 décimales** (`0.063` RRQ, `0.205`, `0.15` clawback, `0.18` REER) ne sont PAS bannissables sans
+  faux positifs (omniprésents en ratios) → une recopie manuelle d'un tel taux passerait sous le radar. (2) Les **facteurs
+  FERR** (`helpers.ts` `RRIF_RATES`, `0.0617`…) sont des constantes réglementaires hors `tax.ts`/`realEstate.ts`, donc non
+  protégées par le scan. Aucune fuite aujourd'hui (vérifié). Étendre le scope = arbitrage faux-positifs à faire.
+- [ ] **[FISC-RRSP-PRE2010-FALLBACK]** 🔧 LOW (découverte #364) — `setupSimulation.ts` applique
+  `RRSP_ANNUAL_LIMIT_FALLBACK` (= plafond 2025, 32 490 $) aux années en sol canadien **avant 2010** (hors table). C'est
+  ANACHRONIQUE (plafond réel ~16,5 k$ en 2005) → sur-estime les droits REER historiques des très vieux profils (mord
+  seulement si salaire×0,18 > 32 490, càd salaires > ~180 k$). Pré-existant (non introduit par #364). Fix futur : étendre
+  la table avant 2010 ou extrapoler à la baisse.
 - [x] **[AI-SNAP-FREQ]** (L4) ✅ LOW (livré) — `monthlyExpenses` NORMALISÉ par fréquence + hors épargne :
   `financialSnapshot` via `computeMonthlyBudgetAggregates`, `NextBestAction` via `monthlyAmountFor` (excl. Epargne).
   Avant : Σ brute des cibles (poste annuel compté ×12) envoyée à l'IA/MCP. 29 tests verts.

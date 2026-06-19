@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Moteur : patrimoine net net de déficit immobilier] — 2026-06-19
+
+### Correction moteur — Vente immeuble avec peu d'équité (frais > solde)
+- **Vente d'une propriété avec hypothèque proche de la valeur + frais de vente** : si le déficit était supérieur à l'équité
+  disponible (ex. hypo = 95 % du prix, frais = 5 % → solde négatif), le moteur **n'en tenait pas compte** : le déficit était effacé
+  silencieusement au lieu d'être soustrait du patrimoine net. Résultat : ton patrimoine affiché était surévalué.
+- **Désormais le déficit est bien traité** : il réduit ton liquide (s'il y a du cash) ou s'ajoute à ta dette visible (découvert
+  porté en ligne). Le patrimoine net reflète exactement la réalité économique de la vente. Cas rare mais structurel pour les
+  propriétaires avec peu d'équité.
+
+---
+
 ## [unreleased — Accessibilité (Vague 2)] — 2026-06-17
 
 ### Futur — Badge « plan insoutenable »

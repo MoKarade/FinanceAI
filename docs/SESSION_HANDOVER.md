@@ -283,6 +283,8 @@
 > - 8 nouveaux docs (BACKLOG, SECURITY_STRATEGY, CENTRALIZED_CALC_*,
 >   PROJECTION_OUTPUT_SCHEMA, etc.)
 
+> **Session 2026-06-19 — FISC-RE-SALE-RESIDUAL (#368)** (money-critical) : vente immo quasi-underwater (hypo 95-100 %, frais 5 % > équité → `saleNet < 0`) : `addLiquid(Math.max(0, saleNet))` effaçait le déficit → patrimoine surévalué. Fix = `addLiquid(saleNet)` → déficit déduit ou porté en `liquidDebt` (PV-6). 2 tests discriminants (unitaire `monthlyEvents.test.ts` + end-to-end conservation). ΔNW = −5 % valeur prouvé. Panel 4 agents APPROVE, 0 régression. Tests ~**2166 verts**. Gates verts.
+>
 > **Session 2026-06-19 — FUZZ-ONETIME-FLOWS (#367)** : fuzz étendu à l'**ACHAT IMMOBILIER** (mise 5-50 % < prix, génère hypothèque ; mesuré 257/500 runs sous hypothèque) + **RÉNOVATION** majeure. Invariant ajouté : `DetteTotale ≥ DettesNonImmo` (hypothèque non double-comptée). **Test déterministe immo** : reconstruction NW sous prêt. Discrimination prouvée end-to-end (flip signe équité + drop liquidDebt → fuzz échoue). **PARTIEL** : reste vente immo / gain locatif / revenu locatif / équité négative / véhicule / héritage / REEE (suivi au BACKLOG). Tests ~**2164 verts**. Gates verts.
 >
 > **Session 2026-06-18 (suite) — HARDEN-FUZZING (#365)** : `tests/services/projection.fuzzConservation.test.ts`
@@ -306,9 +308,9 @@
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
-| **Dernière PR mergée** | **#367** [FUZZ-ONETIME-FLOWS] (fuzz immo/réno + test déterministe, 2026-06-19) |
+| **Dernière PR mergée** | **#368** [FISC-RE-SALE-RESIDUAL] (vente immo quasi-underwater, déficit déduit/porté, 2 tests discriminants, 2026-06-19) |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
-| **Tests** | **~2164/2164 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
+| **Tests** | **~2166/2166 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
 | **Typecheck** | Clean en mode strict |
 | **Build** | OK — **Vite 8 (Rolldown)** ; lazy-loading préservé (vendor react/recharts/ai/pdf) |
 | **Schema store** | **v7** (Zustand persist, migrations v1→v7) |

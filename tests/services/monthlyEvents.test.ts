@@ -163,6 +163,20 @@ describe('applyLifeEvents', () => {
         expect(prop.isBought).toBe(false);
     });
 
+    it('FISC-RE-SALE-RESIDUAL : vente quasi-underwater (frais > équité) → le déficit est PORTÉ, pas effacé', () => {
+        // Hypothèque entre 95 % et 100 % de la valeur : les 5 % de frais poussent le produit net SOUS la
+        // dette → `saleNet` < 0. La propriété est quand même vendue (mortgage 390 k$ < valeur 400 k$), mais
+        // `saleNet = 400 000×0.95 − 390 000 = −10 000`. Avant le fix, `Math.max(0, saleNet)` EFFAÇAIT ce
+        // déficit (patrimoine surévalué de 10 k$) ; désormais `addLiquid(saleNet)` le porte (il tombe dans
+        // le sauvetage PV-6 → liquidDebt VISIBLE / baisse de liquide). Discriminant : 50 000 → 40 000.
+        const event: LifeEvent = { id: 'v', date: '2035-06', type: 'GROS_ACHAT', name: 'Vente maison' };
+        const prop: PropertyStateMutable = { isBought: true, mortgage: 390000, currentValue: 400000 };
+        const { mutator, s } = makeState();
+        applyLifeEvents([event], '2035-06', 1.0, [prop], mutator);
+        expect(s.liquid).toBeCloseTo(50000 - 10000, 0); // ancien code (clamp) laissait 50 000 → échec
+        expect(prop.isBought).toBe(false);
+    });
+
     it('ignore les événements dont la date ne correspond pas', () => {
         // Arrange
         const event: LifeEvent = { id: '4', date: '2029-03', type: 'ACCIDENT', name: 'Maladie', impactAmount: 5000 };

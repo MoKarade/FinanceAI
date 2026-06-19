@@ -113,10 +113,19 @@ export function applyLifeEvents(
         } else {
             const isVente = e.name && e.name.toLowerCase().includes('vente');
             if (isVente) {
+                // `mortgage < currentValue` : équité positive requise. Cas-limite intentionnel : un bien TRULY
+                // underwater (`mortgage >= currentValue`) n'est PAS vendu (on ne modélise pas la vente à perte
+                // forcée). Une vente quasi-underwater (mortgage entre 95 % et 100 % de la valeur) PASSE ce filtre
+                // mais a un `saleNet` négatif — d'où le fix FISC-RE-SALE-RESIDUAL ci-dessous.
                 const soldProp = propertiesState.find(p => p.isBought && p.mortgage < p.currentValue);
                 if (soldProp) {
                     const saleNet = soldProp.currentValue * 0.95 - soldProp.mortgage;
-                    state.addLiquid(Math.max(0, saleNet));
+                    // FISC-RE-SALE-RESIDUAL : PAS de `Math.max(0, …)`. Une vente quasi-underwater (hypothèque
+                    // entre 95 % et 100 % de la valeur → les 5 % de frais poussent sous l'eau) produit un
+                    // `saleNet` NÉGATIF : le déficit (frais > équité) doit être PORTÉ (il tombe dans le
+                    // sauvetage PV-6 plus bas → couvert par actifs ou `liquidDebt` VISIBLE), pas EFFACÉ — sinon
+                    // le patrimoine est surévalué de `|saleNet|` (l'argent du déficit s'évapore).
+                    state.addLiquid(saleNet);
                     state.adjustRealEstate(
                         -(soldProp.currentValue - soldProp.mortgage),
                         -soldProp.mortgage,
@@ -134,7 +143,11 @@ export function applyLifeEvents(
                     soldProp.isBought = false;
                     soldProp.mortgage = 0;
                     soldProp.isSold = true;
-                    state.logLife(`🏠 Vente (net 95%): +${Math.round(Math.max(0, saleNet)).toLocaleString('fr-CA')}$`);
+                    state.logLife(saleNet >= 0
+                        ? `🏠 Vente (net 95%): +${Math.round(saleNet).toLocaleString('fr-CA')}$`
+                        // saleNet < 0 : les frais de 5 % dépassent l'équité → net négatif DÉDUIT du patrimoine
+                        // (ponctionné du liquide, ou porté en dette si le liquide est épuisé — PV-6).
+                        : `🏠 Vente (net 95%): −${Math.round(-saleNet).toLocaleString('fr-CA')}$ (frais > équité)`);
                 }
             } else {
                 const effectiveImpact = (e.impactAmount ?? 0) * expenseMultiplier;

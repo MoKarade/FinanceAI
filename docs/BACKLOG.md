@@ -381,10 +381,17 @@
   N'est PAS réduit** (biais conservateur, identique au chômage stochastique — vérifié empiriquement par le panel).
   Test discriminant prouvé (`git stash` → no-op → patrimoine identique). Conservation : +2 tests moneyConservation
   (50 % + 100 %). Panel 5 agents, tous findings intégrés. **Suite possible** : per-conjoint (sélecteur « qui »).
-- [ ] **[FISC-RE-SALE-RESIDUAL]** 🔧 MEDIUM — vente immobilière à équité négative (hypo > 95 % valeur) :
-  `addLiquid(Math.max(0, saleNet))` (`monthlyEvents.ts:72-79`) efface la dette résiduelle (clamp à 0)
-  alors que l'équité positive est retirée → patrimoine légèrement surévalué. Fix : `addLiquid(saleNet)`
-  (laisser le découvert tomber dans la cascade liquidDebt).
+- [x] **[FISC-RE-SALE-RESIDUAL]** ✅ MEDIUM (PR #368, 2026-06-19) — vente immobilière quasi-underwater (hypo 95-100 %
+  de la valeur, les 5 % de frais poussent `saleNet` < 0) : `addLiquid(Math.max(0, saleNet))` (`monthlyEvents.ts`)
+  EFFAÇAIT le déficit (patrimoine surévalué de `|saleNet|`). Fix : `addLiquid(saleNet)` → le déficit est DÉDUIT
+  (ponctionné du liquide, ou porté en `liquidDebt` visible via PV-6 si liquide épuisé). ΔNW = −5 % de la valeur
+  (prouvé algébrique + empirique). Tests : unitaire (`monthlyEvents.test.ts` 50k→40k) + end-to-end conservation
+  (`moneyConservation` ΔNW < −13k au mois de vente), DISCRIMINANTS prouvés via `git stash` (ancien −7965). Log
+  corrigé (n'affiche plus « +0$ » sur un déficit). Panel 4 agents APPROVE (conservation prouvée, 0 régression).
+- [ ] **[FISC-RE-CAPITAL-LOSS]** 🔧 MEDIUM (découverte panel #368, pré-existant) — `monthlyEvents.ts` à la vente
+  d'un LOCATIF sous coût : `gain = max(0, produit − coût)` puis `if (gain > 0)` → une PERTE en capital réalisée est
+  silencieusement IGNORÉE (ni log, ni banque de pertes type LIR 111(1)b). L'avantage fiscal (report sur gains futurs)
+  est perdu. Hors scope de #368. Fix : comptabiliser la perte (banque de pertes en capital) + log. Effort M.
 - [ ] **[FISC-ASSETLOC-INTL]** 🔧 MEDIUM — asset-location : classe `international` jamais analysée →
   retenue étrangère 15 % en CELI/REER non comptée (`assetLocation.ts:104-132`) ; l'outil dit « optimal »
   alors qu'une perte existe (~375 $/an sur 100 k$ international en CELI). Fix non trivial (le patch naïf

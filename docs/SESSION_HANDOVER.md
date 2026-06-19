@@ -18,6 +18,15 @@
 > phase suivante sans OK explicite de Marc** ; Q1/Q2 à poser (cf `A_FAIRE_MOI` O6) ; handover à jour
 > après chaque phase.
 >
+> **Session 2026-06-19 — Décisions & vision Marc (batch, #374)** : Marc a tranché un lot d'items + livré sa vision
+> Futur/Budget. Capturé dans `BACKLOG.md` § « Décisions & vision Marc — 2026-06-19 ». Closures : ENG-TAX-NS (garder
+> alias), H1 (pas de passphrase), **B-AUDIT-5 vérifié DÉJÀ-FAIT** (SRG déjà exclu du clawback PSV, `projection.ts:918/921/929`
+> — pas de fake fix). Go : Badge **option B** (bordure renforcée), LABEL-NW-SUCCESSORAL (libellés distincts + tooltip),
+> FA-6 (modéliser, barème fed+QC sourcé), PH3-c-bis (supprimer `User.industry`, ⚠️ schéma Zustand). Plans rédigés : ITEM-2C
+> (per-conjoint), tables fiscales (personne seule QC). ★ Vision Q1 Futur = annotations (retraite/événements/FIRE) +
+> infobulle figée + densité au zoom + **verrouillage/persistance de courbe** (clé Phase 2). PH4 = parité catégories Budget,
+> envie/besoin, objectif épargne, détail per-conjoint, abonnements, personas de test complets. Gros chantiers = plan-first.
+>
 > **Session 2026-06-19 — Hygiène CA-01 partiel (#373)** : `utils/safeNumber.ts` (+ test) SUPPRIMÉ — util de coercition
 > NaN jamais adopté (0 consumer prod, grep). CORRIGÉ une affirmation périmée du backlog : `csvExport.ts` n'est PAS mort
 > (usé par `Transactions.tsx`). CA-01 passe à PARTIEL (exports orphelins restants à vérifier 1-à-1, knip bruyant). Trivial, zéro impact runtime.

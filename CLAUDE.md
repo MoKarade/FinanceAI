@@ -263,6 +263,11 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
 - Dev `npm run dev` · Build `npm run build` (⚠️ `prebuild` = `lint` ; build CASSE si lint échoue)
 - `npm run lint` · `npm run typecheck` (clean) · `npm run test` · `test:watch` · `test:e2e`
 - `npm run knip` · `npm run check-contrast` · MCP : `mcp:dev`/`mcp:auth`/`mcp:connect`/`mcp:pack`
+- ⚠️ **Vérifier qu'une classe Tailwind est GÉNÉRÉE : build PROPRE (`rm -rf dist`) AVANT de grep le CSS** (leçon
+  A11Y-BADGE-PROMINENCE 2026-06-19) : le build Rolldown/Vite peut servir un asset CSS en CACHE → un grep du `dist/`
+  périmé rend « classe absente » (count 0) à tort, m'a coûté un cycle de debug. Un build propre confirme la vraie
+  génération (ex. `border-*-400/55` — l'opacité sur shade imbriqué FONCTIONNE ici). Le `commit-gate` build ne PROUVE
+  pas qu'une classe se génère (build « réussi » même si une classe est silencieusement omise) → grep du CSS propre.
 
 ## Tests
 - Tests pour TOUTE nouvelle logique. Priorité `services/projection/`. Ne pas baisser la couverture.

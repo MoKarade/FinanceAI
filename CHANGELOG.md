@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Accessibilité : lisibilité des badges] — 2026-06-19
+
+### Badges plus nets (contraste)
+- **Les badges (« Insoutenable », « Impôt », « FIRE atteint »…) ont une bordure plus marquée** : ils se détachent
+  mieux du fond de la page (le fond du badge reste identique). Petit gain de lisibilité, surtout en coup d'œil rapide.
+
+---
+
 ## [unreleased — Moteur : garde anti-NaN du patrimoine net] — 2026-06-19
 
 ### Robustesse — Un solde corrompu ne vide plus ton graphe en silence

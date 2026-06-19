@@ -25,6 +25,7 @@ blob-report/
 .claude/status.json
 .claude/status.json.tmp
 .claude/agent-events.jsonl
+.claude/agent-transcripts/
 # Captures ad-hoc de tests navigateur à la racine (les vrais assets vivent dans public/).
 /*.png
 # Note : e2e/__snapshots__/ est inclus (baselines committées)

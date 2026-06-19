@@ -16,18 +16,22 @@ le hook capte chaque invocation et le dashboard se met à jour (polling 2 s).
 
 ```
 boucle Claude lance un agent (outil Task/Agent)
-        │  PreToolUse / PostToolUse  (matcher "Task|Agent")
+        │  PreToolUse / PostToolUse  (matcher "Task|Agent")   ── prompt COMPLET → agents[nom].message
         ▼
 scripts/hooks/agent-status.mjs   ── écrit ──►  .claude/status.json     (snapshot, atomique)
-                                 ── append ─►  .claude/agent-events.jsonl (historique)
-        ▲                                              │
-   server.mjs (Node natif, 127.0.0.1)  ── GET /status ─┘
-        ▲
-   dashboard (index.html / dashboard.css / dashboard.js)  ── poll 2 s ──► rend 5 sections
+        ▲                        ── append ─►  .claude/agent-events.jsonl (historique)
+        │
+   l'agent termine  ── SubagentStop (agent_transcript_path) ──► extrait FIL DE PENSÉE + sortie + outils
+        │                              └─► .claude/agent-transcripts/<id>.json (détail complet, gitignored)
+        │                              └─► status.json : agents[nom].transcript = { extraits bornés, tools, hasThinking }
+        ▼
+   server.mjs (Node natif, 127.0.0.1)  ── GET /status ──►  dashboard (poll 2 s)
 ```
 
-- **`source: "live"`** = vraie activité. **`source: "example"`** = `status.example.json` servi en repli, avec un **bandeau « Exemple » non masquable** (jamais de fausse donnée présentée comme réelle — règle no-fake-data).
-- `.claude/status.json` et `.claude/agent-events.jsonl` sont **gitignored** (état runtime local).
+- **Message complet** (Lot 1) : le prompt reçu par chaque agent est gardé ENTIER dans `agents[nom].message` (plus de troncature à 80 car).
+- **Transcription + outils** (Lot 1) : au `SubagentStop`, le hook lit `agent_transcript_path` (le `.jsonl` du sous-agent), en extrait la **sortie finale** (le rapport de l'agent) + les **outils utilisés** + (si présents) les blocs `thinking`. ⚠️ **Vérifié LIVE 2026-06-19 : les transcripts SOUS-AGENTS ne contiennent PAS de blocs `thinking`** (`hasThinking:false`) → on affiche la sortie + les outils, pas un « fil de pensée » (qui n'existe que pour la boucle principale). Corrélation agent→nom par CONTENU (le prompt ENTIER enregistré est sous-chaîne du 1er message user — robuste en panel parallèle MÊME avec un préambule de briefing commun). Détail complet dans `.claude/agent-transcripts/<id>.json` (gitignored) ; seuls des EXTRAITS bornés vont dans `status.json`. Transcript > 30 Mo → non extrait mais SIGNALÉ (`oversize`).
+- **`source: "live"`** = vraie activité. **`source: "example"`** = `status.example.json` servi en repli, avec un **bandeau « Exemple » non masquable** (règle no-fake-data).
+- `.claude/status.json`, `.claude/agent-events.jsonl`, `.claude/agent-transcripts/` sont **gitignored** (état runtime local).
 
 ## 5 sections & maturité
 

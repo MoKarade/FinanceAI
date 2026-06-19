@@ -26,6 +26,12 @@
 ## 🧭 Décisions & vision Marc — 2026-06-19 (batch de réponses)
 > Marc a tranché un lot d'items en attente + livré sa vision Futur/Budget. Source de vérité ; les items
 > individuels ci-dessous pointent ici. Quick-wins/closures appliqués cette session ; gros chantiers = plan-first.
+>
+> **➡️ FEUILLE DE ROUTE VALIDÉE & exécutée en autonomie : [`docs/PLAN_CHANTIERS_2026-06-19.md`](PLAN_CHANTIERS_2026-06-19.md)**
+> (4 agents d'exploration → plans `fichier:ligne`, VALIDÉS par Marc 2026-06-19). Décisions verrouillées : **Q1 multi-courbes
+> OUI** ; **FA-6** = fédéral **14 %** (≤200 $) / titres **inclusion 0 % sur tout le don** / QC **24 % fixe** ; couple = attribution
+> **auto par défaut** (type de poste), éditable ; ordre = gains rapides UI → PH4 → money-critical. ★ **Surprise** : le verrouillage +
+> persistance de courbe (Q1-A) est DÉJÀ construit à ~95 % (`lockedProjectionStore.ts` + store) → ne PAS reconstruire.
 
 ### Tranché (closures + go)
 | Item | Décision Marc | Suite |

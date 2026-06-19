@@ -18,6 +18,13 @@
 > phase suivante sans OK explicite de Marc** ; Q1/Q2 à poser (cf `A_FAIRE_MOI` O6) ; handover à jour
 > après chaque phase.
 >
+> **Session 2026-06-19 — FEUILLE DE ROUTE VALIDÉE (#376)** : `docs/PLAN_CHANTIERS_2026-06-19.md` — plans cadrés par
+> 4 agents (`fichier:ligne`) + VALIDÉS par Marc, exécutés en AUTONOMIE PR par PR. Ordre : R1-R6 gains rapides UI
+> (NW-successoral libellés, Futur P1-P4 annotation FIRE/tooltip figée/boot-restore/densité, PH3-c-bis suppr. `User.industry`,
+> personas complets) → PH4-A→F (Budget) → money-critical (FA-6 dons fed 14 %/titres 0 %/QC 24 %, ITEM-2C per-conjoint, tables
+> personne seule QC) → Q1 multi-courbes. ★ Persistance de courbe DÉJÀ construite (~95 %, `lockedProjectionStore.ts`) → ne pas
+> reconstruire. **PROCHAINE SESSION : reprendre l'exécution à l'item non coché dans le PLAN.**
+>
 > **Session 2026-06-19 — A11Y-BADGE-PROMINENCE (#375)** : Badge option B (choix Marc) — bordure renforcée
 > (`border-*-border` 0,30 → `border-*-400/55`), fond inchangé, badge-only (token `*-border` partagé non touché).
 > Contraste badge↔page remonté (WCAG 1.4.11). Classes Tailwind générées vérifiées (build propre). Item clos.

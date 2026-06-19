@@ -18,6 +18,15 @@
 > phase suivante sans OK explicite de Marc** ; Q1/Q2 à poser (cf `A_FAIRE_MOI` O6) ; handover à jour
 > après chaque phase.
 >
+> **Session 2026-06-19 — HARDEN-NETWORTH-NAN (#372)** (money-critical, garde anti échec silencieux) : `computeRawNetWorth`
+> (SOURCE UNIQUE du patrimoine, `netWorth.ts`) n'avait AUCUNE garde `Number.isFinite` → un seul terme NaN/Infinity rendait
+> TOUT le patrimoine NaN, graphe vide SANS trace. Fix : helper module-scope `sumNetWorthParts` (formule unique, hot-path
+> inchangé) ; total non fini → chemin LENT qui rabat chaque terme fautif sur 0 (itère `NET_WORTH_SIGN`), `logError` THROTTLÉ
+> par signature (anti-flood MC), recalcul. Chemin sain = 1 `Number.isFinite`. Discriminant prouvé (court-circuit → 4 échecs),
+> +6 tests. Panel 3 agents APPROVE — finding redaction-PII RÉFUTÉ empiriquement (pattern `^debt$` ancré ≠ substring → clés
+> `*Debt` non redactées ; leçon « mesurer les findings »). ⚠️ NB : branche partie d'origin/main AVANT le merge de #371 (FISC-RE-
+> CAPITAL-LOSS) → conflit de bandeau attendu au merge (garder les DEUX entrées). Gates verts.
+>
 > **Session 2026-06-18 — Garde-fou FISC-CONST-LINT (#364)** : `utils/fiscalConstantsGuard.ts` + `tests/fiscalConstants.guard.test.ts`
 > (10 tests) : échec dur, auto-extraction des littéraux distinctifs non-collisionnables de `utils/tax.ts`/`services/realEstate.ts`
 > + scan du codebase pour interdit. **A trouvé + corrigé 1 vraie fuite** : `32490` (RRSP 2025 recopié dans `setupSimulation.ts` sans

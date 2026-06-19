@@ -63,6 +63,7 @@ export const StressTestPanel: React.FC<Props> = ({ params, baselineEstateNW }) =
             <p className="text-tiny text-ink-300 mt-1.5">
                 Soumet ton plan à des chocs (inflation, hiver économique, retraite à 55 ans, héritages…)
                 et mesure l'écart avec ton scénario réaliste. Calculé à la demande — ne ralentit pas tes réglages.
+                Les montants = patrimoine successoral (rentes RRQ/PSV incluses).
             </p>
 
             {/* Bouton TOUJOURS monté (a11y : le démonter faisait retomber le focus clavier

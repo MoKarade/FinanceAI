@@ -9,7 +9,7 @@
 // dérivées.
 
 import { mulberry32 } from './helpers';
-import { calculateCeliRoom, getResidencyStartYear, RRSP_ANNUAL_LIMITS, rrqAdjustmentFactor as computeRrqFactor, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE } from '../../utils/tax';
+import { calculateCeliRoom, getResidencyStartYear, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLBACK, rrqAdjustmentFactor as computeRrqFactor, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE } from '../../utils/tax';
 import type { FutureScenarioType } from '../projection';
 
 /**
@@ -67,7 +67,7 @@ export function computeHistoricalContributionRoom(
             for (let y = 1; y <= yearsInCanadaBeforeStart; y++) {
                 const histYear = startYear - y;
                 const pastSalary = individualSalaryPortion / Math.pow(1.02, y);
-                const annualCap = RRSP_ANNUAL_LIMITS[histYear] || 32490;
+                const annualCap = RRSP_ANNUAL_LIMITS[histYear] || RRSP_ANNUAL_LIMIT_FALLBACK;
                 totalHistoricalRrspRoom += Math.max(0, Math.min(pastSalary * 0.18, annualCap) - (totalFE / (activeUsers.length || 1)));
             }
         }

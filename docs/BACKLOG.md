@@ -23,6 +23,59 @@
 
 ---
 
+## 🧭 Décisions & vision Marc — 2026-06-19 (batch de réponses)
+> Marc a tranché un lot d'items en attente + livré sa vision Futur/Budget. Source de vérité ; les items
+> individuels ci-dessous pointent ici. Quick-wins/closures appliqués cette session ; gros chantiers = plan-first.
+
+### Tranché (closures + go)
+| Item | Décision Marc | Suite |
+|---|---|---|
+| `A11Y-BADGE-PROMINENCE` | **Option B — bordure renforcée** (fond inchangé, bordure ~0,55) | 🔧 PR à venir (appliquer aux 6 variants) |
+| `LABEL-NW-SUCCESSORAL` | Reco acceptée : **libellés distincts** (« Patrimoine successoral, avec rentes » vs « Patrimoine projeté ») + **infobulle** expliquant l'écart | 🔧 PR à venir (libellé + tooltip, pas de moteur) |
+| `FA-6` (dons charitables) | **(a) Modéliser proprement** (paliers fed+QC + inclusion 0 % titres) | 🔧 effort M, sourcé (voir item FA-6) |
+| `PH3-c-bis` (`User.industry`) | **Supprimer** | ⚠️ migration schéma Zustand (prudence) |
+| `ENG-TAX-NS` | **Garder l'alias** | ✅ clos, rien à coder |
+| `H1` (chiffrement passphrase) | **Non** | ✅ clos, décliné |
+| `B-AUDIT-5` (SRG dans clawback PSV) | Corriger | ✅ **DÉJÀ FAIT** (vérifié 2026-06-19) : `projection.ts:918/921/929` excluent déjà le SRG (`incomeRetirement − incomeRetirementGis`). Item périmé → clos. PAS de fake fix. |
+| `ITEM-2C`, `Tables fiscales` | **Planifier** | plans ci-dessous |
+| `NAV-CONSOLIDATE` | « on en parle après » | ⏸️ différé |
+
+### ★ Q1 — Onglet Futur (vision détaillée, plan-first par sous-chantier)
+- **Annotations sur la courbe** : âge de retraite ✅ · **chaque événement de vie** ✅ · **FIRE atteint** ✅.
+  PAS : épuisement de compte ❌, ni RRQ/PSV/CELIAPP ❌ (déjà lisibles sur la courbe). **Clic sur une icône →
+  description brève** de l'événement.
+- **Infobulle** : tout voir (actuellement coupée + impossible à scroller car elle suit la souris) → la **figer/
+  rendre scrollable** (ne plus suivre le curseur quand on veut lire).
+- **Densité au zoom (level-of-detail)** : dézoomé = peu d'icônes ; en zoomant, de plus en plus jusqu'à toutes.
+- **★ VERROUILLAGE + PERSISTANCE de la courbe** (clé de voûte Phase 2) : une fois leviers + courbe choisis, elle
+  **reste affichée** en changeant de page ET **après déconnexion/reconnexion**, jusqu'à ce que Marc la change ou
+  **compare** des courbes. → persistance (store + IndexedDB), pas un recalcul volatil.
+
+### PH4 — par onglet (vision, plan-first)
+- **Budget** : **parité catégories** (chaque catégorie de Transactions ↔ un poste Budget) · meilleure répartition
+  **envie/besoin** · **objectif d'épargne** + vue **réel vs objectif**.
+- **Santé financière** retravaillée · **mode couple** plus concret · **détail de ce que CHAQUE conjoint sort**
+  comme argent.
+- **Abonnements** : les voir (peut-être un onglet dédié avec les **dates** d'abonnement).
+- **Personas de test** : tous retravaillés pour **marcher sur TOUTES les pages** (tous les critères cochés).
+
+### Plan — `ITEM-2C` (gates de timing par conjoint, money-critical)
+- **Problème** : FERR 72 / reset REER 71 / bonus PSV 75+ sont bloqués par un pool REER MÉNAGE + un âge principal
+  unique → impossible de différencier le timing par conjoint.
+- **Phase 0** : test de caractérisation pinnant le comportement actuel (golden) — zéro changement moteur.
+- **Phase 1** : `computeRetirementIncome` **per-conjoint de bout en bout** (pool REER par personne, âge par
+  personne) ; défaut additif (égalité ménage préservée si âges égaux → zéro régression).
+- **Phase 2** : brancher FERR/REER/PSV sur l'âge per-conjoint ; re-baser les golden SCIEMMENT (prouver vs ARC) ;
+  panel financial-integrity + projection-validator ; 12 invariants conservation. ⚠️ Lourd, plan-first à chaque phase.
+
+### Plan — Tables fiscales « montant pour personne vivant seule » (QC TP-1.G)
+- **Problème** : le montant pour personne vivant seule (crédit QC) est absent du code ET de `FISCAL_REFERENCE`.
+- **Phase 0** : transcrire la grille TP-1.G **datée + sourcée** dans `FISCAL_REFERENCE.md` (jamais de chiffre deviné).
+- **Phase 1** : appliquer le crédit aux ménages **1 adulte** (et la majoration applicable) dans `calculateFiscalReport` ;
+  test discriminant (un single 65+ bas revenu voit le crédit) ; panel fiscal. Effort S/M une fois la grille fournie.
+
+---
+
 ## 🎛️ Audit UX 2026-06-17 (VALIDÉ — voir `docs/AUDIT_UX_2026-06-17.md`)
 > Audit externe (rendu headless, 7 personas, 14 pages) **validé claim par claim** par panel de 5 agents
 > (preuve `fichier:ligne`). Robustesse app = 0 plantage. Cœur money-critical = sain (les 2 « bugs de chiffres »
@@ -273,8 +326,8 @@
   assertions sur `buildMonthlyDataPoint` (mode MC minimal + mappings dérivés DetteTotale/DettesNonImmo, diffNW,
   *Max, NetTransfer, CoastFIRE, AccruedTax, ExpenseInflation, reconstructabilité, gardes div-0/Infinity). Panel
   `code-reviewer` (arrondi IEEE-754 borderline corrigé + 4 mappings non couverts ajoutés).
-- [ ] **[ENG-TAX-NS]** (L3) 🔧 LOW/🧭 — `services/tax.ts` = alias `export *` jamais résorbé → imports incohérents
-  (`services/tax` vs `utils/tax`). Décision Marc : finir la migration ou supprimer l'alias. Effort S.
+- [x] **[ENG-TAX-NS]** ✅ DÉCISION Marc 2026-06-19 : **GARDER l'alias** `services/tax.ts` (`export *`). Pas de
+  résorption. Clos (voir batch décisions 2026-06-19).
 - [ ] **[FISC-WELCOME-2026]** 🔧 LOW (🧭👤 BLOQUÉ — routé `A_FAIRE_MOI` 2026-06-18) — `services/realEstate.ts:101-105` :
   seuils mutation « reste_qc » millésime **2025** (58 900/290 000/552 300) à réindexer 2026. ⚠️ Marc doit fournir les
   valeurs officielles RQ 2026 (NE PAS deviner) → puis transcrire `FISCAL_REFERENCE.md` + corriger code, même PR.
@@ -763,10 +816,13 @@
 - [ ] **[ITEM-2C]** Gates de *timing* par conjoint (FERR 72 / reset REER 71 / bonus PSV 75+) :
   bloqués structurellement (pool REER ménage + âge principal unique). Fix propre =
   `computeRetirementIncome` per-conjoint de bout en bout (lourd). À planifier ou laisser ?
-- [ ] **[B-AUDIT-5]** SRG inclus dans le revenu du clawback PSV (incorrect, mais bénéficiaire SRG
-  sous le seuil → impact pratique ~0). Corriger pour la propreté si on y touche.
-- [ ] **[H1]** Chiffrement `localStorage` au repos par passphrase (faible valeur isolée ; cascade
-  IndexedDB chiffré). Décision Marc (risque : passphrase oubliée → recovery).
+- [x] **[B-AUDIT-5]** ✅ **DÉJÀ CORRIGÉ** (vérifié 2026-06-19, Marc avait dit « corriger »). Le SRG est DÉJÀ exclu
+  de l'assiette du clawback PSV : `projection.ts:918` passe `incomeRetirement − incomeRetirementGis` à
+  `computeOasClawback`, l.921 `v − gisShare` par conjoint, l.929 le cap `pensionPSV − incomeRetirementGis`
+  (corrigé implicitement par FA-2/FA-3/FA-8). Le `incomeRetirement` AVEC SRG ne sert qu'au reset de janvier
+  (l.945), pas au clawback. Item périmé → PAS de fake fix (un faux fix d'impôt = pire que le finding).
+- [x] **[H1]** ❌ DÉCISION Marc 2026-06-19 : **PAS de chiffrement par passphrase** (risque recovery > valeur ;
+  cascade IndexedDB chiffré suffit). Clos, décliné.
 
 ## 💰 Audit fiscal + moteur 2026-06-09 (3 agents : fiscal-accuracy, projection-validator, code-analyzer)
 > 0 BLOCKER. Socle exact (barèmes/BPA/RRQ/RAMQ/FSS/FERR/retenues conformes au doc). Détails dans les
@@ -785,8 +841,13 @@
 - [x] **[FA-5]** (livré #221) NPV rentes succession : `governmentPension × 0,65 × activeUsersCount`
   (`estateCalculation.ts:144-145`) alors que le moteur le traite déjà comme FAMILIAL → ×N en double,
   `estateNetWorth` couple gonflé de dizaines de k$.
-- [ ] **[FA-6]** 🧭 Dons charitables : crédit 33 % + relief gains 15 % en dur non sourcés
-  (`w5Effects.ts:98-101`). Sourcer au doc (vrai barème ~48-53 % > 200 $ ; don de titres = inclusion 0 %).
+- [ ] **[FA-6]** 🔧 MEDIUM — Dons charitables : `w5Effects.ts:98-101` code en dur « crédit 33 % + relief gains 15 % »
+  = INEXACT. **DÉCISION Marc 2026-06-19 : modéliser proprement (a).** Barème RÉEL recherché (à transcrire daté+sourcé
+  dans `FISCAL_REFERENCE` AVANT de coder) : **par paliers** — Fédéral ~15 % (réduit ~14 % 2025-2026) sur les 1ers 200 $,
+  puis **29 %** au-delà (33 % seulement sur la portion de revenu en tranche max) ; **Québec 20 %** sur 1ers 200 $, puis
+  **24 %** (25,75 % hauts revenus) → **combiné ~32-34 % puis ~48-53 % > 200 $**. **Don de titres cotés en nature =
+  inclusion du gain en capital 0 %** (exonéré, ≠ « relief 15 % »). Sources : revenuquebec.ca (crédits dons) · CFFP
+  guide-mesures-fiscales/credit-impot-dons · canada.ca ligne 34900 (gains sur dons de biens). Effort M.
 - [x] **[FA-7]** 🔧 (livré) §8 immobilier transcrit dans FISCAL_REFERENCE : B-20 (plancher 5,25 %,
   +2 pts, GDS 39/TDS 44), mise de fonds min + amortissements SCHL (30 ans FTB/neuve août 2024),
   primes SCHL par LTV (0,60→4,00 %), mutations QC 2025 (paliers + note Montréal non modélisé,

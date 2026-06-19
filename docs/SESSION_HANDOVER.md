@@ -21,7 +21,15 @@
 > **Session 2026-06-19 — A11Y-BADGE-PROMINENCE (#375)** : Badge option B (choix Marc) — bordure renforcée
 > (`border-*-border` 0,30 → `border-*-400/55`), fond inchangé, badge-only (token `*-border` partagé non touché).
 > Contraste badge↔page remonté (WCAG 1.4.11). Classes Tailwind générées vérifiées (build propre). Item clos.
-> ⚠️ Branche off origin/main avant #374 (docs décisions) → conflit de bandeau possible au merge (garder les deux).
+>
+> **Session 2026-06-19 — Décisions & vision Marc (batch, #374)** : Marc a tranché un lot d'items + livré sa vision
+> Futur/Budget. Capturé dans `BACKLOG.md` § « Décisions & vision Marc — 2026-06-19 ». Closures : ENG-TAX-NS (garder
+> alias), H1 (pas de passphrase), **B-AUDIT-5 vérifié DÉJÀ-FAIT** (SRG déjà exclu du clawback PSV, `projection.ts:918/921/929`
+> — pas de fake fix). Go : Badge **option B** (bordure renforcée), LABEL-NW-SUCCESSORAL (libellés distincts + tooltip),
+> FA-6 (modéliser, barème fed+QC sourcé), PH3-c-bis (supprimer `User.industry`, ⚠️ schéma Zustand). Plans rédigés : ITEM-2C
+> (per-conjoint), tables fiscales (personne seule QC). ★ Vision Q1 Futur = annotations (retraite/événements/FIRE) +
+> infobulle figée + densité au zoom + **verrouillage/persistance de courbe** (clé Phase 2). PH4 = parité catégories Budget,
+> envie/besoin, objectif épargne, détail per-conjoint, abonnements, personas de test complets. Gros chantiers = plan-first.
 >
 > **Session 2026-06-19 — Hygiène CA-01 partiel (#373)** : `utils/safeNumber.ts` (+ test) SUPPRIMÉ — util de coercition
 > NaN jamais adopté (0 consumer prod, grep). CORRIGÉ une affirmation périmée du backlog : `csvExport.ts` n'est PAS mort

@@ -92,10 +92,23 @@ h3{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.1em
 .agent .tr{display:inline-flex;align-items:center;gap:5px;color:var(--accent-2);font-size:10px;font-weight:600}
 .agent .tr::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent-2)}
 
-/* Workflows (placeholder Lot 4) */
-.wf{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
-.wf .c{flex:0 0 220px;background:var(--surface);border:1px dashed var(--line-2);border-radius:var(--r-sm);padding:15px;color:var(--faint);font-size:12px;line-height:1.5}
-.wf .c b{color:var(--muted);display:block;margin-bottom:4px;font-size:12.5px}
+/* Workflows (runs réels — Lot 4) */
+.wf{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+.wfc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:15px;box-shadow:var(--sh);transition:.2s;overflow:hidden}
+.wfc:hover{border-color:var(--line-2)}
+.wfc.running{border-color:color-mix(in oklab,var(--running) 45%,transparent);box-shadow:var(--sh),0 0 30px -16px var(--running)}
+.wfc .wh{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.wfc .wn{font-weight:650;font-size:13px;font-family:var(--mono);letter-spacing:-.01em;word-break:break-all}
+.wfc .wsum{color:var(--muted);font-size:12px;margin:7px 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.wfc .wph{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 0}
+.wfc .wph span{font-size:9.5px;color:var(--faint);border:1px solid var(--line);border-radius:6px;padding:2px 7px;white-space:nowrap}
+.wfc .wag{display:flex;gap:5px;flex-wrap:wrap;margin:9px 0 0}
+.wfc .wag .a{font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:6px;border:1px solid var(--line);color:var(--muted);display:inline-flex;gap:6px;align-items:center;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.wfc .wag .a::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--pending);flex:0 0 auto}
+.wfc .wag .a.done::before{background:var(--ok)}
+.wfc .wag .a.running::before{background:var(--running);animation:pulse 1.5s ease-in-out infinite}
+.wfc .wmore{font-size:10px;color:var(--faint);align-self:center}
+.wfc .wf-foot{display:flex;gap:13px;flex-wrap:wrap;color:var(--faint);font-size:11px;margin-top:11px;padding-top:9px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
 
 /* Badges */
 .badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
@@ -256,7 +269,7 @@ h3{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.1em
   <h2 id="h-ag">Agents <span class="muted" id="ag-count"></span> <span class="tag">clique → détail</span></h2>
   <div id="agents" class="grid" aria-labelledby="h-ag"></div>
 
-  <h2>Workflows <span class="tag">Lot 4</span></h2>
+  <h2>Workflows <span class="muted" id="wf-count"></span> <span class="tag" id="wf-tag" hidden>exemple</span></h2>
   <div id="workflows" class="wf"></div>
 
   <div class="cols">
@@ -364,6 +377,12 @@ const BACKLOG_EXAMPLE={source:'example',branch:'claude/exemple-demo',generatedAt
  fait:[{id:'FMT-CURRENCY-UNIFY',state:'done',marker:'claude',priority:'MEDIUM',section:'Format',desc:'formatCAD partout'},
    {id:'MONEY-PHANTOM',state:'done',marker:'claude',priority:'CRITICAL',section:'Moteur',desc:'source unique computeRawNetWorth'}]};
 
+// Repli /workflows quand le serveur n'est pas lancé (ÉTIQUETÉ exemple via le tag de section).
+const WORKFLOWS_EXAMPLE={source:'example',counts:{running:1,recent:2,total:3},
+ enCours:[{runId:'wf_exemple-run',name:'audit-money-engine',status:'running',summary:'',startedAt:new Date(NOW-90000).toISOString(),durationMs:null,agentCount:4,totalTokens:null,totalToolCalls:null,phases:['Reproduce','Sweep','Verify'],agents:[{label:'reproduce',state:'done'},{label:'sweep:cashflow',state:'done'},{label:'sweep:immo',state:'running'},{label:'verify',state:'running'}],done:2}],
+ recents:[{runId:'wf_ex1',name:'verif-high-financiers',status:'completed',summary:'Vérifie #4/#5/#6 (HIGH financiers) avant fix — posture sceptique.',startedAt:new Date(NOW-3600000).toISOString(),durationMs:124000,agentCount:3,totalTokens:412000,totalToolCalls:18,phases:['Verification'],agents:[{label:'survivant',model:'opus',state:'done'},{label:'acb-renos',model:'opus',state:'done'},{label:'impot-immo',model:'opus',state:'done'}]},
+   {runId:'wf_ex2',name:'review-changes',status:'completed',summary:'Revue multi-dimensions du diff + vérification adversariale.',startedAt:new Date(NOW-7200000).toISOString(),durationMs:96000,agentCount:6,totalTokens:680000,totalToolCalls:42,phases:['Review','Verify'],agents:[{label:'review:bugs',state:'done'},{label:'review:perf',state:'done'},{label:'verify:bugs',state:'done'}]}]};
+
 const POLL=2000, STALE=600000;
 const $=id=>document.getElementById(id);
 const el=(t,c,x)=>{const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;};
@@ -412,10 +431,6 @@ function render(s){
     const left=a.transcript?el('span','tr','transcription'):el('span',null,a.lastRun?ago(a.lastRun):'jamais exécuté');
     ft.append(left,el('span','det','voir détail →'));c.appendChild(ft);
     grid.appendChild(c);});
-
-  // Workflows : placeholder honnête (Lot 4).
-  const wf=$('workflows');wf.replaceChildren();
-  wf.appendChild((()=>{const c=el('div','c');c.append(el('b',null,'Workflows'),el('span',null,'Visualisation des workflows multi-agents — arrive au Lot 4. Le pipeline ci-dessus couvre les revues séquentielles.'));return c;})());
 
   $('risks-tag').hidden=!live;
   fillList($('risks'),s.risks||[],r=>{const row=el('div','rowi');row.appendChild(el('span','sev '+sevCls(r.severity),r.severity||'?'));const bd=el('div','bd');if(r.file)bd.appendChild(el('div','file',r.file));bd.appendChild(el('div','dsc',[r.cause,r.impact,r.fix].filter(Boolean).join(' — ')));if(r.agent)bd.appendChild(el('div','who',r.agent));row.appendChild(bd);return row;},live?'Aucun risque structuré capté.':'Aucun risque.');
@@ -565,10 +580,40 @@ function renderBacklogLists(){
   if(!shown)host.appendChild(el('div','empty',blSearch?('Aucun item ne correspond à « '+blSearch+' ».'):'Rien à afficher dans ce filtre.'));
 }
 
+// ───────────────────────── BLOC WORKFLOWS (/workflows) ─────────────────────────
+const fmtTok=n=>n==null?'—':n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?Math.round(n/1e3)+'k':String(n);
+const AG_CAP=10; // agents affichés par carte (le reste résumé en « +N »)
+function workflowCard(r){
+  const running=r.status==='running';
+  const st=running?'running':r.status==='stale'?'stale':'completed'; // stale = run fantôme (sans json final > 2 h)
+  const c=el('div','wfc'+(running?' running':''));
+  const h=el('div','wh');h.append(el('span','wn',r.name||'workflow'),el('span','st '+st,stLbl(st)));c.appendChild(h);
+  if(r.summary)c.appendChild(el('div','wsum',r.summary));
+  if(r.phases&&r.phases.length){const ph=el('div','wph');r.phases.forEach(p=>ph.appendChild(el('span',null,p)));c.appendChild(ph);}
+  if(r.agents&&r.agents.length){const ag=el('div','wag');r.agents.slice(0,AG_CAP).forEach(a=>{const x=el('span','a '+(a.state||''));x.textContent=a.label;if(a.phase)x.title=a.phase;ag.appendChild(x);});
+    if(r.agents.length>AG_CAP)ag.appendChild(el('span','wmore','+'+(r.agents.length-AG_CAP)));c.appendChild(ag);}
+  const ft=el('div','wf-foot');
+  ft.appendChild(el('span',null,(r.agentCount!=null?r.agentCount:'?')+' agents'));
+  if((running||r.status==='stale')&&r.done!=null)ft.appendChild(el('span',null,r.done+'/'+(r.agentCount||'?')+' finis'));
+  if(r.totalTokens!=null)ft.appendChild(el('span',null,fmtTok(r.totalTokens)+' tok'));
+  if(r.totalToolCalls!=null)ft.appendChild(el('span',null,r.totalToolCalls+' outils'));
+  if(r.durationMs!=null)ft.appendChild(el('span',null,dur(r.durationMs)));
+  if(r.startedAt)ft.appendChild(el('span',null,ago(r.startedAt)));
+  c.appendChild(ft);return c;
+}
+function renderWorkflows(w,live){
+  $('wf-tag').hidden=live;
+  const runs=[...(w.enCours||[]),...(w.recents||[])];
+  const cn=w.counts||{};$('wf-count').textContent=runs.length?('('+(cn.running||0)+' en cours · '+(w.recents||[]).length+' récents)'):'';
+  const host=$('workflows');host.replaceChildren();
+  if(!runs.length){host.appendChild(el('div','empty',live?'Aucun workflow récent. Lance un workflow (outil Workflow) pour le voir apparaître ici.':'Exemple — aucun run.'));return;}
+  runs.forEach(r=>host.appendChild(workflowCard(r)));
+}
+
 // ───────────────────────── Polling (avec détection de changement) ─────────────────────────
 // On ne re-rend QUE si les données ont bougé : évite de churner ~200 nœuds toutes les 2 s pour rien
 // (l'indicateur de connexion, lui, se met à jour à chaque tick). Le 1ʳᵉ rendu se fait toujours.
-let lastStatusSig=null, lastBlSig=null;
+let lastStatusSig=null, lastBlSig=null, lastWfSig=null;
 async function poll(){
   try{const r=await fetch('/status',{cache:'no-store'});const s=await r.json();$('conn-t').textContent='live';$('conn').className='conn';
     const sig=(s.updatedAt||'')+'|'+(s.source||''); // status.json n'est réécrit que sur activité d'agent
@@ -582,6 +627,13 @@ async function pollBacklog(){
     else if(lastBlSig!=='__ex'){lastBlSig='__ex';renderBacklog(BACKLOG_EXAMPLE,false);}}
   catch{if(lastBlSig!=='__ex'){lastBlSig='__ex';renderBacklog(BACKLOG_EXAMPLE,false);}}
 }
+async function pollWorkflows(){
+  try{const r=await fetch('/workflows',{cache:'no-store'});const w=await r.json();
+    if(w&&w.counts){const {generatedAt,...rest}=w;const sig=JSON.stringify(rest);
+      if(sig!==lastWfSig){lastWfSig=sig;renderWorkflows(w,true);}}
+    else if(lastWfSig!=='__ex'){lastWfSig='__ex';renderWorkflows(WORKFLOWS_EXAMPLE,false);}}
+  catch{if(lastWfSig!=='__ex'){lastWfSig='__ex';renderWorkflows(WORKFLOWS_EXAMPLE,false);}}
+}
 
 // Tiroir : ouverture (clic / clavier), fermeture (✕ / fond / Échap).
 $('agents').addEventListener('click',e=>{const card=e.target.closest('.agent');if(card)openDrawer(card.dataset.name,card);});
@@ -592,6 +644,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&drawerOpen)closeDra
 
 poll();setInterval(poll,POLL);
 pollBacklog();setInterval(pollBacklog,POLL);
+pollWorkflows();setInterval(pollWorkflows,POLL);
 // Horloge « live » : re-tique l'âge de la dernière maj chaque seconde (le tableau de bord est VIVANT
 // même quand aucun agent ne tourne — tu vois le temps avancer + le battement de la pastille).
 setInterval(()=>{ if(lastUpd) $('updated').textContent='maj '+ago(lastUpd); },1000);

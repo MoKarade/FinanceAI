@@ -18,6 +18,11 @@
 > phase suivante sans OK explicite de Marc** ; Q1/Q2 à poser (cf `A_FAIRE_MOI` O6) ; handover à jour
 > après chaque phase.
 >
+> **Session 2026-06-19 — A11Y-BADGE-PROMINENCE (#375)** : Badge option B (choix Marc) — bordure renforcée
+> (`border-*-border` 0,30 → `border-*-400/55`), fond inchangé, badge-only (token `*-border` partagé non touché).
+> Contraste badge↔page remonté (WCAG 1.4.11). Classes Tailwind générées vérifiées (build propre). Item clos.
+> ⚠️ Branche off origin/main avant #374 (docs décisions) → conflit de bandeau possible au merge (garder les deux).
+>
 > **Session 2026-06-19 — Hygiène CA-01 partiel (#373)** : `utils/safeNumber.ts` (+ test) SUPPRIMÉ — util de coercition
 > NaN jamais adopté (0 consumer prod, grep). CORRIGÉ une affirmation périmée du backlog : `csvExport.ts` n'est PAS mort
 > (usé par `Transactions.tsx`). CA-01 passe à PARTIEL (exports orphelins restants à vérifier 1-à-1, knip bruyant). Trivial, zéro impact runtime.

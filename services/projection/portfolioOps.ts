@@ -10,11 +10,43 @@
 // Maintenant: 1 fonction pure prenant un mini-state (4 champs).
 // Les State Objects qui ont ces 4 champs l'utilisent directement (subtyping TS).
 
-export interface NonRegSaleState {
+/** Mini-state pour comptabiliser une disposition d'immobilisation (gain OU perte en capital). */
+export interface CapitalDispositionState {
+    /** Banque de pertes en capital reportées (LIR 111(1)b) — déductibles des gains FUTURS. */
+    capitalLossBank: number;
+    /** Gains en capital BRUTS accumulés cette année (inclusion 50 % appliquée en aval). */
+    accCapitalGainsYear: number;
+}
+
+export interface NonRegSaleState extends CapitalDispositionState {
     nonReg: number;
     nonRegACB: number;
-    capitalLossBank: number;
-    accCapitalGainsYear: number;
+}
+
+/**
+ * SOURCE UNIQUE de la règle « gain/perte en capital » pour TOUTE disposition d'immobilisation
+ * (NonReg, crypto, immeuble locatif). `rawGain` est le gain BRUT SIGNÉ (produit de disposition − ACB) :
+ *  - `rawGain < 0` (PERTE) → portée en banque de pertes (`capitalLossBank`), déductible des gains futurs.
+ *    Avant [FISC-RE-CAPITAL-LOSS], la vente immo IGNORAIT ce cas (`Math.max(0, …)` → avantage fiscal perdu).
+ *  - `rawGain ≥ 0` (GAIN) → nette d'abord la banque de pertes accumulée, le RELIQUAT imposable alimente
+ *    `accCapitalGainsYear` (50 % inclus en aval). Un gain ne paie pas d'impôt tant qu'il reste des pertes banquées.
+ *
+ * Mute le state en place. Retourne le détail (perte banquée / gain imposable net) pour le logging.
+ */
+export function applyCapitalDisposition<S extends CapitalDispositionState>(
+    state: S,
+    rawGain: number,
+): { bankedLoss: number; taxableGain: number } {
+    if (rawGain < 0) {
+        const loss = Math.abs(rawGain);
+        state.capitalLossBank += loss;
+        return { bankedLoss: loss, taxableGain: 0 };
+    }
+    const usableLoss = Math.min(rawGain, state.capitalLossBank);
+    const taxableGain = rawGain - usableLoss;
+    state.capitalLossBank -= usableLoss;
+    state.accCapitalGainsYear += taxableGain;
+    return { bankedLoss: 0, taxableGain };
 }
 
 /**
@@ -40,25 +72,15 @@ export function handleNonRegSale<S extends NonRegSaleState>(state: S, amount: nu
         const costBasis = sold * proportion;
         state.nonReg -= sold;
         state.nonRegACB = Math.max(0, state.nonRegACB - costBasis);
-        const rawGain = sold - costBasis;
-        if (rawGain < 0) {
-            state.capitalLossBank += Math.abs(rawGain);
-        } else {
-            const usableLoss = Math.min(rawGain, state.capitalLossBank);
-            const taxableGain = rawGain - usableLoss;
-            state.capitalLossBank -= usableLoss;
-            state.accCapitalGainsYear += taxableGain;
-        }
+        applyCapitalDisposition(state, sold - costBasis);
     }
     return sold;
 }
 
-export interface CryptoSaleState {
+export interface CryptoSaleState extends CapitalDispositionState {
     crypto: number;
     /** Coût de base crypto (= valeur de départ par convention) → ne taxer que le gain. */
     cryptoACB: number;
-    capitalLossBank: number;
-    accCapitalGainsYear: number;
 }
 
 /**
@@ -79,15 +101,7 @@ export function handleCryptoSale<S extends CryptoSaleState>(state: S, amount: nu
         const costBasis = sold * proportion;
         state.crypto -= sold;
         state.cryptoACB = Math.max(0, state.cryptoACB - costBasis);
-        const rawGain = sold - costBasis;
-        if (rawGain < 0) {
-            state.capitalLossBank += Math.abs(rawGain);
-        } else {
-            const usableLoss = Math.min(rawGain, state.capitalLossBank);
-            const taxableGain = rawGain - usableLoss;
-            state.capitalLossBank -= usableLoss;
-            state.accCapitalGainsYear += taxableGain;
-        }
+        applyCapitalDisposition(state, sold - costBasis);
     }
     return sold;
 }

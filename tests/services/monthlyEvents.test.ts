@@ -14,6 +14,7 @@ import {
     INCOME_LOSS_EVENT_TYPES,
 } from '../../services/projection/monthlyEvents';
 import type { PropertyStateMutable, LifeEventMutator, GoalDeadlineMutator } from '../../services/projection/monthlyEvents';
+import { applyCapitalDisposition } from '../../services/projection/portfolioOps';
 import type { TravelGoal, LifeEvent, SavingsGoal, FinancialGoal, ProjectionConfig } from '../../types';
 
 // ── applyTravelExpenses ──────────────────────────────────────────────────────
@@ -82,14 +83,23 @@ describe('applyTravelExpenses', () => {
 describe('applyLifeEvents', () => {
     // Le state est un objet mutable partagé par le mutateur ET les assertions.
     // On NE fait pas de spread (copie valeur) pour éviter la désynchronisation.
-    const makeState = () => {
-        const s = { portfolio: 100000, liquid: 50000, expense: 0, capitalGain: 0 };
+    // Double FIDÈLE : `realizeCapitalDisposition` exerce le VRAI helper `applyCapitalDisposition`
+    // (banque de pertes + nettoyage des gains) au lieu d'un `vi.fn()` creux → le test valide la
+    // logique réelle. `lossBank` peut être pré-amorcé pour tester le nettoyage d'un gain.
+    const makeState = (lossBank = 0) => {
+        const s = { portfolio: 100000, liquid: 50000, expense: 0, capitalGain: 0, lossBank };
         const mutator: LifeEventMutator = {
             shockPortfolio: (f: number) => { s.portfolio *= f; },
             addLiquid: (n: number) => { s.liquid += n; },
             addExpense: (n: number) => { s.expense += n; },
             adjustRealEstate: vi.fn(),
-            realizeCapitalGain: (g: number) => { s.capitalGain += g; },
+            realizeCapitalDisposition: (rawGain: number) => {
+                const st = { capitalLossBank: s.lossBank, accCapitalGainsYear: s.capitalGain };
+                const r = applyCapitalDisposition(st, rawGain);
+                s.lossBank = st.capitalLossBank;
+                s.capitalGain = st.accCapitalGainsYear;
+                return r;
+            },
             logLife: vi.fn(),
             logFlow: vi.fn(),
         };
@@ -117,12 +127,34 @@ describe('applyLifeEvents', () => {
         expect(props[0].isSold).toBe(true);   // la vente a bien lieu, sans impôt sur le gain
     });
 
-    it('RE-GAIN : locatif vendu à perte (produit < coût) → aucun gain négatif', () => {
+    // [FISC-RE-CAPITAL-LOSS] Discriminant : avant le fix, `gain = Math.max(0, produit − coût)` + `if (gain > 0)`
+    // → la perte en capital réalisée était SILENCIEUSEMENT IGNORÉE (ni banque, ni log → avantage fiscal perdu).
+    // Désormais elle est PORTÉE en banque de pertes (déductible des gains futurs). ÉCHOUE sur l'ancien code
+    // (s.lossBank serait resté 0 et logFlow jamais appelé).
+    it('FISC-RE-CAPITAL-LOSS : locatif vendu à perte (produit < coût) → perte PORTÉE en banque (pas ignorée)', () => {
         const event: LifeEvent = { id: 'v', date: '2035-06', type: 'GROS_ACHAT', name: 'Vente locatif' };
         const { mutator, s } = makeState();
         const props: PropertyStateMutable[] = [{ id: 'l', isBought: true, mortgage: 50000, currentValue: 200000, cost: 250000, isPrimaryResidence: false }];
         applyLifeEvents([event], '2035-06', 1.0, props, mutator);
-        expect(s.capitalGain).toBe(0); // max(0, 190000 − 250000) = 0
+        // produit net 200000×0.95 = 190000 ; perte = 190000 − 250000 = −60000 → banque += 60000.
+        expect(s.capitalGain).toBe(0);     // aucun gain imposable réalisé
+        expect(s.lossBank).toBeCloseTo(60000, 0); // perte banquée (ancien code : restait 0)
+        expect(mutator.logFlow).toHaveBeenCalledWith(expect.stringContaining('Perte en capital'));
+    });
+
+    // [FISC-RE-CAPITAL-LOSS] Symétrie : un GAIN locatif nette d'abord la banque de pertes existante avant
+    // d'alimenter l'impôt (cohérent avec NonReg/crypto). Banque pré-amorcée à 100000.
+    it('FISC-RE-CAPITAL-LOSS : un gain locatif nette la banque de pertes avant imposition', () => {
+        const event: LifeEvent = { id: 'v', date: '2040-06', type: 'GROS_ACHAT', name: 'Vente locatif' };
+        const { mutator, s } = makeState(100000); // 100 k$ de pertes reportées disponibles
+        const props: PropertyStateMutable[] = [{ id: 'l', isBought: true, mortgage: 0, currentValue: 400000, cost: 300000, isPrimaryResidence: false }];
+        applyLifeEvents([event], '2040-06', 1.0, props, mutator);
+        // gain brut = 400000×0.95 − 300000 = 80000 ; entièrement absorbé par la banque (100000) → 0 imposable.
+        expect(s.capitalGain).toBe(0);
+        expect(s.lossBank).toBeCloseTo(20000, 0); // 100000 − 80000 consommés
+        // Gain entièrement absorbé (taxableGain = 0, bankedLoss = 0) → AUCUN log (ni gain ni perte) : silence VOULU.
+        expect(mutator.logFlow).not.toHaveBeenCalledWith(expect.stringContaining('Gain en capital'));
+        expect(mutator.logFlow).not.toHaveBeenCalledWith(expect.stringContaining('Perte en capital'));
     });
 
     it('applique un krach boursier et choque le portfolio', () => {
@@ -513,7 +545,7 @@ describe('applyLifeEvents — les événements de perte de revenu ne sont PAS un
         const addExpense = vi.fn();
         const state: LifeEventMutator = {
             shockPortfolio: vi.fn(), addLiquid: vi.fn(), addExpense, adjustRealEstate: vi.fn(),
-            realizeCapitalGain: vi.fn(), logLife: vi.fn(), logFlow: vi.fn(),
+            realizeCapitalDisposition: vi.fn(() => ({ bankedLoss: 0, taxableGain: 0 })), logLife: vi.fn(), logFlow: vi.fn(),
         };
         applyLifeEvents([event], '2028-03', 1.0, [], state);
         expect(addExpense).not.toHaveBeenCalled(); // skippé : pas de faux flux de dépense

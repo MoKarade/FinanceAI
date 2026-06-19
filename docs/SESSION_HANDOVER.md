@@ -26,11 +26,12 @@
 > sous-chaîne du message ENTIER (longest-wins) — **bug live corrigé** (préambule commun attachait tout au 1er agent). ⚠️ **DÉCOUVERTE
 > LIVE : les transcripts SOUS-AGENTS n'ont PAS de blocs `thinking`** (`hasThinking:false`) → pas de « fil de pensée » pour les
 > sous-agents, on montre la SORTIE + les outils. Transcripts sous-agents = `.claude/projects/<session>/subagents/agent-<id>.jsonl`.
-> Panel code-reviewer+silent-failure APPROVE (findings intégrés). **SUITE ACC : Lot 2 (backlog-scan) — plan-first, OK Marc requis.**
+> Panel code-reviewer+silent-failure APPROVE (findings intégrés). **Lot 2 (#380, mergé)** : route `/backlog` (`backlog-scan.mjs` scan READ-ONLY `BACKLOG.md`+`A_FAIRE_MOI`+git via `execFileSync` SANS shell, parsing TOLÉRANT, import dynamique → un scanner cassé ne tue pas `/status`). **Lot 3 (dashboard enrichi)** : cartes agents CLIQUABLES → tiroir détail (message+sortie+outils du transcript, focus-trap via `inert`, fermeture Échap/fond/✕) + **bloc Avancement** (métriques backlog, barres de phases, backlog groupé en cours/attente Marc/à venir/fait, **chips de filtre** + **recherche** client) ; polling `/status`+`/backlog` avec détection de changement ; XSS-safe (`el()`/`textContent`). Vérifié LIVE (preview : routes 200, 0 erreur, tiroir réel, filtres/recherche OK, `inert` pose/retire le focus-trap). Panel code-reviewer+silent-failure+a11y APPROVE (findings intégrés). **SUITE ACC : Lot 4 (workflows) puis Lot 5 (présence) — plan-first, OK Marc requis sur CHAQUE lot.**
 >
-> **📋 FILE D'ATTENTE (2026-06-19)** : (1) **chantiers** `docs/PLAN_CHANTIERS_2026-06-19.md` (autonome, R5 fait → reprendre R1) ;
-> PUIS (2) **Agent Control Center** `docs/BRIEF_CONTROL_CENTER.md` (#378) — ⚠️ **PAS autonome** : LOT PAR LOT, plan-first,
-> **OK de Marc requis sur chaque lot**, commencer par le **Lot 0 (test du preview pane, revenir avec le résultat)**.
+> **📋 FILE D'ATTENTE (2026-06-19)** : Marc a demandé l'**ACC d'abord** (« fais le acc avant tout »). **ACC Lots 0-3 FAITS**
+> (Lot 0 test ✓ · Lot 1 #379 capteur ✓ · Lot 2 #380 `/backlog` ✓ · Lot 3 dashboard enrichi ✓) → **reprendre au Lot 4 (workflows)
+> puis Lot 5 (présence)** — ⚠️ **PAS autonome** : LOT PAR LOT, plan-first, **OK de Marc requis sur chaque lot** (`docs/BRIEF_CONTROL_CENTER.md`).
+> PUIS retour aux **chantiers** `docs/PLAN_CHANTIERS_2026-06-19.md` (autonome, R5 fait → reprendre R1).
 >
 > **Session 2026-06-19 — FEUILLE DE ROUTE VALIDÉE (#376)** : `docs/PLAN_CHANTIERS_2026-06-19.md` — plans cadrés par
 > 4 agents (`fichier:ligne`) + VALIDÉS par Marc, exécutés en AUTONOMIE PR par PR. Ordre : R1-R6 gains rapides UI

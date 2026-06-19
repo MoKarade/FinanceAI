@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Clarté : « Patrimoine successoral » (avec rentes)] — 2026-06-19
+
+### Un KPI mieux nommé, avec une infobulle
+- **Le KPI « Patrimoine projeté » de l'onglet Futur s'appelle maintenant « Patrimoine successoral, avec rentes »** + une
+  infobulle explique ce qu'il recouvre : patrimoine au décès, net de l'impôt de liquidation (REER et gains en capital
+  imposés au décès) **plus** la valeur actualisée des rentes RRQ/PSV restantes. C'est différent du patrimoine en fin
+  d'horizon — le nom le dit enfin. Clarifié partout où ce montant apparaît (Budget, stress-tests, optimiseur de
+  décaissement, assistant IA). Aucun calcul changé, juste les libellés.
+
+---
+
 ## [unreleased — Accessibilité : lisibilité des badges] — 2026-06-19
 
 ### Badges plus nets (contraste)

@@ -1,5 +1,6 @@
 import React from 'react';
 import { PrivateAmount } from './PrivateAmount';
+import { Tooltip } from './Tooltip';
 
 type KPIVariant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'primary';
 
@@ -16,6 +17,8 @@ interface KPIStatProps {
     variant?: KPIVariant;
     /** Active la classe privacy-blur sur la valeur. */
     privacy?: boolean;
+    /** Infobulle d'aide affichée via une icône « i » focusable à côté du label (ex. ce que recouvre un montant). */
+    tooltip?: React.ReactNode;
     className?: string;
     onClick?: () => void;
 }
@@ -51,7 +54,7 @@ const TREND_CLASSES = {
 export const KPIStat: React.FC<KPIStatProps> = ({
     label, value, sublabel, icon, trend, trendLabel,
     trendColor = 'auto', variant = 'default', privacy = false,
-    className = '', onClick,
+    tooltip, className = '', onClick,
 }) => {
     const tColor = trendColor === 'auto' ? detectTrendColor(trend) : trendColor;
     const isClickable = !!onClick;
@@ -66,7 +69,22 @@ export const KPIStat: React.FC<KPIStatProps> = ({
     const inner = (
         <>
             <div className="flex items-center justify-between">
-                <span className="kpi-label">{label}</span>
+                <span className="flex items-center gap-1.5 min-w-0">
+                    <span className="kpi-label">{label}</span>
+                    {tooltip && (
+                        <Tooltip content={tooltip}>
+                            {/* aria-label COURT (action) : le contenu est livré par l'aria-describedby du Tooltip,
+                                pas par ce label (sinon double lecture SR). NE PAS combiner `tooltip` avec `onClick`
+                                (le déclencheur serait un bouton imbriqué). */}
+                            <button
+                                type="button"
+                                aria-label="Aide sur ce montant"
+                                onKeyDown={(e) => { if (e.key === 'Escape') e.currentTarget.blur(); }}
+                                className="inline-flex items-center justify-center w-4 h-4 shrink-0 rounded-full border border-white/20 text-ink-400 text-[10px] font-bold leading-none cursor-help focus-ring"
+                            >i</button>
+                        </Tooltip>
+                    )}
+                </span>
                 {icon && <span className="text-ink-300 text-meta" aria-hidden="true">{icon}</span>}
             </div>
             {/* [D6-SR] — privacy passe par PrivateAmount : blur visuel (CSS inchangé) + masquage SR. */}

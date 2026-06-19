@@ -582,7 +582,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     variant="warning"
                 />
                 <KPIStat
-                    label="Patrimoine projeté"
+                    // Le fallback (value ci-dessous) tombe sur finalNetWorth/fireNumber quand estateNetWorth=0 :
+                    // dans ce cas le nombre N'INCLUT PAS les rentes → libellé neutre + pas de tooltip « avec rentes »
+                    // (sinon le libellé mentirait, le bug même que R1 corrige). Sinon : successoral, avec rentes.
+                    label={results?.estateNetWorth ? "Patrimoine successoral, avec rentes" : "Patrimoine projeté"}
+                    tooltip={results?.estateNetWorth ? "Patrimoine au décès : net de l'impôt de liquidation (REER et gains en capital imposés au décès) + la valeur actualisée des rentes RRQ/PSV restantes. Différent du patrimoine en fin d'horizon." : undefined}
                     icon="💼"
                     // Fallback : si estateNetWorth est 0 (rare en réalité ou bug
                     // silencieux du moteur), utiliser finalNetWorth puis fireNumber

@@ -33,6 +33,14 @@
 > (présence — le moins certain : un hook ne pilote pas forcément l'UI ; viser zéro/un clic)** — ⚠️ **PAS autonome** : plan-first, **OK de Marc requis sur chaque lot** (`docs/BRIEF_CONTROL_CENTER.md`).
 > PUIS retour aux **chantiers** `docs/PLAN_CHANTIERS_2026-06-19.md` (autonome, R5 fait → reprendre R1).
 >
+> **Session 2026-06-19 — R1 (LABEL-NW-SUCCESSORAL) ✅ — 1ᵉʳ chantier autonome** : libellé trompeur « Patrimoine projeté »
+> (qui affichait en fait `estateNetWorth`) renommé **« Patrimoine successoral, avec rentes »** + **tooltip** (nouveau prop
+> `tooltip` sur `KPIStat`) sur 5 sites (FutureProjection KPI, Budget, StressTestPanel, GoalSeekerCard `title`, prompt AiAssistant).
+> Fallback CONDITIONNÉ (libellé neutre si `estateNetWorth`=0, sinon « avec rentes » mentirait sur le `finalNetWorth` affiché —
+> attrapé par financial-integrity). a11y durcie (`Tooltip` : `aria-describedby` sur l'enfant via `cloneElement` + fermeture Échap ;
+> déclencheur `<button>` aria-label court au lieu de `role="img"`). Pure UI, zéro moteur. Typecheck + tests ciblés (22) verts.
+> **CHANTIERS : R1 ✅ → reprendre R2** (annotation « FIRE atteint » au 1ᵉʳ mois `NetWorth ≥ FireTarget`, `FutureProjection.tsx` `lifeMarkers`).
+>
 > **Session 2026-06-19 — FEUILLE DE ROUTE VALIDÉE (#376)** : `docs/PLAN_CHANTIERS_2026-06-19.md` — plans cadrés par
 > 4 agents (`fichier:ligne`) + VALIDÉS par Marc, exécutés en AUTONOMIE PR par PR. Ordre : R1-R6 gains rapides UI
 > (NW-successoral libellés, Futur P1-P4 annotation FIRE/tooltip figée/boot-restore/densité, PH3-c-bis suppr. `User.industry`,

@@ -97,7 +97,7 @@ export const GoalSeekerCard: React.FC<GoalSeekerCardProps> = ({ paramsBuilder, t
                                 .map((r, i) => (
                                     <div key={r.scenarioType} className="flex justify-between text-tiny text-ink-200">
                                         <span className="flex items-center gap-2"><span className="w-4 h-4 inline-flex items-center justify-center rounded-full bg-white/10 text-[10px] font-bold text-ink-300 shrink-0">{i + 1}</span>{r.strategyName}</span>
-                                        <span className="font-mono">{Math.round(r.estateNetWorth).toLocaleString('fr-CA')}$</span>
+                                        <span className="font-mono" title="Patrimoine successoral, rentes RRQ/PSV incluses">{Math.round(r.estateNetWorth).toLocaleString('fr-CA')}$</span>
                                     </div>
                                 ))}
                         </div>

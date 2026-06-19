@@ -22,7 +22,7 @@
 
 ## ORDRE 1 — Gains rapides UI (faible risque, pas de moteur)
 
-### R1 · NW-successoral — libellés + infobulle (pure UI)
+### R1 · NW-successoral — libellés + infobulle (pure UI) — ✅ FAIT (2026-06-19)
 - `FutureProjection.tsx:585` affiche `estateNetWorth` sous le label trompeur « Patrimoine projeté » → renommer
   **« Patrimoine successoral, avec rentes »** + infobulle (impôt de liquidation + VAN rentes RRQ/PSV).
 - Idem `Budget.tsx:661` (ajouter « , avec rentes »), `StressTestPanel.tsx:96`, `retirement/GoalSeekerCard.tsx:100`

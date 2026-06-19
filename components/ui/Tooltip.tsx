@@ -58,6 +58,14 @@ export const Tooltip: React.FC<TooltipProps> = ({
     };
 
     const wrapperClass = asChild ? 'inline-flex' : 'relative inline-flex';
+    const describedById = visible ? tooltipId : undefined;
+    // [A11Y] aria-describedby sur l'ENFANT (le déclencheur), pas le wrapper : sinon il n'est pas associé au
+    // nom accessible d'un <button>/<a> enfant (le SR calcule le nom du child seul). Repli sur le wrapper si
+    // l'enfant n'est pas un élément React clonable (ex. texte brut).
+    const isElementChild = React.isValidElement(children);
+    const child = isElementChild
+        ? React.cloneElement(children as React.ReactElement<{ 'aria-describedby'?: string }>, { 'aria-describedby': describedById })
+        : children;
 
     return (
         <span
@@ -66,9 +74,10 @@ export const Tooltip: React.FC<TooltipProps> = ({
             onMouseLeave={hide}
             onFocus={show}
             onBlur={hide}
-            aria-describedby={visible ? tooltipId : undefined}
+            onKeyDown={(e) => { if (e.key === 'Escape') hide(); }}
+            aria-describedby={isElementChild ? undefined : describedById}
         >
-            {children}
+            {child}
             {visible && (
                 <span
                     role="tooltip"

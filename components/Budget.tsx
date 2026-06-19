@@ -658,7 +658,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                             {formatCAD(projectionSummary.estateNetWorth)}
                         </PrivateAmount>
                         <div className="text-tiny text-ink-500 mt-1">
-                            Patrimoine successoral projeté en {projectionSummary.finalYear} (FutureProjection actif).
+                            Patrimoine successoral projeté, avec rentes RRQ/PSV, en {projectionSummary.finalYear} (FutureProjection actif).
                         </div>
                     </div>
                     <div className="bg-black/30 rounded-xl p-3 border border-white/5">

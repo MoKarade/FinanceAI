@@ -283,7 +283,9 @@
 > - 8 nouveaux docs (BACKLOG, SECURITY_STRATEGY, CENTRALIZED_CALC_*,
 >   PROJECTION_OUTPUT_SCHEMA, etc.)
 
-> **Process 2026-06-19 — CLAUDE.md prefs de Marc FONDUES** : au lieu d'un bloc dupliquant le `~/.claude/CLAUDE.md` global, les bouts nouveaux sont intégrés aux sections existantes — Réponses (résumé d'abord + options bon/mauvais + reco + le POURQUOI + labels enrichis `[Certain]/[Probable]/[Supposition]/[À vérifier]`), Workflow (cadrage en UN batch + définition de « fini » objectif+critère d'arrêt + « proposer ≠ faire »), cycle git **RECONFIRMÉ autonome** (commit→push→PR→merge seul ; le « push si demandé » du bloc global NE prévaut PAS ici ; mais destructif hors-cycle force-push/reset --hard/rm/drop/migration → confirmer Marc d'abord). Décision Marc.
+> **Session 2026-06-19 — NW-PARITY-INVARIANT (#370)** (★ garde-fou keystone) : test-only, `tests/services/nwParity.test.ts` (5 tests). Cross-check NW présent (`computePresentNetWorth` UI) ≡ NW de départ moteur (cash + Σ buckets `derivePortfolioStartingBalances` − dettes) + end-to-end `chartData[0]` à flux nuls avec dettes. **Discriminant prouvé** : 3 scénarios (D1 celibataire, D2 couple 2 revenus, D3 couple asym dettes). Limite documentée : parité HORS immobilier. Panel 3 agents (code-reviewer/financial-integrity/silent-failure) APPROVE, 0 régression. Tests ~**2171/2171 verts**. Gates verts.
+>
+> **Process 2026-06-19 — CLAUDE.md prefs de Marc FONDUES (#369)** : au lieu d'un bloc dupliquant le `~/.claude/CLAUDE.md` global, les bouts nouveaux sont intégrés aux sections existantes — Réponses (résumé d'abord + options bon/mauvais + reco + le POURQUOI + labels enrichis `[Certain]/[Probable]/[Supposition]/[À vérifier]`), Workflow (cadrage en UN batch + définition de « fini » objectif+critère d'arrêt + « proposer ≠ faire »), cycle git **RECONFIRMÉ autonome** (commit→push→PR→merge seul ; le « push si demandé » du bloc global NE prévaut PAS ici ; mais destructif hors-cycle force-push/reset --hard/rm/drop/migration → confirmer Marc d'abord). Décision Marc.
 >
 > **Session 2026-06-19 — FISC-RE-SALE-RESIDUAL (#368)** (money-critical) : vente immo quasi-underwater (hypo 95-100 %, frais 5 % > équité → `saleNet < 0`) : `addLiquid(Math.max(0, saleNet))` effaçait le déficit → patrimoine surévalué. Fix = `addLiquid(saleNet)` → déficit déduit ou porté en `liquidDebt` (PV-6). 2 tests discriminants (unitaire `monthlyEvents.test.ts` + end-to-end conservation). ΔNW = −5 % valeur prouvé. Panel 4 agents APPROVE, 0 régression. Tests ~**2166 verts**. Gates verts.
 >
@@ -310,9 +312,9 @@
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
-| **Dernière PR mergée** | **#368** [FISC-RE-SALE-RESIDUAL] (vente immo quasi-underwater, déficit déduit/porté, 2 tests discriminants, 2026-06-19) |
+| **Dernière PR mergée** | **#370** [NW-PARITY-INVARIANT] (garde-fou keystone parité NW présent ≡ départ moteur, 5 tests, 2026-06-19) |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
-| **Tests** | **~2166/2166 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
+| **Tests** | **~2171/2171 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
 | **Typecheck** | Clean en mode strict |
 | **Build** | OK — **Vite 8 (Rolldown)** ; lazy-loading préservé (vendor react/recharts/ai/pdf) |
 | **Schema store** | **v7** (Zustand persist, migrations v1→v7) |

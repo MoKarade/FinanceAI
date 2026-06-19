@@ -18,6 +18,10 @@
 > phase suivante sans OK explicite de Marc** ; Q1/Q2 à poser (cf `A_FAIRE_MOI` O6) ; handover à jour
 > après chaque phase.
 >
+> **📋 FILE D'ATTENTE (2026-06-19)** : (1) **chantiers** `docs/PLAN_CHANTIERS_2026-06-19.md` (autonome, R5 fait → reprendre R1) ;
+> PUIS (2) **Agent Control Center** `docs/BRIEF_CONTROL_CENTER.md` (#378) — ⚠️ **PAS autonome** : LOT PAR LOT, plan-first,
+> **OK de Marc requis sur chaque lot**, commencer par le **Lot 0 (test du preview pane, revenir avec le résultat)**.
+>
 > **Session 2026-06-19 — FEUILLE DE ROUTE VALIDÉE (#376)** : `docs/PLAN_CHANTIERS_2026-06-19.md` — plans cadrés par
 > 4 agents (`fichier:ligne`) + VALIDÉS par Marc, exécutés en AUTONOMIE PR par PR. Ordre : R1-R6 gains rapides UI
 > (NW-successoral libellés, Futur P1-P4 annotation FIRE/tooltip figée/boot-restore/densité, PH3-c-bis suppr. `User.industry`,

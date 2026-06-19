@@ -5,8 +5,8 @@
 > Audit qualité détaillé : voir `docs/HISTORIQUE.md` (section `AAA_AUDIT_2026-06.md`).
 > Actions humaines (Marc) : [`docs/A_FAIRE_MOI.md`](A_FAIRE_MOI.md).
 >
-> **Dernière mise à jour : 2026-06-19.** Tests : ~2164 verts (+ 1 PR #366) / 158 fichiers · tsc clean · build OK.
-> Session 2026-06-19 — livré : **#366 [FUZZ-ONETIME-FLOWS]** fuzz étendu à l'achat immo (257/500 runs sous hypothèque) + rénovation,
+> **Dernière mise à jour : 2026-06-19.** Tests : ~2164 verts (+ 1 PR #367) / 158 fichiers · tsc clean · build OK.
+> Session 2026-06-19 — livré : **#367 [FUZZ-ONETIME-FLOWS]** fuzz étendu à l'achat immo (257/500 runs sous hypothèque) + rénovation,
 > invariant `DetteTotale ≥ DettesNonImmo`, test déterministe immo. **PARTIEL** : reste vente/gain locatif + équité négative + revenu locatif au suivi.
 > **BACKLOG AUTONOME ÉPUISÉ** (aucun item Claude ≥ actionnable sans OK Marc).
 > Restes uniquement : suivis LOW (DEP-UNDICI-VULN, FISC-CONST-LINT-LIMITS, FISC-RRSP-PRE2010-FALLBACK + suivi FUZZ-ONETIME-FLOWS) +
@@ -300,7 +300,7 @@
   lié à NUM_RUNS, fast-check affiche contre-exemple + seed à l'échec. **Discrimination PROUVÉE end-to-end** (injection
   `+1000` au NW → fuzz échoue, counterexample minimal). Panel 4 agents (résiduel max MESURÉ 0,02 $, arbiter = `computeRawNetWorth`
   terme-pour-terme, chemins fiscaux exercés : REER 70 %, clawback PSV 10 %, insolvabilité 33 %). Complète les ~25 scénarios fixes.
-- [~] **[FUZZ-ONETIME-FLOWS]** 🔧 MEDIUM ◑PARTIEL (PR #366, 2026-06-19) — le fuzz génère désormais l'**ACHAT IMMOBILIER**
+- [~] **[FUZZ-ONETIME-FLOWS]** 🔧 MEDIUM ◑PARTIEL (PR #367, 2026-06-19) — le fuzz génère désormais l'**ACHAT IMMOBILIER**
   (mise 5-50 % < prix → hypothèque ; **mesuré 257/500 runs sous hypothèque**, écart max 886 k$) + **RÉNOVATION** majeure,
   et un invariant **`DetteTotale ≥ DettesNonImmo`** (hypothèque non double-comptée, écart = `mortgageBalance ≥ 0`). **Test
   déterministe immo** : reconstruction NW sous prêt. La reconstructabilité SOUS hypothèque (raison d'être de la forme-bilan,

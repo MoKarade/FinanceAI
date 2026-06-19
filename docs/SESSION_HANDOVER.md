@@ -18,6 +18,16 @@
 > phase suivante sans OK explicite de Marc** ; Q1/Q2 à poser (cf `A_FAIRE_MOI` O6) ; handover à jour
 > après chaque phase.
 >
+> **Session 2026-06-19 — FISC-RE-CAPITAL-LOSS (#371)** (money-critical, découverte panel #368) : un IMMEUBLE LOCATIF vendu
+> SOUS son coût réalisait une perte en capital SILENCIEUSEMENT ignorée (`gain = max(0, produit − coût)` + `if (gain > 0)`)
+> → avantage fiscal LIR 111(1)b perdu. Fix : helper SOURCE UNIQUE `applyCapitalDisposition(state, rawGain signé)` (`portfolioOps.ts`)
+> — perte < 0 → banque de pertes ; gain ≥ 0 → nette la banque puis impose. `handleNonRegSale`/`handleCryptoSale` refactorés
+> dessus (zéro duplication, 3 copies → 1). Mutator immo `realizeCapitalGain` → `realizeCapitalDisposition` (nom honnête : gère
+> gain ET perte) + log de la perte. `NonRegSaleState`/`CryptoSaleState extends CapitalDispositionState` (lien nominal). **Discriminant
+> prouvé 2× (réintro `Math.max(0)` → échec) : unitaire (mock) ET end-to-end (vrai moteur, log « Perte en capital »), puis revert chirurgical**.
+> Tests +7 : helper ×5, perte+gain-netté monthlyEvents, **e2e conservation moneyConservation (reconstructabilité INV-9 sous hypothèque)**.
+> Panel 4 agents APPROVE (M2 toLocaleString RÉFUTÉ : locale `'fr-CA'` explicite ≠ nu). Suite complète verte. Gates verts.
+>
 > **Session 2026-06-18 — Garde-fou FISC-CONST-LINT (#364)** : `utils/fiscalConstantsGuard.ts` + `tests/fiscalConstants.guard.test.ts`
 > (10 tests) : échec dur, auto-extraction des littéraux distinctifs non-collisionnables de `utils/tax.ts`/`services/realEstate.ts`
 > + scan du codebase pour interdit. **A trouvé + corrigé 1 vraie fuite** : `32490` (RRSP 2025 recopié dans `setupSimulation.ts` sans

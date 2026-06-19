@@ -43,9 +43,12 @@ export interface LifeEventMutator {
     addLiquid: (amt: number) => void;
     addExpense: (amt: number) => void;
     adjustRealEstate: (equityDelta: number, mortgageDelta: number) => void;
-    /** RE-GAIN — réalise un gain en capital BRUT (100 %) ; l'inclusion 50 % est appliquée en aval
-     *  (accCapitalGainsYear × 0,5). Sert à imposer la vente d'un IMMEUBLE LOCATIF. */
-    realizeCapitalGain: (grossGain: number) => void;
+    /** RE-GAIN / FISC-RE-CAPITAL-LOSS — comptabilise la disposition d'un IMMEUBLE LOCATIF avec le gain
+     *  BRUT SIGNÉ (produit net 95 % − coût) : un GAIN (≥ 0) nette la banque de pertes puis alimente
+     *  `accCapitalGainsYear` (50 % inclus en aval) ; une PERTE (< 0) est portée en banque de pertes
+     *  (déductible des gains futurs, LIR 111(1)b) au lieu d'être silencieusement ignorée. Retourne le
+     *  détail pour le logging. */
+    realizeCapitalDisposition: (rawGain: number) => { bankedLoss: number; taxableGain: number };
     logLife: (msg: string) => void;
     logFlow: (msg: string) => void;
 }
@@ -130,14 +133,18 @@ export function applyLifeEvents(
                         -(soldProp.currentValue - soldProp.mortgage),
                         -soldProp.mortgage,
                     );
-                    // RE-GAIN — gain en capital à la disposition : EXEMPT pour la résidence principale
-                    // (LIR 40(2)b) ; IMPOSABLE pour un locatif = produit net (95 %) − coût d'achat, 50 %
-                    // inclus en aval. Coût absent → 0 (conservateur : tout le produit devient gain).
+                    // RE-GAIN / FISC-RE-CAPITAL-LOSS — disposition en capital : EXEMPTE pour la résidence
+                    // principale (LIR 40(2)b) ; pour un LOCATIF, gain BRUT SIGNÉ = produit net (95 %) − coût.
+                    // Coût absent → 0 (conservateur : tout le produit devient gain). Un produit SOUS le coût
+                    // (vente à perte) donne un `rawGain` NÉGATIF : il doit être PORTÉ en banque de pertes
+                    // (déductible des gains futurs), pas ignoré — d'où la suppression du `Math.max(0, …)`.
                     if (!soldProp.isPrimaryResidence) {
-                        const gain = Math.max(0, soldProp.currentValue * 0.95 - (soldProp.cost ?? 0));
-                        if (gain > 0) {
-                            state.realizeCapitalGain(gain);
-                            state.logFlow(`🏠 Gain en capital (locatif) réalisé : ${Math.round(gain).toLocaleString('fr-CA')}$ — 50 % imposable`);
+                        const rawGain = soldProp.currentValue * 0.95 - (soldProp.cost ?? 0);
+                        const { bankedLoss, taxableGain } = state.realizeCapitalDisposition(rawGain);
+                        if (taxableGain > 0) {
+                            state.logFlow(`🏠 Gain en capital (locatif) réalisé : ${Math.round(taxableGain).toLocaleString('fr-CA')}$ — 50 % imposable`);
+                        } else if (bankedLoss > 0) {
+                            state.logFlow(`🏠 Perte en capital (locatif) : ${Math.round(bankedLoss).toLocaleString('fr-CA')}$ portée en banque de pertes (déductible des gains futurs)`);
                         }
                     }
                     soldProp.isBought = false;

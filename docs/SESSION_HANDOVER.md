@@ -18,6 +18,16 @@
 > phase suivante sans OK explicite de Marc** ; Q1/Q2 à poser (cf `A_FAIRE_MOI` O6) ; handover à jour
 > après chaque phase.
 >
+> **Session 2026-06-19 — ACC Lot 0 + Lot 1 (#379)** : Agent Control Center (`docs/BRIEF_CONTROL_CENTER.md`), exécution
+> LOT PAR LOT. **Lot 0** (test surface) = **Voie 1 viable** : le preview pane rend `127.0.0.1:4317` avec JS live (poll `/status`
+> mesuré au network, 0 erreur). **Lot 1** (capteur enrichi, `scripts/hooks/agent-status.mjs` + `settings.json` SubagentStop +
+> `.gitignore`) : prompt COMPLET → `agents[nom].message` ; au SubagentStop, extraction sortie+outils(+thinking) du transcript
+> `.jsonl` → `.claude/agent-transcripts/<id>.json` (gitignored) + extraits bornés dans status.json ; corrélation prompt→nom par
+> sous-chaîne du message ENTIER (longest-wins) — **bug live corrigé** (préambule commun attachait tout au 1er agent). ⚠️ **DÉCOUVERTE
+> LIVE : les transcripts SOUS-AGENTS n'ont PAS de blocs `thinking`** (`hasThinking:false`) → pas de « fil de pensée » pour les
+> sous-agents, on montre la SORTIE + les outils. Transcripts sous-agents = `.claude/projects/<session>/subagents/agent-<id>.jsonl`.
+> Panel code-reviewer+silent-failure APPROVE (findings intégrés). **SUITE ACC : Lot 2 (backlog-scan) — plan-first, OK Marc requis.**
+>
 > **📋 FILE D'ATTENTE (2026-06-19)** : (1) **chantiers** `docs/PLAN_CHANTIERS_2026-06-19.md` (autonome, R5 fait → reprendre R1) ;
 > PUIS (2) **Agent Control Center** `docs/BRIEF_CONTROL_CENTER.md` (#378) — ⚠️ **PAS autonome** : LOT PAR LOT, plan-first,
 > **OK de Marc requis sur chaque lot**, commencer par le **Lot 0 (test du preview pane, revenir avec le résultat)**.

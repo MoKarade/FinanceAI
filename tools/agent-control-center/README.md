@@ -5,11 +5,13 @@ Tableau de bord LOCAL qui visualise l'activité des **14 agents Claude Code** de
 
 ## Lancer
 
+**Auto [Lot 5]** : le hook `SessionStart` (`scripts/hooks/session-brief.mjs`) **démarre le serveur au début de chaque session** et surface l'URL dans le brief → en général rien à lancer. Ouvre **http://127.0.0.1:4317** dans le preview pane (épingle l'onglet une fois → il persiste). Lancement manuel si besoin :
+
 ```bash
-npm run acc          # → http://127.0.0.1:4317   (port via env ACC_PORT)
+npm run acc          # → http://127.0.0.1:4317   (port via env ACC_PORT ; s'auto-termine si déjà up)
 ```
 
-Puis lance une revue d'agents (`/review-all`, `/audit-financier`, ou un agent seul) dans Claude Code :
+Puis lance une revue d'agents (`/review-all`, `/audit-financier`, ou un agent seul) ou un workflow dans Claude Code :
 le hook capte chaque invocation et le dashboard se met à jour (polling 2 s).
 
 ## Comment ça marche (données 100 % RÉELLES)

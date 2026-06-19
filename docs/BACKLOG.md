@@ -5,11 +5,11 @@
 > Audit qualité détaillé : voir `docs/HISTORIQUE.md` (section `AAA_AUDIT_2026-06.md`).
 > Actions humaines (Marc) : [`docs/A_FAIRE_MOI.md`](A_FAIRE_MOI.md).
 >
-> **Dernière mise à jour : 2026-06-18.** Tests : ~2159 verts (+ 10 PR #364) / 158 fichiers · tsc clean · build OK.
-> Session 2026-06-18 (suite) — livré : **#364 [FISC-CONST-LINT]** garde-fou + vraie fuite RRSP corrigée.
-> Restes autonomes : **[HARDEN-FUZZING]** (bloqué accord dép `fast-check` Marc) ; LOW-tickets découverts
-> (**[FISC-CONST-LINT-LIMITS]**, **[FISC-RRSP-PRE2010-FALLBACK]**). 🧭/👤 (Marc) : `FISC-WELCOME-2026`
-> (valeurs RQ 2026 manquantes), phases 2-4 du brief (plan-first, OK requis), P0-*, design Budget/Transactions/Retraite.
+> **Dernière mise à jour : 2026-06-18 (suite).** Tests : ~2163 verts (+ 2 PR #365) / 158 fichiers · tsc clean · build OK.
+> Session 2026-06-18 (suite) — livré : **#365 [HARDEN-FUZZING]** fuzz fast-check 500 scénarios + test discriminant,
+> résiduel max 0,02 $. **BACKLOG AUTONOME ÉPUISÉ** (aucun item Claude ≥ actionnable sans OK Marc).
+> Restes uniquement : suivis LOW (FUZZ-ONETIME-FLOWS, DEP-UNDICI-VULN, FISC-CONST-LINT-LIMITS, FISC-RRSP-PRE2010-FALLBACK) +
+> blocages Marc (FISC-WELCOME-2026, RECH-ACTION-UX confirmée visuellement, phases 2-4 brief plan-first, P0-*, design Budget/Transactions/Retraite).
 
 ## Convention (cochage par Claude au merge)
 - Chaque item Claude-faisable porte un **`[ID]`** entre crochets. **Claude coche lui-même**
@@ -292,11 +292,22 @@
 > contre le code actuel — certains tickets sont DÉJÀ faits (ne pas refaire), d'autres partiels. IDs reformulés pour FinanceAI.
 
 **ÉPIC 1 — Noyau de calcul & preuve**
-- [ ] **[HARDEN-FUZZING]** 🔧 HIGH (nouveau, ticket 1.1) — property-based testing des invariants de conservation avec
-  **fast-check** (à installer). Générateurs bornés (salaires 0-1M, dettes, rendements −40 %..+40 %, inflation, âges) →
-  boucler `calculateFutureProjection`, vérifier le résiduel-**BILAN** `ΔNW==ΔΣactifs−ΔΣdettes` ≤ 0,05 $ sur 100 % des mois
-  (PAS la forme épargne+croissance−impôt, qui faux-positive sur les flux one-time — cf CLAUDE.md). Échec → afficher la SEED.
-  ⚠️ borner les runs CI (~300-1000, pas 10 000 : 480 mois × N stratégies, coûteux). Complète les 25 scénarios fixes actuels.
+- [x] **[HARDEN-FUZZING]** ✅ HIGH (PR #365, 2026-06-18, ticket 1.1) — `tests/services/projection.fuzzConservation.test.ts`
+  (fast-check `^4.8.0` dev). 500 scénarios aléatoires BORNÉS → par mois : reconstructabilité forme-BILAN
+  `|NW − (Σactifs − DettesNonImmo)| ≤ 1 $` (PAS la forme dépistage, faux-positive sur flux one-time) + NetWorth fini
+  (lecture STRICTE, pas de NaN silencé) + aucun actif (hors immo) négatif (INV-6). Seed FIXE (CI déterministe), timeout
+  lié à NUM_RUNS, fast-check affiche contre-exemple + seed à l'échec. **Discrimination PROUVÉE end-to-end** (injection
+  `+1000` au NW → fuzz échoue, counterexample minimal). Panel 4 agents (résiduel max MESURÉ 0,02 $, arbiter = `computeRawNetWorth`
+  terme-pour-terme, chemins fiscaux exercés : REER 70 %, clawback PSV 10 %, insolvabilité 33 %). Complète les ~25 scénarios fixes.
+- [ ] **[FUZZ-ONETIME-FLOWS]** 🔧 MEDIUM (suivi #365, découverte panel) — étendre le fuzz aux **flux one-time** : générer
+  `realEstateGoals` (achat immo, downPayment < prix → hypothèque), `majorRenovations`, `vehicleReplacements`, héritage
+  (`lifeEvents`), soldes REEE/`childGoals`. C'est la RAISON D'ÊTRE de la forme-bilan (vs dépistage) — actuellement
+  `immoSeen=0/500`, donc la reconstructabilité SOUS hypothèque n'est fuzzée par AUCUN run (couverte seulement par les
+  tests INV-9 FIXES). Effort M. Ajouter aussi pas-de-double-comptage hypothèque (DetteTotale ≥ DettesNonImmo).
+- [ ] **[DEP-UNDICI-VULN]** 🔧 LOW (sécurité hygiène, repéré #365) — `npm audit` signale 1 vuln HIGH dans `undici@7.25.0`,
+  **transitive de `jsdom`** (env de test Vitest), **dev-only** (non embarquée en prod) et **pré-existante** (pas introduite
+  par fast-check, qui n'ajoute que `pure-rand`). Sans impact (jsdom ne fait pas d'appel réseau réel). Fix éventuel :
+  `npm audit fix` ou bump `jsdom` — à TESTER (risque de casser l'env de test). Non urgent.
 - [x] **[HARDEN-NETWORTH-EXHAUSTIVE]** ✅ MEDIUM (PR #356, 2026-06-18, ticket 1.2) — garde anti MONEY-PHANTOM sur
   `NetWorthParts` (`services/projection/netWorth.ts`) : `export const NET_WORTH_SIGN: Record<keyof NetWorthParts, 1|-1>`
   → un champ ajouté à l'interface SANS signe casse le **typecheck** (prouvé). + test croisé « littéral == Σ signe×valeur »

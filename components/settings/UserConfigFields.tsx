@@ -3,7 +3,7 @@ import { Card } from '../ui/Card';
 import { Icon } from '../ui/Icon';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { annualSalaryToMonthly } from '../../utils/salary';
-import type { User, Industry } from '../../types';
+import type { User } from '../../types';
 
 /**
  * Champs de config utilisateur, composés dans l'onglet PROFIL unifié (PH3).
@@ -158,18 +158,7 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
 
                             {section === 'detailed' && (
                                 <div className="space-y-2">
-                                    {/* PH3-c — champs santé/civil/emploi morts purgés (aucun consommateur). */}
-                                    <select value={user.industry ?? ''} aria-label="Industrie"
-                                        onChange={e => patch(idx, { industry: (e.target.value || undefined) as Industry | undefined })}
-                                        className="w-full bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white">
-                                        <option value="">Industrie...</option>
-                                        <option value="tech">Tech</option><option value="finance">Finance</option><option value="health">Santé</option>
-                                        <option value="public-sector">Secteur public</option><option value="education">Éducation</option>
-                                        <option value="construction">Construction</option><option value="retail">Commerce</option>
-                                        <option value="manufacturing">Manufacture</option><option value="energy">Énergie</option>
-                                        <option value="transportation">Transport</option><option value="agriculture">Agriculture</option>
-                                        <option value="media">Médias</option><option value="other">Autre</option>
-                                    </select>
+                                    {/* PH3-c (+ industry purgé 2026-06-19) — champs profil détaillé morts retirés (aucun consommateur). */}
                                     <div className="text-tiny text-ink-500 uppercase tracking-widest mt-1">Rémunération variable</div>
                                     <div className="grid grid-cols-3 gap-1">
                                         <input aria-label="Bonus en % du brut" type="number" placeholder="Bonus % brut" value={user.bonusPctOfGross ?? ''}

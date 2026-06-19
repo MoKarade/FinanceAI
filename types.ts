@@ -113,12 +113,6 @@ export interface DocumentMeta {
 // CanadianProvince GARDÉ : consommé par ProjectionConfig.futureProvince (W2.7 geographic arbitrage).
 export type CanadianProvince =
   | 'QC' | 'ON' | 'AB' | 'BC' | 'MB' | 'SK' | 'NS' | 'NB' | 'NL' | 'PE' | 'YT' | 'NT' | 'NU';
-// Cycle 2 type-design: union pour Industry (élimine `string` permissif).
-// Liste calibrée sur les top industries StatCan + tech moderne.
-export type Industry =
-    | 'tech' | 'finance' | 'health' | 'public-sector' | 'education'
-    | 'construction' | 'retail' | 'manufacturing' | 'energy'
-    | 'transportation' | 'agriculture' | 'media' | 'other';
 // Union partagée pour les comptes enregistrés canadiens (élimine 3 unions divergentes
 // dans Asset, InvestmentAccount, assetLocation).
 export type RegisteredAccountType = 'CELI' | 'CELIAPP' | 'REER' | 'NON-ENREG' | 'CRYPTO' | 'REEE' | 'MARGE' | 'AUTRE';
@@ -150,10 +144,9 @@ export interface User {
   // complet : aucun consommateur) : gender, healthRating, isSmoker, bmiCategory, chronicConditions,
   // parentAgeAtDeath, activityLevel, yearsOfExperience, employmentType, promotionLikelihood5Y,
   // pensionPlan, province, citizenship, maritalStatus, bonusVolatilityPct, stockOptionsValue,
-  // commissionPctOfGross, cryptoStakingAnnual, payFrequency.
+  // commissionPctOfGross, cryptoStakingAnnual, payFrequency, industry (purgé 2026-06-19, décision Marc :
+  // zéro consommateur services/, seul l'éditeur UserConfigFields le settait).
   // Données résiduelles persistées (localStorage/IndexedDB) = INERTES, ignorées — ZÉRO migration.
-  // W5.1 — Carrière
-  industry?: Industry;                   // GARDÉ (décision audit PH3-c) — éditeur UserConfigFields seul, aucun consommateur services/
   // W5.2 — Rémunération variable (consommée par le moteur)
   bonusPctOfGross?: number;              // 0-100, bonus annuel attendu — services/projection/activeIncome.ts
   rsuVestingPerYear?: number;            // $ RSU vesting annuel attendu — services/projection/activeIncome.ts (lissé /12)

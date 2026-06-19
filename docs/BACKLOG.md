@@ -698,10 +698,10 @@
   conjoint réel sans revenu DOIT changer les courbes (rentes d'État du conjoint) — c'est voulu.
 
 #### Suivis PH3-c (découvertes du contre-audit)
-- [ ] **[PH3-c-bis]** 🧭 (décision Marc) — `User.industry` : ZÉRO consommateur réel (gardé sur mandat,
-  étiqueté « informatif ») — purger ou brancher ? · `ProjectionConfig.futureProvince/MoveYear` (W2.7) :
-  orphelins, candidats audit · `rsuYearsRemaining` : consommé par le moteur mais SANS éditeur UI
-  (défaut 99 ans) — ajouter le champ à la section carrière ou retirer du moteur.
+- [~] **[PH3-c-bis]** PARTIEL — ✅ **`User.industry` PURGÉ** (PR R5/#377, 2026-06-19, décision Marc) : `type Industry` +
+  champ `User.industry` + `<select>` `UserConfigFields` retirés ; zéro consommateur services/, zéro migration (politique PH3-c :
+  résiduel persisté ignoré) ; typecheck clean, 0 ref résiduelle. **RESTE** : `ProjectionConfig.futureProvince/MoveYear` (W2.7,
+  orphelins — auditer) · `rsuYearsRemaining` (consommé moteur mais SANS éditeur UI, défaut 99 ans — ajouter l'éditeur ou retirer du moteur).
 
 #### Phase 4 — onglet FUTUR « leviers-d'abord » (en cours)
 - [x] **[PH4-FUT-A]** ✅ (PR-A) — calcul-sur-clic + retrait des « plans ». La courbe ET le bandeau

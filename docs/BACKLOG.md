@@ -5,10 +5,11 @@
 > Audit qualité détaillé : voir `docs/HISTORIQUE.md` (section `AAA_AUDIT_2026-06.md`).
 > Actions humaines (Marc) : [`docs/A_FAIRE_MOI.md`](A_FAIRE_MOI.md).
 >
-> **Dernière mise à jour : 2026-06-18 (suite).** Tests : ~2163 verts (+ 2 PR #365) / 158 fichiers · tsc clean · build OK.
-> Session 2026-06-18 (suite) — livré : **#365 [HARDEN-FUZZING]** fuzz fast-check 500 scénarios + test discriminant,
-> résiduel max 0,02 $. **BACKLOG AUTONOME ÉPUISÉ** (aucun item Claude ≥ actionnable sans OK Marc).
-> Restes uniquement : suivis LOW (FUZZ-ONETIME-FLOWS, DEP-UNDICI-VULN, FISC-CONST-LINT-LIMITS, FISC-RRSP-PRE2010-FALLBACK) +
+> **Dernière mise à jour : 2026-06-19.** Tests : ~2164 verts (+ 1 PR #366) / 158 fichiers · tsc clean · build OK.
+> Session 2026-06-19 — livré : **#366 [FUZZ-ONETIME-FLOWS]** fuzz étendu à l'achat immo (257/500 runs sous hypothèque) + rénovation,
+> invariant `DetteTotale ≥ DettesNonImmo`, test déterministe immo. **PARTIEL** : reste vente/gain locatif + équité négative + revenu locatif au suivi.
+> **BACKLOG AUTONOME ÉPUISÉ** (aucun item Claude ≥ actionnable sans OK Marc).
+> Restes uniquement : suivis LOW (DEP-UNDICI-VULN, FISC-CONST-LINT-LIMITS, FISC-RRSP-PRE2010-FALLBACK + suivi FUZZ-ONETIME-FLOWS) +
 > blocages Marc (FISC-WELCOME-2026, RECH-ACTION-UX confirmée visuellement, phases 2-4 brief plan-first, P0-*, design Budget/Transactions/Retraite).
 
 ## Convention (cochage par Claude au merge)
@@ -299,11 +300,14 @@
   lié à NUM_RUNS, fast-check affiche contre-exemple + seed à l'échec. **Discrimination PROUVÉE end-to-end** (injection
   `+1000` au NW → fuzz échoue, counterexample minimal). Panel 4 agents (résiduel max MESURÉ 0,02 $, arbiter = `computeRawNetWorth`
   terme-pour-terme, chemins fiscaux exercés : REER 70 %, clawback PSV 10 %, insolvabilité 33 %). Complète les ~25 scénarios fixes.
-- [ ] **[FUZZ-ONETIME-FLOWS]** 🔧 MEDIUM (suivi #365, découverte panel) — étendre le fuzz aux **flux one-time** : générer
-  `realEstateGoals` (achat immo, downPayment < prix → hypothèque), `majorRenovations`, `vehicleReplacements`, héritage
-  (`lifeEvents`), soldes REEE/`childGoals`. C'est la RAISON D'ÊTRE de la forme-bilan (vs dépistage) — actuellement
-  `immoSeen=0/500`, donc la reconstructabilité SOUS hypothèque n'est fuzzée par AUCUN run (couverte seulement par les
-  tests INV-9 FIXES). Effort M. Ajouter aussi pas-de-double-comptage hypothèque (DetteTotale ≥ DettesNonImmo).
+- [~] **[FUZZ-ONETIME-FLOWS]** 🔧 MEDIUM ◑PARTIEL (PR #366, 2026-06-19) — le fuzz génère désormais l'**ACHAT IMMOBILIER**
+  (mise 5-50 % < prix → hypothèque ; **mesuré 257/500 runs sous hypothèque**, écart max 886 k$) + **RÉNOVATION** majeure,
+  et un invariant **`DetteTotale ≥ DettesNonImmo`** (hypothèque non double-comptée, écart = `mortgageBalance ≥ 0`). **Test
+  déterministe immo** : reconstruction NW sous prêt. La reconstructabilité SOUS hypothèque (raison d'être de la forme-bilan,
+  ex-`immoSeen=0/500`) est désormais fuzzée. Discrimination PROUVÉE end-to-end (flip signe équité + drop liquidDebt de
+  DetteTotale → fuzz échoue). **RESTE (suivi)** : la VENTE immo / GAIN EN CAPITAL locatif (déclenché par lifeEvent « vente »
+  — le fuzz achète et DÉTIENT), le REVENU LOCATIF (`rentalIncomeMonthly`), l'ÉQUITÉ NÉGATIVE (choc immo / immeuble sous l'eau),
+  véhicule, héritage, REEE/childGoals.
 - [ ] **[DEP-UNDICI-VULN]** 🔧 LOW (sécurité hygiène, repéré #365) — `npm audit` signale 1 vuln HIGH dans `undici@7.25.0`,
   **transitive de `jsdom`** (env de test Vitest), **dev-only** (non embarquée en prod) et **pré-existante** (pas introduite
   par fast-check, qui n'ajoute que `pure-rand`). Sans impact (jsdom ne fait pas d'appel réseau réel). Fix éventuel :

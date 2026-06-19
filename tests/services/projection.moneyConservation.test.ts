@@ -225,6 +225,38 @@ describe('[CONSERVATION] patrimoine net toujours reconstructible et conservé', 
         expect(deltaNW).toBeGreaterThan(-25_000);       // pas une chute de 80 k$ (la mise = équité)
     });
 
+    it('[FISC-RE-SALE-RESIDUAL] vente quasi-underwater (frais > équité) : déficit PORTÉ, pas effacé (end-to-end)', () => {
+        // Achat HAUTE-LEVIER (mise 2 % → hypothèque ≈ 98 % du prix), valeur STABLE (croissance 0) →
+        // au moment de la vente, les 5 % de frais poussent le produit net SOUS l'hypothèque (saleNet < 0).
+        // Le déficit doit RÉDUIRE le patrimoine du plein coût de vente (≈ 5 % de la valeur), pas seulement
+        // de l'équité (l'ancien clamp `Math.max(0, saleNet)` l'effaçait → patrimoine surévalué).
+        const r = run(makeParams({
+            calculatedStartingCash: 20_000,
+            projection: makeProjection({ years: 6, propertyGrowthRate: 0 }),
+            realEstateGoals: [{
+                id: 're', name: 'Maison', isActive: true, purchaseDate: '2027-01-01',
+                price: 400_000, downPayment: 8_000, mortgageRate: 5, amortization: 25,
+                totalClosingCosts: 6_000, monthlyPayment: 2_330, unrecoverableMonthly: 200,
+                isPrimaryResidence: true,
+            }],
+            lifeEvents: [{ id: 'v', type: 'GROS_ACHAT', name: 'Vente maison', date: '2027-03' }],
+        }));
+        const cd = r.chartData;
+        const saleIdx = cd.findIndex(p => (p.lifeEvents || []).some(e => /Vente/.test(e)));
+        expect(saleIdx).toBeGreaterThan(0);
+        // ΔNW au mois de vente (déterministe, revenu fixe, MC off) : ancien code = −7965 (équité seule,
+        // déficit ~7,2 k$ effacé) ; fix = −15175 (coût de vente 5 %≈−20 k$ atténué par le cashflow net du
+        // mois). Seuil −13 k$ DISCRIMINE largement (ancien −7965 ≫ −13000) avec ~2 k$ de marge sous le fix.
+        const dNW = num(cd[saleIdx].NetWorth) - num(cd[saleIdx - 1].NetWorth);
+        expect(dNW).toBeLessThan(-13_000);
+        // Reconstructabilité tient au mois de vente : le déficit est VISIBLE (liquidDebt/DettesNonImmo),
+        // pas évaporé. (La forme-bilan elle-même ne discrimine PAS ce bug — d'où l'assertion ΔNW ci-dessus.)
+        expect(Math.abs(num(cd[saleIdx].NetWorth) - (shownAssets(cd[saleIdx]) - num(cd[saleIdx].DettesNonImmo)))).toBeLessThan(2);
+        // NB : selon le coussin du vendeur, le déficit réduit le LIQUIDE (cas ci-dessus) OU est porté en
+        // liquidDebt (vendeur à liquide épuisé) — les deux NW-corrects (ΔNW = −5 % prouvé par financial-
+        // integrity ; chemin liquidDebt MESURÉ OK par projection-validator). On teste ici le cas liquide.
+    });
+
     it('INV-6 — aucun compte ne devient négatif (pas de solde fantôme)', () => {
         for (const params of [makeParams(), makeParams({ majorRenovations: [{ id: 'r', date: '2031-09-15', cost: 200_000 }] })]) {
             for (const p of run(params).chartData) {

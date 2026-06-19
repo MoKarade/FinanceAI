@@ -11,6 +11,9 @@ import { dirname, join, normalize, extname } from 'node:path';
 // empêcher le serveur de servir /status + le dashboard (revue silent-failure-hunter).
 let scanBacklog = () => ({ error: 'backlog-scan indisponible' });
 import('./backlog-scan.mjs').then((m) => { if (m && typeof m.scanBacklog === 'function') scanBacklog = m.scanBacklog; }).catch(() => { /* le reste du serveur fonctionne sans /backlog */ });
+// [ACC Lot 4] scan des runs de workflows — même repli dynamique.
+let scanWorkflows = () => ({ error: 'workflow-scan indisponible' });
+import('./workflow-scan.mjs').then((m) => { if (m && typeof m.scanWorkflows === 'function') scanWorkflows = m.scanWorkflows; }).catch(() => { /* le reste du serveur fonctionne sans /workflows */ });
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
@@ -23,6 +26,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=u
 // Whitelist stricte (anti path-traversal) : seuls ces fichiers du dossier sont servables.
 const STATIC = new Set(['index.html']); // dashboard auto-contenu (CSS+JS inline)
 let backlogCache = null; // [ACC Lot 2] cache court de /backlog (scan backlog+git)
+let workflowCache = null; // [ACC Lot 4] cache court de /workflows (scan des runs)
 
 async function readStatus() {
   // Données RÉELLES si .claude/status.json existe (source:"live") ; sinon EXEMPLE clairement étiqueté.
@@ -62,6 +66,16 @@ const server = createServer(async (req, res) => {
       }
       res.writeHead(200, { 'Content-Type': MIME['.json'], 'Cache-Control': 'no-store' });
       return res.end(backlogCache.body);
+    }
+    // [ACC Lot 4] runs de workflows (terminés + en cours). Cache court (2 s).
+    if (url.pathname === '/workflows') {
+      const now = Date.now();
+      if (!workflowCache || now - workflowCache.t > 2000) {
+        try { workflowCache = { t: now, body: JSON.stringify(scanWorkflows()) }; }
+        catch (e) { workflowCache = { t: now, body: JSON.stringify({ error: 'scan failed', detail: String(e) }) }; }
+      }
+      res.writeHead(200, { 'Content-Type': MIME['.json'], 'Cache-Control': 'no-store' });
+      return res.end(workflowCache.body);
     }
     // Statiques (whitelist stricte)
     const name = url.pathname === '/' ? 'index.html' : normalize(url.pathname).replace(/^[/\\]+/, '');

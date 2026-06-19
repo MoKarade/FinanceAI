@@ -18,8 +18,12 @@ Doc détaillée dans `docs/`, qui fait foi.
   réduction 2026-06-11 : 47→9 fichiers docs/). Git garde l'historique fin par fichier.
 
 ## Réponses & reprise de session
-- Réponses **structurées** : titres courts, listes, l'essentiel d'abord.
-  Étiqueter l'incertitude : [Certain] / [Probable] / [Supposition].
+- Réponses **structurées** : résumé/essentiel d'abord, puis le détail (titres courts, listes). Expliquer
+  le POURQUOI (pas juste le comment) et proposer les prochaines étapes. Pour un choix : donner plusieurs
+  options (le bon/le mauvais de chacune) PUIS ta reco. **Vérifier avant d'affirmer** ; jamais de réponse
+  fausse (si pas sûr, le dire) ; vérifier un fait avancé par Marc avant de construire dessus, et le corriger
+  si faux. Étiqueter toute affirmation non-triviale ET tes recommandations :
+  [Certain] / [Probable] / [Supposition] / [À vérifier] — pas de label sur l'évident.
 - **Date + heure en tête de CHAQUE réponse** (règle Marc 2026-06-10) : commencer par
   `[YYYY-MM-DD HH:MM UTC]` (via `date`) — toujours, sans exception.
 - **PAS d'emojis dans le chat** sauf demande explicite (docs/commits en contiennent, OK).
@@ -34,12 +38,19 @@ Doc détaillée dans `docs/`, qui fait foi.
   4. **Planifié** — ce qui est déjà prévu après (IDs)
 
 ## Workflow (validé)
-- **Plan d'abord, TOUJOURS** : proposer un plan, attendre validation avant de coder.
+- **Plan d'abord, TOUJOURS** : avant une tâche non triviale, poser TOUTES les questions de cadrage d'un
+  coup (un seul batch) — y compris la définition de « fini » (objectif exact + critère d'arrêt) — puis
+  proposer un plan court et attendre l'OK avant de coder. **Proposer ≠ faire** : ne JAMAIS ajouter une
+  fonctionnalité ou un scope que Marc n'a pas demandé.
 - **Git — cycle autonome** : Claude gère le cycle COMPLET. Branche `claude/<slug>`
   → commits en français **préfixés par l'ID** (`[A12a] desc`), gated → `git push`
   → PR (draft par défaut) → **Claude merge lui-même** (squash sur `main`) une fois
   le gate vert et `/review-all` fait. Le push sur `main` déclenche le déploiement
-  Vercel : Claude en est responsable (choix de Marc, 2026-06 — plus de gate humain).
+  Vercel : Claude en est responsable (choix de Marc, 2026-06 — plus de gate humain ;
+  RECONFIRMÉ 2026-06-19 : commit→push→PR→merge AUTONOME, malgré « push si demandé » du
+  bloc Préférences global — c'est CE cycle qui prévaut pour FinanceAI). ⚠️ Hors ce cycle,
+  toute action DESTRUCTIVE/irréversible (`--force`/force-push, `reset --hard`, `rm`,
+  `drop`/migration de données, réécriture d'historique git) → CONFIRMER avec Marc d'abord.
 - **NE PAS s'arrêter en pleine tâche** (règle Marc 2026-06-15, NON négociable) : une fois lancé,
   Claude va **jusqu'au bout sans rendre la main** — chaque tour DOIT contenir des appels d'outils
   tant que la tâche n'est pas finie ; JAMAIS de prose « je vais faire X » suivie d'un arrêt (exécuter

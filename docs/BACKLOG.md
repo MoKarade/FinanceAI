@@ -208,11 +208,13 @@
 > Cœur money-critical = AAA (conservation prouvée ≤0,02 $/~25 scénarios, fiscalité 0 écart). **Tous les findings
 > ci-dessous sont à la PÉRIPHÉRIE** (consommateurs UI/IA/viz qui recalculent au lieu de la source unique) — aucun
 > n'altère la VALEUR du patrimoine net. Lot d'implémentation : commencer par le keystone PUIS H1/H2 (test avant fix).
-- [~] **[NW-PARITY-INVARIANT]** 🔧 HIGH (★ garde-fou keystone) — **PARTIELLEMENT LIVRÉ (PR audit)** : SOURCE UNIQUE
-  `computePresentNetWorth` (`services/portfolio.ts`) + les 3 surfaces présentes (`useDerivedFinancials`, `financialSnapshot`,
-  `AiAssistant`) y routent → parité PAR CONSTRUCTION + garde unitaire discriminant (persona endetté + devise étrangère,
-  `tests/services/portfolio.test.ts`). **RESTE** : le cross-check explicite « NW présent ≡ `chartData[0].NetWorth` (moteur
-  mois 0) » (extension d'`INV-1` au présent — vérifier d'abord l'alignement init moteur). Effort S.
+- [x] **[NW-PARITY-INVARIANT]** ✅ HIGH (★ garde-fou keystone, PR #370 2026-06-19) — SOURCE UNIQUE `computePresentNetWorth`
+  (3 surfaces routent) + RESTE livré : `tests/services/nwParity.test.ts` cross-check le NW présent ≡ NW de DÉPART du moteur
+  (`computeStartingCash` ≡ `computeCurrentLiquidity` par construction ; Σ 6 buckets `derivePortfolioStartingBalances` ≡
+  `computeInvestmentsValue` — PAS « par construction » : 2 chemins de valorisation, vérifié) − dettes ; + end-to-end
+  `chartData[0]` à flux nuls AVEC dettes (tolérance relative 0,1 %, le mois 0 applique un MER minime). Discriminant prouvé
+  (D1 TOTAL double-compté, D2 dettes omises, D3 valorisation 2× → tous attrapés). **LIMITE documentée** : parité définie HORS
+  immobilier (`computePresentNetWorth` exclut l'immo, le moteur l'inclut dans `chartData[0]`). Panel 3 agents APPROVE.
 - [x] **[NW-UI-DEBT]** ✅ HIGH (livré PR audit) — `useDerivedFinancials.globalNetWorth` route vers `computePresentNetWorth`
   (soustrait les dettes). Avant : cash+investments SANS dettes → Dashboard gonflé.
 - [x] **[AI-CTX-FX]** ✅ HIGH (livré PR audit) — `AiAssistant` : FX RÉELS (`fxRates`) + dettes soustraites via

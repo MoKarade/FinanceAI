@@ -359,10 +359,14 @@
   LLM ne puisse pas oublier la protection.
 
 
-  `services/projection/netWorth.ts:33` `computeRawNetWorth` n'a AUCUNE garde `Number.isFinite` : un terme non
-  fini (`liquid`/`reer` NaN) se propage au patrimoine affiché SANS `logError` (graphe vide, sans trace). Dette
-  PRÉEXISTANTE (le fix REER ne l'aggrave pas ; décembre garde déjà `.reer` via `Number.isFinite`). Fix : garder
-  chaque terme (rabattre sur 0 + `logError(source:'projection')`), miroir de la garde NaN dette de MONEY-PHANTOM.
+- [x] **[HARDEN-NETWORTH-NAN]** ✅ MEDIUM (PR #372, 2026-06-19) — `computeRawNetWorth` (SOURCE UNIQUE du patrimoine)
+  n'avait AUCUNE garde `Number.isFinite` : un terme non fini (`liquid`/`reer` NaN) rendait TOUT le patrimoine NaN →
+  graphe vide SANS `logError` (échec silencieux, dette préexistante). Fix : helper module-scope `sumNetWorthParts`
+  (formule unique) ; total non fini → chemin lent qui rabat chaque terme fautif sur 0 (itère `NET_WORTH_SIGN`) +
+  `logError(source:'projection', {offending})` **throttlé par signature** (hot-path MC, anti-flood localStorage) +
+  recalcul. Chemin sain = 1 `Number.isFinite` (formule inchangée). Miroir runtime de `sumActiveDebts`. Discriminant
+  prouvé (court-circuit → 4 tests échouent). Panel 3 agents APPROVE (1 finding redaction PII RÉFUTÉ : pattern ancré
+  `^debt$` ≠ substring → clés `*Debt` non redactées). 6 tests ajoutés.
 - [x] **[FISC-ESTATE-PENSION-NPV]** ✅ MEDIUM (PR #352, 2026-06-18) — NPV des rentes publiques (RRQ/PSV) au bilan
   successoral : montant MENSUEL × facteur d'annuité ANNUEL sans ×12 → ~12× sous-évaluée (~34 k$ au lieu de ~409 k$
   sur 1200 $/mois). Fix = annualiser ×12 avant le facteur (`estateCalculation.ts`). Test discriminant PROUVÉ

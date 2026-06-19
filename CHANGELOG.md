@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Moteur : garde anti-NaN du patrimoine net] — 2026-06-19
+
+### Robustesse — Un solde corrompu ne vide plus ton graphe en silence
+- **Si un solde devenait `NaN`/infini** (donnée corrompue, division par zéro en amont), **tout ton patrimoine net devenait
+  invalide et le graphe se vidait — sans aucune trace** d'erreur. Le calcul du patrimoine (source unique) n'avait pas de garde.
+- **Désormais** : un terme non fini est isolé, **rabattu à 0**, et **journalisé** (visible dans le panneau système) au lieu de
+  faire planter silencieusement l'affichage. Le calcul reste **identique au centime** quand tout est normal (aucun impact sur
+  tes chiffres). Filet de défense en profondeur — la vraie source d'un solde corrompu reste à corriger en amont si elle survient.
+
+---
+
 ## [unreleased — Moteur : perte en capital d'un locatif vendu sous coût] — 2026-06-19
 
 ### Correction fiscale — Vente d'un immeuble LOCATIF à perte

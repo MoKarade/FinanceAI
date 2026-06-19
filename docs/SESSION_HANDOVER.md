@@ -18,6 +18,14 @@
 > phase suivante sans OK explicite de Marc** ; Q1/Q2 à poser (cf `A_FAIRE_MOI` O6) ; handover à jour
 > après chaque phase.
 >
+> **Session 2026-06-19 — HARDEN-NETWORTH-NAN (#372)** (money-critical, garde anti échec silencieux) : `computeRawNetWorth`
+> (SOURCE UNIQUE du patrimoine, `netWorth.ts`) n'avait AUCUNE garde `Number.isFinite` → un seul terme NaN/Infinity rendait
+> TOUT le patrimoine NaN, graphe vide SANS trace. Fix : helper module-scope `sumNetWorthParts` (formule unique, hot-path
+> inchangé) ; total non fini → chemin LENT qui rabat chaque terme fautif sur 0 (itère `NET_WORTH_SIGN`), `logError` THROTTLÉ
+> par signature (anti-flood MC), recalcul. Chemin sain = 1 `Number.isFinite`. Discriminant prouvé (court-circuit → 4 échecs),
+> +6 tests. Panel 3 agents APPROVE — finding redaction-PII RÉFUTÉ empiriquement (pattern `^debt$` ancré ≠ substring → clés
+> `*Debt` non redactées ; leçon « mesurer les findings »). Gates verts.
+>
 > **Session 2026-06-19 — FISC-RE-CAPITAL-LOSS (#371)** (money-critical, découverte panel #368) : un IMMEUBLE LOCATIF vendu
 > SOUS son coût réalisait une perte en capital SILENCIEUSEMENT ignorée (`gain = max(0, produit − coût)` + `if (gain > 0)`)
 > → avantage fiscal LIR 111(1)b perdu. Fix : helper SOURCE UNIQUE `applyCapitalDisposition(state, rawGain signé)` (`portfolioOps.ts`)

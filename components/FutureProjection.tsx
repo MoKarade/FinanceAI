@@ -294,7 +294,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // year/age/dateLabel par événement pour la fiche au clic, et `subIdx` pour
     // empiler verticalement les événements d'un même mois.
     const { lifeChartEvents, flowChartEvents } = useMemo(() => {
-        type ChartEvent = { monthIndex: number; year: number | undefined; age: number | undefined; dateLabel: string | undefined; val: number | undefined; netWorth: number | undefined; label: string; subIdx: number; index: number; kind: 'life' | 'flow' };
+        type ChartEvent = { monthIndex: number; year: number | undefined; age: number | undefined; dateLabel: string | undefined; val: number | undefined; netWorth: number | undefined; label: string; subIdx: number; index: number; kind: 'life' | 'flow'; color?: string; pinned?: boolean };
         const lifes: ChartEvent[] = [];
         const flows: ChartEvent[] = [];
         let lifeIdx = 0;
@@ -305,13 +305,18 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const DEDUP_GAP = 3;
         const lastLife: Record<string, number> = {};
         const lastFlow: Record<string, number> = {};
+        // [R2] La pastille « FIRE atteint » vient du MOTEUR (lifeEvent 'Objectif FIRE Atteint 🔥', projection.ts —
+        // source UNIQUE, seuil inflaté + indexé). On NE la recalcule PAS côté UI : on la MET EN VALEUR — orange
+        // #f97316 + `pinned` (jamais écrêtée par thinEvents). Cohérent avec « Future = source unique ».
+        const FIRE_RE = /\bfire\b/i;
         chartData.forEach((d: ProjectionChartPoint) => {
             const meta = { monthIndex: d.monthIndex, year: d.year, age: d.age, dateLabel: d.dateLabel };
             let lifeSub = 0;
             (d.lifeEvents || []).forEach((label: string) => {
                 if (lastLife[label] != null && d.monthIndex - lastLife[label] <= DEDUP_GAP) return;
                 lastLife[label] = d.monthIndex;
-                lifes.push({ ...meta, val: d.NetWorth, netWorth: d.NetWorth, label, subIdx: lifeSub++, index: lifeIdx++, kind: 'life' });
+                const isFire = FIRE_RE.test(label);
+                lifes.push({ ...meta, val: d.NetWorth, netWorth: d.NetWorth, label, subIdx: lifeSub++, index: lifeIdx++, kind: 'life', ...(isFire ? { color: '#f97316', pinned: true } : null) });
             });
             if ((d.flowEvents?.length ?? 0) > 0 && ((d.FluxImpots ?? 0) < 0 || (d.flowEvents || []).some((x: string) => x.includes('-')))) {
                 let flowSub = 0;
@@ -529,7 +534,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const step = Math.ceil(arr.length / cap);
         return arr.filter((_, i) => i % step === 0);
     };
-    const shownLifeEvents = thinEvents(visibleLifeEvents, 40);
+    // [R2] Les événements `pinned` (ex. pastille FIRE) ne sont JAMAIS écrêtés par l'échantillonnage : sinon, en
+    // vue dézoomée (> 40 événements), la pastille FIRE pouvait disparaître en silence (revue adversariale R2).
+    // pinned en FIN : rendus en dernier → dessinés AU-DESSUS (SVG painter) si un autre événement tombe le même mois.
+    const shownLifeEvents = [
+        ...thinEvents(visibleLifeEvents.filter((e) => !e.pinned), 40),
+        ...visibleLifeEvents.filter((e) => e.pinned),
+    ];
     const shownFlowEvents = thinEvents(visibleFlowEvents, 24);
     const lastMonthIndex = chartData.length > 0 ? chartData[chartData.length - 1].monthIndex : 0;
     const idxForYears = (yrs: number) => {

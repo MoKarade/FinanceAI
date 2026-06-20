@@ -8,6 +8,7 @@ import { PrivateAmount } from '../ui/PrivateAmount';
 // Ordre = priorité (premier match gagne). Patterns tolérants aux accents
 // (imp[oô]t, int[ée]r[êe]t…) car le moteur émet parfois sans diacritiques.
 const EVENT_KEYWORD_ICONS: Array<[RegExp, string]> = [
+    [/\bfire\b/i, '🔥'], // [R2] FIRE atteint : 🔥 (sinon « Objectif… » matcherait 🎯 plus bas)
     [/voyage|vacances/i, '✈️'],
     [/krach|chute|baisse|correction march/i, '📉'],
     [/v[ée]hicule|voiture/i, '🚗'],
@@ -218,7 +219,7 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
 // propre icône (plus de labels texte fusionnés « A | B | C »). Les événements
 // d'un même mois s'empilent verticalement via `subIdx` : vie au-dessus du
 // point, flux en dessous. Le clic remonte le payload via `onSelect`.
-export const ClickableEventIcon = (props: { payload?: { label?: string; subIdx?: number }; onSelect?: (p: { label?: string; subIdx?: number }) => void; kind?: string; selected?: boolean; cx?: number; cy?: number; x?: number; y?: number; viewBox?: { x?: number; y?: number } }) => {
+export const ClickableEventIcon = (props: { payload?: { label?: string; subIdx?: number; color?: string }; onSelect?: (p: { label?: string; subIdx?: number; color?: string }) => void; kind?: string; selected?: boolean; cx?: number; cy?: number; x?: number; y?: number; viewBox?: { x?: number; y?: number } }) => {
     const { payload, onSelect, kind = 'life', selected = false } = props;
     // Recharts v3 : utilisé via le prop `shape` du ReferenceDot → coords en cx/cy.
     // Fallbacks (x/y, viewBox) au cas où l'API change.
@@ -230,7 +231,8 @@ export const ClickableEventIcon = (props: { payload?: { label?: string; subIdx?:
     const sub = payload.subIdx || 0;
     const dy = isLife ? -(20 + sub * 24) : (20 + sub * 20);
     const r = isLife ? 12 : 9;
-    const color = isLife ? '#d8c06a' : '#7ba0cf';
+    // [R2] Couleur PAR ÉVÉNEMENT si fournie (ex. FIRE atteint = orange #f97316), sinon défaut du kind.
+    const color = payload.color ?? (isLife ? '#d8c06a' : '#7ba0cf');
     return (
         <g
             transform={`translate(${px}, ${py})`}

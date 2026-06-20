@@ -30,7 +30,7 @@
 >
 > **📋 FILE D'ATTENTE (2026-06-19)** : Marc a demandé l'**ACC d'abord** (« fais le acc avant tout »). **✅ ACC COMPLET — Lots 0-5 FAITS**
 > (Lot 0 test ✓ · Lot 1 #379 capteur ✓ · Lot 2 #380 `/backlog` ✓ · Lot 3 #381 dashboard ✓ · Lot 4 #382 workflows ✓ · Lot 5 présence ✓).
-> **PROCHAINE SESSION : reprendre les chantiers autonomes** `docs/PLAN_CHANTIERS_2026-06-19.md` (R5 + R1 faits → reprendre R2, exécution PR par PR).
+> **PROCHAINE SESSION : reprendre les chantiers autonomes** `docs/PLAN_CHANTIERS_2026-06-19.md` (R5 + R1 + R2 faits → reprendre R3, exécution PR par PR).
 >
 > **Session 2026-06-19 — R1 (LABEL-NW-SUCCESSORAL) ✅ — 1ᵉʳ chantier autonome** : libellé trompeur « Patrimoine projeté »
 > (qui affichait en fait `estateNetWorth`) renommé **« Patrimoine successoral, avec rentes »** + **tooltip** (nouveau prop
@@ -39,6 +39,16 @@
 > attrapé par financial-integrity). a11y durcie (`Tooltip` : `aria-describedby` sur l'enfant via `cloneElement` + fermeture Échap ;
 > déclencheur `<button>` aria-label court au lieu de `role="img"`). Pure UI, zéro moteur. Typecheck + tests ciblés (22) verts.
 > **CHANTIERS : R1 ✅ → reprendre R2** (annotation « FIRE atteint » au 1ᵉʳ mois `NetWorth ≥ FireTarget`, `FutureProjection.tsx` `lifeMarkers`).
+>
+> **Session 2026-06-20 — R2 (annotation FIRE) ✅ — PIVOT source-unique (revue adversariale ultracode)** : ⚠️ DÉCOUVERTE — le
+> MOTEUR émet DÉJÀ `'Objectif FIRE Atteint 🔥'` (`projection.ts:1438`, seuil inflaté) → la pastille FIRE existait. Recalculer
+> côté UI = DOUBLON + violation « Future = source unique ». **Livré** : on met en valeur la pastille MOTEUR — orange `#f97316`
+> + icône 🔥 (`ClickableEventIcon` `payload.color` + entrée `EVENT_KEYWORD_ICONS`) + `pinned` (jamais écrêtée par `thinEvents`
+> en vue dézoomée — bug attrapé par la revue). 2 fichiers (`FutureProjection.tsx`, `ProjectionTooltip.tsx`), zéro moteur,
+> zéro recompute. Le helper `fireReached.ts` a été créé PUIS supprimé après la découverte (workflow de revue adversariale =
+> 5 dimensions + réfutation ; 3 findings confirmés). Typecheck + tests verts ; code-reviewer + silent-failure APPROVE.
+> ⚠️ **LEÇON (portée CLAUDE.md)** : avant d'AJOUTER un calcul/détection côté UI sur la projection, VÉRIFIER que le moteur
+> ne l'émet pas déjà (`chartData.lifeEvents`/champs) — sinon doublon + contournement de la source unique. **CHANTIERS : R2 ✅ → reprendre R3** (infobulle figée/scrollable, `FutureProjection.tsx` + `ProjectionTooltip.tsx`, portail React — risque MOYEN).
 >
 > **Session 2026-06-19 — FEUILLE DE ROUTE VALIDÉE (#376)** : `docs/PLAN_CHANTIERS_2026-06-19.md` — plans cadrés par
 > 4 agents (`fichier:ligne`) + VALIDÉS par Marc, exécutés en AUTONOMIE PR par PR. Ordre : R1-R6 gains rapides UI

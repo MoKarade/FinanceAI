@@ -29,10 +29,16 @@
   (title HTML), prompt `AiAssistant.tsx:102` (cohérence IA).
 - DoD : libellés distincts + tooltip 1 phrase ; typecheck clean ; a11y-auditor sur le tooltip. Zéro moteur.
 
-### R2 · Futur P2 — annotation « FIRE atteint »
+### R2 · Futur P2 — annotation « FIRE atteint » — ✅ FAIT (2026-06-20)
 - Pastille au 1ᵉʳ mois où `NetWorth ≥ FireTarget` (`FutureProjection.tsx` useMemo `lifeMarkers` ~331-351 + rendu).
   `ReferenceDot` orange + `ClickableEventIcon`. Filtrer `monthIndex > 0` (pas si déjà FIRE au départ).
 - DoD : pastille au bon mois sur persona FIRE-atteignable ; aucune si hors horizon. Test unitaire de détection.
+- ⚠️ **PIVOT (revue adversariale ultracode)** : le MOTEUR émet DÉJÀ un lifeEvent `'Objectif FIRE Atteint 🔥'`
+  (`projection.ts:1438`, seuil inflaté/indexé) → la pastille FIRE existait déjà. Recalculer côté UI aurait été un
+  DOUBLON + une violation de « Future = source unique ». **Livré** : on met en valeur la pastille MOTEUR existante —
+  orange `#f97316` + icône 🔥 (via `ClickableEventIcon` `payload.color` + `EVENT_KEYWORD_ICONS`) + `pinned` (jamais
+  écrêtée par `thinEvents`). 2 fichiers, zéro moteur, zéro recompute. « Test unitaire de détection » N/A → la détection
+  est au moteur (déjà testée) ; le helper UI `fireReached.ts` créé puis SUPPRIMÉ après la découverte.
 
 ### R3 · Futur P3 — infobulle figée/scrollable
 - Aujourd'hui le tooltip suit la souris (Recharts recalcule la position à chaque move). Remplacer `<Tooltip content=…>`

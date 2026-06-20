@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Futur : le cap « FIRE atteint » saute aux yeux] — 2026-06-20
+
+### Une pastille orange au moment FIRE
+- **Sur la courbe Futur, le mois où tu atteins ton objectif FIRE est désormais une pastille ORANGE 🔥**, au lieu de
+  se fondre dans les autres jalons de vie. Elle reste **toujours visible**, même en vue dézoomée (avant, elle pouvait
+  disparaître quand le graphe condense les événements). Clique dessus pour le détail du mois. Aucun calcul changé —
+  le moment FIRE est celui que le moteur calcule déjà, juste mieux mis en valeur.
+
+---
+
 ## [unreleased — Clarté : « Patrimoine successoral » (avec rentes)] — 2026-06-19
 
 ### Un KPI mieux nommé, avec une infobulle

@@ -30,7 +30,16 @@
 >
 > **📋 FILE D'ATTENTE (2026-06-19)** : Marc a demandé l'**ACC d'abord** (« fais le acc avant tout »). **✅ ACC COMPLET — Lots 0-5 FAITS**
 > (Lot 0 test ✓ · Lot 1 #379 capteur ✓ · Lot 2 #380 `/backlog` ✓ · Lot 3 #381 dashboard ✓ · Lot 4 #382 workflows ✓ · Lot 5 présence ✓).
-> **PROCHAINE SESSION : reprendre les chantiers autonomes** `docs/PLAN_CHANTIERS_2026-06-19.md` (R5 + R1 + R2 faits → reprendre R3, exécution PR par PR).
+> **PROCHAINE SESSION : reprendre les chantiers autonomes** `docs/PLAN_CHANTIERS_2026-06-19.md` (R5 + R1 + R2 faits ;
+> **R3 DESIGNÉ mais NON implémenté** → reprendre l'IMPLÉMENTATION de R3 avec le blueprint, OU passer à R4 ; exécution PR par PR).
+>
+> **Session 2026-06-22 — R3 (tooltip figé) : DESIGN FAIT, implémentation reportée (choix Marc « B » = session fraîche)** : refacto
+> MOYEN/HIGH (portail React hors contexte Recharts + re-routage du clic qui pilote la modale qui MARCHE) dans une session déjà
+> longue → Marc a choisi de l'implémenter FRAIS. ⚠️ **Découverte (architect)** : le clic ouvre DÉJÀ `FutureDetailModal` (détail
+> complet) → valeur unique du tooltip figé = comparaison + scroll ; décision = COEXISTENCE (tooltip figé léger + bouton « Détail
+> complet »→modale). **BLUEPRINT COMPLET dans `docs/PLAN_CHANTIERS_2026-06-19.md` § R3** (approche la moins risquée : `<Tooltip
+> content={()=>null}>` + portail séparé lisant `lastHoverPointRef` ; state machine `idle/hovering/frozen` ; perf ref+mutation DOM ;
+> découplage `ExpertTooltip(data)` ; ordre d'implémentation + tests). **À la reprise : suivre ce blueprint pas-à-pas.**
 >
 > **Session 2026-06-19 — R1 (LABEL-NW-SUCCESSORAL) ✅ — 1ᵉʳ chantier autonome** : libellé trompeur « Patrimoine projeté »
 > (qui affichait en fait `estateNetWorth`) renommé **« Patrimoine successoral, avec rentes »** + **tooltip** (nouveau prop

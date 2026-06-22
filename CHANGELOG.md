@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Futur : infobulle figeable (clic = fige)] — 2026-06-22
+
+### Lis l'infobulle tranquillement, sans qu'elle fuie sous le curseur
+- **Sur la courbe Futur, un clic FIGE désormais l'infobulle** : elle reste ancrée à l'écran, devient scrollable et
+  cliquable, au lieu de suivre la souris. Tu peux survoler d'autres mois sans qu'elle disparaisse. **Échap** ou un clic
+  ailleurs la libère.
+- **Bouton « Détail complet »** dans l'infobulle figée → ouvre la fiche exhaustive du mois (l'ancienne modale). Les
+  pastilles d'événement (🔥, 🏠…) ouvrent toujours directement le détail.
+- Au survol simple, l'infobulle suit la souris comme avant (rien ne change tant qu'on ne clique pas).
+- Sous le capot : aucun calcul touché (pure UI) ; positionnement borné à l'écran, accessibilité durcie (focus géré,
+  Échap, contraste et cible tactile du bouton conformes).
+
+---
+
 ## [unreleased — Futur : le cap « FIRE atteint » saute aux yeux] — 2026-06-20
 
 ### Une pastille orange au moment FIRE

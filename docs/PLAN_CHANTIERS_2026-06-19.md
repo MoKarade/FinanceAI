@@ -40,7 +40,16 @@
   écrêtée par `thinEvents`). 2 fichiers, zéro moteur, zéro recompute. « Test unitaire de détection » N/A → la détection
   est au moteur (déjà testée) ; le helper UI `fireReached.ts` créé puis SUPPRIMÉ après la découverte.
 
-### R3 · Futur P3 — infobulle figée/scrollable — ⏳ DESIGN FAIT (2026-06-22), implémentation à reprendre FRAIS (choix Marc « B »)
+### R3 · Futur P3 — infobulle figée/scrollable — ✅ FAIT (2026-06-22)
+> **LIVRÉ** (blueprint ci-dessous suivi à la lettre) : clic = FIGE le tooltip (portail `createPortal` dans `body`,
+> `position:fixed`, ancré/scrollable/interactif) ; survol = suit la souris (`pointer-events:none`) ; Échap / clic-dehors
+> libère ; **coexistence** avec la modale via bouton « Détail complet » (+ pastilles d'événement inchangées). `<Tooltip
+> content={()=>null}>` garde Recharts actif (alimente le survol + le curseur). Nouveaux : `utils/chartTooltip.ts`
+> (`resolvePointFromClick` + `clampTooltipPosition`, purs), `hooks/useChartTooltipPosition.ts` (machine d'état
+> `idle/hovering/frozen`, position ref+mutation DOM, listeners Échap/clic-dehors gelé seulement, focus a11y), `ExpertTooltip`
+> découplé (`data` direct + `frozen`/`onOpenDetail`). Tests : 34 unité (utils/hook/tooltip) + 2 e2e (figeage, invariant
+> mousemove, Échap, « Détail complet »→modale). Panel review intégré (contraste footer `ink-400`, cible tactile 44px).
+> Follow-ups routés BACKLOG (`A11Y-CHART-KEYBOARD`, `FIX-INK600-TOKEN`) : accès CLAVIER du graphe (préexistant) + token `text-ink-600` invalide repo-wide.
 - Aujourd'hui le tooltip suit la souris (Recharts recalcule la position à chaque move). Remplacer `<Tooltip content=…>`
   par un **portail React** (`createPortal`) positionné en `position:fixed` ; clic = fige (réutilise `handleChartContainerClick`
   ~475), Échap/clic ailleurs = libère. `ExpertTooltip` doit accepter `data` directement (le découpler du wrapper Recharts).

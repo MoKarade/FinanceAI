@@ -51,7 +51,17 @@
   PAS : épuisement de compte ❌, ni RRQ/PSV/CELIAPP ❌ (déjà lisibles sur la courbe). **Clic sur une icône →
   description brève** de l'événement.
 - **Infobulle** : tout voir (actuellement coupée + impossible à scroller car elle suit la souris) → la **figer/
-  rendre scrollable** (ne plus suivre le curseur quand on veut lire).
+  rendre scrollable** (ne plus suivre le curseur quand on veut lire). ✅ **LIVRÉ (R3, 2026-06-22)** : clic = FIGE
+  l'infobulle (portail `position:fixed`, ancrée, scrollable, interactive) ; survol = suit la souris
+  (`pointer-events:none`) ; Échap / clic-dehors libère ; coexistence avec la modale via bouton « Détail complet ».
+  Hook `useChartTooltipPosition` (machine d'état) + utils purs `resolvePointFromClick`/`clampTooltipPosition`.
+  - **Découvertes R3 (panel a11y, 2026-06-22) → follow-ups** :
+    - `A11Y-CHART-KEYBOARD` — le graphe Futur est clic-only (conteneur `role="img"` `tabIndex=-1`, pastilles `tabIndex=-1`) :
+      figer/ouvrir le détail au CLAVIER n'est pas possible (limite PRÉEXISTANTE, pas une régression R3 ; mitigée par
+      l'alternative sr-only `ChartDataTable`). Chantier a11y dédié (clavier sur graphes Recharts).
+    - `FIX-INK600-TOKEN` — `text-ink-600` n'existe PAS dans la palette (`ink` s'arrête à 500) → ~10 fichiers l'utilisent en
+      no-op (le texte hérite la couleur parente). Remplacer par un token valide (`ink-400`/`ink-500` selon le contraste mesuré).
+      Mécanique mais à faire au cas par cas (contraste). Surfaces R3 déjà corrigées (`ink-400`).
 - **Densité au zoom (level-of-detail)** : dézoomé = peu d'icônes ; en zoomant, de plus en plus jusqu'à toutes.
 - **★ VERROUILLAGE + PERSISTANCE de la courbe** (clé de voûte Phase 2) : une fois leviers + courbe choisis, elle
   **reste affichée** en changeant de page ET **après déconnexion/reconnexion**, jusqu'à ce que Marc la change ou

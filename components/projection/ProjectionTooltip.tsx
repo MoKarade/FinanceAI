@@ -53,13 +53,22 @@ const TOOLTIP_ACCOUNTS: Array<{ key: string; label: string; color: string; gainK
     { key: 'Immobilier', label: 'Immobilier', color: '#bd7d9c' },
 ];
 
-// Infobulle au SURVOL — résumé clair + détail par compte (gains) + dépenses.
+// Infobulle du graphe Futur — résumé clair + détail par compte (gains) + dépenses.
 // G15 : libellés explicites (« Rendement » = marché, « Dépôts » = ce que tu
 // ajoutes, gros chiffre = « Variation ce mois »). Le détail exhaustif + le
-// « pourquoi » par compte reste au CLIC (FutureDetailModal).
-export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { active?: boolean; payload?: { payload: ProjectionChartPoint }[]; userName1?: string; userName2?: string }) => {
-    if (!active || !payload || !payload.length) return null;
-    const data = payload[0].payload;
+// « pourquoi » par compte reste à la modale (FutureDetailModal).
+//
+// [R3] Découplé de Recharts : prend `data` en prop DIRECTE (testable sans le
+// wrapper Recharts) et est rendu via un PORTAIL positionné par
+// `useChartTooltipPosition`. `frozen` = figé (devient interactif/scrollable et
+// montre le bouton « Détail complet ») ; `onOpenDetail` ouvre la modale exhaustive.
+export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOpenDetail }: {
+    data: ProjectionChartPoint;
+    userName1?: string;
+    userName2?: string;
+    frozen?: boolean;
+    onOpenDetail?: () => void;
+}) => {
     const fmt = (n: number) => Math.round(n).toLocaleString('fr-CA');
 
     const totalFlow = (data.NetTransferCELI || 0) + (data.NetTransferREER || 0) + (data.NetTransferNonReg || 0)
@@ -207,9 +216,26 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
                 </div>
             )}
 
-            <div className="text-tiny text-ink-500 text-center pt-1.5 border-t border-white/10">
-                Clique pour le détail complet
-            </div>
+            {/* [R3] Pied de page selon l'état : survol = invite à figer ; figé = bouton
+                « Détail complet » (ouvre la modale) + rappel Échap. Le bouton n'est
+                cliquable que figé (le tooltip de survol est `pointer-events:none`). */}
+            {frozen ? (
+                <div className="pt-2 mt-0.5 border-t border-white/10 flex items-center justify-between gap-2">
+                    <button
+                        type="button"
+                        onClick={onOpenDetail}
+                        className="flex-1 inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-primary bg-primary/15 hover:bg-primary/25 border border-primary/30 rounded-lg px-2 py-2.5 transition-colors"
+                    >
+                        Détail complet →
+                    </button>
+                    {/* ink-400 (#8896a8, AA normal) — ink-600 n'existe pas dans la palette (héritait la couleur parente). */}
+                    <span className="text-[10px] text-ink-400 whitespace-nowrap">Échap pour fermer</span>
+                </div>
+            ) : (
+                <div className="text-tiny text-ink-400 text-center pt-1.5 border-t border-white/10">
+                    Clique pour figer · puis détail complet
+                </div>
+            )}
         </div>
     );
 };

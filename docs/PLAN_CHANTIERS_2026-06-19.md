@@ -40,12 +40,39 @@
   écrêtée par `thinEvents`). 2 fichiers, zéro moteur, zéro recompute. « Test unitaire de détection » N/A → la détection
   est au moteur (déjà testée) ; le helper UI `fireReached.ts` créé puis SUPPRIMÉ après la découverte.
 
-### R3 · Futur P3 — infobulle figée/scrollable
+### R3 · Futur P3 — infobulle figée/scrollable — ⏳ DESIGN FAIT (2026-06-22), implémentation à reprendre FRAIS (choix Marc « B »)
 - Aujourd'hui le tooltip suit la souris (Recharts recalcule la position à chaque move). Remplacer `<Tooltip content=…>`
   par un **portail React** (`createPortal`) positionné en `position:fixed` ; clic = fige (réutilise `handleChartContainerClick`
   ~475), Échap/clic ailleurs = libère. `ExpertTooltip` doit accepter `data` directement (le découpler du wrapper Recharts).
 - Fichiers : `FutureProjection.tsx`, `projection/ProjectionTooltip.tsx`, nouveau `hooks/useChartTooltipPosition.ts`.
 - Risque MOYEN (portail hors contexte Recharts) → extraire `ExpertTooltip` testable d'abord. e2e : mousemove après clic ne bouge plus.
+
+> **⚠️ BLUEPRINT (agent `architect`, 2026-06-22) — à suivre à la reprise. Risque réel MOYEN/HIGH.**
+> **Découverte importante** : le clic ouvre DÉJÀ `FutureDetailModal` (modale complète : drill-down compte, mini-graphe,
+> espace cotisation — montre PLUS qu'un tooltip figé). La valeur UNIQUE d'un tooltip figeable = (a) rester ancré pendant
+> qu'on survole d'AUTRES mois (comparaison) + (b) le scroller sans bloquer le graphe. Sinon = doublon UX. **Décision retenue =
+> COEXISTENCE à rôles distincts** : tooltip figé = comparaison légère + bouton « Détail complet » → ouvre la modale (détail exhaustif).
+>
+> **Approche la MOINS risquée** : NE PAS réimplémenter la détection de point. Garder le `<Tooltip>` Recharts mais en
+> `content={() => null}` (rend rien) — `onMouseMove` du `ComposedChart` (`FutureProjection.tsx:818`) continue d'alimenter
+> `lastHoverPointRef`. Un PORTAIL séparé lit ce ref + la position curseur pour rendre le vrai tooltip.
+> **State machine** `idle → hovering → frozen` (hook `useChartTooltipPosition`) : hover suit la souris (`pointer-events:none`) ;
+> clic fige (`pointer-events:auto`, scrollable) ; Échap / clic-dehors / clic autre point = libère ou re-fige. Listeners `document`
+> (Échap + clic-dehors) AJOUTÉS seulement en `frozen`, cleanup au unmount.
+> **Perf** : position `x/y` en `useRef` + mutation DOM directe (`ref.current.style.left/top`) sur mousemove — PAS de state React
+> (sinon re-render 60fps). State React change seulement au changement de point ou hovering→frozen.
+> **Découplage** : `ExpertTooltip({ data: ProjectionChartPoint, userName1?, userName2?, frozen?, onOpenDetail? })` (props directes,
+> testable sans Recharts) + shim `ExpertTooltipRecharts({active, payload})` si on garde un usage Recharts.
+> **Positionnement** : `position:fixed`, `left=clamp(x+16, 8, vw-288-8)`, `top=clamp(y-24, 8, vh-h-8)` (largeur connue `w-72`=288 ;
+> hauteur via ResizeObserver/ref). `z-index` tooltip < modale (`FutureDetailModal` = portail body) → tooltip 9999, modale 10000.
+> **⚠️ RISQUE CRITIQUE** : re-router le clic SANS casser la modale qui MARCHE (`handleChartContainerClick:480-493` + `onClick`
+> du `ComposedChart:819` → `setDetailPoint`). Le hook prend le contrôle EXCLUSIF du clic ; extraire `resolvePointFromClick(clientX,
+> gridRect, data)` (géométrie lignes 485-491) en util PUR testable. a11y : au figer, focus le tooltip (`tabIndex=-1` + `data-frozen-tooltip`) ;
+> à la fermeture, restituer le focus au graphe.
+> **Ordre** : 1) découpler `ExpertTooltip(data)` + test unitaire ; 2) `useChartTooltipPosition` + tests du hook (transitions) +
+> `resolvePointFromClick` util + test ; 3) câbler le portail, `<Tooltip content={()=>null}>` ; 4) re-router le clic (ne pas casser
+> la modale) ; 5) z-index vs modale ; 6) e2e (mousemove après clic invariant · Échap ferme · scrollable · « Détail complet » ouvre la modale).
+> **Testable unité** : `ExpertTooltip(data)`, `useChartTooltipPosition`, `resolvePointFromClick`. **e2e requis** : le figeage (5 cas ci-dessus).
 
 ### R4 · Futur P1+P4 — boot-restore + densité proportionnelle
 - P1 (XS) : vérifier que `App.tsx` appelle `loadLockedProjection()` + `setLockedProjection()` au mount (sinon courbe

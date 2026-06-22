@@ -83,10 +83,13 @@
 > la modale) ; 5) z-index vs modale ; 6) e2e (mousemove après clic invariant · Échap ferme · scrollable · « Détail complet » ouvre la modale).
 > **Testable unité** : `ExpertTooltip(data)`, `useChartTooltipPosition`, `resolvePointFromClick`. **e2e requis** : le figeage (5 cas ci-dessus).
 
-### R4 · Futur P1+P4 — boot-restore + densité proportionnelle
-- P1 (XS) : vérifier que `App.tsx` appelle `loadLockedProjection()` + `setLockedProjection()` au mount (sinon courbe
-  perdue au reload malgré le flag). Patch si gap.
-- P4 (XS) : cap de densité proportionnel à la fenêtre visible (`~(visMax−visMin)/6`) au lieu du cap fixe 40/24 (`FutureProjection.tsx` ~527-533).
+### R4 · Futur P1+P4 — boot-restore + densité — ✅ FAIT (2026-06-22)
+- P1 (boot-restore) : ✅ **DÉJÀ FAIT** — `App.tsx:72-96` restaure la courbe verrouillée au mount (`isProjectionLocked`
+  persisté → `loadLockedProjection()` → `setLockedProjection(res.result)`, gère ok/unreadable/empty + toast). Aucun gap, zéro patch.
+- P4 (densité) : ✅ cap FIXE baissé **40/24 → 24/16** (`FutureProjection.tsx`, constantes `MAX_LIFE_ICONS`/`MAX_FLOW_ICONS`).
+  ⚠️ **Formule du plan `(visMax−visMin)/6` REJETÉE** (à l'envers : span grand=dézoomé → cap élevé = PLUS d'icônes dézoomé,
+  et cap minuscule en zoom = écrête « toutes ») → le bon correctif est un cap fixe plus bas, pas proportionnel. Le LOD
+  « zoom in = toutes » était déjà assuré (fenêtre zoomée < cap → tout affiché). Décision Marc 2026-06-22 = baisse modérée.
 
 ### R5 · PH3-c-bis — supprimer `User.industry` (trivial)
 - `types.ts` : retirer `export type Industry` (116-130) + `industry?` dans `User` (156). NE PAS toucher les

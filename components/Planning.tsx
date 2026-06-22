@@ -33,9 +33,11 @@ interface PlanningProps {
     /** G22-N3 — sous-section rendue quand intégré dans Budget :
      *  'fixed' = Abonnements/Récurrents + Calendrier ; 'goals' = Objectifs ; 'all' = tout. */
     section?: 'all' | 'fixed' | 'goals';
+    /** [PH4-C] Dépense réelle du MOIS COURANT par catégorie (clé = nom) → « versé ce mois » des objectifs liés. */
+    actualsMap?: Record<string, number>;
 }
 
-export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals = [], setSavingsGoals, budgetItems: _budgetItems, setBudgetItems: _setBudgetItems, config: _config, apiKey, section = 'all' }) => {
+export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals = [], setSavingsGoals, budgetItems = [], setBudgetItems: _setBudgetItems, config: _config, apiKey, section = 'all', actualsMap = {} }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [aiSubs, setAiSubs] = useState<RecurringItem[] | null>(null);
@@ -101,11 +103,15 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
         if (newGoal.name && newGoal.targetAmount) {
             setSavingsGoals([...savingsGoals, { ...newGoal, id: Date.now().toString() } as SavingsGoal]);
             setIsAddingGoal(false);
-            setNewGoal({ name: '', targetAmount: 0, currentAmount: 0, deadline: '', icon: '💰' });
+            setNewGoal({ name: '', targetAmount: 0, currentAmount: 0, deadline: '', icon: '💰', linkedBudgetCategoryName: undefined });
         }
     };
 
     const handleDeleteGoal = (id: string) => { setConfirmDeleteGoalId(id); };
+
+    // [PH4-C] Lier / délier un objectif existant à une catégorie budget (par nom).
+    const updateGoalLink = (id: string, linkedBudgetCategoryName?: string) =>
+        setSavingsGoals(savingsGoals.map(g => g.id === id ? { ...g, linkedBudgetCategoryName } : g));
 
     const doConfirmDeleteGoal = () => {
         if (confirmDeleteGoalId) {
@@ -213,20 +219,44 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                 <input aria-label="Montant cible (dollars)" type="number" placeholder="Cible $" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newGoal.targetAmount || ''} onChange={e => setNewGoal({ ...newGoal, targetAmount: parseFloat(e.target.value) })} />
                                 <input aria-label="Montant actuel (dollars)" type="number" placeholder="Actuel $" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newGoal.currentAmount || ''} onChange={e => setNewGoal({ ...newGoal, currentAmount: parseFloat(e.target.value) })} />
                                 <input aria-label="Date d'échéance" type="date" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newGoal.deadline} onChange={e => setNewGoal({ ...newGoal, deadline: e.target.value })} />
+                                {/* [PH4-C] lien optionnel vers une catégorie budget → « versé ce mois » */}
+                                <select aria-label="Lier à une catégorie budget (optionnel)" className="col-span-2 bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newGoal.linkedBudgetCategoryName ?? ''} onChange={e => setNewGoal({ ...newGoal, linkedBudgetCategoryName: e.target.value || undefined })}>
+                                    <option value="">Lier à une catégorie budget… (optionnel)</option>
+                                    {budgetItems.map(c => <option key={c.id ?? c.name} value={c.name}>{c.name}</option>)}
+                                </select>
                                 <button onClick={handleAddGoal} className="col-span-2 bg-primary text-dark text-meta font-bold py-1 rounded">Ajouter</button>
                             </div>
                         )}
                         <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
                             {savingsGoals.map(goal => {
                                 const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
+                                const linked = goal.linkedBudgetCategoryName;
+                                const isLinked = linked != null && linked !== '';
+                                // [PH4-C] lien orphelin = catégorie renommée/supprimée → ne PAS afficher « 0 » trompeur (panel silent-failure).
+                                const linkOrphan = isLinked && !budgetItems.some(c => c.name === linked);
+                                const paidThisMonth = isLinked && !linkOrphan ? (actualsMap[linked] ?? 0) : null;
                                 return (
                                     <div key={goal.id} className="relative p-3 bg-[#1a1a1a] rounded-xl border border-white/5 group">
                                         <button onClick={() => handleDeleteGoal(goal.id)} aria-label={`Supprimer l'objectif ${goal.name}`} className="absolute top-1 right-1 touch-target flex items-center justify-center text-ink-500 hover:text-danger-500 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity focus-ring rounded"><Icon name="close" size={14} /></button>
                                         <div className="flex justify-between items-center mb-1">
                                             <div className="flex items-center gap-2"><Icon name="goal" size={16} className="text-ink-300 shrink-0" /><span className="text-body font-bold text-white">{goal.name}</span></div>
-                                            <span className="text-meta text-ink-300">{goal.currentAmount}/{goal.targetAmount}$</span>
+                                            <span className="text-meta text-ink-300" title="Accumulé / cible">Accumulé <PrivateAmount as="span">{formatCAD(goal.currentAmount)}</PrivateAmount> / {formatCAD(goal.targetAmount)}</span>
                                         </div>
                                         <div className="w-full bg-black/50 rounded-full h-1.5"><div className="h-full bg-gradient-to-r from-info-500 to-purple-500 rounded-full" style={{ width: `${Math.min(100, progress)}%` }}></div></div>
+                                        {/* [PH4-C] lien catégorie budget (éditable) + « versé ce mois » = dépense réelle rapprochée du mois courant */}
+                                        <div className="mt-2 flex items-center justify-between gap-2">
+                                            <select aria-label={`Lier l'objectif ${goal.name} à une catégorie budget`} value={linked ?? ''} onChange={e => updateGoalLink(goal.id, e.target.value || undefined)} className="bg-dark border border-white/10 rounded px-1.5 py-1.5 text-tiny text-ink-200 max-w-[55%] focus-ring">
+                                                <option value="">Non lié à une catégorie</option>
+                                                {linkOrphan && <option value={linked}>{linked} (introuvable)</option>}
+                                                {budgetItems.map(c => <option key={c.id ?? c.name} value={c.name}>{c.name}</option>)}
+                                            </select>
+                                            {linkOrphan && (
+                                                <span className="text-tiny text-warning-400 whitespace-nowrap" title={`La catégorie « ${linked} » n'existe plus — relie ou délie l'objectif`}>⚠ Lien invalide</span>
+                                            )}
+                                            {paidThisMonth != null && (
+                                                <span className="text-tiny text-ink-300 whitespace-nowrap">Versé ce mois&nbsp;: <PrivateAmount as="span" className="font-bold text-info-400">{formatCAD(paidThisMonth)}</PrivateAmount></span>
+                                            )}
+                                        </div>
                                     </div>
                                 );
                             })}

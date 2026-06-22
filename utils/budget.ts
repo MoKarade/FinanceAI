@@ -105,6 +105,23 @@ export function computeBudgetParity(
     return { actualsMap, totalSpent, orphanCategories, itemsWithoutTransactions };
 }
 
+/**
+ * [PH4-C] Dépense réelle rapprochée par catégorie pour UN mois donné (clé = nom de catégorie).
+ * Sert au « versé ce mois » des objectifs d'épargne liés à une catégorie budget. Pur, testable.
+ * Réutilise la MÊME règle de rapprochement que la parité budget (`computeBudgetParity`) → cohérence.
+ * @param monthStr préfixe ISO du mois, ex. '2026-06'.
+ */
+export function monthlyActualsMap(
+    transactions: readonly Transaction[],
+    items: readonly BudgetCategory[],
+    monthStr: string,
+): Record<string, number> {
+    const monthSpend = transactions.filter(
+        (t) => typeof t.date === 'string' && t.date.startsWith(monthStr) && t.amount < 0 && !t.isTransfer && !t.isDuplicate,
+    );
+    return computeBudgetParity(monthSpend, items).actualsMap;
+}
+
 // ---------------------------------------------------------------------------
 // [PH4-B] Répartition 50/30/20 — théorique (cibles) vs réel (dépenses).
 // ---------------------------------------------------------------------------

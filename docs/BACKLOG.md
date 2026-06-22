@@ -75,7 +75,12 @@
   règle unique `utils/budget.ts matchTransactionToCategory` (réels + tendances), section UI « Parité » (orphelins + postes jamais
   rapprochés). `totalSpent` préserve le « Total dépensé ». · meilleure répartition **envie/besoin** ✅ **FAIT (PH4-B, 2026-06-22)** :
   donut **réel** (dépenses rapprochées + épargne réelle) + table comparative **Réel · Cible · Idéal 50/30/20** (`computeGoldenSplit`,
-  écart coloré ±2 pts). · **objectif d'épargne** + vue **réel vs objectif** (PH4-C).
+  écart coloré ±2 pts). · **objectif d'épargne** + vue **réel vs objectif** ✅ **FAIT (PH4-C, 2026-06-22)** : `SavingsGoal.linkedBudgetCategoryName?`
+  (lien par NOM vers une catégorie budget) → « Accumulé / cible / **Versé ce mois** » (`monthlyActualsMap`, dépense réelle du mois) ;
+  lien éditable par objectif ; lien orphelin (catégorie renommée) → badge « ⚠ Lien invalide ». Migration : aucun code (champ optionnel additif).
+  - [ ] **[PH4C-SAVINGS-NATURE]** 🔧 LOW — lier un objectif à une catégorie de **nature « Épargne »** affiche « Versé ce mois : 0 » en
+    permanence (l'épargne est alimentée par VIREMENTS, exclus d'`actualsMap` comme dans la parité budget). Pistes : filtrer le dropdown
+    aux catégories non-épargne, OU inclure les virements rapprochés pour ces postes. Découvert par `financial-integrity` (PH4-C). Pas un bug $.
   - `BUDGET-KEY-WARNING` (découverte PH4-A, **pré-existant, hors scope**) : la page Budget émet des warnings React « two children
     with the same key, `value` » — c'est **Recharts** (les donuts `<Pie dataKey="value">` sans `nameKey`) ; mes listes (PH4-A/B) ont
     des clés uniques. Fix probable : ajouter `nameKey="name"` aux `<Pie>` (théo + réel). Non-fatal (warning, pas erreur).

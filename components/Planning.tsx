@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { logError } from '../services/errorLogger';
 import { Transaction, RecurringItem, SavingsGoal, BudgetConfig, BudgetCategory } from '../types';
 import { Card } from './ui/Card';
@@ -10,6 +10,8 @@ import { detectSubscriptionsAI } from '../services/claude';
 import { showToast } from './ui/Toast';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { formatCAD } from '../utils/format';
+import { useFinanceStore } from '../store/useFinanceStore';
+import { mergeSubscriptions, addSubscription, removeSubscription, isPinned, subscriptionKey } from '../utils/subscriptions';
 
 /** Icône ligne d'un abonnement selon le marchand (sobre, remplace les emoji). */
 const subIcon = (payee: string): IconName => {
@@ -21,6 +23,9 @@ const subIcon = (payee: string): IconName => {
     if (p.includes('loyer') || p.includes('hypoth')) return 'real-estate';
     return 'transactions';
 };
+
+// [PH4-F] référence stable pour le fallback (évite une nouvelle [] à chaque render → recompute du useMemo).
+const EMPTY_SUBS: RecurringItem[] = [];
 
 interface PlanningProps {
     transactions: Transaction[];
@@ -44,6 +49,9 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
     const [isAddingGoal, setIsAddingGoal] = useState(false);
     const [confirmDeleteGoalId, setConfirmDeleteGoalId] = useState<string | null>(null);
     const [newGoal, setNewGoal] = useState<Partial<SavingsGoal>>({ name: '', targetAmount: 0, currentAmount: 0, deadline: '', icon: '💰' });
+    // [PH4-F] abonnements ÉPINGLÉS (persistés dans le store) — survivent au reload sans re-détection IA.
+    const pinnedSubs = useFinanceStore(s => s.subscriptions) ?? EMPTY_SUBS;
+    const setAppState = useFinanceStore(s => s.setAppState);
 
     const heuristicSubs = useMemo(() => {
         const groups: Record<string, Transaction[]> = {};
@@ -78,7 +86,17 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
         return detected.sort((a, b) => b.averageAmount - a.averageAmount);
     }, [transactions]);
 
-    const activeSubs = aiSubs || heuristicSubs;
+    // [PH4-F] liste affichée = abos ÉPINGLÉS (persistés) + DÉTECTÉS non déjà épinglés (dédup par marchand).
+    const activeSubs = useMemo(() => mergeSubscriptions(pinnedSubs, aiSubs || heuristicSubs), [pinnedSubs, aiSubs, heuristicSubs]);
+
+    const handlePinSub = useCallback((sub: RecurringItem) => {
+        if (isPinned(pinnedSubs, sub)) return;
+        setAppState({ subscriptions: addSubscription(pinnedSubs, sub) });
+        showToast(`« ${sub.payee} » épinglé — il restera après actualisation.`, 'success');
+    }, [pinnedSubs, setAppState]);
+    const handleUnpinSub = useCallback((sub: RecurringItem) => {
+        setAppState({ subscriptions: removeSubscription(pinnedSubs, subscriptionKey(sub)) });
+    }, [pinnedSubs, setAppState]);
     const { totalMonthly, totalYearly } = useMemo(() => {
         const mTotal = activeSubs.reduce((acc, i) => acc + i.averageAmount, 0);
         const yTotal = mTotal * 12;
@@ -162,12 +180,20 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                     }>
                         <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
                             {activeSubs.map((sub, idx) => (
-                                <div key={idx} className="flex justify-between items-center p-3 bg-[#1a1a1a] rounded-xl border border-white/5 hover:border-white/20 transition-all group">
+                                <div key={subscriptionKey(sub) || idx} className="flex justify-between items-center p-3 bg-[#1a1a1a] rounded-xl border border-white/5 hover:border-white/20 transition-all group">
                                     <div className="flex items-center gap-3 overflow-hidden">
                                         <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shadow-inner flex-shrink-0"><Icon name={subIcon(sub.payee)} size={16} className="text-ink-300" /></div>
                                         <div className="min-w-0"><div className="font-bold text-white text-body truncate">{sub.payee}</div><div className="text-tiny text-ink-500">Le {sub.dayOfMonth} du mois</div></div>
                                     </div>
-                                    <div className="text-right flex-shrink-0"><PrivateAmount as="div" className="font-bold text-white">{formatCAD(sub.averageAmount)}</PrivateAmount><div className="text-tiny text-ink-500">/mois</div></div>
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                        {/* [PH4-F] épingler = persister l'abo (survit au reload sans re-détection IA) */}
+                                        {isPinned(pinnedSubs, sub) ? (
+                                            <button onClick={() => handleUnpinSub(sub)} aria-label={`Désépingler ${sub.payee}`} title="Épinglé — cliquer pour retirer" className="text-tiny font-bold text-primary hover:text-danger-400 px-2 py-1.5 rounded transition-colors">Épinglé</button>
+                                        ) : (
+                                            <button onClick={() => handlePinSub(sub)} aria-label={`Épingler ${sub.payee}`} title="Épingler — le garder après actualisation" className="text-tiny text-ink-500 hover:text-primary px-2 py-1.5 rounded transition-all opacity-0 group-hover:opacity-100 focus:opacity-100">Épingler</button>
+                                        )}
+                                        <div className="text-right"><PrivateAmount as="div" className="font-bold text-white">{formatCAD(sub.averageAmount)}</PrivateAmount><div className="text-tiny text-ink-500">/mois</div></div>
+                                    </div>
                                 </div>
                             ))}
                             {activeSubs.length === 0 && <div className="text-center text-ink-500 py-10">Aucun abonnement détecté.</div>}

@@ -30,10 +30,10 @@
 >
 > **📋 FILE D'ATTENTE (2026-06-19)** : Marc a demandé l'**ACC d'abord** (« fais le acc avant tout »). **✅ ACC COMPLET — Lots 0-5 FAITS**
 > (Lot 0 test ✓ · Lot 1 #379 capteur ✓ · Lot 2 #380 `/backlog` ✓ · Lot 3 #381 dashboard ✓ · Lot 4 #382 workflows ✓ · Lot 5 présence ✓).
-> **PROCHAINE SESSION** : ORDRE 1 (R1→R6) ✅ + **PH4-A/B/C ✅ + PH4-D ◑ (« Santé » dans Budget + `PH4D-WEIGHTS-STORE` ✅) + PH4-E ◑ (couple, auto-attribution)** → continuer
-> **ORDRE 2 = PH4 (RESTE)** : `PH4D-BUDGET-RATIOS` (BACKLOG, étend `HealthWeights` 4→6, maintenant que le store porte les poids) ;
-> `PH4E-OWNER-EDIT` (BACKLOG, sélecteur d'`ownerId` UI ; l'auto couvre le défaut) ; **PH4-F** (abonnements, **migration v7→v8 additive**,
-> ⚠️ **test de migration RED d'abord** — le SEUL vrai bump, le plus risqué). Plan-first par phase.
+> **PROCHAINE SESSION** : ORDRE 1 (R1→R6) ✅ + **PH4 quasi-COMPLET : A/B/C ✅ + D ◑ (Santé+poids store) + E ◑ (couple auto) + F ✅ (abos persistés)** → continuer
+> **ORDRE 2 = PH4 (RESTE, 2 follow-ups au BACKLOG)** : `PH4D-BUDGET-RATIOS` (étend `HealthWeights` 4→6 — ratios parité budget + couverture
+> abos, **maintenant débloqué** : le store porte les poids ET les abos `subscriptions`) ; `PH4E-OWNER-EDIT` (sélecteur d'`ownerId` UI ;
+> l'auto couvre le défaut). **ORDRE 3 = money-critical** (M1 dons / M2 ITEM-2C / M3 tables fiscales — panel + discriminant `git stash`). Plan-first par phase.
 > ⭐ **PATRON migration store ADDITIVE** (validé PH4-C + PH4D-WEIGHTS-STORE) : champ `optional` dans `AppState` (ne casse pas les fixtures),
 > valeur fournie à l'**état initial** du store, `partialize` allow-all-sauf-denylist le persiste AUTO, et le **`merge` Zustand par défaut**
 > (`{...current, ...persisted}`) GARDE la valeur initiale quand l'état persisté ne l'a pas → **AUCUN bump v7→v8** ni `migratePersistedState`.
@@ -43,6 +43,16 @@
 > ⚠️ **Quick-win découvert (BACKLOG `BUDGET-NATURE-FREEFORM`)** : les `TEST_BUDGET_ITEMS` ont des natures LIBRES (violent l'union typée)
 > → les 2 donuts 50/30/20 montrent **Besoins 0 %** pour les personas test (un vrai user a la dropdown typée → OK). Fix = aligner les
 > fixtures sur 'Besoin'/'Envie'/'Epargne' (PAS le groupement) ; relancer la SUITE COMPLÈTE après (tests à seuil keyés personas).
+>
+> **Session 2026-06-22 — PH4-F ✅ (abonnements persistés)** : `AppState.subscriptions?: RecurringItem[]` (réutilise `RecurringItem`).
+> **DÉCISION : ADDITIF SANS bump v7→v8** (le plan disait v7→v8, mais les abos n'étaient JAMAIS stockés — seulement détectés à la volée
+> par IA/heuristique → RIEN à migrer ; le pattern additif validé #397 prouve qu'un champ optionnel ne nécessite aucun bump ; plus SÛR =
+> zéro code de migration = zéro bug de migration). `utils/subscriptions.ts` (`subscriptionKey`/`isPinned`/`mergeSubscriptions`/`addSubscription`/
+> `removeSubscription`, purs, dédup par marchand). `Planning.tsx` lit le store + boutons Épingler/Désépingler (l'onglet « Charges fixes & Abos »
+> existait déjà, `section='fixed'`). **Test de migration RED écrit ET PROUVÉ** (retiré `subscriptions:[]` du store → test échoue « undefined ≠ [] »).
+> 13 tests (util + migration). Panel code-reviewer + silent-failure + financial-integrity (zéro double-comptage, dédup) + security-privacy (même
+> classe de sensibilité que `transactions`, chiffré au repos) APPROVE. Découverte routée BACKLOG : `PLANNING-ANNUAL-SUB-12X` (abo annuel ×12,
+> pré-existant). **PH4 : A/B/C ✅ + D ◑ + E ◑ + F ✅.**
 >
 > **Session 2026-06-22 — PH4-E ◑ (dépenses réelles par conjoint)** : `Transaction.ownerId?: 0|1` (additif) ; `utils/budget.ts`
 > `resolveTransactionOwner` (override `ownerId` gagne ; sinon AUTO par `BudgetCategory.type` : `Perso 1`→0, `Perso 2`→1, `Commun`→null)

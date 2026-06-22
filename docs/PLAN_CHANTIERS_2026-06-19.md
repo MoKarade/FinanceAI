@@ -139,8 +139,12 @@
   `computeActualByOwner` (`utils/budget.ts`, attribution AUTO par `BudgetCategory.type`, override par `ownerId`) ; `coupleAnalysis`
   expose `user1Actual/user2Actual/communActual` ; carte couple affiche « Perso réel » par conjoint. Conservation prouvée (financial-integrity).
   ⏳ RESTE : `PH4E-OWNER-EDIT` (BACKLOG) = sélecteur d'`ownerId` dans l'UI transactions (override manuel ; l'auto couvre le défaut). *Migration additive.*
-- **PH4-F** Abonnements persistés + dates : `SubscriptionItem[]` dans `AppState` ; **migration v7→v8 additive** (`subscriptions: []`) ;
-  confirmer un abo détecté (`Planning.tsx`) → persisté ; onglet « Charges fixes & Abos ». ⚠️ écrire le **test de migration d'abord (RED)**.
+- **PH4-F** ✅ (2026-06-22) Abonnements persistés : `AppState.subscriptions?: RecurringItem[]` (réutilise `RecurringItem`, pas de
+  `SubscriptionItem` séparé) ; **ADDITIF SANS bump v7→v8** (décision : les abos n'étaient JAMAIS stockés — détectés à la volée — donc
+  RIEN à migrer ; le pattern additif validé #397 prouve qu'un champ optionnel ne nécessite pas de bump ; plus sûr = zéro code de migration).
+  `utils/subscriptions.ts` (épingler/désépingler/fusionner, dédup par marchand) ; `Planning.tsx` boutons Épingler/Désépingler sur la liste
+  (l'onglet « Charges fixes & Abos » existait déjà, `section='fixed'`). **Test de migration RED écrit + prouvé** (store sans le champ → test échoue).
+  Panel code-reviewer + silent-failure + financial-integrity (zéro double-comptage) + security-privacy (même classe que `transactions`, chiffré) APPROVE.
 - Ordre : A→B→C ; F en parallèle ; D après A ; E en dernier.
 
 ---

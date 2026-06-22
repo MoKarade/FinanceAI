@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Épingle tes abonnements] — 2026-06-22
+
+### Tes abonnements restent, sans relancer l'analyse
+- **Tu peux maintenant « épingler » un abonnement détecté** (Netflix, Spotify, Hydro…) : il est **sauvegardé** et
+  réapparaît à chaque ouverture, sans avoir à relancer la détection IA. Survole un abonnement → bouton « Épingler » ;
+  un abo épinglé affiche « Épinglé » (clique pour le retirer). Les abos épinglés ont priorité sur une nouvelle
+  détection (ton montant confirmé prime). Aucun doublon : un même marchand = un seul abonnement.
+
+---
+
 ## [unreleased — Dépenses réelles par conjoint] — 2026-06-22
 
 ### En couple : qui a dépensé quoi, pour de vrai

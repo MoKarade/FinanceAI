@@ -691,6 +691,10 @@ export interface AppState {
    *  Migré de l'ancienne clé localStorage `healthIndicator:weights:v1` vers le store persisté. Optionnel (additif) :
    *  le store l'initialise toujours (`loadLegacyHealthWeights`), mais un vieil état persisté peut ne pas l'avoir → fallback. */
   healthWeights?: HealthWeights;
+  /** [PH4-F] Abonnements / charges fixes ÉPINGLÉS (persistés). Avant : les abos n'étaient que DÉTECTÉS à la volée
+   *  (IA/heuristique) et reperdus au reload. L'utilisateur en épingle un détecté → il rejoint cette liste persistée.
+   *  Optionnel (additif, PAS de bump v7→v8 : rien à migrer, le store l'initialise à `[]`). Réutilise `RecurringItem`. */
+  subscriptions?: RecurringItem[];
   debts: Debt[];
   travelGoals: TravelGoal[];
   lifeEvents: LifeEvent[];

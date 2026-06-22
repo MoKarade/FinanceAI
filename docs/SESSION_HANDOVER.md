@@ -30,8 +30,16 @@
 >
 > **📋 FILE D'ATTENTE (2026-06-19)** : Marc a demandé l'**ACC d'abord** (« fais le acc avant tout »). **✅ ACC COMPLET — Lots 0-5 FAITS**
 > (Lot 0 test ✓ · Lot 1 #379 capteur ✓ · Lot 2 #380 `/backlog` ✓ · Lot 3 #381 dashboard ✓ · Lot 4 #382 workflows ✓ · Lot 5 présence ✓).
-> **PROCHAINE SESSION : reprendre les chantiers autonomes** `docs/PLAN_CHANTIERS_2026-06-19.md` (R1 + R2 + R3 + R5 faits →
-> **reprendre R4** : boot-restore `loadLockedProjection` au mount + densité d'icônes proportionnelle ; puis R6 personas ; exécution PR par PR).
+> **PROCHAINE SESSION : reprendre les chantiers autonomes** `docs/PLAN_CHANTIERS_2026-06-19.md` (R1 + R2 + R3 + R4 + R5 faits →
+> **reprendre R6** : personas de test fonctionnels sur toutes les pages (`isActive` enfants + `setupOptOut`) ; puis ORDRE 2 = PH4 ; exécution PR par PR).
+>
+> **Session 2026-06-22 — R4 (boot-restore + densité) ✅ FAIT** : **R4-P1 (boot-restore)** était DÉJÀ en place (`App.tsx:72-96`,
+> PH2-d : `isProjectionLocked` persisté → `loadLockedProjection()` → `setLockedProjection` au mount, gère ok/unreadable/empty +
+> toast) → vérifié, zéro patch. **R4-P4 (densité)** : cap fixe d'icônes baissé **40/24 → 24/16** (`MAX_LIFE_ICONS`/`MAX_FLOW_ICONS`
+> dans `FutureProjection.tsx`) pour « dézoomé = peu d'icônes » ; le LOD « zoom = toutes » était déjà assuré (fenêtre zoomée < cap) ;
+> pinned (FIRE) jamais écrêté. ⚠️ **Formule du plan `(visMax−visMin)/6` REJETÉE** (à l'envers : aurait montré PLUS d'icônes dézoomé
+> et écrêté en zoom) → un cap FIXE plus bas est le correctif correct (décision Marc 2026-06-22 : baisse modérée). Aussi : `DEP-UNDICI`
+> planifié (PR #389 : 2 alertes Dependabot `undici` dev-dep → merger la PR Dependabot #366) ; ménage des 13 branches locales `[gone]`.
 >
 > **Session 2026-06-22 — R3 (tooltip figeable) ✅ IMPLÉMENTÉ** (blueprint suivi à la lettre, choix Marc « clic = fige ») :
 > clic sur le graphe Futur = FIGE l'infobulle (portail `createPortal` body, `position:fixed`, ancré/scrollable/interactif,

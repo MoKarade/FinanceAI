@@ -549,14 +549,20 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const step = Math.ceil(arr.length / cap);
         return arr.filter((_, i) => i % step === 0);
     };
+    // [R4] Cap de densité en vue dézoomée (décision Marc 2026-06-22 : 40/24 → 24/16) : la vue large
+    // reste « peu d'icônes » (échantillonnage uniforme) ; en zoomant, la fenêtre contient moins
+    // d'événements que le cap → tous affichés (« jusqu'à toutes »). Cap FIXE (densité écran ≈ constante),
+    // PAS proportionnel au span — un cap ∝ span ferait l'inverse (plus d'icônes dézoomé, moins en zoomant).
+    const MAX_LIFE_ICONS = 24;
+    const MAX_FLOW_ICONS = 16;
     // [R2] Les événements `pinned` (ex. pastille FIRE) ne sont JAMAIS écrêtés par l'échantillonnage : sinon, en
-    // vue dézoomée (> 40 événements), la pastille FIRE pouvait disparaître en silence (revue adversariale R2).
+    // vue dézoomée (au-delà du cap), la pastille FIRE pouvait disparaître en silence (revue adversariale R2).
     // pinned en FIN : rendus en dernier → dessinés AU-DESSUS (SVG painter) si un autre événement tombe le même mois.
     const shownLifeEvents = [
-        ...thinEvents(visibleLifeEvents.filter((e) => !e.pinned), 40),
+        ...thinEvents(visibleLifeEvents.filter((e) => !e.pinned), MAX_LIFE_ICONS),
         ...visibleLifeEvents.filter((e) => e.pinned),
     ];
-    const shownFlowEvents = thinEvents(visibleFlowEvents, 24);
+    const shownFlowEvents = thinEvents(visibleFlowEvents, MAX_FLOW_ICONS);
     const lastMonthIndex = chartData.length > 0 ? chartData[chartData.length - 1].monthIndex : 0;
     const idxForYears = (yrs: number) => {
         const i = chartData.findIndex((d: ProjectionChartPoint) => d.monthIndex >= yrs * 12);

@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Futur : courbe dézoomée plus épurée] — 2026-06-22
+
+### Moins d'icônes d'événements quand tu prends du recul
+- **En vue dézoomée (tout l'horizon), la courbe Futur affiche maintenant moins d'icônes d'événements** (un
+  échantillon représentatif), pour rester lisible. **En zoomant, elles réapparaissent progressivement jusqu'à toutes.**
+  Les jalons importants (comme 🔥 FIRE atteint) restent **toujours visibles**, à tous les niveaux de zoom.
+- La courbe **verrouillée** est déjà restaurée automatiquement au rechargement de la page (vérifié).
+
+---
+
 ## [unreleased — a11y : lisibilité des annotations (token de couleur)] — 2026-06-22
 
 ### Textes d'annotation au bon niveau de gris

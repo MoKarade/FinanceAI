@@ -11,6 +11,7 @@ import type { Transaction, BudgetConfig, BudgetCategory, SavingsGoal } from '../
 import { monthlyActualsMap } from '../../utils/budget';
 import { Budget } from '../Budget';
 import { Planning } from '../Planning';
+import { HealthIndicator } from '../dashboard/HealthIndicator';
 import { ProfileFieldsMoved } from '../settings/ProfileFieldsMoved';
 import { Icon, type IconName } from '../ui/Icon';
 
@@ -24,12 +25,13 @@ interface BudgetWorkspaceProps {
     setSavingsGoals: (goals: SavingsGoal[]) => void;
 }
 
-type SubTab = 'budget' | 'fixed' | 'goals';
+type SubTab = 'budget' | 'fixed' | 'goals' | 'sante';
 
 const SUB_TABS: ReadonlyArray<{ id: SubTab; label: string; icon: IconName }> = [
     { id: 'budget', label: 'Budget', icon: 'chart' },
     { id: 'fixed', label: 'Charges fixes & Abos', icon: 'clock' },
     { id: 'goals', label: 'Objectifs', icon: 'goal' },
+    { id: 'sante', label: 'Santé', icon: 'health' }, // [PH4-D] indicateur de santé financière ramené du Dashboard
 ];
 
 export const BudgetWorkspace: React.FC<BudgetWorkspaceProps> = ({
@@ -74,6 +76,9 @@ export const BudgetWorkspace: React.FC<BudgetWorkspaceProps> = ({
             )}
             {sub === 'goals' && (
                 <Planning section="goals" transactions={transactions} savingsGoals={savingsGoals} setSavingsGoals={setSavingsGoals} budgetItems={budgetItems} setBudgetItems={setBudgetItems} config={config} apiKey={apiKey} actualsMap={monthActualsMap} />
+            )}
+            {sub === 'sante' && (
+                <HealthIndicator />
             )}
         </div>
     );

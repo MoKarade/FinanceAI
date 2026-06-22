@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Santé financière regroupée dans Budget] — 2026-06-22
+
+### Ton indicateur de santé financière vit maintenant dans Budget
+- **L'indicateur de santé financière (le score 0-100 avec taux d'épargne, coussin, dette, FIRE) a quitté le Dashboard pour
+  l'onglet Budget**, dans un nouveau sous-onglet **« Santé »**. Il y est plus à sa place, à côté de ton budget et de tes objectifs.
+  Le calcul et les réglages de pondération sont identiques — c'est juste mieux rangé.
+
+---
+
 ## [unreleased — Objectifs : relie un objectif d'épargne à ton budget] — 2026-06-22
 
 ### « Versé ce mois » sur tes objectifs

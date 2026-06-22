@@ -19,7 +19,6 @@ import { MarketDataPoint } from '../services/finance';
 import { usePortfolioHistory } from '../hooks/usePortfolioHistory';
 import { ASSET_META } from '../services/assetMeta';
 import { useFinanceStore } from '../store/useFinanceStore';
-import { HealthIndicator } from './dashboard/HealthIndicator';
 import { StockComparisonModal } from './dashboard/StockComparisonModal';
 import { Tab as TabEnum } from '../types';
 import { formatCAD, formatPercent, formatSigned } from '../utils/format';
@@ -450,9 +449,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 />
             </StatGrid>
 
-            {/* Phase D.6 — Indicateur santé financière paramétrable (remplace
-                temporairement les anciens KPIs Cash/Saving/Dette retirés en D.5) */}
-            <HealthIndicator />
+            {/* [PH4-D] L'indicateur de santé financière a été DÉPLACÉ dans l'onglet Budget → sous-onglet « Santé »
+                (regroupement avec le budget, qui porte le contexte des ratios). */}
 
             {/* CHART */}
             <Card title={t('dashboard.detailed_evolution')} className="w-full min-h-[450px]"

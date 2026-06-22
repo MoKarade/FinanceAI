@@ -3,7 +3,7 @@
  *
  * Avec les fixtures Alex/Sam activées :
  * - Patrimoine total affiché sur le Dashboard et valeur > 0
- * - Coussin d'urgence (HealthIndicator) affiche un nombre de mois > 0
+ * - Coussin d'urgence (HealthIndicator, onglet Budget → sous-onglet « Santé » depuis PH4-D) affiche un nombre de mois > 0
  *
  * Ce test aurait attrapé le bug récent où le coussin restait à 0
  * (computeCurrentLiquidity non appelé, clés initialBalances incorrectes).
@@ -43,6 +43,10 @@ test.describe('KPI Dashboard — mode test (fixtures Alex/Sam)', () => {
   });
 
   test("coussin d'urgence affiche un nombre de mois > 0", async ({ page }) => {
+    // [PH4-D] HealthIndicator DÉPLACÉ : Dashboard → onglet Budget, sous-onglet « Santé ».
+    await page.goto('/#BUDGET');
+    await page.waitForLoadState('domcontentloaded');
+    await page.getByRole('tab', { name: 'Santé', exact: true }).click();
     // Attendre le composant HealthIndicator (titre "Santé financière")
     const titreHealth = page.locator('#main').getByText('Santé financière').first();
     await expect(titreHealth).toBeVisible({ timeout: 10_000 });

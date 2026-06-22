@@ -268,6 +268,12 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   périmé rend « classe absente » (count 0) à tort, m'a coûté un cycle de debug. Un build propre confirme la vraie
   génération (ex. `border-*-400/55` — l'opacité sur shade imbriqué FONCTIONNE ici). Le `commit-gate` build ne PROUVE
   pas qu'une classe se génère (build « réussi » même si une classe est silencieusement omise) → grep du CSS propre.
+  ⚠️ **Sœur : un SHADE hors de la palette = no-op SILENCIEUX** (leçon FIX-INK600-TOKEN 2026-06-22) : `text-ink-600`
+  était utilisé dans ~9 endroits alors que la palette `ink` (`tailwind.config.js`) s'arrête à **500** → aucune règle CSS
+  générée, le texte HÉRITE la couleur du parent (intention « atténué » perdue, contraste imprévisible, AUCUNE erreur de
+  build/lint). Avant d'écrire `text-<couleur>-<N>`, vérifier que `<N>` existe dans la palette (`ink` = 50→500 ; va du
+  CLAIR au foncé). Choisir le shade par MESURE (`npm run check-contrast`), pas au jugé : `ink-400` passe AA normal (≥4,5),
+  `ink-500` AA large seulement (3,4-4,2).
 
 ## Tests
 - Tests pour TOUTE nouvelle logique. Priorité `services/projection/`. Ne pas baisser la couverture.

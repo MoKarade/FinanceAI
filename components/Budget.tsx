@@ -16,7 +16,7 @@ import { Pill } from './ui/Pill';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { formatCAD, formatSigned, formatPercent } from '../utils/format';
-import { computeBudgetParity, matchTransactionToCategory, computeGoldenSplit, GOLDEN_IDEAL, type OrphanCategory } from '../utils/budget';
+import { computeBudgetParity, matchTransactionToCategory, computeGoldenSplit, GOLDEN_IDEAL, computeActualByOwner, type OrphanCategory } from '../utils/budget';
 import { DualKPIStat } from './budget/DualKPIStat';
 import { calculateFiscalReport } from '../utils/tax';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
@@ -132,7 +132,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     const _totalTaxDisplay = totalTaxMonthly * getMultiplier();
     const _totalGrossDisplay = totalGrossIncomeMonthly * getMultiplier();
 
-    const { actualsMap, totalSpent, trendMap, monthlyDataMap, orphanCategories, itemsWithoutTransactions } = useMemo(() => {
+    const { actualsMap, totalSpent, trendMap, monthlyDataMap, orphanCategories, itemsWithoutTransactions, actualByOwner } = useMemo(() => {
         const { start, end } = getDateRange();
         // Ensure end date includes the full day
         const endInclusive = new Date(end);
@@ -149,6 +149,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         // l'historique → un poste annuel rapproché une fois n'est pas « sans dépense »).
         const allSpend = transactions.filter(t => t.amount < 0 && !t.isTransfer && !t.isDuplicate);
         const parity = computeBudgetParity(filtered, budgetItems, allSpend);
+
+        // [PH4-E] Dépense RÉELLE par conjoint sur la fenêtre (auto par type de poste, override par ownerId).
+        const actualByOwner = computeActualByOwner(filtered, budgetItems);
 
         // Tendances 6 mois : MÊME règle de rapprochement que les réels (avant : nom
         // EXACT seul → un substring-match comptait dans le réel mais pas la tendance ;
@@ -188,6 +191,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             monthlyDataMap: detailedMonthly,
             orphanCategories: parity.orphanCategories,
             itemsWithoutTransactions: parity.itemsWithoutTransactions,
+            actualByOwner,
         };
     // getDateRange et now sont recréés à chaque render (fonctions locales) ; timeView, customStart,
     // customEnd couvrent déjà les paramètres de getDateRange — ajout explicite éviterait une boucle.
@@ -323,6 +327,11 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             user1Contribution, user2Contribution,
             user1ShareCommon, user2ShareCommon,
             user1Personal, user2Personal,
+            // [PH4-E] Dépense RÉELLE par conjoint (transactions auto-attribuées par type de poste,
+            // override par ownerId) — distincte du split PLANIFIÉ ci-dessus (cibles budgétées).
+            user1Actual: actualByOwner.owner0,
+            user2Actual: actualByOwner.owner1,
+            communActual: actualByOwner.commun,
             splitRatio1: ratio1,
             splitMode: config.splitMode,
             isSolo: !user2
@@ -331,8 +340,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // (timeView, inflationSim, customStart, customEnd, periodOffset) sont déjà listées explicitement.
     // periodOffset : getMultiplier→getDateRange en dépend → sans lui, les KPIs d'épargne couple
     // restaient figés sur la période courante en navigant vers le passé (cohérent avec le useMemo voisin).
+    // actualByOwner.* en SCALAIRES (pas l'objet) : `coupleAnalysis` ne se recalcule que si une valeur change,
+    // pas à chaque nouvelle réf de l'objet (le useMemo de parité en recrée un à chaque recalcul).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [config, usersIncome, budgetItems, timeView, inflationSim, customStart, customEnd, periodOffset]);
+    }, [config, usersIncome, budgetItems, timeView, inflationSim, customStart, customEnd, periodOffset, actualByOwner.owner0, actualByOwner.owner1, actualByOwner.commun]);
 
     const alerts = useMemo(() => {
         const list: string[] = [];
@@ -833,6 +844,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                 <div className="flex justify-between text-tiny text-ink-300 px-1">
                                     <div className="flex flex-col">
                                         <span>Sorties: <span className="text-white font-bold">{formatCAD(coupleAnalysis.user1Contribution)}</span></span>
+                                        {/* [PH4-E] dépense RÉELLE perso attribuée (vs « Sorties » = part PLANIFIÉE). Masqué en solo (toujours 0). */}
+                                        {!coupleAnalysis.isSolo && (
+                                            <span className="text-ink-400" title="Dépenses réelles attribuées à ce conjoint (postes Perso, override possible)">Perso réel: <span className="text-white font-semibold">{formatCAD(coupleAnalysis.user1Actual)}</span></span>
+                                        )}
                                     </div>
                                     <div className="flex flex-col items-end">
                                         <span>Épargne: <span className="text-green-400 font-bold">{formatCAD(coupleAnalysis.user1Savings)}</span></span>
@@ -864,6 +879,8 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     <div className="flex justify-between text-tiny text-ink-300 px-1">
                                         <div className="flex flex-col">
                                             <span>Sorties: <span className="text-white font-bold">{formatCAD(coupleAnalysis.user2Contribution)}</span></span>
+                                            {/* [PH4-E] dépense RÉELLE perso attribuée (vs « Sorties » = part PLANIFIÉE) */}
+                                            <span className="text-ink-400" title="Dépenses réelles attribuées à ce conjoint (postes Perso, override possible)">Perso réel: <span className="text-white font-semibold">{formatCAD(coupleAnalysis.user2Actual)}</span></span>
                                         </div>
                                         <div className="flex flex-col items-end">
                                             <span>Épargne: <span className="text-green-400 font-bold">{formatCAD(coupleAnalysis.user2Savings)}</span></span>

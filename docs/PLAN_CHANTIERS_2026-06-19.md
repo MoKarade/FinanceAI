@@ -135,9 +135,10 @@
   ⏳ RESTE (routé BACKLOG) : `PH4D-BUDGET-RATIOS` (ratios budgétaires parité/couverture abos = 2 nouvelles métriques couplées au
   budget, schéma poids 4→6). Scope réduit volontairement
   (slice sûre) vu la longueur de session ; le composant lui-même est INCHANGÉ. Dépend de A.
-- **PH4-E** Couple — sorties par conjoint : `Transaction.ownerId?: 0|1` (`types.ts:16`) ; colonne « Conjoint » en mode couple ;
-  **attribution auto par défaut selon `BudgetCategory.type`** (Perso 1→user0…), éditable ; `Budget.tsx coupleAnalysis` ~263 calcule
-  le réel par conjoint. *Migration additive.*
+- **PH4-E** ◑ Couple — sorties par conjoint : ✅ (2026-06-22) `Transaction.ownerId?: 0|1` additif ; `resolveTransactionOwner` +
+  `computeActualByOwner` (`utils/budget.ts`, attribution AUTO par `BudgetCategory.type`, override par `ownerId`) ; `coupleAnalysis`
+  expose `user1Actual/user2Actual/communActual` ; carte couple affiche « Perso réel » par conjoint. Conservation prouvée (financial-integrity).
+  ⏳ RESTE : `PH4E-OWNER-EDIT` (BACKLOG) = sélecteur d'`ownerId` dans l'UI transactions (override manuel ; l'auto couvre le défaut). *Migration additive.*
 - **PH4-F** Abonnements persistés + dates : `SubscriptionItem[]` dans `AppState` ; **migration v7→v8 additive** (`subscriptions: []`) ;
   confirmer un abo détecté (`Planning.tsx`) → persisté ; onglet « Charges fixes & Abos ». ⚠️ écrire le **test de migration d'abord (RED)**.
 - Ordre : A→B→C ; F en parallèle ; D après A ; E en dernier.

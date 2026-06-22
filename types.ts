@@ -13,6 +13,10 @@ export interface Transaction {
   confidence?: number;
   isAiProcessed?: boolean;
   isVerified?: boolean;
+  /** [PH4-E] Conjoint propriétaire de la dépense en mode couple : 0 = user[0], 1 = user[1].
+   *  Optionnel (additif) — `undefined` = attribution AUTO par le type du poste budget (`Perso 1`→0,
+   *  `Perso 2`→1, `Commun`→aucun). Une valeur explicite est un OVERRIDE manuel. Voir `resolveTransactionOwner`. */
+  ownerId?: 0 | 1;
 }
 
 // Phase E.8 — DCA multi-achat : un seul achat (dateBought + buyPrice) ne suffit

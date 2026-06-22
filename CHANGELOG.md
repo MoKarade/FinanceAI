@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Mode test : tous les personas explorables sur toutes les pages] — 2026-06-22
+
+### Chaque persona de démo ouvre toutes les pages
+- **En mode test, les 7 personas de démonstration n'affichent plus d'écran « configure d'abord »** sur les pages
+  pilotées par les données (Futur, Investissements, Immobilier, Enfant, Dettes, Projets…). Chaque persona déclare
+  explicitement ce qui ne le concerne pas (« pas de projet immobilier », « pas d'enfant »…) ou contient une donnée
+  minimale, pour qu'on puisse explorer toute l'app directement. (Les pages IA restent en attente d'une clé API, normal.)
+- Purement des données de démo (mode test) — aucun impact sur l'app réelle.
+
+---
+
 ## [unreleased — Futur : courbe dézoomée plus épurée] — 2026-06-22
 
 ### Moins d'icônes d'événements quand tu prends du recul

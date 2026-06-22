@@ -89,6 +89,8 @@ export function buildKarimImmigre(): Partial<AppState> {
         financialGoals: [
             { id: 'kar-fg1', name: 'Indépendance financière (1 M$)', target: 1000000, current: 68000, accountType: 'NON-ENREG', deadline: '2042-12-31' },
         ] as unknown as AppState['financialGoals'],
+        // [R6] Aucune dette / projet immo / enfant → opt-out explicite pour que ces pages n'affichent pas de PageSetupGate.
+        setupOptOut: { debts: true, realEstate: true, children: true },
         ...emptyCollections(),
     };
 }

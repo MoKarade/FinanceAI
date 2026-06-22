@@ -19,7 +19,7 @@ export const TEST_CHILD_GOALS: ChildGoal[] = [
         daycareType: 'cpe', schoolType: 'publique', activitiesLevel: 'legeres',
         universityType: 'uni_local', carGift: 'usagee',
         monthlyDiapers: 120, monthlyFood: 200, monthlyClothing: 80,
-        respContribution: 2500, governmentBenefits: 450, initialCost: 2800,
+        respContribution: 2500, governmentBenefits: 450, initialCost: 2800, isActive: true,
     } as unknown as ChildGoal,
 ];
 

@@ -30,8 +30,18 @@
 >
 > **📋 FILE D'ATTENTE (2026-06-19)** : Marc a demandé l'**ACC d'abord** (« fais le acc avant tout »). **✅ ACC COMPLET — Lots 0-5 FAITS**
 > (Lot 0 test ✓ · Lot 1 #379 capteur ✓ · Lot 2 #380 `/backlog` ✓ · Lot 3 #381 dashboard ✓ · Lot 4 #382 workflows ✓ · Lot 5 présence ✓).
-> **PROCHAINE SESSION : reprendre les chantiers autonomes** `docs/PLAN_CHANTIERS_2026-06-19.md` (R1 + R2 + R3 + R4 + R5 faits →
-> **reprendre R6** : personas de test fonctionnels sur toutes les pages (`isActive` enfants + `setupOptOut`) ; puis ORDRE 2 = PH4 ; exécution PR par PR).
+> **PROCHAINE SESSION** : **✅ ORDRE 1 COMPLET (R1→R6)** dans `docs/PLAN_CHANTIERS_2026-06-19.md` → attaquer **ORDRE 2 = PH4**
+> (Budget & co, 6 phases A→F ; A→B→C, F en //, D après A, E en dernier ; plan-first par phase, migration v7→v8 pour PH4-F).
+> Money-critical (M1 dons / M2 ITEM-2C / M3 tables fiscales) = ORDRE 3 (panel + discriminant obligatoires).
+>
+> **Session 2026-06-22 — R6 (personas de test) ✅ FAIT** : tous les personas ouvrent désormais toutes les pages data (aucune
+> `PageSetupGate`). `isActive:true` sur les childGoals (coupleConfort via `TEST_CHILD_GOALS`, autonomeMono) ; `setupOptOut` par
+> persona (karim/preRetraite `{debts,realEstate,children}`, jeuneCoupleDink `{children}`, autonomeMono `{realEstate}`,
+> lea/coupleDettes `{realEstate,children,lifeProjects}`) + **micro-actif CELI** (lea/coupleDettes, prérequis `assets` non opt-outable).
+> Garde-fou `tests/components/setup/personaGates.test.ts` (7 personas × pages data via source unique `PAGE_SETUP`+`REQUIREMENTS`).
+> Actions/Assistant restent gated = clé API (par design). ⚠️ Découverte pré-existante `PERSONA-ASSET-PERF` (BACKLOG) : les actifs
+> de tous les personas omettent `performance`/`currency` (cast `as unknown as Asset[]`) → `AiAssistant` rend `+undefined%` en test
+> avec clé. Aussi ce jour : `DEP-UNDICI` résolu (PR Dependabot #366 mergée → 0 alerte), ménage des branches locales.
 >
 > **Session 2026-06-22 — R4 (boot-restore + densité) ✅ FAIT** : **R4-P1 (boot-restore)** était DÉJÀ en place (`App.tsx:72-96`,
 > PH2-d : `isProjectionLocked` persisté → `loadLockedProjection()` → `setLockedProjection` au mount, gère ok/unreadable/empty +

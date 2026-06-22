@@ -541,7 +541,10 @@
 - [ ] **[PERF-MISSINGDATA]** 🔧 — `MissingDataBanner.tsx:209` : selecteur atomique (`useShallow`) pour eviter les re-renders pendant le calcul MC.
 
 ### Securite (deja connu / Marc)
-- [ ] **[SECU-O4]** 👤 — avant hebergement multi-utilisateurs : proxy backend pour la cle Anthropic (retirer `dangerouslyAllowBrowser`) + Finnhub en header serveur. Cf `A_FAIRE_MOI` O4.
+- [ ] **[DEP-UNDICI]** 🟠 dépendances (planifié 2026-06-22) — 2 alertes Dependabot sur **`undici`** (transitive, **scope `development`** via `package-lock.json`) : `GHSA-vmh5-mc38-953g` **HIGH** (bypass validation cert TLS via SOCKS5 ProxyAgent) + `GHSA-pr7r-676h-xcf6` **MEDIUM** (fuite d'info inter-utilisateurs via cache). **Plage vulnérable** `>= 7.0.0, < 7.28.0` ; **fix = 7.28.0**.
+  - **Risque réel FAIBLE** : dev-only (jamais bundlé en prod ; pas de ProxyAgent SOCKS5 ni de cache HTTP partagé dans notre usage) — mais à patcher pour vider les alertes.
+  - **Action = merger la PR Dependabot existante** [#366](https://github.com/MoKarade/FinanceAI/pull/366) (`build(deps-dev): bump undici 7.25.0→7.28.0`) une fois la CI verte → ferme les 2 alertes. Pur lockfile, zéro code.
+  - **Cadence** (cf `rules/toolkit/dependency-management.md`) : revue Dependabot hebdo, patchs HIGH ≤ 7 j. Décision Marc : merger #366 maintenant ou l'inclure dans la prochaine revue de deps.
 - [x] **[BACKUP-PASSPHRASE]** ✅ LOW (2026-06-17) — `BackupPanel.tsx` : TOUS les seuils (export/import, label, boutons) alignés sur `MIN_PASSPHRASE_LENGTH` (12, importé de `syncOrchestrator` comme `PassphraseGate`). Fin de l'incohérence export-12/import-8 (l'import acceptait des passphrases de 8).
 
 ---

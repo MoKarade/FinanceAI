@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Tes réglages de santé suivent tes appareils] — 2026-06-22
+
+### Les pondérations de l'indicateur de santé sont sauvegardées avec le reste
+- **Les poids que tu donnes à chaque ratio de santé (épargne, coussin, dette, FIRE) sont maintenant rangés avec le reste
+  de tes données** (au lieu d'un coin de stockage local au navigateur). Concrètement : ils **suivent tes appareils** via la
+  sync, et survivent proprement à un nettoyage. Tes réglages existants sont récupérés automatiquement (rien à refaire).
+
+---
+
 ## [unreleased — Santé financière regroupée dans Budget] — 2026-06-22
 
 ### Ton indicateur de santé financière vit maintenant dans Budget

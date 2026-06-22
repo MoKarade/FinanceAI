@@ -527,6 +527,14 @@ export interface SavingsGoal {
   linkedBudgetCategoryName?: string;
 }
 
+/** [PH4D-WEIGHTS-STORE] Pondérations des 4 ratios de l'indicateur de santé financière (`HealthIndicator`). */
+export interface HealthWeights {
+  savingsRate: number;
+  emergencyFund: number;
+  debtRatio: number;
+  fireProgress: number;
+}
+
 export interface Debt {
   id: string;
   name: string;
@@ -675,6 +683,10 @@ export interface AppState {
   childGoal?: ChildGoal;
   childGoals: ChildGoal[];
   savingsGoals: SavingsGoal[];
+  /** [PH4D-WEIGHTS-STORE] Pondérations de l'indicateur de santé financière (somme libre, normalisée à l'affichage).
+   *  Migré de l'ancienne clé localStorage `healthIndicator:weights:v1` vers le store persisté. Optionnel (additif) :
+   *  le store l'initialise toujours (`loadLegacyHealthWeights`), mais un vieil état persisté peut ne pas l'avoir → fallback. */
+  healthWeights?: HealthWeights;
   debts: Debt[];
   travelGoals: TravelGoal[];
   lifeEvents: LifeEvent[];

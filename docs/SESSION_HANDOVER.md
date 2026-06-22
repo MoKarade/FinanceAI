@@ -46,7 +46,7 @@
 > `ink-400`, cible tactile 44px). ⚠️ **Leçons** (cf CLAUDE.md) : le preview headless rend `window` 0×0 → Recharts (ResizeObserver) ne
 > dessine PAS le SVG → vérifier l'interaction graphe par e2e (vrai viewport Chromium), pas par le preview. Le graphe Futur est GATED
 > derrière le bouton « vois directement ta projection actuelle (sans optimiser) » → l'e2e doit le cliquer d'abord. Follow-ups routés
-> BACKLOG (`A11Y-CHART-KEYBOARD`, `FIX-INK600-TOKEN`) : accès CLAVIER du graphe (préexistant, mitigé sr-only `ChartDataTable`) + token `text-ink-600` invalide repo-wide (~10 fichiers).
+> BACKLOG : `FIX-INK600-TOKEN` ✅ **FAIT (2026-06-22, PR séparée)** — `text-ink-600` (hors palette) → `ink-400` sur 9 usages/7 fichiers (AA normal mesuré). Reste `A11Y-CHART-KEYBOARD` : accès CLAVIER du graphe (préexistant, mitigé sr-only `ChartDataTable`).
 >
 > **Session 2026-06-19 — R1 (LABEL-NW-SUCCESSORAL) ✅ — 1ᵉʳ chantier autonome** : libellé trompeur « Patrimoine projeté »
 > (qui affichait en fait `estateNetWorth`) renommé **« Patrimoine successoral, avec rentes »** + **tooltip** (nouveau prop

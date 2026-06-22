@@ -623,7 +623,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                             </PrivateAmount>
                                         </div>
                                     ) : (
-                                        <div className="text-tiny mt-0.5 text-ink-600 italic">
+                                        <div className="text-tiny mt-0.5 text-ink-400 italic">
                                             Date/prix d'achat manquant ·{' '}
                                             <button
                                                 type="button"

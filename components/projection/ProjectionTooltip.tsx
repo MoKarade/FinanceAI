@@ -133,7 +133,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                             Rendement {totalGain > 0 ? '+' : ''}{fmt(totalGain)}$
                         </PrivateAmount>
                     </div>
-                    <div className="text-[10px] text-ink-600 text-center mt-1">Dépôts = ce que tu ajoutes · Rendement = ce que le marché rapporte</div>
+                    <div className="text-[10px] text-ink-400 text-center mt-1">Dépôts = ce que tu ajoutes · Rendement = ce que le marché rapporte</div>
                 </div>
             )}
 

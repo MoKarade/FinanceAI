@@ -97,12 +97,14 @@
 - `components/settings/UserConfigFields.tsx:162-163` : retirer le `<select>` + l'import.
 - **Pas de migration** (politique PH3-c : données résiduelles persistées ignorées). DoD : `grep industry` (hors marketData) = 0.
 
-### R6 · Personas de test — tous fonctionnels sur toutes les pages
-- Cause des gates : `isActive` manquant sur objectifs enfants + `setupOptOut` non setté.
-- (1) `services/testGoals.ts:20` + `testPersonas/autonomeMonoparentale.ts:68` → `isActive: true`.
-- (2) **Option A (choix Marc « tous critères cochés »)** : pour lea-fauchee/couple-dettes/karim/pre-retraite → setter
-  `setupOptOut` (debts/realEstate/children/lifeProjects selon le cas) + micro-actif CELI symbolique pour ouvrir Futur/Investissements.
-- DoD : chaque persona, une fois activé, n'affiche AUCUNE `PageSetupGate`. Pas de migration. (Réf : `components/setup/requirements.ts`.)
+### R6 · Personas de test — tous fonctionnels sur toutes les pages — ✅ FAIT (2026-06-22)
+- (1) `isActive: true` ajouté : `TEST_CHILD_GOALS` (testGoals.ts, coupleConfort) + childGoal d'`autonomeMonoparentale`.
+- (2) `setupOptOut` setté par persona (selon le profil réel) : karim/preRetraite `{debts,realEstate,children}`,
+  jeuneCoupleDink `{children}`, autonomeMono `{realEstate}`, lea/coupleDettes `{realEstate,children,lifeProjects}`
+  + **micro-actif CELI** (1 part VFV.TO, `Asset` complet) pour lea/coupleDettes (prérequis `assets` non opt-outable → ouvre Futur/Investissements).
+- ⚠️ Le plan listait 4 personas pour optOut ; le DoD en exigeait **6** (+ jeuneCoupleDink/autonomeMono) → étendu.
+- **DoD prouvé** par un garde-fou : `tests/components/setup/personaGates.test.ts` (chaque persona × chaque page data = met OU opt-out, via la source unique `PAGE_SETUP`+`REQUIREMENTS`). Actions/Assistant restent gated = clé API (par design, hors scope).
+- Découverte (pré-existante, hors scope) : les actifs de TOUS les personas omettent `performance`/`currency` (cast `as unknown as Asset[]`) → `AiAssistant` rend `+undefined%` en mode test avec clé → `PERSONA-ASSET-PERF` au BACKLOG.
 
 ---
 

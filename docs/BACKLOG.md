@@ -77,6 +77,13 @@
   comme argent.
 - **Abonnements** : les voir (peut-être un onglet dédié avec les **dates** d'abonnement).
 - **Personas de test** : tous retravaillés pour **marcher sur TOUTES les pages** (tous les critères cochés).
+  ✅ **FAIT (R6, 2026-06-22)** : `isActive:true` sur les childGoals (coupleConfort/autonomeMono) + `setupOptOut` par persona
+  (6 personas) + micro-actif CELI (lea/coupleDettes). Garde-fou `tests/components/setup/personaGates.test.ts` (7 personas ×
+  pages data, source unique `PAGE_SETUP`+`REQUIREMENTS`). Actions/Assistant restent gated = clé API (par design).
+  - `PERSONA-ASSET-PERF` (découverte R6, **pré-existant, hors scope**) : les actifs de TOUS les personas omettent
+    `performance`/`currency` (le type `Asset` les exige, mais `TEST_ASSETS` + les inline trichent via `as unknown as Asset[]`)
+    → `AiAssistant.tsx:83` rend `+undefined%` + tri NaN en mode test AVEC clé API. Fix propre = garder `(a.performance ?? 0)`
+    côté AiAssistant et/ou compléter les actifs des personas. (Mes 2 micro-actifs R6 sont déjà complets.)
 
 ### Plan — `ITEM-2C` (gates de timing par conjoint, money-critical)
 - **Problème** : FERR 72 / reset REER 71 / bonus PSV 75+ sont bloqués par un pool REER MÉNAGE + un âge principal

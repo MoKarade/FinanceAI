@@ -87,6 +87,11 @@
   - [ ] **[PH4D-BUDGET-RATIOS]** 🔧 MEDIUM — reste de PH4-D : ajouter à l'`HealthIndicator` 2 ratios **budgétaires** (parité budget
     via `computeBudgetParity` ; couverture des abonnements) → couple le composant aux données Budget (passer `actualsMap`/abos en props,
     étendre le schéma `Weights` 4→6). Fait après `PH4D-WEIGHTS-STORE` (le schéma de poids change).
+  - [ ] **[PH4E-OWNER-EDIT]** 🔧 LOW — reste de PH4-E : **sélecteur d'`ownerId` dans l'UI transactions** (override manuel de
+    l'attribution couple). Le champ `Transaction.ownerId?` + la résolution (`resolveTransactionOwner` : override explicite gagne) sont
+    déjà câblés/testés ; il manque le contrôle UI (par ex. un toggle Conjoint 1/2 par ligne en mode couple) pour SETTER `ownerId`.
+    L'attribution AUTO (par type de poste) couvre le défaut. Note panel : ajouter une garde `amount < 0` interne à `computeActualByOwner`
+    si elle est réutilisée hors du site d'appel filtré (sinon un revenu mal passé tomberait silencieusement en `commun`).
   - `BUDGET-KEY-WARNING` (découverte PH4-A, **pré-existant, hors scope**) : la page Budget émet des warnings React « two children
     with the same key, `value` » — c'est **Recharts** (les donuts `<Pie dataKey="value">` sans `nameKey`) ; mes listes (PH4-A/B) ont
     des clés uniques. Fix probable : ajouter `nameKey="name"` aux `<Pie>` (théo + réel). Non-fatal (warning, pas erreur).

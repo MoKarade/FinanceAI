@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchTransactionToCategory, computeBudgetParity, computeGoldenSplit, GOLDEN_IDEAL } from '../../utils/budget';
+import { matchTransactionToCategory, computeBudgetParity, computeGoldenSplit, GOLDEN_IDEAL, resolveTransactionOwner, computeActualByOwner } from '../../utils/budget';
 import type { BudgetCategory, Transaction } from '../../types';
 
 const cat = (name: string, nature: BudgetCategory['nature'] = 'Besoin'): BudgetCategory =>
@@ -144,5 +144,57 @@ describe('computeGoldenSplit — répartition 50/30/20 (PH4-B)', () => {
         expect(g.envies).toBe(0);
         expect(g.epargne).toBe(500);
         expect(g.total).toBe(500);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// [PH4-E] Attribution par conjoint
+// ---------------------------------------------------------------------------
+
+const catT = (name: string, type: BudgetCategory['type']): BudgetCategory =>
+    ({ id: name, name, target: 100, frequency: 'Monthly', nature: 'Besoin', type } as unknown as BudgetCategory);
+
+const OWNER_ITEMS = [catT('Resto Bob', 'Perso 1'), catT('Coiffeur Alice', 'Perso 2'), catT('Épicerie', 'Commun')];
+
+describe('resolveTransactionOwner — [PH4-E]', () => {
+    it('ownerId explicite (0|1) = OVERRIDE manuel, gagne sur le type du poste', () => {
+        // catégorie Perso 1 (→0) mais override explicite à 1.
+        expect(resolveTransactionOwner({ ownerId: 1, category: 'Resto Bob' }, OWNER_ITEMS)).toBe(1);
+        expect(resolveTransactionOwner({ ownerId: 0, category: 'Coiffeur Alice' }, OWNER_ITEMS)).toBe(0);
+    });
+
+    it('AUTO : Perso 1 → 0, Perso 2 → 1', () => {
+        expect(resolveTransactionOwner({ category: 'Resto Bob' }, OWNER_ITEMS)).toBe(0);
+        expect(resolveTransactionOwner({ category: 'Coiffeur Alice' }, OWNER_ITEMS)).toBe(1);
+    });
+
+    it('Commun → null (dépense partagée, non imputée à un seul conjoint)', () => {
+        expect(resolveTransactionOwner({ category: 'Épicerie' }, OWNER_ITEMS)).toBeNull();
+    });
+
+    it('catégorie orpheline (aucun poste) → null', () => {
+        expect(resolveTransactionOwner({ category: 'Inconnu' }, OWNER_ITEMS)).toBeNull();
+    });
+});
+
+describe('computeActualByOwner — [PH4-E]', () => {
+    it('agrège le réel par conjoint (valeur absolue) ; Commun/orphelin → commun', () => {
+        const txs = [
+            tx({ amount: -40, category: 'Resto Bob' }),     // → owner0
+            tx({ amount: -10, category: 'Resto Bob' }),     // → owner0
+            tx({ amount: -30, category: 'Coiffeur Alice' }),// → owner1
+            tx({ amount: -25, category: 'Épicerie' }),      // → commun
+            tx({ amount: -15, category: 'Inconnu' }),       // → commun (orphelin)
+        ];
+        expect(computeActualByOwner(txs, OWNER_ITEMS)).toEqual({ owner0: 50, owner1: 30, commun: 40 });
+    });
+
+    it('un override ownerId déplace la dépense vers l\'autre conjoint', () => {
+        const txs = [tx({ amount: -100, category: 'Resto Bob', ownerId: 1 })]; // Perso 1 (→0) mais override 1
+        expect(computeActualByOwner(txs, OWNER_ITEMS)).toEqual({ owner0: 0, owner1: 100, commun: 0 });
+    });
+
+    it('lot vide → tout à zéro (pas de NaN)', () => {
+        expect(computeActualByOwner([], OWNER_ITEMS)).toEqual({ owner0: 0, owner1: 0, commun: 0 });
     });
 });

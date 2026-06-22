@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Dépenses réelles par conjoint] — 2026-06-22
+
+### En couple : qui a dépensé quoi, pour de vrai
+- **La carte « Santé Financière du Couple » montre maintenant le « Perso réel » de chaque conjoint** : les dépenses
+  réellement attribuées à l'un ou à l'autre, à côté de la part *planifiée* (« Sorties »). L'attribution est **automatique**
+  par défaut (un poste « Perso 1 » va au 1ᵉʳ conjoint, « Perso 2 » au 2ᵉ ; les postes « Commun » restent partagés). Tu vois
+  ainsi l'écart entre le budget prévu par personne et ce qui est réellement sorti.
+
+---
+
 ## [unreleased — Santé financière regroupée dans Budget] — 2026-06-22
 
 ### Ton indicateur de santé financière vit maintenant dans Budget

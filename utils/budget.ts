@@ -157,3 +157,55 @@ export function computeGoldenSplit(besoins: number, envies: number, epargne: num
         : { besoins: 0, envies: 0, epargne: 0 };
     return { besoins: b, envies: e, epargne: s, total, pct };
 }
+
+// ---------------------------------------------------------------------------
+// [PH4-E] Attribution des dépenses par conjoint (mode couple).
+// ---------------------------------------------------------------------------
+
+/**
+ * Résout le conjoint propriétaire d'une dépense. Règle :
+ *  1. `tx.ownerId` explicite (0|1) = OVERRIDE manuel → gagne toujours.
+ *  2. sinon AUTO par le type du poste budget rapproché : `Perso 1`→0, `Perso 2`→1.
+ *  3. `Commun` ou poste introuvable → `null` (dépense partagée, non imputée à un seul conjoint).
+ * Pur, réutilise la règle de rapprochement unique (`matchTransactionToCategory`) → cohérent avec la parité.
+ */
+export function resolveTransactionOwner(
+    tx: Pick<Transaction, 'ownerId' | 'category'>,
+    items: readonly BudgetCategory[],
+): 0 | 1 | null {
+    if (tx.ownerId === 0 || tx.ownerId === 1) return tx.ownerId;
+    const cat = matchTransactionToCategory(tx.category, items);
+    if (cat?.type === 'Perso 1') return 0;
+    if (cat?.type === 'Perso 2') return 1;
+    return null;
+}
+
+export interface ActualByOwner {
+    /** Dépense réelle (valeur absolue) imputée au conjoint 0. */
+    owner0: number;
+    /** Dépense réelle imputée au conjoint 1. */
+    owner1: number;
+    /** Dépense réelle commune / non imputée à un seul conjoint (`Commun` ou orpheline). */
+    commun: number;
+}
+
+/**
+ * Agrège les dépenses RÉELLES par conjoint sur un lot de transactions de dépense
+ * (montant < 0 déjà filtré côté appelant). Pur, testable. Somme en valeur absolue.
+ */
+export function computeActualByOwner(
+    spendTransactions: readonly Transaction[],
+    items: readonly BudgetCategory[],
+): ActualByOwner {
+    let owner0 = 0;
+    let owner1 = 0;
+    let commun = 0;
+    for (const t of spendTransactions) {
+        const amount = Math.abs(t.amount);
+        const owner = resolveTransactionOwner(t, items);
+        if (owner === 0) owner0 += amount;
+        else if (owner === 1) owner1 += amount;
+        else commun += amount;
+    }
+    return { owner0, owner1, commun };
+}

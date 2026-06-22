@@ -38,6 +38,14 @@
 > → les 2 donuts 50/30/20 montrent **Besoins 0 %** pour les personas test (un vrai user a la dropdown typée → OK). Fix = aligner les
 > fixtures sur 'Besoin'/'Envie'/'Epargne' (PAS le groupement) ; relancer la SUITE COMPLÈTE après (tests à seuil keyés personas).
 >
+> **Session 2026-06-22 — PH4-E ◑ (dépenses réelles par conjoint)** : `Transaction.ownerId?: 0|1` (additif) ; `utils/budget.ts`
+> `resolveTransactionOwner` (override `ownerId` gagne ; sinon AUTO par `BudgetCategory.type` : `Perso 1`→0, `Perso 2`→1, `Commun`→null)
+> + `computeActualByOwner` (réel par conjoint, purs, réutilisent `matchTransactionToCategory`). `Budget.tsx` : `actualByOwner` dans le
+> useMemo de parité → `coupleAnalysis` (`user1Actual/user2Actual/communActual`) → carte couple « Perso réel » (masqué en solo). 7 tests
+> (4 resolve + 3 compute). Panel financial-integrity (**conservation prouvée** : owner0+owner1+commun == totalSpent, seaux disjoints) +
+> code-reviewer + silent-failure APPROVE. **Scope** : auto-attribution + affichage ✅ ; **override éditable dans l'UI transactions → BACKLOG
+> `PH4E-OWNER-EDIT`** (l'auto couvre le défaut). **PH4 : A/B/C ✅ + D ◑ + E ◑.** (⚠️ bandeau FILE D'ATTENTE à reconcilier avec #397 PH4D-WEIGHTS-STORE.)
+>
 > **Session 2026-06-22 — PH4-D ◑ PARTIEL (« Santé » ramené dans Budget)** : l'`HealthIndicator` (composant INCHANGÉ) est DÉPLACÉ
 > du Dashboard vers un nouveau sous-onglet **« Santé »** de `BudgetWorkspace` (`Dashboard.tsx` : render + import retirés ; `BudgetWorkspace.tsx` :
 > sous-onglet 'sante' icône `health`). **e2e `kpi.spec.ts` MIS À JOUR** (test #2 navigue Budget→Santé au lieu du Dashboard — sinon CI rouge ;

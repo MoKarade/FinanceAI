@@ -30,13 +30,20 @@
 >
 > **📋 FILE D'ATTENTE (2026-06-19)** : Marc a demandé l'**ACC d'abord** (« fais le acc avant tout »). **✅ ACC COMPLET — Lots 0-5 FAITS**
 > (Lot 0 test ✓ · Lot 1 #379 capteur ✓ · Lot 2 #380 `/backlog` ✓ · Lot 3 #381 dashboard ✓ · Lot 4 #382 workflows ✓ · Lot 5 présence ✓).
-> **PROCHAINE SESSION** : ORDRE 1 (R1→R6) ✅ + **PH4-A ✅ + PH4-B ✅ + PH4-C ✅** → continuer **ORDRE 2 = PH4** :
-> **PH4-F** (abonnements, **migration v7→v8 additive**, ⚠️ **test de migration RED d'abord**) en // — ou **PH4-D** (santé, ramener
-> `HealthIndicator` dans Budget, dépend de A), **PH4-E** (couple, `Transaction.ownerId?`, migration additive) en dernier. Plan-first par phase.
+> **PROCHAINE SESSION** : ORDRE 1 (R1→R6) ✅ + **PH4-A/B/C ✅ + PH4-D ◑ partiel (« Santé » ramené dans Budget)** → continuer
+> **ORDRE 2 = PH4** : reste de PH4-D au BACKLOG (`PH4D-WEIGHTS-STORE` additif, `PH4D-BUDGET-RATIOS`) ; **PH4-F** (abonnements,
+> **migration v7→v8 additive**, ⚠️ **test de migration RED d'abord**) ; **PH4-E** (couple, `Transaction.ownerId?`, migration additive). Plan-first par phase.
 > Money-critical (M1 dons / M2 ITEM-2C / M3 tables fiscales) = ORDRE 3 (panel + discriminant obligatoires).
 > ⚠️ **Quick-win découvert (BACKLOG `BUDGET-NATURE-FREEFORM`)** : les `TEST_BUDGET_ITEMS` ont des natures LIBRES (violent l'union typée)
 > → les 2 donuts 50/30/20 montrent **Besoins 0 %** pour les personas test (un vrai user a la dropdown typée → OK). Fix = aligner les
 > fixtures sur 'Besoin'/'Envie'/'Epargne' (PAS le groupement) ; relancer la SUITE COMPLÈTE après (tests à seuil keyés personas).
+>
+> **Session 2026-06-22 — PH4-D ◑ PARTIEL (« Santé » ramené dans Budget)** : l'`HealthIndicator` (composant INCHANGÉ) est DÉPLACÉ
+> du Dashboard vers un nouveau sous-onglet **« Santé »** de `BudgetWorkspace` (`Dashboard.tsx` : render + import retirés ; `BudgetWorkspace.tsx` :
+> sous-onglet 'sante' icône `health`). **e2e `kpi.spec.ts` MIS À JOUR** (test #2 navigue Budget→Santé au lieu du Dashboard — sinon CI rouge ;
+> attrapé par code-reviewer). Le test unit `HealthIndicator.test.tsx` (rend le composant via son chemin inchangé) → OK. **Scope RÉDUIT
+> volontairement** (slice sûre, session à 10 PR) : les 2 autres parties de PH4-D → BACKLOG `PH4D-WEIGHTS-STORE` (poids localStorage→store,
+> additif) + `PH4D-BUDGET-RATIOS` (ratios parité/abos, schéma poids 4→6). Panel code-reviewer + silent-failure + a11y APPROVE. **PH4 : A/B/C ✅ + D ◑.**
 >
 > **Session 2026-06-22 — PH4-C (objectif d'épargne lié au budget) ✅ FAIT** : `SavingsGoal.linkedBudgetCategoryName?` (lien par NOM
 > = clé d'`actualsMap`, pas l'`id?` optionnel) ; `utils/budget.ts monthlyActualsMap` (pur, mois courant, réutilise `computeBudgetParity`) ;

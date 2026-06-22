@@ -81,6 +81,12 @@
   - [ ] **[PH4C-SAVINGS-NATURE]** 🔧 LOW — lier un objectif à une catégorie de **nature « Épargne »** affiche « Versé ce mois : 0 » en
     permanence (l'épargne est alimentée par VIREMENTS, exclus d'`actualsMap` comme dans la parité budget). Pistes : filtrer le dropdown
     aux catégories non-épargne, OU inclure les virements rapprochés pour ces postes. Découvert par `financial-integrity` (PH4-C). Pas un bug $.
+  - [ ] **[PH4D-WEIGHTS-STORE]** 🔧 LOW — reste de PH4-D : migrer les poids de l'`HealthIndicator` (`healthIndicator:weights:v1`,
+    localStorage, 4 ratios) vers le **store Zustand** (champ ADDITIF + lecture one-shot de l'ancienne clé localStorage). Aujourd'hui les
+    poids ne sync pas avec le reste de l'état persisté. Pas de v7→v8 (additif).
+  - [ ] **[PH4D-BUDGET-RATIOS]** 🔧 MEDIUM — reste de PH4-D : ajouter à l'`HealthIndicator` 2 ratios **budgétaires** (parité budget
+    via `computeBudgetParity` ; couverture des abonnements) → couple le composant aux données Budget (passer `actualsMap`/abos en props,
+    étendre le schéma `Weights` 4→6). Fait après `PH4D-WEIGHTS-STORE` (le schéma de poids change).
   - `BUDGET-KEY-WARNING` (découverte PH4-A, **pré-existant, hors scope**) : la page Budget émet des warnings React « two children
     with the same key, `value` » — c'est **Recharts** (les donuts `<Pie dataKey="value">` sans `nameKey`) ; mes listes (PH4-A/B) ont
     des clés uniques. Fix probable : ajouter `nameKey="name"` aux `<Pie>` (théo + réel). Non-fatal (warning, pas erreur).

@@ -6,8 +6,9 @@
 // sous-sections via sa prop `section` ('fixed' = abonnements/récurrents + calendrier,
 // 'goals' = objectifs d'épargne). Budget et Planning partagent déjà budgetItems/config.
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Transaction, BudgetConfig, BudgetCategory, SavingsGoal } from '../../types';
+import { monthlyActualsMap } from '../../utils/budget';
 import { Budget } from '../Budget';
 import { Planning } from '../Planning';
 import { ProfileFieldsMoved } from '../settings/ProfileFieldsMoved';
@@ -36,6 +37,15 @@ export const BudgetWorkspace: React.FC<BudgetWorkspaceProps> = ({
 }) => {
     const [sub, setSub] = useState<SubTab>('budget');
 
+    // [PH4-C] Dépense réelle rapprochée du MOIS COURANT par catégorie → « versé ce mois » des objectifs liés.
+    // Calculé ici (parent) pour le partager avec Planning (frère de Budget). `monthStr` ré-évalué à chaque render
+    // (et dans les deps) → réactif au passage de mois, pas figé (revue panel).
+    const monthStr = new Date().toISOString().substring(0, 7);
+    const monthActualsMap = useMemo(
+        () => monthlyActualsMap(transactions, budgetItems, monthStr),
+        [transactions, budgetItems, monthStr],
+    );
+
     return (
         <div className="space-y-4">
             <div className="flex gap-1 p-0.5 rounded-card bg-black/30 border border-white/5 w-fit overflow-x-auto" role="tablist" aria-label="Sections Budget">
@@ -63,7 +73,7 @@ export const BudgetWorkspace: React.FC<BudgetWorkspaceProps> = ({
                 <Planning section="fixed" transactions={transactions} savingsGoals={savingsGoals} setSavingsGoals={setSavingsGoals} budgetItems={budgetItems} setBudgetItems={setBudgetItems} config={config} apiKey={apiKey} />
             )}
             {sub === 'goals' && (
-                <Planning section="goals" transactions={transactions} savingsGoals={savingsGoals} setSavingsGoals={setSavingsGoals} budgetItems={budgetItems} setBudgetItems={setBudgetItems} config={config} apiKey={apiKey} />
+                <Planning section="goals" transactions={transactions} savingsGoals={savingsGoals} setSavingsGoals={setSavingsGoals} budgetItems={budgetItems} setBudgetItems={setBudgetItems} config={config} apiKey={apiKey} actualsMap={monthActualsMap} />
             )}
         </div>
     );

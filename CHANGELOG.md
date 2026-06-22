@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Objectifs : relie un objectif d'épargne à ton budget] — 2026-06-22
+
+### « Versé ce mois » sur tes objectifs
+- **Tu peux maintenant lier un objectif d'épargne à une catégorie de ton budget** : l'objectif affiche alors, en plus de
+  l'accumulé et de la cible, le **« Versé ce mois »** — combien tu as réellement mis dans cette catégorie ce mois-ci (calculé
+  depuis tes transactions, même règle que le budget). Le lien est modifiable par objectif. Si la catégorie liée est renommée ou
+  supprimée, un badge **« ⚠ Lien invalide »** te le signale (plus de « 0 » trompeur).
+
+---
+
 ## [unreleased — Budget : ta répartition 50/30/20 réelle] — 2026-06-22
 
 ### Vois où va vraiment ton argent vs la règle 50/30/20

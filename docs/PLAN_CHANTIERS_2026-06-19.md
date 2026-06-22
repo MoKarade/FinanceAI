@@ -121,8 +121,14 @@
   (pur, partagé théo/réel) + `GOLDEN_IDEAL`. `Budget.tsx` : 2ᵉ donut « réel » (dépenses rapprochées + épargne réelle = revenu −
   dépenses) + table comparative **Réel · Cible · Idéal** (écart ±2 pts vert/orange), caption sr-only, note de **déficit réel**
   (panel silent-failure : `Math.max(0,…)` masquait un déficit). 6 tests `computeGoldenSplit` + suite verte. *Pas de migration.*
-- **PH4-C** Objectif d'épargne réel vs cible : `SavingsGoal.linkedBudgetCategoryId?` (`types.ts:532`) ; remonter `actualsMap`
-  au parent `BudgetWorkspace.tsx` et le passer à `Planning.tsx`. Distinguer « accumulé (solde) » vs « versé ce mois ». *Migration additive.* Dépend de B.
+- **PH4-C** Objectif d'épargne réel vs cible — ✅ FAIT (2026-06-22) : `SavingsGoal.linkedBudgetCategoryName?` (par NOM = clé
+  d'`actualsMap`, pas `id?` qui est optionnel) ; `utils/budget.ts monthlyActualsMap` (pur, mois courant, réutilise `computeBudgetParity`) ;
+  `BudgetWorkspace.tsx` calcule le mois courant (réactif) + passe à `Planning section="goals"` ; `Planning.tsx` : dropdown de lien
+  (form + par objectif éditable) + affichage « Accumulé / cible / Versé ce mois » (formatCAD + PrivateAmount). **Migration : AUCUN code**
+  (champ optionnel additif, pas de Zod strict → rehydrate `undefined`). 6 tests `monthlyActualsMap`. Panel (financial-integrity JUSTE +
+  silent-failure + code-reviewer + a11y) : fixes intégrés — **lien orphelin** (catégorie renommée/supprimée) → badge « ⚠ Lien invalide »
+  au lieu de « 0 » muet ; mois réactif ; token `text-info-300` INEXISTANT → `text-info-400`. ⚠️ Limite documentée (BACKLOG `PH4C-SAVINGS-NATURE`) :
+  lier à une catégorie de nature « Épargne » (alimentée par virements, exclus) affiche « versé 0 » — proposer/filtrer le dropdown plus tard.
 - **PH4-D** Santé financière : ramener `dashboard/HealthIndicator.tsx` dans Budget + ratios budgétaires (parité, couverture abos) ;
   migrer les poids `healthIndicator:weights` dans le store. Dépend de A.
 - **PH4-E** Couple — sorties par conjoint : `Transaction.ownerId?: 0|1` (`types.ts:16`) ; colonne « Conjoint » en mode couple ;

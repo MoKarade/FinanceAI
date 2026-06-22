@@ -522,6 +522,9 @@ export interface SavingsGoal {
   currentAmount: number;
   deadline: string;
   icon: string;
+  /** [PH4-C] Lien optionnel vers une catégorie budget (par NOM = clé d'`actualsMap`) : permet d'afficher
+   *  « versé ce mois » (dépense réelle rapprochée) à côté de l'accumulé (`currentAmount`) et de la cible. Additif. */
+  linkedBudgetCategoryName?: string;
 }
 
 export interface Debt {

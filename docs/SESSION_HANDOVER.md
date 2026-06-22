@@ -30,13 +30,22 @@
 >
 > **📋 FILE D'ATTENTE (2026-06-19)** : Marc a demandé l'**ACC d'abord** (« fais le acc avant tout »). **✅ ACC COMPLET — Lots 0-5 FAITS**
 > (Lot 0 test ✓ · Lot 1 #379 capteur ✓ · Lot 2 #380 `/backlog` ✓ · Lot 3 #381 dashboard ✓ · Lot 4 #382 workflows ✓ · Lot 5 présence ✓).
-> **PROCHAINE SESSION** : ORDRE 1 (R1→R6) ✅ + **PH4-A ✅ + PH4-B ✅** → continuer **ORDRE 2 = PH4** : **PH4-C** (objectif épargne réel
-> vs cible, `SavingsGoal.linkedBudgetCategoryId`, **migration additive**, dépend de B — A/B fournissent déjà `actualsMap`/`totalSpent`),
-> PH4-F (abonnements, **migration v7→v8**, test RED d'abord) en //, PH4-D (santé) après A, PH4-E (couple) en dernier. Plan-first par phase.
+> **PROCHAINE SESSION** : ORDRE 1 (R1→R6) ✅ + **PH4-A ✅ + PH4-B ✅ + PH4-C ✅** → continuer **ORDRE 2 = PH4** :
+> **PH4-F** (abonnements, **migration v7→v8 additive**, ⚠️ **test de migration RED d'abord**) en // — ou **PH4-D** (santé, ramener
+> `HealthIndicator` dans Budget, dépend de A), **PH4-E** (couple, `Transaction.ownerId?`, migration additive) en dernier. Plan-first par phase.
 > Money-critical (M1 dons / M2 ITEM-2C / M3 tables fiscales) = ORDRE 3 (panel + discriminant obligatoires).
 > ⚠️ **Quick-win découvert (BACKLOG `BUDGET-NATURE-FREEFORM`)** : les `TEST_BUDGET_ITEMS` ont des natures LIBRES (violent l'union typée)
 > → les 2 donuts 50/30/20 montrent **Besoins 0 %** pour les personas test (un vrai user a la dropdown typée → OK). Fix = aligner les
 > fixtures sur 'Besoin'/'Envie'/'Epargne' (PAS le groupement) ; relancer la SUITE COMPLÈTE après (tests à seuil keyés personas).
+>
+> **Session 2026-06-22 — PH4-C (objectif d'épargne lié au budget) ✅ FAIT** : `SavingsGoal.linkedBudgetCategoryName?` (lien par NOM
+> = clé d'`actualsMap`, pas l'`id?` optionnel) ; `utils/budget.ts monthlyActualsMap` (pur, mois courant, réutilise `computeBudgetParity`) ;
+> `BudgetWorkspace.tsx` calcule le mois courant (réactif, `monthStr` dans les deps) + passe à `Planning section="goals"` ; `Planning.tsx` :
+> dropdown de lien (form + par objectif éditable) + « Accumulé / cible / **Versé ce mois** » (formatCAD + PrivateAmount). **Migration : AUCUN
+> code** (champ optionnel additif, pas de Zod strict). 6 tests `monthlyActualsMap`. Panel (financial-integrity JUSTE + silent-failure +
+> code-reviewer + a11y) : fixes intégrés — **lien orphelin** (catégorie renommée/supprimée) → badge « ⚠ Lien invalide » (plus de « 0 » muet) ;
+> token `text-info-300` INEXISTANT → `info-400` (RÉCIDIVE de FIX-INK600 → leçon CLAUDE.md renforcée). Limite documentée `[PH4C-SAVINGS-NATURE]`
+> (BACKLOG, LOW) : catégorie nature « Épargne » (virements exclus) → « versé 0 ». **PH4 : A/B/C ✅ → reste D/E/F.**
 >
 > **Session 2026-06-22 — PH4-B (donut 50/30/20 réel vs théorique) ✅ FAIT** : `utils/budget.ts computeGoldenSplit` (pur, clamp ≥0 +
 > garde NaN/division-zéro, partagé théo/réel) + `GOLDEN_IDEAL`. `Budget.tsx` : 2ᵉ donut « Ta répartition réelle » (Besoins/Envies =

@@ -59,9 +59,9 @@
     - `A11Y-CHART-KEYBOARD` — le graphe Futur est clic-only (conteneur `role="img"` `tabIndex=-1`, pastilles `tabIndex=-1`) :
       figer/ouvrir le détail au CLAVIER n'est pas possible (limite PRÉEXISTANTE, pas une régression R3 ; mitigée par
       l'alternative sr-only `ChartDataTable`). Chantier a11y dédié (clavier sur graphes Recharts).
-    - `FIX-INK600-TOKEN` — `text-ink-600` n'existe PAS dans la palette (`ink` s'arrête à 500) → ~10 fichiers l'utilisent en
-      no-op (le texte hérite la couleur parente). Remplacer par un token valide (`ink-400`/`ink-500` selon le contraste mesuré).
-      Mécanique mais à faire au cas par cas (contraste). Surfaces R3 déjà corrigées (`ink-400`).
+    - `FIX-INK600-TOKEN` — ✅ **FAIT (2026-06-22)** : `text-ink-600` (inexistant, `ink` s'arrête à 500) remplacé par `ink-400`
+      sur les **9 usages / 7 fichiers** (Dashboard, ActionPlanDrilldown ×2, FutureDetailModal ×2, ProjectionTooltip, NextBestAction,
+      ZoomableTimeChart, ZoomContainer). `ink-400` mesuré AA normal (`check-contrast` : 5,84 surface / 5,21 highlight, ≥ 4,5). Pur CSS.
 - **Densité au zoom (level-of-detail)** : dézoomé = peu d'icônes ; en zoomant, de plus en plus jusqu'à toutes.
 - **★ VERROUILLAGE + PERSISTANCE de la courbe** (clé de voûte Phase 2) : une fois leviers + courbe choisis, elle
   **reste affichée** en changeant de page ET **après déconnexion/reconnexion**, jusqu'à ce que Marc la change ou

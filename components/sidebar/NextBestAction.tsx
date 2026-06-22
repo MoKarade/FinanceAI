@@ -409,7 +409,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen = 
                     </details>
                 )}
                 {lastFetch && (
-                    <div className="text-tiny text-ink-600 mt-2">
+                    <div className="text-tiny text-ink-400 mt-2">
                         Mis à jour {Math.round((Date.now() - lastFetch) / 60000)} min
                     </div>
                 )}

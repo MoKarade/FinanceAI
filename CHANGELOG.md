@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — a11y : lisibilité des annotations (token de couleur)] — 2026-06-22
+
+### Textes d'annotation au bon niveau de gris
+- Plusieurs petits textes d'aide/annotation (graphes, fiche détail, prochaine action…) utilisaient une classe de
+  couleur **inexistante** : leur teinte était imprévisible (héritée du parent). Ils ont désormais une couleur grise
+  **lisible et conforme aux contrastes d'accessibilité** (AA). Purement visuel, aucune donnée ni calcul touché.
+
+---
+
 ## [unreleased — Futur : infobulle figeable (clic = fige)] — 2026-06-22
 
 ### Lis l'infobulle tranquillement, sans qu'elle fuie sous le curseur

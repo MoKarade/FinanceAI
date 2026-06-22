@@ -503,7 +503,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                 </ComposedChart>
                             </ResponsiveContainer>
                         </div>
-                        <p className="text-tiny text-ink-600 mt-2 text-center">Molette = zoom · glisser = défiler · double-clic = reset</p>
+                        <p className="text-tiny text-ink-400 mt-2 text-center">Molette = zoom · glisser = défiler · double-clic = reset</p>
                         {/* [A11Y-CHARTS] (LOT 3) — alternative TEXTUELLE (sr-only) au mini-graphe de
                             drill-down : valeur du compte par année en table accessible (donnée complète
                             `accountSeries`, pas la vue zoomée). */}
@@ -586,7 +586,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                             {roomByYear.map((r) => (
                                                 <tr key={r.year} className="border-t border-white/5">
                                                     <td className="px-2.5 py-1.5 text-ink-200 font-semibold">{r.year}</td>
-                                                    <td className={`px-2.5 py-1.5 text-right font-mono ${r.gained === null ? 'text-ink-600' : r.gained > 0 ? 'text-green-300' : 'text-ink-400'}`}>
+                                                    <td className={`px-2.5 py-1.5 text-right font-mono ${r.gained === null ? 'text-ink-400' : r.gained > 0 ? 'text-green-300' : 'text-ink-400'}`}>
                                                         <PrivateAmount>{r.gained === null ? '—' : `+${fmtMoney(r.gained)}`}</PrivateAmount>
                                                     </td>
                                                     <td className="px-2.5 py-1.5 text-right font-mono text-ink-300"><PrivateAmount>{fmtMoney(r.avail)}</PrivateAmount></td>

@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Budget : ta répartition 50/30/20 réelle] — 2026-06-22
+
+### Vois où va vraiment ton argent vs la règle 50/30/20
+- **Nouveau donut « Ta répartition réelle »** dans « Améliorer mon budget » : tes dépenses réellement rapprochées à tes
+  postes (Besoins / Envies) + ton épargne réelle (revenu − dépenses), à côté du donut théorique (tes cibles budgétées).
+- **Table comparative Réel · Cible · Idéal** : pour chaque catégorie, ton pourcentage réel, ta cible budgétée, et l'idéal
+  50/30/20. Le réel s'affiche en **vert** s'il est proche de l'idéal (±2 pts), en **orange** sinon.
+- **Signal de déficit** : si tu as dépensé plus que ton revenu sur la période, une note te le dit (l'épargne est ramenée à
+  0 dans le graphe, mais le déficit réel reste affiché — pas de fausse impression d'équilibre).
+
+---
+
 ## [unreleased — Budget : parité avec tes transactions] — 2026-06-22
 
 ### Repère les écarts entre ton budget et tes dépenses réelles

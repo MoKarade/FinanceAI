@@ -117,7 +117,10 @@
   UI : section « Parité » (orphelins + postes jamais rapprochés sur tout l'historique ; épargne exclue, accent-insensible).
   ⚠️ Panel `financial-integrity` a attrapé une régression $ (orphelins sortis du « Total dépensé ») → `totalSpent` préserve le
   total exact. a11y : h2/h3. Tests : 14 (utils/budget) + suite complète verte. *Pas de migration.*
-- **PH4-B** Envie/Besoin : donut 50/30/20 **théorique vs réel** (`Budget.tsx`, `BudgetGroupTable.tsx`). Dépend de A.
+- **PH4-B** Envie/Besoin : donut 50/30/20 **théorique vs réel** — ✅ FAIT (2026-06-22) : `utils/budget.ts computeGoldenSplit`
+  (pur, partagé théo/réel) + `GOLDEN_IDEAL`. `Budget.tsx` : 2ᵉ donut « réel » (dépenses rapprochées + épargne réelle = revenu −
+  dépenses) + table comparative **Réel · Cible · Idéal** (écart ±2 pts vert/orange), caption sr-only, note de **déficit réel**
+  (panel silent-failure : `Math.max(0,…)` masquait un déficit). 6 tests `computeGoldenSplit` + suite verte. *Pas de migration.*
 - **PH4-C** Objectif d'épargne réel vs cible : `SavingsGoal.linkedBudgetCategoryId?` (`types.ts:532`) ; remonter `actualsMap`
   au parent `BudgetWorkspace.tsx` et le passer à `Planning.tsx`. Distinguer « accumulé (solde) » vs « versé ce mois ». *Migration additive.* Dépend de B.
 - **PH4-D** Santé financière : ramener `dashboard/HealthIndicator.tsx` dans Budget + ratios budgétaires (parité, couverture abos) ;

@@ -1,7 +1,8 @@
 // Bloc « Impôts » de l'infobulle Futur (demande Marc) : impôt dormant (latent) +
 // régularisation d'avril. On vérifie l'étiquetage honnête et les signes.
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+// [R3] ExpertTooltip prend désormais `data` en prop DIRECTE (découplé de Recharts).
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { ExpertTooltip } from '../../../components/projection/ProjectionTooltip';
 import type { ProjectionChartPoint } from '../../../services/projection/types';
 
@@ -14,7 +15,7 @@ const pt = (over: Partial<ProjectionChartPoint>): ProjectionChartPoint => ({
 } as ProjectionChartPoint);
 
 const renderTip = (over: Partial<ProjectionChartPoint>) =>
-    render(<ExpertTooltip active payload={[{ payload: pt(over) }]} />);
+    render(<ExpertTooltip data={pt(over)} />);
 
 describe('ExpertTooltip — bloc Impôts (impôt dormant + régularisation)', () => {
     it("affiche l'impôt dormant en valeur ABSOLUE (ImpotLatent est négatif dans le moteur)", () => {
@@ -50,5 +51,24 @@ describe('ExpertTooltip — bloc Impôts (impôt dormant + régularisation)', ()
         renderTip({ ImpotLatent: -120000, FluxImpots: 3400 });
         expect(screen.getByText(/Impôt dormant/)).toBeInTheDocument();
         expect(screen.getByText(/Solde d'impôt \(avril\)/)).toBeInTheDocument();
+    });
+});
+
+// [R3] Pied de page selon l'état figé/survol + bouton « Détail complet ».
+describe('ExpertTooltip — figeage (R3)', () => {
+    it('au SURVOL (non figé) : invite à figer, aucun bouton « Détail complet »', () => {
+        render(<ExpertTooltip data={pt({})} />);
+        expect(screen.getByText(/Clique pour figer/)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Détail complet/ })).toBeNull();
+    });
+
+    it('FIGÉ : affiche le bouton « Détail complet » et déclenche onOpenDetail au clic', () => {
+        const onOpenDetail = vi.fn();
+        render(<ExpertTooltip data={pt({})} frozen onOpenDetail={onOpenDetail} />);
+        const btn = screen.getByRole('button', { name: /Détail complet/ });
+        expect(btn).toBeInTheDocument();
+        expect(screen.queryByText(/Clique pour figer/)).toBeNull();
+        fireEvent.click(btn);
+        expect(onOpenDetail).toHaveBeenCalledTimes(1);
     });
 });

@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
 import { Badge } from './ui/Badge';
@@ -21,6 +22,8 @@ import { Tab as TabEnum } from '../types';
 import { ExpertTooltip, ClickableEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
 import { FutureDetailModal } from './projection/FutureDetailModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
+import { useChartTooltipPosition } from '../hooks/useChartTooltipPosition';
+import { resolvePointFromClick } from '../utils/chartTooltip';
 import { ProjectionControls } from './projection/ProjectionControls';
 import { useSimulationParams } from '../hooks/useSimulationParams';
 import { reconstructCashHistory } from '../services/history/reconstructCashHistory';
@@ -477,20 +480,32 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // distance parcourue depuis le mousedown.
     const lastHoverPointRef = useRef<ProjectionChartPoint | null>(null);
     const pointerDownPosRef = useRef<{ x: number; y: number } | null>(null);
+
+    // [R3] Tooltip FIGEABLE : survol = suit la souris (portail, pointer-events:none) ;
+    // clic = FIGE (devient ancré, scrollable, interactif) ; Échap / clic-dehors libère.
+    // Le moteur d'état + le positionnement vivent dans le hook ; ici on ne fait que
+    // l'alimenter (point survolé via Recharts, position via mousemove) et router le clic.
+    const tooltip = useChartTooltipPosition<ProjectionChartPoint>({
+        getKey: (p) => p.monthIndex,
+        containerRef: zoom.containerEl,
+    });
+
+    // [R3] Clic sur le graphe = FIGE le tooltip (avant : ouvrait directement la modale).
+    // La modale exhaustive s'ouvre désormais via le bouton « Détail complet » du tooltip
+    // figé, et via les pastilles d'événement (inchangées). On résout le mois cliqué par
+    // GÉOMÉTRIE (robuste tactile / sans survol), avec repli sur le dernier point survolé.
+    // On ignore les glissers (pan) via la distance depuis le mousedown.
     const handleChartContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
         const down = pointerDownPosRef.current;
         if (down && (Math.abs(e.clientX - down.x) > 6 || Math.abs(e.clientY - down.y) > 6)) return; // glisser = pan
-        const data = zoom.visibleData;
-        if (!data.length) return;
         const grid = zoom.containerEl.current?.querySelector('.recharts-cartesian-grid');
         const rect = grid?.getBoundingClientRect();
-        let point: ProjectionChartPoint | null | undefined = null;
-        if (rect && rect.width > 0) {
-            const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-            point = data[Math.round(frac * (data.length - 1))];
-        }
-        if (!point) point = lastHoverPointRef.current; // repli : dernier point survolé
-        if (point) setDetailPoint(point);
+        const point = resolvePointFromClick(
+            e.clientX,
+            rect ? { left: rect.left, width: rect.width } : null,
+            zoom.visibleData,
+        ) ?? lastHoverPointRef.current; // repli : dernier point survolé
+        if (point) tooltip.freezeOn(point);
     };
 
     // C6 fix (Sprint 1B) — Garde déplacée ICI (après tous les hooks) pour
@@ -796,9 +811,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     {...zoom.handlers}
                     onMouseDownCapture={(e) => { pointerDownPosRef.current = { x: e.clientX, y: e.clientY }; }}
                     onClick={handleChartContainerClick}
+                    onPointerMove={(e) => tooltip.onPointerMove(e.clientX, e.clientY)}
+                    tabIndex={-1}
                     className={`chart-fullscreen relative w-full h-[380px] sm:h-[500px] lg:h-[650px] select-none ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-pointer'}`}
                     role="img"
-                    aria-label="Courbe de vie — évolution projetée du patrimoine net et de chaque compte dans le temps. Clic = détail, molette = zoom, glisser = défiler."
+                    aria-label="Courbe de vie — évolution projetée du patrimoine net et de chaque compte dans le temps. Clic = figer l'infobulle (puis détail complet), molette = zoom, glisser = défiler."
                 >
                      {isComputing ? (
                         // Pendant le (re)calcul : on masque la courbe (potentiellement périmée) et on
@@ -815,8 +832,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         <ComposedChart
                             data={zoom.visibleData}
                             margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
-                            onMouseMove={((s: { activePayload?: Array<{ payload: ProjectionChartPoint }> }) => { const p = s?.activePayload?.[0]?.payload; if (p) lastHoverPointRef.current = p; }) as unknown as (nextState: unknown, event: unknown) => void}
-                            onClick={((s: { activePayload?: Array<{ payload: ProjectionChartPoint }> }) => { const p = s?.activePayload?.[0]?.payload; if (p) setDetailPoint(p); }) as unknown as (nextState: unknown, event: unknown) => void}
+                            onMouseMove={((s: { activePayload?: Array<{ payload: ProjectionChartPoint }> }) => { const p = s?.activePayload?.[0]?.payload; if (p) { lastHoverPointRef.current = p; tooltip.onHoverPoint(p); } }) as unknown as (nextState: unknown, event: unknown) => void}
+                            onMouseLeave={(() => tooltip.onChartLeave()) as unknown as () => void}
                         >
                             <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
 
@@ -842,7 +859,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             <ReferenceLine y={0} stroke="#444" strokeWidth={2} />
                             {isVisible('aujourdhui') && <ReferenceLine x={todayMonthIndex} stroke="rgba(255,255,255,0.6)" strokeDasharray="5 5" label={<RefLineLabel value="Aujourd'hui" color="#ffffff" />} />}
 
-                            <Tooltip content={<ExpertTooltip userName1={config.users[0]?.name} userName2={config.users[1]?.name} />} />
+                            {/* [R3] Recharts ne rend RIEN (content=()=>null) : il reste actif pour
+                                alimenter onMouseMove (point survolé) + le curseur (ligne verticale).
+                                Le vrai tooltip est rendu dans un PORTAIL positionné par le hook. */}
+                            <Tooltip content={() => null} cursor={{ stroke: 'rgba(255,255,255,0.18)', strokeWidth: 1 }} isAnimationActive={false} />
                             {isVisible('fire') && <ReferenceLine y={fireNumber} stroke="#f97316" strokeDasharray="5 5" label={<RefLineLabel value="Objectif FIRE" color="#f97316" />} />}
 
                             {/* PH4-FUT — ANNOTATIONS de cycle de vie (retraite / rentes RRQ-PSV / épuisement
@@ -920,6 +940,29 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     columns={dataColumns}
                     rows={displayData}
                 />
+
+                {/* [R3] Tooltip portail : survol (pointer-events:none, suit la souris) ou
+                    figé (pointer-events:auto, scrollable, ancré, focusable). Positionné par
+                    le hook (left/top mutés directement). z-290 < modale z-300. */}
+                {tooltip.point && tooltip.mode !== 'idle' && createPortal(
+                    <div
+                        ref={tooltip.tooltipRef}
+                        style={{ position: 'fixed', top: 0, left: 0, zIndex: 290, pointerEvents: tooltip.mode === 'frozen' ? 'auto' : 'none' }}
+                        tabIndex={tooltip.mode === 'frozen' ? -1 : undefined}
+                        data-frozen-tooltip={tooltip.mode === 'frozen' ? '' : undefined}
+                        role={tooltip.mode === 'frozen' ? 'dialog' : undefined}
+                        aria-label={tooltip.mode === 'frozen' ? "Infobulle figée du point projeté — Échap pour fermer" : undefined}
+                    >
+                        <ExpertTooltip
+                            data={tooltip.point}
+                            userName1={config.users[0]?.name}
+                            userName2={config.users[1]?.name}
+                            frozen={tooltip.mode === 'frozen'}
+                            onOpenDetail={() => setDetailPoint(tooltip.point)}
+                        />
+                    </div>,
+                    document.body,
+                )}
 
                 {detailPoint && (
                     <FutureDetailModal

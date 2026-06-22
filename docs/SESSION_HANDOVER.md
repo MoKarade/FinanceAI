@@ -30,16 +30,23 @@
 >
 > **📋 FILE D'ATTENTE (2026-06-19)** : Marc a demandé l'**ACC d'abord** (« fais le acc avant tout »). **✅ ACC COMPLET — Lots 0-5 FAITS**
 > (Lot 0 test ✓ · Lot 1 #379 capteur ✓ · Lot 2 #380 `/backlog` ✓ · Lot 3 #381 dashboard ✓ · Lot 4 #382 workflows ✓ · Lot 5 présence ✓).
-> **PROCHAINE SESSION : reprendre les chantiers autonomes** `docs/PLAN_CHANTIERS_2026-06-19.md` (R5 + R1 + R2 faits ;
-> **R3 DESIGNÉ mais NON implémenté** → reprendre l'IMPLÉMENTATION de R3 avec le blueprint, OU passer à R4 ; exécution PR par PR).
+> **PROCHAINE SESSION : reprendre les chantiers autonomes** `docs/PLAN_CHANTIERS_2026-06-19.md` (R1 + R2 + R3 + R5 faits →
+> **reprendre R4** : boot-restore `loadLockedProjection` au mount + densité d'icônes proportionnelle ; puis R6 personas ; exécution PR par PR).
 >
-> **Session 2026-06-22 — R3 (tooltip figé) : DESIGN FAIT, implémentation reportée (choix Marc « B » = session fraîche)** : refacto
-> MOYEN/HIGH (portail React hors contexte Recharts + re-routage du clic qui pilote la modale qui MARCHE) dans une session déjà
-> longue → Marc a choisi de l'implémenter FRAIS. ⚠️ **Découverte (architect)** : le clic ouvre DÉJÀ `FutureDetailModal` (détail
-> complet) → valeur unique du tooltip figé = comparaison + scroll ; décision = COEXISTENCE (tooltip figé léger + bouton « Détail
-> complet »→modale). **BLUEPRINT COMPLET dans `docs/PLAN_CHANTIERS_2026-06-19.md` § R3** (approche la moins risquée : `<Tooltip
-> content={()=>null}>` + portail séparé lisant `lastHoverPointRef` ; state machine `idle/hovering/frozen` ; perf ref+mutation DOM ;
-> découplage `ExpertTooltip(data)` ; ordre d'implémentation + tests). **À la reprise : suivre ce blueprint pas-à-pas.**
+> **Session 2026-06-22 — R3 (tooltip figeable) ✅ IMPLÉMENTÉ** (blueprint suivi à la lettre, choix Marc « clic = fige ») :
+> clic sur le graphe Futur = FIGE l'infobulle (portail `createPortal` body, `position:fixed`, ancré/scrollable/interactif,
+> `z-290` < modale `z-300`) ; survol = suit la souris (`pointer-events:none`) ; Échap / clic-dehors libère ; **coexistence** avec
+> `FutureDetailModal` via bouton « Détail complet » (+ pastilles d'événement inchangées). `<Tooltip content={()=>null}>` garde
+> Recharts actif (alimente `onMouseMove`/`lastHoverPointRef` + le curseur). **Nouveaux fichiers** : `utils/chartTooltip.ts`
+> (`resolvePointFromClick` + `clampTooltipPosition`, purs), `hooks/useChartTooltipPosition.ts` (machine d'état `idle/hovering/frozen`,
+> position en `useRef` + mutation DOM directe = pas de re-render 60fps, listeners Échap/clic-dehors montés en gelé seulement, focus
+> a11y). `ExpertTooltip` découplé de Recharts (prend `data` direct + `frozen`/`onOpenDetail`). **Tests** : 34 unité (utils/hook/tooltip)
+> + 2 e2e (figeage, invariant mousemove, Échap, « Détail complet »→modale) — tous verts ; suite complète + build verts. Panel
+> `code-reviewer`+`silent-failure-hunter`+`a11y-auditor` : 2 findings réfutés (mesurés), corrigés sur surfaces R3 (contraste footer
+> `ink-400`, cible tactile 44px). ⚠️ **Leçons** (cf CLAUDE.md) : le preview headless rend `window` 0×0 → Recharts (ResizeObserver) ne
+> dessine PAS le SVG → vérifier l'interaction graphe par e2e (vrai viewport Chromium), pas par le preview. Le graphe Futur est GATED
+> derrière le bouton « vois directement ta projection actuelle (sans optimiser) » → l'e2e doit le cliquer d'abord. Follow-ups routés
+> BACKLOG (`A11Y-CHART-KEYBOARD`, `FIX-INK600-TOKEN`) : accès CLAVIER du graphe (préexistant, mitigé sr-only `ChartDataTable`) + token `text-ink-600` invalide repo-wide (~10 fichiers).
 >
 > **Session 2026-06-19 — R1 (LABEL-NW-SUCCESSORAL) ✅ — 1ᵉʳ chantier autonome** : libellé trompeur « Patrimoine projeté »
 > (qui affichait en fait `estateNetWorth`) renommé **« Patrimoine successoral, avec rentes »** + **tooltip** (nouveau prop

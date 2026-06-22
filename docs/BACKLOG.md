@@ -73,10 +73,21 @@
 ### PH4 — par onglet (vision, plan-first)
 - **Budget** : **parité catégories** (chaque catégorie de Transactions ↔ un poste Budget) ✅ **FAIT (PH4-A, 2026-06-22)** :
   règle unique `utils/budget.ts matchTransactionToCategory` (réels + tendances), section UI « Parité » (orphelins + postes jamais
-  rapprochés). `totalSpent` préserve le « Total dépensé ». · meilleure répartition **envie/besoin** (PH4-B) · **objectif d'épargne**
-  + vue **réel vs objectif** (PH4-C).
+  rapprochés). `totalSpent` préserve le « Total dépensé ». · meilleure répartition **envie/besoin** ✅ **FAIT (PH4-B, 2026-06-22)** :
+  donut **réel** (dépenses rapprochées + épargne réelle) + table comparative **Réel · Cible · Idéal 50/30/20** (`computeGoldenSplit`,
+  écart coloré ±2 pts). · **objectif d'épargne** + vue **réel vs objectif** (PH4-C).
   - `BUDGET-KEY-WARNING` (découverte PH4-A, **pré-existant, hors scope**) : la page Budget émet des warnings React « two children
-    with the same key » (≈96 en session) NON liés à PH4-A (mes listes ont des clés uniques) — source à localiser (PieChart/tables ?).
+    with the same key, `value` » — c'est **Recharts** (les donuts `<Pie dataKey="value">` sans `nameKey`) ; mes listes (PH4-A/B) ont
+    des clés uniques. Fix probable : ajouter `nameKey="name"` aux `<Pie>` (théo + réel). Non-fatal (warning, pas erreur).
+  - `BUDGET-DONUT-SVG-ARIA` (découverte PH4-B, **pré-existant, LOW**) : le `<svg>` Recharts sous `role="img"`+`aria-label`
+    n'est pas `aria-hidden` → certains SR (NVDA+FF) peuvent traverser l'arbre SVG. Partagé par les 2 donuts (théo + réel). Fix :
+    envelopper `<ResponsiveContainer>` dans `<div aria-hidden="true">`. Contrastes du bloc PH4-B tous MESURÉS PASS (a11y-auditor).
+  - `BUDGET-NATURE-FREEFORM` (découverte PH4-B, **pré-existant, sépare-en-tâche**) : les `TEST_BUDGET_ITEMS` portent des natures
+    LIBRES ('Logement', 'Alimentation', 'Épargne' accentué…) qui VIOLENT l'union typée `nature: 'Besoin'|'Envie'|'Epargne'`. Le
+    groupement `groupedItems[nature]` ne matchant que la chaîne exacte, ces items tombent TOUS dans « Envie » → les 2 donuts 50/30/20
+    (théo ET réel) affichent **Besoins 0 %** pour les personas test. ⚠️ Affecte SEULEMENT les fixtures (un vrai user a la dropdown
+    typée → OK). Fix = aligner les fixtures sur 'Besoin'/'Envie'/'Epargne' (PAS changer le groupement). ⚠️ Changer des fixtures →
+    relancer la SUITE COMPLÈTE (tests à seuil keyés sur personas, cf leçon R6-MICRO-ASSET).
 - **Santé financière** retravaillée · **mode couple** plus concret · **détail de ce que CHAQUE conjoint sort**
   comme argent.
 - **Abonnements** : les voir (peut-être un onglet dédié avec les **dates** d'abonnement).

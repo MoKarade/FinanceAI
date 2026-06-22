@@ -131,8 +131,9 @@
   lier à une catégorie de nature « Épargne » (alimentée par virements, exclus) affiche « versé 0 » — proposer/filtrer le dropdown plus tard.
 - **PH4-D** Santé financière — ◑ PARTIEL (2026-06-22) : ✅ **ramené** `dashboard/HealthIndicator.tsx` dans Budget (nouveau
   sous-onglet « Santé » de `BudgetWorkspace`, retiré du Dashboard ; e2e `kpi.spec.ts` mis à jour pour naviguer Budget→Santé).
+  ✅ **`PH4D-WEIGHTS-STORE` FAIT (2026-06-22)** : poids → store Zustand (additif, `loadLegacyHealthWeights`, merge défaut garde les poids user).
   ⏳ RESTE (routé BACKLOG) : `PH4D-BUDGET-RATIOS` (ratios budgétaires parité/couverture abos = 2 nouvelles métriques couplées au
-  budget) + `PH4D-WEIGHTS-STORE` (poids `healthIndicator:weights:v1` localStorage → store Zustand, ADDITIF). Scope réduit volontairement
+  budget, schéma poids 4→6). Scope réduit volontairement
   (slice sûre) vu la longueur de session ; le composant lui-même est INCHANGÉ. Dépend de A.
 - **PH4-E** ◑ Couple — sorties par conjoint : ✅ (2026-06-22) `Transaction.ownerId?: 0|1` additif ; `resolveTransactionOwner` +
   `computeActualByOwner` (`utils/budget.ts`, attribution AUTO par `BudgetCategory.type`, override par `ownerId`) ; `coupleAnalysis`

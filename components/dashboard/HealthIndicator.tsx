@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
+import type { HealthWeights } from '../../types';
 import { useFinanceStore } from '../../store/useFinanceStore';
+import { DEFAULT_HEALTH_WEIGHTS } from '../../utils/healthWeights';
 import { formatNumber, formatPercent } from '../../utils/format';
 import { useHasUserData } from '../../utils/useHasUserData';
 import { EmptyDataPrompt } from '../ui/EmptyDataPrompt';
@@ -28,49 +30,9 @@ import { computeCurrentLiquidity } from '../../services/portfolio';
  *    Target 100% → score 100. 0% → score 0.
  */
 
-const STORAGE_KEY = 'healthIndicator:weights:v1';
-
 // Selectors top-level pour stabilité (useProjectionSelector compare la ref).
 const selectFireTarget = (chart: ReadonlyArray<{ FireTarget?: number }>): number =>
     chart[0]?.FireTarget ?? 0;
-
-interface Weights {
-    savingsRate: number;
-    emergencyFund: number;
-    debtRatio: number;
-    fireProgress: number;
-}
-
-const DEFAULT_WEIGHTS: Weights = {
-    savingsRate: 30,
-    emergencyFund: 20,
-    debtRatio: 20,
-    fireProgress: 30,
-};
-
-function loadWeights(): Weights {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return DEFAULT_WEIGHTS;
-        const parsed = JSON.parse(raw) as Partial<Weights>;
-        return {
-            savingsRate: parsed.savingsRate ?? DEFAULT_WEIGHTS.savingsRate,
-            emergencyFund: parsed.emergencyFund ?? DEFAULT_WEIGHTS.emergencyFund,
-            debtRatio: parsed.debtRatio ?? DEFAULT_WEIGHTS.debtRatio,
-            fireProgress: parsed.fireProgress ?? DEFAULT_WEIGHTS.fireProgress,
-        };
-    } catch {
-        return DEFAULT_WEIGHTS;
-    }
-}
-
-function saveWeights(w: Weights) {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(w));
-    } catch {
-        // localStorage indisponible — pas critique
-    }
-}
 
 const clamp01 = (x: number) => Math.max(0, Math.min(100, x));
 
@@ -81,7 +43,7 @@ const colorForScore = (score: number): { ring: string; text: string; bg: string 
 };
 
 interface MetricRow {
-    id: keyof Weights;
+    id: keyof HealthWeights;
     label: string;
     value: number; // 0-100 (déjà clampé)
     raw: string;   // valeur brute formatée pour le tooltip
@@ -95,7 +57,10 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
     // hooks than during the previous render" au moment où le store s'hydrate
     // (hasData false → true change le nombre de hooks). Cf. BACKLOG B0.
     const { hasData } = useHasUserData();
-    const [weights, setWeights] = useState<Weights>(loadWeights);
+    // [PH4D-WEIGHTS-STORE] poids lus/écrits dans le STORE persisté (avant : localStorage local au composant).
+    // Fallback DEFAULT si absent (vieil état persisté) — `?? const` garde une réf stable (pas de boucle de rendu).
+    const weights = useFinanceStore(s => s.healthWeights) ?? DEFAULT_HEALTH_WEIGHTS;
+    const setAppState = useFinanceStore(s => s.setAppState);
     const [showSettings, setShowSettings] = useState(false);
 
     const config = useFinanceStore(s => s.config);
@@ -205,15 +170,12 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
 
     const colors = colorForScore(totalScore);
 
-    const handleWeightChange = (id: keyof Weights, value: number) => {
-        const newWeights = { ...weights, [id]: Math.max(0, Math.min(100, value)) };
-        setWeights(newWeights);
-        saveWeights(newWeights);
+    const handleWeightChange = (id: keyof HealthWeights, value: number) => {
+        setAppState({ healthWeights: { ...weights, [id]: Math.max(0, Math.min(100, value)) } });
     };
 
     const resetWeights = () => {
-        setWeights(DEFAULT_WEIGHTS);
-        saveWeights(DEFAULT_WEIGHTS);
+        setAppState({ healthWeights: { ...DEFAULT_HEALTH_WEIGHTS } });
     };
 
     const totalWeight = Object.values(weights).reduce((s, w) => s + w, 0);

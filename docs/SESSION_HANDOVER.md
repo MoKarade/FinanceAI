@@ -30,9 +30,10 @@
 >
 > **📋 FILE D'ATTENTE (2026-06-19)** : Marc a demandé l'**ACC d'abord** (« fais le acc avant tout »). **✅ ACC COMPLET — Lots 0-5 FAITS**
 > (Lot 0 test ✓ · Lot 1 #379 capteur ✓ · Lot 2 #380 `/backlog` ✓ · Lot 3 #381 dashboard ✓ · Lot 4 #382 workflows ✓ · Lot 5 présence ✓).
-> **PROCHAINE SESSION** : ORDRE 1 (R1→R6) ✅ + **PH4-A/B/C ✅ + PH4-D ◑ (« Santé » dans Budget + `PH4D-WEIGHTS-STORE` ✅)** → continuer
-> **ORDRE 2 = PH4** : `PH4D-BUDGET-RATIOS` (BACKLOG) ; **PH4-E** (couple, `Transaction.ownerId?`, migration additive) ; **PH4-F** (abonnements,
-> **migration v7→v8 additive**, ⚠️ **test de migration RED d'abord**). Plan-first par phase.
+> **PROCHAINE SESSION** : ORDRE 1 (R1→R6) ✅ + **PH4 quasi-COMPLET : A/B/C ✅ + D ◑ (Santé+poids store) + E ◑ (couple auto) + F ✅ (abos persistés)** → continuer
+> **ORDRE 2 = PH4 (RESTE, 2 follow-ups au BACKLOG)** : `PH4D-BUDGET-RATIOS` (étend `HealthWeights` 4→6 — ratios parité budget + couverture
+> abos, **maintenant débloqué** : le store porte les poids ET les abos `subscriptions`) ; `PH4E-OWNER-EDIT` (sélecteur d'`ownerId` UI ;
+> l'auto couvre le défaut). **ORDRE 3 = money-critical** (M1 dons / M2 ITEM-2C / M3 tables fiscales — panel + discriminant `git stash`). Plan-first par phase.
 > ⭐ **PATRON migration store ADDITIVE** (validé PH4-C + PH4D-WEIGHTS-STORE) : champ `optional` dans `AppState` (ne casse pas les fixtures),
 > valeur fournie à l'**état initial** du store, `partialize` allow-all-sauf-denylist le persiste AUTO, et le **`merge` Zustand par défaut**
 > (`{...current, ...persisted}`) GARDE la valeur initiale quand l'état persisté ne l'a pas → **AUCUN bump v7→v8** ni `migratePersistedState`.
@@ -51,7 +52,15 @@
 > existait déjà, `section='fixed'`). **Test de migration RED écrit ET PROUVÉ** (retiré `subscriptions:[]` du store → test échoue « undefined ≠ [] »).
 > 13 tests (util + migration). Panel code-reviewer + silent-failure + financial-integrity (zéro double-comptage, dédup) + security-privacy (même
 > classe de sensibilité que `transactions`, chiffré au repos) APPROVE. Découverte routée BACKLOG : `PLANNING-ANNUAL-SUB-12X` (abo annuel ×12,
-> pré-existant). **PH4 : A/B/C ✅ + D ◑ + E ◑ + F ✅.** (⚠️ bandeau FILE D'ATTENTE + CHANGELOG à reconcilier avec #398 PH4-E.)
+> pré-existant). **PH4 : A/B/C ✅ + D ◑ + E ◑ + F ✅.**
+>
+> **Session 2026-06-22 — PH4-E ◑ (dépenses réelles par conjoint)** : `Transaction.ownerId?: 0|1` (additif) ; `utils/budget.ts`
+> `resolveTransactionOwner` (override `ownerId` gagne ; sinon AUTO par `BudgetCategory.type` : `Perso 1`→0, `Perso 2`→1, `Commun`→null)
+> + `computeActualByOwner` (réel par conjoint, purs, réutilisent `matchTransactionToCategory`). `Budget.tsx` : `actualByOwner` dans le
+> useMemo de parité → `coupleAnalysis` (`user1Actual/user2Actual/communActual`) → carte couple « Perso réel » (masqué en solo). 7 tests
+> (4 resolve + 3 compute). Panel financial-integrity (**conservation prouvée** : owner0+owner1+commun == totalSpent, seaux disjoints) +
+> code-reviewer + silent-failure APPROVE. **Scope** : auto-attribution + affichage ✅ ; **override éditable dans l'UI transactions → BACKLOG
+> `PH4E-OWNER-EDIT`** (l'auto couvre le défaut). **PH4 : A/B/C ✅ + D ◑ + E ◑.**
 >
 > **Session 2026-06-22 — PH4D-WEIGHTS-STORE ✅** : poids de l'`HealthIndicator` migrés de localStorage (`healthIndicator:weights:v1`)
 > vers le **store Zustand persisté** — `AppState.healthWeights?` (additif, PAS de v7→v8), `utils/healthWeights.ts` (`DEFAULT_HEALTH_WEIGHTS`

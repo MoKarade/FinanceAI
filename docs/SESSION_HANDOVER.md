@@ -30,9 +30,18 @@
 >
 > **📋 FILE D'ATTENTE (2026-06-19)** : Marc a demandé l'**ACC d'abord** (« fais le acc avant tout »). **✅ ACC COMPLET — Lots 0-5 FAITS**
 > (Lot 0 test ✓ · Lot 1 #379 capteur ✓ · Lot 2 #380 `/backlog` ✓ · Lot 3 #381 dashboard ✓ · Lot 4 #382 workflows ✓ · Lot 5 présence ✓).
-> **PROCHAINE SESSION** : **✅ ORDRE 1 COMPLET (R1→R6)** dans `docs/PLAN_CHANTIERS_2026-06-19.md` → attaquer **ORDRE 2 = PH4**
-> (Budget & co, 6 phases A→F ; A→B→C, F en //, D après A, E en dernier ; plan-first par phase, migration v7→v8 pour PH4-F).
+> **PROCHAINE SESSION** : ORDRE 1 (R1→R6) ✅ + **PH4-A ✅** → continuer **ORDRE 2 = PH4** : **PH4-B** (donut 50/30/20 théorique vs
+> réel, dépend de A — A fournit déjà `actualsMap`/`totalSpent`), puis PH4-C (objectif épargne, migration additive), PH4-F (abonnements,
+> **migration v7→v8**, test RED d'abord) en //, PH4-D (santé) après A, PH4-E (couple) en dernier. Plan-first par phase.
 > Money-critical (M1 dons / M2 ITEM-2C / M3 tables fiscales) = ORDRE 3 (panel + discriminant obligatoires).
+>
+> **Session 2026-06-22 — PH4-A (parité Budget↔Transactions) ✅ FAIT** : `utils/budget.ts` (`matchTransactionToCategory` règle UNIQUE
+> exact+substring + `computeBudgetParity` → `actualsMap`/`totalSpent`/`orphanCategories`/`itemsWithoutTransactions`). `Budget.tsx` :
+> réels ET tendances 6 mois via la MÊME règle (avant : tendances en exact seul + comptaient les doublons → divergence supprimée).
+> Section UI « Parité » (orphelins + postes jamais rapprochés sur TOUT l'historique ; épargne exclue accent-insensible ; empty-state).
+> ⚠️ Panel `financial-integrity` a attrapé une **régression $** (sortir les orphelins d'`actualsMap` faisait baisser le « Total dépensé »
+> /Restant/projection/IA) → `totalSpent` (matchés+orphelins) préserve le total EXACT d'avant. a11y h2/h3, key robuste. 14 tests utils +
+> suite complète verte. Découverte hors scope : `BUDGET-KEY-WARNING` (warnings React clés dupliquées sur la page Budget, pré-existant, BACKLOG).
 >
 > **Session 2026-06-22 — R6 (personas de test) ✅ FAIT** : tous les personas ouvrent désormais toutes les pages data (aucune
 > `PageSetupGate`). `isActive:true` sur les childGoals (coupleConfort via `TEST_CHILD_GOALS`, autonomeMono) ; `setupOptOut` par

@@ -16,6 +16,7 @@ import { Pill } from './ui/Pill';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { formatCAD, formatSigned } from '../utils/format';
+import { computeBudgetParity, matchTransactionToCategory, type OrphanCategory } from '../utils/budget';
 import { DualKPIStat } from './budget/DualKPIStat';
 import { calculateFiscalReport } from '../utils/tax';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
@@ -131,7 +132,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     const _totalTaxDisplay = totalTaxMonthly * getMultiplier();
     const _totalGrossDisplay = totalGrossIncomeMonthly * getMultiplier();
 
-    const { filteredTransactions: _filteredTransactions, actualsMap, trendMap, monthlyDataMap } = useMemo(() => {
+    const { actualsMap, totalSpent, trendMap, monthlyDataMap, orphanCategories, itemsWithoutTransactions } = useMemo(() => {
         const { start, end } = getDateRange();
         // Ensure end date includes the full day
         const endInclusive = new Date(end);
@@ -144,46 +145,60 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             return t.date >= startStr && t.date <= endStr && t.amount < 0 && !t.isTransfer && !t.isDuplicate;
         });
 
-        const map: Record<string, number> = {};
-        filtered.forEach(t => {
-            let match = budgetItems.find(b => b.name === t.category);
-            if (!match) {
-                match = budgetItems.find(b => b.name.toLowerCase().includes(t.category.toLowerCase()) || t.category.toLowerCase().includes(b.name.toLowerCase()));
-            }
-            const key = match ? match.name : t.category;
-            map[key] = (map[key] || 0) + Math.abs(t.amount);
-        });
+        // [PH4-A] Réels + catégories orphelines (fenêtre) + postes sans dépense (TOUT
+        // l'historique → un poste annuel rapproché une fois n'est pas « sans dépense »).
+        const allSpend = transactions.filter(t => t.amount < 0 && !t.isTransfer && !t.isDuplicate);
+        const parity = computeBudgetParity(filtered, budgetItems, allSpend);
 
+        // Tendances 6 mois : MÊME règle de rapprochement que les réels (avant : nom
+        // EXACT seul → un substring-match comptait dans le réel mais pas la tendance ;
+        // et les doublons `isDuplicate` gonflaient la tendance mais PAS le réel — désormais
+        // exclus des DEUX). Cache par catégorie + un seul passage sur les transactions (perf).
+        const matchCache = new Map<string, string | undefined>();
+        const matchedName = (cat: string): string | undefined => {
+            if (!matchCache.has(cat)) matchCache.set(cat, matchTransactionToCategory(cat, budgetItems)?.name);
+            return matchCache.get(cat);
+        };
+        const months: { mStr: string; monthName: string }[] = [];
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            months.push({ mStr: d.toISOString().substring(0, 7), monthName: d.toLocaleDateString('fr-CA', { month: 'short' }) });
+        }
         const trends: Record<string, number[]> = {};
         const detailedMonthly: Record<string, { name: string, value: number }[]> = {};
-
         budgetItems.forEach(item => {
-            const history = [];
-            const detailedHist = [];
-            for (let i = 5; i >= 0; i--) {
-                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                const mStr = d.toISOString().substring(0, 7);
-                const monthName = d.toLocaleDateString('fr-CA', { month: 'short' });
-
-                const total = transactions
-                    .filter(t => t.date.startsWith(mStr) && (t.category === item.name) && t.amount < 0 && !t.isTransfer)
-                    .reduce((s, t) => s + Math.abs(t.amount), 0);
-
-                history.push(total);
-                detailedHist.push({ name: monthName, value: total });
-            }
-            trends[item.name] = history;
-            detailedMonthly[item.name] = detailedHist;
+            trends[item.name] = months.map(() => 0);
+            detailedMonthly[item.name] = months.map(m => ({ name: m.monthName, value: 0 }));
         });
+        for (const t of transactions) {
+            if (t.amount >= 0 || t.isTransfer || t.isDuplicate) continue;
+            const mi = months.findIndex(m => t.date.startsWith(m.mStr));
+            if (mi < 0) continue;
+            const name = matchedName(t.category);
+            if (!name || !trends[name]) continue;
+            const abs = Math.abs(t.amount);
+            trends[name][mi] += abs;
+            detailedMonthly[name][mi].value += abs;
+        }
 
-        return { filteredTransactions: filtered, actualsMap: map, trendMap: trends, monthlyDataMap: detailedMonthly };
+        return {
+            actualsMap: parity.actualsMap,
+            totalSpent: parity.totalSpent,
+            trendMap: trends,
+            monthlyDataMap: detailedMonthly,
+            orphanCategories: parity.orphanCategories,
+            itemsWithoutTransactions: parity.itemsWithoutTransactions,
+        };
     // getDateRange et now sont recréés à chaque render (fonctions locales) ; timeView, customStart,
     // customEnd couvrent déjà les paramètres de getDateRange — ajout explicite éviterait une boucle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [transactions, timeView, budgetItems, customStart, customEnd]);
 
     const totalBudgetDisplay = budgetItems.reduce((sum, item) => sum + getDisplayTarget(item), 0);
-    const totalSpentDisplay = (Object.values(actualsMap) as number[]).reduce((a, b) => a + b, 0);
+    // [PH4-A/F1] Total dépensé = TOUTES les dépenses (postes rapprochés + orphelins), via
+    // `totalSpent` — préserve le total d'AVANT le refactor (les orphelins comptent dans le réel).
+    // `actualsMap` ne contient plus les orphelins → on NE somme PLUS ses valeurs ici.
+    const totalSpentDisplay = totalSpent;
     const totalRemainingDisplay = totalNetIncomeDisplay - totalSpentDisplay; // Based on Net Income
     const projectedTotalDisplay = timeView === 'MONTH' ? (totalSpentDisplay / (currentDay / daysInMonth)) : totalSpentDisplay;
 
@@ -899,6 +914,51 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                             onAddItem={handleAddItem}
                         />
                     ))}
+
+                    {/* [PH4-A] Parité Budget ↔ Transactions : trous de rapprochement (règle unique
+                        `matchTransactionToCategory`). Empty-state honnête si tout est rapproché. */}
+                    {(orphanCategories.length > 0 || itemsWithoutTransactions.length > 0) ? (
+                        <div className="premium-card rounded-2xl p-4 sm:p-5 border border-white/5">
+                            <div className="flex items-center gap-2 mb-3">
+                                <Icon name="transactions" size={16} />
+                                <h2 className="text-h2 font-bold text-white">Parité Budget ↔ Transactions</h2>
+                            </div>
+                            {orphanCategories.length > 0 && (
+                                <div className="mb-4">
+                                    <h3 className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1.5">
+                                        Catégories de transactions sans poste ({orphanCategories.length})
+                                    </h3>
+                                    <ul className="space-y-1">
+                                        {orphanCategories.map((o: OrphanCategory) => (
+                                            <li key={o.category} className="flex items-center justify-between gap-2 text-meta">
+                                                <span className="text-ink-200 truncate">{o.category}</span>
+                                                <PrivateAmount className="font-mono text-warning-400 shrink-0">{formatCAD(o.total)}</PrivateAmount>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <p className="text-tiny text-ink-400 mt-1.5">Crée un poste du même nom (ou renomme la catégorie) pour suivre ces dépenses.</p>
+                                </div>
+                            )}
+                            {itemsWithoutTransactions.length > 0 && (
+                                <div>
+                                    <h3 className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1.5">
+                                        Postes jamais rapprochés à une dépense ({itemsWithoutTransactions.length})
+                                    </h3>
+                                    <ul className="flex flex-wrap gap-1.5">
+                                        {itemsWithoutTransactions.map(i => (
+                                            <li key={i.id ?? i.name} className="text-tiny px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-ink-200">{i.name}</li>
+                                        ))}
+                                    </ul>
+                                    <p className="text-tiny text-ink-400 mt-1.5">Aucune transaction (tout l'historique) ne correspond à ce poste — nom différent des catégories de transactions, ou poste inutilisé&nbsp;? (l'épargne par virement n'est pas comptée ici)</p>
+                                </div>
+                            )}
+                        </div>
+                    ) : budgetItems.length > 0 && (
+                        <div className="text-meta text-ink-400 flex items-center gap-2 px-1">
+                            <span aria-hidden="true">✓</span>
+                            <span>Parité complète : chaque dépense est rapprochée à un poste, et chaque poste a des dépenses.</span>
+                        </div>
+                    )}
                 </div>
             </div>
 

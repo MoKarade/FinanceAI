@@ -71,8 +71,12 @@
   **compare** des courbes. → persistance (store + IndexedDB), pas un recalcul volatil.
 
 ### PH4 — par onglet (vision, plan-first)
-- **Budget** : **parité catégories** (chaque catégorie de Transactions ↔ un poste Budget) · meilleure répartition
-  **envie/besoin** · **objectif d'épargne** + vue **réel vs objectif**.
+- **Budget** : **parité catégories** (chaque catégorie de Transactions ↔ un poste Budget) ✅ **FAIT (PH4-A, 2026-06-22)** :
+  règle unique `utils/budget.ts matchTransactionToCategory` (réels + tendances), section UI « Parité » (orphelins + postes jamais
+  rapprochés). `totalSpent` préserve le « Total dépensé ». · meilleure répartition **envie/besoin** (PH4-B) · **objectif d'épargne**
+  + vue **réel vs objectif** (PH4-C).
+  - `BUDGET-KEY-WARNING` (découverte PH4-A, **pré-existant, hors scope**) : la page Budget émet des warnings React « two children
+    with the same key » (≈96 en session) NON liés à PH4-A (mes listes ont des clés uniques) — source à localiser (PieChart/tables ?).
 - **Santé financière** retravaillée · **mode couple** plus concret · **détail de ce que CHAQUE conjoint sort**
   comme argent.
 - **Abonnements** : les voir (peut-être un onglet dédié avec les **dates** d'abonnement).

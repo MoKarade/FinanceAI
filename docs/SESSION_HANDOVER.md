@@ -30,13 +30,24 @@
 >
 > **📋 FILE D'ATTENTE (2026-06-19)** : Marc a demandé l'**ACC d'abord** (« fais le acc avant tout »). **✅ ACC COMPLET — Lots 0-5 FAITS**
 > (Lot 0 test ✓ · Lot 1 #379 capteur ✓ · Lot 2 #380 `/backlog` ✓ · Lot 3 #381 dashboard ✓ · Lot 4 #382 workflows ✓ · Lot 5 présence ✓).
-> **PROCHAINE SESSION** : ORDRE 1 (R1→R6) ✅ + **PH4-A/B/C ✅ + PH4-D ◑ partiel (« Santé » ramené dans Budget)** → continuer
-> **ORDRE 2 = PH4** : reste de PH4-D au BACKLOG (`PH4D-WEIGHTS-STORE` additif, `PH4D-BUDGET-RATIOS`) ; **PH4-F** (abonnements,
-> **migration v7→v8 additive**, ⚠️ **test de migration RED d'abord**) ; **PH4-E** (couple, `Transaction.ownerId?`, migration additive). Plan-first par phase.
+> **PROCHAINE SESSION** : ORDRE 1 (R1→R6) ✅ + **PH4-A/B/C ✅ + PH4-D ◑ (« Santé » dans Budget + `PH4D-WEIGHTS-STORE` ✅)** → continuer
+> **ORDRE 2 = PH4** : `PH4D-BUDGET-RATIOS` (BACKLOG) ; **PH4-E** (couple, `Transaction.ownerId?`, migration additive) ; **PH4-F** (abonnements,
+> **migration v7→v8 additive**, ⚠️ **test de migration RED d'abord**). Plan-first par phase.
+> ⭐ **PATRON migration store ADDITIVE** (validé PH4-C + PH4D-WEIGHTS-STORE) : champ `optional` dans `AppState` (ne casse pas les fixtures),
+> valeur fournie à l'**état initial** du store, `partialize` allow-all-sauf-denylist le persiste AUTO, et le **`merge` Zustand par défaut**
+> (`{...current, ...persisted}`) GARDE la valeur initiale quand l'état persisté ne l'a pas → **AUCUN bump v7→v8** ni `migratePersistedState`.
+> Pour migrer une vieille clé localStorage : la lire à l'init (helper testable, ex. `loadLegacyHealthWeights`). Le **v7→v8 de PH4-F** est DIFFÉRENT
+> (vrai bump → toucher `migratePersistedState` + version, test RED d'abord).
 > Money-critical (M1 dons / M2 ITEM-2C / M3 tables fiscales) = ORDRE 3 (panel + discriminant obligatoires).
 > ⚠️ **Quick-win découvert (BACKLOG `BUDGET-NATURE-FREEFORM`)** : les `TEST_BUDGET_ITEMS` ont des natures LIBRES (violent l'union typée)
 > → les 2 donuts 50/30/20 montrent **Besoins 0 %** pour les personas test (un vrai user a la dropdown typée → OK). Fix = aligner les
 > fixtures sur 'Besoin'/'Envie'/'Epargne' (PAS le groupement) ; relancer la SUITE COMPLÈTE après (tests à seuil keyés personas).
+>
+> **Session 2026-06-22 — PH4D-WEIGHTS-STORE ✅** : poids de l'`HealthIndicator` migrés de localStorage (`healthIndicator:weights:v1`)
+> vers le **store Zustand persisté** — `AppState.healthWeights?` (additif, PAS de v7→v8), `utils/healthWeights.ts` (`DEFAULT_HEALTH_WEIGHTS`
+> + `loadLegacyHealthWeights` lu à l'init du store ; le `merge` défaut garde les poids user → zéro perte). HealthIndicator lit/écrit le store
+> (`setAppState`), plus de loadWeights/saveWeights/localStorage. 7 tests migration + 2 tests composant adaptés. Panel code-reviewer + silent-failure
+> APPROVE (logError sur corruption, `@deprecated` sur la clé). Cf. ⭐ PATRON migration additive ci-dessus. **Reste PH4-D : `PH4D-BUDGET-RATIOS`.**
 >
 > **Session 2026-06-22 — PH4-D ◑ PARTIEL (« Santé » ramené dans Budget)** : l'`HealthIndicator` (composant INCHANGÉ) est DÉPLACÉ
 > du Dashboard vers un nouveau sous-onglet **« Santé »** de `BudgetWorkspace` (`Dashboard.tsx` : render + import retirés ; `BudgetWorkspace.tsx` :

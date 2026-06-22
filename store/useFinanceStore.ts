@@ -6,6 +6,7 @@ import type { ProjectionResult } from '../services/projection/types';
 import { quotaStorage } from '../services/quotaStorage';
 import { logError } from '../services/errorLogger';
 import { saveLockedProjection, clearLockedProjection } from '../services/lockedProjectionStore';
+import { loadLegacyHealthWeights } from '../utils/healthWeights';
 
 // Phase B2 — Deep-link cross-tab: un onglet pose un "intent" de focus, la page
 // destination le consomme au mount (scroll, highlight, focus, etc.).
@@ -269,6 +270,9 @@ export const getInitialStateWithMigration = (): AppState => {
             childGoal: savedChildGoal ? JSON.parse(savedChildGoal) : INITIAL_CHILD_GOAL,
             childGoals: savedChildGoal ? [JSON.parse(savedChildGoal)] : [INITIAL_CHILD_GOAL],
             savingsGoals: savedSavingsGoals ? JSON.parse(savedSavingsGoals) : [],
+            // [PH4D-WEIGHTS-STORE] poids santé migrés de l'ancienne clé localStorage vers le store persisté
+            // (lecture one-shot ; ensuite ils vivent dans `financeai-storage` via partialize allow-all).
+            healthWeights: loadLegacyHealthWeights(),
             debts: savedDebts ? JSON.parse(savedDebts) : [],
             travelGoals: savedTravelGoals ? JSON.parse(savedTravelGoals) : [],
             lifeEvents: savedLifeEvents ? JSON.parse(savedLifeEvents) : [],

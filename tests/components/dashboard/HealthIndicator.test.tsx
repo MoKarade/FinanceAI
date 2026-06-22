@@ -66,17 +66,15 @@ describe('HealthIndicator', () => {
     });
 
     it('Réinitialiser remet les poids aux valeurs par défaut', () => {
-        // Préremplir un poids non-default dans localStorage
-        localStorage.setItem('healthIndicator:weights:v1', JSON.stringify({
-            savingsRate: 80, emergencyFund: 5, debtRatio: 5, fireProgress: 10,
-        }));
+        // [PH4D-WEIGHTS-STORE] poids dans le STORE (avant : localStorage local au composant).
+        useFinanceStore.setState({ healthWeights: { savingsRate: 80, emergencyFund: 5, debtRatio: 5, fireProgress: 10 } });
         render(<HealthIndicator />);
         fireEvent.click(screen.getByLabelText('Paramétrer les pondérations'));
-        // Le total devrait être 100 (80+5+5+10)
-        expect(screen.getByText(/Total : 100%/i)).toBeInTheDocument();
+        const sliders = screen.getAllByRole('slider');
+        expect((sliders[0] as HTMLInputElement).value).toBe('80'); // le composant LIT bien le poids non-défaut du STORE
         fireEvent.click(screen.getByText('Réinitialiser'));
-        // Après reset, total devrait être 100% (30+20+20+30)
-        expect(screen.getByText(/Total : 100%/i)).toBeInTheDocument();
+        // Après reset, le store porte les défauts (30/20/20/30).
+        expect(useFinanceStore.getState().healthWeights).toEqual({ savingsRate: 30, emergencyFund: 20, debtRatio: 20, fireProgress: 30 });
     });
 
     it('score élevé avec finances saines (≥70)', () => {
@@ -134,14 +132,12 @@ describe('HealthIndicator', () => {
         expect(screen.getByText(/\bmois\b/)).toBeInTheDocument();
     });
 
-    it('changement de slider sauvegarde dans localStorage', () => {
+    it('changement de slider sauvegarde dans le store', () => {
+        // [PH4D-WEIGHTS-STORE] la sauvegarde va dans le store persisté (avant : localStorage).
         render(<HealthIndicator />);
         fireEvent.click(screen.getByLabelText('Paramétrer les pondérations'));
         const sliders = screen.getAllByRole('slider');
         fireEvent.change(sliders[0], { target: { value: 50 } });
-        const saved = localStorage.getItem('healthIndicator:weights:v1');
-        expect(saved).toBeTruthy();
-        const parsed = JSON.parse(saved!);
-        expect(parsed.savingsRate).toBe(50);
+        expect(useFinanceStore.getState().healthWeights?.savingsRate).toBe(50);
     });
 });

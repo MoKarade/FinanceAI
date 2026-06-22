@@ -91,6 +91,11 @@
   - `BUDGET-KEY-WARNING` (découverte PH4-A, **pré-existant, hors scope**) : la page Budget émet des warnings React « two children
     with the same key, `value` » — c'est **Recharts** (les donuts `<Pie dataKey="value">` sans `nameKey`) ; mes listes (PH4-A/B) ont
     des clés uniques. Fix probable : ajouter `nameKey="name"` aux `<Pie>` (théo + réel). Non-fatal (warning, pas erreur).
+  - [ ] **[PLANNING-ANNUAL-SUB-12X]** 🔧 LOW (découverte PH4-F, **pré-existant, hors scope**) : `Planning.tsx` calcule
+    `totalYearly = totalMonthly * 12` où `totalMonthly = Σ averageAmount` — un abo ANNUEL (détecté à intervalle 350-380 j,
+    `averageAmount` = le montant ANNUEL complet) est compté comme mensuel puis ×12 → surévaluation ~12× de cet abo dans les KPI
+    « Fixe Mensuel »/« Coût Annuel ». Identique avant/après PH4-F (financial-integrity : pas une régression). Fix : utiliser
+    `yearlyCost` pour l'annuel et normaliser le mensuel par `yearlyCost/12` plutôt que `averageAmount` brut.
   - `BUDGET-DONUT-SVG-ARIA` (découverte PH4-B, **pré-existant, LOW**) : le `<svg>` Recharts sous `role="img"`+`aria-label`
     n'est pas `aria-hidden` → certains SR (NVDA+FF) peuvent traverser l'arbre SVG. Partagé par les 2 donuts (théo + réel). Fix :
     envelopper `<ResponsiveContainer>` dans `<div aria-hidden="true">`. Contrastes du bloc PH4-B tous MESURÉS PASS (a11y-auditor).

@@ -43,6 +43,16 @@
 > → les 2 donuts 50/30/20 montrent **Besoins 0 %** pour les personas test (un vrai user a la dropdown typée → OK). Fix = aligner les
 > fixtures sur 'Besoin'/'Envie'/'Epargne' (PAS le groupement) ; relancer la SUITE COMPLÈTE après (tests à seuil keyés personas).
 >
+> **Session 2026-06-22 — PH4-F ✅ (abonnements persistés)** : `AppState.subscriptions?: RecurringItem[]` (réutilise `RecurringItem`).
+> **DÉCISION : ADDITIF SANS bump v7→v8** (le plan disait v7→v8, mais les abos n'étaient JAMAIS stockés — seulement détectés à la volée
+> par IA/heuristique → RIEN à migrer ; le pattern additif validé #397 prouve qu'un champ optionnel ne nécessite aucun bump ; plus SÛR =
+> zéro code de migration = zéro bug de migration). `utils/subscriptions.ts` (`subscriptionKey`/`isPinned`/`mergeSubscriptions`/`addSubscription`/
+> `removeSubscription`, purs, dédup par marchand). `Planning.tsx` lit le store + boutons Épingler/Désépingler (l'onglet « Charges fixes & Abos »
+> existait déjà, `section='fixed'`). **Test de migration RED écrit ET PROUVÉ** (retiré `subscriptions:[]` du store → test échoue « undefined ≠ [] »).
+> 13 tests (util + migration). Panel code-reviewer + silent-failure + financial-integrity (zéro double-comptage, dédup) + security-privacy (même
+> classe de sensibilité que `transactions`, chiffré au repos) APPROVE. Découverte routée BACKLOG : `PLANNING-ANNUAL-SUB-12X` (abo annuel ×12,
+> pré-existant). **PH4 : A/B/C ✅ + D ◑ + E ◑ + F ✅.** (⚠️ bandeau FILE D'ATTENTE + CHANGELOG à reconcilier avec #398 PH4-E.)
+>
 > **Session 2026-06-22 — PH4D-WEIGHTS-STORE ✅** : poids de l'`HealthIndicator` migrés de localStorage (`healthIndicator:weights:v1`)
 > vers le **store Zustand persisté** — `AppState.healthWeights?` (additif, PAS de v7→v8), `utils/healthWeights.ts` (`DEFAULT_HEALTH_WEIGHTS`
 > + `loadLegacyHealthWeights` lu à l'init du store ; le `merge` défaut garde les poids user → zéro perte). HealthIndicator lit/écrit le store

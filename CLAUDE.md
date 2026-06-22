@@ -93,6 +93,14 @@ Doc détaillée dans `docs/`, qui fait foi.
   qui passe + `test` vert (hook `commit-gate`). Jamais `--no-verify`.
 - **Vigilance** (à signaler dans le plan, pas interdit) : migrations schema Zustand
   (persist v7) — une erreur corrompt les données persistées.
+  ⚠️ **Un champ ADDITIF optionnel ne nécessite AUCUN bump de version** (leçon PH4-C/PH4-E/PH4D-WEIGHTS-STORE/PH4-F
+  2026-06-22) : un bump (v7→v8 + code dans `migratePersistedState`) n'est requis que pour RESTRUCTURER/transformer des
+  données EXISTANTES. Pour un nouveau champ (`subscriptions?`, `healthWeights?`…) : le déclarer `optional` dans `AppState`,
+  fournir la valeur à l'ÉTAT INITIAL du store ; `partialize` allow-all-sauf-denylist le persiste AUTO, et le `merge` Zustand
+  par défaut (`{...current, ...persisted}`) GARDE la valeur initiale quand l'état persisté ne l'a pas → rétrocompat gratuite,
+  zéro code de migration = zéro bug de migration (le risque #1). Un plan qui dit « v7→v8 additif » pour un champ dont les
+  données n'étaient JAMAIS stockées (rien à migrer) sur-prescrit le bump → préférer l'additif sans bump (plus sûr), avec
+  quand même un **test de migration RED** prouvant que le champ existe à l'init (retirer le défaut → le test échoue).
 
 ## Exécution cloud — résilience (leçons 2026-06-09)
 - **Le conteneur peut REVERTIR le working tree** (resets périodiques) : ne JAMAIS faire confiance

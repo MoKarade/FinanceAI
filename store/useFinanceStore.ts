@@ -273,6 +273,9 @@ export const getInitialStateWithMigration = (): AppState => {
             // [PH4D-WEIGHTS-STORE] poids santé migrés de l'ancienne clé localStorage vers le store persisté
             // (lecture one-shot ; ensuite ils vivent dans `financeai-storage` via partialize allow-all).
             healthWeights: loadLegacyHealthWeights(),
+            // [PH4-F] abonnements épinglés (additif) : défaut [] ; persistés via partialize allow-all.
+            // Pas de bump v7→v8 — rien à migrer (les abos n'étaient jamais stockés, seulement détectés).
+            subscriptions: [],
             debts: savedDebts ? JSON.parse(savedDebts) : [],
             travelGoals: savedTravelGoals ? JSON.parse(savedTravelGoals) : [],
             lifeEvents: savedLifeEvents ? JSON.parse(savedLifeEvents) : [],

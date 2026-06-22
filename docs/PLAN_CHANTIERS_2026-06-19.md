@@ -111,8 +111,12 @@
 ## ORDRE 2 — PH4 (Budget & co), 6 phases indépendantes
 > Réf détail : `BACKLOG.md`. Règles : `formatCAD` partout, `<PrivateAmount>` sur les montants sensibles, no-fake-data.
 
-- **PH4-A** Parité Budget↔Transactions : extraire `utils/budget.ts matchTransactionToCategory()` (règle UNIQUE) ; signaler
-  catégories de transactions orphelines + postes sans transaction. `Budget.tsx`, `budget/BudgetGroupTable.tsx`. *Pas de migration.*
+- **PH4-A** Parité Budget↔Transactions — ✅ FAIT (2026-06-22) : `utils/budget.ts` (`matchTransactionToCategory` règle unique
+  exact+substring + `computeBudgetParity` → actualsMap/totalSpent/orphanCategories/itemsWithoutTransactions). `Budget.tsx` :
+  réels ET tendances 6 mois via la MÊME règle (avant : tendances en exact seul + comptaient les doublons → divergence corrigée).
+  UI : section « Parité » (orphelins + postes jamais rapprochés sur tout l'historique ; épargne exclue, accent-insensible).
+  ⚠️ Panel `financial-integrity` a attrapé une régression $ (orphelins sortis du « Total dépensé ») → `totalSpent` préserve le
+  total exact. a11y : h2/h3. Tests : 14 (utils/budget) + suite complète verte. *Pas de migration.*
 - **PH4-B** Envie/Besoin : donut 50/30/20 **théorique vs réel** (`Budget.tsx`, `BudgetGroupTable.tsx`). Dépend de A.
 - **PH4-C** Objectif d'épargne réel vs cible : `SavingsGoal.linkedBudgetCategoryId?` (`types.ts:532`) ; remonter `actualsMap`
   au parent `BudgetWorkspace.tsx` et le passer à `Planning.tsx`. Distinguer « accumulé (solde) » vs « versé ce mois ». *Migration additive.* Dépend de B.

@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Budget : parité avec tes transactions] — 2026-06-22
+
+### Repère les écarts entre ton budget et tes dépenses réelles
+- **Le Budget rapproche maintenant tes transactions de tes postes avec UNE seule règle** (avant, les « réels » et les
+  « tendances » se calculaient différemment → un même montant pouvait apparaître dans l'un mais pas l'autre). Tes montants
+  réels et tes tendances 6 mois sont désormais cohérents.
+- **Nouvelle section « Parité Budget ↔ Transactions »** : (1) les **catégories de transactions sans poste** (avec leur total —
+  crée un poste ou renomme la catégorie pour les suivre), et (2) les **postes jamais rapprochés à une dépense** (poste inutilisé
+  ou nom différent). L'épargne (alimentée par virements) n'est pas signalée.
+- Le « Total dépensé » reste inchangé (il compte toujours toutes tes dépenses, avec ou sans poste).
+
+---
+
 ## [unreleased — Mode test : tous les personas explorables sur toutes les pages] — 2026-06-22
 
 ### Chaque persona de démo ouvre toutes les pages

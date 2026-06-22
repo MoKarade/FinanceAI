@@ -14,6 +14,10 @@ export function scriptBypassOnboarding(): string {
   return `
     try {
       localStorage.setItem('app_onboarding_done', 'true');
+      // Pré-régler le consentement (Loi 25) : sinon la bannière fixe (bas, z-40)
+      // se superpose au bas des pages (ex. le graphe Futur) et INTERCEPTE les clics
+      // → faux échecs e2e selon le viewport. 'denied' = aucun tracking en test.
+      localStorage.setItem('financeai:analyticsConsent:v1', 'denied');
     } catch (e) {
       // localStorage indisponible — ne bloque pas le test
     }

@@ -1,6 +1,6 @@
 // services/projection.ts — moteur de projection financière (migré depuis utils/useFutureSimulation.ts)
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness, SavingsGoal, FinancialGoal } from '../types';
-import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate, calculateGrossWithholdingRRSP, getResidencyStartYear, CAPITAL_GAINS_INCLUSION_STANDARD, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
+import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate, calculateGrossWithholdingRRSP, withholdingForGrossRRSP, getResidencyStartYear, CAPITAL_GAINS_INCLUSION_STANDARD, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
 import { RRIF_RATES, welcomeTax, NONREG_DIVIDEND_DISTRIBUTION_SHARE } from './projection/helpers';
 import { salaryShares, splitByShares, stepReerByUser, addByWeights } from './projection/perUserBalances';
 import { logError } from './errorLogger';
@@ -1418,10 +1418,16 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         liquid = g.liquid.newVal; growthLiquid = g.liquid.growth; growthPctLiquid = g.liquid.pct;
         reee = g.reee.newVal; growthREEE = g.reee.growth; growthPctREEE = g.reee.pct;
         totalGrowth += g.totalGrowth;
-        // Retenue à la source ~15% sur les retraits REER de l'année courante,
-        // pas encore régularisée par la déclaration de revenus (approx. mi-année).
-        // 15% = tranche intermédiaire de retenue REER au QC (cf RRSP_WITHHOLDING_QC).
-        totalTaxesPaid += fluxImpots + taxOnRrif + retraitReerMois * 0.15;
+        // [FISC-WHT-HARDCODE 2026-06-23] Retenue à la source sur les retraits REER de l'année, pas encore
+        // régularisée par la déclaration (acompte). AVANT : `* 0.15` en dur SOUS-évaluait la retenue dès la
+        // 2ᵉ tranche (réelle = 19/24/29 % combiné QC, cf RRSP_WITHHOLDING_QC). On utilise désormais la retenue
+        // TIERED (`withholdingForGrossRRSP`, même barème que le moteur via `rrspWithholding`), appliquée au brut
+        // MENSUEL agrégé `retraitReerMois` → bien plus proche de la retenue réelle que le 0,15 (résiduel mineur
+        // les mois à plusieurs tirages, barème non additif — compteur d'AFFICHAGE, non conservé). Pas de
+        // double-compte : ce terme est l'ACOMPTE ; `taxCurrentYear.reer` cumule ces acomptes et décembre n'ajoute
+        // ENSUITE que le complément (réconciliation = `totalAnnualTax − taxCurrentYear.reer`) → l'impôt n'est
+        // compté qu'une fois. `taxOnRrif` (FERR) reste un terme séparé, base disjointe.
+        totalTaxesPaid += fluxImpots + taxOnRrif + withholdingForGrossRRSP(retraitReerMois).withholding;
         totalExpenses += monthlyExpenses;
 
         // Patrimoine net = actifs − TOUTES les dettes. realEstateEquity est DÉJÀ net

@@ -60,8 +60,15 @@
 > vecteurs (retirementIncome `??`, useDerivedFinancials arith. nue, monthlyEvents `??`, w5Effects rental `!==0`, helpers `NaN<=0`+rateAnnual,
 > portfolio `||`→isFinite pour Infinity). Faux positifs écartés (portfolio `||` rattrapait NaN ; taxDecember déjà gardé ; business `>0`).
 > **INV-8 corrigé** (était VACANT : `num()` sanitisait avant `isNaN`). Panel a trouvé `rateAnnual` non gardé → corrigé. Findings différés →
-> BACKLOG `NAN-OBSERVABILITY` + `NAN-MUTATOR-CENTRAL`. Conservation 19/19. RESTE : **LOT 6/M1** `FISC-WHT-HARDCODE` (`totalTaxesPaid` `*0.15`
-> en dur, non-double-compte + discriminant — money-critical) = DERNIER finding.
+> BACKLOG `NAN-OBSERVABILITY` + `NAN-MUTATOR-CENTRAL`. Conservation 19/19.
+> **LOT 6/M1 ✅ FAIT** (moteur, panel 4 agents + discriminant) : `FISC-WHT-HARDCODE` — `totalTaxesPaid` `*0.15` → `withholdingForGrossRRSP`
+> (tiered 19/24/29 %, même barème que le cashflow). Non-double-compte vérifié (acompte que décembre réconcilie). Mesuré 211,6→270,1 k$
+> (discriminant git-stash). ⚠️ A cassé `projection.survivor.test.ts` (écart 3,77→2,21 %, artefact du biais 0,15) → seuil re-calibré 0,03→0,015
+> + chiffres MAJ (pas affaiblir : direction tient). ⚠️ PIÈGE INFRA : la course git-stash CONCURRENTE (4 agents + suite) a donné un faux gate
+> VERT → re-mesuré en isolation (leçon CLAUDE.md). Résiduels → BACKLOG `WHT-DISPLAY-EXACT`.
+> **✅✅ TOUS LES FINDINGS DE L'AUDIT 2026-06-23 CORRIGÉS** (6 lots, PR #407-#411). Restent en BACKLOG : découvertes LOW (NAN-OBSERVABILITY,
+> NAN-MUTATOR-CENTRAL, WHT-DISPLAY-EXACT, SEC-PRIVACY-RETIREMENT-RRQ-PSV) + A_FAIRE_MOI : `FISC-WELCOME-2026`, `W5-TAX-PROXY`, `HIST-NW-DEBT-DISCLAIMER`.
+> **SUITE** : reprendre ORDRE 3 (ITEM-2C gates timing par conjoint / tables fiscales TP-1.G) ou autres chantiers BACKLOG.
 > **Session 2026-06-23 — quick-win `BUDGET-NATURE-FREEFORM` ✅ FAIT** : les 56 items de fixtures (testBudget + 6 personas) avaient
 > des natures LIBRES violant l'union typée `'Besoin'|'Envie'|'Epargne'` → tout en « Envie » + CELI/REER (`'Épargne'` accentué)
 > comptés comme dépenses (groupement, coupleAnalysis, dépenses IA/Dashboard/NextBestAction). Normalisés 50/30/20. Panel

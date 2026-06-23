@@ -99,15 +99,16 @@ describe('[FA-12] survivorMode — intégration runScenario seedée (décès du 
         // (liveFilers=1, seuils individuels, cohérent avec le filing de décembre FA-10 taxFilers=1) → puise
         // MOINS de REER aux paliers sûrs, comble via CELI/non-enreg → impôt cumulé PLUS BAS que le couple.
         // RE-BASELINE 2026-06-16 (FISC-REER-WHT-DOUBLE) : la retenue à la source n'est plus double-comptée.
-        // `totalTaxesPaid` est un FLUX cumulé (Σ fluxImpots + retraitReer×0,15) : comme le patrimoine n'est
-        // plus érodé par la fuite de retenue, le retraité décaisse MOINS de REER sur 11 ans → moins de revenu
-        // imposable → impôt cumulé PLUS BAS, et davantage pour le COUPLE qui décaisse le plus. MESURÉ (stash
-        // avec/sans fix) : base 266,6 → 215,1 k$ (−51 k$, « le 50 000 au fisc »), surv 221,0 → 207,0 k$.
-        // L'écart VRAI survivant↔couple = 3,8 % (8,1 k$) ; le bug le sur-affichait à 17 %. Seuil abaissé
-        // 0,05 → 0,03 EN CONSÉQUENCE (à 0,05 le test échouerait : 3,8 % < 5 %). La DIRECTION (survivant paie
-        // moins, décès matériel) tient. Contrat FA-10 « survivant = 1 contribuable » gardé par retirementIncome.test.ts.
+        // RE-BASELINE 2026-06-23 (FISC-WHT-HARDCODE) : `totalTaxesPaid` utilise désormais la retenue REER
+        // TIERED (19/24/29 % combiné QC) au lieu du `0,15` figé. Le COUPLE décaisse plus → franchit des paliers
+        // PLUS HAUTS → son totalTaxesPaid monte davantage que celui du survivant → l'écart relatif se COMPRIME
+        // (effet CORRECT : un gros retrait subit vraiment une retenue plus haute). MESURÉ (git-stash avec/sans fix,
+        // isolé) : base 215,1 → 232,1 k$, surv 207,0 → 227,0 k$ ; écart VRAI survivant↔couple = 2,21 % (5,1 k$).
+        // Seuil abaissé 0,03 → 0,015 EN CONSÉQUENCE (marge 0,71 pt, robuste — ≠ affaiblir : la DIRECTION
+        // « survivant paie moins, décès matériel » l.109 tient, seule la magnitude — artefact du biais 0,15 — change).
+        // Contrat FA-10 « survivant = 1 contribuable » gardé par retirementIncome.test.ts.
         expect(surv.totalTaxesPaid).toBeLessThan(base.totalTaxesPaid);
-        expect(base.totalTaxesPaid - surv.totalTaxesPaid).toBeGreaterThan(base.totalTaxesPaid * 0.03);
+        expect(base.totalTaxesPaid - surv.totalTaxesPaid).toBeGreaterThan(base.totalTaxesPaid * 0.015);
     });
 
     it('le patrimoine final du survivant est PLUS BAS (PSV du défunt cesse + impôt plus lourd)', () => {

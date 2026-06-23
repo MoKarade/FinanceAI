@@ -477,3 +477,25 @@ describe('[NAN-INPUT-HARDENING] un input non fini (NaN/Infinity) ne se propage j
         }
     });
 });
+
+describe('[FISC-WHT-HARDCODE] retenue REER affichée = tiered (19/24/29 %), pas le 0,15 figé', () => {
+    // Le compteur `totalTaxesPaid` (→ taxLeakage + ranking de stratégies) ajoutait la retenue REER au taux
+    // FIGÉ 0,15, qui sous-évalue dès la 2ᵉ tranche (réelle = 19/24/29 % combiné QC). On utilise désormais la
+    // retenue TIERED EXACTE → totalTaxesPaid plus haut (et = totalAnnualTax, plus de biais). Discriminant
+    // prouvé par git-stash : le seuil ci-dessous est INATTEIGNABLE avec l'ancien 0,15.
+    const bigReerRetiree = () => makeParams({
+        projection: makeProjection({ years: 10, returnRate: 4, returnRates: { celi: 4, reer: 4, nonReg: 4, crypto: 5, cash: 1 } }),
+        calculatedStartingCash: 10_000,
+        liveCSVBalances: { ...NO_INVEST, REER: 600_000 },
+        retirementGoal: { targetAge: 60, targetMonthlyIncome: 9000, governmentPension: 800, lifeExpectancy: 95 },
+        config: makeRetireeConfig(),
+        baseGrossAnnual: 0, baseNetAnnual: 0, currentRentExpense: 0, baseMonthlyExpenses: 8000,
+    });
+
+    it('un gros décaissement REER mensuel (> bracket 1) → totalTaxesPaid reflète la retenue tiered', () => {
+        const r = run(bigReerRetiree());
+        // Discriminant MESURÉ (git-stash) : ancien `* 0.15` → totalTaxesPaid ≈ 211 562 $ ; retenue tiered
+        // (24/29 % combiné) → ≈ 270 087 $ (+58 k$). Le seuil 250 000 est INATTEIGNABLE sous l'ancien 0,15.
+        expect(r.totalTaxesPaid).toBeGreaterThan(250_000);
+    });
+});

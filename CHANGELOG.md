@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Impôt à vie estimé : retenue REER au bon taux] — 2026-06-23
+
+### Le total d'impôts et l'« efficacité fiscale » de tes stratégies sont plus justes
+- L'impôt cumulé affiché (et la métrique de « fuite fiscale » qui sert à comparer les stratégies de décaissement)
+  comptait la retenue sur tes retraits REER à un **taux figé de 15 %**, qui sous-estimait dès ~5 000 $/retrait.
+  Il utilise désormais la **retenue réelle par paliers (19/24/29 %)** — le compteur d'impôts à vie reflète enfin
+  ce que tu paies vraiment (aucun effet sur ton patrimoine, c'est un indicateur d'affichage).
+
+---
+
 ## [unreleased — Mode discret sur les champs éditables + change réel au Centre fiscal] — 2026-06-23
 
 ### Le mode discret masque aussi les champs que tu peux modifier

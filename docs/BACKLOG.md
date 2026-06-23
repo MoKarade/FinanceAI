@@ -354,6 +354,11 @@
   `subtractLiquid`, `projection.ts:717-754`) n'ont aucune garde centrale → des angles morts Infinity subsistent (`w5Effects:137` business,
   `stochasticEvents.ts:45/47/83`, `taxApril.ts:55`). Une garde unique dans ces 4 closures couvrirait tout en 1 endroit (vs gardes par-appelant).
   ⚠️ Infinity NON atteignable depuis le boundary UI (`parseFloat` rend NaN, jamais Infinity) → durcissement défensif, pas bug. Effort S.
+- [ ] **[WHT-DISPLAY-EXACT]** 🔧 LOW (suite LOT 6, panel financial-integrity + code-reviewer) — `totalTaxesPaid` (compteur d'affichage) :
+  (a) les mois à PLUSIEURS tirages REER, `withholdingForGrossRRSP(Σ brut)` ≠ `Σ rrspWithholding(brutᵢ)` (barème par palier non additif)
+  → résiduel d'affichage mineur (~centaines $/an, non conservé) ; exactitude au cent près = accumuler depuis le bucket `.reer`.
+  (b) `rrspWithholding` (local `cashflowAllocation.ts:107`) DUPLIQUE `withholdingForGrossRRSP` (`utils/tax.ts`) → dédupliquer (1 source).
+  Effort S. Aucun impact $ (compteur de display/ranking, pas le NW).
 - [x] **[TC-FX-HARDCODE]** ✅ **FAIT (2026-06-23, LOT 3)** — `TaxCenter.tsx` : FX USD/EUR via `useFinanceStore(s=>s.fxRates)` (helper
   `fxOf` + garde `Number.isFinite`, CAD=1) au lieu de `1.38` figé ; rendements `0.02`/`0.07` → constantes `EST_DIVIDEND_YIELD`/
   `EST_CAPITAL_GAINS_YIELD` ; `0.5` → `CAPITAL_GAINS_INCLUSION_STANDARD` ; garde `(qty||0)*(price||0)`. Panel financial-integrity ✅
@@ -368,9 +373,13 @@
   pattern que les 2 champs voisins déjà migrés). Effort XS.
 - [x] **[SEC-PBKDF2-DRIVE]** ✅ **FAIT (2026-06-23, LOT 1)** — `keyCipher.ts` : PBKDF2 600k (encrypt) + fallback legacy 100k
   (decrypt) pour les anciens blobs Drive. Garde « Web Crypto indisponible » avant la boucle. Test rétro-compat (blob 100k déchiffre).
-- [ ] **[M1-FISC-WHT-HARDCODE]** 🔧 LOW (ouvert depuis juin) — `projection.ts:1424` retenue REER `*0.15` en dur dans le COMPTEUR
-  d'affichage `totalTaxesPaid` (PAS le NW). Retenue affichée sous-évaluée > 1ʳᵉ tranche. Fix `withholdingForGrossRRSP` (vérif
-  non-double-compte). Effort S. (Distinct du faux positif fiscal : la vraie retenue passe par `RRSP_WITHHOLDING_QC`.)
+- [x] **[M1-FISC-WHT-HARDCODE]** ✅ **FAIT (2026-06-23, LOT 6)** — `projection.ts:1428` : retenue REER du compteur `totalTaxesPaid`
+  passe de `*0.15` figé à `withholdingForGrossRRSP(retraitReerMois).withholding` (tiered 19/24/29 % combiné QC, MÊME barème que le
+  cashflow `rrspWithholding`). Non-double-compte VÉRIFIÉ par panel (financial-integrity + projection-validator + silent-failure-hunter) :
+  c'est l'acompte que la réconciliation de décembre soustrait (`totalAnnualTax − taxCurrentYear.reer`) ; `taxOnRrif` séparé, base disjointe.
+  Mesuré : totalTaxesPaid 211,6 k$ → 270,1 k$ sur un retraité décaissant ~9 k$/mois (discriminant git-stash, seuil 250 k$). A compressé
+  l'écart du test survivor 3,77 %→2,21 % (artefact du biais 0,15) → seuil `projection.survivor.test.ts` re-calibré 0,03→0,015 + chiffres MAJ.
+  Résiduels (display) → BACKLOG WHT-DISPLAY-EXACT.
 - [x] **[M5-INV1-EXTEND]** ✅ **DÉJÀ COUVERT (constaté 2026-06-23, LOT 5)** — INV-9 (`projection.moneyConservation.test.ts:346-354`,
   ajouté à l'audit 2026-06-17) contient EXACTEMENT le gap visé : reconstructabilité sous hypothèque `NetWorth = Σactifs − DettesNonImmo`
   (<2 $) + discriminant `DetteTotale` (écart = solde hypothécaire > 1 k$). Pas de test dupliqué (leçon « vérifier avant de coder »).

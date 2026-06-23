@@ -352,8 +352,8 @@
 - [ ] **[SEC-PRIVACY-BLUR-INPUTS]** 🔧 MEDIUM (Loi 25) — `budget/BudgetGroupTable.tsx:180`, `retirement/RetirementIncomeCard.tsx:27,73`
   utilisent `privacy-blur` (CSS) sur des `<input>` → la `value` reste DANS le DOM (inspecteur/copier-coller/lecteur d'écran).
   Champs ÉDITABLES → masquer hors-focus ou désactiver en mode discret (pas juste `<PrivateAmount>`). a11y-auditor au gate. Effort S-M.
-- [ ] **[SEC-PBKDF2-DRIVE]** 🔧 LOW — `services/sync/keyCipher.ts:25` : PBKDF2 `100_000` (vs 600k local) pour chiffrer les
-  `apiKeys` poussées au Drive ; le `sub` Google est peu entropique → aligner à **600 000** (×6 brute-force, rétro-compatible). Effort XS.
+- [x] **[SEC-PBKDF2-DRIVE]** ✅ **FAIT (2026-06-23, LOT 1)** — `keyCipher.ts` : PBKDF2 600k (encrypt) + fallback legacy 100k
+  (decrypt) pour les anciens blobs Drive. Garde « Web Crypto indisponible » avant la boucle. Test rétro-compat (blob 100k déchiffre).
 - [ ] **[M1-FISC-WHT-HARDCODE]** 🔧 LOW (ouvert depuis juin) — `projection.ts:1424` retenue REER `*0.15` en dur dans le COMPTEUR
   d'affichage `totalTaxesPaid` (PAS le NW). Retenue affichée sous-évaluée > 1ʳᵉ tranche. Fix `withholdingForGrossRRSP` (vérif
   non-double-compte). Effort S. (Distinct du faux positif fiscal : la vraie retenue passe par `RRSP_WITHHOLDING_QC`.)
@@ -361,8 +361,9 @@
   `DettesNonImmo` ; INV-9 couvre la non-double-soustraction mais INV-1 n'a pas de scénario sous prêt). Effort S.
 - [ ] **[HIST-NW-NO-DEBT]** 🔧 LOW — `services/history/reconstructPortfolioHistory.ts:143` : `NetWorth` du PASSÉ = placements
   SANS dettes (≠ futur) → historique gonflé pour un endetté. Renommer `InvestedValue` ou documenter le scope. Effort XS.
-- [ ] **[SEC-LOG-DEBT-REGEX]** 🔧 LOW (latent/défensif) — `errorLogger.ts:72` `SENSITIVE_KEY_PATTERNS` ancré `^debt$` → `liquidDebt`
-  non redacté SI loggé (aucun site confirmé ; déjà assessé, cf leçon). Élargir le pattern (sans ancres) en ceinture-bretelles. Effort XS.
+- [x] **[SEC-LOG-DEBT-REGEX]** ✅ **FAIT (2026-06-23, LOT 1)** — `errorLogger.ts` : les termes financiers (amount/balance/debt/
+  salary/income/expense/cost/price/net-worth) matchés en SUBSTRING (capte `liquidDebt`/`mortgageBalance`/`annualAmount`…) ; les
+  termes ambigus (token/email/`fact`…) restent ANCRÉS (anti faux-positif `factor`). Tests : composés redactés + diagnostiques conservés.
 
 ### 🔬 Audit financier 2026-06-17 (findings vérifiés — `docs/AUDIT_FINANCIER_2026-06-17.md`)
 > Cœur money-critical = AAA (conservation prouvée ≤0,02 $/~25 scénarios, fiscalité 0 écart). **Tous les findings

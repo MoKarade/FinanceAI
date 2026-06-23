@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Sécurité : durcissement chiffrement + journaux] — 2026-06-23
+
+### Renforce la protection de tes clés et de tes journaux
+- Les **clés API** chiffrées avant d'être synchronisées sur ton Drive utilisent désormais une dérivation **6× plus
+  robuste** (PBKDF2 600 000 itérations, aligné sur les sauvegardes locales). Tes anciennes sauvegardes restent lisibles.
+- Le **journal d'erreurs** (exportable) masque maintenant aussi les champs financiers aux noms composés
+  (ex. « dette liquide », « solde hypothécaire », « montant annuel ») qui pouvaient auparavant y apparaître en clair.
+
+---
+
 ## [unreleased — Fiscalité : dons charitables + loyers/dividendes correctement imposés] — 2026-06-23
 
 ### Le crédit pour dons (et l'impôt sur loyers/dividendes d'entreprise) s'applique enfin en phase active

@@ -36,6 +36,23 @@ describe('keyCipher — chiffrement des clés API dérivé du sub Google', () =>
     it('sub manquant → lève (on ne chiffre pas avec une clé vide)', async () => {
         await expect(encryptApiKeys(keys, '')).rejects.toThrow();
     });
+
+    it('[SEC-PBKDF2-DRIVE] rétro-compat : un blob LEGACY (100k itérations) se déchiffre encore', async () => {
+        // Recrée à la main un "ancien" blob Drive (100 000 itérations, le paramètre d'avant 2026-06-23),
+        // puis vérifie que decryptApiKeys (qui chiffre désormais à 600k) le lit via son fallback legacy.
+        const { encryptJson } = await import('../../services/secureKeyStore');
+        const encUtf8 = new TextEncoder();
+        const base = await crypto.subtle.importKey('raw', encUtf8.encode(sub), 'PBKDF2', false, ['deriveKey']);
+        const legacyKey = await crypto.subtle.deriveKey(
+            { name: 'PBKDF2', salt: encUtf8.encode('financeai:sync:apiKeys:v1'), iterations: 100_000, hash: 'SHA-256' },
+            base,
+            { name: 'AES-GCM', length: 256 },
+            false,
+            ['encrypt', 'decrypt'],
+        );
+        const legacyBlob = await encryptJson(legacyKey, keys);
+        expect(await decryptApiKeys(legacyBlob, sub)).toEqual(keys);
+    });
 });
 
 describe('keyCipher — Web Crypto indisponible (navigateur dégradé / contexte non sécurisé)', () => {

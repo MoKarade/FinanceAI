@@ -157,7 +157,10 @@ export function applyLifeEvents(
                         : `🏠 Vente (net 95%): −${Math.round(-saleNet).toLocaleString('fr-CA')}$ (frais > équité)`);
                 }
             } else {
-                const effectiveImpact = (e.impactAmount ?? 0) * expenseMultiplier;
+                // [NAN-INPUT-HARDENING] `?? 0` ne rattrape pas NaN → garde l'agrégat (impactAmount d'un
+                // lifeEvent saisi peut être NaN → addExpense(NaN) corromprait le flux en silence).
+                const rawImpact = (e.impactAmount ?? 0) * expenseMultiplier;
+                const effectiveImpact = Number.isFinite(rawImpact) ? rawImpact : 0;
                 state.addExpense(effectiveImpact);
                 state.logLife(`${e.name} 💸`);
                 state.logFlow(`🔔 Événement (${e.name}): -${Math.round(effectiveImpact).toLocaleString('fr-CA')}$`);

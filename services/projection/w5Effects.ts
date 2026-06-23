@@ -117,7 +117,9 @@ export function applyW5Effects(
         const noi = annualRent - annualExpenses;
         rentalPropertyNoiMonthly += noi / 12;
     }
-    if (rentalPropertyNoiMonthly !== 0) {
+    // [NAN-INPUT-HARDENING] `!== 0` laisse passer NaN (`NaN !== 0` = true) → garde l'agrégat (un `noi` NaN
+    // corromprait revenu + impôt locatif). (La branche business ci-dessous est déjà sûre : `NaN > 0` = false.)
+    if (Number.isFinite(rentalPropertyNoiMonthly) && rentalPropertyNoiMonthly !== 0) {
         state.addIncome(rentalPropertyNoiMonthly);
         // [FA-6] via `addTaxDivers` → l'impôt locatif SURVIT à l'écrasement de `.revenu` en décembre :
         // avant, le revenu locatif d'un bailleur ACTIF n'était PAS imposé (clobberé). Le 0,45 reste un

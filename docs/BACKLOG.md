@@ -340,12 +340,20 @@
 > Cœur AAA CONFIRMÉ + élargi (conservation 29 scénarios résiduel ≤0,03 $, fiscalité 0 écart, FA-6 conforme). Findings de
 > juin quasi tous FERMÉS. **Tout ci-dessous = PÉRIPHÉRIE** (durcissement défensif / affichage / sécurité au repos) — aucun
 > n'altère la conservation ni un calcul fiscal du cœur. Lot 1 (sûr) d'abord, puis NaN-hardening (plan-first, touche le moteur).
-- [ ] **[NAN-INPUT-HARDENING]** 🔧 MEDIUM (défense-en-profondeur, transversal) — sur le chemin $, `|| 0`/`?? 0` ne rattrapent
-  PAS NaN (un champ vidé / prix échoué se propagerait en silence, NON capté par les 12 invariants : `NaN > EPS` = false). 7
-  sites : `portfolio.ts:147`, `retirementIncome.ts:173`, `taxDecember.ts:600` (+ `logError`), `useDerivedFinancials.ts:51-61`,
-  `monthlyEvents.ts:160`, `w5Effects.ts:125,139`, `helpers.ts:57` (`NaN<=0`=false). Fix groupé `Number.isFinite`+`logError`
-  throttlé (calque `computeRawNetWorth`), discriminant = injecter NaN → lever. ⚠️ Reachability LIMITÉE (inputs sanitisent
-  surtout à 0) → durcissement, pas bug actif. Touche le moteur → plan-first + panel + conservation. Effort M.
+- [x] **[NAN-INPUT-HARDENING]** ✅ **FAIT (2026-06-23, LOT 4)** — gardes `Number.isFinite` (rabattre sur 0/neutre) sur les VRAIS
+  vecteurs : `retirementIncome.ts:173` (`?? 0`), `useDerivedFinancials.ts:51` (arith. nue), `monthlyEvents.ts:160` (`?? 0`),
+  `w5Effects.ts:125` (rental `!== 0`), `helpers.ts:57+rateAnnual` (`NaN<=0`=false + taux NaN trouvé au panel), `portfolio.ts`
+  (computeTotalDebt/AssetBreakdown/InvestmentsValue : `|| 0`→`Number.isFinite` pour Infinity). ⚠️ Faux positifs écartés (findings=hypothèses) :
+  `portfolio:147` `||` rattrapait déjà NaN ; `taxDecember:600` DÉJÀ gardé ; `w5Effects:139` business sûr via `>0`. Tests discriminants
+  (git-stash : échouent sans gardes) + **INV-8 corrigé** (était VACANT : `num()` sanitisait avant `isNaN`). Panel 4 agents ✅, conservation 19/19.
+- [ ] **[NAN-OBSERVABILITY]** 🔧 LOW (suite LOT 4, panel silent-failure) — 2 gardes rabattent un NaN d'INPUT UTILISATEUR sur 0 EN SILENCE :
+  `monthlyEvents.ts` (lifeEvent `impactAmount` vidé → dépense ignorée sans trace) et `useDerivedFinancials.ts` (prix Finnhub échoué → actif
+  à 0 $ au Dashboard sans trace). Ajouter un `logError` severity `warning` sur le SEUL chemin non-fini (1×/event-mois pour le 1ᵉʳ ; throttlé
+  par `a.id` pour le 2ᵉ — éviter le spam useMemo). Observabilité, pas correction (la garde prévient déjà la corruption). Effort S.
+- [ ] **[NAN-MUTATOR-CENTRAL]** 🔧 LOW (suite LOT 4, panel projection-validator) — les 4 mutateurs nus (`addIncome`/`addExpense`/`addLiquid`/
+  `subtractLiquid`, `projection.ts:717-754`) n'ont aucune garde centrale → des angles morts Infinity subsistent (`w5Effects:137` business,
+  `stochasticEvents.ts:45/47/83`, `taxApril.ts:55`). Une garde unique dans ces 4 closures couvrirait tout en 1 endroit (vs gardes par-appelant).
+  ⚠️ Infinity NON atteignable depuis le boundary UI (`parseFloat` rend NaN, jamais Infinity) → durcissement défensif, pas bug. Effort S.
 - [x] **[TC-FX-HARDCODE]** ✅ **FAIT (2026-06-23, LOT 3)** — `TaxCenter.tsx` : FX USD/EUR via `useFinanceStore(s=>s.fxRates)` (helper
   `fxOf` + garde `Number.isFinite`, CAD=1) au lieu de `1.38` figé ; rendements `0.02`/`0.07` → constantes `EST_DIVIDEND_YIELD`/
   `EST_CAPITAL_GAINS_YIELD` ; `0.5` → `CAPITAL_GAINS_INCLUSION_STANDARD` ; garde `(qty||0)*(price||0)`. Panel financial-integrity ✅

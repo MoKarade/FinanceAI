@@ -25,7 +25,9 @@
 import { describe, it, expect } from 'vitest';
 import { calculateFutureProjection, type SimulationParams } from '../../services/projection';
 import type { ProjectionResult, ProjectionChartPoint } from '../../services/projection';
-import type { ProjectionConfig, BudgetConfig, RetirementGoal, Debt } from '../../types';
+import type { ProjectionConfig, BudgetConfig, RetirementGoal, Debt, LifeEvent } from '../../types';
+import { computeTotalDebt } from '../../services/portfolio';
+import { applyMidMonthGrowth } from '../../services/projection/helpers';
 
 const makeProjection = (o: Partial<ProjectionConfig> = {}): ProjectionConfig => ({
     years: 12,
@@ -315,9 +317,11 @@ describe('[CONSERVATION] patrimoine net toujours reconstructible et conservé', 
         const bad2 = { id: 'y', name: 'Prêt 2', balance: 30_000, interestRate: Number.NaN, minimumPayment: Number.NaN, category: 'Student' } as unknown as Debt;
         for (const debts of [[bad], [bad2], [bad, bad2]]) {
             for (const p of run(makeParams({ debts })).chartData) {
-                expect(Number.isNaN(num(p.NetWorth)), `NetWorth NaN au mois ${p.monthIndex}`).toBe(false);
-                expect(Number.isNaN(num(p.DetteTotale))).toBe(false);
-                expect(Number.isNaN(num(p.diffNW))).toBe(false);
+                // ⚠️ Valeur BRUTE (`Number(...)`), PAS `num()` qui sanitise NaN→0 et rendait l'assertion
+                // VACANTE (corrigé 2026-06-23, LOT 4 : `Number.isNaN(num(x))` est toujours faux).
+                expect(Number.isNaN(Number(p.NetWorth)), `NetWorth NaN au mois ${p.monthIndex}`).toBe(false);
+                expect(Number.isNaN(Number(p.DetteTotale))).toBe(false);
+                expect(Number.isNaN(Number(p.diffNW))).toBe(false);
             }
         }
     });
@@ -434,5 +438,42 @@ describe('[CONSERVATION] patrimoine net toujours reconstructible et conservé', 
         }
         // (e) Le patrimoine net PLONGE (le retraité s'endette) au lieu de rester positif par magie.
         expect(num(last.NetWorth)).toBeLessThan(-10_000);
+    });
+});
+
+describe('[NAN-INPUT-HARDENING] un input non fini (NaN/Infinity) ne se propage jamais en silence', () => {
+    // Garde-fou défense-en-profondeur (audit 2026-06-23). Les inputs sont sanitisés aux boundaries, mais
+    // `?? 0` ne rattrape PAS NaN et l'arithmétique nue propage NaN sans déclencher les 12 invariants
+    // (`NaN > EPS` = false). Chaque garde rabat sur 0/neutre. Tests DISCRIMINANTS (échouent sans la garde).
+    const debt = (balance: number): Debt =>
+        ({ id: 'x', name: 'd', balance, interestRate: 0, minimumPayment: 0, category: 'Car' } as unknown as Debt);
+
+    it('computeTotalDebt : un solde Infinity → 0 (`|| 0` ne le rattrapait pas) ; NaN aussi ; le fini est sommé', () => {
+        expect(computeTotalDebt([debt(Number.POSITIVE_INFINITY)])).toBe(0); // discriminant : `Infinity||0`=Infinity
+        expect(computeTotalDebt([debt(Number.NaN)])).toBe(0);
+        expect(computeTotalDebt([debt(1000), debt(Number.NaN)])).toBe(1000); // seul le fini compte
+    });
+
+    it('applyMidMonthGrowth : un solde de départ/fin non fini → résultat neutre fini (jamais croissance NaN)', () => {
+        // discriminant : sans la garde, `NaN<=0`=false saute l'early-return → newVal NaN.
+        expect(applyMidMonthGrowth(Number.NaN, 1000, 6)).toEqual({ newVal: 0, growth: 0, pct: 0 });
+        expect(applyMidMonthGrowth(1000, Number.NaN, 6)).toEqual({ newVal: 0, growth: 0, pct: 0 });
+        expect(applyMidMonthGrowth(Number.POSITIVE_INFINITY, 0, 6)).toEqual({ newVal: 0, growth: 0, pct: 0 });
+        // [panel LOT 4] un TAUX non fini propageait aussi NaN (`Math.pow(1+NaN/100)`) → garde dédiée :
+        // pas de croissance MAIS le solde de fin est PRÉSERVÉ (pas rabattu à 0).
+        expect(applyMidMonthGrowth(1000, 1100, Number.NaN)).toEqual({ newVal: 1100, growth: 0, pct: 0 });
+    });
+
+    it('e2e — un lifeEvent à impactAmount NaN ne corrompt JAMAIS NetWorth/Expenses (monthlyEvents)', () => {
+        // GROS_ACHAT (non KRACH, non perte-de-revenu, nom sans « vente ») → branche impactAmount.
+        // ⚠️ On asserte la valeur BRUTE (`Number(...)`), PAS via `num()` qui sanitise NaN→0 et rendrait
+        // l'assertion vacante (`Number.isNaN(num(x))` est toujours faux). C'est ce qui discrimine la garde.
+        const raw = (v: unknown): number => Number(v);
+        const bad = { id: 'e', type: 'GROS_ACHAT', name: 'Achat majeur', date: '2027-03-15', impactAmount: Number.NaN } as unknown as LifeEvent;
+        const cd = run(makeParams({ lifeEvents: [bad] })).chartData;
+        for (const p of cd) {
+            expect(Number.isNaN(raw(p.NetWorth)), `NetWorth NaN au mois ${p.monthIndex}`).toBe(false);
+            expect(Number.isNaN(raw(p.Expenses)), `Expenses NaN au mois ${p.monthIndex}`).toBe(false);
+        }
     });
 });

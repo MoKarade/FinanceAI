@@ -58,7 +58,7 @@ const NO_CATEGORY_LABEL = '(sans catégorie)';
 // Un poste « épargne » est alimenté par des VIREMENTS (exclus des dépenses) → « 0
 // dépense » y est normal. ⚠️ La nature est en pratique LIBRE ('Logement', 'Épargne'
 // accentué…) et NON l'union typée → comparaison normalisée (sans accent, minuscule).
-const isSavingsNature = (nature: string): boolean =>
+export const isSavingsNature = (nature: string): boolean =>
     (nature ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase() === 'epargne';
 
 /**

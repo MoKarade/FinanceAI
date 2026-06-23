@@ -132,9 +132,8 @@
 - **PH4-D** Santé financière — ◑ PARTIEL (2026-06-22) : ✅ **ramené** `dashboard/HealthIndicator.tsx` dans Budget (nouveau
   sous-onglet « Santé » de `BudgetWorkspace`, retiré du Dashboard ; e2e `kpi.spec.ts` mis à jour pour naviguer Budget→Santé).
   ✅ **`PH4D-WEIGHTS-STORE` FAIT (2026-06-22)** : poids → store Zustand (additif, `loadLegacyHealthWeights`, merge défaut garde les poids user).
-  ⏳ RESTE (routé BACKLOG) : `PH4D-BUDGET-RATIOS` (ratios budgétaires parité/couverture abos = 2 nouvelles métriques couplées au
-  budget, schéma poids 4→6). Scope réduit volontairement
-  (slice sûre) vu la longueur de session ; le composant lui-même est INCHANGÉ. Dépend de A.
+  ✅ **`PH4D-BUDGET-RATIOS` FAIT (2026-06-22)** : 2 ratios — adhérence budget (hors épargne) + poids des abos (coût mensuel/revenu, plafond 15 %) ;
+  `HealthWeights` 4→6 (`normalizeHealthWeights`) ; `totalScore` exclut les métriques sans donnée. Revue adversariale → 6 findings intégrés. **PH4-D ✅.**
 - **PH4-E** ◑ Couple — sorties par conjoint : ✅ (2026-06-22) `Transaction.ownerId?: 0|1` additif ; `resolveTransactionOwner` +
   `computeActualByOwner` (`utils/budget.ts`, attribution AUTO par `BudgetCategory.type`, override par `ownerId`) ; `coupleAnalysis`
   expose `user1Actual/user2Actual/communActual` ; carte couple affiche « Perso réel » par conjoint. Conservation prouvée (financial-integrity).

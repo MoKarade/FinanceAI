@@ -30,10 +30,10 @@
 >
 > **📋 FILE D'ATTENTE (2026-06-19)** : Marc a demandé l'**ACC d'abord** (« fais le acc avant tout »). **✅ ACC COMPLET — Lots 0-5 FAITS**
 > (Lot 0 test ✓ · Lot 1 #379 capteur ✓ · Lot 2 #380 `/backlog` ✓ · Lot 3 #381 dashboard ✓ · Lot 4 #382 workflows ✓ · Lot 5 présence ✓).
-> **PROCHAINE SESSION** : ORDRE 1 (R1→R6) ✅ + **PH4 quasi-COMPLET : A/B/C ✅ + D ◑ (Santé+poids store) + E ◑ (couple auto) + F ✅ (abos persistés)** → continuer
-> **ORDRE 2 = PH4 (RESTE, 2 follow-ups au BACKLOG)** : `PH4D-BUDGET-RATIOS` (étend `HealthWeights` 4→6 — ratios parité budget + couverture
-> abos, **maintenant débloqué** : le store porte les poids ET les abos `subscriptions`) ; `PH4E-OWNER-EDIT` (sélecteur d'`ownerId` UI ;
-> l'auto couvre le défaut). **ORDRE 3 = money-critical** (M1 dons / M2 ITEM-2C / M3 tables fiscales — panel + discriminant `git stash`). Plan-first par phase.
+> **PROCHAINE SESSION** : ORDRE 1 (R1→R6) ✅ + **PH4 essentiellement COMPLET : A/B/C ✅ + D ✅ (Santé+poids store+2 ratios budget) + E ◑ (couple auto) + F ✅ (abos)** → continuer
+> **ORDRE 2 = PH4 (RESTE = 1 seul follow-up au BACKLOG)** : `PH4E-OWNER-EDIT` (sélecteur d'`ownerId` par ligne dans `Transactions.tsx` en mode
+> couple ; l'auto-attribution couvre déjà le défaut — LOW). **ORDRE 3 = money-critical** (M1 dons / M2 ITEM-2C / M3 tables fiscales —
+> panel + discriminant `git stash` OBLIGATOIRES, session dédiée). Plan-first par phase.
 > ⭐ **PATRON migration store ADDITIVE** (validé PH4-C + PH4D-WEIGHTS-STORE) : champ `optional` dans `AppState` (ne casse pas les fixtures),
 > valeur fournie à l'**état initial** du store, `partialize` allow-all-sauf-denylist le persiste AUTO, et le **`merge` Zustand par défaut**
 > (`{...current, ...persisted}`) GARDE la valeur initiale quand l'état persisté ne l'a pas → **AUCUN bump v7→v8** ni `migratePersistedState`.
@@ -43,6 +43,15 @@
 > ⚠️ **Quick-win découvert (BACKLOG `BUDGET-NATURE-FREEFORM`)** : les `TEST_BUDGET_ITEMS` ont des natures LIBRES (violent l'union typée)
 > → les 2 donuts 50/30/20 montrent **Besoins 0 %** pour les personas test (un vrai user a la dropdown typée → OK). Fix = aligner les
 > fixtures sur 'Besoin'/'Envie'/'Epargne' (PAS le groupement) ; relancer la SUITE COMPLÈTE après (tests à seuil keyés personas).
+>
+> **Session 2026-06-22 — PH4D-BUDGET-RATIOS ✅ (2 ratios santé, PH4-D complet)** : `utils/healthRatios.ts` (purs) — **adhérence budget**
+> (`computeBudgetParityScore` : réel vs cibles du mois COMPLET précédent, hors postes ÉPARGNE, dépassement seul pénalise) + **poids des abos**
+> (`computeSubscriptionLoadScore` : `Σ yearlyCost/12` / revenu net, plafond 15 % → évite le ×12 des abos annuels). `HealthWeights` 4→6 +
+> `normalizeHealthWeights` (rétrocompat lecture, pas de bump). `HealthIndicator` : flag `available` + **`totalScore` EXCLUT les métriques sans
+> donnée** (un 0 par absence ne tire plus le score — corrige aussi FIRE). **Revue ADVERSARIALE (workflow ultracode, 5 dimensions × vérification,
+> 14 agents) : 6 findings RÉELS intégrés** (épargne exclue du dénominateur ; `monthlyExpenses` normalisé en fréquence — bug PRÉ-EXISTANT exposé ;
+> orphelins distingués de « aucune dépense » ; aucun abo épinglé → indispo cohérent ; a11y `—` en `ink-400`) + **3 réfutés à raison**. 62 tests
+> ciblés verts + suite complète. **PH4 : A/B/C ✅ + D ✅ + E ◑ + F ✅** → reste `PH4E-OWNER-EDIT` (LOW) puis ORDRE 3 money-critical.
 >
 > **Session 2026-06-22 — PH4-F ✅ (abonnements persistés)** : `AppState.subscriptions?: RecurringItem[]` (réutilise `RecurringItem`).
 > **DÉCISION : ADDITIF SANS bump v7→v8** (le plan disait v7→v8, mais les abos n'étaient JAMAIS stockés — seulement détectés à la volée

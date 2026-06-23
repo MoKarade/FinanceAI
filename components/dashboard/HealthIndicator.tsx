@@ -1,8 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import type { HealthWeights } from '../../types';
+import type { HealthWeights, RecurringItem } from '../../types';
 import { useFinanceStore } from '../../store/useFinanceStore';
-import { DEFAULT_HEALTH_WEIGHTS } from '../../utils/healthWeights';
-import { formatNumber, formatPercent } from '../../utils/format';
+import { DEFAULT_HEALTH_WEIGHTS, normalizeHealthWeights } from '../../utils/healthWeights';
+import { computeBudgetParity } from '../../utils/budget';
+import { computeBudgetParityScore, computeSubscriptionLoadScore, subscriptionsMonthlyCost, monthlyTargetOf } from '../../utils/healthRatios';
+import { formatCAD, formatNumber, formatPercent } from '../../utils/format';
 import { useHasUserData } from '../../utils/useHasUserData';
 import { EmptyDataPrompt } from '../ui/EmptyDataPrompt';
 import { Icon } from '../ui/Icon';
@@ -36,6 +38,9 @@ const selectFireTarget = (chart: ReadonlyArray<{ FireTarget?: number }>): number
 
 const clamp01 = (x: number) => Math.max(0, Math.min(100, x));
 
+// [PH4D-BUDGET-RATIOS] référence stable pour le fallback abonnements (évite une nouvelle [] par render).
+const EMPTY_SUBS: RecurringItem[] = [];
+
 const colorForScore = (score: number): { ring: string; text: string; bg: string } => {
     if (score >= 70) return { ring: 'stroke-success-400', text: 'text-emerald-300', bg: 'bg-success-500/10' };
     if (score >= 40) return { ring: 'stroke-warning-400', text: 'text-amber-300', bg: 'bg-warning-500/10' };
@@ -48,6 +53,9 @@ interface MetricRow {
     value: number; // 0-100 (déjà clampé)
     raw: string;   // valeur brute formatée pour le tooltip
     help: string;
+    /** [PH4D-BUDGET-RATIOS] false = donnée de base manquante (ex. pas de projection FIRE, pas de dépenses du mois) :
+     *  la métrique est affichée « requis » et EXCLUE du score pondéré (un 0 par absence de donnée fausserait le score). */
+    available: boolean;
 }
 
 export const HealthIndicator: React.FC<{ className?: string }> = ({ className = '' }) => {
@@ -58,8 +66,9 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
     // (hasData false → true change le nombre de hooks). Cf. BACKLOG B0.
     const { hasData } = useHasUserData();
     // [PH4D-WEIGHTS-STORE] poids lus/écrits dans le STORE persisté (avant : localStorage local au composant).
-    // Fallback DEFAULT si absent (vieil état persisté) — `?? const` garde une réf stable (pas de boucle de rendu).
-    const weights = useFinanceStore(s => s.healthWeights) ?? DEFAULT_HEALTH_WEIGHTS;
+    // [PH4D-BUDGET-RATIOS] normalise 4→6 champs (rétrocompat) ; mémorisé sur la réf du store (pas de boucle de rendu).
+    const storedWeights = useFinanceStore(s => s.healthWeights);
+    const weights = useMemo(() => normalizeHealthWeights(storedWeights), [storedWeights]);
     const setAppState = useFinanceStore(s => s.setAppState);
     const [showSettings, setShowSettings] = useState(false);
 
@@ -69,6 +78,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
     const assets = useFinanceStore(s => s.assets);
     const initialBalances = useFinanceStore(s => s.initialBalances);
     const transactions = useFinanceStore(s => s.transactions);
+    const subscriptions = useFinanceStore(s => s.subscriptions) ?? EMPTY_SUBS;
     // Centralisation : FireTarget vient de la projection si disponible
     const projectionFireTarget = useProjectionSelector(selectFireTarget, 0);
 
@@ -78,7 +88,9 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
             (sum, u) => sum + (u.netSalary || u.salary || 0),
             0,
         );
-        const monthlyExpenses = (budgetItems || []).reduce((sum, b) => sum + (b.target || 0), 0);
+        // [PH4D-BUDGET-RATIOS] normalise la fréquence (monthlyTargetOf) : un poste annuel/trimestriel ne doit pas
+        // compter pour sa valeur brute en mensuel (sinon taux d'épargne + coussin faussés ET incohérents avec la parité).
+        const monthlyExpenses = (budgetItems || []).reduce((sum, b) => sum + monthlyTargetOf(b), 0);
         // Liquidités = cash de TOUS les comptes. initialBalances a des clés
         // DYNAMIQUES : noms de comptes bancaires en usage réel (ex : « Compte
         // chèque BMO »), ou types en mode test (CELI, REER, LIQUIDITE…). On
@@ -113,6 +125,36 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
         const fireProgressPct = fireTarget != null ? (totalAssets / fireTarget) * 100 : null;
         const fireScore = fireProgressPct != null ? clamp01(fireProgressPct) : null;
 
+        // 5. Adhérence au budget — dépenses réelles vs cibles, sur le MOIS COMPLET PRÉCÉDENT (évite le biais
+        //    d'un mois courant partiel). YYYY-MM dérivé des composantes LOCALES (toISOString décalerait le mois
+        //    en fuseau négatif). On distingue 3 états : (a) aucune dépense le mois dernier → indispo « pas de
+        //    données » ; (b) des dépenses mais AUCUNE rapprochée à un poste (toutes orphelines) → indispo, mais
+        //    message explicite (sinon un faux 100 ou un « pas de données » trompeur) ; (c) au moins une rapprochée → score.
+        const nowDate = new Date();
+        const prevMonthDate = new Date(nowDate.getFullYear(), nowDate.getMonth() - 1, 1);
+        const prevMonthStr = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
+        const prevSpend = (transactions || []).filter(
+            t => typeof t.date === 'string' && t.date.startsWith(prevMonthStr) && t.amount < 0 && !t.isTransfer && !t.isDuplicate,
+        );
+        const prevParity = computeBudgetParity(prevSpend, budgetItems);
+        const hasMatchedActuals = Object.keys(prevParity.actualsMap).length > 0;
+        const hadSpending = prevParity.totalSpent > 0;
+        const budgetParityScore = hasMatchedActuals ? computeBudgetParityScore(prevParity.actualsMap, budgetItems) : null;
+        const budgetParityRaw = budgetParityScore != null
+            ? 'Mois précédent : dépenses réelles vs cibles'
+            : hadSpending
+                ? 'Dépenses non rapprochées à un poste budget'
+                : 'Pas encore de dépenses à comparer';
+
+        // 6. Poids des abonnements épinglés — coût MENSUEL (yearlyCost/12, pas de ×12) / revenu net mensuel.
+        //    Aucun abo ÉPINGLÉ → indisponible (cohérent avec FIRE/budget) : un 100 « aucun fardeau » serait
+        //    trompeur car l'utilisateur a peut-être des abos non épinglés (détectés à la volée seulement).
+        const subMonthly = subscriptionsMonthlyCost(subscriptions);
+        const subLoadPct = monthlyIncome > 0 ? (subMonthly / monthlyIncome) * 100 : 0;
+        const subscriptionLoadScore = subscriptions.length > 0
+            ? computeSubscriptionLoadScore(subscriptions, monthlyIncome)
+            : null;
+
         return [
             {
                 id: 'savingsRate' as const,
@@ -120,6 +162,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                 value: savingsRateScore,
                 raw: `${formatPercent(savingsRateRaw, 1)} (revenus − dépenses)`,
                 help: "Cible 20%+ : marge mensuelle confortable.",
+                available: true,
             },
             {
                 id: 'emergencyFund' as const,
@@ -127,6 +170,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                 value: emergencyScore,
                 raw: `${formatNumber(emergencyMonths, { decimals: 2 })} mois`,
                 help: "Cible 6 mois : suffisant pour absorber une perte d'emploi.",
+                available: true,
             },
             {
                 id: 'debtRatio' as const,
@@ -134,6 +178,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                 value: debtScore,
                 raw: `${formatPercent(debtAssetsRatio, 1)}`,
                 help: "Cible 0% : pas de dette. >50% : zone critique.",
+                available: true,
             },
             {
                 id: 'fireProgress' as const,
@@ -145,14 +190,42 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                 help: fireProgressPct != null
                     ? "Cible 100% : indépendance financière atteinte (règle des 4%)."
                     : "La cible FIRE vient de l'onglet Future (moteur de projection). Calculez-la d'abord.",
+                available: fireScore != null,
+            },
+            {
+                id: 'budgetParity' as const,
+                label: 'Adhérence au budget',
+                value: budgetParityScore ?? 0,
+                raw: budgetParityRaw,
+                help: budgetParityScore != null
+                    ? "Cible 100% : tu restes dans tes cibles par poste (hors épargne). Le score baisse avec le dépassement."
+                    : hadSpending
+                        ? "Tes dépenses du mois dernier ne correspondent à aucun poste budget — vérifie les noms de tes postes."
+                        : "Catégorise des dépenses sur un mois complet pour mesurer ton adhérence au budget.",
+                available: budgetParityScore != null,
+            },
+            {
+                id: 'subscriptionLoad' as const,
+                label: 'Poids des abonnements',
+                value: subscriptionLoadScore ?? 0,
+                raw: subscriptionLoadScore != null
+                    ? `${formatCAD(subMonthly)}/mois (${formatPercent(subLoadPct, 1)} du revenu net)`
+                    : subscriptions.length === 0
+                        ? 'Aucun abonnement épinglé'
+                        : 'Revenu requis',
+                help: "Cible <15% du revenu net en abonnements épinglés. Épingle tes abos dans « Charges fixes ».",
+                available: subscriptionLoadScore != null,
             },
         ];
-    }, [config, budgetItems, debts, assets, initialBalances, transactions, projectionFireTarget]);
+    }, [config, budgetItems, debts, assets, initialBalances, transactions, subscriptions, projectionFireTarget]);
 
-    // Score global pondéré (normalisation au cas où la somme des poids ≠ 100)
+    // Score global pondéré. [PH4D-BUDGET-RATIOS] n'inclut que les métriques DISPONIBLES (numérateur ET
+    // dénominateur) : une métrique sans donnée (ex. FIRE sans projection, budget sans dépenses) ne doit pas
+    // peser comme un 0 qui écraserait le score. Normalisé par la somme des poids des seules métriques comptées.
     const totalScore = useMemo(() => {
-        const weightedSum = metrics.reduce((sum, m) => sum + m.value * (weights[m.id] || 0), 0);
-        const totalWeight = Object.values(weights).reduce((s, w) => s + w, 0);
+        const counted = metrics.filter(m => m.available);
+        const weightedSum = counted.reduce((sum, m) => sum + m.value * (weights[m.id] || 0), 0);
+        const totalWeight = counted.reduce((sum, m) => sum + (weights[m.id] || 0), 0);
         return totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
     }, [metrics, weights]);
 
@@ -241,13 +314,13 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                             <div key={m.id} className="group">
                                 <div className="flex items-center justify-between text-meta">
                                     <span className="text-ink-300 truncate" title={m.help}>{m.label}</span>
-                                    <span className={`font-mono font-bold ${mColors.text} shrink-0`}>{Math.round(m.value)}</span>
+                                    <span className={`font-mono font-bold shrink-0 ${m.available ? mColors.text : 'text-ink-400'}`} aria-label={m.available ? undefined : `${m.label} : donnée indisponible`}>{m.available ? Math.round(m.value) : '—'}</span>
                                 </div>
                                 <div className="flex items-center gap-2 mt-0.5">
                                     <div className="flex-1 h-1 bg-black/40 rounded-full overflow-hidden">
                                         <div
                                             className={`h-full transition-all duration-500 ${m.value >= 70 ? 'bg-success-400' : m.value >= 40 ? 'bg-warning-400' : 'bg-danger-400'}`}
-                                            style={{ width: `${m.value}%` }}
+                                            style={{ width: `${m.available ? m.value : 0}%` }}
                                         />
                                     </div>
                                     <span className="text-tiny text-ink-500 font-mono shrink-0 tabular-nums">{weights[m.id]}%</span>

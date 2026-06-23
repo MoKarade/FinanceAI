@@ -531,12 +531,16 @@ export interface SavingsGoal {
   linkedBudgetCategoryName?: string;
 }
 
-/** [PH4D-WEIGHTS-STORE] Pondérations des 4 ratios de l'indicateur de santé financière (`HealthIndicator`). */
+/** [PH4D-WEIGHTS-STORE] Pondérations des ratios de l'indicateur de santé financière (`HealthIndicator`).
+ *  [PH4D-BUDGET-RATIOS] étendu de 4 à 6 : ajout de `budgetParity` (adhérence au budget) et `subscriptionLoad`
+ *  (poids des abonnements). Rétrocompat : un état persisté à 4 champs est complété par les défauts à la lecture. */
 export interface HealthWeights {
   savingsRate: number;
   emergencyFund: number;
   debtRatio: number;
   fireProgress: number;
+  budgetParity: number;
+  subscriptionLoad: number;
 }
 
 export interface Debt {

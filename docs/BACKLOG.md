@@ -85,9 +85,14 @@
     `AppState.healthWeights?` (additif, pas de v7→v8) + `utils/healthWeights.ts` (`DEFAULT_HEALTH_WEIGHTS` + `loadLegacyHealthWeights`
     qui lit l'ancienne clé à l'init du store ; le `merge` Zustand défaut garde la valeur initiale → poids user NON perdus). HealthIndicator
     lit/écrit le store (`setAppState`). 7 tests migration + tests composant adaptés. Panel APPROVE (logError sur corruption, `@deprecated` sur la clé).
-  - [ ] **[PH4D-BUDGET-RATIOS]** 🔧 MEDIUM — reste de PH4-D : ajouter à l'`HealthIndicator` 2 ratios **budgétaires** (parité budget
-    via `computeBudgetParity` ; couverture des abonnements) → couple le composant aux données Budget (passer `actualsMap`/abos en props,
-    étendre le schéma `Weights` 4→6). Fait après `PH4D-WEIGHTS-STORE` (le schéma de poids change).
+  - [x] **[PH4D-BUDGET-RATIOS]** ✅ MEDIUM (2026-06-22) — 2 ratios budgétaires ajoutés à l'`HealthIndicator` : **adhérence au budget**
+    (`computeBudgetParityScore`, dépenses réelles vs cibles du mois précédent, hors postes épargne) + **poids des abonnements**
+    (`computeSubscriptionLoadScore`, coût mensuel des abos épinglés / revenu net, plafond 15 %). `HealthWeights` 4→6 (rétrocompat via
+    `normalizeHealthWeights`). Correction de fond : `totalScore` exclut les métriques sans donnée (un 0 par absence ne tire plus le score).
+    Revue adversariale (workflow, 5 dimensions) → 6 findings intégrés (épargne exclue, fréquence `monthlyExpenses`, masquage orphelins, a11y `—`).
+  - [ ] **[A11Y-HEALTH-RAW-INK500]** 🔧 LOW (découverte PH4D-BUDGET-RATIOS, **pré-existant**) : la ligne `m.raw` de chaque métrique
+    (`HealthIndicator.tsx` ~309) utilise `text-ink-500` (3,4-4,2:1 < AA normal). Présent sur les 4 métriques d'origine, hors scope du diff
+    PH4D. Fix : `text-ink-400` (passe AA). Mesuré par l'a11y-auditor de la revue.
   - [ ] **[PH4E-OWNER-EDIT]** 🔧 LOW — reste de PH4-E : **sélecteur d'`ownerId` dans l'UI transactions** (override manuel de
     l'attribution couple). Le champ `Transaction.ownerId?` + la résolution (`resolveTransactionOwner` : override explicite gagne) sont
     déjà câblés/testés ; il manque le contrôle UI (par ex. un toggle Conjoint 1/2 par ligne en mode couple) pour SETTER `ownerId`.

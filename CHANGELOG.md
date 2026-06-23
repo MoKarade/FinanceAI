@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Mode discret sur les champs éditables + change réel au Centre fiscal] — 2026-06-23
+
+### Le mode discret masque aussi les champs que tu peux modifier
+- Tes montants de **pension/rente** (Profil) et tes **cibles de budget** sont maintenant masqués (`•••`) en mode
+  discret tant que tu ne cliques pas dessus pour les modifier — la valeur **sort réellement de la page** (avant,
+  un simple flou la laissait lisible par copier-coller, inspecteur ou lecteur d'écran). Le champ se re-masque dès
+  que tu en sors, ou si tu actives le mode discret pendant que tu édites.
+
+### Centre fiscal : estimation d'impôt de placement plus juste
+- L'estimation d'impôt sur tes placements non enregistrés utilise désormais le **taux de change réel** (au lieu
+  d'un taux USD figé et périmé) → l'impact estimé est correct pour un portefeuille en USD/EUR.
+
+---
+
 ## [unreleased — Sécurité : durcissement chiffrement + journaux] — 2026-06-23
 
 ### Renforce la protection de tes clés et de tes journaux

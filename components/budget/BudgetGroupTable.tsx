@@ -2,6 +2,7 @@ import React from 'react';
 import { BudgetCategory } from '../../types';
 import { Icon } from '../ui/Icon';
 import { PrivateAmount } from '../ui/PrivateAmount';
+import { PrivateNumberInput } from '../ui/PrivateNumberInput';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip } from 'recharts';
 import { LineChart, Line, YAxis as LYAxis } from 'recharts';
 import { formatCAD, formatSigned } from '../../utils/format';
@@ -173,11 +174,11 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                         <td className="p-3 text-right">
                                             <div className="flex flex-col items-end">
                                                 <div className="flex items-center justify-end">
-                                                    <input
+                                                    <PrivateNumberInput
                                                         type="number"
                                                         value={item.target}
                                                         onChange={(e) => onUpdateItem(idx, 'target', parseFloat(e.target.value) || 0)}
-                                                        className={`bg-transparent text-right w-20 outline-none font-mono privacy-blur ${timeView !== 'MONTH' ? 'text-ink-500 text-meta' : 'text-white'}`}
+                                                        className={`bg-transparent text-right w-20 outline-none font-mono ${timeView !== 'MONTH' ? 'text-ink-500 text-meta' : 'text-white'}`}
                                                         title="Modifier le montant de base"
                                                         onClick={(e) => e.stopPropagation()}
                                                     />

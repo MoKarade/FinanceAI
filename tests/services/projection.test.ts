@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateFutureProjection, type SimulationParams } from '../../services/projection';
+import { computeDonationCredit } from '../../utils/donationCredit';
 import type {
     ProjectionConfig,
     BudgetConfig,
@@ -349,6 +350,33 @@ const ALL_TYPES = ['BASE', 'LIBERTE_55', 'HYPER_INFLATION', 'WINDFALL', 'ECONOMI
             const chBase = withCharity.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
             // Le don sort du patrimoine mais le crédit fiscal compense partiellement
             expect(chBase!.estateNetWorth).toBeLessThan(noBase!.estateNetWorth!);
+        });
+
+        it('[FA-6] le crédit-don s\'applique en année ACTIVE (survit décembre via le bucket divers)', () => {
+            // DISCRIMINANT money-critical : avant le fix, le crédit allait dans taxCurrentYear.revenu,
+            // ÉCRASÉ en décembre pour un salarié actif (taxDecember:406) → le don n'avait AUCUN effet
+            // fiscal en phase active. Le fix le route vers `divers` (jamais écrasé) → il s'applique.
+            // Horizon court (3 ans) : le persona (35 ans) est ACTIF tout du long.
+            const noCharity: ProjectionResult = calculateFutureProjection(makeParams({ projection: makeProjection({ years: 3 }) }));
+            const withCharity: ProjectionResult = calculateFutureProjection(makeParams({
+                projection: makeProjection({ years: 3 }),
+                charitableGoals: [{ id: 'c1', annualAmount: 10000 }],
+            }));
+            const noBase = noCharity.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE')!;
+            const chBase = withCharity.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE')!;
+            // Impôt « divers » TOTAL payé sur l'horizon. RAMQ/FSS sont identiques pour les deux → leur
+            // différence ≈ −crédit. Crédit(10 000) ≈ 5 264 $/an → le donateur paie NETTEMENT moins de divers.
+            const sumDivers = (r: ProjectionResult): number =>
+                (r.chartData ?? []).reduce((acc: number, p: ProjectionChartPoint) => acc + (p.TaxPaidDivers ?? 0), 0);
+            // Tous les mois exercés sont en phase active (aucun isRetired) — garde la prémisse du test.
+            expect((chBase.chartData ?? []).some((p: ProjectionChartPoint) => p.isRetired)).toBe(false);
+            // Avant le fix : crédit jeté → sumDivers(donateur) ≈ sumDivers(non-donateur) → ÉCHEC.
+            expect(sumDivers(chBase)).toBeLessThan(sumDivers(noBase) - 1000);
+            // MAGNITUDE (ancre sur la vraie valeur fiscale, pas un chiffre magique) : l'écart de divers
+            // vaut le crédit annuel × le nb de règlements d'avril tombant dans l'horizon (~2 sur 3 ans).
+            // Seuil à 1,5× le crédit annuel : prouve la magnitude-crédit, robuste au compte exact de règlements.
+            const gap = sumDivers(noBase) - sumDivers(chBase);
+            expect(gap).toBeGreaterThan(computeDonationCredit(10000) * 1.5);
         });
 
         it('Immeuble locatif: NOI positif augmente le revenu et le patrimoine', () => {

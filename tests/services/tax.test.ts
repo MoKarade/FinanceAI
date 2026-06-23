@@ -770,7 +770,7 @@ describe('processDecemberTaxFiling intègre la prime RAMQ (§6.4)', () => {
       11,  // décembre
       { ...baseCtx, ramqExempt: false, childrenCount: 0 },
       helpers,
-      { revenu: 0, gains: 0, divers: 0, reer: 0 },
+      { revenu: 0, gains: 0, divers: 0, reer: 0, donCredit: 0 },
     );
     expect(result.newTaxCurrentYear.divers).toBeGreaterThan(0);
     expect(result.logs.some(l => l.includes('RAMQ'))).toBe(true);
@@ -781,7 +781,7 @@ describe('processDecemberTaxFiling intègre la prime RAMQ (§6.4)', () => {
       11,
       { ...baseCtx, ramqExempt: true, childrenCount: 0 },
       helpers,
-      { revenu: 0, gains: 0, divers: 0, reer: 0 },
+      { revenu: 0, gains: 0, divers: 0, reer: 0, donCredit: 0 },
     );
     expect(result.newTaxCurrentYear.divers).toBe(0);
     expect(result.logs.some(l => l.includes('RAMQ'))).toBe(false);
@@ -793,7 +793,7 @@ describe('processDecemberTaxFiling intègre la prime RAMQ (§6.4)', () => {
       11,
       { ...baseCtx, ramqExempt: false, childrenCount: 0, accRrspYear: 30000 },
       helpers,
-      { revenu: 0, gains: 0, divers: 0, reer: 0 },
+      { revenu: 0, gains: 0, divers: 0, reer: 0, donCredit: 0 },
     );
     // Pas de prime RAMQ car revenu net (10k$) < seuil exemption (19 500$)
     expect(result.logs.some(l => l.includes('RAMQ'))).toBe(false);
@@ -901,7 +901,7 @@ describe('processDecemberTaxFiling intègre FSS §6.1', () => {
       11,
       retiredCtx,
       helpers2,
-      { revenu: 0, gains: 0, divers: 0, reer: 0 },
+      { revenu: 0, gains: 0, divers: 0, reer: 0, donCredit: 0 },
     );
     expect(result.newTaxCurrentYear.divers).toBeGreaterThan(0);
     expect(result.logs.some(l => l.includes('FSS'))).toBe(true);
@@ -912,7 +912,7 @@ describe('processDecemberTaxFiling intègre FSS §6.1', () => {
       11,
       { ...retiredCtx, incomeRetirementMonthly: 1000 },  // 12k$ < 18 500$ (FSS_THRESHOLD_ZERO 2026)
       helpers2,
-      { revenu: 0, gains: 0, divers: 0, reer: 0 },
+      { revenu: 0, gains: 0, divers: 0, reer: 0, donCredit: 0 },
     );
     expect(result.logs.some(l => l.includes('FSS'))).toBe(false);
   });
@@ -927,7 +927,7 @@ describe('processDecemberTaxFiling intègre FSS §6.1', () => {
         grossMarcBaseAnnual: 60000,  // revenu actif élevé
       },
       helpers2,
-      { revenu: 0, gains: 0, divers: 0, reer: 0 },
+      { revenu: 0, gains: 0, divers: 0, reer: 0, donCredit: 0 },
     );
     // Mode actif → pas de FSS individuel
     expect(result.logs.some(l => l.includes('FSS'))).toBe(false);

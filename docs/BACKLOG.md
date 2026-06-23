@@ -923,13 +923,22 @@
 - [x] **[FA-5]** (livré #221) NPV rentes succession : `governmentPension × 0,65 × activeUsersCount`
   (`estateCalculation.ts:144-145`) alors que le moteur le traite déjà comme FAMILIAL → ×N en double,
   `estateNetWorth` couple gonflé de dizaines de k$.
-- [ ] **[FA-6]** 🔧 MEDIUM — Dons charitables : `w5Effects.ts:98-101` code en dur « crédit 33 % + relief gains 15 % »
-  = INEXACT. **DÉCISION Marc 2026-06-19 : modéliser proprement (a).** Barème RÉEL recherché (à transcrire daté+sourcé
-  dans `FISCAL_REFERENCE` AVANT de coder) : **par paliers** — Fédéral ~15 % (réduit ~14 % 2025-2026) sur les 1ers 200 $,
-  puis **29 %** au-delà (33 % seulement sur la portion de revenu en tranche max) ; **Québec 20 %** sur 1ers 200 $, puis
-  **24 %** (25,75 % hauts revenus) → **combiné ~32-34 % puis ~48-53 % > 200 $**. **Don de titres cotés en nature =
-  inclusion du gain en capital 0 %** (exonéré, ≠ « relief 15 % »). Sources : revenuquebec.ca (crédits dons) · CFFP
-  guide-mesures-fiscales/credit-impot-dons · canada.ca ligne 34900 (gains sur dons de biens). Effort M.
+- [x] **[FA-6]** ✅ **FAIT (2026-06-23)** — Dons charitables : crédit par PALIERS (`utils/donationCredit.ts`, féd 15/29 +
+  QC 20/24 → 35 % / 53 %, FISCAL_REFERENCE §10 daté+sourcé) remplace le `33 %` plat ; volet titres `−0,15·don` (inventé) SUPPRIMÉ.
+  ⚠️ **Découverte CRITIQUE en cadrant** : le crédit (et la taxe locative/CCPC) allait dans `taxCurrentYear.revenu`, **ÉCRASÉ en
+  décembre année ACTIVE** (`taxDecember:406` `=` vs `+=` retraité) → un salarié actif donateur n'avait AUCUN bénéfice fiscal, et les
+  loyers/dividendes CCPC d'un actif n'étaient PAS imposés. Fix = router les 3 ajustements W5 vers `divers` (jamais écrasé) via
+  `addTaxDivers`. Panel financial-integrity + projection-validator = CORRECT, 0 régression, conservation 35/35, discriminant
+  `git stash` prouvé. Découvertes routées ci-dessous (FA-6-CREDIT-CAP, W5-TAX-PROXY).
+- [x] **[FA-6-CREDIT-CAP]** ✅ **FAIT (2026-06-23, même PR que FA-6)** — le crédit-don (non remboursable) est désormais PLAFONNÉ
+  à l'impôt sur le revenu + gains de l'année. Champ séparé `taxCurrentYear.donCredit` (accumulé en janvier) → `taxDecember`
+  le plafonne à `grossIncomeTax + max(0, gains)` puis l'applique à `divers` (RAMQ/FSS hors assiette). Un crédit non remboursable
+  ne génère plus de remboursement net (donateur bas-revenu : crédit borné à son impôt) ; l'excédent est perdu (pas de report
+  modélisé). Tests unitaires (revenu élevé = complet, revenu bas = plafonné, revenu nul = 0) + discriminant `git stash` (sans cap,
+  les tests bas/nul échouent). Panel financial-integrity + projection-validator + silent-failure-hunter.
+- [ ] **[W5-TAX-PROXY]** 🔧 LOW (découverte FA-6) — les taux d'impôt locatif (`0,45` sur NOI) et dividende CCPC (`0,36`) dans
+  `w5Effects.ts` sont des PROXIES PLATS non sourcés (taux marginal). Désormais APPLIQUÉS en année active (avant : clobberés = 0).
+  Raffiner en impôt incrémental `tax(rev+x)−tax(rev)` + sourcer dans FISCAL_REFERENCE.
 - [x] **[FA-7]** 🔧 (livré) §8 immobilier transcrit dans FISCAL_REFERENCE : B-20 (plancher 5,25 %,
   +2 pts, GDS 39/TDS 44), mise de fonds min + amortissements SCHL (30 ans FTB/neuve août 2024),
   primes SCHL par LTV (0,60→4,00 %), mutations QC 2025 (paliers + note Montréal non modélisé,

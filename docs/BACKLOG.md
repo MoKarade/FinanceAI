@@ -98,17 +98,20 @@
     Table desktop (colonne conditionnelle) + carte mobile (ligne « Conjoint : »). `Transactions.tsx` lit `config` du store ; l'override
     alimente `resolveTransactionOwner`/`computeActualByOwner` (#398, déjà prouvé). 3 tests (solo absente, couple présente, change écrit/efface).
     **PH4-E complet.** Reste-note (`computeActualByOwner` garde `amount<0` interne) → non requis : seul site d'appel filtre déjà.
-  - `BUDGET-KEY-WARNING` (découverte PH4-A, **pré-existant, hors scope**) : la page Budget émet des warnings React « two children
-    with the same key, `value` » — c'est **Recharts** (les donuts `<Pie dataKey="value">` sans `nameKey`) ; mes listes (PH4-A/B) ont
-    des clés uniques. Fix probable : ajouter `nameKey="name"` aux `<Pie>` (théo + réel). Non-fatal (warning, pas erreur).
+  - `BUDGET-KEY-WARNING` (découverte PH4-A, **pré-existant, LOW, non-fatal**) : la page Budget émet des warnings React « two children
+    with the same key, `value` » (~32 en session, clé littérale `value`). ⚠️ **Hypothèse `nameKey` RÉFUTÉE** (testée 2026-06-23) :
+    ajouter `nameKey="name"` aux `<Pie dataKey="value">` ne change RIEN — Recharts keye en interne sur le `dataKey`, pas le label.
+    Sources « value » à l'écran : les 2 donuts (`<Pie dataKey="value">`) au montage + `<Bar dataKey="value">` (`BudgetGroupTable:254`,
+    rendu seulement à l'expansion d'un poste). Vraie correction = inconnue (quirk interne Recharts sur la légende du Pie) → demande une
+    investigation dédiée (essayer un `id` unique par `<Pie>`, ou supprimer/customiser `<Legend>`). Warning React dev, pas une erreur runtime.
   - [ ] **[PLANNING-ANNUAL-SUB-12X]** 🔧 LOW (découverte PH4-F, **pré-existant, hors scope**) : `Planning.tsx` calcule
     `totalYearly = totalMonthly * 12` où `totalMonthly = Σ averageAmount` — un abo ANNUEL (détecté à intervalle 350-380 j,
     `averageAmount` = le montant ANNUEL complet) est compté comme mensuel puis ×12 → surévaluation ~12× de cet abo dans les KPI
     « Fixe Mensuel »/« Coût Annuel ». Identique avant/après PH4-F (financial-integrity : pas une régression). Fix : utiliser
     `yearlyCost` pour l'annuel et normaliser le mensuel par `yearlyCost/12` plutôt que `averageAmount` brut.
-  - `BUDGET-DONUT-SVG-ARIA` (découverte PH4-B, **pré-existant, LOW**) : le `<svg>` Recharts sous `role="img"`+`aria-label`
-    n'est pas `aria-hidden` → certains SR (NVDA+FF) peuvent traverser l'arbre SVG. Partagé par les 2 donuts (théo + réel). Fix :
-    envelopper `<ResponsiveContainer>` dans `<div aria-hidden="true">`. Contrastes du bloc PH4-B tous MESURÉS PASS (a11y-auditor).
+  - `BUDGET-DONUT-SVG-ARIA` ✅ **FAIT (2026-06-23)** : les 2 donuts (théo + réel) enveloppent désormais `<ResponsiveContainer>`
+    dans `<div aria-hidden="true">` → le `<svg>` Recharts n'est plus traversable par les SR (le nom accessible reste sur le
+    `div role="img"`, les données dans le `ChartDataTable` sr-only). Contrastes du bloc PH4-B tous MESURÉS PASS (a11y-auditor).
   - `BUDGET-NATURE-FREEFORM` ✅ **FAIT (2026-06-23)** : les 56 items de fixtures (testBudget + 6 personas) avaient des natures
     LIBRES ('Logement', 'Alimentation', 'Épargne' accentué…) violant l'union typée → tout tombait dans « Envie » + CELI/REER
     (`'Épargne'`≠`'Epargne'`) comptaient comme DÉPENSES (groupement, `coupleAnalysis`, ET les dépenses envoyées à l'IA/Dashboard/

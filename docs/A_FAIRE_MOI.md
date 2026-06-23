@@ -124,3 +124,9 @@ Le code est prêt et déployé ; il manque l'hébergement du bundle (Marc avait 
   proxy de taux marginal » dans l'UI + une source de taux marginal QC dans `FISCAL_REFERENCE` (rapide, honnête) ;
   **(b)** je modélise l'impôt INCRÉMENTAL réel `tax(rev+x)−tax(rev)` par conjoint (exact, mais plan-first dédié,
   touche le moteur). Dis (a) ou (b). En attendant les proxies restent (conservateurs, documentés).
+- [ ] **[HIST-NW-DEBT-DISCLAIMER]** (décision produit, audit 2026-06-23) — le **patrimoine net du PASSÉ** affiché dans le graphe
+  Futur = placements + liquidités + équité immo, **SANS dettes** (l'app n'a que le solde de dette COURANT, pas l'historique
+  d'amortissement) → pour un endetté, la portion passée de la courbe est GONFLÉE vs le futur (qui soustrait les dettes). Le code
+  est désormais documenté (HIST-NW-NO-DEBT). Tranche : **(a)** laisser tel quel (documenté) ; **(b)** disclaimer visuel sur la
+  zone passée du graphe ; **(c)** soustraire la dette COURANTE comme approximation (suppose la dette ~constante dans le passé —
+  imparfait). Reco : (b) (honnête, zéro fausse donnée). Dis (a)/(b)/(c).

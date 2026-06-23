@@ -263,6 +263,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             const celi = inv?.CELI ?? 0, celiapp = inv?.CELIAPP ?? 0, reer = inv?.REER ?? 0,
                 reee = inv?.REEE ?? 0, nonReg = inv?.NonReg ?? 0, crypto = inv?.Crypto ?? 0;
             const hasNW = mi >= firstTxnMi; // VN seulement à partir de la 1re transaction connue
+            // [HIST-NW-NO-DEBT, audit 2026-06-23] ⚠️ Le NetWorth du PASSÉ = placements + cash + équité immo,
+            // SANS dettes (on n'a pas l'historique des soldes de dette, seulement le solde courant) → pour un
+            // endetté, le passé est GONFLÉ vs le futur (qui soustrait les dettes). Limite assumée, pas un bug
+            // de conservation. Une approx (soustraire la dette COURANTE) ou un disclaimer = décision produit
+            // (cf docs/A_FAIRE_MOI HIST-NW-DEBT-DISCLAIMER).
             const investSum = celi + celiapp + reer + reee + nonReg + crypto;
             out.push({
                 monthIndex: mi,

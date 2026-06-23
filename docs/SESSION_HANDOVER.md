@@ -53,6 +53,10 @@
 > (id sur bouton, focus-ring, ref-focus, re-mask sur activation privé, `CAPITAL_GAINS_INCLUSION_STANDARD`). RESTE : LOT 5 `M1`+`M5-INV1`+
 > `HIST-NW` (LOW), LOT 4 `NAN-INPUT-HARDENING` (moteur, plan-first+panel, EN DERNIER). Découverte → BACKLOG : `SEC-PRIVACY-RETIREMENT-RRQ-PSV`
 > (rrq/psv jamais masqués, LOW). Bloqués → A_FAIRE_MOI : `FISC-WELCOME-2026`, `W5-TAX-PROXY` (a/b).
+> **LOT 5 ✅ FAIT** (doc-only) : `M5-INV1-EXTEND` était **déjà couvert** par INV-9 (lignes 346-354 : reconstructabilité hypothèque +
+> discriminant DetteTotale) → fermé sans test dupliqué ; `HIST-NW-NO-DEBT` documenté aux 2 sites (module + `FutureProjection`, NW passé
+> sans dettes faute d'historique). Question produit → A_FAIRE_MOI `HIST-NW-DEBT-DISCLAIMER` (a/b/c). RESTE : **LOT 4** `NAN-INPUT-HARDENING`
+> (moteur, plan-first+panel) + **LOT 6/M1** `FISC-WHT-HARDCODE` (compteur `totalTaxesPaid`, non-double-compte + discriminant — money-critical).
 > **Session 2026-06-23 — quick-win `BUDGET-NATURE-FREEFORM` ✅ FAIT** : les 56 items de fixtures (testBudget + 6 personas) avaient
 > des natures LIBRES violant l'union typée `'Besoin'|'Envie'|'Epargne'` → tout en « Envie » + CELI/REER (`'Épargne'` accentué)
 > comptés comme dépenses (groupement, coupleAnalysis, dépenses IA/Dashboard/NextBestAction). Normalisés 50/30/20. Panel

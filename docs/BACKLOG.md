@@ -363,10 +363,13 @@
 - [ ] **[M1-FISC-WHT-HARDCODE]** 🔧 LOW (ouvert depuis juin) — `projection.ts:1424` retenue REER `*0.15` en dur dans le COMPTEUR
   d'affichage `totalTaxesPaid` (PAS le NW). Retenue affichée sous-évaluée > 1ʳᵉ tranche. Fix `withholdingForGrossRRSP` (vérif
   non-double-compte). Effort S. (Distinct du faux positif fiscal : la vraie retenue passe par `RRSP_WITHHOLDING_QC`.)
-- [ ] **[M5-INV1-EXTEND]** 🔧 LOW — étendre INV-1 (`projection.moneyConservation.test.ts:155`) au cas HYPOTHÈQUE (discriminant
-  `DettesNonImmo` ; INV-9 couvre la non-double-soustraction mais INV-1 n'a pas de scénario sous prêt). Effort S.
-- [ ] **[HIST-NW-NO-DEBT]** 🔧 LOW — `services/history/reconstructPortfolioHistory.ts:143` : `NetWorth` du PASSÉ = placements
-  SANS dettes (≠ futur) → historique gonflé pour un endetté. Renommer `InvestedValue` ou documenter le scope. Effort XS.
+- [x] **[M5-INV1-EXTEND]** ✅ **DÉJÀ COUVERT (constaté 2026-06-23, LOT 5)** — INV-9 (`projection.moneyConservation.test.ts:346-354`,
+  ajouté à l'audit 2026-06-17) contient EXACTEMENT le gap visé : reconstructabilité sous hypothèque `NetWorth = Σactifs − DettesNonImmo`
+  (<2 $) + discriminant `DetteTotale` (écart = solde hypothécaire > 1 k$). Pas de test dupliqué (leçon « vérifier avant de coder »).
+- [x] **[HIST-NW-NO-DEBT]** ✅ **FAIT (2026-06-23, LOT 5)** — documenté les DEUX sites (`reconstructPortfolioHistory.ts:143` + le
+  recompute d'affichage `FutureProjection.tsx:274`) : NW passé = placements (+cash+immo) SANS dettes, car l'app n'a pas l'historique
+  des soldes de dette. Pas de rename (casserait les consommateurs `.NetWorth`). Question PRODUIT (disclaimer / approx dette courante)
+  → `docs/A_FAIRE_MOI` HIST-NW-DEBT-DISCLAIMER.
 - [x] **[SEC-LOG-DEBT-REGEX]** ✅ **FAIT (2026-06-23, LOT 1)** — `errorLogger.ts` : les termes financiers (amount/balance/debt/
   salary/income/expense/cost/price/net-worth) matchés en SUBSTRING (capte `liquidDebt`/`mortgageBalance`/`annualAmount`…) ; les
   termes ambigus (token/email/`fact`…) restent ANCRÉS (anti faux-positif `factor`). Tests : composés redactés + diagnostiques conservés.

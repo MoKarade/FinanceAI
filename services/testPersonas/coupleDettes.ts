@@ -22,13 +22,13 @@ export function buildCoupleDettes(): Partial<AppState> {
     return {
         config: { users: [sophie, marcA], splitMode: '50/50' },
         budgetItems: [
-            { id: 'cd-b1', name: 'Loyer', target: 1850, nature: 'Logement', frequency: 'Monthly' },
-            { id: 'cd-b2', name: 'Épicerie', target: 750, nature: 'Alimentation', frequency: 'Monthly' },
-            { id: 'cd-b3', name: 'Restaurants', target: 300, nature: 'Alimentation', frequency: 'Monthly' },
-            { id: 'cd-b4', name: 'Transport (2 autos)', target: 450, nature: 'Transport', frequency: 'Monthly' },
-            { id: 'cd-b5', name: 'Loisirs', target: 200, nature: 'Loisirs', frequency: 'Monthly' },
-            { id: 'cd-b6', name: 'Télécom + abonnements', target: 180, nature: 'Autre', frequency: 'Monthly' },
-            { id: 'cd-b7', name: 'Santé', target: 90, nature: 'Santé', frequency: 'Monthly' },
+            { id: 'cd-b1', name: 'Loyer', target: 1850, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'cd-b2', name: 'Épicerie', target: 750, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'cd-b3', name: 'Restaurants', target: 300, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'cd-b4', name: 'Transport (2 autos)', target: 450, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'cd-b5', name: 'Loisirs', target: 200, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'cd-b6', name: 'Télécom + abonnements', target: 180, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'cd-b7', name: 'Santé', target: 90, nature: 'Besoin', frequency: 'Monthly' },
         ] as unknown as AppState['budgetItems'],
         // [R6] Micro-actif CELI symbolique (1 part) : ouvre Investissements + Futur (prérequis `assets`,
         // non opt-outable) sans dénaturer le profil « étranglé par les dettes ».

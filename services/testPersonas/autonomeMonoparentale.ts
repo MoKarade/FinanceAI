@@ -18,14 +18,14 @@ export function buildAutonomeMonoparentale(): Partial<AppState> {
     return {
         config: { users: [nadia] as unknown as BudgetConfig['users'], splitMode: '50/50' },
         budgetItems: [
-            { id: 'na-b1', name: 'Loyer', target: 1500, nature: 'Logement', frequency: 'Monthly' },
-            { id: 'na-b2', name: 'Épicerie', target: 600, nature: 'Alimentation', frequency: 'Monthly' },
-            { id: 'na-b3', name: 'Restaurants', target: 200, nature: 'Alimentation', frequency: 'Monthly' },
-            { id: 'na-b4', name: 'Transport', target: 300, nature: 'Transport', frequency: 'Monthly' },
-            { id: 'na-b5', name: 'Loisirs + activités enfant', target: 250, nature: 'Loisirs', frequency: 'Monthly' },
-            { id: 'na-b6', name: 'Frais professionnels', target: 400, nature: 'Autre', frequency: 'Monthly' },
-            { id: 'na-b7', name: 'Assurances (santé + invalidité)', target: 250, nature: 'Santé', frequency: 'Monthly' },
-            { id: 'na-b8', name: 'REER (auto-cotisé)', target: 500, nature: 'Épargne', frequency: 'Monthly' },
+            { id: 'na-b1', name: 'Loyer', target: 1500, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'na-b2', name: 'Épicerie', target: 600, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'na-b3', name: 'Restaurants', target: 200, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'na-b4', name: 'Transport', target: 300, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'na-b5', name: 'Loisirs + activités enfant', target: 250, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'na-b6', name: 'Frais professionnels', target: 400, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'na-b7', name: 'Assurances (santé + invalidité)', target: 250, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'na-b8', name: 'REER (auto-cotisé)', target: 500, nature: 'Epargne', frequency: 'Monthly' },
         ] as unknown as AppState['budgetItems'],
         assets: [
             {

@@ -109,12 +109,17 @@
   - `BUDGET-DONUT-SVG-ARIA` (découverte PH4-B, **pré-existant, LOW**) : le `<svg>` Recharts sous `role="img"`+`aria-label`
     n'est pas `aria-hidden` → certains SR (NVDA+FF) peuvent traverser l'arbre SVG. Partagé par les 2 donuts (théo + réel). Fix :
     envelopper `<ResponsiveContainer>` dans `<div aria-hidden="true">`. Contrastes du bloc PH4-B tous MESURÉS PASS (a11y-auditor).
-  - `BUDGET-NATURE-FREEFORM` (découverte PH4-B, **pré-existant, sépare-en-tâche**) : les `TEST_BUDGET_ITEMS` portent des natures
-    LIBRES ('Logement', 'Alimentation', 'Épargne' accentué…) qui VIOLENT l'union typée `nature: 'Besoin'|'Envie'|'Epargne'`. Le
-    groupement `groupedItems[nature]` ne matchant que la chaîne exacte, ces items tombent TOUS dans « Envie » → les 2 donuts 50/30/20
-    (théo ET réel) affichent **Besoins 0 %** pour les personas test. ⚠️ Affecte SEULEMENT les fixtures (un vrai user a la dropdown
-    typée → OK). Fix = aligner les fixtures sur 'Besoin'/'Envie'/'Epargne' (PAS changer le groupement). ⚠️ Changer des fixtures →
-    relancer la SUITE COMPLÈTE (tests à seuil keyés sur personas, cf leçon R6-MICRO-ASSET).
+  - `BUDGET-NATURE-FREEFORM` ✅ **FAIT (2026-06-23)** : les 56 items de fixtures (testBudget + 6 personas) avaient des natures
+    LIBRES ('Logement', 'Alimentation', 'Épargne' accentué…) violant l'union typée → tout tombait dans « Envie » + CELI/REER
+    (`'Épargne'`≠`'Epargne'`) comptaient comme DÉPENSES (groupement, `coupleAnalysis`, ET les dépenses envoyées à l'IA/Dashboard/
+    NextBestAction qui testent `=== 'Epargne'` exact). Normalisés vers la classe 50/30/20 (`name` garde le détail). Panel
+    financial-integrity + code-reviewer = CORRECTION confirmée, 0 régression (2285 tests verts). Donuts 50/30/20 montrent enfin
+    Besoins ≠ 0 (Léa : 37 % théo / 51 % réel). Vérifié au preview.
+  - `HEALTH-SAVINGS-RATE-DIVERGENCE` (découverte panel BUDGET-NATURE-FREEFORM, **pré-existant, à trancher**) :
+    `components/dashboard/HealthIndicator.tsx:93` somme TOUS les postes (épargne incluse) dans `monthlyExpenses` → le **taux d'épargne**
+    est sous-estimé, alors que `portfolio.computeMonthlyBudgetAggregates`, `useDerivedFinancials`, `NextBestAction` EXCLUENT
+    `nature==='Epargne'`. Même divergence « 2 calculs sur la même donnée la traitent différemment » que la leçon PH4D-BUDGET-RATIOS.
+    Fix = exclure l'épargne du `monthlyExpenses` du HealthIndicator (money-display → panel financial-integrity).
 - **Santé financière** retravaillée · **mode couple** plus concret · **détail de ce que CHAQUE conjoint sort**
   comme argent.
 - **Abonnements** : les voir (peut-être un onglet dédié avec les **dates** d'abonnement).

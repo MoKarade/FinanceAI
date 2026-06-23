@@ -79,4 +79,19 @@ describe('Budget — refonte UI (Phase C3)', () => {
         // Soit l'un soit l'autre — dépend des montants
         expect(text.match(/Excédentaire|Déficitaire/)).toBeTruthy();
     });
+
+    it('[PH4E-OWNER-EDIT] mode COUPLE (user2 nommé) : section « Santé Financière du Couple » présente', () => {
+        const { container } = render(<Budget {...baseProps} />);
+        expect(container.textContent || '').toContain('du Couple');
+    });
+
+    it('[PH4E-OWNER-EDIT] mode SOLO (user2 SANS nom) : section « du Couple » ABSENTE (isSolo basé sur le nom, pas length)', () => {
+        // Régression : `config.users` est un tuple [User,User] → length toujours 2 → isSolo était toujours faux,
+        // la section couple s'affichait en solo (et un ownerId orphelin y montrait un montant inexpliqué).
+        const soloConfig: BudgetConfig = { ...defaultConfig, users: [defaultConfig.users[0], { ...defaultConfig.users[1], name: '' } as User] };
+        const { container } = render(<Budget {...baseProps} config={soloConfig} />);
+        const text = container.textContent || '';
+        expect(text).toContain('Santé Financière'); // la carte existe (titre solo)
+        expect(text).not.toContain('du Couple');     // mais pas la variante couple
+    });
 });

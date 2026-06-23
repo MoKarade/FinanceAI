@@ -93,11 +93,11 @@
   - [ ] **[A11Y-HEALTH-RAW-INK500]** 🔧 LOW (découverte PH4D-BUDGET-RATIOS, **pré-existant**) : la ligne `m.raw` de chaque métrique
     (`HealthIndicator.tsx` ~309) utilise `text-ink-500` (3,4-4,2:1 < AA normal). Présent sur les 4 métriques d'origine, hors scope du diff
     PH4D. Fix : `text-ink-400` (passe AA). Mesuré par l'a11y-auditor de la revue.
-  - [ ] **[PH4E-OWNER-EDIT]** 🔧 LOW — reste de PH4-E : **sélecteur d'`ownerId` dans l'UI transactions** (override manuel de
-    l'attribution couple). Le champ `Transaction.ownerId?` + la résolution (`resolveTransactionOwner` : override explicite gagne) sont
-    déjà câblés/testés ; il manque le contrôle UI (par ex. un toggle Conjoint 1/2 par ligne en mode couple) pour SETTER `ownerId`.
-    L'attribution AUTO (par type de poste) couvre le défaut. Note panel : ajouter une garde `amount < 0` interne à `computeActualByOwner`
-    si elle est réutilisée hors du site d'appel filtré (sinon un revenu mal passé tomberait silencieusement en `commun`).
+  - [x] **[PH4E-OWNER-EDIT]** ✅ LOW (2026-06-22) — **colonne « Conjoint »** dans le tableau Transactions (mode couple) : un `<select>`
+    par ligne (Auto / prénom conjoint 0 / prénom conjoint 1) qui OVERRIDE `Transaction.ownerId` (`updateOwner`, `undefined` = AUTO).
+    Table desktop (colonne conditionnelle) + carte mobile (ligne « Conjoint : »). `Transactions.tsx` lit `config` du store ; l'override
+    alimente `resolveTransactionOwner`/`computeActualByOwner` (#398, déjà prouvé). 3 tests (solo absente, couple présente, change écrit/efface).
+    **PH4-E complet.** Reste-note (`computeActualByOwner` garde `amount<0` interne) → non requis : seul site d'appel filtre déjà.
   - `BUDGET-KEY-WARNING` (découverte PH4-A, **pré-existant, hors scope**) : la page Budget émet des warnings React « two children
     with the same key, `value` » — c'est **Recharts** (les donuts `<Pie dataKey="value">` sans `nameKey`) ; mes listes (PH4-A/B) ont
     des clés uniques. Fix probable : ajouter `nameKey="name"` aux `<Pie>` (théo + réel). Non-fatal (warning, pas erreur).

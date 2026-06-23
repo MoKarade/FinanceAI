@@ -134,10 +134,11 @@
   ✅ **`PH4D-WEIGHTS-STORE` FAIT (2026-06-22)** : poids → store Zustand (additif, `loadLegacyHealthWeights`, merge défaut garde les poids user).
   ✅ **`PH4D-BUDGET-RATIOS` FAIT (2026-06-22)** : 2 ratios — adhérence budget (hors épargne) + poids des abos (coût mensuel/revenu, plafond 15 %) ;
   `HealthWeights` 4→6 (`normalizeHealthWeights`) ; `totalScore` exclut les métriques sans donnée. Revue adversariale → 6 findings intégrés. **PH4-D ✅.**
-- **PH4-E** ◑ Couple — sorties par conjoint : ✅ (2026-06-22) `Transaction.ownerId?: 0|1` additif ; `resolveTransactionOwner` +
+- **PH4-E** ✅ Couple — sorties par conjoint : `Transaction.ownerId?: 0|1` additif ; `resolveTransactionOwner` +
   `computeActualByOwner` (`utils/budget.ts`, attribution AUTO par `BudgetCategory.type`, override par `ownerId`) ; `coupleAnalysis`
   expose `user1Actual/user2Actual/communActual` ; carte couple affiche « Perso réel » par conjoint. Conservation prouvée (financial-integrity).
-  ⏳ RESTE : `PH4E-OWNER-EDIT` (BACKLOG) = sélecteur d'`ownerId` dans l'UI transactions (override manuel ; l'auto couvre le défaut). *Migration additive.*
+  ✅ **`PH4E-OWNER-EDIT` FAIT (2026-06-22)** : colonne « Conjoint » dans le tableau Transactions (mode couple) = `<select>` Auto/conjoint
+  par ligne (`updateOwner`), table + carte mobile. **PH4-E complet.** *Migration additive.*
 - **PH4-F** ✅ (2026-06-22) Abonnements persistés : `AppState.subscriptions?: RecurringItem[]` (réutilise `RecurringItem`, pas de
   `SubscriptionItem` séparé) ; **ADDITIF SANS bump v7→v8** (décision : les abos n'étaient JAMAIS stockés — détectés à la volée — donc
   RIEN à migrer ; le pattern additif validé #397 prouve qu'un champ optionnel ne nécessite pas de bump ; plus sûr = zéro code de migration).

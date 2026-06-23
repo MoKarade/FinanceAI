@@ -346,12 +346,18 @@
   `monthlyEvents.ts:160`, `w5Effects.ts:125,139`, `helpers.ts:57` (`NaN<=0`=false). Fix groupé `Number.isFinite`+`logError`
   throttlé (calque `computeRawNetWorth`), discriminant = injecter NaN → lever. ⚠️ Reachability LIMITÉE (inputs sanitisent
   surtout à 0) → durcissement, pas bug actif. Touche le moteur → plan-first + panel + conservation. Effort M.
-- [ ] **[TC-FX-HARDCODE]** 🔧 MEDIUM — `components/TaxCenter.tsx:139` : USD converti avec `1.38` EN DUR (pas `state.fxRates`,
-  non reçu en props) → impôt estimé affiché FAUX pour détenteur d'actifs USD. + rendements `0.02`/`0.07` (`:141-142`) magic.
-  Fix : passer `fxRates` (ou `useFinanceStore`) + extraire les rendements en constantes. Effort S.
-- [ ] **[SEC-PRIVACY-BLUR-INPUTS]** 🔧 MEDIUM (Loi 25) — `budget/BudgetGroupTable.tsx:180`, `retirement/RetirementIncomeCard.tsx:27,73`
-  utilisent `privacy-blur` (CSS) sur des `<input>` → la `value` reste DANS le DOM (inspecteur/copier-coller/lecteur d'écran).
-  Champs ÉDITABLES → masquer hors-focus ou désactiver en mode discret (pas juste `<PrivateAmount>`). a11y-auditor au gate. Effort S-M.
+- [x] **[TC-FX-HARDCODE]** ✅ **FAIT (2026-06-23, LOT 3)** — `TaxCenter.tsx` : FX USD/EUR via `useFinanceStore(s=>s.fxRates)` (helper
+  `fxOf` + garde `Number.isFinite`, CAD=1) au lieu de `1.38` figé ; rendements `0.02`/`0.07` → constantes `EST_DIVIDEND_YIELD`/
+  `EST_CAPITAL_GAINS_YIELD` ; `0.5` → `CAPITAL_GAINS_INCLUSION_STANDARD` ; garde `(qty||0)*(price||0)`. Panel financial-integrity ✅
+  (sens FX correct, `taxableAddOn` confiné à l'affichage TaxCenter, zéro fuite vers le moteur source-unique).
+- [x] **[SEC-PRIVACY-BLUR-INPUTS]** ✅ **FAIT (2026-06-23, LOT 2)** — nouveau `components/ui/PrivateNumberInput.tsx` (focus-to-edit :
+  `•••` hors DOM en mode discret hors-focus, vrai `<input>` au clic/focus clavier, re-masque au blur ET si le mode discret est
+  (ré)activé en cours d'édition). Appliqué à `BudgetGroupTable` (1 champ) + `RetirementIncomeCard` (2 champs). `id` propagé au
+  bouton (label `htmlFor` préservé), `focus-ring` + `min-h-[24px]`, focus programmatique via ref. Panel a11y + security-privacy ✅.
+- [ ] **[SEC-PRIVACY-RETIREMENT-RRQ-PSV]** 🔧 LOW (Loi 25, découvert au LOT 2 par security-privacy) — `RetirementIncomeCard.tsx:34-53`
+  les `<input>` `rrqEstimateMonthly`/`psvEstimateMonthly` (montants de rente = PII) n'ont JAMAIS été masqués (pas de `privacy-blur` à
+  HEAD, hors périmètre SEC-PRIVACY-BLUR-INPUTS) → en mode discret ils restent en clair. Fix : les passer à `<PrivateNumberInput>` (même
+  pattern que les 2 champs voisins déjà migrés). Effort XS.
 - [x] **[SEC-PBKDF2-DRIVE]** ✅ **FAIT (2026-06-23, LOT 1)** — `keyCipher.ts` : PBKDF2 600k (encrypt) + fallback legacy 100k
   (decrypt) pour les anciens blobs Drive. Garde « Web Crypto indisponible » avant la boucle. Test rétro-compat (blob 100k déchiffre).
 - [ ] **[M1-FISC-WHT-HARDCODE]** 🔧 LOW (ouvert depuis juin) — `projection.ts:1424` retenue REER `*0.15` en dur dans le COMPTEUR

@@ -10,8 +10,15 @@ import { BudgetConfig, Asset } from '../types';
 import { analyzePayslip } from '../services/claude';
 import { logError } from '../services/errorLogger';
 import { calculateFiscalReport, calculateGrossFromNet } from '../services/tax';
+import { CAPITAL_GAINS_INCLUSION_STANDARD } from '../utils/tax';
 import { annualSalaryToMonthly } from '../utils/salary';
 import { formatCAD, formatSigned } from '../utils/format';
+import { useFinanceStore } from '../store/useFinanceStore';
+
+// [TC-FX-HARDCODE, audit 2026-06-23] Hypothèses d'ESTIMATION (PAS des constantes fiscales) pour estimer
+// le revenu imposable d'un portefeuille non-enregistré. Approximatif — affiché comme estimation.
+const EST_DIVIDEND_YIELD = 0.02;        // rendement en dividendes estimé (~2 %/an)
+const EST_CAPITAL_GAINS_YIELD = 0.07;   // gains en capital réalisés estimés (~7 %/an)
 
 interface TaxCenterProps {
     config: BudgetConfig;
@@ -134,16 +141,25 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
         setIsAnalyzing(false);
     };
 
+    // [TC-FX-HARDCODE] taux de change RÉELS du store (avant : USD figé à 1,38 → impôt estimé faux).
+    const fxRates = useFinanceStore((s) => s.fxRates);
     const investmentTaxData = useMemo(() => {
+        const fxOf = (cur: string | undefined): number => {
+            if (cur === 'USD' || cur === 'EUR') {
+                const r = fxRates?.[cur];
+                return Number.isFinite(r) ? (r as number) : 1; // repli 1 si taux absent/non chargé
+            }
+            return 1; // CAD (devise de base) ou devise inconnue
+        };
         const nonRegAssets = assets.filter(a => a.accountType === 'NON-ENREG' || a.accountType === 'CRYPTO');
-        const nonRegValue = nonRegAssets.reduce((sum, a) => sum + (a.quantity * a.currentPrice * (a.currency === 'USD' ? 1.38 : 1)), 0);
+        const nonRegValue = nonRegAssets.reduce((sum, a) => sum + ((a.quantity || 0) * (a.currentPrice || 0) * fxOf(a.currency)), 0);
 
-        const estDividends = nonRegValue * 0.02;
-        const estCapitalGains = nonRegValue * 0.07;
-        const taxableInvestmentIncome = estDividends + (estCapitalGains * 0.5);
+        const estDividends = nonRegValue * EST_DIVIDEND_YIELD;
+        const estCapitalGains = nonRegValue * EST_CAPITAL_GAINS_YIELD;
+        const taxableInvestmentIncome = estDividends + (estCapitalGains * CAPITAL_GAINS_INCLUSION_STANDARD);
 
         return { totalNonReg: nonRegValue, taxableAddOn: taxableInvestmentIncome };
-    }, [assets]);
+    }, [assets, fxRates]);
 
     const [viewUser, setViewUser] = useState<string>('all');
 

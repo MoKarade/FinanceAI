@@ -5,6 +5,7 @@
 import React from 'react';
 import { Card } from '../ui/Card';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
+import { PrivateNumberInput } from '../ui/PrivateNumberInput';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { numOr, numOrUndef } from '../../utils/numericInput';
 import type { RetirementGoal } from '../../types';
@@ -24,7 +25,7 @@ export const RetirementIncomeCard: React.FC = () => {
                         <div className="space-y-5">
                             <div>
                                 <label htmlFor="ric-govPension" className="block text-meta text-ink-300 mb-1">Rente État agrégée (RRQ + PSV, total ménage) / mois — legacy</label>
-                                <input id="ric-govPension" type="number" value={goal.governmentPension} onChange={e => updateGoal('governmentPension', numOr(e.target.value, goal.governmentPension))} className="w-full bg-black/40 border border-info-500/20 rounded-lg px-3 py-2 text-blue-300 font-bold focus:border-info-500 transition-colors outline-none privacy-blur" />
+                                <PrivateNumberInput id="ric-govPension" type="number" value={goal.governmentPension} onChange={e => updateGoal('governmentPension', numOr(e.target.value, goal.governmentPension))} className="w-full bg-black/40 border border-info-500/20 rounded-lg px-3 py-2 text-blue-300 font-bold focus:border-info-500 transition-colors outline-none" />
                                 <p className="text-tiny text-ink-500 mt-1">Total des deux conjoints si tu es en couple. Si tu remplis les 2 champs ci-dessous (par personne), ce champ est ignoré.</p>
                             </div>
                             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
@@ -65,12 +66,12 @@ export const RetirementIncomeCard: React.FC = () => {
                                 <div className="space-y-4 pt-1">
                                     <div>
                                         <label htmlFor="ric-dbMonthly" className="block text-meta text-ink-300 mb-1">Pension employeur DB (prestations determinees) / mois</label>
-                                        <input id="ric-dbMonthly"
+                                        <PrivateNumberInput id="ric-dbMonthly"
                                             type="number"
                                             value={goal.dbPensionMonthly ?? 0}
                                             onChange={e => updateGoal('dbPensionMonthly', numOr(e.target.value, goal.dbPensionMonthly ?? 0))}
                                             placeholder="0"
-                                            className="w-full bg-black/40 border border-success-500/20 rounded-lg px-3 py-2 text-emerald-300 font-bold focus:border-success-500 transition-colors outline-none privacy-blur"
+                                            className="w-full bg-black/40 border border-success-500/20 rounded-lg px-3 py-2 text-emerald-300 font-bold focus:border-success-500 transition-colors outline-none"
                                         />
                                         <p className="text-tiny text-ink-500 mt-1">RREGOP, fonction publique federale, regime garanti viager. Laisse 0 si tu n'as que du REER/CD.</p>
                                     </div>

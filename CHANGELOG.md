@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Mode test : la répartition 50/30/20 des personas est juste] — 2026-06-23
+
+### Corrige le classement Besoin / Envie / Épargne des personas d'exemple
+- Les budgets des personas de test classaient mal leurs postes (tout tombait en « Envie », et l'épargne CELI/REER comptait
+  comme une dépense). Désormais chaque poste est dans la bonne classe **50/30/20** → les donuts « Comparatif » et « Ta
+  répartition réelle » affichent enfin des Besoins ≠ 0, et le potentiel d'épargne / les dépenses montrées (y compris à
+  l'assistant) sont justes en mode test. Aucun impact sur tes vraies données (déjà correctes).
+
+---
+
 ## [unreleased — En couple : corrige qui a payé quoi] — 2026-06-22
 
 ### Attribue une transaction à l'un ou l'autre, à la main

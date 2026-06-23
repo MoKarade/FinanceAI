@@ -22,14 +22,14 @@ export function buildJeuneCoupleDink(): Partial<AppState> {
     return {
         config: { users: [maya, liam], splitMode: '50/50' },
         budgetItems: [
-            { id: 'jc-b1', name: 'Loyer', target: 1600, nature: 'Logement', frequency: 'Monthly' },
-            { id: 'jc-b2', name: 'Épicerie', target: 600, nature: 'Alimentation', frequency: 'Monthly' },
-            { id: 'jc-b3', name: 'Restaurants', target: 350, nature: 'Alimentation', frequency: 'Monthly' },
-            { id: 'jc-b4', name: 'Transport', target: 250, nature: 'Transport', frequency: 'Monthly' },
-            { id: 'jc-b5', name: 'Loisirs', target: 350, nature: 'Loisirs', frequency: 'Monthly' },
-            { id: 'jc-b6', name: 'Abonnements', target: 120, nature: 'Autre', frequency: 'Monthly' },
-            { id: 'jc-b7', name: 'Voyages annuels', target: 5000, nature: 'Loisirs', frequency: 'Yearly' },
-            { id: 'jc-b8', name: 'Épargne achat (CELIAPP)', target: 1500, nature: 'Épargne', frequency: 'Monthly' },
+            { id: 'jc-b1', name: 'Loyer', target: 1600, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'jc-b2', name: 'Épicerie', target: 600, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'jc-b3', name: 'Restaurants', target: 350, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'jc-b4', name: 'Transport', target: 250, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'jc-b5', name: 'Loisirs', target: 350, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'jc-b6', name: 'Abonnements', target: 120, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'jc-b7', name: 'Voyages annuels', target: 5000, nature: 'Envie', frequency: 'Yearly' },
+            { id: 'jc-b8', name: 'Épargne achat (CELIAPP)', target: 1500, nature: 'Epargne', frequency: 'Monthly' },
         ] as unknown as AppState['budgetItems'],
         assets: [
             {

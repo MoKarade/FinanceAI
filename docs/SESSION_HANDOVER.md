@@ -34,6 +34,11 @@
 > **PROCHAIN = ORDRE 3 = money-critical** (M1 dons / M2 ITEM-2C / M3 tables fiscales) : **session DÉDIÉE** — panel `financial-integrity`+`projection-validator`+`silent-failure-hunter`
 > + **test discriminant `git stash` OBLIGATOIRE** pour chaque item (un faux fix dans un moteur d'impôt est pire que le bug). Plan-first par item.
 > Reste aussi les multi-courbes (Q1) et divers BACKLOG. Plus de chantier PH4 ouvert.
+> **Session 2026-06-23 — quick-win `BUDGET-NATURE-FREEFORM` ✅ FAIT** : les 56 items de fixtures (testBudget + 6 personas) avaient
+> des natures LIBRES violant l'union typée `'Besoin'|'Envie'|'Epargne'` → tout en « Envie » + CELI/REER (`'Épargne'` accentué)
+> comptés comme dépenses (groupement, coupleAnalysis, dépenses IA/Dashboard/NextBestAction). Normalisés 50/30/20. Panel
+> financial-integrity+code-reviewer = CORRECTION, 0 régression (2285 verts). Donuts montrent enfin Besoins ≠ 0. Nouveau finding
+> BACKLOG `HEALTH-SAVINGS-RATE-DIVERGENCE` (HealthIndicator:93 n'exclut pas l'épargne du taux d'épargne — pré-existant, à trancher).
 > ⭐ **PATRON migration store ADDITIVE** (validé PH4-C + PH4D-WEIGHTS-STORE) : champ `optional` dans `AppState` (ne casse pas les fixtures),
 > valeur fournie à l'**état initial** du store, `partialize` allow-all-sauf-denylist le persiste AUTO, et le **`merge` Zustand par défaut**
 > (`{...current, ...persisted}`) GARDE la valeur initiale quand l'état persisté ne l'a pas → **AUCUN bump v7→v8** ni `migratePersistedState`.

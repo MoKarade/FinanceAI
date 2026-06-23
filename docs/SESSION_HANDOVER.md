@@ -42,6 +42,11 @@
 > inclus** : crédit non remboursable PLAFONNÉ à l'impôt dû (champ `donCredit` accumulé → cap en décembre à `grossIncomeTax+gains`, excédent
 > perdu) — corrige le sur-crédit d'un donateur bas-revenu (silent-failure-hunter). Panel financial-integrity+projection-validator+silent-failure
 > + discriminants `git stash` (fix d'imputation ET cap) + conservation verte. Follow-up restant : **`W5-TAX-PROXY`** (taux locatif 0,45 / CCPC 0,36 plats non sourcés).
+> **Session 2026-06-23 — AUDIT FINANCIER + CODE exhaustif ✅** (`docs/AUDIT_FINANCIER_2026-06-23.md`, panel 5 agents sur `main`
+> ce61ee1) : **cœur AAA confirmé** (fiscalité 0 écart, conservation 29 scénarios résiduel ≤0,03 $, suite 2329 verte, FA-6 conforme).
+> Findings de juin quasi tous FERMÉS. Nouveaux findings PÉRIPHÉRIQUES routés au BACKLOG (§ audit 2026-06-23) : `NAN-INPUT-HARDENING`
+> (durcissement défensif, 7 sites, plan-first), `TC-FX-HARDCODE` (TaxCenter FX 1.38 en dur), `SEC-PRIVACY-BLUR-INPUTS` (Loi 25),
+> `SEC-PBKDF2-DRIVE` (100k→600k), + M1/M5/HIST/log-regex (LOW). **Aucun ne menace la conservation/fiscalité** — lot 1 (sûr) puis NaN-hardening.
 > **Session 2026-06-23 — quick-win `BUDGET-NATURE-FREEFORM` ✅ FAIT** : les 56 items de fixtures (testBudget + 6 personas) avaient
 > des natures LIBRES violant l'union typée `'Besoin'|'Envie'|'Epargne'` → tout en « Envie » + CELI/REER (`'Épargne'` accentué)
 > comptés comme dépenses (groupement, coupleAnalysis, dépenses IA/Dashboard/NextBestAction). Normalisés 50/30/20. Panel

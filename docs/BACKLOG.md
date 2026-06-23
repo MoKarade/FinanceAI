@@ -336,6 +336,34 @@
   PV-6 (ne s'arme que si liquid<0 ; après le primaire liquid reste au coussin ≥0, vérifié projection-validator +
   silent-failure-hunter). Garde : **INV-12** (`moneyConservation`), prouvé discriminant (résiduel 3496 $/mois sans le
   fix → ≈0 avec, via `git stash`). Chemin DISTINCT du fix REER (qui y était inerte ; INV-10/INV-11 = phase solvable).
+### 🔬 Audit financier 2026-06-23 (findings vérifiés — `docs/AUDIT_FINANCIER_2026-06-23.md`)
+> Cœur AAA CONFIRMÉ + élargi (conservation 29 scénarios résiduel ≤0,03 $, fiscalité 0 écart, FA-6 conforme). Findings de
+> juin quasi tous FERMÉS. **Tout ci-dessous = PÉRIPHÉRIE** (durcissement défensif / affichage / sécurité au repos) — aucun
+> n'altère la conservation ni un calcul fiscal du cœur. Lot 1 (sûr) d'abord, puis NaN-hardening (plan-first, touche le moteur).
+- [ ] **[NAN-INPUT-HARDENING]** 🔧 MEDIUM (défense-en-profondeur, transversal) — sur le chemin $, `|| 0`/`?? 0` ne rattrapent
+  PAS NaN (un champ vidé / prix échoué se propagerait en silence, NON capté par les 12 invariants : `NaN > EPS` = false). 7
+  sites : `portfolio.ts:147`, `retirementIncome.ts:173`, `taxDecember.ts:600` (+ `logError`), `useDerivedFinancials.ts:51-61`,
+  `monthlyEvents.ts:160`, `w5Effects.ts:125,139`, `helpers.ts:57` (`NaN<=0`=false). Fix groupé `Number.isFinite`+`logError`
+  throttlé (calque `computeRawNetWorth`), discriminant = injecter NaN → lever. ⚠️ Reachability LIMITÉE (inputs sanitisent
+  surtout à 0) → durcissement, pas bug actif. Touche le moteur → plan-first + panel + conservation. Effort M.
+- [ ] **[TC-FX-HARDCODE]** 🔧 MEDIUM — `components/TaxCenter.tsx:139` : USD converti avec `1.38` EN DUR (pas `state.fxRates`,
+  non reçu en props) → impôt estimé affiché FAUX pour détenteur d'actifs USD. + rendements `0.02`/`0.07` (`:141-142`) magic.
+  Fix : passer `fxRates` (ou `useFinanceStore`) + extraire les rendements en constantes. Effort S.
+- [ ] **[SEC-PRIVACY-BLUR-INPUTS]** 🔧 MEDIUM (Loi 25) — `budget/BudgetGroupTable.tsx:180`, `retirement/RetirementIncomeCard.tsx:27,73`
+  utilisent `privacy-blur` (CSS) sur des `<input>` → la `value` reste DANS le DOM (inspecteur/copier-coller/lecteur d'écran).
+  Champs ÉDITABLES → masquer hors-focus ou désactiver en mode discret (pas juste `<PrivateAmount>`). a11y-auditor au gate. Effort S-M.
+- [ ] **[SEC-PBKDF2-DRIVE]** 🔧 LOW — `services/sync/keyCipher.ts:25` : PBKDF2 `100_000` (vs 600k local) pour chiffrer les
+  `apiKeys` poussées au Drive ; le `sub` Google est peu entropique → aligner à **600 000** (×6 brute-force, rétro-compatible). Effort XS.
+- [ ] **[M1-FISC-WHT-HARDCODE]** 🔧 LOW (ouvert depuis juin) — `projection.ts:1424` retenue REER `*0.15` en dur dans le COMPTEUR
+  d'affichage `totalTaxesPaid` (PAS le NW). Retenue affichée sous-évaluée > 1ʳᵉ tranche. Fix `withholdingForGrossRRSP` (vérif
+  non-double-compte). Effort S. (Distinct du faux positif fiscal : la vraie retenue passe par `RRSP_WITHHOLDING_QC`.)
+- [ ] **[M5-INV1-EXTEND]** 🔧 LOW — étendre INV-1 (`projection.moneyConservation.test.ts:155`) au cas HYPOTHÈQUE (discriminant
+  `DettesNonImmo` ; INV-9 couvre la non-double-soustraction mais INV-1 n'a pas de scénario sous prêt). Effort S.
+- [ ] **[HIST-NW-NO-DEBT]** 🔧 LOW — `services/history/reconstructPortfolioHistory.ts:143` : `NetWorth` du PASSÉ = placements
+  SANS dettes (≠ futur) → historique gonflé pour un endetté. Renommer `InvestedValue` ou documenter le scope. Effort XS.
+- [ ] **[SEC-LOG-DEBT-REGEX]** 🔧 LOW (latent/défensif) — `errorLogger.ts:72` `SENSITIVE_KEY_PATTERNS` ancré `^debt$` → `liquidDebt`
+  non redacté SI loggé (aucun site confirmé ; déjà assessé, cf leçon). Élargir le pattern (sans ancres) en ceinture-bretelles. Effort XS.
+
 ### 🔬 Audit financier 2026-06-17 (findings vérifiés — `docs/AUDIT_FINANCIER_2026-06-17.md`)
 > Cœur money-critical = AAA (conservation prouvée ≤0,02 $/~25 scénarios, fiscalité 0 écart). **Tous les findings
 > ci-dessous sont à la PÉRIPHÉRIE** (consommateurs UI/IA/viz qui recalculent au lieu de la source unique) — aucun

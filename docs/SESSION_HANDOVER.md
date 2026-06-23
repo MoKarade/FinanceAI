@@ -39,6 +39,10 @@
 > comptés comme dépenses (groupement, coupleAnalysis, dépenses IA/Dashboard/NextBestAction). Normalisés 50/30/20. Panel
 > financial-integrity+code-reviewer = CORRECTION, 0 régression (2285 verts). Donuts montrent enfin Besoins ≠ 0. Nouveau finding
 > BACKLOG `HEALTH-SAVINGS-RATE-DIVERGENCE` (HealthIndicator:93 n'exclut pas l'épargne du taux d'épargne — pré-existant, à trancher).
+> **Session 2026-06-23 — `BUDGET-DONUT-SVG-ARIA` ✅ FAIT (#403)** : les 2 donuts 50/30/20 enveloppent `<ResponsiveContainer>` dans
+> `<div aria-hidden="true">` (SVG Recharts hors traversée SR ; nom accessible sur `role="img"`, données dans `ChartDataTable` sr-only).
+> ⚠️ `BUDGET-KEY-WARNING` reste OUVERT : hypothèse `nameKey="name"` **TESTÉE et RÉFUTÉE** (ne change pas la clé interne Recharts) →
+> investigation dédiée requise (instance « mesurer pas raisonner »). Non-fatal (warning React dev).
 > ⭐ **PATRON migration store ADDITIVE** (validé PH4-C + PH4D-WEIGHTS-STORE) : champ `optional` dans `AppState` (ne casse pas les fixtures),
 > valeur fournie à l'**état initial** du store, `partialize` allow-all-sauf-denylist le persiste AUTO, et le **`merge` Zustand par défaut**
 > (`{...current, ...persisted}`) GARDE la valeur initiale quand l'état persisté ne l'a pas → **AUCUN bump v7→v8** ni `migratePersistedState`.

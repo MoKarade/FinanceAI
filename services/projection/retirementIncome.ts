@@ -170,7 +170,9 @@ export function computeRetirementIncome(
         totalRrqWeight += rrqWeightUser;
 
         // PSV résidence: prorata 1/40, mais 0 si < 10 ans (règle Service Canada)
-        const residencyYears = psvResidencyYears[idx] ?? 0;
+        // [NAN-INPUT-HARDENING] `?? 0` ne rattrape PAS NaN → `Number.isFinite` (sinon NaN<10=false → prorata NaN).
+        const ryRaw = psvResidencyYears[idx];
+        const residencyYears = Number.isFinite(ryRaw) ? ryRaw : 0;
         const psvIndividualProrata = residencyYears < PSV_MIN_RESIDENCY_YEARS
             ? 0
             : Math.min(1.0, residencyYears / PSV_FULL_RESIDENCY_YEARS);

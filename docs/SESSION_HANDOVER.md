@@ -55,8 +55,13 @@
 > (rrq/psv jamais masqués, LOW). Bloqués → A_FAIRE_MOI : `FISC-WELCOME-2026`, `W5-TAX-PROXY` (a/b).
 > **LOT 5 ✅ FAIT** (doc-only) : `M5-INV1-EXTEND` était **déjà couvert** par INV-9 (lignes 346-354 : reconstructabilité hypothèque +
 > discriminant DetteTotale) → fermé sans test dupliqué ; `HIST-NW-NO-DEBT` documenté aux 2 sites (module + `FutureProjection`, NW passé
-> sans dettes faute d'historique). Question produit → A_FAIRE_MOI `HIST-NW-DEBT-DISCLAIMER` (a/b/c). RESTE : **LOT 4** `NAN-INPUT-HARDENING`
-> (moteur, plan-first+panel) + **LOT 6/M1** `FISC-WHT-HARDCODE` (compteur `totalTaxesPaid`, non-double-compte + discriminant — money-critical).
+> sans dettes faute d'historique). Question produit → A_FAIRE_MOI `HIST-NW-DEBT-DISCLAIMER` (a/b/c).
+> **LOT 4 ✅ FAIT** (moteur, panel 4 agents + discriminant git-stash) : `NAN-INPUT-HARDENING` — gardes `Number.isFinite` sur les VRAIS
+> vecteurs (retirementIncome `??`, useDerivedFinancials arith. nue, monthlyEvents `??`, w5Effects rental `!==0`, helpers `NaN<=0`+rateAnnual,
+> portfolio `||`→isFinite pour Infinity). Faux positifs écartés (portfolio `||` rattrapait NaN ; taxDecember déjà gardé ; business `>0`).
+> **INV-8 corrigé** (était VACANT : `num()` sanitisait avant `isNaN`). Panel a trouvé `rateAnnual` non gardé → corrigé. Findings différés →
+> BACKLOG `NAN-OBSERVABILITY` + `NAN-MUTATOR-CENTRAL`. Conservation 19/19. RESTE : **LOT 6/M1** `FISC-WHT-HARDCODE` (`totalTaxesPaid` `*0.15`
+> en dur, non-double-compte + discriminant — money-critical) = DERNIER finding.
 > **Session 2026-06-23 — quick-win `BUDGET-NATURE-FREEFORM` ✅ FAIT** : les 56 items de fixtures (testBudget + 6 personas) avaient
 > des natures LIBRES violant l'union typée `'Besoin'|'Envie'|'Epargne'` → tout en « Envie » + CELI/REER (`'Épargne'` accentué)
 > comptés comme dépenses (groupement, coupleAnalysis, dépenses IA/Dashboard/NextBestAction). Normalisés 50/30/20. Panel

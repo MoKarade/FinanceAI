@@ -30,10 +30,10 @@
 >
 > **📋 FILE D'ATTENTE (2026-06-19)** : Marc a demandé l'**ACC d'abord** (« fais le acc avant tout »). **✅ ACC COMPLET — Lots 0-5 FAITS**
 > (Lot 0 test ✓ · Lot 1 #379 capteur ✓ · Lot 2 #380 `/backlog` ✓ · Lot 3 #381 dashboard ✓ · Lot 4 #382 workflows ✓ · Lot 5 présence ✓).
-> **PROCHAINE SESSION** : ORDRE 1 (R1→R6) ✅ + **PH4 essentiellement COMPLET : A/B/C ✅ + D ✅ (Santé+poids store+2 ratios budget) + E ◑ (couple auto) + F ✅ (abos)** → continuer
-> **ORDRE 2 = PH4 (RESTE = 1 seul follow-up au BACKLOG)** : `PH4E-OWNER-EDIT` (sélecteur d'`ownerId` par ligne dans `Transactions.tsx` en mode
-> couple ; l'auto-attribution couvre déjà le défaut — LOW). **ORDRE 3 = money-critical** (M1 dons / M2 ITEM-2C / M3 tables fiscales —
-> panel + discriminant `git stash` OBLIGATOIRES, session dédiée). Plan-first par phase.
+> **PROCHAINE SESSION** : ORDRE 1 (R1→R6) ✅ + **PH4 COMPLET ✅ : A/B/C + D (Santé+poids store+2 ratios budget) + E (couple auto + override manuel) + F (abos)** → **ORDRE 2 (PH4) TERMINÉ.**
+> **PROCHAIN = ORDRE 3 = money-critical** (M1 dons / M2 ITEM-2C / M3 tables fiscales) : **session DÉDIÉE** — panel `financial-integrity`+`projection-validator`+`silent-failure-hunter`
+> + **test discriminant `git stash` OBLIGATOIRE** pour chaque item (un faux fix dans un moteur d'impôt est pire que le bug). Plan-first par item.
+> Reste aussi les multi-courbes (Q1) et divers BACKLOG. Plus de chantier PH4 ouvert.
 > ⭐ **PATRON migration store ADDITIVE** (validé PH4-C + PH4D-WEIGHTS-STORE) : champ `optional` dans `AppState` (ne casse pas les fixtures),
 > valeur fournie à l'**état initial** du store, `partialize` allow-all-sauf-denylist le persiste AUTO, et le **`merge` Zustand par défaut**
 > (`{...current, ...persisted}`) GARDE la valeur initiale quand l'état persisté ne l'a pas → **AUCUN bump v7→v8** ni `migratePersistedState`.
@@ -43,6 +43,17 @@
 > ⚠️ **Quick-win découvert (BACKLOG `BUDGET-NATURE-FREEFORM`)** : les `TEST_BUDGET_ITEMS` ont des natures LIBRES (violent l'union typée)
 > → les 2 donuts 50/30/20 montrent **Besoins 0 %** pour les personas test (un vrai user a la dropdown typée → OK). Fix = aligner les
 > fixtures sur 'Besoin'/'Envie'/'Epargne' (PAS le groupement) ; relancer la SUITE COMPLÈTE après (tests à seuil keyés personas).
+>
+> **Session 2026-06-22 — PH4E-OWNER-EDIT ✅ (override couple, PH4-E + PH4 COMPLETS)** : colonne « Conjoint » dans le tableau `Transactions.tsx`
+> en mode couple — un `<select>` par ligne (Auto / prénom conjoint 0 / prénom conjoint 1) qui OVERRIDE `Transaction.ownerId` (`updateOwner`,
+> `undefined` = retour AUTO par type de poste). Lu depuis `config` du store (`isCouple = user[1] nommé`). Table desktop (colonne conditionnelle) +
+> carte mobile. L'override alimente `resolveTransactionOwner` (ownerId explicite gagne, #398, déjà prouvé). **Revue adversariale (workflow,
+> 3 dim × vérif) : 5 findings intégrés** — (1) `useFinanceStore` en tête ; (2) **HIGH `isSolo` BUDGET pré-existant** : `config.users` est un
+> tuple `[User,User]` → `length>1` TOUJOURS vrai → la section couple s'affichait en SOLO (un override orphelin y montrait un montant inexpliqué)
+> → `isSolo` basé sur le NOM (cohérent avec `isCouple`) ; (3) select sur DÉPENSES seulement (revenus/transferts ignorés par le calcul → « — ») ;
+> (4) `aria-label` + date (unicité si même marchand) ; (5) `touch-target` mobile. 1 réfuté (focus-ring : tous les selects pareils, pré-existant).
+> 7 tests (5 owner + 2 Budget solo/couple). ⚠️ Branche EMPILÉE sur PH4D (bb4c37d pre-squash) → reconciliée via `git merge origin/main`
+> (#400 squashé en ac2d3ef). **PH4 ENTIÈREMENT COMPLET** → prochain = ORDRE 3 money-critical (session dédiée).
 >
 > **Session 2026-06-22 — PH4D-BUDGET-RATIOS ✅ (2 ratios santé, PH4-D complet)** : `utils/healthRatios.ts` (purs) — **adhérence budget**
 > (`computeBudgetParityScore` : réel vs cibles du mois COMPLET précédent, hors postes ÉPARGNE, dépassement seul pénalise) + **poids des abos**

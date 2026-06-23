@@ -11,6 +11,7 @@ import { PageHeader } from './ui/PageHeader';
 import { Icon } from './ui/Icon';
 import { ImportBankStatement } from './import/ImportBankStatement';
 import { PrivateAmount } from './ui/PrivateAmount';
+import { useFinanceStore } from '../store/useFinanceStore';
 import { formatCAD } from '../utils/format';
 
 interface TransactionsProps {
@@ -33,6 +34,13 @@ export const Transactions: React.FC<TransactionsProps> = ({
     setCategorizationRules,
     onImport,
 }) => {
+    // [PH4E-OWNER-EDIT] mode couple : colonne « Conjoint » pour OVERRIDER l'attribution auto (par type de poste).
+    // Hooks de store regroupés en tête (avant les useState) pour la lisibilité.
+    const config = useFinanceStore(s => s.config);
+    const coupleUsers = config?.users ?? [];
+    const isCouple = !!coupleUsers[1]?.name?.trim();
+    const ownerFirstName = (i: 0 | 1): string => coupleUsers[i]?.name?.trim().split(' ')[0] || `Conjoint ${i + 1}`;
+
     const [showImport, setShowImport] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [progressStatus, setProgressStatus] = useState({ current: 0, total: 0 });
@@ -213,6 +221,11 @@ export const Transactions: React.FC<TransactionsProps> = ({
         setTransactions(prev => prev.map(t =>
             t.id === id ? { ...t, category: newCat, status: 'manual' as const, isTransfer: newCat === 'Transfert', confidence: 100 } : t
         ));
+    };
+
+    // [PH4E-OWNER-EDIT] override manuel du conjoint propriétaire (undefined = retour à l'attribution AUTO par type de poste).
+    const updateOwner = (id: number, ownerId: 0 | 1 | undefined) => {
+        setTransactions(prev => prev.map(t => (t.id === id ? { ...t, ownerId } : t)));
     };
 
     const handleAutoCategorizeAll = async () => {
@@ -634,6 +647,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         </button>
                                     </th>
                                 ))}
+                                {isCouple && <th className="p-3 uppercase tracking-wider">Conjoint</th>}
                             </tr>
                         </thead>
                         <tbody className="text-body">
@@ -697,6 +711,29 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                             {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
                                         </select>
                                     </td>
+
+                                    {isCouple && (
+                                        <td className="p-3">
+                                            {/* [PH4E-OWNER-EDIT] override de l'attribution couple ; « Auto » = par type de poste (défaut).
+                                                SEULEMENT sur les DÉPENSES : computeActualByOwner ignore revenus/transferts → l'override n'y
+                                                aurait aucun effet (on n'offre pas un contrôle trompeur). aria-label discriminé par date (payee non unique). */}
+                                            {t.amount < 0 && !t.isTransfer ? (
+                                                <select
+                                                    aria-label={`Conjoint propriétaire de ${t.payee} (${t.date})`}
+                                                    className="bg-surfaceHighlight border border-white/10 rounded px-2 py-1 text-meta text-white focus:border-primary outline-none cursor-pointer"
+                                                    value={t.ownerId === 0 ? '0' : t.ownerId === 1 ? '1' : 'auto'}
+                                                    onChange={(e) => updateOwner(t.id, e.target.value === 'auto' ? undefined : (e.target.value === '0' ? 0 : 1))}
+                                                    onClick={e => e.stopPropagation()}
+                                                >
+                                                    <option value="auto">Auto</option>
+                                                    <option value="0">{ownerFirstName(0)}</option>
+                                                    <option value="1">{ownerFirstName(1)}</option>
+                                                </select>
+                                            ) : (
+                                                <span className="text-meta text-ink-400" title="L'attribution par conjoint ne s'applique qu'aux dépenses">—</span>
+                                            )}
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>
@@ -772,6 +809,24 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         {t.isTransfer ? '⇄ Tx' : 'Tx'}
                                     </button>
                                 </div>
+
+                                {isCouple && t.amount < 0 && !t.isTransfer && (
+                                    <div className="flex items-center gap-2">
+                                        {/* [PH4E-OWNER-EDIT] override de l'attribution couple en mode carte (mobile). Dépenses seulement
+                                            (revenus/transferts ignorés par le calcul). touch-target = cible tactile ≥ 44px (WCAG 2.5.5). */}
+                                        <span className="text-tiny text-ink-400 shrink-0">Conjoint :</span>
+                                        <select
+                                            aria-label={`Conjoint propriétaire de ${t.payee} (${t.date})`}
+                                            className="touch-target flex-1 bg-surfaceHighlight border border-white/10 rounded px-2 py-1.5 text-meta text-white focus:border-primary outline-none cursor-pointer"
+                                            value={t.ownerId === 0 ? '0' : t.ownerId === 1 ? '1' : 'auto'}
+                                            onChange={(e) => updateOwner(t.id, e.target.value === 'auto' ? undefined : (e.target.value === '0' ? 0 : 1))}
+                                        >
+                                            <option value="auto">Auto</option>
+                                            <option value="0">{ownerFirstName(0)}</option>
+                                            <option value="1">{ownerFirstName(1)}</option>
+                                        </select>
+                                    </div>
+                                )}
                             </li>
                         );
                     })}

@@ -282,7 +282,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     const coupleAnalysis = useMemo(() => {
         // USE NET SALARIES FOR SPLIT ANALYSIS
         const user1 = usersIncome[0];
-        const user2 = usersIncome.length > 1 ? usersIncome[1] : null;
+        // [PH4E-OWNER-EDIT] solo = user2 SANS NOM. `config.users` est un tuple [User, User] (length TOUJOURS 2),
+        // donc `length > 1` rendait `isSolo` toujours faux → la section couple s'affichait en solo (et un override
+        // `ownerId` orphelin y montrait un montant inexpliqué). Détection par NOM, cohérente avec `Transactions.isCouple`.
+        const user2 = usersIncome[1]?.name?.trim() ? usersIncome[1] : null;
 
         // Explicitly use Net Salary for ratio calculation
         const totalNet = user1.netSalary + (user2 ? user2.netSalary : 0);

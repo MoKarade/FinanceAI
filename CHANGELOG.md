@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — En couple : corrige qui a payé quoi] — 2026-06-22
+
+### Attribue une transaction à l'un ou l'autre, à la main
+- **En mode couple, le tableau des transactions a une nouvelle colonne « Conjoint »** : pour chaque ligne, choisis
+  **Auto** (attribution automatique selon le type de poste budget — le réglage par défaut), ou force la transaction
+  sur l'un des deux conjoints. Pratique quand une dépense « commune » est en fait perso, ou l'inverse. Disponible aussi
+  en vue mobile. L'attribution alimente le « Perso réel » de la carte couple.
+
+---
+
 ## [unreleased — Ton score de santé regarde ton budget et tes abonnements] — 2026-06-22
 
 ### Deux nouveaux ratios dans l'indicateur de santé financière

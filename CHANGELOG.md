@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Ton score de santé regarde ton budget et tes abonnements] — 2026-06-22
+
+### Deux nouveaux ratios dans l'indicateur de santé financière
+- **Adhérence au budget** : compare tes dépenses réelles du mois dernier à tes cibles, poste par poste (hors épargne).
+  100 = tu restes dans tes cibles ; le score baisse avec le dépassement.
+- **Poids des abonnements** : tes abonnements épinglés rapportés à ton revenu net (cible : moins de 15 %).
+- **Score plus juste** : une métrique sans donnée (pas de projection FIRE, pas de dépenses le mois dernier, aucun abo
+  épinglé) est maintenant affichée « — » et **exclue** du score global, au lieu de compter comme un 0 qui le tirait
+  injustement vers le bas. Tu peux pondérer les 6 ratios à ta guise (bouton « Paramétrer »).
+
+---
+
 ## [unreleased — Épingle tes abonnements] — 2026-06-22
 
 ### Tes abonnements restent, sans relancer l'analyse

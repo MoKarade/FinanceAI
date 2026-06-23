@@ -47,6 +47,9 @@
 > Findings de juin quasi tous FERMÉS. Nouveaux findings PÉRIPHÉRIQUES routés au BACKLOG (§ audit 2026-06-23) : `NAN-INPUT-HARDENING`
 > (durcissement défensif, 7 sites, plan-first), `TC-FX-HARDCODE` (TaxCenter FX 1.38 en dur), `SEC-PRIVACY-BLUR-INPUTS` (Loi 25),
 > `SEC-PBKDF2-DRIVE` (100k→600k), + M1/M5/HIST/log-regex (LOW). **Aucun ne menace la conservation/fiscalité** — lot 1 (sûr) puis NaN-hardening.
+> **Correction des findings (PM a séquencé en 5 lots)** : **LOT 1 ✅ FAIT** (`SEC-PBKDF2-DRIVE` 600k+fallback legacy ; `SEC-LOG-DEBT-REGEX`
+> substring financiers / ancré ambigus). RESTE : LOT 2 `SEC-PRIVACY-BLUR-INPUTS` (Loi 25, UI), LOT 3 `TC-FX-HARDCODE`, LOT 5 `M1`+`M5-INV1`+`HIST-NW`
+> (LOW), LOT 4 `NAN-INPUT-HARDENING` (moteur, plan-first+panel, EN DERNIER). Bloqués → A_FAIRE_MOI : `FISC-WELCOME-2026`, `W5-TAX-PROXY` (a/b).
 > **Session 2026-06-23 — quick-win `BUDGET-NATURE-FREEFORM` ✅ FAIT** : les 56 items de fixtures (testBudget + 6 personas) avaient
 > des natures LIBRES violant l'union typée `'Besoin'|'Envie'|'Epargne'` → tout en « Envie » + CELI/REER (`'Épargne'` accentué)
 > comptés comme dépenses (groupement, coupleAnalysis, dépenses IA/Dashboard/NextBestAction). Normalisés 50/30/20. Panel

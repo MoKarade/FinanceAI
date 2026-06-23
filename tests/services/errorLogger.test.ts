@@ -140,6 +140,28 @@ describe('errorLogger', () => {
             expect(getErrors()[0].context).toEqual({ tab: 'budget', count: 3, ok: true });
         });
 
+        it('[SEC-LOG-DEBT-REGEX] masque les clés financières COMPOSÉES (liquidDebt, mortgageBalance, annualAmount…)', () => {
+            logError({
+                source: 'ui', message: 'X',
+                context: { liquidDebt: 45000, totalDebt: 80000, mortgageBalance: 300000, annualAmount: 12000, currentPrice: 99, retirementIncome: 5000 },
+            });
+            const ctx = getErrors()[0].context as Record<string, unknown>;
+            for (const k of ['liquidDebt', 'totalDebt', 'mortgageBalance', 'annualAmount', 'currentPrice', 'retirementIncome']) {
+                expect(ctx[k], `${k} doit être masqué`).toBe('[redacted]');
+            }
+        });
+
+        it('[SEC-LOG-DEBT-REGEX] ne sur-redacte PAS les clés diagnostiques (anti faux-positif)', () => {
+            // `factor`/`status`/`requestId` ne doivent PAS être pris pour des champs financiers
+            // (les termes ambigus comme `fact` restent ANCRÉS, pas en substring).
+            logError({ source: 'ui', message: 'X', context: { factor: 1.5, status: 'ok', requestId: 'abc', tabIndex: 2 } });
+            const ctx = getErrors()[0].context as Record<string, unknown>;
+            expect(ctx.factor).toBe(1.5);
+            expect(ctx.status).toBe('ok');
+            expect(ctx.requestId).toBe('abc');
+            expect(ctx.tabIndex).toBe(2);
+        });
+
         it('tronque les tableaux à 10 éléments', () => {
             logError({ source: 'ui', message: 'X', context: { items: Array.from({ length: 25 }, (_, i) => i) } });
             const ctx = getErrors()[0].context as { items: number[] };

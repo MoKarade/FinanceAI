@@ -118,3 +118,9 @@ Le code est prêt et déployé ; il manque l'hébergement du bundle (Marc avait 
   ministère) → je les transcris dans `FISCAL_REFERENCE.md` (daté + sourcé) PUIS je corrige le code, même PR.
   Sans ces valeurs, je laisse le code en 2025 (pas de devinette). Effort Claude : < 45 min une fois les
   valeurs reçues.
+- [ ] **[W5-TAX-PROXY]** (décision d'ambition, audit 2026-06-23) — les revenus LOCATIFS et dividendes CCPC (W5)
+  sont imposés via des PROXIES plats non sourcés (`0,45` / `0,36` dans `w5Effects.ts`), désormais APPLIQUÉS en
+  année active (depuis FA-6). À TOI de trancher : **(a)** je garde les proxies + ajoute une mention « estimation,
+  proxy de taux marginal » dans l'UI + une source de taux marginal QC dans `FISCAL_REFERENCE` (rapide, honnête) ;
+  **(b)** je modélise l'impôt INCRÉMENTAL réel `tax(rev+x)−tax(rev)` par conjoint (exact, mais plan-first dédié,
+  touche le moteur). Dis (a) ou (b). En attendant les proxies restent (conservateurs, documentés).

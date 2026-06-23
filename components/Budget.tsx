@@ -913,22 +913,26 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
                             <div className="pt-2 border-t border-white/5">
                                 <div className="text-meta text-ink-300 text-center mb-2 font-medium">Comparatif visuel 50/30/20</div>
+                                {/* role="img"+aria-label porte le nom accessible ; le SVG Recharts est aria-hidden
+                                    (les données restent dans le ChartDataTable sr-only ci-dessous → AT non privé). */}
                                 <div style={{ width: '100%', height: '180px' }} role="img" aria-label="Donut comparatif 50/30/20 du budget (Besoins, Envies, Épargne théorique)">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie
-                                                data={goldenRuleData}
-                                                cx="50%" cy="50%" innerRadius={40} outerRadius={60}
-                                                dataKey="value"
-                                            >
-                                                {goldenRuleData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.fill} stroke="none" />
-                                                ))}
-                                            </Pie>
-                                            <Legend verticalAlign="bottom" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-                                            <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => formatCAD(val)} />
-                                        </PieChart>
-                                    </ResponsiveContainer>
+                                    <div aria-hidden="true" style={{ width: '100%', height: '100%' }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={goldenRuleData}
+                                                    cx="50%" cy="50%" innerRadius={40} outerRadius={60}
+                                                    dataKey="value"
+                                                >
+                                                    {goldenRuleData.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={entry.fill} stroke="none" />
+                                                    ))}
+                                                </Pie>
+                                                <Legend verticalAlign="bottom" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
+                                                <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => formatCAD(val)} />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
                                 </div>
                                 <ChartDataTable
                                     caption="Répartition budgétaire 50/30/20 (Besoins, Envies, Épargne théorique)"
@@ -944,17 +948,19 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                 {hasRealData ? (
                                     <>
                                         <div style={{ width: '100%', height: '180px' }} role="img" aria-label="Donut de ta répartition réelle (Besoins, Envies, Épargne réelle)">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <PieChart>
-                                                    <Pie data={goldenRealData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} dataKey="value">
-                                                        {goldenRealData.map((entry, index) => (
-                                                            <Cell key={`real-cell-${index}`} fill={entry.fill} stroke="none" />
-                                                        ))}
-                                                    </Pie>
-                                                    <Legend verticalAlign="bottom" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-                                                    <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => formatCAD(val)} />
-                                                </PieChart>
-                                            </ResponsiveContainer>
+                                            <div aria-hidden="true" style={{ width: '100%', height: '100%' }}>
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie data={goldenRealData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} dataKey="value">
+                                                            {goldenRealData.map((entry, index) => (
+                                                                <Cell key={`real-cell-${index}`} fill={entry.fill} stroke="none" />
+                                                            ))}
+                                                        </Pie>
+                                                        <Legend verticalAlign="bottom" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
+                                                        <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => formatCAD(val)} />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            </div>
                                         </div>
                                         <table className="w-full text-tiny mt-1">
                                             <caption className="sr-only">Comparaison de ta répartition réelle, de ta cible budgétée et de l'idéal 50/30/20, par catégorie.</caption>

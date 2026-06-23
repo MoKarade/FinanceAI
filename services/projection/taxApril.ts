@@ -10,8 +10,8 @@ export interface AprilSettlementResult {
     taxPaidGains: number;
     taxPaidDivers: number;
     taxPaidREER: number;
-    /** Nouveau bucket taxPreviousYear après reset (toujours 0/0/0/0). */
-    newTaxPreviousYear: { revenu: number; gains: number; divers: number; reer: number };
+    /** Nouveau bucket taxPreviousYear après reset (toujours 0/0/0/0/0). */
+    newTaxPreviousYear: { revenu: number; gains: number; divers: number; reer: number; donCredit: number };
 }
 
 export interface AprilSettlementMutator {
@@ -32,7 +32,7 @@ export interface AprilSettlementMutator {
 export function processAprilSettlement(
     currentMonthIndex: number,
     m: number,
-    taxPreviousYear: { revenu: number; gains: number; divers: number; reer: number },
+    taxPreviousYear: { revenu: number; gains: number; divers: number; reer: number; donCredit: number },
     state: AprilSettlementMutator,
 ): AprilSettlementResult {
     if (currentMonthIndex !== 3 || m === 0) {
@@ -77,6 +77,6 @@ export function processAprilSettlement(
         taxPaidGains,
         taxPaidDivers,
         taxPaidREER,
-        newTaxPreviousYear: { revenu: 0, gains: 0, divers: 0, reer: 0 },
+        newTaxPreviousYear: { revenu: 0, gains: 0, divers: 0, reer: 0, donCredit: 0 },
     };
 }

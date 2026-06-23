@@ -579,3 +579,46 @@ choisir). Calcul cumulatif par tranche (style impôt).
 - **Gate DB du fractionnement à 65 ans** (limite assumée) : la rente viagère DB est fractionnable
   dès réception à TOUT âge côté fédéral (T1032), mais le QC exige 65 ans. Le moteur faisant un calcul
   combiné QC+féd, on retient **65** (sur-impôt léger pour une DB débutant avant 65, jamais l'inverse).
+
+---
+
+## 10. Crédit d'impôt pour dons de bienfaisance (FA-6) — année d'imposition 2025
+
+> Crédit d'impôt **non remboursable** réclamé **cumulativement** au fédéral (ligne 34900 / Annexe 9) ET au
+> Québec (ligne 395 / Annexe V). Sources (consultées 2026-06-23) :
+> [ARC — P113 « Les dons et l'impôt 2025 »](https://www.canada.ca/en/revenue-agency/services/forms-publications/publications/p113/p113-gifts-income-tax.html) ·
+> [ARC — Ligne 34900](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-34900-donations-gifts.html) ·
+> [Revenu Québec — Crédits d'impôt pour dons](https://www.revenuquebec.ca/fr/citoyens/credits-dimpot/credits-dimpot-pour-dons/) ·
+> [CFFP — Crédit d'impôt pour dons (guide mesures fiscales 2025)](https://cffp.recherche.usherbrooke.ca/outils-ressources/guide-mesures-fiscales/credit-impot-dons/).
+
+### Taux par paliers (`utils/donationCredit.ts`)
+| Tranche du don | Fédéral | Québec | Combiné |
+|---|---|---|---|
+| Premiers 200 $ | **15 %** | **20 %** | **35 %** |
+| Excédent (> 200 $) | **29 %** | **24 %** | **53 %** |
+| Portion appariée au revenu en tranche d'imposition MAX | 33 % (féd) | 25,75 % (QC) | — |
+
+- **Seuil de la tranche max** (déclenche 33 % féd / 25,75 % QC sur la portion de don appariée à ce revenu) :
+  QC **129 590 $** (2025, harmonisé au seuil fédéral le 2025-02-03). Le seuil fédéral du 33 % est plus élevé
+  (tranche supérieure ~253 k$).
+- **Plafond annuel** : fédéral = **75 % du revenu net** ; Québec = **aucun plafond**. Report prospectif 5 ans.
+
+### Implémentation — modèle FA-6 (option B, validée Marc 2026-06-23)
+- Crédit (par adulte) = `0,15·min(don,200) + 0,29·max(0, don−200)` **(féd)** `+ 0,20·min(don,200) + 0,24·max(0, don−200)` **(QC)**.
+  → effectif **35 %** sur les 1ers 200 $, **53 %** au-delà (vs l'ancien **33 % plat** = sous-crédit, surtout > 200 $).
+- **Limites assumées (DOCUMENTÉES, no-fake-data)** :
+  - **Majoration top-bracket** (33 % féd / 25,75 % QC) NON modélisée — requiert le statut marginal par conjoint →
+    crédit légèrement SOUS-estimé pour un donateur à très haut revenu (direction conservatrice).
+  - **Plafond 75 % du revenu net** NON appliqué (les dons modélisés sont petits vs le revenu net) — à ajouter si
+    un don dépasse 75 % du revenu net du donateur.
+  - **Don de titres cotés en nature** : inclusion du gain en capital à **0 %** (LIR 38(a.1)) NON modélisée —
+    `CharitableGoal` ne suit aucune base de coût ni valeur marchande des titres. L'ancien proxy non sourcé
+    `addTaxGains(−0,15·don)` est **SUPPRIMÉ**. À modéliser via un champ `gain` optionnel si voulu (suivi BACKLOG).
+  - **Plafond « non remboursable » à l'impôt dû — APPLIQUÉ** (`FA-6-CREDIT-CAP`, `taxDecember.ts`) : le crédit-don
+    est accumulé (`taxCurrentYear.donCredit`) puis, en décembre, **plafonné à l'impôt sur le revenu + gains de
+    l'année** (`grossIncomeTax + max(0, taxCurrent.gains)`) avant d'être appliqué à `divers`. Un crédit non
+    remboursable ne peut donc PAS générer de remboursement net (donateur bas-revenu : crédit borné à son impôt).
+    **L'excédent non utilisé est PERDU** (le report prospectif 5 ans n'est pas modélisé — conservateur). Les
+    cotisations santé RAMQ/FSS ne font PAS partie de l'assiette du crédit. ⚠️ Le plafond est appliqué sur l'impôt
+    COMBINÉ féd+QC (approximation conservatrice ; en toute rigueur le crédit fédéral ne plafonne qu'à l'impôt
+    fédéral et le QC qu'à l'impôt QC — l'écart n'apparaît qu'à très bas revenu où un palier a de l'impôt et l'autre non).

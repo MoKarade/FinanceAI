@@ -6,6 +6,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Fiscalité : dons charitables + loyers/dividendes correctement imposés] — 2026-06-23
+
+### Le crédit pour dons (et l'impôt sur loyers/dividendes d'entreprise) s'applique enfin en phase active
+- **Crédit d'impôt pour dons charitables corrigé** : il était calculé à un taux plat (33 %) ET, pour un salarié
+  actif, **purement et simplement perdu** (un bug d'imputation l'écrasait en fin d'année). Désormais il suit le vrai
+  barème par paliers (fédéral + Québec : 35 % sur les 1ers 200 $, 53 % au-delà) et s'applique que tu sois actif ou retraité.
+- **Revenus locatifs et dividendes d'entreprise (CCPC)** : pour un propriétaire/actionnaire encore en activité, ils
+  n'étaient **pas imposés** dans la projection (même bug d'imputation) — ils le sont maintenant.
+- Le crédit pour dons est **plafonné à l'impôt que tu dois** (c'est un crédit non remboursable) : un gros don à faible
+  revenu ne génère pas de « remboursement » fictif. L'excédent inutilisé n'est pas reporté dans la projection.
+- Le don de **titres en nature** (case « titres* ») : l'avantage fiscal spécifique (gain en capital exonéré) n'est pas
+  encore modélisé — un tooltip le précise ; le crédit de don ordinaire s'applique quand même.
+
+---
+
 ## [unreleased — Mode test : la répartition 50/30/20 des personas est juste] — 2026-06-23
 
 ### Corrige le classement Besoin / Envie / Épargne des personas d'exemple

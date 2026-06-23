@@ -31,9 +31,17 @@
 > **📋 FILE D'ATTENTE (2026-06-19)** : Marc a demandé l'**ACC d'abord** (« fais le acc avant tout »). **✅ ACC COMPLET — Lots 0-5 FAITS**
 > (Lot 0 test ✓ · Lot 1 #379 capteur ✓ · Lot 2 #380 `/backlog` ✓ · Lot 3 #381 dashboard ✓ · Lot 4 #382 workflows ✓ · Lot 5 présence ✓).
 > **PROCHAINE SESSION** : ORDRE 1 (R1→R6) ✅ + **PH4 COMPLET ✅ : A/B/C + D (Santé+poids store+2 ratios budget) + E (couple auto + override manuel) + F (abos)** → **ORDRE 2 (PH4) TERMINÉ.**
-> **PROCHAIN = ORDRE 3 = money-critical** (M1 dons / M2 ITEM-2C / M3 tables fiscales) : **session DÉDIÉE** — panel `financial-integrity`+`projection-validator`+`silent-failure-hunter`
-> + **test discriminant `git stash` OBLIGATOIRE** pour chaque item (un faux fix dans un moteur d'impôt est pire que le bug). Plan-first par item.
-> Reste aussi les multi-courbes (Q1) et divers BACKLOG. Plus de chantier PH4 ouvert.
+> **ORDRE 3 = money-critical** : **dons (FA-6) ✅ FAIT 2026-06-23** ; RESTE : **ITEM-2C** (gates timing par conjoint) / **tables
+> fiscales** TP-1.G (personne vivant seule) / **FISC-WHT-HARDCODE** (retenue REER 0,15 en dur). **session DÉDIÉE** — panel
+> `financial-integrity`+`projection-validator`+`silent-failure-hunter` + **test discriminant `git stash` OBLIGATOIRE** par item.
+> Plan-first par item. Reste aussi les multi-courbes (Q1) et divers BACKLOG. Plus de chantier PH4 ouvert.
+> **Session 2026-06-23 — FA-6 (crédit dons + sous-imposition locatif/CCPC active) ✅ FAIT** : `utils/donationCredit.ts` (crédit par
+> paliers féd+QC, FISCAL_REFERENCE §10). ⚠️ Bug CRITIQUE trouvé en cadrant : `taxCurrentYear.revenu` (crédit + taxe locative/CCPC W5)
+> est **ÉCRASÉ** en décembre année ACTIVE (`taxDecember:406` `=` vs `+=` retraité) → crédit jeté + loyers/CCPC non imposés pour un actif.
+> Fix = router vers `divers` (jamais écrasé) via `addTaxDivers` — PAS `=`→`+=` (double-compterait la retenue salariale). **+ `FA-6-CREDIT-CAP`
+> inclus** : crédit non remboursable PLAFONNÉ à l'impôt dû (champ `donCredit` accumulé → cap en décembre à `grossIncomeTax+gains`, excédent
+> perdu) — corrige le sur-crédit d'un donateur bas-revenu (silent-failure-hunter). Panel financial-integrity+projection-validator+silent-failure
+> + discriminants `git stash` (fix d'imputation ET cap) + conservation verte. Follow-up restant : **`W5-TAX-PROXY`** (taux locatif 0,45 / CCPC 0,36 plats non sourcés).
 > **Session 2026-06-23 — quick-win `BUDGET-NATURE-FREEFORM` ✅ FAIT** : les 56 items de fixtures (testBudget + 6 personas) avaient
 > des natures LIBRES violant l'union typée `'Besoin'|'Envie'|'Epargne'` → tout en « Envie » + CELI/REER (`'Épargne'` accentué)
 > comptés comme dépenses (groupement, coupleAnalysis, dépenses IA/Dashboard/NextBestAction). Normalisés 50/30/20. Panel

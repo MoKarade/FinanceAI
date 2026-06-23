@@ -488,7 +488,7 @@ const makeHelpers = (overrides: Partial<DecemberHelpers> = {}): DecemberHelpers 
     ...overrides,
 });
 
-const ZERO_TAX = { revenu: 0, gains: 0, divers: 0, reer: 0 };
+const ZERO_TAX = { revenu: 0, gains: 0, divers: 0, reer: 0, donCredit: 0 };
 
 const baseCtx = (o: Partial<DecemberContext> = {}): DecemberContext => ({
     m: 24,
@@ -519,29 +519,60 @@ const baseCtx = (o: Partial<DecemberContext> = {}): DecemberContext => ({
 
 describe('processDecemberTaxFiling — gate « décembre, m>0 »', () => {
     it('mois ≠ décembre → renvoie l\'état initial inchangé, aucun log', () => {
-        const init = { revenu: 123, gains: 45, divers: 6, reer: 7 };
+        const init = { revenu: 123, gains: 45, divers: 6, reer: 7, donCredit: 0 };
         const r = processDecemberTaxFiling(5, baseCtx(), makeHelpers(), init);
         expect(r.newTaxCurrentYear).toEqual(init);
         expect(r.logs).toEqual([]);
     });
 
     it('m === 0 → renvoie l\'état initial inchangé', () => {
-        const init = { revenu: 123, gains: 45, divers: 6, reer: 7 };
+        const init = { revenu: 123, gains: 45, divers: 6, reer: 7, donCredit: 0 };
         const r = processDecemberTaxFiling(DECEMBER, baseCtx({ m: 0 }), makeHelpers(), init);
         expect(r.newTaxCurrentYear).toEqual(init);
         expect(r.logs).toEqual([]);
     });
 
     it('ne mute pas l\'objet taxCurrentYear initial (immutabilité)', () => {
-        const init = { revenu: 0, gains: 0, divers: 0, reer: 0 };
+        const init = { revenu: 0, gains: 0, divers: 0, reer: 0, donCredit: 0 };
         const r = processDecemberTaxFiling(
             DECEMBER,
             baseCtx({ grossMarcBaseAnnual: 120000, optimizeSourceDeductions: false }),
             makeHelpers(),
             init,
         );
-        expect(init).toEqual({ revenu: 0, gains: 0, divers: 0, reer: 0 });
+        expect(init).toEqual({ revenu: 0, gains: 0, divers: 0, reer: 0, donCredit: 0 });
         expect(r.newTaxCurrentYear).not.toBe(init);
+    });
+});
+
+describe('processDecemberTaxFiling — [FA-6-CREDIT-CAP] crédit-don plafonné à l\'impôt dû', () => {
+    const CREDIT = 5264; // computeDonationCredit(10000)
+    // STUB_RATE = 0,25 → impôt salarial brut = grossMarcBaseAnnual × 0,25 (sans déductions, inflation 1).
+    // `applied` = réduction de `divers` due au crédit, isolée de RAMQ/FSS (différence avec/sans crédit).
+    const applied = (gross: number): number => {
+        const base = processDecemberTaxFiling(DECEMBER, baseCtx({ grossMarcBaseAnnual: gross, optimizeSourceDeductions: false }), makeHelpers(), { ...ZERO_TAX });
+        const withCredit = processDecemberTaxFiling(DECEMBER, baseCtx({ grossMarcBaseAnnual: gross, optimizeSourceDeductions: false }), makeHelpers(), { ...ZERO_TAX, donCredit: CREDIT });
+        return base.newTaxCurrentYear.divers - withCredit.newTaxCurrentYear.divers;
+    };
+
+    it('revenu ÉLEVÉ (impôt ≫ crédit) → crédit PLEINEMENT appliqué', () => {
+        // impôt brut = 100 000 × 0,25 = 25 000 ≫ 5 264 → applied = 5 264 (complet)
+        expect(applied(100000)).toBeCloseTo(CREDIT, 2);
+    });
+
+    it('revenu BAS (impôt < crédit) → crédit PLAFONNÉ à l\'impôt (non remboursable, pas de remboursement net)', () => {
+        // impôt brut = 12 000 × 0,25 = 3 000 < 5 264 → applied = 3 000 (PLAFONNÉ, ≠ crédit complet)
+        expect(applied(12000)).toBeCloseTo(3000, 2);
+        expect(applied(12000)).toBeLessThan(CREDIT);
+    });
+
+    it('aucun impôt (revenu nul) → crédit non remboursable = 0 appliqué (pas d\'argent fictif)', () => {
+        expect(applied(0)).toBeCloseTo(0, 2);
+    });
+
+    it('donCredit est CONSOMMÉ (remis à 0) après décembre', () => {
+        const r = processDecemberTaxFiling(DECEMBER, baseCtx({ grossMarcBaseAnnual: 50000 }), makeHelpers(), { ...ZERO_TAX, donCredit: CREDIT });
+        expect(r.newTaxCurrentYear.donCredit).toBe(0);
     });
 });
 

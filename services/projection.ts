@@ -251,8 +251,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let accGrossIncomeYear = 0;
     let accRrspYear = 0;
 
-    let taxCurrentYear = { revenu: 0, gains: 0, reer: 0, divers: 0 };
-    let taxPreviousYear = { revenu: 0, gains: 0, reer: 0, divers: 0 };
+    // donCredit [FA-6-CREDIT-CAP] = crédit-don accumulé (positif) ; plafonné à l'impôt dû puis appliqué
+    // à `divers` en décembre (un crédit non remboursable ne peut pas générer de remboursement net).
+    let taxCurrentYear = { revenu: 0, gains: 0, reer: 0, divers: 0, donCredit: 0 };
+    let taxPreviousYear = { revenu: 0, gains: 0, reer: 0, divers: 0, donCredit: 0 };
 
     let accRetraitsReerYear = 0;
     let accRentesYear = 0;
@@ -739,6 +741,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 subtractLiquid: (amt) => { liquid -= amt; },
                 addTaxRevenu: (amt) => { taxCurrentYear.revenu += amt; },
                 addTaxGains: (amt) => { taxCurrentYear.gains += amt; },
+                addTaxDivers: (amt) => { taxCurrentYear.divers += amt; },
+                addDonationCredit: (amt) => { taxCurrentYear.donCredit += amt; },
                 logFlow: (msg) => logEvent(flowEventsLog, msg),
                 logLife: (msg) => logEvent(lifeEventsLog, msg),
             }
@@ -879,7 +883,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
             // V30: Transfer accumulated taxes to the 'previous year' bucket to be paid in April.
             taxPreviousYear = { ...taxCurrentYear };
-            taxCurrentYear = { revenu: 0, gains: 0, reer: 0, divers: 0 };
+            taxCurrentYear = { revenu: 0, gains: 0, reer: 0, divers: 0, donCredit: 0 };
 
             // V28 + Cycle 12: TFSA Room reset géré en Janvier — voir processJanuaryReset (./projection/taxJanuary)
 

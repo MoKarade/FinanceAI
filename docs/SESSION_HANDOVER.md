@@ -74,9 +74,12 @@
 > facteur RRIF de SON âge) ; `reerByUser` passe de SHADOW à PILOTE. Défaut additif (ancres equal/solo INCHANGÉES) ; golden age-gap
 > re-basés + preuves-de-fix (discriminant git-stash 5/7). ⚠️ Panel a trouvé un **flux fiscal FANTÔME au DÉCÈS** (part du défunt
 > FERR-convertissait → +63 k$ survivant) → corrigé par roulement REER conjugal `reerByUser=[Σ,0]`. + repli `birthYear`, 2 tests unitaires.
-> Conservation 20/20. **⏳ RESTE = sous-phase PSV/RRQ per-conjoint** (bonus 75+ + reset 71, ENTREMÊLÉS avec le gate de DÉBUT PSV →
-> plus large, plan-first dédié ; golden `couplePsvBonus` borne l'état). Money-critical. Détail : `docs/BACKLOG.md` § Plan ITEM-2C.
-> ⚠️ Leçon : un registre per-conjoint qui PILOTE la fiscalité doit gérer décès/divorce (sinon fantôme) + 2ᵉ course git-stash (vérifs isolées).
+> Conservation 20/20. **+ Sous-phase PSV/RRQ per-conjoint ✅ FAIT (2026-06-25, plan-first OK Marc)** : `rrqMonthly`/`psvMonthly`
+> (`retirementIncome.ts`) en SOMME per-conjoint — départ RRQ/PSV + bonus PSV 75+ à l'âge de CHAQUE conjoint sur SA part. Modèle d'âge
+> RELATIF `ctx.age + (âgeDépart_i − âgeDépart_0)` (symétrique, golden inchangé, 10 tests `retirementIncome` préservés — leçon CLAUDE.md).
+> Mode SURVIVANT = modèle familial INCHANGÉ (zéro impact FISC-SURVIVOR). Golden `couplePsvBonus`/`couplePsvStartGap` re-basés + discriminant 4/9.
+> **⏳ RESTE (faible priorité)** : reset REER 71 per-conjoint (~0 impact) + PSV/RRQ AU DÉCÈS (raffinement survivant). ITEM-2C ≈ COMPLET.
+> ⚠️ Leçons : registre per-conjoint pilote → gérer décès (fantôme) ; 2ᵉ course git-stash (vérifs isolées) ; gate d'âge per-conjoint = ancrer sur ctx.age + écart.
 > **Session 2026-06-23 — quick-win `BUDGET-NATURE-FREEFORM` ✅ FAIT** : les 56 items de fixtures (testBudget + 6 personas) avaient
 > des natures LIBRES violant l'union typée `'Besoin'|'Envie'|'Epargne'` → tout en « Envie » + CELI/REER (`'Épargne'` accentué)
 > comptés comme dépenses (groupement, coupleAnalysis, dépenses IA/Dashboard/NextBestAction). Normalisés 50/30/20. Panel

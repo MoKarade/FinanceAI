@@ -152,10 +152,17 @@
   (la part du défunt FERR-convertissait comme un mort de 100 ans → +63 k$ sur le survivant) → roulement REER conjugal
   `reerByUser=[Σ,0]` au `survivorMode`. Panel financial-integrity + projection-validator + silent-failure + code-reviewer ✅.
   Repli `birthYear` pour le conjoint sans `age` + 2 tests unitaires per-conjoint. Conservation 20/20.
-- **RESTE — sous-phase PSV/RRQ per-conjoint** : le **bonus PSV 75+** + le **reset REER 71** restent sur l'âge user1.
-  Le bonus PSV est ENTREMÊLÉ avec le gate de DÉBUT PSV (`retirementIncome.ts:226-228` `age>=psvStartAge`, base FAMILIALE) →
-  fix propre = `psvMonthly`/`rrqMonthly` per-conjoint (départ + bonus). Plus large que la FERR → plan-first dédié. Le golden
-  `couplePsvBonus` (76/64) borne l'état actuel (FERR fixée, PSV encore ménage). ⚠️ Money-critical, panel + discriminant.
+- **Sous-phase PSV/RRQ per-conjoint** ✅ **FAIT (2026-06-25, plan-first OK Marc)** : `rrqMonthly`/`psvMonthly` (`retirementIncome.ts`)
+  passés en SOMME per-conjoint — le DÉPART RRQ/PSV (`age_i >= startAge`) ET le bonus PSV 75+ sont évalués à l'âge de CHAQUE conjoint,
+  sur SA part (`base/N × poids_i`). Modèle d'âge RELATIF `ctx.age + (âgeDépart_i − âgeDépart_0)` (symétrique âges égaux, golden inchangé,
+  10 tests `retirementIncome` préservés — cf leçon CLAUDE.md). Mode SURVIVANT = modèle familial INCHANGÉ (per-conjoint au décès =
+  raffinement à part) → zéro impact FISC-SURVIVOR. Golden : `couplePsvBonus` (76/64, bonus sur user1 seul) + `couplePsvStartGap` (66/63,
+  PSV de user2 à SES 65) re-basés + preuve-de-fix `(66/63)≠(66/66)`. Discriminant git-stash (4/9). Conservation 20/20.
+  **Panel 4 agents → 3 fixes intégrés** : (a) SRG gaté sur `psvMonthly > 0` (au lieu de l'âge user1) — un couple à écart d'âge où
+  l'AÎNÉ touche la PSV mais user0 < 65 avait à tort un SRG nul (bug $ réel exposé par le per-conjoint) ; (b) repli `ctx.age` pour un
+  conjoint sans age/birthYear (évite d'amputer sa rente en silence) ; (c) `returnProfile` PIN re-piné (−476 $ légitime, couple 35/33).
+- **RESTE — reset REER 71 per-conjoint** : `rrspRoomDelta`/`rrspRoomReset` (`taxJanuary.ts`) restent sur l'âge user1 (impact $ ~nul
+  pour les retraités sans cotisation). À traiter si besoin (faible priorité). + per-conjoint PSV/RRQ AU DÉCÈS (raffinement du modèle survivant).
 
 ### Plan — Tables fiscales « montant pour personne vivant seule » (QC TP-1.G)
 - **Problème** : le montant pour personne vivant seule (crédit QC) est absent du code ET de `FISCAL_REFERENCE`.

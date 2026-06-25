@@ -6,7 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
-## [unreleased — Couples : conversion FERR du REER au bon moment, par conjoint] — 2026-06-25
+## [unreleased — Couples : rentes de retraite (FERR, RRQ, PSV) calculées par conjoint] — 2026-06-25
+
+### Le début de la RRQ / PSV et le bonus PSV 75+ sont maintenant calculés par conjoint
+- Pour un couple dont les conjoints n'ont **pas le même âge**, la **RRQ et la PSV de chacun démarrent à SON
+  propre âge** (au lieu de l'âge d'un seul conjoint appliqué à tout le ménage) — le conjoint plus jeune ne
+  « touche » plus sa rente avant l'âge admissible. De même, la **bonification PSV de +10 % à 75 ans** ne
+  s'applique qu'au conjoint qui a réellement 75 ans. Couples de même âge et personnes seules : **aucun changement**.
+- Corrige au passage un cas où le **Supplément de revenu garanti (SRG)** était à tort nul pour un couple à écart
+  d'âge dont l'**aîné** touchait déjà la PSV alors que le plus jeune n'y avait pas encore droit.
 
 ### La conversion obligatoire REER→FERR (72 ans) est maintenant calculée par conjoint
 - Pour un couple dont les conjoints n'ont **pas le même âge**, la conversion obligatoire du REER en FERR

@@ -70,10 +70,11 @@ const SCENARIOS = {
     coupleUser1Younger: retireeCouple(64, 70), // user1 (gate) PLUS JEUNE → FERR à user1=72 (le 72 du conjoint B IGNORÉ = bug)
     coupleEqual: retireeCouple(70, 70),        // ANCRE zéro-régression
     solo: retireeSolo(70),                     // ANCRE zéro-régression
-    couplePsvBonus: retireeCouple(76, 64),     // user1 > 75 (bonus PSV) sur base FAMILIALE — borne le gate PSV 75+ (même bug âge=user1)
+    couplePsvBonus: retireeCouple(76, 64),     // user1 > 75 → bonus PSV SEULEMENT sur sa part ; user2=64 pas de PSV
+    couplePsvStartGap: retireeCouple(66, 63),  // user1=66 (PSV démarrée) ; user2=63 (< 65 → PSV pas encore) — gate de départ per-conjoint
 } as const;
 
-describe('[ITEM-2C] FERR per-conjoint — chaque conjoint convertit SA part REER à SON âge', () => {
+describe('[ITEM-2C] gates de timing per-conjoint — FERR (conversion) + PSV/RRQ (départ + bonus 75+)', () => {
     const measure = (config: BudgetConfig) => {
         const r = calculateFutureProjection(makeParams(config));
         return { ferr: ferrOnset(r.chartData), nw: round(r.finalNetWorth), tax: round(r.totalTaxesPaid) };
@@ -83,11 +84,12 @@ describe('[ITEM-2C] FERR per-conjoint — chaque conjoint convertit SA part REER
     // (`taxJanuary.ts` : boucle sur `reerByUser` + âge par conjoint). Les ANCRES (equal/solo) sont INCHANGÉES
     // vs le comportement ménage (preuve du défaut additif) ; les age-gap reflètent le timing per-conjoint CORRECT.
     const GOLDEN = {
-        coupleUser1Older:   { ferr: 24, nw: -72089, tax: 108006 }, // user1=72 convertit SA part ; user2=66 non (avant : tout le pool)
-        coupleUser1Younger: { ferr: 24, nw: -90128, tax: 105536 }, // user2=72 déclenche SA FERR au mois 24 (avant : retardée au mois 96)
+        coupleUser1Older:   { ferr: 24, nw: -78025, tax: 107558 }, // FERR + PSV/RRQ per-conjoint (user2=64 : PSV démarre à SES 65)
+        coupleUser1Younger: { ferr: 24, nw: -77614, tax: 107558 }, // idem ; user0=64<65 mais user1=70 touche PSV → SRG calculé (psvMonthly>0)
         coupleEqual:        { ferr: 24, nw: -72522, tax: 111442 }, // ANCRE — inchangé vs ménage
         solo:               { ferr: 24, nw: -116697, tax: 160409 }, // ANCRE — inchangé vs ménage
-        couplePsvBonus:     { ferr: 12, nw: -81045, tax: 109984 }, // FERR fixée ; ⚠️ bonus PSV 75+ encore ménage (sous-phase suivante)
+        couplePsvBonus:     { ferr: 12, nw: -84001, tax: 109358 }, // bonus PSV 75+ SEULEMENT sur user1=76 ; user2=64 pas de PSV
+        couplePsvStartGap:  { ferr: 72, nw: -81592, tax: 105432 }, // user1=66 PSV démarrée ; user2=63 PSV démarre à SES 65
     } as const;
 
     // ── ANCRES ZÉRO-RÉGRESSION : le fix per-conjoint NE change RIEN quand les âges coïncident ──────
@@ -117,11 +119,18 @@ describe('[ITEM-2C] FERR per-conjoint — chaque conjoint convertit SA part REER
         expect(ferrOnset(calculateFutureProjection(makeParams(SCENARIOS.coupleUser1Younger)).chartData)).toBe(24);
     });
 
-    // ── BONUS PSV 75+ — encore ménage (sous-phase suivante) : golden pinné post-fix-FERR ───────────
-    it('couple user1 > 75 (76/64) : golden post-FERR (bonus PSV 75+ per-conjoint = sous-phase suivante)', () => {
-        // La FERR est fixée per-conjoint ici. Le bonus PSV 75+ (`retirementIncome.ts`) reste sur l'âge user1
-        // (entremêlé avec le gate de DÉBUT PSV) → traité dans la sous-phase PSV per-conjoint. Ce golden pinne
-        // l'état actuel (FERR fixée, PSV encore ménage) pour border la prochaine étape.
+    // ── PSV/RRQ PER-CONJOINT (départ + bonus 75+ à l'âge de chaque conjoint) ──────────────────────
+    it('couple user1 > 75 (76/64) : bonus PSV 75+ SEULEMENT sur user1 ; user2 (64) pas de PSV', () => {
         expect(measure(SCENARIOS.couplePsvBonus)).toEqual(GOLDEN.couplePsvBonus);
+    });
+    it('couple départ-gap (66/63) : la PSV de user2 ne démarre pas avant SES 65 ans', () => {
+        expect(measure(SCENARIOS.couplePsvStartGap)).toEqual(GOLDEN.couplePsvStartGap);
+    });
+    // ── PREUVE DU FIX PSV : casse sur le code « PSV ménage sur l'âge user1 » (discriminant) ────────
+    it('FIX PSV départ : (66/63) ≠ (66/66) — l\'âge du conjoint 2 décale enfin SA PSV', () => {
+        // Avant : la PSV était gatée sur l'âge de user1 (66 ≥ 65) pour les DEUX scénarios → identiques (l'âge
+        // de user2, 63 vs 66, était ignoré). Maintenant la PSV de user2=63 ne démarre qu'à SES 65 ans → (66/63)
+        // diverge de (66/66). Ce test ÉCHOUE sur le code « PSV ménage » d'avant (les deux y sont égaux).
+        expect(measure(SCENARIOS.couplePsvStartGap)).not.toEqual(measure(retireeCouple(66, 66)));
     });
 });

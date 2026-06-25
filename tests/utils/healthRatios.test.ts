@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     monthlyTargetOf,
+    monthlyConsumptionExpenses,
     computeBudgetParityScore,
     subscriptionsMonthlyCost,
     computeSubscriptionLoadScore,
@@ -20,6 +21,27 @@ describe('monthlyTargetOf — [PH4D-BUDGET-RATIOS] normalisation fréquence', ()
         expect(monthlyTargetOf({ target: 1200, frequency: 'Yearly' })).toBe(100);
         expect(monthlyTargetOf({ target: 100, frequency: 'Weekly' })).toBeCloseTo(433, 5);
         expect(monthlyTargetOf({ target: 300, frequency: 'Quarterly' })).toBe(100);
+    });
+});
+
+describe('monthlyConsumptionExpenses — [HEALTH-SAVINGS-RATE] exclut les postes ÉPARGNE', () => {
+    const savings = (name: string, target: number): BudgetCategory =>
+        ({ id: name, name, target, frequency: 'Monthly', nature: 'Epargne', type: 'Commun' });
+
+    it('somme la consommation, EXCLUT l\'épargne (virements, pas des dépenses)', () => {
+        // 1500 + 800 = 2300 ; le poste CELI (épargne) NE compte PAS comme dépense.
+        expect(monthlyConsumptionExpenses([cat('Loyer', 1500), cat('Bouffe', 800), savings('CELI', 1000)])).toBe(2300);
+    });
+    it('budget 100 % épargne → 0 (rien de consommé → coussin/taux non faussés)', () => {
+        expect(monthlyConsumptionExpenses([savings('REER', 500), savings('CELI', 300)])).toBe(0);
+    });
+    it('normalise la fréquence (annuel /12) sur les postes de consommation', () => {
+        expect(monthlyConsumptionExpenses([cat('Assurance', 1200, 'Yearly'), savings('CELI', 600)])).toBe(100);
+    });
+    it('nature accentuée « Épargne » reconnue (données persistées LIBRES hors union typée)', () => {
+        // En prod, une nature persistée peut être accentuée (`isSavingsNature` normalise NFD). Cast assumé.
+        const accented = { id: 'Y', name: 'Y', target: 999, frequency: 'Monthly', nature: 'Épargne', type: 'Commun' } as unknown as BudgetCategory;
+        expect(monthlyConsumptionExpenses([cat('X', 500), accented])).toBe(500);
     });
 });
 

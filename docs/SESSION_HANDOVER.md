@@ -79,6 +79,10 @@
 > RELATIF `ctx.age + (âgeDépart_i − âgeDépart_0)` (symétrique, golden inchangé, 10 tests `retirementIncome` préservés — leçon CLAUDE.md).
 > Mode SURVIVANT = modèle familial INCHANGÉ (zéro impact FISC-SURVIVOR). Golden `couplePsvBonus`/`couplePsvStartGap` re-basés + discriminant 4/9.
 > **⏳ RESTE (faible priorité)** : reset REER 71 per-conjoint (~0 impact) + PSV/RRQ AU DÉCÈS (raffinement survivant). ITEM-2C ≈ COMPLET.
+> **Priorisation PM (2026-06-25, « fais selon le PM »)** : sa reco #1 TEST-PROJ-MODULES était PÉRIMÉE (49 tests déjà là — leçon R2-FIRE) →
+> passé à #2 **HEALTH-SAVINGS-RATE ✅ FAIT** : taux d'épargne + coussin du score de santé excluent enfin les postes ÉPARGNE (helper
+> `monthlyConsumptionExpenses`). Découverte → BACKLOG `HEALTH-SAVINGS-CONSISTENCY` (4 surfaces IA/MCP/moteur à uniformiser sur `isSavingsNature`).
+> **Prochaines pistes PM** : DEP-UNDICI (bump sécu rapide), NAN-OBSERVABILITY+MUTATOR (batch), FISC-ASSETLOC-INTL (MEDIUM, plan-first). + décisions Marc en attente (W5-TAX-PROXY, HIST-NW-DEBT-DISCLAIMER, FISC-WELCOME-2026).
 > ⚠️ Leçons : registre per-conjoint pilote → gérer décès (fantôme) ; 2ᵉ course git-stash (vérifs isolées) ; gate d'âge per-conjoint = ancrer sur ctx.age + écart.
 > **Session 2026-06-23 — quick-win `BUDGET-NATURE-FREEFORM` ✅ FAIT** : les 56 items de fixtures (testBudget + 6 personas) avaient
 > des natures LIBRES violant l'union typée `'Besoin'|'Envie'|'Epargne'` → tout en « Envie » + CELI/REER (`'Épargne'` accentué)

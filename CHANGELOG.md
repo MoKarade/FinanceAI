@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Couples : conversion FERR du REER au bon moment, par conjoint] — 2026-06-25
+
+### La conversion obligatoire REER→FERR (72 ans) est maintenant calculée par conjoint
+- Pour un couple dont les conjoints n'ont **pas le même âge**, la conversion obligatoire du REER en FERR
+  (à 72 ans) se déclenche désormais **pour chaque conjoint à SON âge**, sur SA part de REER — au lieu d'un
+  âge unique appliqué à tout le REER du ménage. Un couple **de même âge** ou une **personne seule** ne voient
+  **aucun changement**. Effet : le revenu imposable et l'impôt de retraite sont plus justes pour les couples à
+  écart d'âge.
+- Au **décès d'un conjoint**, sa part de REER **roule vers le survivant** (sans impôt, comme le prévoit la règle
+  fiscale) — corrige un cas où le REER du défunt aurait continué à générer des retraits imposables.
+
+---
+
 ## [unreleased — Impôt à vie estimé : retenue REER au bon taux] — 2026-06-23
 
 ### Le total d'impôts et l'« efficacité fiscale » de tes stratégies sont plus justes

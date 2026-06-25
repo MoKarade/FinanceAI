@@ -18,17 +18,22 @@ const helpers: JanuaryHelpers = {
     calculateFiscalReport: () => ({ marginalRate: 0.30, netIncome: 50000 } as unknown as FiscalReport),
 };
 
-const baseCtx = (o: Partial<JanuaryContext> = {}): JanuaryContext => ({
-    m: 12, startYear: 2026, simInflation: 2, age: 40, isRetired: false,
-    activeUsersCount: 1, oasClawbackNextPeriod: 0, hasPurchasedPrimary: false,
-    celiappOpeningYear: 2026, fhsaEligibleUsersCount: 1,
-    users: [{ birthYear: 1986 }],
-    celiapp: 0, reer: 100000, liquid: 50000, nonReg: 0, crypto: 0, celi: 0,
-    accGrossIncomeYear: 80000, accRetraitsReerYearOld: 0, incomeRetirementMonthly: 0,
-    fhsaRoomCurrent: 0, fhsaLifetimeContrib: 0, celiRoomCurrent: 0, rrspRoomCurrent: 0,
-    taxCurrentYearGains: 0, prevPortfolioNW: 0, loopYear: 2027,
-    ...o,
-});
+const baseCtx = (o: Partial<JanuaryContext> = {}): JanuaryContext => {
+    const reer = o.reer ?? 100000;
+    return {
+        m: 12, startYear: 2026, simInflation: 2, age: 40, isRetired: false,
+        activeUsersCount: 1, oasClawbackNextPeriod: 0, hasPurchasedPrimary: false,
+        celiappOpeningYear: 2026, fhsaEligibleUsersCount: 1,
+        users: [{ birthYear: 1986 }],
+        celiapp: 0, reer, liquid: 50000, nonReg: 0, crypto: 0, celi: 0,
+        accGrossIncomeYear: 80000, accRetraitsReerYearOld: 0, incomeRetirementMonthly: 0,
+        fhsaRoomCurrent: 0, fhsaLifetimeContrib: 0, celiRoomCurrent: 0, rrspRoomCurrent: 0,
+        taxCurrentYearGains: 0, prevPortfolioNW: 0, loopYear: 2027,
+        ...o,
+        // [ITEM-2C] registre per-conjoint : 1 conjoint par défaut = pool entier (FERR per-user == ancien calcul).
+        reerByUser: o.reerByUser ?? [reer],
+    };
+};
 
 describe('processJanuaryReset — gate « uniquement en janvier, m>0 »', () => {
     it('mois ≠ janvier → null', () => {
@@ -80,6 +85,28 @@ describe('processJanuaryReset — FERR (retrait minimum à 72+)', () => {
         expect(r.ferrMandatoryGross).toBeCloseTo(100000 * 0.054, 5); // 5400
         expect(r.ferrTaxOnRrif).toBeCloseTo(5400 * 0.3, 5); // 5400 × marginalRate(0.30 décimal), SANS /100
         expect(r.ferrLogMsg).toBeDefined();
+    });
+    it('[ITEM-2C] couple à écart d\'âge : seul le conjoint 72+ convertit SA part (l\'autre = 0)', () => {
+        // user0 = ctx.age 72 (convertit) ; conjoint = 68 (67 + 1 an écoulé) < 72 (ne convertit pas).
+        const r = processJanuaryReset(0, baseCtx({
+            age: 72, reer: 100000, activeUsersCount: 2,
+            users: [{ birthYear: 1955 }, { age: 67 }], reerByUser: [60000, 40000],
+        }), helpers)!;
+        expect(r.ferrGrossByUser).toHaveLength(2);
+        expect(r.ferrGrossByUser[0]).toBeCloseTo(60000 * 0.054, 5); // 3240 (user0 = 72)
+        expect(r.ferrGrossByUser[1]).toBe(0);                       // conjoint 68 < 72
+        expect(r.ferrMandatoryGross).toBeCloseTo(3240, 5);
+        // Cohérence registre/pool : Σ(parts) == total ménage.
+        expect(r.ferrGrossByUser.reduce((s, v) => s + v, 0)).toBeCloseTo(r.ferrMandatoryGross, 9);
+    });
+    it('[ITEM-2C] deux conjoints 72+ : Σ des parts == REER × taux (additif = ancien calcul ménage)', () => {
+        const r = processJanuaryReset(0, baseCtx({
+            age: 72, reer: 100000, activeUsersCount: 2,
+            users: [{ birthYear: 1955 }, { age: 71 }], reerByUser: [60000, 40000], // conjoint 71 + 1 = 72
+        }), helpers)!;
+        expect(r.ferrGrossByUser[0]).toBeCloseTo(60000 * 0.054, 5);
+        expect(r.ferrGrossByUser[1]).toBeCloseTo(40000 * 0.054, 5);
+        expect(r.ferrMandatoryGross).toBeCloseTo(100000 * 0.054, 5); // == ancien calcul ménage (défaut additif)
     });
 });
 

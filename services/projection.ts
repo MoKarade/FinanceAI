@@ -299,10 +299,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     const { incomeMarcNetMonthly, incomeAnnaNetMonthly, grossMarcBaseAnnual, grossAnnaBaseAnnual } =
         computeIncomeBaseline(projection, config.users);
 
-    // Phase 1 refactor « REER par conjoint » (cf docs/REFACTOR_REER_PAR_CONJOINT.md) : registre
-    // REER par conjoint maintenu EN PARALLÈLE du solde commun (qui reste la vérité). Clé = part
-    // salariale. Invariant Σ(reerByUser) == reer garanti par stepReerByUser. Shadow en Phase 1
-    // (non consommé par la fiscalité encore) → zéro changement de résultat.
+    // Registre REER PAR CONJOINT maintenu EN PARALLÈLE du solde commun (qui reste la vérité). Clé de
+    // répartition = part salariale (proxy d'historique de cotisation ; `rrspContributed` prévu — ITEM-2C
+    // sous-phase suivante). Invariant Σ(reerByUser) == reer garanti par stepReerByUser.
+    // [ITEM-2C] Depuis le fix FERR per-conjoint, ce registre PILOTE la fiscalité : chaque conjoint de 72+
+    // convertit SA part au facteur RRIF de SON âge (taxJanuary). Au décès, la part du défunt roule vers le
+    // survivant (cf bloc survivorMode). Plus un shadow.
     const reerShares = salaryShares(
         activeUsersCount > 1 ? [grossMarcBaseAnnual, grossAnnaBaseAnnual] : [grossMarcBaseAnnual + grossAnnaBaseAnnual],
     );
@@ -528,6 +530,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         if (survivorMode && !survivorTriggerLogged) {
             const spouseAge = (config.users[1]?.age || 30) + Math.floor(m / 12);
             logEvent(lifeEventsLog, `🖤 Décès du conjoint à ${spouseAge} ans — bascule en mode survivant`);
+            // [ITEM-2C] Roulement REER conjugal AU DÉCÈS (sans impôt, règle ARC) : la part REER du défunt
+            // rejoint le SURVIVANT (user0) → `reerByUser = [Σ, 0]`. Sans cela, la part du défunt (registre
+            // [1]) continuerait de FERR-convertir au gate per-conjoint comme un « contribuable mort » à 72+
+            // = flux fiscal fantôme imposé au survivant (régression FISC-SURVIVOR-DRAWDOWN). Cohérent avec le
+            // modèle « tout le revenu de retraite est celui du survivant » (1 contribuable).
+            const mergedReer = reerByUser.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0);
+            reerByUser = reerByUser.map((_, i) => (i === 0 ? mergedReer : 0));
             survivorTriggerLogged = true;
         }
 
@@ -944,7 +953,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 oasClawbackNextPeriod, hasPurchasedPrimary,
                 celiappOpeningYear, fhsaEligibleUsersCount,
                 users: config.users,
-                celiapp, reer, liquid, nonReg, crypto, celi,
+                celiapp, reer, reerByUser, liquid, nonReg, crypto, celi,
                 accGrossIncomeYear, accRetraitsReerYearOld: accRetraitsReerYear,
                 incomeRetirementMonthly: incomeRetirement,
                 fhsaRoomCurrent: fhsaRoom, fhsaLifetimeContrib,
@@ -989,7 +998,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 taxCurrentYear.reer += janResult.ferrTaxOnRrif;
                 impotReerMois += janResult.ferrTaxOnRrif;
                 accRetraitsReerYear += janResult.ferrMandatoryGross;
-                accRetraitsReerYearByUser = addByWeights(accRetraitsReerYearByUser, janResult.ferrMandatoryGross, reerByUser);
+                // [ITEM-2C] La FERR de chaque conjoint sort de SA part REER (registre per-conjoint), pas au
+                // pro-rata du pool → le solde REER de chaque conjoint reflète SES conversions obligatoires
+                // (et conditionne SON FERR de l'an suivant). La réconciliation de fin de mois préserve l'attribution.
+                reerByUser = reerByUser.map((v, i) => Math.max(0, (Number.isFinite(v) ? v : 0) - (janResult.ferrGrossByUser[i] ?? 0)));
+                accRetraitsReerYearByUser = accRetraitsReerYearByUser.map((v, i) => (Number.isFinite(v) ? v : 0) + (janResult.ferrGrossByUser[i] ?? 0));
                 liquid += janResult.ferrMandatoryGross;
                 if (janResult.ferrLogMsg) flowEventsLog.push(janResult.ferrLogMsg);
             }

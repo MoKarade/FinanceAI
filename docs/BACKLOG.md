@@ -144,10 +144,18 @@
   (5 scénarios : couple 70/64, 64/70, 70/70, solo 70, **76/64 PSV-bonus**) pinnant FERR + nw + tax. Ancres zéro-régression
   (equal/solo) + **signatures du bug NON-VACANTES** (`(70/64)≡(70/70)` ; `(64/70)` ferr=mois 96 — casseront au fix Phase 2).
   Panel projection-validator + code-reviewer ✅. ZÉRO changement moteur. ⚠️ Bonus PSV 75+ = MÊME bug structurel (borné).
-- **Phase 1** : `computeRetirementIncome` **per-conjoint de bout en bout** (pool REER par personne, âge par
-  personne) ; défaut additif (égalité ménage préservée si âges égaux → zéro régression).
-- **Phase 2** : brancher FERR/REER/PSV sur l'âge per-conjoint ; re-baser les golden SCIEMMENT (prouver vs ARC) ;
-  panel financial-integrity + projection-validator ; 12 invariants conservation. ⚠️ Lourd, plan-first à chaque phase.
+- **Phase 1+2 FERR** ✅ **FAIT (2026-06-25, choix Marc « option 3 » = plomberie+flip 1 PR)** : `taxJanuary.ts` boucle sur
+  `reerByUser` + âge par conjoint (chaque conjoint de 72+ convertit SA part au facteur RRIF de SON âge) ; `projection.ts`
+  débite la part FERR de chaque conjoint dans le registre (qui passe de SHADOW à PILOTE). Défaut additif (âges égaux ⇒
+  Σ=`reer×rate`, ancres golden equal/solo INCHANGÉES). Golden age-gap re-basés SCIEMMENT + preuves-de-fix (discriminant
+  git-stash : 5/7 échouent sur l'ancien code). ⚠️ **Bug CRITIQUE trouvé au panel + corrigé** : flux fiscal FANTÔME au DÉCÈS
+  (la part du défunt FERR-convertissait comme un mort de 100 ans → +63 k$ sur le survivant) → roulement REER conjugal
+  `reerByUser=[Σ,0]` au `survivorMode`. Panel financial-integrity + projection-validator + silent-failure + code-reviewer ✅.
+  Repli `birthYear` pour le conjoint sans `age` + 2 tests unitaires per-conjoint. Conservation 20/20.
+- **RESTE — sous-phase PSV/RRQ per-conjoint** : le **bonus PSV 75+** + le **reset REER 71** restent sur l'âge user1.
+  Le bonus PSV est ENTREMÊLÉ avec le gate de DÉBUT PSV (`retirementIncome.ts:226-228` `age>=psvStartAge`, base FAMILIALE) →
+  fix propre = `psvMonthly`/`rrqMonthly` per-conjoint (départ + bonus). Plus large que la FERR → plan-first dédié. Le golden
+  `couplePsvBonus` (76/64) borne l'état actuel (FERR fixée, PSV encore ménage). ⚠️ Money-critical, panel + discriminant.
 
 ### Plan — Tables fiscales « montant pour personne vivant seule » (QC TP-1.G)
 - **Problème** : le montant pour personne vivant seule (crédit QC) est absent du code ET de `FISCAL_REFERENCE`.

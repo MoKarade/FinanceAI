@@ -137,8 +137,13 @@
 
 ### Plan — `ITEM-2C` (gates de timing par conjoint, money-critical)
 - **Problème** : FERR 72 / reset REER 71 / bonus PSV 75+ sont bloqués par un pool REER MÉNAGE + un âge principal
-  unique → impossible de différencier le timing par conjoint.
-- **Phase 0** : test de caractérisation pinnant le comportement actuel (golden) — zéro changement moteur.
+  unique (`taxJanuary.ts:173` `ctx.age>=72`, `ctx.age`=`users[0].age` projection.ts:177) → timing per-conjoint impossible.
+  ⚙️ **Décisions Marc (2026-06-25)** : cadence phase-par-phase (OK entre chaque) ; clé de répartition REER par conjoint =
+  `rrspContributed` historique [(a)] ; re-baselining golden en Phase 2 = OK (justifié vs ARC + discriminant).
+- **Phase 0** ✅ **FAIT (2026-06-25)** : `tests/services/projection.item2c.golden.test.ts` — golden de caractérisation
+  (5 scénarios : couple 70/64, 64/70, 70/70, solo 70, **76/64 PSV-bonus**) pinnant FERR + nw + tax. Ancres zéro-régression
+  (equal/solo) + **signatures du bug NON-VACANTES** (`(70/64)≡(70/70)` ; `(64/70)` ferr=mois 96 — casseront au fix Phase 2).
+  Panel projection-validator + code-reviewer ✅. ZÉRO changement moteur. ⚠️ Bonus PSV 75+ = MÊME bug structurel (borné).
 - **Phase 1** : `computeRetirementIncome` **per-conjoint de bout en bout** (pool REER par personne, âge par
   personne) ; défaut additif (égalité ménage préservée si âges égaux → zéro régression).
 - **Phase 2** : brancher FERR/REER/PSV sur l'âge per-conjoint ; re-baser les golden SCIEMMENT (prouver vs ARC) ;

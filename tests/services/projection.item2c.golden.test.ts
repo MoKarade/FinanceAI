@@ -1,16 +1,19 @@
 // tests/services/projection.item2c.golden.test.ts
 //
-// [ITEM-2C — Phase 0 : caractérisation] Golden tests qui PINNENT le comportement ACTUEL des gates de
-// timing de retraite (FERR 72 / reset REER 71) — AVANT le passage per-conjoint. ZÉRO changement moteur ici.
+// [ITEM-2C] FERR PER-CONJOINT : chaque conjoint de 72+ convertit SA part REER (`reerByUser[i]`) au facteur
+// RRIF de SON âge, au lieu d'un âge MÉNAGE unique (user1) sur le pool entier.
 //
-// État actuel (vérifié) : le gate FERR (`taxJanuary.ts:173` `ctx.age >= 72`) lit l'âge de l'UTILISATEUR 1
-// (`projection.ts:177` `currentAge = users[0].age`) appliqué au POOL REER MÉNAGE (`ctx.reer`). L'âge du
-// conjoint 2 n'entre PAS dans la décision. `reerByUser` existe en SHADOW (ne pilote rien).
+// Avant : le gate FERR (`taxJanuary.ts` `ctx.age >= 72`) lisait l'âge de l'UTILISATEUR 1 (`projection.ts`
+// `currentAge = users[0].age`) sur le POOL REER MÉNAGE → pour un couple à écart d'âge, mauvais timing
+// (conjoint plus jeune FERR-converti trop tôt ; conjoint plus âgé retardé). `reerByUser` était un SHADOW.
+// Après : `taxJanuary` boucle sur `reerByUser` + l'âge de chaque conjoint ; `projection.ts` débite la part
+// FERR de chaque conjoint dans le registre. Défaut additif → âges égaux ⇒ Σ = `reer × rate` (identique).
 //
-// Ces golden servent de FILET pour la Phase 1 (refactor additif) :
-//   • ANCRES ZÉRO-RÉGRESSION : couple d'âge ÉGAL + SOLO → DOIVENT rester identiques après Phase 1.
-//   • COMPORTEMENT DOCUMENTÉ (à corriger en Phase 2) : couple à écart d'âge → la FERR se déclenche sur
-//     l'âge de l'user1, jamais sur celui du conjoint plus âgé. Ces valeurs seront RE-BASÉES en Phase 2.
+// Golden (déterministes, hors Monte-Carlo) :
+//   • ANCRES : couple d'âge ÉGAL + SOLO → INCHANGÉS vs le calcul ménage (preuve du défaut additif, zéro régression).
+//   • AGE-GAP : timing per-conjoint CORRECT (chaque conjoint à SON 72). Re-basés SCIEMMENT vs l'ancien ménage.
+//   • PREUVES DU FIX : assertions qui ÉCHOUENT sur le code ménage d'avant (discriminant git-stash).
+// ⚠️ Le bonus PSV 75+ (entremêlé avec le gate de DÉBUT PSV) reste ménage → sous-phase PSV per-conjoint suivante.
 import { describe, it, expect } from 'vitest';
 import { calculateFutureProjection, type SimulationParams } from '../../services/projection';
 import type { ProjectionConfig, BudgetConfig, RetirementGoal } from '../../types';
@@ -70,54 +73,55 @@ const SCENARIOS = {
     couplePsvBonus: retireeCouple(76, 64),     // user1 > 75 (bonus PSV) sur base FAMILIALE — borne le gate PSV 75+ (même bug âge=user1)
 } as const;
 
-describe('[ITEM-2C Phase 0] caractérisation des gates de timing (FERR/reset) — comportement ACTUEL', () => {
+describe('[ITEM-2C] FERR per-conjoint — chaque conjoint convertit SA part REER à SON âge', () => {
     const measure = (config: BudgetConfig) => {
         const r = calculateFutureProjection(makeParams(config));
         return { ferr: ferrOnset(r.chartData), nw: round(r.finalNetWorth), tax: round(r.totalTaxesPaid) };
     };
 
-    // Golden MESURÉS sur le code actuel (projection déterministe, hors Monte-Carlo). Tout écart en Phase 1
-    // sur les ANCRES (equal/solo) = régression ; l'écart attendu en Phase 2 (age-gap) sera re-basé SCIEMMENT.
+    // Golden re-basés (projection déterministe, hors Monte-Carlo) APRÈS le fix FERR per-conjoint
+    // (`taxJanuary.ts` : boucle sur `reerByUser` + âge par conjoint). Les ANCRES (equal/solo) sont INCHANGÉES
+    // vs le comportement ménage (preuve du défaut additif) ; les age-gap reflètent le timing per-conjoint CORRECT.
     const GOLDEN = {
-        coupleUser1Older:   { ferr: 24, nw: -72522, tax: 111442 },
-        coupleUser1Younger: { ferr: 96, nw: -90067, tax: 102750 },
-        coupleEqual:        { ferr: 24, nw: -72522, tax: 111442 },
-        solo:               { ferr: 24, nw: -116697, tax: 160409 },
-        couplePsvBonus:     { ferr: 12, nw: -81900, tax: 115257 },
+        coupleUser1Older:   { ferr: 24, nw: -72089, tax: 108006 }, // user1=72 convertit SA part ; user2=66 non (avant : tout le pool)
+        coupleUser1Younger: { ferr: 24, nw: -90128, tax: 105536 }, // user2=72 déclenche SA FERR au mois 24 (avant : retardée au mois 96)
+        coupleEqual:        { ferr: 24, nw: -72522, tax: 111442 }, // ANCRE — inchangé vs ménage
+        solo:               { ferr: 24, nw: -116697, tax: 160409 }, // ANCRE — inchangé vs ménage
+        couplePsvBonus:     { ferr: 12, nw: -81045, tax: 109984 }, // FERR fixée ; ⚠️ bonus PSV 75+ encore ménage (sous-phase suivante)
     } as const;
 
-    // ── ANCRES ZÉRO-RÉGRESSION (DOIVENT rester identiques après la Phase 1 additive) ───────────────
-    it('ANCRE — couple d\'âge ÉGAL (70/70) : golden stable', () => {
+    // ── ANCRES ZÉRO-RÉGRESSION : le fix per-conjoint NE change RIEN quand les âges coïncident ──────
+    it('ANCRE — couple d\'âge ÉGAL (70/70) : identique au calcul ménage', () => {
         expect(measure(SCENARIOS.coupleEqual)).toEqual(GOLDEN.coupleEqual);
     });
-    it('ANCRE — solo (70) : golden stable', () => {
+    it('ANCRE — solo (70) : identique au calcul ménage', () => {
         expect(measure(SCENARIOS.solo)).toEqual(GOLDEN.solo);
     });
 
-    // ── COMPORTEMENT ACTUEL DOCUMENTÉ (buggy — sera RE-BASÉ en Phase 2) ────────────────────────────
-    it('couple user1 PLUS ÂGÉ (70/64) : FERR sur l\'âge user1 — golden actuel', () => {
+    // ── TIMING PER-CONJOINT CORRECT (age-gap) ─────────────────────────────────────────────────────
+    it('couple user1 PLUS ÂGÉ (70/64) : seul user1 (72) convertit sa part ; user2 (66) non', () => {
         expect(measure(SCENARIOS.coupleUser1Older)).toEqual(GOLDEN.coupleUser1Older);
     });
-    it('couple user1 PLUS JEUNE (64/70) : FERR RETARDÉE aux 72 de user1 (le 72 du conjoint ignoré) — golden actuel', () => {
+    it('couple user1 PLUS JEUNE (64/70) : le conjoint plus âgé déclenche SA FERR à temps', () => {
         expect(measure(SCENARIOS.coupleUser1Younger)).toEqual(GOLDEN.coupleUser1Younger);
     });
 
-    // ── SIGNATURES DU BUG (assertions qui CASSERONT en Phase 2 = preuve que le fix mord) ───────────
-    it('BUG actuel : l\'âge du conjoint 2 est IGNORÉ — (70/64) ≡ (70/70) bit-à-bit', () => {
-        // Un conjoint de 64 ans devrait voir SA part REER FERR-convertie bien plus tard qu'un conjoint de 70.
-        // Aujourd'hui les deux scénarios sont IDENTIQUES → le gate ne regarde que l'user1. (Phase 2 brisera ceci.)
-        expect(measure(SCENARIOS.coupleUser1Older)).toEqual(measure(SCENARIOS.coupleEqual));
+    // ── PREUVES DU FIX (ces assertions ÉCHOUENT sur le code ménage d'avant — discriminant git-stash) ──
+    it('FIX : l\'âge du conjoint 2 COMPTE désormais — (70/64) ≠ (70/70)', () => {
+        // Avant : identiques (gate sur user1 seul). Maintenant : un conjoint de 64 ans ne FERR-convertit pas
+        // sa part à 66 ans → le couple 70/64 diverge du couple 70/70.
+        expect(measure(SCENARIOS.coupleUser1Older)).not.toEqual(measure(SCENARIOS.coupleEqual));
     });
-    it('BUG actuel : un conjoint plus ÂGÉ que user1 ne déclenche PAS sa FERR à 72 (retard)', () => {
-        // (64/70) : le conjoint B a 72 ans au mois 24, mais la 1re FERR n'arrive qu'au mois 96 (72 de A).
-        expect(ferrOnset(calculateFutureProjection(makeParams(SCENARIOS.coupleUser1Younger)).chartData)).toBe(96);
+    it('FIX : un conjoint plus ÂGÉ que user1 déclenche SA FERR à 72 (plus de retard)', () => {
+        // (64/70) : le conjoint B a 72 ans au mois 24 → FERR au mois 24 (avant : retardée au mois 96, 72 de A).
+        expect(ferrOnset(calculateFutureProjection(makeParams(SCENARIOS.coupleUser1Younger)).chartData)).toBe(24);
     });
 
-    // ── BONUS PSV 75+ (gate `age >= 75` = user1, base FAMILIALE — même bug structurel que la FERR) ──
-    it('couple user1 > 75 (76/64) : bonus PSV sur l\'âge user1 / base familiale — golden actuel', () => {
-        // Aujourd'hui le bonus PSV 75+ s'active sur l'âge de user1 et la PSV est familiale → un conjoint de
-        // 64 ans « profite » de l'âge de user1. Un fix per-conjoint (Phase 2) calculera le bonus par personne
-        // → nw/tax bougeront. Ce golden borne le gate PSV avant le refactor (recommandation projection-validator).
+    // ── BONUS PSV 75+ — encore ménage (sous-phase suivante) : golden pinné post-fix-FERR ───────────
+    it('couple user1 > 75 (76/64) : golden post-FERR (bonus PSV 75+ per-conjoint = sous-phase suivante)', () => {
+        // La FERR est fixée per-conjoint ici. Le bonus PSV 75+ (`retirementIncome.ts`) reste sur l'âge user1
+        // (entremêlé avec le gate de DÉBUT PSV) → traité dans la sous-phase PSV per-conjoint. Ce golden pinne
+        // l'état actuel (FERR fixée, PSV encore ménage) pour border la prochaine étape.
         expect(measure(SCENARIOS.couplePsvBonus)).toEqual(GOLDEN.couplePsvBonus);
     });
 });

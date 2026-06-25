@@ -69,11 +69,14 @@
 > **✅✅ TOUS LES FINDINGS DE L'AUDIT 2026-06-23 CORRIGÉS** (6 lots, PR #407-#411). + **SEC-PRIVACY-RETIREMENT-RRQ-PSV ✅ FAIT** (suivi :
 > les 2 champs rente RRQ/PSV migrés vers `PrivateNumberInput` → volet vie privée des champs éditables COMPLET). Restent en BACKLOG : découvertes
 > LOW (NAN-OBSERVABILITY, NAN-MUTATOR-CENTRAL, WHT-DISPLAY-EXACT) + A_FAIRE_MOI : `FISC-WELCOME-2026`, `W5-TAX-PROXY`, `HIST-NW-DEBT-DISCLAIMER`.
-> **ORDRE 3 / ITEM-2C — Phase 0 ✅ FAIT (2026-06-25, money-critical, plan-first OK de Marc)** : golden de caractérisation
-> `tests/services/projection.item2c.golden.test.ts` (5 scénarios, ancres equal/solo + signatures de bug non-vacantes : FERR/PSV gatés
-> sur l'âge user1 seul). ZÉRO changement moteur. Décisions Marc : cadence phase-par-phase ; clé REER per-conjoint = `rrspContributed` ;
-> re-base golden OK en Phase 2. **⏳ PROCHAINE = Phase 1** (`computeRetirementIncome` per-conjoint additif, `reerByUser` shadow→pilote) —
-> EN ATTENTE de l'OK de Marc (plan-first par phase). Détail : `docs/BACKLOG.md` § Plan ITEM-2C. Reste : tables TP-1.G + chantiers BACKLOG.
+> **ORDRE 3 / ITEM-2C — FERR per-conjoint ✅ FAIT (2026-06-25, money-critical, options 3 de Marc)** : Phase 0 (golden #413) +
+> Phase 1+2 FERR (1 PR) : `taxJanuary.ts` boucle sur `reerByUser` + âge par conjoint (chaque conjoint de 72+ convertit SA part au
+> facteur RRIF de SON âge) ; `reerByUser` passe de SHADOW à PILOTE. Défaut additif (ancres equal/solo INCHANGÉES) ; golden age-gap
+> re-basés + preuves-de-fix (discriminant git-stash 5/7). ⚠️ Panel a trouvé un **flux fiscal FANTÔME au DÉCÈS** (part du défunt
+> FERR-convertissait → +63 k$ survivant) → corrigé par roulement REER conjugal `reerByUser=[Σ,0]`. + repli `birthYear`, 2 tests unitaires.
+> Conservation 20/20. **⏳ RESTE = sous-phase PSV/RRQ per-conjoint** (bonus 75+ + reset 71, ENTREMÊLÉS avec le gate de DÉBUT PSV →
+> plus large, plan-first dédié ; golden `couplePsvBonus` borne l'état). Money-critical. Détail : `docs/BACKLOG.md` § Plan ITEM-2C.
+> ⚠️ Leçon : un registre per-conjoint qui PILOTE la fiscalité doit gérer décès/divorce (sinon fantôme) + 2ᵉ course git-stash (vérifs isolées).
 > **Session 2026-06-23 — quick-win `BUDGET-NATURE-FREEFORM` ✅ FAIT** : les 56 items de fixtures (testBudget + 6 personas) avaient
 > des natures LIBRES violant l'union typée `'Besoin'|'Envie'|'Epargne'` → tout en « Envie » + CELI/REER (`'Épargne'` accentué)
 > comptés comme dépenses (groupement, coupleAnalysis, dépenses IA/Dashboard/NextBestAction). Normalisés 50/30/20. Panel

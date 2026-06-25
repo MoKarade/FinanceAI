@@ -31,7 +31,7 @@ export const RetirementIncomeCard: React.FC = () => {
                             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
                                 <div>
                                     <label htmlFor="ric-rrq" className="block text-meta text-ink-300 mb-1">🇨🇦 RRQ projetée / mois (par personne)</label>
-                                    <input id="ric-rrq"
+                                    <PrivateNumberInput id="ric-rrq"
                                         type="number"
                                         min={0}
                                         value={goal.rrqEstimateMonthly ?? ''}
@@ -43,7 +43,7 @@ export const RetirementIncomeCard: React.FC = () => {
                                 </div>
                                 <div>
                                     <label htmlFor="ric-psv" className="block text-meta text-ink-300 mb-1">PSV projetée / mois</label>
-                                    <input id="ric-psv"
+                                    <PrivateNumberInput id="ric-psv"
                                         type="number"
                                         min={0}
                                         value={goal.psvEstimateMonthly ?? ''}

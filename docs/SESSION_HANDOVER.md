@@ -82,7 +82,11 @@
 > **Priorisation PM (2026-06-25, « fais selon le PM »)** : sa reco #1 TEST-PROJ-MODULES était PÉRIMÉE (49 tests déjà là — leçon R2-FIRE) →
 > passé à #2 **HEALTH-SAVINGS-RATE ✅ FAIT** : taux d'épargne + coussin du score de santé excluent enfin les postes ÉPARGNE (helper
 > `monthlyConsumptionExpenses`). Découverte → BACKLOG `HEALTH-SAVINGS-CONSISTENCY` (4 surfaces IA/MCP/moteur à uniformiser sur `isSavingsNature`).
-> **Prochaines pistes PM** : DEP-UNDICI (bump sécu rapide), NAN-OBSERVABILITY+MUTATOR (batch), FISC-ASSETLOC-INTL (MEDIUM, plan-first). + décisions Marc en attente (W5-TAX-PROXY, HIST-NW-DEBT-DISCLAIMER, FISC-WELCOME-2026).
+> #3 **DEP-UNDICI = PÉRIMÉ** (lockfile déjà à undici 7.28.0, `npm audit` 0 vuln — fermé). #4 **NAN-OBSERVABILITY ✅ FAIT** (helper
+> `logErrorThrottled` + 2 sites monthlyEvents/useDerivedFinancials). ⚠️ **3 des 5 recos PM étaient PÉRIMÉES** (BACKLOG en retard sur l'état réel) →
+> un PASS de nettoyage du BACKLOG serait utile avant d'en piocher d'autres. **Prochaines pistes (VÉRIFIER d'abord qu'elles ne sont pas déjà faites)** :
+> NAN-MUTATOR-CENTRAL (moteur, garde centrale 4 mutateurs), FISC-ASSETLOC-INTL (MEDIUM, plan-first), HEALTH-SAVINGS-CONSISTENCY (4 surfaces).
+> + décisions Marc en attente : W5-TAX-PROXY, HIST-NW-DEBT-DISCLAIMER, FISC-WELCOME-2026.
 > ⚠️ Leçons : registre per-conjoint pilote → gérer décès (fantôme) ; 2ᵉ course git-stash (vérifs isolées) ; gate d'âge per-conjoint = ancrer sur ctx.age + écart.
 > **Session 2026-06-23 — quick-win `BUDGET-NATURE-FREEFORM` ✅ FAIT** : les 56 items de fixtures (testBudget + 6 personas) avaient
 > des natures LIBRES violant l'union typée `'Besoin'|'Envie'|'Epargne'` → tout en « Envie » + CELI/REER (`'Épargne'` accentué)

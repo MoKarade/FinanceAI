@@ -19,6 +19,20 @@ export function monthlyTargetOf(item: Pick<BudgetCategory, 'target' | 'frequency
 }
 
 /**
+ * [HEALTH-SAVINGS-RATE] Dépenses MENSUELLES de CONSOMMATION : Σ des cibles mensuelles, postes de nature
+ * ÉPARGNE EXCLUS (alimentés par des VIREMENTS, pas des dépenses). Dénominateur du taux d'épargne ET du
+ * coussin d'urgence. Sans l'exclusion, l'épargne budgétée compte à tort comme dépense → taux d'épargne
+ * sous-estimé (≈ 0 % pour un épargnant) et coussin sous-estimé. Cohérent avec `computeBudgetParityScore`
+ * et `Budget.tsx`. Pur.
+ */
+export function monthlyConsumptionExpenses(budgetItems: readonly BudgetCategory[]): number {
+    return budgetItems.reduce(
+        (sum, b) => (isSavingsNature(b.nature) ? sum : sum + monthlyTargetOf(b)),
+        0,
+    );
+}
+
+/**
  * Score d'ADHÉRENCE au budget (0-100). 100 = dépenses réelles ≤ cibles (poste par poste) ; baisse avec
  * le DÉPASSEMENT total. `100·(1 − Σ max(0, réel_i − cible_i) / Σ cible_i)`. `actualsMap` = dépense réelle
  * par poste (clé = nom) sur la MÊME fenêtre que les cibles mensuelles (≈ 1 mois complet).

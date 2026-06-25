@@ -3,7 +3,7 @@ import type { HealthWeights, RecurringItem } from '../../types';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { DEFAULT_HEALTH_WEIGHTS, normalizeHealthWeights } from '../../utils/healthWeights';
 import { computeBudgetParity } from '../../utils/budget';
-import { computeBudgetParityScore, computeSubscriptionLoadScore, subscriptionsMonthlyCost, monthlyTargetOf } from '../../utils/healthRatios';
+import { computeBudgetParityScore, computeSubscriptionLoadScore, subscriptionsMonthlyCost, monthlyConsumptionExpenses } from '../../utils/healthRatios';
 import { formatCAD, formatNumber, formatPercent } from '../../utils/format';
 import { useHasUserData } from '../../utils/useHasUserData';
 import { EmptyDataPrompt } from '../ui/EmptyDataPrompt';
@@ -88,9 +88,10 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
             (sum, u) => sum + (u.netSalary || u.salary || 0),
             0,
         );
-        // [PH4D-BUDGET-RATIOS] normalise la fréquence (monthlyTargetOf) : un poste annuel/trimestriel ne doit pas
-        // compter pour sa valeur brute en mensuel (sinon taux d'épargne + coussin faussés ET incohérents avec la parité).
-        const monthlyExpenses = (budgetItems || []).reduce((sum, b) => sum + monthlyTargetOf(b), 0);
+        // [PH4D-BUDGET-RATIOS + HEALTH-SAVINGS-RATE] dépenses de CONSOMMATION mensuelles : fréquence normalisée
+        // ET postes ÉPARGNE EXCLUS (virements, pas des dépenses) → taux d'épargne + coussin justes et cohérents
+        // avec la parité budget / Budget.tsx (cf `monthlyConsumptionExpenses`).
+        const monthlyExpenses = monthlyConsumptionExpenses(budgetItems || []);
         // Liquidités = cash de TOUS les comptes. initialBalances a des clés
         // DYNAMIQUES : noms de comptes bancaires en usage réel (ex : « Compte
         // chèque BMO »), ou types en mode test (CELI, REER, LIQUIDITE…). On

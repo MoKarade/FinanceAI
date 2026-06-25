@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Score de santé : taux d'épargne et coussin d'urgence plus justes] — 2026-06-25
+
+### Ton épargne budgétée ne compte plus comme une « dépense »
+- Le **taux d'épargne** et le **coussin d'urgence** du score de santé financière (Dashboard) comptaient à tort
+  tes postes de budget de nature **Épargne** (virements vers CELI/REER…) comme des dépenses. Résultat : si tu
+  budgétais explicitement ton épargne, ton taux d'épargne affiché tombait près de **0 %** et ton coussin
+  était sous-estimé. Désormais l'épargne est exclue des dépenses → les deux indicateurs reflètent la réalité.
+
+---
+
 ## [unreleased — Couples : rentes de retraite (FERR, RRQ, PSV) calculées par conjoint] — 2026-06-25
 
 ### Le début de la RRQ / PSV et le bonus PSV 75+ sont maintenant calculés par conjoint

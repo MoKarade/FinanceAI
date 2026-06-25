@@ -661,7 +661,17 @@
 - [x] **[SF-RESIDUS]** ✅ LOW (2026-06-16) — `StockComparisonModal.tsx:41` (→ network/warning), `FutureProjection.tsx:464` (→ ui/error, context = champs manquants, pas les objets financiers), `TaxCenter.tsx:89` (→ ai/error) routés vers `logError`. `syncOrchestrator.ts` était déjà propre (référence BACKLOG périmée).
 
 ### Tests / dette technique
-- [ ] **[TEST-PROJ-MODULES]** 🔧 MEDIUM — 3 sous-modules projection money-critical sans test direct : `assetLocation.ts`, `monthlyOutput.ts`, `strategyConfig.ts`.
+- [x] **[TEST-PROJ-MODULES]** ✅ **PÉRIMÉ/COUVERT (constaté 2026-06-25)** — les 3 modules ONT des tests directs : `projection.assetLocation.test.ts`
+  (8), `monthlyOutput.test.ts` (19), `strategyConfig.returnProfile.test.ts` + `strategyConfigRanking.test.ts` (22) = 49 tests. Item ajouté avant
+  ces couvertures. (Leçon R2-FIRE : vérifier qu'une tâche n'est pas déjà faite avant de la coder.)
+- [ ] **[HEALTH-SAVINGS-RATE]** ✅ **FAIT (2026-06-25, reco PM)** — `HealthIndicator.tsx` : le taux d'épargne + le coussin d'urgence
+  comptaient les postes ÉPARGNE comme des dépenses → taux ≈ 0 % pour un épargnant, coussin sous-estimé. Helper pur `monthlyConsumptionExpenses`
+  (`healthRatios.ts`, exclut `isSavingsNature`, cohérent avec `computeBudgetParityScore`/`Budget.tsx`) + 4 tests. Panel financial-integrity + code-reviewer ✅.
+- [ ] **[HEALTH-SAVINGS-CONSISTENCY]** 🔧 LOW (découvert au HEALTH-SAVINGS-RATE par financial-integrity) — 4 surfaces calculent `monthlyExpenses`
+  avec `nature === 'Epargne'` STRICT (sans normalisation d'accent) au lieu de `isSavingsNature` : `portfolio.ts:138`, `NextBestAction.tsx:113`,
+  `useDerivedFinancials.ts:35`, `buildSimulationParams.ts:230`. Une nature « Épargne » accentuée (données persistées libres) y est comptée comme
+  dépense → épargne sous-estimée vers l'IA/MCP + projection pessimiste. Uniformiser sur `isSavingsNature`. ⚠️ `buildSimulationParams` = moteur
+  money-critical → conservation + discriminant. Effort S.
 - [x] **[DETTE-PDF-FORMAT]** ✅ MEDIUM (2026-06-16) — `pdfReport.ts` : `formatCAD` local retiré → importé de `utils/format` (source unique fr-CA ; bonus : valeurs non finies → '—' au lieu de « NaN $ »). Tests pdfReport/pdfScenarios verts.
 - [ ] **[DETTE-RE-SALE]** 🔧 LOW — `monthlyEvents.ts:70` : vente immo pilotee par sous-chaine « vente » du nom + premier immeuble hypotheque (peut vendre la RP exempte au lieu du locatif). Lier a un `propertyId`.
 - [ ] **[DETTE-DEADCODE]** 🔧 LOW — `runBuyVsRent` (`realEstate.ts:639`) jamais appele hors tests ; verifier aussi `clearCredentials`, facade `getProfile`, `buildTestFixtures`.

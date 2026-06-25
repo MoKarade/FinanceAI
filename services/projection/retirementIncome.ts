@@ -222,10 +222,50 @@ export function computeRetirementIncome(
 
     const survivorRrqFactor = survivorMode ? (1 - 0.5 + 0.5 * rrqSurvivorPct) : 1;
     const survivorPsvFactor = survivorMode ? 0.5 : 1;
-    // Bonification automatique PSV +10% à partir de 75 ans (depuis juillet 2022)
-    const psv75Bonus = age >= 75 ? (1 + PSV_BONUS_75_PLUS) : 1;
-    const rrqMonthly = age >= rrqStartAge ? (rrqBaseFamily * rrqProrata * rrqFactor * survivorRrqFactor) : 0;
-    const psvMonthly = age >= psvStartAge ? (psvBaseFamily * psvProrata * psvFactor * psv75Bonus * survivorPsvFactor) : 0;
+    // Bonification automatique PSV +10% à partir de 75 ans (depuis juillet 2022) — évaluée per-conjoint.
+    const psv75BonusOf = (ageI: number): number => (ageI >= 75 ? (1 + PSV_BONUS_75_PLUS) : 1);
+    let rrqMonthly: number;
+    let psvMonthly: number;
+    if (survivorMode) {
+        // SURVIVANT (1 contribuable = user0) : modèle FAMILIAL × facteur survivant INCHANGÉ (le gate utilise
+        // l'âge du survivant ; la part du défunt est déjà modélisée par le facteur survivant). Le per-conjoint
+        // au décès est un raffinement séparé → zéro impact sur la baseline FISC-SURVIVOR-DRAWDOWN.
+        rrqMonthly = age >= rrqStartAge ? (rrqBaseFamily * rrqProrata * rrqFactor * survivorRrqFactor) : 0;
+        psvMonthly = age >= psvStartAge ? (psvBaseFamily * psvProrata * psvFactor * psv75BonusOf(age) * survivorPsvFactor) : 0;
+    } else {
+        // [ITEM-2C] COUPLE/SOLO VIVANT : le DÉPART RRQ/PSV et le BONUS PSV 75+ sont évalués à l'âge de CHAQUE
+        // conjoint, sur SA part (`base/N × poids_i`). Avant : gate + bonus sur l'âge de user1 sur la base
+        // familiale → un conjoint plus jeune touchait sa rente trop tôt / profitait du bonus de l'aîné. Défaut
+        // additif : `Σ_i (base/N × poids_i) == base × prorata` ⇒ âges égaux/solo identiques (zéro régression).
+        // Âge de DÉPART de chaque conjoint (age explicite, sinon dérivé de birthYear).
+        const startAgeOf = (i: number): number | null => {
+            const u = filteredUsers[i];
+            if (u?.age != null && Number.isFinite(u.age)) return u.age;
+            if (u?.birthYear != null && Number.isFinite(u.birthYear)) return startYear - u.birthYear;
+            return null;
+        };
+        const a0 = startAgeOf(0);
+        // Âge COURANT de chaque conjoint = âge de boucle de user0 (`ctx.age`, authoritative) + l'ÉCART d'âge
+        // avec user0. Ancré sur `ctx.age` (cohérent même quand un test passe `age` ≠ users[0].age) ET symétrique
+        // pour des conjoints de même âge (écart = 0). En prod `ctx.age == users[0].age + yearsElapsed` → identique
+        // à `users[i].age + yearsElapsed`.
+        const ageOfUser = (i: number): number => {
+            if (i === 0) return age;
+            const ai = startAgeOf(i);
+            // Conjoint sans âge NI année de naissance → on suppose le MÊME âge que user0 (préserve le
+            // comportement ménage d'avant et évite d'amputer en silence sa rente sur une donnée manquante).
+            return (ai != null && a0 != null) ? age + (ai - a0) : age;
+        };
+        let rrqSum = 0;
+        let psvSum = 0;
+        for (let i = 0; i < perUserRrqWeight.length; i++) {
+            const ageI = ageOfUser(i);
+            if (ageI >= rrqStartAge) rrqSum += (rrqBaseFamily / activeUsersCount) * perUserRrqWeight[i] * rrqFactor;
+            if (ageI >= psvStartAge) psvSum += (psvBaseFamily / activeUsersCount) * perUserPsvProrata[i] * psvFactor * psv75BonusOf(ageI);
+        }
+        rrqMonthly = rrqSum;
+        psvMonthly = psvSum;
+    }
 
     const inflFactor = Math.pow(1 + simInflation / 100, m / 12);
 
@@ -266,14 +306,17 @@ export function computeRetirementIncome(
     // par 2 → jusqu'à ~2,6 k$/an de SRG fictif NON imposable (sens non conservateur).
     const gisHeads = survivorMode ? 1 : Math.max(1, activeUsersCount);
     const otherIncomeAnnualPerAdult = otherIncomeAnnualFamily / gisHeads;
-    const hasSpouseWithOAS = !survivorMode && activeUsersCount > 1 && age >= psvStartAge;
+    // [ITEM-2C] `psvMonthly > 0` (PSV per-conjoint) au lieu de `age >= psvStartAge` (âge user1 seul) : pour un
+    // couple à écart d'âge où l'aîné touche la PSV mais user0 < psvStartAge, le SRG était à tort 0. Couple
+    // d'âge égal : `age >= psvStartAge` ⟺ `psvMonthly > 0` → inchangé.
+    const hasSpouseWithOAS = !survivorMode && activeUsersCount > 1 && psvMonthly > 0;
     // FA-9 (audit 2026-06-09, fix 2026-06-10) — TOUT en base RÉELLE ici, comme RRQ/PSV : appel
     // SANS `year` (seuils/max 2026 de base) contre le revenu test déjà en base réelle, puis la
     // nominalisation UNIQUE ×inflFactor ci-dessous (gisTotal). Avant : `year=currentYear`
     // indexait max+seuils ×1,02^Δ DANS calculateGISBenefit PUIS ×inflFactor dehors → max SRG
     // double-indexé (surévalué ~49 % à 20 ans, ~+6,5 k$/an fictifs en $ RÉELS 2026, célibataire)
     // et seuils nominaux face à un revenu réel (clawback trop clément, même sens non conservateur).
-    const gisMonthlyPerAdult = (age >= psvStartAge && psvMonthly > 0)
+    const gisMonthlyPerAdult = (psvMonthly > 0)
         ? calculateGISBenefit(
             hasSpouseWithOAS ? otherIncomeAnnualFamily : otherIncomeAnnualPerAdult,
             hasSpouseWithOAS,

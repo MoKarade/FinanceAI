@@ -367,10 +367,9 @@
   `•••` hors DOM en mode discret hors-focus, vrai `<input>` au clic/focus clavier, re-masque au blur ET si le mode discret est
   (ré)activé en cours d'édition). Appliqué à `BudgetGroupTable` (1 champ) + `RetirementIncomeCard` (2 champs). `id` propagé au
   bouton (label `htmlFor` préservé), `focus-ring` + `min-h-[24px]`, focus programmatique via ref. Panel a11y + security-privacy ✅.
-- [ ] **[SEC-PRIVACY-RETIREMENT-RRQ-PSV]** 🔧 LOW (Loi 25, découvert au LOT 2 par security-privacy) — `RetirementIncomeCard.tsx:34-53`
-  les `<input>` `rrqEstimateMonthly`/`psvEstimateMonthly` (montants de rente = PII) n'ont JAMAIS été masqués (pas de `privacy-blur` à
-  HEAD, hors périmètre SEC-PRIVACY-BLUR-INPUTS) → en mode discret ils restent en clair. Fix : les passer à `<PrivateNumberInput>` (même
-  pattern que les 2 champs voisins déjà migrés). Effort XS.
+- [x] **[SEC-PRIVACY-RETIREMENT-RRQ-PSV]** ✅ **FAIT (2026-06-23)** — `RetirementIncomeCard.tsx` : les 2 `<input>` `rrqEstimateMonthly`/
+  `psvEstimateMonthly` (montants de rente = PII) migrés vers `<PrivateNumberInput>` (même pattern panel-approuvé que leurs 2 voisins) →
+  masqués hors-focus en mode discret, valeur hors DOM. Clôt la découverte du LOT 2 (volet vie privée des champs éditables complet).
 - [x] **[SEC-PBKDF2-DRIVE]** ✅ **FAIT (2026-06-23, LOT 1)** — `keyCipher.ts` : PBKDF2 600k (encrypt) + fallback legacy 100k
   (decrypt) pour les anciens blobs Drive. Garde « Web Crypto indisponible » avant la boucle. Test rétro-compat (blob 100k déchiffre).
 - [x] **[M1-FISC-WHT-HARDCODE]** ✅ **FAIT (2026-06-23, LOT 6)** — `projection.ts:1428` : retenue REER du compteur `totalTaxesPaid`

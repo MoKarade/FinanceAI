@@ -198,6 +198,24 @@ export function logError(input: {
     }
 }
 
+/**
+ * [NAN-OBSERVABILITY] Variante THROTTLÉE de `logError` : ne journalise qu'UNE fois par `signature`. Pour les
+ * gardes en hot-path (boucle mensuelle × Monte-Carlo, `useMemo` qui se recalcule) où un même input corrompu
+ * reviendrait à CHAQUE appel et thrasherait le localStorage. Calque le throttle de `computeRawNetWorth`
+ * (HARDEN-NETWORTH-NAN). État module-scope (intrinsèque au throttle).
+ */
+const throttledSignatures = new Set<string>();
+export function logErrorThrottled(signature: string, input: Parameters<typeof logError>[0]): void {
+    if (throttledSignatures.has(signature)) return;
+    throttledSignatures.add(signature);
+    logError(input);
+}
+
+/** Test-only : remet à zéro le throttle de `logErrorThrottled` (isolation entre tests ; convention `__` du repo). */
+export function __resetErrorThrottle(): void {
+    throttledSignatures.clear();
+}
+
 /** Retourne toutes les erreurs (du plus récent au plus ancien) */
 export function getErrors(): LoggedError[] {
     return readState().entries;

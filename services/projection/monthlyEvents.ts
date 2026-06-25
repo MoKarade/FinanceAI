@@ -4,6 +4,7 @@
 // du loop mensuel (après les dépenses enfants, avant shortfall).
 
 import type { TravelGoal, LifeEvent, ProjectionConfig, SavingsGoal, FinancialGoal } from '../../types';
+import { logErrorThrottled } from '../errorLogger';
 
 // ── Voyages ──────────────────────────────────────────────────────────────────
 
@@ -160,6 +161,17 @@ export function applyLifeEvents(
                 // [NAN-INPUT-HARDENING] `?? 0` ne rattrape pas NaN → garde l'agrégat (impactAmount d'un
                 // lifeEvent saisi peut être NaN → addExpense(NaN) corromprait le flux en silence).
                 const rawImpact = (e.impactAmount ?? 0) * expenseMultiplier;
+                // [NAN-OBSERVABILITY] surface une dépense planifiée SILENCIEUSEMENT ignorée (throttlé par
+                // événement : la boucle mensuelle × Monte-Carlo rejouerait le même log sinon).
+                if (!Number.isFinite(rawImpact)) {
+                    logErrorThrottled(`lifeEvent-nan:${e.id}`, {
+                        source: 'projection', severity: 'warning',
+                        message: `Événement "${e.name}" : montant non fini → dépense ignorée`,
+                        // `droppedValue` = NATURE du non-fini (NaN/Infinity), pas le montant : un `impactAmount`
+                        // brut serait redacté par `sanitizeContext` (match `amount`) → log inutile.
+                        context: { id: e.id, droppedValue: Number.isNaN(rawImpact) ? 'NaN' : 'Infinity' },
+                    });
+                }
                 const effectiveImpact = Number.isFinite(rawImpact) ? rawImpact : 0;
                 state.addExpense(effectiveImpact);
                 state.logLife(`${e.name} 💸`);

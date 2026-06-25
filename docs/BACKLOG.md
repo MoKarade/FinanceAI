@@ -366,10 +366,10 @@
   (computeTotalDebt/AssetBreakdown/InvestmentsValue : `|| 0`→`Number.isFinite` pour Infinity). ⚠️ Faux positifs écartés (findings=hypothèses) :
   `portfolio:147` `||` rattrapait déjà NaN ; `taxDecember:600` DÉJÀ gardé ; `w5Effects:139` business sûr via `>0`. Tests discriminants
   (git-stash : échouent sans gardes) + **INV-8 corrigé** (était VACANT : `num()` sanitisait avant `isNaN`). Panel 4 agents ✅, conservation 19/19.
-- [ ] **[NAN-OBSERVABILITY]** 🔧 LOW (suite LOT 4, panel silent-failure) — 2 gardes rabattent un NaN d'INPUT UTILISATEUR sur 0 EN SILENCE :
-  `monthlyEvents.ts` (lifeEvent `impactAmount` vidé → dépense ignorée sans trace) et `useDerivedFinancials.ts` (prix Finnhub échoué → actif
-  à 0 $ au Dashboard sans trace). Ajouter un `logError` severity `warning` sur le SEUL chemin non-fini (1×/event-mois pour le 1ᵉʳ ; throttlé
-  par `a.id` pour le 2ᵉ — éviter le spam useMemo). Observabilité, pas correction (la garde prévient déjà la corruption). Effort S.
+- [x] **[NAN-OBSERVABILITY]** ✅ **FAIT (2026-06-25)** — nouveau helper partagé `logErrorThrottled(signature, input)` (`errorLogger.ts`,
+  1×/signature, calque le throttle de `computeRawNetWorth`) câblé aux 2 sites : `monthlyEvents.ts` (lifeEvent `impactAmount` non fini →
+  `warning` throttlé par event id) et `useDerivedFinancials.ts` (actif valeur non finie → `warning` throttlé par `symbol`). 3 tests du throttle.
+  Observabilité seule (la garde NaN prévient déjà la corruption). Conservation inchangée.
 - [ ] **[NAN-MUTATOR-CENTRAL]** 🔧 LOW (suite LOT 4, panel projection-validator) — les 4 mutateurs nus (`addIncome`/`addExpense`/`addLiquid`/
   `subtractLiquid`, `projection.ts:717-754`) n'ont aucune garde centrale → des angles morts Infinity subsistent (`w5Effects:137` business,
   `stochasticEvents.ts:45/47/83`, `taxApril.ts:55`). Une garde unique dans ces 4 closures couvrirait tout en 1 endroit (vs gardes par-appelant).
@@ -516,10 +516,8 @@
   DetteTotale → fuzz échoue). **RESTE (suivi)** : la VENTE immo / GAIN EN CAPITAL locatif (déclenché par lifeEvent « vente »
   — le fuzz achète et DÉTIENT), le REVENU LOCATIF (`rentalIncomeMonthly`), l'ÉQUITÉ NÉGATIVE (choc immo / immeuble sous l'eau),
   véhicule, héritage, REEE/childGoals.
-- [ ] **[DEP-UNDICI-VULN]** 🔧 LOW (sécurité hygiène, repéré #365) — `npm audit` signale 1 vuln HIGH dans `undici@7.25.0`,
-  **transitive de `jsdom`** (env de test Vitest), **dev-only** (non embarquée en prod) et **pré-existante** (pas introduite
-  par fast-check, qui n'ajoute que `pure-rand`). Sans impact (jsdom ne fait pas d'appel réseau réel). Fix éventuel :
-  `npm audit fix` ou bump `jsdom` — à TESTER (risque de casser l'env de test). Non urgent.
+- [x] **[DEP-UNDICI-VULN]** ✅ **RÉSOLU/PÉRIMÉ (constaté 2026-06-25)** — voir [DEP-UNDICI] : le lockfile est à `undici 7.28.0` (≥ fix),
+  `npm audit` = **0 vulnérabilité**. Le `npm ls` à 7.25.0 = `node_modules` local périmé (pas réinstallé). Rien à coder.
 - [x] **[HARDEN-NETWORTH-EXHAUSTIVE]** ✅ MEDIUM (PR #356, 2026-06-18, ticket 1.2) — garde anti MONEY-PHANTOM sur
   `NetWorthParts` (`services/projection/netWorth.ts`) : `export const NET_WORTH_SIGN: Record<keyof NetWorthParts, 1|-1>`
   → un champ ajouté à l'interface SANS signe casse le **typecheck** (prouvé). + test croisé « littéral == Σ signe×valeur »
@@ -685,7 +683,9 @@
 - [ ] **[PERF-MISSINGDATA]** 🔧 — `MissingDataBanner.tsx:209` : selecteur atomique (`useShallow`) pour eviter les re-renders pendant le calcul MC.
 
 ### Securite (deja connu / Marc)
-- [ ] **[DEP-UNDICI]** 🟠 dépendances (planifié 2026-06-22) — 2 alertes Dependabot sur **`undici`** (transitive, **scope `development`** via `package-lock.json`) : `GHSA-vmh5-mc38-953g` **HIGH** (bypass validation cert TLS via SOCKS5 ProxyAgent) + `GHSA-pr7r-676h-xcf6` **MEDIUM** (fuite d'info inter-utilisateurs via cache). **Plage vulnérable** `>= 7.0.0, < 7.28.0` ; **fix = 7.28.0**.
+- [x] **[DEP-UNDICI]** ✅ **RÉSOLU/PÉRIMÉ (constaté 2026-06-25)** — le `package-lock.json` est DÉJÀ à `undici 7.28.0` (= le fix des 2 alertes
+  Dependabot, plage vulnérable `>= 7.0.0, < 7.28.0`), `node_modules/undici` = 7.28.0, `npm audit` = **0 vulnérabilité** (dev + prod). Les
+  entrées `undici-types` du lock sont un AUTRE package (types TS, non vulnérable). Plus aucune action — bump déjà appliqué au lock.
   - **Risque réel FAIBLE** : dev-only (jamais bundlé en prod ; pas de ProxyAgent SOCKS5 ni de cache HTTP partagé dans notre usage) — mais à patcher pour vider les alertes.
   - **Action = merger la PR Dependabot existante** [#366](https://github.com/MoKarade/FinanceAI/pull/366) (`build(deps-dev): bump undici 7.25.0→7.28.0`) une fois la CI verte → ferme les 2 alertes. Pur lockfile, zéro code.
   - **Cadence** (cf `rules/toolkit/dependency-management.md`) : revue Dependabot hebdo, patchs HIGH ≤ 7 j. Décision Marc : merger #366 maintenant ou l'inclure dans la prochaine revue de deps.

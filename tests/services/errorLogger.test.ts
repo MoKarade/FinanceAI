@@ -4,6 +4,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
     logError,
+    logErrorThrottled,
+    __resetErrorThrottle,
     getErrors,
     filterErrors,
     clearErrors,
@@ -12,6 +14,27 @@ import {
 
 beforeEach(() => {
     localStorage.clear();
+    __resetErrorThrottle();
+});
+
+describe('logErrorThrottled — [NAN-OBSERVABILITY] une seule entrée par signature', () => {
+    it('journalise la 1re occurrence d\'une signature, ignore les suivantes', () => {
+        logErrorThrottled('sig-A', { source: 'projection', message: 'NaN 1' });
+        logErrorThrottled('sig-A', { source: 'projection', message: 'NaN 1 bis' });
+        logErrorThrottled('sig-A', { source: 'projection', message: 'NaN 1 ter' });
+        expect(getErrors()).toHaveLength(1); // throttlé → 1 seule entrée malgré 3 appels (anti-thrash localStorage)
+    });
+    it('signatures DIFFÉRENTES → entrées distinctes', () => {
+        logErrorThrottled('sig-A', { source: 'projection', message: 'A' });
+        logErrorThrottled('sig-B', { source: 'ui', message: 'B' });
+        expect(getErrors()).toHaveLength(2);
+    });
+    it('__resetErrorThrottle ré-autorise une signature déjà vue', () => {
+        logErrorThrottled('sig-A', { source: 'projection', message: 'A' });
+        __resetErrorThrottle();
+        logErrorThrottled('sig-A', { source: 'projection', message: 'A again' });
+        expect(getErrors()).toHaveLength(2);
+    });
 });
 
 describe('errorLogger', () => {

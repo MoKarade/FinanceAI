@@ -697,7 +697,14 @@
   projection-validator (conservation 20/20) + silent-failure ✅. `BudgetGroupTable`/`Budget:266,1010` laissés (groupement UI sur l'union typée, pas un calcul de dépense).
 - [x] **[DETTE-PDF-FORMAT]** ✅ MEDIUM (2026-06-16) — `pdfReport.ts` : `formatCAD` local retiré → importé de `utils/format` (source unique fr-CA ; bonus : valeurs non finies → '—' au lieu de « NaN $ »). Tests pdfReport/pdfScenarios verts.
 - [ ] **[DETTE-RE-SALE]** 🔧 LOW — `monthlyEvents.ts:70` : vente immo pilotee par sous-chaine « vente » du nom + premier immeuble hypotheque (peut vendre la RP exempte au lieu du locatif). Lier a un `propertyId`.
-- [ ] **[DETTE-DEADCODE]** 🔧 LOW — `runBuyVsRent` (`realEstate.ts:639`) jamais appele hors tests ; verifier aussi `clearCredentials`, facade `getProfile`, `buildTestFixtures`.
+- [x] **[DETTE-DEADCODE]** ✅ **FAIT (2026-06-26)** — RETIRÉ : `runBuyVsRent` (`realEstate.ts`, test-only, zéro call-site prod) + ses
+  types `BuyVsRentInput`/`BuyVsRentYear` (servaient QUE lui) + son bloc de test + import ; `buildTestFixtures` (`testFixtures.ts`, wrapper
+  de compat jamais appelé) + ses imports devenus inutilisés (le barrel `testFixtures` reste VIVANT : TestModePanel/Layout/PageSetupGate/
+  usePortfolioHistory en consomment les re-exports). EXCLUS après vérif : `clearCredentials` (dans `mcp/` → règle « y toucher seulement sur
+  demande ») ; façade `getProfile` (méthode du contrat `MarketDataProvider`, implémentée + testée → API délibérée, pas du cruft). Reste du
+  bruit knip (GST/QST/SCHL, interfaces, constantes fiscales) NON purgé (règle CLAUDE.md). + **`_buyVsRentData`** (`RealEstate.tsx`, useMemo
+  préfixé `_` jamais rendu — vraie courbe UI = `combinedData`) retiré (trouvé par le panel code-reviewer, même feature morte). 2 commentaires
+  stale (`testFixtures.ts` en-tête, `coupleConfort.ts`) corrigés. typecheck + build + suite verts.
 - [ ] **[DETTE-GODFILES]** ⏳ — decouper par barrel : `utils/tax.ts`, `syncOrchestrator.ts`, `Investments.tsx`, `Budget.tsx`, `FutureProjection.tsx`.
 - [ ] **[DETTE-UI-PRIMITIVES]** ⏳ — `components/ui/Input|Select|Field` sur les tokens existants ; migrer 16 fichiers a `<input>` inline.
 

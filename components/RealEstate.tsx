@@ -209,24 +209,6 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
     const initialInterest = totalMortgage * monthlyRate;
     const unrecoverableMonthly = Math.max(0, initialInterest + monthlyTaxes + heatingMonthly + condoFees + maintenanceMonthly - rentalIncomeMonthly);
 
-    const _buyVsRentData = useMemo(() => {
-        const data = [];
-        let rentScenarioNetWorth = totalCashNeeded;
-        let buyNetWorth = downPayment + initialRenovations;
-        let currentRentCost = currentRent;
-        for (let year = 1; year <= amortization; year++) {
-            const rentAnnualCost = currentRentCost * 12;
-            const buyAnnualCost = netMonthlyCost * 12 + maintenanceMonthly * 12;
-            const differenceToInvest = (buyAnnualCost - rentAnnualCost);
-            rentScenarioNetWorth *= (1 + marketReturn / 100);
-            if (differenceToInvest > 0) rentScenarioNetWorth += differenceToInvest;
-            buyNetWorth = amortizationData.data[year - 1]?.Équité || 0;
-            currentRentCost *= 1.03;
-            data.push({ year, 'Acheter (Équité)': Math.round(buyNetWorth), 'Louer + Investir': Math.round(rentScenarioNetWorth) });
-        }
-        return data;
-    }, [amortization, totalCashNeeded, downPayment, initialRenovations, netMonthlyCost, maintenanceMonthly, currentRent, marketReturn, amortizationData.data]);
-
     const formatCurrency = (val: number) => formatCAD(val);
 
     // Wiring 2026-05: équité immo projetée par le moteur principal au terme de

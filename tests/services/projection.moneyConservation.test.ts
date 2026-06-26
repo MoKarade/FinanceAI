@@ -495,7 +495,9 @@ describe('[FISC-WHT-HARDCODE] retenue REER affichée = tiered (19/24/29 %), pas 
     it('un gros décaissement REER mensuel (> bracket 1) → totalTaxesPaid reflète la retenue tiered', () => {
         const r = run(bigReerRetiree());
         // Discriminant MESURÉ (git-stash) : ancien `* 0.15` → totalTaxesPaid ≈ 211 562 $ ; retenue tiered
-        // (24/29 % combiné) → ≈ 270 087 $ (+58 k$). Le seuil 250 000 est INATTEIGNABLE sous l'ancien 0,15.
+        // sur le brut agrégé → ≈ 270 087 $ ; [WHT-DISPLAY-EXACT] retenue tiered EXACTE par tirage → ≈ 269 132 $
+        // (−955 $ : le recalcul sur l'agrégat sur-estimait, barème non additif). Le seuil 250 000 reste
+        // INATTEIGNABLE sous l'ancien 0,15 — les deux raffinements tiered le franchissent largement.
         expect(r.totalTaxesPaid).toBeGreaterThan(250_000);
     });
 });

@@ -11,7 +11,7 @@
 import type { Debt } from '../../types';
 import type { AllocationStrategy } from './types';
 import type { ContributionOrder } from './strategyConfig';
-import { PBMA_THRESHOLD_PER_USER, OAS_CLAWBACK_THRESHOLD_2026, RRSP_WITHHOLDING_QC, QC_BRACKETS, FED_BRACKETS, type FiscalReport } from '../../utils/tax';
+import { PBMA_THRESHOLD_PER_USER, OAS_CLAWBACK_THRESHOLD_2026, withholdingForGrossRRSP, QC_BRACKETS, FED_BRACKETS, type FiscalReport } from '../../utils/tax';
 
 // Plafond du palier 1 (14% fédéral + 14% Québec) par utilisateur. Combinaison
 // marginale ≈ 28%, comparable à la retenue REER de 19-24% (cf RRSP_WITHHOLDING_QC)
@@ -54,6 +54,11 @@ export interface CashflowState {
     fhsaLifetimeContrib: number;
     celiWithdrawalsThisYear: number;
     retraitReerMois: number;
+    /** [WHT-DISPLAY-EXACT volet a] Retenue REER PAR TIRAGE cumulée sur le mois (cascade shortfall +
+     *  sauvetage de découvert) — alimente le compteur d'affichage `totalTaxesPaid` à l'EXACT (le barème
+     *  par palier n'est pas additif : recalculer sur le brut mensuel agrégé sur-estime les mois à
+     *  plusieurs tirages). Réinitialisé à 0 chaque mois par le caller, comme `retraitReerMois`. */
+    rrspWithholdingMois: number;
     retraitCeliMois: number;
     withdrawalREER: number;
     withdrawalCELI: number;
@@ -100,16 +105,9 @@ export interface CashflowCtx {
 
 import { handleNonRegSale, handleCryptoSale } from './portfolioOps';
 
-// F4 (audit 2026-05-28) — alignement sur la source de vérité RRSP_WITHHOLDING_QC
-// (combinés QC 19/24/29 %, cf utils/tax.ts). Les anciens taux hardcodés 21/26/30 %
-// étaient faux (sur-retenue ~1-3k$/retraité) ET incohérents avec
-// calculateGrossWithholdingRRSP — déjà corrigé — utilisé juste avant dans la cascade.
-function rrspWithholding(grossDraw: number): number {
-    const w = RRSP_WITHHOLDING_QC;
-    if (grossDraw <= w.bracket1.upTo) return grossDraw * w.bracket1.combined;
-    if (grossDraw <= w.bracket2.upTo) return grossDraw * w.bracket2.combined;
-    return grossDraw * w.bracket3.combined;
-}
+// [WHT-DISPLAY-EXACT volet b] La retenue REER par tirage suit la source de vérité unique
+// `withholdingForGrossRRSP` (utils/tax.ts, 19/24/29 % combiné QC, tranche déterminée sur le brut) —
+// plus de copie locale `rrspWithholding` (qui dupliquait exactement cette logique).
 
 /**
  * Traite le cashflow mensuel: shortfall (cascade retraits) ou excess
@@ -168,7 +166,10 @@ export function processCashflowAllocation(
         // est, lui, déjà crédité BRUT au liquide en janvier — chemin séparé, hors de cette cascade). Sinon le
         // retrait sort le BRUT du REER tandis que le net est effacé par CF-2 → la retenue quitte le NW au
         // retrait ET est re-débitée en avril = double-comptage (fuite ≈ retenue/mois, vérifiée empiriquement).
-        let reerWithholdingPrepaid = 0;
+        // On capture le cumul d'avant CET appel : le restore CF-2 du liquide n'utilise que la retenue prélevée
+        // PAR CET APPEL (delta), alors que `state.rrspWithholdingMois` cumule sur tout le mois (cascade +
+        // sauvetage de découvert, qui rappelle cette fonction) pour le compteur d'affichage.
+        const rrspWithholdingAtStart = state.rrspWithholdingMois;
 
         if (shortfall > 0) state.shortfallMonths++;
 
@@ -191,7 +192,7 @@ export function processCashflowAllocation(
                 const { gross: grossAttempt } = calculateGrossWithholdingRRSP(shortfall);
                 const actualGross = Math.min(state.reer, grossAttempt, capRoomGross);
                 if (actualGross <= 0) return 0;
-                const actualWithholding = rrspWithholding(actualGross);
+                const actualWithholding = withholdingForGrossRRSP(actualGross).withholding;
                 const actualNet = Math.min(actualGross - actualWithholding, shortfall);
 
                 state.reer -= actualGross;
@@ -200,7 +201,7 @@ export function processCashflowAllocation(
                 state.retraitReerMois += actualGross;
                 state.withdrawalREER += actualGross;
                 state.taxCurrentYearReer += actualWithholding;
-                reerWithholdingPrepaid += actualWithholding; // acompte conservé au liquide (cf CF-2)
+                state.rrspWithholdingMois += actualWithholding; // acompte conservé au liquide (cf CF-2) + compteur d'affichage exact
                 runningGross += actualGross;
                 shortfall -= actualNet;
                 state.flowEventLogs.push(`🏦 ↳ Retrait REER (${label}) : +${Math.round(actualGross).toLocaleString('fr-CA')} $ brut → +${Math.round(actualNet).toLocaleString('fr-CA')} $ net après impôt`);
@@ -292,7 +293,8 @@ export function processCashflowAllocation(
         // d'impôt qui reste au patrimoine jusqu'au règlement d'avril (.reer), pas un produit de vente
         // consommé. Le retrait devient ainsi NW-neutre (seul le net finance la dépense ; la retenue
         // n'est débitée qu'UNE fois, en avril).
-        state.liquid = liquidAfterDirectSpend + reerWithholdingPrepaid;
+        // delta = retenue prélevée par CET appel uniquement (cf rrspWithholdingAtStart), pas le mois entier.
+        state.liquid = liquidAfterDirectSpend + (state.rrspWithholdingMois - rrspWithholdingAtStart);
     } else {
         // ── EXCESS ─────────────────────────────────────────────────────
         let excess = monthlyCashflow;

@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Impôt à vie estimé : retenue REER exacte au cent près] — 2026-06-26
+
+### Le total d'impôts estimé est plus précis les mois à plusieurs retraits REER
+- Le compteur **« impôts payés sur la vie de la projection »** (et le classement des stratégies de décaissement
+  qui s'en sert) estimait la retenue à la source des retraits REER en la **recalculant sur le total mensuel agrégé**.
+  Comme le barème de retenue n'est pas additif (un palier unique s'applique à tout le montant), ce recalcul
+  **sur-estimait** les mois où plusieurs retraits REER ont lieu. Désormais le compteur additionne la retenue
+  **réellement prélevée à chaque retrait** → chiffre exact au cent près, cohérent avec ce que la projection a
+  vraiment provisionné. Effet mesuré : ~−1 000 $ sur un retraité décaissant ~9 000 $/mois sur 10 ans.
+- Aucun impact sur ton **patrimoine net** ni sur l'impôt réellement payé (c'est un compteur d'affichage/diagnostic).
+- Côté code : déduplication de la logique de retenue REER vers une **source unique** (`withholdingForGrossRRSP`).
+
 ## [unreleased — Score de santé : taux d'épargne et coussin d'urgence plus justes] — 2026-06-25
 
 ### Ton épargne budgétée ne compte plus comme une « dépense »

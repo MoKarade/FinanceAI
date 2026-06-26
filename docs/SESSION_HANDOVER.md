@@ -93,8 +93,14 @@
 > discriminant git-stash 2500→3500 + panel (conservation 20/20).
 > **FISC-SRCDED-NOOP ✅ RÉSOLU par RETRAIT (choix Marc)** : enquête a prouvé que les 2 bugs visaient du code MORT (`computeMonthlyWithholding`,
 > sortie écrasée par l'override décembre avant règlement ; perturbation +999 999/mois → golden byte-identique). Fonction RETIRÉE (résout aussi
-> PERF-WITHHOLDING + perf MC). Panel 2329/2329. Leçon CLAUDE.md FISC-SRCDED-NOOP (test de perturbation pour prouver « code mort »). **Prochaines
-> pistes plan-first** : WHT-DISPLAY-EXACT (S), FISC-ASSETLOC-INTL (M) ; ou lot hygiène LOW (REEE/NW-DRY/DETTE-DEADCODE). + décisions Marc en attente :
+> PERF-WITHHOLDING + perf MC). Panel 2329/2329. Leçon CLAUDE.md FISC-SRCDED-NOOP (test de perturbation pour prouver « code mort »).
+> **WHT-DISPLAY-EXACT ✅ FAIT (2026-06-26, choix Marc)** : le compteur d'AFFICHAGE `totalTaxesPaid` additionne désormais la retenue REER
+> EXACTE PAR TIRAGE (nouveau champ `CashflowState.rrspWithholdingMois`, round-trippé buildCashState/applyCashState, reset/mois) au lieu de la
+> recalculer sur le brut MENSUEL agrégé (barème non additif → sur-estimait les mois multi-tirages). + dédup volet b : fonction locale
+> `rrspWithholding` → source unique `withholdingForGrossRRSP`. Découplage CF-2 (delta `−rrspWithholdingAtStart` pour rester correct au 2ᵉ appel
+> du sauvetage PV-6). Mesuré git-stash 270 087 → 269 132 $ (−955 $, direction correcte). Test discriminant unitaire RED→GREEN (3 tirages palier 1,
+> somme franchit le palier 2). **Aucun impact NW** (compteur display/ranking). Panel 4 agents APPROVE, conservation 12 inv. verte, suite 2330/2330.
+> **Prochaines pistes plan-first** : FISC-ASSETLOC-INTL (M, money-critical) ; ou lot hygiène LOW (REEE/NW-DRY/DETTE-DEADCODE). + décisions Marc en attente :
 > W5-TAX-PROXY, HIST-NW-DEBT-DISCLAIMER, FISC-WELCOME-2026.
 > ⚠️ Leçons : registre per-conjoint pilote → gérer décès (fantôme) ; 2ᵉ course git-stash (vérifs isolées) ; gate d'âge per-conjoint = ancrer sur ctx.age + écart.
 > **Session 2026-06-23 — quick-win `BUDGET-NATURE-FREEFORM` ✅ FAIT** : les 56 items de fixtures (testBudget + 6 personas) avaient

@@ -3,6 +3,7 @@ import { processCashflowAllocation, type CashflowState, type CashflowCtx } from 
 import type { FiscalReport } from '../../utils/tax';
 import {
     OAS_CLAWBACK_THRESHOLD_2026,
+    PBMA_THRESHOLD_PER_USER,
     RRSP_WITHHOLDING_QC,
 } from '../../utils/tax';
 
@@ -26,7 +27,7 @@ const makeState = (over: Partial<CashflowState> = {}): CashflowState => ({
     capitalLossBank: 0, crypto: 0, cryptoACB: 0, celiRoom: 0, rrspRoom: 0, fhsaRoom: 0,
     taxCurrentYearReer: 0, accRetraitsReerYear: 0, accCapitalGainsYear: 0,
     accRrspYear: 0, accFhsaYear: 0, fhsaLifetimeContrib: 0, celiWithdrawalsThisYear: 0,
-    retraitReerMois: 0, retraitCeliMois: 0, withdrawalREER: 0, withdrawalCELI: 0,
+    retraitReerMois: 0, rrspWithholdingMois: 0, retraitCeliMois: 0, withdrawalREER: 0, withdrawalCELI: 0,
     withdrawalNonReg: 0, withdrawalCrypto: 0, contribCELI: 0, contribREER: 0,
     contribNonReg: 0, contribCELIAPP: 0, shortfallMonths: 0, uncoveredShortfall: 0, flowEventLogs: [],
     ...over,
@@ -427,6 +428,33 @@ describe('cashflowAllocation shortfall — INVARIANTS robustes', () => {
         expect(state.liquid).toBe(7000);
         expect(state.withdrawalCELI).toBe(0);
         expect(state.withdrawalREER).toBe(0);
+    });
+
+    // [WHT-DISPLAY-EXACT volet a] La retenue REER qui alimente le compteur d'AFFICHAGE `totalTaxesPaid`
+    // doit être la SOMME des retenues PAR TIRAGE (`state.rrspWithholdingMois`), pas un recalcul
+    // `withholdingForGrossRRSP(Σ brut)` : le barème par palier n'est PAS additif. Discriminant déterministe :
+    // un mois à 3 tirages REER, chacun resté en palier 1 (≤ 5000 $), mais dont la SOMME franchit le palier 2.
+    // Revenu calé sur le seuil PBMA (robuste à l'indexation) pour garantir un 1ᵉʳ tirage en palier 1.
+    it('rrspWithholdingMois = Σ retenue par tirage (exact), < recalcul sur le brut mensuel agrégé', () => {
+        const income = PBMA_THRESHOLD_PER_USER - 4000; // → pbmaRoom = 4000 $ (palier 1) quelle que soit l'année.
+        const state = makeState({ reer: 500000, liquid: 0 });
+        processCashflowAllocation(
+            state,
+            makeCtx({ strategy: 'AUTO_MARGINAL', isRetired: false, grossMarcBaseAnnual: income, monthlyCashflow: -8000, criticalThreshold: 0 }),
+            [], fiscalStub, grossIdentity,
+        );
+        // Non-vacuité : ≥ 2 tirages REER DISTINCTS ont eu lieu (palier 0 % PBMA + palier 14 % + standard),
+        // et leur SOMME franchit le palier 1 (sinon pas de non-additivité à exposer). Un tirage UNIQUE > 5000 $
+        // ferait échouer l'assertion `≈ 19 %` plus bas (il serait taxé à 24/29 %) → la non-additivité est réelle.
+        expect(state.flowEventLogs.filter(l => l.includes('Retrait REER')).length).toBeGreaterThanOrEqual(2);
+        expect(state.retraitReerMois).toBeGreaterThan(RRSP_WITHHOLDING_QC.bracket1.upTo);
+        expect(state.rrspWithholdingMois).toBeGreaterThan(0);
+        // Chaque tirage est resté en palier 1 → la retenue exacte = 19 % du brut total tiré.
+        expect(state.rrspWithholdingMois).toBeCloseTo(state.retraitReerMois * RRSP_WITHHOLDING_QC.bracket1.combined, 6);
+        // … donc STRICTEMENT inférieure au recalcul sur l'agrégat (qui voit le palier 2 à 24 %).
+        const recomputeOnAggregate = rrspW(state.retraitReerMois);
+        expect(state.rrspWithholdingMois).toBeLessThan(recomputeOnAggregate);
+        expect(recomputeOnAggregate - state.rrspWithholdingMois).toBeGreaterThan(1); // écart non négligeable, non vacant
     });
 });
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { getNextBestActions, type NextBestAction as NBAction, type FinancialSnapshot } from '../../services/claude';
 import { computeCurrentLiquidity, computeInvestmentsValue, computeAssetBreakdown, monthlyAmountFor } from '../../services/portfolio';
+import { isSavingsNature } from '../../utils/budget';
 import { useHasUserData } from '../../utils/useHasUserData';
 import { Tab } from '../../types';
 import { PageHeader } from '../ui/PageHeader';
@@ -110,7 +111,7 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen = 
         // `netSalary` est en MENSUEL dans le store (cf Budget.tsx + Retirement.tsx).
         const monthlyIncome = (config?.users?.[0]?.netSalary || 0) + (config?.users?.[1]?.netSalary || 0);
         // [L4] dépenses NORMALISÉES par fréquence + hors épargne (avant : Σ brute → poste annuel compté ×12).
-        const monthlyExpenses = (budgetItems || []).reduce((acc, b) => b.nature === 'Epargne' ? acc : acc + monthlyAmountFor(b), 0);
+        const monthlyExpenses = (budgetItems || []).reduce((acc, b) => isSavingsNature(b.nature) ? acc : acc + monthlyAmountFor(b), 0); // [HEALTH-SAVINGS-CONSISTENCY] NFD, pas `=== 'Epargne'`
 
         const projected = lastProjection?.chartData?.length
             ? lastProjection.chartData[Math.min(20 * 12 - 1, lastProjection.chartData.length - 1)]?.NetWorth

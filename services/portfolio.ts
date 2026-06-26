@@ -9,6 +9,7 @@ import type {
   Debt,
   User,
 } from '../types';
+import { isSavingsNature } from '../utils/budget';
 
 export interface AssetBreakdown {
   reer: number;
@@ -135,7 +136,9 @@ export const computeMonthlyBudgetAggregates = (
     0,
   );
   const expenses = items.reduce(
-    (acc, item) => item.nature === 'Epargne' ? acc : acc + monthlyAmountFor(item),
+    // [HEALTH-SAVINGS-CONSISTENCY] `isSavingsNature` (NFD) au lieu de `=== 'Epargne'` strict : la nature
+    // persistée est LIBRE (« Épargne » accentué possible) → l'épargne doit être exclue des dépenses partout.
+    (acc, item) => isSavingsNature(item.nature) ? acc : acc + monthlyAmountFor(item),
     0,
   );
   return {

@@ -84,9 +84,14 @@
 > `monthlyConsumptionExpenses`). Découverte → BACKLOG `HEALTH-SAVINGS-CONSISTENCY` (4 surfaces IA/MCP/moteur à uniformiser sur `isSavingsNature`).
 > #3 **DEP-UNDICI = PÉRIMÉ** (lockfile déjà à undici 7.28.0, `npm audit` 0 vuln — fermé). #4 **NAN-OBSERVABILITY ✅ FAIT** (helper
 > `logErrorThrottled` + 2 sites monthlyEvents/useDerivedFinancials). ⚠️ **3 des 5 recos PM étaient PÉRIMÉES** (BACKLOG en retard sur l'état réel) →
-> un PASS de nettoyage du BACKLOG serait utile avant d'en piocher d'autres. **Prochaines pistes (VÉRIFIER d'abord qu'elles ne sont pas déjà faites)** :
-> NAN-MUTATOR-CENTRAL (moteur, garde centrale 4 mutateurs), FISC-ASSETLOC-INTL (MEDIUM, plan-first), HEALTH-SAVINGS-CONSISTENCY (4 surfaces).
-> + décisions Marc en attente : W5-TAX-PROXY, HIST-NW-DEBT-DISCLAIMER, FISC-WELCOME-2026.
+> leçon CLAUDE.md `PM-STALE-BACKLOG`.
+> **PASS de de-staling (workflow `backlog-verify`, 2026-06-26)** : 12 items actionnables vérifiés contre le code → **11 VALIDES, 1 PÉRIMÉ**
+> (FMT-CASING-ACCOUNTTYPE fermé). NAN-MUTATOR-CENTRAL = VALIDE mais **DIFFÉRÉ** (Infinity inatteignable depuis l'UI, `numericInput` garde déjà ;
+> plan en réserve). FISC-SRCDED-NOOP = **2 bugs confirmés** (ordre + unité ~12×, cashflow mensuel affiché, net annuel ≈ inchangé). WHT-DISPLAY-EXACT,
+> FISC-ASSETLOC-INTL = VALIDES, plan-first. Le reste (REEE-LITERALS, NW-ASSETBREAKDOWN-DRY, DETTE-DEADCODE, PERF-WITHHOLDING…) = VALIDES LOW.
+> **HEALTH-SAVINGS-CONSISTENCY ✅ FAIT (choix Marc)** : `isSavingsNature` (NFD) sur 5 surfaces/6 sites (4 du BACKLOG + 5ᵉ `Budget.tsx` trouvée par le panel) ;
+> discriminant git-stash 2500→3500 + panel (conservation 20/20). **Prochaines pistes plan-first** : FISC-SRCDED-NOOP (2 bugs), WHT-DISPLAY-EXACT (S),
+> FISC-ASSETLOC-INTL (M) ; ou lot hygiène LOW (REEE/NW-DRY/DETTE-DEADCODE). + décisions Marc en attente : W5-TAX-PROXY, HIST-NW-DEBT-DISCLAIMER, FISC-WELCOME-2026.
 > ⚠️ Leçons : registre per-conjoint pilote → gérer décès (fantôme) ; 2ᵉ course git-stash (vérifs isolées) ; gate d'âge per-conjoint = ancrer sur ctx.age + écart.
 > **Session 2026-06-23 — quick-win `BUDGET-NATURE-FREEFORM` ✅ FAIT** : les 56 items de fixtures (testBudget + 6 personas) avaient
 > des natures LIBRES violant l'union typée `'Besoin'|'Envie'|'Epargne'` → tout en « Envie » + CELI/REER (`'Épargne'` accentué)

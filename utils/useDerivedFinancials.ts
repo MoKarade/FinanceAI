@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { AppState, Transaction } from '../types';
 import { computePresentNetWorth } from '../services/portfolio';
 import { logErrorThrottled } from '../services/errorLogger';
+import { isSavingsNature } from './budget';
 
 interface DerivedFinancials {
     globalNetWorth: number;
@@ -33,7 +34,7 @@ export function useDerivedFinancials(state: AppState): DerivedFinancials {
     const calculatedMonthlySavings = useMemo(() => {
         const income = state.config.users.reduce((acc, u) => acc + (u.netSalary || u.salary || 0), 0);
         const budgetExp = state.budgetItems.reduce((acc, item) => {
-            if (item.nature === 'Epargne') return acc;
+            if (isSavingsNature(item.nature)) return acc; // [HEALTH-SAVINGS-CONSISTENCY] NFD, pas `=== 'Epargne'` (alimente le moteur)
             let amount = item.target;
             if (item.frequency === 'Yearly') amount /= 12;
             if (item.frequency === 'Quarterly') amount /= 3;

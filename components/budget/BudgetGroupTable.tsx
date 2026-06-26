@@ -86,13 +86,13 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
 
             <div className="bg-[#1a1a1a] rounded-b-lg border border-white/5 overflow-hidden">
                 {isEmpty && (
-                    <div className="px-4 py-6 text-center text-tiny text-ink-500">
+                    <div className="px-4 py-6 text-center text-tiny text-ink-400">
                         Aucune catégorie dans « {nature} » pour l'instant. Clique ci-dessous pour en créer une.
                     </div>
                 )}
                 {!isEmpty && (
                 <table className="w-full text-left border-collapse">
-                    <thead className="bg-black/20 text-tiny text-ink-500 uppercase">
+                    <thead className="bg-black/20 text-tiny text-ink-400 uppercase">
                         <tr>
                             <th className="p-3 font-normal">Catégorie</th>
                             <th className="p-3 font-normal hidden sm:table-cell">Tendance (6m)</th>
@@ -148,7 +148,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                 <select
                                                     value={item.frequency}
                                                     onChange={(e) => onUpdateItem(idx, 'frequency', e.target.value)}
-                                                    className="text-tiny text-ink-500 bg-black border border-white/10 rounded px-1 outline-none cursor-pointer hover:text-white"
+                                                    className="text-tiny text-ink-400 bg-black border border-white/10 rounded px-1 outline-none cursor-pointer hover:text-white"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <option value="Weekly">Hebdo</option>
@@ -159,7 +159,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                 <select
                                                     value={item.type}
                                                     onChange={(e) => onUpdateItem(idx, 'type', e.target.value)}
-                                                    className="text-tiny text-ink-500 bg-black border border-white/10 rounded px-1 outline-none cursor-pointer hover:text-white"
+                                                    className="text-tiny text-ink-400 bg-black border border-white/10 rounded px-1 outline-none cursor-pointer hover:text-white"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <option value="Commun">Commun</option>
@@ -182,7 +182,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                         title="Modifier le montant de base"
                                                         onClick={(e) => e.stopPropagation()}
                                                     />
-                                                    <span className="text-ink-500 text-meta ml-1">
+                                                    <span className="text-ink-400 text-meta ml-1">
                                                         {item.frequency === 'Monthly' ? '/m' : item.frequency === 'Yearly' ? '/an' : ''}
                                                     </span>
                                                 </div>
@@ -190,7 +190,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                             </div>
                                         </td>
                                         <td className="p-3 text-right">
-                                            <div className="text-tiny text-ink-500 font-mono">{percentageOfBudget.toFixed(1)}%</div>
+                                            <div className="text-tiny text-ink-400 font-mono">{percentageOfBudget.toFixed(1)}%</div>
                                         </td>
                                         <td className="p-3 text-right hidden sm:table-cell">
                                             <div className="text-tiny text-ink-300 font-mono whitespace-nowrap">{splitDisplay}</div>
@@ -269,7 +269,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                 <button
                     type="button"
                     onClick={() => onAddItem(nature)}
-                    className="w-full py-2 text-tiny text-ink-500 hover:text-white hover:bg-white/5 transition-colors border-t border-white/5"
+                    className="w-full py-2 text-tiny text-ink-400 hover:text-white hover:bg-white/5 transition-colors border-t border-white/5"
                 >
                     + Ajouter une ligne dans {nature}
                 </button>

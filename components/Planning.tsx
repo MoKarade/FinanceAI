@@ -167,9 +167,9 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                     <p className="text-ink-300 text-body mt-1">{section === 'all' ? 'Abonnements, Factures Récurrentes & Objectifs.' : 'Abonnements & Factures Récurrentes.'}</p>
                 </div>
                 <div className="flex gap-4">
-                    <div className="text-right"><div className="text-tiny uppercase text-ink-500 font-bold">Fixe Mensuel</div><PrivateAmount as="div" className="text-2xl font-bold text-danger-400">{formatCAD(totalMonthly)}</PrivateAmount></div>
+                    <div className="text-right"><div className="text-tiny uppercase text-ink-400 font-bold">Fixe Mensuel</div><PrivateAmount as="div" className="text-2xl font-bold text-danger-400">{formatCAD(totalMonthly)}</PrivateAmount></div>
                     <div className="w-px bg-white/10"></div>
-                    <div className="text-right"><div className="text-tiny uppercase text-ink-500 font-bold">Coût Annuel</div><PrivateAmount as="div" className="text-2xl font-bold text-white">{formatCAD(totalYearly)}</PrivateAmount></div>
+                    <div className="text-right"><div className="text-tiny uppercase text-ink-400 font-bold">Coût Annuel</div><PrivateAmount as="div" className="text-2xl font-bold text-white">{formatCAD(totalYearly)}</PrivateAmount></div>
                 </div>
             </div>
             )}
@@ -184,20 +184,20 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                 <div key={subscriptionKey(sub) || idx} className="flex justify-between items-center p-3 bg-[#1a1a1a] rounded-xl border border-white/5 hover:border-white/20 transition-all group">
                                     <div className="flex items-center gap-3 overflow-hidden">
                                         <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shadow-inner flex-shrink-0"><Icon name={subIcon(sub.payee)} size={16} className="text-ink-300" /></div>
-                                        <div className="min-w-0"><div className="font-bold text-white text-body truncate">{sub.payee}</div><div className="text-tiny text-ink-500">Le {sub.dayOfMonth} du mois</div></div>
+                                        <div className="min-w-0"><div className="font-bold text-white text-body truncate">{sub.payee}</div><div className="text-tiny text-ink-400">Le {sub.dayOfMonth} du mois</div></div>
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
                                         {/* [PH4-F] épingler = persister l'abo (survit au reload sans re-détection IA) */}
                                         {isPinned(pinnedSubs, sub) ? (
                                             <button onClick={() => handleUnpinSub(sub)} aria-label={`Désépingler ${sub.payee}`} title="Épinglé — cliquer pour retirer" className="text-tiny font-bold text-primary hover:text-danger-400 px-2 py-1.5 rounded transition-colors">Épinglé</button>
                                         ) : (
-                                            <button onClick={() => handlePinSub(sub)} aria-label={`Épingler ${sub.payee}`} title="Épingler — le garder après actualisation" className="text-tiny text-ink-500 hover:text-primary px-2 py-1.5 rounded transition-all opacity-0 group-hover:opacity-100 focus:opacity-100">Épingler</button>
+                                            <button onClick={() => handlePinSub(sub)} aria-label={`Épingler ${sub.payee}`} title="Épingler — le garder après actualisation" className="text-tiny text-ink-400 hover:text-primary px-2 py-1.5 rounded transition-all opacity-0 group-hover:opacity-100 focus:opacity-100">Épingler</button>
                                         )}
-                                        <div className="text-right"><PrivateAmount as="div" className="font-bold text-white">{formatCAD(monthlyEquivalent(sub))}</PrivateAmount><div className="text-tiny text-ink-500">/mois</div></div>
+                                        <div className="text-right"><PrivateAmount as="div" className="font-bold text-white">{formatCAD(monthlyEquivalent(sub))}</PrivateAmount><div className="text-tiny text-ink-400">/mois</div></div>
                                     </div>
                                 </div>
                             ))}
-                            {activeSubs.length === 0 && <div className="text-center text-ink-500 py-10">Aucun abonnement détecté.</div>}
+                            {activeSubs.length === 0 && <div className="text-center text-ink-400 py-10">Aucun abonnement détecté.</div>}
                         </div>
                         <div className="mt-4 bg-gradient-to-br from-red-900/20 to-black border border-danger-500/20 p-3 rounded-xl">
                             <div className="text-tiny text-red-300 uppercase font-bold mb-2">Le "Latte Factor"</div>
@@ -218,7 +218,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                             <button onClick={() => changeMonth(1)} aria-label="Mois suivant" className="touch-target flex items-center justify-center hover:bg-white/10 rounded text-ink-300 focus-ring">▶</button>
                         </div>
                         <div className="grid grid-cols-7 gap-1">
-                            {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(d => <div key={d} className="text-center text-ink-500 text-tiny font-bold uppercase pb-1">{d}</div>)}
+                            {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(d => <div key={d} className="text-center text-ink-400 text-tiny font-bold uppercase pb-1">{d}</div>)}
                             {calendarDays.map((date, idx) => {
                                 if (!date) return <div key={idx} />;
                                 const day = date.getDate();
@@ -228,7 +228,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                 const dailyTotal = bills.reduce((s, b) => s + b.averageAmount, 0);
                                 return (
                                     <div key={idx} className={`aspect-square rounded-lg border flex flex-col items-center justify-center relative ${isToday ? 'bg-primary/20 border-primary' : hasBills ? 'bg-danger-500/10 border-danger-500/30' : 'bg-dark/40 border-white/5'}`}>
-                                        <span className={`text-meta font-bold ${isToday ? 'text-primary' : 'text-ink-500'}`}>{day}</span>
+                                        <span className={`text-meta font-bold ${isToday ? 'text-primary' : 'text-ink-400'}`}>{day}</span>
                                         {hasBills && <div className="mt-1 text-center"><div className="text-tiny font-bold text-white leading-none">{formatCAD(dailyTotal)}</div><div className="flex gap-0.5 justify-center mt-0.5">{bills.slice(0, 3).map((b, bi) => <div key={bi} className="w-1 h-1 rounded-full bg-danger-400" title={b.payee}></div>)}</div></div>}
                                     </div>
                                 );
@@ -287,7 +287,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                     </div>
                                 );
                             })}
-                            {savingsGoals.length === 0 && <div className="text-center text-ink-500 text-meta py-4">Aucun objectif.</div>}
+                            {savingsGoals.length === 0 && <div className="text-center text-ink-400 text-meta py-4">Aucun objectif.</div>}
                         </div>
                     </Card>
                 </div>

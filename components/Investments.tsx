@@ -519,7 +519,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                 }}
                                 className={`text-tiny px-2 py-1.5 rounded-lg border transition-all flex items-center gap-2 ${isActive
                                     ? (asset.isTotal ? 'bg-green-500/20 text-green-400 border-green-500/50 font-bold' : 'bg-info-500/20 text-blue-300 border-info-500/50')
-                                    : 'bg-[#1a1a1a] text-ink-500 border-white/5 hover:border-white/10 hover:text-ink-200'
+                                    : 'bg-[#1a1a1a] text-ink-400 border-white/5 hover:border-white/10 hover:text-ink-200'
                                     }`}
                             >
                                 <div className="flex items-center gap-1">
@@ -548,7 +548,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                             visibleKeys={selectedKeys}
                         />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center text-ink-500 bg-white/5 rounded-xl">
+                        <div className="w-full h-full flex items-center justify-center text-ink-400 bg-white/5 rounded-xl">
                             Aucune donnée disponible pour cette période.
                         </div>
                     )}
@@ -616,7 +616,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             </div>
                                             <div className="text-right">
                                                 <div className="text-white font-bold">{formatCAD(item.value)}</div>
-                                                <div className="text-tiny text-ink-500">{item.percent.toFixed(1)}%</div>
+                                                <div className="text-tiny text-ink-400">{item.percent.toFixed(1)}%</div>
                                             </div>
                                         </button>
                                     );
@@ -678,7 +678,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             </div>
                                             <div className="text-right">
                                                 <div className="text-white font-bold">{formatCAD(item.value)}</div>
-                                                <div className="text-tiny text-ink-500">{item.percent.toFixed(1)}%</div>
+                                                <div className="text-tiny text-ink-400">{item.percent.toFixed(1)}%</div>
                                             </div>
                                         </button>
                                     );
@@ -829,7 +829,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             <Icon name={item.icon} size={20} className="text-ink-300 shrink-0" />
                                             <div>
                                                 <div className="text-white font-bold text-body">{item.label}</div>
-                                                <div className="text-tiny text-ink-500 flex items-center gap-2 mt-1">
+                                                <div className="text-tiny text-ink-400 flex items-center gap-2 mt-1">
                                                     <span>Actuel: <span className="text-ink-200 font-bold">{item.currentPct.toFixed(1)}%</span></span>
                                                     <span className="opacity-50">|</span>
                                                     {isRebalanceEdit ? (
@@ -917,7 +917,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             <span><b>Acheter</b> {formatCAD(Math.round(Math.abs(a.diffAmount)))} de <b>{a.label}</b> (déficit {Math.abs(a.diffPct).toFixed(1)}%) — Priorisez votre CELI si vous avez de l'espace disponible.</span>
                                         </div>
                                     ))}
-                                    <div className="text-meta text-ink-500 mt-3 pt-3 border-t border-white/5 italic">
+                                    <div className="text-meta text-ink-400 mt-3 pt-3 border-t border-white/5 italic">
                                         Astuce fiscale : Rééquilibrer via les nouvelles contributions évite de déclencher des gains en capital dans votre compte Non-Enregistré.
                                     </div>
                                 </div>
@@ -973,7 +973,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         </div>
                                         <div>
                                             <div className="font-bold text-white text-body leading-tight tracking-tight">{asset.name}</div>
-                                            <div className="text-tiny text-ink-500 font-medium uppercase tracking-wider">{asset.region}</div>
+                                            <div className="text-tiny text-ink-400 font-medium uppercase tracking-wider">{asset.region}</div>
                                         </div>
                                     </div>
                                     <div className="text-right">
@@ -998,7 +998,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                             <div className="flex items-center justify-between pt-3 border-t border-white/5 relative z-10 mt-auto">
                                 <div className="text-tiny text-ink-300 flex items-center gap-2">
                                     <span className="font-medium">Yield</span>
-                                    <span className={asset.yield > 0 ? "text-success-400 font-bold" : "text-ink-500"}>{asset.yield}%</span>
+                                    <span className={asset.yield > 0 ? "text-success-400 font-bold" : "text-ink-400"}>{asset.yield}%</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {savedAsset && (
@@ -1041,11 +1041,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     <div className="text-tiny text-info-300 uppercase font-bold mb-1">DCA · {purchaseStats.purchaseCount} achats</div>
                                     <div className="space-y-0.5 text-tiny">
                                         <div className="flex justify-between">
-                                            <span className="text-ink-500">Coût moyen</span>
+                                            <span className="text-ink-400">Coût moyen</span>
                                             <span className="font-mono text-ink-200">{formatCAD(purchaseStats.averageCost)}</span>
                                         </div>
                                         <div className="flex justify-between">
-                                            <span className="text-ink-500">Gain total</span>
+                                            <span className="text-ink-400">Gain total</span>
                                             <span className={`font-mono ${purchaseStats.totalGain >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
                                                 {purchaseStats.totalGain >= 0 ? '+' : ''}{formatCAD(purchaseStats.totalGain)} ({purchaseStats.gainPct.toFixed(1)}%)
                                             </span>

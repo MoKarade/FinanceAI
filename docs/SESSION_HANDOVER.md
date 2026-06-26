@@ -111,7 +111,13 @@
 > Affichage display-only (zéro impact NW, confirmé financial-integrity). 7 tests dont discriminant. Follow-ups → `HEALTH-SUB-DRY`, `PLANNING-ANNUAL-CALENDAR`.
 > **⚠️ PERF-BOOT/D7 DÉFÉRÉ (pas un quick-win)** : `hydrateAssets` (`App.tsx:420`) `sleep(2500)` protège AUSSI CoinGecko (~30/min, pas que Finnhub 60/min) →
 > un speedup provider-AVEUGLE déclenche des 429 crypto au cold-boot (régression UX). Vrai fix = provider-aware (M-L) + plan-first. Item rouvert dans cet état.
-> **Prochaines pistes plan-first** : FISC-ASSETLOC-INTL (M, money-critical) ; A11Y-INK500 (~192 occ., par lots) + IA-NAV-LABELS (CSS) = sûrs ; reste lot hygiène LOW (NW-ASSETBREAKDOWN-DRY — partie `currentLiquidity`
+> **A11Y-INK500 LOT 1 ✅ FAIT (2026-06-26, « fais tout »)** : `text-ink-500`→`text-ink-400` (AA normal ✅) sur 6 écrans quotidiens
+> (Dashboard/Budget/BudgetGroupTable/Investments/Transactions/Planning), **43 occ.** migrées sur classification a11y-auditor PAR-OCCURRENCE +
+> **10 GARDÉES** (icônes seuil 3:1, décoratif, `ⓘ` aria-hidden, 1 cible inactive délibérée). Panel a11y-auditor + code-reviewer APPROVE, check-contrast
+> confirme (ink-400 = 5,2-6,4:1), suite 2334. **RESTE ~43 fichiers/~145 occ.** en lots suivants. Découverte → `A11Y-BUDGETTABLE-SELECT-KBD` (selects+bouton invisibles au clavier).
+> **⚠️ IA-NAV-LABELS = DÉCISION UX MARC** (pas un bug) : rail délibérément collapsed-by-default (hover/focus expand, Phase B.1) — NE PAS override sans OK.
+> **⚠️ PERF-BOOT/D7 DÉFÉRÉ** (CoinGecko ~30/min ; provider-aware requis, plan-first).
+> **Prochaines pistes plan-first** : FISC-ASSETLOC-INTL (M, money-critical) ; A11Y-INK500 lots suivants (par écran) ; reste lot hygiène LOW (NW-ASSETBREAKDOWN-DRY — partie `currentLiquidity`
 > safe, `assetBreakdown` a 3 deltas sémantiques à garder) ; + WHT-DISPLAY-MELTDOWN / FISC-REEE-AIP-MODEL (LOW money-critical, discriminant requis).
 > + décisions Marc en attente : W5-TAX-PROXY, HIST-NW-DEBT-DISCLAIMER, FISC-WELCOME-2026.
 > ⚠️ Leçons : registre per-conjoint pilote → gérer décès (fantôme) ; 2ᵉ course git-stash (vérifs isolées) ; gate d'âge per-conjoint = ancrer sur ctx.age + écart.

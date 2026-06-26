@@ -23,6 +23,11 @@ Vérifie :
   Pour un BOUTON/CTA « contour fantôme » (`bg-color/15`), distinguer DEUX contrastes : (a) TEXTE vs fond du
   bouton (lisibilité WCAG 1.4.3) ET (b) fond du bouton vs page (PROMINENCE, WCAG 1.4.11 non-text 3:1). Un CTA
   peut avoir un texte à 12:1 mais un fond à 1,3:1 vs la page → invisible. Ne pas confondre les deux (cf GATE-CTA-CONTRAST).
+  ⚠️ **Couleur HÉRITÉE** (leçon A11Y-INK500 lot 2, 2026-06-26) : classer `text-ink-500` par occurrence ne suffit pas — une
+  couleur portée par un CONTENEUR cascade aux enfants SANS leur propre `text-*`. Ex. un empty-state `<div class="…text-ink-500">`
+  avec un `<p class="text-body">Sélectionne…</p>` : le `<p>` est du TEXTE actif rendu en ink-500 hérité, même sans `text-ink-500`
+  écrit dessus. Pour un audit ink-500, regarder AUSSI les enfants texte des conteneurs `text-ink-500` (l'icône décorative peut
+  garder ink-500, mais le texte instructionnel doit passer ink-400).
 - **Cibles tactiles** : ≥ 44×44 px (`.touch-target`).
 - **Lecteurs d'écran** : alternative textuelle aux graphes (table de données / résumé) ; **mode
   privé** — le flou CSS ne doit pas laisser les montants lisibles par un SR (fuite connue).

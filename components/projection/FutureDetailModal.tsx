@@ -133,7 +133,7 @@ const AccountDrillTooltip: React.FC<AccountDrillTooltipProps> = ({ active, paylo
             <PrivateAmount as="div" className="font-mono text-base font-black text-white mb-2">{fmtMoney(d.value)}</PrivateAmount>
             {reasons.length > 0 ? (
                 <div className="space-y-1">
-                    <div className="text-tiny uppercase tracking-wide text-ink-500 font-bold">Ce mois</div>
+                    <div className="text-tiny uppercase tracking-wide text-ink-400 font-bold">Ce mois</div>
                     {reasons.map((r, i) => (
                         <div key={i} className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded font-mono ${REASON_TONE_CLASS[r.tone]}`}>
                             <Icon name={r.icon} size={12} /><PrivateAmount>{r.text}</PrivateAmount>
@@ -141,7 +141,7 @@ const AccountDrillTooltip: React.FC<AccountDrillTooltipProps> = ({ active, paylo
                     ))}
                 </div>
             ) : (
-                <div className="text-tiny text-ink-500">Équité = capital d’hypothèque remboursé + valorisation</div>
+                <div className="text-tiny text-ink-400">Équité = capital d’hypothèque remboursé + valorisation</div>
             )}
             {d.events.length > 0 && (
                 <div className="mt-2 pt-1.5 border-t border-white/10 space-y-1">
@@ -519,7 +519,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                 <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1">
                                     Pourquoi ça bouge — moments clés
                                 </div>
-                                <p className="text-tiny text-ink-500 mb-2 leading-snug">
+                                <p className="text-tiny text-ink-400 mb-2 leading-snug">
                                     La <span className="text-ink-300 font-semibold">variation</span> d'un mois = rendement de tes placements (marché)
                                     + tes dépôts − tes retraits. Détail ci-dessous.
                                 </p>
@@ -543,7 +543,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <div className="text-tiny text-ink-500">Équité immobilière (capital remboursé + valorisation)</div>
+                                                    <div className="text-tiny text-ink-400">Équité immobilière (capital remboursé + valorisation)</div>
                                                 )}
                                                 {d.events.length > 0 && (
                                                     <div className="mt-1.5 space-y-0.5">
@@ -570,13 +570,13 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                 <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1">
                                     Espace de cotisation gagné par année
                                 </div>
-                                <p className="text-tiny text-ink-500 mb-2 leading-snug">
+                                <p className="text-tiny text-ink-400 mb-2 leading-snug">
                                     Droits {selected.label} qui s'ajoutent chaque année (et ré-ajout de l'espace après un retrait, pour le CELI).
                                 </p>
                                 <div className="max-h-52 overflow-y-auto rounded-lg border border-white/10">
                                     <table className="w-full text-meta">
                                         <thead className="sticky top-0 bg-dark">
-                                            <tr className="text-tiny uppercase tracking-wide text-ink-500">
+                                            <tr className="text-tiny uppercase tracking-wide text-ink-400">
                                                 <th className="text-left font-bold px-2.5 py-1.5">Année</th>
                                                 <th className="text-right font-bold px-2.5 py-1.5">Espace gagné</th>
                                                 <th className="text-right font-bold px-2.5 py-1.5">Espace dispo.</th>

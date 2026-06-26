@@ -705,6 +705,17 @@
   bruit knip (GST/QST/SCHL, interfaces, constantes fiscales) NON purgé (règle CLAUDE.md). + **`_buyVsRentData`** (`RealEstate.tsx`, useMemo
   préfixé `_` jamais rendu — vraie courbe UI = `combinedData`) retiré (trouvé par le panel code-reviewer, même feature morte). 2 commentaires
   stale (`testFixtures.ts` en-tête, `coupleConfort.ts`) corrigés. typecheck + build + suite verts.
+- [x] **[PLANNING-ANNUAL-SUB-12X]** ✅ **FAIT (2026-06-26)** — `Planning.tsx` : les KPI « Fixe mensuel »/« Coût annuel » sommaient
+  `averageAmount` BRUT puis ×12 → un abo ANNUEL compté ×12. Fix : helpers purs `monthlyEquivalent`/`totalMonthlyCost`/`totalYearlyCost`
+  (`utils/subscriptions.ts`) dérivés de `yearlyCost` (source de vérité annualisée) + gardes `Number.isFinite`. KPI + ligne d'affichage
+  (`formatCAD(monthlyEquivalent(sub))` « /mois ») câblés. 6 tests dont discriminant (annuel : 130 ancien → 20 nouveau). Panel financial-integrity + code-reviewer.
+  Follow-up → `PLANNING-ANNUAL-CALENDAR` (un abo ANNUEL apparaît sur le calendrier CHAQUE mois car le filtre ignore le mois ; + label « /an » explicite vs « /mois »).
+- [ ] **[HEALTH-SUB-DRY]** 🔧 LOW (découverte code-reviewer PLANNING-ANNUAL-SUB-12X) — `utils/healthRatios.ts:subscriptionsMonthlyCost`
+  (`Σ yearlyCost/12`) duplique le helper canonique `totalMonthlyCost` (`Σ yearlyCost /12`). Déléguer pour éviter une divergence
+  silencieuse si la garde change. ⚠️ réassocie le `/12` → vérifier qu'aucun golden du score de santé ne bouge (shift flottant) ; panel financial-integrity.
+- [ ] **[PLANNING-ANNUAL-CALENDAR]** 🔧 LOW (découverte PLANNING-ANNUAL-SUB-12X) — le calendrier des factures (`Planning.tsx`) filtre les abos par
+  `dayOfMonth` seul → un abo ANNUEL s'affiche tous les mois (devrait être son mois via `new Date(lastDate).getMonth()`). + montrer « /an » pour les annuels
+  (au lieu du mensuel-équivalent) serait plus clair. Nécessite un discriminant mensuel/annuel (dériver de `yearlyCost` vs `averageAmount`, ou champ `frequency`).
 - [ ] **[DETTE-GODFILES]** ⏳ — decouper par barrel : `utils/tax.ts`, `syncOrchestrator.ts`, `Investments.tsx`, `Budget.tsx`, `FutureProjection.tsx`.
 - [ ] **[DETTE-UI-PRIMITIVES]** ⏳ — `components/ui/Input|Select|Field` sur les tokens existants ; migrer 16 fichiers a `<input>` inline.
 

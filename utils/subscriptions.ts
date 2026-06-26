@@ -38,3 +38,27 @@ export function addSubscription(pinned: readonly RecurringItem[], sub: Recurring
 export function removeSubscription(pinned: readonly RecurringItem[], key: string): RecurringItem[] {
     return pinned.filter((p) => subscriptionKey(p) !== key);
 }
+
+// [PLANNING-ANNUAL-SUB-12X] `yearlyCost` est la source de vérité du coût annualisé d'un abo
+// (mensuel → averageAmount×12 ; annuel → averageAmount×1). Sommer `averageAmount` brut et ×12
+// compte un abo ANNUEL douze fois dans les totaux mensuels. On dérive donc toujours depuis
+// `yearlyCost`. Gardes `Number.isFinite` : un abo d'une source douteuse (IA) ne contamine pas le total.
+
+/** Coût MENSUEL équivalent d'un abo (annuel → /12). NaN/Infinity → 0. */
+export function monthlyEquivalent(sub: Pick<RecurringItem, 'yearlyCost'>): number {
+    const y = Number(sub.yearlyCost);
+    return Number.isFinite(y) ? y / 12 : 0;
+}
+
+/** Total ANNUEL des abos = Σ yearlyCost (chaque abo déjà annualisé correctement). */
+export function totalYearlyCost(subs: readonly RecurringItem[]): number {
+    return subs.reduce((acc, s) => {
+        const y = Number(s.yearlyCost);
+        return acc + (Number.isFinite(y) ? y : 0);
+    }, 0);
+}
+
+/** Total MENSUEL équivalent = Σ monthlyEquivalent = totalYearlyCost/12 (pas de ×12 d'un annuel). */
+export function totalMonthlyCost(subs: readonly RecurringItem[]): number {
+    return totalYearlyCost(subs) / 12;
+}

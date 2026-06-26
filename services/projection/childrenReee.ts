@@ -15,6 +15,31 @@ import {
     type UniversityType, type CarGift,
 } from './childCosts';
 
+// ── Constantes fiscales REEE — SCEE / IQEE ──────────────────────────────────────
+// Source de vérité : docs/FISCAL_REFERENCE.md § « REEE — SCEE / IQEE » (FISC-REEE-CONST).
+// SCEE (Subvention canadienne pour l'épargne-études, ARC) : 20 % de la cotisation,
+// max 500 $/an (1 000 $/an en rattrapage), 7 200 $ à vie par bénéficiaire.
+const SCEE_GRANT_RATE = 0.20;
+const SCEE_ANNUAL_GRANT_BASIC = 500;
+const SCEE_ANNUAL_GRANT_CATCHUP = 1000;
+const SCEE_LIFETIME_GRANT_LIMIT = 7200;
+// IQEE (Incitatif québécois à l'épargne-études, Revenu Québec) : 10 % de la cotisation,
+// max 250 $/an (500 $/an en rattrapage), 3 600 $ à vie par bénéficiaire.
+const IQEE_GRANT_RATE = 0.10;
+const IQEE_ANNUAL_GRANT_BASIC = 250;
+const IQEE_ANNUAL_GRANT_CATCHUP = 500;
+const IQEE_LIFETIME_GRANT_LIMIT = 3600;
+// Plafond de cotisation REEE à vie (ARC §6.9 / F13) + cotisations annuelles visées pour
+// capter la pleine subvention (5 000 $/an en rattrapage tant que SCEE < max théorique).
+const REEE_LIFETIME_LIMIT_PER_BENEFICIARY = 50000;
+const REEE_TARGET_ANNUAL_CONTRIB_BASIC = 2500;
+const REEE_TARGET_ANNUAL_CONTRIB_CATCHUP = 5000;
+// Impôt sur le Paiement de Revenu Accumulé (PRA) à la fermeture du REEE : APPROXIMATION
+// de modèle (~20 %), PAS un taux combiné officiel ARC/RQ — à raffiner (BACKLOG FISC-REEE-AIP-MODEL).
+// Biais : frappe le solde TOTAL (cotisations + gains) → SUR-impose les cotisations remboursées
+// sans impôt, et SOUS-impose si le taux marginal + la surtaxe PRA de 20 % dépasse 20 %.
+const REEE_AIP_TAX_RATE = 0.20;
+
 type FiscalReportFn = (
     grossIncome: number,
     rrspContrib: number,
@@ -221,23 +246,22 @@ export function processOneChild(
         // REEE contributions with SCEE/IQEE catch-up
         // +1 car SCEE calcule sur l'année civile EN COURS, pas l'âge révolu
         const childAgeYearsForGrant = childAgeYears + 1;
-        const maxTheoreticalScee = Math.min(7200, childAgeYearsForGrant * 500);
+        const maxTheoreticalScee = Math.min(SCEE_LIFETIME_GRANT_LIMIT, childAgeYearsForGrant * SCEE_ANNUAL_GRANT_BASIC);
 
-        let optimalReeeMonthly = 2500 / 12;
-        let sceeYearlyLimit = 500;
-        let iqeeYearlyLimit = 250;
+        let optimalReeeMonthly = REEE_TARGET_ANNUAL_CONTRIB_BASIC / 12;
+        let sceeYearlyLimit = SCEE_ANNUAL_GRANT_BASIC;
+        let iqeeYearlyLimit = IQEE_ANNUAL_GRANT_BASIC;
 
         if (newTrackerScee < maxTheoreticalScee) {
-            optimalReeeMonthly = 5000 / 12;
-            sceeYearlyLimit = 1000;
-            iqeeYearlyLimit = 500;
+            optimalReeeMonthly = REEE_TARGET_ANNUAL_CONTRIB_CATCHUP / 12;
+            sceeYearlyLimit = SCEE_ANNUAL_GRANT_CATCHUP;
+            iqeeYearlyLimit = IQEE_ANNUAL_GRANT_CATCHUP;
         }
 
         // Audit §6.9 / F13: plafond REEE lifetime 50 000$/bénéficiaire (ARC).
         // Si on s'approche du plafond, on plafonne la cotisation du mois courant.
         // Au-delà du plafond → 0 cotisation (la croissance du REEE continue,
         // mais aucune nouvelle contribution n'est permise).
-        const REEE_LIFETIME_LIMIT_PER_BENEFICIARY = 50000;
         const lifetimeContribRoomLeft = Math.max(0, REEE_LIFETIME_LIMIT_PER_BENEFICIARY - newTrackerReeeContribLifetime);
         if (optimalReeeMonthly > lifetimeContribRoomLeft) {
             optimalReeeMonthly = lifetimeContribRoomLeft;
@@ -251,10 +275,10 @@ export function processOneChild(
             // Audit §6.9: tracker mis à jour pour bloquer les futurs mois
             newTrackerReeeContribLifetime += optimalReeeMonthly;
 
-            const sceeGrant = Math.min(optimalReeeMonthly * 0.20, sceeYearlyLimit / 12, 7200 - newTrackerScee);
+            const sceeGrant = Math.min(optimalReeeMonthly * SCEE_GRANT_RATE, sceeYearlyLimit / 12, SCEE_LIFETIME_GRANT_LIMIT - newTrackerScee);
             newTrackerScee += Math.max(0, sceeGrant);
 
-            const iqeeGrant = Math.min(optimalReeeMonthly * 0.10, iqeeYearlyLimit / 12, 3600 - newTrackerIqee);
+            const iqeeGrant = Math.min(optimalReeeMonthly * IQEE_GRANT_RATE, iqeeYearlyLimit / 12, IQEE_LIFETIME_GRANT_LIMIT - newTrackerIqee);
             newTrackerIqee += Math.max(0, iqeeGrant);
 
             const totalGrant = Math.max(0, sceeGrant) + Math.max(0, iqeeGrant);
@@ -301,7 +325,7 @@ export function processOneChild(
 
     if (childAgeMonths === 25 * 12 && reeeNewBalance > 0) {
         liquidDelta += reeeNewBalance;
-        taxDiversAdd += reeeNewBalance * 0.20;
+        taxDiversAdd += reeeNewBalance * REEE_AIP_TAX_RATE;
         flowEventLogs.push(`🎓 Fermeture du REEE (régime d'épargne-études) de ${child.name || 'l\'enfant'} : +${Math.round(reeeNewBalance).toLocaleString('fr-CA')} $ versés dans tes liquidités`);
         reeeNewBalance = 0;
     }

@@ -46,6 +46,7 @@ import {
 } from '../history/reconstructPortfolioHistory';
 import { deriveStartingBalancesFromHistory } from '../history/startingBalancesFromHistory';
 import { getEffectivePurchases } from '../../utils/assetPurchases';
+import { isSavingsNature } from '../../utils/budget';
 
 /**
  * Loyer mensuel par défaut quand aucune ligne de budget « loyer / rent /
@@ -227,7 +228,7 @@ export function computeMonthlySavings(
     const users = (config?.users ?? []) as unknown as User[];
     const income = users.reduce((acc, u) => acc + (u?.netSalary || u?.salary || 0), 0);
     const budgetExp = (budgetItems ?? []).reduce((acc, item) => {
-        if (item.nature === 'Epargne') return acc;
+        if (isSavingsNature(item.nature)) return acc; // [HEALTH-SAVINGS-CONSISTENCY] NFD, pas `=== 'Epargne'` (entrée moteur)
         let amount = item.target;
         if (item.frequency === 'Yearly') amount /= 12;
         if (item.frequency === 'Quarterly') amount /= 3;

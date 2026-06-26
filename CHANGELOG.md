@@ -13,6 +13,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   tes postes de budget de nature **Épargne** (virements vers CELI/REER…) comme des dépenses. Résultat : si tu
   budgétais explicitement ton épargne, ton taux d'épargne affiché tombait près de **0 %** et ton coussin
   était sous-estimé. Désormais l'épargne est exclue des dépenses → les deux indicateurs reflètent la réalité.
+- **Cohérence partout** : la même correction est maintenant appliquée à TOUTES les surfaces qui calculent ton
+  épargne mensuelle — Dashboard, assistant IA, suggestions « prochaine action », **projection de retraite** et page
+  Budget. Avant, un poste d'épargne dont le nom de nature était écrit avec un accent (« Épargne ») pouvait être
+  compté comme dépense sur certaines surfaces → épargne sous-estimée et projection pessimiste. Réglé.
 
 ---
 

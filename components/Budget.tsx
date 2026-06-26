@@ -16,7 +16,7 @@ import { Pill } from './ui/Pill';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { formatCAD, formatSigned, formatPercent } from '../utils/format';
-import { computeBudgetParity, matchTransactionToCategory, computeGoldenSplit, GOLDEN_IDEAL, computeActualByOwner, type OrphanCategory } from '../utils/budget';
+import { computeBudgetParity, matchTransactionToCategory, computeGoldenSplit, GOLDEN_IDEAL, computeActualByOwner, isSavingsNature, type OrphanCategory } from '../utils/budget';
 import { DualKPIStat } from './budget/DualKPIStat';
 import { calculateFiscalReport } from '../utils/tax';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
@@ -102,7 +102,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         const baseMonthly = getBaseMonthlyTarget(item);
         let multiplier = getMultiplier();
 
-        if (item.nature !== 'Epargne' && inflationSim > 0) {
+        if (!isSavingsNature(item.nature) && inflationSim > 0) { // [HEALTH-SAVINGS-CONSISTENCY] NFD, pas `!== 'Epargne'`
             multiplier *= (1 + inflationSim / 100);
         }
 
@@ -303,7 +303,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
         budgetItems.forEach(item => {
             const amount = getDisplayTarget(item);
-            if (item.nature !== 'Epargne') {
+            if (!isSavingsNature(item.nature)) { // [HEALTH-SAVINGS-CONSISTENCY] NFD, pas `!== 'Epargne'`
                 if (item.type === 'Commun') commonExpenses += amount;
                 else if (item.type === 'Perso 1') user1Personal += amount;
                 else if (item.type === 'Perso 2') user2Personal += amount;

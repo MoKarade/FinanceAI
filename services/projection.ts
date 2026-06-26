@@ -1,6 +1,6 @@
 // services/projection.ts — moteur de projection financière (migré depuis utils/useFutureSimulation.ts)
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness, SavingsGoal, FinancialGoal } from '../types';
-import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate, calculateGrossWithholdingRRSP, withholdingForGrossRRSP, getResidencyStartYear, CAPITAL_GAINS_INCLUSION_STANDARD, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
+import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate, calculateGrossWithholdingRRSP, getResidencyStartYear, CAPITAL_GAINS_INCLUSION_STANDARD, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
 import { RRIF_RATES, welcomeTax, NONREG_DIVIDEND_DISTRIBUTION_SHARE } from './projection/helpers';
 import { salaryShares, splitByShares, stepReerByUser, addByWeights } from './projection/perUserBalances';
 import { logError } from './errorLogger';
@@ -567,6 +567,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         let impotGainsMois = 0; // V29: Gains en capital (taxes payées ce mois ou différées)
         let impotDiversMois = 0; // V29: Taxes divers (FHSA, etc.)
         let retraitReerMois = 0;
+        // [WHT-DISPLAY-EXACT volet a] Retenue REER PAR TIRAGE cumulée sur le mois (cascade + sauvetage
+        // de découvert) → compteur d'affichage `totalTaxesPaid` exact (barème par palier non additif).
+        let rrspWithholdingMois = 0;
         let retraitCeliMois = 0;
         let impotReerMois = 0; // V24: Impôt sur retraits REER, séparé de fluxImpots
         let impotSalaireMois = 0; // V36: Impôt sur salaire (retenues/provision)
@@ -1262,7 +1265,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             taxCurrentYearReer: taxCurrentYear.reer,
             accRetraitsReerYear, accCapitalGainsYear, accRrspYear, accFhsaYear,
             fhsaLifetimeContrib, celiWithdrawalsThisYear,
-            retraitReerMois, retraitCeliMois,
+            retraitReerMois, rrspWithholdingMois, retraitCeliMois,
             withdrawalREER, withdrawalCELI, withdrawalNonReg, withdrawalCrypto,
             contribCELI, contribREER, contribNonReg, contribCELIAPP,
             shortfallMonths,
@@ -1281,7 +1284,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             accRrspYear = cs.accRrspYear; accFhsaYear = cs.accFhsaYear;
             fhsaLifetimeContrib = cs.fhsaLifetimeContrib;
             celiWithdrawalsThisYear = cs.celiWithdrawalsThisYear;
-            retraitReerMois = cs.retraitReerMois; retraitCeliMois = cs.retraitCeliMois;
+            retraitReerMois = cs.retraitReerMois; rrspWithholdingMois = cs.rrspWithholdingMois; retraitCeliMois = cs.retraitCeliMois;
             withdrawalREER = cs.withdrawalREER; withdrawalCELI = cs.withdrawalCELI;
             withdrawalNonReg = cs.withdrawalNonReg; withdrawalCrypto = cs.withdrawalCrypto;
             contribCELI = cs.contribCELI; contribREER = cs.contribREER;
@@ -1428,16 +1431,17 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         liquid = g.liquid.newVal; growthLiquid = g.liquid.growth; growthPctLiquid = g.liquid.pct;
         reee = g.reee.newVal; growthREEE = g.reee.growth; growthPctREEE = g.reee.pct;
         totalGrowth += g.totalGrowth;
-        // [FISC-WHT-HARDCODE 2026-06-23] Retenue à la source sur les retraits REER de l'année, pas encore
-        // régularisée par la déclaration (acompte). AVANT : `* 0.15` en dur SOUS-évaluait la retenue dès la
-        // 2ᵉ tranche (réelle = 19/24/29 % combiné QC, cf RRSP_WITHHOLDING_QC). On utilise désormais la retenue
-        // TIERED (`withholdingForGrossRRSP`, même barème que le moteur via `rrspWithholding`), appliquée au brut
-        // MENSUEL agrégé `retraitReerMois` → bien plus proche de la retenue réelle que le 0,15 (résiduel mineur
-        // les mois à plusieurs tirages, barème non additif — compteur d'AFFICHAGE, non conservé). Pas de
-        // double-compte : ce terme est l'ACOMPTE ; `taxCurrentYear.reer` cumule ces acomptes et décembre n'ajoute
-        // ENSUITE que le complément (réconciliation = `totalAnnualTax − taxCurrentYear.reer`) → l'impôt n'est
-        // compté qu'une fois. `taxOnRrif` (FERR) reste un terme séparé, base disjointe.
-        totalTaxesPaid += fluxImpots + taxOnRrif + withholdingForGrossRRSP(retraitReerMois).withholding;
+        // [FISC-WHT-HARDCODE 2026-06-23 → WHT-DISPLAY-EXACT 2026-06-26] Retenue à la source sur les retraits
+        // REER du mois, pas encore régularisée par la déclaration (acompte). AVANT : `* 0.15` en dur, puis
+        // `withholdingForGrossRRSP(retraitReerMois)` recalculé sur le brut MENSUEL agrégé (sur-estimait les mois
+        // à plusieurs tirages, barème par palier non additif). DÉSORMAIS : `rrspWithholdingMois`, la SOMME des
+        // retenues PAR TIRAGE déjà calculées par la cascade (`drawReer`) — exact au cent près ET identique à
+        // ce que `taxCurrentYear.reer` a réellement provisionné (cohérence interne du compteur). Compteur
+        // d'AFFICHAGE, non conservé (n'entre pas dans le NW). Pas de double-compte : ce terme est l'ACOMPTE ;
+        // `taxCurrentYear.reer` cumule ces mêmes acomptes et décembre n'ajoute ENSUITE que le complément
+        // (réconciliation = `totalAnnualTax − taxCurrentYear.reer`) → l'impôt n'est compté qu'une fois.
+        // `taxOnRrif` (FERR) reste un terme séparé, base disjointe.
+        totalTaxesPaid += fluxImpots + taxOnRrif + rrspWithholdingMois;
         totalExpenses += monthlyExpenses;
 
         // Patrimoine net = actifs − TOUTES les dettes. realEstateEquity est DÉJÀ net

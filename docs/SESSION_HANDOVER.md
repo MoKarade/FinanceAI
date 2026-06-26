@@ -100,8 +100,12 @@
 > `rrspWithholding` → source unique `withholdingForGrossRRSP`. Découplage CF-2 (delta `−rrspWithholdingAtStart` pour rester correct au 2ᵉ appel
 > du sauvetage PV-6). Mesuré git-stash 270 087 → 269 132 $ (−955 $, direction correcte). Test discriminant unitaire RED→GREEN (3 tirages palier 1,
 > somme franchit le palier 2). **Aucun impact NW** (compteur display/ranking). Panel 4 agents APPROVE, conservation 12 inv. verte, suite 2330/2330.
-> **Prochaines pistes plan-first** : FISC-ASSETLOC-INTL (M, money-critical) ; ou lot hygiène LOW (REEE/NW-DRY/DETTE-DEADCODE). + décisions Marc en attente :
-> W5-TAX-PROXY, HIST-NW-DEBT-DISCLAIMER, FISC-WELCOME-2026.
+> **REEE-LITERALS ✅ FAIT (2026-06-26)** : constantes fiscales SCEE/IQEE/REEE de `childrenReee.ts` extraites en constantes nommées+sourcées
+> (pointent vers `FISCAL_REFERENCE §REEE`) — refactor PUR, golden/conservation/suite byte-identiques. `REEE_AIP_TAX_RATE` (~20 % PRA) nommé +
+> marqué « approximation modèle » (à raffiner). Note FISCAL_REFERENCE l.450 passée de « dette LOW » à « résolu ».
+> **Prochaines pistes plan-first** : FISC-ASSETLOC-INTL (M, money-critical) ; reste lot hygiène LOW (NW-ASSETBREAKDOWN-DRY — partie `currentLiquidity`
+> safe, `assetBreakdown` a 3 deltas sémantiques à garder ; DETTE-DEADCODE — vérifier chaque « mort » au grep) ; + WHT-DISPLAY-MELTDOWN (LOW, discriminant requis).
+> + décisions Marc en attente : W5-TAX-PROXY, HIST-NW-DEBT-DISCLAIMER, FISC-WELCOME-2026.
 > ⚠️ Leçons : registre per-conjoint pilote → gérer décès (fantôme) ; 2ᵉ course git-stash (vérifs isolées) ; gate d'âge per-conjoint = ancrer sur ctx.age + écart.
 > **Session 2026-06-23 — quick-win `BUDGET-NATURE-FREEFORM` ✅ FAIT** : les 56 items de fixtures (testBudget + 6 personas) avaient
 > des natures LIBRES violant l'union typée `'Besoin'|'Envie'|'Epargne'` → tout en « Envie » + CELI/REER (`'Épargne'` accentué)

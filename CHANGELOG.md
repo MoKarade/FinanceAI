@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Abonnements : un abo annuel n'est plus compté ×12] — 2026-06-26
+
+### Tes totaux d'abonnements sont justes même avec un abonnement annuel
+- Dans l'onglet **Planification**, les totaux « Fixe mensuel » et « Coût annuel » des abonnements traitaient
+  **tout abonnement comme mensuel** : un abonnement **annuel** (ex. 120 $/an facturé une fois) était compté
+  comme 120 $/**mois** → **1 440 $/an** affichés au lieu de 120 $. Désormais chaque abonnement contribue son
+  vrai coût mensuel-équivalent (un abo annuel = son montant ÷ 12), et la ligne par abonnement affiche le bon
+  « /mois ». Aucun impact sur ton patrimoine net (c'est de l'affichage).
+
 ## [unreleased — Impôt à vie estimé : retenue REER exacte au cent près] — 2026-06-26
 
 ### Le total d'impôts estimé est plus précis les mois à plusieurs retraits REER

@@ -11,7 +11,7 @@ import { showToast } from './ui/Toast';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { formatCAD } from '../utils/format';
 import { useFinanceStore } from '../store/useFinanceStore';
-import { mergeSubscriptions, addSubscription, removeSubscription, isPinned, subscriptionKey } from '../utils/subscriptions';
+import { mergeSubscriptions, addSubscription, removeSubscription, isPinned, subscriptionKey, monthlyEquivalent, totalMonthlyCost, totalYearlyCost } from '../utils/subscriptions';
 
 /** Icône ligne d'un abonnement selon le marchand (sobre, remplace les emoji). */
 const subIcon = (payee: string): IconName => {
@@ -97,11 +97,12 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
     const handleUnpinSub = useCallback((sub: RecurringItem) => {
         setAppState({ subscriptions: removeSubscription(pinnedSubs, subscriptionKey(sub)) });
     }, [pinnedSubs, setAppState]);
-    const { totalMonthly, totalYearly } = useMemo(() => {
-        const mTotal = activeSubs.reduce((acc, i) => acc + i.averageAmount, 0);
-        const yTotal = mTotal * 12;
-        return { totalMonthly: mTotal, totalYearly: yTotal };
-    }, [activeSubs]);
+    // [PLANNING-ANNUAL-SUB-12X] Totaux dérivés de `yearlyCost` (source de vérité annualisée) :
+    // un abo ANNUEL ne compte plus ×12 dans le total mensuel.
+    const { totalMonthly, totalYearly } = useMemo(() => ({
+        totalMonthly: totalMonthlyCost(activeSubs),
+        totalYearly: totalYearlyCost(activeSubs),
+    }), [activeSubs]);
 
     const calendarDays = useMemo(() => {
         const year = currentDate.getFullYear();
@@ -192,7 +193,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                         ) : (
                                             <button onClick={() => handlePinSub(sub)} aria-label={`Épingler ${sub.payee}`} title="Épingler — le garder après actualisation" className="text-tiny text-ink-500 hover:text-primary px-2 py-1.5 rounded transition-all opacity-0 group-hover:opacity-100 focus:opacity-100">Épingler</button>
                                         )}
-                                        <div className="text-right"><PrivateAmount as="div" className="font-bold text-white">{formatCAD(sub.averageAmount)}</PrivateAmount><div className="text-tiny text-ink-500">/mois</div></div>
+                                        <div className="text-right"><PrivateAmount as="div" className="font-bold text-white">{formatCAD(monthlyEquivalent(sub))}</PrivateAmount><div className="text-tiny text-ink-500">/mois</div></div>
                                     </div>
                                 </div>
                             ))}

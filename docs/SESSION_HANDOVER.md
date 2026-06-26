@@ -103,8 +103,11 @@
 > **REEE-LITERALS ✅ FAIT (2026-06-26)** : constantes fiscales SCEE/IQEE/REEE de `childrenReee.ts` extraites en constantes nommées+sourcées
 > (pointent vers `FISCAL_REFERENCE §REEE`) — refactor PUR, golden/conservation/suite byte-identiques. `REEE_AIP_TAX_RATE` (~20 % PRA) nommé +
 > marqué « approximation modèle » (à raffiner). Note FISCAL_REFERENCE l.450 passée de « dette LOW » à « résolu ».
+> **DETTE-DEADCODE ✅ FAIT (2026-06-26)** : retiré `runBuyVsRent` + types `BuyVsRent*` + son test (test-only, zéro call-site prod) et
+> `buildTestFixtures` (wrapper compat jamais appelé) + imports orphelins. EXCLUS après vérif : `clearCredentials` (mcp/, touch-on-request),
+> façade `getProfile` (contrat `MarketDataProvider` testé). Bruit knip restant (GST/QST/SCHL/interfaces) NON purgé (règle). typecheck+build+suite verts.
 > **Prochaines pistes plan-first** : FISC-ASSETLOC-INTL (M, money-critical) ; reste lot hygiène LOW (NW-ASSETBREAKDOWN-DRY — partie `currentLiquidity`
-> safe, `assetBreakdown` a 3 deltas sémantiques à garder ; DETTE-DEADCODE — vérifier chaque « mort » au grep) ; + WHT-DISPLAY-MELTDOWN (LOW, discriminant requis).
+> safe, `assetBreakdown` a 3 deltas sémantiques à garder) ; + WHT-DISPLAY-MELTDOWN / FISC-REEE-AIP-MODEL (LOW money-critical, discriminant requis).
 > + décisions Marc en attente : W5-TAX-PROXY, HIST-NW-DEBT-DISCLAIMER, FISC-WELCOME-2026.
 > ⚠️ Leçons : registre per-conjoint pilote → gérer décès (fantôme) ; 2ᵉ course git-stash (vérifs isolées) ; gate d'âge per-conjoint = ancrer sur ctx.age + écart.
 > **Session 2026-06-23 — quick-win `BUDGET-NATURE-FREEFORM` ✅ FAIT** : les 56 items de fixtures (testBudget + 6 personas) avaient

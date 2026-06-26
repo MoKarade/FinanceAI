@@ -4,7 +4,6 @@ import {
   calculateMortgagePayment,
   calculatePurchaseCosts,
   runAmortization,
-  runBuyVsRent,
   calculateB20QualifyingRate,
   calculateB20StressTest,
   calculateMinDownPayment,
@@ -136,28 +135,6 @@ describe('calculatePurchaseCosts', () => {
     expect(r.totalCashNeeded).toBeCloseTo(r.welcomeTax + 102300, 0);
     expect(r.notaryFees).toBe(1500);
     expect(r.inspectionFees).toBe(800);
-  });
-});
-
-describe('runBuyVsRent', () => {
-  it('produit des series de longueur amortization', () => {
-    const amort = runAmortization({
-      price: 500000, downPayment: 100000, rate: 4.5, amortization: 25,
-    });
-    const result = runBuyVsRent({
-      amortizationData: amort.data,
-      totalCashNeeded: 108000,
-      netMonthlyCost: 2500,
-      maintenanceMonthly: 416,
-      currentRent: 1600,
-      marketReturn: 7,
-      amortization: 25,
-    });
-    expect(result).toHaveLength(25);
-    result.forEach(p => {
-      expect(p.buyEquity).toBeGreaterThanOrEqual(0);
-      expect(p.rentInvestNetWorth).toBeGreaterThan(0);
-    });
   });
 });
 

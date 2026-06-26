@@ -442,7 +442,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         </div>
 
                         {categorizationRules.length === 0 ? (
-                            <p className="text-tiny text-ink-500 text-center py-2">Aucune regle. Creez-en une pour categoriser automatiquement.</p>
+                            <p className="text-tiny text-ink-400 text-center py-2">Aucune regle. Creez-en une pour categoriser automatiquement.</p>
                         ) : (
                             <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
                                 {categorizationRules.map(rule => (
@@ -480,7 +480,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                 <div className="text-center py-20">
                                     <Icon name="check" size={40} className="text-success-500 block mx-auto mb-2" />
                                     <h3 className="text-white font-bold">Tout est propre !</h3>
-                                    <p className="text-ink-500 text-body">Plus aucune transaction inconnue.</p>
+                                    <p className="text-ink-400 text-body">Plus aucune transaction inconnue.</p>
                                 </div>
                             ) : (
                                 uncategorizedGroups.map((group) => (
@@ -689,7 +689,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         <button
                                             onClick={(e) => { e.stopPropagation(); toggleTransfer(t.id); }}
                                             aria-pressed={t.isTransfer}
-                                            className={`text-tiny px-2 py-0.5 rounded border transition-colors ${t.isTransfer ? 'bg-info-500/20 border-info-500 text-blue-300' : 'bg-white/5 border-white/10 text-ink-500 hover:text-white'}`}
+                                            className={`text-tiny px-2 py-0.5 rounded border transition-colors ${t.isTransfer ? 'bg-info-500/20 border-info-500 text-blue-300' : 'bg-white/5 border-white/10 text-ink-400 hover:text-white'}`}
                                         >
                                             {t.isTransfer ? 'Transfert' : 'Transaction'}
                                         </button>
@@ -781,7 +781,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                                     ></span>
                                                 )}
                                             </div>
-                                            <div className="text-tiny text-ink-500 mt-0.5">{t.date}</div>
+                                            <div className="text-tiny text-ink-400 mt-0.5">{t.date}</div>
                                         </div>
                                     </div>
                                     <PrivateAmount as="div" className={`font-bold text-body whitespace-nowrap ${t.isTransfer ? 'text-blue-300 opacity-70' : t.amount > 0 ? 'text-green-400' : 'text-ink-100'
@@ -835,7 +835,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 {totalPages > 1 && (
                     <div className="flex justify-between items-center mt-4 pt-4 border-t border-white/5">
                         <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="text-meta px-3 py-1 bg-white/10 rounded disabled:opacity-30">Precedent</button>
-                        <span className="text-meta text-ink-500">Page {currentPage} / {totalPages}</span>
+                        <span className="text-meta text-ink-400">Page {currentPage} / {totalPages}</span>
                         <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="text-meta px-3 py-1 bg-white/10 rounded disabled:opacity-30">Suivant</button>
                     </div>
                 )}

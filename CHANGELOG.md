@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Lisibilité : textes secondaires plus contrastés (WCAG AA)] — 2026-06-26
+
+### Les libellés et données secondaires sont plus faciles à lire
+- Sur les écrans **Accueil, Budget, Investissements, Transactions et Planification**, de nombreux textes
+  secondaires (libellés, pourcentages, dates, en-têtes de tableau, messages d'état vide) s'affichaient dans
+  un gris (`ink-500`) qui n'atteignait pas le contraste minimal **WCAG AA** (4,5:1) sur fond sombre. Ils
+  passent à un gris plus clair (`ink-400`, 5,2-6,4:1) → plus lisibles, notamment en cas de basse vision.
+- Les icônes décoratives et un état volontairement atténué gardent leur teinte (rien de superflu n'a changé).
+- Premier lot ; les autres écrans suivront.
+
 ## [unreleased — Abonnements : un abo annuel n'est plus compté ×12] — 2026-06-26
 
 ### Tes totaux d'abonnements sont justes même avec un abonnement annuel

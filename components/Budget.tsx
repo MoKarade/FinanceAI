@@ -717,7 +717,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                         <PrivateAmount as="div" className="text-2xl font-black text-white">
                             {formatCAD(projectionSummary.estateNetWorth)}
                         </PrivateAmount>
-                        <div className="text-tiny text-ink-500 mt-1">
+                        <div className="text-tiny text-ink-400 mt-1">
                             Patrimoine successoral projeté, avec rentes RRQ/PSV, en {projectionSummary.finalYear} (FutureProjection actif).
                         </div>
                     </div>
@@ -726,7 +726,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                         <PrivateAmount as="div" className="text-base font-bold text-success-400">
                             +{formatCAD(projectionSummary.per100Boost)}
                         </PrivateAmount>
-                        <div className="text-tiny text-ink-500">par +100$/mois d'épargne supplémentaire</div>
+                        <div className="text-tiny text-ink-400">par +100$/mois d'épargne supplémentaire</div>
                     </div>
                 </button>
             )}
@@ -814,7 +814,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                         <span className="font-mono">{formatCAD(fiscalBreakdown.aeRqapDisplay)}</span>
                                     </div>
                                 </div>
-                                <div className="flex justify-between items-center text-tiny text-ink-500 pt-1 border-t border-white/5">
+                                <div className="flex justify-between items-center text-tiny text-ink-400 pt-1 border-t border-white/5">
                                     <span>Total déductions ({fiscalBreakdown.averageRate.toFixed(1)}% moyen)</span>
                                     <span className="font-mono text-danger-400">−{formatCAD(fiscalBreakdown.totalTaxDisplay)}</span>
                                 </div>
@@ -830,9 +830,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     <span className="text-body font-bold text-indigo-400">{coupleAnalysis.user1.name}</span>
                                     <div className="flex items-center gap-2">
                                         {coupleAnalysis.splitMode === 'prorata' && (
-                                            <span className="text-tiny text-ink-500">{(coupleAnalysis.splitRatio1 * 100).toFixed(0)}% (Net)</span>
+                                            <span className="text-tiny text-ink-400">{(coupleAnalysis.splitRatio1 * 100).toFixed(0)}% (Net)</span>
                                         )}
-                                        <span className="text-meta text-ink-500 bg-white/5 px-2 py-0.5 rounded">
+                                        <span className="text-meta text-ink-400 bg-white/5 px-2 py-0.5 rounded">
                                             Effort: {coupleAnalysis.user1Income > 0 ? ((coupleAnalysis.user1Contribution / coupleAnalysis.user1Income) * 100).toFixed(0) : 0}%
                                         </span>
                                     </div>
@@ -865,9 +865,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                         <span className="text-body font-bold text-pink-400">{coupleAnalysis.user2.name}</span>
                                         <div className="flex items-center gap-2">
                                             {coupleAnalysis.splitMode === 'prorata' && (
-                                                <span className="text-tiny text-ink-500">{((1 - coupleAnalysis.splitRatio1) * 100).toFixed(0)}% (Net)</span>
+                                                <span className="text-tiny text-ink-400">{((1 - coupleAnalysis.splitRatio1) * 100).toFixed(0)}% (Net)</span>
                                             )}
-                                            <span className="text-meta text-ink-500 bg-white/5 px-2 py-0.5 rounded">
+                                            <span className="text-meta text-ink-400 bg-white/5 px-2 py-0.5 rounded">
                                                 Effort: {coupleAnalysis.user2Income > 0 ? ((coupleAnalysis.user2Contribution / coupleAnalysis.user2Income) * 100).toFixed(0) : 0}%
                                             </span>
                                         </div>

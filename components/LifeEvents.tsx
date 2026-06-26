@@ -188,7 +188,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                 // était une violation de la règle des Hooks (hook dans callback IIFE).
                 return (
                     <Card icon={<Icon name="calendar" size={18} />} title="Timeline">
-                        <div className="text-tiny text-ink-500 mb-4">Faites glisser les événements sur les années pour ajuster votre calendrier de vie.</div>
+                        <div className="text-tiny text-ink-400 mb-4">Faites glisser les événements sur les années pour ajuster votre calendrier de vie.</div>
                         <div className="overflow-x-auto pb-3">
                             <div className="flex gap-2 min-w-max">
                                 {timelineYears.map(year => {
@@ -309,7 +309,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                             <Card className="!p-0 overflow-hidden border-2 border-white/10">
                                 <div className="bg-gradient-to-r from-dark to-black p-6 border-b border-white/10 flex justify-between items-start">
                                     <div>
-                                        <div className="text-meta text-ink-500 uppercase tracking-widest font-bold mb-1">Analyse d'Impact</div>
+                                        <div className="text-meta text-ink-400 uppercase tracking-widest font-bold mb-1">Analyse d'Impact</div>
                                         <h3 className="text-2xl font-black text-white">{selectedItem.name}</h3>
                                         <div className="text-body text-ink-300 mt-1">{new Date(selectedItem.date).toLocaleDateString()}</div>
                                     </div>
@@ -325,8 +325,8 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                         <div className="flex items-center gap-2 mb-2"><Icon name="sprout" size={18} className="text-ink-300" /><h4 className="font-bold text-ink-100 text-body">Effet papillon (20 ans)</h4></div>
                                         <p className="text-meta text-ink-300 mb-3">Si cet argent ({formatCAD(impactAnalysis.immediateCost)}) avait été investi à {returnRate}% au lieu d'être dépensé...</p>
                                         <div className="flex justify-between items-end">
-                                            <div><div className="text-meta text-ink-500">Coût d'Opportunité</div><div className="text-lg font-bold text-orange-400">{formatSigned(-Math.round(impactAnalysis.opportunityCost), { withCurrency: true })}</div></div>
-                                            <div className="text-right"><div className="text-meta text-ink-500">Manque à gagner total</div><div className="text-2xl font-black text-white">{formatSigned(-Math.round(impactAnalysis.totalWealthImpact20y), { withCurrency: true })}</div></div>
+                                            <div><div className="text-meta text-ink-400">Coût d'Opportunité</div><div className="text-lg font-bold text-orange-400">{formatSigned(-Math.round(impactAnalysis.opportunityCost), { withCurrency: true })}</div></div>
+                                            <div className="text-right"><div className="text-meta text-ink-400">Manque à gagner total</div><div className="text-2xl font-black text-white">{formatSigned(-Math.round(impactAnalysis.totalWealthImpact20y), { withCurrency: true })}</div></div>
                                         </div>
                                     </div>
                                 </div>
@@ -364,7 +364,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                     ) : (
                         <div className="sticky top-6 h-[400px] flex flex-col items-center justify-center text-ink-500 bg-white/5 rounded-2xl border border-white/5 border-dashed">
                             <Icon name="life-projects" size={40} className="mb-4 opacity-30" />
-                            <p className="text-body">Sélectionne un événement</p>
+                            <p className="text-body text-ink-400">Sélectionne un événement</p>
                         </div>
                     )}
                 </div>

@@ -111,10 +111,11 @@
 > Affichage display-only (zéro impact NW, confirmé financial-integrity). 7 tests dont discriminant. Follow-ups → `HEALTH-SUB-DRY`, `PLANNING-ANNUAL-CALENDAR`.
 > **⚠️ PERF-BOOT/D7 DÉFÉRÉ (pas un quick-win)** : `hydrateAssets` (`App.tsx:420`) `sleep(2500)` protège AUSSI CoinGecko (~30/min, pas que Finnhub 60/min) →
 > un speedup provider-AVEUGLE déclenche des 429 crypto au cold-boot (régression UX). Vrai fix = provider-aware (M-L) + plan-first. Item rouvert dans cet état.
-> **A11Y-INK500 LOT 1 ✅ FAIT (2026-06-26, « fais tout »)** : `text-ink-500`→`text-ink-400` (AA normal ✅) sur 6 écrans quotidiens
-> (Dashboard/Budget/BudgetGroupTable/Investments/Transactions/Planning), **43 occ.** migrées sur classification a11y-auditor PAR-OCCURRENCE +
-> **10 GARDÉES** (icônes seuil 3:1, décoratif, `ⓘ` aria-hidden, 1 cible inactive délibérée). Panel a11y-auditor + code-reviewer APPROVE, check-contrast
-> confirme (ink-400 = 5,2-6,4:1), suite 2334. **RESTE ~43 fichiers/~145 occ.** en lots suivants. Découverte → `A11Y-BUDGETTABLE-SELECT-KBD` (selects+bouton invisibles au clavier).
+> **A11Y-INK500 LOTS 1+2 ✅ FAITS (2026-06-26, « fais tout »)** : `text-ink-500`→`text-ink-400` (AA normal ✅) sur classification a11y-auditor PAR-OCCURRENCE.
+> **Lot 1** = 6 écrans quotidiens (Dashboard/Budget/BudgetGroupTable/Investments/Transactions/Planning), 43 occ. + 10 gardées. **Lot 2** = LifeEvents/RealEstate/
+> FutureDetailModal/ChildPlanning/retirement(RetirementIncomeCard+AssetLocationCard), 37 occ. + 8 gardées (+ fix empty-state LifeEvents:367 + `aria-hidden` `→` AssetLoc:215).
+> Panel a11y-auditor + code-reviewer APPROVE chaque lot, check-contrast confirme, suite verte. **RESTE ~37 fichiers/~105 occ.** en lots suivants (investments/*, projection/*,
+> sidebar/*, setup/*, realestate/*…). Découverte → `A11Y-BUDGETTABLE-SELECT-KBD` (selects+bouton invisibles au clavier). Méthode rodée : a11y-auditor classe → sed line-adressé → vérif GARDER → panel.
 > **⚠️ IA-NAV-LABELS = DÉCISION UX MARC** (pas un bug) : rail délibérément collapsed-by-default (hover/focus expand, Phase B.1) — NE PAS override sans OK.
 > **⚠️ PERF-BOOT/D7 DÉFÉRÉ** (CoinGecko ~30/min ; provider-aware requis, plan-first).
 > **Prochaines pistes plan-first** : FISC-ASSETLOC-INTL (M, money-critical) ; A11Y-INK500 lots suivants (par écran) ; reste lot hygiène LOW (NW-ASSETBREAKDOWN-DRY — partie `currentLiquidity`

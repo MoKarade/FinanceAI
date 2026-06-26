@@ -434,7 +434,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                     onChange={e => setCurrentRent(Number(e.target.value))}
                                                     className="w-full bg-purple-500/10 border border-purple-500/30 rounded px-2 py-1.5 text-purple-300 text-body font-bold focus:outline-none focus:border-purple-400"
                                                 />
-                                                <span className="text-meta text-ink-500">$/m</span>
+                                                <span className="text-meta text-ink-400">$/m</span>
                                             </div>
                                         </div>
                                         <div>
@@ -496,7 +496,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                         <div className={`p-2 rounded-lg border flex flex-col justify-center ${netYield > 0 ? 'bg-green-900/20 border-green-500/20' : 'bg-red-900/20 border-danger-500/20'}`}>
                                             <div className="text-tiny uppercase font-bold text-ink-300">Si location (Cash-Flow)</div>
                                             <div className={`text-lg font-black ${netYield > 0 ? 'text-green-400' : 'text-danger-400'}`}>
-                                                {formatCurrency(netAnnualIncome)}<span className="text-tiny font-normal text-ink-500">/an</span>
+                                                {formatCurrency(netAnnualIncome)}<span className="text-tiny font-normal text-ink-400">/an</span>
                                             </div>
                                         </div>
                                     </div>
@@ -534,7 +534,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                         columns={scenariosColumns}
                                         rows={combinedData}
                                     />
-                                    <p className="text-tiny text-ink-500 mt-3 text-center">
+                                    <p className="text-tiny text-ink-400 mt-3 text-center">
                                         Note: Le graphique affiche automatiquement les scénarios pertinents (Habiter vs Louer) selon le type de propriété que vous avez configuré (Résidence Principale ou Propriété Locative).
                                     </p>
                                 </>
@@ -544,10 +544,10 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
 
                     <Card title="Amortissement et Équité">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-2">
-                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Welcome Tax</div><div className="text-body font-bold text-white">{formatCurrency(welcomeTax)}</div></div>
-                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Notaire &amp; Insp.</div><div className="text-body font-bold text-white">{formatCurrency(notaryFees + inspectionFees)}</div></div>
-                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Rénos Initiales</div><div className="text-body font-bold text-white">{formatCurrency(initialRenovations)}</div></div>
-                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Maison Totale</div><div className="text-body font-bold text-white">{formatCurrency(price + initialRenovations)}</div></div>
+                            <div><div className="text-tiny text-ink-400 uppercase tracking-wider">Welcome Tax</div><div className="text-body font-bold text-white">{formatCurrency(welcomeTax)}</div></div>
+                            <div><div className="text-tiny text-ink-400 uppercase tracking-wider">Notaire &amp; Insp.</div><div className="text-body font-bold text-white">{formatCurrency(notaryFees + inspectionFees)}</div></div>
+                            <div><div className="text-tiny text-ink-400 uppercase tracking-wider">Rénos Initiales</div><div className="text-body font-bold text-white">{formatCurrency(initialRenovations)}</div></div>
+                            <div><div className="text-tiny text-ink-400 uppercase tracking-wider">Maison Totale</div><div className="text-body font-bold text-white">{formatCurrency(price + initialRenovations)}</div></div>
                         </div>
                     </Card>
 
@@ -560,7 +560,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                             </div>
                             <table className="w-full text-meta text-left min-w-[700px]">
                                 <thead>
-                                    <tr className="border-b border-white/10 text-ink-500 uppercase tracking-wider">
+                                    <tr className="border-b border-white/10 text-ink-400 uppercase tracking-wider">
                                         <th className="py-2 pr-4">Année</th>
                                         <th className="py-2 pr-4">Taux</th>
                                         <th className="py-2 pr-4 text-right">Intérêts/an</th>
@@ -587,7 +587,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                 <td className="py-2 pr-4 text-right text-purple-300"><PrivateAmount>{formatCurrency(row.ValeuréPropriété)}</PrivateAmount></td>
                                                 <td className="py-2 text-right">
                                                     <PrivateAmount className="text-success-400 font-bold">{formatCurrency(row.Équité)}</PrivateAmount>
-                                                    <span className="text-ink-500 ml-1">({equityPct}%)</span>
+                                                    <span className="text-ink-400 ml-1">({equityPct}%)</span>
                                                 </td>
                                             </tr>
                                         );

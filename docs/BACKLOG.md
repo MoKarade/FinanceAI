@@ -613,10 +613,13 @@
   retenue étrangère 15 % en CELI/REER non comptée (`assetLocation.ts:104-132`) ; l'outil dit « optimal »
   alors qu'une perte existe (~375 $/an sur 100 k$ international en CELI). Fix non trivial (le patch naïf
   reste 0 : taxIdeal NonReg=marginalRate domine) — modéliser le coût de détention.
-- [ ] **[FISC-SRCDED-NOOP]** 🔧 MEDIUM/LOW — `optimizeSourceDeductions` (V49) : réduction de la retenue
-  salariale selon cotisations REER/CELIAPP toujours NULLE (ordre d'exécution, `monthlyCalcs.ts:98-112`) +
-  bug d'unité mensuel/annuel sous-jacent. Effet net ~0 (régularisé en avril) mais cashflow mensuel et
-  solde d'avril faussés. Fix : calculer la retenue APRÈS la cascade d'allocation + unité annuelle.
+- [x] **[FISC-SRCDED-NOOP]** ✅ **RÉSOLU (2026-06-26, choix Marc) — par RETRAIT du code mort, pas par fix** :
+  l'enquête a prouvé que les 2 bugs (ordre + unité) affectaient une valeur **DISCARDÉE** — `computeMonthlyWithholding`
+  accumulait dans `taxCurrentYear.revenu`, **jamais appliqué au liquide** (`impotSalaireMois=0`), puis **écrasé par
+  l'override de décembre** (V30) avant le règlement d'avril. Preuve : perturbation +999 999/mois → golden PINé +
+  2331 tests d'intégration **byte-identiques** (seuls les 2 unitaires DE la fonction cassaient). Le flag T1213
+  fonctionne via le chemin DÉCEMBRE (`taxDecember`, V49, correct). « Corriger » = zéro effet → fonction **retirée**
+  (résout aussi PERF-WITHHOLDING + gain perf MC). Panel projection-validator (2329/2329) + financial-integrity + code-reviewer ✅.
 - [x] **[A11Y-DANGER-300]** ✅ LOW (2026-06-17) — `text-danger-300` n'existait PAS dans `tailwind.config.js` (palette
   danger = 400/500/600 seulement) → couleur ignorée. 3 sites hors périmètre MONEY-PHANTOM :
   `ImportBankStatement.tsx:123`, `RealEstateAdviceCard.tsx:19`, `Transactions.tsx:439` (+ son hover no-op).
@@ -683,7 +686,9 @@
 
 ### Performance
 - [ ] **[PERF-BOOT]** 🔧 — `App.tsx:401` : `hydrateAssets` `sleep(2500)` sequentiel par actif → pool concurrent borne.
-- [ ] **[PERF-WITHHOLDING]** 🔧 — `monthlyCalcs.ts:80` : memoïser `computeMonthlyWithholding` par cle d'invariance.
+- [x] **[PERF-WITHHOLDING]** ✅ **RÉSOLU (2026-06-26) — par SUPPRESSION, pas mémoïsation** : `computeMonthlyWithholding`
+  était du code mort (sortie écrasée par décembre, cf. FISC-SRCDED-NOOP) → retirée. On ne mémoïse pas du code mort, on
+  le supprime (gain perf MC réel : 2× `calculateFiscalReport`/mois × chemins MC en moins, pour un résultat jeté).
 - [ ] **[PERF-BUNDLE]** 🔧 — 3 `INEFFECTIVE_DYNAMIC_IMPORT` (`claude.ts`, `backupAuto.ts`, `lockedProjectionStore`) → tout-statique ou tout-dynamique par module.
 - [ ] **[PERF-MISSINGDATA]** 🔧 — `MissingDataBanner.tsx:209` : selecteur atomique (`useShallow`) pour eviter les re-renders pendant le calcul MC.
 

@@ -12,7 +12,7 @@
 //
 //   2) PAR CONJOINT — l'impôt est calculé par individu, pas sur le ménage
 //      combiné. La preuve est la progressivité de calculateFiscalReport (source
-//      de vérité fiscale, appelée une fois par conjoint dans computeMonthlyWithholding) :
+//      de vérité fiscale, appelée une fois par conjoint dans le calcul de décembre) :
 //      un seul revenu de 120 k$ paie PLUS que deux revenus de 60 k$ réunis.
 //
 //   3) BOUT EN BOUT — le brut pilote réellement l'impôt dans la projection :

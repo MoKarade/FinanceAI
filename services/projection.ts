@@ -33,7 +33,7 @@ import { buildSeededRng, computeHistoricalContributionRoom, computeRrqAdjustment
 import { handleNonRegSale as portfolioNonRegSale, handleCryptoSale as portfolioCryptoSale, applyCapitalDisposition } from './projection/portfolioOps';
 import { computeEstateNetWorth } from './projection/estateCalculation';
 import { computeMonthlyMarketRates, type StressTestConfig } from './projection/marketShocks';
-import { computeEffectiveExpenseInflation, computeMonthlyWithholding } from './projection/monthlyCalcs';
+import { computeEffectiveExpenseInflation } from './projection/monthlyCalcs';
 import { type AllocationStrategy, type FutureScenarioType, type ProjectionResult } from './projection/types';
 export type { AllocationStrategy, FutureScenarioType, ProjectionChartPoint, ProjectionResult } from './projection/types';
 export type { StrategySearchResult, ConfigResult, RunStrategySearchOptions } from './projection/strategySearch';
@@ -778,18 +778,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         }
         taxPreviousYear = aprilResult.newTaxPreviousYear;
 
-        // Cycle 29 split: retenue salariale mensuelle → ./projection/monthlyCalcs
+        // [FISC-SRCDED-NOOP — retenue mensuelle retirée 2026-06-26] La provision salariale mensuelle
+        // (`computeMonthlyWithholding`) était VESTIGIALE : sa sortie accumulée dans `taxCurrentYear.revenu`
+        // était ÉCRASÉE par l'override de décembre (`taxDecember`, balise « V30: Override ») avant tout
+        // règlement → jamais consommée (prouvé : perturbation +999 999/mois ⇒ golden byte-identique, 2331
+        // tests d'intégration inchangés). Le flag T1213 agit correctement via le chemin décembre (`taxDecember`,
+        // balise « V49: Retenue source »). On conserve UNIQUEMENT la remise à 0 de l'affichage « impôt salaire »
+        // pour le non-retraité (annule l'affectation d'avril ci-dessus : le règlement d'avril s'affiche via
+        // `fluxImpots`, pas `impotSalaireMois`).
         if (!isRetired) {
-            taxCurrentYear.revenu += computeMonthlyWithholding(
-                // FA-10 (suivi silent-failure-hunter) : salaire du défunt à 0 — sinon la retenue
-                // fantôme accrue survivait à une année de TRANSITION vers la retraite (la branche
-                // retraité de décembre fait `+=`, pas une assignation) et était PAYÉE en avril.
-                { m, loopYear, simInflation, simSalaryGrowth, grossMarcBaseAnnual,
-                  grossAnnaBaseAnnual: survivorMode ? 0 : grossAnnaBaseAnnual,
-                  contribREER, contribCELIAPP, smithInterestDeductibleYear,
-                  enableMonteCarlo, optimizeSourceDeductions: effProj.optimizeSourceDeductions },
-                calculateFiscalReport,
-            );
             impotSalaireMois = 0;
         }
 

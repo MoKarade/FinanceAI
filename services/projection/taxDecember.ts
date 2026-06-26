@@ -413,8 +413,8 @@ export function processDecemberTaxFiling(
         //
         // FIX FISCAL CRITIQUE (Marc, 2026-06) — l'ancien code n'ajoutait que 5 % du
         // vrai impôt sur la pension (« 95 % retenu à la source »), MAIS aucune retenue
-        // mensuelle n'existe pour les retraités (computeMonthlyWithholding est gardé par
-        // `if (!isRetired)`). Et les retraits REER/FERR (ctx.accRetraitsReerYear) étaient
+        // mensuelle n'existe pour les retraités (la branche active `if (!isRetired)` ne
+        // s'applique pas). Et les retraits REER/FERR (ctx.accRetraitsReerYear) étaient
         // EXCLUS de l'assiette imposable → ils restaient au seul taux de retenue à la
         // source (19/24/29 %), jamais réconciliés au taux marginal réel. Résultat :
         // retraités massivement sous-imposés (patrimoine/revenu net surévalués).

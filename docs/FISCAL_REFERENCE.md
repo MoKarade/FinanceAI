@@ -6,6 +6,7 @@
 > **Ré-audité 2026-06-17** (agent `fiscal-accuracy`, audit complet `docs/AUDIT_FINANCIER_2026-06-17.md`) :
 > **0 écart code↔doc**, source unique respectée (zéro chiffre fiscal en dur divergent). Seule réserve LOW :
 > seuils mutation « reste_qc » millésime 2025 à réindexer (cf §8 + BACKLOG `[FISC-WELCOME-2026]`).
+> **2ᵉ passe 2026-06-23** (0 écart, `docs/AUDIT_FINANCIER_2026-06-23.md`).
 > **Règle CLAUDE.md** : toute constante fiscale du code DOIT correspondre à ce doc,
 > daté + sourcé. Aucun chiffre fiscal en dur non sourcé. Audit : agent `fiscal-accuracy`.
 >

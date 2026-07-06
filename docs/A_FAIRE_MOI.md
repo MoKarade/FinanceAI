@@ -27,18 +27,7 @@
   qui expose l'app avant ta confirmation que le gate est validé.
 
 ## O6 — Questions du brief 2026-06-10 (réponses requises, Claude ne devine pas)
-- [ ] **Q2 (Phase 1 / Cloudflare)** : confirmer que le domaine prod passe bien par le proxy
-  Cloudflare (nuage ORANGE dans le dashboard DNS) devant Vercel, et vérifier s'il existe une
-  **Page Rule / Cache Rule « Cache Everything »** (c'est le seul cas où CF servirait un
-  index.html périmé — par défaut CF ne cache pas le HTML et respecte le `no-cache` d'origine).
-- [ ] **Analyse Cloudflare (PH1-b)** — est-il la cause du « Failed to fetch dynamically imported
-  module » ? [Probable] déclencheurs réels : (a) deploy Vercel pendant une session ouverte (les
-  anciens chunks hashés disparaissent atomiquement) ; (b) **Cloudflare Access** : session expirée →
-  la requête du chunk `.js` reçoit un 302 vers la page de login HTML → import échoué même si le
-  chunk existe. [Peu probable] cache CF d'un index périmé (cf Q2). Le vrai bug CÔTÉ APP (le seul
-  chunk sans filet de retry/reload) est corrigé (PH1-a).
-  **Procédure de retrait Cloudflare → voir O1 ci-dessus** (consolidée 2026-06-16 ; le gate Google est
-  désormais code-ready, il reste 2 variables d'env + des clics dashboard).
+- [x] ~~**Q2 (Phase 1 / Cloudflare)** / **Analyse Cloudflare (PH1-b)**~~ — **CADUC (2026-06-16)** : Cloudflare complètement retiré (O1). Apex+www en DNS only → Vercel direct.
 - [ ] **Q1 (Phase 4 / Futur — à répondre avant que Claude code PH4-FUT)** : qu'est-ce que tu veux
   voir ANNOTÉ sur la courbe ? (âge de retraite ? épuisement d'un compte ? bascule de stratégie ?
   début RRQ/PSV ? autre ?)
@@ -54,8 +43,8 @@ Le code est prêt et déployé ; il manque l'hébergement du bundle (Marc avait 
 - [ ] Tester l'install 1 clic (Claude Desktop) + « connecte mes finances » → vraies données.
 
 ## O3 — Prouver la sync Drive en réel (P0 produit multi-user)
-- [ ] Créer le `VITE_GOOGLE_CLIENT_ID` (absent → sync inerte) ; cf `docs/GOOGLE_DRIVE_SETUP.md`.
-- [ ] Fenêtre privée neuve → login Google → toutes les données + clés API reviennent
+- [x] ~~Créer le `VITE_GOOGLE_CLIENT_ID`~~ — ✅ **FAIT (O1-A)** : client OAuth Google déployé.
+- [ ] **Valider sur hubperso.com** : fenêtre privée neuve → login Google → toutes les données + clés API reviennent
   (cf checklist `docs/BACKLOG.md` § sync).
 
 ## O4 — Proxy backend pour la clé Anthropic (P0 multi-user)

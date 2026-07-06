@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Hygiène documentaire : mise à niveau 2026-07-06] — 2026-07-06
+
+### État documentaire synchronisé avec le code actuel
+- **README.md** : chiffres tests réels 2334 / 207 fichiers (au lieu de 742 / 73) ; Vite 8 Rolldown, Vitest 4, schema v7 ; features manquantes ajoutées (import PDF Claude Vision, sync Drive chiffré, Budget v2 50/30/20, retraite per-conjoint, crédit dons, mode discret).
+- **BACKLOG.md** : compteur PR #425 (2026-06-26), items cochés/fusionnés/dédoublonnés (HEALTH-SAVINGS, PLANNING-ANNUAL-SUB-12X, FISC-WHT, PH1-b Cloudflare, D6-GRAPH a11y).
+- **CLAUDE.md** : test count ~2330, agent count 14 réel, leçon 2026-07-06 (branche distante no-op, triaging commits périmés).
+- **SESSION_HANDOVER.md** : table §1 (#425 + 2334 tests), anti-patterns corrigés (cycle autonome Claude-merge), bandeau session 2026-07-06 ajouté.
+- **docs/VISION.md** : auth Google in-app ✅ marqué fait (2026-06-16).
+- **docs/A_FAIRE_MOI.md** : O6/Q2 Cloudflare marqué caduc, O3 cohérent avec O1.
+- **docs/FISCAL_REFERENCE.md** : 2ᵉ passe audit 2026-06-23 marquée.
+- Aucun impact produit — corrections documentaires de cohérence uniquement.
+
+---
+
 ## [unreleased — Lisibilité : textes secondaires plus contrastés (WCAG AA)] — 2026-06-26
 
 ### Les libellés et données secondaires sont plus faciles à lire

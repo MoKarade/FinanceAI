@@ -23,8 +23,8 @@ de qualité d'une « triple AAA company ».
 
 ## Cap produit (ordre indicatif)
 1. **Passer de « solo » (~90 %) à « vrai produit multi-utilisateurs »** (~72 % aujourd'hui) :
-   prouver la sync Drive en réel, auth Google in-app (sortir de Cloudflare), proxy clé
-   Anthropic. (cf `A_FAIRE_MOI` O1/O3/O4.)
+   prouver la sync Drive en réel, ✅ **auth Google in-app** (2026-06-16, Cloudflare retiré), proxy clé
+   Anthropic. (cf `A_FAIRE_MOI` O1/O3/O4 — O2 supprimé.)
 2. **Connecteur Claude grand public** : `.mcpb` hébergé, install 1 clic, ouverture bêta
    (vérification Google `drive.appdata`). (cf `A_FAIRE_MOI` O2.)
 3. **Qualité AAA transversale** (audit `docs/AAA_AUDIT_2026-06.md`) : robustesse (ne jamais

@@ -1,7 +1,62 @@
 import path from 'path';
 import { execSync } from 'node:child_process';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { relayClaude } from './api/_lib/relay';
+
+// [P0-PROXY] Middleware dev : monte le relais BYOK (api/_lib/relay.ts, code Web-standard partagé
+// avec la fonction Edge Vercel) sous /api/claude en `npm run dev` — sans dépendre de `vercel dev`.
+// Corps de REQUÊTE bufferisé (petits JSON texte — Vision reste en direct, hors relais) ;
+// corps de RÉPONSE streamé chunk par chunk (préserve le SSE de chatStream).
+const claudeRelayDevPlugin = (env: Record<string, string>): Plugin => ({
+    name: 'financeai-claude-relay-dev',
+    configureServer(server) {
+        server.middlewares.use('/api/claude', (req, res) => {
+            void (async () => {
+                const chunks: Buffer[] = [];
+                for await (const c of req) chunks.push(c as Buffer);
+                const ctrl = new AbortController();
+                res.on('close', () => { if (!res.writableEnded) ctrl.abort(); });
+                res.on('error', () => { /* socket fermé par le client (abort mi-stream) — no-op voulu */ });
+                const headers = new Headers();
+                for (const [k, v] of Object.entries(req.headers)) if (typeof v === 'string') headers.set(k, v);
+                const original = (req as unknown as { originalUrl?: string }).originalUrl ?? req.url ?? '';
+                const request = new Request(`http://localhost${original}`, {
+                    method: req.method,
+                    headers,
+                    body: chunks.length ? new Uint8Array(Buffer.concat(chunks)) : undefined,
+                    signal: ctrl.signal,
+                });
+                const response = await relayClaude(request, {
+                    accessToken: env.PROXY_ACCESS_TOKEN || env.VITE_PROXY_ACCESS_TOKEN || undefined,
+                });
+                res.statusCode = response.status;
+                response.headers.forEach((v, k) => res.setHeader(k, v));
+                if (response.body) {
+                    const reader = response.body.getReader();
+                    for (;;) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        res.write(value);
+                    }
+                }
+                res.end();
+            })().catch((e) => {
+                // DEV LOCAL uniquement : logguer la vraie cause est sans risque (la clé vit dans les
+                // headers de la requête, jamais dans l'objet d'erreur) et rend le relais diagnosticable.
+                console.error('[relais dev /api/claude]', e);
+                if (!res.headersSent) {
+                    res.statusCode = 502;
+                    res.setHeader('content-type', 'application/json');
+                    res.end(JSON.stringify({ type: 'error', error: { type: 'api_error', message: 'Relais dev indisponible.' } }));
+                } else {
+                    // Flux déjà entamé (SSE) : ne PAS injecter de JSON en queue de stream — terminer sec.
+                    res.end();
+                }
+            });
+        });
+    },
+});
 
 // G22-F2 — version AUTO (plus de bump manuel). CalVer `AAAA.M.J` dérivée de la date
 // de build : change à chaque déploiement, robuste même sur clone git shallow (Vercel)
@@ -26,7 +81,7 @@ export default defineConfig(({ mode }) => {
         port: 3000,
         host: '0.0.0.0',
       },
-      plugins: [react()],
+      plugins: [react(), claudeRelayDevPlugin(env)],
       define: {
         __APP_VERSION__: JSON.stringify(APP_VERSION),
         __GIT_SHA__: JSON.stringify(GIT_SHA),

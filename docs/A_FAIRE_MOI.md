@@ -47,10 +47,20 @@ Le code est prêt et déployé ; il manque l'hébergement du bundle (Marc avait 
 - [ ] **Valider sur hubperso.com** : fenêtre privée neuve → login Google → toutes les données + clés API reviennent
   (cf checklist `docs/BACKLOG.md` § sync).
 
-## O4 — Proxy backend pour la clé Anthropic (P0 multi-user)
-- [ ] `services/claude.ts` utilise `dangerouslyAllowBrowser` (clé exposée côté navigateur —
-  OK solo, inacceptable pour des tiers). Cible : Vercel Edge (free tier). Claude peut coder
-  le proxy ; le déploiement + secret Vercel = action Marc.
+## O4 — Relais BYOK pour Claude (P0-PROXY, dark-launch awaiting env+flag)
+Code livré (2026-07-06, phases 1-2 seulement) : relais Edge Vercel, token chiffré, anti-abus.
+- [ ] **(1) Générer le token** : `openssl rand -hex 32` → copier.
+- [ ] **(2) Poser l'env Vercel SERVEUR** (`PROXY_ACCESS_TOKEN`) : ce token → Settings → Environment Variables
+  → Category **Functions** (serveur-side seulement) → `PROXY_ACCESS_TOKEN=<token>`.
+- [ ] **(3) Poser l'env build** (`VITE_PROXY_ACCESS_TOKEN`) → Category **Production** (ou **Preview** pour tester)
+  → `VITE_PROXY_ACCESS_TOKEN=<token>`.
+- [ ] **(4) Redéployer** Vercel (les nouvelles vars sont injected au build+Functions).
+- [ ] **(5) Smoke test** : dans l'app prod, activeR une fonction IA (« Résumer mes finances »). Doit fonctionner.
+- [ ] **(6) OPTIONNEL — basculer le transport** : une fois satisfait, poser `VITE_CLAUDE_TRANSPORT=proxy` (Production)
+  pour passer du relais par défaut (Vision en direct pour l'instant). Redéployer. Note : rollback = retirer le flag.
+
+⚠️ **Aucune clé Anthropic serveur à créer** — le relais utilise TA clé client (via le navigateur au premier appel
+  token=null), puis la chiffre via le token Vercel, réemballe + envoie à Anthropic. Zéro exposition cloud.
 
 ## O5 — Validations manuelles sur device (ressenti / prod)
 - [ ] Fluidité zoom 60 fps sur tous les onglets ; PDF complet ; iOS Safari ; Lighthouse re-run.

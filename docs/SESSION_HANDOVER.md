@@ -4,8 +4,8 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> ## 📊 Session 2026-07-06 — Rapport d'état + hygiène doc
-> Rapport complet livré à Marc (3 semaines, 111 commits #315→#425, santé 2334 tests verts mesurée) ; branche de session réconciliée (résidus 06-17 superseded écartés) ; dérives doc corrigées (README remis à niveau + features, BACKLOG ×5 cochés/fusionnés/dédoublonnés, compteurs CLAUDE.md/VISION/FISCAL_REFERENCE, CHANGELOG, SESSION_HANDOVER table/mantra). Reste bloqué sur Marc : **FISC-WELCOME-2026**, **W5-TAX-PROXY**, **HIST-NW-DEBT-DISCLAIMER**, Q1 multi-courbes, OAuth consent Production, preuve sync Drive.
+> ## 📊 Session 2026-07-06 — Rapport d'état + hygiène doc + P0-PROXY BYOK + décision app SOLO
+> Rapport complet livré à Marc (3 semaines, 111 commits #315→#425, santé 2334 tests verts mesurée) ; branche de session réconciliée (résidus 06-17 superseded écartés) ; dérives doc corrigées (README remis à niveau + features, BACKLOG ×5 cochés/fusionnés/dédoublonnés, compteurs CLAUDE.md/VISION/FISCAL_REFERENCE, CHANGELOG, SESSION_HANDOVER table/mantra). **+ P0-PROXY relais BYOK livré dark-launch** (phases 1-2 : code proxy Edge + routes + tests ; awaiting env Vercel + flag, cf O4) **+ décision Marc : app SOLO** (multi-user remisé indéfiniment, focus qualité AAA ; multi-appareil Marc + sync Drive conservés). Reste bloqué sur Marc : **FISC-WELCOME-2026**, **W5-TAX-PROXY**, **HIST-NW-DEBT-DISCLAIMER**, Q1 multi-courbes, OAuth consent Production, preuve sync Drive, envs O4.
 >
 > ## ⚡ BRIEF MARC 2026-06-10 — LE CHANTIER PRIORITAIRE (4 phases)
 > Marc a livré un brief structurant (détail COMPLET dans `BACKLOG.md` § « BRIEF MARC 2026-06-10 ») :

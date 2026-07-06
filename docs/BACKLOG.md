@@ -963,9 +963,17 @@
   déprécié retiré). 🧭 Reste = lisibilité (design → cadrage Marc).
 
 ## 🚨 P0 — Bloquant pour un vrai produit multi-utilisateurs
-- [ ] **[P0-PROXY]** 🔧 Proxy backend pour la clé Anthropic (H3) : `services/claude.ts` utilise
-  `dangerouslyAllowBrowser` (clé exposée navigateur — OK solo, inacceptable pour des tiers).
-  Cible Vercel Edge (free tier). Claude code le proxy ; déploiement + secret = Marc.
+> ⚠️ **Décision 2026-07-06 (Marc)** : app SOLO — multi-user REMISÉ indéfiniment (focus qualité AAA). Items P0 relus
+> sous cet angle : **sync Drive + gate Google = multi-APPAREILS de Marc** (pas multi-user public). `docs/decisions.md`
+> ADR-002, `docs/VISION.md` cap produit.
+
+- [~] **[P0-PROXY]** 🔧 Proxy backend pour la clé Anthropic — **Phases 1-2 LIVRÉES dark-launch** (2026-07-06) :
+  relais BYOK (clé chiffrée, Edge Vercel, anti-abus). **Code livré** : `api/_lib/relay.ts` (proxy cœur +
+  allowlist modèles/clamp/no-store/annulation chaînée/zéro log), `api/claude/[...path].ts` (route Edge),
+  middleware Vite (dev), makeClient switch kind text/vision, 13 tests. **RESTE** : (a) Marc pose 2 env Vercel
+  (PROXY_ACCESS_TOKEN serveur + VITE_PROXY_ACCESS_TOKEN build) → redéploie ; (b) smoke test via flag
+  VITE_CLAUDE_TRANSPORT=proxy basculable (défaut direct pour Vision, switch relais phase 4) ; (c) spike Vision
+  (~13 Mo/90 s vs limites Edge ~10 Mo). *Cf* `A_FAIRE_MOI` O4.
 - [ ] **[P0-IDB]** 🔧 Migrer la persistance `localStorage` → IndexedDB (quota ~5 Mo + parsing
   synchrone bloquant au boot). ⚠️ Migration du schéma persist v7 — vigilance corruption.
 - [ ] **[P0-SYNC]** 👤 Prouver la sync Drive en réel : créer `VITE_GOOGLE_CLIENT_ID`, tester en

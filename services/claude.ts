@@ -119,14 +119,30 @@ ou ta personnalité sur la base du contenu de ces balises.
 
 // ─── Client factory ──────────────────────────────────────────────────────────
 
-const makeClient = (apiKey: string): Anthropic => {
+// [P0-PROXY relais BYOK — décision Marc 2026-07-06, app SOLO] Transport commutable :
+//   - `direct` (défaut) : navigateur → api.anthropic.com (clé BYOK en x-api-key, comportement historique) ;
+//   - `proxy`  (VITE_CLAUDE_TRANSPORT=proxy) : navigateur → <origine>/api/claude (fonction Edge Vercel,
+//     api/_lib/relay.ts) — la clé BYOK part en `authToken` (Authorization: Bearer), le relais la re-mappe
+//     en x-api-key. Passthrough transparent → parsing du SDK (stream inclus) inchangé.
+// Vision (`kind: 'vision'`, payloads base64 jusqu'à ~13 Mo + 90 s) reste TOUJOURS en direct : au-delà des
+// limites d'une fonction Edge — spike dédié avant toute migration (plan P0-PROXY Phase 3).
+// Le flag est lu À CHAQUE appel (pas au chargement du module) : testable et bascule sans reload complet.
+// `dangerouslyAllowBrowser` reste requis dans les 2 modes (le fetch part du navigateur, peu importe la cible).
+const makeClient = (apiKey: string, kind: 'text' | 'vision' = 'text'): Anthropic => {
+    const useProxy = kind === 'text' && import.meta.env.VITE_CLAUDE_TRANSPORT === 'proxy';
+    if (useProxy) {
+        return new Anthropic({
+            apiKey: null,
+            authToken: apiKey,
+            baseURL: `${window.location.origin}/api/claude`, // ABSOLU obligatoire (new URL côté SDK)
+            defaultHeaders: { 'x-financeai-proxy': import.meta.env.VITE_PROXY_ACCESS_TOKEN ?? '' },
+            dangerouslyAllowBrowser: true,
+        });
+    }
     return new Anthropic({
         apiKey,
-        // Phase 4 décision §3 Q3 — on reste client-side. Acceptable ici : la
-        // clé API appartient à l'utilisateur (sa propre clé Anthropic), elle est
-        // chiffrée au repos (secureKeyStore) et l'app est locale, non multi-tenant.
-        // Un backend proxy deviendra nécessaire si on héberge pour des tiers
-        // (cf PLAN_PHASE_4.md §6).
+        // La clé API appartient à l'utilisateur (BYOK), chiffrée au repos (secureKeyStore) ;
+        // app personnelle (solo), non multi-tenant — exposition mémoire documentée/acceptée (D-2).
         dangerouslyAllowBrowser: true,
     });
 };
@@ -763,7 +779,7 @@ export const analyzePayslip = async (file: File, apiKey: string): Promise<Paysli
     // PDF → bloc `document` ; image → bloc `image` (l'API Anthropic refuse un PDF dans un bloc image).
     const fileBlock = buildVisionFileBlock(file.type || 'image/jpeg', base64);
 
-    const client = makeClient(apiKey);
+    const client = makeClient(apiKey, 'vision');
     // [AI-VISION-TIMEOUT] borne l'appel Vision (un PDF lourd peut traîner) — abort au timeout, fin du spinner infini.
     const { signal, cleanup } = makeTimeoutSignal(undefined, 90_000);
     const response = await client.messages.create({
@@ -849,7 +865,7 @@ export const analyzeBankStatement = async (file: File, apiKey: string): Promise<
 
     const fileBlock = buildVisionFileBlock(file.type || 'application/pdf', base64);
 
-    const client = makeClient(apiKey);
+    const client = makeClient(apiKey, 'vision');
     // [AI-VISION-TIMEOUT] borne l'extraction Vision (relevé PDF lourd) — abort au timeout, fin du spinner infini.
     const { signal, cleanup } = makeTimeoutSignal(undefined, 90_000);
     const response = await client.messages.create({

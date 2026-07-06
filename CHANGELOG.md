@@ -6,6 +6,27 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — P0-PROXY relais BYOK (dark-launch) + décision app SOLO] — 2026-07-06
+
+### Infra : relais Anthropic chiffré pour l'IA
+- **Proxy Edge Vercel** : clés API jamais exposées au navigateur. Relais BYOK (ta clé reste ta clé) qui
+  chiffre le token de transit, antiAbus par construction. Code + tests livrés ; awaiting env Vercel (PROXY_ACCESS_TOKEN +
+  VITE_PROXY_ACCESS_TOKEN, 6 étapes doc `A_FAIRE_MOI` O4). Vision API reste en direct (~13 Mo > limites Edge, spike post-lancement).
+- **Sécurité du relais** : route unique `/api/claude/`, allowlist modèles, clamp tokens, `no-store` cache,
+  annulation chaînée, zéro logs sensitifs.
+- **Transport basculable** : flag `VITE_CLAUDE_TRANSPORT` (défaut direct, optionnel =proxy après déploiement).
+- **Codex : `api/_lib/relay.ts` (proxy cœur), `api/claude/[...path].ts` (route Edge), middleware Vite, makeClient
+  switch kind text/vision, 13 tests discriminants.** Pas d'API Anthropic côté serveur Node (Edge = stateless, sûr).
+
+### Produit : app SOLO (multi-user remisé)
+- **Décision Marc 2026-07-06** : FinanceAI = outil perso qualité AAA, pas produit bêta public. Multi-appareil
+  (sync Drive + gate Google) CONSERVÉ.
+- **Impact docs** : `docs/decisions.md` ADR-002 (contexte/trade-offs/alt), `docs/VISION.md` cap remisé,
+  `docs/BACKLOG.md` section P0 annotée (multi-user → multi-appareil Marc).
+- Aucun changement de code produit — infra invisible au-delà de la route relais.
+
+---
+
 ## [unreleased — Hygiène documentaire : mise à niveau 2026-07-06] — 2026-07-06
 
 ### État documentaire synchronisé avec le code actuel

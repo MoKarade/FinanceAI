@@ -5,10 +5,8 @@
 > Audit qualité détaillé : voir `docs/HISTORIQUE.md` (section `AAA_AUDIT_2026-06.md`).
 > Actions humaines (Marc) : [`docs/A_FAIRE_MOI.md`](A_FAIRE_MOI.md).
 >
-> **Dernière mise à jour : 2026-06-19.** Tests : ~2164 verts (+ 1 PR #367) / 158 fichiers · tsc clean · build OK.
-> Session 2026-06-19 — livré : **#367 [FUZZ-ONETIME-FLOWS]** fuzz étendu à l'achat immo (257/500 runs sous hypothèque) + rénovation,
-> invariant `DetteTotale ≥ DettesNonImmo`, test déterministe immo. **PARTIEL** : reste vente/gain locatif + équité négative + revenu locatif au suivi.
-> **BACKLOG AUTONOME ÉPUISÉ** (aucun item Claude ≥ actionnable sans OK Marc).
+> **Dernière mise à jour : 2026-07-06.** Tests : 2334 verts / 207 fichiers · tsc clean · build OK.
+> **Dernière PR mergée : #425** (2026-06-26, WHT-DISPLAY-EXACT) — 111 commits depuis #315, audit financier complet 2026-06-23 résolu (6 lots), 5 sessions 06-19→06-26, retraite per-conjoint ✅.
 > Restes uniquement : suivis LOW (DEP-UNDICI-VULN, FISC-CONST-LINT-LIMITS, FISC-RRSP-PRE2010-FALLBACK + suivi FUZZ-ONETIME-FLOWS) +
 > blocages Marc (FISC-WELCOME-2026, RECH-ACTION-UX confirmée visuellement, phases 2-4 brief plan-first, P0-*, design Budget/Transactions/Retraite).
 
@@ -104,9 +102,7 @@
     Sources « value » à l'écran : les 2 donuts (`<Pie dataKey="value">`) au montage + `<Bar dataKey="value">` (`BudgetGroupTable:254`,
     rendu seulement à l'expansion d'un poste). Vraie correction = inconnue (quirk interne Recharts sur la légende du Pie) → demande une
     investigation dédiée (essayer un `id` unique par `<Pie>`, ou supprimer/customiser `<Legend>`). Warning React dev, pas une erreur runtime.
-  - [ ] **[PLANNING-ANNUAL-SUB-12X]** 🔧 LOW (découverte PH4-F, **pré-existant, hors scope**) : `Planning.tsx` calcule
-    `totalYearly = totalMonthly * 12` où `totalMonthly = Σ averageAmount` — un abo ANNUEL (détecté à intervalle 350-380 j,
-    `averageAmount` = le montant ANNUEL complet) est compté comme mensuel puis ×12 → surévaluation ~12× de cet abo dans les KPI
+  - [x] **[PLANNING-ANNUAL-SUB-12X]** ✅ **FAIT (2026-06-26)** — voir l.709 détail. Doublon fermé.
     « Fixe Mensuel »/« Coût Annuel ». Identique avant/après PH4-F (financial-integrity : pas une régression). Fix : utiliser
     `yearlyCost` pour l'annuel et normaliser le mensuel par `yearlyCost/12` plutôt que `averageAmount` brut.
   - `BUDGET-DONUT-SVG-ARIA` ✅ **FAIT (2026-06-23)** : les 2 donuts (théo + réel) enveloppent désormais `<ResponsiveContainer>`
@@ -452,9 +448,7 @@
 - [x] **[LLM-INJECT-PARITY]** (SEC-1) ✅ MEDIUM (livré) — `getCoupleOptimizationStrategies` + `getNextBestActions`
   neutralisent désormais les noms utilisateur (`sanitizePromptText`) et isolent les blocs de données en `<DONNEES>`
   (`wrapUserData`) — parité avec les 4 autres surfaces LLM. Le system prompt QUEBEC_FISCAL_CONTEXT isole déjà `<DONNEES>`.
-- [ ] **[FISC-WHT-HARDCODE]** (M1) 🔍 MEDIUM — `services/projection.ts:1390` `totalTaxesPaid += … + retraitReerMois * 0.15`.
-  ⚠️ **Analyse 2026-06-17 : NE PAS appliquer le fix de surface (0.15→0.29) tel quel.** Post-#314, la retenue REER est un
-  ACOMPTE débité en AVRIL (dans `fluxImpots` d'avril, l.738) → l'ajouter AUSSI mensuellement l.1390 est un possible
+- [x] **[FISC-WHT-HARDCODE]** ✅ **FAIT (2026-06-26, LOT 6/M1)** — `withholdingForGrossRRSP` tiered 19/24/29 % (barème tiers). Résiduel → [WHT-DISPLAY-EXACT] l.381 coché. Doublon fermé.
   DOUBLE-COMPTAGE dans ce compteur d'AFFICHAGE (`totalTaxesPaid`, PAS le NW). Augmenter le taux empirerait le double-compte.
   À FAIRE d'abord : vérifier empiriquement `totalTaxesPaid == Σ(sorties d'impôt réelles)` (cadre moneyConservation), puis
   corriger selon le résultat (retirer la ligne si double-compte, ou aligner sur la vraie retenue si complémentaire). Effort M.
@@ -687,7 +681,7 @@
 - [x] **[TEST-PROJ-MODULES]** ✅ **PÉRIMÉ/COUVERT (constaté 2026-06-25)** — les 3 modules ONT des tests directs : `projection.assetLocation.test.ts`
   (8), `monthlyOutput.test.ts` (19), `strategyConfig.returnProfile.test.ts` + `strategyConfigRanking.test.ts` (22) = 49 tests. Item ajouté avant
   ces couvertures. (Leçon R2-FIRE : vérifier qu'une tâche n'est pas déjà faite avant de la coder.)
-- [ ] **[HEALTH-SAVINGS-RATE]** ✅ **FAIT (2026-06-25, reco PM)** — `HealthIndicator.tsx` : le taux d'épargne + le coussin d'urgence
+- [x] **[HEALTH-SAVINGS-RATE]** ✅ **FAIT (2026-06-25, reco PM)** — `HealthIndicator.tsx` : le taux d'épargne + le coussin d'urgence
   comptaient les postes ÉPARGNE comme des dépenses → taux ≈ 0 % pour un épargnant, coussin sous-estimé. Helper pur `monthlyConsumptionExpenses`
   (`healthRatios.ts`, exclut `isSavingsNature`, cohérent avec `computeBudgetParityScore`/`Budget.tsx`) + 4 tests. Panel financial-integrity + code-reviewer ✅.
 - [x] **[HEALTH-SAVINGS-CONSISTENCY]** ✅ **FAIT (2026-06-26, choix Marc)** — `nature === 'Epargne'` STRICT remplacé par `isSavingsNature`
@@ -785,9 +779,7 @@
   `React.lazy` nu ; boucle bornée structurellement ; ErrorBoundary en dernier recours. Audit cache
   fait : `vercel.json` DÉJÀ conforme (index.html `no-cache`, `/assets/*` `immutable`) ; `sw.js`
   DÉJÀ network-first `no-store` sur les navigations (2026-05-22) — rien à changer.
-- [ ] **[PH1-b]** 🧭👤 Cloudflare : analyse livrée à Marc (session 2026-06-10 — voir aussi
-  `A_FAIRE_MOI`). Verdict : [Probable] déclencheurs = deploy pendant session ouverte (chunks Vercel
-  atomiquement supprimés) et/ou redirect Cloudflare Access sur session expirée ; [Peu probable] cache
+- [x] **[PH1-b]** ✅ **CADUC — Cloudflare retiré 2026-06-16** (Access + proxy DNS dé-proxifié). Auth = gate Google in-app. Fermé.
   CF d'un index.html périmé (CF ne cache pas le HTML par défaut et respecte le `no-cache` origine —
   à vérifier : Page Rule « Cache Everything » dans le dashboard CF). NE PAS retirer Cloudflare avant
   P0-AUTH (gate Google in-app) : c'est l'authentification de l'app. Étapes de retrait + pertes
@@ -1294,13 +1286,10 @@
   dépenses théoriques, mise de fonds y sont masqués. Veux-tu ces montants privés aussi ? Si oui : envelopper
   la valeur dans `<PrivateAmount>` + ajouter `{...maskedSliderAria(isPrivacyMode)}` au slider (les deux ensemble).
   Sinon, fermer. Pas un bug a11y — pur choix de confidentialité produit. (S)
-- [ ] **[D7]** Perf boot : `hydrateAssets` (`App.tsx`) boucle `await sleep(2500ms)` séquentiel par
-  symbole → 10 actifs = ~25 s. Paralléliser + cacher, garde-fous anti-rate-limit. Plus gros gain
-  de fluidité ressenti.
+- [ ] **[D7]** → Voir [PERF-BOOT] l.724 (doublon, même tâche, déféré provider-aware).
 - [ ] **[D6-KBD]** Sidebar hover-only : labels `opacity-0` focusables + `disabled` bloque
   l'accordéon clavier → rendre pilotable au clavier.
-- [ ] **[D6-GRAPH]** Graphes sans alternative textuelle : table de données masquée / bouton « voir
-  les données » sous chaque graphe (a11y).
+- [x] **[D6-GRAPH]** ✅ **PARTIELLEMENT FAIT (A11Y-INK500 lots 1-2)** — tables de données `ChartDataTable` sr-only ajoutées aux 2 donuts Budget. Reste : graphes restants (projections, investissements) ; résiduel = accès clavier aux graphes.
 - [ ] **[D6-HEADING]** `CollapsibleSection` émet son titre dans un `<div className="text-h2">` (pas
   un `<hN>`) → saut h1→h4 dans plusieurs onglets (sous-titres `<h4>`). Ajouter une prop `headingLevel`
   pour un vrai outline (h2/h3). Touche tout le codebase (a11y-auditor 2026-06-09).

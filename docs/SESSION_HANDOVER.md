@@ -4,6 +4,9 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 📊 Session 2026-07-06 — Rapport d'état + hygiène doc
+> Rapport complet livré à Marc (3 semaines, 111 commits #315→#425, santé 2334 tests verts mesurée) ; branche de session réconciliée (résidus 06-17 superseded écartés) ; dérives doc corrigées (README remis à niveau + features, BACKLOG ×5 cochés/fusionnés/dédoublonnés, compteurs CLAUDE.md/VISION/FISCAL_REFERENCE, CHANGELOG, SESSION_HANDOVER table/mantra). Reste bloqué sur Marc : **FISC-WELCOME-2026**, **W5-TAX-PROXY**, **HIST-NW-DEBT-DISCLAIMER**, Q1 multi-courbes, OAuth consent Production, preuve sync Drive.
+>
 > ## ⚡ BRIEF MARC 2026-06-10 — LE CHANTIER PRIORITAIRE (4 phases)
 > Marc a livré un brief structurant (détail COMPLET dans `BACKLOG.md` § « BRIEF MARC 2026-06-10 ») :
 > **Phase 1** bugs chunk périmé (✅ FAITE, mergée #238 → prod : [PH1-a] `lazyWithRetry` sur le dernier
@@ -602,9 +605,9 @@
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
-| **Dernière PR mergée** | **#370** [NW-PARITY-INVARIANT] (garde-fou keystone parité NW présent ≡ départ moteur, 5 tests, 2026-06-19) |
+| **Dernière PR mergée** | **#425** [WHT-DISPLAY-EXACT] (retenue REER exacte par tirage, 2026-06-26) |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
-| **Tests** | **~2171/2171 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
+| **Tests** | **2334/2334 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
 | **Typecheck** | Clean en mode strict |
 | **Build** | OK — **Vite 8 (Rolldown)** ; lazy-loading préservé (vendor react/recharts/ai/pdf) |
 | **Schema store** | **v7** (Zustand persist, migrations v1→v7) |
@@ -920,12 +923,12 @@ Onglets retirés : Planning (fusionné dans Budget — G22-N3), Système (fusion
 ### Anti-patterns à éviter
 - ❌ Ré-introduire Google Sheet / docs.google.com / fetchPortfolioHistory CSV
 - ❌ Pré-remplir INITIAL_USERS avec des noms / salaires non-vides
-- ❌ Push à `main` directement
-- ❌ Merger ses propres PRs
+- ❌ Push à `main` directement sans PR (le cycle autonome = branche + PR + auto-merge, jamais direct)
 - ❌ Ajouter une dépendance payante / SaaS récurrent
 - ❌ Toucher au workflow `.github/workflows/ci.yml` sans précaution
   (vitest v4 incident — lighthouse a son propre workflow isolé pour ça)
 - ❌ Rewrite massif sans plan (cycle 14 = plan P1 d'abord puis exécution)
+- ❌ Arrêter une tâche EN PLEINE EXÉCUTION (règle Marc 2026-06-15 : aller au bout sans rendre la main)
 
 ---
 
@@ -943,9 +946,8 @@ Onglets retirés : Planning (fusionné dans Budget — G22-N3), Système (fusion
 
 ## 10. Mantra
 
-> **Plan avant code. Tests avant push. Draft PR avant merge. User valide en prod.**
+> **Plan avant code. Tests verts avant commit. Gate vert + /review-all avant auto-merge. Claude merge autonome dès CI verte.**
 
-Si tu lis ça, prends 5 min pour relire les contraintes cardinales (§2) avant
-de commencer. C'est la différence entre une session productive et un rollback.
+Cycle 2026-06 : plus de validation humaine sur chaque PR — Claude gère le cycle COMPLET (branche → commits gated → push → PR draft → auto-merge squash dès CI ✅). Si tu lis ça, prends 5 min pour relire les contraintes cardinales (§2) et le workflow (§6) avant de commencer. C'est la différence entre une session productive et un rollback.
 
 Bonne session 👋

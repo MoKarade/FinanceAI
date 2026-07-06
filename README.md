@@ -26,9 +26,9 @@ npm run preview
 ## Lancer les tests
 
 ```bash
-npm run test          # Vitest (742 tests, 73 fichiers)
+npm run test          # Vitest (2334 tests, 207 fichiers)
 npm run typecheck     # TypeScript strict mode (clean)
-npm run build         # Vite (--mode production)
+npm run build         # Vite 8 (--mode production)
 ```
 
 Tests manuels : ~195 cas couvrant les onglets actifs — voir
@@ -67,15 +67,13 @@ Tests manuels : ~195 cas couvrant les onglets actifs — voir
 |---|---|
 | **[`docs/BACKLOG.md`](docs/BACKLOG.md)** | **Source de vérité du restant à faire** — items P0/P1/P2/P3 |
 | [`docs/SESSION_HANDOVER.md`](docs/SESSION_HANDOVER.md) | Reprise rapide — état actuel + recommandations |
-| [`docs/HISTORIQUE.md`](docs/HISTORIQUE.md) | 131 tests manuels par onglet |
-| [`docs/HISTORIQUE.md`](docs/HISTORIQUE.md) | Suivi refactor "Future = source unique" |
+| [`docs/HISTORIQUE.md`](docs/HISTORIQUE.md) | Archive consolidée : snapshots, audits, designs livrés, ADRs, 131 tests manuels par onglet |
 | [`docs/PROJECTION_OUTPUT_SCHEMA.md`](docs/PROJECTION_OUTPUT_SCHEMA.md) | Schéma exhaustif `chartData[i]` (~50 champs) |
-| [`docs/SECURITY_STRATEGY.md`](docs/SECURITY_STRATEGY.md) | Plan auth (Cloudflare Access) |
 | [`docs/PROJECTION.md`](docs/PROJECTION.md) | Moteur de projection (9 phases, 7 scénarios, MC) |
+| [`docs/FISCAL_REFERENCE.md`](docs/FISCAL_REFERENCE.md) | Valeurs fiscales sourcées — RRQ, PSV, SRG, paliers, crédits |
 | [`CHANGELOG.md`](CHANGELOG.md) | Historique des changements |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Stack détaillée, topologie, store, pipeline IA |
 | [`mcp/README.md`](mcp/README.md) | Documentation du serveur MCP (intégration agents IA) |
-| [`docs/archive/`](docs/archive/) | Historique des audits et plans de fix passés |
 
 ## Architecture (vue rapide)
 
@@ -83,7 +81,7 @@ L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCH
 
 - Pas de backend. L'app vit côté navigateur, persiste localement (localStorage + IndexedDB chiffré), et appelle Anthropic, Finnhub et CoinGecko directement depuis le client.
 - Le moteur de projection (`services/projection.ts` + `services/projection/` — 31 sous-modules) est le coeur de l'app. Voir [`docs/PROJECTION.md`](docs/PROJECTION.md) pour les détails.
-- Le state global est Zustand v5 + persist (schema v6 avec migrations v1→v6).
+- Le state global est Zustand v5 + persist (schema v7 avec migrations v1→v7).
 - `services/eraContext.ts` est dormant (MCP-only) — l'UI Era a été retirée.
 
 ## 🔐 Sécurité
@@ -98,24 +96,31 @@ L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCH
 
 ## 🛠️ Stack
 
-- **Frontend** : React 19.2 + Vite 6 + TypeScript 5.8 strict + Tailwind CSS 3
-- **State** : Zustand 5 (avec `persist` + `partialize`, schema v6)
-- **Tests** : Vitest 2.1 + @testing-library/react + axe-core (742 tests, 73 fichiers)
+- **Frontend** : React 19.2 + Vite 8 (Rolldown) + TypeScript 5.8 strict + Tailwind CSS 3
+- **State** : Zustand 5 (avec `persist` + `partialize`, schema v7 + migrations v1→v7)
+- **Tests** : Vitest 4 + @testing-library/react + axe-core (2334 tests, 207 fichiers)
 - **Validation** : Zod 3
-- **Charts** : Recharts (lazy-loaded)
+- **Charts** : Recharts 3 (lazy-loaded)
 - **Backend** : aucun — 100 % navigateur, déploiement statique **Vercel** (`vercel.json`)
 - **LLM** : Anthropic Claude (Sonnet 4.6 + Haiku 4.5 via `@anthropic-ai/sdk`)
-- **Data marché** : Finnhub REST API (cours actions + ETF, cache 1h)
+- **Vision** : Claude Vision pour OCR relevés/paies PDF
+- **Data marché** : Finnhub REST API (cours actions + ETF, cache 1h) ; CoinGecko (crypto)
+- **Sync** : Google Drive (chiffrement optionnel par passphrase, AES-256-GCM)
 - **MCP** : Model Context Protocol server (Node.js)
 
 ## 📈 Fonctionnalités clés
 
 ### Suivi en temps réel
 - Synchronisation transactions Era Context (9 endpoints, AbortController)
+- Import OCR relevés/paies PDF (Claude Vision) — extraction montants, dates, catégories
 - Reconnaissance auto des catégories (rules + LLM)
 - Détection d'abonnements récurrents
+- Sync Google Drive bidirectionnelle (données chiffrées optionnellement)
 
 ### Budget et goals
+- Budget v2 : règle 50/30/20 (Besoins/Envies/Épargne) réel vs théorique
+- Mode couple : propriété d'abonnements par personne
+- Abonnements épinglés (alertes dépassement)
 - Catégories budgétaires hiérarchiques
 - Goals SMART avec suggestion LLM
 - Visualisation de la marge mensuelle
@@ -129,7 +134,9 @@ L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCH
 ### **Projection future (★ feature flagship)**
 - 7 scénarios pré-calibrés : BASE, LIBERTE_55, HYPER_INFLATION, WINDFALL, ECONOMIC_WINTER, COMPOUND_STRESS, LATE_INHERITANCE
 - Monte Carlo 100 itérations (déterministe via PRNG seedé)
+- Retraite per-conjoint : FERR, PSV, RRQ par âge et prénom de chaque conjoint
 - Pension DB + RRQ/PSV + SRG avec prorata résidence
+- Crédit dons par paliers fédéraux et québécois
 - Smile Curve dépenses retraite
 - Soins longue durée stochastiques
 - Mortalité stochastique
@@ -140,6 +147,12 @@ L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCH
 - FVI (Indice de Vitalité Financière)
 
 → Détails complets dans [`docs/PROJECTION.md`](docs/PROJECTION.md).
+
+### Confidentialité et vie privée
+- Mode discret : masquage DOM de tous les montants (toggle dans paramètres)
+- Chiffrement local au repos (AES-256-GCM, PBKDF2 600k itérations)
+- Clés API exclues des sauvegardes et du localStorage
+- Zéro transmission de PII — toutes les données restent dans le navigateur
 
 ### Assistant IA
 - Chat persisté Claude (Sonnet 4.6) avec contexte financier complet

@@ -1,7 +1,7 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, ~1780 tests Vitest.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, ~2330 tests Vitest.
 Tout en français.
 
 Fichier dense et court (il se charge à chaque session = coûte des tokens).
@@ -162,7 +162,7 @@ Doc détaillée dans `docs/`, qui fait foi.
   `dc_probe.test.ts`) puis le supprimer ; si le `commit-gate` lance `vitest` PENDANT cette fenêtre, le glob
   l'attrape puis échoue à le charger (« Cannot find module ») → commit BLOQUÉ à tort (tes vrais tests passent).
   Ne PAS committer tant qu'un agent à Bash tourne ; sinon re-committer une fois l'agent fini (la race se résout).
-  ⚠️ **Course `git stash` CONCURRENTE = mesures CORROMPUES + faux gate VERT** (piège 2026-06-23, FISC-WHT-HARDCODE) :
+- ⚠️ **Course `git stash` CONCURRENTE = mesures CORROMPUES + faux gate VERT** (piège 2026-06-23, FISC-WHT-HARDCODE) :
   lancer PLUSIEURS agents à Bash qui font chacun `git stash push/pop` (pour leur discriminant) EN MÊME TEMPS, +
   une suite complète en arrière-plan, sur le MÊME working tree → les stashes se marchent dessus et la suite peut
   s'exécuter PENDANT qu'un agent a stashé le fix (code d'AVANT) → `exit 0` TROMPEUR (un test qui casse avec le fix
@@ -173,10 +173,11 @@ Doc détaillée dans `docs/`, qui fait foi.
   mesuré l'emporte ») — ici projection-validator avait raison contre l'exit 0. Faire les git-stash SÉQUENTIELLEMENT.
 - Un commit de merge GitHub (`noreply@github.com` sur `main`) signalé « Unverified » par le stop-hook
   n'est PAS un commit local à corriger — l'ignorer.
+- ⚠️ **La suppression d'une branche DISTANTE est un no-op silencieux** (vu 2026-07-06 : `git push origin :branche` répond "Everything up-to-date" sans supprimer). Une branche périmée ne peut donc être ni force-poussée ni supprimée → réconcilier par `checkout -B <br> <tip-distant>` + `merge -X theirs origin/main` + **forcer l'arbre ≡ main** (`git checkout origin/main -- .` puis vérifier `git diff origin/main` VIDE) + commit de merge + push fast-forward. ⚠️ Avant de "sauver" les commits d'une branche périmée, TRIAGER : après des semaines, ils peuvent être superseded voire CONTRAIRES à une décision prise depuis (vu : suppression de l'alias tax vs décision Marc 2026-06-19 de le GARDER).
 
 ## Agents — deux niveaux
 **Globaux** (`~/.claude/agents/` via claude-config / ECC) : dispo dans tous les projets.
-**Projet** (`.claude/agents/` ici, **13**) : spécialisés FinanceAI, SURCHARGENT les globaux par nom.
+**Projet** (`.claude/agents/` ici, **14**) : spécialisés FinanceAI, SURCHARGENT les globaux par nom.
 Détail complet (rôles, modèles, exclusions anti-chevauchement) : **`docs/agents.md`**. Usage des
 commandes (`/new-feature`, `/review-all`, `/release-review`) : **`docs/workflow.md`**.
 

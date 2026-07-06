@@ -110,22 +110,18 @@ Code livré (2026-07-06, phases 1-2 seulement) : relais Edge Vercel, token chiff
   plan d'action déclinés mois/trimestre/semestre/année.
 
 
-## O7 — Valeurs fiscales RQ 2026 requises (Claude ne devine JAMAIS un chiffre fiscal)
-- [ ] **[FISC-WELCOME-2026]** — les seuils de la **taxe de bienvenue** (droits de mutation immobilière)
-  pour le « reste du Québec » sont au millésime **2025** (`services/realEstate.ts:101-105` :
-  58 900 / 290 000 / 552 300 $). Fournis-moi les seuils OFFICIELS **2026** (+ la source Revenu Québec /
-  ministère) → je les transcris dans `FISCAL_REFERENCE.md` (daté + sourcé) PUIS je corrige le code, même PR.
-  Sans ces valeurs, je laisse le code en 2025 (pas de devinette). Effort Claude : < 45 min une fois les
-  valeurs reçues.
-- [ ] **[W5-TAX-PROXY]** (décision d'ambition, audit 2026-06-23) — les revenus LOCATIFS et dividendes CCPC (W5)
-  sont imposés via des PROXIES plats non sourcés (`0,45` / `0,36` dans `w5Effects.ts`), désormais APPLIQUÉS en
-  année active (depuis FA-6). À TOI de trancher : **(a)** je garde les proxies + ajoute une mention « estimation,
-  proxy de taux marginal » dans l'UI + une source de taux marginal QC dans `FISCAL_REFERENCE` (rapide, honnête) ;
-  **(b)** je modélise l'impôt INCRÉMENTAL réel `tax(rev+x)−tax(rev)` par conjoint (exact, mais plan-first dédié,
-  touche le moteur). Dis (a) ou (b). En attendant les proxies restent (conservateurs, documentés).
-- [ ] **[HIST-NW-DEBT-DISCLAIMER]** (décision produit, audit 2026-06-23) — le **patrimoine net du PASSÉ** affiché dans le graphe
-  Futur = placements + liquidités + équité immo, **SANS dettes** (l'app n'a que le solde de dette COURANT, pas l'historique
-  d'amortissement) → pour un endetté, la portion passée de la courbe est GONFLÉE vs le futur (qui soustrait les dettes). Le code
-  est désormais documenté (HIST-NW-NO-DEBT). Tranche : **(a)** laisser tel quel (documenté) ; **(b)** disclaimer visuel sur la
-  zone passée du graphe ; **(c)** soustraire la dette COURANTE comme approximation (suppose la dette ~constante dans le passé —
-  imparfait). Reco : (b) (honnête, zéro fausse donnée). Dis (a)/(b)/(c).
+## O7 — Valeurs fiscales RQ 2026 requises + décisions (résolu 2026-07-06)
+- [x] ✅ **[FISC-WELCOME-2026]** — données reçues 2026-07-06. Seuils reste du Québec 2026 (source *Gazette officielle du Québec,
+  Partie 1, 2025-06-07*) : **62 900 / 315 000** (indexation +2,3438 % vs 2025). Transcrit `FISCAL_REFERENCE.md` §8.
+  Item BACKLOG moisi en 🔧 ACTIONNABLE (effort S une fois les sources). Claude procède.
+- [x] ✅ **[W5-TAX-PROXY]** — décision Marc : **(a) garder les proxies plats** (0,45 locatif / 0,36 CCPC) documentés
+  en tant qu'estimation de taux marginal QC. Ajouter une mention UI + source QC dans `FISCAL_REFERENCE.md` (rapide).
+  Clos, reste UI+doc à Claude.
+- [x] ✅ **[HIST-NW-DEBT-DISCLAIMER]** — décision Marc : **(b) disclaimer visuel** sur la zone passée du graphe (honnête,
+  zéro fausse donnée). Code documenté (HIST-NW-NO-DEBT), reste le visuel UI → item 🔧 BACKLOG.
+- [ ] **[TP1G-VIVANT-SEUL]** — données reçues 2026-07-06. Grille crédit 65+/personne vivant seule (source MFQ fiche 110606)
+  : 2 172 $ (base) + supplément monoparental 2 681 $. Seuil revenu 42 955 $. Transcrit `FISCAL_REFERENCE.md` §4.
+  Item 🔧 ACTIONNABLE moyen (plan-first + discriminant git-stash + panel).
+- [ ] ~~**[FISC-TAXDEC-INCR]**~~ — **À CONFIRMER** : interprétation de la réponse Marc « ok » 2026-07-06. Signifie-t-il
+  (a) COD ER le fix risqué (re-baser golden + tests), ou (b) statu quo/différé ? En attente d'un « go » ou « wait »
+  explicite avant de coder (risque $ élevé).

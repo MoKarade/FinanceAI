@@ -15,6 +15,8 @@ import { ConfirmModal } from './ui/ConfirmModal';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { PrivateAmount } from './ui/PrivateAmount';
+import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import {
     DAYCARE_INFO, SCHOOL_INFO, ACTIVITIES_INFO, UNI_INFO, CAR_INFO,
     getAnnualChildCost,
@@ -218,6 +220,26 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
         ? Math.min(100, (totalResp / totalStudiesCost) * 100)
         : null;
 
+    // [A11Y-CHARTS] tables de données sr-only pour les 2 graphes Recharts (opaques aux lecteurs d'écran).
+    // Colonnes $ masquées en mode privé (parité avec PrivateAmount/blur) ; l'axe X (âge) reste visible.
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
+    const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : fmt(Number(v) || 0);
+    const costColumns: ChartDataColumn[] = [
+        { key: 'age', label: 'Âge enfant', format: (v) => `${v} ans` },
+        { key: 'Essentiel', label: 'Essentiel', format: money },
+        { key: 'Garde_École_Activités', label: 'Garde / École / Activités', format: money },
+        { key: 'Ponctuel', label: 'Ponctuel (naissance, voiture…)', format: money },
+        { key: 'Bénéfices', label: 'Allocations (négatif = bénéfice)', format: money },
+        { key: 'Total', label: 'Total net', format: money },
+    ];
+    const respColumns: ChartDataColumn[] = [
+        { key: 'age', label: 'Âge enfant', format: (v) => `${v} ans` },
+        { key: 'Solde', label: 'Solde total', format: money },
+        { key: 'Contribution', label: 'Contribution', format: money },
+        { key: 'Subvention', label: 'Subventions reçues', format: money },
+        { key: 'Intérêts', label: 'Intérêts', format: money },
+    ];
+
     // C8 fix : garde déplacée APRÈS tous les hooks ci-dessus.
     if (!goal) return null;
 
@@ -306,7 +328,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 <input type="date" value={goal.birthDate} onChange={e => update('birthDate', e.target.value)} className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white focus:border-primary outline-none" />
                             </div>
                         </div>
-                        <p className="text-tiny text-ink-500 mt-2">Cette date sera utilisée dans la simulation de l'onglet Futur.</p>
+                        <p className="text-tiny text-ink-400 mt-2">Cette date sera utilisée dans la simulation de l'onglet Futur.</p>
                     </Card>
 
                     <Card icon={<Icon name="goal" size={18} />} title="Choix de Vie">
@@ -320,7 +342,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                             <span className="text-xl">{info.icon}</span>
                                             <div className="flex-1">
                                                 <div className="text-meta font-bold">{info.label}</div>
-                                                <div className="text-tiny text-ink-500">{info.desc}</div>
+                                                <div className="text-tiny text-ink-400">{info.desc}</div>
                                             </div>
                                             <div className="text-meta font-mono font-bold text-right">{info.monthly > 0 ? `${info.monthly}$/m` : 'Gratuit'}</div>
                                         </button>
@@ -362,7 +384,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                             <span className="text-xl">{info.icon}</span>
                                             <div className="flex-1">
                                                 <div className="text-meta font-bold">{info.label}</div>
-                                                {info.years > 0 && <div className="text-tiny text-ink-500">{info.years} ans</div>}
+                                                {info.years > 0 && <div className="text-tiny text-ink-400">{info.years} ans</div>}
                                             </div>
                                             <div className="text-meta font-mono font-bold text-right text-purple-300">{info.yearlyCost > 0 ? `${(info.yearlyCost / 1000).toFixed(0)}k$/an` : 'Gratuit'}</div>
                                         </button>
@@ -412,6 +434,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                     <Card icon={<Icon name="chart" size={18} />} title="Coût par âge" action={
                         <div className="text-meta text-ink-300 font-mono">Total : <PrivateAmount className="text-white font-bold">{fmt(costTimeline.totalCost)}</PrivateAmount></div>
                     }>
+                        <div role="img" aria-label="Graphique du coût de l'enfant par âge (essentiel, garde/école/activités, ponctuel, allocations)">
                         <ZoomContainer zoom={zoomCost} className="h-[280px]">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={zoomCost.visibleData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
@@ -428,6 +451,12 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 </BarChart>
                             </ResponsiveContainer>
                         </ZoomContainer>
+                        </div>
+                        <ChartDataTable
+                            caption="Coût net de l'enfant par âge"
+                            columns={costColumns}
+                            rows={costTimeline.data}
+                        />
                     </Card>
 
                     <Card icon={<Icon name="graduation" size={18} />} title="Simulateur REEE" action={
@@ -458,21 +487,21 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     <span className="text-info-400 font-bold">{fmt(respContribution)}</span>
                                 </label>
                                 <input type="range" aria-label="Cotisation annuelle REEE" min="0" max="5000" step="100" value={respContribution} onChange={e => setRespContribution(Number(e.target.value))} className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-info-500" />
-                                <p className="text-tiny text-ink-500 mt-1">Optimal : 2 500$/an pour maximiser les subventions (30% = fed 20% + QC 10%)</p>
+                                <p className="text-tiny text-ink-400 mt-1">Optimal : 2 500$/an pour maximiser les subventions (30% = fed 20% + QC 10%)</p>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
                                 <div className="bg-blue-900/20 p-3 rounded-lg border border-info-500/20 text-center">
-                                    <div className="text-tiny text-ink-500 uppercase mb-1">Capital à 17 ans</div>
+                                    <div className="text-tiny text-ink-400 uppercase mb-1">Capital à 17 ans</div>
                                     <PrivateAmount as="div" className="text-lg font-black text-white">
                                         {totalResp != null ? fmt(totalResp) : <ProjectionRequired variant="inline" />}
                                     </PrivateAmount>
                                 </div>
                                 <div className="bg-green-900/20 p-3 rounded-lg border border-green-500/20 text-center">
-                                    <div className="text-tiny text-ink-500 uppercase mb-1">Coût études prévu</div>
+                                    <div className="text-tiny text-ink-400 uppercase mb-1">Coût études prévu</div>
                                     <PrivateAmount as="div" className="text-lg font-black text-white">{fmt(totalStudiesCost)}</PrivateAmount>
                                 </div>
                                 <div className="bg-purple-900/20 p-3 rounded-lg border border-purple-500/20 text-center">
-                                    <div className="text-tiny text-ink-500 uppercase mb-1">Couverture</div>
+                                    <div className="text-tiny text-ink-400 uppercase mb-1">Couverture</div>
                                     <div className={`text-lg font-black ${respCovers != null && respCovers >= 100 ? 'text-green-400' : 'text-yellow-400'}`}>
                                         {respCovers != null ? `${respCovers.toFixed(0)}%` : '—'}
                                     </div>
@@ -483,6 +512,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                             {respProjection.length === 0 ? (
                                 <ProjectionRequired feature="La projection REEE" />
                             ) : (
+                            <div role="img" aria-label="Graphique de projection de l'épargne-études REEE (solde, contributions, subventions) par âge de l'enfant" className="h-full w-full">
                             <ZoomContainer zoom={zoomResp} className="h-full w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <ComposedChart data={zoomResp.visibleData} margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
@@ -502,8 +532,16 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 </ComposedChart>
                             </ResponsiveContainer>
                             </ZoomContainer>
+                            </div>
                             )}
                         </div>
+                        {respProjection.length > 0 && (
+                            <ChartDataTable
+                                caption="Projection de l'épargne-études REEE par âge de l'enfant"
+                                columns={respColumns}
+                                rows={respProjection}
+                            />
+                        )}
                     </Card>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

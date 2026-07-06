@@ -8,6 +8,7 @@ import { PrivateAmount } from '../ui/PrivateAmount';
 // Ordre = priorité (premier match gagne). Patterns tolérants aux accents
 // (imp[oô]t, int[ée]r[êe]t…) car le moteur émet parfois sans diacritiques.
 const EVENT_KEYWORD_ICONS: Array<[RegExp, string]> = [
+    [/\bfire\b/i, '🔥'], // [R2] FIRE atteint : 🔥 (sinon « Objectif… » matcherait 🎯 plus bas)
     [/voyage|vacances/i, '✈️'],
     [/krach|chute|baisse|correction march/i, '📉'],
     [/v[ée]hicule|voiture/i, '🚗'],
@@ -52,13 +53,22 @@ const TOOLTIP_ACCOUNTS: Array<{ key: string; label: string; color: string; gainK
     { key: 'Immobilier', label: 'Immobilier', color: '#bd7d9c' },
 ];
 
-// Infobulle au SURVOL — résumé clair + détail par compte (gains) + dépenses.
+// Infobulle du graphe Futur — résumé clair + détail par compte (gains) + dépenses.
 // G15 : libellés explicites (« Rendement » = marché, « Dépôts » = ce que tu
 // ajoutes, gros chiffre = « Variation ce mois »). Le détail exhaustif + le
-// « pourquoi » par compte reste au CLIC (FutureDetailModal).
-export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { active?: boolean; payload?: { payload: ProjectionChartPoint }[]; userName1?: string; userName2?: string }) => {
-    if (!active || !payload || !payload.length) return null;
-    const data = payload[0].payload;
+// « pourquoi » par compte reste à la modale (FutureDetailModal).
+//
+// [R3] Découplé de Recharts : prend `data` en prop DIRECTE (testable sans le
+// wrapper Recharts) et est rendu via un PORTAIL positionné par
+// `useChartTooltipPosition`. `frozen` = figé (devient interactif/scrollable et
+// montre le bouton « Détail complet ») ; `onOpenDetail` ouvre la modale exhaustive.
+export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOpenDetail }: {
+    data: ProjectionChartPoint;
+    userName1?: string;
+    userName2?: string;
+    frozen?: boolean;
+    onOpenDetail?: () => void;
+}) => {
     const fmt = (n: number) => Math.round(n).toLocaleString('fr-CA');
 
     const totalFlow = (data.NetTransferCELI || 0) + (data.NetTransferREER || 0) + (data.NetTransferNonReg || 0)
@@ -123,7 +133,7 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
                             Rendement {totalGain > 0 ? '+' : ''}{fmt(totalGain)}$
                         </PrivateAmount>
                     </div>
-                    <div className="text-[10px] text-ink-600 text-center mt-1">Dépôts = ce que tu ajoutes · Rendement = ce que le marché rapporte</div>
+                    <div className="text-[10px] text-ink-400 text-center mt-1">Dépôts = ce que tu ajoutes · Rendement = ce que le marché rapporte</div>
                 </div>
             )}
 
@@ -206,9 +216,26 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
                 </div>
             )}
 
-            <div className="text-tiny text-ink-500 text-center pt-1.5 border-t border-white/10">
-                Clique pour le détail complet
-            </div>
+            {/* [R3] Pied de page selon l'état : survol = invite à figer ; figé = bouton
+                « Détail complet » (ouvre la modale) + rappel Échap. Le bouton n'est
+                cliquable que figé (le tooltip de survol est `pointer-events:none`). */}
+            {frozen ? (
+                <div className="pt-2 mt-0.5 border-t border-white/10 flex items-center justify-between gap-2">
+                    <button
+                        type="button"
+                        onClick={onOpenDetail}
+                        className="flex-1 inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-primary bg-primary/15 hover:bg-primary/25 border border-primary/30 rounded-lg px-2 py-2.5 transition-colors"
+                    >
+                        Détail complet →
+                    </button>
+                    {/* ink-400 (#8896a8, AA normal) — ink-600 n'existe pas dans la palette (héritait la couleur parente). */}
+                    <span className="text-[10px] text-ink-400 whitespace-nowrap">Échap pour fermer</span>
+                </div>
+            ) : (
+                <div className="text-tiny text-ink-400 text-center pt-1.5 border-t border-white/10">
+                    Clique pour figer · puis détail complet
+                </div>
+            )}
         </div>
     );
 };
@@ -218,7 +245,7 @@ export const ExpertTooltip = ({ active, payload, userName1, userName2 }: { activ
 // propre icône (plus de labels texte fusionnés « A | B | C »). Les événements
 // d'un même mois s'empilent verticalement via `subIdx` : vie au-dessus du
 // point, flux en dessous. Le clic remonte le payload via `onSelect`.
-export const ClickableEventIcon = (props: { payload?: { label?: string; subIdx?: number }; onSelect?: (p: { label?: string; subIdx?: number }) => void; kind?: string; selected?: boolean; cx?: number; cy?: number; x?: number; y?: number; viewBox?: { x?: number; y?: number } }) => {
+export const ClickableEventIcon = (props: { payload?: { label?: string; subIdx?: number; color?: string }; onSelect?: (p: { label?: string; subIdx?: number; color?: string }) => void; kind?: string; selected?: boolean; cx?: number; cy?: number; x?: number; y?: number; viewBox?: { x?: number; y?: number } }) => {
     const { payload, onSelect, kind = 'life', selected = false } = props;
     // Recharts v3 : utilisé via le prop `shape` du ReferenceDot → coords en cx/cy.
     // Fallbacks (x/y, viewBox) au cas où l'API change.
@@ -230,7 +257,8 @@ export const ClickableEventIcon = (props: { payload?: { label?: string; subIdx?:
     const sub = payload.subIdx || 0;
     const dy = isLife ? -(20 + sub * 24) : (20 + sub * 20);
     const r = isLife ? 12 : 9;
-    const color = isLife ? '#d8c06a' : '#7ba0cf';
+    // [R2] Couleur PAR ÉVÉNEMENT si fournie (ex. FIRE atteint = orange #f97316), sinon défaut du kind.
+    const color = payload.color ?? (isLife ? '#d8c06a' : '#7ba0cf');
     return (
         <g
             transform={`translate(${px}, ${py})`}

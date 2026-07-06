@@ -43,6 +43,9 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
     const [isValidating, setIsValidating] = useState(false);
     const [isSuggestingPrice, setIsSuggestingPrice] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    // [FINNHUB-MISMATCH] message INFORMATIF (non bloquant, ≠ error rouge) : ex. bascule en saisie manuelle
+    // quand un symbole proposé par l'autocomplétion n'a pas de cours Finnhub.
+    const [notice, setNotice] = useState<string | null>(null);
 
     // PH4-INV-1 — autocomplétion à la frappe (Finnhub symbol search). Le dropdown n'apparaît que si
     // une clé Finnhub est configurée ; sinon l'utilisateur reste sur la saisie « À la main ».
@@ -63,6 +66,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
         setManualMode(false);
         setManualPrice('');
         setError(null);
+        setNotice(null);
         setSuggestions([]);
         setShowSuggestions(false);
     };
@@ -90,6 +94,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
         const sym = symbol.trim().toUpperCase();
         if (!sym) { setError('Entre d\'abord un symbole ou un nom court (ex: AAPL, FONDS-XYZ).'); return; }
         setError(null);
+        setNotice(null);
         setManualMode(true);
         setStockName(sym);
     };
@@ -97,36 +102,60 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
     /** Prêt à saisir le reste : soit le symbole est validé (Finnhub), soit on est en mode manuel. */
     const ready = validatedSymbol !== null || manualMode;
 
-    const validateSymbol = async (symOverride?: string, nameOverride?: string) => {
+    /**
+     * Tente d'obtenir un cours pour un symbole. Retourne un STATUT discriminé :
+     *  - 'ok'       : cours obtenu, symbole validé.
+     *  - 'no-quote' : pas de cours (symbole inconnu / non couvert par le forfait) → fallback légitime.
+     *  - 'error'    : exception réseau (timeout, 401, panne) → NE PAS basculer silencieusement en manuel.
+     * La distinction est cruciale : une panne réseau ≠ un symbole non cotable (sinon on masquerait une
+     * vraie erreur derrière « entre le prix à la main »).
+     */
+    const validateSymbol = async (symOverride?: string, nameOverride?: string): Promise<'ok' | 'no-quote' | 'error'> => {
         const sym = (symOverride ?? symbol).trim().toUpperCase();
-        if (!sym) return;
+        if (!sym) return 'no-quote';
         setShowSuggestions(false);
         setIsValidating(true);
         setError(null);
+        setNotice(null);
         try {
             const quote = await getQuote(sym);
             if (!quote || quote.price <= 0) {
                 setError(`Ticker "${sym}" introuvable ou prix indisponible. Configure ta clé Finnhub si pas déjà fait.`);
-                return;
+                return 'no-quote';
             }
             setSymbol(sym);
             setValidatedSymbol(sym);
             setStockName(nameOverride || quote.symbol);
             setCurrentPrice(quote.price);
             setBuyPrice(quote.price.toString()); // par défaut = prix actuel
+            return 'ok';
         } catch (e) {
             console.error('[AddStockForm] validate failed:', e);
             setError("Erreur lors de la validation. Vérifie ta connexion et la clé Finnhub.");
+            return 'error';
         } finally {
             setIsValidating(false);
         }
     };
 
-    /** Clic sur une suggestion d'autocomplétion → préremplit le symbole et le valide (quote live). */
-    const selectSuggestion = (r: SymbolSearchResult) => {
+    /** [FINNHUB-MISMATCH] Clic sur une suggestion → tente la validation (quote live). L'autocomplétion
+     *  Finnhub `/search` propose des symboles que le `/quote` du forfait gratuit ne sait PAS coter (titres
+     *  étrangers/TSX, dérivés). UNIQUEMENT dans ce cas ('no-quote'), on bascule en saisie MANUELLE pré-remplie
+     *  (symbole + nom) — il n'a plus qu'à entrer le prix. Une vraie panne réseau ('error') garde son message
+     *  d'erreur VISIBLE (pas de bascule silencieuse qui masquerait l'incident). */
+    const selectSuggestion = async (r: SymbolSearchResult) => {
         setSuggestions([]);
         setShowSuggestions(false);
-        void validateSymbol(r.symbol, r.description);
+        const res = await validateSymbol(r.symbol, r.description);
+        if (res === 'no-quote') {
+            setError(null);
+            setSymbol(r.symbol.toUpperCase());
+            setStockName(r.description || r.symbol);
+            setManualMode(true);
+            setNotice(`« ${r.symbol} » n'a pas de cours via Finnhub (titre étranger ou hors forfait gratuit). Entre le prix à la main ci-dessous.`);
+        }
+        // res === 'error' → l'erreur réseau reste affichée (pas de fallback manuel silencieux).
+        // res === 'ok'    → symbole validé.
     };
 
     const suggestHistoricalPrice = async () => {
@@ -204,9 +233,13 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                         <input
                             type="text"
                             value={symbol}
-                            onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                            onChange={(e) => { setSymbol(e.target.value.toUpperCase()); if (notice) setNotice(null); }}
                             onFocus={() => { if (suggestions.length) setShowSuggestions(true); }}
                             onBlur={() => { setTimeout(() => setShowSuggestions(false), 150); }}
+                            // [RECH-ACTION-UX] Escape ferme le DROPDOWN d'autocomplétion, PAS la modale entière :
+                            // le Modal écoute Escape sur `document` ; sans ce stopPropagation, vouloir fermer le
+                            // menu fermait toute la fenêtre et perdait la saisie en cours.
+                            onKeyDown={(e) => { if (e.key === 'Escape' && showSuggestions) { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); setShowSuggestions(false); } }}
                             placeholder={hasProvider ? 'Tape un nom ou un ticker : Apple, AAPL, XEQT…' : 'AAPL, TSLA, FONDS-XYZ...'}
                             disabled={validatedSymbol !== null || manualMode}
                             autoComplete="off"
@@ -218,7 +251,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                         {validatedSymbol || manualMode ? (
                             <button
                                 type="button"
-                                onClick={() => { setValidatedSymbol(null); setCurrentPrice(null); setManualMode(false); setManualPrice(''); }}
+                                onClick={() => { setValidatedSymbol(null); setCurrentPrice(null); setManualMode(false); setManualPrice(''); setNotice(null); }}
                                 className="px-3 py-2 bg-white/10 text-white rounded font-bold text-body hover:bg-white/15"
                             >
                                 Changer
@@ -251,7 +284,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                             id="symbol-suggestions"
                             role="listbox"
                             aria-label="Suggestions de titres"
-                            className="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto rounded-lg border border-white/15 bg-dark shadow-xl"
+                            className="absolute z-20 mt-1 w-full max-h-80 overflow-y-auto rounded-lg border border-white/15 bg-dark shadow-xl"
                         >
                             {suggestions.map((r) => (
                                 <li key={r.symbol} role="option" aria-selected={false}>
@@ -270,6 +303,9 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                         </ul>
                     )}
                     </div>
+                    {isValidating && (
+                        <p className="mt-2 text-meta text-ink-300" role="status">⏳ Validation du cours en cours…</p>
+                    )}
                     {manualMode && (
                         <div className="mt-2">
                             <label className="block text-meta text-ink-300 mb-1 font-bold uppercase">Prix actuel par action (manuel)</label>
@@ -392,8 +428,14 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                     </>
                 )}
 
+                {notice && (
+                    <div className="p-2 bg-info-500/10 border border-info-500/30 rounded text-meta text-info-300" role="status">
+                        {notice}
+                    </div>
+                )}
+
                 {error && (
-                    <div className="p-2 bg-danger-500/10 border border-danger-500/30 rounded text-meta text-red-300">
+                    <div className="p-2 bg-danger-500/10 border border-danger-500/30 rounded text-meta text-red-300" role="alert">
                         {error}
                     </div>
                 )}

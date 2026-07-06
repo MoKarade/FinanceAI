@@ -6,16 +6,20 @@
 import type { BudgetCategory, Debt, RealEstateGoal } from '../types';
 
 export const TEST_BUDGET_ITEMS: BudgetCategory[] = [
-    { id: 'b1', name: 'Logement', target: 2100, nature: 'Logement', frequency: 'Monthly' },
-    { id: 'b2', name: 'Épicerie', target: 850, nature: 'Alimentation', frequency: 'Monthly' },
-    { id: 'b3', name: 'Restaurants', target: 250, nature: 'Alimentation', frequency: 'Monthly' },
-    { id: 'b4', name: 'Transport', target: 350, nature: 'Transport', frequency: 'Monthly' },
-    { id: 'b5', name: 'Loisirs', target: 200, nature: 'Loisirs', frequency: 'Monthly' },
-    { id: 'b6', name: 'Santé', target: 100, nature: 'Santé', frequency: 'Monthly' },
-    { id: 'b7', name: 'Abonnements', target: 80, nature: 'Autre', frequency: 'Monthly' },
-    { id: 'b8', name: 'CELI', target: 800, nature: 'Épargne', frequency: 'Monthly' },
-    { id: 'b9', name: 'REER', target: 600, nature: 'Épargne', frequency: 'Monthly' },
-    { id: 'b10', name: 'Voyages annuels', target: 3600, nature: 'Loisirs', frequency: 'Yearly' },
+    // `nature` = classe 50/30/20 (type `'Besoin'|'Envie'|'Epargne'`), PAS une sous-catégorie :
+    // le détail vit dans `name`. Besoin = essentiels (logement, épicerie, transport, santé,
+    // téléphone) ; Envie = discrétionnaire (restaurants, loisirs, abonnements, voyages) ; Epargne
+    // = virements d'épargne (CELI/REER/CELIAPP). Aligne le groupement Budget + les donuts PH4-B.
+    { id: 'b1', name: 'Logement', target: 2100, nature: 'Besoin', frequency: 'Monthly' },
+    { id: 'b2', name: 'Épicerie', target: 850, nature: 'Besoin', frequency: 'Monthly' },
+    { id: 'b3', name: 'Restaurants', target: 250, nature: 'Envie', frequency: 'Monthly' },
+    { id: 'b4', name: 'Transport', target: 350, nature: 'Besoin', frequency: 'Monthly' },
+    { id: 'b5', name: 'Loisirs', target: 200, nature: 'Envie', frequency: 'Monthly' },
+    { id: 'b6', name: 'Santé', target: 100, nature: 'Besoin', frequency: 'Monthly' },
+    { id: 'b7', name: 'Abonnements', target: 80, nature: 'Envie', frequency: 'Monthly' },
+    { id: 'b8', name: 'CELI', target: 800, nature: 'Epargne', frequency: 'Monthly' },
+    { id: 'b9', name: 'REER', target: 600, nature: 'Epargne', frequency: 'Monthly' },
+    { id: 'b10', name: 'Voyages annuels', target: 3600, nature: 'Envie', frequency: 'Yearly' },
 ] as unknown as BudgetCategory[];
 
 export const TEST_REAL_ESTATE: RealEstateGoal[] = [

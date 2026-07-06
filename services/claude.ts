@@ -375,7 +375,7 @@ const NextBestActionSchema = z.object({
     title: z.string().min(3),
     reason: z.string().min(5),
     urgency: z.enum(['high', 'medium', 'low']),
-    impact_estimate: z.string().optional(),
+    impact_estimate: z.string().max(60).optional(),
 });
 
 const NextBestActionsSchema = z.array(NextBestActionSchema).min(1).max(3);
@@ -433,7 +433,7 @@ export const getNextBestActions = async (
         lines.push(
             `Objectifs actifs:\n${snapshot.activeGoals
                 .slice(0, 5)
-                .map(g => `  - ${sanitizePromptText(g.name, 40)}: ${roundToHundred(g.currentAmount)}$ / ${roundToHundred(g.targetAmount)}$ (échéance ${sanitizePromptText(g.deadline, 20)})`)
+                .map(g => `  - ${sanitizePromptText(g.name, 40)}: ${roundToHundred(g.currentAmount)}$ / ${roundToHundred(g.targetAmount)}$ (échéance ${sanitizePromptText(g.deadline.slice(0, 4), 10)})`)
                 .join('\n')}`,
         );
     }
@@ -461,7 +461,7 @@ RÉPONDS UNIQUEMENT par un JSON Array strict de 3 objets (pas de markdown, pas d
         const text = await chat(
             [{ role: 'user', content: userPrompt }],
             apiKey,
-            { model: MODEL_HAIKU, system: QUEBEC_FISCAL_CONTEXT, maxTokens: 1024, temperature: 0.5, timeoutMs: 20000 },
+            { model: MODEL_HAIKU, system: QUEBEC_FISCAL_CONTEXT, maxTokens: 1024, temperature: 0, timeoutMs: 20000 },
         );
         const validated = safeJsonValidate(text, NextBestActionsSchema);
         return validated ?? [];
@@ -764,6 +764,8 @@ export const analyzePayslip = async (file: File, apiKey: string): Promise<Paysli
     const fileBlock = buildVisionFileBlock(file.type || 'image/jpeg', base64);
 
     const client = makeClient(apiKey);
+    // [AI-VISION-TIMEOUT] borne l'appel Vision (un PDF lourd peut traîner) — abort au timeout, fin du spinner infini.
+    const { signal, cleanup } = makeTimeoutSignal(undefined, 90_000);
     const response = await client.messages.create({
         model: MODEL_SONNET,
         max_tokens: 512,
@@ -785,7 +787,8 @@ export const analyzePayslip = async (file: File, apiKey: string): Promise<Paysli
                 },
             ],
         }],
-    });
+    }, { signal });
+    cleanup();
 
     const text = response.content
         .flatMap(b => b.type === 'text' ? [b.text] : [])
@@ -847,6 +850,8 @@ export const analyzeBankStatement = async (file: File, apiKey: string): Promise<
     const fileBlock = buildVisionFileBlock(file.type || 'application/pdf', base64);
 
     const client = makeClient(apiKey);
+    // [AI-VISION-TIMEOUT] borne l'extraction Vision (relevé PDF lourd) — abort au timeout, fin du spinner infini.
+    const { signal, cleanup } = makeTimeoutSignal(undefined, 90_000);
     const response = await client.messages.create({
         model: MODEL_SONNET,
         max_tokens: 16000, // un relevé peut contenir beaucoup de lignes ; non-stream OK ≤ ~16k
@@ -877,7 +882,8 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict (aucun markdown, aucun commentaire
                 },
             ],
         }],
-    });
+    }, { signal });
+    cleanup();
 
     const text = response.content
         .flatMap(b => b.type === 'text' ? [b.text] : [])

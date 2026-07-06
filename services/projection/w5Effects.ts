@@ -8,6 +8,7 @@
 // liquid, taxCurrentYear). Pas de dépendance sur growth/income/shortfall/etc.
 
 import type { InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness } from '../../types';
+import { computeDonationCredit } from '../../utils/donationCredit';
 
 export interface W5Context {
     m: number;
@@ -24,6 +25,10 @@ export interface W5Mutator {
     subtractLiquid: (amount: number) => void;      // liquid -=
     addTaxRevenu: (amount: number) => void;        // taxCurrentYear.revenu +=
     addTaxGains: (amount: number) => void;         // taxCurrentYear.gains +=
+    addTaxDivers: (amount: number) => void;        // taxCurrentYear.divers += (impôt « autres » : SURVIT à
+                                                   // l'override 12-mois de `.revenu` en décembre, cf taxDecember)
+    addDonationCredit: (amount: number) => void;   // taxCurrentYear.donCredit += (crédit-don POSITIF ; plafonné à
+                                                   // l'impôt dû puis appliqué à `divers` en décembre — non remboursable)
     logFlow: (msg: string) => void;
     logLife: (msg: string) => void;
 }
@@ -93,13 +98,14 @@ export function applyW5Effects(
         const annual = charity.annualAmount || 0;
         if (annual <= 0) continue;
         state.addExpense((annual / 12) * expenseMultiplier);
-        // Crédit fiscal en janvier (annualisé)
+        // Crédit fiscal en janvier (annualisé). [FA-6] Crédit NON REMBOURSABLE par paliers (féd+QC,
+        // FISCAL_REFERENCE §10) accumulé dans `donCredit` → décembre le PLAFONNE à l'impôt dû puis
+        // l'applique à `divers` (qui SURVIT à l'override 12-mois de `.revenu`). Avant FA-6, le crédit
+        // allait dans `.revenu`, jeté pour un salarié actif (le don n'avait alors AUCUN bénéfice fiscal).
+        // Don de titres en nature : inclusion gain 0 % NON modélisée (pas de base de coût sur
+        // CharitableGoal) → l'ancien `addTaxGains(-0,15·don)` (non sourcé) est retiré.
         if (currentMonthIndex === 0) {
-            const taxCredit = annual * 0.33;
-            state.addTaxRevenu(-taxCredit);
-            if (charity.donateAppreciatedSecurities) {
-                state.addTaxGains(-annual * 0.15);
-            }
+            state.addDonationCredit(computeDonationCredit(annual));
         }
     }
 
@@ -111,9 +117,14 @@ export function applyW5Effects(
         const noi = annualRent - annualExpenses;
         rentalPropertyNoiMonthly += noi / 12;
     }
-    if (rentalPropertyNoiMonthly !== 0) {
+    // [NAN-INPUT-HARDENING] `!== 0` laisse passer NaN (`NaN !== 0` = true) → garde l'agrégat (un `noi` NaN
+    // corromprait revenu + impôt locatif). (La branche business ci-dessous est déjà sûre : `NaN > 0` = false.)
+    if (Number.isFinite(rentalPropertyNoiMonthly) && rentalPropertyNoiMonthly !== 0) {
         state.addIncome(rentalPropertyNoiMonthly);
-        state.addTaxRevenu((rentalPropertyNoiMonthly * 0.45) / 12);
+        // [FA-6] via `addTaxDivers` → l'impôt locatif SURVIT à l'écrasement de `.revenu` en décembre :
+        // avant, le revenu locatif d'un bailleur ACTIF n'était PAS imposé (clobberé). Le 0,45 reste un
+        // PROXY de taux marginal (non sourcé — suivi BACKLOG W5-TAX-PROXY).
+        state.addTaxDivers((rentalPropertyNoiMonthly * 0.45) / 12);
     }
 
     // W5.7 — Entreprise privée (CCPC) : dividendes mensuels.
@@ -125,7 +136,9 @@ export function applyW5Effects(
     }
     if (businessDividendMonthly > 0) {
         state.addIncome(businessDividendMonthly);
-        state.addTaxRevenu((businessDividendMonthly * 0.36) / 12);
+        // [FA-6] via `addTaxDivers` → l'impôt sur dividende CCPC SURVIT à l'écrasement décembre (avant :
+        // non imposé en année active). Le 0,36 reste un PROXY (non sourcé — suivi BACKLOG W5-TAX-PROXY).
+        state.addTaxDivers((businessDividendMonthly * 0.36) / 12);
     }
 }
 

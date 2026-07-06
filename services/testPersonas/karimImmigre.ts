@@ -19,15 +19,15 @@ export function buildKarimImmigre(): Partial<AppState> {
     return {
         config: { users: [karim] as unknown as BudgetConfig['users'], splitMode: '50/50' },
         budgetItems: [
-            { id: 'kar-b1', name: 'Loyer (condo)', target: 1750, nature: 'Logement', frequency: 'Monthly' },
-            { id: 'kar-b2', name: 'Épicerie', target: 500, nature: 'Alimentation', frequency: 'Monthly' },
-            { id: 'kar-b3', name: 'Restaurants', target: 400, nature: 'Alimentation', frequency: 'Monthly' },
-            { id: 'kar-b4', name: 'Transport', target: 200, nature: 'Transport', frequency: 'Monthly' },
-            { id: 'kar-b5', name: 'Loisirs', target: 300, nature: 'Loisirs', frequency: 'Monthly' },
-            { id: 'kar-b6', name: 'Abonnements', target: 120, nature: 'Autre', frequency: 'Monthly' },
-            { id: 'kar-b7', name: 'Voyages annuels', target: 7000, nature: 'Loisirs', frequency: 'Yearly' },
-            { id: 'kar-b8', name: 'CELI', target: 1000, nature: 'Épargne', frequency: 'Monthly' },
-            { id: 'kar-b9', name: 'REER', target: 800, nature: 'Épargne', frequency: 'Monthly' },
+            { id: 'kar-b1', name: 'Loyer (condo)', target: 1750, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'kar-b2', name: 'Épicerie', target: 500, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'kar-b3', name: 'Restaurants', target: 400, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'kar-b4', name: 'Transport', target: 200, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'kar-b5', name: 'Loisirs', target: 300, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'kar-b6', name: 'Abonnements', target: 120, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'kar-b7', name: 'Voyages annuels', target: 7000, nature: 'Envie', frequency: 'Yearly' },
+            { id: 'kar-b8', name: 'CELI', target: 1000, nature: 'Epargne', frequency: 'Monthly' },
+            { id: 'kar-b9', name: 'REER', target: 800, nature: 'Epargne', frequency: 'Monthly' },
         ] as unknown as AppState['budgetItems'],
         assets: [
             {
@@ -89,6 +89,8 @@ export function buildKarimImmigre(): Partial<AppState> {
         financialGoals: [
             { id: 'kar-fg1', name: 'Indépendance financière (1 M$)', target: 1000000, current: 68000, accountType: 'NON-ENREG', deadline: '2042-12-31' },
         ] as unknown as AppState['financialGoals'],
+        // [R6] Aucune dette / projet immo / enfant → opt-out explicite pour que ces pages n'affichent pas de PageSetupGate.
+        setupOptOut: { debts: true, realEstate: true, children: true },
         ...emptyCollections(),
     };
 }

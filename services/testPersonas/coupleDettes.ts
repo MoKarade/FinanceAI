@@ -7,7 +7,7 @@
 
 import type { AppState, User } from '../../types';
 import { buildPersonaTransactions } from './transactions';
-import { emptyCollections } from './_shared';
+import { emptyCollections, genHistory } from './_shared';
 
 const sophie: User = {
     name: 'Sophie (test)', grossSalary: 3400, netSalary: 2600, color: '#f97316',
@@ -22,15 +22,19 @@ export function buildCoupleDettes(): Partial<AppState> {
     return {
         config: { users: [sophie, marcA], splitMode: '50/50' },
         budgetItems: [
-            { id: 'cd-b1', name: 'Loyer', target: 1850, nature: 'Logement', frequency: 'Monthly' },
-            { id: 'cd-b2', name: 'Épicerie', target: 750, nature: 'Alimentation', frequency: 'Monthly' },
-            { id: 'cd-b3', name: 'Restaurants', target: 300, nature: 'Alimentation', frequency: 'Monthly' },
-            { id: 'cd-b4', name: 'Transport (2 autos)', target: 450, nature: 'Transport', frequency: 'Monthly' },
-            { id: 'cd-b5', name: 'Loisirs', target: 200, nature: 'Loisirs', frequency: 'Monthly' },
-            { id: 'cd-b6', name: 'Télécom + abonnements', target: 180, nature: 'Autre', frequency: 'Monthly' },
-            { id: 'cd-b7', name: 'Santé', target: 90, nature: 'Santé', frequency: 'Monthly' },
+            { id: 'cd-b1', name: 'Loyer', target: 1850, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'cd-b2', name: 'Épicerie', target: 750, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'cd-b3', name: 'Restaurants', target: 300, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'cd-b4', name: 'Transport (2 autos)', target: 450, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'cd-b5', name: 'Loisirs', target: 200, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'cd-b6', name: 'Télécom + abonnements', target: 180, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'cd-b7', name: 'Santé', target: 90, nature: 'Besoin', frequency: 'Monthly' },
         ] as unknown as AppState['budgetItems'],
-        assets: [],
+        // [R6] Micro-actif CELI symbolique (1 part) : ouvre Investissements + Futur (prérequis `assets`,
+        // non opt-outable) sans dénaturer le profil « étranglé par les dettes ».
+        assets: [
+            { id: 'cd-a1', symbol: 'VFV.TO', name: 'Vanguard S&P 500 (CAD)', region: 'us-equity', sector: 'index', accountType: 'CELI', currency: 'CAD', performance: 0, currentPrice: 182.18, priceHistory: genHistory(175, 182.18), purchases: [{ date: '2026-01-15', price: 175, quantity: 1 }], dateBought: '2026-01-15', buyPrice: 175, quantity: 1 },
+        ] as unknown as AppState['assets'],
         // Soldes = cash uniquement (LIQUIDITE). Couple endetté sans placements :
         // leurs maigres soldes registered (CELI/REER) sont du cash, regroupés ici.
         initialBalances: { CELI: 0, REER: 0, 'NON-ENREG': 0, CRYPTO: 0, LIQUIDITE: 3900 },
@@ -66,6 +70,8 @@ export function buildCoupleDettes(): Partial<AppState> {
         financialGoals: [
             { id: 'cd-fg1', name: 'Éteindre la carte de crédit', target: 9000, current: 0, accountType: 'LIQUIDITE', deadline: '2027-12-31' },
         ] as unknown as AppState['financialGoals'],
+        // [R6] Locataire, sans enfant ni projet (a des dettes) → opt-out immo/enfant/projets.
+        setupOptOut: { realEstate: true, children: true, lifeProjects: true },
         ...emptyCollections(),
     };
 }

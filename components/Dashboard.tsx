@@ -19,7 +19,6 @@ import { MarketDataPoint } from '../services/finance';
 import { usePortfolioHistory } from '../hooks/usePortfolioHistory';
 import { ASSET_META } from '../services/assetMeta';
 import { useFinanceStore } from '../store/useFinanceStore';
-import { HealthIndicator } from './dashboard/HealthIndicator';
 import { StockComparisonModal } from './dashboard/StockComparisonModal';
 import { Tab as TabEnum } from '../types';
 import { formatCAD, formatPercent, formatSigned } from '../utils/format';
@@ -450,9 +449,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 />
             </StatGrid>
 
-            {/* Phase D.6 — Indicateur santé financière paramétrable (remplace
-                temporairement les anciens KPIs Cash/Saving/Dette retirés en D.5) */}
-            <HealthIndicator />
+            {/* [PH4-D] L'indicateur de santé financière a été DÉPLACÉ dans l'onglet Budget → sous-onglet « Santé »
+                (regroupement avec le budget, qui porte le contexte des ratios). */}
 
             {/* CHART */}
             <Card title={t('dashboard.detailed_evolution')} className="w-full min-h-[450px]"
@@ -476,7 +474,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 {/* Phase D.3 — chips toggle pour chaque compte + "Total" overlay */}
                 {accountKeys.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5 mb-3">
-                        <span className="text-tiny text-ink-500 uppercase tracking-widest font-bold mr-1">Affichage :</span>
+                        <span className="text-tiny text-ink-400 uppercase tracking-widest font-bold mr-1">Affichage :</span>
                         {accountKeys.map((key, idx) => {
                             const isHidden = hiddenAccounts.has(key);
                             const color = COLORS[idx % COLORS.length];
@@ -489,7 +487,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     title={isHidden ? `Afficher ${key}` : `Masquer ${key}`}
                                     className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-tiny font-medium border transition-colors focus-ring ${
                                         isHidden
-                                            ? 'bg-white/[0.02] text-ink-500 border-white/5 hover:bg-white/5'
+                                            ? 'bg-white/[0.02] text-ink-400 border-white/5 hover:bg-white/5'
                                             : 'bg-white/10 text-ink-100 border-white/15 hover:bg-white/15'
                                     }`}
                                 >
@@ -557,7 +555,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             </button>
                         </div>
                     ) : (
-                        <span className="text-tiny text-ink-500 italic">Coche pour comparer</span>
+                        <span className="text-tiny text-ink-400 italic">Coche pour comparer</span>
                     )
                 }
             >
@@ -603,7 +601,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     <div className="w-8 h-8 rounded bg-surfaceHighlight flex items-center justify-center text-meta font-bold text-ink-200 shrink-0">{asset.symbol.substring(0, 2)}</div>
                                     <div className="min-w-0">
                                         <div className="font-bold text-white text-body truncate">{asset.symbol}</div>
-                                        <div className="text-tiny text-ink-500 bg-black/50 px-1.5 rounded inline-block mt-0.5">{asset.accountType}</div>
+                                        <div className="text-tiny text-ink-400 bg-black/50 px-1.5 rounded inline-block mt-0.5">{asset.accountType}</div>
                                     </div>
                                 </div>
                                 <div className="text-right shrink-0">
@@ -623,7 +621,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                             </PrivateAmount>
                                         </div>
                                     ) : (
-                                        <div className="text-tiny mt-0.5 text-ink-600 italic">
+                                        <div className="text-tiny mt-0.5 text-ink-400 italic">
                                             Date/prix d'achat manquant ·{' '}
                                             <button
                                                 type="button"
@@ -638,7 +636,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             </div>
                         );
                     })}
-                    {segmentedData.assets.length === 0 && <div className="text-center py-4 text-ink-500 text-meta">Aucun actif trouvé.</div>}
+                    {segmentedData.assets.length === 0 && <div className="text-center py-4 text-ink-400 text-meta">Aucun actif trouvé.</div>}
                 </div>
             </Card>
 

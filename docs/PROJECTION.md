@@ -113,7 +113,12 @@ Pour **chaque** mois `m`, le moteur exécute ces 9 phases séquentiellement. Com
     - 85+ ans : 0.90 (no-go)
 - **Soins longue durée (D2.8)** : si MC + flag, tirage stochastique par mois. Probabilité annuelle : 1% à 65 → 25% à 90+. Si déclenchés, ajoute `ltcMonthlyCost` (5000$/mois défaut) jusqu'à la fin.
 - **Mortalité stochastique (D2.8)** : si MC + flag, tirage annuel en janvier. Si décès, la boucle `break` — `estateNetWorth` devient le patrimoine **au décès** et non en fin d'horizon.
-- Événements ponctuels du `lifeEvents[]` (mariage, voyage, voiture…).
+- Événements ponctuels du `lifeEvents[]` (mariage, voyage, voiture… = dépense one-shot via `impactAmount`).
+- **Perte de revenu DATÉE (FISC-EVENT-INCOMELOSS)** : `PERTE_EMPLOI`/`SABBATIQUE`/`ACCIDENT` réduisent le revenu
+  MÉNAGE de `incomeLossPercent`% pendant `durationMonths` mois dès `e.date` (≠ la perte stochastique D2.10 ci-dessus,
+  qui est aléatoire et MC-only). `computeIncomeLossFactor` (phase active) : net + brut REER réduits ; l'impôt
+  salarial de décembre reste sur le brut de base (biais conservateur, comme le chômage stochastique). Inerte en
+  retraite (pas de revenu d'emploi). Composition multiplicative si plusieurs événements/une perte MC coïncident.
 
 ### Phase 4 — Fiscalité (calendrier réel canadien)
 
@@ -247,7 +252,7 @@ Deux exécutions avec les mêmes params donnent **rigoureusement les mêmes nomb
 La conversion REER → FERR est obligatoire l'année des 71 ans. Le retrait minimum (5.4% à 72 → 20%+ à 94) peut **pousser dans une tranche supérieure** et causer un OAS clawback.
 
 ### 3.10 Banque de pertes en capital
-Une perte en capital sur le NonReg n'est PAS perdue : elle s'accumule dans `capitalLossBank` et compense les gains futurs (TLH = Tax Loss Harvesting).
+Une perte en capital n'est PAS perdue : elle s'accumule dans `capitalLossBank` et compense les gains futurs (LIR 111(1)(b)). Toute disposition d'immobilisation passe par la SOURCE UNIQUE `portfolioOps.applyCapitalDisposition(state, rawGain signé)` : NonReg (TLH), crypto, ET la vente d'un immeuble LOCATIF (FISC-RE-CAPITAL-LOSS, 2026-06-19 — auparavant un `Math.max(0,…)` effaçait la perte immobilière). Perte < 0 → banque ; gain ≥ 0 → nette d'abord la banque puis impose le reliquat.
 
 ---
 

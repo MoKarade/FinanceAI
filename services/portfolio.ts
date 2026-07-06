@@ -9,6 +9,7 @@ import type {
   Debt,
   User,
 } from '../types';
+import { isSavingsNature } from '../utils/budget';
 
 export interface AssetBreakdown {
   reer: number;
@@ -41,7 +42,10 @@ export const computeAssetBreakdown = (
 
   for (const a of assets) {
     const factor = toCurrencyFactor(fxRates, a.currency);
-    const valCad = (a.quantity || 0) * (a.currentPrice || 0) * factor;
+    // [NAN-INPUT-HARDENING] garde l'agrégat (aligné sur useDerivedFinancials) : `|| 0` rattrape NaN mais
+    // pas Infinity (quantité/prix divergent) → `Number.isFinite` couvre les deux.
+    const valRaw = (a.quantity || 0) * (a.currentPrice || 0) * factor;
+    const valCad = Number.isFinite(valRaw) ? valRaw : 0;
     const type = (a.accountType || '').toUpperCase();
     if (type === 'REER') breakdown.reer += valCad;
     else if (type === 'CELI') breakdown.celi += valCad;
@@ -61,7 +65,9 @@ export const computeInvestmentsValue = (
 ): number => {
   return assets.reduce((sum, a) => {
     const factor = toCurrencyFactor(fxRates, a.currency);
-    return sum + ((a.quantity || 0) * (a.currentPrice || 0) * factor);
+    // [NAN-INPUT-HARDENING] idem computeAssetBreakdown : garde l'agrégat contre NaN/Infinity.
+    const v = (a.quantity || 0) * (a.currentPrice || 0) * factor;
+    return sum + (Number.isFinite(v) ? v : 0);
   }, 0);
 };
 
@@ -130,7 +136,9 @@ export const computeMonthlyBudgetAggregates = (
     0,
   );
   const expenses = items.reduce(
-    (acc, item) => item.nature === 'Epargne' ? acc : acc + monthlyAmountFor(item),
+    // [HEALTH-SAVINGS-CONSISTENCY] `isSavingsNature` (NFD) au lieu de `=== 'Epargne'` strict : la nature
+    // persistée est LIBRE (« Épargne » accentué possible) → l'épargne doit être exclue des dépenses partout.
+    (acc, item) => isSavingsNature(item.nature) ? acc : acc + monthlyAmountFor(item),
     0,
   );
   return {
@@ -144,7 +152,8 @@ export const computeMonthlyBudgetAggregates = (
  * Total des dettes (soldes positifs dus).
  */
 export const computeTotalDebt = (debts: Debt[]): number => {
-  return (debts || []).reduce((sum, d) => sum + (d.balance || 0), 0);
+  // [NAN-INPUT-HARDENING] `|| 0` rattrape déjà NaN (falsy) ; `Number.isFinite` couvre EN PLUS Infinity.
+  return (debts || []).reduce((sum, d) => sum + (Number.isFinite(d.balance) ? d.balance : 0), 0);
 };
 
 /**

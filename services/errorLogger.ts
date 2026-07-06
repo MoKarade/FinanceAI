@@ -69,7 +69,11 @@ function makeId(): string {
 // Sprint 3 SH5 (sécurité) — Champs financiers/PII à masquer du context.
 // Le logger est exporté/partagé via SystemView donc tout PII fuiterait.
 // Match récursif sur les clés (case-insensitive).
-const SENSITIVE_KEY_PATTERNS = /^(amount|balance|payee|fact|salary|netSalary|grossSalary|income|expense|cost|price|debt|net.*worth|api.*key|token|password|passphrase|email|phone|sin|nas|account.*number)$/i;
+// [SEC-LOG-DEBT-REGEX, audit 2026-06-23] Les termes clairement FINANCIERS sont matchés en SUBSTRING
+// (avant, l'ancrage `^debt$` ratait `liquidDebt`/`mortgageBalance`/`annualAmount`/`grossSalary`…). Les
+// termes courts/ambigus (token, email, `fact`…) restent ANCRÉS pour éviter les faux positifs (ex. ne pas
+// redacter une clé « factor » via `fact`). Case-insensitive, match récursif sur les clés.
+const SENSITIVE_KEY_PATTERNS = /(amount|balance|debt|salary|income|expense|cost|price|net.*worth)|^(payee|fact|token|password|passphrase|email|phone|sin|nas|api.*key|account.*number)$/i;
 const MAX_DEPTH = 4;
 
 // S2 (sécurité/PII) — Le `message` et la `stack` des erreurs sont persistés en
@@ -192,6 +196,24 @@ export function logError(input: {
         // console DevTools alors que l'entrée stockée/exportée est déjà nettoyée.
         fn(`[${input.source}] ${entry.message}`, entry.context ?? '');
     }
+}
+
+/**
+ * [NAN-OBSERVABILITY] Variante THROTTLÉE de `logError` : ne journalise qu'UNE fois par `signature`. Pour les
+ * gardes en hot-path (boucle mensuelle × Monte-Carlo, `useMemo` qui se recalcule) où un même input corrompu
+ * reviendrait à CHAQUE appel et thrasherait le localStorage. Calque le throttle de `computeRawNetWorth`
+ * (HARDEN-NETWORTH-NAN). État module-scope (intrinsèque au throttle).
+ */
+const throttledSignatures = new Set<string>();
+export function logErrorThrottled(signature: string, input: Parameters<typeof logError>[0]): void {
+    if (throttledSignatures.has(signature)) return;
+    throttledSignatures.add(signature);
+    logError(input);
+}
+
+/** Test-only : remet à zéro le throttle de `logErrorThrottled` (isolation entre tests ; convention `__` du repo). */
+export function __resetErrorThrottle(): void {
+    throttledSignatures.clear();
 }
 
 /** Retourne toutes les erreurs (du plus récent au plus ancien) */

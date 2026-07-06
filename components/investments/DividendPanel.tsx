@@ -3,6 +3,10 @@ import { Card } from '../ui/Card';
 import { Icon } from '../ui/Icon';
 import { PrivateAmount } from '../ui/PrivateAmount';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer, Cell } from 'recharts';
+import { formatCAD, formatSigned } from '../../utils/format';
+import { ChartDataTable, type ChartDataColumn } from '../ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
+import { useFinanceStore } from '../../store/useFinanceStore';
 
 interface DividendItem {
     id: string;
@@ -32,6 +36,9 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
 }) => {
     const [dripEnabled, setDripEnabled] = useState(false);
     const [divGrowthRate, setDivGrowthRate] = useState(5);
+    // [A11Y-CHARTS] (LOT 3) — mode discret : masque les montants de la table de données sr-only
+    // (parité avec les <PrivateAmount> du panneau).
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
 
     const dividendProjectionData = useMemo(() => {
         if (dividendCalendar.length === 0) return [];
@@ -64,6 +71,18 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
         return data;
     }, [dividendCalendar, totalAnnualDividends, currentAllocation, dripEnabled, divGrowthRate]);
 
+    // [A11Y-CHARTS] (LOT 3) — colonnes de la table sr-only (alternative texte au BarChart de
+    // projection des dividendes, opaque aux lecteurs d'écran). Mois (axe X, déjà formaté = visible)
+    // + revenu mensuel + cumul annuel. Mode privé masque les MONTANTS (pas le mois).
+    const dividendColumns = useMemo<ChartDataColumn[]>(() => {
+        const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0);
+        return [
+            { key: 'month', label: 'Mois', format: (v) => String(v ?? '') },
+            { key: 'Revenu', label: 'Revenu mensuel', format: money },
+            { key: 'Accumulé', label: 'Cumul annuel', format: money },
+        ];
+    }, [isPrivacyMode]);
+
     return (
         <Card title="Calendrier des Revenus Passifs" className="animate-premium-in" style={{ animationDelay: '0.2s' }}>
             <div className="flex justify-between items-center mb-6 bg-white/[0.03] p-5 rounded-2xl border border-white/10 shadow-lg shadow-black/20">
@@ -71,12 +90,12 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                     <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center shadow-inner border border-white/10"><Icon name="cash" size={26} className="text-ink-200" /></div>
                     <div>
                         <div className="text-tiny uppercase font-bold text-ink-400 tracking-widest mb-1">Rente Annuelle Estimée</div>
-                        <PrivateAmount as="div" className="text-3xl font-black text-white tracking-tight">{totalAnnualDividends.toLocaleString()} CAD</PrivateAmount>
+                        <PrivateAmount as="div" className="text-3xl font-black text-white tracking-tight">{formatCAD(totalAnnualDividends)}</PrivateAmount>
                     </div>
                 </div>
                 <div className="text-right hidden sm:block">
                     <div className="text-tiny uppercase font-bold text-ink-500 tracking-widest mb-1">Moyenne mensuelle</div>
-                    <div className="text-xl font-bold text-ink-200">{(totalAnnualDividends / 12).toLocaleString()} $ / mois</div>
+                    <div className="text-xl font-bold text-ink-200">{formatCAD(totalAnnualDividends / 12)} / mois</div>
                 </div>
             </div>
 
@@ -105,7 +124,7 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-success-400 font-bold text-body">+{item.amountPerPayout.toFixed(0)}$</div>
+                                    <div className="text-success-400 font-bold text-body">{formatSigned(item.amountPerPayout, { withCurrency: true })}</div>
                                     <div className="text-tiny text-ink-500 font-medium">{item.freq === 4 ? 'Trimestriel' : 'Annuel'}</div>
                                 </div>
                             </div>
@@ -160,18 +179,22 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                         </div>
                     </div>
 
-                    <div className="h-[250px] w-full">
+                    <div
+                        className="h-[250px] w-full"
+                        role="img"
+                        aria-label="Projection des revenus de dividendes sur 12 mois — revenu mensuel estimé selon le taux de croissance et l'option de réinvestissement (DRIP)."
+                    >
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={dividendProjectionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
                                 <XAxis dataKey="month" stroke="#ffffff50" fontSize={10} tickLine={false} axisLine={false} dy={10} />
-                                <YAxis stroke="#ffffff50" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}$`} />
+                                <YAxis stroke="#ffffff50" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => formatCAD(val)} />
                                 <ReTooltip
                                     cursor={{ fill: '#ffffff05' }}
                                     contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
                                     itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
                                     labelStyle={{ color: '#9ca3af', fontSize: '10px', marginBottom: '4px' }}
-                                    formatter={(val: number) => [(val || 0).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' }), 'Revenu Mensuel']}
+                                    formatter={(val: number) => [formatCAD(val || 0), 'Revenu Mensuel']}
                                 />
                                 <Bar dataKey="Revenu" fill="#4f9d86" radius={[4, 4, 0, 0]} maxBarSize={40}>
                                     {dividendProjectionData.map((_, index) => (
@@ -181,6 +204,13 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
+                    {/* [A11Y-CHARTS] (LOT 3) — alternative TEXTUELLE (sr-only) au BarChart de projection
+                        des dividendes : mêmes données (revenu + cumul par mois) en table accessible. */}
+                    <ChartDataTable
+                        caption="Projection des revenus de dividendes sur 12 mois"
+                        columns={dividendColumns}
+                        rows={dividendProjectionData}
+                    />
                 </div>
             )}
         </Card>

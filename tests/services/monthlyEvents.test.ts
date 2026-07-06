@@ -10,8 +10,11 @@ import {
     applySavingsGoalDeadlines,
     applyFinancialGoalDeadlines,
     computeStressTest,
+    computeIncomeLossFactor,
+    INCOME_LOSS_EVENT_TYPES,
 } from '../../services/projection/monthlyEvents';
 import type { PropertyStateMutable, LifeEventMutator, GoalDeadlineMutator } from '../../services/projection/monthlyEvents';
+import { applyCapitalDisposition } from '../../services/projection/portfolioOps';
 import type { TravelGoal, LifeEvent, SavingsGoal, FinancialGoal, ProjectionConfig } from '../../types';
 
 // ── applyTravelExpenses ──────────────────────────────────────────────────────
@@ -80,14 +83,23 @@ describe('applyTravelExpenses', () => {
 describe('applyLifeEvents', () => {
     // Le state est un objet mutable partagé par le mutateur ET les assertions.
     // On NE fait pas de spread (copie valeur) pour éviter la désynchronisation.
-    const makeState = () => {
-        const s = { portfolio: 100000, liquid: 50000, expense: 0, capitalGain: 0 };
+    // Double FIDÈLE : `realizeCapitalDisposition` exerce le VRAI helper `applyCapitalDisposition`
+    // (banque de pertes + nettoyage des gains) au lieu d'un `vi.fn()` creux → le test valide la
+    // logique réelle. `lossBank` peut être pré-amorcé pour tester le nettoyage d'un gain.
+    const makeState = (lossBank = 0) => {
+        const s = { portfolio: 100000, liquid: 50000, expense: 0, capitalGain: 0, lossBank };
         const mutator: LifeEventMutator = {
             shockPortfolio: (f: number) => { s.portfolio *= f; },
             addLiquid: (n: number) => { s.liquid += n; },
             addExpense: (n: number) => { s.expense += n; },
             adjustRealEstate: vi.fn(),
-            realizeCapitalGain: (g: number) => { s.capitalGain += g; },
+            realizeCapitalDisposition: (rawGain: number) => {
+                const st = { capitalLossBank: s.lossBank, accCapitalGainsYear: s.capitalGain };
+                const r = applyCapitalDisposition(st, rawGain);
+                s.lossBank = st.capitalLossBank;
+                s.capitalGain = st.accCapitalGainsYear;
+                return r;
+            },
             logLife: vi.fn(),
             logFlow: vi.fn(),
         };
@@ -115,12 +127,34 @@ describe('applyLifeEvents', () => {
         expect(props[0].isSold).toBe(true);   // la vente a bien lieu, sans impôt sur le gain
     });
 
-    it('RE-GAIN : locatif vendu à perte (produit < coût) → aucun gain négatif', () => {
+    // [FISC-RE-CAPITAL-LOSS] Discriminant : avant le fix, `gain = Math.max(0, produit − coût)` + `if (gain > 0)`
+    // → la perte en capital réalisée était SILENCIEUSEMENT IGNORÉE (ni banque, ni log → avantage fiscal perdu).
+    // Désormais elle est PORTÉE en banque de pertes (déductible des gains futurs). ÉCHOUE sur l'ancien code
+    // (s.lossBank serait resté 0 et logFlow jamais appelé).
+    it('FISC-RE-CAPITAL-LOSS : locatif vendu à perte (produit < coût) → perte PORTÉE en banque (pas ignorée)', () => {
         const event: LifeEvent = { id: 'v', date: '2035-06', type: 'GROS_ACHAT', name: 'Vente locatif' };
         const { mutator, s } = makeState();
         const props: PropertyStateMutable[] = [{ id: 'l', isBought: true, mortgage: 50000, currentValue: 200000, cost: 250000, isPrimaryResidence: false }];
         applyLifeEvents([event], '2035-06', 1.0, props, mutator);
-        expect(s.capitalGain).toBe(0); // max(0, 190000 − 250000) = 0
+        // produit net 200000×0.95 = 190000 ; perte = 190000 − 250000 = −60000 → banque += 60000.
+        expect(s.capitalGain).toBe(0);     // aucun gain imposable réalisé
+        expect(s.lossBank).toBeCloseTo(60000, 0); // perte banquée (ancien code : restait 0)
+        expect(mutator.logFlow).toHaveBeenCalledWith(expect.stringContaining('Perte en capital'));
+    });
+
+    // [FISC-RE-CAPITAL-LOSS] Symétrie : un GAIN locatif nette d'abord la banque de pertes existante avant
+    // d'alimenter l'impôt (cohérent avec NonReg/crypto). Banque pré-amorcée à 100000.
+    it('FISC-RE-CAPITAL-LOSS : un gain locatif nette la banque de pertes avant imposition', () => {
+        const event: LifeEvent = { id: 'v', date: '2040-06', type: 'GROS_ACHAT', name: 'Vente locatif' };
+        const { mutator, s } = makeState(100000); // 100 k$ de pertes reportées disponibles
+        const props: PropertyStateMutable[] = [{ id: 'l', isBought: true, mortgage: 0, currentValue: 400000, cost: 300000, isPrimaryResidence: false }];
+        applyLifeEvents([event], '2040-06', 1.0, props, mutator);
+        // gain brut = 400000×0.95 − 300000 = 80000 ; entièrement absorbé par la banque (100000) → 0 imposable.
+        expect(s.capitalGain).toBe(0);
+        expect(s.lossBank).toBeCloseTo(20000, 0); // 100000 − 80000 consommés
+        // Gain entièrement absorbé (taxableGain = 0, bankedLoss = 0) → AUCUN log (ni gain ni perte) : silence VOULU.
+        expect(mutator.logFlow).not.toHaveBeenCalledWith(expect.stringContaining('Gain en capital'));
+        expect(mutator.logFlow).not.toHaveBeenCalledWith(expect.stringContaining('Perte en capital'));
     });
 
     it('applique un krach boursier et choque le portfolio', () => {
@@ -158,6 +192,20 @@ describe('applyLifeEvents', () => {
 
         // Assert — net = (500000 × 0.95) - 150000 = 325000
         expect(s.liquid).toBeCloseTo(50000 + 325000, 0);
+        expect(prop.isBought).toBe(false);
+    });
+
+    it('FISC-RE-SALE-RESIDUAL : vente quasi-underwater (frais > équité) → le déficit est PORTÉ, pas effacé', () => {
+        // Hypothèque entre 95 % et 100 % de la valeur : les 5 % de frais poussent le produit net SOUS la
+        // dette → `saleNet` < 0. La propriété est quand même vendue (mortgage 390 k$ < valeur 400 k$), mais
+        // `saleNet = 400 000×0.95 − 390 000 = −10 000`. Avant le fix, `Math.max(0, saleNet)` EFFAÇAIT ce
+        // déficit (patrimoine surévalué de 10 k$) ; désormais `addLiquid(saleNet)` le porte (il tombe dans
+        // le sauvetage PV-6 → liquidDebt VISIBLE / baisse de liquide). Discriminant : 50 000 → 40 000.
+        const event: LifeEvent = { id: 'v', date: '2035-06', type: 'GROS_ACHAT', name: 'Vente maison' };
+        const prop: PropertyStateMutable = { isBought: true, mortgage: 390000, currentValue: 400000 };
+        const { mutator, s } = makeState();
+        applyLifeEvents([event], '2035-06', 1.0, [prop], mutator);
+        expect(s.liquid).toBeCloseTo(50000 - 10000, 0); // ancien code (clamp) laissait 50 000 → échec
         expect(prop.isBought).toBe(false);
     });
 
@@ -422,5 +470,88 @@ describe('computeStressTest', () => {
         // Assert
         expect(result.crashFactor).toBe(1);
         expect(result.recoveryFactor).toBe(1);
+    });
+});
+
+// ── [FISC-EVENT-INCOMELOSS] computeIncomeLossFactor ───────────────────────────
+
+describe('computeIncomeLossFactor', () => {
+    const ev = (over: Partial<LifeEvent> = {}): LifeEvent => ({
+        id: '1', type: 'PERTE_EMPLOI', name: 'Perte d\'emploi', date: '2028-03',
+        durationMonths: 6, incomeLossPercent: 100, ...over,
+    });
+    // m1 = mois 1-based ; on ancre au 15 pour éviter tout effet de bord de fin de mois.
+    const at = (y: number, m1: number): Date => new Date(Date.UTC(y, m1 - 1, 15));
+
+    it('facteur = (1 − %/100) pendant la fenêtre active', () => {
+        expect(computeIncomeLossFactor([ev({ incomeLossPercent: 100 })], at(2028, 3))).toBe(0);
+        expect(computeIncomeLossFactor([ev({ incomeLossPercent: 50 })], at(2028, 5))).toBe(0.5);
+    });
+
+    it('inactif AVANT la date de début → 1', () => {
+        expect(computeIncomeLossFactor([ev()], at(2028, 2))).toBe(1);
+    });
+
+    it('borne : dernier mois inclus (offset dur−1), premier mois après exclu', () => {
+        // début 2028-03, durée 6 → actif 2028-03..2028-08 (offsets 0..5).
+        expect(computeIncomeLossFactor([ev({ incomeLossPercent: 100 })], at(2028, 8))).toBe(0); // offset 5 → actif
+        expect(computeIncomeLossFactor([ev()], at(2028, 9))).toBe(1);                            // offset 6 → inactif
+    });
+
+    it('deux événements actifs se composent multiplicativement', () => {
+        const a = ev({ id: 'a', type: 'PERTE_EMPLOI', incomeLossPercent: 50 });
+        const b = ev({ id: 'b', type: 'ACCIDENT', incomeLossPercent: 50 });
+        expect(computeIncomeLossFactor([a, b], at(2028, 4))).toBeCloseTo(0.25, 10);
+    });
+
+    it('% clampé à [0, 100] (négatif → 0 ; >100 → 100)', () => {
+        expect(computeIncomeLossFactor([ev({ incomeLossPercent: 150 })], at(2028, 4))).toBe(0);
+        expect(computeIncomeLossFactor([ev({ incomeLossPercent: -10 })], at(2028, 4))).toBe(1);
+    });
+
+    it('incomeLossPercent NaN/undefined (champ UI vidé) → 0 % (facteur 1, JAMAIS de NaN propagé)', () => {
+        // parseFloat('') === NaN ; `?? 0` ne couvre PAS NaN → garde Number.isFinite explicite côté moteur.
+        expect(computeIncomeLossFactor([ev({ incomeLossPercent: NaN })], at(2028, 4))).toBe(1);
+        expect(computeIncomeLossFactor([ev({ incomeLossPercent: undefined })], at(2028, 4))).toBe(1);
+        // durationMonths NaN → événement ignoré (pas de fenêtre active).
+        expect(computeIncomeLossFactor([ev({ durationMonths: NaN })], at(2028, 4))).toBe(1);
+    });
+
+    it('durationMonths ≤ 0 ou absent → ignoré (facteur 1)', () => {
+        expect(computeIncomeLossFactor([ev({ durationMonths: 0 })], at(2028, 3))).toBe(1);
+        expect(computeIncomeLossFactor([ev({ durationMonths: undefined })], at(2028, 3))).toBe(1);
+    });
+
+    it('type NON perte-de-revenu (GROS_ACHAT) ignoré', () => {
+        expect(computeIncomeLossFactor([ev({ type: 'GROS_ACHAT' })], at(2028, 4))).toBe(1);
+    });
+
+    it('date invalide ou absente → ignorée (pas de NaN)', () => {
+        expect(computeIncomeLossFactor([ev({ date: 'pas-une-date' })], at(2028, 4))).toBe(1);
+        expect(computeIncomeLossFactor([ev({ date: undefined as unknown as string })], at(2028, 4))).toBe(1);
+    });
+
+    it('résultat toujours dans [0, 1]', () => {
+        const r = computeIncomeLossFactor([ev({ incomeLossPercent: 100 }), ev({ id: '2', type: 'SABBATIQUE', incomeLossPercent: 100 })], at(2028, 4));
+        expect(r).toBeGreaterThanOrEqual(0);
+        expect(r).toBeLessThanOrEqual(1);
+        expect(r).toBe(0); // 0 × 0 = 0, pas de revenu négatif
+    });
+});
+
+describe('applyLifeEvents — les événements de perte de revenu ne sont PAS une dépense', () => {
+    it('un PERTE_EMPLOI au mois courant n\'appelle PAS addExpense (géré par computeIncomeLossFactor)', () => {
+        const event: LifeEvent = { id: '1', type: 'PERTE_EMPLOI', name: 'Perte', date: '2028-03', durationMonths: 6, incomeLossPercent: 100, impactAmount: 9999 };
+        const addExpense = vi.fn();
+        const state: LifeEventMutator = {
+            shockPortfolio: vi.fn(), addLiquid: vi.fn(), addExpense, adjustRealEstate: vi.fn(),
+            realizeCapitalDisposition: vi.fn(() => ({ bankedLoss: 0, taxableGain: 0 })), logLife: vi.fn(), logFlow: vi.fn(),
+        };
+        applyLifeEvents([event], '2028-03', 1.0, [], state);
+        expect(addExpense).not.toHaveBeenCalled(); // skippé : pas de faux flux de dépense
+    });
+
+    it('INCOME_LOSS_EVENT_TYPES contient les 3 types attendus', () => {
+        expect([...INCOME_LOSS_EVENT_TYPES].sort()).toEqual(['ACCIDENT', 'PERTE_EMPLOI', 'SABBATIQUE']);
     });
 });

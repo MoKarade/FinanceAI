@@ -6,6 +6,374 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Lisibilité : textes secondaires plus contrastés (WCAG AA)] — 2026-06-26
+
+### Les libellés et données secondaires sont plus faciles à lire
+- Sur de nombreux écrans (**Accueil, Budget, Investissements, Transactions, Planification, Événements de vie,
+  Immobilier, Enfants, Revenus de retraite, Emplacement d'actifs**, détails de projection), des textes
+  secondaires (libellés, pourcentages, dates, en-têtes de tableau, notes d'aide, messages d'état vide)
+  s'affichaient dans un gris (`ink-500`) sous le contraste minimal **WCAG AA** (4,5:1) sur fond sombre. Ils
+  passent à un gris plus clair (`ink-400`, 5,2-6,4:1) → plus lisibles, notamment en cas de basse vision.
+- Les icônes décoratives et les états volontairement atténués gardent leur teinte (rien de superflu n'a changé).
+- Migration progressive par écran ; les derniers écrans suivront.
+
+## [unreleased — Abonnements : un abo annuel n'est plus compté ×12] — 2026-06-26
+
+### Tes totaux d'abonnements sont justes même avec un abonnement annuel
+- Dans l'onglet **Planification**, les totaux « Fixe mensuel » et « Coût annuel » des abonnements traitaient
+  **tout abonnement comme mensuel** : un abonnement **annuel** (ex. 120 $/an facturé une fois) était compté
+  comme 120 $/**mois** → **1 440 $/an** affichés au lieu de 120 $. Désormais chaque abonnement contribue son
+  vrai coût mensuel-équivalent (un abo annuel = son montant ÷ 12), et la ligne par abonnement affiche le bon
+  « /mois ». Aucun impact sur ton patrimoine net (c'est de l'affichage).
+
+## [unreleased — Impôt à vie estimé : retenue REER exacte au cent près] — 2026-06-26
+
+### Le total d'impôts estimé est plus précis les mois à plusieurs retraits REER
+- Le compteur **« impôts payés sur la vie de la projection »** (et le classement des stratégies de décaissement
+  qui s'en sert) estimait la retenue à la source des retraits REER en la **recalculant sur le total mensuel agrégé**.
+  Comme le barème de retenue n'est pas additif (un palier unique s'applique à tout le montant), ce recalcul
+  **sur-estimait** les mois où plusieurs retraits REER ont lieu. Désormais le compteur additionne la retenue
+  **réellement prélevée à chaque retrait** → chiffre exact au cent près, cohérent avec ce que la projection a
+  vraiment provisionné. Effet mesuré : ~−1 000 $ sur un retraité décaissant ~9 000 $/mois sur 10 ans.
+- Aucun impact sur ton **patrimoine net** ni sur l'impôt réellement payé (c'est un compteur d'affichage/diagnostic).
+- Côté code : déduplication de la logique de retenue REER vers une **source unique** (`withholdingForGrossRRSP`).
+
+## [unreleased — Score de santé : taux d'épargne et coussin d'urgence plus justes] — 2026-06-25
+
+### Ton épargne budgétée ne compte plus comme une « dépense »
+- Le **taux d'épargne** et le **coussin d'urgence** du score de santé financière (Dashboard) comptaient à tort
+  tes postes de budget de nature **Épargne** (virements vers CELI/REER…) comme des dépenses. Résultat : si tu
+  budgétais explicitement ton épargne, ton taux d'épargne affiché tombait près de **0 %** et ton coussin
+  était sous-estimé. Désormais l'épargne est exclue des dépenses → les deux indicateurs reflètent la réalité.
+- **Cohérence partout** : la même correction est maintenant appliquée à TOUTES les surfaces qui calculent ton
+  épargne mensuelle — Dashboard, assistant IA, suggestions « prochaine action », **projection de retraite** et page
+  Budget. Avant, un poste d'épargne dont le nom de nature était écrit avec un accent (« Épargne ») pouvait être
+  compté comme dépense sur certaines surfaces → épargne sous-estimée et projection pessimiste. Réglé.
+
+---
+
+## [unreleased — Couples : rentes de retraite (FERR, RRQ, PSV) calculées par conjoint] — 2026-06-25
+
+### Le début de la RRQ / PSV et le bonus PSV 75+ sont maintenant calculés par conjoint
+- Pour un couple dont les conjoints n'ont **pas le même âge**, la **RRQ et la PSV de chacun démarrent à SON
+  propre âge** (au lieu de l'âge d'un seul conjoint appliqué à tout le ménage) — le conjoint plus jeune ne
+  « touche » plus sa rente avant l'âge admissible. De même, la **bonification PSV de +10 % à 75 ans** ne
+  s'applique qu'au conjoint qui a réellement 75 ans. Couples de même âge et personnes seules : **aucun changement**.
+- Corrige au passage un cas où le **Supplément de revenu garanti (SRG)** était à tort nul pour un couple à écart
+  d'âge dont l'**aîné** touchait déjà la PSV alors que le plus jeune n'y avait pas encore droit.
+
+### La conversion obligatoire REER→FERR (72 ans) est maintenant calculée par conjoint
+- Pour un couple dont les conjoints n'ont **pas le même âge**, la conversion obligatoire du REER en FERR
+  (à 72 ans) se déclenche désormais **pour chaque conjoint à SON âge**, sur SA part de REER — au lieu d'un
+  âge unique appliqué à tout le REER du ménage. Un couple **de même âge** ou une **personne seule** ne voient
+  **aucun changement**. Effet : le revenu imposable et l'impôt de retraite sont plus justes pour les couples à
+  écart d'âge.
+- Au **décès d'un conjoint**, sa part de REER **roule vers le survivant** (sans impôt, comme le prévoit la règle
+  fiscale) — corrige un cas où le REER du défunt aurait continué à générer des retraits imposables.
+
+---
+
+## [unreleased — Impôt à vie estimé : retenue REER au bon taux] — 2026-06-23
+
+### Le total d'impôts et l'« efficacité fiscale » de tes stratégies sont plus justes
+- L'impôt cumulé affiché (et la métrique de « fuite fiscale » qui sert à comparer les stratégies de décaissement)
+  comptait la retenue sur tes retraits REER à un **taux figé de 15 %**, qui sous-estimait dès ~5 000 $/retrait.
+  Il utilise désormais la **retenue réelle par paliers (19/24/29 %)** — le compteur d'impôts à vie reflète enfin
+  ce que tu paies vraiment (aucun effet sur ton patrimoine, c'est un indicateur d'affichage).
+
+---
+
+## [unreleased — Mode discret sur les champs éditables + change réel au Centre fiscal] — 2026-06-23
+
+### Le mode discret masque aussi les champs que tu peux modifier
+- Tes montants de **pension/rente** (Profil) et tes **cibles de budget** sont maintenant masqués (`•••`) en mode
+  discret tant que tu ne cliques pas dessus pour les modifier — la valeur **sort réellement de la page** (avant,
+  un simple flou la laissait lisible par copier-coller, inspecteur ou lecteur d'écran). Le champ se re-masque dès
+  que tu en sors, ou si tu actives le mode discret pendant que tu édites.
+
+### Centre fiscal : estimation d'impôt de placement plus juste
+- L'estimation d'impôt sur tes placements non enregistrés utilise désormais le **taux de change réel** (au lieu
+  d'un taux USD figé et périmé) → l'impact estimé est correct pour un portefeuille en USD/EUR.
+
+---
+
+## [unreleased — Sécurité : durcissement chiffrement + journaux] — 2026-06-23
+
+### Renforce la protection de tes clés et de tes journaux
+- Les **clés API** chiffrées avant d'être synchronisées sur ton Drive utilisent désormais une dérivation **6× plus
+  robuste** (PBKDF2 600 000 itérations, aligné sur les sauvegardes locales). Tes anciennes sauvegardes restent lisibles.
+- Le **journal d'erreurs** (exportable) masque maintenant aussi les champs financiers aux noms composés
+  (ex. « dette liquide », « solde hypothécaire », « montant annuel ») qui pouvaient auparavant y apparaître en clair.
+
+---
+
+## [unreleased — Fiscalité : dons charitables + loyers/dividendes correctement imposés] — 2026-06-23
+
+### Le crédit pour dons (et l'impôt sur loyers/dividendes d'entreprise) s'applique enfin en phase active
+- **Crédit d'impôt pour dons charitables corrigé** : il était calculé à un taux plat (33 %) ET, pour un salarié
+  actif, **purement et simplement perdu** (un bug d'imputation l'écrasait en fin d'année). Désormais il suit le vrai
+  barème par paliers (fédéral + Québec : 35 % sur les 1ers 200 $, 53 % au-delà) et s'applique que tu sois actif ou retraité.
+- **Revenus locatifs et dividendes d'entreprise (CCPC)** : pour un propriétaire/actionnaire encore en activité, ils
+  n'étaient **pas imposés** dans la projection (même bug d'imputation) — ils le sont maintenant.
+- Le crédit pour dons est **plafonné à l'impôt que tu dois** (c'est un crédit non remboursable) : un gros don à faible
+  revenu ne génère pas de « remboursement » fictif. L'excédent inutilisé n'est pas reporté dans la projection.
+- Le don de **titres en nature** (case « titres* ») : l'avantage fiscal spécifique (gain en capital exonéré) n'est pas
+  encore modélisé — un tooltip le précise ; le crédit de don ordinaire s'applique quand même.
+
+---
+
+## [unreleased — Mode test : la répartition 50/30/20 des personas est juste] — 2026-06-23
+
+### Corrige le classement Besoin / Envie / Épargne des personas d'exemple
+- Les budgets des personas de test classaient mal leurs postes (tout tombait en « Envie », et l'épargne CELI/REER comptait
+  comme une dépense). Désormais chaque poste est dans la bonne classe **50/30/20** → les donuts « Comparatif » et « Ta
+  répartition réelle » affichent enfin des Besoins ≠ 0, et le potentiel d'épargne / les dépenses montrées (y compris à
+  l'assistant) sont justes en mode test. Aucun impact sur tes vraies données (déjà correctes).
+
+---
+
+## [unreleased — En couple : corrige qui a payé quoi] — 2026-06-22
+
+### Attribue une transaction à l'un ou l'autre, à la main
+- **En mode couple, le tableau des transactions a une nouvelle colonne « Conjoint »** : pour chaque ligne, choisis
+  **Auto** (attribution automatique selon le type de poste budget — le réglage par défaut), ou force la transaction
+  sur l'un des deux conjoints. Pratique quand une dépense « commune » est en fait perso, ou l'inverse. Disponible aussi
+  en vue mobile. L'attribution alimente le « Perso réel » de la carte couple.
+
+---
+
+## [unreleased — Ton score de santé regarde ton budget et tes abonnements] — 2026-06-22
+
+### Deux nouveaux ratios dans l'indicateur de santé financière
+- **Adhérence au budget** : compare tes dépenses réelles du mois dernier à tes cibles, poste par poste (hors épargne).
+  100 = tu restes dans tes cibles ; le score baisse avec le dépassement.
+- **Poids des abonnements** : tes abonnements épinglés rapportés à ton revenu net (cible : moins de 15 %).
+- **Score plus juste** : une métrique sans donnée (pas de projection FIRE, pas de dépenses le mois dernier, aucun abo
+  épinglé) est maintenant affichée « — » et **exclue** du score global, au lieu de compter comme un 0 qui le tirait
+  injustement vers le bas. Tu peux pondérer les 6 ratios à ta guise (bouton « Paramétrer »).
+
+---
+
+## [unreleased — Épingle tes abonnements] — 2026-06-22
+
+### Tes abonnements restent, sans relancer l'analyse
+- **Tu peux maintenant « épingler » un abonnement détecté** (Netflix, Spotify, Hydro…) : il est **sauvegardé** et
+  réapparaît à chaque ouverture, sans avoir à relancer la détection IA. Survole un abonnement → bouton « Épingler » ;
+  un abo épinglé affiche « Épinglé » (clique pour le retirer). Les abos épinglés ont priorité sur une nouvelle
+  détection (ton montant confirmé prime). Aucun doublon : un même marchand = un seul abonnement.
+
+---
+
+## [unreleased — Dépenses réelles par conjoint] — 2026-06-22
+
+### En couple : qui a dépensé quoi, pour de vrai
+- **La carte « Santé Financière du Couple » montre maintenant le « Perso réel » de chaque conjoint** : les dépenses
+  réellement attribuées à l'un ou à l'autre, à côté de la part *planifiée* (« Sorties »). L'attribution est **automatique**
+  par défaut (un poste « Perso 1 » va au 1ᵉʳ conjoint, « Perso 2 » au 2ᵉ ; les postes « Commun » restent partagés). Tu vois
+  ainsi l'écart entre le budget prévu par personne et ce qui est réellement sorti.
+
+---
+
+## [unreleased — Tes réglages de santé suivent tes appareils] — 2026-06-22
+
+### Les pondérations de l'indicateur de santé sont sauvegardées avec le reste
+- **Les poids que tu donnes à chaque ratio de santé (épargne, coussin, dette, FIRE) sont maintenant rangés avec le reste
+  de tes données** (au lieu d'un coin de stockage local au navigateur). Concrètement : ils **suivent tes appareils** via la
+  sync, et survivent proprement à un nettoyage. Tes réglages existants sont récupérés automatiquement (rien à refaire).
+
+---
+
+## [unreleased — Santé financière regroupée dans Budget] — 2026-06-22
+
+### Ton indicateur de santé financière vit maintenant dans Budget
+- **L'indicateur de santé financière (le score 0-100 avec taux d'épargne, coussin, dette, FIRE) a quitté le Dashboard pour
+  l'onglet Budget**, dans un nouveau sous-onglet **« Santé »**. Il y est plus à sa place, à côté de ton budget et de tes objectifs.
+  Le calcul et les réglages de pondération sont identiques — c'est juste mieux rangé.
+
+---
+
+## [unreleased — Objectifs : relie un objectif d'épargne à ton budget] — 2026-06-22
+
+### « Versé ce mois » sur tes objectifs
+- **Tu peux maintenant lier un objectif d'épargne à une catégorie de ton budget** : l'objectif affiche alors, en plus de
+  l'accumulé et de la cible, le **« Versé ce mois »** — combien tu as réellement mis dans cette catégorie ce mois-ci (calculé
+  depuis tes transactions, même règle que le budget). Le lien est modifiable par objectif. Si la catégorie liée est renommée ou
+  supprimée, un badge **« ⚠ Lien invalide »** te le signale (plus de « 0 » trompeur).
+
+---
+
+## [unreleased — Budget : ta répartition 50/30/20 réelle] — 2026-06-22
+
+### Vois où va vraiment ton argent vs la règle 50/30/20
+- **Nouveau donut « Ta répartition réelle »** dans « Améliorer mon budget » : tes dépenses réellement rapprochées à tes
+  postes (Besoins / Envies) + ton épargne réelle (revenu − dépenses), à côté du donut théorique (tes cibles budgétées).
+- **Table comparative Réel · Cible · Idéal** : pour chaque catégorie, ton pourcentage réel, ta cible budgétée, et l'idéal
+  50/30/20. Le réel s'affiche en **vert** s'il est proche de l'idéal (±2 pts), en **orange** sinon.
+- **Signal de déficit** : si tu as dépensé plus que ton revenu sur la période, une note te le dit (l'épargne est ramenée à
+  0 dans le graphe, mais le déficit réel reste affiché — pas de fausse impression d'équilibre).
+
+---
+
+## [unreleased — Budget : parité avec tes transactions] — 2026-06-22
+
+### Repère les écarts entre ton budget et tes dépenses réelles
+- **Le Budget rapproche maintenant tes transactions de tes postes avec UNE seule règle** (avant, les « réels » et les
+  « tendances » se calculaient différemment → un même montant pouvait apparaître dans l'un mais pas l'autre). Tes montants
+  réels et tes tendances 6 mois sont désormais cohérents.
+- **Nouvelle section « Parité Budget ↔ Transactions »** : (1) les **catégories de transactions sans poste** (avec leur total —
+  crée un poste ou renomme la catégorie pour les suivre), et (2) les **postes jamais rapprochés à une dépense** (poste inutilisé
+  ou nom différent). L'épargne (alimentée par virements) n'est pas signalée.
+- Le « Total dépensé » reste inchangé (il compte toujours toutes tes dépenses, avec ou sans poste).
+
+---
+
+## [unreleased — Mode test : tous les personas explorables sur toutes les pages] — 2026-06-22
+
+### Chaque persona de démo ouvre toutes les pages
+- **En mode test, les 7 personas de démonstration n'affichent plus d'écran « configure d'abord »** sur les pages
+  pilotées par les données (Futur, Investissements, Immobilier, Enfant, Dettes, Projets…). Chaque persona déclare
+  explicitement ce qui ne le concerne pas (« pas de projet immobilier », « pas d'enfant »…) ou contient une donnée
+  minimale, pour qu'on puisse explorer toute l'app directement. (Les pages IA restent en attente d'une clé API, normal.)
+- Purement des données de démo (mode test) — aucun impact sur l'app réelle.
+
+---
+
+## [unreleased — Futur : courbe dézoomée plus épurée] — 2026-06-22
+
+### Moins d'icônes d'événements quand tu prends du recul
+- **En vue dézoomée (tout l'horizon), la courbe Futur affiche maintenant moins d'icônes d'événements** (un
+  échantillon représentatif), pour rester lisible. **En zoomant, elles réapparaissent progressivement jusqu'à toutes.**
+  Les jalons importants (comme 🔥 FIRE atteint) restent **toujours visibles**, à tous les niveaux de zoom.
+- La courbe **verrouillée** est déjà restaurée automatiquement au rechargement de la page (vérifié).
+
+---
+
+## [unreleased — a11y : lisibilité des annotations (token de couleur)] — 2026-06-22
+
+### Textes d'annotation au bon niveau de gris
+- Plusieurs petits textes d'aide/annotation (graphes, fiche détail, prochaine action…) utilisaient une classe de
+  couleur **inexistante** : leur teinte était imprévisible (héritée du parent). Ils ont désormais une couleur grise
+  **lisible et conforme aux contrastes d'accessibilité** (AA). Purement visuel, aucune donnée ni calcul touché.
+
+---
+
+## [unreleased — Futur : infobulle figeable (clic = fige)] — 2026-06-22
+
+### Lis l'infobulle tranquillement, sans qu'elle fuie sous le curseur
+- **Sur la courbe Futur, un clic FIGE désormais l'infobulle** : elle reste ancrée à l'écran, devient scrollable et
+  cliquable, au lieu de suivre la souris. Tu peux survoler d'autres mois sans qu'elle disparaisse. **Échap** ou un clic
+  ailleurs la libère.
+- **Bouton « Détail complet »** dans l'infobulle figée → ouvre la fiche exhaustive du mois (l'ancienne modale). Les
+  pastilles d'événement (🔥, 🏠…) ouvrent toujours directement le détail.
+- Au survol simple, l'infobulle suit la souris comme avant (rien ne change tant qu'on ne clique pas).
+- Sous le capot : aucun calcul touché (pure UI) ; positionnement borné à l'écran, accessibilité durcie (focus géré,
+  Échap, contraste et cible tactile du bouton conformes).
+
+---
+
+## [unreleased — Futur : le cap « FIRE atteint » saute aux yeux] — 2026-06-20
+
+### Une pastille orange au moment FIRE
+- **Sur la courbe Futur, le mois où tu atteins ton objectif FIRE est désormais une pastille ORANGE 🔥**, au lieu de
+  se fondre dans les autres jalons de vie. Elle reste **toujours visible**, même en vue dézoomée (avant, elle pouvait
+  disparaître quand le graphe condense les événements). Clique dessus pour le détail du mois. Aucun calcul changé —
+  le moment FIRE est celui que le moteur calcule déjà, juste mieux mis en valeur.
+
+---
+
+## [unreleased — Clarté : « Patrimoine successoral » (avec rentes)] — 2026-06-19
+
+### Un KPI mieux nommé, avec une infobulle
+- **Le KPI « Patrimoine projeté » de l'onglet Futur s'appelle maintenant « Patrimoine successoral, avec rentes »** + une
+  infobulle explique ce qu'il recouvre : patrimoine au décès, net de l'impôt de liquidation (REER et gains en capital
+  imposés au décès) **plus** la valeur actualisée des rentes RRQ/PSV restantes. C'est différent du patrimoine en fin
+  d'horizon — le nom le dit enfin. Clarifié partout où ce montant apparaît (Budget, stress-tests, optimiseur de
+  décaissement, assistant IA). Aucun calcul changé, juste les libellés.
+
+---
+
+## [unreleased — Accessibilité : lisibilité des badges] — 2026-06-19
+
+### Badges plus nets (contraste)
+- **Les badges (« Insoutenable », « Impôt », « FIRE atteint »…) ont une bordure plus marquée** : ils se détachent
+  mieux du fond de la page (le fond du badge reste identique). Petit gain de lisibilité, surtout en coup d'œil rapide.
+
+---
+
+## [unreleased — Moteur : garde anti-NaN du patrimoine net] — 2026-06-19
+
+### Robustesse — Un solde corrompu ne vide plus ton graphe en silence
+- **Si un solde devenait `NaN`/infini** (donnée corrompue, division par zéro en amont), **tout ton patrimoine net devenait
+  invalide et le graphe se vidait — sans aucune trace** d'erreur. Le calcul du patrimoine (source unique) n'avait pas de garde.
+- **Désormais** : un terme non fini est isolé, **rabattu à 0**, et **journalisé** (visible dans le panneau système) au lieu de
+  faire planter silencieusement l'affichage. Le calcul reste **identique au centime** quand tout est normal (aucun impact sur
+  tes chiffres). Filet de défense en profondeur — la vraie source d'un solde corrompu reste à corriger en amont si elle survient.
+
+---
+
+## [unreleased — Moteur : perte en capital d'un locatif vendu sous coût] — 2026-06-19
+
+### Correction fiscale — Vente d'un immeuble LOCATIF à perte
+- **Un locatif vendu sous son coût d'achat générait une perte en capital qui était silencieusement ignorée** : l'avantage
+  fiscal (report de la perte sur les gains en capital futurs, LIR 111(1)b) était perdu. Le moteur ne comptabilisait que les
+  gains (`max(0, produit − coût)`).
+- **Désormais la perte est portée en « banque de pertes en capital »** : elle réduit l'impôt sur tes gains en capital futurs
+  (placements, crypto ou autre vente immobilière), exactement comme une perte sur un placement non enregistré. Symétriquement,
+  un gain locatif nette d'abord les pertes accumulées avant d'être imposé. (Vente d'une résidence principale : toujours exemptée.)
+
+---
+
+## [unreleased — Moteur : patrimoine net net de déficit immobilier] — 2026-06-19
+
+### Correction moteur — Vente immeuble avec peu d'équité (frais > solde)
+- **Vente d'une propriété avec hypothèque proche de la valeur + frais de vente** : si le déficit était supérieur à l'équité
+  disponible (ex. hypo = 95 % du prix, frais = 5 % → solde négatif), le moteur **n'en tenait pas compte** : le déficit était effacé
+  silencieusement au lieu d'être soustrait du patrimoine net. Résultat : ton patrimoine affiché était surévalué.
+- **Désormais le déficit est bien traité** : il réduit ton liquide (s'il y a du cash) ou s'ajoute à ta dette visible (découvert
+  porté en ligne). Le patrimoine net reflète exactement la réalité économique de la vente. Cas rare mais structurel pour les
+  propriétaires avec peu d'équité.
+
+---
+
+## [unreleased — Accessibilité (Vague 2)] — 2026-06-17
+
+### Futur — Badge « plan insoutenable »
+- **Un patrimoine projeté qui devient négatif est maintenant expliqué, pas juste affiché** : quand la projection
+  fait passer ton patrimoine net sous zéro (capital épuisé, dette qui prend le dessus), un badge clair « Plan
+  insoutenable — capital épuisé vers X ans » apparaît dans l'en-tête de l'onglet Futur. Un plan qui reste solvable
+  jusqu'au bout n'affiche aucun badge. Transforme un chiffre négatif anxiogène en signal actionnable.
+
+### Investissement — Recherche d'action (Finnhub)
+- **Symbole proposé mais sans cours → saisie manuelle au lieu d'une erreur** : l'autocomplétion proposait des
+  titres (TSX/étrangers) que le forfait Finnhub gratuit ne sait pas coter, ce qui menait à un message d'erreur
+  sec. Désormais l'app bascule automatiquement en saisie manuelle pré-remplie (symbole + nom), avec un message
+  informatif — tu n'as plus qu'à entrer le prix. Une vraie panne réseau reste signalée comme une erreur (pas
+  masquée). Le menu d'autocomplétion est agrandi, et la touche **Échap** ferme le menu sans fermer la fenêtre.
+
+### Projection — Événements de perte de revenu (FISC-EVENT-INCOMELOSS)
+- **Perte d'emploi / année sabbatique / accident appliqués par le moteur** : ces événements de vie étaient
+  collectés par l'UI mais **ignorés** par la projection (no-op silencieux — une interruption de revenu de 6 mois
+  n'avait aucun effet). Ils réduisent désormais le revenu du ménage de « % perdu » pendant « durée (mois) »
+  (défauts perte d'emploi/sabbatique 100 %, accident 50 %, modifiables). Formulaire : deux champs dédiés (% perdu
+  + durée) au lieu d'un champ ambigu, avec validation (un événement sans % ni durée est refusé).
+- Conservation de l'argent préservée (résiduel < 1 $) ; l'impôt salarial de décembre n'est pas réduit (biais
+  conservateur, identique au modèle de chômage stochastique existant).
+
+### Vie privée — Mode discret
+- **Le mode discret masque maintenant la VALEUR (« ••• ») au lieu de la flouter** : la vraie valeur n'est
+  plus présente dans la page (fini la fuite par copier-coller, inspecteur, lecteur d'écran ou désactivation
+  du flou). Le **survol ne révèle plus** le montant. S'applique aux primitives `PrivateAmount`/`PrivateBlock`
+  et aux KPI ; la migration des derniers montants encore floutés suit. (PRIV-DISCRET-DOM)
+
+### Accessibilité (WCAG 2.2 AA)
+- **Visualisation des tranches d'imposition** (`TaxBracketViz`) rendue lisible au lecteur d'écran :
+  barres en `role="img"` + `aria-label` (revenu, taux marginal), contenu visuel interne masqué
+  (`aria-hidden`), alternative textuelle `<ChartDataTable>` sr-only (paliers from→to + taux) par
+  juridiction ; titre de juridiction passé en `<h3>` (fin du saut de niveau h2→h4) ; couleurs de
+  contenu `ink-500`→`ink-400` (contraste AA vérifié : 5,2-6,4:1 vs 3,4-4,2:1). (A11Y-TAXBRACKET)
+
+---
+
 ## [unreleased — Audit financier complet (AAA) + corrections périphériques] — 2026-06-17
 
 > Audit exhaustif du moteur (panel 5 agents + vérification empirique) → `docs/AUDIT_FINANCIER_2026-06-17.md`.

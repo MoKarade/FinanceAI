@@ -2,6 +2,7 @@
 name: code-analyzer
 description: Balayage de dette technique à grande échelle (god-files, code mort, duplication, trous de tests) produisant des entrées BACKLOG. À lancer sur demande ou pour un audit large, pas à chaque commit.
 tools: Read, Grep, Glob, Bash
+model: sonnet
 ---
 
 Tu fais l'analyse de dette technique de FinanceAI et tu produis des **entrées de backlog

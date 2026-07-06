@@ -9,6 +9,13 @@
 > **Règle CLAUDE.md** : toute constante fiscale du code DOIT correspondre à ce doc,
 > daté + sourcé. Aucun chiffre fiscal en dur non sourcé. Audit : agent `fiscal-accuracy`.
 >
+> ⚠️ **Format des dates** : lu par `tests/utils/fiscalFreshness.ts` (garde [HARDEN-FISCAL-TIMEBOMB]).
+> Conserver les marqueurs **`Dernière vérification : YYYY-MM-DD`** et **`Ré-audité YYYY-MM-DD`** dans
+> ce format exact (la regex tolère le gras markdown `**…**`). Une restructuration de ces lignes casse le test.
+> **Bumper la date = ATTESTER une re-vérification RÉELLE des chiffres vs ARC/Revenu Québec** (acte
+> d'engagement, pas une formalité) : la garde mesure la fraîcheur de la DATE, pas l'exactitude des
+> valeurs. Avancer la date sans re-vérifier désarme la bombe et endort la vigilance qu'elle force.
+>
 > **Implémentation** : `utils/tax.ts` (particuliers) + `services/realEstate.ts`
 > (immobilier SCHL/OSFI). Indexation des années futures : `getIndexedBracketsForYear`
 > (≈ +2 %/an au-delà de 2026, sauf montants gelés indiqués). Cf ADR 009.
@@ -440,8 +447,11 @@ exactes par `fiscal-accuracy`) :
 | **IQEE** (Incitatif québécois à l'épargne-études) | **10 %** de la cotisation, max **250 $/an** (500 $/an en rattrapage), **3 600 $ à vie** | Revenu Québec |
 | **Plafond REEE** (`REEE_LIFETIME_LIMIT_PER_BENEFICIARY`) | **50 000 $/bénéficiaire à vie** | ARC §6.9 / F13 |
 | Cotisation visée | **2 500 $/an** (5 000 $/an en mode rattrapage tant que SCEE < max théorique) | optimisation subvention pleine |
-> ⚠️ Reste une dette LOW : ces valeurs sont des **littéraux en dur** dans `childrenReee.ts` (`0.20`,
-> `0.10`, `500/250`, `7200/3600`, `50000`) — extraire en constantes nommées si on y retouche (non urgent).
+> ✅ **REEE-LITERALS résolu (2026-06-26)** : ces valeurs sont désormais des **constantes nommées** en tête de
+> `childrenReee.ts` (`SCEE_GRANT_RATE`, `SCEE_ANNUAL_GRANT_BASIC/CATCHUP`, `SCEE_LIFETIME_GRANT_LIMIT`, idem `IQEE_*`,
+> `REEE_LIFETIME_LIMIT_PER_BENEFICIARY`, `REEE_TARGET_ANNUAL_CONTRIB_BASIC/CATCHUP`), qui pointent vers cette section.
+> Refactor pur (valeurs inchangées). NB : l'impôt sur le PRA à la fermeture (`REEE_AIP_TAX_RATE` ~20 %) est une
+> **approximation de modèle**, PAS un taux combiné officiel — à raffiner séparément.
 > Le **clawback d'allocation** (`householdGross > 150 000 $` → dégressif sur 100 000 $) est une heuristique
 > de modèle (PAS un barème ARC/RQ officiel d'allocation), à raffiner si besoin.
 
@@ -455,10 +465,14 @@ exactes par `fiscal-accuracy`) :
   est **exempt d'impôt** (100 % si RP unique sur toute la période de détention). Appliqué par le levier
   **downsizing** (`realEstateMonth.ts` : l'équité libérée n'incrémente PAS `accCapitalGainsYear`) → aucun
   impôt, aucun effet sur les assiettes de revenu (clawback PSV/SRG, FSS, RAMQ). Conforme.
-- **Gain immobilier d'un LOCATIF (≠ RP) à la VENTE** (`monthlyEvents.applyLifeEvents`, RE-GAIN livré) :
-  produit net (95 %) − coût d'achat → gain BRUT réalisé dans `accCapitalGainsYear` (50 % inclus en aval).
-  Exempt pour la résidence principale. ⚠️ **Reste** : le gain latent immobilier d'un locatif à la
-  **succession** (`estateCalculation`) n'est pas encore modélisé — cf BACKLOG `[RE-GAIN-SUCC]`.
+- **Gain OU perte en capital d'un LOCATIF (≠ RP) à la VENTE** (`monthlyEvents.applyLifeEvents`, RE-GAIN +
+  FISC-RE-CAPITAL-LOSS) : gain BRUT SIGNÉ = produit net (95 %) − coût d'achat, routé par la SOURCE UNIQUE
+  `portfolioOps.applyCapitalDisposition` (partagée avec NonReg/crypto). Gain ≥ 0 → nette d'abord
+  `capitalLossBank` puis alimente `accCapitalGainsYear` (50 % inclus en aval). **Perte < 0 → portée en
+  `capitalLossBank`** (LIR 111(1)(b), déductible des gains FUTURS) — avant FISC-RE-CAPITAL-LOSS (2026-06-19)
+  un `Math.max(0, …)` l'effaçait silencieusement (avantage fiscal perdu). Exempt pour la résidence principale.
+  ⚠️ **Reste** : le gain latent immobilier d'un locatif à la **succession** (`estateCalculation`) utilise
+  `Math.max(0, …)` (une perte latente au décès n'a pas de gain futur à compenser — horizon terminé) — cf BACKLOG `[RE-GAIN-SUCC]`.
 - `DOWNSIZE_RELEASE_PCT = 0.4` est une **hypothèse de modèle** (fraction d'équité libérée en rachetant
   plus petit), **pas une valeur fiscale** — ajustable, non sourcée.
 
@@ -568,3 +582,46 @@ choisir). Calcul cumulatif par tranche (style impôt).
 - **Gate DB du fractionnement à 65 ans** (limite assumée) : la rente viagère DB est fractionnable
   dès réception à TOUT âge côté fédéral (T1032), mais le QC exige 65 ans. Le moteur faisant un calcul
   combiné QC+féd, on retient **65** (sur-impôt léger pour une DB débutant avant 65, jamais l'inverse).
+
+---
+
+## 10. Crédit d'impôt pour dons de bienfaisance (FA-6) — année d'imposition 2025
+
+> Crédit d'impôt **non remboursable** réclamé **cumulativement** au fédéral (ligne 34900 / Annexe 9) ET au
+> Québec (ligne 395 / Annexe V). Sources (consultées 2026-06-23) :
+> [ARC — P113 « Les dons et l'impôt 2025 »](https://www.canada.ca/en/revenue-agency/services/forms-publications/publications/p113/p113-gifts-income-tax.html) ·
+> [ARC — Ligne 34900](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-34900-donations-gifts.html) ·
+> [Revenu Québec — Crédits d'impôt pour dons](https://www.revenuquebec.ca/fr/citoyens/credits-dimpot/credits-dimpot-pour-dons/) ·
+> [CFFP — Crédit d'impôt pour dons (guide mesures fiscales 2025)](https://cffp.recherche.usherbrooke.ca/outils-ressources/guide-mesures-fiscales/credit-impot-dons/).
+
+### Taux par paliers (`utils/donationCredit.ts`)
+| Tranche du don | Fédéral | Québec | Combiné |
+|---|---|---|---|
+| Premiers 200 $ | **15 %** | **20 %** | **35 %** |
+| Excédent (> 200 $) | **29 %** | **24 %** | **53 %** |
+| Portion appariée au revenu en tranche d'imposition MAX | 33 % (féd) | 25,75 % (QC) | — |
+
+- **Seuil de la tranche max** (déclenche 33 % féd / 25,75 % QC sur la portion de don appariée à ce revenu) :
+  QC **129 590 $** (2025, harmonisé au seuil fédéral le 2025-02-03). Le seuil fédéral du 33 % est plus élevé
+  (tranche supérieure ~253 k$).
+- **Plafond annuel** : fédéral = **75 % du revenu net** ; Québec = **aucun plafond**. Report prospectif 5 ans.
+
+### Implémentation — modèle FA-6 (option B, validée Marc 2026-06-23)
+- Crédit (par adulte) = `0,15·min(don,200) + 0,29·max(0, don−200)` **(féd)** `+ 0,20·min(don,200) + 0,24·max(0, don−200)` **(QC)**.
+  → effectif **35 %** sur les 1ers 200 $, **53 %** au-delà (vs l'ancien **33 % plat** = sous-crédit, surtout > 200 $).
+- **Limites assumées (DOCUMENTÉES, no-fake-data)** :
+  - **Majoration top-bracket** (33 % féd / 25,75 % QC) NON modélisée — requiert le statut marginal par conjoint →
+    crédit légèrement SOUS-estimé pour un donateur à très haut revenu (direction conservatrice).
+  - **Plafond 75 % du revenu net** NON appliqué (les dons modélisés sont petits vs le revenu net) — à ajouter si
+    un don dépasse 75 % du revenu net du donateur.
+  - **Don de titres cotés en nature** : inclusion du gain en capital à **0 %** (LIR 38(a.1)) NON modélisée —
+    `CharitableGoal` ne suit aucune base de coût ni valeur marchande des titres. L'ancien proxy non sourcé
+    `addTaxGains(−0,15·don)` est **SUPPRIMÉ**. À modéliser via un champ `gain` optionnel si voulu (suivi BACKLOG).
+  - **Plafond « non remboursable » à l'impôt dû — APPLIQUÉ** (`FA-6-CREDIT-CAP`, `taxDecember.ts`) : le crédit-don
+    est accumulé (`taxCurrentYear.donCredit`) puis, en décembre, **plafonné à l'impôt sur le revenu + gains de
+    l'année** (`grossIncomeTax + max(0, taxCurrent.gains)`) avant d'être appliqué à `divers`. Un crédit non
+    remboursable ne peut donc PAS générer de remboursement net (donateur bas-revenu : crédit borné à son impôt).
+    **L'excédent non utilisé est PERDU** (le report prospectif 5 ans n'est pas modélisé — conservateur). Les
+    cotisations santé RAMQ/FSS ne font PAS partie de l'assiette du crédit. ⚠️ Le plafond est appliqué sur l'impôt
+    COMBINÉ féd+QC (approximation conservatrice ; en toute rigueur le crédit fédéral ne plafonne qu'à l'impôt
+    fédéral et le QC qu'à l'impôt QC — l'écart n'apparaît qu'à très bas revenu où un palier a de l'impôt et l'autre non).

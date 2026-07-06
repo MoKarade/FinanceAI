@@ -13,6 +13,10 @@ export interface Transaction {
   confidence?: number;
   isAiProcessed?: boolean;
   isVerified?: boolean;
+  /** [PH4-E] Conjoint propriétaire de la dépense en mode couple : 0 = user[0], 1 = user[1].
+   *  Optionnel (additif) — `undefined` = attribution AUTO par le type du poste budget (`Perso 1`→0,
+   *  `Perso 2`→1, `Commun`→aucun). Une valeur explicite est un OVERRIDE manuel. Voir `resolveTransactionOwner`. */
+  ownerId?: 0 | 1;
 }
 
 // Phase E.8 — DCA multi-achat : un seul achat (dateBought + buyPrice) ne suffit
@@ -113,12 +117,6 @@ export interface DocumentMeta {
 // CanadianProvince GARDÉ : consommé par ProjectionConfig.futureProvince (W2.7 geographic arbitrage).
 export type CanadianProvince =
   | 'QC' | 'ON' | 'AB' | 'BC' | 'MB' | 'SK' | 'NS' | 'NB' | 'NL' | 'PE' | 'YT' | 'NT' | 'NU';
-// Cycle 2 type-design: union pour Industry (élimine `string` permissif).
-// Liste calibrée sur les top industries StatCan + tech moderne.
-export type Industry =
-    | 'tech' | 'finance' | 'health' | 'public-sector' | 'education'
-    | 'construction' | 'retail' | 'manufacturing' | 'energy'
-    | 'transportation' | 'agriculture' | 'media' | 'other';
 // Union partagée pour les comptes enregistrés canadiens (élimine 3 unions divergentes
 // dans Asset, InvestmentAccount, assetLocation).
 export type RegisteredAccountType = 'CELI' | 'CELIAPP' | 'REER' | 'NON-ENREG' | 'CRYPTO' | 'REEE' | 'MARGE' | 'AUTRE';
@@ -150,10 +148,9 @@ export interface User {
   // complet : aucun consommateur) : gender, healthRating, isSmoker, bmiCategory, chronicConditions,
   // parentAgeAtDeath, activityLevel, yearsOfExperience, employmentType, promotionLikelihood5Y,
   // pensionPlan, province, citizenship, maritalStatus, bonusVolatilityPct, stockOptionsValue,
-  // commissionPctOfGross, cryptoStakingAnnual, payFrequency.
+  // commissionPctOfGross, cryptoStakingAnnual, payFrequency, industry (purgé 2026-06-19, décision Marc :
+  // zéro consommateur services/, seul l'éditeur UserConfigFields le settait).
   // Données résiduelles persistées (localStorage/IndexedDB) = INERTES, ignorées — ZÉRO migration.
-  // W5.1 — Carrière
-  industry?: Industry;                   // GARDÉ (décision audit PH3-c) — éditeur UserConfigFields seul, aucun consommateur services/
   // W5.2 — Rémunération variable (consommée par le moteur)
   bonusPctOfGross?: number;              // 0-100, bonus annuel attendu — services/projection/activeIncome.ts
   rsuVestingPerYear?: number;            // $ RSU vesting annuel attendu — services/projection/activeIncome.ts (lissé /12)
@@ -529,6 +526,21 @@ export interface SavingsGoal {
   currentAmount: number;
   deadline: string;
   icon: string;
+  /** [PH4-C] Lien optionnel vers une catégorie budget (par NOM = clé d'`actualsMap`) : permet d'afficher
+   *  « versé ce mois » (dépense réelle rapprochée) à côté de l'accumulé (`currentAmount`) et de la cible. Additif. */
+  linkedBudgetCategoryName?: string;
+}
+
+/** [PH4D-WEIGHTS-STORE] Pondérations des ratios de l'indicateur de santé financière (`HealthIndicator`).
+ *  [PH4D-BUDGET-RATIOS] étendu de 4 à 6 : ajout de `budgetParity` (adhérence au budget) et `subscriptionLoad`
+ *  (poids des abonnements). Rétrocompat : un état persisté à 4 champs est complété par les défauts à la lecture. */
+export interface HealthWeights {
+  savingsRate: number;
+  emergencyFund: number;
+  debtRatio: number;
+  fireProgress: number;
+  budgetParity: number;
+  subscriptionLoad: number;
 }
 
 export interface Debt {
@@ -679,6 +691,14 @@ export interface AppState {
   childGoal?: ChildGoal;
   childGoals: ChildGoal[];
   savingsGoals: SavingsGoal[];
+  /** [PH4D-WEIGHTS-STORE] Pondérations de l'indicateur de santé financière (somme libre, normalisée à l'affichage).
+   *  Migré de l'ancienne clé localStorage `healthIndicator:weights:v1` vers le store persisté. Optionnel (additif) :
+   *  le store l'initialise toujours (`loadLegacyHealthWeights`), mais un vieil état persisté peut ne pas l'avoir → fallback. */
+  healthWeights?: HealthWeights;
+  /** [PH4-F] Abonnements / charges fixes ÉPINGLÉS (persistés). Avant : les abos n'étaient que DÉTECTÉS à la volée
+   *  (IA/heuristique) et reperdus au reload. L'utilisateur en épingle un détecté → il rejoint cette liste persistée.
+   *  Optionnel (additif, PAS de bump v7→v8 : rien à migrer, le store l'initialise à `[]`). Réutilise `RecurringItem`. */
+  subscriptions?: RecurringItem[];
   debts: Debt[];
   travelGoals: TravelGoal[];
   lifeEvents: LifeEvent[];

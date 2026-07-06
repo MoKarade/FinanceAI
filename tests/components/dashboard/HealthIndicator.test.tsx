@@ -60,32 +60,31 @@ describe('HealthIndicator', () => {
         expect(screen.queryByText(/Pondérations/i)).not.toBeInTheDocument();
         fireEvent.click(screen.getByLabelText('Paramétrer les pondérations'));
         expect(screen.getByText(/Pondérations/i)).toBeInTheDocument();
-        // 4 sliders (range inputs)
+        // [PH4D-BUDGET-RATIOS] 6 sliders (range inputs) : +adhérence budget +poids abos
         const sliders = screen.getAllByRole('slider');
-        expect(sliders.length).toBe(4);
+        expect(sliders.length).toBe(6);
     });
 
     it('Réinitialiser remet les poids aux valeurs par défaut', () => {
-        // Préremplir un poids non-default dans localStorage
-        localStorage.setItem('healthIndicator:weights:v1', JSON.stringify({
-            savingsRate: 80, emergencyFund: 5, debtRatio: 5, fireProgress: 10,
-        }));
+        // [PH4D-WEIGHTS-STORE] poids dans le STORE (avant : localStorage local au composant). 6 champs (PH4D-BUDGET-RATIOS).
+        useFinanceStore.setState({ healthWeights: { savingsRate: 80, emergencyFund: 5, debtRatio: 5, fireProgress: 5, budgetParity: 3, subscriptionLoad: 2 } });
         render(<HealthIndicator />);
         fireEvent.click(screen.getByLabelText('Paramétrer les pondérations'));
-        // Le total devrait être 100 (80+5+5+10)
-        expect(screen.getByText(/Total : 100%/i)).toBeInTheDocument();
+        const sliders = screen.getAllByRole('slider');
+        expect((sliders[0] as HTMLInputElement).value).toBe('80'); // le composant LIT bien le poids non-défaut du STORE (savingsRate = 1er)
         fireEvent.click(screen.getByText('Réinitialiser'));
-        // Après reset, total devrait être 100% (30+20+20+30)
-        expect(screen.getByText(/Total : 100%/i)).toBeInTheDocument();
+        // Après reset, le store porte les défauts à 6 champs (somme 100).
+        expect(useFinanceStore.getState().healthWeights).toEqual({ savingsRate: 25, emergencyFund: 15, debtRatio: 15, fireProgress: 20, budgetParity: 15, subscriptionLoad: 10 });
     });
 
     it('score élevé avec finances saines (≥70)', () => {
         // État favorable : épargne élevée (80%), zéro dette, gros coussin.
         // Les clés de initialBalances sont arbitraires (comme en usage réel) :
         // computeCurrentLiquidity somme toutes les valeurs = 600 000 $ de cash.
-        // Coussin = 600000/2000 = 300 mois → 100. Épargne (10000-2000)/10000 =
-        // 80% → 100. Dette 0 → 100. FIRE = 0 (mode strict : pas de projection).
-        // Score = (100×30 + 100×20 + 100×20 + 0×30) / 100 = 70.
+        // Coussin = 600000/2000 = 300 mois → 100. Épargne (10000-2000)/10000 = 80% → 100. Dette 0 → 100.
+        // [PH4D-BUDGET-RATIOS] FIRE indisponible (pas de projection) ET adhérence budget indisponible (transactions
+        // vides) → EXCLUES du score. Poids des abos = 100 (aucun abo épinglé = aucun fardeau). Score = moyenne pondérée
+        // des métriques DISPONIBLES (épargne/coussin/dette/abos, toutes à 100) = 100 ≥ 70.
         useFinanceStore.setState({
             config: {
                 ...initialState.config,
@@ -131,17 +130,16 @@ describe('HealthIndicator', () => {
         render(<HealthIndicator />);
         // Le coussin affiche un nombre de mois > 0, surtout PAS « 0,00 mois ».
         expect(screen.queryByText(/^0[.,]00\s+mois$/)).not.toBeInTheDocument();
-        expect(screen.getByText(/\bmois\b/)).toBeInTheDocument();
+        // Format coussin « X,XX mois » (espace), pas « $/mois » du poids des abos (PH4D-BUDGET-RATIOS).
+        expect(screen.getByText(/\d+[.,]\d+\s+mois/)).toBeInTheDocument();
     });
 
-    it('changement de slider sauvegarde dans localStorage', () => {
+    it('changement de slider sauvegarde dans le store', () => {
+        // [PH4D-WEIGHTS-STORE] la sauvegarde va dans le store persisté (avant : localStorage).
         render(<HealthIndicator />);
         fireEvent.click(screen.getByLabelText('Paramétrer les pondérations'));
         const sliders = screen.getAllByRole('slider');
         fireEvent.change(sliders[0], { target: { value: 50 } });
-        const saved = localStorage.getItem('healthIndicator:weights:v1');
-        expect(saved).toBeTruthy();
-        const parsed = JSON.parse(saved!);
-        expect(parsed.savingsRate).toBe(50);
+        expect(useFinanceStore.getState().healthWeights?.savingsRate).toBe(50);
     });
 });

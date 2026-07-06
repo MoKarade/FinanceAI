@@ -9,8 +9,16 @@ import { BudgetConfig, Asset } from '../types';
 // Phase 4 A4: bascule sur services/claude.ts (Sonnet 4.6 + Vision)
 import { analyzePayslip } from '../services/claude';
 import { logError } from '../services/errorLogger';
-import { calculateFiscalReport, calculateGrossFromNet } from '../utils/tax';
+import { calculateFiscalReport, calculateGrossFromNet } from '../services/tax';
+import { CAPITAL_GAINS_INCLUSION_STANDARD } from '../utils/tax';
 import { annualSalaryToMonthly } from '../utils/salary';
+import { formatCAD, formatSigned } from '../utils/format';
+import { useFinanceStore } from '../store/useFinanceStore';
+
+// [TC-FX-HARDCODE, audit 2026-06-23] Hypothèses d'ESTIMATION (PAS des constantes fiscales) pour estimer
+// le revenu imposable d'un portefeuille non-enregistré. Approximatif — affiché comme estimation.
+const EST_DIVIDEND_YIELD = 0.02;        // rendement en dividendes estimé (~2 %/an)
+const EST_CAPITAL_GAINS_YIELD = 0.07;   // gains en capital réalisés estimés (~7 %/an)
 
 interface TaxCenterProps {
     config: BudgetConfig;
@@ -133,16 +141,25 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
         setIsAnalyzing(false);
     };
 
+    // [TC-FX-HARDCODE] taux de change RÉELS du store (avant : USD figé à 1,38 → impôt estimé faux).
+    const fxRates = useFinanceStore((s) => s.fxRates);
     const investmentTaxData = useMemo(() => {
+        const fxOf = (cur: string | undefined): number => {
+            if (cur === 'USD' || cur === 'EUR') {
+                const r = fxRates?.[cur];
+                return Number.isFinite(r) ? (r as number) : 1; // repli 1 si taux absent/non chargé
+            }
+            return 1; // CAD (devise de base) ou devise inconnue
+        };
         const nonRegAssets = assets.filter(a => a.accountType === 'NON-ENREG' || a.accountType === 'CRYPTO');
-        const nonRegValue = nonRegAssets.reduce((sum, a) => sum + (a.quantity * a.currentPrice * (a.currency === 'USD' ? 1.38 : 1)), 0);
+        const nonRegValue = nonRegAssets.reduce((sum, a) => sum + ((a.quantity || 0) * (a.currentPrice || 0) * fxOf(a.currency)), 0);
 
-        const estDividends = nonRegValue * 0.02;
-        const estCapitalGains = nonRegValue * 0.07;
-        const taxableInvestmentIncome = estDividends + (estCapitalGains * 0.5);
+        const estDividends = nonRegValue * EST_DIVIDEND_YIELD;
+        const estCapitalGains = nonRegValue * EST_CAPITAL_GAINS_YIELD;
+        const taxableInvestmentIncome = estDividends + (estCapitalGains * CAPITAL_GAINS_INCLUSION_STANDARD);
 
         return { totalNonReg: nonRegValue, taxableAddOn: taxableInvestmentIncome };
-    }, [assets]);
+    }, [assets, fxRates]);
 
     const [viewUser, setViewUser] = useState<string>('all');
 
@@ -251,19 +268,19 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                         <div className="bg-black/30 p-3 rounded border border-white/5">
                             <div className="text-tiny text-ink-300">Brut Annuel Est.</div>
-                            <div className="text-lg font-bold text-white">{scannedPay.gross.toLocaleString()}$</div>
+                            <div className="text-lg font-bold text-white">{formatCAD(scannedPay.gross)}</div>
                         </div>
                         <div className="bg-black/30 p-3 rounded border border-white/5">
                             <div className="text-tiny text-ink-300">Net Annuel Est.</div>
-                            <div className="text-lg font-bold text-green-400">{scannedPay.net.toLocaleString()}$</div>
+                            <div className="text-lg font-bold text-green-400">{formatCAD(scannedPay.net)}</div>
                         </div>
                         <div className="bg-black/30 p-3 rounded border border-white/5">
                             <div className="text-tiny text-ink-300">Impôts Retenus Est.</div>
-                            <div className="text-lg font-bold text-danger-400">-{scannedPay.tax.toLocaleString()}$</div>
+                            <div className="text-lg font-bold text-danger-400">{formatSigned(-scannedPay.tax, { withCurrency: true })}</div>
                         </div>
                         <div className="bg-black/30 p-3 rounded border border-white/5">
                             <div className="text-tiny text-ink-300">REER/RPP Retenus</div>
-                            <div className="text-lg font-bold text-info-400">{scannedPay.rrsp.toLocaleString()}$</div>
+                            <div className="text-lg font-bold text-info-400">{formatCAD(scannedPay.rrsp)}</div>
                         </div>
                     </div>
                     <div className="flex justify-end gap-2">
@@ -316,7 +333,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                 </label>
                                 <div className="p-3 bg-white/5 border border-white/10 rounded-lg flex items-center justify-between">
                                     <span className="text-ink-300">Total Synchronisé</span>
-                                    <span className="text-xl font-bold text-white font-mono">{grossIncome.toLocaleString()}$</span>
+                                    <span className="text-xl font-bold text-white font-mono">{formatCAD(grossIncome)}</span>
                                 </div>
                                 <p className="text-tiny text-ink-500 mt-2 flex items-center gap-1.5">
                                     <Icon name="lock" size={12} /> Lié à la Configuration (× 12 mois).
@@ -327,7 +344,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                 <div className="p-3 bg-green-900/10 border border-green-500/30 rounded">
                                     <div className="flex justify-between items-center">
                                         <span className="text-meta text-green-400 font-bold">Impôt déjà prélevé (Source)</span>
-                                        <span className="text-body font-mono text-white">{alreadyPaidTax.toLocaleString()}$</span>
+                                        <span className="text-body font-mono text-white">{formatCAD(alreadyPaidTax)}</span>
                                     </div>
                                     <div className="text-tiny text-ink-500 mt-1">Détecté automatiquement via vos documents</div>
                                 </div>
@@ -337,10 +354,10 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                 <div className="p-3 bg-white/5 rounded border border-white/10">
                                     <div className="flex justify-between items-center mb-1">
                                         <span className="text-meta text-yellow-400 font-bold">Invest. Non-Enregistrés</span>
-                                        <span className="text-meta text-white">{investmentTaxData.totalNonReg.toLocaleString()}$</span>
+                                        <span className="text-meta text-white">{formatCAD(investmentTaxData.totalNonReg)}</span>
                                     </div>
                                     <div className="text-tiny text-ink-500">
-                                        Impact estimé sur revenu imposable: <span className="text-red-300">+{investmentTaxData.taxableAddOn.toFixed(0)}$</span>
+                                        Impact estimé sur revenu imposable: <span className="text-red-300">{formatSigned(investmentTaxData.taxableAddOn, { withCurrency: true })}</span>
                                     </div>
                                 </div>
                             )}
@@ -352,14 +369,14 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                 <div>
                                     <label className="flex justify-between text-meta text-ink-200 mb-1">
                                         <span>Cotisation REER</span>
-                                        <span>{rrspContribution.toLocaleString()}$</span>
+                                        <span>{formatCAD(rrspContribution)}</span>
                                     </label>
                                     <input type="range" aria-label="Cotisation REER" min="0" max="30000" step="100" value={rrspContribution} onChange={e => setRrspContribution(parseFloat(e.target.value))} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
                                 </div>
                                 <div>
                                     <label className="flex justify-between text-meta text-ink-200 mb-1">
                                         <span>CELIAPP</span>
-                                        <span>{fhsaContribution.toLocaleString()}$</span>
+                                        <span>{formatCAD(fhsaContribution)}</span>
                                     </label>
                                     <input type="range" aria-label="CELIAPP" min="0" max="8000" step="100" value={fhsaContribution} onChange={e => setFhsaContribution(parseFloat(e.target.value))} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-green-500" />
                                 </div>
@@ -373,12 +390,12 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <Card className="!p-4 border-l-4 border-l-red-500 bg-surface/50">
                             <div className="text-tiny text-ink-400 uppercase font-bold">Impôt Total</div>
-                            <div className="text-2xl font-black text-white">{report.totalTax.toLocaleString('fr-CA', { maximumFractionDigits: 0 })} $</div>
+                            <div className="text-2xl font-black text-white">{formatCAD(report.totalTax)}</div>
                             <div className="text-tiny text-ink-400">Fed + Qc</div>
                         </Card>
                         <Card className="!p-4 border-l-4 border-l-green-500 bg-surface/50">
                             <div className="text-tiny text-ink-400 uppercase font-bold">Revenu Net</div>
-                            <div className="text-2xl font-black text-green-400">{report.netIncome.toLocaleString('fr-CA', { maximumFractionDigits: 0 })} $</div>
+                            <div className="text-2xl font-black text-green-400">{formatCAD(report.netIncome)}</div>
                             <div className="text-tiny text-ink-400">Dans vos poches</div>
                         </Card>
                         <Card className="!p-4 border-l-4 border-l-yellow-500 bg-surface/50">
@@ -391,7 +408,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                         <Card className="!p-4 border-l-4 border-l-blue-500 bg-surface/50">
                             <div className="text-tiny text-ink-400 uppercase font-bold">Remboursement Est.</div>
                             <div className={`text-2xl font-black ${report.refundOrOwe > 0 ? 'text-green-400' : 'text-danger-400'}`}>
-                                {report.refundOrOwe > 0 ? '+' : ''}{report.refundOrOwe.toLocaleString('fr-CA', { maximumFractionDigits: 0 })} $
+                                {formatSigned(report.refundOrOwe, { withCurrency: true })}
                             </div>
                             <div className="text-tiny text-ink-400">Basé sur docs reçus</div>
                         </Card>
@@ -410,12 +427,12 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                             <div key={i} className="relative">
                                                 <div className="flex justify-between text-tiny mb-1">
                                                     <span className="text-ink-200 font-bold">{b.rate}</span>
-                                                    <span className="text-ink-400">{b.amount > 0 ? `${b.amount.toFixed(0)}$ taxés` : '0$'}</span>
+                                                    <span className="text-ink-400">{b.amount > 0 ? `${formatCAD(b.amount)} taxés` : '0 $'}</span>
                                                 </div>
                                                 <div className="h-4 w-full bg-surfaceHighlight rounded overflow-hidden relative border border-white/5">
                                                     <div className="h-full bg-danger-600/80 transition-all duration-500" style={{ width: `${b.percentFull}%` }}></div>
                                                     <div className="absolute inset-0 flex items-center justify-center text-tiny font-mono text-white/80 shadow-black drop-shadow-md">
-                                                        {b.filled.toLocaleString()} $ / {typeof b.max === 'number' ? b.max.toLocaleString() : b.max} $
+                                                        {formatCAD(b.filled)} / {typeof b.max === 'number' ? formatCAD(b.max) : `${b.max} $`}
                                                     </div>
                                                 </div>
                                             </div>
@@ -428,12 +445,12 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                             <div key={i} className="relative">
                                                 <div className="flex justify-between text-tiny mb-1">
                                                     <span className="text-ink-200 font-bold">{b.rate}</span>
-                                                    <span className="text-ink-400">{b.amount > 0 ? `${b.amount.toFixed(0)}$ taxés` : '0$'}</span>
+                                                    <span className="text-ink-400">{b.amount > 0 ? `${formatCAD(b.amount)} taxés` : '0 $'}</span>
                                                 </div>
                                                 <div className="h-4 w-full bg-surfaceHighlight rounded overflow-hidden relative border border-white/5">
                                                     <div className="h-full bg-info-600/80 transition-all duration-500" style={{ width: `${b.percentFull}%` }}></div>
                                                     <div className="absolute inset-0 flex items-center justify-center text-tiny font-mono text-white/80 shadow-black drop-shadow-md">
-                                                        {b.filled.toLocaleString()} $ / {typeof b.max === 'number' ? b.max.toLocaleString() : b.max} $
+                                                        {formatCAD(b.filled)} / {typeof b.max === 'number' ? formatCAD(b.max) : `${b.max} $`}
                                                     </div>
                                                 </div>
                                             </div>

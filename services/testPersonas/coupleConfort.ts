@@ -5,8 +5,8 @@
 // testTransactions) telles quelles : double revenu confortable, maison avec
 // hypothèque, 1 enfant, actifs CELI/REER/NonReg/Crypto, dettes modérées.
 //
-// C'est le jeu retourné par buildTestFixtures() depuis toujours — conservé
-// à l'identique pour ne casser aucun consommateur ni les baselines E2E.
+// C'est le persona PAR DÉFAUT (`DEFAULT_PERSONA_ID`) du Mode Test depuis toujours —
+// conservé à l'identique pour ne casser aucun consommateur ni les baselines E2E.
 
 import type { AppState } from '../../types';
 import { TEST_CONFIG } from '../testConfig';

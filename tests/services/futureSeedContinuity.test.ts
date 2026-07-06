@@ -58,8 +58,11 @@ describe('Futur — amorçage des soldes depuis la reconstruction (anti-falaise)
             }
 
             // RÉGRESSION : le bug donnait TOTAL = 0 alors que des avoirs existent.
+            // [R6] Seuil = 0 (pas 1000) : un persona « fauché » peut avoir un MICRO-actif
+            // CELI (~182 $). La VALEUR exacte du seed est validée par la continuité ci-dessous
+            // (seed == dernier point reconstruit) ; ici on garde seulement « ≠ 0 si avoirs ».
             expect(points.length).toBeGreaterThan(0);
-            expect(seed.TOTAL).toBeGreaterThan(1000);
+            expect(seed.TOTAL).toBeGreaterThan(0);
 
             // CONTINUITÉ : le seed du futur DOIT être le dernier point reconstruit
             // (le passé se termine dessus) → jonction sans saut au niveau données.

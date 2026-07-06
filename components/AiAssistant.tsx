@@ -99,7 +99,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
       const fire = lastProjection.fireNumber ?? 0;
       const success = lastProjection.successRate;
       const fvi = lastProjection.fvi;
-      projectionLine = `Patrimoine successoral projeté (FutureProjection): ~${roundToHundred(estateNw).toLocaleString()} CAD. Objectif FIRE: ${roundToHundred(fire).toLocaleString()}$. ${success != null ? `Taux de succès MC: ${success}%.` : ''} ${fvi != null ? `FVI: ${fvi}/100.` : ''}`;
+      projectionLine = `Patrimoine successoral projeté, rentes RRQ/PSV incluses (FutureProjection): ~${roundToHundred(estateNw).toLocaleString()} CAD. Objectif FIRE: ${roundToHundred(fire).toLocaleString()}$. ${success != null ? `Taux de succès MC: ${success}%.` : ''} ${fvi != null ? `FVI: ${fvi}/100.` : ''}`;
     } else {
       const annualContrib = projection.manualContribution * 12;
       const rate = projection.returnRate / 100;

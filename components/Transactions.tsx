@@ -10,6 +10,9 @@ import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
 import { Icon } from './ui/Icon';
 import { ImportBankStatement } from './import/ImportBankStatement';
+import { PrivateAmount } from './ui/PrivateAmount';
+import { useFinanceStore } from '../store/useFinanceStore';
+import { formatCAD } from '../utils/format';
 
 interface TransactionsProps {
     transactions: Transaction[];
@@ -31,6 +34,13 @@ export const Transactions: React.FC<TransactionsProps> = ({
     setCategorizationRules,
     onImport,
 }) => {
+    // [PH4E-OWNER-EDIT] mode couple : colonne « Conjoint » pour OVERRIDER l'attribution auto (par type de poste).
+    // Hooks de store regroupés en tête (avant les useState) pour la lisibilité.
+    const config = useFinanceStore(s => s.config);
+    const coupleUsers = config?.users ?? [];
+    const isCouple = !!coupleUsers[1]?.name?.trim();
+    const ownerFirstName = (i: 0 | 1): string => coupleUsers[i]?.name?.trim().split(' ')[0] || `Conjoint ${i + 1}`;
+
     const [showImport, setShowImport] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [progressStatus, setProgressStatus] = useState({ current: 0, total: 0 });
@@ -211,6 +221,11 @@ export const Transactions: React.FC<TransactionsProps> = ({
         setTransactions(prev => prev.map(t =>
             t.id === id ? { ...t, category: newCat, status: 'manual' as const, isTransfer: newCat === 'Transfert', confidence: 100 } : t
         ));
+    };
+
+    // [PH4E-OWNER-EDIT] override manuel du conjoint propriétaire (undefined = retour à l'attribution AUTO par type de poste).
+    const updateOwner = (id: number, ownerId: 0 | 1 | undefined) => {
+        setTransactions(prev => prev.map(t => (t.id === id ? { ...t, ownerId } : t)));
     };
 
     const handleAutoCategorizeAll = async () => {
@@ -427,7 +442,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         </div>
 
                         {categorizationRules.length === 0 ? (
-                            <p className="text-tiny text-ink-500 text-center py-2">Aucune regle. Creez-en une pour categoriser automatiquement.</p>
+                            <p className="text-tiny text-ink-400 text-center py-2">Aucune regle. Creez-en une pour categoriser automatiquement.</p>
                         ) : (
                             <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
                                 {categorizationRules.map(rule => (
@@ -436,7 +451,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         <Icon name="chevron-right" size={12} className="text-ink-500 hidden sm:inline shrink-0" />
                                         <span className="text-ink-100 bg-white/10 px-2 py-0.5 rounded font-bold truncate max-w-[120px]">{rule.category}</span>
                                         <button onClick={() => handleApplyRuleNow(rule)} aria-label={`Appliquer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 text-ink-300 hover:text-primary transition-all text-tiny font-bold ml-1">Appliquer</button>
-                                        <button onClick={() => handleDeleteRule(rule.id)} aria-label={`Supprimer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 inline-flex text-danger-400 hover:text-danger-300 transition-all ml-1"><Icon name="close" size={13} /></button>
+                                        <button onClick={() => handleDeleteRule(rule.id)} aria-label={`Supprimer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 inline-flex text-danger-400 hover:text-danger-500 transition-all ml-1"><Icon name="close" size={13} /></button>
                                     </div>
                                 ))}
                             </div>
@@ -465,7 +480,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                 <div className="text-center py-20">
                                     <Icon name="check" size={40} className="text-success-500 block mx-auto mb-2" />
                                     <h3 className="text-white font-bold">Tout est propre !</h3>
-                                    <p className="text-ink-500 text-body">Plus aucune transaction inconnue.</p>
+                                    <p className="text-ink-400 text-body">Plus aucune transaction inconnue.</p>
                                 </div>
                             ) : (
                                 uncategorizedGroups.map((group) => (
@@ -478,7 +493,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                                 </div>
                                             </div>
                                             <div className="text-meta text-ink-300">
-                                                Total: <span className="text-white font-mono">{group.total.toFixed(2)}$</span>
+                                                Total: <span className="text-white font-mono">{formatCAD(group.total, { decimals: 2 })}</span>
                                             </div>
                                         </div>
 
@@ -510,7 +525,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 action={
                     <div className="flex items-center gap-1.5 flex-wrap justify-end">
                         <div className={`text-tiny sm:text-meta font-bold px-2 py-1 rounded border border-white/10 whitespace-nowrap ${filteredSum > 0 ? 'text-green-400 bg-green-500/10' : 'text-danger-400 bg-danger-500/10'}`}>
-                            Σ {filteredSum.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}
+                            Σ {formatCAD(filteredSum, { decimals: 2 })}
                         </div>
                         <button
                             onClick={handleExportCSV}
@@ -621,7 +636,9 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         </button>
                                     </th>
                                 ))}
-                                <th className="p-3 w-10">Auto</th>
+                                <th className="p-3 w-12" title="Confiance de la catégorisation IA — vert ≥ 90 %, jaune ≥ 70 %, rouge < 70 %">
+                                    <span className="inline-flex items-center gap-1">Auto<span aria-hidden="true" className="text-ink-500 not-italic">ⓘ</span></span>
+                                </th>
                                 <th className="p-3">Type</th>
                                 {([['amount', 'Montant'], ['category', 'Categorie']] as const).map(([k, label]) => (
                                     <th key={k} className="p-3" aria-sort={sortKey === k ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
@@ -630,6 +647,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         </button>
                                     </th>
                                 ))}
+                                {isCouple && <th className="p-3 uppercase tracking-wider">Conjoint</th>}
                             </tr>
                         </thead>
                         <tbody className="text-body">
@@ -671,14 +689,14 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         <button
                                             onClick={(e) => { e.stopPropagation(); toggleTransfer(t.id); }}
                                             aria-pressed={t.isTransfer}
-                                            className={`text-tiny px-2 py-0.5 rounded border transition-colors ${t.isTransfer ? 'bg-info-500/20 border-info-500 text-blue-300' : 'bg-white/5 border-white/10 text-ink-500 hover:text-white'}`}
+                                            className={`text-tiny px-2 py-0.5 rounded border transition-colors ${t.isTransfer ? 'bg-info-500/20 border-info-500 text-blue-300' : 'bg-white/5 border-white/10 text-ink-400 hover:text-white'}`}
                                         >
                                             {t.isTransfer ? 'Transfert' : 'Transaction'}
                                         </button>
                                     </td>
 
-                                    <td className={`p-3 font-bold privacy-blur ${t.isTransfer ? 'text-blue-300 opacity-70' : t.amount > 0 ? 'text-green-400' : 'text-ink-100'}`}>
-                                        {t.amount.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}
+                                    <td className={`p-3 font-bold ${t.isTransfer ? 'text-blue-300 opacity-70' : t.amount > 0 ? 'text-green-400' : 'text-ink-100'}`}>
+                                        <PrivateAmount>{formatCAD(t.amount, { decimals: 2 })}</PrivateAmount>
                                     </td>
 
                                     <td className="p-3">
@@ -693,6 +711,29 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                             {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
                                         </select>
                                     </td>
+
+                                    {isCouple && (
+                                        <td className="p-3">
+                                            {/* [PH4E-OWNER-EDIT] override de l'attribution couple ; « Auto » = par type de poste (défaut).
+                                                SEULEMENT sur les DÉPENSES : computeActualByOwner ignore revenus/transferts → l'override n'y
+                                                aurait aucun effet (on n'offre pas un contrôle trompeur). aria-label discriminé par date (payee non unique). */}
+                                            {t.amount < 0 && !t.isTransfer ? (
+                                                <select
+                                                    aria-label={`Conjoint propriétaire de ${t.payee} (${t.date})`}
+                                                    className="bg-surfaceHighlight border border-white/10 rounded px-2 py-1 text-meta text-white focus:border-primary outline-none cursor-pointer"
+                                                    value={t.ownerId === 0 ? '0' : t.ownerId === 1 ? '1' : 'auto'}
+                                                    onChange={(e) => updateOwner(t.id, e.target.value === 'auto' ? undefined : (e.target.value === '0' ? 0 : 1))}
+                                                    onClick={e => e.stopPropagation()}
+                                                >
+                                                    <option value="auto">Auto</option>
+                                                    <option value="0">{ownerFirstName(0)}</option>
+                                                    <option value="1">{ownerFirstName(1)}</option>
+                                                </select>
+                                            ) : (
+                                                <span className="text-meta text-ink-400" title="L'attribution par conjoint ne s'applique qu'aux dépenses">—</span>
+                                            )}
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>
@@ -740,13 +781,13 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                                     ></span>
                                                 )}
                                             </div>
-                                            <div className="text-tiny text-ink-500 mt-0.5">{t.date}</div>
+                                            <div className="text-tiny text-ink-400 mt-0.5">{t.date}</div>
                                         </div>
                                     </div>
-                                    <div className={`font-bold text-body privacy-blur whitespace-nowrap ${t.isTransfer ? 'text-blue-300 opacity-70' : t.amount > 0 ? 'text-green-400' : 'text-ink-100'
+                                    <PrivateAmount as="div" className={`font-bold text-body whitespace-nowrap ${t.isTransfer ? 'text-blue-300 opacity-70' : t.amount > 0 ? 'text-green-400' : 'text-ink-100'
                                         }`}>
-                                        {t.amount.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}
-                                    </div>
+                                        {formatCAD(t.amount, { decimals: 2 })}
+                                    </PrivateAmount>
                                 </div>
 
                                 <div className="flex items-center gap-2">
@@ -768,6 +809,24 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         {t.isTransfer ? '⇄ Tx' : 'Tx'}
                                     </button>
                                 </div>
+
+                                {isCouple && t.amount < 0 && !t.isTransfer && (
+                                    <div className="flex items-center gap-2">
+                                        {/* [PH4E-OWNER-EDIT] override de l'attribution couple en mode carte (mobile). Dépenses seulement
+                                            (revenus/transferts ignorés par le calcul). touch-target = cible tactile ≥ 44px (WCAG 2.5.5). */}
+                                        <span className="text-tiny text-ink-400 shrink-0">Conjoint :</span>
+                                        <select
+                                            aria-label={`Conjoint propriétaire de ${t.payee} (${t.date})`}
+                                            className="touch-target flex-1 bg-surfaceHighlight border border-white/10 rounded px-2 py-1.5 text-meta text-white focus:border-primary outline-none cursor-pointer"
+                                            value={t.ownerId === 0 ? '0' : t.ownerId === 1 ? '1' : 'auto'}
+                                            onChange={(e) => updateOwner(t.id, e.target.value === 'auto' ? undefined : (e.target.value === '0' ? 0 : 1))}
+                                        >
+                                            <option value="auto">Auto</option>
+                                            <option value="0">{ownerFirstName(0)}</option>
+                                            <option value="1">{ownerFirstName(1)}</option>
+                                        </select>
+                                    </div>
+                                )}
                             </li>
                         );
                     })}
@@ -776,7 +835,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 {totalPages > 1 && (
                     <div className="flex justify-between items-center mt-4 pt-4 border-t border-white/5">
                         <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="text-meta px-3 py-1 bg-white/10 rounded disabled:opacity-30">Precedent</button>
-                        <span className="text-meta text-ink-500">Page {currentPage} / {totalPages}</span>
+                        <span className="text-meta text-ink-400">Page {currentPage} / {totalPages}</span>
                         <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="text-meta px-3 py-1 bg-white/10 rounded disabled:opacity-30">Suivant</button>
                     </div>
                 )}

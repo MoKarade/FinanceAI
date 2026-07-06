@@ -566,6 +566,11 @@ export const RRSP_ANNUAL_LIMITS: Record<number, number> = {
     2026: 33810, 2027: 34480, 2028: 35170, 2029: 35870, 2030: 36590,
 };
 
+// Plafond REER de repli pour une année HORS table (ex. années en sol canadien avant 2010, lors du
+// calcul des droits historiques). Source unique (évite la recopie en dur du 32490 ailleurs —
+// FISC-CONST-LINT). = plafond 2025 ; conserve le comportement existant de setupSimulation.
+export const RRSP_ANNUAL_LIMIT_FALLBACK = 32490;
+
 /**
  * Année de début de résidence fiscale canadienne, utilisée pour les droits de
  * cotisation (CELI/REER) et la résidence PSV.

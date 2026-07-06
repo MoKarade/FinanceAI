@@ -42,7 +42,7 @@ export const ZoomContainer: React.FC<ZoomContainerProps> = ({ zoom, className = 
                     ↺ Vue complète
                 </button>
             ) : hint ? (
-                <div className="absolute bottom-1 right-1 text-tiny text-ink-600 pointer-events-none bg-black/30 px-1.5 py-0.5 rounded">
+                <div className="absolute bottom-1 right-1 text-tiny text-ink-400 pointer-events-none bg-black/30 px-1.5 py-0.5 rounded">
                     Molette = zoom
                 </div>
             ) : null}

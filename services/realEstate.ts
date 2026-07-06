@@ -64,23 +64,6 @@ export interface PurchaseCosts {
   totalCashNeeded: number;
 }
 
-export interface BuyVsRentInput {
-  amortizationData: AmortizationYearPoint[];
-  totalCashNeeded: number;
-  netMonthlyCost: number;       // hypotheque + taxes + chauffage - revenu locatif
-  maintenanceMonthly: number;
-  currentRent: number;          // loyer mensuel au depart
-  marketReturn: number;         // % par an (TSX, etc.)
-  amortization: number;
-  rentIndexation?: number;      // hausse annuelle du loyer (defaut 3%)
-}
-
-export interface BuyVsRentYear {
-  year: number;
-  buyEquity: number;
-  rentInvestNetWorth: number;
-}
-
 // ---- Taxe de bienvenue / droits de mutation (FISC-WELCOME-UNIFY, source unique moteur + UI) ----
 // Deux barèmes cumulatifs (cf docs/FISCAL_REFERENCE.md §8) :
 //  - Montréal : surtaxe municipale, 8 tranches jusqu'à 4 % (source : Ville de Montréal, droits de
@@ -658,36 +641,3 @@ export const calculatePurchaseCosts = ({
   return { welcomeTax, notaryFees, inspectionFees, initialRenovations, totalCashNeeded };
 };
 
-/**
- * Comparaison Acheter vs Louer+Investir sur la duree d'amortissement.
- * - Cote Acheter : equite issue du schema d'amortissement (transmise via amortizationData).
- * - Cote Louer : la mise de fonds + frais sont investis a marketReturn ;
- *   la difference annuelle (cout d'achat - cout location) est aussi investie si positive ;
- *   le loyer croit de rentIndexation % par an (defaut 3%).
- */
-export const runBuyVsRent = ({
-  amortizationData, totalCashNeeded,
-  netMonthlyCost, maintenanceMonthly, currentRent, marketReturn, amortization,
-  rentIndexation = 3,
-}: BuyVsRentInput): BuyVsRentYear[] => {
-  const data: BuyVsRentYear[] = [];
-  let rentScenarioNetWorth = totalCashNeeded;
-  let currentRentCost = currentRent;
-  const indexFactor = 1 + (rentIndexation / 100);
-
-  for (let year = 1; year <= amortization; year++) {
-    const rentAnnualCost = currentRentCost * 12;
-    const buyAnnualCost = netMonthlyCost * 12 + maintenanceMonthly * 12;
-    const differenceToInvest = (buyAnnualCost - rentAnnualCost);
-    rentScenarioNetWorth *= (1 + marketReturn / 100);
-    if (differenceToInvest > 0) rentScenarioNetWorth += differenceToInvest;
-    const buyEquity = amortizationData[year - 1]?.Equite || 0;
-    currentRentCost *= indexFactor;
-    data.push({
-      year,
-      buyEquity: Math.round(buyEquity),
-      rentInvestNetWorth: Math.round(rentScenarioNetWorth),
-    });
-  }
-  return data;
-};

@@ -8,7 +8,7 @@ régulièrement pour valider et peaufiner à chaque passage »). Différent de `
 courant) : ici on audite **tout le moteur financier sur `main`**, on PROUVE la conservation empiriquement, et
 on produit un rapport daté comparable d'une passe à l'autre.
 
-Cadence recommandée : **1×/trimestre** ET avant un release majeur ET 1×/période d'impôts (avec `fiscal-accuracy`).
+Cadence recommandée : **1×/trimestre** ET avant un release majeur ET 1×/période d'impôts (avec `financial-integrity`).
 
 ## 1. État de base (résilience cloud)
 `git fetch origin main` + `git merge --ff-only origin/main` AVANT de juger (le clone local peut être périmé).
@@ -16,7 +16,7 @@ Note le commit audité. `npm install` si `node_modules` manque.
 
 ## 2. Panel adversarial — lancer les 5 agents EN PARALLÈLE (un seul message multi-outils)
 Brief chacun de **réfuter, pas valider** ; rappeler « findings = hypothèses, ~33 % de faux positifs money-critical » :
-- **`fiscal-accuracy`** — toute constante/logique fiscale vs `docs/FISCAL_REFERENCE.md` (paliers féd/QC, BPA,
+- **`financial-integrity`** — toute constante/logique fiscale vs `docs/FISCAL_REFERENCE.md` (paliers féd/QC, BPA,
   RRQ/MGA/MGAS, PSV/clawback, SRG, CELI/REER/CELIAPP/RAP/REEE, retenues, FERR, gains, taxe bienvenue). Verdict
   par valeur : ✅ conforme / ❌ écart / ⚠️ non sourcé / 🕰️ périmé + `file:line`.
 - **`projection-validator`** — conservation EMPIRIQUE sur ~25 scénarios (jeune, couple+enfants+objectifs,
@@ -28,7 +28,7 @@ Brief chacun de **réfuter, pas valider** ; rappeler « findings = hypothèses, 
   (consommateurs qui recalculent au lieu de la source unique = classe de bug récurrente).
 - **`silent-failure-hunter`** — échecs avalés sur tout le chemin $ : `catch{}`, `|| fallback` masquant (PV-5),
   NaN/Infinity non gardés, débits qui s'évaporent, clamps cachant un négatif anormal.
-- **`security-reviewer`** — données financières au repos : chiffrement (AES-GCM/PBKDF2), secrets exclus des
+- **`security-privacy`** — données financières au repos : chiffrement (AES-GCM/PBKDF2), secrets exclus des
   backups/exports, migrations Zustand, fuite vers le LLM/logs, CSP, anti-injection des prompts.
 
 ## 3. Vérifier CHAQUE finding (trust-but-verify)

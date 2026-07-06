@@ -105,22 +105,22 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                     <div className="bg-black/30 rounded p-3 border border-white/5 col-span-1 text-center">
                         <div className="text-tiny text-ink-300 uppercase tracking-wide mb-1">Efficacité fiscale</div>
                         <div className={`text-2xl font-black ${scoreColor} tabular-nums`}>{efficiencyScore}</div>
-                        <div className="text-tiny text-ink-500">/ 100</div>
+                        <div className="text-tiny text-ink-400">/ 100</div>
                     </div>
                     <div className="bg-success-500/10 rounded p-3 border border-success-500/20">
                         <div className="text-tiny text-success-400 uppercase tracking-wide mb-1">CELI</div>
                         <div className="text-base font-bold text-emerald-200 font-mono">{formatCAD(accountTotals.totals.CELI)}</div>
-                        <div className="text-tiny text-ink-500">{accountTotals.total > 0 ? ((accountTotals.totals.CELI / accountTotals.total) * 100).toFixed(0) : 0}%</div>
+                        <div className="text-tiny text-ink-400">{accountTotals.total > 0 ? ((accountTotals.totals.CELI / accountTotals.total) * 100).toFixed(0) : 0}%</div>
                     </div>
                     <div className="bg-info-500/10 rounded p-3 border border-info-500/20">
                         <div className="text-tiny text-info-400 uppercase tracking-wide mb-1">REER</div>
                         <div className="text-base font-bold text-info-200 font-mono">{formatCAD(accountTotals.totals.REER)}</div>
-                        <div className="text-tiny text-ink-500">{accountTotals.total > 0 ? ((accountTotals.totals.REER / accountTotals.total) * 100).toFixed(0) : 0}%</div>
+                        <div className="text-tiny text-ink-400">{accountTotals.total > 0 ? ((accountTotals.totals.REER / accountTotals.total) * 100).toFixed(0) : 0}%</div>
                     </div>
                     <div className="bg-warning-500/10 rounded p-3 border border-warning-500/20">
                         <div className="text-tiny text-warning-400 uppercase tracking-wide mb-1">Non-Enreg.</div>
                         <div className="text-base font-bold text-amber-200 font-mono">{formatCAD(accountTotals.totals.NonReg)}</div>
-                        <div className="text-tiny text-ink-500">{accountTotals.total > 0 ? ((accountTotals.totals.NonReg / accountTotals.total) * 100).toFixed(0) : 0}%</div>
+                        <div className="text-tiny text-ink-400">{accountTotals.total > 0 ? ((accountTotals.totals.NonReg / accountTotals.total) * 100).toFixed(0) : 0}%</div>
                     </div>
                 </div>
 
@@ -157,6 +157,13 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                             </button>
                         </div>
                     </div>
+                    {/* [IA-ASSETLOC-PERSIST] L'éditeur est un BAC-À-SABLE what-if (état local volontaire, non
+                        persisté) : on clarifie pour que l'utilisateur ne croie pas éditer son vrai portefeuille. */}
+                    <p className="text-tiny text-ink-400 italic leading-snug">
+                        Simulation : ajuste librement pour explorer le placement optimal — ça ne modifie PAS ton
+                        portefeuille réel (édite tes avoirs dans <strong className="text-ink-300">Investissements</strong>).
+                        « ↺ Depuis portefeuille » recharge tes vrais avoirs.
+                    </p>
                     {holdings.map((h, i) => (
                         <div key={i} className="grid grid-cols-12 gap-2 items-center bg-white/[0.02] rounded p-2">
                             <select
@@ -205,7 +212,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                                         <strong className="text-white">{ASSET_CLASS_LABELS[r.assetClass]}</strong>
                                         <span className="text-ink-400"> {formatCAD(r.amount)}</span>
                                         <span className="text-orange-400 mx-1">{r.currentAccount}</span>
-                                        <span className="text-ink-500">→</span>
+                                        <span className="text-ink-500" aria-hidden="true">→</span>
                                         <span className="text-success-400 mx-1">{r.recommendedAccount}</span>
                                     </span>
                                     <span className="text-red-300 font-mono shrink-0">−{formatCAD(r.annualLossIfUnchanged)}/an</span>

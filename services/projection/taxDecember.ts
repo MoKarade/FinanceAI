@@ -335,7 +335,7 @@ export interface DecemberHelpers {
 
 export interface DecemberResult {
     /** Nouveau taxCurrentYear après régularisation (à passer en taxPreviousYear par le caller). */
-    newTaxCurrentYear: { revenu: number; gains: number; divers: number; reer: number };
+    newTaxCurrentYear: { revenu: number; gains: number; divers: number; reer: number; donCredit: number };
     /** Logs à émettre. */
     logs: string[];
 }
@@ -344,13 +344,16 @@ export function processDecemberTaxFiling(
     currentMonthIndex: number,
     ctx: DecemberContext,
     helpers: DecemberHelpers,
-    taxCurrentYearInitial: { revenu: number; gains: number; divers: number; reer: number },
+    taxCurrentYearInitial: { revenu: number; gains: number; divers: number; reer: number; donCredit: number },
 ): DecemberResult {
     if (currentMonthIndex !== 11 || ctx.m === 0) {
         return { newTaxCurrentYear: { ...taxCurrentYearInitial }, logs: [] };
     }
     const logs: string[] = [];
     const taxCurrent = { ...taxCurrentYearInitial };
+    // [FA-6-CREDIT-CAP] Impôt sur le revenu BRUT de l'année (salaire/retraite), capturé dans chaque branche.
+    // Sert à plafonner le crédit-don non remboursable (il ne peut pas excéder l'impôt par ailleurs dû).
+    let grossIncomeTax = 0;
 
     // FA-3a — SRG mensuel à exclure des assiettes, HOISTÉ une fois avec garde NaN
     // (même piège que la garde DB de FA-1 : `?? 0` ne capte PAS NaN, et Math.max(0, NaN)=NaN
@@ -391,6 +394,7 @@ export function processDecemberTaxFiling(
         const taxMarcReal = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, deductionsMarc, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsMarc).totalTax : 0;
         const taxAnnaReal = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, deductionsAnna, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsAnna).totalTax : 0;
         const totalAnnualTax = (taxMarcReal + taxAnnaReal) * ctx.inflationFactor;
+        grossIncomeTax = totalAnnualTax; // [FA-6-CREDIT-CAP] liability salariale de l'année
 
         // V49: Retenue source (T1213 ou non)
         let taxMarcEmployer = taxMarcReal;
@@ -409,8 +413,8 @@ export function processDecemberTaxFiling(
         //
         // FIX FISCAL CRITIQUE (Marc, 2026-06) — l'ancien code n'ajoutait que 5 % du
         // vrai impôt sur la pension (« 95 % retenu à la source »), MAIS aucune retenue
-        // mensuelle n'existe pour les retraités (computeMonthlyWithholding est gardé par
-        // `if (!isRetired)`). Et les retraits REER/FERR (ctx.accRetraitsReerYear) étaient
+        // mensuelle n'existe pour les retraités (la branche active `if (!isRetired)` ne
+        // s'applique pas). Et les retraits REER/FERR (ctx.accRetraitsReerYear) étaient
         // EXCLUS de l'assiette imposable → ils restaient au seul taux de retenue à la
         // source (19/24/29 %), jamais réconciliés au taux marginal réel. Résultat :
         // retraités massivement sous-imposés (patrimoine/revenu net surévalués).
@@ -583,6 +587,7 @@ export function processDecemberTaxFiling(
             }
 
             const totalAnnualTax = taxReal * ctx.inflationFactor;
+            grossIncomeTax = totalAnnualTax; // [FA-6-CREDIT-CAP] liability de retraite de l'année
             // Retenue à la source déjà captée sur les retraits REER/FERR de l'année
             // (présente dans le bucket .reer au moment de décembre). On la crédite pour ne
             // payer en avril que la différence avec l'impôt marginal réel.
@@ -734,6 +739,30 @@ export function processDecemberTaxFiling(
         const divTax = helpers.calculateDividendTax(annualDiv, currentMarginal, 'eligible', progressiveGrossTax);
         if (divTax > 1) taxCurrent.gains += divTax;
     }
+
+    // ---- 4. [FA-6-CREDIT-CAP] Crédit-don NON REMBOURSABLE, PLAFONNÉ à l'impôt dû ----
+    // Un crédit non remboursable ne peut pas générer de remboursement net : on le borne à l'impôt sur le
+    // revenu + gains de l'année (`grossIncomeTax` capturé dans chaque branche + l'impôt sur gains/dividendes
+    // empilé ci-dessus). RAMQ/FSS (cotisations santé, dans `divers`) ne sont PAS dans l'assiette du crédit.
+    // L'excédent non utilisé est PERDU (le report prospectif 5 ans n'est pas modélisé — conservateur, doc
+    // FISCAL_REFERENCE §10). Le crédit appliqué va dans `divers` (qui survit, débité en avril → réduit l'impôt).
+    const donCredit = Math.max(0, Number.isFinite(taxCurrent.donCredit) ? taxCurrent.donCredit : 0);
+    if (donCredit > 0) {
+        // Garde NaN sur l'ASSIETTE (pas seulement le crédit) : un NaN dans grossIncomeTax/gains
+        // contaminerait divers→fluxImpots→liquide en silence (leçon HARDEN-NETWORTH-NAN). Repli 0.
+        const safeGrossIncomeTax = Number.isFinite(grossIncomeTax) ? grossIncomeTax : 0;
+        const safeGains = Number.isFinite(taxCurrent.gains) ? taxCurrent.gains : 0;
+        if (!Number.isFinite(grossIncomeTax) || !Number.isFinite(taxCurrent.gains)) {
+            logs.push(`⚠️ Assiette crédit-don non finie (revenu=${grossIncomeTax}, gains=${taxCurrent.gains}) → repli 0`);
+        }
+        const offsettableTax = Math.max(0, safeGrossIncomeTax) + Math.max(0, safeGains);
+        const appliedCredit = Math.min(donCredit, offsettableTax);
+        taxCurrent.divers -= appliedCredit;
+        if (donCredit - appliedCredit > 1) {
+            logs.push(`↳ Crédit dons plafonné à l'impôt dû: ${Math.round(appliedCredit).toLocaleString('fr-CA')}$ appliqué, ${Math.round(donCredit - appliedCredit).toLocaleString('fr-CA')}$ non utilisable`);
+        }
+    }
+    taxCurrent.donCredit = 0; // consommé (excédent perdu : aucun report modélisé)
 
     return { newTaxCurrentYear: taxCurrent, logs };
 }

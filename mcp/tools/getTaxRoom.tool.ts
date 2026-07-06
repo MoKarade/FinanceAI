@@ -3,7 +3,7 @@ import { z } from 'zod';
 import {
   calculateCeliRoom,
   calculateCeliAvailableRoom,
-} from '../../utils/tax';
+} from '../../services/tax';
 
 const inputSchema = {
   birthYear: z.number().int().min(1900).max(2030)

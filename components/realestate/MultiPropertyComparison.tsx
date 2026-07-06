@@ -4,6 +4,10 @@ import { RealEstateGoal } from '../../types';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import { useTimeChartZoom } from '../../hooks/useTimeChartZoom';
 import { ZoomContainer } from '../ui/ZoomContainer';
+import { ChartDataTable, type ChartDataColumn } from '../ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
+import { useFinanceStore } from '../../store/useFinanceStore';
+import { formatCAD } from '../../utils/format';
 
 const PROP_COLORS = ['#4f9d86', '#5b82bf', '#c2974f', '#9277bd', '#bd7d9c', '#5093a8'];
 
@@ -12,6 +16,9 @@ interface MultiPropertyComparisonProps {
 }
 
 export const MultiPropertyComparison: React.FC<MultiPropertyComparisonProps> = ({ goals }) => {
+    // [A11Y-CHARTS] (LOT 3) — mode discret : masque les montants ($) de la table de données sr-only.
+    // Appelé AVANT tout early return (règle des Hooks).
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
     const allSeries = goals.map((goal, gi) => {
         const p = goal.price || 450000;
         const dp = goal.downPayment || (p * 0.2);
@@ -60,6 +67,16 @@ export const MultiPropertyComparison: React.FC<MultiPropertyComparisonProps> = (
 
     // G7b — zoom molette / pan sur la comparaison multi-propriétés (x = année).
     const zoom = useTimeChartZoom(chartData);
+
+    // [A11Y-CHARTS] (LOT 3) — colonnes de la table sr-only (alternative texte à l'AreaChart multi-
+    // propriétés, opaque aux lecteurs d'écran). Année (axe X, visible) + une colonne d'équité ($) par
+    // propriété (= dataKey de chaque <Area>). Mode privé masque les MONTANTS (pas l'année).
+    const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0);
+    const comparisonColumns: ChartDataColumn[] = [
+        { key: 'year', label: 'Année', format: (v) => v != null ? `An ${v}` : '' },
+        ...allSeries.map(s => ({ key: s.name, label: s.name, format: money })),
+    ];
+
     if (goals.length < 2) return null;
 
     return (
@@ -75,6 +92,10 @@ export const MultiPropertyComparison: React.FC<MultiPropertyComparisonProps> = (
                     </div>
                 ))}
             </div>
+            <div
+                role="img"
+                aria-label={`Comparaison de l'équité projetée de ${goals.length} propriétés, année par année jusqu'à la fin de l'amortissement.`}
+            >
             <ZoomContainer zoom={zoom} className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={zoom.visibleData} margin={{ top: 5, right: 10, left: 5, bottom: 5 }}>
@@ -101,6 +122,14 @@ export const MultiPropertyComparison: React.FC<MultiPropertyComparisonProps> = (
                     </AreaChart>
                 </ResponsiveContainer>
             </ZoomContainer>
+            </div>
+            {/* [A11Y-CHARTS] (LOT 3) — alternative TEXTUELLE (sr-only) à l'AreaChart multi-propriétés :
+                équité projetée de chaque propriété par année en table accessible. */}
+            <ChartDataTable
+                caption={`Équité projetée par année pour ${goals.length} propriétés`}
+                columns={comparisonColumns}
+                rows={chartData}
+            />
         </Card>
     );
 };

@@ -15,9 +15,12 @@ import { Icon } from './ui/Icon';
 import { Pill } from './ui/Pill';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
-import { formatCAD } from '../utils/format';
+import { formatCAD, formatSigned, formatPercent } from '../utils/format';
+import { computeBudgetParity, matchTransactionToCategory, computeGoldenSplit, GOLDEN_IDEAL, computeActualByOwner, isSavingsNature, type OrphanCategory } from '../utils/budget';
 import { DualKPIStat } from './budget/DualKPIStat';
 import { calculateFiscalReport } from '../utils/tax';
+import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 
 interface BudgetProps {
     transactions: Transaction[];
@@ -99,7 +102,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         const baseMonthly = getBaseMonthlyTarget(item);
         let multiplier = getMultiplier();
 
-        if (item.nature !== 'Epargne' && inflationSim > 0) {
+        if (!isSavingsNature(item.nature) && inflationSim > 0) { // [HEALTH-SAVINGS-CONSISTENCY] NFD, pas `!== 'Epargne'`
             multiplier *= (1 + inflationSim / 100);
         }
 
@@ -129,7 +132,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     const _totalTaxDisplay = totalTaxMonthly * getMultiplier();
     const _totalGrossDisplay = totalGrossIncomeMonthly * getMultiplier();
 
-    const { filteredTransactions: _filteredTransactions, actualsMap, trendMap, monthlyDataMap } = useMemo(() => {
+    const { actualsMap, totalSpent, trendMap, monthlyDataMap, orphanCategories, itemsWithoutTransactions, actualByOwner } = useMemo(() => {
         const { start, end } = getDateRange();
         // Ensure end date includes the full day
         const endInclusive = new Date(end);
@@ -142,46 +145,64 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             return t.date >= startStr && t.date <= endStr && t.amount < 0 && !t.isTransfer && !t.isDuplicate;
         });
 
-        const map: Record<string, number> = {};
-        filtered.forEach(t => {
-            let match = budgetItems.find(b => b.name === t.category);
-            if (!match) {
-                match = budgetItems.find(b => b.name.toLowerCase().includes(t.category.toLowerCase()) || t.category.toLowerCase().includes(b.name.toLowerCase()));
-            }
-            const key = match ? match.name : t.category;
-            map[key] = (map[key] || 0) + Math.abs(t.amount);
-        });
+        // [PH4-A] Réels + catégories orphelines (fenêtre) + postes sans dépense (TOUT
+        // l'historique → un poste annuel rapproché une fois n'est pas « sans dépense »).
+        const allSpend = transactions.filter(t => t.amount < 0 && !t.isTransfer && !t.isDuplicate);
+        const parity = computeBudgetParity(filtered, budgetItems, allSpend);
 
+        // [PH4-E] Dépense RÉELLE par conjoint sur la fenêtre (auto par type de poste, override par ownerId).
+        const actualByOwner = computeActualByOwner(filtered, budgetItems);
+
+        // Tendances 6 mois : MÊME règle de rapprochement que les réels (avant : nom
+        // EXACT seul → un substring-match comptait dans le réel mais pas la tendance ;
+        // et les doublons `isDuplicate` gonflaient la tendance mais PAS le réel — désormais
+        // exclus des DEUX). Cache par catégorie + un seul passage sur les transactions (perf).
+        const matchCache = new Map<string, string | undefined>();
+        const matchedName = (cat: string): string | undefined => {
+            if (!matchCache.has(cat)) matchCache.set(cat, matchTransactionToCategory(cat, budgetItems)?.name);
+            return matchCache.get(cat);
+        };
+        const months: { mStr: string; monthName: string }[] = [];
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            months.push({ mStr: d.toISOString().substring(0, 7), monthName: d.toLocaleDateString('fr-CA', { month: 'short' }) });
+        }
         const trends: Record<string, number[]> = {};
         const detailedMonthly: Record<string, { name: string, value: number }[]> = {};
-
         budgetItems.forEach(item => {
-            const history = [];
-            const detailedHist = [];
-            for (let i = 5; i >= 0; i--) {
-                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                const mStr = d.toISOString().substring(0, 7);
-                const monthName = d.toLocaleDateString('fr-CA', { month: 'short' });
-
-                const total = transactions
-                    .filter(t => t.date.startsWith(mStr) && (t.category === item.name) && t.amount < 0 && !t.isTransfer)
-                    .reduce((s, t) => s + Math.abs(t.amount), 0);
-
-                history.push(total);
-                detailedHist.push({ name: monthName, value: total });
-            }
-            trends[item.name] = history;
-            detailedMonthly[item.name] = detailedHist;
+            trends[item.name] = months.map(() => 0);
+            detailedMonthly[item.name] = months.map(m => ({ name: m.monthName, value: 0 }));
         });
+        for (const t of transactions) {
+            if (t.amount >= 0 || t.isTransfer || t.isDuplicate) continue;
+            const mi = months.findIndex(m => t.date.startsWith(m.mStr));
+            if (mi < 0) continue;
+            const name = matchedName(t.category);
+            if (!name || !trends[name]) continue;
+            const abs = Math.abs(t.amount);
+            trends[name][mi] += abs;
+            detailedMonthly[name][mi].value += abs;
+        }
 
-        return { filteredTransactions: filtered, actualsMap: map, trendMap: trends, monthlyDataMap: detailedMonthly };
+        return {
+            actualsMap: parity.actualsMap,
+            totalSpent: parity.totalSpent,
+            trendMap: trends,
+            monthlyDataMap: detailedMonthly,
+            orphanCategories: parity.orphanCategories,
+            itemsWithoutTransactions: parity.itemsWithoutTransactions,
+            actualByOwner,
+        };
     // getDateRange et now sont recréés à chaque render (fonctions locales) ; timeView, customStart,
     // customEnd couvrent déjà les paramètres de getDateRange — ajout explicite éviterait une boucle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [transactions, timeView, budgetItems, customStart, customEnd]);
 
     const totalBudgetDisplay = budgetItems.reduce((sum, item) => sum + getDisplayTarget(item), 0);
-    const totalSpentDisplay = (Object.values(actualsMap) as number[]).reduce((a, b) => a + b, 0);
+    // [PH4-A/F1] Total dépensé = TOUTES les dépenses (postes rapprochés + orphelins), via
+    // `totalSpent` — préserve le total d'AVANT le refactor (les orphelins comptent dans le réel).
+    // `actualsMap` ne contient plus les orphelins → on NE somme PLUS ses valeurs ici.
+    const totalSpentDisplay = totalSpent;
     const totalRemainingDisplay = totalNetIncomeDisplay - totalSpentDisplay; // Based on Net Income
     const projectedTotalDisplay = timeView === 'MONTH' ? (totalSpentDisplay / (currentDay / daysInMonth)) : totalSpentDisplay;
 
@@ -261,7 +282,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     const coupleAnalysis = useMemo(() => {
         // USE NET SALARIES FOR SPLIT ANALYSIS
         const user1 = usersIncome[0];
-        const user2 = usersIncome.length > 1 ? usersIncome[1] : null;
+        // [PH4E-OWNER-EDIT] solo = user2 SANS NOM. `config.users` est un tuple [User, User] (length TOUJOURS 2),
+        // donc `length > 1` rendait `isSolo` toujours faux → la section couple s'affichait en solo (et un override
+        // `ownerId` orphelin y montrait un montant inexpliqué). Détection par NOM, cohérente avec `Transactions.isCouple`.
+        const user2 = usersIncome[1]?.name?.trim() ? usersIncome[1] : null;
 
         // Explicitly use Net Salary for ratio calculation
         const totalNet = user1.netSalary + (user2 ? user2.netSalary : 0);
@@ -279,7 +303,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
         budgetItems.forEach(item => {
             const amount = getDisplayTarget(item);
-            if (item.nature !== 'Epargne') {
+            if (!isSavingsNature(item.nature)) { // [HEALTH-SAVINGS-CONSISTENCY] NFD, pas `!== 'Epargne'`
                 if (item.type === 'Commun') commonExpenses += amount;
                 else if (item.type === 'Perso 1') user1Personal += amount;
                 else if (item.type === 'Perso 2') user2Personal += amount;
@@ -306,6 +330,11 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             user1Contribution, user2Contribution,
             user1ShareCommon, user2ShareCommon,
             user1Personal, user2Personal,
+            // [PH4-E] Dépense RÉELLE par conjoint (transactions auto-attribuées par type de poste,
+            // override par ownerId) — distincte du split PLANIFIÉ ci-dessus (cibles budgétées).
+            user1Actual: actualByOwner.owner0,
+            user2Actual: actualByOwner.owner1,
+            communActual: actualByOwner.commun,
             splitRatio1: ratio1,
             splitMode: config.splitMode,
             isSolo: !user2
@@ -314,8 +343,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // (timeView, inflationSim, customStart, customEnd, periodOffset) sont déjà listées explicitement.
     // periodOffset : getMultiplier→getDateRange en dépend → sans lui, les KPIs d'épargne couple
     // restaient figés sur la période courante en navigant vers le passé (cohérent avec le useMemo voisin).
+    // actualByOwner.* en SCALAIRES (pas l'objet) : `coupleAnalysis` ne se recalcule que si une valeur change,
+    // pas à chaque nouvelle réf de l'objet (le useMemo de parité en recrée un à chaque recalcul).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [config, usersIncome, budgetItems, timeView, inflationSim, customStart, customEnd, periodOffset]);
+    }, [config, usersIncome, budgetItems, timeView, inflationSim, customStart, customEnd, periodOffset, actualByOwner.owner0, actualByOwner.owner1, actualByOwner.commun]);
 
     const alerts = useMemo(() => {
         const list: string[] = [];
@@ -325,7 +356,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             // Alerte seulement au-delà de 10% de dépassement (tolérance anti-bruit
             // pour les petits écarts normaux).
             if (target > 0 && spent > target * 1.1) {
-                list.push(`${item.name} (${(spent - target).toFixed(0)}$ dépassé)`);
+                list.push(`${item.name} (${formatCAD(spent - target)} dépassé)`);
             }
         });
         return list;
@@ -428,6 +459,47 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         { name: 'Épargne Théorique', value: Math.max(0, coupleAnalysis.totalSavings), fill: '#7ba0cf' }
     ];
 
+    // [A11Y-CHARTS] table de données sr-only pour le donut 50/30/20 (Recharts opaque aux lecteurs d'écran).
+    // Colonne Catégorie visible ; colonne Montant $ masquée en mode privé (parité avec PrivateAmount/blur).
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
+    const goldenTotal = goldenRuleData.reduce((s, d) => s + d.value, 0) || 1;
+    const goldenRuleColumns: ChartDataColumn[] = [
+        { key: 'name', label: 'Catégorie' },
+        { key: 'value', label: 'Montant', format: (v) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0) },
+        { key: 'value', label: 'Part', format: (v) => `${((Number(v) || 0) / goldenTotal * 100).toFixed(1)}%` },
+    ];
+
+    // [PH4-B] Répartition 50/30/20 RÉELLE (dépenses rapprochées) à comparer au THÉORIQUE
+    // (cibles, goldenRuleData) et à l'idéal 50/30/20. Besoins/Envies réels = Σ des réels par
+    // poste du groupe ; Épargne réelle = revenu réel − dépenses réelles (totalSpentDisplay inclut
+    // les orphelins → toute dépense réduit bien l'épargne, même non rapprochée à un poste).
+    const goldenTheo = computeGoldenSplit(goldenRuleData[0].value, goldenRuleData[1].value, goldenRuleData[2].value);
+    const realBesoins = groupedItems['Besoin'].reduce((s, i) => s + (actualsMap[i.name] ?? 0), 0);
+    const realEnvies = groupedItems['Envie'].reduce((s, i) => s + (actualsMap[i.name] ?? 0), 0);
+    // < 0 = dépenses > revenu sur la période. On clampe l'épargne du donut à 0 (un segment
+    // négatif n'a pas de sens), MAIS on le SIGNALE (sinon « 0 % épargne » masque un déficit réel).
+    const realDeficit = totalActualIncomeDisplay - totalSpentDisplay;
+    const realEpargne = Math.max(0, realDeficit);
+    const goldenReal = computeGoldenSplit(realBesoins, realEnvies, realEpargne);
+    const hasRealData = goldenReal.total > 0;
+    const goldenRealData = [
+        { name: 'Besoins', value: goldenReal.besoins, fill: '#5fa88f' },
+        { name: 'Envies', value: goldenReal.envies, fill: '#d8c06a' },
+        { name: 'Épargne réelle', value: goldenReal.epargne, fill: '#7ba0cf' },
+    ];
+    const goldenRealColumns: ChartDataColumn[] = [
+        { key: 'name', label: 'Catégorie' },
+        { key: 'value', label: 'Montant', format: (v) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0) },
+        { key: 'value', label: 'Part', format: (v) => `${((Number(v) || 0) / (goldenReal.total || 1) * 100).toFixed(1)}%` },
+    ];
+    // Lignes de comparaison Réel · Cible (budget) · Idéal (50/30/20). `goodWhenHigher` : pour
+    // l'épargne, dépasser l'idéal est BON ; pour besoins/envies, le dépasser est à surveiller.
+    const goldenCompare = [
+        { label: 'Besoins', real: goldenReal.pct.besoins, theo: goldenTheo.pct.besoins, ideal: GOLDEN_IDEAL.besoins, goodWhenHigher: false },
+        { label: 'Envies', real: goldenReal.pct.envies, theo: goldenTheo.pct.envies, ideal: GOLDEN_IDEAL.envies, goodWhenHigher: false },
+        { label: 'Épargne', real: goldenReal.pct.epargne, theo: goldenTheo.pct.epargne, ideal: GOLDEN_IDEAL.epargne, goodWhenHigher: true },
+    ];
+
     // Wiring 2026-05: snapshot final de la projection vivante.
     // Permet de relier "épargne théorique mensuelle" → "patrimoine fin vie".
     const lastProjection = useFinanceStore(s => s.lastProjection);
@@ -481,7 +553,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 badge={
                     <Badge variant={totalNetIncomeDisplay >= totalBudgetDisplay ? 'success' : 'danger'} size="md">
                         {totalNetIncomeDisplay >= totalBudgetDisplay ? 'Excédentaire' : 'Déficitaire'}
-                        <span className="ml-1 tabular-nums">{(totalNetIncomeDisplay - totalBudgetDisplay).toLocaleString()}$</span>
+                        <span className="ml-1 tabular-nums">{formatCAD(totalNetIncomeDisplay - totalBudgetDisplay)}</span>
                     </Badge>
                 }
                 actions={
@@ -645,8 +717,8 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                         <PrivateAmount as="div" className="text-2xl font-black text-white">
                             {formatCAD(projectionSummary.estateNetWorth)}
                         </PrivateAmount>
-                        <div className="text-tiny text-ink-500 mt-1">
-                            Patrimoine successoral projeté en {projectionSummary.finalYear} (FutureProjection actif).
+                        <div className="text-tiny text-ink-400 mt-1">
+                            Patrimoine successoral projeté, avec rentes RRQ/PSV, en {projectionSummary.finalYear} (FutureProjection actif).
                         </div>
                     </div>
                     <div className="bg-black/30 rounded-xl p-3 border border-white/5">
@@ -654,7 +726,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                         <PrivateAmount as="div" className="text-base font-bold text-success-400">
                             +{formatCAD(projectionSummary.per100Boost)}
                         </PrivateAmount>
-                        <div className="text-tiny text-ink-500">par +100$/mois d'épargne supplémentaire</div>
+                        <div className="text-tiny text-ink-400">par +100$/mois d'épargne supplémentaire</div>
                     </div>
                 </button>
             )}
@@ -742,7 +814,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                         <span className="font-mono">{formatCAD(fiscalBreakdown.aeRqapDisplay)}</span>
                                     </div>
                                 </div>
-                                <div className="flex justify-between items-center text-tiny text-ink-500 pt-1 border-t border-white/5">
+                                <div className="flex justify-between items-center text-tiny text-ink-400 pt-1 border-t border-white/5">
                                     <span>Total déductions ({fiscalBreakdown.averageRate.toFixed(1)}% moyen)</span>
                                     <span className="font-mono text-danger-400">−{formatCAD(fiscalBreakdown.totalTaxDisplay)}</span>
                                 </div>
@@ -758,26 +830,30 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     <span className="text-body font-bold text-indigo-400">{coupleAnalysis.user1.name}</span>
                                     <div className="flex items-center gap-2">
                                         {coupleAnalysis.splitMode === 'prorata' && (
-                                            <span className="text-tiny text-ink-500">{(coupleAnalysis.splitRatio1 * 100).toFixed(0)}% (Net)</span>
+                                            <span className="text-tiny text-ink-400">{(coupleAnalysis.splitRatio1 * 100).toFixed(0)}% (Net)</span>
                                         )}
-                                        <span className="text-meta text-ink-500 bg-white/5 px-2 py-0.5 rounded">
+                                        <span className="text-meta text-ink-400 bg-white/5 px-2 py-0.5 rounded">
                                             Effort: {coupleAnalysis.user1Income > 0 ? ((coupleAnalysis.user1Contribution / coupleAnalysis.user1Income) * 100).toFixed(0) : 0}%
                                         </span>
                                     </div>
                                 </div>
 
                                 <div className="relative h-4 w-full bg-black/50 rounded-full overflow-hidden flex">
-                                    <div className="h-full bg-indigo-600" style={{ width: `${(coupleAnalysis.user1ShareCommon / coupleAnalysis.user1Income) * 100}%` }} title={`Commun: ${coupleAnalysis.user1ShareCommon.toFixed(0)}$`}></div>
-                                    <div className="h-full bg-indigo-400" style={{ width: `${(coupleAnalysis.user1Personal / coupleAnalysis.user1Income) * 100}%` }} title={`Perso: ${coupleAnalysis.user1Personal.toFixed(0)}$`}></div>
-                                    <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${coupleAnalysis.user1Savings.toFixed(0)}$`}></div>
+                                    <div className="h-full bg-indigo-600" style={{ width: `${(coupleAnalysis.user1ShareCommon / coupleAnalysis.user1Income) * 100}%` }} title={`Commun: ${formatCAD(coupleAnalysis.user1ShareCommon)}`}></div>
+                                    <div className="h-full bg-indigo-400" style={{ width: `${(coupleAnalysis.user1Personal / coupleAnalysis.user1Income) * 100}%` }} title={`Perso: ${formatCAD(coupleAnalysis.user1Personal)}`}></div>
+                                    <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${formatCAD(coupleAnalysis.user1Savings)}`}></div>
                                 </div>
 
                                 <div className="flex justify-between text-tiny text-ink-300 px-1">
                                     <div className="flex flex-col">
-                                        <span>Sorties: <span className="text-white font-bold">{coupleAnalysis.user1Contribution.toLocaleString()}$</span></span>
+                                        <span>Sorties: <span className="text-white font-bold">{formatCAD(coupleAnalysis.user1Contribution)}</span></span>
+                                        {/* [PH4-E] dépense RÉELLE perso attribuée (vs « Sorties » = part PLANIFIÉE). Masqué en solo (toujours 0). */}
+                                        {!coupleAnalysis.isSolo && (
+                                            <span className="text-ink-400" title="Dépenses réelles attribuées à ce conjoint (postes Perso, override possible)">Perso réel: <span className="text-white font-semibold">{formatCAD(coupleAnalysis.user1Actual)}</span></span>
+                                        )}
                                     </div>
                                     <div className="flex flex-col items-end">
-                                        <span>Épargne: <span className="text-green-400 font-bold">{coupleAnalysis.user1Savings.toLocaleString()}$</span></span>
+                                        <span>Épargne: <span className="text-green-400 font-bold">{formatCAD(coupleAnalysis.user1Savings)}</span></span>
                                     </div>
                                 </div>
                             </div>
@@ -789,26 +865,28 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                         <span className="text-body font-bold text-pink-400">{coupleAnalysis.user2.name}</span>
                                         <div className="flex items-center gap-2">
                                             {coupleAnalysis.splitMode === 'prorata' && (
-                                                <span className="text-tiny text-ink-500">{((1 - coupleAnalysis.splitRatio1) * 100).toFixed(0)}% (Net)</span>
+                                                <span className="text-tiny text-ink-400">{((1 - coupleAnalysis.splitRatio1) * 100).toFixed(0)}% (Net)</span>
                                             )}
-                                            <span className="text-meta text-ink-500 bg-white/5 px-2 py-0.5 rounded">
+                                            <span className="text-meta text-ink-400 bg-white/5 px-2 py-0.5 rounded">
                                                 Effort: {coupleAnalysis.user2Income > 0 ? ((coupleAnalysis.user2Contribution / coupleAnalysis.user2Income) * 100).toFixed(0) : 0}%
                                             </span>
                                         </div>
                                     </div>
 
                                     <div className="relative h-4 w-full bg-black/50 rounded-full overflow-hidden flex">
-                                        <div className="h-full bg-pink-600" style={{ width: `${(coupleAnalysis.user2ShareCommon / coupleAnalysis.user2Income) * 100}%` }} title={`Commun: ${coupleAnalysis.user2ShareCommon.toFixed(0)}$`}></div>
-                                        <div className="h-full bg-pink-400" style={{ width: `${(coupleAnalysis.user2Personal / coupleAnalysis.user2Income) * 100}%` }} title={`Perso: ${coupleAnalysis.user2Personal.toFixed(0)}$`}></div>
-                                        <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${coupleAnalysis.user2Savings.toFixed(0)}$`}></div>
+                                        <div className="h-full bg-pink-600" style={{ width: `${(coupleAnalysis.user2ShareCommon / coupleAnalysis.user2Income) * 100}%` }} title={`Commun: ${formatCAD(coupleAnalysis.user2ShareCommon)}`}></div>
+                                        <div className="h-full bg-pink-400" style={{ width: `${(coupleAnalysis.user2Personal / coupleAnalysis.user2Income) * 100}%` }} title={`Perso: ${formatCAD(coupleAnalysis.user2Personal)}`}></div>
+                                        <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${formatCAD(coupleAnalysis.user2Savings)}`}></div>
                                     </div>
 
                                     <div className="flex justify-between text-tiny text-ink-300 px-1">
                                         <div className="flex flex-col">
-                                            <span>Sorties: <span className="text-white font-bold">{coupleAnalysis.user2Contribution.toLocaleString()}$</span></span>
+                                            <span>Sorties: <span className="text-white font-bold">{formatCAD(coupleAnalysis.user2Contribution)}</span></span>
+                                            {/* [PH4-E] dépense RÉELLE perso attribuée (vs « Sorties » = part PLANIFIÉE) */}
+                                            <span className="text-ink-400" title="Dépenses réelles attribuées à ce conjoint (postes Perso, override possible)">Perso réel: <span className="text-white font-semibold">{formatCAD(coupleAnalysis.user2Actual)}</span></span>
                                         </div>
                                         <div className="flex flex-col items-end">
-                                            <span>Épargne: <span className="text-green-400 font-bold">{coupleAnalysis.user2Savings.toLocaleString()}$</span></span>
+                                            <span>Épargne: <span className="text-green-400 font-bold">{formatCAD(coupleAnalysis.user2Savings)}</span></span>
                                         </div>
                                     </div>
                                 </div>
@@ -816,7 +894,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
                             <div className="pt-2 text-center bg-green-500/10 rounded-lg py-2 border border-green-500/20">
                                 <PrivateAmount as="div" className="text-2xl font-bold text-green-400">
-                                    +{coupleAnalysis.totalSavings.toLocaleString()} $
+                                    {formatSigned(coupleAnalysis.totalSavings, { withCurrency: true })}
                                 </PrivateAmount>
                                 <div className="text-tiny text-green-200">Potentiel d'épargne combiné (Net)</div>
                             </div>
@@ -835,23 +913,93 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
                             <div className="pt-2 border-t border-white/5">
                                 <div className="text-meta text-ink-300 text-center mb-2 font-medium">Comparatif visuel 50/30/20</div>
-                                <div style={{ width: '100%', height: '180px' }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie
-                                                data={goldenRuleData}
-                                                cx="50%" cy="50%" innerRadius={40} outerRadius={60}
-                                                dataKey="value"
-                                            >
-                                                {goldenRuleData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.fill} stroke="none" />
-                                                ))}
-                                            </Pie>
-                                            <Legend verticalAlign="bottom" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-                                            <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => val.toLocaleString() + '$'} />
-                                        </PieChart>
-                                    </ResponsiveContainer>
+                                {/* role="img"+aria-label porte le nom accessible ; le SVG Recharts est aria-hidden
+                                    (les données restent dans le ChartDataTable sr-only ci-dessous → AT non privé). */}
+                                <div style={{ width: '100%', height: '180px' }} role="img" aria-label="Donut comparatif 50/30/20 du budget (Besoins, Envies, Épargne théorique)">
+                                    <div aria-hidden="true" style={{ width: '100%', height: '100%' }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={goldenRuleData}
+                                                    cx="50%" cy="50%" innerRadius={40} outerRadius={60}
+                                                    dataKey="value"
+                                                >
+                                                    {goldenRuleData.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={entry.fill} stroke="none" />
+                                                    ))}
+                                                </Pie>
+                                                <Legend verticalAlign="bottom" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
+                                                <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => formatCAD(val)} />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
                                 </div>
+                                <ChartDataTable
+                                    caption="Répartition budgétaire 50/30/20 (Besoins, Envies, Épargne théorique)"
+                                    columns={goldenRuleColumns}
+                                    rows={goldenRuleData}
+                                />
+                            </div>
+
+                            {/* [PH4-B] RÉEL vs théorique : donut des dépenses réelles + comparaison
+                                aux 3 références (Réel · Cible budgétée · Idéal 50/30/20). */}
+                            <div className="pt-2 border-t border-white/5">
+                                <div className="text-meta text-ink-300 text-center mb-2 font-medium">Ta répartition réelle</div>
+                                {hasRealData ? (
+                                    <>
+                                        <div style={{ width: '100%', height: '180px' }} role="img" aria-label="Donut de ta répartition réelle (Besoins, Envies, Épargne réelle)">
+                                            <div aria-hidden="true" style={{ width: '100%', height: '100%' }}>
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie data={goldenRealData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} dataKey="value">
+                                                            {goldenRealData.map((entry, index) => (
+                                                                <Cell key={`real-cell-${index}`} fill={entry.fill} stroke="none" />
+                                                            ))}
+                                                        </Pie>
+                                                        <Legend verticalAlign="bottom" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
+                                                        <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => formatCAD(val)} />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                        <table className="w-full text-tiny mt-1">
+                                            <caption className="sr-only">Comparaison de ta répartition réelle, de ta cible budgétée et de l'idéal 50/30/20, par catégorie.</caption>
+                                            <thead>
+                                                <tr className="text-ink-400 uppercase tracking-widest">
+                                                    <th scope="col" className="text-left font-bold pb-1">Catégorie</th>
+                                                    <th scope="col" className="text-right font-bold pb-1">Réel</th>
+                                                    <th scope="col" className="text-right font-bold pb-1">Cible</th>
+                                                    <th scope="col" className="text-right font-bold pb-1">Idéal</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {goldenCompare.map(row => {
+                                                    const ecart = row.real - row.ideal;
+                                                    const onTrack = row.goodWhenHigher ? ecart >= -2 : ecart <= 2; // ±2 pts de tolérance
+                                                    return (
+                                                        <tr key={row.label} className="border-t border-white/5">
+                                                            <th scope="row" className="text-left font-medium text-ink-200 py-1">{row.label}</th>
+                                                            <td className={`text-right tabular-nums py-1 font-bold ${onTrack ? 'text-green-400' : 'text-warning-400'}`}>{formatPercent(row.real, 0)}</td>
+                                                            <td className="text-right tabular-nums py-1 text-ink-300">{formatPercent(row.theo, 0)}</td>
+                                                            <td className="text-right tabular-nums py-1 text-ink-400">{formatPercent(row.ideal, 0)}</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                        {realDeficit < 0 && (
+                                            <p className="text-tiny text-warning-400 mt-1.5 font-medium">Déficit réel de {formatCAD(Math.abs(realDeficit))} sur la période : tu as dépensé plus que ton revenu — l'épargne est ramenée à 0 dans ce graphe.</p>
+                                        )}
+                                        <p className="text-tiny text-ink-400 mt-1.5">« Réel » = tes dépenses rapprochées à un poste ; l'épargne réelle = revenu − dépenses. Vert = proche de l'idéal 50/30/20 (±2 pts) ; orange = écart à surveiller.</p>
+                                        <ChartDataTable
+                                            caption="Ta répartition réelle (Besoins, Envies, Épargne réelle)"
+                                            columns={goldenRealColumns}
+                                            rows={goldenRealData}
+                                        />
+                                    </>
+                                ) : (
+                                    <p className="text-meta text-ink-400 text-center py-4">Pas encore de dépenses rapprochées sur la période — ta répartition réelle s'affichera dès que des transactions correspondront à tes postes.</p>
+                                )}
                             </div>
                         </div>
                     </Card>
@@ -882,6 +1030,51 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                             onAddItem={handleAddItem}
                         />
                     ))}
+
+                    {/* [PH4-A] Parité Budget ↔ Transactions : trous de rapprochement (règle unique
+                        `matchTransactionToCategory`). Empty-state honnête si tout est rapproché. */}
+                    {(orphanCategories.length > 0 || itemsWithoutTransactions.length > 0) ? (
+                        <div className="premium-card rounded-2xl p-4 sm:p-5 border border-white/5">
+                            <div className="flex items-center gap-2 mb-3">
+                                <Icon name="transactions" size={16} />
+                                <h2 className="text-h2 font-bold text-white">Parité Budget ↔ Transactions</h2>
+                            </div>
+                            {orphanCategories.length > 0 && (
+                                <div className="mb-4">
+                                    <h3 className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1.5">
+                                        Catégories de transactions sans poste ({orphanCategories.length})
+                                    </h3>
+                                    <ul className="space-y-1">
+                                        {orphanCategories.map((o: OrphanCategory) => (
+                                            <li key={o.category} className="flex items-center justify-between gap-2 text-meta">
+                                                <span className="text-ink-200 truncate">{o.category}</span>
+                                                <PrivateAmount className="font-mono text-warning-400 shrink-0">{formatCAD(o.total)}</PrivateAmount>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <p className="text-tiny text-ink-400 mt-1.5">Crée un poste du même nom (ou renomme la catégorie) pour suivre ces dépenses.</p>
+                                </div>
+                            )}
+                            {itemsWithoutTransactions.length > 0 && (
+                                <div>
+                                    <h3 className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1.5">
+                                        Postes jamais rapprochés à une dépense ({itemsWithoutTransactions.length})
+                                    </h3>
+                                    <ul className="flex flex-wrap gap-1.5">
+                                        {itemsWithoutTransactions.map(i => (
+                                            <li key={i.id ?? i.name} className="text-tiny px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-ink-200">{i.name}</li>
+                                        ))}
+                                    </ul>
+                                    <p className="text-tiny text-ink-400 mt-1.5">Aucune transaction (tout l'historique) ne correspond à ce poste — nom différent des catégories de transactions, ou poste inutilisé&nbsp;? (l'épargne par virement n'est pas comptée ici)</p>
+                                </div>
+                            )}
+                        </div>
+                    ) : budgetItems.length > 0 && (
+                        <div className="text-meta text-ink-400 flex items-center gap-2 px-1">
+                            <span aria-hidden="true">✓</span>
+                            <span>Parité complète : chaque dépense est rapprochée à un poste, et chaque poste a des dépenses.</span>
+                        </div>
+                    )}
                 </div>
             </div>
 

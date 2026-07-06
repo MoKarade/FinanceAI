@@ -1,15 +1,9 @@
 /**
- * Lot 2 — monthlyCalcs : inflation effective des dépenses (bonus santé 75+,
- * pondération CPI) + retenue salariale mensuelle (avec optimisation T1213 des
- * déductions à la source). Sans test direct. `calculateFiscalReport` injecté → stub.
+ * Lot 2 — monthlyCalcs : inflation effective des dépenses (bonus santé 75+, pondération CPI par poste).
+ * (Le test de `computeMonthlyWithholding` a été retiré 2026-06-26 avec la fonction — vestigiale, cf. FISC-SRCDED-NOOP.)
  */
-import { describe, it, expect, vi } from 'vitest';
-import {
-    computeEffectiveExpenseInflation,
-    computeMonthlyWithholding,
-    type MonthlyWithholdingCtx,
-} from '../../services/projection/monthlyCalcs';
-import type { FiscalReport } from '../../utils/tax';
+import { describe, it, expect } from 'vitest';
+import { computeEffectiveExpenseInflation } from '../../services/projection/monthlyCalcs';
 
 describe('computeEffectiveExpenseInflation', () => {
     it('non retraité : inflation uniforme, aucun bonus santé', () => {
@@ -37,44 +31,5 @@ describe('computeEffectiveExpenseInflation', () => {
         const noBonus = computeEffectiveExpenseInflation(40, false, 2.0, { usePerCategoryInflation: true });
         const withBonus = computeEffectiveExpenseInflation(80, true, 2.0, { usePerCategoryInflation: true });
         expect(withBonus).toBeGreaterThan(noBonus);
-    });
-});
-
-describe('computeMonthlyWithholding', () => {
-    const ctx = (o: Partial<MonthlyWithholdingCtx> = {}): MonthlyWithholdingCtx => ({
-        m: 0, loopYear: 2026, simInflation: 2, simSalaryGrowth: 2,
-        grossMarcBaseAnnual: 80000, grossAnnaBaseAnnual: 0,
-        contribREER: 0, contribCELIAPP: 0, smithInterestDeductibleYear: 0,
-        enableMonteCarlo: false, ...o,
-    });
-
-    it('delta mensuel = 8 % de l\'impôt annuel / 12 (rattrapage de la sous-retenue 92 %)', () => {
-        const fiscal = vi.fn((g: number) => ({ totalTax: g > 0 ? 12000 : 0 } as unknown as FiscalReport));
-        // impôt annuel 12 000 ; retenue employeur 92 % → 8 % à provisionner → 960/12 = 80
-        expect(computeMonthlyWithholding(ctx(), fiscal)).toBeCloseTo(80, 5);
-    });
-
-    it('aucun revenu → 0, fiscalReport pas appelé', () => {
-        const fiscal = vi.fn(() => ({ totalTax: 5000 } as unknown as FiscalReport));
-        expect(computeMonthlyWithholding(ctx({ grossMarcBaseAnnual: 0 }), fiscal)).toBe(0);
-        expect(fiscal).not.toHaveBeenCalled();
-    });
-
-    it('optimizeSourceDeductions : la déduction va au conjoint au plus haut revenu', () => {
-        const fiscal = vi.fn((_g: number, _d: number, _f: number, _y: number, _mc: boolean) => ({ totalTax: 10000 } as unknown as FiscalReport));
-        computeMonthlyWithholding(
-            ctx({ grossMarcBaseAnnual: 96000, grossAnnaBaseAnnual: 60000, optimizeSourceDeductions: true, contribREER: 500 }),
-            fiscal,
-        );
-        const marcCall = fiscal.mock.calls.find(c => Math.round(c[0]) === 96000);
-        const annaCall = fiscal.mock.calls.find(c => Math.round(c[0]) === 60000);
-        expect(marcCall![1]).toBeGreaterThan(0); // Marc (plus haut revenu) reçoit la déduction
-        expect(annaCall![1]).toBe(0);
-    });
-
-    it('sans optimisation : aucune déduction à la source', () => {
-        const fiscal = vi.fn((_g: number, _d: number, _f: number, _y: number, _mc: boolean) => ({ totalTax: 10000 } as unknown as FiscalReport));
-        computeMonthlyWithholding(ctx({ grossMarcBaseAnnual: 96000, grossAnnaBaseAnnual: 60000, contribREER: 500 }), fiscal);
-        fiscal.mock.calls.forEach(c => expect(c[1]).toBe(0));
     });
 });

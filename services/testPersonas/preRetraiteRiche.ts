@@ -22,13 +22,13 @@ export function buildPreRetraiteRiche(): Partial<AppState> {
     return {
         config: { users: [diane, robert], splitMode: '50/50' },
         budgetItems: [
-            { id: 'pr-b1', name: 'Maison (taxes + entretien)', target: 900, nature: 'Logement', frequency: 'Monthly' },
-            { id: 'pr-b2', name: 'Épicerie', target: 800, nature: 'Alimentation', frequency: 'Monthly' },
-            { id: 'pr-b3', name: 'Restaurants', target: 450, nature: 'Alimentation', frequency: 'Monthly' },
-            { id: 'pr-b4', name: 'Transport', target: 400, nature: 'Transport', frequency: 'Monthly' },
-            { id: 'pr-b5', name: 'Loisirs', target: 600, nature: 'Loisirs', frequency: 'Monthly' },
-            { id: 'pr-b6', name: 'Santé', target: 200, nature: 'Santé', frequency: 'Monthly' },
-            { id: 'pr-b7', name: 'Voyages annuels', target: 12000, nature: 'Loisirs', frequency: 'Yearly' },
+            { id: 'pr-b1', name: 'Maison (taxes + entretien)', target: 900, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'pr-b2', name: 'Épicerie', target: 800, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'pr-b3', name: 'Restaurants', target: 450, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'pr-b4', name: 'Transport', target: 400, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'pr-b5', name: 'Loisirs', target: 600, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'pr-b6', name: 'Santé', target: 200, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'pr-b7', name: 'Voyages annuels', target: 12000, nature: 'Envie', frequency: 'Yearly' },
         ] as unknown as AppState['budgetItems'],
         assets: [
             {
@@ -84,6 +84,8 @@ export function buildPreRetraiteRiche(): Partial<AppState> {
         financialGoals: [
             { id: 'pr-fg1', name: 'Léguer 500 k$ aux enfants', target: 500000, current: 890000, accountType: 'NON-ENREG', deadline: '2055-12-31' },
         ] as unknown as AppState['financialGoals'],
+        // [R6] Aucune dette / projet immo / enfant → opt-out explicite (pas de PageSetupGate sur ces pages).
+        setupOptOut: { debts: true, realEstate: true, children: true },
         ...emptyCollections(),
     };
 }

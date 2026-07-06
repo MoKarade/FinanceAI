@@ -7,6 +7,7 @@ import { PageHeader } from './ui/PageHeader';
 import { Icon } from './ui/Icon';
 import { Button } from './ui/Button';
 import { TravelGoal } from '../types';
+import { formatCAD } from '../utils/format';
 
 interface TravelProps {
     travelGoals: TravelGoal[];
@@ -119,7 +120,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
 
                                 <div className="bg-black/30 rounded-lg p-3 flex justify-between items-center border border-white/5">
                                     <span className="text-meta text-ink-500 uppercase font-bold">Budget</span>
-                                    <span className="text-lg font-bold text-ink-100">{trip.totalCost.toLocaleString()} $</span>
+                                    <span className="text-lg font-bold text-ink-100">{formatCAD(trip.totalCost)}</span>
                                 </div>
 
                                 {!isPast && (

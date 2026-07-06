@@ -25,7 +25,9 @@
 import { describe, it, expect } from 'vitest';
 import { calculateFutureProjection, type SimulationParams } from '../../services/projection';
 import type { ProjectionResult, ProjectionChartPoint } from '../../services/projection';
-import type { ProjectionConfig, BudgetConfig, RetirementGoal, Debt } from '../../types';
+import type { ProjectionConfig, BudgetConfig, RetirementGoal, Debt, LifeEvent } from '../../types';
+import { computeTotalDebt } from '../../services/portfolio';
+import { applyMidMonthGrowth } from '../../services/projection/helpers';
 
 const makeProjection = (o: Partial<ProjectionConfig> = {}): ProjectionConfig => ({
     years: 12,
@@ -120,6 +122,38 @@ describe('[CONSERVATION] patrimoine net toujours reconstructible et conservé', 
         expect(maxResid).toBeLessThan(1);
     });
 
+    it('[FISC-EVENT-INCOMELOSS] perte de revenu : ΔNW conservé (résiduel ≈ 0) ET patrimoine réduit vs sans événement', () => {
+        // Salarié : perte de revenu MÉNAGE de 50 % pendant 6 mois dès 2027-01 (un des deux revenus coupé).
+        const withLoss = (): SimulationParams => makeParams({
+            lifeEvents: [{ id: 'jl', type: 'PERTE_EMPLOI', name: 'Perte d\'emploi', date: '2027-01', durationMonths: 6, incomeLossPercent: 50 }],
+        });
+        const cd = run(withLoss()).chartData;
+        // Conservation : le revenu réduit flue dans `Income` → chaque mois reste expliqué (résiduel ≈ 0).
+        let maxResid = 0;
+        for (let i = 1; i < cd.length; i++) maxResid = Math.max(maxResid, Math.abs(unexplained(cd[i], cd[i - 1])));
+        expect(maxResid).toBeLessThan(1);
+        // DISCRIMINANT : la perte DOIT réduire le patrimoine final (avant le fix = no-op → identique).
+        const nwWith = num(cd.at(-1)!.NetWorth);
+        const nwWithout = num(run(makeParams()).chartData.at(-1)!.NetWorth);
+        expect(nwWith).toBeLessThan(nwWithout);
+        // Le levier n'est plus muet : au moins un mois de la fenêtre logge la perte.
+        expect(cd.some(p => (p.lifeEvents || []).some(e => /Perte de revenu/.test(e)))).toBe(true);
+    });
+
+    it('[FISC-EVENT-INCOMELOSS] perte 100 % (revenu nul, cas extrême → drawdown/insolvabilité) : conservation tient', () => {
+        // Couple actif, revenu MÉNAGE coupé à 100 % pendant 9 mois, peu de coussin → force le décaissement
+        // puis l'insolvabilité (INV-12). Le résiduel doit RESTER ≈ 0 (l'argent manquant est porté visible).
+        const cd = run(makeParams({
+            lifeEvents: [{ id: 'jl', type: 'PERTE_EMPLOI', name: 'Chômage total', date: '2027-01', durationMonths: 9, incomeLossPercent: 100 }],
+        })).chartData;
+        let maxResid = 0;
+        for (let i = 1; i < cd.length; i++) maxResid = Math.max(maxResid, Math.abs(unexplained(cd[i], cd[i - 1])));
+        expect(maxResid).toBeLessThan(1);
+        // Sur la fenêtre (mois 12..20), le revenu d'emploi tombe à ~0 (100 % coupé, persona sans bonus/side).
+        const windowIncome = cd.slice(12, 21).map(p => num(p.Income));
+        expect(Math.min(...windowIncome)).toBeLessThan(1);
+    });
+
     it('INV-1 — reconstructabilité : NetWorth = Σ(actifs affichés) − DetteTotale (sans placement)', () => {
         // Scénario réno non-abordable (signature de la capture Marc) : un découvert massif
         // doit RESTER reconstructible — la dette affichée explique l'écart actifs↔NW.
@@ -193,6 +227,79 @@ describe('[CONSERVATION] patrimoine net toujours reconstructible et conservé', 
         expect(deltaNW).toBeGreaterThan(-25_000);       // pas une chute de 80 k$ (la mise = équité)
     });
 
+    it('[FISC-RE-SALE-RESIDUAL] vente quasi-underwater (frais > équité) : déficit PORTÉ, pas effacé (end-to-end)', () => {
+        // Achat HAUTE-LEVIER (mise 2 % → hypothèque ≈ 98 % du prix), valeur STABLE (croissance 0) →
+        // au moment de la vente, les 5 % de frais poussent le produit net SOUS l'hypothèque (saleNet < 0).
+        // Le déficit doit RÉDUIRE le patrimoine du plein coût de vente (≈ 5 % de la valeur), pas seulement
+        // de l'équité (l'ancien clamp `Math.max(0, saleNet)` l'effaçait → patrimoine surévalué).
+        const r = run(makeParams({
+            calculatedStartingCash: 20_000,
+            projection: makeProjection({ years: 6, propertyGrowthRate: 0 }),
+            realEstateGoals: [{
+                id: 're', name: 'Maison', isActive: true, purchaseDate: '2027-01-01',
+                price: 400_000, downPayment: 8_000, mortgageRate: 5, amortization: 25,
+                totalClosingCosts: 6_000, monthlyPayment: 2_330, unrecoverableMonthly: 200,
+                isPrimaryResidence: true,
+            }],
+            lifeEvents: [{ id: 'v', type: 'GROS_ACHAT', name: 'Vente maison', date: '2027-03' }],
+        }));
+        const cd = r.chartData;
+        const saleIdx = cd.findIndex(p => (p.lifeEvents || []).some(e => /Vente/.test(e)));
+        expect(saleIdx).toBeGreaterThan(0);
+        // ΔNW au mois de vente (déterministe, revenu fixe, MC off) : ancien code = −7965 (équité seule,
+        // déficit ~7,2 k$ effacé) ; fix = −15175 (coût de vente 5 %≈−20 k$ atténué par le cashflow net du
+        // mois). Seuil −13 k$ DISCRIMINE largement (ancien −7965 ≫ −13000) avec ~2 k$ de marge sous le fix.
+        const dNW = num(cd[saleIdx].NetWorth) - num(cd[saleIdx - 1].NetWorth);
+        expect(dNW).toBeLessThan(-13_000);
+        // Reconstructabilité tient au mois de vente : le déficit est VISIBLE (liquidDebt/DettesNonImmo),
+        // pas évaporé. (La forme-bilan elle-même ne discrimine PAS ce bug — d'où l'assertion ΔNW ci-dessus.)
+        expect(Math.abs(num(cd[saleIdx].NetWorth) - (shownAssets(cd[saleIdx]) - num(cd[saleIdx].DettesNonImmo)))).toBeLessThan(2);
+        // NB : selon le coussin du vendeur, le déficit réduit le LIQUIDE (cas ci-dessus) OU est porté en
+        // liquidDebt (vendeur à liquide épuisé) — les deux NW-corrects (ΔNW = −5 % prouvé par financial-
+        // integrity ; chemin liquidDebt MESURÉ OK par projection-validator). On teste ici le cas liquide.
+    });
+
+    it('[FISC-RE-CAPITAL-LOSS] locatif vendu à perte : perte banquée NON-monétaire (conservation tient) + log (end-to-end)', () => {
+        // Locatif (isPrimaryResidence:false) acheté 400 k$ puis vendu ~5 mois plus tard : la valeur a peu
+        // bougé (~405 k$) donc le produit net 95 % (≈ 384,7 k$) est SOUS le coût (400 k$) → PERTE en capital.
+        // Avant le fix, `Math.max(0, produit − coût)` IGNORAIT cette perte (ni banque, ni log). Désormais elle
+        // est portée en banque de pertes — un compteur FISCAL pur : elle ne déplace AUCUN cash au mois de vente
+        // (seul l'impôt FUTUR baisse). Donc la conservation (résiduel ≈ 0) doit RESTER intacte end-to-end, ce
+        // qui valide le câblage RÉEL du moteur (`projection.ts` mutator), pas seulement le mock unitaire.
+        const r = run(makeParams({
+            // Cash élevé → l'achat se fait À LA DATE prévue (sinon le moteur le REPORTE faute de liquidités
+            // et la vente ne trouve aucun bien acheté — vérifié en debug). Les flux annexes (allocation cascade,
+            // éventuel appel de marge) sont du comportement moteur NORMAL ; la conservation doit tenir à travers.
+            calculatedStartingCash: 300_000,
+            projection: makeProjection({ years: 6 }),
+            realEstateGoals: [{
+                id: 'rent', name: 'Plex locatif', isActive: true, purchaseDate: '2027-01-01',
+                price: 400_000, downPayment: 100_000, mortgageRate: 5, amortization: 25,
+                totalClosingCosts: 6_000, monthlyPayment: 1_750, unrecoverableMonthly: 300,
+                isPrimaryResidence: false,
+            }],
+            lifeEvents: [{ id: 'v', type: 'GROS_ACHAT', name: 'Vente plex locatif', date: '2027-06' }],
+        }));
+        const cd = r.chartData;
+        const saleIdx = cd.findIndex(p => (p.lifeEvents || []).some(e => /Vente/.test(e)));
+        expect(saleIdx).toBeGreaterThan(0);
+        // DISCRIMINANT e2e : le moteur RÉEL logge la perte en capital (l'ancien code, clamp `Math.max(0)`,
+        // ne loggait JAMAIS de perte → cette assertion échoue dessus). Prouve que le mutator projection.ts
+        // route bien par `applyCapitalDisposition` (le chemin distinct du mock unitaire).
+        expect(cd[saleIdx].flowEvents || []).toEqual(
+            expect.arrayContaining([expect.stringMatching(/Perte en capital/)]),
+        );
+        // CONSERVATION (forme reconstructabilité, INV-9 — la bonne pour un scénario immobilier : `unexplained`
+        // n'est valable QUE hors événement car il n'inclut pas le passage cash→équité). La perte banquée est un
+        // compteur FISCAL pur → elle ne change ni `NetWorth`, ni les actifs, ni `DettesNonImmo`. Donc l'identité
+        // `NetWorth = Σactifs − DettesNonImmo` doit tenir à CHAQUE mois (achat, vente à perte, re-flux), à l'euro
+        // près. Sous hypothèque, on reconstruit avec `DettesNonImmo` (jamais `DetteTotale` — leçon M5).
+        for (const p of cd) {
+            const recon = shownAssets(p) - num((p as Record<string, unknown>).DettesNonImmo);
+            expect(Math.abs(num(p.NetWorth) - recon)).toBeLessThan(2);
+        }
+    });
+
     it('INV-6 — aucun compte ne devient négatif (pas de solde fantôme)', () => {
         for (const params of [makeParams(), makeParams({ majorRenovations: [{ id: 'r', date: '2031-09-15', cost: 200_000 }] })]) {
             for (const p of run(params).chartData) {
@@ -210,9 +317,11 @@ describe('[CONSERVATION] patrimoine net toujours reconstructible et conservé', 
         const bad2 = { id: 'y', name: 'Prêt 2', balance: 30_000, interestRate: Number.NaN, minimumPayment: Number.NaN, category: 'Student' } as unknown as Debt;
         for (const debts of [[bad], [bad2], [bad, bad2]]) {
             for (const p of run(makeParams({ debts })).chartData) {
-                expect(Number.isNaN(num(p.NetWorth)), `NetWorth NaN au mois ${p.monthIndex}`).toBe(false);
-                expect(Number.isNaN(num(p.DetteTotale))).toBe(false);
-                expect(Number.isNaN(num(p.diffNW))).toBe(false);
+                // ⚠️ Valeur BRUTE (`Number(...)`), PAS `num()` qui sanitise NaN→0 et rendait l'assertion
+                // VACANTE (corrigé 2026-06-23, LOT 4 : `Number.isNaN(num(x))` est toujours faux).
+                expect(Number.isNaN(Number(p.NetWorth)), `NetWorth NaN au mois ${p.monthIndex}`).toBe(false);
+                expect(Number.isNaN(Number(p.DetteTotale))).toBe(false);
+                expect(Number.isNaN(Number(p.diffNW))).toBe(false);
             }
         }
     });
@@ -332,41 +441,63 @@ describe('[CONSERVATION] patrimoine net toujours reconstructible et conservé', 
     });
 });
 
-describe('[monthlyOutput] contrat de sortie de buildMonthlyDataPoint (L2 audit 2026-06-17)', () => {
-    // monthlyOutput.ts était le seul sous-module de services/projection/ sans test dédié. On exerce
-    // tous ses champs de dette/équité sur un scénario RICHE (immo hypothéqué + prêt auto + retraité REER)
-    // plutôt qu'un mock à 102 champs — verrouille le mapping ctx→point (arrondi, cohérence, champs dérivés).
-    const cd = run(makeParams({
-        config: makeRetireeConfig(),
-        retirementGoal: { targetAge: 60, targetMonthlyIncome: 5000, governmentPension: 1200, lifeExpectancy: 90 },
-        liveCSVBalances: { ...NO_INVEST, REER: 400_000 },
-        calculatedStartingCash: 60_000,
-        debts: [{ id: 'd', name: 'Auto', balance: 20_000, interestRate: 6, minimumPayment: 400, category: 'Car' } as Debt],
-        realEstateGoals: [{
-            id: 're', name: 'Maison', isActive: true, purchaseDate: '2027-06-01', price: 400_000,
-            downPayment: 80_000, mortgageRate: 5, amortization: 25, totalClosingCosts: 6_000,
-            monthlyPayment: 2_100, unrecoverableMonthly: 900, isPrimaryResidence: true,
-        }],
-    })).chartData;
+describe('[NAN-INPUT-HARDENING] un input non fini (NaN/Infinity) ne se propage jamais en silence', () => {
+    // Garde-fou défense-en-profondeur (audit 2026-06-23). Les inputs sont sanitisés aux boundaries, mais
+    // `?? 0` ne rattrape PAS NaN et l'arithmétique nue propage NaN sans déclencher les 12 invariants
+    // (`NaN > EPS` = false). Chaque garde rabat sur 0/neutre. Tests DISCRIMINANTS (échouent sans la garde).
+    const debt = (balance: number): Debt =>
+        ({ id: 'x', name: 'd', balance, interestRate: 0, minimumPayment: 0, category: 'Car' } as unknown as Debt);
 
-    it('tous les champs $ affichés sont arrondis à 2 décimales (pas de float brut qui fuit)', () => {
-        const moneyFields = ['NetWorth', 'DetteTotale', 'DettesNonImmo', 'LiquidDebt', 'REER', 'CELI', 'Liquidites', 'NonReg', 'Immobilier'];
-        for (const p of cd) for (const k of moneyFields) {
-            const v = num((p as Record<string, unknown>)[k]);
-            expect(Math.abs(v - Number(v.toFixed(2))), `${k} non arrondi à 2 décimales`).toBeLessThan(1e-9);
-        }
+    it('computeTotalDebt : un solde Infinity → 0 (`|| 0` ne le rattrapait pas) ; NaN aussi ; le fini est sommé', () => {
+        expect(computeTotalDebt([debt(Number.POSITIVE_INFINITY)])).toBe(0); // discriminant : `Infinity||0`=Infinity
+        expect(computeTotalDebt([debt(Number.NaN)])).toBe(0);
+        expect(computeTotalDebt([debt(1000), debt(Number.NaN)])).toBe(1000); // seul le fini compte
     });
 
-    it('cohérence des dettes : LiquidDebt ≤ DettesNonImmo ≤ DetteTotale', () => {
+    it('applyMidMonthGrowth : un solde de départ/fin non fini → résultat neutre fini (jamais croissance NaN)', () => {
+        // discriminant : sans la garde, `NaN<=0`=false saute l'early-return → newVal NaN.
+        expect(applyMidMonthGrowth(Number.NaN, 1000, 6)).toEqual({ newVal: 0, growth: 0, pct: 0 });
+        expect(applyMidMonthGrowth(1000, Number.NaN, 6)).toEqual({ newVal: 0, growth: 0, pct: 0 });
+        expect(applyMidMonthGrowth(Number.POSITIVE_INFINITY, 0, 6)).toEqual({ newVal: 0, growth: 0, pct: 0 });
+        // [panel LOT 4] un TAUX non fini propageait aussi NaN (`Math.pow(1+NaN/100)`) → garde dédiée :
+        // pas de croissance MAIS le solde de fin est PRÉSERVÉ (pas rabattu à 0).
+        expect(applyMidMonthGrowth(1000, 1100, Number.NaN)).toEqual({ newVal: 1100, growth: 0, pct: 0 });
+    });
+
+    it('e2e — un lifeEvent à impactAmount NaN ne corrompt JAMAIS NetWorth/Expenses (monthlyEvents)', () => {
+        // GROS_ACHAT (non KRACH, non perte-de-revenu, nom sans « vente ») → branche impactAmount.
+        // ⚠️ On asserte la valeur BRUTE (`Number(...)`), PAS via `num()` qui sanitise NaN→0 et rendrait
+        // l'assertion vacante (`Number.isNaN(num(x))` est toujours faux). C'est ce qui discrimine la garde.
+        const raw = (v: unknown): number => Number(v);
+        const bad = { id: 'e', type: 'GROS_ACHAT', name: 'Achat majeur', date: '2027-03-15', impactAmount: Number.NaN } as unknown as LifeEvent;
+        const cd = run(makeParams({ lifeEvents: [bad] })).chartData;
         for (const p of cd) {
-            expect(num(p.LiquidDebt)).toBeLessThanOrEqual(num((p as Record<string, unknown>).DettesNonImmo as number) + 1);
-            expect(num((p as Record<string, unknown>).DettesNonImmo as number)).toBeLessThanOrEqual(num(p.DetteTotale) + 1);
+            expect(Number.isNaN(raw(p.NetWorth)), `NetWorth NaN au mois ${p.monthIndex}`).toBe(false);
+            expect(Number.isNaN(raw(p.Expenses)), `Expenses NaN au mois ${p.monthIndex}`).toBe(false);
         }
     });
+});
 
-    it('diffNW (champ dérivé) = NetWorth(m) − NetWorth(m−1) à l\'euro près', () => {
-        for (let i = 1; i < cd.length; i++) {
-            expect(Math.abs(num(cd[i].diffNW) - (num(cd[i].NetWorth) - num(cd[i - 1].NetWorth)))).toBeLessThan(2);
-        }
+describe('[FISC-WHT-HARDCODE] retenue REER affichée = tiered (19/24/29 %), pas le 0,15 figé', () => {
+    // Le compteur `totalTaxesPaid` (→ taxLeakage + ranking de stratégies) ajoutait la retenue REER au taux
+    // FIGÉ 0,15, qui sous-évalue dès la 2ᵉ tranche (réelle = 19/24/29 % combiné QC). On utilise désormais la
+    // retenue TIERED EXACTE → totalTaxesPaid plus haut (et = totalAnnualTax, plus de biais). Discriminant
+    // prouvé par git-stash : le seuil ci-dessous est INATTEIGNABLE avec l'ancien 0,15.
+    const bigReerRetiree = () => makeParams({
+        projection: makeProjection({ years: 10, returnRate: 4, returnRates: { celi: 4, reer: 4, nonReg: 4, crypto: 5, cash: 1 } }),
+        calculatedStartingCash: 10_000,
+        liveCSVBalances: { ...NO_INVEST, REER: 600_000 },
+        retirementGoal: { targetAge: 60, targetMonthlyIncome: 9000, governmentPension: 800, lifeExpectancy: 95 },
+        config: makeRetireeConfig(),
+        baseGrossAnnual: 0, baseNetAnnual: 0, currentRentExpense: 0, baseMonthlyExpenses: 8000,
+    });
+
+    it('un gros décaissement REER mensuel (> bracket 1) → totalTaxesPaid reflète la retenue tiered', () => {
+        const r = run(bigReerRetiree());
+        // Discriminant MESURÉ (git-stash) : ancien `* 0.15` → totalTaxesPaid ≈ 211 562 $ ; retenue tiered
+        // sur le brut agrégé → ≈ 270 087 $ ; [WHT-DISPLAY-EXACT] retenue tiered EXACTE par tirage → ≈ 269 132 $
+        // (−955 $ : le recalcul sur l'agrégat sur-estimait, barème non additif). Le seuil 250 000 reste
+        // INATTEIGNABLE sous l'ancien 0,15 — les deux raffinements tiered le franchissent largement.
+        expect(r.totalTaxesPaid).toBeGreaterThan(250_000);
     });
 });

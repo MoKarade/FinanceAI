@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import type { AppState, Transaction } from '../types';
 import { computePresentNetWorth } from '../services/portfolio';
+import { logErrorThrottled } from '../services/errorLogger';
+import { isSavingsNature } from './budget';
 
 interface DerivedFinancials {
     globalNetWorth: number;
@@ -32,7 +34,7 @@ export function useDerivedFinancials(state: AppState): DerivedFinancials {
     const calculatedMonthlySavings = useMemo(() => {
         const income = state.config.users.reduce((acc, u) => acc + (u.netSalary || u.salary || 0), 0);
         const budgetExp = state.budgetItems.reduce((acc, item) => {
-            if (item.nature === 'Epargne') return acc;
+            if (isSavingsNature(item.nature)) return acc; // [HEALTH-SAVINGS-CONSISTENCY] NFD, pas `=== 'Epargne'` (alimente le moteur)
             let amount = item.target;
             if (item.frequency === 'Yearly') amount /= 12;
             if (item.frequency === 'Quarterly') amount /= 3;
@@ -48,7 +50,18 @@ export function useDerivedFinancials(state: AppState): DerivedFinancials {
         const reee = 0;
         let nonReg = 0;
         state.assets.forEach(a => {
-            const val = a.quantity * a.currentPrice * (state.fxRates[a.currency] || 1);
+            // [NAN-INPUT-HARDENING] garde l'AGRÉGAT (quantity/currentPrice peuvent être NaN si saisie vidée
+            // / prix échoué) — sinon reer/celi/nonReg deviennent NaN en silence (non capté par les invariants).
+            const raw = a.quantity * a.currentPrice * (state.fxRates[a.currency] || 1);
+            // [NAN-OBSERVABILITY] surface le rabattement (throttlé par actif : ce useMemo se recalcule).
+            if (!Number.isFinite(raw)) {
+                logErrorThrottled(`asset-nan:${a.symbol}`, {
+                    source: 'ui', severity: 'warning',
+                    message: `Actif "${a.name || a.symbol}" : valeur non finie (quantité/prix vidé ou prix échoué) → compté 0 $`,
+                    context: { symbol: a.symbol, accountType: a.accountType },
+                });
+            }
+            const val = Number.isFinite(raw) ? raw : 0;
             if (a.accountType === 'REER') reer += val;
             else if (a.accountType === 'CELI') celi += val;
             else nonReg += val;

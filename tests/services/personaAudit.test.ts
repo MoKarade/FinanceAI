@@ -164,9 +164,16 @@ describe('Audit personas — données + calculs', () => {
 
             it('CALCUL — solde investi de départ reflète le persona (pas le portfolio par défaut)', () => {
                 const investedTotal = live.CELI + live.REER + live.NON_ENREG + live.CRYPTO;
-                if (assets.length === 0) {
-                    // Persona sans placements : aucun solde investi (régression du bug
-                    // « tout le monde hérite du portfolio du couple par défaut »).
+                // Valeur RÉELLE des actifs investis du persona (CELI/REER/NonReg/Crypto ;
+                // currentPrice est déjà en CAD — les USD sont pré-multipliés par le taux).
+                // [R6] On clé sur la TAILLE du portefeuille, pas sur « a-t-il un actif » :
+                // un persona « fauché » avec un MICRO-actif CELI (< 1000 $) doit refléter
+                // SES actifs (≈ sa micro-valeur), JAMAIS hériter du portfolio couple par
+                // défaut (~52 k$) — c'est le bug d'origine que ce garde-fou protège.
+                const personaInvested = assets
+                    .filter((a) => a.accountType !== 'REEE' && a.accountType !== 'CELIAPP')
+                    .reduce((s, a) => s + (a.quantity ?? 0) * (a.currentPrice ?? 0), 0);
+                if (personaInvested < 1000) {
                     expect(investedTotal).toBeLessThan(1000);
                 } else {
                     expect(investedTotal).toBeGreaterThan(1000);

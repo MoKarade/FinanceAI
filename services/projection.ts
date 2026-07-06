@@ -21,7 +21,7 @@ import { computeRetirementIncome } from './projection/retirementIncome';
 import { processOneChild } from './projection/childrenReee';
 import { computeActiveIncome } from './projection/activeIncome';
 import { processReerMeltdown } from './projection/meltdownReer';
-import { applyTravelExpenses, applyLifeEvents, computeStressTest, applySavingsGoalDeadlines, applyFinancialGoalDeadlines } from './projection/monthlyEvents';
+import { applyTravelExpenses, applyLifeEvents, computeStressTest, applySavingsGoalDeadlines, applyFinancialGoalDeadlines, computeIncomeLossFactor } from './projection/monthlyEvents';
 import { computeLatentTax } from './projection/latentTax';
 import { computeGlidepathRates } from './projection/glidepathRates';
 import { processCashflowAllocation, type CashflowState } from './projection/cashflowAllocation';
@@ -30,10 +30,10 @@ import { buildMonthlyDataPoint } from './projection/monthlyOutput';
 import { computeRawNetWorth } from './projection/netWorth';
 import { applyMonthlyGrowth } from './projection/growthApplication';
 import { buildSeededRng, computeHistoricalContributionRoom, computeRrqAdjustment, computeIncomeBaseline, computeScenarioOverrides, makeSmileLifestyleFactor } from './projection/setupSimulation';
-import { handleNonRegSale as portfolioNonRegSale, handleCryptoSale as portfolioCryptoSale } from './projection/portfolioOps';
+import { handleNonRegSale as portfolioNonRegSale, handleCryptoSale as portfolioCryptoSale, applyCapitalDisposition } from './projection/portfolioOps';
 import { computeEstateNetWorth } from './projection/estateCalculation';
 import { computeMonthlyMarketRates, type StressTestConfig } from './projection/marketShocks';
-import { computeEffectiveExpenseInflation, computeMonthlyWithholding } from './projection/monthlyCalcs';
+import { computeEffectiveExpenseInflation } from './projection/monthlyCalcs';
 import { type AllocationStrategy, type FutureScenarioType, type ProjectionResult } from './projection/types';
 export type { AllocationStrategy, FutureScenarioType, ProjectionChartPoint, ProjectionResult } from './projection/types';
 export type { StrategySearchResult, ConfigResult, RunStrategySearchOptions } from './projection/strategySearch';
@@ -251,8 +251,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let accGrossIncomeYear = 0;
     let accRrspYear = 0;
 
-    let taxCurrentYear = { revenu: 0, gains: 0, reer: 0, divers: 0 };
-    let taxPreviousYear = { revenu: 0, gains: 0, reer: 0, divers: 0 };
+    // donCredit [FA-6-CREDIT-CAP] = crédit-don accumulé (positif) ; plafonné à l'impôt dû puis appliqué
+    // à `divers` en décembre (un crédit non remboursable ne peut pas générer de remboursement net).
+    let taxCurrentYear = { revenu: 0, gains: 0, reer: 0, divers: 0, donCredit: 0 };
+    let taxPreviousYear = { revenu: 0, gains: 0, reer: 0, divers: 0, donCredit: 0 };
 
     let accRetraitsReerYear = 0;
     let accRentesYear = 0;
@@ -297,10 +299,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     const { incomeMarcNetMonthly, incomeAnnaNetMonthly, grossMarcBaseAnnual, grossAnnaBaseAnnual } =
         computeIncomeBaseline(projection, config.users);
 
-    // Phase 1 refactor « REER par conjoint » (cf docs/REFACTOR_REER_PAR_CONJOINT.md) : registre
-    // REER par conjoint maintenu EN PARALLÈLE du solde commun (qui reste la vérité). Clé = part
-    // salariale. Invariant Σ(reerByUser) == reer garanti par stepReerByUser. Shadow en Phase 1
-    // (non consommé par la fiscalité encore) → zéro changement de résultat.
+    // Registre REER PAR CONJOINT maintenu EN PARALLÈLE du solde commun (qui reste la vérité). Clé de
+    // répartition = part salariale (proxy d'historique de cotisation ; `rrspContributed` prévu — ITEM-2C
+    // sous-phase suivante). Invariant Σ(reerByUser) == reer garanti par stepReerByUser.
+    // [ITEM-2C] Depuis le fix FERR per-conjoint, ce registre PILOTE la fiscalité : chaque conjoint de 72+
+    // convertit SA part au facteur RRIF de SON âge (taxJanuary). Au décès, la part du défunt roule vers le
+    // survivant (cf bloc survivorMode). Plus un shadow.
     const reerShares = salaryShares(
         activeUsersCount > 1 ? [grossMarcBaseAnnual, grossAnnaBaseAnnual] : [grossMarcBaseAnnual + grossAnnaBaseAnnual],
     );
@@ -526,6 +530,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         if (survivorMode && !survivorTriggerLogged) {
             const spouseAge = (config.users[1]?.age || 30) + Math.floor(m / 12);
             logEvent(lifeEventsLog, `🖤 Décès du conjoint à ${spouseAge} ans — bascule en mode survivant`);
+            // [ITEM-2C] Roulement REER conjugal AU DÉCÈS (sans impôt, règle ARC) : la part REER du défunt
+            // rejoint le SURVIVANT (user0) → `reerByUser = [Σ, 0]`. Sans cela, la part du défunt (registre
+            // [1]) continuerait de FERR-convertir au gate per-conjoint comme un « contribuable mort » à 72+
+            // = flux fiscal fantôme imposé au survivant (régression FISC-SURVIVOR-DRAWDOWN). Cohérent avec le
+            // modèle « tout le revenu de retraite est celui du survivant » (1 contribuable).
+            const mergedReer = reerByUser.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0);
+            reerByUser = reerByUser.map((_, i) => (i === 0 ? mergedReer : 0));
             survivorTriggerLogged = true;
         }
 
@@ -556,6 +567,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         let impotGainsMois = 0; // V29: Gains en capital (taxes payées ce mois ou différées)
         let impotDiversMois = 0; // V29: Taxes divers (FHSA, etc.)
         let retraitReerMois = 0;
+        // [WHT-DISPLAY-EXACT volet a] Retenue REER PAR TIRAGE cumulée sur le mois (cascade + sauvetage
+        // de découvert) → compteur d'affichage `totalTaxesPaid` exact (barème par palier non additif).
+        let rrspWithholdingMois = 0;
         let retraitCeliMois = 0;
         let impotReerMois = 0; // V24: Impôt sur retraits REER, séparé de fluxImpots
         let impotSalaireMois = 0; // V36: Impôt sur salaire (retenues/provision)
@@ -631,7 +645,29 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             incomeMarc = aiResult.incomeMarc;
             incomeAnna = aiResult.incomeAnna;
             monthlyIncome = aiResult.monthlyIncome;
-            accGrossIncomeYear += aiResult.accGrossAdd;
+            // [FISC-EVENT-INCOMELOSS] événements de perte de revenu DATÉS (PERTE_EMPLOI/SABBATIQUE/
+            // ACCIDENT) : réduisent le revenu MÉNAGE de incomeLossPercent % pendant durationMonths mois
+            // (sémantique Marc 2026-06-18 : % perdu + durée, niveau ménage). On réduit le NET (`monthlyIncome`,
+            // cashflow) ET `accGrossAdd` du même facteur. ⚠️ `accGrossAdd` alimente UNIQUEMENT l'espace REER
+            // de l'an+1 (`taxJanuary.ts`), PAS l'impôt salarial de décembre (calculé sur `grossMarcBaseAnnual`
+            // PLEIN — vérifié empiriquement, ΔFluxImpots = 0). Le fix NE modélise donc PAS le remboursement
+            // d'impôt qu'une vraie perte de revenu déclencherait → biais CONSERVATEUR (NW post-perte
+            // légèrement sous-estimé), IDENTIQUE au chômage STOCHASTIQUE existant (`activeIncome.ts` AE 55 %/
+            // LTD). Conservation préservée (résiduel < 1 $, moneyConservation). Appliqué AVANT le bloc enfants
+            // (prestations revenu-testées recalculées sur le revenu réduit). RETRAITE : non appliqué (pas de
+            // revenu d'EMPLOI à perdre) → un événement daté en retraite est inerte. Interaction avec une perte
+            // STOCHASTIQUE (Monte-Carlo) le même mois : composition MULTIPLICATIVE (× 0,55 × facteur), bornée
+            // [0, 1] — voulu (aléa MC + événement planifié = deux pertes distinctes).
+            const incomeLossFactor = computeIncomeLossFactor(lifeEvents, currentLoopDate);
+            let activeGrossAdd = aiResult.accGrossAdd;
+            if (incomeLossFactor < 1) {
+                incomeMarc *= incomeLossFactor;
+                incomeAnna *= incomeLossFactor;
+                monthlyIncome *= incomeLossFactor;
+                activeGrossAdd *= incomeLossFactor;
+                logEvent(lifeEventsLog, `📉 Perte de revenu planifiée (-${Math.round((1 - incomeLossFactor) * 100)} %)`);
+            }
+            accGrossIncomeYear += activeGrossAdd;
             unemployedMonthsRemaining = aiResult.newUnemployedMonths;
             ltdMonthsRemaining = aiResult.newLtdMonths;
             ltdLogged = aiResult.ltdLogged;
@@ -717,6 +753,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 subtractLiquid: (amt) => { liquid -= amt; },
                 addTaxRevenu: (amt) => { taxCurrentYear.revenu += amt; },
                 addTaxGains: (amt) => { taxCurrentYear.gains += amt; },
+                addTaxDivers: (amt) => { taxCurrentYear.divers += amt; },
+                addDonationCredit: (amt) => { taxCurrentYear.donCredit += amt; },
                 logFlow: (msg) => logEvent(flowEventsLog, msg),
                 logLife: (msg) => logEvent(lifeEventsLog, msg),
             }
@@ -743,18 +781,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         }
         taxPreviousYear = aprilResult.newTaxPreviousYear;
 
-        // Cycle 29 split: retenue salariale mensuelle → ./projection/monthlyCalcs
+        // [FISC-SRCDED-NOOP — retenue mensuelle retirée 2026-06-26] La provision salariale mensuelle
+        // (`computeMonthlyWithholding`) était VESTIGIALE : sa sortie accumulée dans `taxCurrentYear.revenu`
+        // était ÉCRASÉE par l'override de décembre (`taxDecember`, balise « V30: Override ») avant tout
+        // règlement → jamais consommée (prouvé : perturbation +999 999/mois ⇒ golden byte-identique, 2331
+        // tests d'intégration inchangés). Le flag T1213 agit correctement via le chemin décembre (`taxDecember`,
+        // balise « V49: Retenue source »). On conserve UNIQUEMENT la remise à 0 de l'affichage « impôt salaire »
+        // pour le non-retraité (annule l'affectation d'avril ci-dessus : le règlement d'avril s'affiche via
+        // `fluxImpots`, pas `impotSalaireMois`).
         if (!isRetired) {
-            taxCurrentYear.revenu += computeMonthlyWithholding(
-                // FA-10 (suivi silent-failure-hunter) : salaire du défunt à 0 — sinon la retenue
-                // fantôme accrue survivait à une année de TRANSITION vers la retraite (la branche
-                // retraité de décembre fait `+=`, pas une assignation) et était PAYÉE en avril.
-                { m, loopYear, simInflation, simSalaryGrowth, grossMarcBaseAnnual,
-                  grossAnnaBaseAnnual: survivorMode ? 0 : grossAnnaBaseAnnual,
-                  contribREER, contribCELIAPP, smithInterestDeductibleYear,
-                  enableMonteCarlo, optimizeSourceDeductions: effProj.optimizeSourceDeductions },
-                calculateFiscalReport,
-            );
             impotSalaireMois = 0;
         }
 
@@ -857,7 +892,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
             // V30: Transfer accumulated taxes to the 'previous year' bucket to be paid in April.
             taxPreviousYear = { ...taxCurrentYear };
-            taxCurrentYear = { revenu: 0, gains: 0, reer: 0, divers: 0 };
+            taxCurrentYear = { revenu: 0, gains: 0, reer: 0, divers: 0, donCredit: 0 };
 
             // V28 + Cycle 12: TFSA Room reset géré en Janvier — voir processJanuaryReset (./projection/taxJanuary)
 
@@ -918,7 +953,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 oasClawbackNextPeriod, hasPurchasedPrimary,
                 celiappOpeningYear, fhsaEligibleUsersCount,
                 users: config.users,
-                celiapp, reer, liquid, nonReg, crypto, celi,
+                celiapp, reer, reerByUser, liquid, nonReg, crypto, celi,
                 accGrossIncomeYear, accRetraitsReerYearOld: accRetraitsReerYear,
                 incomeRetirementMonthly: incomeRetirement,
                 fhsaRoomCurrent: fhsaRoom, fhsaLifetimeContrib,
@@ -963,7 +998,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 taxCurrentYear.reer += janResult.ferrTaxOnRrif;
                 impotReerMois += janResult.ferrTaxOnRrif;
                 accRetraitsReerYear += janResult.ferrMandatoryGross;
-                accRetraitsReerYearByUser = addByWeights(accRetraitsReerYearByUser, janResult.ferrMandatoryGross, reerByUser);
+                // [ITEM-2C] La FERR de chaque conjoint sort de SA part REER (registre per-conjoint), pas au
+                // pro-rata du pool → le solde REER de chaque conjoint reflète SES conversions obligatoires
+                // (et conditionne SON FERR de l'an suivant). La réconciliation de fin de mois préserve l'attribution.
+                reerByUser = reerByUser.map((v, i) => Math.max(0, (Number.isFinite(v) ? v : 0) - (janResult.ferrGrossByUser[i] ?? 0)));
+                accRetraitsReerYearByUser = accRetraitsReerYearByUser.map((v, i) => (Number.isFinite(v) ? v : 0) + (janResult.ferrGrossByUser[i] ?? 0));
                 liquid += janResult.ferrMandatoryGross;
                 if (janResult.ferrLogMsg) flowEventsLog.push(janResult.ferrLogMsg);
             }
@@ -1135,7 +1174,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             addLiquid: (n) => { liquid += n; },
             addExpense: (n) => { monthlyExpenses += n; },
             adjustRealEstate: (eq, mort) => { realEstateEquity += eq; mortgageBalance += mort; },
-            realizeCapitalGain: (g) => { accCapitalGainsYear += g; },
+            realizeCapitalDisposition: (rawGain) => {
+                // Idiome copie/recopie (comme handleNonRegSale) : le helper mute un mini-state, on recopie
+                // les `let` du moteur. Une PERTE alimente `capitalLossBank` (consommée par les gains futurs).
+                const ms = { capitalLossBank, accCapitalGainsYear };
+                const result = applyCapitalDisposition(ms, rawGain);
+                capitalLossBank = ms.capitalLossBank;
+                accCapitalGainsYear = ms.accCapitalGainsYear;
+                return result;
+            },
             logLife: (s) => logEvent(lifeEventsLog, s),
             logFlow: (s) => logEvent(flowEventsLog, s),
         });
@@ -1218,7 +1265,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             taxCurrentYearReer: taxCurrentYear.reer,
             accRetraitsReerYear, accCapitalGainsYear, accRrspYear, accFhsaYear,
             fhsaLifetimeContrib, celiWithdrawalsThisYear,
-            retraitReerMois, retraitCeliMois,
+            retraitReerMois, rrspWithholdingMois, retraitCeliMois,
             withdrawalREER, withdrawalCELI, withdrawalNonReg, withdrawalCrypto,
             contribCELI, contribREER, contribNonReg, contribCELIAPP,
             shortfallMonths,
@@ -1237,7 +1284,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             accRrspYear = cs.accRrspYear; accFhsaYear = cs.accFhsaYear;
             fhsaLifetimeContrib = cs.fhsaLifetimeContrib;
             celiWithdrawalsThisYear = cs.celiWithdrawalsThisYear;
-            retraitReerMois = cs.retraitReerMois; retraitCeliMois = cs.retraitCeliMois;
+            retraitReerMois = cs.retraitReerMois; rrspWithholdingMois = cs.rrspWithholdingMois; retraitCeliMois = cs.retraitCeliMois;
             withdrawalREER = cs.withdrawalREER; withdrawalCELI = cs.withdrawalCELI;
             withdrawalNonReg = cs.withdrawalNonReg; withdrawalCrypto = cs.withdrawalCrypto;
             contribCELI = cs.contribCELI; contribREER = cs.contribREER;
@@ -1384,10 +1431,17 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         liquid = g.liquid.newVal; growthLiquid = g.liquid.growth; growthPctLiquid = g.liquid.pct;
         reee = g.reee.newVal; growthREEE = g.reee.growth; growthPctREEE = g.reee.pct;
         totalGrowth += g.totalGrowth;
-        // Retenue à la source ~15% sur les retraits REER de l'année courante,
-        // pas encore régularisée par la déclaration de revenus (approx. mi-année).
-        // 15% = tranche intermédiaire de retenue REER au QC (cf RRSP_WITHHOLDING_QC).
-        totalTaxesPaid += fluxImpots + taxOnRrif + retraitReerMois * 0.15;
+        // [FISC-WHT-HARDCODE 2026-06-23 → WHT-DISPLAY-EXACT 2026-06-26] Retenue à la source sur les retraits
+        // REER du mois, pas encore régularisée par la déclaration (acompte). AVANT : `* 0.15` en dur, puis
+        // `withholdingForGrossRRSP(retraitReerMois)` recalculé sur le brut MENSUEL agrégé (sur-estimait les mois
+        // à plusieurs tirages, barème par palier non additif). DÉSORMAIS : `rrspWithholdingMois`, la SOMME des
+        // retenues PAR TIRAGE déjà calculées par la cascade (`drawReer`) — exact au cent près ET identique à
+        // ce que `taxCurrentYear.reer` a réellement provisionné (cohérence interne du compteur). Compteur
+        // d'AFFICHAGE, non conservé (n'entre pas dans le NW). Pas de double-compte : ce terme est l'ACOMPTE ;
+        // `taxCurrentYear.reer` cumule ces mêmes acomptes et décembre n'ajoute ENSUITE que le complément
+        // (réconciliation = `totalAnnualTax − taxCurrentYear.reer`) → l'impôt n'est compté qu'une fois.
+        // `taxOnRrif` (FERR) reste un terme séparé, base disjointe.
+        totalTaxesPaid += fluxImpots + taxOnRrif + rrspWithholdingMois;
         totalExpenses += monthlyExpenses;
 
         // Patrimoine net = actifs − TOUTES les dettes. realEstateEquity est DÉJÀ net

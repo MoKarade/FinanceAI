@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
+import { Badge } from './ui/Badge';
 import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { Pill } from './ui/Pill';
@@ -11,6 +13,7 @@ import { useFinanceStore } from '../store/useFinanceStore';
 import { logError } from '../services/errorLogger';
 import { usePendingFocus } from '../utils/usePendingFocus';
 import { buildLockedByMonth } from '../utils/lockedCurveOverlay';
+import { findInsolvencyPoint } from '../utils/insolvency';
 
 // Sprint 2 PH2 — constante stable pour éviter de créer un nouveau [] à chaque
 // render (qui invaliderait les useMemo deps en aval).
@@ -19,6 +22,8 @@ import { Tab as TabEnum } from '../types';
 import { ExpertTooltip, ClickableEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
 import { FutureDetailModal } from './projection/FutureDetailModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
+import { useChartTooltipPosition } from '../hooks/useChartTooltipPosition';
+import { resolvePointFromClick } from '../utils/chartTooltip';
 import { ProjectionControls } from './projection/ProjectionControls';
 import { useSimulationParams } from '../hooks/useSimulationParams';
 import { reconstructCashHistory } from '../services/history/reconstructCashHistory';
@@ -29,6 +34,9 @@ import { StrategyOptimizerPanel } from './projection/StrategyOptimizerPanel';
 import { StressTestPanel } from './projection/StressTestPanel';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
+import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
+import { formatCompactCAD } from '../utils/format';
 
 // G10 — Légende interactive : une seule source de vérité pour les chips ET les
 // gardes de visibilité dans le graphique. `key` correspond au dataKey recharts
@@ -169,6 +177,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const results = useFinanceStore(s => s.lastProjection);
     const { chartData = [] as ProjectionChartPoint[], fireNumber = 0, allResults = [] as ProjectionResult[] } = results ?? {};
 
+    // [PROJ-INSOLVENCY-BADGE] premier moment où le patrimoine net projeté passe sous 0 (plan
+    // insoutenable, capital épuisé). null si solvable sur tout l'horizon → aucun badge (empty state honnête).
+    const insolvency = useMemo(() => findInsolvencyPoint(chartData), [chartData]);
+
     // PH2-d — courbe VERROUILLÉE (référence figée) : lue du store ; le moteur continue de publier
     // `results` en direct (aperçu). Verrouiller/déverrouiller = snapshot + persistance IndexedDB.
     const lockedProjection = useFinanceStore(s => s.lockedProjection);
@@ -251,6 +263,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             const celi = inv?.CELI ?? 0, celiapp = inv?.CELIAPP ?? 0, reer = inv?.REER ?? 0,
                 reee = inv?.REEE ?? 0, nonReg = inv?.NonReg ?? 0, crypto = inv?.Crypto ?? 0;
             const hasNW = mi >= firstTxnMi; // VN seulement à partir de la 1re transaction connue
+            // [HIST-NW-NO-DEBT, audit 2026-06-23] ⚠️ Le NetWorth du PASSÉ = placements + cash + équité immo,
+            // SANS dettes (on n'a pas l'historique des soldes de dette, seulement le solde courant) → pour un
+            // endetté, le passé est GONFLÉ vs le futur (qui soustrait les dettes). Limite assumée, pas un bug
+            // de conservation. Une approx (soustraire la dette COURANTE) ou un disclaimer = décision produit
+            // (cf docs/A_FAIRE_MOI HIST-NW-DEBT-DISCLAIMER).
             const investSum = celi + celiapp + reer + reee + nonReg + crypto;
             out.push({
                 monthIndex: mi,
@@ -285,7 +302,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // year/age/dateLabel par événement pour la fiche au clic, et `subIdx` pour
     // empiler verticalement les événements d'un même mois.
     const { lifeChartEvents, flowChartEvents } = useMemo(() => {
-        type ChartEvent = { monthIndex: number; year: number | undefined; age: number | undefined; dateLabel: string | undefined; val: number | undefined; netWorth: number | undefined; label: string; subIdx: number; index: number; kind: 'life' | 'flow' };
+        type ChartEvent = { monthIndex: number; year: number | undefined; age: number | undefined; dateLabel: string | undefined; val: number | undefined; netWorth: number | undefined; label: string; subIdx: number; index: number; kind: 'life' | 'flow'; color?: string; pinned?: boolean };
         const lifes: ChartEvent[] = [];
         const flows: ChartEvent[] = [];
         let lifeIdx = 0;
@@ -296,13 +313,18 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const DEDUP_GAP = 3;
         const lastLife: Record<string, number> = {};
         const lastFlow: Record<string, number> = {};
+        // [R2] La pastille « FIRE atteint » vient du MOTEUR (lifeEvent 'Objectif FIRE Atteint 🔥', projection.ts —
+        // source UNIQUE, seuil inflaté + indexé). On NE la recalcule PAS côté UI : on la MET EN VALEUR — orange
+        // #f97316 + `pinned` (jamais écrêtée par thinEvents). Cohérent avec « Future = source unique ».
+        const FIRE_RE = /\bfire\b/i;
         chartData.forEach((d: ProjectionChartPoint) => {
             const meta = { monthIndex: d.monthIndex, year: d.year, age: d.age, dateLabel: d.dateLabel };
             let lifeSub = 0;
             (d.lifeEvents || []).forEach((label: string) => {
                 if (lastLife[label] != null && d.monthIndex - lastLife[label] <= DEDUP_GAP) return;
                 lastLife[label] = d.monthIndex;
-                lifes.push({ ...meta, val: d.NetWorth, netWorth: d.NetWorth, label, subIdx: lifeSub++, index: lifeIdx++, kind: 'life' });
+                const isFire = FIRE_RE.test(label);
+                lifes.push({ ...meta, val: d.NetWorth, netWorth: d.NetWorth, label, subIdx: lifeSub++, index: lifeIdx++, kind: 'life', ...(isFire ? { color: '#f97316', pinned: true } : null) });
             });
             if ((d.flowEvents?.length ?? 0) > 0 && ((d.FluxImpots ?? 0) < 0 || (d.flowEvents || []).some((x: string) => x.includes('-')))) {
                 let flowSub = 0;
@@ -405,6 +427,28 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // A3 — consomme displayData (passé réel préfixé + futur projeté).
     const zoom = useTimeChartZoom<ProjectionChartPoint>(displayData as ProjectionChartPoint[]);
 
+    // [A11Y-CHARTS] — colonnes de la table de données sr-only (alternative texte à la courbe Recharts,
+    // opaque aux lecteurs d'écran). Date (axe X) + chaque montant affiché (comptes empilés + Valeur Nette).
+    // Le mode privé masque les MONTANTS (parité avec l'axe/tooltip déjà masqués), pas la date.
+    const dataColumns = useMemo<ChartDataColumn[]>(() => {
+        const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCompactCAD(Number(v) || 0);
+        return [
+            { key: 'dateLabel', label: 'Date', format: (_v, row) => {
+                const r = row as { dateLabel?: string; year?: number };
+                return r.dateLabel ?? (r.year !== undefined ? String(r.year) : '');
+            } },
+            { key: 'NetWorth', label: 'Valeur nette', format: money },
+            { key: 'Liquidites', label: 'Cash', format: money },
+            { key: 'CELI', label: 'CELI', format: money },
+            { key: 'CELIAPP', label: 'CELIAPP (FHSA)', format: money },
+            { key: 'REER', label: 'REER', format: money },
+            { key: 'REEE', label: 'REEE', format: money },
+            { key: 'NonReg', label: 'Non-Enreg', format: money },
+            { key: 'Crypto', label: 'Crypto', format: money },
+            { key: 'Immobilier', label: 'Équité Immo', format: money },
+        ];
+    }, [isPrivacyMode]);
+
     // G5 — événement sélectionné (clic sur une pastille) → fiche détail.
     const [detailPoint, setDetailPoint] = useState<ProjectionChartPoint | null>(null);
 
@@ -441,20 +485,32 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // distance parcourue depuis le mousedown.
     const lastHoverPointRef = useRef<ProjectionChartPoint | null>(null);
     const pointerDownPosRef = useRef<{ x: number; y: number } | null>(null);
+
+    // [R3] Tooltip FIGEABLE : survol = suit la souris (portail, pointer-events:none) ;
+    // clic = FIGE (devient ancré, scrollable, interactif) ; Échap / clic-dehors libère.
+    // Le moteur d'état + le positionnement vivent dans le hook ; ici on ne fait que
+    // l'alimenter (point survolé via Recharts, position via mousemove) et router le clic.
+    const tooltip = useChartTooltipPosition<ProjectionChartPoint>({
+        getKey: (p) => p.monthIndex,
+        containerRef: zoom.containerEl,
+    });
+
+    // [R3] Clic sur le graphe = FIGE le tooltip (avant : ouvrait directement la modale).
+    // La modale exhaustive s'ouvre désormais via le bouton « Détail complet » du tooltip
+    // figé, et via les pastilles d'événement (inchangées). On résout le mois cliqué par
+    // GÉOMÉTRIE (robuste tactile / sans survol), avec repli sur le dernier point survolé.
+    // On ignore les glissers (pan) via la distance depuis le mousedown.
     const handleChartContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
         const down = pointerDownPosRef.current;
         if (down && (Math.abs(e.clientX - down.x) > 6 || Math.abs(e.clientY - down.y) > 6)) return; // glisser = pan
-        const data = zoom.visibleData;
-        if (!data.length) return;
         const grid = zoom.containerEl.current?.querySelector('.recharts-cartesian-grid');
         const rect = grid?.getBoundingClientRect();
-        let point: ProjectionChartPoint | null | undefined = null;
-        if (rect && rect.width > 0) {
-            const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-            point = data[Math.round(frac * (data.length - 1))];
-        }
-        if (!point) point = lastHoverPointRef.current; // repli : dernier point survolé
-        if (point) setDetailPoint(point);
+        const point = resolvePointFromClick(
+            e.clientX,
+            rect ? { left: rect.left, width: rect.width } : null,
+            zoom.visibleData,
+        ) ?? lastHoverPointRef.current; // repli : dernier point survolé
+        if (point) tooltip.freezeOn(point);
     };
 
     // C6 fix (Sprint 1B) — Garde déplacée ICI (après tous les hooks) pour
@@ -498,8 +554,20 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const step = Math.ceil(arr.length / cap);
         return arr.filter((_, i) => i % step === 0);
     };
-    const shownLifeEvents = thinEvents(visibleLifeEvents, 40);
-    const shownFlowEvents = thinEvents(visibleFlowEvents, 24);
+    // [R4] Cap de densité en vue dézoomée (décision Marc 2026-06-22 : 40/24 → 24/16) : la vue large
+    // reste « peu d'icônes » (échantillonnage uniforme) ; en zoomant, la fenêtre contient moins
+    // d'événements que le cap → tous affichés (« jusqu'à toutes »). Cap FIXE (densité écran ≈ constante),
+    // PAS proportionnel au span — un cap ∝ span ferait l'inverse (plus d'icônes dézoomé, moins en zoomant).
+    const MAX_LIFE_ICONS = 24;
+    const MAX_FLOW_ICONS = 16;
+    // [R2] Les événements `pinned` (ex. pastille FIRE) ne sont JAMAIS écrêtés par l'échantillonnage : sinon, en
+    // vue dézoomée (au-delà du cap), la pastille FIRE pouvait disparaître en silence (revue adversariale R2).
+    // pinned en FIN : rendus en dernier → dessinés AU-DESSUS (SVG painter) si un autre événement tombe le même mois.
+    const shownLifeEvents = [
+        ...thinEvents(visibleLifeEvents.filter((e) => !e.pinned), MAX_LIFE_ICONS),
+        ...visibleLifeEvents.filter((e) => e.pinned),
+    ];
+    const shownFlowEvents = thinEvents(visibleFlowEvents, MAX_FLOW_ICONS);
     const lastMonthIndex = chartData.length > 0 ? chartData[chartData.length - 1].monthIndex : 0;
     const idxForYears = (yrs: number) => {
         const i = chartData.findIndex((d: ProjectionChartPoint) => d.monthIndex >= yrs * 12);
@@ -513,6 +581,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 icon="🔮"
                 title="Projection Future"
                 subtitle="Analyse des flux mensuels projetés avec Loyer → Hypothèque automatique et frais enfants dynamiques."
+                badge={insolvency ? (
+                    // role="status" (live polite) : le badge apparaît après le calcul de projection →
+                    // annoncé au lecteur d'écran si le plan bascule en insoutenable lors d'un recalcul.
+                    <div role="status">
+                        <Badge variant="danger" size="md">
+                            {insolvency.age != null
+                                ? `Plan insoutenable — capital épuisé vers ${insolvency.age} ans`
+                                : 'Plan insoutenable — capital épuisé'}
+                        </Badge>
+                    </div>
+                ) : undefined}
                 actions={
                     <Pill
                         aria-label="Mode de données"
@@ -540,7 +619,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     variant="warning"
                 />
                 <KPIStat
-                    label="Patrimoine projeté"
+                    // Le fallback (value ci-dessous) tombe sur finalNetWorth/fireNumber quand estateNetWorth=0 :
+                    // dans ce cas le nombre N'INCLUT PAS les rentes → libellé neutre + pas de tooltip « avec rentes »
+                    // (sinon le libellé mentirait, le bug même que R1 corrige). Sinon : successoral, avec rentes.
+                    label={results?.estateNetWorth ? "Patrimoine successoral, avec rentes" : "Patrimoine projeté"}
+                    tooltip={results?.estateNetWorth ? "Patrimoine au décès : net de l'impôt de liquidation (REER et gains en capital imposés au décès) + la valeur actualisée des rentes RRQ/PSV restantes. Différent du patrimoine en fin d'horizon." : undefined}
                     icon="💼"
                     // Fallback : si estateNetWorth est 0 (rare en réalité ou bug
                     // silencieux du moteur), utiliser finalNetWorth puis fireNumber
@@ -739,7 +822,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     {...zoom.handlers}
                     onMouseDownCapture={(e) => { pointerDownPosRef.current = { x: e.clientX, y: e.clientY }; }}
                     onClick={handleChartContainerClick}
+                    onPointerMove={(e) => tooltip.onPointerMove(e.clientX, e.clientY)}
+                    tabIndex={-1}
                     className={`chart-fullscreen relative w-full h-[380px] sm:h-[500px] lg:h-[650px] select-none ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-pointer'}`}
+                    role="img"
+                    aria-label="Courbe de vie — évolution projetée du patrimoine net et de chaque compte dans le temps. Clic = figer l'infobulle (puis détail complet), molette = zoom, glisser = défiler."
                 >
                      {isComputing ? (
                         // Pendant le (re)calcul : on masque la courbe (potentiellement périmée) et on
@@ -756,8 +843,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         <ComposedChart
                             data={zoom.visibleData}
                             margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
-                            onMouseMove={((s: { activePayload?: Array<{ payload: ProjectionChartPoint }> }) => { const p = s?.activePayload?.[0]?.payload; if (p) lastHoverPointRef.current = p; }) as unknown as (nextState: unknown, event: unknown) => void}
-                            onClick={((s: { activePayload?: Array<{ payload: ProjectionChartPoint }> }) => { const p = s?.activePayload?.[0]?.payload; if (p) setDetailPoint(p); }) as unknown as (nextState: unknown, event: unknown) => void}
+                            onMouseMove={((s: { activePayload?: Array<{ payload: ProjectionChartPoint }> }) => { const p = s?.activePayload?.[0]?.payload; if (p) { lastHoverPointRef.current = p; tooltip.onHoverPoint(p); } }) as unknown as (nextState: unknown, event: unknown) => void}
+                            onMouseLeave={(() => tooltip.onChartLeave()) as unknown as () => void}
                         >
                             <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
 
@@ -783,7 +870,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             <ReferenceLine y={0} stroke="#444" strokeWidth={2} />
                             {isVisible('aujourdhui') && <ReferenceLine x={todayMonthIndex} stroke="rgba(255,255,255,0.6)" strokeDasharray="5 5" label={<RefLineLabel value="Aujourd'hui" color="#ffffff" />} />}
 
-                            <Tooltip content={<ExpertTooltip userName1={config.users[0]?.name} userName2={config.users[1]?.name} />} />
+                            {/* [R3] Recharts ne rend RIEN (content=()=>null) : il reste actif pour
+                                alimenter onMouseMove (point survolé) + le curseur (ligne verticale).
+                                Le vrai tooltip est rendu dans un PORTAIL positionné par le hook. */}
+                            <Tooltip content={() => null} cursor={{ stroke: 'rgba(255,255,255,0.18)', strokeWidth: 1 }} isAnimationActive={false} />
                             {isVisible('fire') && <ReferenceLine y={fireNumber} stroke="#f97316" strokeDasharray="5 5" label={<RefLineLabel value="Objectif FIRE" color="#f97316" />} />}
 
                             {/* PH4-FUT — ANNOTATIONS de cycle de vie (retraite / rentes RRQ-PSV / épuisement
@@ -853,6 +943,37 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </ResponsiveContainer>
                      )}
                 </div>
+
+                {/* [A11Y-CHARTS] — alternative TEXTUELLE (sr-only) à la courbe Recharts : mêmes données
+                    en table accessible, masquage privacy aligné sur l'axe/tooltip. */}
+                <ChartDataTable
+                    caption="Projection du patrimoine net et des comptes par date"
+                    columns={dataColumns}
+                    rows={displayData}
+                />
+
+                {/* [R3] Tooltip portail : survol (pointer-events:none, suit la souris) ou
+                    figé (pointer-events:auto, scrollable, ancré, focusable). Positionné par
+                    le hook (left/top mutés directement). z-290 < modale z-300. */}
+                {tooltip.point && tooltip.mode !== 'idle' && createPortal(
+                    <div
+                        ref={tooltip.tooltipRef}
+                        style={{ position: 'fixed', top: 0, left: 0, zIndex: 290, pointerEvents: tooltip.mode === 'frozen' ? 'auto' : 'none' }}
+                        tabIndex={tooltip.mode === 'frozen' ? -1 : undefined}
+                        data-frozen-tooltip={tooltip.mode === 'frozen' ? '' : undefined}
+                        role={tooltip.mode === 'frozen' ? 'dialog' : undefined}
+                        aria-label={tooltip.mode === 'frozen' ? "Infobulle figée du point projeté — Échap pour fermer" : undefined}
+                    >
+                        <ExpertTooltip
+                            data={tooltip.point}
+                            userName1={config.users[0]?.name}
+                            userName2={config.users[1]?.name}
+                            frozen={tooltip.mode === 'frozen'}
+                            onOpenDetail={() => setDetailPoint(tooltip.point)}
+                        />
+                    </div>,
+                    document.body,
+                )}
 
                 {detailPoint && (
                     <FutureDetailModal

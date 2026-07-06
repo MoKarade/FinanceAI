@@ -5,6 +5,8 @@ import { ProjectionRequired } from './ui/ProjectionRequired';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ZoomContainer } from './ui/ZoomContainer';
+import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { RealEstateGoal, Tab as TabEnum } from '../types';
 import { INITIAL_REAL_ESTATE_GOAL } from '../constants';
 import { ConfirmModal } from './ui/ConfirmModal';
@@ -207,24 +209,6 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
     const initialInterest = totalMortgage * monthlyRate;
     const unrecoverableMonthly = Math.max(0, initialInterest + monthlyTaxes + heatingMonthly + condoFees + maintenanceMonthly - rentalIncomeMonthly);
 
-    const _buyVsRentData = useMemo(() => {
-        const data = [];
-        let rentScenarioNetWorth = totalCashNeeded;
-        let buyNetWorth = downPayment + initialRenovations;
-        let currentRentCost = currentRent;
-        for (let year = 1; year <= amortization; year++) {
-            const rentAnnualCost = currentRentCost * 12;
-            const buyAnnualCost = netMonthlyCost * 12 + maintenanceMonthly * 12;
-            const differenceToInvest = (buyAnnualCost - rentAnnualCost);
-            rentScenarioNetWorth *= (1 + marketReturn / 100);
-            if (differenceToInvest > 0) rentScenarioNetWorth += differenceToInvest;
-            buyNetWorth = amortizationData.data[year - 1]?.Équité || 0;
-            currentRentCost *= 1.03;
-            data.push({ year, 'Acheter (Équité)': Math.round(buyNetWorth), 'Louer + Investir': Math.round(rentScenarioNetWorth) });
-        }
-        return data;
-    }, [amortization, totalCashNeeded, downPayment, initialRenovations, netMonthlyCost, maintenanceMonthly, currentRent, marketReturn, amortizationData.data]);
-
     const formatCurrency = (val: number) => formatCAD(val);
 
     // Wiring 2026-05: équité immo projetée par le moteur principal au terme de
@@ -279,6 +263,21 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
         'Bourse (Placer Cash Initial)': number;
         'Valeur Propriété': number;
     }>(combinedData);
+
+    // [A11Y-CHARTS] table de données sr-only pour le graphe « Scénarios comparatifs » (Recharts opaque
+    // aux lecteurs d'écran). Colonnes $ masquées en mode privé (parité avec PrivateAmount/blur) ; l'axe X
+    // (année) reste visible. Mêmes séries que l'AreaChart ; le graphe n'affiche que les scénarios pertinents
+    // selon le type de propriété, mais la table les liste tous (lecture exhaustive = signal plus riche au SR).
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
+    const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0);
+    const scenariosColumns: ChartDataColumn[] = [
+        { key: 'year', label: 'Année', format: (v) => `An ${v}` },
+        { key: 'Acheter (Résidence)', label: 'Acheter (Résidence)', format: money },
+        { key: 'Louer + Investir Reste', label: 'Louer + Investir Reste', format: money },
+        { key: 'Investissement Locatif (Équité+Loyer)', label: 'Investissement Locatif (Équité+Loyer)', format: money },
+        { key: 'Bourse (Placer Cash Initial)', label: 'Bourse (Placer Cash Initial)', format: money },
+        { key: 'Valeur Propriété', label: 'Valeur Propriété', format: money },
+    ];
 
     return (
         <div className="space-y-6 stagger-in pb-10">
@@ -435,7 +434,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                     onChange={e => setCurrentRent(Number(e.target.value))}
                                                     className="w-full bg-purple-500/10 border border-purple-500/30 rounded px-2 py-1.5 text-purple-300 text-body font-bold focus:outline-none focus:border-purple-400"
                                                 />
-                                                <span className="text-meta text-ink-500">$/m</span>
+                                                <span className="text-meta text-ink-400">$/m</span>
                                             </div>
                                         </div>
                                         <div>
@@ -497,11 +496,12 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                         <div className={`p-2 rounded-lg border flex flex-col justify-center ${netYield > 0 ? 'bg-green-900/20 border-green-500/20' : 'bg-red-900/20 border-danger-500/20'}`}>
                                             <div className="text-tiny uppercase font-bold text-ink-300">Si location (Cash-Flow)</div>
                                             <div className={`text-lg font-black ${netYield > 0 ? 'text-green-400' : 'text-danger-400'}`}>
-                                                {formatCurrency(netAnnualIncome)}<span className="text-tiny font-normal text-ink-500">/an</span>
+                                                {formatCurrency(netAnnualIncome)}<span className="text-tiny font-normal text-ink-400">/an</span>
                                             </div>
                                         </div>
                                     </div>
 
+                                    <div role="img" aria-label="Graphique des scénarios comparatifs immobiliers (Acheter, Louer + Investir, Investissement locatif, Bourse) par année">
                                     <ZoomContainer zoom={zoom} className="h-[300px] w-full mt-2">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <AreaChart data={zoom.visibleData}>
@@ -528,7 +528,13 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                             </AreaChart>
                                         </ResponsiveContainer>
                                     </ZoomContainer>
-                                    <p className="text-tiny text-ink-500 mt-3 text-center">
+                                    </div>
+                                    <ChartDataTable
+                                        caption="Scénarios comparatifs immobiliers par année (équité ou patrimoine net selon le scénario)"
+                                        columns={scenariosColumns}
+                                        rows={combinedData}
+                                    />
+                                    <p className="text-tiny text-ink-400 mt-3 text-center">
                                         Note: Le graphique affiche automatiquement les scénarios pertinents (Habiter vs Louer) selon le type de propriété que vous avez configuré (Résidence Principale ou Propriété Locative).
                                     </p>
                                 </>
@@ -538,10 +544,10 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
 
                     <Card title="Amortissement et Équité">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-2">
-                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Welcome Tax</div><div className="text-body font-bold text-white">{formatCurrency(welcomeTax)}</div></div>
-                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Notaire &amp; Insp.</div><div className="text-body font-bold text-white">{formatCurrency(notaryFees + inspectionFees)}</div></div>
-                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Rénos Initiales</div><div className="text-body font-bold text-white">{formatCurrency(initialRenovations)}</div></div>
-                            <div><div className="text-tiny text-ink-500 uppercase tracking-wider">Maison Totale</div><div className="text-body font-bold text-white">{formatCurrency(price + initialRenovations)}</div></div>
+                            <div><div className="text-tiny text-ink-400 uppercase tracking-wider">Welcome Tax</div><div className="text-body font-bold text-white">{formatCurrency(welcomeTax)}</div></div>
+                            <div><div className="text-tiny text-ink-400 uppercase tracking-wider">Notaire &amp; Insp.</div><div className="text-body font-bold text-white">{formatCurrency(notaryFees + inspectionFees)}</div></div>
+                            <div><div className="text-tiny text-ink-400 uppercase tracking-wider">Rénos Initiales</div><div className="text-body font-bold text-white">{formatCurrency(initialRenovations)}</div></div>
+                            <div><div className="text-tiny text-ink-400 uppercase tracking-wider">Maison Totale</div><div className="text-body font-bold text-white">{formatCurrency(price + initialRenovations)}</div></div>
                         </div>
                     </Card>
 
@@ -554,7 +560,7 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                             </div>
                             <table className="w-full text-meta text-left min-w-[700px]">
                                 <thead>
-                                    <tr className="border-b border-white/10 text-ink-500 uppercase tracking-wider">
+                                    <tr className="border-b border-white/10 text-ink-400 uppercase tracking-wider">
                                         <th className="py-2 pr-4">Année</th>
                                         <th className="py-2 pr-4">Taux</th>
                                         <th className="py-2 pr-4 text-right">Intérêts/an</th>
@@ -575,13 +581,13 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
                                                     {isRenewal && <span className="ml-1.5 text-tiny text-orange-400 border border-orange-500/30 rounded px-1">Renouvellement</span>}
                                                 </td>
                                                 <td className="py-2 pr-4 text-orange-300">{row.TauxEnVigueur}</td>
-                                                <td className="py-2 pr-4 text-right text-danger-400 privacy-blur">{formatCurrency(row.PartInteretAnnuelle)}</td>
-                                                <td className="py-2 pr-4 text-right text-info-400 privacy-blur">{formatCurrency(row.PartPrincipalAnnuelle)}</td>
-                                                <td className="py-2 pr-4 text-right text-white privacy-blur">{formatCurrency(row.Solde)}</td>
-                                                <td className="py-2 pr-4 text-right text-purple-300 privacy-blur">{formatCurrency(row.ValeuréPropriété)}</td>
+                                                <td className="py-2 pr-4 text-right text-danger-400"><PrivateAmount>{formatCurrency(row.PartInteretAnnuelle)}</PrivateAmount></td>
+                                                <td className="py-2 pr-4 text-right text-info-400"><PrivateAmount>{formatCurrency(row.PartPrincipalAnnuelle)}</PrivateAmount></td>
+                                                <td className="py-2 pr-4 text-right text-white"><PrivateAmount>{formatCurrency(row.Solde)}</PrivateAmount></td>
+                                                <td className="py-2 pr-4 text-right text-purple-300"><PrivateAmount>{formatCurrency(row.ValeuréPropriété)}</PrivateAmount></td>
                                                 <td className="py-2 text-right">
                                                     <PrivateAmount className="text-success-400 font-bold">{formatCurrency(row.Équité)}</PrivateAmount>
-                                                    <span className="text-ink-500 ml-1">({equityPct}%)</span>
+                                                    <span className="text-ink-400 ml-1">({equityPct}%)</span>
                                                 </td>
                                             </tr>
                                         );

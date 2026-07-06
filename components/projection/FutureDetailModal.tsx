@@ -6,6 +6,8 @@ import { useTimeChartZoom } from '../../hooks/useTimeChartZoom';
 import { splitEventIcon, ClickableEventIcon } from './ProjectionTooltip';
 import { Icon, type IconName } from '../ui/Icon';
 import { PrivateAmount } from '../ui/PrivateAmount';
+import { ChartDataTable, type ChartDataColumn } from '../ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
 import { ProjectionChartPoint } from '../../services/projection/types';
 
 /**
@@ -112,35 +114,34 @@ interface AccountDrillTooltipProps {
     active?: boolean;
     payload?: Array<{ payload: AccountPoint }>;
     accountLabel: string;
-    isPrivacyMode: boolean;
 }
 
 // G13 — infobulle du drill-down : valeur du mois + le « pourquoi » (gain marché,
 // apport/retrait + origine) + événements. Niveau module → recharts y injecte
-// `active`/`payload`, on lui passe `accountLabel`/`isPrivacyMode` en props.
-const AccountDrillTooltip: React.FC<AccountDrillTooltipProps> = ({ active, payload, accountLabel, isPrivacyMode }) => {
+// `active`/`payload`, on lui passe `accountLabel` en prop. Le masquage des montants
+// (mode discret) est géré par `<PrivateAmount>` (lit le store directement).
+const AccountDrillTooltip: React.FC<AccountDrillTooltipProps> = ({ active, payload, accountLabel }) => {
     if (!active || !payload?.length) return null;
     const d = payload[0].payload as AccountPoint;
     const reasons = explainMovement(d);
-    const blur = isPrivacyMode ? 'privacy-blur' : '';
     return (
         <div className="bg-[#11161f] border border-white/15 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] p-3 w-56 text-meta">
             <div className="flex items-center justify-between gap-2 mb-1.5">
                 <span className="font-bold text-white">{d.dateLabel || d.year}</span>
                 <span className="text-tiny text-ink-400">{accountLabel}</span>
             </div>
-            <div className={`font-mono text-base font-black text-white mb-2 ${blur}`}>{fmtMoney(d.value)}</div>
+            <PrivateAmount as="div" className="font-mono text-base font-black text-white mb-2">{fmtMoney(d.value)}</PrivateAmount>
             {reasons.length > 0 ? (
                 <div className="space-y-1">
-                    <div className="text-tiny uppercase tracking-wide text-ink-500 font-bold">Ce mois</div>
+                    <div className="text-tiny uppercase tracking-wide text-ink-400 font-bold">Ce mois</div>
                     {reasons.map((r, i) => (
-                        <div key={i} className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded font-mono ${REASON_TONE_CLASS[r.tone]} ${blur}`}>
-                            <Icon name={r.icon} size={12} /><span>{r.text}</span>
+                        <div key={i} className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded font-mono ${REASON_TONE_CLASS[r.tone]}`}>
+                            <Icon name={r.icon} size={12} /><PrivateAmount>{r.text}</PrivateAmount>
                         </div>
                     ))}
                 </div>
             ) : (
-                <div className="text-tiny text-ink-500">Équité = capital d’hypothèque remboursé + valorisation</div>
+                <div className="text-tiny text-ink-400">Équité = capital d’hypothèque remboursé + valorisation</div>
             )}
             {d.events.length > 0 && (
                 <div className="mt-2 pt-1.5 border-t border-white/10 space-y-1">
@@ -242,7 +243,6 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
         : [];
 
     const fmt = (n: number) => formatCAD(n);
-    const blur = isPrivacyMode ? 'privacy-blur' : '';
 
     // Dette qui tire le patrimoine net SOUS la somme des actifs affichés = Σ(actifs affichés) −
     // NetWorth. C'est exactement prêts/cartes + découvert + HELOC. On N'inclut PAS l'hypothèque :
@@ -253,6 +253,15 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
     const reducingDebt = Math.max(0, shownAssetsSum - (Number(point.NetWorth) || 0));
     const liquidDebt = Number(point.LiquidDebt) || 0;          // part « découvert » (liquidité à sec)
     const otherReducingDebt = Math.max(0, reducingDebt - liquidDebt); // prêts/cartes + HELOC
+
+    // [A11Y-CHARTS] (LOT 3) — colonnes de la table sr-only du mini-graphe de drill-down d'un compte
+    // (série temporelle de sa valeur, opaque aux lecteurs d'écran). Année (axe X via monthIndex,
+    // visible) + valeur du compte ($, masquée en mode privé — `isPrivacyMode` arrive en prop ici,
+    // pas du store). N'affichée que lorsqu'un compte est sélectionné (drill-down ouvert).
+    const accountSeriesColumns: ChartDataColumn[] = [
+        { key: 'year', label: 'Année', format: (v) => v != null ? String(v) : '' },
+        { key: 'value', label: selected ? selected.label : 'Valeur', format: (v) => isPrivacyMode ? MASKED_AMOUNT_LABEL : fmt(Number(v) || 0) },
+    ];
 
     const portfolioOutflow = (point.RetraitREER || 0) + (point.RetraitCELI || 0);
     const incomes = ([
@@ -282,7 +291,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                     </div>
                     <div className="text-right">
                         <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold">Valeur nette</div>
-                        <div className={`text-2xl font-black text-white font-mono leading-none mt-0.5 ${blur}`}>{fmt(point.NetWorth || 0)}</div>
+                        <PrivateAmount as="div" className="text-2xl font-black text-white font-mono leading-none mt-0.5">{fmt(point.NetWorth || 0)}</PrivateAmount>
                     </div>
                     <button
                         type="button"
@@ -314,7 +323,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                             <span className="text-body text-white truncate">{a.label}</span>
                                         </span>
                                         <span className="flex items-center gap-2 shrink-0">
-                                            <span className={`font-mono text-body text-white ${blur}`}>{fmt(a.value)}</span>
+                                            <PrivateAmount className="font-mono text-body text-white">{fmt(a.value)}</PrivateAmount>
                                             <span className="text-ink-500" aria-hidden="true">›</span>
                                         </span>
                                     </div>
@@ -322,21 +331,21 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                     {(a.flow !== null || a.gain !== null) ? (
                                         <div className="flex items-center gap-2 mt-1.5 pl-[18px] text-tiny font-mono">
                                             {a.flow !== null && (
-                                                <span className={`px-1.5 py-0.5 rounded ${a.flow >= 0 ? 'text-sky-300 bg-sky-500/10' : 'text-orange-300 bg-orange-500/10'} ${blur}`}>
+                                                <PrivateAmount className={`px-1.5 py-0.5 rounded ${a.flow >= 0 ? 'text-sky-300 bg-sky-500/10' : 'text-orange-300 bg-orange-500/10'}`}>
                                                     Apport {a.flow > 0 ? '+' : ''}{fmt(a.flow)}
-                                                </span>
+                                                </PrivateAmount>
                                             )}
                                             {a.gain !== null && (
-                                                <span className={`px-1.5 py-0.5 rounded ${a.gain >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-danger-500/10'} ${blur}`}>
+                                                <PrivateAmount className={`px-1.5 py-0.5 rounded ${a.gain >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-danger-500/10'}`}>
                                                     Gain {a.gain > 0 ? '+' : ''}{fmt(a.gain)}
-                                                </span>
+                                                </PrivateAmount>
                                             )}
                                         </div>
                                     ) : (
                                         <div className="mt-1.5 pl-[18px] text-tiny font-mono">
-                                            <span className={`px-1.5 py-0.5 rounded ${a.variation >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-danger-500/10'} ${blur}`}>
+                                            <PrivateAmount className={`px-1.5 py-0.5 rounded ${a.variation >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-danger-500/10'}`}>
                                                 {a.variation > 0 ? '+' : ''}{fmt(a.variation)} ce mois
-                                            </span>
+                                            </PrivateAmount>
                                         </div>
                                     )}
                                 </button>
@@ -378,20 +387,20 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                             {incomes.map(([label, v]) => (
                                 <div key={label} className="flex justify-between text-meta bg-white/[0.03] rounded-lg px-2.5 py-1.5">
                                     <span className="text-ink-400">{label}</span>
-                                    <span className={`font-mono text-green-400 ${blur}`}>+{fmt(v)}</span>
+                                    <PrivateAmount className="font-mono text-green-400">+{fmt(v)}</PrivateAmount>
                                 </div>
                             ))}
                             {(point.Expenses || 0) > 0 && (
                                 <div className="flex justify-between text-meta bg-white/[0.03] rounded-lg px-2.5 py-1.5">
                                     <span className="text-ink-400">Dépenses</span>
-                                    <span className={`font-mono text-danger-400 ${blur}`}>-{fmt(point.Expenses || 0)}</span>
+                                    <PrivateAmount className="font-mono text-danger-400">-{fmt(point.Expenses || 0)}</PrivateAmount>
                                 </div>
                             )}
                             <div className="flex justify-between text-meta font-bold bg-white/[0.05] rounded-lg px-2.5 py-1.5">
                                 <span className="text-ink-200">Variation nette (mois)</span>
-                                <span className={`font-mono ${(point.diffNW || 0) >= 0 ? 'text-green-400' : 'text-danger-400'} ${blur}`}>
+                                <PrivateAmount className={`font-mono ${(point.diffNW || 0) >= 0 ? 'text-green-400' : 'text-danger-400'}`}>
                                     {(point.diffNW || 0) > 0 ? '+' : ''}{fmt(point.diffNW || 0)}
-                                </span>
+                                </PrivateAmount>
                             </div>
                         </div>
 
@@ -426,7 +435,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                         <div className="flex items-center gap-2 mb-3">
                             <span className="w-3 h-3 rounded-full" style={{ background: selected.color }} />
                             <span className="font-bold text-white">{selected.label}</span>
-                            <span className={`ml-auto font-mono text-body text-white ${blur}`}>{fmt(Number(point[selected.key]) || 0)}</span>
+                            <PrivateAmount className="ml-auto font-mono text-body text-white">{fmt(Number(point[selected.key]) || 0)}</PrivateAmount>
                         </div>
 
                         {/* Sélecteur de période */}
@@ -456,6 +465,8 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                         <div
                             ref={zoom.containerRef}
                             {...zoom.handlers}
+                            role="img"
+                            aria-label={`Historique de la valeur du compte ${selected.label} dans le temps, année par année.`}
                             className={`relative w-full h-[300px] select-none ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-default'}`}
                         >
                             <ResponsiveContainer width="100%" height="100%">
@@ -477,7 +488,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                     <YAxis stroke="#666" tick={{ fontSize: 10 }} width={50} tickFormatter={(v) => isPrivacyMode ? '***' : `${(v / 1000).toFixed(0)}k`} />
                                     <Tooltip
                                         cursor={{ stroke: selected.color, strokeOpacity: 0.4 }}
-                                        content={<AccountDrillTooltip accountLabel={selected.label} isPrivacyMode={isPrivacyMode} />}
+                                        content={<AccountDrillTooltip accountLabel={selected.label} />}
                                     />
                                     <Area type="monotone" dataKey="value" stroke={selected.color} strokeWidth={2} fill="url(#acct-grad)" isAnimationActive={false} name={selected.label} />
                                     {eventMarkers.map((mk, i) => (
@@ -492,7 +503,15 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                 </ComposedChart>
                             </ResponsiveContainer>
                         </div>
-                        <p className="text-tiny text-ink-600 mt-2 text-center">Molette = zoom · glisser = défiler · double-clic = reset</p>
+                        <p className="text-tiny text-ink-400 mt-2 text-center">Molette = zoom · glisser = défiler · double-clic = reset</p>
+                        {/* [A11Y-CHARTS] (LOT 3) — alternative TEXTUELLE (sr-only) au mini-graphe de
+                            drill-down : valeur du compte par année en table accessible (donnée complète
+                            `accountSeries`, pas la vue zoomée). */}
+                        <ChartDataTable
+                            caption={`Historique de la valeur du compte ${selected.label} par année`}
+                            columns={accountSeriesColumns}
+                            rows={accountSeries as unknown as ReadonlyArray<Record<string, unknown>>}
+                        />
 
                         {/* G13 — pourquoi la valeur bouge : plus gros mouvements + raison */}
                         {keyMoments.length > 0 && (
@@ -500,7 +519,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                 <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1">
                                     Pourquoi ça bouge — moments clés
                                 </div>
-                                <p className="text-tiny text-ink-500 mb-2 leading-snug">
+                                <p className="text-tiny text-ink-400 mb-2 leading-snug">
                                     La <span className="text-ink-300 font-semibold">variation</span> d'un mois = rendement de tes placements (marché)
                                     + tes dépôts − tes retraits. Détail ci-dessous.
                                 </p>
@@ -511,20 +530,20 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                             <li key={d.monthIndex} className="bg-white/[0.03] rounded-lg p-2.5">
                                                 <div className="flex items-center justify-between gap-2 mb-1">
                                                     <span className="text-meta font-bold text-white">{d.dateLabel || d.year}</span>
-                                                    <span className={`font-mono text-meta font-bold ${d.delta >= 0 ? 'text-green-400' : 'text-danger-400'} ${blur}`}>
+                                                    <PrivateAmount className={`font-mono text-meta font-bold ${d.delta >= 0 ? 'text-green-400' : 'text-danger-400'}`}>
                                                         {d.delta > 0 ? '+' : ''}{fmtMoney(d.delta)}
-                                                    </span>
+                                                    </PrivateAmount>
                                                 </div>
                                                 {reasons.length > 0 ? (
                                                     <div className="flex flex-wrap gap-1.5">
                                                         {reasons.map((r, i) => (
-                                                            <span key={i} className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-tiny font-mono ${REASON_TONE_CLASS[r.tone]} ${blur}`}>
+                                                            <PrivateAmount key={i} className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-tiny font-mono ${REASON_TONE_CLASS[r.tone]}`}>
                                                                 <Icon name={r.icon} size={11} />{r.text}
-                                                            </span>
+                                                            </PrivateAmount>
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <div className="text-tiny text-ink-500">Équité immobilière (capital remboursé + valorisation)</div>
+                                                    <div className="text-tiny text-ink-400">Équité immobilière (capital remboursé + valorisation)</div>
                                                 )}
                                                 {d.events.length > 0 && (
                                                     <div className="mt-1.5 space-y-0.5">
@@ -551,13 +570,13 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                 <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1">
                                     Espace de cotisation gagné par année
                                 </div>
-                                <p className="text-tiny text-ink-500 mb-2 leading-snug">
+                                <p className="text-tiny text-ink-400 mb-2 leading-snug">
                                     Droits {selected.label} qui s'ajoutent chaque année (et ré-ajout de l'espace après un retrait, pour le CELI).
                                 </p>
                                 <div className="max-h-52 overflow-y-auto rounded-lg border border-white/10">
                                     <table className="w-full text-meta">
                                         <thead className="sticky top-0 bg-dark">
-                                            <tr className="text-tiny uppercase tracking-wide text-ink-500">
+                                            <tr className="text-tiny uppercase tracking-wide text-ink-400">
                                                 <th className="text-left font-bold px-2.5 py-1.5">Année</th>
                                                 <th className="text-right font-bold px-2.5 py-1.5">Espace gagné</th>
                                                 <th className="text-right font-bold px-2.5 py-1.5">Espace dispo.</th>
@@ -567,10 +586,10 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                             {roomByYear.map((r) => (
                                                 <tr key={r.year} className="border-t border-white/5">
                                                     <td className="px-2.5 py-1.5 text-ink-200 font-semibold">{r.year}</td>
-                                                    <td className={`px-2.5 py-1.5 text-right font-mono ${blur} ${r.gained === null ? 'text-ink-600' : r.gained > 0 ? 'text-green-300' : 'text-ink-400'}`}>
-                                                        {r.gained === null ? '—' : `+${fmtMoney(r.gained)}`}
+                                                    <td className={`px-2.5 py-1.5 text-right font-mono ${r.gained === null ? 'text-ink-400' : r.gained > 0 ? 'text-green-300' : 'text-ink-400'}`}>
+                                                        <PrivateAmount>{r.gained === null ? '—' : `+${fmtMoney(r.gained)}`}</PrivateAmount>
                                                     </td>
-                                                    <td className={`px-2.5 py-1.5 text-right font-mono text-ink-300 ${blur}`}>{fmtMoney(r.avail)}</td>
+                                                    <td className="px-2.5 py-1.5 text-right font-mono text-ink-300"><PrivateAmount>{fmtMoney(r.avail)}</PrivateAmount></td>
                                                 </tr>
                                             ))}
                                         </tbody>

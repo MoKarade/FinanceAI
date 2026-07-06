@@ -66,6 +66,12 @@ Le code est prêt et déployé ; il manque l'hébergement du bundle (Marc avait 
 ## O5 — Validations manuelles sur device (ressenti / prod)
 - [ ] Fluidité zoom 60 fps sur tous les onglets ; PDF complet ; iOS Safari ; Lighthouse re-run.
   Liste vivante détaillée : `docs/BACKLOG.md` § « Tests manuels ».
+- [ ] **[RECH-ACTION-UX] confirmer le bug « sélectionner le prix fait quitter la page »** avec une **clé Finnhub
+  configurée** (Investissement → Ajouter une action → tape un nom → sélectionne une suggestion). Le dropdown
+  d'autocomplétion n'apparaît qu'avec une clé, que je n'ai pas en dev → je n'ai pas pu reproduire le symptôme
+  exact. J'ai corrigé la cause la plus évidente (Escape fermait toute la modale, désormais ferme juste le menu,
+  testé) + agrandi le dropdown + fallback gracieux si le symbole n'a pas de cours. Si le bug persiste avec ta
+  clé, dis-moi **exactement** quel geste le déclenche (clic suggestion ? « Suggérer prix historique » ? Entrée ?).
 
 ---
 
@@ -89,9 +95,9 @@ Le code est prêt et déployé ; il manque l'hébergement du bundle (Marc avait 
   machine. En exécution **cloud**, Claude n'y a pas accès (seuls les agents projet committés et
   les agents génériques du harness sont dispo). Sur les PC de Marc, ils restent à installer via
   claude-config / ECC si voulu.
-- [ ] **Docs périmées à resynchroniser** (non bloquant) : `SESSION_HANDOVER.md` cite encore
-  1154 tests / PR #116 / Cloudflare comme auth « courante » ; réel = ~1704 tests, dernier merge
-  bien plus loin. À rafraîchir lors de la prochaine grosse livraison.
+- [x] **Docs périmées resynchronisées (PR #351, 2026-06-18)** : table §1 de `SESSION_HANDOVER.md` mise à
+  jour (#292/2042 tests/Cloudflare → #350/~2077 tests/gate Google in-app). Le reste du HANDOVER (bandeau de
+  tête + sessions) était déjà à jour.
 
 
 ## Décisions design Phase 4 (Claude a fait tout l'autonome — 12 PR #250-261)
@@ -103,3 +109,24 @@ Le code est prêt et déployé ; il manque l'hébergement du bundle (Marc avait 
 - **[PH4-FUT] annotations sur la courbe (Q1 de ton brief)** : QUOI annoter ? (âge retraite / épuisement
   d'un compte / bascule de stratégie / événements de vie). + « Paramètres » renommé/allégé, conseils du
   plan d'action déclinés mois/trimestre/semestre/année.
+
+
+## O7 — Valeurs fiscales RQ 2026 requises (Claude ne devine JAMAIS un chiffre fiscal)
+- [ ] **[FISC-WELCOME-2026]** — les seuils de la **taxe de bienvenue** (droits de mutation immobilière)
+  pour le « reste du Québec » sont au millésime **2025** (`services/realEstate.ts:101-105` :
+  58 900 / 290 000 / 552 300 $). Fournis-moi les seuils OFFICIELS **2026** (+ la source Revenu Québec /
+  ministère) → je les transcris dans `FISCAL_REFERENCE.md` (daté + sourcé) PUIS je corrige le code, même PR.
+  Sans ces valeurs, je laisse le code en 2025 (pas de devinette). Effort Claude : < 45 min une fois les
+  valeurs reçues.
+- [ ] **[W5-TAX-PROXY]** (décision d'ambition, audit 2026-06-23) — les revenus LOCATIFS et dividendes CCPC (W5)
+  sont imposés via des PROXIES plats non sourcés (`0,45` / `0,36` dans `w5Effects.ts`), désormais APPLIQUÉS en
+  année active (depuis FA-6). À TOI de trancher : **(a)** je garde les proxies + ajoute une mention « estimation,
+  proxy de taux marginal » dans l'UI + une source de taux marginal QC dans `FISCAL_REFERENCE` (rapide, honnête) ;
+  **(b)** je modélise l'impôt INCRÉMENTAL réel `tax(rev+x)−tax(rev)` par conjoint (exact, mais plan-first dédié,
+  touche le moteur). Dis (a) ou (b). En attendant les proxies restent (conservateurs, documentés).
+- [ ] **[HIST-NW-DEBT-DISCLAIMER]** (décision produit, audit 2026-06-23) — le **patrimoine net du PASSÉ** affiché dans le graphe
+  Futur = placements + liquidités + équité immo, **SANS dettes** (l'app n'a que le solde de dette COURANT, pas l'historique
+  d'amortissement) → pour un endetté, la portion passée de la courbe est GONFLÉE vs le futur (qui soustrait les dettes). Le code
+  est désormais documenté (HIST-NW-NO-DEBT). Tranche : **(a)** laisser tel quel (documenté) ; **(b)** disclaimer visuel sur la
+  zone passée du graphe ; **(c)** soustraire la dette COURANTE comme approximation (suppose la dette ~constante dans le passé —
+  imparfait). Reco : (b) (honnête, zéro fausse donnée). Dis (a)/(b)/(c).

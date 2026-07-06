@@ -217,9 +217,12 @@ export const CyclicalGoalsPanel: React.FC<{
                     {charity.map((c, i) => (
                         <div key={c.id} className="flex gap-1 mb-1">
                             <input aria-label="Don annuel (dollars)" type="number" placeholder="$/an" value={c.annualAmount} onChange={e => { const next = [...charity]; next[i] = { ...c, annualAmount: Number(e.target.value) || 0 }; onCharity(next); }} className="flex-1 bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                            <label className="text-tiny text-ink-300 flex items-center gap-1">
+                            <label
+                                className="text-tiny text-ink-300 flex items-center gap-1"
+                                title="Don de titres cotés en nature : l'avantage fiscal (inclusion du gain en capital à 0 %) n'est pas encore modélisé — le crédit de don s'applique quand même. Cf FISCAL_REFERENCE §10."
+                            >
                                 <input type="checkbox" checked={c.donateAppreciatedSecurities ?? false} onChange={e => { const next = [...charity]; next[i] = { ...c, donateAppreciatedSecurities: e.target.checked }; onCharity(next); }} />
-                                titres
+                                titres*
                             </label>
                             <button onClick={() => { const next = [...charity]; next.splice(i, 1); onCharity(next); }} className="text-danger-400 text-meta">×</button>
                         </div>

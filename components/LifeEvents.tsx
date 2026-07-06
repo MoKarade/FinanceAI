@@ -7,6 +7,10 @@ import { Button } from './ui/Button';
 import { LifeEvent, LifeEventType, TravelGoal } from '../types';
 import { ResponsiveContainer, PieChart, Pie, Cell, Legend, Tooltip } from 'recharts';
 import { ConfirmModal } from './ui/ConfirmModal';
+import { formatCAD, formatSigned } from '../utils/format';
+import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
+import { useFinanceStore } from '../store/useFinanceStore';
 
 interface LifeEventsProps {
     events: LifeEvent[];
@@ -16,6 +20,15 @@ interface LifeEventsProps {
     netWorth: number;
     returnRate: number;
 }
+
+/** [FISC-EVENT-INCOMELOSS] types modélisés comme une PERTE DE REVENU (% perdu + durée), pas une
+ *  dépense one-shot. Doit rester aligné sur `INCOME_LOSS_EVENT_TYPES` (services/projection/monthlyEvents). */
+const INCOME_LOSS_TYPES: LifeEventType[] = ['PERTE_EMPLOI', 'SABBATIQUE', 'ACCIDENT'];
+/** Défaut de % de revenu perdu par type (modifiable). Sémantique validée Marc 2026-06-18 :
+ *  perte d'emploi & sabbatique = 100 % (revenu coupé), accident/maladie = 50 % (partiel). */
+const INCOME_LOSS_DEFAULT_PCT: Partial<Record<LifeEventType, number>> = { PERTE_EMPLOI: 100, SABBATIQUE: 100, ACCIDENT: 50 };
+/** parseFloat tolérant : champ vide / NaN → undefined (jamais de NaN persisté dans le store ni propagé au moteur). */
+const numOrUndef = (v: string): number | undefined => { const n = parseFloat(v); return Number.isFinite(n) ? n : undefined; };
 
 const getEventInsights = (type: string, amount: number) => {
     switch (type) {
@@ -36,6 +49,7 @@ const getEventInsights = (type: string, amount: number) => {
 
 export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, travelGoals, setTravelGoals, netWorth, returnRate }) => {
     const [isAdding, setIsAdding] = useState(false);
+    const [eventError, setEventError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'ALL' | 'TRAVEL' | 'RISK'>('ALL');
     const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
     const [confirmDeleteKey, setConfirmDeleteKey] = useState<string | null>(null);
@@ -43,10 +57,13 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
     const [newLifeEvent, setNewLifeEvent] = useState<Partial<LifeEvent>>({ type: 'GROS_ACHAT', date: new Date().toISOString().split('T')[0] });
     const [newTrip, setNewTrip] = useState<Partial<TravelGoal>>({ destination: '', date: new Date().toISOString().split('T')[0], totalCost: 0, image: '✈️' });
     const [dragOverYear, setDragOverYear] = useState<number | null>(null);
+    // [A11Y-CHARTS] (LOT 3) — mode discret : masque les montants ($) de la table de données sr-only
+    // (alternative texte au PieChart de répartition estimée).
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
 
     const allItems = useMemo(() => {
         const tItems = travelGoals.map(t => ({ id: t.id, uniqueKey: `travel_${t.id}`, date: t.date, name: `Voyage: ${t.destination}`, cost: t.totalCost, type: 'TRAVEL', icon: 'plane' as IconName, details: t.destination }));
-        const eItems = events.map(e => ({ id: e.id, uniqueKey: `event_${e.id}`, date: e.date, name: e.name, cost: e.impactAmount || 0, type: e.type, icon: (e.type === 'KRACH' ? 'debt' : e.type === 'ACCIDENT' ? 'ambulance' : e.type === 'GROS_ACHAT' ? 'cart' : e.type === 'PERTE_EMPLOI' ? 'portfolio' : e.type === 'MARIAGE' ? 'heart' : e.type === 'RENOVATION' ? 'hammer' : e.type === 'AUTO' ? 'car' : e.type === 'SABBATIQUE' ? 'retirement' : e.type === 'BUSINESS' ? 'rocket' : 'calendar') as IconName, details: e.type === 'KRACH' ? `Chute ${e.impactPercent}%` : (e.durationMonths ? `Durée ${e.durationMonths} mois` : '') }));
+        const eItems = events.map(e => ({ id: e.id, uniqueKey: `event_${e.id}`, date: e.date, name: e.name, cost: e.impactAmount || 0, type: e.type, icon: (e.type === 'KRACH' ? 'debt' : e.type === 'ACCIDENT' ? 'ambulance' : e.type === 'GROS_ACHAT' ? 'cart' : e.type === 'PERTE_EMPLOI' ? 'portfolio' : e.type === 'MARIAGE' ? 'heart' : e.type === 'RENOVATION' ? 'hammer' : e.type === 'AUTO' ? 'car' : e.type === 'SABBATIQUE' ? 'retirement' : e.type === 'BUSINESS' ? 'rocket' : 'calendar') as IconName, details: e.type === 'KRACH' ? `Chute ${e.impactPercent}%` : (INCOME_LOSS_TYPES.includes(e.type) ? (e.incomeLossPercent != null && e.durationMonths != null ? `Perte ${e.incomeLossPercent}% · ${e.durationMonths} mois` : 'Non configuré') : (e.durationMonths ? `Durée ${e.durationMonths} mois` : '')) }));
         return [...tItems, ...eItems].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }, [events, travelGoals]);
 
@@ -79,9 +96,17 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                 setTravelGoals([...travelGoals, { id: Date.now().toString(), destination: newTrip.destination || 'Inconnu', date: newTrip.date || new Date().toISOString().split('T')[0], totalCost: Number(newTrip.totalCost), image: newTrip.image || '✈️' }]);
             }
         } else {
-            if (newLifeEvent.name && newLifeEvent.date) {
-                setEvents([...events, { ...newLifeEvent, id: Date.now().toString() } as LifeEvent]);
+            if (!newLifeEvent.name || !newLifeEvent.date) { setEventError('Nom et date de l\'événement requis.'); return; }
+            // [FISC-EVENT-INCOMELOSS] un événement de perte de revenu SANS % ou durée serait inerte
+            // (le moteur l'ignorerait) → on le refuse explicitement plutôt que de créer un levier muet.
+            if (INCOME_LOSS_TYPES.includes(newLifeEvent.type as LifeEventType)
+                && (!Number.isFinite(newLifeEvent.incomeLossPercent) || (newLifeEvent.incomeLossPercent ?? 0) <= 0
+                    || !Number.isFinite(newLifeEvent.durationMonths) || (newLifeEvent.durationMonths ?? 0) <= 0)) {
+                setEventError('Perte de revenu : indique un % perdu (> 0) et une durée en mois (> 0).');
+                return;
             }
+            setEventError(null);
+            setEvents([...events, { ...newLifeEvent, id: Date.now().toString() } as LifeEvent]);
         }
         setIsAdding(false);
         setNewTrip({ destination: '', date: '', totalCost: 0, image: '✈️' });
@@ -106,6 +131,14 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
         }
     };
 
+    // [A11Y-CHARTS] (LOT 3) — colonnes de la table sr-only du PieChart « Répartition estimée »
+    // (opaque aux lecteurs d'écran). Poste de dépense (catégorie, visible) + montant estimé ($,
+    // masqué en mode privé). Le breakdown a la forme { name, value, color }.
+    const breakdownColumns: ChartDataColumn[] = [
+        { key: 'name', label: 'Poste', format: (v) => String(v ?? '') },
+        { key: 'value', label: 'Montant estimé', format: (v) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0) },
+    ];
+
     return (
         <div className="space-y-6 animate-fade-in pb-24">
             <ConfirmModal
@@ -121,7 +154,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                 icon={<Icon name="life-projects" size={28} />}
                 title="Parcours de Vie"
                 actions={
-                    <Button onClick={() => setIsAdding(!isAdding)} variant={isAdding ? 'ghost' : 'secondary'} size="md">
+                    <Button onClick={() => { setIsAdding(!isAdding); setEventError(null); }} variant={isAdding ? 'ghost' : 'secondary'} size="md">
                         {isAdding ? 'Fermer' : 'Ajouter un Événement'}
                     </Button>
                 }
@@ -155,7 +188,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                 // était une violation de la règle des Hooks (hook dans callback IIFE).
                 return (
                     <Card icon={<Icon name="calendar" size={18} />} title="Timeline">
-                        <div className="text-tiny text-ink-500 mb-4">Faites glisser les événements sur les années pour ajuster votre calendrier de vie.</div>
+                        <div className="text-tiny text-ink-400 mb-4">Faites glisser les événements sur les années pour ajuster votre calendrier de vie.</div>
                         <div className="overflow-x-auto pb-3">
                             <div className="flex gap-2 min-w-max">
                                 {timelineYears.map(year => {
@@ -174,7 +207,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                             {eventsByYear[year]?.map((item) => (
                                                 <div key={item.uniqueKey} draggable onDragStart={(e) => handleDragStart(e, item.uniqueKey)}
                                                     className={`px-1.5 py-1 rounded text-tiny font-bold cursor-grab active:cursor-grabbing flex items-center gap-1 select-none transition-opacity hover:opacity-80 ${item.type === 'KRACH' || item.type === 'ACCIDENT' || item.type === 'PERTE_EMPLOI' ? 'bg-red-900/60 text-red-300 border border-danger-500/30' : item.uniqueKey.startsWith('travel') ? 'bg-blue-900/60 text-blue-300 border border-info-500/30' : 'bg-purple-900/60 text-purple-300 border border-purple-500/30'}`}
-                                                    title={`${item.name} — ${item.cost.toLocaleString()}$`}>
+                                                    title={`${item.name} — ${formatCAD(item.cost)}`}>
                                                     <Icon name={item.icon} size={14} />
                                                     <span className="truncate max-w-[55px]">{item.name}</span>
                                                 </div>
@@ -206,19 +239,25 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
                             <div className="lg:col-span-1">
                                 <label className="text-meta text-ink-300 mb-1 block">Type</label>
-                                <select className="w-full bg-dark border border-white/20 rounded p-2 text-white text-meta" value={newLifeEvent.type} onChange={e => setNewLifeEvent({ ...newLifeEvent, type: e.target.value as LifeEventType })}>
+                                <select className="w-full bg-dark border border-white/20 rounded p-2 text-white text-meta" value={newLifeEvent.type} onChange={e => { const t = e.target.value as LifeEventType; const isLoss = INCOME_LOSS_TYPES.includes(t); setNewLifeEvent(prev => ({ ...prev, type: t, incomeLossPercent: isLoss ? (prev.incomeLossPercent ?? INCOME_LOSS_DEFAULT_PCT[t]) : undefined, durationMonths: isLoss ? prev.durationMonths : undefined, impactPercent: t === 'KRACH' ? prev.impactPercent : undefined, impactAmount: (!isLoss && t !== 'KRACH') ? prev.impactAmount : undefined })); }}>
                                     <optgroup label="Projets de Vie"><option value="GROS_ACHAT">Gros Achat</option><option value="MARIAGE">Mariage</option><option value="RENOVATION">Rénovations</option><option value="AUTO">Achat Auto</option><option value="SABBATIQUE">Année Sabbatique</option><option value="BUSINESS">Lancer Business</option></optgroup>
                                     <optgroup label="Risques & Aléas"><option value="ACCIDENT">Accident / Santé</option><option value="PERTE_EMPLOI">Perte d'Emploi</option><option value="KRACH">Krach Boursier</option><option value="HERITAGE">Héritage / Gain</option></optgroup>
                                 </select>
                             </div>
                             <div><label className="text-meta text-ink-300 mb-1 block">Nom</label><input type="text" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.name} onChange={e => setNewLifeEvent({ ...newLifeEvent, name: e.target.value })} /></div>
                             <div><label className="text-meta text-ink-300 mb-1 block">Date</label><input type="date" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.date} onChange={e => setNewLifeEvent({ ...newLifeEvent, date: e.target.value })} /></div>
-                            {(newLifeEvent.type === 'KRACH' || newLifeEvent.type === 'ACCIDENT' || newLifeEvent.type === 'PERTE_EMPLOI') ? (
-                                <div><label htmlFor="lifeevent-impact" className="text-meta text-ink-300 mb-1 block">Impact (%) ou Durée</label><input id="lifeevent-impact" aria-label="Impact en pourcentage ou durée en mois" type="number" placeholder="Ex: 30% ou 3 mois" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.impactPercent || newLifeEvent.durationMonths || ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, impactPercent: parseFloat(e.target.value), durationMonths: parseFloat(e.target.value) })} /></div>
+                            {newLifeEvent.type === 'KRACH' ? (
+                                <div><label htmlFor="lifeevent-krach" className="text-meta text-ink-300 mb-1 block">Chute (%)</label><input id="lifeevent-krach" type="number" min={0} max={100} placeholder="Ex: 30" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.impactPercent ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, impactPercent: numOrUndef(e.target.value) })} /></div>
+                            ) : INCOME_LOSS_TYPES.includes(newLifeEvent.type as LifeEventType) ? (
+                                <>
+                                    <div><label htmlFor="lifeevent-losspct" className="text-meta text-ink-300 mb-1 block">% de revenu perdu</label><input id="lifeevent-losspct" type="number" min={0} max={100} placeholder="Ex: 100" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.incomeLossPercent ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, incomeLossPercent: numOrUndef(e.target.value) })} /></div>
+                                    <div><label htmlFor="lifeevent-duration" className="text-meta text-ink-300 mb-1 block">Durée (mois)</label><input id="lifeevent-duration" type="number" min={1} placeholder="Ex: 6" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.durationMonths ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, durationMonths: numOrUndef(e.target.value) })} /></div>
+                                </>
                             ) : (
-                                <div><label className="text-meta text-ink-300 mb-1 block">Montant ($)</label><input type="number" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.impactAmount || ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, impactAmount: parseFloat(e.target.value) })} /></div>
+                                <div><label htmlFor="lifeevent-amount" className="text-meta text-ink-300 mb-1 block">Montant ($)</label><input id="lifeevent-amount" type="number" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.impactAmount ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, impactAmount: numOrUndef(e.target.value) })} /></div>
                             )}
                             <button onClick={handleAdd} className="bg-purple-600 hover:bg-purple-500 text-white p-2 rounded font-bold h-[42px]">Ajouter</button>
+                            {eventError && <p className="lg:col-span-5 text-meta text-red-300 mt-1" role="alert">{eventError}</p>}
                         </div>
                     )}
                 </Card>
@@ -247,7 +286,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                                     <div className="text-meta text-ink-300">{item.date} • {item.details || 'Aucun détail'}</div>
                                                 </div>
                                             </div>
-                                            {item.cost > 0 && <div className="font-bold text-danger-400 text-lg">-{item.cost.toLocaleString()}$</div>}
+                                            {item.cost > 0 && <div className="font-bold text-danger-400 text-lg">{formatSigned(-item.cost, { withCurrency: true })}</div>}
                                         </div>
                                         <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteKey(item.uniqueKey); }} className="absolute top-3 right-3 text-ink-500 hover:text-danger-500 p-2 transition-colors z-10 hover:bg-white/5 rounded-full" title="Supprimer cet événement"><Icon name="trash" size={16} /></button>
                                     </div>
@@ -270,7 +309,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                             <Card className="!p-0 overflow-hidden border-2 border-white/10">
                                 <div className="bg-gradient-to-r from-dark to-black p-6 border-b border-white/10 flex justify-between items-start">
                                     <div>
-                                        <div className="text-meta text-ink-500 uppercase tracking-widest font-bold mb-1">Analyse d'Impact</div>
+                                        <div className="text-meta text-ink-400 uppercase tracking-widest font-bold mb-1">Analyse d'Impact</div>
                                         <h3 className="text-2xl font-black text-white">{selectedItem.name}</h3>
                                         <div className="text-body text-ink-300 mt-1">{new Date(selectedItem.date).toLocaleDateString()}</div>
                                     </div>
@@ -278,16 +317,16 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                 </div>
                                 <div className="p-6 space-y-6">
                                     <div>
-                                        <div className="flex justify-between text-body mb-2"><span className="text-ink-200">Coût Immédiat</span><span className="text-white font-bold">{impactAnalysis.immediateCost.toLocaleString()} $</span></div>
+                                        <div className="flex justify-between text-body mb-2"><span className="text-ink-200">Coût Immédiat</span><span className="text-white font-bold">{formatCAD(impactAnalysis.immediateCost)}</span></div>
                                         <div className="w-full bg-surfaceHighlight rounded-full h-2"><div className="h-full bg-danger-500 rounded-full" style={{ width: `${Math.min(100, impactAnalysis.liquidityRatio)}%` }}></div></div>
                                         <div className="text-tiny text-right text-danger-400 mt-1">{impactAnalysis.liquidityRatio.toFixed(1)}% de votre patrimoine actuel</div>
                                     </div>
                                     <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
                                         <div className="flex items-center gap-2 mb-2"><Icon name="sprout" size={18} className="text-ink-300" /><h4 className="font-bold text-ink-100 text-body">Effet papillon (20 ans)</h4></div>
-                                        <p className="text-meta text-ink-300 mb-3">Si cet argent ({impactAnalysis.immediateCost.toLocaleString()}$) avait été investi à {returnRate}% au lieu d'être dépensé...</p>
+                                        <p className="text-meta text-ink-300 mb-3">Si cet argent ({formatCAD(impactAnalysis.immediateCost)}) avait été investi à {returnRate}% au lieu d'être dépensé...</p>
                                         <div className="flex justify-between items-end">
-                                            <div><div className="text-meta text-ink-500">Coût d'Opportunité</div><div className="text-lg font-bold text-orange-400">-{Math.round(impactAnalysis.opportunityCost).toLocaleString()} $</div></div>
-                                            <div className="text-right"><div className="text-meta text-ink-500">Manque à gagner total</div><div className="text-2xl font-black text-white">-{Math.round(impactAnalysis.totalWealthImpact20y).toLocaleString()} $</div></div>
+                                            <div><div className="text-meta text-ink-400">Coût d'Opportunité</div><div className="text-lg font-bold text-orange-400">{formatSigned(-Math.round(impactAnalysis.opportunityCost), { withCurrency: true })}</div></div>
+                                            <div className="text-right"><div className="text-meta text-ink-400">Manque à gagner total</div><div className="text-2xl font-black text-white">{formatSigned(-Math.round(impactAnalysis.totalWealthImpact20y), { withCurrency: true })}</div></div>
                                         </div>
                                     </div>
                                 </div>
@@ -297,11 +336,22 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                     {impactAnalysis.insights.breakdown.length > 0 && (
                                         <div className="mb-6">
                                             <h4 className="text-meta font-bold text-ink-300 uppercase mb-3">Répartition Estimée</h4>
-                                            <div style={{ width: '100%', height: '180px' }}>
+                                            <div
+                                                style={{ width: '100%', height: '180px' }}
+                                                role="img"
+                                                aria-label={`Répartition estimée du coût de « ${selectedItem.name} » par poste de dépense.`}
+                                            >
                                                 <ResponsiveContainer width="100%" height="100%">
                                                     <PieChart><Pie data={impactAnalysis.insights.breakdown} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={5} dataKey="value">{impactAnalysis.insights.breakdown.map((entry: { name: string; value: number; color: string }, index: number) => (<Cell key={`cell-${index}`} fill={entry.color} stroke="none" />))}</Pie><Tooltip contentStyle={{ backgroundColor: '#111', borderColor: '#333', fontSize: '12px' }} formatter={(val: number) => val.toFixed(0) + '$'} /><Legend verticalAlign="middle" align="right" layout="vertical" iconSize={8} wrapperStyle={{ fontSize: '10px' }} /></PieChart>
                                                 </ResponsiveContainer>
                                             </div>
+                                            {/* [A11Y-CHARTS] (LOT 3) — alternative TEXTUELLE (sr-only) au PieChart de
+                                                répartition : poste + montant estimé en table accessible. */}
+                                            <ChartDataTable
+                                                caption={`Répartition estimée du coût de ${selectedItem.name}`}
+                                                columns={breakdownColumns}
+                                                rows={impactAnalysis.insights.breakdown}
+                                            />
                                         </div>
                                     )}
                                     <div className="space-y-3">
@@ -314,7 +364,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                     ) : (
                         <div className="sticky top-6 h-[400px] flex flex-col items-center justify-center text-ink-500 bg-white/5 rounded-2xl border border-white/5 border-dashed">
                             <Icon name="life-projects" size={40} className="mb-4 opacity-30" />
-                            <p className="text-body">Sélectionne un événement</p>
+                            <p className="text-body text-ink-400">Sélectionne un événement</p>
                         </div>
                     )}
                 </div>

@@ -5,6 +5,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { applyW5Effects, applyAgeBasedExpenses } from '../../services/projection/w5Effects';
 import type { W5Context, W5Mutator, W5Containers } from '../../services/projection/w5Effects';
+import { computeDonationCredit } from '../../utils/donationCredit';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -19,13 +20,15 @@ const makeCtx = (overrides: Partial<W5Context> = {}): W5Context => ({
 });
 
 const makeMutator = () => {
-    const s = { expense: 0, income: 0, liquid: 0, taxRevenu: 0, taxGains: 0 };
+    const s = { expense: 0, income: 0, liquid: 0, taxRevenu: 0, taxGains: 0, taxDivers: 0, donCredit: 0 };
     const mutator: W5Mutator = {
         addExpense: (n) => { s.expense += n; },
         addIncome: (n) => { s.income += n; },
         subtractLiquid: (n) => { s.liquid -= n; },
         addTaxRevenu: (n) => { s.taxRevenu += n; },
         addTaxGains: (n) => { s.taxGains += n; },
+        addTaxDivers: (n) => { s.taxDivers += n; },
+        addDonationCredit: (n) => { s.donCredit += n; },
         logFlow: vi.fn(),
         logLife: vi.fn(),
     };
@@ -167,7 +170,7 @@ describe('applyW5Effects — rénovations', () => {
 // ── Dons charitables ──────────────────────────────────────────────────────────
 
 describe('applyW5Effects — dons charitables', () => {
-    it('applique le don mensuel (annuel/12) et le crédit fiscal en janvier', () => {
+    it('[FA-6] crédit par paliers en janvier, accumulé dans donCredit (plafonné en décembre)', () => {
         // Arrange — janvier (currentMonthIndex=0), an 2027 (yearNow=2027)
         const { mutator, s } = makeMutator();
         const containers: W5Containers = {
@@ -178,9 +181,31 @@ describe('applyW5Effects — dons charitables', () => {
         // Act — mois 12, currentMonthIndex=0 (janvier)
         applyW5Effects(makeCtx({ m: 12, currentMonthIndex: 0 }), containers, mutator);
 
-        // Assert — dépense mensuelle = 1000, taxRevenu réduit de 33% × 12000 = -3960
+        // Assert — dépense mensuelle = 1000 ; crédit par PALIERS (féd+QC) = 6324 $
+        // (= 0,15·200 + 0,29·11800 + 0,20·200 + 0,24·11800), PAS l'ancien 33 % plat (3960).
+        // Le crédit (POSITIF) va dans donCredit ; décembre le plafonne à l'impôt dû puis l'applique à divers.
         expect(s.expense).toBeCloseTo(1000, 2);
-        expect(s.taxRevenu).toBeCloseTo(-3960, 2);
+        expect(computeDonationCredit(12000)).toBeCloseTo(6324, 2);
+        expect(s.donCredit).toBeCloseTo(6324, 2);    // crédit accumulé (positif)
+        expect(s.taxDivers).toBe(0);                  // PAS encore dans divers (appliqué/plafonné en décembre)
+        expect(s.taxRevenu).toBe(0);                  // jamais dans revenu (écrasé en décembre)
+    });
+
+    it('[FA-6] don de titres en nature : AUCUN effet sur les gains (inclusion 0 % non modélisée)', () => {
+        // Arrange — le flag donateAppreciatedSecurities ne doit plus toucher taxGains
+        // (l'ancien proxy -0,15·don, non sourcé, est supprimé).
+        const { mutator, s } = makeMutator();
+        const containers: W5Containers = {
+            ...emptyContainers(),
+            charitableGoals: [{ id: 'c1', annualAmount: 12000, donateAppreciatedSecurities: true }],
+        };
+
+        // Act
+        applyW5Effects(makeCtx({ m: 12, currentMonthIndex: 0 }), containers, mutator);
+
+        // Assert — crédit identique (dans donCredit), et taxGains INCHANGÉ (0)
+        expect(s.donCredit).toBeCloseTo(6324, 2);
+        expect(s.taxGains).toBe(0);
     });
 
     it('ne comptabilise pas le crédit fiscal hors janvier', () => {
@@ -196,6 +221,8 @@ describe('applyW5Effects — dons charitables', () => {
 
         // Assert — dépense mensuelle présente mais pas le crédit
         expect(s.expense).toBeCloseTo(1000, 2);
+        expect(s.donCredit).toBe(0);
+        expect(s.taxDivers).toBe(0);
         expect(s.taxRevenu).toBe(0);
     });
 
@@ -236,8 +263,10 @@ describe('applyW5Effects — immeubles locatifs', () => {
 
         // Assert — NOI annuel = 2500×12×0.95 - 500×12 = 28500-6000 = 22500 → /12 = 1875/mois
         expect(s.income).toBeCloseTo(1875, 0);
-        // taxRevenu = 45% de 1875 / 12 × 12 — vérification approximative
-        expect(s.taxRevenu).toBeGreaterThan(0);
+        // [FA-6] l'impôt locatif (proxy 45 %) va dans DIVERS → survit décembre (avant : clobberé en
+        // année active = loyers NON imposés). Plus dans revenu.
+        expect(s.taxDivers).toBeGreaterThan(0);
+        expect(s.taxRevenu).toBe(0);
     });
 });
 
@@ -258,8 +287,10 @@ describe('applyW5Effects — entreprises privées', () => {
         // Act
         applyW5Effects(makeCtx(), containers, mutator);
 
-        // Assert — 120000/12 = 10000/mois
+        // Assert — 120000/12 = 10000/mois ; [FA-6] impôt dividende (proxy 36 %) dans DIVERS, pas revenu
         expect(s.income).toBeCloseTo(10000, 0);
+        expect(s.taxDivers).toBeGreaterThan(0);
+        expect(s.taxRevenu).toBe(0);
     });
 
     it('tient compte du % de participation', () => {

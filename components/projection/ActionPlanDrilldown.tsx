@@ -20,7 +20,7 @@ const FlowChips: React.FC<{ flows: PlanBucket['flows'] }> = ({ flows }) => {
     const deposits = ACTION_ACCOUNTS.filter((a) => flows[a.key] > 100);
     const withdrawals = ACTION_ACCOUNTS.filter((a) => flows[a.key] < -100);
     if (deposits.length === 0 && withdrawals.length === 0) {
-        return <span className="text-tiny text-ink-600">—</span>;
+        return <span className="text-tiny text-ink-400">—</span>;
     }
     return (
         <div className="flex flex-wrap gap-1.5 text-tiny font-mono">
@@ -107,7 +107,7 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
                                     {b.label}
                                 </button>
                             )}
-                            {!isLast && <span aria-hidden="true" className="text-ink-600">›</span>}
+                            {!isLast && <span aria-hidden="true" className="text-ink-400">›</span>}
                         </React.Fragment>
                     );
                 })}

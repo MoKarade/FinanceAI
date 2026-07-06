@@ -182,10 +182,21 @@ export function computeEstateNetWorth(
     // des estimés RRQ/PSV ≠ 65/35. Unités préservées (`governmentPension` et les estimés sont mensuels).
     // RRQ-PSV-MIN — clamp `Math.max(0, …)` symétrique à retirementIncome:207-212 (un estimé négatif
     // ne crée pas de rente négative qui gonflerait/dégonflerait le NPV en silence).
-    const rrqMonthlyFamily = (rrqEstimateMonthly !== undefined) ? (Math.max(0, rrqEstimateMonthly) * activeUsersCount) : (governmentPension * GOV_PENSION_RRQ_SHARE);
-    const psvMonthlyFamily = (psvEstimateMonthly !== undefined) ? (Math.max(0, psvEstimateMonthly) * activeUsersCount) : (governmentPension * GOV_PENSION_PSV_SHARE);
-    const rrqExpected = rrqMonthlyFamily * Math.pow(1 + simInflation / 100, simulationYears);
-    const psvExpected = psvMonthlyFamily * Math.pow(1 + simInflation / 100, simulationYears);
+    // [ENG-ESTATE-ESTIMATE-FIN] `fin()` AVANT le clamp : un estimé NaN (lu BRUT pour préserver `undefined`)
+    // donnait `Math.max(0, NaN)` = NaN → propagé jusqu'à `estateNetWorth`, que le `fin()` de SORTIE zérotait
+    // ENTIÈREMENT (même un finalRawNetWorth positif → 0). Avec `fin()` ici, un estimé NaN ne contribue que 0 à
+    // SA rente ; l'autre rente et le reste du patrimoine successoral restent calculés (dégradation gracieuse).
+    const rrqMonthlyFamily = (rrqEstimateMonthly !== undefined) ? (Math.max(0, fin(rrqEstimateMonthly)) * activeUsersCount) : (governmentPension * GOV_PENSION_RRQ_SHARE);
+    const psvMonthlyFamily = (psvEstimateMonthly !== undefined) ? (Math.max(0, fin(psvEstimateMonthly)) * activeUsersCount) : (governmentPension * GOV_PENSION_PSV_SHARE);
+    // [FISC-ESTATE-PENSION-NPV] ANNUALISATION (×12) — le facteur d'annuité `npvFactor` plus bas
+    // valorise des versements ANNUELS (r=2 %/an, n exprimé en ANNÉES) ; la pension doit donc être
+    // convertie mensuel→annuel AVANT de l'y appliquer. Avant : montant MENSUEL × facteur annuel
+    // = NPV ÷12 → rentes publiques (RRQ/PSV) ~12× SOUS-évaluées au bilan successoral. N'affecte
+    // PAS le NW mensuel ni les invariants de conservation (estateCalculation ne touche que
+    // `estateNetWorth`, écran Succession), mais fausse cet écran de plusieurs centaines de k$.
+    const MONTHS_PER_YEAR = 12;
+    const rrqExpected = rrqMonthlyFamily * MONTHS_PER_YEAR * Math.pow(1 + simInflation / 100, simulationYears);
+    const psvExpected = psvMonthlyFamily * MONTHS_PER_YEAR * Math.pow(1 + simInflation / 100, simulationYears);
 
     const r_npv = 0.02;
     const npvFactor = r_npv > 0 ? (1 - Math.pow(1 + r_npv, -remainingYearsAtEnd)) / r_npv : remainingYearsAtEnd;

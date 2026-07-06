@@ -140,6 +140,14 @@ export function reconstructPortfolioHistory(
                 if (histPrice !== null) valueWithRealPrice += valueCad;
             }
         }
+        // [HIST-NW-NO-DEBT, audit 2026-06-23] ⚠️ Ce `NetWorth` du PASSÉ = SOMME DES COMPTES DE PLACEMENT
+        // SEULEMENT (≠ le NetWorth du FUTUR, qui soustrait les dettes). On ne reconstruit PAS les soldes
+        // de dette historiques (l'app n'a que le solde COURANT, pas l'historique d'amortissement) → pour
+        // un endetté, cette valeur passée est GONFLÉE vs son vrai patrimoine net. C'est une « valeur de
+        // placements reconstruite », pas un patrimoine net au sens du moteur. Le consommateur d'affichage
+        // (`FutureProjection` prefixe passé) recompose d'ailleurs sa propre valeur (placements + cash +
+        // équité immo), tout aussi SANS dettes, même limite. Renommer `InvestedValue` casserait les
+        // consommateurs `.NetWorth` → décision produit (cf docs/A_FAIRE_MOI HIST-NW-DEBT-DISCLAIMER).
         const netWorth = ACCOUNT_KEYS.reduce((s, k) => s + acc[k], 0);
         return {
             date: t,

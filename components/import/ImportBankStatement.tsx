@@ -4,6 +4,7 @@ import { parseBankCsv, extractedTxnsToCsv, type ParsedBankCsv } from '../../serv
 import { analyzeBankStatement } from '../../services/claude';
 import { logError } from '../../services/errorLogger';
 import { Card } from '../ui/Card';
+import { PrivateAmount } from '../ui/PrivateAmount';
 
 interface ImportBankStatementProps {
     /** Reçoit le texte brut (CSV) ; l'app le re-parse + fusionne + dédoublonne. */
@@ -120,7 +121,7 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
             </div>
 
             {error && (
-                <div role="alert" className="text-meta text-danger-300 bg-danger-500/10 border border-danger-500/20 rounded-card p-2">{error}</div>
+                <div role="alert" className="text-meta text-danger-400 bg-danger-500/10 border border-danger-500/20 rounded-card p-2">{error}</div>
             )}
 
             {preview && (
@@ -142,7 +143,7 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
                                     <tr key={t.id}>
                                         <td className="p-2 font-mono text-ink-300">{t.date}</td>
                                         <td className="p-2 text-ink-200 truncate max-w-[160px]">{t.payee}</td>
-                                        <td className={`p-2 text-right font-mono privacy-blur ${t.amount < 0 ? 'text-orange-300' : 'text-success-400'}`}>{cad(t.amount)}</td>
+                                        <td className={`p-2 text-right font-mono ${t.amount < 0 ? 'text-orange-300' : 'text-success-400'}`}><PrivateAmount>{cad(t.amount)}</PrivateAmount></td>
                                     </tr>
                                 ))}
                             </tbody>

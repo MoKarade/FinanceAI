@@ -5,6 +5,7 @@
 import React from 'react';
 import { Card } from '../ui/Card';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
+import { PrivateNumberInput } from '../ui/PrivateNumberInput';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { numOr, numOrUndef } from '../../utils/numericInput';
 import type { RetirementGoal } from '../../types';
@@ -24,13 +25,13 @@ export const RetirementIncomeCard: React.FC = () => {
                         <div className="space-y-5">
                             <div>
                                 <label htmlFor="ric-govPension" className="block text-meta text-ink-300 mb-1">Rente État agrégée (RRQ + PSV, total ménage) / mois — legacy</label>
-                                <input id="ric-govPension" type="number" value={goal.governmentPension} onChange={e => updateGoal('governmentPension', numOr(e.target.value, goal.governmentPension))} className="w-full bg-black/40 border border-info-500/20 rounded-lg px-3 py-2 text-blue-300 font-bold focus:border-info-500 transition-colors outline-none privacy-blur" />
-                                <p className="text-tiny text-ink-500 mt-1">Total des deux conjoints si tu es en couple. Si tu remplis les 2 champs ci-dessous (par personne), ce champ est ignoré.</p>
+                                <PrivateNumberInput id="ric-govPension" type="number" value={goal.governmentPension} onChange={e => updateGoal('governmentPension', numOr(e.target.value, goal.governmentPension))} className="w-full bg-black/40 border border-info-500/20 rounded-lg px-3 py-2 text-blue-300 font-bold focus:border-info-500 transition-colors outline-none" />
+                                <p className="text-tiny text-ink-400 mt-1">Total des deux conjoints si tu es en couple. Si tu remplis les 2 champs ci-dessous (par personne), ce champ est ignoré.</p>
                             </div>
                             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
                                 <div>
                                     <label htmlFor="ric-rrq" className="block text-meta text-ink-300 mb-1">🇨🇦 RRQ projetée / mois (par personne)</label>
-                                    <input id="ric-rrq"
+                                    <PrivateNumberInput id="ric-rrq"
                                         type="number"
                                         min={0}
                                         value={goal.rrqEstimateMonthly ?? ''}
@@ -38,11 +39,11 @@ export const RetirementIncomeCard: React.FC = () => {
                                         onChange={e => updateGoal('rrqEstimateMonthly', numOrUndef(e.target.value))}
                                         className="w-full bg-black/40 border border-info-500/20 rounded-lg px-3 py-2 text-blue-300 text-body focus:border-info-500 transition-colors outline-none"
                                     />
-                                    <p className="text-tiny text-ink-500 mt-1">Max 2025: 1 433$/mois. Consulte ton relevé RRQ.</p>
+                                    <p className="text-tiny text-ink-400 mt-1">Max 2025: 1 433$/mois. Consulte ton relevé RRQ.</p>
                                 </div>
                                 <div>
                                     <label htmlFor="ric-psv" className="block text-meta text-ink-300 mb-1">PSV projetée / mois</label>
-                                    <input id="ric-psv"
+                                    <PrivateNumberInput id="ric-psv"
                                         type="number"
                                         min={0}
                                         value={goal.psvEstimateMonthly ?? ''}
@@ -50,7 +51,7 @@ export const RetirementIncomeCard: React.FC = () => {
                                         onChange={e => updateGoal('psvEstimateMonthly', numOrUndef(e.target.value))}
                                         className="w-full bg-black/40 border border-info-500/20 rounded-lg px-3 py-2 text-blue-300 text-body focus:border-info-500 transition-colors outline-none"
                                     />
-                                    <p className="text-tiny text-ink-500 mt-1">Max 2025: 734$/mois (40 ans résidence).</p>
+                                    <p className="text-tiny text-ink-400 mt-1">Max 2025: 734$/mois (40 ans résidence).</p>
                                 </div>
                             </div>
                             {/* [EP-8] Pension d'employeur DB repliée par défaut : moins courante que RRQ/PSV
@@ -65,14 +66,14 @@ export const RetirementIncomeCard: React.FC = () => {
                                 <div className="space-y-4 pt-1">
                                     <div>
                                         <label htmlFor="ric-dbMonthly" className="block text-meta text-ink-300 mb-1">Pension employeur DB (prestations determinees) / mois</label>
-                                        <input id="ric-dbMonthly"
+                                        <PrivateNumberInput id="ric-dbMonthly"
                                             type="number"
                                             value={goal.dbPensionMonthly ?? 0}
                                             onChange={e => updateGoal('dbPensionMonthly', numOr(e.target.value, goal.dbPensionMonthly ?? 0))}
                                             placeholder="0"
-                                            className="w-full bg-black/40 border border-success-500/20 rounded-lg px-3 py-2 text-emerald-300 font-bold focus:border-success-500 transition-colors outline-none privacy-blur"
+                                            className="w-full bg-black/40 border border-success-500/20 rounded-lg px-3 py-2 text-emerald-300 font-bold focus:border-success-500 transition-colors outline-none"
                                         />
-                                        <p className="text-tiny text-ink-500 mt-1">RREGOP, fonction publique federale, regime garanti viager. Laisse 0 si tu n'as que du REER/CD.</p>
+                                        <p className="text-tiny text-ink-400 mt-1">RREGOP, fonction publique federale, regime garanti viager. Laisse 0 si tu n'as que du REER/CD.</p>
                                     </div>
                                     {(goal.dbPensionMonthly ?? 0) > 0 && (
                                         <div className="grid grid-cols-2 gap-3 pb-3 border-b border-white/5">
@@ -114,7 +115,7 @@ export const RetirementIncomeCard: React.FC = () => {
                                                     onChange={e => updateGoal('dbPensionIndexationPct', numOr(e.target.value, goal.dbPensionIndexationPct ?? 100))}
                                                     className="w-full bg-black/40 border border-success-500/10 rounded-lg px-3 py-2 text-emerald-200 text-body focus:border-success-500 transition-colors outline-none"
                                                 />
-                                                <p className="text-tiny text-ink-500 mt-1">100 = pleine indexation, 50 = demi, 0 = nominale</p>
+                                                <p className="text-tiny text-ink-400 mt-1">100 = pleine indexation, 50 = demi, 0 = nominale</p>
                                             </div>
                                             <div>
                                                 <label htmlFor="ric-dbStartAge" className="block text-meta text-ink-300 mb-1">Age debut versement</label>
@@ -126,7 +127,7 @@ export const RetirementIncomeCard: React.FC = () => {
                                                     onChange={e => updateGoal('dbPensionStartAge', numOr(e.target.value, goal.dbPensionStartAge ?? goal.targetAge))}
                                                     className="w-full bg-black/40 border border-success-500/10 rounded-lg px-3 py-2 text-emerald-200 text-body focus:border-success-500 transition-colors outline-none"
                                                 />
-                                                <p className="text-tiny text-ink-500 mt-1">Defaut = age cible retraite</p>
+                                                <p className="text-tiny text-ink-400 mt-1">Defaut = age cible retraite</p>
                                             </div>
                                         </div>
                                     )}

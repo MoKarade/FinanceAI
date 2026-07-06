@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "acc": "node tools/agent-control-center/server.mjs",
     "prebuild": "npm run lint",
     "build": "vite build --mode production",
     "preview": "vite preview",
@@ -54,6 +55,7 @@
     "axe-core": "^4.11.4",
     "eslint": "^9.0.0",
     "eslint-plugin-react-hooks": "^5.0.0",
+    "fast-check": "^4.8.0",
     "jsdom": "^29.1.1",
     "knip": "^5.0.0",
     "postcss": "^8.4.0",

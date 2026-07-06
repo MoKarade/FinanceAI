@@ -4,6 +4,7 @@
 // du loop mensuel (après les dépenses enfants, avant shortfall).
 
 import type { TravelGoal, LifeEvent, ProjectionConfig, SavingsGoal, FinancialGoal } from '../../types';
+import { logErrorThrottled } from '../errorLogger';
 
 // ── Voyages ──────────────────────────────────────────────────────────────────
 
@@ -43,11 +44,54 @@ export interface LifeEventMutator {
     addLiquid: (amt: number) => void;
     addExpense: (amt: number) => void;
     adjustRealEstate: (equityDelta: number, mortgageDelta: number) => void;
-    /** RE-GAIN — réalise un gain en capital BRUT (100 %) ; l'inclusion 50 % est appliquée en aval
-     *  (accCapitalGainsYear × 0,5). Sert à imposer la vente d'un IMMEUBLE LOCATIF. */
-    realizeCapitalGain: (grossGain: number) => void;
+    /** RE-GAIN / FISC-RE-CAPITAL-LOSS — comptabilise la disposition d'un IMMEUBLE LOCATIF avec le gain
+     *  BRUT SIGNÉ (produit net 95 % − coût) : un GAIN (≥ 0) nette la banque de pertes puis alimente
+     *  `accCapitalGainsYear` (50 % inclus en aval) ; une PERTE (< 0) est portée en banque de pertes
+     *  (déductible des gains futurs, LIR 111(1)b) au lieu d'être silencieusement ignorée. Retourne le
+     *  détail pour le logging. */
+    realizeCapitalDisposition: (rawGain: number) => { bankedLoss: number; taxableGain: number };
     logLife: (msg: string) => void;
     logFlow: (msg: string) => void;
+}
+
+/** [FISC-EVENT-INCOMELOSS] Types d'événements de vie qui réduisent le REVENU (pas une dépense) :
+ *  perte d'emploi, année sabbatique, accident/maladie. Traités par `computeIncomeLossFactor` en
+ *  phase active — exclus du chemin « dépense one-shot » d'`applyLifeEvents`. */
+export const INCOME_LOSS_EVENT_TYPES: ReadonlySet<string> = new Set(['PERTE_EMPLOI', 'SABBATIQUE', 'ACCIDENT']);
+
+/**
+ * [FISC-EVENT-INCOMELOSS] Facteur multiplicatif (∈ [0, 1]) à appliquer au revenu MÉNAGE du mois
+ * courant pour refléter les événements de perte de revenu datés saisis par l'utilisateur
+ * (PERTE_EMPLOI / SABBATIQUE / ACCIDENT). Un événement est ACTIF si le mois courant tombe dans
+ * `[date, date + durationMonths)`. Plusieurs événements actifs se composent multiplicativement.
+ *
+ * Base de date IDENTIQUE à `applyLifeEvents` (année-mois UTC via `toISOString`) → cohérence avec le
+ * matching one-shot. Gardes « never trust » : `incomeLossPercent` non-fini (NaN d'un champ UI vidé,
+ * absent) → 0 % (aucune réduction, jamais de NaN propagé) puis clamp [0, 100] ; `durationMonths` non-fini
+ * ou ≤ 0 → événement ignoré.
+ */
+export function computeIncomeLossFactor(lifeEvents: LifeEvent[], currentLoopDate: Date): number {
+    const [cyStr, cmStr] = currentLoopDate.toISOString().substring(0, 7).split('-');
+    const curIdx = Number(cyStr) * 12 + (Number(cmStr) - 1);
+    if (!Number.isFinite(curIdx)) return 1;
+
+    let factor = 1;
+    for (const e of lifeEvents) {
+        if (!INCOME_LOSS_EVENT_TYPES.has(e.type)) continue;
+        if (!e.date || typeof e.date !== 'string') continue;
+        const [eyStr, emStr] = e.date.split('-');
+        const startIdx = Number(eyStr) * 12 + (Number(emStr) - 1);
+        if (!Number.isFinite(startIdx)) continue;
+        const dur = Math.floor(e.durationMonths ?? 0);
+        if (!(dur > 0)) continue; // NaN/0/négatif → !(… > 0) === true → ignoré
+        const offset = curIdx - startIdx;
+        if (offset < 0 || offset >= dur) continue;
+        // `?? 0` ne couvre PAS NaN (un champ UI vidé → parseFloat('') === NaN) → garde Number.isFinite explicite.
+        const rawPct = e.incomeLossPercent;
+        const lossPct = Number.isFinite(rawPct) ? Math.min(100, Math.max(0, rawPct as number)) : 0;
+        factor *= (1 - lossPct / 100);
+    }
+    return Math.max(0, Math.min(1, factor));
 }
 
 export function applyLifeEvents(
@@ -61,6 +105,10 @@ export function applyLifeEvents(
         // Defensive 2026-05-21 : skip si date manquante/invalide
         if (!e.date || typeof e.date !== 'string') continue;
         if (!e.date.startsWith(currentIsoMonth)) continue;
+        // [FISC-EVENT-INCOMELOSS] perte de revenu = réduction du revenu en phase active
+        // (computeIncomeLossFactor), PAS une dépense one-shot ici (impactAmount non collecté
+        // pour ces types → addExpense(0) serait un faux flux de -0 $).
+        if (INCOME_LOSS_EVENT_TYPES.has(e.type)) continue;
 
         if (e.type === 'KRACH') {
             const drop = 1 - ((e.impactPercent || 30) / 100);
@@ -69,31 +117,62 @@ export function applyLifeEvents(
         } else {
             const isVente = e.name && e.name.toLowerCase().includes('vente');
             if (isVente) {
+                // `mortgage < currentValue` : équité positive requise. Cas-limite intentionnel : un bien TRULY
+                // underwater (`mortgage >= currentValue`) n'est PAS vendu (on ne modélise pas la vente à perte
+                // forcée). Une vente quasi-underwater (mortgage entre 95 % et 100 % de la valeur) PASSE ce filtre
+                // mais a un `saleNet` négatif — d'où le fix FISC-RE-SALE-RESIDUAL ci-dessous.
                 const soldProp = propertiesState.find(p => p.isBought && p.mortgage < p.currentValue);
                 if (soldProp) {
                     const saleNet = soldProp.currentValue * 0.95 - soldProp.mortgage;
-                    state.addLiquid(Math.max(0, saleNet));
+                    // FISC-RE-SALE-RESIDUAL : PAS de `Math.max(0, …)`. Une vente quasi-underwater (hypothèque
+                    // entre 95 % et 100 % de la valeur → les 5 % de frais poussent sous l'eau) produit un
+                    // `saleNet` NÉGATIF : le déficit (frais > équité) doit être PORTÉ (il tombe dans le
+                    // sauvetage PV-6 plus bas → couvert par actifs ou `liquidDebt` VISIBLE), pas EFFACÉ — sinon
+                    // le patrimoine est surévalué de `|saleNet|` (l'argent du déficit s'évapore).
+                    state.addLiquid(saleNet);
                     state.adjustRealEstate(
                         -(soldProp.currentValue - soldProp.mortgage),
                         -soldProp.mortgage,
                     );
-                    // RE-GAIN — gain en capital à la disposition : EXEMPT pour la résidence principale
-                    // (LIR 40(2)b) ; IMPOSABLE pour un locatif = produit net (95 %) − coût d'achat, 50 %
-                    // inclus en aval. Coût absent → 0 (conservateur : tout le produit devient gain).
+                    // RE-GAIN / FISC-RE-CAPITAL-LOSS — disposition en capital : EXEMPTE pour la résidence
+                    // principale (LIR 40(2)b) ; pour un LOCATIF, gain BRUT SIGNÉ = produit net (95 %) − coût.
+                    // Coût absent → 0 (conservateur : tout le produit devient gain). Un produit SOUS le coût
+                    // (vente à perte) donne un `rawGain` NÉGATIF : il doit être PORTÉ en banque de pertes
+                    // (déductible des gains futurs), pas ignoré — d'où la suppression du `Math.max(0, …)`.
                     if (!soldProp.isPrimaryResidence) {
-                        const gain = Math.max(0, soldProp.currentValue * 0.95 - (soldProp.cost ?? 0));
-                        if (gain > 0) {
-                            state.realizeCapitalGain(gain);
-                            state.logFlow(`🏠 Gain en capital (locatif) réalisé : ${Math.round(gain).toLocaleString('fr-CA')}$ — 50 % imposable`);
+                        const rawGain = soldProp.currentValue * 0.95 - (soldProp.cost ?? 0);
+                        const { bankedLoss, taxableGain } = state.realizeCapitalDisposition(rawGain);
+                        if (taxableGain > 0) {
+                            state.logFlow(`🏠 Gain en capital (locatif) réalisé : ${Math.round(taxableGain).toLocaleString('fr-CA')}$ — 50 % imposable`);
+                        } else if (bankedLoss > 0) {
+                            state.logFlow(`🏠 Perte en capital (locatif) : ${Math.round(bankedLoss).toLocaleString('fr-CA')}$ portée en banque de pertes (déductible des gains futurs)`);
                         }
                     }
                     soldProp.isBought = false;
                     soldProp.mortgage = 0;
                     soldProp.isSold = true;
-                    state.logLife(`🏠 Vente (net 95%): +${Math.round(Math.max(0, saleNet)).toLocaleString('fr-CA')}$`);
+                    state.logLife(saleNet >= 0
+                        ? `🏠 Vente (net 95%): +${Math.round(saleNet).toLocaleString('fr-CA')}$`
+                        // saleNet < 0 : les frais de 5 % dépassent l'équité → net négatif DÉDUIT du patrimoine
+                        // (ponctionné du liquide, ou porté en dette si le liquide est épuisé — PV-6).
+                        : `🏠 Vente (net 95%): −${Math.round(-saleNet).toLocaleString('fr-CA')}$ (frais > équité)`);
                 }
             } else {
-                const effectiveImpact = (e.impactAmount ?? 0) * expenseMultiplier;
+                // [NAN-INPUT-HARDENING] `?? 0` ne rattrape pas NaN → garde l'agrégat (impactAmount d'un
+                // lifeEvent saisi peut être NaN → addExpense(NaN) corromprait le flux en silence).
+                const rawImpact = (e.impactAmount ?? 0) * expenseMultiplier;
+                // [NAN-OBSERVABILITY] surface une dépense planifiée SILENCIEUSEMENT ignorée (throttlé par
+                // événement : la boucle mensuelle × Monte-Carlo rejouerait le même log sinon).
+                if (!Number.isFinite(rawImpact)) {
+                    logErrorThrottled(`lifeEvent-nan:${e.id}`, {
+                        source: 'projection', severity: 'warning',
+                        message: `Événement "${e.name}" : montant non fini → dépense ignorée`,
+                        // `droppedValue` = NATURE du non-fini (NaN/Infinity), pas le montant : un `impactAmount`
+                        // brut serait redacté par `sanitizeContext` (match `amount`) → log inutile.
+                        context: { id: e.id, droppedValue: Number.isNaN(rawImpact) ? 'NaN' : 'Infinity' },
+                    });
+                }
+                const effectiveImpact = Number.isFinite(rawImpact) ? rawImpact : 0;
                 state.addExpense(effectiveImpact);
                 state.logLife(`${e.name} 💸`);
                 state.logFlow(`🔔 Événement (${e.name}): -${Math.round(effectiveImpact).toLocaleString('fr-CA')}$`);

@@ -18,14 +18,14 @@ export function buildAutonomeMonoparentale(): Partial<AppState> {
     return {
         config: { users: [nadia] as unknown as BudgetConfig['users'], splitMode: '50/50' },
         budgetItems: [
-            { id: 'na-b1', name: 'Loyer', target: 1500, nature: 'Logement', frequency: 'Monthly' },
-            { id: 'na-b2', name: 'Épicerie', target: 600, nature: 'Alimentation', frequency: 'Monthly' },
-            { id: 'na-b3', name: 'Restaurants', target: 200, nature: 'Alimentation', frequency: 'Monthly' },
-            { id: 'na-b4', name: 'Transport', target: 300, nature: 'Transport', frequency: 'Monthly' },
-            { id: 'na-b5', name: 'Loisirs + activités enfant', target: 250, nature: 'Loisirs', frequency: 'Monthly' },
-            { id: 'na-b6', name: 'Frais professionnels', target: 400, nature: 'Autre', frequency: 'Monthly' },
-            { id: 'na-b7', name: 'Assurances (santé + invalidité)', target: 250, nature: 'Santé', frequency: 'Monthly' },
-            { id: 'na-b8', name: 'REER (auto-cotisé)', target: 500, nature: 'Épargne', frequency: 'Monthly' },
+            { id: 'na-b1', name: 'Loyer', target: 1500, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'na-b2', name: 'Épicerie', target: 600, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'na-b3', name: 'Restaurants', target: 200, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'na-b4', name: 'Transport', target: 300, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'na-b5', name: 'Loisirs + activités enfant', target: 250, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'na-b6', name: 'Frais professionnels', target: 400, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'na-b7', name: 'Assurances (santé + invalidité)', target: 250, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'na-b8', name: 'REER (auto-cotisé)', target: 500, nature: 'Epargne', frequency: 'Monthly' },
         ] as unknown as AppState['budgetItems'],
         assets: [
             {
@@ -71,7 +71,7 @@ export function buildAutonomeMonoparentale(): Partial<AppState> {
                 daycareType: 'cpe', schoolType: 'publique', activitiesLevel: 'legeres',
                 universityType: 'uni_local', carGift: 'usagee',
                 monthlyDiapers: 0, monthlyFood: 300, monthlyClothing: 100,
-                respContribution: 1500, governmentBenefits: 300, initialCost: 0,
+                respContribution: 1500, governmentBenefits: 300, initialCost: 0, isActive: true,
             },
         ] as unknown as AppState['childGoals'],
         travelGoals: [
@@ -81,6 +81,8 @@ export function buildAutonomeMonoparentale(): Partial<AppState> {
         financialGoals: [
             { id: 'na-fg1', name: 'REER autonome 100 k$', target: 100000, current: 28000, accountType: 'REER', deadline: '2040-12-31' },
         ] as unknown as AppState['financialGoals'],
+        // [R6] Monoparentale locataire : enfant activé (ci-dessus), pas de projet immo → opt-out « realEstate ».
+        setupOptOut: { realEstate: true },
         ...emptyCollections(),
     };
 }

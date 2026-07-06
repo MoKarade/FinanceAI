@@ -63,11 +63,11 @@ export interface FinancialOverview extends FinancialSnapshot {
 /**
  * Construit un `FinancialSnapshot` PUR à partir de l'AppState. Réplique
  * fidèlement la logique de `NextBestAction.tsx` :
- *  - patrimoine net = placements + liquidités − dettes ;
+ *  - patrimoine net = source unique `computePresentNetWorth` (placements + liquidités − dettes) ;
  *  - revenu mensuel = Σ netSalary des utilisateurs (les salaires sont MENSUELS
  *    dans le store) ;
- *  - dépenses mensuelles = Σ budgetItems.target bruts (NB : non normalisés par
- *    fréquence — comportement historique préservé) ;
+ *  - dépenses mensuelles = Σ budgetItems NORMALISÉS par fréquence et HORS épargne
+ *    (via `computeMonthlyBudgetAggregates`, fix L4 audit 2026-06-17) ;
  *  - soldes CELI/REER = valeur des placements de ce type ;
  *  - patrimoine projeté à +20 ans : si `lastProjection` fourni, lit le point
  *    correspondant (sinon undefined).

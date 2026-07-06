@@ -35,6 +35,8 @@ import { computePurchaseStats } from '../utils/assetPurchases';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { NetWorthByOwnerCard } from './investments/NetWorthByOwnerCard';
 import { PrivateAmount } from './ui/PrivateAmount';
+import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 
 interface InvestmentsProps {
     assets: Asset[];
@@ -111,6 +113,15 @@ export const Investments: React.FC<InvestmentsProps> = ({
     // Phase E.7 — apiKey du store (fallback prop pour rétrocompat) pour appeler Claude
     const anthropicKeyFromStore = useFinanceStore(s => s.apiKeys.anthropic);
     const claudeKey = anthropicKeyFromStore || apiKey || '';
+
+    // [A11Y-CHARTS] tables de données sr-only pour les donuts d'allocation (Recharts opaque aux
+    // lecteurs d'écran). Classe d'actif + % visibles ; Valeur $ masquée en mode privé (parité PrivateAmount).
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
+    const allocationColumns: ChartDataColumn[] = [
+        { key: 'name', label: "Classe d'actif" },
+        { key: 'value', label: 'Valeur', format: (v) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0) },
+        { key: 'percent', label: 'Part', format: (v) => `${(Number(v) || 0).toFixed(1)}%` },
+    ];
 
     const [marketData, setMarketData] = useState<MarketDataPoint[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -213,7 +224,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
         dividendCalendar,
         totalAnnualDividends,
         availableSeriesWithTrend,
-        healthScore,
+        diversificationScore,
         portfolioTrend,
         benchmarkTrend,
     } = useMemo(() => {
@@ -314,7 +325,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
         else if (portfolioTrend < 0) trendPts -= 10;
         if (trendPts > 40) trendPts = 40;
         if (trendPts < 0) trendPts = 0;
-        const healthScore = Math.round(safePts + trendPts);
+        const diversificationScore = Math.round(safePts + trendPts);
 
         return {
             currentAllocation: allocation,
@@ -323,7 +334,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
             dividendCalendar: sortedDividends,
             totalAnnualDividends: totalDivs,
             availableSeriesWithTrend,
-            healthScore,
+            diversificationScore,
             portfolioTrend,
             benchmarkTrend,
         };
@@ -410,11 +421,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 title="Investissements"
                 badge={
                     <Badge
-                        variant={healthScore >= 80 ? 'success' : healthScore >= 50 ? 'warning' : 'danger'}
+                        variant={diversificationScore >= 80 ? 'success' : diversificationScore >= 50 ? 'warning' : 'danger'}
                         size="md"
-                        title="Score basé sur la diversification et la tendance vs marché"
+                        title="Sous-mesure : diversification du portefeuille + tendance vs marché (le score de santé financière GLOBAL est sur l'Accueil)"
                     >
-                        Santé {healthScore}/100
+                        Diversification {diversificationScore}/100
                     </Badge>
                 }
             />
@@ -508,7 +519,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                 }}
                                 className={`text-tiny px-2 py-1.5 rounded-lg border transition-all flex items-center gap-2 ${isActive
                                     ? (asset.isTotal ? 'bg-green-500/20 text-green-400 border-green-500/50 font-bold' : 'bg-info-500/20 text-blue-300 border-info-500/50')
-                                    : 'bg-[#1a1a1a] text-ink-500 border-white/5 hover:border-white/10 hover:text-ink-200'
+                                    : 'bg-[#1a1a1a] text-ink-400 border-white/5 hover:border-white/10 hover:text-ink-200'
                                     }`}
                             >
                                 <div className="flex items-center gap-1">
@@ -537,7 +548,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                             visibleKeys={selectedKeys}
                         />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center text-ink-500 bg-white/5 rounded-xl">
+                        <div className="w-full h-full flex items-center justify-center text-ink-400 bg-white/5 rounded-xl">
                             Aucune donnée disponible pour cette période.
                         </div>
                     )}
@@ -556,7 +567,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     <div className="bg-[#1a1a1a] rounded-xl p-4 border border-white/5 flex flex-col">
                         <h4 className="text-ink-300 text-meta font-bold uppercase mb-4 text-center">Répartition Géographique</h4>
                         <div className="flex-1 flex flex-col lg:flex-row items-center gap-4">
-                            <div className="flex-1 w-full h-[200px]">
+                            <div className="flex-1 w-full h-[200px]" role="img" aria-label="Donut de répartition géographique du portefeuille">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie
@@ -581,6 +592,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>
+                            <ChartDataTable
+                                caption="Répartition géographique du portefeuille"
+                                columns={allocationColumns}
+                                rows={geoBreakdown}
+                            />
                             <div className="flex-1 w-full space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
                                 {geoBreakdown.map(item => {
                                     const isActive = allocationFilter?.type === 'region' && allocationFilter.value === item.name;
@@ -600,7 +616,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             </div>
                                             <div className="text-right">
                                                 <div className="text-white font-bold">{formatCAD(item.value)}</div>
-                                                <div className="text-tiny text-ink-500">{item.percent.toFixed(1)}%</div>
+                                                <div className="text-tiny text-ink-400">{item.percent.toFixed(1)}%</div>
                                             </div>
                                         </button>
                                     );
@@ -613,7 +629,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     <div className="bg-[#1a1a1a] rounded-xl p-4 border border-white/5 flex flex-col">
                         <h4 className="text-ink-300 text-meta font-bold uppercase mb-4 text-center">Répartition Sectorielle</h4>
                         <div className="flex-1 flex flex-col lg:flex-row items-center gap-4">
-                            <div className="flex-1 w-full h-[200px]">
+                            <div className="flex-1 w-full h-[200px]" role="img" aria-label="Donut de répartition sectorielle du portefeuille">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie
@@ -638,6 +654,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>
+                            <ChartDataTable
+                                caption="Répartition sectorielle du portefeuille"
+                                columns={allocationColumns}
+                                rows={sectorBreakdown}
+                            />
                             <div className="flex-1 w-full space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
                                 {sectorBreakdown.map(item => {
                                     const isActive = allocationFilter?.type === 'sector' && allocationFilter.value === item.name;
@@ -657,7 +678,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             </div>
                                             <div className="text-right">
                                                 <div className="text-white font-bold">{formatCAD(item.value)}</div>
-                                                <div className="text-tiny text-ink-500">{item.percent.toFixed(1)}%</div>
+                                                <div className="text-tiny text-ink-400">{item.percent.toFixed(1)}%</div>
                                             </div>
                                         </button>
                                     );
@@ -808,7 +829,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             <Icon name={item.icon} size={20} className="text-ink-300 shrink-0" />
                                             <div>
                                                 <div className="text-white font-bold text-body">{item.label}</div>
-                                                <div className="text-tiny text-ink-500 flex items-center gap-2 mt-1">
+                                                <div className="text-tiny text-ink-400 flex items-center gap-2 mt-1">
                                                     <span>Actuel: <span className="text-ink-200 font-bold">{item.currentPct.toFixed(1)}%</span></span>
                                                     <span className="opacity-50">|</span>
                                                     {isRebalanceEdit ? (
@@ -840,12 +861,12 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         <div className="text-right">
                                             {!isRebalanceEdit && item.action === 'SELL' && (
                                                 <div className="text-danger-400 font-bold text-body">
-                                                    → Vendre {Math.round(Math.abs(item.diffAmount)).toLocaleString()}$
+                                                    → Vendre {formatCAD(Math.round(Math.abs(item.diffAmount)))}
                                                 </div>
                                             )}
                                             {!isRebalanceEdit && item.action === 'BUY' && (
                                                 <div className="text-green-400 font-bold text-body">
-                                                    → Acheter {Math.round(Math.abs(item.diffAmount)).toLocaleString()}$
+                                                    → Acheter {formatCAD(Math.round(Math.abs(item.diffAmount)))}
                                                 </div>
                                             )}
                                             {!isRebalanceEdit && item.action === 'OK' && (
@@ -887,16 +908,16 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     {rebalancingActions.filter(a => a.action === 'SELL').map((a, i) => (
                                         <div key={i} className="text-meta text-red-300 flex items-start gap-2">
                                             <span className="w-2 h-2 rounded-full bg-danger-500 mt-1.5 shrink-0" aria-hidden="true" />
-                                            <span><b>Vendre</b> {Math.round(Math.abs(a.diffAmount)).toLocaleString()}$ de <b>{a.label}</b> (surplus {a.diffPct.toFixed(1)}%) — Utilisez votre compte Non-Enregistré en priorité pour optimiser la fiscalité.</span>
+                                            <span><b>Vendre</b> {formatCAD(Math.round(Math.abs(a.diffAmount)))} de <b>{a.label}</b> (surplus {a.diffPct.toFixed(1)}%) — Utilisez votre compte Non-Enregistré en priorité pour optimiser la fiscalité.</span>
                                         </div>
                                     ))}
                                     {rebalancingActions.filter(a => a.action === 'BUY').map((a, i) => (
                                         <div key={i} className="text-meta text-green-300 flex items-start gap-2">
                                             <span className="w-2 h-2 rounded-full bg-success-500 mt-1.5 shrink-0" aria-hidden="true" />
-                                            <span><b>Acheter</b> {Math.round(Math.abs(a.diffAmount)).toLocaleString()}$ de <b>{a.label}</b> (déficit {Math.abs(a.diffPct).toFixed(1)}%) — Priorisez votre CELI si vous avez de l'espace disponible.</span>
+                                            <span><b>Acheter</b> {formatCAD(Math.round(Math.abs(a.diffAmount)))} de <b>{a.label}</b> (déficit {Math.abs(a.diffPct).toFixed(1)}%) — Priorisez votre CELI si vous avez de l'espace disponible.</span>
                                         </div>
                                     ))}
-                                    <div className="text-meta text-ink-500 mt-3 pt-3 border-t border-white/5 italic">
+                                    <div className="text-meta text-ink-400 mt-3 pt-3 border-t border-white/5 italic">
                                         Astuce fiscale : Rééquilibrer via les nouvelles contributions évite de déclencher des gains en capital dans votre compte Non-Enregistré.
                                     </div>
                                 </div>
@@ -952,7 +973,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         </div>
                                         <div>
                                             <div className="font-bold text-white text-body leading-tight tracking-tight">{asset.name}</div>
-                                            <div className="text-tiny text-ink-500 font-medium uppercase tracking-wider">{asset.region}</div>
+                                            <div className="text-tiny text-ink-400 font-medium uppercase tracking-wider">{asset.region}</div>
                                         </div>
                                     </div>
                                     <div className="text-right">
@@ -963,7 +984,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                 <div className="grid grid-cols-2 gap-3 text-tiny mb-4 relative z-10">
                                     <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/5 backdrop-blur-sm">
                                         <div className="text-ink-400 mb-1 font-bold">Valeur</div>
-                                        <div className="text-white font-mono font-bold text-meta">{asset.value.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 })}</div>
+                                        <div className="text-white font-mono font-bold text-meta">{formatCAD(asset.value)}</div>
                                     </div>
                                     <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/5 backdrop-blur-sm">
                                         <div className="text-ink-400 mb-1 font-bold">Variation 24h</div>
@@ -977,7 +998,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                             <div className="flex items-center justify-between pt-3 border-t border-white/5 relative z-10 mt-auto">
                                 <div className="text-tiny text-ink-300 flex items-center gap-2">
                                     <span className="font-medium">Yield</span>
-                                    <span className={asset.yield > 0 ? "text-success-400 font-bold" : "text-ink-500"}>{asset.yield}%</span>
+                                    <span className={asset.yield > 0 ? "text-success-400 font-bold" : "text-ink-400"}>{asset.yield}%</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {savedAsset && (
@@ -1020,11 +1041,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     <div className="text-tiny text-info-300 uppercase font-bold mb-1">DCA · {purchaseStats.purchaseCount} achats</div>
                                     <div className="space-y-0.5 text-tiny">
                                         <div className="flex justify-between">
-                                            <span className="text-ink-500">Coût moyen</span>
+                                            <span className="text-ink-400">Coût moyen</span>
                                             <span className="font-mono text-ink-200">{formatCAD(purchaseStats.averageCost)}</span>
                                         </div>
                                         <div className="flex justify-between">
-                                            <span className="text-ink-500">Gain total</span>
+                                            <span className="text-ink-400">Gain total</span>
                                             <span className={`font-mono ${purchaseStats.totalGain >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
                                                 {purchaseStats.totalGain >= 0 ? '+' : ''}{formatCAD(purchaseStats.totalGain)} ({purchaseStats.gainPct.toFixed(1)}%)
                                             </span>

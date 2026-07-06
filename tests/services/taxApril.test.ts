@@ -21,7 +21,7 @@ describe('processAprilSettlement', () => {
     it('ne fait rien si ce n\'est pas avril (currentMonthIndex ≠ 3)', () => {
         // Arrange
         const { mutator, s } = makeMutator();
-        const taxPrev = { revenu: 5000, gains: 1000, divers: 200, reer: 0 };
+        const taxPrev = { revenu: 5000, gains: 1000, divers: 200, reer: 0, donCredit: 0 };
 
         // Act — mois de juin (currentMonthIndex = 5)
         const result = processAprilSettlement(5, 12, taxPrev, mutator);
@@ -34,7 +34,7 @@ describe('processAprilSettlement', () => {
     it('ne fait rien au mois 0 même si c\'est avril', () => {
         // Arrange
         const { mutator, s } = makeMutator();
-        const taxPrev = { revenu: 5000, gains: 1000, divers: 200, reer: 0 };
+        const taxPrev = { revenu: 5000, gains: 1000, divers: 200, reer: 0, donCredit: 0 };
 
         // Act
         const result = processAprilSettlement(3, 0, taxPrev, mutator);
@@ -47,7 +47,7 @@ describe('processAprilSettlement', () => {
     it('règle les impôts en avril quand fluxImpots > 0', () => {
         // Arrange — dette fiscale de 8200$
         const { mutator, s } = makeMutator();
-        const taxPrev = { revenu: 5000, gains: 2000, divers: 1000, reer: 200 };
+        const taxPrev = { revenu: 5000, gains: 2000, divers: 1000, reer: 200, donCredit: 0 };
 
         // Act — avril, mois 4
         const result = processAprilSettlement(3, 4, taxPrev, mutator);
@@ -55,14 +55,14 @@ describe('processAprilSettlement', () => {
         // Assert — liquid réduit de 8200, taxPreviousYear remis à zéro
         expect(result.fluxImpots).toBe(8200);
         expect(s.liquid).toBe(-8200);
-        expect(result.newTaxPreviousYear).toEqual({ revenu: 0, gains: 0, divers: 0, reer: 0 });
+        expect(result.newTaxPreviousYear).toEqual({ revenu: 0, gains: 0, divers: 0, reer: 0, donCredit: 0 });
         expect(mutator.logFlow).toHaveBeenCalledOnce();
     });
 
     it('émet un remboursement et réinvestit le surplus dans nonReg quand flux < 0 (M-8: pas de double-compte)', () => {
         // Arrange — remboursement de retenue à la source
         const { mutator, s } = makeMutator();
-        const taxPrev = { revenu: -3000, gains: 0, divers: 0, reer: 0 };
+        const taxPrev = { revenu: -3000, gains: 0, divers: 0, reer: 0, donCredit: 0 };
 
         // Act — avril, mois 16
         const result = processAprilSettlement(3, 16, taxPrev, mutator);
@@ -80,7 +80,7 @@ describe('processAprilSettlement', () => {
     it('ne réinvestit pas dans nonReg si le remboursement vient de gains/divers', () => {
         // Arrange — remboursement de gains uniquement (taxPaidRevenu ≥ 0)
         const { mutator, s } = makeMutator();
-        const taxPrev = { revenu: 100, gains: -500, divers: 0, reer: 0 };
+        const taxPrev = { revenu: 100, gains: -500, divers: 0, reer: 0, donCredit: 0 };
 
         // Act
         const result = processAprilSettlement(3, 16, taxPrev, mutator);

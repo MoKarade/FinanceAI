@@ -4,6 +4,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
     logError,
+    logErrorThrottled,
+    __resetErrorThrottle,
     getErrors,
     filterErrors,
     clearErrors,
@@ -12,6 +14,27 @@ import {
 
 beforeEach(() => {
     localStorage.clear();
+    __resetErrorThrottle();
+});
+
+describe('logErrorThrottled — [NAN-OBSERVABILITY] une seule entrée par signature', () => {
+    it('journalise la 1re occurrence d\'une signature, ignore les suivantes', () => {
+        logErrorThrottled('sig-A', { source: 'projection', message: 'NaN 1' });
+        logErrorThrottled('sig-A', { source: 'projection', message: 'NaN 1 bis' });
+        logErrorThrottled('sig-A', { source: 'projection', message: 'NaN 1 ter' });
+        expect(getErrors()).toHaveLength(1); // throttlé → 1 seule entrée malgré 3 appels (anti-thrash localStorage)
+    });
+    it('signatures DIFFÉRENTES → entrées distinctes', () => {
+        logErrorThrottled('sig-A', { source: 'projection', message: 'A' });
+        logErrorThrottled('sig-B', { source: 'ui', message: 'B' });
+        expect(getErrors()).toHaveLength(2);
+    });
+    it('__resetErrorThrottle ré-autorise une signature déjà vue', () => {
+        logErrorThrottled('sig-A', { source: 'projection', message: 'A' });
+        __resetErrorThrottle();
+        logErrorThrottled('sig-A', { source: 'projection', message: 'A again' });
+        expect(getErrors()).toHaveLength(2);
+    });
 });
 
 describe('errorLogger', () => {
@@ -138,6 +161,28 @@ describe('errorLogger', () => {
         it('conserve les clés non sensibles', () => {
             logError({ source: 'ui', message: 'X', context: { tab: 'budget', count: 3, ok: true } });
             expect(getErrors()[0].context).toEqual({ tab: 'budget', count: 3, ok: true });
+        });
+
+        it('[SEC-LOG-DEBT-REGEX] masque les clés financières COMPOSÉES (liquidDebt, mortgageBalance, annualAmount…)', () => {
+            logError({
+                source: 'ui', message: 'X',
+                context: { liquidDebt: 45000, totalDebt: 80000, mortgageBalance: 300000, annualAmount: 12000, currentPrice: 99, retirementIncome: 5000 },
+            });
+            const ctx = getErrors()[0].context as Record<string, unknown>;
+            for (const k of ['liquidDebt', 'totalDebt', 'mortgageBalance', 'annualAmount', 'currentPrice', 'retirementIncome']) {
+                expect(ctx[k], `${k} doit être masqué`).toBe('[redacted]');
+            }
+        });
+
+        it('[SEC-LOG-DEBT-REGEX] ne sur-redacte PAS les clés diagnostiques (anti faux-positif)', () => {
+            // `factor`/`status`/`requestId` ne doivent PAS être pris pour des champs financiers
+            // (les termes ambigus comme `fact` restent ANCRÉS, pas en substring).
+            logError({ source: 'ui', message: 'X', context: { factor: 1.5, status: 'ok', requestId: 'abc', tabIndex: 2 } });
+            const ctx = getErrors()[0].context as Record<string, unknown>;
+            expect(ctx.factor).toBe(1.5);
+            expect(ctx.status).toBe('ok');
+            expect(ctx.requestId).toBe('abc');
+            expect(ctx.tabIndex).toBe(2);
         });
 
         it('tronque les tableaux à 10 éléments', () => {

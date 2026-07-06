@@ -7,7 +7,7 @@
 
 import type { AppState, BudgetConfig, User } from '../../types';
 import { buildPersonaTransactions } from './transactions';
-import { emptyCollections } from './_shared';
+import { emptyCollections, genHistory } from './_shared';
 
 const lea: User = {
     name: 'Léa (test)', grossSalary: 3200, netSalary: 2450, color: '#ec4899',
@@ -18,15 +18,19 @@ export function buildLeaFauchee(): Partial<AppState> {
     return {
         config: { users: [lea] as unknown as BudgetConfig['users'], splitMode: '50/50' },
         budgetItems: [
-            { id: 'lea-b1', name: 'Loyer', target: 1100, nature: 'Logement', frequency: 'Monthly' },
-            { id: 'lea-b2', name: 'Épicerie', target: 320, nature: 'Alimentation', frequency: 'Monthly' },
-            { id: 'lea-b3', name: 'Restaurants', target: 110, nature: 'Alimentation', frequency: 'Monthly' },
-            { id: 'lea-b4', name: 'Transport (STM)', target: 100, nature: 'Transport', frequency: 'Monthly' },
-            { id: 'lea-b5', name: 'Loisirs', target: 70, nature: 'Loisirs', frequency: 'Monthly' },
-            { id: 'lea-b6', name: 'Téléphone', target: 50, nature: 'Autre', frequency: 'Monthly' },
-            { id: 'lea-b7', name: 'CELI', target: 150, nature: 'Épargne', frequency: 'Monthly' },
+            { id: 'lea-b1', name: 'Loyer', target: 1100, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'lea-b2', name: 'Épicerie', target: 320, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'lea-b3', name: 'Restaurants', target: 110, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'lea-b4', name: 'Transport (STM)', target: 100, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'lea-b5', name: 'Loisirs', target: 70, nature: 'Envie', frequency: 'Monthly' },
+            { id: 'lea-b6', name: 'Téléphone', target: 50, nature: 'Besoin', frequency: 'Monthly' },
+            { id: 'lea-b7', name: 'CELI', target: 150, nature: 'Epargne', frequency: 'Monthly' },
         ] as unknown as AppState['budgetItems'],
-        assets: [],
+        // [R6] Micro-actif CELI symbolique (1 part) : ouvre les pages Investissements + Futur
+        // (prérequis `assets`, non opt-outable) sans dénaturer le profil « fauchée ».
+        assets: [
+            { id: 'lea-a1', symbol: 'VFV.TO', name: 'Vanguard S&P 500 (CAD)', region: 'us-equity', sector: 'index', accountType: 'CELI', currency: 'CAD', performance: 0, currentPrice: 182.18, priceHistory: genHistory(170, 182.18), purchases: [{ date: '2026-01-15', price: 170, quantity: 1 }], dateBought: '2026-01-15', buyPrice: 170, quantity: 1 },
+        ] as unknown as AppState['assets'],
         // Soldes = cash uniquement (LIQUIDITE) ; aucun placement. Convention
         // persona : les comptes investis (CELI/REER/NonReg/Crypto) sont portés
         // par `assets`, jamais doublés dans initialBalances (sinon le liquide
@@ -56,6 +60,8 @@ export function buildLeaFauchee(): Partial<AppState> {
         financialGoals: [
             { id: 'lea-fg1', name: 'Fonds urgence 3 mois', target: 6000, current: 1200, accountType: 'CELI', deadline: '2028-12-31' },
         ] as unknown as AppState['financialGoals'],
+        // [R6] Locataire, sans enfant ni projet (a une dette étudiante) → opt-out immo/enfant/projets.
+        setupOptOut: { realEstate: true, children: true, lifeProjects: true },
         ...emptyCollections(),
     };
 }

@@ -34,6 +34,9 @@ export interface JanuaryContext {
     // Soldes courants (read-only)
     celiapp: number;
     reer: number;
+    // [ITEM-2C] Registre REER PAR CONJOINT (Σ == reer). Sert au gate FERR per-conjoint (chaque conjoint
+    // de 72+ convertit SA part au facteur RRIF de SON âge). Aligné sur `config.users` (même ordre/longueur).
+    reerByUser: number[];
     liquid: number;
     nonReg: number;
     crypto: number;
@@ -69,8 +72,9 @@ export interface JanuaryResult {
     accGrossIncomeYearReset: number;         // 0
     // CELIAPP fermeture 15 ans
     celiappTransferToReer: number;           // si fermeture: solde transféré
-    // FERR (only if age >= 71)
-    ferrMandatoryGross: number;
+    // FERR (only if age >= 72) — PER-CONJOINT [ITEM-2C]
+    ferrMandatoryGross: number;          // total ménage (= Σ ferrGrossByUser) — débit du pool + assiette imposable
+    ferrGrossByUser: number[];           // part FERR de chaque conjoint (débit du registre reerByUser)
     ferrTaxOnRrif: number;
     ferrLogMsg?: string;
     // Guyton-Klinger
@@ -163,6 +167,7 @@ export function processJanuaryReset(
     let ferrMandatoryGross = 0;
     let ferrTaxOnRrif = 0;
     let ferrLogMsg: string | undefined;
+    const ferrGrossByUser = ctx.reerByUser.map(() => 0);
     // Règle ARC (cf docs/FISCAL_REFERENCE.md §6) : la conversion REER→FERR est obligatoire AU PLUS
     // TARD à la fin de l'année des 71 ans, mais AUCUN retrait minimum n'est dû l'année d'ouverture du
     // FERR. Pour le cas standard (conversion à l'échéance des 71 ans), le 1er retrait minimum
@@ -170,10 +175,28 @@ export function processJanuaryReset(
     // n'existe que pour une conversion VOLONTAIRE précoce (non modélisée ici).
     // (Révision 2026-06 : un commit avait passé le gate à 71 — anticipait d'un an le revenu imposable
     // + la retenue + le clawback PSV/SRG. Corrigé après audit fiscal-accuracy, choix de Marc.)
-    if (ctx.age >= 72) {
-        const rrifRate = helpers.RRIF_RATES[ctx.age] || 0.20;
-        ferrMandatoryGross = ctx.reer * rrifRate;
-
+    // [ITEM-2C] PER-CONJOINT : chaque conjoint de 72+ convertit SA part REER (`reerByUser[i]`) au facteur
+    // RRIF de SON âge. Avant : un âge MÉNAGE unique (user1) sur le pool entier → mauvais timing pour un
+    // couple à écart d'âge. Défaut additif : âges égaux ⇒ Σ = `reer × rate` (identique à l'ancien calcul).
+    const yearsElapsed = Math.floor(ctx.m / 12);
+    const currentAgeOfUser = (i: number): number => {
+        // user0 : `ctx.age` est SON âge courant authoritative (= users[0].age + yearsElapsed côté moteur).
+        if (i === 0) return ctx.age;
+        const u = ctx.users[i];
+        if (u?.age != null && Number.isFinite(u.age)) return u.age + yearsElapsed;
+        // Repli depuis `birthYear` : un conjoint réel saisi par année de naissance (sans `age`) doit quand
+        // même déclencher SA FERR — sinon sa part REER ne se convertirait jamais (sous-imposition silencieuse).
+        if (u?.birthYear != null && Number.isFinite(u.birthYear)) return (ctx.startYear + yearsElapsed) - u.birthYear;
+        return Number.NEGATIVE_INFINITY; // conjoint sans âge ni année de naissance → jamais FERR
+    };
+    for (let i = 0; i < ctx.reerByUser.length; i++) {
+        const ageI = currentAgeOfUser(i);
+        if (ageI < 72) continue;
+        const rrifRateI = helpers.RRIF_RATES[ageI] || 0.20;
+        ferrGrossByUser[i] = Math.max(0, Number.isFinite(ctx.reerByUser[i]) ? ctx.reerByUser[i] : 0) * rrifRateI;
+        ferrMandatoryGross += ferrGrossByUser[i];
+    }
+    if (ferrMandatoryGross > 0) {
         // V47: RRIF Marginal Rate Fix
         const priorYearGainsProxy = (ctx.taxCurrentYearGains / 0.25) || 0;
         const inflFactorAtNow = Math.pow(1 + ctx.simInflation / 100, ctx.m / 12);
@@ -208,7 +231,7 @@ export function processJanuaryReset(
         // l'affichage de la retenue mensuelle / WithheldTaxRrif / ImpotRetraitREER était faux.
         ferrTaxOnRrif = ferrMandatoryGross * rrifMarginalRate;
         const netRrif = ferrMandatoryGross - ferrTaxOnRrif;
-        ferrLogMsg = `🏦 FERR (${(rrifRate * 100).toFixed(1)}%): Brut ${ferrMandatoryGross.toFixed(2)}$ → Net ${netRrif.toFixed(2)}$ → Liquidités`;
+        ferrLogMsg = `🏦 FERR (per-conjoint): Brut ${ferrMandatoryGross.toFixed(2)}$ → Net ${netRrif.toFixed(2)}$ → Liquidités`;
     }
 
     // === 5. Guyton-Klinger trigger ===
@@ -232,6 +255,7 @@ export function processJanuaryReset(
         accGrossIncomeYearReset: 0,
         celiappTransferToReer,
         ferrMandatoryGross,
+        ferrGrossByUser,
         ferrTaxOnRrif,
         ferrLogMsg,
         guytonKlingerFreeze,

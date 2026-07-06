@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { Icon } from '../ui/Icon';
 import { parseBrokerCsv, holdingsToAssets, type ParsedBrokerCsv } from '../../services/import/parseBrokerCsv';
+import { PrivateAmount } from '../ui/PrivateAmount';
 import type { Asset } from '../../types';
 
 /**
@@ -103,8 +104,8 @@ export const ImportBrokerPositions: React.FC<Props> = ({ isOpen, onClose, onImpo
                                     {preview.holdings.slice(0, 8).map((h, i) => (
                                         <tr key={`${h.symbol}-${i}`}>
                                             <td className="p-2 font-mono text-ink-200">{h.symbol}</td>
-                                            <td className="p-2 text-right font-mono text-ink-300 privacy-blur">{h.quantity}</td>
-                                            <td className="p-2 text-right font-mono text-ink-300 privacy-blur">{fmt(h.avgCost)} {h.currency}</td>
+                                            <td className="p-2 text-right font-mono text-ink-300"><PrivateAmount>{h.quantity}</PrivateAmount></td>
+                                            <td className="p-2 text-right font-mono text-ink-300"><PrivateAmount>{`${fmt(h.avgCost)} ${h.currency}`}</PrivateAmount></td>
                                             <td className="p-2 text-ink-300">{h.accountType ?? 'NON-ENREG'}</td>
                                         </tr>
                                     ))}

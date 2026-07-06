@@ -18,6 +18,303 @@
 > phase suivante sans OK explicite de Marc** ; Q1/Q2 à poser (cf `A_FAIRE_MOI` O6) ; handover à jour
 > après chaque phase.
 >
+> **Session 2026-06-19 — ACC Lot 0 + Lot 1 (#379)** : Agent Control Center (`docs/BRIEF_CONTROL_CENTER.md`), exécution
+> LOT PAR LOT. **Lot 0** (test surface) = **Voie 1 viable** : le preview pane rend `127.0.0.1:4317` avec JS live (poll `/status`
+> mesuré au network, 0 erreur). **Lot 1** (capteur enrichi, `scripts/hooks/agent-status.mjs` + `settings.json` SubagentStop +
+> `.gitignore`) : prompt COMPLET → `agents[nom].message` ; au SubagentStop, extraction sortie+outils(+thinking) du transcript
+> `.jsonl` → `.claude/agent-transcripts/<id>.json` (gitignored) + extraits bornés dans status.json ; corrélation prompt→nom par
+> sous-chaîne du message ENTIER (longest-wins) — **bug live corrigé** (préambule commun attachait tout au 1er agent). ⚠️ **DÉCOUVERTE
+> LIVE : les transcripts SOUS-AGENTS n'ont PAS de blocs `thinking`** (`hasThinking:false`) → pas de « fil de pensée » pour les
+> sous-agents, on montre la SORTIE + les outils. Transcripts sous-agents = `.claude/projects/<session>/subagents/agent-<id>.jsonl`.
+> Panel code-reviewer+silent-failure APPROVE (findings intégrés). **Lot 2 (#380, mergé)** : route `/backlog` (`backlog-scan.mjs` scan READ-ONLY `BACKLOG.md`+`A_FAIRE_MOI`+git via `execFileSync` SANS shell, parsing TOLÉRANT, import dynamique → un scanner cassé ne tue pas `/status`). **Lot 3 (dashboard enrichi)** : cartes agents CLIQUABLES → tiroir détail (message+sortie+outils du transcript, focus-trap via `inert`, fermeture Échap/fond/✕) + **bloc Avancement** (métriques backlog, barres de phases, backlog groupé en cours/attente Marc/à venir/fait, **chips de filtre** + **recherche** client) ; polling `/status`+`/backlog` avec détection de changement ; XSS-safe (`el()`/`textContent`). Vérifié LIVE (preview : routes 200, 0 erreur, tiroir réel, filtres/recherche OK, `inert` pose/retire le focus-trap). Panel code-reviewer+silent-failure+a11y APPROVE (findings intégrés). **Lot 4 (workflows)** : ⚠️ DÉCOUVERTE — les dynamic workflows **se journalisent eux-mêmes** dans `<session>/workflows/wf_<runId>.json` (terminés) + `subagents/workflows/<runId>/journal.jsonl` (stream LIVE, le json final n'existe pas encore pendant le run) ; **PAS de hook** (les agents internes d'un workflow ne touchent PAS `agent-status.mjs` — 2 systèmes séparés). Livré : `workflow-scan.mjs` (read-only, PUR fs, zéro dép) + route `/workflows` + bloc dashboard (cartes de run : nom/statut/phases/agents+état/tokens/durée, run EN COURS surligné en tête, marqueur `stale` > 2 h). Vérifié LIVE : un workflow lancé apparaît EN COURS (agents `running`) puis passe en « récents ». Panel code-reviewer+silent-failure APPROVE (findings intégrés : warns sur faux négatifs muets, stale, label 60). **Lot 5 (présence)** : le hook `SessionStart` (`session-brief.mjs`) **démarre le serveur ACC au début de session** (détaché, s'auto-termine sur EADDRINUSE — plus tôt que `ensureAccServer` au 1ᵉʳ agent) + **surface l'URL** `http://127.0.0.1:4317` dans le brief → présence « un clic » (Marc épingle le preview une fois). Vérifié : le hook spawn bien le serveur (port 4317 écoute, `/health` + `/workflows` répondent). **✅ ACC COMPLET (Lots 0-5).** Limite assumée : un hook ne peut pas auto-ÉPINGLER le preview (UI app) → « un clic », pas « zéro ».
+>
+> **📋 FILE D'ATTENTE (2026-06-19)** : Marc a demandé l'**ACC d'abord** (« fais le acc avant tout »). **✅ ACC COMPLET — Lots 0-5 FAITS**
+> (Lot 0 test ✓ · Lot 1 #379 capteur ✓ · Lot 2 #380 `/backlog` ✓ · Lot 3 #381 dashboard ✓ · Lot 4 #382 workflows ✓ · Lot 5 présence ✓).
+> **PROCHAINE SESSION** : ORDRE 1 (R1→R6) ✅ + **PH4 COMPLET ✅ : A/B/C + D (Santé+poids store+2 ratios budget) + E (couple auto + override manuel) + F (abos)** → **ORDRE 2 (PH4) TERMINÉ.**
+> **ORDRE 3 = money-critical** : **dons (FA-6) ✅ FAIT 2026-06-23** ; RESTE : **ITEM-2C** (gates timing par conjoint) / **tables
+> fiscales** TP-1.G (personne vivant seule) / **FISC-WHT-HARDCODE** (retenue REER 0,15 en dur). **session DÉDIÉE** — panel
+> `financial-integrity`+`projection-validator`+`silent-failure-hunter` + **test discriminant `git stash` OBLIGATOIRE** par item.
+> Plan-first par item. Reste aussi les multi-courbes (Q1) et divers BACKLOG. Plus de chantier PH4 ouvert.
+> **Session 2026-06-23 — FA-6 (crédit dons + sous-imposition locatif/CCPC active) ✅ FAIT** : `utils/donationCredit.ts` (crédit par
+> paliers féd+QC, FISCAL_REFERENCE §10). ⚠️ Bug CRITIQUE trouvé en cadrant : `taxCurrentYear.revenu` (crédit + taxe locative/CCPC W5)
+> est **ÉCRASÉ** en décembre année ACTIVE (`taxDecember:406` `=` vs `+=` retraité) → crédit jeté + loyers/CCPC non imposés pour un actif.
+> Fix = router vers `divers` (jamais écrasé) via `addTaxDivers` — PAS `=`→`+=` (double-compterait la retenue salariale). **+ `FA-6-CREDIT-CAP`
+> inclus** : crédit non remboursable PLAFONNÉ à l'impôt dû (champ `donCredit` accumulé → cap en décembre à `grossIncomeTax+gains`, excédent
+> perdu) — corrige le sur-crédit d'un donateur bas-revenu (silent-failure-hunter). Panel financial-integrity+projection-validator+silent-failure
+> + discriminants `git stash` (fix d'imputation ET cap) + conservation verte. Follow-up restant : **`W5-TAX-PROXY`** (taux locatif 0,45 / CCPC 0,36 plats non sourcés).
+> **Session 2026-06-23 — AUDIT FINANCIER + CODE exhaustif ✅** (`docs/AUDIT_FINANCIER_2026-06-23.md`, panel 5 agents sur `main`
+> ce61ee1) : **cœur AAA confirmé** (fiscalité 0 écart, conservation 29 scénarios résiduel ≤0,03 $, suite 2329 verte, FA-6 conforme).
+> Findings de juin quasi tous FERMÉS. Nouveaux findings PÉRIPHÉRIQUES routés au BACKLOG (§ audit 2026-06-23) : `NAN-INPUT-HARDENING`
+> (durcissement défensif, 7 sites, plan-first), `TC-FX-HARDCODE` (TaxCenter FX 1.38 en dur), `SEC-PRIVACY-BLUR-INPUTS` (Loi 25),
+> `SEC-PBKDF2-DRIVE` (100k→600k), + M1/M5/HIST/log-regex (LOW). **Aucun ne menace la conservation/fiscalité** — lot 1 (sûr) puis NaN-hardening.
+> **Correction des findings (PM a séquencé en 5 lots)** : **LOT 1 ✅ (#407)** (`SEC-PBKDF2-DRIVE` 600k+fallback ; `SEC-LOG-DEBT-REGEX`).
+> **LOT 2+3 ✅ FAIT** (batché — UI pure) : `SEC-PRIVACY-BLUR-INPUTS` (`PrivateNumberInput` focus-to-edit, valeur hors DOM) + `TC-FX-HARDCODE`
+> (FX réel du store + constantes). Panel a11y+security-privacy+financial-integrity+silent-failure+code-reviewer → fix convergents intégrés
+> (id sur bouton, focus-ring, ref-focus, re-mask sur activation privé, `CAPITAL_GAINS_INCLUSION_STANDARD`). RESTE : LOT 5 `M1`+`M5-INV1`+
+> `HIST-NW` (LOW), LOT 4 `NAN-INPUT-HARDENING` (moteur, plan-first+panel, EN DERNIER). Découverte → BACKLOG : `SEC-PRIVACY-RETIREMENT-RRQ-PSV`
+> (rrq/psv jamais masqués, LOW). Bloqués → A_FAIRE_MOI : `FISC-WELCOME-2026`, `W5-TAX-PROXY` (a/b).
+> **LOT 5 ✅ FAIT** (doc-only) : `M5-INV1-EXTEND` était **déjà couvert** par INV-9 (lignes 346-354 : reconstructabilité hypothèque +
+> discriminant DetteTotale) → fermé sans test dupliqué ; `HIST-NW-NO-DEBT` documenté aux 2 sites (module + `FutureProjection`, NW passé
+> sans dettes faute d'historique). Question produit → A_FAIRE_MOI `HIST-NW-DEBT-DISCLAIMER` (a/b/c).
+> **LOT 4 ✅ FAIT** (moteur, panel 4 agents + discriminant git-stash) : `NAN-INPUT-HARDENING` — gardes `Number.isFinite` sur les VRAIS
+> vecteurs (retirementIncome `??`, useDerivedFinancials arith. nue, monthlyEvents `??`, w5Effects rental `!==0`, helpers `NaN<=0`+rateAnnual,
+> portfolio `||`→isFinite pour Infinity). Faux positifs écartés (portfolio `||` rattrapait NaN ; taxDecember déjà gardé ; business `>0`).
+> **INV-8 corrigé** (était VACANT : `num()` sanitisait avant `isNaN`). Panel a trouvé `rateAnnual` non gardé → corrigé. Findings différés →
+> BACKLOG `NAN-OBSERVABILITY` + `NAN-MUTATOR-CENTRAL`. Conservation 19/19.
+> **LOT 6/M1 ✅ FAIT** (moteur, panel 4 agents + discriminant) : `FISC-WHT-HARDCODE` — `totalTaxesPaid` `*0.15` → `withholdingForGrossRRSP`
+> (tiered 19/24/29 %, même barème que le cashflow). Non-double-compte vérifié (acompte que décembre réconcilie). Mesuré 211,6→270,1 k$
+> (discriminant git-stash). ⚠️ A cassé `projection.survivor.test.ts` (écart 3,77→2,21 %, artefact du biais 0,15) → seuil re-calibré 0,03→0,015
+> + chiffres MAJ (pas affaiblir : direction tient). ⚠️ PIÈGE INFRA : la course git-stash CONCURRENTE (4 agents + suite) a donné un faux gate
+> VERT → re-mesuré en isolation (leçon CLAUDE.md). Résiduels → BACKLOG `WHT-DISPLAY-EXACT`.
+> **✅✅ TOUS LES FINDINGS DE L'AUDIT 2026-06-23 CORRIGÉS** (6 lots, PR #407-#411). + **SEC-PRIVACY-RETIREMENT-RRQ-PSV ✅ FAIT** (suivi :
+> les 2 champs rente RRQ/PSV migrés vers `PrivateNumberInput` → volet vie privée des champs éditables COMPLET). Restent en BACKLOG : découvertes
+> LOW (NAN-OBSERVABILITY, NAN-MUTATOR-CENTRAL, WHT-DISPLAY-EXACT) + A_FAIRE_MOI : `FISC-WELCOME-2026`, `W5-TAX-PROXY`, `HIST-NW-DEBT-DISCLAIMER`.
+> **ORDRE 3 / ITEM-2C — FERR per-conjoint ✅ FAIT (2026-06-25, money-critical, options 3 de Marc)** : Phase 0 (golden #413) +
+> Phase 1+2 FERR (1 PR) : `taxJanuary.ts` boucle sur `reerByUser` + âge par conjoint (chaque conjoint de 72+ convertit SA part au
+> facteur RRIF de SON âge) ; `reerByUser` passe de SHADOW à PILOTE. Défaut additif (ancres equal/solo INCHANGÉES) ; golden age-gap
+> re-basés + preuves-de-fix (discriminant git-stash 5/7). ⚠️ Panel a trouvé un **flux fiscal FANTÔME au DÉCÈS** (part du défunt
+> FERR-convertissait → +63 k$ survivant) → corrigé par roulement REER conjugal `reerByUser=[Σ,0]`. + repli `birthYear`, 2 tests unitaires.
+> Conservation 20/20. **+ Sous-phase PSV/RRQ per-conjoint ✅ FAIT (2026-06-25, plan-first OK Marc)** : `rrqMonthly`/`psvMonthly`
+> (`retirementIncome.ts`) en SOMME per-conjoint — départ RRQ/PSV + bonus PSV 75+ à l'âge de CHAQUE conjoint sur SA part. Modèle d'âge
+> RELATIF `ctx.age + (âgeDépart_i − âgeDépart_0)` (symétrique, golden inchangé, 10 tests `retirementIncome` préservés — leçon CLAUDE.md).
+> Mode SURVIVANT = modèle familial INCHANGÉ (zéro impact FISC-SURVIVOR). Golden `couplePsvBonus`/`couplePsvStartGap` re-basés + discriminant 4/9.
+> **⏳ RESTE (faible priorité)** : reset REER 71 per-conjoint (~0 impact) + PSV/RRQ AU DÉCÈS (raffinement survivant). ITEM-2C ≈ COMPLET.
+> **Priorisation PM (2026-06-25, « fais selon le PM »)** : sa reco #1 TEST-PROJ-MODULES était PÉRIMÉE (49 tests déjà là — leçon R2-FIRE) →
+> passé à #2 **HEALTH-SAVINGS-RATE ✅ FAIT** : taux d'épargne + coussin du score de santé excluent enfin les postes ÉPARGNE (helper
+> `monthlyConsumptionExpenses`). Découverte → BACKLOG `HEALTH-SAVINGS-CONSISTENCY` (4 surfaces IA/MCP/moteur à uniformiser sur `isSavingsNature`).
+> #3 **DEP-UNDICI = PÉRIMÉ** (lockfile déjà à undici 7.28.0, `npm audit` 0 vuln — fermé). #4 **NAN-OBSERVABILITY ✅ FAIT** (helper
+> `logErrorThrottled` + 2 sites monthlyEvents/useDerivedFinancials). ⚠️ **3 des 5 recos PM étaient PÉRIMÉES** (BACKLOG en retard sur l'état réel) →
+> leçon CLAUDE.md `PM-STALE-BACKLOG`.
+> **PASS de de-staling (workflow `backlog-verify`, 2026-06-26)** : 12 items actionnables vérifiés contre le code → **11 VALIDES, 1 PÉRIMÉ**
+> (FMT-CASING-ACCOUNTTYPE fermé). NAN-MUTATOR-CENTRAL = VALIDE mais **DIFFÉRÉ** (Infinity inatteignable depuis l'UI, `numericInput` garde déjà ;
+> plan en réserve). FISC-SRCDED-NOOP = **2 bugs confirmés** (ordre + unité ~12×, cashflow mensuel affiché, net annuel ≈ inchangé). WHT-DISPLAY-EXACT,
+> FISC-ASSETLOC-INTL = VALIDES, plan-first. Le reste (REEE-LITERALS, NW-ASSETBREAKDOWN-DRY, DETTE-DEADCODE, PERF-WITHHOLDING…) = VALIDES LOW.
+> **HEALTH-SAVINGS-CONSISTENCY ✅ FAIT (choix Marc)** : `isSavingsNature` (NFD) sur 5 surfaces/6 sites (4 du BACKLOG + 5ᵉ `Budget.tsx` trouvée par le panel) ;
+> discriminant git-stash 2500→3500 + panel (conservation 20/20).
+> **FISC-SRCDED-NOOP ✅ RÉSOLU par RETRAIT (choix Marc)** : enquête a prouvé que les 2 bugs visaient du code MORT (`computeMonthlyWithholding`,
+> sortie écrasée par l'override décembre avant règlement ; perturbation +999 999/mois → golden byte-identique). Fonction RETIRÉE (résout aussi
+> PERF-WITHHOLDING + perf MC). Panel 2329/2329. Leçon CLAUDE.md FISC-SRCDED-NOOP (test de perturbation pour prouver « code mort »).
+> **WHT-DISPLAY-EXACT ✅ FAIT (2026-06-26, choix Marc)** : le compteur d'AFFICHAGE `totalTaxesPaid` additionne désormais la retenue REER
+> EXACTE PAR TIRAGE (nouveau champ `CashflowState.rrspWithholdingMois`, round-trippé buildCashState/applyCashState, reset/mois) au lieu de la
+> recalculer sur le brut MENSUEL agrégé (barème non additif → sur-estimait les mois multi-tirages). + dédup volet b : fonction locale
+> `rrspWithholding` → source unique `withholdingForGrossRRSP`. Découplage CF-2 (delta `−rrspWithholdingAtStart` pour rester correct au 2ᵉ appel
+> du sauvetage PV-6). Mesuré git-stash 270 087 → 269 132 $ (−955 $, direction correcte). Test discriminant unitaire RED→GREEN (3 tirages palier 1,
+> somme franchit le palier 2). **Aucun impact NW** (compteur display/ranking). Panel 4 agents APPROVE, conservation 12 inv. verte, suite 2330/2330.
+> **REEE-LITERALS ✅ FAIT (2026-06-26)** : constantes fiscales SCEE/IQEE/REEE de `childrenReee.ts` extraites en constantes nommées+sourcées
+> (pointent vers `FISCAL_REFERENCE §REEE`) — refactor PUR, golden/conservation/suite byte-identiques. `REEE_AIP_TAX_RATE` (~20 % PRA) nommé +
+> marqué « approximation modèle » (à raffiner). Note FISCAL_REFERENCE l.450 passée de « dette LOW » à « résolu ».
+> **DETTE-DEADCODE ✅ FAIT (2026-06-26)** : retiré `runBuyVsRent` + types `BuyVsRent*` + son test (test-only, zéro call-site prod) et
+> `buildTestFixtures` (wrapper compat jamais appelé) + imports orphelins. EXCLUS après vérif : `clearCredentials` (mcp/, touch-on-request),
+> façade `getProfile` (contrat `MarketDataProvider` testé). Bruit knip restant (GST/QST/SCHL/interfaces) NON purgé (règle). typecheck+build+suite verts.
+> **PLANNING-ANNUAL-SUB-12X ✅ FAIT (2026-06-26, « fais tout »)** : KPI abos (`Planning.tsx`) comptaient un abo ANNUEL ×12 (Σ `averageAmount` brut ×12).
+> Helpers purs `monthlyEquivalent`/`totalMonthlyCost`/`totalYearlyCost` (`utils/subscriptions.ts`) dérivés de `yearlyCost` + gardes `Number.isFinite`.
+> Affichage display-only (zéro impact NW, confirmé financial-integrity). 7 tests dont discriminant. Follow-ups → `HEALTH-SUB-DRY`, `PLANNING-ANNUAL-CALENDAR`.
+> **⚠️ PERF-BOOT/D7 DÉFÉRÉ (pas un quick-win)** : `hydrateAssets` (`App.tsx:420`) `sleep(2500)` protège AUSSI CoinGecko (~30/min, pas que Finnhub 60/min) →
+> un speedup provider-AVEUGLE déclenche des 429 crypto au cold-boot (régression UX). Vrai fix = provider-aware (M-L) + plan-first. Item rouvert dans cet état.
+> **A11Y-INK500 LOTS 1+2 ✅ FAITS (2026-06-26, « fais tout »)** : `text-ink-500`→`text-ink-400` (AA normal ✅) sur classification a11y-auditor PAR-OCCURRENCE.
+> **Lot 1** = 6 écrans quotidiens (Dashboard/Budget/BudgetGroupTable/Investments/Transactions/Planning), 43 occ. + 10 gardées. **Lot 2** = LifeEvents/RealEstate/
+> FutureDetailModal/ChildPlanning/retirement(RetirementIncomeCard+AssetLocationCard), 37 occ. + 8 gardées (+ fix empty-state LifeEvents:367 + `aria-hidden` `→` AssetLoc:215).
+> Panel a11y-auditor + code-reviewer APPROVE chaque lot, check-contrast confirme, suite verte. **RESTE ~37 fichiers/~105 occ.** en lots suivants (investments/*, projection/*,
+> sidebar/*, setup/*, realestate/*…). Découverte → `A11Y-BUDGETTABLE-SELECT-KBD` (selects+bouton invisibles au clavier). Méthode rodée : a11y-auditor classe → sed line-adressé → vérif GARDER → panel.
+> **⚠️ IA-NAV-LABELS = DÉCISION UX MARC** (pas un bug) : rail délibérément collapsed-by-default (hover/focus expand, Phase B.1) — NE PAS override sans OK.
+> **⚠️ PERF-BOOT/D7 DÉFÉRÉ** (CoinGecko ~30/min ; provider-aware requis, plan-first).
+> **Prochaines pistes plan-first** : FISC-ASSETLOC-INTL (M, money-critical) ; A11Y-INK500 lots suivants (par écran) ; reste lot hygiène LOW (NW-ASSETBREAKDOWN-DRY — partie `currentLiquidity`
+> safe, `assetBreakdown` a 3 deltas sémantiques à garder) ; + WHT-DISPLAY-MELTDOWN / FISC-REEE-AIP-MODEL (LOW money-critical, discriminant requis).
+> + décisions Marc en attente : W5-TAX-PROXY, HIST-NW-DEBT-DISCLAIMER, FISC-WELCOME-2026.
+> ⚠️ Leçons : registre per-conjoint pilote → gérer décès (fantôme) ; 2ᵉ course git-stash (vérifs isolées) ; gate d'âge per-conjoint = ancrer sur ctx.age + écart.
+> **Session 2026-06-23 — quick-win `BUDGET-NATURE-FREEFORM` ✅ FAIT** : les 56 items de fixtures (testBudget + 6 personas) avaient
+> des natures LIBRES violant l'union typée `'Besoin'|'Envie'|'Epargne'` → tout en « Envie » + CELI/REER (`'Épargne'` accentué)
+> comptés comme dépenses (groupement, coupleAnalysis, dépenses IA/Dashboard/NextBestAction). Normalisés 50/30/20. Panel
+> financial-integrity+code-reviewer = CORRECTION, 0 régression (2285 verts). Donuts montrent enfin Besoins ≠ 0. Nouveau finding
+> BACKLOG `HEALTH-SAVINGS-RATE-DIVERGENCE` (HealthIndicator:93 n'exclut pas l'épargne du taux d'épargne — pré-existant, à trancher).
+> **Session 2026-06-23 — `BUDGET-DONUT-SVG-ARIA` ✅ FAIT (#403)** : les 2 donuts 50/30/20 enveloppent `<ResponsiveContainer>` dans
+> `<div aria-hidden="true">` (SVG Recharts hors traversée SR ; nom accessible sur `role="img"`, données dans `ChartDataTable` sr-only).
+> ⚠️ `BUDGET-KEY-WARNING` reste OUVERT : hypothèse `nameKey="name"` **TESTÉE et RÉFUTÉE** (ne change pas la clé interne Recharts) →
+> investigation dédiée requise (instance « mesurer pas raisonner »). Non-fatal (warning React dev).
+> ⭐ **PATRON migration store ADDITIVE** (validé PH4-C + PH4D-WEIGHTS-STORE) : champ `optional` dans `AppState` (ne casse pas les fixtures),
+> valeur fournie à l'**état initial** du store, `partialize` allow-all-sauf-denylist le persiste AUTO, et le **`merge` Zustand par défaut**
+> (`{...current, ...persisted}`) GARDE la valeur initiale quand l'état persisté ne l'a pas → **AUCUN bump v7→v8** ni `migratePersistedState`.
+> Pour migrer une vieille clé localStorage : la lire à l'init (helper testable, ex. `loadLegacyHealthWeights`). Le **v7→v8 de PH4-F** est DIFFÉRENT
+> (vrai bump → toucher `migratePersistedState` + version, test RED d'abord).
+> Money-critical (M1 dons / M2 ITEM-2C / M3 tables fiscales) = ORDRE 3 (panel + discriminant obligatoires).
+> ⚠️ **Quick-win découvert (BACKLOG `BUDGET-NATURE-FREEFORM`)** : les `TEST_BUDGET_ITEMS` ont des natures LIBRES (violent l'union typée)
+> → les 2 donuts 50/30/20 montrent **Besoins 0 %** pour les personas test (un vrai user a la dropdown typée → OK). Fix = aligner les
+> fixtures sur 'Besoin'/'Envie'/'Epargne' (PAS le groupement) ; relancer la SUITE COMPLÈTE après (tests à seuil keyés personas).
+>
+> **Session 2026-06-22 — PH4E-OWNER-EDIT ✅ (override couple, PH4-E + PH4 COMPLETS)** : colonne « Conjoint » dans le tableau `Transactions.tsx`
+> en mode couple — un `<select>` par ligne (Auto / prénom conjoint 0 / prénom conjoint 1) qui OVERRIDE `Transaction.ownerId` (`updateOwner`,
+> `undefined` = retour AUTO par type de poste). Lu depuis `config` du store (`isCouple = user[1] nommé`). Table desktop (colonne conditionnelle) +
+> carte mobile. L'override alimente `resolveTransactionOwner` (ownerId explicite gagne, #398, déjà prouvé). **Revue adversariale (workflow,
+> 3 dim × vérif) : 5 findings intégrés** — (1) `useFinanceStore` en tête ; (2) **HIGH `isSolo` BUDGET pré-existant** : `config.users` est un
+> tuple `[User,User]` → `length>1` TOUJOURS vrai → la section couple s'affichait en SOLO (un override orphelin y montrait un montant inexpliqué)
+> → `isSolo` basé sur le NOM (cohérent avec `isCouple`) ; (3) select sur DÉPENSES seulement (revenus/transferts ignorés par le calcul → « — ») ;
+> (4) `aria-label` + date (unicité si même marchand) ; (5) `touch-target` mobile. 1 réfuté (focus-ring : tous les selects pareils, pré-existant).
+> 7 tests (5 owner + 2 Budget solo/couple). ⚠️ Branche EMPILÉE sur PH4D (bb4c37d pre-squash) → reconciliée via `git merge origin/main`
+> (#400 squashé en ac2d3ef). **PH4 ENTIÈREMENT COMPLET** → prochain = ORDRE 3 money-critical (session dédiée).
+>
+> **Session 2026-06-22 — PH4D-BUDGET-RATIOS ✅ (2 ratios santé, PH4-D complet)** : `utils/healthRatios.ts` (purs) — **adhérence budget**
+> (`computeBudgetParityScore` : réel vs cibles du mois COMPLET précédent, hors postes ÉPARGNE, dépassement seul pénalise) + **poids des abos**
+> (`computeSubscriptionLoadScore` : `Σ yearlyCost/12` / revenu net, plafond 15 % → évite le ×12 des abos annuels). `HealthWeights` 4→6 +
+> `normalizeHealthWeights` (rétrocompat lecture, pas de bump). `HealthIndicator` : flag `available` + **`totalScore` EXCLUT les métriques sans
+> donnée** (un 0 par absence ne tire plus le score — corrige aussi FIRE). **Revue ADVERSARIALE (workflow ultracode, 5 dimensions × vérification,
+> 14 agents) : 6 findings RÉELS intégrés** (épargne exclue du dénominateur ; `monthlyExpenses` normalisé en fréquence — bug PRÉ-EXISTANT exposé ;
+> orphelins distingués de « aucune dépense » ; aucun abo épinglé → indispo cohérent ; a11y `—` en `ink-400`) + **3 réfutés à raison**. 62 tests
+> ciblés verts + suite complète. **PH4 : A/B/C ✅ + D ✅ + E ◑ + F ✅** → reste `PH4E-OWNER-EDIT` (LOW) puis ORDRE 3 money-critical.
+>
+> **Session 2026-06-22 — PH4-F ✅ (abonnements persistés)** : `AppState.subscriptions?: RecurringItem[]` (réutilise `RecurringItem`).
+> **DÉCISION : ADDITIF SANS bump v7→v8** (le plan disait v7→v8, mais les abos n'étaient JAMAIS stockés — seulement détectés à la volée
+> par IA/heuristique → RIEN à migrer ; le pattern additif validé #397 prouve qu'un champ optionnel ne nécessite aucun bump ; plus SÛR =
+> zéro code de migration = zéro bug de migration). `utils/subscriptions.ts` (`subscriptionKey`/`isPinned`/`mergeSubscriptions`/`addSubscription`/
+> `removeSubscription`, purs, dédup par marchand). `Planning.tsx` lit le store + boutons Épingler/Désépingler (l'onglet « Charges fixes & Abos »
+> existait déjà, `section='fixed'`). **Test de migration RED écrit ET PROUVÉ** (retiré `subscriptions:[]` du store → test échoue « undefined ≠ [] »).
+> 13 tests (util + migration). Panel code-reviewer + silent-failure + financial-integrity (zéro double-comptage, dédup) + security-privacy (même
+> classe de sensibilité que `transactions`, chiffré au repos) APPROVE. Découverte routée BACKLOG : `PLANNING-ANNUAL-SUB-12X` (abo annuel ×12,
+> pré-existant). **PH4 : A/B/C ✅ + D ◑ + E ◑ + F ✅.**
+>
+> **Session 2026-06-22 — PH4-E ◑ (dépenses réelles par conjoint)** : `Transaction.ownerId?: 0|1` (additif) ; `utils/budget.ts`
+> `resolveTransactionOwner` (override `ownerId` gagne ; sinon AUTO par `BudgetCategory.type` : `Perso 1`→0, `Perso 2`→1, `Commun`→null)
+> + `computeActualByOwner` (réel par conjoint, purs, réutilisent `matchTransactionToCategory`). `Budget.tsx` : `actualByOwner` dans le
+> useMemo de parité → `coupleAnalysis` (`user1Actual/user2Actual/communActual`) → carte couple « Perso réel » (masqué en solo). 7 tests
+> (4 resolve + 3 compute). Panel financial-integrity (**conservation prouvée** : owner0+owner1+commun == totalSpent, seaux disjoints) +
+> code-reviewer + silent-failure APPROVE. **Scope** : auto-attribution + affichage ✅ ; **override éditable dans l'UI transactions → BACKLOG
+> `PH4E-OWNER-EDIT`** (l'auto couvre le défaut). **PH4 : A/B/C ✅ + D ◑ + E ◑.**
+>
+> **Session 2026-06-22 — PH4D-WEIGHTS-STORE ✅** : poids de l'`HealthIndicator` migrés de localStorage (`healthIndicator:weights:v1`)
+> vers le **store Zustand persisté** — `AppState.healthWeights?` (additif, PAS de v7→v8), `utils/healthWeights.ts` (`DEFAULT_HEALTH_WEIGHTS`
+> + `loadLegacyHealthWeights` lu à l'init du store ; le `merge` défaut garde les poids user → zéro perte). HealthIndicator lit/écrit le store
+> (`setAppState`), plus de loadWeights/saveWeights/localStorage. 7 tests migration + 2 tests composant adaptés. Panel code-reviewer + silent-failure
+> APPROVE (logError sur corruption, `@deprecated` sur la clé). Cf. ⭐ PATRON migration additive ci-dessus. **Reste PH4-D : `PH4D-BUDGET-RATIOS`.**
+>
+> **Session 2026-06-22 — PH4-D ◑ PARTIEL (« Santé » ramené dans Budget)** : l'`HealthIndicator` (composant INCHANGÉ) est DÉPLACÉ
+> du Dashboard vers un nouveau sous-onglet **« Santé »** de `BudgetWorkspace` (`Dashboard.tsx` : render + import retirés ; `BudgetWorkspace.tsx` :
+> sous-onglet 'sante' icône `health`). **e2e `kpi.spec.ts` MIS À JOUR** (test #2 navigue Budget→Santé au lieu du Dashboard — sinon CI rouge ;
+> attrapé par code-reviewer). Le test unit `HealthIndicator.test.tsx` (rend le composant via son chemin inchangé) → OK. **Scope RÉDUIT
+> volontairement** (slice sûre, session à 10 PR) : les 2 autres parties de PH4-D → BACKLOG `PH4D-WEIGHTS-STORE` (poids localStorage→store,
+> additif) + `PH4D-BUDGET-RATIOS` (ratios parité/abos, schéma poids 4→6). Panel code-reviewer + silent-failure + a11y APPROVE. **PH4 : A/B/C ✅ + D ◑.**
+>
+> **Session 2026-06-22 — PH4-C (objectif d'épargne lié au budget) ✅ FAIT** : `SavingsGoal.linkedBudgetCategoryName?` (lien par NOM
+> = clé d'`actualsMap`, pas l'`id?` optionnel) ; `utils/budget.ts monthlyActualsMap` (pur, mois courant, réutilise `computeBudgetParity`) ;
+> `BudgetWorkspace.tsx` calcule le mois courant (réactif, `monthStr` dans les deps) + passe à `Planning section="goals"` ; `Planning.tsx` :
+> dropdown de lien (form + par objectif éditable) + « Accumulé / cible / **Versé ce mois** » (formatCAD + PrivateAmount). **Migration : AUCUN
+> code** (champ optionnel additif, pas de Zod strict). 6 tests `monthlyActualsMap`. Panel (financial-integrity JUSTE + silent-failure +
+> code-reviewer + a11y) : fixes intégrés — **lien orphelin** (catégorie renommée/supprimée) → badge « ⚠ Lien invalide » (plus de « 0 » muet) ;
+> token `text-info-300` INEXISTANT → `info-400` (RÉCIDIVE de FIX-INK600 → leçon CLAUDE.md renforcée). Limite documentée `[PH4C-SAVINGS-NATURE]`
+> (BACKLOG, LOW) : catégorie nature « Épargne » (virements exclus) → « versé 0 ». **PH4 : A/B/C ✅ → reste D/E/F.**
+>
+> **Session 2026-06-22 — PH4-B (donut 50/30/20 réel vs théorique) ✅ FAIT** : `utils/budget.ts computeGoldenSplit` (pur, clamp ≥0 +
+> garde NaN/division-zéro, partagé théo/réel) + `GOLDEN_IDEAL`. `Budget.tsx` : 2ᵉ donut « Ta répartition réelle » (Besoins/Envies =
+> Σ actualsMap par groupe ; Épargne réelle = revenu réel − dépenses réelles) + table comparative **Réel · Cible · Idéal** (écart ±2 pts
+> vert/orange), caption sr-only, `ChartDataTable` sr-only. ⚠️ Panel `silent-failure-hunter` : `Math.max(0,…)` masquait un **déficit réel**
+> → note « Déficit réel de X » quand dépenses > revenu (no-fake-data). a11y : panel a MESURÉ tous les contrastes PASS. 6 tests
+> `computeGoldenSplit` + suite complète verte. Découvertes BACKLOG : `BUDGET-NATURE-FREEFORM`, `BUDGET-DONUT-SVG-ARIA` (pré-existants).
+>
+> **Session 2026-06-22 — PH4-A (parité Budget↔Transactions) ✅ FAIT** : `utils/budget.ts` (`matchTransactionToCategory` règle UNIQUE
+> exact+substring + `computeBudgetParity` → `actualsMap`/`totalSpent`/`orphanCategories`/`itemsWithoutTransactions`). `Budget.tsx` :
+> réels ET tendances 6 mois via la MÊME règle (avant : tendances en exact seul + comptaient les doublons → divergence supprimée).
+> Section UI « Parité » (orphelins + postes jamais rapprochés sur TOUT l'historique ; épargne exclue accent-insensible ; empty-state).
+> ⚠️ Panel `financial-integrity` a attrapé une **régression $** (sortir les orphelins d'`actualsMap` faisait baisser le « Total dépensé »
+> /Restant/projection/IA) → `totalSpent` (matchés+orphelins) préserve le total EXACT d'avant. a11y h2/h3, key robuste. 14 tests utils +
+> suite complète verte. Découverte hors scope : `BUDGET-KEY-WARNING` (warnings React clés dupliquées sur la page Budget, pré-existant, BACKLOG).
+>
+> **Session 2026-06-22 — R6 (personas de test) ✅ FAIT** : tous les personas ouvrent désormais toutes les pages data (aucune
+> `PageSetupGate`). `isActive:true` sur les childGoals (coupleConfort via `TEST_CHILD_GOALS`, autonomeMono) ; `setupOptOut` par
+> persona (karim/preRetraite `{debts,realEstate,children}`, jeuneCoupleDink `{children}`, autonomeMono `{realEstate}`,
+> lea/coupleDettes `{realEstate,children,lifeProjects}`) + **micro-actif CELI** (lea/coupleDettes, prérequis `assets` non opt-outable).
+> Garde-fou `tests/components/setup/personaGates.test.ts` (7 personas × pages data via source unique `PAGE_SETUP`+`REQUIREMENTS`).
+> Actions/Assistant restent gated = clé API (par design). ⚠️ Découverte pré-existante `PERSONA-ASSET-PERF` (BACKLOG) : les actifs
+> de tous les personas omettent `performance`/`currency` (cast `as unknown as Asset[]`) → `AiAssistant` rend `+undefined%` en test
+> avec clé. Aussi ce jour : `DEP-UNDICI` résolu (PR Dependabot #366 mergée → 0 alerte), ménage des branches locales.
+>
+> **Session 2026-06-22 — R4 (boot-restore + densité) ✅ FAIT** : **R4-P1 (boot-restore)** était DÉJÀ en place (`App.tsx:72-96`,
+> PH2-d : `isProjectionLocked` persisté → `loadLockedProjection()` → `setLockedProjection` au mount, gère ok/unreadable/empty +
+> toast) → vérifié, zéro patch. **R4-P4 (densité)** : cap fixe d'icônes baissé **40/24 → 24/16** (`MAX_LIFE_ICONS`/`MAX_FLOW_ICONS`
+> dans `FutureProjection.tsx`) pour « dézoomé = peu d'icônes » ; le LOD « zoom = toutes » était déjà assuré (fenêtre zoomée < cap) ;
+> pinned (FIRE) jamais écrêté. ⚠️ **Formule du plan `(visMax−visMin)/6` REJETÉE** (à l'envers : aurait montré PLUS d'icônes dézoomé
+> et écrêté en zoom) → un cap FIXE plus bas est le correctif correct (décision Marc 2026-06-22 : baisse modérée). Aussi : `DEP-UNDICI`
+> planifié (PR #389 : 2 alertes Dependabot `undici` dev-dep → merger la PR Dependabot #366) ; ménage des 13 branches locales `[gone]`.
+>
+> **Session 2026-06-22 — R3 (tooltip figeable) ✅ IMPLÉMENTÉ** (blueprint suivi à la lettre, choix Marc « clic = fige ») :
+> clic sur le graphe Futur = FIGE l'infobulle (portail `createPortal` body, `position:fixed`, ancré/scrollable/interactif,
+> `z-290` < modale `z-300`) ; survol = suit la souris (`pointer-events:none`) ; Échap / clic-dehors libère ; **coexistence** avec
+> `FutureDetailModal` via bouton « Détail complet » (+ pastilles d'événement inchangées). `<Tooltip content={()=>null}>` garde
+> Recharts actif (alimente `onMouseMove`/`lastHoverPointRef` + le curseur). **Nouveaux fichiers** : `utils/chartTooltip.ts`
+> (`resolvePointFromClick` + `clampTooltipPosition`, purs), `hooks/useChartTooltipPosition.ts` (machine d'état `idle/hovering/frozen`,
+> position en `useRef` + mutation DOM directe = pas de re-render 60fps, listeners Échap/clic-dehors montés en gelé seulement, focus
+> a11y). `ExpertTooltip` découplé de Recharts (prend `data` direct + `frozen`/`onOpenDetail`). **Tests** : 34 unité (utils/hook/tooltip)
+> + 2 e2e (figeage, invariant mousemove, Échap, « Détail complet »→modale) — tous verts ; suite complète + build verts. Panel
+> `code-reviewer`+`silent-failure-hunter`+`a11y-auditor` : 2 findings réfutés (mesurés), corrigés sur surfaces R3 (contraste footer
+> `ink-400`, cible tactile 44px). ⚠️ **Leçons** (cf CLAUDE.md) : le preview headless rend `window` 0×0 → Recharts (ResizeObserver) ne
+> dessine PAS le SVG → vérifier l'interaction graphe par e2e (vrai viewport Chromium), pas par le preview. Le graphe Futur est GATED
+> derrière le bouton « vois directement ta projection actuelle (sans optimiser) » → l'e2e doit le cliquer d'abord. Follow-ups routés
+> BACKLOG : `FIX-INK600-TOKEN` ✅ **FAIT (2026-06-22, PR séparée)** — `text-ink-600` (hors palette) → `ink-400` sur 9 usages/7 fichiers (AA normal mesuré). Reste `A11Y-CHART-KEYBOARD` : accès CLAVIER du graphe (préexistant, mitigé sr-only `ChartDataTable`).
+>
+> **Session 2026-06-19 — R1 (LABEL-NW-SUCCESSORAL) ✅ — 1ᵉʳ chantier autonome** : libellé trompeur « Patrimoine projeté »
+> (qui affichait en fait `estateNetWorth`) renommé **« Patrimoine successoral, avec rentes »** + **tooltip** (nouveau prop
+> `tooltip` sur `KPIStat`) sur 5 sites (FutureProjection KPI, Budget, StressTestPanel, GoalSeekerCard `title`, prompt AiAssistant).
+> Fallback CONDITIONNÉ (libellé neutre si `estateNetWorth`=0, sinon « avec rentes » mentirait sur le `finalNetWorth` affiché —
+> attrapé par financial-integrity). a11y durcie (`Tooltip` : `aria-describedby` sur l'enfant via `cloneElement` + fermeture Échap ;
+> déclencheur `<button>` aria-label court au lieu de `role="img"`). Pure UI, zéro moteur. Typecheck + tests ciblés (22) verts.
+> **CHANTIERS : R1 ✅ → reprendre R2** (annotation « FIRE atteint » au 1ᵉʳ mois `NetWorth ≥ FireTarget`, `FutureProjection.tsx` `lifeMarkers`).
+>
+> **Session 2026-06-20 — R2 (annotation FIRE) ✅ — PIVOT source-unique (revue adversariale ultracode)** : ⚠️ DÉCOUVERTE — le
+> MOTEUR émet DÉJÀ `'Objectif FIRE Atteint 🔥'` (`projection.ts:1438`, seuil inflaté) → la pastille FIRE existait. Recalculer
+> côté UI = DOUBLON + violation « Future = source unique ». **Livré** : on met en valeur la pastille MOTEUR — orange `#f97316`
+> + icône 🔥 (`ClickableEventIcon` `payload.color` + entrée `EVENT_KEYWORD_ICONS`) + `pinned` (jamais écrêtée par `thinEvents`
+> en vue dézoomée — bug attrapé par la revue). 2 fichiers (`FutureProjection.tsx`, `ProjectionTooltip.tsx`), zéro moteur,
+> zéro recompute. Le helper `fireReached.ts` a été créé PUIS supprimé après la découverte (workflow de revue adversariale =
+> 5 dimensions + réfutation ; 3 findings confirmés). Typecheck + tests verts ; code-reviewer + silent-failure APPROVE.
+> ⚠️ **LEÇON (portée CLAUDE.md)** : avant d'AJOUTER un calcul/détection côté UI sur la projection, VÉRIFIER que le moteur
+> ne l'émet pas déjà (`chartData.lifeEvents`/champs) — sinon doublon + contournement de la source unique. **CHANTIERS : R2 ✅ → reprendre R3** (infobulle figée/scrollable, `FutureProjection.tsx` + `ProjectionTooltip.tsx`, portail React — risque MOYEN).
+>
+> **Session 2026-06-19 — FEUILLE DE ROUTE VALIDÉE (#376)** : `docs/PLAN_CHANTIERS_2026-06-19.md` — plans cadrés par
+> 4 agents (`fichier:ligne`) + VALIDÉS par Marc, exécutés en AUTONOMIE PR par PR. Ordre : R1-R6 gains rapides UI
+> (NW-successoral libellés, Futur P1-P4 annotation FIRE/tooltip figée/boot-restore/densité, PH3-c-bis suppr. `User.industry`,
+> personas complets) → PH4-A→F (Budget) → money-critical (FA-6 dons fed 14 %/titres 0 %/QC 24 %, ITEM-2C per-conjoint, tables
+> personne seule QC) → Q1 multi-courbes. ★ Persistance de courbe DÉJÀ construite (~95 %, `lockedProjectionStore.ts`) → ne pas
+> reconstruire. **PROCHAINE SESSION : reprendre l'exécution à l'item non coché dans le PLAN.**
+>
+> **Session 2026-06-19 — A11Y-BADGE-PROMINENCE (#375)** : Badge option B (choix Marc) — bordure renforcée
+> (`border-*-border` 0,30 → `border-*-400/55`), fond inchangé, badge-only (token `*-border` partagé non touché).
+> Contraste badge↔page remonté (WCAG 1.4.11). Classes Tailwind générées vérifiées (build propre). Item clos.
+>
+> **Session 2026-06-19 — Décisions & vision Marc (batch, #374)** : Marc a tranché un lot d'items + livré sa vision
+> Futur/Budget. Capturé dans `BACKLOG.md` § « Décisions & vision Marc — 2026-06-19 ». Closures : ENG-TAX-NS (garder
+> alias), H1 (pas de passphrase), **B-AUDIT-5 vérifié DÉJÀ-FAIT** (SRG déjà exclu du clawback PSV, `projection.ts:918/921/929`
+> — pas de fake fix). Go : Badge **option B** (bordure renforcée), LABEL-NW-SUCCESSORAL (libellés distincts + tooltip),
+> FA-6 (modéliser, barème fed+QC sourcé), PH3-c-bis (supprimer `User.industry`, ⚠️ schéma Zustand). Plans rédigés : ITEM-2C
+> (per-conjoint), tables fiscales (personne seule QC). ★ Vision Q1 Futur = annotations (retraite/événements/FIRE) +
+> infobulle figée + densité au zoom + **verrouillage/persistance de courbe** (clé Phase 2). PH4 = parité catégories Budget,
+> envie/besoin, objectif épargne, détail per-conjoint, abonnements, personas de test complets. Gros chantiers = plan-first.
+>
+> **Session 2026-06-19 — Hygiène CA-01 partiel (#373)** : `utils/safeNumber.ts` (+ test) SUPPRIMÉ — util de coercition
+> NaN jamais adopté (0 consumer prod, grep). CORRIGÉ une affirmation périmée du backlog : `csvExport.ts` n'est PAS mort
+> (usé par `Transactions.tsx`). CA-01 passe à PARTIEL (exports orphelins restants à vérifier 1-à-1, knip bruyant). Trivial, zéro impact runtime.
+>
+> **Session 2026-06-19 — HARDEN-NETWORTH-NAN (#372)** (money-critical, garde anti échec silencieux) : `computeRawNetWorth`
+> (SOURCE UNIQUE du patrimoine, `netWorth.ts`) n'avait AUCUNE garde `Number.isFinite` → un seul terme NaN/Infinity rendait
+> TOUT le patrimoine NaN, graphe vide SANS trace. Fix : helper module-scope `sumNetWorthParts` (formule unique, hot-path
+> inchangé) ; total non fini → chemin LENT qui rabat chaque terme fautif sur 0 (itère `NET_WORTH_SIGN`), `logError` THROTTLÉ
+> par signature (anti-flood MC), recalcul. Chemin sain = 1 `Number.isFinite`. Discriminant prouvé (court-circuit → 4 échecs),
+> +6 tests. Panel 3 agents APPROVE — finding redaction-PII RÉFUTÉ empiriquement (pattern `^debt$` ancré ≠ substring → clés
+> `*Debt` non redactées ; leçon « mesurer les findings »). Gates verts.
+>
+> **Session 2026-06-19 — FISC-RE-CAPITAL-LOSS (#371)** (money-critical, découverte panel #368) : un IMMEUBLE LOCATIF vendu
+> SOUS son coût réalisait une perte en capital SILENCIEUSEMENT ignorée (`gain = max(0, produit − coût)` + `if (gain > 0)`)
+> → avantage fiscal LIR 111(1)b perdu. Fix : helper SOURCE UNIQUE `applyCapitalDisposition(state, rawGain signé)` (`portfolioOps.ts`)
+> — perte < 0 → banque de pertes ; gain ≥ 0 → nette la banque puis impose. `handleNonRegSale`/`handleCryptoSale` refactorés
+> dessus (zéro duplication, 3 copies → 1). Mutator immo `realizeCapitalGain` → `realizeCapitalDisposition` (nom honnête : gère
+> gain ET perte) + log de la perte. `NonRegSaleState`/`CryptoSaleState extends CapitalDispositionState` (lien nominal). **Discriminant
+> prouvé 2× (réintro `Math.max(0)` → échec) : unitaire (mock) ET end-to-end (vrai moteur, log « Perte en capital »), puis revert chirurgical**.
+> Tests +7 : helper ×5, perte+gain-netté monthlyEvents, **e2e conservation moneyConservation (reconstructabilité INV-9 sous hypothèque)**.
+> Panel 4 agents APPROVE (M2 toLocaleString RÉFUTÉ : locale `'fr-CA'` explicite ≠ nu). Suite complète verte. Gates verts.
+>
+> **Session 2026-06-18 — Garde-fou FISC-CONST-LINT (#364)** : `utils/fiscalConstantsGuard.ts` + `tests/fiscalConstants.guard.test.ts`
+> (10 tests) : échec dur, auto-extraction des littéraux distinctifs non-collisionnables de `utils/tax.ts`/`services/realEstate.ts`
+> + scan du codebase pour interdit. **A trouvé + corrigé 1 vraie fuite** : `32490` (RRSP 2025 recopié dans `setupSimulation.ts` sans
+> le nommer) → constante nommée `RRSP_ANNUAL_LIMIT_FALLBACK` dans `tax.ts`. Scope sûr : ronds (`60000`) et taux 2-décimales (`0.5`)
+> EXCLUS, strip des commentaires, échappatoire `// fiscal-const-ok`. Nouveaux LOW-tickets découverts (FISC-CONST-LINT-LIMITS,
+> FISC-RRSP-PRE2010-FALLBACK). ~2159 tests verts (+ 10). Gates verts.
+>
 > **Session 2026-06-17 — AUDIT FINANCIER COMPLET + corrections (#318→#323)** : audit exhaustif du moteur
 > (panel 5 agents + vérif empirique → rapport AAA `docs/AUDIT_FINANCIER_2026-06-17.md`, 5 diagrammes Mermaid).
 > Verdict : **cœur money-critical AAA** (conservation prouvée ≤ 0,02 $ sur ~25 scénarios, fiscalité 0 écart,
@@ -30,6 +327,23 @@
 > (11 tickets Marc validés : 2 déjà faits, 3 partiels, 5 nouveaux) · **#323** M4 (viz fiscale NETTE de crédits) +
 > AI-NBA-FX (FX réels). **Reste LOW** : L1/L2 (tests-guards), L3 (🧭 décision alias `services/tax.ts`),
 > REEE-LITERALS (hygiène), M1 (⚠️ analyse double-comptage requise). Gates verts, ~2077 tests, 12 invariants conservation.
+>
+> **Session 2026-06-17 (suite) — Environnement d'agents + Accessibilité (Vague 2)** : mise en place de
+> l'environnement d'agents (14 agents projet + orchestrateur routé à CHAQUE message via hook `UserPromptSubmit`)
+> et de l'**Agent Control Center** (dashboard dev-only live `npm run acc`, auto-démarré au lancement d'un agent —
+> PR #325→#334), puis reprise du backlog. **Vague 2 (accessibilité)** : `A11Y-TAXBRACKET` (#335,
+> `TaxBracketViz` → `role="img"`+`aria-hidden`, `<ChartDataTable>` sr-only, `h4`→`h3`, `ink-500`→`ink-400`
+> contraste VÉRIFIÉ) + `D6-HEADING` (#336, `CollapsibleSection` titre dans un vrai `<hN>` + prop `headingLevel`)
+> LIVRÉS. Reste Vague 2 : `A11Y-INK500` (codemod CIBLÉ — ink-500 = disabled), `A11Y-D6-SR-2` ph.3,
+> `A11Y-CHARTS` ph.2, `A11Y-MODAL-PRIVATE`, `D6-KBD`.
+>
+> **Session 2026-06-17 (suite²) — AUDIT UX externe VALIDÉ + backlog** : audit UX (rendu headless, 7 personas,
+> 14 pages) reçu de Marc → **20 claims validés un par un** par panel de 5 agents (preuve `fichier:ligne`) →
+> `docs/AUDIT_UX_2026-06-17.md`. Verdict : robustesse OK (0 plantage), cœur money-critical sain (les 2 « bugs de
+> chiffres » = libellé `estateNetWorth` + persona insoutenable, PAS des erreurs de calcul). Vrais chantiers :
+> **FMT-CURRENCY-UNIFY** (75 sites $ manuels), **IA dispersée** (14 dest., scores/holdings/complétude dupliqués),
+> **PRIV-DISCRET-DOM** (mode discret floute sans masquer + hover révèle). Backlog rempli (§ « Audit UX 2026-06-17 »),
+> dédupliqué, + 3 nouveaux points. **PM relancé pour l'ordre d'exécution.**
 >
 > **Session 2026-06-16/17 — Durcissement MONEY-CONSERVATION (#314 #315)** : 2 bugs de conservation de
 > l'argent du moteur, trouvés via le résiduel `ΔNW − (épargne+croissance−impôt)`. **#314 [FISC-REER-WHT-DOUBLE]**
@@ -259,6 +573,27 @@
 > - 8 nouveaux docs (BACKLOG, SECURITY_STRATEGY, CENTRALIZED_CALC_*,
 >   PROJECTION_OUTPUT_SCHEMA, etc.)
 
+> **Session 2026-06-19 — NW-PARITY-INVARIANT (#370)** (★ garde-fou keystone) : test-only, `tests/services/nwParity.test.ts` (5 tests). Cross-check NW présent (`computePresentNetWorth` UI) ≡ NW de départ moteur (cash + Σ buckets `derivePortfolioStartingBalances` − dettes) + end-to-end `chartData[0]` à flux nuls avec dettes. **Discriminant prouvé** : 3 scénarios (D1 celibataire, D2 couple 2 revenus, D3 couple asym dettes). Limite documentée : parité HORS immobilier. Panel 3 agents (code-reviewer/financial-integrity/silent-failure) APPROVE, 0 régression. Tests ~**2171/2171 verts**. Gates verts.
+>
+> **Process 2026-06-19 — CLAUDE.md prefs de Marc FONDUES (#369)** : au lieu d'un bloc dupliquant le `~/.claude/CLAUDE.md` global, les bouts nouveaux sont intégrés aux sections existantes — Réponses (résumé d'abord + options bon/mauvais + reco + le POURQUOI + labels enrichis `[Certain]/[Probable]/[Supposition]/[À vérifier]`), Workflow (cadrage en UN batch + définition de « fini » objectif+critère d'arrêt + « proposer ≠ faire »), cycle git **RECONFIRMÉ autonome** (commit→push→PR→merge seul ; le « push si demandé » du bloc global NE prévaut PAS ici ; mais destructif hors-cycle force-push/reset --hard/rm/drop/migration → confirmer Marc d'abord). Décision Marc.
+>
+> **Session 2026-06-19 — FISC-RE-SALE-RESIDUAL (#368)** (money-critical) : vente immo quasi-underwater (hypo 95-100 %, frais 5 % > équité → `saleNet < 0`) : `addLiquid(Math.max(0, saleNet))` effaçait le déficit → patrimoine surévalué. Fix = `addLiquid(saleNet)` → déficit déduit ou porté en `liquidDebt` (PV-6). 2 tests discriminants (unitaire `monthlyEvents.test.ts` + end-to-end conservation). ΔNW = −5 % valeur prouvé. Panel 4 agents APPROVE, 0 régression. Tests ~**2166 verts**. Gates verts.
+>
+> **Session 2026-06-19 — FUZZ-ONETIME-FLOWS (#367)** : fuzz étendu à l'**ACHAT IMMOBILIER** (mise 5-50 % < prix, génère hypothèque ; mesuré 257/500 runs sous hypothèque) + **RÉNOVATION** majeure. Invariant ajouté : `DetteTotale ≥ DettesNonImmo` (hypothèque non double-comptée). **Test déterministe immo** : reconstruction NW sous prêt. Discrimination prouvée end-to-end (flip signe équité + drop liquidDebt → fuzz échoue). **PARTIEL** : reste vente immo / gain locatif / revenu locatif / équité négative / véhicule / héritage / REEE (suivi au BACKLOG). Tests ~**2164 verts**. Gates verts.
+>
+> **Session 2026-06-18 (suite) — HARDEN-FUZZING (#365)** : `tests/services/projection.fuzzConservation.test.ts`
+> (2 tests : 1 fuzz 500 runs + 1 discriminant end-to-end) + dép dev `fast-check ^4.8.0` déjà en place. Fuzz des 12 invariants :
+> reconstructabilité forme-bilan (`ΔNetWorth = Σactifs − dettes`), NetWorth toujours fini, INV-6 (pas de flux fantôme).
+> Scénarios bornés (1-180 mois, couples/célibataires, revenus/immo/dettes aléa). Discrimination prouvée : revert TEMPORAIRE
+> d'une garde → test échoue → revert annulé (pattern détaillé CLAUDE.md « Prouver un test discriminant »). Panel 4 agents
+> (projection-validator/financial-integrity/silent-failure/code-reviewer) ; **résiduel max mesuré 0,02 $**. **Backlog autonome
+> ÉPUISÉ** : restent suivis (FUZZ-ONETIME-FLOWS, DEP-UNDICI-VULN, FISC-CONST-LINT-LIMITS, FISC-RRSP-PRE2010-FALLBACK) +
+> items 🧭/👤 Marc (FISC-WELCOME-2026, RECH-ACTION-UX, phases 2-4 brief). Tests ~**2163 verts**. Gates verts.
+>
+> **Session 2026-06-18 — Durcissement MONEY-CONSERVATION + correctifs métier + UX (12 PR #351→#363)** :
+> **Lot HIGH fiscal/métier** — #352 [FISC-ESTATE-PENSION-NPV] (NPV rentes RRQ/PSV ×12 annualisée, bilan successoral ~375 k$ corrigés) · #354 [FISC-EVENT-INCOMELOSS] (perte d'emploi/sabbatique/accident : réduction revenu ménage appliquée par moteur ; défauts 100%/100%/50%, net+brut REER réduits, impôt décembre conservateur) · #355 [FINNHUB-MISMATCH][RECH-ACTION-UX] (Investissement : fallback gracieux symbole non-cotable, Escape ferme dropdown sans fermer modale) ; **Durcissement money** — #356 [HARDEN-NETWORTH-EXHAUSTIVE] (compile-guard `NET_WORTH_SIGN` dans `computeRawNetWorth`, test littéral vs Σ, zéro régression) · **#362 [ENG-LOOP-ORDER-TEST]** (test ordre boucle mensuelle : allocation AVANT croissance, 2 scénarios discriminants, inversion PROUVÉE à la main échoue test → attrape décalage rendement que les 12 invariants laissent passer) · **#363 [HARDEN-FISCAL-TIMEBOMB]** (garde de fraîcheur des valeurs fiscales : `utils/fiscalFreshness.ts` lit la date « Dernière vérification »/« Ré-audité » dans `FISCAL_REFERENCE.md`, warn @12 mois, fail @18 mois ; 13 tests discriminants) ; **Hygiène** — #351 [ENG-MONTHLYOUTPUT-TEST] (test monthlyOutput complet, seul module sans test) + #353 [BACKLOG] (cocher livrés, découvertes, router FISC-WELCOME-2026) ; **UX + infra** — #357 [DOCS-DISCIPLINE] (`documentation-manager` devient PROPRIÉTAIRE de SESSION_HANDOVER, dans le « Toujours » de /review-all + rappel hook → handover à jour à CHAQUE push) · #358 [PROJ-INSOLVENCY-BADGE] (onglet Futur : badge danger « Plan insoutenable — capital épuisé vers X ans » quand le NW projeté franchit 0 ; helper pur `utils/insolvency.ts`) ; **Robustesse** — #360 [ENG-ESTATE-ESTIMATE-FIN] (`fin()` à la SOURCE : un estimé de rente NaN ne zérote plus TOUT l'estate — dégradation gracieuse). Conservation prouvée : **12 invariants OK**. Moteur stable **~2149 tests**, typecheck strict, Vite clean. État prêt déploiement.
+> ⚠️ **À FAIRE Marc** : `FISC-WELCOME-2026` (valeurs RQ 2026) · `RECH-ACTION-UX` (confirmer visuellement avec clé Finnhub, A_FAIRE_MOI O5). **Restes autonomes** : `FISC-CONST-LINT` (risque faux positifs) ; `HARDEN-FUZZING` (attend OK dép `fast-check`). **Déféré (décision design Marc)** : `A11Y-BADGE-PROMINENCE` (fond Badge ~1.1:1 < 3:1 WCAG 1.4.11 sur TOUS les variants ; contraste par teinte non automatisé par check-contrast).
+
 ---
 
 ## 1. État en une page
@@ -267,9 +602,9 @@
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
-| **Dernière PR mergée** | **#292** (cycle autonome ; #288→#292 cette session) |
+| **Dernière PR mergée** | **#370** [NW-PARITY-INVARIANT] (garde-fou keystone parité NW présent ≡ départ moteur, 5 tests, 2026-06-19) |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
-| **Tests** | **2042/2042 verts** (Vitest 4 ; `fileParallelism: false`) |
+| **Tests** | **~2171/2171 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
 | **Typecheck** | Clean en mode strict |
 | **Build** | OK — **Vite 8 (Rolldown)** ; lazy-loading préservé (vendor react/recharts/ai/pdf) |
 | **Schema store** | **v7** (Zustand persist, migrations v1→v7) |
@@ -278,7 +613,7 @@
 | **Crypto** | CoinGecko (gratuit, sans clé) |
 | **Stock/ETF** | Finnhub REST (gratuit) |
 | **Sécurité storage** | AES-256-GCM + IndexedDB non-extractible (`services/secureKeyStore.ts`) ; `npm audit` = **0** |
-| **Auth** | Cloudflare Access (Google OAuth) — migration vers gate Google in-app prévue (ADR 010, pas faite) |
+| **Auth** | **Gate Google in-app** (`LoginGate`+`authGate`, `VITE_GOOGLE_GATE=1`) — **Cloudflare RETIRÉ le 2026-06-16** (Access + proxy DNS). Gate SOFT (trappe `?nogate=1`) ; données privées par compte Google |
 | **Lighthouse prod** | Performance 97 / A11y 100 / BP 100 / SEO 90 (dernière mesure connue) |
 | **PWA** | manifest + SW v2 (precache résilient) — installable Chrome/Edge/Mobile |
 | **WCAG** | AA conformant (sub-set AAA pour touch, focus, reduced-motion) |

@@ -12,12 +12,15 @@ import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Refere
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { buildLockedByMonth, pointStackedCapital } from '../utils/lockedCurveOverlay';
 import { ZoomContainer } from './ui/ZoomContainer';
+import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
+import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { TaxBracketViz } from './TaxBracketViz';
 import { GoalSeekerCard } from './retirement/GoalSeekerCard';
 import { AssetLocationCard } from './retirement/AssetLocationCard';
 import { CurrentCapitalCard } from './retirement/CurrentCapitalCard';
-import { calculateGrossFromNet } from '../utils/tax';
+import { calculateGrossFromNet } from '../services/tax';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { formatCAD, formatSigned, formatCompactCAD } from '../utils/format';
 import { useShallow } from 'zustand/shallow';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 
@@ -122,6 +125,9 @@ export const Retirement: React.FC<RetirementProps> = ({
     // se pilote depuis Futur ; Retraite ne fait que l'AFFICHER, source unique cohérente).
     const lockedProjection = useFinanceStore(s => s.lockedProjection);
     const isProjectionLocked = useFinanceStore(s => s.isProjectionLocked);
+    // [A11Y-CHARTS] — mode discret : masque les montants de la table de données sr-only (parité
+    // avec les <PrivateAmount> / blur visuel du reste de l'onglet).
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
     // chartData dérivé de projectionFromStore : utilisé uniquement dans le JSX
     // après les hooks. Pour les useMemo, on dépend de projectionFromStore directement
     // afin d'éviter la nouvelle référence `?? []` qui invaliderait les deps à chaque render.
@@ -155,6 +161,37 @@ export const Retirement: React.FC<RetirementProps> = ({
         return base.map(d => ({ ...d, lockedTotalCapital: lockedCapitalByMonth.get(d.monthIndex) }));
     }, [yearlyData, lifeExpectancy, lockedCapitalByMonth]);
     const bankruptcyPoint = retirementData.find(d => d.TotalCapital <= 0);
+
+    // [A11Y-CHARTS] — colonnes de la table de données sr-only du graphe d'accumulation (alternative
+    // texte à la courbe Recharts, opaque aux lecteurs d'écran). Âge (axe X) + comptes empilés + capital
+    // total + patrimoine net. Mode privé masque les MONTANTS (pas l'âge).
+    const accumColumns = useMemo<ChartDataColumn[]>(() => {
+        const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCompactCAD(Number(v) || 0);
+        return [
+            { key: 'age', label: 'Âge', format: (v) => v != null ? `${v} ans` : '' },
+            { key: 'NetWorth', label: 'Patrimoine net', format: money },
+            { key: 'TotalCapital', label: 'Capital placé', format: money },
+            { key: 'Liquidites', label: 'Liquidités', format: money },
+            { key: 'NonReg', label: 'Non-Enreg.', format: money },
+            { key: 'CELI', label: 'CELI', format: money },
+            { key: 'CELIAPP', label: 'CELIAPP', format: money },
+            { key: 'REER', label: 'REER', format: money },
+        ];
+    }, [isPrivacyMode]);
+
+    // [A11Y-CHARTS] (LOT 3) — colonnes de la table de données sr-only du 2e graphe « Flux à la
+    // retraite » (alternative texte au ComposedChart Recharts, opaque aux lecteurs d'écran). Âge
+    // (axe X) + rente gouv./PSV + revenu total + besoin (dépenses). Mode privé masque les MONTANTS
+    // (pas l'âge). Mêmes dataKeys que le graphe : IncomeRetirement / Income / Expenses.
+    const cashflowColumns = useMemo<ChartDataColumn[]>(() => {
+        const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0);
+        return [
+            { key: 'age', label: 'Âge', format: (v) => v != null ? `${v} ans` : '' },
+            { key: 'IncomeRetirement', label: 'Rente gouv. + PSV', format: money },
+            { key: 'Income', label: 'Revenu total', format: money },
+            { key: 'Expenses', label: 'Besoin (avec inflation)', format: money },
+        ];
+    }, [isPrivacyMode]);
 
     // G7c — zoom molette / pan sur les deux graphes Retraite (x = âge).
     type YearlyPoint = ProjectionChartPoint & { TotalCapital: number };
@@ -239,6 +276,10 @@ export const Retirement: React.FC<RetirementProps> = ({
                     ) : (
                         <>
                             <Card icon={<Icon name="investments" size={18} />} title="Accumulation & épuisement">
+                                <div
+                                    role="img"
+                                    aria-label="Graphique d'accumulation et d'épuisement — évolution du capital placé (par compte) et du patrimoine net selon l'âge, de maintenant jusqu'à l'espérance de vie."
+                                >
                                 <ZoomContainer zoom={zoomAccum} className="h-[420px] w-full" style={{ minHeight: '420px' }}>
                                     <ResponsiveContainer width="100%" height="100%">
                                         <ComposedChart data={zoomAccum.visibleData} margin={{ top: 20, right: 30, left: 10, bottom: 0 }}>
@@ -266,7 +307,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
                                             <XAxis dataKey="age" stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickMargin={10} tickFormatter={(val) => `${val} ans`} />
-                                            <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => `${(val / 1000).toFixed(0)}k$`} width={55} />
+                                            <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => formatCompactCAD(val)} width={55} />
                                             <Tooltip content={<RetirementTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.07)', strokeWidth: 2 }} />
                                             <Legend verticalAlign="top" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '12px' }} />
                                             <ReferenceLine x={goal.targetAge} stroke="#f97316" strokeDasharray="5 3" label={{ position: 'insideTopRight', value: `Retraite (${goal.targetAge}a)`, fill: '#f97316', fontSize: 11, fontWeight: 'bold', dy: -8 }} />
@@ -282,37 +323,49 @@ export const Retirement: React.FC<RetirementProps> = ({
                                         </ComposedChart>
                                     </ResponsiveContainer>
                                 </ZoomContainer>
+                                </div>
+                                {/* [A11Y-CHARTS] — alternative TEXTUELLE (sr-only) à la courbe d'accumulation :
+                                    mêmes données en table accessible, masquage privacy aligné sur les PrivateAmount. */}
+                                <ChartDataTable
+                                    caption="Capital placé et patrimoine net par âge (accumulation puis épuisement)"
+                                    columns={accumColumns}
+                                    rows={lifeExpectancyData}
+                                />
 
                                 <div className="grid grid-cols-3 gap-4 mt-6">
                                     <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
                                         <div className="text-tiny text-ink-500 uppercase tracking-widest font-bold">Capital a la Retraite</div>
                                         <PrivateAmount as="div" className="text-2xl font-black text-info-400 mt-1 drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]">
-                                            {(retirementNetWorth / 1000).toFixed(0)}k $
+                                            {formatCompactCAD(retirementNetWorth)}
                                         </PrivateAmount>
                                     </div>
                                     <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
                                         <div className="text-tiny text-ink-500 uppercase tracking-widest font-bold">Pic du Patrimoine</div>
                                         <PrivateAmount as="div" className="text-2xl font-black text-success-400 mt-1 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]">
-                                            {(peakNetWorth / 1000).toFixed(0)}k $
+                                            {formatCompactCAD(peakNetWorth)}
                                         </PrivateAmount>
                                     </div>
                                     <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
                                         <div className="text-tiny text-ink-500 uppercase tracking-widest font-bold">Heritage ({lifeExpectancy} ans)</div>
                                         <PrivateAmount as="div" className={`text-2xl font-black mt-1 ${finalNetWorth > 0 ? 'text-white' : 'text-danger-400'}`}>
-                                            {finalNetWorth > 0 ? `${(finalNetWorth / 1000).toFixed(0)}k $` : 'Épuisé'}
+                                            {finalNetWorth > 0 ? formatCompactCAD(finalNetWorth) : 'Épuisé'}
                                         </PrivateAmount>
                                     </div>
                                 </div>
                             </Card>
 
                             <Card icon={<Icon name="debt" size={18} />} title="Flux à la retraite">
+                                <div
+                                    role="img"
+                                    aria-label="Graphique des flux à la retraite — revenu total, rente gouvernementale + PSV et besoin mensuel (ajusté à l'inflation) selon l'âge, de la retraite jusqu'à l'espérance de vie."
+                                >
                                 <ZoomContainer zoom={zoomCashflow} className="h-[280px] w-full" style={{ minHeight: '280px' }}>
                                     <ResponsiveContainer width="100%" height="100%">
                                         <ComposedChart data={zoomCashflow.visibleData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
                                             <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
                                             <XAxis dataKey="age" stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => `${val}a`} />
-                                            <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} width={50} tickFormatter={(val) => `${(val / 1000).toFixed(0)}k`} />
-                                            <Tooltip contentStyle={{ backgroundColor: '#0B0E14', borderColor: '#1e293b', borderRadius: '10px', color: '#fff' }} formatter={(val: number | string, name: string) => [`${Number(val).toLocaleString()}$`, name]} />
+                                            <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} width={50} tickFormatter={(val) => formatCompactCAD(val)} />
+                                            <Tooltip contentStyle={{ backgroundColor: '#0B0E14', borderColor: '#1e293b', borderRadius: '10px', color: '#fff' }} formatter={(val: number | string, name: string) => [formatCAD(Number(val)), name]} />
                                             <Legend iconType="circle" />
                                             <Area type="monotone" dataKey="IncomeRetirement" fill="#5b82bf20" stroke="#5b82bf" strokeWidth={2} name="Rente Gouv. + PSV" />
                                             <Area type="monotone" dataKey="Income" fill="#4f9d8615" stroke="#4f9d86" strokeWidth={2} name="Revenu Total" />
@@ -320,6 +373,15 @@ export const Retirement: React.FC<RetirementProps> = ({
                                         </ComposedChart>
                                     </ResponsiveContainer>
                                 </ZoomContainer>
+                                </div>
+                                {/* [A11Y-CHARTS] (LOT 3) — alternative TEXTUELLE (sr-only) au graphe « Flux à la
+                                    retraite » : mêmes flux (rente, revenu, besoin) par âge en table accessible,
+                                    masquage privacy aligné sur le reste de l'onglet. */}
+                                <ChartDataTable
+                                    caption="Flux à la retraite par âge — rente gouvernementale, revenu total et besoin mensuel"
+                                    columns={cashflowColumns}
+                                    rows={retirementData}
+                                />
                                 <div className="mt-4 text-meta text-ink-300 text-center bg-white/5 p-3 rounded-lg border border-white/10">
                                     La ligne rouge represente votre besoin mensuel ({goal.targetMonthlyIncome}$/mois), ajuste a l'inflation ({projection.inflationRate ?? 2}%) au fil du temps.
                                 </div>
@@ -355,34 +417,34 @@ const RetirementTooltip = React.memo(({ active, payload }: RetirementTooltipProp
             <div className="mb-4 space-y-2">
                 <div className="flex justify-between items-center">
                     <span className="text-tiny font-bold text-ink-300 uppercase tracking-widest">Patrimoine Net</span>
-                    <PrivateAmount className="text-body font-black text-success-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]">{data.NetWorth?.toLocaleString()}$</PrivateAmount>
+                    <PrivateAmount className="text-body font-black text-success-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]">{formatCAD(data.NetWorth)}</PrivateAmount>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                     <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                         <div className="text-tiny text-primary font-bold mb-1">CELI</div>
-                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{(data.CELI || 0).toLocaleString()}$</PrivateAmount>
+                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.CELI || 0)}</PrivateAmount>
                     </div>
                     <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                         <div className="text-tiny text-info-500 font-bold mb-1">REER</div>
-                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{(data.REER || 0).toLocaleString()}$</PrivateAmount>
+                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.REER || 0)}</PrivateAmount>
                     </div>
                     {/* Revue #245 (a11y S1) — CELIAPP visible au stack doit avoir sa valeur TEXTE ici. */}
                     {(data.CELIAPP || 0) > 0 && (
                         <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                             <div className="text-tiny text-[#2dd4bf] font-bold mb-1">CELIAPP</div>
-                            <PrivateAmount as="div" className="text-meta font-black text-ink-50">{(data.CELIAPP || 0).toLocaleString()}$</PrivateAmount>
+                            <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.CELIAPP || 0)}</PrivateAmount>
                         </div>
                     )}
                     {(data.NonReg || 0) > 0 && (
                         <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                             <div className="text-tiny text-warning-500 font-bold mb-1">Non-Enreg.</div>
-                            <PrivateAmount as="div" className="text-meta font-black text-ink-50">{(data.NonReg || 0).toLocaleString()}$</PrivateAmount>
+                            <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.NonReg || 0)}</PrivateAmount>
                         </div>
                     )}
                     <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                         <div className="text-tiny text-[#9b8fcf] font-bold mb-1">Liquidites</div>
-                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{(data.Liquidites || 0).toLocaleString()}$</PrivateAmount>
+                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.Liquidites || 0)}</PrivateAmount>
                     </div>
                 </div>
             </div>
@@ -391,16 +453,16 @@ const RetirementTooltip = React.memo(({ active, payload }: RetirementTooltipProp
                 <div className="space-y-2">
                     <div className="text-tiny font-bold text-ink-300 uppercase tracking-widest mb-1">Flux Mensuel</div>
                     <div className="bg-black/30 rounded-lg p-3 border border-danger-500/20 space-y-2">
-                        <div className="flex justify-between text-meta"><span className="text-ink-300">Revenu total</span><PrivateAmount className="text-success-400 font-bold">+{(data.Income || 0).toLocaleString()}$</PrivateAmount></div>
-                        <div className="flex justify-between text-meta"><span className="text-ink-300">Depenses (Infl.)</span><PrivateAmount className="text-danger-400 font-bold">-{(data.Expenses || 0).toLocaleString()}$</PrivateAmount></div>
-                        <div className="flex justify-between text-meta pt-1 border-t border-white/5"><span className="text-ink-300">Cashflow</span><PrivateAmount className={`font-bold ${((data.Income ?? 0) - (data.Expenses ?? 0)) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>{((data.Income ?? 0) - (data.Expenses ?? 0)).toLocaleString()}$</PrivateAmount></div>
+                        <div className="flex justify-between text-meta"><span className="text-ink-300">Revenu total</span><PrivateAmount className="text-success-400 font-bold">{formatSigned(data.Income || 0, { withCurrency: true })}</PrivateAmount></div>
+                        <div className="flex justify-between text-meta"><span className="text-ink-300">Depenses (Infl.)</span><PrivateAmount className="text-danger-400 font-bold">{formatSigned(-(data.Expenses || 0), { withCurrency: true })}</PrivateAmount></div>
+                        <div className="flex justify-between text-meta pt-1 border-t border-white/5"><span className="text-ink-300">Cashflow</span><PrivateAmount className={`font-bold ${((data.Income ?? 0) - (data.Expenses ?? 0)) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>{formatCAD((data.Income ?? 0) - (data.Expenses ?? 0))}</PrivateAmount></div>
                     </div>
                 </div>
             ) : (
                 <div className="space-y-2">
                     <div className="text-tiny font-bold text-ink-300 uppercase tracking-widest mb-1">Epargne Mensuelle</div>
                     <div className="bg-black/30 rounded-lg p-3 border border-success-500/20">
-                        <div className="flex justify-between text-meta"><span className="text-ink-300">Cashflow</span><PrivateAmount className="text-success-400 font-bold">+{(data.Savings || 0).toLocaleString()}$</PrivateAmount></div>
+                        <div className="flex justify-between text-meta"><span className="text-ink-300">Cashflow</span><PrivateAmount className="text-success-400 font-bold">{formatSigned(data.Savings || 0, { withCurrency: true })}</PrivateAmount></div>
                     </div>
                 </div>
             )}

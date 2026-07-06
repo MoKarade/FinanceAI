@@ -54,6 +54,12 @@ export const MER = 0.0020;
 // V31: Séquençage Mid-Month & Intégration globale des MER
 // Cycle 7 split: hoisté hors de runScenario (était redéfini 360× par scénario).
 export function applyMidMonthGrowth(startVal: number, endVal: number, rateAnnual: number, applyMER: boolean = true) {
+    // [NAN-INPUT-HARDENING] un input non fini (NaN/Infinity) SAUTERAIT l'early-return ci-dessous (`NaN<=0`=false)
+    // → croissance NaN propagée en silence. Rabat sur le résultat neutre (l'input était censé être sanitisé au boundary).
+    if (!Number.isFinite(startVal) || !Number.isFinite(endVal)) return { newVal: 0, growth: 0, pct: 0 };
+    // `rateAnnual` NaN/Infinity → `Math.pow(1+NaN/100,…)`=NaN propagerait aussi (vecteur trouvé au panel LOT 4).
+    // Taux inconnu = PAS de croissance, mais on PRÉSERVE le solde (`endVal`, déjà fini ci-dessus) — pas de perte.
+    if (!Number.isFinite(rateAnnual)) return { newVal: endVal, growth: 0, pct: 0 };
     if (startVal <= 0 && endVal <= 0) return { newVal: 0, growth: 0, pct: 0 };
     const monthlyRate = Math.pow(1 + rateAnnual / 100, 1 / 12) - 1;
     const netFlow = endVal - startVal;

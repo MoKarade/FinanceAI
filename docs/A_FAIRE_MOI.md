@@ -49,7 +49,7 @@ Le code est prêt et déployé ; il manque l'hébergement du bundle (Marc avait 
 
 ## O4 — Relais BYOK pour Claude (P0-PROXY, dark-launch awaiting env+flag)
 Code livré (2026-07-06, phases 1-2 seulement) : relais Edge Vercel, token chiffré, anti-abus.
-- [ ] **(1) Générer le token** : `openssl rand -hex 32` → copier.
+- [ ] **(1) Générer le token** : `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))" (PowerShell : openssl absent sur Windows)` → copier.
 - [ ] **(2) Poser l'env Vercel SERVEUR** (`PROXY_ACCESS_TOKEN`) : ce token → Settings → Environment Variables
   → Category **Functions** (serveur-side seulement) → `PROXY_ACCESS_TOKEN=<token>`.
 - [ ] **(3) Poser l'env build** (`VITE_PROXY_ACCESS_TOKEN`) → Category **Production** (ou **Preview** pour tester)

@@ -22,11 +22,15 @@ de qualité d'une « triple AAA company ».
   + dépôt de documents (paie, relevés) rangés automatiquement.
 
 ## Cap produit (ordre indicatif)
-1. **Passer de « solo » (~90 %) à « vrai produit multi-utilisateurs »** (~72 % aujourd'hui) :
-   prouver la sync Drive en réel, ✅ **auth Google in-app** (2026-06-16, Cloudflare retiré), proxy clé
-   Anthropic. (cf `A_FAIRE_MOI` O1/O3/O4 — O2 supprimé.)
-2. **Connecteur Claude grand public** : `.mcpb` hébergé, install 1 clic, ouverture bêta
-   (vérification Google `drive.appdata`). (cf `A_FAIRE_MOI` O2.)
+> ⚠️ **DÉCISION 2026-07-06 (Marc)** : app SOLO (multi-user REMISÉ indéfiniment). Raison : focus qualité AAA.
+> Details : `docs/decisions.md` ADR-002. Raison : une app QC existentielle pour Marc n'est pas un produit
+> bêta public ; multi-appareil + sync Drive MAINTENUS. Relais BYOK pour Claude (Edge Vercel, token chiffré)
+> livré + dark-launch ; awaiting env+flag.
+
+1. ⚠️ **~~Passer à « vrai produit multi-utilisateurs »~~** — **REMISÉ (2026-07-06)** — reste **multi-appareil
+   Marc** : prouver la sync Drive en réel, ✅ **auth Google in-app** (2026-06-16, Cloudflare retiré), relais BYOK
+   pour Claude (proxy Edge Vercel, token chiffré, anti-abus, vision restant direct). (cf `A_FAIRE_MOI` O1/O3/O4.)
+2. **Connecteur Claude perso** : `.mcpb` hébergé, install 1 clic. (cf `A_FAIRE_MOI` O2 — reste en archive.)
 3. **Qualité AAA transversale** (audit `docs/AAA_AUDIT_2026-06.md`) : robustesse (ne jamais
    avaler une erreur), a11y, design system tokenisé, perf de boot, découpe des god-files.
 4. **Exactitude fiscale continue** : attribution par conjoint complète (timing FERR/PSV),

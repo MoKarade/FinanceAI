@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — HIST-NW-DEBT-DISCLAIMER : disclaimer patrimoine passé] — 2026-07-07
+
+### Transparence (UI)
+- **Disclaimer honnête sur le patrimoine passé** : une note sous le graphe Futur signale que la zone passée
+  (avant « Aujourd'hui ») affiche le patrimoine **hors dettes** — l'app ne conserve pas l'historique des soldes
+  de dette, seulement le solde courant — donc un profil endetté voit son passé surévalué vs le futur (qui, lui,
+  soustrait les dettes). Décision Marc (b) : expliquer plutôt que deviner un historique de dette (zéro fausse donnée).
+
+---
+
 ## [unreleased — TP1G-VIVANT-SEUL : crédit QC « personne vivant seule »] — 2026-07-07
 
 ### Fiscalité (money-critical)

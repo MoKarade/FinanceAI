@@ -117,8 +117,9 @@ Code livré (2026-07-06, phases 1-2 seulement) : relais Edge Vercel, token chiff
 - [x] ✅ **[W5-TAX-PROXY]** — décision Marc : **(a) garder les proxies plats** (0,45 locatif / 0,36 CCPC) documentés
   en tant qu'estimation de taux marginal QC. Ajouter une mention UI + source QC dans `FISCAL_REFERENCE.md` (rapide).
   Clos, reste UI+doc à Claude.
-- [x] ✅ **[HIST-NW-DEBT-DISCLAIMER]** — décision Marc : **(b) disclaimer visuel** sur la zone passée du graphe (honnête,
-  zéro fausse donnée). Code documenté (HIST-NW-NO-DEBT), reste le visuel UI → item 🔧 BACKLOG.
+- [x] ✅ **[HIST-NW-DEBT-DISCLAIMER]** — décision Marc **(b) disclaimer visuel** LIVRÉ (2026-07-07) : note `role="note"`
+  sous le graphe Futur (`FutureProjection.tsx`, conditionnelle à un passé reconstruit) expliquant que la zone bleutée
+  avant « Aujourd'hui » est HORS dettes (l'app n'a que le solde de dette courant) → passé surévalué pour un endetté. Zéro fausse donnée.
 - [ ] **[TP1G-VIVANT-SEUL]** — données reçues 2026-07-06. Grille crédit 65+/personne vivant seule (source MFQ fiche 110606)
   : 2 172 $ (base) + supplément monoparental 2 681 $. Seuil revenu 42 955 $. Transcrit `FISCAL_REFERENCE.md` §4.
   Item 🔧 ACTIONNABLE moyen (plan-first + discriminant git-stash + panel).

@@ -944,6 +944,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                      )}
                 </div>
 
+                {/* [HIST-NW-DEBT-DISCLAIMER] Décision Marc (b) : disclaimer visuel HONNÊTE sur la zone passée.
+                    Le patrimoine AVANT aujourd'hui est reconstruit HORS dettes (l'app n'a que le solde de dette
+                    COURANT, pas son historique) → pour un endetté, le passé est gonflé vs le futur. Zéro fausse
+                    donnée : on l'explique au lieu de deviner un historique de dette. Affiché seulement s'il y a un passé. */}
+                {pastPrefix.length > 0 && (
+                    <p className="text-tiny text-ink-400 mt-2 flex items-start gap-1.5" role="note">
+                        <span aria-hidden="true">ⓘ</span>
+                        <span>La zone bleutée <strong className="text-info-400">avant « Aujourd'hui »</strong> affiche le patrimoine passé <strong>hors dettes</strong> — l'app ne conserve pas l'historique des soldes de dette (seulement le solde courant). Pour un profil endetté, le passé est donc surévalué par rapport au futur, qui soustrait les dettes.</span>
+                    </p>
+                )}
+
                 {/* [A11Y-CHARTS] — alternative TEXTUELLE (sr-only) à la courbe Recharts : mêmes données
                     en table accessible, masquage privacy aligné sur l'axe/tooltip. */}
                 <ChartDataTable

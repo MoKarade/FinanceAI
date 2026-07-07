@@ -28,8 +28,8 @@ import {
   PENSION_INCOME_AMOUNT_FED,
   AGE_AMOUNT_QC_2026,
   RETIREMENT_INCOME_AMOUNT_QC_2026,
-  QC_LINE_361_THRESHOLD_SINGLE,
-  QC_LINE_361_THRESHOLD_COUPLE,
+  QC_LINE_361_THRESHOLD_2026,
+  LIVING_ALONE_AMOUNT_QC_2026,
   FED_NONREFUNDABLE_RATE,
   QC_NONREFUNDABLE_RATE,
   FSS_THRESHOLD_ZERO,
@@ -462,14 +462,15 @@ describe('calculateAgeAndPensionCredits (§6.2)', () => {
   });
 
   it('frontière âge : 65 ans active les crédits, 64 ans non (off-by-one guard)', () => {
-    // Revenu sous le seuil QC (27 835$ sans conjoint) pour exclure la réduction.
+    // Revenu sous le seuil unique 2026 (42 955$) pour exclure la réduction.
     const incomeBelowAllThresholds = 20000;
     const at64 = calculateAgeAndPensionCredits({ age: 64, eligiblePensionIncome: 0, familyIncome: incomeBelowAllThresholds }, incomeBelowAllThresholds);
     const at65 = calculateAgeAndPensionCredits({ age: 65, eligiblePensionIncome: 0, familyIncome: incomeBelowAllThresholds }, incomeBelowAllThresholds);
     expect(at64.fedCredit).toBe(0);
     expect(at64.qcCredit).toBe(0);
     expect(at65.fedCredit).toBeCloseTo(AGE_AMOUNT_FED_2026 * FED_NONREFUNDABLE_RATE, 2);
-    expect(at65.qcCredit).toBeCloseTo(AGE_AMOUNT_QC_2026 * QC_NONREFUNDABLE_RATE, 2);
+    // Solo (pas de conjoint) : âge + « personne vivant seule » (pension = 0 → composante retraite nulle).
+    expect(at65.qcCredit).toBeCloseTo((AGE_AMOUNT_QC_2026 + LIVING_ALONE_AMOUNT_QC_2026) * QC_NONREFUNDABLE_RATE, 2);
   });
 
   it('age 65+ sans pension : crédit âge actif, composante pension QC nulle', () => {
@@ -478,8 +479,8 @@ describe('calculateAgeAndPensionCredits (§6.2)', () => {
       25000,
     );
     expect(fedCredit).toBeCloseTo(AGE_AMOUNT_FED_2026 * FED_NONREFUNDABLE_RATE, 2);
-    // Composante revenu retraite QC = 0 puisque pension = 0
-    expect(qcCredit).toBeCloseTo(AGE_AMOUNT_QC_2026 * QC_NONREFUNDABLE_RATE, 2);
+    // Composante revenu retraite QC = 0 (pension = 0) ; solo → montant « personne vivant seule » inclus.
+    expect(qcCredit).toBeCloseTo((AGE_AMOUNT_QC_2026 + LIVING_ALONE_AMOUNT_QC_2026) * QC_NONREFUNDABLE_RATE, 2);
   });
 
   it('protège contre NaN dans eligiblePensionIncome (silent-failure guard)', () => {
@@ -533,19 +534,23 @@ describe('calculateAgeAndPensionCredits (§6.2)', () => {
     expect(high - low).toBeCloseTo((PENSION_INCOME_AMOUNT_FED - 1500) * FED_NONREFUNDABLE_RATE, 2);
   });
 
-  it('applique la ligne 361 QC à plein pour 65+ sous le seuil sans conjoint', () => {
-    const familyIncome = QC_LINE_361_THRESHOLD_SINGLE - 1000;
+  it('applique la ligne 361 QC à plein pour 65+ sous le seuil sans conjoint (montant vivant seul inclus)', () => {
+    const familyIncome = QC_LINE_361_THRESHOLD_2026 - 1000;
     const pension = RETIREMENT_INCOME_AMOUNT_QC_2026;
     const { qcCredit } = calculateAgeAndPensionCredits(
       { age: 70, eligiblePensionIncome: pension, hasSpouse: false, familyIncome },
       familyIncome,
     );
-    const expectedAmount = AGE_AMOUNT_QC_2026 + RETIREMENT_INCOME_AMOUNT_QC_2026;
+    // Solo 65+ sous le seuil : âge + revenu de retraite + « personne vivant seule », aucune réduction.
+    const expectedAmount = AGE_AMOUNT_QC_2026 + RETIREMENT_INCOME_AMOUNT_QC_2026 + LIVING_ALONE_AMOUNT_QC_2026;
     expect(qcCredit).toBeCloseTo(expectedAmount * QC_NONREFUNDABLE_RATE, 2);
   });
 
-  it('utilise le seuil couple (45 270$) quand hasSpouse = true', () => {
-    const familyIncome = QC_LINE_361_THRESHOLD_COUPLE - 1000;
+  it('TP1G-VIVANT-SEUL : le solo (vivant seul) obtient PLUS de crédit que le couple au même revenu', () => {
+    // Sous le seuil UNIQUE 2026 (aucune réduction), le solo gagne le montant « personne vivant seule »
+    // (2 172 × 14 % ≈ 304 $) que le couple n'a pas → l'ancienne assertion (withSpouse > noSpouse, via un
+    // seuil couple plus haut) s'INVERSE : c'est le montant vivant seul qui domine désormais.
+    const familyIncome = QC_LINE_361_THRESHOLD_2026 - 1000;
     const { qcCredit: withSpouse } = calculateAgeAndPensionCredits(
       { age: 70, eligiblePensionIncome: 3000, hasSpouse: true, familyIncome },
       familyIncome,
@@ -554,17 +559,18 @@ describe('calculateAgeAndPensionCredits (§6.2)', () => {
       { age: 70, eligiblePensionIncome: 3000, hasSpouse: false, familyIncome },
       familyIncome,
     );
-    expect(withSpouse).toBeGreaterThan(noSpouse);
+    expect(noSpouse).toBeGreaterThan(withSpouse);
+    expect(noSpouse - withSpouse).toBeCloseTo(LIVING_ALONE_AMOUNT_QC_2026 * QC_NONREFUNDABLE_RATE, 2);
   });
 
-  it('réduit la ligne 361 QC de 18.75% du revenu excédentaire', () => {
+  it('réduit la ligne 361 QC de 18.75% du revenu excédentaire (montant vivant seul inclus)', () => {
     const excess = 10000;
-    const familyIncome = QC_LINE_361_THRESHOLD_SINGLE + excess;
+    const familyIncome = QC_LINE_361_THRESHOLD_2026 + excess;
     const { qcCredit } = calculateAgeAndPensionCredits(
       { age: 70, eligiblePensionIncome: RETIREMENT_INCOME_AMOUNT_QC_2026, hasSpouse: false, familyIncome },
       familyIncome,
     );
-    const grossLine361 = AGE_AMOUNT_QC_2026 + RETIREMENT_INCOME_AMOUNT_QC_2026;
+    const grossLine361 = AGE_AMOUNT_QC_2026 + RETIREMENT_INCOME_AMOUNT_QC_2026 + LIVING_ALONE_AMOUNT_QC_2026;
     const reduction = excess * 0.1875;
     const expectedAmount = Math.max(0, grossLine361 - reduction);
     expect(qcCredit).toBeCloseTo(expectedAmount * QC_NONREFUNDABLE_RATE, 2);
@@ -595,20 +601,18 @@ describe('calculateFiscalReport avec ageOpts (§6.2 intégration)', () => {
     expect(r2.totalTax).toBe(r3.totalTax);
   });
 
-  it('annule exactement le crédit ligne 361 QC au-dessus du seuil familial (assertion stricte)', () => {
-    // À 80 000$ sans conjoint : excès = 80 000 - 27 835 = 52 165$
-    // réduction = 52 165 × 18.75% = 9 781$ >> grossLine361 (3 986 + 3 058 = 7 044$)
-    // donc qcCredit = max(0, 7 044 - 9 781) × 14% = 0
+  it('annule exactement le crédit ligne 361 QC bien au-dessus du seuil familial (assertion stricte)', () => {
+    // Sous le seuil UNIQUE 2026 (42 955) + montant vivant seul, l'extinction QC recule à ~92 k$ :
+    // grossLine361 = 3 986 + 3 058 + 2 172 = 9 216 ; extinction à 42 955 + 9 216/0,1875 ≈ 92 107$.
+    // À 100 000$ : excès = 57 045 × 18,75% = 10 696 >> 9 216 → qcCredit = max(0, …) × 14% = 0.
     const { qcCredit, fedCredit } = calculateAgeAndPensionCredits(
-      { age: 70, eligiblePensionIncome: 80000, hasSpouse: false, familyIncome: 80000 },
-      80000,
+      { age: 70, eligiblePensionIncome: 80000, hasSpouse: false, familyIncome: 100000 },
+      100000,
     );
     expect(qcCredit).toBe(0);
-    // Le crédit fédéral âge est réduit (excès = 80 000 - 46 432 = 33 568$ × 15% = 5 035$
-    // de réduction sur le 8 966$ d'âge max, soit ageAmountFed restant ≈ 3 931$).
-    // Plus le crédit pension 2 000$ → fedAmount = ~5 931$ × 15% ≈ 890$.
-    expect(fedCredit).toBeGreaterThan(800);
-    expect(fedCredit).toBeLessThan(950);
+    // Le crédit fédéral âge est quasi éteint à 100 000$ ; il reste surtout le crédit pension.
+    expect(fedCredit).toBeGreaterThan(250);
+    expect(fedCredit).toBeLessThan(600);
   });
 
   it('régression — retraité 70 ans, 30 000$ revenu pension, sans conjoint (valeur figée)', () => {
@@ -621,10 +625,11 @@ describe('calculateFiscalReport avec ageOpts (§6.2 intégration)', () => {
       hasSpouse: false,
       familyIncome: 30000,
     });
-    // Fenêtre 500-1000$ : crédits §6.2 (fed âge plein + pension 2k + ligne 361
-    // partiellement réduite par excès 30k-27.8k) ramènent l'impôt à ~690$.
-    expect(r.totalTax).toBeGreaterThan(500);
-    expect(r.totalTax).toBeLessThan(1000);
+    // Re-baseline TP1G-VIVANT-SEUL : à 30 000$ (< seuil unique 42 955), la ligne 361 n'est PAS réduite
+    // et inclut le montant « personne vivant seule » (2 172$) → crédit QC plus élevé → impôt ~299$
+    // (avant : ~690$, ligne 361 réduite + sans vivant seul). Baisse VOULUE d'un crédit plus généreux au solo.
+    expect(r.totalTax).toBeGreaterThan(150);
+    expect(r.totalTax).toBeLessThan(500);
     expect(r.netIncome).toBeGreaterThan(25000);
     expect(r.netIncome).toBeLessThan(30000);
   });

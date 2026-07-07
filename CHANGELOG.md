@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — TP1G-VIVANT-SEUL : crédit QC « personne vivant seule »] — 2026-07-07
+
+### Fiscalité (money-critical)
+- **Crédit « personne vivant seule » (ligne 361 QC)** modélisé : le montant de base (2 172 $) s'additionne aux
+  montants âge + revenu de retraite pour un contribuable **sans conjoint** (solo ou survivant), l'ensemble réduit une
+  seule fois de 18,75 % au-delà d'un **seuil unique 42 955 $** (revenu familial net) — les paliers duaux seul/couple
+  (27 835 / 45 270, non sourcés) sont **archivés** (léger effet à la baisse sur le crédit des couples dans la bande).
+  Un retraité solo 65+ paie ~304 $/an de moins. Source : MFQ Dépenses fiscales 2025, fiche 110606, tableau C.31.
+  Limites assumées : appliqué au bloc 65+ ; supplément monoparental (2 681 $) non modélisé.
+
+---
+
 ## [unreleased — DETTE-RE-SALE : vente immobilière ciblée par bien] — 2026-07-07
 
 ### Correction (money-critical)

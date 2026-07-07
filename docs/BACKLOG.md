@@ -500,7 +500,13 @@
   limite assumée documentée (ville par ville, non modélisable sur le binaire montreal/reste_qc). Discriminant : 500 k$ = 5 610,50 $
   (avant : 5 755,50 $) + bornes exactes 62 900/315 000 testées. SOURCE : *Gazette officielle du Québec* 2025-06-07 nº 23 (indexation
   +2,3438 %). Panel `financial-integrity`. Montréal intact, invariant « montreal ≥ reste_qc » préservé.
-- [ ] **[TP1G-VIVANT-SEUL]** 🔧 MEDIUM money-critical (grille reçue 2026-07-06) — `services/projection/taxDecember.ts` ligne 361 QC : intégrer le **montant « personne vivant seule »** (2 172 $ base + supplément monoparental 2 681 $) au panier de crédits non remboursables. **Mécanique** : additionner le montant personne vivant seule (si solo) aux montants âge + revenu retraite AVANT la réduction commune 18,75 % au-delà du seuil 42 955 $, puis convertir à 14 %. **Gate** : contribuable SEUL (mode solo OU survivant). Supplément monoparental NON modélisé (hors scope : personas sans étudiant majeur ≥ 18). SOURCE : MFQ Dépenses fiscales 2025 fiche 110606 Tableau C.31 + Loi sur les impôts art. 752.0.7.4. FISCAL_REFERENCE.md §4 mise à jour 2026-07-06. Plan-first + discriminant git-stash + panel `financial-integrity`.
+- [x] **[TP1G-VIVANT-SEUL]** ✅ **FAIT (2026-07-07)** — `utils/tax.ts` : montant « personne vivant seule » (2 172 $)
+  additionné à âge + revenu retraite AVANT la réduction UNIQUE 18,75 % au-delà du **seuil unique 42 955 $** (les paliers
+  duaux 27 835/45 270 non sourcés sont ARCHIVÉS → touche aussi les couples, crédit ↓ léger dans la bande), conversion 14 %.
+  Gate `!hasSpouse` = solo ET survivant (via `taxFilers`, aucun changement `taxDecember.ts`). Discriminant prouvé (zéro-out
+  → 3 tests solo échouent) ; suite complète 2352 verts, 2 goldens ITEM-2C re-basés SCIEMMENT (solo −9 175 $ ; couple +9 $).
+  Panel `financial-integrity` + `silent-failure-hunter`. Limites assumées (doc §4) : montant appliqué au bloc 65+ (solo <65
+  non crédité) ; supplément monoparental 2 681 $ NON modélisé (exigerait `childrenCount`).
 - [x] **[REEE-LITERALS]** ✅ **FAIT (2026-06-26)** — `services/projection/childrenReee.ts` : SCEE/IQEE/REEE extraits en
   constantes nommées+sourcées (`SCEE_GRANT_RATE`, `*_ANNUAL_GRANT_BASIC/CATCHUP`, `*_LIFETIME_GRANT_LIMIT`, `IQEE_*`,
   `REEE_LIFETIME_LIMIT_PER_BENEFICIARY`, `REEE_TARGET_ANNUAL_CONTRIB_*`, + `REEE_AIP_TAX_RATE` marqué « approximation modèle »),

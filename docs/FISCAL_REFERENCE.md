@@ -175,7 +175,7 @@
 | Montant en raison de l'âge (`AGE_AMOUNT_QC_2026`) | **3 986 $** | Revenu Québec TP-1.G, 65+/personne |
 | Montant revenu de retraite (`RETIREMENT_INCOME_AMOUNT_QC_2026`) | **3 058 $** | sur 1ers 3 058 $ de pension admissible |
 | **Personne vivant seule (base)** (`LIVING_ALONE_AMOUNT_QC_2026`) | **2 172 $** | Revenu Québec TP-1.G ligne 361, contribuable seul |
-| **Supplément monoparental** (`LIVING_ALONE_MONOPARENTAL_SUPPLEMENT_QC_2026`) | **2 681 $** | ajout si ≥ 1 enfant à charge (réduit −1/12/mois d'Allocation famille) |
+| **Supplément monoparental** (NON modélisé — hors scope) | 2 681 $ | ajout si ≥ 1 enfant à charge (réduit −1/12/mois d'Allocation famille) ; exigerait `childrenCount` → différé (un parent seul touche quand même la BASE 2 172 $ via le gate `!hasSpouse`) |
 | Seuil revenu familial — sans conjoint | 27 835 $ | crédit complet en dessous (ancien) |
 | Seuil revenu familial — avec conjoint | 45 270 $ | crédit complet en dessous (ancien) |
 | **Seuil revenu familial net — personne vivant seule (2026)** | **42 955 $** | nouveau ; ancien 42 090 $ (2025) |
@@ -189,6 +189,10 @@
 > **1/12 par mois d'Allocation famille** (cohabitation bénéficiaire). Seuil arrondi au 5 $. Bascule 2026 : nouveau
 > seuil 42 955 $ ; ancien barème couple/seul (27 835 / 45 270) **archivé**. Les paliers individuels seul/couple n'existent plus.
 > Indexation 2026 : +2,05 % (QC), +2,0 % (féd).
+> ⚠️ **Limite d'implémentation (TP1G-VIVANT-SEUL, 2026-07-07)** : le montant « personne vivant seule » n'est appliqué
+> qu'au bloc **65+** (`calculateAgeAndPensionCredits` n'est appelée que pour des 65+/retraités) ; un contribuable seul
+> de **< 65 ans** n'est PAS crédité (le montant est en réalité indépendant de l'âge, mais l'étendre = surface golden
+> énorme sur tout actif solo → différé). Gate `!hasSpouse` = solo ET survivant (tous deux 1 contribuable via `taxFilers`).
 
 ### Assiette du revenu de pension ADMISSIBLE (féd 31400 + QC 361) — règle ET implémentation
 **Règle (ARC/RQ)** : sont admissibles la rente viagère d'un régime de pension (RPA/DB) et, à 65 ans+,

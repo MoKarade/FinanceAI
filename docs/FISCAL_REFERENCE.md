@@ -169,15 +169,25 @@
 | Âge minimum | 65 ans | |
 | Crédit pour revenu de pension (`PENSION_INCOME_AMOUNT_FED`) | **2 000 $** | ARC ligne 31400 (fixe, non indexé depuis 2006) |
 
-### Québec — ligne 361 (âge + revenu de retraite combinés)
+### Québec — ligne 361 (âge + revenu de retraite + personne vivant seule combinés)
 | Constante | Valeur 2026 | Source |
 |---|---|---|
 | Montant en raison de l'âge (`AGE_AMOUNT_QC_2026`) | **3 986 $** | Revenu Québec TP-1.G, 65+/personne |
 | Montant revenu de retraite (`RETIREMENT_INCOME_AMOUNT_QC_2026`) | **3 058 $** | sur 1ers 3 058 $ de pension admissible |
-| Seuil revenu familial — sans conjoint | 27 835 $ | crédit complet en dessous |
-| Seuil revenu familial — avec conjoint | 45 270 $ | |
-| Taux de réduction (`QC_LINE_361_REDUCTION_RATE`) | 18,75 % | au-delà du seuil |
+| **Personne vivant seule (base)** (`LIVING_ALONE_AMOUNT_QC_2026`) | **2 172 $** | Revenu Québec TP-1.G ligne 361, contribuable seul |
+| **Supplément monoparental** (`LIVING_ALONE_MONOPARENTAL_SUPPLEMENT_QC_2026`) | **2 681 $** | ajout si ≥ 1 enfant à charge (réduit −1/12/mois d'Allocation famille) |
+| Seuil revenu familial — sans conjoint | 27 835 $ | crédit complet en dessous (ancien) |
+| Seuil revenu familial — avec conjoint | 45 270 $ | crédit complet en dessous (ancien) |
+| **Seuil revenu familial net — personne vivant seule (2026)** | **42 955 $** | nouveau ; ancien 42 090 $ (2025) |
+| Taux de réduction (`QC_LINE_361_REDUCTION_RATE`) | 18,75 % | au-delà du seuil applicable (personne vivant seule + âge + revenu retraite, PUIS réduit une fois) |
 | Âge minimum | 65 ans | |
+| Conversion en crédit (taux) | **14 %** | taux du crédit non remboursable ligne 361 QC |
+> **Mécanique (source : MFQ Dépenses fiscales 2025, fiche 110606, Tableau C.31 + Loi sur les impôts art. 752.0.7.4)** :
+> les montants « Personne vivant seule » et « Supplément monoparental » s'ADDITIONNENT aux montants âge + revenus
+> retraite. L'**ensemble** (somme des 3-4 montants applicables) est réduit **UNE SEULE FOIS** de 18,75 % au-delà
+> du seuil **42 955 $** (revenu familial net), puis converti en crédit à 14 %. Supplément monoparental réduit de
+> **1/12 par mois d'Allocation famille** (cohabitation bénéficiaire). Seuil arrondi au 5 $. Bascule 2026 : nouveau
+> seuil 42 955 $ ; ancien barème couple/seul (27 835 / 45 270) **archivé**. Les paliers individuels seul/couple n'existent plus.
 > Indexation 2026 : +2,05 % (QC), +2,0 % (féd).
 
 ### Assiette du revenu de pension ADMISSIBLE (féd 31400 + QC 361) — règle ET implémentation
@@ -521,18 +531,22 @@ choisir). Calcul cumulatif par tranche (style impôt).
 | 3 231 000 → 5 385 000 $ | 3,5 % |
 | > 5 385 000 $ | 4,0 % |
 
-**Reste du Québec** (barème provincial de base — Loi concernant les droits sur les mutations immobilières)
+**Reste du Québec** (barème provincial de base — Loi concernant les droits sur les mutations immobilières, **2026**)
 | Tranche du prix | Taux |
 |---|---|
-| ≤ 58 900 $ | 0,5 % |
-| 58 900 → 290 000 $ | 1,0 % |
-| 290 000 → 552 300 $ | 1,5 % |
-| > 552 300 $ | 2,0 % |
+| ≤ 62 900 $ | 0,5 % |
+| 62 900 → 315 000 $ | 1,0 % |
+| 315 000 → (sans limite 3ᵉ palier) | 1,5 % |
 
-> Repère : pour un achat à 500 000 $ → **5 885 $** (Montréal) vs **5 755,50 $** (reste du QC).
-> ⚠️ Seuils provinciaux 2025 (58 900 / 290 000 / 552 300) — **à réindexer 2026** (LOW, indexés
-> annuellement). Les paliers municipaux hors Montréal (Laval, Gatineau, Québec…) ne sont pas distingués :
-> ils tombent dans `'reste_qc'` (barème provincial de base, légère sous-estimation possible).
+> **Source** : Loi concernant les droits sur les mutations immobilières (RLRQ c. D-15.1), indexation 2026 publiée dans la
+> **Gazette officielle du Québec, Partie 1, 2025-06-07 (157ᵉ année, nº 23)**, avis de la ministre des Affaires municipales.
+> Indexation 2026 = **+2,3438 %** vs 2025 (61 500→62 900 ; 307 800→315 000). Barème complet jusqu'à 500 000 $ approx.
+> Repère : pour un achat à 500 000 $ → **5 885 $** (Montréal) vs **6 325 $** (reste du QC, 2026).
+> ⚠️ **Limite assumée** : le barème provincial de base s'applique à tout le Québec sauf Montréal ; toutefois,
+> toute municipalité peut ajouter une surtaxe locale (ex. Laval, Longueuil, Québec en appliquent). Les paliers
+> municipaux hors Montréal ne sont pas distingués : ils tombent dans `'reste_qc'` → légère sous-estimation possible
+> pour les résidences dans les municipalités à surtaxe. Montréal seule a un barème entièrement distinct et surchargé
+> (cf tableau Montréal ci-dessus).
 
 ### TPS/TVQ résidence NEUVE — remboursements (`calculateGstNewHomeRebate`/`calculateQstNewHomeRebate`)
 - **TPS 5 %** (`GST_RATE`) : remboursement **36 %** de la TPS payée si prix ≤ **350 000 $**

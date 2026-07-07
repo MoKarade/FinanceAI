@@ -494,9 +494,9 @@
   `code-reviewer` (arrondi IEEE-754 borderline corrigé + 4 mappings non couverts ajoutés).
 - [x] **[ENG-TAX-NS]** ✅ DÉCISION Marc 2026-06-19 : **GARDER l'alias** `services/tax.ts` (`export *`). Pas de
   résorption. Clos (voir batch décisions 2026-06-19).
-- [ ] **[FISC-WELCOME-2026]** 🔧 LOW (🧭👤 BLOQUÉ — routé `A_FAIRE_MOI` 2026-06-18) — `services/realEstate.ts:101-105` :
-  seuils mutation « reste_qc » millésime **2025** (58 900/290 000/552 300) à réindexer 2026. ⚠️ Marc doit fournir les
-  valeurs officielles RQ 2026 (NE PAS deviner) → puis transcrire `FISCAL_REFERENCE.md` + corriger code, même PR.
+- [ ] **[FISC-WELCOME-2026]** 🔧 MEDIUM money-critical (données reçues 2026-07-06) — `services/realEstate.ts:101-105` :
+  mettre à jour le barème « reste_qc » de **2025** (58 900/290 000/552 300) au barème **2026** (62 900/315 000 + taux 3ᵉ palier 1,5 %, cf `FISCAL_REFERENCE.md` §8 mise à jour 2026-07-06). SOURCE PRIMAIRE : *Gazette officielle du Québec, Partie 1, 2025-06-07*, indexation +2,3438 %. Plan-first + test (personas d'achat immobilier) + doc (FISCAL_REFERENCE maintenue).
+- [ ] **[TP1G-VIVANT-SEUL]** 🔧 MEDIUM money-critical (grille reçue 2026-07-06) — `services/projection/taxDecember.ts` ligne 361 QC : intégrer le **montant « personne vivant seule »** (2 172 $ base + supplément monoparental 2 681 $) au panier de crédits non remboursables. **Mécanique** : additionner le montant personne vivant seule (si solo) aux montants âge + revenu retraite AVANT la réduction commune 18,75 % au-delà du seuil 42 955 $, puis convertir à 14 %. **Gate** : contribuable SEUL (mode solo OU survivant). Supplément monoparental NON modélisé (hors scope : personas sans étudiant majeur ≥ 18). SOURCE : MFQ Dépenses fiscales 2025 fiche 110606 Tableau C.31 + Loi sur les impôts art. 752.0.7.4. FISCAL_REFERENCE.md §4 mise à jour 2026-07-06. Plan-first + discriminant git-stash + panel `financial-integrity`.
 - [x] **[REEE-LITERALS]** ✅ **FAIT (2026-06-26)** — `services/projection/childrenReee.ts` : SCEE/IQEE/REEE extraits en
   constantes nommées+sourcées (`SCEE_GRANT_RATE`, `*_ANNUAL_GRANT_BASIC/CATCHUP`, `*_LIFETIME_GRANT_LIMIT`, `IQEE_*`,
   `REEE_LIFETIME_LIMIT_PER_BENEFICIARY`, `REEE_TARGET_ANNUAL_CONTRIB_*`, + `REEE_AIP_TAX_RATE` marqué « approximation modèle »),
@@ -650,7 +650,7 @@
 - [x] **[FISC-SURVIVOR-DRAWDOWN]** ✅ HIGH (#297, 2026-06-15) — `cashflowAllocation.ts` : seuils survivant ×2 → `liveFilers=1` (cohérent taxFilers/oasBeneficiaries) + salaire du défunt exclu. Verdict NUANCE (qualité de stratégie, pas fuite fiscale). Panel projection-validator OK. NB : `meltdownReer.ts` a le même schéma (cible ×N) — voir [FISC-MELTDOWN-SURVIVOR] ci-dessous, opt-in MC, à faire si voulu.
 - [x] ~~**[FISC-ACB-RENO]**~~ ❌ **FAUX POSITIF** (vérifié 2026-06-15, fiscal-accuracy) — prémisse fausse : les rénos n'augmentent PAS non plus `currentValue` dans le moteur (croît seulement par `propertyGrowthRate`). `cost` ET `currentValue` ignorent les rénos symétriquement → gain cohérent, pas de surimposition. ⚠️ Le fix suggéré (ajouter rénos à `cost` seul) serait NOCIF (sous-imposition). **NE PAS corriger.** (Sujet séparé hors scope : l'équité/net worth sous-estime les rénos capitalisées → [DETTE-RENO-EQUITY] à créer si voulu.)
 - [x] **[FISC-LATENT-RE]** ✅ HIGH (#298, 2026-06-15) — `latentTax.ts` : `realEstateLatentGain` (×50%) ajouté à `totalTaxableLatent`, même Σ que le bilan successoral. Seul `ImpotLatent` d'affichage bouge. Panel projection-validator OK.
-- [ ] **[FISC-TAXDEC-INCR]** 🔧 LOW (requalifié de MEDIUM, triage 2026-06-16 — `fixIsSafe:false`) — `taxDecember.ts:694-730` : 3 sous-claims RÉELS mais bornés. (a) crédit d'âge omis sur l'incrément gains/div → ne joue QUE dans la zone d'érosion du crédit (s'annule ailleurs comme le BPA), sous-imposition légère bornée. (b) gains+div empilés depuis la MÊME base (pas en cascade) → sous-imposition d'un retraité gros gains ET gros div franchissant un palier ensemble. (c) FSS sur revenu moyen du couple → **déjà documenté in situ** (taxDecember.ts:653-658, plafond 1 000 $/adulte). ⚠️ Fix RISQUÉ : un `ageOpts` mal aligné FABRIQUE un écart artificiel ; chaîner gains→div risque le double-comptage ; re-base les snapshots d'impôt de décembre → exige tests de non-régression + OK Marc. Différé.
+- [ ] **[FISC-TAXDEC-INCR]** 🔧 LOW (requalifié de MEDIUM, triage 2026-06-16 — `fixIsSafe:false`) — `taxDecember.ts:694-730` : 3 sous-claims RÉELS mais bornés. (a) crédit d'âge omis sur l'incrément gains/div → ne joue QUE dans la zone d'érosion du crédit (s'annule ailleurs comme le BPA), sous-imposition légère bornée. (b) gains+div empilés depuis la MÊME base (pas en cascade) → sous-imposition d'un retraité gros gains ET gros div franchissant un palier ensemble. (c) FSS sur revenu moyen du couple → **déjà documenté in situ** (taxDecember.ts:653-658, plafond 1 000 $/adulte). ⚠️ **DÉCISION Marc 2026-07-06 À CONFIRMER** — interprétation : OK pour COD ER le fix risqué, ou ok=statu quo / différé ? Avant tout code : clarifier l'intention (fix full vs stay différé + doc). En attente.
 - [x] ~~**[FISC-GOVPENSION-SCALE]**~~ ❌ **FAUX POSITIF** (vérifié 2026-06-16, panel projection-validator + fiscal-accuracy + code-reviewer, unanime) — prémisse FAUSSE : `governmentPension` est un AGRÉGAT **MÉNAGE** (RRQ+PSV combinés des 2 conjoints), pas un per-personne. L'absence de ×N est VOULUE et cohérente sur 3 sites (`retirementIncome`, `estateCalculation:177-178`, `setupSimulation:114-118`) + documentée (utils/tax.ts:99, FISCAL_REFERENCE §6) + verrouillée par régression (`estateCalculation.test.ts:131`). Ajouter ×N = ré-introduire le bug FA-5 (couple double-compté) → **NE PAS corriger**. ✅ Corrections sûres faites (2026-06-16) : label UI clarifié « total ménage (couple combiné) » + typo « Etat→État » (`RetirementIncomeCard.tsx:26`) ; rename `rrqBaseIndiv/psvBaseIndiv → …Family` (`retirementIncome.ts`, le nom trompeur avait FABRIQUÉ le faux positif).
 - [x] **[FISC-RRQ-PRORATA]** ✅ MEDIUM (2026-06-16) — prorata de résidence RRQ rendu PER-CONJOINT (`retirementIncome.ts`), mirroir de la PSV : `arrivalAge` via `getResidencyStartYear` (corrige aussi le gate `isImmigrant` manquant → RRQ désormais cohérente avec PSV/CELI/REER), poids RRQ = ratio gains/MGA × prorata résidence per-conjoint, split par poids. Couple non-immigrant ⇒ inchangé (zéro régression baseline ; état `canadaArrivalYear` sans `isImmigrant` inatteignable en prod). 3 tests discriminants (symétrie ordre-conjoints — VÉRIFIÉ échouant sur l'ancien code via stash). Triage adversarial : REAL_BUG confirmé (seul vrai bug sur 7 findings vérifiés).
 - [x] ~~**[FISC-INFLATION-COUPLING]**~~ ❌ **DOUBLON de ITEM 2a (déjà rejeté Marc)** (triage 2026-06-16) — `tax.ts:673` indexe les paliers ×1,02/an pendant que le revenu est déflaté par `simInflation`. Le fix proposé (« indexer sur `simInflation` ») a été **prouvé numériquement PIRE** (simInflation 5 %/20 ans : ARC ~29 353 $ vs fix ~7 712 $ vs actuel ~22 313 $ — cf HISTORIQUE.md ITEM 2a). Cause : l'aller-retour déflate→impôt→réinflate est lossy (BPA/crédits en $ fixes). Le vrai correctif = impôt sur revenu NOMINAL + paliers indexés `simInflation` (supprime l'aller-retour) = chantier STRUCTUREL ~12 sites → **décision Marc + plan requis**. Documenté FISCAL_REFERENCE §9. **NE PAS appliquer le fix naïf.**
@@ -1025,9 +1025,7 @@
   `simInflation`, retirer les déflations (`monthlyCalcs.ts:92-110`, latentTax, retirementIncome, taxDecember…),
   **re-baser les golden Phase 0 + les baselines SCIEMMENT** (prouver le rapprochement vs ARC), panel
   fiscal-accuracy + projection-validator. ⚠️ Money-critical, plan-first à chaque phase, gate + panel.
-- [ ] **[ITEM-2C]** Gates de *timing* par conjoint (FERR 72 / reset REER 71 / bonus PSV 75+) :
-  bloqués structurellement (pool REER ménage + âge principal unique). Fix propre =
-  `computeRetirementIncome` per-conjoint de bout en bout (lourd). À planifier ou laisser ?
+- [x] **[ITEM-2C]** ✅ **PHASES 1+2 FAITES (2026-06-25 : FERR per-conjoint + PSV/RRQ per-conjoint)**. RESTES : reset REER 71 + per-conjoint PSV/RRQ AU DÉCÈS = **DÉCISION Marc 2026-07-06 : LAISSER EN LIMITE ASSUMÉE** (doc `FISCAL_REFERENCE §9` coté survivorMode, impact $ minimal). Clos.
 - [x] **[B-AUDIT-5]** ✅ **DÉJÀ CORRIGÉ** (vérifié 2026-06-19, Marc avait dit « corriger »). Le SRG est DÉJÀ exclu
   de l'assiette du clawback PSV : `projection.ts:918` passe `incomeRetirement − incomeRetirementGis` à
   `computeOasClawback`, l.921 `v − gisShare` par conjoint, l.929 le cap `pensionPSV − incomeRetirementGis`
@@ -1066,9 +1064,7 @@
   ne génère plus de remboursement net (donateur bas-revenu : crédit borné à son impôt) ; l'excédent est perdu (pas de report
   modélisé). Tests unitaires (revenu élevé = complet, revenu bas = plafonné, revenu nul = 0) + discriminant `git stash` (sans cap,
   les tests bas/nul échouent). Panel financial-integrity + projection-validator + silent-failure-hunter.
-- [ ] **[W5-TAX-PROXY]** 🔧 LOW (découverte FA-6) — les taux d'impôt locatif (`0,45` sur NOI) et dividende CCPC (`0,36`) dans
-  `w5Effects.ts` sont des PROXIES PLATS non sourcés (taux marginal). Désormais APPLIQUÉS en année active (avant : clobberés = 0).
-  Raffiner en impôt incrémental `tax(rev+x)−tax(rev)` + sourcer dans FISCAL_REFERENCE.
+- [x] **[W5-TAX-PROXY]** ✅ **DÉCISION Marc 2026-07-06** : **(a) Garder les proxies plats** (0,45 locatif / 0,36 CCPC) documentés en tant qu'estimation de taux marginal QC. Ajouter une mention UI + source de taux marginal QC dans `FISCAL_REFERENCE.md` (rapide, honnête). Option (b) = modéliser l'impôt incrémental réel (exact, mais plan-first dédié, impact moteur). Choix : (a). Clos.
 - [x] **[FA-7]** 🔧 (livré) §8 immobilier transcrit dans FISCAL_REFERENCE : B-20 (plancher 5,25 %,
   +2 pts, GDS 39/TDS 44), mise de fonds min + amortissements SCHL (30 ans FTB/neuve août 2024),
   primes SCHL par LTV (0,60→4,00 %), mutations QC 2025 (paliers + note Montréal non modélisé,
@@ -1288,12 +1284,13 @@
   DebtManager.smoke (1) + TaxCenter.smoke (2) ; RealEstate/ChildPlanning vérifiés statiquement (render =
   fixtures goal/enfant, disproportionné pour attribut statique). NB : `aria-label` partout (uniformité) ;
   `aria-labelledby` serait + robuste contre la dérive label↔aria si refonte un jour.
-- [ ] **[D6-PRIV-MONTANTS]** ❓DÉCISION MARC (découverte audit a11y du lot sliders) — incohérence produit :
+- [ ] **[D6-PRIV-MONTANTS]** 🔧 DECISION Marc 2026-07-06 : **OUI masquer au repose, révéler au focus** — incohérence produit :
   les montants $ des sliders REER/CELIAPP (TaxCenter), REEE (ChildPlanning) et paiement suppl. (DebtManager)
-  s'affichent EN CLAIR en mode privé (pas de `<PrivateAmount>`/`privacy-blur`), alors que prix immo, revenus/
-  dépenses théoriques, mise de fonds y sont masqués. Veux-tu ces montants privés aussi ? Si oui : envelopper
-  la valeur dans `<PrivateAmount>` + ajouter `{...maskedSliderAria(isPrivacyMode)}` au slider (les deux ensemble).
-  Sinon, fermer. Pas un bug a11y — pur choix de confidentialité produit. (S)
+  s'affichent EN CLAIR en mode privé (pas de `<PrivateAmount>`), alors que prix immo, revenus/dépenses théoriques,
+  mise de fonds y sont masqués. Solution : chaque slider → encapsuler la valeur numérique DANS un composant qui
+  masque au blur/repose (par symétrie avec `<PrivateNumberInput>` — focus révèle, blur re-masque) ; l'input reste
+  cliquable. Accessible : `aria-label` porte la vraie valeur SR-safe + le slider se focus normalement. Patches : `TaxCenter.tsx`,
+  `ChildPlanning.tsx`, `DebtManager.tsx`. Effort S (3 fichiers, pattern clair). Priorité : post-D7-KBD (lot a11y).
 - [ ] **[D7]** → Voir [PERF-BOOT] l.724 (doublon, même tâche, déféré provider-aware).
 - [ ] **[D6-KBD]** Sidebar hover-only : labels `opacity-0` focusables + `disabled` bloque
   l'accordéon clavier → rendre pilotable au clavier.

@@ -60,6 +60,11 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
     // [A11Y-CHARTS] (LOT 3) — mode discret : masque les montants ($) de la table de données sr-only
     // (alternative texte au PieChart de répartition estimée).
     const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
+    // DETTE-RE-SALE : biens immobiliers pour désigner LEQUEL vendre sur un événement « vente » (le
+    // sélecteur n'apparaît qu'avec ≥2 biens actifs — sinon le fallback moteur suffit). Lu du store
+    // directement (LifeEvents y accède déjà) → aucun threading de prop à travers LifeProjects/TabRouter.
+    const realEstateGoals = useFinanceStore(s => s.realEstateGoals);
+    const activeProperties = useMemo(() => realEstateGoals.filter(g => g.isActive), [realEstateGoals]);
 
     const allItems = useMemo(() => {
         const tItems = travelGoals.map(t => ({ id: t.id, uniqueKey: `travel_${t.id}`, date: t.date, name: `Voyage: ${t.destination}`, cost: t.totalCost, type: 'TRAVEL', icon: 'plane' as IconName, details: t.destination }));
@@ -255,6 +260,15 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                 </>
                             ) : (
                                 <div><label htmlFor="lifeevent-amount" className="text-meta text-ink-300 mb-1 block">Montant ($)</label><input id="lifeevent-amount" type="number" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.impactAmount ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, impactAmount: numOrUndef(e.target.value) })} /></div>
+                            )}
+                            {newLifeEvent.name?.toLowerCase().includes('vente') && activeProperties.length >= 2 && (
+                                <div className="lg:col-span-5">
+                                    <label htmlFor="lifeevent-property" className="text-meta text-ink-300 mb-1 block">Bien à vendre (plusieurs biens détectés)</label>
+                                    <select id="lifeevent-property" className="w-full bg-dark border border-white/20 rounded p-2 text-white text-meta" value={newLifeEvent.propertyId ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, propertyId: e.target.value || undefined })}>
+                                        <option value="">Auto (1er bien à équité positive)</option>
+                                        {activeProperties.map(g => <option key={g.id} value={g.id}>{g.name || 'Bien immobilier'}</option>)}
+                                    </select>
+                                </div>
                             )}
                             <button onClick={handleAdd} className="bg-purple-600 hover:bg-purple-500 text-white p-2 rounded font-bold h-[42px]">Ajouter</button>
                             {eventError && <p className="lg:col-span-5 text-meta text-red-300 mt-1" role="alert">{eventError}</p>}

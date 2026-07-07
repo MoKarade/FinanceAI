@@ -36,6 +36,10 @@ export interface PropertyStateMutable {
     cost?: number;
     /** RE-GAIN — résidence principale (gain EXEMPT, LIR 40(2)b) vs locatif (gain imposable). */
     isPrimaryResidence?: boolean;
+    /** DETTE-RE-SALE — id stable du RealEstateGoal (aligné `projection.ts` propertiesState) pour cibler
+     *  la vente par `LifeEvent.propertyId`. Optionnel + explicitement typé (vs l'index catch-all `unknown`) :
+     *  le moteur le fournit toujours (`projection.ts` propertiesState), absent ⇒ jamais ciblé (fallback). */
+    id?: string;
     [key: string]: unknown;
 }
 
@@ -121,7 +125,17 @@ export function applyLifeEvents(
                 // underwater (`mortgage >= currentValue`) n'est PAS vendu (on ne modélise pas la vente à perte
                 // forcée). Une vente quasi-underwater (mortgage entre 95 % et 100 % de la valeur) PASSE ce filtre
                 // mais a un `saleNet` négatif — d'où le fix FISC-RE-SALE-RESIDUAL ci-dessous.
-                const soldProp = propertiesState.find(p => p.isBought && p.mortgage < p.currentValue);
+                // DETTE-RE-SALE : cible le bien par `propertyId` si l'événement le fournit (l'UI le
+                // renseigne via un sélecteur) — sinon fallback historique (PREMIER bien à équité positive,
+                // rétrocompat exacte pour les événements sans propertyId). ⚠️ Un `propertyId` fourni SANS
+                // match (bien inconnu/underwater/déjà vendu) ne vend RIEN : ne JAMAIS vendre silencieusement
+                // un AUTRE bien que celui visé — c'est précisément la classe de bug corrigée ici (dans un
+                // scénario à 2 biens, le `find` premier-bien vendait la résidence principale exemptée au lieu
+                // du locatif imposable, faussant le gain en capital).
+                const isSellable = (p: typeof propertiesState[number]) => p.isBought && p.mortgage < p.currentValue;
+                const soldProp = e.propertyId
+                    ? propertiesState.find(p => p.id === e.propertyId && isSellable(p))
+                    : propertiesState.find(isSellable);
                 if (soldProp) {
                     const saleNet = soldProp.currentValue * 0.95 - soldProp.mortgage;
                     // FISC-RE-SALE-RESIDUAL : PAS de `Math.max(0, …)`. Une vente quasi-underwater (hypothèque
@@ -156,6 +170,17 @@ export function applyLifeEvents(
                         // saleNet < 0 : les frais de 5 % dépassent l'équité → net négatif DÉDUIT du patrimoine
                         // (ponctionné du liquide, ou porté en dette si le liquide est épuisé — PV-6).
                         : `🏠 Vente (net 95%): −${Math.round(-saleNet).toLocaleString('fr-CA')}$ (frais > équité)`);
+                } else if (e.propertyId) {
+                    // DETTE-RE-SALE / observabilité (panel silent-failure) : `propertyId` visait un bien
+                    // introuvable / non vendable (supprimé du store, underwater, déjà vendu) → la vente
+                    // planifiée ne se produit PAS. La rendre VISIBLE plutôt que l'avaler (même patron que
+                    // NAN-OBSERVABILITY) : un no-op silencieux ressemblerait à « aucun événement ce mois ».
+                    logErrorThrottled(`lifeEvent-nosell:${e.id}`, {
+                        source: 'projection', severity: 'warning',
+                        message: `Vente "${e.name}" ignorée : bien ciblé introuvable ou non vendable`,
+                        context: { id: e.id, propertyId: e.propertyId },
+                    });
+                    state.logFlow(`🏠 Vente "${e.name}" ignorée : bien ciblé introuvable ou déjà vendu`);
                 }
             } else {
                 // [NAN-INPUT-HARDENING] `?? 0` ne rattrape pas NaN → garde l'agrégat (impactAmount d'un

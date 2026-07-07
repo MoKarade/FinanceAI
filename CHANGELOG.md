@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — DETTE-RE-SALE : vente immobilière ciblée par bien] — 2026-07-07
+
+### Correction (money-critical)
+- **Vente immobilière ciblée** : un événement de vente désigne désormais le bien par `propertyId` au lieu de
+  vendre le premier bien à équité positive — corrige un bug de justesse $ (dans un scénario résidence principale +
+  locatif, le moteur vendait la résidence principale EXEMPTÉE au lieu du locatif IMPOSABLE, faussant le gain en
+  capital de dizaines de k$). Fallback rétrocompatible si non désigné ; sélecteur ajouté au formulaire d'événement
+  dès 2 biens actifs. Champ `LifeEvent.propertyId` additif optionnel — aucune migration de schéma (v7 conservé).
+
+---
+
 ## [unreleased — FISC-WELCOME-2026 : taxe de bienvenue « reste du Québec » 2026] — 2026-07-07
 
 ### Fiscalité (money-critical)

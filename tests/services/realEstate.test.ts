@@ -34,10 +34,19 @@ import {
 import { welcomeTax as engineWelcomeTax } from '../../services/projection/helpers';
 
 describe('calculateWelcomeTax (FISC-WELCOME-UNIFY)', () => {
-  it('reste_qc : applique les paliers provinciaux sur 500k$', () => {
-    // 0.5% * 58900 + 1.0% * (290000 - 58900) + 1.5% * (500000 - 290000)
-    // = 294.5 + 2311 + 3150 = 5755.5$
-    expect(calculateWelcomeTax(500000, 'reste_qc')).toBeCloseTo(5755.5, 1);
+  it('reste_qc : barème de base 2026 sur 500k$ (Gazette 2025-06-07 nº23)', () => {
+    // Seuils 2026 62 900 / 315 000 : 0,5%*62900 + 1,0%*(315000-62900) + 1,5%*(500000-315000)
+    // = 314.50 + 2521 + 2775 = 5610.50$ (avant réindexation 2026 : 5755.50$ — discriminant).
+    expect(calculateWelcomeTax(500000, 'reste_qc')).toBeCloseTo(5610.5, 1);
+  });
+
+  it('reste_qc : bornes exactes des seuils 2026 (62 900 / 315 000)', () => {
+    // Pile au seuil 1 : tout à 0,5%.
+    expect(calculateWelcomeTax(62900, 'reste_qc')).toBeCloseTo(314.5, 2);
+    // Pile au seuil 2 : 314.50 + (315000-62900)*0,01 = 2835.50.
+    expect(calculateWelcomeTax(315000, 'reste_qc')).toBeCloseTo(2835.5, 2);
+    // Au-delà : 1,5% sur l'excédent (base ≤ 500k fiable ; sur-tranches municipales >500k non modélisées).
+    expect(calculateWelcomeTax(1000000, 'reste_qc')).toBeCloseTo(2835.5 + 685000 * 0.015, 1);
   });
 
   it('montreal : applique la surtaxe municipale sur 500k$', () => {
@@ -47,7 +56,7 @@ describe('calculateWelcomeTax (FISC-WELCOME-UNIFY)', () => {
   });
 
   it('non defini ⇒ repli conservateur Montreal (barème le plus eleve)', () => {
-    // Pas de municipalite ⇒ Montreal = 5885 (> reste_qc 5755.5), par prudence.
+    // Pas de municipalite ⇒ Montreal = 5885 (> reste_qc 5610.5), par prudence.
     expect(calculateWelcomeTax(500000)).toBeCloseTo(5885, 1);
     expect(calculateWelcomeTax(500000)).toBe(calculateWelcomeTax(500000, 'montreal'));
   });

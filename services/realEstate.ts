@@ -68,8 +68,11 @@ export interface PurchaseCosts {
 // Deux barèmes cumulatifs (cf docs/FISCAL_REFERENCE.md §8) :
 //  - Montréal : surtaxe municipale, 8 tranches jusqu'à 4 % (source : Ville de Montréal, droits de
 //    mutation 2026).
-//  - Reste du QC : barème provincial, 4 tranches max 2 % (Loi concernant les droits sur les mutations
-//    immobilières). ⚠️ Seuils 2025 (58 900 / 290 000 / 552 300) — à réindexer 2026 (LOW, non sourcé ici).
+//  - Reste du QC : barème provincial de BASE, 3 tranches (Loi concernant les droits sur les mutations
+//    immobilières, RLRQ c. D-15.1). Seuils 2026 (62 900 / 315 000, indexation 2,3438 %) — source :
+//    Gazette officielle du Québec 2025-06-07 nº 23 (avis ministre Affaires municipales) ; cf FISCAL_REFERENCE §8.
+//    ⚠️ Limite assumée : une municipalité peut ajouter des sur-tranches > 500 000 $ (max 3 %, Montréal au-delà) —
+//    non modélisable sur le binaire montreal/reste_qc (base fiable ≤ 500 000 $, ville par ville au-delà).
 const WELCOME_TAX_MONTREAL: ReadonlyArray<{ upTo: number; rate: number }> = [
   { upTo: 53700, rate: 0.005 },
   { upTo: 269300, rate: 0.010 },
@@ -82,10 +85,9 @@ const WELCOME_TAX_MONTREAL: ReadonlyArray<{ upTo: number; rate: number }> = [
 ];
 
 const WELCOME_TAX_QUEBEC: ReadonlyArray<{ upTo: number; rate: number }> = [
-  { upTo: 58900, rate: 0.005 },
-  { upTo: 290000, rate: 0.010 },
-  { upTo: 552300, rate: 0.015 },
-  { upTo: Infinity, rate: 0.020 },
+  { upTo: 62900, rate: 0.005 },
+  { upTo: 315000, rate: 0.010 },
+  { upTo: Infinity, rate: 0.015 },
 ];
 
 /**

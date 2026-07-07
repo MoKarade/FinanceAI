@@ -695,7 +695,14 @@
   → projection pessimiste). Test discriminant `healthSavingsConsistency.test.ts` (git-stash : 2500→3500 prouvé) + panel financial-integrity +
   projection-validator (conservation 20/20) + silent-failure ✅. `BudgetGroupTable`/`Budget:266,1010` laissés (groupement UI sur l'union typée, pas un calcul de dépense).
 - [x] **[DETTE-PDF-FORMAT]** ✅ MEDIUM (2026-06-16) — `pdfReport.ts` : `formatCAD` local retiré → importé de `utils/format` (source unique fr-CA ; bonus : valeurs non finies → '—' au lieu de « NaN $ »). Tests pdfReport/pdfScenarios verts.
-- [ ] **[DETTE-RE-SALE]** 🔧 LOW — `monthlyEvents.ts:70` : vente immo pilotee par sous-chaine « vente » du nom + premier immeuble hypotheque (peut vendre la RP exempte au lieu du locatif). Lier a un `propertyId`.
+- [x] **[DETTE-RE-SALE]** ✅ **FAIT (2026-07-07)** — `monthlyEvents.ts` : vente immo ciblée par `LifeEvent.propertyId`
+  (champ additif optionnel, PAS de bump v7) au lieu du `find` premier-bien qui vendait la RP exemptée au lieu du locatif
+  imposable (faussait le gain en capital de dizaines de k$). Fallback rétrocompat exact si `propertyId` absent ; fourni SANS
+  match → aucune vente (jamais un AUTRE bien). Sélecteur UI (`LifeEvents`, affiché si ≥2 biens actifs, option « Auto »).
+  4 tests discriminants (dont symétrie + no-match + fallback) + panel projection-validator (2352/2352, conservation 20/20)/silent-failure/code-reviewer.
+- [ ] **[DETTE-RE-SALE-PURGE]** 🔧 LOW (suivi, panel silent-failure 2026-07-07) — supprimer un bien (`RealEstate.tsx doConfirmDeleteGoal`)
+  ne purge pas `lifeEvents[].propertyId` qui le référence → vente orpheline. Mitigé : la vente orpheline est SIGNALÉE (`logFlow`
+  « vente ignorée : bien introuvable »), pas silencieuse. Fix propre : avertir/purger à la suppression. Effort S.
 - [x] **[DETTE-DEADCODE]** ✅ **FAIT (2026-06-26)** — RETIRÉ : `runBuyVsRent` (`realEstate.ts`, test-only, zéro call-site prod) + ses
   types `BuyVsRentInput`/`BuyVsRentYear` (servaient QUE lui) + son bloc de test + import ; `buildTestFixtures` (`testFixtures.ts`, wrapper
   de compat jamais appelé) + ses imports devenus inutilisés (le barrel `testFixtures` reste VIVANT : TestModePanel/Layout/PageSetupGate/

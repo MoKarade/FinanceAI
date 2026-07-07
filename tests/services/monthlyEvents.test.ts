@@ -157,6 +157,63 @@ describe('applyLifeEvents', () => {
         expect(mutator.logFlow).not.toHaveBeenCalledWith(expect.stringContaining('Perte en capital'));
     });
 
+    // [DETTE-RE-SALE] Discriminant : 2 biens (résidence principale + locatif), tous deux à équité positive.
+    // L'événement cible le LOCATIF par propertyId → c'est LUI qui se vend (gain imposable), PAS la RP.
+    // Ancien code (`find` premier bien à équité positive) vendait la RP [0] exemptée → capitalGain=0 → ÉCHOUE.
+    it('DETTE-RE-SALE : vente ciblée par propertyId vend le BON bien (locatif), pas le premier (RP)', () => {
+        const event: LifeEvent = { id: 'v', date: '2035-06', type: 'GROS_ACHAT', name: 'Vente locatif', propertyId: 'loc' };
+        const { mutator, s } = makeState();
+        const props: PropertyStateMutable[] = [
+            { id: 'rp', isBought: true, mortgage: 100000, currentValue: 500000, cost: 300000, isPrimaryResidence: true },
+            { id: 'loc', isBought: true, mortgage: 100000, currentValue: 500000, cost: 300000, isPrimaryResidence: false },
+        ];
+        applyLifeEvents([event], '2035-06', 1.0, props, mutator);
+        expect(props[1].isSold).toBe(true);   // le LOCATIF visé est vendu
+        expect(props[0].isSold).toBeFalsy();  // la RP n'est PAS vendue (ancien code : l'aurait vendue)
+        expect(s.capitalGain).toBeCloseTo(175000, 0); // gain locatif réalisé (RP aurait donné 0 → exempt)
+    });
+
+    // Symétrie : cibler la RP (par id) quand elle est en 2ᵉ position prouve que c'est l'id qui pilote, pas l'index.
+    it('DETTE-RE-SALE : cibler la RP en 2ᵉ position la vend elle (exempte), pas le locatif en tête', () => {
+        const event: LifeEvent = { id: 'v', date: '2035-06', type: 'GROS_ACHAT', name: 'Vente maison', propertyId: 'rp' };
+        const { mutator, s } = makeState();
+        const props: PropertyStateMutable[] = [
+            { id: 'loc', isBought: true, mortgage: 100000, currentValue: 500000, cost: 300000, isPrimaryResidence: false },
+            { id: 'rp', isBought: true, mortgage: 100000, currentValue: 500000, cost: 300000, isPrimaryResidence: true },
+        ];
+        applyLifeEvents([event], '2035-06', 1.0, props, mutator);
+        expect(props[1].isSold).toBe(true);   // la RP visée
+        expect(props[0].isSold).toBeFalsy();  // le locatif intact
+        expect(s.capitalGain).toBe(0);        // vente RP = exempte
+    });
+
+    // propertyId fourni SANS correspondance → AUCUNE vente (ne pas vendre un autre bien silencieusement).
+    it('DETTE-RE-SALE : propertyId sans correspondance ne vend RIEN (pas de repli sur un autre bien)', () => {
+        const event: LifeEvent = { id: 'v', date: '2035-06', type: 'GROS_ACHAT', name: 'Vente locatif', propertyId: 'fantome' };
+        const { mutator, s } = makeState();
+        const props: PropertyStateMutable[] = [
+            { id: 'rp', isBought: true, mortgage: 100000, currentValue: 500000, cost: 300000, isPrimaryResidence: true },
+        ];
+        applyLifeEvents([event], '2035-06', 1.0, props, mutator);
+        expect(props[0].isSold).toBeFalsy();  // rien vendu
+        expect(s.capitalGain).toBe(0);
+        // Observabilité (panel silent-failure) : la vente ignorée est SIGNALÉE, pas avalée en silence.
+        expect(mutator.logFlow).toHaveBeenCalledWith(expect.stringContaining('ignorée'));
+    });
+
+    // Rétrocompat : SANS propertyId, comportement historique inchangé (premier bien à équité positive).
+    it('DETTE-RE-SALE : sans propertyId, fallback historique (premier bien à équité positive)', () => {
+        const event: LifeEvent = { id: 'v', date: '2035-06', type: 'GROS_ACHAT', name: 'Vente' };
+        const { mutator, s } = makeState();
+        const props: PropertyStateMutable[] = [
+            { id: 'rp', isBought: true, mortgage: 100000, currentValue: 500000, cost: 300000, isPrimaryResidence: true },
+            { id: 'loc', isBought: true, mortgage: 100000, currentValue: 500000, cost: 300000, isPrimaryResidence: false },
+        ];
+        applyLifeEvents([event], '2035-06', 1.0, props, mutator);
+        expect(props[0].isSold).toBe(true);   // premier bien (RP) = comportement d'avant
+        expect(s.capitalGain).toBe(0);
+    });
+
     it('applique un krach boursier et choque le portfolio', () => {
         // Arrange
         const event: LifeEvent = { id: '1', date: '2030-01', type: 'KRACH', name: 'Crise', impactPercent: 40 };

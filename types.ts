@@ -583,6 +583,10 @@ export interface LifeEvent {
   durationMonths?: number;
   incomeLossPercent?: number;
   icon?: string;
+  /** DETTE-RE-SALE — pour un événement de VENTE immobilière (`name` contient « vente »), désigne le
+   *  bien à vendre par son `RealEstateGoal.id`. Absent ⇒ fallback historique (premier bien à équité
+   *  positive). Champ additif optionnel ⇒ aucun bump de schéma persist (v7 conservé). */
+  propertyId?: string;
 }
 
 export interface RetirementGoal {

@@ -150,8 +150,13 @@ export const FED_NONREFUNDABLE_RATE = 0.15;
 // Voir https://www.revenuquebec.ca/.../aide-par-ligne/350-a-398-1-credits-dimpot-non-remboursables/ligne-361/
 export const AGE_AMOUNT_QC_2026 = 3986;                     // 65+ par personne, 2026
 export const RETIREMENT_INCOME_AMOUNT_QC_2026 = 3058;       // max sur premier 3 058$ de pension admissible (≈2998 × 1.0205)
-export const QC_LINE_361_THRESHOLD_SINGLE = 27835;          // revenu familial max pour crédit complet (sans conjoint)
-export const QC_LINE_361_THRESHOLD_COUPLE = 45270;          // revenu familial max pour crédit complet (avec conjoint)
+// TP1G-VIVANT-SEUL (2026-07-07) — seuil de réduction UNIQUE (revenu familial net) : remplace les paliers
+// duaux 27 835/45 270 (non sourcés, archivés). Source : MFQ Dépenses fiscales 2025, fiche 110606, tableau C.31.
+export const QC_LINE_361_THRESHOLD_2026 = 42955;
+// Montant « personne vivant seule » (base), ligne 361 — s'ADDITIONNE à âge + revenu de retraite AVANT la
+// réduction commune. MFQ fiche 110606 C.31 / Loi sur les impôts art. 752.0.7.4 a). Supplément monoparental
+// (2 681 $) NON modélisé (hors scope : exigerait childrenCount + réduction 1/12 par mois d'Allocation famille).
+export const LIVING_ALONE_AMOUNT_QC_2026 = 2172;
 export const QC_LINE_361_REDUCTION_RATE = 0.1875;           // 18.75% au-delà du seuil
 export const QC_LINE_361_MIN_AGE = 65;
 
@@ -163,7 +168,13 @@ export interface AgeCreditOptions {
     age?: number;
     /** Revenu de pension admissible — sert au crédit pension fed (max 2 000$) et au crédit revenu retraite QC. */
     eligiblePensionIncome?: number;
-    /** Si vrai, utilise le seuil QC couple (45 270$). Sinon seuil individuel (27 835$). */
+    /**
+     * TP1G-VIVANT-SEUL — présence d'un conjoint. `false`/absent (contribuable SEUL, inclut le survivant
+     * via `taxFilers`) ⇒ ajoute le montant QC « personne vivant seule » (2 172$) à la ligne 361. `true` ⇒ pas
+     * de montant vivant seul. (Le seuil de réduction est désormais UNIQUE — 42 955$ — quel que soit le statut.)
+     * ⚠️ Optionnel = `undefined` traité comme SOLO : un appelant en mode COUPLE DOIT passer `hasSpouse: true`
+     * explicitement, sinon sur-crédit ~304$/an. Tous les appelants prod le font (taxDecember, survivor-aware).
+     */
     hasSpouse?: boolean;
     /**
      * Revenu familial QC utilisé pour réduire la ligne 361.
@@ -211,8 +222,8 @@ export const calculateAgeAndPensionCredits = (
     const ageThresholdFed = AGE_AMOUNT_FED_THRESHOLD_2026 * inflationFactor;
     const ageAmountQc = AGE_AMOUNT_QC_2026 * inflationFactor;
     const retirementAmountQc = RETIREMENT_INCOME_AMOUNT_QC_2026 * inflationFactor;
-    const thresholdSingle = QC_LINE_361_THRESHOLD_SINGLE * inflationFactor;
-    const thresholdCouple = QC_LINE_361_THRESHOLD_COUPLE * inflationFactor;
+    const line361Threshold = QC_LINE_361_THRESHOLD_2026 * inflationFactor;
+    const livingAloneAmount = LIVING_ALONE_AMOUNT_QC_2026 * inflationFactor;
 
     let fedAmount = 0;
     let qcAmount = 0;
@@ -235,13 +246,18 @@ export const calculateAgeAndPensionCredits = (
         fedAmount += Math.min(PENSION_INCOME_AMOUNT_FED, pension);
     }
 
-    // Ligne 361 QC (âge + revenu retraite combinés, Revenu Québec)
+    // Ligne 361 QC — âge + revenu de retraite + « personne vivant seule », COMBINÉS puis réduits UNE fois.
     if (age >= QC_LINE_361_MIN_AGE) {
         const retirementQc = Math.min(retirementAmountQc, pension);
-        const grossLine361 = ageAmountQc + retirementQc;
+        // TP1G-VIVANT-SEUL : le montant « vivant seule » s'ADDITIONNE (mécanique combinée, Annexe B /
+        // art. 752.0.7.4), gaté sur !hasSpouse — couvre solo ET survivant (tous deux 1 contribuable via
+        // taxFilers). Seuil de réduction UNIQUE sur le revenu FAMILIAL (fin des paliers duaux). Limite
+        // assumée : appliqué au bloc 65+ (le montant est en fait indépendant de l'âge, mais la fonction
+        // n'est appelée qu'à 65+ ; un solo actif < 65 n'est pas crédité — surface golden énorme, différé + doc §4).
+        const livingAlone = opts.hasSpouse ? 0 : livingAloneAmount;
+        const grossLine361 = ageAmountQc + retirementQc + livingAlone;
 
-        const threshold = opts.hasSpouse ? thresholdCouple : thresholdSingle;
-        const reduction = Math.max(0, familyIncome - threshold) * QC_LINE_361_REDUCTION_RATE;
+        const reduction = Math.max(0, familyIncome - line361Threshold) * QC_LINE_361_REDUCTION_RATE;
         qcAmount = Math.max(0, grossLine361 - reduction);
     }
 

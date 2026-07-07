@@ -87,9 +87,9 @@ describe('[ITEM-2C] gates de timing per-conjoint — FERR (conversion) + PSV/RRQ
         coupleUser1Older:   { ferr: 24, nw: -78025, tax: 107558 }, // FERR + PSV/RRQ per-conjoint (user2=64 : PSV démarre à SES 65)
         coupleUser1Younger: { ferr: 24, nw: -77614, tax: 107558 }, // idem ; user0=64<65 mais user1=70 touche PSV → SRG calculé (psvMonthly>0)
         coupleEqual:        { ferr: 24, nw: -72522, tax: 111442 }, // ANCRE — inchangé vs ménage
-        solo:               { ferr: 24, nw: -116697, tax: 160409 }, // ANCRE — inchangé vs ménage
+        solo:               { ferr: 24, nw: -110523, tax: 151234 }, // ANCRE — inchangé vs ménage ; re-basé TP1G-VIVANT-SEUL (solo 65+ gagne le crédit « personne vivant seule » → impôt −9 175 cumulé)
         couplePsvBonus:     { ferr: 12, nw: -84001, tax: 109358 }, // bonus PSV 75+ SEULEMENT sur user1=76 ; user2=64 pas de PSV
-        couplePsvStartGap:  { ferr: 72, nw: -81592, tax: 105432 }, // user1=66 PSV démarrée ; user2=63 PSV démarre à SES 65
+        couplePsvStartGap:  { ferr: 72, nw: -81592, tax: 105441 }, // user1=66 PSV démarrée ; user2=63 PSV démarre à SES 65 ; re-basé TP1G (seuil couple 45 270→42 955 → impôt +9)
     } as const;
 
     // ── ANCRES ZÉRO-RÉGRESSION : le fix per-conjoint NE change RIEN quand les âges coïncident ──────

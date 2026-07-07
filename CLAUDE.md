@@ -48,7 +48,13 @@ Doc détaillée dans `docs/`, qui fait foi.
   le gate vert et `/review-all` fait. Le push sur `main` déclenche le déploiement
   Vercel : Claude en est responsable (choix de Marc, 2026-06 — plus de gate humain ;
   RECONFIRMÉ 2026-06-19 : commit→push→PR→merge AUTONOME, malgré « push si demandé » du
-  bloc Préférences global — c'est CE cycle qui prévaut pour FinanceAI). ⚠️ Hors ce cycle,
+  bloc Préférences global — c'est CE cycle qui prévaut pour FinanceAI).
+  ⚠️ **Ne PAS fractionner le cycle sur plusieurs tours** (leçon 2026-07-07, Marc : « ya un bug quand tu commit et push ») :
+  un cycle étalé (commit au tour N, push au tour N+1, PR au tour N+2) laisse un état À MOITIÉ FAIT dès qu'un tour est
+  interrompu (des commits poussés SANS PR = rien n'atterrit sur `main`, la reprise croit « c'est fait »). Faire commit+push
+  en UN SEUL appel Bash atomique (`git add && git commit && git push` chaînés), puis créer la PR + armer l'auto-merge dans
+  le MÊME tour. Si des commits sont déjà poussés sans PR (après reprise/interruption) : créer la PR IMMÉDIATEMENT depuis
+  l'existant — JAMAIS re-committer le même travail. ⚠️ Hors ce cycle,
   toute action DESTRUCTIVE/irréversible (`--force`/force-push, `reset --hard`, `rm`,
   `drop`/migration de données, réécriture d'historique git) → CONFIRMER avec Marc d'abord.
 - **NE PAS s'arrêter en pleine tâche** (règle Marc 2026-06-15, NON négociable) : une fois lancé,

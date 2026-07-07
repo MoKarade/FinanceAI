@@ -541,7 +541,7 @@ choisir). Calcul cumulatif par tranche (style impôt).
 > **Source** : Loi concernant les droits sur les mutations immobilières (RLRQ c. D-15.1), indexation 2026 publiée dans la
 > **Gazette officielle du Québec, Partie 1, 2025-06-07 (157ᵉ année, nº 23)**, avis de la ministre des Affaires municipales.
 > Indexation 2026 = **+2,3438 %** vs 2025 (61 500→62 900 ; 307 800→315 000). Barème complet jusqu'à 500 000 $ approx.
-> Repère : pour un achat à 500 000 $ → **5 885 $** (Montréal) vs **6 325 $** (reste du QC, 2026).
+> Repère : pour un achat à 500 000 $ → **5 885 $** (Montréal) vs **5 610,50 $** (reste du QC, 2026) — Montréal reste le plus élevé (repli conservateur cohérent).
 > ⚠️ **Limite assumée** : le barème provincial de base s'applique à tout le Québec sauf Montréal ; toutefois,
 > toute municipalité peut ajouter une surtaxe locale (ex. Laval, Longueuil, Québec en appliquent). Les paliers
 > municipaux hors Montréal ne sont pas distingués : ils tombent dans `'reste_qc'` → légère sous-estimation possible

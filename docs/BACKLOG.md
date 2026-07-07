@@ -507,6 +507,12 @@
   → 3 tests solo échouent) ; suite complète 2352 verts, 2 goldens ITEM-2C re-basés SCIEMMENT (solo −9 175 $ ; couple +9 $).
   Panel `financial-integrity` + `silent-failure-hunter`. Limites assumées (doc §4) : montant appliqué au bloc 65+ (solo <65
   non crédité) ; supplément monoparental 2 681 $ NON modélisé (exigerait `childrenCount`).
+- [ ] **[FISC-LINE361-PERCONJOINT-REDUC]** 🔍 LOW money-critical (découverte `financial-integrity` TP1G 2026-07-07, PRÉ-EXISTANT) —
+  la réduction 18,75 % de la ligne 361 QC est appliquée PAR CONJOINT en mode retraité couple (`taxDecember.ts:532` passe
+  `familyIncome = taxableReal` TOTAL à CHAQUE appel, boucle n=2) → si l'Annexe B réduit le TOTAL combiné une SEULE fois,
+  la réduction serait comptée 2× dans la bande de réduction PARTIELLE → léger sur-impôt couple. NON introduit par TP1G
+  (code d'avant, non modifié). Vérifier la structure réelle de l'Annexe B (réduction sur le total ménage vs per-déclaration)
+  AVANT de coder ; discriminant `git stash` + panel. Golden `coupleEqual` inchangé = crédit soit nul soit plein hors bande.
 - [x] **[REEE-LITERALS]** ✅ **FAIT (2026-06-26)** — `services/projection/childrenReee.ts` : SCEE/IQEE/REEE extraits en
   constantes nommées+sourcées (`SCEE_GRANT_RATE`, `*_ANNUAL_GRANT_BASIC/CATCHUP`, `*_LIFETIME_GRANT_LIMIT`, `IQEE_*`,
   `REEE_LIFETIME_LIMIT_PER_BENEFICIARY`, `REEE_TARGET_ANNUAL_CONTRIB_*`, + `REEE_AIP_TAX_RATE` marqué « approximation modèle »),

@@ -378,7 +378,7 @@ pour minimiser l'impôt combiné (élection optionnelle).
 > Quand le conjoint (user2) décède (`modelSurvivor`, Monte Carlo), le moteur traite le SURVIVANT
 > (user1) comme **contribuable unique** :
 > 1. **Déclaration individuelle** : impôt de décembre sur UNE tête (un seul BPA, barème progressif
->    une fois), seuils « sans conjoint » (ligne 361 QC 27 835 $, RAMQ exemption célibataire,
+>    une fois), seuils « sans conjoint » (ligne 361 QC seuil unique 42 955 $ + montant « vivant seule », RAMQ exemption célibataire,
 >    FSS ×1), AUCUN crédit d'âge/pension du défunt. Clawback PSV idem (FA-2, `oasBeneficiaries=1`).
 > 2. **Roulement intégral au conjoint** (hypothèse) : REER/FERR roulés sans imposition immédiate
 >    (LIR 60(l)) — les retraits ultérieurs sont imposables à 100 % entre les mains du survivant ;
@@ -393,8 +393,9 @@ pour minimiser l'impôt combiné (élection optionnelle).
 > 6. Salaire du défunt = 0 (revenu actif, retenue mensuelle, récolte de gains au palier ×1).
 > Limites connues (restes OUVERTS — non couverts par le lot FA-8 2026-06-11, cf BACKLOG) : les
 > droits CELI/REER/CELIAPP continuent de s'accumuler ×N (plafonds non survivor-aware) ; retenue
-> FERR estimée sur 2 têtes (effet de timing seulement, réconcilié en décembre) ; « montant pour
-> personne vivant seule » QC non modélisé (à sourcer).
+> FERR estimée sur 2 têtes (effet de timing seulement, réconcilié en décembre). Le « montant pour
+> personne vivant seule » QC EST désormais modélisé pour le survivant (TP1G-VIVANT-SEUL 2026-07-07,
+> gate `!hasSpouse` via `taxFilers` → le survivant le reçoit ; cf §4).
 
 ---
 

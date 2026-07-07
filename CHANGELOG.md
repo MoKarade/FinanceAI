@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — FISC-WELCOME-2026 : taxe de bienvenue « reste du Québec » 2026] — 2026-07-07
+
+### Fiscalité (money-critical)
+- **Barème des droits de mutation « reste du Québec »** réindexé au millésime **2026** : 3 tranches de base
+  (≤ 62 900 $ : 0,5 % · → 315 000 $ : 1,0 % · > 315 000 $ : 1,5 %), source *Gazette officielle du Québec*
+  2025-06-07 nº 23 (indexation +2,3438 %). L'ancienne 4ᵉ tranche à 2 % (approximation des sur-tranches
+  municipales > 500 k$, non sourcée) est retirée → limite assumée documentée (ville par ville au-delà).
+  Achat à 500 k$ : **5 610,50 $** (avant 5 755,50 $). Montréal inchangé, invariant « montreal ≥ reste_qc » préservé.
+
+---
+
 ## [unreleased — P0-PROXY relais BYOK (dark-launch) + décision app SOLO] — 2026-07-06
 
 ### Infra : relais Anthropic chiffré pour l'IA

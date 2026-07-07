@@ -8,7 +8,7 @@
 > **Dernière mise à jour : 2026-07-06.** Tests : 2334 verts / 207 fichiers · tsc clean · build OK.
 > **Dernière PR mergée : #425** (2026-06-26, WHT-DISPLAY-EXACT) — 111 commits depuis #315, audit financier complet 2026-06-23 résolu (6 lots), 5 sessions 06-19→06-26, retraite per-conjoint ✅.
 > Restes uniquement : suivis LOW (DEP-UNDICI-VULN, FISC-CONST-LINT-LIMITS, FISC-RRSP-PRE2010-FALLBACK + suivi FUZZ-ONETIME-FLOWS) +
-> blocages Marc (FISC-WELCOME-2026, RECH-ACTION-UX confirmée visuellement, phases 2-4 brief plan-first, P0-*, design Budget/Transactions/Retraite).
+> blocages Marc (RECH-ACTION-UX confirmée visuellement, phases 2-4 brief plan-first, P0-*, design Budget/Transactions/Retraite).
 
 ## Convention (cochage par Claude au merge)
 - Chaque item Claude-faisable porte un **`[ID]`** entre crochets. **Claude coche lui-même**
@@ -494,8 +494,12 @@
   `code-reviewer` (arrondi IEEE-754 borderline corrigé + 4 mappings non couverts ajoutés).
 - [x] **[ENG-TAX-NS]** ✅ DÉCISION Marc 2026-06-19 : **GARDER l'alias** `services/tax.ts` (`export *`). Pas de
   résorption. Clos (voir batch décisions 2026-06-19).
-- [ ] **[FISC-WELCOME-2026]** 🔧 MEDIUM money-critical (données reçues 2026-07-06) — `services/realEstate.ts:101-105` :
-  mettre à jour le barème « reste_qc » de **2025** (58 900/290 000/552 300) au barème **2026** (62 900/315 000 + taux 3ᵉ palier 1,5 %, cf `FISCAL_REFERENCE.md` §8 mise à jour 2026-07-06). SOURCE PRIMAIRE : *Gazette officielle du Québec, Partie 1, 2025-06-07*, indexation +2,3438 %. Plan-first + test (personas d'achat immobilier) + doc (FISCAL_REFERENCE maintenue).
+- [x] **[FISC-WELCOME-2026]** ✅ **FAIT (2026-07-07)** money-critical — `services/realEstate.ts` `WELCOME_TAX_QUEBEC` :
+  barème « reste_qc » passé du millésime 2025 (58 900/290 000/552 300 + 4ᵉ tranche 2 %) au **barème de BASE 2026 à 3 tranches**
+  (62 900 : 0,5 % / 315 000 : 1,0 % / >315 000 : 1,5 %). La 4ᵉ tranche à 2 % (sur-tranches municipales >500 k$) est RETIRÉE →
+  limite assumée documentée (ville par ville, non modélisable sur le binaire montreal/reste_qc). Discriminant : 500 k$ = 5 610,50 $
+  (avant : 5 755,50 $) + bornes exactes 62 900/315 000 testées. SOURCE : *Gazette officielle du Québec* 2025-06-07 nº 23 (indexation
+  +2,3438 %). Panel `financial-integrity`. Montréal intact, invariant « montreal ≥ reste_qc » préservé.
 - [ ] **[TP1G-VIVANT-SEUL]** 🔧 MEDIUM money-critical (grille reçue 2026-07-06) — `services/projection/taxDecember.ts` ligne 361 QC : intégrer le **montant « personne vivant seule »** (2 172 $ base + supplément monoparental 2 681 $) au panier de crédits non remboursables. **Mécanique** : additionner le montant personne vivant seule (si solo) aux montants âge + revenu retraite AVANT la réduction commune 18,75 % au-delà du seuil 42 955 $, puis convertir à 14 %. **Gate** : contribuable SEUL (mode solo OU survivant). Supplément monoparental NON modélisé (hors scope : personas sans étudiant majeur ≥ 18). SOURCE : MFQ Dépenses fiscales 2025 fiche 110606 Tableau C.31 + Loi sur les impôts art. 752.0.7.4. FISCAL_REFERENCE.md §4 mise à jour 2026-07-06. Plan-first + discriminant git-stash + panel `financial-integrity`.
 - [x] **[REEE-LITERALS]** ✅ **FAIT (2026-06-26)** — `services/projection/childrenReee.ts` : SCEE/IQEE/REEE extraits en
   constantes nommées+sourcées (`SCEE_GRANT_RATE`, `*_ANNUAL_GRANT_BASIC/CATCHUP`, `*_LIFETIME_GRANT_LIMIT`, `IQEE_*`,

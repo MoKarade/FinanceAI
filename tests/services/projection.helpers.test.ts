@@ -96,9 +96,9 @@ describe('projection/helpers', () => {
             expect(welcomeTax(0)).toBe(0);
         });
 
-        it('reste_qc : barème provincial (500k → 5755.50$)', () => {
-            // 58900*0.005 + 231100*0.010 + 210000*0.015 = 294.50 + 2311 + 3150
-            expect(welcomeTax(500000, 'reste_qc')).toBeCloseTo(5755.5, 2);
+        it('reste_qc : barème de base 2026 (500k → 5610.50$)', () => {
+            // Seuils 2026 : 62900*0.005 + 252100*0.010 + 185000*0.015 = 314.50 + 2521 + 2775
+            expect(welcomeTax(500000, 'reste_qc')).toBeCloseTo(5610.5, 2);
         });
 
         it('50k → 250$ (palier 1 seul)', () => {

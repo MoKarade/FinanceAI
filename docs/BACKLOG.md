@@ -88,9 +88,10 @@
     (`computeSubscriptionLoadScore`, coût mensuel des abos épinglés / revenu net, plafond 15 %). `HealthWeights` 4→6 (rétrocompat via
     `normalizeHealthWeights`). Correction de fond : `totalScore` exclut les métriques sans donnée (un 0 par absence ne tire plus le score).
     Revue adversariale (workflow, 5 dimensions) → 6 findings intégrés (épargne exclue, fréquence `monthlyExpenses`, masquage orphelins, a11y `—`).
-  - [ ] **[A11Y-HEALTH-RAW-INK500]** 🔧 LOW (découverte PH4D-BUDGET-RATIOS, **pré-existant**) : la ligne `m.raw` de chaque métrique
-    (`HealthIndicator.tsx` ~309) utilise `text-ink-500` (3,4-4,2:1 < AA normal). Présent sur les 4 métriques d'origine, hors scope du diff
-    PH4D. Fix : `text-ink-400` (passe AA). Mesuré par l'a11y-auditor de la revue.
+  - [x] **[A11Y-HEALTH-RAW-INK500]** ✅ **FAIT (2026-07-07)** — `HealthIndicator.tsx` : **3** occurrences `text-ink-500`
+    migrées vers `text-ink-400` (le `m.raw` de chaque métrique l.329 + les 2 voisines de même classe échouant AA trouvées à la
+    lecture : `/ 100` l.306 et le poids `%` l.327). `check-contrast` confirme ink-400 = 5,21-6,42:1 (AA ✅) vs ink-500 = 3,41-4,20:1 (❌).
+    Panel a11y-auditor + code-reviewer APPROVE. Pur CSS, zéro logique.
   - [x] **[PH4E-OWNER-EDIT]** ✅ LOW (2026-06-22) — **colonne « Conjoint »** dans le tableau Transactions (mode couple) : un `<select>`
     par ligne (Auto / prénom conjoint 0 / prénom conjoint 1) qui OVERRIDE `Transaction.ownerId` (`updateOwner`, `undefined` = AUTO).
     Table desktop (colonne conditionnelle) + carte mobile (ligne « Conjoint : »). `Transactions.tsx` lit `config` du store ; l'override
@@ -687,7 +688,12 @@
   `role="img"` + **masquage privacy-aware** ($ → `Montant masqué` en mode discret ; `%` visibles). Garde-test
   (DebtManager). ⚠️ Seul l'amortissement RealEstate non câblé car DÉJÀ un `<table>` HTML accessible (correct).
 - [ ] **[A11Y-INK500]** 🔧 LOW (EN COURS, par lots) — `ink-500` (#6a7689) sur du contenu actif (échec AA normal). Passer à `ink-400` (#8896a8, AA ✅ 5,21-6,42 cf check-contrast). **Avancement** : `TaxBracketViz.tsx` (4 occ., A11Y-TAXBRACKET) + **LOT 1 fait 2026-06-26** = 6 écrans quotidiens (Dashboard/Budget/BudgetGroupTable/Investments/Transactions/Planning), **43 occ. migrées** sur classification a11y-auditor par-occurrence ; **10 GARDÉES** à raison (icônes = seuil 3:1, séparateurs décoratifs, `ⓘ` aria-hidden, 1 cible inactive délibérée `timeView!==MONTH`). ⚠️ PAS un sed global aveugle. **LOT 2 fait 2026-06-26** = LifeEvents/RealEstate/FutureDetailModal/ChildPlanning/retirement(RetirementIncomeCard+AssetLocationCard), **37 occ. migrées** + **8 GARDÉES** (icônes, tabs inactifs, glyphes aria-hidden) ; code-reviewer a aussi corrigé LifeEvents:367 (texte d'empty-state → ink-400) + ajouté `aria-hidden` au `→` AssetLocationCard:215. **RESTE ~37 fichiers / ~105 occ.** (investments/*, projection/*, sidebar/*, setup/*, realestate/*, AdvancedProjectionParams…) → lots suivants.
-- [ ] **[A11Y-BUDGETTABLE-SELECT-KBD]** 🔧 LOW (découverte a11y-auditor + code-reviewer LOT A11Y-INK500) — `BudgetGroupTable.tsx` : les `<select>` fréquence/type (l.151/162) ET le bouton supprimer (l.225) sont `opacity-0 group-hover:opacity-100` SANS `focus:opacity-100`/`focus-within` → invisibles pour un utilisateur **clavier seul** (révélés au survol uniquement). Ajouter une révélation au focus (cf pattern `focus-within:opacity-100` déjà utilisé l.267 Planning).
+- [x] **[A11Y-BUDGETTABLE-SELECT-KBD]** ✅ **FAIT (2026-07-07)** — `BudgetGroupTable.tsx` : `focus-within:opacity-100` sur le
+  wrapper des `<select>` fréquence/type (l.147) + `focus:opacity-100` sur le bouton supprimer (l.225, `<td>` séparé) → révélés au
+  focus clavier (avant : survol souris uniquement). Panel a11y-auditor APPROVE (anneau de focus natif visible, WCAG 2.4.7 OK) +
+  code-reviewer (redondance `focus-visible` retirée). ⚠️ Note hors-scope (a11y-auditor) : `BudgetGroupTable:181` (`text-ink-500`
+  sur l'input `target` en vue ≠ MONTH) échoue AA sur du texte actif — mais GARDÉ « à raison » au LOT 1 [A11Y-INK500] (« cible
+  inactive délibérée ») ; à re-trancher dans le sweep [A11Y-INK500], pas ici.
 
 ### Echecs silencieux
 - [x] **[SF-PDF]** ✅ MEDIUM (2026-06-16) — `pdfReport.ts` : échec jsPDF routé vers `logError({source:'ui'})` (visible en prod via SystemView) ; repli print conservé.

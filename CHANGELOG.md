@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — A11Y : contraste santé + révélation clavier budget] — 2026-07-07
+
+### Accessibilité
+- **Santé financière (Accueil)** : les libellés secondaires de l'indicateur (`/ 100`, poids `%` de chaque
+  métrique, ligne de détail `raw`) passent de `text-ink-500` (3,4-4,2:1, échec WCAG AA texte normal) à
+  `text-ink-400` (5,2-6,4:1, ✅ AA). Mesuré par `check-contrast`. (A11Y-HEALTH-RAW-INK500)
+- **Tableau Budget** : les `<select>` fréquence/type et le bouton « Supprimer » d'une catégorie, jusqu'ici
+  révélés au survol souris seulement (`opacity-0 group-hover`), sont désormais révélés aussi au **focus
+  clavier** (`focus-within` / `focus`) → utilisables sans souris. (A11Y-BUDGETTABLE-SELECT-KBD)
+
+---
+
 ## [unreleased — TP1G-VIVANT-SEUL : crédit QC « personne vivant seule »] — 2026-07-07
 
 ### Fiscalité (money-critical)

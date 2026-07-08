@@ -6,6 +6,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Nettoyage abonnements : calendrier annuel + DRY santé] — 2026-07-07
+
+### Planification
+- **Calendrier des factures** : un abonnement **annuel** ne s'affiche plus tous les mois — il apparaît
+  uniquement dans son **mois d'échéance** (dérivé de `lastDate`). La liste des abonnements affiche le mois
+  précis + « annuel » pour ces abonnements (au lieu de « Le X du mois »). Nouveau helper pur
+  `isAnnualSubscription` (discriminant ratio `yearlyCost/averageAmount`). (PLANNING-ANNUAL-CALENDAR)
+
+### Interne
+- **Coût mensuel des abonnements (santé financière)** : `subscriptionsMonthlyCost` délègue au helper
+  canonique `totalMonthlyCost` — source unique de l'annualisation, plus de divergence possible si la garde
+  NaN change. Aucun impact sur le score (valeurs identiques). (HEALTH-SUB-DRY)
+
+---
+
 ## [unreleased — A11Y : contraste santé + révélation clavier budget] — 2026-07-07
 
 ### Accessibilité

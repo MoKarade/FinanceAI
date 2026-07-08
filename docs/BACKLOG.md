@@ -721,6 +721,10 @@
 - [ ] **[DETTE-RE-SALE-PURGE]** 🔧 LOW (suivi, panel silent-failure 2026-07-07) — supprimer un bien (`RealEstate.tsx doConfirmDeleteGoal`)
   ne purge pas `lifeEvents[].propertyId` qui le référence → vente orpheline. Mitigé : la vente orpheline est SIGNALÉE (`logFlow`
   « vente ignorée : bien introuvable »), pas silencieuse. Fix propre : avertir/purger à la suppression. Effort S.
+  ⚠️ **DIFFÉRÉ (sweep 2026-07-07) — ambiguïté design money-adjacent** : purger `propertyId`→`undefined` re-cible l'événement sur le 1ᵉʳ bien à
+  équité positive (ANNULE l'intention de [DETTE-RE-SALE] : ne pas vendre le mauvais bien) ; supprimer l'événement = destructif ; avertir = plus de
+  câblage store→dialog. Re-cibler une vente = money-critical → mérite une décision délibérée (option A purge/B remove/C warn) + panel, pas un batch.
+  État actuel déjà mitigé (logFlow). À trancher avec Marc.
 - [x] **[DETTE-DEADCODE]** ✅ **FAIT (2026-06-26)** — RETIRÉ : `runBuyVsRent` (`realEstate.ts`, test-only, zéro call-site prod) + ses
   types `BuyVsRentInput`/`BuyVsRentYear` (servaient QUE lui) + son bloc de test + import ; `buildTestFixtures` (`testFixtures.ts`, wrapper
   de compat jamais appelé) + ses imports devenus inutilisés (le barrel `testFixtures` reste VIVANT : TestModePanel/Layout/PageSetupGate/
@@ -734,12 +738,15 @@
   (`utils/subscriptions.ts`) dérivés de `yearlyCost` (source de vérité annualisée) + gardes `Number.isFinite`. KPI + ligne d'affichage
   (`formatCAD(monthlyEquivalent(sub))` « /mois ») câblés. 6 tests dont discriminant (annuel : 130 ancien → 20 nouveau). Panel financial-integrity + code-reviewer.
   Follow-up → `PLANNING-ANNUAL-CALENDAR` (un abo ANNUEL apparaît sur le calendrier CHAQUE mois car le filtre ignore le mois ; + label « /an » explicite vs « /mois »).
-- [ ] **[HEALTH-SUB-DRY]** 🔧 LOW (découverte code-reviewer PLANNING-ANNUAL-SUB-12X) — `utils/healthRatios.ts:subscriptionsMonthlyCost`
-  (`Σ yearlyCost/12`) duplique le helper canonique `totalMonthlyCost` (`Σ yearlyCost /12`). Déléguer pour éviter une divergence
-  silencieuse si la garde change. ⚠️ réassocie le `/12` → vérifier qu'aucun golden du score de santé ne bouge (shift flottant) ; panel financial-integrity.
-- [ ] **[PLANNING-ANNUAL-CALENDAR]** 🔧 LOW (découverte PLANNING-ANNUAL-SUB-12X) — le calendrier des factures (`Planning.tsx`) filtre les abos par
-  `dayOfMonth` seul → un abo ANNUEL s'affiche tous les mois (devrait être son mois via `new Date(lastDate).getMonth()`). + montrer « /an » pour les annuels
-  (au lieu du mensuel-équivalent) serait plus clair. Nécessite un discriminant mensuel/annuel (dériver de `yearlyCost` vs `averageAmount`, ou champ `frequency`).
+- [x] **[HEALTH-SUB-DRY]** ✅ **FAIT (2026-07-07)** — `utils/healthRatios.ts:subscriptionsMonthlyCost` délègue au helper canonique
+  `totalMonthlyCost` (`utils/subscriptions.ts`). Panel `financial-integrity` : golden santé NE PEUT PAS bouger (identité math `Σ(x/12)=(Σx)/12`,
+  écart sous-ULP, `Math.round` sur métrique+score avant affichage) ; garde NaN préservée (par-item dans `totalYearlyCost`). code-reviewer : pas de cycle d'import. APPROVE.
+- [x] **[PLANNING-ANNUAL-CALENDAR]** ✅ **FAIT (2026-07-07)** — helpers PURS `isAnnualSubscription` (discriminant ratio `yearlyCost/averageAmount`,
+  seuil STRICT 2 = ~annuel ; plus fréquent → défaut mensuel = sur-affichage, jamais masquer une facture) + `subscriptionDueLabel` (`utils/subscriptions.ts`).
+  `Planning.tsx` : calendrier filtre les annuels par mois d'échéance (`lastDate.getMonth() === date.getMonth()` de la cellule) ; liste affiche « Le X <mois> · annuel ».
+  Panel `financial-integrity` (display seul, `dailyTotal` non consommé par un flux $ ; seuil 2 resserré depuis 6 sur son finding trimestriel) + code-reviewer
+  (IIFE extraite en helper testable, double-espace corrigé) APPROVE. 6 tests neufs (seuil, trimestriel, label + date invalide).
+  ⚠️ Limite : `RecurringItem` n'a pas de `frequency` → une cadence IA non standard (hebdo/trimestriel) tombe en mensuel (sur-affiché) ; un vrai champ `frequency` serait le fix complet (non requis).
 - [ ] **[DETTE-GODFILES]** ⏳ — decouper par barrel : `utils/tax.ts`, `syncOrchestrator.ts`, `Investments.tsx`, `Budget.tsx`, `FutureProjection.tsx`.
 - [ ] **[DETTE-UI-PRIMITIVES]** ⏳ — `components/ui/Input|Select|Field` sur les tokens existants ; migrer 16 fichiers a `<input>` inline.
 

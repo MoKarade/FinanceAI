@@ -11,7 +11,7 @@ import { showToast } from './ui/Toast';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { formatCAD } from '../utils/format';
 import { useFinanceStore } from '../store/useFinanceStore';
-import { mergeSubscriptions, addSubscription, removeSubscription, isPinned, subscriptionKey, monthlyEquivalent, totalMonthlyCost, totalYearlyCost } from '../utils/subscriptions';
+import { mergeSubscriptions, addSubscription, removeSubscription, isPinned, subscriptionKey, monthlyEquivalent, totalMonthlyCost, totalYearlyCost, isAnnualSubscription, subscriptionDueLabel } from '../utils/subscriptions';
 
 /** Icône ligne d'un abonnement selon le marchand (sobre, remplace les emoji). */
 const subIcon = (payee: string): IconName => {
@@ -184,7 +184,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                 <div key={subscriptionKey(sub) || idx} className="flex justify-between items-center p-3 bg-[#1a1a1a] rounded-xl border border-white/5 hover:border-white/20 transition-all group">
                                     <div className="flex items-center gap-3 overflow-hidden">
                                         <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shadow-inner flex-shrink-0"><Icon name={subIcon(sub.payee)} size={16} className="text-ink-300" /></div>
-                                        <div className="min-w-0"><div className="font-bold text-white text-body truncate">{sub.payee}</div><div className="text-tiny text-ink-400">Le {sub.dayOfMonth} du mois</div></div>
+                                        <div className="min-w-0"><div className="font-bold text-white text-body truncate">{sub.payee}</div><div className="text-tiny text-ink-400">{subscriptionDueLabel(sub)}</div></div>
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
                                         {/* [PH4-F] épingler = persister l'abo (survit au reload sans re-détection IA) */}
@@ -223,7 +223,14 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                 if (!date) return <div key={idx} />;
                                 const day = date.getDate();
                                 const isToday = new Date().toDateString() === date.toDateString();
-                                const bills = activeSubs.filter(i => i.dayOfMonth === day);
+                                // [PLANNING-ANNUAL-CALENDAR] un abo MENSUEL tombe chaque mois à `dayOfMonth` ;
+                                // un abo ANNUEL uniquement dans son mois d'échéance (dérivé de `lastDate`).
+                                const bills = activeSubs.filter(i => {
+                                    if (i.dayOfMonth !== day) return false;
+                                    if (!isAnnualSubscription(i)) return true;
+                                    const due = new Date(i.lastDate);
+                                    return !Number.isNaN(due.getTime()) && due.getMonth() === date.getMonth();
+                                });
                                 const hasBills = bills.length > 0;
                                 const dailyTotal = bills.reduce((s, b) => s + b.averageAmount, 0);
                                 return (

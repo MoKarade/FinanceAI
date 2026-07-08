@@ -6,6 +6,49 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Perf : sélecteur atomique + imports de bundle honnêtes] — 2026-07-07
+
+### Performance / interne
+- **Checklist de complétude (Configuration)** : `MissingDataChecklist` s'abonnait au store ENTIER
+  (`useFinanceStore()`) → re-render à chaque mutation (dont les écritures fréquentes du calcul Monte-Carlo).
+  Remplacé par un sélecteur `useShallow` sur le tableau dérivé des champs manquants → re-render seulement
+  quand l'ensemble des champs manquants change. (PERF-MISSINGDATA)
+- **Imports de bundle** : 2 des 3 `INEFFECTIVE_DYNAMIC_IMPORT` (dynamic imports qui ne créaient aucun chunk
+  séparé car le module est déjà en boot) convertis en imports statiques honnêtes — `lockedProjectionStore`
+  (App.tsx, déjà en boot via le store) et `backupAuto` (syncOrchestrator, déjà en boot via App.tsx). Le 3ᵉ
+  (`claude.ts`) est conservé en dynamique **à dessein** : ses consommateurs sont lazy, donc le SDK Anthropic
+  vit dans les chunks lazy, pas en boot — le rendre statique le tirerait en boot. Boot inchangé (99,8 kB gzip),
+  build : 3 warnings → 1. (PERF-BUNDLE)
+
+---
+
+## [unreleased — Nettoyage abonnements : calendrier annuel + DRY santé] — 2026-07-07
+
+### Planification
+- **Calendrier des factures** : un abonnement **annuel** ne s'affiche plus tous les mois — il apparaît
+  uniquement dans son **mois d'échéance** (dérivé de `lastDate`). La liste des abonnements affiche le mois
+  précis + « annuel » pour ces abonnements (au lieu de « Le X du mois »). Nouveau helper pur
+  `isAnnualSubscription` (discriminant ratio `yearlyCost/averageAmount`). (PLANNING-ANNUAL-CALENDAR)
+
+### Interne
+- **Coût mensuel des abonnements (santé financière)** : `subscriptionsMonthlyCost` délègue au helper
+  canonique `totalMonthlyCost` — source unique de l'annualisation, plus de divergence possible si la garde
+  NaN change. Aucun impact sur le score (valeurs identiques). (HEALTH-SUB-DRY)
+
+---
+
+## [unreleased — A11Y : contraste santé + révélation clavier budget] — 2026-07-07
+
+### Accessibilité
+- **Santé financière (Accueil)** : les libellés secondaires de l'indicateur (`/ 100`, poids `%` de chaque
+  métrique, ligne de détail `raw`) passent de `text-ink-500` (3,4-4,2:1, échec WCAG AA texte normal) à
+  `text-ink-400` (5,2-6,4:1, ✅ AA). Mesuré par `check-contrast`. (A11Y-HEALTH-RAW-INK500)
+- **Tableau Budget** : les `<select>` fréquence/type et le bouton « Supprimer » d'une catégorie, jusqu'ici
+  révélés au survol souris seulement (`opacity-0 group-hover`), sont désormais révélés aussi au **focus
+  clavier** (`focus-within` / `focus`) → utilisables sans souris. (A11Y-BUDGETTABLE-SELECT-KBD)
+
+---
+
 ## [unreleased — TP1G-VIVANT-SEUL : crédit QC « personne vivant seule »] — 2026-07-07
 
 ### Fiscalité (money-critical)

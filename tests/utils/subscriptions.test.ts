@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { subscriptionKey, isPinned, mergeSubscriptions, addSubscription, removeSubscription, monthlyEquivalent, totalMonthlyCost, totalYearlyCost } from '../../utils/subscriptions';
+import { subscriptionKey, isPinned, mergeSubscriptions, addSubscription, removeSubscription, monthlyEquivalent, totalMonthlyCost, totalYearlyCost, isAnnualSubscription, subscriptionDueLabel } from '../../utils/subscriptions';
 import type { RecurringItem } from '../../types';
 
 const sub = (payee: string, over: Partial<RecurringItem> = {}): RecurringItem =>
@@ -101,5 +101,45 @@ describe('monthlyEquivalent / totaux — [PLANNING-ANNUAL-SUB-12X] un abo ANNUEL
     it('liste vide → 0', () => {
         expect(totalYearlyCost([])).toBe(0);
         expect(totalMonthlyCost([])).toBe(0);
+    });
+});
+
+describe('isAnnualSubscription — [PLANNING-ANNUAL-CALENDAR] discriminant mensuel/annuel par ratio', () => {
+    it('mensuel (yearlyCost = averageAmount×12) → false', () => {
+        expect(isAnnualSubscription({ averageAmount: 10, yearlyCost: 120 })).toBe(false);
+        expect(isAnnualSubscription({ averageAmount: 55, yearlyCost: 660 })).toBe(false);
+    });
+    it('annuel (yearlyCost ≈ averageAmount) → true', () => {
+        expect(isAnnualSubscription({ averageAmount: 120, yearlyCost: 120 })).toBe(true);
+        expect(isAnnualSubscription({ averageAmount: 130, yearlyCost: 130 })).toBe(true);
+    });
+    it('seuil STRICT 2 : ratio ≤ 2 = annuel, > 2 = plus fréquent (défaut mensuel)', () => {
+        expect(isAnnualSubscription({ averageAmount: 10, yearlyCost: 20 })).toBe(true);  // ratio 2
+        expect(isAnnualSubscription({ averageAmount: 10, yearlyCost: 21 })).toBe(false); // ratio 2,1
+    });
+    it('trimestriel (ratio 4) NON classé annuel → sur-affiché mensuel, jamais masqué (finding financial-integrity)', () => {
+        expect(isAnnualSubscription({ averageAmount: 10, yearlyCost: 40 })).toBe(false); // ratio 4 = trimestriel
+    });
+    it('valeurs dégénérées (avg ≤ 0, NaN, Infinity) → false (défaut mensuel, sûr)', () => {
+        expect(isAnnualSubscription({ averageAmount: 0, yearlyCost: 0 })).toBe(false);
+        expect(isAnnualSubscription({ averageAmount: NaN, yearlyCost: 120 })).toBe(false);
+        expect(isAnnualSubscription({ averageAmount: 10, yearlyCost: NaN })).toBe(false);
+        expect(isAnnualSubscription({ averageAmount: 10, yearlyCost: Infinity })).toBe(false);
+    });
+});
+
+describe('subscriptionDueLabel — [PLANNING-ANNUAL-CALENDAR] libellé d\'échéance', () => {
+    it('mensuel → « Le X du mois »', () => {
+        expect(subscriptionDueLabel({ dayOfMonth: 15, averageAmount: 10, yearlyCost: 120, lastDate: '2026-06-15' }))
+            .toBe('Le 15 du mois');
+    });
+    it('annuel → « Le X <mois> · annuel » (mois dérivé de lastDate)', () => {
+        // 2026-03-15 → mars ; annuel (avg 120, yr 120)
+        expect(subscriptionDueLabel({ dayOfMonth: 15, averageAmount: 120, yearlyCost: 120, lastDate: '2026-03-15' }))
+            .toBe('Le 15 mars · annuel');
+    });
+    it('annuel à lastDate invalide → mois omis SANS double-espace (finding code-reviewer)', () => {
+        expect(subscriptionDueLabel({ dayOfMonth: 15, averageAmount: 120, yearlyCost: 120, lastDate: 'pas-une-date' }))
+            .toBe('Le 15 · annuel');
     });
 });

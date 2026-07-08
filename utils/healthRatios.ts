@@ -1,5 +1,6 @@
 import type { BudgetCategory, RecurringItem } from '../types';
 import { isSavingsNature } from './budget';
+import { totalMonthlyCost } from './subscriptions';
 
 // [PH4D-BUDGET-RATIOS] Deux ratios budgétaires PURS pour l'indicateur de santé financière.
 // Score 0-100 (100 = idéal). `null` quand la donnée de base manque (rien à mesurer) → l'UI affiche
@@ -61,14 +62,13 @@ export function computeBudgetParityScore(
 }
 
 /**
- * Coût MENSUEL des abonnements. Utilise `yearlyCost/12` → correct pour un abo MENSUEL comme ANNUEL
- * (évite le ×12 de `PLANNING-ANNUAL-SUB-12X` où `averageAmount` d'un abo annuel = le montant annuel complet).
+ * [HEALTH-SUB-DRY] Coût MENSUEL des abonnements. Délègue au helper CANONIQUE `totalMonthlyCost`
+ * (`utils/subscriptions.ts`, `Σ yearlyCost /12`) — source unique de l'annualisation (évite le ×12 d'un
+ * abo ANNUEL, cf `PLANNING-ANNUAL-SUB-12X`). La garde `Number.isFinite` vit désormais dans `totalYearlyCost`
+ * → si elle change, les deux surfaces (santé + Planning) restent alignées.
  */
 export function subscriptionsMonthlyCost(subscriptions: readonly RecurringItem[]): number {
-    return subscriptions.reduce(
-        (sum, s) => sum + (Number.isFinite(s.yearlyCost) ? s.yearlyCost : 0) / 12,
-        0,
-    );
+    return totalMonthlyCost(subscriptions);
 }
 
 /** Plafond du poids des abonnements : à `SUBSCRIPTION_LOAD_CEILING` × le revenu net mensuel, le score tombe à 0. */

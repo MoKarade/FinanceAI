@@ -50,6 +50,35 @@ export function monthlyEquivalent(sub: Pick<RecurringItem, 'yearlyCost'>): numbe
     return Number.isFinite(y) ? y / 12 : 0;
 }
 
+/**
+ * [PLANNING-ANNUAL-CALENDAR] Un abo est ANNUEL si son coût annualisé ≈ son montant unitaire (ratio ~1),
+ * vs mensuel (~12). Convention du détecteur (`Planning`) : `yearlyCost = averageAmount × (annuel ? 1 : 12)`.
+ * `RecurringItem` n'a pas de champ `frequency` → on dérive du ratio, seuil STRICT à 2 (marge sur le float
+ * autour de 1). Toute cadence plus fréquente (trimestriel ratio 4, mensuel ratio 12, ou un abo IA à cadence
+ * non standard) tombe donc en NON-annuel → affiché CHAQUE mois (sur-affichage = jamais masquer une facture,
+ * direction de risque sûre). Avg ≤ 0 ou valeurs non finies → NON annuel (défaut mensuel).
+ */
+export function isAnnualSubscription(sub: Pick<RecurringItem, 'averageAmount' | 'yearlyCost'>): boolean {
+    const avg = Number(sub.averageAmount);
+    const yr = Number(sub.yearlyCost);
+    if (!Number.isFinite(avg) || !Number.isFinite(yr) || avg <= 0) return false;
+    return yr <= avg * 2;
+}
+
+/**
+ * [PLANNING-ANNUAL-CALENDAR] Libellé d'échéance d'un abo (affichage) : mensuel → « Le X du mois » ;
+ * annuel → « Le X <mois> · annuel » (mois dérivé de `lastDate`, OMIS proprement si la date est invalide,
+ * sans double-espace). Pur + testable (vs IIFE inline dans le JSX).
+ */
+export function subscriptionDueLabel(
+    sub: Pick<RecurringItem, 'dayOfMonth' | 'averageAmount' | 'yearlyCost' | 'lastDate'>,
+): string {
+    if (!isAnnualSubscription(sub)) return `Le ${sub.dayOfMonth} du mois`;
+    const d = new Date(sub.lastDate);
+    const month = Number.isNaN(d.getTime()) ? '' : d.toLocaleString('fr-CA', { month: 'long' });
+    return ['Le', String(sub.dayOfMonth), month, '· annuel'].filter(Boolean).join(' ');
+}
+
 /** Total ANNUEL des abos = Σ yearlyCost (chaque abo déjà annualisé correctement). */
 export function totalYearlyCost(subs: readonly RecurringItem[]): number {
     return subs.reduce((acc, s) => {

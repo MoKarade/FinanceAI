@@ -88,9 +88,10 @@
     (`computeSubscriptionLoadScore`, coût mensuel des abos épinglés / revenu net, plafond 15 %). `HealthWeights` 4→6 (rétrocompat via
     `normalizeHealthWeights`). Correction de fond : `totalScore` exclut les métriques sans donnée (un 0 par absence ne tire plus le score).
     Revue adversariale (workflow, 5 dimensions) → 6 findings intégrés (épargne exclue, fréquence `monthlyExpenses`, masquage orphelins, a11y `—`).
-  - [ ] **[A11Y-HEALTH-RAW-INK500]** 🔧 LOW (découverte PH4D-BUDGET-RATIOS, **pré-existant**) : la ligne `m.raw` de chaque métrique
-    (`HealthIndicator.tsx` ~309) utilise `text-ink-500` (3,4-4,2:1 < AA normal). Présent sur les 4 métriques d'origine, hors scope du diff
-    PH4D. Fix : `text-ink-400` (passe AA). Mesuré par l'a11y-auditor de la revue.
+  - [x] **[A11Y-HEALTH-RAW-INK500]** ✅ **FAIT (2026-07-07)** — `HealthIndicator.tsx` : **3** occurrences `text-ink-500`
+    migrées vers `text-ink-400` (le `m.raw` de chaque métrique l.329 + les 2 voisines de même classe échouant AA trouvées à la
+    lecture : `/ 100` l.306 et le poids `%` l.327). `check-contrast` confirme ink-400 = 5,21-6,42:1 (AA ✅) vs ink-500 = 3,41-4,20:1 (❌).
+    Panel a11y-auditor + code-reviewer APPROVE. Pur CSS, zéro logique.
   - [x] **[PH4E-OWNER-EDIT]** ✅ LOW (2026-06-22) — **colonne « Conjoint »** dans le tableau Transactions (mode couple) : un `<select>`
     par ligne (Auto / prénom conjoint 0 / prénom conjoint 1) qui OVERRIDE `Transaction.ownerId` (`updateOwner`, `undefined` = AUTO).
     Table desktop (colonne conditionnelle) + carte mobile (ligne « Conjoint : »). `Transactions.tsx` lit `config` du store ; l'override
@@ -687,7 +688,12 @@
   `role="img"` + **masquage privacy-aware** ($ → `Montant masqué` en mode discret ; `%` visibles). Garde-test
   (DebtManager). ⚠️ Seul l'amortissement RealEstate non câblé car DÉJÀ un `<table>` HTML accessible (correct).
 - [ ] **[A11Y-INK500]** 🔧 LOW (EN COURS, par lots) — `ink-500` (#6a7689) sur du contenu actif (échec AA normal). Passer à `ink-400` (#8896a8, AA ✅ 5,21-6,42 cf check-contrast). **Avancement** : `TaxBracketViz.tsx` (4 occ., A11Y-TAXBRACKET) + **LOT 1 fait 2026-06-26** = 6 écrans quotidiens (Dashboard/Budget/BudgetGroupTable/Investments/Transactions/Planning), **43 occ. migrées** sur classification a11y-auditor par-occurrence ; **10 GARDÉES** à raison (icônes = seuil 3:1, séparateurs décoratifs, `ⓘ` aria-hidden, 1 cible inactive délibérée `timeView!==MONTH`). ⚠️ PAS un sed global aveugle. **LOT 2 fait 2026-06-26** = LifeEvents/RealEstate/FutureDetailModal/ChildPlanning/retirement(RetirementIncomeCard+AssetLocationCard), **37 occ. migrées** + **8 GARDÉES** (icônes, tabs inactifs, glyphes aria-hidden) ; code-reviewer a aussi corrigé LifeEvents:367 (texte d'empty-state → ink-400) + ajouté `aria-hidden` au `→` AssetLocationCard:215. **RESTE ~37 fichiers / ~105 occ.** (investments/*, projection/*, sidebar/*, setup/*, realestate/*, AdvancedProjectionParams…) → lots suivants.
-- [ ] **[A11Y-BUDGETTABLE-SELECT-KBD]** 🔧 LOW (découverte a11y-auditor + code-reviewer LOT A11Y-INK500) — `BudgetGroupTable.tsx` : les `<select>` fréquence/type (l.151/162) ET le bouton supprimer (l.225) sont `opacity-0 group-hover:opacity-100` SANS `focus:opacity-100`/`focus-within` → invisibles pour un utilisateur **clavier seul** (révélés au survol uniquement). Ajouter une révélation au focus (cf pattern `focus-within:opacity-100` déjà utilisé l.267 Planning).
+- [x] **[A11Y-BUDGETTABLE-SELECT-KBD]** ✅ **FAIT (2026-07-07)** — `BudgetGroupTable.tsx` : `focus-within:opacity-100` sur le
+  wrapper des `<select>` fréquence/type (l.147) + `focus:opacity-100` sur le bouton supprimer (l.225, `<td>` séparé) → révélés au
+  focus clavier (avant : survol souris uniquement). Panel a11y-auditor APPROVE (anneau de focus natif visible, WCAG 2.4.7 OK) +
+  code-reviewer (redondance `focus-visible` retirée). ⚠️ Note hors-scope (a11y-auditor) : `BudgetGroupTable:181` (`text-ink-500`
+  sur l'input `target` en vue ≠ MONTH) échoue AA sur du texte actif — mais GARDÉ « à raison » au LOT 1 [A11Y-INK500] (« cible
+  inactive délibérée ») ; à re-trancher dans le sweep [A11Y-INK500], pas ici.
 
 ### Echecs silencieux
 - [x] **[SF-PDF]** ✅ MEDIUM (2026-06-16) — `pdfReport.ts` : échec jsPDF routé vers `logError({source:'ui'})` (visible en prod via SystemView) ; repli print conservé.
@@ -715,6 +721,10 @@
 - [ ] **[DETTE-RE-SALE-PURGE]** 🔧 LOW (suivi, panel silent-failure 2026-07-07) — supprimer un bien (`RealEstate.tsx doConfirmDeleteGoal`)
   ne purge pas `lifeEvents[].propertyId` qui le référence → vente orpheline. Mitigé : la vente orpheline est SIGNALÉE (`logFlow`
   « vente ignorée : bien introuvable »), pas silencieuse. Fix propre : avertir/purger à la suppression. Effort S.
+  ⚠️ **DIFFÉRÉ (sweep 2026-07-07) — ambiguïté design money-adjacent** : purger `propertyId`→`undefined` re-cible l'événement sur le 1ᵉʳ bien à
+  équité positive (ANNULE l'intention de [DETTE-RE-SALE] : ne pas vendre le mauvais bien) ; supprimer l'événement = destructif ; avertir = plus de
+  câblage store→dialog. Re-cibler une vente = money-critical → mérite une décision délibérée (option A purge/B remove/C warn) + panel, pas un batch.
+  État actuel déjà mitigé (logFlow). À trancher avec Marc.
 - [x] **[DETTE-DEADCODE]** ✅ **FAIT (2026-06-26)** — RETIRÉ : `runBuyVsRent` (`realEstate.ts`, test-only, zéro call-site prod) + ses
   types `BuyVsRentInput`/`BuyVsRentYear` (servaient QUE lui) + son bloc de test + import ; `buildTestFixtures` (`testFixtures.ts`, wrapper
   de compat jamais appelé) + ses imports devenus inutilisés (le barrel `testFixtures` reste VIVANT : TestModePanel/Layout/PageSetupGate/
@@ -728,12 +738,15 @@
   (`utils/subscriptions.ts`) dérivés de `yearlyCost` (source de vérité annualisée) + gardes `Number.isFinite`. KPI + ligne d'affichage
   (`formatCAD(monthlyEquivalent(sub))` « /mois ») câblés. 6 tests dont discriminant (annuel : 130 ancien → 20 nouveau). Panel financial-integrity + code-reviewer.
   Follow-up → `PLANNING-ANNUAL-CALENDAR` (un abo ANNUEL apparaît sur le calendrier CHAQUE mois car le filtre ignore le mois ; + label « /an » explicite vs « /mois »).
-- [ ] **[HEALTH-SUB-DRY]** 🔧 LOW (découverte code-reviewer PLANNING-ANNUAL-SUB-12X) — `utils/healthRatios.ts:subscriptionsMonthlyCost`
-  (`Σ yearlyCost/12`) duplique le helper canonique `totalMonthlyCost` (`Σ yearlyCost /12`). Déléguer pour éviter une divergence
-  silencieuse si la garde change. ⚠️ réassocie le `/12` → vérifier qu'aucun golden du score de santé ne bouge (shift flottant) ; panel financial-integrity.
-- [ ] **[PLANNING-ANNUAL-CALENDAR]** 🔧 LOW (découverte PLANNING-ANNUAL-SUB-12X) — le calendrier des factures (`Planning.tsx`) filtre les abos par
-  `dayOfMonth` seul → un abo ANNUEL s'affiche tous les mois (devrait être son mois via `new Date(lastDate).getMonth()`). + montrer « /an » pour les annuels
-  (au lieu du mensuel-équivalent) serait plus clair. Nécessite un discriminant mensuel/annuel (dériver de `yearlyCost` vs `averageAmount`, ou champ `frequency`).
+- [x] **[HEALTH-SUB-DRY]** ✅ **FAIT (2026-07-07)** — `utils/healthRatios.ts:subscriptionsMonthlyCost` délègue au helper canonique
+  `totalMonthlyCost` (`utils/subscriptions.ts`). Panel `financial-integrity` : golden santé NE PEUT PAS bouger (identité math `Σ(x/12)=(Σx)/12`,
+  écart sous-ULP, `Math.round` sur métrique+score avant affichage) ; garde NaN préservée (par-item dans `totalYearlyCost`). code-reviewer : pas de cycle d'import. APPROVE.
+- [x] **[PLANNING-ANNUAL-CALENDAR]** ✅ **FAIT (2026-07-07)** — helpers PURS `isAnnualSubscription` (discriminant ratio `yearlyCost/averageAmount`,
+  seuil STRICT 2 = ~annuel ; plus fréquent → défaut mensuel = sur-affichage, jamais masquer une facture) + `subscriptionDueLabel` (`utils/subscriptions.ts`).
+  `Planning.tsx` : calendrier filtre les annuels par mois d'échéance (`lastDate.getMonth() === date.getMonth()` de la cellule) ; liste affiche « Le X <mois> · annuel ».
+  Panel `financial-integrity` (display seul, `dailyTotal` non consommé par un flux $ ; seuil 2 resserré depuis 6 sur son finding trimestriel) + code-reviewer
+  (IIFE extraite en helper testable, double-espace corrigé) APPROVE. 6 tests neufs (seuil, trimestriel, label + date invalide).
+  ⚠️ Limite : `RecurringItem` n'a pas de `frequency` → une cadence IA non standard (hebdo/trimestriel) tombe en mensuel (sur-affiché) ; un vrai champ `frequency` serait le fix complet (non requis).
 - [ ] **[DETTE-GODFILES]** ⏳ — decouper par barrel : `utils/tax.ts`, `syncOrchestrator.ts`, `Investments.tsx`, `Budget.tsx`, `FutureProjection.tsx`.
 - [ ] **[DETTE-UI-PRIMITIVES]** ⏳ — `components/ui/Input|Select|Field` sur les tokens existants ; migrer 16 fichiers a `<input>` inline.
 
@@ -742,8 +755,14 @@
 - [x] **[PERF-WITHHOLDING]** ✅ **RÉSOLU (2026-06-26) — par SUPPRESSION, pas mémoïsation** : `computeMonthlyWithholding`
   était du code mort (sortie écrasée par décembre, cf. FISC-SRCDED-NOOP) → retirée. On ne mémoïse pas du code mort, on
   le supprime (gain perf MC réel : 2× `calculateFiscalReport`/mois × chemins MC en moins, pour un résultat jeté).
-- [ ] **[PERF-BUNDLE]** 🔧 — 3 `INEFFECTIVE_DYNAMIC_IMPORT` (`claude.ts`, `backupAuto.ts`, `lockedProjectionStore`) → tout-statique ou tout-dynamique par module.
-- [ ] **[PERF-MISSINGDATA]** 🔧 — `MissingDataBanner.tsx:209` : selecteur atomique (`useShallow`) pour eviter les re-renders pendant le calcul MC.
+- [x] **[PERF-BUNDLE]** ✅ **FAIT (2026-07-07)** — 2 des 3 `INEFFECTIVE_DYNAMIC_IMPORT` convertis en import STATIQUE (le module
+  était DÉJÀ en boot, le dynamic import ne créait aucun chunk) : `lockedProjectionStore` (`App.tsx`, boot via le store) + `backupAuto`
+  (`syncOrchestrator.ts`, boot via `App.tsx initAutoBackup`). Le 3ᵉ (`claude.ts`) est GARDÉ dynamique **à dessein** : ses consommateurs
+  sont lazy (TabRouter) → le SDK Anthropic vit dans les chunks lazy, PAS en boot ; le rendre statique le tirerait en boot = régression
+  (vérifié : boot 99,8 kB gzip inchangé, warnings 3→1). Panel code-reviewer + silent-failure-hunter. Zéro régression (branches d'erreur préservées).
+- [x] **[PERF-MISSINGDATA]** ✅ **FAIT (2026-07-07)** — `components/ui/MissingDataBanner.tsx` (`MissingDataChecklist`) : le full-store
+  `useFinanceStore()` remplacé par un sélecteur `useShallow` sur le tableau DÉRIVÉ des champs manquants → re-render seulement quand
+  l'ENSEMBLE change (plus à chaque écriture du calcul MC). Panel code-reviewer + silent-failure-hunter. 20 tests verts.
 
 ### Securite (deja connu / Marc)
 - [x] **[DEP-UNDICI]** ✅ **RÉSOLU/PÉRIMÉ (constaté 2026-06-25)** — le `package-lock.json` est DÉJÀ à `undici 7.28.0` (= le fix des 2 alertes

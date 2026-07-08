@@ -30,6 +30,9 @@ import { getOrCreateDeviceId, readSyncMeta, writeSyncMeta, clearSyncMeta } from 
 import { setGateAuthedThisSession, clearGateAuthedThisSession } from './authGate';
 import type { SyncEnvelope, SyncMeta } from './syncTypes';
 import { saveApiKeys } from '../secureKeyStore';
+// [PERF-BUNDLE] import STATIQUE : backupAuto est déjà dans le chunk de BOOT (importé statiquement par
+// App.tsx via initAutoBackup) → le dynamic import ne créait aucun chunk séparé (INEFFECTIVE_DYNAMIC_IMPORT).
+import { createBackupNow } from '../backupAuto';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { hasMeaningfulData } from '../../utils/onboarding';
 
@@ -153,7 +156,6 @@ async function applyPulledPayload(payload: unknown, apiKeys?: ApiKeys): Promise<
     if (typeof localStorage === 'undefined') return;
     // Filet : backup local de l'état courant avant d'écraser (réutilise backupAuto).
     try {
-        const { createBackupNow } = await import('../backupAuto');
         await createBackupNow('auto');
     } catch {
         /* le backup d'assurance est best-effort, on ne bloque pas la restauration */

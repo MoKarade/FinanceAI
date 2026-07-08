@@ -303,7 +303,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                         <div className={`text-2xl font-black ${colors.text} tabular-nums`}>{totalScore}</div>
-                        <div className="text-tiny text-ink-500">/ 100</div>
+                        <div className="text-tiny text-ink-400">/ 100</div>
                     </div>
                 </div>
 
@@ -324,9 +324,9 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                                             style={{ width: `${m.available ? m.value : 0}%` }}
                                         />
                                     </div>
-                                    <span className="text-tiny text-ink-500 font-mono shrink-0 tabular-nums">{weights[m.id]}%</span>
+                                    <span className="text-tiny text-ink-400 font-mono shrink-0 tabular-nums">{weights[m.id]}%</span>
                                 </div>
-                                <div className="text-tiny text-ink-500 mt-0.5">{m.raw}</div>
+                                <div className="text-tiny text-ink-400 mt-0.5">{m.raw}</div>
                             </div>
                         );
                     })}

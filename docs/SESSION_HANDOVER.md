@@ -10,9 +10,13 @@
 > `TP1G-VIVANT-SEUL` (crédit QC « personne vivant seule » 2 172 $ ligne 361, seuil UNIQUE **42 955 $** remplaçant les paliers duaux 27 835/45 270
 > — DÉCOUVERTE : l'ancien 45 270 était le seuil du crédit ligne 462 CONFONDU → retrait d'un sur-crédit couple ; panel `financial-integrity` +
 > `silent-failure-hunter`). **Nouveau finding BACKLOG** : `[FISC-LINE361-PERCONJOINT-REDUC]` (réduction 18,75 % appliquée PAR CONJOINT → possible
-> double-comptage couple en bande partielle, pré-existant, à vérifier séparément). **⏳ EN COURS — sweep LOW/MEDIUM sûrs** : a11y (`A11Y-HEALTH-RAW-INK500`
-> + `A11Y-BUDGETTABLE-SELECT-KBD`, panel APPROVE) → nettoyage (`HEALTH-SUB-DRY`/`PLANNING-ANNUAL-CALENDAR`/`DETTE-RE-SALE-PURGE`) → perf
-> (`PERF-BUNDLE`/`PERF-MISSINGDATA`) → money-critical restants (`WHT-DISPLAY-MELTDOWN`, `FISC-REEE-AIP-MODEL`). **NE PAS toucher** (bloqués) :
+> double-comptage couple en bande partielle, pré-existant, à vérifier séparément). **⏳ EN COURS — sweep LOW/MEDIUM sûrs, PR #432**
+> (branche mono `claude/recent-commits-status-w3sakd`, commits focalisés, un merge) : **✅ a11y** (`A11Y-HEALTH-RAW-INK500` +
+> `A11Y-BUDGETTABLE-SELECT-KBD`) · **✅ nettoyage** (`HEALTH-SUB-DRY` DRY coût mensuel santé + `PLANNING-ANNUAL-CALENDAR` abo annuel ≠ chaque
+> mois ; **`DETTE-RE-SALE-PURGE` DIFFÉRÉ** — ambiguïté design money-adjacent purge/remove/warn, à trancher avec Marc) · **✅ perf**
+> (`PERF-MISSINGDATA` sélecteur `useShallow` + `PERF-BUNDLE` 2/3 imports statiques, `claude.ts` gardé dynamique à dessein). Panels APPROVE à
+> chaque vague. **RESTE — money-critical ISOLÉS** (PRs séparées après merge #432) : `WHT-DISPLAY-MELTDOWN`, `FISC-REEE-AIP-MODEL`, investigation
+> `FISC-LINE361-PERCONJOINT-REDUC`. **NE PAS toucher** (bloqués) :
 > 🧭 décisions Marc (IA-NAV-CONSOLIDATE, PH4-BUD, ITEM-2A, FISC-TAXDEC-INCR) · ⏳ gros chantiers (MCP-CLOUDRUN, DETTE-GODFILES, CIX-*, CA-*, D-*,
 > P0-IDB, PROFIL-SWITCH) · money-critical différés `fixIsSafe:false` (FISC-RAP-REPAY, FISC-CHILDCARE, FISC-SURVIVOR-CAP, NAN-MUTATOR-CENTRAL).
 > **Reste Marc** : envs O4 (jeton relais Vercel), 12 tests manuels. Décisions bloc 2026-07-06 exécutées ✅.

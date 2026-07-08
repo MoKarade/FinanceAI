@@ -6,6 +6,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Perf : sélecteur atomique + imports de bundle honnêtes] — 2026-07-07
+
+### Performance / interne
+- **Checklist de complétude (Configuration)** : `MissingDataChecklist` s'abonnait au store ENTIER
+  (`useFinanceStore()`) → re-render à chaque mutation (dont les écritures fréquentes du calcul Monte-Carlo).
+  Remplacé par un sélecteur `useShallow` sur le tableau dérivé des champs manquants → re-render seulement
+  quand l'ensemble des champs manquants change. (PERF-MISSINGDATA)
+- **Imports de bundle** : 2 des 3 `INEFFECTIVE_DYNAMIC_IMPORT` (dynamic imports qui ne créaient aucun chunk
+  séparé car le module est déjà en boot) convertis en imports statiques honnêtes — `lockedProjectionStore`
+  (App.tsx, déjà en boot via le store) et `backupAuto` (syncOrchestrator, déjà en boot via App.tsx). Le 3ᵉ
+  (`claude.ts`) est conservé en dynamique **à dessein** : ses consommateurs sont lazy, donc le SDK Anthropic
+  vit dans les chunks lazy, pas en boot — le rendre statique le tirerait en boot. Boot inchangé (99,8 kB gzip),
+  build : 3 warnings → 1. (PERF-BUNDLE)
+
+---
+
 ## [unreleased — Nettoyage abonnements : calendrier annuel + DRY santé] — 2026-07-07
 
 ### Planification

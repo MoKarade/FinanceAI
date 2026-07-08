@@ -24,6 +24,7 @@ import { configureMarketDataProvider } from './services/marketData';
 import { installGlobalErrorHandlers, logError } from './services/errorLogger';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { initAutoBackup } from './services/backupAuto';
+import { loadLockedProjection } from './services/lockedProjectionStore';
 import { initSync, runBootSync, schedulePush, pushNow, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, startDrivePolling, markApiKeysHydrated, type SyncStatus } from './services/sync/syncOrchestrator';
 import { trackPageView } from './services/analytics';
 import { GuidedTour } from './components/tour/GuidedTour';
@@ -80,8 +81,9 @@ export const App: React.FC = () => {
         // PH2-d-1 — 'empty' (rien/erreur d'accès) → silence ; 'unreadable' (entrée présente mais clé
         // disparue) → on AVERTIT l'utilisateur (jumeau de decrypt_failed des clés API).
         if (useFinanceStore.getState().isProjectionLocked) {
-            import('./services/lockedProjectionStore')
-                .then(({ loadLockedProjection }) => loadLockedProjection())
+            // [PERF-BUNDLE] import STATIQUE : lockedProjectionStore est déjà dans le chunk de BOOT (importé
+            // statiquement par le store) → le dynamic import ne créait aucun chunk séparé (INEFFECTIVE_DYNAMIC_IMPORT).
+            loadLockedProjection()
                 .then((res) => {
                     if (res.status === 'ok') {
                         useFinanceStore.getState().setLockedProjection(res.result);

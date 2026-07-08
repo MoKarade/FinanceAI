@@ -1,5 +1,6 @@
 import React from 'react';
 import { useFinanceStore } from '../../store/useFinanceStore';
+import { useShallow } from 'zustand/shallow';
 import { Tab } from '../../types';
 import type { FinanceState } from '../../store/useFinanceStore';
 import { Icon } from './Icon';
@@ -204,11 +205,13 @@ export const MissingDataBanner: React.FC<MissingDataBannerProps> = ({
  * cocher rapidement ce qui reste à compléter.
  */
 export const MissingDataChecklist: React.FC<{ className?: string }> = ({ className = '' }) => {
-    // Récupère le state une fois ; performance OK car la checklist est rendue
-    // seulement sur la page Configuration.
-    const state = useFinanceStore();
-    const missingFields = (Object.keys(MISSING_DATA_FIELDS) as MissingDataField[])
-        .filter(f => MISSING_DATA_FIELDS[f].isMissing(state));
+    // [PERF-MISSINGDATA] Sélecteur SHALLOW sur le tableau DÉRIVÉ des champs manquants : la checklist ne
+    // re-render que quand l'ENSEMBLE des champs manquants change, PAS à chaque mutation du store (ex. les
+    // écritures fréquentes pendant un calcul Monte-Carlo). Avant : `useFinanceStore()` s'abonnait au store ENTIER.
+    const missingFields = useFinanceStore(useShallow((state) =>
+        (Object.keys(MISSING_DATA_FIELDS) as MissingDataField[])
+            .filter(f => MISSING_DATA_FIELDS[f].isMissing(state)),
+    ));
 
     const totalFields = Object.keys(MISSING_DATA_FIELDS).length;
     const completedFields = totalFields - missingFields.length;

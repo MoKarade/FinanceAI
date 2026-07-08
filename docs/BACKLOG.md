@@ -755,8 +755,14 @@
 - [x] **[PERF-WITHHOLDING]** ✅ **RÉSOLU (2026-06-26) — par SUPPRESSION, pas mémoïsation** : `computeMonthlyWithholding`
   était du code mort (sortie écrasée par décembre, cf. FISC-SRCDED-NOOP) → retirée. On ne mémoïse pas du code mort, on
   le supprime (gain perf MC réel : 2× `calculateFiscalReport`/mois × chemins MC en moins, pour un résultat jeté).
-- [ ] **[PERF-BUNDLE]** 🔧 — 3 `INEFFECTIVE_DYNAMIC_IMPORT` (`claude.ts`, `backupAuto.ts`, `lockedProjectionStore`) → tout-statique ou tout-dynamique par module.
-- [ ] **[PERF-MISSINGDATA]** 🔧 — `MissingDataBanner.tsx:209` : selecteur atomique (`useShallow`) pour eviter les re-renders pendant le calcul MC.
+- [x] **[PERF-BUNDLE]** ✅ **FAIT (2026-07-07)** — 2 des 3 `INEFFECTIVE_DYNAMIC_IMPORT` convertis en import STATIQUE (le module
+  était DÉJÀ en boot, le dynamic import ne créait aucun chunk) : `lockedProjectionStore` (`App.tsx`, boot via le store) + `backupAuto`
+  (`syncOrchestrator.ts`, boot via `App.tsx initAutoBackup`). Le 3ᵉ (`claude.ts`) est GARDÉ dynamique **à dessein** : ses consommateurs
+  sont lazy (TabRouter) → le SDK Anthropic vit dans les chunks lazy, PAS en boot ; le rendre statique le tirerait en boot = régression
+  (vérifié : boot 99,8 kB gzip inchangé, warnings 3→1). Panel code-reviewer + silent-failure-hunter. Zéro régression (branches d'erreur préservées).
+- [x] **[PERF-MISSINGDATA]** ✅ **FAIT (2026-07-07)** — `components/ui/MissingDataBanner.tsx` (`MissingDataChecklist`) : le full-store
+  `useFinanceStore()` remplacé par un sélecteur `useShallow` sur le tableau DÉRIVÉ des champs manquants → re-render seulement quand
+  l'ENSEMBLE change (plus à chaque écriture du calcul MC). Panel code-reviewer + silent-failure-hunter. 20 tests verts.
 
 ### Securite (deja connu / Marc)
 - [x] **[DEP-UNDICI]** ✅ **RÉSOLU/PÉRIMÉ (constaté 2026-06-25)** — le `package-lock.json` est DÉJÀ à `undici 7.28.0` (= le fix des 2 alertes

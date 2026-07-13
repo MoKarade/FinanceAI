@@ -5,8 +5,9 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AppState } from '../../types';
 import { calculateFutureProjection } from '../../services/projection';
-import type { ProjectionChartPoint, ProjectionResult } from '../../services/projection/types';
+import type { ProjectionResult } from '../../services/projection/types';
 import { buildSimulationParamsFromState } from '../../services/projection/buildSimulationParams';
+import { extractYearlySeries, fireAgeOf } from '../whatIf';
 import { jsonContent, withState, type StateProvider } from './_dataAware';
 
 // Scénarios exposés à Claude → stratType interne du moteur.
@@ -26,13 +27,10 @@ const inputSchema = {
             'STRESS/COMPOUND_STRESS (krach + inflation + soins longue durée).'),
     monteCarlo: z.boolean().default(false)
         .describe('Active la simulation Monte Carlo (probabilité de réussite + vitalité financière).'),
+    includeSeries: z.boolean().default(false)
+        .describe('Inclure la série ANNUELLE réelle (patrimoine nominal/réel, comptes, dettes, par âge) ' +
+            'pour tracer un graphique avec les chiffres EXACTS du moteur.'),
 };
-
-/** Âge au 1er mois où la valeur nette atteint la cible FIRE (sinon null). */
-function fireAgeOf(chartData: ProjectionChartPoint[]): number | null {
-    const d = chartData.find((p) => (p.FireTarget || 0) > 0 && (p.NetWorth || 0) >= (p.FireTarget || 0));
-    return d ? (d.age ?? null) : null;
-}
 
 export const registerGetProjection = (server: McpServer, getState: StateProvider): void => {
     server.tool(
@@ -42,7 +40,7 @@ export const registerGetProjection = (server: McpServer, getState: StateProvider
         'FinanceAI. Renvoie le patrimoine final NOMINAL et RÉEL (déflaté), le patrimoine successoral, ' +
         "l'objectif FIRE, l'âge d'indépendance financière, et (si Monte Carlo) la probabilité de réussite.",
         inputSchema,
-        async ({ years, scenario, monteCarlo }) => withState(getState, (state: AppState) => {
+        async ({ years, scenario, monteCarlo, includeSeries }) => withState(getState, (state: AppState) => {
             const params = buildSimulationParamsFromState(state);
             // Horizon demandé : on surcharge years sans muter l'état d'origine.
             params.projection = { ...params.projection, years };
@@ -94,6 +92,8 @@ export const registerGetProjection = (server: McpServer, getState: StateProvider
                     stratType: r.stratType,
                     estateNetWorth: Math.round(r.estateNetWorth ?? 0),
                 })) ?? [],
+                // [MCP-WHATIF] série annuelle EXACTE du moteur (graphiques sans chiffre inventé).
+                series: includeSeries ? extractYearlySeries(chartData) : null,
             });
         }),
     );

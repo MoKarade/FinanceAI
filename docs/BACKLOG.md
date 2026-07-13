@@ -276,7 +276,7 @@
 
 ---
 
-## 🚀 MCP FinanceAI → Cloud Run [⏳ gros chantier] (brief Marc 2026-06-16)
+## 🚀 MCP FinanceAI → Cloud Run [⏳ gros chantier] (brief Marc 2026-06-16, RELANCÉ 2026-07-13)
 > Le serveur MCP perso FinanceAI (finances : Drive/BigQuery, comptes CELI/REER/CELIAPP/REEE) tourne en
 > local (stdio), token Google en **fichier**. **Symptôme** : `get_financial_overview` → `invalid_grant`
 > (« Token has been expired or revoked ») alors que `ping` répond. **But** : serveur **distant** hébergé sur
@@ -285,20 +285,61 @@
 > ⚠️ **DEUX OAuth distincts** : **A** = serveur ↔ Google (lire les finances Drive/BigQuery — c'est CE token qui
 > est mort, à persister hors disque + rafraîchir) ; **B** = Claude ↔ serveur (auth du connecteur — Bearer
 > d'abord, architecture prête pour OAuth 2.1 plus tard). NE PAS les confondre.
+>
+> **RELANCE 2026-07-13 (choix Marc : claude.ai web/mobile direct)** — plan validé en 4 lots :
+> Lot 1 `[MCP-WHATIF]` (tools what-if + séries, indépendant de l'hébergement) → Lot 2 `[MCP-CLOUDRUN-HTTP]`
+> → Lot 3 `[MCP-CLOUDRUN-A]`+`[MCP-CLOUDRUN-B]` → Lot 4 `[MCP-CLOUDRUN-DEPLOY]` (+ MAJ carte « Connecter à
+> Claude » de l'app, qui pointe vers un `.mcpb` jamais hébergé — rappel Marc 2026-07-13).
+> ⚠️ **Phase 0 REFAITE 2026-07-13, correction au brief** : l'UI connecteurs custom de claude.ai n'a PAS de
+> champ Bearer statique (OAuth 2.0 seulement : Authorization URL, Token URL, Client ID/Secret en advanced
+> settings ; `static_headers` = bêta réservée aux orgs Team/Enterprise) → **Auth B = mini serveur OAuth 2.1
+> mono-utilisateur (PKCE)**, pas un middleware Bearer. `[MCP-CLOUDRUN-ROOT]` (consentement en Production)
+> = ✅ RÉGLÉ par Marc 2026-07-06. Marc a confirmé : PAS de passphrase sur le coffre (DriveStateSource OK).
 
-- [ ] **[MCP-CLOUDRUN-0]** 🔧 **Phase 0 — explorer + rapporter (LECTURE SEULE, ne rien modifier)** :
+- [x] **[MCP-CLOUDRUN-0]** ✅ **FAIT 2026-07-13** (phase 0 refaite : stack TS `@modelcontextprotocol/sdk`,
+  entrée `mcp/stdio.ts`, 15 tools, token Drive en `~/.financeai-mcp/credentials.json` scope `drive.appdata`,
+  flux `access_type=offline+prompt=consent` ; rapport livré à Marc en session, plan 4 lots OK). Détail original :
   langage/framework MCP (FastMCP Python ? `@modelcontextprotocol/sdk` TS ? autre ?) ; transport actuel +
   entrée du serveur ; où/comment le token Google est lu/écrit (fichier ? chemin ? lib OAuth ?) ; où vivent
   `client_id`/`client_secret` (clair ? `.env` ?) ; scopes Google + `access_type`/`prompt` ; **liste
   exhaustive des outils MCP exposés** (pour ne rien casser). → rapport court + plan → **attendre l'OK Marc**.
+- [x] **[MCP-WHATIF]** ✅ **Lot 1 FAIT 2026-07-13 (PR de cette session)** — demande Marc : « si j'achète une
+  voiture demain, comment ça affecte mes finances, avec des chiffres précis de l'app et des graphs, aucun
+  chiffre inventé ». Nouveau tool data-aware `simulate_what_if` (`mcp/whatIf.ts` pur + `mcp/tools/
+  simulateWhatIf.tool.ts`) : changements hypothétiques (achat ponctuel/financé, salaire, dépense récurrente,
+  nouvelle dette, achat immobilier) traduits vers les VRAIES structures moteur (LifeEvent GROS_ACHAT, Debt,
+  RealEstateGoal, users, calculatedMonthlySavings) → moteur roulé 2× (même `now`) → deltas à 1/2/5/10/20 ans
+  + âge FIRE + impôts + hypothèses REMONTÉES (`assumptions`) + séries annuelles base/scénario pour graphs.
+  + `get_projection` param `includeSeries` (série annuelle exacte). 20 tests (discriminants de MAGNITUDE
+  économique : voiture 30 k$ → écart an 1 ∈ [−40k, −25k]). ⚠️ Piège évité : `totalClosingCosts` SANS taxe
+  de bienvenue (le moteur ajoute `welcomeFees` lui-même, `realEstateMonth.ts:175` — l'inclure = double-comptage).
+  **Panel 2026-07-13 (3 agents, findings MESURÉS et tous intégrés)** : mot réservé « vente » assaini (delta 0
+  silencieux sinon) · `.finite()` + gardes `Number.isFinite` (Infinity passait Zod → impact fabriqué) · mois ISO
+  construit comme le moteur (toISOString, pas composants locaux — fuseaux positifs décalaient d'un mois) ·
+  changement daté hors horizon REJETÉ (avant : « succès » à effet nul) · financement différé REJETÉ (dettes sans
+  date de début → −28 k$ quatre ans trop tôt) · mise de fonds > prix rejetée · hypothèses SCHL/retraite remontées.
+- [ ] **[MCP-WHATIF-DATED-DEBT]** 🔧 LOW (suivi panel MCP-WHATIF 2026-07-13) — les dettes du moteur n'ont pas de
+  date de DÉBUT (servies dès le mois 0) → le what-if rejette un achat FINANCÉ différé (`monthsFromNow > 1`).
+  Pour le supporter : soit un champ `startDate?` sur `Debt` honoré par le moteur (plan-first, touche le moteur),
+  soit une modélisation « flux de paiements » côté what-if. Décision Marc requise sur la sémantique.
+- [ ] **[MCP-ENGINE-WARNINGS]** 🔧 LOW (suivi panel silent-failure 2026-07-13) — les `logErrorThrottled` du moteur
+  (ex. « montant non fini → dépense ignorée ») partent dans un sink NAVIGATEUR (localStorage, no-op sous Node) →
+  invisibles pour Claude côté MCP. Piste : `withState` collecte les logs moteur pendant le run et les remonte dans
+  la réponse JSON (champ `engineWarnings`). Zéro impact app web.
+- [ ] **[ENG-LIFEEVENT-VENTE-SUBSTRING]** 🔧 LOW (racine du finding « vente », pré-existant) — `applyLifeEvents`
+  détecte une vente immobilière par SOUS-CHAÎNE `name.includes('vente')` : fragile pour tout producteur de
+  LifeEvent non humain (MCP assainit déjà via `safeEngineName`). Piste : type d'événement EXPLICITE
+  (`'VENTE_IMMO'` dans `LifeEventType`) + migration douce du fallback substring. Plan-first (touche le moteur).
 - [ ] **[MCP-CLOUDRUN-A]** 🔧 **Auth A (serveur ↔ Google — le token mort)** : module `token_store` qui
   lit/écrit le refresh token dans **Secret Manager** (`financeai-google-refresh`), jamais en fichier ;
   `client_id`/`client_secret` depuis `financeai-google-client` ; flux `access_type=offline` + `prompt=consent` ;
   si Google renvoie un nouveau refresh token → **réécrire le secret** ; **gérer `invalid_grant` explicitement**
   (log clair + message MCP exploitable « reconnecte Google », pas de crash) + outil/chemin de ré-consentement.
-- [ ] **[MCP-CLOUDRUN-B]** 🔧 **Sécurité B (Claude ↔ serveur)** : middleware exigeant
-  `Authorization: Bearer <FINANCEAI_API_KEY>` (clé en secret/env) → **401** sinon ; point d'extension commenté
-  pour OAuth 2.1 (401 + `WWW-Authenticate`).
+- [ ] **[MCP-CLOUDRUN-B]** 🔧 **Sécurité B (Claude ↔ serveur)** — ⚠️ RÉVISÉ 2026-07-13 (phase 0 : claude.ai
+  n'a pas de champ Bearer statique) : **mini serveur OAuth 2.1 mono-utilisateur** (endpoints authorize/token,
+  PKCE, client id/secret en secrets, 401 + `WWW-Authenticate` sinon) — c'est ce que l'UI « custom connector »
+  de claude.ai accepte (advanced settings). Le Bearer reste OK pour l'API Messages (`authorization_token`)
+  mais PAS pour l'UI web/mobile.
 - [ ] **[MCP-CLOUDRUN-HTTP]** 🔧 **Transport** : stdio → **Streamable HTTP**, endpoint unique `/mcp`
   (POST + GET), écoute `0.0.0.0:$PORT` (défaut **8080**) ; garder un mode stdio via `MCP_TRANSPORT=stdio|http`
   pour le dev local.

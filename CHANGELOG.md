@@ -6,6 +6,26 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Connecteur MCP : what-if sur vraies données + séries pour graphiques] — 2026-07-13
+
+### Connecteur MCP (Lot 1 du chantier claude.ai)
+- **Nouveau tool `simulate_what_if`** : « si j'achète une voiture demain, comment ça affecte mes
+  finances ? » sur les VRAIES données. Les changements hypothétiques (achat ponctuel ou financé,
+  changement de salaire, dépense récurrente ±, nouvelle dette, achat immobilier) sont traduits vers les
+  structures que le moteur consomme déjà (`LifeEvent`, `Debt`, `RealEstateGoal`, salaires, épargne
+  mensuelle), puis le moteur complet roule DEUX fois (trajectoire actuelle vs avec changements) :
+  deltas de patrimoine à 1/2/5/10/20 ans, impact âge FIRE + impôts, hypothèses de modélisation
+  remontées (`assumptions`), et séries annuelles base+scénario pour tracer des graphiques comparés.
+  Aucun chiffre inventé : Claude reçoit les points du moteur. (`mcp/whatIf.ts` pur + 13 tests avec
+  discriminants de magnitude économique.) (MCP-WHATIF)
+- **`get_projection` : paramètre `includeSeries`** → série ANNUELLE exacte (patrimoine nominal/réel,
+  comptes CELI/REER/CELIAPP/REEE/non-enregistré/crypto, immobilier, dettes, par âge) pour les graphiques.
+- **Chantier relancé (choix Marc 2026-07-13)** : cible = claude.ai web/mobile (Cloud Run). Phase 0
+  refaite — correction au brief : l'UI connecteurs custom claude.ai exige OAuth 2.0/2.1 (pas de champ
+  Bearer statique) → lots suivants HTTP → OAuth → déploiement (cf `docs/BACKLOG.md` §MCP-CLOUDRUN).
+
+---
+
 ## [unreleased — Perf : sélecteur atomique + imports de bundle honnêtes] — 2026-07-07
 
 ### Performance / interne

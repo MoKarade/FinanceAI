@@ -22,6 +22,7 @@ import { registerGetTaxSituation } from './tools/getTaxSituation.tool';
 import { registerGetRetirementOutlook } from './tools/getRetirementOutlook.tool';
 import { registerGetNextBestActions } from './tools/getNextBestActions.tool';
 import { registerSearchTransactions } from './tools/searchTransactions.tool';
+import { registerSimulateWhatIf } from './tools/simulateWhatIf.tool';
 import { registerApplyPayslip } from './tools/applyPayslip.tool';
 import { registerApplyBankStatement } from './tools/applyBankStatement.tool';
 import { registerApplyBrokerStatement } from './tools/applyBrokerStatement.tool';
@@ -75,6 +76,7 @@ export const createServer = (options: CreateServerOptions = {}): McpServer => {
     registerGetRetirementOutlook(server, getState);
     registerGetNextBestActions(server, getState);
     registerSearchTransactions(server, getState);
+    registerSimulateWhatIf(server, getState);
 
     // Tools d'ECRITURE (Lot 2) — uniquement si un magasin inscriptible est fourni.
     // Le tool verifie lui-meme canWrite et renvoie une erreur claire si lecture seule.

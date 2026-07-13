@@ -4,6 +4,25 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 📊 Session 2026-07-13 — MCP pour claude.ai : Lot 1 what-if + séries LIVRÉ, chantier Cloud Run relancé
+> **Demande Marc** : parler à Claude de ses VRAIES finances depuis claude.ai web/mobile (pas seulement Desktop), déposer des
+> PDF (déjà couvert, Lot 2 ingestion), et poser des what-if (« si j'achète une voiture demain ») avec chiffres EXACTS de l'app
+> + graphiques — zéro chiffre inventé. **Choix Marc consignés** : cible claude.ai direct (chantier MCP-CLOUDRUN relancé, 4 lots) ·
+> what-if générique complet · séries annuelles pour que Claude trace · PAS de passphrase sur le coffre (DriveStateSource OK).
+> **✅ Lot 1 `[MCP-WHATIF]`** : tool `simulate_what_if` (`mcp/whatIf.ts` PUR : achat ponctuel/financé → LifeEvent GROS_ACHAT+Debt,
+> salaire → users (net proportionnel REMONTÉ en assumption), dépense récurrente → délta d'épargne POST-clamp, immo → RealEstateGoal
+> avec closingCosts SANS taxe de bienvenue — le moteur ajoute `welcomeFees` lui-même) ; moteur roulé 2× même `now` → deltas
+> 1/2/5/10/20 ans + FIRE + impôts + séries annuelles base/scénario ; `get_projection` gagne `includeSeries`. 13 tests
+> (discriminants de MAGNITUDE : voiture 30 k$ → écart an 1 ∈ [−40k,−25k] ; 20 après panel). **Panel (3 agents, findings
+> MESURÉS, tous intégrés)** : mot réservé « vente » (delta 0 silencieux) assaini · Infinity passait Zod (`.finite()` +
+> gardes, leçon CLAUDE.md) · mois ISO = même construction que le moteur (UTC) · hors-horizon + financement différé +
+> mise>prix REJETÉS (erreurs claires) · suivis BACKLOG `MCP-WHATIF-DATED-DEBT`/`MCP-ENGINE-WARNINGS`/
+> `ENG-LIFEEVENT-VENTE-SUBSTRING`. **Phase 0 Cloud Run REFAITE** : ⚠️ claude.ai
+> custom connectors = OAuth 2.0/2.1 SEULEMENT (pas de Bearer statique ; `static_headers` = bêta Team/Enterprise) → Auth B révisée
+> en mini-OAuth 2.1 mono-user (BACKLOG §MCP-CLOUDRUN à jour). `MCP-CLOUDRUN-ROOT` (consent Production) déjà réglé 2026-07-06.
+> **RESTE (lots 2-4)** : transport Streamable HTTP `/mcp` → Auth A (Secret Manager) + B (OAuth 2.1) → Dockerfile/deploy.sh/
+> Actions + MAJ carte « Connecter à Claude » (Réglages → Système : pointe vers un `.mcpb` jamais hébergé — rappel Marc).
+>
 > ## 📊 Session 2026-07-07 — BACKLOG EN CONTINU : money-critical (#429/#430/#431 mergés) → sweep a11y/nettoyage/perf
 > Exécution **ORDONNÉE du backlog** (demande Marc « continue le backlog en entier ») : **✅ MERGÉS** #429 `FISC-WELCOME-2026` (barème taxe
 > bienvenue « reste QC » 2026, 500 k$ = 5 610,50 $), #430 `DETTE-RE-SALE` (vente immo ciblée par `propertyId`, panel 2352/2352), #431

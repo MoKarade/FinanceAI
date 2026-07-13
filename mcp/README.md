@@ -202,6 +202,76 @@ npm run mcp:connect
 - ⚠️ Une **passphrase** active (coffre chiffré) empêche le connecteur de lire le Drive
   (message clair « retire la passphrase »).
 
+## Déployer sur Cloud Run → utiliser depuis claude.ai (web + téléphone)
+
+Pour parler à Claude de tes finances depuis le **web ou le téléphone** (pas seulement
+Claude Desktop), le serveur MCP doit être hébergé. Recette Google Cloud Run. Coût :
+**quasi nul** en `min-instances 0` (scale-to-zero — tu ne paies que les requêtes, ~0 $
+à l'usage solo ; contrepartie : un cold start de ~2 s au réveil, qui vide le cache
+anti-rejeu OAuth en mémoire). `MIN_INSTANCES=1` supprime le cold start et garde le cache
+chaud, mais facture le temps d'inactivité (non gratuit). ⚠️ Commandes `gcloud`.
+
+### Une fois (préparation GCP)
+
+1. **Projet + CLI** : crée un projet sur console.cloud.google.com, installe `gcloud`,
+   puis `gcloud auth login` et `gcloud config set project <TON_PROJET>`.
+2. **Active les API** :
+   ```
+   gcloud services enable run.googleapis.com secretmanager.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
+   ```
+3. **Génère tes 2 clés** (PowerShell natif — pas d'openssl) :
+   ```
+   node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"   # clé de signature
+   node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"   # TA clé d'accès (garde-la)
+   ```
+4. **Crée les 3 secrets** (colle chaque valeur quand demandé ; pour le refresh Google,
+   lance d'abord `npm run mcp:auth` en local puis prends le contenu de
+   `~/.financeai-mcp/credentials.json`) :
+   ```
+   gcloud secrets create financeai-oauth-signing-key --data-file=-   # colle la clé de signature, Ctrl+Z Entrée
+   gcloud secrets create financeai-access-key        --data-file=-   # colle TA clé d'accès
+   gcloud secrets create financeai-google-refresh    --data-file=credentials.json
+   ```
+5. **Donne au service l'accès aux 3 secrets** (le compte de service Cloud Run par défaut lit
+   les 2 clés OAuth montées en env ET le refresh Google à l'exécution — les 3 sont requis, sinon
+   la révision échoue « permission denied ») :
+   ```
+   $SA="<NUM>-compute@developer.gserviceaccount.com"   # <NUM> = numéro de projet (gcloud projects describe <TON_PROJET>)
+   gcloud secrets add-iam-policy-binding financeai-oauth-signing-key --member="serviceAccount:$SA" --role="roles/secretmanager.secretAccessor"
+   gcloud secrets add-iam-policy-binding financeai-access-key        --member="serviceAccount:$SA" --role="roles/secretmanager.secretAccessor"
+   gcloud secrets add-iam-policy-binding financeai-google-refresh    --member="serviceAccount:$SA" --role="roles/secretmanager.secretAccessor"
+   ```
+
+### Déployer
+
+```
+# Windows PowerShell : $env:PROJECT_ID="ton-projet"; bash mcp/deploy.sh
+PROJECT_ID=ton-projet ./mcp/deploy.sh
+```
+Le script déploie, récupère l'URL publique, puis re-déploie avec `FINANCEAI_PUBLIC_URL`
+(l'issuer OAuth). Il affiche à la fin l'URL du connecteur (`https://…run.app/mcp`).
+
+### Brancher claude.ai
+
+Dans claude.ai (ou l'app mobile) → **Settings → Connectors → Add custom connector** →
+colle `https://…run.app/mcp`. Claude découvre l'OAuth tout seul ; à la connexion, entre
+**ta clé d'accès**. C'est fait — pose « si j'achète une voiture demain ? » sur tes vrais chiffres.
+
+### Déploiement continu (optionnel)
+
+`.github/workflows/deploy-mcp.yml` redéploie à chaque push `main` touchant le serveur, via
+Workload Identity Federation (aucune clé de service en secret GitHub). Il ne tourne que si
+les variables de repo `GCP_PROJECT_ID` + secrets `GCP_WIF_PROVIDER`/`GCP_DEPLOY_SA` sont
+configurés — sinon il est ignoré (le déploiement manuel `mcp/deploy.sh` reste toujours valable).
+
+> ⚠️ **Avant l'exposition publique** (cf `docs/BACKLOG.md` §MCP-CLOUDRUN-AUTH-HARDENING) :
+> `FINANCEAI_ACCESS_KEY` DOIT être générée aléatoirement (étape 3), `min-instances 1`
+> évite de vider le cache anti-rejeu à froid, et un rate-limit sur `/oauth/authorize`
+> est recommandé. Kill-switch en cas d'incident : régénère `financeai-oauth-signing-key`
+> (`gcloud secrets versions add`) PUIS force une nouvelle révision
+> (`gcloud run services update <service> --region <region>`) — sinon une instance déjà
+> chaude garde l'ancienne clé en mémoire et les jetons émis restent valides jusqu'à expiration.
+
 ## Installation 1 clic (bundle `.mcpb`)
 
 Pour distribuer le connecteur sans terminal (Node est embarqué dans Claude Desktop) :

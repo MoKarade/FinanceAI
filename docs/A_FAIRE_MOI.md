@@ -42,6 +42,20 @@ Le code est prêt et déployé ; il manque l'hébergement du bundle (Marc avait 
   pointer `VITE_CONNECTOR_MCPB_URL` vers une release.
 - [ ] Tester l'install 1 clic (Claude Desktop) + « connecte mes finances » → vraies données.
 
+## O8 — Déployer le serveur MCP sur Cloud Run → claude.ai web/mobile (Lot 4 livré, actions GCP restantes)
+Le code des 4 lots est mergé (what-if + séries, transport HTTP, OAuth 2.1, Docker/deploy/CI). Pas-à-pas
+COMPLET dans `mcp/README.md` § « Déployer sur Cloud Run ». Résumé des actions Marc (Google Cloud, ~15 min) :
+- [ ] Projet GCP + `gcloud auth login` + activer les API (run, secretmanager, cloudbuild, artifactregistry).
+- [ ] Générer 2 clés (`node -e "…randomBytes…"` — PowerShell natif, cf README) : signature + **ta clé d'accès**.
+- [ ] `npm run mcp:auth` en local → créer les **3 secrets** Secret Manager (signing-key, access-key,
+  google-refresh depuis `~/.financeai-mcp/credentials.json`) + IAM `secretAccessor` sur google-refresh.
+- [ ] `PROJECT_ID=… ./mcp/deploy.sh` → récupère l'URL `https://…run.app/mcp`.
+- [ ] claude.ai (ou mobile) → Settings → Connectors → Add custom connector → coller l'URL → autoriser avec la clé d'accès.
+- [ ] (Optionnel) déploiement continu : configurer `GCP_PROJECT_ID` (var repo) + `GCP_WIF_PROVIDER`/`GCP_DEPLOY_SA` (secrets).
+- ⚠️ **Avant exposition** (BACKLOG `MCP-CLOUDRUN-AUTH-HARDENING`) : clé d'accès aléatoire (fait à l'étape 2),
+  `min-instances 1` (déjà dans deploy.sh), rate-limit `/oauth/authorize` recommandé. Kill-switch : régénérer signing-key.
+- (Optionnel) définir `VITE_MCP_SERVER_URL` sur Vercel → la carte « Connecter à Claude » de l'app affiche l'URL du connecteur.
+
 ## O3 — Prouver la sync Drive en réel (P0 produit multi-user)
 - [x] ~~Créer le `VITE_GOOGLE_CLIENT_ID`~~ — ✅ **FAIT (O1-A)** : client OAuth Google déployé.
 - [ ] **Valider sur hubperso.com** : fenêtre privée neuve → login Google → toutes les données + clés API reviennent

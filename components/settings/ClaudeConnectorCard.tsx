@@ -14,6 +14,9 @@ import { Icon } from '../ui/Icon';
 
 const MCPB_URL = (import.meta.env.VITE_CONNECTOR_MCPB_URL as string | undefined) || '/financeai-connector.mcpb';
 const CLAUDE_DOWNLOAD = 'https://claude.ai/download';
+// URL du serveur MCP hébergé (Cloud Run) pour le branchement claude.ai web/mobile.
+// Vide tant que le serveur n'est pas déployé (Lot 4) → la section web n'apparaît pas.
+const MCP_SERVER_URL = (import.meta.env.VITE_MCP_SERVER_URL as string | undefined)?.replace(/\/$/, '') || '';
 
 const StepNum: React.FC<{ n: number }> = ({ n }) => (
     <span className="flex-shrink-0 w-6 h-6 inline-flex items-center justify-center rounded-full bg-primary/20 text-primary text-tiny font-bold">{n}</span>
@@ -96,6 +99,20 @@ export const ClaudeConnectorCard: React.FC = () => {
                     Aucune installation technique (Node est inclus dans Claude Desktop), aucun compte développeur.
                     Tes données restent dans <strong>ton</strong> Google Drive.
                 </p>
+
+                {MCP_SERVER_URL && (
+                    <div className="pt-3 border-t border-white/10 space-y-2">
+                        <p className="text-meta text-ink-200 font-medium">Sur le web ou le téléphone (claude.ai)</p>
+                        <p className="text-tiny text-ink-300 leading-snug">
+                            Sans rien installer : dans claude.ai → <strong>Settings → Connectors → Add custom connector</strong>,
+                            colle l'URL ci-dessous, puis autorise avec ta clé d'accès. Tu pourras alors poser tes
+                            questions et lancer des simulations (« si j'achète une voiture demain ? ») depuis n'importe où.
+                        </p>
+                        <code className="block rounded-card bg-white/5 border border-white/10 px-3 py-2 text-tiny text-ink-200 break-all">
+                            {MCP_SERVER_URL}/mcp
+                        </code>
+                    </div>
+                )}
             </div>
         </Card>
     );

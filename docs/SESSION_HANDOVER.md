@@ -36,10 +36,14 @@
 > `/.well-known/*` (RFC 8414/9728) ; garde Bearer sur `/mcp` (401 + WWW-Authenticate). **Auth A** = `mcp/auth/
 > credentialsBackend.ts` — refresh token Google en **Secret Manager** (`$FINANCEAI_GOOGLE_SECRET`, metadata server + REST,
 > zéro dép) ou fichier local ; `invalid_grant` → message actionnable. Activation : `SIGNING_KEY`+`ACCESS_KEY` présents.
-> 21 unités OAuth + flux e2e HTTP complet. **RESTE (Lot 4 SEUL)** : Dockerfile + `deploy.sh` (`gcloud run deploy`, région
-> Montréal, `--set-secrets` ×3) + GitHub Actions (redeploy push main) + README pas-à-pas GCP pour Marc + MAJ carte
-> « Connecter à Claude » + condition `[MCP-CLOUDRUN-DEPLOY-LOGS]`. Actions Marc : créer projet GCP + 3 secrets + brancher
-> claude.ai (Settings → Connectors → URL du serveur).
+> 21 unités OAuth + flux e2e HTTP complet.
+> **✅ Lot 4 `[MCP-CLOUDRUN-DEPLOY]` (même session) → CHANTIER MCP claude.ai COMPLET (1→4)** : `mcp/Dockerfile`
+> (node:22-slim, fermeture d'import PROUVÉE minimale, `npx tsx mcp/http.ts`) + `.dockerignore` + `mcp/deploy.sh`
+> (gcloud run, Montréal, secrets OAuth, min-instances 1, 2 passes pour `FINANCEAI_PUBLIC_URL`) + `.github/workflows/
+> deploy-mcp.yml` (CD via WIF, garde `if vars.GCP_PROJECT_ID`) + README pas-à-pas GCP + carte « Connecter à Claude »
+> (section web/mobile via `VITE_MCP_SERVER_URL`). **Actions Marc → `A_FAIRE_MOI` O8** : projet GCP + 3 secrets + IAM +
+> `deploy.sh` + coller l'URL dans claude.ai (~15 min, pas-à-pas fourni). Conditions pré-exposition : BACKLOG
+> `MCP-CLOUDRUN-AUTH-HARDENING` (rate-limit, clé aléatoire) + `MCP-CLOUDRUN-DEPLOY-LOGS`.
 >
 > ## 📊 Session 2026-07-07 — BACKLOG EN CONTINU : money-critical (#429/#430/#431 mergés) → sweep a11y/nettoyage/perf
 > Exécution **ORDONNÉE du backlog** (demande Marc « continue le backlog en entier ») : **✅ MERGÉS** #429 `FISC-WELCOME-2026` (barème taxe

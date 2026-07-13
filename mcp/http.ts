@@ -24,6 +24,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { createServer as createMcpServer } from './server';
 import { MCP_SERVER_VERSION, resolveState, type ResolvedState } from './bootstrap';
+import { makeOAuthProvider, OAuthError, type OAuthProvider } from './auth/oauthProvider';
 
 /** Cap du corps de requête : largement suffisant pour du JSON-RPC MCP, borne l'OOM (mesuré : RSS ~7× la taille du corps). */
 const MAX_BODY_BYTES = 5 * 1024 * 1024;
@@ -48,6 +49,9 @@ export interface HttpServerOptions {
     sweepIntervalMs?: number;
     /** Garde-fou mémoire : refus (503) au-delà (défaut 32 — app solo, jamais atteint en usage normal). */
     maxSessions?: number;
+    /** [MCP-CLOUDRUN-B] fournisseur OAuth 2.1 : si présent, /mcp exige un Bearer valide
+     *  et les endpoints /oauth/* + /.well-known/* sont exposés. */
+    auth?: OAuthProvider;
 }
 
 export interface RunningHttpServer {
@@ -230,13 +234,138 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Runni
         }
     };
 
+    // ── [MCP-CLOUDRUN-B] endpoints OAuth 2.1 (si auth configurée) ────────────
+    const escapeHtml = (s: string): string =>
+        s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+
+    const authorizeFormHtml = (q: Record<string, string>, error?: string): string => `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FinanceAI — autorisation</title>
+<style>body{font-family:system-ui;max-width:26rem;margin:4rem auto;padding:0 1rem;background:#0f1115;color:#e8eaf0}
+input,button{font-size:1rem;padding:.6rem;width:100%;box-sizing:border-box;border-radius:.5rem;border:1px solid #333}
+button{background:#2563eb;color:#fff;border:0;margin-top:.75rem;cursor:pointer}.err{color:#f87171}</style></head>
+<body><h1>FinanceAI MCP</h1>
+<p>Claude demande l'accès à tes finances. Entre ta <strong>clé d'accès</strong> pour autoriser.</p>
+${error ? `<p class="err">${escapeHtml(error)}</p>` : ''}
+<form method="POST" action="/oauth/authorize">
+${['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_method', 'response_type']
+    .map((k) => `<input type="hidden" name="${k}" value="${escapeHtml(q[k] ?? '')}">`).join('\n')}
+<input type="password" name="access_key" placeholder="Clé d'accès" autofocus autocomplete="current-password">
+<button type="submit">Autoriser</button></form></body></html>`;
+
+    const handleOAuth = async (auth: OAuthProvider, url: string, req: IncomingMessage, res: ServerResponse): Promise<boolean> => {
+        if (url === '/.well-known/oauth-authorization-server') {
+            sendJson(res, 200, auth.authorizationServerMetadata());
+            return true;
+        }
+        if (url === '/.well-known/oauth-protected-resource') {
+            sendJson(res, 200, auth.protectedResourceMetadata());
+            return true;
+        }
+        if (url === '/oauth/register' && req.method === 'POST') {
+            let body: { redirect_uris?: string[] };
+            try {
+                body = JSON.parse(await readBody(req)) as { redirect_uris?: string[] };
+            } catch {
+                throw new OAuthError('invalid_request', 'Corps JSON invalide.');
+            }
+            sendJson(res, 201, auth.registerClient(body.redirect_uris ?? []));
+            return true;
+        }
+        if (url === '/oauth/authorize' && req.method === 'GET') {
+            const q = Object.fromEntries(new URL(req.url ?? '/', 'http://x').searchParams);
+            auth.validateAuthorizeRequest(q);
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+            res.end(authorizeFormHtml(q));
+            return true;
+        }
+        if (url === '/oauth/authorize' && req.method === 'POST') {
+            const form = Object.fromEntries(new URLSearchParams(await readBody(req)));
+            auth.validateAuthorizeRequest(form);
+            let code: string;
+            try {
+                code = auth.authorize({
+                    clientId: form.client_id, redirectUri: form.redirect_uri,
+                    codeChallenge: form.code_challenge, accessKey: form.access_key ?? '',
+                });
+            } catch (err) {
+                if (err instanceof OAuthError && err.code === 'access_denied') {
+                    res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
+                    res.end(authorizeFormHtml(form, 'Clé d’accès invalide — réessaie.'));
+                    return true;
+                }
+                throw err;
+            }
+            const target = new URL(form.redirect_uri);
+            target.searchParams.set('code', code);
+            if (form.state) target.searchParams.set('state', form.state);
+            res.writeHead(302, { Location: target.toString() });
+            res.end();
+            return true;
+        }
+        if (url === '/oauth/token' && req.method === 'POST') {
+            const form = Object.fromEntries(new URLSearchParams(await readBody(req)));
+            if (form.grant_type === 'authorization_code') {
+                sendJson(res, 200, auth.exchangeCode({
+                    code: form.code ?? '', clientId: form.client_id ?? '',
+                    clientSecret: form.client_secret, redirectUri: form.redirect_uri ?? '',
+                    codeVerifier: form.code_verifier ?? '',
+                }));
+            } else if (form.grant_type === 'refresh_token') {
+                sendJson(res, 200, auth.refreshGrant({
+                    refreshToken: form.refresh_token ?? '', clientId: form.client_id ?? '',
+                    clientSecret: form.client_secret,
+                }));
+            } else {
+                sendJson(res, 400, { error: 'unsupported_grant_type', error_description: 'authorization_code ou refresh_token.' });
+            }
+            return true;
+        }
+        return false;
+    };
+
     const server = createHttpServer((req, res) => {
         const url = (req.url ?? '/').split('?')[0];
         if (url === '/health') {
             sendJson(res, 200, { status: 'ok', version: MCP_SERVER_VERSION });
             return;
         }
+        if (options.auth && (url.startsWith('/oauth/') || url.startsWith('/.well-known/'))) {
+            const auth = options.auth;
+            handleOAuth(auth, url, req, res)
+                .then((handled) => {
+                    if (!handled) sendJson(res, 404, { error: 'introuvable' });
+                })
+                .catch((err: unknown) => {
+                    if (err instanceof OAuthError) {
+                        sendJson(res, err.status, { error: err.code, error_description: err.message });
+                    } else {
+                        console.error('[FinanceAI MCP http] Erreur OAuth :', err);
+                        if (!res.headersSent) sendJson(res, 500, { error: 'server_error' });
+                        else res.end();
+                    }
+                });
+            return;
+        }
         if (url === '/mcp') {
+            // [MCP-CLOUDRUN-B] garde Bearer AVANT tout traitement (toutes méthodes) ; le
+            // WWW-Authenticate pointe la découverte RFC 9728 (flux attendu par claude.ai).
+            if (options.auth) {
+                try {
+                    options.auth.verifyAccessToken(req.headers.authorization);
+                } catch (err) {
+                    const metaUrl = options.auth.resourceMetadataUrl();
+                    res.writeHead(401, {
+                        'Content-Type': 'application/json',
+                        'WWW-Authenticate': `Bearer resource_metadata="${metaUrl}"`,
+                    });
+                    res.end(JSON.stringify({
+                        jsonrpc: '2.0', id: null,
+                        error: { code: -32001, message: err instanceof OAuthError ? err.message : 'Authentification requise.' },
+                    }));
+                    return;
+                }
+            }
             handleMcp(req, res).catch((err: unknown) => {
                 console.error('[FinanceAI MCP http] Erreur de requête :', err);
                 if (!res.headersSent) {
@@ -299,24 +428,50 @@ if (isDirectRun) {
         // (MCP_HTTP_HOST=0.0.0.0 sans $PORT afficherait sinon un « loopback » mensonger — panel).
         const isLoopback = host === '127.0.0.1' || host === 'localhost' || host === '::1';
 
-        if (!isLoopback && !cloudPort && process.env.MCP_HTTP_ALLOW_EXPOSED !== '1') {
+        // [MCP-CLOUDRUN-B] OAuth 2.1 activé quand les 3 variables sont là (Cloud Run les
+        // reçoit de Secret Manager au Lot 4 ; en local elles sont optionnelles — loopback).
+        const signingKey = process.env.FINANCEAI_OAUTH_SIGNING_KEY;
+        const accessKey = process.env.FINANCEAI_ACCESS_KEY;
+        const publicUrl = process.env.FINANCEAI_PUBLIC_URL?.replace(/\/$/, '');
+        let auth: OAuthProvider | undefined;
+        if (signingKey && accessKey) {
+            auth = makeOAuthProvider({
+                signingKey, accessKey,
+                issuer: publicUrl ?? `http://127.0.0.1:${port}`,
+            });
+        } else if (signingKey || accessKey) {
+            console.error('[FinanceAI MCP http] REFUS de démarrer : FINANCEAI_OAUTH_SIGNING_KEY et FINANCEAI_ACCESS_KEY vont ENSEMBLE (l’un sans l’autre = config incohérente).');
+            process.exit(1);
+        }
+        // Auth active sur un hôte exposé SANS URL publique → les endpoints OAuth annonceraient
+        // un issuer loopback que claude.ai ne peut pas atteindre (panne silencieuse — code-reviewer).
+        if (auth && !isLoopback && !publicUrl) {
+            console.error('[FinanceAI MCP http] REFUS de démarrer : FINANCEAI_PUBLIC_URL requis quand l’auth est active sur un hôte exposé (sinon les URLs OAuth pointent vers le loopback, injoignable par claude.ai).');
+            process.exit(1);
+        }
+
+        if (!isLoopback && !auth && process.env.MCP_HTTP_ALLOW_EXPOSED !== '1') {
             console.error(
-                `[FinanceAI MCP http] REFUS de démarrer : hôte non-loopback (${host}) SANS authentification ` +
-                '(le Lot 3 OAuth n’est pas livré) — tes données financières seraient lisibles ET modifiables ' +
-                'par le réseau. Pour forcer en connaissance de cause : MCP_HTTP_ALLOW_EXPOSED=1.',
+                `[FinanceAI MCP http] REFUS de démarrer : hôte non-loopback (${host}) SANS authentification — ` +
+                'tes données financières seraient lisibles ET modifiables par le réseau. Configure l’OAuth ' +
+                '(FINANCEAI_OAUTH_SIGNING_KEY + FINANCEAI_ACCESS_KEY + FINANCEAI_PUBLIC_URL) ou, pour un test ' +
+                'en connaissance de cause : MCP_HTTP_ALLOW_EXPOSED=1.',
             );
             process.exit(1);
         }
 
         const state = await resolveState(process.argv[2]);
-        const running = await startHttpServer({ port, host, state, dnsRebindingProtection: isLoopback });
+        const running = await startHttpServer({ port, host, state, dnsRebindingProtection: isLoopback, auth });
 
         console.error(`[FinanceAI MCP http] v${MCP_SERVER_VERSION} — écoute http://${host}:${running.port}/mcp (santé : /health)`);
         console.error(`[FinanceAI MCP http] Source d'état : ${state.describe()}`);
+        console.error(auth
+            ? `[FinanceAI MCP http] Auth OAuth 2.1 ACTIVE (issuer : ${publicUrl ?? 'loopback'}) — /mcp exige un Bearer.`
+            : '[FinanceAI MCP http] Auth DÉSACTIVÉE (variables OAuth absentes).');
         if (isLoopback) {
-            console.error('[FinanceAI MCP http] Mode LOCAL : loopback seulement, anti-DNS-rebinding actif. ⚠️ Pas d’auth avant le Lot 3 — ne pas exposer.');
-        } else {
-            console.error(`[FinanceAI MCP http] ⚠️⚠️ EXPOSÉ sur ${host} SANS AUTHENTIFICATION — données financières accessibles au réseau. Réservé à Cloud Run/tests.`);
+            console.error('[FinanceAI MCP http] Mode LOCAL : loopback seulement, anti-DNS-rebinding actif.');
+        } else if (!auth) {
+            console.error(`[FinanceAI MCP http] ⚠️⚠️ EXPOSÉ sur ${host} SANS AUTHENTIFICATION — données financières accessibles au réseau. Réservé aux tests.`);
         }
 
         const shutdown = (signal: string): void => {

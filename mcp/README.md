@@ -164,9 +164,21 @@ MCP_HTTP_PORT=9090 npm run mcp:http   # port custom
   opt-in explicite `MCP_HTTP_ALLOW_EXPOSED=1` en connaissance de cause.
 - Corps de requête plafonné (5 Mo → 413) ; arrêt SIGTERM borné (grâce 5 s puis fermeture forcée loguée).
 - Le mode **stdio** (`npm run mcp:dev`, Claude Desktop) reste inchangé.
-- ⚠️ **AUCUNE authentification pour l'instant** (Lot 3 : OAuth 2.1 + Secret Manager,
-  cf `docs/BACKLOG.md` §MCP-CLOUDRUN) → **ne PAS exposer ce serveur publiquement**
-  avant le Lot 3. En local loopback, le modèle de menace ≈ celui du mode stdio.
+- **Authentification (Lot 3)** : définir `FINANCEAI_OAUTH_SIGNING_KEY` (≥32 car.) +
+  `FINANCEAI_ACCESS_KEY` (≥16 car.) + `FINANCEAI_PUBLIC_URL` active un **OAuth 2.1
+  mono-utilisateur** : `/mcp` exige alors un Bearer, claude.ai fait le flux
+  authorize/token, et la « porte » est ta clé d'accès (saisie une fois). Sans ces
+  variables, le serveur refuse de démarrer sur un hôte exposé (loopback seulement).
+  Le refresh token Google va en **Secret Manager** si `FINANCEAI_GOOGLE_SECRET` est
+  défini (Cloud Run), sinon dans le fichier local.
+
+### Générer les clés (PowerShell — poste de Marc, openssl absent)
+
+```powershell
+# clé de signature (48 octets) et clé d'accès (24 octets)
+node -e "console.log('SIGNING=' + require('crypto').randomBytes(48).toString('base64url'))"
+node -e "console.log('ACCESS='  + require('crypto').randomBytes(24).toString('base64url'))"
+```
 
 ## Synchronisation Google Drive (auto) — recommandé
 

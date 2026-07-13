@@ -1,4 +1,4 @@
-# FinanceAI MCP Server (v0.4.0)
+# FinanceAI MCP Server (v0.5.0)
 
 Serveur MCP (Model Context Protocol) qui expose FinanceAI à Claude : **poser des
 questions** sur ses vraies finances (patrimoine, projection, impôts, retraite) ET
@@ -145,6 +145,28 @@ Desktop et le rouvrir ; vérifier **Settings → Developer** (`financeai` = `run
 - macOS/Linux : chemins en `/Users/...` (un seul slash), reste identique.
 
 Redémarrer Claude Desktop. Les tools apparaissent dans le sélecteur MCP.
+
+## Transport HTTP (Streamable HTTP) — chantier claude.ai (Lot 2)
+
+Pour brancher **claude.ai (web/mobile)**, le serveur doit être joignable en HTTP.
+L'entrée `mcp/http.ts` expose le MÊME registre de tools en **Streamable HTTP** :
+
+```bash
+npm run mcp:http          # local : http://127.0.0.1:8080/mcp (santé : /health)
+MCP_HTTP_PORT=9090 npm run mcp:http   # port custom
+```
+
+- **Sessions** : `initialize` → en-tête `mcp-session-id`, à renvoyer sur chaque requête
+  (POST/GET/DELETE `/mcp`). Sessions inactives fermées après 1 h.
+- **Local par défaut = loopback** (`127.0.0.1`) + protection anti-DNS-rebinding (Host + Origin).
+  Sur **Cloud Run**, `$PORT` est défini par la plateforme → écoute `0.0.0.0:$PORT`.
+  Un hôte non-loopback SANS `$PORT` est **refusé au démarrage** (données financières sans auth) —
+  opt-in explicite `MCP_HTTP_ALLOW_EXPOSED=1` en connaissance de cause.
+- Corps de requête plafonné (5 Mo → 413) ; arrêt SIGTERM borné (grâce 5 s puis fermeture forcée loguée).
+- Le mode **stdio** (`npm run mcp:dev`, Claude Desktop) reste inchangé.
+- ⚠️ **AUCUNE authentification pour l'instant** (Lot 3 : OAuth 2.1 + Secret Manager,
+  cf `docs/BACKLOG.md` §MCP-CLOUDRUN) → **ne PAS exposer ce serveur publiquement**
+  avant le Lot 3. En local loopback, le modèle de menace ≈ celui du mode stdio.
 
 ## Synchronisation Google Drive (auto) — recommandé
 

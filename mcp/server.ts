@@ -12,6 +12,7 @@
 //     StateProvider injecte (fichier local en stdio ; Drive en Lot 3).
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { MCP_SERVER_VERSION } from './bootstrap';
 import { registerPingTool } from './tools/ping.tool';
 import { registerGetTaxRoom } from './tools/getTaxRoom.tool';
 import { registerCalculateRealEstate } from './tools/calculateRealEstate.tool';
@@ -49,7 +50,7 @@ export interface CreateServerOptions {
 export const createServer = (options: CreateServerOptions = {}): McpServer => {
     const server = new McpServer({
         name: 'financeai-mcp',
-        version: '0.4.0',
+        version: MCP_SERVER_VERSION,
     });
 
     // Tools sans etat (calculatrice conversationnelle) — conserves tels quels.

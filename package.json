@@ -18,6 +18,7 @@
     "knip": "knip",
     "check-contrast": "tsx scripts/check-contrast.ts",
     "mcp:dev": "tsx mcp/stdio.ts",
+    "mcp:http": "tsx mcp/http.ts",
     "mcp:setup": "node mcp/install-desktop.mjs",
     "mcp:auth": "tsx mcp/auth.ts",
     "mcp:connect": "node mcp/install-desktop.mjs && tsx mcp/auth.ts",

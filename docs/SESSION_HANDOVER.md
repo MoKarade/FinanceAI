@@ -29,10 +29,17 @@
 > `transport.onerror` câblé (rejets SDK invisibles sinon) · `allowedHosts/Origins` sur le port RÉELLEMENT lié ·
 > refus de démarrage hôte non-loopback sans auth (sauf `MCP_HTTP_ALLOW_EXPOSED=1`) · session-ids tronqués dans les
 > logs · fermetures de session loguées · version dédupliquée (`MCP_SERVER_VERSION`). Verdict security-privacy :
-> mergeable AVANT le Lot 3 (loopback par défaut, rien d'exposé). ⚠️ SANS auth → ne pas exposer avant Lot 3
-> (condition pré-déploiement : `[MCP-CLOUDRUN-DEPLOY-LOGS]`). **RESTE (lots 3-4)** : Auth A (Secret Manager) + B (OAuth 2.1 mono-user — pas de Bearer
-> statique côté claude.ai) → Dockerfile/deploy.sh/Actions + MAJ carte « Connecter à Claude » (Réglages → Système :
-> pointe vers un `.mcpb` jamais hébergé — rappel Marc) + actions Marc GCP (pas-à-pas à fournir).
+> mergeable AVANT le Lot 3 (loopback par défaut, rien d'exposé).
+> **✅ Lot 3 `[MCP-CLOUDRUN-A]`+`[MCP-CLOUDRUN-B]` (même session)** : **Auth B** = `mcp/auth/oauthProvider.ts` — OAuth 2.1
+> mono-user STATELESS (tokens signés HMAC, DCR sans base = client_secret dérivé, PKCE S256 obligatoire, allowlist redirect,
+> rotation refresh) ; porte = clé d'accès (`$FINANCEAI_ACCESS_KEY`) constant-time sur page HTML ; endpoints `/oauth/*` +
+> `/.well-known/*` (RFC 8414/9728) ; garde Bearer sur `/mcp` (401 + WWW-Authenticate). **Auth A** = `mcp/auth/
+> credentialsBackend.ts` — refresh token Google en **Secret Manager** (`$FINANCEAI_GOOGLE_SECRET`, metadata server + REST,
+> zéro dép) ou fichier local ; `invalid_grant` → message actionnable. Activation : `SIGNING_KEY`+`ACCESS_KEY` présents.
+> 21 unités OAuth + flux e2e HTTP complet. **RESTE (Lot 4 SEUL)** : Dockerfile + `deploy.sh` (`gcloud run deploy`, région
+> Montréal, `--set-secrets` ×3) + GitHub Actions (redeploy push main) + README pas-à-pas GCP pour Marc + MAJ carte
+> « Connecter à Claude » + condition `[MCP-CLOUDRUN-DEPLOY-LOGS]`. Actions Marc : créer projet GCP + 3 secrets + brancher
+> claude.ai (Settings → Connectors → URL du serveur).
 >
 > ## 📊 Session 2026-07-07 — BACKLOG EN CONTINU : money-critical (#429/#430/#431 mergés) → sweep a11y/nettoyage/perf
 > Exécution **ORDONNÉE du backlog** (demande Marc « continue le backlog en entier ») : **✅ MERGÉS** #429 `FISC-WELCOME-2026` (barème taxe

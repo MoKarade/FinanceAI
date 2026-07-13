@@ -8,9 +8,9 @@
 
 import { resolveDefaultStateSource, type StateSource } from './state/loadAppState';
 import { makeStateStore, type StateStore } from './state/stateStore';
-import { loadCredentials } from './drive/tokenStore';
 import { DriveStateSource } from './drive/driveStateSource';
 import { makeDriveTokenProvider } from './drive/tokenProvider';
+import { resolveCredentialsBackend } from './auth/credentialsBackend';
 
 export const MCP_SERVER_VERSION = '0.5.0';
 
@@ -25,16 +25,22 @@ export interface ResolvedState {
     describe: () => string;
 }
 
-/** Résout la source d'état (Drive autorisé > fichier local) et fabrique le store. */
+/** Résout la source d'état (Drive autorisé > fichier local) et fabrique le store.
+ *  [MCP-CLOUDRUN-A] les identifiants Drive viennent d'un BACKEND : fichier local
+ *  par défaut, Secret Manager si $FINANCEAI_GOOGLE_SECRET est défini (Cloud Run). */
 export async function resolveState(explicitPath?: string): Promise<ResolvedState> {
-    const driveCreds = await loadCredentials();
+    const backend = resolveCredentialsBackend();
+    const driveCreds = await backend.load();
     const source: StateSource | null = driveCreds
-        ? new DriveStateSource(makeDriveTokenProvider())
+        ? new DriveStateSource(makeDriveTokenProvider({ backend }))
         : resolveDefaultStateSource(explicitPath);
     const store = makeStateStore(source);
     const driveEmail = driveCreds?.email ?? null;
     const describe = (): string => {
-        if (driveCreds) return `Google Drive (auto-sync)${driveEmail ? ` — ${driveEmail}` : ''}`;
+        // [MCP-CLOUDRUN-DEPLOY-LOGS] jamais l'email complet dans les logs (condition pré-Cloud Run) :
+        // seul le domaine est montré (assez pour reconnaître SON compte, rien d'identifiant en clair).
+        const emailHint = driveEmail?.includes('@') ? ` — …@${driveEmail.split('@')[1]}` : '';
+        if (driveCreds) return `Google Drive (auto-sync)${emailHint} [${backend.description}]`;
         if (source) return source.description;
         return "aucune source d'état";
     };

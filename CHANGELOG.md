@@ -6,6 +6,24 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Connecteur MCP : authentification OAuth 2.1 (Lot 3 claude.ai)] — 2026-07-13
+
+### Connecteur MCP — sécurité (Lot 3)
+- **OAuth 2.1 mono-utilisateur** (`mcp/auth/oauthProvider.ts`) : ce que l'UI des connecteurs custom de
+  claude.ai exige (pas de Bearer statique). Serveur STATELESS (compatible Cloud Run scale-to-zero) —
+  jetons signés HMAC-SHA256, enregistrement dynamique de client (DCR) sans base, PKCE S256 obligatoire,
+  allowlist de redirection, rotation du refresh token. L'accès est gardé par une **clé d'accès** unique
+  saisie une fois (comparaison constant-time). Endpoints `/oauth/*` + découverte `/.well-known/*`
+  (RFC 8414/9728) ; `/mcp` répond 401 + `WWW-Authenticate` sans Bearer valide.
+- **Refresh token Google en Secret Manager** (`mcp/auth/credentialsBackend.ts`) : sur Cloud Run, le token
+  long-terme vit dans Secret Manager (via metadata server, zéro dépendance) au lieu d'un fichier ; en local,
+  le fichier `~/.financeai-mcp/credentials.json` reste le défaut. `invalid_grant` (token expiré/révoqué —
+  le symptôme historique) donne désormais un message actionnable « reconnecte le Drive » au lieu du texte brut.
+- Auth activée quand `FINANCEAI_OAUTH_SIGNING_KEY` + `FINANCEAI_ACCESS_KEY` sont présents ; sans elles, le
+  serveur refuse de démarrer sur un hôte exposé. 21 tests OAuth + flux e2e complet.
+
+---
+
 ## [unreleased — Connecteur MCP : transport HTTP (Lot 2 claude.ai)] — 2026-07-13
 
 ### Connecteur MCP (v0.5.0)

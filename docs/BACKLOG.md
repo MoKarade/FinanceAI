@@ -330,16 +330,21 @@
   détecte une vente immobilière par SOUS-CHAÎNE `name.includes('vente')` : fragile pour tout producteur de
   LifeEvent non humain (MCP assainit déjà via `safeEngineName`). Piste : type d'événement EXPLICITE
   (`'VENTE_IMMO'` dans `LifeEventType`) + migration douce du fallback substring. Plan-first (touche le moteur).
-- [ ] **[MCP-CLOUDRUN-A]** 🔧 **Auth A (serveur ↔ Google — le token mort)** : module `token_store` qui
-  lit/écrit le refresh token dans **Secret Manager** (`financeai-google-refresh`), jamais en fichier ;
-  `client_id`/`client_secret` depuis `financeai-google-client` ; flux `access_type=offline` + `prompt=consent` ;
-  si Google renvoie un nouveau refresh token → **réécrire le secret** ; **gérer `invalid_grant` explicitement**
-  (log clair + message MCP exploitable « reconnecte Google », pas de crash) + outil/chemin de ré-consentement.
-- [ ] **[MCP-CLOUDRUN-B]** 🔧 **Sécurité B (Claude ↔ serveur)** — ⚠️ RÉVISÉ 2026-07-13 (phase 0 : claude.ai
-  n'a pas de champ Bearer statique) : **mini serveur OAuth 2.1 mono-utilisateur** (endpoints authorize/token,
-  PKCE, client id/secret en secrets, 401 + `WWW-Authenticate` sinon) — c'est ce que l'UI « custom connector »
-  de claude.ai accepte (advanced settings). Le Bearer reste OK pour l'API Messages (`authorization_token`)
-  mais PAS pour l'UI web/mobile.
+- [x] **[MCP-CLOUDRUN-A]** ✅ **Lot 3 FAIT 2026-07-13** — `mcp/auth/credentialsBackend.ts` : backend
+  d'identifiants FICHIER (local, inchangé) OU **Secret Manager** (`$FINANCEAI_GOOGLE_SECRET`) via metadata
+  server + API REST (zéro dépendance npm) ; `save` réécrit une version (refresh token régénéré). `tokenProvider`
+  prend le backend en injection + **`invalid_grant` traité** → message ACTIONNABLE (« Autorisation Google EXPIRÉE
+  ou RÉVOQUÉE… reconnecte »). `bootstrap` sélectionne le backend selon l'env. 404 secret = « pas autorisé »
+  (pas une panne). Test Secret Manager avec fetch simulé (round-trip base64, metadata absent → erreur claire).
+- [x] **[MCP-CLOUDRUN-B]** ✅ **Lot 3 FAIT 2026-07-13** — `mcp/auth/oauthProvider.ts` : mini serveur OAuth 2.1
+  MONO-USER **STATELESS** (Cloud Run scale-to-zero : rien en mémoire) — tokens = payload JSON signé HMAC-SHA256
+  (`$FINANCEAI_OAUTH_SIGNING_KEY`), DCR sans base (client_secret = HMAC(client_id)), PKCE **S256 obligatoire**,
+  redirect_uri sur allowlist (claude.ai/claude.com + loopback) lié au code, rotation du refresh (OAuth 2.1). La
+  « porte » = **clé d'accès** unique (`$FINANCEAI_ACCESS_KEY`) constant-time sur une page HTML. Endpoints `/oauth/
+  authorize` (form GET + POST), `/oauth/token`, `/oauth/register`, `/.well-known/oauth-authorization-server` +
+  `/.well-known/oauth-protected-resource` (RFC 8414/9728) ; garde Bearer sur `/mcp` (toutes méthodes) → 401 +
+  `WWW-Authenticate` pointant la découverte. Activé quand `SIGNING_KEY`+`ACCESS_KEY` présents (l'un sans l'autre
+  = refus de démarrer). 21 unités OAuth + flux e2e HTTP complet (register→authorize→code→token PKCE→tools/call).
 - [x] **[MCP-CLOUDRUN-HTTP]** ✅ **Lot 2 FAIT 2026-07-13** — `mcp/http.ts` (node:http pur, zéro dépendance
   ajoutée) : endpoint unique `/mcp` (POST/GET/DELETE, sessions `StreamableHTTPServerTransport` du SDK,
   `enableJsonResponse`, balayage sessions inactives 1 h, cap 32) + `/health` ; `$PORT` (Cloud Run) → `0.0.0.0`,
@@ -347,6 +352,12 @@
   d'état (partagée stdio/http) ; version 0.4.0→0.5.0. Le switch stdio|http = 2 entrées + scripts npm
   (`mcp:dev`/`mcp:http`) plutôt que `MCP_TRANSPORT` (plus simple, même effet). 9 tests e2e (vrai serveur,
   vrai protocole). ⚠️ SANS auth → ne pas exposer avant Lot 3 (A+B).
+- [ ] **[MCP-CLOUDRUN-AUTH-HARDENING]** 🔧 CONDITIONS pré-exposition (panel sécurité Lot 3, 2026-07-13, à trancher
+  au Lot 4) : (1) **rate-limit** sur `POST /oauth/authorize` (brute-force de la clé d'accès — Cloud Armor ou compteur) ;
+  (2) `FINANCEAI_ACCESS_KEY` GÉNÉRÉE par `crypto.randomBytes` (documenté README, pas juste « ≥16 car. ») ; (3) single-use
+  code + rotation refresh sont **best-effort mémoire** (mono-instance) → si multi-instance un jour, `jti` consommés dans
+  un store partagé (Firestore/Memorystore TTL) ; kill-switch d'incident = rotation `FINANCEAI_OAUTH_SIGNING_KEY` (à
+  documenter dans le runbook) ; (4) `min-instances 1` recommandé pour ne pas vider le set de `jti` à chaque cold-start.
 - [ ] **[MCP-CLOUDRUN-DEPLOY-LOGS]** 🔧 CONDITION pré-déploiement (panel security-privacy 2026-07-13) : avant
   d'exposer les logs à Cloud Run, retirer/tronquer l'EMAIL Drive du log de démarrage (`bootstrap.describe()`)
   — les session-ids sont DÉJÀ tronqués à 8 caractères (fait au Lot 2). + MAJ carte « Connecter à Claude » de

@@ -1,0 +1,60 @@
+# [MCP-CLOUDRUN-DEPLOY] Déploiement continu du serveur MCP sur Cloud Run.
+# Se déclenche quand le code du serveur (mcp/, services/, utils/, types/constants,
+# Dockerfile, manifeste) change sur main. Redéploie via Workload Identity Federation
+# (aucune clé de service en secret GitHub). Réutilise mcp/deploy.sh (source unique de
+# la logique de déploiement — pas de duplication à maintenir).
+#
+# Prérequis (une fois, cf mcp/README.md § « Déploiement continu ») — secrets/vars du repo :
+#   - vars    GCP_PROJECT_ID (+ optionnels GCP_REGION, MCP_SERVICE_NAME, MCP_MIN_INSTANCES)
+#   - secrets GCP_WIF_PROVIDER (projects/…/workloadIdentityPools/…/providers/…),
+#             GCP_DEPLOY_SA (compte de service déployeur : run.admin + iam.serviceAccountUser + secretAccessor sur les 3 secrets)
+# Si Marc préfère le déploiement MANUEL (mcp/deploy.sh), ce workflow reste ignoré tant
+# que GCP_PROJECT_ID n'est pas défini (garde `if` ci-dessous).
+
+name: Deploy MCP (Cloud Run)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mcp/**'
+      - 'services/**'
+      - 'utils/**'
+      - 'types.ts'
+      - 'constants.ts'
+      - 'Dockerfile'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-mcp.yml'
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    name: Build & deploy to Cloud Run
+    runs-on: ubuntu-latest
+    # Ne tourne que si l'infra GCP est configurée (sinon no-op silencieux, pas d'échec rouge).
+    if: ${{ vars.GCP_PROJECT_ID != '' }}
+    permissions:
+      contents: read
+      id-token: write   # Workload Identity Federation (OIDC)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      # deploy.sh gère le bootstrap sans fenêtre (URL existante réutilisée → une passe).
+      - name: Deploy via mcp/deploy.sh
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          REGION: ${{ vars.GCP_REGION || 'northamerica-northeast1' }}
+          SERVICE: ${{ vars.MCP_SERVICE_NAME || 'financeai-mcp' }}
+          MIN_INSTANCES: ${{ vars.MCP_MIN_INSTANCES || '0' }}
+        run: bash mcp/deploy.sh

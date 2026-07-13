@@ -6,6 +6,24 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Connecteur MCP : déploiement Cloud Run (Lot 4 claude.ai — chantier COMPLET)] — 2026-07-13
+
+### Connecteur MCP — déploiement (Lot 4)
+- **Conteneur Cloud Run** : `mcp/Dockerfile` (node:22-slim, exécute le serveur HTTP via tsx, utilisateur
+  non-root) + `.dockerignore` (n'embarque que le serveur, pas le front ni les secrets).
+- **Déploiement** : `mcp/deploy.sh` (`gcloud run deploy` région Montréal, secrets OAuth injectés depuis
+  Secret Manager, `min-instances 1`, injection de l'URL publique en 2ᵉ passe) + `.github/workflows/
+  deploy-mcp.yml` (déploiement continu sur push `main` via Workload Identity Federation, ignoré tant que
+  l'infra GCP n'est pas configurée).
+- **Doc** : `mcp/README.md` gagne un guide pas-à-pas Google Cloud (génération des clés, création des 3 secrets,
+  IAM, branchement claude.ai depuis le web ou le téléphone).
+- **App** : la carte « Connecter à Claude » (Réglages → Système) affiche désormais, si `VITE_MCP_SERVER_URL`
+  est défini, l'URL du connecteur à coller dans claude.ai (web/mobile) en plus de l'installation Claude Desktop.
+- **Chantier MCP claude.ai COMPLET** (lots 1→4) : what-if + séries · transport HTTP · OAuth 2.1 + Secret
+  Manager · déploiement. Reste des actions Google Cloud côté utilisateur (cf `docs/A_FAIRE_MOI.md`).
+
+---
+
 ## [unreleased — Connecteur MCP : authentification OAuth 2.1 (Lot 3 claude.ai)] — 2026-07-13
 
 ### Connecteur MCP — sécurité (Lot 3)

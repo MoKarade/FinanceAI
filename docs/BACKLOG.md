@@ -358,11 +358,22 @@
   code + rotation refresh sont **best-effort mémoire** (mono-instance) → si multi-instance un jour, `jti` consommés dans
   un store partagé (Firestore/Memorystore TTL) ; kill-switch d'incident = rotation `FINANCEAI_OAUTH_SIGNING_KEY` (à
   documenter dans le runbook) ; (4) `min-instances 1` recommandé pour ne pas vider le set de `jti` à chaque cold-start.
+- [x] **[MCP-CLOUDRUN-DEPLOY-LOGS]** ✅ RÉSOLU 2026-07-13 — l'email Drive est tronqué au domaine dans les logs
+  (`bootstrap.describe()` : `…@domaine`), session-ids tronqués (Lot 2). Case cochée (panel a confirmé le code déjà en place).
 - [ ] **[MCP-CLOUDRUN-DEPLOY-LOGS]** 🔧 CONDITION pré-déploiement (panel security-privacy 2026-07-13) : avant
   d'exposer les logs à Cloud Run, retirer/tronquer l'EMAIL Drive du log de démarrage (`bootstrap.describe()`)
   — les session-ids sont DÉJÀ tronqués à 8 caractères (fait au Lot 2). + MAJ carte « Connecter à Claude » de
   l'app (Réglages → Système) pour décrire le branchement claude.ai (rappel Marc 2026-07-13).
-- [ ] **[MCP-CLOUDRUN-DEPLOY]** 🔧 **Conteneur + CI/CD** : Dockerfile (EXPOSE 8080, démarre sur `PORT`) +
+- [x] **[MCP-CLOUDRUN-DEPLOY]** ✅ **Lot 4 FAIT 2026-07-13** — `mcp/Dockerfile` (node:22-slim, copie mcp/services/
+  utils/types/constants — fermeture d'import PROUVÉE minimale, USER node, `npx tsx mcp/http.ts`, EXPOSE 8080) +
+  `.dockerignore` (exclut front/tests/secrets) + `mcp/deploy.sh` (`gcloud run deploy --source`, région Montréal,
+  `--set-secrets` ×2 OAuth + `FINANCEAI_GOOGLE_SECRET` env, `min-instances 1`, 2 passes pour injecter
+  `FINANCEAI_PUBLIC_URL`) + `.github/workflows/deploy-mcp.yml` (déploiement continu via WIF, garde `if
+  vars.GCP_PROJECT_ID`) + README pas-à-pas GCP (clés `randomBytes`, 3 secrets, IAM secretAccessor, branchement
+  claude.ai) + carte « Connecter à Claude » (`ClaudeConnectorCard.tsx`) gagne une section web/mobile
+  (`VITE_MCP_SERVER_URL`). **Actions Marc restantes** (dans A_FAIRE_MOI) : créer projet GCP + 3 secrets + IAM +
+  lancer `deploy.sh` + coller l'URL dans claude.ai. **Spec d'origine ci-dessous (référence) :**
+- **[MCP-CLOUDRUN-DEPLOY — spec]** Dockerfile (EXPOSE 8080, démarre sur `PORT`) +
   endpoint `/health` → 200 ; `deploy.sh` (`gcloud run deploy`, région **northamerica-northeast1**,
   `--min-instances 0`, `--set-secrets` ×3) ; workflow **GitHub Actions** (`google-github-actions/deploy-cloudrun`)
   qui redéploie sur push `main` ; README (créer les 3 secrets, publier l'OAuth consent en Production, déployer,

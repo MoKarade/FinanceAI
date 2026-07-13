@@ -1,0 +1,28 @@
+# [MCP-CLOUDRUN-DEPLOY] — contexte d'upload `gcloud run deploy --source` (Cloud Build).
+# gcloud filtre l'upload local→Cloud Build via CE fichier (pas .dockerignore, qui ne
+# s'applique qu'à l'étape docker build). On n'envoie que ce dont le serveur a besoin.
+# (Les secrets réels sont déjà gitignorés ; ceci réduit surtout la taille d'upload.)
+.git
+.github
+node_modules
+dist
+e2e
+tests
+components
+hooks
+store
+locales
+public
+scripts
+tools
+docs
+coverage
+playwright-report
+test-results
+*.log
+.env*
+.financeai-mcp
+mcp/drive/connector-client.json
+financeai-state*.json
+.vscode
+.claude

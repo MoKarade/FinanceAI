@@ -340,9 +340,17 @@
   PKCE, client id/secret en secrets, 401 + `WWW-Authenticate` sinon) — c'est ce que l'UI « custom connector »
   de claude.ai accepte (advanced settings). Le Bearer reste OK pour l'API Messages (`authorization_token`)
   mais PAS pour l'UI web/mobile.
-- [ ] **[MCP-CLOUDRUN-HTTP]** 🔧 **Transport** : stdio → **Streamable HTTP**, endpoint unique `/mcp`
-  (POST + GET), écoute `0.0.0.0:$PORT` (défaut **8080**) ; garder un mode stdio via `MCP_TRANSPORT=stdio|http`
-  pour le dev local.
+- [x] **[MCP-CLOUDRUN-HTTP]** ✅ **Lot 2 FAIT 2026-07-13** — `mcp/http.ts` (node:http pur, zéro dépendance
+  ajoutée) : endpoint unique `/mcp` (POST/GET/DELETE, sessions `StreamableHTTPServerTransport` du SDK,
+  `enableJsonResponse`, balayage sessions inactives 1 h, cap 32) + `/health` ; `$PORT` (Cloud Run) → `0.0.0.0`,
+  local → `127.0.0.1` + anti-DNS-rebinding ; SIGTERM/SIGINT propres ; `mcp/bootstrap.ts` factorise la source
+  d'état (partagée stdio/http) ; version 0.4.0→0.5.0. Le switch stdio|http = 2 entrées + scripts npm
+  (`mcp:dev`/`mcp:http`) plutôt que `MCP_TRANSPORT` (plus simple, même effet). 9 tests e2e (vrai serveur,
+  vrai protocole). ⚠️ SANS auth → ne pas exposer avant Lot 3 (A+B).
+- [ ] **[MCP-CLOUDRUN-DEPLOY-LOGS]** 🔧 CONDITION pré-déploiement (panel security-privacy 2026-07-13) : avant
+  d'exposer les logs à Cloud Run, retirer/tronquer l'EMAIL Drive du log de démarrage (`bootstrap.describe()`)
+  — les session-ids sont DÉJÀ tronqués à 8 caractères (fait au Lot 2). + MAJ carte « Connecter à Claude » de
+  l'app (Réglages → Système) pour décrire le branchement claude.ai (rappel Marc 2026-07-13).
 - [ ] **[MCP-CLOUDRUN-DEPLOY]** 🔧 **Conteneur + CI/CD** : Dockerfile (EXPOSE 8080, démarre sur `PORT`) +
   endpoint `/health` → 200 ; `deploy.sh` (`gcloud run deploy`, région **northamerica-northeast1**,
   `--min-instances 0`, `--set-secrets` ×3) ; workflow **GitHub Actions** (`google-github-actions/deploy-cloudrun`)

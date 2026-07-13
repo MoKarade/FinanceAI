@@ -6,6 +6,25 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Connecteur MCP : transport HTTP (Lot 2 claude.ai)] — 2026-07-13
+
+### Connecteur MCP (v0.5.0)
+- **Transport Streamable HTTP** (`mcp/http.ts`, `npm run mcp:http`) : le même registre de tools
+  (16, dont `simulate_what_if`) servi en HTTP — endpoint `/mcp` à sessions + `/health`. Prérequis
+  du branchement claude.ai web/mobile (Cloud Run, lots 3-4). Local = loopback + anti-DNS-rebinding ;
+  `$PORT` (Cloud Run) → `0.0.0.0`. Arrêt propre SIGTERM. ⚠️ Sans auth tant que le Lot 3 (OAuth 2.1)
+  n'est pas livré — ne pas exposer publiquement.
+- **`mcp/bootstrap.ts`** : résolution de la source d'état (Drive autorisé > fichier local) factorisée,
+  partagée entre stdio et HTTP (comportement stdio inchangé). 13 tests e2e du serveur HTTP.
+- **Durcissements (panel 3 agents, findings prouvés)** : arrêt SIGTERM borné (grâce 5 s + fermeture forcée
+  loguée — une requête en vol suspendue bloquait l'arrêt à jamais) ; corps plafonné 5 Mo → 413 avec drain
+  (pas d'OOM silencieux, pas de RST qui jette la réponse) ; erreurs internes du SDK loguées
+  (`transport.onerror`) ; protection anti-rebinding sur le port réellement lié + `Origin` vérifiée ;
+  refus de démarrage sur hôte non-loopback sans auth (`MCP_HTTP_ALLOW_EXPOSED=1` pour forcer) ;
+  session-ids tronqués dans les logs.
+
+---
+
 ## [unreleased — Connecteur MCP : what-if sur vraies données + séries pour graphiques] — 2026-07-13
 
 ### Connecteur MCP (Lot 1 du chantier claude.ai)

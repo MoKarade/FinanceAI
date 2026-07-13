@@ -12,27 +12,20 @@
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createServer } from './server';
-import { resolveDefaultStateSource, STATE_FILE_ENV, type StateSource } from './state/loadAppState';
-import { makeStateStore } from './state/stateStore';
-import { loadCredentials } from './drive/tokenStore';
-import { DriveStateSource } from './drive/driveStateSource';
-import { makeDriveTokenProvider } from './drive/tokenProvider';
+import { STATE_FILE_ENV } from './state/loadAppState';
+import { MCP_SERVER_VERSION, resolveState } from './bootstrap';
 
 const main = async (): Promise<void> => {
-    const explicitPath = process.argv[2];
-    const driveCreds = await loadCredentials();
-    const source: StateSource | null = driveCreds
-        ? new DriveStateSource(makeDriveTokenProvider())
-        : resolveDefaultStateSource(explicitPath);
-    const store = makeStateStore(source);
+    // [MCP-CLOUDRUN-HTTP] résolution de la source PARTAGÉE avec l'entrée HTTP (mcp/bootstrap.ts).
+    const { source, store, isDrive, describe } = await resolveState(process.argv[2]);
 
     const server = createServer({ getState: store.get, store });
     const transport = new StdioServerTransport();
     await server.connect(transport);
 
-    if (driveCreds) {
+    if (isDrive) {
         console.error(
-            `[FinanceAI MCP] Source : Google Drive (auto-sync)${driveCreds.email ? ` — ${driveCreds.email}` : ''}. ` +
+            `[FinanceAI MCP] Source : ${describe()}. ` +
             'Lecture + ecriture (apply_*) sur le meme blob que l\'app.',
         );
     } else if (source) {
@@ -49,7 +42,7 @@ const main = async (): Promise<void> => {
             'lance npm run mcp:auth (Drive) ou fournis un export JSON.',
         );
     }
-    console.error('[FinanceAI MCP] Server connected via stdio (v0.4.0)');
+    console.error(`[FinanceAI MCP] Server connected via stdio (v${MCP_SERVER_VERSION})`);
 };
 
 main().catch((err) => {

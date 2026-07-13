@@ -20,8 +20,19 @@
 > `ENG-LIFEEVENT-VENTE-SUBSTRING`. **Phase 0 Cloud Run REFAITE** : ⚠️ claude.ai
 > custom connectors = OAuth 2.0/2.1 SEULEMENT (pas de Bearer statique ; `static_headers` = bêta Team/Enterprise) → Auth B révisée
 > en mini-OAuth 2.1 mono-user (BACKLOG §MCP-CLOUDRUN à jour). `MCP-CLOUDRUN-ROOT` (consent Production) déjà réglé 2026-07-06.
-> **RESTE (lots 2-4)** : transport Streamable HTTP `/mcp` → Auth A (Secret Manager) + B (OAuth 2.1) → Dockerfile/deploy.sh/
-> Actions + MAJ carte « Connecter à Claude » (Réglages → Système : pointe vers un `.mcpb` jamais hébergé — rappel Marc).
+> **✅ Lot 2 `[MCP-CLOUDRUN-HTTP]` (même session, PR #433 mergée avant)** : `mcp/http.ts` (node:http pur, sessions
+> Streamable HTTP + `/health`, loopback+anti-DNS-rebinding Host+Origin en local, `0.0.0.0:$PORT` sous Cloud Run,
+> SIGTERM propre, 13 tests e2e) + `mcp/bootstrap.ts` (source d'état factorisée stdio/http) ; v0.5.0 ; `npm run
+> mcp:http`. **Panel Lot 2 (code-reviewer + silent-failure + security-privacy, findings PROUVÉS, tous intégrés)** :
+> arrêt borné (grâce 5 s + fermeture forcée loguée — une requête en vol suspendue bloquait SIGTERM à JAMAIS, prouvé) ·
+> corps plafonné 5 Mo → 413 + drain (OOM silencieux sinon, +144 Mo RSS/20 Mo mesuré) + garde close-avant-fin ·
+> `transport.onerror` câblé (rejets SDK invisibles sinon) · `allowedHosts/Origins` sur le port RÉELLEMENT lié ·
+> refus de démarrage hôte non-loopback sans auth (sauf `MCP_HTTP_ALLOW_EXPOSED=1`) · session-ids tronqués dans les
+> logs · fermetures de session loguées · version dédupliquée (`MCP_SERVER_VERSION`). Verdict security-privacy :
+> mergeable AVANT le Lot 3 (loopback par défaut, rien d'exposé). ⚠️ SANS auth → ne pas exposer avant Lot 3
+> (condition pré-déploiement : `[MCP-CLOUDRUN-DEPLOY-LOGS]`). **RESTE (lots 3-4)** : Auth A (Secret Manager) + B (OAuth 2.1 mono-user — pas de Bearer
+> statique côté claude.ai) → Dockerfile/deploy.sh/Actions + MAJ carte « Connecter à Claude » (Réglages → Système :
+> pointe vers un `.mcpb` jamais hébergé — rappel Marc) + actions Marc GCP (pas-à-pas à fournir).
 >
 > ## 📊 Session 2026-07-07 — BACKLOG EN CONTINU : money-critical (#429/#430/#431 mergés) → sweep a11y/nettoyage/perf
 > Exécution **ORDONNÉE du backlog** (demande Marc « continue le backlog en entier ») : **✅ MERGÉS** #429 `FISC-WELCOME-2026` (barème taxe

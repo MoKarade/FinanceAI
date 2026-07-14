@@ -4,37 +4,36 @@
 # n'existe pas de flag --dockerfile). Vercel (front) ignore ce fichier — il détecte
 # Vite via package.json. Le .dockerignore n'embarque que le serveur, pas le front.
 #
-# Le serveur est du TypeScript exécuté par `tsx` (pas de build séparé : le moteur de
-# projection est importé tel quel). Build/run local :
-#   docker build -t financeai-mcp .
-#   docker run -e PORT=8080 -e FINANCEAI_OAUTH_SIGNING_KEY=… -e FINANCEAI_ACCESS_KEY=… \
-#              -e FINANCEAI_PUBLIC_URL=https://… -p 8080:8080 financeai-mcp
+# Le serveur est BUNDLÉ au build par esbuild (dist-mcp/http.js, un fichier autonome).
+# Pourquoi PAS `tsx` au runtime : selon la version de Node, tsx échoue à résoudre les
+# imports sans extension à nom pointé (`./tools/ping.tool` → ERR_MODULE_NOT_FOUND, vu
+# sur Cloud Run). Le bundle fige la résolution au build ET démarre instantanément.
+#
+# Build/run local : docker build -t financeai-mcp . && docker run -e PORT=8080 … financeai-mcp
 
 FROM node:22-slim
 
 WORKDIR /app
 
-# Install déterministe via le lockfile (npm ci). On installe AUSSI les devDeps :
-# `tsx` (le runtime TS du serveur) y vit → `--include=dev` obligatoire, et l'install
-# doit rester HORS NODE_ENV=production (sinon npm saute les devDeps → `tsx` absent →
-# le CMD échoue / retélécharge à chaud à chaque cold start — findings panel 2026-07-13).
-# Manifeste + lockfile copiés d'abord = cache de couche quand seul le code change.
+# Install déterministe via le lockfile. `--include=dev` : esbuild (bundler du serveur)
+# vit dans les devDeps → requis au BUILD ; l'install doit rester HORS NODE_ENV=production
+# (sinon npm saute les devDeps). Manifeste + lockfile d'abord = cache de couche.
 COPY package.json package-lock.json ./
 RUN npm ci --include=dev --no-audit --no-fund
 
-# Le serveur tourne en production (Cloud Run injecte $PORT ; écoute 0.0.0.0:$PORT).
-ENV NODE_ENV=production
-
-# Code nécessaire au serveur MCP (fermeture d'import PROUVÉE minimale : moteur +
-# adaptateurs + tools + types racine). On évite le front (components/, e2e/, tests/…).
+# Code du serveur (fermeture d'import : moteur + adaptateurs + tools + types racine).
 COPY tsconfig.json ./
 COPY types.ts constants.ts ./
 COPY mcp ./mcp
 COPY services ./services
 COPY utils ./utils
 
-# Utilisateur non-root (image node fournit `node`).
+# Bundle esbuild → dist-mcp/http.js (autonome : toutes les deps inline).
+RUN node mcp/build-server.mjs
+
+ENV NODE_ENV=production
 USER node
 
 EXPOSE 8080
-CMD ["npx", "tsx", "mcp/http.ts"]
+# Node pur sur le bundle (pas de tsx) : démarrage rapide, résolution figée.
+CMD ["node", "dist-mcp/http.js"]

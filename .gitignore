@@ -60,3 +60,4 @@ blob-report/
 mcp/drive/connector-client.json
 financeai-state*.json
 .financeai-mcp/
+dist-mcp

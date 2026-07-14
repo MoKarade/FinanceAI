@@ -396,6 +396,15 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   l'arithmétique nue propage les deux. Donc « ce site a un `|| 0` donc il fuit NaN » est FAUX — auditer `||` vs
   `?? ` vs nu AVANT de garder (sinon on durcit des faux positifs). Garder TOUS les inputs d'une fonction, pas
   seulement ceux flaggés (le panel a trouvé `rateAnnual` NaN non gardé dans `applyMidMonthGrowth`, à côté de startVal/endVal).
+- ⚠️ **Serveur TS en conteneur : BUNDLER (esbuild) au build, ne PAS compter sur `tsx` au runtime** (leçon
+  MCP-CLOUDRUN-BUNDLE 2026-07-14, vu en PROD Cloud Run) : `tsx` échoue à résoudre un import sans extension à
+  NOM POINTÉ (`./tools/ping.tool` → `ERR_MODULE_NOT_FOUND`, le `.tool` pris pour une extension) selon la version
+  de Node/tsx — ça marche en local (une version) et casse dans l'image (une autre). Le conteneur boot-loop, Cloud
+  Run tue la révision (« failed to listen on PORT »). Fix : `mcp/build-server.mjs` (esbuild bundle `http.ts` →
+  `dist-mcp/http.js` autonome, toutes deps inline) au build de l'image, `CMD ["node", "dist-mcp/http.js"]` (zéro
+  tsx runtime, démarrage instantané, résolution FIGÉE au build). Prouvé : le bundle démarre sans `node_modules`.
+  Réflexe : lire les LOGS RUNTIME (`gcloud run services logs read <svc> --region … --limit 50`) — le message de
+  déploiement « failed to start » est générique, le vrai `ERR_MODULE_NOT_FOUND` n'est que dans les logs du conteneur.
 - ⚠️ **`Dockerfile` : `ENV NODE_ENV=production` APRÈS `npm ci`, pas avant** (leçon MCP-CLOUDRUN-DEPLOY 2026-07-13,
   2 agents) : `NODE_ENV=production` avant l'install fait sauter les devDependencies → `tsx` (runtime TS du serveur)
   absent de l'image → `CMD npx tsx` retélécharge à chaud à chaque cold start (supply-chain + panne). Installer avec

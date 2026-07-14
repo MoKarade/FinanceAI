@@ -22,7 +22,8 @@
     "mcp:setup": "node mcp/install-desktop.mjs",
     "mcp:auth": "tsx mcp/auth.ts",
     "mcp:connect": "node mcp/install-desktop.mjs && tsx mcp/auth.ts",
-    "mcp:pack": "node mcp/pack.mjs"
+    "mcp:pack": "node mcp/pack.mjs",
+    "mcp:build-server": "node mcp/build-server.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",

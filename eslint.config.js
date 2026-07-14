@@ -4,7 +4,11 @@ import reactHooks from 'eslint-plugin-react-hooks';
 
 export default [
   {
-    ignores: ['dist/**', 'node_modules/**', '**/*.d.ts', 'public/**'],
+    // dist-mcp/** et dist-ssr/** : artefacts de build (bundle esbuild du serveur MCP + SSR) — comme
+    // dist/**, ils ne doivent PAS être lint-scannés (leur code bundlé porte des directives eslint de
+    // deps tierces → « rule not found ». Vercel build d'un clone propre ne les a pas, mais un build
+    // local APRÈS `mcp/build-server.mjs` fait échouer `prebuild=lint`). Alignés sur .gitignore.
+    ignores: ['dist/**', 'dist-mcp/**', 'dist-ssr/**', 'node_modules/**', '**/*.d.ts', 'public/**'],
   },
   {
     files: ['**/*.{ts,tsx}'],

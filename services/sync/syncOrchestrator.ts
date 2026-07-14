@@ -108,6 +108,36 @@ export function computeIsEmpty(snapshot: unknown): boolean {
     return !hasMeaningfulData(state as Parameters<typeof hasMeaningfulData>[0]);
 }
 
+/** Compte succinct d'un payload pour l'UI de conflit (aide l'utilisateur à choisir sans se tromper). */
+export interface ConflictSideCounts {
+    assets: number;
+    transactions: number;
+}
+
+/** Résumé « cet appareil vs Drive » présenté par SyncConflictModal (anti-clobber Marc 2026-07-14). */
+export interface ConflictSummary {
+    local: ConflictSideCounts;
+    /**
+     * `encrypted` : le blob Drive est chiffré (passphrase) → son contenu est ILLISIBLE d'ici, donc les
+     * comptes valent 0 mais ne veulent RIEN dire → le modal doit afficher « chiffré, contenu inconnu »
+     * (pas « 0 placement ») et NE PAS pousser à « garder le plus » (sinon on écraserait un backup chiffré
+     * potentiellement plus riche).
+     */
+    drive: ConflictSideCounts & { updatedAt: number; encrypted: boolean };
+}
+
+/**
+ * Compte les collections clés d'un payload (state.assets / state.transactions). Purement défensif :
+ * un payload chiffré (`null`) ou malformé rend des zéros (le modal affichera « inconnu » côté Drive).
+ * On NE calcule PAS le patrimoine (nécessiterait le moteur) : le nombre de placements/transactions
+ * suffit à distinguer « appareil riche » d'une « vieille copie pauvre ».
+ */
+export function summarizeForConflict(payload: unknown): ConflictSideCounts {
+    const state = (payload as { state?: Record<string, unknown> } | null)?.state;
+    const len = (v: unknown): number => (Array.isArray(v) ? v.length : 0);
+    return { assets: len(state?.assets), transactions: len(state?.transactions) };
+}
+
 interface LocalPayload {
     payload: unknown;
     apiKeys: ApiKeys;
@@ -154,11 +184,17 @@ function getLocalPayload(): LocalPayload {
  */
 async function applyPulledPayload(payload: unknown, apiKeys?: ApiKeys): Promise<void> {
     if (typeof localStorage === 'undefined') return;
-    // Filet : backup local de l'état courant avant d'écraser (réutilise backupAuto).
+    // Filet : backup local de l'état courant avant d'écraser (réutilise backupAuto). Le SyncConflictModal
+    // promet « un backup local est tenté avant » → un échec ne bloque pas la restauration, mais NE DOIT PAS
+    // être avalé en silence (finding silent-failure 2026-07-14) : on journalise en 'warning' pour que
+    // « restauration SANS filet » soit visible (diagnostics/SystemView), pas invisible.
     try {
-        await createBackupNow('auto');
-    } catch {
-        /* le backup d'assurance est best-effort, on ne bloque pas la restauration */
+        const backup = await createBackupNow('auto');
+        if (!backup) {
+            logError({ source: 'storage', severity: 'warning', message: 'applyPulledPayload: backup pré-restauration non créé (localStorage vide ou IndexedDB indispo) — restauration SANS filet' });
+        }
+    } catch (e) {
+        logError({ source: 'storage', severity: 'warning', message: 'applyPulledPayload: backup pré-restauration échoué — restauration SANS filet', error: e instanceof Error ? e : new Error(String(e)) });
     }
     // Sync v2 : ré-applique les clés API. Chiffrées dans secureKeyStore (persistées) ET injectées
     // dans le store vivant tout de suite (utilisables sans reload). Best-effort : si le coffre est
@@ -206,6 +242,13 @@ export interface SyncStatus {
     conflict: boolean;
     error: string | null;
     /**
+     * Phase de la DERNIÈRE erreur (`error`) : sert à l'UI pour proposer la BONNE action de reprise.
+     * `null` si `error` est null. ⚠️ Ne pas déclencher un `pushNow` de « réessai » sur une erreur de
+     * `pull`/`boot`/`connect` (on pousserait un local peut-être PÉRIMÉ par-dessus un Drive qu'on n'a
+     * justement pas réussi à lire → clobber). Finding silent-failure 2026-07-14.
+     */
+    errorPhase: 'pull' | 'push' | 'boot' | 'connect' | 'delete' | null;
+    /**
      * `true` quand un pull a rencontré un blob CHIFFRÉ (`enc:true`) alors qu'aucune passphrase n'est
      * active dans cette session : l'UI doit la demander puis re-puller. Aucune donnée locale n'a été
      * touchée (zéro perte). Repasse à `false` dès qu'un pull aboutit (passphrase fournie) ou qu'on se
@@ -217,6 +260,12 @@ export interface SyncStatus {
      * Reflet de `passphraseStore` pour l'UI (afficher l'état + le bon libellé du bouton activer/effacer).
      */
     passphraseActive: boolean;
+    /**
+     * Résumé « cet appareil vs Drive » quand `conflict` est vrai (nb de placements/transactions de
+     * chaque côté + date Drive). `null` hors conflit. Permet à SyncConflictModal d'afficher un choix
+     * ÉCLAIRÉ (anti-clobber Marc 2026-07-14) au lieu d'un « garder l'un ou l'autre » à l'aveugle.
+     */
+    conflictSummary: ConflictSummary | null;
 }
 
 let _status: SyncStatus = {
@@ -227,8 +276,10 @@ let _status: SyncStatus = {
     busy: false,
     conflict: false,
     error: null,
+    errorPhase: null,
     needsPassphrase: false,
     passphraseActive: false,
+    conflictSummary: null,
 };
 const _listeners = new Set<(s: SyncStatus) => void>();
 
@@ -306,8 +357,21 @@ async function resolveSub(token: string): Promise<string | null> {
     }
 }
 
-/** Pousse le payload local vers Drive (create ou update) et met à jour la meta. */
-export async function pushNow(): Promise<PushResult> {
+// Garde de RÉENTRANCE du push : deux `pushNow()` quasi simultanés (ex. `visibilitychange` hidden +
+// `pagehide` au MÊME tick à la fermeture d'onglet — `pushNow` n'écrit la meta qu'après le réseau, donc
+// le 2ᵉ passe encore le test de hash) réutilisent le MÊME push en vol au lieu d'en lancer deux → évite
+// un double `createSyncFile` (2 fichiers Drive) au 1er push. Calqué sur `_decisionInFlight`.
+let _pushInFlight: Promise<PushResult> | null = null;
+
+/** Pousse le payload local vers Drive (create ou update) et met à jour la meta. Dé-doublonné (réentrance). */
+export function pushNow(): Promise<PushResult> {
+    if (_pushInFlight) return _pushInFlight;
+    const run = runPushNow().finally(() => { _pushInFlight = null; });
+    _pushInFlight = run;
+    return run;
+}
+
+async function runPushNow(): Promise<PushResult> {
     if (!isGoogleAuthConfigured()) return 'not-configured';
     const testMode = isTestModeActive();
     const local = getLocalPayload();
@@ -369,7 +433,7 @@ export async function pushNow(): Promise<PushResult> {
             lastPulledUpdatedAt: now,
             lastLocalHash: local.hash,
         });
-        setStatus({ busy: false, lastSyncedAt: now, connected: true, conflict: false });
+        setStatus({ busy: false, lastSyncedAt: now, connected: true, conflict: false, conflictSummary: null });
         return 'pushed';
     } catch (e) {
         handleError('push', e);
@@ -381,17 +445,46 @@ export async function pushNow(): Promise<PushResult> {
 let _pushTimer: ReturnType<typeof setTimeout> | null = null;
 const PUSH_DEBOUNCE_MS = 8000;
 
-/** Programme un push après une période d'inactivité (debounce). No-op si non connecté. */
+/**
+ * Vrai si un push AUTOMATIQUE (debounce/flush/poll) doit s'ABSTENIR : un conflit non résolu est
+ * affiché (un push l'auto-résoudrait en écrasant Drive SANS le choix utilisateur → court-circuit du
+ * SyncConflictModal, perte possible côté Drive) ou un blob chiffré attend sa passphrase. Aligné sur la
+ * garde de `startDrivePolling`. (Finding money-critical 2026-07-14 : le moteur publie `lastProjection`
+ * ~chaque seconde → `schedulePush` partait pendant le conflit et le résolvait tout seul.)
+ */
+function autoPushBlocked(): boolean {
+    return _status.conflict || _status.needsPassphrase;
+}
+
+/** Programme un push après une période d'inactivité (debounce). No-op si non connecté / conflit / passphrase. */
 export function schedulePush(): void {
     if (!isGoogleAuthConfigured() || !_status.connected) return;
+    if (autoPushBlocked()) return; // ne pas armer un push tant qu'un conflit / prompt passphrase est actif
     if (_pushTimer) clearTimeout(_pushTimer);
     _pushTimer = setTimeout(() => {
         _pushTimer = null;
+        // Re-teste : un conflit peut survenir PENDANT les 8 s de debounce (pull Drive concurrent).
+        if (autoPushBlocked()) return;
         // Ignore si rien n'a changé depuis la dernière sync (les changements d'UI transitoires
         // — onglet actif, mode privé — déclenchent l'abonnement store sans modifier le snapshot).
         if (getLocalPayload().hash === currentMeta().lastLocalHash) return;
         void pushNow();
     }, PUSH_DEBOUNCE_MS);
+}
+
+/**
+ * Flush IMMÉDIAT du push en attente — à appeler quand l'onglet se masque/ferme (visibilitychange
+ * `hidden` / `pagehide`). Garantit que le DERNIER changement atteint Drive avant que l'utilisateur
+ * parte, sans attendre le debounce (sinon un changement suivi d'une fermeture rapide ne serait jamais
+ * poussé → le connecteur MCP lirait une copie Drive périmée quand Marc parle à Claude). No-op si non
+ * connecté, si un conflit/passphrase est en attente, ou si rien n'a changé depuis la dernière sync.
+ */
+export function flushPush(): void {
+    if (!isGoogleAuthConfigured() || !_status.connected) return;
+    if (autoPushBlocked()) return; // ne JAMAIS court-circuiter un conflit non résolu au masquage d'onglet
+    if (_pushTimer) { clearTimeout(_pushTimer); _pushTimer = null; }
+    if (getLocalPayload().hash === currentMeta().lastLocalHash) return; // rien de neuf → pas de push
+    void pushNow();
 }
 
 /** Tire Drive et applique (réhydratation EN PLACE). Met à jour la meta avant d'appliquer. */
@@ -479,7 +572,7 @@ export async function pullNow(): Promise<void> {
         });
         const syncedAt = Date.now();
         // Pull réussi → plus besoin de passphrase (réinitialise le drapeau s'il était posé).
-        setStatus({ conflict: false, needsPassphrase: false });
+        setStatus({ conflict: false, conflictSummary: null, needsPassphrase: false });
         await applyPulledPayload(effectivePayload, restoredKeys); // réhydrate le store EN PLACE (pas de reload)
         // Le pull réussi DOIT retomber busy:false : sinon le spinner « Synchronisation… » reste figé
         // après une restauration (applyPulledPayload ne touche pas au statut). Bug : seuls les chemins
@@ -506,7 +599,10 @@ export async function connectAndSync(): Promise<void> {
         // La restauration réhydrate en place (pas de reload). Le flag sert de filet : si un reload
         // survient (rehydrate en échec, ou refresh manuel), le gate ne re-bloque pas sur le login.
         setGateAuthedThisSession();
-        await runDecision(token, true); // login explicite → intention de restauration
+        // Garde anti-perte STRICTE (plus de « restoreIntent » qui faisait gagner Drive) : si cet
+        // appareil a des données réelles ET Drive diverge → `conflict` (choix utilisateur), jamais
+        // d'écrasement auto. Le cas « nouvel appareil, je restaure » (local vide) → pull automatique.
+        await runDecision(token);
     } catch (e) {
         handleError('connect', e);
     }
@@ -535,7 +631,7 @@ export async function gateSilentResume(): Promise<boolean> {
         writeSyncMeta({ ...meta, connectedEmail: email, connectedSub: sub ?? meta.connectedSub ?? null });
         setStatus({ connected: true, email });
         setGateAuthedThisSession(); // filet si un reload survient → pas de 2e écran de login
-        await runDecision(token, true); // reprise au gate → intention de restauration (pull si Drive a des données)
+        await runDecision(token); // garde anti-perte stricte (local vide → pull ; local réel divergent → conflict)
         return true;
     } catch {
         // Échec silencieux attendu (pas de session / pas de consentement) → cas nominal au 1er
@@ -564,7 +660,7 @@ export async function runBootSync(): Promise<void> {
     // 2) Le jeton est en main → une erreur APRÈS (lecture/écriture Drive) est, elle, anormale → handleError.
     try {
         setStatus({ connected: true });
-        await runDecision(token, false); // boot normal (hors gate) → garde anti-perte stricte
+        await runDecision(token); // garde anti-perte stricte (identique au gate désormais)
     } catch (e) {
         setStatus({ connected: false });
         if (!(e instanceof DriveAuthError)) handleError('boot', e);
@@ -578,12 +674,12 @@ export async function runBootSync(): Promise<void> {
 let _decisionInFlight: Promise<void> | null = null;
 
 /**
- * Applique decideOnLoad puis exécute l'action résultante.
- * `restoreIntent` = login PAR LE GATE (l'utilisateur se connecte pour récupérer son compte) : sur un
- * appareil jamais synchronisé, Drive gagne (restaure) au lieu de bloquer sur un faux « conflit ».
- * Au boot normal (`false`), on garde la garde anti-perte stricte.
+ * Applique decideOnLoad puis exécute l'action résultante. UNE seule règle anti-perte (plus de
+ * `restoreIntent`/exception gate) : local vide → pull (restaure) ; local réel + Drive divergent →
+ * `conflict` (choix utilisateur via SyncConflictModal), JAMAIS d'écrasement auto. Retrait 2026-07-14
+ * (anti-clobber Marc : une vieille copie Drive écrasait 230k$ de local réel à la reconnexion).
  */
-async function runDecision(token: string, restoreIntent = false): Promise<void> {
+async function runDecision(token: string): Promise<void> {
     if (_decisionInFlight) return _decisionInFlight; // une décision concurrente est déjà en cours
     const run = (async () => {
         setStatus({ busy: true, error: null });
@@ -595,7 +691,6 @@ async function runDecision(token: string, restoreIntent = false): Promise<void> 
             localIsEmpty: local.isEmpty,
             localHash: local.hash,
             meta,
-            restoreIntent,
         });
         switch (decision.action) {
             case 'pull':
@@ -605,11 +700,28 @@ async function runDecision(token: string, restoreIntent = false): Promise<void> 
                 await pushNow();
                 break;
             case 'conflict':
-                setStatus({ busy: false, conflict: true });
+                // Divergence réelle → JAMAIS d'écrasement auto. On expose un RÉSUMÉ (nb de placements/
+                // transactions de chaque côté + date Drive) pour que l'utilisateur choisisse sans se
+                // tromper (anti-clobber Marc 2026-07-14 : voir « cet appareil : 15 placements » vs
+                // « Drive : 1 placement, il y a 3 mois » évite de restaurer une vieille copie pauvre).
+                setStatus({
+                    busy: false,
+                    conflict: true,
+                    conflictSummary: {
+                        local: summarizeForConflict(local.payload),
+                        drive: {
+                            // Blob chiffré → payload illisible (null) → comptes 0 non significatifs :
+                            // on marque `encrypted` pour que le modal affiche « contenu inconnu ».
+                            ...summarizeForConflict(drive?.enc ? null : drive?.payload),
+                            updatedAt: drive?.updatedAt ?? 0,
+                            encrypted: Boolean(drive?.enc),
+                        },
+                    },
+                });
                 break;
             case 'noop':
             default:
-                setStatus({ busy: false, conflict: false });
+                setStatus({ busy: false, conflict: false, conflictSummary: null });
                 break;
         }
     })();
@@ -623,7 +735,10 @@ async function runDecision(token: string, restoreIntent = false): Promise<void> 
 
 /** Résolution de conflit par l'utilisateur : garder le local (push) ou garder Drive (pull). */
 export async function resolveConflict(keep: 'local' | 'drive'): Promise<void> {
-    setStatus({ conflict: false });
+    // On n'efface PAS le conflit d'avance : pushNow/pullNow remettent `conflict:false` eux-mêmes AU
+    // SUCCÈS, et laissent le conflit AFFICHÉ en cas d'échec (réseau) → le choix explicite « garder cet
+    // appareil » / « restaurer Drive » n'est jamais annulé en silence (finding silent-failure 2026-07-14 :
+    // avant, un pull raté effaçait quand même le conflit, l'utilisateur retombait sur la bannière générique).
     if (keep === 'local') await pushNow();
     else await pullNow();
 }
@@ -726,7 +841,7 @@ export function disconnectSync(): void {
     // La passphrase est un secret de SESSION : on la purge à la déconnexion (sinon elle resterait
     // déchiffrer un blob d'un autre compte reconnecté dans le même onglet).
     clearPassphrase();
-    setStatus({ connected: false, email: null, conflict: false, lastSyncedAt: 0, needsPassphrase: false });
+    setStatus({ connected: false, email: null, conflict: false, conflictSummary: null, lastSyncedAt: 0, needsPassphrase: false });
 }
 
 /**
@@ -744,15 +859,15 @@ export async function deleteRemoteData(): Promise<void> {
         revokeAccess();
         clearSyncMeta();
         clearPassphrase(); // secret de session purgé avec la déconnexion qui suit la suppression
-        setStatus({ busy: false, connected: false, email: null, conflict: false, lastSyncedAt: 0, needsPassphrase: false });
+        setStatus({ busy: false, connected: false, email: null, conflict: false, conflictSummary: null, lastSyncedAt: 0, needsPassphrase: false });
     } catch (e) {
         handleError('delete', e);
     }
 }
 
-function handleError(phase: string, e: unknown): void {
+function handleError(phase: NonNullable<SyncStatus['errorPhase']>, e: unknown): void {
     const message = e instanceof Error ? e.message : String(e);
-    setStatus({ busy: false, error: `Sync (${phase}) : ${message}` });
+    setStatus({ busy: false, error: `Sync (${phase}) : ${message}`, errorPhase: phase });
     logError({
         source: 'storage',
         severity: 'warning',

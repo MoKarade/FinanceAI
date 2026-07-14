@@ -10,7 +10,6 @@ import {
     pullNow,
     disconnectSync,
     deleteRemoteData,
-    resolveConflict,
     removeSyncPassphrase,
     type SyncStatus,
 } from '../../services/sync/syncOrchestrator';
@@ -130,28 +129,10 @@ export const GoogleDriveSyncCard: React.FC = () => {
                     </p>
                 )}
 
-                {status.conflict && (
-                    <div className="p-3 rounded-card bg-warning-500/10 border border-warning-500/30 space-y-2">
-                        <div className="text-meta font-semibold text-amber-300">Conflit de synchronisation</div>
-                        <p className="text-tiny text-ink-300">
-                            Cet appareil et Google Drive ont divergé depuis la dernière sync. Que garder ?
-                        </p>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => resolveConflict('local')}
-                                className="px-3 py-1.5 rounded-card bg-primary/15 border border-primary/40 text-primary text-meta font-medium hover:bg-primary/25"
-                            >
-                                Garder cet appareil
-                            </button>
-                            <button
-                                onClick={() => resolveConflict('drive')}
-                                className="px-3 py-1.5 rounded-card bg-white/5 border border-white/10 text-ink-200 text-meta font-medium hover:bg-white/10"
-                            >
-                                Garder Google Drive
-                            </button>
-                        </div>
-                    </div>
-                )}
+                {/* La résolution de conflit vit désormais dans le modal GLOBAL `SyncConflictModal`
+                    (overlay, monté au niveau App, avec résumé « cet appareil vs Drive » + distinction
+                    chiffré/clair) → surgit au premier plan quel que soit l'onglet. L'ancienne UI inline
+                    ici était redondante (mêmes boutons, sans les compteurs) — retirée 2026-07-14. */}
 
                 {!status.connected ? (
                     <button

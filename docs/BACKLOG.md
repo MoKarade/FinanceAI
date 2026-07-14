@@ -10,6 +10,40 @@
 > Restes uniquement : suivis LOW (DEP-UNDICI-VULN, FISC-CONST-LINT-LIMITS, FISC-RRSP-PRE2010-FALLBACK + suivi FUZZ-ONETIME-FLOWS) +
 > blocages Marc (RECH-ACTION-UX confirmée visuellement, phases 2-4 brief plan-first, P0-*, design Budget/Transactions/Retraite).
 
+## 🔴 Intégrité des données Drive + MCP (2026-07-14) — incident perte de 230k$ + audit 6 alertes
+> Marc a perdu 230k$ de placements (reconnexion Drive → écrasement du local par une vieille copie). Récupéré
+> via auto-backup IndexedDB. Audit adversarial (12 agents) des 6 alertes claude.ai : verdicts ci-dessous.
+> ⚠️ **Les items MCP requièrent un REDÉPLOIEMENT Cloud Run** (`mcp/deploy.sh`) pour que Marc en profite.
+
+- **`[SYNC-ANTI-CLOBBER]`** 🔧 ✅ **LIVRÉ (PR à venir, 2026-07-14)** — `decideOnLoad` sans `restoreIntent` (une seule
+  garde anti-perte : local réel + Drive divergent → `conflict`, jamais d'écrasement auto) + `SyncConflictModal` global
+  (résumé « cet appareil vs Drive ») + `SyncStatusBanner` (alerte déconnexion/erreur push) + `flushPush` au masquage
+  d'onglet + gate HARD-block (`LoginGate`). Discriminant git-stash prouvé. **Marc : mettre `VITE_GOOGLE_GATE=1` sur Vercel.**
+- **`[MCP-RETIREMENT-VERDICT]`** 🔧 money-critical — `get_retirement_outlook` compare les RENTES PUBLIQUES SEULES à la
+  cible (`meetsIncomeTarget=false`) en IGNORANT le décaissement du portefeuille que le moteur émet (RetraitREER/CELI) →
+  « sous la cible » alors que MC=100 %. Audit **CONFIRMED** (finding #4). Fix : ajouter les retraits (source unique) au
+  revenu de retraite + redéfinir le verdict sur revenu TOTAL ou `successProbabilityPct`. **Priorité (visible, a induit Marc en erreur).**
+- **`[MCP-PAYSLIP-BACKUP]`** 🔧 money-critical — `driveStateSource.saveState` écrase le blob Drive SANS backup ni garde
+  anti-conflit et renvoie `backupPath:null`, alors que la description du tool promet une « sauvegarde horodatée ». Audit
+  **CONFIRMED** (finding #5, même famille que la perte). Fix : vrai backup Drive avant overwrite OU corriger la spec + garde
+  de concurrence (relire `updatedAt`, refuser si Drive a avancé depuis le get).
+- **`[MCP-TAX-COUPLE]`** 🔧 money-critical — `get_tax_situation` somme les 2 salaires et impose comme UNE personne
+  (`getTaxSituation.tool.ts:28,34`) → +11 300 $/an de trop pour un couple à 2 revenus (fiscalité individuelle). Audit
+  **PARTIAL** (finding #2, 3/3 adversarial). ≈ nul pour Marc (mono-salarié). Fix : per-conjoint puis somme (aligner sur le moteur `taxDecember.ts:369-395`) + test discriminant couple 60/60 → ~22 k$/36 %.
+- **`[MCP-STALE-FRESHNESS]`** 🔧 — le connecteur MCP sert la copie Drive sans jamais signaler qu'elle est PÉRIMÉE (jour où
+  l'app n'a pas poussé). Fix : exposer l'âge du blob (`updatedAt`) dans les tools → Claude sait si les données sont fraîches.
+- **`[PROJ-TAXPAID-LABEL]`** 🔧 — `totalTaxesPaid` (projection.ts:1444) n'agrège que les régularisations d'avril → négatif
+  pour un gros cotisant REER, exposé comme « impôt total payé » (getProjection.tool.ts:82) + corrompt taxLeakage/avgEfficiency
+  (MC). Audit **PARTIAL** non-money-critical (finding #3, conservation 20/20 verte). Fix : renommer « régularisations fiscales
+  nettes », ne pas surfacer comme impôt total, `Math.max(0, …)` sur taxLeakage/efficiency.
+- **`[CELI-ASSET-NUDGE]`** 🔧 — l'app suit les virements CELI sortants mais pas le compte destinataire → CELI affiché 0 malgré
+  ~24 k$ cotisés (patrimoine sous-estimé). Audit **CONFIRMED** (finding #6). Fix (produit, NO-fake-data : ne PAS dériver celi=Σvirements =
+  coût, pas valeur marché) : NUDGE onboarding « tu vires vers ton CELI mais aucun avoir CELI saisi → ajoute-les ». Router UX.
+- Note : `moteur-impot-couple-fusionne` audit **REFUTED** — le moteur impose déjà PAR conjoint (`taxDecember.ts:394-396`), aucun bug. (Correction d'une hypothèse antérieure.)
+- **`[SYNC-FETCH-TIMEOUT]`** 🔧 (suivi panel SYNC-ANTI-CLOBBER) — les fetch Google/Drive (`services/googleDrive/driveAppData.ts`) n'ont AUCUN timeout/`AbortController` → un réseau « dégradé » (Google lent) peut faire pendre `fetchUserIdentity`/`readDrive` indéfiniment (mitigé côté UI par la trappe LoginGate à 10 s, mais la racine reste). + `fetch(..., {keepalive:true})` pour fiabiliser le push `flushPush` au `pagehide`. Effort M.
+- **`[A11Y-CHECK-CONTRAST-DRIFT]`** 🔧 (dette outillage) — `scripts/check-contrast.ts` utilise des valeurs de tokens PÉRIMÉES (`surface #151922` au lieu de `#0E1014` ; `primary #10b981` = l'ancien vert au lieu de `#e6eaf2`) → il ne teste pas les vrais combos actuels (rose bannière, superpositions). Réaligner sur `tailwind.config.js`.
+- **`[A11Y-GHOST-BUTTON-PROMINENCE]`** 🔧 (design-system) — le variant `ghost`/`outline` de `components/ui/Button.tsx` (`bg-white/5 border-white/10`, ~1,1-1,8:1) échoue WCAG 1.4.11 (prominence &lt; 3:1), utilisé dans ~28 fichiers. `GATE-CTA-CONTRAST` n'avait traité qu'un CTA primaire. Fix au niveau du design-system.
+
 ## Convention (cochage par Claude au merge)
 - Chaque item Claude-faisable porte un **`[ID]`** entre crochets. **Claude coche lui-même**
   l'item au moment du merge de la PR qui le livre (l'Action `backlog-autocheck` a été retirée —

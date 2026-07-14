@@ -4,6 +4,25 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴 Session 2026-07-14 — Incident perte de données Drive (230k$) + anti-clobber STRICT + audit 6 alertes MCP
+> **Incident** : Marc a perdu 230k$ de placements. Chaîne : appareil silencieusement déconnecté (jeton Google expiré ~1h →
+> `schedulePush` no-op EN SILENCE) → ses ajouts (jusqu'à 230k$) jamais poussés vers Drive → à la reconnexion, méta vierge →
+> l'ancien `restoreIntent` de `decideOnLoad` faisait un `pull` qui a ÉCRASÉ le local avec une VIEILLE copie Drive (SPCX seul, 4k$).
+> **✅ Récupéré** via l'auto-backup IndexedDB (`applyPulledPayload` → `createBackupNow('auto')` AVANT d'écraser → Réglages →
+> Sauvegarde → « Restaurer » le plus gros backup). Confirmé bout-en-bout : le MCP relit 230k$ non-enreg + NW 181,9k$.
+> **✅ LIVRÉ `[SYNC-ANTI-CLOBBER]` (PR à venir)** : `decideOnLoad` SANS `restoreIntent` (une seule garde : local réel + Drive
+> divergent → `conflict`, jamais d'écrasement auto) + `SyncConflictModal` GLOBAL (résumé « cet appareil vs Drive ») +
+> `SyncStatusBanner` (alerte déconnexion/erreur push) + `flushPush` (push au masquage d'onglet → MCP jamais périmé) + gate
+> HARD-block (`LoginGate`). Discriminant git-stash PROUVÉ. typecheck clean, 34 tests sync verts. **⚠️ Marc doit mettre
+> `VITE_GOOGLE_GATE=1` sur Vercel** pour activer le hard-block. **⚠️ NE JAMAIS conseiller déconnecter+reconnecter** (efface la
+> méta = recrée le piège vierge).
+> **Audit adversarial 6 alertes claude.ai (12 agents)** → BACKLOG (§ Intégrité Drive+MCP), tous CONFIRMÉS sauf 1 : `MCP-RETIREMENT-VERDICT`
+> (CONFIRMED, money-critical, a induit Marc en erreur : verdict retraite ignore le décaissement du portefeuille), `MCP-PAYSLIP-BACKUP`
+> (CONFIRMED : écrit Drive sans backup ni garde de concurrence), `MCP-TAX-COUPLE` (PARTIAL : fusionne les 2 salaires, ≈nul pour Marc mono-salarié),
+> `PROJ-TAXPAID-LABEL` (PARTIAL non-money-crit : `totalTaxesPaid` mal nommé), `CELI-ASSET-NUDGE` (CONFIRMED : virements CELI suivis mais compte
+> destinataire non → CELI=0). Moteur impôt couple **REFUTED** (déjà per-conjoint, aucun bug). **⚠️ Les fixes MCP requièrent un REDÉPLOIEMENT Cloud Run.**
+> **Suite proposée** : `MCP-RETIREMENT-VERDICT` (le plus visible) en PR next (redéploiement Cloud Run), puis `MCP-PAYSLIP-BACKUP`.
+>
 > ## 📊 Session 2026-07-13 — MCP pour claude.ai : Lot 1 what-if + séries LIVRÉ, chantier Cloud Run relancé
 > **Demande Marc** : parler à Claude de ses VRAIES finances depuis claude.ai web/mobile (pas seulement Desktop), déposer des
 > PDF (déjà couvert, Lot 2 ingestion), et poser des what-if (« si j'achète une voiture demain ») avec chiffres EXACTS de l'app

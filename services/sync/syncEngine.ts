@@ -17,7 +17,7 @@ const decision = (action: SyncDecision['action'], reason: string): SyncDecision 
  * (choix laissé à l'utilisateur, jamais d'écrasement automatique).
  */
 export function decideOnLoad(input: DecideOnLoadInput): SyncDecision {
-    const { drive, localIsEmpty, localHash, meta, restoreIntent = false } = input;
+    const { drive, localIsEmpty, localHash, meta } = input;
 
     // 1) Drive n'existe pas encore.
     if (!drive) {
@@ -27,35 +27,39 @@ export function decideOnLoad(input: DecideOnLoadInput): SyncDecision {
     }
 
     // 2) Local vide (incognito / nouvel appareil) → restaurer depuis Drive. Aucun conflit possible.
+    //    (`localIsEmpty` = pas de données SIGNIFICATIVES, cf hasMeaningfulData : un défaut/onboarding
+    //    frais compte comme vide → la restauration « nouvel appareil » passe ici, sans risque.)
     if (localIsEmpty) {
         return decision('pull', 'local-vide-restaurer');
     }
 
-    // 3) Les deux côtés existent : comparer l'avancement.
-    const deviceNeverSynced = meta.lastPulledUpdatedAt === 0 && meta.lastLocalHash === '';
+    // 3) Les DEUX côtés ont des données significatives → garde anti-perte STRICTE, sans exception.
+    //    On n'écrase (pull/push) que si la cible est CERTAINEMENT plus ancienne ; toute divergence
+    //    réelle — y compris « méta vierge » (appareil déconnecté/jamais syncé, impossible de comparer)
+    //    → `conflict` : l'utilisateur choisit (UI globale SyncConflictModal), JAMAIS d'écrasement auto.
+    //
+    //    ⚠️ Retrait de l'ancien `restoreIntent` (« gate → Drive gagne ») : il faisait gagner Drive même
+    //    sur du LOCAL réel → à la reconnexion, une VIEILLE copie Drive écrasait des données récentes.
+    //    Bug Marc 2026-07-14 : 230k$ de placements locaux clobberés par une copie Drive périmée (SPCX
+    //    seul). Le local significatif ne se perd désormais JAMAIS en silence. Le cas légitime « nouvel
+    //    appareil, je restaure » est déjà couvert par (2) (local vide → pull).
     const driveAdvanced = drive.updatedAt > meta.lastPulledUpdatedAt;
     const localChanged = localHash !== meta.lastLocalHash;
 
-    // 3a) RESTAURATION EXPLICITE (login par le gate) : « je me connecte pour RÉCUPÉRER mon compte ».
-    //     Drive gagne dès qu'il a avancé (ou appareil jamais syncé : méta vierge). Le LOCAL ne gagne
-    //     que s'il est STRICTEMENT en avance (Drive pas avancé + local modifié). JAMAIS de `conflict`
-    //     au gate : il n'a pas d'UI pour le résoudre (réservée à Réglages) → sans ça il restait coincé
-    //     et affichait le local (bug Marc 2026-05-29 : « mes données ne sont pas celles sauvegardées »).
-    //     Filet anti-perte : l'orchestrateur backupe le local AVANT d'écraser (applyPulledPayload).
-    //     Le boot normal (`restoreIntent=false`) garde la garde stricte en 3b.
-    if (restoreIntent) {
-        if (deviceNeverSynced || driveAdvanced) return decision('pull', 'gate-restaure');
-        if (localChanged) return decision('push', 'gate-local-en-avance');
-        return decision('noop', 'gate-deja-sync');
-    }
-
-    // 3b) Boot normal — garde anti-perte stricte (jamais d'écrasement auto d'une cible divergente).
     if (driveAdvanced && localChanged) {
-        // Les deux ont divergé depuis la dernière sync → décision à l'utilisateur.
+        // Contenu strictement IDENTIQUE des deux côtés (ex. reconnexion sur le même compte après un
+        // `disconnectSync` qui a vidé la méta → tout « compte » comme divergent alors que rien n'a
+        // changé) → rien à choisir : noop. Évite un conflit « bruyant » sur des données identiques.
+        // (Seulement en clair : un blob chiffré a `payload:null`, non comparable → on garde le conflit.)
+        if (!drive.enc && hashPayload(drive.payload) === localHash) {
+            return decision('noop', 'contenu-identique');
+        }
+        // Les deux ont divergé depuis la dernière sync (ou méta vierge : les deux « comptent » comme
+        // avancés) → décision à l'utilisateur.
         return decision('conflict', 'divergence-deux-cotes');
     }
     if (driveAdvanced) {
-        // Drive a avancé, local intact → restaurer (sûr).
+        // Drive a avancé, local intact depuis la dernière sync → restaurer (sûr, rien de local perdu).
         return decision('pull', 'drive-plus-recent-local-inchange');
     }
     if (localChanged) {

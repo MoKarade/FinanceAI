@@ -396,15 +396,21 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   l'arithmétique nue propage les deux. Donc « ce site a un `|| 0` donc il fuit NaN » est FAUX — auditer `||` vs
   `?? ` vs nu AVANT de garder (sinon on durcit des faux positifs). Garder TOUS les inputs d'une fonction, pas
   seulement ceux flaggés (le panel a trouvé `rateAnnual` NaN non gardé dans `applyMidMonthGrowth`, à côté de startVal/endVal).
-- ⚠️ **Serveur TS en conteneur : BUNDLER (esbuild) au build, ne PAS compter sur `tsx` au runtime** (leçon
-  MCP-CLOUDRUN-BUNDLE 2026-07-14, vu en PROD Cloud Run) : `tsx` échoue à résoudre un import sans extension à
-  NOM POINTÉ (`./tools/ping.tool` → `ERR_MODULE_NOT_FOUND`, le `.tool` pris pour une extension) selon la version
-  de Node/tsx — ça marche en local (une version) et casse dans l'image (une autre). Le conteneur boot-loop, Cloud
-  Run tue la révision (« failed to listen on PORT »). Fix : `mcp/build-server.mjs` (esbuild bundle `http.ts` →
-  `dist-mcp/http.js` autonome, toutes deps inline) au build de l'image, `CMD ["node", "dist-mcp/http.js"]` (zéro
-  tsx runtime, démarrage instantané, résolution FIGÉE au build). Prouvé : le bundle démarre sans `node_modules`.
-  Réflexe : lire les LOGS RUNTIME (`gcloud run services logs read <svc> --region … --limit 50`) — le message de
-  déploiement « failed to start » est générique, le vrai `ERR_MODULE_NOT_FOUND` n'est que dans les logs du conteneur.
+- ⚠️ **`.gcloudignore` = syntaxe GITIGNORE (pattern NU matche à TOUS les niveaux) ≠ `.dockerignore`** (leçon
+  MCP-CLOUDRUN-IGNORE 2026-07-14, vu en PROD, DEUX crashs de suite mal diagnostiqués) : un `tools` nu dans
+  `.gcloudignore` (destiné au dossier RACINE `tools/`) excluait AUSSI `mcp/tools/` de l'upload Cloud Build → les
+  15 `*.tool.ts` ABSENTS de l'image → `Cannot find module ping.tool` (runtime tsx) PUIS `Could not resolve
+  ./tools/ping.tool` (build esbuild). J'ai d'abord accusé tsx (faux), puis esbuild (faux) : la VRAIE cause = fichiers
+  jamais uploadés. Fix : ancrer les dossiers du front à la RACINE avec `/` (`/tools`, `/store`, `/tests`…) — prouvé
+  (`git check-ignore` : `tools`→`mcp/tools` OUI, `/tools`→NON). **Réflexe #1 sur un « Could not resolve »/module
+  manquant en conteneur : lire la LISTE DES FICHIERS uploadés dans le log Cloud Build (FETCHSOURCE/inflating) — un
+  dossier absent = pattern `.gcloudignore` trop large, PAS un bug de résolution du bundler/runtime.**
+- ⚠️ **Serveur TS en conteneur : BUNDLER (esbuild) au build reste PRÉFÉRABLE à `tsx` runtime** (démarrage instantané,
+  résolution figée, zéro deps runtime) — `mcp/build-server.mjs` bundle `http.ts` → `dist-mcp/http.js` autonome (prouvé :
+  démarre sans `node_modules`), `CMD ["node", "dist-mcp/http.js"]`. NB : ce n'était PAS la cause des crashs ci-dessus
+  (c'était `.gcloudignore`), mais on le garde. Réflexe complémentaire : lire aussi les LOGS RUNTIME
+  (`gcloud run services logs read <svc> --region … --limit 50`) — « failed to listen on PORT » est générique, le vrai
+  message est dans les logs du conteneur ; et les LOGS DE BUILD (`gcloud builds log --region <r> <id>`) pour un échec de build.
 - ⚠️ **`Dockerfile` : `ENV NODE_ENV=production` APRÈS `npm ci`, pas avant** (leçon MCP-CLOUDRUN-DEPLOY 2026-07-13,
   2 agents) : `NODE_ENV=production` avant l'install fait sauter les devDependencies → `tsx` (runtime TS du serveur)
   absent de l'image → `CMD npx tsx` retélécharge à chaud à chaque cold start (supply-chain + panne). Installer avec

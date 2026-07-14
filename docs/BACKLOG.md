@@ -19,23 +19,32 @@
   garde anti-perte : local réel + Drive divergent → `conflict`, jamais d'écrasement auto) + `SyncConflictModal` global
   (résumé « cet appareil vs Drive ») + `SyncStatusBanner` (alerte déconnexion/erreur push) + `flushPush` au masquage
   d'onglet + gate HARD-block (`LoginGate`). Discriminant git-stash prouvé. **Marc : mettre `VITE_GOOGLE_GATE=1` sur Vercel.**
-- **`[MCP-RETIREMENT-VERDICT]`** 🔧 money-critical — `get_retirement_outlook` compare les RENTES PUBLIQUES SEULES à la
-  cible (`meetsIncomeTarget=false`) en IGNORANT le décaissement du portefeuille que le moteur émet (RetraitREER/CELI) →
-  « sous la cible » alors que MC=100 %. Audit **CONFIRMED** (finding #4). Fix : ajouter les retraits (source unique) au
-  revenu de retraite + redéfinir le verdict sur revenu TOTAL ou `successProbabilityPct`. **Priorité (visible, a induit Marc en erreur).**
-- **`[MCP-PAYSLIP-BACKUP]`** 🔧 money-critical — `driveStateSource.saveState` écrase le blob Drive SANS backup ni garde
-  anti-conflit et renvoie `backupPath:null`, alors que la description du tool promet une « sauvegarde horodatée ». Audit
-  **CONFIRMED** (finding #5, même famille que la perte). Fix : vrai backup Drive avant overwrite OU corriger la spec + garde
-  de concurrence (relire `updatedAt`, refuser si Drive a avancé depuis le get).
-- **`[MCP-TAX-COUPLE]`** 🔧 money-critical — `get_tax_situation` somme les 2 salaires et impose comme UNE personne
-  (`getTaxSituation.tool.ts:28,34`) → +11 300 $/an de trop pour un couple à 2 revenus (fiscalité individuelle). Audit
-  **PARTIAL** (finding #2, 3/3 adversarial). ≈ nul pour Marc (mono-salarié). Fix : per-conjoint puis somme (aligner sur le moteur `taxDecember.ts:369-395`) + test discriminant couple 60/60 → ~22 k$/36 %.
-- **`[MCP-STALE-FRESHNESS]`** 🔧 — le connecteur MCP sert la copie Drive sans jamais signaler qu'elle est PÉRIMÉE (jour où
-  l'app n'a pas poussé). Fix : exposer l'âge du blob (`updatedAt`) dans les tools → Claude sait si les données sont fraîches.
-- **`[PROJ-TAXPAID-LABEL]`** 🔧 — `totalTaxesPaid` (projection.ts:1444) n'agrège que les régularisations d'avril → négatif
-  pour un gros cotisant REER, exposé comme « impôt total payé » (getProjection.tool.ts:82) + corrompt taxLeakage/avgEfficiency
-  (MC). Audit **PARTIAL** non-money-critical (finding #3, conservation 20/20 verte). Fix : renommer « régularisations fiscales
-  nettes », ne pas surfacer comme impôt total, `Math.max(0, …)` sur taxLeakage/efficiency.
+- **`[MCP-RETIREMENT-VERDICT]`** ✅ **LIVRÉ 2026-07-14 (PR MCP v0.6.0)** — `get_retirement_outlook` expose désormais le
+  décaissement du portefeuille (`incomeSources.portfolioWithdrawals`, retraits REER/CELI + loyers, moyenne 1re année déflatée
+  par point) et `meetsIncomeTarget` est basé sur la SOUTENABILITÉ du plan (`minNetWorth > 0` + MC ≥ 85 si demandé) — plus
+  jamais « sous la cible » pour un plan autofinancé (MC 98 %). NB mesuré : le décaissement NON-ENREGISTRÉ n'a pas de champ
+  moteur (`Retrait*`) → sommer les revenus sous-estime toujours (3 923 $ identifiables vs cible 5 500 $ sur un plan qui
+  tient) → verdict = signal moteur, pas somme. Discriminant git-stash prouvé (DINK : false→true).
+- **`[MCP-PAYSLIP-BACKUP]`** ✅ **LIVRÉ 2026-07-14** — `driveStateSource.saveState` : backup Drive horodaté
+  (`financeai-sync.json.<ISO>.bak.json`, rolling 5, appDataFolder) AVANT tout écrasement, FAIL-CLOSED (backup impossible →
+  write refusé) ; garde de concurrence (`updatedAt` a avancé depuis la lecture → refuse, rien d'écrasé, cache store invalidé
+  → le retry relit du frais). `backupPath` désormais réel côté Drive (spec des apply_* tenue). Discriminant prouvé.
+- **`[MCP-TAX-COUPLE]`** ✅ **LIVRÉ 2026-07-14** — `get_tax_situation` calcule PAR CONJOINT puis somme (aligné moteur
+  `taxDecember.ts:369-395`) ; `marginalRatePct` = marginal du conjoint au plus haut revenu (jamais celui du total fusionné) ;
+  détail `perUser`. Discriminant : couple 60/60 → ~22 k$/36,1 % (l'ancien code rendait 33 435 $/45,7 %). Solo inchangé (Marc).
+- **`[MCP-STALE-FRESHNESS]`** ✅ **LIVRÉ 2026-07-14** — `mcp/state/freshness.ts` : la source Drive publie l'`updatedAt` du
+  blob lu/écrit ; `withState` appose une note de fraîcheur à CHAQUE réponse (date + âge ; > 6 h → avertissement « possiblement
+  périmées, ouvre l'app pour pousser »). Claude sait désormais quand la copie Drive est vieille.
+- **`[PROJ-TAXPAID-LABEL]`** 🔶 **partiellement livré 2026-07-14** — surface MCP faite : `get_projection` ET `simulate_what_if`
+  renomment le champ en `netTaxSettlements`/`netTaxSettlementsDelta` + note explicite (« PAS l'impôt total payé »). RESTE
+  (moteur, non-money-critical) : renommer/documenter `totalTaxesPaid` côté `projection.ts:1444` et borner
+  `taxLeakage`/`avgEfficiency` (`Math.max(0, …)`, monteCarlo.ts:106/137 — efficacité > 100 % possible avec un compteur
+  négatif). ⚠️ touche des seuils de tests MC → re-baseliner prudemment.
+- **`[MCP-WRITE-VERSION-TOKEN]`** 🔧 (durcissement, panel 2026-07-14) — la garde de concurrence Drive (`lastSeenUpdatedAt`)
+  est PROCESS-WIDE : elle protège contre l'app qui pousse entre lecture et écriture MCP (l'incident), mais DEUX tool-calls
+  MCP concurrents (2 sessions du même user) dont les mutations partent du même cache peuvent encore se marcher dessus
+  (fenêtre = durée d'un handler ; writes désormais sérialisés par mutex + refus journalisé). Vrai fix : jeton de version
+  par appel plumbé via `StateStore.get()` → `{state, version}` et `save(next, expectedVersion)`. Effort M.
 - **`[CELI-ASSET-NUDGE]`** 🔧 — l'app suit les virements CELI sortants mais pas le compte destinataire → CELI affiché 0 malgré
   ~24 k$ cotisés (patrimoine sous-estimé). Audit **CONFIRMED** (finding #6). Fix (produit, NO-fake-data : ne PAS dériver celi=Σvirements =
   coût, pas valeur marché) : NUDGE onboarding « tu vires vers ton CELI mais aucun avoir CELI saisi → ajoute-les ». Router UX.
@@ -43,6 +52,12 @@
 - **`[SYNC-FETCH-TIMEOUT]`** 🔧 (suivi panel SYNC-ANTI-CLOBBER) — les fetch Google/Drive (`services/googleDrive/driveAppData.ts`) n'ont AUCUN timeout/`AbortController` → un réseau « dégradé » (Google lent) peut faire pendre `fetchUserIdentity`/`readDrive` indéfiniment (mitigé côté UI par la trappe LoginGate à 10 s, mais la racine reste). + `fetch(..., {keepalive:true})` pour fiabiliser le push `flushPush` au `pagehide`. Effort M.
 - **`[A11Y-CHECK-CONTRAST-DRIFT]`** 🔧 (dette outillage) — `scripts/check-contrast.ts` utilise des valeurs de tokens PÉRIMÉES (`surface #151922` au lieu de `#0E1014` ; `primary #10b981` = l'ancien vert au lieu de `#e6eaf2`) → il ne teste pas les vrais combos actuels (rose bannière, superpositions). Réaligner sur `tailwind.config.js`.
 - **`[A11Y-GHOST-BUTTON-PROMINENCE]`** 🔧 (design-system) — le variant `ghost`/`outline` de `components/ui/Button.tsx` (`bg-white/5 border-white/10`, ~1,1-1,8:1) échoue WCAG 1.4.11 (prominence &lt; 3:1), utilisé dans ~28 fichiers. `GATE-CTA-CONTRAST` n'avait traité qu'un CTA primaire. Fix au niveau du design-system.
+- **`[MCP-TAX-FHSA-BALANCE]`** 🔧 (pré-existant, trouvé par le panel 2026-07-14) — `getTaxSituation.tool.ts` passe `u.fhsaBalance`
+  (un SOLDE) comme cotisation CELIAPP ANNUELLE à `calculateFiscalReport` → sur-déduit (sous-estime l'impôt) dès que le solde
+  dépasse la cotisation de l'année. Antérieur au fix per-conjoint (l'ancien code sommait pareil). Fix : champ de cotisation
+  annuelle dédié ou clamp au plafond CELIAPP annuel. + Limite documentée : un conjoint SANS salaire brut mais avec
+  `rrspContributed > 0` n'a aucun bénéfice fiscal (correct — la déduction ne réduit que le revenu de SON titulaire ; l'ancien
+  code l'appliquait à tort au revenu fusionné de l'autre).
 
 ## Convention (cochage par Claude au merge)
 - Chaque item Claude-faisable porte un **`[ID]`** entre crochets. **Claude coche lui-même**

@@ -21,7 +21,14 @@
 > (CONFIRMED : écrit Drive sans backup ni garde de concurrence), `MCP-TAX-COUPLE` (PARTIAL : fusionne les 2 salaires, ≈nul pour Marc mono-salarié),
 > `PROJ-TAXPAID-LABEL` (PARTIAL non-money-crit : `totalTaxesPaid` mal nommé), `CELI-ASSET-NUDGE` (CONFIRMED : virements CELI suivis mais compte
 > destinataire non → CELI=0). Moteur impôt couple **REFUTED** (déjà per-conjoint, aucun bug). **⚠️ Les fixes MCP requièrent un REDÉPLOIEMENT Cloud Run.**
-> **Suite proposée** : `MCP-RETIREMENT-VERDICT` (le plus visible) en PR next (redéploiement Cloud Run), puis `MCP-PAYSLIP-BACKUP`.
+> **✅ LOT MCP v0.6.0 LIVRÉ (même session, 2e PR)** : les 4 items MCP + surface TAXPAID faits — `MCP-RETIREMENT-VERDICT`
+> (décaissement visible + verdict = soutenabilité minNetWorth/MC ; ⚠️ leçon : le décaissement NON-ENREGISTRÉ n'a pas de champ
+> `Retrait*` moteur → toute somme de revenus retraite depuis chartData SOUS-estime, cf CLAUDE.md), `MCP-TAX-COUPLE`
+> (per-conjoint, discriminant 60/60 → 22 126 $/36,1 % vs fusionné 33 435 $/45,7 %), `MCP-PAYSLIP-BACKUP` (backup Drive
+> horodaté rolling 5 FAIL-CLOSED + garde de concurrence updatedAt + cache store invalidé sur échec), `MCP-STALE-FRESHNESS`
+> (note de fraîcheur sur chaque réponse withState, seuil 6 h), `PROJ-TAXPAID-LABEL` surface (`netTaxSettlements` + note ;
+> reliquat moteur au BACKLOG). Discriminants git-stash prouvés (8 tests échouent sur l'ancien code). v0.6.0.
+> **⚠️ ACTION MARC : redéployer Cloud Run** (`mcp/deploy.sh` depuis son poste) pour activer v0.6.0 sur claude.ai.
 >
 > ## 📊 Session 2026-07-13 — MCP pour claude.ai : Lot 1 what-if + séries LIVRÉ, chantier Cloud Run relancé
 > **Demande Marc** : parler à Claude de ses VRAIES finances depuis claude.ai web/mobile (pas seulement Desktop), déposer des

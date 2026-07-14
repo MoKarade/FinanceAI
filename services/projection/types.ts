@@ -169,6 +169,9 @@ export interface ProjectionResult {
     delayPensions?: boolean;
     gainVsAuto?: number;
     successRate?: number | null;
+    /** Survie BRUTE Monte Carlo (% de runs finissant patrimoine > 0). ⚠️ `successRate` est ÉCRASÉ
+     *  par le FVI quand MC tourne (V65) — pour un verdict de soutenabilité, utiliser CE champ. */
+    survivalRatePct?: number | null;
     fvi?: number | null;
     expertMetrics?: {
         swr: number;

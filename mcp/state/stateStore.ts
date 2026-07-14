@@ -53,9 +53,18 @@ export function makeStateStore(
                 "$FINANCEAI_STATE_FILE doit pointer vers un fichier accessible en écriture.",
             );
         }
-        const res = await source.saveState(next);
-        cache = { state: next, at: now() }; // le cache reflète immédiatement l'écriture
-        return res;
+        try {
+            const res = await source.saveState(next);
+            cache = { state: next, at: now() }; // le cache reflète immédiatement l'écriture
+            return res;
+        } catch (err) {
+            // Échec d'écriture (dont CONFLIT de concurrence Drive : le blob a avancé entre-temps) →
+            // le cache est suspect (il peut porter l'état PÉRIMÉ qui a causé le conflit). On
+            // l'invalide pour que le prochain get() relise la source fraîche — c'est ce qui rend
+            // le « relance le tool » du message de conflit réellement efficace.
+            cache = null;
+            throw err;
+        }
     };
 
     return { get, save, canWrite: isWritableSource(source) };

@@ -74,6 +74,66 @@ export interface DriveFileRef {
     modifiedTime: string;
 }
 
+/** Réf enrichie (avec nom) pour lister des fichiers appData arbitraires (ex. backups .bak.json). */
+export interface AppDataFileRef extends DriveFileRef {
+    name: string;
+}
+
+/**
+ * Liste les fichiers d'appDataFolder dont le nom CONTIENT `nameContains` (ex. `.bak.json` pour les
+ * sauvegardes du connecteur). Sert au pruning des backups — pageSize couvre large (les backups sont
+ * plafonnés bien en dessous).
+ */
+export async function listAppDataFiles(
+    token: string,
+    nameContains: string,
+    fetchFn?: FetchLike,
+): Promise<AppDataFileRef[]> {
+    const f = resolveFetch(fetchFn);
+    const params = new URLSearchParams({
+        spaces: 'appDataFolder',
+        q: `name contains '${nameContains}'`,
+        fields: 'files(id,name,modifiedTime)',
+        pageSize: '50',
+    });
+    const res = await f(`${DRIVE_FILES}?${params.toString()}`, { headers: authHeader(token) });
+    if (!res.ok) await failFromResponse(res);
+    const data = (await res.json()) as { files?: AppDataFileRef[] };
+    return data.files ?? [];
+}
+
+/**
+ * Crée un fichier arbitraire dans appDataFolder (multipart métadonnées + contenu JSON). Retourne
+ * l'id créé. Base commune de `createSyncFile` et des BACKUPS horodatés du connecteur MCP.
+ */
+export async function createAppDataFile(
+    token: string,
+    name: string,
+    content: unknown,
+    fetchFn?: FetchLike,
+): Promise<string> {
+    const f = resolveFetch(fetchFn);
+    const boundary = `fai-${Math.random().toString(36).slice(2)}`;
+    const metadata = { name, parents: ['appDataFolder'] };
+    const body =
+        `--${boundary}\r\n` +
+        'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+        `${JSON.stringify(metadata)}\r\n` +
+        `--${boundary}\r\n` +
+        'Content-Type: application/json\r\n\r\n' +
+        `${JSON.stringify(content)}\r\n` +
+        `--${boundary}--`;
+    const res = await f(`${DRIVE_UPLOAD}?uploadType=multipart&fields=id`, {
+        method: 'POST',
+        headers: { ...authHeader(token), 'Content-Type': `multipart/related; boundary=${boundary}` },
+        body,
+    });
+    if (!res.ok) await failFromResponse(res);
+    const data = (await res.json()) as { id?: string };
+    if (!data.id) throw new DriveError('Création du fichier sans id retourné');
+    return data.id;
+}
+
 /** Cherche le fichier de sync dans appDataFolder. Retourne sa réf ou null s'il n'existe pas. */
 export async function findSyncFile(token: string, fetchFn?: FetchLike): Promise<DriveFileRef | null> {
     const f = resolveFetch(fetchFn);
@@ -96,26 +156,7 @@ export async function createSyncFile(
     envelope: SyncEnvelope,
     fetchFn?: FetchLike,
 ): Promise<string> {
-    const f = resolveFetch(fetchFn);
-    const boundary = `fai-${Math.random().toString(36).slice(2)}`;
-    const metadata = { name: SYNC_FILE_NAME, parents: ['appDataFolder'] };
-    const body =
-        `--${boundary}\r\n` +
-        'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
-        `${JSON.stringify(metadata)}\r\n` +
-        `--${boundary}\r\n` +
-        'Content-Type: application/json\r\n\r\n' +
-        `${JSON.stringify(envelope)}\r\n` +
-        `--${boundary}--`;
-    const res = await f(`${DRIVE_UPLOAD}?uploadType=multipart&fields=id`, {
-        method: 'POST',
-        headers: { ...authHeader(token), 'Content-Type': `multipart/related; boundary=${boundary}` },
-        body,
-    });
-    if (!res.ok) await failFromResponse(res);
-    const data = (await res.json()) as { id?: string };
-    if (!data.id) throw new DriveError('Création du fichier sans id retourné');
-    return data.id;
+    return createAppDataFile(token, SYNC_FILE_NAME, envelope, fetchFn);
 }
 
 /** Lit et parse le contenu du fichier de sync. */

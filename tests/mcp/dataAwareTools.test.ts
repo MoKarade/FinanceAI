@@ -53,6 +53,10 @@ async function callJson(handler: Handler, args: Record<string, unknown> = {}): P
 function karimState(): AppState {
     return normalizeAppState(TEST_PERSONAS.find((p) => p.id === 'karim-immigre')!.build());
 }
+// Couple DINK (2 salaires, retraite autofinancée par le portefeuille) — cas des fixes 2026-07-14.
+function dinkState(): AppState {
+    return normalizeAppState(TEST_PERSONAS.find((p) => p.id === 'jeune-couple-dink')!.build());
+}
 function providerFor(state: AppState): StateProvider {
     const src: StateSource = { description: 'fixture', loadRaw: async () => JSON.stringify(state) };
     return makeStateProvider(src, { ttlMs: 0 });
@@ -88,14 +92,25 @@ describe('Lot 1 — get_projection', () => {
         // Réel ≤ nominal (déflaté par l'inflation).
         expect(out.finalNetWorthReal as number).toBeLessThanOrEqual(out.finalNetWorthNominal as number);
         expect(Array.isArray(out.byScenario)).toBe(true);
+        // [PROJ-TAXPAID-LABEL] : plus JAMAIS de champ « totalTaxesPaid » (compteur de régularisations
+        // d'avril, négatif pour un gros cotisant REER, présenté à tort comme l'impôt total payé) —
+        // renommé netTaxSettlements + note explicative.
+        expect(out).not.toHaveProperty('totalTaxesPaid');
+        expect(Number.isFinite(out.netTaxSettlements as number)).toBe(true);
+        expect(String(out.netTaxSettlementsNote)).toMatch(/N'EST PAS l'impôt total/);
     });
 
-    it('Monte Carlo renvoie une probabilité de réussite', async () => {
+    it('Monte Carlo renvoie la SURVIE BRUTE (0-100), distincte du FVI composite', async () => {
         const h = captureTool(registerGetProjection, providerFor(karimState()));
         const out = await callJson(h, { years: 15, scenario: 'BASE', monteCarlo: true });
-        const mc = out.monteCarlo as Record<string, unknown> | null;
+        const mc = out.monteCarlo as Record<string, number | null> | null;
         expect(mc).not.toBeNull();
-        expect(mc!.successProbabilityPct).not.toBeUndefined();
+        // [MCP-RETIREMENT-VERDICT] successProbabilityPct = survivalRatePct moteur (% de runs avec
+        // patrimoine final > 0), PAS result.successRate (écrasé par le FVI quand MC tourne).
+        expect(typeof mc!.successProbabilityPct).toBe('number');
+        expect(mc!.successProbabilityPct as number).toBeGreaterThanOrEqual(0);
+        expect(mc!.successProbabilityPct as number).toBeLessThanOrEqual(100);
+        expect(typeof mc!.financialVitalityIndex).toBe('number'); // le FVI reste exposé À CÔTÉ
     });
 });
 
@@ -110,6 +125,42 @@ describe('Lot 1 — get_tax_situation', () => {
         expect(out.marginalRatePct as number).toBeGreaterThan(0);
         expect(out.celiRoomRemaining as number).toBeGreaterThanOrEqual(0);
         expect(out.reerRoomRemaining as number).toBeGreaterThanOrEqual(0);
+    });
+
+    it('[MCP-TAX-COUPLE] couple 60k/60k imposé PAR CONJOINT, jamais fusionné en un contribuable à 120k (discriminant)', async () => {
+        // Fiscalité canadienne = individuelle. Mesuré (utils/tax réel, 2026) : 2×60k = 22 126 $
+        // (marginal 36,1 %/conjoint) vs fusionné 120k = 33 435 $ (45,7 %) → l'ancien code
+        // (computeBaseGrossAnnual → UN calculateFiscalReport) sur-estimait de ~11 300 $/an.
+        // Ce test ÉCHOUE sur l'ancien code (totalTax ~33 435, marginal 45,7).
+        const state = karimState();
+        state.config.users = [
+            { ...state.config.users[0], name: 'A', grossSalary: 5000, netSalary: 3800, rrspContributed: 0, fhsaBalance: 0 },
+            { ...(state.config.users[1] ?? state.config.users[0]), name: 'B', grossSalary: 5000, netSalary: 3800, rrspContributed: 0, fhsaBalance: 0 },
+        ] as typeof state.config.users;
+        const h = captureTool(registerGetTaxSituation, providerFor(state));
+        const out = await callJson(h, { year: 2026 });
+
+        expect(out.grossAnnualIncome).toBe(120000);
+        // Impôt du couple ≈ 2× impôt individuel 60k (22 126 $), PAS l'impôt d'un solo 120k (33 435 $).
+        expect(out.totalTax as number).toBeGreaterThan(20000);
+        expect(out.totalTax as number).toBeLessThan(25000);
+        // Marginal = celui d'un conjoint à 60k (36,1 %), jamais celui du total ménage (45,7 %).
+        expect(out.marginalRatePct as number).toBeLessThan(40);
+        // Détail par contribuable exposé (2 entrées symétriques).
+        const perUser = out.perUser as Array<Record<string, number>>;
+        expect(perUser).toHaveLength(2);
+        expect(perUser[0].totalTax).toBe(perUser[1].totalTax); // symétrie 60k/60k
+        expect(perUser[0].grossAnnual).toBe(60000);
+    });
+
+    it('[MCP-TAX-COUPLE] solo : totaux INCHANGÉS par le refactor per-conjoint (non-régression)', async () => {
+        // Un seul salarié → per-conjoint ≡ calcul unique : mêmes totaux qu'avant le fix.
+        const h = captureTool(registerGetTaxSituation, providerFor(karimState()));
+        const out = await callJson(h, { year: 2026 });
+        const perUser = out.perUser as Array<Record<string, number>>;
+        expect(perUser).toHaveLength(1);
+        expect(perUser[0].totalTax).toBe(out.totalTax);
+        expect(perUser[0].marginalRatePct).toBe(out.marginalRatePct);
     });
 });
 
@@ -137,10 +188,32 @@ describe('Lot 1 — get_retirement_outlook', () => {
         const src = out.incomeSources as Record<string, number>;
         expect(src.governmentPensionsNominal).toBeGreaterThanOrEqual(src.governmentPensions);
         expect(src.privatePensionsNominal).toBeGreaterThanOrEqual(src.privatePensions);
-        // RÉGRESSION CLÉ : le verdict compare le revenu RÉEL à la cible (en $ d'aujourd'hui),
-        // PAS le nominal (sinon un revenu 2064 « battait » une cible 2026 à tort).
+        // [MCP-RETIREMENT-VERDICT] : le verdict est basé sur la SOUTENABILITÉ du plan (patrimoine
+        // jamais épuisé PENDANT LA RETRAITE, sans MC), plus jamais sur « rentes seules ≥ cible »
+        // (qui ignorait le décaissement) ni sur le min de TOUT l'horizon (faux négatif si creux
+        // transitoire en accumulation — finding panel).
         const target = out.targetMonthlyIncome as number;
-        expect(out.meetsIncomeTarget).toBe(target > 0 && real >= target);
+        expect(out.meetsIncomeTarget).toBe(target > 0 && (out.minRetirementNetWorth as number) > 0);
+    });
+
+    it('[MCP-RETIREMENT-VERDICT] DINK autofinancé : décaissement VISIBLE + verdict positif (discriminant)', async () => {
+        // Persona jeune-couple-dink : rentes publiques ~903 $/mois réels << cible 5 500 $, mais le
+        // portefeuille (~1,5 M$ à la retraite) finance le reste — plan soutenable (MC ~98 %).
+        // ANCIEN code : meetsIncomeTarget=false (« sous la cible ») car rentes seules comparées à la
+        // cible → recommandation à l'envers (sur-épargner). NOUVEAU : décaissement exposé + verdict
+        // sur la soutenabilité (minNetWorth > 0) → true. Ce test ÉCHOUE sur l'ancien code.
+        const h = captureTool(registerGetRetirementOutlook, providerFor(dinkState()));
+        const out = await callJson(h, { monteCarlo: false });
+        const src = out.incomeSources as Record<string, number>;
+        // Le décaissement du portefeuille est désormais VISIBLE (mesuré ~3 020 $/mois réels).
+        expect(src.portfolioWithdrawals).toBeGreaterThan(1000);
+        // Le revenu total identifiable dépasse largement les rentes seules (mesuré 3 923 vs 903).
+        const real = out.projectedRetirementIncomeMonthly as number;
+        expect(real).toBeGreaterThan((src.governmentPensions + src.privatePensions) * 2);
+        // Verdict : le plan FINANCE la cible (patrimoine jamais épuisé EN RETRAITE) malgré rentes < cible.
+        expect(out.minRetirementNetWorth as number).toBeGreaterThan(0);
+        expect(out.meetsIncomeTarget).toBe(true);
+        expect(String(out.verdict)).toMatch(/FINANCE le train de vie/);
     });
 });
 

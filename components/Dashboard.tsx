@@ -24,6 +24,7 @@ import { Tab as TabEnum } from '../types';
 import { formatCAD, formatPercent, formatSigned } from '../utils/format';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { logError } from '../services/errorLogger';
+import { computeInvestmentsValue, toCurrencyFactor } from '../services/portfolio';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { PrivateBlock } from './ui/PrivateBlock';
 
@@ -107,6 +108,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     // lastProjection.chartData (plus de formule ad-hoc). Sync garantie avec l'onglet Futur.
     const lastProjection = useFinanceStore(s => s.lastProjection);
     const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
+    // [ASSET-FX-DISPLAY] prix des actifs en devise NATIVE → conversion CAD pour toute valeur/gain affiché.
+    const fxRates = useFinanceStore(s => s.fxRates);
 
     // [EP-3] KPI Futur dérivé en amont du rendu. no-silent-failure : typeof NaN === 'number'
     // est `true` → on EXIGE une valeur FINIE. Un dernier point présent mais NetWorth non fini =
@@ -160,7 +163,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
             transactions.forEach((t) => {
                 if (!t.isDuplicate && !t.isTransfer) cash += t.amount;
             });
-            const portfolio = assets.reduce((sum, a) => sum + (a.quantity || 0) * (a.currentPrice || 0), 0);
+            // [ASSET-FX-DISPLAY] valeur CAD (prix natif × FX) via la source unique.
+            const portfolio = computeInvestmentsValue(assets, fxRates);
             return {
                 unifiedHistory: [],
                 latestTotals: { date: new Date().toISOString().split('T')[0], Total: cash + portfolio } as MarketDataPoint,
@@ -330,7 +334,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             segmentedData: { assets: indAssets, cash: cashList, credit: creditList },
             totalMonthlyPassive: passiveIncome
         };
-    }, [marketData, assets, timeRange, customStart, customEnd, transactions, initialBalances, debts, realEstateGoals]);
+    }, [marketData, assets, timeRange, customStart, customEnd, transactions, initialBalances, debts, realEstateGoals, fxRates]);
 
     const performance = useMemo(() => {
         if (unifiedHistory.length < 2) return { global: 0, diff: 0 };
@@ -568,7 +572,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         const quantity = ownedAsset?.quantity || 0;
                         const currentPrice = ownedAsset?.currentPrice || 0;
                         const hasPurchaseData = buyPrice && buyPrice > 0 && quantity > 0;
-                        const gainAbs = hasPurchaseData ? (currentPrice - buyPrice) * quantity : null;
+                        // [ASSET-FX-DISPLAY] gain $ affiché en CAD : (prix natif − achat natif) × qty × FX.
+                        // Le % reste un ratio de prix natifs (sans devise), inchangé.
+                        const gainAbs = hasPurchaseData
+                            ? (currentPrice - buyPrice) * quantity * toCurrencyFactor(fxRates, ownedAsset?.currency || 'CAD')
+                            : null;
                         const gainPct = hasPurchaseData ? ((currentPrice - buyPrice!) / buyPrice!) * 100 : null;
                         return (
                             <div

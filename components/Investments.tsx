@@ -23,6 +23,7 @@ import { MarketDataPoint } from '../services/finance';
 import { usePortfolioHistory } from '../hooks/usePortfolioHistory';
 import { StockChart } from './StockChart';
 import { ASSET_META } from '../services/assetMeta';
+import { assetValueCad, toCurrencyFactor } from '../services/portfolio';
 import { DividendPanel } from './investments/DividendPanel';
 import { formatCAD } from '../utils/format';
 import { ProjectionRequired } from './ui/ProjectionRequired';
@@ -136,6 +137,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
     // Wiring 2026-05: lecture de la projection vivante depuis le store.
     const lastProjection = useFinanceStore(s => s.lastProjection);
     const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
+    // [ASSET-FX-DISPLAY] prix des actifs en devise NATIVE → conversion CAD pour toute valeur affichée.
+    const fxRates = useFinanceStore(s => s.fxRates);
     const projectionHorizonYears = projection.years || 30;
     const horizonData = useMemo(() => {
         if (!lastProjection?.chartData?.length) return { snapshot: null, corrupt: false };
@@ -274,7 +277,9 @@ export const Investments: React.FC<InvestmentsProps> = ({
         // (c) ALLOCATION = portefeuille réel (assets). trend24h enrichi depuis le CSV par symbole si dispo.
         const FREQ_MAP: Record<string, number> = { Monthly: 12, Quarterly: 4, Yearly: 1 };
         const allocation = assets.map(a => {
-            const value = (a.quantity || 0) * (a.currentPrice || 0);
+            // [ASSET-FX-DISPLAY] valeur en CAD (prix natif × FX) — l'ancien qty×prix brut mélangeait
+            // USD/EUR/CAD (portefeuille sous-affiché de ~70 k$, incident Marc 2026-07-14).
+            const value = assetValueCad(a, fxRates);
             const meta = ASSET_META[a.symbol] || { name: a.name || a.symbol, sector: 'Autre', region: 'Autre', yield: 0, freq: 1 };
             const cur = latestValues[a.symbol] ?? 0;
             const prev = prevValues[a.symbol] ?? 0;
@@ -338,7 +343,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
             portfolioTrend,
             benchmarkTrend,
         };
-    }, [marketData, assets]);
+    }, [marketData, assets, fxRates]);
 
     // --- FILTERED DATA FOR CHART ---
     const filteredMarketData = useMemo(() => {
@@ -957,8 +962,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     // Try to find matching asset in props to get saved account type
                     const savedAsset = assets.find(a => asset.id.includes(a.symbol));
                     const accountType = savedAsset?.accountType || 'NON-ENREG';
-                    // Phase E.8 — affiche les stats DCA si purchases[] présent
-                    const purchaseStats = savedAsset ? computePurchaseStats({ ...savedAsset, currentPrice: asset.value / (savedAsset.quantity || 1) }) : null;
+                    // Phase E.8 — stats DCA si purchases[] présent. ⚠️ Prix NATIF de l'actif (comme
+                    // buyPrice/purchases[].price) — surtout PAS re-dérivé de asset.value, qui est
+                    // désormais en CAD ([ASSET-FX-DISPLAY]) : mélanger CAD et natif fausserait le gain.
+                    // (L'ancien `asset.value / quantity` était une identité du prix natif — plus maintenant.)
+                    const purchaseStats = savedAsset ? computePurchaseStats(savedAsset) : null;
 
                     return (
                         <div key={asset.id} className="premium-card border border-white/5 hover:border-white/20 p-5 rounded-2xl transition-all group relative overflow-hidden flex flex-col justify-between animate-premium-in shadow-xl">
@@ -1040,14 +1048,18 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                 <div className="mt-3 pt-3 border-t border-white/5">
                                     <div className="text-tiny text-info-300 uppercase font-bold mb-1">DCA · {purchaseStats.purchaseCount} achats</div>
                                     <div className="space-y-0.5 text-tiny">
+                                        {/* [ASSET-FX-DISPLAY] les stats DCA sont calculées en devise NATIVE
+                                            (prix comparés entre eux) → conversion CAD à l'AFFICHAGE seulement,
+                                            pour réconcilier avec la Valeur (CAD) de la même carte. Le % reste
+                                            un ratio natif, exact tel quel. */}
                                         <div className="flex justify-between">
                                             <span className="text-ink-400">Coût moyen</span>
-                                            <span className="font-mono text-ink-200">{formatCAD(purchaseStats.averageCost)}</span>
+                                            <span className="font-mono text-ink-200">{formatCAD(purchaseStats.averageCost * toCurrencyFactor(fxRates, savedAsset?.currency || 'CAD'))}</span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-ink-400">Gain total</span>
                                             <span className={`font-mono ${purchaseStats.totalGain >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                                {purchaseStats.totalGain >= 0 ? '+' : ''}{formatCAD(purchaseStats.totalGain)} ({purchaseStats.gainPct.toFixed(1)}%)
+                                                {purchaseStats.totalGain >= 0 ? '+' : ''}{formatCAD(purchaseStats.totalGain * toCurrencyFactor(fxRates, savedAsset?.currency || 'CAD'))} ({purchaseStats.gainPct.toFixed(1)}%)
                                             </span>
                                         </div>
                                     </div>

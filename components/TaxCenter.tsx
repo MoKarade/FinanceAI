@@ -9,6 +9,7 @@ import { BudgetConfig, Asset } from '../types';
 // Phase 4 A4: bascule sur services/claude.ts (Sonnet 4.6 + Vision)
 import { analyzePayslip } from '../services/claude';
 import { logError } from '../services/errorLogger';
+import { assetValueCad } from '../services/portfolio';
 import { calculateFiscalReport, calculateGrossFromNet } from '../services/tax';
 import { CAPITAL_GAINS_INCLUSION_STANDARD } from '../utils/tax';
 import { annualSalaryToMonthly } from '../utils/salary';
@@ -144,15 +145,10 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
     // [TC-FX-HARDCODE] taux de change RÉELS du store (avant : USD figé à 1,38 → impôt estimé faux).
     const fxRates = useFinanceStore((s) => s.fxRates);
     const investmentTaxData = useMemo(() => {
-        const fxOf = (cur: string | undefined): number => {
-            if (cur === 'USD' || cur === 'EUR') {
-                const r = fxRates?.[cur];
-                return Number.isFinite(r) ? (r as number) : 1; // repli 1 si taux absent/non chargé
-            }
-            return 1; // CAD (devise de base) ou devise inconnue
-        };
+        // [ASSET-FX-DISPLAY] routé sur la source unique assetValueCad (l'ancien fxOf local était une
+        // 3e implémentation de la même conversion — correcte mais divergente, repli muet inclus).
         const nonRegAssets = assets.filter(a => a.accountType === 'NON-ENREG' || a.accountType === 'CRYPTO');
-        const nonRegValue = nonRegAssets.reduce((sum, a) => sum + ((a.quantity || 0) * (a.currentPrice || 0) * fxOf(a.currency)), 0);
+        const nonRegValue = nonRegAssets.reduce((sum, a) => sum + assetValueCad(a, fxRates), 0);
 
         const estDividends = nonRegValue * EST_DIVIDEND_YIELD;
         const estCapitalGains = nonRegValue * EST_CAPITAL_GAINS_YIELD;

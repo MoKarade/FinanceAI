@@ -11,6 +11,7 @@ import React, { useState, useMemo } from 'react';
 import { Card } from '../ui/Card';
 import { optimizeAssetLocation, type AssetClass, type AccountType } from '../../services/projection/assetLocation';
 import { useFinanceStore } from '../../store/useFinanceStore';
+import { assetValueCad } from '../../services/portfolio';
 import { formatCAD } from '../../utils/format';
 import { Icon } from '../ui/Icon';
 
@@ -48,6 +49,8 @@ function classifyAccount(accountType: string | undefined): AccountType {
 
 export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGrossIncome }) => {
     const storeAssets = useFinanceStore(s => s.assets || []);
+    // [ASSET-FX-DISPLAY] prix natifs → montants CAD via la source unique.
+    const fxRates = useFinanceStore(s => s.fxRates);
 
     // Pré-remplit depuis les assets réels du store
     const initialHoldings = useMemo<Holding[]>(() => {
@@ -55,7 +58,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
             .filter(a => a.quantity > 0 && a.currentPrice > 0)
             .map(a => ({
                 assetClass: classifyAsset(a.symbol, undefined, undefined),
-                amount: Math.round(a.quantity * a.currentPrice),
+                amount: Math.round(assetValueCad(a, fxRates)),
                 currentAccount: classifyAccount(a.accountType),
             }));
         if (fromStore.length > 0) return fromStore;
@@ -64,7 +67,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
             { assetClass: 'us-equity', amount: 100000, currentAccount: 'CELI' },
             { assetClass: 'ca-equity', amount: 50000, currentAccount: 'NonReg' },
         ];
-    }, [storeAssets]);
+    }, [storeAssets, fxRates]);
 
     const [holdings, setHoldings] = useState<Holding[]>(initialHoldings);
 

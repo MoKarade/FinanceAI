@@ -6,6 +6,33 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Patrimoine affiché en VRAIS dollars CAD (`[ASSET-FX-DISPLAY]`, money-critical)] — 2026-07-14
+
+> Incident élucidé : « je devrais pas avoir 230k » — en fait SI. Les prix des actifs sont stockés en
+> devise NATIVE (USD/EUR/CAD) et 6 surfaces UI les sommaient SANS conversion → l'app affichait
+> 160 352 « $ » (69 k USD + 84 k EUR + 7 k CAD additionnés bruts) au lieu de ~230 k$ CAD réels.
+> Le connecteur MCP (fx-correct) donnait le bon chiffre — pris à tort pour un bug. Courtier : ~250 k$
+> (l'écart restant = cours périmés → `[PRICE-REFRESH-LIVE]` au BACKLOG).
+
+- **`assetValueCad`** (`services/portfolio.ts`) : source UNIQUE de la valeur CAD d'un actif (prix natif ×
+  `toCurrencyFactor` + garde NaN/Infinity) ; `computeAssetBreakdown`/`computeInvestmentsValue` routés dessus.
+- **5 surfaces corrigées** : `NetWorthByOwnerCard`/`netWorthByOwner` (signature + fxRates), allocation de
+  la page Investissements (valeurs, poids, dividendes annuels désormais en CAD), fallback patrimoine du
+  Dashboard, gains $ par position du Dashboard (le % reste un ratio natif), `HealthIndicator`,
+  `AssetLocationCard`. Les stats DCA repassent par le prix NATIF de l'actif (plus de dérivation depuis
+  la valeur CAD — mélange de devises évité).
+- **`csvExport`** : colonne `Value` documentée NATIVE par ligne (la colonne `Currency` la qualifie).
+- **Garde anti-récidive** : `tests/services/assetFxGuard.test.ts` scanne le code (volume prouvé, commentaires
+  strippés) et interdit toute multiplication `quantity × currentPrice` sans fx sur la ligne. Discriminant
+  git-stash prouvé (4 tests échouent sur l'ancien code).
+- **Panel adversarial (3 agents) — findings intégrés** : repli FX 1:1 et actif corrompu/sans devise désormais
+  JOURNALISÉS (`logErrorThrottled`, patron HARDEN-NETWORTH-NAN — le repli muet « fxRates vide → facteur 1 »
+  était le bug lui-même) ; panneau DCA d'Investments : coût moyen/gain total convertis en CAD à l'affichage
+  (ils étaient natifs sous une étiquette $ CAD — gain sous-affiché ~33 % sur un titre EUR) ; `TaxCenter`
+  routé sur `assetValueCad` (3e implémentation locale de la conversion éliminée).
+
+---
+
 ## [unreleased — Connecteur MCP v0.6.0 : verdicts honnêtes + écriture Drive sûre + fraîcheur] — 2026-07-14
 
 > Fixes des 4 items MCP de l'audit adversarial (12 agents) des réponses claude.ai. ⚠️ **Nécessite un

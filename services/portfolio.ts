@@ -10,6 +10,7 @@ import type {
   User,
 } from '../types';
 import { isSavingsNature } from '../utils/budget';
+import { logErrorThrottled } from './errorLogger';
 
 export interface AssetBreakdown {
   reer: number;
@@ -25,9 +26,59 @@ export interface MonthlyBudgetAggregates {
   savings: number;
 }
 
-const toCurrencyFactor = (fxRates: Record<string, number> | undefined, currency: string): number => {
-  if (!fxRates) return currency === 'CAD' ? 1 : 1;
-  return fxRates[currency] || 1;
+export const toCurrencyFactor = (fxRates: Record<string, number> | undefined, currency: string): number => {
+  // CAD (devise de base) ou devise absente → 1:1 légitime (l'absence de devise sur un ACTIF est
+  // signalée par assetValueCad, qui a le contexte). Devise ÉTRANGÈRE sans taux valide → repli 1:1
+  // MAIS JAMAIS silencieux (finding panel 2026-07-14 : le repli muet « {} → facteur 1 » est
+  // exactement le bug ASSET-FX-DISPLAY qui a sous-affiché ~70 k$ — s'il se reproduit via un fxRates
+  // vide/corrompu, on veut le voir dans les diagnostics). Throttlé 1×/devise (hot-path UI).
+  if (!currency || currency === 'CAD') return 1;
+  const r = fxRates?.[currency];
+  if (Number.isFinite(r) && (r as number) > 0) return r as number;
+  logErrorThrottled(`fx-fallback:${currency}`, {
+    source: 'network',
+    severity: 'warning',
+    message: `Taux ${currency}→CAD absent ou corrompu — repli 1:1 (valeurs en ${currency} SOUS-évaluées à l'affichage)`,
+    context: { currency, rate: r ?? null },
+  });
+  return 1;
+};
+
+/**
+ * [ASSET-FX-DISPLAY] Valeur CAD d'UN actif — LA source unique pour tout affichage/somme de placements.
+ * `currentPrice` est stocké en devise NATIVE du titre (AddStockForm : prix Finnhub USD/EUR/CAD + champ
+ * `currency`) → toute somme SANS `toCurrencyFactor` mélange les devises (incident Marc 2026-07-14 :
+ * l'app affichait 160 352 « $ » = 69 k USD + 84 k EUR + 7 k CAD additionnés bruts, vs ~230 k$ CAD réels
+ * — le patrimoine était SOUS-affiché de ~70 k$). Garde NaN/Infinity incluse (NAN-INPUT-HARDENING).
+ * Un test-garde (assetFxGuard) interdit toute nouvelle somme quantity×currentPrice hors de ce helper.
+ */
+export const assetValueCad = (
+  a: Pick<Asset, 'quantity' | 'currentPrice' | 'currency'> & { symbol?: string },
+  fxRates: Record<string, number> | undefined,
+): number => {
+  const raw = (a.quantity || 0) * (a.currentPrice || 0);
+  // Actif VALORISÉ sans devise (donnée legacy d'avant le champ `currency`) : traité 1:1 comme du
+  // CAD — correct pour du CAD legacy, SOUS-évalué pour un USD/EUR legacy → signalé (jamais muet),
+  // throttlé 1×/symbole. Le backfill propre est suivi au BACKLOG ([ASSET-FX-DISPLAY] note legacy).
+  if (!a.currency && raw !== 0) {
+    logErrorThrottled(`asset-no-currency:${a.symbol ?? '?'}`, {
+      source: 'storage',
+      severity: 'warning',
+      message: `Actif « ${a.symbol ?? '?'} » sans devise — traité comme CAD (sous-évalué si USD/EUR)`,
+      context: { symbol: a.symbol ?? null },
+    });
+  }
+  const v = raw * toCurrencyFactor(fxRates, a.currency);
+  if (Number.isFinite(v)) return v;
+  // Valeur corrompue (NaN/Infinity : import cassé, saisie manuelle) → 0$, mais JAMAIS en silence :
+  // l'actif disparaîtrait de TOUTES les surfaces sans trace (patron HARDEN-NETWORTH-NAN).
+  logErrorThrottled(`asset-value-nonfinite:${a.symbol ?? '?'}`, {
+    source: 'storage',
+    severity: 'warning',
+    message: `Valeur non finie pour l'actif « ${a.symbol ?? '?'} » — ignoré (0 $) dans les totaux`,
+    context: { symbol: a.symbol ?? null, quantity: a.quantity ?? null, currentPrice: a.currentPrice ?? null },
+  });
+  return 0;
 };
 
 /**
@@ -41,11 +92,7 @@ export const computeAssetBreakdown = (
   const breakdown: AssetBreakdown = { reer: 0, celi: 0, reee: 0, nonReg: 0, crypto: 0 };
 
   for (const a of assets) {
-    const factor = toCurrencyFactor(fxRates, a.currency);
-    // [NAN-INPUT-HARDENING] garde l'agrégat (aligné sur useDerivedFinancials) : `|| 0` rattrape NaN mais
-    // pas Infinity (quantité/prix divergent) → `Number.isFinite` couvre les deux.
-    const valRaw = (a.quantity || 0) * (a.currentPrice || 0) * factor;
-    const valCad = Number.isFinite(valRaw) ? valRaw : 0;
+    const valCad = assetValueCad(a, fxRates); // source unique (FX + garde NaN/Infinity)
     const type = (a.accountType || '').toUpperCase();
     if (type === 'REER') breakdown.reer += valCad;
     else if (type === 'CELI') breakdown.celi += valCad;
@@ -63,12 +110,7 @@ export const computeInvestmentsValue = (
   assets: Asset[],
   fxRates: Record<string, number>,
 ): number => {
-  return assets.reduce((sum, a) => {
-    const factor = toCurrencyFactor(fxRates, a.currency);
-    // [NAN-INPUT-HARDENING] idem computeAssetBreakdown : garde l'agrégat contre NaN/Infinity.
-    const v = (a.quantity || 0) * (a.currentPrice || 0) * factor;
-    return sum + (Number.isFinite(v) ? v : 0);
-  }, 0);
+  return assets.reduce((sum, a) => sum + assetValueCad(a, fxRates), 0);
 };
 
 /**

@@ -10,6 +10,7 @@ import { Card } from '../ui/Card';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import type { Asset, AssetOwner } from '../../types';
 import { computeNetWorthByOwner, defaultOwner } from '../../services/couple/netWorthByOwner';
+import { assetValueCad } from '../../services/portfolio';
 import { Icon } from '../ui/Icon';
 import { PrivateAmount } from '../ui/PrivateAmount';
 
@@ -23,6 +24,8 @@ const pct = (v: number, total: number): string => (total > 0 ? `${Math.round((v 
 
 export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets, setAssets }) => {
     const config = useFinanceStore((s) => s.config);
+    // [ASSET-FX-DISPLAY] les prix des actifs sont en devise NATIVE → conversion CAD obligatoire.
+    const fxRates = useFinanceStore((s) => s.fxRates);
     const users = (config?.users ?? []).filter(Boolean);
     // Mode couple = 2e utilisateur avec un nom (même définition que CoupleModeBadge).
     const isCouple = users.length >= 2 && !!users[1]?.name?.trim();
@@ -33,7 +36,7 @@ export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets
     const color1 = users[0]?.color || '#4f9d86';
     const color2 = users[1]?.color || '#5b82bf';
 
-    const bd = computeNetWorthByOwner(assets, 0, true);
+    const bd = computeNetWorthByOwner(assets, fxRates, 0, true);
 
     const setOwner = (symbol: string, owner: AssetOwner | undefined) => {
         setAssets(assets.map((a) => (a.symbol === symbol ? { ...a, owner } : a)));
@@ -69,7 +72,7 @@ export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets
                 <div className="space-y-1.5">
                     <div className="text-tiny text-ink-500 font-black uppercase tracking-widest mb-1">Attribuer par actif</div>
                     {assets.map((a) => {
-                        const value = (Number(a.currentPrice) || 0) * (Number(a.quantity) || 0);
+                        const value = assetValueCad(a, fxRates); // CAD (prix natif × FX)
                         return (
                             <div key={a.symbol} className="flex items-center justify-between gap-2 text-body bg-white/5 rounded px-2 py-1.5">
                                 <span className="text-ink-100 truncate">

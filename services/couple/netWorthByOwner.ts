@@ -8,6 +8,7 @@
 // Pur (aucun effet de bord) → entièrement testable.
 
 import type { Asset, AssetOwner, RegisteredAccountType } from '../../types';
+import { assetValueCad } from '../portfolio';
 
 export interface OwnerBreakdown {
     user1: number;
@@ -62,25 +63,33 @@ export function netWorthByOwner(holdings: readonly OwnableHolding[], isCouple = 
     return out;
 }
 
-/** Convertit des Asset (placements) en avoirs valorisés (prix courant × quantité). */
-export function assetsToHoldings(assets: readonly Asset[]): OwnableHolding[] {
+/**
+ * Convertit des Asset (placements) en avoirs valorisés EN CAD (prix natif × quantité × FX).
+ * [ASSET-FX-DISPLAY] `fxRates` OBLIGATOIRE : les prix sont stockés en devise NATIVE — l'ancienne
+ * version sommait USD+EUR+CAD bruts (patrimoine SOUS-affiché de ~70 k$, incident Marc 2026-07-14).
+ */
+export function assetsToHoldings(
+    assets: readonly Asset[],
+    fxRates: Record<string, number>,
+): OwnableHolding[] {
     return assets.map((a) => ({
-        value: (Number(a.currentPrice) || 0) * (Number(a.quantity) || 0),
+        value: assetValueCad(a, fxRates),
         accountType: a.accountType,
         owner: a.owner,
     }));
 }
 
 /**
- * Répartit le patrimoine total (placements + cash) entre conjoints.
- * Le cash (liquidités) est considéré comme conjoint par défaut.
+ * Répartit le patrimoine total (placements + cash) entre conjoints, en CAD.
+ * Le cash (liquidités, déjà en CAD) est considéré comme conjoint par défaut.
  */
 export function computeNetWorthByOwner(
     assets: readonly Asset[],
+    fxRates: Record<string, number>,
     cashJoint = 0,
     isCouple = true,
 ): OwnerBreakdown {
-    const holdings = assetsToHoldings(assets);
+    const holdings = assetsToHoldings(assets, fxRates);
     if (cashJoint > 0) holdings.push({ value: cashJoint, owner: 'joint' });
     return netWorthByOwner(holdings, isCouple);
 }

@@ -25,11 +25,13 @@ import { installGlobalErrorHandlers, logError } from './services/errorLogger';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { initAutoBackup } from './services/backupAuto';
 import { loadLockedProjection } from './services/lockedProjectionStore';
-import { initSync, runBootSync, schedulePush, pushNow, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, startDrivePolling, markApiKeysHydrated, type SyncStatus } from './services/sync/syncOrchestrator';
+import { initSync, runBootSync, schedulePush, pushNow, flushPush, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, startDrivePolling, markApiKeysHydrated, type SyncStatus } from './services/sync/syncOrchestrator';
 import { trackPageView } from './services/analytics';
 import { GuidedTour } from './components/tour/GuidedTour';
 import { startGuidedTour } from './components/tour/tourControl';
 import { PassphraseGate } from './components/auth/PassphraseGate';
+import { SyncConflictModal } from './components/sync/SyncConflictModal';
+import { SyncStatusBanner } from './components/sync/SyncStatusBanner';
 
 const GuideModal = lazyWithRetry(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })), 'GuideModal');
 // PH2-c — moteur de projection app-level LAZY-chargé : garde le bundle de BOOT léger (le code du
@@ -132,12 +134,23 @@ export const App: React.FC = () => {
         // Rafraîchissement « fluide » : reflète SEUL les changements de Drive (ex. doc rangé par le
         // connecteur MCP) sur intervalle + au retour sur l'onglet (garde anti-perte réutilisée).
         const stopPolling = startDrivePolling();
+        // Flush du push en attente quand l'onglet se masque/ferme : garantit que le DERNIER changement
+        // atteint Drive avant que Marc parte parler à Claude (sinon le debounce 8s pourrait ne jamais
+        // partir → le connecteur MCP lirait une copie périmée). No-op si non connecté / rien de neuf.
+        const onHide = () => {
+            if (typeof document !== 'undefined' && document.visibilityState === 'hidden') flushPush();
+        };
+        const onPageHide = () => flushPush();
+        if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onHide);
+        if (typeof window !== 'undefined') window.addEventListener('pagehide', onPageHide);
 
         return () => {
             clearTimeout(timer);
             clearTimeout(syncTimer);
             unsubSync();
             stopPolling();
+            if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onHide);
+            if (typeof window !== 'undefined') window.removeEventListener('pagehide', onPageHide);
         };
     }, []);
 
@@ -520,6 +533,10 @@ export const App: React.FC = () => {
 
     return (
         <div>
+            {/* Bandeau de statut sync EN TÊTE (in-flow → pousse le contenu, ne le recouvre pas) :
+                alerte « non connecté / non sauvegardé » ou « échec de sauvegarde ». Rendu null si
+                sync non configurée, en mode test, ou tout va bien. */}
+            <SyncStatusBanner />
             {/* PH2-c (clé de voûte) — moteur de projection AU NIVEAU APP (headless, rend null) :
                 publie store.lastProjection pour TOUS les onglets, indépendamment de l'onglet actif.
                 Garde no-fake-data interne (prérequis Futur salaire+placements+profil retraite).
@@ -625,6 +642,10 @@ export const App: React.FC = () => {
                 </Suspense>
             </Layout>
             <ToastContainer />
+            {/* Résolution de conflit de sync — overlay bloquant GLOBAL (anti-clobber Marc 2026-07-14) :
+                jamais d'écrasement auto, l'utilisateur choisit « cet appareil » vs « Drive » en voyant
+                le résumé de chaque côté. Monté ici → surgit au premier plan quel que soit l'onglet. */}
+            <SyncConflictModal />
             <PwaInstallBanner />
             {/* S-B (Loi 25) — consentement mesure d'audience, bandeau discret. */}
             <ConsentBanner />

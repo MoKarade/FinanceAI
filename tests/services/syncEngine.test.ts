@@ -98,95 +98,82 @@ describe('decideOnLoad — matrice anti-perte', () => {
 });
 
 /**
- * restoreIntent = login PAR LE GATE (« je me connecte pour RÉCUPÉRER mon compte »). Au gate, Drive
- * gagne dès qu'il a avancé (ou appareil jamais syncé) ; le local ne gagne que s'il est STRICTEMENT
- * en avance. JAMAIS de `conflict` (le gate n'a pas d'UI pour le résoudre). Bug Marc 2026-05-29 :
- * sans ça, le gate classait tout en conflit et montrait le local (mauvaises données) au lieu de
- * restaurer. Le boot normal (restoreIntent absent/false) garde la garde stricte (conflict possible).
+ * Reconnexion / gate : il n'y a PLUS d'exception « restoreIntent » (qui faisait gagner Drive même sur
+ * du LOCAL réel → une vieille copie Drive écrasait des données récentes à la reconnexion). Bug Marc
+ * 2026-07-14 : 230k$ de placements locaux clobberés par une copie Drive périmée (SPCX seul). UNE seule
+ * garde anti-perte : local vide → pull (restaure) ; local réel + Drive divergent → `conflict` (choix
+ * utilisateur, surfacé par l'UI globale SyncConflictModal), JAMAIS d'écrasement auto. Le cas légitime
+ * « nouvel appareil, je restaure » passe par la règle local-vide (hasMeaningfulData classe un défaut/
+ * onboarding frais comme vide).
  */
-describe('decideOnLoad — restoreIntent (gate : restauration explicite)', () => {
+describe('decideOnLoad — anti-clobber reconnexion (retrait restoreIntent, Marc 2026-07-14)', () => {
     const fresh = (over: Partial<SyncMeta> = {}): SyncMeta =>
         meta({ lastPulledUpdatedAt: 0, lastLocalHash: '', ...over });
 
-    it('GATE + appareil jamais syncé (méta vierge) + local NON-vide → pull (restaure)', () => {
+    it('DISCRIMINANT : méta vierge (reconnexion) + local RÉEL + Drive divergent → conflict (JAMAIS pull auto)', () => {
+        // Le piège EXACT : appareil déconnecté (méta vierge) avec des placements locaux réels, Drive
+        // porte une VIEILLE copie pauvre. AVANT le fix : restoreIntent → pull → local écrasé. APRÈS : conflict.
         const d = decideOnLoad({
-            drive: envelope({ updatedAt: 2000 }),
-            localIsEmpty: false,
-            localHash: 'bbbbbbbb',
-            meta: fresh(),
-            restoreIntent: true,
-        });
-        expect(d.action).toBe('pull');
-        expect(d.reason).toBe('gate-restaure');
-    });
-
-    it('GATE + Drive a avancé + local modifié (ex-conflit) → pull (Drive gagne, plus de blocage)', () => {
-        const d = decideOnLoad({
-            drive: envelope({ updatedAt: 2000 }),
-            localIsEmpty: false,
-            localHash: 'bbbbbbbb',
-            meta: meta({ lastPulledUpdatedAt: 1000, lastLocalHash: 'aaaaaaaa' }),
-            restoreIntent: true,
-        });
-        expect(d.action).toBe('pull');
-        expect(d.reason).toBe('gate-restaure');
-    });
-
-    it('GATE + Drive PAS avancé + local modifié (local strictement en avance) → push', () => {
-        const d = decideOnLoad({
-            drive: envelope({ updatedAt: 1000 }),
-            localIsEmpty: false,
-            localHash: 'cccccccc',
-            meta: meta({ lastPulledUpdatedAt: 1000, lastLocalHash: 'aaaaaaaa' }),
-            restoreIntent: true,
-        });
-        expect(d.action).toBe('push');
-        expect(d.reason).toBe('gate-local-en-avance');
-    });
-
-    it('GATE + rien n a bougé des deux côtés → noop', () => {
-        const d = decideOnLoad({
-            drive: envelope({ updatedAt: 1000 }),
-            localIsEmpty: false,
-            localHash: 'aaaaaaaa',
-            meta: meta({ lastPulledUpdatedAt: 1000, lastLocalHash: 'aaaaaaaa' }),
-            restoreIntent: true,
-        });
-        expect(d.action).toBe('noop');
-        expect(d.reason).toBe('gate-deja-sync');
-    });
-
-    it('BOOT normal (sans restoreIntent) + Drive avancé + local modifié → conflict (garde stricte)', () => {
-        const d = decideOnLoad({
-            drive: envelope({ updatedAt: 2000 }),
-            localIsEmpty: false,
-            localHash: 'bbbbbbbb',
-            meta: meta({ lastPulledUpdatedAt: 1000, lastLocalHash: 'aaaaaaaa' }),
-            // restoreIntent absent → false
+            drive: envelope({ updatedAt: 5000, payload: { state: { assets: [{ symbol: 'SPCX' }] } } }),
+            localIsEmpty: false, // l'appareil a les vraies données (230k$)
+            localHash: 'richlocal',
+            meta: fresh(), // méta vierge = déconnecté / jamais syncé via ce système
         });
         expect(d.action).toBe('conflict');
         expect(d.reason).toBe('divergence-deux-cotes');
     });
 
-    it('GATE + local VIDE → pull (la règle local-vide prime, avant la logique restoreIntent)', () => {
+    it('méta vierge + local réel + Drive avancé → conflict (pas de restauration destructrice)', () => {
+        const d = decideOnLoad({
+            drive: envelope({ updatedAt: 2000 }),
+            localIsEmpty: false,
+            localHash: 'bbbbbbbb',
+            meta: fresh(),
+        });
+        expect(d.action).toBe('conflict');
+        expect(d.reason).toBe('divergence-deux-cotes');
+    });
+
+    it('méta vierge MAIS contenu Drive == local (reconnexion sur données identiques) → noop (pas de conflit bruyant)', () => {
+        const identical = { state: { transactions: [{ id: 't1' }] } };
+        const d = decideOnLoad({
+            drive: envelope({ updatedAt: 2000, payload: identical }),
+            localIsEmpty: false,
+            localHash: hashPayload(identical), // == hash du payload Drive (clair)
+            meta: fresh(),
+        });
+        expect(d.action).toBe('noop');
+        expect(d.reason).toBe('contenu-identique');
+    });
+
+    it('local VIDE (nouvel appareil) → pull : la restauration légitime passe TOUJOURS (aucune perte possible)', () => {
         const d = decideOnLoad({
             drive: envelope(),
             localIsEmpty: true,
             localHash: 'x',
             meta: fresh(),
-            restoreIntent: true,
         });
         expect(d.action).toBe('pull');
         expect(d.reason).toBe('local-vide-restaurer');
     });
 
-    it('GATE + Drive ABSENT + local non-vide → push (première sync, rien à écraser)', () => {
+    it('local réel strictement en avance (Drive pas avancé depuis la dernière sync) → push (publie, pas de conflit)', () => {
+        const d = decideOnLoad({
+            drive: envelope({ updatedAt: 1000 }),
+            localIsEmpty: false,
+            localHash: 'cccccccc',
+            meta: meta({ lastPulledUpdatedAt: 1000, lastLocalHash: 'aaaaaaaa' }),
+        });
+        expect(d.action).toBe('push');
+        expect(d.reason).toBe('local-modifie');
+    });
+
+    it('Drive ABSENT + local réel → push (première sync, rien à écraser)', () => {
         const d = decideOnLoad({
             drive: null,
             localIsEmpty: false,
             localHash: 'bbbbbbbb',
             meta: fresh(),
-            restoreIntent: true,
         });
         expect(d.action).toBe('push');
         expect(d.reason).toBe('premiere-sync');

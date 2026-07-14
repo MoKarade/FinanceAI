@@ -33,7 +33,23 @@ export function LoginGate({ children }: LoginGateProps): React.ReactElement {
         return 'checking';
     });
     const [error, setError] = useState<string | null>(null);
+    // Anti-lockout : révèle la trappe d'échappement même SANS erreur explicite, si la connexion « pend »
+    // (réseau dégradé / Google lent — les fetch Google/Drive n'ont pas de timeout → une promesse peut ne
+    // jamais résoudre et laisser l'écran figé sur « Connexion en cours… » sans aucune affordance). Finding
+    // sécurité 2026-07-14. On ne l'arme QUE dans les états où un hang réseau est possible (`checking` =
+    // reprise silencieuse, `logging-in` = login interactif) → le hard-block reste « dur » sur l'écran
+    // `needs-login` au repos (l'utilisateur doit cliquer « Se connecter » ; une erreur révèle la trappe).
+    const [showEscape, setShowEscape] = useState(false);
     const started = useRef(false);
+
+    useEffect(() => {
+        if (phase !== 'checking' && phase !== 'logging-in') return;
+        const t = setTimeout(() => setShowEscape(true), 10000);
+        return () => clearTimeout(t);
+    }, [phase]);
+    useEffect(() => {
+        if (error) setShowEscape(true); // une erreur explicite révèle la trappe immédiatement
+    }, [error]);
 
     useEffect(() => {
         if (phase !== 'checking' || started.current) return;
@@ -101,15 +117,25 @@ export function LoginGate({ children }: LoginGateProps): React.ReactElement {
                     </button>
                 )}
 
-                {error && <p className="text-tiny text-rose-400 italic">{error}</p>}
+                {error && <p role="alert" className="text-tiny text-rose-400 italic">{error}</p>}
 
-                <button
-                    type="button"
-                    onClick={onEscape}
-                    className="text-tiny text-ink-500 underline underline-offset-2 hover:text-ink-200"
-                >
-                    Continuer sans me connecter
-                </button>
+                {/* Hard-block (choix Marc 2026-07-14) : pas d'accès tant que non connecté à Drive — la
+                    sauvegarde de tes données en dépend. Trappe d'URGENCE : révélée après un échec de
+                    connexion OU après un délai si la connexion « pend » (réseau dégradé), pour ne jamais
+                    t'enfermer dehors loin de tes propres données. `?nogate=1` en URL reste aussi dispo. */}
+                {showEscape ? (
+                    <button
+                        type="button"
+                        onClick={onEscape}
+                        className="inline-block min-h-[24px] px-1 py-2 text-tiny text-ink-400 underline underline-offset-2 hover:text-ink-200 focus-ring rounded"
+                    >
+                        Problème de connexion ? Continuer sans me connecter (données non sauvegardées)
+                    </button>
+                ) : (
+                    <p className="text-tiny text-ink-500 leading-snug">
+                        Connexion requise pour sauvegarder tes données automatiquement.
+                    </p>
+                )}
             </div>
         </div>
     );

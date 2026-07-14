@@ -77,8 +77,10 @@ import {
     connectAndSync,
     pushNow,
     pullNow,
+    flushPush,
     getSyncStatus,
     markApiKeysHydrated,
+    summarizeForConflict,
 } from '../../services/sync/syncOrchestrator';
 import { buildEnvelope } from '../../services/sync/syncEngine';
 import { isGateAuthedThisSession } from '../../services/sync/authGate';
@@ -138,6 +140,78 @@ describe('Flux gate → restauration (intégration, Drive mocké)', () => {
         expect(getSyncStatus().email).toBe('marc@example.com');
         expect(getSyncStatus().connected).toBe(true);
         expect(reloadMock).not.toHaveBeenCalled();
+    });
+});
+
+describe('summarizeForConflict — résumé « cet appareil vs Drive » (choix éclairé du conflit)', () => {
+    it('compte les placements et transactions d un payload persist Zustand', () => {
+        expect(summarizeForConflict({ state: { assets: [{}, {}, {}], transactions: [{}, {}] } })).toEqual({
+            assets: 3,
+            transactions: 2,
+        });
+    });
+    it('défensif : payload null (blob chiffré) / malformé / sans state → zéros (pas de crash)', () => {
+        expect(summarizeForConflict(null)).toEqual({ assets: 0, transactions: 0 });
+        expect(summarizeForConflict(undefined)).toEqual({ assets: 0, transactions: 0 });
+        expect(summarizeForConflict('bogus')).toEqual({ assets: 0, transactions: 0 });
+        expect(summarizeForConflict({ state: {} })).toEqual({ assets: 0, transactions: 0 });
+        expect(summarizeForConflict({ state: { assets: 'notarray' } })).toEqual({ assets: 0, transactions: 0 });
+    });
+});
+
+describe('ANTI-CLOBBER reconnexion (Marc 2026-07-14) — le local réel ne se perd JAMAIS en silence', () => {
+    it('reconnexion (méta vierge) + données locales RÉELLES + Drive divergent → CONFLICT, local NON écrasé', async () => {
+        // Le scénario EXACT de la perte : appareil déconnecté (méta vierge → aucune trace de sync) avec
+        // de vraies données (3 placements), Drive porte une VIEILLE copie pauvre (driveEnvelope = 1 actif).
+        // AVANT le fix : connectAndSync → restoreIntent → pull → localStorage écrasé par la copie Drive.
+        // APRÈS : conflit signalé, aucune écriture locale, l'utilisateur choisit via SyncConflictModal.
+        localStorage.setItem(STORE_KEY, JSON.stringify({
+            state: {
+                assets: [{ symbol: 'AAA' }, { symbol: 'BBB' }, { symbol: 'CCC' }],
+                transactions: [{ id: 'l1' }, { id: 'l2' }],
+                config: { users: [{ name: 'Marc', grossSalary: 108000, netSalary: 80000 }] },
+            },
+            version: 7,
+        }));
+
+        await connectAndSync();
+
+        // Conflit signalé (pas de pull auto), et le résumé « cet appareil vs Drive » est exposé.
+        expect(getSyncStatus().conflict).toBe(true);
+        expect(getSyncStatus().conflictSummary?.local.assets).toBe(3);
+        expect(getSyncStatus().conflictSummary?.drive.assets).toBe(1); // driveEnvelope = 1 actif (VFV)
+
+        // DISCRIMINANT : le localStorage N'A PAS été écrasé par la copie Drive (3 placements intacts).
+        // Sur l'ancien code (pull auto), il ne resterait que la seule VFV de Drive.
+        const persisted = JSON.parse(localStorage.getItem(STORE_KEY) as string);
+        expect(persisted.state.assets).toHaveLength(3);
+        expect(createBackupMock).not.toHaveBeenCalled(); // pas d'applyPulledPayload → pas d'écrasement
+    });
+
+    it('pendant un CONFLIT : flushPush ne pousse PAS (le modal n est pas court-circuité par un masquage d onglet)', async () => {
+        // Provoque un conflit (méta vierge + local réel + Drive divergent).
+        localStorage.setItem(STORE_KEY, JSON.stringify({
+            state: { assets: [{ symbol: 'AAA' }, { symbol: 'BBB' }], transactions: [{ id: 'l1' }], config: { users: [{ name: 'Marc', grossSalary: 108000 }] } },
+            version: 7,
+        }));
+        await connectAndSync();
+        expect(getSyncStatus().conflict).toBe(true);
+
+        const driveApi = await import('../../services/googleDrive/driveAppData');
+        const updateSpy = driveApi.updateSyncFile as ReturnType<typeof vi.fn>;
+        const createSpy = driveApi.createSyncFile as ReturnType<typeof vi.fn>;
+        updateSpy.mockClear();
+        createSpy.mockClear();
+
+        // Masquage d'onglet pendant le conflit → flushPush ne doit RIEN pousser (sinon il écraserait
+        // Drive et auto-résoudrait le conflit sans le choix utilisateur — finding money-critical).
+        flushPush();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(updateSpy).not.toHaveBeenCalled();
+        expect(createSpy).not.toHaveBeenCalled();
+        expect(getSyncStatus().conflict).toBe(true); // conflit intact, pas auto-résolu
     });
 });
 

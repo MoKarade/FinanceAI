@@ -6,6 +6,30 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Intégrité des données Drive : anti-perte STRICT + gate hard-block] — 2026-07-14
+
+### Sync Google Drive — plus JAMAIS d'écrasement automatique du local réel (`[SYNC-ANTI-CLOBBER]`)
+> Contexte : Marc a perdu 230k$ de placements — appareil silencieusement déconnecté (jeton expiré → aucun push),
+> puis reconnexion → `pull` qui a écrasé le local avec une vieille copie Drive (SPCX seul). Récupéré via auto-backup.
+- **`decideOnLoad` sans exception `restoreIntent`** (`services/sync/syncEngine.ts`) : une seule garde anti-perte —
+  local vide → pull (restaure) ; local RÉEL + Drive divergent → `conflict` (choix utilisateur), jamais d'écrasement
+  silencieux. Retrait du champ `restoreIntent` de `DecideOnLoadInput` et des 3 appelants (connect/gate/boot).
+- **`SyncConflictModal`** (`components/sync/SyncConflictModal.tsx`) : résolution de conflit GLOBALE (montée au niveau
+  App, surgit au premier plan quel que soit l'onglet), avec résumé « cet appareil vs Drive » (nb placements/transactions
+  + date Drive) pour un choix éclairé ; « Restaurer depuis Drive » (destructeur) protégé par une confirmation.
+- **`SyncStatusBanner`** (`components/sync/SyncStatusBanner.tsx`) : bandeau rouge in-flow dès que déconnecté-avec-données
+  ou push en erreur, avec bouton Reconnecter/Réessayer (« propose de me connecter dès que je ne le suis pas »).
+- **`flushPush`** (`services/sync/syncOrchestrator.ts`) : flush du push en attente au `visibilitychange hidden`/`pagehide`
+  → le dernier changement atteint Drive avant que Marc parte parler à Claude (sinon le MCP lit une copie périmée).
+- **Gate HARD-block** (`components/auth/LoginGate.tsx`) : pas d'accès tant que non connecté à Drive ; trappe d'urgence
+  révélée seulement après un échec de connexion (+ `?nogate=1`). Requiert `VITE_GOOGLE_GATE=1` sur Vercel.
+- Tests : discriminant git-stash prouvé (reconnexion + local réel + Drive divergent → `conflict`, local NON écrasé —
+  échoue sur l'ancien code) ; `summarizeForConflict` (pur) ; matrice `decideOnLoad` mise à jour.
+- Suite : audit des 6 alertes claude.ai routé au BACKLOG (`MCP-RETIREMENT-VERDICT`, `MCP-PAYSLIP-BACKUP`, `MCP-TAX-COUPLE`,
+  `MCP-STALE-FRESHNESS`, `PROJ-TAXPAID-LABEL`, `CELI-ASSET-NUDGE`) — nécessitent un redéploiement Cloud Run.
+
+---
+
 ## [unreleased — Connecteur MCP : déploiement Cloud Run (Lot 4 claude.ai — chantier COMPLET)] — 2026-07-13
 
 ### Connecteur MCP — déploiement (Lot 4)

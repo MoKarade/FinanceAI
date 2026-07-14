@@ -117,7 +117,10 @@ export const registerSimulateWhatIf = (server: McpServer, getState: StateProvide
                     finalNetWorthNominal: Math.round(last?.NetWorth ?? run.finalNetWorth ?? 0),
                     finalNetWorthReal: Math.round(last?.realNetWorth ?? last?.NetWorth ?? 0),
                     fireAge: fireAgeOf(chart),
-                    totalTaxesPaid: Math.round(run.totalTaxesPaid ?? 0),
+                    // [PROJ-TAXPAID-LABEL] — même rename que get_projection : ce compteur moteur
+                    // n'agrège que les régularisations d'avril (négatif = remboursements REER),
+                    // PAS l'impôt total payé. Jamais exposé sous un nom trompeur.
+                    netTaxSettlements: Math.round(run.totalTaxesPaid ?? 0),
                     minNetWorth: Math.round(run.minNetWorth ?? 0),
                 };
             };
@@ -135,11 +138,16 @@ export const registerSimulateWhatIf = (server: McpServer, getState: StateProvide
                 impact: {
                     finalNetWorthDelta: whatIf.finalNetWorthNominal - base.finalNetWorthNominal,
                     finalNetWorthDeltaReal: whatIf.finalNetWorthReal - base.finalNetWorthReal,
-                    totalTaxesDelta: whatIf.totalTaxesPaid - base.totalTaxesPaid,
+                    // Delta des RÉGULARISATIONS fiscales (avril), pas de l'impôt total — cf note.
+                    netTaxSettlementsDelta: whatIf.netTaxSettlements - base.netTaxSettlements,
                     fireAgeDelta: (base.fireAge != null && whatIf.fireAge != null)
                         ? whatIf.fireAge - base.fireAge
                         : null,
                 },
+                netTaxSettlementsNote:
+                    "netTaxSettlements = somme des régularisations fiscales d'avril (négatif = " +
+                    "remboursements nets, ex. grosses cotisations REER) — PAS l'impôt total payé. " +
+                    'Pour la charge fiscale courante : get_tax_situation.',
                 deltasByHorizon: compareAtHorizons(baseChart, whatIfChart, horizon),
                 series: includeSeries
                     ? { base: extractYearlySeries(baseChart), whatIf: extractYearlySeries(whatIfChart) }

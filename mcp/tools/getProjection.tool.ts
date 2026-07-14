@@ -79,10 +79,24 @@ export const registerGetProjection = (server: McpServer, getState: StateProvider
                 fireAge,
                 minNetWorth: Math.round(result.minNetWorth ?? 0),
                 shortfallRate: Number((result.shortfallRate ?? 0).toFixed(3)),
-                totalTaxesPaid: Math.round(result.totalTaxesPaid ?? 0),
+                // [PROJ-TAXPAID-LABEL] — ex-`totalTaxesPaid`, renommé : ce compteur moteur n'agrège
+                // que les RÉGULARISATIONS d'avril (+ retenues RRIF/REER en retraite), PAS l'impôt
+                // retenu à la source sur les salaires → NÉGATIF pour un gros cotisant REER
+                // (remboursements annuels) et sans rapport avec « l'impôt total payé » (audit
+                // 2026-07-14, adversarial 3/3). Le nom + la note empêchent Claude de le présenter
+                // comme la charge fiscale de l'utilisateur (le -50 253 $ qui l'a alarmé).
+                netTaxSettlements: Math.round(result.totalTaxesPaid ?? 0),
+                netTaxSettlementsNote:
+                    "Somme des régularisations fiscales (soldes/remboursements d'avril + impôts de " +
+                    "retraits en retraite) sur l'horizon — négatif = remboursements nets (grosses " +
+                    "cotisations REER). Ce N'EST PAS l'impôt total payé (l'impôt retenu à la source " +
+                    'sur les salaires n\'y figure pas). Pour la charge fiscale courante : get_tax_situation.',
                 monteCarlo: monteCarlo
                     ? {
-                        successProbabilityPct: result.successRate ?? null,
+                        // Survie BRUTE Monte Carlo (% de runs patrimoine final > 0) — PAS
+                        // `result.successRate`, qui est écrasé par le FVI (score composite) quand
+                        // MC tourne (mislabel pré-existant corrigé, finding panel 2026-07-14).
+                        successProbabilityPct: result.survivalRatePct ?? null,
                         financialVitalityIndex: result.fvi ?? null,
                     }
                     : null,

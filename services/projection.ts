@@ -1724,6 +1724,12 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
     return {
         ...target,
         successRate: fvi || successRate, // V65: Display FVI as health score
+        // [MCP-RETIREMENT-VERDICT] — survie BRUTE Monte Carlo (% de runs avec patrimoine final > 0,
+        // monteCarlo.ts:92), NON écrasée par le FVI : `successRate` ci-dessus EST le FVI (score
+        // composite survie 30 % + sécurité 30 % + efficacité 20 % + legs 20 %) → un verdict de
+        // soutenabilité qui seuillait dessus pouvait dire « plan solide » à 50 % de survie réelle
+        // (finding panel 2026-07-14). Champ ADDITIF : aucun consommateur existant ne change.
+        survivalRatePct: successRate,
         fvi,
         expertMetrics: expertMetrics ?? undefined,
         allResults: results,

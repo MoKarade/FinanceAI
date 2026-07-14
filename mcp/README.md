@@ -1,4 +1,4 @@
-# FinanceAI MCP Server (v0.5.0)
+# FinanceAI MCP Server (v0.6.0)
 
 Serveur MCP (Model Context Protocol) qui expose FinanceAI à Claude : **poser des
 questions** sur ses vraies finances (patrimoine, projection, impôts, retraite) ET
@@ -39,15 +39,18 @@ ta source d'état ») au lieu de planter.
 | `get_financial_overview` | Patrimoine net, liquidités, placements, ventilation par compte (CELI/REER/CELIAPP/REEE/non-enregistré/crypto), revenu/dépenses/cashflow mensuels, dette totale, objectifs actifs |
 | `get_projection` | Projection long terme sur SES vraies données (valeur nette dans le temps, âge d'épuisement éventuel). `includeSeries: true` → série ANNUELLE exacte (patrimoine nominal/réel, comptes, dettes, par âge) pour tracer des graphiques |
 | `simulate_what_if` | « Si j'achète une voiture demain ? » — changements HYPOTHÉTIQUES (achat ponctuel ou financé, salaire ±, dépense récurrente, nouvelle dette, achat immobilier) simulés sur SES vraies données : le moteur roule 2× (avec/sans) → deltas de patrimoine à 1/2/5/10/20 ans, impact FIRE/impôts, hypothèses explicites, séries annuelles base+scénario pour graphiques comparés. Aucun chiffre inventé : tout sort du moteur |
-| `get_tax_situation` | Situation fiscale réelle (revenu imposable, impôt fédéral/QC, taux moyen et marginal) |
-| `get_retirement_outlook` | Perspective retraite/FIRE (âge cible et âge FIRE atteignable, revenu de retraite projeté RRQ/PSV + pensions privées, cible de revenu, verdict de suffisance) |
+| `get_tax_situation` | Situation fiscale réelle, calculée **PAR CONJOINT puis sommée** (fiscalité canadienne individuelle — jamais de fusion des 2 salaires) : impôt fédéral/QC, marginal par conjoint (`perUser`), espace REER/CELI du ménage |
+| `get_retirement_outlook` | Perspective retraite/FIRE : âge cible/FIRE, revenu décomposé (rentes RRQ/PSV + pensions privées + **décaissement du portefeuille** REER/CELI + loyers, moyenne 1re année, $ d'aujourd'hui), verdict `meetsIncomeTarget` basé sur la **soutenabilité du plan** (minNetWorth + Monte Carlo), pas sur les rentes seules |
 | `get_next_best_actions` | Prochaines meilleures actions priorisées (REER vs CELI, dette, coussin, etc.) |
 | `search_transactions` | Recherche dans SES transactions (filtre texte/catégorie/montant) |
 
 ### Écriture (Lot 2) — ingestion de documents
 Claude lit la pièce jointe (PDF/image) et en extrait les valeurs ; le tool ne fait que la **fusion sûre**
-(sauvegarde horodatée avant écriture, dédup, résumé). Exposés uniquement si une source **inscriptible**
-est configurée.
+(sauvegarde horodatée avant écriture — fichier `.bak` local en mode fichier, **backup Drive**
+`financeai-sync.json.<ISO>.bak.json` rolling 5 dans appDataFolder en mode Drive — dédup, résumé).
+Écriture Drive protégée par une **garde de concurrence** : si l'app a synchronisé entre la lecture et
+l'écriture, le tool refuse (rien d'écrasé) et invite à relancer. Exposés uniquement si une source
+**inscriptible** est configurée.
 
 | Tool | Effet |
 |------|-------|

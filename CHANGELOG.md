@@ -6,6 +6,57 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Connecteur MCP v0.6.0 : verdicts honnêtes + écriture Drive sûre + fraîcheur] — 2026-07-14
+
+> Fixes des 4 items MCP de l'audit adversarial (12 agents) des réponses claude.ai. ⚠️ **Nécessite un
+> redéploiement Cloud Run** (`mcp/deploy.sh`) pour être actif sur claude.ai.
+
+### `get_retirement_outlook` — verdict de retraite honnête (`[MCP-RETIREMENT-VERDICT]`, money-critical)
+- Le revenu de retraite expose désormais le **décaissement du portefeuille** (`portfolioWithdrawals` :
+  retraits REER/CELI émis par le moteur, + loyers), moyenne mensuelle de la 1re année, déflatée par point.
+- `meetsIncomeTarget` est basé sur la **soutenabilité du plan** (`minNetWorth > 0` sur tout l'horizon,
+  + Monte Carlo ≥ 85 % si demandé) — plus jamais « revenu sous la cible » pour un plan autofinancé à
+  MC 98 % (l'ancien verdict comparait les rentes publiques SEULES à la cible).
+- Mesuré : le décaissement non-enregistré/liquide n'a pas de champ moteur → sommer les revenus
+  sous-estime structurellement (note explicite dans la réponse).
+
+### `get_tax_situation` — impôt PAR CONJOINT (`[MCP-TAX-COUPLE]`, money-critical)
+- Calcul par contribuable puis somme (fiscalité canadienne individuelle, aligné moteur
+  `taxDecember.ts`) ; `marginalRatePct` = marginal du conjoint au plus haut revenu ; détail `perUser`.
+- Discriminant prouvé : couple 60k/60k → ~22 126 $ / 36,1 % (l'ancien code fusionnait → 33 435 $ / 45,7 %).
+
+### Écriture Drive sûre (`[MCP-PAYSLIP-BACKUP]`, money-critical)
+- `DriveStateSource.saveState` crée un **backup Drive horodaté** (`financeai-sync.json.<ISO>.bak.json`,
+  rolling 5, appDataFolder) AVANT tout écrasement — FAIL-CLOSED (backup impossible → écriture refusée).
+- **Garde de concurrence** : si l'app a synchronisé entre la lecture et l'écriture (`updatedAt` a avancé),
+  le write est refusé (rien d'écrasé) et le cache d'état est invalidé → le retry relit l'état frais.
+- `backupPath` renvoyé par les tools `apply_*` est désormais RÉEL côté Drive (spec tenue).
+- `driveAppData` : helpers génériques `createAppDataFile`/`listAppDataFiles`.
+
+### Fraîcheur des données (`[MCP-STALE-FRESHNESS]`)
+- `mcp/state/freshness.ts` + note automatique sur CHAQUE réponse data-aware : date/âge du blob Drive ;
+  au-delà de 6 h → avertissement « possiblement périmées — ouvre l'app pour pousser » (incident
+  2026-07-14 : le MCP servait 5 732 $ pendant que l'app locale portait 160 k$+ jamais poussés).
+
+### `get_projection` + `simulate_what_if` — étiquette fiscale honnête (`[PROJ-TAXPAID-LABEL]`, surface MCP)
+- `totalTaxesPaid` → `netTaxSettlements` (+ `netTaxSettlementsDelta` dans le what-if) + note : ce compteur
+  n'agrège que les régularisations d'avril (négatif = remboursements REER), PAS l'impôt total payé.
+  Reliquat moteur (clamp taxLeakage MC) au BACKLOG.
+
+### Panel adversarial (3 agents) — findings intégrés
+- **[ÉLEVÉ] `successProbabilityPct` était le FVI, pas la survie** : `result.successRate` moteur est ÉCRASÉ
+  par le FVI (score composite) quand MC tourne (`projection.ts` V65) → un plan à 50 % de survie réelle
+  pouvait afficher « 85 % ». Fix : champ moteur ADDITIF `survivalRatePct` (survie brute, monteCarlo.ts:92)
+  + les tools MCP l'utilisent (verdict retraite ≥ 85 % ET `successProbabilityPct`). `successRate`/UI inchangés.
+- **[ÉLEVÉ] Race multi-sessions sur la garde de concurrence Drive** : writes sérialisés (mutex processus),
+  refus de conflit + échec de pruning JOURNALISÉS (plus de catch muet) ; reliquat `[MCP-WRITE-VERSION-TOKEN]`.
+- **[MOYEN] Verdict retraite** : min du patrimoine sur la PHASE RETRAITE (`minRetirementNetWorth`) au lieu
+  du min global (faux négatif sur creux d'accumulation) ; cas « house-rich cash-poor » couvert par MC (défaut on).
+- Garde `Number.isFinite` sur le déflateur (NaN amplifié par la moyenne 12 mois) ; tests fail-closed backup,
+  invalidation du cache store sur conflit, et survie MC 0-100 ajoutés.
+
+---
+
 ## [unreleased — Intégrité des données Drive : anti-perte STRICT + gate hard-block] — 2026-07-14
 
 ### Sync Google Drive — plus JAMAIS d'écrasement automatique du local réel (`[SYNC-ANTI-CLOBBER]`)

@@ -6,6 +6,7 @@
 // message clair pour Claude au lieu d'un crash du serveur).
 
 import type { AppState } from '../../types';
+import { freshnessNotice } from '../state/freshness';
 
 /** Réponse MCP standard (un bloc texte). */
 export interface ToolTextResult {
@@ -50,7 +51,14 @@ export async function withState(
         );
     }
     try {
-        return fn(state);
+        const res = fn(state);
+        // [MCP-STALE-FRESHNESS] — appose l'âge des données à CHAQUE réponse (bloc texte ADDITIF,
+        // le JSON du 1er bloc reste intact). Si la source n'a pas d'horodatage (fixture, fichier
+        // local), pas de note. Claude voit ainsi quand la copie Drive est périmée au lieu de
+        // présenter des chiffres morts comme actuels (incident 2026-07-14).
+        const notice = freshnessNotice();
+        if (notice) res.content.push({ type: 'text', text: notice });
+        return res;
     } catch (err) {
         return errorContent(
             `Calcul impossible sur ton état. ${err instanceof Error ? err.message : String(err)}`,

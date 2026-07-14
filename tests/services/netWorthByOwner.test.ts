@@ -67,26 +67,53 @@ describe('netWorthByOwner', () => {
 });
 
 describe('assetsToHoldings', () => {
-    it('valorise prix courant × quantité et reporte owner + accountType', () => {
+    const FX = { CAD: 1, USD: 1.4, EUR: 1.5 };
+
+    it('valorise prix courant × quantité (CAD, fx=1) et reporte owner + accountType', () => {
         const assets = [
-            { symbol: 'VFV.TO', currentPrice: 100, quantity: 10, accountType: 'CELI', owner: 'user2' },
-            { symbol: 'BTC', currentPrice: 50000, quantity: 0.5, accountType: 'CRYPTO' },
+            { symbol: 'VFV.TO', currency: 'CAD', currentPrice: 100, quantity: 10, accountType: 'CELI', owner: 'user2' },
+            { symbol: 'BTC', currency: 'CAD', currentPrice: 50000, quantity: 0.5, accountType: 'CRYPTO' },
         ] as unknown as Asset[];
-        const h = assetsToHoldings(assets);
+        const h = assetsToHoldings(assets, FX);
         expect(h[0]).toEqual({ value: 1000, accountType: 'CELI', owner: 'user2' });
         expect(h[1]).toEqual({ value: 25000, accountType: 'CRYPTO', owner: undefined });
+    });
+
+    it('[ASSET-FX-DISPLAY] DISCRIMINANT : convertit les prix NATIFS en CAD (USD×1.4, EUR×1.5) — échoue sur l\'ancien code sans FX', () => {
+        // Le bug de l'incident 2026-07-14 : NVDA (USD) + CW8.PA (EUR) sommés bruts comme des CAD →
+        // portefeuille SOUS-affiché (~70 k$ chez Marc). L'ancien code rendait 100 et 200 ici.
+        const assets = [
+            { symbol: 'NVDA', currency: 'USD', currentPrice: 10, quantity: 10, accountType: 'NON-ENREG' },
+            { symbol: 'CW8.PA', currency: 'EUR', currentPrice: 20, quantity: 10, accountType: 'NON-ENREG' },
+        ] as unknown as Asset[];
+        const h = assetsToHoldings(assets, FX);
+        expect(h[0].value).toBe(140); // 100 USD × 1.4
+        expect(h[1].value).toBe(300); // 200 EUR × 1.5
     });
 });
 
 describe('computeNetWorthByOwner', () => {
-    it('combine placements + cash conjoint', () => {
+    const FX = { CAD: 1, USD: 1.4, EUR: 1.5 };
+
+    it('combine placements (convertis CAD) + cash conjoint (déjà CAD)', () => {
         const assets = [
-            { symbol: 'VFV.TO', currentPrice: 100, quantity: 200, accountType: 'CELI', owner: 'user1' },
-            { symbol: 'XEQT.TO', currentPrice: 40, quantity: 100, accountType: 'NON-ENREG' },
+            { symbol: 'VFV.TO', currency: 'CAD', currentPrice: 100, quantity: 200, accountType: 'CELI', owner: 'user1' },
+            { symbol: 'XEQT.TO', currency: 'CAD', currentPrice: 40, quantity: 100, accountType: 'NON-ENREG' },
         ] as unknown as Asset[];
-        const r = computeNetWorthByOwner(assets, 8000, true);
+        const r = computeNetWorthByOwner(assets, FX, 8000, true);
         expect(r.user1).toBe(20000);       // VFV CELI user1
         expect(r.joint).toBe(4000 + 8000); // XEQT nonreg (joint défaut) + cash
         expect(r.total).toBe(32000);
+    });
+
+    it('[ASSET-FX-DISPLAY] le total par personne reflète les devises (mix USD/EUR/CAD)', () => {
+        const assets = [
+            { symbol: 'NVDA', currency: 'USD', currentPrice: 100, quantity: 5, accountType: 'CELI', owner: 'user1' },   // 500 USD → 700 CAD
+            { symbol: 'SAF.PA', currency: 'EUR', currentPrice: 200, quantity: 2, accountType: 'NON-ENREG' },            // 400 EUR → 600 CAD (joint)
+        ] as unknown as Asset[];
+        const r = computeNetWorthByOwner(assets, FX, 0, true);
+        expect(r.user1).toBe(700);
+        expect(r.joint).toBe(600);
+        expect(r.total).toBe(1300); // et PAS 900 (somme brute sans FX de l'ancien code)
     });
 });

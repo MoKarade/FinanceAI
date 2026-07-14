@@ -29,6 +29,13 @@
 > (note de fraîcheur sur chaque réponse withState, seuil 6 h), `PROJ-TAXPAID-LABEL` surface (`netTaxSettlements` + note ;
 > reliquat moteur au BACKLOG). Discriminants git-stash prouvés (8 tests échouent sur l'ancien code). v0.6.0.
 > **⚠️ ACTION MARC : redéployer Cloud Run** (`mcp/deploy.sh` depuis son poste) pour activer v0.6.0 sur claude.ai.
+> **✅ v0.6.0 DÉPLOYÉE par Marc (même session, ~18:45Z)** — révision financeai-mcp-00004-kvh, /health vérifié.
+> **✅ 3e LOT `[ASSET-FX-DISPLAY]` (même session)** : « je devrais pas avoir 230k » → investigation → en fait SI :
+> les prix d'actifs sont NATIFS (USD/EUR/CAD) et 6 surfaces UI sommaient SANS conversion FX → app affichait
+> 160 352 « $ » (somme multi-devises brute) vs ~230 k$ CAD réels (le MCP avait raison ; courtier ~250 k$, écart
+> restant = cours périmés → `[PRICE-REFRESH-LIVE]`). Fix : source unique `assetValueCad` + 5 surfaces converties +
+> garde scan `assetFxGuard` (discriminant git-stash prouvé). La note de fraîcheur v0.6.0 a AUSSI exposé au passage
+> que l'onglet app de Marc (vieux bundle) ne poussait plus vers Drive depuis 15:41Z — F5 requis pour le nouveau bundle.
 >
 > ## 📊 Session 2026-07-13 — MCP pour claude.ai : Lot 1 what-if + séries LIVRÉ, chantier Cloud Run relancé
 > **Demande Marc** : parler à Claude de ses VRAIES finances depuis claude.ai web/mobile (pas seulement Desktop), déposer des

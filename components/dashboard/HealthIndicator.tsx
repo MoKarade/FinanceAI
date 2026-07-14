@@ -9,7 +9,7 @@ import { useHasUserData } from '../../utils/useHasUserData';
 import { EmptyDataPrompt } from '../ui/EmptyDataPrompt';
 import { Icon } from '../ui/Icon';
 import { useProjectionSelector } from '../../hooks/useProjectionSelector';
-import { computeCurrentLiquidity } from '../../services/portfolio';
+import { computeCurrentLiquidity, computeInvestmentsValue } from '../../services/portfolio';
 
 /**
  * Phase D.6 — indicateur de santé financière paramétrable.
@@ -79,6 +79,8 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
     const initialBalances = useFinanceStore(s => s.initialBalances);
     const transactions = useFinanceStore(s => s.transactions);
     const subscriptions = useFinanceStore(s => s.subscriptions) ?? EMPTY_SUBS;
+    // [ASSET-FX-DISPLAY] prix des actifs en devise NATIVE → conversion CAD pour le patrimoine du score.
+    const fxRates = useFinanceStore(s => s.fxRates);
     // Centralisation : FireTarget vient de la projection si disponible
     const projectionFireTarget = useProjectionSelector(selectFireTarget, 0);
 
@@ -101,7 +103,8 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
         // toujours à 0, patrimoine sous-estimé.
         const liquidity = computeCurrentLiquidity(initialBalances, transactions);
         const totalDebts = (debts || []).reduce((sum, d) => sum + (d.balance || 0), 0);
-        const investmentValue = (assets || []).reduce((sum, a) => sum + (a.quantity || 0) * (a.currentPrice || 0), 0);
+        // [ASSET-FX-DISPLAY] valeur CAD via la source unique (prix natifs × FX).
+        const investmentValue = computeInvestmentsValue(assets || [], fxRates);
         // Patrimoine = placements + liquidités (la liquidité inclut déjà tout
         // le cash : CELI, REER, comptes courants…).
         const totalAssets = investmentValue + liquidity;
@@ -218,7 +221,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                 available: subscriptionLoadScore != null,
             },
         ];
-    }, [config, budgetItems, debts, assets, initialBalances, transactions, subscriptions, projectionFireTarget]);
+    }, [config, budgetItems, debts, assets, initialBalances, transactions, subscriptions, projectionFireTarget, fxRates]);
 
     // Score global pondéré. [PH4D-BUDGET-RATIOS] n'inclut que les métriques DISPONIBLES (numérateur ET
     // dénominateur) : une métrique sans donnée (ex. FIRE sans projection, budget sans dépenses) ne doit pas

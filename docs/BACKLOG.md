@@ -40,6 +40,25 @@
   (moteur, non-money-critical) : renommer/documenter `totalTaxesPaid` côté `projection.ts:1444` et borner
   `taxLeakage`/`avgEfficiency` (`Math.max(0, …)`, monteCarlo.ts:106/137 — efficacité > 100 % possible avec un compteur
   négatif). ⚠️ touche des seuils de tests MC → re-baseliner prudemment.
+- **`[ASSET-FX-DISPLAY]`** ✅ **LIVRÉ 2026-07-14 (PR FX)** — 6 surfaces UI sommaient `quantity × currentPrice` SANS
+  conversion de devise (prix stockés en NATIF) → patrimoine SOUS-affiché de ~70 k$ (l'app disait 160 352 $, la vraie
+  valeur CAD ≈ 230 k$ — le MCP avait raison, incident « je devrais pas avoir 230k » élucidé). Fix : source unique
+  `assetValueCad` + 5 sites convertis (NetWorthByOwnerCard, Investments, Dashboard ×2, HealthIndicator,
+  AssetLocationCard) + csvExport documenté natif-par-ligne + test-garde scan `assetFxGuard` (discriminant prouvé).
+- **`[ASSET-CURRENCY-BACKFILL]`** 🔧 (résidu panel FX) — un actif LEGACY sans champ `currency` est traité 1:1 CAD
+  (désormais JOURNALISÉ par `assetValueCad`, plus muet) ; le fix propre = backfill de migration (défaut assumé +
+  documenté) OU invite UI à préciser la devise. Attendre de VOIR le log apparaître chez un utilisateur réel avant
+  de migrer (peut ne concerner personne). Effort S.
+- **`[PRICE-REFRESH-LIVE]`** 🔧 — les `currentPrice` stockés ne se rafraîchissent JAMAIS après l'ajout (seul
+  `priceHistory` s'hydrate au boot, et seulement s'il est vide) → valeurs périmées (écart mesuré ~20 k$ vs courtier :
+  230 k$ calculés vs 250 k$ réels chez Marc). Fix : rafraîchir `currentPrice` (dernier point d'historique au boot, ou
+  bouton « Actualiser les cours »). ⚠️ Leçon PERF-BOOT-RATELIMIT : provider-aware (CoinGecko free ~30/min = le plus
+  strict), JAMAIS de Promise.all aveugle. Effort M.
+- **`[MCP-GET-HOLDINGS]`** 🔧 — aucun tool MCP ne LISTE les positions (symbole, qty, prix, devise, valeur CAD) :
+  pendant l'incident FX, impossible d'identifier le « +70 k$ » en une question. Ajouter `get_holdings` (lecture
+  seule, réutilise `assetValueCad`). Effort S, grande valeur diagnostique.
+- **`[MCP-FRESHNESS-PRECISION]`** 🔧 — la note de fraîcheur arrondit à l'heure (« il y a 5 h » pour 4 h 40) ;
+  afficher heures+minutes sous 48 h (retour claude.ai via Marc 2026-07-14). Trivial (humanAge, freshness.ts).
 - **`[MCP-WRITE-VERSION-TOKEN]`** 🔧 (durcissement, panel 2026-07-14) — la garde de concurrence Drive (`lastSeenUpdatedAt`)
   est PROCESS-WIDE : elle protège contre l'app qui pousse entre lecture et écriture MCP (l'incident), mais DEUX tool-calls
   MCP concurrents (2 sessions du même user) dont les mutations partent du même cache peuvent encore se marcher dessus

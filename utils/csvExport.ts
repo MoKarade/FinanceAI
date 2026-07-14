@@ -87,6 +87,9 @@ export function exportHoldingsCSV(assets: Asset[]): string {
         { header: 'Date Bought', accessor: a => a.dateBought || '' },
         { header: 'Account Type', accessor: a => a.accountType || '' },
         { header: 'Performance %', accessor: a => a.performance },
+        // [ASSET-FX-DISPLAY] `Value` est volontairement en devise NATIVE de la ligne (la colonne
+        // `Currency` à côté la qualifie) — c'est le seul agrégat par-ligne où le natif est correct.
+        // Ne PAS sommer cette colonne entre devises ; pour un total CAD, utiliser l'app.
         { header: 'Value', accessor: a => (a.quantity || 0) * (a.currentPrice || 0) },
     ]);
 }

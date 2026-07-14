@@ -1,26 +1,28 @@
 # [MCP-CLOUDRUN-DEPLOY] — le build Cloud Run n'a besoin que du serveur MCP.
 # On exclut le front, les tests, les artefacts et tout secret local.
-node_modules
-dist
+# ⚠️ Dossiers du front ANCRÉS à la racine avec `/` (comme .gcloudignore) : un `tools`
+# nu exclurait aussi `mcp/tools/` (les tools MCP) et casserait le bundle esbuild.
 .git
 .github
-e2e
-tests
-components
-hooks
-store
-locales
-public
-scripts
-tools
-docs
-coverage
-playwright-report
-test-results
+node_modules
+/dist
+/dist-mcp
+/e2e
+/tests
+/components
+/hooks
+/store
+/locales
+/public
+/scripts
+/tools
+/docs
+/coverage
+/playwright-report
+/test-results
 *.log
 .env*
 .financeai-mcp
 mcp/drive/connector-client.json
 .vscode
 .claude
-dist-mcp

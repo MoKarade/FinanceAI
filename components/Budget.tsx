@@ -12,6 +12,7 @@ import { BudgetAiModal } from './budget/BudgetAiModal';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { PageHeader } from './ui/PageHeader';
 import { ProjectionStaleBanner } from './ui/ProjectionStaleBanner';
+import { StatementReminder } from './StatementReminder';
 import { Icon } from './ui/Icon';
 import { Pill } from './ui/Pill';
 import { Button } from './ui/Button';
@@ -721,6 +722,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     </>
                 }
             />
+
+            {/* [UX-STATEMENT-REMINDER] rappel proactif « relevé du mois manquant » (le filet d'import
+                mensuel qui a manqué quand la fuite persona est restée invisible des semaines). */}
+            <StatementReminder />
 
             {/* [BUDGET-PAST-AVG] Tuiles dédupliquées (« Budget » et « Dépenses » affichaient les
                 MÊMES chiffres — demande Marc). Le « prévu » des dépenses = MOYENNE DE TOUT LE

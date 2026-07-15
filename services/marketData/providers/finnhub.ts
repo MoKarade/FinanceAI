@@ -209,8 +209,22 @@ export class FinnhubProvider implements MarketDataProvider {
     // --- helpers de mapping Finnhub → notre taxonomie interne ---
 
     private inferCurrency(symbol: string): string {
+        // Préfixes (format historique assetMeta) ET suffixes (format Finnhub /search : `CW8.PA`,
+        // `VISA.TO`…). ⚠️ Finding panel 2026-07-15 : sans les suffixes, un titre Euronext `.PA`
+        // était étiqueté USD → la garde de devise du refresh des cours skippait à tort TOUTE la
+        // poche EUR en « currency-mismatch » (les cours EUR ne se rafraîchissaient jamais).
         if (symbol.startsWith('TSE:') || symbol.startsWith('TSX:')) return 'CAD';
         if (symbol.startsWith('EPA:')) return 'EUR';
+        const dot = symbol.lastIndexOf('.');
+        if (dot > 0) {
+            const suffix = symbol.slice(dot + 1).toUpperCase();
+            if (suffix === 'TO' || suffix === 'V' || suffix === 'NE' || suffix === 'CN') return 'CAD';
+            // Places de la zone euro couvertes par Finnhub : Paris, Francfort/Xetra/Tradegate,
+            // Milan, Madrid, Amsterdam, Bruxelles, Lisbonne, Vienne, Dublin, Helsinki.
+            if (['PA', 'DE', 'F', 'TG', 'MI', 'MC', 'AS', 'BR', 'LS', 'VI', 'IR', 'HE'].includes(suffix)) return 'EUR';
+            if (suffix === 'L') return 'GBP';
+            if (suffix === 'SW') return 'CHF';
+        }
         return 'USD';
     }
 

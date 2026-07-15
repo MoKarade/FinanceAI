@@ -6,6 +6,41 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Cours actualisés en continu (`[PRICE-REFRESH-LIVE]`)] — 2026-07-14
+
+> Suite directe d'ASSET-FX-DISPLAY : même convertis, les prix restaient FIGÉS à leur valeur d'ajout
+> (dérive mesurée ~20 k$ vs courtier). Les cours se rafraîchissent désormais.
+
+- **`services/priceRefresh.ts`** : `refreshAssetPrices` — quotes live via la source unique `getQuote`
+  (Finnhub/CoinGecko, cache 5 min), SÉQUENTIEL espacé 2 500 ms (≈24/min, sous la limite du provider le
+  plus strict — jamais de `Promise.all`, leçon PERF-BOOT-RATELIMIT). Gardes : prix NATIF only (la
+  conversion reste à l'affichage via `assetValueCad`), devise protégée (quote ≠ devise stockée → skip),
+  couverture honnête (symbole non quotable → skip motivé, jamais de prix inventé). `applyPricePatches`
+  fusionne par symbole sur l'état COURANT (anti-course : un pull Drive/une édition pendant le refresh
+  n'est pas écrasé).
+- **Au boot** (App.tsx) : refresh automatique après l'hydratation d'historique, sauté en mode test.
+- **Bouton « Actualiser les cours »** (Investissements → Détail) : état busy, horodatage « Cours mis à
+  jour : … », toast récapitulatif (X mis à jour · Y non couverts par le fournisseur, symboles nommés).
+- **`Asset.priceUpdatedAt`** : champ additif optionnel (aucun bump de migration).
+- **Panel adversarial (3 agents) — findings intégrés** :
+  - **[ÉLEVÉ, racine] `inferCurrency` Finnhub ignorait les SUFFIXES** (`CW8.PA` → étiqueté USD) → la
+    garde de devise aurait skippé à tort TOUTE la poche EUR en « currency-mismatch » (jamais
+    rafraîchie). Fix : mapping des suffixes (.PA/.TG/.DE… → EUR, .TO/.V → CAD, .L → GBP), discriminant
+    git-stash prouvé.
+  - **[ÉLEVÉ] anti-churn** : un quote au prix IDENTIQUE ne produit plus de patch (sinon
+    `priceUpdatedAt` seul changeait le hash → push Drive à chaque boot + CONFLITS FANTÔMES entre
+    2 appareils sur le mécanisme anti-clobber).
+  - **[ÉLEVÉ] fréquence inter-passes** : mutex module (boot et bouton sérialisés) + passe non forcée
+    sautée si < 5 min depuis la dernière (anti-spam reload) ; les symboles sans provider sont skippés
+    SANS consommer de pacing (un boot sans clé Finnhub ne dort plus (N−1)×2,5 s pour rien).
+  - Garde MODE TEST sur le bouton (les prix de fixtures persona ne sont plus écrasables) ; try/catch
+    par itération (une exception ne jette plus le progrès des autres symboles) ; `performance`
+    recalculée au moment de l'APPLICATION (édition concurrente du prix d'achat respectée) ; devise
+    REVALIDÉE à l'application (patch abandonné si elle a changé pendant la fenêtre) ; self-heal de la
+    devise d'un actif legacy depuis le quote ; date affichée via `formatDate` (convention repo).
+
+---
+
 ## [unreleased — Patrimoine affiché en VRAIS dollars CAD (`[ASSET-FX-DISPLAY]`, money-critical)] — 2026-07-14
 
 > Incident élucidé : « je devrais pas avoir 230k » — en fait SI. Les prix des actifs sont stockés en

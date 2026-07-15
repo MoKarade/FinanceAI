@@ -42,6 +42,15 @@ export function configureMarketDataProvider(opts: { finnhubKey?: string }): void
 }
 
 /**
+ * [PRICE-REFRESH-LIVE] Un provider peut-il quoter ce symbole ? (crypto → CoinGecko toujours ;
+ * autres → Finnhub seulement si la clé est configurée). Permet aux appelants de SAUTER d'emblée
+ * les symboles sans provider au lieu de consommer du pacing (sleep) pour des null instantanés.
+ */
+export function hasQuoteProvider(symbol: string): boolean {
+    return pickProvider(symbol) != null;
+}
+
+/**
  * Quote spot. Retourne null si pas de provider configuré ou si le symbole
  * est inconnu / erreur réseau.
  */

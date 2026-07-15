@@ -58,7 +58,9 @@ function reactParams(state: AppState, startYear: number, startMonth: number): Si
         (b) =>
             b.name.toLowerCase().includes('loyer') ||
             b.name.toLowerCase().includes('rent') ||
-            b.name.toLowerCase().includes('hypothèque'),
+            b.name.toLowerCase().includes('hypothèque') ||
+            // [BUDGET-TX-CATEGORIES] réplique du canonique : « Logement » reconnu (sinon 1600 $)
+            b.name.toLowerCase().includes('logement'),
     );
     let currentRentExpense = 1600;
     if (rentItem) {

@@ -5,6 +5,7 @@ import { Transaction, BudgetCategory, CategorizationRule } from '../types';
 import { showToast } from './ui/Toast';
 // Phase 4 A3: bascule sur services/claude.ts (Haiku 4.5 pour vitesse)
 import { categorizeBatch } from '../services/claude';
+import { ruleCategorize, RULE_CATEGORIES } from '../services/import/categoryRules';
 import { Card } from './ui/Card';
 import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
@@ -128,7 +129,9 @@ export const Transactions: React.FC<TransactionsProps> = ({
     const availableCategories = useMemo(() => {
         const budgetNames = budgetItems.map(b => b.name);
         const systemCats = ["Salaire", "Autre", "Transfert", "Investissement", "Remboursement", "Inconnu"];
-        return Array.from(new Set([...budgetNames, ...systemCats])).sort();
+        // [TX-CATEGORY-RULES] + jeu canonique des règles : disponible même quand le budget est
+        // encore VIDE (post-purge), pour le classement manuel ET la liste `allowed` de l'IA.
+        return Array.from(new Set([...budgetNames, ...systemCats, ...RULE_CATEGORIES])).sort();
     }, [budgetItems]);
 
     const filteredTransactions = useMemo(() => {
@@ -250,6 +253,30 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 setProcessing(false);
                 return;
             }
+        }
+
+        // [TX-CATEGORY-RULES] Passe RÈGLES d'abord (déterministe, gratuite, ~88 % du corpus réel) :
+        // ce que les règles classent est appliqué immédiatement ; l'IA ne reçoit QUE le reste.
+        const ruled = new Map<number, string>();
+        for (const t of targetTxs) {
+            const cat = ruleCategorize(t.payee);
+            if (cat) ruled.set(t.id, cat);
+        }
+        if (ruled.size > 0) {
+            setTransactions(prev => prev.map(t => {
+                const cat = ruled.get(t.id);
+                return cat
+                    ? { ...t, category: cat, status: 'processed' as const, isTransfer: cat === 'Transfert' ? true : t.isTransfer, isAiProcessed: false, confidence: 100 }
+                    : t;
+            }));
+            setLiveLogs(prev => [...prev, `${ruled.size} classee(s) par regles (sans IA).`]);
+            targetTxs = targetTxs.filter(t => !ruled.has(t.id));
+        }
+        if (targetTxs.length === 0) {
+            showToast(`${ruled.size} transaction(s) classee(s) par regles — rien a envoyer a l'IA.`, 'success');
+            setSelectedIds(new Set()); // même nettoyage que le chemin IA (finding panel : sélection qui restait cochée)
+            setProcessing(false);
+            return;
         }
 
         setProgressStatus({ current: 0, total: targetTxs.length });

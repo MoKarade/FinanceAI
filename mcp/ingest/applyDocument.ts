@@ -7,6 +7,7 @@
 
 import type { AppState, User, Asset, Transaction, Debt } from '../../types';
 import { annualSalaryToMonthly } from '../../utils/salary';
+import { ruleCategorize } from '../../services/import/categoryRules';
 
 /** Fiche de paie — valeurs ANNUELLES (Claude multiplie période × fréquence). */
 export interface PayslipPayload {
@@ -243,7 +244,10 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
             date: tx.date,
             payee: tx.payee || '',
             amount: tx.amount,
-            category: tx.category || 'Non catégorisé',
+            // [TX-CATEGORY-RULES] Catégorie fournie par l'appelant si présente, sinon règles
+            // déterministes sur le payee (mêmes règles que l'import CSV de l'app — cohérence
+            // app↔MCP), sinon « Non catégorisé » (l'IA de l'app peut re-passer dessus).
+            category: tx.category || ruleCategorize(tx.payee || '') || 'Non catégorisé',
             status: 'processed',
             isTransfer: !!tx.isTransfer,
             ...(doc.accountName ? { accountName: doc.accountName } : {}),

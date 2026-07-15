@@ -6,6 +6,41 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Catégories de transactions par règles + Budget aligné (`[TX-CATEGORY-RULES]` + `[BUDGET-TX-CATEGORIES]`)] — 2026-07-15
+
+> Demandes Marc : « les catégories des transactions sont très mal réglées » + « dans mon onglet
+> budget je veux seulement et exactement les meme catégories que dans transactions, et je veux
+> voir l'historique par rapport a ces catégories ».
+
+- **`services/import/categoryRules.ts`** : catégorisation DÉTERMINISTE par règles sur le payee
+  (corpus réel : ~88 % de couverture mesurée sur 1 995 transactions extraites de 37 relevés
+  Desjardins). Jeu canonique de 16 catégories (`RULE_CATEGORIES`). Gratuit, instantané,
+  reproductible — l'IA (clé Anthropic) ne sert qu'EN SECOURS sur le reste.
+- **Branchée partout** : import CSV (`parseBankCsv`, si pas de colonne catégorie), bouton
+  « Auto-catégoriser » (passe règles AVANT l'IA — ce que les règles classent ne coûte aucun appel
+  API), import MCP (`apply_bank_statement` — cohérence app↔MCP), listes de catégories disponibles
+  (manuel + `allowed` IA) enrichies du jeu canonique (utile budget vide post-purge).
+- **Budget = exactement les catégories des transactions** (`utils/budgetSync.ts` + effet
+  `Budget.tsx`) : postes manquants AJOUTÉS (cible suggérée = médiane mensuelle 6 mois,
+  modifiable), postes sans aucune transaction RETIRÉS — retraits à la PREMIÈRE passe du montage
+  seulement (un poste créé à la main survit le temps d'y affecter des transactions — œuf-et-poule
+  avec le menu de catégories). Idempotent, no-op sur transactions vides.
+- **Historique par catégorie (12 mois)** : nouvelle table dans Budget — dépenses mensuelles par
+  catégorie (hors transferts/doublons), moyenne par mois actif, lignes = exactement les
+  catégories des transactions. Région défilante focusable + caption sr-only (panel a11y).
+- **Findings panel intégrés (4 agents)** : cible suggérée = MOYENNE sur fenêtre 6 mois (zéros
+  inclus — la médiane des mois actifs aurait projeté un voyage ponctuel de 2 400 $ en
+  28 800 $/an) ; postes flou-rapprochables RENOMMÉS (réglages préservés) au lieu de
+  supprimés/recréés ; « Impôts » exclu des postes (revenu projeté déjà net) ; « Logement »
+  reconnu par la détection de loyer (projection + Retraite + réplique de parité — sinon défaut
+  1 600 $) ; retraits limités à UNE passe par CHARGEMENT d'app (flag module — un ref composant
+  se ré-armait à chaque changement de sous-onglet) + trace durable logError des retraits/renommages ;
+  règle « Interac vers une personne » AVANT les enseignes (un destinataire nommé Bell/Wendy/Brunet
+  ne tombe plus en Abonnements/Restaurants/Santé) ; SAAQ avant ASSURANCE ; INTERET SUR/INTEREST ON
+  (jamais le mot nu) ; \bGRILL\b/PROVISIONS ancrés.
+
+---
+
 ## [unreleased — Purge des données de persona de test (`[PERSONA-PURGE]`)] — 2026-07-15
 
 > Incident Marc : « j'ai des fausses transactions sans doute des profils de test je veux plus que ça

@@ -13,12 +13,14 @@
 > **✅ LIVRÉ `[PERSONA-PURGE]`** : registre d'ids (`testPersonas/artifactIds.ts`, parité test-scan) + sanitizer pur
 > (`personaSanitizer.ts`) à 5 ancrages (boot self-heal + toast, sortie mode test, push Drive, pull Drive, restauration
 > backup). 22 tests. La purge chez Marc s'exécute au prochain chargement de l'app après déploiement Vercel.
-> **Chantier EN COURS (demandes Marc, même session)** : (B) catégorisation par RÈGLES déterministes (payees QC réels tirés
-> de ses 37 relevés PDF uploadés — corpus extrait et PROUVÉ : 355 tx compte validées par soldes + 1 640 tx carte exactes
-> au sou vs totaux imprimés, 19/19 relevés) + IA en secours ; (C) onglet Budget = EXACTEMENT les catégories des
-> transactions + historique mensuel par catégorie (verbatim : « seulement et exactement les meme catégories que dans
-> transactions… pas en rajouter ou quoi ») ; (D) livrable CSV propre 18 mois catégorisé pour ré-import. Dataset extrait
-> dans le scratchpad session (PII — jamais dans le repo).
+> **✅ LIVRÉ (même session) `[TX-CATEGORY-RULES]` + `[BUDGET-TX-CATEGORIES]`** : règles déterministes de catégorisation
+> (payees QC réels tirés de ses 37 relevés PDF uploadés — corpus extrait et PROUVÉ : 355 tx compte validées par soldes +
+> 1 640 tx carte exactes au sou vs totaux imprimés, 19/19 relevés ; ~88 % de couverture) branchées import CSV + bouton
+> Auto-catégoriser (règles AVANT IA) + MCP ; Budget auto-aligné sur les catégories des transactions (médiane 6 mois
+> comme cible suggérée, retraits à la 1re passe du montage) + table « Historique par catégorie » 12 mois.
+> **RESTE (D)** : livrable CSV propre 18 mois catégorisé pour ré-import (dataset dans le scratchpad session — PII,
+> jamais dans le repo) + mode d'emploi à Marc (purge d'abord via l'app déployée, puis import CSV, dedup gère les ~200
+> déjà importées).
 >
 > ## 🔴 Session 2026-07-14 — Incident perte de données Drive (230k$) + anti-clobber STRICT + audit 6 alertes MCP
 > **Incident** : Marc a perdu 230k$ de placements. Chaîne : appareil silencieusement déconnecté (jeton Google expiré ~1h →

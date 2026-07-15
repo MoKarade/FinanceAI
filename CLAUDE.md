@@ -351,6 +351,9 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
 
 ## Commandes (exactes, package.json)
 - Dev `npm run dev` · Build `npm run build` (⚠️ `prebuild` = `lint` ; build CASSE si lint échoue)
+- ⚠️ **Typecheck : `npm run typecheck`, JAMAIS `npx tsc`** (piège 2026-07-15) : `npx tsc` peut résoudre un
+  TypeScript DISTANT (vu : 6.0.2 téléchargé qui IGNORE `--noEmit` et affiche l'aide → « vert » trompeur +
+  20 tests « échoués » dans le même appel par pollution d'environnement). Le script npm force le tsc local (5.8).
 - `npm run lint` · `npm run typecheck` (clean) · `npm run test` · `test:watch` · `test:e2e`
 - `npm run knip` · `npm run check-contrast` · MCP : `mcp:dev`/`mcp:auth`/`mcp:connect`/`mcp:pack`
 - ⚠️ **Vérifier qu'une classe Tailwind est GÉNÉRÉE : build PROPRE (`rm -rf dist`) AVANT de grep le CSS** (leçon

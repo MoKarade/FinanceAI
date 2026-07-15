@@ -100,7 +100,9 @@ export const Retirement: React.FC<RetirementProps> = ({
     const baseMonthlyExpenses = Math.max(0, (baseNetAnnual / 12) - calculatedMonthlySavings);
 
     const currentRentExpense = useMemo(() => {
-        const rentItem = budgetItems.find(b => b.name.toLowerCase().includes('loyer') || b.name.toLowerCase().includes('hypothèque'));
+        // [BUDGET-TX-CATEGORIES] + « logement » (nom canonique des postes auto-alignés), comme
+        // computeCurrentRentExpense (buildSimulationParams) — sinon défaut 1600 $ à tort.
+        const rentItem = budgetItems.find(b => b.name.toLowerCase().includes('loyer') || b.name.toLowerCase().includes('hypothèque') || b.name.toLowerCase().includes('logement'));
         return rentItem ? (rentItem.frequency === 'Yearly' ? rentItem.target / 12 : rentItem.target) : 1600;
     }, [budgetItems]);
 

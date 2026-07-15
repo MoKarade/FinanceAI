@@ -113,7 +113,10 @@ export function computeCurrentRentExpense(budgetItems: readonly BudgetCategory[]
         (b) =>
             b.name.toLowerCase().includes('loyer') ||
             b.name.toLowerCase().includes('rent') ||
-            b.name.toLowerCase().includes('hypothèque'),
+            b.name.toLowerCase().includes('hypothèque') ||
+            // [BUDGET-TX-CATEGORIES] « Logement » = nom canonique des postes auto-alignés sur les
+            // catégories de transactions — sans lui, un budget auto retomberait sur le défaut 1600 $.
+            b.name.toLowerCase().includes('logement'),
     );
     if (rentItem) {
         let val = rentItem.target;

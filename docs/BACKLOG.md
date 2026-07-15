@@ -16,6 +16,13 @@
 > mélangés aux ~200 vraies transactions Desjardins ; [Probable] budgets `kar-b*` aussi. Fuite ANTÉRIEURE
 > aux gardes actuelles (persona activé ~2026-06-07), chemin exact non identifiable a posteriori.
 
+- **`[TX-CATEGORY-RULES]`** ✅ **LIVRÉ 2026-07-15** — règles déterministes de catégorisation (payees QC du corpus
+  réel de Marc, ~88 % de couverture mesurée) branchées sur import CSV + bouton Auto-catégoriser (règles AVANT IA)
+  + MCP apply_bank_statement + listes de catégories. Jeu canonique 16 catégories (`RULE_CATEGORIES`).
+- **`[BUDGET-TX-CATEGORIES]`** ✅ **LIVRÉ 2026-07-15** (verbatim Marc : « seulement et exactement les meme
+  catégories que dans transactions ») — sync auto Budget↔catégories observées (`utils/budgetSync.ts`, cible
+  suggérée = médiane 6 mois ; retraits à la 1re passe du montage seulement) + table « Historique par catégorie »
+  (12 mois, moyenne par mois actif).
 - **`[PERSONA-PURGE]`** ✅ **LIVRÉ 2026-07-15** — registre d'ids d'artefacts (`testPersonas/artifactIds.ts`,
   parité fixtures↔registre verrouillée par test-scan) + sanitizer pur (`personaSanitizer.ts`) ancré à
   5 endroits : boot (self-heal + toast), sortie de mode test (snapshot), push Drive, pull Drive,

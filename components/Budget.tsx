@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Transaction, BudgetConfig, BudgetCategory, Tab as TabEnum } from '../types';
 import { Card } from './ui/Card';
 import { ConfirmModal } from './ui/ConfirmModal';
@@ -6,6 +6,7 @@ import { ProjectionRequired } from './ui/ProjectionRequired';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 import { showToast } from './ui/Toast';
+import { logError } from '../services/errorLogger';
 import { BudgetGroupTable } from './budget/BudgetGroupTable';
 import { BudgetAiModal } from './budget/BudgetAiModal';
 import { useFinanceStore } from '../store/useFinanceStore';
@@ -17,6 +18,7 @@ import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { formatCAD, formatSigned, formatPercent } from '../utils/format';
 import { computeBudgetParity, matchTransactionToCategory, computeGoldenSplit, GOLDEN_IDEAL, computeActualByOwner, isSavingsNature, type OrphanCategory } from '../utils/budget';
+import { syncBudgetWithTransactionCategories, buildCategoryMonthlyHistory } from '../utils/budgetSync';
 import { DualKPIStat } from './budget/DualKPIStat';
 import { calculateFiscalReport } from '../utils/tax';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
@@ -32,6 +34,12 @@ interface BudgetProps {
 
 type TimeView = 'MONTH' | 'QUARTER' | 'YEAR' | 'CUSTOM';
 
+// [BUDGET-TX-CATEGORIES] Flag MODULE (survit aux démontages) : les RETRAITS de postes ne
+// s'appliquent qu'à la PREMIÈRE sync par CHARGEMENT D'APP. Un ref composant se ré-armait à
+// chaque remount (changement d'onglet/sous-onglet → <Budget> démonte) → un poste créé à la
+// main était retiré en quelques clics de navigation (finding panel silent-failure 2026-07-15).
+let _budgetFullSyncDoneThisLoad = false;
+
 export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItems, setBudgetItems, apiKey }) => {
     const [timeView, setTimeView] = useState<TimeView>('MONTH');
     const [inflationSim, setInflationSim] = useState(0);
@@ -43,6 +51,41 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     const [personFilter, setPersonFilter] = useState<0 | 1 | null>(null);
 
     const [showAiModal, setShowAiModal] = useState(false);
+
+    // [BUDGET-TX-CATEGORIES] Le Budget reflète SEULEMENT ET EXACTEMENT les catégories présentes
+    // dans les Transactions (demande Marc 2026-07-15) : postes manquants ajoutés (cible suggérée
+    // = moyenne mensuelle 6 mois, modifiable), postes flou-rapprochables RENOMMÉS (réglages
+    // conservés), postes sans aucune transaction retirés. Les RETRAITS/RENOMMAGES ne s'appliquent
+    // qu'à la PREMIÈRE sync par CHARGEMENT D'APP (flag module, PAS un ref — cf. ci-dessus) —
+    // ensuite ajouts-seulement, sinon un poste créé à la main serait retiré AVANT qu'on puisse y
+    // affecter une transaction (œuf-et-poule : le menu de catégories se nourrit des postes).
+    // Idempotent ; no-op sur transactions vides (état pas encore hydraté).
+    useEffect(() => {
+        if (transactions.length === 0) return;
+        const sync = syncBudgetWithTransactionCategories(transactions, budgetItems);
+        if (!sync.changed) { _budgetFullSyncDoneThisLoad = true; return; }
+        const removalAllowed = !_budgetFullSyncDoneThisLoad;
+        const items = removalAllowed
+            ? sync.items
+            : [...budgetItems, ...sync.items.filter(i => sync.added.includes(i.name))];
+        _budgetFullSyncDoneThisLoad = true;
+        if (removalAllowed || sync.added.length > 0) {
+            setBudgetItems(items);
+            if (removalAllowed && (sync.removed.length || sync.renamed.length)) {
+                // Trace DURABLE (le toast disparaît en 4 s) : quels postes ont été retirés/renommés.
+                logError({
+                    source: 'storage', severity: 'warning',
+                    message: `Budget aligné sur les catégories des transactions — retirés : [${sync.removed.join(', ') || '—'}], renommés : [${sync.renamed.join(', ') || '—'}]`,
+                });
+            }
+            const parts: string[] = [];
+            if (sync.added.length) parts.push(`${sync.added.length} catégorie(s) ajoutée(s) depuis tes transactions`);
+            if (removalAllowed && sync.renamed.length) parts.push(`${sync.renamed.length} renommée(s) (réglages conservés)`);
+            if (removalAllowed && sync.removed.length) parts.push(`${sync.removed.length} sans transaction retirée(s)`);
+            if (parts.length) showToast(`Budget aligné sur tes transactions : ${parts.join(', ')}.`, 'info');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [transactions, budgetItems]);
 
     // Custom Date State
     const [customStart, setCustomStart] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
@@ -197,6 +240,13 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // customEnd couvrent déjà les paramètres de getDateRange — ajout explicite éviterait une boucle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [transactions, timeView, budgetItems, customStart, customEnd]);
+
+    // [BUDGET-TX-CATEGORIES] Historique mensuel par catégorie (12 mois) — lignes = exactement
+    // les catégories de dépense observées dans les transactions (mêmes noms que les postes).
+    const categoryHistory = useMemo(
+        () => buildCategoryMonthlyHistory(transactions, budgetItems.map(i => i.name)),
+        [transactions, budgetItems],
+    );
 
     const totalBudgetDisplay = budgetItems.reduce((sum, item) => sum + getDisplayTarget(item), 0);
     // [PH4-A/F1] Total dépensé = TOUTES les dépenses (postes rapprochés + orphelins), via
@@ -1073,6 +1123,60 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                         <div className="text-meta text-ink-400 flex items-center gap-2 px-1">
                             <span aria-hidden="true">✓</span>
                             <span>Parité complète : chaque dépense est rapprochée à un poste, et chaque poste a des dépenses.</span>
+                        </div>
+                    )}
+
+                    {/* [BUDGET-TX-CATEGORIES] Historique mensuel PAR CATÉGORIE (12 mois) — exactement
+                        les catégories des transactions (mêmes lignes que les postes ci-dessus). */}
+                    {categoryHistory.rows.length > 0 && (
+                        <div className="premium-card rounded-2xl p-4 sm:p-5 border border-white/5">
+                            <div className="flex items-center gap-2 mb-3">
+                                <Icon name="chart" size={16} />
+                                <h2 className="text-h2 font-bold text-white">Historique par catégorie (12 mois)</h2>
+                            </div>
+                            {/* Région défilante FOCUSABLE (WCAG 2.1.1 — ~14 colonnes, déborde
+                                forcément) + caption programmatique (H39) — findings a11y-auditor. */}
+                            <div
+                                className="overflow-x-auto focus-ring rounded-lg"
+                                tabIndex={0}
+                                role="region"
+                                aria-label="Historique par catégorie, tableau défilant horizontalement"
+                            >
+                                <table className="w-full text-meta">
+                                    <caption className="sr-only">
+                                        Historique des dépenses par catégorie, 12 derniers mois.
+                                    </caption>
+                                    <thead>
+                                        <tr className="text-tiny uppercase tracking-widest text-ink-400">
+                                            <th scope="col" className="text-left font-bold py-1.5 pr-2 sticky left-0 bg-surface">Catégorie</th>
+                                            {categoryHistory.months.map(m => (
+                                                <th key={m} scope="col" className="text-right font-bold py-1.5 px-1.5 whitespace-nowrap">
+                                                    {new Date(`${m}-15`).toLocaleDateString('fr-CA', { month: 'short', year: '2-digit' })}
+                                                </th>
+                                            ))}
+                                            <th scope="col" className="text-right font-bold py-1.5 pl-2">Moy./mois</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {categoryHistory.rows.map(row => (
+                                            <tr key={row.category} className="border-t border-white/5">
+                                                <th scope="row" className="text-left font-medium text-ink-100 py-1.5 pr-2 sticky left-0 bg-surface whitespace-nowrap">{row.category}</th>
+                                                {row.byMonth.map((v, i) => (
+                                                    <td key={categoryHistory.months[i]} className="text-right py-1.5 px-1.5 font-mono">
+                                                        {v > 0
+                                                            ? <PrivateAmount className="text-ink-200">{formatCAD(v)}</PrivateAmount>
+                                                            : <span className="text-ink-400" aria-label="aucune dépense">—</span>}
+                                                    </td>
+                                                ))}
+                                                <td className="text-right py-1.5 pl-2 font-mono">
+                                                    <PrivateAmount className="text-ink-100 font-bold">{formatCAD(row.monthlyAverage)}</PrivateAmount>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p className="text-tiny text-ink-400 mt-2">Dépenses réelles par mois (hors transferts et doublons) — les lignes sont exactement tes catégories de transactions.</p>
                         </div>
                     )}
                 </div>

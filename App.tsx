@@ -26,6 +26,7 @@ import { installGlobalErrorHandlers, logError } from './services/errorLogger';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { initAutoBackup, createBackupNow } from './services/backupAuto';
 import { sanitizePersonaArtifacts } from './services/personaSanitizer';
+import { RULE_CATEGORIES } from './services/import/categoryRules';
 import { loadLockedProjection } from './services/lockedProjectionStore';
 import { initSync, runBootSync, schedulePush, pushNow, flushPush, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, startDrivePolling, markApiKeysHydrated, type SyncStatus } from './services/sync/syncOrchestrator';
 import { trackPageView } from './services/analytics';
@@ -555,9 +556,12 @@ export const App: React.FC = () => {
         try {
             const { categorizeBatch } = await import('./services/claude');
             // 'Inconnu' EXCLU des cibles : c'est un statut « à classer », pas une destination.
+            // [TX-CATEGORY-RULES] + jeu canonique des règles : cibles IA disponibles même quand
+            // le budget est encore vide (post-purge), cohérentes avec l'import et le Budget.
             const allowed = Array.from(new Set([
                 ...state.budgetItems.map(b => b.name),
                 'Salaire', 'Autre', 'Transfert', 'Investissement', 'Remboursement',
+                ...RULE_CATEGORIES,
             ]));
             const classified = await categorizeBatch(toClassify, apiKey, deduped, allowed);
             const byId = new Map(classified.map(t => [t.id, t]));

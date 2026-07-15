@@ -36,6 +36,10 @@
 > restant = cours périmés → `[PRICE-REFRESH-LIVE]`). Fix : source unique `assetValueCad` + 5 surfaces converties +
 > garde scan `assetFxGuard` (discriminant git-stash prouvé). La note de fraîcheur v0.6.0 a AUSSI exposé au passage
 > que l'onglet app de Marc (vieux bundle) ne poussait plus vers Drive depuis 15:41Z — F5 requis pour le nouveau bundle.
+> **✅ 4e LOT `[PRICE-REFRESH-LIVE]` (même session, PR #442 à venir)** : les cours se rafraîchissent (boot + bouton
+> « Actualiser les cours »), séquentiel provider-aware 2 500 ms, prix natif only + devise protégée + couverture honnête
+> (non-couverts NOMMÉS — les titres EU de Marc peuvent ne pas être quotables en Finnhub gratuit), patches fusionnés
+> anti-course, `Asset.priceUpdatedAt` additif. Ça ferme l'écart ~250 k$ courtier pour les titres couverts.
 >
 > ## 📊 Session 2026-07-13 — MCP pour claude.ai : Lot 1 what-if + séries LIVRÉ, chantier Cloud Run relancé
 > **Demande Marc** : parler à Claude de ses VRAIES finances depuis claude.ai web/mobile (pas seulement Desktop), déposer des

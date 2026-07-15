@@ -24,8 +24,10 @@ import { usePortfolioHistory } from '../hooks/usePortfolioHistory';
 import { StockChart } from './StockChart';
 import { ASSET_META } from '../services/assetMeta';
 import { assetValueCad, toCurrencyFactor } from '../services/portfolio';
+import { getQuote, hasQuoteProvider } from '../services/marketData';
+import { refreshAssetPrices, applyPricePatches } from '../services/priceRefresh';
 import { DividendPanel } from './investments/DividendPanel';
-import { formatCAD } from '../utils/format';
+import { formatCAD, formatDate } from '../utils/format';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { logError } from '../services/errorLogger';
 import { getRebalanceJustifications, type RebalanceActionInput } from '../services/claude';
@@ -362,6 +364,50 @@ export const Investments: React.FC<InvestmentsProps> = ({
 
         return marketData.filter(d => new Date(d.date) >= startDate);
     }, [marketData, timeRange]);
+
+    // [PRICE-REFRESH-LIVE] — actualise les currentPrice via les quotes live (séquentiel provider-aware).
+    // HONNÊTE sur la couverture : les symboles non quotables (forfait Finnhub, titres manuels/GIC)
+    // sont listés dans le toast au lieu d'être silencieusement laissés périmés. Fusion par symbole
+    // sur l'état FRAIS du store (anti-course avec un pull Drive pendant le refresh).
+    const [isRefreshingPrices, setIsRefreshingPrices] = useState(false);
+    const lastPriceRefreshAt = useMemo(() => {
+        const stamps = assets.map(a => a.priceUpdatedAt || 0).filter(t => t > 0);
+        return stamps.length > 0 ? Math.max(...stamps) : null;
+    }, [assets]);
+    const handleRefreshPrices = async () => {
+        // Garde MODE TEST (finding panel) : ne jamais écraser les prix de fixtures persona (CoinGecko
+        // répond même sans clé → un clic corromprait l'état déterministe du persona).
+        if (useFinanceStore.getState().isTestMode === true) {
+            showToast('Actualisation désactivée en mode test (prix des fixtures conservés).', 'info');
+            return;
+        }
+        setIsRefreshingPrices(true);
+        try {
+            // force:true = geste explicite (le gate 5 min du service ne s'applique pas au bouton ;
+            // le cache quote 5 min absorbe de toute façon les re-clics rapprochés côté réseau).
+            const res = await refreshAssetPrices(assets, { getQuote, hasProvider: hasQuoteProvider }, { force: true });
+            if (res.patches.size > 0) {
+                const fresh = useFinanceStore.getState().assets ?? [];
+                setAssets(applyPricePatches(fresh, res.patches));
+            }
+            const uncovered = res.skipped.filter(s => s.reason === 'no-quote' || s.reason === 'invalid-price' || s.reason === 'error');
+            const mismatched = res.skipped.filter(s => s.reason === 'currency-mismatch');
+            if (res.refreshed.length + res.unchanged.length + uncovered.length + mismatched.length === 0) {
+                showToast('Aucun titre valorisé à actualiser.', 'info');
+            } else {
+                const parts: string[] = [`${res.refreshed.length} cours mis à jour`];
+                if (res.unchanged.length > 0) parts.push(`${res.unchanged.length} déjà à jour`);
+                if (uncovered.length > 0) parts.push(`${uncovered.length} sans cours disponible (${uncovered.map(s => s.symbol).slice(0, 4).join(', ')}${uncovered.length > 4 ? '…' : ''}) — clé Finnhub requise, ou titre non coté à mettre à jour à la main`);
+                if (mismatched.length > 0) parts.push(`${mismatched.length} ignoré(s) : devise du quote ≠ devise stockée (${mismatched.map(s => s.symbol).join(', ')})`);
+                showToast(parts.join(' · '), uncovered.length + mismatched.length > 0 ? 'info' : 'success');
+            }
+        } catch (e) {
+            logError({ source: 'network', severity: 'warning', message: 'Actualisation des cours échouée (prix existants conservés)', error: e });
+            showToast('Actualisation des cours impossible (réseau/fournisseur). Prix existants conservés.', 'error');
+        } finally {
+            setIsRefreshingPrices(false);
+        }
+    };
 
     const handleAssetAccountChange = (symbolKey: string, newAccount: string) => {
         const assetIdx = assets.findIndex(a => symbolKey.includes(a.symbol));
@@ -934,8 +980,23 @@ export const Investments: React.FC<InvestmentsProps> = ({
 
             {/* 5. STOCK CARDS GRID — Phase E.3 sub-tab 'detail' */}
             {subTab === 'detail' && <>
-                {/* Phase E.9 — bouton d'ajout manuel d'action */}
-                <div className="flex justify-end gap-2">
+                {/* Phase E.9 — bouton d'ajout manuel d'action · [PRICE-REFRESH-LIVE] actualisation des cours */}
+                <div className="flex justify-end items-center gap-2 flex-wrap">
+                    {lastPriceRefreshAt != null && (
+                        <span className="text-tiny text-ink-400 mr-auto">
+                            {/* formatDate (fr-CA, NaN→—) + heure, même patron qu'AutoBackupPanel. */}
+                            Cours mis à jour : {formatDate(lastPriceRefreshAt)} {new Date(lastPriceRefreshAt).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                    )}
+                    <button
+                        type="button"
+                        onClick={handleRefreshPrices}
+                        disabled={isRefreshingPrices}
+                        aria-busy={isRefreshingPrices}
+                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/15 text-ink-200 text-tiny font-bold rounded-card transition-colors focus-ring disabled:opacity-50"
+                    >
+                        {isRefreshingPrices ? 'Actualisation…' : 'Actualiser les cours'}
+                    </button>
                     <button
                         type="button"
                         onClick={() => setShowImportBroker(true)}

@@ -20,7 +20,8 @@ import { useDerivedFinancials } from './utils/useDerivedFinancials';
 import { TabRouter } from './components/TabRouter';
 import { CommandPalette, useCommandPalette, makeNavigationActions } from './components/ui/CommandPalette';
 import { useTranslation } from 'react-i18next';
-import { configureMarketDataProvider } from './services/marketData';
+import { configureMarketDataProvider, getQuote, hasQuoteProvider } from './services/marketData';
+import { refreshAssetPrices, applyPricePatches } from './services/priceRefresh';
 import { installGlobalErrorHandlers, logError } from './services/errorLogger';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { initAutoBackup } from './services/backupAuto';
@@ -445,7 +446,29 @@ export const App: React.FC = () => {
                 });
             }
         };
-        hydrateAssets();
+        // [PRICE-REFRESH-LIVE] — après l'hydratation d'historique, rafraîchit les currentPrice
+        // depuis les quotes live (séquentiel 2 500 ms, cf services/priceRefresh). Sans ça, un prix
+        // reste FIGÉ à sa valeur d'ajout pour toujours (dérive mesurée ~20 k$ vs courtier).
+        // Anti-course : lit l'état FRAIS du store au lancement ET à l'application (fusion par
+        // symbole) — un pull Drive pendant le refresh n'est pas écrasé. Sauté en mode test
+        // (ne pas réécrire les prix des fixtures persona).
+        const refreshPricesAtBoot = async (): Promise<void> => {
+            const s = useFinanceStore.getState();
+            if (s.isTestMode === true) return;
+            const current = s.assets ?? [];
+            if (current.filter(a => a?.symbol && (a.quantity || 0) > 0).length === 0) return;
+            try {
+                // Boot = passe NON forcée : sautée si une passe a fini il y a < 5 min (mutex +
+                // intervalle min du service — anti-entrelacement avec le bouton, anti-spam reload).
+                const res = await refreshAssetPrices(current, { getQuote, hasProvider: hasQuoteProvider });
+                if (cancelled || res.patches.size === 0) return;
+                const fresh = useFinanceStore.getState().assets ?? [];
+                setAppState({ assets: applyPricePatches(fresh, res.patches) });
+            } catch (e) {
+                logError({ source: 'network', severity: 'warning', message: 'Rafraîchissement des cours au boot échoué (prix existants conservés)', error: e });
+            }
+        };
+        hydrateAssets().then(() => { if (!cancelled) void refreshPricesAtBoot(); });
         return () => { cancelled = true; };
     // Effet run-once au boot : setAppState et state.assets omis pour éviter une boucle de re-fetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps

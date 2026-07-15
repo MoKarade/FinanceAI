@@ -49,11 +49,12 @@
   (désormais JOURNALISÉ par `assetValueCad`, plus muet) ; le fix propre = backfill de migration (défaut assumé +
   documenté) OU invite UI à préciser la devise. Attendre de VOIR le log apparaître chez un utilisateur réel avant
   de migrer (peut ne concerner personne). Effort S.
-- **`[PRICE-REFRESH-LIVE]`** 🔧 — les `currentPrice` stockés ne se rafraîchissent JAMAIS après l'ajout (seul
-  `priceHistory` s'hydrate au boot, et seulement s'il est vide) → valeurs périmées (écart mesuré ~20 k$ vs courtier :
-  230 k$ calculés vs 250 k$ réels chez Marc). Fix : rafraîchir `currentPrice` (dernier point d'historique au boot, ou
-  bouton « Actualiser les cours »). ⚠️ Leçon PERF-BOOT-RATELIMIT : provider-aware (CoinGecko free ~30/min = le plus
-  strict), JAMAIS de Promise.all aveugle. Effort M.
+- **`[PRICE-REFRESH-LIVE]`** ✅ **LIVRÉ 2026-07-14 (PR à venir)** — `services/priceRefresh.ts` : `refreshAssetPrices`
+  (getQuote séquentiel espacé 2 500 ms ≈ 24/min, sous CoinGecko free ~30/min — jamais de Promise.all) + patches par
+  symbole fusionnés sur l'état FRAIS (`applyPricePatches`, anti-course avec un pull Drive/édition). Gardes : prix natif
+  only, devise protégée (quote ≠ devise stockée → skip), couverture HONNÊTE (no-quote/invalid-price listés, jamais de
+  prix inventé). Câblage : refresh AU BOOT (après hydrateAssets, sauté en mode test) + bouton « Actualiser les cours »
+  (Investissements → Détail, horodatage + toast récapitulatif). Champ additif `Asset.priceUpdatedAt` (zéro bump).
 - **`[MCP-GET-HOLDINGS]`** 🔧 — aucun tool MCP ne LISTE les positions (symbole, qty, prix, devise, valeur CAD) :
   pendant l'incident FX, impossible d'identifier le « +70 k$ » en une question. Ajouter `get_holdings` (lecture
   seule, réutilise `assetValueCad`). Effort S, grande valeur diagnostique.

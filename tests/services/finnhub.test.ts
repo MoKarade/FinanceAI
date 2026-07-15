@@ -157,3 +157,31 @@ describe('FinnhubProvider — searchSymbol (PH4-INV-1 autocomplétion)', () => {
         expect(await p.searchSymbol('aapl')).toEqual([]);
     });
 });
+
+describe('FinnhubProvider — inferCurrency (via getQuote.currency)', () => {
+    const p = new FinnhubProvider('test-key');
+    const q = async (sym: string) => {
+        mockFetch({ c: 100, d: 1, dp: 1, t: 1_700_000_000 });
+        return (await p.getQuote(sym))!.currency;
+    };
+
+    it('[PRICE-REFRESH-LIVE] SUFFIXES Finnhub (format /search) : .PA/.TG/.DE → EUR, .TO/.V → CAD, .L → GBP', async () => {
+        // Finding panel 2026-07-15 : sans les suffixes, `CW8.PA` était étiqueté USD → la garde de
+        // devise du refresh skippait à tort TOUTE la poche EUR en « currency-mismatch » (les cours
+        // EUR ne se rafraîchissaient JAMAIS). Ce test ÉCHOUE sur l'ancien code (rendait 'USD').
+        expect(await q('CW8.PA')).toBe('EUR');
+        expect(await q('SAF.PA')).toBe('EUR');
+        expect(await q('KLA.TG')).toBe('EUR');
+        expect(await q('SAP.DE')).toBe('EUR');
+        expect(await q('VISA.TO')).toBe('CAD');
+        expect(await q('XYZ.V')).toBe('CAD');
+        expect(await q('HSBA.L')).toBe('GBP');
+    });
+
+    it('préfixes historiques et défaut USD inchangés', async () => {
+        expect(await q('TSX:VFV')).toBe('CAD');
+        expect(await q('EPA:SAF')).toBe('EUR');
+        expect(await q('NVDA')).toBe('USD');
+        expect(await q('BRK.B')).toBe('USD'); // suffixe de CLASSE d'action US, pas une place boursière
+    });
+});

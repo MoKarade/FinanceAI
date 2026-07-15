@@ -54,6 +54,9 @@ export interface Asset {
   purchases?: AssetPurchase[];
   priceHistory?: Array<{ date: string; price: number; rawPrice?: number; fxRate?: number }>;
   lastHistorySync?: number;
+  /** [PRICE-REFRESH-LIVE] Epoch ms de la dernière mise à jour de `currentPrice` par un quote live.
+   *  Absent = prix jamais rafraîchi (figé à l'ajout/saisie manuelle). Champ ADDITIF optionnel. */
+  priceUpdatedAt?: number;
   accountType?: RegisteredAccountType;
   /** CI-1000x B1 — propriétaire (user1 | user2 | joint). Absent ⇒ défaut heuristique. */
   owner?: AssetOwner;

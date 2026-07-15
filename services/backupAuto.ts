@@ -165,7 +165,10 @@ export async function createBackupNow(source: 'auto' | 'manual' = 'manual'): Pro
 
     try {
         const db = await openDB();
-        return new Promise((resolve, reject) => {
+        // [BACKUP-PROMISE-CATCH] `await` la promesse AVANT de la retourner : sinon un rejet ASYNC
+        // (tx.onerror IndexedDB, ex. quota) passe au caller SANS être journalisé par le catch ci-dessous
+        // (l'utilisateur croirait être sauvegardé). L'await ramène le rejet dans ce catch → logué + null.
+        return await new Promise((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readwrite');
             const store = tx.objectStore(STORE_NAME);
             store.add(entry);
@@ -191,7 +194,9 @@ export async function createBackupNow(source: 'auto' | 'manual' = 'manual'): Pro
 export async function listBackups(): Promise<BackupEntry[]> {
     try {
         const db = await openDB();
-        return new Promise((resolve, reject) => {
+        // [BACKUP-PROMISE-CATCH] `await` : un rejet async (req.onerror) doit repasser par le catch ci-dessous
+        // (sinon il fuit non journalisé jusqu'au caller — restoreBackup appelle listBackups HORS de son try).
+        return await new Promise((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readonly');
             const store = tx.objectStore(STORE_NAME);
             const req = store.getAll();
@@ -218,7 +223,7 @@ export async function listBackups(): Promise<BackupEntry[]> {
 export async function deleteBackup(id: string): Promise<void> {
     try {
         const db = await openDB();
-        return new Promise((resolve, reject) => {
+        return await new Promise((resolve, reject) => { // [BACKUP-PROMISE-CATCH] rejet async → catch
             const tx = db.transaction(STORE_NAME, 'readwrite');
             tx.objectStore(STORE_NAME).delete(id);
             tx.oncomplete = () => { db.close(); resolve(); };
@@ -233,7 +238,7 @@ export async function deleteBackup(id: string): Promise<void> {
 export async function clearAllBackups(): Promise<void> {
     try {
         const db = await openDB();
-        return new Promise((resolve, reject) => {
+        return await new Promise((resolve, reject) => { // [BACKUP-PROMISE-CATCH] rejet async → catch
             const tx = db.transaction(STORE_NAME, 'readwrite');
             tx.objectStore(STORE_NAME).clear();
             tx.oncomplete = () => { db.close(); resolve(); };

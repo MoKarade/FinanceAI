@@ -6,6 +6,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — VAGUE 4a « périphérique : sécurité Vision + nettoyage »] — 2026-07-15
+
+### Sécurité / vie privée
+- **Clause anti-injection sur les prompts Vision** (`[SEC-VISION-CONSENT-INJECTION]`) — un relevé/paie (image/PDF)
+  peut contenir du texte adversarial lu par le modèle ; `VISION_INJECTION_GUARD` (dans les 2 prompts Vision) le traite
+  comme donnée, jamais comme instruction. Extraction Vision passée en `temperature: 0` (déterministe). + **avis de
+  confidentialité explicite** (Loi 25) sur les **3 surfaces** qui envoient un document brut à Anthropic (relevé bancaire
+  + les 2 uploads de fiche de paie) : montants, nom, employeur, n° de compte quittent l'appareil — un CSV reste 100 % local.
+- **Backups IndexedDB : rejets asynchrones journalisés** (`[BACKUP-PROMISE-CATCH]`) — `return await` sur `createBackupNow`
+  ET ses 3 fonctions sœurs (`listBackups`/`deleteBackup`/`clearAllBackups`) → un échec async (quota, tx.onerror) repasse
+  par le catch (logué + repli) au lieu de fuir non journalisé (corrige un spinner infini du bouton « Backup maintenant »).
+  Discriminant git-stash prouvé.
+
+### Nettoyage
+- Code mort retiré (`[DETTE-DEADCODE-2026-07]`) : locales `_`-préfixées inutilisées (Budget, RealEstate, AiAssistant).
+
 ## [unreleased — VAGUE 3a « rappel d'import de relevé »] — 2026-07-15
 
 ### Ajouté

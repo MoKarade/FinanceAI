@@ -76,7 +76,6 @@ export const RealEstate: React.FC<RealEstateProps> = ({ availableCash, goals, se
 
     const price = activeGoal.price || 450000;
     const downPayment = activeGoal.downPayment || (price * 0.2);
-    const _downPaymentPercent = Math.round((downPayment / price) * 100);
     const rate = activeGoal.mortgageRate || 4.5;
     const amortization = activeGoal.amortization || 25;
     const targetDate = activeGoal.purchaseDate || new Date().toISOString().split('T')[0];

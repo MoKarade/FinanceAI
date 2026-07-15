@@ -180,19 +180,14 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 ...u,
                 grossSalary: monthlyGross,
                 netSalary: monthlyNet,
-                taxDeduction: Math.max(0, monthlyGross - monthlyNet)
             };
         });
     }, [config.users]);
 
-    const totalGrossIncomeMonthly = usersIncome.reduce((sum, u) => sum + u.grossSalary, 0);
     const totalNetIncomeMonthly = usersIncome.reduce((sum, u) => sum + u.netSalary, 0);
-    const totalTaxMonthly = usersIncome.reduce((sum, u) => sum + u.taxDeduction, 0);
 
     // Display values based on time view
     const totalNetIncomeDisplay = totalNetIncomeMonthly * getMultiplier();
-    const _totalTaxDisplay = totalTaxMonthly * getMultiplier();
-    const _totalGrossDisplay = totalGrossIncomeMonthly * getMultiplier();
 
     const { actualsMap, totalSpent, trendMap, monthlyDataMap, orphanCategories, itemsWithoutTransactions, actualByOwner } = useMemo(() => {
         const { start, end } = getDateRange();

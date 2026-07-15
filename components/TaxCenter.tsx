@@ -286,6 +286,11 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                         <img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" alt="Drive" className="w-6 h-6 group-hover:scale-110 transition-transform" />
                     </button>
             </div>
+            {/* [SEC-VISION-CONSENT-INJECTION] Loi 25 : « Calcul rapide » envoie la fiche de paie BRUTE
+                (nom, employeur, salaire exact) à Anthropic — le dire explicitement près de l'action. */}
+            <p className="text-tiny text-ink-400">
+                « Calcul rapide » envoie ta fiche de paie (image/PDF, avec nom/employeur/salaire) à Anthropic (Claude) pour en extraire les montants.
+            </p>
 
             {isAnalyzing && (
                 <div className="w-full bg-surfaceHighlight rounded-full h-2.5 overflow-hidden">

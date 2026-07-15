@@ -120,7 +120,6 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
       .join('\n');
 
     const userAge = config.users[0]?.age || 35;
-    const _retirementAge = projection.years ? userAge + projection.years : 65;
 
     // S-D — Toutes les données dérivées de saisies utilisateur (placements, projet
     // immo, transactions) sont déjà neutralisées via sanitizePromptText, puis le

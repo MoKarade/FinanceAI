@@ -1,4 +1,4 @@
-# FinanceAI MCP Server (v0.6.0)
+# FinanceAI MCP Server (v0.7.0)
 
 Serveur MCP (Model Context Protocol) qui expose FinanceAI à Claude : **poser des
 questions** sur ses vraies finances (patrimoine, projection, impôts, retraite) ET
@@ -58,6 +58,7 @@ l'écriture, le tool refuse (rien d'écrasé) et invite à relancer. Exposés un
 | `apply_bank_statement` | Ajoute les transactions (dédup date+montant+marchand), compte optionnel |
 | `apply_broker_statement` | Met à jour / ajoute les positions (par symbole + compte fiscal) |
 | `apply_tax_slip` | T4 / RL-1 → revenu d'emploi annuel (→ brut mensuel) + cotisations REER |
+| `apply_debt` | Dette RÉELLE (prêt auto, carte, perso) — ajout ou mise à jour PAR NOM, PARTIELLE (seuls les champs fournis changent ; même nom = écrasement, jamais de doublon). ⚠️ Dettes déjà contractées seulement : la projection les sert dès le mois 0 ; un achat FUTUR/hypothétique passe par `simulate_what_if` |
 
 ### Connexion (amorçage)
 | `connect_drive` | Autorise le Google Drive de l'utilisateur **dans la conversation** (consentement navigateur, client OAuth partagé) — pour l'install `.mcpb` sans terminal |

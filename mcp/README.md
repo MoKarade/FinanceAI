@@ -198,11 +198,42 @@ contrat [`@mokarade/hub-contract` v1](https://github.com/MoKarade/hub-contract) 
   (`mcp/financialSignals.ts`, partagés avec `get_next_best_actions`) → metrics/alerts.
   État de plus de 6 h (`freshness`) → `status: "degraded"` + `dataAsOf` ; état illisible
   → summary `status: "error"` (HTTP 200) — le widget montre la panne, jamais du vide.
-- **Génération du jeton** :
+
+### En local (stdio n'expose rien ; HTTP seulement)
 
 ```powershell
+# jeton (≥16 caractères)
 node -e "console.log('HUB=' + require('crypto').randomBytes(24).toString('base64url'))"
+# puis
+$env:FINANCEAI_HUB_TOKEN="le-jeton" ; npm run mcp:http
 ```
+
+### Sur Cloud Run — via Secret Manager (durable)
+
+⚠️ Poser `FINANCEAI_HUB_TOKEN` à la main avec `gcloud run services update --update-env-vars`
+**ne marche pas durablement** : (1) ça ne rebuild pas l'image (le code `/hub/summary`
+doit être déployé, pas seulement la variable), et (2) le prochain `deploy.sh`
+l'efface (`--set-env-vars` remplace tout). Le jeton doit donc vivre dans **Secret
+Manager**, comme les clés OAuth — `deploy.sh` le monte alors automatiquement, à chaque
+déploiement, s'il existe.
+
+```bash
+# 1. Créer le secret (nouveau jeton — occasion de faire la rotation si l'ancien a fuité)
+node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))" \
+  | tr -d '\n' | gcloud secrets create financeai-hub-token --data-file=- --project="$PROJECT_ID"
+
+# 2. Donner au compte de service Cloud Run l'accès en lecture (même SA que les 3 autres secrets)
+gcloud secrets add-iam-policy-binding financeai-hub-token \
+  --member="serviceAccount:$RUNTIME_SA" \
+  --role="roles/secretmanager.secretAccessor" --project="$PROJECT_ID"
+
+# 3. Redéployer : deploy.sh détecte le secret, le monte, et rebuild l'image à jour
+PROJECT_ID="$PROJECT_ID" ./mcp/deploy.sh
+```
+
+Le hub enverra ce même jeton dans le header `x-hub-token`. Rotation : ajoute une nouvelle
+version au secret (`gcloud secrets versions add financeai-hub-token --data-file=-`) puis
+redéploie.
 
 ## Synchronisation Google Drive (auto) — recommandé
 

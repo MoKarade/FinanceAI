@@ -6,6 +6,25 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — VAGUE 2 « fiscal money-critical » : assiette emploi vs imposable + MCP v0.7.3] — 2026-07-15
+
+> `[FISC-PAYROLL-BASE-INVEST]` + `[TAX-APP-MCP-BASE]`. Panel 4 agents (financial-integrity, projection-validator,
+> code-reviewer, silent-failure-hunter). ⚠️ Redéploiement Cloud Run requis (v0.7.3).
+
+### Corrigé
+- **Cotisations RRQ/RQAP/AE sur le SALAIRE seul** — l'onglet Impôt calculait RRQ/RQAP/AE sur *salaire + revenu de
+  placement estimé* → cotisations surévaluées quand le salaire est sous les maximums (RRQ ~74,6 k, AE ~68,9 k,
+  RQAP ~103 k). `calculateFiscalReport` sépare désormais l'assiette d'EMPLOI (cotisations) de l'assiette IMPOSABLE
+  (paliers d'impôt). **Mesuré : ~1 016 $/an de cotisations surévaluées corrigées** sur un profil salaire 50 k +
+  230 k non-enregistré. Rétrocompat bit-identique pour le moteur de projection (aucun changement de conservation).
+- **App ↔ MCP alignés** — `get_tax_situation` (MCP) et l'onglet Impôt utilisent maintenant le MÊME helper d'estimation
+  du revenu de placement (`services/taxEstimate.ts`) → mêmes chiffres. Le MCP inclut désormais le placement imposable
+  dans l'assiette (`taxableInvestmentIncome` exposé), et `averageRatePct` porte sur l'assiette imposable réelle.
+
+### Tests
+- `tests/services/taxPayrollBase.test.ts` (discriminant git-stash prouvé : sur-cotisation 1 016 $ → 0 sans le fix) +
+  test MCP `[TAX-APP-MCP-BASE]` (placement imposé, cotisations sur salaire, cohérence averageRatePct). Suite complète verte.
+
 ## [unreleased — Vidage BACKLOG en vagues, VAGUE 1 « confiance quotidienne » + MCP v0.7.2] — 2026-07-15
 
 > Plan PM validé par Marc (« go tout sans t'arrêter »). Vague 1 = 6 items S à impact quotidien, panel 6 agents.

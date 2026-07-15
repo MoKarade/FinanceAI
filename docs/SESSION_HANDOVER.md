@@ -39,7 +39,17 @@
 > ~8 correctifs mineurs appliqués (2 MEDIUM : celiNudge garde NaN, getHoldings log rendement non-fini ; + arrondi `round(Σ)`, aria-label
 > Label-in-Name, hover contraste, taxApril remboursement). 3 findings pré-existants routés au BACKLOG (`AI-PROMPT-FAKE-ZERO`,
 > `MCP-PROMPT-SCRUB`, `A11Y-BANNER-HOVER-CONTRAST`). **⚠️ Marc : redéployer Cloud Run pour MCP v0.7.2** (`get_holdings` + fraîcheur précise).
-> **Suite** : Vague 2 (fiscal `FISC-PAYROLL-BASE-INVEST` + `TAX-APP-MCP-BASE` + `FISC-ASSETLOC-INTL`, plan-first + discriminants git-stash).
+> **✅ VAGUE 2 livrée (fiscal money-critical, MCP v0.7.3)** : `[FISC-PAYROLL-BASE-INVEST]` + `[TAX-APP-MCP-BASE]` —
+> `calculateFiscalReport` sépare l'assiette EMPLOI (RRQ/RQAP/AE = salaire) de l'assiette IMPOSABLE (paliers = salaire +
+> placement) via un 7ᵉ param optionnel `employmentIncome` (défaut = grossIncome → **rétrocompat bit-identique** pour les
+> ~15 appelants moteur, prouvé par projection-validator + moneyConservation 20/20). App (TaxCenter) et MCP (get_tax_situation)
+> alignés sur le helper partagé `services/taxEstimate.ts`. **Mesuré ~1 016 $/an de cotisations sur-évaluées corrigées**
+> (salaire 50 k + 230 k non-enreg), discriminant git-stash prouvé. Panel 4 agents : cœur correct ; 1 bug ÉLEVÉ que j'avais
+> introduit (averageRatePct MCP sur salaire au lieu de l'assiette imposable) CORRIGÉ + `taxableInvestmentIncome` exposé.
+> 2 items routés au BACKLOG : `[FISC-SOLO-INVEST-SPLIT]` (split par longueur de tuple sous-impose le placement d'un solo —
+> pré-existant, à valider avec Marc car ↑ son impôt estimé), `[FISC-ASSETLOC-INTL]` ÉVALUÉ/DIFFÉRÉ (international en non-enreg
+> chez Marc = pas de perte ; fix non trivial). **⚠️ Marc : redéployer Cloud Run pour MCP v0.7.3.**
+> **Suite** : Vague 3 (fondation sync — `ARCH-SYNC-SPLIT` EN PREMIER, puis SEC-DRIVE-ENCRYPT-DEFAULT, MCP-WRITE-VERSION-TOKEN, SYNC-FETCH-TIMEOUT ; parallèle MCP-CHARTDATA-SUM-GUARD, UX-STATEMENT-REMINDER).
 >
 > ## 🔴 Session 2026-07-14 — Incident perte de données Drive (230k$) + anti-clobber STRICT + audit 6 alertes MCP
 > **Incident** : Marc a perdu 230k$ de placements. Chaîne : appareil silencieusement déconnecté (jeton Google expiré ~1h →

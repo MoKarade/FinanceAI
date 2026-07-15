@@ -100,13 +100,25 @@
 - **`[PERSONA-LEAK-ROOTCAUSE]`** 🔍 LOW — chemin de fuite exact inconnu (antérieur aux gardes SYNC-ANTI-CLOBBER
   et shouldPush-test). Si récidive malgré PERSONA-PURGE (le log `purgePersonaArtifacts` en ferait foi), creuser :
   restauration d'un backup pris EN mode test avant #217, ou merge conflit Drive d'une époque sans garde.
-- **`[FISC-PAYROLL-BASE-INVEST]`** 🔧 MEDIUM (finding panel TAX-DETAIL 2026-07-15, PRÉ-EXISTANT exposé par la
-  nouvelle carte) — `calculateFiscalReport` calcule RRQ/RQAP/AE sur `grossIncome` TOTAL, or TaxCenter lui passe
-  salaire + revenu de placement estimé (`uTotalTaxable`) : cotisations gonflées (+883 $ mesurés, salaire 50 k +
-  200 k non-enreg) quand le salaire est SOUS les maximums (RRQ ~68,5 k, AE ~65,7 k, RQAP ~98 k). Fix : séparer
-  l'assiette d'emploi (RRQ/RQAP/AE) de l'assiette imposable (paliers) — signature à 2 revenus. Corollaire
-  `[TAX-APP-MCP-BASE]` : get_tax_situation calcule sur salaire SEUL (sans placement) → app ↔ MCP divergent pour
-  un détenteur de non-enreg ; aligner les deux assiettes au même fix (+ repli net→brut côté MCP absent).
+- **`[FISC-PAYROLL-BASE-INVEST]` + `[TAX-APP-MCP-BASE]`** ✅ **LIVRÉ 2026-07-15 (Vague 2, MCP v0.7.3)** —
+  `calculateFiscalReport` gagne un 7ᵉ param optionnel `employmentIncome` (assiette EMPLOI RRQ/RQAP/AE) DISTINCT de
+  l'assiette imposable (paliers) ; défaut = grossIncome → **rétrocompat bit-identique** pour les ~15 appelants moteur
+  (prouvé par projection-validator + moneyConservation 20/20). TaxCenter passe `uGross` (salaire), get_tax_situation
+  aligné sur le MÊME helper partagé `services/taxEstimate.ts` (placement imposable ajouté à l'assiette + `employmentIncome`
+  = salaire). **Mesuré : ~1 016 $/an de cotisations sur-évaluées évitées** (salaire 50 k + 230 k non-enreg), discriminant
+  git-stash prouvé (0 sans le fix). Panel 4 agents : cœur correct, averageRatePct MCP recalé sur l'assiette réelle +
+  `taxableInvestmentIncome` exposé. ⚠️ Redéploiement Cloud Run requis (v0.7.3).
+- **`[FISC-SOLO-INVEST-SPLIT]`** 🔧 MEDIUM (finding panel Vague 2, financial-integrity + code-reviewer, PRÉ-EXISTANT) —
+  le split du revenu de placement `1/config.users.length` répartit sur les 2 têtes du tuple `[User,User]` MÊME en solo :
+  la part attribuée au « conjoint fantôme » (ou à un conjoint payé en `netSalary` seul, exclu de perUserReports côté MCP)
+  est abritée sous SON BPA / non imposée → **sous-imposition du placement d'un solo/mono-salarié** (Marc : ~la moitié de
+  ~12,6 k$ non imposée). Fix (leçon PH4E-OWNER-EDIT : `.length` d'un tuple est vacueux) : splitter par le nombre de
+  contribuables RÉELS (`users[i].name?.trim()` ou brut/net > 0), app ET MCP au même helper. ⚠️ Change les chiffres affichés
+  (impôt estimé du solo ↑) → à valider avec Marc + plan-first (touche le split per-conjoint, gelé CIX).
+- **`[FISC-ASSETLOC-INTL]`** 🔧 MEDIUM — **ÉVALUÉ 2026-07-15 (Vague 2), DIFFÉRÉ** : s'applique au TYPE de titres de Marc
+  (ETF EU internationaux) mais PAS à leur emplacement actuel (100 % non-enregistré, où la retenue étrangère 15 % EST
+  créditable — la perte n'existe qu'en CELI/REER, où Marc a 0 $). Le BACKLOG note lui-même « fix non trivial (le patch naïf
+  reste 0) ». À reprendre si Marc met de l'international en CELI/REER (cf CELI-ASSET-NUDGE). Latent, pas stale. Détail infra ↓.
 - **`[BACKUP-PROMISE-CATCH]`** 🔧 LOW (finding panel 2026-07-15) — `createBackupNow` fait `return new Promise(...)`
   DANS son try : un rejet ASYNC (tx.onerror IndexedDB, ex. quota) passe au caller sans être journalisé par son
   propre catch. Fix : `await` la promesse avant de la retourner (le catch interne loggue alors vraiment). Les

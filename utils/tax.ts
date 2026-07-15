@@ -738,10 +738,22 @@ export const calculateFiscalReport = (
     year: number = 2026,
     skipBreakdown: boolean = false,
     ageOpts?: AgeCreditOptions,
+    // [FISC-PAYROLL-BASE-INVEST] Assiette d'EMPLOI (RRQ/RQAP/AE) — DISTINCTE de l'assiette imposable
+    // (`grossIncome`, qui inclut légitimement le revenu de placement pour les paliers d'impôt). Les
+    // cotisations RRQ/RQAP/AE ne portent QUE sur le revenu de TRAVAIL ; les inclure sur le placement
+    // les gonfle quand le salaire est sous les maximums (RRQ ~74,6 k, AE ~68,9 k, RQAP ~103 k). Absent
+    // (`undefined`) → défaut = `grossIncome` : rétrocompat TOTALE pour les appelants dont le gross EST
+    // le salaire (moteur de projection, PDF, viz…). Une valeur explicite (même 0) est respectée.
+    employmentIncome?: number,
 ) => {
     grossIncome = Number(grossIncome) || 0;
     rrspContribution = Number(rrspContribution) || 0;
     fhsaContribution = Number(fhsaContribution) || 0;
+    // Rétrocompat : absent → grossIncome. Fourni → coercé ; NaN/Infinity → 0 (repli BORNÉ et VOLONTAIRE,
+    // même discipline que getMarginalRate : utils/tax.ts n'importe jamais logError — le repli explicite EST
+    // le signal). Les 2 appelants vivants (TaxCenter uGross, get_tax_situation g filtré > 0) sont pré-assainis
+    // en amont ; un futur appelant qui brancherait un employmentIncome non validé doit loguer côté appelant.
+    const employmentBase = employmentIncome === undefined ? grossIncome : (Number(employmentIncome) || 0);
     const { fed: indexedFedBrackets, qc: indexedQcBrackets, basicFed: indexedBasicFed, basicQc: indexedBasicQc } = getIndexedBracketsForYear(year);
 
     const netTaxable = Math.max(0, grossIncome - rrspContribution - fhsaContribution);
@@ -770,15 +782,16 @@ export const calculateFiscalReport = (
     // §6.2 — ligne 361 QC (âge + revenu retraite, réduite par revenu familial)
     qcTax -= ageCredits.qcCredit;
 
-    const rrqBase = Math.max(0, Math.min(grossIncome, RRQ_MPE) - RRQ_EXEMPTION);
+    // [FISC-PAYROLL-BASE-INVEST] cotisations sur l'assiette d'EMPLOI (salaire), jamais sur le placement.
+    const rrqBase = Math.max(0, Math.min(employmentBase, RRQ_MPE) - RRQ_EXEMPTION);
     const rrqVolet1 = Math.min(RRQ_MAX, rrqBase * RRQ_RATE);
 
-    const rrqBaseVolet2 = Math.max(0, Math.min(grossIncome, RRQ_YAMPE) - RRQ_MPE);
+    const rrqBaseVolet2 = Math.max(0, Math.min(employmentBase, RRQ_YAMPE) - RRQ_MPE);
     const rrqVolet2 = rrqBaseVolet2 * RRQ_PART2_RATE;
     const rrq = rrqVolet1 + rrqVolet2;
 
-    const rqap = Math.min(RQAP_MAX, Math.min(grossIncome, RQAP_MAX_INCOME) * RQAP_RATE);
-    const ae = Math.min(AE_MAX_QC, Math.min(grossIncome, AE_MAX_INCOME) * AE_RATE_QC);
+    const rqap = Math.min(RQAP_MAX, Math.min(employmentBase, RQAP_MAX_INCOME) * RQAP_RATE);
+    const ae = Math.min(AE_MAX_QC, Math.min(employmentBase, AE_MAX_INCOME) * AE_RATE_QC);
 
     const totalTax = Math.max(0, fedTax) + Math.max(0, qcTax);
     const totalDeductions = totalTax + rrq + rqap + ae;

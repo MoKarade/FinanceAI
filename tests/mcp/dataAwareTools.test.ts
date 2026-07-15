@@ -214,6 +214,42 @@ describe('Lot 1 — get_tax_situation', () => {
         expect(perUser[0].grossAnnual).toBe(60000);
     });
 
+    it('[TAX-APP-MCP-BASE] impose le placement (aligné app) MAIS RRQ/RQAP/AE sur le SALAIRE seul', async () => {
+        const base = karimState();
+        // Solo, salaire 60 k/an (sous les maximums de cotisation), muté EN PLACE (tuple).
+        base.config.users[0] = { ...base.config.users[0], grossSalary: 5000, netSalary: 3800, rrspContributed: 0, fhsaBalance: 0 };
+        const withInvest: AppState = {
+            ...base,
+            fxRates: { ...base.fxRates, CAD: 1 },
+            assets: [{ symbol: 'ZZZ', name: 'NonReg', quantity: 1, currentPrice: 200000, currency: 'CAD', performance: 0, dateBought: '2025-01-01', accountType: 'NON-ENREG' }],
+        };
+        const noInvest: AppState = { ...withInvest, assets: [] };
+
+        const outWith = await callJson(captureTool(registerGetTaxSituation, providerFor(withInvest)), { year: 2026 });
+        const outNo = await callJson(captureTool(registerGetTaxSituation, providerFor(noInvest)), { year: 2026 });
+
+        // Placement IMPOSÉ (même assiette que l'onglet Impôt) → impôt plus élevé avec des avoirs non-enreg.
+        expect(outWith.totalTax as number).toBeGreaterThan(outNo.totalTax as number);
+        // MAIS cotisations RRQ/RQAP/AE IDENTIQUES : assiette emploi = salaire seul, jamais gonflée.
+        const wWith = outWith.payrollDeductions as Record<string, number>;
+        const wNo = outNo.payrollDeductions as Record<string, number>;
+        expect(wWith.rrq).toBe(wNo.rrq);
+        expect(wWith.rqap).toBe(wNo.rqap);
+        expect(wWith.ae).toBe(wNo.ae);
+
+        // [code-reviewer] cohérence : le placement imposé est exposé, et averageRatePct porte sur
+        // l'assiette imposable RÉELLE (salaire + placement), pas le salaire seul (sinon taux sur-estimé).
+        const investI = outWith.taxableInvestmentIncome as number;
+        expect(investI).toBeGreaterThan(0);
+        const totalTaxable = (outWith.grossAnnualIncome as number) + investI;
+        const expectedAvg = Number((((outWith.totalTax as number) / totalTaxable) * 100).toFixed(1));
+        expect(outWith.averageRatePct as number).toBeCloseTo(expectedAvg, 1);
+        // Le taux moyen est INFÉRIEUR à totalTax/salaire (l'ancien dénominateur bugué, plus petit).
+        expect(outWith.averageRatePct as number).toBeLessThan(
+            ((outWith.totalTax as number) / (outWith.grossAnnualIncome as number)) * 100,
+        );
+    });
+
     it('[TAX-DETAIL] retenues détaillées + net mensuel + provenance + réel des transactions exposés', async () => {
         const state = karimState();
         // Karim est SOLO : muter l'index 0 EN PLACE (reconstruire le tuple créerait users[1] =

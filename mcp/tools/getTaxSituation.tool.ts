@@ -7,6 +7,7 @@ import { calculateFiscalReport } from '../../utils/tax';
 import { computeMonthlyActualAverages } from '../../utils/budgetSync';
 import { computeHistoricalContributionRoom } from '../../services/projection/setupSimulation';
 import { computeAssetBreakdown } from '../../services/portfolio';
+import { estimateTaxableInvestmentIncome } from '../../services/taxEstimate';
 import { computeBaseGrossAnnual } from '../../services/projection/buildSimulationParams';
 import { jsonContent, withState, type StateProvider } from './_dataAware';
 
@@ -41,15 +42,36 @@ export const registerGetTaxSituation = (server: McpServer, getState: StateProvid
             // et ses rrspContributed/fhsaBalance ne déduisent RIEN (correct : une déduction ne
             // réduit que le revenu de SON titulaire — l'ancien code fusionné l'appliquait à tort
             // au revenu de l'autre conjoint).
+            // [TAX-APP-MCP-BASE] même assiette que l'onglet Impôt : le revenu de placement imposable
+            // (non-enreg/crypto, helper PARTAGÉ services/taxEstimate) s'ajoute au revenu imposable, réparti
+            // par conjoint comme dans TaxCenter (÷ nombre de users, tuple [User,User] → ratio 1/2).
+            // [FISC-PAYROLL-BASE-INVEST] mais l'assiette EMPLOI (RRQ/RQAP/AE) reste le SALAIRE seul (`g`)
+            // — le placement ne cotise pas. NB (limite documentée, à traiter au BACKLOG [FISC-SOLO-INVEST-SPLIT])
+            // : le split par longueur de tuple laisse la part d'un conjoint SANS brut (exclu de perUserReports,
+            // ou payé en net seul) NON imposée — sous-imposition du placement d'un solo/mono-salarié.
+            const taxableAddOn = estimateTaxableInvestmentIncome(
+                (state.assets ?? []) as AppState['assets'],
+                state.fxRates ?? {},
+            );
+            const splitRatio = users.length > 0 ? 1 / users.length : 1;
             const perUserReports = activeUsers
                 .map((u) => ({ user: u, grossAnnual: (u.grossSalary || 0) * 12 }))
                 .filter(({ grossAnnual: g }) => g > 0)
-                .map(({ user: u, grossAnnual: g }) => ({
-                    name: u.name || null,
-                    grossAnnual: g,
-                    salarySource: u.salarySource,
-                    report: calculateFiscalReport(g, u.rrspContributed || 0, u.fhsaBalance || 0, year, true),
-                }));
+                .map(({ user: u, grossAnnual: g }) => {
+                    // Assiette IMPOSABLE = salaire + part de placement ; assiette EMPLOI = salaire (`g`).
+                    const taxableBase = g + taxableAddOn * splitRatio;
+                    return {
+                        name: u.name || null,
+                        grossAnnual: g,
+                        taxableBase,
+                        salarySource: u.salarySource,
+                        report: calculateFiscalReport(
+                            taxableBase,
+                            u.rrspContributed || 0, u.fhsaBalance || 0, year, true,
+                            undefined, g,
+                        ),
+                    };
+                });
 
             // [TAX-REAL-SPENDING] mêmes moyennes que l'app (utils/budgetSync, source unique).
             const realAverages = computeMonthlyActualAverages((state.transactions ?? []) as Transaction[]);
@@ -57,6 +79,11 @@ export const registerGetTaxSituation = (server: McpServer, getState: StateProvid
             const sum = (f: (r: (typeof perUserReports)[number]) => number): number =>
                 perUserReports.reduce((s, r) => s + f(r), 0);
             const totalTax = sum((r) => r.report.totalTax);
+            // [code-reviewer] cohérence : totalTax/netIncome portent sur salaire+placement → le taux MOYEN
+            // et la reconstructabilité doivent utiliser la MÊME assiette (sinon averageRatePct sur-estimé
+            // et netIncome ≠ grossAnnualIncome − totalTax). taxableInvestmentIncome = part réellement imposée.
+            const totalTaxableIncome = sum((r) => r.taxableBase);
+            const taxedInvestmentIncome = Math.max(0, totalTaxableIncome - sum((r) => r.grossAnnual));
             // Marginal du ménage = celui du conjoint au revenu le plus élevé (JAMAIS le marginal du
             // total fusionné) ; le détail par conjoint est dans perUser.
             const topMarginal = perUserReports.reduce((m, r) => Math.max(m, r.report.marginalRate), 0);
@@ -72,11 +99,15 @@ export const registerGetTaxSituation = (server: McpServer, getState: StateProvid
                 currency: 'CAD',
                 year,
                 grossAnnualIncome: Math.round(grossAnnual),
+                // [TAX-APP-MCP-BASE] revenu de placement imposable estimé (non-enreg/crypto) inclus dans
+                // l'assiette d'impôt → exposé pour que netIncome soit reconstructible.
+                taxableInvestmentIncome: Math.round(taxedInvestmentIncome),
                 taxFederal: Math.round(sum((r) => r.report.fedTax)),
                 taxQuebec: Math.round(sum((r) => r.report.qcTax)),
                 totalTax: Math.round(totalTax),
                 marginalRatePct: Number((topMarginal * 100).toFixed(1)),
-                averageRatePct: grossAnnual > 0 ? Number(((totalTax / grossAnnual) * 100).toFixed(1)) : 0,
+                // Taux MOYEN sur l'assiette imposable RÉELLE (salaire + placement), cohérent avec totalTax.
+                averageRatePct: totalTaxableIncome > 0 ? Number(((totalTax / totalTaxableIncome) * 100).toFixed(1)) : 0,
                 netIncome: Math.round(sum((r) => r.report.netIncome)),
                 payrollDeductions: {
                     rrq: Math.round(sum((r) => r.report.rrq)),
@@ -122,7 +153,9 @@ export const registerGetTaxSituation = (server: McpServer, getState: StateProvid
                     "marginalRatePct = marginal du conjoint au plus haut revenu ; voir perUser pour chacun. " +
                     'celiRoomRemaining/reerRoomRemaining sont des AGRÉGATS du ménage (somme des droits des ' +
                     "2 comptes légaux distincts) — ne pas verser tout l'espace dans le compte d'UNE personne. " +
-                    "Estimation sur salaires bruts annualisés ; n'inclut pas tous les crédits/revenus de placement. " +
+                    "Assiette imposable = salaires bruts annualisés + revenu de placement IMPOSABLE ESTIMÉ du " +
+                    "non-enregistré/crypto (dividendes ~2 % + gains ~7 %×50 %, champ taxableInvestmentIncome) ; les " +
+                    "cotisations RRQ/RQAP/AE portent sur le SALAIRE seul. N'inclut pas : revenu locatif, tous les crédits. " +
                     'perUser.withholdings = retenues détaillées ; perUser.salarySource = provenance du salaire ' +
                     '(fiche de paie = source unique — null = saisie manuelle) ; realMonthlyAverages = réel des ' +
                     'transactions (mois pleins, hors transferts), mêmes chiffres que l\'onglet Budget.',

@@ -11,17 +11,12 @@ import { analyzePayslip } from '../services/claude';
 import { logError } from '../services/errorLogger';
 import { assetValueCad } from '../services/portfolio';
 import { calculateFiscalReport, calculateGrossFromNet } from '../services/tax';
-import { CAPITAL_GAINS_INCLUSION_STANDARD } from '../utils/tax';
+import { estimateTaxableInvestmentIncome } from '../services/taxEstimate';
 import { annualSalaryToMonthly } from '../utils/salary';
 import { computeMonthlyActualAverages } from '../utils/budgetSync';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { formatCAD, formatSigned } from '../utils/format';
 import { useFinanceStore } from '../store/useFinanceStore';
-
-// [TC-FX-HARDCODE, audit 2026-06-23] Hypothèses d'ESTIMATION (PAS des constantes fiscales) pour estimer
-// le revenu imposable d'un portefeuille non-enregistré. Approximatif — affiché comme estimation.
-const EST_DIVIDEND_YIELD = 0.02;        // rendement en dividendes estimé (~2 %/an)
-const EST_CAPITAL_GAINS_YIELD = 0.07;   // gains en capital réalisés estimés (~7 %/an)
 
 interface TaxCenterProps {
     config: BudgetConfig;
@@ -153,14 +148,12 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
     // [TC-FX-HARDCODE] taux de change RÉELS du store (avant : USD figé à 1,38 → impôt estimé faux).
     const fxRates = useFinanceStore((s) => s.fxRates);
     const investmentTaxData = useMemo(() => {
-        // [ASSET-FX-DISPLAY] routé sur la source unique assetValueCad (l'ancien fxOf local était une
-        // 3e implémentation de la même conversion — correcte mais divergente, repli muet inclus).
+        // [ASSET-FX-DISPLAY] routé sur la source unique assetValueCad. [TAX-APP-MCP-BASE] l'assiette
+        // placement imposable vient du helper PARTAGÉ (services/taxEstimate) — même code que
+        // get_tax_situation (MCP) → l'app et le connecteur calculent sur la MÊME base.
         const nonRegAssets = assets.filter(a => a.accountType === 'NON-ENREG' || a.accountType === 'CRYPTO');
         const nonRegValue = nonRegAssets.reduce((sum, a) => sum + assetValueCad(a, fxRates), 0);
-
-        const estDividends = nonRegValue * EST_DIVIDEND_YIELD;
-        const estCapitalGains = nonRegValue * EST_CAPITAL_GAINS_YIELD;
-        const taxableInvestmentIncome = estDividends + (estCapitalGains * CAPITAL_GAINS_INCLUSION_STANDARD);
+        const taxableInvestmentIncome = estimateTaxableInvestmentIncome(assets, fxRates);
 
         return { totalNonReg: nonRegValue, taxableAddOn: taxableInvestmentIncome };
     }, [assets, fxRates]);
@@ -180,12 +173,18 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                 : calculateGrossFromNet((u.netSalary || 0) * 12);
             const splitRatio = 1 / config.users.length;
             const uTotalTaxable = uGross + (investmentTaxData.taxableAddOn * splitRatio);
-            const res = calculateFiscalReport(uTotalTaxable, rrspContribution * splitRatio, fhsaContribution * splitRatio);
+            // [FISC-PAYROLL-BASE-INVEST] assiette IMPOSABLE = salaire + placement (paliers d'impôt),
+            // mais assiette EMPLOI (RRQ/RQAP/AE) = salaire SEUL (uGross) — le placement ne cotise pas.
+            const res = calculateFiscalReport(
+                uTotalTaxable, rrspContribution * splitRatio, fhsaContribution * splitRatio,
+                undefined /* year */, undefined /* skipBreakdown */, undefined /* ageOpts */, uGross /* employmentIncome */,
+            );
             const refundOrOwe = (alreadyPaidTax * splitRatio) > 0 ? ((alreadyPaidTax * splitRatio) - res.totalTax) : 0;
             return {
                 id: i,
                 name: u.name,
                 gross: uGross,
+                taxable: uTotalTaxable,
                 report: { ...res, refundOrOwe },
                 fedBreakdown: res.fedBreakdown,
                 qcBreakdown: res.qcBreakdown
@@ -194,6 +193,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
 
         if (viewUser === 'all') {
             const totalGross = results.reduce((sum, r) => sum + r.gross, 0);
+            const totalTaxable = results.reduce((sum, r) => sum + r.taxable, 0);
             const totalTax = results.reduce((sum, r) => sum + r.report.totalTax, 0);
             const totalNetIncome = results.reduce((sum, r) => sum + r.report.netIncome, 0);
             const totalRefundOrOwe = results.reduce((sum, r) => sum + r.report.refundOrOwe, 0);
@@ -207,7 +207,8 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                     netIncome: totalNetIncome,
                     marginalRate: maxMarginal,
                     refundOrOwe: totalRefundOrOwe,
-                    averageRate: totalGross > 0 ? (totalTax / totalGross * 100) : 0
+                    // Taux moyen sur l'assiette IMPOSABLE (salaire + placement), cohérent avec totalTax/le MCP.
+                    averageRate: totalTaxable > 0 ? (totalTax / totalTaxable * 100) : 0
                 },
                 // [TAX-DETAIL] détail des retenues, sommé (le détail par conjoint est dans les onglets)
                 deductions: {

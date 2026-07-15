@@ -18,7 +18,7 @@ import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { formatCAD, formatSigned, formatPercent } from '../utils/format';
 import { computeBudgetParity, matchTransactionToCategory, computeGoldenSplit, GOLDEN_IDEAL, computeActualByOwner, isSavingsNature, type OrphanCategory } from '../utils/budget';
-import { syncBudgetWithTransactionCategories, buildCategoryMonthlyHistory } from '../utils/budgetSync';
+import { syncBudgetWithTransactionCategories, buildMonthlyLedger, computeMonthlyActualAverages } from '../utils/budgetSync';
 import { DualKPIStat } from './budget/DualKPIStat';
 import { calculateFiscalReport } from '../utils/tax';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
@@ -65,17 +65,35 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         const sync = syncBudgetWithTransactionCategories(transactions, budgetItems);
         if (!sync.changed) { _budgetFullSyncDoneThisLoad = true; return; }
         const removalAllowed = !_budgetFullSyncDoneThisLoad;
+        // Mode ajouts-seulement (après la 1re sync du chargement) : retraits/renommages GELÉS,
+        // mais les REFRESH de cibles auto passent quand même (finding panel : sinon un import
+        // CSV en cours de session laisse les postes auto préexistants sur des moyennes d'AVANT
+        // l'import jusqu'au prochain reload). Un poste conservé garde son id+nom → on reprend
+        // sa version rafraîchie depuis sync.items ; les retirés/renommés restent tels quels.
         const items = removalAllowed
             ? sync.items
-            : [...budgetItems, ...sync.items.filter(i => sync.added.includes(i.name))];
+            : [
+                ...budgetItems.map(b => {
+                    const refreshed = sync.items.find(i => i.id === b.id && i.name === b.name);
+                    return b.autoTarget === true && refreshed ? refreshed : b;
+                }),
+                ...sync.items.filter(i => sync.added.includes(i.name)),
+            ];
         _budgetFullSyncDoneThisLoad = true;
-        if (removalAllowed || sync.added.length > 0) {
+        if (removalAllowed || sync.added.length > 0 || sync.refreshedCount > 0) {
             setBudgetItems(items);
             if (removalAllowed && (sync.removed.length || sync.renamed.length)) {
                 // Trace DURABLE (le toast disparaît en 4 s) : quels postes ont été retirés/renommés.
                 logError({
                     source: 'storage', severity: 'warning',
                     message: `Budget aligné sur les catégories des transactions — retirés : [${sync.removed.join(', ') || '—'}], renommés : [${sync.renamed.join(', ') || '—'}]`,
+                });
+            } else if (removalAllowed && !sync.added.length) {
+                // Refresh des cibles AUTO seul (persist + push Drive sans action utilisateur) :
+                // trace discrète pour la traçabilité des écritures automatiques (finding panel).
+                logError({
+                    source: 'storage', severity: 'info',
+                    message: 'Budget : cibles auto recalculées (moyenne de tout le passé) — aucune autre modification.',
                 });
             }
             const parts: string[] = [];
@@ -241,12 +259,16 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [transactions, timeView, budgetItems, customStart, customEnd]);
 
-    // [BUDGET-TX-CATEGORIES] Historique mensuel par catégorie (12 mois) — lignes = exactement
-    // les catégories de dépense observées dans les transactions (mêmes noms que les postes).
-    const categoryHistory = useMemo(
-        () => buildCategoryMonthlyHistory(transactions, budgetItems.map(i => i.name)),
+    // [BUDGET-MONTHLY-LEDGER] Grand livre mensuel (12 mois) : RÉEL des dépenses ET des revenus
+    // par mois + solde (demande Marc). Lignes dépenses = exactement les postes du budget.
+    const ledger = useMemo(
+        () => buildMonthlyLedger(transactions, budgetItems.map(i => i.name)),
         [transactions, budgetItems],
     );
+
+    // [BUDGET-PAST-AVG] « Budget du mois en cours = moyenne de tout le passé » (demande Marc) :
+    // moyennes mensuelles GLOBALES (dépenses/revenus) sur tous les mois PLEINS d'historique.
+    const pastAverages = useMemo(() => computeMonthlyActualAverages(transactions), [transactions]);
 
     const totalBudgetDisplay = budgetItems.reduce((sum, item) => sum + getDisplayTarget(item), 0);
     // [PH4-A/F1] Total dépensé = TOUTES les dépenses (postes rapprochés + orphelins), via
@@ -420,6 +442,13 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         const newItems = [...budgetItems];
         const oldItem = newItems[index];
         newItems[index] = { ...oldItem, [field]: value };
+        // [BUDGET-TX-CATEGORIES] Éditer la CIBLE ou la FRÉQUENCE à la main décroche la gestion
+        // auto (cible auto = moyenne MENSUELLE de tout le passé ; si la fréquence passait à
+        // « Yearly » en restant auto, le refresh réécrirait un montant mensuel interprété ÷12 —
+        // finding panel : cible silencieusement mal échelonnée).
+        if ((field === 'target' || field === 'frequency') && oldItem.autoTarget) {
+            newItems[index] = { ...newItems[index], autoTarget: false };
+        }
         setBudgetItems(newItems);
 
         // Phase D'.1 — synchro absolue : si rename de catégorie, propage aux
@@ -693,40 +722,49 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 }
             />
 
-            {/* Phase D'.5 — Tuiles fusionnées prévu/réel (doc directives §3) */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <DualKPIStat
-                    label="Budget"
-                    icon={<Icon name="goal" size={16} />}
-                    prevu={totalBudgetDisplay}
-                    reel={totalSpentDisplay}
-                    sublabel={`Cible (×${getMultiplier().toFixed(1)})`}
-                    variant="primary"
-                />
+            {/* [BUDGET-PAST-AVG] Tuiles dédupliquées (« Budget » et « Dépenses » affichaient les
+                MÊMES chiffres — demande Marc). Le « prévu » des dépenses = MOYENNE DE TOUT LE
+                PASSÉ (mois pleins), pas la somme des cibles : c'est le budget du mois en cours. */}
+            <div className={`grid grid-cols-2 gap-4 ${timeView === 'MONTH' ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
                 <DualKPIStat
                     label="Revenus"
                     icon={<Icon name="money" size={16} />}
-                    prevu={totalNetIncomeDisplay}
+                    prevu={pastAverages.incomeAvg * getMultiplier()}
                     reel={totalActualIncomeDisplay}
-                    sublabel="Net (transactions ≥ 0)"
+                    sublabel={pastAverages.fullMonths > 0 ? `Moy. passée (${pastAverages.fullMonths} mois)` : 'Aucun mois complet'}
                     variant="success"
                 />
                 <DualKPIStat
                     label="Dépenses"
                     icon={<Icon name="debt" size={16} />}
-                    prevu={totalBudgetDisplay}
+                    prevu={pastAverages.expenseAvg * getMultiplier()}
                     reel={totalSpentDisplay}
-                    sublabel={projectedTotalDisplay > totalBudgetDisplay ? `Projection +${formatCAD(projectedTotalDisplay - totalBudgetDisplay)}` : 'Sous le budget'}
-                    variant={totalSpentDisplay > totalBudgetDisplay ? 'danger' : 'info'}
+                    sublabel={`Budget = moy. passée (${pastAverages.fullMonths} mois)`}
+                    // Aucun mois complet → comparaison NON pertinente : neutre, jamais « danger »
+                    // sur un prévu=0 (finding panel : badge rouge + écart 0,0 % contradictoires).
+                    variant={pastAverages.fullMonths > 0 && totalSpentDisplay > pastAverages.expenseAvg * getMultiplier() ? 'danger' : 'info'}
                     invertGoodBad
                 />
+                {/* Vue MOIS seulement : hors MONTH, projectedTotalDisplay === totalSpentDisplay
+                    → la tuile dupliquerait « Dépenses » (finding panel — le problème d'origine). */}
+                {timeView === 'MONTH' && (
+                    <DualKPIStat
+                        label="Fin de mois (projection)"
+                        icon={<Icon name="goal" size={16} />}
+                        prevu={pastAverages.expenseAvg * getMultiplier()}
+                        reel={projectedTotalDisplay}
+                        sublabel="Dépenses au rythme actuel"
+                        variant={pastAverages.fullMonths > 0 && projectedTotalDisplay > pastAverages.expenseAvg * getMultiplier() ? 'danger' : 'info'}
+                        invertGoodBad
+                    />
+                )}
                 <DualKPIStat
                     label="Restant"
                     icon={<Icon name="status" size={16} />}
-                    prevu={totalNetIncomeDisplay - totalBudgetDisplay}
-                    reel={totalRemainingDisplay}
-                    sublabel="Revenu − Dépenses"
-                    variant={totalRemainingDisplay < 0 ? 'danger' : 'success'}
+                    prevu={(pastAverages.incomeAvg - pastAverages.expenseAvg) * getMultiplier()}
+                    reel={totalActualIncomeDisplay - totalSpentDisplay}
+                    sublabel="Revenus − dépenses (réels)"
+                    variant={totalActualIncomeDisplay - totalSpentDisplay < 0 ? 'danger' : 'success'}
                 />
             </div>
 
@@ -1126,13 +1164,14 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                         </div>
                     )}
 
-                    {/* [BUDGET-TX-CATEGORIES] Historique mensuel PAR CATÉGORIE (12 mois) — exactement
-                        les catégories des transactions (mêmes lignes que les postes ci-dessus). */}
-                    {categoryHistory.rows.length > 0 && (
+                    {/* [BUDGET-MONTHLY-LEDGER] Grand livre mensuel (12 mois) : RÉEL des revenus ET
+                        des dépenses par mois + solde (demande Marc). Lignes de dépenses =
+                        exactement les catégories des transactions (mêmes que les postes). */}
+                    {(ledger.expenseRows.length > 0 || ledger.incomeRows.length > 0) && (
                         <div className="premium-card rounded-2xl p-4 sm:p-5 border border-white/5">
                             <div className="flex items-center gap-2 mb-3">
                                 <Icon name="chart" size={16} />
-                                <h2 className="text-h2 font-bold text-white">Historique par catégorie (12 mois)</h2>
+                                <h2 className="text-h2 font-bold text-white">Réel par mois — revenus et dépenses (12 mois)</h2>
                             </div>
                             {/* Région défilante FOCUSABLE (WCAG 2.1.1 — ~14 colonnes, déborde
                                 forcément) + caption programmatique (H39) — findings a11y-auditor. */}
@@ -1140,29 +1179,57 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                 className="overflow-x-auto focus-ring rounded-lg"
                                 tabIndex={0}
                                 role="region"
-                                aria-label="Historique par catégorie, tableau défilant horizontalement"
+                                aria-label="Réel mensuel par catégorie, tableau défilant horizontalement"
                             >
                                 <table className="w-full text-meta">
                                     <caption className="sr-only">
-                                        Historique des dépenses par catégorie, 12 derniers mois.
+                                        Revenus et dépenses réels par catégorie, 12 derniers mois (dernier mois en cours, partiel).
                                     </caption>
                                     <thead>
                                         <tr className="text-tiny uppercase tracking-widest text-ink-400">
                                             <th scope="col" className="text-left font-bold py-1.5 pr-2 sticky left-0 bg-surface">Catégorie</th>
-                                            {categoryHistory.months.map(m => (
+                                            {ledger.months.map((m, i) => (
                                                 <th key={m} scope="col" className="text-right font-bold py-1.5 px-1.5 whitespace-nowrap">
                                                     {new Date(`${m}-15`).toLocaleDateString('fr-CA', { month: 'short', year: '2-digit' })}
+                                                    {i === ledger.currentMonthIndex && <span className="block font-normal normal-case tracking-normal text-ink-400">(en cours)</span>}
                                                 </th>
                                             ))}
-                                            <th scope="col" className="text-right font-bold py-1.5 pl-2">Moy./mois</th>
+                                            {/* Fenêtre 12 mois (≠ cible auto = moyenne de TOUT le passé — libellé explicite, finding panel) */}
+                                            <th scope="col" className="text-right font-bold py-1.5 pl-2">Moy. 12 mois pleins</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {categoryHistory.rows.map(row => (
-                                            <tr key={row.category} className="border-t border-white/5">
+                                        {/* — REVENUS — */}
+                                        <tr className="border-t border-white/10">
+                                            <th scope="row" colSpan={ledger.months.length + 2} className="text-left text-tiny uppercase tracking-widest text-success-400 font-bold pt-3 pb-1 sticky left-0 bg-surface">Revenus</th>
+                                        </tr>
+                                        {ledger.incomeRows.map(row => (
+                                            <tr key={`in-${row.category}`} className="border-t border-white/5">
                                                 <th scope="row" className="text-left font-medium text-ink-100 py-1.5 pr-2 sticky left-0 bg-surface whitespace-nowrap">{row.category}</th>
                                                 {row.byMonth.map((v, i) => (
-                                                    <td key={categoryHistory.months[i]} className="text-right py-1.5 px-1.5 font-mono">
+                                                    <td key={ledger.months[i]} className="text-right py-1.5 px-1.5 font-mono">
+                                                        {v > 0
+                                                            ? <PrivateAmount className="text-ink-200">{formatCAD(v)}</PrivateAmount>
+                                                            : <span className="text-ink-400" aria-label="aucun revenu">—</span>}
+                                                    </td>
+                                                ))}
+                                                <td className="text-right py-1.5 pl-2 font-mono">
+                                                    <PrivateAmount className="text-ink-100 font-bold">{formatCAD(row.monthlyAverage)}</PrivateAmount>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {ledger.incomeRows.length === 0 && (
+                                            <tr><td colSpan={ledger.months.length + 2} className="text-ink-400 text-meta py-1.5">Aucun revenu dans les transactions sur 12 mois.</td></tr>
+                                        )}
+                                        {/* — DÉPENSES — */}
+                                        <tr className="border-t border-white/10">
+                                            <th scope="row" colSpan={ledger.months.length + 2} className="text-left text-tiny uppercase tracking-widest text-warning-400 font-bold pt-3 pb-1 sticky left-0 bg-surface">Dépenses</th>
+                                        </tr>
+                                        {ledger.expenseRows.map(row => (
+                                            <tr key={`out-${row.category}`} className="border-t border-white/5">
+                                                <th scope="row" className="text-left font-medium text-ink-100 py-1.5 pr-2 sticky left-0 bg-surface whitespace-nowrap">{row.category}</th>
+                                                {row.byMonth.map((v, i) => (
+                                                    <td key={ledger.months[i]} className="text-right py-1.5 px-1.5 font-mono">
                                                         {v > 0
                                                             ? <PrivateAmount className="text-ink-200">{formatCAD(v)}</PrivateAmount>
                                                             : <span className="text-ink-400" aria-label="aucune dépense">—</span>}
@@ -1173,10 +1240,38 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                                 </td>
                                             </tr>
                                         ))}
+                                        {/* — TOTAUX + SOLDE — */}
+                                        <tr className="border-t border-white/20 font-bold">
+                                            <th scope="row" className="text-left text-ink-50 py-2 pr-2 sticky left-0 bg-surface">Total revenus</th>
+                                            {ledger.totalIncomeByMonth.map((v, i) => (
+                                                <td key={ledger.months[i]} className="text-right py-2 px-1.5 font-mono">
+                                                    <PrivateAmount className="text-success-400">{formatCAD(v)}</PrivateAmount>
+                                                </td>
+                                            ))}
+                                            <td className="py-2 pl-2" />
+                                        </tr>
+                                        <tr className="font-bold">
+                                            <th scope="row" className="text-left text-ink-50 py-1 pr-2 sticky left-0 bg-surface">Total dépenses</th>
+                                            {ledger.totalExpenseByMonth.map((v, i) => (
+                                                <td key={ledger.months[i]} className="text-right py-1 px-1.5 font-mono">
+                                                    <PrivateAmount className="text-warning-400">{formatCAD(v)}</PrivateAmount>
+                                                </td>
+                                            ))}
+                                            <td className="py-1 pl-2" />
+                                        </tr>
+                                        <tr className="font-bold border-t border-white/10">
+                                            <th scope="row" className="text-left text-ink-50 py-2 pr-2 sticky left-0 bg-surface">Solde</th>
+                                            {ledger.netByMonth.map((v, i) => (
+                                                <td key={ledger.months[i]} className="text-right py-2 px-1.5 font-mono">
+                                                    <PrivateAmount className={v >= 0 ? 'text-success-400' : 'text-danger-400'}>{formatSigned(v, { withCurrency: true })}</PrivateAmount>
+                                                </td>
+                                            ))}
+                                            <td className="py-2 pl-2" />
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
-                            <p className="text-tiny text-ink-400 mt-2">Dépenses réelles par mois (hors transferts et doublons) — les lignes sont exactement tes catégories de transactions.</p>
+                            <p className="text-tiny text-ink-400 mt-2">Réel par mois, hors transferts et doublons. Le dernier mois est EN COURS (partiel) — il est exclu des moyennes. Un revenu à « — » sur le mois courant veut souvent dire que le relevé de compte du mois n'est pas encore importé.</p>
                         </div>
                     )}
                 </div>

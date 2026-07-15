@@ -18,9 +18,15 @@
 > 1 640 tx carte exactes au sou vs totaux imprimés, 19/19 relevés ; ~88 % de couverture) branchées import CSV + bouton
 > Auto-catégoriser (règles AVANT IA) + MCP ; Budget auto-aligné sur les catégories des transactions (médiane 6 mois
 > comme cible suggérée, retraits à la 1re passe du montage) + table « Historique par catégorie » 12 mois.
-> **RESTE (D)** : livrable CSV propre 18 mois catégorisé pour ré-import (dataset dans le scratchpad session — PII,
-> jamais dans le repo) + mode d'emploi à Marc (purge d'abord via l'app déployée, puis import CSV, dedup gère les ~200
-> déjà importées).
+> **✅ (D) CSV livré à Marc** (1 995 tx validées au sou, 87 % catégorisées, instructions d'import données).
+> **✅ LIVRÉ `[BUDGET-MONTHLY-LEDGER]`+`[BUDGET-PAST-AVG]`** : grand livre mensuel revenus+dépenses+solde (12 mois,
+> mois courant marqué partiel et exclu des moyennes), budget du mois courant = moyenne de TOUT le passé (cibles
+> `autoTarget` recalculées au chargement et en session ; édition manuelle décroche), tuiles KPI dédupliquées.
+> **CHANTIER SUIVANT (Lot F, demande Marc)** : chaîne de vérité du revenu — Santé financière ← onglet Impôt ← fichiers
+> de paie (source unique, provenance visible), onglet Impôt DÉTAILLÉ (brut → retenues féd/QC/RRQ/AE/RQAP → net + vraies
+> dépenses), même détail exposé dans le MCP (`get_tax_situation` perUser + retenues + salarySource + realSpending).
+> Repérage fait : TaxCenter scanne déjà les paies (analyzePayslip→applyToProfile→config), Health lit config.netSalary,
+> calculateFiscalReport a tout le détail (fedTax/qcTax/rrq v1+v2/rqap/ae/breakdowns).
 >
 > ## 🔴 Session 2026-07-14 — Incident perte de données Drive (230k$) + anti-clobber STRICT + audit 6 alertes MCP
 > **Incident** : Marc a perdu 230k$ de placements. Chaîne : appareil silencieusement déconnecté (jeton Google expiré ~1h →

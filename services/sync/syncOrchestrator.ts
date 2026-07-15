@@ -35,6 +35,7 @@ import { saveApiKeys } from '../secureKeyStore';
 import { createBackupNow } from '../backupAuto';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { hasMeaningfulData } from '../../utils/onboarding';
+import { sanitizePersistEnvelope } from '../personaSanitizer';
 
 type ApiKeys = { anthropic: string; finnhub: string };
 
@@ -160,7 +161,11 @@ function getLocalPayload(): LocalPayload {
             parsed = null;
         }
     }
-    const payload = stripApiKeys(parsed);
+    // [PERSONA-PURGE] Ceinture côté PUSH : un payload RÉEL (non test) ne part JAMAIS vers Drive
+    // avec des artefacts de persona de test — même si le self-heal du boot n'a pas (encore)
+    // tourné (vieil onglet, autre appareil). Le hash suit le payload DÉSINFECTÉ → pas de boucle.
+    const { envelope: sanitized } = sanitizePersistEnvelope(stripApiKeys(parsed));
+    const payload = sanitized;
     const apiKeys = currentApiKeys();
     // Hash de détection-de-changement = PAYLOAD SEUL (pas les clés API). Raison : au gate, les clés
     // ne sont pas encore hydratées (currentApiKeys() = vide tant que App.tsx n'a pas restauré depuis
@@ -211,7 +216,17 @@ async function applyPulledPayload(payload: unknown, apiKeys?: ApiKeys): Promise<
             /* le store réhydratera les clés au prochain boot via secureKeyStore */
         }
     }
-    localStorage.setItem(STORE_KEY, JSON.stringify(payload));
+    // [PERSONA-PURGE] Ceinture côté PULL : une copie Drive HISTORIQUE peut encore contenir des
+    // artefacts de persona (fuite d'avant les gardes) → on désinfecte AVANT d'écraser le local,
+    // sinon la restauration ré-injecterait la pollution qu'on vient de purger.
+    const { envelope: cleanPayload, report: pullPurge } = sanitizePersistEnvelope(payload);
+    if (pullPurge.removedTotal > 0) {
+        logError({
+            source: 'storage', severity: 'warning',
+            message: `applyPulledPayload : ${pullPurge.removedTotal} artefact(s) de persona retirés du payload Drive avant restauration`,
+        });
+    }
+    localStorage.setItem(STORE_KEY, JSON.stringify(cleanPayload));
     // Restaurer des données = utilisateur EXISTANT → ne JAMAIS réafficher l'onboarding « nouvel
     // utilisateur ». Sans ça, l'onboarding s'affichait puis, en se terminant, faisait un setAppState
     // qui ÉCRASAIT les profils (config.users) ET les clés API restaurés par des valeurs vides du

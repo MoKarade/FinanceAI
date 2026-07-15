@@ -6,6 +6,37 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Purge des données de persona de test (`[PERSONA-PURGE]`)] — 2026-07-15
+
+> Incident Marc : « j'ai des fausses transactions sans doute des profils de test je veux plus que ça
+> arrive jamais » — ~600 transactions du persona « Karim » (persona-tx-*) + son objectif « Indépendance
+> financière (1 M$) » (kar-fg1) retrouvés MÉLANGÉS aux ~200 vraies transactions. Défense en profondeur.
+
+- **`services/testPersonas/artifactIds.ts`** : registre AUTONOME (boot-safe, zéro fixture importée) de
+  tous les ids d'artefacts de persona — préfixes générés (`persona-tx-`, `test-tx-`, `test-asset-`) +
+  ~100 ids exacts de fixtures. Parité registre↔fixtures VERROUILLÉE par test-scan (un futur persona à
+  id non enregistré = test rouge) ; zéro collision avec les ids réels (timestamps, `cat_/debt_/rule_`,
+  `child_1`/`main_property` — vérifié, y compris les voisins `child-1`/`re-1`).
+- **`services/personaSanitizer.ts`** : purge PURE et chirurgicale par id (19 tranches tableau +
+  `childGoal` singulier) + variante enveloppe persist (`sanitizePersistEnvelope`, skip en mode test).
+- **6 points d'ancrage** — un état RÉEL ne peut plus jamais contenir/propager un artefact de persona :
+  self-heal au BOOT (App.tsx, backup IndexedDB PRÉ-purge puis toast — finding panel sécurité), sortie
+  du MODE TEST (snapshot désinfecté, y compris les singuliers childGoal/weddingGoal — bug de spread
+  attrapé par le panel), PUSH Drive (ceinture dans `getLocalPayload`), PULL Drive (`applyPulledPayload`
+  — une vieille copie Drive ne ré-injecte plus la pollution), RESTAURATION de backup (`restoreBackup`),
+  et **lecture MCP** (`mcp/state/stateStore.ts` — un blob historique pollué n'est plus résumé à Claude
+  ni re-perpétué par les écritures ; trou structurel trouvé par le panel).
+- **Échecs silencieux corrigés au passage** (panel) : backup illisible à la restauration désormais
+  journalisé (cause d'« état vide au reboot » enfin visible) ; échec du backup pré-purge journalisé
+  (le rejet async d'IndexedDB ne remonte PAS au catch interne de `createBackupNow` — piège documenté).
+- **Tests** (`personaSanitizer.test.ts` 26 + `stateStorePurge.test.ts` 2 + preuves POSITIVES push/pull
+  dans `syncOrchestrator.flow.test.ts`) : parité fixtures↔registre (volume prouvé : 7 personas, 100+
+  ids scannés), direction anti-faux-positif (ids réels jamais flaggés, voisins immédiats inclus),
+  pureté/no-op même référence, intégration store (purge idempotente, no-op en mode test, snapshot
+  pollué désinfecté, singulier childGoal), pushNow/pullNow sur payloads réellement pollués.
+
+---
+
 ## [unreleased — Connecteur MCP v0.7.0 : ajout de dettes (`[MCP-APPLY-DEBT]`)] — 2026-07-15
 
 > Demande Marc : « rajouter des dettes avec mcp genre achat de voiture ». ⚠️ Redéploiement Cloud Run requis.

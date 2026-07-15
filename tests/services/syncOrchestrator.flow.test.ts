@@ -223,7 +223,9 @@ describe('Push : ce qui est exporté embarque TOUT (demande Marc)', () => {
                 transactions: [{ id: 'a' }, { id: 'b' }],
                 assets: [{ symbol: 'XEQT' }],
                 investmentTransactions: [{ id: 'it1' }],
-                debts: [{ id: 'd1' }],
+                // [PERSONA-PURGE] id RÉALISTE obligatoire : « d1 » est un id de fixture persona
+                // (testBudget TEST_DEBTS) → la ceinture anti-fuite du push le purgerait (voulu).
+                debts: [{ id: '1752585600001' }],
                 config: { users: [{ name: 'Marc', netSalary: 80000, grossSalary: 108000 }] },
                 retirementGoal: { targetAge: 60, lifeExpectancy: 92 },
                 documents: [{ id: 'doc1' }, { id: 'doc2' }],
@@ -246,6 +248,62 @@ describe('Push : ce qui est exporté embarque TOUT (demande Marc)', () => {
         expect(sent.payload.state.documents).toHaveLength(2);
         expect(sent.payload.state.retirementGoal.lifeExpectancy).toBe(92);
         expect(sent.payload.state.config.users[0].name).toBe('Marc');
+    });
+
+    // [PERSONA-PURGE] Preuve POSITIVE de la ceinture au push (finding panel : l'évitement
+    // d'un id persona dans la fixture n'est pas une preuve — celle-ci exerce le nettoyage).
+    it('pushNow DÉSINFECTE un payload réel pollué par des artefacts de persona avant l’envoi Drive', async () => {
+        const local = {
+            state: {
+                isTestMode: false,
+                transactions: [
+                    { id: 'persona-tx-1', payee: 'Shopify - Dépôt paie', amount: 3200 },
+                    { id: '1752585600002', payee: 'Paie / ROBOVIC INC.', amount: 837.31 },
+                ],
+                financialGoals: [{ id: 'kar-fg1', name: 'Indépendance financière (1 M$)' }],
+                assets: [{ id: '1752585600003', symbol: 'XEQT' }],
+                config: { users: [{ name: 'Marc' }] },
+            },
+            version: 7,
+        };
+        localStorage.setItem(STORE_KEY, JSON.stringify(local));
+
+        const driveApi = await import('../../services/googleDrive/driveAppData');
+        const result = await pushNow();
+        expect(result).toBe('pushed');
+        const sent =
+            (driveApi.updateSyncFile as ReturnType<typeof vi.fn>).mock.calls[0]?.[2] ??
+            (driveApi.createSyncFile as ReturnType<typeof vi.fn>).mock.calls[0]?.[1];
+        expect(sent).toBeDefined();
+        const state = sent.payload.state as { transactions: Array<{ id: string }>; financialGoals: unknown[]; assets: Array<{ id: string }> };
+        expect(state.transactions.map(t => t.id)).toEqual(['1752585600002']); // persona-tx-1 purgé
+        expect(state.financialGoals).toEqual([]);                              // kar-fg1 purgé
+        expect(state.assets.map(a => a.id)).toEqual(['1752585600003']);        // le réel intact
+    });
+
+    it('pullNow DÉSINFECTE un payload Drive HISTORIQUE pollué avant de l’écrire en local', async () => {
+        // Local VIDE (→ decideOnLoad pull) ; Drive = copie d'époque avec pollution persona.
+        const driveApi = await import('../../services/googleDrive/driveAppData');
+        (driveApi.readSyncFile as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            ...driveEnvelope,
+            payload: {
+                state: {
+                    isTestMode: false,
+                    transactions: [
+                        { id: 'persona-tx-9', payee: 'Loyer - Condo Griffintown', amount: -1750 },
+                        { id: 'tx-drive-1', payee: 'réelle', amount: 42 },
+                    ],
+                    budgetItems: [{ id: 'kar-b1', name: 'Loyer (condo)' }, { id: 'cat_1700000000000', name: 'Épicerie' }],
+                },
+                version: 7,
+            },
+        });
+        await pullNow(); // Promise<void> — la preuve est l'état ÉCRIT en local ci-dessous
+        const written = JSON.parse(localStorage.getItem(STORE_KEY)!) as {
+            state: { transactions: Array<{ id: string }>; budgetItems: Array<{ id: string }> };
+        };
+        expect(written.state.transactions.map(t => t.id)).toEqual(['tx-drive-1']);   // persona-tx-9 purgé
+        expect(written.state.budgetItems.map(b => b.id)).toEqual(['cat_1700000000000']); // kar-b1 purgé
     });
 });
 

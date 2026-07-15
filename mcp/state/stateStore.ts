@@ -13,6 +13,7 @@ import {
 } from './loadAppState';
 import type { SaveResult } from './writeAppState';
 import { DEFAULT_STATE_TTL_MS } from './stateProvider';
+import { sanitizePersonaArtifacts } from '../../services/personaSanitizer';
 
 export interface StateStore {
     /** Lecture (avec cache court de session). */
@@ -41,7 +42,17 @@ export function makeStateStore(
         }
         const t = now();
         if (cache && t - cache.at < ttl) return cache.state;
-        const state = await loadAppStateFromSource(source);
+        const raw = await loadAppStateFromSource(source);
+        // [PERSONA-PURGE] Ceinture MCP : un blob Drive/fichier HISTORIQUE peut encore porter des
+        // artefacts de persona de test (fuite d'avant les gardes navigateur, appareil jamais
+        // rouvert) → sans ce filtre, les tools résument des données CONTAMINÉES à Claude et
+        // save() re-perpétue la pollution (finding panel 2026-07-15). Lecture désinfectée =
+        // toutes les écritures dérivées le sont aussi. NB : le connecteur ne voit jamais un
+        // état de MODE TEST (shouldPush le coupe côté app) → pas de skip isTestMode requis ici.
+        const { state, report } = sanitizePersonaArtifacts(raw);
+        if (report.removedTotal > 0) {
+            console.error(`[PERSONA-PURGE] stateStore : ${report.removedTotal} artefact(s) de persona de test ignorés à la lecture (${Object.entries(report.bySlice).map(([k, v]) => `${k}:${v}`).join(', ')})`);
+        }
         cache = { state, at: t };
         return state;
     };

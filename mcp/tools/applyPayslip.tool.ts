@@ -16,12 +16,14 @@ const inputSchema = {
         .describe('Utilisateur ciblé : 0 = principal (défaut), 1 = conjoint.'),
     userName: z.string().optional()
         .describe('Alternative à userIndex : cibler l\'utilisateur par son nom.'),
-    grossAnnual: z.number().positive().optional()
+    grossAnnual: z.number().positive().finite().optional()
         .describe('Salaire BRUT annuel (période × fréquence). Stocké en mensuel.'),
-    netAnnual: z.number().positive().optional()
+    netAnnual: z.number().positive().finite().optional()
         .describe('Salaire NET annuel. Stocké en mensuel.'),
-    rrspContributedAnnual: z.number().min(0).optional()
+    rrspContributedAnnual: z.number().min(0).finite().optional()
         .describe('Cotisations REER de l\'année (annuel).'),
+    employer: z.string().max(120).optional()
+        .describe("Employeur/étiquette de la paie — affiché comme SOURCE du revenu (provenance)."),
 };
 
 export const registerApplyPayslip = (server: McpServer, store: StateStore): void => {

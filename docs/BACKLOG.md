@@ -16,6 +16,10 @@
 > mélangés aux ~200 vraies transactions Desjardins ; [Probable] budgets `kar-b*` aussi. Fuite ANTÉRIEURE
 > aux gardes actuelles (persona activé ~2026-06-07), chemin exact non identifiable a posteriori.
 
+- **`[INCOME-PROVENANCE]` + `[TAX-DETAIL]`** ✅ **LIVRÉ 2026-07-15** (demande Marc : chaîne paie→Impôt→Santé,
+  source unique) — salarySource estampillé (scan paie UI + apply_payslip MCP), bannière de provenance +
+  détail des retenues (féd/QC/RRQ/RQAP/AE) + réel des transactions dans l'onglet Impôt ; get_tax_situation
+  enrichi (withholdings/netMonthly/salarySource/realMonthlyAverages). MCP v0.7.1 → **redéploiement Cloud Run requis**.
 - **`[BUDGET-MONTHLY-LEDGER]` + `[BUDGET-PAST-AVG]`** ✅ **LIVRÉ 2026-07-15** (demandes Marc : réel
   revenus+dépenses par mois ; budget du mois courant = moyenne de tout le passé ; tuiles Budget/Dépenses
   identiques dédupliquées ; « Revenus 0 » explicité — relevé de compte mensuel en retard sur la carte).
@@ -36,6 +40,13 @@
 - **`[PERSONA-LEAK-ROOTCAUSE]`** 🔍 LOW — chemin de fuite exact inconnu (antérieur aux gardes SYNC-ANTI-CLOBBER
   et shouldPush-test). Si récidive malgré PERSONA-PURGE (le log `purgePersonaArtifacts` en ferait foi), creuser :
   restauration d'un backup pris EN mode test avant #217, ou merge conflit Drive d'une époque sans garde.
+- **`[FISC-PAYROLL-BASE-INVEST]`** 🔧 MEDIUM (finding panel TAX-DETAIL 2026-07-15, PRÉ-EXISTANT exposé par la
+  nouvelle carte) — `calculateFiscalReport` calcule RRQ/RQAP/AE sur `grossIncome` TOTAL, or TaxCenter lui passe
+  salaire + revenu de placement estimé (`uTotalTaxable`) : cotisations gonflées (+883 $ mesurés, salaire 50 k +
+  200 k non-enreg) quand le salaire est SOUS les maximums (RRQ ~68,5 k, AE ~65,7 k, RQAP ~98 k). Fix : séparer
+  l'assiette d'emploi (RRQ/RQAP/AE) de l'assiette imposable (paliers) — signature à 2 revenus. Corollaire
+  `[TAX-APP-MCP-BASE]` : get_tax_situation calcule sur salaire SEUL (sans placement) → app ↔ MCP divergent pour
+  un détenteur de non-enreg ; aligner les deux assiettes au même fix (+ repli net→brut côté MCP absent).
 - **`[BACKUP-PROMISE-CATCH]`** 🔧 LOW (finding panel 2026-07-15) — `createBackupNow` fait `return new Promise(...)`
   DANS son try : un rejet ASYNC (tx.onerror IndexedDB, ex. quota) passe au caller sans être journalisé par son
   propre catch. Fix : `await` la promesse avant de la retourner (le catch interne loggue alors vraiment). Les

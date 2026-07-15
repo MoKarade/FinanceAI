@@ -13,6 +13,8 @@ import { assetValueCad } from '../services/portfolio';
 import { calculateFiscalReport, calculateGrossFromNet } from '../services/tax';
 import { CAPITAL_GAINS_INCLUSION_STANDARD } from '../utils/tax';
 import { annualSalaryToMonthly } from '../utils/salary';
+import { computeMonthlyActualAverages } from '../utils/budgetSync';
+import { PrivateAmount } from './ui/PrivateAmount';
 import { formatCAD, formatSigned } from '../utils/format';
 import { useFinanceStore } from '../store/useFinanceStore';
 
@@ -46,7 +48,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
     const [progress, setProgress] = useState({ current: 0, total: 0 });
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [scannedPay, setScannedPay] = useState<{ gross: number, net: number, tax: number, rrsp: number, freq: string } | null>(null);
+    const [scannedPay, setScannedPay] = useState<{ gross: number, net: number, tax: number, rrsp: number, freq: string, sourceLabel?: string } | null>(null);
 
     const applyToProfile = () => {
         if (!scannedPay || !setConfig) return;
@@ -57,6 +59,9 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
             // Avant : le brut annuel était stocké tel quel → moteur ré-annualisait → revenu ~12× trop haut.
             grossSalary: annualSalaryToMonthly(scannedPay.gross),
             netSalary: annualSalaryToMonthly(scannedPay.net),
+            // [INCOME-PROVENANCE] La fiche de paie devient LA source du revenu (demande Marc :
+            // « l'onglet impôt dépend seulement des fichiers de paie que je lui mets »).
+            salarySource: { kind: 'payslip', label: scannedPay.sourceLabel, appliedAt: Date.now() },
         };
         setConfig(newConfig);
         showToast("Configuration mise à jour avec succès !", "success");
@@ -120,7 +125,10 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                     net: annualNet,
                     tax: annualTax,
                     rrsp: annualRrsp,
-                    freq: res.frequency
+                    freq: res.frequency,
+                    // [INCOME-PROVENANCE] nom du fichier de paie = étiquette de la source unique
+                    // (tronqué : même discipline que le .max(120) du chemin MCP — finding panel)
+                    sourceLabel: file.name.slice(0, 120),
                 };
 
                 totalTaxPaidFound += annualTax;
@@ -201,6 +209,17 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                     refundOrOwe: totalRefundOrOwe,
                     averageRate: totalGross > 0 ? (totalTax / totalGross * 100) : 0
                 },
+                // [TAX-DETAIL] détail des retenues, sommé (le détail par conjoint est dans les onglets)
+                deductions: {
+                    fed: results.reduce((s, r) => s + r.report.fedTax, 0),
+                    qc: results.reduce((s, r) => s + r.report.qcTax, 0),
+                    rrq: results.reduce((s, r) => s + r.report.rrq, 0),
+                    rqap: results.reduce((s, r) => s + r.report.rqap, 0),
+                    ae: results.reduce((s, r) => s + r.report.ae, 0),
+                },
+                // La base du calcul inclut le revenu de placement ESTIMÉ (non-enreg/crypto) — la
+                // cascade affichée doit l'inclure pour BOUCLER (finding financial-integrity F1).
+                taxableAddOn: investmentTaxData.taxableAddOn,
                 fedBreakdown: results[0].fedBreakdown,
                 qcBreakdown: results[0].qcBreakdown
             };
@@ -210,13 +229,29 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                 isGlobal: false,
                 grossIncome: userRes.gross,
                 report: userRes.report,
+                deductions: {
+                    fed: userRes.report.fedTax,
+                    qc: userRes.report.qcTax,
+                    rrq: userRes.report.rrq,
+                    rqap: userRes.report.rqap,
+                    ae: userRes.report.ae,
+                },
+                taxableAddOn: investmentTaxData.taxableAddOn / config.users.length,
                 fedBreakdown: userRes.fedBreakdown,
                 qcBreakdown: userRes.qcBreakdown
             };
         }
     }, [config.users, viewUser, rrspContribution, fhsaContribution, investmentTaxData, alreadyPaidTax]);
 
-    const { grossIncome, report, fedBreakdown, qcBreakdown, isGlobal } = taxData;
+    const { grossIncome, report, fedBreakdown, qcBreakdown, isGlobal, deductions, taxableAddOn } = taxData;
+
+    // [INCOME-PROVENANCE] Source du revenu du profil principal (fiche de paie = source unique).
+    const salarySource = config.users[0]?.salarySource;
+
+    // [TAX-REAL-SPENDING] « voir exactement ce que je gagne et dépense » : réel mensuel moyen
+    // (mois pleins, hors transferts/doublons) — mêmes fonctions que le Budget (source unique).
+    const transactions = useFinanceStore(s => s.transactions);
+    const realAverages = useMemo(() => computeMonthlyActualAverages(transactions), [transactions]);
 
     const openDrive = () => window.open(DRIVE_FOLDER_URL, '_blank');
 
@@ -383,6 +418,26 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
 
                 <div className="lg:col-span-8 space-y-6 order-1 lg:order-2">
 
+                    {/* [INCOME-PROVENANCE] Source UNIQUE du revenu (demande Marc : « l'onglet impôt
+                        dépend seulement des fichiers de paie que je lui mets »). La Santé financière
+                        lit le même config.users[].netSalary → toute la chaîne suit cette source. */}
+                    {salarySource?.kind === 'payslip' || salarySource?.kind === 'mcp' ? (
+                        <div className="bg-success-500/10 border border-success-500/30 rounded-lg px-4 py-2.5 text-meta text-ink-100 flex items-center gap-2">
+                            <Icon name="lock" size={14} />
+                            <span>
+                                Revenu basé sur la fiche de paie{salarySource.label ? ` « ${salarySource.label} »` : ''}
+                                {salarySource.kind === 'mcp' ? ' (via le connecteur Claude)' : ''}
+                                {salarySource.appliedAt ? `, appliquée le ${new Date(salarySource.appliedAt).toLocaleDateString('fr-CA')}` : ''}.
+                                {' '}La Santé financière et le Budget utilisent ce même revenu.
+                            </span>
+                        </div>
+                    ) : (
+                        <div className="bg-warning-500/10 border border-warning-500/30 rounded-lg px-4 py-2.5 text-meta text-ink-100 flex items-center gap-2">
+                            <Icon name="status" size={14} />
+                            <span>Revenu saisi manuellement (aucune fiche de paie appliquée). Pour un calcul précis, importe une paie via « Calcul rapide » — elle deviendra LA source du revenu partout.</span>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <Card className="!p-4 border-l-4 border-l-red-500 bg-surface/50">
                             <div className="text-tiny text-ink-400 uppercase font-bold">Impôt Total</div>
@@ -407,6 +462,93 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                 {formatSigned(report.refundOrOwe, { withCurrency: true })}
                             </div>
                             <div className="text-tiny text-ink-400">Basé sur docs reçus</div>
+                        </Card>
+                    </div>
+
+                    {/* [TAX-DETAIL] Brut → chaque retenue → net (demande Marc : « plus détaillé,
+                        plus précis, que je vois exactement ce que je gagne ») + réel des dépenses. */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Card icon={<Icon name="tax" size={18} />} title={`Ce que tu gagnes — détail (annuel${!isGlobal ? `, ${viewUser}` : ''})`}>
+                            <dl className="space-y-1.5 text-meta">
+                                <div className="flex justify-between py-1">
+                                    <dt className="text-ink-200 font-bold">Salaire brut</dt>
+                                    <dd className="font-mono text-white font-bold"><PrivateAmount>{formatCAD(grossIncome)}</PrivateAmount></dd>
+                                </div>
+                                {/* [TAX-DETAIL F1] la base fiscale inclut le revenu de placement ESTIMÉ :
+                                    sans cette ligne, la cascade brut − retenues ≠ net (écart = l'add-on,
+                                    mesuré par le panel — la carte doit BOUCLER au dollar près). */}
+                                {taxableAddOn > 0 && (
+                                    <div className="flex justify-between py-1">
+                                        <dt className="text-ink-300">+ Revenu de placement estimé (non-enreg/crypto)</dt>
+                                        <dd className="font-mono text-ink-100"><PrivateAmount>{formatSigned(taxableAddOn, { withCurrency: true })}</PrivateAmount></dd>
+                                    </div>
+                                )}
+                                <div className="flex justify-between py-1 border-b border-white/10">
+                                    <dt className="text-ink-200 font-bold">Revenu imposable estimé</dt>
+                                    <dd className="font-mono text-white font-bold"><PrivateAmount>{formatCAD(grossIncome + taxableAddOn)}</PrivateAmount></dd>
+                                </div>
+                                <div className="flex justify-between py-1">
+                                    <dt className="text-ink-300">Impôt fédéral (après abattement QC)</dt>
+                                    <dd className="font-mono text-danger-400"><PrivateAmount>{formatSigned(-deductions.fed, { withCurrency: true })}</PrivateAmount></dd>
+                                </div>
+                                <div className="flex justify-between py-1">
+                                    <dt className="text-ink-300">Impôt Québec</dt>
+                                    <dd className="font-mono text-danger-400"><PrivateAmount>{formatSigned(-deductions.qc, { withCurrency: true })}</PrivateAmount></dd>
+                                </div>
+                                <div className="flex justify-between py-1">
+                                    <dt className="text-ink-300">RRQ (volets 1 + 2)</dt>
+                                    <dd className="font-mono text-danger-400"><PrivateAmount>{formatSigned(-deductions.rrq, { withCurrency: true })}</PrivateAmount></dd>
+                                </div>
+                                <div className="flex justify-between py-1">
+                                    <dt className="text-ink-300">RQAP</dt>
+                                    <dd className="font-mono text-danger-400"><PrivateAmount>{formatSigned(-deductions.rqap, { withCurrency: true })}</PrivateAmount></dd>
+                                </div>
+                                <div className="flex justify-between py-1">
+                                    <dt className="text-ink-300">Assurance-emploi</dt>
+                                    <dd className="font-mono text-danger-400"><PrivateAmount>{formatSigned(-deductions.ae, { withCurrency: true })}</PrivateAmount></dd>
+                                </div>
+                                <div className="flex justify-between py-1.5 border-t border-white/10">
+                                    <dt className="text-ink-100 font-bold">Revenu net (fiscal)</dt>
+                                    <dd className="font-mono text-success-400 font-bold"><PrivateAmount>{formatCAD(report.netIncome)}</PrivateAmount></dd>
+                                </div>
+                                <div className="flex justify-between py-1">
+                                    <dt className="text-ink-300">Soit par mois (net fiscal)</dt>
+                                    <dd className="font-mono text-ink-100"><PrivateAmount>{formatCAD(report.netIncome / 12)}</PrivateAmount></dd>
+                                </div>
+                            </dl>
+                            <p className="text-tiny text-ink-400 mt-2">Estimation {new Date().getFullYear()}{isGlobal ? ' (couple, sommé par conjoint)' : ''}. Net FISCAL = imposable − impôts − cotisations (avant RPP/assurances collectives). Les cotisations RRQ/RQAP/AE sont estimées sur le revenu imposable (léger sur-compte si salaire sous les maximums — suivi au BACKLOG).</p>
+                        </Card>
+                        <Card icon={<Icon name="transactions" size={18} />} title="Ce que tu dépenses — réel (transactions, ménage)">
+                            {/* [TAX-DETAIL F2-scope] le réel des transactions est TOUJOURS un agrégat
+                                MÉNAGE : en vue individuelle d'un couple, comparer au net d'UN conjoint
+                                serait dominé par le salaire de l'autre (finding panel) → carte masquée. */}
+                            {!isGlobal ? (
+                                <p className="text-meta text-ink-400">Le réel des transactions est un agrégat du ménage — sélectionne « Global (Couple) » pour le voir.</p>
+                            ) : realAverages.fullMonths > 0 ? (
+                                <dl className="space-y-1.5 text-meta">
+                                    <div className="flex justify-between py-1">
+                                        <dt className="text-ink-300">Revenus réels moyens / mois</dt>
+                                        <dd className="font-mono text-success-400"><PrivateAmount>{formatCAD(realAverages.incomeAvg)}</PrivateAmount></dd>
+                                    </div>
+                                    <div className="flex justify-between py-1">
+                                        <dt className="text-ink-300">Dépenses réelles moyennes / mois</dt>
+                                        <dd className="font-mono text-danger-400"><PrivateAmount>{formatSigned(-realAverages.expenseAvg, { withCurrency: true })}</PrivateAmount></dd>
+                                    </div>
+                                    <div className="flex justify-between py-1.5 border-t border-white/10">
+                                        <dt className="text-ink-100 font-bold">Solde mensuel moyen</dt>
+                                        <dd className={`font-mono font-bold ${realAverages.incomeAvg - realAverages.expenseAvg >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                            <PrivateAmount>{formatSigned(realAverages.incomeAvg - realAverages.expenseAvg, { withCurrency: true })}</PrivateAmount>
+                                        </dd>
+                                    </div>
+                                    <div className="flex justify-between py-1">
+                                        <dt className="text-ink-300">Écart net fiscal ↔ revenus réels</dt>
+                                        <dd className="font-mono text-ink-100"><PrivateAmount>{formatSigned(realAverages.incomeAvg - report.netIncome / 12, { withCurrency: true })}</PrivateAmount></dd>
+                                    </div>
+                                </dl>
+                            ) : (
+                                <p className="text-meta text-ink-400">Aucun mois complet de transactions — importe tes relevés pour voir le réel ici.</p>
+                            )}
+                            <p className="text-tiny text-ink-400 mt-2">Moyennes sur {realAverages.fullMonths} mois plein(s) d'historique, hors transferts et doublons — mêmes chiffres que l'onglet Budget. Un écart net↔réel notable = revenus hors paie (Interac, remboursements) ou relevés incomplets.</p>
                         </Card>
                     </div>
 

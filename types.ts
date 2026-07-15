@@ -147,6 +147,14 @@ export interface User {
   celiContributed?: number;
   rrspContributed?: number;
   facteurEquivalence?: number;
+  /** [INCOME-PROVENANCE] Provenance du salaire (source UNIQUE = fiche de paie, demande Marc
+   *  2026-07-15) : estampillé par TaxCenter (scan de paie) et par le MCP (apply_payslip).
+   *  Absent = saisie manuelle/inconnue (l'onglet Impôt l'affiche). Champ additif optionnel. */
+  salarySource?: {
+    kind: 'payslip' | 'mcp' | 'manual';
+    label?: string;
+    appliedAt?: number;
+  };
   // ── PH3-c (2026-06-11) — champs « profil détaillé » historiques PURGÉS (contre-audit repo
   // complet : aucun consommateur) : gender, healthRating, isSmoker, bmiCategory, chronicConditions,
   // parentAgeAtDeath, activityLevel, yearsOfExperience, employmentType, promotionLikelihood5Y,

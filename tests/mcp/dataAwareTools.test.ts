@@ -21,6 +21,7 @@ import type { StateProvider } from '../../mcp/tools/_dataAware';
 import { registerGetFinancialOverview } from '../../mcp/tools/getFinancialOverview.tool';
 import { registerGetProjection } from '../../mcp/tools/getProjection.tool';
 import { registerGetTaxSituation } from '../../mcp/tools/getTaxSituation.tool';
+import { applyDocument } from '../../mcp/ingest/applyDocument';
 import { registerGetRetirementOutlook } from '../../mcp/tools/getRetirementOutlook.tool';
 import { registerGetNextBestActions } from '../../mcp/tools/getNextBestActions.tool';
 import { registerSearchTransactions } from '../../mcp/tools/searchTransactions.tool';
@@ -151,6 +152,58 @@ describe('Lot 1 — get_tax_situation', () => {
         expect(perUser).toHaveLength(2);
         expect(perUser[0].totalTax).toBe(perUser[1].totalTax); // symétrie 60k/60k
         expect(perUser[0].grossAnnual).toBe(60000);
+    });
+
+    it('[TAX-DETAIL] retenues détaillées + net mensuel + provenance + réel des transactions exposés', async () => {
+        const state = karimState();
+        // Karim est SOLO : muter l'index 0 EN PLACE (reconstruire le tuple créerait users[1] =
+        // undefined → null au JSON → schéma AppState rejeté).
+        state.config.users[0] = { ...state.config.users[0], salarySource: { kind: 'mcp', label: 'ROBOVIC', appliedAt: 1752585600000 } };
+        const h = captureTool(registerGetTaxSituation, providerFor(state));
+        const out = await callJson(h, { year: 2026 });
+        const pu = (out.perUser as Array<Record<string, unknown>>)[0];
+        const w = pu.withholdings as Record<string, number>;
+        // Retenues détaillées cohérentes : fed+qc == totalTax du contribuable (arrondis ±2 $)
+        expect(w.federal + w.quebec).toBeCloseTo(pu.totalTax as number, -1);
+        for (const k of ['federal', 'quebec', 'rrq', 'rqap', 'ae']) {
+            expect(w[k]).toBeGreaterThanOrEqual(0);
+        }
+        expect(pu.netMonthly as number).toBeCloseTo((pu.netIncome as number) / 12, -1);
+        // Provenance de la paie (source unique) transmise telle quelle
+        expect((pu.salarySource as Record<string, unknown>).kind).toBe('mcp');
+        expect((pu.salarySource as Record<string, unknown>).label).toBe('ROBOVIC');
+        // Réel des transactions (mois pleins) : net = income − expenses
+        const real = out.realMonthlyAverages as Record<string, number>;
+        expect(real.net).toBe(real.income - real.expenses);
+        expect(real.fullMonths).toBeGreaterThanOrEqual(0);
+    });
+
+    it('[INCOME-PROVENANCE] apply_payslip estampille la source (montant changé, 1er apply idempotent, changement d\'employeur) ; retry identique = inerte', async () => {
+        const s = karimState();
+        const first = applyDocument(s, { kind: 'payslip', userIndex: 0, grossAnnual: 90_000, employer: 'ROBOVIC INC.' });
+        const u1 = first.nextState.config.users[0];
+        expect(u1.salarySource?.kind).toBe('mcp');
+        expect(u1.salarySource?.label).toBe('ROBOVIC INC.');
+        expect(typeof u1.salarySource?.appliedAt).toBe('number');
+
+        // Retry STRICTEMENT identique (même employeur, mêmes montants) → 0 changement, inerte.
+        const retry = applyDocument(first.nextState, { kind: 'payslip', userIndex: 0, grossAnnual: 90_000, employer: 'ROBOVIC INC.' });
+        expect(retry.changes).toHaveLength(0);
+        expect(retry.nextState.config.users[0].salarySource?.appliedAt).toBe(u1.salarySource?.appliedAt);
+
+        // CHANGEMENT D'EMPLOYEUR à salaire identique → provenance rafraîchie (1 change dédié,
+        // sinon le tool retournerait applied:false sans sauvegarder — finding panel).
+        const newJob = applyDocument(first.nextState, { kind: 'payslip', userIndex: 0, grossAnnual: 90_000, employer: 'NOUVEL EMPLOYEUR' });
+        expect(newJob.changes).toHaveLength(1);
+        expect(newJob.changes[0].field).toContain('salarySource');
+        expect(newJob.nextState.config.users[0].salarySource?.label).toBe('NOUVEL EMPLOYEUR');
+
+        // 1er apply IDEMPOTENT (montants déjà à jour via saisie manuelle) → estampille quand même
+        // (une vraie paie vient d'être appliquée : le bandeau ne doit pas dire « saisie manuelle »).
+        const manualState = karimState();
+        const monthlyGross = manualState.config.users[0].grossSalary;
+        const firstIdempotent = applyDocument(manualState, { kind: 'payslip', userIndex: 0, grossAnnual: monthlyGross * 12 });
+        expect(firstIdempotent.nextState.config.users[0].salarySource?.kind).toBe('mcp');
     });
 
     it('[MCP-TAX-COUPLE] solo : totaux INCHANGÉS par le refactor per-conjoint (non-régression)', async () => {

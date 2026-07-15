@@ -22,11 +22,11 @@
 > **✅ LIVRÉ `[BUDGET-MONTHLY-LEDGER]`+`[BUDGET-PAST-AVG]`** : grand livre mensuel revenus+dépenses+solde (12 mois,
 > mois courant marqué partiel et exclu des moyennes), budget du mois courant = moyenne de TOUT le passé (cibles
 > `autoTarget` recalculées au chargement et en session ; édition manuelle décroche), tuiles KPI dédupliquées.
-> **CHANTIER SUIVANT (Lot F, demande Marc)** : chaîne de vérité du revenu — Santé financière ← onglet Impôt ← fichiers
-> de paie (source unique, provenance visible), onglet Impôt DÉTAILLÉ (brut → retenues féd/QC/RRQ/AE/RQAP → net + vraies
-> dépenses), même détail exposé dans le MCP (`get_tax_situation` perUser + retenues + salarySource + realSpending).
-> Repérage fait : TaxCenter scanne déjà les paies (analyzePayslip→applyToProfile→config), Health lit config.netSalary,
-> calculateFiscalReport a tout le détail (fedTax/qcTax/rrq v1+v2/rqap/ae/breakdowns).
+> **✅ LIVRÉ `[INCOME-PROVENANCE]`+`[TAX-DETAIL]` (Lot F)** : chaîne de vérité du revenu — salarySource estampillé
+> (scan de paie UI + apply_payslip MCP avec `employer`), bannière de provenance + détail des retenues
+> (féd/QC/RRQ v1+2/RQAP/AE, brut→net annuel+mensuel) + réel des transactions dans l'onglet Impôt ;
+> get_tax_situation enrichi (perUser.withholdings/netMonthly/salarySource + realMonthlyAverages). MCP v0.7.1 —
+> **⚠️ Marc : redéployer Cloud Run** (`git pull` puis `PROJECT_ID=financeai-497112 bash mcp/deploy.sh`).
 >
 > ## 🔴 Session 2026-07-14 — Incident perte de données Drive (230k$) + anti-clobber STRICT + audit 6 alertes MCP
 > **Incident** : Marc a perdu 230k$ de placements. Chaîne : appareil silencieusement déconnecté (jeton Google expiré ~1h →

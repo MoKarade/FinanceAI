@@ -1,4 +1,4 @@
-# FinanceAI MCP Server (v0.7.0)
+# FinanceAI MCP Server (v0.7.1)
 
 Serveur MCP (Model Context Protocol) qui expose FinanceAI à Claude : **poser des
 questions** sur ses vraies finances (patrimoine, projection, impôts, retraite) ET
@@ -54,7 +54,7 @@ l'écriture, le tool refuse (rien d'écrasé) et invite à relancer. Exposés un
 
 | Tool | Effet |
 |------|-------|
-| `apply_payslip` | Fiche de paie → salaire brut/net (annuel → mensuel) + REER de l'utilisateur ciblé |
+| `apply_payslip` | Fiche de paie → salaire brut/net (annuel → mensuel) + REER de l'utilisateur ciblé. v0.7.1 : `employer` (provenance `salarySource`, affichée dans l'onglet Impôt) |
 | `apply_bank_statement` | Ajoute les transactions (dédup date+montant+marchand), compte optionnel |
 | `apply_broker_statement` | Met à jour / ajoute les positions (par symbole + compte fiscal) |
 | `apply_tax_slip` | T4 / RL-1 → revenu d'emploi annuel (→ brut mensuel) + cotisations REER |

@@ -6,6 +6,29 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Chaîne de vérité du revenu : paie → Impôt détaillé → Santé + MCP v0.7.1 (`[INCOME-PROVENANCE]` + `[TAX-DETAIL]`)] — 2026-07-15
+
+> Demandes Marc : « la santé financière doit dépendre seulement de mon onglet impôt et l'onglet
+> impôt dépend seulement des fichiers de paie que je lui mets, qui doit être unique… je veux que
+> l'onglet impôt soit plus détaillé plus précis et que je vois exactement ce que je gagne et
+> dépense et ce genre d'info doit être dans le mcp aussi ». ⚠️ Redéploiement Cloud Run requis (0.7.1).
+
+- **Provenance du salaire (source unique)** : `User.salarySource` (additif) estampillé par le scan
+  de paie de l'onglet Impôt (« Calcul rapide », nom du fichier) ET par `apply_payslip` MCP (champ
+  `employer`, estampillé seulement si un montant change). Bannière dans l'onglet Impôt : « Revenu
+  basé sur la fiche de paie X appliquée le Y — la Santé financière et le Budget utilisent ce même
+  revenu » (avertissement si saisie manuelle). La Santé lit déjà `config.users[].netSalary` (la
+  valeur que la paie écrit) — chaîne documentée dans HealthIndicator.
+- **Onglet Impôt détaillé** : carte « Ce que tu gagnes » (brut → impôt fédéral après abattement,
+  impôt QC, RRQ volets 1+2, RQAP, AE → net annuel + mensuel, taux moyen) + carte « Ce que tu
+  dépenses » (réel des transactions : revenus/dépenses/solde mensuels moyens sur mois pleins +
+  écart net fiscal ↔ revenus réels — mêmes chiffres que le Budget, source unique `budgetSync`).
+- **MCP v0.7.1** : `get_tax_situation.perUser` += `withholdings` (féd/QC/RRQ/RQAP/AE), `netMonthly`,
+  `salarySource` ; nouveau bloc `realMonthlyAverages` (réel des transactions). `apply_payslip` :
+  `.finite()` sur les montants (règle D9) + `employer`.
+
+---
+
 ## [unreleased — Budget mensuel : réel revenus+dépenses, budget = moyenne du passé (`[BUDGET-MONTHLY-LEDGER]` + `[BUDGET-PAST-AVG]`)] — 2026-07-15
 
 > Demandes Marc : « chaque mois, je devrai avoir le réel de dépenses et revenus pour ce mois ci,

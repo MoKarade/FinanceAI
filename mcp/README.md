@@ -184,6 +184,26 @@ node -e "console.log('SIGNING=' + require('crypto').randomBytes(48).toString('ba
 node -e "console.log('ACCESS='  + require('crypto').randomBytes(24).toString('base64url'))"
 ```
 
+## Hub perso — GET /hub/summary (HUB-01)
+
+Le serveur HTTP expose un résumé pour le dashboard du hub (`hubperso.com`), conforme au
+contrat [`@mokarade/hub-contract` v1](https://github.com/MoKarade/hub-contract) (pinné
+`#v1.0.0` dans `package.json`) :
+
+- **Activation** : définir `FINANCEAI_HUB_TOKEN` (≥16 caractères — refus de démarrer
+  sinon). Sans la variable, la route n'existe pas (404).
+- **Auth** : le hub envoie le header `x-hub-token` ; comparaison en temps constant,
+  **401** si absent ou invalide. Réponse toujours en `Cache-Control: no-store`.
+- **Données** : VRAIES métriques (`buildFinancialOverview`) + signaux financiers
+  (`mcp/financialSignals.ts`, partagés avec `get_next_best_actions`) → metrics/alerts.
+  État de plus de 6 h (`freshness`) → `status: "degraded"` + `dataAsOf` ; état illisible
+  → summary `status: "error"` (HTTP 200) — le widget montre la panne, jamais du vide.
+- **Génération du jeton** :
+
+```powershell
+node -e "console.log('HUB=' + require('crypto').randomBytes(24).toString('base64url'))"
+```
+
 ## Synchronisation Google Drive (auto) — recommandé
 
 Au lieu d'exporter un fichier, le connecteur lit/écrit le **même blob Drive que l'app**

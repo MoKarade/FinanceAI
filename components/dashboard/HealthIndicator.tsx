@@ -85,7 +85,10 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
     const projectionFireTarget = useProjectionSelector(selectFireTarget, 0);
 
     const metrics = useMemo<MetricRow[]>(() => {
-        // Revenus mensuels (netSalary est mensuel dans le store)
+        // [INCOME-PROVENANCE] Revenus mensuels = config.users[].netSalary UNIQUEMENT (mensuel dans
+        // le store) — c'est la valeur écrite par la fiche de paie (TaxCenter « Calcul rapide » ou
+        // MCP apply_payslip). Chaîne de vérité voulue par Marc (2026-07-15) : paie → onglet Impôt →
+        // Santé financière. Ne JAMAIS dériver ce revenu des transactions ici.
         const monthlyIncome = (config?.users || []).reduce(
             (sum, u) => sum + (u.netSalary || u.salary || 0),
             0,

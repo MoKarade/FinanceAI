@@ -2,8 +2,9 @@
 // Lot 1 — situation fiscale RÉELLE : impôt courant + espace REER/CELI restant.
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import type { AppState, User } from '../../types';
+import type { AppState, Transaction, User } from '../../types';
 import { calculateFiscalReport } from '../../utils/tax';
+import { computeMonthlyActualAverages } from '../../utils/budgetSync';
 import { computeHistoricalContributionRoom } from '../../services/projection/setupSimulation';
 import { computeAssetBreakdown } from '../../services/portfolio';
 import { computeBaseGrossAnnual } from '../../services/projection/buildSimulationParams';
@@ -46,8 +47,12 @@ export const registerGetTaxSituation = (server: McpServer, getState: StateProvid
                 .map(({ user: u, grossAnnual: g }) => ({
                     name: u.name || null,
                     grossAnnual: g,
+                    salarySource: u.salarySource,
                     report: calculateFiscalReport(g, u.rrspContributed || 0, u.fhsaBalance || 0, year, true),
                 }));
+
+            // [TAX-REAL-SPENDING] mêmes moyennes que l'app (utils/budgetSync, source unique).
+            const realAverages = computeMonthlyActualAverages((state.transactions ?? []) as Transaction[]);
 
             const sum = (f: (r: (typeof perUserReports)[number]) => number): number =>
                 perUserReports.reduce((s, r) => s + f(r), 0);
@@ -79,7 +84,8 @@ export const registerGetTaxSituation = (server: McpServer, getState: StateProvid
                     ae: Math.round(sum((r) => r.report.ae)),
                 },
                 // Détail PAR CONTRIBUABLE (fiscalité individuelle) — c'est le marginal de CHAQUE
-                // conjoint qui guide une décision REER, pas celui du ménage.
+                // conjoint qui guide une décision REER, pas celui du ménage. [TAX-DETAIL] retenues
+                // détaillées + provenance du salaire (fiche de paie = source unique, demande Marc).
                 perUser: perUserReports.map((r) => ({
                     name: r.name,
                     grossAnnual: Math.round(r.grossAnnual),
@@ -87,7 +93,24 @@ export const registerGetTaxSituation = (server: McpServer, getState: StateProvid
                     marginalRatePct: Number((r.report.marginalRate * 100).toFixed(1)),
                     averageRatePct: Number(r.report.averageRate.toFixed(1)),
                     netIncome: Math.round(r.report.netIncome),
+                    netMonthly: Math.round(r.report.netIncome / 12),
+                    withholdings: {
+                        federal: Math.round(r.report.fedTax),
+                        quebec: Math.round(r.report.qcTax),
+                        rrq: Math.round(r.report.rrq),
+                        rqap: Math.round(r.report.rqap),
+                        ae: Math.round(r.report.ae),
+                    },
+                    salarySource: r.salarySource ?? null,
                 })),
+                // [TAX-REAL-SPENDING] Réel des transactions (mois pleins) — « ce que je gagne et
+                // dépense » aussi côté connecteur, mêmes chiffres que l'app (source unique).
+                realMonthlyAverages: {
+                    income: realAverages.incomeAvg,
+                    expenses: realAverages.expenseAvg,
+                    net: realAverages.incomeAvg - realAverages.expenseAvg,
+                    fullMonths: realAverages.fullMonths,
+                },
                 celiRoomRemaining: Math.round(celiRoomRemaining),
                 reerRoomRemaining: Math.round(reerRoomRemaining),
                 currentBalances: {
@@ -99,7 +122,10 @@ export const registerGetTaxSituation = (server: McpServer, getState: StateProvid
                     "marginalRatePct = marginal du conjoint au plus haut revenu ; voir perUser pour chacun. " +
                     'celiRoomRemaining/reerRoomRemaining sont des AGRÉGATS du ménage (somme des droits des ' +
                     "2 comptes légaux distincts) — ne pas verser tout l'espace dans le compte d'UNE personne. " +
-                    "Estimation sur salaires bruts annualisés ; n'inclut pas tous les crédits/revenus de placement.",
+                    "Estimation sur salaires bruts annualisés ; n'inclut pas tous les crédits/revenus de placement. " +
+                    'perUser.withholdings = retenues détaillées ; perUser.salarySource = provenance du salaire ' +
+                    '(fiche de paie = source unique — null = saisie manuelle) ; realMonthlyAverages = réel des ' +
+                    'transactions (mois pleins, hors transferts), mêmes chiffres que l\'onglet Budget.',
             });
         }),
     );

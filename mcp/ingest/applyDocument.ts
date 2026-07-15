@@ -17,6 +17,8 @@ export interface PayslipPayload {
     grossAnnual?: number;
     netAnnual?: number;
     rrspContributedAnnual?: number;
+    /** [INCOME-PROVENANCE] Employeur/étiquette de la paie (affiché comme source du revenu). */
+    employer?: string;
 }
 
 /** Relevé bancaire — transactions à ajouter (dédup automatique). */
@@ -171,6 +173,24 @@ function applyPayslip(state: AppState, doc: PayslipPayload): ApplyResult {
         if (u.rrspContributed !== doc.rrspContributedAnnual) {
             changes.push({ field: `users[${idx}].rrspContributed`, before: u.rrspContributed ?? 0, after: doc.rrspContributedAnnual });
             u.rrspContributed = doc.rrspContributedAnnual;
+        }
+    }
+
+    // [INCOME-PROVENANCE] La fiche de paie devient LA source du revenu (visible dans l'onglet
+    // Impôt + exposée par get_tax_situation). Estampillée si : un montant a changé, OU une paie
+    // plausible est fournie sans provenance existante (1er apply idempotent — sinon le bandeau
+    // dirait « saisie manuelle » à tort), OU l'employeur fourni diffère (changement d'employeur
+    // à salaire identique — findings panel). La mise à jour de provenance SEULE compte comme un
+    // changement (sinon le tool retournerait applied:false sans sauvegarder).
+    const payProvided = (typeof doc.grossAnnual === 'number' && doc.grossAnnual > 0)
+        || (typeof doc.netAnnual === 'number' && doc.netAnnual > 0);
+    const provenanceStale = payProvided
+        && (!u.salarySource || (typeof doc.employer === 'string' && doc.employer.trim() !== '' && doc.employer !== u.salarySource.label));
+    if (changes.length > 0 || provenanceStale) {
+        const before = u.salarySource?.label ?? null;
+        u.salarySource = { kind: 'mcp', label: doc.employer || u.salarySource?.label || 'fiche de paie (connecteur)', appliedAt: Date.now() };
+        if (changes.length === 0) {
+            changes.push({ field: `users[${idx}].salarySource`, before, after: u.salarySource.label, note: 'provenance de la paie mise à jour (montants inchangés)' });
         }
     }
 

@@ -47,9 +47,15 @@ describe('Lot 2 — applyDocument (paie, pur)', () => {
         expect(r.nextState.config.users[0].grossSalary).toBe(5000);
     });
 
-    it('valeur identique → 0 changement (pas d\'écriture inutile)', () => {
-        const r = applyDocument(baseState(), { kind: 'payslip', grossAnnual: 60000 }); // 60000/12 = 5000 déjà
-        expect(r.changes.length).toBe(0);
+    it('valeur identique → 1er apply estampille la PROVENANCE, le retry est inerte ([INCOME-PROVENANCE])', () => {
+        // Nouvelle spec 2026-07-15 (finding panel) : une vraie paie vient d'être appliquée même si
+        // les montants matchent déjà une saisie manuelle → salarySource écrit UNE fois (sinon le
+        // bandeau de l'onglet Impôt dirait « saisie manuelle » à tort). Le retry reste sans écriture.
+        const first = applyDocument(baseState(), { kind: 'payslip', grossAnnual: 60000 }); // 60000/12 = 5000 déjà
+        expect(first.changes.length).toBe(1);
+        expect(first.changes[0].field).toContain('salarySource');
+        const retry = applyDocument(first.nextState, { kind: 'payslip', grossAnnual: 60000 });
+        expect(retry.changes.length).toBe(0);
     });
 
     it('rrspContributedAnnual écrit', () => {
@@ -148,12 +154,15 @@ describe('Lot 2 — apply_payslip (bout en bout, fichier réel)', () => {
         expect(reloaded.config.users[0].grossSalary).toBe(8000); // 96000/12
     });
 
-    it('valeurs identiques → applied:false, aucune sauvegarde créée', async () => {
+    it('valeurs identiques → 1er apply écrit la PROVENANCE (1 backup), le retry est applied:false sans backup', async () => {
+        // Nouvelle spec 2026-07-15 ([INCOME-PROVENANCE], finding panel) — cf. test pur ci-dessus.
         const store = makeStateStore(new FileStateSource(file), { ttlMs: 0 });
         const out = JSON.parse((await captureApply(store)({ grossAnnual: 60000 })).content[0].text); // = 5000/mois déjà
-        expect(out.applied).toBe(false);
+        expect(out.applied).toBe(true); // provenance estampillée
+        const retry = JSON.parse((await captureApply(store)({ grossAnnual: 60000 })).content[0].text);
+        expect(retry.applied).toBe(false); // idempotent dès la 2e passe
         const baks = (await fs.readdir(dir)).filter((n) => n.endsWith('.bak'));
-        expect(baks.length).toBe(0);
+        expect(baks.length).toBe(1); // une seule écriture, un seul backup
     });
 
     it('source non inscriptible → erreur claire, pas de crash', async () => {

@@ -25,9 +25,14 @@
   passphrase opt-in) alors que les clés API ont déjà un chiffrement NON-optionnel dérivé du `sub` Google
   (keyCipher). Appliquer la même recette à tout le payload (zéro friction, cross-device intact) ; passphrase =
   zéro-knowledge additionnel.
-- **`[SEC-VISION-CONSENT-INJECTION]`** 🟡 MOYEN (S) — relevés envoyés en IMAGE BRUTE à Claude Vision (montants
-  exacts, nom/adresse/n° compte imprimés) : ajouter la clause anti-injection au prompt Vision (absente, présente
-  partout ailleurs) + consentement explicite ponctuel avant le 1er envoi (Loi 25).
+- **`[SEC-VISION-CONSENT-INJECTION]`** ✅ **LIVRÉ 2026-07-15 (Vague 4)** — clause anti-injection `VISION_INJECTION_GUARD`
+  (`utils/promptSafety.ts`) câblée dans les 2 prompts Vision (paie + relevé) : un document peut contenir du texte
+  adversarial lu par le modèle → traité comme donnée, jamais comme instruction (test scan) ; + `temperature: 0` sur les
+  2 appels Vision (extraction déterministe). + avis de confidentialité EXPLICITE Loi 25 sur les **3 surfaces d'envoi
+  brut** (relevé `ImportBankStatement`, paie `PayslipUploadCard` + `TaxCenter` — panel security-privacy). RESTE (petits
+  suivis) : `[SEC-ONBOARDING-VISION-TEXT]` (le texte d'onboarding « marchands tronqués + arrondis 100 $ » décrit le
+  pipeline TEXTE, trompeur pour le Vision brut — à nuancer) ; QA manuelle du guard (upload piégé « ignore… ») non
+  automatisable côté no-backend ; aperçu d'import limité à 3 lignes (`slice(0,3)`, pré-existant).
 - **`[MCP-CHARTDATA-SUM-GUARD]`** 🟡 MOYEN (M) — garde-fou générique : tout nouveau tool MCP qui SOMME des flux
   chartData retombe dans le piège MCP-RETIREMENT-VERDICT (décaissement non-enreg sans champ Retrait*) ; corrigé au
   cas par cas aujourd'hui, à systématiser (test/lint de convention sur mcp/tools/*).
@@ -46,8 +51,9 @@
 - **`[DETTE-TESTGAP-MARKETDATA]`** ✅ **LIVRÉ 2026-07-15 (Vague 1)** — `tests/services/marketDataRouting.test.ts` :
   6 tests de routage `pickProvider` (crypto→CoinGecko même sans clé ; action→Finnhub ; crypto va TOUJOURS à CoinGecko
   même avec clé), preuve par l'URL réellement appelée (coingecko.com vs finnhub.io).
-- **`[DETTE-DEADCODE-2026-07]`** 🟢 LOW (S) — 4 locales `_`-préfixées mortes confirmées : Budget.tsx:193-194,
-  RealEstate.tsx:79, AiAssistant.tsx:122. (Les `_` de runAsync/syncOrchestrator/usePastPortfolioHistory sont VIVANTS.)
+- **`[DETTE-DEADCODE-2026-07]`** ✅ **LIVRÉ 2026-07-15 (Vague 4)** — locales `_`-préfixées mortes retirées (Budget.tsx
+  `_totalTaxDisplay`/`_totalGrossDisplay` + leur chaîne source `totalTaxMonthly`/`totalGrossIncomeMonthly`, RealEstate
+  `_downPaymentPercent`, AiAssistant `_retirementAge`). typecheck clean après retrait.
 - **`[DETTE-CHART-THEME-DUP]`** 🟢 LOW (S) — tooltip Recharts dupliqué 14× avec 4 fonds différents → constante
   partagée CHART_TOOLTIP_STYLE. · **`[DETTE-INPUT-PRIMITIVES]`** 🟢 LOW→M — 81 inputs inline sans primitive
   Field (40 dans AdvancedProjectionParams). · **`[SEC-GA-DEFER-CONSENT]`** 🟢 LOW (S) — injecter gtag.js APRÈS
@@ -121,10 +127,12 @@
   (ETF EU internationaux) mais PAS à leur emplacement actuel (100 % non-enregistré, où la retenue étrangère 15 % EST
   créditable — la perte n'existe qu'en CELI/REER, où Marc a 0 $). Le BACKLOG note lui-même « fix non trivial (le patch naïf
   reste 0) ». À reprendre si Marc met de l'international en CELI/REER (cf CELI-ASSET-NUDGE). Latent, pas stale. Détail infra ↓.
-- **`[BACKUP-PROMISE-CATCH]`** 🔧 LOW (finding panel 2026-07-15) — `createBackupNow` fait `return new Promise(...)`
-  DANS son try : un rejet ASYNC (tx.onerror IndexedDB, ex. quota) passe au caller sans être journalisé par son
-  propre catch. Fix : `await` la promesse avant de la retourner (le catch interne loggue alors vraiment). Les
-  call-sites critiques (purge boot) journalisent déjà côté appelant en attendant.
+- **`[BACKUP-PROMISE-CATCH]`** ✅ **LIVRÉ 2026-07-15 (Vague 4)** — `return await new Promise(...)` appliqué à `createBackupNow`
+  ET aux 3 fonctions sœurs du même fichier (`listBackups`/`deleteBackup`/`clearAllBackups`, même bug — panel code-reviewer :
+  `restoreBackup` appelait `listBackups` HORS de son try → rejet async non capté sur le bouton « Restaurer »). Un rejet ASYNC
+  (tx/req.onerror IndexedDB, ex. quota) repasse désormais par le catch → journalisé + repli. Vrai impact confirmé : le bouton
+  « Backup maintenant » (`AutoBackupPanel`, sans try/catch amont) restait en spinner infini. Discriminant git-stash prouvé.
+  App.tsx self-heal aligné (`if (!backup)` + commentaire à jour).
 - **`[PURGE-TOAST-UX]`** 🎨 LOW (finding panel) — seuls le boot notifie par toast ; les purges au pull Drive /
   sortie de mode test ne sont visibles qu'en SystemView (logError). Si Marc veut la notification partout :
   abonnement générique aux entrées storage PERSONA-PURGE → toast. (`restoreBackup` recharge la page → toast inutile.)

@@ -142,13 +142,16 @@ export const App: React.FC = () => {
             const { report } = sanitizePersonaArtifacts(st as unknown as Parameters<typeof sanitizePersonaArtifacts>[0]);
             if (report.removedTotal === 0) return;
             try {
-                await createBackupNow('auto');
+                // Depuis [BACKUP-PROMISE-CATCH], createBackupNow journalise EN INTERNE ses échecs
+                // IndexedDB (rejet async tx.onerror → null) ; ici on trace juste que le filet est absent.
+                const backup = await createBackupNow('auto');
+                if (!backup) {
+                    logError({ source: 'storage', severity: 'warning', message: 'purgePersonaArtifacts : backup pré-purge indisponible (null) — purge SANS filet' });
+                }
             } catch (e) {
-                // ⚠️ Pas déjà journalisé : le rejet ASYNC de createBackupNow (tx.onerror IndexedDB,
-                // ex. quota) passe au CALLER, pas à son catch interne (finding silent-failure
-                // 2026-07-15). La purge procède quand même (chirurgicale, ids déterministes),
-                // mais « filet absent » doit être visible.
-                logError({ source: 'storage', severity: 'warning', message: 'purgePersonaArtifacts : backup pré-purge échoué (IndexedDB) — purge SANS filet', error: e instanceof Error ? e : new Error(String(e)) });
+                // Erreur SYNCHRONE en amont du backup (payload/crypto de chiffrement) — la purge procède
+                // quand même (chirurgicale, ids déterministes), mais « filet absent » doit être visible.
+                logError({ source: 'storage', severity: 'warning', message: 'purgePersonaArtifacts : backup pré-purge échoué (amont) — purge SANS filet', error: e instanceof Error ? e : new Error(String(e)) });
             }
             const purged = useFinanceStore.getState().purgePersonaArtifacts();
             if (purged > 0) {

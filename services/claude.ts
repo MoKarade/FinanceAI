@@ -14,7 +14,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { Transaction, RecurringItem } from '../types';
 import { logError } from './errorLogger';
-import { sanitizePromptText, wrapUserData } from '../utils/promptSafety';
+import { sanitizePromptText, wrapUserData, VISION_INJECTION_GUARD } from '../utils/promptSafety';
 import { isInternalTransferLabel } from '../utils/transactionParser';
 
 // ─── Modèles ─────────────────────────────────────────────────────────────────
@@ -785,7 +785,8 @@ export const analyzePayslip = async (file: File, apiKey: string): Promise<Paysli
     const response = await client.messages.create({
         model: MODEL_SONNET,
         max_tokens: 512,
-        system: `${QUEBEC_FISCAL_CONTEXT}\nTu analyses des fiches de paie québécoises (T4, RL-1, talons). Extrais les montants de la PÉRIODE COURANTE uniquement (pas les cumuls YTD).`,
+        temperature: 0, // extraction déterministe (aligné sur les autres appels d'extraction du fichier)
+        system: `${QUEBEC_FISCAL_CONTEXT}\nTu analyses des fiches de paie québécoises (T4, RL-1, talons). Extrais les montants de la PÉRIODE COURANTE uniquement (pas les cumuls YTD).\n${VISION_INJECTION_GUARD}`,
         messages: [{
             role: 'user',
             content: [
@@ -871,8 +872,10 @@ export const analyzeBankStatement = async (file: File, apiKey: string): Promise<
     const response = await client.messages.create({
         model: MODEL_SONNET,
         max_tokens: 16000, // un relevé peut contenir beaucoup de lignes ; non-stream OK ≤ ~16k
+        temperature: 0, // extraction déterministe (aligné sur les autres appels d'extraction du fichier)
         system: `${QUEBEC_FISCAL_CONTEXT}
-Tu es un extracteur EXPERT de relevés bancaires et de cartes de crédit québécois (Desjardins, RBC, BMO, TD, Banque Nationale, Tangerine, etc.). Tu lis le document (image/PDF) et retournes des transactions structurées FIDÈLES au document, sans rien inventer ni omettre.`,
+Tu es un extracteur EXPERT de relevés bancaires et de cartes de crédit québécois (Desjardins, RBC, BMO, TD, Banque Nationale, Tangerine, etc.). Tu lis le document (image/PDF) et retournes des transactions structurées FIDÈLES au document, sans rien inventer ni omettre.
+${VISION_INJECTION_GUARD}`,
         messages: [{
             role: 'user',
             content: [

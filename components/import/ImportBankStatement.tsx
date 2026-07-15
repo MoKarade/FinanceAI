@@ -96,6 +96,13 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
             <p className="text-meta text-ink-400">
                 CSV exporté de ta banque (100 % local) — ou PDF/image de relevé, analysé par l'IA (Claude) puis classé.
             </p>
+            {/* [SEC-VISION-CONSENT-INJECTION] Loi 25 : consentement éclairé avant l'envoi de PII. Le CSV reste
+                local ; un PDF/image, lui, PART chez Anthropic → le dire explicitement AVANT le choix du fichier. */}
+            <p className="text-tiny text-amber-300/90 bg-amber-900/10 border border-warning-500/20 rounded-lg px-3 py-2">
+                Confidentialité : un <strong>PDF ou une image</strong> est envoyé à Anthropic (Claude) pour en
+                extraire les transactions — il contient des données personnelles (montants, nom, n° de compte).
+                Un <strong>CSV</strong> ne quitte jamais ton navigateur. Choisis un CSV si tu préfères tout garder local.
+            </p>
 
             <label className={`group flex flex-col items-center justify-center w-full h-36 rounded-card border-2 border-dashed transition-all duration-300 ${
                 analyzing

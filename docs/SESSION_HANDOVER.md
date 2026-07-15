@@ -51,6 +51,9 @@
 > chez Marc = pas de perte ; fix non trivial). **⚠️ Marc : redéployer Cloud Run pour MCP v0.7.3.**
 > **✅ VAGUE 3a livrée** : `[UX-STATEMENT-REMINDER]` — bannière proactive « relevé du mois manquant » (onglet Budget,
 > helper pur + dismiss keyé par mois, CTA vers Transactions). Le filet d'import mensuel qui manquait (leçon fuite persona).
+> **✅ VAGUE 4a livrée (périphérique sûr, hors sync)** : `[SEC-VISION-CONSENT-INJECTION]` (clause anti-injection
+> `VISION_INJECTION_GUARD` dans les 2 prompts Vision + avis de confidentialité explicite à l'upload, Loi 25),
+> `[DETTE-DEADCODE-2026-07]` (locales `_` mortes retirées), `[BACKUP-PROMISE-CATCH]` (`await` du backup → rejet async logué).
 > **Suite Vague 3b** : `[ARCH-SYNC-SPLIT]` (L, plan-first + panel + discriminants sur les 2 incidents — scinder
 > `syncOrchestrator.ts` 892 l./~28 exports en 4 modules + barrel de compat), PUIS SEC-DRIVE-ENCRYPT-DEFAULT,
 > MCP-WRITE-VERSION-TOKEN, SYNC-FETCH-TIMEOUT. `[MCP-CHARTDATA-SUM-GUARD]` différé (lint de convention heuristique à

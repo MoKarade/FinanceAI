@@ -65,6 +65,44 @@ describe('backupAuto', () => {
         localStorage.clear();
     });
 
+    it('[BACKUP-PROMISE-CATCH] rejet ASYNC (req.onerror) APRÈS un openDB réussi → capté (logError + repli), jamais un rejet non catché', async () => {
+        // Discriminant du fix `return await new Promise(...)` : ici open() RÉUSSIT puis la requête getAll
+        // échoue de façon ASYNC. Sur l'ancien code (`return new Promise` SANS await), ce rejet échappait
+        // au catch → listBackups() rejetait au caller (unhandled, restoreBackup l'appelle hors de son try).
+        // Avec `await`, il repasse par le catch → logError('listBackups…') + []. (git stash du `await` → échoue.)
+        const { listBackups } = await import('../../services/backupAuto');
+        vi.mocked(logError).mockClear();
+        const fakeReqErr = new Error('QuotaExceededError');
+        vi.stubGlobal('indexedDB', {
+            open: () => {
+                const req: Record<string, unknown> = { onsuccess: null, onerror: null, onupgradeneeded: null, result: null };
+                queueMicrotask(() => {
+                    req.result = {
+                        objectStoreNames: { contains: () => true },
+                        transaction: () => ({
+                            objectStore: () => ({
+                                getAll: () => {
+                                    const r: Record<string, unknown> = { onsuccess: null, onerror: null, error: fakeReqErr };
+                                    queueMicrotask(() => (r.onerror as (() => void) | null)?.());
+                                    return r;
+                                },
+                            }),
+                        }),
+                        close: () => {},
+                    };
+                    (req.onsuccess as (() => void) | null)?.();
+                });
+                return req;
+            },
+        });
+        const result = await listBackups(); // ne doit PAS rejeter
+        expect(result).toEqual([]);
+        expect(logError).toHaveBeenCalledWith(
+            expect.objectContaining({ message: expect.stringContaining('listBackups') }),
+        );
+        vi.unstubAllGlobals();
+    });
+
     it('getBackupStats returns count=0 sur état initial', async () => {
         const { getBackupStats } = await import('../../services/backupAuto');
         vi.stubGlobal('indexedDB', undefined);

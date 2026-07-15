@@ -19,6 +19,7 @@ import {
 import { makeStateProvider } from '../../mcp/state/stateProvider';
 import type { StateProvider } from '../../mcp/tools/_dataAware';
 import { registerGetFinancialOverview } from '../../mcp/tools/getFinancialOverview.tool';
+import { registerGetHoldings } from '../../mcp/tools/getHoldings.tool';
 import { registerGetProjection } from '../../mcp/tools/getProjection.tool';
 import { registerGetTaxSituation } from '../../mcp/tools/getTaxSituation.tool';
 import { applyDocument } from '../../mcp/ingest/applyDocument';
@@ -74,6 +75,65 @@ describe('Lot 1 — get_financial_overview', () => {
         expect((out.accounts as Record<string, number>).reer).toBeGreaterThan(12000);
         expect(out.totalDebt).toBe(0);
         expect(out.coupleMode).toBe(false);
+    });
+});
+
+describe('[MCP-GET-HOLDINGS] get_holdings', () => {
+    it('liste les positions triées par valeur CAD, avec total et ventilation par compte', async () => {
+        const h = captureTool(registerGetHoldings, providerFor(karimState()));
+        const out = await callJson(h);
+        const positions = out.positions as Array<Record<string, unknown>>;
+        expect(Array.isArray(positions)).toBe(true);
+        expect(positions.length).toBeGreaterThan(0);
+        expect(out.count).toBe(positions.length);
+        expect(out.currency).toBe('CAD');
+        // Tri décroissant par valeur CAD.
+        const values = positions.map((p) => p.valueCAD as number);
+        expect(values).toEqual([...values].sort((a, b) => b - a));
+        // Total = round(Σ bruts) (aligné sur get_financial_overview) → peut différer de Σ(positions
+        // arrondies) d'au plus 1 $ par position (dérive d'arrondi, bornée).
+        const sum = values.reduce((s, v) => s + v, 0);
+        expect(Math.abs((out.totalValueCAD as number) - sum)).toBeLessThanOrEqual(positions.length);
+        // Ventilation par compte : Σ buckets ≈ total (même dérive d'arrondi bornée, ≤ nb de buckets).
+        const byAccount = out.byAccount as Record<string, number>;
+        const bucketSum = Object.values(byAccount).reduce((s, v) => s + v, 0);
+        expect(Math.abs(bucketSum - (out.totalValueCAD as number))).toBeLessThanOrEqual(Object.keys(byAccount).length);
+        // Chaque position porte les champs attendus.
+        expect(positions[0]).toHaveProperty('symbol');
+        expect(positions[0]).toHaveProperty('currency');
+        expect(positions[0]).toHaveProperty('valueCAD');
+    });
+
+    it('valueCAD = SOURCE UNIQUE (FX appliqué) — un titre USD est CONVERTI, pas sommé brut', async () => {
+        // Discriminant [ASSET-FX-DISPLAY] : NVDA 10 × 100 USD × fx 1,4 = 1 400 $ CAD (jamais 1 000).
+        const fxState: AppState = {
+            ...buildDefaultAppState(),
+            fxRates: { USD: 1.4, EUR: 1.5, CAD: 1 },
+            assets: [
+                { symbol: 'NVDA', name: 'Nvidia', quantity: 10, currentPrice: 100, currency: 'USD', performance: 5, dateBought: '2025-01-01', accountType: 'NON-ENREG' },
+                { symbol: 'XEQT.TO', name: 'XEQT', quantity: 100, currentPrice: 30, currency: 'CAD', performance: 2, dateBought: '2025-01-01', accountType: 'CELI' },
+            ],
+        };
+        const h = captureTool(registerGetHoldings, providerFor(fxState));
+        const out = await callJson(h);
+        const positions = out.positions as Array<Record<string, unknown>>;
+        const nvda = positions.find((p) => p.symbol === 'NVDA')!;
+        const xeqt = positions.find((p) => p.symbol === 'XEQT.TO')!;
+        expect(nvda.valueCAD).toBe(1400); // FX appliqué (le bug ASSET-FX-DISPLAY donnait 1000)
+        expect(xeqt.valueCAD).toBe(3000);
+        expect(out.totalValueCAD).toBe(4400);
+        expect(positions[0].symbol).toBe('XEQT.TO'); // 3000 > 1400
+        expect((out.byAccount as Record<string, number>).CELI).toBe(3000);
+        expect((out.byAccount as Record<string, number>)['NON-ENREG']).toBe(1400);
+    });
+
+    it('portefeuille vide → count 0, total 0, positions vides (pas de crash)', async () => {
+        const emptyState: AppState = { ...buildDefaultAppState(), assets: [] };
+        const h = captureTool(registerGetHoldings, providerFor(emptyState));
+        const out = await callJson(h);
+        expect(out.count).toBe(0);
+        expect(out.totalValueCAD).toBe(0);
+        expect(out.positions).toEqual([]);
     });
 });
 

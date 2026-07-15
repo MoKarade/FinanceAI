@@ -6,6 +6,32 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Vidage BACKLOG en vagues, VAGUE 1 « confiance quotidienne » + MCP v0.7.2] — 2026-07-15
+
+> Plan PM validé par Marc (« go tout sans t'arrêter »). Vague 1 = 6 items S à impact quotidien, panel 6 agents.
+
+### Ajouté
+- **`get_holdings` (MCP v0.7.2)** — tool lecture seule listant les positions individuelles (symbole, nom, quantité,
+  prix natif, devise, **valeur CAD** via `assetValueCad`, compte, rendement), triées, avec total et ventilation par
+  compte. Répond à « qu'est-ce que je détiens ». ⚠️ Redéploiement Cloud Run requis.
+- **Nudge CELI** (`[CELI-ASSET-NUDGE]`) — bannière discrète dans Investissements quand des virements CELI/TFSA sont
+  détectés mais qu'aucun avoir CELI n'est saisi (CELI affiché 0 = patrimoine sous-estimé). NO-fake-data : le montant
+  viré est un contexte, jamais un solde ; masqué en mode discret (`PrivateAmount`).
+
+### Corrigé
+- **`[DETTE-PDF-FX-BYPASS]`** — le PDF (`buildHoldingsRows`) ET `useDerivedFinancials` (2ᵉ instance latente révélée par
+  le garde resserré) calculaient `quantité × prix × fx` à la main (repli 1:1 muet, classe de l'incident FX des 230 k$) →
+  routés par la source unique `assetValueCad` ; garde `assetFxGuard` resserré (interdit désormais le `fx`/`factor` nu).
+- **`[MCP-FRESHNESS-PRECISION]`** — la note de fraîcheur MCP affiche heures + minutes sous 48 h (« 4 h 40 » au lieu de
+  « 5 h »), et corrige un double-arrondi.
+- **`[DETTE-TOLOCALESTRING-NU]`** — 6 sites `toLocaleString()` nus (contexte IA + log fiscal) rendaient « NaN » / format
+  en-US hors navigateur → `formatNumber`/`formatCAD` (fr-CA, NaN → « — »).
+
+### Tests
+- Routage `pickProvider` (crypto→CoinGecko / action→Finnhub, `[DETTE-TESTGAP-MARKETDATA]`), `get_holdings` (tri, FX,
+  ventilation, vide), fraîcheur heures+minutes, nudge CELI (détection, seuil, garde NaN, NO-fake-data). Suite complète
+  verte (2598 tests), typecheck + lint clean.
+
 ## [unreleased — Chaîne de vérité du revenu : paie → Impôt détaillé → Santé + MCP v0.7.1 (`[INCOME-PROVENANCE]` + `[TAX-DETAIL]`)] — 2026-07-15
 
 > Demandes Marc : « la santé financière doit dépendre seulement de mon onglet impôt et l'onglet

@@ -12,6 +12,7 @@ import type { AppState, Asset, Debt, FinancialGoal } from '../types';
 import type { ProjectionResult } from './projection/types';
 import { calculateFiscalReport } from '../utils/tax';
 import { formatCAD } from '../utils/format';
+import { assetValueCad } from './portfolio';
 import { logError } from './errorLogger';
 
 // ============================================================================
@@ -112,19 +113,19 @@ export interface ReportData {
 /** Convertit `assets` en holdings avec valeur CAD. Trie par valeur décroissante. */
 export function buildHoldingsRows(state: Pick<AppState, 'assets' | 'fxRates'>): HoldingRow[] {
     return state.assets
-        .map((a: Asset): HoldingRow => {
-            const fx = state.fxRates[a.currency] || 1;
-            return {
-                symbol: a.symbol,
-                name: a.name,
-                quantity: a.quantity,
-                currentPrice: a.currentPrice,
-                currency: a.currency,
-                valueCAD: a.quantity * a.currentPrice * fx,
-                accountType: a.accountType,
-                performancePct: a.performance,
-            };
-        })
+        .map((a: Asset): HoldingRow => ({
+            symbol: a.symbol,
+            name: a.name,
+            quantity: a.quantity,
+            currentPrice: a.currentPrice,
+            currency: a.currency,
+            // [DETTE-PDF-FX-BYPASS] source unique (FX + garde NaN/Infinity + devise absente signalée) —
+            // JAMAIS `quantity × currentPrice × fx` à la main : le prix est stocké en devise NATIVE et
+            // un repli fxRates[currency]||1 muet sous-affiche le patrimoine (incident ASSET-FX-DISPLAY).
+            valueCAD: assetValueCad(a, state.fxRates),
+            accountType: a.accountType,
+            performancePct: a.performance,
+        }))
         .sort((x, y) => y.valueCAD - x.valueCAD);
 }
 

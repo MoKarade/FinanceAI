@@ -1,4 +1,4 @@
-# FinanceAI MCP Server (v0.7.1)
+# FinanceAI MCP Server (v0.7.2)
 
 Serveur MCP (Model Context Protocol) qui expose FinanceAI à Claude : **poser des
 questions** sur ses vraies finances (patrimoine, projection, impôts, retraite) ET
@@ -37,6 +37,7 @@ ta source d'état ») au lieu de planter.
 | Tool | Répond à |
 |------|----------|
 | `get_financial_overview` | Patrimoine net, liquidités, placements, ventilation par compte (CELI/REER/CELIAPP/REEE/non-enregistré/crypto), revenu/dépenses/cashflow mensuels, dette totale, objectifs actifs |
+| `get_holdings` | Liste les PLACEMENTS individuels (chaque titre) : symbole, nom, quantité, prix natif (USD/EUR/CAD), devise, **valeur CAD** (source unique `assetValueCad`), compte, rendement — trié par valeur, avec total et ventilation par compte. Répond à « qu'est-ce que je détiens », « ma plus grosse position », « combien en CELI » |
 | `get_projection` | Projection long terme sur SES vraies données (valeur nette dans le temps, âge d'épuisement éventuel). `includeSeries: true` → série ANNUELLE exacte (patrimoine nominal/réel, comptes, dettes, par âge) pour tracer des graphiques |
 | `simulate_what_if` | « Si j'achète une voiture demain ? » — changements HYPOTHÉTIQUES (achat ponctuel ou financé, salaire ±, dépense récurrente, nouvelle dette, achat immobilier) simulés sur SES vraies données : le moteur roule 2× (avec/sans) → deltas de patrimoine à 1/2/5/10/20 ans, impact FIRE/impôts, hypothèses explicites, séries annuelles base+scénario pour graphiques comparés. Aucun chiffre inventé : tout sort du moteur |
 | `get_tax_situation` | Situation fiscale réelle, calculée **PAR CONJOINT puis sommée** (fiscalité canadienne individuelle — jamais de fusion des 2 salaires) : impôt fédéral/QC, marginal par conjoint (`perUser`), espace REER/CELI du ménage |
@@ -349,6 +350,7 @@ Calculatrice (sans état) :
 
 Sur tes vraies données (data-aware) :
 - « Donne-moi une vue d'ensemble de mes finances » → `get_financial_overview`
+- « Qu'est-ce que je détiens ? Quelle est ma plus grosse position ? » → `get_holdings`
 - « À quel âge mon épargne s'épuise-t-elle selon ma projection ? » → `get_projection`
 - « Quel est mon taux marginal d'impôt cette année ? » → `get_tax_situation`
 - « Est-ce que je suis sur la bonne voie pour la retraite ? » → `get_retirement_outlook`

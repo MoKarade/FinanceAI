@@ -37,6 +37,7 @@ import { ImportBrokerPositions } from './investments/ImportBrokerPositions';
 import { computePurchaseStats } from '../utils/assetPurchases';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { NetWorthByOwnerCard } from './investments/NetWorthByOwnerCard';
+import { CeliAssetNudge } from './CeliAssetNudge';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
@@ -480,6 +481,9 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     </Badge>
                 }
             />
+
+            {/* [CELI-ASSET-NUDGE] virements CELI détectés mais aucun avoir CELI saisi → CELI affiché 0. */}
+            <CeliAssetNudge onAddAsset={() => setShowAddStockForm(true)} />
 
             {/* CI-1000x Phase 1 (axe B) — répartition du portefeuille par personne (mode couple). */}
             <NetWorthByOwnerCard assets={assets} setAssets={setAssets} />

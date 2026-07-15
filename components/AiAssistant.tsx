@@ -6,6 +6,7 @@ import { useFinanceStore } from '../store/useFinanceStore';
 import { chatStream } from '../services/claude';
 import { sanitizePromptText, wrapUserData, neutralizeFrameTags, PROMPT_DATA_ISOLATION_NOTE } from '../utils/promptSafety';
 import { computePresentNetWorth, computeCurrentLiquidity, computeInvestmentsValue } from '../services/portfolio';
+import { formatNumber } from '../utils/format';
 
 interface AiAssistantProps {
   apiKey: string;
@@ -99,7 +100,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
       const fire = lastProjection.fireNumber ?? 0;
       const success = lastProjection.successRate;
       const fvi = lastProjection.fvi;
-      projectionLine = `Patrimoine successoral projeté, rentes RRQ/PSV incluses (FutureProjection): ~${roundToHundred(estateNw).toLocaleString()} CAD. Objectif FIRE: ${roundToHundred(fire).toLocaleString()}$. ${success != null ? `Taux de succès MC: ${success}%.` : ''} ${fvi != null ? `FVI: ${fvi}/100.` : ''}`;
+      projectionLine = `Patrimoine successoral projeté, rentes RRQ/PSV incluses (FutureProjection): ~${formatNumber(roundToHundred(estateNw))} CAD. Objectif FIRE: ${formatNumber(roundToHundred(fire))}$. ${Number.isFinite(success) ? `Taux de succès MC: ${success}%.` : ''} ${Number.isFinite(fvi) ? `FVI: ${fvi}/100.` : ''}`;
     } else {
       const annualContrib = projection.manualContribution * 12;
       const rate = projection.returnRate / 100;
@@ -107,15 +108,15 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
       for (let i = 0; i < projection.years; i++) {
         futureValue = (futureValue + annualContrib) * (1 + rate);
       }
-      projectionLine = `Projection simplifiée (formule 5%): ~${roundToHundred(futureValue).toLocaleString()} CAD à ${projection.years} ans. ⚠️ L'utilisateur n'a pas encore ouvert l'onglet Future — pas de simulation détaillée disponible.`;
+      projectionLine = `Projection simplifiée (formule 5%): ~${formatNumber(roundToHundred(futureValue))} CAD à ${projection.years} ans. ⚠️ L'utilisateur n'a pas encore ouvert l'onglet Future — pas de simulation détaillée disponible.`;
     }
 
     const realEstateContext = realEstateGoal
-      ? `Projet immo : ${sanitizePromptText(realEstateGoal.name, 40) || 'principal'} à ${roundToHundred(realEstateGoal.price || 0).toLocaleString()}$ (mise de fonds ${roundToHundred(realEstateGoal.downPayment || 0).toLocaleString()}$, taux ${realEstateGoal.mortgageRate || 0}%).`
+      ? `Projet immo : ${sanitizePromptText(realEstateGoal.name, 40) || 'principal'} à ${formatNumber(roundToHundred(realEstateGoal.price || 0))}$ (mise de fonds ${formatNumber(roundToHundred(realEstateGoal.downPayment || 0))}$, taux ${realEstateGoal.mortgageRate || 0}%).`
       : 'Aucun projet immobilier actif.';
 
     const last20Txs = transactions.slice(0, 20)
-      .map(t => `${sanitizePromptText(t.date, 10)}: ${sanitizePromptText(t.payee)} (${roundToHundred(t.amount)}$)`)
+      .map(t => `${sanitizePromptText(t.date, 10)}: ${sanitizePromptText(t.payee)} (${formatNumber(roundToHundred(t.amount))}$)`)
       .join('\n');
 
     const userAge = config.users[0]?.age || 35;
@@ -128,8 +129,8 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, 
     const userDataBlock = wrapUserData(
 `=== USER SNAPSHOT ===
 - Age principal: ${userAge} ans
-- Net Worth: ${roundToHundred(netWorth).toLocaleString()} CAD (Cash: ${roundToHundred(totalCash).toLocaleString()}, Stocks: ${roundToHundred(totalInvestments).toLocaleString()})
-- Burn mensuel: ~${roundToHundred(monthlyBurn).toLocaleString()}$
+- Net Worth: ${formatNumber(roundToHundred(netWorth))} CAD (Cash: ${formatNumber(roundToHundred(totalCash))}, Stocks: ${formatNumber(roundToHundred(totalInvestments))})
+- Burn mensuel: ~${formatNumber(roundToHundred(monthlyBurn))}$
 - Runway: ${runway} mois
 - Top placements: ${topAssets || 'aucun'}
 - ${projectionLine}

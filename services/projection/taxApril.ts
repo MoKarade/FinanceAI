@@ -3,6 +3,8 @@
 // Cycle 8 (origine): bien borné — s'exécute uniquement en avril (currentMonthIndex === 3).
 // Mutations: liquid, nonReg, nonRegACB, taxPreviousYear (reset), log.
 
+import { formatCAD } from '../../utils/format';
+
 export interface AprilSettlementResult {
     /** Total payé (positif) ou remboursé (négatif). 0 si rien à régler. */
     fluxImpots: number;
@@ -55,7 +57,7 @@ export function processAprilSettlement(
     if (fluxImpots !== 0) {
         state.subtractLiquid(fluxImpots);
         if (fluxImpots < 0) {
-            state.logFlow(`💸 Remboursement d'impôt: +${Math.round(Math.abs(fluxImpots)).toLocaleString('fr-CA')}$`);
+            state.logFlow(`💸 Remboursement d'impôt: +${formatCAD(Math.abs(fluxImpots))}`);
             // Le remboursement de salaire (excédent retenu) est réinvesti dans nonReg.
             // M-8 (2026-06) : subtractLiquid(fluxImpots) ci-dessus a déjà crédité TOUT le
             // remboursement au liquide ; on retire donc la part réinvestie du liquide, sinon
@@ -67,7 +69,7 @@ export function processAprilSettlement(
                 state.subtractLiquid(reinvest); // réinvesti → sort du liquide
             }
         } else {
-            state.logFlow(`🏛️ Fisc: Régularisation de ${Math.round(fluxImpots).toLocaleString()}$ payée.`);
+            state.logFlow(`🏛️ Fisc: Régularisation de ${formatCAD(fluxImpots)} payée.`);
         }
     }
 

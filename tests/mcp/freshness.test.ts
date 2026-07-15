@@ -32,6 +32,27 @@ describe('freshness — registre + note', () => {
         expect(note).not.toContain('⚠️');
     });
 
+    it('[MCP-FRESHNESS-PRECISION] sous 48 h : affiche heures ET minutes (« 4 h 40 »)', () => {
+        const now = 1_800_000_000_000;
+        setStateFreshness({ updatedAt: now - (4 * 60 + 40) * 60_000, source: 'Google Drive' });
+        const note = freshnessNotice(now);
+        expect(note).toContain('il y a 4 h 40');
+        expect(note).not.toContain('il y a 5 h'); // l'ancien arrondi trompeur
+    });
+
+    it('[MCP-FRESHNESS-PRECISION] pile sur l\'heure → « N h » sans « N h 0 »', () => {
+        const now = 1_800_000_000_000;
+        setStateFreshness({ updatedAt: now - 5 * 60 * 60_000, source: 'Google Drive' });
+        expect(freshnessNotice(now)).toContain('il y a 5 h,'); // « 5 h » puis la virgule de source
+    });
+
+    it('[MCP-FRESHNESS-PRECISION] au-delà de 48 h → jours (pas heures+minutes)', () => {
+        const now = 1_800_000_000_000;
+        setStateFreshness({ updatedAt: now - 50 * 60 * 60_000, source: 'Google Drive' });
+        const note = freshnessNotice(now);
+        expect(note).toMatch(/il y a 2 j/);
+    });
+
     it('blob PÉRIMÉ (au-delà du seuil) → AVERTISSEMENT actionnable (ouvrir l\'app pour pousser)', () => {
         const now = 1_800_000_000_000;
         setStateFreshness({ updatedAt: now - (STALE_THRESHOLD_MS + 60_000), source: 'Google Drive' });

@@ -12,7 +12,7 @@ import { DriveStateSource } from './drive/driveStateSource';
 import { makeDriveTokenProvider } from './drive/tokenProvider';
 import { resolveCredentialsBackend } from './auth/credentialsBackend';
 
-export const MCP_SERVER_VERSION = '0.6.0';
+export const MCP_SERVER_VERSION = '0.7.0';
 
 export interface ResolvedState {
     source: StateSource | null;

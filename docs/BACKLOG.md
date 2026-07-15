@@ -45,6 +45,13 @@
   valeur CAD ≈ 230 k$ — le MCP avait raison, incident « je devrais pas avoir 230k » élucidé). Fix : source unique
   `assetValueCad` + 5 sites convertis (NetWorthByOwnerCard, Investments, Dashboard ×2, HealthIndicator,
   AssetLocationCard) + csvExport documenté natif-par-ligne + test-garde scan `assetFxGuard` (discriminant prouvé).
+- **`[MCP-APPLY-DEBT]`** ✅ **LIVRÉ 2026-07-15 (demande Marc « rajouter des dettes avec mcp genre achat de voiture »)** —
+  tool `apply_debt` (v0.7.0) : ajoute/met à jour PAR NOM une dette RÉELLE (update PARTIEL — champs $ optionnels en màj,
+  requis à l'ajout ; idempotent au retry, jamais de doublon, description avertit « même nom = écrasement »),
+  catégorie inférée du nom (auto→Car, études→Student, carte→CreditCard), bornes anti-injection D9 + gardes non-fini
+  côté MÉTIER (bypass-Zod couvert, leçon MCP-WHATIF). ⚠️ Sémantique moteur documentée dans la description : dettes
+  DÉJÀ CONTRACTÉES seulement (servies dès le mois 0) — achat FUTUR/hypothétique routé vers `simulate_what_if`
+  (garde-fou [MCP-WHATIF-DATED-DEBT]). ⚠️ Redéploiement Cloud Run requis.
 - **`[ASSET-CURRENCY-BACKFILL]`** 🔧 (résidu panel FX) — un actif LEGACY sans champ `currency` est traité 1:1 CAD
   (désormais JOURNALISÉ par `assetValueCad`, plus muet) ; le fix propre = backfill de migration (défaut assumé +
   documenté) OU invite UI à préciser la devise. Attendre de VOIR le log apparaître chez un utilisateur réel avant

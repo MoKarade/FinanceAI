@@ -6,6 +6,26 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Connecteur MCP v0.7.0 : ajout de dettes (`[MCP-APPLY-DEBT]`)] — 2026-07-15
+
+> Demande Marc : « rajouter des dettes avec mcp genre achat de voiture ». ⚠️ Redéploiement Cloud Run requis.
+
+- **`apply_debt`** : ajoute une dette RÉELLE (prêt auto, carte, perso, marge) ou MET À JOUR la dette
+  existante du même nom — mise à jour PARTIELLE : seuls les champs fournis changent (jamais forcer
+  l'IA à ré-inventer un solde/taux qu'elle n'a pas — finding panel), idempotent au retry, jamais de
+  doublon. La description avertit qu'un MÊME nom = écrasement (dette différente → nom distinctif).
+  Catégorie inférée du nom si absente (auto → Car, études → Student, carte → CreditCard, sinon
+  Personal ; accents strippés, mots courts ancrés — « Chargex »/« recharge » ne matchent plus `char`).
+- **Sûreté** : bornes anti-injection (D9 : solde ≤ 50 M$, taux ≤ 100 %, paiement ≤ 1 M$/mois,
+  amortissement ≤ 50 ans) + gardes non-fini côté MÉTIER (un appel direct du handler bypasse Zod —
+  leçon MCP-WHATIF) ; rejet = throw AVANT toute écriture (jamais de dette partielle). Sauvegarde
+  Drive horodatée avant écriture (infra `runApply` + backup v0.6.0).
+- **Sémantique moteur explicitée** : les dettes n'ont pas de date de début (servies dès le mois 0) →
+  le tool est réservé aux dettes DÉJÀ CONTRACTÉES ; sa description route les achats FUTURS/
+  hypothétiques vers `simulate_what_if` (garde-fou `[MCP-WHATIF-DATED-DEBT]`).
+
+---
+
 ## [unreleased — Cours actualisés en continu (`[PRICE-REFRESH-LIVE]`)] — 2026-07-14
 
 > Suite directe d'ASSET-FX-DISPLAY : même convertis, les prix restaient FIGÉS à leur valeur d'ajout

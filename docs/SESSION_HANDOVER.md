@@ -36,7 +36,10 @@
 > restant = cours périmés → `[PRICE-REFRESH-LIVE]`). Fix : source unique `assetValueCad` + 5 surfaces converties +
 > garde scan `assetFxGuard` (discriminant git-stash prouvé). La note de fraîcheur v0.6.0 a AUSSI exposé au passage
 > que l'onglet app de Marc (vieux bundle) ne poussait plus vers Drive depuis 15:41Z — F5 requis pour le nouveau bundle.
-> **✅ 4e LOT `[PRICE-REFRESH-LIVE]` (même session, PR #442 à venir)** : les cours se rafraîchissent (boot + bouton
+> **✅ 5e LOT `[MCP-APPLY-DEBT]` (2026-07-15, demande Marc « rajouter des dettes avec mcp genre achat de voiture »)** :
+> tool `apply_debt` v0.7.0 — ajout/màj PAR NOM (update PARTIEL, idempotent), catégorie inférée, bornes D9 + non-fini bypass-Zod,
+> description qui ROUTE l'achat futur vers simulate_what_if (dettes servies dès mois 0). ⚠️ Redéploiement Cloud Run requis.
+> **✅ 4e LOT `[PRICE-REFRESH-LIVE]` (même session, PR #442 MERGÉE)** : les cours se rafraîchissent (boot + bouton
 > « Actualiser les cours »), séquentiel provider-aware 2 500 ms, prix natif only + devise protégée + couverture honnête
 > (non-couverts NOMMÉS — les titres EU de Marc peuvent ne pas être quotables en Finnhub gratuit), patches fusionnés
 > anti-course, `Asset.priceUpdatedAt` additif. Ça ferme l'écart ~250 k$ courtier pour les titres couverts.

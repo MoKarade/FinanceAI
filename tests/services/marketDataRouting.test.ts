@@ -18,15 +18,23 @@ import {
 const CRYPTO = 'BTC-CAD';   // ticker BTC connu de CoinGecko
 const STOCK = 'NASDAQ:NVDA'; // action → Finnhub
 
-/** Mock fetch qui répond selon l'hôte appelé + mémorise les URLs pour prouver le routage. */
-function stubFetchCapturingUrls(urls: string[]) {
+const COINGECKO_HOST = 'api.coingecko.com';
+const FINNHUB_HOST = 'finnhub.io';
+
+/** Hostname EXACT de l'URL (parsé) — jamais un substring d'URL (anti-pattern CodeQL/sanitization). */
+function hostOf(input: string | URL): string {
+    return new URL(String(input)).hostname;
+}
+
+/** Mock fetch qui répond selon l'HÔTE PARSÉ + mémorise les hostnames appelés pour prouver le routage. */
+function stubFetchCapturingHosts(hosts: string[]) {
     vi.stubGlobal('fetch', vi.fn(async (input: string | URL) => {
-        const url = String(input);
-        urls.push(url);
-        if (url.includes('coingecko.com')) {
+        const host = hostOf(input);
+        hosts.push(host);
+        if (host === COINGECKO_HOST) {
             return { ok: true, status: 200, json: async () => ({ bitcoin: { cad: 50_000, cad_24h_change: 1.5 } }) } as Response;
         }
-        // finnhub.io
+        // FINNHUB_HOST
         return { ok: true, status: 200, json: async () => ({ c: 100, d: 1, dp: 1, t: 1_700_000_000 }) } as Response;
     }));
 }
@@ -54,40 +62,40 @@ describe('[DETTE-TESTGAP-MARKETDATA] routage pickProvider', () => {
     });
 
     it('SANS clé : getQuote(crypto) frappe CoinGecko et renvoie un prix (ne tombe PAS sur un Finnhub null)', async () => {
-        const urls: string[] = [];
-        stubFetchCapturingUrls(urls);
+        const hosts: string[] = [];
+        stubFetchCapturingHosts(hosts);
         const q = await getQuote(CRYPTO);
         expect(q).not.toBeNull();
         expect(q?.price).toBe(50_000);
-        expect(urls.some((u) => u.includes('coingecko.com'))).toBe(true);
-        expect(urls.some((u) => u.includes('finnhub.io'))).toBe(false);
+        expect(hosts).toContain(COINGECKO_HOST);
+        expect(hosts).not.toContain(FINNHUB_HOST);
     });
 
     it('SANS clé : getQuote(action) renvoie null (aucun provider — pas de fetch)', async () => {
-        const urls: string[] = [];
-        stubFetchCapturingUrls(urls);
+        const hosts: string[] = [];
+        stubFetchCapturingHosts(hosts);
         const q = await getQuote(STOCK);
         expect(q).toBeNull();
-        expect(urls).toHaveLength(0); // court-circuité avant tout réseau
+        expect(hosts).toHaveLength(0); // court-circuité avant tout réseau
     });
 
     it('AVEC clé : un crypto va TOUJOURS à CoinGecko, JAMAIS à Finnhub (le routage prime sur la clé)', async () => {
         configureMarketDataProvider({ finnhubKey: 'k' });
-        const urls: string[] = [];
-        stubFetchCapturingUrls(urls);
+        const hosts: string[] = [];
+        stubFetchCapturingHosts(hosts);
         const q = await getQuote(CRYPTO);
         expect(q?.price).toBe(50_000);
-        expect(urls.some((u) => u.includes('coingecko.com'))).toBe(true);
-        expect(urls.some((u) => u.includes('finnhub.io'))).toBe(false);
+        expect(hosts).toContain(COINGECKO_HOST);
+        expect(hosts).not.toContain(FINNHUB_HOST);
     });
 
     it('AVEC clé : une action va à Finnhub', async () => {
         configureMarketDataProvider({ finnhubKey: 'k' });
-        const urls: string[] = [];
-        stubFetchCapturingUrls(urls);
+        const hosts: string[] = [];
+        stubFetchCapturingHosts(hosts);
         const q = await getQuote(STOCK);
         expect(q).not.toBeNull();
-        expect(urls.some((u) => u.includes('finnhub.io'))).toBe(true);
-        expect(urls.some((u) => u.includes('coingecko.com'))).toBe(false);
+        expect(hosts).toContain(FINNHUB_HOST);
+        expect(hosts).not.toContain(COINGECKO_HOST);
     });
 });

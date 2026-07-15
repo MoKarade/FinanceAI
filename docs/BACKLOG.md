@@ -16,6 +16,11 @@
 > mélangés aux ~200 vraies transactions Desjardins ; [Probable] budgets `kar-b*` aussi. Fuite ANTÉRIEURE
 > aux gardes actuelles (persona activé ~2026-06-07), chemin exact non identifiable a posteriori.
 
+- **`[BUDGET-MONTHLY-LEDGER]` + `[BUDGET-PAST-AVG]`** ✅ **LIVRÉ 2026-07-15** (demandes Marc : réel
+  revenus+dépenses par mois ; budget du mois courant = moyenne de tout le passé ; tuiles Budget/Dépenses
+  identiques dédupliquées ; « Revenus 0 » explicité — relevé de compte mensuel en retard sur la carte).
+  Cibles `autoTarget` (champ additif) recalculées à chaque chargement ET en cours de session ; grand
+  livre 12 mois avec bucket « Autres / non classées » (Σ lignes ≡ Total).
 - **`[TX-CATEGORY-RULES]`** ✅ **LIVRÉ 2026-07-15** — règles déterministes de catégorisation (payees QC du corpus
   réel de Marc, ~88 % de couverture mesurée) branchées sur import CSV + bouton Auto-catégoriser (règles AVANT IA)
   + MCP apply_bank_statement + listes de catégories. Jeu canonique 16 catégories (`RULE_CATEGORIES`).

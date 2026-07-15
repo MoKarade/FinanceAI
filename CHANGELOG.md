@@ -6,6 +6,33 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Budget mensuel : réel revenus+dépenses, budget = moyenne du passé (`[BUDGET-MONTHLY-LEDGER]` + `[BUDGET-PAST-AVG]`)] — 2026-07-15
+
+> Demandes Marc : « chaque mois, je devrai avoir le réel de dépenses et revenus pour ce mois ci,
+> et pour le mois en cours le budget devrait être la moyenne de tout le passé », « je vois 0 en
+> revenus ça marche pas », « j'ai un truc budget et dépenses et ça a l'air d'être le même ».
+
+- **Grand livre mensuel (12 mois)** (`buildMonthlyLedger`) : la table du Budget montre désormais
+  le RÉEL par mois — lignes de REVENUS (par catégorie, « Autres revenus » pour les positifs à
+  classer) ET de DÉPENSES + Total revenus / Total dépenses / Solde. Le mois courant est marqué
+  « (en cours) » et EXCLU des moyennes (un « — » en revenus au mois courant = relevé de compte
+  pas encore importé, pas un bug — note explicite sous la table).
+- **Budget du mois en cours = moyenne de TOUT le passé** : cibles AUTO (`autoTarget`, champ
+  additif) = moyenne mensuelle sur tous les mois PLEINS d'historique, recalculée à chaque
+  chargement ; éditer une cible à la main DÉCROCHE la gestion auto. Tuiles KPI : le « prévu »
+  = moyenne passée (× fenêtre), plus jamais la somme des cibles.
+- **Tuiles dédupliquées** : « Budget » et « Dépenses » affichaient les MÊMES chiffres →
+  remplacées par Revenus / Dépenses (budget = moy. passée) / Fin de mois (projection au rythme
+  actuel, vue MOIS seulement — hors MOIS elle re-dupliquerait Dépenses) / Restant (réels).
+- **Findings panel intégrés (2 agents)** : décrochage auto sur édition de FRÉQUENCE (sinon cible
+  mensuelle réécrite sous une fréquence Yearly = ÷12 silencieux) ; bucket « Autres / non
+  classées » côté dépenses du grand livre (Σ lignes ≡ Total, prouvé par test) ; refresh des
+  cibles auto AUSSI en cours de session (import CSV après chargement) ; moyenne du grand livre
+  = run-rate sur mois couverts (plus jamais 2 400 $ affiché à côté d'une cible de 400 $) ; badge
+  neutre quand aucun mois complet ; garde anti-transactions futures ; traces logError.
+
+---
+
 ## [unreleased — Catégories de transactions par règles + Budget aligné (`[TX-CATEGORY-RULES]` + `[BUDGET-TX-CATEGORIES]`)] — 2026-07-15
 
 > Demandes Marc : « les catégories des transactions sont très mal réglées » + « dans mon onglet

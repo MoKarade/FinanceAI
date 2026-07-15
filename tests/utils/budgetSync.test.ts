@@ -3,7 +3,7 @@
 // (verbatim Marc 2026-07-15). Sync idempotente + historique mensuel par catégorie.
 
 import { describe, it, expect } from 'vitest';
-import { syncBudgetWithTransactionCategories, buildCategoryMonthlyHistory, lastMonths } from '../../utils/budgetSync';
+import { syncBudgetWithTransactionCategories, buildMonthlyLedger, computeMonthlyActualAverages, fullHistoryMonths, lastMonths } from '../../utils/budgetSync';
 import type { BudgetCategory, Transaction } from '../../types';
 
 const REF = new Date(2026, 6, 15); // 15 juillet 2026 (mois 6 = juillet)
@@ -34,18 +34,50 @@ describe('syncBudgetWithTransactionCategories', () => {
         expect(r.removed).toEqual(['Loisirs']);
         const names = r.items.map(i => i.name).sort();
         expect(names).toEqual(['Restaurants', 'Épicerie'].sort());
-        // Poste conservé INTACT (cible utilisateur préservée)
+        // Poste conservé INTACT (cible utilisateur préservée — autoTarget absent = manuel)
         expect(r.items.find(i => i.name === 'Restaurants')!.target).toBe(250);
-        // Cible = run-rate : (100+300+200)/6 mois = 100 — PAS la médiane des mois actifs (200)
+        // Cible auto = MOYENNE DE TOUT LE PASSÉ (mois PLEINS : mai + juin = 2 mois ;
+        // juillet EN COURS exclu) : (100+300)/2 = 200. Marqué autoTarget.
         const epicerie = r.items.find(i => i.name === 'Épicerie')!;
-        expect(epicerie.target).toBe(100);
+        expect(epicerie.target).toBe(200);
         expect(epicerie.nature).toBe('Besoin');
+        expect(epicerie.autoTarget).toBe(true);
     });
 
-    it('cible run-rate : un poste PONCTUEL (Voyages 2400 $ un seul mois) ne devient PAS 2400 $/mois (finding F1)', () => {
-        const transactions = [tx({ category: 'Voyages', amount: -2400, date: '2026-06-05' })];
+    it('cible run-rate : un poste PONCTUEL (Voyages 2400 $ un seul mois sur 6 pleins) ne devient PAS 2400 $/mois (finding F1)', () => {
+        const transactions = [
+            tx({ category: 'Voyages', amount: -2400, date: '2026-01-15' }),
+            tx({ category: 'Épicerie', amount: -50, date: '2026-01-02' }), // ancre le début d'historique
+        ];
         const r = syncBudgetWithTransactionCategories(transactions, [], REF);
-        expect(r.items[0].target).toBe(400); // 2400 / 6 mois — même total annualisé que la réalité
+        // Historique plein = janv→juin 2026 (6 mois) → 2400/6 = 400
+        expect(r.items.find(i => i.name === 'Voyages')!.target).toBe(400);
+    });
+
+    it('un poste AUTO renommé (fuzzy) voit sa cible recalculée SOUS LE NOUVEAU NOM dès cette passe (finding panel)', () => {
+        const transactions = [
+            tx({ category: 'Restaurants', amount: -80, date: '2026-05-03' }),
+            tx({ category: 'Restaurants', amount: -120, date: '2026-06-03' }),
+        ];
+        const existing = [{ ...item('Restaurant', 999), autoTarget: true }];
+        const r = syncBudgetWithTransactionCategories(transactions, existing, REF);
+        const it0 = r.items.find(i => i.name === 'Restaurants')!;
+        expect(it0.target).toBe(100); // (80+120)/2 mois pleins — pas 999 (une passe de retard)
+        expect(it0.autoTarget).toBe(true);
+    });
+
+    it('une cible AUTO se recalcule à la sync (moyenne de tout le passé) ; une cible MANUELLE jamais', () => {
+        const transactions = [
+            tx({ category: 'Épicerie', amount: -100, date: '2026-05-10' }),
+            tx({ category: 'Épicerie', amount: -300, date: '2026-06-10' }),
+        ];
+        const auto = { ...item('Épicerie', 999), autoTarget: true };
+        const manual = { ...item('Restaurants', 555) };
+        const withRestoTx = [...transactions, tx({ category: 'Restaurants', amount: -80, date: '2026-06-03' })];
+        const r = syncBudgetWithTransactionCategories(withRestoTx, [auto, manual], REF);
+        expect(r.changed).toBe(true);
+        expect(r.items.find(i => i.name === 'Épicerie')!.target).toBe(200);   // (100+300)/2 — recalculée
+        expect(r.items.find(i => i.name === 'Restaurants')!.target).toBe(555); // manuelle intacte
     });
 
     it('RENOMME (réglages préservés) un poste flou-rapprochable au lieu de le supprimer/recréer (finding F2)', () => {
@@ -101,28 +133,81 @@ describe('syncBudgetWithTransactionCategories', () => {
     });
 });
 
-describe('buildCategoryMonthlyHistory', () => {
-    it('totaux mensuels par catégorie (12 mois), tri par total décroissant, moyenne sur mois ACTIFS', () => {
+describe('buildMonthlyLedger (réel revenus + dépenses par mois)', () => {
+    it('dépenses ET revenus par mois, totaux, solde ; mois courant marqué et EXCLU des moyennes', () => {
         const transactions = [
             tx({ category: 'Épicerie', amount: -100, date: '2026-07-02' }),
-            tx({ category: 'Épicerie', amount: -50, date: '2026-07-20' }),
             tx({ category: 'Épicerie', amount: -200, date: '2026-06-05' }),
-            tx({ category: 'Restaurants', amount: -30, date: '2026-07-01' }),
+            tx({ category: 'Restaurants', amount: -30, date: '2026-06-11' }),
+            tx({ category: 'Salaire', amount: 1674.62, date: '2026-06-04' }),
+            tx({ category: 'Salaire', amount: 837.31, date: '2026-07-03' }),
+            tx({ category: 'Uncategorized', amount: 50, date: '2026-06-20' }), // revenu à classer
+            tx({ category: 'Salaire', amount: 999, date: '2026-06-15', isTransfer: true }), // exclu
             tx({ category: 'Épicerie', amount: -999, date: '2025-06-05' }), // hors fenêtre 12 mois
         ];
-        const h = buildCategoryMonthlyHistory(transactions, ['Épicerie', 'Restaurants'], 12, REF);
-        expect(h.months).toHaveLength(12);
-        expect(h.months[11]).toBe('2026-07');
-        expect(h.months[0]).toBe('2025-08'); // 2025-06 exclu
-        const epicerie = h.rows[0];
-        expect(epicerie.category).toBe('Épicerie'); // plus gros total en premier
-        expect(epicerie.byMonth[11]).toBe(150);     // juillet : 100 + 50
-        expect(epicerie.byMonth[10]).toBe(200);     // juin
-        expect(epicerie.total).toBe(350);
-        expect(epicerie.monthlyAverage).toBe(175);  // moyenne sur 2 mois ACTIFS, pas 12
+        const l = buildMonthlyLedger(transactions, ['Épicerie', 'Restaurants'], 12, REF);
+        expect(l.months).toHaveLength(12);
+        expect(l.months[11]).toBe('2026-07');
+        expect(l.currentMonthIndex).toBe(11);
+        // Dépenses
+        const epicerie = l.expenseRows.find(r => r.category === 'Épicerie')!;
+        expect(epicerie.byMonth[11]).toBe(100); // juillet (en cours)
+        expect(epicerie.byMonth[10]).toBe(200); // juin
+        // Moyenne = RUN-RATE sur les mois pleins de la fenêtre couverts par l'historique
+        // (historique depuis 2025-06 → les 11 mois pleins de la fenêtre sont couverts) ;
+        // juillet (partiel) EXCLU. Sémantique alignée sur la cible auto (finding panel).
+        expect(epicerie.monthlyAverage).toBeCloseTo(200 / 11, 4);
+        // Revenus
+        const salaire = l.incomeRows.find(r => r.category === 'Salaire')!;
+        expect(salaire.byMonth[10]).toBe(1674.62);
+        expect(salaire.byMonth[11]).toBe(837.31);
+        expect(l.incomeRows.find(r => r.category === 'Autres revenus')!.byMonth[10]).toBe(50);
+        // Totaux + solde (juin) : revenus 1674.62+50, dépenses 230
+        expect(l.totalIncomeByMonth[10]).toBeCloseTo(1724.62, 2);
+        expect(l.totalExpenseByMonth[10]).toBe(230);
+        expect(l.netByMonth[10]).toBeCloseTo(1494.62, 2);
+    });
+
+    it('une dépense HORS postes tombe dans « Autres / non classées » — Σ(lignes) == Total (finding panel)', () => {
+        const transactions = [
+            tx({ category: 'Épicerie', amount: -100, date: '2026-06-05' }),
+            tx({ category: 'Impôts', amount: -475.96, date: '2026-06-30' }),       // jamais un poste
+            tx({ category: 'Uncategorized', amount: -20, date: '2026-06-12' }),
+        ];
+        const l = buildMonthlyLedger(transactions, ['Épicerie'], 12, REF);
+        const autres = l.expenseRows.find(r => r.category === 'Autres / non classées')!;
+        expect(autres.byMonth[10]).toBeCloseTo(495.96, 2);
+        const sumRows = l.expenseRows.reduce((s, r) => s + r.byMonth[10], 0);
+        expect(sumRows).toBeCloseTo(l.totalExpenseByMonth[10], 2); // aucun écart silencieux
     });
 
     it('lastMonths rend N clés YYYY-MM, ancien → récent', () => {
         expect(lastMonths(3, REF)).toEqual(['2026-05', '2026-06', '2026-07']);
+    });
+});
+
+describe('moyennes de TOUT le passé (mois pleins)', () => {
+    it('fullHistoryMonths : du 1er mois de transaction au dernier mois RÉVOLU (courant exclu)', () => {
+        const transactions = [
+            tx({ category: 'Épicerie', amount: -10, date: '2026-03-15' }),
+            tx({ category: 'Épicerie', amount: -10, date: '2026-07-02' }), // mois courant
+        ];
+        expect(fullHistoryMonths(transactions, REF)).toEqual(['2026-03', '2026-04', '2026-05', '2026-06']);
+        expect(fullHistoryMonths([tx({ date: '2026-07-02' })], REF)).toEqual([]); // tout est courant
+    });
+
+    it('computeMonthlyActualAverages : dépenses ET revenus moyens (transferts/doublons exclus)', () => {
+        const transactions = [
+            tx({ category: 'Salaire', amount: 2000, date: '2026-05-04' }),
+            tx({ category: 'Salaire', amount: 2000, date: '2026-06-04' }),
+            tx({ category: 'Épicerie', amount: -400, date: '2026-05-10' }),
+            tx({ category: 'Épicerie', amount: -600, date: '2026-06-10' }),
+            tx({ category: 'Transfert', amount: -5000, date: '2026-06-15', isTransfer: true }), // exclu
+            tx({ category: 'Salaire', amount: 837, date: '2026-07-03' }), // mois courant : exclu
+        ];
+        const a = computeMonthlyActualAverages(transactions, REF);
+        expect(a.fullMonths).toBe(2);
+        expect(a.incomeAvg).toBe(2000);
+        expect(a.expenseAvg).toBe(500);
     });
 });

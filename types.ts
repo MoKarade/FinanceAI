@@ -169,6 +169,10 @@ export interface BudgetCategory {
   frequency: 'Monthly' | 'Yearly' | 'Weekly' | 'Quarterly';
   type: 'Commun' | 'Perso 1' | 'Perso 2';
   nature: 'Besoin' | 'Envie' | 'Epargne';
+  /** [BUDGET-TX-CATEGORIES] true = cible AUTO-gérée (moyenne mensuelle de tout le passé,
+   *  recalculée à chaque chargement) ; une édition MANUELLE de la cible décroche (false).
+   *  Champ additif optionnel — aucun bump de version persist requis. */
+  autoTarget?: boolean;
 }
 
 export interface ProjectionConfig {

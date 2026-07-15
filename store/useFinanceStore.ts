@@ -7,6 +7,7 @@ import { quotaStorage } from '../services/quotaStorage';
 import { logError } from '../services/errorLogger';
 import { saveLockedProjection, clearLockedProjection } from '../services/lockedProjectionStore';
 import { loadLegacyHealthWeights } from '../utils/healthWeights';
+import { sanitizePersonaArtifacts } from '../services/personaSanitizer';
 
 // Phase B2 — Deep-link cross-tab: un onglet pose un "intent" de focus, la page
 // destination le consomme au mount (scroll, highlight, focus, etc.).
@@ -79,6 +80,9 @@ export interface FinanceState extends AppState {
     enableTestMode: (fixtures: Partial<AppState>, personaId?: string | null) => void;
     /** Désactive le mode test : restaure l'état sauvegardé. */
     disableTestMode: () => void;
+    /** [PERSONA-PURGE] Retire du mode RÉEL tout artefact de persona de test (ids déterministes).
+     *  No-op en mode test. Rend le nombre d'items retirés (0 = déjà propre). */
+    purgePersonaArtifacts: () => number;
 }
 
 const safeRandomId = (): string => {
@@ -402,7 +406,7 @@ export function migratePersistedState(persistedState: unknown, fromVersion: numb
 
 export const useFinanceStore = create<FinanceState>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             ...initialState,
             activeTab: Tab.DASHBOARD,
             isPrivacyMode: false,
@@ -503,14 +507,57 @@ export const useFinanceStore = create<FinanceState>()(
                     logError({ source: 'storage', severity: 'warning', message: 'disableTestMode : mode test actif sans realDataSnapshot — vraies données non restaurables, retour à un état vide.' });
                     return { ...prev, ...personaResetBase(), isTestMode: false, realDataSnapshot: null, activeTestPersonaId: null };
                 }
+                // [PERSONA-PURGE] Le snapshot des « vraies » données peut lui-même être pollué
+                // (pris à une époque où des artefacts de persona avaient déjà fui) → on le
+                // désinfecte AVANT de le restaurer : la sortie du mode test rend un état réel PROPRE.
+                const { state: cleanSnap, report } = sanitizePersonaArtifacts(snap);
+                if (report.removedTotal > 0) {
+                    logError({
+                        source: 'storage', severity: 'warning',
+                        message: `disableTestMode : ${report.removedTotal} artefact(s) de persona retiré(s) du snapshot réel (${Object.entries(report.bySlice).map(([k, v]) => `${k}:${v}`).join(', ')})`,
+                    });
+                }
+                // ⚠️ Singuliers RETIRÉS du snapshot par le sanitizer (clé supprimée) : le spread
+                // `{...prev, ...cleanSnap}` ne les écraserait PAS → on garderait le childGoal/
+                // weddingGoal du PERSONA qu'on quitte (bug panel 2026-07-15). Reset explicite.
+                const singularResets: Partial<FinanceState> = {};
+                if (report.bySlice.childGoal) singularResets.childGoal = structuredClone(INITIAL_CHILD_GOAL);
+                if (report.bySlice.weddingGoal) singularResets.weddingGoal = undefined;
                 return {
                     ...prev,
-                    ...snap,
+                    ...cleanSnap,
+                    ...singularResets,
                     isTestMode: false,
                     realDataSnapshot: null,
                     activeTestPersonaId: null,
                 };
             }),
+
+            // [PERSONA-PURGE] Self-heal du mode réel (appelé au boot par App.tsx) : purge par id
+            // déterministe (registre artifactIds), JAMAIS en mode test (fixtures légitimes).
+            // La persistance Zustand + le push Drive debouncé propagent l'état guéri partout.
+            purgePersonaArtifacts: () => {
+                const prev = get();
+                if (prev.isTestMode) return 0;
+                const { state: cleaned, report } = sanitizePersonaArtifacts(prev as unknown as Partial<AppState>);
+                if (report.removedTotal === 0) return 0;
+                logError({
+                    source: 'storage', severity: 'warning',
+                    message: `purgePersonaArtifacts : ${report.removedTotal} artefact(s) de persona de test retirés des données réelles (${Object.entries(report.bySlice).map(([k, v]) => `${k}:${v}`).join(', ')})`,
+                });
+                // Patch MINIMAL : seulement les tranches touchées (pas tout l'état). Le singulier
+                // `childGoal` (retiré du patch par le sanitizer) retombe sur le défaut de l'app.
+                const patch: Partial<FinanceState> = { lastUpdate: Date.now() };
+                for (const slice of Object.keys(report.bySlice)) {
+                    if (slice === 'childGoal') {
+                        patch.childGoal = structuredClone(INITIAL_CHILD_GOAL);
+                    } else {
+                        (patch as Record<string, unknown>)[slice] = (cleaned as Record<string, unknown>)[slice];
+                    }
+                }
+                set(patch);
+                return report.removedTotal;
+            },
         }),
         {
             name: 'financeai-storage',

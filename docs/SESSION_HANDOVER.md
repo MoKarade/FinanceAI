@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴 Session 2026-07-15 (suite) — Incident « fausses transactions » : purge persona + chantier transactions/catégories/Budget
+> **Incident** : Marc a trouvé des FAUSSES transactions dans ses vraies données (« je veux plus que ça arrive jamais »).
+> Diagnostic (MCP + code) : ~600 transactions du persona de test « Karim » (`persona-tx-*`, activé ~06-07) + son objectif
+> `kar-fg1` (« Indépendance financière 1 M$ ») mélangés aux ~200 vraies transactions Desjardins ; [Probable] budgets `kar-b*`
+> aussi (expliquerait « catégories très mal réglées »). Fuite antérieure aux gardes actuelles, chemin exact inconnu
+> (`[PERSONA-LEAK-ROOTCAUSE]` LOW au BACKLOG).
+> **✅ LIVRÉ `[PERSONA-PURGE]`** : registre d'ids (`testPersonas/artifactIds.ts`, parité test-scan) + sanitizer pur
+> (`personaSanitizer.ts`) à 5 ancrages (boot self-heal + toast, sortie mode test, push Drive, pull Drive, restauration
+> backup). 22 tests. La purge chez Marc s'exécute au prochain chargement de l'app après déploiement Vercel.
+> **Chantier EN COURS (demandes Marc, même session)** : (B) catégorisation par RÈGLES déterministes (payees QC réels tirés
+> de ses 37 relevés PDF uploadés — corpus extrait et PROUVÉ : 355 tx compte validées par soldes + 1 640 tx carte exactes
+> au sou vs totaux imprimés, 19/19 relevés) + IA en secours ; (C) onglet Budget = EXACTEMENT les catégories des
+> transactions + historique mensuel par catégorie (verbatim : « seulement et exactement les meme catégories que dans
+> transactions… pas en rajouter ou quoi ») ; (D) livrable CSV propre 18 mois catégorisé pour ré-import. Dataset extrait
+> dans le scratchpad session (PII — jamais dans le repo).
+>
 > ## 🔴 Session 2026-07-14 — Incident perte de données Drive (230k$) + anti-clobber STRICT + audit 6 alertes MCP
 > **Incident** : Marc a perdu 230k$ de placements. Chaîne : appareil silencieusement déconnecté (jeton Google expiré ~1h →
 > `schedulePush` no-op EN SILENCE) → ses ajouts (jusqu'à 230k$) jamais poussés vers Drive → à la reconnexion, méta vierge →

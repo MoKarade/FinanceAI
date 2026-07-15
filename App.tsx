@@ -24,7 +24,8 @@ import { configureMarketDataProvider, getQuote, hasQuoteProvider } from './servi
 import { refreshAssetPrices, applyPricePatches } from './services/priceRefresh';
 import { installGlobalErrorHandlers, logError } from './services/errorLogger';
 import { lazyWithRetry } from './utils/lazyWithRetry';
-import { initAutoBackup } from './services/backupAuto';
+import { initAutoBackup, createBackupNow } from './services/backupAuto';
+import { sanitizePersonaArtifacts } from './services/personaSanitizer';
 import { loadLockedProjection } from './services/lockedProjectionStore';
 import { initSync, runBootSync, schedulePush, pushNow, flushPush, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, startDrivePolling, markApiKeysHydrated, type SyncStatus } from './services/sync/syncOrchestrator';
 import { trackPageView } from './services/analytics';
@@ -126,6 +127,33 @@ export const App: React.FC = () => {
                 window.addEventListener('load', registerSW, { once: true });
             }
         }
+
+        // [PERSONA-PURGE] Self-heal AVANT l'init sync : si des artefacts de persona de test ont
+        // fui dans les données réelles (incident 2026-07-15 : ~600 transactions « Karim » chez
+        // Marc), on les retire par id déterministe — l'état guéri est ensuite persisté et poussé
+        // vers Drive par le cycle normal. No-op en mode test et sur état propre.
+        // Détection À SEC d'abord ; pollution détectée → backup IndexedDB de l'état PRÉ-purge
+        // (finding panel sécurité : symétrie avec applyPulledPayload — toute mutation automatique
+        // des vraies données a son filet), PUIS purge. Best-effort : backup HS ≠ rester pollué.
+        void (async () => {
+            const st = useFinanceStore.getState();
+            if (st.isTestMode) return;
+            const { report } = sanitizePersonaArtifacts(st as unknown as Parameters<typeof sanitizePersonaArtifacts>[0]);
+            if (report.removedTotal === 0) return;
+            try {
+                await createBackupNow('auto');
+            } catch (e) {
+                // ⚠️ Pas déjà journalisé : le rejet ASYNC de createBackupNow (tx.onerror IndexedDB,
+                // ex. quota) passe au CALLER, pas à son catch interne (finding silent-failure
+                // 2026-07-15). La purge procède quand même (chirurgicale, ids déterministes),
+                // mais « filet absent » doit être visible.
+                logError({ source: 'storage', severity: 'warning', message: 'purgePersonaArtifacts : backup pré-purge échoué (IndexedDB) — purge SANS filet', error: e instanceof Error ? e : new Error(String(e)) });
+            }
+            const purged = useFinanceStore.getState().purgePersonaArtifacts();
+            if (purged > 0) {
+                showToast(`${purged} donnée(s) de test (persona) retirée(s) de tes vraies données (backup pris avant).`, 'info');
+            }
+        })();
 
         // Sync Google Drive — inerte si VITE_GOOGLE_CLIENT_ID absent. Init + sync silencieuse au
         // boot (uniquement si déjà connecté), puis push debouncé sur chaque changement du store.

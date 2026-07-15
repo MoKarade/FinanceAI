@@ -10,6 +10,28 @@
 > Restes uniquement : suivis LOW (DEP-UNDICI-VULN, FISC-CONST-LINT-LIMITS, FISC-RRSP-PRE2010-FALLBACK + suivi FUZZ-ONETIME-FLOWS) +
 > blocages Marc (RECH-ACTION-UX confirmée visuellement, phases 2-4 brief plan-first, P0-*, design Budget/Transactions/Retraite).
 
+## 🔴 Données de test dans les vraies données (2026-07-15) — incident « fausses transactions »
+> Marc : « j'ai des fausses transactions sans doute des profils de test je veux plus que ça arrive jamais ».
+> Constat (via MCP + code) : ~600 transactions du persona « Karim » (`persona-tx-*`) + objectif `kar-fg1`
+> mélangés aux ~200 vraies transactions Desjardins ; [Probable] budgets `kar-b*` aussi. Fuite ANTÉRIEURE
+> aux gardes actuelles (persona activé ~2026-06-07), chemin exact non identifiable a posteriori.
+
+- **`[PERSONA-PURGE]`** ✅ **LIVRÉ 2026-07-15** — registre d'ids d'artefacts (`testPersonas/artifactIds.ts`,
+  parité fixtures↔registre verrouillée par test-scan) + sanitizer pur (`personaSanitizer.ts`) ancré à
+  5 endroits : boot (self-heal + toast), sortie de mode test (snapshot), push Drive, pull Drive,
+  restauration de backup. 22 tests (direction anti-faux-positif incluse). La purge des données de Marc
+  s'exécute AUTOMATIQUEMENT au prochain chargement de l'app (Vercel déploie au merge).
+- **`[PERSONA-LEAK-ROOTCAUSE]`** 🔍 LOW — chemin de fuite exact inconnu (antérieur aux gardes SYNC-ANTI-CLOBBER
+  et shouldPush-test). Si récidive malgré PERSONA-PURGE (le log `purgePersonaArtifacts` en ferait foi), creuser :
+  restauration d'un backup pris EN mode test avant #217, ou merge conflit Drive d'une époque sans garde.
+- **`[BACKUP-PROMISE-CATCH]`** 🔧 LOW (finding panel 2026-07-15) — `createBackupNow` fait `return new Promise(...)`
+  DANS son try : un rejet ASYNC (tx.onerror IndexedDB, ex. quota) passe au caller sans être journalisé par son
+  propre catch. Fix : `await` la promesse avant de la retourner (le catch interne loggue alors vraiment). Les
+  call-sites critiques (purge boot) journalisent déjà côté appelant en attendant.
+- **`[PURGE-TOAST-UX]`** 🎨 LOW (finding panel) — seuls le boot notifie par toast ; les purges au pull Drive /
+  sortie de mode test ne sont visibles qu'en SystemView (logError). Si Marc veut la notification partout :
+  abonnement générique aux entrées storage PERSONA-PURGE → toast. (`restoreBackup` recharge la page → toast inutile.)
+
 ## 🔴 Intégrité des données Drive + MCP (2026-07-14) — incident perte de 230k$ + audit 6 alertes
 > Marc a perdu 230k$ de placements (reconnexion Drive → écrasement du local par une vieille copie). Récupéré
 > via auto-backup IndexedDB. Audit adversarial (12 agents) des 6 alertes claude.ai : verdicts ci-dessous.

@@ -19,6 +19,7 @@
 
 import { getOrCreateDeviceKey, encryptJson, decryptJson } from './secureKeyStore';
 import { logError } from './errorLogger';
+import { sanitizePersistEnvelope } from './personaSanitizer';
 
 // Tier 🟡 — n'avertir qu'UNE fois par session que les backups tombent en clair
 // (les auto-backups sont périodiques : éviter de spammer le log borné).
@@ -259,8 +260,29 @@ export async function restoreBackup(id: string): Promise<boolean> {
         const plaintext = await readStoredPayload(entry, deviceKey);
         // Backup la version actuelle d'abord (insurance)
         await createBackupNow('manual');
+        // [PERSONA-PURGE] Un backup HISTORIQUE peut contenir des artefacts de persona de test
+        // (fuite d'avant les gardes) → désinfection avant restauration (skip auto si le backup
+        // est un état de mode test légitime). Parse best-effort : illisible → restauré tel quel
+        // (le self-heal du boot rattrapera après le reload).
+        let toRestore = plaintext;
+        try {
+            const { envelope, report } = sanitizePersistEnvelope(JSON.parse(plaintext));
+            if (report.removedTotal > 0) {
+                logError({
+                    source: 'storage', severity: 'warning',
+                    message: `restoreBackup : ${report.removedTotal} artefact(s) de persona retirés du backup avant restauration`,
+                });
+                toRestore = JSON.stringify(envelope);
+            }
+        } catch (e) {
+            // Backup au contenu NON-JSON = corruption réelle — à ne JAMAIS avaler (finding
+            // silent-failure 2026-07-15) : on journalise l'origine AVANT que l'hydratation
+            // Zustand n'échoue en aval sans cause visible. On restaure quand même tel quel
+            // (contrat existant : le boot self-heal/migration tentera de récupérer).
+            logError({ source: 'storage', severity: 'error', message: 'restoreBackup: backup illisible (JSON invalide) — restauré tel quel, cause probable de l\'état vide au reboot', error: e instanceof Error ? e : new Error(String(e)) });
+        }
         // Restaure
-        localStorage.setItem(STORE_KEY_LOCALSTORAGE, plaintext);
+        localStorage.setItem(STORE_KEY_LOCALSTORAGE, toRestore);
         // Reload pour rehydrater
         if (typeof window !== 'undefined') window.location.reload();
         return true;

@@ -9,7 +9,10 @@
 // Endpoints :
 //   - POST/GET/DELETE /mcp : protocole MCP Streamable HTTP (sessions à ID,
 //     réponses JSON directes — enableJsonResponse) ;
-//   - GET /health          : 200 {"status":"ok"} (sonde Cloud Run).
+//   - GET /health          : 200 {"status":"ok"} (sonde Cloud Run) ;
+//   - GET /hub/summary     : [HUB-01] résumé pour le hub perso (contrat
+//     @mokarade/hub-contract v1) — actif seulement si FINANCEAI_HUB_TOKEN
+//     est défini ; header x-hub-token exigé, 401 sinon, no-store.
 //
 // ⚠️ SÉCURITÉ (Lot 2 = transport SEULEMENT) : AUCUNE authentification ici —
 // l'auth OAuth 2.1 (Claude ↔ serveur) et le token Drive en Secret Manager
@@ -19,12 +22,14 @@
 // hors Cloud Run est REFUSÉ au démarrage sauf opt-in explicite.
 
 import { createServer as createHttpServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import { HUB_TOKEN_HEADER } from '@mokarade/hub-contract';
 import { createServer as createMcpServer } from './server';
 import { MCP_SERVER_VERSION, resolveState, type ResolvedState } from './bootstrap';
 import { makeOAuthProvider, OAuthError, type OAuthProvider } from './auth/oauthProvider';
+import { buildHubSummary, errorHubSummary } from './hubSummary';
 
 /** Cap du corps de requête : largement suffisant pour du JSON-RPC MCP, borne l'OOM (mesuré : RSS ~7× la taille du corps). */
 const MAX_BODY_BYTES = 5 * 1024 * 1024;
@@ -52,6 +57,9 @@ export interface HttpServerOptions {
     /** [MCP-CLOUDRUN-B] fournisseur OAuth 2.1 : si présent, /mcp exige un Bearer valide
      *  et les endpoints /oauth/* + /.well-known/* sont exposés. */
     auth?: OAuthProvider;
+    /** [HUB-01] jeton du hub perso : si présent, GET /hub/summary est exposé
+     *  (header x-hub-token, 401 sinon, Cache-Control: no-store). Absent = route désactivée. */
+    hubToken?: string;
 }
 
 export interface RunningHttpServer {
@@ -94,9 +102,25 @@ function readBody(req: IncomingMessage): Promise<string> {
     });
 }
 
-function sendJson(res: ServerResponse, status: number, payload: unknown): void {
-    res.writeHead(status, { 'Content-Type': 'application/json' });
+function sendJson(
+    res: ServerResponse,
+    status: number,
+    payload: unknown,
+    extraHeaders: Record<string, string> = {},
+): void {
+    res.writeHead(status, { 'Content-Type': 'application/json', ...extraHeaders });
     res.end(JSON.stringify(payload));
+}
+
+/** [HUB-01] un summary est un instantané : jamais mis en cache (contrat hub). */
+const HUB_NO_STORE = { 'Cache-Control': 'no-store' } as const;
+
+/** [HUB-01] comparaison en temps constant (via digests de longueur fixe — timingSafeEqual
+ *  exige des buffers de même taille, un secret de longueur différente ne doit pas fuiter). */
+function hubTokensMatch(provided: string, expected: string): boolean {
+    const a = createHash('sha256').update(provided).digest();
+    const b = createHash('sha256').update(expected).digest();
+    return timingSafeEqual(a, b);
 }
 
 /** Erreur JSON-RPC (forme attendue par un client MCP, id null = hors requête identifiable). */
@@ -324,10 +348,38 @@ ${['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_metho
         return false;
     };
 
+    const knownEndpoints = ['/mcp', '/health', ...(options.hubToken ? ['/hub/summary'] : [])];
+
+    // [HUB-01] GET /hub/summary — résumé conforme au contrat hub, données réelles.
+    // Un échec de lecture d'état renvoie un summary status "error" (HTTP 200) : le
+    // widget du hub affiche la panne au lieu de traiter l'app comme injoignable.
+    const handleHubSummary = (req: IncomingMessage, res: ServerResponse, hubToken: string): void => {
+        if (req.method !== 'GET') {
+            sendJson(res, 405, { error: 'GET uniquement.' }, HUB_NO_STORE);
+            return;
+        }
+        const provided = req.headers[HUB_TOKEN_HEADER];
+        if (typeof provided !== 'string' || !hubTokensMatch(provided, hubToken)) {
+            sendJson(res, 401, { error: `Header ${HUB_TOKEN_HEADER} absent ou invalide.` }, HUB_NO_STORE);
+            return;
+        }
+        state.store.get()
+            .then((appState) => sendJson(res, 200, buildHubSummary(appState), HUB_NO_STORE))
+            .catch((err: unknown) => {
+                const reason = err instanceof Error ? err.message : String(err);
+                console.error('[FinanceAI MCP http] /hub/summary : état indisponible —', reason);
+                sendJson(res, 200, errorHubSummary(reason), HUB_NO_STORE);
+            });
+    };
+
     const server = createHttpServer((req, res) => {
         const url = (req.url ?? '/').split('?')[0];
         if (url === '/health') {
             sendJson(res, 200, { status: 'ok', version: MCP_SERVER_VERSION });
+            return;
+        }
+        if (url === '/hub/summary' && options.hubToken) {
+            handleHubSummary(req, res, options.hubToken);
             return;
         }
         if (options.auth && (url.startsWith('/oauth/') || url.startsWith('/.well-known/'))) {
@@ -382,7 +434,7 @@ ${['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_metho
             });
             return;
         }
-        sendJson(res, 404, { error: 'introuvable', endpoints: ['/mcp', '/health'] });
+        sendJson(res, 404, { error: 'introuvable', endpoints: knownEndpoints });
     });
 
     await new Promise<void>((resolve, reject) => {
@@ -450,6 +502,14 @@ if (isDirectRun) {
             process.exit(1);
         }
 
+        // [HUB-01] jeton du hub perso : optionnel (route désactivée sans lui), mais
+        // jamais faible — un jeton court se brute-force, autant refuser de démarrer.
+        const hubToken = process.env.FINANCEAI_HUB_TOKEN;
+        if (hubToken !== undefined && hubToken.length < 16) {
+            console.error('[FinanceAI MCP http] REFUS de démarrer : FINANCEAI_HUB_TOKEN trop court (< 16 caractères).');
+            process.exit(1);
+        }
+
         if (!isLoopback && !auth && process.env.MCP_HTTP_ALLOW_EXPOSED !== '1') {
             console.error(
                 `[FinanceAI MCP http] REFUS de démarrer : hôte non-loopback (${host}) SANS authentification — ` +
@@ -461,13 +521,16 @@ if (isDirectRun) {
         }
 
         const state = await resolveState(process.argv[2]);
-        const running = await startHttpServer({ port, host, state, dnsRebindingProtection: isLoopback, auth });
+        const running = await startHttpServer({ port, host, state, dnsRebindingProtection: isLoopback, auth, hubToken });
 
         console.error(`[FinanceAI MCP http] v${MCP_SERVER_VERSION} — écoute http://${host}:${running.port}/mcp (santé : /health)`);
         console.error(`[FinanceAI MCP http] Source d'état : ${state.describe()}`);
         console.error(auth
             ? `[FinanceAI MCP http] Auth OAuth 2.1 ACTIVE (issuer : ${publicUrl ?? 'loopback'}) — /mcp exige un Bearer.`
             : '[FinanceAI MCP http] Auth DÉSACTIVÉE (variables OAuth absentes).');
+        console.error(hubToken
+            ? '[FinanceAI MCP http] Hub : GET /hub/summary ACTIF (header x-hub-token exigé).'
+            : '[FinanceAI MCP http] Hub : /hub/summary désactivé (FINANCEAI_HUB_TOKEN absent).');
         if (isLoopback) {
             console.error('[FinanceAI MCP http] Mode LOCAL : loopback seulement, anti-DNS-rebinding actif.');
         } else if (!auth) {

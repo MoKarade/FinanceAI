@@ -31,8 +31,10 @@
 - **`[MCP-CHARTDATA-SUM-GUARD]`** 🟡 MOYEN (M) — garde-fou générique : tout nouveau tool MCP qui SOMME des flux
   chartData retombe dans le piège MCP-RETIREMENT-VERDICT (décaissement non-enreg sans champ Retrait*) ; corrigé au
   cas par cas aujourd'hui, à systématiser (test/lint de convention sur mcp/tools/*).
-- **`[UX-STATEMENT-REMINDER]`** 🟡 MOYEN (S) — rappel proactif « relevé de [mois] manquant » (généraliser la bannière
-  budget) : le rituel d'import mensuel n'a aucun filet — c'est ce qui a laissé la fuite persona invisible des semaines.
+- **`[UX-STATEMENT-REMINDER]`** ✅ **LIVRÉ 2026-07-15 (Vague 3a)** — helper pur `computeStatementReminderStatus`
+  (détecte : aucune transaction réelle ce mois-ci = relevé non importé, ≥ 1 mois de retard, après le 5 du mois) +
+  bannière dismissible `StatementReminder` (onglet Budget, CTA « Importer mon relevé » → onglet Transactions, dismiss
+  keyé par mois courant → réapparaît le mois suivant si toujours en retard). Le filet d'import mensuel qui manquait.
 - **`[DETTE-GODFILE-BUDGET]` / `[DETTE-GODFILE-INVESTMENTS]`** 🟡 MEDIUM (L, au fil de l'eau) — 1 289/1 163 lignes ;
   répliquer le pattern « sections » qui a réussi sur Settings (207 l.) ; extraire coupleAnalysis/fiscalBreakdown/
   alerts vers services/budgetAnalysis.ts (purs, testables) et DEFAULT_TARGET_MODEL/écarts vers services/.

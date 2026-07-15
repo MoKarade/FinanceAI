@@ -49,7 +49,12 @@
 > 2 items routés au BACKLOG : `[FISC-SOLO-INVEST-SPLIT]` (split par longueur de tuple sous-impose le placement d'un solo —
 > pré-existant, à valider avec Marc car ↑ son impôt estimé), `[FISC-ASSETLOC-INTL]` ÉVALUÉ/DIFFÉRÉ (international en non-enreg
 > chez Marc = pas de perte ; fix non trivial). **⚠️ Marc : redéployer Cloud Run pour MCP v0.7.3.**
-> **Suite** : Vague 3 (fondation sync — `ARCH-SYNC-SPLIT` EN PREMIER, puis SEC-DRIVE-ENCRYPT-DEFAULT, MCP-WRITE-VERSION-TOKEN, SYNC-FETCH-TIMEOUT ; parallèle MCP-CHARTDATA-SUM-GUARD, UX-STATEMENT-REMINDER).
+> **✅ VAGUE 3a livrée** : `[UX-STATEMENT-REMINDER]` — bannière proactive « relevé du mois manquant » (onglet Budget,
+> helper pur + dismiss keyé par mois, CTA vers Transactions). Le filet d'import mensuel qui manquait (leçon fuite persona).
+> **Suite Vague 3b** : `[ARCH-SYNC-SPLIT]` (L, plan-first + panel + discriminants sur les 2 incidents — scinder
+> `syncOrchestrator.ts` 892 l./~28 exports en 4 modules + barrel de compat), PUIS SEC-DRIVE-ENCRYPT-DEFAULT,
+> MCP-WRITE-VERSION-TOKEN, SYNC-FETCH-TIMEOUT. `[MCP-CHARTDATA-SUM-GUARD]` différé (lint de convention heuristique à
+> concevoir soigneusement, fort risque de faux positifs). ⚠️ Zone sync = là où Marc a perdu 230 k$ → prudence maximale.
 >
 > ## 🔴 Session 2026-07-14 — Incident perte de données Drive (230k$) + anti-clobber STRICT + audit 6 alertes MCP
 > **Incident** : Marc a perdu 230k$ de placements. Chaîne : appareil silencieusement déconnecté (jeton Google expiré ~1h →

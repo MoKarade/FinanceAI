@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — VAGUE 3a « rappel d'import de relevé »] — 2026-07-15
+
+### Ajouté
+- **Rappel proactif « relevé du mois manquant »** (`[UX-STATEMENT-REMINDER]`) — bannière dans l'onglet Budget quand
+  aucune transaction réelle n'existe pour le mois courant (relevé de compte probablement pas encore importé) : le rituel
+  d'import mensuel n'avait aucun filet (c'est ce qui a laissé la fuite de données de persona invisible des semaines).
+  Dismissable par mois (réapparaît le mois suivant si toujours en retard), CTA vers l'onglet Transactions.
+
 ## [unreleased — VAGUE 2 « fiscal money-critical » : assiette emploi vs imposable + MCP v0.7.3] — 2026-07-15
 
 > `[FISC-PAYROLL-BASE-INVEST]` + `[TAX-APP-MCP-BASE]`. Panel 4 agents (financial-integrity, projection-validator,

@@ -34,6 +34,20 @@ echo "▶ Déploiement de $SERVICE sur $REGION (projet $PROJECT_ID, min-instance
 EXISTING_URL="$(gcloud run services describe "$SERVICE" --project "$PROJECT_ID" --region "$REGION" --format 'value(status.url)' 2>/dev/null || true)"
 PUBLIC_URL="${EXISTING_URL:-https://pending.invalid}"
 
+# Secrets montés en variables d'env. Les 2 clés OAuth sont obligatoires ; le jeton du
+# hub perso est OPTIONNEL — monté seulement si le secret `financeai-hub-token` existe
+# (sinon GET /hub/summary reste désactivé, pas d'échec). Le monter ici plutôt qu'en
+# variable posée à la main garantit qu'il SURVIT à chaque redéploiement (--set-secrets
+# et --set-env-vars remplacent l'existant : une var posée hors script serait effacée).
+SECRETS="FINANCEAI_OAUTH_SIGNING_KEY=financeai-oauth-signing-key:latest,FINANCEAI_ACCESS_KEY=financeai-access-key:latest"
+if gcloud secrets describe financeai-hub-token --project "$PROJECT_ID" >/dev/null 2>&1; then
+  SECRETS="${SECRETS},FINANCEAI_HUB_TOKEN=financeai-hub-token:latest"
+  echo "  Hub : secret financeai-hub-token trouvé → GET /hub/summary ACTIF."
+else
+  echo "  Hub : secret financeai-hub-token absent → GET /hub/summary désactivé."
+  echo "        Pour l'activer : crée le secret puis redéploie (cf mcp/README.md § Hub perso)."
+fi
+
 gcloud run deploy "$SERVICE" \
   --project "$PROJECT_ID" \
   --region "$REGION" \
@@ -42,7 +56,7 @@ gcloud run deploy "$SERVICE" \
   --min-instances "$MIN_INSTANCES" \
   --max-instances 2 \
   --port 8080 \
-  --set-secrets "FINANCEAI_OAUTH_SIGNING_KEY=financeai-oauth-signing-key:latest,FINANCEAI_ACCESS_KEY=financeai-access-key:latest" \
+  --set-secrets "$SECRETS" \
   --set-env-vars "FINANCEAI_GOOGLE_SECRET=projects/${PROJECT_ID}/secrets/financeai-google-refresh,FINANCEAI_PUBLIC_URL=${PUBLIC_URL}"
 
 if [ -z "$EXISTING_URL" ]; then

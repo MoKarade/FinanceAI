@@ -487,7 +487,7 @@ i18next · jspdf. Prod : **Vercel** (`vercel.json` : headers sécurité + cache 
 ## Structure (PLAT — pas de src/)
 Racine : `App.tsx`, `index.tsx`, `constants.ts`, `types.ts`, `i18n.ts`.
 Dossiers : `components/ hooks/ services/ store/ utils/ locales/ mcp/ e2e/ tests/ scripts/ docs/`.
-Cœur : `services/projection.ts` + `services/projection/` (31 sous-modules).
+Cœur : `services/projection.ts` + `services/projection/` (41 sous-modules).
 ⚠️ Hoister un import au niveau App tire ses deps dans le bundle de BOOT → lazy-charger (lazyWithRetry
 + Suspense) tout composant/service app-level qui importe du lourd (ex. `ProjectionEngine` → moteur
 projection ; PH2-c : index 660→536 kB gzip après bascule lazy).

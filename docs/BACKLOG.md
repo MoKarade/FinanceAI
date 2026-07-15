@@ -10,6 +10,49 @@
 > Restes uniquement : suivis LOW (DEP-UNDICI-VULN, FISC-CONST-LINT-LIMITS, FISC-RRSP-PRE2010-FALLBACK + suivi FUZZ-ONETIME-FLOWS) +
 > blocages Marc (RECH-ACTION-UX confirmée visuellement, phases 2-4 brief plan-first, P0-*, design Budget/Transactions/Retraite).
 
+## 🔎 Analyse app complète 2026-07-15 (panel 4 agents — rapport : `docs/ANALYSE_APP_2026-07-15.md`)
+> Demande Marc : « une grosse analyse de l'app ». Détail, preuves fichier:ligne et plan d'ordre dans le rapport.
+
+- **`[DETTE-PDF-FX-BYPASS]`** 🔴 HIGH (S) — `services/pdfReport.ts:123` : `quantity × currentPrice × fx` à la main
+  au lieu d'`assetValueCad` (sans gardes NaN/devise), INVISIBLE du test-garde assetFxGuard (le mot « fx » sur la
+  ligne suffit). Même classe que l'incident ASSET-FX-DISPLAY, dans le PDF remis à l'utilisateur. Fix : router par
+  `assetValueCad` + renforcer le scan (interdire aussi `* fx` hors portfolio.ts).
+- **`[ARCH-SYNC-SPLIT]`** 🟠 ÉLEVÉ (L, plan-first) — scinder `syncOrchestrator.ts` (892 l., 23 exports mêlés :
+  push/pull/conflit/passphrase/polling/suppression — siège des 2 incidents de juillet) en 4 modules par
+  responsabilité + barrel de compat ; discriminants sur les scénarios des 2 incidents. ADR complet dans le rapport.
+  À faire AVANT tout nouveau chantier sync.
+- **`[SEC-DRIVE-ENCRYPT-DEFAULT]`** 🟠 MOYEN-ÉLEVÉ (M) — payload Drive EN CLAIR par défaut (chiffré seulement si
+  passphrase opt-in) alors que les clés API ont déjà un chiffrement NON-optionnel dérivé du `sub` Google
+  (keyCipher). Appliquer la même recette à tout le payload (zéro friction, cross-device intact) ; passphrase =
+  zéro-knowledge additionnel.
+- **`[SEC-VISION-CONSENT-INJECTION]`** 🟡 MOYEN (S) — relevés envoyés en IMAGE BRUTE à Claude Vision (montants
+  exacts, nom/adresse/n° compte imprimés) : ajouter la clause anti-injection au prompt Vision (absente, présente
+  partout ailleurs) + consentement explicite ponctuel avant le 1er envoi (Loi 25).
+- **`[MCP-CHARTDATA-SUM-GUARD]`** 🟡 MOYEN (M) — garde-fou générique : tout nouveau tool MCP qui SOMME des flux
+  chartData retombe dans le piège MCP-RETIREMENT-VERDICT (décaissement non-enreg sans champ Retrait*) ; corrigé au
+  cas par cas aujourd'hui, à systématiser (test/lint de convention sur mcp/tools/*).
+- **`[UX-STATEMENT-REMINDER]`** 🟡 MOYEN (S) — rappel proactif « relevé de [mois] manquant » (généraliser la bannière
+  budget) : le rituel d'import mensuel n'a aucun filet — c'est ce qui a laissé la fuite persona invisible des semaines.
+- **`[DETTE-GODFILE-BUDGET]` / `[DETTE-GODFILE-INVESTMENTS]`** 🟡 MEDIUM (L, au fil de l'eau) — 1 289/1 163 lignes ;
+  répliquer le pattern « sections » qui a réussi sur Settings (207 l.) ; extraire coupleAnalysis/fiscalBreakdown/
+  alerts vers services/budgetAnalysis.ts (purs, testables) et DEFAULT_TARGET_MODEL/écarts vers services/.
+- **`[DETTE-CLAUDE-SPLIT]`** 🟡 MEDIUM (M) — services/claude.ts = 8 features IA indépendantes (918 l.) → split
+  mécanique services/claude/ + re-export (zéro breaking).
+- **`[DETTE-TOLOCALESTRING-NU]`** 🟡 MEDIUM (S) — 6 `toLocaleString()` sans locale (AiAssistant ×5, taxApril:70) :
+  rendraient « NaN » au lieu de « — » ; router par formatCAD/formatSigned (règle FMT-CURRENCY-UNIFY).
+- **`[DETTE-TESTGAP-MARKETDATA]`** 🟡 MEDIUM (S) — `pickProvider` (routage Finnhub/CoinGecko) sans test : un bug de
+  routage = prix jamais rafraîchi en silence.
+- **`[DETTE-DEADCODE-2026-07]`** 🟢 LOW (S) — 4 locales `_`-préfixées mortes confirmées : Budget.tsx:193-194,
+  RealEstate.tsx:79, AiAssistant.tsx:122. (Les `_` de runAsync/syncOrchestrator/usePastPortfolioHistory sont VIVANTS.)
+- **`[DETTE-CHART-THEME-DUP]`** 🟢 LOW (S) — tooltip Recharts dupliqué 14× avec 4 fonds différents → constante
+  partagée CHART_TOOLTIP_STYLE. · **`[DETTE-INPUT-PRIMITIVES]`** 🟢 LOW→M — 81 inputs inline sans primitive
+  Field (40 dans AdvancedProjectionParams). · **`[SEC-GA-DEFER-CONSENT]`** 🟢 LOW (S) — injecter gtag.js APRÈS
+  consentement. · **`[ENG-RAMQ-FIELDS]`** 🟢 LOW (M) — 2 TODO moteur (enfants à charge, assurance médicaments privée,
+  champs User additifs).
+- **DÉCISIONS DE GEL proposées (produit)** : `[CIX]` en entier + raffinements per-conjoint/dons + durcissement
+  OAuth au-delà de l'existant + chasses d'affichage LOW sans impact patrimoine — tant que la situation de
+  l'utilisateur (solo, 26 ans) ne change pas. La doc « 31 sous-modules projection » corrigée → 41.
+
 ## 🔴 Données de test dans les vraies données (2026-07-15) — incident « fausses transactions »
 > Marc : « j'ai des fausses transactions sans doute des profils de test je veux plus que ça arrive jamais ».
 > Constat (via MCP + code) : ~600 transactions du persona « Karim » (`persona-tx-*`) + objectif `kar-fg1`

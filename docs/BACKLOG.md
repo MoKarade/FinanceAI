@@ -17,10 +17,14 @@
   `useDerivedFinancials.assetBreakdown` (2ᵉ instance latente RÉVÉLÉE par le garde resserré) routés par
   `assetValueCad` ; garde `assetFxGuard` resserré (n'accepte plus qu'`assetValueCad`/`toCurrencyFactor`, plus le
   `fx`/`factor` nu qui laissait passer le bug). Panel financial-integrity : bascule correcte ou strictement meilleure.
-- **`[ARCH-SYNC-SPLIT]`** 🟠 ÉLEVÉ (L, plan-first) — scinder `syncOrchestrator.ts` (892 l., 23 exports mêlés :
-  push/pull/conflit/passphrase/polling/suppression — siège des 2 incidents de juillet) en 4 modules par
-  responsabilité + barrel de compat ; discriminants sur les scénarios des 2 incidents. ADR complet dans le rapport.
-  À faire AVANT tout nouveau chantier sync.
+- **`[ARCH-SYNC-SPLIT]`** ✅ **LIVRÉ 2026-07-15 (Vague 3)** — `syncOrchestrator.ts` (892 l.) scindé en **9 modules à
+  responsabilité unique + barrel de compat** verbatim (API publique inchangée, zéro site appelant modifié) : `syncStatusStore`
+  (propriétaire UNIQUE de `_status`+listeners, racine du DAG), `syncTypes`, `syncSnapshot` (getLocalPayload + helpers purs +
+  ceinture persona PUSH), `syncErrors`, `syncMeta`, `syncPush` (`_apiKeysHydrated`/`_pushInFlight`/`_pushTimer`), `syncPull`
+  (pullNow + applyPulledPayload + ceinture persona PULL — le point d'écrasement 230k$), `syncLifecycle` (`_decisionInFlight`,
+  switch anti-clobber `runDecision`), `syncPolling` (`_pollTimer`), `syncPassphrase`. Règle « un état mutable = un module
+  propriétaire » : `grep "let _status"` == 1, double-ceinture `sanitizePersistEnvelope` == 2 (push+pull, non fusionnée),
+  `madge --circular` == 0. 81 tests sync verts, suite complète + typecheck OK.
 - **`[SEC-DRIVE-ENCRYPT-DEFAULT]`** 🟠 MOYEN-ÉLEVÉ (M) — payload Drive EN CLAIR par défaut (chiffré seulement si
   passphrase opt-in) alors que les clés API ont déjà un chiffrement NON-optionnel dérivé du `sub` Google
   (keyCipher). Appliquer la même recette à tout le payload (zéro friction, cross-device intact) ; passphrase =

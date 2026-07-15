@@ -54,9 +54,14 @@
 > **✅ VAGUE 4a livrée (périphérique sûr, hors sync)** : `[SEC-VISION-CONSENT-INJECTION]` (clause anti-injection
 > `VISION_INJECTION_GUARD` dans les 2 prompts Vision + avis de confidentialité explicite à l'upload, Loi 25),
 > `[DETTE-DEADCODE-2026-07]` (locales `_` mortes retirées), `[BACKUP-PROMISE-CATCH]` (`await` du backup → rejet async logué).
-> **Suite Vague 3b** : `[ARCH-SYNC-SPLIT]` (L, plan-first + panel + discriminants sur les 2 incidents — scinder
-> `syncOrchestrator.ts` 892 l./~28 exports en 4 modules + barrel de compat), PUIS SEC-DRIVE-ENCRYPT-DEFAULT,
-> MCP-WRITE-VERSION-TOKEN, SYNC-FETCH-TIMEOUT. `[MCP-CHARTDATA-SUM-GUARD]` différé (lint de convention heuristique à
+> **✅ VAGUE 3b livrée** : `[ARCH-SYNC-SPLIT]` — `syncOrchestrator.ts` (892 l.) scindé en **9 modules à responsabilité
+> unique + barrel de compat** verbatim (API publique inchangée, zéro appelant modifié) : `syncStatusStore` (propriétaire
+> UNIQUE de `_status`, racine du DAG), `syncTypes`, `syncSnapshot`, `syncErrors`, `syncMeta`, `syncPush`, `syncPull`
+> (applyPulledPayload = point d'écrasement 230k$), `syncLifecycle` (switch anti-clobber `runDecision`, `_decisionInFlight`),
+> `syncPolling`, `syncPassphrase`. Invariants prouvés : `grep "let _status"`==1, double-ceinture persona (push+pull)==2 non
+> fusionnée, `madge --circular`==0. 81 tests sync + suite complète + typecheck OK. Débloque le durcissement sync.
+> **Suite** : `[SEC-DRIVE-ENCRYPT-DEFAULT]`, `[MCP-WRITE-VERSION-TOKEN]`, `[SYNC-FETCH-TIMEOUT]` (Vague 3 durcissement, sur la
+> nouvelle fondation modulaire). `[MCP-CHARTDATA-SUM-GUARD]` différé (lint de convention heuristique à
 > concevoir soigneusement, fort risque de faux positifs). ⚠️ Zone sync = là où Marc a perdu 230 k$ → prudence maximale.
 >
 > ## 🔴 Session 2026-07-14 — Incident perte de données Drive (230k$) + anti-clobber STRICT + audit 6 alertes MCP

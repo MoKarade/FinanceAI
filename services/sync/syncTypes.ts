@@ -89,3 +89,24 @@ export interface DecideOnLoadInput {
     /** Métadonnées locales (dernière sync connue). */
     meta: SyncMeta;
 }
+
+/** Clés API synchronisées (jamais persistées en clair dans Drive). [ARCH-SYNC-SPLIT] partagé push/pull/snapshot. */
+export type ApiKeys = { anthropic: string; finnhub: string };
+
+/** Compte succinct d'un payload pour l'UI de conflit (aide l'utilisateur à choisir sans se tromper). */
+export interface ConflictSideCounts {
+    assets: number;
+    transactions: number;
+}
+
+/** Résumé « cet appareil vs Drive » présenté par SyncConflictModal (anti-clobber Marc 2026-07-14). */
+export interface ConflictSummary {
+    local: ConflictSideCounts;
+    /**
+     * `encrypted` : le blob Drive est chiffré (passphrase) → son contenu est ILLISIBLE d'ici, donc les
+     * comptes valent 0 mais ne veulent RIEN dire → le modal doit afficher « chiffré, contenu inconnu »
+     * (pas « 0 placement ») et NE PAS pousser à « garder le plus » (sinon on écraserait un backup chiffré
+     * potentiellement plus riche).
+     */
+    drive: ConflictSideCounts & { updatedAt: number; encrypted: boolean };
+}

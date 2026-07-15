@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — VAGUE 3 « fondation sync : ARCH-SYNC-SPLIT »] — 2026-07-15
+
+### Refactor (comportement inchangé)
+- **`syncOrchestrator.ts` scindé en 9 modules à responsabilité unique + barrel de compat** (`[ARCH-SYNC-SPLIT]`) — le
+  fichier de 892 lignes (siège des 2 incidents de sync de juillet, dont la perte de 230k$) est éclaté par responsabilité :
+  `syncStatusStore` (propriétaire UNIQUE de l'état de statut, racine du graphe de dépendances), `syncTypes`, `syncSnapshot`
+  (snapshot local + helpers purs), `syncErrors`, `syncMeta`, `syncPush`, `syncPull`, `syncLifecycle` (décision anti-clobber),
+  `syncPolling`, `syncPassphrase`. Déplacements **verbatim** : l'API publique historique est préservée par le barrel
+  `syncOrchestrator.ts` → aucun site appelant (App, composants, tests, MCP) n'a bougé. Invariants vérifiés : un seul `_status`
+  dans tout le repo, la double-ceinture de désinfection persona (push + pull) intacte et non fusionnée, zéro cycle d'import.
+  Prépare les durcissements sync à venir (`SEC-DRIVE-ENCRYPT-DEFAULT`, `MCP-WRITE-VERSION-TOKEN`, `SYNC-FETCH-TIMEOUT`).
+
 ## [unreleased — VAGUE 4a « périphérique : sécurité Vision + nettoyage »] — 2026-07-15
 
 ### Sécurité / vie privée

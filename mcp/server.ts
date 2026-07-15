@@ -18,6 +18,7 @@ import { registerGetTaxRoom } from './tools/getTaxRoom.tool';
 import { registerCalculateRealEstate } from './tools/calculateRealEstate.tool';
 import { registerRunProjection } from './tools/runProjection.tool';
 import { registerGetFinancialOverview } from './tools/getFinancialOverview.tool';
+import { registerGetHoldings } from './tools/getHoldings.tool';
 import { registerGetProjection } from './tools/getProjection.tool';
 import { registerGetTaxSituation } from './tools/getTaxSituation.tool';
 import { registerGetRetirementOutlook } from './tools/getRetirementOutlook.tool';
@@ -73,6 +74,7 @@ export const createServer = (options: CreateServerOptions = {}): McpServer => {
         );
     });
     registerGetFinancialOverview(server, getState);
+    registerGetHoldings(server, getState);
     registerGetProjection(server, getState);
     registerGetTaxSituation(server, getState);
     registerGetRetirementOutlook(server, getState);

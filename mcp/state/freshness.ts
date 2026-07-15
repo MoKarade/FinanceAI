@@ -38,13 +38,20 @@ export function getStateFreshness(): StateFreshness {
 /** Seuil au-delà duquel la note devient un AVERTISSEMENT explicite (données possiblement périmées). */
 export const STALE_THRESHOLD_MS = 6 * 60 * 60 * 1000; // 6 h
 
-/** Âge lisible (« 3 min », « 5 h », « 2 j »). */
+/**
+ * Âge lisible (« 3 min », « 4 h 40 », « 5 h », « 2 j »). [MCP-FRESHNESS-PRECISION] sous 48 h,
+ * on affiche heures ET minutes (retour claude.ai : « il y a 5 h » pour 4 h 40 induisait en erreur
+ * sur la vraie fraîcheur) ; pile sur l'heure → juste « N h » (pas de « N h 0 »). Au-delà, jours.
+ */
 function humanAge(ageMs: number): string {
-    const min = Math.round(ageMs / 60_000);
-    if (min < 60) return `${Math.max(0, min)} min`;
-    const h = Math.round(min / 60);
-    if (h < 48) return `${h} h`;
-    return `${Math.round(h / 24)} j`;
+    const totalMin = Math.max(0, Math.round(ageMs / 60_000));
+    if (totalMin < 60) return `${totalMin} min`;
+    if (totalMin < 48 * 60) {
+        const h = Math.floor(totalMin / 60);
+        const m = totalMin % 60;
+        return m === 0 ? `${h} h` : `${h} h ${m}`;
+    }
+    return `${Math.round(totalMin / (24 * 60))} j`;
 }
 
 /**

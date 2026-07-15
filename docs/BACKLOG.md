@@ -13,10 +13,10 @@
 ## 🔎 Analyse app complète 2026-07-15 (panel 4 agents — rapport : `docs/ANALYSE_APP_2026-07-15.md`)
 > Demande Marc : « une grosse analyse de l'app ». Détail, preuves fichier:ligne et plan d'ordre dans le rapport.
 
-- **`[DETTE-PDF-FX-BYPASS]`** 🔴 HIGH (S) — `services/pdfReport.ts:123` : `quantity × currentPrice × fx` à la main
-  au lieu d'`assetValueCad` (sans gardes NaN/devise), INVISIBLE du test-garde assetFxGuard (le mot « fx » sur la
-  ligne suffit). Même classe que l'incident ASSET-FX-DISPLAY, dans le PDF remis à l'utilisateur. Fix : router par
-  `assetValueCad` + renforcer le scan (interdire aussi `* fx` hors portfolio.ts).
+- **`[DETTE-PDF-FX-BYPASS]`** ✅ **LIVRÉ 2026-07-15 (Vague 1)** — `pdfReport.buildHoldingsRows` ET
+  `useDerivedFinancials.assetBreakdown` (2ᵉ instance latente RÉVÉLÉE par le garde resserré) routés par
+  `assetValueCad` ; garde `assetFxGuard` resserré (n'accepte plus qu'`assetValueCad`/`toCurrencyFactor`, plus le
+  `fx`/`factor` nu qui laissait passer le bug). Panel financial-integrity : bascule correcte ou strictement meilleure.
 - **`[ARCH-SYNC-SPLIT]`** 🟠 ÉLEVÉ (L, plan-first) — scinder `syncOrchestrator.ts` (892 l., 23 exports mêlés :
   push/pull/conflit/passphrase/polling/suppression — siège des 2 incidents de juillet) en 4 modules par
   responsabilité + barrel de compat ; discriminants sur les scénarios des 2 incidents. ADR complet dans le rapport.
@@ -38,10 +38,12 @@
   alerts vers services/budgetAnalysis.ts (purs, testables) et DEFAULT_TARGET_MODEL/écarts vers services/.
 - **`[DETTE-CLAUDE-SPLIT]`** 🟡 MEDIUM (M) — services/claude.ts = 8 features IA indépendantes (918 l.) → split
   mécanique services/claude/ + re-export (zéro breaking).
-- **`[DETTE-TOLOCALESTRING-NU]`** 🟡 MEDIUM (S) — 6 `toLocaleString()` sans locale (AiAssistant ×5, taxApril:70) :
-  rendraient « NaN » au lieu de « — » ; router par formatCAD/formatSigned (règle FMT-CURRENCY-UNIFY).
-- **`[DETTE-TESTGAP-MARKETDATA]`** 🟡 MEDIUM (S) — `pickProvider` (routage Finnhub/CoinGecko) sans test : un bug de
-  routage = prix jamais rafraîchi en silence.
+- **`[DETTE-TOLOCALESTRING-NU]`** ✅ **LIVRÉ 2026-07-15 (Vague 1)** — 6 sites `toLocaleString()` nus (AiAssistant ×5,
+  taxApril payé+remboursement) routés par `formatNumber`/`formatCAD` (NaN → « — »). Zéro `toLocaleString()` nu restant
+  (grep exhaustif). Bonus panel : `AiAssistant:103` `success`/`fvi` passés de `!= null` à `Number.isFinite` (évite « NaN% »).
+- **`[DETTE-TESTGAP-MARKETDATA]`** ✅ **LIVRÉ 2026-07-15 (Vague 1)** — `tests/services/marketDataRouting.test.ts` :
+  6 tests de routage `pickProvider` (crypto→CoinGecko même sans clé ; action→Finnhub ; crypto va TOUJOURS à CoinGecko
+  même avec clé), preuve par l'URL réellement appelée (coingecko.com vs finnhub.io).
 - **`[DETTE-DEADCODE-2026-07]`** 🟢 LOW (S) — 4 locales `_`-préfixées mortes confirmées : Budget.tsx:193-194,
   RealEstate.tsx:79, AiAssistant.tsx:122. (Les `_` de runAsync/syncOrchestrator/usePastPortfolioHistory sont VIVANTS.)
 - **`[DETTE-CHART-THEME-DUP]`** 🟢 LOW (S) — tooltip Recharts dupliqué 14× avec 4 fonds différents → constante
@@ -52,6 +54,21 @@
 - **DÉCISIONS DE GEL proposées (produit)** : `[CIX]` en entier + raffinements per-conjoint/dons + durcissement
   OAuth au-delà de l'existant + chasses d'affichage LOW sans impact patrimoine — tant que la situation de
   l'utilisateur (solo, 26 ans) ne change pas. La doc « 31 sous-modules projection » corrigée → 41.
+
+### Findings du panel Vague 1 (2026-07-15) — routés (pré-existants, hors périmètre de la vague)
+- **`[AI-PROMPT-FAKE-ZERO]`** 🟡 MEDIUM (S, ai-reviewer) — `services/claude.ts:33-36` `roundToHundred` retourne **`0`**
+  pour toute valeur non finie, puis interpolé nu dans ~6 prompt-builders (`getNextBestActions`, `getCoupleOptimizationStrategies`,
+  `getRealEstateAdvice`, `buildRebalancePrompt`, `detectSubscriptionsAI`, `categorizeBatch`) → fabrique un faux « 0$ » plausible
+  (no-fake-data) envoyé au modèle, plus trompeur qu'un « — » honnête. Fix : marqueur explicite `(non disponible)` quand l'entrée
+  n'est pas finie. (Le fix Vague 1 a corrigé le pendant dans `AiAssistant.tsx` ; celui de `claude.ts` reste.)
+- **`[MCP-PROMPT-SCRUB]`** 🟡 MEDIUM (S, security-privacy) — les champs texte libres (`name` d'actif, `payee`) ressortent
+  BRUTS dans le JSON des tools data-aware (`get_holdings`, `get_financial_overview`, `search_transactions`) sans passer par
+  `sanitizePromptText`/`wrapUserData` → injection de prompt indirecte possible (nom d'actif auto-rempli depuis Finnhub ou extrait
+  d'un PDF de courtage). Pas une régression (norme actuelle), mais `get_holdings` étend la surface. Fix : scrub léger centralisé
+  dans `_dataAware.ts` appliqué à TOUS les tools data-aware.
+- **`[A11Y-BANNER-HOVER-CONTRAST]`** 🟢 LOW (S, a11y-auditor) — pattern systémique « `bg-X-600 hover:bg-X-500` + texte blanc
+  + `text-meta` 12px » : le survol descend sous 4,5:1 (WCAG 1.4.3). Corrigé dans `CeliAssetNudge` (`hover:brightness-110`) ;
+  reste `BackupReminder` (variante quota `danger`) + à généraliser au design-system des bannières.
 
 ## 🔴 Données de test dans les vraies données (2026-07-15) — incident « fausses transactions »
 > Marc : « j'ai des fausses transactions sans doute des profils de test je veux plus que ça arrive jamais ».
@@ -150,19 +167,19 @@
   only, devise protégée (quote ≠ devise stockée → skip), couverture HONNÊTE (no-quote/invalid-price listés, jamais de
   prix inventé). Câblage : refresh AU BOOT (après hydrateAssets, sauté en mode test) + bouton « Actualiser les cours »
   (Investissements → Détail, horodatage + toast récapitulatif). Champ additif `Asset.priceUpdatedAt` (zéro bump).
-- **`[MCP-GET-HOLDINGS]`** 🔧 — aucun tool MCP ne LISTE les positions (symbole, qty, prix, devise, valeur CAD) :
-  pendant l'incident FX, impossible d'identifier le « +70 k$ » en une question. Ajouter `get_holdings` (lecture
-  seule, réutilise `assetValueCad`). Effort S, grande valeur diagnostique.
-- **`[MCP-FRESHNESS-PRECISION]`** 🔧 — la note de fraîcheur arrondit à l'heure (« il y a 5 h » pour 4 h 40) ;
-  afficher heures+minutes sous 48 h (retour claude.ai via Marc 2026-07-14). Trivial (humanAge, freshness.ts).
+- **`[MCP-GET-HOLDINGS]`** ✅ **LIVRÉ 2026-07-15 (Vague 1, MCP v0.7.2)** — tool `get_holdings` (lecture seule) :
+  positions individuelles (symbole/nom/qty/prix natif/devise/valeur CAD/compte/rendement) triées, total + ventilation
+  par compte, via `assetValueCad` (source unique). Arrondi aligné sur `get_financial_overview` (`round(Σ)`). ⚠️ Redéploiement Cloud Run requis.
+- **`[MCP-FRESHNESS-PRECISION]`** ✅ **LIVRÉ 2026-07-15 (Vague 1, MCP v0.7.2)** — `humanAge` affiche heures+minutes
+  sous 48 h (« 4 h 40 » ; pile sur l'heure → « 5 h »). Corrige aussi un double-arrondi de l'ancienne version. ⚠️ Redéploiement Cloud Run requis.
 - **`[MCP-WRITE-VERSION-TOKEN]`** 🔧 (durcissement, panel 2026-07-14) — la garde de concurrence Drive (`lastSeenUpdatedAt`)
   est PROCESS-WIDE : elle protège contre l'app qui pousse entre lecture et écriture MCP (l'incident), mais DEUX tool-calls
   MCP concurrents (2 sessions du même user) dont les mutations partent du même cache peuvent encore se marcher dessus
   (fenêtre = durée d'un handler ; writes désormais sérialisés par mutex + refus journalisé). Vrai fix : jeton de version
   par appel plumbé via `StateStore.get()` → `{state, version}` et `save(next, expectedVersion)`. Effort M.
-- **`[CELI-ASSET-NUDGE]`** 🔧 — l'app suit les virements CELI sortants mais pas le compte destinataire → CELI affiché 0 malgré
-  ~24 k$ cotisés (patrimoine sous-estimé). Audit **CONFIRMED** (finding #6). Fix (produit, NO-fake-data : ne PAS dériver celi=Σvirements =
-  coût, pas valeur marché) : NUDGE onboarding « tu vires vers ton CELI mais aucun avoir CELI saisi → ajoute-les ». Router UX.
+- **`[CELI-ASSET-NUDGE]`** ✅ **LIVRÉ 2026-07-15 (Vague 1)** — helper pur `computeCeliNudgeStatus` (détecte virements
+  CELI/TFSA sortants ≥ 1000 $ + zéro avoir CELI) + bannière dismissible `CeliAssetNudge` (Investissements, `PrivateAmount`
+  pour le mode discret, CTA « Ajouter mes avoirs CELI »). NO-fake-data : montant viré = CONTEXTE, jamais un solde dérivé.
 - Note : `moteur-impot-couple-fusionne` audit **REFUTED** — le moteur impose déjà PAR conjoint (`taxDecember.ts:394-396`), aucun bug. (Correction d'une hypothèse antérieure.)
 - **`[SYNC-FETCH-TIMEOUT]`** 🔧 (suivi panel SYNC-ANTI-CLOBBER) — les fetch Google/Drive (`services/googleDrive/driveAppData.ts`) n'ont AUCUN timeout/`AbortController` → un réseau « dégradé » (Google lent) peut faire pendre `fetchUserIdentity`/`readDrive` indéfiniment (mitigé côté UI par la trappe LoginGate à 10 s, mais la racine reste). + `fetch(..., {keepalive:true})` pour fiabiliser le push `flushPush` au `pagehide`. Effort M.
 - **`[A11Y-CHECK-CONTRAST-DRIFT]`** 🔧 (dette outillage) — `scripts/check-contrast.ts` utilise des valeurs de tokens PÉRIMÉES (`surface #151922` au lieu de `#0E1014` ; `primary #10b981` = l'ancien vert au lieu de `#e6eaf2`) → il ne teste pas les vrais combos actuels (rose bannière, superpositions). Réaligner sur `tailwind.config.js`.

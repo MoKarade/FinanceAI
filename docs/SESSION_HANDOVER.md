@@ -28,6 +28,19 @@
 > get_tax_situation enrichi (perUser.withholdings/netMonthly/salarySource + realMonthlyAverages). MCP v0.7.1 —
 > **⚠️ Marc : redéployer Cloud Run** (`git pull` puis `PROJECT_ID=financeai-497112 bash mcp/deploy.sh`).
 >
+> ## 🟢 Session 2026-07-15 (suite) — Vidage du BACKLOG en vagues (plan PM validé « go tout ») — VAGUE 1 livrée
+> Marc a demandé au PM l'ordre pour « tout corriger et vider le backlog », validé le plan en vagues, puis « go tout sans t'arrêter ».
+> **Ordre** : V1 confiance quotidienne (S) → V2 fiscal money-critical (M) → V3 fondation sync (L, ARCH-SYNC-SPLIT d'abord) → V4 périphérique.
+> **✅ VAGUE 1 livrée (6 items S)** : `[DETTE-PDF-FX-BYPASS]` (pdfReport + `useDerivedFinancials` — **2ᵉ bypass FX latent RÉVÉLÉ par
+> le garde `assetFxGuard` resserré** ; les deux routés par `assetValueCad`), `[MCP-GET-HOLDINGS]` (tool `get_holdings`, MCP **v0.7.2**),
+> `[CELI-ASSET-NUDGE]` (helper pur + bannière dismissible Investissements, NO-fake-data), `[MCP-FRESHNESS-PRECISION]` (heures+minutes < 48 h),
+> `[DETTE-TOLOCALESTRING-NU]` (6 sites → formatNumber/formatCAD, zéro reliquat), `[DETTE-TESTGAP-MARKETDATA]` (6 tests routage pickProvider).
+> Panel 6 agents (code-reviewer, silent-failure-hunter, financial-integrity, ai-reviewer, a11y-auditor, security-privacy) : cœur jugé net,
+> ~8 correctifs mineurs appliqués (2 MEDIUM : celiNudge garde NaN, getHoldings log rendement non-fini ; + arrondi `round(Σ)`, aria-label
+> Label-in-Name, hover contraste, taxApril remboursement). 3 findings pré-existants routés au BACKLOG (`AI-PROMPT-FAKE-ZERO`,
+> `MCP-PROMPT-SCRUB`, `A11Y-BANNER-HOVER-CONTRAST`). **⚠️ Marc : redéployer Cloud Run pour MCP v0.7.2** (`get_holdings` + fraîcheur précise).
+> **Suite** : Vague 2 (fiscal `FISC-PAYROLL-BASE-INVEST` + `TAX-APP-MCP-BASE` + `FISC-ASSETLOC-INTL`, plan-first + discriminants git-stash).
+>
 > ## 🔴 Session 2026-07-14 — Incident perte de données Drive (230k$) + anti-clobber STRICT + audit 6 alertes MCP
 > **Incident** : Marc a perdu 230k$ de placements. Chaîne : appareil silencieusement déconnecté (jeton Google expiré ~1h →
 > `schedulePush` no-op EN SILENCE) → ses ajouts (jusqu'à 230k$) jamais poussés vers Drive → à la reconnexion, méta vierge →

@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import type { AppState, Transaction } from '../types';
-import { computePresentNetWorth } from '../services/portfolio';
-import { logErrorThrottled } from '../services/errorLogger';
+import { assetValueCad, computePresentNetWorth } from '../services/portfolio';
 import { isSavingsNature } from './budget';
 
 interface DerivedFinancials {
@@ -50,18 +49,10 @@ export function useDerivedFinancials(state: AppState): DerivedFinancials {
         const reee = 0;
         let nonReg = 0;
         state.assets.forEach(a => {
-            // [NAN-INPUT-HARDENING] garde l'AGRÉGAT (quantity/currentPrice peuvent être NaN si saisie vidée
-            // / prix échoué) — sinon reer/celi/nonReg deviennent NaN en silence (non capté par les invariants).
-            const raw = a.quantity * a.currentPrice * (state.fxRates[a.currency] || 1);
-            // [NAN-OBSERVABILITY] surface le rabattement (throttlé par actif : ce useMemo se recalcule).
-            if (!Number.isFinite(raw)) {
-                logErrorThrottled(`asset-nan:${a.symbol}`, {
-                    source: 'ui', severity: 'warning',
-                    message: `Actif "${a.name || a.symbol}" : valeur non finie (quantité/prix vidé ou prix échoué) → compté 0 $`,
-                    context: { symbol: a.symbol, accountType: a.accountType },
-                });
-            }
-            const val = Number.isFinite(raw) ? raw : 0;
+            // [DETTE-PDF-FX-BYPASS] source unique : FX (prix stocké en devise NATIVE) + garde NaN/Infinity
+            // + devise absente signalée, TOUT dans assetValueCad — jamais `quantity × currentPrice × (fx||1)`
+            // à la main (le repli 1:1 muet sous-affiche le patrimoine, incident ASSET-FX-DISPLAY).
+            const val = assetValueCad(a, state.fxRates);
             if (a.accountType === 'REER') reer += val;
             else if (a.accountType === 'CELI') celi += val;
             else nonReg += val;

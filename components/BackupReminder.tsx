@@ -126,7 +126,8 @@ export const BackupReminder: React.FC<BackupReminderProps> = ({ onNavigateToSett
                 <button
                     type="button"
                     onClick={handleDismiss}
-                    aria-label="Ignorer ce rappel"
+                    // [A11Y 2.5.3 Label in Name] le nom accessible commence par le texte visible.
+                    aria-label="Plus tard — ignorer ce rappel"
                     className="rounded-lg px-2 py-1 text-meta text-ink-300 hover:text-white transition-colors focus-ring"
                 >
                     Plus tard

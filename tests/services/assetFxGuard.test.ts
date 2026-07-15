@@ -7,9 +7,11 @@
 // touchées : NetWorthByOwnerCard, Investments, Dashboard, HealthIndicator, AssetLocationCard, CSV).
 //
 // Ce test SCANNE le code source : tout `quantity` et `currentPrice` multipliés sur la MÊME ligne
-// doivent passer par la source unique (`assetValueCad`/`toCurrencyFactor`/`fx`) — sinon échec avec
-// le fichier:ligne fautif. Leçon FISC-CONST-LINT : un scan doit PROUVER son volume (un scan qui ne
-// trouve aucun fichier/aucun motif passe à vide = protection nulle silencieuse).
+// doivent passer par la SOURCE UNIQUE (`assetValueCad` ou `toCurrencyFactor`) — sinon échec avec le
+// fichier:ligne fautif. [DETTE-PDF-FX-BYPASS] un `fx`/`factor` NU (`fxRates[cur] || 1`) ne suffit
+// PLUS : c'était le trou qui laissait passer pdfReport.ts:123 et useDerivedFinancials. Leçon
+// FISC-CONST-LINT : un scan doit PROUVER son volume (un scan qui ne trouve aucun fichier/aucun motif
+// passe à vide = protection nulle silencieuse).
 //
 // ⚠️ LIMITE ASSUMÉE (défense-en-profondeur, pas garantie structurelle) : le scan exige les
 // identifiants LITTÉRAUX sur la ligne de multiplication — un alias (`const {quantity: q} = a; q*p`)
@@ -65,7 +67,7 @@ describe('[ASSET-FX-DISPLAY] garde anti quantity×currentPrice sans FX', () => {
         expect(portfolio).toMatch(/quantity.*currentPrice|currentPrice.*quantity/);
     });
 
-    it('toute multiplication quantity×currentPrice hors allowlist mentionne fx/factor/assetValueCad sur la ligne', () => {
+    it('toute multiplication quantity×currentPrice hors allowlist passe par assetValueCad/toCurrencyFactor sur la ligne', () => {
         const offenders: string[] = [];
         for (const f of files) {
             const rel = f.slice(ROOT.length + 1).replace(/\\/g, '/');
@@ -76,9 +78,13 @@ describe('[ASSET-FX-DISPLAY] garde anti quantity×currentPrice sans FX', () => {
                 const multiplies =
                     /quantity[^\n]*\*[^\n]*currentPrice|currentPrice[^\n]*\*[^\n]*quantity/.test(line);
                 if (!multiplies) return;
-                // …sans passage par la conversion (source unique, factor ou taux fx sur la ligne —
-                // `fx` en substring couvre fxRates/fxOf/fx[/`* fx` ; vérifié sans faux négatif).
-                const converted = /assetValueCad|toCurrencyFactor|factor|fx/i.test(line);
+                // …sans passage par la SOURCE UNIQUE. [DETTE-PDF-FX-BYPASS] resserré : un `fx`/`factor`
+                // NU sur la ligne (ex. `quantity × currentPrice × (fxRates[cur] || 1)`) ne suffit PLUS —
+                // c'était précisément le trou qui laissait passer pdfReport.ts:123 et useDerivedFinancials
+                // (repli 1:1 muet = le bug ASSET-FX-DISPLAY). Seuls les helpers sanctionnés comptent :
+                // `assetValueCad` (valorisation complète) ou `toCurrencyFactor` (facteur explicite, ex.
+                // calcul de gain (px−buyPx)×qty×toCurrencyFactor dans Dashboard).
+                const converted = /assetValueCad|toCurrencyFactor/.test(line);
                 if (!converted) offenders.push(`${rel}:${i + 1} → ${line.trim().slice(0, 120)}`);
             });
         }

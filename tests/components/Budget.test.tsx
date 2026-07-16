@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, within, fireEvent } from '@testing-library/react';
 import { Budget } from '../../components/Budget';
-import type { BudgetConfig, BudgetCategory, User } from '../../types';
+import type { BudgetConfig, BudgetCategory, User, Transaction } from '../../types';
 
 // Mock recharts (jsdom n'a pas SVG dimensions)
 vi.mock('recharts', async () => {
@@ -93,5 +93,37 @@ describe('Budget — refonte UI (Phase C3)', () => {
         const text = container.textContent || '';
         expect(text).toContain('Santé Financière'); // la carte existe (titre solo)
         expect(text).not.toContain('du Couple');     // mais pas la variante couple
+    });
+
+    it('[BUDGET-MONTH-NAV] naviguer vers le mois précédent RECALCULE les dépenses RÉELLES (régression periodOffset)', () => {
+        // Bug Marc 2026-07-16 : le memo `actualsMap` (dépenses réelles par poste) omettait `periodOffset`
+        // dans ses deps → naviguer vers un autre mois NE recalculait pas les réels (« ça s'actualise pas »).
+        // Discriminant : on scope la RÉEL de la tuile « Dépenses » (pas la prévu = moyenne passée). Sur
+        // l'ancien code, la réel reste figée sur le mois courant (1000) après clic ; le fix la passe à 9999.
+        const now = new Date();
+        const iso = (d: Date) => d.toISOString().split('T')[0];
+        const curDate = iso(new Date(now.getFullYear(), now.getMonth(), 1));       // mois courant
+        const prevDate = iso(new Date(now.getFullYear(), now.getMonth() - 1, 15)); // mois précédent
+        const tx = (id: string, date: string, amount: number): Transaction =>
+            ({ id, date, description: 'Resto', category: 'Restaurants', amount } as unknown as Transaction);
+        const transactions = [tx('c1', curDate, -1000), tx('p1', prevDate, -9999)];
+
+        const { container, getByLabelText } = render(<Budget {...baseProps} transactions={transactions} />);
+
+        // La RÉEL de la tuile « Dépenses » = premier montant (.text-kpi), la prévu = second (moy. passée).
+        // On cible la tuile KPI via `.kpi-label` (« Dépenses » apparaît aussi ailleurs : en-tête du grand livre).
+        const reelDigits = (): string => {
+            const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
+                .find((l) => (l.textContent ?? '').includes('Dépenses'));
+            const tile = label!.closest('.rounded-card') as HTMLElement;
+            const reel = tile.querySelector('.text-kpi') as HTMLElement;
+            return (reel.textContent ?? '').replace(/[^\d]/g, '');
+        };
+
+        expect(reelDigits()).toBe('1000'); // mois courant : 1000 dépensé
+
+        fireEvent.click(getByLabelText('Période précédente')); // periodOffset → -1
+
+        expect(reelDigits()).toBe('9999'); // mois précédent : le memo a bien recalculé (échoue sur l'ancien code)
     });
 });

@@ -94,13 +94,14 @@
   vraies transactions des catégories `Salaire`/`Revenus divers` (`computeIncomeBreakdown`), ventilé, transferts/doublons/
   positifs non-revenu exclus ; badge + payload IA sur revenu réel (moyenne mois pleins) ; carte Santé étiquetée « (salaire
   déclaré) » (garde le brut config, requis pour la décompo brut→net). Panel financial-integrity : 0 bug bloquant.
-  Découvertes (SUIVI, non bloquantes) :
-  - **`[TX-INCOME-CATEGORY-LIST]`** (FAIBLE) — `components/Transactions.tsx` (catégorisation manuelle) ne propose PAS
-    `Revenus divers` → une rentrée classée à la main en `Autre`/`Investissement` devient invisible comme revenu. Ajouter
-    `Revenus divers` (et éventuellement `Salaire`) à la liste manuelle.
-  - **`[TAX-MCP-INCOMEAVG-TEST]`** (FAIBLE) — la nouvelle sémantique `incomeAvg` (salaire+divers, hors remboursements) est
-    consommée par `TaxCenter.tsx` + `mcp/tools/getTaxSituation.tool.ts` mais non verrouillée par un test côté ces deux
-    surfaces. Direction correcte (revenu fiscal hors remboursements) — ajouter un test de non-régression.
+  Découvertes (SUIVI) :
+  - **`[TX-INCOME-CATEGORY-LIST]`** ✅ **PÉRIMÉ 2026-07-16 (faux positif du panel)** — `Revenus divers` EST déjà proposé en
+    catégorisation manuelle : `Transactions.tsx:134` unit `systemCats` avec `RULE_CATEGORIES` (`categoryRules.ts:17` contient
+    `Revenus divers`). Le panel n'avait lu que le tableau `systemCats` codé en dur (l.131), pas l'union. Rien à corriger.
+  - **`[TAX-MCP-INCOMEAVG-TEST]`** ✅ **LIVRÉ 2026-07-16** — test d'intégration sur le contrat MCP `get_tax_situation`
+    (`tests/mcp/dataAwareTools.test.ts`) : un remboursement +500 dans un mois plein N'inflate PAS `realMonthlyAverages.income`
+    (2300 et non 2800). La sémantique de `computeMonthlyActualAverages` était déjà verrouillée à la source
+    (`budgetSync.test.ts:219`) ; ce test verrouille en plus le pass-through côté MCP (chiffre que LIT Claude).
 - **`[INCOME-PROVENANCE]` + `[TAX-DETAIL]`** ✅ **LIVRÉ 2026-07-15** (demande Marc : chaîne paie→Impôt→Santé,
   source unique) — salarySource estampillé (scan paie UI + apply_payslip MCP), bannière de provenance +
   détail des retenues (féd/QC/RRQ/RQAP/AE) + réel des transactions dans l'onglet Impôt ; get_tax_situation

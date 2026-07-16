@@ -27,7 +27,7 @@ import { registerGetRetirementOutlook } from '../../mcp/tools/getRetirementOutlo
 import { registerGetNextBestActions } from '../../mcp/tools/getNextBestActions.tool';
 import { registerSearchTransactions } from '../../mcp/tools/searchTransactions.tool';
 import { searchTransactions } from '../../services/transactionsSearch';
-import type { AppState } from '../../types';
+import type { AppState, Transaction } from '../../types';
 
 // ── Faux serveur : capture les handlers enregistrés ─────────────────────────
 type Handler = (args: Record<string, unknown>) => Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }>;
@@ -272,6 +272,32 @@ describe('Lot 1 — get_tax_situation', () => {
         const real = out.realMonthlyAverages as Record<string, number>;
         expect(real.net).toBe(real.income - real.expenses);
         expect(real.fullMonths).toBeGreaterThanOrEqual(0);
+    });
+
+    it('[TAX-MCP-INCOMEAVG-TEST] realMonthlyAverages.income = revenu RÉEL (catégories de revenu) — un positif non-revenu (remboursement) NE l\'inflate PAS', async () => {
+        // Contrat MCP que LIT Claude : le revenu réel exposé doit partager la base du Budget
+        // (transactions des catégories Salaire/Revenus divers), PAS « tout positif ». Discriminant :
+        // un remboursement +500 dans un mois plein NE doit PAS compter comme revenu (sur l'ancien
+        // code « tout positif », income aurait valu 2800 ; désormais 2300).
+        const state = karimState();
+        const now = new Date();
+        // Tout dans le MOIS PRÉCÉDENT (mois plein) → fullMonths == 1, dénominateur = 1 (assertion non vacante).
+        const d = new Date(now.getFullYear(), now.getMonth() - 1, 10).toISOString().split('T')[0];
+        const mk = (id: string, amount: number, category: string): Transaction =>
+            ({ id, date: d, payee: 'X', description: 'x', amount, category } as unknown as Transaction);
+        state.transactions = [
+            mk('tx-sal-1', 2000, 'Salaire'),        // paie
+            mk('tx-div-1', 300, 'Revenus divers'),  // divers
+            mk('tx-rmb-1', 500, 'Remboursement'),   // positif MAIS pas un revenu → exclu
+            mk('tx-exp-1', -400, 'Restaurants'),    // dépense
+        ];
+        const h = captureTool(registerGetTaxSituation, providerFor(state));
+        const out = await callJson(h, { year: 2026 });
+        const real = out.realMonthlyAverages as Record<string, number>;
+        expect(real.fullMonths).toBe(1);
+        expect(real.income).toBe(2300);   // 2000 + 300, PAS 2800 (remboursement exclu)
+        expect(real.expenses).toBe(400);
+        expect(real.net).toBe(1900);
     });
 
     it('[INCOME-PROVENANCE] apply_payslip estampille la source (montant changé, 1er apply idempotent, changement d\'employeur) ; retry identique = inerte', async () => {

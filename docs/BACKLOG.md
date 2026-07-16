@@ -200,11 +200,13 @@
   par compte, via `assetValueCad` (source unique). Arrondi aligné sur `get_financial_overview` (`round(Σ)`). ⚠️ Redéploiement Cloud Run requis.
 - **`[MCP-FRESHNESS-PRECISION]`** ✅ **LIVRÉ 2026-07-15 (Vague 1, MCP v0.7.2)** — `humanAge` affiche heures+minutes
   sous 48 h (« 4 h 40 » ; pile sur l'heure → « 5 h »). Corrige aussi un double-arrondi de l'ancienne version. ⚠️ Redéploiement Cloud Run requis.
-- **`[MCP-WRITE-VERSION-TOKEN]`** 🔧 (durcissement, panel 2026-07-14) — la garde de concurrence Drive (`lastSeenUpdatedAt`)
-  est PROCESS-WIDE : elle protège contre l'app qui pousse entre lecture et écriture MCP (l'incident), mais DEUX tool-calls
-  MCP concurrents (2 sessions du même user) dont les mutations partent du même cache peuvent encore se marcher dessus
-  (fenêtre = durée d'un handler ; writes désormais sérialisés par mutex + refus journalisé). Vrai fix : jeton de version
-  par appel plumbé via `StateStore.get()` → `{state, version}` et `save(next, expectedVersion)`. Effort M.
+- **`[MCP-WRITE-VERSION-TOKEN]`** ✅ **LIVRÉ 2026-07-16 (GO Marc)** — OCC (optimistic concurrency) per-call : `StateVersion`
+  (= `updatedAt` du blob) plumbé via `StateStore.getWithVersion() → {state, version}` + `save(next, expectedVersion)`.
+  `DriveStateSource.loadRawVersioned()` lit raw+version atomiquement ; `saveState(state, expectedVersion)` REFUSE si la
+  version stockée a bougé depuis la lecture de CET appel (ferme le trou de la garde process-wide `lastSeenUpdatedAt` : 2
+  tool-calls concurrents partis du même cache — le 2ᵉ clobberait). Additif : les tools de LECTURE gardent `get()` ; seuls
+  `_writeHelper` + `applyPayslip` passent le jeton ; fichier local (stdio mono-processus) = pas d'OCC. 4 tests dont
+  discriminant prouvé (git-patch : la garde process-wide seule laisse le 2ᵉ save clobber).
 - **`[CELI-ASSET-NUDGE]`** ✅ **LIVRÉ 2026-07-15 (Vague 1)** — helper pur `computeCeliNudgeStatus` (détecte virements
   CELI/TFSA sortants ≥ 1000 $ + zéro avoir CELI) + bannière dismissible `CeliAssetNudge` (Investissements, `PrivateAmount`
   pour le mode discret, CTA « Ajouter mes avoirs CELI »). NO-fake-data : montant viré = CONTEXTE, jamais un solde dérivé.

@@ -32,11 +32,8 @@
     pas le risque de retoucher l'anti-clobber pour une clé non-secrète. Si tu veux du vrai secret → active la
     **passphrase** (déjà là). Dis-moi si tu veux quand même le chiffrement `sub` par défaut et je le fais en
     plan détaillé + panel + discriminants sur les 2 scénarios d'incident.
-- [ ] **`[MCP-WRITE-VERSION-TOKEN]` — durcir la concurrence d'écriture MCP ?** Le garde actuel (mutex +
-  `lastSeenUpdatedAt` + refus journalisé) couvre déjà l'incident principal (l'app pousse entre lecture et
-  écriture MCP). Le résidu = 2 sessions MCP simultanées du même compte (fenêtre étroite). Le vrai fix (jeton de
-  version plumbé `get→{state,version}`/`save(next,expected)`) est un refactor de l'API d'écriture MCP. **Reco
-  [Probable]** : faisable en autonome mais non urgent — dis-moi si tu veux que je le prenne.
+- [x] **`[MCP-WRITE-VERSION-TOKEN]` — ✅ FAIT (ton GO « 2 oui », 2026-07-16)** — OCC per-call plumbé
+  (`getWithVersion`/`save(next,expectedVersion)`), 2 tool-calls MCP concurrents ne peuvent plus se clobber. Discriminant prouvé.
 
 ## O1 — Auth : RETIRER Cloudflare → ✅ **FAIT (2026-06-16)**
 > Cloudflare RETIRÉ de FinanceAI : Access (mur) supprimé + apex/www dé-proxifiés (DNS only → Vercel TLS direct).

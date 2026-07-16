@@ -16,6 +16,12 @@ import type { AppState } from '../../types';
 export interface SaveResult {
     /** Chemin de la sauvegarde de l'état PRÉCÉDENT (null si le fichier n'existait pas). */
     backupPath: string | null;
+    /**
+     * [MCP-WRITE-VERSION-TOKEN] Nouvelle version de concurrence du blob écrit (updatedAt epoch ms), pour
+     * que le store rafraîchisse son jeton en cache → un write suivant dans la même session repart du bon
+     * jeton. Absent pour les sources sans versioning (fichier local).
+     */
+    version?: number | null;
 }
 
 /** Suffixe des sauvegardes : <fichier>.<ISO>.bak (l'ISO trie chronologiquement). */

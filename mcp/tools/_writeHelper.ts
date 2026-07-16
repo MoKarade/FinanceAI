@@ -15,16 +15,17 @@ export async function runApply(store: StateStore, doc: DocumentPayload): Promise
             'État en lecture seule : configure une source inscriptible (fichier $FINANCEAI_STATE_FILE, ou Drive via npm run mcp:auth).',
         );
     }
-    let state;
+    let state, version;
     try {
-        state = await store.get();
+        // [MCP-WRITE-VERSION-TOKEN] lire l'état AVEC son jeton de version → le passer au save pour l'OCC.
+        ({ state, version } = await store.getWithVersion());
     } catch (err) {
         return errorContent(`Impossible de charger l'état avant écriture. ${err instanceof Error ? err.message : String(err)}`);
     }
     try {
         const { nextState, changes, summary } = applyDocument(state, doc);
         if (changes.length === 0) return jsonContent({ applied: false, summary, changes: [] });
-        const { backupPath } = await store.save(nextState);
+        const { backupPath } = await store.save(nextState, version);
         return jsonContent({ applied: true, summary, changes, backupPath });
     } catch (err) {
         return errorContent(`Écriture impossible. ${err instanceof Error ? err.message : String(err)}`);

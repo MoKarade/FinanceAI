@@ -37,6 +37,15 @@ export const STATE_FILE_ENV = 'FINANCEAI_STATE_FILE';
  * brute de l'enveloppe/état. Drive (Lot 3) implémentera cette interface (lecture
  * de financeai-sync.json + déchiffrement éventuel) sans toucher aux tools.
  */
+/**
+ * [MCP-WRITE-VERSION-TOKEN] Jeton de version de concurrence : `updatedAt` (epoch ms) du blob au moment
+ * de la lecture. `null` = pas de blob / source sans versioning (fichier local mono-processus). Sert à
+ * l'OCC (optimistic concurrency) : un `saveState(state, expectedVersion)` n'écrit QUE si le blob n'a pas
+ * bougé depuis la lecture qui a produit `expectedVersion` (sinon deux tool-calls MCP concurrents partis du
+ * même cache s'écraseraient — le dernier gagnant silencieux, la limite process-wide de `lastSeenUpdatedAt`).
+ */
+export type StateVersion = number | null;
+
 export interface StateSource {
     /** Identifiant lisible de la source (pour messages d'erreur / logs stderr). */
     readonly description: string;
@@ -50,7 +59,19 @@ export interface StateSource {
  * en réécrivant le blob chiffré, sans toucher aux tools d'écriture.
  */
 export interface WritableStateSource extends StateSource {
-    saveState(state: AppState): Promise<SaveResult>;
+    /**
+     * Persiste l'état. `expectedVersion` (optionnel, additif) = jeton lu par CET appelant : si fourni,
+     * l'écriture est REFUSÉE (conflit) quand la version stockée a changé depuis (OCC per-call). Omis →
+     * comportement historique (garde process-wide `lastSeenUpdatedAt`). Rétrocompat : les appelants qui ne
+     * passent pas de jeton gardent la sémantique d'avant.
+     */
+    saveState(state: AppState, expectedVersion?: StateVersion): Promise<SaveResult>;
+    /**
+     * Lecture ATOMIQUE raw + version pour l'OCC des writers. Optionnel : si absent, le store retombe sur
+     * `loadRaw()` avec `version: null` (pas d'OCC — cas fichier local). Atomique = raw et version viennent
+     * de la MÊME lecture (pas de capture séparée racée sous lectures concurrentes).
+     */
+    loadRawVersioned?(): Promise<{ raw: string; version: StateVersion }>;
 }
 
 /** Garde de type : la source sait-elle écrire ? */
@@ -75,7 +96,9 @@ export class FileStateSource implements WritableStateSource {
             );
         }
     }
-    async saveState(state: AppState): Promise<SaveResult> {
+    async saveState(state: AppState, _expectedVersion?: StateVersion): Promise<SaveResult> {
+        // Fichier local = mode stdio mono-processus : pas de concurrence multi-appareils → l'OCC
+        // (`expectedVersion`) ne s'applique pas ; l'écriture atomique + sauvegarde suffisent.
         return saveAppStateToFile(this.filePath, state);
     }
 }
@@ -142,13 +165,21 @@ export function normalizeAppState(partial: Partial<AppState>): AppState {
  * - Forme inattendue → Error claire (préfixe « AppState invalide … »).
  */
 export async function loadAppStateFromSource(source: StateSource): Promise<AppState> {
-    const raw = await source.loadRaw();
+    return parseRawToAppState(await source.loadRaw(), source.description);
+}
+
+/**
+ * Transforme le JSON brut d'une source en AppState validé+normalisé. Extrait de `loadAppStateFromSource`
+ * pour être réutilisé par le chemin VERSIONNÉ (getWithVersion), qui a déjà le raw en main via
+ * `loadRawVersioned` — évite une 2ᵉ lecture réseau et garde une seule source de vérité pour la transformation.
+ */
+export function parseRawToAppState(raw: string, sourceDescription: string): AppState {
     let parsed: unknown;
     try {
         parsed = JSON.parse(raw);
     } catch (err) {
         const reason = err instanceof Error ? err.message : String(err);
-        throw new Error(`JSON invalide depuis ${source.description} : ${reason}.`);
+        throw new Error(`JSON invalide depuis ${sourceDescription} : ${reason}.`);
     }
     // Tolère une enveloppe { payload: AppState } (format blob Drive) OU l'état nu.
     const candidate =

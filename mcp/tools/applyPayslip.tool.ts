@@ -41,9 +41,10 @@ export const registerApplyPayslip = (server: McpServer, store: StateStore): void
                     "État en lecture seule : $FINANCEAI_STATE_FILE doit pointer vers un fichier accessible en écriture.",
                 );
             }
-            let state;
+            let state, version;
             try {
-                state = await store.get();
+                // [MCP-WRITE-VERSION-TOKEN] jeton de version lu → passé au save (OCC anti-clobber).
+                ({ state, version } = await store.getWithVersion());
             } catch (err) {
                 return errorContent(`Impossible de charger l'état avant écriture. ${err instanceof Error ? err.message : String(err)}`);
             }
@@ -52,7 +53,7 @@ export const registerApplyPayslip = (server: McpServer, store: StateStore): void
                 if (changes.length === 0) {
                     return jsonContent({ applied: false, summary, changes: [] });
                 }
-                const { backupPath } = await store.save(nextState);
+                const { backupPath } = await store.save(nextState, version);
                 return jsonContent({ applied: true, summary, changes, backupPath });
             } catch (err) {
                 return errorContent(`Écriture impossible. ${err instanceof Error ? err.message : String(err)}`);

@@ -27,7 +27,7 @@ import {
 } from '../../services/googleDrive/driveAppData';
 import { buildEnvelope } from '../../services/sync/syncEngine';
 import type { SyncEnvelope } from '../../services/sync/syncTypes';
-import type { WritableStateSource } from '../state/loadAppState';
+import type { WritableStateSource, StateVersion } from '../state/loadAppState';
 import type { SaveResult } from '../state/writeAppState';
 import { setStateFreshness } from '../state/freshness';
 import { logError } from '../../services/errorLogger';
@@ -97,6 +97,14 @@ export class DriveStateSource implements WritableStateSource {
     }
 
     async loadRaw(): Promise<string> {
+        return (await this.loadRawVersioned()).raw;
+    }
+
+    /**
+     * [MCP-WRITE-VERSION-TOKEN] Lecture ATOMIQUE : renvoie le JSON de l'état ET la version de concurrence
+     * (`updatedAt` du blob) issus de la MÊME lecture. Le writer thread ce jeton jusqu'au save → OCC per-call.
+     */
+    async loadRawVersioned(): Promise<{ raw: string; version: StateVersion }> {
         const token = await this.getToken();
         const ref = await findSyncFile(token, this.fetchFn);
         if (!ref) {
@@ -106,47 +114,57 @@ export class DriveStateSource implements WritableStateSource {
         }
         const env = await readSyncFile(token, ref.id, this.fetchFn);
         if (env.enc === true) throw new Error(ENC_MSG);
-        this.lastSeenUpdatedAt = env.updatedAt ?? null;
+        const version = env.updatedAt ?? null;
+        this.lastSeenUpdatedAt = version;
         // [MCP-STALE-FRESHNESS] — publie l'âge du blob : chaque réponse de tool portera la note de
         // fraîcheur (Claude sait si la copie Drive est périmée au lieu d'affirmer des chiffres morts).
-        setStateFreshness({ updatedAt: env.updatedAt ?? null, source: 'Google Drive' });
-        return JSON.stringify(extractState(env.payload));
+        setStateFreshness({ updatedAt: version, source: 'Google Drive' });
+        return { raw: JSON.stringify(extractState(env.payload)), version };
     }
 
-    saveState(state: AppState): Promise<SaveResult> {
+    saveState(state: AppState, expectedVersion?: StateVersion): Promise<SaveResult> {
         // Sérialisation : chaque save attend la fin du précédent (voir _saveQueue). Le résultat de
         // CE save est retourné à SON appelant ; un échec ne casse pas la chaîne (catch → maillon suivant).
-        const run = this._saveQueue.then(() => this.doSaveState(state));
+        const run = this._saveQueue.then(() => this.doSaveState(state, expectedVersion));
         this._saveQueue = run.catch(() => undefined);
         return run;
     }
 
-    private async doSaveState(state: AppState): Promise<SaveResult> {
+    private async doSaveState(state: AppState, expectedVersion?: StateVersion): Promise<SaveResult> {
         const token = await this.getToken();
         const ref = await findSyncFile(token, this.fetchFn);
         let existing: SyncEnvelope | null = null;
         if (ref) {
             existing = await readSyncFile(token, ref.id, this.fetchFn);
             if (existing.enc === true) throw new Error(ENC_MSG);
-            // Garde de CONCURRENCE : le blob a avancé depuis notre dernière lecture → l'app (ou un
-            // autre appareil) a sauvegardé entre-temps. Écraser maintenant jetterait ses changements
-            // (last-writer-wins silencieux). On refuse avec un message actionnable — le store
-            // invalide son cache sur échec de save → le prochain get() relit l'état frais.
-            if (this.lastSeenUpdatedAt != null && (existing.updatedAt ?? 0) > this.lastSeenUpdatedAt) {
-                // Journalisé côté serveur (observabilité Cloud Run) EN PLUS du throw vers le tool :
-                // un refus de write money-critical ne doit laisser aucune zone d'ombre.
-                logError({
-                    source: 'storage',
-                    severity: 'warning',
-                    message: 'DriveStateSource: conflit de concurrence détecté — écriture REFUSÉE (rien d\'écrasé)',
-                    context: { existingUpdatedAt: existing.updatedAt, lastSeenUpdatedAt: this.lastSeenUpdatedAt },
-                });
-                throw new Error(
-                    'Conflit : la sauvegarde Drive a été modifiée depuis la lecture (l\'app a ' +
-                    'synchronisé entre-temps). Rien n\'a été écrasé. Relance le tool : il relira ' +
-                    'l\'état à jour, puis réapplique le changement.',
-                );
-            }
+        }
+        // Garde de CONCURRENCE anti-clobber (refus au lieu d'un last-writer-wins silencieux ; le store
+        // invalide son cache sur échec → le prochain get() relit l'état frais).
+        // [MCP-WRITE-VERSION-TOKEN] Deux régimes :
+        //  - `expectedVersion` FOURNI (nouveau, per-call) : OCC strict — on écrit SEULEMENT si la version
+        //    stockée (updatedAt courant, ou null si pas de blob) est EXACTEMENT celle lue par CET appelant.
+        //    Attrape le cas que `lastSeenUpdatedAt` (process-wide) ratait : 2 tool-calls concurrents partis
+        //    du même cache — le 1er avance la version, le 2ᵉ (même expectedVersion) est refusé, pas clobbered.
+        //  - `expectedVersion` OMIS (historique) : garde process-wide `lastSeenUpdatedAt` (rétrocompat).
+        const currentVersion: StateVersion = existing?.updatedAt ?? null;
+        const conflict =
+            expectedVersion !== undefined
+                ? currentVersion !== expectedVersion
+                : this.lastSeenUpdatedAt != null && (existing?.updatedAt ?? 0) > this.lastSeenUpdatedAt;
+        if (conflict) {
+            // Journalisé côté serveur (observabilité Cloud Run) EN PLUS du throw vers le tool :
+            // un refus de write money-critical ne doit laisser aucune zone d'ombre.
+            logError({
+                source: 'storage',
+                severity: 'warning',
+                message: 'DriveStateSource: conflit de concurrence détecté — écriture REFUSÉE (rien d\'écrasé)',
+                context: { currentVersion, expectedVersion, lastSeenUpdatedAt: this.lastSeenUpdatedAt },
+            });
+            throw new Error(
+                'Conflit : la sauvegarde Drive a été modifiée depuis la lecture (l\'app a ' +
+                'synchronisé entre-temps, ou un autre appel concurrent). Rien n\'a été écrasé. Relance le ' +
+                'tool : il relira l\'état à jour, puis réapplique le changement.',
+            );
         }
 
         // [MCP-PAYSLIP-BACKUP] — sauvegarde Drive HORODATÉE de l'existant AVANT tout écrasement
@@ -175,7 +193,7 @@ export class DriveStateSource implements WritableStateSource {
 
         this.lastSeenUpdatedAt = now;
         setStateFreshness({ updatedAt: now, source: 'Google Drive' });
-        return { backupPath };
+        return { backupPath, version: now }; // [MCP-WRITE-VERSION-TOKEN] nouveau jeton → le store rafraîchit son cache
     }
 
     /** Rolling : garde les KEEP_DRIVE_BACKUPS sauvegardes les plus récentes, supprime le reste.

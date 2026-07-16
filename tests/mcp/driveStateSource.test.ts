@@ -219,6 +219,66 @@ describe('DriveStateSource — écriture', () => {
     });
 });
 
+describe('DriveStateSource — [MCP-WRITE-VERSION-TOKEN] OCC per-call (jeton de version)', () => {
+    /** fetch dont le blob GET « persiste » : chaque PATCH devient le nouveau `current` (updatedAt avance). */
+    function makeAdvancingFetch(captured: SyncEnvelope[], created: Array<{ name: string; content: unknown }>): FetchLike {
+        let current: SyncEnvelope = clearEnvelope({ v: 'v1000' }); // updatedAt 1000
+        const base = makeFetch({
+            fileExists: true, envelope: current, created,
+            onWrite: (e) => { captured.push(e); current = e; }, // le blob avance à la version écrite
+        });
+        return async (url, init) => {
+            if ((init?.method || 'GET').toUpperCase() === 'GET' && url.includes('alt=media')) {
+                return { ok: true, status: 200, json: async () => current } as unknown as Response;
+            }
+            return base(url, init);
+        };
+    }
+
+    it('loadRawVersioned renvoie le raw ET la version (updatedAt du blob)', async () => {
+        const src = new DriveStateSource(token, makeFetch({ fileExists: true, envelope: clearEnvelope({ transactions: [{ id: 't1' }] }) }));
+        const { raw, version } = await src.loadRawVersioned();
+        expect(version).toBe(1_000);
+        expect(JSON.parse(raw)).toMatchObject({ transactions: [{ id: 't1' }] });
+    });
+
+    it('save avec le BON jeton → écrit (aucun faux conflit)', async () => {
+        const captured: SyncEnvelope[] = [];
+        const src = new DriveStateSource(token, makeAdvancingFetch(captured, []));
+        const { version } = await src.loadRawVersioned(); // 1000
+        const res = await src.saveState(buildDefaultAppState(), version);
+        expect(captured).toHaveLength(1);           // écrit
+        expect(typeof res.version).toBe('number');  // nouveau jeton retourné
+        expect(res.version).not.toBe(1_000);        // la version a avancé
+    });
+
+    // DISCRIMINANT : 2 tool-calls partis du MÊME jeton (1000). A écrit → le blob ET lastSeenUpdatedAt
+    // avancent à la version de A. B (jeton périmé 1000) : la garde PROCESS-WIDE comparerait
+    // existing.updatedAt == lastSeenUpdatedAt (tous deux = version de A) → PAS de conflit → B CLOBBERAIT.
+    // L'OCC compare expectedVersion(1000) != existing → REFUSE. C'est exactement le trou que le jeton ferme.
+    it('2ᵉ save avec jeton PÉRIMÉ refusé là où la garde process-wide clobbererait', async () => {
+        const captured: SyncEnvelope[] = [];
+        const src = new DriveStateSource(token, makeAdvancingFetch(captured, []));
+        const { version } = await src.loadRawVersioned(); // 1000 — jeton partagé par A et B
+
+        await src.saveState(buildDefaultAppState(), version); // A : OK, blob avance, lastSeen = versionA
+        expect(captured).toHaveLength(1);
+
+        // B : MÊME jeton périmé → conflit (l'OCC), alors que la garde process-wide passerait.
+        await expect(src.saveState(buildDefaultAppState(), version)).rejects.toThrow(/Conflit/i);
+        expect(captured).toHaveLength(1); // B n'a RIEN écrit
+    });
+
+    it('store.getWithVersion() → jeton propagé au save (bout en bout)', async () => {
+        const captured: SyncEnvelope[] = [];
+        const store = makeStateStore(new DriveStateSource(token, makeAdvancingFetch(captured, [])), { ttlMs: 0 });
+        const { version } = await store.getWithVersion();
+        expect(version).toBe(1_000);
+        await store.save(buildDefaultAppState(), version); // bon jeton → écrit
+        expect(captured).toHaveLength(1);
+    });
+});
+
 describe('StateStore — invalidation du cache sur échec de save (rend vrai le « relance le tool »)', () => {
     it('save en conflit → cache invalidé → le get() suivant RELIT la source (pas le cache périmé)', async () => {
         // C'est la moitié STORE de la garde de concurrence : le message d'erreur du conflit promet

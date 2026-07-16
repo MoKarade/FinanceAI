@@ -25,6 +25,30 @@ const NON_BUDGET_CATEGORIES = new Set([
     'Impôts',
 ]);
 
+/**
+ * Catégories de REVENU réel (transactions positives) — la SOURCE DE VÉRITÉ du revenu affiché au Budget,
+ * à la place du salaire saisi à l'onboarding (`config.users[].netSalary`) qui ne correspond pas à ce que
+ * l'utilisateur reçoit vraiment (demande Marc 2026-07-16 : « le revenu doit correspondre à ma paie réelle
+ * / mes fiches de paie, pas au chiffre d'onboarding », séparé en Salaire vs Revenus divers). On NE compte
+ * PAS les autres positifs (remboursements, retours d'investissement…) comme du revenu de budget.
+ */
+export const INCOME_CATEGORIES = { salary: 'Salaire', other: 'Revenus divers' } as const;
+const isIncome = (t: Transaction): boolean =>
+    t.amount > 0 && !t.isTransfer && !t.isDuplicate &&
+    (t.category === INCOME_CATEGORIES.salary || t.category === INCOME_CATEGORIES.other);
+
+/** Ventilation du revenu réel (positif) d'un ensemble de transactions : salaire vs divers vs total. */
+export function computeIncomeBreakdown(transactions: Transaction[]): { salary: number; other: number; total: number } {
+    let salary = 0;
+    let other = 0;
+    for (const t of transactions) {
+        if (!isIncome(t)) continue;
+        if (t.category === INCOME_CATEGORIES.salary) salary += t.amount;
+        else other += t.amount;
+    }
+    return { salary, other, total: salary + other };
+}
+
 /** Nature par défaut d'une catégorie créée automatiquement (heuristique QC). */
 const NEED_CATEGORIES = new Set([
     'Logement', 'Épicerie', 'Transport', 'Santé', 'Assurances', 'Frais bancaires', 'Impôts',
@@ -93,26 +117,36 @@ export const historicalMonthlyAverage = (transactions: Transaction[], category: 
     return Math.round(total / Math.max(1, months.length));
 };
 
-/** Moyennes mensuelles GLOBALES (dépenses, revenus) sur tout le passé (mois pleins). */
+/**
+ * Moyennes mensuelles GLOBALES sur tout le passé (mois pleins) : dépenses + revenu VENTILÉ (salaire /
+ * divers). `incomeAvg = salaryAvg + otherAvg`. Le revenu est restreint aux catégories de revenu réel
+ * (`isIncome`) — plus l'ancien « tout positif » qui comptait remboursements/retours comme du revenu.
+ */
 export function computeMonthlyActualAverages(
     transactions: Transaction[],
     ref: Date = new Date(),
-): { expenseAvg: number; incomeAvg: number; fullMonths: number } {
+): { expenseAvg: number; incomeAvg: number; salaryAvg: number; otherAvg: number; fullMonths: number } {
     const months = fullHistoryMonths(transactions, ref);
-    if (months.length === 0) return { expenseAvg: 0, incomeAvg: 0, fullMonths: 0 };
+    if (months.length === 0) return { expenseAvg: 0, incomeAvg: 0, salaryAvg: 0, otherAvg: 0, fullMonths: 0 };
     const inWindow = new Set(months);
     let expense = 0;
-    let income = 0;
+    let salary = 0;
+    let other = 0;
     for (const t of transactions) {
         if (t.isTransfer || t.isDuplicate) continue;
         const m = t.date?.slice(0, 7) ?? '';
         if (!inWindow.has(m)) continue;
-        if (t.amount < 0) expense += Math.abs(t.amount);
-        else if (t.amount > 0) income += t.amount;
+        if (t.amount < 0) { expense += Math.abs(t.amount); continue; }
+        if (t.category === INCOME_CATEGORIES.salary) salary += t.amount;
+        else if (t.category === INCOME_CATEGORIES.other) other += t.amount;
     }
+    const salaryAvg = Math.round(salary / months.length);
+    const otherAvg = Math.round(other / months.length);
     return {
         expenseAvg: Math.round(expense / months.length),
-        incomeAvg: Math.round(income / months.length),
+        incomeAvg: salaryAvg + otherAvg,
+        salaryAvg,
+        otherAvg,
         fullMonths: months.length,
     };
 }

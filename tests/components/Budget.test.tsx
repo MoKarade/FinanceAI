@@ -126,4 +126,30 @@ describe('Budget — refonte UI (Phase C3)', () => {
 
         expect(reelDigits()).toBe('9999'); // mois précédent : le memo a bien recalculé (échoue sur l'ancien code)
     });
+
+    it('[BUDGET-INCOME-REAL] Revenus = vraies transactions salaire+divers (pas les positifs non-revenu), avec ventilation', () => {
+        // Bug Marc 2026-07-16 : le revenu doit venir des vraies rentrées (paie Robovic + revenus divers),
+        // ventilé, et NE PAS compter un positif non-revenu (remboursement). Discriminant : l'ancien code
+        // sommait TOUS les positifs → 2600 ; le fix restreint aux catégories de revenu → 2500.
+        const now = new Date();
+        const cur = new Date(now.getFullYear(), now.getMonth(), 3).toISOString().split('T')[0];
+        const tx = (id: string, amount: number, category: string): Transaction =>
+            ({ id, date: cur, payee: 'X', amount, category } as unknown as Transaction);
+        const transactions = [
+            tx('s1', 2000, 'Salaire'),         // paie
+            tx('d1', 500, 'Revenus divers'),   // divers
+            tx('r1', 100, 'Remboursement'),    // positif MAIS pas un revenu → NE doit PAS compter
+            tx('e1', -300, 'Restaurants'),     // dépense
+        ];
+        const { container } = render(<Budget {...baseProps} transactions={transactions} />);
+
+        const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
+            .find((l) => (l.textContent ?? '').includes('Revenus'));
+        const tile = label!.closest('.rounded-card') as HTMLElement;
+        const reel = (tile.querySelector('.text-kpi') as HTMLElement).textContent?.replace(/[^\d]/g, '');
+        expect(reel).toBe('2500'); // 2000 + 500, PAS 2600 (remboursement exclu)
+        // Ventilation salaire / divers visible
+        expect(tile.textContent).toMatch(/Salaire/);
+        expect(tile.textContent).toMatch(/Divers/);
+    });
 });

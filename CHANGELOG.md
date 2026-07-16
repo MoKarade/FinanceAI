@@ -6,7 +6,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
-## [unreleased — correction Budget : navigation de mois] — 2026-07-16
+## [unreleased — correction Budget : navigation de mois + revenus réels] — 2026-07-16
 
 ### Corrections
 - **Budget : les dépenses réelles se recalculent en changeant de mois** (`[BUDGET-MONTH-NAV]`, bug signalé Marc) — le
@@ -15,6 +15,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   `periodOffset` ajouté aux deps (déjà présent dans les memos voisins revenus/alertes). Désormais : mois passé → dépenses de
   CE mois ; mois courant → dépenses du mois en cours, avec le budget de référence = moyenne des mois pleins passés (tuiles
   KPI, inchangé). Test de régression discriminant (la réel reste figée sur l'ancien code).
+- **Budget : les revenus viennent des VRAIES transactions (paie + divers), ventilés** (`[BUDGET-INCOME-REAL]`, bug signalé
+  Marc « les revenus semblent pas logiques ») — la tuile Revenus sommait **tous** les positifs (remboursements/retours inclus)
+  et coexistait avec le salaire d'onboarding (`config.users[].netSalary`) → deux bases de revenu incohérentes. Corrigé :
+  `computeIncomeBreakdown` (`utils/budgetSync.ts`) restreint le revenu aux catégories `Salaire` (paie) et `Revenus divers`,
+  exclut transferts/doublons/positifs non-revenu, et **ventile** salaire vs divers (sous-libellé de la tuile). Le badge
+  Excédentaire/Déficitaire et le diagnostic IA raisonnent désormais sur ce revenu réel (moyenne des mois pleins passés),
+  plus sur le chiffre saisi à l'onboarding. La carte « Santé Financière » garde le salaire brut déclaré (nécessaire à la
+  décomposition brut→déductions→net) et est explicitement étiquetée « (salaire déclaré) ». `computeMonthlyActualAverages`
+  expose `salaryAvg`/`otherAvg` (ripple bénéfique sur TaxCenter + MCP `get_tax_situation` : revenu réel = catégories de
+  revenu, hors remboursements). Tests discriminants (2500 vs 2600 ancien ; ventilation salaire/divers).
 
 ## [unreleased — durcissement MCP : concurrence d'écriture] — 2026-07-16
 

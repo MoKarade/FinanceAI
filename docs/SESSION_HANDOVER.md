@@ -6,10 +6,12 @@
 >
 > ## 🟢 Session 2026-07-16 — Durcissement sync/MCP + a11y + fix Budget
 > **✅ Mergés** : ARCH-SYNC-SPLIT (#455), SYNC-FETCH-TIMEOUT (#456), A11Y-CHECK-CONTRAST-DRIFT (#457), GHOST-BUTTON (#458),
-> BORDER-SWEEP boutons (#459), MCP-WRITE-VERSION-TOKEN OCC (#460, GO Marc). **En cours** : `[BUDGET-MONTH-NAV]` — bug Marc
-> « les dépenses Budget ne s'actualisent pas en changeant de mois » → memo `actualsMap` omettait `periodOffset` (fix +
-> test discriminant). **Décision Marc** : SEC-DRIVE-ENCRYPT-DEFAULT = NON. **En attente Marc** : sweep a11y des CHAMPS
-> (input/select) — regarder le rendu des boutons en preview d'abord.
+> BORDER-SWEEP boutons (#459), MCP-WRITE-VERSION-TOKEN OCC (#460, GO Marc), `[BUDGET-MONTH-NAV]` (#461). **En cours** :
+> `[BUDGET-INCOME-REAL]` — bug Marc « les revenus semblent pas logiques » → la tuile Revenus sommait tous les positifs
+> (remboursements inclus) et coexistait avec le salaire d'onboarding. Fix : revenu = vraies transactions (catégories
+> `Salaire`/`Revenus divers`), ventilé salaire/divers, badge + IA sur revenu réel, carte Santé étiquetée « (salaire
+> déclaré) ». Panel financial-integrity : aucun bug bloquant. **Décision Marc** : SEC-DRIVE-ENCRYPT-DEFAULT = NON. **En
+> attente Marc** : sweep a11y des CHAMPS (input/select) — regarder le rendu des boutons en preview d'abord.
 >
 > ## 🔴 Session 2026-07-15 (suite) — Incident « fausses transactions » : purge persona + chantier transactions/catégories/Budget
 > **Incident** : Marc a trouvé des FAUSSES transactions dans ses vraies données (« je veux plus que ça arrive jamais »).

@@ -19,7 +19,7 @@ import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { formatCAD, formatSigned, formatPercent } from '../utils/format';
 import { computeBudgetParity, matchTransactionToCategory, computeGoldenSplit, GOLDEN_IDEAL, computeActualByOwner, isSavingsNature, type OrphanCategory } from '../utils/budget';
-import { syncBudgetWithTransactionCategories, buildMonthlyLedger, computeMonthlyActualAverages } from '../utils/budgetSync';
+import { syncBudgetWithTransactionCategories, buildMonthlyLedger, computeMonthlyActualAverages, computeIncomeBreakdown } from '../utils/budgetSync';
 import { DualKPIStat } from './budget/DualKPIStat';
 import { calculateFiscalReport } from '../utils/tax';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
@@ -113,7 +113,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     const now = new Date();
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const currentDay = now.getDate();
-    const monthProgress = (currentDay / daysInMonth) * 100;
+    // [BUDGET-MONTH-NAV] Un mois PASSÉ (navigué) est CLOS → progression 100 % ; seul le mois en cours
+    // (periodOffset === 0) utilise l'avancement réel du jour. Sinon les barres de progression par poste
+    // sur un mois passé se calaient sur l'avancement du mois d'aujourd'hui (finding audit).
+    const monthProgress = periodOffset === 0 ? (currentDay / daysInMonth) * 100 : 100;
 
     const getDateRange = () => {
         // Phase D'.6 — applique le periodOffset (négatif = passé, positif = futur)
@@ -183,11 +186,6 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             };
         });
     }, [config.users]);
-
-    const totalNetIncomeMonthly = usersIncome.reduce((sum, u) => sum + u.netSalary, 0);
-
-    // Display values based on time view
-    const totalNetIncomeDisplay = totalNetIncomeMonthly * getMultiplier();
 
     const { actualsMap, totalSpent, trendMap, monthlyDataMap, orphanCategories, itemsWithoutTransactions, actualByOwner } = useMemo(() => {
         const { start, end } = getDateRange();
@@ -274,8 +272,15 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // `totalSpent` — préserve le total d'AVANT le refactor (les orphelins comptent dans le réel).
     // `actualsMap` ne contient plus les orphelins → on NE somme PLUS ses valeurs ici.
     const totalSpentDisplay = totalSpent;
-    const totalRemainingDisplay = totalNetIncomeDisplay - totalSpentDisplay; // Based on Net Income
-    const projectedTotalDisplay = timeView === 'MONTH' ? (totalSpentDisplay / (currentDay / daysInMonth)) : totalSpentDisplay;
+    // [BUDGET-INCOME-REAL] Revenu de référence = MOYENNE RÉELLE (paie + divers) des mois pleins passés,
+    // PAS le salaire d'onboarding. Sert au badge Excédentaire/Déficitaire (cohérent avec les tuiles réel).
+    const avgRealIncomeDisplay = pastAverages.incomeAvg * getMultiplier();
+    // [BUDGET-MONTH-NAV] La projection « fin de mois » n'a de sens que pour le mois EN COURS (partiel).
+    // Sur un mois PASSÉ (periodOffset < 0, déjà clos), diviser par l'avancement du mois d'AUJOURD'HUI
+    // donnait un chiffre fantaisiste (finding audit, même classe que le bug periodOffset des dépenses).
+    const projectedTotalDisplay = timeView === 'MONTH' && periodOffset === 0
+        ? (totalSpentDisplay / (currentDay / daysInMonth))
+        : totalSpentDisplay;
 
     // Phase D'.3 — vraie décomposition fiscale (intègre fed + QC + RRQ + AE + RQAP)
     // au lieu de la simple soustraction Brut − Net.
@@ -317,20 +322,22 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [usersIncome, timeView, customStart, customEnd]);
 
-    // Phase D'.5 — revenu RÉEL = somme transactions positives (hors transferts) sur la période
-    const totalActualIncomeDisplay = useMemo(() => {
+    // [BUDGET-INCOME-REAL 2026-07-16] Revenu RÉEL = ventilé SALAIRE (paie) vs REVENUS DIVERS depuis les
+    // transactions de la période (catégories de revenu réel), PAS le salaire d'onboarding (demande Marc :
+    // « le revenu doit correspondre à ma paie réelle / mes fiches, pas au chiffre saisi »). period-aware
+    // (periodOffset) comme les dépenses.
+    const incomeBreakdown = useMemo(() => {
         const { start, end } = getDateRange();
-        return transactions
-            .filter(t => !t.isTransfer && t.amount > 0)
-            .filter(t => {
-                const d = new Date(t.date);
-                return d >= start && d <= end;
-            })
-            .reduce((sum, t) => sum + t.amount, 0);
+        const inRange = transactions.filter(t => {
+            const d = new Date(t.date);
+            return d >= start && d <= end;
+        });
+        return computeIncomeBreakdown(inRange);
     // getDateRange est une fonction locale recréée à chaque render ; ses vraies deps
     // (timeView, customStart, customEnd, periodOffset) sont listées directement.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [transactions, timeView, customStart, customEnd, periodOffset]);
+    const totalActualIncomeDisplay = incomeBreakdown.total;
 
     // --- 2. GROUPING LOGIC ---
     const groupedItems = useMemo(() => {
@@ -512,7 +519,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     }, [confirmDeleteId, budgetItems, transactions]);
 
     const buildAiPayload = () => ({
-        totalNetIncome: totalNetIncomeDisplay,
+        // [BUDGET-INCOME-REAL 2026-07-16] Le diagnostic IA raisonne sur le MÊME revenu que l'utilisateur voit :
+        // la moyenne RÉELLE (paie + divers) des mois pleins passés, PAS le salaire d'onboarding
+        // (`config.users[].netSalary`) — sinon l'IA conseille sur un revenu incohérent avec les tuiles/badge.
+        totalNetIncome: avgRealIncomeDisplay,
         totalBudget: totalBudgetDisplay,
         totalSpent: totalSpentDisplay,
         alerts,
@@ -629,9 +639,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     'Période personnalisée'
                 }
                 badge={
-                    <Badge variant={totalNetIncomeDisplay >= totalBudgetDisplay ? 'success' : 'danger'} size="md">
-                        {totalNetIncomeDisplay >= totalBudgetDisplay ? 'Excédentaire' : 'Déficitaire'}
-                        <span className="ml-1 tabular-nums">{formatCAD(totalNetIncomeDisplay - totalBudgetDisplay)}</span>
+                    <Badge variant={avgRealIncomeDisplay >= totalBudgetDisplay ? 'success' : 'danger'} size="md">
+                        {avgRealIncomeDisplay >= totalBudgetDisplay ? 'Excédentaire' : 'Déficitaire'}
+                        <span className="ml-1 tabular-nums">{formatCAD(avgRealIncomeDisplay - totalBudgetDisplay)}</span>
                     </Badge>
                 }
                 actions={
@@ -734,7 +744,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     icon={<Icon name="money" size={16} />}
                     prevu={pastAverages.incomeAvg * getMultiplier()}
                     reel={totalActualIncomeDisplay}
-                    sublabel={pastAverages.fullMonths > 0 ? `Moy. passée (${pastAverages.fullMonths} mois)` : 'Aucun mois complet'}
+                    // [BUDGET-INCOME-REAL] Ventilation demandée par Marc : salaire (paie) vs revenus divers,
+                    // depuis les vraies transactions de la période. Remplace « moy. passée » peu informatif.
+                    sublabel={`Salaire ${formatCAD(incomeBreakdown.salary)} · Divers ${formatCAD(incomeBreakdown.other)}`}
                     variant="success"
                 />
                 <DualKPIStat
@@ -748,9 +760,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     variant={pastAverages.fullMonths > 0 && totalSpentDisplay > pastAverages.expenseAvg * getMultiplier() ? 'danger' : 'info'}
                     invertGoodBad
                 />
-                {/* Vue MOIS seulement : hors MONTH, projectedTotalDisplay === totalSpentDisplay
-                    → la tuile dupliquerait « Dépenses » (finding panel — le problème d'origine). */}
-                {timeView === 'MONTH' && (
+                {/* Vue MOIS + mois EN COURS seulement : hors MONTH ou sur un mois passé,
+                    projectedTotalDisplay === totalSpentDisplay → la tuile dupliquerait « Dépenses »
+                    (finding panel) et une « projection » sur un mois clos n'a aucun sens. */}
+                {timeView === 'MONTH' && periodOffset === 0 && (
                     <DualKPIStat
                         label="Fin de mois (projection)"
                         icon={<Icon name="goal" size={16} />}
@@ -848,29 +861,30 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                 au lieu de la simple soustraction Brut − Net. */}
                             <div className="bg-black/30 rounded-lg p-3 border border-white/5 space-y-2">
                                 <div className="flex justify-between items-center text-tiny text-ink-300">
-                                    <span>Revenus Bruts Totaux</span>
+                                    <span>Revenus Bruts Totaux <span className="text-ink-400">(salaire déclaré)</span></span>
                                     <span className="font-mono">{formatCAD(fiscalBreakdown.grossDisplay)}</span>
                                 </div>
                                 {/* Barre stackée multi-couleurs des déductions */}
+                                {/* Garde /0 : sans salaire brut déclaré, `x/0` rendrait width:NaN%/Infinity% (finding audit). */}
                                 <div className="w-full bg-surfaceHighlight h-2 rounded-full overflow-hidden flex">
                                     <div
                                         className="h-full bg-danger-500/80"
-                                        style={{ width: `${(fiscalBreakdown.fedTaxDisplay / fiscalBreakdown.grossDisplay) * 100}%` }}
+                                        style={{ width: `${fiscalBreakdown.grossDisplay > 0 ? (fiscalBreakdown.fedTaxDisplay / fiscalBreakdown.grossDisplay) * 100 : 0}%` }}
                                         title={`Fédéral : ${formatCAD(fiscalBreakdown.fedTaxDisplay)}`}
                                     />
                                     <div
                                         className="h-full bg-rose-600/80"
-                                        style={{ width: `${(fiscalBreakdown.qcTaxDisplay / fiscalBreakdown.grossDisplay) * 100}%` }}
+                                        style={{ width: `${fiscalBreakdown.grossDisplay > 0 ? (fiscalBreakdown.qcTaxDisplay / fiscalBreakdown.grossDisplay) * 100 : 0}%` }}
                                         title={`Québec : ${formatCAD(fiscalBreakdown.qcTaxDisplay)}`}
                                     />
                                     <div
                                         className="h-full bg-warning-500/80"
-                                        style={{ width: `${(fiscalBreakdown.rrqDisplay / fiscalBreakdown.grossDisplay) * 100}%` }}
+                                        style={{ width: `${fiscalBreakdown.grossDisplay > 0 ? (fiscalBreakdown.rrqDisplay / fiscalBreakdown.grossDisplay) * 100 : 0}%` }}
                                         title={`RRQ : ${formatCAD(fiscalBreakdown.rrqDisplay)}`}
                                     />
                                     <div
                                         className="h-full bg-yellow-400/80"
-                                        style={{ width: `${(fiscalBreakdown.aeRqapDisplay / fiscalBreakdown.grossDisplay) * 100}%` }}
+                                        style={{ width: `${fiscalBreakdown.grossDisplay > 0 ? (fiscalBreakdown.aeRqapDisplay / fiscalBreakdown.grossDisplay) * 100 : 0}%` }}
                                         title={`AE + RQAP : ${formatCAD(fiscalBreakdown.aeRqapDisplay)}`}
                                     />
                                 </div>

@@ -3,7 +3,7 @@
 // (verbatim Marc 2026-07-15). Sync idempotente + historique mensuel par catégorie.
 
 import { describe, it, expect } from 'vitest';
-import { syncBudgetWithTransactionCategories, buildMonthlyLedger, computeMonthlyActualAverages, fullHistoryMonths, lastMonths } from '../../utils/budgetSync';
+import { syncBudgetWithTransactionCategories, buildMonthlyLedger, computeMonthlyActualAverages, computeIncomeBreakdown, fullHistoryMonths, lastMonths } from '../../utils/budgetSync';
 import type { BudgetCategory, Transaction } from '../../types';
 
 const REF = new Date(2026, 6, 15); // 15 juillet 2026 (mois 6 = juillet)
@@ -209,5 +209,37 @@ describe('moyennes de TOUT le passé (mois pleins)', () => {
         expect(a.fullMonths).toBe(2);
         expect(a.incomeAvg).toBe(2000);
         expect(a.expenseAvg).toBe(500);
+    });
+
+    it('[BUDGET-INCOME-REAL] computeMonthlyActualAverages ventile salaire vs divers, exclut les positifs non-revenu', () => {
+        const transactions = [
+            tx({ category: 'Salaire', amount: 1600, date: '2026-05-04' }),
+            tx({ category: 'Salaire', amount: 1600, date: '2026-06-04' }),
+            tx({ category: 'Revenus divers', amount: 745, date: '2026-05-25' }),
+            tx({ category: 'Remboursement', amount: 500, date: '2026-06-10' }), // positif MAIS pas un revenu → exclu
+            tx({ category: 'Épicerie', amount: -400, date: '2026-05-10' }),
+        ];
+        const a = computeMonthlyActualAverages(transactions, REF);
+        expect(a.fullMonths).toBe(2);
+        expect(a.salaryAvg).toBe(1600);                 // 3200 / 2
+        expect(a.otherAvg).toBe(Math.round(745 / 2));   // 373 (Revenus divers, mai seulement)
+        expect(a.incomeAvg).toBe(a.salaryAvg + a.otherAvg);
+    });
+});
+
+describe('[BUDGET-INCOME-REAL] computeIncomeBreakdown (salaire vs revenus divers, source de vérité du revenu)', () => {
+    it('sépare salaire / divers ; ignore transferts, doublons, dépenses et positifs non-revenu', () => {
+        const b = computeIncomeBreakdown([
+            tx({ category: 'Salaire', amount: 820 }),
+            tx({ category: 'Salaire', amount: 820 }),
+            tx({ category: 'Revenus divers', amount: 745 }),
+            tx({ category: 'Salaire', amount: 999, isTransfer: true }),   // transfert → ignoré
+            tx({ category: 'Salaire', amount: 999, isDuplicate: true }),  // doublon → ignoré
+            tx({ category: 'Remboursement', amount: 500 }),               // positif non-revenu → ignoré
+            tx({ category: 'Épicerie', amount: -100 }),                   // dépense → ignorée
+        ]);
+        expect(b.salary).toBe(1640);
+        expect(b.other).toBe(745);
+        expect(b.total).toBe(2385);
     });
 });

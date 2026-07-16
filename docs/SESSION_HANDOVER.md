@@ -67,10 +67,14 @@
 > avalée en silence → renvoi muet au login ; finding silent-failure). Volet `keepalive` ÉCARTÉ à la mesure : keepalive/
 > sendBeacon plafonnés à 64 Ko < payload sync réel → fiabilité `pagehide` = timeout+bannière+debounce (leçons CLAUDE.md).
 > 5 tests (2 discriminants timeout en-têtes+corps, clearTimeout, repli userinfo, gate route l'erreur). Panel 2 agents (2 findings appliqués).
-> **Suite Vague 3** : `[SEC-DRIVE-ENCRYPT-DEFAULT]` (M, chiffrer le payload Drive par défaut via `sub` — ⚠️ affecte la
-> lisibilité du résumé de conflit `summarizeForConflict` : à concevoir, dépendance de déchiffrement dans le chemin de décision),
-> `[MCP-WRITE-VERSION-TOKEN]` (M, jeton de version plumbé `StateStore.get→{state,version}`/`save(next,expected)`).
-> `[MCP-CHARTDATA-SUM-GUARD]` différé (lint heuristique, fort risque de faux positifs). ⚠️ Zone sync = là où Marc a perdu 230 k$ → prudence maximale.
+> **✅ VAGUE 4 (a11y outillage)** : `[A11Y-CHECK-CONTRAST-DRIFT]` — `check-contrast.ts` LIT les tokens depuis
+> `tailwind.config.js` (fini la dérive silencieuse des valeurs re-codées en dur) + garde anti-scan-vide. 60 combos, 0 non-conforme.
+> **⏸️ Restant Vague 3 → DÉCISION MARC** (`docs/A_FAIRE_MOI.md` §O-SYNC) : `[SEC-DRIVE-ENCRYPT-DEFAULT]` (plan-first Claude :
+> touche l'anti-clobber `decideOnLoad`/`summarizeForConflict` + migration format `enc` bool→tri-état ; gain modeste car Drive
+> privé + clé `sub` non-secrète → reco basse priorité / passphrase pour du vrai secret) et `[MCP-WRITE-VERSION-TOKEN]` (garde
+> mutex+lastSeenUpdatedAt déjà en place ; refactor API d'écriture MCP, non urgent). `[MCP-CHARTDATA-SUM-GUARD]` différé (lint
+> heuristique, faux positifs). Vague 4 périphérique restante : `[A11Y-GHOST-BUTTON-PROMINENCE]` (variant ghost/outline WCAG 1.4.11,
+> ~28 fichiers). ⚠️ Zone sync = là où Marc a perdu 230 k$ → prudence maximale.
 >
 > ## 🔴 Session 2026-07-14 — Incident perte de données Drive (230k$) + anti-clobber STRICT + audit 6 alertes MCP
 > **Incident** : Marc a perdu 230k$ de placements. Chaîne : appareil silencieusement déconnecté (jeton Google expiré ~1h →

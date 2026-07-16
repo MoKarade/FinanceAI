@@ -16,33 +16,49 @@
  * Run : `npx tsx scripts/check-contrast.ts`
  */
 
-// --- Surfaces de fond utilisées dans l'app ---
-const BACKGROUNDS: Record<string, string> = {
-    'dark (page)': '#0B0E14',
-    'surface (card)': '#151922',
-    'surfaceHighlight': '#1E2330',
-};
+// [A11Y-CHECK-CONTRAST-DRIFT 2026-07-16] Les tokens sont LUS depuis tailwind.config.js (source unique) au
+// lieu d'être re-codés en dur ici — sinon ils DÉRIVENT en silence (vu : `surface #151922` au lieu de
+// `#0E1014`, `primary #10b981` au lieu de `#e6eaf2`) et le script « teste » des combos qui n'existent plus
+// (protection nulle). On ne teste que les valeurs HEX opaques : les tokens `rgba(...)` (bg/border
+// translucides) exigeraient une composition sur le fond sous-jacent (hors périmètre de ce contrôle).
+import twConfig from '../tailwind.config.js';
 
-// --- Couleurs de texte testées (à partir des tokens sémantiques) ---
-const TEXT_COLORS: Record<string, string> = {
-    'primary': '#10b981',
-    'secondary': '#8b5cf6',
-    'success-400': '#34d399',
-    'success-500': '#10b981',
-    'warning-400': '#fbbf24',
-    'warning-500': '#f59e0b',
-    'danger-400': '#f87171',
-    'danger-500': '#ef4444',
-    'info-400': '#60a5fa',
-    'info-500': '#3b82f6',
-    'ink-50': '#f8fafc',
-    'ink-100': '#e2e8f0',
-    'ink-200': '#cbd5e1',
-    'ink-300': '#94a3b8',
-    // P2.5 (2026-05): éclaircis pour respecter WCAG AA sur les 3 bgs.
-    'ink-400': '#8896a8', // était #64748b (ratio 3.30 fail)
-    'ink-500': '#6a7689', // était #475569 (ratio 2.07 fail)
-};
+const COLORS = (twConfig as { theme?: { extend?: { colors?: Record<string, unknown> } } })?.theme?.extend?.colors ?? {};
+
+/** Vrai si une valeur de token est une couleur HEX opaque (`#rrggbb`) — seul cas testable ici. */
+function isOpaqueHex(v: unknown): v is string {
+    return typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v);
+}
+
+// Clés servant de FOND (surfaces) : exclues de l'ensemble « texte » (tester « surface sur surface » = bruit à 1.00).
+const BG_KEYS = ['dark', 'surface', 'surfaceHighlight'] as const;
+
+// --- Surfaces de fond utilisées dans l'app (lues depuis la config) ---
+const BACKGROUNDS: Record<string, string> = {};
+for (const [name, key] of [['dark (page)', 'dark'], ['surface (card)', 'surface'], ['surfaceHighlight', 'surfaceHighlight']] as const) {
+    const v = COLORS[key];
+    if (isOpaqueHex(v)) BACKGROUNDS[name] = v;
+}
+
+// --- Couleurs de texte testées : tokens plats (primary/secondary) + échelles numériques (ink/success/…) ---
+const TEXT_COLORS: Record<string, string> = {};
+for (const [key, val] of Object.entries(COLORS)) {
+    if ((BG_KEYS as readonly string[]).includes(key)) continue; // les surfaces ne sont pas du texte
+    if (isOpaqueHex(val)) {
+        TEXT_COLORS[key] = val; // token plat : primary, secondary…
+    } else if (val && typeof val === 'object') {
+        for (const [shade, shadeVal] of Object.entries(val as Record<string, unknown>)) {
+            if (isOpaqueHex(shadeVal)) TEXT_COLORS[`${key}-${shade}`] = shadeVal; // ex. ink-400, success-500
+        }
+    }
+}
+
+// Garde-fou anti-scan-vide (cf leçon FISC-CONST-LINT) : un import cassé/refactor de la config donnerait
+// des tables vides → le script « passe » sans rien tester. On exige un volume plancher plausible.
+if (Object.keys(BACKGROUNDS).length < 3 || Object.keys(TEXT_COLORS).length < 8) {
+    console.error(`check-contrast: tokens introuvables dans tailwind.config.js (bg=${Object.keys(BACKGROUNDS).length}, text=${Object.keys(TEXT_COLORS).length}) — l'import a-t-il changé ?`);
+    process.exit(2);
+}
 
 // --- WCAG contrast calculation ---
 function hexToRgb(hex: string): [number, number, number] {

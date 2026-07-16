@@ -25,10 +25,12 @@
   switch anti-clobber `runDecision`), `syncPolling` (`_pollTimer`), `syncPassphrase`. Règle « un état mutable = un module
   propriétaire » : `grep "let _status"` == 1, double-ceinture `sanitizePersistEnvelope` == 2 (push+pull, non fusionnée),
   `madge --circular` == 0. 81 tests sync verts, suite complète + typecheck OK.
-- **`[SEC-DRIVE-ENCRYPT-DEFAULT]`** 🟠 MOYEN-ÉLEVÉ (M) — payload Drive EN CLAIR par défaut (chiffré seulement si
-  passphrase opt-in) alors que les clés API ont déjà un chiffrement NON-optionnel dérivé du `sub` Google
-  (keyCipher). Appliquer la même recette à tout le payload (zéro friction, cross-device intact) ; passphrase =
-  zéro-knowledge additionnel.
+- **`[SEC-DRIVE-ENCRYPT-DEFAULT]`** ⏸️ **EN ATTENTE DÉCISION MARC (2026-07-16)** → voir `docs/A_FAIRE_MOI.md` §O-SYNC.
+  Payload Drive EN CLAIR par défaut (chiffré seulement si passphrase opt-in) alors que les clés API ont déjà un
+  chiffrement dérivé du `sub` Google (keyCipher). MAIS l'appliquer au payload touche l'anti-clobber (decideOnLoad
+  lit le payload clair pour le noop « contenu identique » ; summarizeForConflict lit assets/tx en clair) + exige une
+  migration de format (`SyncEnvelope.enc` bool→tri-état). Plan-first Claude 2026-07-16 : gain modeste (Drive privé,
+  clé `sub` non-secrète) vs risque money-critical → reco basse priorité / passphrase pour du vrai secret. Décision Marc requise.
 - **`[SEC-VISION-CONSENT-INJECTION]`** ✅ **LIVRÉ 2026-07-15 (Vague 4)** — clause anti-injection `VISION_INJECTION_GUARD`
   (`utils/promptSafety.ts`) câblée dans les 2 prompts Vision (paie + relevé) : un document peut contenir du texte
   adversarial lu par le modèle → traité comme donnée, jamais comme instruction (test scan) ; + `temperature: 0` sur les
@@ -221,7 +223,12 @@
   actifs + budgets + config) dépasse largement 64 Ko → `keepalive:true` FERAIT ÉCHOUER les gros push au `pagehide`. La
   fiabilité de `flushPush` au masquage d'onglet reste couverte par timeout + `SyncStatusBanner` (invite à reconnecter sur
   erreur) + push debouncé ; un vrai « push garanti à l'unload » exigerait une delta-sync bornée < 64 Ko (projet séparé, non planifié).
-- **`[A11Y-CHECK-CONTRAST-DRIFT]`** 🔧 (dette outillage) — `scripts/check-contrast.ts` utilise des valeurs de tokens PÉRIMÉES (`surface #151922` au lieu de `#0E1014` ; `primary #10b981` = l'ancien vert au lieu de `#e6eaf2`) → il ne teste pas les vrais combos actuels (rose bannière, superpositions). Réaligner sur `tailwind.config.js`.
+- **`[A11Y-CHECK-CONTRAST-DRIFT]`** ✅ **LIVRÉ 2026-07-16 (Vague 4)** — `scripts/check-contrast.ts` LIT désormais
+  les tokens depuis `tailwind.config.js` (source unique) au lieu de valeurs re-codées en dur qui dérivaient (vu :
+  `surface #151922`→`#0E1014`, `primary #10b981`→`#e6eaf2`) → fini le « teste des combos qui n'existent plus »
+  (protection nulle). Ne teste que les HEX opaques (les `rgba()` translucides exigeraient une composition, hors
+  périmètre) ; surfaces exclues de l'ensemble « texte » ; garde anti-scan-vide (bg≥3, text≥8 sinon exit 2). Résultat
+  réaligné : 60 combos, 0 non-conforme, 9 large-only (shades `-600`/`ink-500`, usages larges/bordures — OK).
 - **`[A11Y-GHOST-BUTTON-PROMINENCE]`** 🔧 (design-system) — le variant `ghost`/`outline` de `components/ui/Button.tsx` (`bg-white/5 border-white/10`, ~1,1-1,8:1) échoue WCAG 1.4.11 (prominence &lt; 3:1), utilisé dans ~28 fichiers. `GATE-CTA-CONTRAST` n'avait traité qu'un CTA primaire. Fix au niveau du design-system.
 - **`[MCP-TAX-FHSA-BALANCE]`** 🔧 (pré-existant, trouvé par le panel 2026-07-14) — `getTaxSituation.tool.ts` passe `u.fhsaBalance`
   (un SOLDE) comme cotisation CELIAPP ANNUELLE à `calculateFiscalReport` → sur-déduit (sous-estime l'impôt) dès que le solde

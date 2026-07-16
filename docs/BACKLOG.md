@@ -229,7 +229,20 @@
   (protection nulle). Ne teste que les HEX opaques (les `rgba()` translucides exigeraient une composition, hors
   périmètre) ; surfaces exclues de l'ensemble « texte » ; garde anti-scan-vide (bg≥3, text≥8 sinon exit 2). Résultat
   réaligné : 60 combos, 0 non-conforme, 9 large-only (shades `-600`/`ink-500`, usages larges/bordures — OK).
-- **`[A11Y-GHOST-BUTTON-PROMINENCE]`** 🔧 (design-system) — le variant `ghost`/`outline` de `components/ui/Button.tsx` (`bg-white/5 border-white/10`, ~1,1-1,8:1) échoue WCAG 1.4.11 (prominence &lt; 3:1), utilisé dans ~28 fichiers. `GATE-CTA-CONTRAST` n'avait traité qu'un CTA primaire. Fix au niveau du design-system.
+- **`[A11Y-GHOST-BUTTON-PROMINENCE]`** ✅ **LIVRÉ 2026-07-16 (Vague 4)** — variants `ghost`/`outline` de
+  `components/ui/Button.tsx` : bordure `white/10`-`/15` (~1,2-1,6:1, quasi invisible) → **`white/40`** (mesuré ~3,8:1 sur
+  les 3 surfaces dark/surface/highlight via calcul node de contraste) → WCAG 1.4.11 (contraste non-texte ≥3:1) au niveau
+  du design-system → corrige les ~28 usages d'un coup. Classe générée vérifiée (`dist` : `.border-white/40{border-color:#fff6}`).
+  Note scope : les `border-white/10` restants sont DÉCORATIFS (cards/dividers/pills/table-rows, hors 1.4.11) ; les cartes/
+  champs cliquables custom hors composant Button → `[A11Y-BORDER-PROMINENCE-SWEEP]` ci-dessous.
+- **`[A11Y-BORDER-PROMINENCE-SWEEP]`** 🔧 (a11y, découvert par l'a11y-auditor 2026-07-16 en marge de GHOST-BUTTON) — ~15
+  éléments INTERACTIFS custom (hors composant `Button`) réutilisent `border-white/10`-`/15` (~1,2-1,6:1) et échouent AUSSI
+  WCAG 1.4.11 (bordure = affordance). À traiter au cas par cas (mesurer chaque surface via `check-contrast`/calcul node
+  AVANT de choisir l'opacité, comme GHOST-BUTTON — NE PAS bumper à l'aveugle). Sites confirmés interactifs : `Budget.tsx:800`
+  (carte cliquable), `TaxCenter.tsx:277,285`, `AiAssistant.tsx:311`, `Investments.tsx:1000,1007`, `Dashboard.tsx:378`,
+  `settings/GoogleDriveSyncCard.tsx:164,171,209`, `sync/SyncConflictModal.tsx:179,198`, `RealEstate.tsx:318` (onglet inactif),
+  `Transactions.tsx:452,458` (inputs),`:617,623` (bouton `aria-pressed`+`select` inactifs), `settings/PayslipUploadCard.tsx:116,137`,
+  `import/ImportBankStatement.tsx:110` (labels radiogroup/dropzone). Décoratifs (cards/dividers/pills/tr) = HORS périmètre.
 - **`[MCP-TAX-FHSA-BALANCE]`** 🔧 (pré-existant, trouvé par le panel 2026-07-14) — `getTaxSituation.tool.ts` passe `u.fhsaBalance`
   (un SOLDE) comme cotisation CELIAPP ANNUELLE à `calculateFiscalReport` → sur-déduit (sous-estime l'impôt) dès que le solde
   dépasse la cotisation de l'année. Antérieur au fix per-conjoint (l'ancien code sommait pareil). Fix : champ de cotisation

@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — VAGUE 4 « a11y : boutons ghost/outline »] — 2026-07-16
+
+### Accessibilité
+- **Bordure des boutons `ghost`/`outline` conforme WCAG 1.4.11** (`[A11Y-GHOST-BUTTON-PROMINENCE]`) — la limite de ces
+  boutons était à `white/10`-`/15` (~1,2-1,6:1 sur fond sombre, quasi invisible) ; passée à `white/40` (~3,8:1, mesuré),
+  la bordure — seule affordance de ces variants — atteint le seuil de contraste non-texte ≥3:1. Corrige tous les usages
+  d'un coup (composant de design-system). Aucune régression du texte (`ink-100` inchangé, ≥4,5:1).
+
 ## [unreleased — VAGUE 4 « outillage a11y »] — 2026-07-16
 
 ### Outillage

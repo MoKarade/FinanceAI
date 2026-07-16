@@ -29,6 +29,22 @@ vi.mock('recharts', async () => {
     };
 });
 vi.mock('../../services/errorLogger', () => ({ logError: vi.fn() }));
+// Store IDB mocké et OBSERVABLE (jsdom n'a pas d'indexedDB ; le round-trip IDB réel est prouvé à part
+// dans tests/services/lockedProjectionStore.test.ts avec fake-indexeddb). Permet d'asserter les APPELS
+// (ex. garde mode-test sur clearRevealedProjection). load → 'empty' = comportement jsdom d'origine.
+const idbMocks = vi.hoisted(() => ({
+    loadRevealed: vi.fn(async () => ({ status: 'empty' as const })),
+    saveRevealed: vi.fn(async () => true),
+    clearRevealed: vi.fn(async () => undefined),
+}));
+vi.mock('../../services/lockedProjectionStore', () => ({
+    loadRevealedProjection: idbMocks.loadRevealed,
+    saveRevealedProjection: idbMocks.saveRevealed,
+    clearRevealedProjection: idbMocks.clearRevealed,
+    saveLockedProjection: vi.fn(async () => true),
+    loadLockedProjection: vi.fn(async () => ({ status: 'empty' as const })),
+    clearLockedProjection: vi.fn(async () => undefined),
+}));
 // Optimiseur/stress neutralisés (hors sujet ici — on teste le gating/gel, pas la recherche).
 vi.mock('../../components/projection/StrategyOptimizerPanel', () => ({
     StrategyOptimizerPanel: () => <span>optimiseur (mock)</span>,
@@ -147,5 +163,70 @@ describe('FutureProjection — persistance de la révélation + gel « pas à jo
 
         await waitFor(() => expect(screen.getByText(/Compose tes leviers/i)).toBeInTheDocument());
         expect(useFinanceStore.getState().revealedProjectionSig).toBeNull();
+        // Hors mode test : le gel IDB est bien purgé (voir aussi le test mode-test plus bas).
+        expect(idbMocks.clearRevealed).toHaveBeenCalled();
+    });
+
+    it('[no-fake-data] reload AVANT publication moteur → « se recharge » (spinner), JAMAIS de KPIs à 0 $ ni d\'amorçage', async () => {
+        // 1. Révèle (sig persistée).
+        render(<Harness />);
+        fireEvent.click(revealBtn());
+        await waitFor(() => expect(screen.getByText(/La Courbe de Vie - STRAT-A/i)).toBeInTheDocument());
+        cleanup();
+
+        // 2. « Reload » : sig persistée MAIS le moteur n'a encore RIEN publié (lastProjection est hors
+        // persist → null au boot ; ProjectionEngine mettra ~300 ms + calcul avant de publier).
+        act(() => { useFinanceStore.setState({ lastProjection: null }); });
+        render(<Harness />);
+
+        // Discriminant (finding silent-failure BLOQUANT) : sans la garde `results !== null`, l'ancienne
+        // version affichait le strip KPI avec « Objectif FIRE 0k $ » (fausse donnée) et un graphe vide.
+        expect(screen.getByText(/Ta projection se recharge/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Objectif FIRE/i)).not.toBeInTheDocument();      // pas de KPIs à 0 $
+        expect(screen.queryByText(/Compose tes leviers/i)).not.toBeInTheDocument(); // pas d'amorçage trompeur
+
+        // 3. Le moteur publie → la courbe remplace le spinner, sans geste utilisateur.
+        act(() => { useFinanceStore.setState({ lastProjection: RESULT_A }); });
+        await waitFor(() => expect(screen.getByText(/La Courbe de Vie - STRAT-A/i)).toBeInTheDocument());
+        expect(screen.queryByText(/se recharge/i)).not.toBeInTheDocument();
+    });
+
+    it('[a11y] montage déjà-révélé (reload) → le focus n\'est PAS volé ; révélation par CLIC → focus sur la courbe', async () => {
+        // Montage avec sig persistée (posée par un cycle précédent) : pas de vol de focus.
+        render(<Harness />);
+        fireEvent.click(revealBtn());
+        await waitFor(() => expect(screen.getByText(/La Courbe de Vie - STRAT-A/i)).toBeInTheDocument());
+        cleanup();
+        render(<Harness />); // remontage révélé d'emblée
+        const region = () => screen.getByRole('region', { name: /Projection affichée/i });
+        expect(region()).toBeInTheDocument();
+        expect(document.activeElement).not.toBe(region()); // focus resté où il était (body)
+
+        // Transition explicite (clic) : re-gate puis re-révèle → le focus DOIT aller sur la courbe.
+        fireEvent.click(screen.getByText(/Ré-optimiser/i));
+        await waitFor(() => expect(screen.getByText(/Compose tes leviers/i)).toBeInTheDocument());
+        fireEvent.click(revealBtn());
+        await waitFor(() => expect(document.activeElement).toBe(region()));
+    });
+
+    it('[mode test] « Rechoisir mes leviers » en persona NE supprime PAS le blob réel (garde clearRevealedProjection)', async () => {
+        // Passe en mode test avec les mêmes données (persona) : révèle, puis re-gate.
+        const data = getPersonaOrDefault(DEFAULT_PERSONA_ID);
+        act(() => {
+            useFinanceStore.getState().enableTestMode(data.build(), data.id);
+            useFinanceStore.setState({ lastProjection: RESULT_A, projectionRunMC: false });
+        });
+        idbMocks.clearRevealed.mockClear();
+        render(<Harness />);
+        fireEvent.click(revealBtn());
+        await waitFor(() => expect(screen.getByText(/Ré-optimiser/i)).toBeInTheDocument());
+
+        fireEvent.click(screen.getByText(/Ré-optimiser/i)); // = regateToLevers
+
+        await waitFor(() => expect(screen.getByText(/Compose tes leviers/i)).toBeInTheDocument());
+        // Discriminant (finding silent-failure ÉLEVÉ) : sans la garde, le blob RÉEL était supprimé
+        // silencieusement depuis une démo persona (record IDB partagé réel/test).
+        expect(idbMocks.clearRevealed).not.toHaveBeenCalled();
+        act(() => { useFinanceStore.getState().disableTestMode(); });
     });
 });

@@ -90,12 +90,21 @@
   efface la clé (disconnect OU deleteRemoteData). + plancher 30 s (anti-boucle), skip si acquisition interactive en vol. 19 tests.
   Découverte livrée à part : `[PROJECTION-PERSIST]` (voir entrée dédiée ci-dessous).
 - **`[PROJECTION-PERSIST]`** ✅ **LIVRÉ 2026-07-16** (demande Marc « la projection reste, badge si pas à jour ») — la signature
-  de révélation (`revealedProjectionSig`) passe d'un useState local à un champ PERSISTÉ du store (additif, hors denylist →
-  localStorage + sync Drive → autre PC) ; blob figé en IDB chiffrée (record `revealed` de `lockedProjectionStore`, refactor
-  saveRecord/loadRecord/clearRecord par id, zéro migration) ; substitution unique `results = gel ?? live` → courbe/KPIs/plan
-  cohérents ; badge « Pas à jour » + « Recharger avec mes données » / « Rechoisir mes leviers » (choix Marc : FIGER, jamais
-  recalculer en douce). Repli honnête sans blob (autre PC) : live + badge. Gel coupé en mode test (anti-fuite données réelles).
-  4 tests discriminants (git-stash : 4/4 rouges sur l'ancien code).
+  de révélation (`revealedProjectionSig`, HASH court) passe d'un useState local à un champ PERSISTÉ du store (additif, hors
+  denylist → localStorage + sync Drive → autre PC) ; blob figé en IDB chiffrée (record `revealed` de `lockedProjectionStore`,
+  refactor saveRecord/loadRecord/clearRecord par id, zéro migration) ; substitution unique `results = gel ?? live` → courbe/
+  KPIs/plan cohérents ; badge « Pas à jour » + « Recharger avec mes données » / « Rechoisir mes leviers » (choix Marc : FIGER,
+  jamais recalculer en douce). Repli honnête sans blob (autre PC) : live + badge. Gel coupé en mode test. Panel (3 agents) →
+  4 findings réels APPLIQUÉS : garde no-fake-data au reload (carte « se recharge » au lieu de KPIs 0 $), garde mode-test sur la
+  SUPPRESSION du blob réel, hash au lieu du JSON complet persisté, dédup module-level des écritures IDB (~1-2 Mo par visite
+  d'onglet sinon). 7 tests discriminants (git-stash rouges) + round-trip IDB réel (devDep `fake-indexeddb`).
+  Suivis non bloquants (panel) :
+  - **`[FUT-TOUCH-TARGETS]`** 🟢 LOW (S) — les petits boutons de l'onglet Futur (période, Verrouiller, Ré-optimiser, badge)
+    font ~22-24 px de haut sans `.touch-target` (pattern systémique du fichier, pas une régression) — à uniformiser avec le
+    sweep a11y des CHAMPS déjà en attente de Marc.
+  - **`[PROJ-REVEAL-RACE]`** 🟢 LOW — course étroite « Rechoisir » vs sauvegarde-miroir en vol (blob orphelin possible,
+    récupérable en re-révélant) ; et vérification empirique de la cadence de republication moteur (console.count sur l'effet
+    miroir, cf note historique syncPush:138) si un doute de fréquence d'écriture IDB apparaît.
 - **`[A11Y-BANNER-HOVER-CONTRAST]`** 🟢 LOW (S, a11y-auditor) — pattern systémique « `bg-X-600 hover:bg-X-500` + texte blanc
   + `text-meta` 12px » : le survol descend sous 4,5:1 (WCAG 1.4.3). Corrigé dans `CeliAssetNudge` (`hover:brightness-110`) ;
   reste `BackupReminder` (variante quota `danger`) + à généraliser au design-system des bannières.

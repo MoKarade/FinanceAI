@@ -17,8 +17,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   mes données » (recalcule) ou « Rechoisir mes leviers » (retour au composeur) — au lieu de disparaître derrière
   l'écran « Paramètres modifiés » (choix Marc : figer, jamais recalculer en douce). Sur un autre PC sans le blob figé
   (non synchronisé, ~1-2 Mo), repli honnête : courbe live + badge. En mode test, le gel est coupé (aucune vraie donnée
-  affichée/écrasée par un persona). KPIs/plan d'action suivent la même source figée (cohérence totale). 4 tests
-  discriminants (prouvés rouges sur l'ancien code).
+  affichée/écrasée par un persona). KPIs/plan d'action suivent la même source figée (cohérence totale). 7 tests
+  discriminants (prouvés rouges sur l'ancien code) + round-trip IndexedDB réel (fake-indexeddb).
+  Durcissements issus du panel (code-reviewer + silent-failure-hunter + a11y) : au reload, tant que le moteur n'a pas
+  republié → carte « Ta projection se recharge… » honnête (plus jamais de KPIs « 0 $ » affichés avec assurance) ; un
+  persona ne peut plus SUPPRIMER le blob figé réel (« Ré-optimiser » gardé mode-test) ; la signature persistée est un
+  hash court (pas le JSON complet des params — évite de gonfler localStorage + chaque push Drive) ; écriture IDB
+  dédupliquée (plus de réécriture ~1-2 Mo à chaque visite d'onglet) ; focus jamais volé au chargement (garde immune
+  StrictMode) ; bordure du bouton secondaire remontée à 3:1 (WCAG 1.4.11).
 
 ## [unreleased — Drive : ne plus se reconnecter à chaque reload] — 2026-07-16
 

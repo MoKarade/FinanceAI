@@ -12,8 +12,9 @@
 > `localStorage` (clé dédiée, jamais synchronisée) + renouvellement silencieux avant ~1h ; panel a trouvé + fixé une régression
 > HIGH (sync fantôme cross-onglet post-déconnexion → écouteur `storage`). **En cours : `[PROJECTION-PERSIST]`** — la projection
 > révélée RESTE (signature persistée+synchronisée dans le store ; blob figé IDB record `revealed`) et se FIGE quand les entrées
-> changent (badge « Pas à jour » + boutons Recharger/Rechoisir, choix Marc : figer). Gel coupé en mode test. 4 tests
-> discriminants prouvés rouges sur l'ancien code ; panel code-reviewer+silent-failure+a11y en cours. **Décision Marc** :
+> changent (badge « Pas à jour » + boutons Recharger/Rechoisir, choix Marc : figer). Gel coupé en mode test. Panel (3 agents)
+> → 4 findings réels appliqués (garde no-fake-data reload, garde suppression blob en mode test, hash de sig, dédup IDB) ;
+> 7 tests discriminants + round-trip IDB réel (fake-indexeddb). **Décision Marc** :
 > SEC-DRIVE-ENCRYPT-DEFAULT = NON ; refresh_token/backend = NON (archi 100% navigateur). **En attente Marc** : sweep a11y des
 > CHAMPS (input/select) — regarder le rendu des boutons en preview d'abord.
 >

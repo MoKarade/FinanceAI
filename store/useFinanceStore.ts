@@ -500,6 +500,10 @@ export const useFinanceStore = create<FinanceState>()(
                     // Les clés API sont des credentials, jamais des données financières : le mode test
                     // ne doit JAMAIS les écraser (sinon market data tombe en panne au retour).
                     apiKeys: prev.apiKeys,
+                    // [PROJECTION-PERSIST] champ de FinanceState (hors AppState) → personaResetBase ne le
+                    // couvre pas : reset explicite, sinon la sig RÉELLE traîne dans l'état persona (déjà
+                    // capturée dans realDataSnapshot ci-dessus, restaurée à la sortie).
+                    revealedProjectionSig: null,
                     isTestMode: true,
                     realDataSnapshot,
                     activeTestPersonaId: personaId ?? null,
@@ -516,7 +520,9 @@ export const useFinanceStore = create<FinanceState>()(
                     // les données fictives passer pour réelles (ce qui, le flag retombé, ré-ouvrirait le
                     // push Drive — le bug 2026-05-29). Jamais avalé.
                     logError({ source: 'storage', severity: 'warning', message: 'disableTestMode : mode test actif sans realDataSnapshot — vraies données non restaurables, retour à un état vide.' });
-                    return { ...prev, ...personaResetBase(), isTestMode: false, realDataSnapshot: null, activeTestPersonaId: null };
+                    // [PROJECTION-PERSIST] reset explicite (hors AppState) : une sig issue d'un persona
+                    // ne doit pas survivre en mode réel dans ce chemin dégradé.
+                    return { ...prev, ...personaResetBase(), revealedProjectionSig: null, isTestMode: false, realDataSnapshot: null, activeTestPersonaId: null };
                 }
                 // [PERSONA-PURGE] Le snapshot des « vraies » données peut lui-même être pollué
                 // (pris à une époque où des artefacts de persona avaient déjà fui) → on le

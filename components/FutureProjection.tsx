@@ -39,6 +39,11 @@ import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { formatCompactCAD } from '../utils/format';
 
+// [PROJECTION-PERSIST] Dédup MODULE-LEVEL de l'écriture du blob figé (finding code-reviewer) :
+// survit au démontage/remontage de l'onglet → pas de réécriture IDB (~1-2 Mo chiffrés) à chaque
+// visite quand le moteur n'a pas republié. Volontairement PAS dans le store (pur détail d'I/O).
+let _lastSavedRevealedResults: ProjectionResult | null = null;
+
 // G10 — Légende interactive : une seule source de vérité pour les chips ET les
 // gardes de visibilité dans le graphique. `key` correspond au dataKey recharts
 // (ou à un groupe logique : 'montecarlo', 'events', 'fire', 'aujourdhui').
@@ -188,9 +193,21 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     //     la courbe live, toujours avec le badge.
     //   - MODE TEST : jamais de gel (le blob porte les VRAIES données de Marc → l'afficher en démo
     //     persona les fuiterait à l'écran ; et un persona ne doit pas écraser le blob réel).
+    // ⚠️ Signature = HASH COURT du JSON, pas le JSON lui-même (finding code-reviewer) : la sig est
+    // désormais PERSISTÉE + synchronisée Drive — stocker le JSON complet des params (~dizaines de Ko,
+    // duplicata de budgets/dettes/objectifs déjà dans le state) gonflerait localStorage et chaque push.
+    // L'égalité stricte suffit à détecter la péremption ; hash FNV-1a 32 bits + longueur (déterministe
+    // cross-PC : même stringify → même hash). Non-crypto assumé (détection de changement, pas sécurité).
     const currentSig = useMemo<string | null>(() => {
-        try { return JSON.stringify({ p: params, mc: runMC }); }
-        catch { return null; } // illisible (inatteignable : params est sérialisable) → jamais révélé
+        try {
+            const json = JSON.stringify({ p: params, mc: runMC });
+            let h = 0x811c9dc5;
+            for (let i = 0; i < json.length; i++) {
+                h ^= json.charCodeAt(i);
+                h = Math.imul(h, 0x01000193);
+            }
+            return `v1:${(h >>> 0).toString(36)}:${json.length.toString(36)}`;
+        } catch { return null; } // illisible (inatteignable : params est sérialisable) → jamais révélé
     }, [params, runMC]);
     const revealedSig = useFinanceStore(s => s.revealedProjectionSig);
     const setRevealedSig = useFinanceStore(s => s.setRevealedProjectionSig);
@@ -211,18 +228,35 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // Miroir du gel : tant que la courbe est FRAÎCHE, le blob figé suit le résultat live (une écriture
     // par VRAI recalcul moteur — ProjectionEngine ne republie que sur changement réel de params).
     // Dès qu'un paramètre change (périmé), ce miroir s'arrête → le blob garde la dernière courbe vue.
+    // ⚠️ Dédup par RÉFÉRENCE au niveau MODULE (finding code-reviewer) : FutureProjection est démonté/
+    // remonté à chaque changement d'onglet (TabRouter) → avec une dédup locale au montage, CHAQUE visite
+    // de l'onglet réécrivait le blob chiffré (~1-2 Mo, AES-GCM) en IDB alors que rien n'avait changé.
+    // `lastProjection` vit dans le store APP-LEVEL : son identité survit aux montages → la comparaison
+    // module-level saute l'écriture tant que le moteur n'a pas VRAIMENT republié. (setFrozenResults
+    // reste nécessaire à chaque montage : état local remis à null au démontage.)
     useEffect(() => {
         if (curveRevealed && liveResults && !isTestModeActive) {
             setFrozenResults(liveResults);
-            void saveRevealedProjection(liveResults);
+            if (_lastSavedRevealedResults !== liveResults) {
+                _lastSavedRevealedResults = liveResults;
+                void saveRevealedProjection(liveResults);
+            }
         }
     }, [curveRevealed, liveResults, isTestModeActive]);
     // Substitution UNIQUE : tout l'aval (chartData, KPIs, événements, insolvabilité, plan) consomme
     // `results` → périmé = TOUT figé de façon cohérente, pas seulement la courbe.
     const frozenUsable = isStale && !isTestModeActive ? frozenResults : null;
     const results = frozenUsable ?? liveResults;
-    // Courbe visible = fraîche OU périmée-avec-résultat (figé ou repli live). Jamais révélé → gate.
-    const curveVisible = curveRevealed || (isStale && !isTestModeActive && results !== null);
+    // Courbe visible = (fraîche OU périmée hors mode test) ET un résultat existe. La garde
+    // `results !== null` vaut pour les DEUX branches (finding silent-failure BLOQUANT) : au reload,
+    // la signature persistée révèle d'emblée mais le moteur n'a pas encore publié (~300 ms + calcul)
+    // → sans la garde, les KPIs affichaient « Objectif FIRE 0k$ » / « 0.00M$ » avec assurance
+    // (no-fake-data violé) et un graphe vide sans spinner. Jamais révélé → gate.
+    const curveVisible = results !== null && (curveRevealed || (isStale && !isTestModeActive));
+    // Fenêtre de RESTAURATION : révélé (sig persistée) mais AUCUN résultat encore (moteur en route,
+    // gel IDB en lecture). On affiche une carte de chargement honnête — PAS l'écran d'amorçage, sinon
+    // chaque reload donne l'impression que la projection a été perdue (l'inverse de la demande Marc).
+    const curveRestoring = revealedSig !== null && !isTestModeActive && results === null;
     const { chartData = [] as ProjectionChartPoint[], fireNumber = 0, allResults = [] as ProjectionResult[] } = results ?? {};
 
     // [PROJ-INSOLVENCY-BADGE] premier moment où le patrimoine net projeté passe sous 0 (plan
@@ -433,7 +467,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const regateToLevers = () => {
         setRevealedSig(null);
         setFrozenResults(null);
-        void clearRevealedProjection();
+        // ⚠️ Garde mode test (finding silent-failure ÉLEVÉ) : le record IDB `revealed` est un slot
+        // GLOBAL partagé réel/test — un clic « Ré-optimiser » pendant une démo persona SUPPRIMERAIT
+        // silencieusement le blob RÉEL de l'utilisateur (même classe d'incident que PERSONA-PURGE).
+        // Cohérent avec les effets voisins (restauration + miroir), déjà gatés `!isTestModeActive`.
+        if (!isTestModeActive) void clearRevealedProjection();
     };
     // PH4-FUT (leviers-d'abord) — « Appliquer la stratégie gagnante PUIS révéler la courbe » : on ne peut
     // pas figer la signature dans le même tick que l'application (les params changent juste après).
@@ -448,14 +486,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const applyAndReveal = (cfg: StrategyConfig) => { handleApplyConfig(cfg); setRevealAfterApply(true); };
     // A11y : à la révélation, déplacer le focus sur la zone courbe (le bouton « Calculer » se
     // démonte → sinon le focus retombe sur <body> et le lecteur d'écran perd le contexte).
-    // [PROJECTION-PERSIST] on SAUTE le premier passage : avec la signature persistée, curveRevealed peut
-    // être vrai dès le montage (reload) → voler le focus à l'arrivée sur la page serait intrusif ; le
-    // focus ne bouge que sur une révélation EXPLICITE (transition post-montage, i.e. un clic).
+    // [PROJECTION-PERSIST] le focus ne bouge que sur une TRANSITION false→true (révélation explicite,
+    // i.e. un clic) : avec la signature persistée, curveRevealed peut être vrai dès le montage (reload)
+    // → voler le focus à l'arrivée sur la page serait intrusif. Détection par ref « valeur précédente »
+    // initialisée à la valeur du MONTAGE — immune à la double-invocation d'effets de StrictMode (dev),
+    // contrairement à un flag « sauter le 1er passage » (finding a11y-auditor).
     const revealedRef = useRef<HTMLDivElement>(null);
-    const revealFocusArmed = useRef(false);
+    const prevCurveRevealedRef = useRef(curveRevealed);
     useEffect(() => {
-        if (!revealFocusArmed.current) { revealFocusArmed.current = true; return; }
-        if (curveRevealed) revealedRef.current?.focus();
+        const was = prevCurveRevealedRef.current;
+        prevCurveRevealedRef.current = curveRevealed;
+        if (!was && curveRevealed) revealedRef.current?.focus();
     }, [curveRevealed]);
 
     // [UI-SCEN] — bandeau « Verdict » et classement retirés : la comparaison des façons
@@ -738,7 +779,20 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             {/* PH4-FUT « leviers-d'abord » : le composeur de leviers est REMONTÉ EN AMONT (avant tout
                 calcul). On compose ses leviers, on cherche la meilleure combo, on l'applique → la courbe
                 affichée = la MEILLEURE selon les leviers. Plus de sous-onglet « Optimisation » séparé. */}
-            {futureSubTab === 'graph' && !curveVisible && (
+            {/* [PROJECTION-PERSIST] Fenêtre de restauration (sig persistée, résultat pas encore là :
+                moteur en route ~300 ms-qq s, gel IDB en lecture) → chargement honnête, PAS l'écran
+                d'amorçage (sinon chaque reload donne l'impression d'avoir perdu la projection). */}
+            {futureSubTab === 'graph' && curveRestoring && (
+                <Card className="text-center">
+                    <div className="py-10 flex flex-col items-center gap-3 text-ink-300" role="status" aria-live="polite">
+                        <svg className="animate-spin h-8 w-8 text-amber-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="40" strokeDashoffset="20" opacity="0.5" />
+                        </svg>
+                        <span className="text-meta">Ta projection se recharge…</span>
+                    </div>
+                </Card>
+            )}
+            {futureSubTab === 'graph' && !curveVisible && !curveRestoring && (
                 <div className="space-y-4">
                     <Card className="text-center">
                         <div className="py-6 px-4 space-y-3 max-w-xl mx-auto">
@@ -794,7 +848,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         <button
                             type="button"
                             onClick={regateToLevers}
-                            className="px-3 py-1 rounded-card border border-white/15 text-ink-200 hover:text-ink-50 text-tiny font-bold focus-ring"
+                            className="px-3 py-1 rounded-card border border-white/30 text-ink-200 hover:text-ink-50 text-tiny font-bold focus-ring"
                         >
                             Rechoisir mes leviers
                         </button>
@@ -1110,7 +1164,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
             {/* Plan d'action : explications fusionnées + checklist hiérarchique.
                 PH4 — gated comme la courbe : pas de résultats tant que la projection n'est pas calculée. */}
-            {futureSubTab === 'plan' && !curveVisible && (
+            {/* [PROJECTION-PERSIST] pendant la restauration, ne pas montrer l'invite (flash trompeur). */}
+            {futureSubTab === 'plan' && !curveVisible && !curveRestoring && (
                 <Card className="text-center">
                     <div className="py-10 px-4 space-y-3 max-w-md mx-auto">
                         <div className="text-3xl" aria-hidden="true">🗂️</div>

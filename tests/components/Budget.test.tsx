@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, within, fireEvent } from '@testing-library/react';
+import { render, fireEvent } from '@testing-library/react';
 import { Budget } from '../../components/Budget';
 import type { BudgetConfig, BudgetCategory, User, Transaction } from '../../types';
 

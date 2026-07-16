@@ -15,7 +15,12 @@
 > changent (badge « Pas à jour » + boutons Recharger/Rechoisir, choix Marc : figer). Gel coupé en mode test. Panel (3 agents)
 > → 4 findings réels appliqués (garde no-fake-data reload, garde suppression blob en mode test, hash de sig, dédup IDB) ;
 > 7 tests discriminants + round-trip IDB réel (fake-indexeddb) — **MERGÉ (#467)**. Puis `[A11Y-BANNER-HOVER-CONTRAST]` :
-> hover quota BackupReminder 3,76:1 → `brightness-90` (5,23:1 mesuré ; le facteur dépend de la base, jamais copier). **Décision Marc** :
+> hover quota BackupReminder 3,76:1 → `brightness-90` (5,23:1 mesuré ; le facteur dépend de la base, jamais copier).
+> **🔬 AUDIT FINANCIER passe n°2 (demande Marc « gros checkup ») : rapport `docs/AUDIT_FINANCIER_2026-07-16.md`** —
+> cœur AAA (fiscal 0 écart, conservation 0,02 $ max sur 31 scénarios, 2661/2661, 0 vuln) ; lot de juin fermé 12/14 ;
+> MAIS 1 CRITIQUE (`[STORE-REHYDRATE-SILENT]` : réhydratation sans filet = app vierge sans trace) + 2 HIGH
+> (`[DASH-NW-DUP]` repli NW sans dettes ; `[INCOME-3WAY-SPLIT]` IA/MCP sur salaire config) + suivis — tout au BACKLOG §Audit
+> 2026-07-16. Prochain lot de corrections proposé à Marc (plan-first). **Décision Marc** :
 > SEC-DRIVE-ENCRYPT-DEFAULT = NON ; refresh_token/backend = NON (archi 100% navigateur). **En attente Marc** : sweep a11y des
 > CHAMPS (input/select) — regarder le rendu des boutons en preview d'abord.
 >

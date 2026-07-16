@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — audit financier complet, passe n°2] — 2026-07-16
+
+### Audit
+- **Audit financier récurrent (passe n°2)** — rapport daté `docs/AUDIT_FINANCIER_2026-07-16.md` (panel adversarial
+  5 agents + batterie déterministe). Cœur AAA confirmé : fiscalité 0 écart sur ~180 valeurs, conservation prouvée
+  sur 31 scénarios (résiduel max 0,02 $), 41/41 modules moteur testés, 2661/2661 tests, 0 vulnérabilité. Lot de
+  findings de juin fermé à 12/14. Nouveaux findings routés au BACKLOG : 1 CRITIQUE (réhydratation du store sans
+  filet d'erreur), 2 HIGH (KPI patrimoine du Dashboard contournant la source unique en repli ; revenu IA/MCP resté
+  sur le salaire d'onboarding), plus durcissements MOYEN/LOW. Nettoyage : 4 warnings lint (locales mortes
+  `financialSnapshot`, import orphelin) → lint 0 problème.
+
 ## [unreleased — a11y : hover conforme sur le rappel de sauvegarde] — 2026-07-16
 
 ### Accessibilité

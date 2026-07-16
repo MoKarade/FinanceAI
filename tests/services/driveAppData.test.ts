@@ -227,3 +227,78 @@ describe('driveAppData — fetchUserIdentity (D5 : ne jamais avaler)', () => {
         expect(getErrors().length).toBe(0);
     });
 });
+
+describe('driveAppData — timeout réseau (SYNC-FETCH-TIMEOUT)', () => {
+    /** fetch qui ne reçoit JAMAIS d'en-têtes (connexion jamais établie), rejette à l'abort. */
+    const neverRespondsFetch: FetchLike = vi.fn(
+        (_input, init) =>
+            new Promise<Response>((_resolve, reject) => {
+                init?.signal?.addEventListener('abort', () => reject(new Error('AbortError')));
+            }),
+    );
+
+    /**
+     * fetch qui répond VITE (en-têtes reçus) mais dont le CORPS stalle : `json()`/`text()` ne
+     * résolvent jamais tant que le signal n'abort pas. C'est le cas que le 1er jet du fix NE couvrait
+     * PAS (clearTimeout dès la résolution des en-têtes) → il re-pendait sur la lecture du corps.
+     */
+    const stallingBodyFetch: FetchLike = vi.fn(async (_input, init) => {
+        const signal = init?.signal;
+        const stall = <T>(): Promise<T> =>
+            new Promise<T>((_r, reject) => signal?.addEventListener('abort', () => reject(new Error('AbortError'))));
+        return { ok: true, status: 200, json: () => stall(), text: () => stall<string>() } as unknown as Response;
+    });
+
+    // Discriminant #1 (connexion jamais établie) : sur l'ancien code (fetch sans AbortController),
+    // findSyncFile pendait indéfiniment → advanceTimers ne provoquait aucun rejet → échec Vitest.
+    it('un Drive qui ne répond jamais → DriveError après le délai (pas de hang)', async () => {
+        vi.useFakeTimers();
+        try {
+            const p = findSyncFile('tok', neverRespondsFetch);
+            const assertion = expect(p).rejects.toBeInstanceOf(DriveError);
+            await vi.advanceTimersByTimeAsync(21_000); // dépasse les 20 s du délai
+            await assertion;
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    // Discriminant #2 (corps qui stalle APRÈS les en-têtes) : c'est le trou du 1er jet — le timeout
+    // ne couvrait que jusqu'aux en-têtes, la lecture du corps (res.json()) restait sans filet et
+    // pouvait re-pendre sur un gros pull. Le handler DANS le budget de délai doit lever une DriveError.
+    it('un CORPS de réponse qui stalle après les en-têtes → DriveError (lecture du corps couverte)', async () => {
+        vi.useFakeTimers();
+        try {
+            const p = readSyncFile('tok', 'file-1', stallingBodyFetch);
+            const assertion = expect(p).rejects.toBeInstanceOf(DriveError);
+            await vi.advanceTimersByTimeAsync(21_000);
+            await assertion;
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('un appel qui répond à temps ne laisse AUCUN timer en suspens (clearTimeout)', async () => {
+        vi.useFakeTimers();
+        try {
+            const fastFetch: FetchLike = vi.fn(async () => res({ files: [] }));
+            expect(await findSyncFile('tok', fastFetch)).toBeNull();
+            expect(vi.getTimerCount()).toBe(0); // le timer de délai a bien été nettoyé
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('le timeout de userinfo est capté par le repli gracieux (email/sub null + warning)', async () => {
+        vi.useFakeTimers();
+        clearErrors();
+        try {
+            const p = fetchUserIdentity('tok', neverRespondsFetch);
+            await vi.advanceTimersByTimeAsync(21_000);
+            expect(await p).toEqual({ email: null, sub: null });
+            expect(getErrors().length).toBe(1); // fetchUserIdentity loggue le repli, n'avale pas
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+});

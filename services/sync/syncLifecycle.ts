@@ -92,8 +92,22 @@ export async function connectAndSync(): Promise<void> {
 export async function gateSilentResume(): Promise<boolean> {
     if (!isGoogleAuthConfigured()) return false;
     setStatus({ busy: true, error: null });
+    // 1) Jeton silencieux (cache only). Un échec ICI est le cas NORMAL (pas de session/consentement, ou
+    //    jeton expiré ~1 h) → no-op SANS journaliser (sinon bruit + faux positifs SystemView à chaque boot).
+    let token: string;
     try {
-        const token = await getValidAccessToken(); // cache-only : rejette si pas de jeton valide en cache
+        token = await getValidAccessToken(); // cache-only : rejette si pas de jeton valide en cache
+    } catch {
+        setStatus({ busy: false, connected: false });
+        return false;
+    }
+    // 2) Le jeton est en main → une erreur APRÈS (identité/lecture Drive, ex. TIMEOUT réseau) est ANORMALE :
+    //    on la ROUTE via handleError (→ logError + status.error) au lieu de l'avaler en silence comme un
+    //    « pas de session ». Sinon un Drive injoignable renvoyait l'utilisateur au login SANS trace ni message,
+    //    indiscernable d'un 1er accès (finding silent-failure 2026-07-16 ; symétrie avec runBootSync). On
+    //    conserve le retour `false` (le gate montre le login) — la décision de rendre l'app malgré une sync en
+    //    échec reste un choix UX distinct (non pris ici, zone gate sensible).
+    try {
         const { email, sub } = await fetchUserIdentity(token); // sub → clé de chiffrement des clés API
         const meta = currentMeta();
         writeSyncMeta({ ...meta, connectedEmail: email, connectedSub: sub ?? meta.connectedSub ?? null });
@@ -101,10 +115,9 @@ export async function gateSilentResume(): Promise<boolean> {
         setGateAuthedThisSession(); // filet si un reload survient → pas de 2e écran de login
         await runDecision(token); // garde anti-perte stricte (local vide → pull ; local réel divergent → conflict)
         return true;
-    } catch {
-        // Échec silencieux attendu (pas de session / pas de consentement) → cas nominal au 1er
-        // accès, pas un bug. Le gate basculera sur le login interactif.
+    } catch (e) {
         setStatus({ busy: false, connected: false });
+        if (!(e instanceof DriveAuthError)) handleError('boot', e);
         return false;
     }
 }

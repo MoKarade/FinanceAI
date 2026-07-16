@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — VAGUE 3 « durcissement sync : timeout réseau »] — 2026-07-16
+
+### Robustesse
+- **Timeout sur tous les appels Google/Drive** (`[SYNC-FETCH-TIMEOUT]`) — `withDriveTimeout` (AbortController, 20 s)
+  enveloppe chaque requête de `driveAppData.ts`, **lecture du corps comprise** (`res.json()` dans le budget) : un réseau
+  lent/bloqué — y compris un corps de réponse qui stalle en cours de téléchargement — lève désormais une `DriveError`
+  explicite au lieu de faire PENDRE `readDrive`/`fetchUserIdentity` indéfiniment. `clearTimeout` garanti, dégrade
+  proprement sans `AbortController`. Volet `keepalive` écarté : `fetch keepalive`/`sendBeacon` plafonnés à 64 Ko, en deçà
+  du payload sync réel.
+- **`gateSilentResume` : erreur Drive post-jeton rendue visible** — quand un jeton valide est en cache mais que Drive est
+  injoignable (ex. timeout), l'erreur est maintenant journalisée + publiée (`status.error`) au lieu d'être avalée en
+  silence, qui renvoyait l'utilisateur au login sans aucune trace (symétrie avec `runBootSync`).
+
 ## [unreleased — VAGUE 3 « fondation sync : ARCH-SYNC-SPLIT »] — 2026-07-15
 
 ### Refactor (comportement inchangé)

@@ -60,9 +60,17 @@
 > (applyPulledPayload = point d'écrasement 230k$), `syncLifecycle` (switch anti-clobber `runDecision`, `_decisionInFlight`),
 > `syncPolling`, `syncPassphrase`. Invariants prouvés : `grep "let _status"`==1, double-ceinture persona (push+pull)==2 non
 > fusionnée, `madge --circular`==0. 81 tests sync + suite complète + typecheck OK. Débloque le durcissement sync.
-> **Suite** : `[SEC-DRIVE-ENCRYPT-DEFAULT]`, `[MCP-WRITE-VERSION-TOKEN]`, `[SYNC-FETCH-TIMEOUT]` (Vague 3 durcissement, sur la
-> nouvelle fondation modulaire). `[MCP-CHARTDATA-SUM-GUARD]` différé (lint de convention heuristique à
-> concevoir soigneusement, fort risque de faux positifs). ⚠️ Zone sync = là où Marc a perdu 230 k$ → prudence maximale.
+> **✅ VAGUE 3c livrée** : `[SYNC-FETCH-TIMEOUT]` — `withDriveTimeout` (AbortController 20 s) sur TOUS les appels
+> `driveAppData.ts`, **lecture du corps comprise** (un 1er jet ne couvrait que les en-têtes → re-pendait sur un gros
+> pull dont le corps stalle ; corrigé sur finding code-reviewer) → un réseau lent lève une `DriveError` honnête au lieu
+> de pendre à l'infini. **+ `gateSilentResume` route désormais l'erreur Drive post-jeton via `handleError`** (avant :
+> avalée en silence → renvoi muet au login ; finding silent-failure). Volet `keepalive` ÉCARTÉ à la mesure : keepalive/
+> sendBeacon plafonnés à 64 Ko < payload sync réel → fiabilité `pagehide` = timeout+bannière+debounce (leçons CLAUDE.md).
+> 5 tests (2 discriminants timeout en-têtes+corps, clearTimeout, repli userinfo, gate route l'erreur). Panel 2 agents (2 findings appliqués).
+> **Suite Vague 3** : `[SEC-DRIVE-ENCRYPT-DEFAULT]` (M, chiffrer le payload Drive par défaut via `sub` — ⚠️ affecte la
+> lisibilité du résumé de conflit `summarizeForConflict` : à concevoir, dépendance de déchiffrement dans le chemin de décision),
+> `[MCP-WRITE-VERSION-TOKEN]` (M, jeton de version plumbé `StateStore.get→{state,version}`/`save(next,expected)`).
+> `[MCP-CHARTDATA-SUM-GUARD]` différé (lint heuristique, fort risque de faux positifs). ⚠️ Zone sync = là où Marc a perdu 230 k$ → prudence maximale.
 >
 > ## 🔴 Session 2026-07-14 — Incident perte de données Drive (230k$) + anti-clobber STRICT + audit 6 alertes MCP
 > **Incident** : Marc a perdu 230k$ de placements. Chaîne : appareil silencieusement déconnecté (jeton Google expiré ~1h →

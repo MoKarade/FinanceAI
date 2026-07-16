@@ -207,7 +207,20 @@
   CELI/TFSA sortants ≥ 1000 $ + zéro avoir CELI) + bannière dismissible `CeliAssetNudge` (Investissements, `PrivateAmount`
   pour le mode discret, CTA « Ajouter mes avoirs CELI »). NO-fake-data : montant viré = CONTEXTE, jamais un solde dérivé.
 - Note : `moteur-impot-couple-fusionne` audit **REFUTED** — le moteur impose déjà PAR conjoint (`taxDecember.ts:394-396`), aucun bug. (Correction d'une hypothèse antérieure.)
-- **`[SYNC-FETCH-TIMEOUT]`** 🔧 (suivi panel SYNC-ANTI-CLOBBER) — les fetch Google/Drive (`services/googleDrive/driveAppData.ts`) n'ont AUCUN timeout/`AbortController` → un réseau « dégradé » (Google lent) peut faire pendre `fetchUserIdentity`/`readDrive` indéfiniment (mitigé côté UI par la trappe LoginGate à 10 s, mais la racine reste). + `fetch(..., {keepalive:true})` pour fiabiliser le push `flushPush` au `pagehide`. Effort M.
+- **`[SYNC-FETCH-TIMEOUT]`** ✅ **LIVRÉ 2026-07-16 (Vague 3)** — `withDriveTimeout` (AbortController, 20 s,
+  `DRIVE_FETCH_TIMEOUT_MS`) enveloppe TOUS les appels Google/Drive de `driveAppData.ts` (findSyncFile, read/update/
+  create/delete, listAppDataFiles, fetchUserIdentity) → un réseau « dégradé » lève une `DriveError` explicite au lieu
+  de PENDRE indéfiniment (la racine du hang, mitigé jusqu'ici seulement par la trappe LoginGate 10 s). ⚠️ **Le délai
+  couvre AUSSI la lecture du CORPS** (`res.json()`/`text()` DANS le budget via un handler) — un 1er jet qui ne wrappait
+  que jusqu'aux en-têtes re-pendait sur un gros pull dont le corps stalle (finding code-reviewer). `clearTimeout` dans
+  `finally`, dégrade proprement si `AbortController` absent. **+ `gateSilentResume` ROUTE désormais une erreur Drive
+  post-jeton via `handleError`** (avant : catch unique l'avalait en silence → renvoi muet au login, indiscernable d'un
+  1er accès — finding silent-failure) ; symétrie avec `runBootSync`. 5 tests (2 discriminants timeout : en-têtes + corps
+  qui stalle ; clearTimeout ; repli userinfo ; gate route l'erreur). ⚠️ **Volet `keepalive:true` REJETÉ (mesure, pas supposition)** : `fetch
+  keepalive` ET `navigator.sendBeacon` sont plafonnés à **64 Ko de corps**, or le payload sync réel de Marc (~2000 tx +
+  actifs + budgets + config) dépasse largement 64 Ko → `keepalive:true` FERAIT ÉCHOUER les gros push au `pagehide`. La
+  fiabilité de `flushPush` au masquage d'onglet reste couverte par timeout + `SyncStatusBanner` (invite à reconnecter sur
+  erreur) + push debouncé ; un vrai « push garanti à l'unload » exigerait une delta-sync bornée < 64 Ko (projet séparé, non planifié).
 - **`[A11Y-CHECK-CONTRAST-DRIFT]`** 🔧 (dette outillage) — `scripts/check-contrast.ts` utilise des valeurs de tokens PÉRIMÉES (`surface #151922` au lieu de `#0E1014` ; `primary #10b981` = l'ancien vert au lieu de `#e6eaf2`) → il ne teste pas les vrais combos actuels (rose bannière, superpositions). Réaligner sur `tailwind.config.js`.
 - **`[A11Y-GHOST-BUTTON-PROMINENCE]`** 🔧 (design-system) — le variant `ghost`/`outline` de `components/ui/Button.tsx` (`bg-white/5 border-white/10`, ~1,1-1,8:1) échoue WCAG 1.4.11 (prominence &lt; 3:1), utilisé dans ~28 fichiers. `GATE-CTA-CONTRAST` n'avait traité qu'un CTA primaire. Fix au niveau du design-system.
 - **`[MCP-TAX-FHSA-BALANCE]`** 🔧 (pré-existant, trouvé par le panel 2026-07-14) — `getTaxSituation.tool.ts` passe `u.fhsaBalance`

@@ -14,7 +14,8 @@
 > révélée RESTE (signature persistée+synchronisée dans le store ; blob figé IDB record `revealed`) et se FIGE quand les entrées
 > changent (badge « Pas à jour » + boutons Recharger/Rechoisir, choix Marc : figer). Gel coupé en mode test. Panel (3 agents)
 > → 4 findings réels appliqués (garde no-fake-data reload, garde suppression blob en mode test, hash de sig, dédup IDB) ;
-> 7 tests discriminants + round-trip IDB réel (fake-indexeddb). **Décision Marc** :
+> 7 tests discriminants + round-trip IDB réel (fake-indexeddb) — **MERGÉ (#467)**. Puis `[A11Y-BANNER-HOVER-CONTRAST]` :
+> hover quota BackupReminder 3,76:1 → `brightness-90` (5,23:1 mesuré ; le facteur dépend de la base, jamais copier). **Décision Marc** :
 > SEC-DRIVE-ENCRYPT-DEFAULT = NON ; refresh_token/backend = NON (archi 100% navigateur). **En attente Marc** : sweep a11y des
 > CHAMPS (input/select) — regarder le rendu des boutons en preview d'abord.
 >

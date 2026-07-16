@@ -105,9 +105,11 @@
   - **`[PROJ-REVEAL-RACE]`** 🟢 LOW — course étroite « Rechoisir » vs sauvegarde-miroir en vol (blob orphelin possible,
     récupérable en re-révélant) ; et vérification empirique de la cadence de republication moteur (console.count sur l'effet
     miroir, cf note historique syncPush:138) si un doute de fréquence d'écriture IDB apparaît.
-- **`[A11Y-BANNER-HOVER-CONTRAST]`** 🟢 LOW (S, a11y-auditor) — pattern systémique « `bg-X-600 hover:bg-X-500` + texte blanc
-  + `text-meta` 12px » : le survol descend sous 4,5:1 (WCAG 1.4.3). Corrigé dans `CeliAssetNudge` (`hover:brightness-110`) ;
-  reste `BackupReminder` (variante quota `danger`) + à généraliser au design-system des bannières.
+- **`[A11Y-BANNER-HOVER-CONTRAST]`** ✅ **LIVRÉ 2026-07-16 (Vague 4)** — `BackupReminder` variante quota : `hover:bg-danger-500`
+  + blanc 12px = 3,76:1 (< AA) → hover qui FONCE (`hover:brightness-90` = 5,23:1 mesuré en linéaire). ⚠️ Le fix CeliAssetNudge
+  (`hover:brightness-110`, base info-600 = 4,81:1 OK) aurait échoué ICI de justesse (danger-600 ×1,1 = 4,48:1) — le facteur
+  dépend de la BASE, toujours mesurer, jamais copier-coller. Variante warning (translucide) mesurée conforme (8,64/5,27) — rien
+  à changer. La GÉNÉRALISATION au design-system des bannières rejoint le sweep a11y des champs (en attente preview Marc).
 
 ## 🔴 Données de test dans les vraies données (2026-07-15) — incident « fausses transactions »
 > Marc : « j'ai des fausses transactions sans doute des profils de test je veux plus que ça arrive jamais ».

@@ -239,6 +239,26 @@ describe('gateSilentResume — échec silencieux (getValidAccessToken rejette)',
     });
 });
 
+describe('gateSilentResume — jeton VALIDE mais Drive injoignable (timeout réseau) → erreur ROUTÉE', () => {
+    // Discriminant du fix silent-failure 2026-07-16 : sur l'ancien code (catch unique englobant),
+    // une erreur de lecture Drive APRÈS un jeton valide était avalée en silence (aucun logError, aucun
+    // status.error) → indiscernable d'un « pas de session ». Le nouveau chemin à deux phases doit la
+    // ROUTER via handleError. Sur l'ancien code, `expect(logErrorMock).toHaveBeenCalled()` échouerait.
+    it('journalise l’erreur + publie status.error (pas un renvoi muet au login)', async () => {
+        // Jeton en cache VALIDE (défaut 'tok-silent'), mais la lecture Drive échoue (ex. timeout).
+        findSyncFileMock.mockRejectedValueOnce(new Error('Drive : délai dépassé (20 s) — réseau lent'));
+
+        const ok = await gateSilentResume();
+
+        expect(ok).toBe(false); // décision de rendu inchangée : le gate montre le login
+        const status = getSyncStatus();
+        expect(status.connected).toBe(false);
+        expect(status.busy).toBe(false);
+        expect(logErrorMock).toHaveBeenCalled(); // tracé (SystemView), pas avalé
+        expect(status.error).toBeTruthy(); // visible pour l'UI
+    });
+});
+
 describe('pullNow — échec de lecture Drive (les données locales sont protégées)', () => {
     it('findSyncFile rejette → pas de crash, statut en erreur', async () => {
         localStorage.setItem(STORE_KEY, JSON.stringify(NONEMPTY_LOCAL));

@@ -38,6 +38,50 @@ const resolveFetch = (f?: FetchLike): FetchLike => {
     throw new DriveError('fetch indisponible dans cet environnement');
 };
 
+/**
+ * Délai maximal (ms) d'un appel Drive/Google avant abandon. Sans lui, un réseau « dégradé » (Google
+ * lent, DNS bloqué) faisait PENDRE `readDrive`/`fetchUserIdentity` indéfiniment — un push/pull qui ne
+ * se termine jamais est pire qu'un échec honnête (le SyncStatusBanner ne peut proposer de reconnecter
+ * que sur une erreur, pas sur un « busy » figé). [SYNC-FETCH-TIMEOUT] 2026-07-16. 20 s = marge large
+ * pour une connexion lente réelle sans laisser l'utilisateur bloqué une minute.
+ */
+export const DRIVE_FETCH_TIMEOUT_MS = 20_000;
+
+/**
+ * Exécute `f(input, init)` PUIS la lecture du corps (`handler`) sous un MÊME budget de délai
+ * (AbortController). Point clé : le timer n'est nettoyé qu'APRÈS consommation du corps par `handler`.
+ * Un simple wrapper autour de `fetch` ne couvrirait QUE la phase « jusqu'aux en-têtes » — or `res.json()`/
+ * `res.text()` lisent le CORPS en streaming APRÈS ; une connexion qui stalle PENDANT le téléchargement
+ * du corps (en-têtes reçus vite, corps qui traîne — réseau instable) re-pendrait à l'infini, précisément
+ * le bug que ce ticket ferme. En abortant, le signal partagé fait REJETER un `res.json()`/`res.text()` en
+ * cours → transformé en `DriveError` explicite, jamais un hang. `clearTimeout` dans `finally` → aucun timer
+ * qui traîne. Dégrade proprement si `AbortController` absent (très vieux runtime). [SYNC-FETCH-TIMEOUT].
+ */
+async function withDriveTimeout<T>(
+    f: FetchLike,
+    input: string,
+    init: RequestInit,
+    handler: (res: Response) => Promise<T>,
+    timeoutMs = DRIVE_FETCH_TIMEOUT_MS,
+): Promise<T> {
+    if (typeof AbortController === 'undefined') return handler(await f(input, init));
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const res = await f(input, { ...init, signal: controller.signal });
+        return await handler(res); // lecture du corps DANS le budget de délai
+    } catch (e) {
+        if (controller.signal.aborted) {
+            throw new DriveError(
+                `Drive : délai dépassé (${Math.round(timeoutMs / 1000)} s) — réseau lent ou indisponible. Réessaie une fois connecté.`,
+            );
+        }
+        throw e;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 function authHeader(token: string): Record<string, string> {
     return { Authorization: `Bearer ${token}` };
 }
@@ -96,10 +140,11 @@ export async function listAppDataFiles(
         fields: 'files(id,name,modifiedTime)',
         pageSize: '50',
     });
-    const res = await f(`${DRIVE_FILES}?${params.toString()}`, { headers: authHeader(token) });
-    if (!res.ok) await failFromResponse(res);
-    const data = (await res.json()) as { files?: AppDataFileRef[] };
-    return data.files ?? [];
+    return withDriveTimeout(f, `${DRIVE_FILES}?${params.toString()}`, { headers: authHeader(token) }, async (res) => {
+        if (!res.ok) await failFromResponse(res);
+        const data = (await res.json()) as { files?: AppDataFileRef[] };
+        return data.files ?? [];
+    });
 }
 
 /**
@@ -123,15 +168,21 @@ export async function createAppDataFile(
         'Content-Type: application/json\r\n\r\n' +
         `${JSON.stringify(content)}\r\n` +
         `--${boundary}--`;
-    const res = await f(`${DRIVE_UPLOAD}?uploadType=multipart&fields=id`, {
-        method: 'POST',
-        headers: { ...authHeader(token), 'Content-Type': `multipart/related; boundary=${boundary}` },
-        body,
-    });
-    if (!res.ok) await failFromResponse(res);
-    const data = (await res.json()) as { id?: string };
-    if (!data.id) throw new DriveError('Création du fichier sans id retourné');
-    return data.id;
+    return withDriveTimeout(
+        f,
+        `${DRIVE_UPLOAD}?uploadType=multipart&fields=id`,
+        {
+            method: 'POST',
+            headers: { ...authHeader(token), 'Content-Type': `multipart/related; boundary=${boundary}` },
+            body,
+        },
+        async (res) => {
+            if (!res.ok) await failFromResponse(res);
+            const data = (await res.json()) as { id?: string };
+            if (!data.id) throw new DriveError('Création du fichier sans id retourné');
+            return data.id;
+        },
+    );
 }
 
 /** Cherche le fichier de sync dans appDataFolder. Retourne sa réf ou null s'il n'existe pas. */
@@ -143,11 +194,12 @@ export async function findSyncFile(token: string, fetchFn?: FetchLike): Promise<
         fields: 'files(id,modifiedTime)',
         pageSize: '1',
     });
-    const res = await f(`${DRIVE_FILES}?${params.toString()}`, { headers: authHeader(token) });
-    if (!res.ok) await failFromResponse(res);
-    const data = (await res.json()) as { files?: DriveFileRef[] };
-    const file = data.files?.[0];
-    return file ? { id: file.id, modifiedTime: file.modifiedTime } : null;
+    return withDriveTimeout(f, `${DRIVE_FILES}?${params.toString()}`, { headers: authHeader(token) }, async (res) => {
+        if (!res.ok) await failFromResponse(res);
+        const data = (await res.json()) as { files?: DriveFileRef[] };
+        const file = data.files?.[0];
+        return file ? { id: file.id, modifiedTime: file.modifiedTime } : null;
+    });
 }
 
 /** Crée le fichier de sync (multipart : métadonnées + contenu). Retourne l'id créé. */
@@ -166,13 +218,14 @@ export async function readSyncFile(
     fetchFn?: FetchLike,
 ): Promise<SyncEnvelope> {
     const f = resolveFetch(fetchFn);
-    const res = await f(`${DRIVE_FILES}/${fileId}?alt=media`, { headers: authHeader(token) });
-    if (!res.ok) await failFromResponse(res);
-    try {
-        return (await res.json()) as SyncEnvelope;
-    } catch {
-        throw new DriveError('Contenu du fichier de sync illisible (JSON invalide)');
-    }
+    return withDriveTimeout(f, `${DRIVE_FILES}/${fileId}?alt=media`, { headers: authHeader(token) }, async (res) => {
+        if (!res.ok) await failFromResponse(res);
+        try {
+            return (await res.json()) as SyncEnvelope;
+        } catch {
+            throw new DriveError('Contenu du fichier de sync illisible (JSON invalide)');
+        }
+    });
 }
 
 /** Remplace le contenu du fichier de sync existant (media). */
@@ -183,20 +236,27 @@ export async function updateSyncFile(
     fetchFn?: FetchLike,
 ): Promise<void> {
     const f = resolveFetch(fetchFn);
-    const res = await f(`${DRIVE_UPLOAD}/${fileId}?uploadType=media`, {
-        method: 'PATCH',
-        headers: { ...authHeader(token), 'Content-Type': 'application/json' },
-        body: JSON.stringify(envelope),
-    });
-    if (!res.ok) await failFromResponse(res);
+    await withDriveTimeout(
+        f,
+        `${DRIVE_UPLOAD}/${fileId}?uploadType=media`,
+        {
+            method: 'PATCH',
+            headers: { ...authHeader(token), 'Content-Type': 'application/json' },
+            body: JSON.stringify(envelope),
+        },
+        async (res) => {
+            if (!res.ok) await failFromResponse(res);
+        },
+    );
 }
 
 /** Supprime le fichier de sync de l'appDataFolder. Idempotent : un 404 (déjà absent) = succès. */
 export async function deleteSyncFile(token: string, fileId: string, fetchFn?: FetchLike): Promise<void> {
     const f = resolveFetch(fetchFn);
-    const res = await f(`${DRIVE_FILES}/${fileId}`, { method: 'DELETE', headers: authHeader(token) });
-    // 204 No Content = succès ; 404 = fichier déjà supprimé → on tolère (idempotent).
-    if (!res.ok && res.status !== 404) await failFromResponse(res);
+    await withDriveTimeout(f, `${DRIVE_FILES}/${fileId}`, { method: 'DELETE', headers: authHeader(token) }, async (res) => {
+        // 204 No Content = succès ; 404 = fichier déjà supprimé → on tolère (idempotent).
+        if (!res.ok && res.status !== 404) await failFromResponse(res);
+    });
 }
 
 /**
@@ -210,22 +270,23 @@ export async function fetchUserIdentity(
 ): Promise<{ email: string | null; sub: string | null }> {
     const f = resolveFetch(fetchFn);
     try {
-        const res = await f(USERINFO, { headers: authHeader(token) });
-        if (!res.ok) {
-            // D5 « ne jamais avaler » : un échec ici prive `sub` → la clé de chiffrement
-            // des clés API ne peut plus être dérivée (clés non synchronisées/déchiffrables
-            // sur les autres appareils). On loggue (warning : le caller gère le null
-            // gracieusement, c'est best-effort) sans changer le repli existant.
-            logError({
-                source: 'network',
-                severity: 'warning',
-                message: `fetchUserIdentity: réponse Google ${res.status}`,
-                context: { status: res.status },
-            });
-            return { email: null, sub: null };
-        }
-        const data = (await res.json()) as { email?: string; sub?: string };
-        return { email: data.email ?? null, sub: data.sub ?? null };
+        return await withDriveTimeout(f, USERINFO, { headers: authHeader(token) }, async (res) => {
+            if (!res.ok) {
+                // D5 « ne jamais avaler » : un échec ici prive `sub` → la clé de chiffrement
+                // des clés API ne peut plus être dérivée (clés non synchronisées/déchiffrables
+                // sur les autres appareils). On loggue (warning : le caller gère le null
+                // gracieusement, c'est best-effort) sans changer le repli existant.
+                logError({
+                    source: 'network',
+                    severity: 'warning',
+                    message: `fetchUserIdentity: réponse Google ${res.status}`,
+                    context: { status: res.status },
+                });
+                return { email: null, sub: null };
+            }
+            const data = (await res.json()) as { email?: string; sub?: string };
+            return { email: data.email ?? null, sub: data.sub ?? null };
+        });
     } catch (e) {
         logError({
             source: 'network',

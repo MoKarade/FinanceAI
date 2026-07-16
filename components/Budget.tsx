@@ -797,7 +797,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 <button
                     type="button"
                     onClick={() => navigateWithFocus(TabEnum.FUTURE)}
-                    className="bg-white/[0.03] border border-white/10 rounded-card p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full text-left hover:bg-white/[0.05] transition-colors focus-ring"
+                    className="bg-white/[0.03] border border-white/40 rounded-card p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full text-left hover:bg-white/[0.05] transition-colors focus-ring"
                     title="Ouvrir FutureProjection"
                 >
                     <div>

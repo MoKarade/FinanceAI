@@ -274,7 +274,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isAnalyzing}
-                        className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-lg transition-all active:scale-95 group disabled:opacity-50"
+                        className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/40 px-4 py-2 rounded-lg transition-all active:scale-95 group disabled:opacity-50"
                         title="Pour archiver vos documents, utilisez plutôt l'onglet Documents"
                     >
                         <Icon name={isAnalyzing ? 'clock' : 'bot'} size={18} className="text-ink-300" />
@@ -282,7 +282,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                     </button>
                     <input type="file" ref={fileInputRef} className="hidden" multiple accept="image/*,application/pdf" onChange={handleFileDrop} />
 
-                    <button onClick={openDrive} className="flex items-center justify-center gap-2 bg-[#1f2937] hover:bg-[#374151] border border-white/10 px-4 py-2 rounded-lg transition-all shadow-lg active:scale-95 group">
+                    <button onClick={openDrive} className="flex items-center justify-center gap-2 bg-[#1f2937] hover:bg-[#374151] border border-white/40 px-4 py-2 rounded-lg transition-all shadow-lg active:scale-95 group">
                         <img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" alt="Drive" className="w-6 h-6 group-hover:scale-110 transition-transform" />
                     </button>
             </div>

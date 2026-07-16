@@ -161,14 +161,14 @@ export const GoogleDriveSyncCard: React.FC = () => {
                             <button
                                 onClick={onPush}
                                 disabled={status.busy}
-                                className="px-3 py-1.5 rounded-card bg-white/5 border border-white/10 text-ink-200 text-meta font-medium hover:bg-white/10 disabled:opacity-50"
+                                className="px-3 py-1.5 rounded-card bg-white/5 border border-white/40 text-ink-200 text-meta font-medium hover:bg-white/10 disabled:opacity-50"
                             >
                                 {status.busy ? '…' : 'Sauvegarder maintenant'}
                             </button>
                             <button
                                 onClick={onPull}
                                 disabled={status.busy}
-                                className="px-3 py-1.5 rounded-card bg-white/5 border border-white/10 text-ink-200 text-meta font-medium hover:bg-white/10 disabled:opacity-50"
+                                className="px-3 py-1.5 rounded-card bg-white/5 border border-white/40 text-ink-200 text-meta font-medium hover:bg-white/10 disabled:opacity-50"
                             >
                                 Restaurer depuis Drive
                             </button>
@@ -206,7 +206,7 @@ export const GoogleDriveSyncCard: React.FC = () => {
                                     </button>
                                     <button
                                         onClick={() => setConfirmDelete(false)}
-                                        className="px-3 py-1.5 rounded-card bg-white/5 border border-white/10 text-ink-200 text-meta font-medium hover:bg-white/10"
+                                        className="px-3 py-1.5 rounded-card bg-white/5 border border-white/40 text-ink-200 text-meta font-medium hover:bg-white/10"
                                     >
                                         Annuler
                                     </button>

@@ -9,6 +9,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased — VAGUE 4 « a11y : boutons ghost/outline »] — 2026-07-16
 
 ### Accessibilité
+- **Boutons d'action secondaires : bordure conforme WCAG 1.4.11** (`[A11Y-BORDER-PROMINENCE-SWEEP]`, partiel) — 12 boutons
+  custom (hors composant `Button`) qui gardaient une bordure `white/10`-`/15` (quasi invisible) passent à `white/40`
+  (~3,8:1, même valeur mesurée que le composant Button) : TaxCenter, AiAssistant, Investments, Dashboard, réglages Drive,
+  modal de conflit sync, carte cliquable Budget. Les champs `<input>`/`<select>`, toggles à état et dropzones restent à
+  traiter dans une passe dédiée par type (interaction avec les états focus/actif).
 - **Bordure des boutons `ghost`/`outline` conforme WCAG 1.4.11** (`[A11Y-GHOST-BUTTON-PROMINENCE]`) — la limite de ces
   boutons était à `white/10`-`/15` (~1,2-1,6:1 sur fond sombre, quasi invisible) ; passée à `white/40` (~3,8:1, mesuré),
   la bordure — seule affordance de ces variants — atteint le seuil de contraste non-texte ≥3:1. Corrige tous les usages

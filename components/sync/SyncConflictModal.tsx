@@ -176,7 +176,7 @@ export const SyncConflictModal: React.FC = () => {
                             type="button"
                             onClick={() => setConfirmRestore(true)}
                             disabled={busy}
-                            className="px-4 py-2 rounded-card bg-white/5 border border-white/15 text-ink-200 text-meta font-medium hover:bg-white/10 disabled:opacity-50 focus-ring"
+                            className="px-4 py-2 rounded-card bg-white/5 border border-white/40 text-ink-200 text-meta font-medium hover:bg-white/10 disabled:opacity-50 focus-ring"
                         >
                             Restaurer depuis Drive…
                         </button>
@@ -195,7 +195,7 @@ export const SyncConflictModal: React.FC = () => {
                                 type="button"
                                 onClick={() => setConfirmRestore(false)}
                                 disabled={busy}
-                                className="px-3 py-1.5 rounded-card bg-white/5 border border-white/10 text-ink-200 text-meta font-medium hover:bg-white/10 disabled:opacity-50 focus-ring"
+                                className="px-3 py-1.5 rounded-card bg-white/5 border border-white/40 text-ink-200 text-meta font-medium hover:bg-white/10 disabled:opacity-50 focus-ring"
                             >
                                 Annuler
                             </button>

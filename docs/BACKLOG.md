@@ -235,14 +235,17 @@
   du design-system → corrige les ~28 usages d'un coup. Classe générée vérifiée (`dist` : `.border-white/40{border-color:#fff6}`).
   Note scope : les `border-white/10` restants sont DÉCORATIFS (cards/dividers/pills/table-rows, hors 1.4.11) ; les cartes/
   champs cliquables custom hors composant Button → `[A11Y-BORDER-PROMINENCE-SWEEP]` ci-dessous.
-- **`[A11Y-BORDER-PROMINENCE-SWEEP]`** 🔧 (a11y, découvert par l'a11y-auditor 2026-07-16 en marge de GHOST-BUTTON) — ~15
-  éléments INTERACTIFS custom (hors composant `Button`) réutilisent `border-white/10`-`/15` (~1,2-1,6:1) et échouent AUSSI
-  WCAG 1.4.11 (bordure = affordance). À traiter au cas par cas (mesurer chaque surface via `check-contrast`/calcul node
-  AVANT de choisir l'opacité, comme GHOST-BUTTON — NE PAS bumper à l'aveugle). Sites confirmés interactifs : `Budget.tsx:800`
-  (carte cliquable), `TaxCenter.tsx:277,285`, `AiAssistant.tsx:311`, `Investments.tsx:1000,1007`, `Dashboard.tsx:378`,
-  `settings/GoogleDriveSyncCard.tsx:164,171,209`, `sync/SyncConflictModal.tsx:179,198`, `RealEstate.tsx:318` (onglet inactif),
-  `Transactions.tsx:452,458` (inputs),`:617,623` (bouton `aria-pressed`+`select` inactifs), `settings/PayslipUploadCard.tsx:116,137`,
-  `import/ImportBankStatement.tsx:110` (labels radiogroup/dropzone). Décoratifs (cards/dividers/pills/tr) = HORS périmètre.
+- **`[A11Y-BORDER-PROMINENCE-SWEEP]`** 🟡 **PARTIEL 2026-07-16 (Vague 4)** — ~15 éléments INTERACTIFS custom (hors composant
+  `Button`) réutilisent `border-white/10`-`/15` (~1,2-1,6:1) et échouent WCAG 1.4.11 (bordure = affordance). Traité au cas
+  par cas (`white/40` = même valeur mesurée que GHOST-BUTTON, ~3,8:1 sur les 3 surfaces — PAS de bump aveugle).
+  - ✅ **Boutons d'action autonomes FAITS** (12 sites) : `Budget.tsx:800` (carte cliquable), `TaxCenter.tsx:277,285`,
+    `AiAssistant.tsx:311`, `Investments.tsx:1000,1007`, `Dashboard.tsx:378`, `settings/GoogleDriveSyncCard.tsx:164,171,209`,
+    `sync/SyncConflictModal.tsx:179,198`.
+  - ⏳ **RESTE (cas de jugement, différés exprès)** : les `<input>`/`<select>` (`Transactions.tsx:452,458,530,732,750,823,847`,
+    `Dashboard.tsx:470,472`, `Investments.tsx:1102`) — la bordure interagit avec `focus:border-*`, traitement 1.4.11 distinct ;
+    les onglets/toggles à état conditionnel (`RealEstate.tsx:318`, `Transactions.tsx:617,623` inactifs — l'état ACTIF a déjà
+    une bordure colorée ≥3:1) ; les labels/dropzones (`settings/PayslipUploadCard.tsx:116,137`, `import/ImportBankStatement.tsx:110`,
+    `border-dashed` + hover). À faire dans une passe dédiée par type (input vs toggle vs dropzone). Décoratifs (cards/dividers/pills/tr) = HORS périmètre.
 - **`[MCP-TAX-FHSA-BALANCE]`** 🔧 (pré-existant, trouvé par le panel 2026-07-14) — `getTaxSituation.tool.ts` passe `u.fhsaBalance`
   (un SOLDE) comme cotisation CELIAPP ANNUELLE à `calculateFiscalReport` → sur-déduit (sous-estime l'impôt) dès que le solde
   dépasse la cotisation de l'année. Antérieur au fix per-conjoint (l'ancien code sommait pareil). Fix : champ de cotisation

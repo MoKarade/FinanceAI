@@ -375,7 +375,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <button
                                 type="button"
                                 onClick={() => onNavigate?.(TabEnum.INVESTMENTS)}
-                                className="px-4 py-2 rounded-card bg-white/5 border border-white/10 text-ink-200 text-meta font-bold hover:bg-white/10 transition-colors focus-ring"
+                                className="px-4 py-2 rounded-card bg-white/5 border border-white/40 text-ink-200 text-meta font-bold hover:bg-white/10 transition-colors focus-ring"
                             >
                                 Ajouter des placements
                             </button>

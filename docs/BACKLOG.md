@@ -90,6 +90,17 @@
 > mélangés aux ~200 vraies transactions Desjardins ; [Probable] budgets `kar-b*` aussi. Fuite ANTÉRIEURE
 > aux gardes actuelles (persona activé ~2026-06-07), chemin exact non identifiable a posteriori.
 
+- **`[BUDGET-INCOME-REAL]`** ✅ **LIVRÉ 2026-07-16** (bug Marc « les revenus semblent pas logiques ») — revenu du Budget =
+  vraies transactions des catégories `Salaire`/`Revenus divers` (`computeIncomeBreakdown`), ventilé, transferts/doublons/
+  positifs non-revenu exclus ; badge + payload IA sur revenu réel (moyenne mois pleins) ; carte Santé étiquetée « (salaire
+  déclaré) » (garde le brut config, requis pour la décompo brut→net). Panel financial-integrity : 0 bug bloquant.
+  Découvertes (SUIVI, non bloquantes) :
+  - **`[TX-INCOME-CATEGORY-LIST]`** (FAIBLE) — `components/Transactions.tsx` (catégorisation manuelle) ne propose PAS
+    `Revenus divers` → une rentrée classée à la main en `Autre`/`Investissement` devient invisible comme revenu. Ajouter
+    `Revenus divers` (et éventuellement `Salaire`) à la liste manuelle.
+  - **`[TAX-MCP-INCOMEAVG-TEST]`** (FAIBLE) — la nouvelle sémantique `incomeAvg` (salaire+divers, hors remboursements) est
+    consommée par `TaxCenter.tsx` + `mcp/tools/getTaxSituation.tool.ts` mais non verrouillée par un test côté ces deux
+    surfaces. Direction correcte (revenu fiscal hors remboursements) — ajouter un test de non-régression.
 - **`[INCOME-PROVENANCE]` + `[TAX-DETAIL]`** ✅ **LIVRÉ 2026-07-15** (demande Marc : chaîne paie→Impôt→Santé,
   source unique) — salarySource estampillé (scan paie UI + apply_payslip MCP), bannière de provenance +
   détail des retenues (féd/QC/RRQ/RQAP/AE) + réel des transactions dans l'onglet Impôt ; get_tax_situation

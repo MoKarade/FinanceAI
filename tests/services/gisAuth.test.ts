@@ -186,7 +186,7 @@ describe('renouvellement silencieux du jeton', () => {
                 callback: (_r: unknown) => { void _r; },
                 requestAccessToken() {
                     calls += 1;
-                    // 130s → délai de renouvellement = 130000 − 60000(marge) − 60000(lead) = 10000 ms.
+                    // 130s → délai = max(30000 plancher, 130000−60000−60000) = 30000 ms (plancher anti-boucle).
                     this.callback({ access_token: `tok-${calls}`, expires_in: 130 });
                 },
             };
@@ -196,7 +196,7 @@ describe('renouvellement silencieux du jeton', () => {
             expect(await requestAccessToken(true)).toBe('tok-1');
             expect(calls).toBe(1);
 
-            await vi.advanceTimersByTimeAsync(11_000); // franchit le déclenchement du renouvellement
+            await vi.advanceTimersByTimeAsync(31_000); // franchit le plancher de 30 s → déclenche le renouvellement
             expect(calls).toBe(2);                     // 2e acquisition RÉSEAU = renouvellement
             expect(getCachedToken()).toBe('tok-2');    // nouveau jeton en cache, sans reconnexion
         } finally {
@@ -226,10 +226,28 @@ describe('renouvellement silencieux du jeton', () => {
             await requestAccessToken(true);
             // Le renouvellement échoue mais NE doit PAS lever : si le rejet n'était pas catché dans le
             // minuteur, l'avance des timers propagerait l'erreur (unhandled) et ferait échouer le test.
-            await vi.advanceTimersByTimeAsync(11_000);
+            await vi.advanceTimersByTimeAsync(31_000); // franchit le plancher de 30 s → déclenche le renouvellement
             expect(calls).toBe(2); // le renouvellement a bien été tenté (2e appel), puis avalé proprement
         } finally {
             vi.useRealTimers();
         }
+    });
+});
+
+// Propagation cross-onglet de la déconnexion (finding security-privacy) : sans elle, le renouvellement
+// silencieux garderait CE jeton vivant indéfiniment après une déconnexion/suppression faite dans un
+// AUTRE onglet → sync fantôme post-déconnexion (Loi 25). L'event `storage` (autres onglets uniquement)
+// purge le jeton en mémoire.
+describe('[AUTH-DRIVE-PERSIST] déconnexion propagée entre onglets (event storage)', () => {
+    it('purge le jeton EN MÉMOIRE quand un autre onglet efface la clé jeton', async () => {
+        stubGis({ access_token: 'tok-multi', expires_in: 3600 });
+        configureGoogleAuth('cid');
+        await requestAccessToken(true);
+        expect(getCachedToken()).toBe('tok-multi');
+        // Simule la déconnexion dans un AUTRE onglet : la clé disparaît de localStorage (partagé) et
+        // l'event `storage` se déclenche ici (il ne se déclenche QUE dans les onglets NON à l'origine).
+        localStorage.removeItem(TOKEN_KEY);
+        window.dispatchEvent(new StorageEvent('storage', { key: TOKEN_KEY, oldValue: 'x', newValue: null }));
+        expect(getCachedToken()).toBeNull(); // jeton mémoire purgé → cet onglet cesse de pousser vers Drive
     });
 });

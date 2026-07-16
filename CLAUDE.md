@@ -778,6 +778,15 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   Pattern : payload optionnel + « si fourni, alors valide » (bornes D9) + requis seulement quand la cible n'existe pas.
   Sœur : une regex d'inférence sur un NOM utilisateur → accents strippés (`normalize('NFD')`+`\p{Diacritic}`) et mots
   COURTS ancrés `\b…\b` (« char » nu matchait « Chargex »/« recharge » — prouvé par le panel).
+- ⚠️ **La SORTIE JSON d'un tool MCP data-aware est une surface d'INJECTION de prompt indirecte** (leçon MCP-PROMPT-SCRUB
+  2026-07-16) : un nom d'actif (auto-rempli Finnhub), un payee/catégorie (extrait d'un PDF de courtage), un nom de projet/
+  utilisateur = TEXTE LIBRE lu par Claude → un attaquant contrôlant la source y glisse une instruction. `sanitizePromptText`
+  n'était appliqué qu'au PROMPT-building (`claude.ts`/`AiAssistant`), PAS aux réponses de tools. Fix CENTRAL au chokepoint
+  `jsonContent` (`_dataAware.ts`) : `scrubMcpDeep` scrube EN PROFONDEUR toute valeur string (nombres/booléens/null et clés
+  intacts) → couvre TOUS les tools présents ET futurs sans risque d'oublier un champ (le scrub par-champ en aurait raté :
+  `get_tax_situation` émettait aussi `u.name`/`salarySource.label`). Limite assumée : une injection en langage NATUREL passe
+  toujours (le scrub retire le markup/tags forgés, pas le sens) — defense-in-depth, pas étanche. NE PAS scruber les CLÉS
+  (contrat d'objet) ni les nombres (money-critical). ⚠️ Sœur : le scrub central est le pendant OUTPUT du wrapUserData INPUT.
 - ⚠️ **Les dettes du moteur n'ont PAS de date de début** (elles sont servies dès le mois 0, `projection.ts` §dettes) :
   injecter une dette pour un événement FUTUR fausse le patrimoine AVANT l'événement (mesuré −28 k$ quatre ans trop tôt)
   → rejeter/borner le cas (cf what-if financement différé) tant que `[MCP-WHATIF-DATED-DEBT]` n'est pas fait.

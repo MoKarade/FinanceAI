@@ -7,6 +7,34 @@
 
 import type { AppState } from '../../types';
 import { freshnessNotice } from '../state/freshness';
+import { sanitizePromptText } from '../../utils/promptSafety';
+
+// [MCP-PROMPT-SCRUB] Longueur max d'un champ TEXTE exposé à Claude via un tool data-aware.
+// Assez large pour un nom d'actif / payee / nom de projet normal (banques : < 60), mais borne
+// le flood de contexte par un champ malveillant. Le vrai rempart est le strip des caractères
+// d'injection/markup (cf sanitizePromptText) ; la borne n'est qu'une ceinture anti-flood.
+export const MCP_TEXT_MAX = 200;
+
+/**
+ * [MCP-PROMPT-SCRUB] Neutralise EN PROFONDEUR toute valeur STRING d'un payload de tool
+ * data-aware avant de le renvoyer à Claude : nom d'actif (auto-rempli Finnhub), payee/
+ * catégorie (extraits d'un relevé/PDF de courtage), nom de projet/dette, nom d'utilisateur,
+ * employeur… = champs texte LIBRES potentiellement porteurs d'une injection de prompt indirecte.
+ * `sanitizePromptText` retire caractères de contrôle + markup/injection + borne la longueur.
+ * Ne touche QUE les strings (nombres/booléens/null/dates ISO inchangés — aucun caractère strippé) ;
+ * les clés d'objet (contrôlées par le code) ne sont pas modifiées. Centralisé ici → couvre TOUS
+ * les tools data-aware, présents ET futurs, sans risque d'oublier un champ.
+ */
+export function scrubMcpDeep(value: unknown): unknown {
+    if (typeof value === 'string') return sanitizePromptText(value, MCP_TEXT_MAX);
+    if (Array.isArray(value)) return value.map(scrubMcpDeep);
+    if (value && typeof value === 'object') {
+        const out: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(value as Record<string, unknown>)) out[k] = scrubMcpDeep(v);
+        return out;
+    }
+    return value; // number | boolean | null | undefined — inchangés
+}
 
 /** Réponse MCP standard (un bloc texte). */
 export interface ToolTextResult {
@@ -22,9 +50,10 @@ export interface ToolTextResult {
  */
 export type StateProvider = () => Promise<AppState>;
 
-/** Emballe un objet sérialisable en réponse MCP texte (JSON indenté). */
+/** Emballe un objet sérialisable en réponse MCP texte (JSON indenté).
+ *  [MCP-PROMPT-SCRUB] Les champs texte libres sont neutralisés en profondeur (anti-injection). */
 export function jsonContent(payload: unknown): ToolTextResult {
-    return { content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }] };
+    return { content: [{ type: 'text', text: JSON.stringify(scrubMcpDeep(payload), null, 2) }] };
 }
 
 /** Réponse d'erreur exploitable (texte + isError) — jamais de throw vers le transport. */

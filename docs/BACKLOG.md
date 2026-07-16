@@ -75,11 +75,11 @@
   (`services/claude.ts`) ; le site pseudo-JSON de `categorizeBatch` garde `amount: null` pour un montant non fini. Plus de faux
   « 0$ » envoyé au modèle (no-fake-data) — pendant `claude.ts` du fix Vague 1 d'`AiAssistant.tsx` (« — » via `formatNumber`).
   Test discriminant via `buildRebalancePrompt` (NaN → « (non disponible) », jamais « 0$ »/« NaN »).
-- **`[MCP-PROMPT-SCRUB]`** 🟡 MEDIUM (S, security-privacy) — les champs texte libres (`name` d'actif, `payee`) ressortent
-  BRUTS dans le JSON des tools data-aware (`get_holdings`, `get_financial_overview`, `search_transactions`) sans passer par
-  `sanitizePromptText`/`wrapUserData` → injection de prompt indirecte possible (nom d'actif auto-rempli depuis Finnhub ou extrait
-  d'un PDF de courtage). Pas une régression (norme actuelle), mais `get_holdings` étend la surface. Fix : scrub léger centralisé
-  dans `_dataAware.ts` appliqué à TOUS les tools data-aware.
+- **`[MCP-PROMPT-SCRUB]`** ✅ **LIVRÉ 2026-07-16 (Vague 4)** — `jsonContent` (`mcp/tools/_dataAware.ts`) applique `scrubMcpDeep` :
+  scrub EN PROFONDEUR de toute valeur STRING d'un payload de tool data-aware (nom d'actif Finnhub, payee/catégorie extraits d'un
+  PDF de courtage, nom de projet/dette/utilisateur, employeur) via `sanitizePromptText` (strip contrôle + markup/injection, borne
+  200) — nombres/booléens/null et clés d'objet intacts. Central → couvre TOUS les tools data-aware (présents ET futurs) sans
+  risque d'oublier un champ. Test discriminant (nom d'actif malveillant neutralisé ; « Vanguard S&P 500 » conservé intact).
 - **`[A11Y-BANNER-HOVER-CONTRAST]`** 🟢 LOW (S, a11y-auditor) — pattern systémique « `bg-X-600 hover:bg-X-500` + texte blanc
   + `text-meta` 12px » : le survol descend sous 4,5:1 (WCAG 1.4.3). Corrigé dans `CeliAssetNudge` (`hover:brightness-110`) ;
   reste `BackupReminder` (variante quota `danger`) + à généraliser au design-system des bannières.

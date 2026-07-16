@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — MCP : neutralisation anti-injection des champs texte libres] — 2026-07-16
+
+### Sécurité (MCP connecteur)
+- **Champs texte libres neutralisés dans les réponses des tools data-aware** (`[MCP-PROMPT-SCRUB]`) — un nom d'actif
+  (auto-rempli depuis Finnhub) ou un payee/catégorie (extrait d'un relevé/PDF de courtage) ressortait BRUT dans le JSON lu
+  par Claude → surface d'injection de prompt indirecte. `jsonContent` (`mcp/tools/_dataAware.ts`) applique désormais
+  `scrubMcpDeep` : scrub en profondeur de toute valeur string (strip caractères de contrôle + markup/injection, borne 200)
+  via `sanitizePromptText` — nombres/soldes et clés d'objet intacts, un nom légitime (« Vanguard S&P 500 ») conservé. Central
+  → couvre TOUS les tools data-aware (présents et futurs). Test discriminant.
+
 ## [unreleased — IA : plus de faux « 0 $ » dans les prompts] — 2026-07-16
 
 ### Corrections

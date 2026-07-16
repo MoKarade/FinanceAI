@@ -530,6 +530,18 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   seuil UI nominal vs moteur inflaté) + contournement de la source unique. La revue ADVERSARIALE (workflow ultracode) l'a
   attrapé. Réflexe : `grep` le moteur (`services/projection*`) pour le concept (FIRE, retraite, jalon…) AVANT de le recalculer ;
   s'il existe, le CONSOMMER (matcher le label/champ) et juste le présenter, pas le refaire.
+- ⚠️ **FIGER une vue dérivée = SUBSTITUER à la lecture UNIQUE de la source, pas par-surface** (leçon PROJECTION-PERSIST
+  2026-07-16, demande Marc « la projection reste + badge pas à jour ») : `FutureProjection` lit `lastProjection` en UN point
+  (`results`) dont TOUT l'aval dérive (courbe, KPIs, événements, plan) → `results = gelIDB ?? live` fige TOUT de façon cohérente
+  (geler seulement la courbe aurait mélangé KPIs frais et courbe figée). Pattern de persistance d'un état de révélation :
+  **petite SIGNATURE dans le store persisté** (voyage par la sync Drive → cross-PC) + **gros blob figé en IDB device-local**
+  (~1-2 Mo, jamais synchronisé) avec repli HONNÊTE si le blob manque (autre PC : live + badge). ⚠️ Gel COUPÉ en mode test, dans
+  les DEUX sens : afficher le blob réel en démo persona fuiterait les vraies données à l'écran ; laisser le miroir tourner
+  écraserait le blob réel par du persona. ⚠️ Un état UI click-gated qui devient PERSISTÉ peut être vrai DÈS le montage → un
+  effet « focus à la révélation » vole alors le focus au chargement de page ; sauter le premier passage (ref armée). ⚠️ Un
+  effet-miroir qui écrit l'IDB à chaque publication moteur n'est sûr que si le moteur ne publie QUE sur vrai changement
+  (vérifié : ProjectionEngine memoïse params + debounce 300 ms) — vérifier la cadence du producteur AVANT de brancher un
+  side-effect d'écriture sur ses publications.
 - **No-fake-data** : zéro donnée simulée en prod. Projection non calculée → `<ProjectionRequired>`.
   ⚠️ **Une valeur NON FINIE interpolée NUE dans un prompt IA fabrique une fausse donnée PLAUSIBLE** (leçon AI-PROMPT-FAKE-ZERO
   2026-07-16) : `roundToHundred` rendait `0` pour NaN/Infinity → « 0 $ » crédible envoyé au modèle (pire qu'un « — » honnête).

@@ -44,6 +44,13 @@ export interface FinanceState extends AppState {
     /** PH2-d — vrai si une courbe est verrouillée. Persisté (booléen ADDITIF, pas de bump v7) ;
      *  le gros blob `lockedProjection` vit en IndexedDB. */
     isProjectionLocked: boolean;
+    /** [PROJECTION-PERSIST 2026-07-16] Signature des inputs de la DERNIÈRE projection RÉVÉLÉE par
+     *  l'utilisateur (clic « Calculer »/« Appliquer »). Persistée (string ADDITIVE, pas de bump v7,
+     *  synchronisée Drive → cross-PC) : au reload/changement de page/autre appareil, la courbe reste
+     *  affichée au lieu de re-demander un calcul (demande Marc). null = jamais révélé.
+     *  Si les inputs divergent (sig ≠ courante), l'UI FIGE l'ancienne courbe (blob IDB, cf
+     *  lockedProjectionStore record `revealed`) + badge « pas à jour » (choix Marc : figer, pas recalculer). */
+    revealedProjectionSig: string | null;
     pendingFocus: PendingFocus | null;
     // Mode test : true = l'app affiche des fixtures de test, banner visible
     isTestMode: boolean;
@@ -67,6 +74,8 @@ export interface FinanceState extends AppState {
     unlockProjection: () => void;
     /** PH2-d — restaure la courbe verrouillée depuis IndexedDB au boot (sans ré-écrire l'IDB). */
     setLockedProjection: (r: ProjectionResult | null) => void;
+    /** [PROJECTION-PERSIST] fixe/efface la signature de la projection révélée (null = re-gate). */
+    setRevealedProjectionSig: (sig: string | null) => void;
     /** Navigate to a tab with an optional section to scroll/focus on arrival. */
     navigateWithFocus: (tab: Tab, section?: string) => void;
     /** Called by the destination page after it has consumed the focus intent. */
@@ -415,6 +424,7 @@ export const useFinanceStore = create<FinanceState>()(
             projectionStatus: 'idle',
             lockedProjection: null,
             isProjectionLocked: false,
+            revealedProjectionSig: null,
             pendingFocus: null,
             isTestMode: false,
             realDataSnapshot: null,
@@ -446,6 +456,7 @@ export const useFinanceStore = create<FinanceState>()(
             // Boot uniquement : pose le blob restauré depuis l'IDB (réconcilie le booléen persisté
             // avec le contenu réel — si l'IDB est vide/illisible, r=null → on retombe déverrouillé).
             setLockedProjection: (r) => set({ lockedProjection: r, isProjectionLocked: r !== null }),
+            setRevealedProjectionSig: (sig) => set({ revealedProjectionSig: sig }),
             navigateWithFocus: (tab, section) => {
                 if (typeof window !== 'undefined' && window.location.hash.replace('#', '') !== tab) {
                     window.location.hash = tab;

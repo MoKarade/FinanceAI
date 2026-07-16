@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Futur : la projection révélée reste (reload, page, autre PC)] — 2026-07-16
+
+### Améliorations (Futur)
+- **La projection générée RESTE affichée** (`[PROJECTION-PERSIST]`, demande Marc) — la « révélation » (clic
+  Calculer/Appliquer) était un état local du composant : un reload ou un aller-retour d'onglet re-demandait un calcul.
+  Désormais la signature des entrées révélées est **persistée** (store, synchronisée Drive → autre PC inclus) et la
+  courbe s'affiche directement au retour. Quand les hypothèses/données changent : la courbe est **FIGÉE au dernier
+  calcul** (blob IndexedDB chiffré, record `revealed`) avec un badge « Pas à jour » + deux boutons — « Recharger avec
+  mes données » (recalcule) ou « Rechoisir mes leviers » (retour au composeur) — au lieu de disparaître derrière
+  l'écran « Paramètres modifiés » (choix Marc : figer, jamais recalculer en douce). Sur un autre PC sans le blob figé
+  (non synchronisé, ~1-2 Mo), repli honnête : courbe live + badge. En mode test, le gel est coupé (aucune vraie donnée
+  affichée/écrasée par un persona). KPIs/plan d'action suivent la même source figée (cohérence totale). 4 tests
+  discriminants (prouvés rouges sur l'ancien code).
+
 ## [unreleased — Drive : ne plus se reconnecter à chaque reload] — 2026-07-16
 
 ### Améliorations (authentification Drive)

@@ -88,9 +88,14 @@
   DOUBLE panel (security-privacy + code-reviewer) a trouvé + fait fixer une régression HIGH : le renouvellement débornait une
   « sync fantôme post-déconnexion » cross-onglet (Loi 25) → écouteur `storage` qui purge le jeton mémoire quand un autre onglet
   efface la clé (disconnect OU deleteRemoteData). + plancher 30 s (anti-boucle), skip si acquisition interactive en vol. 19 tests.
-  Découverte : **`[PROJECTION-PERSIST]`** (PR-B, demande Marc même message) — projection générée doit RESTER (reload/page/autre PC)
-  + badge « pas à jour » **figeant** l'ancienne courbe quand un param change. Infra à 90 % (péremption `isStale` déjà dans
-  `FutureProjection.tsx`) : persister `revealedSig` + le blob figé (pattern `lockedProjectionStore.ts` IDB) + surfacer badge/bouton.
+  Découverte livrée à part : `[PROJECTION-PERSIST]` (voir entrée dédiée ci-dessous).
+- **`[PROJECTION-PERSIST]`** ✅ **LIVRÉ 2026-07-16** (demande Marc « la projection reste, badge si pas à jour ») — la signature
+  de révélation (`revealedProjectionSig`) passe d'un useState local à un champ PERSISTÉ du store (additif, hors denylist →
+  localStorage + sync Drive → autre PC) ; blob figé en IDB chiffrée (record `revealed` de `lockedProjectionStore`, refactor
+  saveRecord/loadRecord/clearRecord par id, zéro migration) ; substitution unique `results = gel ?? live` → courbe/KPIs/plan
+  cohérents ; badge « Pas à jour » + « Recharger avec mes données » / « Rechoisir mes leviers » (choix Marc : FIGER, jamais
+  recalculer en douce). Repli honnête sans blob (autre PC) : live + badge. Gel coupé en mode test (anti-fuite données réelles).
+  4 tests discriminants (git-stash : 4/4 rouges sur l'ancien code).
 - **`[A11Y-BANNER-HOVER-CONTRAST]`** 🟢 LOW (S, a11y-auditor) — pattern systémique « `bg-X-600 hover:bg-X-500` + texte blanc
   + `text-meta` 12px » : le survol descend sous 4,5:1 (WCAG 1.4.3). Corrigé dans `CeliAssetNudge` (`hover:brightness-110`) ;
   reste `BackupReminder` (variante quota `danger`) + à généraliser au design-system des bannières.

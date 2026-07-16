@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — a11y : hover conforme sur le rappel de sauvegarde] — 2026-07-16
+
+### Accessibilité
+- **`BackupReminder` (variante quota) : le survol du bouton « Sauvegarder » repasse AA** (`[A11Y-BANNER-HOVER-CONTRAST]`) —
+  `hover:bg-danger-500` + blanc 12px tombait à 3,76:1 (< 4,5). Le hover FONCE désormais (`hover:brightness-90` = 5,23:1
+  mesuré en espace linéaire). Le facteur du fix dépend de la couleur de BASE (`brightness-110`, valable sur info-600,
+  aurait échoué ici à 4,48:1) — mesuré, pas copié. Variante warning mesurée conforme, inchangée.
+
 ## [unreleased — Futur : la projection révélée reste (reload, page, autre PC)] — 2026-07-16
 
 ### Améliorations (Futur)

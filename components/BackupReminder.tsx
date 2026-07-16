@@ -115,10 +115,15 @@ export const BackupReminder: React.FC<BackupReminderProps> = ({ onNavigateToSett
                 <button
                     type="button"
                     onClick={handleNavigate}
-                    className={`rounded-lg px-2.5 py-1 text-meta font-bold transition-colors focus-ring ${
+                    // [A11Y-BANNER-HOVER-CONTRAST] variante quota : `hover:bg-danger-500` + blanc 12px = 3,76:1
+                    // (< 4,5 AA). Le hover FONCE (brightness-90 → 5,23:1 mesuré, linéaire) au lieu d'éclaircir —
+                    // ⚠️ `hover:brightness-110` (le fix CeliAssetNudge, base info-600) échouerait ICI de justesse
+                    // (danger-600 ×1,1 = 4,48:1) : le bon facteur dépend de la BASE, toujours mesurer.
+                    // Variante warning (translucide) mesurée OK : base 8,64:1, hover 5,27:1.
+                    className={`rounded-lg px-2.5 py-1 text-meta font-bold focus-ring ${
                         quotaWarning
-                            ? 'bg-danger-600 hover:bg-danger-500 text-white'
-                            : 'bg-amber-700/60 hover:bg-warning-600/70 text-white'
+                            ? 'bg-danger-600 transition-[filter] hover:brightness-90 text-white'
+                            : 'bg-amber-700/60 hover:bg-warning-600/70 text-white transition-colors'
                     }`}
                 >
                     Sauvegarder

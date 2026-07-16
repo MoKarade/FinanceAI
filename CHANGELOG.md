@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — correction Budget : navigation de mois] — 2026-07-16
+
+### Corrections
+- **Budget : les dépenses réelles se recalculent en changeant de mois** (`[BUDGET-MONTH-NAV]`, bug signalé Marc) — le
+  memo des dépenses réelles par poste (`actualsMap`) omettait `periodOffset` (le navigateur de mois) dans ses dépendances
+  → naviguer vers un mois précédent laissait les dépenses **figées** sur le mois courant (« ça s'actualise pas »). Corrigé :
+  `periodOffset` ajouté aux deps (déjà présent dans les memos voisins revenus/alertes). Désormais : mois passé → dépenses de
+  CE mois ; mois courant → dépenses du mois en cours, avec le budget de référence = moyenne des mois pleins passés (tuiles
+  KPI, inchangé). Test de régression discriminant (la réel reste figée sur l'ancien code).
+
 ## [unreleased — durcissement MCP : concurrence d'écriture] — 2026-07-16
 
 ### Robustesse (MCP connecteur)

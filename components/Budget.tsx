@@ -250,10 +250,13 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             itemsWithoutTransactions: parity.itemsWithoutTransactions,
             actualByOwner,
         };
-    // getDateRange et now sont recréés à chaque render (fonctions locales) ; timeView, customStart,
-    // customEnd couvrent déjà les paramètres de getDateRange — ajout explicite éviterait une boucle.
+    // getDateRange et now sont recréés à chaque render (fonctions locales) ; ses VRAIS paramètres sont
+    // listés explicitement : timeView + customStart/customEnd ET `periodOffset` (le navigateur de mois —
+    // getDateRange l'applique, cf `now.getMonth() + periodOffset`). ⚠️ Bug corrigé 2026-07-16 : periodOffset
+    // manquait ici (mais présent dans les memos voisins revenus/alertes) → naviguer vers un autre mois NE
+    // recalculait PAS les dépenses réelles par poste (memo figé sur le mois courant → « ça s'actualise pas »).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [transactions, timeView, budgetItems, customStart, customEnd]);
+    }, [transactions, timeView, budgetItems, customStart, customEnd, periodOffset]);
 
     // [BUDGET-MONTHLY-LEDGER] Grand livre mensuel (12 mois) : RÉEL des dépenses ET des revenus
     // par mois + solde (demande Marc). Lignes dépenses = exactement les postes du budget.

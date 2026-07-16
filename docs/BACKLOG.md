@@ -70,11 +70,11 @@
   l'utilisateur (solo, 26 ans) ne change pas. La doc « 31 sous-modules projection » corrigée → 41.
 
 ### Findings du panel Vague 1 (2026-07-15) — routés (pré-existants, hors périmètre de la vague)
-- **`[AI-PROMPT-FAKE-ZERO]`** 🟡 MEDIUM (S, ai-reviewer) — `services/claude.ts:33-36` `roundToHundred` retourne **`0`**
-  pour toute valeur non finie, puis interpolé nu dans ~6 prompt-builders (`getNextBestActions`, `getCoupleOptimizationStrategies`,
-  `getRealEstateAdvice`, `buildRebalancePrompt`, `detectSubscriptionsAI`, `categorizeBatch`) → fabrique un faux « 0$ » plausible
-  (no-fake-data) envoyé au modèle, plus trompeur qu'un « — » honnête. Fix : marqueur explicite `(non disponible)` quand l'entrée
-  n'est pas finie. (Le fix Vague 1 a corrigé le pendant dans `AiAssistant.tsx` ; celui de `claude.ts` reste.)
+- **`[AI-PROMPT-FAKE-ZERO]`** ✅ **LIVRÉ 2026-07-16 (Vague 4)** — `roundToHundred` non-fini rend désormais `NaN` (plus `0`) ;
+  nouveau helper `promptCad(x)` = fini ? `<arrondi>$` : `(non disponible)` appliqué aux **27 sites d'affichage** de prompts
+  (`services/claude.ts`) ; le site pseudo-JSON de `categorizeBatch` garde `amount: null` pour un montant non fini. Plus de faux
+  « 0$ » envoyé au modèle (no-fake-data) — pendant `claude.ts` du fix Vague 1 d'`AiAssistant.tsx` (« — » via `formatNumber`).
+  Test discriminant via `buildRebalancePrompt` (NaN → « (non disponible) », jamais « 0$ »/« NaN »).
 - **`[MCP-PROMPT-SCRUB]`** 🟡 MEDIUM (S, security-privacy) — les champs texte libres (`name` d'actif, `payee`) ressortent
   BRUTS dans le JSON des tools data-aware (`get_holdings`, `get_financial_overview`, `search_transactions`) sans passer par
   `sanitizePromptText`/`wrapUserData` → injection de prompt indirecte possible (nom d'actif auto-rempli depuis Finnhub ou extrait

@@ -147,6 +147,23 @@ describe('buildRebalancePrompt — anti-injection de prompt (C1)', () => {
         const prompt = buildRebalancePrompt(malicious);
         expect(prompt).toContain('a1');
     });
+
+    // [AI-PROMPT-FAKE-ZERO] Un montant NON FINI ne doit JAMAIS être rendu « 0$ » (fausse donnée
+    // envoyée au modèle) — marqueur honnête « (non disponible) ». Discriminant : sur l'ancien code
+    // (`roundToHundred` renvoyait 0 pour non-fini), le prompt aurait contenu « 0$ ».
+    const base: RebalanceActionInput = { id: 'x', label: 'AAPL', action: 'BUY', currentPct: 5, targetPct: 10, diffAmount: 1500 };
+
+    it('montant fini → rendu « <arrondi>$ » (1500$)', () => {
+        const prompt = buildRebalancePrompt([base]);
+        expect(prompt).toContain('1500$');
+    });
+
+    it('montant NON FINI (NaN) → « (non disponible) », JAMAIS « 0$ » ni « NaN »', () => {
+        const prompt = buildRebalancePrompt([{ ...base, diffAmount: Number.NaN }]);
+        expect(prompt).toContain('(non disponible)');
+        expect(prompt).not.toContain('0$');
+        expect(prompt).not.toContain('NaN$');
+    });
 });
 
 describe('buildVisionFileBlock — PDF vs image (régression « impossible d\'uploader mes documents »)', () => {

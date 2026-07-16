@@ -30,10 +30,20 @@ const MODEL_HAIKU = 'claude-haiku-4-5-20251001';
 // Arrondit un montant à la centaine avant de l'envoyer à l'API Claude.
 // Double intérêt : confidentialité (on ne transmet pas les montants exacts de
 // l'utilisateur) et économie de tokens (des chiffres plus courts à encoder).
+// ⚠️ [AI-PROMPT-FAKE-ZERO] : une entrée NON FINIE (NaN/Infinity) rend `NaN`, JAMAIS `0` —
+// un « 0 $ » plausible envoyé au modèle est de la fausse donnée (no-fake-data), plus
+// trompeur qu'un marqueur honnête. Les sites d'AFFICHAGE passent par `promptCad` (ci-dessous)
+// qui rend « (non disponible) » ; le seul appel brut restant (categorizeBatch) est gardé sur place.
 const roundToHundred = (amount: number): number => {
-    if (!isFinite(amount)) return 0;
+    if (!isFinite(amount)) return NaN;
     return Math.round(amount / 100) * 100;
 };
+
+// Formate un montant pour un PROMPT : « 1500$ » si fini, « (non disponible) » sinon.
+// Évite le faux « 0$ » (no-fake-data) — pendant `claude.ts` du fix Vague 1 d'`AiAssistant.tsx`
+// (qui rend « — » via `formatNumber`).
+const promptCad = (amount: number): string =>
+    Number.isFinite(amount) ? `${roundToHundred(amount)}$` : '(non disponible)';
 
 // ─── Schémas Zod ─────────────────────────────────────────────────────────────
 
@@ -289,7 +299,7 @@ export const categorizeBatch = async (
             continue;
         }
 
-        const txList = toAnalyze.map(t => `- {id: ${t.id}, payee: "${cleanMerchantName(t.payee || '')}", amount: ${roundToHundred(t.amount)}}`).join('\n');
+        const txList = toAnalyze.map(t => `- {id: ${t.id}, payee: "${cleanMerchantName(t.payee || '')}", amount: ${Number.isFinite(t.amount) ? roundToHundred(t.amount) : 'null'}}`).join('\n');
 
         // C3 fix : données utilisateur encadrées <DONNEES> (via wrapUserData, qui
         // retire aussi toute balise </DONNEES> littérale injectée) + allowlist
@@ -350,7 +360,7 @@ export const detectSubscriptionsAI = async (
     if (!apiKey || transactions.length === 0) return [];
 
     const sample = transactions.slice(0, 200)
-        .map(t => `${sanitizePromptText(t.date, 10)}: ${cleanMerchantName(t.payee || '')} (${roundToHundred(t.amount)}$)`)
+        .map(t => `${sanitizePromptText(t.date, 10)}: ${cleanMerchantName(t.payee || '')} (${promptCad(t.amount)})`)
         .join('\n');
 
     // Parité avec categorizeBatch : on isole les données dans <DONNEES> pour que
@@ -427,21 +437,21 @@ export const getNextBestActions = async (
     if (!apiKey) return [];
 
     const lines: string[] = [
-        `Patrimoine net actuel: ${roundToHundred(snapshot.netWorth)}$`,
-        `Revenus mensuels: ${roundToHundred(snapshot.monthlyIncome)}$`,
-        `Dépenses mensuelles: ${roundToHundred(snapshot.monthlyExpenses)}$`,
+        `Patrimoine net actuel: ${promptCad(snapshot.netWorth)}`,
+        `Revenus mensuels: ${promptCad(snapshot.monthlyIncome)}`,
+        `Dépenses mensuelles: ${promptCad(snapshot.monthlyExpenses)}`,
         `Âge: ${snapshot.currentAge} ans, retraite cible: ${snapshot.retirementAge} ans`,
-        `Solde CELI: ${roundToHundred(snapshot.celiBalance)}$`,
-        `Solde REER: ${roundToHundred(snapshot.reerBalance)}$`,
+        `Solde CELI: ${promptCad(snapshot.celiBalance)}`,
+        `Solde REER: ${promptCad(snapshot.reerBalance)}`,
         snapshot.coupleMode ? 'Mode couple actif' : 'Mode individuel',
     ];
     if (snapshot.projectedNetWorth20y !== undefined) {
-        lines.push(`Patrimoine projeté à +20 ans: ${roundToHundred(snapshot.projectedNetWorth20y)}$`);
+        lines.push(`Patrimoine projeté à +20 ans: ${promptCad(snapshot.projectedNetWorth20y)}`);
     }
     if (snapshot.topDebts.length > 0) {
         lines.push(
             `Dettes prioritaires:\n${snapshot.topDebts
-                .map(d => `  - ${sanitizePromptText(d.name, 40)}: ${roundToHundred(d.balance)}$ à ${d.rate.toFixed(2)}%`)
+                .map(d => `  - ${sanitizePromptText(d.name, 40)}: ${promptCad(d.balance)} à ${d.rate.toFixed(2)}%`)
                 .join('\n')}`,
         );
     }
@@ -449,7 +459,7 @@ export const getNextBestActions = async (
         lines.push(
             `Objectifs actifs:\n${snapshot.activeGoals
                 .slice(0, 5)
-                .map(g => `  - ${sanitizePromptText(g.name, 40)}: ${roundToHundred(g.currentAmount)}$ / ${roundToHundred(g.targetAmount)}$ (échéance ${sanitizePromptText(g.deadline.slice(0, 4), 10)})`)
+                .map(g => `  - ${sanitizePromptText(g.name, 40)}: ${promptCad(g.currentAmount)} / ${promptCad(g.targetAmount)} (échéance ${sanitizePromptText(g.deadline.slice(0, 4), 10)})`)
                 .join('\n')}`,
         );
     }
@@ -525,12 +535,12 @@ export const getRealEstateAdvice = async (
     const userPrompt = `Tu es conseiller hypothécaire québécois expert.
 
 PROFIL DU PROJET :
-- Prix : ${roundToHundred(ctx.price)}$, mise de fonds ${roundToHundred(ctx.downPayment)}$ (${((ctx.downPayment / ctx.price) * 100).toFixed(1)}%)
-- Hypothèque : ${ctx.mortgageRate}% sur ${ctx.amortizationYears} ans → ${roundToHundred(ctx.monthlyMortgagePayment)}$/mois
-- Frais récurrents : taxes ${roundToHundred(ctx.propertyTaxesAnnual)}$/an, entretien ${roundToHundred(ctx.maintenanceAnnual)}$/an
-- Welcome tax : ${roundToHundred(ctx.welcomeTax)}$ (un coup)
+- Prix : ${promptCad(ctx.price)}, mise de fonds ${promptCad(ctx.downPayment)}${Number.isFinite(ctx.price) && ctx.price > 0 && Number.isFinite(ctx.downPayment) ? ` (${((ctx.downPayment / ctx.price) * 100).toFixed(1)}%)` : ''}
+- Hypothèque : ${ctx.mortgageRate}% sur ${ctx.amortizationYears} ans → ${promptCad(ctx.monthlyMortgagePayment)}/mois
+- Frais récurrents : taxes ${promptCad(ctx.propertyTaxesAnnual)}/an, entretien ${promptCad(ctx.maintenanceAnnual)}/an
+- Welcome tax : ${promptCad(ctx.welcomeTax)} (un coup)
 - Type : ${ctx.isPrimaryResidence ? 'résidence principale' : 'investissement locatif'}${ctx.isFirstTimeBuyer ? ' · PREMIER ACHAT (RAP + CELIAPP éligibles)' : ''}
-${ctx.currentRent ? `- Coût opportunité : loyer actuel ${roundToHundred(ctx.currentRent)}$/mois` : ''}
+${ctx.currentRent ? `- Coût opportunité : loyer actuel ${promptCad(ctx.currentRent)}/mois` : ''}
 ${ctx.marketReturnExpected ? `- Rendement boursier attendu : ${ctx.marketReturnExpected}%` : ''}
 ${ctx.propertyAppreciationExpected ? `- Appréciation immo attendue : ${ctx.propertyAppreciationExpected}%/an` : ''}
 
@@ -599,9 +609,9 @@ export const getCoupleOptimizationStrategies = async (
     // isolé en <DONNEES> — parité avec categorizeBatch/buildRebalancePrompt (le system prompt
     // QUEBEC_FISCAL_CONTEXT instruit le modèle d'ignorer toute consigne à l'intérieur de <DONNEES>).
     const profil = [
-        `- ${sanitizePromptText(ctx.user1.name, 40)} : brut ${roundToHundred(ctx.user1.grossAnnual)}$, net ${roundToHundred(ctx.user1.netAnnual)}$/an${ctx.user1.rrspRoom ? `, REER dispo ${roundToHundred(ctx.user1.rrspRoom)}$` : ''}${ctx.user1.tfsaRoom ? `, CELI dispo ${roundToHundred(ctx.user1.tfsaRoom)}$` : ''}`,
-        `- ${sanitizePromptText(ctx.user2.name, 40)} : brut ${roundToHundred(ctx.user2.grossAnnual)}$, net ${roundToHundred(ctx.user2.netAnnual)}$/an${ctx.user2.rrspRoom ? `, REER dispo ${roundToHundred(ctx.user2.rrspRoom)}$` : ''}${ctx.user2.tfsaRoom ? `, CELI dispo ${roundToHundred(ctx.user2.tfsaRoom)}$` : ''}`,
-        ctx.combinedAssetsCAD ? `- Patrimoine combiné : ${roundToHundred(ctx.combinedAssetsCAD)}$` : '',
+        `- ${sanitizePromptText(ctx.user1.name, 40)} : brut ${promptCad(ctx.user1.grossAnnual)}, net ${promptCad(ctx.user1.netAnnual)}/an${ctx.user1.rrspRoom ? `, REER dispo ${promptCad(ctx.user1.rrspRoom)}` : ''}${ctx.user1.tfsaRoom ? `, CELI dispo ${promptCad(ctx.user1.tfsaRoom)}` : ''}`,
+        `- ${sanitizePromptText(ctx.user2.name, 40)} : brut ${promptCad(ctx.user2.grossAnnual)}, net ${promptCad(ctx.user2.netAnnual)}/an${ctx.user2.rrspRoom ? `, REER dispo ${promptCad(ctx.user2.rrspRoom)}` : ''}${ctx.user2.tfsaRoom ? `, CELI dispo ${promptCad(ctx.user2.tfsaRoom)}` : ''}`,
+        ctx.combinedAssetsCAD ? `- Patrimoine combiné : ${promptCad(ctx.combinedAssetsCAD)}` : '',
         ctx.isRetired ? '- Statut : à la retraite (fractionnement de revenus de pension applicable)' : '',
     ].filter(Boolean).join('\n');
 
@@ -678,7 +688,7 @@ export function buildRebalancePrompt(actions: RebalanceActionInput[]): string {
         const label = sanitizePromptText(a.label, 80);
         const sector = a.sector ? ` | secteur ${sanitizePromptText(a.sector, 40)}` : '';
         const region = a.region ? ` | région ${sanitizePromptText(a.region, 40)}` : '';
-        return `[${a.id}] ${label} | ${a.action} | actuel ${a.currentPct.toFixed(1)}% vs cible ${a.targetPct.toFixed(1)}% (Δ ${roundToHundred(a.diffAmount)}$)${sector}${region}`;
+        return `[${a.id}] ${label} | ${a.action} | actuel ${a.currentPct.toFixed(1)}% vs cible ${a.targetPct.toFixed(1)}% (Δ ${promptCad(a.diffAmount)})${sector}${region}`;
     }).join('\n');
 
     return `Tu es conseiller financier québécois expert. Pour CHAQUE action de rééquilibrage ci-dessous, fournis UNE SEULE phrase claire (max 20 mots) qui justifie le mouvement.

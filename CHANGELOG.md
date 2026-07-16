@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — IA : plus de faux « 0 $ » dans les prompts] — 2026-07-16
+
+### Corrections
+- **Prompts IA : un montant indisponible n'est plus envoyé comme « 0 $ »** (`[AI-PROMPT-FAKE-ZERO]`, no-fake-data) —
+  `roundToHundred` (`services/claude.ts`) retournait `0` pour toute valeur non finie (NaN/Infinity), interpolé nu dans ~27 sites
+  de prompts → fabriquait un « 0 $ » plausible plus trompeur qu'un marqueur honnête. Corrigé : `roundToHundred` rend `NaN`
+  pour le non-fini, et un helper `promptCad` rend `(non disponible)` (sinon `<arrondi>$`) sur tous les sites d'affichage ;
+  `categorizeBatch` émet `amount: null` pour un montant non fini. Pendant `claude.ts` du fix Vague 1 d'`AiAssistant.tsx`
+  (qui rendait déjà « — »). Test discriminant.
+
 ## [unreleased — correction Budget : navigation de mois + revenus réels] — 2026-07-16
 
 ### Corrections

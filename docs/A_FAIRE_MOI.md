@@ -7,6 +7,37 @@
 
 ---
 
+## O-SYNC — Décisions durcissement sync (Vague 3, remontées par Claude 2026-07-16)
+> Les 2 gros wins de Vague 3 sont livrés (ARCH-SYNC-SPLIT #455, SYNC-FETCH-TIMEOUT #456). Les 2 items
+> restants touchent des chemins money-critical (ta zone de perte 230k$) et méritent TON arbitrage avant
+> que Claude code — d'où ce point plutôt qu'un pilote auto.
+
+- [ ] **`[SEC-DRIVE-ENCRYPT-DEFAULT]` — chiffrer le payload Drive par défaut ? (décision archi)**
+  - **Le pour** : aujourd'hui le payload Drive est en CLAIR (`enc:false`) par défaut ; seules les clés API
+    sont chiffrées (via le `sub` Google, `keyCipher`). Étendre ce chiffrement `sub` à tout le payload sort les
+    données financières du clair dans le fichier appData.
+  - **Le contre (pourquoi Claude n'a pas foncé)** : gain de sécurité **modeste** — le fichier vit déjà dans
+    ton `appDataFolder` PRIVÉ (accès = ton compte Google + scope `drive.appdata`), et la clé dérivée du `sub`
+    n'est **pas un secret** (le `sub` est dans le jeton OAuth → un attaquant qui a ton compte peut la redériver,
+    aveu de `keyCipher.ts`). Le vrai zéro-knowledge, c'est la passphrase (déjà dispo, opt-in).
+  - **Le coût réel (pas un « M »)** : ça touche la mécanique EXACTE de l'anti-clobber qui t'a sauvé du 230k$ :
+    (1) `decideOnLoad` lit le payload clair pour l'optimisation « contenu identique → noop » (`syncEngine.ts:54`)
+    → chiffré, elle saute → **faux conflits bruyants** sur des données identiques à la reconnexion ;
+    (2) `summarizeForConflict` lit `assets`/`transactions` en clair pour le modal « cet appareil vs Drive »
+    → il faudrait déchiffrer avant de résumer ; (3) `SyncEnvelope.enc` est un booléen dont `true` = passphrase
+    zéro-knowledge → il faudrait un 3ᵉ état (`enc:'sub'`), donc **migration de format** + rétro-compat des vieux
+    blobs clairs. C'est faisable (le `sub` est dispo → déchiffrer-avant-décider), mais c'est un chantier
+    money-critical, pas un quick-win.
+  - **Ma reco [Probable]** : **basse priorité**. Le gain (données pas en clair dans TON Drive privé) ne justifie
+    pas le risque de retoucher l'anti-clobber pour une clé non-secrète. Si tu veux du vrai secret → active la
+    **passphrase** (déjà là). Dis-moi si tu veux quand même le chiffrement `sub` par défaut et je le fais en
+    plan détaillé + panel + discriminants sur les 2 scénarios d'incident.
+- [ ] **`[MCP-WRITE-VERSION-TOKEN]` — durcir la concurrence d'écriture MCP ?** Le garde actuel (mutex +
+  `lastSeenUpdatedAt` + refus journalisé) couvre déjà l'incident principal (l'app pousse entre lecture et
+  écriture MCP). Le résidu = 2 sessions MCP simultanées du même compte (fenêtre étroite). Le vrai fix (jeton de
+  version plumbé `get→{state,version}`/`save(next,expected)`) est un refactor de l'API d'écriture MCP. **Reco
+  [Probable]** : faisable en autonome mais non urgent — dis-moi si tu veux que je le prenne.
+
 ## O1 — Auth : RETIRER Cloudflare → ✅ **FAIT (2026-06-16)**
 > Cloudflare RETIRÉ de FinanceAI : Access (mur) supprimé + apex/www dé-proxifiés (DNS only → Vercel TLS direct).
 > Auth = **gate Google in-app** actif (`VITE_GOOGLE_GATE=1`). Le tunnel CF du `hub` reste (projet séparé).

@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — VAGUE 4 « outillage a11y »] — 2026-07-16
+
+### Outillage
+- **`check-contrast` lit désormais les tokens depuis `tailwind.config.js`** (`[A11Y-CHECK-CONTRAST-DRIFT]`) — le
+  script re-codait des valeurs de couleurs PÉRIMÉES (surface/primary d'une ancienne palette) → il testait des combos
+  inexistants (protection nulle). Il dérive maintenant les tokens de la config (source unique), exclut les surfaces de
+  l'ensemble « texte », ne teste que les HEX opaques, et refuse de « passer à vide » (garde bg≥3 / text≥8). Aucun impact
+  runtime (script CLI).
+
 ## [unreleased — VAGUE 3 « durcissement sync : timeout réseau »] — 2026-07-16
 
 ### Robustesse

@@ -74,12 +74,12 @@
 > **PARTIEL** : 12 boutons d'action autonomes custom bumpés à `white/40` (TaxCenter/AiAssistant/Investments/Dashboard/Drive/
 > SyncConflictModal/Budget). RESTE différé par type (jugement) : `<input>`/`<select>` (interaction focus), toggles à état
 > conditionnel (l'actif a déjà bordure colorée), labels/dropzones — passe dédiée. Décoratifs hors périmètre.
-> **⏸️ Restant Vague 3 → DÉCISION MARC** (`docs/A_FAIRE_MOI.md` §O-SYNC) : `[SEC-DRIVE-ENCRYPT-DEFAULT]` (plan-first Claude :
-> touche l'anti-clobber `decideOnLoad`/`summarizeForConflict` + migration format `enc` bool→tri-état ; gain modeste car Drive
-> privé + clé `sub` non-secrète → reco basse priorité / passphrase pour du vrai secret) et `[MCP-WRITE-VERSION-TOKEN]` (garde
-> mutex+lastSeenUpdatedAt déjà en place ; refactor API d'écriture MCP, non urgent). `[MCP-CHARTDATA-SUM-GUARD]` différé (lint
-> heuristique, faux positifs). Vague 4 périphérique restante : `[A11Y-GHOST-BUTTON-PROMINENCE]` (variant ghost/outline WCAG 1.4.11,
-> ~28 fichiers). ⚠️ Zone sync = là où Marc a perdu 230 k$ → prudence maximale.
+> **✅ `[MCP-WRITE-VERSION-TOKEN]` (GO Marc « 2 oui » 2026-07-16)** : OCC per-call plumbé (`getWithVersion`/`save(next,
+> expectedVersion)`, `DriveStateSource.loadRawVersioned`) → 2 tool-calls MCP concurrents ne se clobberent plus. Discriminant prouvé (git-patch).
+> **⏸️ Décision Marc — `[SEC-DRIVE-ENCRYPT-DEFAULT]` = NON** (Marc 2026-07-16 « pas 1 ») : plan-first Claude avait tranché reco
+> basse priorité (touche l'anti-clobber + migration format, gain modeste, clé `sub` non-secrète) → confirmé, on ne le fait pas.
+> `[MCP-CHARTDATA-SUM-GUARD]` différé (lint heuristique, faux positifs). Reste sweep a11y sur les CHAMPS (input/select/toggle/
+> dropzone) → en attente que Marc regarde le rendu des boutons en preview. ⚠️ Zone sync = là où Marc a perdu 230 k$ → prudence maximale.
 >
 > ## 🔴 Session 2026-07-14 — Incident perte de données Drive (230k$) + anti-clobber STRICT + audit 6 alertes MCP
 > **Incident** : Marc a perdu 230k$ de placements. Chaîne : appareil silencieusement déconnecté (jeton Google expiré ~1h →

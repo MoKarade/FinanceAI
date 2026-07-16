@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — durcissement MCP : concurrence d'écriture] — 2026-07-16
+
+### Robustesse (MCP connecteur)
+- **Écritures MCP protégées par jeton de version (OCC)** (`[MCP-WRITE-VERSION-TOKEN]`) — deux tool-calls MCP concurrents
+  partant du même état en cache ne peuvent plus s'écraser silencieusement (last-writer-wins). Chaque lecture d'écriture
+  porte un jeton (`updatedAt` du blob Drive) ; `save` refuse si la version stockée a bougé depuis. Additif : les tools de
+  lecture sont inchangés ; le fichier local (stdio mono-processus) n'est pas concerné. Discriminant prouvé.
+
 ## [unreleased — VAGUE 4 « a11y : boutons ghost/outline »] — 2026-07-16
 
 ### Accessibilité

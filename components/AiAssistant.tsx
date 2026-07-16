@@ -308,7 +308,7 @@ ${last20Txs}`
                     key={label}
                     type="button"
                     onClick={() => handleSend(prompt)}
-                    className="flex items-center gap-2 p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-card text-left transition-colors focus-ring"
+                    className="flex items-center gap-2 p-2.5 bg-white/5 hover:bg-white/10 border border-white/40 rounded-card text-left transition-colors focus-ring"
                   >
                     <Icon name={icon} size={16} className="text-ink-300 flex-shrink-0" />
                     <span className="text-meta text-ink-200 leading-tight">{label}</span>

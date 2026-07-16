@@ -997,14 +997,14 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         onClick={handleRefreshPrices}
                         disabled={isRefreshingPrices}
                         aria-busy={isRefreshingPrices}
-                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/15 text-ink-200 text-tiny font-bold rounded-card transition-colors focus-ring disabled:opacity-50"
+                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/40 text-ink-200 text-tiny font-bold rounded-card transition-colors focus-ring disabled:opacity-50"
                     >
                         {isRefreshingPrices ? 'Actualisation…' : 'Actualiser les cours'}
                     </button>
                     <button
                         type="button"
                         onClick={() => setShowImportBroker(true)}
-                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/15 text-ink-200 text-tiny font-bold rounded-card transition-colors focus-ring"
+                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/40 text-ink-200 text-tiny font-bold rounded-card transition-colors focus-ring"
                     >
                         Importer (CSV courtier)
                     </button>

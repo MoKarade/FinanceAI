@@ -70,8 +70,10 @@
 > **✅ VAGUE 4 (a11y)** : `[A11Y-CHECK-CONTRAST-DRIFT]` — `check-contrast.ts` LIT les tokens depuis `tailwind.config.js`
 > (fini la dérive silencieuse) + garde anti-scan-vide. 60 combos, 0 non-conforme. `[A11Y-GHOST-BUTTON-PROMINENCE]` —
 > bordure boutons `ghost`/`outline` `white/10`→`white/40` (~3,8:1 mesuré, WCAG 1.4.11 non-texte ≥3:1) au niveau du
-> composant de design-system (corrige ~28 usages ; a11y-auditor a confirmé 3,76-3,82:1). Découverte routée : `[A11Y-BORDER-PROMINENCE-SWEEP]`
-> (~15 boutons/labels/inputs custom hors composant Button, même défaut latent — à mesurer au cas par cas, BACKLOG).
+> composant de design-system (corrige ~28 usages ; a11y-auditor a confirmé 3,76-3,82:1). `[A11Y-BORDER-PROMINENCE-SWEEP]`
+> **PARTIEL** : 12 boutons d'action autonomes custom bumpés à `white/40` (TaxCenter/AiAssistant/Investments/Dashboard/Drive/
+> SyncConflictModal/Budget). RESTE différé par type (jugement) : `<input>`/`<select>` (interaction focus), toggles à état
+> conditionnel (l'actif a déjà bordure colorée), labels/dropzones — passe dédiée. Décoratifs hors périmètre.
 > **⏸️ Restant Vague 3 → DÉCISION MARC** (`docs/A_FAIRE_MOI.md` §O-SYNC) : `[SEC-DRIVE-ENCRYPT-DEFAULT]` (plan-first Claude :
 > touche l'anti-clobber `decideOnLoad`/`summarizeForConflict` + migration format `enc` bool→tri-état ; gain modeste car Drive
 > privé + clé `sub` non-secrète → reco basse priorité / passphrase pour du vrai secret) et `[MCP-WRITE-VERSION-TOKEN]` (garde

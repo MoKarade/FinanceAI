@@ -8,13 +8,13 @@
 > **✅ Mergés** : ARCH-SYNC-SPLIT (#455), SYNC-FETCH-TIMEOUT (#456), A11Y-CHECK-CONTRAST-DRIFT (#457), GHOST-BUTTON (#458),
 > BORDER-SWEEP boutons (#459), MCP-WRITE-VERSION-TOKEN OCC (#460), `[BUDGET-MONTH-NAV]` (#461), `[BUDGET-INCOME-REAL]` (#462),
 > `[TAX-MCP-INCOMEAVG-TEST]` (#463), `[AI-PROMPT-FAKE-ZERO]` (#464), `[MCP-PROMPT-SCRUB]` (#465). **En cours** :
-> `[AUTH-DRIVE-PERSIST]` (#466) — demande Marc « ne plus me reconnecter à Drive à chaque reload » : jeton `sessionStorage`→
-> `localStorage` (clé dédiée, jamais synchronisée) + renouvellement silencieux avant ~1h. Panel a trouvé + fixé une régression
-> HIGH (sync fantôme cross-onglet post-déconnexion → écouteur `storage` qui purge le jeton). **PROCHAIN : PR-B `[PROJECTION-PERSIST]`**
-> — Marc veut que la projection générée RESTE (reload/page/autre PC) + badge « pas à jour » quand un param change (décision Marc :
-> **figer** l'ancienne courbe, pas recalculer). L'infra existe à 90 % : la détection de péremption (`isStale = revealedSig !==
-> currentSig`) est déjà là dans `FutureProjection.tsx` ; il manque à PERSISTER `revealedSig` (+ le blob figé via le pattern
-> `lockedProjectionStore.ts` IDB déjà en place) et à surfacer le badge/bouton hors de l'écran de garde. **Décision Marc** :
+> `[AUTH-DRIVE-PERSIST]` (#466, MERGÉ) — « ne plus me reconnecter à Drive à chaque reload » : jeton `sessionStorage`→
+> `localStorage` (clé dédiée, jamais synchronisée) + renouvellement silencieux avant ~1h ; panel a trouvé + fixé une régression
+> HIGH (sync fantôme cross-onglet post-déconnexion → écouteur `storage`). **En cours : `[PROJECTION-PERSIST]`** — la projection
+> révélée RESTE (signature persistée+synchronisée dans le store ; blob figé IDB record `revealed`) et se FIGE quand les entrées
+> changent (badge « Pas à jour » + boutons Recharger/Rechoisir, choix Marc : figer). Gel coupé en mode test. Panel (3 agents)
+> → 4 findings réels appliqués (garde no-fake-data reload, garde suppression blob en mode test, hash de sig, dédup IDB) ;
+> 7 tests discriminants + round-trip IDB réel (fake-indexeddb). **Décision Marc** :
 > SEC-DRIVE-ENCRYPT-DEFAULT = NON ; refresh_token/backend = NON (archi 100% navigateur). **En attente Marc** : sweep a11y des
 > CHAMPS (input/select) — regarder le rendu des boutons en preview d'abord.
 >

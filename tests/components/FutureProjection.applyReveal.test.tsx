@@ -84,8 +84,13 @@ describe('FutureProjection — applyAndReveal (PH4-FUT-TEST)', () => {
         act(() => {
             useFinanceStore.getState().enableTestMode(persona.build(), persona.id);
             // runMC=false (déterministe) ; pas de courbe pré-révélée ni verrouillée → écran d'amorçage.
+            // [PROJECTION-PERSIST] un résultat moteur DOIT être publié : depuis la garde no-fake-data
+            // (`curveVisible` exige `results !== null`), une révélation SANS résultat n'affiche plus la
+            // courbe (c'était le flash « Objectif FIRE 0k$ » corrigé) — ces tests vérifient le FLUX de
+            // révélation, pas l'attente moteur → on publie un résultat minimal.
             useFinanceStore.setState({
-                projectionRunMC: false, lastProjection: null, projectionStatus: 'idle',
+                projectionRunMC: false, projectionStatus: 'idle',
+                lastProjection: { chartData: [], fireNumber: 400_000, allResults: [] },
                 isProjectionLocked: false, lockedProjection: null,
             });
         });

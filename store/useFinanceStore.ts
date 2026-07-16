@@ -44,6 +44,13 @@ export interface FinanceState extends AppState {
     /** PH2-d — vrai si une courbe est verrouillée. Persisté (booléen ADDITIF, pas de bump v7) ;
      *  le gros blob `lockedProjection` vit en IndexedDB. */
     isProjectionLocked: boolean;
+    /** [PROJECTION-PERSIST 2026-07-16] Signature des inputs de la DERNIÈRE projection RÉVÉLÉE par
+     *  l'utilisateur (clic « Calculer »/« Appliquer »). Persistée (string ADDITIVE, pas de bump v7,
+     *  synchronisée Drive → cross-PC) : au reload/changement de page/autre appareil, la courbe reste
+     *  affichée au lieu de re-demander un calcul (demande Marc). null = jamais révélé.
+     *  Si les inputs divergent (sig ≠ courante), l'UI FIGE l'ancienne courbe (blob IDB, cf
+     *  lockedProjectionStore record `revealed`) + badge « pas à jour » (choix Marc : figer, pas recalculer). */
+    revealedProjectionSig: string | null;
     pendingFocus: PendingFocus | null;
     // Mode test : true = l'app affiche des fixtures de test, banner visible
     isTestMode: boolean;
@@ -67,6 +74,8 @@ export interface FinanceState extends AppState {
     unlockProjection: () => void;
     /** PH2-d — restaure la courbe verrouillée depuis IndexedDB au boot (sans ré-écrire l'IDB). */
     setLockedProjection: (r: ProjectionResult | null) => void;
+    /** [PROJECTION-PERSIST] fixe/efface la signature de la projection révélée (null = re-gate). */
+    setRevealedProjectionSig: (sig: string | null) => void;
     /** Navigate to a tab with an optional section to scroll/focus on arrival. */
     navigateWithFocus: (tab: Tab, section?: string) => void;
     /** Called by the destination page after it has consumed the focus intent. */
@@ -415,6 +424,7 @@ export const useFinanceStore = create<FinanceState>()(
             projectionStatus: 'idle',
             lockedProjection: null,
             isProjectionLocked: false,
+            revealedProjectionSig: null,
             pendingFocus: null,
             isTestMode: false,
             realDataSnapshot: null,
@@ -446,6 +456,7 @@ export const useFinanceStore = create<FinanceState>()(
             // Boot uniquement : pose le blob restauré depuis l'IDB (réconcilie le booléen persisté
             // avec le contenu réel — si l'IDB est vide/illisible, r=null → on retombe déverrouillé).
             setLockedProjection: (r) => set({ lockedProjection: r, isProjectionLocked: r !== null }),
+            setRevealedProjectionSig: (sig) => set({ revealedProjectionSig: sig }),
             navigateWithFocus: (tab, section) => {
                 if (typeof window !== 'undefined' && window.location.hash.replace('#', '') !== tab) {
                     window.location.hash = tab;
@@ -489,6 +500,10 @@ export const useFinanceStore = create<FinanceState>()(
                     // Les clés API sont des credentials, jamais des données financières : le mode test
                     // ne doit JAMAIS les écraser (sinon market data tombe en panne au retour).
                     apiKeys: prev.apiKeys,
+                    // [PROJECTION-PERSIST] champ de FinanceState (hors AppState) → personaResetBase ne le
+                    // couvre pas : reset explicite, sinon la sig RÉELLE traîne dans l'état persona (déjà
+                    // capturée dans realDataSnapshot ci-dessus, restaurée à la sortie).
+                    revealedProjectionSig: null,
                     isTestMode: true,
                     realDataSnapshot,
                     activeTestPersonaId: personaId ?? null,
@@ -505,7 +520,9 @@ export const useFinanceStore = create<FinanceState>()(
                     // les données fictives passer pour réelles (ce qui, le flag retombé, ré-ouvrirait le
                     // push Drive — le bug 2026-05-29). Jamais avalé.
                     logError({ source: 'storage', severity: 'warning', message: 'disableTestMode : mode test actif sans realDataSnapshot — vraies données non restaurables, retour à un état vide.' });
-                    return { ...prev, ...personaResetBase(), isTestMode: false, realDataSnapshot: null, activeTestPersonaId: null };
+                    // [PROJECTION-PERSIST] reset explicite (hors AppState) : une sig issue d'un persona
+                    // ne doit pas survivre en mode réel dans ce chemin dégradé.
+                    return { ...prev, ...personaResetBase(), revealedProjectionSig: null, isTestMode: false, realDataSnapshot: null, activeTestPersonaId: null };
                 }
                 // [PERSONA-PURGE] Le snapshot des « vraies » données peut lui-même être pollué
                 // (pris à une époque où des artefacts de persona avaient déjà fui) → on le

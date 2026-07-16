@@ -22,6 +22,11 @@ const DB_NAME = 'financeai-locked-projection';
 const STORE_NAME = 'locked';
 const DB_VERSION = 1;
 const FIXED_KEY = 'current';
+// [PROJECTION-PERSIST 2026-07-16] 2e enregistrement (MÊME store, MÊME schéma → zéro migration IDB) :
+// la projection RÉVÉLÉE, figée au clic « Calculer »/« Appliquer ». Sert à RÉAFFICHER la courbe telle
+// quelle au reload, et à la FIGER quand les paramètres changent (badge « pas à jour », choix Marc).
+// Indépendant du verrou (`current`) : verrouiller/déverrouiller ne touche pas la courbe révélée.
+const REVEALED_KEY = 'revealed';
 
 // N'avertir qu'UNE fois par session que le verrou tombe en clair (log borné).
 let _cleartextWarned = false;
@@ -71,14 +76,14 @@ async function tryGetKey(): Promise<CryptoKey | null> {
 }
 
 /**
- * Persiste la courbe verrouillée (chiffrée si une clé de device existe, sinon en clair).
+ * Persiste un enregistrement de projection (chiffré si une clé de device existe, sinon en clair).
  * Best-effort : retourne `false` sans lever en cas d'échec.
  */
-export async function saveLockedProjection(result: ProjectionResult): Promise<boolean> {
+async function saveRecord(id: string, result: ProjectionResult): Promise<boolean> {
     try {
         const key = await tryGetKey();
         const payload = key ? await encryptJson(key, result) : JSON.stringify(result);
-        const rec: LockedRecord = { id: FIXED_KEY, payload, encrypted: !!key, timestamp: Date.now() };
+        const rec: LockedRecord = { id, payload, encrypted: !!key, timestamp: Date.now() };
         const db = await openDB();
         try {
             await new Promise<void>((resolve, reject) => {
@@ -96,11 +101,21 @@ export async function saveLockedProjection(result: ProjectionResult): Promise<bo
         logError({
             source: 'storage',
             severity: 'warning',
-            message: 'Échec de persistance de la courbe verrouillée (IndexedDB).',
+            message: `Échec de persistance de la projection « ${id} » (IndexedDB).`,
             error: e instanceof Error ? e : new Error(String(e)),
         });
         return false;
     }
+}
+
+/** Persiste la courbe VERROUILLÉE (référence à superposer). Best-effort. */
+export function saveLockedProjection(result: ProjectionResult): Promise<boolean> {
+    return saveRecord(FIXED_KEY, result);
+}
+
+/** [PROJECTION-PERSIST] Persiste la projection RÉVÉLÉE (réaffichage au reload + gel si périmée). */
+export function saveRevealedProjection(result: ProjectionResult): Promise<boolean> {
+    return saveRecord(REVEALED_KEY, result);
 }
 
 /** PH2-d-1 — résultat de restauration DISCRIMINÉ : distingue « rien de stocké » d'« entrée illisible »
@@ -111,20 +126,20 @@ export type LoadLockedResult =
     | { status: 'unreadable' };
 
 /**
- * Restaure la courbe verrouillée. Retourne un statut DISCRIMINÉ (ne lève JAMAIS) :
+ * Restaure un enregistrement de projection. Retourne un statut DISCRIMINÉ (ne lève JAMAIS) :
  *  - 'ok'         : courbe relue (clair ou déchiffré).
- *  - 'empty'      : rien de stocké (jamais verrouillé) OU erreur d'ACCÈS IDB → silence légitime.
+ *  - 'empty'      : rien de stocké OU erreur d'ACCÈS IDB → silence légitime.
  *  - 'unreadable' : une entrée EXISTE mais est indéchiffrable (clé device disparue / blob altéré)
  *                   → l'appelant (boot) avertit l'utilisateur (PH2-d-1, jumeau de `decrypt_failed`).
  */
-export async function loadLockedProjection(): Promise<LoadLockedResult> {
+async function loadRecord(id: string): Promise<LoadLockedResult> {
     let rec: LockedRecord | undefined;
     try {
         const db = await openDB();
         try {
             rec = await new Promise<LockedRecord | undefined>((resolve, reject) => {
                 const tx = db.transaction(STORE_NAME, 'readonly');
-                const req = tx.objectStore(STORE_NAME).get(FIXED_KEY);
+                const req = tx.objectStore(STORE_NAME).get(id);
                 req.onsuccess = () => resolve(req.result as LockedRecord | undefined);
                 req.onerror = () => reject(req.error);
             });
@@ -137,7 +152,7 @@ export async function loadLockedProjection(): Promise<LoadLockedResult> {
         logError({
             source: 'storage',
             severity: 'warning',
-            message: 'Échec d\'accès à la courbe verrouillée (IndexedDB).',
+            message: `Échec d'accès à la projection « ${id} » (IndexedDB).`,
             error: e instanceof Error ? e : new Error(String(e)),
         });
         return { status: 'empty' };
@@ -151,7 +166,7 @@ export async function loadLockedProjection(): Promise<LoadLockedResult> {
             logError({
                 source: 'storage',
                 severity: 'warning',
-                message: 'Courbe verrouillée chiffrée mais clé de device absente : indéchiffrable.',
+                message: `Projection « ${id} » chiffrée mais clé de device absente : indéchiffrable.`,
             });
             return { status: 'unreadable' };
         }
@@ -161,21 +176,31 @@ export async function loadLockedProjection(): Promise<LoadLockedResult> {
         logError({
             source: 'storage',
             severity: 'warning',
-            message: 'Courbe verrouillée présente mais indéchiffrable (blob altéré ?).',
+            message: `Projection « ${id} » présente mais indéchiffrable (blob altéré ?).`,
             error: e instanceof Error ? e : new Error(String(e)),
         });
         return { status: 'unreadable' };
     }
 }
 
-/** Efface la courbe verrouillée persistée (au déverrouillage). Best-effort, ne lève jamais. */
-export async function clearLockedProjection(): Promise<void> {
+/** Restaure la courbe VERROUILLÉE (boot). */
+export function loadLockedProjection(): Promise<LoadLockedResult> {
+    return loadRecord(FIXED_KEY);
+}
+
+/** [PROJECTION-PERSIST] Restaure la projection RÉVÉLÉE (réaffichage au reload / gel si périmée). */
+export function loadRevealedProjection(): Promise<LoadLockedResult> {
+    return loadRecord(REVEALED_KEY);
+}
+
+/** Efface un enregistrement de projection persisté. Best-effort, ne lève jamais. */
+async function clearRecord(id: string): Promise<void> {
     try {
         const db = await openDB();
         try {
             await new Promise<void>((resolve, reject) => {
                 const tx = db.transaction(STORE_NAME, 'readwrite');
-                tx.objectStore(STORE_NAME).delete(FIXED_KEY);
+                tx.objectStore(STORE_NAME).delete(id);
                 tx.oncomplete = () => resolve();
                 tx.onerror = () => reject(tx.error);
                 tx.onabort = () => reject(tx.error);
@@ -187,8 +212,18 @@ export async function clearLockedProjection(): Promise<void> {
         logError({
             source: 'storage',
             severity: 'warning',
-            message: 'Échec d\'effacement de la courbe verrouillée (IndexedDB).',
+            message: `Échec d'effacement de la projection « ${id} » (IndexedDB).`,
             error: e instanceof Error ? e : new Error(String(e)),
         });
     }
+}
+
+/** Efface la courbe verrouillée persistée (au déverrouillage). */
+export function clearLockedProjection(): Promise<void> {
+    return clearRecord(FIXED_KEY);
+}
+
+/** [PROJECTION-PERSIST] Efface la projection révélée persistée (re-gate « rechoisir mes leviers »). */
+export function clearRevealedProjection(): Promise<void> {
+    return clearRecord(REVEALED_KEY);
 }

@@ -41,7 +41,8 @@
 > (scan de paie UI + apply_payslip MCP avec `employer`), bannière de provenance + détail des retenues
 > (féd/QC/RRQ v1+2/RQAP/AE, brut→net annuel+mensuel) + réel des transactions dans l'onglet Impôt ;
 > get_tax_situation enrichi (perUser.withholdings/netMonthly/salarySource + realMonthlyAverages). MCP v0.7.1 —
-> **⚠️ Marc : redéployer Cloud Run** (`git pull` puis `PROJECT_ID=financeai-497112 bash mcp/deploy.sh`).
+> **✅ Cloud Run REDÉPLOYÉ par Marc (2026-07-16, « ça marche »)** : le connecteur claude.ai tourne sur la
+> dernière version (v0.7.x + OCC MCP-WRITE-VERSION-TOKEN + MCP-PROMPT-SCRUB). Plus d'action en attente ici.
 >
 > ## 🟢 Session 2026-07-15 (suite) — Vidage du BACKLOG en vagues (plan PM validé « go tout ») — VAGUE 1 livrée
 > Marc a demandé au PM l'ordre pour « tout corriger et vider le backlog », validé le plan en vagues, puis « go tout sans t'arrêter ».

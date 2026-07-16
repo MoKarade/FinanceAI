@@ -132,7 +132,8 @@
 - **`[INCOME-PROVENANCE]` + `[TAX-DETAIL]`** ✅ **LIVRÉ 2026-07-15** (demande Marc : chaîne paie→Impôt→Santé,
   source unique) — salarySource estampillé (scan paie UI + apply_payslip MCP), bannière de provenance +
   détail des retenues (féd/QC/RRQ/RQAP/AE) + réel des transactions dans l'onglet Impôt ; get_tax_situation
-  enrichi (withholdings/netMonthly/salarySource/realMonthlyAverages). MCP v0.7.1 → **redéploiement Cloud Run requis**.
+  enrichi (withholdings/netMonthly/salarySource/realMonthlyAverages). MCP v0.7.1 → ✅ **Cloud Run redéployé par Marc
+  2026-07-16** (dernière version en ligne : v0.7.x + OCC + prompt-scrub).
 - **`[BUDGET-MONTHLY-LEDGER]` + `[BUDGET-PAST-AVG]`** ✅ **LIVRÉ 2026-07-15** (demandes Marc : réel
   revenus+dépenses par mois ; budget du mois courant = moyenne de tout le passé ; tuiles Budget/Dépenses
   identiques dédupliquées ; « Revenus 0 » explicité — relevé de compte mensuel en retard sur la carte).

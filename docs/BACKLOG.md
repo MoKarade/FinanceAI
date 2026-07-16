@@ -111,6 +111,43 @@
   dépend de la BASE, toujours mesurer, jamais copier-coller. Variante warning (translucide) mesurée conforme (8,64/5,27) — rien
   à changer. La GÉNÉRALISATION au design-system des bannières rejoint le sweep a11y des champs (en attente preview Marc).
 
+## 🔬 Audit financier 2026-07-16 (passe n°2) — findings vérifiés (rapport : docs/AUDIT_FINANCIER_2026-07-16.md)
+> Cœur AAA confirmé (fiscal 0 écart/~180 valeurs ; conservation : 31 scénarios, résiduel max 0,02 $ ; 41/41
+> modules testés ; 2661/2661). Lot de juin fermé 12/14. Les findings ci-dessous sont TOUS contre-vérifiés
+> dans le vrai code (trust-but-verify) — détail/preuves au rapport §5.
+
+- [ ] **`[STORE-REHYDRATE-SILENT]`** 🔴 CRITIQUE (S) — la réhydratation Zustand n'a AUCUN filet : blob corrompu /
+  migration qui lève = app VIERGE au boot, zéro trace (pas d'`onRehydrateStorage` ; le « filet ultime » de
+  `syncPull.ts:88-94` est du code mort — `rehydrate()` ne rejette jamais, vérifié dans zustand). Fix :
+  `onRehydrateStorage` → `logError(critical)` + try/catch par palier dans `migratePersistedState` + bannière
+  honnête « données non chargées — restaurer un backup ». Même classe que l'incident 230 k$, côté local.
+- [ ] **`[DASH-NW-DUP]`** 🔴 HIGH (M) — « Valeur Nette Globale » (Dashboard, KPI n°1) contourne la source unique :
+  le REPLI sans CSV (`Dashboard.tsx:160-175`) rend `cash + portefeuille` — **dettes JAMAIS soustraites**
+  (pattern MONEY-PHANTOM/H1 réapparu) ; chemin principal : dette sommée sans `isFinite` (l.270). Nuance : l'immo
+  dans la série HISTORIQUE suit la convention moteur (périmètre à ÉTIQUETER, pas un bug). Fix : router le repli
+  sur `computePresentNetWorth` + garde + étiquette + livrer le test de parité « NW unique » (reco juin, jamais livré).
+- [ ] **`[INCOME-3WAY-SPLIT]`** 🔴 HIGH (S-M) — `financialSnapshot.ts:90` (→ MCP get_financial_overview + contexte IA)
+  et `NextBestAction.tsx:112` (sidebar permanente) envoient encore `Σ netSalary` (salaire d'onboarding) à l'IA,
+  alors que Budget affiche le revenu RÉEL depuis BUDGET-INCOME-REAL — l'angle mort nommé par la leçon elle-même.
+  Fix : router sur `computeMonthlyActualAverages`/`computeIncomeBreakdown`, repli étiqueté « salaire déclaré ».
+- [ ] **`[MCP-TOOLS-SILENT-CATCH]`** 🟠 ÉLEVÉ (S) — `withState`/`runApply`/`applyPayslip` : les 4 catch de frontière
+  MCP rendent l'erreur à Claude mais n'appellent JAMAIS `logError` → bug de calcul introuvable côté Cloud Run.
+- [ ] **`[SYNC-APIKEYS-SILENT]`** 🟡 MOYEN (S) — `syncPull.ts:55-60` : échec `saveApiKeys` (coffre indispo) avalé →
+  clés en mémoire seulement, disparaissent au reload sans trace (asymétrique avec l.153-164 qui journalise).
+- [ ] **`[DEBT-SUM-DUP]`** 🟡 MOYEN (S) — 4 sites (`NextBestAction:109`, `HealthIndicator:108`, `Dashboard:270`,
+  `DebtManager:73`) réimplémentent `computeTotalDebt` sans garde `isFinite`. Fix groupé DRY.
+- [ ] **`[MCP-USERTEXT-LANDMINE]`** 🟡 MOYEN (S, préventif) — `USER_TEXT_KEYS` ne couvre pas `notes`/`insurer`/
+  `beneficiary`/`destination` (champs LIBRES utilisateur, aucun tool ne les expose ENCORE — exploitabilité nulle
+  aujourd'hui, vérifiée). Durcir avant qu'un futur tool « assurances/documents/voyages » n'hérite du trou.
+- [ ] **`[LOG-TOKEN-ANCHORED]`** 🟢 LOW (XS) — `errorLogger.ts:76` : scrub matche `token` mais pas `accessToken`
+  (aucun appelant concerné aujourd'hui — préventif, même transition que SEC-LOG-DEBT-REGEX).
+- [ ] **`[MCP-RUNPROJECTION-AMBIG]`** 🟢 LOW (XS) — clarifier la description de `run_projection` (calculateur
+  générique ≠ vrai moteur) pour ne pas aiguiller le LLM vers la formule simplifiée.
+- [x] **`[LINT-4-WARNINGS]`** ✅ réglé dans la PR du rapport (3 locales mortes `financialSnapshot.ts` + import
+  `within` orphelin `Budget.test.tsx`) — lint 0 problème.
+- Dette non urgente (L, plan-first `architect`) : découpe de `Budget.tsx` (+20 % en 3 sem.) / `FutureProjection.tsx`
+  (+13 %) / `TaxCenter.tsx` (+31 %) — le terrain où naissent les récidives de la classe n°1.
+
 ## 🔴 Données de test dans les vraies données (2026-07-15) — incident « fausses transactions »
 > Marc : « j'ai des fausses transactions sans doute des profils de test je veux plus que ça arrive jamais ».
 > Constat (via MCP + code) : ~600 transactions du persona « Karim » (`persona-tx-*`) + objectif `kar-fg1`

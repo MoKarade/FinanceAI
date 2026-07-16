@@ -79,9 +79,8 @@ export function buildFinancialSnapshot(
     const fx = state.fxRates ?? {};
     const assets = state.assets ?? [];
     const breakdown = computeAssetBreakdown(assets, fx);
-    const investments = computeInvestmentsValue(assets, fx);
-    const liquidity = computeCurrentLiquidity(state.initialBalances ?? {}, state.transactions ?? []);
-    const totalDebt = computeTotalDebt(state.debts ?? []);
+    // (Les intermédiaires investments/liquidity/totalDebt ont été absorbés par computePresentNetWorth —
+    // locales mortes retirées, audit 2026-07-16.)
     // Source unique du NW présent (parité Dashboard/IA/moteur garantie par construction).
     const netWorth = computePresentNetWorth(state.initialBalances ?? {}, state.transactions ?? [], assets, fx, state.debts ?? []);
 

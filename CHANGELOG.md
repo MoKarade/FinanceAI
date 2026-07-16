@@ -12,9 +12,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Champs texte libres neutralisés dans les réponses des tools data-aware** (`[MCP-PROMPT-SCRUB]`) — un nom d'actif
   (auto-rempli depuis Finnhub) ou un payee/catégorie (extrait d'un relevé/PDF de courtage) ressortait BRUT dans le JSON lu
   par Claude → surface d'injection de prompt indirecte. `jsonContent` (`mcp/tools/_dataAware.ts`) applique désormais
-  `scrubMcpDeep` : scrub en profondeur de toute valeur string (strip caractères de contrôle + markup/injection, borne 200)
-  via `sanitizePromptText` — nombres/soldes et clés d'objet intacts, un nom légitime (« Vanguard S&P 500 ») conservé. Central
-  → couvre TOUS les tools data-aware (présents et futurs). Test discriminant.
+  `scrubMcpDeep` : neutralise (strip caractères de contrôle + markup/injection, borne 200 via `sanitizePromptText`) les
+  valeurs sous les CLÉS de texte libre utilisateur (`name`/`payee`/`category`/`label`/`employer`/`description`) — les notes/
+  verdicts money-critical rédigés par le code (`notes`, `netTaxSettlementsNote`…), les nombres/soldes, les identifiants
+  (`symbol` : `^GSPC` préservé) et les clés d'objet restent INTACTS. Central → couvre TOUS les tools data-aware (présents et
+  futurs) pour les clés connues. Un nom légitime (« Vanguard S&P 500 ») conservé. Tests discriminants (nom malveillant
+  neutralisé ; notes code-auteur intactes au-delà de 200 c.).
 
 ## [unreleased — IA : plus de faux « 0 $ » dans les prompts] — 2026-07-16
 

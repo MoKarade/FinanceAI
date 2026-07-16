@@ -113,6 +113,32 @@ describe('[MCP-PROMPT-SCRUB] neutralisation des champs texte libres (anti-inject
         const pos = (out.positions as Array<Record<string, unknown>>)[0];
         expect(pos.name).toBe('Vanguard S&P 500'); // « & » NON strippé, valeur intacte
     });
+
+    it('get_holdings : un SYMBOLE d\'indice (« ^GSPC ») garde son « ^ » (symbol hors périmètre du scrub)', async () => {
+        const state = karimState();
+        state.assets = [{ ...evilAsset('S&P 500 Index'), symbol: '^GSPC' }];
+        const h = captureTool(registerGetHoldings, providerFor(state));
+        const out = await callJson(h);
+        const pos = (out.positions as Array<Record<string, unknown>>)[0];
+        expect(pos.symbol).toBe('^GSPC'); // identifiant préservé (le scrub ne touche pas `symbol`)
+    });
+
+    // ⚠️ RÉGRESSION money-critical (double finding panel 2026-07-16) : le scrub NE DOIT PAS toucher les
+    // notes/verdicts RÉDIGÉS PAR LE CODE (clés `notes`/`netTaxSettlementsNote`…) — ce sont des garde-fous
+    // anti-mésinterprétation. Une 1re version scrubait TOUTE string + tronquait à 200 → détruisait ces notes.
+    it('[note code-auteur] get_tax_situation.notes CONSERVÉ INTACT (mise en garde « agrégat ménage » au-delà de 200 car.)', async () => {
+        const h = captureTool(registerGetTaxSituation, providerFor(karimState()));
+        const out = await callJson(h, { year: 2026 });
+        // Phrase située APRÈS le 200e caractère de la note (tronquée sur l'ancienne version).
+        expect(out.notes as string).toContain('AGRÉGATS du ménage');
+    });
+
+    it('[note code-auteur] get_projection.netTaxSettlementsNote CONSERVÉ INTACT (« net ≠ impôt total », anti-incident -50 253 $)', async () => {
+        const h = captureTool(registerGetProjection, providerFor(karimState()));
+        const out = await callJson(h, { years: 10, scenario: 'BASE', monteCarlo: false });
+        // Phrase de FIN de note (au-delà du 200e car.) — tronquée par la 1re version à scrub aveugle.
+        expect(out.netTaxSettlementsNote as string).toContain('Pour la charge fiscale courante');
+    });
 });
 
 describe('[MCP-GET-HOLDINGS] get_holdings', () => {

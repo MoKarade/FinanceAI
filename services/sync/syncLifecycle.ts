@@ -78,13 +78,15 @@ export async function connectAndSync(): Promise<void> {
 
 /**
  * R2 — reprise SILENCIEUSE pour le gate de login : réutilise un jeton Google DÉJÀ EN CACHE (mémoire
- * ou sessionStorage, survit à un reload tant que l'onglet reste ouvert et que le jeton n'a pas
- * expiré ~1 h). Si présent, on récupère l'email, met à jour la meta et exécute la décision de sync
+ * ou localStorage — depuis AUTH-DRIVE-PERSIST 2026-07-16, survit reload / fermeture d'onglet). Si
+ * présent et non expiré, on récupère l'email, met à jour la meta et exécute la décision de sync
  * (→ pull auto si le local est vide → restauration « tout automatique »).
  *
- * N.B. : il n'y a PLUS de renouvellement réseau silencieux (GIS est popup-only → un popup au boot
- * sans geste utilisateur échouait avec `popup_failed_to_open`). Sans jeton en cache valide, on
- * retourne `false` et le gate montre le bouton « Se connecter » (clic = geste → popup autorisé).
+ * N.B. : AU BOOT on ne tente jamais de popup ni de réseau (GIS est popup-only → un popup sans geste
+ * échouerait avec `popup_failed_to_open`). Le renouvellement réseau silencieux existe désormais
+ * (`gisAuth.scheduleTokenRenewal`) mais est réservé au MINUTEUR post-login (onglet vivant), pas au
+ * boot. Sans jeton en cache valide, on retourne `false` et le gate montre « Se connecter » (clic =
+ * geste → popup autorisé).
  *
  * Retourne `true` si authentifié (le gate rend l'app), `false` sinon. Ne lève jamais : un échec
  * silencieux est le cas NORMAL (1er accès, ou jeton expiré/onglet rouvert).

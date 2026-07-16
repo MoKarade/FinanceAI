@@ -83,6 +83,14 @@
   et les identifiants (`symbol` → `^GSPC`) passent INTACTS (le scrub aveugle les tronquait à 200 → détruisait les garde-fous
   anti-mésinterprétation). Central → couvre tous les tools data-aware pour les clés connues. Tests discriminants (nom malveillant
   neutralisé ; « Vanguard S&P 500 » + notes code-auteur au-delà de 200 c. intactes).
+- **`[AUTH-DRIVE-PERSIST]`** ✅ **LIVRÉ 2026-07-16** (demande Marc « ne plus me reconnecter à Drive à chaque reload ») — jeton
+  GIS `sessionStorage`→`localStorage` (clé dédiée, jamais synchronisée) + renouvellement silencieux avant ~1h (`gisAuth.ts`).
+  DOUBLE panel (security-privacy + code-reviewer) a trouvé + fait fixer une régression HIGH : le renouvellement débornait une
+  « sync fantôme post-déconnexion » cross-onglet (Loi 25) → écouteur `storage` qui purge le jeton mémoire quand un autre onglet
+  efface la clé (disconnect OU deleteRemoteData). + plancher 30 s (anti-boucle), skip si acquisition interactive en vol. 19 tests.
+  Découverte : **`[PROJECTION-PERSIST]`** (PR-B, demande Marc même message) — projection générée doit RESTER (reload/page/autre PC)
+  + badge « pas à jour » **figeant** l'ancienne courbe quand un param change. Infra à 90 % (péremption `isStale` déjà dans
+  `FutureProjection.tsx`) : persister `revealedSig` + le blob figé (pattern `lockedProjectionStore.ts` IDB) + surfacer badge/bouton.
 - **`[A11Y-BANNER-HOVER-CONTRAST]`** 🟢 LOW (S, a11y-auditor) — pattern systémique « `bg-X-600 hover:bg-X-500` + texte blanc
   + `text-meta` 12px » : le survol descend sous 4,5:1 (WCAG 1.4.3). Corrigé dans `CeliAssetNudge` (`hover:brightness-110`) ;
   reste `BackupReminder` (variante quota `danger`) + à généraliser au design-system des bannières.

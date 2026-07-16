@@ -6,6 +6,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Drive : ne plus se reconnecter à chaque reload] — 2026-07-16
+
+### Améliorations (authentification Drive)
+- **La session Google Drive survit aux reloads et au-delà de ~1h** (`[AUTH-DRIVE-PERSIST]`, demande Marc) — le jeton GIS
+  (`drive.appdata`+`email`, ~1h, sans refresh token) était caché en `sessionStorage` → perdu à la fermeture d'onglet, mort
+  à 1h. Désormais : (1) cache en **`localStorage`** (clé dédiée `financeai:gis:token:v1`, **jamais** synchronisée vers Drive)
+  → survit reload / fermeture d'onglet / nouvel onglet ; (2) **renouvellement silencieux** avant l'expiration tant que
+  l'onglet vit (échec = silencieux, bannière de reconnexion en secours ; jamais de popup au boot). Reste dans l'archi 100%
+  navigateur (pas de backend / refresh token).
+
+### Sécurité
+- **Déconnexion/suppression Drive propagée entre onglets** — le renouvellement silencieux aurait pu maintenir un 2ᵉ onglet
+  « connecté » indéfiniment après une déconnexion faite ailleurs (« sync fantôme post-déconnexion », Loi 25). Un écouteur
+  `storage` purge le jeton en mémoire + arrête le renouvellement dès qu'un autre onglet efface la clé jeton (déconnexion OU
+  suppression des données Drive) → l'onglet cesse immédiatement de pousser. Findings panel security-privacy + code-reviewer.
+
 ## [unreleased — MCP : neutralisation anti-injection des champs texte libres] — 2026-07-16
 
 ### Sécurité (MCP connecteur)

@@ -2,8 +2,9 @@
 // Authentification Google Drive via Google Identity Services (GIS) — token client navigateur.
 // Scope minimal : drive.appdata (dossier app caché) + userinfo.email (afficher le compte).
 // Aucun secret client (flux token GIS public). Le token est gardé en mémoire ET mis en cache
-// dans sessionStorage (effacé à la fermeture de l'onglet) pour éviter une reconnexion à chaque
-// rechargement ; scope minimal drive.appdata → un vol éventuel ne donne accès qu'au dossier app.
+// dans localStorage (clé dédiée, jamais synchronisée) pour éviter une reconnexion à chaque reload /
+// fermeture d'onglet, + renouvellement silencieux avant expiration (cf plus bas). Scope minimal
+// drive.appdata → un vol éventuel ne donne accès qu'au dossier app, et le jeton expire en ~1h.
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 export const DRIVE_SCOPES = [
@@ -46,35 +47,43 @@ let _scriptPromise: Promise<void> | null = null;
 // fois à l'init du client). Sans ça, un échec SANS réponse token (pas de session Google, popup
 // bloqué…) ne rejetterait jamais la promesse → boot / gate figé indéfiniment.
 let _pendingReject: ((e: Error) => void) | null = null;
+// Minuteur de renouvellement silencieux du jeton (choix Marc 2026-07-16 : ne plus se reconnecter à ~1h
+// tant que l'onglet vit). Armé après chaque acquisition, purgé à la révocation/reset.
+let _renewTimer: ReturnType<typeof setTimeout> | undefined;
 
 /** Marge avant expiration pour rafraîchir un peu en avance (évite un appel sur un token mourant). */
 const EXPIRY_MARGIN_MS = 60_000;
+/** Coussin supplémentaire avant l'échéance pour lancer le renouvellement (renouvelle ~2 min avant). */
+const RENEW_LEAD_MS = 60_000;
 
-// Persistance du jeton DANS LA SESSION (sessionStorage). Le jeton GIS ne vit qu'en mémoire : un simple
-// rafraîchissement de page le perdait → l'app se croyait déconnectée et il fallait re-cliquer
-// « Connecter » à chaque refresh (friction majeure signalée par Marc 2026-05-29, surtout en navigation
-// privée où la ré-auth silencieuse est souvent bloquée par les cookies tiers). On le persiste pour la
-// durée de la session (effacé à la fermeture de l'onglet ET à la révocation). C'est un jeton de portée
-// drive.appdata + email (pas un secret long terme) ; compromis UX assumé.
+// Persistance du jeton en localStorage (choix Marc 2026-07-16 : « je veux pas me reconnecter à chaque
+// reload »). Le jeton GIS ne vit qu'en mémoire ~1h ; l'ancien cache sessionStorage était PERDU à la
+// FERMETURE DE L'ONGLET et non partagé entre onglets → reconnexion à chaque nouvel onglet. localStorage
+// survit à la fermeture d'onglet ET est partagé entre onglets du même appareil. ⚠️ Clé DÉDIÉE (≠
+// `financeai-storage`, le store synchronisé) → le jeton n'est JAMAIS poussé vers Drive (secret
+// device-local, comme les apiKeys). Portée minimale drive.appdata + email, expire ~1h (pas un secret
+// long terme) : un vol ne donne accès qu'au dossier app, et pour < 1h. La péremption ~1h est couverte
+// par le renouvellement silencieux (cf `scheduleTokenRenewal`) tant que l'onglet vit ; sinon la bannière
+// de reconnexion prend le relais.
 const TOKEN_STORAGE_KEY = 'financeai:gis:token:v1';
 
-/** Persiste le jeton courant en session (best-effort). */
+/** Persiste le jeton courant sur l'appareil (localStorage, best-effort). */
 function persistCached(): void {
     try {
-        if (typeof sessionStorage !== 'undefined' && _cached) {
-            sessionStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(_cached));
+        if (typeof localStorage !== 'undefined' && _cached) {
+            localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(_cached));
         }
     } catch {
-        /* sessionStorage indispo — le jeton reste en mémoire pour cette page */
+        /* localStorage indispo (quota, nav privée stricte) — le jeton reste en mémoire pour cette page */
     }
 }
 
-/** Restaure le jeton depuis la session s'il est encore valide (sinon purge). No-op si déjà en mémoire. */
-function restoreCachedFromSession(): void {
+/** Restaure le jeton depuis l'appareil s'il est encore valide (sinon purge). No-op si déjà en mémoire. */
+function restoreCachedToken(): void {
     if (_cached) return;
     try {
-        if (typeof sessionStorage === 'undefined') return;
-        const raw = sessionStorage.getItem(TOKEN_STORAGE_KEY);
+        if (typeof localStorage === 'undefined') return;
+        const raw = localStorage.getItem(TOKEN_STORAGE_KEY);
         if (!raw) return;
         const parsed = JSON.parse(raw) as { accessToken?: unknown; expiresAt?: unknown };
         if (
@@ -84,7 +93,7 @@ function restoreCachedFromSession(): void {
         ) {
             _cached = { accessToken: parsed.accessToken, expiresAt: parsed.expiresAt };
         } else {
-            sessionStorage.removeItem(TOKEN_STORAGE_KEY); // expiré / corrompu → purge
+            localStorage.removeItem(TOKEN_STORAGE_KEY); // expiré / corrompu → purge
         }
     } catch {
         /* illisible — on repartira d'une ré-authentification */
@@ -92,13 +101,35 @@ function restoreCachedFromSession(): void {
 }
 
 /** Efface le jeton persisté (déconnexion / reset). */
-function clearCachedSession(): void {
+function clearCachedToken(): void {
     try {
-        if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+        if (typeof localStorage !== 'undefined') localStorage.removeItem(TOKEN_STORAGE_KEY);
     } catch {
         /* best-effort */
     }
 }
+
+// [AUTH-DRIVE-PERSIST] Propagation CROSS-ONGLET de la déconnexion (finding security-privacy). Quand un
+// AUTRE onglet efface le jeton de localStorage (`revokeAccess`→`clearCachedToken` lors d'une déconnexion
+// ou d'une suppression Drive), l'événement `storage` se déclenche ICI — il ne se déclenche QUE dans les
+// AUTRES onglets, jamais dans celui qui a fait le changement. On purge alors le jeton EN MÉMOIRE + on
+// arrête le renouvellement silencieux → cet onglet cesse IMMÉDIATEMENT de pousser vers Drive. Sans ça,
+// le renouvellement le garderait « connecté » indéfiniment après une déconnexion faite ailleurs (sync
+// fantôme post-déconnexion, Loi 25 droit à l'effacement).
+let _storageListenerBound = false;
+function bindCrossTabDisconnect(): void {
+    if (_storageListenerBound) return;
+    if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return;
+    _storageListenerBound = true;
+    window.addEventListener('storage', (e: StorageEvent) => {
+        // Suppression de la clé jeton par un autre onglet → newValue null = déconnexion propagée.
+        if (e.key === TOKEN_STORAGE_KEY && e.newValue === null) {
+            _cached = null;
+            clearRenewTimer();
+        }
+    });
+}
+bindCrossTabDisconnect();
 
 /** Le Client ID OAuth est-il configuré ? (feature inerte sinon — cf VITE_GOOGLE_CLIENT_ID). */
 export function isGoogleAuthConfigured(): boolean {
@@ -164,26 +195,12 @@ function ensureTokenClient(): GisTokenClient {
 }
 
 /**
- * Demande un access token. `interactive=true` force le consentement (1er login / re-grant) et
- * ouvre le popup Google (à n'appeler que SOUS un geste utilisateur — clic).
- *
- * `interactive=false` = reprise SILENCIEUSE : on s'appuie UNIQUEMENT sur le cache (mémoire +
- * sessionStorage). Raison (fix `popup_failed_to_open`, Marc 2026-06) : le token client GIS n'a
- * aucun flux sans UI — toute acquisition réseau passe par un popup, lequel exige un geste
- * utilisateur. Au boot / hard-refresh (Ctrl+Shift+R) il n'y a pas de geste → le navigateur bloque
- * le popup et GIS lève `popup_failed_to_open` à CHAQUE chargement. On ne tente donc jamais de popup
- * en silencieux : sans jeton valide en cache, on rejette proprement et l'appelant (gate / boot)
- * bascule sur le bouton « Connecter ». La ré-auth réseau silencieuse étant de toute façon bloquée
- * par les cookies tiers dans les navigateurs modernes, on ne perd rien d'utile.
+ * Acquisition RÉSEAU d'un jeton via GIS. `prompt='consent'` = login interactif (popup, sous un geste).
+ * `prompt=''` = renouvellement (réutilise le consentement existant ; peut aboutir SANS popup si la
+ * session Google est active + cookies tiers non bloqués, sinon GIS lève un `error_callback`). Sur succès :
+ * met en cache, persiste, et (re)programme le renouvellement silencieux.
  */
-export function requestAccessToken(interactive: boolean): Promise<string> {
-    if (!interactive) {
-        restoreCachedFromSession();
-        if (_cached && !isTokenExpired(_cached.expiresAt, Date.now())) {
-            return Promise.resolve(_cached.accessToken);
-        }
-        return Promise.reject(new Error('Session Google expirée — reconnexion requise'));
-    }
+function acquireTokenViaNetwork(prompt: 'consent' | '', timeoutMs: number): Promise<string> {
     return loadGisScript().then(
         () =>
             new Promise<string>((resolve, reject) => {
@@ -209,10 +226,9 @@ export function requestAccessToken(interactive: boolean): Promise<string> {
                 // Route l'error_callback GIS (défini à l'init) vers CE rejet.
                 _pendingReject = onError;
                 // Filet anti-hang : si GIS ne rappelle ni callback ni error_callback (cas limite).
-                // Court en silencieux (échec attendu rapide), large en interactif (l'utilisateur agit).
                 timer = setTimeout(
                     () => settle(() => reject(new Error("Délai dépassé pour l'autorisation Google"))),
-                    interactive ? 120_000 : 15_000,
+                    timeoutMs,
                 );
                 client.callback = (resp: GisTokenResponse) => {
                     if (resp.error || !resp.access_token) {
@@ -224,36 +240,102 @@ export function requestAccessToken(interactive: boolean): Promise<string> {
                     const accessToken = resp.access_token;
                     const expiresAt = Date.now() + (resp.expires_in ?? 3600) * 1000;
                     _cached = { accessToken, expiresAt };
-                    persistCached(); // survit à un refresh → plus de reconnexion à chaque rafraîchissement
+                    persistCached(); // survit reload/fermeture d'onglet → plus de reconnexion à chaque reload
+                    scheduleTokenRenewal(); // garde la session vivante au-delà de ~1h tant que l'onglet vit
                     settle(() => resolve(accessToken));
                 };
-                client.requestAccessToken({ prompt: interactive ? 'consent' : '' });
+                client.requestAccessToken({ prompt });
             }),
     );
 }
 
 /**
- * Retourne un token valide DEPUIS LE CACHE (mémoire ou session) s'il est bon. Sinon REJETTE
+ * (Re)programme un renouvellement SILENCIEUX du jeton un peu avant son expiration, tant que l'onglet
+ * vit (choix Marc 2026-07-16 : ne plus se reconnecter à ~1h). Best-effort : si GIS exige une UI
+ * (session Google absente, cookies tiers bloqués), l'échec est SILENCIEUX et la bannière de
+ * reconnexion (`SyncStatusBanner`) prend le relais — on n'ouvre JAMAIS un popup sans geste utilisateur.
+ */
+/** Arrête le minuteur de renouvellement (déconnexion / reset / re-armement). */
+function clearRenewTimer(): void {
+    if (_renewTimer) { clearTimeout(_renewTimer); _renewTimer = undefined; }
+}
+
+/** Plancher du délai de renouvellement : évite une boucle serrée si un `expires_in` anormalement
+ *  court était renvoyé (Google renvoie ~3600s en pratique). Retente au pire toutes les 30 s. */
+const MIN_RENEW_DELAY_MS = 30_000;
+
+function scheduleTokenRenewal(): void {
+    if (typeof setTimeout === 'undefined') return;
+    clearRenewTimer();
+    if (!_cached) return;
+    const delay = Math.max(MIN_RENEW_DELAY_MS, _cached.expiresAt - Date.now() - EXPIRY_MARGIN_MS - RENEW_LEAD_MS);
+    _renewTimer = setTimeout(() => {
+        _renewTimer = undefined;
+        // [code-reviewer] Ne PAS renouveler si une acquisition (login interactif) est DÉJÀ en vol :
+        // `_tokenClient.callback`/`_pendingReject` sont des singletons — un 2e appel écraserait la
+        // promesse en cours. On re-programme pour plus tard ; l'acquisition en vol, en cas de succès,
+        // ré-arme de toute façon le renouvellement.
+        if (_pendingReject) { scheduleTokenRenewal(); return; }
+        // Succès → le callback réseau reprogramme via scheduleTokenRenewal. Échec → silencieux (bannière).
+        renewTokenSilently().catch(() => { /* best-effort : reconnexion proposée par la bannière */ });
+    }, delay);
+}
+
+/**
+ * Renouvellement SILENCIEUX (réseau, `prompt=''`) — réservé au minuteur post-login. NE PAS appeler au
+ * boot (popup bloqué sans geste, cf `requestAccessToken(false)`). Échoue proprement si GIS exige une UI.
+ */
+export function renewTokenSilently(): Promise<string> {
+    return acquireTokenViaNetwork('', 15_000);
+}
+
+/**
+ * Demande un access token. `interactive=true` force le consentement (1er login / re-grant) et
+ * ouvre le popup Google (à n'appeler que SOUS un geste utilisateur — clic).
+ *
+ * `interactive=false` = reprise SILENCIEUSE au BOOT : on s'appuie UNIQUEMENT sur le cache (mémoire +
+ * localStorage). Raison (fix `popup_failed_to_open`, Marc 2026-06) : au boot / hard-refresh il n'y a
+ * pas de geste → un popup serait bloqué et GIS lèverait `popup_failed_to_open` à CHAQUE chargement.
+ * On ne tente donc jamais de popup en silencieux au boot : sans jeton valide en cache, on rejette
+ * proprement et l'appelant (gate / boot) bascule sur le bouton « Connecter ». Le renouvellement réseau
+ * silencieux existe (cf `renewTokenSilently`) mais est réservé au MINUTEUR post-login (onglet vivant),
+ * jamais au boot.
+ */
+export function requestAccessToken(interactive: boolean): Promise<string> {
+    if (!interactive) {
+        restoreCachedToken();
+        if (_cached && !isTokenExpired(_cached.expiresAt, Date.now())) {
+            scheduleTokenRenewal(); // jeton restauré valide → (re)armer le renouvellement pour cet onglet
+            return Promise.resolve(_cached.accessToken);
+        }
+        return Promise.reject(new Error('Session Google expirée — reconnexion requise'));
+    }
+    return acquireTokenViaNetwork('consent', 120_000);
+}
+
+/**
+ * Retourne un token valide DEPUIS LE CACHE (mémoire ou localStorage) s'il est bon. Sinon REJETTE
  * (cf `requestAccessToken(false)`, cache-only — plus de renouvellement réseau silencieux : GIS est
  * popup-only, ce qui échouait au boot sans geste utilisateur). Pour (ré)obtenir un jeton après
  * expiration, il faut passer par la connexion interactive (clic → `connectAndSync`).
  */
 export function getValidAccessToken(): Promise<string> {
-    restoreCachedFromSession(); // récupère le jeton d'un refresh précédent (évite une reconnexion)
+    restoreCachedToken(); // récupère le jeton d'un refresh précédent (évite une reconnexion)
     if (_cached && !isTokenExpired(_cached.expiresAt, Date.now())) {
+        scheduleTokenRenewal(); // jeton valide → garder la session vivante (renouvellement pour cet onglet)
         return Promise.resolve(_cached.accessToken);
     }
     return requestAccessToken(false);
 }
 
-/** Token en cache (mémoire ou session, sans réseau), ou null. Pour savoir si on est « connecté ». */
+/** Token en cache (mémoire ou localStorage, sans réseau), ou null. Pour savoir si on est « connecté ». */
 export function getCachedToken(): string | null {
-    restoreCachedFromSession();
+    restoreCachedToken();
     if (_cached && !isTokenExpired(_cached.expiresAt, Date.now())) return _cached.accessToken;
     return null;
 }
 
-/** Révoque l'accès et purge le cache mémoire + session (déconnexion). */
+/** Révoque l'accès et purge le cache mémoire + appareil (déconnexion). Arrête le renouvellement. */
 export function revokeAccess(): void {
     const oauth2 = getGis();
     if (_cached && oauth2) {
@@ -264,7 +346,8 @@ export function revokeAccess(): void {
         }
     }
     _cached = null;
-    clearCachedSession();
+    clearRenewTimer();
+    clearCachedToken();
 }
 
 /** Réinitialise l'état module — réservé aux tests. */
@@ -274,5 +357,6 @@ export function _resetForTests(): void {
     _cached = null;
     _scriptPromise = null;
     _pendingReject = null;
-    clearCachedSession();
+    clearRenewTimer();
+    clearCachedToken();
 }

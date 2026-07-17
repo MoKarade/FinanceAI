@@ -28,6 +28,10 @@ export const registerGetFinancialOverview = (server: McpServer, getState: StateP
                     crypto: Math.round(o.accounts.crypto),
                 },
                 monthlyIncome: Math.round(o.monthlyIncome),
+                // Provenance du revenu : 'transactions' = moyenne réelle (même base que Budget),
+                // 'declared' = salaire d'onboarding (repli sans historique). Sans cette étiquette,
+                // l'IA prendrait un salaire déclaré pour le revenu réel (BUDGET-INCOME-REAL).
+                monthlyIncomeSource: o.monthlyIncomeSource,
                 monthlyExpenses: Math.round(o.monthlyExpenses),
                 monthlyCashflow: Math.round(o.monthlyCashflow),
                 totalDebt: Math.round(o.totalDebt),

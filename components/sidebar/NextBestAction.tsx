@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { getNextBestActions, type NextBestAction as NBAction, type FinancialSnapshot } from '../../services/claude';
-import { computeCurrentLiquidity, computeInvestmentsValue, computeAssetBreakdown, monthlyAmountFor } from '../../services/portfolio';
-import { isSavingsNature } from '../../utils/budget';
+import { buildFinancialSnapshot } from '../../services/financialSnapshot';
 import { useHasUserData } from '../../utils/useHasUserData';
 import { Tab } from '../../types';
 import { PageHeader } from '../ui/PageHeader';
@@ -96,49 +95,21 @@ export const NextBestAction: React.FC<NextBestActionProps> = ({ isSidebarOpen = 
     const fxRates = useFinanceStore(s => s.fxRates);
 
     const snapshot: FinancialSnapshot = useMemo(() => {
-        // Patrimoine net = placements + liquidités (cash de TOUS les comptes :
-        // initialBalances a des clés dynamiques, donc source unique) − dettes.
-        // Avant, on lisait des clés fixes celi/reer/liquidity qui n'existent
-        // jamais → patrimoine sous-estimé envoyé à l'IA.
-        // [AI-NBA-FX] FX RÉELS (avant : {} → actifs étrangers comptés 1:1 → NW sous-estimé envoyé à l'IA).
-        const investmentsValue = computeInvestmentsValue(assets || [], fxRates || {});
-        const assetBreakdown = computeAssetBreakdown(assets || [], fxRates || {});
-        const netWorth =
-            investmentsValue
-            + computeCurrentLiquidity(initialBalances, transactions)
-            - (debts || []).reduce((acc, d) => acc + (d.balance || 0), 0);
-
-        // `netSalary` est en MENSUEL dans le store (cf Budget.tsx + Retirement.tsx).
-        const monthlyIncome = (config?.users?.[0]?.netSalary || 0) + (config?.users?.[1]?.netSalary || 0);
-        // [L4] dépenses NORMALISÉES par fréquence + hors épargne (avant : Σ brute → poste annuel compté ×12).
-        const monthlyExpenses = (budgetItems || []).reduce((acc, b) => isSavingsNature(b.nature) ? acc : acc + monthlyAmountFor(b), 0); // [HEALTH-SAVINGS-CONSISTENCY] NFD, pas `=== 'Epargne'`
-
+        // [INCOME-3WAY-SPLIT + DEBT-SUM-DUP, audit 2026-07-16] SOURCE UNIQUE : ce composant
+        // RÉIMPLÉMENTAIT le snapshot inline (NW sans garde isFinite sur les dettes, revenu = salaire
+        // d'onboarding, dépenses via une somme locale) — trois divergences potentielles avec ce que
+        // l'utilisateur voit et ce que le MCP envoie. `buildFinancialSnapshot` (extrait de CE composant
+        // à l'origine, cf en-tête de financialSnapshot.ts) est LA source : NW gardé, revenu RÉEL
+        // (moyenne des transactions, même base que Budget, repli étiqueté « salaire déclaré »),
+        // dépenses normalisées. Le widget sidebar et le connecteur claude.ai lisent désormais
+        // exactement les mêmes chiffres.
         const projected = lastProjection?.chartData?.length
             ? lastProjection.chartData[Math.min(20 * 12 - 1, lastProjection.chartData.length - 1)]?.NetWorth
             : undefined;
-
-        return {
-            netWorth,
-            monthlyIncome,
-            monthlyExpenses,
-            // Soldes CELI/REER = valeur des placements de ce type (par accountType).
-            celiBalance: assetBreakdown.celi,
-            reerBalance: assetBreakdown.reer,
-            currentAge: config?.users?.[0]?.age || 30,
-            retirementAge: retirementGoal?.targetAge || 65,
-            topDebts: (debts || []).slice(0, 3).map(d => ({ name: d.name, balance: d.balance, rate: d.interestRate })),
-            activeGoals: (financialGoals || [])
-                .filter(g => !g.completed)
-                .slice(0, 3)
-                .map(g => ({
-                    name: g.name,
-                    targetAmount: g.targetAmount,
-                    currentAmount: g.manualCurrentAmount || 0,
-                    deadline: g.deadline,
-                })),
-            projectedNetWorth20y: projected,
-            coupleMode: Boolean(config?.users?.[1]?.name && config.users[1].name.trim() !== ''),
-        };
+        return buildFinancialSnapshot(
+            { assets, initialBalances, transactions, debts, config, budgetItems, retirementGoal, financialGoals, fxRates } as Parameters<typeof buildFinancialSnapshot>[0],
+            { projectedNetWorth20y: projected },
+        );
     }, [assets, fxRates, initialBalances, transactions, debts, config, budgetItems, retirementGoal, financialGoals, lastProjection]);
 
     const fetchActions = useCallback(async (force = false) => {

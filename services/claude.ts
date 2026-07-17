@@ -411,6 +411,10 @@ export type NextBestAction = z.infer<typeof NextBestActionSchema>;
 export interface FinancialSnapshot {
     netWorth: number;
     monthlyIncome: number;
+    /** [INCOME-3WAY-SPLIT] provenance du revenu ('transactions' = moyenne réelle, même base que Budget ;
+     *  'declared' = salaire saisi, repli sans mois plein). Optionnel — forme en phase avec
+     *  services/financialSnapshot.ts (test de compatibilité). */
+    monthlyIncomeSource?: 'transactions' | 'declared';
     monthlyExpenses: number;
     celiBalance: number;
     reerBalance: number;
@@ -438,7 +442,10 @@ export const getNextBestActions = async (
 
     const lines: string[] = [
         `Patrimoine net actuel: ${promptCad(snapshot.netWorth)}`,
-        `Revenus mensuels: ${promptCad(snapshot.monthlyIncome)}`,
+        // [INCOME-3WAY-SPLIT] étiqueter la provenance : l'IA doit savoir si le chiffre est le revenu
+        // RÉEL (même base que l'écran Budget) ou le salaire déclaré (repli) — sinon elle conseille sur
+        // un montant que l'utilisateur ne voit plus (la contradiction BUDGET-INCOME-REAL, déplacée).
+        `Revenus mensuels: ${promptCad(snapshot.monthlyIncome)}${snapshot.monthlyIncomeSource === 'transactions' ? ' (réel, moyenne des transactions)' : snapshot.monthlyIncomeSource === 'declared' ? ' (salaire déclaré)' : ''}`,
         `Dépenses mensuelles: ${promptCad(snapshot.monthlyExpenses)}`,
         `Âge: ${snapshot.currentAge} ans, retraite cible: ${snapshot.retirementAge} ans`,
         `Solde CELI: ${promptCad(snapshot.celiBalance)}`,

@@ -109,6 +109,16 @@ interface MigrationStatus {
 let _migrationStatus: MigrationStatus = { failed: false, backupKey: null, error: null };
 export const getMigrationStatus = (): MigrationStatus => _migrationStatus;
 
+// [STORE-REHYDRATE-SILENT, audit 2026-07-16] Statut de la RÉHYDRATATION ZUSTAND (`financeai-storage`,
+// parse + migrate v1→v7) — chemin DISTINCT de la migration legacy ci-dessus (getInitialStateWithMigration),
+// qui, lui, était déjà couvert. Sans `onRehydrateStorage`, zustand JETTE l'erreur (vérifié dans
+// middleware.mjs) → blob corrompu = app vierge sans AUCUNE trace, indiscernable d'un 1er lancement
+// (les données sont pourtant encore dans le blob + Drive + backups). Même pattern que MigrationStatus :
+// statut module-level + toast critique dans App + visible SystemView.
+interface HydrationStatus { failed: boolean; error: string | null }
+let _hydrationStatus: HydrationStatus = { failed: false, error: null };
+export const getHydrationStatus = (): HydrationStatus => _hydrationStatus;
+
 const migrateBudgetItems = (items: BudgetCategory[]): BudgetCategory[] => {
     return items.map(item => {
         const id = item.id || `cat_${safeRandomId()}`;
@@ -354,18 +364,43 @@ type MigratingState = Partial<FinanceState> & {
  * le boot des utilisateurs existants.
  */
 export function migratePersistedState(persistedState: unknown, fromVersion: number): unknown {
+    // [STORE-REHYDRATE-SILENT, audit 2026-07-16] Un palier qui LÈVE (blob inattendu/corrompu) doit être
+    // DIAGNOSTICABLE : on trace le palier fautif puis on RELANCE — l'erreur remonte à `onRehydrateStorage`
+    // (le filet, cf config persist) qui journalise en critique + lève la bannière. Ne JAMAIS avaler ici :
+    // continuer sur un blob à moitié migré serait pire que l'état initial.
+    let palier = 'init';
+    try {
+        return migratePersistedStateUnsafe(persistedState, fromVersion, (p) => { palier = p; });
+    } catch (e) {
+        logError({
+            source: 'storage', severity: 'critical',
+            message: `Migration du state persisté ÉCHOUÉE au palier « ${palier} » (v${fromVersion}→v7) — réhydratation abandonnée.`,
+            error: e instanceof Error ? e : new Error(String(e)),
+        });
+        throw e;
+    }
+}
+
+function migratePersistedStateUnsafe(
+    persistedState: unknown,
+    fromVersion: number,
+    step: (palier: string) => void,
+): unknown {
     let state = persistedState as MigratingState;
     // v0/undefined → v1 : intro versioning
+    step('v0→v1');
     if (fromVersion === undefined || fromVersion < 1) {
         state = state as MigratingState;
     }
     // v1 → v2 : Phase 4 A1 — ajout apiKeys.anthropic (gemini gardé).
     // v2 → v3 : Phase 4 A5 — suppression de apiKeys.gemini (pas de copie vers anthropic, formats ≠).
+    step('v2→v3 (apiKeys)');
     if (fromVersion < 3 && state?.apiKeys) {
         const apiKeys = state.apiKeys;
         state = { ...state, apiKeys: { anthropic: apiKeys.anthropic || '' } } as MigratingState;
     }
     // v3 → v4 : §7.F.5 — ajout apiKeys.finnhub pour le data sourcing marketData (default vide).
+    step('v3→v4 (finnhub)');
     if (fromVersion < 4 && state?.apiKeys) {
         const apiKeys = state.apiKeys;
         state = {
@@ -375,6 +410,7 @@ export function migratePersistedState(persistedState: unknown, fromVersion: numb
     }
     // v4 → v5 : Phase C.3 — `lifeExpectancy` migré du state local Retirement.tsx vers
     //   retirementGoal global (default 90).
+    step('v4→v5 (lifeExpectancy)');
     if (fromVersion < 5 && state?.retirementGoal) {
         const rg = state.retirementGoal;
         if (rg.lifeExpectancy === undefined) {
@@ -383,6 +419,7 @@ export function migratePersistedState(persistedState: unknown, fromVersion: numb
     }
     // v5 → v6 : Phase E.8 — DCA multi-achat (dateBought+buyPrice+quantity → purchases[]).
     //   Les champs legacy restent pour rétrocompat.
+    step('v5→v6 (purchases DCA)');
     if (fromVersion < 6 && Array.isArray(state?.assets)) {
         type LegacyAsset = { dateBought?: string; buyPrice?: number; quantity?: number; purchases?: unknown };
         state = {
@@ -400,6 +437,7 @@ export function migratePersistedState(persistedState: unknown, fromVersion: numb
     //   envoyait des données persona et écrasait la vraie sauvegarde). Si un blob a été figé en
     //   mode test, on restaure les vraies données depuis realDataSnapshot, puis on purge les
     //   champs de test (ils ne seront plus jamais réécrits — cf partialize).
+    step('v6→v7 (purge mode test)');
     if (fromVersion < 7) {
         if (state?.isTestMode && state.realDataSnapshot) {
             state = { ...state, ...state.realDataSnapshot } as MigratingState;
@@ -588,6 +626,19 @@ export const useFinanceStore = create<FinanceState>()(
             // Le strip <7 (cf migrate) reste pour nettoyer les blobs de l'ère buggée (≤ v6).
             version: 7,
             migrate: migratePersistedState,
+            // [STORE-REHYDRATE-SILENT] Le FILET : sans ce callback, toute erreur de parse/migration est
+            // JETÉE par zustand (l'app démarre vierge, zéro trace). Ici : journal CRITIQUE + statut lu par
+            // App (toast « ne rien saisir, restaurer un backup ») et SystemView. On ne tente PAS de
+            // réparer/écraser le blob (il reste intact dans localStorage pour diagnostic/récupération).
+            onRehydrateStorage: () => (_state, error) => {
+                if (!error) return;
+                _hydrationStatus = { failed: true, error: String(error) };
+                logError({
+                    source: 'storage', severity: 'critical',
+                    message: 'Réhydratation du store ÉCHOUÉE (blob financeai-storage illisible ou migration en erreur) — état par défaut chargé. Le blob est INTACT : ne rien saisir, restaurer un backup.',
+                    error: error instanceof Error ? error : new Error(String(error)),
+                });
+            },
             partialize: (state) => {
                 // Exclut de la persistance : les clés API (chiffrées ailleurs) et les états UI
                 // transitoires (onglet, mode privé, projection calculée, focus en attente).

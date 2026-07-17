@@ -116,20 +116,19 @@
 > modules testés ; 2661/2661). Lot de juin fermé 12/14. Les findings ci-dessous sont TOUS contre-vérifiés
 > dans le vrai code (trust-but-verify) — détail/preuves au rapport §5.
 
-- [ ] **`[STORE-REHYDRATE-SILENT]`** 🔴 CRITIQUE (S) — la réhydratation Zustand n'a AUCUN filet : blob corrompu /
-  migration qui lève = app VIERGE au boot, zéro trace (pas d'`onRehydrateStorage` ; le « filet ultime » de
-  `syncPull.ts:88-94` est du code mort — `rehydrate()` ne rejette jamais, vérifié dans zustand). Fix :
-  `onRehydrateStorage` → `logError(critical)` + try/catch par palier dans `migratePersistedState` + bannière
-  honnête « données non chargées — restaurer un backup ». Même classe que l'incident 230 k$, côté local.
-- [ ] **`[DASH-NW-DUP]`** 🔴 HIGH (M) — « Valeur Nette Globale » (Dashboard, KPI n°1) contourne la source unique :
-  le REPLI sans CSV (`Dashboard.tsx:160-175`) rend `cash + portefeuille` — **dettes JAMAIS soustraites**
-  (pattern MONEY-PHANTOM/H1 réapparu) ; chemin principal : dette sommée sans `isFinite` (l.270). Nuance : l'immo
-  dans la série HISTORIQUE suit la convention moteur (périmètre à ÉTIQUETER, pas un bug). Fix : router le repli
-  sur `computePresentNetWorth` + garde + étiquette + livrer le test de parité « NW unique » (reco juin, jamais livré).
-- [ ] **`[INCOME-3WAY-SPLIT]`** 🔴 HIGH (S-M) — `financialSnapshot.ts:90` (→ MCP get_financial_overview + contexte IA)
-  et `NextBestAction.tsx:112` (sidebar permanente) envoient encore `Σ netSalary` (salaire d'onboarding) à l'IA,
-  alors que Budget affiche le revenu RÉEL depuis BUDGET-INCOME-REAL — l'angle mort nommé par la leçon elle-même.
-  Fix : router sur `computeMonthlyActualAverages`/`computeIncomeBreakdown`, repli étiqueté « salaire déclaré ».
+- [x] **`[STORE-REHYDRATE-SILENT]`** 🔴 CRITIQUE (S) — ✅ 2026-07-17 (lot corrections audit) : `onRehydrateStorage`
+  ajouté (logError critical + `getHydrationStatus()` exposé), `migratePersistedState` wrappé avec traçage PAR PALIER
+  (`palier « v5→v6 »` dans le message), toast CRITIQUE honnête dans App (« NE RIEN SAISIR — restaure un backup », le
+  blob reste INTACT). 4 tests discriminants (`tests/store/hydrationNet.test.ts`), prouvés rouges sur l'ancien code.
+- [x] **`[DASH-NW-DUP]`** 🔴 HIGH (M) — ✅ 2026-07-17 (lot corrections audit) : le repli sans CSV route sur
+  `computePresentNetWorth` (dettes soustraites), le chemin principal sur `computeTotalDebt` (gardé isFinite) ;
+  périmètre immo ÉTIQUETÉ sur le KPI (« équité immo incluse » seulement si immo présent) + « Revenu actif » étiqueté
+  « (net, salaire déclaré) ». Test discriminant Dashboard (persona endetté : 590, pas 990), prouvé rouge avant fix.
+- [x] **`[INCOME-3WAY-SPLIT]`** 🔴 HIGH (S-M) — ✅ 2026-07-17 (lot corrections audit) : `buildFinancialSnapshot`
+  (→ MCP get_financial_overview + IA) route sur `computeMonthlyActualAverages` (même base que Budget), repli
+  étiqueté `monthlyIncomeSource: 'declared'` ; le prompt `claude.ts` étiquette « (réel, moyenne des transactions) »
+  vs « (salaire déclaré) » ; `NextBestAction` consomme désormais `buildFinancialSnapshot` (fin du recalcul local).
+  2 tests discriminants (2300 réel ≠ 4000 déclaré, remboursement exclu), prouvés rouges avant fix.
 - [ ] **`[MCP-TOOLS-SILENT-CATCH]`** 🟠 ÉLEVÉ (S) — `withState`/`runApply`/`applyPayslip` : les 4 catch de frontière
   MCP rendent l'erreur à Claude mais n'appellent JAMAIS `logError` → bug de calcul introuvable côté Cloud Run.
 - [ ] **`[SYNC-APIKEYS-SILENT]`** 🟡 MOYEN (S) — `syncPull.ts:55-60` : échec `saveApiKeys` (coffre indispo) avalé →

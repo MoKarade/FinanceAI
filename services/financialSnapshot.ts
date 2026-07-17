@@ -15,6 +15,7 @@
 // La compatibilité de forme est verrouillée par un test.
 
 import type { AppState } from '../types';
+import { computeMonthlyActualAverages } from '../utils/budgetSync';
 import {
     computeAssetBreakdown,
     computeInvestmentsValue,
@@ -32,6 +33,12 @@ import {
 export interface FinancialSnapshot {
     netWorth: number;
     monthlyIncome: number;
+    /** [INCOME-3WAY-SPLIT, audit 2026-07-16] Provenance du revenu : 'transactions' = moyenne RÉELLE
+     *  (paie + divers, mois pleins — la même base que l'onglet Budget) ; 'declared' = repli sur le
+     *  salaire saisi (aucun mois plein de transactions). Permet aux prompts/tools d'ÉTIQUETER le
+     *  chiffre au lieu de faire raisonner l'IA sur un salaire d'onboarding que l'utilisateur ne voit
+     *  plus (l'angle mort nommé par la leçon BUDGET-INCOME-REAL). Additif optionnel (compat claude.ts). */
+    monthlyIncomeSource?: 'transactions' | 'declared';
     monthlyExpenses: number;
     celiBalance: number;
     reerBalance: number;
@@ -52,7 +59,9 @@ export interface FinancialOverview extends FinancialSnapshot {
     investments: number;
     /** Ventilation des placements par type de compte (CAD). */
     accounts: AssetBreakdown;
-    /** Épargne mensuelle = max(0, revenu − dépenses budgétées). */
+    /** Épargne mensuelle = max(0, monthlyIncome − monthlyExpenses) — MÊME base de revenu que
+     *  `monthlyIncome` (réelle ou déclarée, cf `monthlyIncomeSource`), sinon le payload se
+     *  contredit lui-même (finding panel INCOME-3WAY-SPLIT : cashflow resté sur le déclaré). */
     monthlyCashflow: number;
     /** Dette totale (Σ soldes dus). */
     totalDebt: number;
@@ -64,8 +73,8 @@ export interface FinancialOverview extends FinancialSnapshot {
  * Construit un `FinancialSnapshot` PUR à partir de l'AppState. Réplique
  * fidèlement la logique de `NextBestAction.tsx` :
  *  - patrimoine net = source unique `computePresentNetWorth` (placements + liquidités − dettes) ;
- *  - revenu mensuel = Σ netSalary des utilisateurs (les salaires sont MENSUELS
- *    dans le store) ;
+ *  - revenu mensuel = moyenne RÉELLE des transactions de revenu (paie + divers, même base que
+ *    Budget), repli étiqueté sur le salaire déclaré sans mois plein (`monthlyIncomeSource`) ;
  *  - dépenses mensuelles = Σ budgetItems NORMALISÉS par fréquence et HORS épargne
  *    (via `computeMonthlyBudgetAggregates`, fix L4 audit 2026-06-17) ;
  *  - soldes CELI/REER = valeur des placements de ce type ;
@@ -85,8 +94,17 @@ export function buildFinancialSnapshot(
     const netWorth = computePresentNetWorth(state.initialBalances ?? {}, state.transactions ?? [], assets, fx, state.debts ?? []);
 
     const users = state.config?.users ?? [];
-    // `netSalary` est en MENSUEL dans le store (cf Budget.tsx / Retirement.tsx).
-    const monthlyIncome = (users[0]?.netSalary || 0) + (users[1]?.netSalary || 0);
+    // [INCOME-3WAY-SPLIT, audit 2026-07-16] Revenu = moyenne RÉELLE des transactions (paie + divers,
+    // mois pleins, même base que l'onglet Budget — computeMonthlyActualAverages restreint aux
+    // INCOME_CATEGORIES, remboursements exclus). Repli HONNÊTE sur le salaire déclaré s'il n'y a
+    // aucun mois plein de transactions ; la provenance est exposée pour que les prompts étiquettent.
+    // Avant : Σ netSalary d'onboarding → l'IA/MCP raisonnait sur un chiffre que l'utilisateur ne
+    // voit plus depuis BUDGET-INCOME-REAL (contradiction déplacée).
+    const realAvg = computeMonthlyActualAverages(state.transactions ?? []);
+    const declaredIncome = (users[0]?.netSalary || 0) + (users[1]?.netSalary || 0);
+    const useReal = realAvg.fullMonths > 0 && realAvg.incomeAvg > 0;
+    const monthlyIncome = useReal ? realAvg.incomeAvg : declaredIncome;
+    const monthlyIncomeSource: 'transactions' | 'declared' = useReal ? 'transactions' : 'declared';
     // [L4 audit 2026-06-17] Dépenses mensuelles NORMALISÉES par fréquence (annuel/trim/hebdo) et HORS
     // épargne, via le helper partagé — avant : Σ brute des cibles (un poste annuel compté ×12, faux pour IA/MCP).
     const monthlyExpenses = computeMonthlyBudgetAggregates(state.config, state.budgetItems ?? []).expenses;
@@ -94,6 +112,7 @@ export function buildFinancialSnapshot(
     return {
         netWorth,
         monthlyIncome,
+        monthlyIncomeSource,
         monthlyExpenses,
         celiBalance: breakdown.celi,
         reerBalance: breakdown.reer,
@@ -130,7 +149,6 @@ export function buildFinancialOverview(
     const snapshot = buildFinancialSnapshot(state, opts);
     const fx = state.fxRates ?? {};
     const assets = state.assets ?? [];
-    const budget = computeMonthlyBudgetAggregates(state.config, state.budgetItems ?? []);
 
     return {
         ...snapshot,
@@ -138,7 +156,10 @@ export function buildFinancialOverview(
         liquidity: computeCurrentLiquidity(state.initialBalances ?? {}, state.transactions ?? []),
         investments: computeInvestmentsValue(assets, fx),
         accounts: computeAssetBreakdown(assets, fx),
-        monthlyCashflow: budget.savings,
+        // Cashflow sur la MÊME base de revenu que snapshot.monthlyIncome (réelle, repli déclaré) —
+        // l'ancien `budget.savings` restait sur Σ netSalary : `monthlyIncome − monthlyExpenses`
+        // dans le même payload ne redonnait pas monthlyCashflow (contradiction interne pour l'IA).
+        monthlyCashflow: Math.max(0, snapshot.monthlyIncome - snapshot.monthlyExpenses),
         totalDebt: computeTotalDebt(state.debts ?? []),
         userCount: (state.config?.users ?? []).filter((u) => u && (u.name || u.grossSalary)).length,
     };

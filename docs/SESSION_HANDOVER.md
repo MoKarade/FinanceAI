@@ -4,6 +4,17 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-17 — Lot corrections audit passe n°2 (« go correction »)
+> **✅ Lot 1-2-3 de l'audit livré (1 PR)** : `[STORE-REHYDRATE-SILENT]` (CRITIQUE — `onRehydrateStorage` +
+> `getHydrationStatus()` + paliers de migration tracés + toast « NE RIEN SAISIR, restaure un backup », blob intact),
+> `[DASH-NW-DUP]` (HIGH — repli Dashboard → `computePresentNetWorth`, dettes enfin soustraites ; `computeTotalDebt`
+> gardé ; périmètre immo + « salaire déclaré » étiquetés), `[INCOME-3WAY-SPLIT]` (HIGH — `buildFinancialSnapshot`
+> → moyenne réelle des transactions, repli étiqueté `monthlyIncomeSource` ; prompts claude.ts étiquetés ;
+> NextBestAction routé sur le helper partagé). 6 tests discriminants prouvés rouges pré-fix (git-stash séquentiel).
+> **Restants audit** (BACKLOG §Audit 2026-07-16) : `[MCP-TOOLS-SILENT-CATCH]`, `[SYNC-APIKEYS-SILENT]`,
+> `[DEBT-SUM-DUP]` (reste HealthIndicator:108 + DebtManager:73), `[MCP-USERTEXT-LANDMINE]`, `[LOG-TOKEN-ANCHORED]`,
+> `[MCP-RUNPROJECTION-AMBIG]`, découpe god-files (L, plan-first).
+>
 > ## 🟢 Session 2026-07-16 — Durcissement sync/MCP + a11y + Budget + persistance Drive/projection
 > **✅ Mergés** : ARCH-SYNC-SPLIT (#455), SYNC-FETCH-TIMEOUT (#456), A11Y-CHECK-CONTRAST-DRIFT (#457), GHOST-BUTTON (#458),
 > BORDER-SWEEP boutons (#459), MCP-WRITE-VERSION-TOKEN OCC (#460), `[BUDGET-MONTH-NAV]` (#461), `[BUDGET-INCOME-REAL]` (#462),

@@ -24,7 +24,7 @@ import { Tab as TabEnum } from '../types';
 import { formatCAD, formatPercent, formatSigned } from '../utils/format';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { logError } from '../services/errorLogger';
-import { computeInvestmentsValue, toCurrencyFactor } from '../services/portfolio';
+import { toCurrencyFactor, computePresentNetWorth, computeTotalDebt } from '../services/portfolio';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { PrivateBlock } from './ui/PrivateBlock';
 
@@ -158,16 +158,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
         // transactions (cash) + assets (portfolio courant) pour que NetWorth
         // s'affiche correctement en mode test ou pour user sans CSV.
         if (marketData.length === 0) {
-            let cash = 0;
-            (Object.values(initialBalances) as number[]).forEach(v => cash += v);
-            transactions.forEach((t) => {
-                if (!t.isDuplicate && !t.isTransfer) cash += t.amount;
-            });
-            // [ASSET-FX-DISPLAY] valeur CAD (prix natif × FX) via la source unique.
-            const portfolio = computeInvestmentsValue(assets, fxRates);
+            // [DASH-NW-DUP, audit 2026-07-16] Repli SOURCE UNIQUE : l'ancien calcul inline
+            // (`cash + portefeuille`) ne soustrayait JAMAIS les dettes (pattern MONEY-PHANTOM/H1
+            // réapparu — un utilisateur endetté sans CSV voyait un patrimoine gonflé de sa dette).
+            // `computePresentNetWorth` = cash + placements − dettes (gardé NaN/Infinity), la même
+            // formule que le snapshot IA/MCP et useDerivedFinancials. + équité immo (valeur −
+            // hypothèque, même expression que le chemin principal l.~270) : ce KPI l'INCLUT par
+            // convention (étiquette « équité immo incluse ») — sans ce terme, un propriétaire
+            // sans CSV verrait un patrimoine amputé de sa maison SOUS une étiquette qui ment
+            // (finding panel financial-integrity, lot audit 2026-07-17).
+            const fallbackRealEstateEquity = realEstateGoals.reduce(
+                (sum, g) => sum + (g.currentValue || 0) - (g.mortgageBalance || 0), 0);
             return {
                 unifiedHistory: [],
-                latestTotals: { date: new Date().toISOString().split('T')[0], Total: cash + portfolio } as MarketDataPoint,
+                latestTotals: {
+                    date: new Date().toISOString().split('T')[0],
+                    Total: computePresentNetWorth(initialBalances, transactions, assets, fxRates, debts)
+                        + fallbackRealEstateEquity,
+                } as MarketDataPoint,
                 accountKeys: [],
                 segmentedData: { assets: [], cash: [], credit: [] },
                 totalMonthlyPassive: 0,
@@ -267,7 +275,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
         });
 
         const currentRealEstateEquity = realEstateGoals.reduce((sum, g) => sum + (g.currentValue || 0) - (g.mortgageBalance || 0), 0);
-        const currentDebts = debts.reduce((sum, d) => sum + d.balance, 0);
+        // [DASH-NW-DUP] source unique gardée NaN/Infinity (l'ancienne somme inline propageait un solde corrompu).
+        const currentDebts = computeTotalDebt(debts);
 
         const hist = marketData.map(row => {
             const rowDateStr = row.date as string;
@@ -335,6 +344,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
             totalMonthlyPassive: passiveIncome
         };
     }, [marketData, assets, timeRange, customStart, customEnd, transactions, initialBalances, debts, realEstateGoals, fxRates]);
+
+    // [DASH-NW-DUP] pilote l'étiquette de périmètre du KPI patrimoine (la série historique inclut
+    // l'équité immo — convention moteur — contrairement au NW « hors immo » des surfaces IA).
+    const hasRealEstate = realEstateGoals.some(g => (g.currentValue || 0) > 0);
 
     const performance = useMemo(() => {
         if (unifiedHistory.length < 2) return { global: 0, diff: 0 };
@@ -405,7 +418,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     label={t('dashboard.global_net_worth')}
                     icon={<Icon name="money" size={16} />}
                     value={formatCAD(Number(latestTotals?.Total) || 0)}
-                    sublabel={t('dashboard.consolidated', 'Tous comptes')}
+                    // [DASH-NW-DUP] Étiquette de PÉRIMÈTRE : la série historique inclut l'équité
+                    // immobilière (convention moteur/chartData), contrairement au NW « hors immo »
+                    // des surfaces IA (computePresentNetWorth) — l'écart entre les deux est l'équité
+                    // immo, ATTENDU (leçon NW-PARITY-INVARIANT). Sans étiquette, deux « patrimoines »
+                    // différents à l'écran = la classe de confusion que Marc a déjà signalée.
+                    sublabel={hasRealEstate ? 'Tous comptes, équité immo incluse' : t('dashboard.consolidated', 'Tous comptes')}
+                    tooltip={hasRealEstate ? "Inclut l'équité immobilière (valeur − hypothèque). Les surfaces IA/MCP raisonnent hors immobilier — l'écart entre les deux est ton équité immo." : undefined}
                     privacy
                     variant="primary"
                 />
@@ -423,7 +442,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     label="Revenu actif"
                     icon={<Icon name="portfolio" size={16} />}
                     value={formatCAD(totalMonthlyActiveIncome)}
-                    sublabel="/ mois (net)"
+                    // [INCOME-3WAY-SPLIT] ce KPI affiche le salaire DÉCLARÉ (config) — légitime ici
+                    // (c'est son objet), mais ÉTIQUETÉ pour ne pas être confondu avec le revenu réel
+                    // des transactions affiché dans Budget (exception documentée BUDGET-INCOME-REAL).
+                    sublabel="/ mois (net, salaire déclaré)"
                     privacy
                     variant="info"
                 />

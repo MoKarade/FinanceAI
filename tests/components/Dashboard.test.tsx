@@ -201,4 +201,45 @@ describe('Dashboard', () => {
         const { container } = render(<Dashboard {...baseProps} transactions={txsWithDuplicate} />);
         expect(container.firstChild).toBeTruthy();
     });
+
+    it('[DASH-NW-DUP audit 2026-07-16] sans CSV historique, la « Valeur Nette Globale » SOUSTRAIT les dettes (source unique)', () => {
+        // Discriminant : l'ancien repli (marketData vide — le cas de CE harnais, fetch mocké → [])
+        // calculait `cash + portefeuille` SANS soustraire les dettes → affichait 990 $ ici.
+        // La source unique (computePresentNetWorth) donne 1000 − 10 − 400 = 590 $.
+        const debt = { id: 'debt_1752585600001', name: 'Auto', balance: 400, interestRate: 6.5, minimumPayment: 50 };
+        const { container } = render(
+            <Dashboard
+                {...baseProps}
+                transactions={[oneTx]}
+                initialBalances={{ Compte: 1000 }}
+                debts={[debt as unknown as import('../../types').Debt]}
+            />,
+        );
+        const text = container.textContent ?? '';
+        expect(text).toContain('590');   // dettes soustraites (nouveau)
+        expect(text).not.toContain('990'); // l'ancien montant gonflé n'apparaît nulle part
+    });
+
+    it('[DASH-NW-DUP suivi panel] le repli sans CSV INCLUT l\'équité immo (l\'étiquette « équité immo incluse » dit vrai)', () => {
+        // Discriminant (finding financial-integrity, lot 2026-07-17) : le repli routait sur
+        // computePresentNetWorth qui EXCLUT l'immo par design, alors que le chemin principal
+        // (avec CSV) l'inclut ET que l'étiquette du KPI affirme « équité immo incluse » dès
+        // qu'un bien existe → un propriétaire sans CSV voyait 590 $ sous une étiquette qui ment.
+        // Attendu : 590 + (100 000 − 60 000) = 40 590.
+        const debt = { id: 'debt_1752585600001', name: 'Auto', balance: 400, interestRate: 6.5, minimumPayment: 50 };
+        const home = { id: 'reg_1752585600002', name: 'Maison', currentValue: 100000, mortgageBalance: 60000 };
+        const { container } = render(
+            <Dashboard
+                {...baseProps}
+                transactions={[oneTx]}
+                initialBalances={{ Compte: 1000 }}
+                debts={[debt as unknown as import('../../types').Debt]}
+                realEstateGoals={[home as unknown as import('../../types').RealEstateGoal]}
+            />,
+        );
+        const text = container.textContent ?? '';
+        // 40 590 rendu (formatCAD fr-CA : espace fine/insécable comme séparateur de milliers).
+        expect(text).toMatch(/40[\s  ]590/);
+        expect(text).toContain('équité immo incluse');
+    });
 });

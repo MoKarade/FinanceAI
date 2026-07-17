@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { Card } from './ui/Card';
 import { AppState } from '../types';
-import { getMigrationStatus } from '../store/useFinanceStore';
+import { getMigrationStatus, getHydrationStatus } from '../store/useFinanceStore';
 import { ErrorLogViewer } from './system/ErrorLogViewer';
 import { AuditLogViewer } from './system/AuditLogViewer';
 import { Icon } from './ui/Icon';
@@ -65,6 +65,19 @@ const computeDiagnostics = (state: AppState): LogLine[] => {
         }
     } else {
         lines.push({ text: stamp(`STATE_MGR: migration localStorage OK`), level: 'info' });
+    }
+
+    // [STORE-REHYDRATE-SILENT] Chemin DISTINCT de la migration legacy : la réhydratation ZUSTAND
+    // (blob financeai-storage illisible / migration persist en erreur) — sans cette ligne, le
+    // diagnostic affichait « migration OK » alors que l'app tourne sur l'état par défaut.
+    const hydration = getHydrationStatus();
+    if (hydration.failed) {
+        lines.push({
+            text: stamp(`STATE_MGR: ERREUR de réhydratation du store (blob intact, état par défaut chargé) — ${hydration.error?.slice(0, 80)}`),
+            level: 'err',
+        });
+    } else {
+        lines.push({ text: stamp(`STATE_MGR: réhydratation du store OK`), level: 'info' });
     }
 
     lines.push({

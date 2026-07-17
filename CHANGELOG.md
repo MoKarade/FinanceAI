@@ -6,6 +6,34 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — lot corrections audit : réhydratation, KPI patrimoine, revenu IA] — 2026-07-17
+
+### Corrections (lot audit passe n°2 — 1 CRITIQUE + 2 HIGH)
+- **`[STORE-REHYDRATE-SILENT]` (CRITIQUE)** — la réhydratation Zustand a maintenant un filet : `onRehydrateStorage`
+  journalise en `critical` tout blob illisible / migration en erreur (avec le PALIER fautif, ex. « v5→v6 ») et
+  l'app affiche un toast honnête « tes données n'ont PAS pu être chargées — NE RIEN SAISIR, restaure un backup »
+  au lieu de démarrer VIERGE en silence (même classe que l'incident 230 k$, côté local). Le blob localStorage
+  reste INTACT (aucune écrasure). 4 tests discriminants.
+- **`[DASH-NW-DUP]` (HIGH)** — le KPI « Valeur Nette Globale » du Dashboard ne contourne plus la source unique :
+  le repli sans CSV route sur `computePresentNetWorth` (les dettes étaient JAMAIS soustraites — pattern
+  MONEY-PHANTOM réapparu), le chemin principal sur `computeTotalDebt` (garde isFinite). Périmètre étiqueté :
+  « équité immo incluse » (si immo), « Revenu actif (net, salaire déclaré) ».
+- **`[INCOME-3WAY-SPLIT]` (HIGH)** — le snapshot IA/MCP (`buildFinancialSnapshot` → get_financial_overview,
+  NextBestAction, prompts Claude) envoie le revenu RÉEL (moyenne des transactions de catégories de revenu, même
+  base que l'onglet Budget) au lieu du salaire d'onboarding ; repli honnête étiqueté `monthlyIncomeSource:
+  'declared'` sans historique. Les prompts étiquettent « (réel, moyenne des transactions) » vs « (salaire
+  déclaré) ». `NextBestAction` consomme le helper partagé (fin du recalcul local divergent).
+
+### Correctifs additionnels du panel pré-commit (5 findings réels, tous appliqués + testés)
+- `monthlyCashflow` (overview MCP) partageait l'ANCIENNE base (salaire déclaré) avec le nouveau `monthlyIncome`
+  réel → payload auto-contradictoire pour l'IA ; recalculé `max(0, monthlyIncome − monthlyExpenses)`.
+- Le repli Dashboard (sans CSV) EXCLUAIT l'équité immo alors que l'étiquette « équité immo incluse » l'affirmait →
+  équité (valeur − hypothèque) ajoutée au repli, cohérent avec le chemin principal.
+- `get_financial_overview` expose désormais `monthlyIncomeSource` (l'étiquette de provenance manquait au JSON MCP).
+- Toasts App : deux refs SÉPARÉS (migration legacy / réhydratation) — un ref partagé avalait l'avertissement
+  « NE RIEN SAISIR » précisément quand les deux échecs coexistent (localStorage inaccessible).
+- SystemView affiche le statut de réhydratation (chemin distinct de la migration, comme promis par le filet).
+
 ## [unreleased — audit financier complet, passe n°2] — 2026-07-16
 
 ### Audit

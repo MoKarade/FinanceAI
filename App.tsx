@@ -13,7 +13,7 @@ import { logAudit } from './services/auditLog';
 import { fetchAssetHistory, fetchFxRates } from './services/finance';
 // Phase 3E perf — lazy-load pdfReport (jspdf = 595KB) seulement au clic
 // "Générer PDF" plutôt qu'au boot de l'app.
-import { useFinanceStore, getMigrationStatus } from './store/useFinanceStore';
+import { useFinanceStore, getMigrationStatus, getHydrationStatus } from './store/useFinanceStore';
 import { loadApiKeysDetailed, saveApiKeys } from './services/secureKeyStore';
 import { useShallow } from 'zustand/shallow';
 import { useDerivedFinancials } from './utils/useDerivedFinancials';
@@ -194,11 +194,15 @@ export const App: React.FC = () => {
         trackPageView(activeTab);
     }, [activeTab]);
 
+    // Deux refs SÉPARÉS (finding panel silent-failure, lot audit 2026-07-17) : un ref partagé
+    // ferait avaler le toast d'hydratation quand migration legacy ET réhydratation échouent
+    // ENSEMBLE (localStorage inaccessible : les deux chemins tombent en même temps) — le pire
+    // scénario perdrait précisément son avertissement « NE RIEN SAISIR ».
     const migrationWarningShown = useRef(false);
+    const hydrationWarningShown = useRef(false);
     useEffect(() => {
-        if (migrationWarningShown.current) return;
         const status = getMigrationStatus();
-        if (status.failed) {
+        if (status.failed && !migrationWarningShown.current) {
             migrationWarningShown.current = true;
             const backupHint = status.backupKey
                 ? `Backup sauvegarde sous la cle ${status.backupKey} (F12 -> Application -> Local Storage).`
@@ -208,6 +212,19 @@ export const App: React.FC = () => {
                 'error'
             );
             console.error('[FinanceAI] Migration failure:', status);
+        }
+        // [STORE-REHYDRATE-SILENT, audit 2026-07-16] Chemin DISTINCT : la réhydratation ZUSTAND
+        // (financeai-storage) a échoué → l'app affiche l'état par défaut alors que les données existent
+        // encore (blob intact + Drive + backups). Avant ce filet : app vierge SANS AUCUN message →
+        // risque de sur-réaction destructrice (re-onboarding par-dessus, pull écrasant).
+        const hydration = getHydrationStatus();
+        if (hydration.failed && !hydrationWarningShown.current) {
+            hydrationWarningShown.current = true;
+            showToast(
+                '[CRITIQUE] Tes données n\'ont PAS pu être chargées (sauvegarde locale illisible). NE RIEN SAISIR : tes données existent encore — restaure un backup (Réglages → Sauvegarde) ou reconnecte Drive.',
+                'error'
+            );
+            console.error('[FinanceAI] Hydration failure:', hydration);
         }
     }, []);
 

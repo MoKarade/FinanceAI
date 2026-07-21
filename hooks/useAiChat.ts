@@ -14,11 +14,12 @@
 //    (jamais « le dernier ») — un Effacer/chevauchement ne peut plus corrompre une autre bulle ;
 //    garde de réentrance par REF (l'état React `isLoading` est une closure périmable).
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type Anthropic from '@anthropic-ai/sdk';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { runAgentLoop } from '../services/aiTools/agentLoop';
 import { appStateProvider } from '../services/aiTools/appStateProvider';
+import { executeWriteTool, type WritePreview, type WriteDecision } from '../services/aiTools/writeExecutor';
 import { neutralizeFrameTags } from '../utils/promptSafety';
 import { logError } from '../services/errorLogger';
 import type { AiMessage } from '../types';
@@ -36,12 +37,23 @@ export const TOOL_LABELS: Record<string, string> = {
     get_tax_room: 'Espace CELI',
     calculate_real_estate: 'Calcul immobilier',
     run_projection: 'Calculateur de projection',
+    // [AITOOLS-D] Tools d'écriture — le suffixe distingue une PROPOSITION (gated par le modal de
+    // confirmation) d'une simple consultation dans les chips de transparence.
+    apply_debt: 'Dette (proposition d\'écriture)',
+    apply_payslip: 'Fiche de paie (proposition d\'écriture)',
+    apply_bank_statement: 'Relevé bancaire (proposition d\'écriture)',
+    apply_broker_statement: 'Relevé de courtage (proposition d\'écriture)',
+    apply_tax_slip: 'Feuillet fiscal (proposition d\'écriture)',
 };
 
 export interface UseAiChat {
     isLoading: boolean;
     /** Libellés des tools en cours de consultation pour l'envoi actif (chips live). */
     activeTools: string[];
+    /** [AITOOLS-D] Écriture EN ATTENTE de confirmation (diff à afficher dans le modal) — null sinon. */
+    pendingWrite: WritePreview | null;
+    /** Tranche l'écriture en attente (bouton Appliquer → 'apply', Annuler → 'cancel'). */
+    resolvePendingWrite: (decision: WriteDecision) => void;
     sendMessage: (text: string) => Promise<void>;
     cancel: () => void;
     clearConversation: () => void;
@@ -59,6 +71,34 @@ export function useAiChat(apiKey: string): UseAiChat {
     // Garde de réentrance SYNCHRONE (finding panel : deux sendMessage dans le même tick lisent la
     // même closure isLoading=false → deux boucles concurrentes qui se corrompent mutuellement).
     const inFlightRef = useRef(false);
+    // [AITOOLS-D] Écriture en attente de confirmation : le diff pour le modal + le resolver de la
+    // promesse sur laquelle writeExecutor attend le clic.
+    const [pendingWrite, setPendingWrite] = useState<WritePreview | null>(null);
+    const writeResolverRef = useRef<((d: WriteDecision) => void) | null>(null);
+
+    const resolvePendingWrite = useCallback((decision: WriteDecision) => {
+        const resolve = writeResolverRef.current;
+        writeResolverRef.current = null;
+        setPendingWrite(null);
+        resolve?.(decision);
+    }, []);
+
+    const requestConfirmation = useCallback((preview: WritePreview): Promise<WriteDecision> => {
+        return new Promise((resolve) => {
+            writeResolverRef.current = resolve;
+            setPendingWrite(preview);
+        });
+    }, []);
+
+    // [Finding panel sécurité 2026-07-21 — CRITIQUE, mesuré] Le modal de confirmation affiche des
+    // MONTANTS. Si le mode discret s'active PENDANT qu'une confirmation est en attente (ex. quelqu'un
+    // entre dans la pièce), il faut que la valeur SORTE de l'écran (Loi 25, ADR-5 « masquer = ne pas
+    // rendre »). On REFUSE l'écriture en attente (cohérent avec « fermer = refus » : Échap/backdrop/✕)
+    // → pendingWrite repasse à null → le modal disparaît. L'utilisateur redemande hors mode discret.
+    const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
+    useEffect(() => {
+        if (isPrivacyMode && writeResolverRef.current) resolvePendingWrite('cancel');
+    }, [isPrivacyMode, pendingWrite, resolvePendingWrite]);
 
     const appendMessage = useCallback((msg: AiMessage) => {
         const { aiConversation, setAppState } = useFinanceStore.getState();
@@ -130,6 +170,9 @@ export function useAiChat(apiKey: string): UseAiChat {
                     setActiveTools([...usedLabels]);
                     updateModelMessage(modelMsgId, { toolsUsed: [...usedLabels] });
                 },
+                // [AITOOLS-D] Écritures : diff pur → modal (requestConfirmation attend le clic) →
+                // apply/refus. Sans ce callback, les tools apply_* ne seraient même pas déclarés.
+                onWriteToolUse: (spec, args) => executeWriteTool(spec, args, requestConfirmation),
             });
             // Le texte FINAL fait foi (marqueurs honnêtes [Réponse coupée]/[Erreur]/[Annulé]/
             // [Limite atteinte] inclus — les deltas streamés ne portent pas ces marqueurs).
@@ -150,10 +193,34 @@ export function useAiChat(apiKey: string): UseAiChat {
             setActiveTools([]);
             abortRef.current = null;
         }
-    }, [apiKey, appendMessage, updateModelMessage]);
+    }, [apiKey, appendMessage, updateModelMessage, requestConfirmation]);
 
     const cancel = useCallback(() => {
+        // Une écriture en attente de confirmation est REFUSÉE par l'annulation (le modal se ferme,
+        // writeExecutor rend « refusé ») — puis le tour API en vol est interrompu.
+        if (writeResolverRef.current) resolvePendingWrite('cancel');
         abortRef.current?.abort(new DOMException('User cancelled', 'AbortError'));
+    }, [resolvePendingWrite]);
+
+    // [Findings panel 2026-07-21 — CRITIQUE, mesuré] `AiAssistant` n'est monté que sur l'onglet
+    // Assistant (TabRouter) : changer d'onglet PENDANT qu'un modal de confirmation est ouvert démonte
+    // ce hook → `writeResolverRef` disparaît → la promesse de `requestConfirmation` ne se résout
+    // JAMAIS → toute la boucle agentique (déjà payée) reste suspendue sans trace. Cleanup au
+    // démontage : refuser toute écriture en attente + abort le tour API en vol (ne PAS passer par
+    // `resolvePendingWrite` — son `setPendingWrite` déclencherait un setState sur composant démonté ;
+    // les refs, elles, sont stables → deps []).
+    useEffect(() => {
+        return () => {
+            if (writeResolverRef.current) {
+                logError({
+                    source: 'ai', severity: 'warning',
+                    message: 'Chat in-app : écriture en attente de confirmation abandonnée au démontage (changement d\'onglet ?) — refusée automatiquement.',
+                });
+                writeResolverRef.current('cancel');
+                writeResolverRef.current = null;
+            }
+            abortRef.current?.abort(new DOMException('Unmounted', 'AbortError'));
+        };
     }, []);
 
     const clearConversation = useCallback(() => {
@@ -163,5 +230,5 @@ export function useAiChat(apiKey: string): UseAiChat {
         useFinanceStore.getState().setAppState({ aiConversation: [] });
     }, []);
 
-    return { isLoading, activeTools, sendMessage, cancel, clearConversation };
+    return { isLoading, activeTools, pendingWrite, resolvePendingWrite, sendMessage, cancel, clearConversation };
 }

@@ -7,9 +7,10 @@
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import type Anthropic from '@anthropic-ai/sdk';
-import type { AnyReadToolSpec } from '../../mcp/tools/_toolSpec';
+import type { AnyToolSpec } from '../../mcp/tools/_toolSpec';
 
-export function toAnthropicTools(specs: readonly AnyReadToolSpec[]): Anthropic.Tool[] {
+// [AITOOLS-D] Accepte lecture ET écriture (name/description/inputSchema communs aux deux formes).
+export function toAnthropicTools(specs: readonly AnyToolSpec[]): Anthropic.Tool[] {
     return specs.map((spec) => {
         // $refStrategy 'none' : schémas inline (le SDK Anthropic n'attend pas de $ref/definitions).
         const schema = zodToJsonSchema(z.object(spec.inputSchema), { $refStrategy: 'none' }) as Record<string, unknown>;

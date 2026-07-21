@@ -6,6 +6,41 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — chantier Claude-in-app, Lot D : écritures avec confirmation] — 2026-07-21
+
+### Améliorations (Assistant)
+- **L'assistant in-app peut maintenant PROPOSER des écritures** via les 5 mêmes tools `apply_*` que le
+  connecteur claude.ai (dette, fiche de paie, relevé bancaire, relevé de courtage, feuillet fiscal) —
+  **RIEN ne s'écrit sans ton clic** : diff avant → après calculé PUREMENT (`applyDocument`, zéro mutation)
+  → modal « Confirmer la modification » (`AiChatConfirmModal`) → Appliquer (sauvegarde IndexedDB créée
+  AVANT l'écriture ; échec du backup = écriture ANNULÉE) ou Annuler (tool_result « refusé », Claude ne
+  réessaie pas sans nouvelle demande). Toute fermeture du modal (✕, Échap, backdrop) = refus.
+- Anti-course : au clic Appliquer, le diff est RECALCULÉ sur l'état FRAIS (un prix rafraîchi ou une
+  écriture concurrente pendant que le modal est ouvert n'est jamais écrasé par un état périmé).
+- Structurel : les tools d'écriture ne sont DÉCLARÉS à l'API que si l'exécuteur de confirmation est
+  branché (une surface sans modal est incapable d'écrire) ; les vraies `apiKeys` ne peuvent pas être
+  écrasées par un apply (exclues du snapshot ET du patch appliqué). Chips « proposition d'écriture ».
+- Fix flake CI `oauthProvider` (« jeton ALTÉRÉ ») : le caractère de remplacement se base sur celui
+  qu'on remplace (position -2) — avant, ~1/64 des runs produisait un jeton identique (faux rouge).
+
+### Correctifs du panel (4 agents, sondes exécutées — 2 CRITIQUE + 2 ÉLEVÉ + 2 MOYEN appliqués)
+- **Mode discret ne masquait pas le modal de confirmation** (CRITIQUE, Loi 25) : le modal affichait des
+  montants hors du gating mode discret → activer le mode discret pendant une confirmation laissait la valeur
+  en clair. Le hook auto-refuse désormais toute confirmation en attente quand le mode discret s'active
+  (cohérent avec « fermer = refus ») + rendu gaté `!isPrivacyMode`.
+- **Promesse de confirmation orpheline au changement d'onglet** (CRITIQUE) : `AiAssistant` n'est monté que
+  sur l'onglet Assistant ; changer d'onglet pendant un modal ouvert démontait `useAiChat` → la boucle
+  agentique restait suspendue à vie sans trace. Cleanup au démontage : refus automatique + abort + logError.
+- **Injection de prompt indirecte via `summary`** (ÉLEVÉ) : le `summary`/`field`/`note` d'un tool_result
+  d'écriture réinjectait le nom user brut (extrait d'un document joint) dans le contexte de Claude —
+  `jsonContent` ne scrube que les clés user-free-text. `sanitizePromptText` appliqué au renvoi vers le
+  modèle (jamais sur l'affichage user ni le store). `.max()` ajouté à `symbol`/`name` broker.
+- **« Annuler » ne coupait qu'une confirmation par lot** (ÉLEVÉ) : si le modèle propose 2 écritures dans un
+  tour, Annuler sur la 1re ouvrait quand même la 2e. La boucle de dispatch court-circuite désormais les
+  tool_use restants dès le signal aborté (refus honnête `is_error`).
+- **`.finite()`** ajouté aux 5 specs $ (3 en manquaient — mitigé par la ceinture `applyDocument`, ajouté
+  par cohérence). 4 tests de régression (démontage, mode discret, abort en lot, scrub injection).
+
 ## [unreleased — chantier Claude-in-app : tools moteur hors du thread principal] — 2026-07-21
 
 ### Améliorations

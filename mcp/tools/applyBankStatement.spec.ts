@@ -13,7 +13,7 @@ const inputSchema = {
     transactions: z.array(z.object({
         date: z.string().describe('Date ISO (YYYY-MM-DD).'),
         payee: z.string().describe('Marchand / description.'),
-        amount: z.number().describe('Montant SIGNÉ : négatif = dépense, positif = entrée.'),
+        amount: z.number().finite().describe('Montant SIGNÉ : négatif = dépense, positif = entrée.'),
         category: z.string().optional().describe('Catégorie (ex: Alimentation, Transport).'),
         isTransfer: z.boolean().optional().describe('Vrai si c\'est un virement interne.'),
     })).describe('Transactions extraites du relevé.'),

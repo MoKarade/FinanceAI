@@ -12,10 +12,10 @@ const inputSchema = {
     accountType: z.enum(['NON-ENREG', 'CELI', 'REER', 'CELIAPP', 'CRYPTO']).optional()
         .describe('Compte fiscal des positions (défaut: NON-ENREG).'),
     holdings: z.array(z.object({
-        symbol: z.string().describe('Ticker (ex: AAPL, XEQT.TO, BTC).'),
-        quantity: z.number().describe('Nombre de parts/unités détenues.'),
-        currentPrice: z.number().optional().describe('Prix actuel par part, si indiqué sur le relevé.'),
-        name: z.string().optional().describe('Nom du titre.'),
+        symbol: z.string().min(1).max(20).describe('Ticker (ex: AAPL, XEQT.TO, BTC).'),
+        quantity: z.number().finite().describe('Nombre de parts/unités détenues.'),
+        currentPrice: z.number().finite().optional().describe('Prix actuel par part, si indiqué sur le relevé.'),
+        name: z.string().max(120).optional().describe('Nom du titre.'),
         currency: z.enum(['USD', 'CAD', 'EUR']).optional().describe('Devise (défaut: CAD).'),
     })).describe('Positions extraites du relevé de courtage.'),
 };

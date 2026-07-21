@@ -97,7 +97,11 @@ describe('oauthProvider — rejets', () => {
     it('jeton ALTÉRÉ (1 caractère) → invalid_token', () => {
         const p = providerAt(() => 0);
         const { tokens } = fullFlow(p);
-        const tampered = tokens.access_token.slice(0, -2) + (tokens.access_token.endsWith('A') ? 'B' : 'A') + tokens.access_token.slice(-1);
+        // ⚠️ Anti-flake : baser le caractère de remplacement sur celui qu'on REMPLACE (position -2),
+        // pas sur le dernier — sinon, quand l'avant-dernier vaut déjà 'A' (~1/64 des runs), le
+        // « tampered » est identique à l'original et le test échoue à tort.
+        const replaced = tokens.access_token.at(-2);
+        const tampered = tokens.access_token.slice(0, -2) + (replaced === 'A' ? 'B' : 'A') + tokens.access_token.slice(-1);
         expect(() => p.verifyAccessToken(`Bearer ${tampered}`))
             .toThrowError(expect.objectContaining({ code: 'invalid_token', status: 401 }));
     });

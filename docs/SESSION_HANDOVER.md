@@ -23,7 +23,15 @@
 > ⚠️ **INCIDENT revert conteneur** : le Lot C NON COMMITÉ a été effacé pendant l'attente du panel (agents
 > orphelinés en prime) — ré-appliqué depuis la mémoire de session. RÈGLE : committer AVANT tout panel.
 > ⏳ Marc doit VALIDER le critère d'arrêt en prod (5 vraies questions → réponses correctes).
-> **Suite** : D (écritures+confirmation), E (panneau latéral global + onglet agrandi), SEC (audit final).
+> **✅ `[AITOOLS-D]` livré (PR #479)** : écritures avec CONFIRMATION — `writeExecutor` (diff pur applyDocument →
+> modal `AiChatConfirmModal` → recalcul sur état FRAIS anti-course → backup auto OBLIGATOIRE sinon pas
+> d'écriture → setAppState sans apiKeys) ; apply_* déclarés à l'API SEULEMENT si l'exécuteur est branché ;
+> Annuler/✕/Échap/backdrop = refus explicite. Panel 4 agents (sondes) → 6 findings appliqués : mode discret
+> masque le modal (Loi 25), promesse orpheline au démontage d'onglet, scrub injection du `summary`, Annuler
+> coupe tout le lot de tool_use, `.finite()` sur 5 specs. 17 tests + fix flake oauthProvider. Découverte :
+> `[MCP-WRITE-SUMMARY-SCRUB]` (même vecteur côté serveur MCP, au BACKLOG).
+> **Suite** : E (panneau latéral global + onglet agrandi — useAiChat déjà prêt), SEC (audit final),
+> puis P2 (tools d'écriture supplémentaires : transactions, objectifs, budgets, actifs, immobilier).
 > + `[DEP-AUDIT-2026-07]` mergé (#474) : npm audit 4→0 vulnérabilités (adm-zip 0.6 prouvé par mcp:pack).
 >
 > ## 🟢 Session 2026-07-21 — Lot audit n°2 : les 6 restants (« go ») + cadrage MCP/Claude-in-app

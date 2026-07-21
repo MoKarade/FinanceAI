@@ -33,11 +33,19 @@ function scriptedClient(script: Anthropic.Message[]) {
     let i = 0;
     const client: AgentClientLike = {
         messages: {
-            stream: (params) => {
+            stream: (params, opts) => {
                 requests.push(params);
                 const msg = script[Math.min(i, script.length - 1)];
                 i += 1;
-                return { on: () => undefined, finalMessage: async () => msg };
+                return {
+                    on: () => undefined,
+                    // Fidélité au vrai SDK : un signal déjà aborté fait rejeter finalMessage
+                    // (sinon un test d'annulation ne pourrait pas observer l'arrêt du tour suivant).
+                    finalMessage: async () => {
+                        if (opts?.signal?.aborted) throw new DOMException('User cancelled', 'AbortError');
+                        return msg;
+                    },
+                };
             },
         },
     };
@@ -105,7 +113,7 @@ describe('runAgentLoop', () => {
 
     it('tool INCONNU → tool_result is_error « non disponible », pas de crash', async () => {
         const { client, requests } = scriptedClient([
-            toolMsg('apply_debt', { name: 'x' }), // write-tool : PAS dans le registre lecture (Lot B)
+            toolMsg('tool_inexistant', { name: 'x' }), // ni lecture ni écriture
             textMsg('Ok.'),
         ]);
         const res = await runAgentLoop([{ role: 'user', content: 'q' }], { apiKey: 'sk-test', getState, client });
@@ -221,6 +229,113 @@ describe('runAgentLoop', () => {
         expect(res.stopReason).toBe('aborted');
         expect(res.text).toContain('[Annulé]');
         expect(logError).not.toHaveBeenCalled();
+    });
+
+    // ── [AITOOLS-D] Routage des tools d'ÉCRITURE ─────────────────────────────────────────────
+
+    it('[AITOOLS-D] SANS onWriteToolUse : les apply_* ne sont PAS déclarés à l\'API + is_error si hallucinés', async () => {
+        // Structurel : une surface sans exécuteur de confirmation est INCAPABLE d'écrire — le tool
+        // n'existe même pas côté API, et la ceinture rattrape un nom halluciné.
+        const { client, requests } = scriptedClient([
+            toolMsg('apply_debt', { name: 'Prêt auto', balance: 5000, interestRate: 7, minimumPayment: 150 }),
+            textMsg('Ok.'),
+        ]);
+        await runAgentLoop([{ role: 'user', content: 'q' }], { apiKey: 'sk-test', getState, client });
+        const tools = requests[0].tools as Array<{ name: string }>;
+        expect(tools.some((t) => t.name.startsWith('apply_'))).toBe(false);
+        const block = ((requests[1].messages as Anthropic.MessageParam[]).at(-1)!
+            .content as Anthropic.ToolResultBlockParam[])[0];
+        expect(block.is_error).toBe(true);
+        expect(block.content as string).toContain('n\'est pas disponible');
+    });
+
+    it('[AITOOLS-D] AVEC onWriteToolUse : les 5 apply_* sont déclarés, args VALIDÉS puis routés vers l\'exécuteur', async () => {
+        const { client, requests } = scriptedClient([
+            toolMsg('apply_debt', { name: 'Prêt auto Civic', balance: 12000, interestRate: 6.5, minimumPayment: 320 }),
+            textMsg('Dette proposée.'),
+        ]);
+        const onWriteToolUse = vi.fn(async () => ({ content: [{ type: 'text' as const, text: '{"applied":true}' }] }));
+        const res = await runAgentLoop([{ role: 'user', content: 'q' }], {
+            apiKey: 'sk-test', getState, client, onWriteToolUse,
+        });
+        expect(res.stopReason).toBe('end');
+        const tools = requests[0].tools as Array<{ name: string }>;
+        expect(tools.filter((t) => t.name.startsWith('apply_')).map((t) => t.name).sort()).toEqual([
+            'apply_bank_statement', 'apply_broker_statement', 'apply_debt', 'apply_payslip', 'apply_tax_slip',
+        ]);
+        expect(onWriteToolUse).toHaveBeenCalledTimes(1);
+        const [spec, args] = onWriteToolUse.mock.calls[0] as unknown as [{ name: string }, Record<string, unknown>];
+        expect(spec.name).toBe('apply_debt');
+        expect(args.balance).toBe(12000); // args VALIDÉS (zod) transmis à l'exécuteur
+        const block = ((requests[1].messages as Anthropic.MessageParam[]).at(-1)!
+            .content as Anthropic.ToolResultBlockParam[])[0];
+        expect(block.is_error).toBeUndefined();
+        expect(block.content as string).toContain('"applied":true');
+    });
+
+    it('[AITOOLS-D] args d\'écriture INVALIDES → is_error lisible, l\'exécuteur n\'est JAMAIS appelé', async () => {
+        const { client, requests } = scriptedClient([
+            toolMsg('apply_debt', { name: '', balance: Infinity }), // nom vide + Infinity (leçon MCP-WHATIF)
+            textMsg('Corrigé.'),
+        ]);
+        const onWriteToolUse = vi.fn();
+        await runAgentLoop([{ role: 'user', content: 'q' }], { apiKey: 'sk-test', getState, client, onWriteToolUse });
+        expect(onWriteToolUse).not.toHaveBeenCalled();
+        const block = ((requests[1].messages as Anthropic.MessageParam[]).at(-1)!
+            .content as Anthropic.ToolResultBlockParam[])[0];
+        expect(block.is_error).toBe(true);
+        expect(block.content as string).toContain('Arguments invalides');
+    });
+
+    it('[AITOOLS-D] l\'exécuteur d\'écriture qui THROW → is_error + logError, la conversation survit (ceinture)', async () => {
+        const { client, requests } = scriptedClient([
+            toolMsg('apply_debt', { name: 'Prêt', balance: 100, interestRate: 5, minimumPayment: 10 }),
+            textMsg('Fini.'),
+        ]);
+        const onWriteToolUse = vi.fn(async () => { throw new Error('IndexedDB explosé'); });
+        const res = await runAgentLoop([{ role: 'user', content: 'q' }], {
+            apiKey: 'sk-test', getState, client, onWriteToolUse,
+        });
+        expect(res.stopReason).toBe('end'); // la boucle continue, pas de throw
+        const block = ((requests[1].messages as Anthropic.MessageParam[]).at(-1)!
+            .content as Anthropic.ToolResultBlockParam[])[0];
+        expect(block.is_error).toBe(true);
+        expect(block.content as string).toContain('a échoué');
+        expect(logError).toHaveBeenCalledWith(expect.objectContaining({
+            source: 'ai', severity: 'error',
+            message: expect.stringMatching(/exécuteur d'écriture apply_debt a levé/),
+        }));
+    });
+
+    it('[AITOOLS-D panel] ANNULATION pendant le 1er write d\'un lot → les tool_use RESTANTS du même tour sont court-circuités (pas de 2e confirmation)', async () => {
+        // Discriminant (finding panel mesuré) : 2 apply_* dans UN tour ; annuler pendant le 1er modal
+        // ne doit PAS ouvrir le 2e. Avant le garde : onWriteToolUse était appelé 2×.
+        const twoWrites = {
+            content: [
+                { type: 'tool_use', id: 'w1', name: 'apply_debt', input: { name: 'Dette 1', balance: 100, interestRate: 5, minimumPayment: 10 } },
+                { type: 'tool_use', id: 'w2', name: 'apply_debt', input: { name: 'Dette 2', balance: 200, interestRate: 6, minimumPayment: 20 } },
+            ],
+            stop_reason: 'tool_use',
+        } as unknown as Anthropic.Message;
+        const { client, requests } = scriptedClient([twoWrites, textMsg('fin')]);
+        const ctrl = new AbortController();
+        let writeCalls = 0;
+        const onWriteToolUse = vi.fn(async () => {
+            writeCalls += 1;
+            ctrl.abort(new DOMException('User cancelled', 'AbortError')); // simule le clic Annuler pendant le 1er modal
+            return { content: [{ type: 'text' as const, text: '{"applied":false,"refusedByUser":true}' }] };
+        });
+        const res = await runAgentLoop([{ role: 'user', content: 'ajoute ces deux dettes' }], {
+            apiKey: 'sk-test', getState, client, signal: ctrl.signal, onWriteToolUse,
+        });
+        expect(writeCalls).toBe(1); // le 2e write n'est JAMAIS exécuté (court-circuit sur signal aborté)
+        // Le tour suivant appelle stream() avec le signal aborté → stopReason aborted (pas d'API gaspillée).
+        expect(res.stopReason).toBe('aborted');
+        // Le 2e tour a bien été construit avec un tool_result « annulé » pour w2 (l'API exige 1 result/tool_use).
+        const firstTurnResults = (requests[1].messages as Anthropic.MessageParam[]).at(-1)!
+            .content as Anthropic.ToolResultBlockParam[];
+        expect(firstTurnResults.find((r) => r.tool_use_id === 'w2')?.content).toContain('Annulé');
+        expect(firstTurnResults.find((r) => r.tool_use_id === 'w2')?.is_error).toBe(true);
     });
 
     it('[ceinture panel] cap max_turns : l\'historique retourné se TERMINE par un tour assistant (reprise saine)', async () => {

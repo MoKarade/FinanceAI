@@ -24,9 +24,14 @@
   Parité PROUVÉE (8 tools × 2 personas, exhaustivité assertée) + « aucune donnée changée » prouvé (2 personas,
   MC + what-if variés, clone frontière testé). Panel 4 agents : 1 CRITIQUE + 3 ÉLEVÉ + 5 MOYEN appliqués ;
   bonus : dérive RÉELLE `documents` manquant du littéral legacy du store attrapée par le test de défauts.
-- [ ] **`[AITOOLS-C]` Branchement panneau existant** (M) — AiAssistant passe au tool-use, SUPPRESSION de
-  `generateContext()` (source divergente), chips « a consulté : X », bannière mode test, garde clé absente.
-  Critère d'arrêt Marc : 5 vraies questions → réponses correctes sur données réelles.
+- [x] **`[AITOOLS-C]` Branchement panneau existant** (M) — ✅ 2026-07-21 (PR #478) : AiAssistant en
+  tool-use via `hooks/useAiChat` (partagé, prêt Lot E), `generateContext()` SUPPRIMÉ, chips « a consulté »,
+  bannière mode test (warning-400 mesuré), mode discret = chat masqué entier (ADR-5), bundle boot inchangé
+  (+110 o gzip). Panel sur diff COMMITÉ : 1 CRITIQUE (abort ≠ error) + 2 ÉLEVÉ (identité de message par ID,
+  réentrance par ref, Effacer gelé pendant envoi) + 2 MOYEN appliqués — sondes mesurées. 8 tests composant.
+  ⚠️ Incident : un revert conteneur a EFFACÉ le Lot C non commité pendant l'attente du panel (ré-appliqué
+  de mémoire) → règle : committer AVANT de lancer un panel. ⏳ Critère d'arrêt à VALIDER PAR MARC en prod
+  (5 vraies questions → réponses correctes).
 - [x] **`[AITOOLS-ENGINE-WORKER]`** 🟠 ÉLEVÉ (M→S, requis avant Lot C) — ✅ 2026-07-21 : les 3 tools moteur
   routés sur `runProjectionAsync` (drop-in : même signature, Worker + timeout 30s côté navigateur, repli
   synchrone IDENTIQUE côté Node/MCP) ; `withState` élargi aux fn async (rétrocompat sync). Parité re-prouvée

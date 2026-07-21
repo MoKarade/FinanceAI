@@ -14,8 +14,16 @@
 > extraite browser-safe → `mcp/state/appStateDefaults.ts`). Parité de payloads PROUVÉE (8×2 personas) +
 > preuve « aucune donnée changée ». ⚠️ Piège trouvé au test : l'état du STORE porte les ACTIONS Zustand →
 > structuredClone du what-if plantait (« could not be cloned ») — d'où le pick data-only + normalize.
-> **Suite** : C (branchement panneau, SUPPRIMER generateContext), D (écritures+confirmation), E (UI
-> partagée + PrivateBlock mode discret), SEC (audit final — exigence Marc).
+> **✅ `[AITOOLS-ENGINE-WORKER]` livré (#477)** : 3 tools moteur → runProjectionAsync (Worker navigateur,
+> repli sync Node/MCP), withState async-compatible, garde-scan anti-appel-direct.
+> **✅ `[AITOOLS-C]` livré (PR #478)** : AiAssistant en tool-use (useAiChat partagé), generateContext
+> SUPPRIMÉ, chips, bannière mode test, mode discret = chat masqué entier, bundle boot inchangé. Panel sur
+> diff COMMITÉ : abort ≠ error (plus de faux logs), identité de message par ID + réentrance par ref +
+> Effacer gelé pendant envoi, divergence écran-Futur-figé vs get_projection expliquée au system prompt.
+> ⚠️ **INCIDENT revert conteneur** : le Lot C NON COMMITÉ a été effacé pendant l'attente du panel (agents
+> orphelinés en prime) — ré-appliqué depuis la mémoire de session. RÈGLE : committer AVANT tout panel.
+> ⏳ Marc doit VALIDER le critère d'arrêt en prod (5 vraies questions → réponses correctes).
+> **Suite** : D (écritures+confirmation), E (panneau latéral global + onglet agrandi), SEC (audit final).
 > + `[DEP-AUDIT-2026-07]` mergé (#474) : npm audit 4→0 vulnérabilités (adm-zip 0.6 prouvé par mcp:pack).
 >
 > ## 🟢 Session 2026-07-21 — Lot audit n°2 : les 6 restants (« go ») + cadrage MCP/Claude-in-app

@@ -62,14 +62,19 @@ export interface AgentLoopResult {
     toolsUsed: string[];
     turns: number;
     /** 'end' = fin normale ; 'max_turns' = cap d'outils ; 'truncated' = réponse COUPÉE (max_tokens) ;
-     *  'refused' = refus du modèle ; 'error' = échec API/état (texte accumulé + message honnête).
+     *  'refused' = refus du modèle ; 'aborted' = ANNULATION utilisateur (nominale — jamais logError) ;
+     *  'error' = échec API/état (texte accumulé + message honnête).
      *  [Findings panel 2026-07-21] : collapser max_tokens en « fin normale » présentait une phrase
-     *  coupée en plein chiffre avec la même autorité qu'une réponse complète (no-fake-data, version texte). */
-    stopReason: 'end' | 'max_turns' | 'truncated' | 'refused' | 'error';
+     *  coupée en plein chiffre avec la même autorité qu'une réponse complète (no-fake-data, version
+     *  texte) ; collapser l'abort en 'error' affichait « réessaie » + polluait les logs d'erreur à
+     *  chaque clic Annuler (bruit qui masque les VRAIS échecs API). */
+    stopReason: 'end' | 'max_turns' | 'truncated' | 'refused' | 'aborted' | 'error';
     /** Renseigné quand stopReason === 'error' (message technique, déjà journalisé via logError). */
     errorMessage?: string;
-    /** Historique complet (avec blocs tool_use/tool_result) — EN MÉMOIRE SEULEMENT (ADR-4 :
-     *  jamais persisté/synchronisé tel quel ; le transcript persisté reste rôle+texte). */
+    /** Historique complet (avec blocs tool_use/tool_result) de CET envoi. ⚠️ État réel (finding
+     *  panel) : le consommateur actuel (useAiChat) le JETTE à chaque tour — les tours suivants
+     *  repartent du transcript TEXTE seul, et le modèle re-consulte les tools au besoin (lecture
+     *  idempotente sur le même état → mêmes chiffres). Jamais persisté/synchronisé (ADR-4). */
     messages: Anthropic.MessageParam[];
 }
 
@@ -148,10 +153,18 @@ export async function runAgentLoop(
             }
             msg = await stream.finalMessage();
         } catch (e) {
-            // [Finding panel CRITIQUE] Échec API (réseau, 429/5xx, timeout, abort) : journaliser et
-            // rendre un résultat HONNÊTE (texte déjà streamé + historique préservés pour l'UI/retry)
-            // au lieu de rejeter en perdant tout le travail déjà payé.
             const err = e instanceof Error ? e : new Error(String(e));
+            // [Finding panel CRITIQUE #2] ANNULATION utilisateur ≠ panne : détectée via le signal
+            // externe (le timeout interne, lui, n'aborte pas opts.signal) ou le nom de l'erreur.
+            // Action nominale → AUCUN logError (sinon chaque clic Annuler pollue les logs d'erreur
+            // et masque les vrais échecs API), texte honnête « [Annulé] ».
+            if (opts.signal?.aborted || err.name === 'AbortError' || e instanceof DOMException) {
+                text += (text ? '\n\n' : '') + '[Annulé]';
+                return { text, toolsUsed, turns: turn, stopReason: 'aborted', messages };
+            }
+            // [Finding panel CRITIQUE] Échec API (réseau, 429/5xx, timeout) : journaliser et rendre
+            // un résultat HONNÊTE (texte déjà streamé + historique préservés pour l'UI/retry)
+            // au lieu de rejeter en perdant tout le travail déjà payé.
             logError({
                 source: 'ai', severity: 'error',
                 message: `Chat in-app : échec de l'appel Claude au tour ${turn} — conversation interrompue.`,

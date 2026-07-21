@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — chantier Claude-in-app : tools moteur hors du thread principal] — 2026-07-21
+
+### Améliorations
+- **`[AITOOLS-ENGINE-WORKER]`** — `get_projection`, `get_retirement_outlook` (Monte Carlo par défaut)
+  et `simulate_what_if` (2 runs) routés sur `runProjectionAsync` : Web Worker + timeout 30 s côté
+  navigateur (l'UI du futur chat ne gèlera pas pendant un calcul), repli synchrone IDENTIQUE côté
+  Node/MCP (mêmes résultats — parité re-prouvée). `withState` accepte les handlers async (rétrocompat
+  sync). Garde-scan : plus aucun appel moteur direct possible dans un spec.
+
 ## [unreleased — chantier Claude-in-app, Lot B : boucle agentique + registre app (lecture)] — 2026-07-21
 
 ### Nouveau (fondation, pas encore branché à l'UI — Lot C)

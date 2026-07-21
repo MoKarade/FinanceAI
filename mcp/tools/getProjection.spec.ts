@@ -7,7 +7,9 @@
 
 import { z } from 'zod';
 import type { AppState } from '../../types';
-import { calculateFutureProjection } from '../../services/projection';
+// [AITOOLS-ENGINE-WORKER] runProjectionAsync : Web Worker côté navigateur (l'UI ne gèle plus
+// pendant le calcul), repli SYNCHRONE identique côté Node/MCP — même moteur, mêmes résultats.
+import { runProjectionAsync } from '../../services/projection/runAsync';
 import type { ProjectionResult } from '../../services/projection/types';
 import { buildSimulationParamsFromState } from '../../services/projection/buildSimulationParams';
 import { extractYearlySeries, fireAgeOf } from '../whatIf';
@@ -49,7 +51,7 @@ export const getProjectionSpec = {
         'FinanceAI. Renvoie le patrimoine final NOMINAL et RÉEL (déflaté), le patrimoine successoral, ' +
         "l'objectif FIRE, l'âge d'indépendance financière, et (si Monte Carlo) la probabilité de réussite.",
     inputSchema,
-    handler: async ({ years, scenario, monteCarlo, includeSeries }, getState) => withState(getState, (state: AppState) => {
+    handler: async ({ years, scenario, monteCarlo, includeSeries }, getState) => withState(getState, async (state: AppState) => {
         const params = buildSimulationParamsFromState(state);
         // Horizon demandé : on surcharge years sans muter l'état d'origine.
         params.projection = { ...params.projection, years };
@@ -60,7 +62,7 @@ export const getProjectionSpec = {
         // le fallback renverrait des chiffres BASE étiquetés du mauvais scénario — BLOCKER
         // attrapé par performance-optimizer). byScenario reflète ce qui est calculé (1 entrée,
         // ou 1+1 pour un stress demandé).
-        const result = calculateFutureProjection(params, monteCarlo, 0,
+        const result = await runProjectionAsync(params, monteCarlo, 0,
             stratType === 'BASE' ? undefined : [stratType]);
 
         const chartData = result.chartData ?? [];

@@ -4,6 +4,32 @@
 > archivé dans [`docs/HISTORIQUE.md`](HISTORIQUE.md) (fusion de tous les snapshots/audits/designs livrés).
 > Audit qualité détaillé : voir `docs/HISTORIQUE.md` (section `AAA_AUDIT_2026-06.md`).
 > Actions humaines (Marc) : [`docs/A_FAIRE_MOI.md`](A_FAIRE_MOI.md).
+
+## 🚧 Chantier Claude-in-app (GO Marc 2026-07-21 : « go jusqu'à tout fini et testé + audit de sec à la fin + aucune donnée changée + résultat fiable »)
+> Plan validé (panel PM + architect, 2026-07-21). P1 = Claude intégré à l'app (tool-use sur les MÊMES
+> specs que le MCP — parité « mêmes réponses que claude.ai ») ; P2 = tools MCP d'écriture manquants
+> (ordre : transactions → objectifs → budgets → actifs → immobilier) ; P3 = visuels des 5 surfaces.
+> Décisions verrouillées : mode discret = chat masqué d'un bloc (PrivateBlock) ; transcript persisté
+> LÉGER (payloads tools en mémoire session seulement) ; Sonnet = chat interactif (Haiku reste au fond) ;
+> écritures = confirmation diff avant/après à CHAQUE écriture ; AUDIT SÉCURITÉ complet en fin de chantier.
+
+- [x] **`[AITOOLS-A]` Frontière spec/register** — ✅ 2026-07-21 : 16 tools scindés en `*.spec.ts`
+  (pur, browser-safe) + `*.tool.ts` (mince). Parité d'enregistrement MESURÉE (worktree HEAD vs courant,
+  16/16 identiques), suite MCP verte, garde `noMcpSdkInSpecs` (frontière + minceur, volume prouvé).
+- [ ] **`[AITOOLS-B]` Registre app + boucle agentique lecture** (L) — `services/aiTools/` : 11 tools de
+  lecture → SDK Anthropic tool-use (validation zod explicite, cap ~6 tours, streaming) + test de parité
+  « même état → même payload » MCP↔app sur personas + `zod-to-json-schema` en dep directe.
+- [ ] **`[AITOOLS-C]` Branchement panneau existant** (M) — AiAssistant passe au tool-use, SUPPRESSION de
+  `generateContext()` (source divergente), chips « a consulté : X », bannière mode test, garde clé absente.
+  Critère d'arrêt Marc : 5 vraies questions → réponses correctes sur données réelles.
+- [ ] **`[AITOOLS-D]` Écritures + confirmation** (M) — 5 write-tools via `applyDocument` pur → modal diff
+  avant/après → Appliquer (backup + setState) / Annuler (tool_result refusé). Diff RECALCULÉ au commit
+  (anti-race), écritures multiples chaînées séquentiellement. RIEN d'écrit sans clic.
+- [ ] **`[AITOOLS-E]` UI partagée** (L) — `useAiChat` + panneau latéral global (lazy) + onglet Assistant
+  agrandi (même conversation partout), `PrivateBlock` en mode discret, audit a11y, mesure gzip du chunk.
+- [ ] **`[AITOOLS-SEC]` Audit sécurité FINAL du chantier** (M, exigence Marc) — panel security-privacy +
+  ai-reviewer sur TOUT le chantier : injection indirecte via tool_result, aucune écriture sans confirmation
+  (prouvé par test), clé API, Loi 25, mode discret, personas. + vérif « aucune donnée changée » en lecture.
 >
 > **Dernière mise à jour : 2026-07-06.** Tests : 2334 verts / 207 fichiers · tsc clean · build OK.
 > **Dernière PR mergée : #425** (2026-06-26, WHT-DISPLAY-EXACT) — 111 commits depuis #315, audit financier complet 2026-06-23 résolu (6 lots), 5 sessions 06-19→06-26, retraite per-conjoint ✅.

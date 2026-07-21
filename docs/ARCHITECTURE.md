@@ -223,6 +223,16 @@ User input ──► AiAssistant.tsx
 - `getCoupleOptimizationStrategies()` — Phase G.4, Spousal RRSP / pension splitting (Haiku)
 - `getRealEstateAdvice()` — Phase F.8, 5 catégories cost/timing/leverage/tax/risk (Haiku)
 
+**Frontière spec/register des tools MCP** (Lot A du chantier Claude-in-app, 2026-07-21, ADR-1) :
+chaque tool est scindé en `mcp/tools/<x>.spec.ts` (logique métier PURE, browser-safe : nom,
+description, schéma zod, handler/toDocument — types dans `_toolSpec.ts`) et `mcp/tools/<x>.tool.ts`
+(enregistrement serveur MINCE, seul autorisé à importer `@modelcontextprotocol/sdk`). Deux
+consommateurs des specs : le serveur MCP (`server.tool(...)`) et, à venir, le chat Claude in-app
+(`services/aiTools/` → SDK Anthropic tool-use). Exclus de la parité : `ping` (trivial) et
+`connect_drive` (OAuth loopback Node, sans équivalent in-app — l'app EST la source de données).
+Gardes : `tests/aiTools/noMcpSdkInSpecs.test.ts` (frontière + tools minces, volume prouvé) ;
+parité mesurée par capture d'enregistrement (worktree HEAD vs courant : 16 tools identiques).
+
 ---
 
 ## 7. Tests

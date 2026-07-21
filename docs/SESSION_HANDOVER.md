@@ -4,6 +4,15 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-21 (suite) — Chantier Claude-in-app LANCÉ (GO Marc) — Lot A livré
+> **GO Marc** : « go jusqu'à tout fini et testé + audit de sec à la fin + aucune donnée changée + résultat fiable ».
+> Plan 5 lots validé (PM + architect) — détail et décisions verrouillées : BACKLOG §Chantier Claude-in-app.
+> **✅ `[AITOOLS-A]` livré** : 16 tools MCP scindés spec (pur, browser-safe) / register (mince) — parité
+> d'enregistrement MESURÉE 16/16 (worktree HEAD vs courant), suite MCP verte, garde `noMcpSdkInSpecs`.
+> **Suite** : `[AITOOLS-B]` (registre app + boucle agentique lecture + test de parité de payloads),
+> puis C (branchement panneau), D (écritures+confirmation), E (UI partagée), SEC (audit final).
+> + `[DEP-AUDIT-2026-07]` mergé (#474) : npm audit 4→0 vulnérabilités (adm-zip 0.6 prouvé par mcp:pack).
+>
 > ## 🟢 Session 2026-07-21 — Lot audit n°2 : les 6 restants (« go ») + cadrage MCP/Claude-in-app
 > **✅ Lot des 6 restants de l'audit livré (1 PR)** : `[MCP-TOOLS-SILENT-CATCH]` (logError aux 6 catch de
 > frontière MCP), `[SYNC-APIKEYS-SILENT]` (échec coffre journalisé au pull), `[DEBT-SUM-DUP]` (HealthIndicator +

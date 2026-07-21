@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — chantier Claude-in-app, Lot A : frontière spec/register des tools MCP] — 2026-07-21
+
+### Refactor (préparatoire, zéro changement de comportement)
+- **16 tools MCP scindés en `*.spec.ts` (logique pure, browser-safe) + `*.tool.ts` (enregistrement
+  serveur mince)** — fondation du chat Claude intégré à l'app (GO Marc 2026-07-21) : la MÊME logique
+  servira le serveur MCP (claude.ai) ET le tool-use in-app (SDK Anthropic), garantissant « les mêmes
+  réponses que claude.ai ». `ping`/`connect_drive` exclus (trivial / OAuth Node sans équivalent in-app).
+- **Preuves verbatim** : parité d'enregistrement MESURÉE (capture par faux serveur, worktree HEAD vs
+  courant — 16/16 tools : nom, description, schéma identiques) + suite MCP complète verte (payloads
+  inchangés) + garde `noMcpSdkInSpecs` (frontière browser-safe + tools minces ≤ 25 lignes, volume
+  prouvé) + 0 cycle d'import dans mcp/tools ; aucun spec n'importe un `.tool.ts`.
+
 ## [unreleased — sécurité deps : 0 vulnérabilité npm audit] — 2026-07-21
 
 ### Sécurité (dépendances)

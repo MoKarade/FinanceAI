@@ -13,12 +13,19 @@ vi.mock('../../services/aiTools/agentLoop', () => ({
 vi.mock('../../services/aiTools/appStateProvider', () => ({
     appStateProvider: vi.fn(async () => ({})),
 }));
+// [AITOOLS-D] L'exécuteur d'écriture est mocké : on teste le CÂBLAGE UI (executeWriteTool reçoit
+// requestConfirmation → pendingWrite → modal → clic → décision), pas applyDocument (testé à part).
+const executeWriteToolMock = vi.fn();
+vi.mock('../../services/aiTools/writeExecutor', () => ({
+    executeWriteTool: (...args: unknown[]) => executeWriteToolMock(...args),
+}));
 
 beforeEach(() => {
     // jsdom n'implémente pas scrollIntoView (utilisé par l'auto-scroll du fil de messages).
     Element.prototype.scrollIntoView = vi.fn();
     useFinanceStore.getState().resetState();
     runAgentLoopMock.mockReset();
+    executeWriteToolMock.mockReset();
     runAgentLoopMock.mockResolvedValue({
         text: 'Ton patrimoine est **solide**.',
         toolsUsed: ['get_financial_overview'],
@@ -114,6 +121,68 @@ describe('AiAssistant — tool-use (AITOOLS-C)', () => {
         await waitFor(() => expect(runAgentLoopMock).toHaveBeenCalled());
         expect(runAgentLoopMock).toHaveBeenCalledTimes(1);
         resolveLoop({ text: 'ok', toolsUsed: [], turns: 1, stopReason: 'end', messages: [] });
+    });
+
+    // ── [AITOOLS-D] Modal de confirmation d'écriture ─────────────────────────────────────────
+
+    /** Câble un envoi qui déclenche UNE écriture via le vrai chemin useAiChat → executeWriteTool. */
+    function scriptWriteFlow() {
+        const decisions: string[] = [];
+        executeWriteToolMock.mockImplementation(async (_spec, _args, requestConfirmation) => {
+            const decision = await (requestConfirmation as (p: unknown) => Promise<string>)({
+                toolName: 'apply_debt',
+                summary: 'Ajout de la dette « Prêt auto Civic ».',
+                changes: [{ field: 'Dette : Prêt auto Civic', before: null, after: 12000 }],
+            });
+            decisions.push(decision);
+            return { content: [{ type: 'text', text: JSON.stringify({ applied: decision === 'apply' }) }] };
+        });
+        runAgentLoopMock.mockImplementation(async (_history: unknown, opts: {
+            onWriteToolUse?: (spec: unknown, args: Record<string, unknown>) => Promise<unknown>;
+        }) => {
+            await opts.onWriteToolUse!({ name: 'apply_debt' }, { name: 'Prêt auto Civic', balance: 12000 });
+            return { text: 'Dette traitée.', toolsUsed: ['apply_debt'], turns: 2, stopReason: 'end', messages: [] };
+        });
+        return decisions;
+    }
+
+    async function sendTriggeringWrite() {
+        render(<AiAssistant apiKey="sk-test" />);
+        openPanel();
+        fireEvent.change(screen.getByLabelText(/Question au conseiller IA/i), { target: { value: 'Ajoute ma dette auto' } });
+        fireEvent.click(screen.getByRole('button', { name: /Envoyer le message/i }));
+        await waitFor(() => expect(screen.getByText(/Confirmer la modification/i)).toBeInTheDocument());
+    }
+
+    it('[AITOOLS-D] écriture proposée → MODAL avec le diff ; « Appliquer » → décision apply, la boucle conclut', async () => {
+        const decisions = scriptWriteFlow();
+        await sendTriggeringWrite();
+        // Le diff est montré (champ + résumé) — la promesse de writeExecutor est EN ATTENTE du clic.
+        expect(screen.getByText(/Dette : Prêt auto Civic/)).toBeInTheDocument();
+        expect(screen.getByText(/Ajout de la dette/)).toBeInTheDocument();
+        expect(decisions).toEqual([]); // rien tranché tant que pas de clic
+
+        fireEvent.click(screen.getByRole('button', { name: /^Appliquer$/ }));
+        await waitFor(() => expect(document.body.textContent).toContain('Dette traitée.'));
+        expect(decisions).toEqual(['apply']);
+        expect(screen.queryByText(/Confirmer la modification/i)).toBeNull(); // modal fermé
+    });
+
+    it('[AITOOLS-D] « Annuler » dans le modal → décision cancel (zéro écriture), la conversation continue', async () => {
+        const decisions = scriptWriteFlow();
+        await sendTriggeringWrite();
+        fireEvent.click(screen.getByRole('button', { name: /^Annuler$/ }));
+        await waitFor(() => expect(document.body.textContent).toContain('Dette traitée.'));
+        expect(decisions).toEqual(['cancel']);
+        expect(screen.queryByText(/Confirmer la modification/i)).toBeNull();
+    });
+
+    it('[AITOOLS-D] fermer le modal par ✕ (ou backdrop/Échap) = REFUS, jamais une promesse orpheline', async () => {
+        const decisions = scriptWriteFlow();
+        await sendTriggeringWrite();
+        fireEvent.click(screen.getByRole('button', { name: /^Fermer$/ }));
+        await waitFor(() => expect(document.body.textContent).toContain('Dette traitée.'));
+        expect(decisions).toEqual(['cancel']);
     });
 
     it('[ADR-5] mode DISCRET → conversation et champ de saisie HORS du DOM (masquer = ne pas rendre)', () => {

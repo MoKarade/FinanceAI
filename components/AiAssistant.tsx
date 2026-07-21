@@ -3,6 +3,7 @@ import { Icon, type IconName } from './ui/Icon';
 import { AiMessage } from '../types';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { useAiChat } from '../hooks/useAiChat';
+import { AiChatConfirmModal } from './aiChat/AiChatConfirmModal';
 
 interface AiAssistantProps {
   apiKey: string;
@@ -35,7 +36,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey }) => {
   const aiConversation = useFinanceStore(s => s.aiConversation);
   const isTestMode = useFinanceStore(s => s.isTestMode);
   const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
-  const { isLoading, activeTools, sendMessage, cancel, clearConversation } = useAiChat(apiKey);
+  const { isLoading, activeTools, pendingWrite, resolvePendingWrite, sendMessage, cancel, clearConversation } = useAiChat(apiKey);
 
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
@@ -240,6 +241,12 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey }) => {
           </>
           )}
         </div>
+      )}
+
+      {/* [AITOOLS-D] Confirmation d'écriture — HORS du panneau (indépendant de isOpen : fermer le
+          chat mi-stream ne doit pas orpheliner la promesse de writeExecutor ni cacher la décision). */}
+      {pendingWrite && (
+        <AiChatConfirmModal preview={pendingWrite} onDecision={resolvePendingWrite} />
       )}
     </>
   );

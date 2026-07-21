@@ -40,9 +40,12 @@
   stateless → réinjecter `messages` (avec tool_results volumineux, ex. simulate_what_if includeSeries ~1400
   points) RE-paie ces tokens à CHAQUE tour suivant sur la clé BYOK. Borner l'historique resoumis (tronquer les
   vieux tool_results, garder le texte). NB : ne PAS changer `includeSeries` défaut (surface claude.ai, parité).
-- [ ] **`[AITOOLS-D]` Écritures + confirmation** (M) — 5 write-tools via `applyDocument` pur → modal diff
-  avant/après → Appliquer (backup + setState) / Annuler (tool_result refusé). Diff RECALCULÉ au commit
-  (anti-race), écritures multiples chaînées séquentiellement. RIEN d'écrit sans clic.
+- [x] **`[AITOOLS-D]` Écritures + confirmation** (M) — ✅ 2026-07-21 : 5 write-tools via `applyDocument` pur →
+  modal diff avant/après (`AiChatConfirmModal`) → Appliquer (backup `createBackupNow('auto')` OBLIGATOIRE
+  avant l'écriture, sinon annulée) / Annuler (tool_result refusé). Diff RECALCULÉ sur état FRAIS au clic
+  (anti-race), écritures multiples séquentielles (la boucle re-snapshot après chaque apply), tools déclarés
+  à l'API SEULEMENT si l'exécuteur est branché, apiKeys insensibles à un apply. 13 tests (writeExecutor 6,
+  agentLoop routage 4, UI modal 3). + fix flake oauthProvider (tamper ~1/64 no-op).
 - [ ] **`[AITOOLS-E]` UI partagée** (L) — `useAiChat` + panneau latéral global (lazy) + onglet Assistant
   agrandi (même conversation partout), `PrivateBlock` en mode discret, audit a11y, mesure gzip du chunk.
 - [ ] **`[AITOOLS-SEC]` Audit sécurité FINAL du chantier** (M, exigence Marc) — panel security-privacy +

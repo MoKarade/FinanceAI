@@ -14,12 +14,15 @@
 //   de throw qui casserait la conversation.
 
 import type Anthropic from '@anthropic-ai/sdk';
+import { z } from 'zod';
 import { makeClient, makeTimeoutSignal, MODEL_SONNET } from '../claude';
 import { logError } from '../errorLogger';
-import type { StateProvider } from '../../mcp/tools/_dataAware';
+import type { StateProvider, ToolTextResult } from '../../mcp/tools/_dataAware';
+import { errorContent } from '../../mcp/tools/_dataAware';
+import type { AnyWriteToolSpec } from '../../mcp/tools/_toolSpec';
 import { dispatchReadTool } from './dispatch';
 import { toAnthropicTools } from './toAnthropicTools';
-import { READ_SPECS } from './registry';
+import { READ_SPECS, WRITE_SPECS, WRITE_SPECS_BY_NAME } from './registry';
 import { buildAgentSystemPrompt } from './systemPrompt';
 
 const DEFAULT_MAX_TURNS = 6;
@@ -45,6 +48,10 @@ export interface AgentLoopOptions {
     onTextDelta?: (delta: string) => void;
     /** Transparence : notifié au début de chaque exécution de tool (chip « a consulté : X »). */
     onToolUse?: (toolName: string) => void;
+    /** [AITOOLS-D] Exécuteur d'ÉCRITURE (writeExecutor : diff → CONFIRMATION → apply/refus). Les
+     *  5 tools apply_* ne sont DÉCLARÉS à l'API que si ce callback est fourni — une surface sans
+     *  confirmation (tests, futur usage lecture seule) reste STRUCTURELLEMENT incapable d'écrire. */
+    onWriteToolUse?: (spec: AnyWriteToolSpec, args: Record<string, unknown>) => Promise<ToolTextResult>;
     signal?: AbortSignal;
     maxTurns?: number;
     turnTimeoutMs?: number;
@@ -83,6 +90,44 @@ function flattenContent(content: Array<{ type: 'text'; text: string }>): string 
     return content.map((b) => b.text).join('\n\n');
 }
 
+/**
+ * [AITOOLS-D] Route un tool_use : écriture (validation zod PUIS exécuteur de confirmation — mêmes
+ * ceintures que la lecture : erreurs → tool_result lisible, jamais de throw) ou lecture (dispatch).
+ */
+async function dispatchAnyTool(
+    name: string,
+    rawArgs: unknown,
+    getState: StateProvider,
+    onWriteToolUse?: (spec: AnyWriteToolSpec, args: Record<string, unknown>) => Promise<ToolTextResult>,
+): Promise<ToolTextResult> {
+    const writeSpec = WRITE_SPECS_BY_NAME.get(name);
+    if (writeSpec) {
+        if (!onWriteToolUse) {
+            // Structurel : sans exécuteur de confirmation, l'écriture est IMPOSSIBLE (le tool ne
+            // devrait même pas être déclaré — ceinture au cas où le modèle hallucine le nom).
+            return errorContent(`Le tool d'écriture ${name} n'est pas disponible sur cette surface.`);
+        }
+        const parsed = z.object(writeSpec.inputSchema).safeParse(rawArgs ?? {});
+        if (!parsed.success) {
+            const detail = parsed.error.issues
+                .map((i) => `${i.path.join('.') || '(racine)'} : ${i.message}`)
+                .join(' ; ');
+            return errorContent(`Arguments invalides pour ${name} — ${detail}`);
+        }
+        try {
+            return await onWriteToolUse(writeSpec, parsed.data as Record<string, unknown>);
+        } catch (err) {
+            logError({
+                source: 'ai', severity: 'error',
+                message: `Chat in-app : l'exécuteur d'écriture ${name} a levé (ceinture) — AUCUNE écriture appliquée.`,
+                error: err instanceof Error ? err : new Error(String(err)),
+            });
+            return errorContent(`L'écriture ${name} a échoué. ${err instanceof Error ? err.message : String(err)}`);
+        }
+    }
+    return dispatchReadTool(name, rawArgs, getState);
+}
+
 /** Invoque un callback UI en l'ISOLANT : une erreur de rendu ne casse JAMAIS la boucle agentique
  *  (finding panel silent-failure 2026-07-21 — un throw de couche présentation perdait toute la
  *  conversation + les tool_results déjà payés). */
@@ -104,7 +149,8 @@ export async function runAgentLoop(
     opts: AgentLoopOptions,
 ): Promise<AgentLoopResult> {
     const client = opts.client ?? (makeClient(opts.apiKey) as unknown as AgentClientLike);
-    const tools = toAnthropicTools(READ_SPECS);
+    // [AITOOLS-D] Les tools d'écriture ne sont déclarés QUE si un exécuteur de confirmation existe.
+    const tools = toAnthropicTools(opts.onWriteToolUse ? [...READ_SPECS, ...WRITE_SPECS] : READ_SPECS);
     const maxTurns = opts.maxTurns ?? DEFAULT_MAX_TURNS;
     const system = opts.system ?? buildAgentSystemPrompt();
 
@@ -208,7 +254,7 @@ export async function runAgentLoop(
         for (const tu of toolUses) {
             safeCallback(opts.onToolUse ? () => opts.onToolUse!(tu.name) : undefined, 'onToolUse');
             toolsUsed.push(tu.name);
-            const res = await dispatchReadTool(tu.name, tu.input, frozenState);
+            const res = await dispatchAnyTool(tu.name, tu.input, frozenState, opts.onWriteToolUse);
             results.push({
                 type: 'tool_result',
                 tool_use_id: tu.id,

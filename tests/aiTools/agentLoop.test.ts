@@ -105,7 +105,7 @@ describe('runAgentLoop', () => {
 
     it('tool INCONNU → tool_result is_error « non disponible », pas de crash', async () => {
         const { client, requests } = scriptedClient([
-            toolMsg('apply_debt', { name: 'x' }), // write-tool : PAS dans le registre lecture (Lot B)
+            toolMsg('tool_inexistant', { name: 'x' }), // ni lecture ni écriture
             textMsg('Ok.'),
         ]);
         const res = await runAgentLoop([{ role: 'user', content: 'q' }], { apiKey: 'sk-test', getState, client });
@@ -221,6 +221,82 @@ describe('runAgentLoop', () => {
         expect(res.stopReason).toBe('aborted');
         expect(res.text).toContain('[Annulé]');
         expect(logError).not.toHaveBeenCalled();
+    });
+
+    // ── [AITOOLS-D] Routage des tools d'ÉCRITURE ─────────────────────────────────────────────
+
+    it('[AITOOLS-D] SANS onWriteToolUse : les apply_* ne sont PAS déclarés à l\'API + is_error si hallucinés', async () => {
+        // Structurel : une surface sans exécuteur de confirmation est INCAPABLE d'écrire — le tool
+        // n'existe même pas côté API, et la ceinture rattrape un nom halluciné.
+        const { client, requests } = scriptedClient([
+            toolMsg('apply_debt', { name: 'Prêt auto', balance: 5000, interestRate: 7, minimumPayment: 150 }),
+            textMsg('Ok.'),
+        ]);
+        await runAgentLoop([{ role: 'user', content: 'q' }], { apiKey: 'sk-test', getState, client });
+        const tools = requests[0].tools as Array<{ name: string }>;
+        expect(tools.some((t) => t.name.startsWith('apply_'))).toBe(false);
+        const block = ((requests[1].messages as Anthropic.MessageParam[]).at(-1)!
+            .content as Anthropic.ToolResultBlockParam[])[0];
+        expect(block.is_error).toBe(true);
+        expect(block.content as string).toContain('n\'est pas disponible');
+    });
+
+    it('[AITOOLS-D] AVEC onWriteToolUse : les 5 apply_* sont déclarés, args VALIDÉS puis routés vers l\'exécuteur', async () => {
+        const { client, requests } = scriptedClient([
+            toolMsg('apply_debt', { name: 'Prêt auto Civic', balance: 12000, interestRate: 6.5, minimumPayment: 320 }),
+            textMsg('Dette proposée.'),
+        ]);
+        const onWriteToolUse = vi.fn(async () => ({ content: [{ type: 'text' as const, text: '{"applied":true}' }] }));
+        const res = await runAgentLoop([{ role: 'user', content: 'q' }], {
+            apiKey: 'sk-test', getState, client, onWriteToolUse,
+        });
+        expect(res.stopReason).toBe('end');
+        const tools = requests[0].tools as Array<{ name: string }>;
+        expect(tools.filter((t) => t.name.startsWith('apply_')).map((t) => t.name).sort()).toEqual([
+            'apply_bank_statement', 'apply_broker_statement', 'apply_debt', 'apply_payslip', 'apply_tax_slip',
+        ]);
+        expect(onWriteToolUse).toHaveBeenCalledTimes(1);
+        const [spec, args] = onWriteToolUse.mock.calls[0] as unknown as [{ name: string }, Record<string, unknown>];
+        expect(spec.name).toBe('apply_debt');
+        expect(args.balance).toBe(12000); // args VALIDÉS (zod) transmis à l'exécuteur
+        const block = ((requests[1].messages as Anthropic.MessageParam[]).at(-1)!
+            .content as Anthropic.ToolResultBlockParam[])[0];
+        expect(block.is_error).toBeUndefined();
+        expect(block.content as string).toContain('"applied":true');
+    });
+
+    it('[AITOOLS-D] args d\'écriture INVALIDES → is_error lisible, l\'exécuteur n\'est JAMAIS appelé', async () => {
+        const { client, requests } = scriptedClient([
+            toolMsg('apply_debt', { name: '', balance: Infinity }), // nom vide + Infinity (leçon MCP-WHATIF)
+            textMsg('Corrigé.'),
+        ]);
+        const onWriteToolUse = vi.fn();
+        await runAgentLoop([{ role: 'user', content: 'q' }], { apiKey: 'sk-test', getState, client, onWriteToolUse });
+        expect(onWriteToolUse).not.toHaveBeenCalled();
+        const block = ((requests[1].messages as Anthropic.MessageParam[]).at(-1)!
+            .content as Anthropic.ToolResultBlockParam[])[0];
+        expect(block.is_error).toBe(true);
+        expect(block.content as string).toContain('Arguments invalides');
+    });
+
+    it('[AITOOLS-D] l\'exécuteur d\'écriture qui THROW → is_error + logError, la conversation survit (ceinture)', async () => {
+        const { client, requests } = scriptedClient([
+            toolMsg('apply_debt', { name: 'Prêt', balance: 100, interestRate: 5, minimumPayment: 10 }),
+            textMsg('Fini.'),
+        ]);
+        const onWriteToolUse = vi.fn(async () => { throw new Error('IndexedDB explosé'); });
+        const res = await runAgentLoop([{ role: 'user', content: 'q' }], {
+            apiKey: 'sk-test', getState, client, onWriteToolUse,
+        });
+        expect(res.stopReason).toBe('end'); // la boucle continue, pas de throw
+        const block = ((requests[1].messages as Anthropic.MessageParam[]).at(-1)!
+            .content as Anthropic.ToolResultBlockParam[])[0];
+        expect(block.is_error).toBe(true);
+        expect(block.content as string).toContain('a échoué');
+        expect(logError).toHaveBeenCalledWith(expect.objectContaining({
+            source: 'ai', severity: 'error',
+            message: expect.stringMatching(/exécuteur d'écriture apply_debt a levé/),
+        }));
     });
 
     it('[ceinture panel] cap max_turns : l\'historique retourné se TERMINE par un tour assistant (reprise saine)', async () => {

@@ -19,6 +19,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { runAgentLoop } from '../services/aiTools/agentLoop';
 import { appStateProvider } from '../services/aiTools/appStateProvider';
+import { executeWriteTool, type WritePreview, type WriteDecision } from '../services/aiTools/writeExecutor';
 import { neutralizeFrameTags } from '../utils/promptSafety';
 import { logError } from '../services/errorLogger';
 import type { AiMessage } from '../types';
@@ -36,12 +37,23 @@ export const TOOL_LABELS: Record<string, string> = {
     get_tax_room: 'Espace CELI',
     calculate_real_estate: 'Calcul immobilier',
     run_projection: 'Calculateur de projection',
+    // [AITOOLS-D] Tools d'écriture — le suffixe distingue une PROPOSITION (gated par le modal de
+    // confirmation) d'une simple consultation dans les chips de transparence.
+    apply_debt: 'Dette (proposition d\'écriture)',
+    apply_payslip: 'Fiche de paie (proposition d\'écriture)',
+    apply_bank_statement: 'Relevé bancaire (proposition d\'écriture)',
+    apply_broker_statement: 'Relevé de courtage (proposition d\'écriture)',
+    apply_tax_slip: 'Feuillet fiscal (proposition d\'écriture)',
 };
 
 export interface UseAiChat {
     isLoading: boolean;
     /** Libellés des tools en cours de consultation pour l'envoi actif (chips live). */
     activeTools: string[];
+    /** [AITOOLS-D] Écriture EN ATTENTE de confirmation (diff à afficher dans le modal) — null sinon. */
+    pendingWrite: WritePreview | null;
+    /** Tranche l'écriture en attente (bouton Appliquer → 'apply', Annuler → 'cancel'). */
+    resolvePendingWrite: (decision: WriteDecision) => void;
     sendMessage: (text: string) => Promise<void>;
     cancel: () => void;
     clearConversation: () => void;
@@ -59,6 +71,24 @@ export function useAiChat(apiKey: string): UseAiChat {
     // Garde de réentrance SYNCHRONE (finding panel : deux sendMessage dans le même tick lisent la
     // même closure isLoading=false → deux boucles concurrentes qui se corrompent mutuellement).
     const inFlightRef = useRef(false);
+    // [AITOOLS-D] Écriture en attente de confirmation : le diff pour le modal + le resolver de la
+    // promesse sur laquelle writeExecutor attend le clic.
+    const [pendingWrite, setPendingWrite] = useState<WritePreview | null>(null);
+    const writeResolverRef = useRef<((d: WriteDecision) => void) | null>(null);
+
+    const resolvePendingWrite = useCallback((decision: WriteDecision) => {
+        const resolve = writeResolverRef.current;
+        writeResolverRef.current = null;
+        setPendingWrite(null);
+        resolve?.(decision);
+    }, []);
+
+    const requestConfirmation = useCallback((preview: WritePreview): Promise<WriteDecision> => {
+        return new Promise((resolve) => {
+            writeResolverRef.current = resolve;
+            setPendingWrite(preview);
+        });
+    }, []);
 
     const appendMessage = useCallback((msg: AiMessage) => {
         const { aiConversation, setAppState } = useFinanceStore.getState();
@@ -130,6 +160,9 @@ export function useAiChat(apiKey: string): UseAiChat {
                     setActiveTools([...usedLabels]);
                     updateModelMessage(modelMsgId, { toolsUsed: [...usedLabels] });
                 },
+                // [AITOOLS-D] Écritures : diff pur → modal (requestConfirmation attend le clic) →
+                // apply/refus. Sans ce callback, les tools apply_* ne seraient même pas déclarés.
+                onWriteToolUse: (spec, args) => executeWriteTool(spec, args, requestConfirmation),
             });
             // Le texte FINAL fait foi (marqueurs honnêtes [Réponse coupée]/[Erreur]/[Annulé]/
             // [Limite atteinte] inclus — les deltas streamés ne portent pas ces marqueurs).
@@ -150,11 +183,14 @@ export function useAiChat(apiKey: string): UseAiChat {
             setActiveTools([]);
             abortRef.current = null;
         }
-    }, [apiKey, appendMessage, updateModelMessage]);
+    }, [apiKey, appendMessage, updateModelMessage, requestConfirmation]);
 
     const cancel = useCallback(() => {
+        // Une écriture en attente de confirmation est REFUSÉE par l'annulation (le modal se ferme,
+        // writeExecutor rend « refusé ») — puis le tour API en vol est interrompu.
+        if (writeResolverRef.current) resolvePendingWrite('cancel');
         abortRef.current?.abort(new DOMException('User cancelled', 'AbortError'));
-    }, []);
+    }, [resolvePendingWrite]);
 
     const clearConversation = useCallback(() => {
         // Ceinture : ne JAMAIS vider pendant un envoi (la réponse en cours — déjà payée — serait
@@ -163,5 +199,5 @@ export function useAiChat(apiKey: string): UseAiChat {
         useFinanceStore.getState().setAppState({ aiConversation: [] });
     }, []);
 
-    return { isLoading, activeTools, sendMessage, cancel, clearConversation };
+    return { isLoading, activeTools, pendingWrite, resolvePendingWrite, sendMessage, cancel, clearConversation };
 }

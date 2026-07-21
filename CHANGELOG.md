@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — chantier Claude-in-app, Lot D : écritures avec confirmation] — 2026-07-21
+
+### Améliorations (Assistant)
+- **L'assistant in-app peut maintenant PROPOSER des écritures** via les 5 mêmes tools `apply_*` que le
+  connecteur claude.ai (dette, fiche de paie, relevé bancaire, relevé de courtage, feuillet fiscal) —
+  **RIEN ne s'écrit sans ton clic** : diff avant → après calculé PUREMENT (`applyDocument`, zéro mutation)
+  → modal « Confirmer la modification » (`AiChatConfirmModal`) → Appliquer (sauvegarde IndexedDB créée
+  AVANT l'écriture ; échec du backup = écriture ANNULÉE) ou Annuler (tool_result « refusé », Claude ne
+  réessaie pas sans nouvelle demande). Toute fermeture du modal (✕, Échap, backdrop) = refus.
+- Anti-course : au clic Appliquer, le diff est RECALCULÉ sur l'état FRAIS (un prix rafraîchi ou une
+  écriture concurrente pendant que le modal est ouvert n'est jamais écrasé par un état périmé).
+- Structurel : les tools d'écriture ne sont DÉCLARÉS à l'API que si l'exécuteur de confirmation est
+  branché (une surface sans modal est incapable d'écrire) ; les vraies `apiKeys` ne peuvent pas être
+  écrasées par un apply (exclues du snapshot ET du patch appliqué). Chips « proposition d'écriture ».
+- Fix flake CI `oauthProvider` (« jeton ALTÉRÉ ») : le caractère de remplacement se base sur celui
+  qu'on remplace (position -2) — avant, ~1/64 des runs produisait un jeton identique (faux rouge).
+
 ## [unreleased — chantier Claude-in-app : tools moteur hors du thread principal] — 2026-07-21
 
 ### Améliorations

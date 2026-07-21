@@ -14,7 +14,7 @@
 // ⚠️ Browser-safe : ce module (et tout services/aiTools/) ne doit JAMAIS importer le SDK serveur
 // MCP ni un module Node-only — garde : tests/aiTools/noMcpSdkInSpecs.test.ts.
 
-import type { AnyReadToolSpec } from '../../mcp/tools/_toolSpec';
+import type { AnyReadToolSpec, AnyWriteToolSpec } from '../../mcp/tools/_toolSpec';
 import { getFinancialOverviewSpec } from '../../mcp/tools/getFinancialOverview.spec';
 import { getHoldingsSpec } from '../../mcp/tools/getHoldings.spec';
 import { getProjectionSpec } from '../../mcp/tools/getProjection.spec';
@@ -26,6 +26,11 @@ import { simulateWhatIfSpec } from '../../mcp/tools/simulateWhatIf.spec';
 import { getTaxRoomSpec } from '../../mcp/tools/getTaxRoom.spec';
 import { calculateRealEstateSpec } from '../../mcp/tools/calculateRealEstate.spec';
 import { runProjectionSpec } from '../../mcp/tools/runProjection.spec';
+import { applyDebtSpec } from '../../mcp/tools/applyDebt.spec';
+import { applyPayslipSpec } from '../../mcp/tools/applyPayslip.spec';
+import { applyBankStatementSpec } from '../../mcp/tools/applyBankStatement.spec';
+import { applyBrokerStatementSpec } from '../../mcp/tools/applyBrokerStatement.spec';
+import { applyTaxSlipSpec } from '../../mcp/tools/applyTaxSlip.spec';
 
 /** Tools de LECTURE exposés au chat in-app. AUCUNE mutation possible par ces handlers. */
 export const READ_SPECS: AnyReadToolSpec[] = [
@@ -45,3 +50,21 @@ export const READ_SPECS: AnyReadToolSpec[] = [
 /** Index par nom pour le dispatch. */
 export const READ_SPECS_BY_NAME: ReadonlyMap<string, AnyReadToolSpec> =
     new Map(READ_SPECS.map((s) => [s.name, s]));
+
+/**
+ * [AITOOLS-D] Tools d'ÉCRITURE exposés au chat in-app — les MÊMES 5 specs que le serveur MCP.
+ * ⚠️ Contrat NON NÉGOCIABLE (exigence Marc « aucune donnée changée » sans consentement) : ces specs
+ * ne PERSISTENT rien (`toDocument` seulement) — l'écriture réelle passe par
+ * `services/aiTools/writeExecutor.ts` : diff pur → CONFIRMATION visuelle (modal) → clic Appliquer.
+ * La boucle agentique ne les déclare à l'API QUE si un exécuteur de confirmation est branché.
+ */
+export const WRITE_SPECS: AnyWriteToolSpec[] = [
+    applyDebtSpec,
+    applyPayslipSpec,
+    applyBankStatementSpec,
+    applyBrokerStatementSpec,
+    applyTaxSlipSpec,
+];
+
+export const WRITE_SPECS_BY_NAME: ReadonlyMap<string, AnyWriteToolSpec> =
+    new Map(WRITE_SPECS.map((s) => [s.name, s]));

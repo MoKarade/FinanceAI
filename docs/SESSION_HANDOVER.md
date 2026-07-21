@@ -7,10 +7,15 @@
 > ## 🟢 Session 2026-07-21 (suite) — Chantier Claude-in-app LANCÉ (GO Marc) — Lot A livré
 > **GO Marc** : « go jusqu'à tout fini et testé + audit de sec à la fin + aucune donnée changée + résultat fiable ».
 > Plan 5 lots validé (PM + architect) — détail et décisions verrouillées : BACKLOG §Chantier Claude-in-app.
-> **✅ `[AITOOLS-A]` livré** : 16 tools MCP scindés spec (pur, browser-safe) / register (mince) — parité
+> **✅ `[AITOOLS-A]` livré (#475)** : 16 tools MCP scindés spec (pur, browser-safe) / register (mince) — parité
 > d'enregistrement MESURÉE 16/16 (worktree HEAD vs courant), suite MCP verte, garde `noMcpSdkInSpecs`.
-> **Suite** : `[AITOOLS-B]` (registre app + boucle agentique lecture + test de parité de payloads),
-> puis C (branchement panneau), D (écritures+confirmation), E (UI partagée), SEC (audit final).
+> **✅ `[AITOOLS-B]` livré** : `services/aiTools/` (boucle agentique tool-use lecture, 11 tools, cap 6 tours,
+> validation zod explicite) + `appStateProvider` (snapshot plat via la MÊME normalizeAppState que le MCP,
+> extraite browser-safe → `mcp/state/appStateDefaults.ts`). Parité de payloads PROUVÉE (8×2 personas) +
+> preuve « aucune donnée changée ». ⚠️ Piège trouvé au test : l'état du STORE porte les ACTIONS Zustand →
+> structuredClone du what-if plantait (« could not be cloned ») — d'où le pick data-only + normalize.
+> **Suite** : C (branchement panneau, SUPPRIMER generateContext), D (écritures+confirmation), E (UI
+> partagée + PrivateBlock mode discret), SEC (audit final — exigence Marc).
 > + `[DEP-AUDIT-2026-07]` mergé (#474) : npm audit 4→0 vulnérabilités (adm-zip 0.6 prouvé par mcp:pack).
 >
 > ## 🟢 Session 2026-07-21 — Lot audit n°2 : les 6 restants (« go ») + cadrage MCP/Claude-in-app

@@ -8,6 +8,7 @@ import {
   calculatePurchaseCosts,
   runAmortization,
 } from '../../services/realEstate';
+import { jsonContent } from './_dataAware';
 import type { ReadToolSpec } from './_toolSpec';
 
 const inputSchema = {
@@ -73,24 +74,21 @@ export const calculateRealEstateSpec = {
       startYear: params.startYear,
     });
 
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          currency: 'CAD',
-          purchaseCosts,
-          mortgage: {
-            totalMortgage: mortgage.totalMortgage,
-            monthlyPayment: Math.round(mortgage.monthlyMortgage),
-            firstMonthInterest: Math.round(mortgage.monthlyInterest),
-          },
-          projection: {
-            totalInterestPaid: Math.round(amort.totalInterest),
-            finalPropertyValue: Math.round(amort.finalValue),
-            yearlyBreakdown: amort.data,
-          },
-        }, null, 2),
-      }],
-    };
+    // [Finding panel 2026-07-21] jsonContent = LE chokepoint de sortie (identique octet pour octet
+    // ici — payload 100 % numérique) : un seul chemin de sortie JSON pour tous les specs.
+    return jsonContent({
+      currency: 'CAD',
+      purchaseCosts,
+      mortgage: {
+        totalMortgage: mortgage.totalMortgage,
+        monthlyPayment: Math.round(mortgage.monthlyMortgage),
+        firstMonthInterest: Math.round(mortgage.monthlyInterest),
+      },
+      projection: {
+        totalInterestPaid: Math.round(amort.totalInterest),
+        finalPropertyValue: Math.round(amort.finalValue),
+        yearlyBreakdown: amort.data,
+      },
+    });
   },
 } satisfies ReadToolSpec<Args>;

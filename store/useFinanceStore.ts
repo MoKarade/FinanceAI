@@ -317,6 +317,10 @@ export const getInitialStateWithMigration = (): AppState => {
             vehicleReplacements: (() => { try { const r = localStorage.getItem('app_vehicle_replacements'); return r ? JSON.parse(r) : []; } catch (e) { logError({ source: 'storage', severity: 'warning', message: 'Migration store : parse localStorage échoué (champ ignoré, défaut appliqué)', error: e }); return []; } })(),
             majorRenovations: (() => { try { const r = localStorage.getItem('app_major_renovations'); return r ? JSON.parse(r) : []; } catch (e) { logError({ source: 'storage', severity: 'warning', message: 'Migration store : parse localStorage échoué (champ ignoré, défaut appliqué)', error: e }); return []; } })(),
             charitableGoals: (() => { try { const r = localStorage.getItem('app_charitable_goals'); return r ? JSON.parse(r) : []; } catch (e) { logError({ source: 'storage', severity: 'warning', message: 'Migration store : parse localStorage échoué (champ ignoré, défaut appliqué)', error: e }); return []; } })(),
+            // [Dérive attrapée par tests/aiTools/registryParity 2026-07-21] `documents` MANQUAIT du
+            // littéral legacy (même classe que le « FIX agents : defaults manquants » ci-dessus) →
+            // state.documents undefined au 1er boot sans financeai-storage. Jamais stocké en legacy → [].
+            documents: [],
         };
     } catch (e) {
         const errorStr = String(e);

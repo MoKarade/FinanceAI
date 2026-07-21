@@ -14,20 +14,17 @@
 
 import { promises as fs } from 'node:fs';
 import type { AppState } from '../../types';
-import {
-    INITIAL_BUDGET,
-    INITIAL_CONFIG,
-    INITIAL_PROJECTION,
-    INITIAL_REAL_ESTATE_GOAL,
-    INITIAL_CHILD_GOAL,
-    DEFAULT_FX_RATES,
-} from '../../constants';
+import { normalizeAppState } from './appStateDefaults';
 import { validateAppStateShape } from './appStateSchema';
 import { saveAppStateToFile, type SaveResult } from './writeAppState';
 
 // Ré-export pour les consommateurs (tools / tests) qui veulent valider une forme
 // sans connaître le module de schéma.
 export { validateAppStateShape } from './appStateSchema';
+// [AITOOLS-B] buildDefaultAppState/normalizeAppState EXTRAITS vers appStateDefaults.ts
+// (browser-safe — ce fichier-ci importe node:fs). Ré-export de compat : les consommateurs
+// existants (tools/tests) continuent d'importer depuis loadAppState sans changement.
+export { buildDefaultAppState, normalizeAppState } from './appStateDefaults';
 
 /** Variable d'environnement portant le chemin du fichier d'état (mode stdio). */
 export const STATE_FILE_ENV = 'FINANCEAI_STATE_FILE';
@@ -101,62 +98,6 @@ export class FileStateSource implements WritableStateSource {
         // (`expectedVersion`) ne s'applique pas ; l'écriture atomique + sauvegarde suffisent.
         return saveAppStateToFile(this.filePath, state);
     }
-}
-
-/**
- * Construit un AppState COMPLET par défaut (sans dépendance React/localStorage).
- * Mirroir du `defaultState` du store, utilisé comme base de normalisation pour
- * fusionner un état partiel (export app, persona, blob Drive) → AppState valide.
- */
-export function buildDefaultAppState(): AppState {
-    return {
-        transactions: [],
-        assets: [],
-        investmentTransactions: [],
-        investmentAccounts: [],
-        budgetItems: INITIAL_BUDGET,
-        config: INITIAL_CONFIG,
-        projection: INITIAL_PROJECTION,
-        realEstateGoals: [INITIAL_REAL_ESTATE_GOAL],
-        childGoal: INITIAL_CHILD_GOAL,
-        childGoals: [INITIAL_CHILD_GOAL],
-        savingsGoals: [],
-        debts: [],
-        travelGoals: [],
-        lifeEvents: [],
-        retirementGoal: { targetAge: 65, targetMonthlyIncome: 4000, governmentPension: 1200 },
-        financialGoals: [],
-        initialBalances: {},
-        apiKeys: { anthropic: '', finnhub: '' },
-        fxRates: DEFAULT_FX_RATES,
-        lastUpdate: Date.now(),
-        categorizationRules: [],
-        aiConversation: [],
-        insurancePolicies: [],
-        rentalProperties: [],
-        privateBusinesses: [],
-        vehicleReplacements: [],
-        majorRenovations: [],
-        charitableGoals: [],
-        documents: [],
-    };
-}
-
-/**
- * Normalise un état (potentiellement partiel) en AppState complet : on part des
- * défauts et on écrase avec les champs présents. Garantit que les collections et
- * `config`/`projection`/`fxRates` existent toujours pour le moteur pur.
- */
-export function normalizeAppState(partial: Partial<AppState>): AppState {
-    const base = buildDefaultAppState();
-    return {
-        ...base,
-        ...partial,
-        // Sous-objets : fusion peu profonde pour ne pas perdre les défauts si la
-        // source ne fournit qu'une partie (ex. fxRates sans CAD).
-        config: { ...base.config, ...(partial.config ?? {}) },
-        fxRates: { ...base.fxRates, ...(partial.fxRates ?? {}) },
-    };
 }
 
 /**

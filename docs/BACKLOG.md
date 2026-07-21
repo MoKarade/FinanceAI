@@ -16,12 +16,27 @@
 - [x] **`[AITOOLS-A]` Frontière spec/register** — ✅ 2026-07-21 : 16 tools scindés en `*.spec.ts`
   (pur, browser-safe) + `*.tool.ts` (mince). Parité d'enregistrement MESURÉE (worktree HEAD vs courant,
   16/16 identiques), suite MCP verte, garde `noMcpSdkInSpecs` (frontière + minceur, volume prouvé).
-- [ ] **`[AITOOLS-B]` Registre app + boucle agentique lecture** (L) — `services/aiTools/` : 11 tools de
-  lecture → SDK Anthropic tool-use (validation zod explicite, cap ~6 tours, streaming) + test de parité
-  « même état → même payload » MCP↔app sur personas + `zod-to-json-schema` en dep directe.
+- [x] **`[AITOOLS-B]` Registre app + boucle agentique lecture** (L) — ✅ 2026-07-21 : `services/aiTools/`
+  (registry 11 tools lecture, toAnthropicTools, dispatch avec validation zod explicite + ceinture try/catch,
+  agentLoop cap 6 tours + streaming + timeout/tour + fins dégradées distinguées error/truncated/refused +
+  callbacks UI isolés, systemPrompt, appStateProvider : pick data-only SANS apiKeys + validateAppStateShape +
+  structuredClone + la MÊME normalizeAppState que le MCP — extraite browser-safe `mcp/state/appStateDefaults.ts`).
+  Parité PROUVÉE (8 tools × 2 personas, exhaustivité assertée) + « aucune donnée changée » prouvé (2 personas,
+  MC + what-if variés, clone frontière testé). Panel 4 agents : 1 CRITIQUE + 3 ÉLEVÉ + 5 MOYEN appliqués ;
+  bonus : dérive RÉELLE `documents` manquant du littéral legacy du store attrapée par le test de défauts.
 - [ ] **`[AITOOLS-C]` Branchement panneau existant** (M) — AiAssistant passe au tool-use, SUPPRESSION de
   `generateContext()` (source divergente), chips « a consulté : X », bannière mode test, garde clé absente.
   Critère d'arrêt Marc : 5 vraies questions → réponses correctes sur données réelles.
+- [ ] **`[AITOOLS-ENGINE-WORKER]`** 🟠 ÉLEVÉ (M, requis AVANT/AVEC le Lot C) — finding ai-reviewer Lot B :
+  les tools moteur (`get_projection`, `get_retirement_outlook` — Monte Carlo par DÉFAUT —, `simulate_what_if`
+  ×2 runs) exécutent `calculateFutureProjection` SYNCHRONE sur le thread principal → l'UI (y compris le bouton
+  Annuler) GÈLE pendant le dispatch, hors timeout. Le repo a DÉJÀ le pattern : `services/projection/runAsync.ts`
+  (Web Worker + timeout 30s + cancel) — router les handlers côté navigateur par un adaptateur async (Node/MCP
+  garde le synchrone). Sans ça, pas de branchement UI.
+- [ ] **`[AITOOLS-HISTORY-BOUND]`** 🟡 MOYEN (S, à traiter au Lot C/E) — finding ai-reviewer : l'API est
+  stateless → réinjecter `messages` (avec tool_results volumineux, ex. simulate_what_if includeSeries ~1400
+  points) RE-paie ces tokens à CHAQUE tour suivant sur la clé BYOK. Borner l'historique resoumis (tronquer les
+  vieux tool_results, garder le texte). NB : ne PAS changer `includeSeries` défaut (surface claude.ai, parité).
 - [ ] **`[AITOOLS-D]` Écritures + confirmation** (M) — 5 write-tools via `applyDocument` pur → modal diff
   avant/après → Appliquer (backup + setState) / Annuler (tool_result refusé). Diff RECALCULÉ au commit
   (anti-race), écritures multiples chaînées séquentiellement. RIEN d'écrit sans clic.

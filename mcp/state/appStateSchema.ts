@@ -12,7 +12,7 @@
 // champs optionnels) : l'AppState est riche et évolue ; on vérifie surtout que
 // les COLLECTIONS clés sont des tableaux et que `config.users` est exploitable.
 // La normalisation (remplissage des défauts manquants) est faite séparément par
-// `normalizeAppState` (mcp/state/loadAppState.ts).
+// `normalizeAppState` (mcp/state/appStateDefaults.ts — browser-safe, ré-exporté par loadAppState).
 
 import { z } from 'zod';
 

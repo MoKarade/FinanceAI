@@ -6,6 +6,43 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — chantier Claude-in-app, Lot B : boucle agentique + registre app (lecture)] — 2026-07-21
+
+### Nouveau (fondation, pas encore branché à l'UI — Lot C)
+- **`services/aiTools/`** : le chat Claude in-app peut consommer les 11 tools de LECTURE (mêmes specs
+  que le serveur MCP) via le SDK Anthropic — `registry` (11 tools, écriture exclue jusqu'au Lot D),
+  `toAnthropicTools` (zod → JSON Schema, même source de schémas que claude.ai), `dispatch` (validation
+  zod EXPLICITE — l'étape que server.tool faisait côté MCP), `agentLoop` (streaming, cap dur 6 tours,
+  timeout par tour, tool_result d'erreur lisibles — jamais de throw vers la conversation),
+  `systemPrompt` (contexte QC + discipline no-fake-data), `appStateProvider` (snapshot PLAT du store —
+  actions Zustand écartées — par la MÊME `normalizeAppState` que le MCP).
+- **`mcp/state/appStateDefaults.ts`** : `buildDefaultAppState`/`normalizeAppState` extraits VERBATIM
+  de `loadAppState.ts` (qui importe node:fs) → browser-safe ; ré-export de compat, zéro site touché.
+- **Parité « mêmes réponses que claude.ai » PROUVÉE et verrouillée** : même état → même payload JSON
+  sur les 8 tools data-aware × 2 personas (exhaustivité de la liste des cas assertée) + preuve
+  « AUCUNE donnée changée » (snapshot du store identique après exécution de tous les tools de lecture).
+
+### Correctifs du panel pré-commit (4 agents — 1 CRITIQUE, 3 ÉLEVÉ, 5 MOYEN appliqués)
+- `agentLoop` : échec API (réseau/429/529/timeout) → résultat HONNÊTE `stopReason:'error'` (texte déjà
+  streamé + historique préservés) + logError, au lieu de rejeter en perdant le travail payé ; réponse
+  TRONQUÉE (`max_tokens`) → `'truncated'` + marqueur « [Réponse coupée] » (une phrase coupée en plein
+  chiffre n'est plus présentée comme complète) ; refus → `'refused'` ; cap de tours → l'historique se
+  clôt par un tour assistant (reprise saine) ; callbacks UI isolés (un bug de rendu ne casse plus la boucle).
+- `dispatch` : ceinture try/catch structurelle autour de tout handler (l'invariant « jamais de throw
+  vers la conversation » n'est plus supposé) + paramètre injectable pour la tester.
+- `appStateProvider` : `apiKeys` EXCLU du snapshot (les vraies clés ne peuvent plus atteindre un
+  handler) ; `validateAppStateShape` AVANT normalisation (un store corrompu → erreur claire, jamais
+  des zéros plausibles) ; `structuredClone` à la frontière (~1 ms mesuré — « aucune donnée changée »
+  garanti structurellement, plus seulement par discipline du moteur).
+- Tools stateless convergés sur le chokepoint `jsonContent` (+ garde-scan « jamais de JSON.stringify
+  à la main dans un spec ») ; `$schema` méta retiré des schémas envoyés à l'API ; `userFacts`
+  (birthYear/canadaArrivalYear) exposés dans get_financial_overview (les calculateurs n'ont plus à
+  APPROXIMER l'année de naissance) + carve-out explicite du system prompt.
+- **Dérive RÉELLE attrapée par le nouveau test « défauts MCP ≡ défauts store »** : le chemin d'import
+  legacy du store omettait `documents` (state.documents undefined au 1er boot) — corrigé.
+- Différés au BACKLOG : `[AITOOLS-ENGINE-WORKER]` (tools moteur synchrones sur le thread principal —
+  requis avant le branchement UI), `[AITOOLS-HISTORY-BOUND]` (borner l'historique resoumis, coût BYOK).
+
 ## [unreleased — chantier Claude-in-app, Lot A : frontière spec/register des tools MCP] — 2026-07-21
 
 ### Refactor (préparatoire, zéro changement de comportement)

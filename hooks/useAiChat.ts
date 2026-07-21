@@ -14,7 +14,7 @@
 //    (jamais « le dernier ») — un Effacer/chevauchement ne peut plus corrompre une autre bulle ;
 //    garde de réentrance par REF (l'état React `isLoading` est une closure périmable).
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type Anthropic from '@anthropic-ai/sdk';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { runAgentLoop } from '../services/aiTools/agentLoop';
@@ -89,6 +89,16 @@ export function useAiChat(apiKey: string): UseAiChat {
             setPendingWrite(preview);
         });
     }, []);
+
+    // [Finding panel sécurité 2026-07-21 — CRITIQUE, mesuré] Le modal de confirmation affiche des
+    // MONTANTS. Si le mode discret s'active PENDANT qu'une confirmation est en attente (ex. quelqu'un
+    // entre dans la pièce), il faut que la valeur SORTE de l'écran (Loi 25, ADR-5 « masquer = ne pas
+    // rendre »). On REFUSE l'écriture en attente (cohérent avec « fermer = refus » : Échap/backdrop/✕)
+    // → pendingWrite repasse à null → le modal disparaît. L'utilisateur redemande hors mode discret.
+    const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
+    useEffect(() => {
+        if (isPrivacyMode && writeResolverRef.current) resolvePendingWrite('cancel');
+    }, [isPrivacyMode, pendingWrite, resolvePendingWrite]);
 
     const appendMessage = useCallback((msg: AiMessage) => {
         const { aiConversation, setAppState } = useFinanceStore.getState();
@@ -191,6 +201,27 @@ export function useAiChat(apiKey: string): UseAiChat {
         if (writeResolverRef.current) resolvePendingWrite('cancel');
         abortRef.current?.abort(new DOMException('User cancelled', 'AbortError'));
     }, [resolvePendingWrite]);
+
+    // [Findings panel 2026-07-21 — CRITIQUE, mesuré] `AiAssistant` n'est monté que sur l'onglet
+    // Assistant (TabRouter) : changer d'onglet PENDANT qu'un modal de confirmation est ouvert démonte
+    // ce hook → `writeResolverRef` disparaît → la promesse de `requestConfirmation` ne se résout
+    // JAMAIS → toute la boucle agentique (déjà payée) reste suspendue sans trace. Cleanup au
+    // démontage : refuser toute écriture en attente + abort le tour API en vol (ne PAS passer par
+    // `resolvePendingWrite` — son `setPendingWrite` déclencherait un setState sur composant démonté ;
+    // les refs, elles, sont stables → deps []).
+    useEffect(() => {
+        return () => {
+            if (writeResolverRef.current) {
+                logError({
+                    source: 'ai', severity: 'warning',
+                    message: 'Chat in-app : écriture en attente de confirmation abandonnée au démontage (changement d\'onglet ?) — refusée automatiquement.',
+                });
+                writeResolverRef.current('cancel');
+                writeResolverRef.current = null;
+            }
+            abortRef.current?.abort(new DOMException('Unmounted', 'AbortError'));
+        };
+    }, []);
 
     const clearConversation = useCallback(() => {
         // Ceinture : ne JAMAIS vider pendant un envoi (la réponse en cours — déjà payée — serait

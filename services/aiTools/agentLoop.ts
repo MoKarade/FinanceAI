@@ -252,6 +252,19 @@ export async function runAgentLoop(
         messages.push({ role: 'assistant', content: msg.content });
         const results: Anthropic.ToolResultBlockParam[] = [];
         for (const tu of toolUses) {
+            // [Finding panel 2026-07-21, mesuré] ANNULATION en cours de lot : le modèle peut émettre
+            // plusieurs tool_use dans UN tour (parallel tool-use). Sans ce garde, cliquer « Annuler »
+            // pendant la 1re confirmation d'écriture refusait bien celle-là (via cancel()) MAIS la
+            // boucle ouvrait quand même le modal de la 2e — l'utilisateur revoyait une demande alors
+            // qu'il venait de tout annuler. Dès que le signal externe est aborté, court-circuiter les
+            // tool_use RESTANTS en refus honnête (jamais de nouvelle exécution/confirmation).
+            if (opts.signal?.aborted) {
+                results.push({
+                    type: 'tool_result', tool_use_id: tu.id, is_error: true,
+                    content: '[Annulé par l\'utilisateur — non exécuté]',
+                });
+                continue;
+            }
             safeCallback(opts.onToolUse ? () => opts.onToolUse!(tu.name) : undefined, 'onToolUse');
             toolsUsed.push(tu.name);
             const res = await dispatchAnyTool(tu.name, tu.input, frozenState, opts.onWriteToolUse);

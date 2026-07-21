@@ -33,11 +33,19 @@ function scriptedClient(script: Anthropic.Message[]) {
     let i = 0;
     const client: AgentClientLike = {
         messages: {
-            stream: (params) => {
+            stream: (params, opts) => {
                 requests.push(params);
                 const msg = script[Math.min(i, script.length - 1)];
                 i += 1;
-                return { on: () => undefined, finalMessage: async () => msg };
+                return {
+                    on: () => undefined,
+                    // Fidélité au vrai SDK : un signal déjà aborté fait rejeter finalMessage
+                    // (sinon un test d'annulation ne pourrait pas observer l'arrêt du tour suivant).
+                    finalMessage: async () => {
+                        if (opts?.signal?.aborted) throw new DOMException('User cancelled', 'AbortError');
+                        return msg;
+                    },
+                };
             },
         },
     };
@@ -297,6 +305,37 @@ describe('runAgentLoop', () => {
             source: 'ai', severity: 'error',
             message: expect.stringMatching(/exécuteur d'écriture apply_debt a levé/),
         }));
+    });
+
+    it('[AITOOLS-D panel] ANNULATION pendant le 1er write d\'un lot → les tool_use RESTANTS du même tour sont court-circuités (pas de 2e confirmation)', async () => {
+        // Discriminant (finding panel mesuré) : 2 apply_* dans UN tour ; annuler pendant le 1er modal
+        // ne doit PAS ouvrir le 2e. Avant le garde : onWriteToolUse était appelé 2×.
+        const twoWrites = {
+            content: [
+                { type: 'tool_use', id: 'w1', name: 'apply_debt', input: { name: 'Dette 1', balance: 100, interestRate: 5, minimumPayment: 10 } },
+                { type: 'tool_use', id: 'w2', name: 'apply_debt', input: { name: 'Dette 2', balance: 200, interestRate: 6, minimumPayment: 20 } },
+            ],
+            stop_reason: 'tool_use',
+        } as unknown as Anthropic.Message;
+        const { client, requests } = scriptedClient([twoWrites, textMsg('fin')]);
+        const ctrl = new AbortController();
+        let writeCalls = 0;
+        const onWriteToolUse = vi.fn(async () => {
+            writeCalls += 1;
+            ctrl.abort(new DOMException('User cancelled', 'AbortError')); // simule le clic Annuler pendant le 1er modal
+            return { content: [{ type: 'text' as const, text: '{"applied":false,"refusedByUser":true}' }] };
+        });
+        const res = await runAgentLoop([{ role: 'user', content: 'ajoute ces deux dettes' }], {
+            apiKey: 'sk-test', getState, client, signal: ctrl.signal, onWriteToolUse,
+        });
+        expect(writeCalls).toBe(1); // le 2e write n'est JAMAIS exécuté (court-circuit sur signal aborté)
+        // Le tour suivant appelle stream() avec le signal aborté → stopReason aborted (pas d'API gaspillée).
+        expect(res.stopReason).toBe('aborted');
+        // Le 2e tour a bien été construit avec un tool_result « annulé » pour w2 (l'API exige 1 result/tool_use).
+        const firstTurnResults = (requests[1].messages as Anthropic.MessageParam[]).at(-1)!
+            .content as Anthropic.ToolResultBlockParam[];
+        expect(firstTurnResults.find((r) => r.tool_use_id === 'w2')?.content).toContain('Annulé');
+        expect(firstTurnResults.find((r) => r.tool_use_id === 'w2')?.is_error).toBe(true);
     });
 
     it('[ceinture panel] cap max_turns : l\'historique retourné se TERMINE par un tour assistant (reprise saine)', async () => {

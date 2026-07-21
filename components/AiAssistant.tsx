@@ -244,8 +244,10 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey }) => {
       )}
 
       {/* [AITOOLS-D] Confirmation d'écriture — HORS du panneau (indépendant de isOpen : fermer le
-          chat mi-stream ne doit pas orpheliner la promesse de writeExecutor ni cacher la décision). */}
-      {pendingWrite && (
+          chat mi-stream ne doit pas orpheliner la promesse de writeExecutor ni cacher la décision).
+          ⚠️ Gaté sur !isPrivacyMode (finding sécurité : le modal affiche des montants — Loi 25) : le
+          hook auto-refuse déjà la confirmation quand le mode discret s'active, ce gate évite le flash. */}
+      {pendingWrite && !isPrivacyMode && (
         <AiChatConfirmModal preview={pendingWrite} onDecision={resolvePendingWrite} />
       )}
     </>

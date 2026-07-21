@@ -13,9 +13,9 @@ const inputSchema = {
         .describe('Utilisateur ciblé : 0 = principal (défaut), 1 = conjoint.'),
     userName: z.string().optional().describe('Alternative à userIndex : cibler par nom.'),
     slipType: z.string().optional().describe('Type de feuillet (T4, RL-1…).'),
-    employmentIncomeAnnual: z.number().positive().optional()
+    employmentIncomeAnnual: z.number().positive().finite().optional()
         .describe("Revenu d'emploi ANNUEL (T4 case 14 / RL-1 case A). Stocké en mensuel."),
-    rrspContributedAnnual: z.number().min(0).optional()
+    rrspContributedAnnual: z.number().min(0).finite().optional()
         .describe('Cotisations REER de l\'année.'),
 };
 

@@ -24,6 +24,9 @@ beforeEach(() => {
     // jsdom n'implémente pas scrollIntoView (utilisé par l'auto-scroll du fil de messages).
     Element.prototype.scrollIntoView = vi.fn();
     useFinanceStore.getState().resetState();
+    // resetState ne remet PAS isPrivacyMode/isTestMode (hors initialState) → reset explicite pour
+    // isoler les tests qui les activent (sinon fuite d'état inter-tests : le chat resterait masqué).
+    useFinanceStore.setState({ isPrivacyMode: false, isTestMode: false } as never);
     runAgentLoopMock.mockReset();
     executeWriteToolMock.mockReset();
     runAgentLoopMock.mockResolvedValue({
@@ -183,6 +186,37 @@ describe('AiAssistant — tool-use (AITOOLS-C)', () => {
         fireEvent.click(screen.getByRole('button', { name: /^Fermer$/ }));
         await waitFor(() => expect(document.body.textContent).toContain('Dette traitée.'));
         expect(decisions).toEqual(['cancel']);
+    });
+
+    it('[AITOOLS-D panel sécurité CRITIQUE] activer le MODE DISCRET pendant une confirmation → modal masqué + écriture auto-refusée (Loi 25)', async () => {
+        // Discriminant (finding mesuré) : le modal affiche des montants et était rendu HORS du gating
+        // mode discret → la valeur restait à l'écran. Activer le mode discret doit sortir la valeur du
+        // DOM et refuser l'écriture en attente (cohérent avec « fermer = refus »).
+        const decisions = scriptWriteFlow();
+        await sendTriggeringWrite();
+        expect(screen.getByText(/Dette : Prêt auto Civic/)).toBeInTheDocument();
+
+        useFinanceStore.setState({ isPrivacyMode: true } as never);
+        await waitFor(() => expect(screen.queryByText(/Confirmer la modification/i)).toBeNull());
+        expect(document.body.textContent).not.toContain('Prêt auto Civic'); // valeur HORS du DOM
+        await waitFor(() => expect(decisions).toEqual(['cancel'])); // écriture refusée, pas orpheline
+    });
+
+    it('[AITOOLS-D panel CRITIQUE] DÉMONTAGE pendant une confirmation (changement d\'onglet) → la promesse est RÉSOLUE en cancel, pas orpheline', async () => {
+        // Discriminant (finding mesuré) : AiAssistant n'est monté que sur l'onglet Assistant ; changer
+        // d'onglet le démonte pendant qu'un modal est ouvert. Sans le cleanup au démontage, la promesse
+        // de requestConfirmation ne se résolvait JAMAIS → boucle agentique suspendue à vie.
+        const decisions = scriptWriteFlow();
+        const { unmount } = render(<AiAssistant apiKey="sk-test" />);
+        openPanel();
+        fireEvent.change(screen.getByLabelText(/Question au conseiller IA/i), { target: { value: 'Ajoute ma dette auto' } });
+        fireEvent.click(screen.getByRole('button', { name: /Envoyer le message/i }));
+        await waitFor(() => expect(screen.getByText(/Confirmer la modification/i)).toBeInTheDocument());
+        expect(decisions).toEqual([]); // en attente du clic
+
+        unmount(); // simule le changement d'onglet (TabRouter démonte AiAssistant)
+        // Le cleanup du hook a résolu la confirmation en attente → executeWriteTool poursuit et résout.
+        await waitFor(() => expect(decisions).toEqual(['cancel']));
     });
 
     it('[ADR-5] mode DISCRET → conversation et champ de saisie HORS du DOM (masquer = ne pas rendre)', () => {

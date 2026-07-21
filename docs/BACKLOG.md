@@ -44,8 +44,17 @@
   modal diff avant/après (`AiChatConfirmModal`) → Appliquer (backup `createBackupNow('auto')` OBLIGATOIRE
   avant l'écriture, sinon annulée) / Annuler (tool_result refusé). Diff RECALCULÉ sur état FRAIS au clic
   (anti-race), écritures multiples séquentielles (la boucle re-snapshot après chaque apply), tools déclarés
-  à l'API SEULEMENT si l'exécuteur est branché, apiKeys insensibles à un apply. 13 tests (writeExecutor 6,
-  agentLoop routage 4, UI modal 3). + fix flake oauthProvider (tamper ~1/64 no-op).
+  à l'API SEULEMENT si l'exécuteur est branché, apiKeys insensibles à un apply. 17 tests. + fix flake
+  oauthProvider (tamper ~1/64 no-op). **Panel (4 agents, sondes)** : 6 findings appliqués — mode discret
+  masque le modal (Loi 25), promesse orpheline au démontage d'onglet, scrub injection du `summary`,
+  Annuler coupe tout le lot, `.finite()` sur 5 specs.
+- [ ] **`[MCP-WRITE-SUMMARY-SCRUB]`** 🟠 (S/M, découvert au panel Lot D) — le vecteur « injection indirecte
+  via `summary`/`field` d'un tool_result d'écriture » existe AUSSI côté serveur MCP (`applyDocument`→`runApply`
+  renvoie le `summary` à claude.ai) : le nom user (extrait d'un document joint) y revient VERBATIM. Corrigé pour
+  le chat in-app (writeExecutor scrube au renvoi), PAS pour le MCP. Fix propre = `sanitizePromptText` au point
+  d'usage dans `applyDocument.ts` (touche du code moteur PARTAGÉ → à faire avec panel `financial-integrity` +
+  vérif que les golden/tests de `summary` MCP ne régressent pas). Limite assumée : injection en langage naturel
+  passe toujours (defense-in-depth).
 - [ ] **`[AITOOLS-E]` UI partagée** (L) — `useAiChat` + panneau latéral global (lazy) + onglet Assistant
   agrandi (même conversation partout), `PrivateBlock` en mode discret, audit a11y, mesure gzip du chunk.
 - [ ] **`[AITOOLS-SEC]` Audit sécurité FINAL du chantier** (M, exigence Marc) — panel security-privacy +

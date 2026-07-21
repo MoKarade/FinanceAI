@@ -20,7 +20,27 @@ import { snapshotAppState } from './appStateProvider';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { createBackupNow } from '../backupAuto';
 import { logError } from '../errorLogger';
+import { sanitizePromptText } from '../../utils/promptSafety';
 import type { AppState } from '../../types';
+
+// [Finding panel sécurité 2026-07-21, mesuré] Le `summary`/`field`/`note` d'un résultat d'écriture
+// est de la PROSE composée par le code qui INTERPOLE des substrings SAISIES PAR L'UTILISATEUR (nom de
+// dette, employeur, ticker — souvent extraits d'un document JOINT). `jsonContent` ne scrube que les
+// clés user-free-text (name/payee/…), PAS `summary`/`field`/`note` → un nom malveillant («
+// <IGNORE ALL PRIOR INSTRUCTIONS>… ») revenait VERBATIM dans le contexte du tour suivant, emballé
+// dans une phrase « de confiance » (injection de prompt INDIRECTE — même classe que MCP-PROMPT-SCRUB).
+// On scrube CE QUI EST RENVOYÉ AU MODÈLE (sanitizePromptText neutralise le markup + borne la longueur).
+// ⚠️ NE touche PAS ce que le MODAL affiche (preview.*, montré à l'utilisateur, échappé par React) :
+// l'utilisateur voit ses vraies valeurs ; seul le tool_result vers Claude est désinfecté.
+const scrubValue = (v: unknown): unknown => (typeof v === 'string' ? sanitizePromptText(v) : v);
+function scrubChangesForModel(changes: Change[]): Change[] {
+    return changes.map((c) => ({
+        field: sanitizePromptText(c.field),
+        before: scrubValue(c.before),
+        after: scrubValue(c.after),
+        ...(c.note !== undefined ? { note: sanitizePromptText(c.note) } : {}),
+    }));
+}
 
 /** Aperçu montré dans le modal de confirmation. */
 export interface WritePreview {
@@ -42,7 +62,7 @@ export async function executeWriteTool(
     // 1. Diff PUR sur le snapshot courant — RIEN n'est écrit ici.
     const preview = applyDocument(snapshotAppState(), doc);
     if (preview.changes.length === 0) {
-        return jsonContent({ applied: false, summary: preview.summary, changes: [] });
+        return jsonContent({ applied: false, summary: sanitizePromptText(preview.summary), changes: [] });
     }
 
     // 2. CONFIRMATION — on attend le clic (le modal peut rester ouvert longtemps, c'est voulu).
@@ -74,7 +94,8 @@ export async function executeWriteTool(
         });
         return jsonContent({
             applied: false,
-            summary: 'Écriture annulée : la sauvegarde de sécurité a échoué (IndexedDB indisponible ?). Réessaie, ou fais la modification à la main.',
+            backupFailed: true,
+            summary: 'Écriture annulée : la sauvegarde de sécurité a échoué (IndexedDB indisponible ?). NE réessaie PAS automatiquement (l\'échec risque de persister dans cette session) — informe l\'utilisateur et suggère de recharger la page, puis de refaire la demande.',
         });
     }
 
@@ -83,5 +104,5 @@ export async function executeWriteTool(
     void _ak;
     useFinanceStore.getState().setAppState({ ...safePatch, lastUpdate: Date.now() });
 
-    return jsonContent({ applied: true, summary: final.summary, changes: final.changes });
+    return jsonContent({ applied: true, summary: sanitizePromptText(final.summary), changes: scrubChangesForModel(final.changes) });
 }

@@ -5,7 +5,8 @@
 
 import { z } from 'zod';
 import type { AppState } from '../../types';
-import { calculateFutureProjection } from '../../services/projection';
+// [AITOOLS-ENGINE-WORKER] runProjectionAsync : Web Worker côté navigateur, repli sync Node/MCP.
+import { runProjectionAsync } from '../../services/projection/runAsync';
 import type { ProjectionChartPoint } from '../../services/projection/types';
 import { buildSimulationParamsFromState } from '../../services/projection/buildSimulationParams';
 import { jsonContent, withState } from './_dataAware';
@@ -106,9 +107,9 @@ export const getRetirementOutlookSpec = {
         'minNetWorth + Monte Carlo) — PAS sur la somme des sources (le décaissement non-enregistré ' +
         'n\'y est pas détaillé).',
     inputSchema,
-    handler: async ({ monteCarlo }, getState) => withState(getState, (state: AppState) => {
+    handler: async ({ monteCarlo }, getState) => withState(getState, async (state: AppState) => {
         const params = buildSimulationParamsFromState(state);
-        const result = calculateFutureProjection(params, monteCarlo, 0); // BASE
+        const result = await runProjectionAsync(params, monteCarlo, 0); // BASE
         const chartData = result.chartData ?? [];
 
         // Les revenus du moteur sont en dollars NOMINAUX (futurs). On les ramène en dollars

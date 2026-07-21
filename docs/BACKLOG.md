@@ -27,12 +27,10 @@
 - [ ] **`[AITOOLS-C]` Branchement panneau existant** (M) — AiAssistant passe au tool-use, SUPPRESSION de
   `generateContext()` (source divergente), chips « a consulté : X », bannière mode test, garde clé absente.
   Critère d'arrêt Marc : 5 vraies questions → réponses correctes sur données réelles.
-- [ ] **`[AITOOLS-ENGINE-WORKER]`** 🟠 ÉLEVÉ (M, requis AVANT/AVEC le Lot C) — finding ai-reviewer Lot B :
-  les tools moteur (`get_projection`, `get_retirement_outlook` — Monte Carlo par DÉFAUT —, `simulate_what_if`
-  ×2 runs) exécutent `calculateFutureProjection` SYNCHRONE sur le thread principal → l'UI (y compris le bouton
-  Annuler) GÈLE pendant le dispatch, hors timeout. Le repo a DÉJÀ le pattern : `services/projection/runAsync.ts`
-  (Web Worker + timeout 30s + cancel) — router les handlers côté navigateur par un adaptateur async (Node/MCP
-  garde le synchrone). Sans ça, pas de branchement UI.
+- [x] **`[AITOOLS-ENGINE-WORKER]`** 🟠 ÉLEVÉ (M→S, requis avant Lot C) — ✅ 2026-07-21 : les 3 tools moteur
+  routés sur `runProjectionAsync` (drop-in : même signature, Worker + timeout 30s côté navigateur, repli
+  synchrone IDENTIQUE côté Node/MCP) ; `withState` élargi aux fn async (rétrocompat sync). Parité re-prouvée
+  (registryParity vert sur le chemin async) + garde-scan « jamais d'appel moteur DIRECT dans un spec ».
 - [ ] **`[AITOOLS-HISTORY-BOUND]`** 🟡 MOYEN (S, à traiter au Lot C/E) — finding ai-reviewer : l'API est
   stateless → réinjecter `messages` (avec tool_results volumineux, ex. simulate_what_if includeSeries ~1400
   points) RE-paie ces tokens à CHAQUE tour suivant sur la clé BYOK. Borner l'historique resoumis (tronquer les

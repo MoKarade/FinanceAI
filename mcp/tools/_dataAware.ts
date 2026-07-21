@@ -88,7 +88,9 @@ export function errorContent(message: string): ToolTextResult {
  */
 export async function withState(
     getState: StateProvider,
-    fn: (state: AppState) => ToolTextResult,
+    // [AITOOLS-ENGINE-WORKER] fn peut être ASYNC : les tools moteur awaitent runProjectionAsync
+    // (Web Worker côté navigateur, repli synchrone côté Node/MCP). Un fn sync reste supporté tel quel.
+    fn: (state: AppState) => ToolTextResult | Promise<ToolTextResult>,
 ): Promise<ToolTextResult> {
     let state: AppState;
     try {
@@ -106,7 +108,7 @@ export async function withState(
         );
     }
     try {
-        const res = fn(state);
+        const res = await fn(state);
         // [MCP-STALE-FRESHNESS] — appose l'âge des données à CHAQUE réponse (bloc texte ADDITIF,
         // le JSON du 1er bloc reste intact). Si la source n'a pas d'horodatage (fixture, fichier
         // local), pas de note. Claude voit ainsi quand la copie Drive est périmée au lieu de

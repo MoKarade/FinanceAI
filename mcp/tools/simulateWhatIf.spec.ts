@@ -11,7 +11,8 @@
 
 import { z } from 'zod';
 import type { AppState } from '../../types';
-import { calculateFutureProjection } from '../../services/projection';
+// [AITOOLS-ENGINE-WORKER] runProjectionAsync : Web Worker côté navigateur, repli sync Node/MCP.
+import { runProjectionAsync } from '../../services/projection/runAsync';
 import type { ProjectionResult } from '../../services/projection/types';
 import {
     applyWhatIfChanges,
@@ -102,7 +103,7 @@ export const simulateWhatIfSpec = {
         'graphiques comparés. IMPORTANT : présente toujours à l’utilisateur les hypothèses (`assumptions`) retournées, ' +
         'et n’invente JAMAIS de chiffre — tout vient du moteur.',
     inputSchema,
-    handler: async ({ changes, years, includeSeries }, getState) => withState(getState, (state: AppState) => {
+    handler: async ({ changes, years, includeSeries }, getState) => withState(getState, async (state: AppState) => {
         const now = new Date();
         const horizon = years ?? state.projection?.years ?? 25;
 
@@ -112,8 +113,8 @@ export const simulateWhatIfSpec = {
         // d'horloge entre base et scénario), scénario BASE, sans Monte Carlo.
         const baseParams = buildWhatIfParams(state, now, horizon, 0);
         const whatIfParams = buildWhatIfParams(application.state, now, horizon, application.monthlySavingsDelta);
-        const baseRun: ProjectionResult = calculateFutureProjection(baseParams, false, 0);
-        const whatIfRun: ProjectionResult = calculateFutureProjection(whatIfParams, false, 0);
+        const baseRun: ProjectionResult = await runProjectionAsync(baseParams, false, 0);
+        const whatIfRun: ProjectionResult = await runProjectionAsync(whatIfParams, false, 0);
 
         const baseChart = baseRun.chartData ?? [];
         const whatIfChart = whatIfRun.chartData ?? [];

@@ -52,6 +52,20 @@ describe('[ARCH-AITOOLS-SPLIT] frontière browser-safe des specs de tools', () =
         }
     });
 
+    it('[AITOOLS-ENGINE-WORKER] aucun spec n\'appelle le moteur en DIRECT (calculateFutureProjection) — toujours runProjectionAsync', () => {
+        // Un appel direct exécute le moteur SYNCHRONE sur le thread principal du navigateur →
+        // l'UI (y compris Annuler) gèle pendant le Monte Carlo. runProjectionAsync = Worker côté
+        // navigateur, repli synchrone identique côté Node/MCP (même moteur, mêmes résultats —
+        // parité re-prouvée par registryParity).
+        const specDir = resolve(process.cwd(), 'mcp/tools');
+        const specNames = readdirSync(specDir).filter((f) => f.endsWith('.spec.ts'));
+        expect(specNames.length).toBeGreaterThanOrEqual(16);
+        for (const f of specNames) {
+            const src = readFileSync(resolve(specDir, f), 'utf-8');
+            expect(src.includes('calculateFutureProjection('), `${f} : appel moteur DIRECT (gèle l'UI)`).toBe(false);
+        }
+    });
+
     it('[chokepoint jsonContent] aucun spec ne construit sa sortie JSON à la main (text: JSON.stringify)', () => {
         // [Finding panel ai-reviewer 2026-07-21] jsonContent (_dataAware) est LE chokepoint de sortie
         // (scrub anti-injection USER_TEXT_KEYS). Un `text: JSON.stringify(...)` à la main crée un 2e

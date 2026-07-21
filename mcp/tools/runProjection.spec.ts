@@ -3,6 +3,7 @@
 // Enregistrement serveur : runProjection.tool.ts. Tool STATELESS (calculateur pur, ignore l'état).
 
 import { z } from 'zod';
+import { jsonContent } from './_dataAware';
 import type { ReadToolSpec } from './_toolSpec';
 
 // Note Sprint 1 : projection simplifiee par capitalisation composee.
@@ -66,28 +67,25 @@ export const runProjectionSpec = {
       ? Math.pow(final.nominal / startingNetWorth, 1 / years) - 1
       : 0;
 
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          currency: 'CAD',
-          inputs: {
-            startingNetWorth,
-            monthlySavings,
-            years,
-            returnRate: returnRate ?? 7,
-            inflationRate: inflationRate ?? 2.5,
-          },
-          summary: {
-            finalNetWorthNominal: final?.nominal ?? startingNetWorth,
-            finalNetWorthReal: final?.real ?? startingNetWorth,
-            totalContributions: Math.round(cumulativeContrib),
-            totalGrowthFromReturns: Math.round(totalGrowth),
-            cagrPercent: Number((cagr * 100).toFixed(2)),
-          },
-          yearlyTimeline: timeline,
-        }, null, 2),
-      }],
-    };
+    // [Finding panel 2026-07-21] jsonContent = LE chokepoint de sortie (identique octet pour octet
+    // ici — payload 100 % numérique) : un seul chemin de sortie JSON pour tous les specs.
+    return jsonContent({
+      currency: 'CAD',
+      inputs: {
+        startingNetWorth,
+        monthlySavings,
+        years,
+        returnRate: returnRate ?? 7,
+        inflationRate: inflationRate ?? 2.5,
+      },
+      summary: {
+        finalNetWorthNominal: final?.nominal ?? startingNetWorth,
+        finalNetWorthReal: final?.real ?? startingNetWorth,
+        totalContributions: Math.round(cumulativeContrib),
+        totalGrowthFromReturns: Math.round(totalGrowth),
+        cagrPercent: Number((cagr * 100).toFixed(2)),
+      },
+      yearlyTimeline: timeline,
+    });
   },
 } satisfies ReadToolSpec<Args>;

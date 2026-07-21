@@ -33,6 +33,9 @@ describe('[ARCH-AITOOLS-SPLIT] frontière browser-safe des specs de tools', () =
         const files = specNames.map((f) => resolve(specDir, f));
         // Les fondations partagées par les specs doivent AUSSI rester browser-safe.
         files.push(resolve(specDir, '_toolSpec.ts'), resolve(specDir, '_dataAware.ts'), resolve(specDir, '_writeHelper.ts'));
+        // [AITOOLS-B] + les défauts/normalisation d'AppState (extraits de loadAppState qui, LUI,
+        // importe node:fs — c'est précisément pour ça qu'ils ont leur propre module).
+        files.push(resolve(process.cwd(), 'mcp/state/appStateDefaults.ts'));
         const aiToolsDir = resolve(process.cwd(), 'services/aiTools');
         if (existsSync(aiToolsDir)) {
             for (const f of readdirSync(aiToolsDir)) {
@@ -46,6 +49,20 @@ describe('[ARCH-AITOOLS-SPLIT] frontière browser-safe des specs de tools', () =
             for (const bad of FORBIDDEN) {
                 expect(src.includes(bad), `${file} contient « ${bad} » (frontière browser-safe violée)`).toBe(false);
             }
+        }
+    });
+
+    it('[chokepoint jsonContent] aucun spec ne construit sa sortie JSON à la main (text: JSON.stringify)', () => {
+        // [Finding panel ai-reviewer 2026-07-21] jsonContent (_dataAware) est LE chokepoint de sortie
+        // (scrub anti-injection USER_TEXT_KEYS). Un `text: JSON.stringify(...)` à la main crée un 2e
+        // chemin de sortie NON gardé — inoffensif pour un payload numérique aujourd'hui, un trou dès
+        // qu'un futur tool y met du texte libre utilisateur.
+        const specDir = resolve(process.cwd(), 'mcp/tools');
+        const specNames = readdirSync(specDir).filter((f) => f.endsWith('.spec.ts'));
+        expect(specNames.length).toBeGreaterThanOrEqual(16);
+        for (const f of specNames) {
+            const src = readFileSync(resolve(specDir, f), 'utf-8');
+            expect(src.includes('text: JSON.stringify'), `${f} : sortie JSON hors chokepoint jsonContent`).toBe(false);
         }
     });
 

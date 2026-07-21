@@ -42,6 +42,17 @@ export const getFinancialOverviewSpec = {
             currentAge: o.currentAge,
             retirementAge: o.retirementAge,
             coupleMode: o.coupleMode,
+            // [Finding panel ai-reviewer 2026-07-21] Faits utilisateur EXACTS requis par les
+            // calculateurs (get_tax_room exige birthYear/arrivalYear, exposés NULLE PART ailleurs) —
+            // sans eux, le modèle devait les APPROXIMER depuis currentAge (espace CELI faux présenté
+            // avec confiance). `name` passe par le scrub USER_TEXT_KEYS comme partout.
+            userFacts: (state.config?.users ?? [])
+                .filter((u) => u && (u.name || u.grossSalary))
+                .map((u) => ({
+                    name: u.name,
+                    birthYear: u.birthYear ?? null,
+                    canadaArrivalYear: u.canadaArrivalYear ?? null,
+                })),
             topDebts: o.topDebts.map((d) => ({ name: d.name, balance: Math.round(d.balance), rate: d.rate })),
             activeGoals: o.activeGoals.map((g) => ({
                 name: g.name,

@@ -7,6 +7,7 @@ import {
   calculateCeliRoom,
   calculateCeliAvailableRoom,
 } from '../../services/tax';
+import { jsonContent } from './_dataAware';
 import type { ReadToolSpec } from './_toolSpec';
 
 const inputSchema = {
@@ -30,21 +31,19 @@ export const getTaxRoomSpec = {
   description:
     "Calcule l'espace de cotisation CELI cumule depuis le max(18 ans, arrivee Canada) et l'espace restant disponible compte tenu du solde courant. Utilise les plafonds officiels ARC 2009-2025 ; extrapole 2026+ a ~7500$ par an (inflation 2%).",
   inputSchema,
+  // [Finding panel 2026-07-21] jsonContent = LE chokepoint de sortie (scrub anti-injection) —
+  // un JSON.stringify à la main créait un 2e chemin de sortie non gardé (identique octet pour
+  // octet ici : payload 100 % numérique + note code-auteur, hors USER_TEXT_KEYS).
   handler: async ({ birthYear, arrivalYear, currentYear, currentCeliBalance }, _getState) => {
     const balance = currentCeliBalance ?? 0;
     const totalRoom = calculateCeliRoom(birthYear, arrivalYear, currentYear);
     const availableRoom = calculateCeliAvailableRoom(birthYear, arrivalYear, currentYear, balance);
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          currency: 'CAD',
-          totalRoom,
-          currentBalance: balance,
-          availableRoom,
-          notes: 'Le plafond CELI s\'accumule meme sans cotisation. Les retraits liberent de l\'espace l\'annee suivante (non modelise ici, fournir balance ajustee).',
-        }, null, 2),
-      }],
-    };
+    return jsonContent({
+      currency: 'CAD',
+      totalRoom,
+      currentBalance: balance,
+      availableRoom,
+      notes: 'Le plafond CELI s\'accumule meme sans cotisation. Les retraits liberent de l\'espace l\'annee suivante (non modelise ici, fournir balance ajustee).',
+    });
   },
 } satisfies ReadToolSpec<Args>;

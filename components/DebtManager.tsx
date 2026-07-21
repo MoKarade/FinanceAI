@@ -5,6 +5,7 @@ import { PageHeader } from './ui/PageHeader';
 import { Icon } from './ui/Icon';
 import { Badge } from './ui/Badge';
 import { Debt } from '../types';
+import { computeTotalDebt } from '../services/portfolio';
 import { ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
@@ -70,7 +71,8 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
         return { chart: data, totalInterest: totalInterestPaid, months: month };
     }, [debts, extraPayment]);
 
-    const totalDebt = debts.reduce((sum, d) => sum + d.balance, 0);
+    // [DEBT-SUM-DUP, audit 2026-07-16] Source unique (garde isFinite incluse) au lieu du reduce local.
+    const totalDebt = computeTotalDebt(debts);
     const totalMinPayment = debts.reduce((sum, d) => sum + d.minimumPayment, 0);
 
     // G7a — zoom molette / pan sur la courbe d'extinction (x = mois).

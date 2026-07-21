@@ -146,6 +146,20 @@ describe('errorLogger', () => {
             }
         });
 
+        it('[LOG-TOKEN-ANCHORED audit 2026-07-16] masque les clés en SUFFIXE -token (accessToken, refresh_token, idToken)', () => {
+            // Discriminant : l'ancien pattern ancrait `token` EXACT → `accessToken` passait en clair.
+            logError({
+                source: 'network',
+                message: 'X',
+                context: { accessToken: 'ya29.secret', refresh_token: 'rt-secret', idToken: 'jwt', factor: 1.38 },
+            });
+            const ctx = getErrors()[0].context!;
+            for (const k of ['accessToken', 'refresh_token', 'idToken']) {
+                expect(ctx[k], `${k} doit être masqué`).toBe('[redacted]');
+            }
+            expect(ctx.factor, 'factor (non sensible) doit rester en clair').toBe(1.38); // anti-faux-positif conservé
+        });
+
         it('masque récursivement (objet imbriqué)', () => {
             logError({
                 source: 'ai',

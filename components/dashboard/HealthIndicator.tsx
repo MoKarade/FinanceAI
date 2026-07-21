@@ -9,7 +9,7 @@ import { useHasUserData } from '../../utils/useHasUserData';
 import { EmptyDataPrompt } from '../ui/EmptyDataPrompt';
 import { Icon } from '../ui/Icon';
 import { useProjectionSelector } from '../../hooks/useProjectionSelector';
-import { computeCurrentLiquidity, computeInvestmentsValue } from '../../services/portfolio';
+import { computeCurrentLiquidity, computeInvestmentsValue, computeTotalDebt } from '../../services/portfolio';
 
 /**
  * Phase D.6 — indicateur de santé financière paramétrable.
@@ -105,7 +105,8 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
         // « checking »/« celi » qui n'existent jamais → bug : coussin d'urgence
         // toujours à 0, patrimoine sous-estimé.
         const liquidity = computeCurrentLiquidity(initialBalances, transactions);
-        const totalDebts = (debts || []).reduce((sum, d) => sum + (d.balance || 0), 0);
+        // [DEBT-SUM-DUP, audit 2026-07-16] Source unique (garde isFinite incluse) au lieu du reduce local.
+        const totalDebts = computeTotalDebt(debts || []);
         // [ASSET-FX-DISPLAY] valeur CAD via la source unique (prix natifs × FX).
         const investmentValue = computeInvestmentsValue(assets || [], fxRates);
         // Patrimoine = placements + liquidités (la liquidité inclut déjà tout

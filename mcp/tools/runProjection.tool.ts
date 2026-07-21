@@ -22,7 +22,7 @@ const inputSchema = {
 export const registerRunProjection = (server: McpServer): void => {
   server.tool(
     'run_projection',
-    "Projection financiere simple par capitalisation composee. Renvoie l'evolution annuelle du patrimoine en valeur nominale ET en valeur reelle ajustee inflation, plus un sommaire (contributions totales, croissance, CAGR). Pour des simulations complexes (immobilier multi-comptes, retraite, Monte Carlo, scenarios A/B), utiliser l'app web FinanceAI directement.",
+    "CALCULATEUR GÉNÉRIQUE de capitalisation composée sur les paramètres FOURNIS — ne lit PAS les données réelles de l'utilisateur (pour SA vraie projection : get_projection ; pour son plan de retraite : get_retirement_outlook ; pour un scénario sur SES données : simulate_what_if). Renvoie l'évolution annuelle du patrimoine en valeur nominale ET réelle (ajustée inflation), plus un sommaire (contributions totales, croissance, CAGR).",
     inputSchema,
     async ({ startingNetWorth, monthlySavings, years, returnRate, inflationRate }) => {
       const r = (returnRate ?? 7) / 100;

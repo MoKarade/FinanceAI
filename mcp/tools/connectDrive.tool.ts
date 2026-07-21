@@ -7,6 +7,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { jsonContent, errorContent, type ToolTextResult } from './_dataAware';
+import { logError } from '../../services/errorLogger';
 import { loadCredentials } from '../drive/tokenStore';
 import { resolveSharedClient } from '../drive/sharedClient';
 import { runLoopbackAuth } from '../drive/loopbackAuth';
@@ -37,6 +38,13 @@ export const registerConnectDrive = (server: McpServer): void => {
                         'finances ou envoie-moi un document à ranger.',
                 });
             } catch (e) {
+                // [MCP-TOOLS-SILENT-CATCH, finding panel 2026-07-21] 7e et dernier catch de frontière
+                // MCP sans trace serveur (consentement refusé, timeout loopback… étaient invisibles).
+                logError({
+                    source: 'network', severity: 'warning',
+                    message: 'MCP connect_drive : authentification loopback ÉCHOUÉE (réponse d\'erreur renvoyée à Claude).',
+                    error: e instanceof Error ? e : new Error(String(e)),
+                });
                 return errorContent(`Connexion Drive échouée : ${e instanceof Error ? e.message : String(e)}`);
             }
         },

@@ -8,6 +8,7 @@
 import type { AppState } from '../../types';
 import { freshnessNotice } from '../state/freshness';
 import { sanitizePromptText } from '../../utils/promptSafety';
+import { logError } from '../../services/errorLogger';
 
 // [MCP-PROMPT-SCRUB] Longueur max d'un champ TEXTE LIBRE utilisateur exposé à Claude via un tool
 // data-aware. Assez large pour un nom d'actif / payee / nom de projet normal (banques : < 60), mais
@@ -24,7 +25,14 @@ export const MCP_TEXT_MAX = 200;
 // (double finding panel 2026-07-16). `symbol` est EXCLU exprès (identifiant court, `^GSPC` perdrait
 // son `^` ; risque d'injection négligeable sur un ticker). Étendre cette liste si un futur tool
 // expose un nouveau champ texte libre utilisateur (cf test de garde `scrubMcpDeep`).
-const USER_TEXT_KEYS = new Set(['name', 'payee', 'category', 'label', 'employer', 'description']);
+// [MCP-USERTEXT-LANDMINE, audit 2026-07-16] insurer/beneficiary/destination ajoutés PRÉVENTIVEMENT
+// (aucun tool ne les expose encore) — un futur tool « assurances/documents/voyages » hériterait sinon
+// du trou. ⚠️ `notes` est RÉSERVÉ au texte code-auteur (getTaxSituation.notes…) : un futur champ de
+// notes UTILISATEUR doit s'appeler `userNotes` (déjà couvert ici), JAMAIS `notes`.
+const USER_TEXT_KEYS = new Set([
+    'name', 'payee', 'category', 'label', 'employer', 'description',
+    'insurer', 'beneficiary', 'destination', 'userNotes',
+]);
 
 /**
  * [MCP-PROMPT-SCRUB] Neutralise les champs TEXTE LIBRE utilisateur d'un payload de tool data-aware
@@ -86,6 +94,13 @@ export async function withState(
     try {
         state = await getState();
     } catch (err) {
+        // [MCP-TOOLS-SILENT-CATCH] La réponse d'erreur part à Claude, mais SANS logError le bug
+        // était introuvable côté serveur (Cloud Run route console.* vers ses logs via errorLogger).
+        logError({
+            source: 'storage', severity: 'error',
+            message: 'MCP withState : chargement de l\'état ÉCHOUÉ (réponse d\'erreur renvoyée à Claude).',
+            error: err instanceof Error ? err : new Error(String(err)),
+        });
         return errorContent(
             `Impossible de charger ton état FinanceAI. ${err instanceof Error ? err.message : String(err)}`,
         );
@@ -100,6 +115,13 @@ export async function withState(
         if (notice) res.content.push({ type: 'text', text: notice });
         return res;
     } catch (err) {
+        // [MCP-TOOLS-SILENT-CATCH] Un bug de CALCUL dans un tool (NaN, forme d'état inattendue)
+        // doit laisser une trace serveur, pas seulement un message à Claude.
+        logError({
+            source: 'unknown', severity: 'error',
+            message: 'MCP withState : calcul d\'un tool data-aware ÉCHOUÉ (réponse d\'erreur renvoyée à Claude).',
+            error: err instanceof Error ? err : new Error(String(err)),
+        });
         return errorContent(
             `Calcul impossible sur ton état. ${err instanceof Error ? err.message : String(err)}`,
         );

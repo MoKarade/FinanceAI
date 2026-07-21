@@ -305,6 +305,23 @@ describe('Push : ce qui est exporté embarque TOUT (demande Marc)', () => {
         expect(written.state.transactions.map(t => t.id)).toEqual(['tx-drive-1']);   // persona-tx-9 purgé
         expect(written.state.budgetItems.map(b => b.id)).toEqual(['cat_1700000000000']); // kar-b1 purgé
     });
+
+    it('[SYNC-APIKEYS-SILENT audit 2026-07-16] échec de persistance des clés API au pull → logError warning, données quand même restaurées', async () => {
+        // Discriminant : l'ancien catch était VIDE — les clés vivaient en mémoire seulement et
+        // « disparaissaient » au reload sans AUCUNE trace (asymétrique avec le push qui journalise).
+        const logSpy = vi.spyOn(errorLogger, 'logError');
+        saveApiKeysMock.mockRejectedValueOnce(new Error('coffre IndexedDB indispo'));
+        await expect(pullNow()).resolves.toBeUndefined(); // best-effort : pas de crash
+        expect(logSpy).toHaveBeenCalledWith(expect.objectContaining({
+            source: 'storage',
+            severity: 'warning',
+            message: expect.stringMatching(/clés API ÉCHOUÉE/),
+        }));
+        // Les DONNÉES sont restaurées malgré l'échec du coffre (le best-effort est préservé).
+        const written = JSON.parse(localStorage.getItem(STORE_KEY)!) as { state: { transactions: unknown[] } };
+        expect(written.state.transactions.length).toBeGreaterThan(0);
+        logSpy.mockRestore();
+    });
 });
 
 describe('Verrou anti-double-sync (boot : gate + runBootSync)', () => {
@@ -418,6 +435,24 @@ describe('D5 — anti-race : clés API préservées si pas encore hydratées', (
         expect(await pushNow()).toBe('pushed');
         const sent = (driveApi.updateSyncFile as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[2];
         expect(sent.apiKeysEnc).toBe('EXISTING-ENC-BLOB'); // préservé, PAS effacé
+    });
+
+    it('[SYNC-APIKEYS-SILENT push, finding panel 2026-07-21] relecture de préservation D5 ÉCHOUE → logError warning, push part quand même (sans clés)', async () => {
+        // Discriminant : l'ancien `catch { /* best-effort */ }` était VIDE — l'apiKeysEnc Drive était
+        // écrasé sans AUCUNE trace (« mes clés ont disparu sur l'autre appareil » indébuggable).
+        // ⚠️ Doit rester AVANT le test markApiKeysHydrated (le flag ne se réinitialise pas).
+        const driveApi = await import('../../services/googleDrive/driveAppData');
+        const logSpy = vi.spyOn(errorLogger, 'logError');
+        useFinanceStore.getState().updateApiKeys({ anthropic: '', finnhub: '' });
+        localStorage.setItem(STORE_KEY, JSON.stringify({ state: { transactions: [{ id: 'local-d5' }] }, version: 7 }));
+        (driveApi.readSyncFile as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Drive 500'));
+
+        expect(await pushNow()).toBe('pushed'); // best-effort préservé : le push part
+        expect(logSpy).toHaveBeenCalledWith(expect.objectContaining({
+            source: 'storage', severity: 'warning',
+            message: expect.stringMatching(/PRÉSERVER les clés API existantes ÉCHOUÉE/),
+        }));
+        logSpy.mockRestore();
     });
 
     it('après markApiKeysHydrated() : clés vides = effacement volontaire → on n\'écrase plus avec les anciennes', async () => {

@@ -16,6 +16,7 @@ import { getLocalPayload, hasAnyKey } from './syncSnapshot';
 import { setStatus, getSyncStatus } from './syncStatusStore';
 import { currentMeta, resolveSub } from './syncMeta';
 import { handleError } from './syncErrors';
+import { logError } from '../errorLogger';
 
 /** Résultat d'un push — permet à l'UI d'être honnête (toast réel vs « rien à sauvegarder »). */
 export type PushResult = 'pushed' | 'skipped-empty' | 'skipped-testmode' | 'not-configured' | 'error';
@@ -94,8 +95,16 @@ async function runPushNow(): Promise<PushResult> {
                 if (sub) {
                     try {
                         apiKeysEnc = await encryptApiKeys(local.apiKeys, sub);
-                    } catch {
-                        /* crypto indispo → push sans clés (jamais de clés en clair dans Drive) */
+                    } catch (e) {
+                        // [SYNC-APIKEYS-SILENT, finding panel 2026-07-21] Best-effort ASSUMÉ (jamais de
+                        // clés en clair dans Drive) mais JOURNALISÉ : les catch locaux court-circuitent le
+                        // handleError englobant → sans trace, « clés absentes sur l'autre appareil » était
+                        // indébuggable. Clés locales intactes, re-poussées au prochain push réussi.
+                        logError({
+                            source: 'storage', severity: 'warning',
+                            message: 'Push Drive : chiffrement des clés API ÉCHOUÉ — push envoyé SANS clés (clés locales intactes).',
+                            error: e instanceof Error ? e : new Error(String(e)),
+                        });
                     }
                 }
             } else if (!_apiKeysHydrated && ref) {
@@ -106,7 +115,16 @@ async function runPushNow(): Promise<PushResult> {
                 try {
                     const existing = await readSyncFile(token, ref.id);
                     if (existing && !existing.enc && existing.apiKeysEnc) apiKeysEnc = existing.apiKeysEnc;
-                } catch { /* best-effort */ }
+                } catch (e) {
+                    // [SYNC-APIKEYS-SILENT, finding panel 2026-07-21] Échec de la PRÉSERVATION D5 : ce
+                    // push écrase l'apiKeysEnc de Drive sans le relire → le journaliser (sinon des clés
+                    // qui « disparaissent » de Drive n'ont aucune explication nulle part).
+                    logError({
+                        source: 'storage', severity: 'warning',
+                        message: 'Push Drive : relecture du blob pour PRÉSERVER les clés API existantes ÉCHOUÉE — push envoyé sans clés (l\'apiKeysEnc Drive existant est écrasé).',
+                        error: e instanceof Error ? e : new Error(String(e)),
+                    });
+                }
             }
             envelope = buildEnvelope(local.payload, getOrCreateDeviceId(), APP_VERSION, now, apiKeysEnc);
         }

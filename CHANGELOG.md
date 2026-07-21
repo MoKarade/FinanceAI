@@ -6,6 +6,36 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — lot audit n°2 : traçabilité MCP/sync, dettes DRY, durcissements préventifs] — 2026-07-21
+
+### Corrections (restants de l'audit passe n°2 — 1 ÉLEVÉ + 3 MOYEN + 2 LOW)
+- **`[MCP-TOOLS-SILENT-CATCH]` (ÉLEVÉ)** — les 6 catch de frontière MCP (`withState`, `runApply`,
+  `apply_payslip`) journalisent désormais via `logError` AVANT de rendre la réponse d'erreur à Claude :
+  un bug de calcul/état devient traçable dans les logs Cloud Run au lieu d'être introuvable côté serveur.
+- **`[SYNC-APIKEYS-SILENT]` (MOYEN)** — l'échec de persistance des clés API au pull Drive (coffre indispo)
+  est journalisé (« clés utilisables cette session seulement ») au lieu d'être avalé ; le best-effort est
+  préservé (les données sont restaurées quand même).
+- **`[DEBT-SUM-DUP]` (MOYEN)** — les 2 derniers reduce locaux de soldes de dettes (`HealthIndicator`,
+  `DebtManager`) routés sur la source unique `computeTotalDebt` (garde isFinite incluse).
+- **`[MCP-USERTEXT-LANDMINE]` (MOYEN, préventif)** — `USER_TEXT_KEYS` couvre `insurer`/`beneficiary`/
+  `destination`/`userNotes` (anti-injection pour de futurs tools) ; `notes` reste RÉSERVÉ au texte
+  code-auteur (jamais scrubé/tronqué).
+- **`[LOG-TOKEN-ANCHORED]` (LOW)** — le scrub du journal redacte les clés en suffixe `-token`
+  (`accessToken`, `refresh_token`, `idToken`), `factor` toujours épargné.
+- **`[MCP-RUNPROJECTION-AMBIG]` (LOW)** — description de `run_projection` clarifiée : calculateur
+  GÉNÉRIQUE sur paramètres fournis, avec aiguillage vers `get_projection`/`get_retirement_outlook`/
+  `simulate_what_if` pour les données réelles.
+
+### Correctifs additionnels du panel adversarial (workflow 17 agents : 14 findings, 4 confirmés, 10 réfutés)
+- Les 2 catch clés-API du **PUSH** Drive (chiffrement échoué ; relecture de préservation D5 échouée)
+  sont journalisés — ils court-circuitaient le `handleError` englobant, « mes clés ont disparu sur
+  l'autre appareil » était indébuggable (et le commentaire du fix pull affirmait à tort que le push
+  journalisait déjà — mesuré faux par le panel, corrigé).
+- `connect_drive` : 7ᵉ et dernier catch de frontière MCP couvert par `logError` (échecs d'auth
+  loopback invisibles).
+- `apply_payslip` routé sur `runApply` comme les 4 autres tools d'écriture (il inlinait le même bloc —
+  le lot venait d'y dupliquer les logError, et son message lecture-seule avait déjà drifté).
+
 ## [unreleased — lot corrections audit : réhydratation, KPI patrimoine, revenu IA] — 2026-07-17
 
 ### Corrections (lot audit passe n°2 — 1 CRITIQUE + 2 HIGH)

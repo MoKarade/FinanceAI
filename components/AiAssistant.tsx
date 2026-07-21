@@ -1,22 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Icon, type IconName } from './ui/Icon';
-import { logError } from '../services/errorLogger';
-import { Transaction, BudgetCategory, Asset, ProjectionConfig, RealEstateGoal, BudgetConfig, AiMessage } from '../types';
+import { AiMessage } from '../types';
 import { useFinanceStore } from '../store/useFinanceStore';
-import { chatStream } from '../services/claude';
-import { sanitizePromptText, wrapUserData, neutralizeFrameTags, PROMPT_DATA_ISOLATION_NOTE } from '../utils/promptSafety';
-import { computePresentNetWorth, computeCurrentLiquidity, computeInvestmentsValue } from '../services/portfolio';
-import { formatNumber } from '../utils/format';
+import { useAiChat } from '../hooks/useAiChat';
 
 interface AiAssistantProps {
   apiKey: string;
-  transactions: Transaction[];
-  budgetItems: BudgetCategory[];
-  assets: Asset[];
-  projection: ProjectionConfig;
-  realEstateGoal?: RealEstateGoal;
-  config: BudgetConfig;
-  initialBalances: Record<string, number>;
 }
 
 // Phase 4 — Prompts pré-écrits pour démarrer une conversation rapidement.
@@ -29,201 +18,45 @@ const SUGGESTED_PROMPTS: Array<{ icon: IconName; label: string; prompt: string }
 
 const GREETING: AiMessage = {
   role: 'model',
-  text: "Bonjour ! Je suis ton conseiller financier personnel. Je connais ton budget, tes actions et tes projets.\n\nPose-moi une question ou clique sur une suggestion ci-dessous.",
+  text: "Bonjour ! Je suis ton conseiller financier personnel. Je consulte tes VRAIES données (patrimoine, impôts, projection, transactions) à la demande — les mêmes que le connecteur claude.ai.\n\nPose-moi une question ou clique sur une suggestion ci-dessous.",
   timestamp: '',
 };
 
 /**
- * Phase 4 — AiAssistant enrichi.
- *
- * Améliorations vs version précédente:
- *  - Streaming des réponses (generateContentStream) → UX progressive
- *  - 4 prompts suggérés cliquables en début de conversation
- *  - Contexte enrichi avec lastProjection du store (FIRE, success rate,
- *    estate net worth réels — au lieu de la formule simplifiée 5%)
- *  - Markdown bold (`**texte**`) rendu en <strong>
+ * [AITOOLS-C] AiAssistant en TOOL-USE : le chat consulte les 11 tools de lecture (mêmes specs que
+ * le serveur MCP — « mêmes réponses que claude.ai », exigence Marc) via useAiChat/runAgentLoop.
+ * L'ancien contexte fait-main (`generateContext`, ~80 lignes recalculées à côté des tools) est
+ * SUPPRIMÉ : c'était une 2e source de vérité appauvrie qui divergeait des tools (finding PM,
+ * plan Claude-in-app 2026-07-21). Chips de transparence « a consulté : X » par message ; bannière
+ * mode test ; mode discret = chat masqué en entier (les montants dans la prose ne sont pas
+ * masquables valeur par valeur — ADR-5).
  */
-export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey, transactions, budgetItems: _budgetItems, assets, projection, realEstateGoal, config, initialBalances }) => {
+export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey }) => {
   const aiConversation = useFinanceStore(s => s.aiConversation);
-  const setAppState = useFinanceStore(s => s.setAppState);
-  const lastProjection = useFinanceStore(s => s.lastProjection);
-  const fxRates = useFinanceStore(s => s.fxRates);
-  const debts = useFinanceStore(s => s.debts);
+  const isTestMode = useFinanceStore(s => s.isTestMode);
+  const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
+  const { isLoading, activeTools, sendMessage, cancel, clearConversation } = useAiChat(apiKey);
 
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [streamingText, setStreamingText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  // §7.C.2 — AbortController pour permettre à l'utilisateur d'annuler un stream.
-  const abortRef = useRef<AbortController | null>(null);
 
   const messagesToRender: AiMessage[] = aiConversation.length === 0 ? [GREETING] : aiConversation;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [aiConversation, isOpen, isLoading, streamingText]);
+  }, [aiConversation, isOpen, isLoading]);
 
   useEffect(() => {
     if (isOpen) setTimeout(() => inputRef.current?.focus(), 100);
   }, [isOpen]);
 
-  // S-D — la neutralisation des libellés utilisateur est centralisée dans
-  // utils/promptSafety.ts (sanitizePromptText), partagée et testée. On évite
-  // ici une copie locale qui dériverait.
-  const roundToHundred = (amount: number): number => Math.round(amount / 100) * 100;
-
-  const generateContext = () => {
-    // [AI-CTX-FX] Source unique du NW présent : FX RÉELS (`fxRates`, fini les 1.38/1.50 en dur)
-    // ET dettes soustraites — cohérent avec le moteur, le Dashboard et le snapshot.
-    const totalCash = computeCurrentLiquidity(initialBalances, transactions);
-    const totalInvestments = computeInvestmentsValue(assets, fxRates);
-    const netWorth = computePresentNetWorth(initialBalances, transactions, assets, fxRates, debts);
-
-    const topAssets = [...assets].sort((a, b) => b.performance - a.performance).slice(0, 3).map(a => `${sanitizePromptText(a.symbol, 12)}: +${a.performance}%`).join(', ');
-
-    const now = new Date();
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(now.getMonth() - 3);
-    const recentExpenses = transactions
-      .filter(t => new Date(t.date) >= threeMonthsAgo && t.amount < 0 && !t.isTransfer && !t.isDuplicate)
-      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-    const monthlyBurn = recentExpenses / 3;
-    const runway = monthlyBurn > 0 ? (totalCash / monthlyBurn).toFixed(1) : "Infini";
-
-    // Phase 4 — utilise la projection réelle du store si dispo (sinon fallback formule simple)
-    let projectionLine: string;
-    if (lastProjection?.chartData?.length) {
-      const last = lastProjection.chartData[lastProjection.chartData.length - 1];
-      const estateNw = lastProjection.estateNetWorth ?? last?.NetWorth ?? 0;
-      const fire = lastProjection.fireNumber ?? 0;
-      const success = lastProjection.successRate;
-      const fvi = lastProjection.fvi;
-      projectionLine = `Patrimoine successoral projeté, rentes RRQ/PSV incluses (FutureProjection): ~${formatNumber(roundToHundred(estateNw))} CAD. Objectif FIRE: ${formatNumber(roundToHundred(fire))}$. ${Number.isFinite(success) ? `Taux de succès MC: ${success}%.` : ''} ${Number.isFinite(fvi) ? `FVI: ${fvi}/100.` : ''}`;
-    } else {
-      const annualContrib = projection.manualContribution * 12;
-      const rate = projection.returnRate / 100;
-      let futureValue = netWorth;
-      for (let i = 0; i < projection.years; i++) {
-        futureValue = (futureValue + annualContrib) * (1 + rate);
-      }
-      projectionLine = `Projection simplifiée (formule 5%): ~${formatNumber(roundToHundred(futureValue))} CAD à ${projection.years} ans. ⚠️ L'utilisateur n'a pas encore ouvert l'onglet Future — pas de simulation détaillée disponible.`;
-    }
-
-    const realEstateContext = realEstateGoal
-      ? `Projet immo : ${sanitizePromptText(realEstateGoal.name, 40) || 'principal'} à ${formatNumber(roundToHundred(realEstateGoal.price || 0))}$ (mise de fonds ${formatNumber(roundToHundred(realEstateGoal.downPayment || 0))}$, taux ${realEstateGoal.mortgageRate || 0}%).`
-      : 'Aucun projet immobilier actif.';
-
-    const last20Txs = transactions.slice(0, 20)
-      .map(t => `${sanitizePromptText(t.date, 10)}: ${sanitizePromptText(t.payee)} (${formatNumber(roundToHundred(t.amount))}$)`)
-      .join('\n');
-
-    const userAge = config.users[0]?.age || 35;
-
-    // S-D — Toutes les données dérivées de saisies utilisateur (placements, projet
-    // immo, transactions) sont déjà neutralisées via sanitizePromptText, puis le
-    // bloc complet est isolé dans <DONNEES>. La note d'isolation reste, elle, dans
-    // la zone d'instructions de confiance (hors <DONNEES>) pour cadrer le modèle.
-    const userDataBlock = wrapUserData(
-`=== USER SNAPSHOT ===
-- Age principal: ${userAge} ans
-- Net Worth: ${formatNumber(roundToHundred(netWorth))} CAD (Cash: ${formatNumber(roundToHundred(totalCash))}, Stocks: ${formatNumber(roundToHundred(totalInvestments))})
-- Burn mensuel: ~${formatNumber(roundToHundred(monthlyBurn))}$
-- Runway: ${runway} mois
-- Top placements: ${topAssets || 'aucun'}
-- ${projectionLine}
-- ${realEstateContext}
-
-=== RECENT TRANSACTIONS ===
-${last20Txs}`
-    );
-
-    return `
-      You are an elite, friendly financial advisor for Quebec residents. Speak French naturally. Use emojis sparingly.
-      Use **bold** in your responses to highlight key numbers and recommendations.
-
-      ${PROMPT_DATA_ISOLATION_NOTE}
-
-      ${userDataBlock}
-
-      === RULES ===
-      - Sois concis (max 4-5 phrases sauf demande de détail).
-      - Utilise **bold** sur les chiffres clés et conclusions.
-      - Pour les questions de stratégie, donne 2-3 options structurées avec listes à puces.
-      - Réfère-toi à la simulation FutureProjection si disponible pour les questions d'horizon long.
-    `;
-  };
-
-  const appendMessage = (msg: AiMessage) => {
-    setAppState({ aiConversation: [...useFinanceStore.getState().aiConversation, msg] });
-  };
-
-  const updateLastModelMessage = (text: string) => {
-    const current = useFinanceStore.getState().aiConversation;
-    if (current.length === 0 || current[current.length - 1].role !== 'model') return;
-    const updated = [...current];
-    updated[updated.length - 1] = { ...updated[updated.length - 1], text };
-    setAppState({ aiConversation: updated });
-  };
-
-  const clearConversation = () => {
-    setAppState({ aiConversation: [] });
-  };
-
-  const handleSend = async (overrideText?: string) => {
+  const handleSend = (overrideText?: string) => {
     const userText = (overrideText ?? input).trim();
-    if (!userText) return;
-
+    if (!userText || isLoading) return;
     setInput('');
-    appendMessage({ role: 'user', text: userText, timestamp: new Date().toISOString() });
-    setIsLoading(true);
-    setStreamingText('');
-
-    try {
-      if (!apiKey) throw new Error("Clé API Anthropic manquante.");
-
-      const systemPrompt = generateContext();
-
-      // Phase 4 A2: streaming via services/claude.ts (Sonnet 4.6)
-      // H3 (sécurité) — les données réelles sont isolées dans <DONNEES> côté
-      // system prompt. On neutralise donc toute fausse balise de cadre littérale
-      // (<DONNEES>/</DONNEES>) dans le message utilisateur ET dans l'historique
-      // (un libellé importé peut y ressortir) pour empêcher une falsification de
-      // l'isolation. On ne tronque/encadre PAS le tour utilisateur : c'est du
-      // dialogue, pas une donnée à wrapper.
-      const recent = useFinanceStore.getState().aiConversation.slice(-10);
-      const messages = [
-        ...recent.map(m => ({
-          role: (m.role === 'model' ? 'assistant' : 'user') as 'user' | 'assistant',
-          content: neutralizeFrameTags(m.text),
-        })),
-        { role: 'user' as const, content: neutralizeFrameTags(userText) },
-      ];
-
-      // On crée un message "vide" qu'on va remplir progressivement
-      appendMessage({ role: 'model', text: '', timestamp: new Date().toISOString() });
-
-      // §7.C.2 — Crée un AbortController par requête, accessible via bouton "Annuler"
-      abortRef.current = new AbortController();
-      let accumulated = '';
-      for await (const chunk of chatStream(messages, apiKey, { system: systemPrompt, signal: abortRef.current.signal })) {
-        accumulated += chunk;
-        setStreamingText(accumulated);
-        updateLastModelMessage(accumulated);
-      }
-    } catch (e: unknown) {
-      // TH4 fix : unknown au lieu de any (useUnknownInCatchVariables tsconfig)
-      logError({ source: 'ai', severity: 'error', message: 'Assistant Claude : échec du streaming', error: e });
-      appendMessage({
-        role: 'model',
-        text: "Oups, je n'arrive pas à réfléchir. Vérifie ta clé API Anthropic.",
-        timestamp: new Date().toISOString(),
-      });
-    } finally {
-      setIsLoading(false);
-      setStreamingText('');
-    }
+    void sendMessage(userText);
   };
 
   const formatTime = (iso: string): string => {
@@ -278,6 +111,26 @@ ${last20Txs}`
             </div>
           </div>
 
+          {/* [AITOOLS-C] Bannière mode test : les réponses portent sur le PERSONA, pas les vraies données.
+              ⚠️ warning-400 (la palette warning = 400/500/600 — un shade 300 serait un no-op silencieux,
+              mesuré par l'a11y-auditor, récidive FIX-INK600 évitée). */}
+          {isTestMode && (
+            <div className="bg-warning-500/15 border-b border-warning-500/30 px-4 py-2 text-meta text-warning-400" role="status">
+              Mode démo actif — je réponds sur les données du persona de test, pas sur tes vraies finances.
+            </div>
+          )}
+
+          {/* [ADR-5] Mode discret : le chat ENTIER est masqué (la prose porte des montants qu'on ne
+              peut pas masquer valeur par valeur de façon fiable — masquer = ne pas rendre). */}
+          {isPrivacyMode ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
+              <Icon name="bot" size={28} className="text-ink-400" aria-hidden="true" />
+              <p className="text-body text-ink-200 font-medium">Mode discret actif</p>
+              <p className="text-meta text-ink-400">La conversation (montants inclus) est masquée. Désactive le mode discret pour discuter avec l'assistant.</p>
+              <span className="sr-only">Conversation masquée en mode discret</span>
+            </div>
+          ) : (
+          <>
           <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
             {messagesToRender.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -290,6 +143,16 @@ ${last20Txs}`
                     : 'bg-[#2a2a2a] text-ink-100 rounded-tl-none border border-white/5'
                     }`}
                 >
+                  {/* [AITOOLS-C] Chips de transparence : quels tools ont nourri CETTE réponse. */}
+                  {m.role === 'model' && m.toolsUsed && m.toolsUsed.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {[...new Set(m.toolsUsed)].map((label) => (
+                        <span key={label} className="text-tiny px-2 py-0.5 rounded-full bg-white/10 text-ink-300 border border-white/10">
+                          a consulté : {label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   {m.text.split('\n').map((line, idx) => renderMarkdownLine(line, idx))}
                   {m.timestamp && (
                     <div className={`text-tiny mt-1 text-right ${m.role === 'user' ? 'text-green-200' : 'text-ink-500'}`}>
@@ -317,13 +180,21 @@ ${last20Txs}`
               </div>
             )}
 
-            {isLoading && !streamingText && (
+            {isLoading && (
               <div className="flex justify-start">
                 <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mr-2 flex-shrink-0 border border-white/10"><Icon name="bot" size={16} className="text-ink-300" /></div>
-                <div className="bg-[#2a2a2a] rounded-2xl rounded-tl-none px-4 py-4 flex gap-1.5 items-center border border-white/5" aria-label="Chargement de la réponse">
-                  <div className="w-2 h-2 bg-ink-300 rounded-full animate-[bounce_1.4s_infinite_0ms]"></div>
-                  <div className="w-2 h-2 bg-ink-300 rounded-full animate-[bounce_1.4s_infinite_200ms]"></div>
-                  <div className="w-2 h-2 bg-ink-300 rounded-full animate-[bounce_1.4s_infinite_400ms]"></div>
+                <div className="bg-[#2a2a2a] rounded-2xl rounded-tl-none px-4 py-3 border border-white/5" aria-label="Chargement de la réponse">
+                  {/* [AITOOLS-C] État de chargement NOMMÉ (finding PM : « Consulte : Situation
+                      fiscale… » bat le point bondissant générique quand 2-3 tools s'enchaînent). */}
+                  {activeTools.length > 0 ? (
+                    <span className="text-meta text-ink-300" role="status">Consulte : {activeTools[activeTools.length - 1]}…</span>
+                  ) : (
+                    <div className="flex gap-1.5 items-center py-1">
+                      <div className="w-2 h-2 bg-ink-300 rounded-full animate-[bounce_1.4s_infinite_0ms]"></div>
+                      <div className="w-2 h-2 bg-ink-300 rounded-full animate-[bounce_1.4s_infinite_200ms]"></div>
+                      <div className="w-2 h-2 bg-ink-300 rounded-full animate-[bounce_1.4s_infinite_400ms]"></div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -345,7 +216,7 @@ ${last20Txs}`
               />
               {isLoading ? (
                 <button
-                  onClick={() => abortRef.current?.abort(new DOMException('User cancelled', 'AbortError'))}
+                  onClick={cancel}
                   aria-label="Annuler la génération"
                   title="Annuler"
                   className="bg-danger-500 hover:bg-danger-400 text-white w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg shadow-danger-500/20 focus-ring"
@@ -364,6 +235,8 @@ ${last20Txs}`
               )}
             </div>
           </div>
+          </>
+          )}
         </div>
       )}
     </>

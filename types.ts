@@ -696,6 +696,10 @@ export interface AiMessage {
   text: string;
   /** ISO 8601 string (sérialisable JSON, contrairement à Date qui devient string après reload) */
   timestamp: string;
+  /** [AITOOLS-C] Libellés des tools consultés pour CE message (chips de transparence « a consulté :
+   *  Situation fiscale »). ADDITIF optionnel (zéro migration) — libellés seulement, JAMAIS les
+   *  payloads (ADR-4 : le transcript persisté/synchronisé reste léger). */
+  toolsUsed?: string[];
 }
 
 export interface AppState {

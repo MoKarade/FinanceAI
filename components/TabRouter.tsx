@@ -276,17 +276,9 @@ export const TabRouter: React.FC<TabRouterProps> = ({
 
                 {activeTab === Tab.ASSISTANT && (
                     <PageSetupGate tab={Tab.ASSISTANT}>
-                        <AiAssistant
-                            // Phase 4 A5: clé Anthropic Claude (Gemini retiré)
-                            apiKey={state.apiKeys.anthropic}
-                            transactions={state.transactions}
-                            budgetItems={state.budgetItems}
-                            assets={state.assets}
-                            projection={state.projection}
-                            realEstateGoal={state.realEstateGoals[0]}
-                            config={state.config}
-                            initialBalances={state.initialBalances}
-                        />
+                        {/* [AITOOLS-C] Le chat lit l'état via appStateProvider (tool-use) — plus
+                            besoin de lui passer les tranches de données en props. */}
+                        <AiAssistant apiKey={state.apiKeys.anthropic} />
                     </PageSetupGate>
                 )}
                 </div>

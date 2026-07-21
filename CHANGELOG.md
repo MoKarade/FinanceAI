@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — sécurité deps : 0 vulnérabilité npm audit] — 2026-07-21
+
+### Sécurité (dépendances)
+- **`npm audit` : 4 → 0 vulnérabilités** (`[DEP-AUDIT-2026-07]`, signalé par Dependabot « 2 high » au push) —
+  `brace-expansion` (DoS regex, chaîne eslint) + `js-yaml` (CPU quadratique) via `npm audit fix` ;
+  `adm-zip` 0.5→0.6 (alloc 4 Go sur ZIP forgé — usage local = CRÉATION de zip par `mcp/pack.mjs` seulement,
+  jamais de lecture non fiable) avec preuve empirique : `npm run mcp:pack` produit un `.mcpb` valide et relisible.
+
 ## [unreleased — lot audit n°2 : traçabilité MCP/sync, dettes DRY, durcissements préventifs] — 2026-07-21
 
 ### Corrections (restants de l'audit passe n°2 — 1 ÉLEVÉ + 3 MOYEN + 2 LOW)

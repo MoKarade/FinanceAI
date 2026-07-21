@@ -201,6 +201,28 @@ describe('runAgentLoop', () => {
         }));
     });
 
+    it('[ceinture panel] ANNULATION utilisateur → stopReason aborted + « [Annulé] », SANS logError (action nominale)', async () => {
+        // Discriminant (finding panel CRITIQUE, sonde mesurée) : l'ancien catch absorbait l'abort en
+        // 'error' générique (« réessaie ») + logError severity error à CHAQUE clic Annuler (bruit
+        // qui masque les vrais échecs API).
+        const ctrl = new AbortController();
+        const client: AgentClientLike = {
+            messages: {
+                stream: () => ({
+                    on: () => undefined,
+                    finalMessage: async () => { throw new DOMException('User cancelled', 'AbortError'); },
+                }),
+            },
+        };
+        ctrl.abort(new DOMException('User cancelled', 'AbortError'));
+        const res = await runAgentLoop([{ role: 'user', content: 'q' }], {
+            apiKey: 'sk-test', getState, client, signal: ctrl.signal,
+        });
+        expect(res.stopReason).toBe('aborted');
+        expect(res.text).toContain('[Annulé]');
+        expect(logError).not.toHaveBeenCalled();
+    });
+
     it('[ceinture panel] cap max_turns : l\'historique retourné se TERMINE par un tour assistant (reprise saine)', async () => {
         const { client } = scriptedClient([toolMsg('get_financial_overview', {})]);
         const res = await runAgentLoop([{ role: 'user', content: 'q' }], {

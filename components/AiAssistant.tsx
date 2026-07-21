@@ -107,7 +107,9 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ apiKey }) => {
               </div>
             </div>
             <div className="ml-auto">
-              <button onClick={clearConversation} aria-label="Effacer la conversation" className="text-ink-300 hover:text-white p-2 text-meta bg-white/5 rounded-lg focus-ring">Effacer</button>
+              {/* [Finding panel] Effacer DÉSACTIVÉ pendant un envoi : vider mi-stream perdait la
+                  réponse en cours (déjà payée) sans trace — Annuler d'abord, effacer ensuite. */}
+              <button onClick={clearConversation} disabled={isLoading} aria-label="Effacer la conversation" className="text-ink-300 hover:text-white p-2 text-meta bg-white/5 rounded-lg focus-ring disabled:opacity-40 disabled:cursor-not-allowed">Effacer</button>
             </div>
           </div>
 

@@ -15,6 +15,28 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   Node/MCP (mêmes résultats — parité re-prouvée). `withState` accepte les handlers async (rétrocompat
   sync). Garde-scan : plus aucun appel moteur direct possible dans un spec.
 
+## [unreleased — chantier Claude-in-app, Lot C : l'assistant passe au tool-use] — 2026-07-21
+
+### Améliorations (Assistant)
+- **L'assistant in-app consulte tes VRAIES données via les 11 tools de lecture** (mêmes specs que le
+  connecteur claude.ai — « mêmes réponses ») au lieu d'un contexte résumé fait main. `generateContext()`
+  SUPPRIMÉ (source divergente). Chips « a consulté : Situation fiscale » par réponse + chargement nommé
+  (« Consulte : Projection… »). Logique partagée `hooks/useAiChat.ts` (prête pour le panneau global, Lot E).
+- **Bannière mode test** (« je réponds sur le persona ») — `warning-400` (le shade 300 n'existe pas :
+  no-op silencieux évité, mesuré). **Mode discret : chat masqué en ENTIER** (hors DOM, ADR-5).
+- Transcript persisté LÉGER : rôle + texte + libellés d'outils (`AiMessage.id?`/`toolsUsed?` additifs).
+- Bundle boot inchangé (mesuré : +110 octets gzip = bruit ; chat dans le chunk lazy).
+
+### Correctifs du panel (sondes mesurées — 1 CRITIQUE + 2 ÉLEVÉ + 2 MOYEN appliqués)
+- **Annuler ≠ erreur** : l'annulation rend `stopReason:'aborted'` + « [Annulé] » SANS logError (avant :
+  « réessaie » générique + une entrée de log d'ERREUR à chaque clic Annuler — bruit masquant les vrais échecs).
+- **Identité de message** : les mises à jour de stream ciblent l'ID du message de CET envoi (jamais « le
+  dernier ») + garde de réentrance par ref (deux envois du même tick = une seule boucle) + **Effacer
+  désactivé pendant un envoi** (vider mi-stream perdait la réponse payée sans trace).
+- Commentaire ADR-4 corrigé (les blocs tool_use sont JETÉS par tour — re-consultation idempotente) ;
+  system prompt : divergence possible entre `get_projection` (frais) et l'écran Futur (optimisé/figé)
+  expliquée à l'utilisateur au lieu de passer pour un bug.
+
 ## [unreleased — chantier Claude-in-app, Lot B : boucle agentique + registre app (lecture)] — 2026-07-21
 
 ### Nouveau (fondation, pas encore branché à l'UI — Lot C)

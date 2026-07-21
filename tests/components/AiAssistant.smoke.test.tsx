@@ -79,6 +79,43 @@ describe('AiAssistant — tool-use (AITOOLS-C)', () => {
         expect(screen.getByText(/Mode démo actif/i)).toBeInTheDocument();
     });
 
+    it('[Finding panel] Effacer est DÉSACTIVÉ pendant un envoi + le garde du hook ignore un clear programmatique', async () => {
+        // Discriminant (sonde panel) : vider mi-stream perdait la réponse en cours (payée) sans trace.
+        let resolveLoop: (v: unknown) => void = () => undefined;
+        runAgentLoopMock.mockReturnValueOnce(new Promise((res) => { resolveLoop = res; }));
+        render(<AiAssistant apiKey="sk-test" />);
+        openPanel();
+        fireEvent.change(screen.getByLabelText(/Question au conseiller IA/i), { target: { value: 'longue question' } });
+        fireEvent.click(screen.getByRole('button', { name: /Envoyer le message/i }));
+        await waitFor(() => expect(runAgentLoopMock).toHaveBeenCalledTimes(1));
+
+        const clearBtn = screen.getByRole('button', { name: /Effacer la conversation/i });
+        expect(clearBtn).toBeDisabled();
+        fireEvent.click(clearBtn); // même cliqué (AT/programmatique), le garde du hook no-op
+        expect(useFinanceStore.getState().aiConversation.length).toBeGreaterThan(0);
+
+        resolveLoop({ text: 'Réponse finale.', toolsUsed: [], turns: 1, stopReason: 'end', messages: [] });
+        await waitFor(() => expect(document.body.textContent).toContain('Réponse finale.'));
+        // La réponse payée atterrit dans SA bulle (id stable) — rien n'est perdu.
+        expect(useFinanceStore.getState().aiConversation.at(-1)!.text).toBe('Réponse finale.');
+    });
+
+    it('[Finding panel] deux envois dans le même tick → UNE seule boucle (garde de réentrance par ref)', async () => {
+        // Discriminant (sonde panel) : la closure isLoading (state React) laissait passer deux
+        // sendMessage du même tick → bulle vide définitive + réponse réattribuée au mauvais message.
+        let resolveLoop: (v: unknown) => void = () => undefined;
+        runAgentLoopMock.mockReturnValue(new Promise((res) => { resolveLoop = res; }));
+        render(<AiAssistant apiKey="sk-test" />);
+        openPanel();
+        // Deux clics sur une suggestion dans le même burst (aucun await entre les deux).
+        const suggestion = screen.getByRole('button', { name: /Quand retraite/i });
+        fireEvent.click(suggestion);
+        fireEvent.click(suggestion);
+        await waitFor(() => expect(runAgentLoopMock).toHaveBeenCalled());
+        expect(runAgentLoopMock).toHaveBeenCalledTimes(1);
+        resolveLoop({ text: 'ok', toolsUsed: [], turns: 1, stopReason: 'end', messages: [] });
+    });
+
     it('[ADR-5] mode DISCRET → conversation et champ de saisie HORS du DOM (masquer = ne pas rendre)', () => {
         useFinanceStore.setState({
             isPrivacyMode: true,

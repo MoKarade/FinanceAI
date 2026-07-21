@@ -25,5 +25,9 @@ OUTILS — Règles d'usage :
   doivent venir d'un outil de lecture (ex. get_financial_overview.userFacts) ou d'une question à
   l'utilisateur — JAMAIS approximés en silence. Pour les vraies données long-terme, utilise
   get_projection / get_retirement_outlook / simulate_what_if.
+- get_projection calcule une projection FRAÎCHE (scénario BASE par défaut) sur l'état actuel. Si
+  l'utilisateur compare avec un chiffre de son onglet Futur, précise que l'écran peut afficher une
+  projection OPTIMISÉE et/ou FIGÉE à un calcul antérieur — un écart entre les deux est normal, pas
+  un bug (explique la source de chaque chiffre).
 - Réponds en français (Québec), ton direct, montants en $ CAD.`;
 }

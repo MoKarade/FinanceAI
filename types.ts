@@ -696,6 +696,10 @@ export interface AiMessage {
   text: string;
   /** ISO 8601 string (sérialisable JSON, contrairement à Date qui devient string après reload) */
   timestamp: string;
+  /** [AITOOLS-C] Identité STABLE du message — les mises à jour de stream ciblent CET id, jamais
+   *  « le dernier de la liste » (finding panel : un Effacer/chevauchement corrompait la mauvaise
+   *  bulle). ADDITIF optionnel (les anciens messages persistés n'en ont pas — jamais mis à jour). */
+  id?: string;
   /** [AITOOLS-C] Libellés des tools consultés pour CE message (chips de transparence « a consulté :
    *  Situation fiscale »). ADDITIF optionnel (zéro migration) — libellés seulement, JAMAIS les
    *  payloads (ADR-4 : le transcript persisté/synchronisé reste léger). */

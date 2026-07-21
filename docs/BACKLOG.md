@@ -129,19 +129,25 @@
   étiqueté `monthlyIncomeSource: 'declared'` ; le prompt `claude.ts` étiquette « (réel, moyenne des transactions) »
   vs « (salaire déclaré) » ; `NextBestAction` consomme désormais `buildFinancialSnapshot` (fin du recalcul local).
   2 tests discriminants (2300 réel ≠ 4000 déclaré, remboursement exclu), prouvés rouges avant fix.
-- [ ] **`[MCP-TOOLS-SILENT-CATCH]`** 🟠 ÉLEVÉ (S) — `withState`/`runApply`/`applyPayslip` : les 4 catch de frontière
-  MCP rendent l'erreur à Claude mais n'appellent JAMAIS `logError` → bug de calcul introuvable côté Cloud Run.
-- [ ] **`[SYNC-APIKEYS-SILENT]`** 🟡 MOYEN (S) — `syncPull.ts:55-60` : échec `saveApiKeys` (coffre indispo) avalé →
-  clés en mémoire seulement, disparaissent au reload sans trace (asymétrique avec l.153-164 qui journalise).
-- [ ] **`[DEBT-SUM-DUP]`** 🟡 MOYEN (S) — 4 sites (`NextBestAction:109`, `HealthIndicator:108`, `Dashboard:270`,
-  `DebtManager:73`) réimplémentent `computeTotalDebt` sans garde `isFinite`. Fix groupé DRY.
-- [ ] **`[MCP-USERTEXT-LANDMINE]`** 🟡 MOYEN (S, préventif) — `USER_TEXT_KEYS` ne couvre pas `notes`/`insurer`/
-  `beneficiary`/`destination` (champs LIBRES utilisateur, aucun tool ne les expose ENCORE — exploitabilité nulle
-  aujourd'hui, vérifiée). Durcir avant qu'un futur tool « assurances/documents/voyages » n'hérite du trou.
-- [ ] **`[LOG-TOKEN-ANCHORED]`** 🟢 LOW (XS) — `errorLogger.ts:76` : scrub matche `token` mais pas `accessToken`
-  (aucun appelant concerné aujourd'hui — préventif, même transition que SEC-LOG-DEBT-REGEX).
-- [ ] **`[MCP-RUNPROJECTION-AMBIG]`** 🟢 LOW (XS) — clarifier la description de `run_projection` (calculateur
-  générique ≠ vrai moteur) pour ne pas aiguiller le LLM vers la formule simplifiée.
+- [x] **`[MCP-TOOLS-SILENT-CATCH]`** 🟠 ÉLEVÉ (S) — ✅ 2026-07-21 (lot audit n°2) : les **7/7** catch de frontière
+  (`withState` ×2, `runApply` ×2, `applyPayslip` — routé sur `runApply`, dé-duplication finding panel —,
+  `connectDrive` trouvé par le panel) appellent `logError` AVANT de rendre la réponse d'erreur à Claude → traçable
+  dans les logs Cloud Run (errorLogger route console.*). Tests `tests/mcp/mcpBoundaryLog.test.ts`
+  (3 discriminants + 1 anti-bruit nominal), prouvés rouges pré-fix.
+- [x] **`[SYNC-APIKEYS-SILENT]`** 🟡 MOYEN (S) — ✅ 2026-07-21 (lot audit n°2) : échec `saveApiKeys` au PULL →
+  `logError` warning (best-effort préservé) **+ côté PUSH (finding panel)** : les 2 catch clés-API (chiffrement ;
+  relecture de préservation D5) journalisés aussi. Tests discriminants dans `syncOrchestrator.flow.test.ts`.
+- [x] **`[DEBT-SUM-DUP]`** 🟡 MOYEN (S) — ✅ 2026-07-21 (lot audit n°2) : les 2 sites restants
+  (`HealthIndicator:108`, `DebtManager:73`) routés sur `computeTotalDebt` (NextBestAction et Dashboard l'étaient
+  déjà depuis le lot #471). Zéro reduce local de soldes de dettes restant.
+- [x] **`[MCP-USERTEXT-LANDMINE]`** 🟡 MOYEN (S, préventif) — ✅ 2026-07-21 (lot audit n°2) : `USER_TEXT_KEYS`
+  += `insurer`/`beneficiary`/`destination`/`userNotes`. ⚠️ `notes` N'EST PAS ajouté (RÉSERVÉ code-auteur,
+  cf MCP-PROMPT-SCRUB — un futur champ de notes UTILISATEUR doit s'appeler `userNotes`). Test de garde.
+- [x] **`[LOG-TOKEN-ANCHORED]`** 🟢 LOW (XS) — ✅ 2026-07-21 (lot audit n°2) : `token` → `.*token` (suffixe ancré)
+  → `accessToken`/`refresh_token`/`idToken` redactés, `factor` toujours épargné (anti-faux-positif testé).
+- [x] **`[MCP-RUNPROJECTION-AMBIG]`** 🟢 LOW (XS) — ✅ 2026-07-21 (lot audit n°2) : description réécrite
+  « CALCULATEUR GÉNÉRIQUE… ne lit PAS les données réelles » + aiguillage explicite vers `get_projection`
+  (vraie projection) / `get_retirement_outlook` (retraite) / `simulate_what_if` (scénarios sur SES données).
 - [x] **`[LINT-4-WARNINGS]`** ✅ réglé dans la PR du rapport (3 locales mortes `financialSnapshot.ts` + import
   `within` orphelin `Budget.test.tsx`) — lint 0 problème.
 - Dette non urgente (L, plan-first `architect`) : découpe de `Budget.tsx` (+20 % en 3 sem.) / `FutureProjection.tsx`

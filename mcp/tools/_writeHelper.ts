@@ -8,6 +8,7 @@
 import { applyDocument, type DocumentPayload } from '../ingest/applyDocument';
 import { jsonContent, errorContent, type ToolTextResult } from './_dataAware';
 import type { StateStore } from '../state/stateStore';
+import { logError } from '../../services/errorLogger';
 
 export async function runApply(store: StateStore, doc: DocumentPayload): Promise<ToolTextResult> {
     if (!store.canWrite) {
@@ -20,6 +21,12 @@ export async function runApply(store: StateStore, doc: DocumentPayload): Promise
         // [MCP-WRITE-VERSION-TOKEN] lire l'état AVEC son jeton de version → le passer au save pour l'OCC.
         ({ state, version } = await store.getWithVersion());
     } catch (err) {
+        // [MCP-TOOLS-SILENT-CATCH] trace serveur en plus de la réponse d'erreur à Claude.
+        logError({
+            source: 'storage', severity: 'error',
+            message: `MCP runApply(${doc.kind}) : chargement de l'état avant écriture ÉCHOUÉ.`,
+            error: err instanceof Error ? err : new Error(String(err)),
+        });
         return errorContent(`Impossible de charger l'état avant écriture. ${err instanceof Error ? err.message : String(err)}`);
     }
     try {
@@ -28,6 +35,12 @@ export async function runApply(store: StateStore, doc: DocumentPayload): Promise
         const { backupPath } = await store.save(nextState, version);
         return jsonContent({ applied: true, summary, changes, backupPath });
     } catch (err) {
+        // [MCP-TOOLS-SILENT-CATCH] échec d'application/persistance (OCC, Drive, fusion) journalisé.
+        logError({
+            source: 'storage', severity: 'error',
+            message: `MCP runApply(${doc.kind}) : application/écriture du document ÉCHOUÉE.`,
+            error: err instanceof Error ? err : new Error(String(err)),
+        });
         return errorContent(`Écriture impossible. ${err instanceof Error ? err.message : String(err)}`);
     }
 }

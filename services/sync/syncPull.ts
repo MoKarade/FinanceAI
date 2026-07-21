@@ -55,8 +55,16 @@ async function applyPulledPayload(payload: unknown, apiKeys?: ApiKeys): Promise<
     if (apiKeys && hasAnyKey(apiKeys)) {
         try {
             await saveApiKeys(apiKeys);
-        } catch {
-            /* coffre indispo — données restaurées quand même */
+        } catch (e) {
+            // [SYNC-APIKEYS-SILENT, audit 2026-07-16] Best-effort ASSUMÉ (les données sont restaurées
+            // quand même) mais JOURNALISÉ : sans trace, les clés vivent en mémoire seulement et
+            // « disparaissent » au prochain reload sans explication. (Les chemins clés-API du PUSH
+            // sont journalisés pareil — syncPush, finding panel 2026-07-21.)
+            logError({
+                source: 'storage', severity: 'warning',
+                message: 'Pull Drive : persistance des clés API ÉCHOUÉE (coffre indispo) — clés utilisables cette session seulement, à ressaisir après reload.',
+                error: e instanceof Error ? e : new Error(String(e)),
+            });
         }
         try {
             useFinanceStore.getState().updateApiKeys(apiKeys);

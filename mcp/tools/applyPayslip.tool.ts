@@ -7,8 +7,8 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { applyDocument } from '../ingest/applyDocument';
-import { jsonContent, errorContent, type ToolTextResult } from './_dataAware';
+import type { ToolTextResult } from './_dataAware';
+import { runApply } from './_writeHelper';
 import type { StateStore } from '../state/stateStore';
 
 const inputSchema = {
@@ -35,29 +35,10 @@ export const registerApplyPayslip = (server: McpServer, store: StateStore): void
         'Renvoie le détail des changements (avant → après) et le chemin de la sauvegarde. ' +
         "N'invente jamais de chiffres : ne renseigne que ce qui figure sur le document.",
         inputSchema,
-        async (args): Promise<ToolTextResult> => {
-            if (!store.canWrite) {
-                return errorContent(
-                    "État en lecture seule : $FINANCEAI_STATE_FILE doit pointer vers un fichier accessible en écriture.",
-                );
-            }
-            let state, version;
-            try {
-                // [MCP-WRITE-VERSION-TOKEN] jeton de version lu → passé au save (OCC anti-clobber).
-                ({ state, version } = await store.getWithVersion());
-            } catch (err) {
-                return errorContent(`Impossible de charger l'état avant écriture. ${err instanceof Error ? err.message : String(err)}`);
-            }
-            try {
-                const { nextState, changes, summary } = applyDocument(state, { kind: 'payslip', ...args });
-                if (changes.length === 0) {
-                    return jsonContent({ applied: false, summary, changes: [] });
-                }
-                const { backupPath } = await store.save(nextState, version);
-                return jsonContent({ applied: true, summary, changes, backupPath });
-            } catch (err) {
-                return errorContent(`Écriture impossible. ${err instanceof Error ? err.message : String(err)}`);
-            }
-        },
+        // [Finding panel 2026-07-21] apply_payslip était le SEUL apply_* à INLINER le bloc
+        // canWrite→getWithVersion→applyDocument→save (drift déjà constaté : son message read-only
+        // omettait l'option Drive/mcp:auth) → routé sur runApply comme les 4 autres. Les logError
+        // [MCP-TOOLS-SILENT-CATCH] vivent en UN endroit (_writeHelper), couvert par mcpBoundaryLog.
+        async (args): Promise<ToolTextResult> => runApply(store, { kind: 'payslip', ...args }),
     );
 };

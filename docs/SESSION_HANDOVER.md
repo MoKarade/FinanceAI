@@ -4,6 +4,17 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-21 — Lot audit n°2 : les 6 restants (« go ») + cadrage MCP/Claude-in-app
+> **✅ Lot des 6 restants de l'audit livré (1 PR)** : `[MCP-TOOLS-SILENT-CATCH]` (logError aux 6 catch de
+> frontière MCP), `[SYNC-APIKEYS-SILENT]` (échec coffre journalisé au pull), `[DEBT-SUM-DUP]` (HealthIndicator +
+> DebtManager → computeTotalDebt), `[MCP-USERTEXT-LANDMINE]` (+4 clés préventives, `notes` réservé code-auteur),
+> `[LOG-TOKEN-ANCHORED]` (`.*token` suffixe), `[MCP-RUNPROJECTION-AMBIG]` (description clarifiée). 6 tests
+> discriminants prouvés rouges pré-fix. §Audit 2026-07-16 : TOUT est coché sauf la découpe god-files (L, plan-first).
+> **🎯 NOUVEAU CHANTIER demandé par Marc (2026-07-21)** : « grandement améliorer le MCP », app surtout
+> visuel/affichage (l'usage passe par Claude), + Claude INTÉGRÉ dans l'app qui consomme le MCP directement.
+> Marc veut un cadrage par questions (« pose plein de questions ») → batch de cadrage envoyé, EN ATTENTE de ses
+> réponses avant tout plan/code (plan-first).
+>
 > ## 🟢 Session 2026-07-17 — Lot corrections audit passe n°2 (« go correction »)
 > **✅ Lot 1-2-3 de l'audit livré (1 PR)** : `[STORE-REHYDRATE-SILENT]` (CRITIQUE — `onRehydrateStorage` +
 > `getHydrationStatus()` + paliers de migration tracés + toast « NE RIEN SAISIR, restaure un backup », blob intact),

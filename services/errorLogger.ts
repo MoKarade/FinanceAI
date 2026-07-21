@@ -73,7 +73,9 @@ function makeId(): string {
 // (avant, l'ancrage `^debt$` ratait `liquidDebt`/`mortgageBalance`/`annualAmount`/`grossSalary`…). Les
 // termes courts/ambigus (token, email, `fact`…) restent ANCRÉS pour éviter les faux positifs (ex. ne pas
 // redacter une clé « factor » via `fact`). Case-insensitive, match récursif sur les clés.
-const SENSITIVE_KEY_PATTERNS = /(amount|balance|debt|salary|income|expense|cost|price|net.*worth)|^(payee|fact|token|password|passphrase|email|phone|sin|nas|api.*key|account.*number)$/i;
+// [LOG-TOKEN-ANCHORED, audit 2026-07-16] `token` matche en SUFFIXE (`.*token`) : `accessToken`/
+// `refresh_token`/`idToken` sont redactés, sans le risque substring (« tokenizer » n'existe pas ici).
+const SENSITIVE_KEY_PATTERNS = /(amount|balance|debt|salary|income|expense|cost|price|net.*worth)|^(payee|fact|.*token|password|passphrase|email|phone|sin|nas|api.*key|account.*number)$/i;
 const MAX_DEPTH = 4;
 
 // S2 (sécurité/PII) — Le `message` et la `stack` des erreurs sont persistés en

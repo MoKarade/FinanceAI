@@ -27,6 +27,7 @@ import { sumMessagesCostUsd } from '../../services/aiChat/pricing';
 import { formatCostCad } from '../../utils/format';
 // [CHAT-PAGE-CONTEXT] Badge du contexte d'écran perçu (contestable par l'utilisateur — confiance).
 import { useViewContextSnapshot } from '../../hooks/useViewContextSnapshot';
+import { viewContextMatchesTab } from '../../services/aiChat/viewContext';
 import { TAB_LABELS } from '../../constants';
 
 export type AiChatVariant = 'panel' | 'tab';
@@ -90,7 +91,11 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
     // d'onglet n'a de sens que dans le PANNEAU (sur l'onglet Assistant, « Contexte : Assistant IA »
     // serait du bruit).
     const activeTab = useFinanceStore(s => s.activeTab);
-    const viewCtx = useViewContextSnapshot();
+    const viewCtxRaw = useViewContextSnapshot();
+    // [Finding panel #490 — ÉLEVÉ] Même corrélation scope↔onglet que le prompt : le cleanup du
+    // publisher est différé après paint → sans ce filtre, le badge afficherait « Accueil —
+    // juillet 2026 » (période de Budget) pendant la fenêtre de transition d'onglet.
+    const viewCtx = viewContextMatchesTab(viewCtxRaw, activeTab) ? viewCtxRaw : null;
     const contextBadge = viewCtx
         ? `${TAB_LABELS[activeTab] ?? ''} — ${viewCtx.detail.periodLabel}`
         : (variant === 'panel' && activeTab !== Tab.ASSISTANT ? (TAB_LABELS[activeTab] ?? null) : null);
@@ -356,8 +361,11 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
 
                     <div className="p-4 bg-black/40 backdrop-blur-md border-t border-white/5 flex-shrink-0">
                         {/* [CHAT-PAGE-CONTEXT] Contexte d'écran perçu, contestable d'un coup d'œil.
-                            Texte visible (pas title seul — leçon a11y #489) ; dans la zone
-                            !isPrivacyMode (la période peut indirectement révéler l'activité). */}
+                            Texte visible (pas title seul — leçon a11y #489). Mode discret : AUCUNE
+                            garde locale ici — le DÉTAIL (montants/période) est déjà purgé à la
+                            SOURCE par useViewContextPublisher, et toute cette branche du ternaire
+                            isPrivacyMode n'est pas rendue (double couverture — ne pas « ajouter »
+                            une garde ici, ni en chercher une manquante). */}
                         {contextBadge && (
                             <p className={`text-tiny text-ink-400 mb-1.5 ${isPanel ? '' : 'max-w-3xl mx-auto'}`}>
                                 Contexte : {contextBadge}

@@ -18,6 +18,7 @@
 import { TAB_LABELS } from '../../constants';
 import { Tab } from '../../types';
 import { sanitizePromptText } from '../../utils/promptSafety';
+import { logError } from '../errorLogger';
 
 /** Détail publié par l'onglet Budget (vague 1) — les montants sont CEUX affichés à l'écran. */
 export interface BudgetViewDetail {
@@ -52,7 +53,17 @@ const _subscribers = new Set<() => void>();
 
 function notify(): void {
     for (const cb of _subscribers) {
-        try { cb(); } catch { /* un subscriber cassé ne bloque pas les autres */ }
+        try {
+            cb();
+        } catch (e) {
+            // Isolé (un subscriber cassé ne bloque pas les autres) mais JAMAIS muet (finding panel
+            // #490 : un badge qui cesse de se mettre à jour serait indétectable sans trace).
+            logError({
+                source: 'ui', severity: 'warning',
+                message: 'viewContext : un subscriber a levé une exception — ignoré (les autres continuent).',
+                error: e instanceof Error ? e : new Error(String(e)),
+            });
+        }
     }
 }
 
@@ -86,6 +97,22 @@ export function _resetViewContextForTests(): void {
     _subscribers.clear();
 }
 
+/** [Finding panel #490 — ÉLEVÉ] Corrélation scope ↔ onglet, vérifiée AU POINT DE CONSOMMATION
+ *  (prompt ET badge) : le cleanup du publisher est un useEffect DIFFÉRÉ après paint, alors que
+ *  `activeTab` change en synchrone → fenêtre où le registre porte encore le détail de Budget
+ *  pendant que l'utilisateur est déjà ailleurs. Sans ce check, le prompt dirait « tu es sur
+ *  Accueil » avec les chiffres de Budget (contexte croisé — la garantie même de la feature).
+ *  Toute page instrumentée (vague 2+) DOIT s'enregistrer ici. */
+const SCOPE_TO_TAB: Record<string, Tab> = {
+    budget: Tab.BUDGET,
+};
+
+/** L'entrée du registre correspond-elle à l'onglet ACTIF ? (mismatch = absence honnête). */
+export function viewContextMatchesTab(entry: ViewContextEntry | null, activeTab: Tab): entry is ViewContextEntry {
+    if (!entry) return false;
+    return SCOPE_TO_TAB[entry.scope] === activeTab;
+}
+
 /** Montant pour le prompt : arrondi au dollar, JAMAIS un défaut plausible sur non-fini
  *  (classe AI-PROMPT-FAKE-ZERO — un « 0 $ » crédible est pire qu'une omission honnête). */
 function promptAmount(v: number): string | null {
@@ -100,9 +127,9 @@ function promptAmount(v: number): string | null {
  */
 export function describeViewContextForPrompt(activeTab: Tab): string {
     const tabLabel = TAB_LABELS[activeTab] ?? String(activeTab);
-    const entry = _current;
+    const entry = viewContextMatchesTab(_current, activeTab) ? _current : null;
     if (!entry) {
-        return `CONTEXTE ÉCRAN : l'utilisateur est sur l'onglet « ${tabLabel} ». Tu ne vois PAS le détail de cette page — si on te demande d'expliquer « ce qui est affiché », dis-le honnêtement et consulte tes outils pour répondre sur les données (sans prétendre voir l'écran).`;
+        return `CONTEXTE ÉCRAN : l'utilisateur est sur l'onglet « ${tabLabel} ». Tu ne vois PAS le détail de cette page — si on te demande d'expliquer « ce qui est affiché », dis-le honnêtement et consulte tes outils pour répondre sur les données (sans prétendre voir l'écran). Ne mentionne JAMAIS spontanément que tu ne vois pas la page dans une réponse qui ne porte pas sur l'écran.`;
     }
     const d = entry.detail;
     const parts: string[] = [];
@@ -112,6 +139,10 @@ export function describeViewContextForPrompt(activeTab: Tab): string {
     if (spent) parts.push(`dépenses réelles ${spent}`);
     if (target) parts.push(`cible du budget ${target}`);
     if (income) parts.push(`revenus réels de la période ${income}`);
+    // [Finding sécurité #490 — MOYEN] Les segments TEXTE UTILISATEUR (noms de catégories, filtre
+    // personne) sont assainis PUIS encadrés <DONNEES> (balises code-auteur — l'utilisateur ne peut
+    // pas les fermer, sanitizePromptText retire < et >) : cohérent avec la règle d'isolement
+    // anti-injection du QUEBEC_FISCAL_CONTEXT, au lieu d'un texte libre « de confiance » en system.
     const top = d.topCategories
         .slice(0, 3)
         .map((c) => {
@@ -120,7 +151,7 @@ export function describeViewContextForPrompt(activeTab: Tab): string {
         })
         .filter((x): x is string => x !== null);
     const filterNote = d.personFilterLabel
-        ? ` Filtre actif : dépenses de ${sanitizePromptText(d.personFilterLabel)} seulement.`
+        ? ` Filtre actif : dépenses de <DONNEES>${sanitizePromptText(d.personFilterLabel)}</DONNEES> seulement.`
         : '';
-    return `CONTEXTE ÉCRAN : l'utilisateur est sur l'onglet « ${tabLabel} » — période affichée : ${d.periodLabel} (vue ${d.timeViewLabel}).${filterNote} Chiffres AFFICHÉS À L'ÉCRAN (cite CEUX-CI pour toute question sur « ce qui est affiché » — pour un chiffre absent d'ici, consulte tes outils en le disant) : ${parts.join(', ')}.${top.length > 0 ? ` Top catégories dépensées : ${top.join(', ')}.` : ''}`;
+    return `CONTEXTE ÉCRAN : l'utilisateur est sur l'onglet « ${tabLabel} » — période affichée : ${d.periodLabel} (vue ${d.timeViewLabel}).${filterNote} Chiffres AFFICHÉS À L'ÉCRAN (cite CEUX-CI pour toute question sur « ce qui est affiché » — pour un chiffre absent d'ici, consulte tes outils en le disant) : ${parts.join(', ')}.${top.length > 0 ? ` Top catégories dépensées : <DONNEES>${top.join(', ')}</DONNEES>.` : ''} Si un outil rend un montant DIFFÉRENT pour un concept proche, ce ne sont PAS des contradictions : des PÉRIMÈTRES différents (période affichée vs agrégat mensuel standard) — cite le chiffre ÉCRAN pour « ce qui est affiché » et explique la différence de base si l'outil est aussi pertinent.`;
 }

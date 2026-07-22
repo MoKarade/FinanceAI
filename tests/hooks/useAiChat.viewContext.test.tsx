@@ -66,6 +66,16 @@ describe('useAiChat — contexte d\'écran (CHAT-PAGE-CONTEXT)', () => {
         expect(captured.lines[0]).toContain('Tu ne vois PAS le détail');
     });
 
+    it('[Finding sécurité #490] MODE DISCRET → AUCUNE ligne de contexte au chokepoint d\'envoi (ceinture)', async () => {
+        // Les protections périphériques (publisher purgé + chat masqué) couvrent l'UI ; ce test
+        // verrouille le point d'égress LUI-MÊME contre un appel programmatique/masquage partiel futur.
+        publishViewContext('budget', budgetDetail('juillet 2026'));
+        useFinanceStore.setState({ isPrivacyMode: true } as never);
+        const { result } = renderHook(() => useAiChat('sk-test'));
+        await act(async () => { await result.current.sendMessage('Question'); });
+        expect(captured.lines[0]).toBeUndefined(); // ni Tier 2 (montants) ni Tier 1 (onglet)
+    });
+
     it('le contexte n\'est JAMAIS persisté dans le transcript (ADR-4)', async () => {
         publishViewContext('budget', budgetDetail('juillet 2026'));
         const { result } = renderHook(() => useAiChat('sk-test'));

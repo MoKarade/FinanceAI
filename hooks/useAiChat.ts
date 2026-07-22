@@ -33,6 +33,8 @@ import { aliveAttachmentMessageIds } from '../services/aiChat/conversations';
 // [B3+B4] Modèle par conversation + coût réel — modules purs/légers (boot-safe en import statique).
 import { MODEL_IDS, resolveChatModelKey } from '../services/aiChat/models';
 import { chatCostUsd } from '../services/aiChat/pricing';
+// [CHAT-PAGE-CONTEXT] Contexte d'écran (module pur, boot-safe) — lu en IMPÉRATIF à l'envoi.
+import { describeViewContextForPrompt } from '../services/aiChat/viewContext';
 // [B2] Octets des pièces jointes en fichiers Drive appdata SÉPARÉS (cross-device) — best-effort,
 // jamais bloquant, module léger (fetch nu, aucun SDK).
 import { pushAttachmentsToDrive, fetchAttachmentsFromDrive, deleteAttachmentsFromDrive } from '../services/aiChat/attachmentDriveStore';
@@ -172,6 +174,19 @@ export function useAiChat(apiKey: string): UseAiChat {
         // conversation. Tout chemin de sortie repasse par le `finally` global ci-dessous.
         inFlightRef.current = true;
         setIsLoading(true);
+        // [CHAT-PAGE-CONTEXT] Contexte d'écran capturé en SYNCHRONE, AVANT le premier await (comme
+        // les flags ci-dessus — même leçon B2) : une navigation pendant la lecture des pièces
+        // jointes ne peut pas faire répondre le chat sur une AUTRE page que celle qui a motivé la
+        // question. Figé pour toute la boucle via le `system` (jamais relu mi-envoi).
+        // [Finding sécurité #490 — ÉLEVÉ] Gate mode discret AU CHOKEPOINT D'ENVOI lui-même
+        // (ceinture) : le publisher purge déjà le détail à la source et le chat entier est masqué
+        // en mode discret (ADR-5), mais le point d'égress réseau doit être gardé EN PROPRE — une
+        // future évolution (masquage partiel, appel programmatique) ne doit pas pouvoir faire
+        // fuiter la ligne de contexte en silence.
+        const sendState = useFinanceStore.getState();
+        const viewContextLine = sendState.isPrivacyMode
+            ? undefined
+            : describeViewContextForPrompt(sendState.activeTab);
         try {
 
         // [AITOOLS-B1] Lecture des pièces jointes AVANT tout append : un fichier illisible refuse
@@ -320,6 +335,7 @@ export function useAiChat(apiKey: string): UseAiChat {
             const result = await runAgentLoop(history, {
                 apiKey,
                 model: modelId,
+                viewContextLine,
                 getState: appStateProvider,
                 signal: abortRef.current.signal,
                 onTextDelta: (delta) => {

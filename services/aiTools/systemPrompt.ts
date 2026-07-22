@@ -7,7 +7,15 @@
 
 import { QUEBEC_FISCAL_CONTEXT } from '../claude';
 
-export function buildAgentSystemPrompt(): string {
+/**
+ * [CHAT-PAGE-CONTEXT] `viewContextLine` (additif, défaut absent → prompt BYTE-IDENTIQUE à avant) :
+ * la ligne « CONTEXTE ÉCRAN » de services/aiChat/viewContext.ts, calculée UNE fois par envoi dans
+ * useAiChat (le `system` est structurellement figé pour toute la boucle — jamais relu mi-envoi).
+ * ⚠️ Placée en FIN de prompt : le jour où [AITOOLS-PROMPT-CACHE] pose un cache_control sur le
+ * préfixe statique, il faudra scinder system en blocs (statique caché / dynamique) — cette ligne
+ * change à chaque envoi et invaliderait sinon le hit de cache du préfixe entier.
+ */
+export function buildAgentSystemPrompt(viewContextLine?: string): string {
     return `${QUEBEC_FISCAL_CONTEXT}
 OUTILS — Règles d'usage :
 - Tu as accès aux données financières RÉELLES de l'utilisateur via des outils (tools). Pour TOUTE
@@ -35,5 +43,34 @@ OUTILS — Règles d'usage :
   l'utilisateur compare avec un chiffre de son onglet Futur, précise que l'écran peut afficher une
   projection OPTIMISÉE et/ou FIGÉE à un calcul antérieur — un écart entre les deux est normal, pas
   un bug (explique la source de chaque chiffre).
-- Réponds en français (Québec), ton direct, montants en $ CAD.`;
+- Réponds en français (Québec), ton direct, montants en $ CAD.${viewContextLine ? `\n${viewContextLine}` : ''}`;
+}
+
+/** Bloc système du SDK Anthropic (sous-ensemble utilisé — évite d'importer le SDK ici). */
+export interface AgentSystemBlock {
+    type: 'text';
+    text: string;
+    cache_control?: { type: 'ephemeral' };
+}
+
+/**
+ * [Finding ai-reviewer #490 — ÉLEVÉ, coût BYOK] `system` en DEUX blocs : le préfixe STATIQUE
+ * (contexte fiscal + règles outils — identique à chaque envoi) porte un `cache_control` ephemeral,
+ * la ligne CONTEXTE ÉCRAN (qui change avec la navigation) vit dans un bloc SÉPARÉ SANS cache.
+ * Sans cette scission, un `system` string qui varie par envoi invalidait le préfixe de cache
+ * ENTIER — y compris l'entrée des pièces jointes (un PDF de 10 Mo re-facturé plein tarif au
+ * message suivant un changement de page). Résiduel assumé : l'entrée de cache des MESSAGES
+ * (pièces jointes incluses) est quand même ré-écrite quand la ligne de contexte change entre
+ * deux envois — mais le préfixe statique (le plus gros bloc + les 16 schémas d'outils), lui,
+ * est re-servi du cache dans TOUS les cas. (Livre au passage l'essentiel d'[AITOOLS-PROMPT-CACHE].)
+ * NB : sous le minimum cacheable (1024/2048 tokens selon modèle), l'API IGNORE cache_control
+ * sans erreur — le breakpoint est sans risque. Limite API : 4 breakpoints (2 utilisés : ici +
+ * pièces jointes).
+ */
+export function buildAgentSystemBlocks(viewContextLine?: string): AgentSystemBlock[] {
+    const blocks: AgentSystemBlock[] = [
+        { type: 'text', text: buildAgentSystemPrompt(), cache_control: { type: 'ephemeral' } },
+    ];
+    if (viewContextLine) blocks.push({ type: 'text', text: viewContextLine });
+    return blocks;
 }

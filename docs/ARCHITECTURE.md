@@ -209,6 +209,12 @@ User input ──► AiAssistant.tsx
                          └─ Stream chunks → UI
 ```
 
+**Injection du contexte de page** (vague 1, PR #490) : le `system` prompt inclut via
+`services/aiChat/viewContext.ts` un registre de l'onglet actif (`TAB_LABELS`) et, pour
+Budget, les détails de la période naviguée (dépenses réelles, cible, revenus, top 3
+catégories, filtre) — le contexte est capturé SYNCHRONE au moment du clic Envoyer et figé
+pour toute la réponse (pas de dérive si l'utilisateur navigue).
+
 **Séparation des modèles** :
 - `claude-sonnet-4-6` — chat, analyses budget, suggestions Planning, vision payslip
 - `claude-haiku-4-5` — catégorisation batch transactions (volume + vitesse), justifications rééquilibrage, NextBestAction, optimisation fiscale couple, conseils Immobilier (refonte v3.0)

@@ -23,7 +23,7 @@ import type { AnyWriteToolSpec } from '../../mcp/tools/_toolSpec';
 import { dispatchReadTool } from './dispatch';
 import { toAnthropicTools } from './toAnthropicTools';
 import { READ_SPECS, WRITE_SPECS, WRITE_SPECS_BY_NAME } from './registry';
-import { buildAgentSystemPrompt } from './systemPrompt';
+import { buildAgentSystemBlocks } from './systemPrompt';
 // [B4-CHAT-COST] Accumulation de l'usage RÉEL (tokens facturés) par tour — module pur/léger.
 import { addUsage, EMPTY_USAGE, type AiTokenUsage } from '../aiChat/pricing';
 
@@ -60,6 +60,10 @@ export interface AgentLoopOptions {
     model?: string;
     maxTokens?: number;
     system?: string;
+    /** [CHAT-PAGE-CONTEXT] Ligne « CONTEXTE ÉCRAN » capturée par l'appelant AU MOMENT de l'envoi
+     *  (figée pour toute la boucle via `system` — jamais relue mi-envoi). Ignorée si `system` est
+     *  fourni explicitement. */
+    viewContextLine?: string;
     /** Client injectable (tests). Défaut : makeClient(apiKey) — même transport que le reste de l'app. */
     client?: AgentClientLike;
 }
@@ -173,7 +177,9 @@ export async function runAgentLoop(
     // [AITOOLS-D] Les tools d'écriture ne sont déclarés QUE si un exécuteur de confirmation existe.
     const tools = toAnthropicTools(opts.onWriteToolUse ? [...READ_SPECS, ...WRITE_SPECS] : READ_SPECS);
     const maxTurns = opts.maxTurns ?? DEFAULT_MAX_TURNS;
-    const system = opts.system ?? buildAgentSystemPrompt();
+    // [Finding ai-reviewer #490] Blocs système : préfixe statique CACHÉ (cache_control) + ligne de
+    // contexte d'écran dynamique séparée — un `system` string variable invalidait le cache entier.
+    const system = opts.system ?? buildAgentSystemBlocks(opts.viewContextLine);
 
     const messages: Anthropic.MessageParam[] = [...history];
     const toolsUsed: string[] = [];

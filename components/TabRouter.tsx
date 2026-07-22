@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react';
 import { Tab, AppState, Transaction } from '../types';
+import { TAB_LABELS } from '../constants';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 // P1 fix — wrap React.lazy avec retry + reload sur chunk-load-error
 // (cf hubperso.com regression : "Failed to fetch dynamically imported module")
@@ -25,26 +26,6 @@ const FutureProjection = lazyWithRetry(() => import('./FutureProjection').then(m
 const DebtManager = lazyWithRetry(() => import('./DebtManager').then(m => ({ default: m.DebtManager })), 'DebtManager');
 // G22-N5 — SystemView n'est plus une route top-level : fusionné dans Settings
 // (sous-onglet « Système & diagnostics »).
-
-const TAB_LABELS: Record<Tab, string> = {
-    [Tab.DASHBOARD]: 'Accueil',
-    [Tab.TRANSACTIONS]: 'Transactions',
-    [Tab.BUDGET]: 'Budget',
-    [Tab.DEBT]: 'Dettes',
-    [Tab.INVESTMENTS]: 'Investissements',
-    [Tab.FUTURE]: 'Futur',
-    [Tab.ACTIONS]: 'Prochaine action',
-    [Tab.REAL_ESTATE]: 'Immobilier',
-    [Tab.CHILD]: 'Enfant',
-    [Tab.TRAVEL]: 'Voyages',
-    [Tab.LIFE_EVENTS]: 'Parcours de Vie',
-    [Tab.LIFE_PROJECTS]: 'Projets de vie',
-    [Tab.RETIREMENT]: 'Retraite',
-    [Tab.TAX]: 'Impôts & Docs',
-    [Tab.SETTINGS]: 'Paramètres',
-    [Tab.PROFILE]: 'Profil',
-    [Tab.ASSISTANT]: 'Assistant IA',
-};
 
 const TabLoader: React.FC = () => (
     <div className="flex items-center justify-center h-96">

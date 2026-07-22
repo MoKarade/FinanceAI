@@ -156,6 +156,7 @@ L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCH
 
 ### Assistant IA
 - Chat persisté Claude avec contexte financier complet (tools de lecture/écriture partagés avec le MCP)
+- Le chat voit la page affichée : sur Budget, il connaît la période naviguée, les dépenses réelles et cibles de l'écran — « explique-moi ce chiffre » répond sur le chiffre visible, pas un recalcul
 - Modèle au choix PAR conversation : Haiku / Sonnet (défaut) / Opus — le choix suit la conversation
 - Coût API réel affiché en CAD (par réponse, par conversation, total cumulé) — tokens facturés × tarif
 - Onglet dédié avec historique multi-conversations (sync Drive) + pièces jointes (images, PDF, CSV)

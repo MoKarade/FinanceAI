@@ -1,0 +1,54 @@
+# [HUB-REFRESH-CRON] Rafraîchissement planifié des prix de marché.
+#
+# Déclenche le serveur MCP (Cloud Run) qui lit l'état Drive, rafraîchit les cours et réécrit le
+# blob — sans que l'utilisateur ouvre l'app. Cloud Run peut dormir (scale-to-zero) : ce cron
+# externe le réveille. Gratuit (GitHub Actions), pas de limite « 1×/jour » comme Vercel Hobby.
+#
+# Secrets requis (Settings → Secrets and variables → Actions) :
+#   FINANCEAI_MCP_URL        — URL du serveur MCP, ex. https://financeai-mcp-xxxx.run.app
+#   FINANCEAI_REFRESH_SECRET — le même secret que la Script Property Cloud Run FINANCEAI_REFRESH_SECRET
+#
+# Le job « rougit » sur tout non-200 : serveur injoignable, 401 (mauvais secret), ou 5xx = panne
+# RÉELLE (Drive KO, jeton révoqué, coffre chiffré) → alerte GitHub. Un conflit de concurrence
+# (l'app a poussé au même moment) reste 200 { ok:false, conflict:true } et sera réessayé au tick suivant.
+
+name: Rafraîchir les prix FinanceAI
+
+on:
+  schedule:
+    # Toutes les 6 h (00/06/12/18 UTC), tous les jours — couvre la crypto le week-end.
+    - cron: '3 */6 * * *'
+  workflow_dispatch: {} # déclenchement manuel possible depuis l'onglet Actions
+
+# Un seul refresh à la fois (un run planifié + un manuel ne se chevauchent pas).
+concurrency:
+  group: refresh-prices
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: POST /refresh
+        env:
+          MCP_URL: ${{ secrets.FINANCEAI_MCP_URL }}
+          REFRESH_SECRET: ${{ secrets.FINANCEAI_REFRESH_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MCP_URL:-}" ] || [ -z "${REFRESH_SECRET:-}" ]; then
+            echo "::error::Secrets FINANCEAI_MCP_URL / FINANCEAI_REFRESH_SECRET manquants."
+            exit 1
+          fi
+          # --max-time 240 : le refresh espace ses appels de 2 500 ms (anti-quota) ; avec beaucoup
+          # de titres, la passe peut durer > 2 min. On reste sous le timeout-minutes: 5 du job pour
+          # ne pas couper une passe qui, côté serveur, sauvegarde quand même.
+          code=$(curl -sS --max-time 240 -o /tmp/refresh_out -w '%{http_code}' \
+            -X POST "${MCP_URL%/}/refresh" \
+            -H "Authorization: Bearer ${REFRESH_SECRET}")
+          echo "HTTP ${code}"
+          # Le secret n'est jamais dans le corps ; l'afficher aide au diagnostic (updated/skipped).
+          cat /tmp/refresh_out; echo
+          # 200 = OK (ok:true) ou conflit transitoire (ok:false, conflict:true — réessai au tick suivant).
+          # 5xx = panne RÉELLE (Drive KO, jeton révoqué, coffre chiffré) → le job rougit et alerte.
+          test "${code}" = "200"

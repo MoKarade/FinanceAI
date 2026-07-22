@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-22 — Refresh planifié des prix (`HUB-REFRESH-CRON`) livré (GO Marc « code tout »)
+> **Problème Marc** : « les données de finance ai sont pas à jour mais j'ai pas envie d'aller dans l'app
+> pour que ce soit à jour ». Cause racine : seule l'app navigateur poussait l'état dans Drive → tout
+> figeait dès l'onglet fermé. **Solution livrée** : `mcp/refreshPrices.ts` (`runPriceRefresh` — lit le
+> blob, rafraîchit les cours via le moteur PARTAGÉ `services/priceRefresh` en `force:true`, réécrit avec
+> l'OCC ; ne touche QUE `currentPrice`, jamais les données saisies ; skip honnête si pas de provider) +
+> route `POST /refresh` (`mcp/http.ts`, activée par `FINANCEAI_REFRESH_SECRET` ≥16 car., Bearer temps
+> constant, conflit OCC = `200 {ok:false, conflict:true}` transitoire mais panne RÉELLE = `5xx` pour
+> que le cron rougisse — `StateConflictError` typée, finding sécu ÉLEVÉ appliqué) + déclencheur GitHub Actions gratuit
+> (`.github/workflows/refresh-prices.yml`, 6 h + manuel — Cloud Run dort, un cron externe le réveille).
+> `deploy.sh` monte `financeai-refresh-secret` + `financeai-finnhub-key` (optionnelle, actions) depuis
+> Secret Manager s'ils existent. Tests `tests/mcp/refreshPrices.test.ts` (7, verts). ADR `docs/decisions.md`.
+> ⏳ **Marc doit** : créer les secrets Cloud Run (`financeai-refresh-secret` + `financeai-finnhub-key`),
+> redéployer (`./mcp/deploy.sh`), puis créer les 2 secrets GitHub (`FINANCEAI_MCP_URL` +
+> `FINANCEAI_REFRESH_SECRET`). Détail : `mcp/README.md` § Refresh planifié.
+>
 > ## 🟢 Session 2026-07-22 — Chantier Claude-in-app COMPLET (A→E + audit SEC)
 > **✅ `[AITOOLS-SEC]` livré — chantier CLÔTURÉ.** Audit de sécurité final (panel security-privacy + ai-reviewer,
 > sondes exécutées) sur toute la surface. **Verdict : sain.** Rapport `docs/AUDIT_SEC_CLAUDE_IN_APP_2026-07-22.md`.

@@ -27,6 +27,7 @@ import {
 } from '../../services/googleDrive/driveAppData';
 import { buildEnvelope } from '../../services/sync/syncEngine';
 import type { SyncEnvelope } from '../../services/sync/syncTypes';
+import { StateConflictError } from '../state/stateErrors';
 import type { WritableStateSource, StateVersion } from '../state/loadAppState';
 import type { SaveResult } from '../state/writeAppState';
 import { setStateFreshness } from '../state/freshness';
@@ -160,7 +161,7 @@ export class DriveStateSource implements WritableStateSource {
                 message: 'DriveStateSource: conflit de concurrence détecté — écriture REFUSÉE (rien d\'écrasé)',
                 context: { currentVersion, expectedVersion, lastSeenUpdatedAt: this.lastSeenUpdatedAt },
             });
-            throw new Error(
+            throw new StateConflictError(
                 'Conflit : la sauvegarde Drive a été modifiée depuis la lecture (l\'app a ' +
                 'synchronisé entre-temps, ou un autre appel concurrent). Rien n\'a été écrasé. Relance le ' +
                 'tool : il relira l\'état à jour, puis réapplique le changement.',

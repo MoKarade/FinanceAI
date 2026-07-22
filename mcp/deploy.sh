@@ -48,6 +48,21 @@ else
   echo "        Pour l'activer : crée le secret puis redéploie (cf mcp/README.md § Hub perso)."
 fi
 
+# Refresh planifié des prix (HUB-REFRESH-CRON) — OPTIONNEL, même logique que le hub :
+# monté seulement si le secret `financeai-refresh-secret` existe (sinon POST /refresh reste
+# désactivé, 404). La clé Finnhub est optionnelle (repli CoinGecko pour la crypto sans clé).
+if gcloud secrets describe financeai-refresh-secret --project "$PROJECT_ID" >/dev/null 2>&1; then
+  SECRETS="${SECRETS},FINANCEAI_REFRESH_SECRET=financeai-refresh-secret:latest"
+  echo "  Refresh : secret financeai-refresh-secret trouvé → POST /refresh ACTIF."
+else
+  echo "  Refresh : secret financeai-refresh-secret absent → POST /refresh désactivé."
+  echo "            Pour l'activer : crée le secret puis redéploie (cf mcp/README.md § Refresh planifié)."
+fi
+if gcloud secrets describe financeai-finnhub-key --project "$PROJECT_ID" >/dev/null 2>&1; then
+  SECRETS="${SECRETS},FINANCEAI_FINNHUB_KEY=financeai-finnhub-key:latest"
+  echo "  Refresh : secret financeai-finnhub-key trouvé → cours actions via Finnhub."
+fi
+
 gcloud run deploy "$SERVICE" \
   --project "$PROJECT_ID" \
   --region "$REGION" \

@@ -7,6 +7,7 @@
 
 import { applyDocument, type DocumentPayload } from '../ingest/applyDocument';
 import { jsonContent, errorContent, type ToolTextResult } from './_dataAware';
+import { scrubWriteResultForModel } from './scrubWriteResult';
 import type { StateStore } from '../state/stateStore';
 import { logError } from '../../services/errorLogger';
 
@@ -31,9 +32,16 @@ export async function runApply(store: StateStore, doc: DocumentPayload): Promise
     }
     try {
         const { nextState, changes, summary } = applyDocument(state, doc);
-        if (changes.length === 0) return jsonContent({ applied: false, summary, changes: [] });
+        // [MCP-WRITE-SUMMARY-SCRUB, audit SEC] Désinfecter summary/changes AVANT de les renvoyer au
+        // modèle (claude.ai) — un nom/employeur/ticker piégé (extrait d'un document joint) reviendrait
+        // sinon VERBATIM dans le contexte du tour suivant. Même helper que le chat in-app (parité).
+        if (changes.length === 0) {
+            const safe = scrubWriteResultForModel(summary, []);
+            return jsonContent({ applied: false, summary: safe.summary, changes: [] });
+        }
         const { backupPath } = await store.save(nextState, version);
-        return jsonContent({ applied: true, summary, changes, backupPath });
+        const safe = scrubWriteResultForModel(summary, changes);
+        return jsonContent({ applied: true, summary: safe.summary, changes: safe.changes, backupPath });
     } catch (err) {
         // [MCP-TOOLS-SILENT-CATCH] échec d'application/persistance (OCC, Drive, fusion) journalisé.
         logError({

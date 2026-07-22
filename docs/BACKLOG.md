@@ -48,19 +48,24 @@
   oauthProvider (tamper ~1/64 no-op). **Panel (4 agents, sondes)** : 6 findings appliqués — mode discret
   masque le modal (Loi 25), promesse orpheline au démontage d'onglet, scrub injection du `summary`,
   Annuler coupe tout le lot, `.finite()` sur 5 specs.
-- [ ] **`[MCP-WRITE-SUMMARY-SCRUB]`** 🟠 (S/M, découvert au panel Lot D) — le vecteur « injection indirecte
-  via `summary`/`field` d'un tool_result d'écriture » existe AUSSI côté serveur MCP (`applyDocument`→`runApply`
-  renvoie le `summary` à claude.ai) : le nom user (extrait d'un document joint) y revient VERBATIM. Corrigé pour
-  le chat in-app (writeExecutor scrube au renvoi), PAS pour le MCP. Fix propre = `sanitizePromptText` au point
-  d'usage dans `applyDocument.ts` (touche du code moteur PARTAGÉ → à faire avec panel `financial-integrity` +
-  vérif que les golden/tests de `summary` MCP ne régressent pas). Limite assumée : injection en langage naturel
-  passe toujours (defense-in-depth).
+- [x] **`[MCP-WRITE-SUMMARY-SCRUB]`** ✅ 2026-07-22 (audit SEC) — le vecteur « injection indirecte via
+  `summary`/`field` d'un tool_result d'écriture » existait AUSSI côté serveur MCP (`runApply` renvoyait le
+  `summary` non scrubé à claude.ai). CORRIGÉ : helper PARTAGÉ `mcp/tools/scrubWriteResult.ts`
+  (`scrubWriteResultForModel`) consommé par `writeExecutor` (app) ET `runApply` (MCP) → parité par construction.
+  Test `tests/mcp/writeResultScrub.test.ts`. ⚠️ Effet sur claude.ai au prochain deploy Cloud Run. Limite assumée :
+  injection en langage naturel passe toujours (defense-in-depth).
 - [x] **`[AITOOLS-E]` UI partagée** (L) — ✅ 2026-07-22 : `AiChatProvider` (1 instance `useAiChat` au niveau
   App) + panneau latéral GLOBAL (`AiChatLauncher`, FAB partout, lazy) + onglet Assistant pleine page —
   rendu mutualisé `AiChatView` (variant panneau/onglet), MÊME conversation partout. Résout à la racine le
   finding Lot D « promesse orpheline au démontage d'onglet » (chat monté App, jamais démonté par onglet ;
   modal rendu 1× par le provider). Boot inchangé (~107 kB gzip mesuré : SDK Anthropic en import dynamique
   dans `useAiChat`, panneau lazy). Mode discret masque tout ; pastille d'activité sur le FAB panneau fermé.
+- [ ] **`[AITOOLS-PROMPT-CACHE]`** 🟡 (S/M, découvert à l'audit SEC) — pas de prompt caching Anthropic :
+  chaque tour de `runAgentLoop` (jusqu'à 6) resoumet system + 16 schémas de tools + tool_results accumulés
+  → coût BYOK repayé à chaque consultation d'outil. Fix = `cache_control: {type:'ephemeral'}` sur le bloc
+  `system` et le tableau `tools` (stables d'un tour à l'autre) dans `agentLoop.ts` — gain direct, zéro
+  changement de comportement. À MESURER (économie réelle de tokens) et tester la forme de requête (les
+  tests scriptés capturent `requests[0]`). Optimisation coût, pas sécurité → ticket dédié hors SEC.
 - [ ] **`[PERF-SDK-BOOT-PRELOAD]`** 🟡 (S/M, découvert au panel Lot E, PRÉ-EXISTANT) — `ai-vendor` (SDK
   Anthropic) apparaît en `<link rel="modulepreload">` dans `dist/index.html` → le navigateur télécharge
   le SDK au boot (sans l'exécuter). Cause : `services/claude.ts:13` fait `import Anthropic from '@anthropic-ai/sdk'`
@@ -69,9 +74,12 @@
   (le marqueur `dispatchAnyTool` du Lot E, lui, est bien absent du boot). Fix = rendre l'usage du SDK dans
   claude.ts lazy (dynamic import par fonction) OU retirer le modulepreload via config Vite — à mesurer (gain
   gzip réel) et vérifier qu'aucun chemin critique ne régresse. Ticket distinct, pas urgent.
-- [ ] **`[AITOOLS-SEC]` Audit sécurité FINAL du chantier** (M, exigence Marc) — panel security-privacy +
-  ai-reviewer sur TOUT le chantier : injection indirecte via tool_result, aucune écriture sans confirmation
-  (prouvé par test), clé API, Loi 25, mode discret, personas. + vérif « aucune donnée changée » en lecture.
+- [x] **`[AITOOLS-SEC]` Audit sécurité FINAL du chantier** ✅ 2026-07-22 (exigence Marc) — panel security-privacy
+  + ai-reviewer sur TOUT le chantier. **Verdict : sain.** Rapport daté `docs/AUDIT_SEC_CLAUDE_IN_APP_2026-07-22.md`.
+  Prouvés SAINS (mesuré) : aucune écriture sans confirmation, clés API exclues, Loi 25/mode discret, isolation
+  persona, lecture zéro-mutation, parité claude.ai. Findings corrigés : `[MCP-WRITE-SUMMARY-SCRUB]` (ÉLEVÉ,
+  injection indirecte serveur), `.finite()` sur 3 tools lecture + garde-scan, `refusal` fin dégradée honnête.
+  Optimisations coût routées (non-sécurité) : `[AITOOLS-PROMPT-CACHE]`, `[PERF-SDK-BOOT-PRELOAD]`.
 >
 > **Dernière mise à jour : 2026-07-06.** Tests : 2334 verts / 207 fichiers · tsc clean · build OK.
 > **Dernière PR mergée : #425** (2026-06-26, WHT-DISPLAY-EXACT) — 111 commits depuis #315, audit financier complet 2026-06-23 résolu (6 lots), 5 sessions 06-19→06-26, retraite per-conjoint ✅.

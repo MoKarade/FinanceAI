@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — chantier Claude-in-app, AITOOLS-SEC : audit sécurité final] — 2026-07-22
+
+### Sécurité (audit de clôture du chantier — rapport `docs/AUDIT_SEC_CLAUDE_IN_APP_2026-07-22.md`)
+- **Injection de prompt indirecte fermée côté serveur MCP** (`[MCP-WRITE-SUMMARY-SCRUB]`, ÉLEVÉ) :
+  `runApply` renvoyait le `summary`/`changes` d'une écriture NON désinfectés à claude.ai — un nom de
+  dette/employeur/ticker piégé (extrait d'un document joint) revenait verbatim dans le contexte. Le scrub,
+  déjà en place côté app (Lot D), est désormais un helper PARTAGÉ (`scrubWriteResultForModel`) consommé par
+  les deux surfaces → parité par construction, plus de dérive. ⚠️ Effet sur claude.ai au prochain deploy Cloud Run.
+
+### Durcissements (audit de clôture du chantier)
+- **`.finite()` sur les champs $ non bornés de 3 tools de lecture** (runProjection, calculateRealEstate,
+  searchTransactions, getTaxRoom) — `Infinity` traversait la validation Zod (`.positive()/.nonnegative()`
+  ne l'excluent pas), risquant un calcul absurde présenté avec autorité. + garde-scan
+  `tests/aiTools/specFiniteGuard.test.ts` (volume prouvé) interdisant tout futur champ $ sans `.finite()`.
+- **Réponse REFUSÉE par le modèle** (`stop_reason: 'refusal'`) traitée comme une fin dégradée honnête :
+  marqueur « [Réponse refusée] » + `logError` (avant : « aucune réponse, réessaie » aveugle, sans trace).
+
 ## [unreleased — chantier Claude-in-app, Lot E : chat partout (panneau global + onglet)] — 2026-07-22
 
 ### Améliorations (Assistant)

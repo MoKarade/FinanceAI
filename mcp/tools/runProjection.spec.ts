@@ -12,9 +12,9 @@ import type { ReadToolSpec } from './_toolSpec';
 // Monte Carlo, scenarios). On l'exposera en Sprint 2 avec un schema dedie.
 
 const inputSchema = {
-  startingNetWorth: z.number()
+  startingNetWorth: z.number().finite()
     .describe('Patrimoine de depart en CAD (cash + investissements)'),
-  monthlySavings: z.number()
+  monthlySavings: z.number().finite()
     .describe('Epargne mensuelle moyenne en CAD'),
   years: z.number().int().min(1).max(50)
     .describe('Horizon de projection en annees'),

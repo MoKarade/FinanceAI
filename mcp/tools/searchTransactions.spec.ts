@@ -14,8 +14,8 @@ const inputSchema = {
     query: z.string().optional()
         .describe('Texte libre (marchand ou catégorie), casse-insensible. Ex: "épicerie", "Hydro".'),
     category: z.string().optional().describe('Filtre par catégorie exacte.'),
-    minAmount: z.number().optional().describe('Montant minimum signé (dépenses négatives).'),
-    maxAmount: z.number().optional().describe('Montant maximum signé.'),
+    minAmount: z.number().finite().optional().describe('Montant minimum signé (dépenses négatives).'),
+    maxAmount: z.number().finite().optional().describe('Montant maximum signé.'),
     fromDate: z.string().optional().describe('Date de début incluse (YYYY-MM-DD).'),
     toDate: z.string().optional().describe('Date de fin incluse (YYYY-MM-DD).'),
     includeTransfers: z.boolean().default(false).describe('Inclure les virements/transferts.'),

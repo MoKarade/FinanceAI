@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-22 — Chantier Claude-in-app COMPLET (A→E + audit SEC)
+> **✅ `[AITOOLS-SEC]` livré — chantier CLÔTURÉ.** Audit de sécurité final (panel security-privacy + ai-reviewer,
+> sondes exécutées) sur toute la surface. **Verdict : sain.** Rapport `docs/AUDIT_SEC_CLAUDE_IN_APP_2026-07-22.md`.
+> Prouvés SAINS : aucune écriture sans confirmation, clés API exclues, Loi 25/mode discret, isolation persona,
+> lecture zéro-mutation, parité claude.ai. **3 findings corrigés** : `[MCP-WRITE-SUMMARY-SCRUB]` (ÉLEVÉ — injection
+> indirecte côté serveur MCP, le scrub app jamais porté au serveur → helper PARTAGÉ `scrubWriteResult.ts` ;
+> ⚠️ effet claude.ai au prochain deploy Cloud Run), `.finite()` sur 3 tools lecture + garde-scan, `refusal`
+> fin dégradée honnête. Optimisations coût routées (non-sécurité) : `[AITOOLS-PROMPT-CACHE]`, `[PERF-SDK-BOOT-PRELOAD]`.
+> **Chantier Claude-in-app : A→E + SEC = TOUT livré.** Suite possible (au choix Marc) : P2 (tools d'écriture
+> supplémentaires : transactions/objectifs/budgets/actifs/immobilier, réutilisent l'infra de confirmation) + P3
+> (visuels des 5 surfaces). Marc doit encore VALIDER en prod (questions réelles dans l'onglet Assistant).
+>
 > ## 🟢 Session 2026-07-22 — Chantier Claude-in-app : Lot E livré (chat PARTOUT)
 > **✅ `[AITOOLS-E]` livré** : le conseiller IA est accessible sur TOUS les onglets (panneau latéral global
 > `AiChatLauncher`, FAB partout, lazy) + onglet Assistant pleine page. `AiChatProvider` (monté App) = UNE
